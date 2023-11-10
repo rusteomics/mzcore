@@ -1,4 +1,4 @@
-#[allow(dead_code)]
+#![allow(dead_code)]
 
 // Source: http://pdg.lbl.gov/2012/reviews/rpp2012-rev-phys-constants.pdf
 pub const AVERAGE_AA_MASS: f64 = 111.1254; // TODO: marco => why difference with 111.10523866044295 by computation
@@ -16,74 +16,40 @@ pub const NH3_MONO_MASS: f64 = 17.02654910101;
 pub const WATER_MONO_MASS: f64 = 18.010565;
 pub const WATER_AVERAGE_MASS: f64 = 18.01525697318;
 
-pub mod aa {
-    pub const A: char = 'A';
-    pub const B: char = 'B';
-    pub const C: char = 'C';
-    pub const D: char = 'D';
-    pub const E: char = 'E';
-    pub const F: char = 'F';
-    pub const G: char = 'G';
-    pub const H: char = 'H';
-    pub const J: char = 'J';
-    pub const I: char = 'I';
-    pub const K: char = 'K';
-    pub const L: char = 'L';
-    pub const M: char = 'M';
-    pub const N: char = 'N';
-    pub const O: char = 'O';
-    pub const P: char = 'P';
-    pub const Q: char = 'Q';
-    pub const R: char = 'R';
-    pub const S: char = 'S';
-    pub const T: char = 'T';
-    pub const U: char = 'U';
-    pub const V: char = 'V';
-    pub const W: char = 'W';
-    pub const X: char = 'X';
-    pub const Y: char = 'Y';
-    pub const Z: char = 'Z';
-}
 
 // --- Sage definition --- //
+// FIXME: some letters are sometimes used for undetermined amino acids (should we add them)
+// FIXME: is this really needed with the previously defined enum?
+// Example: B for D/N, J for I/L, Z for E/Q, X for any
 pub const VALID_AA: [u8; 22] = [
     b'A', b'C', b'D', b'E', b'F', b'G', b'H', b'I', b'K', b'L', b'M', b'N', b'P', b'Q', b'R', b'S',
     b'T', b'V', b'W', b'Y', b'U', b'O',
 ];
 
-pub mod atom {
-    pub const C: &'static str = "C";
-    pub const H: &'static str = "H";
-    pub const O: &'static str = "O";
-    pub const N: &'static str = "N";
-    pub const P: &'static str = "P";
-    pub const S: &'static str = "S";
-}
-
 // --- Sage definition --- //
-pub const MONOISOTOPIC_MASSES: [f32; 26] = [
+pub const MONOISOTOPIC_AA_MASSES: [f64; 26] = [
     71.03711, 0.0, 103.00919, 115.02694, 129.04259, 147.0684, 57.02146, 137.05891, 113.08406, 0.0,
     128.09496, 113.08406, 131.0405, 114.04293, 237.14774, 97.05276, 128.05858, 156.1011, 87.03203,
     101.04768, 150.95363, 99.06841, 186.07932, 0.0, 163.06332, 0.0,
 ];
 
-pub const fn monoisotopic(aa: u8) -> f32 {
+pub const fn monoisotopic_aa_mass(aa: u8) -> f64 {
     if aa.is_ascii_uppercase() {
-        MONOISOTOPIC_MASSES[(aa - b'A') as usize]
+        MONOISOTOPIC_AA_MASSES[(aa - b'A') as usize]
     } else {
         0.0
     }
 }
 
 #[cfg(test)]
-mod test {
+mod tests {
 
-    use super::{monoisotopic, VALID_AA};
+    use super::{monoisotopic_aa_mass, VALID_AA};
 
     #[test]
     fn valid_aa() {
         for ch in VALID_AA {
-            assert!(monoisotopic(ch) > 0.0);
+            assert!(monoisotopic_aa_mass(ch) > 0.0);
         }
     }
 

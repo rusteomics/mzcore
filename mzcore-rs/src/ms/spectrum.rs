@@ -1,3 +1,4 @@
+use std::borrow::Cow;
 ///
 /// Some parts of this file originates from [Sage](https://github.com/lazear/sage/blob/master/crates/sage/src/spectrum.rs)
 /// Copyright (c) 2022 Michael Lazear
@@ -12,17 +13,17 @@ pub struct SpectrumData {
 }
 
 pub trait HasSpectrumData {
-    fn get_mz_list(&self) -> &Vec<f64>;
-    fn get_intensity_list(&self) -> &Vec<f32>;
+    fn get_mz_list(&self) -> Cow<[f64]>;
+    fn get_intensity_list(&self) -> Cow<[f32]>;
 }
 
 impl HasSpectrumData for SpectrumData {
-    fn get_mz_list(&self) -> &Vec<f64> {
-        &self.mz_list
+    fn get_mz_list(&self) -> Cow<[f64]> {
+        Cow::from(&self.mz_list)
     }
 
-    fn get_intensity_list(&self) -> &Vec<f32> {
-        &self.intensity_list
+    fn get_intensity_list(&self) -> Cow<[f32]> {
+        Cow::from(&self.intensity_list)
     }
 }
 
@@ -43,7 +44,7 @@ impl SpectrumData {
 
 // --- Similar to sage definitions --- //
 
-#[derive(Copy, Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
 pub struct Peak {
     pub mz: f64,
     pub intensity: f32,

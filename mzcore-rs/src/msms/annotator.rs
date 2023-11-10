@@ -1,15 +1,13 @@
 
-//use anyhow::*;
 //use itertools::Itertools;
+use serde::{Deserialize, Serialize};
 
 //use crate::ms::spectrum::SpectrumData;
 use crate::msms::fragmentation::*;
-use crate::msms::model::*;
 use crate::msms::model::FragmentIonSeries;
 
-// --- Creation of "struct" that contains the required info about the exp. and theo. data for their --- //
-// comparison and specifications of each candidates. --- //
-#[derive(Clone, Copy, PartialEq, Debug)]
+/// Struct that contains the required info about a match between the exp. and theo. data.
+#[derive(Clone, Copy, Debug, PartialEq, PartialOrd, Serialize, Deserialize)]
 pub struct MatchedPeak {
     pub peak_index: usize,
     pub peak_mz: f64,
@@ -118,7 +116,7 @@ pub fn annotate_spectrum(spectrum_peaks: &[[f64;2]], frag_table: &FragmentationT
                 //println!("matching fragment with m/z={}", peak_mz);
 
                 let frag_table_col: &TheoreticalFragmentIons = frag_table.get(frag_table_col_idx).unwrap();
-                let aa_position = if is_ion_forward(frag_table_col.ion_type).unwrap() {
+                let aa_position = if frag_table_col.ion_type.is_n_terminal().unwrap() {
                     (1 + frag_table_row_idx ) as u16
                 } else {
                     (1 + frag_table_n_rows - frag_table_row_idx) as u16

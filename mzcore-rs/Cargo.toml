@@ -14,10 +14,13 @@ publish = false
 name = "mzcore"
 #crate-type = ["cdylib"]
 
+#[[bin]]
+#name = "mzcore-sandbox"
+#path = "src/main.rs"
+
 [dependencies]
 anyhow = "1.0.75"
 fallible-iterator = "0.3.0"
 fast-float = "0.2.0"
 itertools = "0.11.0"
-lazy_static = "1.4.0"
-serde = { version = "*", features = ["derive"] }
+serde = { version = "*", features = ["derive","rc"] }

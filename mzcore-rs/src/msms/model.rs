@@ -1,14 +1,12 @@
-//use std::fmt::Display;
-// You need to bring the ToString trait into scope to use it
-//use std::string::ToString;
-//use strum_macros;
+
+use serde::{Deserialize, Serialize};
 
 use crate::chemistry::constants::*;
-//use crate::chemistry::constants::atom::H;
-use crate::chemistry::model::Peptide;
-use crate::chemistry::table::BIOMOLECULE_ATOM_TABLE;
+use crate::chemistry::element::Element;
+use crate::chemistry::peptide::LinearPeptide;
+use crate::chemistry::table::biomolecule_atom_table;
 
-#[derive(Clone, Eq, PartialEq, Debug)]
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize, Deserialize)]
 pub enum ActivationType {
     CID,
     ECD,
@@ -23,7 +21,7 @@ impl std::fmt::Display for ActivationType {
     }
 }
 
-#[derive(Clone, Eq, PartialEq, Debug)]
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize, Deserialize)]
 pub enum MsAnalyzer {
     FTMS,
     TRAP,
@@ -35,8 +33,16 @@ impl std::fmt::Display for MsAnalyzer {
     }
 }
 
+/// Enumeration that defines ion series direction
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize, Deserialize)]
+pub enum FragmentIonSeriesDirection {
+    NTerminal,
+    CTerminal,
+    Unspecified,
+}
+
 #[allow(non_camel_case_types)]
-#[derive(Clone, Copy, Eq, PartialEq, Debug)] //, strum_macros::Display
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize, Deserialize)]
 pub enum FragmentIonSeries {
     //M,
     //M_H2O,
@@ -52,7 +58,7 @@ pub enum FragmentIonSeries {
     //#[strum(serialize = "b-NH3")]
     b_NH3,
     c,
-    c_dot,
+    c·,
     c_m1,
     c_p1,
     c_p2,
@@ -74,156 +80,112 @@ pub enum FragmentIonSeries {
     z,
     z_H2O,
     z_NH3,
-    z_dot,
+    z·,
     z_p1,
     z_p2,
     z_p3,
     immonium,
 }
 
+impl FragmentIonSeries {
 
-pub fn get_ion_mono_mass_shift(ion_type: FragmentIonSeries) -> f64 {
+    pub fn get_ion_mono_mass_shift(&self) -> f64 {
 
-    // TODO: put in constants
-    let h_mono_mass = BIOMOLECULE_ATOM_TABLE.atom_by_symbol.get("H").unwrap().mono_mass();
-    let n_mono_mass = BIOMOLECULE_ATOM_TABLE.atom_by_symbol.get("N").unwrap().mono_mass();
-    let o_mono_mass = BIOMOLECULE_ATOM_TABLE.atom_by_symbol.get("O").unwrap().mono_mass();
+        // TODO: define as constants?
+        let atom_table = biomolecule_atom_table();
+        let h_mono_mass = atom_table.atom_by_element.get(&Element::H).unwrap().monoisotopic_mass();
+        let n_mono_mass = atom_table.atom_by_element.get(&Element::N).unwrap().monoisotopic_mass();
+        let o_mono_mass = atom_table.atom_by_element.get(&Element::O).unwrap().monoisotopic_mass();
 
-    use FragmentIonSeries::*;
-    let mass_shift = match ion_type {
-        //M => 0.0,
-        //M_H2O => - WATER_MONO_MASS,
-        //M_NH3 => - NH3_MONO_MASS,
-        a =>  - (WATER_MONO_MASS + CO_MONO_MASS), //Composition(formula='H-2O-1' + 'C-1O-1'),
-        a_H2O => - (2.0 * WATER_MONO_MASS + CO_MONO_MASS), //Composition(formula='H-2O-1' + 'C-1O-1' + 'H-2O-1'),
-        a_NH3 => - (CO_MONO_MASS + NH3_MONO_MASS + WATER_MONO_MASS), //Composition(formula='H-2O-1' + 'C-1O-1' + 'N-1H-3'),
-        b => - WATER_MONO_MASS, //Composition(formula='H-2O-1'),
-        b_H2O => -2.0 * WATER_MONO_MASS, //Composition(formula='H-2O-1' + 'H-2O-1'),
-        b_NH3 => - (WATER_MONO_MASS + NH3_MONO_MASS), //Composition(formula='H-2O-1' + 'N-1H-3'),
-        c => - WATER_MONO_MASS + NH3_MONO_MASS,
-        c_dot => - WATER_MONO_MASS + NH3_MONO_MASS + PROTON_MASS,
-        c_m1 => - WATER_MONO_MASS + NH3_MONO_MASS - PROTON_MASS,
-        c_p1 => - WATER_MONO_MASS + NH3_MONO_MASS + PROTON_MASS,
-        c_p2 => - WATER_MONO_MASS + NH3_MONO_MASS + 2.0 * PROTON_MASS,
-        c_H2O => - 2.0 * WATER_MONO_MASS + NH3_MONO_MASS,
-        c_NH3 => - WATER_MONO_MASS,
-        d => 0.0, // FIXME
-        v => 0.0, // FIXME
-        w => 0.0, // FIXME
-        x => - WATER_MONO_MASS + CO2_MONO_MASS,
-        x_H2O => - 2.0 * WATER_MONO_MASS + CO2_MONO_MASS,
-        x_NH3 => - WATER_MONO_MASS - NH3_MONO_MASS + CO2_MONO_MASS,
-        y => 0.0,
-        y_H2O => - WATER_MONO_MASS,
-        y_NH3 => - NH3_MONO_MASS,
-        ya => 0.0, // FIXME
-        yb => 0.0, // FIXME
-        z => - WATER_MONO_MASS + o_mono_mass - n_mono_mass,
-        z_H2O => - 2.0 * WATER_MONO_MASS + o_mono_mass - n_mono_mass - h_mono_mass,
-        z_NH3 => - WATER_MONO_MASS - NH3_MONO_MASS + o_mono_mass - n_mono_mass - h_mono_mass,
-        z_dot => - WATER_MONO_MASS + o_mono_mass - n_mono_mass, // TODO: check me
-        z_p1 => - WATER_MONO_MASS + o_mono_mass - n_mono_mass + h_mono_mass,
-        z_p2 => - WATER_MONO_MASS + o_mono_mass - n_mono_mass + 2.0 * h_mono_mass,
-        z_p3 => - WATER_MONO_MASS + o_mono_mass - n_mono_mass + 3.0 * h_mono_mass,
-        immonium => 0.0 // FIXME
-    };
-
-    mass_shift
-
-    /*
-        'z':        Composition(formula='H-2O-1' + 'ON-1H-1'),
-    'z-dot':    Composition(formula='H-2O-1' + 'ON-1'),
-    'z+1':      Composition(formula='H-2O-1' + 'ON-1H1'),
-    'z+2':      Composition(formula='H-2O-1' + 'ON-1H2'),
-    'z+3':      Composition(formula='H-2O-1' + 'ON-1H3'),
-    'z-H2O':    Composition(formula='H-2O-1' + 'ON-1H-1' + 'H-2O-1'),
-    'z-NH3':    Composition(formula='H-2O-1' + 'ON-1H-1' + 'N-1H-3'),
-            'M':        Composition(formula=''),
-    'M-H2O':    Composition(formula='H-2O-1'),
-    'M-NH3':    Composition(formula='N-1H-3'),
-    'a':        Composition(formula='H-2O-1' + 'C-1O-1'),
-    'a-H2O':    Composition(formula='H-2O-1' + 'C-1O-1' + 'H-2O-1'),
-    'a-NH3':    Composition(formula='H-2O-1' + 'C-1O-1' + 'N-1H-3'),
-    'b':        Composition(formula='H-2O-1'),
-    'b-H2O':    Composition(formula='H-2O-1' + 'H-2O-1'),
-    'b-NH3':    Composition(formula='H-2O-1' + 'N-1H-3'),
-    'c':        Composition(formula='H-2O-1' + 'NH3'),
-    'c-1':      Composition(formula='H-2O-1' + 'NH3' + 'H-1'),
-    'c-dot':    Composition(formula='H-2O-1' + 'NH3' + 'H1'),
-    'c+1':      Composition(formula='H-2O-1' + 'NH3' + 'H1'),
-    'c+2':      Composition(formula='H-2O-1' + 'NH3' + 'H2'),
-    'c-H2O':    Composition(formula='H-2O-1' + 'NH3' + 'H-2O-1'),
-    'c-NH3':    Composition(formula='H-2O-1'),
-    'x':        Composition(formula='H-2O-1' + 'CO2'),
-    'x-H2O':    Composition(formula='H-2O-1' + 'CO2' + 'H-2O-1'),
-    'x-NH3':    Composition(formula='H-2O-1' + 'CO2' + 'N-1H-3'),
-    'y':        Composition(formula=''),
-    'y-H2O':    Composition(formula='H-2O-1'),
-    'y-NH3':    Composition(formula='N-1H-3'),
-
-*/
-}
-// --- function determines ion_types (forward, reverse or none (to get rid of crashing) --- //
-pub fn is_ion_forward(ion_type: FragmentIonSeries) -> Option<bool> {
-    use FragmentIonSeriesDirection::*;
-
-    match get_ion_series_direction(ion_type) {
-        Forward => Some(true),
-        Reverse => Some(false),
-        Unspecified => None
+        match self {
+            //M => 0.0,
+            //M_H2O => - WATER_MONO_MASS,
+            //M_NH3 => - NH3_MONO_MASS,
+            Self::a =>  - (WATER_MONO_MASS + CO_MONO_MASS), //Composition(formula='H-2O-1' + 'C-1O-1'),
+            Self::a_H2O => - (2.0 * WATER_MONO_MASS + CO_MONO_MASS), //Composition(formula='H-2O-1' + 'C-1O-1' + 'H-2O-1'),
+            Self::a_NH3 => - (CO_MONO_MASS + NH3_MONO_MASS + WATER_MONO_MASS), //Composition(formula='H-2O-1' + 'C-1O-1' + 'N-1H-3'),
+            Self::b => - WATER_MONO_MASS, //Composition(formula='H-2O-1'),
+            Self::b_H2O => -2.0 * WATER_MONO_MASS, //Composition(formula='H-2O-1' + 'H-2O-1'),
+            Self::b_NH3 => - (WATER_MONO_MASS + NH3_MONO_MASS), //Composition(formula='H-2O-1' + 'N-1H-3'),
+            Self::c => - WATER_MONO_MASS + NH3_MONO_MASS,
+            Self::c· => - WATER_MONO_MASS + NH3_MONO_MASS + PROTON_MASS,
+            Self::c_m1 => - WATER_MONO_MASS + NH3_MONO_MASS - PROTON_MASS,
+            Self::c_p1 => - WATER_MONO_MASS + NH3_MONO_MASS + PROTON_MASS,
+            Self::c_p2 => - WATER_MONO_MASS + NH3_MONO_MASS + 2.0 * PROTON_MASS,
+            Self::c_H2O => - 2.0 * WATER_MONO_MASS + NH3_MONO_MASS,
+            Self::c_NH3 => - WATER_MONO_MASS,
+            Self::d => 0.0, // FIXME
+            Self::v => 0.0, // FIXME
+            Self::w => 0.0, // FIXME
+            Self::x => - WATER_MONO_MASS + CO2_MONO_MASS,
+            Self::x_H2O => - 2.0 * WATER_MONO_MASS + CO2_MONO_MASS,
+            Self::x_NH3 => - WATER_MONO_MASS - NH3_MONO_MASS + CO2_MONO_MASS,
+            Self::y => 0.0,
+            Self::y_H2O => - WATER_MONO_MASS,
+            Self::y_NH3 => - NH3_MONO_MASS,
+            Self::ya => 0.0, // FIXME
+            Self::yb => 0.0, // FIXME
+            Self::z => - WATER_MONO_MASS + o_mono_mass - n_mono_mass,
+            Self::z_H2O => - 2.0 * WATER_MONO_MASS + o_mono_mass - n_mono_mass - h_mono_mass,
+            Self::z_NH3 => - WATER_MONO_MASS - NH3_MONO_MASS + o_mono_mass - n_mono_mass - h_mono_mass,
+            Self::z· => - WATER_MONO_MASS + o_mono_mass - n_mono_mass, // TODO: check me
+            Self::z_p1 => - WATER_MONO_MASS + o_mono_mass - n_mono_mass + h_mono_mass,
+            Self::z_p2 => - WATER_MONO_MASS + o_mono_mass - n_mono_mass + 2.0 * h_mono_mass,
+            Self::z_p3 => - WATER_MONO_MASS + o_mono_mass - n_mono_mass + 3.0 * h_mono_mass,
+            Self::immonium => 0.0 // FIXME
+        }
     }
-}
 
-#[derive(Clone, Copy, Eq, PartialEq, Debug)] //, strum_macros::Display
-// --- create enumeration to define ion_types direction --- //
-pub enum FragmentIonSeriesDirection {
-    Forward,
-    Reverse,
-    Unspecified,
-}
+    pub fn is_n_terminal(&self) -> Option<bool> {
+        use FragmentIonSeriesDirection as SeriesDir;
 
-//adv using match: if there is a change in fragment ion series, it warns you about it.
-pub fn get_ion_series_direction(ion_type: FragmentIonSeries) -> FragmentIonSeriesDirection {
+        match self.get_ion_series_direction() {
+            SeriesDir::NTerminal => Some(true),
+            SeriesDir::CTerminal => Some(false),
+            SeriesDir::Unspecified => None
+        }
+    }
 
-    use FragmentIonSeries::*;
-    use FragmentIonSeriesDirection as SeriesDir;
+    pub fn get_ion_series_direction(&self) -> FragmentIonSeriesDirection {
 
-    let ion_series_direction = match ion_type {
-        a => SeriesDir::Forward,
-        a_H2O => SeriesDir::Forward,
-        a_NH3 => SeriesDir::Forward,
-        b => SeriesDir::Forward,
-        b_H2O => SeriesDir::Forward,
-        b_NH3 => SeriesDir::Forward,
-        c => SeriesDir::Forward,
-        c_dot => SeriesDir::Forward,
-        c_m1 => SeriesDir::Forward,
-        c_p1 => SeriesDir::Forward,
-        c_p2 => SeriesDir::Forward,
-        c_H2O => SeriesDir::Forward,
-        c_NH3 => SeriesDir::Forward,
-        d => SeriesDir::Unspecified, // FIXME
-        v => SeriesDir::Unspecified, // FIXME
-        w => SeriesDir::Unspecified, // FIXME
-        x => SeriesDir::Reverse,
-        x_H2O => SeriesDir::Reverse,
-        x_NH3 => SeriesDir::Reverse,
-        y => SeriesDir::Reverse,
-        y_H2O => SeriesDir::Reverse,
-        y_NH3 => SeriesDir::Reverse,
-        ya => SeriesDir::Reverse,
-        yb => SeriesDir::Reverse,
-        z => SeriesDir::Reverse,
-        z_H2O => SeriesDir::Reverse,
-        z_NH3 => SeriesDir::Reverse,
-        z_dot => SeriesDir::Reverse,
-        z_p1 => SeriesDir::Reverse,
-        z_p2 => SeriesDir::Reverse,
-        z_p3 => SeriesDir::Reverse,
-        immonium => SeriesDir::Unspecified,
-    };
+        //use FragmentIonSeries::*;
+        use FragmentIonSeriesDirection as SeriesDir;
 
-    ion_series_direction
+        match self {
+            Self::a => SeriesDir::NTerminal,
+            Self::a_H2O => SeriesDir::NTerminal,
+            Self::a_NH3 => SeriesDir::NTerminal,
+            Self::b => SeriesDir::NTerminal,
+            Self::b_H2O => SeriesDir::NTerminal,
+            Self::b_NH3 => SeriesDir::NTerminal,
+            Self::c => SeriesDir::NTerminal,
+            Self::c· => SeriesDir::NTerminal,
+            Self::c_m1 => SeriesDir::NTerminal,
+            Self::c_p1 => SeriesDir::NTerminal,
+            Self::c_p2 => SeriesDir::NTerminal,
+            Self::c_H2O => SeriesDir::NTerminal,
+            Self::c_NH3 => SeriesDir::NTerminal,
+            Self::d => SeriesDir::Unspecified, // FIXME
+            Self::v => SeriesDir::Unspecified, // FIXME
+            Self::w => SeriesDir::Unspecified, // FIXME
+            Self::x => SeriesDir::CTerminal,
+            Self::x_H2O => SeriesDir::CTerminal,
+            Self::x_NH3 => SeriesDir::CTerminal,
+            Self::y => SeriesDir::CTerminal,
+            Self::y_H2O => SeriesDir::CTerminal,
+            Self::y_NH3 => SeriesDir::CTerminal,
+            Self::ya => SeriesDir::CTerminal,
+            Self::yb => SeriesDir::CTerminal,
+            Self::z => SeriesDir::CTerminal,
+            Self::z_H2O => SeriesDir::CTerminal,
+            Self::z_NH3 => SeriesDir::CTerminal,
+            Self::z· => SeriesDir::CTerminal,
+            Self::z_p1 => SeriesDir::CTerminal,
+            Self::z_p2 => SeriesDir::CTerminal,
+            Self::z_p3 => SeriesDir::CTerminal,
+            Self::immonium => SeriesDir::Unspecified,
+        }
+    }
 }
 
 impl std::fmt::Display for FragmentIonSeries {
@@ -240,7 +202,7 @@ impl std::fmt::Display for FragmentIonSeries {
             b_NH3 => write!(f, "b-NH3"),
             b_H2O => write!(f, "a-H2O"),
             c => write!(f, "c"),
-            c_dot => write!(f, "c."), // FIXME: is this the usual repr?
+            c· => write!(f, "c·"),
             c_m1 => write!(f, "c-1"),
             c_p1 => write!(f, "c+1"),
             c_p2 => write!(f, "c+1"),
@@ -260,47 +222,21 @@ impl std::fmt::Display for FragmentIonSeries {
             z => write!(f, "z"),
             z_NH3 => write!(f, "z-NH3"),
             z_H2O => write!(f, "z-H2O"),
-            z_dot => write!(f, "z."), // FIXME: is this the usual repr?
+            z· => write!(f, "z·"),
             z_p1 => write!(f, "z+1"),
             z_p2 => write!(f, "z+2"),
             z_p3 => write!(f, "z+3"),
             immonium => write!(f, "immonium"),
         }
-
-        /*
-    d,
-    v,
-    w,
-    x,
-    x_H2O,
-    x_NH3,
-    y,
-    //#[strum(serialize = "y-H2O")]
-    y_H2O,
-   //#[strum(serialize = "y-NH3")]
-    y_NH3,
-    ya,
-    yb,
-    z,
-    z_H2O,
-    z_NH3,
-    z_dot,
-    z_p1,
-    z_p2,
-    z_p3,
-    immonium,
-         */
-
-
     }
 }
 
-#[derive(Clone, Copy, Eq, PartialEq, Debug)]
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize, Deserialize)]
 pub enum FragmentType {
-    IMMONIUM,
-    INTERNAL,
-    SATELLITE,
-    SEQUENCE,
+    Immonium,
+    Internal,
+    Satellite,
+    Sequence,
 }
 
 impl std::fmt::Display for FragmentType {
@@ -309,22 +245,22 @@ impl std::fmt::Display for FragmentType {
         use FragmentType::*;
 
         match self {
-            IMMONIUM => write!(f, "IM"),
-            INTERNAL => write!(f, "IN"),
-            SATELLITE => write!(f, "SAT"),
-            SEQUENCE => write!(f, "SEQ"),
+            Immonium => write!(f, "IM"),
+            Internal => write!(f, "IN"),
+            Satellite => write!(f, "SAT"),
+            Sequence => write!(f, "SEQ"),
         }
     }
 }
 
-#[derive(Clone, PartialEq, Debug)]
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize, Deserialize)]
 pub struct FragmentIonType {
     pub ion_series: FragmentIonSeries,
     pub neutral_loss: Option<NeutralLoss>,
     pub is_forward_ion: bool
 }
 
-#[derive(Clone, Default, PartialEq, Debug)]
+#[derive(Clone, Debug, PartialEq, PartialOrd, Serialize, Deserialize)]
 struct FragmentMatch {
     pub label: String,
     pub r#type: Option<String>, // = None,
@@ -334,7 +270,7 @@ struct FragmentMatch {
     pub neutral_loss_mass: Option<f64> // = None
 }
 
-#[derive(Clone, Copy, Eq, PartialEq, Debug)]
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize, Deserialize)]
 pub enum NeutralLoss {
     CH4OS,
     H2O,
@@ -349,7 +285,8 @@ impl std::fmt::Display for NeutralLoss {
     }
 }
 
-#[derive(Clone, PartialEq, Debug)]
+/*
+#[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize, Deserialize)]
 struct TheoreticalFragmentIon {
     pub position: i32,
     pub moz: f64,
@@ -359,11 +296,11 @@ struct TheoreticalFragmentIon {
     pub frag_series: Option<String>, // = None,
     pub is_reverse_series: bool,
     pub is_alternative_nl: bool // = false
-}
+}*/
 
-#[derive(Clone, Default, PartialEq, Debug)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 struct FragmentIonTable {
-    peptide: Peptide,
+    peptide: LinearPeptide,
     charge_by_ion_type: std::collections::HashMap<char,i8>,
     //sequence: Option<Vec<char>>, // = None,
     ptm_neutral_losses: Option<std::collections::HashMap<i32,f64>> // NL mass by seq position
