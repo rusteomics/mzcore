@@ -1,0 +1,49 @@
+name: Generate databases
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "7 4 1 * *"
+  push:
+    branches: ["release", "main"]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+env:
+  CARGO_TERM_COLOR: always
+  CARGO_ENCODED_RUSTFLAGS: --cfg=github_action
+
+jobs:
+  generate-databases:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check
+        run: cargo check
+      - name: Download and build external databases
+        run: |
+          bash ./.github/workflows/scripts/update-all-databases.sh
+          MESSAGE="$(cat /tmp/MESSAGES)"
+          echo "MESSAGE=${MESSAGE}" >> "${GITHUB_ENV}"
+      - name: Create pull request
+        id: cpr
+        uses: peter-evans/create-pull-request@v7
+        with:
+          token: ${{ secrets.RUSTEOMICS_MZCORE_PR_TOKEN }}
+          commit-message: Update external databases and ontologies
+          committer: GitHub <noreply@github.com>
+          author: GitHub <noreply@github.com>
+          branch: update-databases
+          delete-branch: true
+          title: "Update external databases and ontologies"
+          body: |
+            This automated PR updates the binary blobs for external databases
+            and ontologies.
+
+            Below are messages from script execution:
+              > ${{ env.MESSAGE }}
+          labels: |
+            A-rustyms-generate-databases
+            C-maintenance

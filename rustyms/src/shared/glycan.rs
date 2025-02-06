@@ -122,8 +122,8 @@ impl MonoSaccharide {
         // Prefix mods
         let mut amount = 1;
         if bytes[index].is_ascii_digit() {
-            match bytes[index + 1] {
-                b',' if bytes[index + 3] == b':' => {
+            match bytes.get(index + 1) {
+                Some(b',') if bytes.get(index + 3).copied() == Some(b':') => {
                     let start_index = index;
                     index += 7;
                     index += line[index..].ignore(&["-"]);
@@ -146,7 +146,7 @@ impl MonoSaccharide {
                         GlycanSubstituent::Deoxy,
                     ]);
                 }
-                b',' => {
+                Some(b',') => {
                     let num = bytes[index + 1..]
                         .iter()
                         .take_while(|c| c.is_ascii_digit() || **c == b',' || **c == b'?')
@@ -155,7 +155,8 @@ impl MonoSaccharide {
                     amount = num / 2;
                     // X,X{mod} (or 3/4/5/etc mods)
                 }
-                _ => index += 1, // X{mod}
+                Some(_) => index += 1, // X{mod}
+                None => (),
             }
             index += line[index..].ignore(&["-"]);
         }

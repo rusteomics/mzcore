@@ -1,3 +1,6 @@
+rustyms-generate-databases/data/*
+!rustyms-generate-databases/data/CIAAW*
+!rustyms-generate-databases/data/IUPAC*
 /target
 Cargo.lock
 */target/
