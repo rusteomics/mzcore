@@ -3,6 +3,7 @@
 mod glycan_structure;
 mod monosaccharide;
 mod positioned_structure;
+mod render;
 
 pub use glycan_structure::*;
 pub use monosaccharide::*;
