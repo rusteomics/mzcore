@@ -565,7 +565,9 @@ impl GlycanStructure {
                 branch.transpose(depth - branch.y, displacement);
                 displacement += branch.width;
             }
-            depth += 1;
+            if !branches.is_empty() {
+                depth += 1;
+            }
             // Determine the center point for this sugar
             let mut center = match branches.len() {
                 0 => 0.5,
@@ -653,32 +655,33 @@ impl RenderedMonosaccharide {
             && self.sides.is_empty()
     }
 
-    /// Get the subtree starting on the given position, return None if the position is not valid, it also indicates the depth of this subtree for the given branch breakages
+    /// Get the subtree starting on the given position, return None if the position is not valid, it also indicates the depth of this subtree for the given branch breakages and if a break tops the structure
     fn get_subtree<'a>(
         &'a self,
         start: &'a GlycanPosition,
         branch_breaks: &'a [GlycanPosition],
-    ) -> Option<(&'a Self, usize, Vec<(usize, &'a [usize])>)> {
-        fn maximal_depth(tree: &RenderedMonosaccharide, breakages: &[(usize, &[usize])]) -> usize {
+    ) -> Option<(&'a Self, usize, bool, Vec<(usize, &'a [usize])>)> {
+        fn maximal_depth(
+            tree: &RenderedMonosaccharide,
+            breakages: &[(usize, &[usize])],
+        ) -> (usize, bool) {
             // The tree is cut here
             if breakages.iter().any(|b| b.0 == 0) {
-                return 0;
+                return (0, true);
             };
 
             let total_branches = tree.branches.len() + tree.sides.len();
-            1 + match total_branches {
-                0 => 0,
-                1 => maximal_depth(
-                    tree.branches
-                        .first()
-                        .or_else(|| tree.sides.first())
-                        .unwrap(),
-                    &breakages.iter().map(|b| (b.0 - 1, b.1)).collect_vec(),
-                ),
+            let (depth, break_top) = match total_branches {
+                0 => (0, false),
+                1 => tree.branches.first().map_or((0, false), |branch| {
+                    maximal_depth(
+                        branch,
+                        &breakages.iter().map(|b| (b.0 - 1, b.1)).collect_vec(),
+                    )
+                }),
                 _ => tree
                     .branches
                     .iter()
-                    .chain(tree.sides.iter())
                     .map(|branch| {
                         maximal_depth(
                             branch,
@@ -690,8 +693,9 @@ impl RenderedMonosaccharide {
                         )
                     })
                     .max()
-                    .unwrap(),
-            }
+                    .unwrap_or((0, false)),
+            };
+            (depth + 1, break_top)
         }
 
         let mut tree = self;
@@ -725,7 +729,8 @@ impl RenderedMonosaccharide {
                 )
             })
             .collect_vec();
-        Some((tree, maximal_depth(tree, &rules), rules))
+        let (depth, break_top) = maximal_depth(tree, &rules);
+        Some((tree, depth, break_top, rules))
     }
 
     #[must_use]
@@ -748,28 +753,59 @@ impl RenderedMonosaccharide {
             sugar_size: f32,
             stroke_size: f32,
             x_offset: f32,
-            y_offset: usize,
+            y_offset: f32,
             breaks: &[(usize, &[usize])],
             foreground: &str,
             background: &str,
         ) {
             let x = element.x - x_offset;
-            let y = element.y - y_offset;
+            let y = element.y as f32 - y_offset;
             let total_branches = element.branches.len() + element.sides.len();
             // First all lines to get good stacking behaviour
-            for branch in element.branches.iter().chain(element.sides.iter()) {
+            for (side, branch) in element
+                .branches
+                .iter()
+                .map(|b| (false, b))
+                .chain(element.sides.iter().map(|b| (true, b)))
+            {
                 if (total_branches == 1 && breaks.iter().any(|b| b.0 == 1))
                     || breaks
                         .iter()
                         .any(|b| b.0 == 1 && b.1.first() == Some(&branch.branch_index))
                 {
+                    let origin_x = (x + element.mid_point) * column_size;
+                    let origin_y = (y + 0.5) * column_size;
+                    let base_x = (branch.x + branch.mid_point - x_offset) * column_size;
+                    let base_y = (y - 0.5 + f32::from(side)) * column_size + stroke_size * 0.5;
+                    let angle = f32::atan2(base_y - origin_y, base_x - origin_x);
                     write!(
                         buffer,
-                        "<line x1=\"{}\" y1=\"{}\" x2=\"{}\" y2=\"{}\" stroke=\"red\" stroke-width=\"{stroke_size}\"/>",
-                        (x + element.mid_point) * column_size,
-                        (y as f32 + 0.5) * column_size,
-                        (branch.x + branch.mid_point - x_offset) * column_size,
-                        y as f32 * column_size
+                        "<line x1=\"{origin_x}\" y1=\"{origin_y}\" x2=\"{base_x}\" y2=\"{base_y}\" stroke=\"{foreground}\" stroke-width=\"{stroke_size}\"/>",
+                    )
+                    .unwrap();
+                    let x1 = base_x + (sugar_size / 2.0) * (0.5 * PI - angle).cos();
+                    let y1 = base_y - (sugar_size / 2.0) * (0.5 * PI - angle).sin();
+                    let x2 = base_x - (sugar_size / 2.0) * (0.5 * PI - angle).cos();
+                    let y2 = base_y + (sugar_size / 2.0) * (0.5 * PI - angle).sin();
+                    write!(
+                        buffer,
+                        "<line x1=\"{x1}\" y1=\"{y1}\" x2=\"{x2}\" y2=\"{y2}\" stroke=\"{foreground}\" stroke-width=\"{stroke_size}\"/>",
+                    )
+                    .unwrap();
+                    let x3 = x1 - stroke_size * 2.0 * angle.cos();
+                    let y3 = y1 - stroke_size * 2.0 * angle.sin();
+                    write!(
+                        buffer,
+                        "<line x1=\"{x1}\" y1=\"{y1}\" x2=\"{x3}\" y2=\"{y3}\" stroke=\"{foreground}\" stroke-width=\"{stroke_size}\"/>",
+                    )
+                    .unwrap();
+                    let offset = 0.25 * column_size + stroke_size;
+                    let r = (0.25 * column_size - stroke_size).min(sugar_size * 0.25);
+                    let adjusted_x = base_x - offset * angle.cos();
+                    let adjusted_y = base_y - offset * angle.sin();
+                    write!(
+                        buffer,
+                        "<circle r=\"{r}\" cx=\"{adjusted_x}\" cy=\"{adjusted_y}\" fill=\"transparent\" stroke=\"{foreground}\" stroke-width=\"{stroke_size}\"/>",
                     )
                     .unwrap();
                 } else {
@@ -777,9 +813,9 @@ impl RenderedMonosaccharide {
                         buffer,
                         "<line x1=\"{}\" y1=\"{}\" x2=\"{}\" y2=\"{}\" stroke=\"{foreground}\" stroke-width=\"{stroke_size}\"/>",
                         (x + element.mid_point) * column_size,
-                        (y as f32 + 0.5) * column_size,
+                        (y + 0.5) * column_size,
                         (branch.x + branch.mid_point - x_offset) * column_size,
-                        ((branch.y.saturating_sub(y_offset)) as f32 + 0.5) * column_size
+                        ((branch.y as f32) - y_offset + 0.5) * column_size
                     )
                     .unwrap();
                 }
@@ -798,14 +834,14 @@ impl RenderedMonosaccharide {
                     "<circle r=\"{}\" cx=\"{}\" cy=\"{}\" fill=\"{fill}\" stroke=\"{foreground}\" stroke-width=\"{stroke_size}\"/>",
                     sugar_size / 2.0,
                     (x + element.mid_point) * column_size,
-                    (y as f32 + 0.5) * column_size
+                    (y + 0.5) * column_size
                 )
                 .unwrap(),
                 Shape::Square => write!(
                     buffer,
                     "<rect x=\"{}\" y=\"{}\" width=\"{}\" height=\"{}\" fill=\"{fill}\" stroke=\"{foreground}\" stroke-width=\"{stroke_size}\"/>",
                     (x + element.mid_point).mul_add(column_size, - sugar_size / 2.0),
-                    (y as f32 + 0.5).mul_add(column_size, - sugar_size / 2.0),
+                    (y + 0.5).mul_add(column_size, - sugar_size / 2.0),
                     sugar_size,
                     sugar_size
                 )
@@ -814,14 +850,14 @@ impl RenderedMonosaccharide {
                     buffer,
                     "<rect x=\"{}\" y=\"{}\" width=\"{}\" height=\"{}\" fill=\"{fill}\" stroke=\"{foreground}\" stroke-width=\"{stroke_size}\"/>",
                     (x + element.mid_point).mul_add(column_size, - sugar_size / 2.0),
-                    (y as f32 + 0.5).mul_add(column_size, - sugar_size / 4.0),
+                    (y + 0.5).mul_add(column_size, - sugar_size / 4.0),
                     sugar_size,
                     sugar_size / 2.0
                 )
                 .unwrap(),
                 Shape::CrossedSquare => {
                     let x1 = (x + element.mid_point).mul_add(column_size,- sugar_size / 2.0);
-                    let y1 = (y as f32 + 0.5).mul_add(column_size, - sugar_size / 2.0);
+                    let y1 = (y + 0.5).mul_add(column_size, - sugar_size / 2.0);
                     let x2 = x1 + sugar_size;
                     let y2 = y1 + sugar_size;
 
@@ -834,7 +870,7 @@ impl RenderedMonosaccharide {
                     let x1 = (x + element.mid_point).mul_add(column_size,- sugar_size / 2.0);
                     let x2 = x1 + sugar_size / 2.0;
                     let x3 = x1 + sugar_size;
-                    let y1 = (y as f32 + 0.5).mul_add(column_size, - sugar_size / 2.0);
+                    let y1 = (y + 0.5).mul_add(column_size, - sugar_size / 2.0);
                     let y2 = y1 + sugar_size / 2.0;
                     let y3 = y1 + sugar_size;
 
@@ -847,7 +883,7 @@ impl RenderedMonosaccharide {
                     let x1 = (x + element.mid_point).mul_add(column_size,- sugar_size / 2.0);
                     let x2 = x1 + sugar_size / 2.0;
                     let x3 = x1 + sugar_size;
-                    let y1 = (y as f32 + 0.5).mul_add(column_size, - sugar_size / 2.0);
+                    let y1 = (y + 0.5).mul_add(column_size, - sugar_size / 2.0);
                     let y2 = y1 + sugar_size;
 
                     write!(
@@ -858,7 +894,7 @@ impl RenderedMonosaccharide {
                 Shape::LeftPointingTriangle => {
                     let x1 = (x + element.mid_point).mul_add(column_size,- sugar_size / 2.0);
                     let x2 = x1 + sugar_size;
-                    let y1 = (y as f32 + 0.5).mul_add(column_size, - sugar_size / 2.0);
+                    let y1 = (y + 0.5).mul_add(column_size, - sugar_size / 2.0);
                     let y2 = y1 + sugar_size / 2.0;
                     let y3 = y1 + sugar_size;
 
@@ -870,7 +906,7 @@ impl RenderedMonosaccharide {
                 Shape::RightPointingTriangle => {
                     let x1 = (x + element.mid_point).mul_add(column_size,- sugar_size / 2.0);
                     let x2 = x1 + sugar_size;
-                    let y1 = (y as f32 + 0.5).mul_add(column_size, - sugar_size / 2.0);
+                    let y1 = (y + 0.5).mul_add(column_size, - sugar_size / 2.0);
                     let y2 = y1 + sugar_size / 2.0;
                     let y3 = y1 + sugar_size;
 
@@ -883,7 +919,7 @@ impl RenderedMonosaccharide {
                     let x1 = (x + element.mid_point).mul_add(column_size,- sugar_size / 2.0);
                     let x2 = x1 + sugar_size / 2.0;
                     let x3 = x1 + sugar_size;
-                    let y1 = (y as f32 + 0.5).mul_add(column_size, - sugar_size / 2.0);
+                    let y1 = (y + 0.5).mul_add(column_size, - sugar_size / 2.0);
                     let y2 = y1 + sugar_size;
 
                     write!(
@@ -895,7 +931,7 @@ impl RenderedMonosaccharide {
                     let x1 = (x + element.mid_point).mul_add(column_size,- sugar_size / 2.0);
                     let x2 = x1 + sugar_size / 2.0;
                     let x3 = x1 + sugar_size;
-                    let y1 = (y as f32 + 0.5).mul_add(column_size, - sugar_size / 2.0);
+                    let y1 = (y + 0.5).mul_add(column_size, - sugar_size / 2.0);
                     let y2 = y1 + sugar_size / 2.0;
                     let y3 = y1 + sugar_size;
 
@@ -908,7 +944,7 @@ impl RenderedMonosaccharide {
                     let x1 = (x + element.mid_point).mul_add(column_size,- sugar_size / 2.0);
                     let x2 = x1 + sugar_size / 2.0;
                     let x3 = x1 + sugar_size;
-                    let y1 = (y as f32 + 0.5).mul_add(column_size, - sugar_size / 4.0);
+                    let y1 = (y + 0.5).mul_add(column_size, - sugar_size / 4.0);
                     let y2 = y1 + sugar_size / 4.0;
                     let y3 = y1 + sugar_size / 2.0;
 
@@ -923,7 +959,7 @@ impl RenderedMonosaccharide {
                     let x2 = x1 + a;
                     let x3 = x1 + sugar_size - a;
                     let x4 = x1 + sugar_size;
-                    let y1 = (y as f32 + 0.5).mul_add(column_size, - sugar_size / 4.0);
+                    let y1 = (y + 0.5).mul_add(column_size, - sugar_size / 4.0);
                     let y2 = y1 + sugar_size / 4.0;
                     let y3 = y1 + sugar_size / 2.0;
 
@@ -943,7 +979,7 @@ impl RenderedMonosaccharide {
                     let x3 = base_x;
                     let x4 = base_x + d;
                     let x5 = base_x + a;
-                    let y1 = (y as f32 + 0.5).mul_add(column_size, - sugar_size / 2.0);
+                    let y1 = (y + 0.5).mul_add(column_size, - sugar_size / 2.0);
                     let y2 = y1 + sugar_size / 2.0 - b;
                     let y3 = y1 + sugar_size / 2.0 + c;
 
@@ -975,7 +1011,7 @@ impl RenderedMonosaccharide {
                     let x7 = base_x + g;
                     let x8 = base_x + d;
                     let x9 = base_x + a;
-                    let y1 = (y as f32 + 0.5).mul_add(column_size, - sugar_size / 2.0);
+                    let y1 = (y + 0.5).mul_add(column_size, - sugar_size / 2.0);
                     let y2 = y1 + sugar_size / 2.0 - b;
                     let y3 = y1 + sugar_size / 2.0 + j;
                     let y4 = y1 + sugar_size / 2.0 + f;
@@ -990,14 +1026,14 @@ impl RenderedMonosaccharide {
             if !element.inner_modifications.is_empty() {
                 write!(buffer, "<text x=\"{}\" y=\"{}\" fill=\"{foreground}\" text-anchor=\"middle\" font-style=\"italic\" font-size=\"{}px\" dominant-baseline=\"middle\">{}</text>",
                     (x + element.mid_point) * column_size,
-                    (y as f32 + 0.5) * column_size,
+                    (y + 0.5) * column_size,
                     sugar_size / 2.0,
                     element.inner_modifications).unwrap();
             }
             if !element.outer_modifications.is_empty() {
                 write!(buffer, "<text x=\"{}\" y=\"{}\" fill=\"{foreground}\" text-anchor=\"middle\" font-size=\"{}px\" dominant-baseline=\"ideographic\">{}</text>",
                     (x + element.mid_point) * column_size,
-                    (y as f32).mul_add(column_size, -element.shape.height().mul_add(sugar_size, -column_size) / 2.0),
+                    y.mul_add(column_size, -element.shape.height().mul_add(sugar_size, -column_size) / 2.0),
                     sugar_size / 2.0,
                     element.outer_modifications).unwrap();
             }
@@ -1031,15 +1067,25 @@ impl RenderedMonosaccharide {
             }
         }
 
-        let (tree, depth, breaks) = if let Some(root) = &root_break {
+        let (tree, depth, break_top, breaks) = if let Some(root) = &root_break {
             if let Some(tree) = self.get_subtree(root, branch_breaks) {
                 tree
             } else {
                 return false;
             }
         } else {
-            (self, self.y + 1, Vec::new())
+            (
+                self,
+                self.y + 1,
+                false,
+                branch_breaks
+                    .iter()
+                    .map(|p| (p.inner_depth, p.branch.as_slice()))
+                    .collect_vec(),
+            )
         };
+
+        let depth = depth as f32 + f32::from(break_top);
 
         write!(
             output,
@@ -1105,7 +1151,7 @@ impl RenderedMonosaccharide {
             sugar_size,
             stroke_size,
             tree.x,
-            tree.y - (depth - 1),
+            tree.y as f32 - (depth - 1.0),
             &breaks,
             &foreground,
             &background,
@@ -1159,30 +1205,32 @@ fn test_rendering() {
             STROKE_SIZE,
             None,
             &[],
-            [0, 0, 0],
+            [66, 66, 66],
             [255, 255, 255],
         ) {
             panic!("Rendering failed")
         }
     }
-    let structure = GlycanStructure::from_short_iupac(codes[0].1, 0..codes[0].1.len(), 0).unwrap();
-    for (root, breaks) in [
+
+    for (index, root, breaks) in [
         (
-            GlycanPosition {
+            0,
+            Some(GlycanPosition {
                 inner_depth: 2,
                 series_number: 2,
                 branch: Vec::new(),
                 attachment: None,
-            },
+            }),
             Vec::new(),
         ),
         (
-            GlycanPosition {
+            0,
+            Some(GlycanPosition {
                 inner_depth: 2,
                 series_number: 2,
                 branch: Vec::new(),
                 attachment: None,
-            },
+            }),
             vec![GlycanPosition {
                 inner_depth: 4,
                 series_number: 4,
@@ -1191,12 +1239,13 @@ fn test_rendering() {
             }],
         ),
         (
-            GlycanPosition {
+            0,
+            Some(GlycanPosition {
                 inner_depth: 2,
                 series_number: 2,
                 branch: Vec::new(),
                 attachment: None,
-            },
+            }),
             vec![
                 GlycanPosition {
                     inner_depth: 5,
@@ -1213,22 +1262,91 @@ fn test_rendering() {
             ],
         ),
         (
-            GlycanPosition {
+            0,
+            Some(GlycanPosition {
                 inner_depth: 4,
                 series_number: 4,
                 branch: vec![1],
                 attachment: None,
-            },
+            }),
             Vec::new(),
         ),
+        (
+            16,
+            Some(GlycanPosition {
+                inner_depth: 1,
+                series_number: 1,
+                branch: Vec::new(),
+                attachment: None,
+            }),
+            vec![
+                GlycanPosition {
+                    inner_depth: 3,
+                    series_number: 3,
+                    branch: vec![0],
+                    attachment: None,
+                },
+                GlycanPosition {
+                    inner_depth: 4,
+                    series_number: 4,
+                    branch: vec![1, 1],
+                    attachment: None,
+                },
+            ],
+        ),
+        (
+            18,
+            Some(GlycanPosition {
+                inner_depth: 1,
+                series_number: 1,
+                branch: vec![0],
+                attachment: None,
+            }),
+            vec![
+                GlycanPosition {
+                    inner_depth: 3,
+                    series_number: 3,
+                    branch: vec![0, 0],
+                    attachment: None,
+                },
+                GlycanPosition {
+                    inner_depth: 6,
+                    series_number: 6,
+                    branch: vec![0, 1],
+                    attachment: None,
+                },
+            ],
+        ),
+        (
+            1,
+            None,
+            vec![GlycanPosition {
+                inner_depth: 1,
+                series_number: 1,
+                branch: Vec::new(),
+                attachment: None,
+            }],
+        ),
+        (
+            1,
+            None,
+            vec![GlycanPosition {
+                inner_depth: 2,
+                series_number: 2,
+                branch: Vec::new(),
+                attachment: None,
+            }],
+        ),
     ] {
+        let structure =
+            GlycanStructure::from_short_iupac(codes[index].1, 0..codes[index].1.len(), 0).unwrap();
         if !structure.render().to_svg(
             &mut html,
             Some("pep".to_string()),
             COLUMN_SIZE,
             SUGAR_SIZE,
             STROKE_SIZE,
-            Some(root),
+            root,
             &breaks,
             [0, 0, 0],
             [255, 255, 255],
