@@ -42,248 +42,415 @@ impl MonoSaccharide {
                 _ => outer_modifications.push_str(m.notation()),
             }
         }
-        let outer_mods =
-            |acetyl: usize, glycolyl: usize, nglycolyl: usize, o_carboxy_ethyl: usize| {
-                [
-                    GlycanSubstituent::Acetyl.notation().repeat(acetyl),
-                    GlycanSubstituent::Glycolyl.notation().repeat(glycolyl),
-                    GlycanSubstituent::NGlycolyl.notation().repeat(nglycolyl),
-                    GlycanSubstituent::OCarboxyEthyl
-                        .notation()
-                        .repeat(o_carboxy_ethyl),
-                    outer_modifications,
-                ]
-                .join("")
-            };
-        match (&self.base_sugar, nacetyl, acid, amino, deoxy) {
-            (BaseSugar::Hexose(Some(HexoseIsomer::Glucose)), 1, 0, 0, 0) if o_carboxy_ethyl > 0 => {
-                (
-                    Shape::Hexagon,
-                    Colour::Purple,
-                    inner_modifications,
-                    outer_mods(acetyl, glycolyl, nglycolyl, o_carboxy_ethyl - 1),
-                )
-            }
-            (BaseSugar::Hexose(Some(HexoseIsomer::Glucose)), 0, 0, 0, 0)
-                if nglycolyl > 0 && o_carboxy_ethyl > 0 =>
-            {
-                (
-                    Shape::Hexagon,
-                    Colour::LightBlue,
-                    inner_modifications,
-                    outer_mods(acetyl, glycolyl, nglycolyl - 1, o_carboxy_ethyl - 1),
-                )
-            }
-            (BaseSugar::Hexose(Some(HexoseIsomer::Glucose)), 0, 0, 1, 0) if o_carboxy_ethyl > 0 => {
-                (
-                    Shape::Hexagon,
-                    Colour::Brown,
-                    inner_modifications,
-                    outer_mods(acetyl, glycolyl, nglycolyl, o_carboxy_ethyl - 1),
-                )
-            }
-            (BaseSugar::Hexose(isomer), 0, 0, 0, 0) => {
-                let (s, c) = match isomer {
-                    None => (Shape::Circle, Colour::White),
-                    Some(HexoseIsomer::Glucose) => (Shape::Circle, Colour::Blue),
-                    Some(HexoseIsomer::Mannose) => (Shape::Circle, Colour::Green),
-                    Some(HexoseIsomer::Galactose) => (Shape::Circle, Colour::Yellow),
-                    Some(HexoseIsomer::Gulose) => (Shape::Circle, Colour::Orange),
-                    Some(HexoseIsomer::Altrose) => (Shape::Circle, Colour::Pink),
-                    Some(HexoseIsomer::Allose) => (Shape::Circle, Colour::Purple),
-                    Some(HexoseIsomer::Talose) => (Shape::Circle, Colour::LightBlue),
-                    Some(HexoseIsomer::Idose) => (Shape::Circle, Colour::Brown),
-                    Some(HexoseIsomer::Psicose) => (Shape::Pentagon, Colour::Pink),
-                    Some(HexoseIsomer::Fructose) => (Shape::Pentagon, Colour::Green),
-                    Some(HexoseIsomer::Sorbose) => (Shape::Pentagon, Colour::Orange),
-                    Some(HexoseIsomer::Tagatose) => (Shape::Pentagon, Colour::Yellow),
-                };
-                (
-                    s,
-                    c,
-                    inner_modifications,
-                    outer_mods(acetyl, glycolyl, nglycolyl, o_carboxy_ethyl),
-                )
-            }
-            (BaseSugar::Hexose(isomer), 1, 0, 0, 0) => {
-                let c = match isomer {
-                    Some(HexoseIsomer::Glucose) => Colour::Blue,
-                    Some(HexoseIsomer::Mannose) => Colour::Green,
-                    Some(HexoseIsomer::Galactose) => Colour::Yellow,
-                    Some(HexoseIsomer::Gulose) => Colour::Orange,
-                    Some(HexoseIsomer::Altrose) => Colour::Pink,
-                    Some(HexoseIsomer::Allose) => Colour::Purple,
-                    Some(HexoseIsomer::Talose) => Colour::LightBlue,
-                    Some(HexoseIsomer::Idose) => Colour::Brown,
-                    Some(_) | None => Colour::White,
-                };
-                (
-                    Shape::Square,
-                    c,
-                    inner_modifications,
-                    outer_mods(acetyl, glycolyl, nglycolyl, o_carboxy_ethyl),
-                )
-            }
-            (BaseSugar::Hexose(isomer), 0, 0, 1, 0) => {
-                let c = match isomer {
-                    Some(HexoseIsomer::Glucose) => Colour::Blue,
-                    Some(HexoseIsomer::Mannose) => Colour::Green,
-                    Some(HexoseIsomer::Galactose) => Colour::Yellow,
-                    Some(HexoseIsomer::Gulose) => Colour::Orange,
-                    Some(HexoseIsomer::Altrose) => Colour::Pink,
-                    Some(HexoseIsomer::Allose) => Colour::Purple,
-                    Some(HexoseIsomer::Talose) => Colour::LightBlue,
-                    Some(HexoseIsomer::Idose) => Colour::Brown,
-                    Some(_) | None => Colour::White,
-                };
-                (
-                    Shape::CrossedSquare,
-                    c,
-                    inner_modifications,
-                    outer_mods(acetyl, glycolyl, nglycolyl, o_carboxy_ethyl),
-                )
-            }
-            (BaseSugar::Hexose(isomer), 0, 1, 0, 0) => {
-                let c = match isomer {
-                    Some(HexoseIsomer::Glucose) => Colour::Blue,
-                    Some(HexoseIsomer::Mannose) => Colour::Green,
-                    Some(HexoseIsomer::Galactose) => Colour::Yellow,
-                    Some(HexoseIsomer::Gulose) => Colour::Orange,
-                    Some(HexoseIsomer::Altrose) => Colour::Pink,
-                    Some(HexoseIsomer::Allose) => Colour::Purple,
-                    Some(HexoseIsomer::Talose) => Colour::LightBlue,
-                    Some(HexoseIsomer::Idose) => Colour::Brown,
-                    Some(_) | None => Colour::White,
-                };
-                (
-                    Shape::DividedDiamond,
-                    c,
-                    inner_modifications,
-                    outer_mods(acetyl, glycolyl, nglycolyl, o_carboxy_ethyl),
-                )
-            }
-            (BaseSugar::Hexose(isomer), 0, 0, 0, 1) => {
-                let c = match isomer {
-                    Some(HexoseIsomer::Glucose) => Colour::Blue,
-                    Some(HexoseIsomer::Mannose) => Colour::Green,
-                    Some(HexoseIsomer::Galactose) => Colour::Red,
-                    Some(HexoseIsomer::Gulose) => Colour::Orange,
-                    Some(HexoseIsomer::Altrose) => Colour::Pink,
-                    Some(HexoseIsomer::Talose) => Colour::LightBlue,
-                    Some(_) | None => Colour::White,
-                };
-                (
-                    Shape::Triangle,
-                    c,
-                    inner_modifications,
-                    outer_mods(acetyl, glycolyl, nglycolyl, o_carboxy_ethyl),
-                )
-            }
-            (BaseSugar::Hexose(isomer), 1, 0, 0, 1) => {
-                let c = match isomer {
-                    Some(HexoseIsomer::Glucose) => Colour::Blue,
-                    Some(HexoseIsomer::Mannose) => Colour::Green,
-                    Some(HexoseIsomer::Galactose) => Colour::Red,
-                    Some(HexoseIsomer::Altrose) => Colour::Pink,
-                    Some(HexoseIsomer::Talose) => Colour::LightBlue,
-                    Some(_) | None => Colour::White,
-                };
-                (
-                    Shape::DividedTriangle,
-                    c,
-                    inner_modifications,
-                    outer_mods(acetyl, glycolyl, nglycolyl, o_carboxy_ethyl),
-                )
-            }
-            (BaseSugar::Hexose(isomer), 0, 0, 0, 2) => {
-                let c = match isomer {
-                    Some(HexoseIsomer::Glucose) => Colour::Blue,
-                    Some(HexoseIsomer::Mannose) => Colour::Green,
-                    Some(HexoseIsomer::Galactose) => Colour::Orange,
-                    Some(HexoseIsomer::Altrose) => Colour::Pink,
-                    Some(HexoseIsomer::Allose) => Colour::Purple,
-                    Some(HexoseIsomer::Talose) => Colour::LightBlue,
-                    Some(_) | None => Colour::White,
-                };
-                (
-                    Shape::Rectangle,
-                    c,
-                    inner_modifications,
-                    outer_mods(acetyl, glycolyl, nglycolyl, o_carboxy_ethyl),
-                )
-            }
-            (BaseSugar::Pentose(isomer), 0, 0, 0, 0) => (
+        let outer_mods = |nacetyl: usize,
+                          acid: usize,
+                          amino: usize,
+                          deoxy: usize,
+                          acetyl: usize,
+                          glycolyl: usize,
+                          nglycolyl: usize,
+                          o_carboxy_ethyl: usize| {
+            [
+                GlycanSubstituent::NAcetyl.notation().repeat(nacetyl),
+                GlycanSubstituent::Acid.notation().repeat(acid),
+                GlycanSubstituent::Amino.notation().repeat(amino),
+                GlycanSubstituent::Deoxy.notation().repeat(deoxy),
+                GlycanSubstituent::Acetyl.notation().repeat(acetyl),
+                GlycanSubstituent::Glycolyl.notation().repeat(glycolyl),
+                GlycanSubstituent::NGlycolyl.notation().repeat(nglycolyl),
+                GlycanSubstituent::OCarboxyEthyl
+                    .notation()
+                    .repeat(o_carboxy_ethyl),
+                outer_modifications,
+            ]
+            .join("")
+        };
+        match &self.base_sugar {
+            BaseSugar::Pentose(isomer) => (
                 Shape::Star,
                 match isomer {
-                    None | Some(PentoseIsomer::Xylulose) => Colour::White,
+                    None | Some(PentoseIsomer::Xylulose) => Colour::Background,
                     Some(PentoseIsomer::Arabinose) => Colour::Green,
                     Some(PentoseIsomer::Lyxose) => Colour::Yellow,
                     Some(PentoseIsomer::Xylose) => Colour::Orange,
                     Some(PentoseIsomer::Ribose) => Colour::Pink,
                 },
                 inner_modifications,
-                outer_mods(acetyl, glycolyl, nglycolyl, o_carboxy_ethyl),
-            ),
-            (BaseSugar::Nonose, 0, 1, 2, 2) => (
-                Shape::FlatDiamond,
-                Colour::White,
-                inner_modifications,
-                outer_mods(acetyl, glycolyl, nglycolyl, o_carboxy_ethyl),
-            ), // This does not detect which exact isomer it is, as that information is currently not tracked
-            (BaseSugar::Nonose, 0, a, b, _) if a > 0 && b > 0 => (
-                Shape::Diamond,
-                match (acid, amino, deoxy) {
-                    (1, 1, 1) => Colour::Red, // This could either be Sia (Red) or Kdo (Green) for now defaults to red until the isomeric state is tracked
-                    (1, 1, 0) if acetyl > 0 => Colour::Purple,
-                    (1, 1, 0) if glycolyl > 0 => Colour::LightBlue,
-                    (1, 1, 0) => Colour::Brown,
-                    _ => Colour::White,
-                },
-                inner_modifications,
                 outer_mods(
-                    acetyl.saturating_sub(1),
-                    glycolyl.saturating_sub(1),
+                    nacetyl,
+                    acid,
+                    amino,
+                    deoxy,
+                    acetyl,
+                    glycolyl,
                     nglycolyl,
                     o_carboxy_ethyl,
                 ),
             ),
-            (BaseSugar::Hexose(Some(HexoseIsomer::Glucose)), 0, 0, 2, 1) => (
-                Shape::Hexagon,
-                Colour::Blue,
-                inner_modifications,
-                outer_mods(acetyl, glycolyl, nglycolyl, o_carboxy_ethyl),
-            ),
-            (BaseSugar::Heptose(Some(HeptoseIsomer::GlyceroMannoHeptopyranose)), 0, 0, 0, 0) => (
+            BaseSugar::Hexose(isomer) => {
+                if o_carboxy_ethyl > 0 && nacetyl > 0 {
+                    (
+                        Shape::Hexagon,
+                        Colour::Purple,
+                        inner_modifications,
+                        outer_mods(
+                            nacetyl - 1,
+                            acid,
+                            amino,
+                            deoxy,
+                            acetyl,
+                            glycolyl,
+                            nglycolyl,
+                            o_carboxy_ethyl - 1,
+                        ),
+                    )
+                } else if o_carboxy_ethyl > 0 && nglycolyl > 0 {
+                    (
+                        Shape::Hexagon,
+                        Colour::LightBlue,
+                        inner_modifications,
+                        outer_mods(
+                            nacetyl,
+                            acid,
+                            amino,
+                            deoxy,
+                            acetyl,
+                            glycolyl,
+                            nglycolyl - 1,
+                            o_carboxy_ethyl - 1,
+                        ),
+                    )
+                } else if o_carboxy_ethyl > 0 && amino > 0 {
+                    (
+                        Shape::Hexagon,
+                        Colour::Brown,
+                        inner_modifications,
+                        outer_mods(
+                            nacetyl,
+                            acid,
+                            amino - 1,
+                            deoxy,
+                            acetyl,
+                            glycolyl,
+                            nglycolyl,
+                            o_carboxy_ethyl - 1,
+                        ),
+                    )
+                } else if deoxy > 1 {
+                    let c = match isomer {
+                        Some(HexoseIsomer::Glucose) => Colour::Blue,
+                        Some(HexoseIsomer::Mannose) => Colour::Green,
+                        Some(HexoseIsomer::Galactose) => Colour::Orange,
+                        Some(HexoseIsomer::Altrose) => Colour::Pink,
+                        Some(HexoseIsomer::Allose) => Colour::Purple,
+                        Some(HexoseIsomer::Talose) => Colour::LightBlue,
+                        Some(_) | None => Colour::Background,
+                    };
+                    (
+                        Shape::Rectangle,
+                        c,
+                        inner_modifications,
+                        outer_mods(
+                            nacetyl,
+                            acid,
+                            amino,
+                            deoxy - 2,
+                            acetyl,
+                            glycolyl,
+                            nglycolyl,
+                            o_carboxy_ethyl,
+                        ),
+                    )
+                } else if amino > 1 && deoxy > 0 {
+                    (
+                        Shape::Hexagon,
+                        Colour::Blue,
+                        inner_modifications,
+                        outer_mods(
+                            nacetyl,
+                            acid,
+                            amino - 2,
+                            deoxy - 1,
+                            acetyl,
+                            glycolyl,
+                            nglycolyl,
+                            o_carboxy_ethyl,
+                        ),
+                    )
+                } else if nacetyl > 0 && deoxy > 0 {
+                    let c = match isomer {
+                        Some(HexoseIsomer::Glucose) => Colour::Blue,
+                        Some(HexoseIsomer::Mannose) => Colour::Green,
+                        Some(HexoseIsomer::Galactose) => Colour::Red,
+                        Some(HexoseIsomer::Altrose) => Colour::Pink,
+                        Some(HexoseIsomer::Talose) => Colour::LightBlue,
+                        Some(_) | None => Colour::Background,
+                    };
+                    (
+                        Shape::DividedTriangle,
+                        c,
+                        inner_modifications,
+                        outer_mods(
+                            nacetyl - 1,
+                            acid,
+                            amino,
+                            deoxy - 1,
+                            acetyl,
+                            glycolyl,
+                            nglycolyl,
+                            o_carboxy_ethyl,
+                        ),
+                    )
+                } else if deoxy > 0 {
+                    let c = match isomer {
+                        Some(HexoseIsomer::Glucose) => Colour::Blue,
+                        Some(HexoseIsomer::Mannose) => Colour::Green,
+                        Some(HexoseIsomer::Galactose) => Colour::Red,
+                        Some(HexoseIsomer::Gulose) => Colour::Orange,
+                        Some(HexoseIsomer::Altrose) => Colour::Pink,
+                        Some(HexoseIsomer::Talose) => Colour::LightBlue,
+                        Some(_) | None => Colour::Background,
+                    };
+                    (
+                        Shape::Triangle,
+                        c,
+                        inner_modifications,
+                        outer_mods(
+                            nacetyl,
+                            acid,
+                            amino,
+                            deoxy - 1,
+                            acetyl,
+                            glycolyl,
+                            nglycolyl,
+                            o_carboxy_ethyl,
+                        ),
+                    )
+                } else if acid > 0 {
+                    let c = match isomer {
+                        Some(HexoseIsomer::Glucose) => Colour::Blue,
+                        Some(HexoseIsomer::Mannose) => Colour::Green,
+                        Some(HexoseIsomer::Galactose) => Colour::Yellow,
+                        Some(HexoseIsomer::Gulose) => Colour::Orange,
+                        Some(HexoseIsomer::Altrose) => Colour::Pink,
+                        Some(HexoseIsomer::Allose) => Colour::Purple,
+                        Some(HexoseIsomer::Talose) => Colour::LightBlue,
+                        Some(HexoseIsomer::Idose) => Colour::Brown,
+                        Some(_) | None => Colour::Background,
+                    };
+                    (
+                        Shape::DividedDiamond,
+                        c,
+                        inner_modifications,
+                        outer_mods(
+                            nacetyl,
+                            acid - 1,
+                            amino,
+                            deoxy,
+                            acetyl,
+                            glycolyl,
+                            nglycolyl,
+                            o_carboxy_ethyl,
+                        ),
+                    )
+                } else if amino > 0 {
+                    let c = match isomer {
+                        Some(HexoseIsomer::Glucose) => Colour::Blue,
+                        Some(HexoseIsomer::Mannose) => Colour::Green,
+                        Some(HexoseIsomer::Galactose) => Colour::Yellow,
+                        Some(HexoseIsomer::Gulose) => Colour::Orange,
+                        Some(HexoseIsomer::Altrose) => Colour::Pink,
+                        Some(HexoseIsomer::Allose) => Colour::Purple,
+                        Some(HexoseIsomer::Talose) => Colour::LightBlue,
+                        Some(HexoseIsomer::Idose) => Colour::Brown,
+                        Some(_) | None => Colour::Background,
+                    };
+                    (
+                        Shape::CrossedSquare,
+                        c,
+                        inner_modifications,
+                        outer_mods(
+                            nacetyl,
+                            acid,
+                            amino - 1,
+                            deoxy,
+                            acetyl,
+                            glycolyl,
+                            nglycolyl,
+                            o_carboxy_ethyl,
+                        ),
+                    )
+                } else if nacetyl > 0 {
+                    let c = match isomer {
+                        Some(HexoseIsomer::Glucose) => Colour::Blue,
+                        Some(HexoseIsomer::Mannose) => Colour::Green,
+                        Some(HexoseIsomer::Galactose) => Colour::Yellow,
+                        Some(HexoseIsomer::Gulose) => Colour::Orange,
+                        Some(HexoseIsomer::Altrose) => Colour::Pink,
+                        Some(HexoseIsomer::Allose) => Colour::Purple,
+                        Some(HexoseIsomer::Talose) => Colour::LightBlue,
+                        Some(HexoseIsomer::Idose) => Colour::Brown,
+                        Some(_) | None => Colour::Background,
+                    };
+                    (
+                        Shape::Square,
+                        c,
+                        inner_modifications,
+                        outer_mods(
+                            nacetyl - 1,
+                            acid,
+                            amino,
+                            deoxy,
+                            acetyl,
+                            glycolyl,
+                            nglycolyl,
+                            o_carboxy_ethyl,
+                        ),
+                    )
+                } else {
+                    let (s, c) = match isomer {
+                        None => (Shape::Circle, Colour::Background),
+                        Some(HexoseIsomer::Glucose) => (Shape::Circle, Colour::Blue),
+                        Some(HexoseIsomer::Mannose) => (Shape::Circle, Colour::Green),
+                        Some(HexoseIsomer::Galactose) => (Shape::Circle, Colour::Yellow),
+                        Some(HexoseIsomer::Gulose) => (Shape::Circle, Colour::Orange),
+                        Some(HexoseIsomer::Altrose) => (Shape::Circle, Colour::Pink),
+                        Some(HexoseIsomer::Allose) => (Shape::Circle, Colour::Purple),
+                        Some(HexoseIsomer::Talose) => (Shape::Circle, Colour::LightBlue),
+                        Some(HexoseIsomer::Idose) => (Shape::Circle, Colour::Brown),
+                        Some(HexoseIsomer::Psicose) => (Shape::Pentagon, Colour::Pink),
+                        Some(HexoseIsomer::Fructose) => (Shape::Pentagon, Colour::Green),
+                        Some(HexoseIsomer::Sorbose) => (Shape::Pentagon, Colour::Orange),
+                        Some(HexoseIsomer::Tagatose) => (Shape::Pentagon, Colour::Yellow),
+                    };
+                    (
+                        s,
+                        c,
+                        inner_modifications,
+                        outer_mods(
+                            nacetyl,
+                            acid,
+                            amino,
+                            deoxy,
+                            acetyl,
+                            glycolyl,
+                            nglycolyl,
+                            o_carboxy_ethyl,
+                        ),
+                    )
+                }
+            }
+            BaseSugar::Heptose(Some(HeptoseIsomer::GlyceroMannoHeptopyranose)) => (
                 Shape::Hexagon,
                 Colour::Green,
                 inner_modifications,
-                outer_mods(acetyl, glycolyl, nglycolyl, o_carboxy_ethyl),
+                outer_mods(
+                    nacetyl,
+                    acid,
+                    amino,
+                    deoxy,
+                    acetyl,
+                    glycolyl,
+                    nglycolyl,
+                    o_carboxy_ethyl,
+                ),
             ),
-            (BaseSugar::Octose, 0, 1, 0, 1) => (
-                Shape::Hexagon,
-                Colour::Yellow,
-                inner_modifications,
-                outer_mods(acetyl, glycolyl, nglycolyl, o_carboxy_ethyl),
-            ),
-            (BaseSugar::Heptose(None), 0, 2, 0, 1) => (
+            BaseSugar::Heptose(None) if acid > 1 && deoxy > 0 => (
                 Shape::Hexagon,
                 Colour::Orange,
                 inner_modifications,
-                outer_mods(acetyl, glycolyl, nglycolyl, o_carboxy_ethyl),
+                outer_mods(
+                    nacetyl,
+                    acid - 2,
+                    amino,
+                    deoxy - 1,
+                    acetyl,
+                    glycolyl,
+                    nglycolyl,
+                    o_carboxy_ethyl,
+                ),
             ),
+            BaseSugar::Octose if acid > 0 && deoxy > 0 => (
+                Shape::Hexagon,
+                Colour::Yellow,
+                inner_modifications,
+                outer_mods(
+                    nacetyl,
+                    acid - 1,
+                    amino,
+                    deoxy - 1,
+                    acetyl,
+                    glycolyl,
+                    nglycolyl,
+                    o_carboxy_ethyl,
+                ),
+            ),
+            BaseSugar::Nonose if acid > 0 && amino > 0 => {
+                if amino > 1 && deoxy > 1 {
+                    (
+                        Shape::FlatDiamond,
+                        Colour::Background,
+                        inner_modifications,
+                        outer_mods(
+                            nacetyl,
+                            acid - 1,
+                            amino - 2,
+                            deoxy - 2,
+                            acetyl,
+                            glycolyl,
+                            nglycolyl,
+                            o_carboxy_ethyl,
+                        ),
+                    ) // This does not detect which exact isomer it is, as that information is currently not tracked
+                } else {
+                    let colour = if deoxy > 0 {
+                        Colour::Red
+                    } else if acetyl > 0 {
+                        Colour::Purple
+                    } else if glycolyl > 0 {
+                        Colour::LightBlue
+                    } else {
+                        Colour::Brown
+                    };
+                    (
+                        Shape::Diamond,
+                        colour,
+                        inner_modifications,
+                        outer_mods(
+                            nacetyl,
+                            acid - 1,
+                            amino - 1,
+                            deoxy - usize::from(colour == Colour::Red),
+                            acetyl - usize::from(colour == Colour::Purple),
+                            glycolyl - usize::from(colour == Colour::LightBlue),
+                            nglycolyl,
+                            o_carboxy_ethyl,
+                        ),
+                    )
+                }
+            }
             _ => (
                 Shape::Hexagon,
-                Colour::White,
+                Colour::Background,
                 inner_modifications,
-                outer_mods(acetyl, glycolyl, nglycolyl, o_carboxy_ethyl),
+                outer_mods(
+                    nacetyl,
+                    acid,
+                    amino,
+                    deoxy,
+                    acetyl,
+                    glycolyl,
+                    nglycolyl,
+                    o_carboxy_ethyl,
+                ),
             ),
         }
     }
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
 enum Colour {
-    White,
+    Background,
     Blue,
     Green,
     Yellow,
@@ -299,7 +466,7 @@ impl Colour {
     /// Represented as percentages 0..=100
     fn cmyk(&self) -> [u8; 4] {
         match self {
-            Self::White => [0, 0, 0, 0],
+            Self::Background => [0, 0, 0, 0],
             Self::Blue => [100, 50, 0, 0],
             Self::Green => [100, 0, 100, 0],
             Self::Yellow => [0, 15, 100, 0],
@@ -315,7 +482,7 @@ impl Colour {
     /// Represented as bytes 0..=255
     fn rgb(&self) -> [u8; 3] {
         match self {
-            Self::White => [255, 255, 255],
+            Self::Background => [255, 255, 255],
             Self::Blue => [0, 144, 188],
             Self::Green => [0, 166, 81],
             Self::Yellow => [255, 212, 0],
@@ -561,17 +728,21 @@ impl RenderedMonosaccharide {
         Some((tree, maximal_depth(tree, &rules), rules))
     }
 
+    #[must_use]
     fn to_svg(
         &self,
+        mut output: impl Write,
         basis: Option<String>,
         column_size: f32,
         sugar_size: f32,
         stroke_size: f32,
         root_break: Option<GlycanPosition>,
         branch_breaks: &[GlycanPosition],
-    ) -> Option<String> {
+        foreground: [u8; 3],
+        background: [u8; 3],
+    ) -> bool {
         fn render_element(
-            buffer: &mut String,
+            buffer: &mut impl Write,
             element: &RenderedMonosaccharide,
             column_size: f32,
             sugar_size: f32,
@@ -579,6 +750,8 @@ impl RenderedMonosaccharide {
             x_offset: f32,
             y_offset: usize,
             breaks: &[(usize, &[usize])],
+            foreground: &str,
+            background: &str,
         ) {
             let x = element.x - x_offset;
             let y = element.y - y_offset;
@@ -602,7 +775,7 @@ impl RenderedMonosaccharide {
                 } else {
                     write!(
                         buffer,
-                        "<line x1=\"{}\" y1=\"{}\" x2=\"{}\" y2=\"{}\" stroke=\"black\" stroke-width=\"{stroke_size}\"/>",
+                        "<line x1=\"{}\" y1=\"{}\" x2=\"{}\" y2=\"{}\" stroke=\"{foreground}\" stroke-width=\"{stroke_size}\"/>",
                         (x + element.mid_point) * column_size,
                         (y as f32 + 0.5) * column_size,
                         (branch.x + branch.mid_point - x_offset) * column_size,
@@ -611,13 +784,18 @@ impl RenderedMonosaccharide {
                     .unwrap();
                 }
             }
+
             // Render the sugar
-            let colour = element.colour.rgb();
-            let fill = format!("rgb({},{},{})", colour[0], colour[1], colour[2]);
+            let fill = if element.colour == Colour::Background {
+                background.to_string()
+            } else {
+                let colour = element.colour.rgb();
+                format!("rgb({},{},{})", colour[0], colour[1], colour[2])
+            };
             match element.shape {
                 Shape::Circle => write!(
                     buffer,
-                    "<circle r=\"{}\" cx=\"{}\" cy=\"{}\" fill=\"{fill}\" stroke=\"black\" stroke-width=\"{stroke_size}\"/>",
+                    "<circle r=\"{}\" cx=\"{}\" cy=\"{}\" fill=\"{fill}\" stroke=\"{foreground}\" stroke-width=\"{stroke_size}\"/>",
                     sugar_size / 2.0,
                     (x + element.mid_point) * column_size,
                     (y as f32 + 0.5) * column_size
@@ -625,7 +803,7 @@ impl RenderedMonosaccharide {
                 .unwrap(),
                 Shape::Square => write!(
                     buffer,
-                    "<rect x=\"{}\" y=\"{}\" width=\"{}\" height=\"{}\" fill=\"{fill}\" stroke=\"black\" stroke-width=\"{stroke_size}\"/>",
+                    "<rect x=\"{}\" y=\"{}\" width=\"{}\" height=\"{}\" fill=\"{fill}\" stroke=\"{foreground}\" stroke-width=\"{stroke_size}\"/>",
                     (x + element.mid_point).mul_add(column_size, - sugar_size / 2.0),
                     (y as f32 + 0.5).mul_add(column_size, - sugar_size / 2.0),
                     sugar_size,
@@ -634,7 +812,7 @@ impl RenderedMonosaccharide {
                 .unwrap(),
                 Shape::Rectangle => write!(
                     buffer,
-                    "<rect x=\"{}\" y=\"{}\" width=\"{}\" height=\"{}\" fill=\"{fill}\" stroke=\"black\" stroke-width=\"{stroke_size}\"/>",
+                    "<rect x=\"{}\" y=\"{}\" width=\"{}\" height=\"{}\" fill=\"{fill}\" stroke=\"{foreground}\" stroke-width=\"{stroke_size}\"/>",
                     (x + element.mid_point).mul_add(column_size, - sugar_size / 2.0),
                     (y as f32 + 0.5).mul_add(column_size, - sugar_size / 4.0),
                     sugar_size,
@@ -649,7 +827,7 @@ impl RenderedMonosaccharide {
 
                     write!(
                     buffer,
-                    "<polygon points=\"{x1} {y1} {x2} {y1} {x2} {y2} {x1} {y2}\"stroke=\"black\" stroke-width=\"{stroke_size}\"/><polygon points=\"{x1} {y1} {x2} {y1} {x2} {y2}\" fill=\"{fill}\" stroke=\"black\" stroke-width=\"{stroke_size}\" stroke-linejoin=\"bevel\"/><polygon points=\"{x1} {y1} {x1} {y2} {x2} {y2}\" fill=\"white\" stroke=\"black\" stroke-width=\"{stroke_size}\" stroke-linejoin=\"bevel\"/>",
+                    "<polygon points=\"{x1} {y1} {x2} {y1} {x2} {y2} {x1} {y2}\"stroke=\"{foreground}\" stroke-width=\"{stroke_size}\"/><polygon points=\"{x1} {y1} {x2} {y1} {x2} {y2}\" fill=\"{fill}\" stroke=\"{foreground}\" stroke-width=\"{stroke_size}\" stroke-linejoin=\"bevel\"/><polygon points=\"{x1} {y1} {x1} {y2} {x2} {y2}\" fill=\"{background}\" stroke=\"{foreground}\" stroke-width=\"{stroke_size}\" stroke-linejoin=\"bevel\"/>",
                 )
                 .unwrap();},
                 Shape::DividedDiamond => {
@@ -662,7 +840,7 @@ impl RenderedMonosaccharide {
 
                     write!(
                     buffer,
-                    "<polygon points=\"{x1} {y2} {x2} {y1} {x3} {y2} {x2} {y3}\" stroke=\"black\" stroke-width=\"{stroke_size}\"/><polygon points=\"{x1} {y2} {x2} {y1} {x3} {y2}\" fill=\"{fill}\" stroke=\"black\" stroke-width=\"{stroke_size}\" stroke-linejoin=\"bevel\"/><polygon points=\"{x1} {y2} {x2} {y3} {x3} {y2}\" fill=\"white\" stroke=\"black\" stroke-width=\"{stroke_size}\" stroke-linejoin=\"bevel\"/>",
+                    "<polygon points=\"{x1} {y2} {x2} {y1} {x3} {y2} {x2} {y3}\" stroke=\"{foreground}\" stroke-width=\"{stroke_size}\"/><polygon points=\"{x1} {y2} {x2} {y1} {x3} {y2}\" fill=\"{fill}\" stroke=\"{foreground}\" stroke-width=\"{stroke_size}\" stroke-linejoin=\"bevel\"/><polygon points=\"{x1} {y2} {x2} {y3} {x3} {y2}\" fill=\"{background}\" stroke=\"{foreground}\" stroke-width=\"{stroke_size}\" stroke-linejoin=\"bevel\"/>",
                 )
                 .unwrap();},
                 Shape::Triangle => {
@@ -674,7 +852,7 @@ impl RenderedMonosaccharide {
 
                     write!(
                     buffer,
-                    "<polygon points=\"{x1} {y2} {x2} {y1} {x3} {y2}\" fill=\"{fill}\" stroke=\"black\" stroke-width=\"{stroke_size}\"/>",
+                    "<polygon points=\"{x1} {y2} {x2} {y1} {x3} {y2}\" fill=\"{fill}\" stroke=\"{foreground}\" stroke-width=\"{stroke_size}\"/>",
                 )
                 .unwrap();},
                 Shape::LeftPointingTriangle => {
@@ -686,7 +864,7 @@ impl RenderedMonosaccharide {
 
                     write!(
                     buffer,
-                    "<polygon points=\"{x1} {y2} {x2} {y1} {x2} {y3}\" fill=\"{fill}\" stroke=\"black\" stroke-width=\"{stroke_size}\"/>",
+                    "<polygon points=\"{x1} {y2} {x2} {y1} {x2} {y3}\" fill=\"{fill}\" stroke=\"{foreground}\" stroke-width=\"{stroke_size}\"/>",
                 )
                 .unwrap();},
                 Shape::RightPointingTriangle => {
@@ -698,7 +876,7 @@ impl RenderedMonosaccharide {
 
                     write!(
                     buffer,
-                    "<polygon points=\"{x1} {y1} {x2} {y2} {x1} {y3}\" fill=\"{fill}\" stroke=\"black\" stroke-width=\"{stroke_size}\"/>",
+                    "<polygon points=\"{x1} {y1} {x2} {y2} {x1} {y3}\" fill=\"{fill}\" stroke=\"{foreground}\" stroke-width=\"{stroke_size}\"/>",
                 )
                 .unwrap();},
                 Shape::DividedTriangle => {
@@ -710,7 +888,7 @@ impl RenderedMonosaccharide {
 
                     write!(
                     buffer,
-                    "<polygon points=\"{x2} {y1} {x3} {y2} {x1} {y2}\" stroke=\"black\" stroke-width=\"{stroke_size}\"/><polygon points=\"{x2} {y1} {x3} {y2} {x2} {y2}\" fill=\"{fill}\" stroke=\"black\" stroke-width=\"{stroke_size}\" stroke-linejoin=\"bevel\"/><polygon points=\"{x2} {y1} {x1} {y2} {x2} {y2}\" fill=\"white\"  stroke=\"black\" stroke-width=\"{stroke_size}\" stroke-linejoin=\"bevel\"/>",
+                    "<polygon points=\"{x2} {y1} {x3} {y2} {x1} {y2}\" stroke=\"{foreground}\" stroke-width=\"{stroke_size}\"/><polygon points=\"{x2} {y1} {x3} {y2} {x2} {y2}\" fill=\"{fill}\" stroke=\"{foreground}\" stroke-width=\"{stroke_size}\" stroke-linejoin=\"bevel\"/><polygon points=\"{x2} {y1} {x1} {y2} {x2} {y2}\" fill=\"{background}\"  stroke=\"{foreground}\" stroke-width=\"{stroke_size}\" stroke-linejoin=\"bevel\"/>",
                 )
                 .unwrap();},
                 Shape::Diamond => {
@@ -723,7 +901,7 @@ impl RenderedMonosaccharide {
 
                     write!(
                     buffer,
-                    "<polygon points=\"{x2} {y1} {x3} {y2} {x2} {y3} {x1} {y2}\" fill=\"{fill}\" stroke=\"black\" stroke-width=\"{stroke_size}\"/>",
+                    "<polygon points=\"{x2} {y1} {x3} {y2} {x2} {y3} {x1} {y2}\" fill=\"{fill}\" stroke=\"{foreground}\" stroke-width=\"{stroke_size}\"/>",
                 )
                 .unwrap();},
                 Shape::FlatDiamond => {
@@ -736,7 +914,7 @@ impl RenderedMonosaccharide {
 
                     write!(
                     buffer,
-                    "<polygon points=\"{x2} {y1} {x3} {y2} {x2} {y3} {x1} {y2}\" fill=\"{fill}\" stroke=\"black\" stroke-width=\"{stroke_size}\"/>",
+                    "<polygon points=\"{x2} {y1} {x3} {y2} {x2} {y3} {x1} {y2}\" fill=\"{fill}\" stroke=\"{foreground}\" stroke-width=\"{stroke_size}\"/>",
                 )
                 .unwrap();},
                 Shape::Hexagon => {
@@ -751,7 +929,7 @@ impl RenderedMonosaccharide {
 
                     write!(
                     buffer,
-                    "<polygon points=\"{x1} {y2} {x2} {y1} {x3} {y1} {x4} {y2} {x3} {y3} {x2} {y3}\" fill=\"{fill}\" stroke=\"black\" stroke-width=\"{stroke_size}\"/>",
+                    "<polygon points=\"{x1} {y2} {x2} {y1} {x3} {y1} {x4} {y2} {x3} {y3} {x2} {y3}\" fill=\"{fill}\" stroke=\"{foreground}\" stroke-width=\"{stroke_size}\"/>",
                 )
                 .unwrap();},
                 Shape::Pentagon => {
@@ -771,7 +949,7 @@ impl RenderedMonosaccharide {
 
                     write!(
                     buffer,
-                    "<polygon points=\"{x1} {y2} {x3} {y1} {x5} {y2} {x4} {y3} {x2} {y3}\" fill=\"{fill}\" stroke=\"black\" stroke-width=\"{stroke_size}\"/>",
+                    "<polygon points=\"{x1} {y2} {x3} {y1} {x5} {y2} {x4} {y3} {x2} {y3}\" fill=\"{fill}\" stroke=\"{foreground}\" stroke-width=\"{stroke_size}\"/>",
                 )
                 .unwrap();},
                 Shape::Star => {
@@ -805,19 +983,19 @@ impl RenderedMonosaccharide {
 
                     write!(
                     buffer,
-                    "<polygon points=\"{x1} {y2} {x4} {y2} {x5} {y1} {x6} {y2} {x9} {y2} {x7} {y3} {x8} {y5} {x5} {y4} {x2} {y5} {x3} {y3}\" fill=\"{fill}\" stroke=\"black\" stroke-width=\"{stroke_size}\"/>",
+                    "<polygon points=\"{x1} {y2} {x4} {y2} {x5} {y1} {x6} {y2} {x9} {y2} {x7} {y3} {x8} {y5} {x5} {y4} {x2} {y5} {x3} {y3}\" fill=\"{fill}\" stroke=\"{foreground}\" stroke-width=\"{stroke_size}\"/>",
                 )
                 .unwrap();},
             }
             if !element.inner_modifications.is_empty() {
-                write!(buffer, "<text x=\"{}\" y=\"{}\" fill=\"black\" text-anchor=\"middle\" font-style=\"italic\" font-size=\"{}px\" dominant-baseline=\"middle\">{}</text>",
+                write!(buffer, "<text x=\"{}\" y=\"{}\" fill=\"{foreground}\" text-anchor=\"middle\" font-style=\"italic\" font-size=\"{}px\" dominant-baseline=\"middle\">{}</text>",
                     (x + element.mid_point) * column_size,
                     (y as f32 + 0.5) * column_size,
                     sugar_size / 2.0,
                     element.inner_modifications).unwrap();
             }
             if !element.outer_modifications.is_empty() {
-                write!(buffer, "<text x=\"{}\" y=\"{}\" fill=\"black\" text-anchor=\"middle\" font-size=\"{}px\" dominant-baseline=\"ideographic\">{}</text>",
+                write!(buffer, "<text x=\"{}\" y=\"{}\" fill=\"{foreground}\" text-anchor=\"middle\" font-size=\"{}px\" dominant-baseline=\"ideographic\">{}</text>",
                     (x + element.mid_point) * column_size,
                     (y as f32).mul_add(column_size, -element.shape.height().mul_add(sugar_size, -column_size) / 2.0),
                     sugar_size / 2.0,
@@ -846,22 +1024,25 @@ impl RenderedMonosaccharide {
                             })
                             .map(|b| (b.0 - 1, &b.1[usize::from(total_branches > 1)..]))
                             .collect_vec(),
+                        foreground,
+                        background,
                     );
                 }
             }
         }
 
         let (tree, depth, breaks) = if let Some(root) = &root_break {
-            self.get_subtree(root, branch_breaks)?
+            if let Some(tree) = self.get_subtree(root, branch_breaks) {
+                tree
+            } else {
+                return false;
+            }
         } else {
             (self, self.y + 1, Vec::new())
         };
 
-        dbg!((tree.y, depth, &breaks));
-
-        let mut picture = String::new();
         write!(
-            &mut picture,
+            output,
             "<svg width=\"{}\" height=\"{}\">",
             tree.width * column_size,
             (depth as f32 + f32::from(basis.is_some() && root_break.is_none())).mul_add(
@@ -875,27 +1056,29 @@ impl RenderedMonosaccharide {
         )
         .unwrap();
 
+        let foreground = format!("rgb({},{},{})", foreground[0], foreground[1], foreground[2]);
+        let background = format!("rgb({},{},{})", background[0], background[1], background[2]);
         if root_break.is_some() {
             let base_x = tree.mid_point * column_size;
             let base_y = (depth as f32).mul_add(column_size, stroke_size * 3.0);
             write!(
-                &mut picture,
-                "<line x1=\"{base_x}\" y1=\"{}\" x2=\"{base_x}\" y2=\"{}\" stroke=\"black\" stroke-width=\"{stroke_size}\"/>",
+                output,
+                "<line x1=\"{base_x}\" y1=\"{}\" x2=\"{base_x}\" y2=\"{}\" stroke=\"{foreground}\" stroke-width=\"{stroke_size}\"/>",
                 (depth as f32 - 0.5) * column_size,
                 base_y,
             )
             .unwrap();
             write!(
-                &mut picture,
-                "<line x1=\"{}\" y1=\"{y}\" x2=\"{}\" y2=\"{y}\" stroke=\"black\" stroke-width=\"{stroke_size}\"/>",
+                output,
+                "<line x1=\"{}\" y1=\"{y}\" x2=\"{}\" y2=\"{y}\" stroke=\"{foreground}\" stroke-width=\"{stroke_size}\"/>",
                 base_x - sugar_size / 2.0,
                 base_x + sugar_size / 2.0,
                 y = base_y,
             )
             .unwrap();
             write!(
-                &mut picture,
-                "<line x1=\"{x}\" y1=\"{}\" x2=\"{x}\" y2=\"{}\" stroke=\"black\" stroke-width=\"{stroke_size}\"/>",
+                output,
+                "<line x1=\"{x}\" y1=\"{}\" x2=\"{x}\" y2=\"{}\" stroke=\"{foreground}\" stroke-width=\"{stroke_size}\"/>",
                 base_y - stroke_size * 2.0,
                 base_y,
                 x=base_x - sugar_size / 2.0,
@@ -903,20 +1086,20 @@ impl RenderedMonosaccharide {
             .unwrap();
         } else if let Some(basis) = basis {
             write!(
-                &mut picture,
-                "<line x1=\"{x}\" y1=\"{}\" x2=\"{x}\" y2=\"{}\" stroke=\"black\" stroke-width=\"{stroke_size}\"/>",
+                output,
+                "<line x1=\"{x}\" y1=\"{}\" x2=\"{x}\" y2=\"{}\" stroke=\"{foreground}\" stroke-width=\"{stroke_size}\"/>",
                 (depth as f32 - 0.5) * column_size,
                 (depth as f32 + 0.25) * column_size,
                 x=tree.mid_point * column_size,
             )
             .unwrap();
-            write!(&mut picture, "<text x=\"{}\" y=\"{}\" fill=\"black\" text-anchor=\"middle\" font-size=\"{}px\" dominant-baseline=\"ideographic\">{basis}</text>",
+            write!(output, "<text x=\"{}\" y=\"{}\" fill=\"{foreground}\" text-anchor=\"middle\" font-size=\"{}px\" dominant-baseline=\"ideographic\">{basis}</text>",
                     tree.mid_point * column_size,
                     (depth as f32 + 1.0) * column_size,
                     sugar_size).unwrap();
         }
         render_element(
-            &mut picture,
+            &mut output,
             tree,
             column_size,
             sugar_size,
@@ -924,11 +1107,13 @@ impl RenderedMonosaccharide {
             tree.x,
             tree.y - (depth - 1),
             &breaks,
+            &foreground,
+            &background,
         );
 
-        write!(&mut picture, "</svg>").unwrap();
+        write!(output, "</svg>").unwrap();
 
-        Some(picture)
+        true
     }
 }
 
@@ -961,23 +1146,24 @@ fn test_rendering() {
         ("G36128WO", "Ido(b1-3)ManNAc(?1-3)[Ido(b1-3)L-AllNAc(b1-3)Ido(b1-4)AltNAc(b1-6)]Tal(b1-4)D-Ido(?1-"),
         ("G83422GV", "L-6dTal(a1-3)[Fuc(a1-2)Gal(b1-4)GlcNAc(b1-3)Gal(b1-4)]GlcNAc(b1-3)Gal(b1-3)[Neu5Ac(a2-3)Gal(b1-4)[Fuc(a1-3)]GlcNAc(b1-6)]GalNAc(a1-"),
         ("G09073GJ","GalNAc(?1-?)GlcA2,3NAc2(?1-?)D-FucNAc"),
+        ("G00069DT","Neu(a2-3)Gal(b1-4)GlcNAc(b1-3)Gal(b1-4)GlcNAc(b1-3)Gal(b1-4)Glc(b1-"),
     ];
 
     for (_, iupac) in &codes {
         let structure = GlycanStructure::from_short_iupac(iupac, 0..iupac.len(), 0).unwrap();
-        html.push_str(
-            &structure
-                .render()
-                .to_svg(
-                    Some("pep".to_string()),
-                    COLUMN_SIZE,
-                    SUGAR_SIZE,
-                    STROKE_SIZE,
-                    None,
-                    &[],
-                )
-                .unwrap(),
-        );
+        if !structure.render().to_svg(
+            &mut html,
+            Some("pep".to_string()),
+            COLUMN_SIZE,
+            SUGAR_SIZE,
+            STROKE_SIZE,
+            None,
+            &[],
+            [0, 0, 0],
+            [255, 255, 255],
+        ) {
+            panic!("Rendering failed")
+        }
     }
     let structure = GlycanStructure::from_short_iupac(codes[0].1, 0..codes[0].1.len(), 0).unwrap();
     for (root, breaks) in [
@@ -1036,19 +1222,19 @@ fn test_rendering() {
             Vec::new(),
         ),
     ] {
-        html.push_str(
-            &structure
-                .render()
-                .to_svg(
-                    Some("pep".to_string()),
-                    COLUMN_SIZE,
-                    SUGAR_SIZE,
-                    STROKE_SIZE,
-                    Some(root),
-                    &breaks,
-                )
-                .unwrap(),
-        );
+        if !structure.render().to_svg(
+            &mut html,
+            Some("pep".to_string()),
+            COLUMN_SIZE,
+            SUGAR_SIZE,
+            STROKE_SIZE,
+            Some(root),
+            &breaks,
+            [0, 0, 0],
+            [255, 255, 255],
+        ) {
+            panic!("Rendering failed")
+        }
     }
 
     write!(&mut html, "<hr>").unwrap();
