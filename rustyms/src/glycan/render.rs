@@ -546,10 +546,33 @@ impl Shape {
 }
 
 impl GlycanStructure {
-    fn render(&self) -> RenderedMonosaccharide {
+    /// Build the rendered glycan, this can be used to create SVG images of this glycan. The footnotes list is used to gather modification texts that are too big to place in line. The caller will have to find their own way of displaying this to the user.
+    pub fn render(&self, footnotes: &mut Vec<String>) -> RenderedGlycan {
+        self.inner_render(0, &[], footnotes)
+    }
+    fn inner_render(
+        &self,
+        depth: usize,
+        path: &[usize],
+        footnotes: &mut Vec<String>,
+    ) -> RenderedGlycan {
         let (shape, colour, inner_modifications, outer_modifications) = self.sugar.get_shape();
+        let outer_modifications = if outer_modifications.len() > 6 {
+            let index = footnotes.iter().position(|e| *e == outer_modifications);
+            if let Some(index) = index {
+                OuterModifications::Footnote(index)
+            } else {
+                let index = footnotes.len();
+                footnotes.push(outer_modifications);
+                OuterModifications::Footnote(index)
+            }
+        } else if !outer_modifications.is_empty() {
+            OuterModifications::Text(outer_modifications)
+        } else {
+            OuterModifications::Empty
+        };
         if self.branches.is_empty() {
-            RenderedMonosaccharide {
+            RenderedGlycan {
                 y: 0,
                 x: 0.0,
                 mid_point: 0.5,
@@ -558,16 +581,33 @@ impl GlycanStructure {
                 colour,
                 inner_modifications,
                 outer_modifications,
+                position: GlycanPosition {
+                    inner_depth: depth,
+                    series_number: depth,
+                    branch: path.to_vec(),
+                    attachment: None,
+                },
+                title: self.sugar.to_string(),
                 branch_index: 0,
                 branches: Vec::new(),
                 sides: Vec::new(),
             }
         } else {
-            let mut depth = 0;
+            let mut y_depth = 0;
             let mut branches = Vec::new();
             let mut sides = Vec::new();
             for (branch_index, branch) in self.branches.iter().enumerate() {
-                let mut rendered = branch.render();
+                let mut new_path = path.to_vec();
+                new_path.push(branch_index);
+                let mut rendered = branch.inner_render(
+                    depth + 1,
+                    if self.branches.len() > 1 {
+                        &new_path
+                    } else {
+                        path
+                    },
+                    footnotes,
+                );
                 rendered.branch_index = branch_index;
                 if rendered.is_sideways() && sides.len() < 2 {
                     if sides.is_empty() && rendered.shape == Shape::Triangle {
@@ -577,18 +617,18 @@ impl GlycanStructure {
                     }
                     sides.push(rendered);
                 } else {
-                    depth = depth.max(rendered.y);
+                    y_depth = y_depth.max(rendered.y);
                     branches.push(rendered);
                 }
             }
             // Update all branch placements
             let mut displacement = 0.0;
             for branch in &mut branches {
-                branch.transpose(depth - branch.y, displacement);
+                branch.transpose(y_depth - branch.y, displacement);
                 displacement += branch.width;
             }
             if !branches.is_empty() {
-                depth += 1;
+                y_depth += 1;
             }
             // Determine the center point for this sugar
             let mut center = match branches.len() {
@@ -605,7 +645,7 @@ impl GlycanStructure {
             };
             let mut width = branches.last().map_or(1.0, |b| b.x + b.width);
             if !sides.is_empty() {
-                sides[0].transpose(depth, center + 0.5);
+                sides[0].transpose(y_depth, center + 0.5);
                 width = width.max(center + 0.5 + sides[0].width);
             }
             if sides.len() == 2 {
@@ -620,10 +660,10 @@ impl GlycanStructure {
                     width += shift;
                     x = 0.0;
                 }
-                sides[1].transpose(depth, x);
+                sides[1].transpose(y_depth, x);
             }
-            RenderedMonosaccharide {
-                y: depth,
+            RenderedGlycan {
+                y: y_depth,
                 x: 0.0,
                 mid_point: center,
                 width,
@@ -631,6 +671,13 @@ impl GlycanStructure {
                 colour,
                 inner_modifications,
                 outer_modifications,
+                position: GlycanPosition {
+                    inner_depth: depth,
+                    series_number: depth,
+                    branch: path.to_vec(),
+                    attachment: None,
+                },
+                title: self.sugar.to_string(),
                 branch_index: 0,
                 branches,
                 sides,
@@ -639,7 +686,7 @@ impl GlycanStructure {
     }
 }
 
-struct RenderedMonosaccharide {
+struct RenderedGlycan {
     /// The depth of this sugar along the main axis of the glycan, starting at 0 at the top (in the leaves)
     y: usize,
     /// The sideways placement of this whole tree starting at 0 at the leftmost monosaccharide, 1.0 is the width of one monosaccharide
@@ -651,13 +698,23 @@ struct RenderedMonosaccharide {
     shape: Shape,
     colour: Colour,
     inner_modifications: String,
-    outer_modifications: String,
+    outer_modifications: OuterModifications,
+    /// The position of this sugar
+    position: GlycanPosition,
+    /// Full name of the glycan
+    title: String,
     branch_index: usize,
-    branches: Vec<RenderedMonosaccharide>,
-    sides: Vec<RenderedMonosaccharide>,
+    branches: Vec<RenderedGlycan>,
+    sides: Vec<RenderedGlycan>,
 }
 
-impl RenderedMonosaccharide {
+enum OuterModifications {
+    Footnote(usize),
+    Text(String),
+    Empty,
+}
+
+impl RenderedGlycan {
     fn transpose(&mut self, y: usize, x: f32) {
         self.y += y;
         self.x += x;
@@ -683,10 +740,7 @@ impl RenderedMonosaccharide {
         start: &'a GlycanPosition,
         branch_breaks: &'a [GlycanPosition],
     ) -> Option<(&'a Self, usize, bool, Vec<(usize, &'a [usize])>)> {
-        fn maximal_depth(
-            tree: &RenderedMonosaccharide,
-            breakages: &[(usize, &[usize])],
-        ) -> (usize, bool) {
+        fn maximal_depth(tree: &RenderedGlycan, breakages: &[(usize, &[usize])]) -> (usize, bool) {
             // The tree is cut here
             if breakages.iter().any(|b| b.0 == 0) {
                 return (0, true);
@@ -770,7 +824,7 @@ impl RenderedMonosaccharide {
     ) -> bool {
         fn render_element(
             buffer: &mut impl Write,
-            element: &RenderedMonosaccharide,
+            element: &RenderedGlycan,
             column_size: f32,
             sugar_size: f32,
             stroke_size: f32,
@@ -850,10 +904,16 @@ impl RenderedMonosaccharide {
                 let colour = element.colour.rgb();
                 format!("rgb({},{},{})", colour[0], colour[1], colour[2])
             };
+            let title = format!(
+                " data-sugar=\"{}\" data-position=\"{}-{}\"",
+                element.title,
+                element.position.inner_depth,
+                element.position.branch.iter().join(",")
+            );
             match element.shape {
                 Shape::Circle => write!(
                     buffer,
-                    "<circle r=\"{}\" cx=\"{}\" cy=\"{}\" fill=\"{fill}\" stroke=\"{foreground}\" stroke-width=\"{stroke_size}\"/>",
+                    "<circle r=\"{}\" cx=\"{}\" cy=\"{}\" fill=\"{fill}\" stroke=\"{foreground}\" stroke-width=\"{stroke_size}\"{title}/>",
                     sugar_size / 2.0,
                     (x + element.mid_point) * column_size,
                     (y + 0.5) * column_size
@@ -861,7 +921,7 @@ impl RenderedMonosaccharide {
                 .unwrap(),
                 Shape::Square => write!(
                     buffer,
-                    "<rect x=\"{}\" y=\"{}\" width=\"{}\" height=\"{}\" fill=\"{fill}\" stroke=\"{foreground}\" stroke-width=\"{stroke_size}\"/>",
+                    "<rect x=\"{}\" y=\"{}\" width=\"{}\" height=\"{}\" fill=\"{fill}\" stroke=\"{foreground}\" stroke-width=\"{stroke_size}\"{title}/>",
                     (x + element.mid_point).mul_add(column_size, - sugar_size / 2.0),
                     (y + 0.5).mul_add(column_size, - sugar_size / 2.0),
                     sugar_size,
@@ -870,37 +930,13 @@ impl RenderedMonosaccharide {
                 .unwrap(),
                 Shape::Rectangle => write!(
                     buffer,
-                    "<rect x=\"{}\" y=\"{}\" width=\"{}\" height=\"{}\" fill=\"{fill}\" stroke=\"{foreground}\" stroke-width=\"{stroke_size}\"/>",
+                    "<rect x=\"{}\" y=\"{}\" width=\"{}\" height=\"{}\" fill=\"{fill}\" stroke=\"{foreground}\" stroke-width=\"{stroke_size}\"{title}/>",
                     (x + element.mid_point).mul_add(column_size, - sugar_size / 2.0),
                     (y + 0.5).mul_add(column_size, - sugar_size / 4.0),
                     sugar_size,
                     sugar_size / 2.0
                 )
                 .unwrap(),
-                Shape::CrossedSquare => {
-                    let x1 = (x + element.mid_point).mul_add(column_size,- sugar_size / 2.0);
-                    let y1 = (y + 0.5).mul_add(column_size, - sugar_size / 2.0);
-                    let x2 = x1 + sugar_size;
-                    let y2 = y1 + sugar_size;
-
-                    write!(
-                    buffer,
-                    "<polygon points=\"{x1} {y1} {x2} {y1} {x2} {y2} {x1} {y2}\"stroke=\"{foreground}\" stroke-width=\"{stroke_size}\"/><polygon points=\"{x1} {y1} {x2} {y1} {x2} {y2}\" fill=\"{fill}\" stroke=\"{foreground}\" stroke-width=\"{stroke_size}\" stroke-linejoin=\"bevel\"/><polygon points=\"{x1} {y1} {x1} {y2} {x2} {y2}\" fill=\"{background}\" stroke=\"{foreground}\" stroke-width=\"{stroke_size}\" stroke-linejoin=\"bevel\"/>",
-                )
-                .unwrap();},
-                Shape::DividedDiamond => {
-                    let x1 = (x + element.mid_point).mul_add(column_size,- sugar_size / 2.0);
-                    let x2 = x1 + sugar_size / 2.0;
-                    let x3 = x1 + sugar_size;
-                    let y1 = (y + 0.5).mul_add(column_size, - sugar_size / 2.0);
-                    let y2 = y1 + sugar_size / 2.0;
-                    let y3 = y1 + sugar_size;
-
-                    write!(
-                    buffer,
-                    "<polygon points=\"{x1} {y2} {x2} {y1} {x3} {y2} {x2} {y3}\" stroke=\"{foreground}\" stroke-width=\"{stroke_size}\"/><polygon points=\"{x1} {y2} {x2} {y1} {x3} {y2}\" fill=\"{fill}\" stroke=\"{foreground}\" stroke-width=\"{stroke_size}\" stroke-linejoin=\"bevel\"/><polygon points=\"{x1} {y2} {x2} {y3} {x3} {y2}\" fill=\"{background}\" stroke=\"{foreground}\" stroke-width=\"{stroke_size}\" stroke-linejoin=\"bevel\"/>",
-                )
-                .unwrap();},
                 Shape::Triangle => {
                     let x1 = (x + element.mid_point).mul_add(column_size,- sugar_size / 2.0);
                     let x2 = x1 + sugar_size / 2.0;
@@ -910,7 +946,7 @@ impl RenderedMonosaccharide {
 
                     write!(
                     buffer,
-                    "<polygon points=\"{x1} {y2} {x2} {y1} {x3} {y2}\" fill=\"{fill}\" stroke=\"{foreground}\" stroke-width=\"{stroke_size}\"/>",
+                    "<polygon points=\"{x1} {y2} {x2} {y1} {x3} {y2}\" fill=\"{fill}\" stroke=\"{foreground}\" stroke-width=\"{stroke_size}\"{title}/>",
                 )
                 .unwrap();},
                 Shape::LeftPointingTriangle => {
@@ -922,7 +958,7 @@ impl RenderedMonosaccharide {
 
                     write!(
                     buffer,
-                    "<polygon points=\"{x1} {y2} {x2} {y1} {x2} {y3}\" fill=\"{fill}\" stroke=\"{foreground}\" stroke-width=\"{stroke_size}\"/>",
+                    "<polygon points=\"{x1} {y2} {x2} {y1} {x2} {y3}\" fill=\"{fill}\" stroke=\"{foreground}\" stroke-width=\"{stroke_size}\"{title}/>",
                 )
                 .unwrap();},
                 Shape::RightPointingTriangle => {
@@ -934,19 +970,7 @@ impl RenderedMonosaccharide {
 
                     write!(
                     buffer,
-                    "<polygon points=\"{x1} {y1} {x2} {y2} {x1} {y3}\" fill=\"{fill}\" stroke=\"{foreground}\" stroke-width=\"{stroke_size}\"/>",
-                )
-                .unwrap();},
-                Shape::DividedTriangle => {
-                    let x1 = (x + element.mid_point).mul_add(column_size,- sugar_size / 2.0);
-                    let x2 = x1 + sugar_size / 2.0;
-                    let x3 = x1 + sugar_size;
-                    let y1 = (y + 0.5).mul_add(column_size, - sugar_size / 2.0);
-                    let y2 = y1 + sugar_size;
-
-                    write!(
-                    buffer,
-                    "<polygon points=\"{x2} {y1} {x3} {y2} {x1} {y2}\" stroke=\"{foreground}\" stroke-width=\"{stroke_size}\"/><polygon points=\"{x2} {y1} {x3} {y2} {x2} {y2}\" fill=\"{fill}\" stroke=\"{foreground}\" stroke-width=\"{stroke_size}\" stroke-linejoin=\"bevel\"/><polygon points=\"{x2} {y1} {x1} {y2} {x2} {y2}\" fill=\"{background}\"  stroke=\"{foreground}\" stroke-width=\"{stroke_size}\" stroke-linejoin=\"bevel\"/>",
+                    "<polygon points=\"{x1} {y1} {x2} {y2} {x1} {y3}\" fill=\"{fill}\" stroke=\"{foreground}\" stroke-width=\"{stroke_size}\"{title}/>",
                 )
                 .unwrap();},
                 Shape::Diamond => {
@@ -959,7 +983,7 @@ impl RenderedMonosaccharide {
 
                     write!(
                     buffer,
-                    "<polygon points=\"{x2} {y1} {x3} {y2} {x2} {y3} {x1} {y2}\" fill=\"{fill}\" stroke=\"{foreground}\" stroke-width=\"{stroke_size}\"/>",
+                    "<polygon points=\"{x2} {y1} {x3} {y2} {x2} {y3} {x1} {y2}\" fill=\"{fill}\" stroke=\"{foreground}\" stroke-width=\"{stroke_size}\"{title}/>",
                 )
                 .unwrap();},
                 Shape::FlatDiamond => {
@@ -972,7 +996,7 @@ impl RenderedMonosaccharide {
 
                     write!(
                     buffer,
-                    "<polygon points=\"{x2} {y1} {x3} {y2} {x2} {y3} {x1} {y2}\" fill=\"{fill}\" stroke=\"{foreground}\" stroke-width=\"{stroke_size}\"/>",
+                    "<polygon points=\"{x2} {y1} {x3} {y2} {x2} {y3} {x1} {y2}\" fill=\"{fill}\" stroke=\"{foreground}\" stroke-width=\"{stroke_size}\"{title}/>",
                 )
                 .unwrap();},
                 Shape::Hexagon => {
@@ -987,7 +1011,7 @@ impl RenderedMonosaccharide {
 
                     write!(
                     buffer,
-                    "<polygon points=\"{x1} {y2} {x2} {y1} {x3} {y1} {x4} {y2} {x3} {y3} {x2} {y3}\" fill=\"{fill}\" stroke=\"{foreground}\" stroke-width=\"{stroke_size}\"/>",
+                    "<polygon points=\"{x1} {y2} {x2} {y1} {x3} {y1} {x4} {y2} {x3} {y3} {x2} {y3}\" fill=\"{fill}\" stroke=\"{foreground}\" stroke-width=\"{stroke_size}\"{title}/>",
                 )
                 .unwrap();},
                 Shape::Pentagon => {
@@ -1007,7 +1031,7 @@ impl RenderedMonosaccharide {
 
                     write!(
                     buffer,
-                    "<polygon points=\"{x1} {y2} {x3} {y1} {x5} {y2} {x4} {y3} {x2} {y3}\" fill=\"{fill}\" stroke=\"{foreground}\" stroke-width=\"{stroke_size}\"/>",
+                    "<polygon points=\"{x1} {y2} {x3} {y1} {x5} {y2} {x4} {y3} {x2} {y3}\" fill=\"{fill}\" stroke=\"{foreground}\" stroke-width=\"{stroke_size}\"{title}/>",
                 )
                 .unwrap();},
                 Shape::Star => {
@@ -1041,7 +1065,43 @@ impl RenderedMonosaccharide {
 
                     write!(
                     buffer,
-                    "<polygon points=\"{x1} {y2} {x4} {y2} {x5} {y1} {x6} {y2} {x9} {y2} {x7} {y3} {x8} {y5} {x5} {y4} {x2} {y5} {x3} {y3}\" fill=\"{fill}\" stroke=\"{foreground}\" stroke-width=\"{stroke_size}\"/>",
+                    "<polygon points=\"{x1} {y2} {x4} {y2} {x5} {y1} {x6} {y2} {x9} {y2} {x7} {y3} {x8} {y5} {x5} {y4} {x2} {y5} {x3} {y3}\" fill=\"{fill}\" stroke=\"{foreground}\" stroke-width=\"{stroke_size}\"{title}/>",
+                )
+                .unwrap();},
+                Shape::CrossedSquare => {
+                    let x1 = (x + element.mid_point).mul_add(column_size,- sugar_size / 2.0);
+                    let y1 = (y + 0.5).mul_add(column_size, - sugar_size / 2.0);
+                    let x2 = x1 + sugar_size;
+                    let y2 = y1 + sugar_size;
+
+                    write!(
+                    buffer,
+                    "<polygon points=\"{x1} {y1} {x2} {y1} {x2} {y2}\" fill=\"{fill}\" stroke=\"{foreground}\" stroke-width=\"{stroke_size}\" stroke-linejoin=\"bevel\"/><polygon points=\"{x1} {y1} {x1} {y2} {x2} {y2}\" fill=\"{background}\" stroke=\"{foreground}\" stroke-width=\"{stroke_size}\" stroke-linejoin=\"bevel\"/><polygon points=\"{x1} {y1} {x2} {y1} {x2} {y2} {x1} {y2}\" fill=\"transparent\" stroke=\"{foreground}\" stroke-width=\"{stroke_size}\"{title}/>",
+                )
+                .unwrap();},
+                Shape::DividedDiamond => {
+                    let x1 = (x + element.mid_point).mul_add(column_size,- sugar_size / 2.0);
+                    let x2 = x1 + sugar_size / 2.0;
+                    let x3 = x1 + sugar_size;
+                    let y1 = (y + 0.5).mul_add(column_size, - sugar_size / 2.0);
+                    let y2 = y1 + sugar_size / 2.0;
+                    let y3 = y1 + sugar_size;
+
+                    write!(
+                    buffer,
+                    "<polygon points=\"{x1} {y2} {x2} {y1} {x3} {y2}\" fill=\"{fill}\" stroke=\"{foreground}\" stroke-width=\"{stroke_size}\" stroke-linejoin=\"bevel\"/><polygon points=\"{x1} {y2} {x2} {y3} {x3} {y2}\" fill=\"{background}\" stroke=\"{foreground}\" stroke-width=\"{stroke_size}\" stroke-linejoin=\"bevel\"/><polygon points=\"{x1} {y2} {x2} {y1} {x3} {y2} {x2} {y3}\" fill=\"transparent\" stroke=\"{foreground}\" stroke-width=\"{stroke_size}\"{title}/>",
+                )
+                .unwrap();},
+                Shape::DividedTriangle => {
+                    let x1 = (x + element.mid_point).mul_add(column_size,- sugar_size / 2.0);
+                    let x2 = x1 + sugar_size / 2.0;
+                    let x3 = x1 + sugar_size;
+                    let y1 = (y + 0.5).mul_add(column_size, - sugar_size / 2.0);
+                    let y2 = y1 + sugar_size;
+
+                    write!(
+                    buffer,
+                    "<polygon points=\"{x2} {y1} {x3} {y2} {x2} {y2}\" fill=\"{fill}\" stroke=\"{foreground}\" stroke-width=\"{stroke_size}\" stroke-linejoin=\"bevel\"/><polygon points=\"{x2} {y1} {x1} {y2} {x2} {y2}\" fill=\"{background}\"  stroke=\"{foreground}\" stroke-width=\"{stroke_size}\" stroke-linejoin=\"bevel\"/><polygon points=\"{x2} {y1} {x3} {y2} {x1} {y2}\" fill=\"transparent\" stroke=\"{foreground}\" stroke-width=\"{stroke_size}\"{title}/>",
                 )
                 .unwrap();},
             }
@@ -1052,12 +1112,16 @@ impl RenderedMonosaccharide {
                     sugar_size / 2.0,
                     element.inner_modifications).unwrap();
             }
-            if !element.outer_modifications.is_empty() {
-                write!(buffer, "<text x=\"{}\" y=\"{}\" fill=\"{foreground}\" text-anchor=\"middle\" font-size=\"{}px\" dominant-baseline=\"ideographic\">{}</text>",
-                    (x + element.mid_point) * column_size,
-                    y.mul_add(column_size, -element.shape.height().mul_add(sugar_size, -column_size) / 2.0),
-                    sugar_size / 2.0,
-                    element.outer_modifications).unwrap();
+            match &element.outer_modifications {
+                OuterModifications::Empty => (),
+                OuterModifications::Footnote(index) => write!(buffer, "<text x=\"{}\" y=\"{}\" fill=\"{foreground}\" text-anchor=\"middle\" font-size=\"{}px\" dominant-baseline=\"ideographic\">{index}</text>",
+                (x + element.mid_point) * column_size,
+                y.mul_add(column_size, -element.shape.height().mul_add(sugar_size, -column_size) / 2.0),
+                sugar_size / 2.0).unwrap(),
+                OuterModifications::Text(text) => write!(buffer, "<text x=\"{}\" y=\"{}\" fill=\"{foreground}\" text-anchor=\"middle\" font-size=\"{}px\" dominant-baseline=\"ideographic\">{text}</text>",
+                (x + element.mid_point) * column_size,
+                y.mul_add(column_size, -element.shape.height().mul_add(sugar_size, -column_size) / 2.0),
+                sugar_size / 2.0).unwrap(),
             }
             // Render all connected sugars
             for branch in element.branches.iter().chain(element.sides.iter()) {
@@ -1191,6 +1255,7 @@ fn test_rendering() {
     const SUGAR_SIZE: f32 = 15.0;
     const STROKE_SIZE: f32 = 1.5;
     let mut html = String::new();
+    let mut footnotes = Vec::new();
     write!(&mut html, "<html lang=\"en\"><head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\"><title>Glycan render test</title></head><body>").unwrap();
 
     let codes = [
@@ -1219,7 +1284,7 @@ fn test_rendering() {
 
     for (_, iupac) in &codes {
         let structure = GlycanStructure::from_short_iupac(iupac, 0..iupac.len(), 0).unwrap();
-        if !structure.render().to_svg(
+        if !structure.render(&mut footnotes).to_svg(
             &mut html,
             Some("pep".to_string()),
             COLUMN_SIZE,
@@ -1362,7 +1427,7 @@ fn test_rendering() {
     ] {
         let structure =
             GlycanStructure::from_short_iupac(codes[index].1, 0..codes[index].1.len(), 0).unwrap();
-        if !structure.render().to_svg(
+        if !structure.render(&mut footnotes).to_svg(
             &mut html,
             Some("pep".to_string()),
             COLUMN_SIZE,
@@ -1378,6 +1443,13 @@ fn test_rendering() {
     }
 
     write!(&mut html, "<hr>").unwrap();
+    if !footnotes.is_empty() {
+        write!(&mut html, "<ol>").unwrap();
+        for note in footnotes {
+            write!(&mut html, "<li>{note}</li>").unwrap();
+        }
+        write!(&mut html, "</ol><hr>").unwrap();
+    }
     for (code, _) in &codes {
         write!(
             &mut html,
