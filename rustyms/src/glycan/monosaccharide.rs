@@ -193,7 +193,7 @@ impl MonoSaccharide {
                     base.with_neutral_loss(&NeutralLoss::Loss(molecular_formula!(C 2 H 6 O 3))),
                     base.with_neutral_loss(&NeutralLoss::Loss(molecular_formula!(C 4 H 8 O 4))),
                 ]
-            } else if matches!(self.base_sugar, BaseSugar::Nonose)
+            } else if matches!(self.base_sugar, BaseSugar::Nonose(_))
                 && (self.substituents
                     == [
                         GlycanSubstituent::Amino,

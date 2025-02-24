@@ -9,12 +9,23 @@ use crate::{
     Element, SequencePosition, ELEMENT_PARSE_LIST,
 };
 
+/// Glycan absolute configuration
+#[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Serialize, Deserialize)]
+pub enum Configuration {
+    /// D configuration
+    D,
+    /// L configuration
+    L,
+}
+
 /// A monosaccharide with all its complexity
 #[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Serialize, Deserialize)]
 pub struct MonoSaccharide {
     pub(super) base_sugar: BaseSugar,
     pub(super) substituents: Vec<GlycanSubstituent>,
     pub(super) furanose: bool,
+    pub(super) epi: bool,
+    pub(super) configuration: Option<Configuration>,
     pub(super) proforma_name: Option<String>,
 }
 
@@ -25,6 +36,8 @@ impl MonoSaccharide {
             base_sugar: sugar,
             substituents: substituents.to_owned(),
             furanose: false,
+            epi: false,
+            configuration: None,
             proforma_name: None,
         }
     }
@@ -116,9 +129,21 @@ impl MonoSaccharide {
         let line = original_line.to_ascii_lowercase();
         let bytes = line.as_bytes();
         let mut substituents = Vec::new();
+        let mut configuration = None;
+        let mut epi = false;
 
         // ignore stuff
-        index += line[index..].ignore(&["keto-", "d-", "l-", "?-"]);
+        index += line[index..].ignore(&["keto-"]);
+        if line[index..].starts_with("d-") {
+            configuration = Some(Configuration::D);
+            index += 2;
+        } else if line[index..].starts_with("l-") {
+            configuration = Some(Configuration::L);
+            index += 2;
+        } else if line[index..].starts_with("?-") {
+            configuration = None;
+            index += 2;
+        }
         // Prefix mods
         let mut amount = 1;
         if bytes[index].is_ascii_digit() {
@@ -160,8 +185,11 @@ impl MonoSaccharide {
             }
             index += line[index..].ignore(&["-"]);
         }
-        // Detect & ignore epi state
-        index += line[index..].ignore(&["e"]);
+        // Detect epi state
+        if line[index..].starts_with("e") {
+            epi = true;
+            index += 1;
+        }
         // Get the prefix mods
         if !line[index..].starts_with("dig") && !line[index..].starts_with("dha") {
             if let Some(o) = line[index..].take_any(PREFIX_SUBSTITUENTS, |e| {
@@ -172,7 +200,16 @@ impl MonoSaccharide {
             index += line[index..].ignore(&["-"]);
         }
         // Another optional isomeric state
-        index += line[index..].ignore(&["d-", "l-", "?-"]);
+        if line[index..].starts_with("d-") {
+            configuration = Some(Configuration::D);
+            index += 2;
+        } else if line[index..].starts_with("l-") {
+            configuration = Some(Configuration::L);
+            index += 2;
+        } else if line[index..].starts_with("?-") {
+            configuration = None;
+            index += 2;
+        }
         // Base sugar
         let mut sugar = None;
         for sug in BASE_SUGARS {
@@ -188,6 +225,8 @@ impl MonoSaccharide {
                     base_sugar: b,
                     substituents,
                     furanose: false,
+                    epi,
+                    configuration,
                     proforma_name: None,
                 };
                 alo.substituents.extend(s.iter().cloned());
@@ -455,7 +494,7 @@ pub enum BaseSugar {
     /// 8 carbon base sugar
     Octose,
     /// 9 carbon base sugar
-    Nonose,
+    Nonose(Option<NonoseIsomer>),
     /// 10 carbon base sugar
     Decose,
 }
@@ -474,7 +513,7 @@ impl Display for BaseSugar {
                 Self::Hexose(_) => "Hex",
                 Self::Heptose(_) => "Hep",
                 Self::Octose => "Oct",
-                Self::Nonose => "Non",
+                Self::Nonose(_) => "Non",
                 Self::Decose => "Dec",
             }
         )
@@ -496,7 +535,7 @@ impl Chemical for BaseSugar {
             Self::Hexose(_) => molecular_formula!(H 10 C 6 O 5),
             Self::Heptose(_) => molecular_formula!(H 12 C 7 O 6),
             Self::Octose => molecular_formula!(H 14 C 8 O 7),
-            Self::Nonose => molecular_formula!(H 16 C 9 O 8),
+            Self::Nonose(_) => molecular_formula!(H 16 C 9 O 8),
             Self::Decose => molecular_formula!(H 18 C 10 O 9),
         }
     }
@@ -566,6 +605,20 @@ pub enum HeptoseIsomer {
     GlyceroMannoHeptopyranose, // TODO: Does this indicate some mods?
     /// Sed
     Sedoheptulose,
+}
+
+/// Any 9 carbon glycan, these isomers are modification specific (need the correct substituents applied to be meaningful)
+#[allow(dead_code)]
+#[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Serialize, Deserialize)]
+pub enum NonoseIsomer {
+    /// 3-Deoxy-D-glycero-D-galacto-non-2-ulopyranosonic acid
+    Kdn,
+    /// 5,7-Diamino-3,5,7,9-tetradeoxy-L-glycero-L-manno-non-2-ulopyranosonic acid
+    Pse,
+    /// 5,7-Diamino-3,5,7,9-tetradeoxy-D-glycero-D-galacto-non-2-ulopyranosonic acid (or 4eLeg or 8eLeg)
+    Leg,
+    /// 5,7-Diamino-3,5,7,9-tetradeoxy-L-glycero-L-altro-non-2-ulopyranosonic acid
+    Aci,
 }
 
 /// Any substituent on a monosaccharide.

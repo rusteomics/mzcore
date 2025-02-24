@@ -5,8 +5,8 @@ use itertools::Itertools;
 use crate::fragment::GlycanPosition;
 
 use super::{
-    BaseSugar, GlycanStructure, GlycanSubstituent, HeptoseIsomer, HexoseIsomer, MonoSaccharide,
-    PentoseIsomer,
+    BaseSugar, Configuration, GlycanStructure, GlycanSubstituent, HeptoseIsomer, HexoseIsomer,
+    MonoSaccharide, NonoseIsomer, PentoseIsomer,
 };
 
 impl MonoSaccharide {
@@ -26,6 +26,13 @@ impl MonoSaccharide {
         } else {
             String::new()
         };
+        if let Some(c) = &self.configuration {
+            if *c == Configuration::D {
+                inner_modifications.push('D');
+            } else {
+                inner_modifications.push('L');
+            }
+        }
         let mut outer_modifications = String::new();
         for m in &self.substituents {
             match m {
@@ -385,11 +392,22 @@ impl MonoSaccharide {
                     o_carboxy_ethyl,
                 ),
             ),
-            BaseSugar::Nonose if acid > 0 && amino > 0 => {
+            BaseSugar::Nonose(isomer) if acid > 0 && amino > 0 => {
                 if amino > 1 && deoxy > 1 {
                     (
                         Shape::FlatDiamond,
-                        Colour::Background,
+                        match isomer {
+                            Some(NonoseIsomer::Pse) => Colour::Green,
+                            Some(NonoseIsomer::Leg) => {
+                                if self.epi {
+                                    Colour::LightBlue
+                                } else {
+                                    Colour::Yellow
+                                }
+                            }
+                            Some(NonoseIsomer::Aci) => Colour::Pink,
+                            _ => Colour::Background,
+                        },
                         inner_modifications,
                         outer_mods(
                             nacetyl,
@@ -401,10 +419,14 @@ impl MonoSaccharide {
                             nglycolyl,
                             o_carboxy_ethyl,
                         ),
-                    ) // This does not detect which exact isomer it is, as that information is currently not tracked
+                    )
                 } else {
                     let colour = if deoxy > 0 {
-                        Colour::Red
+                        if *isomer == Some(NonoseIsomer::Kdn) {
+                            Colour::Green
+                        } else {
+                            Colour::Red
+                        }
                     } else if acetyl > 0 {
                         Colour::Purple
                     } else if glycolyl > 0 {
@@ -420,7 +442,7 @@ impl MonoSaccharide {
                             nacetyl,
                             acid - 1,
                             amino - 1,
-                            deoxy - usize::from(colour == Colour::Red),
+                            deoxy - usize::from(colour == Colour::Red || colour == Colour::Green),
                             acetyl - usize::from(colour == Colour::Purple),
                             glycolyl - usize::from(colour == Colour::LightBlue),
                             nglycolyl,

@@ -134,7 +134,7 @@ impl Distribution<BaseSugar> for StandardUniform {
             5 => BaseSugar::Hexose(None),
             6 => BaseSugar::Heptose(None),
             7 => BaseSugar::Octose,
-            8 => BaseSugar::Nonose,
+            8 => BaseSugar::Nonose(None),
             _ => BaseSugar::Decose,
         }
     }
