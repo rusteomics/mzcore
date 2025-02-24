@@ -62,6 +62,16 @@ impl MonoSaccharide {
         }
     }
 
+    /// Set this saccharide up to be a certain configuration
+    #[must_use]
+    #[allow(dead_code)]
+    pub fn configuration(self, configuration: Configuration) -> Self {
+        Self {
+            configuration: Some(configuration),
+            ..self
+        }
+    }
+
     /// Simplify a glycan composition to be sorted and deduplicated.
     /// Returns None if overflow occurred, meaning that there where more than `isize::MAX` or less then `isize::MIN` monosaccharides for one species.
     pub(crate) fn simplify_composition(

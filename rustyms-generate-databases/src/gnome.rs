@@ -117,7 +117,7 @@ impl std::str::FromStr for GnoSubsumption {
 }
 
 fn parse_gnome() -> HashMap<String, GNOmeModification> {
-    let obo = OboOntology::from_file("rustyms-generate-databases/data/GNOme.obo.gz")
+    let obo = OboOntology::from_file("rustyms-generate-databases/data/GNOme.obo")
         .expect("Not a valid obo file");
     let mut mods = HashMap::new();
 
@@ -221,7 +221,7 @@ fn parse_gnome_structures() -> HashMap<String, GlycosmosList> {
     let mut glycans = HashMap::new();
     let mut errors = 0;
     for line in parse_csv(
-        "rustyms-generate-databases/data/glycosmos_glycans_list.csv.gz",
+        "rustyms-generate-databases/data/glycosmos_glycans_list.csv",
         b',',
         None,
     )

@@ -347,7 +347,9 @@ mod tests {
         );
         assert_eq!(
             parse("D-Araf"),
-            MonoSaccharide::new(BaseSugar::Pentose(Some(PentoseIsomer::Arabinose)), &[]).furanose()
+            MonoSaccharide::new(BaseSugar::Pentose(Some(PentoseIsomer::Arabinose)), &[])
+                .furanose()
+                .configuration(Configuration::D)
         );
         assert_eq!(
             parse("Xyl-onic"),
