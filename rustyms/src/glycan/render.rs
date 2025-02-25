@@ -1279,23 +1279,16 @@ impl RenderedGlycan {
             write!(
                 output,
                 "<line x1=\"{x}\" y1=\"{}\" x2=\"{x}\" y2=\"{}\" stroke=\"{foreground}\" stroke-width=\"{stroke_size}\"/>",
-                (depth as f32 - 0.5) * column_size,
-                (depth as f32 + 0.25) * column_size,
+                (depth - 0.5) * column_size,
+                depth * column_size + (column_size - sugar_size) / 2.0,
                 x=(sub_tree.tree.x + sub_tree.tree.mid_point - sub_tree.left_offset) * column_size,
             )
             .unwrap();
             write!(output, "<text x=\"{}\" y=\"{}\" fill=\"{foreground}\" text-anchor=\"middle\" font-size=\"{}px\" dominant-baseline=\"ideographic\">{basis}</text>",
             (sub_tree.tree.x + sub_tree.tree.mid_point - sub_tree.left_offset) * column_size,
-                    (depth as f32 + 1.0) * column_size,
+                    depth * column_size + (column_size - sugar_size) / 2.0 + sugar_size,
                     sugar_size).unwrap();
         }
-        write!(
-            output,
-            "<!-- {} {} {:#?} -->",
-            sub_tree.left_offset, sub_tree.right_offset, sub_tree.tree
-        )
-        .unwrap();
-        write!(output, "<!-- {:#?} -->", sub_tree.branch_breaks).unwrap();
         render_element(
             &mut output,
             sub_tree.tree,
@@ -1555,5 +1548,4 @@ fn test_rendering() {
     }
     write!(&mut html, "</body></html>").unwrap();
     std::fs::write("../rendered_glycans.html", html).unwrap();
-    todo!();
 }
