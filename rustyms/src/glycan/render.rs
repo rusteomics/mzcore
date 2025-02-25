@@ -486,7 +486,7 @@ enum Colour {
 
 impl Colour {
     /// Represented as percentages 0..=100
-    fn cmyk(&self) -> [u8; 4] {
+    const fn cmyk(&self) -> [u8; 4] {
         match self {
             Self::Background => [0, 0, 0, 0],
             Self::Blue => [100, 50, 0, 0],
@@ -502,7 +502,7 @@ impl Colour {
     }
 
     /// Represented as bytes 0..=255
-    fn rgb(&self) -> [u8; 3] {
+    const fn rgb(&self) -> [u8; 3] {
         match self {
             Self::Background => [255, 255, 255],
             Self::Blue => [0, 144, 188],
@@ -518,7 +518,7 @@ impl Colour {
     }
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
 enum Shape {
     Circle,
     Square,
@@ -537,7 +537,8 @@ enum Shape {
 }
 
 impl Shape {
-    fn height(&self) -> f32 {
+    /// The height of a symbol as ratio to the width
+    const fn height(&self) -> f32 {
         match self {
             Self::Rectangle | Self::FlatDiamond | Self::Hexagon => 0.5,
             _ => 1.0,
@@ -559,13 +560,14 @@ impl GlycanStructure {
         let (shape, colour, inner_modifications, outer_modifications) = self.sugar.get_shape();
         let outer_modifications = if outer_modifications.len() > 6 {
             let index = footnotes.iter().position(|e| *e == outer_modifications);
-            if let Some(index) = index {
-                OuterModifications::Footnote(index)
-            } else {
-                let index = footnotes.len();
-                footnotes.push(outer_modifications);
-                OuterModifications::Footnote(index)
-            }
+            index.map_or_else(
+                || {
+                    let index = footnotes.len();
+                    footnotes.push(outer_modifications);
+                    OuterModifications::Footnote(index)
+                },
+                OuterModifications::Footnote,
+            )
         } else if !outer_modifications.is_empty() {
             OuterModifications::Text(outer_modifications)
         } else {
@@ -686,7 +688,8 @@ impl GlycanStructure {
     }
 }
 
-struct RenderedGlycan {
+#[derive(Debug, Clone)]
+pub struct RenderedGlycan {
     /// The depth of this sugar along the main axis of the glycan, starting at 0 at the top (in the leaves)
     y: usize,
     /// The sideways placement of this whole tree starting at 0 at the leftmost monosaccharide, 1.0 is the width of one monosaccharide
@@ -695,23 +698,45 @@ struct RenderedGlycan {
     mid_point: f32,
     /// The total width of the (sub)tree with all of its branches and sides
     width: f32,
+    /// The shape of the monosaccharide
     shape: Shape,
+    /// The colour of the monosaccharide
     colour: Colour,
+    /// Text to be shown inside the monosaccharide
     inner_modifications: String,
+    /// Text to be shown outside the monosaccharide
     outer_modifications: OuterModifications,
     /// The position of this sugar
     position: GlycanPosition,
     /// Full name of the glycan
     title: String,
+    /// The index into the branches of the parent monosaccharide
     branch_index: usize,
+    /// All branches that go up the tree
     branches: Vec<RenderedGlycan>,
+    /// All branches that go to the side (Fucoses)
     sides: Vec<RenderedGlycan>,
 }
 
+#[derive(Debug, Clone)]
+/// Modifications that are to be shown outside of the saccharide
 enum OuterModifications {
+    /// Too long of a text, or it did not fit, so show as a footnote
     Footnote(usize),
+    /// Text
     Text(String),
+    /// No modification
     Empty,
+}
+
+struct SubTree<'a> {
+    tree: &'a RenderedGlycan,
+    /// Total depth of the glycans with the breaks applied
+    depth: usize,
+    left_offset: f32,
+    right_offset: f32,
+    break_top: bool,
+    branch_breaks: Vec<(usize, &'a [usize])>,
 }
 
 impl RenderedGlycan {
@@ -739,17 +764,22 @@ impl RenderedGlycan {
         &'a self,
         start: &'a GlycanPosition,
         branch_breaks: &'a [GlycanPosition],
-    ) -> Option<(&'a Self, usize, bool, Vec<(usize, &'a [usize])>)> {
-        fn maximal_depth(tree: &RenderedGlycan, breakages: &[(usize, &[usize])]) -> (usize, bool) {
+    ) -> Option<SubTree<'a>> {
+        fn maximal_depth(
+            tree: &RenderedGlycan,
+            breakages: &[(usize, &[usize])],
+        ) -> (usize, bool, f32, f32) {
+            let lx = (tree.x + tree.mid_point - 0.5).max(0.0);
+            let rx = (tree.width - tree.mid_point - 0.5).max(0.0);
             // The tree is cut here
             if breakages.iter().any(|b| b.0 == 0) {
-                return (0, true);
+                return (0, true, lx, rx);
             };
 
             let total_branches = tree.branches.len() + tree.sides.len();
-            let (depth, break_top) = match total_branches {
-                0 => (0, false),
-                1 => tree.branches.first().map_or((0, false), |branch| {
+            let (depth, break_top, left_offset, right_offset) = match total_branches {
+                0 => (0, false, lx, rx),
+                1 => tree.branches.first().map_or((0, false, lx, rx), |branch| {
                     maximal_depth(
                         branch,
                         &breakages.iter().map(|b| (b.0 - 1, b.1)).collect_vec(),
@@ -758,20 +788,47 @@ impl RenderedGlycan {
                 _ => tree
                     .branches
                     .iter()
-                    .map(|branch| {
-                        maximal_depth(
-                            branch,
-                            &breakages
-                                .iter()
-                                .filter(|b| b.1.first() == Some(&branch.branch_index))
-                                .map(|b| (b.0 - 1, &b.1[1..]))
-                                .collect_vec(),
+                    .enumerate()
+                    .map(|(i, branch)| {
+                        (
+                            i,
+                            maximal_depth(
+                                branch,
+                                &breakages
+                                    .iter()
+                                    .filter(|b| b.1.first() == Some(&branch.branch_index))
+                                    .map(|b| (b.0 - 1, &b.1[1..]))
+                                    .collect_vec(),
+                            ),
                         )
                     })
-                    .max()
-                    .unwrap_or((0, false)),
+                    .fold((0, false, lx, rx), |acc, (i, v)| {
+                        (
+                            acc.0.max(v.0),
+                            if v.0 >= acc.0 { v.1 } else { acc.1 },
+                            if i == 0 { v.2 } else { acc.2 },
+                            if i == tree.branches.len() - 1 {
+                                v.3
+                            } else {
+                                acc.3
+                            },
+                        )
+                    }),
             };
-            (depth + 1, break_top)
+            (
+                depth + 1,
+                break_top,
+                if tree.sides.len() == 2 {
+                    left_offset.min(tree.x + tree.mid_point - 1.5).max(0.0)
+                } else {
+                    left_offset
+                },
+                if tree.sides.is_empty() {
+                    right_offset
+                } else {
+                    right_offset.min(tree.width - tree.mid_point - 1.5).max(0.0)
+                },
+            )
         }
 
         let mut tree = self;
@@ -797,7 +854,7 @@ impl RenderedGlycan {
 
         let rules = branch_breaks
             .iter()
-            .filter(|b| b.inner_depth > start.inner_depth && b.branch.starts_with(&start.branch))
+            .filter(|b| b.inner_depth >= start.inner_depth && b.branch.starts_with(&start.branch))
             .map(|b| {
                 (
                     b.inner_depth - start.inner_depth,
@@ -805,8 +862,15 @@ impl RenderedGlycan {
                 )
             })
             .collect_vec();
-        let (depth, break_top) = maximal_depth(tree, &rules);
-        Some((tree, depth, break_top, rules))
+        let (depth, break_top, left_offset, right_offset) = maximal_depth(tree, &rules);
+        Some(SubTree {
+            tree,
+            depth,
+            left_offset,
+            right_offset,
+            break_top,
+            branch_breaks: rules,
+        })
     }
 
     #[must_use]
@@ -1153,31 +1217,25 @@ impl RenderedGlycan {
             }
         }
 
-        let (tree, depth, break_top, breaks) = if let Some(root) = &root_break {
-            if let Some(tree) = self.get_subtree(root, branch_breaks) {
-                tree
-            } else {
-                return false;
-            }
-        } else {
-            (
-                self,
-                self.y + 1,
-                false,
-                branch_breaks
-                    .iter()
-                    .map(|p| (p.inner_depth, p.branch.as_slice()))
-                    .collect_vec(),
-            )
+        let base = GlycanPosition {
+            inner_depth: 0,
+            series_number: 0,
+            branch: Vec::new(),
+            attachment: None,
+        };
+        let Some(sub_tree) = self.get_subtree(root_break.as_ref().unwrap_or(&base), branch_breaks)
+        else {
+            return false;
         };
 
-        let depth = depth as f32 + f32::from(break_top);
+        let depth = sub_tree.depth as f32 + f32::from(sub_tree.break_top);
 
         write!(
             output,
             "<svg width=\"{}\" height=\"{}\">",
-            tree.width * column_size,
-            (depth as f32 + f32::from(basis.is_some() && root_break.is_none())).mul_add(
+            (sub_tree.tree.x + sub_tree.tree.width - sub_tree.left_offset - sub_tree.right_offset)
+                * column_size,
+            (depth + f32::from(basis.is_some() && root_break.is_none())).mul_add(
                 column_size,
                 if root_break.is_some() {
                     3.5 * stroke_size
@@ -1191,12 +1249,13 @@ impl RenderedGlycan {
         let foreground = format!("rgb({},{},{})", foreground[0], foreground[1], foreground[2]);
         let background = format!("rgb({},{},{})", background[0], background[1], background[2]);
         if root_break.is_some() {
-            let base_x = tree.mid_point * column_size;
-            let base_y = (depth as f32).mul_add(column_size, stroke_size * 3.0);
+            let base_x =
+                (sub_tree.tree.x + sub_tree.tree.mid_point - sub_tree.left_offset) * column_size;
+            let base_y = depth.mul_add(column_size, stroke_size * 3.0);
             write!(
                 output,
                 "<line x1=\"{base_x}\" y1=\"{}\" x2=\"{base_x}\" y2=\"{}\" stroke=\"{foreground}\" stroke-width=\"{stroke_size}\"/>",
-                (depth as f32 - 0.5) * column_size,
+                (depth - 0.5) * column_size,
                 base_y,
             )
             .unwrap();
@@ -1222,23 +1281,30 @@ impl RenderedGlycan {
                 "<line x1=\"{x}\" y1=\"{}\" x2=\"{x}\" y2=\"{}\" stroke=\"{foreground}\" stroke-width=\"{stroke_size}\"/>",
                 (depth as f32 - 0.5) * column_size,
                 (depth as f32 + 0.25) * column_size,
-                x=tree.mid_point * column_size,
+                x=(sub_tree.tree.x + sub_tree.tree.mid_point - sub_tree.left_offset) * column_size,
             )
             .unwrap();
             write!(output, "<text x=\"{}\" y=\"{}\" fill=\"{foreground}\" text-anchor=\"middle\" font-size=\"{}px\" dominant-baseline=\"ideographic\">{basis}</text>",
-                    tree.mid_point * column_size,
+            (sub_tree.tree.x + sub_tree.tree.mid_point - sub_tree.left_offset) * column_size,
                     (depth as f32 + 1.0) * column_size,
                     sugar_size).unwrap();
         }
+        write!(
+            output,
+            "<!-- {} {} {:#?} -->",
+            sub_tree.left_offset, sub_tree.right_offset, sub_tree.tree
+        )
+        .unwrap();
+        write!(output, "<!-- {:#?} -->", sub_tree.branch_breaks).unwrap();
         render_element(
             &mut output,
-            tree,
+            sub_tree.tree,
             column_size,
             sugar_size,
             stroke_size,
-            tree.x,
-            tree.y as f32 - (depth - 1.0),
-            &breaks,
+            sub_tree.left_offset,
+            sub_tree.tree.y as f32 - (depth - 1.0),
+            &sub_tree.branch_breaks,
             &foreground,
             &background,
         );
@@ -1359,6 +1425,36 @@ fn test_rendering() {
             Vec::new(),
         ),
         (
+            14,
+            Some(GlycanPosition {
+                inner_depth: 0,
+                series_number: 0,
+                branch: Vec::new(),
+                attachment: None,
+            }),
+            vec![GlycanPosition {
+                inner_depth: 1,
+                series_number: 1,
+                branch: vec![0],
+                attachment: None,
+            }],
+        ),
+        (
+            14,
+            Some(GlycanPosition {
+                inner_depth: 1,
+                series_number: 1,
+                branch: vec![0],
+                attachment: None,
+            }),
+            vec![GlycanPosition {
+                inner_depth: 2,
+                series_number: 2,
+                branch: vec![0],
+                attachment: None,
+            }],
+        ),
+        (
             16,
             Some(GlycanPosition {
                 inner_depth: 1,
@@ -1459,4 +1555,5 @@ fn test_rendering() {
     }
     write!(&mut html, "</body></html>").unwrap();
     std::fs::write("../rendered_glycans.html", html).unwrap();
+    todo!();
 }
