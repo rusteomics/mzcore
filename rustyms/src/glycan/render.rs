@@ -738,6 +738,15 @@ enum OuterModifications {
     Empty,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+/// THe direction of the rendered glycan
+pub enum GlycanDirection {
+    /// A top down tree, with the root at the bottom
+    TopDown,
+    /// A left to right tree, with the root at the right
+    LeftToRight,
+}
+
 /// A subtree of a rendered glycan, used to restrict the canvas for glycan fragments
 struct SubTree<'a> {
     /// The root for this sub tree
@@ -896,6 +905,7 @@ impl RenderedGlycan {
     ///  * `column_size`: the size (in pixels) of one block in the glycan, the full size with the padding and sugar size included.
     ///  * `sugar_size`: the size (in pixels) of a monosaccharide.
     ///  * `stroke_size`: the size (in pixels) of the strokes in the graphic.
+    ///  * `direction`: the direction the draw the image in.
     ///  * `root_break`: the first monosaccharide to be included in the rendering, used to draw glycan fragments.
     ///  * `branch_breaks`: the list of breaks in the branches of the fragment, the fragment will include the indicated glycan position.
     ///  * `foreground`: the colour to be used for the foreground, in RGB order.
@@ -911,6 +921,7 @@ impl RenderedGlycan {
         column_size: f32,
         sugar_size: f32,
         stroke_size: f32,
+        direction: GlycanDirection,
         root_break: Option<GlycanPosition>,
         branch_breaks: &[GlycanPosition],
         foreground: [u8; 3],
@@ -923,6 +934,7 @@ impl RenderedGlycan {
             column_size: f32,
             sugar_size: f32,
             stroke_size: f32,
+            direction: GlycanDirection,
             x_offset: f32,
             y_offset: f32,
             breaks: &[(usize, &[usize])],
@@ -931,8 +943,10 @@ impl RenderedGlycan {
             incoming_stroke: (f32, f32, f32, f32),
             footnotes: &mut Vec<String>,
         ) -> Result<(), std::fmt::Error> {
-            let x = element.x - x_offset;
-            let y = element.y as f32 - y_offset;
+            let x = pick_direction("x", "y", direction);
+            let y = pick_direction("y", "x", direction);
+            let raw_x = element.x - x_offset;
+            let raw_y = element.y as f32 - y_offset;
 
             let total_branches = element.branches.len() + element.sides.len();
             let mut strokes = vec![incoming_stroke];
@@ -943,8 +957,8 @@ impl RenderedGlycan {
                 .map(|b| (false, b))
                 .chain(element.sides.iter().map(|b| (true, b)))
             {
-                let origin_x = (x + element.mid_point) * column_size;
-                let origin_y = (y + 0.5) * column_size;
+                let origin_x = (raw_x + element.mid_point) * column_size;
+                let origin_y = (raw_y + 0.5) * column_size;
                 let base_x = (branch.x + branch.mid_point - x_offset) * column_size;
                 if (total_branches == 1 && breaks.iter().any(|b| b.0 == 1))
                     || breaks
@@ -952,11 +966,11 @@ impl RenderedGlycan {
                         .any(|b| b.0 == 1 && b.1.first() == Some(&branch.branch_index))
                 {
                     let base_y =
-                        (y - 0.5 + f32::from(side)).mul_add(column_size, stroke_size * 0.5);
+                        (raw_y - 0.5 + f32::from(side)).mul_add(column_size, stroke_size * 0.5);
                     let angle = f32::atan2(base_y - origin_y, base_x - origin_x);
                     write!(
                         buffer,
-                        "<line x1=\"{origin_x}\" y1=\"{origin_y}\" x2=\"{base_x}\" y2=\"{base_y}\" stroke=\"{foreground}\" stroke-width=\"{stroke_size}\"/>",
+                        "<line {x}1=\"{origin_x}\" {y}1=\"{origin_y}\" {x}2=\"{base_x}\" {y}2=\"{base_y}\" stroke=\"{foreground}\" stroke-width=\"{stroke_size}\"/>",
                     )?;
                     let x1 = (sugar_size / 2.0).mul_add(0.5f32.mul_add(PI, -angle).cos(), base_x);
                     let y1 = (sugar_size / 2.0).mul_add(-0.5f32.mul_add(PI, -angle).sin(), base_y);
@@ -964,13 +978,13 @@ impl RenderedGlycan {
                     let y2 = (sugar_size / 2.0).mul_add(0.5f32.mul_add(PI, -angle).sin(), base_y);
                     write!(
                         buffer,
-                        "<line x1=\"{x1}\" y1=\"{y1}\" x2=\"{x2}\" y2=\"{y2}\" stroke=\"{foreground}\" stroke-width=\"{stroke_size}\"/>",
+                        "<line {x}1=\"{x1}\" {y}1=\"{y1}\" {x}2=\"{x2}\" {y}2=\"{y2}\" stroke=\"{foreground}\" stroke-width=\"{stroke_size}\"/>",
                     )?;
                     let x3 = (stroke_size * 2.0).mul_add(-angle.cos(), x1);
                     let y3 = (stroke_size * 2.0).mul_add(-angle.sin(), y1);
                     write!(
                         buffer,
-                        "<line x1=\"{x1}\" y1=\"{y1}\" x2=\"{x3}\" y2=\"{y3}\" stroke=\"{foreground}\" stroke-width=\"{stroke_size}\"/>",
+                        "<line {x}1=\"{x1}\" {y}1=\"{y1}\" {x}2=\"{x3}\" {y}2=\"{y3}\" stroke=\"{foreground}\" stroke-width=\"{stroke_size}\"/>",
                     )?;
                     let offset = 0.25f32.mul_add(column_size, stroke_size);
                     let r = 0.25f32
@@ -980,25 +994,31 @@ impl RenderedGlycan {
                     let adjusted_y = offset.mul_add(-angle.sin(), base_y);
                     write!(
                         buffer,
-                        "<circle r=\"{r}\" cx=\"{adjusted_x}\" cy=\"{adjusted_y}\" fill=\"transparent\" stroke=\"{foreground}\" stroke-width=\"{stroke_size}\"/>",
+                        "<circle r=\"{r}\" c{x}=\"{adjusted_x}\" c{y}=\"{adjusted_y}\" fill=\"transparent\" stroke=\"{foreground}\" stroke-width=\"{stroke_size}\"/>",
                     )?;
-                    strokes.push((
-                        origin_x.min(base_x),
-                        base_y.min(origin_y),
-                        origin_x.max(base_x),
-                        base_y.max(origin_y),
+                    strokes.push(pick_box(
+                        (
+                            origin_x.min(base_x),
+                            base_y.min(origin_y),
+                            origin_x.max(base_x),
+                            base_y.max(origin_y),
+                        ),
+                        direction,
                     ));
                 } else {
                     let base_y = ((branch.y as f32) - y_offset + 0.5) * column_size;
                     write!(
                         buffer,
-                        "<line x1=\"{origin_x}\" y1=\"{origin_y}\" x2=\"{base_x}\" y2=\"{base_y}\" stroke=\"{foreground}\" stroke-width=\"{stroke_size}\"/>",
+                        "<line {x}1=\"{origin_x}\" {y}1=\"{origin_y}\" {x}2=\"{base_x}\" {y}2=\"{base_y}\" stroke=\"{foreground}\" stroke-width=\"{stroke_size}\"/>",
                     )?;
-                    strokes.push((
-                        origin_x.min(base_x),
-                        base_y.min(origin_y),
-                        origin_x.max(base_x),
-                        base_y.max(origin_y),
+                    strokes.push(pick_box(
+                        (
+                            origin_x.min(base_x),
+                            base_y.min(origin_y),
+                            origin_x.max(base_x),
+                            base_y.max(origin_y),
+                        ),
+                        direction,
                     ));
                 }
             }
@@ -1019,32 +1039,35 @@ impl RenderedGlycan {
             match element.shape {
                 Shape::Circle => write!(
                     buffer,
-                    "<circle r=\"{}\" cx=\"{}\" cy=\"{}\" fill=\"{fill}\" stroke=\"{foreground}\" stroke-width=\"{stroke_size}\"{title}/>",
+                    "<circle r=\"{}\" c{x}=\"{}\" c{y}=\"{}\" fill=\"{fill}\" stroke=\"{foreground}\" stroke-width=\"{stroke_size}\"{title}/>",
                     sugar_size / 2.0,
-                    (x + element.mid_point) * column_size,
-                    (y + 0.5) * column_size
+                    (raw_x + element.mid_point) * column_size,
+                    (raw_y + 0.5) * column_size
                 )?,
                 Shape::Square => write!(
                     buffer,
-                    "<rect x=\"{}\" y=\"{}\" width=\"{}\" height=\"{}\" fill=\"{fill}\" stroke=\"{foreground}\" stroke-width=\"{stroke_size}\"{title}/>",
-                    (x + element.mid_point).mul_add(column_size, - sugar_size / 2.0),
-                    (y + 0.5).mul_add(column_size, - sugar_size / 2.0),
+                    "<rect {x}=\"{}\" {y}=\"{}\" width=\"{}\" height=\"{}\" fill=\"{fill}\" stroke=\"{foreground}\" stroke-width=\"{stroke_size}\"{title}/>",
+                    (raw_x + element.mid_point).mul_add(column_size, - sugar_size / 2.0),
+                    (raw_y + 0.5).mul_add(column_size, - sugar_size / 2.0),
                     sugar_size,
                     sugar_size
                 )?,
-                Shape::Rectangle => write!(
-                    buffer,
-                    "<rect x=\"{}\" y=\"{}\" width=\"{}\" height=\"{}\" fill=\"{fill}\" stroke=\"{foreground}\" stroke-width=\"{stroke_size}\"{title}/>",
-                    (x + element.mid_point).mul_add(column_size, - sugar_size / 2.0),
-                    (y + 0.5).mul_add(column_size, - sugar_size / 4.0),
-                    sugar_size,
-                    sugar_size / 2.0
-                )?,
+                Shape::Rectangle => {
+                    let (base_x, base_y) = pick_point((((raw_x + element.mid_point) * column_size), (raw_y + 0.5) * column_size), direction);
+                    write!(
+                        buffer,
+                        "<rect x=\"{}\" y=\"{}\" width=\"{}\" height=\"{}\" fill=\"{fill}\" stroke=\"{foreground}\" stroke-width=\"{stroke_size}\"{title}/>",
+                        base_x - sugar_size / 2.0,
+                        base_y - sugar_size / 4.0,
+                        sugar_size,
+                        sugar_size / 2.0
+                    )?;},
                 Shape::Triangle => {
-                    let x1 = (x + element.mid_point).mul_add(column_size,- sugar_size / 2.0);
+                    let (base_x, base_y) = pick_point((((raw_x + element.mid_point) * column_size), (raw_y + 0.5) * column_size), direction);
+                    let x1 = base_x - sugar_size / 2.0;
                     let x2 = x1 + sugar_size / 2.0;
                     let x3 = x1 + sugar_size;
-                    let y1 = (y + 0.5).mul_add(column_size, - sugar_size / 2.0);
+                    let y1 = base_y - sugar_size / 2.0;
                     let y2 = y1 + sugar_size;
 
                     write!(
@@ -1052,44 +1075,48 @@ impl RenderedGlycan {
                     "<polygon points=\"{x1} {y2} {x2} {y1} {x3} {y2}\" fill=\"{fill}\" stroke=\"{foreground}\" stroke-width=\"{stroke_size}\"{title}/>",
                 )?;},
                 Shape::LeftPointingTriangle => {
-                    let x1 = (x + element.mid_point).mul_add(column_size,- sugar_size / 2.0);
+                    let x1 = (raw_x + element.mid_point).mul_add(column_size,- sugar_size / 2.0);
                     let x2 = x1 + sugar_size;
-                    let y1 = (y + 0.5).mul_add(column_size, - sugar_size / 2.0);
+                    let y1 = (raw_y + 0.5).mul_add(column_size, - sugar_size / 2.0);
                     let y2 = y1 + sugar_size / 2.0;
                     let y3 = y1 + sugar_size;
 
                     write!(
                     buffer,
-                    "<polygon points=\"{x1} {y2} {x2} {y1} {x2} {y3}\" fill=\"{fill}\" stroke=\"{foreground}\" stroke-width=\"{stroke_size}\"{title}/>",
+                    "<polygon points=\"{}\" fill=\"{fill}\" stroke=\"{foreground}\" stroke-width=\"{stroke_size}\"{title}/>",
+                    points(&[(x1, y2), (x2, y1), (x2, y3)], direction)
                 )?;},
                 Shape::RightPointingTriangle => {
-                    let x1 = (x + element.mid_point).mul_add(column_size,- sugar_size / 2.0);
+                    let x1 = (raw_x + element.mid_point).mul_add(column_size,- sugar_size / 2.0);
                     let x2 = x1 + sugar_size;
-                    let y1 = (y + 0.5).mul_add(column_size, - sugar_size / 2.0);
+                    let y1 = (raw_y + 0.5).mul_add(column_size, - sugar_size / 2.0);
                     let y2 = y1 + sugar_size / 2.0;
                     let y3 = y1 + sugar_size;
 
                     write!(
                     buffer,
-                    "<polygon points=\"{x1} {y1} {x2} {y2} {x1} {y3}\" fill=\"{fill}\" stroke=\"{foreground}\" stroke-width=\"{stroke_size}\"{title}/>",
+                    "<polygon points=\"{}\" fill=\"{fill}\" stroke=\"{foreground}\" stroke-width=\"{stroke_size}\"{title}/>",
+                    points(&[(x1, y1), (x2, y2), (x1, y3)], direction)
                 )?;},
                 Shape::Diamond => {
-                    let x1 = (x + element.mid_point).mul_add(column_size,- sugar_size / 2.0);
+                    let x1 = (raw_x + element.mid_point).mul_add(column_size,- sugar_size / 2.0);
                     let x2 = x1 + sugar_size / 2.0;
                     let x3 = x1 + sugar_size;
-                    let y1 = (y + 0.5).mul_add(column_size, - sugar_size / 2.0);
+                    let y1 = (raw_y + 0.5).mul_add(column_size, - sugar_size / 2.0);
                     let y2 = y1 + sugar_size / 2.0;
                     let y3 = y1 + sugar_size;
 
                     write!(
                     buffer,
-                    "<polygon points=\"{x2} {y1} {x3} {y2} {x2} {y3} {x1} {y2}\" fill=\"{fill}\" stroke=\"{foreground}\" stroke-width=\"{stroke_size}\"{title}/>",
+                    "<polygon points=\"{}\" fill=\"{fill}\" stroke=\"{foreground}\" stroke-width=\"{stroke_size}\"{title}/>",
+                    points(&[(x2,y1),(x3,y2),(x2,y3),(x1,y2)], direction)
                 )?;},
                 Shape::FlatDiamond => {
-                    let x1 = (x + element.mid_point).mul_add(column_size,- sugar_size / 2.0);
+                    let (base_x, base_y) = pick_point((((raw_x + element.mid_point) * column_size), (raw_y + 0.5) * column_size), direction);
+                    let x1 = base_x - sugar_size / 2.0;
                     let x2 = x1 + sugar_size / 2.0;
                     let x3 = x1 + sugar_size;
-                    let y1 = (y + 0.5).mul_add(column_size, - sugar_size / 4.0);
+                    let y1 = base_y - sugar_size / 4.0;
                     let y2 = y1 + sugar_size / 4.0;
                     let y3 = y1 + sugar_size / 2.0;
 
@@ -1099,11 +1126,12 @@ impl RenderedGlycan {
                 )?;},
                 Shape::Hexagon => {
                     let a = sugar_size / 2.0 / 3.0_f32.sqrt();
-                    let x1 = (x + element.mid_point).mul_add(column_size,- sugar_size / 2.0);
+                    let (base_x, base_y) = pick_point((((raw_x + element.mid_point) * column_size), (raw_y + 0.5) * column_size), direction);
+                    let x1 = base_x - sugar_size / 2.0;
                     let x2 = x1 + a;
                     let x3 = x1 + sugar_size - a;
                     let x4 = x1 + sugar_size;
-                    let y1 = (y + 0.5).mul_add(column_size, - sugar_size / 4.0);
+                    let y1 = base_y - sugar_size / 4.0;
                     let y2 = y1 + sugar_size / 4.0;
                     let y3 = y1 + sugar_size / 2.0;
 
@@ -1112,17 +1140,17 @@ impl RenderedGlycan {
                     "<polygon points=\"{x1} {y2} {x2} {y1} {x3} {y1} {x4} {y2} {x3} {y3} {x2} {y3}\" fill=\"{fill}\" stroke=\"{foreground}\" stroke-width=\"{stroke_size}\"{title}/>",
                 )?;},
                 Shape::Pentagon => {
+                    let (base_x, base_y) = pick_point((((raw_x + element.mid_point) * column_size), (raw_y + 0.5) * column_size), direction);
                     let a = (18.0/360.0 * 2.0 * PI).cos() * sugar_size / 2.0;
                     let b = (18.0/360.0 * 2.0 * PI).sin() * sugar_size / 2.0;
                     let c = (36.0/360.0*2.0*PI).cos() * sugar_size / 2.0;
                     let d = (36.0/360.0*2.0*PI).sin() * sugar_size / 2.0;
-                    let base_x = (x + element.mid_point) * column_size;
                     let x1 = base_x - a;
                     let x2 = base_x - d;
                     let x3 = base_x;
                     let x4 = base_x + d;
                     let x5 = base_x + a;
-                    let y1 = (y + 0.5).mul_add(column_size, - sugar_size / 2.0);
+                    let y1 = base_y - sugar_size / 2.0;
                     let y2 = y1 + sugar_size / 2.0 - b;
                     let y3 = y1 + sugar_size / 2.0 + c;
 
@@ -1144,7 +1172,7 @@ impl RenderedGlycan {
                     let h = (sugar_size / 2.0 - b) * (18.0/360.0*2.0*PI).tan();
                     let j = (18.0/360.0*2.0*PI).tan() * g;
                     // Calculate the positions of the pentagram points
-                    let base_x = (x + element.mid_point) * column_size;
+                    let (base_x, base_y) = pick_point((((raw_x + element.mid_point) * column_size), (raw_y + 0.5) * column_size), direction);
                     let x1 = base_x - a;
                     let x2 = base_x - d;
                     let x3 = base_x - g;
@@ -1154,7 +1182,7 @@ impl RenderedGlycan {
                     let x7 = base_x + g;
                     let x8 = base_x + d;
                     let x9 = base_x + a;
-                    let y1 = (y + 0.5).mul_add(column_size, - sugar_size / 2.0);
+                    let y1 = base_y - sugar_size / 2.0;
                     let y2 = y1 + sugar_size / 2.0 - b;
                     let y3 = y1 + sugar_size / 2.0 + j;
                     let y4 = y1 + sugar_size / 2.0 + f;
@@ -1165,8 +1193,9 @@ impl RenderedGlycan {
                     "<polygon points=\"{x1} {y2} {x4} {y2} {x5} {y1} {x6} {y2} {x9} {y2} {x7} {y3} {x8} {y5} {x5} {y4} {x2} {y5} {x3} {y3}\" fill=\"{fill}\" stroke=\"{foreground}\" stroke-width=\"{stroke_size}\"{title}/>",
                 )?;},
                 Shape::CrossedSquare => {
-                    let x1 = (x + element.mid_point).mul_add(column_size,- sugar_size / 2.0);
-                    let y1 = (y + 0.5).mul_add(column_size, - sugar_size / 2.0);
+                    let (base_x, base_y) = pick_point((((raw_x + element.mid_point) * column_size), (raw_y + 0.5) * column_size), direction);
+                    let x1 = base_x - sugar_size / 2.0;
+                    let y1 = base_y - sugar_size / 2.0;
                     let x2 = x1 + sugar_size;
                     let y2 = y1 + sugar_size;
 
@@ -1175,10 +1204,11 @@ impl RenderedGlycan {
                     "<polygon points=\"{x1} {y1} {x2} {y1} {x2} {y2}\" fill=\"{fill}\" stroke=\"{foreground}\" stroke-width=\"{stroke_size}\" stroke-linejoin=\"bevel\"/><polygon points=\"{x1} {y1} {x1} {y2} {x2} {y2}\" fill=\"{background}\" stroke=\"{foreground}\" stroke-width=\"{stroke_size}\" stroke-linejoin=\"bevel\"/><polygon points=\"{x1} {y1} {x2} {y1} {x2} {y2} {x1} {y2}\" fill=\"transparent\" stroke=\"{foreground}\" stroke-width=\"{stroke_size}\"{title}/>",
                 )?;},
                 Shape::DividedDiamond => {
-                    let x1 = (x + element.mid_point).mul_add(column_size,- sugar_size / 2.0);
+                    let (base_x, base_y) = pick_point((((raw_x + element.mid_point) * column_size), (raw_y + 0.5) * column_size), direction);
+                    let x1 = base_x - sugar_size / 2.0;
                     let x2 = x1 + sugar_size / 2.0;
                     let x3 = x1 + sugar_size;
-                    let y1 = (y + 0.5).mul_add(column_size, - sugar_size / 2.0);
+                    let y1 = base_y- sugar_size / 2.0;
                     let y2 = y1 + sugar_size / 2.0;
                     let y3 = y1 + sugar_size;
 
@@ -1187,10 +1217,11 @@ impl RenderedGlycan {
                     "<polygon points=\"{x1} {y2} {x2} {y1} {x3} {y2}\" fill=\"{fill}\" stroke=\"{foreground}\" stroke-width=\"{stroke_size}\" stroke-linejoin=\"bevel\"/><polygon points=\"{x1} {y2} {x2} {y3} {x3} {y2}\" fill=\"{background}\" stroke=\"{foreground}\" stroke-width=\"{stroke_size}\" stroke-linejoin=\"bevel\"/><polygon points=\"{x1} {y2} {x2} {y1} {x3} {y2} {x2} {y3}\" fill=\"transparent\" stroke=\"{foreground}\" stroke-width=\"{stroke_size}\"{title}/>",
                 )?;},
                 Shape::DividedTriangle => {
-                    let x1 = (x + element.mid_point).mul_add(column_size,- sugar_size / 2.0);
+                    let (base_x, base_y) = pick_point((((raw_x + element.mid_point) * column_size), (raw_y + 0.5) * column_size), direction);
+                    let x1 = base_x - sugar_size / 2.0;
                     let x2 = x1 + sugar_size / 2.0;
                     let x3 = x1 + sugar_size;
-                    let y1 = (y + 0.5).mul_add(column_size, - sugar_size / 2.0);
+                    let y1 = base_y - sugar_size / 2.0;
                     let y2 = y1 + sugar_size;
 
                     write!(
@@ -1199,23 +1230,29 @@ impl RenderedGlycan {
                 )?;},
             }
             if !element.inner_modifications.is_empty() {
-                write!(buffer, "<text x=\"{}\" y=\"{}\" fill=\"{foreground}\" text-anchor=\"middle\" font-style=\"italic\" font-size=\"{}px\" dominant-baseline=\"middle\">{}</text>",
-                    (x + element.mid_point) * column_size,
-                    (y + 0.5) * column_size,
+                write!(buffer, "<text {x}=\"{}\" {y}=\"{}\" fill=\"{foreground}\" text-anchor=\"middle\" font-style=\"italic\" font-size=\"{}px\" dominant-baseline=\"middle\">{}</text>",
+                    (raw_x + element.mid_point) * column_size,
+                    (raw_y + 0.5) * column_size,
                     sugar_size / 2.0,
                     element.inner_modifications)?;
             }
-            if let Some((x, y, alignment, text)) = text_location(
+            if let Some((pos_x, pos_y, alignment, text)) = text_location(
                 &element.outer_modifications,
                 element.shape,
-                ((x + element.mid_point - 0.5) * column_size, y * column_size),
+                pick_point(
+                    (
+                        (raw_x + element.mid_point - 0.5) * column_size,
+                        raw_y * column_size,
+                    ),
+                    direction,
+                ),
                 column_size,
                 sugar_size,
                 stroke_size,
                 &strokes,
                 footnotes,
             ) {
-                write!(buffer, "<text x=\"{x}\" y=\"{y}\" fill=\"{foreground}\" text-anchor=\"{alignment}\" font-size=\"{}px\" dominant-baseline=\"hanging\">{text}</text>", sugar_size / 2.0)?;
+                write!(buffer, "<text x=\"{pos_x}\" y=\"{pos_y}\" fill=\"{foreground}\" text-anchor=\"{alignment}\" font-size=\"{}px\" dominant-baseline=\"hanging\">{text}</text>", sugar_size / 2.0)?;
             }
             // Render all connected sugars
             for (index, branch) in element
@@ -1235,6 +1272,7 @@ impl RenderedGlycan {
                         column_size,
                         sugar_size,
                         stroke_size,
+                        direction,
                         x_offset,
                         y_offset,
                         &breaks
@@ -1267,21 +1305,24 @@ impl RenderedGlycan {
         };
 
         let depth = sub_tree.depth as f32 + f32::from(sub_tree.break_top);
-
-        write!(
-            output,
-            "<svg width=\"{}\" height=\"{}\">",
+        let width =
             (sub_tree.tree.x + sub_tree.tree.width - sub_tree.left_offset - sub_tree.right_offset)
-                * column_size,
-            (depth + f32::from(basis.is_some() && root_break.is_none())).mul_add(
-                column_size,
-                if root_break.is_some() {
-                    3.5 * stroke_size
-                } else {
-                    0.0
-                }
-            )
-        )?;
+                * column_size;
+        let height = (depth + f32::from(basis.is_some() && root_break.is_none())).mul_add(
+            column_size,
+            if root_break.is_some() {
+                3.5 * stroke_size
+            } else {
+                0.0
+            },
+        );
+
+        let x = pick_direction("x", "y", direction);
+        let y = pick_direction("y", "x", direction);
+        let w = pick_direction("width", "height", direction);
+        let h = pick_direction("height", "width", direction);
+
+        write!(output, "<svg {w}=\"{}\" {h}=\"{}\">", width, height)?;
 
         let foreground = format!("rgb({},{},{})", foreground[0], foreground[1], foreground[2]);
         let background = format!("rgb({},{},{})", background[0], background[1], background[2]);
@@ -1291,23 +1332,23 @@ impl RenderedGlycan {
             let base_y = depth.mul_add(column_size, stroke_size * 3.0);
             write!(
                 output,
-                "<line x1=\"{base_x}\" y1=\"{}\" x2=\"{base_x}\" y2=\"{}\" stroke=\"{foreground}\" stroke-width=\"{stroke_size}\"/>",
+                "<line {x}1=\"{base_x}\" {y}1=\"{}\" {x}2=\"{base_x}\" {y}2=\"{}\" stroke=\"{foreground}\" stroke-width=\"{stroke_size}\"/>",
                 (depth - 0.5) * column_size,
                 base_y,
             )?;
             write!(
                 output,
-                "<line x1=\"{}\" y1=\"{y}\" x2=\"{}\" y2=\"{y}\" stroke=\"{foreground}\" stroke-width=\"{stroke_size}\"/>",
+                "<line {x}1=\"{}\" {y}1=\"{base_y}\" {x}2=\"{}\" {y}2=\"{base_y}\" stroke=\"{foreground}\" stroke-width=\"{stroke_size}\"/>",
                 base_x - sugar_size / 2.0,
                 base_x + sugar_size / 2.0,
-                y = base_y,
+                
             )?;
             write!(
                 output,
-                "<line x1=\"{x}\" y1=\"{}\" x2=\"{x}\" y2=\"{}\" stroke=\"{foreground}\" stroke-width=\"{stroke_size}\"/>",
+                "<line {x}1=\"{bs_x}\" {y}1=\"{}\" {x}2=\"{bs_x}\" {y}2=\"{}\" stroke=\"{foreground}\" stroke-width=\"{stroke_size}\"/>",
                 stroke_size.mul_add(-2.0, base_y),
                 base_y,
-                x=base_x - sugar_size / 2.0,
+                bs_x=base_x - sugar_size / 2.0,
             )
             ?;
             (base_x, (depth - 0.5) * column_size, base_x, base_y)
@@ -1317,13 +1358,19 @@ impl RenderedGlycan {
             let base_y = depth.mul_add(column_size, (column_size - sugar_size) / 2.0);
             write!(
                 output,
-                "<line x1=\"{base_x}\" y1=\"{}\" x2=\"{base_x}\" y2=\"{base_y}\" stroke=\"{foreground}\" stroke-width=\"{stroke_size}\"/>",
+                "<line {x}1=\"{base_x}\" {y}1=\"{}\" {x}2=\"{base_x}\" {y}2=\"{base_y}\" stroke=\"{foreground}\" stroke-width=\"{stroke_size}\"/>",
                 (depth - 0.5) * column_size,
             )
             ?;
-            write!(output, "<text x=\"{base_x}\" y=\"{}\" fill=\"{foreground}\" text-anchor=\"middle\" font-size=\"{}px\" dominant-baseline=\"ideographic\">{basis}</text>",
-                    base_y  + sugar_size,
-                    sugar_size)?;
+            if direction == GlycanDirection::TopDown {
+                write!(output, "<text x=\"{base_x}\" y=\"{}\" fill=\"{foreground}\" text-anchor=\"middle\" font-size=\"{}px\" dominant-baseline=\"ideographic\">{basis}</text>",
+                        base_y  + sugar_size,
+                        sugar_size)?;
+            } else {
+                write!(output, "<text y=\"{base_x}\" x=\"{}\" fill=\"{foreground}\" text-anchor=\"end\" font-size=\"{}px\" dominant-baseline=\"middle\">{basis}</text>",
+                (depth + 1.0) * column_size,
+                sugar_size)?;
+            }
             (base_x, (depth - 0.5) * column_size, base_x, base_y)
         } else {
             (
@@ -1339,12 +1386,13 @@ impl RenderedGlycan {
             column_size,
             sugar_size,
             stroke_size,
+            direction,
             sub_tree.left_offset,
             sub_tree.tree.y as f32 - (depth - 1.0),
             &sub_tree.branch_breaks,
             &foreground,
             &background,
-            stroke,
+            pick_box(stroke, direction),
             footnotes,
         )?;
 
@@ -1376,90 +1424,71 @@ fn text_location(
     let text_width = (text.len() as f32) * text_height; // Rule of thumb, on average text is thinner than square, so this should be a good upper limit
     let vertical_padding = shape.height().mul_add(-sugar_size, column_size) / 2.0;
 
-    if vertical_padding >= text_height && strokes.len() == 1 {
-        // Only incoming stroke, so the top is free
-        return Some((position.0 + column_size / 2.0, position.1, "middle", text));
-    } else if vertical_padding >= text_height {
-        // Check which of the four corners work out
-        let mut tl = true;
-        let tl_box = (
-            position.0,
-            position.1,
-            position.0 + text_width,
-            position.1 + text_height,
-        );
-        let mut tml = column_size.mul_add(0.5, -stroke_size) >= text_width;
-        let tml_box = (
-            position.0 + column_size.mul_add(0.5, -stroke_size) - text_width,
-            position.1,
-            position.0 + column_size.mul_add(0.5, -stroke_size),
-            position.1 + text_height,
-        );
-        let mut tr = true;
-        let tr_box = (
-            position.0 + column_size - text_width,
-            position.1,
-            position.0 + column_size,
-            position.1 + text_height,
-        );
-        let mut bl = true;
-        let bl_box = (
-            position.0,
-            position.1 + column_size - text_height,
-            position.0 + text_width,
-            position.1 + column_size,
-        );
-        let mut br = true;
-        let br_box = (
-            position.0 + column_size - text_width,
-            position.1 + column_size - text_height,
-            position.0 + column_size,
-            position.1 + column_size,
-        );
-        let mut bmr = column_size.mul_add(0.5, -stroke_size) >= text_width;
-        let bmr_box = (
-            stroke_size.mul_add(2.0, column_size.mul_add(0.5, position.0)),
-            position.1 + column_size - text_height,
-            stroke_size.mul_add(2.0, column_size.mul_add(0.5, position.0) + text_width),
-            position.1 + column_size,
-        );
+    if vertical_padding >= text_height {
+        let mut options = vec![
+            ((
+                (column_size - text_width).mul_add(0.5, position.0),
+                position.1,
+                (column_size + text_width).mul_add(0.5, position.0),
+                position.1 + text_height,
+            ), "middle"),
+            ((
+                (column_size - text_width).mul_add(0.5, position.0),
+                position.1 + column_size - text_height,
+                (column_size + text_width).mul_add(0.5, position.0),
+                position.1 + column_size,
+            ), "middle"),
+            ((
+                position.0 + column_size.mul_add(0.5, -stroke_size) - text_width,
+                position.1,
+                position.0 + column_size.mul_add(0.5, -stroke_size),
+                position.1 + text_height,
+            ), "end"),
+            ((
+                stroke_size.mul_add(2.0, column_size.mul_add(0.5, position.0)),
+                position.1 + column_size - text_height,
+                stroke_size.mul_add(2.0, column_size.mul_add(0.5, position.0) + text_width),
+                position.1 + column_size,
+            ), "start"),
+            ((
+                position.0,
+                position.1,
+                position.0 + text_width,
+                position.1 + text_height,
+                ), "start"),
+            ((
+                position.0 + column_size - text_width,
+                position.1,
+                position.0 + column_size,
+                position.1 + text_height,
+            ), "end"),
+            ((
+                position.0,
+                position.1 + column_size - text_height,
+                position.0 + text_width,
+                position.1 + column_size,
+            ), "start"),
+            ((
+                position.0 + column_size - text_width,
+                position.1 + column_size - text_height,
+                position.0 + column_size,
+                position.1 + column_size,
+            ), "end"),
+        ];
+
+        // Remove any options that put text outside of the box
+        options.retain(|(option, _)| option.0 >= position.0 && option.2 <= position.0 + column_size && option.1 >= position.1 && option.3 <= position.1 + column_size);
+
         for stroke in strokes {
-            if tl && hitbox_test(tl_box, *stroke) {
-                tl = false;
-            }
-            if tml && hitbox_test(tml_box, *stroke) {
-                tml = false;
-            }
-            if tr && hitbox_test(tr_box, *stroke) {
-                tr = false;
-            }
-            if bl && hitbox_test(bl_box, *stroke) {
-                bl = false;
-            }
-            if br && hitbox_test(br_box, *stroke) {
-                br = false;
-            }
-            if bmr && hitbox_test(bmr_box, *stroke) {
-                bmr = false;
-            }
+            options.retain(|(option, _)| !hitbox_test(*option, *stroke));
         }
-        if tml {
-            return Some((tml_box.2, tml_box.1, "end", text));
-        }
-        if bmr {
-            return Some((tml_box.2, tml_box.1, "end", text));
-        }
-        if tl {
-            return Some((tl_box.0, tl_box.1, "start", text));
-        }
-        if tr {
-            return Some((tr_box.2, tr_box.1, "end", text));
-        }
-        if bl {
-            return Some((bl_box.0, bl_box.1, "start", text));
-        }
-        if br {
-            return Some((br_box.2, br_box.1, "end", text));
+        if let Some((option, anchor)) = options.first() {
+            let (x, y) = match *anchor {
+                "end" => (option.2, option.1),
+                "middle" => ((option.0 + option.2) / 2.0, option.1),
+                _ => (option.0, option.1),
+            };
+            return Some((x, y, anchor, text));
         }
     }
 
@@ -1499,6 +1528,40 @@ fn hitbox_test(box1: (f32, f32, f32, f32), box2: (f32, f32, f32, f32)) -> bool {
     debug_assert!(box1.1 <= box1.3, "Invalid boxes: {box1:?} {box2:?}");
     debug_assert!(box2.1 <= box2.3, "Invalid boxes: {box1:?} {box2:?}");
     box1.2 > box2.0 && box1.0 < box2.2 && box1.3 > box2.1 && box1.1 < box2.3
+}
+
+fn pick_direction<T>(a: T, b: T, direction: GlycanDirection) -> T {
+    if direction == GlycanDirection::TopDown {
+        a
+    } else {
+        b
+    }
+}
+
+fn pick_point<T>(a: (T, T), direction: GlycanDirection) -> (T, T) {
+    if direction == GlycanDirection::TopDown {
+        a
+    } else {
+        (a.1, a.0)
+    }
+}
+
+fn pick_box<T>(a: (T, T, T, T), direction: GlycanDirection) -> (T, T, T, T) {
+    if direction == GlycanDirection::TopDown {
+        a
+    } else {
+        (a.1, a.0, a.3, a.2)
+    }
+}
+
+fn points(points: &[(f32, f32)], direction: GlycanDirection) -> String {
+    points
+        .iter()
+        .map(|p| {
+            let (a, b) = pick_point(*p, direction);
+            format!("{a} {b}",)
+        })
+        .join(" ")
 }
 
 #[test]
@@ -1544,6 +1607,30 @@ fn test_rendering() {
                 COLUMN_SIZE,
                 SUGAR_SIZE,
                 STROKE_SIZE,
+                GlycanDirection::TopDown,
+                None,
+                &[],
+                [66, 66, 66],
+                [255, 255, 255],
+                &mut footnotes,
+            )
+            .unwrap()
+        {
+            panic!("Rendering failed")
+        }
+    }
+
+    for (_, iupac) in &codes {
+        let structure = GlycanStructure::from_short_iupac(iupac, 0..iupac.len(), 0).unwrap();
+        if !structure
+            .render(&mut footnotes)
+            .to_svg(
+                &mut html,
+                Some("pep".to_string()),
+                COLUMN_SIZE,
+                SUGAR_SIZE,
+                STROKE_SIZE,
+                GlycanDirection::LeftToRight,
                 None,
                 &[],
                 [66, 66, 66],
@@ -1722,6 +1809,7 @@ fn test_rendering() {
                 COLUMN_SIZE,
                 SUGAR_SIZE,
                 STROKE_SIZE,
+                GlycanDirection::TopDown,
                 root,
                 &breaks,
                 [0, 0, 0],
