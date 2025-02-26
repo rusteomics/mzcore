@@ -1426,58 +1426,87 @@ fn text_location(
 
     if vertical_padding >= text_height {
         let mut options = vec![
-            ((
-                (column_size - text_width).mul_add(0.5, position.0),
-                position.1,
-                (column_size + text_width).mul_add(0.5, position.0),
-                position.1 + text_height,
-            ), "middle"),
-            ((
-                (column_size - text_width).mul_add(0.5, position.0),
-                position.1 + column_size - text_height,
-                (column_size + text_width).mul_add(0.5, position.0),
-                position.1 + column_size,
-            ), "middle"),
-            ((
-                position.0 + column_size.mul_add(0.5, -stroke_size) - text_width,
-                position.1,
-                position.0 + column_size.mul_add(0.5, -stroke_size),
-                position.1 + text_height,
-            ), "end"),
-            ((
-                stroke_size.mul_add(2.0, column_size.mul_add(0.5, position.0)),
-                position.1 + column_size - text_height,
-                stroke_size.mul_add(2.0, column_size.mul_add(0.5, position.0) + text_width),
-                position.1 + column_size,
-            ), "start"),
-            ((
-                position.0,
-                position.1,
-                position.0 + text_width,
-                position.1 + text_height,
-                ), "start"),
-            ((
-                position.0 + column_size - text_width,
-                position.1,
-                position.0 + column_size,
-                position.1 + text_height,
-            ), "end"),
-            ((
-                position.0,
-                position.1 + column_size - text_height,
-                position.0 + text_width,
-                position.1 + column_size,
-            ), "start"),
-            ((
-                position.0 + column_size - text_width,
-                position.1 + column_size - text_height,
-                position.0 + column_size,
-                position.1 + column_size,
-            ), "end"),
+            (
+                (
+                    (column_size - text_width).mul_add(0.5, position.0),
+                    position.1,
+                    (column_size + text_width).mul_add(0.5, position.0),
+                    position.1 + text_height,
+                ),
+                "middle",
+            ),
+            (
+                (
+                    (column_size - text_width).mul_add(0.5, position.0),
+                    position.1 + column_size - text_height,
+                    (column_size + text_width).mul_add(0.5, position.0),
+                    position.1 + column_size,
+                ),
+                "middle",
+            ),
+            (
+                (
+                    position.0 + column_size.mul_add(0.5, -stroke_size) - text_width,
+                    position.1,
+                    position.0 + column_size.mul_add(0.5, -stroke_size),
+                    position.1 + text_height,
+                ),
+                "end",
+            ),
+            (
+                (
+                    stroke_size.mul_add(2.0, column_size.mul_add(0.5, position.0)),
+                    position.1 + column_size - text_height,
+                    stroke_size.mul_add(2.0, column_size.mul_add(0.5, position.0) + text_width),
+                    position.1 + column_size,
+                ),
+                "start",
+            ),
+            (
+                (
+                    position.0,
+                    position.1,
+                    position.0 + text_width,
+                    position.1 + text_height,
+                ),
+                "start",
+            ),
+            (
+                (
+                    position.0 + column_size - text_width,
+                    position.1,
+                    position.0 + column_size,
+                    position.1 + text_height,
+                ),
+                "end",
+            ),
+            (
+                (
+                    position.0,
+                    position.1 + column_size - text_height,
+                    position.0 + text_width,
+                    position.1 + column_size,
+                ),
+                "start",
+            ),
+            (
+                (
+                    position.0 + column_size - text_width,
+                    position.1 + column_size - text_height,
+                    position.0 + column_size,
+                    position.1 + column_size,
+                ),
+                "end",
+            ),
         ];
 
         // Remove any options that put text outside of the box
-        options.retain(|(option, _)| option.0 >= position.0 && option.2 <= position.0 + column_size && option.1 >= position.1 && option.3 <= position.1 + column_size);
+        options.retain(|(option, _)| {
+            option.0 >= position.0
+                && option.2 <= position.0 + column_size
+                && option.1 >= position.1
+                && option.3 <= position.1 + column_size
+        });
 
         for stroke in strokes {
             options.retain(|(option, _)| !hitbox_test(*option, *stroke));
