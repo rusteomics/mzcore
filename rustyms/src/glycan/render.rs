@@ -885,6 +885,7 @@ impl RenderedGlycan {
         branch_breaks: &[GlycanPosition],
         foreground: [u8; 3],
         background: [u8; 3],
+        footnotes: &mut Vec<String>,
     ) -> bool {
         fn render_element(
             buffer: &mut impl Write,
@@ -897,10 +898,14 @@ impl RenderedGlycan {
             breaks: &[(usize, &[usize])],
             foreground: &str,
             background: &str,
+            incoming_stroke: (f32, f32, f32, f32),
+            footnotes: &mut Vec<String>,
         ) {
             let x = element.x - x_offset;
             let y = element.y as f32 - y_offset;
+
             let total_branches = element.branches.len() + element.sides.len();
+            let mut strokes = vec![incoming_stroke];
             // First all lines to get good stacking behaviour
             for (side, branch) in element
                 .branches
@@ -908,14 +913,14 @@ impl RenderedGlycan {
                 .map(|b| (false, b))
                 .chain(element.sides.iter().map(|b| (true, b)))
             {
+                let origin_x = (x + element.mid_point) * column_size;
+                let origin_y = (y + 0.5) * column_size;
+                let base_x = (branch.x + branch.mid_point - x_offset) * column_size;
                 if (total_branches == 1 && breaks.iter().any(|b| b.0 == 1))
                     || breaks
                         .iter()
                         .any(|b| b.0 == 1 && b.1.first() == Some(&branch.branch_index))
                 {
-                    let origin_x = (x + element.mid_point) * column_size;
-                    let origin_y = (y + 0.5) * column_size;
-                    let base_x = (branch.x + branch.mid_point - x_offset) * column_size;
                     let base_y = (y - 0.5 + f32::from(side)) * column_size + stroke_size * 0.5;
                     let angle = f32::atan2(base_y - origin_y, base_x - origin_x);
                     write!(
@@ -948,16 +953,25 @@ impl RenderedGlycan {
                         "<circle r=\"{r}\" cx=\"{adjusted_x}\" cy=\"{adjusted_y}\" fill=\"transparent\" stroke=\"{foreground}\" stroke-width=\"{stroke_size}\"/>",
                     )
                     .unwrap();
+                    strokes.push((
+                        origin_x.min(base_x),
+                        base_y.min(origin_y),
+                        origin_x.max(base_x),
+                        base_y.max(origin_y),
+                    ));
                 } else {
+                    let base_y = ((branch.y as f32) - y_offset + 0.5) * column_size;
                     write!(
                         buffer,
-                        "<line x1=\"{}\" y1=\"{}\" x2=\"{}\" y2=\"{}\" stroke=\"{foreground}\" stroke-width=\"{stroke_size}\"/>",
-                        (x + element.mid_point) * column_size,
-                        (y + 0.5) * column_size,
-                        (branch.x + branch.mid_point - x_offset) * column_size,
-                        ((branch.y as f32) - y_offset + 0.5) * column_size
+                        "<line x1=\"{origin_x}\" y1=\"{origin_y}\" x2=\"{base_x}\" y2=\"{base_y}\" stroke=\"{foreground}\" stroke-width=\"{stroke_size}\"/>",
                     )
                     .unwrap();
+                    strokes.push((
+                        origin_x.min(base_x),
+                        base_y.min(origin_y),
+                        origin_x.max(base_x),
+                        base_y.max(origin_y),
+                    ));
                 }
             }
 
@@ -1176,19 +1190,26 @@ impl RenderedGlycan {
                     sugar_size / 2.0,
                     element.inner_modifications).unwrap();
             }
-            match &element.outer_modifications {
-                OuterModifications::Empty => (),
-                OuterModifications::Footnote(index) => write!(buffer, "<text x=\"{}\" y=\"{}\" fill=\"{foreground}\" text-anchor=\"middle\" font-size=\"{}px\" dominant-baseline=\"ideographic\">{index}</text>",
-                (x + element.mid_point) * column_size,
-                y.mul_add(column_size, -element.shape.height().mul_add(sugar_size, -column_size) / 2.0),
-                sugar_size / 2.0).unwrap(),
-                OuterModifications::Text(text) => write!(buffer, "<text x=\"{}\" y=\"{}\" fill=\"{foreground}\" text-anchor=\"middle\" font-size=\"{}px\" dominant-baseline=\"ideographic\">{text}</text>",
-                (x + element.mid_point) * column_size,
-                y.mul_add(column_size, -element.shape.height().mul_add(sugar_size, -column_size) / 2.0),
-                sugar_size / 2.0).unwrap(),
+            if let Some((x, y, alignment, text)) = best_text_location(
+                &element.outer_modifications,
+                element.shape,
+                (x + element.mid_point - 0.5) * column_size,
+                y * column_size,
+                column_size,
+                sugar_size,
+                stroke_size,
+                &strokes,
+                footnotes,
+            ) {
+                write!(buffer, "<text x=\"{x}\" y=\"{y}\" fill=\"{foreground}\" text-anchor=\"{alignment}\" font-size=\"{}px\" dominant-baseline=\"hanging\">{text}</text>", sugar_size / 2.0);
             }
             // Render all connected sugars
-            for branch in element.branches.iter().chain(element.sides.iter()) {
+            for (index, branch) in element
+                .branches
+                .iter()
+                .chain(element.sides.iter())
+                .enumerate()
+            {
                 if !((total_branches == 1 && breaks.iter().any(|b| b.0 == 1))
                     || breaks
                         .iter()
@@ -1212,6 +1233,8 @@ impl RenderedGlycan {
                             .collect_vec(),
                         foreground,
                         background,
+                        strokes[index + 1],
+                        footnotes,
                     );
                 }
             }
@@ -1248,7 +1271,7 @@ impl RenderedGlycan {
 
         let foreground = format!("rgb({},{},{})", foreground[0], foreground[1], foreground[2]);
         let background = format!("rgb({},{},{})", background[0], background[1], background[2]);
-        if root_break.is_some() {
+        let stroke = if root_break.is_some() {
             let base_x =
                 (sub_tree.tree.x + sub_tree.tree.mid_point - sub_tree.left_offset) * column_size;
             let base_y = depth.mul_add(column_size, stroke_size * 3.0);
@@ -1275,20 +1298,29 @@ impl RenderedGlycan {
                 x=base_x - sugar_size / 2.0,
             )
             .unwrap();
+            (base_x, (depth - 0.5) * column_size, base_x, base_y)
         } else if let Some(basis) = basis {
+            let base_x =
+                (sub_tree.tree.x + sub_tree.tree.mid_point - sub_tree.left_offset) * column_size;
+            let base_y = depth * column_size + (column_size - sugar_size) / 2.0;
             write!(
                 output,
-                "<line x1=\"{x}\" y1=\"{}\" x2=\"{x}\" y2=\"{}\" stroke=\"{foreground}\" stroke-width=\"{stroke_size}\"/>",
+                "<line x1=\"{base_x}\" y1=\"{}\" x2=\"{base_x}\" y2=\"{base_y}\" stroke=\"{foreground}\" stroke-width=\"{stroke_size}\"/>",
                 (depth - 0.5) * column_size,
-                depth * column_size + (column_size - sugar_size) / 2.0,
-                x=(sub_tree.tree.x + sub_tree.tree.mid_point - sub_tree.left_offset) * column_size,
             )
             .unwrap();
-            write!(output, "<text x=\"{}\" y=\"{}\" fill=\"{foreground}\" text-anchor=\"middle\" font-size=\"{}px\" dominant-baseline=\"ideographic\">{basis}</text>",
-            (sub_tree.tree.x + sub_tree.tree.mid_point - sub_tree.left_offset) * column_size,
-                    depth * column_size + (column_size - sugar_size) / 2.0 + sugar_size,
+            write!(output, "<text x=\"{base_x}\" y=\"{}\" fill=\"{foreground}\" text-anchor=\"middle\" font-size=\"{}px\" dominant-baseline=\"ideographic\">{basis}</text>",
+                    base_y  + sugar_size,
                     sugar_size).unwrap();
-        }
+            (base_x, (depth - 0.5) * column_size, base_x, base_y)
+        } else {
+            (
+                sub_tree.tree.x + sub_tree.tree.mid_point,
+                (depth + 0.5) * column_size,
+                sub_tree.tree.x + sub_tree.tree.mid_point,
+                (depth + 0.5) * column_size,
+            )
+        };
         render_element(
             &mut output,
             sub_tree.tree,
@@ -1300,12 +1332,157 @@ impl RenderedGlycan {
             &sub_tree.branch_breaks,
             &foreground,
             &background,
+            stroke,
+            footnotes,
         );
 
         write!(output, "</svg>").unwrap();
 
         true
     }
+}
+
+fn best_text_location(
+    outer_modifications: &OuterModifications,
+    shape: Shape,
+    base_x: f32,
+    base_y: f32,
+    column_size: f32,
+    sugar_size: f32,
+    stroke_size: f32,
+    strokes: &[(f32, f32, f32, f32)], // x1, y1, x2, y2
+    footnotes: &mut Vec<String>,
+) -> Option<(f32, f32, &'static str, String)> {
+    let text = match outer_modifications {
+        OuterModifications::Empty => return None,
+        OuterModifications::Footnote(index) => (index + 1).to_string(), // Human numbering
+        OuterModifications::Text(text) => text.clone(),
+    };
+
+    // Stay within box, dodge strokes, if not fitting fall back to adding to footnotes
+    let text_height = sugar_size / 2.0;
+    let text_width = (text.len() as f32) * text_height; // Rule of thumb, on average text is thinner than square, so this should be a good upper limit
+    let vertical_padding = shape.height().mul_add(-sugar_size, column_size) / 2.0;
+
+    if vertical_padding >= text_height && strokes.len() == 1 {
+        // Only incoming stroke, so the top is free
+        return Some((base_x + column_size / 2.0, base_y, "middle", text));
+    } else if vertical_padding >= text_height {
+        // Check which of the four corners work out
+        let mut tl = true;
+        let tl_box = (base_x, base_y, base_x + text_width, base_y + text_height);
+        let mut tml = (column_size * 0.5 - stroke_size) >= text_width;
+        let tml_box = (
+            base_x + (column_size * 0.5 - stroke_size) - text_width,
+            base_y,
+            base_x + (column_size * 0.5 - stroke_size),
+            base_y + text_height,
+        );
+        let mut tr = true;
+        let tr_box = (
+            base_x + column_size - text_width,
+            base_y,
+            base_x + column_size,
+            base_y + text_height,
+        );
+        let mut bl = true;
+        let bl_box = (
+            base_x,
+            base_y + column_size - text_height,
+            base_x + text_width,
+            base_y + column_size,
+        );
+        let mut br = true;
+        let br_box = (
+            base_x + column_size - text_width,
+            base_y + column_size - text_height,
+            base_x + column_size,
+            base_y + column_size,
+        );
+        let mut bmr = (column_size * 0.5 - stroke_size) >= text_width;
+        let bmr_box = (
+            base_x + column_size * 0.5 + stroke_size * 2.0,
+            base_y + column_size - text_height,
+            base_x + column_size * 0.5 + stroke_size * 2.0 + text_width,
+            base_y + column_size,
+        );
+        for stroke in strokes {
+            if tl && hitbox_test(tl_box, *stroke) {
+                tl = false;
+            }
+            if tml && hitbox_test(tml_box, *stroke) {
+                tml = false;
+            }
+            if tr && hitbox_test(tr_box, *stroke) {
+                tr = false;
+            }
+            if bl && hitbox_test(bl_box, *stroke) {
+                bl = false;
+            }
+            if br && hitbox_test(br_box, *stroke) {
+                br = false;
+            }
+            if bmr && hitbox_test(bmr_box, *stroke) {
+                bmr = false;
+            }
+        }
+        if tml {
+            return Some((tml_box.2, tml_box.1, "end", text));
+        }
+        if bmr {
+            return Some((tml_box.2, tml_box.1, "end", text));
+        }
+        if tl {
+            return Some((tl_box.0, tl_box.1, "start", text));
+        }
+        if tr {
+            return Some((tr_box.2, tr_box.1, "end", text));
+        }
+        if bl {
+            return Some((bl_box.0, bl_box.1, "start", text));
+        }
+        if br {
+            return Some((br_box.2, br_box.1, "end", text));
+        }
+    }
+
+    if let OuterModifications::Text(text) = outer_modifications {
+        let index = footnotes
+            .iter()
+            .position(|p| *p == *text)
+            .unwrap_or_else(|| {
+                footnotes.push(text.clone());
+                footnotes.len() - 1
+            });
+
+        best_text_location(
+            &OuterModifications::Footnote(index),
+            shape,
+            base_x,
+            base_y,
+            column_size,
+            sugar_size,
+            stroke_size,
+            strokes,
+            footnotes,
+        )
+    } else {
+        Some((
+            base_x + column_size,
+            base_y + column_size - text_height,
+            "end",
+            text,
+        ))
+    }
+}
+
+/// Test if two boxes hit
+fn hitbox_test(box1: (f32, f32, f32, f32), box2: (f32, f32, f32, f32)) -> bool {
+    debug_assert!(box1.0 <= box1.2, "Invalid boxes: {box1:?} {box2:?}");
+    debug_assert!(box2.0 <= box2.2, "Invalid boxes: {box1:?} {box2:?}");
+    debug_assert!(box1.1 <= box1.3, "Invalid boxes: {box1:?} {box2:?}");
+    debug_assert!(box2.1 <= box2.3, "Invalid boxes: {box1:?} {box2:?}");
+    box1.2 > box2.0 && box1.0 < box2.2 && box1.3 > box2.1 && box1.1 < box2.3
 }
 
 #[test]
@@ -1353,6 +1530,7 @@ fn test_rendering() {
             &[],
             [66, 66, 66],
             [255, 255, 255],
+            &mut footnotes,
         ) {
             panic!("Rendering failed")
         }
@@ -1526,6 +1704,7 @@ fn test_rendering() {
             &breaks,
             [0, 0, 0],
             [255, 255, 255],
+            &mut footnotes,
         ) {
             panic!("Rendering failed")
         }
