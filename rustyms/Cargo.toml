@@ -34,6 +34,7 @@ serde = { workspace = true }
 similar = { workspace = true }
 thin-vec = { workspace = true }
 uom = { workspace = true }
+zeno = { workspace = true, optional = true }
 
 [dev-dependencies]
 iai-callgrind = { workspace = true }
@@ -48,6 +49,7 @@ default = [
     "isotopes",
     "rand",
     "mzdata",
+    "zeno",
 ]
 imgt = []
 align = []
