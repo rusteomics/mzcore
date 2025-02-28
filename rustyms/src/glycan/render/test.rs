@@ -1,9 +1,11 @@
 #![allow(clippy::missing_panics_doc)]
+use base64::Engine;
+
 use crate::{
     fragment::GlycanPosition,
     glycan::{GlycanDirection, GlycanStructure},
 };
-use std::fmt::Write;
+use std::{fmt::Write, io::BufWriter};
 
 #[test]
 fn test_rendering() {
@@ -40,7 +42,7 @@ fn test_rendering() {
 
     for (_, iupac) in &codes {
         let structure = GlycanStructure::from_short_iupac(iupac, 0..iupac.len(), 0).unwrap();
-        structure
+        let rendered = structure
             .render(
                 Some("pep".to_string()),
                 COLUMN_SIZE,
@@ -53,9 +55,24 @@ fn test_rendering() {
                 [255, 255, 255],
                 &mut footnotes,
             )
-            .unwrap()
-            .to_svg(&mut html)
             .unwrap();
+        rendered.to_svg(&mut html).unwrap();
+        let (bitmap, width) = rendered.to_bitmap(zeno::Format::subpixel_bgra());
+        dbg!((bitmap.len(), width, bitmap.len() / 4 / width));
+        let mut buffer = Vec::new();
+        let mut w = BufWriter::new(&mut buffer);
+        let mut encoder =
+            png::Encoder::new(&mut w, width as u32, (bitmap.len() / 4 / width) as u32);
+        encoder.set_color(png::ColorType::Rgba);
+        encoder.set_depth(png::BitDepth::Eight);
+        let mut writer = encoder.write_header().unwrap();
+        writer.write_image_data(&bitmap).unwrap();
+        drop(writer);
+        drop(w);
+
+        write!(&mut html, "<img src=\"data:image/png;base64, ").unwrap();
+        base64::engine::general_purpose::STANDARD.encode_string(&buffer, &mut html);
+        write!(&mut html, "\"/>").unwrap();
     }
 
     for (_, iupac) in &codes {

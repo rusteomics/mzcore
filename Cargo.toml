@@ -27,6 +27,7 @@ codegen-units = 1
 
 [workspace.dependencies]
 afl = "0.15"
+base64 = "0.22"
 bincode = "1.3"
 clap = { version = "4.5", features = ["derive", "cargo"] }
 directories = "6.0"
@@ -36,6 +37,7 @@ itertools = "0.14"
 mzdata = "0.44"
 ndarray = "0.16"
 ordered-float = { version = "4.6", features = ["serde"] }
+png = "0.17"
 probability = "0.20"
 pyo3 = "0.23"
 rand = "0.9"

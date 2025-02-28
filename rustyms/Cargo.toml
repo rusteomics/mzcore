@@ -37,7 +37,9 @@ uom = { workspace = true }
 zeno = { workspace = true, optional = true }
 
 [dev-dependencies]
+base64 = { workspace = true }
 iai-callgrind = { workspace = true }
+png = { workspace = true }
 serde_json = { workspace = true }
 
 [features]

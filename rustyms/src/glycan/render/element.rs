@@ -13,6 +13,74 @@ use crate::{
     },
 };
 
+/// A rendered glycan, contains all information needed to render this to svg or a bitmap.
+pub struct RenderedGlycan {
+    /// The size of the canvas
+    pub(super) size: (f32, f32),
+    /// All elements to be rendered
+    pub(super) elements: Vec<Element>,
+    /// The background colour
+    pub(super) background: [u8; 3],
+}
+
+#[derive(Debug, Clone)]
+pub(super) enum Element {
+    Line {
+        from: (f32, f32),
+        to: (f32, f32),
+        stroke: [u8; 3],
+        stroke_size: f32,
+    },
+    Circle {
+        r: f32,
+        center: (f32, f32),
+        fill: Option<[u8; 3]>,
+        stroke: [u8; 3],
+        stroke_size: f32,
+        svg_header: String,
+    },
+    Rectangle {
+        top: (f32, f32),
+        w: f32,
+        h: f32,
+        fill: [u8; 3],
+        stroke: [u8; 3],
+        stroke_size: f32,
+        svg_header: String,
+    },
+    Polygon {
+        points: Vec<(f32, f32)>,
+        fill: [u8; 3],
+        stroke: [u8; 3],
+        stroke_size: f32,
+        svg_header: String,
+        bevel: bool,
+    },
+    Text {
+        text: String,
+        position: (f32, f32),
+        anchor: TextAnchor,
+        baseline: TextBaseline,
+        fill: [u8; 3],
+        size: f32,
+        italic: bool,
+    },
+}
+
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+pub(super) enum TextAnchor {
+    Start,
+    Middle,
+    End,
+}
+
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+pub(super) enum TextBaseline {
+    Hanging,
+    Middle,
+    Ideographic,
+}
+
 impl AbsolutePositionedGlycan {
     /// Render this glycan to the internal rendering representation
     pub(super) fn render(
@@ -726,6 +794,7 @@ impl AbsolutePositionedGlycan {
         Some(RenderedGlycan {
             size,
             elements: buffer,
+            background,
         })
     }
 }
@@ -909,69 +978,4 @@ fn pick_box<T>(a: (T, T, T, T), direction: GlycanDirection) -> (T, T, T, T) {
     } else {
         (a.1, a.0, a.3, a.2)
     }
-}
-
-/// A rendered glycan, contains all information needed to render this to svg or a bitmap.
-pub struct RenderedGlycan {
-    /// The size of the canvas
-    pub(super) size: (f32, f32),
-    /// All elements to be rendered
-    pub(super) elements: Vec<Element>,
-}
-
-pub(super) enum Element {
-    Line {
-        from: (f32, f32),
-        to: (f32, f32),
-        stroke: [u8; 3],
-        stroke_size: f32,
-    },
-    Circle {
-        r: f32,
-        center: (f32, f32),
-        fill: Option<[u8; 3]>,
-        stroke: [u8; 3],
-        stroke_size: f32,
-        svg_header: String,
-    },
-    Rectangle {
-        top: (f32, f32),
-        w: f32,
-        h: f32,
-        fill: [u8; 3],
-        stroke: [u8; 3],
-        stroke_size: f32,
-        svg_header: String,
-    },
-    Polygon {
-        points: Vec<(f32, f32)>,
-        fill: [u8; 3],
-        stroke: [u8; 3],
-        stroke_size: f32,
-        svg_header: String,
-        bevel: bool,
-    },
-    Text {
-        text: String,
-        position: (f32, f32),
-        anchor: TextAnchor,
-        baseline: TextBaseline,
-        fill: [u8; 3],
-        size: f32,
-        italic: bool,
-    },
-}
-
-#[derive(Debug, Clone, Copy, Eq, PartialEq)]
-pub(super) enum TextAnchor {
-    Start,
-    Middle,
-    End,
-}
-
-#[derive(Debug, Clone, Copy, Eq, PartialEq)]
-pub(super) enum TextBaseline {
-    Hanging,
-    Middle,
-    Ideographic,
 }
