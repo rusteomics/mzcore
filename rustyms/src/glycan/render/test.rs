@@ -1,17 +1,80 @@
 #![allow(clippy::missing_panics_doc)]
 use base64::Engine;
+use swash::{scale::ScaleContext, CacheKey, FontRef};
 
 use crate::{
     fragment::GlycanPosition,
     glycan::{GlycanDirection, GlycanStructure},
 };
-use std::{fmt::Write, io::BufWriter};
+use std::{
+    fmt::Write,
+    io::BufWriter,
+    path::{Path, PathBuf},
+};
+
+pub struct Font {
+    // Full content of the font file
+    data: Vec<u8>,
+    // Offset to the table directory
+    offset: u32,
+    // Cache key
+    key: CacheKey,
+}
+
+impl Font {
+    pub fn from_file(path: PathBuf, index: usize) -> Option<Self> {
+        // Read the full font file
+        let data = std::fs::read(path).ok()?;
+        // Create a temporary font reference for the first font in the file.
+        // This will do some basic validation, compute the necessary offset
+        // and generate a fresh cache key for us.
+        let font = FontRef::from_index(&data, index)?;
+        let (offset, key) = (font.offset, font.key);
+        // Return our struct with the original file data and copies of the
+        // offset and key from the font reference
+        Some(Self { data, offset, key })
+    }
+
+    // Create the transient font reference for accessing this crate's
+    // functionality.
+    pub fn as_ref(&self) -> FontRef {
+        // Note that you'll want to initialize the struct directly here as
+        // using any of the FontRef constructors will generate a new key which,
+        // while completely safe, will nullify the performance optimizations of
+        // the caching mechanisms used in this crate.
+        FontRef {
+            data: &self.data,
+            offset: self.offset,
+            key: self.key,
+        }
+    }
+}
 
 #[test]
 fn test_rendering() {
     const COLUMN_SIZE: f32 = 30.0;
     const SUGAR_SIZE: f32 = 15.0;
     const STROKE_SIZE: f32 = 1.5;
+
+    let font = Font::from_file(
+        std::fs::read_dir(
+            directories::UserDirs::font_dir(
+                &directories::UserDirs::new().expect("Could not find user directories"),
+            )
+            .unwrap_or_else(|| Path::new("C:/WINDOWS/Fonts")), // Font directory not defined for windows
+        )
+        .expect("Could not open font directory")
+        .find(|p| {
+            p.as_ref()
+                .is_ok_and(|p| p.file_name().eq_ignore_ascii_case("times.ttf"))
+        })
+        .expect("No font files")
+        .expect("Could not open font file")
+        .path(),
+        0,
+    )
+    .expect("Invalid font");
+
     let mut html = String::new();
     let mut footnotes = Vec::new();
     write!(&mut html, "<html lang=\"en\"><head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\"><title>Glycan render test</title></head><body>").unwrap();
@@ -40,7 +103,8 @@ fn test_rendering() {
         ("G00069DT","Neu(a2-3)Gal(b1-4)GlcNAc(b1-3)Gal(b1-4)GlcNAc(b1-3)Gal(b1-4)Glc(b1-"),
     ];
 
-    for (_, iupac) in &codes {
+    let mut context = ScaleContext::new();
+    for (index, (_, iupac)) in codes.iter().enumerate() {
         let structure = GlycanStructure::from_short_iupac(iupac, 0..iupac.len(), 0).unwrap();
         let rendered = structure
             .render(
@@ -48,7 +112,11 @@ fn test_rendering() {
                 COLUMN_SIZE,
                 SUGAR_SIZE,
                 STROKE_SIZE,
-                GlycanDirection::TopDown,
+                if index % 3 == 0 {
+                    GlycanDirection::LeftToRight
+                } else {
+                    GlycanDirection::TopDown
+                },
                 None,
                 &[],
                 [66, 66, 66],
@@ -57,8 +125,15 @@ fn test_rendering() {
             )
             .unwrap();
         rendered.to_svg(&mut html).unwrap();
-        let (bitmap, width) = rendered.to_bitmap(zeno::Format::subpixel_bgra());
-        dbg!((bitmap.len(), width, bitmap.len() / 4 / width));
+        let (bitmap, width) = rendered.to_bitmap(
+            if index % 2 == 0 {
+                zeno::Format::subpixel_bgra()
+            } else {
+                zeno::Format::Alpha
+            },
+            font.as_ref(),
+            &mut context,
+        );
         let mut buffer = Vec::new();
         let mut w = BufWriter::new(&mut buffer);
         let mut encoder =
@@ -253,22 +328,48 @@ fn test_rendering() {
     ] {
         let structure =
             GlycanStructure::from_short_iupac(codes[index].1, 0..codes[index].1.len(), 0).unwrap();
-        structure
+        let rendered = structure
             .render(
                 Some("pep".to_string()),
                 COLUMN_SIZE,
                 SUGAR_SIZE,
                 STROKE_SIZE,
-                GlycanDirection::TopDown,
+                if index % 3 == 0 {
+                    GlycanDirection::LeftToRight
+                } else {
+                    GlycanDirection::TopDown
+                },
                 root,
                 &breaks,
                 [0, 0, 0],
                 [255, 255, 255],
                 &mut footnotes,
             )
-            .unwrap()
-            .to_svg(&mut html)
             .unwrap();
+        rendered.to_svg(&mut html).unwrap();
+        let (bitmap, width) = rendered.to_bitmap(
+            if index % 2 == 0 {
+                zeno::Format::subpixel_bgra()
+            } else {
+                zeno::Format::Alpha
+            },
+            font.as_ref(),
+            &mut context,
+        );
+        let mut buffer = Vec::new();
+        let mut w = BufWriter::new(&mut buffer);
+        let mut encoder =
+            png::Encoder::new(&mut w, width as u32, (bitmap.len() / 4 / width) as u32);
+        encoder.set_color(png::ColorType::Rgba);
+        encoder.set_depth(png::BitDepth::Eight);
+        let mut writer = encoder.write_header().unwrap();
+        writer.write_image_data(&bitmap).unwrap();
+        drop(writer);
+        drop(w);
+
+        write!(&mut html, "<img src=\"data:image/png;base64, ").unwrap();
+        base64::engine::general_purpose::STANDARD.encode_string(&buffer, &mut html);
+        write!(&mut html, "\"/>").unwrap();
     }
 
     write!(&mut html, "<hr>").unwrap();

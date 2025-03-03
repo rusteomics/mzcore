@@ -32,6 +32,7 @@ rayon = { workspace = true, optional = true }
 regex = { workspace = true }
 serde = { workspace = true }
 similar = { workspace = true }
+swash = {workspace = true, optional = true}
 thin-vec = { workspace = true }
 uom = { workspace = true }
 zeno = { workspace = true, optional = true }
@@ -41,6 +42,7 @@ base64 = { workspace = true }
 iai-callgrind = { workspace = true }
 png = { workspace = true }
 serde_json = { workspace = true }
+directories = {workspace = true}
 
 [features]
 default = [
@@ -51,12 +53,13 @@ default = [
     "isotopes",
     "rand",
     "mzdata",
-    "zeno",
+    "bitmap",
 ]
 imgt = []
 align = []
 identification = []
 isotopes = ["probability", "ndarray"]
+bitmap = ["zeno", "swash"]
 
 [[bench]]
 name = "iai"

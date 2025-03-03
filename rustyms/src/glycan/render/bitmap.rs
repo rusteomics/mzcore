@@ -1,26 +1,25 @@
 use itertools::Itertools;
+use swash::{
+    scale::{image::Image, Render, ScaleContext, Source},
+    FontRef,
+};
 use zeno::{Fill, Format, Mask, PathBuilder, Scratch, Stroke, Vector};
 
-use crate::glycan::{
-    render::element::{Element, TextAnchor, TextBaseline},
-    RenderedGlycan,
-};
+use crate::glycan::{render::element::Element, RenderedGlycan};
+
+use super::element::{TextAnchor, TextBaseline};
 
 impl RenderedGlycan {
     /// Render this glycan as an RGBA bitmap.
-    ///  * `antialiasing`: the used strategy for antialiasing.
-    ///
-    /// # Errors
-    /// If the underlying buffer errors the error is returned.
-    pub fn to_bitmap(&self, format: Format) -> (Vec<u8>, usize) {
-        fn clr(clr: Option<&[u8; 3]>) -> String {
-            if let Some([r, g, b]) = clr {
-                format!("rgb({r},{g},{b})")
-            } else {
-                "transparent".to_string()
-            }
-        }
-
+    ///  * `format`: the used strategy for antialiasing.
+    ///  * `font`: the font for rendering text.
+    ///  * `context`: the context for caching rendering text.
+    pub fn to_bitmap(
+        &self,
+        format: Format,
+        font: FontRef,
+        context: &mut ScaleContext,
+    ) -> (Vec<u8>, usize) {
         let mask_factor = if format == Format::Alpha { 1 } else { 4 };
         let image_width = self.size.0.ceil() as usize;
         let mut image = std::iter::repeat([
@@ -45,10 +44,10 @@ impl RenderedGlycan {
                     stroke,
                     stroke_size,
                 } => {
-                    let xmin = (from.0.min(to.0) - stroke_size / 2.0).floor();
-                    let xmax = (from.0.max(to.0) + stroke_size / 2.0).ceil();
-                    let ymin = (from.1.min(to.1) - stroke_size / 2.0).floor();
-                    let ymax = (from.1.max(to.1) + stroke_size / 2.0).ceil();
+                    let xmin = (from.0.min(to.0) - stroke_size).floor();
+                    let xmax = (from.0.max(to.0) + stroke_size).ceil();
+                    let ymin = (from.1.min(to.1) - stroke_size).floor();
+                    let ymax = (from.1.max(to.1) + stroke_size).ceil();
                     let width = (xmax - xmin) as usize;
                     let height = (ymax - ymin) as usize;
                     let commands = vec![
@@ -106,8 +105,8 @@ impl RenderedGlycan {
                         .size(width as u32, height as u32)
                         .render_into(&mut stroke_mask, None);
                     (
-                        (center.0 - r - stroke_size / 2.0) as usize,
-                        (center.1 - r - stroke_size / 2.0) as usize,
+                        (center.0 - r) as usize,
+                        (center.1 - r) as usize,
                         width,
                         *fill,
                         Some(*stroke),
@@ -168,10 +167,10 @@ impl RenderedGlycan {
                         .fold((f32::MAX, f32::MIN, f32::MAX, f32::MIN), |acc, (x, y)| {
                             (acc.0.min(*x), acc.1.max(*x), acc.2.min(*y), acc.3.max(*y))
                         });
-                    let xmin = (xmin - stroke_size / 2.0).floor();
-                    let xmax = (xmax + stroke_size / 2.0).ceil();
-                    let ymin = (ymin - stroke_size / 2.0).floor();
-                    let ymax = (ymax + stroke_size / 2.0).ceil();
+                    let xmin = (xmin - stroke_size).floor();
+                    let xmax = (xmax + stroke_size).ceil();
+                    let ymin = (ymin - stroke_size).floor();
+                    let ymax = (ymax + stroke_size).ceil();
                     let width = (xmax - xmin) as usize;
                     let height = (ymax - ymin) as usize;
                     let mut commands = Vec::with_capacity(points.len() + 2);
@@ -219,8 +218,55 @@ impl RenderedGlycan {
                     baseline,
                     fill,
                     size,
-                    italic,
-                } => (0, 0, 0, None, None), // TODO: add this logic
+                    italic: _, // Needs a separate font
+                } => {
+                    let mut scaler = context.builder(font).size(*size).hint(true).build();
+                    let metrics = font.metrics(&[]);
+                    let normalisation_factor = size / f32::from(metrics.units_per_em);
+                    let y_offset = position.1
+                        - match baseline {
+                            TextBaseline::Hanging => metrics.ascent,
+                            TextBaseline::Middle => metrics.ascent - metrics.x_height / 2.0,
+                            TextBaseline::Ideographic => metrics.ascent + metrics.descent,
+                        } * normalisation_factor;
+                    let mut width = 0.0;
+                    for c in text.chars() {
+                        let id = font.charmap().map(c);
+                        width += font.glyph_metrics(&[]).advance_width(id);
+                    }
+
+                    let x_offset = position.0
+                        - match anchor {
+                            TextAnchor::Start => 0.0,
+                            TextAnchor::Middle => width / 2.0,
+                            TextAnchor::End => width,
+                        } * normalisation_factor;
+
+                    let mut offset = 0.0;
+                    for c in text.chars() {
+                        let id = font.charmap().map(c);
+                        let glyph_metrics = font.glyph_metrics(&[]);
+                        let mask = Render::new(&[Source::Outline])
+                            .format(format)
+                            .offset(Vector::new(
+                                (x_offset + offset).fract(),
+                                y_offset.fract() - 1.0,
+                            ))
+                            .render(&mut scaler, id)
+                            .unwrap();
+                        draw_mask(
+                            (&mut image, image_width),
+                            (&mask.data, mask.placement.width as usize),
+                            (x_offset + offset + mask.placement.left as f32) as usize,
+                            (y_offset + mask.placement.top as f32) as usize,
+                            *fill,
+                            format,
+                        );
+
+                        offset += glyph_metrics.advance_width(id) * normalisation_factor;
+                    }
+                    (0, 0, 0, None, None)
+                } // TODO: add this logic
             };
             if let Some(fill) = fill {
                 draw_mask(
@@ -257,8 +303,8 @@ fn draw_mask(
 ) {
     let mask_factor = if format == Format::Alpha { 1 } else { 4 };
     let mask_height = mask.0.len() / mask_factor / mask.1;
-    for r in 0..mask.1 {
-        for w in 0..mask_height {
+    for r in 0..mask_height {
+        for w in 0..mask.1 {
             let image_pos = ((r + y) * image.1 + (w + x)) * 4;
             let mask_pos = (r * mask.1 + w) * mask_factor;
 
