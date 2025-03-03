@@ -481,9 +481,7 @@ impl FragmentType {
             Self::z·(_) => Cow::Borrowed("z·"),
             Self::B(_) => Cow::Borrowed("B"),
             Self::Y(_) | Self::YComposition(_, _) => Cow::Borrowed("Y"),
-            Self::Diagnostic(DiagnosticPosition::Peptide(_, aa)) => {
-                Cow::Owned(format!("d{}", aa.char()))
-            }
+            Self::Diagnostic(DiagnosticPosition::Peptide(_, aa)) => Cow::Owned(format!("d{aa}")),
             Self::Diagnostic(DiagnosticPosition::Reporter) => Cow::Borrowed("r"),
             Self::Diagnostic(DiagnosticPosition::Labile(m)) => Cow::Owned(format!("d{m}")),
             Self::Diagnostic(
@@ -491,8 +489,8 @@ impl FragmentType {
                 | DiagnosticPosition::GlycanCompositional(sug, _),
             ) => Cow::Owned(format!("d{sug}")),
             Self::Oxonium(_) | Self::OxoniumComposition(_, _) => Cow::Borrowed("oxonium"),
-            Self::Immonium(_, aa) => Cow::Owned(format!("i{}", aa.aminoacid.char())),
-            Self::PrecursorSideChainLoss(_, aa) => Cow::Owned(format!("p-s{}", aa.char())),
+            Self::Immonium(_, aa) => Cow::Owned(format!("i{}", aa.aminoacid)),
+            Self::PrecursorSideChainLoss(_, aa) => Cow::Owned(format!("p-s{aa}")),
             Self::Precursor => Cow::Borrowed("p"),
             Self::Internal(fragmentation, _, _) => Cow::Owned(format!(
                 "m{}",
