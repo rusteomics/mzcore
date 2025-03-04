@@ -21,6 +21,8 @@ pub struct RenderedGlycan {
     pub(super) elements: Vec<Element>,
     /// The background colour
     pub(super) background: [u8; 3],
+    /// Midpoint in pixels from the right for a top down glycan or in pixels from the top for a left to right glycan
+    pub midpoint: f32,
 }
 
 #[derive(Debug, Clone)]
@@ -862,6 +864,7 @@ impl AbsolutePositionedGlycan {
             size,
             elements: buffer,
             background,
+            midpoint: (sub_tree.tree.mid_point - sub_tree.left_offset) * column_size,
         })
     }
 }
