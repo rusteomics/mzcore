@@ -56,6 +56,12 @@ pub(super) enum Element {
         svg_header: String,
         bevel: bool,
     },
+    Curve {
+        start: (f32, f32),
+        points: Vec<(f32, f32, f32, f32)>,
+        stroke: [u8; 3],
+        stroke_size: f32,
+    },
     Text {
         text: String,
         position: (f32, f32),
@@ -81,11 +87,25 @@ pub(super) enum TextBaseline {
     Ideographic,
 }
 
+/// The symbol or text to use at the base of a glycan
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
+pub enum GlycanRoot {
+    /// No symbol, this will also not draw a line from the root sugar
+    #[default]
+    None,
+    /// A tilde ('~') like symbol to indicate the full peptidoform
+    Symbol,
+    /// A piece of text, take care to not make this too big as it will be cut off in the image.
+    /// Commonly used options are 'pep' to indicate the full peptidoform, or to indicate the
+    /// attached amino acid any of 'Arg', or 'N'.
+    Text(String),
+}
+
 impl AbsolutePositionedGlycan {
     /// Render this glycan to the internal rendering representation
     pub(super) fn render(
         &self,
-        basis: Option<String>,
+        basis: GlycanRoot,
         column_size: f32,
         sugar_size: f32,
         stroke_size: f32,
@@ -111,8 +131,6 @@ impl AbsolutePositionedGlycan {
             incoming_stroke: (f32, f32, f32, f32),
             footnotes: &mut Vec<String>,
         ) {
-            let x = pick_direction("x", "y", direction);
-            let y = pick_direction("y", "x", direction);
             let raw_x = element.x - x_offset;
             let raw_y = element.y as f32 - y_offset;
 
@@ -695,11 +713,17 @@ impl AbsolutePositionedGlycan {
         };
         let sub_tree = self.get_subtree(root_break.as_ref().unwrap_or(&base), branch_breaks)?;
 
-        let depth = sub_tree.depth as f32 + f32::from(sub_tree.break_top);
+        let depth = 0.5f32.mul_add(f32::from(sub_tree.break_top), sub_tree.depth as f32);
         let width =
             (sub_tree.tree.x + sub_tree.tree.width - sub_tree.left_offset - sub_tree.right_offset)
                 * column_size;
-        let height = (depth + f32::from(basis.is_some() && root_break.is_none())).mul_add(
+        let height = (match basis {
+            GlycanRoot::None => 0.0_f32,
+            GlycanRoot::Symbol => 0.5,
+            GlycanRoot::Text(_) => 1.0,
+        })
+        .mul_add(f32::from(root_break.is_none()), depth)
+        .mul_add(
             column_size,
             if root_break.is_some() {
                 3.5 * stroke_size
@@ -735,45 +759,88 @@ impl AbsolutePositionedGlycan {
                 stroke_size,
             });
             (base_x, (depth - 0.5) * column_size, base_x, base_y)
-        } else if let Some(basis) = basis {
-            let base_x =
-                (sub_tree.tree.x + sub_tree.tree.mid_point - sub_tree.left_offset) * column_size;
-            let base_y = depth.mul_add(column_size, (column_size - sugar_size) / 2.0);
-            buffer.push(Element::Line {
-                from: pick_point((base_x, (depth - 0.5) * column_size), direction),
-                to: pick_point((base_x, base_y), direction),
-                stroke: foreground,
-                stroke_size,
-            });
-            if direction == GlycanDirection::TopDown {
-                buffer.push(Element::Text {
-                    text: basis,
-                    position: (base_x, base_y + sugar_size),
-                    anchor: TextAnchor::Middle,
-                    baseline: TextBaseline::Ideographic,
-                    fill: foreground,
-                    size: sugar_size,
-                    italic: false,
-                });
-            } else {
-                buffer.push(Element::Text {
-                    text: basis,
-                    position: ((depth + 1.0) * column_size, base_x),
-                    anchor: TextAnchor::End,
-                    baseline: TextBaseline::Middle,
-                    fill: foreground,
-                    size: sugar_size,
-                    italic: false,
-                });
-            }
-            (base_x, (depth - 0.5) * column_size, base_x, base_y)
         } else {
-            (
-                sub_tree.tree.x + sub_tree.tree.mid_point,
-                (depth + 0.5) * column_size,
-                sub_tree.tree.x + sub_tree.tree.mid_point,
-                (depth + 0.5) * column_size,
-            )
+            match basis {
+                GlycanRoot::None => (
+                    sub_tree.tree.x + sub_tree.tree.mid_point,
+                    (depth + 0.5) * column_size,
+                    sub_tree.tree.x + sub_tree.tree.mid_point,
+                    (depth + 0.5) * column_size,
+                ),
+                GlycanRoot::Symbol => {
+                    let base_x = (sub_tree.tree.x + sub_tree.tree.mid_point - sub_tree.left_offset)
+                        * column_size;
+                    let base_y = depth.mul_add(column_size, (column_size - sugar_size) / 2.0);
+                    buffer.push(Element::Line {
+                        from: pick_point((base_x, (depth - 0.5) * column_size), direction),
+                        to: pick_point((base_x, base_y), direction),
+                        stroke: foreground,
+                        stroke_size,
+                    });
+                    buffer.push(Element::Curve {
+                        start: pick_point(
+                            (base_x - (sugar_size * 0.75).min(column_size * 0.5), base_y),
+                            direction,
+                        ),
+                        points: vec![
+                            pick_double_point(
+                                (
+                                    sugar_size.mul_add(-0.5, base_x),
+                                    sugar_size.mul_add(0.5, base_y),
+                                    base_x,
+                                    base_y,
+                                ),
+                                direction,
+                            ),
+                            pick_double_point(
+                                (
+                                    sugar_size.mul_add(0.5, base_x),
+                                    sugar_size.mul_add(-0.5, base_y),
+                                    base_x + (sugar_size * 0.75).min(column_size * 0.5),
+                                    base_y,
+                                ),
+                                direction,
+                            ),
+                        ],
+                        stroke: foreground,
+                        stroke_size,
+                    });
+                    (base_x, (depth - 0.5) * column_size, base_x, base_y)
+                }
+                GlycanRoot::Text(basis) => {
+                    let base_x = (sub_tree.tree.x + sub_tree.tree.mid_point - sub_tree.left_offset)
+                        * column_size;
+                    let base_y = depth.mul_add(column_size, (column_size - sugar_size) / 2.0);
+                    buffer.push(Element::Line {
+                        from: pick_point((base_x, (depth - 0.5) * column_size), direction),
+                        to: pick_point((base_x, base_y), direction),
+                        stroke: foreground,
+                        stroke_size,
+                    });
+                    if direction == GlycanDirection::TopDown {
+                        buffer.push(Element::Text {
+                            text: basis,
+                            position: (base_x, base_y + sugar_size),
+                            anchor: TextAnchor::Middle,
+                            baseline: TextBaseline::Ideographic,
+                            fill: foreground,
+                            size: sugar_size,
+                            italic: false,
+                        });
+                    } else {
+                        buffer.push(Element::Text {
+                            text: basis,
+                            position: ((depth + 1.0) * column_size, base_x),
+                            anchor: TextAnchor::End,
+                            baseline: TextBaseline::Middle,
+                            fill: foreground,
+                            size: sugar_size,
+                            italic: false,
+                        });
+                    }
+                    (base_x, (depth - 0.5) * column_size, base_x, base_y)
+                }
+            }
         };
         render_element(
             &mut buffer,
@@ -956,19 +1023,19 @@ fn hitbox_test(box1: (f32, f32, f32, f32), box2: (f32, f32, f32, f32)) -> bool {
     box1.2 > box2.0 && box1.0 < box2.2 && box1.3 > box2.1 && box1.1 < box2.3
 }
 
-fn pick_direction<T>(a: T, b: T, direction: GlycanDirection) -> T {
-    if direction == GlycanDirection::TopDown {
-        a
-    } else {
-        b
-    }
-}
-
 fn pick_point<T>(a: (T, T), direction: GlycanDirection) -> (T, T) {
     if direction == GlycanDirection::TopDown {
         a
     } else {
         (a.1, a.0)
+    }
+}
+
+fn pick_double_point<T>(a: (T, T, T, T), direction: GlycanDirection) -> (T, T, T, T) {
+    if direction == GlycanDirection::TopDown {
+        a
+    } else {
+        (a.1, a.0, a.3, a.2)
     }
 }
 

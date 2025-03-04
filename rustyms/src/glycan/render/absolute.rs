@@ -3,14 +3,17 @@ use itertools::Itertools;
 use crate::{
     fragment::GlycanPosition,
     glycan::{
-        render::shape::{Colour, Shape},
+        render::{
+            element::GlycanRoot,
+            shape::{Colour, Shape},
+        },
         GlycanStructure, RenderedGlycan,
     },
 };
 
 impl GlycanStructure {
     /// Render this glycan to the internal representation. This can then be rendered to SVG or a bitmap.
-    ///  * `basis`: the text to draw at the root of the tree.
+    ///  * `basis`: the text or symbol to draw at the root of the tree.
     ///  * `column_size`: the size (in pixels) of one block in the glycan, the full size with the padding and sugar size included.
     ///  * `sugar_size`: the size (in pixels) of a monosaccharide.
     ///  * `stroke_size`: the size (in pixels) of the strokes in the graphic.
@@ -25,7 +28,7 @@ impl GlycanStructure {
     /// If the underlying buffer errors the error is returned. Otherwise `Ok(false)` is returned if the given `root_break` is not valid, and `Ok(true)` is returned if the rendering was fully successful.
     pub fn render(
         &self,
-        basis: Option<String>,
+        basis: GlycanRoot,
         column_size: f32,
         sugar_size: f32,
         stroke_size: f32,

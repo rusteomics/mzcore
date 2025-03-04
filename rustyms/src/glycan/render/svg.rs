@@ -97,6 +97,11 @@ impl RenderedGlycan {
                             match anchor {TextAnchor::Start => "start", TextAnchor::Middle => "middle", TextAnchor::End => "End"},
                             match baseline {TextBaseline::Hanging => "hanging", TextBaseline::Middle => "middle", TextBaseline::Ideographic => "ideographic"},
                             if *italic {" font-style=\"italic\""} else {""})?,
+                    Element::Curve { start, points, stroke, stroke_size } => write!(output,
+                        "<path d=\"M {} {} {}\" stroke=\"{}\" stroke-width=\"{stroke_size}px\" fill=\"none\"/>",
+                        start.0, start.1,
+                        points.iter().map(|(a, b, c, d)| format!("Q {a} {b} {c} {d}")).join(" "),
+                        clr(Some(stroke)))?,
                 }
         }
         write!(output, "</svg>")?;

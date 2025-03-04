@@ -22,11 +22,14 @@ impl MonoSaccharide {
             String::new()
         };
         if let Some(c) = &self.configuration {
-            if *c == Configuration::D {
-                inner_modifications.push('D');
-            } else {
-                inner_modifications.push('L');
-            }
+            inner_modifications.push_str(match *c {
+                Configuration::D => "D",
+                Configuration::L => "L",
+                Configuration::DD => "DD",
+                Configuration::LL => "LL",
+                Configuration::DL => "DL",
+                Configuration::LD => "LD",
+            });
         }
         let mut outer_modifications = String::new();
         for m in &self.substituents {
@@ -481,22 +484,6 @@ pub(super) enum Colour {
 }
 
 impl Colour {
-    /// Represented as percentages 0..=100
-    pub(super) const fn cmyk(self) -> [u8; 4] {
-        match self {
-            Self::Background => [0, 0, 0, 0],
-            Self::Blue => [100, 50, 0, 0],
-            Self::Green => [100, 0, 100, 0],
-            Self::Yellow => [0, 15, 100, 0],
-            Self::Orange => [0, 65, 100, 0],
-            Self::Pink => [0, 47, 24, 0],
-            Self::Purple => [38, 88, 0, 0],
-            Self::LightBlue => [41, 5, 3, 0],
-            Self::Brown => [32, 48, 76, 13],
-            Self::Red => [0, 100, 100, 0],
-        }
-    }
-
     /// Represented as bytes 0..=255
     pub(super) const fn rgb(self) -> [u8; 3] {
         match self {

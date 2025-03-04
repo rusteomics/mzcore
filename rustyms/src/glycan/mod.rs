@@ -8,4 +8,4 @@ mod render;
 pub use glycan_structure::*;
 pub use monosaccharide::*;
 pub use positioned_structure::*;
-pub use render::{GlycanDirection, RenderedGlycan};
+pub use render::{GlycanDirection, GlycanRoot, RenderedGlycan};

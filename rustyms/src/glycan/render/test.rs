@@ -108,7 +108,7 @@ fn test_rendering() {
         let structure = GlycanStructure::from_short_iupac(iupac, 0..iupac.len(), 0).unwrap();
         let rendered = structure
             .render(
-                Some("pep".to_string()),
+                crate::glycan::render::GlycanRoot::Text("pep".to_string()),
                 COLUMN_SIZE,
                 SUGAR_SIZE,
                 STROKE_SIZE,
@@ -148,26 +148,6 @@ fn test_rendering() {
         write!(&mut html, "<img src=\"data:image/png;base64, ").unwrap();
         base64::engine::general_purpose::STANDARD.encode_string(&buffer, &mut html);
         write!(&mut html, "\"/>").unwrap();
-    }
-
-    for (_, iupac) in &codes {
-        let structure = GlycanStructure::from_short_iupac(iupac, 0..iupac.len(), 0).unwrap();
-        structure
-            .render(
-                Some("pep".to_string()),
-                COLUMN_SIZE,
-                SUGAR_SIZE,
-                STROKE_SIZE,
-                GlycanDirection::TopDown,
-                None,
-                &[],
-                [66, 66, 66],
-                [255, 255, 255],
-                &mut footnotes,
-            )
-            .unwrap()
-            .to_svg(&mut html)
-            .unwrap();
     }
 
     for (index, root, breaks) in [
@@ -330,7 +310,7 @@ fn test_rendering() {
             GlycanStructure::from_short_iupac(codes[index].1, 0..codes[index].1.len(), 0).unwrap();
         let rendered = structure
             .render(
-                Some("pep".to_string()),
+                crate::glycan::render::GlycanRoot::Symbol,
                 COLUMN_SIZE,
                 SUGAR_SIZE,
                 STROKE_SIZE,

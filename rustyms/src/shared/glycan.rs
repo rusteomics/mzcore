@@ -16,6 +16,14 @@ pub enum Configuration {
     D,
     /// L configuration
     L,
+    /// Double configuration D and D
+    DD,
+    /// Double configuration L and L
+    LL,
+    /// Double configuration D and L
+    DL,
+    /// Double configuration L and D
+    LD,
 }
 
 /// A monosaccharide with all its complexity
@@ -196,14 +204,14 @@ impl MonoSaccharide {
             index += line[index..].ignore(&["-"]);
         }
         // Detect epi state
-        if line[index..].starts_with("e") {
+        if line[index..].starts_with('e') {
             epi = true;
             index += 1;
         }
         // Get the prefix mods
         if !line[index..].starts_with("dig") && !line[index..].starts_with("dha") {
             if let Some(o) = line[index..].take_any(PREFIX_SUBSTITUENTS, |e| {
-                substituents.extend(std::iter::repeat(e.clone()).take(amount));
+                substituents.extend(std::iter::repeat(*e).take(amount));
             }) {
                 index += o;
             }
@@ -239,7 +247,7 @@ impl MonoSaccharide {
                     configuration,
                     proforma_name: None,
                 };
-                alo.substituents.extend(s.iter().cloned());
+                alo.substituents.extend(s.iter().copied());
                 alo
             })
             .ok_or_else(|| {
@@ -292,14 +300,14 @@ impl MonoSaccharide {
                     sugar.substituents.extend(
                         e.iter()
                             .flat_map(|s| std::iter::repeat(s).take(double_amount))
-                            .cloned(),
+                            .copied(),
                     );
                     if single_amount > 0 {
                         sugar.substituents.extend(
                             e.iter()
                                 .filter(|s| **s != GlycanSubstituent::Water)
                                 .flat_map(|s| std::iter::repeat(s).take(single_amount))
-                                .cloned(),
+                                .copied(),
                         );
                     }
                 }) {
@@ -321,7 +329,7 @@ impl MonoSaccharide {
                 if let Some(o) = line[index..].take_any(POSTFIX_SUBSTITUENTS, |e| {
                     sugar
                         .substituents
-                        .extend(std::iter::repeat(e.clone()).take(amount));
+                        .extend(std::iter::repeat(*e).take(amount));
                 }) {
                     index += o;
                 } else if let Some(o) = line[index..].take_any(ELEMENT_PARSE_LIST, |e| {
@@ -634,7 +642,7 @@ pub enum NonoseIsomer {
 /// Any substituent on a monosaccharide.
 /// Source: <https://www.ncbi.nlm.nih.gov/glycans/snfg.html> table 3.
 #[allow(dead_code)]
-#[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Serialize, Deserialize)]
+#[derive(Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Serialize, Deserialize)]
 pub enum GlycanSubstituent {
     ///`Am` N-acetimidoyl
     Acetimidoyl,
@@ -727,7 +735,8 @@ pub enum GlycanSubstituent {
 }
 
 impl GlycanSubstituent {
-    pub fn notation(&self) -> &'static str {
+    /// Get the symbol used to denote this substituent
+    pub const fn notation(self) -> &'static str {
         match self {
             Self::Acetimidoyl => "Am",
             Self::Acetyl => "Ac",

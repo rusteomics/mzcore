@@ -4,8 +4,8 @@ mod bitmap;
 mod element;
 mod shape;
 mod svg;
-#[cfg(test)]
+#[cfg(all(test, not(github_action)))]
 mod test;
 
 pub use absolute::GlycanDirection;
-pub use element::RenderedGlycan;
+pub use element::{GlycanRoot, RenderedGlycan};

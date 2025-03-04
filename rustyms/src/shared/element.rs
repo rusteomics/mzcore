@@ -506,7 +506,8 @@ impl TryFrom<usize> for Element {
 }
 
 impl Element {
-    pub fn symbol(&self) -> &'static str {
+    /// Get the symbol for this element
+    pub const fn symbol(self) -> &'static str {
         match self {
             Self::H => "H",
             Self::He => "He",
@@ -633,7 +634,6 @@ impl Element {
 }
 
 impl std::fmt::Display for Element {
-    #[expect(clippy::too_many_lines)]
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.symbol())
     }
