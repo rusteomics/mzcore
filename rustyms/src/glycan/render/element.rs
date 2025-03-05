@@ -89,12 +89,56 @@ pub(super) enum TextBaseline {
     Ideographic,
 }
 
-/// The symbol or text to use at the base of a glycan
+/// The symbol or text to use at the base of a glycan.
+///
+#[doc = include_str!("../../../images/glycan_root.svg")]
+///
+/// _Glycan [G01670UQ](http://glytoucan.org/Structures/Glycans/G01670UQ) using the different root types: None, Line, Symbol, Text("pep"), Text("N"), Text("Arg")_
+///
+/// ```rust
+/// const COLUMN_SIZE: f32 = 30.0;
+/// const SUGAR_SIZE: f32 = 15.0;
+/// const STROKE_SIZE: f32 = 1.5;
+/// let mut output = String::new();
+/// let mut footnotes = Vec::new();
+/// let short_iupac = "Neu5Ac(a2-6)Gal(b1-4)GlcNAc(b1-2)Man(a1-3)[Gal(b1-4)GlcNAc(b1-2)Man(a1-6)]Man(b1-4)GlcNAc(b1-4)GlcNAc(?1-"; // Definition for G01670UQ
+/// let structure = GlycanStructure::from_short_iupac(short_iupac, 0..short_iupac.len(), 0).unwrap();
+/// for root in [
+///     GlycanRoot::None,
+///     GlycanRoot::Line,
+///     GlycanRoot::Symbol,
+///     GlycanRoot::Text("pep".to_string()),
+///     GlycanRoot::Text("N".to_string()),
+///     GlycanRoot::Text("Arg".to_string()),
+/// ] {
+///     let rendered = structure
+///         .render(
+///             root,
+///             COLUMN_SIZE,
+///             SUGAR_SIZE,
+///             STROKE_SIZE,
+///             GlycanDirection::TopDown,
+///             None,
+///             &[],
+///             [0, 0, 0],
+///             [255, 255, 255],
+///             &mut footnotes,
+///         )
+///         .unwrap();
+///     rendered.to_svg(&mut output).unwrap();
+/// }
+/// ```
+/// This examples shows how to generate SVGs for all the different root types as seen in the above picture.
+/// Note that this writes all SVGs after each other to the variable `output`. Also note that this writes
+/// all modifications that did not fit inside the image in the variable `footnotes` and this will need to
+/// be dealt with by the caller, as indicated in [`GlycanStructure::render`](crate::glycan::GlycanStructure::render).
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
 pub enum GlycanRoot {
     /// No symbol, this will also not draw a line from the root sugar
     #[default]
     None,
+    /// No symbol, but this will draw a line from the root sugar
+    Line,
     /// A tilde ('~') like symbol to indicate the full peptidoform
     Symbol,
     /// A piece of text, take care to not make this too big as it will be cut off in the image.
@@ -721,7 +765,7 @@ impl AbsolutePositionedGlycan {
                 * column_size;
         let height = (match basis {
             GlycanRoot::None => 0.0_f32,
-            GlycanRoot::Symbol => 0.5,
+            GlycanRoot::Line | GlycanRoot::Symbol => 0.5,
             GlycanRoot::Text(_) => 1.0,
         })
         .mul_add(f32::from(root_break.is_none()), depth)
@@ -769,6 +813,18 @@ impl AbsolutePositionedGlycan {
                     sub_tree.tree.x + sub_tree.tree.mid_point,
                     (depth + 0.5) * column_size,
                 ),
+                GlycanRoot::Line => {
+                    let base_x = (sub_tree.tree.x + sub_tree.tree.mid_point - sub_tree.left_offset)
+                        * column_size;
+                    let base_y = depth.mul_add(column_size, (column_size - sugar_size) / 2.0);
+                    buffer.push(Element::Line {
+                        from: pick_point((base_x, (depth - 0.5) * column_size), direction),
+                        to: pick_point((base_x, base_y), direction),
+                        stroke: foreground,
+                        stroke_size,
+                    });
+                    (base_x, (depth - 0.5) * column_size, base_x, base_y)
+                }
                 GlycanRoot::Symbol => {
                     let base_x = (sub_tree.tree.x + sub_tree.tree.mid_point - sub_tree.left_offset)
                         * column_size;

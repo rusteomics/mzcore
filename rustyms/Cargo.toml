@@ -13,7 +13,6 @@ repository = "https://github.com/snijderlab/rustyms"
 readme = "README.md"
 include = [
     "src/**/*",
-    "databases/**/*.gz",
     "README.md",
     "build.rs",
     "benches/**/*",

@@ -4,7 +4,7 @@ use swash::{scale::ScaleContext, CacheKey, FontRef};
 
 use crate::{
     fragment::GlycanPosition,
-    glycan::{GlycanDirection, GlycanStructure},
+    glycan::{GlycanDirection, GlycanRoot, GlycanStructure},
 };
 use std::{
     fmt::Write,
@@ -350,6 +350,32 @@ fn test_rendering() {
         write!(&mut html, "<img src=\"data:image/png;base64, ").unwrap();
         base64::engine::general_purpose::STANDARD.encode_string(&buffer, &mut html);
         write!(&mut html, "\"/>").unwrap();
+    }
+
+    let structure = GlycanStructure::from_short_iupac(codes[0].1, 0..codes[0].1.len(), 0).unwrap();
+    for root in [
+        GlycanRoot::None,
+        GlycanRoot::Line,
+        GlycanRoot::Symbol,
+        GlycanRoot::Text("pep".to_string()),
+        GlycanRoot::Text("N".to_string()),
+        GlycanRoot::Text("Arg".to_string()),
+    ] {
+        let rendered = structure
+            .render(
+                root,
+                COLUMN_SIZE,
+                SUGAR_SIZE,
+                STROKE_SIZE,
+                GlycanDirection::TopDown,
+                None,
+                &[],
+                [0, 0, 0],
+                [255, 255, 255],
+                &mut footnotes,
+            )
+            .unwrap();
+        rendered.to_svg(&mut html).unwrap();
     }
 
     write!(&mut html, "<hr>").unwrap();
