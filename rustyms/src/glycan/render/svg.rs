@@ -24,8 +24,8 @@ impl RenderedGlycan {
 
         write!(
             output,
-            "<svg width=\"{}\" height=\"{}\">",
-            self.size.0, self.size.1
+            "<svg width=\"{}\" height=\"{}\" style=\"--midpoint:{}\" class=\"glycan\">",
+            self.size.0, self.size.1, self.midpoint
         )?;
         for element in &self.elements {
             match element {

@@ -149,7 +149,7 @@ pub enum GlycanRoot {
 }
 
 impl AbsolutePositionedGlycan {
-    /// Render this glycan to the internal rendering representation
+    /// Render this glycan to the internal rendering representation, returns None if the root break contains an invalid position.
     pub(super) fn render(
         &self,
         basis: GlycanRoot,
@@ -738,8 +738,9 @@ impl AbsolutePositionedGlycan {
                         &breaks
                             .iter()
                             .filter(|b| {
-                                total_branches > 1 && b.1.first() == Some(&branch.branch_index)
-                                    || total_branches == 1
+                                (total_branches > 1 && b.1.first() == Some(&branch.branch_index)
+                                    || total_branches == 1)
+                                    && b.0 > 0
                             })
                             .map(|b| (b.0 - 1, &b.1[usize::from(total_branches > 1)..]))
                             .collect_vec(),
@@ -760,24 +761,21 @@ impl AbsolutePositionedGlycan {
         };
         let sub_tree = self.get_subtree(root_break.as_ref().unwrap_or(&base), branch_breaks)?;
 
-        let depth = 0.5f32.mul_add(f32::from(sub_tree.break_top), sub_tree.depth as f32);
         let width =
             (sub_tree.tree.x + sub_tree.tree.width - sub_tree.left_offset - sub_tree.right_offset)
                 * column_size;
-        let height = (match basis {
-            GlycanRoot::None => 0.0_f32,
-            GlycanRoot::Line | GlycanRoot::Symbol => 0.5,
-            GlycanRoot::Text(_) => 1.0,
-        })
-        .mul_add(f32::from(root_break.is_none()), depth)
-        .mul_add(
-            column_size,
-            if root_break.is_some() {
+        let depth = sub_tree.depth as f32 + if sub_tree.break_top { 0.75 } else { 0.0 };
+        let height = depth
+            * column_size
+            + if root_break.is_some() {
                 3.5 * stroke_size
             } else {
-                0.0
-            },
-        );
+                (match basis {
+                    GlycanRoot::None => 0.0_f32,
+                    GlycanRoot::Line | GlycanRoot::Symbol => 0.5,
+                    GlycanRoot::Text(_) => 1.0,
+                }) * column_size
+            };
 
         let size = pick_point((width, height), direction);
 

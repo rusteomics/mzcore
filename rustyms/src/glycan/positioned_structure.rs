@@ -162,19 +162,27 @@ impl PositionedGlycanStructure {
                         .all(|b| matches!(b, GlycanBreakPos::End(_)))
                 })
                 .filter(|(m, _)| *m != MolecularFormula::default())
-                .map(|(m, b)| {
-                    (
-                        m,
-                        [b, vec![GlycanBreakPos::B(self.position(attachment))]].concat(),
-                    )
-                })
                 .map(|(formula, breakages)| {
                     Fragment::new(
                         formula,
                         Charge::zero(),
                         peptidoform_ion_index,
                         peptidoform_index,
-                        FragmentType::Oxonium(breakages),
+                        FragmentType::Oxonium {
+                            b: self.position(attachment),
+                            y: breakages
+                                .iter()
+                                .filter(|b| matches!(b, GlycanBreakPos::Y(_)))
+                                .map(|b| b.position())
+                                .cloned()
+                                .collect(),
+                            end: breakages
+                                .iter()
+                                .filter(|b| matches!(b, GlycanBreakPos::End(_)))
+                                .map(|b| b.position())
+                                .cloned()
+                                .collect(),
+                        },
                     )
                 }),
         );
