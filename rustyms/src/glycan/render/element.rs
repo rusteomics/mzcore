@@ -9,7 +9,7 @@ use crate::{
             absolute::{AbsolutePositionedGlycan, OuterModifications},
             shape::{Colour, Shape},
         },
-        GlycanDirection,
+        GlycanBranchIndex, GlycanBranchMassIndex, GlycanDirection,
     },
 };
 
@@ -148,20 +148,34 @@ pub enum GlycanRoot {
     Text(String),
 }
 
+/// The selected (part) of a glycan to render, using [`Self::FULL`] is a shortcut to get the full glycan.
+pub enum GlycanSelection<'a> {
+    /// A subtree of the glycan, with potentially a break of the root of the subtree and breaks in the branches.
+    /// If no breaks are specified the full glycan is shown. The root is the first monosaccharide to be included
+    /// in the rendering. The fragment will not include the indicated glycan positions for the branch breaks.
+    Subtree(Option<&'a GlycanPosition>, &'a [GlycanPosition]),
+    /// A single sugar, all it branches will be shown as broken.
+    SingleSugar(&'a GlycanPosition),
+}
+
+impl GlycanSelection<'static> {
+    /// A shorthand for a full glycan.
+    pub const FULL: Self = Self::Subtree(None, &[]);
+}
+
 impl AbsolutePositionedGlycan {
     /// Render this glycan to the internal rendering representation, returns None if the root break contains an invalid position.
-    pub(super) fn render(
-        &self,
+    pub(super) fn render<'a>(
+        &'a self,
         basis: GlycanRoot,
         column_size: f32,
         sugar_size: f32,
         stroke_size: f32,
         direction: GlycanDirection,
-        root_break: Option<GlycanPosition>,
-        branch_breaks: &[GlycanPosition],
+        selection: GlycanSelection<'a>,
         foreground: [u8; 3],
         background: [u8; 3],
-        footnotes: &mut Vec<String>,
+        footnotes: &'a mut Vec<String>,
     ) -> Option<RenderedGlycan> {
         fn render_element(
             buffer: &mut Vec<Element>,
@@ -172,7 +186,7 @@ impl AbsolutePositionedGlycan {
             direction: GlycanDirection,
             x_offset: f32,
             y_offset: f32,
-            breaks: &[(usize, &[usize])],
+            breaks: &[(usize, Vec<(GlycanBranchIndex, GlycanBranchMassIndex)>)],
             foreground: [u8; 3],
             background: [u8; 3],
             incoming_stroke: (f32, f32, f32, f32),
@@ -196,7 +210,7 @@ impl AbsolutePositionedGlycan {
                 if (total_branches == 1 && breaks.iter().any(|b| b.0 == 1))
                     || breaks
                         .iter()
-                        .any(|b| b.0 == 1 && b.1.first() == Some(&branch.branch_index))
+                        .any(|b| b.0 == 1 && b.1.first().map(|b| b.0) == Some(branch.branch_index))
                 {
                     let base_y =
                         (raw_y - 0.5 + f32::from(side)).mul_add(column_size, stroke_size * 0.5);
@@ -278,7 +292,7 @@ impl AbsolutePositionedGlycan {
                 " data-sugar=\"{}\" data-position=\"{}-{}\"",
                 element.title,
                 element.position.inner_depth,
-                element.position.branch.iter().join(",")
+                element.position.branch.iter().map(|b| b.0).join(",")
             );
             match element.shape {
                 Shape::Circle => buffer.push(Element::Circle {
@@ -724,7 +738,7 @@ impl AbsolutePositionedGlycan {
                 if !((total_branches == 1 && breaks.iter().any(|b| b.0 == 1))
                     || breaks
                         .iter()
-                        .any(|b| b.0 == 1 && b.1.first() == Some(&branch.branch_index)))
+                        .any(|b| b.0 == 1 && b.1.first().map(|b| b.0) == Some(branch.branch_index)))
                 {
                     render_element(
                         buffer,
@@ -738,11 +752,12 @@ impl AbsolutePositionedGlycan {
                         &breaks
                             .iter()
                             .filter(|b| {
-                                (total_branches > 1 && b.1.first() == Some(&branch.branch_index)
+                                (total_branches > 1
+                                    && b.1.first().map(|b| b.0) == Some(branch.branch_index)
                                     || total_branches == 1)
                                     && b.0 > 0
                             })
-                            .map(|b| (b.0 - 1, &b.1[usize::from(total_branches > 1)..]))
+                            .map(|b| (b.0 - 1, b.1[usize::from(total_branches > 1)..].to_vec()))
                             .collect_vec(),
                         foreground,
                         background,
@@ -753,21 +768,14 @@ impl AbsolutePositionedGlycan {
             }
         }
 
-        let base = GlycanPosition {
-            inner_depth: 0,
-            series_number: 0,
-            branch: Vec::new(),
-            attachment: None,
-        };
-        let sub_tree = self.get_subtree(root_break.as_ref().unwrap_or(&base), branch_breaks)?;
+        let sub_tree = self.get_subtree(selection)?;
 
         let width =
             (sub_tree.tree.x + sub_tree.tree.width - sub_tree.left_offset - sub_tree.right_offset)
                 * column_size;
         let depth = sub_tree.depth as f32 + if sub_tree.break_top { 0.75 } else { 0.0 };
-        let height = depth
-            * column_size
-            + if root_break.is_some() {
+        let height = depth * column_size
+            + if sub_tree.break_bottom {
                 3.5 * stroke_size
             } else {
                 (match basis {
@@ -780,7 +788,7 @@ impl AbsolutePositionedGlycan {
         let size = pick_point((width, height), direction);
 
         let mut buffer = Vec::new();
-        let stroke = if root_break.is_some() {
+        let stroke = if sub_tree.break_bottom {
             let base_x =
                 (sub_tree.tree.x + sub_tree.tree.mid_point - sub_tree.left_offset) * column_size;
             let base_y = depth.mul_add(column_size, stroke_size * 3.0);

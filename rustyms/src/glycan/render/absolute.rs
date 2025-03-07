@@ -1,3 +1,5 @@
+use std::borrow::Cow;
+
 use itertools::Itertools;
 
 use crate::{
@@ -7,9 +9,12 @@ use crate::{
             element::GlycanRoot,
             shape::{Colour, Shape},
         },
-        GlycanStructure, RenderedGlycan,
+        GlycanBranchIndex, GlycanBranchMassIndex, GlycanStructure, RenderedGlycan,
     },
+    Chemical,
 };
+
+use super::element::GlycanSelection;
 
 impl GlycanStructure {
     /// Render this glycan to the internal representation. This can then be rendered to SVG or a bitmap.
@@ -18,26 +23,24 @@ impl GlycanStructure {
     ///  * `sugar_size`: the size (in pixels) of a monosaccharide.
     ///  * `stroke_size`: the size (in pixels) of the strokes in the graphic.
     ///  * `direction`: the direction the draw the image in.
-    ///  * `root_break`: the first monosaccharide to be included in the rendering, used to draw glycan fragments.
-    ///  * `branch_breaks`: the list of breaks in the branches of the fragment, the fragment will include the indicated glycan position.
+    ///  * `selection`: the selection of the glycan to draw, used to render fragments.
     ///  * `foreground`: the colour to be used for the foreground, in RGB order.
     ///  * `background`: the colour to be used for the background, in RGB order, this is used to fill 'empty' sugars if the isomeric state is unknown.
     ///  * `footnotes`: used to gather modification texts that are too big to place in line. The caller will have to find their own way of displaying this to the user.
     ///
     /// # Errors
     /// If the underlying buffer errors the error is returned. Otherwise `Ok(false)` is returned if the given `root_break` is not valid, and `Ok(true)` is returned if the rendering was fully successful.
-    pub fn render(
-        &self,
+    pub fn render<'a>(
+        &'a self,
         basis: GlycanRoot,
         column_size: f32,
         sugar_size: f32,
         stroke_size: f32,
         direction: GlycanDirection,
-        root_break: Option<GlycanPosition>,
-        branch_breaks: &[GlycanPosition],
+        selection: GlycanSelection<'a>,
         foreground: [u8; 3],
         background: [u8; 3],
-        footnotes: &mut Vec<String>,
+        footnotes: &'a mut Vec<String>,
     ) -> Option<RenderedGlycan> {
         self.position_absolute(0, &[], footnotes).render(
             basis,
@@ -45,8 +48,7 @@ impl GlycanStructure {
             sugar_size,
             stroke_size,
             direction,
-            root_break,
-            branch_breaks,
+            selection,
             foreground,
             background,
             footnotes,
@@ -57,7 +59,7 @@ impl GlycanStructure {
     fn position_absolute(
         &self,
         depth: usize,
-        path: &[usize],
+        path: &[(GlycanBranchIndex, GlycanBranchMassIndex)],
         footnotes: &mut Vec<String>,
     ) -> AbsolutePositionedGlycan {
         let (shape, colour, inner_modifications, outer_modifications) = self.sugar.get_shape();
@@ -103,9 +105,20 @@ impl GlycanStructure {
             let mut y_depth = 0;
             let mut branches = Vec::new();
             let mut sides = Vec::new();
-            for (branch_index, branch) in self.branches.iter().enumerate() {
+            for (mass_index, (branch_index, branch)) in self
+                .branches
+                .iter()
+                .enumerate()
+                .sorted_unstable_by(|(_, a), (_, b)| {
+                    b.formula()
+                        .monoisotopic_mass()
+                        .partial_cmp(&a.formula().monoisotopic_mass())
+                        .unwrap()
+                })
+                .enumerate()
+            {
                 let mut new_path = path.to_vec();
-                new_path.push(branch_index);
+                new_path.push((branch_index, mass_index));
                 let mut rendered = branch.position_absolute(
                     depth + 1,
                     if self.branches.len() > 1 {
@@ -256,8 +269,10 @@ pub(super) struct SubTree<'a> {
     pub(super) right_offset: f32,
     /// If this fragment is topped by a breaking symbol, needed to calculate the correct height for the canvas
     pub(super) break_top: bool,
+    /// If this fragment is bottomed by a breaking symbol, needed to calculate the correct height for the canvas
+    pub(super) break_bottom: bool,
     /// All breaking branches, standardised to the linked root
-    pub(super) branch_breaks: Vec<(usize, &'a [usize])>,
+    pub(super) branch_breaks: Vec<(usize, Vec<(GlycanBranchIndex, GlycanBranchMassIndex)>)>,
 }
 
 impl AbsolutePositionedGlycan {
@@ -282,15 +297,11 @@ impl AbsolutePositionedGlycan {
     }
 
     /// Get the subtree starting on the given position, return None if the starting position is not valid, it also indicates the depth of this subtree for the given branch breakages and if a break tops the structure
-    pub(super) fn get_subtree<'a>(
-        &'a self,
-        start: &'a GlycanPosition,
-        branch_breaks: &'a [GlycanPosition],
-    ) -> Option<SubTree<'a>> {
+    pub(super) fn get_subtree<'a>(&'a self, selection: GlycanSelection<'a>) -> Option<SubTree<'a>> {
         /// Calculate the maximal depth, break top, left and right offset
         fn canvas_size(
             tree: &AbsolutePositionedGlycan,
-            breakages: &[(usize, &[usize])],
+            breakages: &[(usize, Vec<(GlycanBranchIndex, GlycanBranchMassIndex)>)],
         ) -> (usize, bool, f32, f32) {
             let lx = (tree.x + tree.mid_point - 0.5).max(0.0);
             let rx = (tree.width - tree.mid_point - 0.5).max(0.0);
@@ -305,7 +316,10 @@ impl AbsolutePositionedGlycan {
                 1 => tree.branches.first().map_or((0, false, lx, rx), |branch| {
                     canvas_size(
                         branch,
-                        &breakages.iter().map(|b| (b.0 - 1, b.1)).collect_vec(),
+                        &breakages
+                            .iter()
+                            .map(|b| (b.0 - 1, b.1.clone()))
+                            .collect_vec(),
                     )
                 }),
                 _ => tree
@@ -319,8 +333,10 @@ impl AbsolutePositionedGlycan {
                                 branch,
                                 &breakages
                                     .iter()
-                                    .filter(|b| b.1.first() == Some(&branch.branch_index))
-                                    .map(|b| (b.0 - 1, &b.1[1..]))
+                                    .filter(|b| {
+                                        b.1.first().map(|b| b.0) == Some(branch.branch_index)
+                                    })
+                                    .map(|b| (b.0 - 1, b.1[1..].to_vec()))
                                     .collect_vec(),
                             ),
                         )
@@ -354,37 +370,85 @@ impl AbsolutePositionedGlycan {
             )
         }
 
-        let mut tree = self;
-        let mut depth = 0;
-        let mut branch_choices = start.branch.clone();
-        while depth < start.inner_depth {
-            depth += 1;
+        let (tree, rules, break_bottom) = match selection {
+            GlycanSelection::Subtree(root, branch_breaks) => {
+                let start = root.unwrap_or(&self.position);
+                let mut tree = self;
+                let mut depth = 0;
+                let mut branch_choices = start.branch.clone();
+                while depth < start.inner_depth {
+                    depth += 1;
 
-            let total_branches = tree.branches.len() + tree.sides.len();
-            match total_branches {
-                0 => return None,
-                1 => tree = tree.branches.first().or_else(|| tree.sides.first())?,
-                _ => {
-                    let index = branch_choices.pop()?;
-                    tree = tree
-                        .branches
-                        .iter()
-                        .find(|b| b.branch_index == index)
-                        .or_else(|| tree.sides.iter().find(|b| b.branch_index == index))?;
+                    let total_branches = tree.branches.len() + tree.sides.len();
+                    match total_branches {
+                        0 => return None,
+                        1 => tree = tree.branches.first().or_else(|| tree.sides.first())?,
+                        _ => {
+                            let index = branch_choices.pop()?;
+                            tree = tree
+                                .branches
+                                .iter()
+                                .find(|b| b.branch_index == index.0)
+                                .or_else(|| {
+                                    tree.sides.iter().find(|b| b.branch_index == index.0)
+                                })?;
+                        }
+                    }
                 }
-            }
-        }
 
-        let rules = branch_breaks
-            .iter()
-            .filter(|b| b.inner_depth >= start.inner_depth && b.branch.starts_with(&start.branch))
-            .map(|b| {
-                (
-                    b.inner_depth - start.inner_depth,
-                    &b.branch[start.branch.len()..],
-                )
-            })
-            .collect_vec();
+                let rules = branch_breaks
+                    .iter()
+                    .filter(|b| {
+                        b.inner_depth >= start.inner_depth && b.branch.starts_with(&start.branch)
+                    })
+                    .map(|b| {
+                        (
+                            b.inner_depth - start.inner_depth,
+                            b.branch[start.branch.len()..].to_vec(),
+                        )
+                    })
+                    .collect_vec();
+                (tree, rules, root.is_some())
+            }
+            GlycanSelection::SingleSugar(position) => {
+                let mut tree = self;
+                let mut depth = 0;
+                let mut branch_choices = position.branch.clone();
+                while depth < position.inner_depth {
+                    depth += 1;
+
+                    let total_branches = tree.branches.len() + tree.sides.len();
+                    match total_branches {
+                        0 => return None,
+                        1 => tree = tree.branches.first().or_else(|| tree.sides.first())?,
+                        _ => {
+                            let index = branch_choices.pop()?;
+                            tree = tree
+                                .branches
+                                .iter()
+                                .find(|b| b.branch_index == index.0)
+                                .or_else(|| {
+                                    tree.sides.iter().find(|b| b.branch_index == index.0)
+                                })?;
+                        }
+                    }
+                }
+
+                let rules = tree
+                    .branches
+                    .iter()
+                    .enumerate()
+                    .map(|(branch_index, _)| {
+                        (
+                            1,
+                            [position.branch.clone(), vec![(branch_index, branch_index)]].concat(),
+                        )
+                        // TODO: the mass_index should be stored here, but currently that is unused so for now this does not introduce incorrect behaviour
+                    })
+                    .collect_vec();
+                (tree, rules, true)
+            }
+        };
         let (depth, break_top, left_offset, right_offset) = canvas_size(tree, &rules);
         Some(SubTree {
             tree,
@@ -392,6 +456,7 @@ impl AbsolutePositionedGlycan {
             left_offset,
             right_offset,
             break_top,
+            break_bottom,
             branch_breaks: rules,
         })
     }

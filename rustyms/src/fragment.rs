@@ -10,7 +10,7 @@ use ordered_float::OrderedFloat;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    glycan::MonoSaccharide,
+    glycan::{GlycanBranchIndex, GlycanBranchMassIndex, GlycanSelection, MonoSaccharide},
     model::ChargeRange,
     molecular_charge::{CachedCharge, MolecularCharge},
     system::{
@@ -273,7 +273,7 @@ pub struct GlycanPosition {
     /// The series number (from the ion series terminal)
     pub series_number: usize,
     /// The branch naming
-    pub branch: Vec<usize>,
+    pub branch: Vec<(GlycanBranchIndex, GlycanBranchMassIndex)>,
     /// The aminoacid index where this glycan is attached
     pub attachment: Option<(AminoAcid, usize)>,
 }
@@ -286,7 +286,7 @@ impl GlycanPosition {
         self.branch
             .iter()
             .enumerate()
-            .map(|(i, b)| {
+            .map(|(i, (_, b))| {
                 if i == 0 {
                     char::from_u32(
                         (0x03B1..=0x03C9)
@@ -432,22 +432,24 @@ impl FragmentType {
     }
 
     /// Get the glycan break positions of this ion (or None if not applicable), gives the sequence index, the root break, and the branch breaks.
-    pub fn glycan_break_positions(
-        &self,
-    ) -> Option<(Option<usize>, Option<&GlycanPosition>, &[GlycanPosition])> {
+    pub fn glycan_break_positions(&self) -> Option<(Option<usize>, GlycanSelection<'_>)> {
         match self {
-            Self::B(n) => Some((n.attachment.map(|(_, p)| p), Some(n), &[])),
+            Self::B(n) => Some((
+                n.attachment.map(|(_, p)| p),
+                GlycanSelection::Subtree(Some(n), &[]),
+            )),
             Self::Diagnostic(DiagnosticPosition::Glycan(n, _)) => Some((
                 n.attachment.map(|(_, p)| p),
-                Some(n),
-                std::slice::from_ref(n),
+                GlycanSelection::SingleSugar(n),
             )),
             Self::Y(breaks) => Some((
                 breaks.first().and_then(|p| p.attachment.map(|(_, p)| p)),
-                None,
-                breaks,
+                GlycanSelection::Subtree(None, breaks),
             )),
-            Self::Oxonium { b, y, .. } => Some((b.attachment.map(|(_, p)| p), Some(b), y)),
+            Self::Oxonium { b, y, .. } => Some((
+                b.attachment.map(|(_, p)| p),
+                GlycanSelection::Subtree(Some(b), y),
+            )),
             _ => None,
         }
     }
@@ -470,9 +472,13 @@ impl FragmentType {
             | Self::PrecursorSideChainLoss(n, _) => Some(n.series_number.to_string()),
             Self::B(n) | Self::Diagnostic(DiagnosticPosition::Glycan(n, _)) => Some(n.label()),
             Self::Y(bonds) => Some(bonds.iter().map(GlycanPosition::label).join("")),
-            Self::Oxonium { b, y, end } => {
-                Some(b.label() + &y.iter().chain(end.iter()).map(|p| p.label()).join(""))
-            }
+            Self::Oxonium { b, y, end } => Some(
+                b.label()
+                    + &y.iter()
+                        .chain(end.iter())
+                        .map(GlycanPosition::label)
+                        .join(""),
+            ),
             Self::YComposition(sugars, _) | Self::OxoniumComposition(sugars, _) => Some(
                 sugars
                     .iter()

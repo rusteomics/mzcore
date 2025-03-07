@@ -8,4 +8,4 @@ mod svg;
 mod test;
 
 pub use absolute::GlycanDirection;
-pub use element::{GlycanRoot, RenderedGlycan};
+pub use element::{GlycanRoot, GlycanSelection, RenderedGlycan};

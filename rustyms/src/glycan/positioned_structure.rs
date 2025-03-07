@@ -15,6 +15,11 @@ use crate::{
 
 use crate::uom::num_traits::Zero;
 
+/// The index in the branches as stored in the structure
+pub type GlycanBranchIndex = usize;
+/// The index in the branches when the branches are sorted on mass, this is used to properly render the names of the branches for human consumption
+pub type GlycanBranchMassIndex = usize;
+
 /// Rose tree representation of glycan structure
 #[derive(Debug, Eq, PartialEq, Clone, Hash, Serialize, Deserialize)]
 pub struct PositionedGlycanStructure {
@@ -22,7 +27,8 @@ pub struct PositionedGlycanStructure {
     pub(super) branches: Vec<PositionedGlycanStructure>,
     pub(super) inner_depth: usize,
     pub(super) outer_depth: usize,
-    pub(super) branch: Vec<usize>,
+    /// The branches taken to get to this location (from the root) as the index in the branches and the index in the branches when sorted on mass
+    pub(super) branch: Vec<(GlycanBranchIndex, GlycanBranchMassIndex)>,
 }
 
 impl Chemical for PositionedGlycanStructure {
@@ -173,13 +179,13 @@ impl PositionedGlycanStructure {
                             y: breakages
                                 .iter()
                                 .filter(|b| matches!(b, GlycanBreakPos::Y(_)))
-                                .map(|b| b.position())
+                                .map(GlycanBreakPos::position)
                                 .cloned()
                                 .collect(),
                             end: breakages
                                 .iter()
                                 .filter(|b| matches!(b, GlycanBreakPos::End(_)))
-                                .map(|b| b.position())
+                                .map(GlycanBreakPos::position)
                                 .cloned()
                                 .collect(),
                         },

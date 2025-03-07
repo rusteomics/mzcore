@@ -4,7 +4,7 @@ use swash::{scale::ScaleContext, CacheKey, FontRef};
 
 use crate::{
     fragment::GlycanPosition,
-    glycan::{GlycanDirection, GlycanRoot, GlycanStructure},
+    glycan::{render::element::GlycanSelection, GlycanDirection, GlycanRoot, GlycanStructure},
 };
 use std::{
     fmt::Write,
@@ -101,6 +101,7 @@ fn test_rendering() {
         ("G83422GV", "L-6dTal(a1-3)[Fuc(a1-2)Gal(b1-4)GlcNAc(b1-3)Gal(b1-4)]GlcNAc(b1-3)Gal(b1-3)[Neu5Ac(a2-3)Gal(b1-4)[Fuc(a1-3)]GlcNAc(b1-6)]GalNAc(a1-"),
         ("G09073GJ","GalNAc(?1-?)GlcA2,3NAc2(?1-?)D-FucNAc"),
         ("G00069DT","Neu(a2-3)Gal(b1-4)GlcNAc(b1-3)Gal(b1-4)GlcNAc(b1-3)Gal(b1-4)Glc(b1-"),
+        ("G00468KU","GlcNAc(b1-2)Man(a1-3)[GlcNAc(b1-4)][Man(a1-?)Man(a1-6)]Man(b1-4)GlcNAc(b1-4)GlcNAc(?1-"),
     ];
 
     let mut context = ScaleContext::new();
@@ -117,8 +118,7 @@ fn test_rendering() {
                 } else {
                     GlycanDirection::TopDown
                 },
-                None,
-                &[],
+                GlycanSelection::FULL,
                 [66, 66, 66],
                 [255, 255, 255],
                 &mut footnotes,
@@ -150,206 +150,343 @@ fn test_rendering() {
         write!(&mut html, "\"/>").unwrap();
     }
 
-    for (index, root, breaks) in [
+    for (index, selection) in [
         (
             0,
-            Some(GlycanPosition {
-                inner_depth: 2,
-                series_number: 2,
-                branch: Vec::new(),
-                attachment: None,
-            }),
-            Vec::new(),
-        ),
-        (
-            0,
-            Some(GlycanPosition {
-                inner_depth: 2,
-                series_number: 2,
-                branch: Vec::new(),
-                attachment: None,
-            }),
-            vec![GlycanPosition {
-                inner_depth: 4,
-                series_number: 4,
-                branch: vec![1],
-                attachment: None,
-            }],
-        ),
-        (
-            0,
-            Some(GlycanPosition {
-                inner_depth: 2,
-                series_number: 2,
-                branch: Vec::new(),
-                attachment: None,
-            }),
-            vec![
-                GlycanPosition {
-                    inner_depth: 5,
-                    series_number: 5,
-                    branch: vec![0],
+            GlycanSelection::Subtree(
+                Some(&GlycanPosition {
+                    inner_depth: 2,
+                    series_number: 2,
+                    branch: Vec::new(),
                     attachment: None,
-                },
-                GlycanPosition {
-                    inner_depth: 3,
-                    series_number: 3,
-                    branch: vec![1],
-                    attachment: None,
-                },
-            ],
+                }),
+                &[],
+            ),
         ),
         (
             0,
-            Some(GlycanPosition {
-                inner_depth: 4,
-                series_number: 4,
-                branch: vec![1],
-                attachment: None,
-            }),
-            Vec::new(),
+            GlycanSelection::Subtree(
+                Some(&GlycanPosition {
+                    inner_depth: 2,
+                    series_number: 2,
+                    branch: Vec::new(),
+                    attachment: None,
+                }),
+                &[GlycanPosition {
+                    inner_depth: 4,
+                    series_number: 4,
+                    branch: vec![(1, 1)],
+                    attachment: None,
+                }],
+            ),
+        ),
+        (
+            0,
+            GlycanSelection::Subtree(
+                Some(&GlycanPosition {
+                    inner_depth: 2,
+                    series_number: 2,
+                    branch: Vec::new(),
+                    attachment: None,
+                }),
+                &[
+                    GlycanPosition {
+                        inner_depth: 5,
+                        series_number: 5,
+                        branch: vec![(0, 0)],
+                        attachment: None,
+                    },
+                    GlycanPosition {
+                        inner_depth: 3,
+                        series_number: 3,
+                        branch: vec![(1, 1)],
+                        attachment: None,
+                    },
+                ],
+            ),
+        ),
+        (
+            0,
+            GlycanSelection::Subtree(
+                Some(&GlycanPosition {
+                    inner_depth: 4,
+                    series_number: 4,
+                    branch: vec![(1, 1)],
+                    attachment: None,
+                }),
+                &[],
+            ),
         ),
         (
             14,
-            Some(GlycanPosition {
-                inner_depth: 0,
-                series_number: 0,
-                branch: Vec::new(),
-                attachment: None,
-            }),
-            vec![GlycanPosition {
-                inner_depth: 1,
-                series_number: 1,
-                branch: vec![0],
-                attachment: None,
-            }],
+            GlycanSelection::Subtree(
+                Some(&GlycanPosition {
+                    inner_depth: 0,
+                    series_number: 0,
+                    branch: Vec::new(),
+                    attachment: None,
+                }),
+                &[GlycanPosition {
+                    inner_depth: 1,
+                    series_number: 1,
+                    branch: vec![(0, 0)],
+                    attachment: None,
+                }],
+            ),
         ),
         (
             14,
-            Some(GlycanPosition {
-                inner_depth: 1,
-                series_number: 1,
-                branch: vec![0],
-                attachment: None,
-            }),
-            vec![GlycanPosition {
-                inner_depth: 2,
-                series_number: 2,
-                branch: vec![0],
-                attachment: None,
-            }],
+            GlycanSelection::Subtree(
+                Some(&GlycanPosition {
+                    inner_depth: 1,
+                    series_number: 1,
+                    branch: vec![(0, 0)],
+                    attachment: None,
+                }),
+                &[GlycanPosition {
+                    inner_depth: 2,
+                    series_number: 2,
+                    branch: vec![(0, 0)],
+                    attachment: None,
+                }],
+            ),
         ),
         (
             16,
-            Some(GlycanPosition {
-                inner_depth: 1,
-                series_number: 1,
-                branch: Vec::new(),
-                attachment: None,
-            }),
-            vec![
-                GlycanPosition {
-                    inner_depth: 3,
-                    series_number: 3,
-                    branch: vec![0],
+            GlycanSelection::Subtree(
+                Some(&GlycanPosition {
+                    inner_depth: 1,
+                    series_number: 1,
+                    branch: Vec::new(),
                     attachment: None,
-                },
-                GlycanPosition {
-                    inner_depth: 4,
-                    series_number: 4,
-                    branch: vec![1, 1],
-                    attachment: None,
-                },
-            ],
+                }),
+                &[
+                    GlycanPosition {
+                        inner_depth: 3,
+                        series_number: 3,
+                        branch: vec![(0, 0)],
+                        attachment: None,
+                    },
+                    GlycanPosition {
+                        inner_depth: 4,
+                        series_number: 4,
+                        branch: vec![(1, 1), (1, 1)],
+                        attachment: None,
+                    },
+                ],
+            ),
         ),
         (
             18,
-            Some(GlycanPosition {
-                inner_depth: 1,
-                series_number: 1,
-                branch: vec![0],
+            GlycanSelection::Subtree(
+                Some(&GlycanPosition {
+                    inner_depth: 1,
+                    series_number: 1,
+                    branch: vec![(0, 0)],
+                    attachment: None,
+                }),
+                &[
+                    GlycanPosition {
+                        inner_depth: 3,
+                        series_number: 3,
+                        branch: vec![(0, 0), (0, 0)],
+                        attachment: None,
+                    },
+                    GlycanPosition {
+                        inner_depth: 6,
+                        series_number: 6,
+                        branch: vec![(0, 0), (1, 1)],
+                        attachment: None,
+                    },
+                ],
+            ),
+        ),
+        (
+            1,
+            GlycanSelection::Subtree(
+                None,
+                &[GlycanPosition {
+                    inner_depth: 1,
+                    series_number: 1,
+                    branch: Vec::new(),
+                    attachment: None,
+                }],
+            ),
+        ),
+        (
+            1,
+            GlycanSelection::Subtree(
+                None,
+                &[GlycanPosition {
+                    inner_depth: 2,
+                    series_number: 2,
+                    branch: Vec::new(),
+                    attachment: None,
+                }],
+            ),
+        ),
+        (
+            // B3Y1gY2bY2a
+            21,
+            GlycanSelection::Subtree(
+                Some(&GlycanPosition {
+                    inner_depth: 2,
+                    series_number: 3,
+                    branch: vec![],
+                    attachment: None,
+                }),
+                &[
+                    GlycanPosition {
+                        inner_depth: 3,
+                        series_number: 1,
+                        branch: vec![(1, 2)],
+                        attachment: None,
+                    },
+                    GlycanPosition {
+                        inner_depth: 3,
+                        series_number: 2,
+                        branch: vec![(2, 1)],
+                        attachment: None,
+                    },
+                    GlycanPosition {
+                        inner_depth: 3,
+                        series_number: 2,
+                        branch: vec![(0, 0)],
+                        attachment: None,
+                    },
+                ],
+            ),
+        ),
+        (
+            // B2aY1a
+            21,
+            GlycanSelection::Subtree(
+                Some(&GlycanPosition {
+                    inner_depth: 3,
+                    series_number: 2,
+                    branch: vec![(0, 0)],
+                    attachment: None,
+                }),
+                &[GlycanPosition {
+                    inner_depth: 4,
+                    series_number: 1,
+                    branch: vec![(0, 0)],
+                    attachment: None,
+                }],
+            ),
+        ),
+        (
+            // B2bY1b
+            21,
+            GlycanSelection::Subtree(
+                Some(&GlycanPosition {
+                    inner_depth: 3,
+                    series_number: 2,
+                    branch: vec![(2, 1)],
+                    attachment: None,
+                }),
+                &[GlycanPosition {
+                    inner_depth: 4,
+                    series_number: 1,
+                    branch: vec![(2, 1)],
+                    attachment: None,
+                }],
+            ),
+        ),
+        (
+            // B1b
+            21,
+            GlycanSelection::Subtree(
+                Some(&GlycanPosition {
+                    inner_depth: 4,
+                    series_number: 1,
+                    branch: vec![(2, 1)],
+                    attachment: None,
+                }),
+                &[],
+            ),
+        ),
+        (
+            // dHex3
+            21,
+            GlycanSelection::SingleSugar(&GlycanPosition {
+                inner_depth: 2,
+                series_number: 3,
+                branch: vec![],
                 attachment: None,
             }),
-            vec![
-                GlycanPosition {
-                    inner_depth: 3,
-                    series_number: 3,
-                    branch: vec![0, 0],
-                    attachment: None,
-                },
-                GlycanPosition {
-                    inner_depth: 6,
-                    series_number: 6,
-                    branch: vec![0, 1],
-                    attachment: None,
-                },
-            ],
         ),
         (
-            1,
-            None,
-            vec![GlycanPosition {
-                inner_depth: 1,
-                series_number: 1,
-                branch: Vec::new(),
-                attachment: None,
-            }],
-        ),
-        (
-            1,
-            None,
-            vec![GlycanPosition {
-                inner_depth: 2,
+            // dHex2a
+            21,
+            GlycanSelection::SingleSugar(&GlycanPosition {
+                inner_depth: 3,
                 series_number: 2,
-                branch: Vec::new(),
+                branch: vec![(0, 0)],
                 attachment: None,
-            }],
+            }),
+        ),
+        (
+            // dHex2b
+            21,
+            GlycanSelection::SingleSugar(&GlycanPosition {
+                inner_depth: 3,
+                series_number: 2,
+                branch: vec![(2, 1)],
+                attachment: None,
+            }),
+        ),
+        (
+            // dHex1b
+            21,
+            GlycanSelection::SingleSugar(&GlycanPosition {
+                inner_depth: 4,
+                series_number: 1,
+                branch: vec![(2, 1)],
+                attachment: None,
+            }),
         ),
     ] {
         let structure =
             GlycanStructure::from_short_iupac(codes[index].1, 0..codes[index].1.len(), 0).unwrap();
-        let rendered = structure
-            .render(
-                crate::glycan::render::GlycanRoot::Symbol,
-                COLUMN_SIZE,
-                SUGAR_SIZE,
-                STROKE_SIZE,
-                if index % 3 == 0 {
-                    GlycanDirection::LeftToRight
+        if let Some(rendered) = structure.render(
+            crate::glycan::render::GlycanRoot::Symbol,
+            COLUMN_SIZE,
+            SUGAR_SIZE,
+            STROKE_SIZE,
+            GlycanDirection::TopDown,
+            selection,
+            [0, 0, 0],
+            [255, 255, 255],
+            &mut footnotes,
+        ) {
+            rendered.to_svg(&mut html).unwrap();
+            let (bitmap, width) = rendered.to_bitmap(
+                if index % 2 == 0 {
+                    zeno::Format::subpixel_bgra()
                 } else {
-                    GlycanDirection::TopDown
+                    zeno::Format::Alpha
                 },
-                root,
-                &breaks,
-                [0, 0, 0],
-                [255, 255, 255],
-                &mut footnotes,
-            )
-            .unwrap();
-        rendered.to_svg(&mut html).unwrap();
-        let (bitmap, width) = rendered.to_bitmap(
-            if index % 2 == 0 {
-                zeno::Format::subpixel_bgra()
-            } else {
-                zeno::Format::Alpha
-            },
-            font.as_ref(),
-            &mut context,
-        );
-        let mut buffer = Vec::new();
-        let mut w = BufWriter::new(&mut buffer);
-        let mut encoder =
-            png::Encoder::new(&mut w, width as u32, (bitmap.len() / 4 / width) as u32);
-        encoder.set_color(png::ColorType::Rgba);
-        encoder.set_depth(png::BitDepth::Eight);
-        let mut writer = encoder.write_header().unwrap();
-        writer.write_image_data(&bitmap).unwrap();
-        drop(writer);
-        drop(w);
+                font.as_ref(),
+                &mut context,
+            );
+            let mut buffer = Vec::new();
+            let mut w = BufWriter::new(&mut buffer);
+            let mut encoder =
+                png::Encoder::new(&mut w, width as u32, (bitmap.len() / 4 / width) as u32);
+            encoder.set_color(png::ColorType::Rgba);
+            encoder.set_depth(png::BitDepth::Eight);
+            let mut writer = encoder.write_header().unwrap();
+            writer.write_image_data(&bitmap).unwrap();
+            drop(writer);
+            drop(w);
 
-        write!(&mut html, "<img src=\"data:image/png;base64, ").unwrap();
-        base64::engine::general_purpose::STANDARD.encode_string(&buffer, &mut html);
-        write!(&mut html, "\"/>").unwrap();
+            write!(&mut html, "<img src=\"data:image/png;base64, ").unwrap();
+            base64::engine::general_purpose::STANDARD.encode_string(&buffer, &mut html);
+            write!(&mut html, "\"/>").unwrap();
+        } else {
+            write!(&mut html, "Render error: invalid root").unwrap();
+        }
     }
 
     let structure = GlycanStructure::from_short_iupac(codes[0].1, 0..codes[0].1.len(), 0).unwrap();
@@ -368,8 +505,7 @@ fn test_rendering() {
                 SUGAR_SIZE,
                 STROKE_SIZE,
                 GlycanDirection::TopDown,
-                None,
-                &[],
+                GlycanSelection::FULL,
                 [0, 0, 0],
                 [255, 255, 255],
                 &mut footnotes,
