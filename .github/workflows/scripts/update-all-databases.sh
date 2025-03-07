@@ -41,11 +41,9 @@ function make-ontologies {
     curl https://raw.githubusercontent.com/HUPO-PSI/mzIdentML/master/cv/XLMOD.obo \
         > ${db_data}/XLMOD.obo
     curl -L http://purl.obolibrary.org/obo/gno.obo \
-        | sed '/(property_value: GNO:00000(022|023|041|042|101|102) .*$\n)|(def: .*$\n)/d' \
-        | gzip -c \
-        > ${db_data}/GNOme.obo.gz
+        > ${db_data}/GNOme.obo
     curl -L https://glycosmos.org/download/glycosmos_glycans_list.csv \
-        | gzip -c > ${db_data}/glycosmos_glycans_list.csv.gz
+        > ${db_data}/glycosmos_glycans_list.csv
 
 
     echo "Serializing the other databases..."

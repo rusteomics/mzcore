@@ -37,13 +37,28 @@ impl ModificationId {
             )),
             Ontology::Gnome => Some(format!(
                 "http://glytoucan.org/Structures/Glycans/{}",
-                self.name
+                self.name.to_ascii_uppercase()
             )),
             Ontology::Resid => Some(format!(
                 "https://proteininformationresource.org/cgi-bin/resid?id=AA{:04}",
                 self.id.unwrap_or_default()
             )),
             Ontology::Xlmod | Ontology::Custom => None,
+        }
+    }
+}
+
+impl Display for ModificationId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        if self.ontology == Ontology::Gnome {
+            write!(
+                f,
+                "{}:{}",
+                self.ontology.char(),
+                self.name.to_ascii_uppercase()
+            )
+        } else {
+            write!(f, "{}:{}", self.ontology.char(), self.name)
         }
     }
 }
@@ -321,19 +336,8 @@ impl SimpleModificationInner {
             } if specification_compliant => {
                 write!(f, "Formula:{formula}|INFO:Custom:{name}")?;
             }
-            Self::Database {
-                id:
-                    ModificationId {
-                        name,
-                        ontology: Ontology::Custom,
-                        ..
-                    },
-                ..
-            } if specification_compliant => {
-                write!(f, "C:{name}")?;
-            }
             Self::Database { id, .. } | Self::Gno { id, .. } | Self::Linker { id, .. } => {
-                write!(f, "{}:{}", id.ontology.char(), id.name)?;
+                write!(f, "{id}")?;
             }
         }
         Ok(())

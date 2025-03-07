@@ -9,12 +9,31 @@ use crate::{
     Element, SequencePosition, ELEMENT_PARSE_LIST,
 };
 
+/// Glycan absolute configuration
+#[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Serialize, Deserialize)]
+pub enum Configuration {
+    /// D configuration
+    D,
+    /// L configuration
+    L,
+    /// Double configuration D and D
+    DD,
+    /// Double configuration L and L
+    LL,
+    /// Double configuration D and L
+    DL,
+    /// Double configuration L and D
+    LD,
+}
+
 /// A monosaccharide with all its complexity
 #[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Serialize, Deserialize)]
 pub struct MonoSaccharide {
     pub(super) base_sugar: BaseSugar,
     pub(super) substituents: Vec<GlycanSubstituent>,
     pub(super) furanose: bool,
+    pub(super) epi: bool,
+    pub(super) configuration: Option<Configuration>,
     pub(super) proforma_name: Option<String>,
 }
 
@@ -25,6 +44,8 @@ impl MonoSaccharide {
             base_sugar: sugar,
             substituents: substituents.to_owned(),
             furanose: false,
+            epi: false,
+            configuration: None,
             proforma_name: None,
         }
     }
@@ -45,6 +66,16 @@ impl MonoSaccharide {
     pub fn furanose(self) -> Self {
         Self {
             furanose: true,
+            ..self
+        }
+    }
+
+    /// Set this saccharide up to be a certain configuration
+    #[must_use]
+    #[allow(dead_code)]
+    pub fn configuration(self, configuration: Configuration) -> Self {
+        Self {
+            configuration: Some(configuration),
             ..self
         }
     }
@@ -116,9 +147,21 @@ impl MonoSaccharide {
         let line = original_line.to_ascii_lowercase();
         let bytes = line.as_bytes();
         let mut substituents = Vec::new();
+        let mut configuration = None;
+        let mut epi = false;
 
         // ignore stuff
-        index += line[index..].ignore(&["keto-", "d-", "l-", "?-"]);
+        index += line[index..].ignore(&["keto-"]);
+        if line[index..].starts_with("d-") {
+            configuration = Some(Configuration::D);
+            index += 2;
+        } else if line[index..].starts_with("l-") {
+            configuration = Some(Configuration::L);
+            index += 2;
+        } else if line[index..].starts_with("?-") {
+            configuration = None;
+            index += 2;
+        }
         // Prefix mods
         let mut amount = 1;
         if bytes[index].is_ascii_digit() {
@@ -160,19 +203,31 @@ impl MonoSaccharide {
             }
             index += line[index..].ignore(&["-"]);
         }
-        // Detect & ignore epi state
-        index += line[index..].ignore(&["e"]);
+        // Detect epi state
+        if line[index..].starts_with('e') {
+            epi = true;
+            index += 1;
+        }
         // Get the prefix mods
         if !line[index..].starts_with("dig") && !line[index..].starts_with("dha") {
             if let Some(o) = line[index..].take_any(PREFIX_SUBSTITUENTS, |e| {
-                substituents.extend(std::iter::repeat(e.clone()).take(amount));
+                substituents.extend(std::iter::repeat(*e).take(amount));
             }) {
                 index += o;
             }
             index += line[index..].ignore(&["-"]);
         }
         // Another optional isomeric state
-        index += line[index..].ignore(&["d-", "l-", "?-"]);
+        if line[index..].starts_with("d-") {
+            configuration = Some(Configuration::D);
+            index += 2;
+        } else if line[index..].starts_with("l-") {
+            configuration = Some(Configuration::L);
+            index += 2;
+        } else if line[index..].starts_with("?-") {
+            configuration = None;
+            index += 2;
+        }
         // Base sugar
         let mut sugar = None;
         for sug in BASE_SUGARS {
@@ -188,9 +243,11 @@ impl MonoSaccharide {
                     base_sugar: b,
                     substituents,
                     furanose: false,
+                    epi,
+                    configuration,
                     proforma_name: None,
                 };
-                alo.substituents.extend(s.iter().cloned());
+                alo.substituents.extend(s.iter().copied());
                 alo
             })
             .ok_or_else(|| {
@@ -243,14 +300,14 @@ impl MonoSaccharide {
                     sugar.substituents.extend(
                         e.iter()
                             .flat_map(|s| std::iter::repeat(s).take(double_amount))
-                            .cloned(),
+                            .copied(),
                     );
                     if single_amount > 0 {
                         sugar.substituents.extend(
                             e.iter()
                                 .filter(|s| **s != GlycanSubstituent::Water)
                                 .flat_map(|s| std::iter::repeat(s).take(single_amount))
-                                .cloned(),
+                                .copied(),
                         );
                     }
                 }) {
@@ -272,7 +329,7 @@ impl MonoSaccharide {
                 if let Some(o) = line[index..].take_any(POSTFIX_SUBSTITUENTS, |e| {
                     sugar
                         .substituents
-                        .extend(std::iter::repeat(e.clone()).take(amount));
+                        .extend(std::iter::repeat(*e).take(amount));
                 }) {
                     index += o;
                 } else if let Some(o) = line[index..].take_any(ELEMENT_PARSE_LIST, |e| {
@@ -455,7 +512,7 @@ pub enum BaseSugar {
     /// 8 carbon base sugar
     Octose,
     /// 9 carbon base sugar
-    Nonose,
+    Nonose(Option<NonoseIsomer>),
     /// 10 carbon base sugar
     Decose,
 }
@@ -474,7 +531,7 @@ impl Display for BaseSugar {
                 Self::Hexose(_) => "Hex",
                 Self::Heptose(_) => "Hep",
                 Self::Octose => "Oct",
-                Self::Nonose => "Non",
+                Self::Nonose(_) => "Non",
                 Self::Decose => "Dec",
             }
         )
@@ -496,7 +553,7 @@ impl Chemical for BaseSugar {
             Self::Hexose(_) => molecular_formula!(H 10 C 6 O 5),
             Self::Heptose(_) => molecular_formula!(H 12 C 7 O 6),
             Self::Octose => molecular_formula!(H 14 C 8 O 7),
-            Self::Nonose => molecular_formula!(H 16 C 9 O 8),
+            Self::Nonose(_) => molecular_formula!(H 16 C 9 O 8),
             Self::Decose => molecular_formula!(H 18 C 10 O 9),
         }
     }
@@ -568,10 +625,24 @@ pub enum HeptoseIsomer {
     Sedoheptulose,
 }
 
+/// Any 9 carbon glycan, these isomers are modification specific (need the correct substituents applied to be meaningful)
+#[allow(dead_code)]
+#[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Serialize, Deserialize)]
+pub enum NonoseIsomer {
+    /// 3-Deoxy-D-glycero-D-galacto-non-2-ulopyranosonic acid
+    Kdn,
+    /// 5,7-Diamino-3,5,7,9-tetradeoxy-L-glycero-L-manno-non-2-ulopyranosonic acid
+    Pse,
+    /// 5,7-Diamino-3,5,7,9-tetradeoxy-D-glycero-D-galacto-non-2-ulopyranosonic acid (or 4eLeg or 8eLeg)
+    Leg,
+    /// 5,7-Diamino-3,5,7,9-tetradeoxy-L-glycero-L-altro-non-2-ulopyranosonic acid
+    Aci,
+}
+
 /// Any substituent on a monosaccharide.
 /// Source: <https://www.ncbi.nlm.nih.gov/glycans/snfg.html> table 3.
 #[allow(dead_code)]
-#[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Serialize, Deserialize)]
+#[derive(Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Serialize, Deserialize)]
 pub enum GlycanSubstituent {
     ///`Am` N-acetimidoyl
     Acetimidoyl,
@@ -663,58 +734,61 @@ pub enum GlycanSubstituent {
     Water,
 }
 
+impl GlycanSubstituent {
+    /// Get the symbol used to denote this substituent
+    pub const fn notation(self) -> &'static str {
+        match self {
+            Self::Acetimidoyl => "Am",
+            Self::Acetyl => "Ac",
+            Self::AcetylAlanyl => "Ala2Ac",
+            Self::AcetylGlutaminyl => "Gln2Ac",
+            Self::Acid => "A",
+            Self::Alanyl => "Ala",
+            Self::Alcohol => "ol",
+            Self::Amino => "N",
+            Self::Aric => "aric",
+            Self::CargoxyEthylidene => "Pyr",
+            Self::Deoxy => "d",
+            Self::Didehydro => "en",
+            Self::DiHydroxyButyryl => "3,4Hb",
+            Self::DiMethyl => "DiMe",
+            Self::DiMethylAcetimidoyl => "AmMe2",
+            Self::DiMethylGlyceryl => "Gr2,3Me2",
+            Self::Ethanolamine => "Etn",
+            Self::Element(el) => el.symbol(),
+            Self::EtOH => "EtOH",
+            Self::Formyl => "Fo",
+            Self::Glyceryl => "Gr",
+            Self::Glycolyl => "Gc",
+            Self::Glycyl => "Gly",
+            Self::HydroxyButyryl => "Hb",
+            Self::HydroxyMethyl => "HMe",
+            Self::Lac => "Lac",
+            Self::Lactyl => "Lt",
+            Self::Methyl => "Me",
+            Self::MethylAcetimidoyl => "AmMe",
+            Self::MethylGlutamyl => "5Glu2Me",
+            Self::NAcetyl => "NAc",
+            Self::NDiMe => "NDiMe",
+            Self::NFo => "NFo",
+            Self::NGlycolyl => "NGc",
+            Self::OCarboxyEthyl => "carboxyethyl",
+            Self::PCholine => "PCho",
+            Self::Phosphate => "P",
+            Self::Pyruvyl => "Py",
+            Self::Suc => "Suc",
+            Self::Sulfate => "S",
+            Self::Tauryl => "Tau",
+            Self::Ulo => "ulo",
+            Self::Ulof => "ulof",
+            Self::Water => "water_loss",
+        }
+    }
+}
+
 impl Display for GlycanSubstituent {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "{}",
-            match self {
-                Self::Acetimidoyl => "Am".to_string(),
-                Self::Acetyl => "Ac".to_string(),
-                Self::AcetylAlanyl => "Ala2Ac".to_string(),
-                Self::AcetylGlutaminyl => "Gln2Ac".to_string(),
-                Self::Acid => "A".to_string(),
-                Self::Alanyl => "Ala".to_string(),
-                Self::Alcohol => "ol".to_string(),
-                Self::Amino => "N".to_string(),
-                Self::Aric => "aric".to_string(),
-                Self::CargoxyEthylidene => "Pyr".to_string(),
-                Self::Deoxy => "d".to_string(),
-                Self::Didehydro => "en".to_string(),
-                Self::DiHydroxyButyryl => "3,4Hb".to_string(),
-                Self::DiMethyl => "DiMe".to_string(),
-                Self::DiMethylAcetimidoyl => "AmMe2".to_string(),
-                Self::DiMethylGlyceryl => "Gr2,3Me2".to_string(),
-                Self::Ethanolamine => "Etn".to_string(),
-                Self::Element(el) => el.to_string(),
-                Self::EtOH => "EtOH".to_string(),
-                Self::Formyl => "Fo".to_string(),
-                Self::Glyceryl => "Gr".to_string(),
-                Self::Glycolyl => "Gc".to_string(),
-                Self::Glycyl => "Gly".to_string(),
-                Self::HydroxyButyryl => "Hb".to_string(),
-                Self::HydroxyMethyl => "HMe".to_string(),
-                Self::Lac => "Lac".to_string(),
-                Self::Lactyl => "Lt".to_string(),
-                Self::Methyl => "Me".to_string(),
-                Self::MethylAcetimidoyl => "AmMe".to_string(),
-                Self::MethylGlutamyl => "5Glu2Me".to_string(),
-                Self::NAcetyl => "NAc".to_string(),
-                Self::NDiMe => "NDiMe".to_string(),
-                Self::NFo => "NFo".to_string(),
-                Self::NGlycolyl => "NGc".to_string(),
-                Self::OCarboxyEthyl => "carboxyethyl".to_string(),
-                Self::PCholine => "PCho".to_string(),
-                Self::Phosphate => "P".to_string(),
-                Self::Pyruvyl => "Py".to_string(),
-                Self::Suc => "Suc".to_string(),
-                Self::Sulfate => "S".to_string(),
-                Self::Tauryl => "Tau".to_string(),
-                Self::Ulo => "ulo".to_string(),
-                Self::Ulof => "ulof".to_string(),
-                Self::Water => "water_loss".to_string(),
-            }
-        )
+        write!(f, "{}", self.notation())
     }
 }
 
