@@ -102,6 +102,7 @@ fn test_rendering() {
         ("G09073GJ","GalNAc(?1-?)GlcA2,3NAc2(?1-?)D-FucNAc"),
         ("G00069DT","Neu(a2-3)Gal(b1-4)GlcNAc(b1-3)Gal(b1-4)GlcNAc(b1-3)Gal(b1-4)Glc(b1-"),
         ("G00468KU","GlcNAc(b1-2)Man(a1-3)[GlcNAc(b1-4)][Man(a1-?)Man(a1-6)]Man(b1-4)GlcNAc(b1-4)GlcNAc(?1-"),
+        ("G75079FY","Neu5Ac(?2-?)Gal(?1-?)GlcNAc(?1-?)Man(?1-?)[Neu5Ac(?2-?)Gal(?1-?)GlcNAc(?1-?)Man(?1-?)][GlcNAc(?1-?)]Man(?1-?)GlcNAc(?1-?)[Fuc(?1-?)]GlcNAc"),
     ];
 
     let mut context = ScaleContext::new();
@@ -326,6 +327,19 @@ fn test_rendering() {
             ),
         ),
         (
+            // Y5
+            21,
+            GlycanSelection::Subtree(
+                None,
+                &[GlycanPosition {
+                    inner_depth: 0,
+                    series_number: 5,
+                    branch: Vec::new(),
+                    attachment: None,
+                }],
+            ),
+        ),
+        (
             // B3Y1gY2bY2a
             21,
             GlycanSelection::Subtree(
@@ -445,6 +459,19 @@ fn test_rendering() {
                 branch: vec![(2, 1)],
                 attachment: None,
             }),
+        ),
+        (
+            // B4a'
+            22,
+            GlycanSelection::Subtree(
+                Some(&GlycanPosition {
+                    inner_depth: 3,
+                    series_number: 4,
+                    branch: vec![(0, 0), (1, 1)],
+                    attachment: None,
+                }),
+                &[],
+            ),
         ),
     ] {
         let structure =

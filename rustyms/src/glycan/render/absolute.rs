@@ -1,5 +1,3 @@
-use std::borrow::Cow;
-
 use itertools::Itertools;
 
 use crate::{
@@ -116,6 +114,7 @@ impl GlycanStructure {
                         .unwrap()
                 })
                 .enumerate()
+                .sorted_unstable_by(|a, b| (a.1 .0.cmp(&b.1 .0)))
             {
                 let mut new_path = path.to_vec();
                 new_path.push((branch_index, mass_index));
@@ -258,6 +257,7 @@ pub enum GlycanDirection {
 }
 
 /// A subtree of a rendered glycan, used to restrict the canvas for glycan fragments
+#[derive(Debug, Clone)]
 pub(super) struct SubTree<'a> {
     /// The root for this sub tree
     pub(super) tree: &'a AbsolutePositionedGlycan,
@@ -376,6 +376,7 @@ impl AbsolutePositionedGlycan {
                 let mut tree = self;
                 let mut depth = 0;
                 let mut branch_choices = start.branch.clone();
+                branch_choices.reverse();
                 while depth < start.inner_depth {
                     depth += 1;
 
@@ -388,10 +389,8 @@ impl AbsolutePositionedGlycan {
                             tree = tree
                                 .branches
                                 .iter()
-                                .find(|b| b.branch_index == index.0)
-                                .or_else(|| {
-                                    tree.sides.iter().find(|b| b.branch_index == index.0)
-                                })?;
+                                .chain(tree.sides.iter())
+                                .find(|b| b.branch_index == index.0)?;
                         }
                     }
                 }
@@ -414,6 +413,7 @@ impl AbsolutePositionedGlycan {
                 let mut tree = self;
                 let mut depth = 0;
                 let mut branch_choices = position.branch.clone();
+                branch_choices.reverse();
                 while depth < position.inner_depth {
                     depth += 1;
 
@@ -437,12 +437,9 @@ impl AbsolutePositionedGlycan {
                 let rules = tree
                     .branches
                     .iter()
-                    .enumerate()
-                    .map(|(branch_index, _)| {
-                        (
-                            1,
-                            [position.branch.clone(), vec![(branch_index, branch_index)]].concat(),
-                        )
+                    .chain(tree.sides.iter())
+                    .map(|b| {
+                        (1, vec![(b.branch_index, b.branch_index)])
                         // TODO: the mass_index should be stored here, but currently that is unused so for now this does not introduce incorrect behaviour
                     })
                     .collect_vec();

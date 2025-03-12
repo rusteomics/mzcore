@@ -149,6 +149,7 @@ pub enum GlycanRoot {
 }
 
 /// The selected (part) of a glycan to render, using [`Self::FULL`] is a shortcut to get the full glycan.
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum GlycanSelection<'a> {
     /// A subtree of the glycan, with potentially a break of the root of the subtree and breaks in the branches.
     /// If no breaks are specified the full glycan is shown. The root is the first monosaccharide to be included
@@ -907,21 +908,69 @@ impl AbsolutePositionedGlycan {
                 }
             }
         };
-        render_element(
-            &mut buffer,
-            sub_tree.tree,
-            column_size,
-            sugar_size,
-            stroke_size,
-            direction,
-            sub_tree.left_offset,
-            sub_tree.tree.y as f32 - (depth - 1.0),
-            &sub_tree.branch_breaks,
-            foreground,
-            background,
-            pick_box(stroke, direction),
-            footnotes,
-        );
+
+        // If the full glycan has broken off immediately draw the break symbol
+        if sub_tree.branch_breaks.iter().any(|r| r.0 == 0) {
+            let origin_y = depth.mul_add(column_size, (column_size - sugar_size) / 2.0);
+            let base_x =
+                (sub_tree.tree.x + sub_tree.tree.mid_point - sub_tree.left_offset) * column_size;
+            let base_y = (depth - 0.5).mul_add(column_size, stroke_size * 0.5);
+            let angle = -PI / 2.0; // Always straight
+            buffer.push(Element::Line {
+                from: pick_point((base_x, origin_y), direction),
+                to: pick_point((base_x, base_y), direction),
+                stroke: foreground,
+                stroke_size,
+            });
+            let x1 = (sugar_size / 2.0).mul_add(0.5f32.mul_add(PI, -angle).cos(), base_x);
+            let y1 = (sugar_size / 2.0).mul_add(-0.5f32.mul_add(PI, -angle).sin(), base_y);
+            let x2 = (sugar_size / 2.0).mul_add(-0.5f32.mul_add(PI, -angle).cos(), base_x);
+            let y2 = (sugar_size / 2.0).mul_add(0.5f32.mul_add(PI, -angle).sin(), base_y);
+            buffer.push(Element::Line {
+                from: pick_point((x1, y1), direction),
+                to: pick_point((x2, y2), direction),
+                stroke: foreground,
+                stroke_size,
+            });
+            let x3 = (stroke_size * 2.0).mul_add(-angle.cos(), x1);
+            let y3 = (stroke_size * 2.0).mul_add(-angle.sin(), y1);
+            buffer.push(Element::Line {
+                from: pick_point((x1, y1), direction),
+                to: pick_point((x3, y3), direction),
+                stroke: foreground,
+                stroke_size,
+            });
+            let offset = 0.25f32.mul_add(column_size, stroke_size);
+            let r = 0.25f32
+                .mul_add(column_size, -stroke_size)
+                .min(sugar_size * 0.25);
+            let adjusted_x = offset.mul_add(-angle.cos(), base_x);
+            let adjusted_y = offset.mul_add(-angle.sin(), base_y);
+            buffer.push(Element::Circle {
+                r,
+                center: pick_point((adjusted_x, adjusted_y), direction),
+                fill: None,
+                stroke: foreground,
+                stroke_size,
+                svg_header: String::new(),
+            });
+        } else {
+            render_element(
+                &mut buffer,
+                sub_tree.tree,
+                column_size,
+                sugar_size,
+                stroke_size,
+                direction,
+                sub_tree.left_offset,
+                sub_tree.tree.y as f32 - (depth - 1.0),
+                &sub_tree.branch_breaks,
+                foreground,
+                background,
+                pick_box(stroke, direction),
+                footnotes,
+            );
+        }
 
         Some(RenderedGlycan {
             size,
