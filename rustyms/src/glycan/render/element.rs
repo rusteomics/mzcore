@@ -96,7 +96,7 @@ pub(super) enum TextBaseline {
 /// _Glycan [G01670UQ](http://glytoucan.org/Structures/Glycans/G01670UQ) using the different root types: None, Line, Symbol, Text("pep"), Text("N"), Text("Arg")_
 ///
 /// ```rust
-/// # use rustyms::glycan::{GlycanStructure, GlycanDirection, GlycanRoot};
+/// # use rustyms::glycan::{GlycanStructure, GlycanDirection, GlycanRoot, GlycanSelection};
 /// const COLUMN_SIZE: f32 = 30.0;
 /// const SUGAR_SIZE: f32 = 15.0;
 /// const STROKE_SIZE: f32 = 1.5;
@@ -119,8 +119,7 @@ pub(super) enum TextBaseline {
 ///             SUGAR_SIZE,
 ///             STROKE_SIZE,
 ///             GlycanDirection::TopDown,
-///             None,
-///             &[],
+///             GlycanSelection::FULL,
 ///             [0, 0, 0],
 ///             [255, 255, 255],
 ///             &mut footnotes,
