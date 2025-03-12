@@ -1,5 +1,5 @@
 mod absolute;
-#[cfg(feature = "zeno")]
+#[cfg(feature = "glycan-render-bitmap")]
 mod bitmap;
 mod element;
 mod shape;

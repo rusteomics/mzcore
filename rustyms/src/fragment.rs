@@ -9,8 +9,10 @@ use itertools::Itertools;
 use ordered_float::OrderedFloat;
 use serde::{Deserialize, Serialize};
 
+#[cfg(feature = "glycan-render")]
+use crate::glycan::GlycanSelection;
 use crate::{
-    glycan::{GlycanBranchIndex, GlycanBranchMassIndex, GlycanSelection, MonoSaccharide},
+    glycan::{GlycanBranchIndex, GlycanBranchMassIndex, MonoSaccharide},
     model::ChargeRange,
     molecular_charge::{CachedCharge, MolecularCharge},
     system::{
@@ -432,6 +434,8 @@ impl FragmentType {
     }
 
     /// Get the glycan break positions of this ion (or None if not applicable), gives the sequence index, the root break, and the branch breaks.
+    /// Only available with feature 'glycan-render'.
+    #[cfg(feature = "glycan-render")]
     pub fn glycan_break_positions(&self) -> Option<(Option<usize>, GlycanSelection<'_>)> {
         match self {
             Self::B(n) => Some((

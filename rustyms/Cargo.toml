@@ -52,13 +52,15 @@ default = [
     "isotopes",
     "rand",
     "mzdata",
-    "bitmap",
+    "glycan-render",
+    "glycan-render-bitmap",
 ]
 imgt = []
 align = []
 identification = []
 isotopes = ["probability", "ndarray"]
-bitmap = ["zeno", "swash"]
+glycan-render = []
+glycan-render-bitmap = ["zeno", "swash", "glycan-render"]
 
 [[bench]]
 name = "iai"
