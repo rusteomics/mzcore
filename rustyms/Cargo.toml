@@ -13,7 +13,6 @@ repository = "https://github.com/snijderlab/rustyms"
 readme = "README.md"
 include = [
     "src/**/*",
-    "databases/**/*.gz",
     "README.md",
     "build.rs",
     "benches/**/*",
@@ -32,12 +31,17 @@ rayon = { workspace = true, optional = true }
 regex = { workspace = true }
 serde = { workspace = true }
 similar = { workspace = true }
+swash = {workspace = true, optional = true}
 thin-vec = { workspace = true }
 uom = { workspace = true }
+zeno = { workspace = true, optional = true }
 
 [dev-dependencies]
+base64 = { workspace = true }
 iai-callgrind = { workspace = true }
+png = { workspace = true }
 serde_json = { workspace = true }
+directories = {workspace = true}
 
 [features]
 default = [
@@ -48,11 +52,15 @@ default = [
     "isotopes",
     "rand",
     "mzdata",
+    "glycan-render",
+    "glycan-render-bitmap",
 ]
 imgt = []
 align = []
 identification = []
 isotopes = ["probability", "ndarray"]
+glycan-render = []
+glycan-render-bitmap = ["zeno", "swash", "glycan-render"]
 
 [[bench]]
 name = "iai"
