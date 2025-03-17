@@ -3,7 +3,8 @@ use std::marker::PhantomData;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    AminoAcid, Chemical, MolecularFormula, Multi, MultiChemical, SemiAmbiguous, UnAmbiguous,
+    aminoacids::IsAminoAcid, AminoAcid, Chemical, MolecularFormula, Multi, MultiChemical,
+    SemiAmbiguous, UnAmbiguous,
 };
 
 /// A checked amino acid. This wraps an [`AminoAcid`] to keep track of the maximal complexity of
@@ -279,24 +280,48 @@ impl<T> CheckedAminoAcid<T> {
         self.aminoacid.canonical_identical(rhs.aminoacid)
     }
 
-    /// Get the description of the amino acid as a single character
-    pub const fn char(self) -> char {
-        self.aminoacid.char()
-    }
-
-    /// Get the 3 letter code for the amino acid
-    pub const fn code(self) -> &'static str {
-        self.aminoacid.code()
-    }
-
-    /// Get the full name of the amino acid
-    pub const fn name(self) -> &'static str {
-        self.aminoacid.name()
-    }
-
     /// Get the underlying (unchecked) amino acid
     pub const fn aminoacid(self) -> AminoAcid {
         self.aminoacid
+    }
+}
+
+impl<T> IsAminoAcid for CheckedAminoAcid<T> {
+    fn name(&self) -> std::borrow::Cow<'_, str> {
+        self.aminoacid.name()
+    }
+
+    fn three_letter_code(&self) -> Option<std::borrow::Cow<'_, str>> {
+        self.aminoacid.three_letter_code()
+    }
+
+    fn one_letter_code(&self) -> Option<char> {
+        self.aminoacid.one_letter_code()
+    }
+
+    fn pro_forma_definition(&self) -> std::borrow::Cow<'_, str> {
+        self.aminoacid.pro_forma_definition()
+    }
+
+    fn immonium_losses(&self) -> std::borrow::Cow<'_, [crate::NeutralLoss]> {
+        self.aminoacid.immonium_losses()
+    }
+
+    fn satellite_ion_fragments(
+        &self,
+        sequence_index: crate::SequencePosition,
+        peptidoform_index: usize,
+    ) -> Option<std::borrow::Cow<'_, Multi<MolecularFormula>>> {
+        self.aminoacid
+            .satellite_ion_fragments(sequence_index, peptidoform_index)
+    }
+
+    fn side_chain(
+        &self,
+        sequence_index: crate::SequencePosition,
+        peptidoform_index: usize,
+    ) -> std::borrow::Cow<'_, Multi<MolecularFormula>> {
+        self.aminoacid.side_chain(sequence_index, peptidoform_index)
     }
 }
 
@@ -398,7 +423,7 @@ impl<T> Default for CheckedAminoAcid<T> {
 
 impl<T> std::fmt::Display for CheckedAminoAcid<T> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.char())
+        write!(f, "{}", self.pro_forma_definition())
     }
 }
 

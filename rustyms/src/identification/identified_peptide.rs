@@ -506,9 +506,9 @@ impl IdentifiedPeptide {
                 precursor_mz: mz, ..
             })
             | MetaData::MSFragger(MSFraggerData { mz, .. }) => Some(*mz),
-            MetaData::MZTab(MZTabData { mz, .. }) | MetaData::MaxQuant(MaxQuantData { mz, .. }) => {
-                *mz
-            }
+            MetaData::MZTab(MZTabData { mz, .. })
+            | MetaData::MaxQuant(MaxQuantData { mz, .. })
+            | MetaData::DeepNovoFamily(DeepNovoFamilyData { mz, .. }) => *mz,
             MetaData::Sage(SageData { mass, z, .. })
             | MetaData::NovoB(NovoBData { mass, z, .. })
             | MetaData::PLink(PLinkData { mass, z, .. }) => {
@@ -516,8 +516,7 @@ impl IdentifiedPeptide {
                     mass.value / (z.value as f64),
                 ))
             }
-            MetaData::DeepNovoFamily(_)
-            | MetaData::Fasta(_)
+            MetaData::Fasta(_)
             | MetaData::SpectrumSequenceList(_)
             | MetaData::PowerNovo(_)
             | MetaData::PepNet(_) => None,

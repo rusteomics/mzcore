@@ -4,7 +4,7 @@ use std::str::FromStr;
 
 use crate::imgt_gene::IMGTGene;
 use crate::shared::{AnnotatedSequence, Gene, Species};
-use rustyms::AminoAcid;
+use rustyms::{AminoAcid, IsAminoAcid};
 
 #[derive(Debug)]
 pub struct DataItem {
@@ -57,7 +57,12 @@ impl Display for Region {
             // self.found_seq.0,
             self.found_seq
                 .as_ref()
-                .map(|seq| seq.1 .0.iter().map(|a| a.char()).collect::<String>())
+                .map(|seq| seq
+                    .1
+                     .0
+                    .iter()
+                    .map(|a| a.pro_forma_definition())
+                    .collect::<String>())
                 .unwrap_or_else(|e| format!("<NO SEQ!>: {e}")),
         )
     }
@@ -237,7 +242,10 @@ impl std::fmt::Debug for AASequence {
         write!(
             f,
             "[{}]",
-            self.0.iter().map(|a| a.char()).collect::<String>()
+            self.0
+                .iter()
+                .map(|a| a.pro_forma_definition())
+                .collect::<String>()
         )
     }
 }
