@@ -7,11 +7,12 @@ license.workspace = true
 publish = false
 
 [dependencies]
-rustyms = { path = "../../rustyms" }
 clap = { workspace = true }
 directories = { workspace = true }
 itertools = { workspace = true }
+mzdata = { workspace = true, default-features=false, features = ["mgf", "mzml"]  }
 rayon = { workspace = true }
+rustyms = { path = "../../rustyms", default-features=false, features = ["mzdata"] }
 serde_json = { workspace = true }
 
 [lints]
