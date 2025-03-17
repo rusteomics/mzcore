@@ -27,7 +27,14 @@ pub struct PositionedGlycanStructure {
     pub(super) branches: Vec<PositionedGlycanStructure>,
     pub(super) inner_depth: usize,
     pub(super) outer_depth: usize,
-    /// The branches taken to get to this location (from the root) as the index in the branches and the index in the branches when sorted on mass
+    /// The branches taken to get to this location (from the root) as the index in the branches and the index in the branches when sorted by mass.
+    /// For a general glycan with a fucose on the first hexnac and a bisection after the core double
+    /// hexnac + hex, this variable will contain an empty list for the root hexnac. For the fucose
+    /// this variable will contain `[(0, 1)]` indicating it is the first branch in the structure but
+    /// the second branch if the branches are sorted by mass. For the monosaccharides in the left
+    /// bisection this variable will contain `[(1, 0), (0, 0)]`, indicating that it took the main
+    /// branch (and not the fucose) and that it took the left branch for the second bisection which
+    /// is heavier than the right branch.
     pub(super) branch: Vec<(GlycanBranchIndex, GlycanBranchMassIndex)>,
 }
 

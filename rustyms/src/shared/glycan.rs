@@ -625,7 +625,10 @@ pub enum HeptoseIsomer {
     Sedoheptulose,
 }
 
-/// Any 9 carbon glycan, these isomers are modification specific (need the correct substituents applied to be meaningful)
+/// Any 9 carbon glycan, these isomers are modification specific (need the correct substituents
+/// applied to be meaningful). These are to be used only to store isomeric state that was inferred
+/// from other sources that cannot be tracked in other ways in the current structure. Any isomer
+/// used that does not have the correct monosaccharide substituents applied is meaningless.
 #[allow(dead_code)]
 #[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Serialize, Deserialize)]
 pub enum NonoseIsomer {
@@ -648,10 +651,6 @@ pub enum GlycanSubstituent {
     Acetimidoyl,
     ///`Ac` acetyl
     Acetyl,
-    ///`Ala2Ac` N-acetyl-D-alanyl
-    AcetylAlanyl,
-    ///`Gln2Ac` N-acetyl-glutaminyl
-    AcetylGlutaminyl,
     ///`A` acid
     Acid,
     ///`Ala` D-alanyl
@@ -666,14 +665,8 @@ pub enum GlycanSubstituent {
     CargoxyEthylidene,
     ///`d` Deoxy
     Deoxy,
-    ///`3,4Hb` 3,4-dihydroxybutyryl
-    DiHydroxyButyryl,
     ///`DiMe` two methyl
     DiMethyl,
-    ///`AmMe2` N-(N,N-dimethyl-acetimidoyl)
-    DiMethylAcetimidoyl,
-    ///`Gr2,3Me2` 2,3-di-O-methyl-glyceryl
-    DiMethylGlyceryl,
     ///`en` didehydro an addition of a double bond
     Didehydro,
     ///`An` element that replaces a side chain
@@ -700,10 +693,6 @@ pub enum GlycanSubstituent {
     Lactyl,
     ///`Me` methyl
     Methyl,
-    ///`AmMe` N-(N-methyl-acetimidoyl)
-    MethylAcetimidoyl,
-    ///5Glu2Me N-methyl-5-glutamyl
-    MethylGlutamyl,
     ///`NAc` N-acetyl
     NAcetyl,
     ///`N2DiMe` N linked double methyl
@@ -740,8 +729,6 @@ impl GlycanSubstituent {
         match self {
             Self::Acetimidoyl => "Am",
             Self::Acetyl => "Ac",
-            Self::AcetylAlanyl => "Ala2Ac",
-            Self::AcetylGlutaminyl => "Gln2Ac",
             Self::Acid => "A",
             Self::Alanyl => "Ala",
             Self::Alcohol => "ol",
@@ -750,10 +737,7 @@ impl GlycanSubstituent {
             Self::CargoxyEthylidene => "Pyr",
             Self::Deoxy => "d",
             Self::Didehydro => "en",
-            Self::DiHydroxyButyryl => "3,4Hb",
-            Self::DiMethyl => "DiMe",
-            Self::DiMethylAcetimidoyl => "AmMe2",
-            Self::DiMethylGlyceryl => "Gr2,3Me2",
+            Self::DiMethyl => "Me2",
             Self::Ethanolamine => "Etn",
             Self::Element(el) => el.symbol(),
             Self::EtOH => "EtOH",
@@ -766,8 +750,6 @@ impl GlycanSubstituent {
             Self::Lac => "Lac",
             Self::Lactyl => "Lt",
             Self::Methyl => "Me",
-            Self::MethylAcetimidoyl => "AmMe",
-            Self::MethylGlutamyl => "5Glu2Me",
             Self::NAcetyl => "NAc",
             Self::NDiMe => "NDiMe",
             Self::NFo => "NFo",
@@ -801,8 +783,6 @@ impl Chemical for GlycanSubstituent {
         let side = match self {
             Self::Acetimidoyl => molecular_formula!(H 5 C 2 N 1),
             Self::Acetyl => molecular_formula!(H 3 C 2 O 1),
-            Self::AcetylAlanyl => molecular_formula!(H 8 C 5 N 1 O 2),
-            Self::AcetylGlutaminyl => molecular_formula!(H 11 C 7 N 2 O 3),
             Self::Acid => molecular_formula!(H -1 O 2), // Together with the replacement below this is H-2 O+1
             Self::Alanyl => molecular_formula!(H 6 C 3 N 1 O 1),
             Self::Alcohol => molecular_formula!(H 3 O 1), // Together with the replacement below this is H+2
@@ -811,10 +791,7 @@ impl Chemical for GlycanSubstituent {
             Self::CargoxyEthylidene => molecular_formula!(H 3 C 3 O 3), // double substituent, calculated to work with the additional side chain deletion
             Self::Deoxy => molecular_formula!(H 1), // Together with the replacement below this is O-1
             Self::Didehydro => molecular_formula!(H -1 O 1), // Together with the replacement below this is H-2
-            Self::DiHydroxyButyryl => molecular_formula!(H 7 C 4 O 3),
             Self::DiMethyl => molecular_formula!(H 5 C 2), // assumed to replace the both the OH and H on a single carbon
-            Self::DiMethylAcetimidoyl => molecular_formula!(H 9 C 4 N 1),
-            Self::DiMethylGlyceryl => molecular_formula!(H 9 C 5 O 3),
             Self::Ethanolamine => molecular_formula!(H 6 C 2 N 1 O 1),
             Self::EtOH => molecular_formula!(H 5 C 2 O 2),
             Self::Element(el) => MolecularFormula::new(&[(*el, None, 1)], &[]).unwrap(),
@@ -826,8 +803,6 @@ impl Chemical for GlycanSubstituent {
             Self::HydroxyMethyl | Self::Ulo => molecular_formula!(H 3 C 1 O 2), // Ulo: replaces H, together with replacement below this is H2C1O1
             Self::Lactyl => molecular_formula!(H 5 C 3 O 2),
             Self::Methyl => molecular_formula!(H 3 C 1),
-            Self::MethylAcetimidoyl => molecular_formula!(H 7 C 3 N 1),
-            Self::MethylGlutamyl => molecular_formula!(H 10 C 6 N 1 O 3),
             Self::NDiMe => molecular_formula!(H 6 C 2 N 1),
             Self::NFo => molecular_formula!(H 2 C 1 N 1 O 1),
             Self::NGlycolyl => molecular_formula!(H 4 C 2 N 1 O 2),

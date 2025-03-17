@@ -231,7 +231,7 @@ impl MonoSaccharide {
                             o_carboxy_ethyl,
                         ),
                     )
-                } else if acid > 0 {
+                } else if acid > 0 || amino > 0 || nacetyl > 0 {
                     let c = match isomer {
                         Some(HexoseIsomer::Glucose) => Colour::Blue,
                         Some(HexoseIsomer::Mannose) => Colour::Green,
@@ -243,68 +243,21 @@ impl MonoSaccharide {
                         Some(HexoseIsomer::Idose) => Colour::Brown,
                         Some(_) | None => Colour::Background,
                     };
-                    (
-                        Shape::DividedDiamond,
-                        c,
-                        inner_modifications,
-                        outer_mods(
-                            nacetyl,
-                            acid - 1,
-                            amino,
-                            deoxy,
-                            acetyl,
-                            glycolyl,
-                            nglycolyl,
-                            o_carboxy_ethyl,
-                        ),
-                    )
-                } else if amino > 0 {
-                    let c = match isomer {
-                        Some(HexoseIsomer::Glucose) => Colour::Blue,
-                        Some(HexoseIsomer::Mannose) => Colour::Green,
-                        Some(HexoseIsomer::Galactose) => Colour::Yellow,
-                        Some(HexoseIsomer::Gulose) => Colour::Orange,
-                        Some(HexoseIsomer::Altrose) => Colour::Pink,
-                        Some(HexoseIsomer::Allose) => Colour::Purple,
-                        Some(HexoseIsomer::Talose) => Colour::LightBlue,
-                        Some(HexoseIsomer::Idose) => Colour::Brown,
-                        Some(_) | None => Colour::Background,
+                    let shape = if acid > 0 {
+                        Shape::DividedDiamond
+                    } else if amino > 0 {
+                        Shape::CrossedSquare
+                    } else {
+                        Shape::Square
                     };
                     (
-                        Shape::CrossedSquare,
+                        shape,
                         c,
                         inner_modifications,
                         outer_mods(
-                            nacetyl,
-                            acid,
-                            amino - 1,
-                            deoxy,
-                            acetyl,
-                            glycolyl,
-                            nglycolyl,
-                            o_carboxy_ethyl,
-                        ),
-                    )
-                } else if nacetyl > 0 {
-                    let c = match isomer {
-                        Some(HexoseIsomer::Glucose) => Colour::Blue,
-                        Some(HexoseIsomer::Mannose) => Colour::Green,
-                        Some(HexoseIsomer::Galactose) => Colour::Yellow,
-                        Some(HexoseIsomer::Gulose) => Colour::Orange,
-                        Some(HexoseIsomer::Altrose) => Colour::Pink,
-                        Some(HexoseIsomer::Allose) => Colour::Purple,
-                        Some(HexoseIsomer::Talose) => Colour::LightBlue,
-                        Some(HexoseIsomer::Idose) => Colour::Brown,
-                        Some(_) | None => Colour::Background,
-                    };
-                    (
-                        Shape::Square,
-                        c,
-                        inner_modifications,
-                        outer_mods(
-                            nacetyl - 1,
-                            acid,
-                            amino,
+                            nacetyl - usize::from(shape == Shape::Square),
+                            acid - usize::from(shape == Shape::DividedDiamond),
+                            amino - usize::from(shape == Shape::CrossedSquare),
                             deoxy,
                             acetyl,
                             glycolyl,
