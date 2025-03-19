@@ -344,11 +344,11 @@ pub enum FragmentType {
     /// c
     c(PeptidePosition),
     /// d
-    d(PeptidePosition),
+    d(PeptidePosition, AminoAcid, u8),
     /// v
-    v(PeptidePosition),
+    v(PeptidePosition, AminoAcid, u8),
     /// w
-    w(PeptidePosition),
+    w(PeptidePosition, AminoAcid, u8),
     /// x
     x(PeptidePosition),
     /// y
@@ -401,9 +401,9 @@ impl FragmentType {
             Self::a(n)
             | Self::b(n)
             | Self::c(n)
-            | Self::d(n)
-            | Self::v(n)
-            | Self::w(n)
+            | Self::d(n, _, _)
+            | Self::v(n, _, _)
+            | Self::w(n, _, _)
             | Self::x(n)
             | Self::y(n)
             | Self::z(n)
@@ -429,9 +429,9 @@ impl FragmentType {
             Self::a(n)
             | Self::b(n)
             | Self::c(n)
-            | Self::d(n)
-            | Self::v(n)
-            | Self::w(n)
+            | Self::d(n, _, _)
+            | Self::v(n, _, _)
+            | Self::w(n, _, _)
             | Self::x(n)
             | Self::y(n)
             | Self::z(n)
@@ -472,9 +472,12 @@ impl FragmentType {
             Self::a(_) => Cow::Borrowed("a"),
             Self::b(_) => Cow::Borrowed("b"),
             Self::c(_) => Cow::Borrowed("c"),
-            Self::d(_) => Cow::Borrowed("d"),
-            Self::v(_) => Cow::Borrowed("v"),
-            Self::w(_) => Cow::Borrowed("w"),
+            Self::d(_, _, 0) => Cow::Borrowed("d"),
+            Self::d(_, _, n) => Cow::Owned(format!("{n}d")),
+            Self::v(_, _, 0) => Cow::Borrowed("v"),
+            Self::v(_, _, n) => Cow::Owned(format!("{n}v")),
+            Self::w(_, _, 0) => Cow::Borrowed("w"),
+            Self::w(_, _, n) => Cow::Owned(format!("{n}w")),
             Self::x(_) => Cow::Borrowed("x"),
             Self::y(_) => Cow::Borrowed("y"),
             Self::z(_) => Cow::Borrowed("z"),
@@ -511,9 +514,9 @@ impl FragmentType {
             Self::a(_) => FragmentKind::a,
             Self::b(_) => FragmentKind::b,
             Self::c(_) => FragmentKind::c,
-            Self::d(_) => FragmentKind::d,
-            Self::v(_) => FragmentKind::v,
-            Self::w(_) => FragmentKind::w,
+            Self::d(_, _, _) => FragmentKind::d,
+            Self::v(_, _, _) => FragmentKind::v,
+            Self::w(_, _, _) => FragmentKind::w,
             Self::x(_) => FragmentKind::x,
             Self::y(_) => FragmentKind::y,
             Self::z(_) | Self::z·(_) => FragmentKind::z,

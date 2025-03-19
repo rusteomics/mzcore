@@ -11,6 +11,28 @@ pub enum SequencePosition {
     CTerm,
 }
 
+/// Add to the index, the onus of making sure the index is still valid for the peptide is on the caller.
+impl std::ops::Add<u8> for SequencePosition {
+    type Output = Self;
+    fn add(self, rhs: u8) -> Self::Output {
+        match self {
+            Self::Index(i) => Self::Index(i.saturating_add(rhs as usize)),
+            n => n,
+        }
+    }
+}
+
+/// Subtract from the index, the onus of making sure the index is still valid for the peptide is on the caller.
+impl std::ops::Sub<u8> for SequencePosition {
+    type Output = Self;
+    fn sub(self, rhs: u8) -> Self::Output {
+        match self {
+            Self::Index(i) => Self::Index(i.saturating_sub(rhs as usize)),
+            n => n,
+        }
+    }
+}
+
 impl Default for SequencePosition {
     fn default() -> Self {
         Self::Index(0)

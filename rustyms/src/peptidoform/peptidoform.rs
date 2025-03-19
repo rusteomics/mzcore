@@ -830,7 +830,7 @@ impl<Complexity> Peptidoform<Complexity> {
                         &mut charge_carriers,
                         SequencePosition::Index(sequence_index),
                         self.sequence.len(),
-                        &model.ions(position),
+                        &model.ions(position, &self),
                         peptidoform_ion_index,
                         peptidoform_index,
                         (
