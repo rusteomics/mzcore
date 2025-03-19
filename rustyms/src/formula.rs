@@ -326,6 +326,7 @@ mod tests {
             &[],
             &mut MolecularCharge::proton(1).into(),
             ChargeRange::ONE,
+            &[0],
         );
         let fragment_u = Fragment::generate_all(
             &unlabelled,
@@ -336,6 +337,7 @@ mod tests {
             &[],
             &mut MolecularCharge::proton(1).into(),
             ChargeRange::ONE,
+            &[0],
         );
         let fragment_ul = Fragment::generate_all(
             &unlabelled,
@@ -346,6 +348,7 @@ mod tests {
             &[],
             &mut MolecularCharge::proton(1).into(),
             ChargeRange::ONE,
+            &[0],
         );
         let all_fragments_labelled = |multi: &[Fragment]| {
             multi

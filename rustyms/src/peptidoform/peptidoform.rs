@@ -875,6 +875,7 @@ impl<Complexity> Peptidoform<Complexity> {
                                     &[],
                                     &mut charge_carriers,
                                     model.precursor.1,
+                                    &[0],
                                 )
                             })
                             .collect_vec()
@@ -917,6 +918,7 @@ impl<Complexity> Peptidoform<Complexity> {
             &precursor_neutral_losses,
             &mut charge_carriers,
             model.precursor.1,
+            &[0],
         ));
 
         // Add glycan fragmentation to all peptide fragments

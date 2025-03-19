@@ -42,7 +42,7 @@ fn triple_a() {
         .c(PrimaryIonSeries::default())
         .x(PrimaryIonSeries::default())
         .y(PrimaryIonSeries::default())
-        .z(PrimaryIonSeries::default());
+        .z(PrimaryIonSeries::default().variants(vec![0, 1]));
     test(
         theoretical_fragments,
         Peptidoform::pro_forma("AAA", None)
@@ -90,7 +90,7 @@ fn with_modifications() {
         .c(PrimaryIonSeries::default())
         .x(PrimaryIonSeries::default())
         .y(PrimaryIonSeries::default())
-        .z(PrimaryIonSeries::default());
+        .z(PrimaryIonSeries::default().variants(vec![0, 1]));
     test(
         theoretical_fragments,
         Peptidoform::pro_forma("[Gln->pyro-Glu]-QAAM[Oxidation]", None).unwrap(),
@@ -334,7 +334,7 @@ fn all_aminoacids() {
         .c(PrimaryIonSeries::default())
         .x(PrimaryIonSeries::default())
         .y(PrimaryIonSeries::default())
-        .z(PrimaryIonSeries::default());
+        .z(PrimaryIonSeries::default().variants(vec![0, 1]));
     test(
         theoretical_fragments,
         Peptidoform::pro_forma("ARNDCQEGHILKMFPSTWYV", None)

@@ -99,20 +99,23 @@ impl Fragment {
         neutral_losses: &[NeutralLoss],
         charge_carriers: &mut CachedCharge,
         charge_range: ChargeRange,
+        variants: &[i8],
     ) -> Vec<Self> {
         termini
             .iter()
             .cartesian_product(theoretical_mass.iter())
             .cartesian_product(charge_carriers.range(charge_range))
             .cartesian_product(std::iter::once(None).chain(neutral_losses.iter().map(Some)))
-            .map(|(((term, mass), charge), loss)| Self {
+            .cartesian_product(variants.iter())
+            .map(|((((term, mass), charge), loss), variant)| Self {
                 formula: Some(
                     term + mass
                         + charge.formula_inner(SequencePosition::default(), peptidoform_index)
-                        + loss.unwrap_or(&NeutralLoss::Gain(MolecularFormula::default())),
+                        + loss.unwrap_or(&NeutralLoss::Gain(MolecularFormula::default()))
+                        + molecular_formula!(H 1) * variant,
                 ),
                 charge: Charge::new::<crate::system::e>(charge.charge().value.try_into().unwrap()),
-                ion: annotation.clone(),
+                ion: annotation.with_variant(*variant),
                 peptidoform_ion_index: Some(peptidoform_ion_index),
                 peptidoform_index: Some(peptidoform_index),
                 neutral_loss: loss.map(|l| vec![l.clone()]).unwrap_or_default(),
@@ -338,25 +341,23 @@ pub enum DiagnosticPosition {
 #[expect(non_camel_case_types)]
 pub enum FragmentType {
     /// a
-    a(PeptidePosition),
+    a(PeptidePosition, i8),
     /// b
-    b(PeptidePosition),
+    b(PeptidePosition, i8),
     /// c
-    c(PeptidePosition),
+    c(PeptidePosition, i8),
     /// d
-    d(PeptidePosition, AminoAcid, u8),
+    d(PeptidePosition, AminoAcid, u8, i8),
     /// v
-    v(PeptidePosition, AminoAcid, u8),
+    v(PeptidePosition, AminoAcid, u8, i8),
     /// w
-    w(PeptidePosition, AminoAcid, u8),
+    w(PeptidePosition, AminoAcid, u8, i8),
     /// x
-    x(PeptidePosition),
+    x(PeptidePosition, i8),
     /// y
-    y(PeptidePosition),
+    y(PeptidePosition, i8),
     /// z
-    z(PeptidePosition),
-    /// z·
-    z·(PeptidePosition),
+    z(PeptidePosition, i8),
     // glycan A fragment (Never generated)
     //A(GlycanPosition),
     /// glycan B fragment
@@ -395,19 +396,34 @@ pub enum FragmentType {
 }
 
 impl FragmentType {
+    /// Get a main ion series fragment with the specified variant, or pass the fragment type through unchanged
+    pub fn with_variant(&self, variant: i8) -> Self {
+        match self {
+            Self::a(p, _) => Self::a(*p, variant),
+            Self::b(p, _) => Self::b(*p, variant),
+            Self::c(p, _) => Self::c(*p, variant),
+            Self::d(p, a, d, _) => Self::d(*p, *a, *d, variant),
+            Self::v(p, a, d, _) => Self::v(*p, *a, *d, variant),
+            Self::w(p, a, d, _) => Self::w(*p, *a, *d, variant),
+            Self::x(p, _) => Self::x(*p, variant),
+            Self::y(p, _) => Self::y(*p, variant),
+            Self::z(p, _) => Self::z(*p, variant),
+            other => other.clone(),
+        }
+    }
+
     /// Get the position of this ion (or None if it is a precursor ion)
     pub const fn position(&self) -> Option<&PeptidePosition> {
         match self {
-            Self::a(n)
-            | Self::b(n)
-            | Self::c(n)
-            | Self::d(n, _, _)
-            | Self::v(n, _, _)
-            | Self::w(n, _, _)
-            | Self::x(n)
-            | Self::y(n)
-            | Self::z(n)
-            | Self::z·(n)
+            Self::a(n, _)
+            | Self::b(n, _)
+            | Self::c(n, _)
+            | Self::d(n, _, _, _)
+            | Self::v(n, _, _, _)
+            | Self::w(n, _, _, _)
+            | Self::x(n, _)
+            | Self::y(n, _)
+            | Self::z(n, _)
             | Self::Diagnostic(DiagnosticPosition::Peptide(n, _))
             | Self::Immonium(n, _)
             | Self::PrecursorSideChainLoss(n, _) => Some(n),
@@ -426,16 +442,15 @@ impl FragmentType {
     /// Get the position label, unless it is a precursor ion
     pub fn position_label(&self) -> Option<String> {
         match self {
-            Self::a(n)
-            | Self::b(n)
-            | Self::c(n)
-            | Self::d(n, _, _)
-            | Self::v(n, _, _)
-            | Self::w(n, _, _)
-            | Self::x(n)
-            | Self::y(n)
-            | Self::z(n)
-            | Self::z·(n)
+            Self::a(n, _)
+            | Self::b(n, _)
+            | Self::c(n, _)
+            | Self::d(n, _, _, _)
+            | Self::v(n, _, _, _)
+            | Self::w(n, _, _, _)
+            | Self::x(n, _)
+            | Self::y(n, _)
+            | Self::z(n, _)
             | Self::Diagnostic(DiagnosticPosition::Peptide(n, _))
             | Self::Immonium(n, _)
             | Self::PrecursorSideChainLoss(n, _) => Some(n.series_number.to_string()),
@@ -469,19 +484,87 @@ impl FragmentType {
     /// Get the label for this fragment type
     pub fn label(&self) -> Cow<str> {
         match self {
-            Self::a(_) => Cow::Borrowed("a"),
-            Self::b(_) => Cow::Borrowed("b"),
-            Self::c(_) => Cow::Borrowed("c"),
-            Self::d(_, _, 0) => Cow::Borrowed("d"),
-            Self::d(_, _, n) => Cow::Owned(format!("{n}d")),
-            Self::v(_, _, 0) => Cow::Borrowed("v"),
-            Self::v(_, _, n) => Cow::Owned(format!("{n}v")),
-            Self::w(_, _, 0) => Cow::Borrowed("w"),
-            Self::w(_, _, n) => Cow::Owned(format!("{n}w")),
-            Self::x(_) => Cow::Borrowed("x"),
-            Self::y(_) => Cow::Borrowed("y"),
-            Self::z(_) => Cow::Borrowed("z"),
-            Self::z·(_) => Cow::Borrowed("z·"),
+            Self::a(_, 0) => Cow::Borrowed("a"),
+            Self::a(_, n) => Cow::Owned(format!(
+                "a{}",
+                if *n < 0 {
+                    "\'".repeat((-n) as usize)
+                } else {
+                    "·".repeat(*n as usize)
+                }
+            )),
+            Self::b(_, 0) => Cow::Borrowed("b"),
+            Self::b(_, n) => Cow::Owned(format!(
+                "b{}",
+                if *n < 0 {
+                    "\'".repeat((-n) as usize)
+                } else {
+                    "·".repeat(*n as usize)
+                }
+            )),
+            Self::c(_, 0) => Cow::Borrowed("c"),
+            Self::c(_, n) => Cow::Owned(format!(
+                "c{}",
+                if *n < 0 {
+                    "\'".repeat((-n) as usize)
+                } else {
+                    "·".repeat(*n as usize)
+                }
+            )),
+            Self::d(_, _, 0, 0) => Cow::Borrowed("d"),
+            Self::d(_, _, n, v) => Cow::Owned(format!(
+                "{n}d{}",
+                if *v < 0 {
+                    "\'".repeat((-v) as usize)
+                } else {
+                    "·".repeat(*v as usize)
+                }
+            )),
+            Self::v(_, _, 0, 0) => Cow::Borrowed("v"),
+            Self::v(_, _, n, v) => Cow::Owned(format!(
+                "{n}v{}",
+                if *v < 0 {
+                    "\'".repeat((-v) as usize)
+                } else {
+                    "·".repeat(*v as usize)
+                }
+            )),
+            Self::w(_, _, 0, 0) => Cow::Borrowed("w"),
+            Self::w(_, _, n, v) => Cow::Owned(format!(
+                "{n}w{}",
+                if *v < 0 {
+                    "\'".repeat((-v) as usize)
+                } else {
+                    "·".repeat(*v as usize)
+                }
+            )),
+            Self::x(_, 0) => Cow::Borrowed("x"),
+            Self::x(_, n) => Cow::Owned(format!(
+                "x{}",
+                if *n < 0 {
+                    "\'".repeat((-n) as usize)
+                } else {
+                    "·".repeat(*n as usize)
+                }
+            )),
+            Self::y(_, 0) => Cow::Borrowed("y"),
+            Self::y(_, n) => Cow::Owned(format!(
+                "y{}",
+                if *n < 0 {
+                    "\'".repeat((-n) as usize)
+                } else {
+                    "·".repeat(*n as usize)
+                }
+            )),
+            Self::z(_, 0) => Cow::Borrowed("z"),
+            Self::z(_, n) => Cow::Owned(format!(
+                "z{}",
+                if *n < 0 {
+                    "\'".repeat((-n) as usize)
+                } else {
+                    "·".repeat(*n as usize)
+                }
+            )),
             Self::B(_) => Cow::Borrowed("B"),
             Self::Y(_) | Self::YComposition(_, _) => Cow::Borrowed("Y"),
             Self::Diagnostic(DiagnosticPosition::Peptide(_, aa)) => {
@@ -511,15 +594,15 @@ impl FragmentType {
     /// Get the kind of fragment, easier to match against
     pub const fn kind(&self) -> FragmentKind {
         match self {
-            Self::a(_) => FragmentKind::a,
-            Self::b(_) => FragmentKind::b,
-            Self::c(_) => FragmentKind::c,
-            Self::d(_, _, _) => FragmentKind::d,
-            Self::v(_, _, _) => FragmentKind::v,
-            Self::w(_, _, _) => FragmentKind::w,
-            Self::x(_) => FragmentKind::x,
-            Self::y(_) => FragmentKind::y,
-            Self::z(_) | Self::z·(_) => FragmentKind::z,
+            Self::a(_, _) => FragmentKind::a,
+            Self::b(_, _) => FragmentKind::b,
+            Self::c(_, _) => FragmentKind::c,
+            Self::d(_, _, _, _) => FragmentKind::d,
+            Self::v(_, _, _, _) => FragmentKind::v,
+            Self::w(_, _, _, _) => FragmentKind::w,
+            Self::x(_, _) => FragmentKind::x,
+            Self::y(_, _) => FragmentKind::y,
+            Self::z(_, _) => FragmentKind::z,
             Self::Y(_) | Self::YComposition(_, _) => FragmentKind::Y,
             Self::Diagnostic(
                 DiagnosticPosition::Glycan(_, _) | DiagnosticPosition::GlycanCompositional(_, _),

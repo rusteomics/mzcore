@@ -453,9 +453,26 @@ impl Mul<&i32> for &MolecularFormula {
     }
 }
 
+impl Mul<&i8> for &MolecularFormula {
+    type Output = MolecularFormula;
+    fn mul(self, rhs: &i8) -> Self::Output {
+        MolecularFormula {
+            additional_mass: self.additional_mass * f64::from(*rhs),
+            elements: self
+                .elements
+                .iter()
+                .copied()
+                .map(|part| (part.0, part.1, part.2 * *rhs as i32))
+                .collect(),
+            labels: self.labels.clone(),
+        }
+    }
+}
+
 impl_binop_ref_cases!(impl Add, add for MolecularFormula, MolecularFormula, MolecularFormula);
 impl_binop_ref_cases!(impl Sub, sub for MolecularFormula, MolecularFormula, MolecularFormula);
 impl_binop_ref_cases!(impl Mul, mul for MolecularFormula, i32, MolecularFormula);
+impl_binop_ref_cases!(impl Mul, mul for MolecularFormula, i8, MolecularFormula);
 
 impl AddAssign<&Self> for MolecularFormula {
     fn add_assign(&mut self, rhs: &Self) {

@@ -322,23 +322,38 @@ impl GlycanModel {
 #[non_exhaustive]
 pub struct PossibleIons<'a> {
     /// a series ions
-    pub a: (bool, &'a [NeutralLoss], ChargeRange),
+    pub a: (bool, &'a [NeutralLoss], ChargeRange, &'a [i8]),
     /// b series ions
-    pub b: (bool, &'a [NeutralLoss], ChargeRange),
+    pub b: (bool, &'a [NeutralLoss], ChargeRange, &'a [i8]),
     /// c series ions
-    pub c: (bool, &'a [NeutralLoss], ChargeRange),
+    pub c: (bool, &'a [NeutralLoss], ChargeRange, &'a [i8]),
     /// d series ions (side chain fragmentation from a)
-    pub d: (Vec<(AminoAcid, u8)>, &'a [NeutralLoss], ChargeRange),
+    pub d: (
+        Vec<(AminoAcid, u8)>,
+        &'a [NeutralLoss],
+        ChargeRange,
+        &'a [i8],
+    ),
     /// v series ions (full side chain broken off from y)
-    pub v: (Vec<(AminoAcid, u8)>, &'a [NeutralLoss], ChargeRange),
+    pub v: (
+        Vec<(AminoAcid, u8)>,
+        &'a [NeutralLoss],
+        ChargeRange,
+        &'a [i8],
+    ),
     /// w series ions (side chain fragmentation from z)
-    pub w: (Vec<(AminoAcid, u8)>, &'a [NeutralLoss], ChargeRange),
+    pub w: (
+        Vec<(AminoAcid, u8)>,
+        &'a [NeutralLoss],
+        ChargeRange,
+        &'a [i8],
+    ),
     /// x series ions
-    pub x: (bool, &'a [NeutralLoss], ChargeRange),
+    pub x: (bool, &'a [NeutralLoss], ChargeRange, &'a [i8]),
     /// y series ions
-    pub y: (bool, &'a [NeutralLoss], ChargeRange),
+    pub y: (bool, &'a [NeutralLoss], ChargeRange, &'a [i8]),
     /// z series ions
-    pub z: (bool, &'a [NeutralLoss], ChargeRange),
+    pub z: (bool, &'a [NeutralLoss], ChargeRange, &'a [i8]),
     /// precursor ions
     pub precursor: (&'a [NeutralLoss], ChargeRange),
     /// immonium
@@ -487,46 +502,55 @@ impl Model {
                 self.a.location.possible(position),
                 self.a.neutral_losses.as_slice(),
                 self.a.charge_range,
+                self.a.allowed_variants.as_slice(),
             ),
             b: (
                 self.b.location.possible(position),
                 self.b.neutral_losses.as_slice(),
                 self.b.charge_range,
+                self.b.allowed_variants.as_slice(),
             ),
             c: (
                 self.c.location.possible(position),
                 self.c.neutral_losses.as_slice(),
                 self.c.charge_range,
+                self.c.allowed_variants.as_slice(),
             ),
             d: (
                 self.d.location.possible(position, peptidoform, false),
                 self.d.neutral_losses.as_slice(),
                 self.d.charge_range,
+                self.d.allowed_variants.as_slice(),
             ),
             v: (
                 self.v.location.possible(c_position, peptidoform, true),
                 self.v.neutral_losses.as_slice(),
                 self.v.charge_range,
+                self.v.allowed_variants.as_slice(),
             ),
             w: (
                 self.w.location.possible(c_position, peptidoform, true),
                 self.w.neutral_losses.as_slice(),
                 self.w.charge_range,
+                self.w.allowed_variants.as_slice(),
             ),
             x: (
                 self.x.location.possible(c_position),
                 self.x.neutral_losses.as_slice(),
                 self.x.charge_range,
+                self.x.allowed_variants.as_slice(),
             ),
             y: (
                 self.y.location.possible(c_position),
                 self.y.neutral_losses.as_slice(),
                 self.y.charge_range,
+                self.y.allowed_variants.as_slice(),
             ),
             z: (
                 self.z.location.possible(c_position),
                 self.z.neutral_losses.as_slice(),
                 self.z.charge_range,
+                self.z.allowed_variants.as_slice(),
             ),
             precursor: (self.precursor.0.as_slice(), self.precursor.1),
             immonium: self.immonium,
