@@ -462,7 +462,7 @@ impl Mul<&i8> for &MolecularFormula {
                 .elements
                 .iter()
                 .copied()
-                .map(|part| (part.0, part.1, part.2 * *rhs as i32))
+                .map(|part| (part.0, part.1, part.2 * i32::from(*rhs)))
                 .collect(),
             labels: self.labels.clone(),
         }

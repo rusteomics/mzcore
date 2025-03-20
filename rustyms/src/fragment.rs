@@ -11,7 +11,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     glycan::MonoSaccharide,
-    model::ChargeRange,
+    model::{ChargeRange, PossiblePrimaryIons},
     molecular_charge::{CachedCharge, MolecularCharge},
     system::{
         f64::{MassOverCharge, Ratio},
@@ -99,14 +99,49 @@ impl Fragment {
         neutral_losses: &[NeutralLoss],
         charge_carriers: &mut CachedCharge,
         charge_range: ChargeRange,
-        variants: &[i8],
     ) -> Vec<Self> {
         termini
             .iter()
             .cartesian_product(theoretical_mass.iter())
             .cartesian_product(charge_carriers.range(charge_range))
             .cartesian_product(std::iter::once(None).chain(neutral_losses.iter().map(Some)))
-            .cartesian_product(variants.iter())
+            .map(|(((term, mass), charge), loss)| Self {
+                formula: Some(
+                    term + mass
+                        + charge.formula_inner(SequencePosition::default(), peptidoform_index)
+                        + loss.unwrap_or(&NeutralLoss::Gain(MolecularFormula::default())),
+                ),
+                charge: Charge::new::<crate::system::e>(charge.charge().value.try_into().unwrap()),
+                ion: annotation.clone(),
+                peptidoform_ion_index: Some(peptidoform_ion_index),
+                peptidoform_index: Some(peptidoform_index),
+                neutral_loss: loss.map(|l| vec![l.clone()]).unwrap_or_default(),
+                deviation: None,
+                confidence: None,
+                auxiliary: false,
+            })
+            .collect()
+    }
+    /// Generate a list of possible fragments from the list of possible preceding termini and neutral losses
+    /// # Panics
+    /// When the charge range results in a negative charge
+    #[expect(clippy::too_many_arguments)]
+    #[must_use]
+    pub fn generate_series(
+        theoretical_mass: &Multi<MolecularFormula>,
+        peptidoform_ion_index: usize,
+        peptidoform_index: usize,
+        annotation: &FragmentType,
+        termini: &Multi<MolecularFormula>,
+        charge_carriers: &mut CachedCharge,
+        settings: &PossiblePrimaryIons,
+    ) -> Vec<Self> {
+        termini
+            .iter()
+            .cartesian_product(theoretical_mass.iter())
+            .cartesian_product(charge_carriers.range(settings.1))
+            .cartesian_product(std::iter::once(None).chain(settings.0.iter().map(Some)))
+            .cartesian_product(settings.2.iter())
             .map(|((((term, mass), charge), loss), variant)| Self {
                 formula: Some(
                     term + mass

@@ -830,7 +830,7 @@ impl<Complexity> Peptidoform<Complexity> {
                         &mut charge_carriers,
                         SequencePosition::Index(sequence_index),
                         self.sequence.len(),
-                        &model.ions(position, &self),
+                        &model.ions(position, self),
                         peptidoform_ion_index,
                         peptidoform_index,
                         (
@@ -841,7 +841,7 @@ impl<Complexity> Peptidoform<Complexity> {
                     ),
             );
 
-            if model.m {
+            if model.amino_acid_side_chain_loss_from_precursor {
                 //  p - sX fragment: precursor amino acid side chain losses
                 output.extend(
                     self.formulas_inner(
@@ -874,8 +874,7 @@ impl<Complexity> Peptidoform<Complexity> {
                                     &Multi::default(),
                                     &[],
                                     &mut charge_carriers,
-                                    model.precursor.1,
-                                    &[0],
+                                    model.precursor.2,
                                 )
                             })
                             .collect_vec()
@@ -907,6 +906,24 @@ impl<Complexity> Peptidoform<Complexity> {
         } else {
             Vec::new()
         };
+        // Add amino acid specific neutral losses
+        precursor_neutral_losses.extend(
+            model
+                .precursor
+                .1
+                .iter()
+                .filter_map(|(rule, losses)| {
+                    rule.iter()
+                        .any(|aa| {
+                            self.sequence
+                                .iter()
+                                .any(|seq| seq.aminoacid.aminoacid() == *aa)
+                        })
+                        .then_some(losses)
+                })
+                .flatten()
+                .cloned(),
+        );
         precursor_neutral_losses.extend_from_slice(&model.precursor.0);
 
         output.extend(Fragment::generate_all(
@@ -917,8 +934,7 @@ impl<Complexity> Peptidoform<Complexity> {
             &Multi::default(),
             &precursor_neutral_losses,
             &mut charge_carriers,
-            model.precursor.1,
-            &[0],
+            model.precursor.2,
         ));
 
         // Add glycan fragmentation to all peptide fragments
@@ -947,7 +963,7 @@ impl<Complexity> Peptidoform<Complexity> {
             }
         }
 
-        if model.modification_specific_diagnostic_ions.0 {
+        if let Some(charge) = model.modification_specific_diagnostic_ions {
             // Add all modification diagnostic ions
             for (dia, pos) in self.diagnostic_ions() {
                 output.extend(
@@ -962,10 +978,7 @@ impl<Complexity> Peptidoform<Complexity> {
                         confidence: None,
                         auxiliary: false,
                     }
-                    .with_charge_range(
-                        &mut charge_carriers,
-                        model.modification_specific_diagnostic_ions.1,
-                    ),
+                    .with_charge_range(&mut charge_carriers, charge),
                 );
             }
         }
