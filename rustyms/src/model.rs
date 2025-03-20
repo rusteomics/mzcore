@@ -816,7 +816,8 @@ impl Model {
             b: PrimaryIonSeries::default()
                 .neutral_losses(vec![NeutralLoss::Loss(molecular_formula!(H 2 O 1))]),
             c: PrimaryIonSeries::default()
-                .neutral_losses(vec![NeutralLoss::Loss(molecular_formula!(H 2 O 1))]),
+                .neutral_losses(vec![NeutralLoss::Loss(molecular_formula!(H 2 O 1))])
+                .variants(vec![0, 1]),
             d: SatelliteIonSeries::base(),
             v: SatelliteIonSeries::default(),
             w: SatelliteIonSeries::base()
@@ -892,7 +893,8 @@ impl Model {
                 .neutral_losses(vec![NeutralLoss::Loss(molecular_formula!(H 2 O 1))]),
             d: SatelliteIonSeries::base()
                 .neutral_losses(vec![NeutralLoss::Loss(molecular_formula!(H 2 O 1))]),
-            v: SatelliteIonSeries::default(),
+            v: SatelliteIonSeries::base()
+                .neutral_losses(vec![NeutralLoss::Loss(molecular_formula!(H 2 O 1))]),
             w: SatelliteIonSeries::base()
                 .neutral_losses(vec![NeutralLoss::Loss(molecular_formula!(H 2 O 1))]),
             x: PrimaryIonSeries::default()
@@ -1043,7 +1045,7 @@ impl Model {
                     NeutralLoss::Loss(molecular_formula!(H 2 O 1)),
                     NeutralLoss::Loss(molecular_formula!(H 3 N 1)),
                 ])
-                .variants(vec![0, 1, 2]),
+                .variants(vec![-1, 0, 1, 2]),
             precursor: (
                 vec![
                     NeutralLoss::Loss(molecular_formula!(H 2 O 1)),
