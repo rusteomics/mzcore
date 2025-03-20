@@ -14,8 +14,8 @@ use crate::{
     peptidoform::*,
     placement_rule::PlacementRule,
     system::usize::Charge,
-    AmbiguousLabel, DiagnosticIon, Element, Model, MolecularFormula, Multi, MultiChemical,
-    NeutralLoss, Protease, SequenceElement, SequencePosition,
+    AmbiguousLabel, DiagnosticIon, Element, Model, MolecularFormula, Multi, NeutralLoss, Protease,
+    SequenceElement, SequencePosition,
 };
 use itertools::Itertools;
 use ordered_float::OrderedFloat;

@@ -685,7 +685,7 @@ impl Model {
                     self.w.allowed_variants.as_slice(),
                 ),
             ),
-            x: self.x.location.possible(position).then_some((
+            x: self.x.location.possible(c_position).then_some((
                 get_neutral_losses(
                     &self.x.neutral_losses,
                     &self.x.amino_acid_neutral_losses,
@@ -695,7 +695,7 @@ impl Model {
                 self.x.charge_range,
                 self.x.allowed_variants.as_slice(),
             )),
-            y: self.y.location.possible(position).then_some((
+            y: self.y.location.possible(c_position).then_some((
                 get_neutral_losses(
                     &self.y.neutral_losses,
                     &self.y.amino_acid_neutral_losses,
@@ -705,7 +705,7 @@ impl Model {
                 self.y.charge_range,
                 self.y.allowed_variants.as_slice(),
             )),
-            z: self.z.location.possible(position).then_some((
+            z: self.z.location.possible(c_position).then_some((
                 get_neutral_losses(
                     &self.z.neutral_losses,
                     &self.z.amino_acid_neutral_losses,
