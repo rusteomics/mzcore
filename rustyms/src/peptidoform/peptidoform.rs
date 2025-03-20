@@ -5,6 +5,7 @@ use crate::{
     fragment::{DiagnosticPosition, Fragment, FragmentType, PeptidePosition},
     glycan::MonoSaccharide,
     helper_functions::{peptide_range_contains, RangeExtension},
+    model::get_all_sidechain_losses,
     modification::{
         CrossLinkName, GnoComposition, LinkerSpecificity, Modification, SimpleModification,
         SimpleModificationInner,
@@ -840,47 +841,6 @@ impl<Complexity> Peptidoform<Complexity> {
                         ),
                     ),
             );
-
-            if model.amino_acid_side_chain_loss_from_precursor {
-                //  p - sX fragment: precursor amino acid side chain losses
-                output.extend(
-                    self.formulas_inner(
-                        peptidoform_index,
-                        all_peptides,
-                        &[],
-                        &mut Vec::new(),
-                        model.allow_cross_link_cleavage,
-                    )
-                    .0
-                    .iter()
-                    .flat_map(|m| {
-                        self.sequence[sequence_index]
-                            .aminoacid
-                            .formulas_inner(
-                                SequencePosition::Index(sequence_index),
-                                peptidoform_index,
-                            )
-                            .iter()
-                            .flat_map(|aa| {
-                                Fragment::generate_all(
-                                    &((-modifications_total.clone()) + m.clone() - aa.clone()
-                                        + molecular_formula!(C 2 H 2 N 1 O 1)),
-                                    peptidoform_ion_index,
-                                    peptidoform_index,
-                                    &FragmentType::PrecursorSideChainLoss(
-                                        position,
-                                        self.sequence[sequence_index].aminoacid.aminoacid(),
-                                    ),
-                                    &Multi::default(),
-                                    &[],
-                                    &mut charge_carriers,
-                                    model.precursor.2,
-                                )
-                            })
-                            .collect_vec()
-                    }),
-                );
-            }
         }
         for fragment in &mut output {
             fragment.formula = fragment.formula.as_ref().map(|f| {
@@ -924,6 +884,10 @@ impl<Complexity> Peptidoform<Complexity> {
                 .flatten()
                 .cloned(),
         );
+        // Add amino acid side chain losses
+        precursor_neutral_losses
+            .extend(get_all_sidechain_losses(&self.sequence, &model.precursor.2));
+        // Add all normal neutral losses
         precursor_neutral_losses.extend_from_slice(&model.precursor.0);
 
         output.extend(Fragment::generate_all(
@@ -934,7 +898,7 @@ impl<Complexity> Peptidoform<Complexity> {
             &Multi::default(),
             &precursor_neutral_losses,
             &mut charge_carriers,
-            model.precursor.2,
+            model.precursor.3,
         ));
 
         // Add glycan fragmentation to all peptide fragments

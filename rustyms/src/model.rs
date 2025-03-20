@@ -2,12 +2,13 @@
 
 use std::ops::RangeInclusive;
 
+use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 
 use crate::{
     fragment::PeptidePosition,
     system::{e, f64::MassOverCharge, isize::Charge, mz},
-    AminoAcid, NeutralLoss, Peptidoform, Tolerance,
+    AminoAcid, MultiChemical, NeutralLoss, Peptidoform, SequenceElement, Tolerance,
 };
 
 /// Control what charges are allowed for an ion series. Defined as an inclusive range.
@@ -107,12 +108,11 @@ pub struct Model {
     pub precursor: (
         Vec<NeutralLoss>,
         Vec<(Vec<AminoAcid>, Vec<NeutralLoss>)>,
+        (u8, Option<Vec<AminoAcid>>),
         ChargeRange,
     ),
     /// immonium ions
     pub immonium: Option<ChargeRange>,
-    /// loss of an amino acid side chain from the precursor (follows precursor charge)
-    pub amino_acid_side_chain_loss_from_precursor: bool,
     /// If the neutral losses specific for modifications should be generated
     pub modification_specific_neutral_losses: bool,
     /// If the diagnostic ions specific for modifications should be generated with the allowed charge range
@@ -136,6 +136,8 @@ pub struct SatelliteIonSeries {
     pub neutral_losses: Vec<NeutralLoss>,
     /// The allowed amino acid specific neutral losses
     pub amino_acid_neutral_losses: Vec<(Vec<AminoAcid>, Vec<NeutralLoss>)>,
+    /// The maximal number of side chain lost and the amino acids from which the side chains can be lost (or all if no selection is given)
+    pub amino_acid_side_chain_losses: (u8, Option<Vec<AminoAcid>>),
     /// The allowed charges
     pub charge_range: ChargeRange,
     /// The allowed ion variants (e.g. w vs w+1 vs w-1)
@@ -179,6 +181,17 @@ impl SatelliteIonSeries {
             ..self
         }
     }
+    /// Replace the amino acid side chain losses
+    #[must_use]
+    pub fn amino_acid_side_chain_losses(
+        self,
+        amino_acid_side_chain_losses: (u8, Option<Vec<AminoAcid>>),
+    ) -> Self {
+        Self {
+            amino_acid_side_chain_losses,
+            ..self
+        }
+    }
     /// Replace the charge range
     #[must_use]
     pub fn charge_range(self, charge_range: ChargeRange) -> Self {
@@ -203,6 +216,7 @@ impl std::default::Default for SatelliteIonSeries {
             location: SatelliteLocation::default(),
             neutral_losses: Vec::new(),
             amino_acid_neutral_losses: Vec::new(),
+            amino_acid_side_chain_losses: (0, None),
             charge_range: ChargeRange::ONE_TO_PRECURSOR,
             allowed_variants: vec![0],
         }
@@ -218,6 +232,8 @@ pub struct PrimaryIonSeries {
     pub neutral_losses: Vec<NeutralLoss>,
     /// The allowed amino acid specific neutral losses
     pub amino_acid_neutral_losses: Vec<(Vec<AminoAcid>, Vec<NeutralLoss>)>,
+    /// The maximal number of side chain lost and the amino acids from which the side chains can be lost (or all if no selection is given)
+    pub amino_acid_side_chain_losses: (u8, Option<Vec<AminoAcid>>),
     /// The allowed charges
     pub charge_range: ChargeRange,
     /// The allowed ion variants (e.g. a vs a+1 vs a+2)
@@ -249,6 +265,17 @@ impl PrimaryIonSeries {
             ..self
         }
     }
+    /// Replace the amino acid side chain losses
+    #[must_use]
+    pub fn amino_acid_side_chain_losses(
+        self,
+        amino_acid_side_chain_losses: (u8, Option<Vec<AminoAcid>>),
+    ) -> Self {
+        Self {
+            amino_acid_side_chain_losses,
+            ..self
+        }
+    }
     /// Replace the charge range
     #[must_use]
     pub fn charge_range(self, charge_range: ChargeRange) -> Self {
@@ -273,6 +300,7 @@ impl std::default::Default for PrimaryIonSeries {
             location: Location::All,
             neutral_losses: Vec::new(),
             amino_acid_neutral_losses: Vec::new(),
+            amino_acid_side_chain_losses: (0, None),
             charge_range: ChargeRange::ONE_TO_PRECURSOR,
             allowed_variants: vec![0],
         }
@@ -483,10 +511,16 @@ impl Model {
         self,
         neutral_loss: Vec<NeutralLoss>,
         amino_acid_specific_neutral_losses: Vec<(Vec<AminoAcid>, Vec<NeutralLoss>)>,
+        amino_acid_side_chain_losses: (u8, Option<Vec<AminoAcid>>),
         charges: ChargeRange,
     ) -> Self {
         Self {
-            precursor: (neutral_loss, amino_acid_specific_neutral_losses, charges),
+            precursor: (
+                neutral_loss,
+                amino_acid_specific_neutral_losses,
+                amino_acid_side_chain_losses,
+                charges,
+            ),
             ..self
         }
     }
@@ -495,14 +529,6 @@ impl Model {
     pub fn immonium(self, state: Option<ChargeRange>) -> Self {
         Self {
             immonium: state,
-            ..self
-        }
-    }
-    /// Set m
-    #[must_use]
-    pub fn m(self, state: bool) -> Self {
-        Self {
-            amino_acid_side_chain_loss_from_precursor: state,
             ..self
         }
     }
@@ -559,25 +585,31 @@ impl Model {
         };
 
         let get_neutral_losses = |neutral_losses: &Vec<NeutralLoss>,
-                                  amino_acid_sepcific: &Vec<(Vec<AminoAcid>, Vec<NeutralLoss>)>,
+                                  amino_acid_specific: &Vec<(Vec<AminoAcid>, Vec<NeutralLoss>)>,
+                                  amino_acid_side_chains: &(u8, Option<Vec<AminoAcid>>),
                                   c_terminal| {
+            let peptide_slice = &peptidoform[if c_terminal {
+                sequence_index..peptidoform.len()
+            } else {
+                0..sequence_index
+            }];
             neutral_losses
                 .iter()
                 .chain(
-                    peptidoform[if c_terminal {
-                        sequence_index..peptidoform.len()
-                    } else {
-                        0..sequence_index
-                    }]
-                    .iter()
-                    .flat_map(|seq| {
-                        amino_acid_sepcific.iter().filter_map(|(rule, loss)| {
-                            rule.contains(&seq.aminoacid.aminoacid()).then_some(loss)
+                    peptide_slice
+                        .iter()
+                        .flat_map(|seq| {
+                            amino_acid_specific.iter().filter_map(|(rule, loss)| {
+                                rule.contains(&seq.aminoacid.aminoacid()).then_some(loss)
+                            })
                         })
-                    })
-                    .flatten(),
+                        .flatten(),
                 )
                 .cloned()
+                .chain(get_all_sidechain_losses(
+                    peptide_slice,
+                    &amino_acid_side_chains,
+                ))
                 .collect()
         };
 
@@ -588,6 +620,7 @@ impl Model {
                 get_neutral_losses(
                     &self.a.neutral_losses,
                     &self.a.amino_acid_neutral_losses,
+                    &self.a.amino_acid_side_chain_losses,
                     false,
                 ),
                 self.a.charge_range,
@@ -597,6 +630,7 @@ impl Model {
                 get_neutral_losses(
                     &self.b.neutral_losses,
                     &self.b.amino_acid_neutral_losses,
+                    &self.b.amino_acid_side_chain_losses,
                     false,
                 ),
                 self.b.charge_range,
@@ -606,6 +640,7 @@ impl Model {
                 get_neutral_losses(
                     &self.c.neutral_losses,
                     &self.c.amino_acid_neutral_losses,
+                    &self.c.amino_acid_side_chain_losses,
                     false,
                 ),
                 self.c.charge_range,
@@ -617,6 +652,7 @@ impl Model {
                     get_neutral_losses(
                         &self.d.neutral_losses,
                         &self.d.amino_acid_neutral_losses,
+                        &self.d.amino_acid_side_chain_losses,
                         false,
                     ),
                     self.d.charge_range,
@@ -629,6 +665,7 @@ impl Model {
                     get_neutral_losses(
                         &self.v.neutral_losses,
                         &self.v.amino_acid_neutral_losses,
+                        &self.v.amino_acid_side_chain_losses,
                         false,
                     ),
                     self.v.charge_range,
@@ -641,6 +678,7 @@ impl Model {
                     get_neutral_losses(
                         &self.w.neutral_losses,
                         &self.w.amino_acid_neutral_losses,
+                        &self.w.amino_acid_side_chain_losses,
                         false,
                     ),
                     self.w.charge_range,
@@ -651,6 +689,7 @@ impl Model {
                 get_neutral_losses(
                     &self.x.neutral_losses,
                     &self.x.amino_acid_neutral_losses,
+                    &self.x.amino_acid_side_chain_losses,
                     false,
                 ),
                 self.x.charge_range,
@@ -660,6 +699,7 @@ impl Model {
                 get_neutral_losses(
                     &self.y.neutral_losses,
                     &self.y.amino_acid_neutral_losses,
+                    &self.y.amino_acid_side_chain_losses,
                     false,
                 ),
                 self.y.charge_range,
@@ -669,6 +709,7 @@ impl Model {
                 get_neutral_losses(
                     &self.z.neutral_losses,
                     &self.z.amino_acid_neutral_losses,
+                    &self.z.amino_acid_side_chain_losses,
                     false,
                 ),
                 self.z.charge_range,
@@ -702,10 +743,10 @@ impl Model {
             precursor: (
                 vec![NeutralLoss::Loss(molecular_formula!(H 2 O 1))],
                 Vec::new(),
+                (1, None),
                 ChargeRange::PRECURSOR,
             ),
             immonium: Some(ChargeRange::ONE),
-            amino_acid_side_chain_loss_from_precursor: true,
             modification_specific_neutral_losses: true,
             modification_specific_diagnostic_ions: Some(ChargeRange::ONE),
             glycan: GlycanModel::ALLOW
@@ -728,9 +769,8 @@ impl Model {
             x: PrimaryIonSeries::default().location(Location::None),
             y: PrimaryIonSeries::default().location(Location::None),
             z: PrimaryIonSeries::default().location(Location::None),
-            precursor: (Vec::new(), Vec::new(), ChargeRange::PRECURSOR),
+            precursor: (Vec::new(), Vec::new(), (0, None), ChargeRange::PRECURSOR),
             immonium: None,
-            amino_acid_side_chain_loss_from_precursor: false,
             modification_specific_neutral_losses: false,
             modification_specific_diagnostic_ions: None,
             glycan: GlycanModel::DISALLOW,
@@ -756,10 +796,10 @@ impl Model {
             precursor: (
                 vec![NeutralLoss::Loss(molecular_formula!(H 2 O 1))],
                 Vec::new(),
+                (0, None),
                 ChargeRange::PRECURSOR,
             ),
             immonium: Some(ChargeRange::ONE),
-            amino_acid_side_chain_loss_from_precursor: false,
             modification_specific_neutral_losses: true,
             modification_specific_diagnostic_ions: Some(ChargeRange::ONE),
             glycan: GlycanModel::DISALLOW,
@@ -789,10 +829,10 @@ impl Model {
             precursor: (
                 vec![NeutralLoss::Loss(molecular_formula!(H 2 O 1))],
                 Vec::new(),
+                (0, None),
                 ChargeRange::ONE_TO_PRECURSOR,
             ),
             immonium: None,
-            amino_acid_side_chain_loss_from_precursor: false,
             modification_specific_neutral_losses: true,
             modification_specific_diagnostic_ions: Some(ChargeRange::ONE),
             glycan: GlycanModel::ALLOW
@@ -827,10 +867,10 @@ impl Model {
             precursor: (
                 vec![NeutralLoss::Loss(molecular_formula!(H 2 O 1))],
                 Vec::new(),
+                (0, None),
                 ChargeRange::ONE_TO_PRECURSOR,
             ),
             immonium: Some(ChargeRange::ONE),
-            amino_acid_side_chain_loss_from_precursor: false,
             modification_specific_neutral_losses: true,
             modification_specific_diagnostic_ions: Some(ChargeRange::ONE),
             glycan: GlycanModel::ALLOW
@@ -864,10 +904,10 @@ impl Model {
             precursor: (
                 vec![NeutralLoss::Loss(molecular_formula!(H 2 O 1))],
                 Vec::new(),
+                (0, None),
                 ChargeRange::ONE_TO_PRECURSOR,
             ),
             immonium: None,
-            amino_acid_side_chain_loss_from_precursor: false,
             modification_specific_neutral_losses: true,
             modification_specific_diagnostic_ions: Some(ChargeRange::ONE),
             glycan: GlycanModel::ALLOW
@@ -898,10 +938,10 @@ impl Model {
             precursor: (
                 vec![NeutralLoss::Loss(molecular_formula!(H 2 O 1))],
                 Vec::new(),
+                (0, None),
                 ChargeRange::PRECURSOR,
             ),
             immonium: None,
-            amino_acid_side_chain_loss_from_precursor: false,
             modification_specific_neutral_losses: true,
             modification_specific_diagnostic_ions: Some(ChargeRange::ONE),
             glycan: GlycanModel::DISALLOW,
@@ -966,13 +1006,13 @@ impl Model {
                         vec![NeutralLoss::Loss(molecular_formula!(C 2 H 3 O 2))],
                     ),
                 ],
+                (2, None),
                 ChargeRange {
                     start: ChargePoint::Relative(-2),
                     end: ChargePoint::Relative(0),
                 },
             ),
             immonium: None,
-            amino_acid_side_chain_loss_from_precursor: false,
             modification_specific_neutral_losses: true,
             modification_specific_diagnostic_ions: Some(ChargeRange::ONE),
             glycan: GlycanModel::DISALLOW,
@@ -1023,10 +1063,10 @@ impl Model {
                         vec![NeutralLoss::Loss(molecular_formula!(C 2 H 3 O 2))],
                     ),
                 ],
+                (0, None),
                 ChargeRange::PRECURSOR,
             ),
             immonium: None,
-            amino_acid_side_chain_loss_from_precursor: false,
             modification_specific_neutral_losses: true,
             modification_specific_diagnostic_ions: Some(ChargeRange::ONE),
             glycan: GlycanModel::DISALLOW,
@@ -1143,5 +1183,43 @@ impl SatelliteLocation {
             }
         }
         output
+    }
+}
+
+/// Get all possible side chain losses for a given stretch of amino acids. The number indicates
+/// the maximum total side chains lost, the selection restricts the set of amino acids that can
+/// lose their side chain, if this is None all amino acids can loose their side chain.
+///
+/// This might generate non sensible options for satellite ions (e.g. double side chain loss for v)
+pub(crate) fn get_all_sidechain_losses<Complexity>(
+    slice: &[SequenceElement<Complexity>],
+    settings: &(u8, Option<Vec<AminoAcid>>),
+) -> Vec<NeutralLoss> {
+    if settings.0 == 0 {
+        Vec::new()
+    } else {
+        let options: Vec<NeutralLoss> = slice
+            .iter()
+            .filter_map(|seq| {
+                settings
+                    .1
+                    .as_ref()
+                    .is_none_or(|aa| aa.contains(&seq.aminoacid.aminoacid()))
+                    .then_some(seq.aminoacid.aminoacid())
+            })
+            .flat_map(|aa| {
+                aa.formulas()
+                    .iter()
+                    .map(|f| {
+                        NeutralLoss::SideChainLoss(f - molecular_formula!(H 3 C 2 N 1 O 1), aa)
+                    })
+                    .collect::<Vec<_>>()
+            })
+            .collect();
+        (1..=settings.0)
+            .flat_map(|k| options.iter().combinations(k as usize))
+            .flatten()
+            .cloned()
+            .collect()
     }
 }
