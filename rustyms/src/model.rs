@@ -1159,7 +1159,10 @@ impl SatelliteLocation {
             (None, None) => return Vec::new(),
         };
         let range = if c_terminal {
-            sequence_index..sequence_index.saturating_add(max_distance as usize)
+            sequence_index
+                ..sequence_index
+                    .saturating_add(max_distance as usize)
+                    .min(peptidoform.len() - 1)
         } else {
             sequence_index.saturating_sub(max_distance as usize)..sequence_index
         };
