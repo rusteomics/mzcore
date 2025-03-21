@@ -17,7 +17,7 @@ impl NeutralLoss {
     /// Check if this neutral loss if empty (has an empty molecular formula)
     pub fn is_empty(&self) -> bool {
         match self {
-            Self::Loss(f) | Self::Gain(f) => f.is_empty(),
+            Self::Loss(f) | Self::Gain(f) | Self::SideChainLoss(f, _) => f.is_empty(),
         }
     }
 
@@ -25,6 +25,7 @@ impl NeutralLoss {
     pub fn hill_notation_html(&self) -> String {
         match self {
             Self::Loss(c) => format!("-{}", c.hill_notation_html().trim_start_matches('+')),
+            Self::SideChainLoss(_, aa) => format!("-sidechain_{aa}"),
             Self::Gain(c) => format!("+{}", c.hill_notation_html().trim_start_matches('+')),
         }
     }
@@ -33,6 +34,7 @@ impl NeutralLoss {
     pub fn hill_notation_fancy(&self) -> String {
         match self {
             Self::Loss(c) => format!("-{}", c.hill_notation_fancy().trim_start_matches('+')),
+            Self::SideChainLoss(_, aa) => format!("-sidechain_{aa}"),
             Self::Gain(c) => format!("+{}", c.hill_notation_fancy().trim_start_matches('+')),
         }
     }
@@ -41,6 +43,7 @@ impl NeutralLoss {
     pub fn hill_notation(&self) -> String {
         match self {
             Self::Loss(c) => format!("-{}", c.hill_notation().trim_start_matches('+')),
+            Self::SideChainLoss(_, aa) => format!("-sidechain_{aa}"),
             Self::Gain(c) => format!("+{}", c.hill_notation().trim_start_matches('+')),
         }
     }
@@ -98,6 +101,7 @@ impl Display for NeutralLoss {
             "{}",
             match self {
                 Self::Loss(c) => format!("-{c}"),
+                Self::SideChainLoss(_, aa) => format!("-sidechain_{aa}"),
                 Self::Gain(c) => format!("+{c}"),
             }
         )
@@ -109,7 +113,7 @@ impl std::ops::Add<&NeutralLoss> for &MolecularFormula {
     fn add(self, rhs: &NeutralLoss) -> Self::Output {
         match rhs {
             NeutralLoss::Gain(mol) => self + mol,
-            NeutralLoss::Loss(mol) => self - mol,
+            NeutralLoss::Loss(mol) | NeutralLoss::SideChainLoss(mol, _) => self - mol,
         }
     }
 }
@@ -119,7 +123,7 @@ impl std::ops::Add<&NeutralLoss> for &Multi<MolecularFormula> {
     fn add(self, rhs: &NeutralLoss) -> Self::Output {
         match rhs {
             NeutralLoss::Gain(mol) => self + mol,
-            NeutralLoss::Loss(mol) => self - mol,
+            NeutralLoss::Loss(mol) | NeutralLoss::SideChainLoss(mol, _) => self - mol,
         }
     }
 }
