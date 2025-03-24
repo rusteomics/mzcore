@@ -107,9 +107,9 @@ impl AnnotatedSpectrum {
                     .annotation
                     .iter()
                     .filter(|a| {
-                        peptidoform_ion_index.map_or(true, |i| a.peptidoform_ion_index == Some(i))
-                            && peptidoform_index.map_or(true, |i| a.peptidoform_index == Some(i))
-                            && ion.map_or(true, |kind| a.ion.kind() == kind)
+                        peptidoform_ion_index.is_none_or(|i| a.peptidoform_ion_index == Some(i))
+                            && peptidoform_index.is_none_or(|i| a.peptidoform_index == Some(i))
+                            && ion.is_none_or(|kind| a.ion.kind() == kind)
                     })
                     .count() as u32;
                 if number == 0 {
@@ -124,9 +124,9 @@ impl AnnotatedSpectrum {
         let total_fragments = fragments
             .iter()
             .filter(|f| {
-                peptidoform_ion_index.map_or(true, |i| f.peptidoform_ion_index == Some(i))
-                    && peptidoform_index.map_or(true, |i| f.peptidoform_index == Some(i))
-                    && ion.map_or(true, |kind| f.ion.kind() == kind)
+                peptidoform_ion_index.is_none_or(|i| f.peptidoform_ion_index == Some(i))
+                    && peptidoform_index.is_none_or(|i| f.peptidoform_index == Some(i))
+                    && ion.is_none_or(|kind| f.ion.kind() == kind)
             })
             .count() as u32;
         (
@@ -153,7 +153,7 @@ impl AnnotatedSpectrum {
                         .filter(|a| {
                             a.peptidoform_ion_index == Some(peptidoform_ion_index)
                                 && a.peptidoform_index == Some(peptidoform_index)
-                                && ion.map_or(true, |kind| a.ion.kind() == kind)
+                                && ion.is_none_or(|kind| a.ion.kind() == kind)
                         })
                         .filter_map(|a| a.ion.position())
                 })
@@ -165,7 +165,7 @@ impl AnnotatedSpectrum {
                 .filter(|f| {
                     f.peptidoform_ion_index == Some(peptidoform_ion_index)
                         && f.peptidoform_index == Some(peptidoform_index)
-                        && ion.map_or(true, |i| i == f.ion.kind())
+                        && ion.is_none_or(|i| i == f.ion.kind())
                 })
                 .filter_map(|f| f.ion.position().map(|p| p.sequence_index))
                 .unique()
@@ -185,8 +185,8 @@ impl AnnotatedSpectrum {
             .iter()
             .flat_map(|p| {
                 p.annotation.iter().filter(|a| {
-                    peptidoform_index.map_or(true, |i| a.peptidoform_index == Some(i))
-                        && ion.map_or(true, |kind| a.ion.kind() == kind)
+                    peptidoform_index.is_none_or(|i| a.peptidoform_index == Some(i))
+                        && ion.is_none_or(|kind| a.ion.kind() == kind)
                 })
             })
             .map(|f| f.formula.clone())
@@ -195,8 +195,8 @@ impl AnnotatedSpectrum {
         let total_fragments = fragments
             .iter()
             .filter(|f| {
-                peptidoform_index.map_or(true, |i| f.peptidoform_index == Some(i))
-                    && ion.map_or(true, |kind| f.ion.kind() == kind)
+                peptidoform_index.is_none_or(|i| f.peptidoform_index == Some(i))
+                    && ion.is_none_or(|kind| f.ion.kind() == kind)
             })
             .map(|f| f.formula.clone())
             .unique()

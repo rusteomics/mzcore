@@ -540,6 +540,7 @@ impl std::cmp::PartialOrd for FragmentType {
 
 impl FragmentType {
     /// Get a main ion series fragment with the specified variant, or pass the fragment type through unchanged
+    #[must_use]
     pub fn with_variant(&self, variant: i8) -> Self {
         match self {
             Self::a(p, _) => Self::a(*p, variant),

@@ -608,7 +608,7 @@ impl Model {
                 .cloned()
                 .chain(get_all_sidechain_losses(
                     peptide_slice,
-                    &amino_acid_side_chains,
+                    amino_acid_side_chains,
                 ))
                 .collect()
         };

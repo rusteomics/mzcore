@@ -431,9 +431,8 @@ impl PeptideModificationSearch {
                 .iter()
                 .flat_map(|o| o.lookup(custom_database))
                 .filter(|modification| {
-                    aminoacid.map_or(true, |aa| {
-                        modification.2.is_possible_aa(aa, position).any_possible()
-                    })
+                    aminoacid
+                        .is_none_or(|aa| modification.2.is_possible_aa(aa, position).any_possible())
                 })
                 .filter(|modification| check_matches(in_place, &modification.2))
                 .map(|(_, _, modification)| modification)
@@ -442,9 +441,8 @@ impl PeptideModificationSearch {
             modifications
                 .iter()
                 .filter(|modification| {
-                    aminoacid.map_or(true, |aa| {
-                        modification.is_possible_aa(aa, position).any_possible()
-                    })
+                    aminoacid
+                        .is_none_or(|aa| modification.is_possible_aa(aa, position).any_possible())
                 })
                 .filter(|modification| check_matches(in_place, modification))
                 .collect()
