@@ -349,13 +349,8 @@ impl MonoSaccharide {
                         Shape::FlatDiamond,
                         match isomer {
                             Some(NonoseIsomer::Pse) => Colour::Green,
-                            Some(NonoseIsomer::Leg) => {
-                                if self.epi {
-                                    Colour::LightBlue
-                                } else {
-                                    Colour::Yellow
-                                }
-                            }
+                            Some(NonoseIsomer::Leg) => Colour::Yellow,
+                            Some(NonoseIsomer::ELeg) => Colour::LightBlue,
                             Some(NonoseIsomer::Aci) => Colour::Pink,
                             _ => Colour::Background,
                         },

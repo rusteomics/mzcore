@@ -73,7 +73,7 @@ impl MonoSaccharide {
                     Charge::default(),
                     peptidoform_ion_index,
                     peptidoform_index,
-                    FragmentType::OxoniumComposition(composition.clone(), attachment),
+                    FragmentType::BComposition(composition.clone(), attachment),
                 )
                 .with_charge_range(charge_carriers, model.glycan.oxonium_charge_range)
                 .flat_map(|o| o.with_neutral_losses(&model.glycan.neutral_losses)),

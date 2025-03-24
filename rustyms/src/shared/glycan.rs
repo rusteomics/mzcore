@@ -32,7 +32,6 @@ pub struct MonoSaccharide {
     pub(super) base_sugar: BaseSugar,
     pub(super) substituents: Vec<GlycanSubstituent>,
     pub(super) furanose: bool,
-    pub(super) epi: bool,
     pub(super) configuration: Option<Configuration>,
     pub(super) proforma_name: Option<String>,
 }
@@ -44,7 +43,6 @@ impl MonoSaccharide {
             base_sugar: sugar,
             substituents: substituents.to_owned(),
             furanose: false,
-            epi: false,
             configuration: None,
             proforma_name: None,
         }
@@ -240,10 +238,14 @@ impl MonoSaccharide {
         let mut sugar = sugar
             .map(|(b, s)| {
                 let mut alo = Self {
-                    base_sugar: b,
+                    base_sugar: match b {
+                        BaseSugar::Nonose(Some(NonoseIsomer::Leg)) if epi => {
+                            BaseSugar::Nonose(Some(NonoseIsomer::ELeg))
+                        }
+                        other => other,
+                    },
                     substituents,
                     furanose: false,
-                    epi,
                     configuration,
                     proforma_name: None,
                 };
@@ -636,8 +638,10 @@ pub enum NonoseIsomer {
     Kdn,
     /// 5,7-Diamino-3,5,7,9-tetradeoxy-L-glycero-L-manno-non-2-ulopyranosonic acid
     Pse,
-    /// 5,7-Diamino-3,5,7,9-tetradeoxy-D-glycero-D-galacto-non-2-ulopyranosonic acid (or 4eLeg or 8eLeg)
+    /// 5,7-Diamino-3,5,7,9-tetradeoxy-D-glycero-D-galacto-non-2-ulopyranosonic acid
     Leg,
+    /// 4 or 8 eLeg
+    ELeg,
     /// 5,7-Diamino-3,5,7,9-tetradeoxy-L-glycero-L-altro-non-2-ulopyranosonic acid
     Aci,
 }

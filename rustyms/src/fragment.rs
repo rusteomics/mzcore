@@ -362,7 +362,7 @@ pub enum FragmentType {
     // glycan A fragment (Never generated)
     //A(GlycanPosition),
     /// glycan B fragment
-    B(GlycanPosition),
+    // B(GlycanPosition),
     // glycan C fragment (Never generated)
     //C(GlycanPosition),
     // glycan X fragment (Never generated)
@@ -371,8 +371,8 @@ pub enum FragmentType {
     Y(Vec<GlycanPosition>),
     // glycan Z fragment (Never generated)
     // Z(GlycanPosition),
-    /// Internal glycan fragment, meaning both a B and Y breakages (and potentially multiple of Y)
-    Oxonium {
+    /// B glycan fragment, potentially with additional Y breakages
+    B {
         /// The root break
         b: GlycanPosition,
         /// The branch breakages
@@ -381,7 +381,7 @@ pub enum FragmentType {
         end: Vec<GlycanPosition>,
     },
     /// A B or internal glycan fragment for a glycan where only the composition is known, also saves the attachment (AA + sequence index)
-    OxoniumComposition(Vec<(MonoSaccharide, isize)>, Option<(AminoAcid, usize)>),
+    BComposition(Vec<(MonoSaccharide, isize)>, Option<(AminoAcid, usize)>),
     /// A B or internal glycan fragment for a glycan where only the composition is known, also saves the attachment (AA + sequence index)
     YComposition(Vec<(MonoSaccharide, isize)>, Option<(AminoAcid, usize)>),
     /// Immonium ion
@@ -424,11 +424,10 @@ impl FragmentType {
         }
     }
 
-    /// Get the glycan position of this ion (or None if not applicable)
+    /// Get the root glycan position of this ion (or None if not applicable), Y is not defined as it does not have a root break
     pub const fn glycan_position(&self) -> Option<&GlycanPosition> {
         match self {
-            Self::B(n) | Self::Diagnostic(DiagnosticPosition::Glycan(n, _)) => Some(n),
-            Self::Oxonium { b, .. } => Some(b),
+            Self::Diagnostic(DiagnosticPosition::Glycan(b, _)) | Self::B { b, .. } => Some(b),
             _ => None,
         }
     }
@@ -438,10 +437,6 @@ impl FragmentType {
     #[cfg(feature = "glycan-render")]
     pub fn glycan_break_positions(&self) -> Option<(Option<usize>, GlycanSelection<'_>)> {
         match self {
-            Self::B(n) => Some((
-                n.attachment.map(|(_, p)| p),
-                GlycanSelection::Subtree(Some(n), &[]),
-            )),
             Self::Diagnostic(DiagnosticPosition::Glycan(n, _)) => Some((
                 n.attachment.map(|(_, p)| p),
                 GlycanSelection::SingleSugar(n),
@@ -450,7 +445,7 @@ impl FragmentType {
                 breaks.first().and_then(|p| p.attachment.map(|(_, p)| p)),
                 GlycanSelection::Subtree(None, breaks),
             )),
-            Self::Oxonium { b, y, .. } => Some((
+            Self::B { b, y, .. } => Some((
                 b.attachment.map(|(_, p)| p),
                 GlycanSelection::Subtree(Some(b), y),
             )),
@@ -474,16 +469,16 @@ impl FragmentType {
             | Self::Diagnostic(DiagnosticPosition::Peptide(n, _))
             | Self::Immonium(n, _)
             | Self::PrecursorSideChainLoss(n, _) => Some(n.series_number.to_string()),
-            Self::B(n) | Self::Diagnostic(DiagnosticPosition::Glycan(n, _)) => Some(n.label()),
+            Self::Diagnostic(DiagnosticPosition::Glycan(n, _)) => Some(n.label()),
             Self::Y(bonds) => Some(bonds.iter().map(GlycanPosition::label).join("")),
-            Self::Oxonium { b, y, end } => Some(
+            Self::B { b, y, end } => Some(
                 b.label()
                     + &y.iter()
                         .chain(end.iter())
                         .map(GlycanPosition::label)
                         .join(""),
             ),
-            Self::YComposition(sugars, _) | Self::OxoniumComposition(sugars, _) => Some(
+            Self::YComposition(sugars, _) | Self::BComposition(sugars, _) => Some(
                 sugars
                     .iter()
                     .map(|(sugar, amount)| format!("{sugar}{amount}"))
@@ -515,7 +510,6 @@ impl FragmentType {
             Self::y(_) => Cow::Borrowed("y"),
             Self::z(_) => Cow::Borrowed("z"),
             Self::z·(_) => Cow::Borrowed("z·"),
-            Self::B(_) => Cow::Borrowed("B"),
             Self::Y(_) | Self::YComposition(_, _) => Cow::Borrowed("Y"),
             Self::Diagnostic(DiagnosticPosition::Peptide(_, aa)) => {
                 Cow::Owned(format!("d{}", aa.char()))
@@ -526,7 +520,7 @@ impl FragmentType {
                 DiagnosticPosition::Glycan(_, sug)
                 | DiagnosticPosition::GlycanCompositional(sug, _),
             ) => Cow::Owned(format!("d{sug}")),
-            Self::Oxonium { .. } | Self::OxoniumComposition(_, _) => Cow::Borrowed("oxonium"),
+            Self::B { .. } | Self::BComposition(_, _) => Cow::Borrowed("B"),
             Self::Immonium(_, aa) => Cow::Owned(format!("i{}", aa.aminoacid.char())),
             Self::PrecursorSideChainLoss(_, aa) => Cow::Owned(format!("p-s{}", aa.char())),
             Self::Precursor => Cow::Borrowed("p"),
@@ -557,9 +551,8 @@ impl FragmentType {
             Self::Diagnostic(
                 DiagnosticPosition::Glycan(_, _) | DiagnosticPosition::GlycanCompositional(_, _),
             )
-            | Self::B(_)
-            | Self::Oxonium { .. }
-            | Self::OxoniumComposition(_, _) => FragmentKind::Oxonium,
+            | Self::B { .. }
+            | Self::BComposition(_, _) => FragmentKind::B,
             Self::Diagnostic(_) => FragmentKind::diagnostic,
             Self::Immonium(_, _) => FragmentKind::immonium,
             Self::PrecursorSideChainLoss(_, _) => FragmentKind::precursor_side_chain_loss,
@@ -658,7 +651,7 @@ pub enum FragmentKind {
     /// glycan Y fragment, generated by one or more branches broken
     Y,
     /// B or glycan diagnostic ion or Internal glycan fragment, meaning both a B and Y breakages (and potentially multiple of both), resulting in a set of monosaccharides
-    Oxonium,
+    B,
     /// Immonium ion
     immonium,
     /// Precursor with amino acid side chain loss
@@ -689,7 +682,7 @@ impl Display for FragmentKind {
                 Self::w => "w",
                 Self::z => "z",
                 Self::Y => "Y",
-                Self::Oxonium => "oxonium",
+                Self::B => "oxonium",
                 Self::immonium => "immonium",
                 Self::precursor_side_chain_loss => "precursor side chain loss",
                 Self::diagnostic => "diagnostic",
