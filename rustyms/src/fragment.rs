@@ -2,6 +2,7 @@
 
 use std::{
     borrow::Cow,
+    cmp::Ordering,
     fmt::{Debug, Display},
 };
 
@@ -336,7 +337,7 @@ pub enum DiagnosticPosition {
 }
 
 /// The possible types of fragments
-#[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Serialize, Deserialize, Default)]
+#[derive(Clone, Eq, PartialEq, Hash, Debug, Serialize, Deserialize, Default)]
 #[expect(non_camel_case_types)]
 pub enum FragmentType {
     /// a
@@ -401,6 +402,101 @@ pub enum FragmentType {
     /// precursor
     #[default]
     Precursor,
+}
+
+impl std::cmp::Ord for FragmentType {
+    fn cmp(&self, other: &Self) -> Ordering {
+        // Sort of type first (precursor/abcxyz/dw/v)
+        match (self, other) {
+            // Peptide
+            (Self::Precursor, Self::Precursor) => Ordering::Equal,
+            (Self::Precursor, _) => Ordering::Less,
+            (_, Self::Precursor) => Ordering::Greater,
+            (Self::a(s), Self::a(o)) => s.cmp(o),
+            (Self::a(_), _) => Ordering::Less,
+            (_, Self::a(_)) => Ordering::Greater,
+            (Self::b(s), Self::b(o)) => s.cmp(o),
+            (Self::b(_), _) => Ordering::Less,
+            (_, Self::b(_)) => Ordering::Greater,
+            (Self::c(s), Self::c(o)) => s.cmp(o),
+            (Self::c(_), _) => Ordering::Less,
+            (_, Self::c(_)) => Ordering::Greater,
+            (Self::x(s), Self::x(o)) => s.cmp(o),
+            (Self::x(_), _) => Ordering::Less,
+            (_, Self::x(_)) => Ordering::Greater,
+            (Self::y(s), Self::y(o)) => s.cmp(o),
+            (Self::y(_), _) => Ordering::Less,
+            (_, Self::y(_)) => Ordering::Greater,
+            (Self::z(s), Self::z(o)) => s.cmp(o),
+            (Self::z(_), _) => Ordering::Less,
+            (_, Self::z(_)) => Ordering::Greater,
+            (Self::z·(s), Self::z·(o)) => s.cmp(o),
+            (Self::z·(_), _) => Ordering::Less,
+            (_, Self::z·(_)) => Ordering::Greater,
+            (Self::d(s), Self::d(o)) => s.cmp(o),
+            (Self::d(_), _) => Ordering::Less,
+            (_, Self::d(_)) => Ordering::Greater,
+            (Self::w(s), Self::w(o)) => s.cmp(o),
+            (Self::w(_), _) => Ordering::Less,
+            (_, Self::w(_)) => Ordering::Greater,
+            (Self::v(s), Self::v(o)) => s.cmp(o),
+            (Self::v(_), _) => Ordering::Less,
+            (_, Self::v(_)) => Ordering::Greater,
+            (Self::Immonium(s, _), Self::Immonium(o, _)) => s.cmp(o),
+            (Self::Immonium(_, _), _) => Ordering::Less,
+            (_, Self::Immonium(_, _)) => Ordering::Greater,
+            (Self::PrecursorSideChainLoss(s, _), Self::PrecursorSideChainLoss(o, _)) => s.cmp(o),
+            (Self::PrecursorSideChainLoss(_, _), _) => Ordering::Less,
+            (_, Self::PrecursorSideChainLoss(_, _)) => Ordering::Greater,
+            (Self::Internal(st, sa, sb), Self::Internal(ot, oa, ob)) => {
+                sa.cmp(oa).then(sb.cmp(ob)).then(st.cmp(ot))
+            }
+            (Self::Internal(_, _, _), _) => Ordering::Less,
+            (_, Self::Internal(_, _, _)) => Ordering::Greater,
+            // Glycans
+            (Self::B { b: sb, y: sy, .. }, Self::B { b: ob, y: oy, .. }) => {
+                sy.len().cmp(&oy.len()).then(sb.cmp(ob))
+            }
+            (Self::Y(s), Self::Y(o)) => s.len().cmp(&o.len()),
+            (Self::B { y: sy, .. }, Self::Y(o)) => {
+                (sy.len() + 1).cmp(&o.len()).then(Ordering::Greater)
+            }
+            (Self::Y(s), Self::B { y: oy, .. }) => {
+                s.len().cmp(&(oy.len() + 1)).then(Ordering::Less)
+            }
+            (Self::B { .. }, _) => Ordering::Less,
+            (_, Self::B { .. }) => Ordering::Greater,
+            (Self::Y(_), _) => Ordering::Less,
+            (_, Self::Y(_)) => Ordering::Greater,
+            (Self::BComposition(s, sl), Self::BComposition(o, ol))
+            | (Self::YComposition(s, sl), Self::YComposition(o, ol)) => {
+                s.len().cmp(&o.len()).then(sl.cmp(ol))
+            }
+            (Self::BComposition(s, sl), Self::YComposition(o, ol)) => s
+                .len()
+                .cmp(&o.len())
+                .then(sl.cmp(ol))
+                .then(Ordering::Greater),
+            (Self::YComposition(s, sl), Self::BComposition(o, ol)) => {
+                s.len().cmp(&o.len()).then(sl.cmp(ol)).then(Ordering::Less)
+            }
+            (Self::BComposition(_, _), _) => Ordering::Less,
+            (_, Self::BComposition(_, _)) => Ordering::Greater,
+            (Self::YComposition(_, _), _) => Ordering::Less,
+            (_, Self::YComposition(_, _)) => Ordering::Greater,
+            // Other
+            (Self::Diagnostic(s), Self::Diagnostic(o)) => s.cmp(o),
+            (Self::Diagnostic(_), _) => Ordering::Less,
+            (_, Self::Diagnostic(_)) => Ordering::Greater,
+            (Self::Unknown(s), Self::Unknown(o)) => s.cmp(o),
+        }
+    }
+}
+
+impl std::cmp::PartialOrd for FragmentType {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
 }
 
 impl FragmentType {
