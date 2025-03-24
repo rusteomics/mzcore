@@ -73,7 +73,7 @@ impl MonoSaccharide {
                     Charge::default(),
                     peptidoform_ion_index,
                     peptidoform_index,
-                    FragmentType::OxoniumComposition(composition.clone(), attachment),
+                    FragmentType::BComposition(composition.clone(), attachment),
                 )
                 .with_charge_range(charge_carriers, model.glycan.oxonium_charge_range)
                 .flat_map(|o| o.with_neutral_losses(&model.glycan.neutral_losses)),
@@ -193,7 +193,7 @@ impl MonoSaccharide {
                     base.with_neutral_loss(&NeutralLoss::Loss(molecular_formula!(C 2 H 6 O 3))),
                     base.with_neutral_loss(&NeutralLoss::Loss(molecular_formula!(C 4 H 8 O 4))),
                 ]
-            } else if matches!(self.base_sugar, BaseSugar::Nonose)
+            } else if matches!(self.base_sugar, BaseSugar::Nonose(_))
                 && (self.substituents
                     == [
                         GlycanSubstituent::Amino,
@@ -347,7 +347,9 @@ mod tests {
         );
         assert_eq!(
             parse("D-Araf"),
-            MonoSaccharide::new(BaseSugar::Pentose(Some(PentoseIsomer::Arabinose)), &[]).furanose()
+            MonoSaccharide::new(BaseSugar::Pentose(Some(PentoseIsomer::Arabinose)), &[])
+                .furanose()
+                .configuration(Configuration::D)
         );
         assert_eq!(
             parse("Xyl-onic"),

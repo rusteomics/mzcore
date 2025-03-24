@@ -5,7 +5,10 @@ use std::{fmt::Display, hash::Hash};
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 
-use super::{glycan_parse_list, BaseSugar, MonoSaccharide, PositionedGlycanStructure};
+use super::{
+    glycan_parse_list, BaseSugar, GlycanBranchIndex, GlycanBranchMassIndex, MonoSaccharide,
+    PositionedGlycanStructure,
+};
 use crate::{
     error::{Context, CustomError},
     formula::{Chemical, MolecularFormula},
@@ -115,30 +118,34 @@ impl GlycanStructure {
     fn internal_pos(
         self,
         inner_depth: usize,
-        branch: &[usize],
+        branch: &[(GlycanBranchIndex, GlycanBranchMassIndex)],
     ) -> (PositionedGlycanStructure, usize) {
         // Sort the branches on decreasing molecular weight
-        let mut branches = self.branches;
-        branches.sort_unstable_by(|a, b| {
-            b.formula()
-                .monoisotopic_mass()
-                .partial_cmp(&a.formula().monoisotopic_mass())
-                .unwrap()
-        });
+        let branches = self
+            .branches
+            .into_iter()
+            .enumerate()
+            .sorted_unstable_by(|(_, a), (_, b)| {
+                b.formula()
+                    .monoisotopic_mass()
+                    .partial_cmp(&a.formula().monoisotopic_mass())
+                    .unwrap()
+            })
+            .collect_vec();
 
         // Get the correct branch indices adding a new layer of indices when needed
         let branches: Vec<(PositionedGlycanStructure, usize)> = if branches.len() == 1 {
             branches
                 .into_iter()
-                .map(|b| b.internal_pos(inner_depth + 1, branch))
+                .map(|(_, b)| b.internal_pos(inner_depth + 1, branch))
                 .collect()
         } else {
             branches
                 .into_iter()
                 .enumerate()
-                .map(|(i, b)| {
+                .map(|(mass_index, (index, b))| {
                     let mut new_branch = branch.to_vec();
-                    new_branch.push(i);
+                    new_branch.push((index, mass_index));
                     b.internal_pos(inner_depth + 1, &new_branch)
                 })
                 .collect()

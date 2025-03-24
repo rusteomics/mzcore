@@ -7,6 +7,7 @@ Cargo.lock
 errors.dat
 *.dat.Z
 *.dat
+*.html
 GNOme.obo
 glycosmos_glycans_list.csv
 .venv/

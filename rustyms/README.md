@@ -80,3 +80,5 @@ It has multiple features which allow you to slim it down if needed (all are enab
 * `rand` - allows the generation of random peptides.
 * `rayon` - enables parallel iterators using rayon, mostly for `imgt` but also in consecutive align.
 * `mzdata` - enables integration with [mzdata](https://github.com/mobiusklein/mzdata) which has more advanced raw file support.
+* `glycan-render` - enables the rendering to SVGs for glycans and glycan fragments
+* `glycan-render-bitmap` - enables the rendering to bitmaps for glycans, by enabling the optional dependencies zeno and swash

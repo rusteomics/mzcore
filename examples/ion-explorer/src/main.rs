@@ -346,11 +346,21 @@ fn write_comparison_stack(path: &Path, points: &[ComparisonPoint]) {
                 ("count_b".to_string(), p.count_b.to_string()),
                 (
                     "avg_intensity_a".to_string(),
-                    if p.count_a == 0 {0.0} else {p.total_intensity_a / p.count_a as f64}.to_string(),
+                    if p.count_a == 0 {
+                        0.0
+                    } else {
+                        p.total_intensity_a / p.count_a as f64
+                    }
+                    .to_string(),
                 ),
                 (
                     "avg_intensity_b".to_string(),
-                    if p.count_b == 0 {0.0} else {p.total_intensity_b / p.count_b as f64}.to_string(),
+                    if p.count_b == 0 {
+                        0.0
+                    } else {
+                        p.total_intensity_b / p.count_b as f64
+                    }
+                    .to_string(),
                 ),
             ]
         }),
