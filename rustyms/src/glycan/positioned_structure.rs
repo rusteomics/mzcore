@@ -15,6 +15,11 @@ use crate::{
 
 use crate::uom::num_traits::Zero;
 
+/// The index in the branches as stored in the structure
+pub type GlycanBranchIndex = usize;
+/// The index in the branches when the branches are sorted on mass, this is used to properly render the names of the branches for human consumption
+pub type GlycanBranchMassIndex = usize;
+
 /// Rose tree representation of glycan structure
 #[derive(Debug, Eq, PartialEq, Clone, Hash, Serialize, Deserialize)]
 pub struct PositionedGlycanStructure {
@@ -22,7 +27,15 @@ pub struct PositionedGlycanStructure {
     pub(super) branches: Vec<PositionedGlycanStructure>,
     pub(super) inner_depth: usize,
     pub(super) outer_depth: usize,
-    pub(super) branch: Vec<usize>,
+    /// The branches taken to get to this location (from the root) as the index in the branches and the index in the branches when sorted by mass.
+    /// For a general glycan with a fucose on the first hexnac and a bisection after the core double
+    /// hexnac + hex, this variable will contain an empty list for the root hexnac. For the fucose
+    /// this variable will contain `[(0, 1)]` indicating it is the first branch in the structure but
+    /// the second branch if the branches are sorted by mass. For the monosaccharides in the left
+    /// bisection this variable will contain `[(1, 0), (0, 0)]`, indicating that it took the main
+    /// branch (and not the fucose) and that it took the left branch for the second bisection which
+    /// is heavier than the right branch.
+    pub(super) branch: Vec<(GlycanBranchIndex, GlycanBranchMassIndex)>,
 }
 
 impl Chemical for PositionedGlycanStructure {
@@ -144,40 +157,36 @@ impl PositionedGlycanStructure {
         peptidoform_index: usize,
         attachment: Option<(AminoAcid, usize)>,
     ) -> Vec<Fragment> {
-        // Generate the basic single breakage B fragments
-        let mut base_fragments = vec![Fragment::new(
-            self.formula_inner(SequencePosition::default(), peptidoform_index),
-            Charge::zero(),
-            peptidoform_ion_index,
-            peptidoform_index,
-            FragmentType::B(self.position(attachment)),
-        )];
-        // Extend with all internal fragments, meaning multiple breaking bonds
-        base_fragments.extend(
-            self.internal_break_points(peptidoform_index, attachment)
-                .into_iter()
-                .filter(|(_, breakages)| {
-                    !breakages
-                        .iter()
-                        .all(|b| matches!(b, GlycanBreakPos::End(_)))
-                })
-                .filter(|(m, _)| *m != MolecularFormula::default())
-                .map(|(m, b)| {
-                    (
-                        m,
-                        [b, vec![GlycanBreakPos::B(self.position(attachment))]].concat(),
-                    )
-                })
-                .map(|(formula, breakages)| {
-                    Fragment::new(
-                        formula,
-                        Charge::zero(),
-                        peptidoform_ion_index,
-                        peptidoform_index,
-                        FragmentType::Oxonium(breakages),
-                    )
-                }),
-        );
+        // Find all B type fragments (with and without Y breakage)
+        let mut base_fragments = self
+            .internal_break_points(peptidoform_index, attachment)
+            .into_iter()
+            .filter(|(m, _)| *m != MolecularFormula::default())
+            .map(|(formula, breakages)| {
+                Fragment::new(
+                    formula,
+                    Charge::zero(),
+                    peptidoform_ion_index,
+                    peptidoform_index,
+                    FragmentType::B {
+                        b: self.position(attachment),
+                        y: breakages
+                            .iter()
+                            .filter(|b| matches!(b, GlycanBreakPos::Y(_)))
+                            .map(GlycanBreakPos::position)
+                            .cloned()
+                            .collect(),
+                        end: breakages
+                            .iter()
+                            .filter(|b| matches!(b, GlycanBreakPos::End(_)))
+                            .map(GlycanBreakPos::position)
+                            .cloned()
+                            .collect(),
+                    },
+                )
+            })
+            .collect_vec();
+
         // Extend with the theoretical fragments for all branches of this position
         base_fragments.extend(self.branches.iter().flat_map(|b| {
             b.oxonium_fragments(peptidoform_ion_index, peptidoform_index, attachment)

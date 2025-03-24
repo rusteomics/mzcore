@@ -28,6 +28,8 @@ jobs:
         cargo build -p rustyms --no-default-features --features rand
         cargo build -p rustyms --no-default-features --features rayon
         cargo build -p rustyms --no-default-features --features mzdata
+        cargo build -p rustyms --no-default-features --features glycan-render
+        cargo build -p rustyms --no-default-features --features glycan-render-bitmap
   
   fmt:
     runs-on: ubuntu-latest
