@@ -383,7 +383,7 @@ impl GlycanModel {
 }
 
 /// The possibilities for primary ions, a list of all allowed neutral losses, all charge options, and all allowed variant ions
-pub type PossiblePrimaryIons<'a> = (Vec<NeutralLoss>, ChargeRange, &'a [i8]);
+pub type PossiblePrimaryIons<'a> = (Vec<Vec<NeutralLoss>>, ChargeRange, &'a [i8]);
 /// The possibilities for satellite ions, a list of all satellite ions with their amino acid and
 /// distance from the parent backbone cleavage, as well as all ion settings as for primary series.
 pub type PossibleSatelliteIons<'a> = (Vec<(AminoAcid, u8)>, PossiblePrimaryIons<'a>);
@@ -605,7 +605,7 @@ impl Model {
                         })
                         .flatten(),
                 )
-                .cloned()
+                .map(|l| vec![l.clone()])
                 .chain(get_all_sidechain_losses(
                     peptide_slice,
                     amino_acid_side_chains,
@@ -826,7 +826,8 @@ impl Model {
             y: PrimaryIonSeries::default()
                 .neutral_losses(vec![NeutralLoss::Loss(molecular_formula!(H 2 O 1))]),
             z: PrimaryIonSeries::default()
-                .neutral_losses(vec![NeutralLoss::Loss(molecular_formula!(H 2 O 1))]),
+                .neutral_losses(vec![NeutralLoss::Loss(molecular_formula!(H 2 O 1))])
+                .variants(vec![0, 1]),
             precursor: (
                 vec![NeutralLoss::Loss(molecular_formula!(H 2 O 1))],
                 Vec::new(),
@@ -882,8 +883,8 @@ impl Model {
         }
     }
 
-    /// hot EACID
-    pub fn hot_eacid() -> Self {
+    /// EAciD
+    pub fn eacid() -> Self {
         Self {
             a: PrimaryIonSeries::default()
                 .neutral_losses(vec![NeutralLoss::Loss(molecular_formula!(H 2 O 1))]),
@@ -1199,7 +1200,7 @@ impl SatelliteLocation {
 pub(crate) fn get_all_sidechain_losses<Complexity>(
     slice: &[SequenceElement<Complexity>],
     settings: &(u8, Option<Vec<AminoAcid>>),
-) -> Vec<NeutralLoss> {
+) -> Vec<Vec<NeutralLoss>> {
     if settings.0 == 0 {
         Vec::new()
     } else {
@@ -1212,19 +1213,60 @@ pub(crate) fn get_all_sidechain_losses<Complexity>(
                     .is_none_or(|aa| aa.contains(&seq.aminoacid.aminoacid()))
                     .then_some(seq.aminoacid.aminoacid())
             })
+            .unique()
             .flat_map(|aa| {
                 aa.formulas()
                     .iter()
                     .map(|f| {
                         NeutralLoss::SideChainLoss(f - molecular_formula!(H 3 C 2 N 1 O 1), aa)
                     })
+                    .filter(|l| !l.is_empty())
                     .collect::<Vec<_>>()
             })
             .collect();
         (1..=settings.0)
             .flat_map(|k| options.iter().combinations(k as usize))
-            .flatten()
-            .cloned()
+            .map(|o| o.into_iter().cloned().collect_vec())
             .collect()
     }
+}
+
+#[test]
+fn side_chain_losses() {
+    let peptide = Peptidoform::pro_forma("FGGGTKLELKR", None)
+        .unwrap()
+        .into_simple_linear()
+        .unwrap();
+    assert_eq!(
+        0,
+        get_all_sidechain_losses(peptide.sequence(), &(0, None)).len()
+    );
+    assert_eq!(
+        1,
+        get_all_sidechain_losses(
+            peptide.sequence(),
+            &(1, Some(vec![AminoAcid::Phenylalanine]))
+        )
+        .len()
+    );
+    assert_eq!(
+        0,
+        get_all_sidechain_losses(peptide.sequence(), &(1, Some(vec![AminoAcid::Glycine]))).len()
+    );
+    assert_eq!(
+        1,
+        get_all_sidechain_losses(peptide.sequence(), &(1, Some(vec![AminoAcid::Leucine]))).len()
+    );
+    assert_eq!(
+        6,
+        get_all_sidechain_losses(peptide.sequence(), &(1, None)).len()
+    );
+    assert_eq!(
+        3,
+        dbg!(get_all_sidechain_losses(
+            peptide.sequence(),
+            &(2, Some(vec![AminoAcid::Phenylalanine, AminoAcid::Leucine]))
+        ))
+        .len()
+    );
 }

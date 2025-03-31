@@ -1,3 +1,4 @@
+use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 
 use crate::{
@@ -381,24 +382,32 @@ impl AminoAcid {
                 ));
             }
             for (aa, distance) in &ions.d.0 {
-                base_fragments.extend(Fragment::generate_series(
-                    &(-aa.satellite_ion_fragments(sequence_index - *distance, peptidoform_index)
-                        * modifications
-                        * self.formulas_inner(sequence_index, peptidoform_index)
-                        + molecular_formula!(H 1 C 1 O 1)),
-                    peptidoform_ion_index,
-                    peptidoform_index,
-                    &FragmentType::d(n_pos, *aa, *distance, 0),
-                    n_term,
-                    charge_carriers,
-                    &ions.d.1,
-                ));
+                let satellite_fragments =
+                    aa.satellite_ion_fragments(sequence_index - *distance, peptidoform_index);
+                if !(satellite_fragments.is_empty()
+                    || satellite_fragments.len() == 0 && satellite_fragments[0].is_empty())
+                {
+                    base_fragments.extend(Fragment::generate_series(
+                        &(-satellite_fragments
+                            * modifications
+                            * self.formulas_inner(sequence_index, peptidoform_index)
+                            + molecular_formula!(H 1 C 1 O 1)),
+                        peptidoform_ion_index,
+                        peptidoform_index,
+                        &FragmentType::d(n_pos, *aa, *distance, 0),
+                        n_term,
+                        charge_carriers,
+                        &ions.d.1,
+                    ));
+                }
             }
         }
         if allow_terminal.1 {
             for (aa, distance) in &ions.v.0 {
                 base_fragments.extend(Fragment::generate_series(
-                    &molecular_formula!(H 3 C 2 N 1 O 1).into(),
+                    &(self.formulas_inner(sequence_index, peptidoform_index)
+                        * -aa.formulas_inner(sequence_index + *distance, peptidoform_index)
+                        + molecular_formula!(H 3 C 2 N 1 O 1)),
                     peptidoform_ion_index,
                     peptidoform_index,
                     &FragmentType::v(c_pos, *aa, *distance, 0),
@@ -408,18 +417,24 @@ impl AminoAcid {
                 ));
             }
             for (aa, distance) in &ions.w.0 {
-                base_fragments.extend(Fragment::generate_series(
-                    &(-aa.satellite_ion_fragments(sequence_index + *distance, peptidoform_index)
-                        * modifications
-                        * self.formulas_inner(sequence_index, peptidoform_index)
-                        + molecular_formula!(H 2 N 1)),
-                    peptidoform_ion_index,
-                    peptidoform_index,
-                    &FragmentType::w(c_pos, *aa, *distance, 0),
-                    c_term,
-                    charge_carriers,
-                    &ions.w.1,
-                ));
+                let satellite_fragments =
+                    aa.satellite_ion_fragments(sequence_index - *distance, peptidoform_index);
+                if !(satellite_fragments.is_empty()
+                    || satellite_fragments.len() == 0 && satellite_fragments[0].is_empty())
+                {
+                    base_fragments.extend(Fragment::generate_series(
+                        &(-satellite_fragments
+                            * modifications
+                            * self.formulas_inner(sequence_index, peptidoform_index)
+                            + molecular_formula!(H 2 N 1)),
+                        peptidoform_ion_index,
+                        peptidoform_index,
+                        &FragmentType::w(c_pos, *aa, *distance, 0),
+                        c_term,
+                        charge_carriers,
+                        &ions.w.1,
+                    ));
+                }
             }
             if let Some(settings) = &ions.x {
                 base_fragments.extend(Fragment::generate_series(
@@ -468,7 +483,11 @@ impl AminoAcid {
                     peptidoform_index,
                     &FragmentType::Immonium(n_pos, self.into()), // TODO: get the actual sequenceelement here
                     &Multi::default(),
-                    self.immonium_losses().as_slice(),
+                    &self
+                        .immonium_losses()
+                        .iter()
+                        .map(|l| vec![l.clone()])
+                        .collect_vec(),
                     charge_carriers,
                     charge,
                 ));

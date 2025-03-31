@@ -861,7 +861,7 @@ impl<Complexity> Peptidoform<Complexity> {
         let mut precursor_neutral_losses = if model.modification_specific_neutral_losses {
             self.potential_neutral_losses(.., all_peptides, peptidoform_index, &mut Vec::new())
                 .into_iter()
-                .map(|(n, _, _)| n)
+                .map(|(n, _, _)| vec![n])
                 .collect_vec()
         } else {
             Vec::new()
@@ -882,13 +882,13 @@ impl<Complexity> Peptidoform<Complexity> {
                         .then_some(losses)
                 })
                 .flatten()
-                .cloned(),
+                .map(|l| vec![l.clone()]),
         );
         // Add amino acid side chain losses
         precursor_neutral_losses
             .extend(get_all_sidechain_losses(&self.sequence, &model.precursor.2));
         // Add all normal neutral losses
-        precursor_neutral_losses.extend_from_slice(&model.precursor.0);
+        precursor_neutral_losses.extend(model.precursor.0.iter().map(|l| vec![l.clone()]));
 
         output.extend(Fragment::generate_all(
             &full_precursor,

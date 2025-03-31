@@ -1,4 +1,8 @@
-use std::{fmt::Display, ops::Add, str::FromStr};
+use std::{
+    fmt::Display,
+    ops::{Add, AddAssign},
+    str::FromStr,
+};
 
 use serde::{Deserialize, Serialize};
 
@@ -118,6 +122,21 @@ impl std::ops::Add<&NeutralLoss> for &MolecularFormula {
     }
 }
 
+impl std::ops::AddAssign<&NeutralLoss> for MolecularFormula {
+    fn add_assign(&mut self, rhs: &NeutralLoss) {
+        match rhs {
+            NeutralLoss::Gain(mol) => *self += mol,
+            NeutralLoss::Loss(mol) | NeutralLoss::SideChainLoss(mol, _) => *self -= mol,
+        }
+    }
+}
+
+impl AddAssign<NeutralLoss> for MolecularFormula {
+    fn add_assign(&mut self, rhs: NeutralLoss) {
+        *self += &rhs;
+    }
+}
+
 impl std::ops::Add<&NeutralLoss> for &Multi<MolecularFormula> {
     type Output = Multi<MolecularFormula>;
     fn add(self, rhs: &NeutralLoss) -> Self::Output {
@@ -130,3 +149,23 @@ impl std::ops::Add<&NeutralLoss> for &Multi<MolecularFormula> {
 
 impl_binop_ref_cases!(impl Add, add for MolecularFormula, NeutralLoss, MolecularFormula);
 impl_binop_ref_cases!(impl Add, add for Multi<MolecularFormula>, NeutralLoss, Multi<MolecularFormula>);
+
+impl<'a> std::iter::Sum<&'a NeutralLoss> for MolecularFormula {
+    fn sum<I: Iterator<Item = &'a NeutralLoss>>(iter: I) -> Self {
+        let mut output = Self::default();
+        for value in iter {
+            output += value;
+        }
+        output
+    }
+}
+
+impl std::iter::Sum<NeutralLoss> for MolecularFormula {
+    fn sum<I: Iterator<Item = NeutralLoss>>(iter: I) -> Self {
+        let mut output = Self::default();
+        for value in iter {
+            output += value;
+        }
+        output
+    }
+}

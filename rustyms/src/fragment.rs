@@ -99,7 +99,7 @@ impl Fragment {
         peptidoform_index: usize,
         annotation: &FragmentType,
         termini: &Multi<MolecularFormula>,
-        neutral_losses: &[NeutralLoss],
+        neutral_losses: &[Vec<NeutralLoss>],
         charge_carriers: &mut CachedCharge,
         charge_range: ChargeRange,
     ) -> Vec<Self> {
@@ -108,17 +108,20 @@ impl Fragment {
             .cartesian_product(theoretical_mass.iter())
             .cartesian_product(charge_carriers.range(charge_range))
             .cartesian_product(std::iter::once(None).chain(neutral_losses.iter().map(Some)))
-            .map(|(((term, mass), charge), loss)| Self {
+            .map(|(((term, mass), charge), losses)| Self {
                 formula: Some(
                     term + mass
                         + charge.formula_inner(SequencePosition::default(), peptidoform_index)
-                        + loss.unwrap_or(&NeutralLoss::Gain(MolecularFormula::default())),
+                        + losses
+                            .iter()
+                            .flat_map(|l| l.iter())
+                            .sum::<MolecularFormula>(),
                 ),
                 charge: Charge::new::<crate::system::e>(charge.charge().value.try_into().unwrap()),
                 ion: annotation.clone(),
                 peptidoform_ion_index: Some(peptidoform_ion_index),
                 peptidoform_index: Some(peptidoform_index),
-                neutral_loss: loss.map(|l| vec![l.clone()]).unwrap_or_default(),
+                neutral_loss: losses.map(|l| l.clone()).unwrap_or_default(),
                 deviation: None,
                 confidence: None,
                 auxiliary: false,
@@ -145,18 +148,21 @@ impl Fragment {
             .cartesian_product(charge_carriers.range(settings.1))
             .cartesian_product(std::iter::once(None).chain(settings.0.iter().map(Some)))
             .cartesian_product(settings.2.iter())
-            .map(|((((term, mass), charge), loss), variant)| Self {
+            .map(|((((term, mass), charge), losses), variant)| Self {
                 formula: Some(
                     term + mass
                         + charge.formula_inner(SequencePosition::default(), peptidoform_index)
-                        + loss.unwrap_or(&NeutralLoss::Gain(MolecularFormula::default()))
+                        + losses
+                            .iter()
+                            .flat_map(|l| l.iter())
+                            .sum::<MolecularFormula>()
                         + molecular_formula!(H 1) * variant,
                 ),
                 charge: Charge::new::<crate::system::e>(charge.charge().value.try_into().unwrap()),
                 ion: annotation.with_variant(*variant),
                 peptidoform_ion_index: Some(peptidoform_ion_index),
                 peptidoform_index: Some(peptidoform_index),
-                neutral_loss: loss.map(|l| vec![l.clone()]).unwrap_or_default(),
+                neutral_loss: losses.map(|l| l.clone()).unwrap_or_default(),
                 deviation: None,
                 confidence: None,
                 auxiliary: false,
@@ -647,112 +653,63 @@ impl FragmentType {
         }
     }
 
-    /// Get the label for this fragment type
-    pub fn label(&self) -> Cow<str> {
-        match self {
-            Self::a(_, 0) => Cow::Borrowed("a"),
-            Self::a(_, n) => Cow::Owned(format!(
-                "a{}",
-                if *n < 0 {
-                    "\'".repeat((-n) as usize)
-                } else {
-                    "·".repeat(*n as usize)
-                }
-            )),
-            Self::b(_, 0) => Cow::Borrowed("b"),
-            Self::b(_, n) => Cow::Owned(format!(
-                "b{}",
-                if *n < 0 {
-                    "\'".repeat((-n) as usize)
-                } else {
-                    "·".repeat(*n as usize)
-                }
-            )),
-            Self::c(_, 0) => Cow::Borrowed("c"),
-            Self::c(_, n) => Cow::Owned(format!(
-                "c{}",
-                if *n < 0 {
-                    "\'".repeat((-n) as usize)
-                } else {
-                    "·".repeat(*n as usize)
-                }
-            )),
-            Self::d(_, _, 0, 0) => Cow::Borrowed("d"),
-            Self::d(_, _, n, v) => Cow::Owned(format!(
-                "{n}d{}",
-                if *v < 0 {
-                    "\'".repeat((-v) as usize)
-                } else {
-                    "·".repeat(*v as usize)
-                }
-            )),
-            Self::v(_, _, 0, 0) => Cow::Borrowed("v"),
-            Self::v(_, _, n, v) => Cow::Owned(format!(
-                "{n}v{}",
-                if *v < 0 {
-                    "\'".repeat((-v) as usize)
-                } else {
-                    "·".repeat(*v as usize)
-                }
-            )),
-            Self::w(_, _, 0, 0) => Cow::Borrowed("w"),
-            Self::w(_, _, n, v) => Cow::Owned(format!(
-                "{n}w{}",
-                if *v < 0 {
-                    "\'".repeat((-v) as usize)
-                } else {
-                    "·".repeat(*v as usize)
-                }
-            )),
-            Self::x(_, 0) => Cow::Borrowed("x"),
-            Self::x(_, n) => Cow::Owned(format!(
-                "x{}",
-                if *n < 0 {
-                    "\'".repeat((-n) as usize)
-                } else {
-                    "·".repeat(*n as usize)
-                }
-            )),
-            Self::y(_, 0) => Cow::Borrowed("y"),
-            Self::y(_, n) => Cow::Owned(format!(
-                "y{}",
-                if *n < 0 {
-                    "\'".repeat((-n) as usize)
-                } else {
-                    "·".repeat(*n as usize)
-                }
-            )),
-            Self::z(_, 0) => Cow::Borrowed("z"),
-            Self::z(_, n) => Cow::Owned(format!(
-                "z{}",
-                if *n < 0 {
-                    "\'".repeat((-n) as usize)
-                } else {
-                    "·".repeat(*n as usize)
-                }
-            )),
-            Self::B { .. } | Self::BComposition(_, _) => Cow::Borrowed("B"),
-            Self::Y(_) | Self::YComposition(_, _) => Cow::Borrowed("Y"),
-            Self::Diagnostic(DiagnosticPosition::Peptide(_, aa)) => {
-                Cow::Owned(format!("d{}", aa.char()))
+    /// Get the label for this fragment type, the first argument is the optional superscript prefix, the second is the main label
+    pub fn label(&self) -> (Option<String>, Cow<str>) {
+        let get_label = |ion: &'static str, v: i8| {
+            if v == 0 {
+                Cow::Borrowed(ion)
+            } else {
+                Cow::Owned(format!(
+                    "{ion}{}",
+                    if v < 0 {
+                        "\'".repeat((-v) as usize)
+                    } else {
+                        "·".repeat(v as usize)
+                    }
+                ))
             }
-            Self::Diagnostic(DiagnosticPosition::Reporter) => Cow::Borrowed("r"),
-            Self::Diagnostic(DiagnosticPosition::Labile(m)) => Cow::Owned(format!("d{m}")),
+        };
+
+        match self {
+            Self::a(_, v) => (None, get_label("a", *v)),
+            Self::b(_, v) => (None, get_label("b", *v)),
+            Self::c(_, v) => (None, get_label("c", *v)),
+            Self::d(_, _, n, v) => ((*n != 0).then_some(n.to_string()), get_label("d", *v)),
+            Self::v(_, _, n, v) => ((*n != 0).then_some(n.to_string()), get_label("v", *v)),
+            Self::w(_, _, n, v) => ((*n != 0).then_some(n.to_string()), get_label("w", *v)),
+            Self::x(_, v) => (None, get_label("x", *v)),
+            Self::y(_, v) => (None, get_label("y", *v)),
+            Self::z(_, v) => (None, get_label("z", *v)),
+            Self::B { .. } | Self::BComposition(_, _) => (None, Cow::Borrowed("B")),
+            Self::Y(_) | Self::YComposition(_, _) => (None, Cow::Borrowed("Y")),
+            Self::Diagnostic(DiagnosticPosition::Peptide(_, aa)) => {
+                (None, Cow::Owned(format!("d{}", aa.char())))
+            }
+            Self::Diagnostic(DiagnosticPosition::Reporter) => (None, Cow::Borrowed("r")),
+            Self::Diagnostic(DiagnosticPosition::Labile(m)) => (None, Cow::Owned(format!("d{m}"))),
             Self::Diagnostic(
                 DiagnosticPosition::Glycan(_, sug)
                 | DiagnosticPosition::GlycanCompositional(sug, _),
-            ) => Cow::Owned(format!("d{sug}")),
-            Self::Immonium(_, aa) => Cow::Owned(format!("i{}", aa.aminoacid.char())),
-            Self::PrecursorSideChainLoss(_, aa) => Cow::Owned(format!("p-s{}", aa.char())),
-            Self::Precursor => Cow::Borrowed("p"),
-            Self::Internal(fragmentation, _, _) => Cow::Owned(format!(
-                "m{}",
-                fragmentation.map_or(String::new(), |(n, c)| format!("{n}:{c}")),
-            )),
-            Self::Unknown(series) => Cow::Owned(format!(
-                "?{}",
-                series.map_or(String::new(), |s| s.to_string()),
-            )),
+            ) => (None, Cow::Owned(format!("d{sug}"))),
+            Self::Immonium(_, aa) => (None, Cow::Owned(format!("i{}", aa.aminoacid.char()))),
+            Self::PrecursorSideChainLoss(_, aa) => {
+                (None, Cow::Owned(format!("p-sidechain_{}", aa.char())))
+            }
+            Self::Precursor => (None, Cow::Borrowed("p")),
+            Self::Internal(fragmentation, _, _) => (
+                None,
+                Cow::Owned(format!(
+                    "m{}",
+                    fragmentation.map_or(String::new(), |(n, c)| format!("{n}:{c}")),
+                )),
+            ),
+            Self::Unknown(series) => (
+                None,
+                Cow::Owned(format!(
+                    "?{}",
+                    series.map_or(String::new(), |s| s.to_string()),
+                )),
+            ),
         }
     }
 
@@ -786,10 +743,12 @@ impl FragmentType {
 
 impl Display for FragmentType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let (sup, label) = self.label();
         write!(
             f,
-            "{}{}",
-            self.label(),
+            "{}{}{}",
+            sup.unwrap_or_default(),
+            label,
             self.position_label().unwrap_or_default()
         )
     }

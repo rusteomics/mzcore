@@ -6,7 +6,7 @@ use std::{
     fmt::Write,
     hash::Hash,
     num::NonZeroU16,
-    ops::{Add, AddAssign, Mul, Neg, Sub},
+    ops::{Add, AddAssign, Mul, Neg, Sub, SubAssign},
 };
 use thin_vec::ThinVec;
 
@@ -501,9 +501,43 @@ impl AddAssign<&Self> for MolecularFormula {
     }
 }
 
+impl SubAssign<&Self> for MolecularFormula {
+    fn sub_assign(&mut self, rhs: &Self) {
+        self.labels.extend_from_slice(&rhs.labels);
+        let mut index_result = 0;
+        let mut index_rhs = 0;
+        self.additional_mass -= rhs.additional_mass;
+        while index_rhs < rhs.elements.len() {
+            let (el, i, n) = rhs.elements[index_rhs];
+            if index_result < self.elements.len() {
+                let (re, ri, _) = self.elements[index_result];
+                if el > re || (el == re && i > ri) {
+                    index_result += 1;
+                } else if el == re && i == ri {
+                    self.elements[index_result].2 -= n;
+                    index_rhs += 1;
+                } else {
+                    self.elements.insert(index_result, (el, i, -n));
+                    index_rhs += 1;
+                }
+            } else {
+                self.elements.push((el, i, -n));
+                index_rhs += 1;
+            }
+        }
+        self.elements.retain(|el| el.2 != 0);
+    }
+}
+
 impl AddAssign<Self> for MolecularFormula {
     fn add_assign(&mut self, rhs: Self) {
         *self += &rhs;
+    }
+}
+
+impl SubAssign<Self> for MolecularFormula {
+    fn sub_assign(&mut self, rhs: Self) {
+        *self -= &rhs;
     }
 }
 

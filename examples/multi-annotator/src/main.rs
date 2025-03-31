@@ -56,7 +56,7 @@ fn select_model(text: &str, default: &Model) -> Model {
         "etd" => Model::etd(),
         "td_etd" => Model::td_etd(),
         "ethcd" | "etcad" => Model::ethcd(),
-        "hot eacid" | "eacid" => Model::hot_eacid(),
+        "eacid" => Model::eacid(),
         "ead" => Model::ead(),
         "hcd" | "cid" => Model::cid_hcd(),
         "all" => Model::all(),
