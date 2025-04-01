@@ -36,7 +36,7 @@ impl<Complexity> MultiAlignmentLine<'_, Complexity> {
         {
             print!(
                 "{}{}",
-                piece.1.aminoacid.char(),
+                piece.1.aminoacid,
                 "·".repeat(piece.0.step as usize - 1)
             );
         }

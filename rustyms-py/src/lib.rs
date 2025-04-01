@@ -6,7 +6,7 @@ use std::num::NonZeroU16;
 use ordered_float::OrderedFloat;
 use pyo3::{exceptions::PyValueError, prelude::*, types::PyType};
 
-use rustyms::{AnnotatableSpectrum, Chemical, Linked, MultiChemical};
+use rustyms::{AnnotatableSpectrum, Chemical, IsAminoAcid, Linked, MultiChemical};
 
 /// Mass mode enum.
 #[pyclass(eq, eq_int)]
@@ -440,7 +440,7 @@ impl AminoAcid {
     }
 
     fn __str__(&self) -> String {
-        self.0.char().to_string()
+        self.0.pro_forma_definition().to_string()
     }
 
     fn __repr__(&self) -> String {
@@ -1124,7 +1124,7 @@ impl Peptidoform {
         self.0
             .sequence()
             .iter()
-            .map(|x| x.aminoacid.char())
+            .map(|x| x.aminoacid.pro_forma_definition())
             .collect()
     }
 

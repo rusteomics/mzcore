@@ -607,9 +607,7 @@ impl FragmentType {
             Self::z(_) => Cow::Borrowed("z"),
             Self::z·(_) => Cow::Borrowed("z·"),
             Self::Y(_) | Self::YComposition(_, _) => Cow::Borrowed("Y"),
-            Self::Diagnostic(DiagnosticPosition::Peptide(_, aa)) => {
-                Cow::Owned(format!("d{}", aa.char()))
-            }
+            Self::Diagnostic(DiagnosticPosition::Peptide(_, aa)) => Cow::Owned(format!("d{aa}")),
             Self::Diagnostic(DiagnosticPosition::Reporter) => Cow::Borrowed("r"),
             Self::Diagnostic(DiagnosticPosition::Labile(m)) => Cow::Owned(format!("d{m}")),
             Self::Diagnostic(
