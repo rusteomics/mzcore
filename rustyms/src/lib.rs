@@ -84,7 +84,7 @@ pub use crate::sequence_element::SequenceElement;
 pub use crate::sequence_position::*;
 pub use crate::spectrum::{AnnotatableSpectrum, AnnotatedSpectrum, RawSpectrum};
 pub use crate::tolerance::*;
-pub use aminoacid::{is_amino_acid::IsAminoAcid, is_amino_acid_impl::AminoAcid};
+pub use aminoacid::{AminoAcid, IsAminoAcid};
 pub use checked_aminoacid::CheckedAminoAcid;
 pub use fragment::Fragment;
 pub use peptidoform::{CompoundPeptidoformIon, Peptidoform, PeptidoformIon};

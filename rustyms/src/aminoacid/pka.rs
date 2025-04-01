@@ -34,8 +34,8 @@ impl<Complexity: AtMax<SemiAmbiguous>> Peptidoform<Complexity> {
     /// // Create a SemiAmbiguous Peptidoform for glutamic acid (E) and Alanine (A)
     /// let peptidoform = Peptidoform::pro_forma(&"EMEVEESPEK", None).unwrap().into_semi_ambiguous().unwrap();
     /// let pi = peptidoform.isoelectic_point::<PKaLide1991>();
-    /// // The calculated pI is approximately 3.57 (bacause it's rounded to 2 decimal points) based on Lide 1991 pKa values
-    /// assert_eq!(pi, Some(3.57));
+    /// // The calculated pI is approximately 3.57 based on Lide 1991 pKa values
+    /// assert_eq!(pi.map(|v| (v * 100.0).round() / 100.0), Some(3.57));
     /// ```
     ///
     /// # Shortcomings
@@ -119,7 +119,7 @@ impl<Complexity: AtMax<SemiAmbiguous>> Peptidoform<Complexity> {
             }
         }
 
-        Some((new_pi * 100.0).round() / 100.0)
+        Some(new_pi)
     }
 }
 
@@ -280,10 +280,15 @@ mod tests {
                     None::<std::iter::Empty<SimpleModification>>,
                 )
                 .unwrap_or_else(|| panic!("Missing pKa for {aa:?}"));
+                let round = |v: f64| (v * 100.0).round() / 100.0;
 
-                assert_eq!(pka.n_term(), *n_term, "N-term mismatch for {aa:?}");
-                assert_eq!(pka.sidechain(), *sidechain, "Sidechain mismatch for {aa:?}");
-                assert_eq!(pka.c_term(), *c_term, "C-term mismatch for {aa:?}");
+                assert_eq!(round(pka.n_term()), *n_term, "N-term mismatch for {aa:?}");
+                assert_eq!(
+                    pka.sidechain().map(round),
+                    *sidechain,
+                    "Sidechain mismatch for {aa:?}"
+                );
+                assert_eq!(round(pka.c_term()), *c_term, "C-term mismatch for {aa:?}");
             } else {
                 assert!(maybe_values.is_none(), "Expected None for {aa:?}");
             }
@@ -294,9 +299,11 @@ mod tests {
     fn test_isoelectric_point<Source: PKaSource<AminoAcid>>(cases: &[(&str, Option<f64>)]) {
         for &(seq, expected) in cases {
             let peptide = create_peptidoform(seq);
+            let round = |v: f64| (v * 100.0).round() / 100.0;
             let iso = peptide.isoelectic_point::<Source>();
             assert_eq!(
-                iso, expected,
+                iso.map(round),
+                expected,
                 "Isoelectric point mismatch for peptide: {seq}"
             );
         }
