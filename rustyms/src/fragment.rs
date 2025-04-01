@@ -21,8 +21,8 @@ use crate::{
         usize::Charge,
         OrderedMassOverCharge,
     },
-    AmbiguousLabel, AminoAcid, Chemical, MassMode, Modification, MolecularFormula, Multi,
-    NeutralLoss, SemiAmbiguous, SequenceElement, SequencePosition, Tolerance,
+    AmbiguousLabel, AminoAcid, Chemical, IsAminoAcid, MassMode, Modification, MolecularFormula,
+    Multi, NeutralLoss, SemiAmbiguous, SequenceElement, SequencePosition, Tolerance,
 };
 
 /// A theoretical fragment of a peptide
@@ -615,8 +615,19 @@ impl FragmentType {
                 | DiagnosticPosition::GlycanCompositional(sug, _),
             ) => Cow::Owned(format!("d{sug}")),
             Self::B { .. } | Self::BComposition(_, _) => Cow::Borrowed("B"),
-            Self::Immonium(_, aa) => Cow::Owned(format!("i{}", aa.aminoacid.char())),
-            Self::PrecursorSideChainLoss(_, aa) => Cow::Owned(format!("p-s{}", aa.char())),
+            Self::Immonium(_, aa) => Cow::Owned(
+                aa.aminoacid
+                    .one_letter_code()
+                    .map(|c| format!("i{c}"))
+                    .or_else(|| aa.aminoacid.three_letter_code().map(|c| format!("i{c}")))
+                    .unwrap_or_else(|| format!("i{}", aa.aminoacid.name())),
+            ),
+            Self::PrecursorSideChainLoss(_, aa) => Cow::Owned(
+                aa.one_letter_code()
+                    .map(|c| format!("p-s{c}"))
+                    .or_else(|| aa.three_letter_code().map(|c| format!("p-s{c}")))
+                    .unwrap_or_else(|| format!("p-s{}", aa.name())),
+            ),
             Self::Precursor => Cow::Borrowed("p"),
             Self::Internal(fragmentation, _, _) => Cow::Owned(format!(
                 "m{}",
