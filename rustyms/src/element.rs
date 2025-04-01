@@ -82,7 +82,7 @@ impl Element {
                 let mut max = None;
                 for iso in &elemental_data()[self as usize - 1].2 {
                     let chance = iso.2 * f64::from(n);
-                    if max.map_or(true, |m: (Mass, f64)| chance > m.1) {
+                    if max.is_none_or(|m: (Mass, f64)| chance > m.1) {
                         max = Some((iso.1, chance));
                     }
                 }

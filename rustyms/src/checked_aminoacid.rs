@@ -3,8 +3,8 @@ use std::marker::PhantomData;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    aminoacids::IsAminoAcid, AminoAcid, Chemical, MolecularFormula, Multi, MultiChemical,
-    SemiAmbiguous, UnAmbiguous,
+    aminoacid::{is_amino_acid::IsAminoAcid, is_amino_acid_impl::AminoAcid},
+    Chemical, MolecularFormula, Multi, MultiChemical, SemiAmbiguous, UnAmbiguous,
 };
 
 /// A checked amino acid. This wraps an [`AminoAcid`] to keep track of the maximal complexity of

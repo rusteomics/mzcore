@@ -34,10 +34,7 @@ mod formula;
 #[path = "shared/csv.rs"]
 pub mod csv;
 
-pub mod aminoacid_hydrophobicity;
-pub mod aminoacid_pka;
-pub mod aminoacid_properties;
-mod aminoacids;
+pub mod aminoacid;
 mod checked_aminoacid;
 mod element;
 pub mod error;
@@ -87,7 +84,7 @@ pub use crate::sequence_element::SequenceElement;
 pub use crate::sequence_position::*;
 pub use crate::spectrum::{AnnotatableSpectrum, AnnotatedSpectrum, RawSpectrum};
 pub use crate::tolerance::*;
-pub use aminoacids::{AminoAcid, IsAminoAcid};
+pub use aminoacid::{is_amino_acid::IsAminoAcid, is_amino_acid_impl::AminoAcid};
 pub use checked_aminoacid::CheckedAminoAcid;
 pub use fragment::Fragment;
 pub use peptidoform::{CompoundPeptidoformIon, Peptidoform, PeptidoformIon};

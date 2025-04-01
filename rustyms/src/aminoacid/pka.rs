@@ -1,9 +1,13 @@
+//! Module used to store and calculate pKa and isoelectric point values for a given [AminoAcid] or [Peptidoform] respectively
+
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    aminoacid_properties::ChargeClass, aminoacids::IsAminoAcid,
-    modification::SimpleModificationInner, AminoAcid, AtMax, Peptidoform, SemiAmbiguous,
+    aminoacid::properties::ChargeClass, modification::SimpleModificationInner, AminoAcid, AtMax,
+    Peptidoform, SemiAmbiguous,
 };
+
+use super::is_amino_acid::IsAminoAcid;
 
 /// A source for pKa values, which can be used to calculate the pKa for peptidoforms.
 pub trait PKaSource<AA: IsAminoAcid> {
@@ -18,6 +22,27 @@ pub trait PKaSource<AA: IsAminoAcid> {
 }
 
 impl<Complexity: AtMax<SemiAmbiguous>> Peptidoform<Complexity> {
+    /// Get the calculated isoelectric point (pI) for the peptidoform, or None if any sequence elements lack pKa values.
+    ///
+    /// The isoelectric point is the pH at which the net charge of the peptidoform is zero. This is determined using a binary
+    /// search between pH 0 and 14. The charge at each pH is computed using the Henderson-Hasselbalch equation with pKa values
+    /// from the provided `PKaSource`, considering N-terminal, C-terminal, and sidechain ionizable groups.
+    ///
+    /// # Example
+    /// ```rust
+    /// # use rustyms::{Peptidoform, aminoacid::pka::{PKaSource, PKaLide1991}};
+    /// // Create a SemiAmbiguous Peptidoform for glutamic acid (E) and Alanine (A)
+    /// let peptidoform = Peptidoform::pro_forma(&"EMEVEESPEK", None).unwrap().into_semi_ambiguous().unwrap();
+    /// let pi = peptidoform.isoelectic_point::<PKaLide1991>();
+    /// // The calculated pI is approximately 3.57 (bacause it's rounded to 2 decimal points) based on Lide 1991 pKa values
+    /// assert_eq!(pi, Some(3.57));
+    /// ```
+    ///
+    /// # Shortcomings
+    /// - **Naive Approach**: Does not account for interactions between ionizable groups.
+    /// - **Modifications Ignored**: Modifications affecting pKa are not considered.
+    /// - **Environmental Factors**: Assumes pKa values are independent of sequence and environment.
+    ///
     /// Get the calculated pKa value for the given peptidoform, or None if any of the sequence elements do not have a defined pKa.
     #[allow(non_snake_case)]
     pub fn isoelectic_point<Source: PKaSource<AminoAcid>>(&self) -> Option<f64> {
@@ -29,8 +54,8 @@ impl<Complexity: AtMax<SemiAmbiguous>> Peptidoform<Complexity> {
         // Collect all ionizable groups with their pKa values
         let mut ionizable = Vec::with_capacity(sequence.len() + 2);
 
-        // N-terminal
-        let first = sequence.first().unwrap();
+        // Handle N-terminal
+        let first = sequence.first()?;
         ionizable.push((
             ChargeClass::Positive,
             Source::pKa(
@@ -42,8 +67,8 @@ impl<Complexity: AtMax<SemiAmbiguous>> Peptidoform<Complexity> {
             .n_term(),
         )); // N-terminal is always positive
 
-        // C-terminal
-        let last = sequence.last().unwrap();
+        // Handle C-terminal
+        let last = sequence.last()?;
         ionizable.push((
             ChargeClass::Negative,
             Source::pKa(
@@ -225,5 +250,111 @@ impl PKaSource<AminoAcid> for PKaLehninger {
             AminoAcid::Asparagine => Some(AminoAcidPKa::new(8.80, None, 2.02)),
             _ => None,
         }
+    }
+}
+
+#[cfg(test)]
+#[expect(clippy::float_cmp, clippy::missing_panics_doc)]
+mod tests {
+    use super::*;
+    use crate::{modification::SimpleModification, Peptidoform, SemiAmbiguous};
+
+    // Helper to create a Peptidoform from a list of amino acids
+    fn create_peptidoform(aas: &str) -> Peptidoform<SemiAmbiguous> {
+        Peptidoform::pro_forma(aas, None)
+            .unwrap()
+            .into_semi_ambiguous()
+            .unwrap()
+    }
+
+    // Helper function to test pKa values for a given source
+    fn test_pka<Source: PKaSource<AminoAcid>>(
+        test_cases: &[(AminoAcid, Option<(f64, Option<f64>, f64)>)],
+    ) {
+        for (aa, maybe_values) in test_cases {
+            if let Some((n_term, sidechain, c_term)) = maybe_values {
+                let pka = Source::pKa(
+                    *aa,
+                    std::iter::empty::<SimpleModification>(),
+                    None::<std::iter::Empty<SimpleModification>>,
+                    None::<std::iter::Empty<SimpleModification>>,
+                )
+                .unwrap_or_else(|| panic!("Missing pKa for {aa:?}"));
+
+                assert_eq!(pka.n_term(), *n_term, "N-term mismatch for {aa:?}");
+                assert_eq!(pka.sidechain(), *sidechain, "Sidechain mismatch for {aa:?}");
+                assert_eq!(pka.c_term(), *c_term, "C-term mismatch for {aa:?}");
+            } else {
+                assert!(maybe_values.is_none(), "Expected None for {aa:?}");
+            }
+        }
+    }
+
+    // Helper function to test an isoelectric point value given a source
+    fn test_isoelectric_point<Source: PKaSource<AminoAcid>>(cases: &[(&str, Option<f64>)]) {
+        for &(seq, expected) in cases {
+            let peptide = create_peptidoform(seq);
+            let iso = peptide.isoelectic_point::<Source>();
+            assert_eq!(
+                iso, expected,
+                "Isoelectric point mismatch for peptide: {seq}"
+            );
+        }
+    }
+
+    #[test]
+    fn test_pka_lide1991() {
+        let test_cases = [
+            (AminoAcid::Arginine, Some((9.00, Some(12.10), 2.03))),
+            (AminoAcid::GlutamicAcid, Some((9.58, Some(4.15), 2.16))),
+            (AminoAcid::Alanine, Some((9.71, None, 2.33))),
+            (AminoAcid::Histidine, Some((9.09, Some(6.04), 1.70))),
+            (AminoAcid::Unknown, None),
+        ];
+
+        test_pka::<PKaLide1991>(&test_cases);
+    }
+
+    #[test]
+    fn test_pka_lehninger() {
+        let test_cases = [
+            (AminoAcid::Cysteine, Some((10.28, Some(8.18), 1.96))),
+            (AminoAcid::AsparticAcid, Some((9.60, Some(3.65), 1.88))),
+            (AminoAcid::Isoleucine, Some((9.68, None, 2.36))),
+            (AminoAcid::Tryptophan, Some((9.39, None, 2.38))),
+            (AminoAcid::Selenocysteine, None),
+        ];
+
+        test_pka::<PKaLehninger>(&test_cases);
+    }
+
+    #[test]
+    fn test_isoelectric_point_lide1991() {
+        let test_cases = [
+            ("E", Some(3.16)),
+            ("A", Some(6.02)),
+            ("DE", Some(2.85)),
+            ("HR", Some(10.6)),
+            ("KDEH", Some(5.17)),
+            ("AXRT", None),
+            ("AXRT[Oxidation]", None),
+        ];
+
+        test_isoelectric_point::<PKaLide1991>(&test_cases);
+    }
+
+    #[test]
+    fn test_isoelectric_point_lehninger() {
+        let test_cases = [
+            ("G", Some(5.97)),
+            ("Y", Some(5.65)),
+            ("CQ", Some(6.23)),
+            ("KP", Some(9.74)),
+            ("FIVS", Some(5.67)),
+            ("TKLB", None),
+            ("TK[Oxidation]LB", None),
+        ];
+
+        test_isoelectric_point::<PKaLehninger>(&test_cases);
     }
 }
