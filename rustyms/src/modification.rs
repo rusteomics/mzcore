@@ -17,8 +17,8 @@ use crate::{
     peptidoform::Linked,
     placement_rule::{PlacementRule, Position},
     system::OrderedMass,
-    AmbiguousLabel, AminoAcid, Chemical, DiagnosticIon, Fragment, Model, MolecularFormula, Multi,
-    NeutralLoss, Peptidoform, SequenceElement, SequencePosition,
+    AmbiguousLabel, AminoAcid, Chemical, DiagnosticIon, Fragment, FragmentationModel,
+    MolecularFormula, Multi, NeutralLoss, Peptidoform, SequenceElement, SequencePosition,
 };
 
 include!("shared/modification.rs");
@@ -640,7 +640,7 @@ impl Modification {
     /// Generate theoretical fragments for side chains (glycans)
     pub(crate) fn generate_theoretical_fragments(
         &self,
-        model: &Model,
+        model: &FragmentationModel,
         peptidoform_ion_index: usize,
         peptidoform_index: usize,
         charge_carriers: &mut CachedCharge,
@@ -666,7 +666,7 @@ impl SimpleModificationInner {
     /// Generate theoretical fragments for side chains (glycans)
     pub(crate) fn generate_theoretical_fragments(
         &self,
-        model: &Model,
+        model: &FragmentationModel,
         peptidoform_ion_index: usize,
         peptidoform_index: usize,
         charge_carriers: &mut CachedCharge,

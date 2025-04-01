@@ -5,8 +5,9 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     fragment::{Fragment, FragmentKind},
+    model::MatchingParameters,
     peptidoform::UnAmbiguous,
-    AnnotatedSpectrum, MassMode, Model, Peptidoform,
+    AnnotatedSpectrum, MassMode, Peptidoform,
 };
 
 impl AnnotatedSpectrum {
@@ -16,14 +17,14 @@ impl AnnotatedSpectrum {
     pub fn scores(
         &self,
         fragments: &[Fragment],
-        model: &Model,
+        parameters: &MatchingParameters,
         mass_mode: MassMode,
     ) -> (Scores, Vec<Vec<Scores>>) {
         let fragments = fragments
             .iter()
             .filter(|f| {
                 f.mz(mass_mode)
-                    .is_some_and(|mz| model.mz_range.contains(&mz))
+                    .is_some_and(|mz| parameters.mz_range.contains(&mz))
             })
             .collect_vec();
         let total_intensity: f64 = self.spectrum.iter().map(|p| *p.intensity).sum();

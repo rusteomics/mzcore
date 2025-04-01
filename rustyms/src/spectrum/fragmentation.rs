@@ -1,4 +1,6 @@
-use crate::{system::MassOverCharge, CompoundPeptidoformIon, Fragment, MassMode, Model};
+use crate::{
+    model::MatchingParameters, system::MassOverCharge, CompoundPeptidoformIon, Fragment, MassMode,
+};
 
 use super::AnnotatedSpectrum;
 
@@ -26,16 +28,16 @@ pub trait AnnotatableSpectrum {
         &self,
         peptide: CompoundPeptidoformIon,
         theoretical_fragments: &[Fragment],
-        model: &Model,
+        parameters: &MatchingParameters,
         mode: MassMode,
     ) -> AnnotatedSpectrum {
-        let tolerance = model.tolerance.into();
+        let tolerance = parameters.tolerance.into();
         let mut annotated = Self::empty_annotated(self, peptide);
 
         for fragment in theoretical_fragments {
             // Determine fragment mz and see if it is within the model range.
             if let Some(mz) = fragment.mz(mode) {
-                if !model.mz_range.contains(&mz) {
+                if !parameters.mz_range.contains(&mz) {
                     continue;
                 }
 

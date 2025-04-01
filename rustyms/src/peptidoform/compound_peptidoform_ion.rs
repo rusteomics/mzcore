@@ -4,8 +4,8 @@ use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    peptidoform::Linked, system::usize::Charge, Fragment, Model, MolecularFormula, Multi,
-    Peptidoform, PeptidoformIon,
+    peptidoform::Linked, system::usize::Charge, Fragment, FragmentationModel, MolecularFormula,
+    Multi, Peptidoform, PeptidoformIon,
 };
 
 /// A single full ProForma entry. This entry can contain multiple sets of cross-linked peptides.
@@ -63,7 +63,7 @@ impl CompoundPeptidoformIon {
     pub fn generate_theoretical_fragments(
         &self,
         max_charge: Charge,
-        model: &Model,
+        model: &FragmentationModel,
     ) -> Vec<Fragment> {
         let mut base = Vec::new();
         for (index, peptidoform) in self.peptidoform_ions().iter().enumerate() {

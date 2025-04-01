@@ -4,7 +4,7 @@ use crate::{
     fragment::{DiagnosticPosition, Fragment, FragmentType},
     molecular_charge::CachedCharge,
     system::usize::Charge,
-    AminoAcid, Model, Multi, NeutralLoss,
+    AminoAcid, FragmentationModel, Multi, NeutralLoss,
 };
 
 include!("../shared/glycan.rs");
@@ -44,7 +44,7 @@ impl MonoSaccharide {
     /// Generate the theoretical fragments, if any monosaccharide is present a negative number of times no fragments are generated.
     pub(crate) fn theoretical_fragments(
         composition: &[(Self, isize)],
-        model: &Model,
+        model: &FragmentationModel,
         peptidoform_ion_index: usize,
         peptidoform_index: usize,
         charge_carriers: &mut CachedCharge,

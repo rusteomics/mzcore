@@ -10,7 +10,7 @@ use crate::{
     fragment::{Fragment, FragmentType, GlycanBreakPos, GlycanPosition},
     molecular_charge::CachedCharge,
     system::usize::Charge,
-    AminoAcid, Model, Multi, SequencePosition,
+    AminoAcid, FragmentationModel, Multi, SequencePosition,
 };
 
 use crate::uom::num_traits::Zero;
@@ -58,7 +58,7 @@ impl PositionedGlycanStructure {
     /// * `full_formula` the total formula of the whole peptide + glycan
     pub fn generate_theoretical_fragments(
         &self,
-        model: &Model,
+        model: &FragmentationModel,
         peptidoform_ion_index: usize,
         peptidoform_index: usize,
         charge_carriers: &mut CachedCharge,

@@ -9,8 +9,8 @@ use crate::{
     },
     placement_rule::{self, PlacementRule, Position},
     system::{da, usize::Charge},
-    AminoAcid, CompoundPeptidoformIon, Element, Model, MolecularCharge, MultiChemical, Peptidoform,
-    PeptidoformIon,
+    AminoAcid, CompoundPeptidoformIon, Element, FragmentationModel, MolecularCharge, MultiChemical,
+    Peptidoform, PeptidoformIon,
 };
 
 #[test]
@@ -431,7 +431,9 @@ fn parse_xl_inter() {
 #[test]
 fn dimeric_peptide() {
     // Only generate a single series, easier to reason about
-    let test_model = Model::none().a(PrimaryIonSeries::default());
+    let test_model = FragmentationModel::none()
+        .clone()
+        .a(PrimaryIonSeries::default());
 
     // With two different sequences
     let dimeric = CompoundPeptidoformIon::pro_forma("AA+CC", None).unwrap();

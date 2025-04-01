@@ -14,8 +14,8 @@ use crate::{
     peptidoform::*,
     placement_rule::PlacementRule,
     system::usize::Charge,
-    AmbiguousLabel, DiagnosticIon, Element, Model, MolecularFormula, Multi, NeutralLoss, Protease,
-    SequenceElement, SequencePosition,
+    AmbiguousLabel, DiagnosticIon, Element, FragmentationModel, MolecularFormula, Multi,
+    NeutralLoss, Protease, SequenceElement, SequencePosition,
 };
 use itertools::Itertools;
 use ordered_float::OrderedFloat;
@@ -748,7 +748,7 @@ impl<Complexity> Peptidoform<Complexity> {
     pub(crate) fn generate_theoretical_fragments_inner(
         &self,
         max_charge: Charge,
-        model: &Model,
+        model: &FragmentationModel,
         peptidoform_ion_index: usize,
         peptidoform_index: usize,
         all_peptides: &[Peptidoform<Linked>],
@@ -1419,7 +1419,7 @@ impl<Complexity: AtMax<Linear>> Peptidoform<Complexity> {
     pub fn generate_theoretical_fragments(
         &self,
         max_charge: Charge,
-        model: &Model,
+        model: &FragmentationModel,
     ) -> Vec<Fragment> {
         self.generate_theoretical_fragments_inner(max_charge, model, 0, 0, &[])
     }

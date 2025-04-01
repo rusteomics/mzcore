@@ -27,13 +27,33 @@ pub enum Configuration {
 }
 
 /// A monosaccharide with all its complexity
-#[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Serialize, Deserialize)]
+#[derive(Clone, Ord, PartialOrd, Debug, Serialize, Deserialize)]
 pub struct MonoSaccharide {
     pub(super) base_sugar: BaseSugar,
     pub(super) substituents: Vec<GlycanSubstituent>,
     pub(super) furanose: bool,
     pub(super) configuration: Option<Configuration>,
     pub(super) proforma_name: Option<String>,
+}
+
+impl std::cmp::PartialEq for MonoSaccharide {
+    fn eq(&self, other: &Self) -> bool {
+        self.base_sugar == other.base_sugar
+            && self.substituents == other.substituents
+            && self.furanose == other.furanose
+            && self.configuration == other.configuration
+    }
+}
+
+impl std::cmp::Eq for MonoSaccharide {}
+
+impl std::hash::Hash for MonoSaccharide {
+    fn hash<H: std::hash::Hasher>(&self, hasher: &mut H) {
+        self.base_sugar.hash(hasher);
+        self.substituents.hash(hasher);
+        self.furanose.hash(hasher);
+        self.configuration.hash(hasher);
+    }
 }
 
 impl MonoSaccharide {

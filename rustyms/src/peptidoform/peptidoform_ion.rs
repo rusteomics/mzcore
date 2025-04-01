@@ -9,7 +9,8 @@ use crate::{
     },
     peptidoform::Linked,
     system::usize::Charge,
-    Fragment, Model, MolecularCharge, MolecularFormula, Multi, Peptidoform, SequencePosition,
+    Fragment, FragmentationModel, MolecularCharge, MolecularFormula, Multi, Peptidoform,
+    SequencePosition,
 };
 /// A single peptidoform ion, can contain multiple peptidoforms
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Debug, Default, Serialize, Deserialize, Hash)]
@@ -52,7 +53,7 @@ impl PeptidoformIon {
     pub fn generate_theoretical_fragments(
         &self,
         max_charge: Charge,
-        model: &Model,
+        model: &FragmentationModel,
     ) -> Vec<Fragment> {
         self.generate_theoretical_fragments_inner(max_charge, model, 0)
     }
@@ -61,7 +62,7 @@ impl PeptidoformIon {
     pub(super) fn generate_theoretical_fragments_inner(
         &self,
         max_charge: Charge,
-        model: &Model,
+        model: &FragmentationModel,
         peptidoform_ion_index: usize,
     ) -> Vec<Fragment> {
         let mut base = Vec::new();

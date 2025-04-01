@@ -57,7 +57,8 @@ struct Cli {
 fn main() {
     let args = Cli::parse();
 
-    let model = Model::none()
+    let model = FragmentationModel::none()
+        .clone()
         .b(PrimaryIonSeries::default())
         .d(SatelliteIonSeries::default().location(SatelliteLocation {
             rules: Vec::new(),

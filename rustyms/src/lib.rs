@@ -74,7 +74,7 @@ pub use crate::formula::*;
 pub use crate::formula_search::find_formulas;
 pub use crate::isobaric_sets::{building_blocks, find_isobaric_sets};
 pub use crate::mass_mode::MassMode;
-pub use crate::model::Model;
+pub use crate::model::FragmentationModel;
 pub use crate::modification::{CrossLinkName, Modification};
 pub use crate::molecular_charge::MolecularCharge;
 pub use crate::multi::*;
@@ -96,6 +96,8 @@ extern crate uom;
 #[cfg(test)]
 #[expect(clippy::missing_panics_doc)]
 mod test {
+    use crate::model::MatchingParameters;
+
     use super::*;
 
     #[test]
@@ -106,7 +108,7 @@ mod test {
             .unwrap();
         let fragments = peptide.generate_theoretical_fragments(
             system::usize::Charge::new::<system::e>(1),
-            &Model::all(),
+            &FragmentationModel::all(),
         );
         println!("{}", fragments.len());
         println!("{fragments:?}");
@@ -114,12 +116,14 @@ mod test {
 
     #[test]
     fn simple_matching() {
-        let model = Model::all();
+        let model = FragmentationModel::all();
+        let parameters = MatchingParameters::default();
         let spectrum = rawfile::mgf::open("data/example.mgf").unwrap();
         let peptide = CompoundPeptidoformIon::pro_forma("WFWF", None).unwrap();
         let fragments = peptide
             .generate_theoretical_fragments(system::usize::Charge::new::<system::e>(1), &model);
-        let annotated = spectrum[0].annotate(peptide, &fragments, &model, MassMode::Monoisotopic);
+        let annotated =
+            spectrum[0].annotate(peptide, &fragments, &parameters, MassMode::Monoisotopic);
         println!("{annotated:?}");
     }
 }

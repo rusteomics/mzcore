@@ -766,12 +766,12 @@ enum FragmentationModel {
 }
 
 /// Helper function to match a [`FragmentationModel`] to a rustyms Model.
-fn match_model(model: &FragmentationModel) -> PyResult<rustyms::Model> {
+fn match_model(model: &FragmentationModel) -> PyResult<rustyms::FragmentationModel> {
     match model {
-        FragmentationModel::All => Ok(rustyms::Model::all()),
-        FragmentationModel::CidHcd => Ok(rustyms::Model::cid_hcd()),
-        FragmentationModel::Etd => Ok(rustyms::Model::etd()),
-        FragmentationModel::Ethcd => Ok(rustyms::Model::ethcd()),
+        FragmentationModel::All => Ok(rustyms::FragmentationModel::all()),
+        FragmentationModel::CidHcd => Ok(rustyms::FragmentationModel::cid_hcd()),
+        FragmentationModel::Etd => Ok(rustyms::FragmentationModel::etd()),
+        FragmentationModel::Ethcd => Ok(rustyms::FragmentationModel::ethcd()),
     }
 }
 
