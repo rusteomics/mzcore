@@ -3,12 +3,14 @@ use std::{
     collections::BTreeMap,
     fs::File,
     io::{BufReader, BufWriter},
+    sync::atomic::AtomicUsize,
 };
 
 use clap::Parser;
 use directories::ProjectDirs;
 use fragment::FragmentType;
 use itertools::Itertools;
+use mzdata::io::{MZFileReader, SpectrumSource};
 use rayon::prelude::*;
 use rustyms::{
     spectrum::{Score, Scores},
@@ -19,7 +21,7 @@ use spectrum::{AnnotatedPeak, PeakSpectrum};
 
 #[derive(Parser)]
 struct Cli {
-    /// The input csv file, should have the following columns: 'mgf_path', 'scan_number', 'z', 'sequence', and can have 'fragmentation' (etd/td_etd/ethcd/etcad/hot eacid/eacid/ead/hcd/cid/all/none, defaults to the global model)
+    /// The input csv file, should have the following columns: 'path', 'scan_index', 'z', 'sequence', and can have 'fragmentation' (etd/td_etd/ethcd/etcad/hot eacid/eacid/ead/hcd/cid/all/none, defaults to the global model)
     #[arg(short, long)]
     in_path: String,
     /// The output path to output the resulting csv file
@@ -78,35 +80,40 @@ fn main() {
     let files = rustyms::csv::parse_csv(args.in_path, b',', None)
         .unwrap()
         .filter_map(|a| a.ok())
-        .into_group_map_by(|l| l.index_column("mgf_path").unwrap().0.to_string());
+        .into_group_map_by(|l| {
+            l.index_column("path")
+                .expect("No column `path`")
+                .0
+                .to_string()
+        });
     let out_file = BufWriter::new(File::create(args.out_path).unwrap());
-    let mut out_data = Vec::new();
     let total_peptides = files.values().map(|f| f.len()).sum::<usize>();
-    let mut done_peptides = 0;
+    let peptides_counter = AtomicUsize::default();
+    let raw_file_counter = AtomicUsize::default();
     println!("Raw files: 0/{}, Peptides: 0/{total_peptides}", files.len());
 
-    for (index, (file_name, lines)) in files.iter().enumerate() {
-        let file = rustyms::rawfile::mgf::open(file_name).unwrap();
+    let out_data: Vec<_> =  files.par_iter().flat_map(|(file_name, lines)| {
+        let mut file = mzdata::io::MZReaderType::open_path(file_name).unwrap();
 
         let rows = lines
-            .par_iter()
+            .iter()
             .filter_map(|line| {
-                let scan_number = line
-                    .index_column("scan_number")
-                    .unwrap()
+                let scan_index = line
+                    .index_column("scan_index")
+                    .expect("No column `scan_index`")
                     .0
                     .parse::<usize>()
                     .unwrap();
-                let z = line.index_column("z").unwrap().0.parse::<usize>().unwrap();
+                let z = line.index_column("z").expect("No column `z`").0.parse::<usize>().unwrap();
                 let peptide = CompoundPeptidoformIon::pro_forma(
-                    line.index_column("sequence").unwrap().0,
+                    line.index_column("sequence").expect("No column `sequence`").0,
                     custom_database.as_ref(),
                 )
                 .unwrap();
                 let selected_model = line
                     .index_column("fragmentation")
                     .map_or_else(|_| model.clone(), |(text, _)| select_model(text, &model));
-                if let Some(spectrum) = file.iter().find(|s| s.raw_scan_number == Some(scan_number))
+                if let Some(spectrum) = file.get_spectrum_by_index(scan_index)
                 {
                     let fragments =
                         peptide.generate_theoretical_fragments(Charge::new::<e>(z), &model);
@@ -236,19 +243,19 @@ fn main() {
                     }
                     Some(row)
                 } else {
-                    eprintln!("Could not find scan number {scan_number} for file {file_name}");
+                    eprintln!("Could not find scan index {scan_index} for file {file_name}");
                     None
                 }
             })
             .collect::<Vec<_>>();
-        out_data.extend_from_slice(&rows);
-        done_peptides += lines.len();
         println!(
-            "Raw files: {}/{}, Peptides: {done_peptides}/{total_peptides}",
-            index + 1,
+            "Raw files: {}/{}, Peptides: {}/{total_peptides}",
+            raw_file_counter.fetch_add(1, std::sync::atomic::Ordering::Relaxed) + 1,
+            peptides_counter.fetch_add(lines.len(), std::sync::atomic::Ordering::Relaxed) + lines.len(),
             files.len()
         );
-    }
+        rows.into_iter().map(|row| row.into_iter().collect_vec()).collect_vec()
+    }).collect();
 
     rustyms::csv::write_csv(out_file, out_data).unwrap();
 }

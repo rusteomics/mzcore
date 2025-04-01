@@ -270,7 +270,7 @@ impl AnnotatedSpectrum {
         .chain(
             [
                 FragmentKind::Y,
-                FragmentKind::Oxonium,
+                FragmentKind::B,
                 FragmentKind::immonium,
                 FragmentKind::precursor_side_chain_loss,
                 FragmentKind::diagnostic,
