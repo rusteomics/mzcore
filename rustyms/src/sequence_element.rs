@@ -117,7 +117,7 @@ impl<T> SequenceElement<T> {
         if self.ambiguous.is_some() && last_ambiguous != self.ambiguous {
             write!(f, "(?")?;
         }
-        write!(f, "{}", self.aminoacid.char())?;
+        write!(f, "{}", self.aminoacid)?;
         for m in &self.modifications {
             let mut display_ambiguous = false;
             if let Modification::Ambiguous { id, .. } = m {

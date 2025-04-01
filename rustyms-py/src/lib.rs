@@ -6,7 +6,7 @@ use std::num::NonZeroU16;
 use ordered_float::OrderedFloat;
 use pyo3::{exceptions::PyValueError, prelude::*, types::PyType};
 
-use rustyms::{AnnotatableSpectrum, Chemical, Linked, MultiChemical};
+use rustyms::{AnnotatableSpectrum, Chemical, IsAminoAcid, Linked, MultiChemical, Tolerance};
 
 /// Mass mode enum.
 #[pyclass(eq, eq_int)]
@@ -440,7 +440,7 @@ impl AminoAcid {
     }
 
     fn __str__(&self) -> String {
-        self.0.char().to_string()
+        self.0.pro_forma_definition().to_string()
     }
 
     fn __repr__(&self) -> String {
@@ -763,15 +763,56 @@ enum FragmentationModel {
     CidHcd,
     Etd,
     Ethcd,
+    Ead,
+    Eacid,
+    Uvpd,
 }
 
 /// Helper function to match a [`FragmentationModel`] to a rustyms Model.
 fn match_model(model: &FragmentationModel) -> PyResult<rustyms::FragmentationModel> {
     match model {
-        FragmentationModel::All => Ok(rustyms::FragmentationModel::all()),
-        FragmentationModel::CidHcd => Ok(rustyms::FragmentationModel::cid_hcd()),
-        FragmentationModel::Etd => Ok(rustyms::FragmentationModel::etd()),
-        FragmentationModel::Ethcd => Ok(rustyms::FragmentationModel::ethcd()),
+        FragmentationModel::All => Ok(rustyms::FragmentationModel::all().clone()),
+        FragmentationModel::CidHcd => Ok(rustyms::FragmentationModel::cid_hcd().clone()),
+        FragmentationModel::Etd => Ok(rustyms::FragmentationModel::etd().clone()),
+        FragmentationModel::Ethcd => Ok(rustyms::FragmentationModel::ethcd().clone()),
+        FragmentationModel::Ead => Ok(rustyms::FragmentationModel::ead().clone()),
+        FragmentationModel::Eacid => Ok(rustyms::FragmentationModel::eacid().clone()),
+        FragmentationModel::Uvpd => Ok(rustyms::FragmentationModel::uvpd().clone()),
+    }
+}
+
+/// Parameters for matching theoretical fragments to measured data
+///
+/// Parameters
+/// ----------
+/// parameters : MatchingParameters
+///     The parameters
+///
+#[pyclass]
+#[derive(Clone)]
+pub struct MatchingParameters(rustyms::model::MatchingParameters);
+
+#[pymethods]
+impl MatchingParameters {
+    /// Create default parameters
+    #[staticmethod]
+    fn new() -> Self {
+        MatchingParameters(rustyms::model::MatchingParameters::default())
+    }
+
+    /// Set the tolerance to a certain ppm value
+    #[setter]
+    fn tolerance_ppm(&mut self, tolerance: f64) {
+        self.0.tolerance = rustyms::Tolerance::new_ppm(tolerance);
+    }
+
+    /// Set the tolerance to a certain absolute Thompson value
+    #[setter]
+    fn tolerance_thompson(&mut self, tolerance: f64) {
+        self.0.tolerance =
+            rustyms::Tolerance::new_absolute(rustyms::system::MassOverCharge::new::<
+                rustyms::system::mz,
+            >(tolerance));
     }
 }
 
@@ -1124,7 +1165,7 @@ impl Peptidoform {
         self.0
             .sequence()
             .iter()
-            .map(|x| x.aminoacid.char())
+            .map(|x| x.aminoacid.pro_forma_definition())
             .collect()
     }
 
@@ -1487,6 +1528,8 @@ impl RawSpectrum {
     ///     The peptidoform to annotate the spectrum with.
     /// model : FragmentationModel
     ///     The model to use for the fragmentation.
+    /// parameters : MatchingParameters
+    ///     The parameters to use for the matching.
     /// mode : MassMode
     ///    The mode to use for the mass.
     ///
@@ -1500,11 +1543,12 @@ impl RawSpectrum {
     /// ValueError
     ///     If the model is not one of the valid models.
     ///
-    #[pyo3(signature = (peptidoform, model, mode=&MassMode::Monoisotopic))]
+    #[pyo3(signature = (peptidoform, model, parameters, mode=&MassMode::Monoisotopic))]
     fn annotate(
         &self,
         peptidoform: CompoundPeptidoformIon,
         model: &FragmentationModel,
+        parameters: &MatchingParameters,
         mode: &MassMode,
     ) -> PyResult<AnnotatedSpectrum> {
         let rusty_model = match_model(model)?;
@@ -1517,7 +1561,7 @@ impl RawSpectrum {
         Ok(AnnotatedSpectrum(self.0.annotate(
             peptidoform.0,
             &fragments,
-            &rusty_model,
+            &parameters.0,
             match mode {
                 MassMode::Monoisotopic => rustyms::MassMode::Monoisotopic,
                 MassMode::Average => rustyms::MassMode::Average,

@@ -34,8 +34,7 @@ mod formula;
 #[path = "shared/csv.rs"]
 pub mod csv;
 
-pub mod aminoacid_properties;
-mod aminoacids;
+pub mod aminoacid;
 mod checked_aminoacid;
 mod element;
 pub mod error;
@@ -85,7 +84,7 @@ pub use crate::sequence_element::SequenceElement;
 pub use crate::sequence_position::*;
 pub use crate::spectrum::{AnnotatableSpectrum, AnnotatedSpectrum, RawSpectrum};
 pub use crate::tolerance::*;
-pub use aminoacids::AminoAcid;
+pub use aminoacid::{AminoAcid, IsAminoAcid};
 pub use checked_aminoacid::CheckedAminoAcid;
 pub use fragment::Fragment;
 pub use peptidoform::{CompoundPeptidoformIon, Peptidoform, PeptidoformIon};

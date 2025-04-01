@@ -21,8 +21,8 @@ use crate::{
         usize::Charge,
         OrderedMassOverCharge,
     },
-    AmbiguousLabel, AminoAcid, Chemical, MassMode, Modification, MolecularFormula, Multi,
-    NeutralLoss, SemiAmbiguous, SequenceElement, SequencePosition, Tolerance,
+    AmbiguousLabel, AminoAcid, Chemical, IsAminoAcid, MassMode, Modification, MolecularFormula,
+    Multi, NeutralLoss, SemiAmbiguous, SequenceElement, SequencePosition, Tolerance,
 };
 
 /// A theoretical fragment of a peptide
@@ -682,19 +682,40 @@ impl FragmentType {
             Self::z(_, v) => (None, get_label("z", *v)),
             Self::B { .. } | Self::BComposition(_, _) => (None, Cow::Borrowed("B")),
             Self::Y(_) | Self::YComposition(_, _) => (None, Cow::Borrowed("Y")),
-            Self::Diagnostic(DiagnosticPosition::Peptide(_, aa)) => {
-                (None, Cow::Owned(format!("d{}", aa.char())))
-            }
+            Self::Diagnostic(DiagnosticPosition::Peptide(_, aa)) => (
+                None,
+                Cow::Owned(
+                    aa.one_letter_code()
+                        .map(|c| format!("d{c}"))
+                        .or_else(|| aa.three_letter_code().map(|c| format!("d{c}")))
+                        .unwrap_or_else(|| format!("d{}", aa.name())),
+                ),
+            ),
             Self::Diagnostic(DiagnosticPosition::Reporter) => (None, Cow::Borrowed("r")),
             Self::Diagnostic(DiagnosticPosition::Labile(m)) => (None, Cow::Owned(format!("d{m}"))),
             Self::Diagnostic(
                 DiagnosticPosition::Glycan(_, sug)
                 | DiagnosticPosition::GlycanCompositional(sug, _),
             ) => (None, Cow::Owned(format!("d{sug}"))),
-            Self::Immonium(_, aa) => (None, Cow::Owned(format!("i{}", aa.aminoacid.char()))),
-            Self::PrecursorSideChainLoss(_, aa) => {
-                (None, Cow::Owned(format!("p-sidechain_{}", aa.char())))
-            }
+            Self::Immonium(_, aa) => (
+                None,
+                Cow::Owned(
+                    aa.aminoacid
+                        .one_letter_code()
+                        .map(|c| format!("i{c}"))
+                        .or_else(|| aa.aminoacid.three_letter_code().map(|c| format!("i{c}")))
+                        .unwrap_or_else(|| format!("i{}", aa.aminoacid.name())),
+                ),
+            ),
+            Self::PrecursorSideChainLoss(_, aa) => (
+                None,
+                Cow::Owned(
+                    aa.one_letter_code()
+                        .map(|c| format!("p-s{c}"))
+                        .or_else(|| aa.three_letter_code().map(|c| format!("p-s{c}")))
+                        .unwrap_or_else(|| format!("p-s{}", aa.name())),
+                ),
+            ),
             Self::Precursor => (None, Cow::Borrowed("p")),
             Self::Internal(fragmentation, _, _) => (
                 None,

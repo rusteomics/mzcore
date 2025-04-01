@@ -1,4 +1,7 @@
-use itertools::Itertools;
+//! Module used define the implementations for the [IsAminoAcid] trait
+
+use std::borrow::Cow;
+
 use serde::{Deserialize, Serialize};
 
 use crate::{
@@ -6,63 +9,260 @@ use crate::{
     fragment::{Fragment, FragmentType, PeptidePosition},
     model::*,
     molecular_charge::CachedCharge,
-    system::Mass,
-    MassMode, Multi, MultiChemical, NeutralLoss, SequencePosition,
+    Multi, MultiChemical, NeutralLoss, SequencePosition,
 };
 
-use std::borrow::Cow;
+use super::is_amino_acid::IsAminoAcid;
 
-/// A general trait to define amino acids.
-pub trait IsAminoAcid {
-    /// The full name for this amino acid.
-    fn name(&self) -> Cow<'_, str>;
-    /// The three letter code for this amino acid. Or None if there is no common three letter
-    /// definition for this amino acid.
-    fn three_letter_code(&self) -> Option<Cow<'_, str>>;
-    /// The one letter code for this amino acid. Or None if there is no common single character
-    /// definition for this amino acid.
-    #[doc(alias = "code")]
-    fn one_letter_code(&self) -> Option<char>;
-    /// The ProForma definition for this amino acid. If this is not a simple amino acid it can be
-    /// defined as an amino acid with an additional modification. For example `X[H9C2N2]` could be
-    /// used if Arginine was not defined as `R` in ProForma.
-    fn pro_forma_definition(&self) -> Cow<'_, str>;
-    /// The full molecular formula for this amino acid. It allows multiple molecular formulas to
-    /// allow ambiguous amino acids such as B and Z.
-    fn formulas(&self) -> Cow<'_, Multi<MolecularFormula>>;
-    /// The monoisotopic mass of this amino acid. Should be redefined for better performance.
-    fn monoisotopic_mass(&self) -> Cow<'_, Multi<Mass>> {
-        Cow::Owned(
-            self.formulas()
-                .iter()
-                .map(MolecularFormula::monoisotopic_mass)
-                .collect(),
-        )
+impl std::fmt::Display for dyn IsAminoAcid {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.pro_forma_definition())
     }
-    /// The average weight of this amino acid. Should be redefined for better performance.
-    fn average_weight(&self) -> Cow<'_, Multi<Mass>> {
-        Cow::Owned(
-            self.formulas()
-                .iter()
-                .map(MolecularFormula::average_weight)
-                .collect(),
-        )
-    }
-    /// The mass with a given mass mode for this amino acid. Should be redefined for better performance.
-    fn mass(&self, mode: MassMode) -> Cow<'_, Multi<Mass>> {
-        Cow::Owned(self.formulas().iter().map(|f| f.mass(mode)).collect())
-    }
-    /// The molecular formula of the side chain of the amino acid.
-    fn side_chain(&self) -> Cow<'_, Multi<MolecularFormula>>;
-    /// The molecular formulas that can fragment for satellite ions (d and w). Commonly the fragment
-    /// after the second carbon into the side chain. `MolecularFormula::default()` can be returned
-    /// if no satellite ions are possible.
-    fn satellite_ion_fragments(&self) -> Option<Cow<'_, Multi<MolecularFormula>>>;
-    /// Common neutral losses for the immonium ion of this amino acid.
-    fn immonium_losses(&self) -> Cow<'_, [NeutralLoss]>;
 }
 
-include!("shared/aminoacid.rs");
+include!("../shared/aminoacid.rs");
+
+impl std::fmt::Display for AminoAcid {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.pro_forma_definition())
+    }
+}
+
+impl IsAminoAcid for AminoAcid {
+    /// Get the single letter representation of the amino acid
+    fn one_letter_code(&self) -> Option<char> {
+        Some(match self {
+            Self::Alanine => 'A',
+            Self::AmbiguousAsparagine => 'B',
+            Self::Cysteine => 'C',
+            Self::AsparticAcid => 'D',
+            Self::GlutamicAcid => 'E',
+            Self::Phenylalanine => 'F',
+            Self::Glycine => 'G',
+            Self::Histidine => 'H',
+            Self::Isoleucine => 'I',
+            Self::AmbiguousLeucine => 'J',
+            Self::Lysine => 'K',
+            Self::Leucine => 'L',
+            Self::Methionine => 'M',
+            Self::Asparagine => 'N',
+            Self::Pyrrolysine => 'O',
+            Self::Proline => 'P',
+            Self::Glutamine => 'Q',
+            Self::Arginine => 'R',
+            Self::Serine => 'S',
+            Self::Threonine => 'T',
+            Self::Selenocysteine => 'U',
+            Self::Valine => 'V',
+            Self::Tryptophan => 'W',
+            Self::Unknown => 'X',
+            Self::Tyrosine => 'Y',
+            Self::AmbiguousGlutamine => 'Z',
+        })
+    }
+
+    fn pro_forma_definition(&self) -> Cow<'_, str> {
+        Cow::Borrowed(match self {
+            Self::Alanine => "A",
+            Self::AmbiguousAsparagine => "B",
+            Self::Cysteine => "C",
+            Self::AsparticAcid => "D",
+            Self::GlutamicAcid => "E",
+            Self::Phenylalanine => "F",
+            Self::Glycine => "G",
+            Self::Histidine => "H",
+            Self::Isoleucine => "I",
+            Self::AmbiguousLeucine => "J",
+            Self::Lysine => "K",
+            Self::Leucine => "L",
+            Self::Methionine => "M",
+            Self::Asparagine => "N",
+            Self::Pyrrolysine => "O",
+            Self::Proline => "P",
+            Self::Glutamine => "Q",
+            Self::Arginine => "R",
+            Self::Serine => "S",
+            Self::Threonine => "T",
+            Self::Selenocysteine => "U",
+            Self::Valine => "V",
+            Self::Tryptophan => "W",
+            Self::Unknown => "X",
+            Self::Tyrosine => "Y",
+            Self::AmbiguousGlutamine => "Z",
+        })
+    }
+
+    /// Get the 3 letter code for the amino acid
+    fn three_letter_code(&self) -> Option<Cow<'_, str>> {
+        Some(Cow::Borrowed(match self {
+            Self::Alanine => "Ala",
+            Self::AmbiguousAsparagine => "Asx",
+            Self::Cysteine => "Cys",
+            Self::AsparticAcid => "Asp",
+            Self::GlutamicAcid => "Glu",
+            Self::Phenylalanine => "Phe",
+            Self::Glycine => "Gly",
+            Self::Histidine => "His",
+            Self::Isoleucine => "Ile",
+            Self::AmbiguousLeucine => "Xle",
+            Self::Lysine => "Lys",
+            Self::Leucine => "Leu",
+            Self::Methionine => "Met",
+            Self::Asparagine => "Asn",
+            Self::Pyrrolysine => "Pyl",
+            Self::Proline => "Pro",
+            Self::Glutamine => "Gln",
+            Self::Arginine => "Arg",
+            Self::Serine => "Ser",
+            Self::Threonine => "Thr",
+            Self::Selenocysteine => "Sec",
+            Self::Valine => "Val",
+            Self::Tryptophan => "Trp",
+            Self::Unknown => "Xaa",
+            Self::Tyrosine => "Tyr",
+            Self::AmbiguousGlutamine => "Glx",
+        }))
+    }
+
+    /// Get the full name for the amino acid
+    fn name(&self) -> Cow<'_, str> {
+        Cow::Borrowed(match self {
+            Self::Alanine => "Alanine",
+            Self::AmbiguousAsparagine => "AmbiguousAsparagine",
+            Self::Cysteine => "Cysteine",
+            Self::AsparticAcid => "AsparticAcid",
+            Self::GlutamicAcid => "GlutamicAcid",
+            Self::Phenylalanine => "Phenylalanine",
+            Self::Glycine => "Glycine",
+            Self::Histidine => "Histidine",
+            Self::Isoleucine => "Isoleucine",
+            Self::AmbiguousLeucine => "AmbiguousLeucine",
+            Self::Lysine => "Lysine",
+            Self::Leucine => "Leucine",
+            Self::Methionine => "Methionine",
+            Self::Asparagine => "Asparagine",
+            Self::Pyrrolysine => "Pyrrolysine",
+            Self::Proline => "Proline",
+            Self::Glutamine => "Glutamine",
+            Self::Arginine => "Arginine",
+            Self::Serine => "Serine",
+            Self::Threonine => "Threonine",
+            Self::Selenocysteine => "Selenocysteine",
+            Self::Valine => "Valine",
+            Self::Tryptophan => "Tryptophan",
+            Self::Unknown => "Unknown",
+            Self::Tyrosine => "Tyrosine",
+            Self::AmbiguousGlutamine => "AmbiguousGlutamine",
+        })
+    }
+
+    fn side_chain(
+        &self,
+        sequence_index: SequencePosition,
+        peptidoform_index: usize,
+    ) -> Cow<'_, Multi<MolecularFormula>> {
+        let crate::SequencePosition::Index(sequence_index) = sequence_index else {
+            return Cow::Owned(Multi::default());
+        };
+        Cow::Owned(match self {
+            Self::Alanine => molecular_formula!(H 3 C 1).into(),
+            Self::Arginine => molecular_formula!(H 10 C 4 N 3).into(), // One of the H's counts as the charge carrier and is added later
+            Self::Asparagine => molecular_formula!(H 4 C 2 O 1 N 1).into(),
+            Self::AsparticAcid => molecular_formula!(H 3 C 2 O 2).into(),
+            Self::AmbiguousAsparagine => vec![
+                molecular_formula!(H 4 C 2 O 1 N 1 (crate::AmbiguousLabel::AminoAcid{option: Self::Asparagine, sequence_index, peptidoform_index})),
+                molecular_formula!(H 3 C 2 O 2 (crate::AmbiguousLabel::AminoAcid{option: Self::AsparticAcid, sequence_index, peptidoform_index})),
+            ]
+            .into(),
+            Self::Cysteine => molecular_formula!(H 3 C 1 S 1).into(),
+            Self::Glutamine => molecular_formula!(H 6 C 3 O 1 N 1).into(),
+            Self::GlutamicAcid => molecular_formula!(H 5 C 3 O 2).into(),
+            Self::AmbiguousGlutamine => vec![
+                molecular_formula!(H 6 C 3 O 1 N 1 (crate::AmbiguousLabel::AminoAcid{option: Self::Glutamine, sequence_index, peptidoform_index})),
+                molecular_formula!(H 5 C 3 O 2 (crate::AmbiguousLabel::AminoAcid{option: Self::GlutamicAcid, sequence_index, peptidoform_index})),
+            ]
+            .into(),
+            Self::Glycine => molecular_formula!(H 1).into(),
+            Self::Histidine => molecular_formula!(H 5 C 4 N 2).into(),
+            Self::AmbiguousLeucine | Self::Isoleucine | Self::Leucine => {
+                molecular_formula!(H 9 C 4).into()
+            }
+            Self::Lysine => molecular_formula!(H 10 C 4 N 1).into(),
+            Self::Methionine => molecular_formula!(H 7 C 3 S 1).into(),
+            Self::Phenylalanine => molecular_formula!(H 7 C 7).into(),
+            Self::Proline => molecular_formula!(H 5 C 3).into(),
+            Self::Pyrrolysine => molecular_formula!(H 17 C 9 O 1 N 2).into(),
+            Self::Selenocysteine => molecular_formula!(H 3 C 1 Se 1).into(),
+            Self::Serine => molecular_formula!(H 3 C 1 O 1).into(),
+            Self::Threonine => molecular_formula!(H 5 C 2 O 1).into(),
+            Self::Tryptophan => molecular_formula!(H 8 C 9 N 1).into(),
+            Self::Tyrosine => molecular_formula!(H 7 C 7 O 1).into(),
+            Self::Valine => molecular_formula!(H 7 C 3).into(),
+            Self::Unknown => molecular_formula!().into(),
+        })
+    }
+
+    // TODO: Take side chain mutations into account (maybe define pyrrolysine as a mutation)
+    fn satellite_ion_fragments(
+        &self,
+        sequence_index: SequencePosition,
+        peptidoform_index: usize,
+    ) -> Option<Cow<'_, Multi<MolecularFormula>>> {
+        let crate::SequencePosition::Index(sequence_index) = sequence_index else {
+            return None;
+        };
+        Some(Cow::Owned(
+        match self {
+            Self::Alanine
+            | Self::Glycine
+            | Self::Histidine
+            | Self::Phenylalanine
+            | Self::Proline
+            | Self::Tryptophan
+            | Self::Tyrosine
+            | Self::Unknown => Multi::default(),
+            Self::Arginine => molecular_formula!(H 9 C 2 N 2).into(),
+            Self::Asparagine => molecular_formula!(H 2 C 1 N 1 O 1).into(),
+            Self::AsparticAcid => molecular_formula!(H 1 C 1 O 2).into(),
+            Self::AmbiguousAsparagine => vec![
+                molecular_formula!(H 2 C 1 N 1 O 1 (crate::AmbiguousLabel::AminoAcid{option: Self::Asparagine, sequence_index, peptidoform_index})),
+                molecular_formula!(H 1 C 1 O 2 (crate::AmbiguousLabel::AminoAcid{option: Self::AsparticAcid, sequence_index, peptidoform_index})),
+            ]
+            .into(),
+            Self::Cysteine => molecular_formula!(H 1 S 1).into(),
+            Self::Glutamine => molecular_formula!(H 4 C 2 N 1 O 1).into(),
+            Self::GlutamicAcid => molecular_formula!(H 3 C 2 O 2).into(),
+            Self::AmbiguousGlutamine => vec![
+                molecular_formula!(H 4 C 2 N 1 O 1 (crate::AmbiguousLabel::AminoAcid{option: Self::Glutamine, sequence_index, peptidoform_index})),
+                molecular_formula!(H 3 C 2 O 2 (crate::AmbiguousLabel::AminoAcid{option: Self::GlutamicAcid, sequence_index, peptidoform_index})),
+            ]
+            .into(),
+            Self::Isoleucine => vec![
+                molecular_formula!(H 3 C 1),
+                molecular_formula!(H 5 C 2),
+            ]
+            .into(),
+            Self::Leucine => molecular_formula!(H 7 C 3).into(),
+            Self::AmbiguousLeucine => vec![
+                molecular_formula!(H 3 C 1 (crate::AmbiguousLabel::AminoAcid{option: Self::Isoleucine, sequence_index, peptidoform_index})),
+                molecular_formula!(H 5 C 2 (crate::AmbiguousLabel::AminoAcid{option: Self::Isoleucine, sequence_index, peptidoform_index})),
+                molecular_formula!(H 7 C 3 (crate::AmbiguousLabel::AminoAcid{option: Self::Leucine, sequence_index, peptidoform_index})),
+            ]
+            .into(),
+            Self::Lysine => molecular_formula!(H 8 C 3 N 1).into(),
+            Self::Methionine => molecular_formula!(H 5 C 2 S 1).into(),
+            Self::Pyrrolysine => molecular_formula!(H 15 C 9 N 2 O 1).into(),
+            Self::Selenocysteine => molecular_formula!(Se 1).into(),
+            Self::Serine => molecular_formula!(H 1 O 1).into(),
+            Self::Threonine => vec![
+                molecular_formula!(H 1 O 1),
+                molecular_formula!(H 3 C 1),
+            ]
+            .into(),
+            Self::Valine => molecular_formula!(H 3 C 1).into(), // Technically two options, but both have the same mass
+        }))
+    }
+}
 
 impl AminoAcid {
     /// All amino acids with a unique mass (no I/L in favour of J, no B, no Z, and no X)
@@ -113,68 +313,6 @@ impl AminoAcid {
         Self::Tyrosine,
         Self::Valine,
     ];
-
-    // TODO: Take side chain mutations into account (maybe define pyrrolysine as a mutation)
-    /// # Panics
-    /// When the sequence index is terminal.
-    pub(crate) fn satellite_ion_fragments(
-        self,
-        sequence_index: SequencePosition,
-        peptidoform_index: usize,
-    ) -> Multi<MolecularFormula> {
-        let crate::SequencePosition::Index(sequence_index) = sequence_index else {
-            panic!("Not allowed to call satellite ion fragments with a terminal sequence index")
-        };
-        match self {
-            Self::Alanine
-            | Self::Glycine
-            | Self::Histidine
-            | Self::Phenylalanine
-            | Self::Proline
-            | Self::Tryptophan
-            | Self::Tyrosine
-            | Self::Unknown => Multi::default(),
-            Self::Arginine => molecular_formula!(H 9 C 2 N 2).into(),
-            Self::Asparagine => molecular_formula!(H 2 C 1 N 1 O 1).into(),
-            Self::AsparticAcid => molecular_formula!(H 1 C 1 O 2).into(),
-            Self::AmbiguousAsparagine => vec![
-                molecular_formula!(H 2 C 1 N 1 O 1 (crate::AmbiguousLabel::AminoAcid{option: Self::Asparagine, sequence_index, peptidoform_index})),
-                molecular_formula!(H 1 C 1 O 2 (crate::AmbiguousLabel::AminoAcid{option: Self::AsparticAcid, sequence_index, peptidoform_index})),
-            ]
-            .into(),
-            Self::Cysteine => molecular_formula!(H 1 S 1).into(),
-            Self::Glutamine => molecular_formula!(H 4 C 2 N 1 O 1).into(),
-            Self::GlutamicAcid => molecular_formula!(H 3 C 2 O 2).into(),
-            Self::AmbiguousGlutamine => vec![
-                molecular_formula!(H 4 C 2 N 1 O 1 (crate::AmbiguousLabel::AminoAcid{option: Self::Glutamine, sequence_index, peptidoform_index})),
-                molecular_formula!(H 3 C 2 O 2 (crate::AmbiguousLabel::AminoAcid{option: Self::GlutamicAcid, sequence_index, peptidoform_index})),
-            ]
-            .into(),
-            Self::Isoleucine => vec![
-                molecular_formula!(H 3 C 1),
-                molecular_formula!(H 5 C 2),
-            ]
-            .into(),
-            Self::Leucine => molecular_formula!(H 7 C 3).into(),
-            Self::AmbiguousLeucine => vec![
-                molecular_formula!(H 3 C 1 (crate::AmbiguousLabel::AminoAcid{option: Self::Isoleucine, sequence_index, peptidoform_index})),
-                molecular_formula!(H 5 C 2 (crate::AmbiguousLabel::AminoAcid{option: Self::Isoleucine, sequence_index, peptidoform_index})),
-                molecular_formula!(H 7 C 3 (crate::AmbiguousLabel::AminoAcid{option: Self::Leucine, sequence_index, peptidoform_index})),
-            ]
-            .into(),
-            Self::Lysine => molecular_formula!(H 8 C 3 N 1).into(),
-            Self::Methionine => molecular_formula!(H 5 C 2 S 1).into(),
-            Self::Pyrrolysine => molecular_formula!(H 15 C 9 N 2 O 1).into(),
-            Self::Selenocysteine => molecular_formula!(Se 1).into(),
-            Self::Serine => molecular_formula!(H 1 O 1).into(),
-            Self::Threonine => vec![
-                molecular_formula!(H 1 O 1),
-                molecular_formula!(H 3 C 1),
-            ]
-            .into(),
-            Self::Valine => molecular_formula!(H 3 C 1).into(), // Technically two options, but both have the same mass
-        }
-    }
 
     // TODO: generalise over used storage type, so using molecularformula, monoisotopic mass, or average mass, also make sure that AAs can return these numbers in a const fashion
     #[expect(clippy::too_many_lines, clippy::too_many_arguments)]
@@ -233,13 +371,11 @@ impl AminoAcid {
                 ));
             }
             for (aa, distance) in &ions.d.0 {
-                let satellite_fragments =
-                    aa.satellite_ion_fragments(sequence_index - *distance, peptidoform_index);
-                if !(satellite_fragments.is_empty()
-                    || satellite_fragments.len() == 0 && satellite_fragments[0].is_empty())
+                if let Some(satellite_fragments) =
+                    aa.satellite_ion_fragments(sequence_index - *distance, peptidoform_index)
                 {
                     base_fragments.extend(Fragment::generate_series(
-                        &(-satellite_fragments
+                        &(-satellite_fragments.as_ref()
                             * modifications
                             * self.formulas_inner(sequence_index, peptidoform_index)
                             + molecular_formula!(H 1 C 1 O 1)),
@@ -268,13 +404,11 @@ impl AminoAcid {
                 ));
             }
             for (aa, distance) in &ions.w.0 {
-                let satellite_fragments =
-                    aa.satellite_ion_fragments(sequence_index - *distance, peptidoform_index);
-                if !(satellite_fragments.is_empty()
-                    || satellite_fragments.len() == 0 && satellite_fragments[0].is_empty())
+                if let Some(satellite_fragments) =
+                    aa.satellite_ion_fragments(sequence_index - *distance, peptidoform_index)
                 {
                     base_fragments.extend(Fragment::generate_series(
-                        &(-satellite_fragments
+                        &(-satellite_fragments.as_ref()
                             * modifications
                             * self.formulas_inner(sequence_index, peptidoform_index)
                             + molecular_formula!(H 2 N 1)),
@@ -339,109 +473,13 @@ impl AminoAcid {
                         .filter(|(aa, _)| aa.contains(&self))
                         .flat_map(|(_, l)| l.iter())
                         .map(|l| vec![l.clone()])
-                        .collect_vec(),
+                        .collect::<Vec<_>>(),
                     charge_carriers,
                     *charge,
                 ));
             }
         }
         base_fragments
-    }
-
-    /// Get the single letter representation of the amino acid
-    pub const fn char(self) -> char {
-        match self {
-            Self::Alanine => 'A',
-            Self::AmbiguousAsparagine => 'B',
-            Self::Cysteine => 'C',
-            Self::AsparticAcid => 'D',
-            Self::GlutamicAcid => 'E',
-            Self::Phenylalanine => 'F',
-            Self::Glycine => 'G',
-            Self::Histidine => 'H',
-            Self::Isoleucine => 'I',
-            Self::AmbiguousLeucine => 'J',
-            Self::Lysine => 'K',
-            Self::Leucine => 'L',
-            Self::Methionine => 'M',
-            Self::Asparagine => 'N',
-            Self::Pyrrolysine => 'O',
-            Self::Proline => 'P',
-            Self::Glutamine => 'Q',
-            Self::Arginine => 'R',
-            Self::Serine => 'S',
-            Self::Threonine => 'T',
-            Self::Selenocysteine => 'U',
-            Self::Valine => 'V',
-            Self::Tryptophan => 'W',
-            Self::Unknown => 'X',
-            Self::Tyrosine => 'Y',
-            Self::AmbiguousGlutamine => 'Z',
-        }
-    }
-
-    /// Get the 3 letter code for the amino acid
-    pub const fn code(self) -> &'static str {
-        match self {
-            Self::Alanine => "Ala",
-            Self::AmbiguousAsparagine => "Asx",
-            Self::Cysteine => "Cys",
-            Self::AsparticAcid => "Asp",
-            Self::GlutamicAcid => "Glu",
-            Self::Phenylalanine => "Phe",
-            Self::Glycine => "Gly",
-            Self::Histidine => "His",
-            Self::Isoleucine => "Ile",
-            Self::AmbiguousLeucine => "Xle",
-            Self::Lysine => "Lys",
-            Self::Leucine => "Leu",
-            Self::Methionine => "Met",
-            Self::Asparagine => "Asn",
-            Self::Pyrrolysine => "Pyl",
-            Self::Proline => "Pro",
-            Self::Glutamine => "Gln",
-            Self::Arginine => "Arg",
-            Self::Serine => "Ser",
-            Self::Threonine => "Thr",
-            Self::Selenocysteine => "Sec",
-            Self::Valine => "Val",
-            Self::Tryptophan => "Trp",
-            Self::Unknown => "Xaa",
-            Self::Tyrosine => "Tyr",
-            Self::AmbiguousGlutamine => "Glx",
-        }
-    }
-
-    /// Get the full name for the amino acid
-    pub const fn name(self) -> &'static str {
-        match self {
-            Self::Alanine => "Alanine",
-            Self::AmbiguousAsparagine => "AmbiguousAsparagine",
-            Self::Cysteine => "Cysteine",
-            Self::AsparticAcid => "AsparticAcid",
-            Self::GlutamicAcid => "GlutamicAcid",
-            Self::Phenylalanine => "Phenylalanine",
-            Self::Glycine => "Glycine",
-            Self::Histidine => "Histidine",
-            Self::Isoleucine => "Isoleucine",
-            Self::AmbiguousLeucine => "AmbiguousLeucine",
-            Self::Lysine => "Lysine",
-            Self::Leucine => "Leucine",
-            Self::Methionine => "Methionine",
-            Self::Asparagine => "Asparagine",
-            Self::Pyrrolysine => "Pyrrolysine",
-            Self::Proline => "Proline",
-            Self::Glutamine => "Glutamine",
-            Self::Arginine => "Arginine",
-            Self::Serine => "Serine",
-            Self::Threonine => "Threonine",
-            Self::Selenocysteine => "Selenocysteine",
-            Self::Valine => "Valine",
-            Self::Tryptophan => "Tryptophan",
-            Self::Unknown => "Unknown",
-            Self::Tyrosine => "Tyrosine",
-            Self::AmbiguousGlutamine => "AmbiguousGlutamine",
-        }
     }
 
     /// Check if two amino acids are considered identical. X is identical to anything, J to IL, B to ND, Z to EQ.
@@ -458,12 +496,6 @@ impl AminoAcid {
             | (Self::Glutamine | Self::GlutamicAcid, Self::AmbiguousGlutamine) => true,
             _ => false,
         }
-    }
-}
-
-impl std::fmt::Display for AminoAcid {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.char())
     }
 }
 
@@ -523,7 +555,7 @@ mod tests {
             );
             println!(
                 "{}: {} {} {} {}",
-                aa.char(),
+                aa.pro_forma_definition(),
                 mono,
                 mono_mass,
                 weight,
