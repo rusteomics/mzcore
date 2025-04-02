@@ -61,8 +61,7 @@ impl Fragment {
             | FragmentType::b(pos, variant)
             | FragmentType::c(pos, variant)
             | FragmentType::x(pos, variant)
-            | FragmentType::y(pos, variant)
-            | FragmentType::z(pos, variant) => format!(
+            | FragmentType::y(pos, variant) => format!(
                 "{}{}{}",
                 self.ion.kind(),
                 pos.series_number,
@@ -70,6 +69,16 @@ impl Fragment {
                     String::new()
                 } else {
                     format!("{variant:+}H")
+                }
+            ),
+            FragmentType::z(pos, variant) => format!(
+                "{}{}{}",
+                self.ion.kind(),
+                pos.series_number,
+                if *variant == 1 {
+                    String::new()
+                } else {
+                    format!("{:+}H", variant-1)
                 }
             ),
             FragmentType::d(pos, _, distance, variant, label) => {
