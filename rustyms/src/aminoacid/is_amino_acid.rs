@@ -1,7 +1,8 @@
 //! Module used create the [IsAminoAcid] trait
 
 use crate::{
-    formula::MolecularFormula, system::Mass, MassMode, Multi, MultiChemical, SequencePosition,
+    formula::MolecularFormula, fragment::SatelliteLabel, system::Mass, MassMode, Multi,
+    MultiChemical, SequencePosition,
 };
 
 use std::borrow::Cow;
@@ -58,5 +59,5 @@ pub trait IsAminoAcid: MultiChemical {
         &self,
         sequence_index: SequencePosition,
         peptidoform_index: usize,
-    ) -> Option<Cow<'_, Multi<MolecularFormula>>>;
+    ) -> Option<Cow<'_, Vec<(SatelliteLabel, MolecularFormula)>>>;
 }

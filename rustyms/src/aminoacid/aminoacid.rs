@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     formula::MolecularFormula,
-    fragment::{Fragment, FragmentType, PeptidePosition},
+    fragment::{Fragment, FragmentType, PeptidePosition, SatelliteLabel},
     model::*,
     molecular_charge::CachedCharge,
     Multi, MultiChemical, NeutralLoss, SequencePosition,
@@ -207,11 +207,11 @@ impl IsAminoAcid for AminoAcid {
         &self,
         sequence_index: SequencePosition,
         peptidoform_index: usize,
-    ) -> Option<Cow<'_, Multi<MolecularFormula>>> {
+    ) -> Option<Cow<'_, Vec<(SatelliteLabel, MolecularFormula)>>> {
         let crate::SequencePosition::Index(sequence_index) = sequence_index else {
             return None;
         };
-        Some(Cow::Owned(
+
         match self {
             Self::Alanine
             | Self::Glycine
@@ -220,47 +220,102 @@ impl IsAminoAcid for AminoAcid {
             | Self::Proline
             | Self::Tryptophan
             | Self::Tyrosine
-            | Self::Unknown => Multi::default(),
-            Self::Arginine => molecular_formula!(H 9 C 2 N 2).into(),
-            Self::Asparagine => molecular_formula!(H 2 C 1 N 1 O 1).into(),
-            Self::AsparticAcid => molecular_formula!(H 1 C 1 O 2).into(),
-            Self::AmbiguousAsparagine => vec![
-                molecular_formula!(H 2 C 1 N 1 O 1 (crate::AmbiguousLabel::AminoAcid{option: Self::Asparagine, sequence_index, peptidoform_index})),
-                molecular_formula!(H 1 C 1 O 2 (crate::AmbiguousLabel::AminoAcid{option: Self::AsparticAcid, sequence_index, peptidoform_index})),
-            ]
-            .into(),
-            Self::Cysteine => molecular_formula!(H 1 S 1).into(),
-            Self::Glutamine => molecular_formula!(H 4 C 2 N 1 O 1).into(),
-            Self::GlutamicAcid => molecular_formula!(H 3 C 2 O 2).into(),
-            Self::AmbiguousGlutamine => vec![
-                molecular_formula!(H 4 C 2 N 1 O 1 (crate::AmbiguousLabel::AminoAcid{option: Self::Glutamine, sequence_index, peptidoform_index})),
-                molecular_formula!(H 3 C 2 O 2 (crate::AmbiguousLabel::AminoAcid{option: Self::GlutamicAcid, sequence_index, peptidoform_index})),
-            ]
-            .into(),
-            Self::Isoleucine => vec![
-                molecular_formula!(H 3 C 1),
-                molecular_formula!(H 5 C 2),
-            ]
-            .into(),
-            Self::Leucine => molecular_formula!(H 7 C 3).into(),
-            Self::AmbiguousLeucine => vec![
-                molecular_formula!(H 3 C 1 (crate::AmbiguousLabel::AminoAcid{option: Self::Isoleucine, sequence_index, peptidoform_index})),
-                molecular_formula!(H 5 C 2 (crate::AmbiguousLabel::AminoAcid{option: Self::Isoleucine, sequence_index, peptidoform_index})),
-                molecular_formula!(H 7 C 3 (crate::AmbiguousLabel::AminoAcid{option: Self::Leucine, sequence_index, peptidoform_index})),
-            ]
-            .into(),
-            Self::Lysine => molecular_formula!(H 8 C 3 N 1).into(),
-            Self::Methionine => molecular_formula!(H 5 C 2 S 1).into(),
-            Self::Pyrrolysine => molecular_formula!(H 15 C 9 N 2 O 1).into(),
-            Self::Selenocysteine => molecular_formula!(Se 1).into(),
-            Self::Serine => molecular_formula!(H 1 O 1).into(),
-            Self::Threonine => vec![
+            | Self::Unknown => None,
+            Self::Arginine => Some(Cow::Owned(vec![(
+                SatelliteLabel::None,
+                molecular_formula!(H 9 C 2 N 2),
+            )])),
+            Self::Asparagine => Some(Cow::Owned(vec![(
+                SatelliteLabel::None,
+                molecular_formula!(H 2 C 1 N 1 O 1),
+            )])),
+            Self::AsparticAcid => Some(Cow::Owned(vec![(
+                SatelliteLabel::None,
+                molecular_formula!(H 1 C 1 O 2),
+            )])),
+            Self::AmbiguousAsparagine => Some(Cow::Owned(vec![
+                (
+                    SatelliteLabel::None,
+                    molecular_formula!(H 2 C 1 N 1 O 1 (crate::AmbiguousLabel::AminoAcid{option: Self::Asparagine, sequence_index, peptidoform_index})),
+                ),
+                (
+                    SatelliteLabel::None,
+                    molecular_formula!(H 1 C 1 O 2 (crate::AmbiguousLabel::AminoAcid{option: Self::AsparticAcid, sequence_index, peptidoform_index})),
+                ),
+            ])),
+            Self::Cysteine => Some(Cow::Owned(vec![(
+                SatelliteLabel::None,
+                molecular_formula!(H 1 S 1),
+            )])),
+            Self::Glutamine => Some(Cow::Owned(vec![(
+                SatelliteLabel::None,
+                molecular_formula!(H 4 C 2 N 1 O 1),
+            )])),
+            Self::GlutamicAcid => Some(Cow::Owned(vec![(
+                SatelliteLabel::None,
+                molecular_formula!(H 3 C 2 O 2),
+            )])),
+            Self::AmbiguousGlutamine => Some(Cow::Owned(vec![
+                (
+                    SatelliteLabel::None,
+                    molecular_formula!(H 4 C 2 N 1 O 1 (crate::AmbiguousLabel::AminoAcid{option: Self::Glutamine, sequence_index, peptidoform_index})),
+                ),
+                (
+                    SatelliteLabel::None,
+                    molecular_formula!(H 3 C 2 O 2 (crate::AmbiguousLabel::AminoAcid{option: Self::GlutamicAcid, sequence_index, peptidoform_index})),
+                ),
+            ])),
+            Self::Isoleucine => Some(Cow::Owned(vec![
+                (SatelliteLabel::A, molecular_formula!(H 3 C 1)),
+                (SatelliteLabel::B, molecular_formula!(H 5 C 2)),
+            ])),
+            Self::Leucine => Some(Cow::Owned(vec![(
+                SatelliteLabel::None,
+                molecular_formula!(H 7 C 3),
+            )])),
+            Self::AmbiguousLeucine => Some(Cow::Owned(vec![
+                (
+                    SatelliteLabel::A,
+                    molecular_formula!(H 3 C 1 (crate::AmbiguousLabel::AminoAcid{option: Self::Isoleucine, sequence_index, peptidoform_index})),
+                ),
+                (
+                    SatelliteLabel::B,
+                    molecular_formula!(H 5 C 2 (crate::AmbiguousLabel::AminoAcid{option: Self::Isoleucine, sequence_index, peptidoform_index})),
+                ),
+                (
+                    SatelliteLabel::None,
+                    molecular_formula!(H 7 C 3 (crate::AmbiguousLabel::AminoAcid{option: Self::Leucine, sequence_index, peptidoform_index})),
+                ),
+            ])),
+            Self::Lysine => Some(Cow::Owned(vec![(
+                SatelliteLabel::None,
+                molecular_formula!(H 8 C 3 N 1),
+            )])),
+            Self::Methionine => Some(Cow::Owned(vec![(
+                SatelliteLabel::None,
+                molecular_formula!(H 5 C 2 S 1),
+            )])),
+            Self::Pyrrolysine => Some(Cow::Owned(vec![(
+                SatelliteLabel::None,
+                molecular_formula!(H 15 C 9 N 2 O 1),
+            )])),
+            Self::Selenocysteine => Some(Cow::Owned(vec![(
+                SatelliteLabel::None,
+                molecular_formula!(Se 1),
+            )])),
+            Self::Serine => Some(Cow::Owned(vec![(
+                SatelliteLabel::None,
                 molecular_formula!(H 1 O 1),
+            )])),
+            Self::Threonine => Some(Cow::Owned(vec![
+                (SatelliteLabel::None, molecular_formula!(H 1 O 1)),
+                (SatelliteLabel::None, molecular_formula!(H 3 C 1)),
+            ])),
+            Self::Valine => Some(Cow::Owned(vec![(
+                SatelliteLabel::None,
                 molecular_formula!(H 3 C 1),
-            ]
-            .into(),
-            Self::Valine => molecular_formula!(H 3 C 1).into(), // Technically two options, but both have the same mass
-        }))
+            )])), // Technically two options, but both have the same mass
+        }
     }
 }
 
@@ -374,18 +429,20 @@ impl AminoAcid {
                 if let Some(satellite_fragments) =
                     aa.satellite_ion_fragments(sequence_index - *distance, peptidoform_index)
                 {
-                    base_fragments.extend(Fragment::generate_series(
-                        &(-satellite_fragments.as_ref()
-                            * modifications
-                            * self.formulas_inner(sequence_index, peptidoform_index)
-                            + molecular_formula!(H 1 C 1 O 1)),
-                        peptidoform_ion_index,
-                        peptidoform_index,
-                        &FragmentType::d(n_pos, *aa, *distance, 0),
-                        n_term,
-                        charge_carriers,
-                        &ions.d.1,
-                    ));
+                    for (label, formula) in satellite_fragments.iter() {
+                        base_fragments.extend(Fragment::generate_series(
+                            &(modifications
+                                * self.formulas_inner(sequence_index, peptidoform_index)
+                                + molecular_formula!(H 1 C 1 O 1)
+                                - formula),
+                            peptidoform_ion_index,
+                            peptidoform_index,
+                            &FragmentType::d(n_pos, *aa, *distance, 0, *label),
+                            n_term,
+                            charge_carriers,
+                            &ions.d.1,
+                        ));
+                    }
                 }
             }
         }
@@ -407,18 +464,20 @@ impl AminoAcid {
                 if let Some(satellite_fragments) =
                     aa.satellite_ion_fragments(sequence_index - *distance, peptidoform_index)
                 {
-                    base_fragments.extend(Fragment::generate_series(
-                        &(-satellite_fragments.as_ref()
-                            * modifications
-                            * self.formulas_inner(sequence_index, peptidoform_index)
-                            + molecular_formula!(H 2 N 1)),
-                        peptidoform_ion_index,
-                        peptidoform_index,
-                        &FragmentType::w(c_pos, *aa, *distance, 0),
-                        c_term,
-                        charge_carriers,
-                        &ions.w.1,
-                    ));
+                    for (label, formula) in satellite_fragments.iter() {
+                        base_fragments.extend(Fragment::generate_series(
+                            &(modifications
+                                * self.formulas_inner(sequence_index, peptidoform_index)
+                                + molecular_formula!(H 2 N 1)
+                                - formula),
+                            peptidoform_ion_index,
+                            peptidoform_index,
+                            &FragmentType::w(c_pos, *aa, *distance, 0, *label),
+                            c_term,
+                            charge_carriers,
+                            &ions.w.1,
+                        ));
+                    }
                 }
             }
             if let Some(settings) = &ions.x {
