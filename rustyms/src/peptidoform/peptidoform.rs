@@ -539,7 +539,7 @@ impl<Complexity> Peptidoform<Complexity> {
     fn diagnostic_ions(&self) -> Vec<(DiagnosticIon, DiagnosticPosition)> {
         self.iter(..)
             .flat_map(|(pos, aa)| {
-                aa.diagnostic_ions(pos.sequence_index)
+                aa.diagnostic_ions(pos.sequence_index, &self.n_term, &self.c_term)
                     .into_iter()
                     .map(move |diagnostic| {
                         (
