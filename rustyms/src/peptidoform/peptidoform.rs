@@ -478,53 +478,53 @@ impl<Complexity> Peptidoform<Complexity> {
         let own_losses = self
             .iter(range)
             .flat_map(|(pos, aa)| {
-                aa.modifications
-                    .iter()
-                    .filter_map(|modification| match modification {
-                        Modification::Simple(modification)
-                        | Modification::Ambiguous { modification, .. } => match &**modification {
-                            SimpleModificationInner::Database { specificities, .. } => Some(
-                                specificities
-                                    .iter()
-                                    .filter_map(move |(rules, rule_losses, _)| {
-                                        if PlacementRule::any_possible(
-                                            rules,
-                                            aa,
-                                            pos.sequence_index,
-                                        ) {
-                                            Some(rule_losses)
-                                        } else {
-                                            None
-                                        }
-                                    })
-                                    .flatten()
-                                    .map(move |loss| {
-                                        (loss.clone(), peptidoform_index, pos.sequence_index)
-                                    })
-                                    .collect_vec(),
-                            ),
-                            _ => None, // TODO: potentially hydrolysed cross-linkers could also have neutral losses
-                        },
-                        Modification::CrossLink {
-                            linker,
-                            peptide,
-                            side,
-                            ..
-                        } => {
-                            if !ignore_peptides.contains(peptide) {
-                                found_peptides.push(*peptide);
-                            };
-                            let (neutral, _, _) = side.allowed_rules(linker);
-                            Some(
-                                neutral
-                                    .into_iter()
-                                    .map(|n| (n, peptidoform_index, pos.sequence_index))
-                                    .collect_vec(),
-                            )
-                        }
-                    })
-                    .flatten()
-                    .collect_vec()
+                match pos.sequence_index {
+                    SequencePosition::NTerm => self.n_term.as_slice(),
+                    SequencePosition::Index(_) => aa.modifications.as_slice(),
+                    SequencePosition::CTerm => self.c_term.as_slice(),
+                }
+                .iter()
+                .filter_map(|modification| match modification {
+                    Modification::Simple(modification)
+                    | Modification::Ambiguous { modification, .. } => match &**modification {
+                        SimpleModificationInner::Database { specificities, .. } => Some(
+                            specificities
+                                .iter()
+                                .filter_map(move |(rules, rule_losses, _)| {
+                                    if PlacementRule::any_possible(rules, aa, pos.sequence_index) {
+                                        Some(rule_losses)
+                                    } else {
+                                        None
+                                    }
+                                })
+                                .flatten()
+                                .map(move |loss| {
+                                    (loss.clone(), peptidoform_index, pos.sequence_index)
+                                })
+                                .collect_vec(),
+                        ),
+                        _ => None, // TODO: potentially hydrolysed cross-linkers could also have neutral losses
+                    },
+                    Modification::CrossLink {
+                        linker,
+                        peptide,
+                        side,
+                        ..
+                    } => {
+                        if !ignore_peptides.contains(peptide) {
+                            found_peptides.push(*peptide);
+                        };
+                        let (neutral, _, _) = side.allowed_rules(linker);
+                        Some(
+                            neutral
+                                .into_iter()
+                                .map(|n| (n, peptidoform_index, pos.sequence_index))
+                                .collect_vec(),
+                        )
+                    }
+                })
+                .flatten()
+                .collect_vec()
             })
             .collect_vec();
         own_losses

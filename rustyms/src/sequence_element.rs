@@ -313,7 +313,7 @@ impl<T> SequenceElement<T> {
         for modification in modifications {
             match modification {
                 Modification::CrossLink { linker, side, .. } => {
-                    diagnostic_ions.extend_from_slice(&side.allowed_rules(&linker).2);
+                    diagnostic_ions.extend_from_slice(&side.allowed_rules(linker).2);
                 }
                 Modification::Simple(modification)
                 | Modification::Ambiguous { modification, .. } => match &**modification {
