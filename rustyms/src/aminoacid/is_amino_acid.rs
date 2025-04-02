@@ -1,8 +1,7 @@
 //! Module used create the [IsAminoAcid] trait
 
 use crate::{
-    formula::MolecularFormula, system::Mass, MassMode, Multi, MultiChemical, NeutralLoss,
-    SequencePosition,
+    formula::MolecularFormula, system::Mass, MassMode, Multi, MultiChemical, SequencePosition,
 };
 
 use std::borrow::Cow;

@@ -298,12 +298,22 @@ impl<T> SequenceElement<T> {
     }
 
     /// Get all possible diagnostic ions
-    pub(crate) fn diagnostic_ions(&self, position: SequencePosition) -> Vec<DiagnosticIon> {
+    pub(crate) fn diagnostic_ions(
+        &self,
+        position: SequencePosition,
+        n_term: &[Modification],
+        c_term: &[Modification],
+    ) -> Vec<DiagnosticIon> {
         let mut diagnostic_ions = Vec::new();
-        for modification in &self.modifications {
+        let modifications = match position {
+            SequencePosition::NTerm => n_term,
+            SequencePosition::Index(_) => &self.modifications,
+            SequencePosition::CTerm => c_term,
+        };
+        for modification in modifications {
             match modification {
                 Modification::CrossLink { linker, side, .. } => {
-                    diagnostic_ions.extend_from_slice(&side.allowed_rules(linker).2);
+                    diagnostic_ions.extend_from_slice(&side.allowed_rules(&linker).2);
                 }
                 Modification::Simple(modification)
                 | Modification::Ambiguous { modification, .. } => match &**modification {
