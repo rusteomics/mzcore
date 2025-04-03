@@ -158,9 +158,9 @@ fn extract_and_merge(
     for fragment in fragments {
         if let Some(mz) = fragment.mz(MassMode::Monoisotopic) {
             let key = match fragment.ion {
-                FragmentType::d(_, _, d, _)
+                FragmentType::d(_, _, d, _, _)
                 | FragmentType::v(_, _, d, _)
-                | FragmentType::w(_, _, d, _) => (fragment.ion.kind(), Some(d)),
+                | FragmentType::w(_, _, d, _, _) => (fragment.ion.kind(), Some(d)),
                 _ => (fragment.ion.kind(), None),
             };
             let low = mz.value - args.before_fragment;

@@ -4,6 +4,7 @@ use std::{collections::HashSet, fmt::Write, marker::PhantomData, num::NonZeroU32
 
 use crate::{
     error::{Context, CustomError},
+    model::{GlycanModel, GlycanPeptideFragment},
     modification::{
         CrossLinkName, LinkerSpecificity, Modification, RulePossible, SimpleModification,
         SimpleModificationInner,
@@ -185,6 +186,7 @@ impl<T> SequenceElement<T> {
         allow_ms_cleavable: bool,
         sequence_index: SequencePosition,
         peptidoform_index: usize,
+        glycan_model: &GlycanModel,
     ) -> (Multi<MolecularFormula>, HashSet<CrossLinkName>) {
         let (formula, seen) = self
             .modifications
@@ -198,7 +200,11 @@ impl<T> SequenceElement<T> {
                         placed[*id] = true;
                         (
                             modification
-                                .formula_inner(sequence_index, peptidoform_index)
+                                .formula_inner(
+                                    sequence_index,
+                                    peptidoform_index,
+                                    GlycanPeptideFragment::FULL,
+                                )
                                 .into(),
                             HashSet::default(),
                         )

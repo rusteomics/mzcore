@@ -36,12 +36,18 @@ pub struct MonoSaccharide {
     pub(super) proforma_name: Option<String>,
 }
 
+impl MonoSaccharide {
+    fn equivalent(&self, other: &Self, precise: bool) -> bool {
+        self.base_sugar.equivalent(&other.base_sugar, precise)
+            && self.substituents == other.substituents
+            && (!precise
+                || (self.furanose == other.furanose && self.configuration == other.configuration))
+    }
+}
+
 impl std::cmp::PartialEq for MonoSaccharide {
     fn eq(&self, other: &Self) -> bool {
-        self.base_sugar == other.base_sugar
-            && self.substituents == other.substituents
-            && self.furanose == other.furanose
-            && self.configuration == other.configuration
+        self.equivalent(other, true)
     }
 }
 
@@ -537,6 +543,24 @@ pub enum BaseSugar {
     Nonose(Option<NonoseIsomer>),
     /// 10 carbon base sugar
     Decose,
+}
+
+impl BaseSugar {
+    fn equivalent(&self, other: &Self, precise: bool) -> bool {
+        match (self, other) {
+            (Self::None, Self::None)
+            | (Self::Sugar, Self::Sugar)
+            | (Self::Octose, Self::Octose)
+            | (Self::Decose, Self::Decose)
+            | (Self::Triose, Self::Triose) => true,
+            (Self::Tetrose(a), Self::Tetrose(b)) => !precise || a == b,
+            (Self::Pentose(a), Self::Pentose(b)) => !precise || a == b,
+            (Self::Hexose(a), Self::Hexose(b)) => !precise || a == b,
+            (Self::Heptose(a), Self::Heptose(b)) => !precise || a == b,
+            (Self::Nonose(a), Self::Nonose(b)) => !precise || a == b,
+            _ => false,
+        }
+    }
 }
 
 impl Display for BaseSugar {

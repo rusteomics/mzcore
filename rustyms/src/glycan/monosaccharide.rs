@@ -2,6 +2,7 @@
 
 use crate::{
     fragment::{DiagnosticPosition, Fragment, FragmentType},
+    model::GlycanModel,
     molecular_charge::CachedCharge,
     system::usize::Charge,
     AminoAcid, FragmentationModel, Multi, NeutralLoss,
@@ -100,6 +101,7 @@ impl MonoSaccharide {
                         peptidoform_index,
                         DiagnosticPosition::GlycanCompositional(sugar.clone(), attachment),
                         false,
+                        &model.glycan,
                     )
                     .into_iter()
                     .flat_map(|d| {
@@ -159,13 +161,13 @@ impl MonoSaccharide {
     }
 
     /// Generate all uncharged diagnostic ions for this monosaccharide.
-    /// According to: <https://doi.org/10.1016/j.trac.2018.09.007>.
     pub(crate) fn diagnostic_ions(
         &self,
         peptidoform_ion_index: usize,
         peptidoform_index: usize,
         position: DiagnosticPosition,
         add_base: bool,
+        model: &GlycanModel,
     ) -> Vec<Fragment> {
         let base = Fragment::new(
             self.formula(),
@@ -174,48 +176,14 @@ impl MonoSaccharide {
             peptidoform_index,
             FragmentType::Diagnostic(position),
         );
-        let mut result =
-            if matches!(self.base_sugar, BaseSugar::Hexose(_)) && self.substituents.is_empty() {
-                vec![
-                    base.with_neutral_loss(&NeutralLoss::Loss(molecular_formula!(H 2 O 1))),
-                    base.with_neutral_loss(&NeutralLoss::Loss(molecular_formula!(H 4 O 2))),
-                    base.with_neutral_loss(&NeutralLoss::Loss(molecular_formula!(C 1 H 6 O 3))),
-                    base.with_neutral_loss(&NeutralLoss::Loss(molecular_formula!(C 2 H 6 O 3))),
-                ]
-            } else if matches!(self.base_sugar, BaseSugar::Hexose(_))
-                && self.substituents == [GlycanSubstituent::NAcetyl]
-            {
-                vec![
-                    base.with_neutral_loss(&NeutralLoss::Loss(molecular_formula!(H 2 O 1))),
-                    base.with_neutral_loss(&NeutralLoss::Loss(molecular_formula!(H 4 O 2))),
-                    base.with_neutral_loss(&NeutralLoss::Loss(molecular_formula!(C 2 H 4 O 2))),
-                    base.with_neutral_loss(&NeutralLoss::Loss(molecular_formula!(C 1 H 6 O 3))),
-                    base.with_neutral_loss(&NeutralLoss::Loss(molecular_formula!(C 2 H 6 O 3))),
-                    base.with_neutral_loss(&NeutralLoss::Loss(molecular_formula!(C 4 H 8 O 4))),
-                ]
-            } else if matches!(self.base_sugar, BaseSugar::Nonose(_))
-                && (self.substituents
-                    == [
-                        GlycanSubstituent::Amino,
-                        GlycanSubstituent::Acetyl,
-                        GlycanSubstituent::Acid,
-                    ]
-                    || self.substituents
-                        == [
-                            GlycanSubstituent::Amino,
-                            GlycanSubstituent::Glycolyl,
-                            GlycanSubstituent::Acid,
-                        ])
-            {
-                // Neu5Ac and Neu5Gc
-                vec![base.with_neutral_loss(&NeutralLoss::Loss(molecular_formula!(H 2 O 1)))]
-            } else {
-                return Vec::new(); // Do not add this full glycan as diagnostic ion
-            };
-        if add_base {
-            result.push(base);
-        }
-        result
+        model
+            .specific_neutral_losses
+            .iter()
+            .filter(|(ms, precise, _)| ms.equivalent(self, *precise))
+            .flat_map(|(_, _, losses)| losses)
+            .map(|loss| base.with_neutral_loss(loss))
+            .chain(std::iter::repeat_n(base.clone(), usize::from(add_base)))
+            .collect()
     }
 }
 

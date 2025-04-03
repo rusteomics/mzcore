@@ -8,6 +8,7 @@ use super::MonoSaccharide;
 use crate::{
     formula::{Chemical, MolecularFormula},
     fragment::{Fragment, FragmentType, GlycanBreakPos, GlycanPosition},
+    model::GlycanModel,
     molecular_charge::CachedCharge,
     system::usize::Charge,
     AminoAcid, FragmentationModel, Multi, SequencePosition,
@@ -114,11 +115,16 @@ impl PositionedGlycanStructure {
                 );
                 // Generate all diagnostic ions
                 base_fragments.extend(
-                    self.diagnostic_ions(peptidoform_ion_index, peptidoform_index, attachment)
-                        .into_iter()
-                        .flat_map(|f| {
-                            f.with_charge_range(charge_carriers, model.glycan.oxonium_charge_range)
-                        }),
+                    self.diagnostic_ions(
+                        peptidoform_ion_index,
+                        peptidoform_index,
+                        attachment,
+                        &model.glycan,
+                    )
+                    .into_iter()
+                    .flat_map(|f| {
+                        f.with_charge_range(charge_carriers, model.glycan.oxonium_charge_range)
+                    }),
                 );
                 base_fragments
             })
@@ -131,6 +137,7 @@ impl PositionedGlycanStructure {
         peptidoform_ion_index: usize,
         peptidoform_index: usize,
         attachment: Option<(AminoAcid, usize)>,
+        model: &GlycanModel,
     ) -> Vec<Fragment> {
         let mut output = self.sugar.diagnostic_ions(
             peptidoform_ion_index,
@@ -140,12 +147,11 @@ impl PositionedGlycanStructure {
                 self.sugar.clone(),
             ),
             true,
+            model,
         );
-        output.extend(
-            self.branches.iter().flat_map(|b| {
-                b.diagnostic_ions(peptidoform_ion_index, peptidoform_index, attachment)
-            }),
-        );
+        output.extend(self.branches.iter().flat_map(|b| {
+            b.diagnostic_ions(peptidoform_ion_index, peptidoform_index, attachment, model)
+        }));
 
         output
     }

@@ -13,12 +13,14 @@ use std::{
 
 use crate::{
     glycan::{GlycanStructure, MonoSaccharide},
+    model::{GlycanModel, GlycanPeptideFragment},
     molecular_charge::CachedCharge,
     peptidoform::Linked,
     placement_rule::{PlacementRule, Position},
     system::OrderedMass,
     AmbiguousLabel, AminoAcid, Chemical, DiagnosticIon, Fragment, FragmentationModel,
-    MolecularFormula, Multi, NeutralLoss, Peptidoform, SequenceElement, SequencePosition,
+    MolecularFormula, Multi, MultiChemical, NeutralLoss, Peptidoform, SequenceElement,
+    SequencePosition,
 };
 
 include!("shared/modification.rs");
@@ -119,30 +121,10 @@ impl Chemical for SimpleModificationInner {
         position: SequencePosition,
         peptidoform_index: usize,
     ) -> MolecularFormula {
-        match self {
-            Self::Mass(m)
-            | Self::Gno {
-                composition: GnoComposition::Weight(m),
-                ..
-            } => MolecularFormula::with_additional_mass(m.value),
-            Self::Gno {
-                composition: GnoComposition::Composition(monosaccharides),
-                ..
-            }
-            | Self::Glycan(monosaccharides) => monosaccharides
-                .iter()
-                .fold(MolecularFormula::default(), |acc, i| {
-                    acc + i.0.formula_inner(position, peptidoform_index) * i.1 as i32
-                }),
-            Self::GlycanStructure(glycan)
-            | Self::Gno {
-                composition: GnoComposition::Topology(glycan),
-                ..
-            } => glycan.formula_inner(position, peptidoform_index),
-            Self::Formula(formula)
-            | Self::Database { formula, .. }
-            | Self::Linker { formula, .. } => formula.clone(),
-        }
+        self.formula_inner(position, peptidoform_index, GlycanPeptideFragment::FULL)
+            .to_vec()
+            .pop()
+            .unwrap()
     }
 }
 
@@ -160,30 +142,45 @@ impl SimpleModificationInner {
         &self,
         sequence_index: SequencePosition,
         peptidoform_index: usize,
-    ) -> MolecularFormula {
+        glycan_fragmentation: GlycanPeptideFragment,
+    ) -> Multi<MolecularFormula> {
         match self {
             Self::Mass(m)
             | Self::Gno {
                 composition: GnoComposition::Weight(m),
                 ..
-            } => MolecularFormula::with_additional_mass(m.value),
+            } => MolecularFormula::with_additional_mass(m.value).into(),
             Self::Gno {
                 composition: GnoComposition::Composition(monosaccharides),
                 ..
             }
-            | Self::Glycan(monosaccharides) => monosaccharides
-                .iter()
-                .fold(MolecularFormula::default(), |acc, i| {
+            | Self::Glycan(monosaccharides) => {
+                monosaccharides.iter().fold(Multi::default(), |acc, i| {
                     acc + i.0.formula_inner(sequence_index, peptidoform_index) * i.1 as i32
-                }),
+                })
+            }
             Self::GlycanStructure(glycan)
             | Self::Gno {
                 composition: GnoComposition::Topology(glycan),
                 ..
-            } => glycan.formula_inner(sequence_index, peptidoform_index),
+            } => {
+                let mut options = Vec::new();
+
+                if glycan_fragmentation.core() {
+                    let base = glycan.options.push(MolecularFormula::default());
+                    // TODO: fix
+                }
+                if glycan_fragmentation.full() {
+                    options.push(glycan.formula_inner(sequence_index, peptidoform_index));
+                }
+                if glycan_fragmentation.free() || options.is_empty() {
+                    options.push(MolecularFormula::default());
+                }
+                options.into()
+            }
             Self::Formula(formula)
             | Self::Database { formula, .. }
-            | Self::Linker { formula, .. } => formula.clone(),
+            | Self::Linker { formula, .. } => formula.into(),
         }
     }
 

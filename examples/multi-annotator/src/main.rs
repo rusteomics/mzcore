@@ -197,7 +197,7 @@ fn main() {
                                         .map(|(i, _)| {
                                             if annotated.spectrum().any(|p: &AnnotatedPeak| {
                                                 p.annotation.iter().any(|a: &Fragment| {
-                                                    matches!(a.ion, FragmentType::w(s, _, 0, _) | FragmentType::d(s, _, 0, _) if s.sequence_index
+                                                    matches!(a.ion, FragmentType::w(s, _, 0, _, _) | FragmentType::d(s, _, 0, _, _) if s.sequence_index
                                                     == SequencePosition::Index(i))
                                                 })
                                             }) {

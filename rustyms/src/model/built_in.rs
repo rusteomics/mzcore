@@ -1,6 +1,7 @@
 use std::sync::LazyLock;
 
 use crate::{
+    glycan::{BaseSugar, GlycanSubstituent, MonoSaccharide},
     model::{
         ChargePoint, ChargeRange, FragmentationModel, GlycanModel, Location, PrimaryIonSeries,
         SatelliteIonSeries, SatelliteLocation,
@@ -36,7 +37,8 @@ static MODEL_ALL: LazyLock<FragmentationModel> = LazyLock::new(|| FragmentationM
     immonium: Some((ChargeRange::ONE, immonium_losses().clone())),
     modification_specific_neutral_losses: true,
     modification_specific_diagnostic_ions: Some(ChargeRange::ONE),
-    glycan: GlycanModel::ALLOW.neutral_losses(vec![NeutralLoss::Loss(molecular_formula!(H 2 O 1))]),
+    glycan: GlycanModel::default_allow()
+        .neutral_losses(vec![NeutralLoss::Loss(molecular_formula!(H 2 O 1))]),
     allow_cross_link_cleavage: true,
 });
 
@@ -107,7 +109,8 @@ static MODEL_ETHCD: LazyLock<FragmentationModel> = LazyLock::new(|| Fragmentatio
     immonium: None,
     modification_specific_neutral_losses: true,
     modification_specific_diagnostic_ions: Some(ChargeRange::ONE),
-    glycan: GlycanModel::ALLOW.neutral_losses(vec![NeutralLoss::Loss(molecular_formula!(H 2 O 1))]),
+    glycan: GlycanModel::default_allow()
+        .neutral_losses(vec![NeutralLoss::Loss(molecular_formula!(H 2 O 1))]),
     allow_cross_link_cleavage: true,
 });
 
@@ -139,7 +142,8 @@ static MODEL_EAD: LazyLock<FragmentationModel> = LazyLock::new(|| FragmentationM
     immonium: Some((ChargeRange::ONE, immonium_losses().clone())),
     modification_specific_neutral_losses: true,
     modification_specific_diagnostic_ions: Some(ChargeRange::ONE),
-    glycan: GlycanModel::ALLOW.neutral_losses(vec![NeutralLoss::Loss(molecular_formula!(H 2 O 1))]),
+    glycan: GlycanModel::default_allow()
+        .neutral_losses(vec![NeutralLoss::Loss(molecular_formula!(H 2 O 1))]),
     allow_cross_link_cleavage: true,
 });
 
@@ -171,7 +175,8 @@ static MODEL_EACID: LazyLock<FragmentationModel> = LazyLock::new(|| Fragmentatio
     immonium: None,
     modification_specific_neutral_losses: true,
     modification_specific_diagnostic_ions: Some(ChargeRange::ONE),
-    glycan: GlycanModel::ALLOW.neutral_losses(vec![NeutralLoss::Loss(molecular_formula!(H 2 O 1))]),
+    glycan: GlycanModel::default_allow()
+        .neutral_losses(vec![NeutralLoss::Loss(molecular_formula!(H 2 O 1))]),
     allow_cross_link_cleavage: true,
 });
 
@@ -199,7 +204,7 @@ static MODEL_CID_HCD: LazyLock<FragmentationModel> = LazyLock::new(|| Fragmentat
     immonium: None,
     modification_specific_neutral_losses: true,
     modification_specific_diagnostic_ions: Some(ChargeRange::ONE),
-    glycan: GlycanModel::ALLOW,
+    glycan: GlycanModel::default_allow(),
     allow_cross_link_cleavage: true,
 });
 
@@ -513,4 +518,62 @@ static IMMONIUM_LOSSES: LazyLock<Vec<(Vec<AminoAcid>, Vec<NeutralLoss>)>> = Lazy
 
 pub fn immonium_losses() -> &'static Vec<(Vec<AminoAcid>, Vec<NeutralLoss>)> {
     LazyLock::force(&IMMONIUM_LOSSES)
+}
+
+/// Generate all uncharged diagnostic ions for this monosaccharide.
+/// According to: <https://doi.org/10.1016/j.trac.2018.09.007>.
+static GLYCAN_LOSSES: LazyLock<Vec<(MonoSaccharide, bool, Vec<NeutralLoss>)>> =
+    LazyLock::new(|| {
+        vec![
+            (
+                MonoSaccharide::new(BaseSugar::Hexose(None), &[]),
+                false,
+                vec![
+                    NeutralLoss::Loss(molecular_formula!(H 2 O 1)),
+                    NeutralLoss::Loss(molecular_formula!(H 4 O 2)),
+                    NeutralLoss::Loss(molecular_formula!(C 1 H 6 O 3)),
+                    NeutralLoss::Loss(molecular_formula!(C 2 H 6 O 3)),
+                ],
+            ),
+            (
+                MonoSaccharide::new(BaseSugar::Hexose(None), &[GlycanSubstituent::NAcetyl]),
+                false,
+                vec![
+                    NeutralLoss::Loss(molecular_formula!(H 2 O 1)),
+                    NeutralLoss::Loss(molecular_formula!(H 4 O 2)),
+                    NeutralLoss::Loss(molecular_formula!(C 2 H 4 O 2)),
+                    NeutralLoss::Loss(molecular_formula!(C 1 H 6 O 3)),
+                    NeutralLoss::Loss(molecular_formula!(C 2 H 6 O 3)),
+                    NeutralLoss::Loss(molecular_formula!(C 4 H 8 O 4)),
+                ],
+            ),
+            (
+                MonoSaccharide::new(
+                    BaseSugar::Nonose(None),
+                    &[
+                        GlycanSubstituent::Amino,
+                        GlycanSubstituent::Acetyl,
+                        GlycanSubstituent::Acid,
+                    ],
+                ),
+                false,
+                vec![NeutralLoss::Loss(molecular_formula!(H 2 O 1))],
+            ),
+            (
+                MonoSaccharide::new(
+                    BaseSugar::Nonose(None),
+                    &[
+                        GlycanSubstituent::Amino,
+                        GlycanSubstituent::Glycolyl,
+                        GlycanSubstituent::Acid,
+                    ],
+                ),
+                false,
+                vec![NeutralLoss::Loss(molecular_formula!(H 2 O 1))],
+            ),
+        ]
+    });
+
+pub fn glycan_losses() -> &'static Vec<(MonoSaccharide, bool, Vec<NeutralLoss>)> {
+    LazyLock::force(&GLYCAN_LOSSES)
 }
