@@ -13,14 +13,13 @@ use std::{
 
 use crate::{
     glycan::{GlycanStructure, MonoSaccharide},
-    model::{GlycanModel, GlycanPeptideFragment},
+    model::GlycanPeptideFragment,
     molecular_charge::CachedCharge,
     peptidoform::Linked,
     placement_rule::{PlacementRule, Position},
     system::OrderedMass,
     AmbiguousLabel, AminoAcid, Chemical, DiagnosticIon, Fragment, FragmentationModel,
-    MolecularFormula, Multi, MultiChemical, NeutralLoss, Peptidoform, SequenceElement,
-    SequencePosition,
+    MolecularFormula, Multi, NeutralLoss, Peptidoform, SequenceElement, SequencePosition,
 };
 
 include!("shared/modification.rs");
@@ -121,10 +120,15 @@ impl Chemical for SimpleModificationInner {
         position: SequencePosition,
         peptidoform_index: usize,
     ) -> MolecularFormula {
-        self.formula_inner(position, peptidoform_index, GlycanPeptideFragment::FULL)
-            .to_vec()
-            .pop()
-            .unwrap()
+        self.formula_inner(
+            position,
+            peptidoform_index,
+            GlycanPeptideFragment::FULL,
+            None,
+        )
+        .to_vec()
+        .pop()
+        .unwrap()
     }
 }
 
@@ -143,6 +147,7 @@ impl SimpleModificationInner {
         sequence_index: SequencePosition,
         peptidoform_index: usize,
         glycan_fragmentation: GlycanPeptideFragment,
+        attachment: Option<AminoAcid>,
     ) -> Multi<MolecularFormula> {
         match self {
             Self::Mass(m)
@@ -155,9 +160,31 @@ impl SimpleModificationInner {
                 ..
             }
             | Self::Glycan(monosaccharides) => {
-                monosaccharides.iter().fold(Multi::default(), |acc, i| {
-                    acc + i.0.formula_inner(sequence_index, peptidoform_index) * i.1 as i32
-                })
+                let mut options = Vec::new();
+
+                if let Some(range) = glycan_fragmentation.core() {
+                    for option in MonoSaccharide::composition_options(
+                        monosaccharides,
+                        *range.start() as usize..=*range.end() as usize,
+                    ) {
+                        // TODO: make a label somehow
+                        options.push(option.iter().fold(MolecularFormula::default(), |acc, i| {
+                            acc + i.0.formula_inner(sequence_index, peptidoform_index) * i.1 as i32
+                        }));
+                    }
+                }
+                if glycan_fragmentation.full() {
+                    options.push(monosaccharides.iter().fold(
+                        MolecularFormula::default(),
+                        |acc, i| {
+                            acc + i.0.formula_inner(sequence_index, peptidoform_index) * i.1 as i32
+                        },
+                    ));
+                }
+                if options.is_empty() {
+                    options.push(MolecularFormula::default());
+                }
+                options.into()
             }
             Self::GlycanStructure(glycan)
             | Self::Gno {
@@ -166,14 +193,20 @@ impl SimpleModificationInner {
             } => {
                 let mut options = Vec::new();
 
-                if glycan_fragmentation.core() {
-                    let base = glycan.options.push(MolecularFormula::default());
-                    // TODO: fix
+                if let Some(range) = glycan_fragmentation.core() {
+                    for option in glycan.clone().determine_positions().core_options(
+                        range,
+                        peptidoform_index,
+                        attachment.map(|a| (a, sequence_index)),
+                    ) {
+                        // TODO: keep the labels somehow
+                        options.push(option.1);
+                    }
                 }
                 if glycan_fragmentation.full() {
                     options.push(glycan.formula_inner(sequence_index, peptidoform_index));
                 }
-                if glycan_fragmentation.free() || options.is_empty() {
+                if options.is_empty() {
                     options.push(MolecularFormula::default());
                 }
                 options.into()
@@ -500,6 +533,8 @@ impl Modification {
         allow_ms_cleavable: bool,
         sequence_index: SequencePosition,
         peptidoform_index: usize,
+        glycan_fragmentation: GlycanPeptideFragment,
+        attachment: Option<AminoAcid>,
     ) -> (Multi<MolecularFormula>, HashSet<CrossLinkName>) {
         match self {
             Self::Simple(modification) | Self::Ambiguous { modification, .. } => {
@@ -510,7 +545,13 @@ impl Modification {
                         HashSet::new(),
                     ),
                     s => (
-                        s.formula_inner(sequence_index, peptidoform_index).into(),
+                        s.formula_inner(
+                            sequence_index,
+                            peptidoform_index,
+                            glycan_fragmentation,
+                            attachment,
+                        )
+                        .into(),
                         HashSet::new(),
                     ),
                 }
@@ -528,14 +569,24 @@ impl Modification {
                     applied_cross_links.push(name.clone());
                     (
                         linker
-                            .formula_inner(sequence_index, peptidoform_index)
-                            .with_label(AmbiguousLabel::CrossLinkBound(name.clone()))
+                            .formula_inner(
+                                sequence_index,
+                                peptidoform_index,
+                                glycan_fragmentation,
+                                attachment,
+                            )
+                            .with_label(&AmbiguousLabel::CrossLinkBound(name.clone()))
                             .into(),
                         HashSet::from([name.clone()]),
                     )
                 } else {
                     applied_cross_links.push(name.clone());
-                    let link = linker.formula_inner(sequence_index, peptidoform_index);
+                    let link = linker.formula_inner(
+                        sequence_index,
+                        peptidoform_index,
+                        glycan_fragmentation,
+                        attachment,
+                    );
                     let (_, stubs, _) = side.allowed_rules(linker);
 
                     if allow_ms_cleavable && !stubs.is_empty() {
@@ -560,7 +611,7 @@ impl Modification {
                                 false,
                             );
                             seen_peptides.extend(seen);
-                            (f + link)
+                            (f * link)
                                 .with_label(&AmbiguousLabel::CrossLinkBound(name.clone()))
                                 .to_vec()
                         });
@@ -576,7 +627,7 @@ impl Modification {
                         );
                         seen.insert(name.clone());
                         (
-                            (f + link).with_label(&AmbiguousLabel::CrossLinkBound(name.clone())),
+                            (f * link).with_label(&AmbiguousLabel::CrossLinkBound(name.clone())),
                             seen,
                         )
                     }
@@ -642,7 +693,7 @@ impl Modification {
         peptidoform_index: usize,
         charge_carriers: &mut CachedCharge,
         full_formula: &Multi<MolecularFormula>,
-        attachment: Option<(AminoAcid, usize)>,
+        attachment: Option<(AminoAcid, SequencePosition)>,
     ) -> Vec<Fragment> {
         match self {
             Self::Simple(modification) | Self::Ambiguous { modification, .. } => modification
@@ -668,7 +719,7 @@ impl SimpleModificationInner {
         peptidoform_index: usize,
         charge_carriers: &mut CachedCharge,
         full_formula: &Multi<MolecularFormula>,
-        attachment: Option<(AminoAcid, usize)>,
+        attachment: Option<(AminoAcid, SequencePosition)>,
     ) -> Vec<Fragment> {
         match self {
             Self::GlycanStructure(glycan)

@@ -1,7 +1,5 @@
 use crate::helper_functions::{end_of_enclosure, next_char};
-use std::ops::Range;
-
-use super::GlycanSubstituent;
+use std::ops::{Range, RangeInclusive};
 
 /// Rose tree representation of glycan structure
 #[allow(dead_code)]
@@ -16,17 +14,6 @@ impl GlycanStructure {
     #[allow(dead_code)]
     pub const fn new(sugar: MonoSaccharide, branches: Vec<Self>) -> Self {
         Self { sugar, branches }
-    }
-
-    /// Get all possible core compositions
-    pub fn core(&self) -> Vec<Vec<&MonoSaccharide>> {
-        if self.sugar.base_sugar.equivalent(&BaseSugar::Hexose(None), false) && self.sugar.substituents.contains(&GlycanSubstituent::NAcetyl) {
-            let base = &self.sugar;
-            let mut others = Vec::new();
-            for branch in &self.branches {
-                if self.sugar.base_sugar.equivalent(&BaseSugar::Hexose(None), false) && self.sugar.substituents.contains(&GlycanSubstituent::NAcetyl)
-            }
-        }
     }
 
     /// Parse a short IUPAC glycan structure

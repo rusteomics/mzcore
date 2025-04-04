@@ -2,10 +2,10 @@
 
 use crate::{
     checked_aminoacid::CheckedAminoAcid,
-    fragment::{DiagnosticPosition, Fragment, FragmentType, PeptidePosition},
+    fragment::{DiagnosticPosition, Fragment, FragmentKind, FragmentType, PeptidePosition},
     glycan::MonoSaccharide,
     helper_functions::{peptide_range_contains, RangeExtension},
-    model::get_all_sidechain_losses,
+    model::{get_all_sidechain_losses, GlycanModel},
     modification::{
         CrossLinkName, GnoComposition, LinkerSpecificity, Modification, SimpleModification,
         SimpleModificationInner,
@@ -21,7 +21,7 @@ use itertools::Itertools;
 use ordered_float::OrderedFloat;
 use serde::{Deserialize, Serialize};
 use std::{
-    collections::HashSet,
+    collections::{HashMap, HashSet},
     fmt::{Display, Write},
     marker::PhantomData,
     num::NonZeroU16,
@@ -411,7 +411,7 @@ impl<Complexity> Peptidoform<Complexity> {
         self.charge_carriers = charge_carriers;
     }
 
-    /// The mass of the N terminal modifications. The global isotope modifications are NOT applied.
+    /// The mass of the N terminal placed modifications. The global isotope modifications are NOT applied.
     fn get_n_term_mass(
         &self,
         all_peptides: &[Peptidoform<Linked>],
@@ -419,23 +419,64 @@ impl<Complexity> Peptidoform<Complexity> {
         applied_cross_links: &mut Vec<CrossLinkName>,
         allow_ms_cleavable: bool,
         peptidoform_index: usize,
-    ) -> Multi<MolecularFormula> {
-        self.n_term.iter().fold(Multi::default(), |acc, f| {
-            if let Modification::Ambiguous { .. } = f {
-                acc
-            } else {
-                acc * f
-                    .formula_inner(
-                        all_peptides,
-                        visited_peptides,
-                        applied_cross_links,
-                        allow_ms_cleavable,
-                        SequencePosition::NTerm,
-                        peptidoform_index,
-                    )
-                    .0
-            }
-        }) + molecular_formula!(H 1)
+        glycan_model: &GlycanModel,
+    ) -> (
+        Multi<MolecularFormula>,
+        HashMap<FragmentKind, Multi<MolecularFormula>>,
+    ) {
+        let (base, mut specific) =
+            self.n_term
+                .iter()
+                .fold((Multi::default(), HashMap::new()), |acc, f| {
+                    if let Modification::Ambiguous { .. } = f {
+                        acc
+                    } else {
+                        let attachment = all_peptides[peptidoform_index]
+                            .sequence
+                            .first()
+                            .map(|s| s.aminoacid.aminoacid());
+                        let (default, specific) = glycan_model.get_peptide_fragments(attachment);
+                        (
+                            acc.0
+                                * f.formula_inner(
+                                    all_peptides,
+                                    visited_peptides,
+                                    applied_cross_links,
+                                    allow_ms_cleavable,
+                                    SequencePosition::NTerm,
+                                    peptidoform_index,
+                                    default,
+                                    attachment,
+                                )
+                                .0,
+                            crate::helper_functions::merge_hashmap(
+                                acc.1,
+                                specific
+                                    .into_iter()
+                                    .map(|(k, setting)| {
+                                        (
+                                            k,
+                                            f.formula_inner(
+                                                all_peptides,
+                                                visited_peptides,
+                                                applied_cross_links,
+                                                allow_ms_cleavable,
+                                                SequencePosition::NTerm,
+                                                peptidoform_index,
+                                                setting,
+                                                attachment,
+                                            )
+                                            .0,
+                                        )
+                                    })
+                                    .collect(),
+                            ),
+                        )
+                    }
+                });
+        let terminus = molecular_formula!(H 1);
+        specific.values_mut().map(|v| *v += terminus.clone());
+        (base + terminus, specific)
     }
 
     /// The mass of the C terminal modifications. The global isotope modifications are NOT applied.
@@ -446,23 +487,64 @@ impl<Complexity> Peptidoform<Complexity> {
         applied_cross_links: &mut Vec<CrossLinkName>,
         allow_ms_cleavable: bool,
         peptidoform_index: usize,
-    ) -> Multi<MolecularFormula> {
-        self.c_term.iter().fold(Multi::default(), |acc, f| {
-            if let Modification::Ambiguous { .. } = f {
-                acc
-            } else {
-                acc * f
-                    .formula_inner(
-                        all_peptides,
-                        visited_peptides,
-                        applied_cross_links,
-                        allow_ms_cleavable,
-                        SequencePosition::CTerm,
-                        peptidoform_index,
-                    )
-                    .0
-            }
-        }) + molecular_formula!(H 1 O 1)
+        glycan_model: &GlycanModel,
+    ) -> (
+        Multi<MolecularFormula>,
+        HashMap<FragmentKind, Multi<MolecularFormula>>,
+    ) {
+        let (base, mut specific) =
+            self.c_term
+                .iter()
+                .fold((Multi::default(), HashMap::new()), |acc, f| {
+                    if let Modification::Ambiguous { .. } = f {
+                        acc
+                    } else {
+                        let attachment = all_peptides[peptidoform_index]
+                            .sequence
+                            .first()
+                            .map(|s| s.aminoacid.aminoacid());
+                        let (default, specific) = glycan_model.get_peptide_fragments(attachment);
+                        (
+                            acc.0
+                                * f.formula_inner(
+                                    all_peptides,
+                                    visited_peptides,
+                                    applied_cross_links,
+                                    allow_ms_cleavable,
+                                    SequencePosition::NTerm,
+                                    peptidoform_index,
+                                    default,
+                                    attachment,
+                                )
+                                .0,
+                            crate::helper_functions::merge_hashmap(
+                                acc.1,
+                                specific
+                                    .into_iter()
+                                    .map(|(k, setting)| {
+                                        (
+                                            k,
+                                            f.formula_inner(
+                                                all_peptides,
+                                                visited_peptides,
+                                                applied_cross_links,
+                                                allow_ms_cleavable,
+                                                SequencePosition::NTerm,
+                                                peptidoform_index,
+                                                setting,
+                                                attachment,
+                                            )
+                                            .0,
+                                        )
+                                    })
+                                    .collect(),
+                            ),
+                        )
+                    }
+                });
+        let terminus = molecular_formula!(H 1 O 1);
+        specific.values_mut().map(|v| *v += terminus.clone());
+        (base + terminus, specific)
     }
 
     /// Find all neutral losses in the given stretch of peptide (loss, peptide index, sequence index)
@@ -627,28 +709,35 @@ impl<Complexity> Peptidoform<Complexity> {
         applied_cross_links: &mut Vec<CrossLinkName>,
         allow_ms_cleavable: bool,
         peptidoform_index: usize,
-    ) -> (Multi<MolecularFormula>, HashSet<CrossLinkName>) {
+        glycan_model: &GlycanModel,
+    ) -> (
+        Multi<MolecularFormula>,
+        HashMap<FragmentKind, Multi<MolecularFormula>>,
+        HashSet<CrossLinkName>,
+    ) {
         // Calculate all formulas for the selected AA range without any ambiguous modifications
-        let (formulas, seen) = self.sequence[(
+        let (formulas, specific, seen) = self.sequence[(
             aa_range.start_bound().cloned(),
             aa_range.end_bound().cloned(),
         )]
             .iter()
             .enumerate()
             .fold(
-                (base.clone(), HashSet::new()),
+                (base.clone(), HashMap::new(), HashSet::new()),
                 |previous_aa_formulas, (index, aa)| {
-                    let (f, s) = aa.formulas_base(
+                    let (f, specific, s) = aa.formulas_base(
                         all_peptides,
                         visited_peptides,
                         applied_cross_links,
                         allow_ms_cleavable,
                         SequencePosition::Index(index),
                         peptidoform_index,
+                        glycan_model,
                     );
                     (
                         previous_aa_formulas.0 * f,
-                        previous_aa_formulas.1.union(&s).cloned().collect(),
+                        crate::helper_functions::merge_hashmap(previous_aa_formulas.1, specific),
+                        previous_aa_formulas.2.union(&s).cloned().collect(),
                     )
                 },
             );
@@ -699,9 +788,9 @@ impl<Complexity> Peptidoform<Complexity> {
             });
 
         // Determine the formula for all selected ambiguous modifications and create the labels
-        let all_ambiguous_options = previous_combinations
+        let (all_ambiguous_options, all_ambiguous_specific) = previous_combinations
             .into_iter()
-            .map(|current_selected_ambiguous| {
+            .flat_map(|current_selected_ambiguous| {
                 current_selected_ambiguous
                     .iter()
                     .copied()
@@ -721,24 +810,65 @@ impl<Complexity> Peptidoform<Complexity> {
                                 ..
                             } = m
                             {
+                                let aa = self[*pos].aminoacid.aminoacid();
+                                let (default, specific) =
+                                    glycan_model.get_peptide_fragments(Some(aa));
                                 (*mid == id).then(|| {
-                                    modification
-                                        .formula_inner(*pos, peptidoform_index)
-                                        .with_label(AmbiguousLabel::Modification {
-                                            id,
-                                            sequence_index: *pos,
-                                            peptidoform_index,
-                                        })
+                                    (
+                                        modification
+                                            .formula_inner(
+                                                *pos,
+                                                peptidoform_index,
+                                                default,
+                                                Some(aa),
+                                            )
+                                            .with_label(&AmbiguousLabel::Modification {
+                                                id,
+                                                sequence_index: *pos,
+                                                peptidoform_index,
+                                            }),
+                                        specific
+                                            .into_iter()
+                                            .map(|(f, setting)| {
+                                                (
+                                                    f,
+                                                    modification
+                                                        .formula_inner(
+                                                            *pos,
+                                                            peptidoform_index,
+                                                            setting,
+                                                            Some(aa),
+                                                        )
+                                                        .with_label(
+                                                            &AmbiguousLabel::Modification {
+                                                                id,
+                                                                sequence_index: *pos,
+                                                                peptidoform_index,
+                                                            },
+                                                        ),
+                                                )
+                                            })
+                                            .collect(),
+                                    )
                                 })
                             } else {
                                 None
                             }
                         })
                     })
-                    .sum::<MolecularFormula>()
+                    .collect_vec()
             })
-            .collect::<Multi<MolecularFormula>>();
-        (formulas * all_ambiguous_options, seen)
+            .fold((Multi::default(), HashMap::new()), |acc, v| {
+                (
+                    acc.0 * v.0,
+                    crate::helper_functions::merge_hashmap(acc.1, v.1),
+                )
+            });
+        (
+            formulas * all_ambiguous_options,
+            crate::helper_functions::merge_hashmap(specific, all_ambiguous_specific),
+            seen,
+        )
     }
 
     /// Generate the theoretical fragments for this peptide, with the given maximal charge of the fragments, and the given model.
@@ -902,8 +1032,7 @@ impl<Complexity> Peptidoform<Complexity> {
         ));
 
         // Add glycan fragmentation to all peptide fragments
-        // Assuming that only one glycan can ever fragment at the same time,
-        // and that no peptide fragmentation occurs during glycan fragmentation
+        // Assuming that only one glycan can ever fragment at the same time.
         let full_formula = self
             .formulas_inner(
                 peptidoform_index,
@@ -914,7 +1043,10 @@ impl<Complexity> Peptidoform<Complexity> {
             )
             .0;
         for (sequence_index, position) in self.sequence.iter().enumerate() {
-            let attachment = (position.aminoacid.aminoacid(), sequence_index);
+            let attachment = (
+                position.aminoacid.aminoacid(),
+                SequencePosition::Index(sequence_index),
+            );
             for modification in &position.modifications {
                 output.extend(modification.generate_theoretical_fragments(
                     model,

@@ -78,7 +78,7 @@ impl Fragment {
                 if *variant == 1 {
                     String::new()
                 } else {
-                    format!("{:+}H", variant-1)
+                    format!("{:+}H", variant - 1)
                 }
             ),
             FragmentType::d(pos, _, distance, variant, label) => {
@@ -490,7 +490,7 @@ pub struct GlycanPosition {
     /// The branch naming
     pub branch: Vec<(GlycanBranchIndex, GlycanBranchMassIndex)>,
     /// The aminoacid index where this glycan is attached
-    pub attachment: Option<(AminoAcid, usize)>,
+    pub attachment: Option<(AminoAcid, SequencePosition)>,
 }
 
 impl GlycanPosition {
@@ -539,7 +539,7 @@ pub enum DiagnosticPosition {
     /// A position on a glycan
     Glycan(GlycanPosition, MonoSaccharide),
     /// A position on a compositional glycan (attachment AA + sequence index + the sugar)
-    GlycanCompositional(MonoSaccharide, Option<(AminoAcid, usize)>),
+    GlycanCompositional(MonoSaccharide, Option<(AminoAcid, SequencePosition)>),
     /// A position on a peptide
     Peptide(PeptidePosition, AminoAcid),
     /// Labile modification
@@ -620,9 +620,15 @@ pub enum FragmentType {
         end: Vec<GlycanPosition>,
     },
     /// A B or internal glycan fragment for a glycan where only the composition is known, also saves the attachment (AA + sequence index)
-    BComposition(Vec<(MonoSaccharide, isize)>, Option<(AminoAcid, usize)>),
+    BComposition(
+        Vec<(MonoSaccharide, isize)>,
+        Option<(AminoAcid, SequencePosition)>,
+    ),
     /// A B or internal glycan fragment for a glycan where only the composition is known, also saves the attachment (AA + sequence index)
-    YComposition(Vec<(MonoSaccharide, isize)>, Option<(AminoAcid, usize)>),
+    YComposition(
+        Vec<(MonoSaccharide, isize)>,
+        Option<(AminoAcid, SequencePosition)>,
+    ),
     /// Immonium ion
     Immonium(PeptidePosition, SequenceElement<SemiAmbiguous>),
     /// Precursor with amino acid side chain loss
@@ -788,7 +794,9 @@ impl FragmentType {
     /// Get the glycan break positions of this ion (or None if not applicable), gives the sequence index, the root break, and the branch breaks.
     /// Only available with feature 'glycan-render'.
     #[cfg(feature = "glycan-render")]
-    pub fn glycan_break_positions(&self) -> Option<(Option<usize>, GlycanSelection<'_>)> {
+    pub fn glycan_break_positions(
+        &self,
+    ) -> Option<(Option<SequencePosition>, GlycanSelection<'_>)> {
         match self {
             Self::Diagnostic(DiagnosticPosition::Glycan(n, _)) => Some((
                 n.attachment.map(|(_, p)| p),

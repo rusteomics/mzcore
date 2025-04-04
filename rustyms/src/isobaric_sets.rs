@@ -4,6 +4,7 @@ use itertools::Itertools;
 
 use crate::{
     checked_aminoacid::CheckedAminoAcid,
+    model::GlycanModel,
     modification::{Modification, SimpleModification, SimpleModificationInner},
     peptidoform::SimpleLinear,
     placement_rule::{PlacementRule, Position},
@@ -128,6 +129,7 @@ pub fn building_blocks(
                     false,
                     SequencePosition::default(),
                     0,
+                    &GlycanModel::DISALLOW,
                 )
                 .0
                 .iter()
@@ -198,11 +200,19 @@ pub fn building_blocks(
                 options
             })
             .flat_map(|s| {
-                s.formulas_all(&[], &[], &mut Vec::new(), false, position, 0)
-                    .0
-                    .iter()
-                    .map(|f| (s.clone(), f.monoisotopic_mass()))
-                    .collect_vec()
+                s.formulas_all(
+                    &[],
+                    &[],
+                    &mut Vec::new(),
+                    false,
+                    position,
+                    0,
+                    &GlycanModel::DISALLOW,
+                )
+                .0
+                .iter()
+                .map(|f| (s.clone(), f.monoisotopic_mass()))
+                .collect_vec()
             })
             .collect();
         options.sort_unstable_by(|a, b| a.1.partial_cmp(&b.1).unwrap());

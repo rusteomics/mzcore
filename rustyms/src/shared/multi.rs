@@ -1,5 +1,5 @@
 use std::{
-    ops::{Add, Deref, Mul, MulAssign, Neg, Sub},
+    ops::{Add, AddAssign, Deref, Mul, MulAssign, Neg, Sub},
     rc::Rc,
 };
 
@@ -107,6 +107,36 @@ where
     /// Adds this formula to all formulas in the multi formula
     fn add(self, rhs: M) -> Self::Output {
         self.0.iter().cloned().map(|m| m + rhs.clone()).collect()
+    }
+}
+
+impl<M> AddAssign<M> for Multi<M>
+where
+    M: Add<M, Output = M> + Clone,
+{
+    /// Adds this formula to all formulas in the multi formula
+    fn add_assign(&mut self, rhs: M) {
+        *self = Multi(self.0.iter().cloned().map(|m| m + rhs.clone()).collect());
+    }
+}
+
+impl<M> AddAssign<M> for &mut Multi<M>
+where
+    M: Add<M, Output = M> + Clone,
+{
+    /// Adds this formula to all formulas in the multi formula
+    fn add_assign(&mut self, rhs: M) {
+        **self = Multi(self.0.iter().cloned().map(|m| m + rhs.clone()).collect());
+    }
+}
+
+impl<'a, M> AddAssign<&'a M> for &mut Multi<M>
+where
+    M: Add<&'a M, Output = M> + Clone,
+{
+    /// Adds this formula to all formulas in the multi formula
+    fn add_assign(&mut self, rhs: &'a M) {
+        **self = Multi(self.0.iter().cloned().map(|m| m + rhs).collect());
     }
 }
 

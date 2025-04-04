@@ -63,6 +63,12 @@ impl std::hash::Hash for MonoSaccharide {
 }
 
 impl MonoSaccharide {
+    /// Check if this is a fucose
+    pub fn is_fucose(&self) -> bool {
+        self.base_sugar == BaseSugar::Hexose(Some(HexoseIsomer::Galactose))
+            && self.substituents.contains(&GlycanSubstituent::Deoxy)
+    }
+
     /// Create a new monosaccharide
     pub fn new(sugar: BaseSugar, substituents: &[GlycanSubstituent]) -> Self {
         Self {

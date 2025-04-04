@@ -50,7 +50,7 @@ impl MonoSaccharide {
         peptidoform_index: usize,
         charge_carriers: &mut CachedCharge,
         full_formula: &Multi<MolecularFormula>,
-        attachment: Option<(AminoAcid, usize)>,
+        attachment: Option<(AminoAcid, SequencePosition)>,
     ) -> Vec<Fragment> {
         if composition.iter().any(|(_, a)| u16::try_from(*a).is_err()) {
             // u16: negative + also ensure it fits within the bounds of the molecular formula structure
@@ -116,7 +116,7 @@ impl MonoSaccharide {
     /// Get all unique combinations of monosaccharides within the given range of number of monosaccharides used
     /// # Panics
     /// If any if the composition options has more then [`isize::MAX`] sugars.
-    fn composition_options(
+    pub fn composition_options(
         composition: &[(Self, isize)],
         range: std::ops::RangeInclusive<usize>,
     ) -> Vec<Vec<(Self, isize)>> {

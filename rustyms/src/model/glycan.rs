@@ -1,5 +1,10 @@
-use std::ops::RangeInclusive;
+use std::{
+    collections::{BTreeMap, HashMap},
+    hash::Hash,
+    ops::RangeInclusive,
+};
 
+use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 
 use crate::{
@@ -78,7 +83,7 @@ impl GlycanModel {
             compositional_range: 1..=10,
             neutral_losses: Vec::new(),
             specific_neutral_losses: glycan_losses().clone(),
-            default_peptide_fragment: GlycanPeptideFragment::Core(0, 1),
+            default_peptide_fragment: GlycanPeptideFragment::CORE_AND_FREE,
             peptide_fragment_rules: Vec::new(),
             oxonium_charge_range: ChargeRange::ONE,
             other_charge_range: ChargeRange::ONE_TO_PRECURSOR,
@@ -90,7 +95,7 @@ impl GlycanModel {
         compositional_range: 0..=0,
         neutral_losses: Vec::new(),
         specific_neutral_losses: Vec::new(),
-        default_peptide_fragment: GlycanPeptideFragment::Full,
+        default_peptide_fragment: GlycanPeptideFragment::FULL,
         peptide_fragment_rules: Vec::new(),
         oxonium_charge_range: ChargeRange::ONE,
         other_charge_range: ChargeRange::ONE_TO_PRECURSOR,
@@ -104,7 +109,7 @@ impl GlycanModel {
         attachment: Option<AminoAcid>,
     ) -> (
         GlycanPeptideFragment,
-        Vec<(&[FragmentKind], GlycanPeptideFragment)>,
+        HashMap<FragmentKind, GlycanPeptideFragment>,
     ) {
         let base = self
             .peptide_fragment_rules
@@ -116,7 +121,10 @@ impl GlycanModel {
             self.peptide_fragment_rules
                 .iter()
                 .filter(|rule| attachment.is_some_and(|a| rule.0.contains(&a)))
-                .filter_map(|rule| rule.2.simplify(base).map(|f| (rule.1.as_slice(), f)))
+                .flat_map(|rule| rule.1.iter().map(|f| (f, rule.2)))
+                .into_group_map()
+                .into_iter()
+                .map(|(f, settings)| (*f, settings.iter().fold(settings[0], |acc, v| acc + v)))
                 .collect(),
         )
     }
@@ -124,34 +132,68 @@ impl GlycanModel {
 
 /// Rules to determine the glycan fragmentation for glycans on other fragments.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, Serialize, Deserialize)]
-pub enum GlycanPeptideFragment {
+pub struct GlycanPeptideFragment {
     /// The full glycan stays attached
-    Full,
-    /// The glycan fragments and at any number of monosaccharides within the range (min, max) stay attached (any fucoses on these fragments are always included and do not count towards the limit)
-    Core(u8, u8),
+    full: bool,
+    /// The glycan fragments and at any number of monosaccharides within the range (min, max, inclusive) stay attached (any fucoses on these fragments are always included and do not count towards the limit)
+    core: Option<(u8, u8)>,
 }
 
-impl GlycanPeptideFragment {
-    /// Check if this fragment contains anything not contained in the other fragment. None if this
-    /// fragment is a subset of other, Some with the exclusive options if this fragment is disjoint
-    /// or not a true subset of other. If the range of other fully fits inside the self range (so
-    /// subtraction would result in two disjoint ranges for self) the full range of self is returned.
-    fn simplify(self, other: Self) -> Option<Self> {
-        match (self, other) {
-            (Self::Full, Self::Full) => None,
-            (Self::Full, Self::Core(_, _)) => Some(self),
-            (Self::Core(_, _), Self::Full) => Some(self),
-            (Self::Core(mins, maxs), Self::Core(mino, maxo)) => {
-                if mins >= mino || maxs <= maxo {
-                    None
-                } else if mins < mino && maxs <= maxo {
-                    Some(Self::Core(mins, mino))
-                } else if mins >= mino && maxs > maxo {
-                    Some(Self::Core(maxo, maxs))
-                } else {
-                    Some(self)
-                }
-            }
+impl std::ops::Add<&Self> for GlycanPeptideFragment {
+    type Output = Self;
+    fn add(self, rhs: &Self) -> Self::Output {
+        Self {
+            full: self.full || rhs.full,
+            core: self
+                .core
+                .and_then(|c| rhs.core.map(|r| (c, r)))
+                .map(|(c, r)| (c.0.min(r.0), c.1.max(r.1)))
+                .or(self.core)
+                .or(rhs.core),
         }
     }
 }
+
+impl GlycanPeptideFragment {
+    pub const FULL: Self = Self {
+        full: true,
+        core: None,
+    };
+    const CORE_AND_FREE: Self = Self {
+        full: false,
+        core: Some((0, 1)),
+    };
+
+    pub fn full(&self) -> bool {
+        self.full
+    }
+
+    pub fn core(&self) -> Option<RangeInclusive<u8>> {
+        self.core.map(|(min, max)| min..=max)
+    }
+}
+
+// impl GlycanPeptideFragment {
+//     /// Check if this fragment contains anything not contained in the other fragment. None if this
+//     /// fragment is a subset of other, Some with the exclusive options if this fragment is disjoint
+//     /// or not a true subset of other. If the range of other fully fits inside the self range (so
+//     /// subtraction would result in two disjoint ranges for self) the full range of self is returned.
+//     fn simplify(self, other: Self) -> Option<Self> {
+//         match (self, other) {
+//             (Self::Full, Self::Full) => None,
+//             (Self::Full, Self::Core(_, _)) => Some(self),
+//             (Self::Core(_, _), Self::Full) => Some(self),
+//             (Self::Core(mins, maxs), Self::Core(mino, maxo)) => {
+//                 if mins >= mino || maxs <= maxo {
+//                     None
+//                 } else if mins < mino && maxs <= maxo {
+//                     Some(Self::Core(mins, mino))
+//                 } else if mins >= mino && maxs > maxo {
+//                     Some(Self::Core(maxo, maxs))
+//                 } else {
+//                     Some(self)
+//                 }
+//             }
+//         }
+//     }
+// }
