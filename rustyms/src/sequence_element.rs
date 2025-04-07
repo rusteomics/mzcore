@@ -257,27 +257,23 @@ impl<T> SequenceElement<T> {
                         let (default, specific) =
                             glycan_model.get_peptide_fragments(Some(self.aminoacid.aminoacid()));
                         (
-                            modification
-                                .formula_inner(
-                                    sequence_index,
-                                    peptidoform_index,
-                                    default,
-                                    Some(self.aminoacid.aminoacid()),
-                                )
-                                .into(),
+                            modification.formula_inner(
+                                sequence_index,
+                                peptidoform_index,
+                                default,
+                                Some(self.aminoacid.aminoacid()),
+                            ),
                             specific
                                 .into_iter()
                                 .map(|(k, setting)| {
                                     (
                                         k,
-                                        modification
-                                            .formula_inner(
-                                                sequence_index,
-                                                peptidoform_index,
-                                                setting,
-                                                Some(self.aminoacid.aminoacid()),
-                                            )
-                                            .into(),
+                                        modification.formula_inner(
+                                            sequence_index,
+                                            peptidoform_index,
+                                            setting,
+                                            Some(self.aminoacid.aminoacid()),
+                                        ),
                                     )
                                 })
                                 .collect(),
@@ -285,42 +281,17 @@ impl<T> SequenceElement<T> {
                         )
                     })
                 } else {
-                    let (default, specific) =
-                        glycan_model.get_peptide_fragments(Some(self.aminoacid.aminoacid()));
-                    let default = m.formula_inner(
+                    let (formula, specific, seen) = m.formula_inner(
                         all_peptidoforms,
                         visited_peptidoforms,
                         applied_cross_links,
                         allow_ms_cleavable,
                         sequence_index,
                         peptidoform_index,
-                        default,
+                        glycan_model,
                         Some(self.aminoacid.aminoacid()),
                     );
-
-                    Some((
-                        default.0,
-                        specific
-                            .into_iter()
-                            .map(|(k, setting)| {
-                                (
-                                    k,
-                                    m.formula_inner(
-                                        all_peptidoforms,
-                                        visited_peptidoforms,
-                                        applied_cross_links,
-                                        allow_ms_cleavable,
-                                        sequence_index,
-                                        peptidoform_index,
-                                        setting,
-                                        Some(self.aminoacid.aminoacid()),
-                                    )
-                                    .0,
-                                )
-                            })
-                            .collect(),
-                        default.1,
-                    ))
+                    Some((formula, specific, seen))
                 }
             })
             .fold(

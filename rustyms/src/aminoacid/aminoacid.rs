@@ -1,15 +1,15 @@
-//! Module used define the implementations for the [IsAminoAcid] trait
+//! Module used define the implementations for the [`IsAminoAcid`] trait
 
-use std::borrow::Cow;
+use std::{borrow::Cow, collections::HashMap};
 
 use serde::{Deserialize, Serialize};
 
 use crate::{
     formula::MolecularFormula,
-    fragment::{Fragment, FragmentType, PeptidePosition, SatelliteLabel},
+    fragment::{Fragment, FragmentKind, FragmentType, PeptidePosition, SatelliteLabel},
     model::*,
     molecular_charge::CachedCharge,
-    Multi, MultiChemical, NeutralLoss, SequencePosition,
+    Multi, MultiChemical, SequencePosition,
 };
 
 use super::is_amino_acid::IsAminoAcid;
@@ -373,9 +373,18 @@ impl AminoAcid {
     #[expect(clippy::too_many_lines, clippy::too_many_arguments)]
     pub(crate) fn fragments(
         self,
-        n_term: &Multi<MolecularFormula>,
-        c_term: &Multi<MolecularFormula>,
-        modifications: &Multi<MolecularFormula>,
+        n_term: &(
+            Multi<MolecularFormula>,
+            HashMap<FragmentKind, Multi<MolecularFormula>>,
+        ),
+        c_term: &(
+            Multi<MolecularFormula>,
+            HashMap<FragmentKind, Multi<MolecularFormula>>,
+        ),
+        modifications: &(
+            Multi<MolecularFormula>,
+            HashMap<FragmentKind, Multi<MolecularFormula>>,
+        ),
         charge_carriers: &mut CachedCharge,
         sequence_index: SequencePosition,
         sequence_length: usize,
@@ -392,11 +401,15 @@ impl AminoAcid {
             if let Some(settings) = &ions.a {
                 base_fragments.extend(Fragment::generate_series(
                     &(self.formulas_inner(sequence_index, peptidoform_index)
-                        * (modifications - molecular_formula!(H 1 C 1 O 1))),
+                        * (modifications
+                            .1
+                            .get(&FragmentKind::a)
+                            .unwrap_or(&modifications.0)
+                            - molecular_formula!(H 1 C 1 O 1))),
                     peptidoform_ion_index,
                     peptidoform_index,
                     &FragmentType::a(n_pos, 0),
-                    n_term,
+                    n_term.1.get(&FragmentKind::a).unwrap_or(&n_term.0),
                     charge_carriers,
                     settings,
                 ));
@@ -404,11 +417,15 @@ impl AminoAcid {
             if let Some(settings) = &ions.b {
                 base_fragments.extend(Fragment::generate_series(
                     &(self.formulas_inner(sequence_index, peptidoform_index)
-                        * (modifications - molecular_formula!(H 1))),
+                        * (modifications
+                            .1
+                            .get(&FragmentKind::b)
+                            .unwrap_or(&modifications.0)
+                            - molecular_formula!(H 1))),
                     peptidoform_ion_index,
                     peptidoform_index,
                     &FragmentType::b(n_pos, 0),
-                    n_term,
+                    n_term.1.get(&FragmentKind::b).unwrap_or(&n_term.0),
                     charge_carriers,
                     settings,
                 ));
@@ -416,11 +433,15 @@ impl AminoAcid {
             if let Some(settings) = &ions.c {
                 base_fragments.extend(Fragment::generate_series(
                     &(self.formulas_inner(sequence_index, peptidoform_index)
-                        * (modifications + molecular_formula!(H 2 N 1))),
+                        * (modifications
+                            .1
+                            .get(&FragmentKind::c)
+                            .unwrap_or(&modifications.0)
+                            + molecular_formula!(H 2 N 1))),
                     peptidoform_ion_index,
                     peptidoform_index,
                     &FragmentType::c(n_pos, 0),
-                    n_term,
+                    n_term.1.get(&FragmentKind::c).unwrap_or(&n_term.0),
                     charge_carriers,
                     settings,
                 ));
@@ -432,13 +453,16 @@ impl AminoAcid {
                     for (label, formula) in satellite_fragments.iter() {
                         base_fragments.extend(Fragment::generate_series(
                             &(modifications
+                                .1
+                                .get(&FragmentKind::d)
+                                .unwrap_or(&modifications.0)
                                 * self.formulas_inner(sequence_index, peptidoform_index)
                                 + molecular_formula!(H 1 C 1 O 1)
                                 - formula),
                             peptidoform_ion_index,
                             peptidoform_index,
                             &FragmentType::d(n_pos, *aa, *distance, 0, *label),
-                            n_term,
+                            n_term.1.get(&FragmentKind::d).unwrap_or(&n_term.0),
                             charge_carriers,
                             &ions.d.1,
                         ));
@@ -455,7 +479,7 @@ impl AminoAcid {
                     peptidoform_ion_index,
                     peptidoform_index,
                     &FragmentType::v(c_pos, *aa, *distance, 0),
-                    c_term,
+                    c_term.1.get(&FragmentKind::v).unwrap_or(&c_term.0),
                     charge_carriers,
                     &ions.v.1,
                 ));
@@ -467,13 +491,16 @@ impl AminoAcid {
                     for (label, formula) in satellite_fragments.iter() {
                         base_fragments.extend(Fragment::generate_series(
                             &(modifications
+                                .1
+                                .get(&FragmentKind::w)
+                                .unwrap_or(&modifications.0)
                                 * self.formulas_inner(sequence_index, peptidoform_index)
                                 + molecular_formula!(H 2 N 1)
                                 - formula),
                             peptidoform_ion_index,
                             peptidoform_index,
                             &FragmentType::w(c_pos, *aa, *distance, 0, *label),
-                            c_term,
+                            c_term.1.get(&FragmentKind::w).unwrap_or(&c_term.0),
                             charge_carriers,
                             &ions.w.1,
                         ));
@@ -483,11 +510,16 @@ impl AminoAcid {
             if let Some(settings) = &ions.x {
                 base_fragments.extend(Fragment::generate_series(
                     &(self.formulas_inner(sequence_index, peptidoform_index)
-                        * (modifications + molecular_formula!(C 1 O 1) - molecular_formula!(H 1))),
+                        * (modifications
+                            .1
+                            .get(&FragmentKind::x)
+                            .unwrap_or(&modifications.0)
+                            + molecular_formula!(C 1 O 1)
+                            - molecular_formula!(H 1))),
                     peptidoform_ion_index,
                     peptidoform_index,
                     &FragmentType::x(c_pos, 0),
-                    c_term,
+                    c_term.1.get(&FragmentKind::x).unwrap_or(&c_term.0),
                     charge_carriers,
                     settings,
                 ));
@@ -495,11 +527,15 @@ impl AminoAcid {
             if let Some(settings) = &ions.y {
                 base_fragments.extend(Fragment::generate_series(
                     &(self.formulas_inner(sequence_index, peptidoform_index)
-                        * (modifications + molecular_formula!(H 1))),
+                        * (modifications
+                            .1
+                            .get(&FragmentKind::y)
+                            .unwrap_or(&modifications.0)
+                            + molecular_formula!(H 1))),
                     peptidoform_ion_index,
                     peptidoform_index,
                     &FragmentType::y(c_pos, 0),
-                    c_term,
+                    c_term.1.get(&FragmentKind::y).unwrap_or(&c_term.0),
                     charge_carriers,
                     settings,
                 ));
@@ -507,11 +543,15 @@ impl AminoAcid {
             if let Some(settings) = &ions.z {
                 base_fragments.extend(Fragment::generate_series(
                     &(self.formulas_inner(sequence_index, peptidoform_index)
-                        * (modifications - molecular_formula!(H 2 N 1))),
+                        * (modifications
+                            .1
+                            .get(&FragmentKind::z)
+                            .unwrap_or(&modifications.0)
+                            - molecular_formula!(H 2 N 1))),
                     peptidoform_ion_index,
                     peptidoform_index,
                     &FragmentType::z(c_pos, 0),
-                    c_term,
+                    c_term.1.get(&FragmentKind::z).unwrap_or(&c_term.0),
                     charge_carriers,
                     settings,
                 ));
@@ -522,10 +562,14 @@ impl AminoAcid {
             if let Some((charge, losses)) = &ions.immonium {
                 base_fragments.extend(Fragment::generate_all(
                     &(self.formulas_inner(sequence_index, peptidoform_index)
-                        * (modifications - molecular_formula!(C 1 O 1))),
+                        * (modifications
+                            .1
+                            .get(&FragmentKind::immonium)
+                            .unwrap_or(&modifications.0)
+                            - molecular_formula!(C 1 O 1))),
                     peptidoform_ion_index,
                     peptidoform_index,
-                    &FragmentType::Immonium(n_pos, self.into()), // TODO: get the actual sequenceelement here
+                    &FragmentType::Immonium(n_pos, self.into()), // TODO: get the actual sequence element here
                     &Multi::default(),
                     &losses
                         .iter()

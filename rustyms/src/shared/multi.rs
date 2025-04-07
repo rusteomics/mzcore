@@ -6,7 +6,7 @@ use std::{
 use itertools::{Itertools, MinMaxResult};
 use serde::{Deserialize, Serialize};
 
-use crate::system::OrderedMass;
+use crate::{system::OrderedMass, MolecularFormula, NeutralLoss};
 
 /// A collection of potentially multiple of the generic type, it is used be able to easily
 /// combine multiple of this multi struct into all possible combinations.
@@ -364,5 +364,17 @@ impl crate::Multi<crate::MolecularFormula> {
                 .map(|o| o.with_label(label.clone()))
                 .collect(),
         )
+    }
+
+    pub(crate) fn with_neutral_loss(self, loss: &NeutralLoss) -> Self {
+        let mut new_options = Vec::with_capacity(self.0.len() * 2);
+        for option in self.0.iter() {
+            new_options.push(match loss {
+                NeutralLoss::Gain(m) => option + m,
+                NeutralLoss::Loss(m) | NeutralLoss::SideChainLoss(m, _) => option - m,
+            })
+        }
+        new_options.extend_from_slice(&self.0);
+        Self(new_options.into())
     }
 }

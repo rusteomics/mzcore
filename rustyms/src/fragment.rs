@@ -480,18 +480,7 @@ impl PeptidePosition {
     }
 }
 
-/// The definition of the position of an ion inside a glycan
-#[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Serialize, Deserialize)]
-pub struct GlycanPosition {
-    /// The depth starting at the amino acid
-    pub inner_depth: usize,
-    /// The series number (from the ion series terminal)
-    pub series_number: usize,
-    /// The branch naming
-    pub branch: Vec<(GlycanBranchIndex, GlycanBranchMassIndex)>,
-    /// The aminoacid index where this glycan is attached
-    pub attachment: Option<(AminoAcid, SequencePosition)>,
-}
+include!("shared/glycan_position.rs");
 
 impl GlycanPosition {
     /// Get the branch names
@@ -830,13 +819,14 @@ impl FragmentType {
             | Self::Immonium(n, _)
             | Self::PrecursorSideChainLoss(n, _) => Some(n.series_number.to_string()),
             Self::Diagnostic(DiagnosticPosition::Glycan(n, _)) => Some(n.label()),
-            Self::Y(bonds) => Some(bonds.iter().map(GlycanPosition::label).join("")),
+            Self::Y(bonds) => Some(bonds.iter().map(GlycanPosition::label).join("Y")),
             Self::B { b, y, end } => Some(
                 b.label()
+                    + "Y"
                     + &y.iter()
                         .chain(end.iter())
                         .map(GlycanPosition::label)
-                        .join(""),
+                        .join("Y"),
             ),
             Self::YComposition(sugars, _) | Self::BComposition(sugars, _) => Some(
                 sugars

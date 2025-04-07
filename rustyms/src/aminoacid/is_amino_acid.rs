@@ -1,4 +1,4 @@
-//! Module used create the [IsAminoAcid] trait
+//! Module used to create the [`IsAminoAcid`] trait
 
 use crate::{
     formula::MolecularFormula, fragment::SatelliteLabel, system::Mass, MassMode, Multi,
@@ -44,7 +44,7 @@ pub trait IsAminoAcid: MultiChemical {
     fn mass(&self, mode: MassMode) -> Cow<'_, Multi<Mass>> {
         Cow::Owned(self.formulas().iter().map(|f| f.mass(mode)).collect())
     }
-    /// The molecular formula of the side chain of the amino acid.  The `sequence_index` and
+    /// The molecular formula of the side chain of the amino acid. The `sequence_index` and
     /// `peptidoform_index` are used to keep track of ambiguous amino acids.
     fn side_chain(
         &self,

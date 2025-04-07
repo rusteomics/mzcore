@@ -1,6 +1,7 @@
 use std::sync::LazyLock;
 
 use crate::{
+    fragment::FragmentKind,
     glycan::{BaseSugar, GlycanSubstituent, MonoSaccharide},
     model::{
         ChargePoint, ChargeRange, FragmentationModel, GlycanModel, Location, PrimaryIonSeries,
@@ -8,6 +9,8 @@ use crate::{
     },
     AminoAcid, NeutralLoss,
 };
+
+use super::GlycanPeptideFragment;
 
 static MODEL_ALL: LazyLock<FragmentationModel> = LazyLock::new(|| FragmentationModel {
     a: PrimaryIonSeries::default()
@@ -110,7 +113,30 @@ static MODEL_ETHCD: LazyLock<FragmentationModel> = LazyLock::new(|| Fragmentatio
     modification_specific_neutral_losses: true,
     modification_specific_diagnostic_ions: Some(ChargeRange::ONE),
     glycan: GlycanModel::default_allow()
-        .neutral_losses(vec![NeutralLoss::Loss(molecular_formula!(H 2 O 1))]),
+        .neutral_losses(vec![NeutralLoss::Loss(molecular_formula!(H 2 O 1))])
+        .default_peptide_fragment(GlycanPeptideFragment::FULL)
+        .peptide_fragment_rules(vec![
+            (
+                vec![AminoAcid::Asparagine, AminoAcid::Tryptophan],
+                vec![FragmentKind::c, FragmentKind::z, FragmentKind::w],
+                GlycanPeptideFragment::FULL,
+            ),
+            (
+                vec![AminoAcid::Asparagine, AminoAcid::Tryptophan],
+                vec![FragmentKind::b, FragmentKind::y, FragmentKind::v],
+                GlycanPeptideFragment::CORE,
+            ),
+            (
+                vec![AminoAcid::Serine, AminoAcid::Threonine],
+                vec![FragmentKind::c, FragmentKind::z, FragmentKind::w],
+                GlycanPeptideFragment::FULL,
+            ),
+            (
+                vec![AminoAcid::Serine, AminoAcid::Threonine],
+                vec![FragmentKind::b, FragmentKind::y, FragmentKind::v],
+                GlycanPeptideFragment::FREE,
+            ),
+        ]),
     allow_cross_link_cleavage: true,
 });
 
@@ -204,7 +230,7 @@ static MODEL_CID_HCD: LazyLock<FragmentationModel> = LazyLock::new(|| Fragmentat
     immonium: None,
     modification_specific_neutral_losses: true,
     modification_specific_diagnostic_ions: Some(ChargeRange::ONE),
-    glycan: GlycanModel::default_allow(),
+    glycan: GlycanModel::default_allow().default_peptide_fragment(GlycanPeptideFragment::CORE),
     allow_cross_link_cleavage: true,
 });
 
@@ -270,7 +296,7 @@ static MODEL_ETD: LazyLock<FragmentationModel> = LazyLock::new(|| FragmentationM
     immonium: None,
     modification_specific_neutral_losses: true,
     modification_specific_diagnostic_ions: Some(ChargeRange::ONE),
-    glycan: GlycanModel::DISALLOW,
+    glycan: GlycanModel::default_allow().default_peptide_fragment(GlycanPeptideFragment::FREE),
     allow_cross_link_cleavage: true,
 });
 
@@ -555,7 +581,8 @@ static GLYCAN_LOSSES: LazyLock<Vec<(MonoSaccharide, bool, Vec<NeutralLoss>)>> =
                         GlycanSubstituent::Acetyl,
                         GlycanSubstituent::Acid,
                     ],
-                ),
+                )
+                .with_name("NeuAc"),
                 false,
                 vec![NeutralLoss::Loss(molecular_formula!(H 2 O 1))],
             ),
@@ -567,7 +594,8 @@ static GLYCAN_LOSSES: LazyLock<Vec<(MonoSaccharide, bool, Vec<NeutralLoss>)>> =
                         GlycanSubstituent::Glycolyl,
                         GlycanSubstituent::Acid,
                     ],
-                ),
+                )
+                .with_name("NeuGc"),
                 false,
                 vec![NeutralLoss::Loss(molecular_formula!(H 2 O 1))],
             ),

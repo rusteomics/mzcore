@@ -1,4 +1,5 @@
 use crate::{
+    fragment::GlycanPosition,
     system::{da, fraction, Mass, OrderedMass, Ratio},
     MassMode,
 };
@@ -9,6 +10,7 @@ use std::fmt::Write;
 mod formula_shared;
 
 pub use formula_shared::*;
+use itertools::Itertools;
 
 impl From<&MolecularFormula> for OrderedMass {
     /// Create an ordered mass from the monoisotopic mass (needed for [`Multi<MolecularFormula>`](crate::Multi))
@@ -146,6 +148,17 @@ impl std::fmt::Display for AmbiguousLabel {
             Self::CrossLinkBroken(name, formula) => {
                 write!(f, "broken{name}@{}", formula.hill_notation())
             }
+            Self::GlycanFragment(bonds) => {
+                write!(f, "Y{}", bonds.iter().map(GlycanPosition::label).join("Y"))
+            }
+            Self::GlycanFragmentComposition(composition) => write!(
+                f,
+                "Y{}",
+                composition
+                    .iter()
+                    .map(|(sugar, amount)| format!("{sugar}{amount}"))
+                    .join("")
+            ),
         }
     }
 }

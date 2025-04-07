@@ -1,4 +1,4 @@
-//! Module used to store and calculate pKa and isoelectric point values for a given [AminoAcid] or [Peptidoform] respectively
+//! Module used to store and calculate pKa and isoelectric point values for a given [`AminoAcid`] or [Peptidoform] respectively
 
 use serde::{Deserialize, Serialize};
 

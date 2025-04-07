@@ -23,7 +23,7 @@ pub struct GlycanModel {
     pub compositional_range: RangeInclusive<usize>,
     /// The allowed neutral losses
     pub neutral_losses: Vec<NeutralLoss>,
-    /// Allowed neutral losses based on monosaccharides with a flag to indicate precise isomeric state matching
+    /// Allowed neutral losses on diagnostic ions based on monosaccharides with a flag to indicate precise isomeric state matching
     pub specific_neutral_losses: Vec<(MonoSaccharide, bool, Vec<NeutralLoss>)>,
     /// Glycan fragmentation on peptide fragments when no rules apply
     pub default_peptide_fragment: GlycanPeptideFragment,
@@ -73,6 +73,25 @@ impl GlycanModel {
     pub fn other_charge_range(self, other_charge_range: ChargeRange) -> Self {
         Self {
             other_charge_range,
+            ..self
+        }
+    }
+    /// Replace the default rules for glycans on peptide fragments
+    #[must_use]
+    pub fn default_peptide_fragment(self, default_peptide_fragment: GlycanPeptideFragment) -> Self {
+        Self {
+            default_peptide_fragment,
+            ..self
+        }
+    }
+    /// Replace the specific rules for glycans on peptide fragments
+    #[must_use]
+    pub fn peptide_fragment_rules(
+        self,
+        peptide_fragment_rules: Vec<(Vec<AminoAcid>, Vec<FragmentKind>, GlycanPeptideFragment)>,
+    ) -> Self {
+        Self {
+            peptide_fragment_rules,
             ..self
         }
     }
@@ -155,20 +174,34 @@ impl std::ops::Add<&Self> for GlycanPeptideFragment {
 }
 
 impl GlycanPeptideFragment {
+    /// A default model that only allows full fragments
     pub const FULL: Self = Self {
         full: true,
         core: None,
     };
-    const CORE_AND_FREE: Self = Self {
+    /// A default model that only allows core and free (0..=1)
+    pub const CORE_AND_FREE: Self = Self {
         full: false,
         core: Some((0, 1)),
     };
+    /// A default model that only allows core (1..=1)
+    pub const CORE: Self = Self {
+        full: false,
+        core: Some((1, 1)),
+    };
+    /// A default model that only allows free (0..=0)
+    pub const FREE: Self = Self {
+        full: false,
+        core: Some((0, 0)),
+    };
 
-    pub fn full(&self) -> bool {
+    /// Get if this models allows full glycans on peptide fragments
+    pub const fn full(self) -> bool {
         self.full
     }
 
-    pub fn core(&self) -> Option<RangeInclusive<u8>> {
+    /// Get if this models allows core fragments on peptide fragments and the depth range of those fragments
+    pub fn core(self) -> Option<RangeInclusive<u8>> {
         self.core.map(|(min, max)| min..=max)
     }
 }

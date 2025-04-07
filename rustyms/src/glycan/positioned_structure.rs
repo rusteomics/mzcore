@@ -64,7 +64,7 @@ impl PositionedGlycanStructure {
     ) -> Vec<(Vec<GlycanPosition>, MolecularFormula)> {
         self.internal_break_points(0, peptidoform_index, attachment)
             .iter()
-            .filter(|(_, _, depth)| range.contains(&depth))
+            .filter(|(_, _, depth)| range.contains(depth))
             .map(|(f, pos, _)| {
                 (
                     pos.iter()
@@ -92,7 +92,7 @@ impl PositionedGlycanStructure {
                 (
                     self.formula_inner(SequencePosition::default(), peptidoform_index),
                     vec![GlycanBreakPos::End(self.position(attachment))],
-                    depth + u8::from(self.sugar.is_fucose()),
+                    depth + u8::from(!self.sugar.is_fucose()),
                 ),
                 (
                     MolecularFormula::default(),
@@ -105,7 +105,7 @@ impl PositionedGlycanStructure {
                 .iter()
                 .map(|b| {
                     b.internal_break_points(
-                        depth + u8::from(b.sugar.is_fucose()),
+                        depth + u8::from(!b.sugar.is_fucose()),
                         peptidoform_index,
                         attachment,
                     )

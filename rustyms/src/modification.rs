@@ -6,14 +6,16 @@ use serde::{Deserialize, Serialize};
 
 use std::{
     cmp::Ordering,
-    collections::{BTreeSet, HashSet},
+    collections::{BTreeSet, HashMap, HashSet},
     fmt::{Display, Write},
     sync::Arc,
 };
 
 use crate::{
+    fragment::FragmentKind,
     glycan::{GlycanStructure, MonoSaccharide},
-    model::GlycanPeptideFragment,
+    helper_functions::merge_hashmap,
+    model::{GlycanModel, GlycanPeptideFragment},
     molecular_charge::CachedCharge,
     peptidoform::Linked,
     placement_rule::{PlacementRule, Position},
@@ -167,10 +169,15 @@ impl SimpleModificationInner {
                         monosaccharides,
                         *range.start() as usize..=*range.end() as usize,
                     ) {
-                        // TODO: make a label somehow
-                        options.push(option.iter().fold(MolecularFormula::default(), |acc, i| {
-                            acc + i.0.formula_inner(sequence_index, peptidoform_index) * i.1 as i32
-                        }));
+                        options.push(
+                            option
+                                .iter()
+                                .fold(MolecularFormula::default(), |acc, i| {
+                                    acc + i.0.formula_inner(sequence_index, peptidoform_index)
+                                        * i.1 as i32
+                                })
+                                .with_label(AmbiguousLabel::GlycanFragmentComposition(option)),
+                        );
                     }
                 }
                 if glycan_fragmentation.full() {
@@ -199,8 +206,11 @@ impl SimpleModificationInner {
                         peptidoform_index,
                         attachment.map(|a| (a, sequence_index)),
                     ) {
-                        // TODO: keep the labels somehow
-                        options.push(option.1);
+                        options.push(
+                            option
+                                .1
+                                .with_label(AmbiguousLabel::GlycanFragment(option.0)),
+                        );
                     }
                 }
                 if glycan_fragmentation.full() {
@@ -533,27 +543,49 @@ impl Modification {
         allow_ms_cleavable: bool,
         sequence_index: SequencePosition,
         peptidoform_index: usize,
-        glycan_fragmentation: GlycanPeptideFragment,
+        glycan_model: &GlycanModel,
         attachment: Option<AminoAcid>,
-    ) -> (Multi<MolecularFormula>, HashSet<CrossLinkName>) {
+    ) -> (
+        Multi<MolecularFormula>,
+        HashMap<FragmentKind, Multi<MolecularFormula>>,
+        HashSet<CrossLinkName>,
+    ) {
         match self {
             Self::Simple(modification) | Self::Ambiguous { modification, .. } => {
                 match &**modification {
                     // A linker that is not cross-linked is hydrolysed
                     SimpleModificationInner::Linker { formula, .. } => (
                         (formula.clone() + molecular_formula!(H 2 O 1)).into(),
+                        HashMap::new(),
                         HashSet::new(),
                     ),
-                    s => (
-                        s.formula_inner(
+
+                    s => {
+                        let (default_rules, specific_rules) =
+                            glycan_model.get_peptide_fragments(attachment);
+
+                        let f = s.formula_inner(
                             sequence_index,
                             peptidoform_index,
-                            glycan_fragmentation,
+                            default_rules,
                             attachment,
-                        )
-                        .into(),
-                        HashSet::new(),
-                    ),
+                        );
+                        let specific = specific_rules
+                            .into_iter()
+                            .map(|(k, settings)| {
+                                (
+                                    k,
+                                    s.formula_inner(
+                                        sequence_index,
+                                        peptidoform_index,
+                                        settings,
+                                        attachment,
+                                    ),
+                                )
+                            })
+                            .collect();
+                        (f, specific, HashSet::new())
+                    }
                 }
             }
             Self::CrossLink {
@@ -564,7 +596,7 @@ impl Modification {
                 ..
             } => {
                 if applied_cross_links.contains(name) {
-                    (Multi::default(), HashSet::default())
+                    (Multi::default(), HashMap::new(), HashSet::default())
                 } else if visited_peptides.contains(other_peptide) {
                     applied_cross_links.push(name.clone());
                     (
@@ -572,11 +604,11 @@ impl Modification {
                             .formula_inner(
                                 sequence_index,
                                 peptidoform_index,
-                                glycan_fragmentation,
+                                glycan_model.default_peptide_fragment,
                                 attachment,
                             )
-                            .with_label(&AmbiguousLabel::CrossLinkBound(name.clone()))
-                            .into(),
+                            .with_label(&AmbiguousLabel::CrossLinkBound(name.clone())),
+                        HashMap::new(),
                         HashSet::from([name.clone()]),
                     )
                 } else {
@@ -584,7 +616,7 @@ impl Modification {
                     let link = linker.formula_inner(
                         sequence_index,
                         peptidoform_index,
-                        glycan_fragmentation,
+                        glycan_model.default_peptide_fragment,
                         attachment,
                     );
                     let (_, stubs, _) = side.allowed_rules(linker);
@@ -601,33 +633,39 @@ impl Modification {
                             .unique()
                             .collect();
                         let mut seen_peptides = HashSet::from([name.clone()]);
+                        let mut specific = HashMap::new();
 
                         options.extend_from_slice(&{
-                            let (f, seen) = all_peptides[*other_peptide].formulas_inner(
-                                *other_peptide,
-                                all_peptides,
-                                visited_peptides,
-                                applied_cross_links,
-                                false,
-                            );
+                            let (f, f_specific, seen) = all_peptides[*other_peptide]
+                                .formulas_inner(
+                                    *other_peptide,
+                                    all_peptides,
+                                    visited_peptides,
+                                    applied_cross_links,
+                                    false,
+                                    glycan_model,
+                                );
                             seen_peptides.extend(seen);
+                            specific = merge_hashmap(specific, f_specific);
                             (f * link)
                                 .with_label(&AmbiguousLabel::CrossLinkBound(name.clone()))
                                 .to_vec()
                         });
 
-                        (options.into(), seen_peptides)
+                        (options.into(), specific, seen_peptides)
                     } else {
-                        let (f, mut seen) = all_peptides[*other_peptide].formulas_inner(
+                        let (f, specific, mut seen) = all_peptides[*other_peptide].formulas_inner(
                             *other_peptide,
                             all_peptides,
                             visited_peptides,
                             applied_cross_links,
                             false,
+                            glycan_model,
                         );
                         seen.insert(name.clone());
                         (
                             (f * link).with_label(&AmbiguousLabel::CrossLinkBound(name.clone())),
+                            specific,
                             seen,
                         )
                     }

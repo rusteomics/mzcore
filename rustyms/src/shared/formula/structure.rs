@@ -1,7 +1,10 @@
 use ordered_float::OrderedFloat;
 use serde::{Deserialize, Serialize};
 
-use crate::{AminoAcid, CrossLinkName, Element, Multi, SequencePosition};
+use crate::{
+    fragment::GlycanPosition, glycan::MonoSaccharide, AminoAcid, CrossLinkName, Element, Multi,
+    SequencePosition,
+};
 use std::{
     fmt::Write,
     hash::Hash,
@@ -27,7 +30,7 @@ pub struct MolecularFormula {
 /// Keep track of what ambiguous option is used
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, Serialize, Deserialize)]
 pub enum AmbiguousLabel {
-    /// A ambiguous amino acid, with the actual amino acid used tracked
+    /// An ambiguous amino acid, with the actual amino acid used tracked
     AminoAcid {
         /// Which amino acid is used
         option: AminoAcid,
@@ -36,7 +39,7 @@ pub enum AmbiguousLabel {
         /// Peptide index
         peptidoform_index: usize,
     },
-    /// A ambiguous modification, with the actual position
+    /// An ambiguous modification, with the actual position
     Modification {
         /// Which ambiguous modification
         id: usize,
@@ -51,6 +54,10 @@ pub enum AmbiguousLabel {
     CrossLinkBound(CrossLinkName),
     /// A broken cross-link, having the name and the stub that was left in its place
     CrossLinkBroken(CrossLinkName, MolecularFormula),
+    /// A glycan fragment on a peptide fragment, with the Y breakages that lead to that fragment
+    GlycanFragment(Vec<GlycanPosition>),
+    /// A glycan fragment on a peptide fragment, with the monosaccharides that make up the fragment
+    GlycanFragmentComposition(Vec<(MonoSaccharide, isize)>),
 }
 
 /// Any item that has a clearly defined single molecular formula

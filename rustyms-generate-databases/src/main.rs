@@ -54,6 +54,16 @@ include!("../../rustyms/src/shared/neutral_loss.rs");
 include!("../../rustyms/src/shared/modification.rs");
 include!("../../rustyms/src/shared/aminoacid.rs");
 
+mod fragment {
+    use super::*;
+    use serde::{Deserialize, Serialize};
+    /// The index in the branches as stored in the structure
+    pub type GlycanBranchIndex = usize;
+    /// The index in the branches when the branches are sorted on mass, this is used to properly render the names of the branches for human consumption
+    pub type GlycanBranchMassIndex = usize;
+    include!("../../rustyms/src/shared/glycan_position.rs");
+}
+
 impl crate::Element {
     pub fn is_valid(self, _isotope: Option<std::num::NonZeroU16>) -> bool {
         true
