@@ -5,6 +5,8 @@ pub enum NeutralLoss {
     Gain(MolecularFormula),
     /// Loss of a specific formula
     Loss(MolecularFormula),
+    /// Loss of a side chain of an amino acid
+    SideChainLoss(MolecularFormula, crate::AminoAcid),
 }
 
 /// A diagnostic ion, defined in M (not MH+) chemical formula

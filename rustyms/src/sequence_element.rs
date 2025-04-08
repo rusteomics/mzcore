@@ -1,9 +1,16 @@
 #![warn(dead_code)]
 
-use std::{collections::HashSet, fmt::Write, marker::PhantomData, num::NonZeroU32};
+use std::{
+    collections::{HashMap, HashSet},
+    fmt::Write,
+    marker::PhantomData,
+    num::NonZeroU32,
+};
 
 use crate::{
     error::{Context, CustomError},
+    fragment::FragmentKind,
+    model::GlycanModel,
     modification::{
         CrossLinkName, LinkerSpecificity, Modification, RulePossible, SimpleModification,
         SimpleModificationInner,
@@ -139,38 +146,27 @@ impl<T> SequenceElement<T> {
     /// Get the molecular formulas for this position without any the ambiguous modifications
     pub(crate) fn formulas_base(
         &self,
-        all_peptides: &[Peptidoform<Linked>],
-        visited_peptides: &[usize],
+        all_peptidoforms: &[Peptidoform<Linked>],
+        visited_peptidoforms: &[usize],
         applied_cross_links: &mut Vec<CrossLinkName>,
         allow_ms_cleavable: bool,
         sequence_index: SequencePosition,
         peptidoform_index: usize,
-    ) -> (Multi<MolecularFormula>, HashSet<CrossLinkName>) {
-        let (formula, seen) = self
-            .modifications
-            .iter()
-            .filter_map(|m| {
-                if let Modification::Ambiguous { .. } = m {
-                    None
-                } else {
-                    Some(m.formula_inner(
-                        all_peptides,
-                        visited_peptides,
-                        applied_cross_links,
-                        allow_ms_cleavable,
-                        sequence_index,
-                        peptidoform_index,
-                    ))
-                }
-            })
-            .fold((Multi::default(), HashSet::new()), |(am, av), (m, v)| {
-                (am * m, av.union(&v).cloned().collect())
-            });
-        (
-            self.aminoacid
-                .formulas_inner(sequence_index, peptidoform_index)
-                * formula,
-            seen,
+        glycan_model: &GlycanModel,
+    ) -> (
+        Multi<MolecularFormula>,
+        HashMap<FragmentKind, Multi<MolecularFormula>>,
+        HashSet<CrossLinkName>,
+    ) {
+        self.formulas_generic(
+            &mut |_| false,
+            all_peptidoforms,
+            visited_peptidoforms,
+            applied_cross_links,
+            allow_ms_cleavable,
+            sequence_index,
+            peptidoform_index,
+            glycan_model,
         )
     }
 
@@ -179,14 +175,75 @@ impl<T> SequenceElement<T> {
     pub(crate) fn formulas_greedy(
         &self,
         placed: &mut [bool],
-        all_peptides: &[Peptidoform<Linked>],
-        visited_peptides: &[usize],
+        all_peptidoforms: &[Peptidoform<Linked>],
+        visited_peptidoforms: &[usize],
         applied_cross_links: &mut Vec<CrossLinkName>,
         allow_ms_cleavable: bool,
         sequence_index: SequencePosition,
         peptidoform_index: usize,
-    ) -> (Multi<MolecularFormula>, HashSet<CrossLinkName>) {
-        let (formula, seen) = self
+        glycan_model: &GlycanModel,
+    ) -> (
+        Multi<MolecularFormula>,
+        HashMap<FragmentKind, Multi<MolecularFormula>>,
+        HashSet<CrossLinkName>,
+    ) {
+        self.formulas_generic(
+            &mut |id| (!placed[id]).then(|| placed[id] = true).is_some(),
+            all_peptidoforms,
+            visited_peptidoforms,
+            applied_cross_links,
+            allow_ms_cleavable,
+            sequence_index,
+            peptidoform_index,
+            glycan_model,
+        )
+    }
+
+    /// Get the molecular formulas for this position with all ambiguous modifications, without any global isotype modifications
+    pub(crate) fn formulas_all(
+        &self,
+        all_peptidoforms: &[Peptidoform<Linked>],
+        visited_peptidoforms: &[usize],
+        applied_cross_links: &mut Vec<CrossLinkName>,
+        allow_ms_cleavable: bool,
+        sequence_index: SequencePosition,
+        peptidoform_index: usize,
+        glycan_model: &GlycanModel,
+    ) -> (
+        Multi<MolecularFormula>,
+        HashMap<FragmentKind, Multi<MolecularFormula>>,
+        HashSet<CrossLinkName>,
+    ) {
+        self.formulas_generic(
+            &mut |_| true,
+            all_peptidoforms,
+            visited_peptidoforms,
+            applied_cross_links,
+            allow_ms_cleavable,
+            sequence_index,
+            peptidoform_index,
+            glycan_model,
+        )
+    }
+
+    /// Get the molecular formulas for this position with the ambiguous modifications placed on the very first placed (and updating this in `placed`), without any global isotype modifications
+    #[expect(clippy::too_many_arguments)]
+    pub(crate) fn formulas_generic(
+        &self,
+        place_ambiguous: &mut impl FnMut(usize) -> bool,
+        all_peptidoforms: &[Peptidoform<Linked>],
+        visited_peptidoforms: &[usize],
+        applied_cross_links: &mut Vec<CrossLinkName>,
+        allow_ms_cleavable: bool,
+        sequence_index: SequencePosition,
+        peptidoform_index: usize,
+        glycan_model: &GlycanModel,
+    ) -> (
+        Multi<MolecularFormula>,
+        HashMap<FragmentKind, Multi<MolecularFormula>>,
+        HashSet<CrossLinkName>,
+    ) {
+        let (formula, specific, seen) = self
             .modifications
             .iter()
             .filter_map(|m| {
@@ -194,67 +251,63 @@ impl<T> SequenceElement<T> {
                     id, modification, ..
                 } = m
                 {
-                    (!placed[*id]).then(|| {
-                        placed[*id] = true;
+                    place_ambiguous(*id).then(|| {
+                        let (default, specific) =
+                            glycan_model.get_peptide_fragments(Some(self.aminoacid.aminoacid()));
                         (
-                            modification
-                                .formula_inner(sequence_index, peptidoform_index)
-                                .into(),
+                            modification.formula_inner(
+                                sequence_index,
+                                peptidoform_index,
+                                default,
+                                Some(self.aminoacid.aminoacid()),
+                            ),
+                            specific
+                                .into_iter()
+                                .map(|(k, setting)| {
+                                    (
+                                        k,
+                                        modification.formula_inner(
+                                            sequence_index,
+                                            peptidoform_index,
+                                            setting,
+                                            Some(self.aminoacid.aminoacid()),
+                                        ),
+                                    )
+                                })
+                                .collect(),
                             HashSet::default(),
                         )
                     })
                 } else {
-                    Some(m.formula_inner(
-                        all_peptides,
-                        visited_peptides,
+                    let (formula, specific, seen) = m.formula_inner(
+                        all_peptidoforms,
+                        visited_peptidoforms,
                         applied_cross_links,
                         allow_ms_cleavable,
                         sequence_index,
                         peptidoform_index,
-                    ))
+                        glycan_model,
+                        Some(self.aminoacid.aminoacid()),
+                    );
+                    Some((formula, specific, seen))
                 }
             })
-            .fold((Multi::default(), HashSet::new()), |(am, av), (m, v)| {
-                (am * m, av.union(&v).cloned().collect())
-            });
+            .fold(
+                (Multi::default(), HashMap::new(), HashSet::new()),
+                |(am, asp, av), (m, sp, v)| {
+                    (
+                        am * m,
+                        crate::helper_functions::merge_hashmap(asp, sp),
+                        av.union(&v).cloned().collect(),
+                    )
+                },
+            );
+        let own = self
+            .aminoacid
+            .formulas_inner(sequence_index, peptidoform_index);
         (
-            self.aminoacid
-                .formulas_inner(sequence_index, peptidoform_index)
-                * formula,
-            seen,
-        )
-    }
-
-    /// Get the molecular formulas for this position with all ambiguous modifications, without any global isotype modifications
-    pub(crate) fn formulas_all(
-        &self,
-        all_peptides: &[Peptidoform<Linked>],
-        visited_peptides: &[usize],
-        applied_cross_links: &mut Vec<CrossLinkName>,
-        allow_ms_cleavable: bool,
-        sequence_index: SequencePosition,
-        peptidoform_index: usize,
-    ) -> (Multi<MolecularFormula>, HashSet<CrossLinkName>) {
-        let (formula, seen) = self
-            .modifications
-            .iter()
-            .map(|m| {
-                m.formula_inner(
-                    all_peptides,
-                    visited_peptides,
-                    applied_cross_links,
-                    allow_ms_cleavable,
-                    sequence_index,
-                    peptidoform_index,
-                )
-            })
-            .fold((Multi::default(), HashSet::new()), |(am, av), (m, v)| {
-                (am * m, av.union(&v).cloned().collect())
-            });
-        (
-            self.aminoacid
-                .formulas_inner(sequence_index, peptidoform_index)
-                * formula,
+            formula * &own,
+            specific.into_iter().map(|(k, v)| (k, v * &own)).collect(),
             seen,
         )
     }
@@ -298,9 +351,19 @@ impl<T> SequenceElement<T> {
     }
 
     /// Get all possible diagnostic ions
-    pub(crate) fn diagnostic_ions(&self, position: SequencePosition) -> Vec<DiagnosticIon> {
+    pub(crate) fn diagnostic_ions(
+        &self,
+        position: SequencePosition,
+        n_term: &[Modification],
+        c_term: &[Modification],
+    ) -> Vec<DiagnosticIon> {
         let mut diagnostic_ions = Vec::new();
-        for modification in &self.modifications {
+        let modifications = match position {
+            SequencePosition::NTerm => n_term,
+            SequencePosition::Index(_) => &self.modifications,
+            SequencePosition::CTerm => c_term,
+        };
+        for modification in modifications {
             match modification {
                 Modification::CrossLink { linker, side, .. } => {
                     diagnostic_ions.extend_from_slice(&side.allowed_rules(linker).2);

@@ -4,12 +4,14 @@ use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 
 use crate::{
+    model::GlycanModel,
     modification::{
         CrossLinkName, CrossLinkSide, RulePossible, SimpleModification, SimpleModificationInner,
     },
     peptidoform::Linked,
     system::usize::Charge,
-    Fragment, Model, MolecularCharge, MolecularFormula, Multi, Peptidoform, SequencePosition,
+    Fragment, FragmentationModel, MolecularCharge, MolecularFormula, Multi, Peptidoform,
+    SequencePosition,
 };
 /// A single peptidoform ion, can contain multiple peptidoforms
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Debug, Default, Serialize, Deserialize, Hash)]
@@ -39,12 +41,23 @@ impl PeptidoformIon {
     }
 
     /// Gives all possible formulas for this peptidoform (including breakage of cross-links that can break).
+    /// Includes the full glycan, if there are any glycans.
     /// Assumes all peptides in this peptidoform are connected.
     /// If there are no peptides in this peptidoform it returns [`Multi::default`].
     pub fn formulas(&self) -> Multi<MolecularFormula> {
         self.0
             .first()
-            .map(|p| p.formulas_inner(0, &self.0, &[], &mut Vec::new(), true).0)
+            .map(|p| {
+                p.formulas_inner(
+                    0,
+                    &self.0,
+                    &[],
+                    &mut Vec::new(),
+                    true,
+                    &GlycanModel::DISALLOW,
+                )
+                .0
+            })
             .unwrap_or_default()
     }
 
@@ -52,7 +65,7 @@ impl PeptidoformIon {
     pub fn generate_theoretical_fragments(
         &self,
         max_charge: Charge,
-        model: &Model,
+        model: &FragmentationModel,
     ) -> Vec<Fragment> {
         self.generate_theoretical_fragments_inner(max_charge, model, 0)
     }
@@ -61,7 +74,7 @@ impl PeptidoformIon {
     pub(super) fn generate_theoretical_fragments_inner(
         &self,
         max_charge: Charge,
-        model: &Model,
+        model: &FragmentationModel,
         peptidoform_ion_index: usize,
     ) -> Vec<Fragment> {
         let mut base = Vec::new();

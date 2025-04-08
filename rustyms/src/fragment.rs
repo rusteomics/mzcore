@@ -14,7 +14,7 @@ use serde::{Deserialize, Serialize};
 use crate::glycan::GlycanSelection;
 use crate::{
     glycan::{GlycanBranchIndex, GlycanBranchMassIndex, MonoSaccharide},
-    model::ChargeRange,
+    model::{ChargeRange, PossiblePrimaryIons},
     molecular_charge::{CachedCharge, MolecularCharge},
     system::{
         f64::{MassOverCharge, Ratio},
@@ -25,18 +25,18 @@ use crate::{
     Multi, NeutralLoss, SemiAmbiguous, SequenceElement, SequencePosition, Tolerance,
 };
 
-/// A theoretical fragment of a peptide
+/// A theoretical fragment
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, Serialize, Deserialize, Default)]
 pub struct Fragment {
     /// The theoretical composition
     pub formula: Option<MolecularFormula>,
     /// The charge
     pub charge: Charge,
-    /// All possible annotations for this fragment saved as a tuple of peptide index and its type
+    /// The annotation for this fragment
     pub ion: FragmentType,
-    /// The peptidoform this fragment comes from, saved as the index into the list of peptidoform in the overarching [`crate::CompoundPeptidoform`] struct
+    /// The peptidoform this fragment comes from, saved as the index into the list of peptidoform in the overarching [`crate::CompoundPeptidoformIon`] struct
     pub peptidoform_ion_index: Option<usize>,
-    /// The peptide this fragment comes from, saved as the index into the list of peptides in the overarching [`crate::Peptidoform`] struct
+    /// The peptide this fragment comes from, saved as the index into the list of peptides in the overarching [`crate::PeptidoformIon`] struct
     pub peptidoform_index: Option<usize>,
     /// Any neutral losses applied
     pub neutral_loss: Vec<NeutralLoss>,
@@ -49,6 +49,175 @@ pub struct Fragment {
 }
 
 impl Fragment {
+    /// Write the fragment as an mzPAF string
+    pub fn to_mzPAF(&self) -> String {
+        let mut output = String::new();
+        if self.auxiliary {
+            output.push('&');
+        }
+        // Push the ion type info (plus maybe some neutral losses if needed)
+        output.push_str(&match &self.ion {
+            FragmentType::a(pos, variant)
+            | FragmentType::b(pos, variant)
+            | FragmentType::c(pos, variant)
+            | FragmentType::x(pos, variant)
+            | FragmentType::y(pos, variant) => format!(
+                "{}{}{}",
+                self.ion.kind(),
+                pos.series_number,
+                if *variant == 0 {
+                    String::new()
+                } else {
+                    format!("{variant:+}H")
+                }
+            ),
+            FragmentType::z(pos, variant) => format!(
+                "{}{}{}",
+                self.ion.kind(),
+                pos.series_number,
+                if *variant == 1 {
+                    String::new()
+                } else {
+                    format!("{:+}H", variant - 1)
+                }
+            ),
+            FragmentType::d(pos, _, distance, variant, label) => {
+                if *distance == 0 {
+                    format!(
+                        "d{label}{}{}",
+                        pos.series_number,
+                        if *variant == 0 {
+                            String::new()
+                        } else {
+                            format!("{variant:+}H")
+                        }
+                    )
+                } else {
+                    format!(
+                        "a{}-{}{}",
+                        pos.series_number,
+                        "C1", // TODO: get specific formula
+                        if *variant == 0 {
+                            String::new()
+                        } else {
+                            format!("{variant:+}H")
+                        }
+                    )
+                }
+            }
+            FragmentType::v(pos, _, distance, variant) => {
+                if *distance == 0 {
+                    format!(
+                        "v{}{}",
+                        pos.series_number,
+                        if *variant == 0 {
+                            String::new()
+                        } else {
+                            format!("{variant:+}H")
+                        }
+                    )
+                } else {
+                    format!(
+                        "y{}-{}{}",
+                        pos.series_number,
+                        "C1", // TODO: get specific formula
+                        if *variant == 0 {
+                            String::new()
+                        } else {
+                            format!("{variant:+}H")
+                        }
+                    )
+                }
+            }
+            FragmentType::w(pos, _, distance, variant, label) => {
+                if *distance == 0 {
+                    format!(
+                        "w{label}{}{}",
+                        pos.series_number,
+                        if *variant == 0 {
+                            String::new()
+                        } else {
+                            format!("{variant:+}H")
+                        }
+                    )
+                } else {
+                    format!(
+                        "z{}-{}{}",
+                        pos.series_number,
+                        "C1", // TODO: get specific formula
+                        if *variant == 0 {
+                            String::new()
+                        } else {
+                            format!("{variant:+}H")
+                        }
+                    )
+                }
+            }
+            FragmentType::Precursor => "p".to_string(),
+            FragmentType::PrecursorSideChainLoss(_, aa) => format!("p-r[sidechain_{aa}]"),
+            FragmentType::Immonium(_, seq) => format!(
+                "I{}{}",
+                seq.aminoacid,
+                seq.modifications.iter().map(|m| format!("[{m}]")).join("") // TODO: how to handle ambiguous mods? maybe store somewhere which where applied for this fragment
+            ),
+            FragmentType::Unknown(num) => {
+                format!("?{}", num.map_or(String::new(), |u| u.to_string()))
+            }
+            FragmentType::Diagnostic(_)
+            | FragmentType::B { .. }
+            | FragmentType::BComposition(_, _)
+            | FragmentType::Y(_)
+            | FragmentType::YComposition(_, _) => self
+                .formula
+                .as_ref()
+                .map_or_else(|| "?".to_string(), |f| format!("f{{{f}}}")), // TODO: better way of storing?
+            FragmentType::Internal(name, a, b) => name.as_ref().map_or_else(
+                || format!("m{}:{}", a.sequence_index + 1, b.sequence_index + 1),
+                |name| {
+                    format!(
+                        "m{}:{}{}",
+                        a.sequence_index + 1,
+                        b.sequence_index + 1,
+                        match name {
+                            (BackboneNFragment::a, BackboneCFragment::x)
+                            | (BackboneNFragment::b, BackboneCFragment::y)
+                            | (BackboneNFragment::c, BackboneCFragment::z) => "",
+                            (BackboneNFragment::a, BackboneCFragment::y) => "-CO",
+                            (BackboneNFragment::a, BackboneCFragment::z) => "-CHNO",
+                            (BackboneNFragment::b, BackboneCFragment::x) => "+CO",
+                            (BackboneNFragment::b, BackboneCFragment::z) => "-NH",
+                            (BackboneNFragment::c, BackboneCFragment::x) => "+CHNO",
+                            (BackboneNFragment::c, BackboneCFragment::y) => "+NH",
+                        }
+                    )
+                },
+            ),
+        });
+        // More losses
+        for loss in &self.neutral_loss {
+            output.push_str(&match loss {
+                NeutralLoss::SideChainLoss(_, aa) => format!("-r[sidechain_{aa}]"),
+                l => l.to_string(),
+            });
+        }
+        // Isotopes: not handled
+        // Charge state
+        if self.charge.value != 1 {
+            output.push_str(&format!("^{}", self.charge.value));
+        }
+        // Deviation
+        match self.deviation {
+            Some(Tolerance::Absolute(abs)) => output.push_str(&format!("/{}", abs.value)),
+            Some(Tolerance::Relative(ppm)) => output.push_str(&format!("/{}ppm", ppm.value)),
+            None => (),
+        }
+        // Confidence
+        if let Some(confidence) = self.confidence {
+            output.push_str(&format!("*{confidence}"));
+        }
+        output
+    }
+
     /// Get the mz
     pub fn mz(&self, mode: MassMode) -> Option<MassOverCharge> {
         self.formula.as_ref().map(|f| {
@@ -99,7 +268,7 @@ impl Fragment {
         peptidoform_index: usize,
         annotation: &FragmentType,
         termini: &Multi<MolecularFormula>,
-        neutral_losses: &[NeutralLoss],
+        neutral_losses: &[Vec<NeutralLoss>],
         charge_carriers: &mut CachedCharge,
         charge_range: ChargeRange,
     ) -> Vec<Self> {
@@ -108,17 +277,60 @@ impl Fragment {
             .cartesian_product(theoretical_mass.iter())
             .cartesian_product(charge_carriers.range(charge_range))
             .cartesian_product(std::iter::once(None).chain(neutral_losses.iter().map(Some)))
-            .map(|(((term, mass), charge), loss)| Self {
+            .map(|(((term, mass), charge), losses)| Self {
                 formula: Some(
                     term + mass
                         + charge.formula_inner(SequencePosition::default(), peptidoform_index)
-                        + loss.unwrap_or(&NeutralLoss::Gain(MolecularFormula::default())),
+                        + losses
+                            .iter()
+                            .flat_map(|l| l.iter())
+                            .sum::<MolecularFormula>(),
                 ),
                 charge: Charge::new::<crate::system::e>(charge.charge().value.try_into().unwrap()),
                 ion: annotation.clone(),
                 peptidoform_ion_index: Some(peptidoform_ion_index),
                 peptidoform_index: Some(peptidoform_index),
-                neutral_loss: loss.map(|l| vec![l.clone()]).unwrap_or_default(),
+                neutral_loss: losses.map(Clone::clone).unwrap_or_default(),
+                deviation: None,
+                confidence: None,
+                auxiliary: false,
+            })
+            .collect()
+    }
+    /// Generate a list of possible fragments from the list of possible preceding termini and neutral losses
+    /// # Panics
+    /// When the charge range results in a negative charge
+    #[must_use]
+    pub fn generate_series(
+        theoretical_mass: &Multi<MolecularFormula>,
+        peptidoform_ion_index: usize,
+        peptidoform_index: usize,
+        annotation: &FragmentType,
+        termini: &Multi<MolecularFormula>,
+        charge_carriers: &mut CachedCharge,
+        settings: &PossiblePrimaryIons,
+    ) -> Vec<Self> {
+        termini
+            .iter()
+            .cartesian_product(theoretical_mass.iter())
+            .cartesian_product(charge_carriers.range(settings.1))
+            .cartesian_product(std::iter::once(None).chain(settings.0.iter().map(Some)))
+            .cartesian_product(settings.2.iter())
+            .map(|((((term, mass), charge), losses), variant)| Self {
+                formula: Some(
+                    term + mass
+                        + charge.formula_inner(SequencePosition::default(), peptidoform_index)
+                        + losses
+                            .iter()
+                            .flat_map(|l| l.iter())
+                            .sum::<MolecularFormula>()
+                        + molecular_formula!(H 1) * variant,
+                ),
+                charge: Charge::new::<crate::system::e>(charge.charge().value.try_into().unwrap()),
+                ion: annotation.with_variant(*variant),
+                peptidoform_ion_index: Some(peptidoform_ion_index),
+                peptidoform_index: Some(peptidoform_index),
+                neutral_loss: losses.map(|l| l.clone()).unwrap_or_default(),
                 deviation: None,
                 confidence: None,
                 auxiliary: false,
@@ -268,18 +480,7 @@ impl PeptidePosition {
     }
 }
 
-/// The definition of the position of an ion inside a glycan
-#[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Serialize, Deserialize)]
-pub struct GlycanPosition {
-    /// The depth starting at the amino acid
-    pub inner_depth: usize,
-    /// The series number (from the ion series terminal)
-    pub series_number: usize,
-    /// The branch naming
-    pub branch: Vec<(GlycanBranchIndex, GlycanBranchMassIndex)>,
-    /// The aminoacid index where this glycan is attached
-    pub attachment: Option<(AminoAcid, usize)>,
-}
+include!("shared/glycan_position.rs");
 
 impl GlycanPosition {
     /// Get the branch names
@@ -327,7 +528,7 @@ pub enum DiagnosticPosition {
     /// A position on a glycan
     Glycan(GlycanPosition, MonoSaccharide),
     /// A position on a compositional glycan (attachment AA + sequence index + the sugar)
-    GlycanCompositional(MonoSaccharide, Option<(AminoAcid, usize)>),
+    GlycanCompositional(MonoSaccharide, Option<(AminoAcid, SequencePosition)>),
     /// A position on a peptide
     Peptide(PeptidePosition, AminoAcid),
     /// Labile modification
@@ -336,30 +537,56 @@ pub enum DiagnosticPosition {
     Reporter,
 }
 
+/// A label for a satellite ion, none for most amino acids but a or b for Thr and Ile
+#[derive(
+    Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Serialize, Deserialize, Default,
+)]
+pub enum SatelliteLabel {
+    /// No label needed
+    #[default]
+    None,
+    /// Heaviest of the two options
+    A,
+    /// Lightest of the two options
+    B,
+}
+
+impl std::fmt::Display for SatelliteLabel {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{}",
+            match self {
+                Self::None => "",
+                Self::A => "a",
+                Self::B => "b",
+            }
+        )
+    }
+}
+
 /// The possible types of fragments
 #[derive(Clone, Eq, PartialEq, Hash, Debug, Serialize, Deserialize, Default)]
 #[expect(non_camel_case_types)]
 pub enum FragmentType {
     /// a
-    a(PeptidePosition),
+    a(PeptidePosition, i8),
     /// b
-    b(PeptidePosition),
+    b(PeptidePosition, i8),
     /// c
-    c(PeptidePosition),
-    /// d
-    d(PeptidePosition),
+    c(PeptidePosition, i8),
+    /// d a position, originating amino acid, distance from a break, variant,
+    d(PeptidePosition, AminoAcid, u8, i8, SatelliteLabel),
     /// v
-    v(PeptidePosition),
+    v(PeptidePosition, AminoAcid, u8, i8),
     /// w
-    w(PeptidePosition),
+    w(PeptidePosition, AminoAcid, u8, i8, SatelliteLabel),
     /// x
-    x(PeptidePosition),
+    x(PeptidePosition, i8),
     /// y
-    y(PeptidePosition),
+    y(PeptidePosition, i8),
     /// z
-    z(PeptidePosition),
-    /// z·
-    z·(PeptidePosition),
+    z(PeptidePosition, i8),
     // glycan A fragment (Never generated)
     //A(GlycanPosition),
     /// glycan B fragment
@@ -382,9 +609,15 @@ pub enum FragmentType {
         end: Vec<GlycanPosition>,
     },
     /// A B or internal glycan fragment for a glycan where only the composition is known, also saves the attachment (AA + sequence index)
-    BComposition(Vec<(MonoSaccharide, isize)>, Option<(AminoAcid, usize)>),
+    BComposition(
+        Vec<(MonoSaccharide, isize)>,
+        Option<(AminoAcid, SequencePosition)>,
+    ),
     /// A B or internal glycan fragment for a glycan where only the composition is known, also saves the attachment (AA + sequence index)
-    YComposition(Vec<(MonoSaccharide, isize)>, Option<(AminoAcid, usize)>),
+    YComposition(
+        Vec<(MonoSaccharide, isize)>,
+        Option<(AminoAcid, SequencePosition)>,
+    ),
     /// Immonium ion
     Immonium(PeptidePosition, SequenceElement<SemiAmbiguous>),
     /// Precursor with amino acid side chain loss
@@ -412,36 +645,39 @@ impl std::cmp::Ord for FragmentType {
             (Self::Precursor, Self::Precursor) => Ordering::Equal,
             (Self::Precursor, _) => Ordering::Less,
             (_, Self::Precursor) => Ordering::Greater,
-            (Self::a(s), Self::a(o)) => s.cmp(o),
-            (Self::a(_), _) => Ordering::Less,
-            (_, Self::a(_)) => Ordering::Greater,
-            (Self::b(s), Self::b(o)) => s.cmp(o),
-            (Self::b(_), _) => Ordering::Less,
-            (_, Self::b(_)) => Ordering::Greater,
-            (Self::c(s), Self::c(o)) => s.cmp(o),
-            (Self::c(_), _) => Ordering::Less,
-            (_, Self::c(_)) => Ordering::Greater,
-            (Self::x(s), Self::x(o)) => s.cmp(o),
-            (Self::x(_), _) => Ordering::Less,
-            (_, Self::x(_)) => Ordering::Greater,
-            (Self::y(s), Self::y(o)) => s.cmp(o),
-            (Self::y(_), _) => Ordering::Less,
-            (_, Self::y(_)) => Ordering::Greater,
-            (Self::z(s), Self::z(o)) => s.cmp(o),
-            (Self::z(_), _) => Ordering::Less,
-            (_, Self::z(_)) => Ordering::Greater,
-            (Self::z·(s), Self::z·(o)) => s.cmp(o),
-            (Self::z·(_), _) => Ordering::Less,
-            (_, Self::z·(_)) => Ordering::Greater,
-            (Self::d(s), Self::d(o)) => s.cmp(o),
-            (Self::d(_), _) => Ordering::Less,
-            (_, Self::d(_)) => Ordering::Greater,
-            (Self::w(s), Self::w(o)) => s.cmp(o),
-            (Self::w(_), _) => Ordering::Less,
-            (_, Self::w(_)) => Ordering::Greater,
-            (Self::v(s), Self::v(o)) => s.cmp(o),
-            (Self::v(_), _) => Ordering::Less,
-            (_, Self::v(_)) => Ordering::Greater,
+            (Self::a(s, sv), Self::a(o, ov)) => s.cmp(o).then(sv.cmp(ov)),
+            (Self::a(_, _), _) => Ordering::Less,
+            (_, Self::a(_, _)) => Ordering::Greater,
+            (Self::b(s, sv), Self::b(o, ov)) => s.cmp(o).then(sv.cmp(ov)),
+            (Self::b(_, _), _) => Ordering::Less,
+            (_, Self::b(_, _)) => Ordering::Greater,
+            (Self::c(s, sv), Self::c(o, ov)) => s.cmp(o).then(sv.cmp(ov)),
+            (Self::c(_, _), _) => Ordering::Less,
+            (_, Self::c(_, _)) => Ordering::Greater,
+            (Self::x(s, sv), Self::x(o, ov)) => s.cmp(o).then(sv.cmp(ov)),
+            (Self::x(_, _), _) => Ordering::Less,
+            (_, Self::x(_, _)) => Ordering::Greater,
+            (Self::y(s, sv), Self::y(o, ov)) => s.cmp(o).then(sv.cmp(ov)),
+            (Self::y(_, _), _) => Ordering::Less,
+            (_, Self::y(_, _)) => Ordering::Greater,
+            (Self::z(s, sv), Self::z(o, ov)) => s.cmp(o).then(sv.cmp(ov)),
+            (Self::z(_, _), _) => Ordering::Less,
+            (_, Self::z(_, _)) => Ordering::Greater,
+            (Self::d(s, _, sd, sv, sl), Self::d(o, _, od, ov, ol)) => {
+                s.cmp(o).then(sd.cmp(od)).then(sv.cmp(ov)).then(sl.cmp(ol))
+            }
+            (Self::d(_, _, _, _, _), _) => Ordering::Less,
+            (_, Self::d(_, _, _, _, _)) => Ordering::Greater,
+            (Self::w(s, _, sd, sv, sl), Self::w(o, _, od, ov, ol)) => {
+                s.cmp(o).then(sd.cmp(od)).then(sv.cmp(ov)).then(sl.cmp(ol))
+            }
+            (Self::w(_, _, _, _, _), _) => Ordering::Less,
+            (_, Self::w(_, _, _, _, _)) => Ordering::Greater,
+            (Self::v(s, _, sd, sv), Self::v(o, _, od, ov)) => {
+                s.cmp(o).then(sd.cmp(od)).then(sv.cmp(ov))
+            }
+            (Self::v(_, _, _, _), _) => Ordering::Less,
+            (_, Self::v(_, _, _, _)) => Ordering::Greater,
             (Self::Immonium(s, _), Self::Immonium(o, _)) => s.cmp(o),
             (Self::Immonium(_, _), _) => Ordering::Less,
             (_, Self::Immonium(_, _)) => Ordering::Greater,
@@ -500,19 +736,35 @@ impl std::cmp::PartialOrd for FragmentType {
 }
 
 impl FragmentType {
+    /// Get a main ion series fragment with the specified variant, or pass the fragment type through unchanged
+    #[must_use]
+    pub fn with_variant(&self, variant: i8) -> Self {
+        match self {
+            Self::a(p, _) => Self::a(*p, variant),
+            Self::b(p, _) => Self::b(*p, variant),
+            Self::c(p, _) => Self::c(*p, variant),
+            Self::d(p, a, d, _, l) => Self::d(*p, *a, *d, variant, *l),
+            Self::v(p, a, d, _) => Self::v(*p, *a, *d, variant),
+            Self::w(p, a, d, _, l) => Self::w(*p, *a, *d, variant, *l),
+            Self::x(p, _) => Self::x(*p, variant),
+            Self::y(p, _) => Self::y(*p, variant),
+            Self::z(p, _) => Self::z(*p, variant),
+            other => other.clone(),
+        }
+    }
+
     /// Get the position of this ion (or None if it is a precursor ion)
     pub const fn position(&self) -> Option<&PeptidePosition> {
         match self {
-            Self::a(n)
-            | Self::b(n)
-            | Self::c(n)
-            | Self::d(n)
-            | Self::v(n)
-            | Self::w(n)
-            | Self::x(n)
-            | Self::y(n)
-            | Self::z(n)
-            | Self::z·(n)
+            Self::a(n, _)
+            | Self::b(n, _)
+            | Self::c(n, _)
+            | Self::d(n, _, _, _, _)
+            | Self::v(n, _, _, _)
+            | Self::w(n, _, _, _, _)
+            | Self::x(n, _)
+            | Self::y(n, _)
+            | Self::z(n, _)
             | Self::Diagnostic(DiagnosticPosition::Peptide(n, _))
             | Self::Immonium(n, _)
             | Self::PrecursorSideChainLoss(n, _) => Some(n),
@@ -531,7 +783,9 @@ impl FragmentType {
     /// Get the glycan break positions of this ion (or None if not applicable), gives the sequence index, the root break, and the branch breaks.
     /// Only available with feature 'glycan-render'.
     #[cfg(feature = "glycan-render")]
-    pub fn glycan_break_positions(&self) -> Option<(Option<usize>, GlycanSelection<'_>)> {
+    pub fn glycan_break_positions(
+        &self,
+    ) -> Option<(Option<SequencePosition>, GlycanSelection<'_>)> {
         match self {
             Self::Diagnostic(DiagnosticPosition::Glycan(n, _)) => Some((
                 n.attachment.map(|(_, p)| p),
@@ -552,27 +806,27 @@ impl FragmentType {
     /// Get the position label, unless it is a precursor ion
     pub fn position_label(&self) -> Option<String> {
         match self {
-            Self::a(n)
-            | Self::b(n)
-            | Self::c(n)
-            | Self::d(n)
-            | Self::v(n)
-            | Self::w(n)
-            | Self::x(n)
-            | Self::y(n)
-            | Self::z(n)
-            | Self::z·(n)
+            Self::a(n, _)
+            | Self::b(n, _)
+            | Self::c(n, _)
+            | Self::d(n, _, _, _, _)
+            | Self::v(n, _, _, _)
+            | Self::w(n, _, _, _, _)
+            | Self::x(n, _)
+            | Self::y(n, _)
+            | Self::z(n, _)
             | Self::Diagnostic(DiagnosticPosition::Peptide(n, _))
             | Self::Immonium(n, _)
             | Self::PrecursorSideChainLoss(n, _) => Some(n.series_number.to_string()),
             Self::Diagnostic(DiagnosticPosition::Glycan(n, _)) => Some(n.label()),
-            Self::Y(bonds) => Some(bonds.iter().map(GlycanPosition::label).join("")),
+            Self::Y(bonds) => Some(bonds.iter().map(GlycanPosition::label).join("Y")),
             Self::B { b, y, end } => Some(
                 b.label()
+                    + "Y"
                     + &y.iter()
                         .chain(end.iter())
                         .map(GlycanPosition::label)
-                        .join(""),
+                        .join("Y"),
             ),
             Self::YComposition(sugars, _) | Self::BComposition(sugars, _) => Some(
                 sugars
@@ -593,65 +847,119 @@ impl FragmentType {
         }
     }
 
-    /// Get the label for this fragment type
-    pub fn label(&self) -> Cow<str> {
+    /// Get the label for this fragment type, the first argument is the optional superscript prefix, the second is the main label
+    pub fn label(&self) -> (Option<String>, Cow<str>) {
+        let get_label = |ion: &'static str, v: i8| {
+            if v == 0 {
+                Cow::Borrowed(ion)
+            } else {
+                Cow::Owned(format!(
+                    "{ion}{}",
+                    if v < 0 {
+                        "\'".repeat((-v) as usize)
+                    } else {
+                        "·".repeat(v as usize)
+                    }
+                ))
+            }
+        };
+
         match self {
-            Self::a(_) => Cow::Borrowed("a"),
-            Self::b(_) => Cow::Borrowed("b"),
-            Self::c(_) => Cow::Borrowed("c"),
-            Self::d(_) => Cow::Borrowed("d"),
-            Self::v(_) => Cow::Borrowed("v"),
-            Self::w(_) => Cow::Borrowed("w"),
-            Self::x(_) => Cow::Borrowed("x"),
-            Self::y(_) => Cow::Borrowed("y"),
-            Self::z(_) => Cow::Borrowed("z"),
-            Self::z·(_) => Cow::Borrowed("z·"),
-            Self::Y(_) | Self::YComposition(_, _) => Cow::Borrowed("Y"),
-            Self::Diagnostic(DiagnosticPosition::Peptide(_, aa)) => Cow::Owned(format!("d{aa}")),
-            Self::Diagnostic(DiagnosticPosition::Reporter) => Cow::Borrowed("r"),
-            Self::Diagnostic(DiagnosticPosition::Labile(m)) => Cow::Owned(format!("d{m}")),
+            Self::a(_, v) => (None, get_label("a", *v)),
+            Self::b(_, v) => (None, get_label("b", *v)),
+            Self::c(_, v) => (None, get_label("c", *v)),
+            Self::d(_, _, n, v, l) => (
+                (*n != 0).then_some(n.to_string()),
+                Cow::Owned(format!(
+                    "d{l}{}",
+                    if *v < 0 {
+                        "\'".repeat((-v) as usize)
+                    } else {
+                        "·".repeat(*v as usize)
+                    }
+                )),
+            ),
+            Self::v(_, _, n, v) => ((*n != 0).then_some(n.to_string()), get_label("v", *v)),
+            Self::w(_, _, n, v, l) => (
+                (*n != 0).then_some(n.to_string()),
+                Cow::Owned(format!(
+                    "w{l}{}",
+                    if *v < 0 {
+                        "\'".repeat((-v) as usize)
+                    } else {
+                        "·".repeat(*v as usize)
+                    }
+                )),
+            ),
+            Self::x(_, v) => (None, get_label("x", *v)),
+            Self::y(_, v) => (None, get_label("y", *v)),
+            Self::z(_, v) => (None, get_label("z", *v)),
+            Self::B { .. } | Self::BComposition(_, _) => (None, Cow::Borrowed("B")),
+            Self::Y(_) | Self::YComposition(_, _) => (None, Cow::Borrowed("Y")),
+            Self::Diagnostic(DiagnosticPosition::Peptide(_, aa)) => (
+                None,
+                Cow::Owned(
+                    aa.one_letter_code()
+                        .map(|c| format!("d{c}"))
+                        .or_else(|| aa.three_letter_code().map(|c| format!("d{c}")))
+                        .unwrap_or_else(|| format!("d{}", aa.name())),
+                ),
+            ),
+            Self::Diagnostic(DiagnosticPosition::Reporter) => (None, Cow::Borrowed("r")),
+            Self::Diagnostic(DiagnosticPosition::Labile(m)) => (None, Cow::Owned(format!("d{m}"))),
             Self::Diagnostic(
                 DiagnosticPosition::Glycan(_, sug)
                 | DiagnosticPosition::GlycanCompositional(sug, _),
-            ) => Cow::Owned(format!("d{sug}")),
-            Self::B { .. } | Self::BComposition(_, _) => Cow::Borrowed("B"),
-            Self::Immonium(_, aa) => Cow::Owned(
-                aa.aminoacid
-                    .one_letter_code()
-                    .map(|c| format!("i{c}"))
-                    .or_else(|| aa.aminoacid.three_letter_code().map(|c| format!("i{c}")))
-                    .unwrap_or_else(|| format!("i{}", aa.aminoacid.name())),
+            ) => (None, Cow::Owned(format!("d{sug}"))),
+            Self::Immonium(_, aa) => (
+                None,
+                Cow::Owned(
+                    aa.aminoacid
+                        .one_letter_code()
+                        .map(|c| format!("i{c}"))
+                        .or_else(|| aa.aminoacid.three_letter_code().map(|c| format!("i{c}")))
+                        .unwrap_or_else(|| format!("i{}", aa.aminoacid.name())),
+                ),
             ),
-            Self::PrecursorSideChainLoss(_, aa) => Cow::Owned(
-                aa.one_letter_code()
-                    .map(|c| format!("p-s{c}"))
-                    .or_else(|| aa.three_letter_code().map(|c| format!("p-s{c}")))
-                    .unwrap_or_else(|| format!("p-s{}", aa.name())),
+            Self::PrecursorSideChainLoss(_, aa) => (
+                None,
+                Cow::Owned(
+                    aa.one_letter_code()
+                        .map(|c| format!("p-s{c}"))
+                        .or_else(|| aa.three_letter_code().map(|c| format!("p-s{c}")))
+                        .unwrap_or_else(|| format!("p-s{}", aa.name())),
+                ),
             ),
-            Self::Precursor => Cow::Borrowed("p"),
-            Self::Internal(fragmentation, _, _) => Cow::Owned(format!(
-                "m{}",
-                fragmentation.map_or(String::new(), |(n, c)| format!("{n}:{c}")),
-            )),
-            Self::Unknown(series) => Cow::Owned(format!(
-                "?{}",
-                series.map_or(String::new(), |s| s.to_string()),
-            )),
+            Self::Precursor => (None, Cow::Borrowed("p")),
+            Self::Internal(fragmentation, _, _) => (
+                None,
+                Cow::Owned(format!(
+                    "m{}",
+                    fragmentation.map_or(String::new(), |(n, c)| format!("{n}:{c}")),
+                )),
+            ),
+            Self::Unknown(series) => (
+                None,
+                Cow::Owned(format!(
+                    "?{}",
+                    series.map_or(String::new(), |s| s.to_string()),
+                )),
+            ),
         }
     }
 
     /// Get the kind of fragment, easier to match against
     pub const fn kind(&self) -> FragmentKind {
         match self {
-            Self::a(_) => FragmentKind::a,
-            Self::b(_) => FragmentKind::b,
-            Self::c(_) => FragmentKind::c,
-            Self::d(_) => FragmentKind::d,
-            Self::v(_) => FragmentKind::v,
-            Self::w(_) => FragmentKind::w,
-            Self::x(_) => FragmentKind::x,
-            Self::y(_) => FragmentKind::y,
-            Self::z(_) | Self::z·(_) => FragmentKind::z,
+            Self::a(_, _) => FragmentKind::a,
+            Self::b(_, _) => FragmentKind::b,
+            Self::c(_, _) => FragmentKind::c,
+            Self::d(_, _, _, _, _) => FragmentKind::d,
+            Self::v(_, _, _, _) => FragmentKind::v,
+            Self::w(_, _, _, _, _) => FragmentKind::w,
+            Self::x(_, _) => FragmentKind::x,
+            Self::y(_, _) => FragmentKind::y,
+            Self::z(_, _) => FragmentKind::z,
             Self::Y(_) | Self::YComposition(_, _) => FragmentKind::Y,
             Self::Diagnostic(
                 DiagnosticPosition::Glycan(_, _) | DiagnosticPosition::GlycanCompositional(_, _),
@@ -670,10 +978,12 @@ impl FragmentType {
 
 impl Display for FragmentType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let (sup, label) = self.label();
         write!(
             f,
-            "{}{}",
-            self.label(),
+            "{}{}{}",
+            sup.unwrap_or_default(),
+            label,
             self.position_label().unwrap_or_default()
         )
     }

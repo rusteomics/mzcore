@@ -1,12 +1,12 @@
 use std::{
-    ops::{Add, Deref, Mul, MulAssign, Neg, Sub},
+    ops::{Add, AddAssign, Deref, Mul, MulAssign, Neg, Sub},
     rc::Rc,
 };
 
 use itertools::{Itertools, MinMaxResult};
 use serde::{Deserialize, Serialize};
 
-use crate::system::OrderedMass;
+use crate::{system::OrderedMass, MolecularFormula, NeutralLoss};
 
 /// A collection of potentially multiple of the generic type, it is used be able to easily
 /// combine multiple of this multi struct into all possible combinations.
@@ -107,6 +107,36 @@ where
     /// Adds this formula to all formulas in the multi formula
     fn add(self, rhs: M) -> Self::Output {
         self.0.iter().cloned().map(|m| m + rhs.clone()).collect()
+    }
+}
+
+impl<M> AddAssign<M> for Multi<M>
+where
+    M: Add<M, Output = M> + Clone,
+{
+    /// Adds this formula to all formulas in the multi formula
+    fn add_assign(&mut self, rhs: M) {
+        *self = Multi(self.0.iter().cloned().map(|m| m + rhs.clone()).collect());
+    }
+}
+
+impl<M> AddAssign<M> for &mut Multi<M>
+where
+    M: Add<M, Output = M> + Clone,
+{
+    /// Adds this formula to all formulas in the multi formula
+    fn add_assign(&mut self, rhs: M) {
+        **self = Multi(self.0.iter().cloned().map(|m| m + rhs.clone()).collect());
+    }
+}
+
+impl<'a, M> AddAssign<&'a M> for &mut Multi<M>
+where
+    M: Add<&'a M, Output = M> + Clone,
+{
+    /// Adds this formula to all formulas in the multi formula
+    fn add_assign(&mut self, rhs: &'a M) {
+        **self = Multi(self.0.iter().cloned().map(|m| m + rhs).collect());
     }
 }
 
@@ -334,5 +364,17 @@ impl crate::Multi<crate::MolecularFormula> {
                 .map(|o| o.with_label(label.clone()))
                 .collect(),
         )
+    }
+
+    pub(crate) fn with_neutral_loss(self, loss: &NeutralLoss) -> Self {
+        let mut new_options = Vec::with_capacity(self.0.len() * 2);
+        for option in self.0.iter() {
+            new_options.push(match loss {
+                NeutralLoss::Gain(m) => option + m,
+                NeutralLoss::Loss(m) | NeutralLoss::SideChainLoss(m, _) => option - m,
+            })
+        }
+        new_options.extend_from_slice(&self.0);
+        Self(new_options.into())
     }
 }

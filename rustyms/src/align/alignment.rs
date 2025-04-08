@@ -14,6 +14,7 @@ use super::scoring::*;
 use crate::align::mass_alignment::determine_final_score;
 use crate::align::mass_alignment::score_pair;
 use crate::helper_functions::next_num;
+use crate::model::GlycanModel;
 use crate::peptidoform::AtMax;
 use crate::peptidoform::Linear;
 use crate::system::Mass;
@@ -210,6 +211,7 @@ impl<'lifetime, A: AtMax<SimpleLinear>, B: AtMax<SimpleLinear>> Alignment<'lifet
                                     false,
                                     SequencePosition::Index(index_a),
                                     0,
+                                    &GlycanModel::DISALLOW,
                                 )
                                 .0
                                 .iter()
@@ -223,6 +225,7 @@ impl<'lifetime, A: AtMax<SimpleLinear>, B: AtMax<SimpleLinear>> Alignment<'lifet
                                     false,
                                     SequencePosition::Index(index_b),
                                     0,
+                                    &GlycanModel::DISALLOW,
                                 )
                                 .0
                                 .iter()
@@ -403,6 +406,7 @@ impl<A: AtMax<Linear>, B: AtMax<Linear>> Alignment<'_, A, B> {
                             false,
                             SequencePosition::Index(index),
                             0,
+                            &GlycanModel::DISALLOW,
                         )
                         .0
                 })
@@ -428,6 +432,7 @@ impl<A: AtMax<Linear>, B: AtMax<Linear>> Alignment<'_, A, B> {
                             false,
                             SequencePosition::Index(index),
                             0,
+                            &GlycanModel::DISALLOW,
                         )
                         .0
                 })

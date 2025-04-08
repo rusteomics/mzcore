@@ -1,6 +1,8 @@
 #![allow(dead_code)]
 
 use std::{
+    collections::HashMap,
+    hash::Hash,
     num::{IntErrorKind, ParseIntError},
     ops::{Bound, Range, RangeBounds},
     path::Path,
@@ -416,6 +418,19 @@ pub fn f64_bits(value: f64) -> u64 {
     } else {
         (value + 0.0).to_bits() // The +0.0 is to guarantee even handling of negative and positive zero
     }
+}
+
+pub fn merge_hashmap<K, V>(one: HashMap<K, V>, two: HashMap<K, V>) -> HashMap<K, V>
+where
+    V: std::ops::MulAssign + Default,
+    K: Eq + Hash,
+{
+    let mut new = one;
+    for (key, value) in two {
+        let v = new.entry(key).or_default();
+        *v *= value
+    }
+    new
 }
 
 /// Implement a binary operator for all ref cases after the implementation for the ref-ref case (assumes deref operator works)

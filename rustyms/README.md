@@ -29,18 +29,19 @@ this crate enables the reading of [mgf](rawfile::mgf), doing [spectrum annotatio
 ```rust
 # fn main() -> Result<(), rustyms::error::CustomError> {
 # let raw_file_path = "data/annotated_example.mgf";
-use rustyms::{*, system::{usize::Charge, e}};
+use rustyms::{*, model::*, system::{usize::Charge, e}};
 // Open example raw data (this is the built in mgf reader, look into mzdata for more advanced raw file readers)
 let spectrum = rawfile::mgf::open(raw_file_path)?;
 // Parse the given ProForma definition
 let peptide = CompoundPeptidoformIon::pro_forma("[Gln->pyro-Glu]-QVQEVSERTHGGNFD", None)?;
 // Generate theoretical fragments for this peptide given EThcD fragmentation
-let model = Model::ethcd();
+let model = FragmentationModel::ethcd();
 let fragments = peptide.generate_theoretical_fragments(Charge::new::<e>(2), &model);
+let parameters = MatchingParameters::default();
 // Annotate the raw data with the theoretical fragments
-let annotated = spectrum[0].annotate(peptide, &fragments, &model, MassMode::Monoisotopic);
+let annotated = spectrum[0].annotate(peptide, &fragments, &parameters, MassMode::Monoisotopic);
 // Calculate a peak false discovery rate for this annotation 
-let (fdr, _) = annotated.fdr(&fragments, &model, MassMode::Monoisotopic);
+let (fdr, _) = annotated.fdr(&fragments, &parameters, MassMode::Monoisotopic);
 // This is the incorrect sequence for this spectrum so the peak FDR will indicate this
 # dbg!(&fdr, fdr.peaks_sigma(), fdr.peaks_fdr(), fdr.peaks_score());
 assert!(fdr.peaks_sigma() > 2.0);

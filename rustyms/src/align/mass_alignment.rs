@@ -1,6 +1,7 @@
 use std::fmt::Debug;
 
 use crate::{
+    model::GlycanModel,
     peptidoform::{AtMax, SimpleLinear},
     system::Mass,
     MassMode, MolecularFormula, Multi, Peptidoform, SequenceElement, SequencePosition,
@@ -298,12 +299,13 @@ fn calculate_masses<const STEPS: u16>(
                 .iter()
                 .map(|p| {
                     p.formulas_all(
-                        &[],
+                        &[sequence],
                         &[],
                         &mut Vec::new(),
                         false,
                         SequencePosition::Index(i),
                         0,
+                        &GlycanModel::DISALLOW,
                     )
                     .0
                 })
@@ -483,9 +485,10 @@ impl std::ops::IndexMut<[usize; 2]> for Matrix {
 #[expect(clippy::missing_panics_doc)]
 mod tests {
     use super::score;
-    use crate::align::scoring::AlignScoring;
-    use crate::{CheckedAminoAcid, SequencePosition};
-    use crate::{MolecularFormula, Multi, SequenceElement};
+    use crate::{
+        align::scoring::AlignScoring, model::GlycanModel, CheckedAminoAcid, MolecularFormula,
+        Multi, SequenceElement, SequencePosition,
+    };
 
     #[test]
     fn pair() {
@@ -505,7 +508,8 @@ mod tests {
                             &mut Vec::new(),
                             false,
                             SequencePosition::default(),
-                            0
+                            0,
+                            &GlycanModel::DISALLOW,
                         )
                         .0)
                     .sum::<Multi<MolecularFormula>>()[0]
@@ -522,7 +526,8 @@ mod tests {
                             &mut Vec::new(),
                             false,
                             SequencePosition::default(),
-                            0
+                            0,
+                            &GlycanModel::DISALLOW,
                         )
                         .0)
                     .sum::<Multi<MolecularFormula>>()[0]

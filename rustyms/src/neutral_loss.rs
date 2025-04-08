@@ -1,4 +1,8 @@
-use std::{fmt::Display, ops::Add, str::FromStr};
+use std::{
+    fmt::Display,
+    ops::{Add, AddAssign},
+    str::FromStr,
+};
 
 use serde::{Deserialize, Serialize};
 
@@ -17,7 +21,7 @@ impl NeutralLoss {
     /// Check if this neutral loss if empty (has an empty molecular formula)
     pub fn is_empty(&self) -> bool {
         match self {
-            Self::Loss(f) | Self::Gain(f) => f.is_empty(),
+            Self::Loss(f) | Self::Gain(f) | Self::SideChainLoss(f, _) => f.is_empty(),
         }
     }
 
@@ -25,6 +29,7 @@ impl NeutralLoss {
     pub fn hill_notation_html(&self) -> String {
         match self {
             Self::Loss(c) => format!("-{}", c.hill_notation_html().trim_start_matches('+')),
+            Self::SideChainLoss(_, aa) => format!("-sidechain_{aa}"),
             Self::Gain(c) => format!("+{}", c.hill_notation_html().trim_start_matches('+')),
         }
     }
@@ -33,6 +38,7 @@ impl NeutralLoss {
     pub fn hill_notation_fancy(&self) -> String {
         match self {
             Self::Loss(c) => format!("-{}", c.hill_notation_fancy().trim_start_matches('+')),
+            Self::SideChainLoss(_, aa) => format!("-sidechain_{aa}"),
             Self::Gain(c) => format!("+{}", c.hill_notation_fancy().trim_start_matches('+')),
         }
     }
@@ -41,6 +47,7 @@ impl NeutralLoss {
     pub fn hill_notation(&self) -> String {
         match self {
             Self::Loss(c) => format!("-{}", c.hill_notation().trim_start_matches('+')),
+            Self::SideChainLoss(_, aa) => format!("-sidechain_{aa}"),
             Self::Gain(c) => format!("+{}", c.hill_notation().trim_start_matches('+')),
         }
     }
@@ -98,6 +105,7 @@ impl Display for NeutralLoss {
             "{}",
             match self {
                 Self::Loss(c) => format!("-{c}"),
+                Self::SideChainLoss(_, aa) => format!("-sidechain_{aa}"),
                 Self::Gain(c) => format!("+{c}"),
             }
         )
@@ -109,8 +117,23 @@ impl std::ops::Add<&NeutralLoss> for &MolecularFormula {
     fn add(self, rhs: &NeutralLoss) -> Self::Output {
         match rhs {
             NeutralLoss::Gain(mol) => self + mol,
-            NeutralLoss::Loss(mol) => self - mol,
+            NeutralLoss::Loss(mol) | NeutralLoss::SideChainLoss(mol, _) => self - mol,
         }
+    }
+}
+
+impl std::ops::AddAssign<&NeutralLoss> for MolecularFormula {
+    fn add_assign(&mut self, rhs: &NeutralLoss) {
+        match rhs {
+            NeutralLoss::Gain(mol) => *self += mol,
+            NeutralLoss::Loss(mol) | NeutralLoss::SideChainLoss(mol, _) => *self -= mol,
+        }
+    }
+}
+
+impl AddAssign<NeutralLoss> for MolecularFormula {
+    fn add_assign(&mut self, rhs: NeutralLoss) {
+        *self += &rhs;
     }
 }
 
@@ -119,10 +142,30 @@ impl std::ops::Add<&NeutralLoss> for &Multi<MolecularFormula> {
     fn add(self, rhs: &NeutralLoss) -> Self::Output {
         match rhs {
             NeutralLoss::Gain(mol) => self + mol,
-            NeutralLoss::Loss(mol) => self - mol,
+            NeutralLoss::Loss(mol) | NeutralLoss::SideChainLoss(mol, _) => self - mol,
         }
     }
 }
 
 impl_binop_ref_cases!(impl Add, add for MolecularFormula, NeutralLoss, MolecularFormula);
 impl_binop_ref_cases!(impl Add, add for Multi<MolecularFormula>, NeutralLoss, Multi<MolecularFormula>);
+
+impl<'a> std::iter::Sum<&'a NeutralLoss> for MolecularFormula {
+    fn sum<I: Iterator<Item = &'a NeutralLoss>>(iter: I) -> Self {
+        let mut output = Self::default();
+        for value in iter {
+            output += value;
+        }
+        output
+    }
+}
+
+impl std::iter::Sum<NeutralLoss> for MolecularFormula {
+    fn sum<I: Iterator<Item = NeutralLoss>>(iter: I) -> Self {
+        let mut output = Self::default();
+        for value in iter {
+            output += value;
+        }
+        output
+    }
+}

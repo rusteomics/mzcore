@@ -2,8 +2,9 @@ use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 
 use crate::{
+    model::MatchingParameters,
     system::{MassOverCharge, Ratio},
-    AnnotatedSpectrum, Fragment, MassMode, Model, WithinTolerance,
+    AnnotatedSpectrum, Fragment, MassMode, WithinTolerance,
 };
 
 impl AnnotatedSpectrum {
@@ -20,7 +21,7 @@ impl AnnotatedSpectrum {
     pub fn fdr(
         &self,
         fragments: &[Fragment],
-        model: &Model,
+        parameters: &MatchingParameters,
         mass_mode: MassMode,
     ) -> (Fdr, Vec<Vec<Fdr>>) {
         let mzs = fragments
@@ -29,7 +30,7 @@ impl AnnotatedSpectrum {
                 f.mz(mass_mode)
                     .map(|mz| (mz, f.peptidoform_ion_index, f.peptidoform_index))
             })
-            .filter(|(mz, _, _)| model.mz_range.contains(mz))
+            .filter(|(mz, _, _)| parameters.mz_range.contains(mz))
             .collect_vec();
 
         let individual_peptides = self
@@ -52,7 +53,7 @@ impl AnnotatedSpectrum {
                                 })
                                 .collect_vec()
                                 .as_slice(),
-                            model,
+                            parameters,
                         )
                     })
                     .collect()
@@ -61,13 +62,13 @@ impl AnnotatedSpectrum {
         (
             self.internal_fdr(
                 mzs.iter().map(|(mz, _, _)| *mz).collect_vec().as_slice(),
-                model,
+                parameters,
             ),
             individual_peptides,
         )
     }
 
-    fn internal_fdr(&self, mzs: &[MassOverCharge], model: &Model) -> Fdr {
+    fn internal_fdr(&self, mzs: &[MassOverCharge], parameters: &MatchingParameters) -> Fdr {
         let mut results = Vec::with_capacity(51);
         let total_intensity = self.spectrum.iter().map(|s| s.intensity.0).sum::<f64>();
 
@@ -103,7 +104,7 @@ impl AnnotatedSpectrum {
                     }
                 }
 
-                if model
+                if parameters
                     .tolerance
                     .within(&self.spectrum[closest.0].experimental_mz, mass)
                     && !peak_annotated[closest.0]

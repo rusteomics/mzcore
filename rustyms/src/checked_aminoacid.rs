@@ -3,8 +3,8 @@ use std::marker::PhantomData;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    AminoAcid, Chemical, IsAminoAcid, MolecularFormula, Multi, MultiChemical, SemiAmbiguous,
-    UnAmbiguous,
+    fragment::SatelliteLabel, AminoAcid, Chemical, IsAminoAcid, MolecularFormula, Multi,
+    MultiChemical, SemiAmbiguous, UnAmbiguous,
 };
 
 /// A checked amino acid. This wraps an [`AminoAcid`] to keep track of the maximal complexity of
@@ -303,15 +303,11 @@ impl<T> IsAminoAcid for CheckedAminoAcid<T> {
         self.aminoacid.pro_forma_definition()
     }
 
-    fn immonium_losses(&self) -> std::borrow::Cow<'_, [crate::NeutralLoss]> {
-        self.aminoacid.immonium_losses()
-    }
-
     fn satellite_ion_fragments(
         &self,
         sequence_index: crate::SequencePosition,
         peptidoform_index: usize,
-    ) -> Option<std::borrow::Cow<'_, Multi<MolecularFormula>>> {
+    ) -> Option<std::borrow::Cow<'_, Vec<(SatelliteLabel, MolecularFormula)>>> {
         self.aminoacid
             .satellite_ion_fragments(sequence_index, peptidoform_index)
     }

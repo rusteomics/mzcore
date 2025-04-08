@@ -13,24 +13,22 @@ use itertools::Itertools;
 use mzdata::io::{MZFileReader, SpectrumSource};
 use rayon::prelude::*;
 use rustyms::{
+    model::MatchingParameters,
     spectrum::{Score, Scores},
-    system::{e, usize::Charge, Mass},
+    system::{e, usize::Charge},
     *,
 };
 use spectrum::{AnnotatedPeak, PeakSpectrum};
 
 #[derive(Parser)]
 struct Cli {
-    /// The input csv file, should have the following columns: 'path', 'scan_index', 'z', 'sequence', and can have 'fragmentation' (etd/td_etd/ethcd/etcad/hot eacid/eacid/ead/hcd/cid/all/none, defaults to the global model)
+    /// The input csv file, should have the following columns: 'path', 'scan_index', 'z', 'sequence', and can have 'fragmentation' (etd/td_etd/ethcd/etcad/eacid/ead/hcd/cid/all/none, defaults to the global model)
     #[arg(short, long)]
     in_path: String,
     /// The output path to output the resulting csv file
     #[arg(short, long)]
     out_path: String,
-    /// The tolerance for matching fragments, use `<x>ppm` or `<x>da` to control the unit, e.g. `10.0ppm` or `2.3da`
-    #[arg(short, long, default_value_t = Tolerance::new_ppm(20.0), value_parser=mass_tolerance_parse)]
-    pub tolerance: Tolerance<Mass>,
-    /// Global model, will be overruled by line specific models (etd/td_etd/ethcd/etcad/hot eacid/eacid/ead/hcd/cid/all/none)
+    /// Global model, will be overruled by line specific models (etd/td_etd/ethcd/etcad/eacid/ead/hcd/cid/all/none)
     #[arg(long, default_value_t = String::from("all"))]
     model: String,
     /// Turns on reporting of glycan Y-ions in a charge independent manner
@@ -47,27 +45,24 @@ struct Cli {
     no_custom_mods: bool,
 }
 
-fn mass_tolerance_parse(input: &str) -> Result<Tolerance<Mass>, &'static str> {
-    input.parse().map_err(|()| "Invalid tolerance parameter")
-}
-
-fn select_model(text: &str, default: &Model) -> Model {
+fn select_model(text: &str, default: &'static FragmentationModel) -> &'static FragmentationModel {
     match text.to_ascii_lowercase().as_str() {
-        "etd" => Model::etd(),
-        "td_etd" => Model::td_etd(),
-        "ethcd" | "etcad" => Model::ethcd(),
-        "hot eacid" | "eacid" => Model::hot_eacid(),
-        "ead" => Model::ead(),
-        "hcd" | "cid" => Model::cid_hcd(),
-        "all" => Model::all(),
-        "none" => Model::none(),
-        _ => default.clone(),
+        "etd" => FragmentationModel::etd(),
+        "td_etd" => FragmentationModel::td_etd(),
+        "ethcd" | "etcad" => FragmentationModel::ethcd(),
+        "eacid" => FragmentationModel::eacid(),
+        "ead" => FragmentationModel::ead(),
+        "hcd" | "cid" => FragmentationModel::cid_hcd(),
+        "all" => FragmentationModel::all(),
+        "none" => FragmentationModel::none(),
+        _ => default,
     }
 }
 
 fn main() {
     let args = Cli::parse();
-    let model = select_model(&args.model, &Model::all());
+    let model = select_model(&args.model, FragmentationModel::all());
+    let parameters = MatchingParameters::default();
     let path = ProjectDirs::from("com", "com.snijderlab.annotator", "")
         .unwrap()
         .config_dir()
@@ -112,19 +107,19 @@ fn main() {
                 .unwrap();
                 let selected_model = line
                     .index_column("fragmentation")
-                    .map_or_else(|_| model.clone(), |(text, _)| select_model(text, &model));
+                    .map_or_else(|_| model, |(text, _)| select_model(text, model));
                 if let Some(spectrum) = file.get_spectrum_by_index(scan_index)
                 {
                     let fragments =
-                        peptide.generate_theoretical_fragments(Charge::new::<e>(z), &model);
+                        peptide.generate_theoretical_fragments(Charge::new::<e>(z), selected_model);
                     let annotated = spectrum.annotate(
                         peptide,
                         &fragments,
-                        &selected_model,
+                        &parameters,
                         MassMode::Monoisotopic,
                     );
                     let scores: &Scores = &annotated
-                        .scores(&fragments, &selected_model, MassMode::Monoisotopic)
+                        .scores(&fragments, &parameters, MassMode::Monoisotopic)
                         .1[0][0];
 
                     let mut row: BTreeMap<_, _> = line.into();
@@ -202,7 +197,7 @@ fn main() {
                                         .map(|(i, _)| {
                                             if annotated.spectrum().any(|p: &AnnotatedPeak| {
                                                 p.annotation.iter().any(|a: &Fragment| {
-                                                    matches!(a.ion, FragmentType::w(s) | FragmentType::d(s) if s.sequence_index
+                                                    matches!(a.ion, FragmentType::w(s, _, 0, _, _) | FragmentType::d(s, _, 0, _, _) if s.sequence_index
                                                     == SequencePosition::Index(i))
                                                 })
                                             }) {

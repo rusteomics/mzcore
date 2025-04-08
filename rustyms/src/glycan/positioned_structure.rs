@@ -1,5 +1,5 @@
 //! Handle positioned glycan structures
-use std::hash::Hash;
+use std::{hash::Hash, ops::RangeInclusive};
 
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
@@ -8,9 +8,10 @@ use super::MonoSaccharide;
 use crate::{
     formula::{Chemical, MolecularFormula},
     fragment::{Fragment, FragmentType, GlycanBreakPos, GlycanPosition},
+    model::GlycanModel,
     molecular_charge::CachedCharge,
     system::usize::Charge,
-    AminoAcid, Model, Multi, SequencePosition,
+    AminoAcid, FragmentationModel, Multi, SequencePosition,
 };
 
 use crate::uom::num_traits::Zero;
@@ -54,16 +55,133 @@ impl Chemical for PositionedGlycanStructure {
 }
 
 impl PositionedGlycanStructure {
+    /// All core options, with the Y breakage positions leading to this fragment
+    pub fn core_options(
+        &self,
+        range: RangeInclusive<u8>,
+        peptidoform_index: usize,
+        attachment: Option<(AminoAcid, SequencePosition)>,
+    ) -> Vec<(Vec<GlycanPosition>, MolecularFormula)> {
+        self.internal_break_points(0, peptidoform_index, attachment)
+            .iter()
+            .filter(|(_, _, depth)| range.contains(depth))
+            .map(|(f, pos, _)| {
+                (
+                    pos.iter()
+                        .filter(|b| !matches!(b, GlycanBreakPos::End(_)))
+                        .map(GlycanBreakPos::position)
+                        .cloned()
+                        .collect(),
+                    f.clone(),
+                )
+            })
+            .collect()
+    }
+
+    /// All possible bonds that can be broken and the molecular formula that would be held over if these bonds all broke and the broken off parts are lost.
+    fn internal_break_points(
+        &self,
+        depth: u8,
+        peptidoform_index: usize,
+        attachment: Option<(AminoAcid, SequencePosition)>,
+    ) -> Vec<(MolecularFormula, Vec<GlycanBreakPos>, u8)> {
+        // Find every internal fragment ending at this bond (in a B breakage) (all bonds found are Y breakages and endings)
+        // Walk through all branches and determine all possible breakages
+        if self.branches.is_empty() {
+            vec![
+                (
+                    self.formula_inner(SequencePosition::default(), peptidoform_index),
+                    vec![GlycanBreakPos::End(self.position(attachment))],
+                    depth + u8::from(!self.sugar.is_fucose()),
+                ),
+                (
+                    MolecularFormula::default(),
+                    vec![GlycanBreakPos::Y(self.position(attachment))],
+                    depth,
+                ),
+            ]
+        } else {
+            self.branches
+                .iter()
+                .map(|b| {
+                    b.internal_break_points(
+                        depth + u8::from(!b.sugar.is_fucose()),
+                        peptidoform_index,
+                        attachment,
+                    )
+                }) // get all previous options
+                .fold(Vec::new(), |accumulator, branch_options| {
+                    if accumulator.is_empty() {
+                        branch_options
+                    } else {
+                        let mut new_accumulator = Vec::new();
+                        for base in &accumulator {
+                            for option in &branch_options {
+                                new_accumulator.push((
+                                    &option.0 + &base.0,
+                                    [option.1.clone(), base.1.clone()].concat(),
+                                    option.2.max(base.2),
+                                ));
+                            }
+                        }
+                        new_accumulator
+                    }
+                })
+                .into_iter()
+                .map(|(m, b, d)| {
+                    (
+                        m + self
+                            .sugar
+                            .formula_inner(SequencePosition::default(), peptidoform_index),
+                        b,
+                        d,
+                    )
+                })
+                .chain(std::iter::once((
+                    // add the option of it breaking here
+                    MolecularFormula::default(),
+                    vec![GlycanBreakPos::Y(self.position(attachment))],
+                    depth,
+                )))
+                .collect()
+        }
+    }
+
+    /// Get uncharged diagnostic ions from all positions
+    fn diagnostic_ions(
+        &self,
+        peptidoform_ion_index: usize,
+        peptidoform_index: usize,
+        attachment: Option<(AminoAcid, SequencePosition)>,
+        model: &GlycanModel,
+    ) -> Vec<Fragment> {
+        let mut output = self.sugar.diagnostic_ions(
+            peptidoform_ion_index,
+            peptidoform_index,
+            crate::fragment::DiagnosticPosition::Glycan(
+                self.position(attachment),
+                self.sugar.clone(),
+            ),
+            true,
+            model,
+        );
+        output.extend(self.branches.iter().flat_map(|b| {
+            b.diagnostic_ions(peptidoform_ion_index, peptidoform_index, attachment, model)
+        }));
+
+        output
+    }
+
     /// Generate all theoretical fragments for this glycan
     /// * `full_formula` the total formula of the whole peptide + glycan
     pub fn generate_theoretical_fragments(
         &self,
-        model: &Model,
+        model: &FragmentationModel,
         peptidoform_ion_index: usize,
         peptidoform_index: usize,
         charge_carriers: &mut CachedCharge,
         full_formula: &Multi<MolecularFormula>,
-        attachment: Option<(AminoAcid, usize)>,
+        attachment: Option<(AminoAcid, SequencePosition)>,
     ) -> Vec<Fragment> {
         model
             .glycan
@@ -80,13 +198,13 @@ impl PositionedGlycanStructure {
                     .collect_vec();
                 // Generate all Y fragments
                 base_fragments.extend(
-                    self.internal_break_points(peptidoform_index, attachment)
+                    self.internal_break_points(0, peptidoform_index, attachment)
                         .iter()
-                        .filter(|(_, bonds)| {
+                        .filter(|(_, bonds, _)| {
                             bonds.iter().all(|b| !matches!(b, GlycanBreakPos::B(_)))
                                 && !bonds.iter().all(|b| matches!(b, GlycanBreakPos::End(_)))
                         })
-                        .flat_map(move |(f, bonds)| {
+                        .flat_map(move |(f, bonds, _)| {
                             full_formula.iter().map(move |full| {
                                 Fragment::new(
                                     full - self.formula_inner(
@@ -114,40 +232,20 @@ impl PositionedGlycanStructure {
                 );
                 // Generate all diagnostic ions
                 base_fragments.extend(
-                    self.diagnostic_ions(peptidoform_ion_index, peptidoform_index, attachment)
-                        .into_iter()
-                        .flat_map(|f| {
-                            f.with_charge_range(charge_carriers, model.glycan.oxonium_charge_range)
-                        }),
+                    self.diagnostic_ions(
+                        peptidoform_ion_index,
+                        peptidoform_index,
+                        attachment,
+                        &model.glycan,
+                    )
+                    .into_iter()
+                    .flat_map(|f| {
+                        f.with_charge_range(charge_carriers, model.glycan.oxonium_charge_range)
+                    }),
                 );
                 base_fragments
             })
             .unwrap_or_default()
-    }
-
-    /// Get uncharged diagnostic ions from all positions
-    fn diagnostic_ions(
-        &self,
-        peptidoform_ion_index: usize,
-        peptidoform_index: usize,
-        attachment: Option<(AminoAcid, usize)>,
-    ) -> Vec<Fragment> {
-        let mut output = self.sugar.diagnostic_ions(
-            peptidoform_ion_index,
-            peptidoform_index,
-            crate::fragment::DiagnosticPosition::Glycan(
-                self.position(attachment),
-                self.sugar.clone(),
-            ),
-            true,
-        );
-        output.extend(
-            self.branches.iter().flat_map(|b| {
-                b.diagnostic_ions(peptidoform_ion_index, peptidoform_index, attachment)
-            }),
-        );
-
-        output
     }
 
     /// Generate all fragments without charge and neutral loss options
@@ -155,14 +253,14 @@ impl PositionedGlycanStructure {
         &self,
         peptidoform_ion_index: usize,
         peptidoform_index: usize,
-        attachment: Option<(AminoAcid, usize)>,
+        attachment: Option<(AminoAcid, SequencePosition)>,
     ) -> Vec<Fragment> {
         // Find all B type fragments (with and without Y breakage)
         let mut base_fragments = self
-            .internal_break_points(peptidoform_index, attachment)
+            .internal_break_points(0, peptidoform_index, attachment)
             .into_iter()
-            .filter(|(m, _)| *m != MolecularFormula::default())
-            .map(|(formula, breakages)| {
+            .filter(|(m, _, _)| *m != MolecularFormula::default())
+            .map(|(formula, breakages, _)| {
                 Fragment::new(
                     formula,
                     Charge::zero(),
@@ -194,64 +292,7 @@ impl PositionedGlycanStructure {
         base_fragments
     }
 
-    /// All possible bonds that can be broken and the molecular formula that would be held over if these bonds all broke and the broken off parts are lost.
-    fn internal_break_points(
-        &self,
-        peptidoform_index: usize,
-        attachment: Option<(AminoAcid, usize)>,
-    ) -> Vec<(MolecularFormula, Vec<GlycanBreakPos>)> {
-        // Find every internal fragment ending at this bond (in a B breakage) (all bonds found are Y breakages and endings)
-        // Walk through all branches and determine all possible breakages
-        if self.branches.is_empty() {
-            vec![
-                (
-                    self.formula_inner(SequencePosition::default(), peptidoform_index),
-                    vec![GlycanBreakPos::End(self.position(attachment))],
-                ),
-                (
-                    MolecularFormula::default(),
-                    vec![GlycanBreakPos::Y(self.position(attachment))],
-                ),
-            ]
-        } else {
-            self.branches
-                .iter()
-                .map(|b| b.internal_break_points(peptidoform_index, attachment)) // get all previous options
-                .fold(Vec::new(), |accumulator, branch_options| {
-                    if accumulator.is_empty() {
-                        branch_options
-                    } else {
-                        let mut new_accumulator = Vec::new();
-                        for base in &accumulator {
-                            for option in &branch_options {
-                                new_accumulator.push((
-                                    &option.0 + &base.0,
-                                    [option.1.clone(), base.1.clone()].concat(),
-                                ));
-                            }
-                        }
-                        new_accumulator
-                    }
-                })
-                .into_iter()
-                .map(|(m, b)| {
-                    (
-                        m + self
-                            .sugar
-                            .formula_inner(SequencePosition::default(), peptidoform_index),
-                        b,
-                    )
-                })
-                .chain(std::iter::once((
-                    // add the option of it breaking here
-                    MolecularFormula::default(),
-                    vec![GlycanBreakPos::Y(self.position(attachment))],
-                )))
-                .collect()
-        }
-    }
-
-    fn position(&self, attachment: Option<(AminoAcid, usize)>) -> GlycanPosition {
+    fn position(&self, attachment: Option<(AminoAcid, SequencePosition)>) -> GlycanPosition {
         GlycanPosition {
             inner_depth: self.inner_depth,
             series_number: self.outer_depth + 1,

@@ -1,4 +1,5 @@
 use crate::{
+    fragment::GlycanPosition,
     system::{da, fraction, Mass, OrderedMass, Ratio},
     MassMode,
 };
@@ -9,6 +10,7 @@ use std::fmt::Write;
 mod formula_shared;
 
 pub use formula_shared::*;
+use itertools::Itertools;
 
 impl From<&MolecularFormula> for OrderedMass {
     /// Create an ordered mass from the monoisotopic mass (needed for [`Multi<MolecularFormula>`](crate::Multi))
@@ -130,17 +132,33 @@ impl std::fmt::Display for AmbiguousLabel {
                 option,
                 sequence_index,
                 peptidoform_index,
-            } => write!(f, "{option}@p{peptidoform_index}i{sequence_index}"),
+            } => write!(
+                f,
+                "{option}@p{}i{}",
+                peptidoform_index + 1,
+                sequence_index + 1
+            ),
             Self::Modification {
                 id,
                 sequence_index,
                 peptidoform_index,
-            } => write!(f, "\x23{id}@p{peptidoform_index}i{sequence_index}"),
+            } => write!(f, "\x23{id}@p{}i{}", peptidoform_index + 1, sequence_index),
             Self::ChargeCarrier(formula) => write!(f, "[{}]", formula.hill_notation()),
             Self::CrossLinkBound(name) => write!(f, "intact{name}"),
             Self::CrossLinkBroken(name, formula) => {
                 write!(f, "broken{name}@{}", formula.hill_notation())
             }
+            Self::GlycanFragment(bonds) => {
+                write!(f, "Y{}", bonds.iter().map(GlycanPosition::label).join("Y"))
+            }
+            Self::GlycanFragmentComposition(composition) => write!(
+                f,
+                "Y{}",
+                composition
+                    .iter()
+                    .map(|(sugar, amount)| format!("{sugar}{amount}"))
+                    .join("")
+            ),
         }
     }
 }

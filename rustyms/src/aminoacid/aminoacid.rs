@@ -1,15 +1,15 @@
-//! Module used define the implementations for the [IsAminoAcid] trait
+//! Module used define the implementations for the [`IsAminoAcid`] trait
 
-use std::borrow::Cow;
+use std::{borrow::Cow, collections::HashMap};
 
 use serde::{Deserialize, Serialize};
 
 use crate::{
     formula::MolecularFormula,
-    fragment::{Fragment, FragmentType, PeptidePosition},
+    fragment::{Fragment, FragmentKind, FragmentType, PeptidePosition, SatelliteLabel},
     model::*,
     molecular_charge::CachedCharge,
-    Multi, MultiChemical, NeutralLoss, SequencePosition,
+    Multi, MultiChemical, SequencePosition,
 };
 
 use super::is_amino_acid::IsAminoAcid;
@@ -207,11 +207,11 @@ impl IsAminoAcid for AminoAcid {
         &self,
         sequence_index: SequencePosition,
         peptidoform_index: usize,
-    ) -> Option<Cow<'_, Multi<MolecularFormula>>> {
+    ) -> Option<Cow<'_, Vec<(SatelliteLabel, MolecularFormula)>>> {
         let crate::SequencePosition::Index(sequence_index) = sequence_index else {
             return None;
         };
-        Some(Cow::Owned(
+
         match self {
             Self::Alanine
             | Self::Glycine
@@ -220,196 +220,102 @@ impl IsAminoAcid for AminoAcid {
             | Self::Proline
             | Self::Tryptophan
             | Self::Tyrosine
-            | Self::Unknown => Multi::default(),
-            Self::Arginine => molecular_formula!(H 9 C 2 N 2).into(),
-            Self::Asparagine => molecular_formula!(H 2 C 1 N 1 O 1).into(),
-            Self::AsparticAcid => molecular_formula!(H 1 C 1 O 2).into(),
-            Self::AmbiguousAsparagine => vec![
-                molecular_formula!(H 2 C 1 N 1 O 1 (crate::AmbiguousLabel::AminoAcid{option: Self::Asparagine, sequence_index, peptidoform_index})),
-                molecular_formula!(H 1 C 1 O 2 (crate::AmbiguousLabel::AminoAcid{option: Self::AsparticAcid, sequence_index, peptidoform_index})),
-            ]
-            .into(),
-            Self::Cysteine => molecular_formula!(H 1 S 1).into(),
-            Self::Glutamine => molecular_formula!(H 4 C 2 N 1 O 1).into(),
-            Self::GlutamicAcid => molecular_formula!(H 3 C 2 O 2).into(),
-            Self::AmbiguousGlutamine => vec![
-                molecular_formula!(H 4 C 2 N 1 O 1 (crate::AmbiguousLabel::AminoAcid{option: Self::Glutamine, sequence_index, peptidoform_index})),
-                molecular_formula!(H 3 C 2 O 2 (crate::AmbiguousLabel::AminoAcid{option: Self::GlutamicAcid, sequence_index, peptidoform_index})),
-            ]
-            .into(),
-            Self::Isoleucine => vec![
-                molecular_formula!(H 3 C 1),
-                molecular_formula!(H 5 C 2),
-            ]
-            .into(),
-            Self::Leucine => molecular_formula!(H 7 C 3).into(),
-            Self::AmbiguousLeucine => vec![
-                molecular_formula!(H 3 C 1 (crate::AmbiguousLabel::AminoAcid{option: Self::Isoleucine, sequence_index, peptidoform_index})),
-                molecular_formula!(H 5 C 2 (crate::AmbiguousLabel::AminoAcid{option: Self::Isoleucine, sequence_index, peptidoform_index})),
-                molecular_formula!(H 7 C 3 (crate::AmbiguousLabel::AminoAcid{option: Self::Leucine, sequence_index, peptidoform_index})),
-            ]
-            .into(),
-            Self::Lysine => molecular_formula!(H 8 C 3 N 1).into(),
-            Self::Methionine => molecular_formula!(H 5 C 2 S 1).into(),
-            Self::Pyrrolysine => molecular_formula!(H 15 C 9 N 2 O 1).into(),
-            Self::Selenocysteine => molecular_formula!(Se 1).into(),
-            Self::Serine => molecular_formula!(H 1 O 1).into(),
-            Self::Threonine => vec![
+            | Self::Unknown => None,
+            Self::Arginine => Some(Cow::Owned(vec![(
+                SatelliteLabel::None,
+                molecular_formula!(H 9 C 2 N 2),
+            )])),
+            Self::Asparagine => Some(Cow::Owned(vec![(
+                SatelliteLabel::None,
+                molecular_formula!(H 2 C 1 N 1 O 1),
+            )])),
+            Self::AsparticAcid => Some(Cow::Owned(vec![(
+                SatelliteLabel::None,
+                molecular_formula!(H 1 C 1 O 2),
+            )])),
+            Self::AmbiguousAsparagine => Some(Cow::Owned(vec![
+                (
+                    SatelliteLabel::None,
+                    molecular_formula!(H 2 C 1 N 1 O 1 (crate::AmbiguousLabel::AminoAcid{option: Self::Asparagine, sequence_index, peptidoform_index})),
+                ),
+                (
+                    SatelliteLabel::None,
+                    molecular_formula!(H 1 C 1 O 2 (crate::AmbiguousLabel::AminoAcid{option: Self::AsparticAcid, sequence_index, peptidoform_index})),
+                ),
+            ])),
+            Self::Cysteine => Some(Cow::Owned(vec![(
+                SatelliteLabel::None,
+                molecular_formula!(H 1 S 1),
+            )])),
+            Self::Glutamine => Some(Cow::Owned(vec![(
+                SatelliteLabel::None,
+                molecular_formula!(H 4 C 2 N 1 O 1),
+            )])),
+            Self::GlutamicAcid => Some(Cow::Owned(vec![(
+                SatelliteLabel::None,
+                molecular_formula!(H 3 C 2 O 2),
+            )])),
+            Self::AmbiguousGlutamine => Some(Cow::Owned(vec![
+                (
+                    SatelliteLabel::None,
+                    molecular_formula!(H 4 C 2 N 1 O 1 (crate::AmbiguousLabel::AminoAcid{option: Self::Glutamine, sequence_index, peptidoform_index})),
+                ),
+                (
+                    SatelliteLabel::None,
+                    molecular_formula!(H 3 C 2 O 2 (crate::AmbiguousLabel::AminoAcid{option: Self::GlutamicAcid, sequence_index, peptidoform_index})),
+                ),
+            ])),
+            Self::Isoleucine => Some(Cow::Owned(vec![
+                (SatelliteLabel::A, molecular_formula!(H 3 C 1)),
+                (SatelliteLabel::B, molecular_formula!(H 5 C 2)),
+            ])),
+            Self::Leucine => Some(Cow::Owned(vec![(
+                SatelliteLabel::None,
+                molecular_formula!(H 7 C 3),
+            )])),
+            Self::AmbiguousLeucine => Some(Cow::Owned(vec![
+                (
+                    SatelliteLabel::A,
+                    molecular_formula!(H 3 C 1 (crate::AmbiguousLabel::AminoAcid{option: Self::Isoleucine, sequence_index, peptidoform_index})),
+                ),
+                (
+                    SatelliteLabel::B,
+                    molecular_formula!(H 5 C 2 (crate::AmbiguousLabel::AminoAcid{option: Self::Isoleucine, sequence_index, peptidoform_index})),
+                ),
+                (
+                    SatelliteLabel::None,
+                    molecular_formula!(H 7 C 3 (crate::AmbiguousLabel::AminoAcid{option: Self::Leucine, sequence_index, peptidoform_index})),
+                ),
+            ])),
+            Self::Lysine => Some(Cow::Owned(vec![(
+                SatelliteLabel::None,
+                molecular_formula!(H 8 C 3 N 1),
+            )])),
+            Self::Methionine => Some(Cow::Owned(vec![(
+                SatelliteLabel::None,
+                molecular_formula!(H 5 C 2 S 1),
+            )])),
+            Self::Pyrrolysine => Some(Cow::Owned(vec![(
+                SatelliteLabel::None,
+                molecular_formula!(H 15 C 9 N 2 O 1),
+            )])),
+            Self::Selenocysteine => Some(Cow::Owned(vec![(
+                SatelliteLabel::None,
+                molecular_formula!(Se 1),
+            )])),
+            Self::Serine => Some(Cow::Owned(vec![(
+                SatelliteLabel::None,
                 molecular_formula!(H 1 O 1),
+            )])),
+            Self::Threonine => Some(Cow::Owned(vec![
+                (SatelliteLabel::None, molecular_formula!(H 1 O 1)),
+                (SatelliteLabel::None, molecular_formula!(H 3 C 1)),
+            ])),
+            Self::Valine => Some(Cow::Owned(vec![(
+                SatelliteLabel::None,
                 molecular_formula!(H 3 C 1),
-            ]
-            .into(),
-            Self::Valine => molecular_formula!(H 3 C 1).into(), // Technically two options, but both have the same mass
-        }))
-    }
-
-    /// All losses from the base immonium ions. Compiled from the sources below.
-    ///
-    /// | AA    | [Wikipedia](https://upload.wikimedia.org/wikipedia/commons/thumb/0/01/Amino_acid_fragment_ions.png/400px-Amino_acid_fragment_ions.png) |  0.1016/1044-0305(93)87006-X  | [ionsource](https://www.ionsource.com/Card/immon/immon.htm) | [10.1002/chin.199624319](http://dx.doi.org/10.1002/chin.199624319) | [Prospector   (MS-Comp)](https://prospector.ucsf.edu/prospector/cgi-bin/msform.cgi?form=mscomp) | [10.1186/1477-5956-9-2](http://dx.doi.org/10.1186/1477-5956-9-2) |  10.1016/j.ymeth.2004.08.013   | 10.1385/1597452750 (table 5)  | 10.1021/ac902712f  | [Prospector   (MS-Product)](https://prospector.ucsf.edu/prospector/cgi-bin/msform.cgi?form=msproduct) | [ThermoFisher](https://tools.thermofisher.com/content/sfs/brochures/cms_040030.pdf) | 10.1074/mcp.O113.035915 | 10.1074/mcp.O113.035915 | 10.1021/ac902712f | [Prospector   (MS-Product)](https://prospector.ucsf.edu/prospector/cgi-bin/msform.cgi?form=msproduct) |  | 10.1385/1597452750 (table 5) | Sources | Best mass | Best formula | Loss     | Loss formula | Interpreted loss | Interpreted formula     | Final      |
-    /// |-------|---------------------------------------------------------------------------------------------------------------------------|-----------------------------|------------------------------------------------|------------------------------------------|-----------------------------------------------------------------------|-----------------------------------------|-----------------------------|------------------------------|-------------------|--------------------------------------------------------------------------|---------------------------------------------------------------------|-------------------------|-------------------------|-------------------|--------------------------------------------------------------------------|------------------------------|---------|----------:|--------------|----------|--------------|------------------|-------------------------|------------|
-    /// | A     | 44                                                                                                                        | 44                          |                                                | 44                                       |                                                                       | 44                                      |                             | 44.05                        |                   |                                                                          | 44.0500                                                             |                         |                         |                   |                                                                          |                              | 6       |   44.0500 |              |          |              |                  |                         |            |
-    /// | R     | 129                                                                                                                       | 129                         |                                                | 129                                      |                                                                       | 129                                     |                             | 129.11                       |                   |                                                                          | 129.1140                                                            | 129.1135                | C5H13N4+                |                   |                                                                          |                              | 8       |  129.1138 | C5H13N4+     |          |              |                  |                         |            |
-    /// |       |                                                                                                                           |                             | 185                                            |                                          | 185                                                                   |                                         |                             |                              |                   |                                                                          |                                                                     |                         |                         |                   |                                                                          |                              | 2       |       185 |              | -55.8862 |              | C-2O-2           |                         | C-2O-2     |
-    /// |       |                                                                                                                           |                             |                                                |                                          |                                                                       |                                         |                             | 115.09                       |                   |                                                                          |                                                                     |                         |                         |                   |                                                                          |                              | 1       |    115.09 |              | 14.0238  |              | C1H2             |                         | C1H2       |
-    /// |       | 112                                                                                                                       | 112                         | 112                                            | 112                                      | 112                                                                   | 112                                     | 112.09                      | 112.09                       |                   | 112.0869                                                                 | 112.0875                                                            |                         |                         |                   | C5H10N3+                                                                 | C5H10N3+                     | 12      |  112.0872 | C5H10N3+     | 17.0266  | H3N1         |                  |                         | H3N1       |
-    /// |       | 100                                                                                                                       | 100                         | 100                                            | 100                                      | 100                                                                   | 100                                     | 100.09                      |                              |                   | 100.0869                                                                 | 100.0875                                                            |                         |                         |                   | C4H10N3+                                                                 |                              | 10      |  100.0872 | C4H10N3+     | 29.0266  | C1H3N1       |                  |                         | C1H3N1     |
-    /// |       | 87                                                                                                                        | 87                          | 87                                             | 87                                       | 87                                                                    | 87                                      | 87.09                       | 87.09                        | 87.0922           | 87.0917                                                                  |                                                                     |                         |                         | C4H11N2+          | C4H11N2+                                                                 |                              | 12      |   87.0920 | C4H11N2+     | 42.0218  | C2H2N2       |                  |                         | C2H2N2     |
-    /// |       | 73                                                                                                                        | 73                          | 73                                             |                                          | 73                                                                    | 72                                      | 73.00                       |                              | 73.0640           |                                                                          |                                                                     |                         |                         | C2H7N3+           |                                                                          |                              | 8       |   73.0640 | C2H7N3+      | 56.0498  | C3H6N1       |                  |                         | C3H6N1     |
-    /// |       | 70                                                                                                                        | 70                          | 70                                             | 70                                       | 70                                                                    | 70                                      | 70.07                       | 70.07                        | 70.0657           | 70.0651                                                                  | 70.0657                                                             |                         |                         | C4H8N1+           | C4H8N1+                                                                  |                              | 13      |   70.0655 | C4H8N1+      | 59.0483  | C1H5N3       |                  |                         | C1H5N3     |
-    /// |       |                                                                                                                           |                             |                                                |                                          |                                                                       |                                         |                             | 60.06                        |                   |                                                                          |                                                                     |                         |                         |                   |                                                                          |                              | 1       |     60.06 |              | 69.0538  |              | C3H4N2O-1        | C2H6N1O1+               | C3H4N2O-1  |
-    /// |       |                                                                                                                           | 59                          |                                                |                                          |                                                                       | 59                                      |                             |                              | 59.0483           |                                                                          |                                                                     |                         |                         | CH5N3+            |                                                                          |                              | 4       |   59.0483 | CH5N3+       | 70.0655  | C4H8N1       |                  |                         | C4H8N1     |
-    /// |       |                                                                                                                           |                             |                                                |                                          |                                                                       |                                         |                             |                              | 43.0296           |                                                                          |                                                                     |                         |                         | C1H3N2+           |                                                                          |                              | 2       |   43.0296 | C1H3N2+      | 86.0842  | C4H10N2      |                  |                         | C4H10N2    |
-    /// |       | 29                                                                                                                        |                             |                                                |                                          |                                                                       |                                         |                             |                              |                   |                                                                          |                                                                     |                         |                         |                   |                                                                          |                              | 1       |        29 |              | 100.1138 |              |                  | H1N2/C1H1O1/C1H3N1/C2H5 |            |
-    /// | N     | 87                                                                                                                        | 87                          | 87                                             | 87                                       | 87                                                                    | 87                                      | 87.09                       | 87.06                        |                   | 87.0553                                                                  | 87.0558                                                             |                         |                         |                   | C3H7N2O1+                                                                |                              | 11      |   87.0556 | C3H7N2O1+    |          |              |                  |                         |            |
-    /// |       | 70                                                                                                                        | 70                          | 70                                             | 70                                       |                                                                       | 70                                      |                             | 70.03                        |                   |                                                                          | 70.0293                                                             |                         |                         |                   |                                                                          | C3H4N1O1+                    | 8       |   70.0293 | C3H4N1O1+    | 17.0263  | H3N1         |                  |                         | H3N1       |
-    /// | D     | 88                                                                                                                        | 88                          | 88                                             | 88                                       | 88                                                                    | 88                                      | 88.04                       | 88.04                        | 88.0399           | 88.0393                                                                  | 88.0399                                                             |                         |                         | C3H6N1O2+         | C3H6N1O2+                                                                |                              | 13      |   88.0397 | C3H6N1O2+    |          |              |                  |                         |            |
-    /// |       | 70                                                                                                                        |                             | 70                                             | 70                                       |                                                                       | 70                                      |                             | 70.03                        |                   |                                                                          | 70.0293                                                             |                         |                         |                   |                                                                          | C3H4N1O1+                    | 7       |   70.0293 | C3H4N1O1+    | 18.0104  | H2O1         |                  |                         | H2O1       |
-    /// | C     | 76                                                                                                                        |                             |                                                | 76                                       |                                                                       | 76                                      |                             |                              |                   |                                                                          | 76.0221                                                             |                         |                         |                   |                                                                          |                              | 4       |   76.0221 |              |          |              |                  |                         |            |
-    /// | E     | 102                                                                                                                       | 102                         |                                                | 102                                      | 102                                                                   | 102                                     | 102.06                      | 102.05                       | 102.0555          | 102.0550                                                                 | 102.0555                                                            | 102.0550                | C4H8N1O2+               | C4H8N1O2+         | C4H8N1O2+                                                                |                              | 14      |  102.0553 | C4H8N1O2+    |          |              |                  |                         |            |
-    /// |       |                                                                                                                           |                             |                                                | 91                                       |                                                                       |                                         |                             |                              |                   |                                                                          |                                                                     |                         |                         |                   |                                                                          |                              | 1       |        91 |              | 11.0553  |              |                  |                         |            |
-    /// |       |                                                                                                                           |                             |                                                | 84                                       |                                                                       |                                         |                             | 84.04                        |                   |                                                                          | 84.0449                                                             |                         |                         |                   |                                                                          | C4H6N1O1+                    | 4       |   84.0449 | C4H6N1O1+    | 18.0104  | H2O1         |                  |                         | H2O1       |
-    /// | Q     | 101                                                                                                                       | 101                         | 101                                            | 101                                      | 101                                                                   | 101                                     | 101.11                      | 101.11                       |                   | 101.0709                                                                 | 101.0715                                                            | 101.0709                | C4H9N2O1+               |                   | C4H9N2O1+                                                                |                              | 13      |  101.0711 | C4H9N2O1+    |          |              |                  |                         |            |
-    /// |       | 129                                                                                                                       | 129                         | 129                                            | 129                                      | 129                                                                   | 129                                     | 129.1                       | 129.11                       |                   | 129.0659                                                                 | 129.1028                                                            |                         |                         |                   | C5H9N2O2+                                                                |                              | 11      |  129.0844 | C5H9N2O2+    | -28.0133 | C-1O-1       |                  |                         | C-1O-1     |
-    /// |       | 84                                                                                                                        | 84                          | 84                                             | 84                                       | 84                                                                    | 84                                      | 84.08                       | 84.04                        | 84.0813           | 84.0444                                                                  | 84.0449                                                             |                         |                         | C5H10N1+          | C4H6N1O1+                                                                | C4H6N1O1+                    | 14      |   84.0569 | C5H10N1+     | 17.0142  | H3N1         |                  |                         | H3N1       |
-    /// |       | 56                                                                                                                        |                             |                                                | 56                                       |                                                                       | 56                                      |                             | 56.05                        |                   |                                                                          | 56.0500                                                             |                         |                         |                   |                                                                          |                              | 5       |   56.0500 |              | 45.0211  |              | C1H3N1O1         |                         | C1H3N1O1   |
-    /// | G     | 30                                                                                                                        | 30                          |                                                | 30                                       |                                                                       | 30                                      |                             | 30.03                        | 30.0344           |                                                                          | 30.0344                                                             |                         |                         | C1H4N1+           |                                                                          |                              | 8       |   30.0344 | C1H4N1+      |          |              |                  |                         |            |
-    /// | H     | 110                                                                                                                       | 110                         | 110                                            | 110                                      | 110                                                                   | 110                                     | 110.07                      | 110.07                       | 110.0718          | 110.0713                                                                 | 110.0718                                                            | 110.0713                | C5H8N3+                 | C5H8N3+           | C5H8N3+                                                                  |                              | 15      |  110.0716 | C5H8N3+      |          |              |                  |                         |            |
-    /// |       | 166                                                                                                                       | 166                         |                                                |                                          |                                                                       | 166                                     |                             |                              |                   |                                                                          |                                                                     |                         |                         |                   |                                                                          |                              | 3       |       166 |              | -55.9284 |              | C-2O-2           |                         | C-2O-2     |
-    /// |       | 138                                                                                                                       | 138                         |                                                |                                          |                                                                       | 138                                     | 138.07                      |                              |                   | 138.0662                                                                 |                                                                     |                         |                         |                   | C6H8N3O1+                                                                |                              | 6       |  138.0662 | C6H8N3O1+    | -27.9946 | C-1O-1       |                  |                         | C-1O-1     |
-    /// |       | 123                                                                                                                       | 123                         |                                                |                                          |                                                                       | 123                                     |                             |                              |                   |                                                                          |                                                                     |                         |                         |                   |                                                                          |                              | 3       |       123 |              | -12.9284 |              | H3O-1            |                         | H3O-1      |
-    /// |       | 121                                                                                                                       | 121                         |                                                |                                          |                                                                       | 121                                     |                             |                              |                   |                                                                          |                                                                     |                         |                         |                   |                                                                          |                              | 3       |       121 |              | -10.9284 |              | H5O-1            |                         | H5O-1      |
-    /// |       | 82                                                                                                                        | 82                          |                                                |                                          |                                                                       | 82                                      |                             |                              | 82.0531           |                                                                          |                                                                     |                         |                         | C4H6N2+           |                                                                          |                              | 5       |   82.0531 | C4H6N2+      | 28.0185  | C1H2N1       |                  |                         | C1H2N1     |
-    /// | I/L/J | 86                                                                                                                        | 86                          | 86                                             | 86                                       | 86                                                                    | 86                                      | 86.1                        | 86.10                        | 86.0970           | 86.0964                                                                  | 86.0970                                                             |                         |                         | C5H12N+           | C5H12N1+                                                                 |                              | 13      |   86.0968 | C5H12N+      |          |              |                  |                         |            |
-    /// |       | 72                                                                                                                        | 72                          |                                                | 72                                       |                                                                       | 72                                      |                             |                              |                   |                                                                          | 72.0449                                                             |                         |                         |                   |                                                                          |                              | 5       |   72.0449 |              | 14.0519  |              | C1H2             |                         | C1H2       |
-    /// |       | 44                                                                                                                        |                             |                                                | 44                                       |                                                                       | 44                                      |                             |                              |                   |                                                                          | 44.0500                                                             |                         |                         |                   |                                                                          |                              | 4       |   44.0500 |              | 42.0468  |              | C3H6             |                         | C3H6       |
-    /// | K     | 101                                                                                                                       | 101                         | 101                                            | 101                                      | 101                                                                   | 101                                     | 101.11                      | 101.11                       |                   | 101.1073                                                                 | 101.1079                                                            |                         |                         |                   | C5H13N2+                                                                 |                              | 11      |  101.1076 | C5H13N2+     |          |              |                  |                         |            |
-    /// |       | 129                                                                                                                       | 129                         | 129                                            | 129                                      | 129                                                                   | 129                                     | 129.1                       | 129.11                       |                   | 129.1022                                                                 |                                                                     | 129.1022                | C6H13N2O1+              |                   | C6H13N2O1+                                                               |                              | 12      |  129.1022 | C6H13N2O1+   | -27.9946 | C-1O-1       |                  |                         | C-1O-1     |
-    /// |       |                                                                                                                           |                             |                                                |                                          |                                                                       |                                         |                             |                              |                   | 126.0913                                                                 |                                                                     |                         |                         |                   | C7H12N1O1+                                                               |                              | 2       |  126.0913 | C7H12N1O1+   | -24.9837 | C-2H1N1O-1   |                  |                         | C-2H1N1O-1 |
-    /// |       | 112                                                                                                                       | 112                         |                                                | 112                                      |                                                                       | 112                                     |                             |                              |                   |                                                                          |                                                                     |                         |                         |                   |                                                                          |                              | 4       |       112 |              | -10.8924 |              | H5O-1            |                         | H5O-1      |
-    /// |       | 84                                                                                                                        | 84                          | 84                                             | 84                                       | 84                                                                    | 84                                      | 84.08                       | 84.08                        | 84.0813           | 84.0808                                                                  | 84.0813                                                             |                         |                         | C5H10N1+          | C5H10N1+                                                                 | C5H10N1+                     | 14      |   84.0811 | C5H10N1+     | 17.0265  | H3N1         |                  |                         | H3N1       |
-    /// |       | 70                                                                                                                        | 70                          |                                                |                                          |                                                                       | 70                                      |                             |                              |                   |                                                                          |                                                                     |                         |                         |                   |                                                                          |                              | 3       |        70 |              | 31.1076  |              | C1H5N1           |                         | C1H5N1     |
-    /// |       |                                                                                                                           |                             |                                                |                                          |                                                                       |                                         |                             | 56.05                        |                   |                                                                          | 56.0500                                                             |                         |                         |                   |                                                                          |                              | 2       |   56.0500 |              | 45.0576  |              | C2H7N1           |                         | C2H7N1     |
-    /// | M     | 104                                                                                                                       | 104                         | 104                                            | 104                                      | 104                                                                   | 104                                     | 104.05                      | 104.06                       |                   | 104.0528                                                                 | 104.0534                                                            |                         |                         |                   | C4H10N1S1+                                                               |                              | 11      |  104.0531 | C4H10N1S1+   |          |              |                  |                         |            |
-    /// |       |                                                                                                                           |                             |                                                |                                          |                                                                       | 70                                      |                             |                              |                   |                                                                          |                                                                     |                         |                         |                   |                                                                          |                              |         |        70 |              | 34.0531  |              | H2S1             |                         | H2S1       |
-    /// |       | 61                                                                                                                        | 61                          |                                                |                                          |                                                                       | 61                                      |                             |                              | 61.0112           |                                                                          |                                                                     |                         |                         | C2H5S1+           |                                                                          |                              | 5       |   61.0112 | C2H5S1+      | 43.0419  | C2H3N1       |                  |                         | C2H3N1     |
-    /// |       |                                                                                                                           |                             |                                                |                                          |                                                                       |                                         |                             |                              |                   |                                                                          |                                                                     |                         |                         |                   |                                                                          | C3H6N1+                      | 1       |        ?? | C3H6N1+      | ??       | C1H4S1       |                  |                         | C1H4S1     |
-    /// | F     | 120                                                                                                                       | 120                         | 120                                            | 120                                      | 120                                                                   | 120                                     | 120.08                      | 120.08                       | 120.0813          | 120.0808                                                                 | 120.0813                                                            | 120.0808                | C8H10N+                 | C8H10N1+          | C8H10N1+                                                                 |                              | 15      |  120.0811 | C8H10N+      |          |              |                  |                         |            |
-    /// |       | 91                                                                                                                        | 91                          |                                                | 91                                       |                                                                       | 91                                      |                             |                              |                   |                                                                          | 91.0548                                                             |                         |                         |                   |                                                                          |                              | 5       |   91.0548 |              | 29.0263  |              | C1H3N1           | C7H7+                   | C1H3N1     |
-    /// | P     | 70                                                                                                                        | 70                          | 70                                             | 70                                       | 70                                                                    | 70                                      | 70.07                       | 70.07                        | 70.0657           | 70.0651                                                                  | 70.0657                                                             |                         |                         | C4H8N1+           | C4H8N1+                                                                  |                              | 13      |   70.0655 | C4H8N1+      |          |              |                  |                         |            |
-    /// |       |                                                                                                                           |                             | 126                                            |                                          | 126                                                                   |                                         | 126.06                      |                              |                   | 126.055                                                                  |                                                                     |                         |                         |                   | C6H8N1O2+                                                                |                              | 5       |  126.0550 | C6H8N1O2+    | -55.9895 | C-2O-2       |                  |                         | C-2O-2     |
-    /// | S     | 60                                                                                                                        | 60                          | 60                                             | 60                                       | 60                                                                    | 60                                      | 60.04                       | 60.04                        |                   | 60.0444                                                                  | 60.0449                                                             |                         |                         |                   | C2H6N1O1+                                                                |                              | 11      |   60.0447 | C2H6N1O1+    |          |              |                  |                         |            |
-    /// |       |                                                                                                                           |                             |                                                |                                          |                                                                       |                                         |                             |                              |                   |                                                                          |                                                                     |                         |                         |                   |                                                                          | C2H4N1+                      | 1       |        ?? | C2H4N1+      | ??       | H2O1         |                  |                         | H2O1       |
-    /// | T     | 74                                                                                                                        | 74                          | 74                                             | 74                                       | 74                                                                    | 74                                      |                             | 74.06                        | 74.0606           | 74.0600                                                                  | 74.0606                                                             |                         |                         | C3H8N1O1+         | C3H8N1O1+                                                                |                              | 12      |   74.0604 | C3H8N1O1+    |          |              |                  |                         |            |
-    /// |       |                                                                                                                           |                             |                                                |                                          |                                                                       |                                         |                             |                              |                   |                                                                          |                                                                     |                         |                         |                   |                                                                          | C3H6N1O1+                    | 1       |        ?? | C3H6N1O1+    | ??       | H2N1         |                  |                         | H2N1       |
-    /// | W     | 159                                                                                                                       | 159                         | 159                                            | 159                                      | 159                                                                   | 159                                     | 159.09                      | 159.09                       |                   | 159.0917                                                                 | 159.0922                                                            | 159.0917                | C10H11N2+               |                   | C10H11N2+                                                                |                              | 13      |  159.0919 | C10H11N2+    |          |              |                  |                         |            |
-    /// |       |                                                                                                                           | 171                         |                                                |                                          |                                                                       | 171                                     |                             |                              |                   |                                                                          |                                                                     |                         |                         |                   |                                                                          |                              | 2       |       171 |              | -11.9081 |              | H4O-1            |                         | H4O-1      |
-    /// |       | 170                                                                                                                       | 170                         | 170                                            |                                          | 170                                                                   | 170                                     |                             |                              |                   |                                                                          |                                                                     |                         |                         |                   |                                                                          |                              | 5       |       170 |              | -10.9081 |              | H5O-1            |                         | H5O-1      |
-    /// |       | 132                                                                                                                       |                             |                                                | 132                                      |                                                                       | 132                                     |                             | 132.08                       |                   |                                                                          | 132.0813                                                            |                         |                         |                   |                                                                          |                              | 5       |  132.0813 |              | 27.0106  |              | C1H1N1           |                         | C1H1N1     |
-    /// |       | 130                                                                                                                       | 130                         | 130                                            | 130                                      | 130                                                                   | 130                                     |                             | 130.07                       |                   |                                                                          | 130.0657                                                            |                         |                         |                   |                                                                          |                              | 8       |  130.0657 |              | 29.0262  |              | C1H3N1           |                         | C1H3N1     |
-    /// |       | 117                                                                                                                       | 117                         | 117                                            | 117                                      | 117                                                                   | 117                                     |                             |                              |                   |                                                                          | 117.0578                                                            |                         |                         |                   |                                                                          |                              | 7       |  117.0578 |              | 42.0341  |              | C2H4N1           |                         | C2H4N1     |
-    /// |       | 100                                                                                                                       |                             |                                                |                                          |                                                                       |                                         |                             |                              |                   |                                                                          |                                                                     |                         |                         |                   |                                                                          |                              | 1       |       100 |              | 59.0919  |              | C3H9N1/C2H7N2    |                         |            |
-    /// |       |                                                                                                                           |                             |                                                | 77                                       |                                                                       | 77                                      |                             |                              |                   |                                                                          | 77.0391                                                             |                         |                         |                   |                                                                          |                              | 3       |   77.0391 |              | 82.0528  |              | C4H6N2           | C6H5                    | C4H6N2     |
-    /// |       | 11                                                                                                                        |                             |                                                |                                          |                                                                       |                                         |                             |                              |                   |                                                                          |                                                                     |                         |                         |                   |                                                                          |                              | 1       |        11 |              | 148.0919 |              |                  |                         |            |
-    /// | Y     | 136                                                                                                                       | 136                         | 136                                            | 136                                      | 136                                                                   | 136                                     | 136.08                      | 136.08                       | 136.0762          | 136.0757                                                                 | 136.0762                                                            | 136.0757                | C8H10N1O1+              | C8H10N1O1+        | C8H10N1O1+                                                               |                              | 15      |  136.0760 | C8H10N1O1+   |          |              |                  |                         |            |
-    /// |       | 107                                                                                                                       | 107                         |                                                | 107                                      |                                                                       | 107                                     |                             |                              |                   |                                                                          | 107.0497                                                            |                         |                         |                   |                                                                          |                              | 5       |  107.0497 |              | 29.0263  |              | C1H3N1           |                         | C1H3N1     |
-    /// |       | 91                                                                                                                        | 91                          |                                                | 91                                       |                                                                       | 91                                      |                             |                              |                   |                                                                          | 91.0548                                                             |                         |                         |                   |                                                                          |                              | 5       |   91.0548 |              | 45.0212  |              | C1H3N1O1         |                         | C1H3N1O1   |
-    /// |       |                                                                                                                           |                             |                                                |                                          |                                                                       |                                         |                             |                              | 55.0184           |                                                                          |                                                                     |                         |                         | C3H3O1+           |                                                                          |                              | 2       |   55.0184 | C3H3O1+      | 81.0576  | C5H7N1       |                  |                         | C5H7N1     |
-    /// | V     | 72                                                                                                                        | 72                          | 72                                             | 72                                       | 72                                                                    | 72                                      | 72.08                       | 72.08                        | 72.0813           | 72.0808                                                                  | 72.0813                                                             |                         |                         | C4H10N1+          | C4H10N1+                                                                 |                              | 13      |   72.0811 | C4H10N1+     |          |              |                  |                         |            |
-    /// |       | 69                                                                                                                        |                             |                                                | 69                                       |                                                                       | 69                                      |                             |                              |                   |                                                                          | 69.0704                                                             |                         |                         |                   |                                                                          |                              | 4       |   69.0704 |              | 3.0107   |              | C1H1O-1          |                         | C1H1O-1    |
-    /// |       | 55                                                                                                                        |                             |                                                | 55                                       |                                                                       | 55                                      |                             |                              |                   |                                                                          | 55.0548                                                             |                         |                         |                   |                                                                          |                              | 4       |   55.0548 |              | 17.0263  |              | H3N1             |                         | H3N1       |
-    /// |       | 44                                                                                                                        |                             |                                                |                                          |                                                                       |                                         |                             |                              |                   |                                                                          |                                                                     |                         |                         |                   |                                                                          |                              | 1       |        44 |              | 28.0811  |              | C1H2N1           |                         | C1H2N1     |
-    /// |       |                                                                                                                           |                             |                                                | 41                                       |                                                                       | 41                                      |                             |                              |                   |                                                                          | 41.0391                                                             |                         |                         |                   |                                                                          |                              | 3       |   41.0391 |              | 31.0420  |              | C1H5N1           |                         | C1H5N1     |
-    fn immonium_losses(&self) -> Cow<'_, [NeutralLoss]> {
-        // TODO: For B/Z there are common immonium ions, but the mass is the same (meaning the loss is different), find a way of representing that
-        Cow::Owned(match self {
-            Self::Arginine => vec![
-                NeutralLoss::Gain(molecular_formula!(C 2 O 2)),
-                NeutralLoss::Loss(molecular_formula!(C 1 H 2)),
-                NeutralLoss::Loss(molecular_formula!(H 3 N 1)),
-                NeutralLoss::Loss(molecular_formula!(C 1 H 3 N 1)),
-                NeutralLoss::Loss(molecular_formula!(C 2 H 2 N 2)),
-                NeutralLoss::Loss(molecular_formula!(C 3 H 6 N 2)),
-                NeutralLoss::Loss(molecular_formula!(C 1 H 5 N 3)),
-                NeutralLoss::Loss(molecular_formula!(C 3 H 4 N 2 O -1)),
-                NeutralLoss::Loss(molecular_formula!(C 4 H 8 N 1)),
-                NeutralLoss::Loss(molecular_formula!(C 4 H 10 N 2)),
-            ],
-            Self::Asparagine => vec![NeutralLoss::Loss(molecular_formula!(H 3 N 1))],
-            Self::AsparticAcid | Self::GlutamicAcid | Self::Serine => {
-                vec![NeutralLoss::Loss(molecular_formula!(H 2 O 1))]
-            }
-            Self::Glutamine => vec![
-                NeutralLoss::Gain(molecular_formula!(C 1 O 1)),
-                NeutralLoss::Loss(molecular_formula!(H 3 N 1)),
-                NeutralLoss::Loss(molecular_formula!(C 1 H 3 N 1 O 1)),
-            ],
-            Self::Histidine => vec![
-                NeutralLoss::Gain(molecular_formula!(C 2 O 2)),
-                NeutralLoss::Gain(molecular_formula!(C 1 O 1)),
-                NeutralLoss::Loss(molecular_formula!(H 3 O -1)),
-                NeutralLoss::Loss(molecular_formula!(H 5 O -1)),
-                NeutralLoss::Loss(molecular_formula!(C 1 H 2 N 1)),
-            ],
-            Self::Leucine | Self::Isoleucine | Self::AmbiguousLeucine => vec![
-                NeutralLoss::Loss(molecular_formula!(C 1 H 2)),
-                NeutralLoss::Loss(molecular_formula!(C 3 H 6)),
-            ],
-            Self::Lysine => vec![
-                NeutralLoss::Gain(molecular_formula!(C 1 O 1)),
-                NeutralLoss::Loss(molecular_formula!(C -2 H 1 N 1 O -1)),
-                NeutralLoss::Loss(molecular_formula!(H 5 O -1)),
-                NeutralLoss::Loss(molecular_formula!(H 3 N 1)),
-                NeutralLoss::Loss(molecular_formula!(C 1 H 5 N 1)),
-                NeutralLoss::Loss(molecular_formula!(C 2 H 7 N 1)),
-            ],
-            Self::Methionine => vec![
-                NeutralLoss::Loss(molecular_formula!(H 2 S 1)),
-                NeutralLoss::Loss(molecular_formula!(C 2 H 3 N 1)),
-                NeutralLoss::Loss(molecular_formula!(C 1 H 4 S 1)),
-            ],
-            Self::Phenylalanine => vec![NeutralLoss::Gain(molecular_formula!(C 2 O 2))],
-            Self::Threonine => vec![NeutralLoss::Loss(molecular_formula!(H 2 N 1))],
-            Self::Tryptophan => vec![
-                NeutralLoss::Loss(molecular_formula!(H 4 O -1)),
-                NeutralLoss::Loss(molecular_formula!(H 5 O -1)),
-                NeutralLoss::Loss(molecular_formula!(C 1 H 1 N 1)),
-                NeutralLoss::Loss(molecular_formula!(C 1 H 3 N 1)),
-                NeutralLoss::Loss(molecular_formula!(C 2 H 4 N 1)),
-                NeutralLoss::Loss(molecular_formula!(C 4 H 6 N 2)),
-            ],
-            Self::Tyrosine => vec![
-                NeutralLoss::Loss(molecular_formula!(C 1 H 3 N 1)),
-                NeutralLoss::Loss(molecular_formula!(C 1 H 3 N 1 O 1)),
-                NeutralLoss::Loss(molecular_formula!(C 5 H 7 N 1)),
-            ],
-            Self::Valine => vec![
-                NeutralLoss::Loss(molecular_formula!(C 1 H 1 O -1)),
-                NeutralLoss::Loss(molecular_formula!(H 3 N 1)),
-                NeutralLoss::Loss(molecular_formula!(C 1 H 2 N 1)),
-                NeutralLoss::Loss(molecular_formula!(C 1 H 5 N 1)),
-            ],
-            _ => Vec::new(),
-        })
+            )])), // Technically two options, but both have the same mass
+        }
     }
 }
 
@@ -467,9 +373,18 @@ impl AminoAcid {
     #[expect(clippy::too_many_lines, clippy::too_many_arguments)]
     pub(crate) fn fragments(
         self,
-        n_term: &Multi<MolecularFormula>,
-        c_term: &Multi<MolecularFormula>,
-        modifications: &Multi<MolecularFormula>,
+        n_term: &(
+            Multi<MolecularFormula>,
+            HashMap<FragmentKind, Multi<MolecularFormula>>,
+        ),
+        c_term: &(
+            Multi<MolecularFormula>,
+            HashMap<FragmentKind, Multi<MolecularFormula>>,
+        ),
+        modifications: &(
+            Multi<MolecularFormula>,
+            HashMap<FragmentKind, Multi<MolecularFormula>>,
+        ),
         charge_carriers: &mut CachedCharge,
         sequence_index: SequencePosition,
         sequence_length: usize,
@@ -482,158 +397,190 @@ impl AminoAcid {
         let n_pos = PeptidePosition::n(sequence_index, sequence_length);
         let c_pos = PeptidePosition::c(sequence_index, sequence_length);
 
-        if ions.a.0 && allow_terminal.0 {
-            base_fragments.extend(Fragment::generate_all(
-                &(self.formulas_inner(sequence_index, peptidoform_index)
-                    * (modifications - molecular_formula!(H 1 C 1 O 1))),
-                peptidoform_ion_index,
-                peptidoform_index,
-                &FragmentType::a(n_pos),
-                n_term,
-                ions.a.1,
-                charge_carriers,
-                ions.a.2,
-            ));
-        }
-        if ions.b.0 && allow_terminal.0 {
-            base_fragments.extend(Fragment::generate_all(
-                &(self.formulas_inner(sequence_index, peptidoform_index)
-                    * (modifications - molecular_formula!(H 1))),
-                peptidoform_ion_index,
-                peptidoform_index,
-                &FragmentType::b(n_pos),
-                n_term,
-                ions.b.1,
-                charge_carriers,
-                ions.b.2,
-            ));
-        }
-        if ions.c.0 && allow_terminal.0 {
-            base_fragments.extend(Fragment::generate_all(
-                &(self.formulas_inner(sequence_index, peptidoform_index)
-                    * (modifications + molecular_formula!(H 2 N 1))),
-                peptidoform_ion_index,
-                peptidoform_index,
-                &FragmentType::c(n_pos),
-                n_term,
-                ions.c.1,
-                charge_carriers,
-                ions.c.2,
-            ));
-        }
-        if ions.d.0 && allow_terminal.0 {
-            if let Some(satellite_ion_fragments) =
-                self.satellite_ion_fragments(sequence_index, peptidoform_index)
-            {
-                base_fragments.extend(Fragment::generate_all(
-                    &(-satellite_ion_fragments.as_ref()
-                        * modifications
-                        * self.formulas_inner(sequence_index, peptidoform_index)
-                        + molecular_formula!(H 1 C 1 O 1)),
+        if allow_terminal.0 {
+            if let Some(settings) = &ions.a {
+                base_fragments.extend(Fragment::generate_series(
+                    &(self.formulas_inner(sequence_index, peptidoform_index)
+                        * (modifications
+                            .1
+                            .get(&FragmentKind::a)
+                            .unwrap_or(&modifications.0)
+                            - molecular_formula!(H 1 C 1 O 1))),
                     peptidoform_ion_index,
                     peptidoform_index,
-                    &FragmentType::d(n_pos),
-                    n_term,
-                    ions.d.1,
+                    &FragmentType::a(n_pos, 0),
+                    n_term.1.get(&FragmentKind::a).unwrap_or(&n_term.0),
                     charge_carriers,
-                    ions.d.2,
+                    settings,
                 ));
             }
-        }
-        if ions.v.0 && allow_terminal.1 {
-            base_fragments.extend(Fragment::generate_all(
-                &molecular_formula!(H 3 C 2 N 1 O 1).into(),
-                peptidoform_ion_index,
-                peptidoform_index,
-                &FragmentType::v(c_pos),
-                c_term,
-                ions.v.1,
-                charge_carriers,
-                ions.v.2,
-            ));
-        }
-        if ions.w.0 && allow_terminal.1 {
-            if let Some(satellite_ion_fragments) =
-                self.satellite_ion_fragments(sequence_index, peptidoform_index)
-            {
-                base_fragments.extend(Fragment::generate_all(
-                    &(-satellite_ion_fragments.as_ref()
-                        * modifications
-                        * self.formulas_inner(sequence_index, peptidoform_index)
-                        + molecular_formula!(H 2 N 1)),
+            if let Some(settings) = &ions.b {
+                base_fragments.extend(Fragment::generate_series(
+                    &(self.formulas_inner(sequence_index, peptidoform_index)
+                        * (modifications
+                            .1
+                            .get(&FragmentKind::b)
+                            .unwrap_or(&modifications.0)
+                            - molecular_formula!(H 1))),
                     peptidoform_ion_index,
                     peptidoform_index,
-                    &FragmentType::w(c_pos),
-                    c_term,
-                    ions.w.1,
+                    &FragmentType::b(n_pos, 0),
+                    n_term.1.get(&FragmentKind::b).unwrap_or(&n_term.0),
                     charge_carriers,
-                    ions.w.2,
+                    settings,
                 ));
             }
+            if let Some(settings) = &ions.c {
+                base_fragments.extend(Fragment::generate_series(
+                    &(self.formulas_inner(sequence_index, peptidoform_index)
+                        * (modifications
+                            .1
+                            .get(&FragmentKind::c)
+                            .unwrap_or(&modifications.0)
+                            + molecular_formula!(H 2 N 1))),
+                    peptidoform_ion_index,
+                    peptidoform_index,
+                    &FragmentType::c(n_pos, 0),
+                    n_term.1.get(&FragmentKind::c).unwrap_or(&n_term.0),
+                    charge_carriers,
+                    settings,
+                ));
+            }
+            for (aa, distance) in &ions.d.0 {
+                if let Some(satellite_fragments) =
+                    aa.satellite_ion_fragments(sequence_index - *distance, peptidoform_index)
+                {
+                    for (label, formula) in satellite_fragments.iter() {
+                        base_fragments.extend(Fragment::generate_series(
+                            &(modifications
+                                .1
+                                .get(&FragmentKind::d)
+                                .unwrap_or(&modifications.0)
+                                * self.formulas_inner(sequence_index, peptidoform_index)
+                                + molecular_formula!(H 1 C 1 O 1)
+                                - formula),
+                            peptidoform_ion_index,
+                            peptidoform_index,
+                            &FragmentType::d(n_pos, *aa, *distance, 0, *label),
+                            n_term.1.get(&FragmentKind::d).unwrap_or(&n_term.0),
+                            charge_carriers,
+                            &ions.d.1,
+                        ));
+                    }
+                }
+            }
         }
-        if ions.x.0 && allow_terminal.1 {
-            base_fragments.extend(Fragment::generate_all(
-                &(self.formulas_inner(sequence_index, peptidoform_index)
-                    * (modifications + molecular_formula!(C 1 O 1) - molecular_formula!(H 1))),
-                peptidoform_ion_index,
-                peptidoform_index,
-                &FragmentType::x(c_pos),
-                c_term,
-                ions.x.1,
-                charge_carriers,
-                ions.x.2,
-            ));
-        }
-        if ions.y.0 && allow_terminal.1 {
-            base_fragments.extend(Fragment::generate_all(
-                &(self.formulas_inner(sequence_index, peptidoform_index)
-                    * (modifications + molecular_formula!(H 1))),
-                peptidoform_ion_index,
-                peptidoform_index,
-                &FragmentType::y(c_pos),
-                c_term,
-                ions.y.1,
-                charge_carriers,
-                ions.y.2,
-            ));
-        }
-        if ions.z.0 && allow_terminal.1 {
-            base_fragments.extend(Fragment::generate_all(
-                &(self.formulas_inner(sequence_index, peptidoform_index)
-                    * (modifications - molecular_formula!(H 2 N 1))),
-                peptidoform_ion_index,
-                peptidoform_index,
-                &FragmentType::z(c_pos),
-                c_term,
-                ions.z.1,
-                charge_carriers,
-                ions.z.2,
-            ));
-            base_fragments.extend(Fragment::generate_all(
-                &(self.formulas_inner(sequence_index, peptidoform_index)
-                    * (modifications - molecular_formula!(H 1 N 1))),
-                peptidoform_ion_index,
-                peptidoform_index,
-                &FragmentType::z·(c_pos),
-                c_term,
-                ions.z.1,
-                charge_carriers,
-                ions.z.2,
-            ));
+        if allow_terminal.1 {
+            for (aa, distance) in &ions.v.0 {
+                base_fragments.extend(Fragment::generate_series(
+                    &(self.formulas_inner(sequence_index, peptidoform_index)
+                        * -aa.formulas_inner(sequence_index + *distance, peptidoform_index)
+                        + molecular_formula!(H 3 C 2 N 1 O 1)),
+                    peptidoform_ion_index,
+                    peptidoform_index,
+                    &FragmentType::v(c_pos, *aa, *distance, 0),
+                    c_term.1.get(&FragmentKind::v).unwrap_or(&c_term.0),
+                    charge_carriers,
+                    &ions.v.1,
+                ));
+            }
+            for (aa, distance) in &ions.w.0 {
+                if let Some(satellite_fragments) =
+                    aa.satellite_ion_fragments(sequence_index - *distance, peptidoform_index)
+                {
+                    for (label, formula) in satellite_fragments.iter() {
+                        base_fragments.extend(Fragment::generate_series(
+                            &(modifications
+                                .1
+                                .get(&FragmentKind::w)
+                                .unwrap_or(&modifications.0)
+                                * self.formulas_inner(sequence_index, peptidoform_index)
+                                + molecular_formula!(H 2 N 1)
+                                - formula),
+                            peptidoform_ion_index,
+                            peptidoform_index,
+                            &FragmentType::w(c_pos, *aa, *distance, 0, *label),
+                            c_term.1.get(&FragmentKind::w).unwrap_or(&c_term.0),
+                            charge_carriers,
+                            &ions.w.1,
+                        ));
+                    }
+                }
+            }
+            if let Some(settings) = &ions.x {
+                base_fragments.extend(Fragment::generate_series(
+                    &(self.formulas_inner(sequence_index, peptidoform_index)
+                        * (modifications
+                            .1
+                            .get(&FragmentKind::x)
+                            .unwrap_or(&modifications.0)
+                            + molecular_formula!(C 1 O 1)
+                            - molecular_formula!(H 1))),
+                    peptidoform_ion_index,
+                    peptidoform_index,
+                    &FragmentType::x(c_pos, 0),
+                    c_term.1.get(&FragmentKind::x).unwrap_or(&c_term.0),
+                    charge_carriers,
+                    settings,
+                ));
+            }
+            if let Some(settings) = &ions.y {
+                base_fragments.extend(Fragment::generate_series(
+                    &(self.formulas_inner(sequence_index, peptidoform_index)
+                        * (modifications
+                            .1
+                            .get(&FragmentKind::y)
+                            .unwrap_or(&modifications.0)
+                            + molecular_formula!(H 1))),
+                    peptidoform_ion_index,
+                    peptidoform_index,
+                    &FragmentType::y(c_pos, 0),
+                    c_term.1.get(&FragmentKind::y).unwrap_or(&c_term.0),
+                    charge_carriers,
+                    settings,
+                ));
+            }
+            if let Some(settings) = &ions.z {
+                base_fragments.extend(Fragment::generate_series(
+                    &(self.formulas_inner(sequence_index, peptidoform_index)
+                        * (modifications
+                            .1
+                            .get(&FragmentKind::z)
+                            .unwrap_or(&modifications.0)
+                            - molecular_formula!(H 2 N 1))),
+                    peptidoform_ion_index,
+                    peptidoform_index,
+                    &FragmentType::z(c_pos, 0),
+                    c_term.1.get(&FragmentKind::z).unwrap_or(&c_term.0),
+                    charge_carriers,
+                    settings,
+                ));
+            }
         }
 
-        if ions.immonium.0 && allow_terminal.0 && allow_terminal.1 {
-            base_fragments.extend(Fragment::generate_all(
-                &(self.formulas_inner(sequence_index, peptidoform_index)
-                    * (modifications - molecular_formula!(C 1 O 1))),
-                peptidoform_ion_index,
-                peptidoform_index,
-                &FragmentType::Immonium(n_pos, self.into()), // TODO: get the actual sequenceelement here
-                &Multi::default(),
-                self.immonium_losses().as_ref(),
-                charge_carriers,
-                ions.immonium.1,
-            ));
+        if allow_terminal.0 && allow_terminal.1 {
+            if let Some((charge, losses)) = &ions.immonium {
+                base_fragments.extend(Fragment::generate_all(
+                    &(self.formulas_inner(sequence_index, peptidoform_index)
+                        * (modifications
+                            .1
+                            .get(&FragmentKind::immonium)
+                            .unwrap_or(&modifications.0)
+                            - molecular_formula!(C 1 O 1))),
+                    peptidoform_ion_index,
+                    peptidoform_index,
+                    &FragmentType::Immonium(n_pos, self.into()), // TODO: get the actual sequence element here
+                    &Multi::default(),
+                    &losses
+                        .iter()
+                        .filter(|(aa, _)| aa.contains(&self))
+                        .flat_map(|(_, l)| l.iter())
+                        .map(|l| vec![l.clone()])
+                        .collect::<Vec<_>>(),
+                    charge_carriers,
+                    *charge,
+                ));
+            }
         }
         base_fragments
     }

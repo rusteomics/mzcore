@@ -1,12 +1,15 @@
 use ordered_float::OrderedFloat;
 use serde::{Deserialize, Serialize};
 
-use crate::{AminoAcid, CrossLinkName, Element, Multi, SequencePosition};
+use crate::{
+    fragment::GlycanPosition, glycan::MonoSaccharide, AminoAcid, CrossLinkName, Element, Multi,
+    SequencePosition,
+};
 use std::{
     fmt::Write,
     hash::Hash,
     num::NonZeroU16,
-    ops::{Add, AddAssign, Mul, Neg, Sub},
+    ops::{Add, AddAssign, Mul, Neg, Sub, SubAssign},
 };
 use thin_vec::ThinVec;
 
@@ -27,7 +30,7 @@ pub struct MolecularFormula {
 /// Keep track of what ambiguous option is used
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, Serialize, Deserialize)]
 pub enum AmbiguousLabel {
-    /// A ambiguous amino acid, with the actual amino acid used tracked
+    /// An ambiguous amino acid, with the actual amino acid used tracked
     AminoAcid {
         /// Which amino acid is used
         option: AminoAcid,
@@ -36,7 +39,7 @@ pub enum AmbiguousLabel {
         /// Peptide index
         peptidoform_index: usize,
     },
-    /// A ambiguous modification, with the actual position
+    /// An ambiguous modification, with the actual position
     Modification {
         /// Which ambiguous modification
         id: usize,
@@ -51,6 +54,10 @@ pub enum AmbiguousLabel {
     CrossLinkBound(CrossLinkName),
     /// A broken cross-link, having the name and the stub that was left in its place
     CrossLinkBroken(CrossLinkName, MolecularFormula),
+    /// A glycan fragment on a peptide fragment, with the Y breakages that lead to that fragment
+    GlycanFragment(Vec<GlycanPosition>),
+    /// A glycan fragment on a peptide fragment, with the monosaccharides that make up the fragment
+    GlycanFragmentComposition(Vec<(MonoSaccharide, isize)>),
 }
 
 /// Any item that has a clearly defined single molecular formula
@@ -453,9 +460,26 @@ impl Mul<&i32> for &MolecularFormula {
     }
 }
 
+impl Mul<&i8> for &MolecularFormula {
+    type Output = MolecularFormula;
+    fn mul(self, rhs: &i8) -> Self::Output {
+        MolecularFormula {
+            additional_mass: self.additional_mass * f64::from(*rhs),
+            elements: self
+                .elements
+                .iter()
+                .copied()
+                .map(|part| (part.0, part.1, part.2 * i32::from(*rhs)))
+                .collect(),
+            labels: self.labels.clone(),
+        }
+    }
+}
+
 impl_binop_ref_cases!(impl Add, add for MolecularFormula, MolecularFormula, MolecularFormula);
 impl_binop_ref_cases!(impl Sub, sub for MolecularFormula, MolecularFormula, MolecularFormula);
 impl_binop_ref_cases!(impl Mul, mul for MolecularFormula, i32, MolecularFormula);
+impl_binop_ref_cases!(impl Mul, mul for MolecularFormula, i8, MolecularFormula);
 
 impl AddAssign<&Self> for MolecularFormula {
     fn add_assign(&mut self, rhs: &Self) {
@@ -484,9 +508,43 @@ impl AddAssign<&Self> for MolecularFormula {
     }
 }
 
+impl SubAssign<&Self> for MolecularFormula {
+    fn sub_assign(&mut self, rhs: &Self) {
+        self.labels.extend_from_slice(&rhs.labels);
+        let mut index_result = 0;
+        let mut index_rhs = 0;
+        self.additional_mass -= rhs.additional_mass;
+        while index_rhs < rhs.elements.len() {
+            let (el, i, n) = rhs.elements[index_rhs];
+            if index_result < self.elements.len() {
+                let (re, ri, _) = self.elements[index_result];
+                if el > re || (el == re && i > ri) {
+                    index_result += 1;
+                } else if el == re && i == ri {
+                    self.elements[index_result].2 -= n;
+                    index_rhs += 1;
+                } else {
+                    self.elements.insert(index_result, (el, i, -n));
+                    index_rhs += 1;
+                }
+            } else {
+                self.elements.push((el, i, -n));
+                index_rhs += 1;
+            }
+        }
+        self.elements.retain(|el| el.2 != 0);
+    }
+}
+
 impl AddAssign<Self> for MolecularFormula {
     fn add_assign(&mut self, rhs: Self) {
         *self += &rhs;
+    }
+}
+
+impl SubAssign<Self> for MolecularFormula {
+    fn sub_assign(&mut self, rhs: Self) {
+        *self -= &rhs;
     }
 }
 

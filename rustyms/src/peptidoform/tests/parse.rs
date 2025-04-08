@@ -9,8 +9,8 @@ use crate::{
     },
     placement_rule::{self, PlacementRule, Position},
     system::{da, usize::Charge},
-    AminoAcid, CompoundPeptidoformIon, Element, Model, MolecularCharge, MultiChemical, Peptidoform,
-    PeptidoformIon,
+    AminoAcid, CompoundPeptidoformIon, Element, FragmentationModel, MolecularCharge, MultiChemical,
+    Peptidoform, PeptidoformIon,
 };
 
 #[test]
@@ -419,9 +419,9 @@ fn parse_xl_inter() {
     //dbg!(&singular.sequence[0].modifications);
     assert_eq!(
         peptide.formulas().to_vec()[0],
-        (AminoAcid::Alanine.single_formula().unwrap() * 2
+        (AminoAcid::Alanine.single_formula().unwrap() * 2_i32
             + molecular_formula!(C 8 H 10 O 2)
-            + molecular_formula!(H 2 O 1) * 2)
+            + molecular_formula!(H 2 O 1) * 2_i32)
             .with_label(crate::AmbiguousLabel::CrossLinkBound(
                 crate::CrossLinkName::Name("test".to_string())
             ))
@@ -431,7 +431,9 @@ fn parse_xl_inter() {
 #[test]
 fn dimeric_peptide() {
     // Only generate a single series, easier to reason about
-    let test_model = Model::none().a(PrimaryIonSeries::default());
+    let test_model = FragmentationModel::none()
+        .clone()
+        .a(PrimaryIonSeries::default());
 
     // With two different sequences
     let dimeric = CompoundPeptidoformIon::pro_forma("AA+CC", None).unwrap();

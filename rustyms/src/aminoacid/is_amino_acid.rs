@@ -1,8 +1,8 @@
-//! Module used create the [IsAminoAcid] trait
+//! Module used to create the [`IsAminoAcid`] trait
 
 use crate::{
-    formula::MolecularFormula, system::Mass, MassMode, Multi, MultiChemical, NeutralLoss,
-    SequencePosition,
+    formula::MolecularFormula, fragment::SatelliteLabel, system::Mass, MassMode, Multi,
+    MultiChemical, SequencePosition,
 };
 
 use std::borrow::Cow;
@@ -44,7 +44,7 @@ pub trait IsAminoAcid: MultiChemical {
     fn mass(&self, mode: MassMode) -> Cow<'_, Multi<Mass>> {
         Cow::Owned(self.formulas().iter().map(|f| f.mass(mode)).collect())
     }
-    /// The molecular formula of the side chain of the amino acid.  The `sequence_index` and
+    /// The molecular formula of the side chain of the amino acid. The `sequence_index` and
     /// `peptidoform_index` are used to keep track of ambiguous amino acids.
     fn side_chain(
         &self,
@@ -59,7 +59,5 @@ pub trait IsAminoAcid: MultiChemical {
         &self,
         sequence_index: SequencePosition,
         peptidoform_index: usize,
-    ) -> Option<Cow<'_, Multi<MolecularFormula>>>;
-    /// Common neutral losses for the immonium ion of this amino acid.
-    fn immonium_losses(&self) -> Cow<'_, [NeutralLoss]>;
+    ) -> Option<Cow<'_, Vec<(SatelliteLabel, MolecularFormula)>>>;
 }

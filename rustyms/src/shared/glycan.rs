@@ -27,7 +27,7 @@ pub enum Configuration {
 }
 
 /// A monosaccharide with all its complexity
-#[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Serialize, Deserialize)]
+#[derive(Clone, Ord, PartialOrd, Debug, Serialize, Deserialize)]
 pub struct MonoSaccharide {
     pub(super) base_sugar: BaseSugar,
     pub(super) substituents: Vec<GlycanSubstituent>,
@@ -37,6 +37,38 @@ pub struct MonoSaccharide {
 }
 
 impl MonoSaccharide {
+    fn equivalent(&self, other: &Self, precise: bool) -> bool {
+        self.base_sugar.equivalent(&other.base_sugar, precise)
+            && self.substituents == other.substituents
+            && (!precise
+                || (self.furanose == other.furanose && self.configuration == other.configuration))
+    }
+}
+
+impl std::cmp::PartialEq for MonoSaccharide {
+    fn eq(&self, other: &Self) -> bool {
+        self.equivalent(other, true)
+    }
+}
+
+impl std::cmp::Eq for MonoSaccharide {}
+
+impl std::hash::Hash for MonoSaccharide {
+    fn hash<H: std::hash::Hasher>(&self, hasher: &mut H) {
+        self.base_sugar.hash(hasher);
+        self.substituents.hash(hasher);
+        self.furanose.hash(hasher);
+        self.configuration.hash(hasher);
+    }
+}
+
+impl MonoSaccharide {
+    /// Check if this is a fucose
+    pub fn is_fucose(&self) -> bool {
+        self.base_sugar == BaseSugar::Hexose(Some(HexoseIsomer::Galactose))
+            && self.substituents.contains(&GlycanSubstituent::Deoxy)
+    }
+
     /// Create a new monosaccharide
     pub fn new(sugar: BaseSugar, substituents: &[GlycanSubstituent]) -> Self {
         Self {
@@ -517,6 +549,24 @@ pub enum BaseSugar {
     Nonose(Option<NonoseIsomer>),
     /// 10 carbon base sugar
     Decose,
+}
+
+impl BaseSugar {
+    fn equivalent(&self, other: &Self, precise: bool) -> bool {
+        match (self, other) {
+            (Self::None, Self::None)
+            | (Self::Sugar, Self::Sugar)
+            | (Self::Octose, Self::Octose)
+            | (Self::Decose, Self::Decose)
+            | (Self::Triose, Self::Triose) => true,
+            (Self::Tetrose(a), Self::Tetrose(b)) => !precise || a == b,
+            (Self::Pentose(a), Self::Pentose(b)) => !precise || a == b,
+            (Self::Hexose(a), Self::Hexose(b)) => !precise || a == b,
+            (Self::Heptose(a), Self::Heptose(b)) => !precise || a == b,
+            (Self::Nonose(a), Self::Nonose(b)) => !precise || a == b,
+            _ => false,
+        }
+    }
 }
 
 impl Display for BaseSugar {
