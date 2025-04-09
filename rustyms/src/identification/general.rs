@@ -94,7 +94,7 @@ pub fn open_identified_peptides_file<'a>(
         Some("psmtsv") => {
             OpairData::parse_file(path, custom_database, keep_all_columns).map(IdentifiedPeptideIter::into_box)
         }
-        Some("fasta") => FastaData::parse_file(path).map(|peptides| {
+        Some("fasta" | "fas" | "fa" | "faa" | "mpfa") => FastaData::parse_file(path).map(|peptides| {
             Box::new(peptides.into_iter().map(|p| Ok(p.into())))
                 as Box<dyn Iterator<Item = Result<IdentifiedPeptide, CustomError>> + 'a>
         }),
