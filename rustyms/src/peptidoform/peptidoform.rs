@@ -431,10 +431,7 @@ impl<Complexity> Peptidoform<Complexity> {
                     if let Modification::Ambiguous { .. } = f {
                         acc
                     } else {
-                        let attachment = all_peptides[peptidoform_index]
-                            .sequence
-                            .first()
-                            .map(|s| s.aminoacid.aminoacid());
+                        let attachment = self.sequence.first().map(|s| s.aminoacid.aminoacid());
                         let (formula, specific, _seen) = f.formula_inner(
                             all_peptides,
                             visited_peptides,
@@ -476,10 +473,7 @@ impl<Complexity> Peptidoform<Complexity> {
                     if let Modification::Ambiguous { .. } = f {
                         acc
                     } else {
-                        let attachment = all_peptides[peptidoform_index]
-                            .sequence
-                            .first()
-                            .map(|s| s.aminoacid.aminoacid());
+                        let attachment = self.sequence.last().map(|s| s.aminoacid.aminoacid());
                         let (formula, specific, _seen) = f.formula_inner(
                             all_peptides,
                             visited_peptides,

@@ -386,7 +386,8 @@ impl std::fmt::Display for CsvLine {
 }
 
 /// Write a CSV file. It fill empty columns with empty space, ensures the correct amount of columns
-/// on each line, and auto wraps any separator containing values and headers in apostrophes (").
+/// on each line, and auto wraps any separator containing values and headers in double quotes (").
+/// It also replaces any double quotes (") in wrapped fields in single quotes (').
 /// # Errors
 /// If the `Write` implementation errors.
 #[allow(dead_code)]
@@ -402,13 +403,13 @@ pub fn write_csv(
             let mut new_row = vec![String::new(); order.len()];
             for (mut column, mut value) in row {
                 if value.contains(separator) {
-                    value = format!("\"{value}\"");
+                    value = format!("\"{}\"", value.replace('\"', "\'"));
                 }
                 if let Some(index) = order.iter().position(|i| *i == column) {
                     new_row[index] = value;
                 } else {
                     if column.contains(separator) {
-                        column = format!("\"{column}\"");
+                        column = format!("\"{}\"", column.replace('\"', "\'"));
                     }
                     order.push(column);
                     new_row.push(value);
