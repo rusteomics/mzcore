@@ -28,7 +28,7 @@ struct Cli {
 fn main() {
     let args = Cli::parse();
     let out_file = BufWriter::new(File::create(args.out_path).unwrap());
-    let peptides = open_identified_peptides_file(args.peptides, None)
+    let peptides = open_identified_peptides_file(args.peptides, None, false)
         .unwrap()
         .filter_map(|p| p.ok())
         .filter_map(|p| {
@@ -145,5 +145,5 @@ fn main() {
         })
         .collect();
 
-    write_csv(out_file, alignments).unwrap();
+    write_csv(out_file, alignments, ',').unwrap();
 }

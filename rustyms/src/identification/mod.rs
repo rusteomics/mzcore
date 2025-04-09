@@ -3,6 +3,7 @@
 #[macro_use]
 mod common_parser;
 
+mod basic_csv;
 mod deepnovofamily;
 mod fasta;
 mod general;
@@ -23,6 +24,7 @@ mod sage;
 mod ssl;
 
 use crate::*;
+pub use basic_csv::*;
 pub use deepnovofamily::*;
 pub use fasta::*;
 pub use general::*;

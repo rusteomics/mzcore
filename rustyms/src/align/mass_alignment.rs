@@ -299,7 +299,7 @@ fn calculate_masses<const STEPS: u16>(
                 .iter()
                 .map(|p| {
                     p.formulas_all(
-                        &[sequence],
+                        &[],
                         &[],
                         &mut Vec::new(),
                         false,

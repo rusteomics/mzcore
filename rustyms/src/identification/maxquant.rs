@@ -62,7 +62,7 @@ format_family!(
         dn_sequence: String, |location: Location, _| Ok(location.get_string());
         evidence_id: usize, |location: Location, _| location.parse::<usize>(NUMBER_ERROR);
         experiment: String, |location: Location, _| Ok(location.get_string());
-        fragmentation: String, |location: Location, _| Ok(location.get_string());
+        mode: String, |location: Location, _| Ok(location.get_string());
         genes: String, |location: Location, _| Ok(location.get_string());
         id: usize, |location: Location, _| location.parse::<usize>(NUMBER_ERROR);
         intensity_coverage: f64, |location: Location, _| location.parse::<f64>(NUMBER_ERROR);
@@ -158,7 +158,7 @@ pub const MSMS: MaxQuantFormat = MaxQuantFormat {
     dn_sequence: OptionalColumn::NotAvailable,
     evidence_id: OptionalColumn::Required("evidence id"),
     experiment: OptionalColumn::NotAvailable,
-    fragmentation: OptionalColumn::Required("fragmentation"),
+    mode: OptionalColumn::Required("fragmentation"),
     genes: OptionalColumn::NotAvailable,
     id: OptionalColumn::Required("id"),
     intensity_coverage: OptionalColumn::Required("intensity coverage"),
@@ -221,7 +221,7 @@ pub const MSMS_SCANS: MaxQuantFormat = MaxQuantFormat {
     dn_sequence: OptionalColumn::NotAvailable,
     evidence_id: OptionalColumn::NotAvailable,
     experiment: OptionalColumn::NotAvailable,
-    fragmentation: OptionalColumn::Required("fragmentation"),
+    mode: OptionalColumn::Required("fragmentation"),
     genes: OptionalColumn::NotAvailable,
     id: OptionalColumn::NotAvailable,
     intensity_coverage: OptionalColumn::NotAvailable,
@@ -284,7 +284,7 @@ pub const NOVO_MSMS_SCANS: MaxQuantFormat = MaxQuantFormat {
     dn_sequence: OptionalColumn::Required("dn sequence"),
     evidence_id: OptionalColumn::NotAvailable,
     experiment: OptionalColumn::Optional("experiment"),
-    fragmentation: OptionalColumn::Required("fragmentation"),
+    mode: OptionalColumn::Required("fragmentation"),
     genes: OptionalColumn::NotAvailable,
     id: OptionalColumn::NotAvailable,
     intensity_coverage: OptionalColumn::NotAvailable,
@@ -349,7 +349,7 @@ pub const SILAC: MaxQuantFormat = MaxQuantFormat {
     dn_sequence: OptionalColumn::NotAvailable,
     evidence_id: OptionalColumn::NotAvailable,
     experiment: OptionalColumn::Required("experiment"),
-    fragmentation: OptionalColumn::NotAvailable,
+    mode: OptionalColumn::NotAvailable,
     genes: OptionalColumn::Required("gene names"),
     id: OptionalColumn::Required("id"),
     intensity: OptionalColumn::Required("intensity"),

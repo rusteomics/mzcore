@@ -3,7 +3,8 @@ use std::{
     collections::BTreeMap,
     fs::File,
     io::{BufReader, BufWriter},
-    path::Path,
+    ops::RangeInclusive,
+    path::{Path, PathBuf},
 };
 
 use clap::Parser;
@@ -15,11 +16,12 @@ use mzdata::{
     prelude::SpectrumLike,
     spectrum::{MultiLayerSpectrum, RefPeakDataLevel},
 };
+use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use rustyms::{
     fragment::{FragmentKind, FragmentType},
     identification::{SpectrumId, SpectrumIds},
     model::{ChargeRange, PrimaryIonSeries, SatelliteIonSeries, SatelliteLocation},
-    modification::{Ontology, SimpleModification},
+    modification::SimpleModification,
     *,
 };
 
@@ -33,23 +35,23 @@ struct Cli {
     out_path: String,
     /// The raw file to use for any file without a raw file
     #[arg(long)]
-    raw_file: Option<String>,
-    /// The directory where to find raw files that are named in the peptides file
+    raw_file: Option<PathBuf>,
+    /// The directory where to find non absolute raw files that are named in the peptides file
     #[arg(long)]
-    raw_file_directory: String,
+    raw_file_directory: Option<PathBuf>,
     /// To turn off loading the custom modifications database from the Annotator (if installed)
     #[arg(long)]
     no_custom_mods: bool,
-    /// The bin width of the mz bins
+    /// The bin width of the mass bins
     #[arg(long, default_value = "0.25")]
     resolution: f64,
     /// The high end of the range for looking at diagnostic/immonium ions, selects all peaks in 0..=`max_start`
     #[arg(long, default_value = "200.0")]
     max_start: f64,
-    /// The number of Thompson to select before a fragment ion
+    /// The number of Dalton to select before a fragment ion
     #[arg(long, default_value = "100.0")]
     before_fragment: f64,
-    /// The number of Thompson to select after a fragment ion
+    /// The number of Dalton to select after a fragment ion
     #[arg(long, default_value = "100.0")]
     after_fragment: f64,
 }
@@ -87,6 +89,7 @@ fn main() {
     let peptides = rustyms::identification::open_identified_peptides_file(
         &args.in_path,
         custom_database.as_ref(),
+        false,
     )
     .expect("Could not open identified peptides file")
     .filter_map(|a| a.ok())
@@ -95,10 +98,19 @@ fn main() {
         _ => None,
     });
 
-    let mut stack = Stack::default();
-
-    for (file, peptides) in peptides {
-        let mut file = mzdata::io::MZReaderType::open_path(file.map(|f|Path::new(&args.raw_file_directory).join(f)).or(args.raw_file.as_ref().map(|p| p.into())).expect("The raw file parameter has to be defined if there are peptides without a defined raw file")).unwrap();
+    let stack: Stack = peptides.par_iter().map(|(file, peptides)| {
+        let mut stack = Stack::default();
+        let path = match file {
+            Some(file) => {
+                if file.is_absolute() {
+                    file.clone()
+                } else {
+                    args.raw_file_directory.as_ref().expect("The raw file directory parameter has to be defined if there are peptides with a non absolute path").join(file)
+                }
+            }
+            None => args.raw_file.clone().expect("The raw file parameter has to be defined if there are peptides without a defined raw file"),
+        };
+        let mut file = mzdata::io::MZReaderType::open_path(path).unwrap();
 
         for peptide in peptides {
             if peptide.charge().is_none() {
@@ -124,32 +136,25 @@ fn main() {
                         &mut stack,
                         &spectrum,
                         &fragments,
-                        &[(
-                            (AminoAcid::Asparagine, Vec::new()),
-                            (
-                                AminoAcid::Asparagine,
-                                vec![Ontology::Unimod.find_id(7, None).unwrap()],
-                            ),
-                        )],
                         &cpi,
                         &args,
+                        peptide.mode().map(|m| m.to_string()),
                     );
                 }
             }
         }
-    }
+        stack
+    }).collect();
     stack.store(Path::new(&args.out_path));
 }
-
-type ComparisonKey = (AminoAcid, Vec<SimpleModification>);
 
 fn extract_and_merge(
     stack: &mut Stack,
     spectrum: &MultiLayerSpectrum,
     fragments: &[Fragment],
-    comparisons: &[(ComparisonKey, ComparisonKey)],
     peptidoform: &CompoundPeptidoformIon,
     args: &Cli,
+    mode: Option<String>,
 ) {
     let spectrum = match spectrum.peaks() {
         RefPeakDataLevel::Centroid(c) => c,
@@ -157,78 +162,68 @@ fn extract_and_merge(
     };
     for fragment in fragments {
         if let Some(mz) = fragment.mz(MassMode::Monoisotopic) {
+            let seq = fragment.ion.position().map(|pos| {
+                let seq = &peptidoform.peptidoform_ions()
+                    [fragment.peptidoform_ion_index.unwrap_or_default()]
+                .peptidoforms()[fragment.peptidoform_index.unwrap_or_default()][pos.sequence_index];
+                (
+                    seq.aminoacid.aminoacid(),
+                    seq.modifications
+                        .iter()
+                        .filter_map(|m| m.clone().into_simple())
+                        .collect(),
+                )
+            });
+
             let key = match fragment.ion {
                 FragmentType::d(_, _, d, _, _)
                 | FragmentType::v(_, _, d, _)
-                | FragmentType::w(_, _, d, _, _) => (fragment.ion.kind(), Some(d)),
-                _ => (fragment.ion.kind(), None),
+                | FragmentType::w(_, _, d, _, _) => {
+                    (fragment.ion.kind(), Some(d), seq, mode.clone())
+                }
+                _ => (fragment.ion.kind(), None, seq, mode.clone()),
             };
-            let low = mz.value - args.before_fragment;
-            let high = mz.value + args.after_fragment;
+            let low = mz.value - args.before_fragment / fragment.charge.value as f64;
+            let high = mz.value + args.after_fragment / fragment.charge.value as f64;
             let sub_spectrum = spectrum.between(low, high, mzdata::prelude::Tolerance::Da(0.0));
+
             merge_stack(
                 stack.fragments.entry(key).or_default(),
                 sub_spectrum,
+                fragment.charge.value,
                 mz.value,
                 args.resolution,
+                low..=high,
             );
-            // Comparison
-            let (kind, pos) = match fragment.ion {
-                FragmentType::a(pos, _)
-                | FragmentType::b(pos, _)
-                | FragmentType::c(pos, _)
-                | FragmentType::x(pos, _)
-                | FragmentType::y(pos, _)
-                | FragmentType::z(pos, _) => (fragment.ion.kind(), pos),
-                _ => continue,
-            };
-            let seq = &peptidoform.peptidoform_ions()
-                [fragment.peptidoform_ion_index.unwrap_or_default()]
-            .peptidoforms()[fragment.peptidoform_index.unwrap_or_default()][pos.sequence_index];
-            let key: ComparisonKey = (
-                seq.aminoacid.aminoacid(),
-                seq.modifications
-                    .iter()
-                    .filter_map(|m| m.simple())
-                    .cloned()
-                    .collect(),
-            );
-            for (a, b) in comparisons {
-                if key == *a {
-                    merge_comparison_stack(
-                        stack
-                            .comparison
-                            .entry((kind, a.clone(), b.clone()))
-                            .or_default(),
-                        sub_spectrum,
-                        mz.value,
-                        args.resolution,
-                        true,
-                    );
-                } else if key == *b {
-                    merge_comparison_stack(
-                        stack
-                            .comparison
-                            .entry((kind, a.clone(), b.clone()))
-                            .or_default(),
-                        sub_spectrum,
-                        mz.value,
-                        args.resolution,
-                        false,
-                    );
-                }
-            }
         }
     }
     // Get start
     let sub_spectrum = spectrum.between(0.0, args.max_start, mzdata::prelude::Tolerance::Da(0.0));
-    merge_stack(&mut stack.start, sub_spectrum, 0.0, args.resolution);
+    merge_stack(
+        &mut stack.start,
+        sub_spectrum,
+        1,
+        0.0,
+        args.resolution,
+        0.0..=args.max_start,
+    );
 }
 
-fn merge_stack(points: &mut Vec<Point>, slice: &[CentroidPeak], center: f64, resolution: f64) {
+fn merge_stack(
+    points: &mut Vec<Point>,
+    slice: &[CentroidPeak],
+    charge: usize,
+    center: f64,
+    resolution: f64,
+    range: RangeInclusive<f64>,
+) {
     for found_peak in slice {
-        let normalised_mz = ((found_peak.mz - center) / resolution).round() * resolution;
-        match points.binary_search_by(|p| p.mz.total_cmp(&normalised_mz)) {
+        if !range.contains(&found_peak.mz) {
+            continue;
+        }
+        let normalised_mass =
+            ((found_peak.mz - center) / resolution).round() * resolution * charge as f64;
+        match points.binary_search_by(|p| p.mass.total_cmp(&normalised_mass)) {
             Ok(index) => {
                 points[index].count += 1;
                 points[index].total_intensity += found_peak.intensity as f64;
@@ -237,7 +232,7 @@ fn merge_stack(points: &mut Vec<Point>, slice: &[CentroidPeak], center: f64, res
                 points.insert(
                     index,
                     Point {
-                        mz: normalised_mz,
+                        mass: normalised_mass,
                         count: 1,
                         total_intensity: found_peak.intensity as f64,
                     },
@@ -247,56 +242,17 @@ fn merge_stack(points: &mut Vec<Point>, slice: &[CentroidPeak], center: f64, res
     }
 }
 
-fn merge_comparison_stack(
-    points: &mut Vec<ComparisonPoint>,
-    slice: &[CentroidPeak],
-    center: f64,
-    resolution: f64,
-    is_a: bool,
-) {
-    for found_peak in slice {
-        let normalised_mz = ((found_peak.mz - center) / resolution).round() * resolution;
-        match points.binary_search_by(|p| p.mz.total_cmp(&normalised_mz)) {
-            Ok(index) => {
-                if is_a {
-                    points[index].count_a += 1;
-                    points[index].total_intensity_a += found_peak.intensity as f64;
-                } else {
-                    points[index].count_b += 1;
-                    points[index].total_intensity_b += found_peak.intensity as f64;
-                }
-            }
-            Err(index) => {
-                points.insert(
-                    index,
-                    if is_a {
-                        ComparisonPoint {
-                            mz: normalised_mz,
-                            count_a: 1,
-                            count_b: 0,
-                            total_intensity_a: found_peak.intensity as f64,
-                            total_intensity_b: 0.0,
-                        }
-                    } else {
-                        ComparisonPoint {
-                            mz: normalised_mz,
-                            count_a: 0,
-                            count_b: 1,
-                            total_intensity_a: 0.0,
-                            total_intensity_b: found_peak.intensity as f64,
-                        }
-                    },
-                );
-            }
-        }
-    }
-}
+type ItemKey = (
+    FragmentKind,
+    Option<u8>,
+    Option<(AminoAcid, Vec<SimpleModification>)>,
+    Option<String>,
+);
 
 #[derive(Default, Debug)]
 struct Stack {
     start: Vec<Point>,
-    fragments: BTreeMap<(FragmentKind, Option<u8>), Vec<Point>>,
-    comparison: BTreeMap<(FragmentKind, ComparisonKey, ComparisonKey), Vec<ComparisonPoint>>,
+    fragments: BTreeMap<ItemKey, Vec<Point>>,
 }
 
 impl Stack {
@@ -304,83 +260,83 @@ impl Stack {
         write_stack(&base_path.join("start.csv"), &self.start);
         for (key, stack) in self.fragments.iter() {
             let path = match key {
-                (i, None) => base_path.join(format!("fragment_{i}.csv")),
-                (i, Some(d)) => base_path.join(format!("fragment_{i}_{d}.csv")),
+                (i, None, el, mode) => base_path.join(format!(
+                    "fragment_{i}_{}_{}.csv",
+                    el.as_ref().map_or("-".to_string(), |(aa, mods)| format!(
+                        "{aa}{}",
+                        mods.iter().map(|m| format!("[{m}]")).join("")
+                    )),
+                    mode.as_ref().map_or("-".to_string(), |e| e.to_string())
+                )),
+                (i, Some(d), el, mode) => base_path.join(format!(
+                    "fragment_{d}{i}_{}_{}.csv",
+                    el.as_ref().map_or("-".to_string(), |(aa, mods)| format!(
+                        "{aa}{}",
+                        mods.iter().map(|m| format!("[{m}]")).join("")
+                    )),
+                    mode.as_ref().map_or("-".to_string(), |e| e.to_string())
+                )),
             };
             write_stack(&path, stack);
         }
-        for ((fragment, a, b), stack) in self.comparison.iter() {
-            let a = format!("{}{}", a.0, a.1.iter().map(|m| format!("[{m}]")).join(""));
-            let b = format!("{}{}", b.0, b.1.iter().map(|m| format!("[{m}]")).join(""));
-            let path = base_path.join(format!("comparison_{fragment}_{a}_{b}.csv"));
-            write_comparison_stack(&path, stack);
+    }
+
+    fn merge(mut self, other: &Self) -> Self {
+        merge_points(&mut self.start, &other.start);
+        for (key, points) in &other.fragments {
+            let entry = self.fragments.entry(key.clone()).or_default();
+            merge_points(entry, points);
+        }
+        self
+    }
+}
+
+fn merge_points(points: &mut Vec<Point>, other: &[Point]) {
+    for point in other {
+        match points.binary_search_by(|p| p.mass.total_cmp(&point.mass)) {
+            Ok(index) => {
+                points[index].count += point.count;
+                points[index].total_intensity += point.total_intensity;
+            }
+            Err(index) => {
+                points.insert(index, point.clone());
+            }
         }
     }
 }
 
+impl rayon::iter::FromParallelIterator<Stack> for Stack {
+    fn from_par_iter<I>(par_iter: I) -> Self
+    where
+        I: rayon::prelude::IntoParallelIterator<Item = Stack>,
+    {
+        let par_iter = par_iter.into_par_iter();
+        par_iter.reduce(Stack::default, |acc, s| acc.merge(&s))
+    }
+}
+
 fn write_stack(path: &Path, points: &[Point]) {
-    let out_file = BufWriter::new(File::create(path).unwrap());
+    let out_file =
+        BufWriter::new(File::create(path).unwrap_or_else(|e| {
+            panic!("Could not create file: '{}'\n{e}", path.to_string_lossy())
+        }));
     rustyms::csv::write_csv(
         out_file,
         points.iter().map(|p| {
             [
-                ("mz".to_string(), p.mz.to_string()),
+                ("mass".to_string(), p.mass.to_string()),
                 ("count".to_string(), p.count.to_string()),
-                (
-                    "avg_intensity".to_string(),
-                    (p.total_intensity / p.count as f64).to_string(),
-                ),
+                ("total_intensity".to_string(), p.total_intensity.to_string()),
             ]
         }),
+        ',',
     )
     .unwrap();
 }
 
-fn write_comparison_stack(path: &Path, points: &[ComparisonPoint]) {
-    let out_file = BufWriter::new(File::create(path).unwrap());
-    rustyms::csv::write_csv(
-        out_file,
-        points.iter().map(|p| {
-            [
-                ("mz".to_string(), p.mz.to_string()),
-                ("count_a".to_string(), p.count_a.to_string()),
-                ("count_b".to_string(), p.count_b.to_string()),
-                (
-                    "avg_intensity_a".to_string(),
-                    if p.count_a == 0 {
-                        0.0
-                    } else {
-                        p.total_intensity_a / p.count_a as f64
-                    }
-                    .to_string(),
-                ),
-                (
-                    "avg_intensity_b".to_string(),
-                    if p.count_b == 0 {
-                        0.0
-                    } else {
-                        p.total_intensity_b / p.count_b as f64
-                    }
-                    .to_string(),
-                ),
-            ]
-        }),
-    )
-    .unwrap();
-}
-
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 struct Point {
-    mz: f64,
+    mass: f64,
     count: usize,
     total_intensity: f64,
-}
-
-#[derive(Debug)]
-struct ComparisonPoint {
-    mz: f64,
-    count_a: usize,
-    count_b: usize,
-    total_intensity_a: f64,
-    total_intensity_b: f64,
 }

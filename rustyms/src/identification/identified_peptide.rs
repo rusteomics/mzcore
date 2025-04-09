@@ -25,7 +25,7 @@ use crate::{
     Peptidoform, PeptidoformIon,
 };
 
-use super::CompoundPeptidoformIon;
+use super::{BasicCSVData, CompoundPeptidoformIon};
 
 /// A peptide that is identified by a de novo or database matching program
 #[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
@@ -42,6 +42,8 @@ pub struct IdentifiedPeptide {
 #[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
 #[expect(clippy::upper_case_acronyms)]
 pub enum MetaData {
+    /// A basic csv format
+    BasicCSV(BasicCSVData),
     /// DeepNovo/PointNovo/PGPointNovo metadata
     DeepNovoFamily(DeepNovoFamilyData),
     /// Fasta metadata
@@ -188,6 +190,9 @@ impl IdentifiedPeptide {
                     )))
                 }
             }
+            MetaData::BasicCSV(BasicCSVData { sequence, .. }) => Some(
+                ReturnedPeptide::CompoundPeptidoform(Cow::Borrowed(sequence)),
+            ),
             MetaData::MSFragger(MSFraggerData { peptide, .. })
             | MetaData::SpectrumSequenceList(SpectrumSequenceListData { peptide, .. })
             | MetaData::MaxQuant(MaxQuantData { peptide, .. })
@@ -222,6 +227,7 @@ impl IdentifiedPeptide {
     /// Get the name of the format
     pub const fn format_name(&self) -> &'static str {
         match &self.metadata {
+            MetaData::BasicCSV(_) => "CSV",
             MetaData::SpectrumSequenceList(_) => "SpectrumSequenceList",
             MetaData::DeepNovoFamily(_) => "DeepNovo Family",
             MetaData::Fasta(_) => "Fasta",
@@ -248,6 +254,7 @@ impl IdentifiedPeptide {
                 version.to_string()
             }
             MetaData::DeepNovoFamily(DeepNovoFamilyData { version, .. }) => version.to_string(),
+            MetaData::BasicCSV(BasicCSVData { version, .. }) => version.to_string(),
             MetaData::Fasta(_) => "Fasta".to_string(),
             MetaData::InstaNovo(InstaNovoData { version, .. }) => version.to_string(),
             MetaData::MaxQuant(MaxQuantData { version, .. }) => version.to_string(),
@@ -284,7 +291,10 @@ impl IdentifiedPeptide {
             MetaData::Opair(OpairData { scan, .. })
             | MetaData::NovoB(NovoBData { scan, .. })
             | MetaData::SpectrumSequenceList(SpectrumSequenceListData { scan, .. })
-            | MetaData::InstaNovo(InstaNovoData { scan, .. }) => scan.to_string(),
+            | MetaData::InstaNovo(InstaNovoData { scan, .. })
+            | MetaData::BasicCSV(BasicCSVData {
+                scan_index: scan, ..
+            }) => scan.to_string(),
             MetaData::Sage(SageData { id, .. }) | MetaData::MZTab(MZTabData { id, .. }) => {
                 id.to_string()
             }
@@ -346,7 +356,8 @@ impl IdentifiedPeptide {
             | MetaData::PLGS(PLGSData { precursor_z: z, .. })
             | MetaData::PLink(PLinkData { z, .. })
             | MetaData::InstaNovo(InstaNovoData { z, .. })
-            | MetaData::MZTab(MZTabData { z, .. }) => Some(*z),
+            | MetaData::MZTab(MZTabData { z, .. })
+            | MetaData::BasicCSV(BasicCSVData { z, .. }) => Some(*z),
             MetaData::Peaks(PeaksData { z, .. })
             | MetaData::DeepNovoFamily(DeepNovoFamilyData { z, .. }) => *z,
             MetaData::SpectrumSequenceList(SpectrumSequenceListData { z, .. }) => {
@@ -359,8 +370,9 @@ impl IdentifiedPeptide {
     /// Which fragmentation mode was used, if known
     pub fn mode(&self) -> Option<&str> {
         match &self.metadata {
-            MetaData::Peaks(PeaksData { mode, .. }) => mode.as_deref(),
-            MetaData::MaxQuant(MaxQuantData { fragmentation, .. }) => fragmentation.as_deref(),
+            MetaData::Peaks(PeaksData { mode, .. })
+            | MetaData::BasicCSV(BasicCSVData { mode, .. })
+            | MetaData::MaxQuant(MaxQuantData { mode, .. }) => mode.as_deref(),
             _ => None,
         }
     }
@@ -385,7 +397,8 @@ impl IdentifiedPeptide {
             | MetaData::NovoB(_)
             | MetaData::PowerNovo(_)
             | MetaData::PepNet(_)
-            | MetaData::PLink(_) => None,
+            | MetaData::PLink(_)
+            | MetaData::BasicCSV(_) => None,
         }
     }
 
@@ -427,9 +440,12 @@ impl IdentifiedPeptide {
 
             MetaData::Opair(OpairData { raw_file, scan, .. })
             | MetaData::SpectrumSequenceList(SpectrumSequenceListData { raw_file, scan, .. })
-            | MetaData::InstaNovo(InstaNovoData { raw_file, scan, .. }) => {
-                SpectrumIds::FileKnown(vec![(raw_file.clone(), vec![SpectrumId::Index(*scan)])])
-            }
+            | MetaData::InstaNovo(InstaNovoData { raw_file, scan, .. })
+            | MetaData::BasicCSV(BasicCSVData {
+                raw_file,
+                scan_index: scan,
+                ..
+            }) => SpectrumIds::FileKnown(vec![(raw_file.clone(), vec![SpectrumId::Index(*scan)])]),
 
             MetaData::PowerNovo(PowerNovoData { raw_file, scan, .. }) => {
                 scan.as_ref().map_or(SpectrumIds::None, |scan| {
@@ -519,7 +535,8 @@ impl IdentifiedPeptide {
             MetaData::Fasta(_)
             | MetaData::SpectrumSequenceList(_)
             | MetaData::PowerNovo(_)
-            | MetaData::PepNet(_) => None,
+            | MetaData::PepNet(_)
+            | MetaData::BasicCSV(_) => None,
         }
     }
 
@@ -548,7 +565,8 @@ impl IdentifiedPeptide {
             MetaData::Fasta(_)
             | MetaData::PowerNovo(_)
             | MetaData::SpectrumSequenceList(_)
-            | MetaData::PepNet(_) => None,
+            | MetaData::PepNet(_)
+            | MetaData::BasicCSV(_) => None,
         }
     }
 
@@ -609,7 +627,8 @@ impl IdentifiedPeptide {
             | MetaData::InstaNovo(_)
             | MetaData::PowerNovo(_)
             | MetaData::SpectrumSequenceList(_)
-            | MetaData::PepNet(_) => None,
+            | MetaData::PepNet(_)
+            | MetaData::BasicCSV(_) => None,
         }
     }
 
@@ -631,7 +650,8 @@ impl IdentifiedPeptide {
             | MetaData::DeepNovoFamily(_)
             | MetaData::SpectrumSequenceList(_)
             | MetaData::InstaNovo(_)
-            | MetaData::PepNet(_) => None,
+            | MetaData::PepNet(_)
+            | MetaData::BasicCSV(_) => None,
         }
     }
 
@@ -667,7 +687,8 @@ impl IdentifiedPeptide {
             | MetaData::Fasta(_)
             | MetaData::PowerNovo(_)
             | MetaData::SpectrumSequenceList(_)
-            | MetaData::PepNet(_) => None,
+            | MetaData::PepNet(_)
+            | MetaData::BasicCSV(_) => None,
         }
     }
 
@@ -760,6 +781,7 @@ where
     fn parse(
         source: &Self::Source,
         custom_database: Option<&CustomDatabase>,
+        keep_all_columns: bool,
     ) -> Result<(Self, &'static Self::Format), CustomError>;
 
     /// Parse a single identified peptide with the given format
@@ -769,6 +791,7 @@ where
         source: &Self::Source,
         format: &Self::Format,
         custom_database: Option<&CustomDatabase>,
+        keep_all_columns: bool,
     ) -> Result<Self, CustomError>;
 
     /// Parse a source of multiple peptides automatically determining the format to use by the first item
@@ -777,11 +800,13 @@ where
     fn parse_many<I: Iterator<Item = Result<Self::Source, CustomError>>>(
         iter: I,
         custom_database: Option<&CustomDatabase>,
+        keep_all_columns: bool,
     ) -> IdentifiedPeptideIter<Self, I> {
         IdentifiedPeptideIter {
             iter: Box::new(iter),
             format: None,
             custom_database,
+            keep_all_columns,
             peek: None,
         }
     }
@@ -792,6 +817,7 @@ where
     fn parse_file(
         path: impl AsRef<std::path::Path>,
         custom_database: Option<&CustomDatabase>,
+        keep_all_columns: bool,
     ) -> Result<BoxedIdentifiedPeptideIter<Self>, CustomError>;
 
     /// Parse a reader with identified peptides.
@@ -800,6 +826,7 @@ where
     fn parse_reader<'a>(
         reader: impl std::io::Read + 'a,
         custom_database: Option<&'a CustomDatabase>,
+        keep_all_columns: bool,
     ) -> Result<BoxedIdentifiedPeptideIter<'a, Self>, CustomError>;
 
     /// Allow post processing of the peptide
@@ -834,6 +861,7 @@ pub struct IdentifiedPeptideIter<
     iter: Box<I>,
     format: Option<R::Format>,
     custom_database: Option<&'lifetime CustomDatabase>,
+    keep_all_columns: bool,
     peek: Option<Result<R, CustomError>>,
 }
 
@@ -849,14 +877,19 @@ where
         }
 
         let peek = if let Some(format) = &self.format {
-            self.iter
-                .next()
-                .map(|source| R::parse_specific(&source?, format, self.custom_database))
+            self.iter.next().map(|source| {
+                R::parse_specific(
+                    &source?,
+                    format,
+                    self.custom_database,
+                    self.keep_all_columns,
+                )
+            })
         } else {
             match self
                 .iter
                 .next()
-                .map(|source| R::parse(&source?, self.custom_database))
+                .map(|source| R::parse(&source?, self.custom_database, self.keep_all_columns))
             {
                 None => None,
                 Some(Ok((pep, format))) => {
@@ -883,14 +916,19 @@ where
         }
 
         if let Some(format) = &self.format {
-            self.iter
-                .next()
-                .map(|source| R::parse_specific(&source?, format, self.custom_database))
+            self.iter.next().map(|source| {
+                R::parse_specific(
+                    &source?,
+                    format,
+                    self.custom_database,
+                    self.keep_all_columns,
+                )
+            })
         } else {
             match self
                 .iter
                 .next()
-                .map(|source| R::parse(&source?, self.custom_database))
+                .map(|source| R::parse(&source?, self.custom_database, self.keep_all_columns))
             {
                 None => None,
                 Some(Ok((pep, format))) => {
@@ -937,7 +975,7 @@ where
     T::Version: std::fmt::Display,
 {
     let mut number = 0;
-    for peptide in T::parse_reader(reader, custom_database).map_err(|e| e.to_string())? {
+    for peptide in T::parse_reader(reader, custom_database, false).map_err(|e| e.to_string())? {
         let peptide: IdentifiedPeptide = peptide.map_err(|e| e.to_string())?.into();
         number += 1;
 

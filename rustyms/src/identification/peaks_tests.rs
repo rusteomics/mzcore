@@ -225,7 +225,9 @@ fn peaks_db_protein_peptide() {
 
 #[test]
 fn full_peaks_file() {
-    for pep in PeaksData::parse_file("data/200305_HER_test_04_DENOVO_excerpt.csv", None).unwrap() {
+    for pep in
+        PeaksData::parse_file("data/200305_HER_test_04_DENOVO_excerpt.csv", None, false).unwrap()
+    {
         if let Err(e) = pep {
             panic!("{}", e);
         }

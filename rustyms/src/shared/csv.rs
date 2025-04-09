@@ -7,6 +7,7 @@ use std::{
     io::{BufRead, BufReader, Write},
     ops::Range,
     str::FromStr,
+    sync::Arc,
 };
 
 use flate2::bufread::GzDecoder;
@@ -23,7 +24,7 @@ use crate::{
 pub struct CsvLine {
     line_index: usize,
     line: String,
-    fields: Vec<(String, Range<usize>)>,
+    fields: Vec<(Arc<String>, Range<usize>)>,
 }
 
 #[allow(dead_code)]
@@ -39,6 +40,12 @@ impl CsvLine {
     /// Get the column headers
     pub fn headers(&self) -> impl Iterator<Item = &str> {
         self.fields.iter().map(|f| f.0.as_str())
+    }
+    /// Get the column values
+    pub fn values(&self) -> impl Iterator<Item = (Arc<String>, &str)> {
+        self.fields
+            .iter()
+            .map(|f| (f.0.clone(), &self.line[f.1.clone()]))
     }
     /// Get the number of columns
     pub fn number_of_columns(&self) -> usize {
@@ -76,7 +83,7 @@ impl CsvLine {
     pub fn index_column(&self, name: &str) -> Result<(&str, &Range<usize>), CustomError> {
         self.fields
             .iter()
-            .find(|f| f.0 == name)
+            .find(|f| *f.0 == *name)
             .map(|f| (&self.line[f.1.clone()], &f.1))
             .ok_or_else(|| {
                 CustomError::error(
@@ -207,7 +214,7 @@ pub fn parse_csv_raw<T: std::io::Read>(
         let _ = lines.next();
     }
     let column_headers = if let Some(header) = provided_header {
-        header
+        header.into_iter().map(Arc::new).collect()
     } else {
         let (_, column_headers) = lines.next().ok_or_else(|| {
             CustomError::error("Could parse csv file", "The file is empty", Context::None)
@@ -216,7 +223,7 @@ pub fn parse_csv_raw<T: std::io::Read>(
             .map_err(|err| CustomError::error("Could not read header line", err, Context::None))?;
         csv_separate(&header_line, separator)?
             .into_iter()
-            .map(|r| header_line[r].to_lowercase())
+            .map(|r| Arc::new(header_line[r].to_lowercase()))
             .collect()
     };
 
@@ -230,7 +237,7 @@ pub fn parse_csv_raw<T: std::io::Read>(
 /// An iterator returning CSV lines
 pub struct CsvLineIter<T: std::io::Read> {
     lines: std::iter::Peekable<std::iter::Enumerate<std::io::Lines<BufReader<T>>>>,
-    header: Vec<String>,
+    header: Vec<Arc<String>>,
     separator: u8,
 }
 
@@ -379,38 +386,39 @@ impl std::fmt::Display for CsvLine {
 }
 
 /// Write a CSV file. It fill empty columns with empty space, ensures the correct amount of columns
-/// on each line, and auto wraps any comma (,) containing values and headers in apostrophes (").
+/// on each line, and auto wraps any separator containing values and headers in apostrophes (").
 /// # Errors
 /// If the `Write` implementation errors.
 #[allow(dead_code)]
 pub fn write_csv(
     mut f: impl Write,
     data: impl IntoIterator<Item = impl IntoIterator<Item = (String, String)>>,
+    separator: char,
 ) -> Result<(), std::io::Error> {
     let mut order: Vec<String> = Vec::new();
     let sorted: Vec<Vec<String>> = data
         .into_iter()
         .map(|row| {
             let mut new_row = vec![String::new(); order.len()];
-            for (column, mut value) in row {
-                if value.contains(',') {
+            for (mut column, mut value) in row {
+                if value.contains(separator) {
                     value = format!("\"{value}\"");
                 }
                 if let Some(index) = order.iter().position(|i| *i == column) {
                     new_row[index] = value;
                 } else {
-                    if column.contains(',') {
-                        order.push(format!("\"{column}\""));
-                    } else {
-                        order.push(column.to_string());
+                    if column.contains(separator) {
+                        column = format!("\"{column}\"");
                     }
+                    order.push(column);
                     new_row.push(value);
                 }
             }
             new_row
         })
         .collect_vec();
-    writeln!(f, "{}", order.iter().join(","))?;
+    let separator = separator.to_string();
+    writeln!(f, "{}", order.iter().join(&separator))?;
     for row in sorted {
         let len = order.len() - row.len();
         writeln!(
@@ -418,7 +426,7 @@ pub fn write_csv(
             "{}",
             row.into_iter()
                 .chain(std::iter::repeat(String::new()).take(len))
-                .join(",")
+                .join(&separator)
         )?;
     }
     Ok(())

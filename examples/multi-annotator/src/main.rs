@@ -3,7 +3,7 @@ use std::{
     collections::BTreeMap,
     fs::File,
     io::{BufReader, BufWriter},
-    sync::atomic::AtomicUsize,
+    sync::{atomic::AtomicUsize, Arc},
 };
 
 use clap::Parser;
@@ -13,6 +13,7 @@ use itertools::Itertools;
 use mzdata::io::{MZFileReader, SpectrumSource};
 use rayon::prelude::*;
 use rustyms::{
+    identification::IdentifiedPeptideSource,
     model::MatchingParameters,
     spectrum::{Score, Scores},
     system::{e, usize::Charge},
@@ -22,15 +23,15 @@ use spectrum::{AnnotatedPeak, PeakSpectrum};
 
 #[derive(Parser)]
 struct Cli {
-    /// The input csv file, should have the following columns: 'path', 'scan_index', 'z', 'sequence', and can have 'fragmentation' (etd/td_etd/ethcd/etcad/eacid/ead/hcd/cid/all/none, defaults to the global model)
+    /// The input csv file, should have the following columns: 'raw_file' (full path), 'scan_index', 'z', 'sequence', and can have 'mode' (etd/td_etd/ethcd/etcad/eacid/ead/hcd/cid/all/none, defaults to the global model)
     #[arg(short, long)]
     in_path: String,
     /// The output path to output the resulting csv file
     #[arg(short, long)]
     out_path: String,
-    /// Global model, will be overruled by line specific models (etd/td_etd/ethcd/etcad/eacid/ead/hcd/cid/all/none)
+    /// Global mode, will be overruled by line specific modes (etd/td_etd/ethcd/etcad/eacid/ead/hcd/cid/all/none)
     #[arg(long, default_value_t = String::from("all"))]
-    model: String,
+    mode: String,
     /// Turns on reporting of glycan Y-ions in a charge independent manner
     #[arg(long)]
     charge_independent_Y: bool,
@@ -61,7 +62,7 @@ fn select_model(text: &str, default: &'static FragmentationModel) -> &'static Fr
 
 fn main() {
     let args = Cli::parse();
-    let model = select_model(&args.model, FragmentationModel::all());
+    let model = select_model(&args.mode, FragmentationModel::all());
     let parameters = MatchingParameters::default();
     let path = ProjectDirs::from("com", "com.snijderlab.annotator", "")
         .unwrap()
@@ -72,15 +73,14 @@ fn main() {
     } else {
         Some(serde_json::from_reader(BufReader::new(File::open(path).unwrap())).unwrap())
     };
-    let files = rustyms::csv::parse_csv(args.in_path, b',', None)
-        .unwrap()
-        .filter_map(|a| a.ok())
-        .into_group_map_by(|l| {
-            l.index_column("path")
-                .expect("No column `path`")
-                .0
-                .to_string()
-        });
+    let files = rustyms::identification::BasicCSVData::parse_file(
+        args.in_path,
+        custom_database.as_ref(),
+        true,
+    )
+    .expect("Invalid input file")
+    .filter_map(|a| a.ok())
+    .into_group_map_by(|l| l.raw_file.clone());
     let out_file = BufWriter::new(File::create(args.out_path).unwrap());
     let total_peptides = files.values().map(|f| f.len()).sum::<usize>();
     let peptides_counter = AtomicUsize::default();
@@ -93,27 +93,13 @@ fn main() {
         let rows = lines
             .iter()
             .filter_map(|line| {
-                let scan_index = line
-                    .index_column("scan_index")
-                    .expect("No column `scan_index`")
-                    .0
-                    .parse::<usize>()
-                    .unwrap();
-                let z = line.index_column("z").expect("No column `z`").0.parse::<usize>().unwrap();
-                let peptide = CompoundPeptidoformIon::pro_forma(
-                    line.index_column("sequence").expect("No column `sequence`").0,
-                    custom_database.as_ref(),
-                )
-                .unwrap();
-                let selected_model = line
-                    .index_column("fragmentation")
-                    .map_or_else(|_| model, |(text, _)| select_model(text, model));
-                if let Some(spectrum) = file.get_spectrum_by_index(scan_index)
+                let selected_model = line.mode.as_ref()
+                    .map_or(model, |text| select_model(text, model));
+                if let Some(spectrum) = file.get_spectrum_by_index(line.scan_index)
                 {
-                    let fragments =
-                        peptide.generate_theoretical_fragments(Charge::new::<e>(z), selected_model);
+                    let fragments = line.sequence.generate_theoretical_fragments(line.z, selected_model);
                     let annotated = spectrum.annotate(
-                        peptide,
+                        line.sequence.clone(),
                         &fragments,
                         &parameters,
                         MassMode::Monoisotopic,
@@ -122,7 +108,7 @@ fn main() {
                         .scores(&fragments, &parameters, MassMode::Monoisotopic)
                         .1[0][0];
 
-                    let mut row: BTreeMap<_, _> = line.into();
+                    let mut row: BTreeMap<Arc<String>, String> = line.full_csv_line().unwrap_or(&[]).into_iter().cloned().collect();
 
                     if args.charge_independent_Y {
                         let unique_Y = fragments
@@ -149,13 +135,13 @@ fn main() {
                             .unique()
                             .count();
                         row.insert(
-                            "ion_Y_charge_independent".to_string(),
+                            Arc::new("ion_Y_charge_independent".to_string()),
                             format!("{}", (unique_Y_found as f64 / unique_Y as f64),),
                         );
                     }
                     if args.report_intensity {
                         row.insert(
-                            "intensity_combined".to_string(),
+                            Arc::new("intensity_combined".to_string()),
                             match scores.score {
                                 Score::Position { intensity, .. }
                                 | Score::UniqueFormulas { intensity, .. } => {
@@ -164,7 +150,7 @@ fn main() {
                             },
                         );
                         row.insert(
-                            "total_ion_current".to_string(),
+                            Arc::new("total_ion_current".to_string()),
                             match scores.score {
                                 Score::Position { intensity, .. }
                                 | Score::UniqueFormulas { intensity, .. } => {
@@ -173,7 +159,7 @@ fn main() {
                             },
                         );
                         for (ion, score) in &scores.ions {
-                            row.insert(format!("intensity_{ion}"), match score {
+                            row.insert(Arc::new(format!("intensity_{ion}")), match score {
                                 Score::Position { intensity, .. }
                                 | Score::UniqueFormulas { intensity, .. } => {
                                     intensity.fraction().to_string()
@@ -183,7 +169,7 @@ fn main() {
                     }
                     if args.report_IL_satellite_coverage {
                         row.insert(
-                            "IL_satellite_coverage".to_string(),
+                            Arc::new("IL_satellite_coverage".to_string()),
                             annotated.peptide.clone().singular_peptide().map_or(
                                 String::new(),
                                 |p| {
@@ -212,7 +198,7 @@ fn main() {
                         );
                     }
                     row.insert(
-                        "ion_combined".to_string(),
+                        Arc::new("ion_combined".to_string()),
                         match scores.score {
                             Score::Position {
                                 theoretical_positions,
@@ -234,11 +220,11 @@ fn main() {
                                 unique_formulas, ..
                             } => unique_formulas,
                         };
-                        row.insert(format!("ion_{ion}"), format!("{}", recovered.fraction(),));
+                        row.insert(Arc::new(format!("ion_{ion}")), format!("{}", recovered.fraction(),));
                     }
                     Some(row)
                 } else {
-                    eprintln!("Could not find scan index {scan_index} for file {file_name}");
+                    eprintln!("Could not find scan index {} for file {}", line.scan_index, file_name.to_string_lossy());
                     None
                 }
             })
@@ -246,11 +232,19 @@ fn main() {
         println!(
             "Raw files: {}/{}, Peptides: {}/{total_peptides}",
             raw_file_counter.fetch_add(1, std::sync::atomic::Ordering::Relaxed) + 1,
+            files.len(),
             peptides_counter.fetch_add(lines.len(), std::sync::atomic::Ordering::Relaxed) + lines.len(),
-            files.len()
         );
         rows.into_iter().map(|row| row.into_iter().collect_vec()).collect_vec()
     }).collect();
 
-    rustyms::csv::write_csv(out_file, out_data).unwrap();
+    rustyms::csv::write_csv(
+        out_file,
+        out_data.into_iter().map(|r| {
+            r.into_iter()
+                .map(|(k, v)| (std::sync::Arc::<std::string::String>::unwrap_or_clone(k), v))
+        }),
+        ',',
+    )
+    .unwrap();
 }

@@ -39,7 +39,8 @@ fn main() {
         if let Ok(s) = std::str::from_utf8(data) {
             let csv = rustyms::csv::parse_csv_raw(BufReader::new(StringReader::new(s)), b',', None)
                 .unwrap();
-            let _: Vec<_> = rustyms::identification::PeaksData::parse_many(csv, None).collect();
+            let _: Vec<_> =
+                rustyms::identification::PeaksData::parse_many(csv, None, false).collect();
         }
     });
 }

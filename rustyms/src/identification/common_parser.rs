@@ -32,17 +32,19 @@ macro_rules! format_family {
             $($(#[doc = $rdoc])? pub $rname: $rtyp,)*
             $($(#[doc = $odoc])? pub $oname: Option<$otyp>,)*
             /// The version used to read in the data
-            pub version: $version
+            pub version: $version,
+            /// The stored columns if kept
+            columns: Option<Vec<(std::sync::Arc<String>, String)>>,
         }
 
         impl IdentifiedPeptideSource for $data {
             type Source = CsvLine;
             type Format = $format;
             type Version = $version;
-            fn parse(source: &Self::Source, custom_database: Option<&crate::ontologies::CustomDatabase>) -> Result<(Self, &'static Self::Format), CustomError> {
+            fn parse(source: &Self::Source, custom_database: Option<&crate::ontologies::CustomDatabase>, keep_all_columns: bool) -> Result<(Self, &'static Self::Format), CustomError> {
                 let mut errors = Vec::new();
                 for format in $versions {
-                    match Self::parse_specific(source, format, custom_database) {
+                    match Self::parse_specific(source, format, custom_database, keep_all_columns) {
                         Ok(peptide) => return Ok((peptide, format)),
                         Err(err) => errors.push(err.with_version(&format.version)),
                     }
@@ -56,10 +58,11 @@ macro_rules! format_family {
             fn parse_file(
                 path: impl AsRef<std::path::Path>,
                 custom_database: Option<&crate::ontologies::CustomDatabase>,
+                keep_all_columns: bool,
             ) -> Result<BoxedIdentifiedPeptideIter<Self>, CustomError> {
                 parse_csv(path, $separator, $header).and_then(|lines| {
                     let mut i = Self::parse_many::<Box<dyn Iterator<Item = Result<Self::Source, CustomError>>>>(
-                        Box::new(lines), custom_database);
+                        Box::new(lines), custom_database, keep_all_columns);
                     if let Some(Err(e)) = i.peek() {
                         Err(e.clone())
                     } else {
@@ -70,10 +73,11 @@ macro_rules! format_family {
             fn parse_reader<'a>(
                 reader: impl std::io::Read + 'a,
                 custom_database: Option<&'a crate::ontologies::CustomDatabase>,
+                keep_all_columns: bool,
             ) -> Result<BoxedIdentifiedPeptideIter<'a, Self>, CustomError> {
                 crate::csv::parse_csv_raw(reader, $separator, $header).and_then(move |lines| {
                     let mut i = Self::parse_many::<Box<dyn Iterator<Item = Result<Self::Source, CustomError>>>>(
-                        Box::new(lines), custom_database);
+                        Box::new(lines), custom_database, keep_all_columns);
                     if let Some(Err(e)) = i.peek() {
                         Err(e.clone())
                     } else {
@@ -82,18 +86,26 @@ macro_rules! format_family {
                 })
             }
             #[allow(clippy::redundant_closure_call)] // Macro magic
-            fn parse_specific(source: &Self::Source, format: &$format, custom_database: Option<&crate::ontologies::CustomDatabase>) -> Result<Self, CustomError> {
+            fn parse_specific(source: &Self::Source, format: &$format, custom_database: Option<&crate::ontologies::CustomDatabase>, keep_all_columns: bool) -> Result<Self, CustomError> {
                 #[allow(unused_imports)]
                 use crate::helper_functions::InvertResult;
 
                 let parsed = Self {
                     $($rname: $rf(source.column(format.$rname)?, custom_database)?,)*
                     $($oname: format.$oname.open_column(source).and_then(|l: Option<Location>| l.map(|value: Location| $of(value, custom_database)).invert())?,)*
-                    version: format.version.clone()
+                    version: format.version.clone(),
+                    columns: keep_all_columns.then(|| source.values().map(|(h, v)| (h, v.to_string())).collect()),
                 };
                 Self::post_process(source, parsed, custom_database)
             }
             $($post_process)?
+        }
+
+        impl $data {
+            /// Get all original columns from the CSV file, only available if the file was opened with the option 'keep_all_columns' turned on.
+            pub fn full_csv_line(&self) -> Option<&[(std::sync::Arc<String>, String)]> {
+                self.columns.as_deref()
+            }
         }
     };
 }

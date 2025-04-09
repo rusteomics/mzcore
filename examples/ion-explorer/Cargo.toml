@@ -16,6 +16,7 @@ rustyms = { path = "../../rustyms", default-features = false, features = [
     "identification",
 ] }
 serde_json = { workspace = true }
+rayon = {workspace = true}
 
 [lints]
 workspace = true
