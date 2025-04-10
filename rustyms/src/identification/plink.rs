@@ -133,7 +133,7 @@ format_family!(
         is_filter_in: bool, |location: Location, _| Ok(location.as_str() == "1");
     }
     optional {
-        scan: usize, |location: Location, _| location.parse::<usize>(NUMBER_ERROR);
+        scan_number: usize, |location: Location, _| location.parse::<usize>(NUMBER_ERROR);
         raw_file: PathBuf, |location: Location, _| Ok(Some(location.get_string().into()));
     }
 
@@ -262,7 +262,7 @@ format_family!(
             .captures(&parsed.title)
         {
             parsed.raw_file = Some(m.get(1).unwrap().as_str().into());
-            parsed.scan = Some(m.get(2).unwrap().as_str().parse::<usize>().unwrap());
+            parsed.scan_number = Some(m.get(2).unwrap().as_str().parse::<usize>().unwrap());
         }
         Ok(parsed)
     }
@@ -452,7 +452,7 @@ pub const V2_3: PLinkFormat = PLinkFormat {
     raw_file_id: "fileid",
     is_complex_satisfied: "iscomplexsatisfied",
     is_filter_in: "isfilterin",
-    scan: OptionalColumn::NotAvailable,
+    scan_number: OptionalColumn::NotAvailable,
     raw_file: OptionalColumn::NotAvailable,
 };
 

@@ -276,9 +276,12 @@ impl IdentifiedPeptide {
     pub fn id(&self) -> String {
         match &self.metadata {
             MetaData::Peaks(PeaksData {
-                id, scan, feature, ..
+                id,
+                scan_number,
+                feature,
+                ..
             }) => id.map_or(
-                scan.as_ref().map_or(
+                scan_number.as_ref().map_or(
                     feature
                         .as_ref()
                         .map_or("-".to_string(), ToString::to_string),
@@ -287,11 +290,17 @@ impl IdentifiedPeptide {
                 |i| i.to_string(),
             ),
             MetaData::DeepNovoFamily(DeepNovoFamilyData { scan, .. }) => scan.iter().join(";"),
-            MetaData::Novor(NovorData { id, scan, .. }) => id.unwrap_or(*scan).to_string(),
-            MetaData::Opair(OpairData { scan, .. })
+            MetaData::Novor(NovorData {
+                id, scan_number, ..
+            }) => id.unwrap_or(*scan_number).to_string(),
+            MetaData::Opair(OpairData {
+                scan_number: scan, ..
+            })
             | MetaData::NovoB(NovoBData { scan, .. })
             | MetaData::SpectrumSequenceList(SpectrumSequenceListData { scan, .. })
-            | MetaData::InstaNovo(InstaNovoData { scan, .. })
+            | MetaData::InstaNovo(InstaNovoData {
+                scan_number: scan, ..
+            })
             | MetaData::BasicCSV(BasicCSVData {
                 scan_index: scan, ..
             }) => scan.to_string(),
@@ -301,9 +310,9 @@ impl IdentifiedPeptide {
             MetaData::Fasta(f) => f.identifier().accession().to_string(),
             MetaData::MSFragger(MSFraggerData { scan, .. }) => scan.to_string(),
             MetaData::PLink(PLinkData { order, .. }) => order.to_string(),
-            MetaData::MaxQuant(MaxQuantData { id, scan, .. }) => {
-                id.map_or_else(|| scan.iter().join(";"), |id| id.to_string())
-            }
+            MetaData::MaxQuant(MaxQuantData {
+                id, scan_number, ..
+            }) => id.map_or_else(|| scan_number.iter().join(";"), |id| id.to_string()),
             MetaData::PowerNovo(PowerNovoData { scan, .. }) => {
                 scan.as_ref().map_or("-".to_string(), ToString::to_string)
             }
@@ -405,30 +414,39 @@ impl IdentifiedPeptide {
     /// The scans per rawfile that are at the basis for this identified peptide, if the rawfile is unknown there will be one
     pub fn scans(&self) -> SpectrumIds {
         match &self.metadata {
-            MetaData::Peaks(PeaksData { raw_file, scan, .. }) => {
-                scan.as_ref().map_or(SpectrumIds::None, |scan| {
+            MetaData::Peaks(PeaksData {
+                raw_file,
+                scan_number,
+                ..
+            }) => scan_number
+                .as_ref()
+                .map_or(SpectrumIds::None, |scan_number| {
                     raw_file.clone().map_or_else(
                         || {
                             SpectrumIds::FileNotKnown(
-                                scan.iter()
+                                scan_number
+                                    .iter()
                                     .flat_map(|s| s.scans.clone())
-                                    .map(SpectrumId::Index)
+                                    .map(SpectrumId::Number)
                                     .collect(),
                             )
                         },
                         |raw_file| {
                             SpectrumIds::FileKnown(vec![(
                                 raw_file,
-                                scan.iter()
+                                scan_number
+                                    .iter()
                                     .flat_map(|s| s.scans.clone())
-                                    .map(SpectrumId::Index)
+                                    .map(SpectrumId::Number)
                                     .collect(),
                             )])
                         },
                     )
-                })
+                }),
+            MetaData::Novor(NovorData { scan_number, .. }) => {
+                SpectrumIds::FileNotKnown(vec![SpectrumId::Number(*scan_number)])
             }
-            MetaData::Novor(NovorData { scan, .. }) | MetaData::NovoB(NovoBData { scan, .. }) => {
+            MetaData::NovoB(NovoBData { scan, .. }) => {
                 SpectrumIds::FileNotKnown(vec![SpectrumId::Index(*scan)])
             }
             MetaData::DeepNovoFamily(DeepNovoFamilyData { scan, .. }) => SpectrumIds::FileNotKnown(
@@ -438,14 +456,32 @@ impl IdentifiedPeptide {
                     .collect(),
             ),
 
-            MetaData::Opair(OpairData { raw_file, scan, .. })
-            | MetaData::SpectrumSequenceList(SpectrumSequenceListData { raw_file, scan, .. })
-            | MetaData::InstaNovo(InstaNovoData { raw_file, scan, .. })
+            MetaData::Opair(OpairData {
+                raw_file,
+                scan_number,
+                ..
+            })
+            | MetaData::InstaNovo(InstaNovoData {
+                raw_file,
+                scan_number,
+                ..
+            }) => SpectrumIds::FileKnown(vec![(
+                raw_file.clone(),
+                vec![SpectrumId::Number(*scan_number)],
+            )]),
+            MetaData::SpectrumSequenceList(SpectrumSequenceListData {
+                raw_file,
+                scan: scan_index,
+                ..
+            })
             | MetaData::BasicCSV(BasicCSVData {
                 raw_file,
-                scan_index: scan,
+                scan_index,
                 ..
-            }) => SpectrumIds::FileKnown(vec![(raw_file.clone(), vec![SpectrumId::Index(*scan)])]),
+            }) => SpectrumIds::FileKnown(vec![(
+                raw_file.clone(),
+                vec![SpectrumId::Index(*scan_index)],
+            )]),
 
             MetaData::PowerNovo(PowerNovoData { raw_file, scan, .. }) => {
                 scan.as_ref().map_or(SpectrumIds::None, |scan| {
@@ -458,21 +494,31 @@ impl IdentifiedPeptide {
                 })
             }
 
-            MetaData::MaxQuant(MaxQuantData { raw_file, scan, .. }) => {
-                raw_file.as_ref().map_or_else(
-                    || {
-                        SpectrumIds::FileNotKnown(
-                            scan.iter().copied().map(SpectrumId::Index).collect(),
-                        )
-                    },
-                    |raw_file| {
-                        SpectrumIds::FileKnown(vec![(
-                            raw_file.clone(),
-                            scan.iter().copied().map(SpectrumId::Index).collect(),
-                        )])
-                    },
-                )
-            }
+            MetaData::MaxQuant(MaxQuantData {
+                raw_file,
+                scan_number,
+                ..
+            }) => raw_file.as_ref().map_or_else(
+                || {
+                    SpectrumIds::FileNotKnown(
+                        scan_number
+                            .iter()
+                            .copied()
+                            .map(SpectrumId::Number)
+                            .collect(),
+                    )
+                },
+                |raw_file| {
+                    SpectrumIds::FileKnown(vec![(
+                        raw_file.clone(),
+                        scan_number
+                            .iter()
+                            .copied()
+                            .map(SpectrumId::Number)
+                            .collect(),
+                    )])
+                },
+            ),
             MetaData::MZTab(MZTabData { spectra_ref, .. }) => spectra_ref.clone(),
             MetaData::MSFragger(MSFraggerData { raw_file, scan, .. }) => {
                 raw_file.clone().map_or_else(
@@ -482,7 +528,7 @@ impl IdentifiedPeptide {
             }
             MetaData::PLink(PLinkData {
                 raw_file,
-                scan,
+                scan_number: scan,
                 title,
                 ..
             }) => scan.map_or_else(
@@ -721,6 +767,8 @@ pub enum SpectrumId {
     Native(String),
     /// A spectrum index
     Index(usize),
+    /// A scan number, unless there is a better alternative should be interpreted as index+1
+    Number(usize),
     /// Time range, assumes all MS2 spectra within this range are selected
     RetentionTime(RangeInclusive<OrderedTime>),
 }
@@ -735,6 +783,7 @@ impl std::fmt::Display for SpectrumId {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Index(i) => write!(f, "{i}"),
+            Self::Number(i) => write!(f, "\x23{i}"),
             Self::Native(n) => write!(f, "{n}"),
             Self::RetentionTime(n) => {
                 write!(f, "{:.3} — {:.3} min", n.start().value, n.end().value)
@@ -744,10 +793,11 @@ impl std::fmt::Display for SpectrumId {
 }
 
 impl SpectrumId {
-    /// Get the index if this is an index
-    pub const fn index(&self) -> Option<usize> {
+    /// Get the index if this is an index or scan number
+    pub fn index(&self) -> Option<usize> {
         match self {
             Self::Index(i) => Some(*i),
+            Self::Number(i) => Some(i - 1),
             Self::Native(_) | Self::RetentionTime(_) => None,
         }
     }
@@ -756,7 +806,7 @@ impl SpectrumId {
     pub fn native(&self) -> Option<&str> {
         match self {
             Self::Native(n) => Some(n),
-            Self::Index(_) | Self::RetentionTime(_) => None,
+            Self::Index(_) | Self::RetentionTime(_) | Self::Number(_) => None,
         }
     }
 }

@@ -24,7 +24,7 @@ format_family!(
     NovorData,
     NovorVersion, [&OLD_DENOVO, &OLD_PSM, &NEW_DENOVO, &NEW_PSM], b',', None;
     required {
-        scan: usize, |location: Location, _| location.parse(NUMBER_ERROR);
+        scan_number: usize, |location: Location, _| location.parse(NUMBER_ERROR);
         mz: MassOverCharge, |location: Location, _| location.parse::<f64>(NUMBER_ERROR).map(MassOverCharge::new::<crate::system::mz>);
         z: Charge, |location: Location, _| location.parse::<usize>(NUMBER_ERROR).map(Charge::new::<crate::system::e>);
         mass: Mass, |location: Location, _| location.parse::<f64>(NUMBER_ERROR).map(Mass::new::<crate::system::dalton>);
@@ -114,7 +114,7 @@ impl std::fmt::Display for NovorVersion {
 /// <https://github.com/snijderlab/stitch/issues/156#issuecomment-1097862072>
 pub const OLD_DENOVO: NovorFormat = NovorFormat {
     version: NovorVersion::OldDenovo,
-    scan: "scan #",
+    scan_number: "scan #",
     mz: "m/z",
     z: "z",
     mass: "peptide mass",
@@ -148,7 +148,7 @@ pub const OLD_DENOVO: NovorFormat = NovorFormat {
 /// <https://github.com/snijderlab/stitch/issues/156#issuecomment-1097862072>
 pub const OLD_PSM: NovorFormat = NovorFormat {
     version: NovorVersion::OldPSM,
-    scan: "scan",
+    scan_number: "scan",
     mz: "m/z",
     z: "z",
     mass: "mass",
@@ -170,7 +170,7 @@ pub const OLD_PSM: NovorFormat = NovorFormat {
 /// denovo: `# id, scanNum, RT, mz(data), z, pepMass(denovo), err(data-denovo), ppm(1e6*err/(mz*z)), score, peptide, aaScore,`
 pub const NEW_DENOVO: NovorFormat = NovorFormat {
     version: NovorVersion::NewDenovo,
-    scan: "scannum",
+    scan_number: "scannum",
     mz: "mz(data)",
     z: "z",
     mass: "pepmass(denovo)",
@@ -192,7 +192,7 @@ pub const NEW_DENOVO: NovorFormat = NovorFormat {
 /// PSM: `#id, spectraId, scanNum, RT, mz, z, pepMass, err, ppm, score, protein, start, length, origin, peptide, noPTMPeptide, aac, allProteins`
 pub const NEW_PSM: NovorFormat = NovorFormat {
     version: NovorVersion::NewPSM,
-    scan: "scannum",
+    scan_number: "scannum",
     mz: "mz",
     z: "z",
     mass: "pepmass",

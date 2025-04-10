@@ -30,7 +30,7 @@ format_family!(
     OpairVersion, [&O_PAIR], b'\t', None;
     required {
         raw_file: PathBuf, |location: Location, _| Ok(Path::new(&location.get_string()).to_owned());
-        scan: usize, |location: Location, _| location.parse(NUMBER_ERROR);
+        scan_number: usize, |location: Location, _| location.parse(NUMBER_ERROR);
         rt: Time, |location: Location, _| location.parse::<f64>(NUMBER_ERROR).map(Time::new::<crate::system::time::min>);
         precursor_scan_number: usize, |location: Location, _| location.parse(NUMBER_ERROR);
         mz: MassOverCharge, |location: Location, _| location.parse::<f64>(NUMBER_ERROR).map(MassOverCharge::new::<crate::system::mz>);
@@ -226,7 +226,7 @@ impl std::fmt::Display for OpairVersion {
 pub const O_PAIR: OpairFormat = OpairFormat {
     version: OpairVersion::Opair,
     raw_file: "file name",
-    scan: "scan number",
+    scan_number: "scan number",
     rt: "scan retention time",
     precursor_scan_number: "precursor scan number",
     mz: "precursor mz",

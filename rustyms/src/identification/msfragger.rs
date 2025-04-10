@@ -103,7 +103,7 @@ format_family!(
             {
                 parsed.raw_file = Some(m.get(1).unwrap().as_str().into());
                 parsed.scan =
-                    SpectrumId::Index(m.get(2).unwrap().as_str().parse::<usize>().unwrap());
+                    SpectrumId::Number(m.get(2).unwrap().as_str().parse::<usize>().unwrap());
             }
         }
         if parsed.peptide.is_none() {

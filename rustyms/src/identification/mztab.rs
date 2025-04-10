@@ -519,19 +519,31 @@ impl MZTabData {
                         range.clone(),
                     )))?;
 
-                    let scan_index = scan_id.strip_prefix("index=").map(|id| id.parse::<usize>().map_err(|err| {
-                        CustomError::error(
-                            "Invalid mzTab spectra_ref index",
-                            format!("The spectra_ref index {}", explain_number_error(&err)),
-                            Context::line_range(
-                                Some(line.line_index),
-                                line.line,
-                                range.clone(),
-                            ),
-                        )
-                    })).transpose()?;
-
-                    let id = scan_index.map_or_else(|| SpectrumId::Native(scan_id.to_string()), SpectrumId::Index);
+                    let id = match scan_id.split_once('=') {
+                        Some(("scan", num)) if num.chars().all(|c| c.is_ascii_digit()) => SpectrumId::Number(num.parse().map_err(|err| {
+                            CustomError::error(
+                                "Invalid mzTab spectra_ref scan number",
+                                format!("The spectra_ref scan number {}", explain_number_error(&err)),
+                                Context::line_range(
+                                    Some(line.line_index),
+                                    line.line,
+                                    range.clone(),
+                                ),
+                            )
+                        })?),
+                        Some(("index", index)) if index.chars().all(|c| c.is_ascii_digit()) => SpectrumId::Index(index.parse().map_err(|err| {
+                            CustomError::error(
+                                "Invalid mzTab spectra_ref index",
+                                format!("The spectra_ref index {}", explain_number_error(&err)),
+                                Context::line_range(
+                                    Some(line.line_index),
+                                    line.line,
+                                    range.clone(),
+                                ),
+                            )
+                        })?),
+                        _ =>  SpectrumId::Native(scan_id.to_owned()),
+                    };
 
                     Ok((std::path::PathBuf::from(path), id))
                 })).collect::<Result<Vec<_>, CustomError>>()?

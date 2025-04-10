@@ -32,7 +32,7 @@ format_family!(
     InstaNovoData,
     InstaNovoVersion, [&INSTANOVO_V1_0_0], b',', None;
     required {
-        scan: usize, |location: Location, _| location.parse(NUMBER_ERROR);
+        scan_number: usize, |location: Location, _| location.parse(NUMBER_ERROR);
         mz: MassOverCharge, |location: Location, _| location.parse::<f64>(NUMBER_ERROR).map(MassOverCharge::new::<crate::system::mz>);
         z: Charge, |location: Location, _| location.parse::<usize>(NUMBER_ERROR).map(Charge::new::<crate::system::e>);
         raw_file: PathBuf, |location: Location, _| Ok(Path::new(&location.get_string()).to_owned());
@@ -77,7 +77,7 @@ impl From<InstaNovoData> for IdentifiedPeptide {
 /// The only known version of InstaNovo
 pub const INSTANOVO_V1_0_0: InstaNovoFormat = InstaNovoFormat {
     version: InstaNovoVersion::V1_0_0,
-    scan: "scan_number",
+    scan_number: "scan_number",
     mz: "precursor_mz",
     z: "precursor_charge",
     raw_file: "experiment_name",

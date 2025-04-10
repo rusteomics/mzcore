@@ -80,7 +80,7 @@ format_family!(
                 let v = v.trim();
                 Modification::sloppy_modification(v.full_line(), v.location.clone(), None, custom_database)
             }).unique().collect::<Result<Vec<_>,_>>();
-        scan: Vec<PeaksFamilyId>, |location: Location, _| location.or_empty()
+        scan_number: Vec<PeaksFamilyId>, |location: Location, _| location.or_empty()
                         .map_or(Ok(Vec::new()), |l| l.array(';').map(|v| v.parse(ID_ERROR)).collect::<Result<Vec<_>,_>>());
         z: Charge, |location: Location, _| location.parse::<usize>(NUMBER_ERROR).map(Charge::new::<crate::system::e>);
         alc: f64, |location: Location, _| location.parse::<f64>(NUMBER_ERROR);
@@ -155,7 +155,7 @@ impl From<PeaksData> for IdentifiedPeptide {
 /// An older version of a PEAKS export
 pub const X: PeaksFormat = PeaksFormat {
     version: PeaksVersion::X,
-    scan: OptionalColumn::Required("scan"),
+    scan_number: OptionalColumn::Required("scan"),
     peptide: "peptide",
     alc: OptionalColumn::Required("alc (%)"),
     mz: "m/z",
@@ -196,7 +196,7 @@ pub const X: PeaksFormat = PeaksFormat {
 /// Version X of PEAKS export (made for build 31 January 2019)
 pub const X_PATCHED: PeaksFormat = PeaksFormat {
     version: PeaksVersion::XPatched,
-    scan: OptionalColumn::Required("scan"),
+    scan_number: OptionalColumn::Required("scan"),
     peptide: "peptide",
     alc: OptionalColumn::Required("alc (%)"),
     mz: "m/z",
@@ -237,7 +237,7 @@ pub const X_PATCHED: PeaksFormat = PeaksFormat {
 /// Version X+ of PEAKS export (made for build 20 November 2019)
 pub const XPLUS: PeaksFormat = PeaksFormat {
     version: PeaksVersion::XPlus,
-    scan: OptionalColumn::Required("scan"),
+    scan_number: OptionalColumn::Required("scan"),
     peptide: "peptide",
     alc: OptionalColumn::Required("alc (%)"),
     mz: "m/z",
@@ -278,7 +278,7 @@ pub const XPLUS: PeaksFormat = PeaksFormat {
 /// Version 11 of PEAKS export
 pub const V11: PeaksFormat = PeaksFormat {
     version: PeaksVersion::V11,
-    scan: OptionalColumn::Required("scan"),
+    scan_number: OptionalColumn::Required("scan"),
     peptide: "peptide",
     alc: OptionalColumn::Required("alc (%)"),
     mz: "m/z",
@@ -319,7 +319,7 @@ pub const V11: PeaksFormat = PeaksFormat {
 /// Version 11 of PEAKS export
 pub const V11_FEATURES: PeaksFormat = PeaksFormat {
     version: PeaksVersion::V11Features,
-    scan: OptionalColumn::NotAvailable,
+    scan_number: OptionalColumn::NotAvailable,
     peptide: "denovo peptide",
     alc: OptionalColumn::Required("alc (%)"),
     quality: OptionalColumn::Required("quality"),
@@ -360,7 +360,7 @@ pub const V11_FEATURES: PeaksFormat = PeaksFormat {
 /// Version 12 of PEAKS export
 pub const V12: PeaksFormat = PeaksFormat {
     version: PeaksVersion::V12,
-    scan: OptionalColumn::Required("scan"),
+    scan_number: OptionalColumn::Required("scan"),
     peptide: "peptide",
     alc: OptionalColumn::Required("alc (%)"),
     mz: "m/z",
@@ -401,7 +401,7 @@ pub const V12: PeaksFormat = PeaksFormat {
 /// Version Ab of PEAKS export
 pub const AB: PeaksFormat = PeaksFormat {
     version: PeaksVersion::Ab,
-    scan: OptionalColumn::Required("scan"),
+    scan_number: OptionalColumn::Required("scan"),
     peptide: "peptide",
     alc: OptionalColumn::Required("alc (%)"),
     mz: "m/z",
@@ -442,7 +442,7 @@ pub const AB: PeaksFormat = PeaksFormat {
 /// Version DB peptide of PEAKS export
 pub const DB_PEPTIDE: PeaksFormat = PeaksFormat {
     version: PeaksVersion::DBPeptide,
-    scan: OptionalColumn::Required("scan"),
+    scan_number: OptionalColumn::Required("scan"),
     peptide: "peptide",
     alc: OptionalColumn::NotAvailable,
     mz: "m/z",
@@ -483,7 +483,7 @@ pub const DB_PEPTIDE: PeaksFormat = PeaksFormat {
 /// Version DB psm of PEAKS export
 pub const DB_PSM: PeaksFormat = PeaksFormat {
     version: PeaksVersion::DBPSM,
-    scan: OptionalColumn::Required("scan"),
+    scan_number: OptionalColumn::Required("scan"),
     peptide: "peptide",
     alc: OptionalColumn::NotAvailable,
     mz: "m/z",
@@ -525,7 +525,7 @@ pub const DB_PSM: PeaksFormat = PeaksFormat {
 /// protein group, protein id, protein accession, unique, start, end,
 pub const DB_PROTEIN_PEPTIDE: PeaksFormat = PeaksFormat {
     version: PeaksVersion::DBProteinPeptide,
-    scan: OptionalColumn::Required("scan"),
+    scan_number: OptionalColumn::Required("scan"),
     peptide: "peptide",
     alc: OptionalColumn::NotAvailable,
     mz: "m/z",

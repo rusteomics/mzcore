@@ -25,7 +25,7 @@ static NUMBER_ERROR: (&str, &str) = (
 );
 
 format_family!(
-    /// The format for any SSL file
+    /// The format for any [SSL file](https://skyline.ms/wiki/home/software/BiblioSpec/page.view?name=BiblioSpec%20input%20and%20output%20file%20formats).
     SpectrumSequenceListFormat,
     /// The data from any SSL file
     SpectrumSequenceListData,

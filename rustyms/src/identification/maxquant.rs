@@ -31,7 +31,7 @@ format_family!(
     MaxQuantData,
     MaxQuantVersion, [&MSMS, &NOVO_MSMS_SCANS, &MSMS_SCANS, &SILAC], b'\t', None;
     required {
-        scan: Vec<usize>, |location: Location, _| location.or_empty().array(';').map(|s| s.parse(NUMBER_ERROR)).collect::<Result<Vec<usize>, CustomError>>();
+        scan_number: Vec<usize>, |location: Location, _| location.or_empty().array(';').map(|s| s.parse(NUMBER_ERROR)).collect::<Result<Vec<usize>, CustomError>>();
         modifications: String, |location: Location, _| Ok(location.get_string());
         proteins: String, |location: Location, _| Ok(location.get_string());
         peptide: Option<Peptidoform<SemiAmbiguous>>, |location: Location, custom_database: Option<&CustomDatabase>| location.or_empty().parse_with(|location| Peptidoform::sloppy_pro_forma(
@@ -196,7 +196,7 @@ pub const MSMS: MaxQuantFormat = MaxQuantFormat {
     rt: OptionalColumn::Required("retention time"),
     scan_event_number: OptionalColumn::Required("scan event number"),
     scan_index: OptionalColumn::Required("scan index"),
-    scan: "scan number",
+    scan_number: "scan number",
     score_diff: OptionalColumn::Required("score diff"),
     score: "score",
     simple_mass_error_ppm: OptionalColumn::Required("simple mass error [ppm]"),
@@ -259,7 +259,7 @@ pub const MSMS_SCANS: MaxQuantFormat = MaxQuantFormat {
     rt: OptionalColumn::Required("retention time"),
     scan_event_number: OptionalColumn::Required("scan event number"),
     scan_index: OptionalColumn::Required("scan index"),
-    scan: "scan number",
+    scan_number: "scan number",
     score_diff: OptionalColumn::NotAvailable,
     score: "score",
     simple_mass_error_ppm: OptionalColumn::NotAvailable,
@@ -322,7 +322,7 @@ pub const NOVO_MSMS_SCANS: MaxQuantFormat = MaxQuantFormat {
     rt: OptionalColumn::Required("retention time"),
     scan_event_number: OptionalColumn::Required("scan event number"),
     scan_index: OptionalColumn::Required("scan index"),
-    scan: "scan number",
+    scan_number: "scan number",
     score_diff: OptionalColumn::NotAvailable,
     score: "score",
     simple_mass_error_ppm: OptionalColumn::NotAvailable,
@@ -387,7 +387,7 @@ pub const SILAC: MaxQuantFormat = MaxQuantFormat {
     rt: OptionalColumn::Required("retention time"),
     scan_event_number: OptionalColumn::NotAvailable,
     scan_index: OptionalColumn::NotAvailable,
-    scan: "ms/ms scan numbers",
+    scan_number: "ms/ms scan numbers",
     score_diff: OptionalColumn::NotAvailable,
     score: "score",
     simple_mass_error_ppm: OptionalColumn::NotAvailable,

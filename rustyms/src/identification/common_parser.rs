@@ -102,7 +102,7 @@ macro_rules! format_family {
         }
 
         impl $data {
-            /// Get all original columns from the CSV file, only available if the file was opened with the option 'keep_all_columns' turned on.
+            /// Get all original columns from the CSV file, only available if the file was opened with the option `keep_all_columns` turned on.
             pub fn full_csv_line(&self) -> Option<&[(std::sync::Arc<String>, String)]> {
                 self.columns.as_deref()
             }
