@@ -16,7 +16,7 @@ package.authors = [
 package.edition = "2021"
 package.license = "MIT OR Apache-2.0"
 package.rust-version = "1.84.0"
-package.version = "0.9.0"
+package.version = "0.10.0"
 
 [profile.release]
 debug = true
