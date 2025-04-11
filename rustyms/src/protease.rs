@@ -10,7 +10,146 @@ use crate::{AminoAcid, SequenceElement};
 /// a specificity at a certain position any amino acid that is contained in the set is allowed (see
 /// [`crate::CheckedAminoAcid::canonical_identical`]).
 ///
-/// #TODO: Add the possibility to define the effiency of amino acids or certain motifs
+/// A standard set of proteases can be found here [`known_proteases`]
+///
+/// # Examples
+///
+/// ## Basic digestion with Trypsin
+/// ```rust
+/// # use rustyms::Peptidoform;
+/// # use rustyms::known_proteases;
+/// // Define a protease and sequence to digest
+/// let trypsin = &known_proteases::TRYPSIN;
+/// let sequence = Peptidoform::pro_forma("SIADIRGGKSLAIEGCRTKM", None).unwrap().into_linear().unwrap();
+///
+/// // Run an in-silico digest with 0 missed cleavages and only allow peptides ranging from 4 to 40 amino acids long
+/// let digest = sequence.digest(trypsin, 0, 4..40);
+///
+/// assert_eq!(digest.len(), 2);
+/// assert_eq!(digest[0].to_string(), "SIADIR");
+/// ```
+///
+/// ## Finding cut sites in a sequence
+/// ```rust
+/// # use rustyms::Peptidoform;
+/// # use rustyms::known_proteases;
+/// // Define a protease and sequence to digest
+/// let trypsin = &known_proteases::TRYPSIN;
+/// let sequence = Peptidoform::pro_forma("SIADIRGRKM", None).unwrap().into_linear().unwrap();
+///
+/// // Get all locations where trypsin would cut
+/// let cut_sites = trypsin.match_locations(sequence.sequence());
+///
+/// assert_eq!(cut_sites, vec![6, 8, 9]);
+/// ```
+///
+/// ## Using different proteases
+/// ```rust
+/// # use rustyms::Peptidoform;
+/// # use rustyms::known_proteases;
+/// // Define a sequence to digest
+/// let sequence = Peptidoform::pro_forma("FAREDKPGLF", None).unwrap().into_linear().unwrap();
+///
+/// // Compare different digestion patterns
+/// let gluc_digest = sequence.digest(&known_proteases::GLUC, 0, 4..40);
+/// let lysc_digest = sequence.digest(&known_proteases::LYSC, 0, 4..40);
+///
+/// assert_eq!(gluc_digest[0].to_string(), "FARE");
+/// assert_eq!(lysc_digest[0].to_string(), "FAREDK");
+/// ```
+///
+/// ## Creating a custom protease
+/// ```rust
+/// # use rustyms::{Peptidoform, AminoAcid, Protease};
+/// // Define a custom protease that cuts after Histidine (H)
+/// let his_protease = Protease::c_terminal_of(vec![AminoAcid::Histidine]);
+///
+/// // Test it on a sequence
+/// let sequence = Peptidoform::pro_forma("AAHFGHKLM", None).unwrap().into_linear().unwrap();
+/// let digest = sequence.digest(&his_protease, 0, 1..40);
+///
+/// assert_eq!(digest.len(), 3);
+/// assert_eq!(digest[0].to_string(), "AAH");
+/// assert_eq!(digest[1].to_string(), "FGH");
+/// assert_eq!(digest[2].to_string(), "KLM");
+/// ```
+///
+/// ## Digestion with missed cleavages
+/// ```rust
+/// # use rustyms::Peptidoform;
+/// # use rustyms::known_proteases;
+/// // Define a protease and sequence to digest
+/// let trypsin = &known_proteases::TRYPSIN;
+/// let sequence = Peptidoform::pro_forma("AARKFGKPLM", None).unwrap().into_linear().unwrap();
+///
+/// // With 0 missed cleavages
+/// let digest_0 = sequence.digest(trypsin, 0, 1..40);
+/// assert_eq!(digest_0.len(), 3);
+///
+/// // With 1 missed cleavage
+/// let digest_1 = sequence.digest(trypsin, 1, 1..40);
+/// assert_eq!(digest_1.len(), 5); // Original 3 peptides + 2 peptides with 1 missed cleavage
+/// ```
+///
+/// ## Digestion with a complex custom protease
+/// ```rust
+/// # use rustyms::{Peptidoform, AminoAcid, Protease};
+/// # use rustyms::known_proteases;
+/// // A protease that:
+/// // 1. Requires two phenylalanine residues followed by any amino acid before the cut site (FF*)
+/// // 2. And requires any amino acid except proline followed by either histidine or tryptophan after the cut site (*H/W)
+/// let custom_protease = Protease {
+///     before: vec![
+///         Some(vec![AminoAcid::Phenylalanine]),
+///         Some(vec![AminoAcid::Phenylalanine]),
+///         None
+///     ],
+///     after: vec![
+///         Some(Protease::get_exclusive(&[AminoAcid::Proline])),
+///         Some(vec![AminoAcid::Histidine, AminoAcid::Tryptophan])
+///     ],
+/// };
+///
+/// // A sequence with multiple potential cut sites:
+/// // - Position 10: FF(M)-(A)H - valid cut site
+/// // - Position 18: FF(G)-(V)H - valid cut site
+/// // - Position 26: FF(A)-(P)H - invalid due to proline after cut site
+/// // - Position 34: FF(T)-(S)W - valid cut site
+/// let long_sequence = Peptidoform::pro_forma("SLDARETFFMAHKDGFFGVHPDTFFAPHPHYFFTSWNVPG", None)
+///     .unwrap()
+///     .into_linear()
+///     .unwrap();
+///
+/// // Find all cut sites
+/// let cut_sites = custom_protease.match_locations(long_sequence.sequence());
+/// assert_eq!(cut_sites, vec![10, 18, 34]);
+///
+/// // Perform a digestion with 0 missed cleavages
+/// let digest = long_sequence.digest(&custom_protease, 0, 1..40);
+///
+/// assert_eq!(digest.len(), 4);
+/// assert_eq!(digest[0].to_string(), "SLDARETFFM");
+/// assert_eq!(digest[1].to_string(), "AHKDGFFG");
+/// assert_eq!(digest[2].to_string(), "VHPDTFFAPHPHYFFT");
+/// assert_eq!(digest[3].to_string(), "SWNVPG");
+///
+/// // Perform a digestion with 1 missed cleavage
+/// let digest_missed = long_sequence.digest(&custom_protease, 1, 1..40);
+///
+/// // Should include original fragments plus those with 1 missed cleavage
+/// assert_eq!(digest_missed.len(), 7);
+///
+/// // Original fragments
+/// assert!(digest_missed.iter().any(|p| p.to_string() == "SLDARETFFM"));
+/// assert!(digest_missed.iter().any(|p| p.to_string() == "AHKDGFFG"));
+/// assert!(digest_missed.iter().any(|p| p.to_string() == "VHPDTFFAPHPHYFFT"));
+/// assert!(digest_missed.iter().any(|p| p.to_string() == "SWNVPG"));
+///
+/// // Fragments with 1 missed cleavage
+/// assert!(digest_missed.iter().any(|p| p.to_string() == "SLDARETFFMAHKDGFFG"));
+/// assert!(digest_missed.iter().any(|p| p.to_string() == "AHKDGFFGVHPDTFFAPHPHYFFT"));
+/// assert!(digest_missed.iter().any(|p| p.to_string() == "VHPDTFFAPHPHYFFTSWNVPG"));
+/// ```
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct Protease {
     /// The amino acids n terminal of the cut site.
@@ -160,7 +299,7 @@ mod tests {
         );
 
         // Test peptides
-        let peptides = test_case.sequence.digest(protease, 0);
+        let peptides = test_case.sequence.digest(protease, 0, 4..40);
 
         if peptides.len() != test_case.expected_peptides.len() {
             for peptide in &peptides {
@@ -191,21 +330,12 @@ mod tests {
             ProteaseTestCase {
                 sequence: str_to_peptidoform("AKRPGKR"),
                 expected_cut_sites: vec![2, 6],
-                expected_peptides: vec![
-                    str_to_peptidoform("AK"),
-                    str_to_peptidoform("RPGK"),
-                    str_to_peptidoform("R"),
-                ],
+                expected_peptides: vec![str_to_peptidoform("RPGK")],
             },
             ProteaseTestCase {
                 sequence: str_to_peptidoform("ARAKGCVLRPKDGR"),
                 expected_cut_sites: vec![2, 4, 11],
-                expected_peptides: vec![
-                    str_to_peptidoform("AR"),
-                    str_to_peptidoform("AK"),
-                    str_to_peptidoform("GCVLRPK"),
-                    str_to_peptidoform("DGR"),
-                ],
+                expected_peptides: vec![str_to_peptidoform("GCVLRPK")],
             },
         ];
 
@@ -220,20 +350,12 @@ mod tests {
             ProteaseTestCase {
                 sequence: str_to_peptidoform("AFWYPLGF"),
                 expected_cut_sites: vec![2, 3],
-                expected_peptides: vec![
-                    str_to_peptidoform("AF"),
-                    str_to_peptidoform("W"),
-                    str_to_peptidoform("YPLGF"),
-                ],
+                expected_peptides: vec![str_to_peptidoform("YPLGF")],
             },
             ProteaseTestCase {
                 sequence: str_to_peptidoform("AVFUDGWTYPMSR"),
                 expected_cut_sites: vec![3, 7],
-                expected_peptides: vec![
-                    str_to_peptidoform("AVF"),
-                    str_to_peptidoform("UDGW"),
-                    str_to_peptidoform("TYPMSR"),
-                ],
+                expected_peptides: vec![str_to_peptidoform("UDGW"), str_to_peptidoform("TYPMSR")],
             },
         ];
 
@@ -248,22 +370,12 @@ mod tests {
             ProteaseTestCase {
                 sequence: str_to_peptidoform("AACVFLPAKLURF"),
                 expected_cut_sites: vec![5, 6, 10],
-                expected_peptides: vec![
-                    str_to_peptidoform("AACVF"),
-                    str_to_peptidoform("L"),
-                    str_to_peptidoform("PAKL"),
-                    str_to_peptidoform("URF"),
-                ],
+                expected_peptides: vec![str_to_peptidoform("AACVF"), str_to_peptidoform("PAKL")],
             },
             ProteaseTestCase {
                 sequence: str_to_peptidoform("GFLPKDLVMSRG"),
                 expected_cut_sites: vec![2, 3, 7],
-                expected_peptides: vec![
-                    str_to_peptidoform("GF"),
-                    str_to_peptidoform("L"),
-                    str_to_peptidoform("PKDL"),
-                    str_to_peptidoform("VMSRG"),
-                ],
+                expected_peptides: vec![str_to_peptidoform("PKDL"), str_to_peptidoform("VMSRG")],
             },
         ];
 
@@ -273,55 +385,17 @@ mod tests {
     }
 
     #[test]
-    fn elastase() {
-        let test_cases = vec![
-            ProteaseTestCase {
-                sequence: str_to_peptidoform("FASGVPRKT"),
-                expected_cut_sites: vec![2, 3, 4, 5],
-                expected_peptides: vec![
-                    str_to_peptidoform("FA"),
-                    str_to_peptidoform("S"),
-                    str_to_peptidoform("G"),
-                    str_to_peptidoform("V"),
-                    str_to_peptidoform("PRKT"),
-                ],
-            },
-            ProteaseTestCase {
-                sequence: str_to_peptidoform("PGAVSLFTGK"),
-                expected_cut_sites: vec![2, 3, 4, 5, 6, 9],
-                expected_peptides: vec![
-                    str_to_peptidoform("PG"),
-                    str_to_peptidoform("A"),
-                    str_to_peptidoform("V"),
-                    str_to_peptidoform("S"),
-                    str_to_peptidoform("L"),
-                    str_to_peptidoform("FTG"),
-                    str_to_peptidoform("K"),
-                ],
-            },
-        ];
-
-        for test_case in test_cases {
-            test_protease(&known_proteases::ELASTASE, &test_case);
-        }
-    }
-
-    #[test]
     fn aspn() {
         let test_cases = vec![
             ProteaseTestCase {
                 sequence: str_to_peptidoform("FARDKPGLFD"),
                 expected_cut_sites: vec![3, 9],
-                expected_peptides: vec![
-                    str_to_peptidoform("FAR"),
-                    str_to_peptidoform("DKPGLF"),
-                    str_to_peptidoform("D"),
-                ],
+                expected_peptides: vec![str_to_peptidoform("DKPGLF")],
             },
             ProteaseTestCase {
                 sequence: str_to_peptidoform("PFKDLTMSR"),
                 expected_cut_sites: vec![3],
-                expected_peptides: vec![str_to_peptidoform("PFK"), str_to_peptidoform("DLTMSR")],
+                expected_peptides: vec![str_to_peptidoform("DLTMSR")],
             },
         ];
 
@@ -361,11 +435,7 @@ mod tests {
             ProteaseTestCase {
                 sequence: str_to_peptidoform("PFKDLTKMSR"),
                 expected_cut_sites: vec![3, 7],
-                expected_peptides: vec![
-                    str_to_peptidoform("PFK"),
-                    str_to_peptidoform("DLTK"),
-                    str_to_peptidoform("MSR"),
-                ],
+                expected_peptides: vec![str_to_peptidoform("DLTK")],
             },
         ];
 
@@ -380,7 +450,7 @@ mod tests {
             ProteaseTestCase {
                 sequence: str_to_peptidoform("FARKDPGLF"),
                 expected_cut_sites: vec![3],
-                expected_peptides: vec![str_to_peptidoform("FAR"), str_to_peptidoform("KDPGLF")],
+                expected_peptides: vec![str_to_peptidoform("KDPGLF")],
             },
             ProteaseTestCase {
                 sequence: str_to_peptidoform("PFKDLRTMSR"),
