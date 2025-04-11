@@ -23,7 +23,7 @@ pub trait AnnotatableSpectrum {
     fn search(&self, query: MassOverCharge, tolerance: Self::Tolerance) -> Option<usize>;
 
     /// Annotate this spectrum with the given peptidoform and given fragments see
-    /// [`crate::CompoundPeptidoform::generate_theoretical_fragments`].
+    /// [`crate::CompoundPeptidoformIon::generate_theoretical_fragments`].
     fn annotate(
         &self,
         peptide: CompoundPeptidoformIon,

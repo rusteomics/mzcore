@@ -1,4 +1,4 @@
-use std::{io::Write, iter, path::Path};
+use std::{io::Write, iter, path::Path, sync::LazyLock};
 
 use regex::Regex;
 
@@ -20,6 +20,13 @@ pub fn build_unimod_ontology(out_dir: &Path) {
     file.write_all(&bincode::serialize::<OntologyModificationList>(&final_mods).unwrap())
         .unwrap();
 }
+
+static REGEX_POSITION: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new("spec_(\\d+)_position \"(.+)\"").unwrap());
+static REGEX_SITE: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new("spec_(\\d+)_site \"(.+)\"").unwrap());
+static REGEX_NEUTRAL_LOSS: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new("spec_(\\d+)_neutral_loss_\\d+_composition \"(.+)\"").unwrap());
 
 fn parse_unimod() -> Vec<OntologyModification> {
     let obo = OboOntology::from_file("rustyms-generate-databases/data/unimod.obo")
@@ -61,37 +68,33 @@ fn parse_unimod() -> Vec<OntologyModification> {
             }
         }
         if let Some(xref) = obj.lines.get("xref") {
-            let re_position = Regex::new("spec_(\\d+)_position \"(.+)\"").unwrap();
-            let re_site = Regex::new("spec_(\\d+)_site \"(.+)\"").unwrap();
-            let re_neutral_loss =
-                Regex::new("spec_(\\d+)_neutral_loss_\\d+_composition \"(.+)\"").unwrap();
             let mut mod_rules = Vec::new();
             for line in xref {
                 if line.starts_with("delta_composition") {
                     modification.formula =
                         MolecularFormula::from_unimod(line, 19..line.len()).unwrap();
                     take = true;
-                } else if let Some(groups) = re_position.captures(line) {
+                } else if let Some(groups) = REGEX_POSITION.captures(line) {
                     let index = groups.get(1).unwrap().as_str().parse::<usize>().unwrap() - 1;
                     let position = groups.get(2).unwrap().as_str().to_string();
                     if mod_rules.len() <= index {
-                        mod_rules.extend(
-                            iter::repeat((String::new(), String::new(), Vec::new()))
-                                .take(index + 1 - mod_rules.len()),
-                        );
+                        mod_rules.extend(iter::repeat_n(
+                            (String::new(), String::new(), Vec::new()),
+                            index + 1 - mod_rules.len(),
+                        ));
                     }
                     mod_rules[index].1 = position;
-                } else if let Some(groups) = re_site.captures(line) {
+                } else if let Some(groups) = REGEX_SITE.captures(line) {
                     let index = groups.get(1).unwrap().as_str().parse::<usize>().unwrap() - 1;
                     let site = groups.get(2).unwrap().as_str().to_string();
                     if mod_rules.len() <= index {
-                        mod_rules.extend(
-                            iter::repeat((String::new(), String::new(), Vec::new()))
-                                .take(index + 1 - mod_rules.len()),
-                        );
+                        mod_rules.extend(iter::repeat_n(
+                            (String::new(), String::new(), Vec::new()),
+                            index + 1 - mod_rules.len(),
+                        ));
                     }
                     mod_rules[index].0.push_str(&site);
-                } else if let Some(groups) = re_neutral_loss.captures(line) {
+                } else if let Some(groups) = REGEX_NEUTRAL_LOSS.captures(line) {
                     let index = groups.get(1).unwrap().as_str().parse::<usize>().unwrap() - 1;
                     if !groups
                         .get(2)
@@ -102,10 +105,10 @@ fn parse_unimod() -> Vec<OntologyModification> {
                                 .unwrap(),
                         );
                         if mod_rules.len() <= index {
-                            mod_rules.extend(
-                                iter::repeat((String::new(), String::new(), Vec::new()))
-                                    .take(index + 1 - mod_rules.len()),
-                            );
+                            mod_rules.extend(iter::repeat_n(
+                                (String::new(), String::new(), Vec::new()),
+                                index + 1 - mod_rules.len(),
+                            ));
                         }
                         mod_rules[index].2.push(loss);
                     }

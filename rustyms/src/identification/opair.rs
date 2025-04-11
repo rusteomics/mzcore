@@ -54,7 +54,7 @@ format_family!(
                     ))
                 }
                 let bytes =
-                    loc.line.line()[loc.location.start + 1..loc.location.end-1].as_bytes();
+                    &loc.line.line().as_bytes()[loc.location.start + 1..loc.location.end-1];
                 let start = bytes.iter().take_while(|c| c.is_ascii_digit()).count();
                 let end = bytes
                     .iter()

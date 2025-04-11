@@ -2,19 +2,19 @@
 //! Used for compile time checking for incorrect use of peptides.
 use serde::{Deserialize, Serialize};
 
-/// A [`crate::LinearPeptide`] that (potentially) is linked, either with cross-links or branches
+/// A [`crate::Peptidoform`] that (potentially) is linked, either with cross-links or branches
 #[derive(
     Debug, Default, Copy, Clone, PartialEq, PartialOrd, Ord, Eq, Hash, Serialize, Deserialize,
 )]
 pub struct Linked;
 
-/// A [`crate::LinearPeptide`] that is not cross-linked or branched, but can use the whole breath of the complexity otherwise
+/// A [`crate::Peptidoform`] that is not cross-linked or branched, but can use the whole breath of the complexity otherwise
 #[derive(
     Debug, Default, Copy, Clone, PartialEq, PartialOrd, Ord, Eq, Hash, Serialize, Deserialize,
 )]
 pub struct Linear;
 
-/// A [`crate::LinearPeptide`] that does not have any of the following:
+/// A [`crate::Peptidoform`] that does not have any of the following:
 /// * Labile modifications
 /// * Global isotope modifications
 /// * Charge carriers, use of charged ions apart from protons
@@ -24,7 +24,7 @@ pub struct Linear;
 )]
 pub struct SimpleLinear;
 
-/// A [`crate::LinearPeptide`] that does not have any of the following:
+/// A [`crate::Peptidoform`] that does not have any of the following:
 /// * Ambiguous modifications
 /// * Ambiguous amino acid sequence `(?AA)`
 ///
@@ -34,7 +34,7 @@ pub struct SimpleLinear;
 )]
 pub struct SemiAmbiguous;
 
-/// A [`crate::LinearPeptide`] that does not have any of the following:
+/// A [`crate::Peptidoform`] that does not have any of the following:
 /// * Ambiguous amino acids (B/Z)
 ///
 /// On top of the outlawed features in [`SemiAmbiguous`].

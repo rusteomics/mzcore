@@ -1,6 +1,6 @@
 //! Module used define the implementations for the [`IsAminoAcid`] trait
 
-use std::{borrow::Cow, collections::HashMap};
+use std::{borrow::Cow, collections::HashMap, sync::LazyLock};
 
 use serde::{Deserialize, Serialize};
 
@@ -319,6 +319,10 @@ impl IsAminoAcid for AminoAcid {
     }
 }
 
+/// The mass of the backbone of an amino acid
+pub static BACKBONE: LazyLock<MolecularFormula> =
+    LazyLock::new(|| molecular_formula!(H 3 C 2 N 1 O 1));
+
 impl AminoAcid {
     /// All amino acids with a unique mass (no I/L in favour of J, no B, no Z, and no X)
     pub const UNIQUE_MASS_AMINO_ACIDS: &'static [Self] = &[
@@ -475,7 +479,7 @@ impl AminoAcid {
                 base_fragments.extend(Fragment::generate_series(
                     &(self.formulas_inner(sequence_index, peptidoform_index)
                         * -aa.formulas_inner(sequence_index + *distance, peptidoform_index)
-                        + molecular_formula!(H 3 C 2 N 1 O 1)),
+                        + LazyLock::force(&BACKBONE)),
                     peptidoform_ion_index,
                     peptidoform_index,
                     &FragmentType::v(c_pos, *aa, *distance, 0),

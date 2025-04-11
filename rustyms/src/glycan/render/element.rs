@@ -148,7 +148,7 @@ pub enum GlycanRoot {
 }
 
 /// The selected (part) of a glycan to render, using [`Self::FULL`] is a shortcut to get the full glycan.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum GlycanSelection<'a> {
     /// A subtree of the glycan, with potentially a break of the root of the subtree and breaks in the branches.
     /// If no breaks are specified the full glycan is shown. The root is the first monosaccharide to be included

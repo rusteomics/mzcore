@@ -1,9 +1,12 @@
 //! Handle model instantiation.
 
+use std::sync::LazyLock;
+
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 
 use crate::{
+    aminoacid::BACKBONE,
     fragment::PeptidePosition,
     model::{ChargeRange, GlycanModel},
     AminoAcid, MultiChemical, NeutralLoss, Peptidoform, SequenceElement,
@@ -483,9 +486,7 @@ pub(crate) fn get_all_sidechain_losses<Complexity>(
             .flat_map(|aa| {
                 aa.formulas()
                     .iter()
-                    .map(|f| {
-                        NeutralLoss::SideChainLoss(f - molecular_formula!(H 3 C 2 N 1 O 1), aa)
-                    })
+                    .map(|f| NeutralLoss::SideChainLoss(f - LazyLock::force(&BACKBONE), aa))
                     .filter(|l| !l.is_empty())
                     .collect::<Vec<_>>()
             })

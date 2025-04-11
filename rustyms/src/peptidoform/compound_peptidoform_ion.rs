@@ -16,7 +16,7 @@ use crate::{
 pub struct CompoundPeptidoformIon(pub(super) Vec<PeptidoformIon>);
 
 impl CompoundPeptidoformIon {
-    /// Create a new [`CompoundPeptidoform`] from many [`Peptidoform`]s. This returns None if the
+    /// Create a new [`CompoundPeptidoformIon`] from many [`Peptidoform`]s. This returns None if the
     /// global isotope modifications of all peptidoforms are not identical.
     pub fn new(iter: impl IntoIterator<Item = PeptidoformIon>) -> Option<Self> {
         let result = Self(iter.into_iter().collect());

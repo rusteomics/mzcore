@@ -1,5 +1,5 @@
 use crate::helper_functions::{end_of_enclosure, next_char};
-use std::ops::{Range, RangeInclusive};
+use std::ops::Range;
 
 /// Rose tree representation of glycan structure
 #[allow(dead_code)]

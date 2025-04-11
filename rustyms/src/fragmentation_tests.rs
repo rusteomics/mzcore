@@ -750,7 +750,7 @@ fn test(
                 this_found = true;
                 if !allow_double_theoretical {
                     break;
-                };
+                }
             }
             index += 1;
         }

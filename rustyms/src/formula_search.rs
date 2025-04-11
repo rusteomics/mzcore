@@ -2,13 +2,7 @@ use std::num::NonZeroU16;
 
 use crate::{system::Mass, Element, MolecularFormula, Multi, Tolerance};
 
-/// Find the isobaric sets for the given mass with the given modifications and ppm error.
-/// The modifications are placed on any location they are allowed based on the given placement
-/// rules, so using any modifications which provide those is advised. If the provided [`LinearPeptide`]
-/// has multiple formulas, it uses the formula with the lowest monoisotopic mass.
-/// # Panics
-/// Panics if any of the modifications does not have a defined mass. Or if the weight of the
-/// base selection is already in the tolerance of the given mass.
+/// Find the molecular formulas that fit the mass given the tolerance using only the provided elements.
 pub fn find_formulas(
     mass: Mass,
     tolerance: Tolerance<Mass>,

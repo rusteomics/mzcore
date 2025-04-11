@@ -46,6 +46,8 @@ impl<Complexity: AtMax<SemiAmbiguous>> Peptidoform<Complexity> {
     /// Get the calculated pKa value for the given peptidoform, or None if any of the sequence elements do not have a defined pKa.
     #[allow(non_snake_case)]
     pub fn isoelectic_point<Source: PKaSource<AminoAcid>>(&self) -> Option<f64> {
+        const EPSILON: f64 = 0.0001;
+
         let sequence = self.sequence();
         if sequence.is_empty() {
             return None;
@@ -106,8 +108,8 @@ impl<Complexity: AtMax<SemiAmbiguous>> Peptidoform<Complexity> {
         let mut low = 0.0;
         let mut high = 14.0;
         let mut new_pi = 7.775;
-        const EPSILON: f64 = 0.0001;
 
+        #[allow(clippy::while_float)]
         while (high - low) > EPSILON {
             new_pi = (low + high) / 2.0;
             let charge = calculate_charge(new_pi, &ionizable);
@@ -123,6 +125,7 @@ impl<Complexity: AtMax<SemiAmbiguous>> Peptidoform<Complexity> {
     }
 }
 
+#[allow(non_snake_case)]
 fn calculate_charge(pH: f64, ionizable: &[(ChargeClass, f64)]) -> f64 {
     let mut charge = 0.0;
 

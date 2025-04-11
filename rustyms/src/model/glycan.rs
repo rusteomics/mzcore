@@ -1,8 +1,4 @@
-use std::{
-    collections::{BTreeMap, HashMap},
-    hash::Hash,
-    ops::RangeInclusive,
-};
+use std::{collections::HashMap, hash::Hash, ops::RangeInclusive};
 
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};

@@ -1,7 +1,7 @@
 # Match those fragments!
 
 Handle mass spectrometry data in Rust. This crate is set up to handle very complex peptides with
-loads of ambiguity and complexity. It pivots around the [`CompoundPeptidoform`], [`Peptidoform`] and [`LinearPeptide`]
+loads of ambiguity and complexity. It pivots around the [`CompoundPeptidoformIon`], [`PeptidoformIon`] and [`Peptidoform`]
 which encode the [ProForma](https://github.com/HUPO-PSI/ProForma) specification. Additionally
 this crate enables the reading of [mgf](rawfile::mgf), doing [spectrum annotation](RawSpectrum::annotate)
 (BU/MD/TD), finding [isobaric sequences](find_isobaric_sets), doing [alignments of peptides](align::align)
@@ -36,7 +36,7 @@ let spectrum = rawfile::mgf::open(raw_file_path)?;
 let peptide = CompoundPeptidoformIon::pro_forma("[Gln->pyro-Glu]-QVQEVSERTHGGNFD", None)?;
 // Generate theoretical fragments for this peptide given EThcD fragmentation
 let model = FragmentationModel::ethcd();
-let fragments = peptide.generate_theoretical_fragments(Charge::new::<e>(2), &model);
+let fragments = peptide.generate_theoretical_fragments(Charge::new::<e>(2), model);
 let parameters = MatchingParameters::default();
 // Annotate the raw data with the theoretical fragments
 let annotated = spectrum[0].annotate(peptide, &fragments, &parameters, MassMode::Monoisotopic);

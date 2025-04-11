@@ -18,7 +18,7 @@ use crate::{
 pub struct PeptidoformIon(pub(crate) Vec<Peptidoform<Linked>>);
 
 impl PeptidoformIon {
-    /// Create a new [`Peptidoform`] from many [`LinearPeptide`]s. This returns None if the
+    /// Create a new [`PeptidoformIon`] from many [`Peptidoform`]s. This returns None if the
     /// global isotope modifications or the charge carriers of all peptides are not identical.
     pub fn new<Complexity>(
         iter: impl IntoIterator<Item = Peptidoform<Complexity>>,
@@ -30,7 +30,7 @@ impl PeptidoformIon {
         global_and_charge_equal.then_some(result)
     }
 
-    /// Create a new [`Peptidoform`] from many [`LinearPeptide`]s. This returns None if the
+    /// Create a new [`PeptidoformIon`] from many [`Peptidoform`]s. This returns None if the
     /// global isotope modifications or the charge carriers of all peptides are not identical.
     pub fn from_vec(iter: Vec<Peptidoform<Linked>>) -> Option<Self> {
         let result = Self(iter);

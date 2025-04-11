@@ -5,7 +5,7 @@ use crate::{
     model::GlycanModel,
     molecular_charge::CachedCharge,
     system::usize::Charge,
-    AminoAcid, FragmentationModel, Multi, NeutralLoss,
+    AminoAcid, FragmentationModel, Multi,
 };
 
 include!("../shared/glycan.rs");

@@ -6,7 +6,7 @@ use std::{
 use itertools::{Itertools, MinMaxResult};
 use serde::{Deserialize, Serialize};
 
-use crate::{system::OrderedMass, MolecularFormula, NeutralLoss};
+use crate::{system::OrderedMass, NeutralLoss};
 
 /// A collection of potentially multiple of the generic type, it is used be able to easily
 /// combine multiple of this multi struct into all possible combinations.
@@ -116,7 +116,7 @@ where
 {
     /// Adds this formula to all formulas in the multi formula
     fn add_assign(&mut self, rhs: M) {
-        *self = Multi(self.0.iter().cloned().map(|m| m + rhs.clone()).collect());
+        *self = Self(self.0.iter().cloned().map(|m| m + rhs.clone()).collect());
     }
 }
 
@@ -372,7 +372,7 @@ impl crate::Multi<crate::MolecularFormula> {
             new_options.push(match loss {
                 NeutralLoss::Gain(m) => option + m,
                 NeutralLoss::Loss(m) | NeutralLoss::SideChainLoss(m, _) => option - m,
-            })
+            });
         }
         new_options.extend_from_slice(&self.0);
         Self(new_options.into())

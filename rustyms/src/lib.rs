@@ -34,6 +34,7 @@ mod formula;
 #[path = "shared/csv.rs"]
 pub mod csv;
 
+/// Contains logic surrounding amino acids, see [`AminoAcid`] for the main structure.
 pub mod aminoacid;
 mod checked_aminoacid;
 mod element;
@@ -107,7 +108,7 @@ mod test {
             .unwrap();
         let fragments = peptide.generate_theoretical_fragments(
             system::usize::Charge::new::<system::e>(1),
-            &FragmentationModel::all(),
+            FragmentationModel::all(),
         );
         println!("{}", fragments.len());
         println!("{fragments:?}");
@@ -120,7 +121,7 @@ mod test {
         let spectrum = rawfile::mgf::open("data/example.mgf").unwrap();
         let peptide = CompoundPeptidoformIon::pro_forma("WFWF", None).unwrap();
         let fragments = peptide
-            .generate_theoretical_fragments(system::usize::Charge::new::<system::e>(1), &model);
+            .generate_theoretical_fragments(system::usize::Charge::new::<system::e>(1), model);
         let annotated =
             spectrum[0].annotate(peptide, &fragments, &parameters, MassMode::Monoisotopic);
         println!("{annotated:?}");

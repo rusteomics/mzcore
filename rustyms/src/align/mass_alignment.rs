@@ -15,8 +15,8 @@ use super::{
 // TODO: no way of handling terminal modifications yet
 // TODO: potentially allow any gap to match to a list of aminoacids also if the mass difference is exactly a common modification
 /// Create an alignment of two peptides based on mass and homology.
-/// The substitution matrix is in the exact same order as the definition of [`AminoAcid`].
-/// The [`Tolerance`] sets the tolerance for two sets of amino acids to be regarded as the same mass.
+/// The substitution matrix is in the exact same order as the definition of [`crate::AminoAcid`].
+/// The [`crate::Tolerance`] sets the tolerance for two sets of amino acids to be regarded as the same mass.
 /// The [`AlignType`] controls the alignment behaviour, global/local or anything in between.
 /// # Panics
 /// It panics when the length of `seq_a` or `seq_b` is bigger than [`isize::MAX`].

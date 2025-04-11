@@ -135,9 +135,7 @@ impl MolecularCharge {
             .map(|charge_carriers| {
                 let mut charge_carriers = charge_carriers;
                 charge_carriers.extend(
-                    std::iter::repeat(self.charge_carriers.clone())
-                        .take(quotient as usize)
-                        .flatten(),
+                    std::iter::repeat_n(self.charge_carriers.clone(), quotient as usize).flatten(),
                 );
                 Self { charge_carriers }.simplified()
             })

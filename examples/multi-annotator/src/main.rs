@@ -16,7 +16,6 @@ use rustyms::{
     identification::IdentifiedPeptideSource,
     model::MatchingParameters,
     spectrum::{Score, Scores},
-    system::{e, usize::Charge},
     *,
 };
 use spectrum::{AnnotatedPeak, PeakSpectrum};
@@ -108,7 +107,7 @@ fn main() {
                         .scores(&fragments, &parameters, MassMode::Monoisotopic)
                         .1[0][0];
 
-                    let mut row: BTreeMap<Arc<String>, String> = line.full_csv_line().unwrap_or(&[]).into_iter().cloned().collect();
+                    let mut row: BTreeMap<Arc<String>, String> = line.full_csv_line().unwrap_or(&[]).iter().cloned().collect();
 
                     if args.charge_independent_Y {
                         let unique_Y = fragments

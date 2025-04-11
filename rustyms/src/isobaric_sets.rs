@@ -229,7 +229,7 @@ pub fn building_blocks(
 
 /// Find the isobaric sets for the given mass with the given modifications and ppm error.
 /// The modifications are placed on any location they are allowed based on the given placement
-/// rules, so using any modifications which provide those is advised. If the provided [`LinearPeptide`]
+/// rules, so using any modifications which provide those is advised. If the provided [`Peptidoform`]
 /// has multiple formulas, it uses the formula with the lowest monoisotopic mass.
 /// # Panics
 /// Panics if any of the modifications does not have a defined mass. Or if the weight of the

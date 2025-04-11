@@ -15,7 +15,7 @@ use super::Peptidoform;
 
 /// Search for modifications that fit the mass tolerance and optional position requirements. If the
 /// `positions` is `None` it will not filter for possible positions. Otherwise only modifications
-/// that are possible (see [`SimpleModification::is_possible_aa`]) on any of the listed combinations
+/// that are possible (see [`SimpleModificationInner::is_possible_aa`]) on any of the listed combinations
 /// of amino acid and position. If the custom modifications are passed it will also search in them.
 ///
 /// It returns the list of possible modifications.
@@ -187,7 +187,7 @@ impl PeptideModificationSearch {
         }
     }
 
-    /// Set the mass mode, all mass modifications will be interpreted as this mode, the default is [`MassMode::MonoIsotopic`]
+    /// Set the mass mode, all mass modifications will be interpreted as this mode, the default is [`MassMode::Monoisotopic`]
     #[must_use]
     pub fn mass_mode(self, mass_mode: MassMode) -> Self {
         Self {

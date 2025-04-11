@@ -515,7 +515,7 @@ impl CrossLinkSide {
                 }
             }
             _ => (),
-        };
+        }
         (neutral, stubs, diagnostic)
     }
 }

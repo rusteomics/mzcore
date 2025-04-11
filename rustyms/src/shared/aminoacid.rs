@@ -34,6 +34,7 @@ pub enum AminoAcid {
 }
 //ARNDCQEGHILKMFPSTWYVBJZUOX
 
+/// The error that a given sequence is not a valid codon
 #[derive(Debug)]
 pub struct NotACodon;
 

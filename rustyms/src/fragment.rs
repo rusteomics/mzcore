@@ -3,7 +3,8 @@
 use std::{
     borrow::Cow,
     cmp::Ordering,
-    fmt::{Debug, Display},
+    fmt::{Debug, Display, Write},
+    sync::LazyLock,
 };
 
 use itertools::Itertools;
@@ -22,7 +23,7 @@ use crate::{
         OrderedMassOverCharge,
     },
     AmbiguousLabel, AminoAcid, Chemical, IsAminoAcid, MassMode, Modification, MolecularFormula,
-    Multi, NeutralLoss, SemiAmbiguous, SequenceElement, SequencePosition, Tolerance,
+    Multi, MultiChemical, NeutralLoss, SemiAmbiguous, SequenceElement, SequencePosition, Tolerance,
 };
 
 /// A theoretical fragment
@@ -50,18 +51,20 @@ pub struct Fragment {
 
 impl Fragment {
     /// Write the fragment as an mzPAF string
+    #[allow(non_snake_case)]
     pub fn to_mzPAF(&self) -> String {
         let mut output = String::new();
         if self.auxiliary {
             output.push('&');
         }
         // Push the ion type info (plus maybe some neutral losses if needed)
-        output.push_str(&match &self.ion {
+        match &self.ion {
             FragmentType::a(pos, variant)
             | FragmentType::b(pos, variant)
             | FragmentType::c(pos, variant)
             | FragmentType::x(pos, variant)
-            | FragmentType::y(pos, variant) => format!(
+            | FragmentType::y(pos, variant) => write!(
+                &mut output,
                 "{}{}{}",
                 self.ion.kind(),
                 pos.series_number,
@@ -70,8 +73,10 @@ impl Fragment {
                 } else {
                     format!("{variant:+}H")
                 }
-            ),
-            FragmentType::z(pos, variant) => format!(
+            )
+            .unwrap(),
+            FragmentType::z(pos, variant) => write!(
+                &mut output,
                 "{}{}{}",
                 self.ion.kind(),
                 pos.series_number,
@@ -80,10 +85,12 @@ impl Fragment {
                 } else {
                     format!("{:+}H", variant - 1)
                 }
-            ),
-            FragmentType::d(pos, _, distance, variant, label) => {
+            )
+            .unwrap(),
+            FragmentType::d(pos, aa, distance, variant, label) => {
                 if *distance == 0 {
-                    format!(
+                    write!(
+                        &mut output,
                         "d{label}{}{}",
                         pos.series_number,
                         if *variant == 0 {
@@ -92,22 +99,38 @@ impl Fragment {
                             format!("{variant:+}H")
                         }
                     )
-                } else {
-                    format!(
-                        "a{}-{}{}",
+                    .unwrap();
+                } else if let Some(loss) = aa
+                    .satellite_ion_fragments(
+                        pos.sequence_index,
+                        self.peptidoform_index.unwrap_or_default(),
+                    )
+                    .and_then(|fragments| {
+                        fragments
+                            .iter()
+                            .find(|f| f.0 == *label)
+                            .map(|(_, loss)| loss.clone())
+                    })
+                {
+                    write!(
+                        &mut output,
+                        "a{}-{loss}{}",
                         pos.series_number,
-                        "C1", // TODO: get specific formula
                         if *variant == 0 {
                             String::new()
                         } else {
                             format!("{variant:+}H")
                         }
                     )
+                    .unwrap();
+                } else {
+                    write!(&mut output, "?",).unwrap();
                 }
             }
-            FragmentType::v(pos, _, distance, variant) => {
+            FragmentType::v(pos, aa, distance, variant) => {
                 if *distance == 0 {
-                    format!(
+                    write!(
+                        &mut output,
                         "v{}{}",
                         pos.series_number,
                         if *variant == 0 {
@@ -116,22 +139,29 @@ impl Fragment {
                             format!("{variant:+}H")
                         }
                     )
+                    .unwrap();
                 } else {
-                    format!(
+                    write!(
+                        &mut output,
                         "y{}-{}{}",
                         pos.series_number,
-                        "C1", // TODO: get specific formula
+                        aa.formulas()
+                            .first()
+                            .map(|f| f - LazyLock::force(&crate::aminoacid::BACKBONE))
+                            .unwrap_or_default(),
                         if *variant == 0 {
                             String::new()
                         } else {
                             format!("{variant:+}H")
                         }
                     )
+                    .unwrap();
                 }
             }
-            FragmentType::w(pos, _, distance, variant, label) => {
+            FragmentType::w(pos, aa, distance, variant, label) => {
                 if *distance == 0 {
-                    format!(
+                    write!(
+                        &mut output,
                         "w{label}{}{}",
                         pos.series_number,
                         if *variant == 0 {
@@ -140,80 +170,112 @@ impl Fragment {
                             format!("{variant:+}H")
                         }
                     )
-                } else {
-                    format!(
-                        "z{}-{}{}",
+                    .unwrap();
+                } else if let Some(loss) = aa
+                    .satellite_ion_fragments(
+                        pos.sequence_index,
+                        self.peptidoform_index.unwrap_or_default(),
+                    )
+                    .and_then(|fragments| {
+                        fragments
+                            .iter()
+                            .find(|f| f.0 == *label)
+                            .map(|(_, loss)| loss.clone())
+                    })
+                {
+                    write!(
+                        &mut output,
+                        "z{}-{loss}{}",
                         pos.series_number,
-                        "C1", // TODO: get specific formula
                         if *variant == 0 {
                             String::new()
                         } else {
                             format!("{variant:+}H")
                         }
                     )
+                    .unwrap();
+                } else {
+                    write!(&mut output, "?",).unwrap();
                 }
             }
-            FragmentType::Precursor => "p".to_string(),
-            FragmentType::PrecursorSideChainLoss(_, aa) => format!("p-r[sidechain_{aa}]"),
-            FragmentType::Immonium(_, seq) => format!(
+            FragmentType::Precursor => write!(&mut output, "p").unwrap(),
+            FragmentType::PrecursorSideChainLoss(_, aa) => {
+                write!(&mut output, "p-r[sidechain_{aa}]").unwrap();
+            }
+            FragmentType::Immonium(_, seq) => write!(
+                &mut output,
                 "I{}{}",
                 seq.aminoacid,
                 seq.modifications.iter().map(|m| format!("[{m}]")).join("") // TODO: how to handle ambiguous mods? maybe store somewhere which where applied for this fragment
-            ),
-            FragmentType::Unknown(num) => {
-                format!("?{}", num.map_or(String::new(), |u| u.to_string()))
-            }
+            )
+            .unwrap(),
+            FragmentType::Unknown(num) => write!(
+                &mut output,
+                "?{}",
+                num.map_or(String::new(), |u| u.to_string())
+            )
+            .unwrap(),
             FragmentType::Diagnostic(_)
             | FragmentType::B { .. }
             | FragmentType::BComposition(_, _)
             | FragmentType::Y(_)
-            | FragmentType::YComposition(_, _) => self
-                .formula
-                .as_ref()
-                .map_or_else(|| "?".to_string(), |f| format!("f{{{f}}}")), // TODO: better way of storing?
-            FragmentType::Internal(name, a, b) => name.as_ref().map_or_else(
-                || format!("m{}:{}", a.sequence_index + 1, b.sequence_index + 1),
-                |name| {
-                    format!(
-                        "m{}:{}{}",
-                        a.sequence_index + 1,
-                        b.sequence_index + 1,
-                        match name {
-                            (BackboneNFragment::a, BackboneCFragment::x)
-                            | (BackboneNFragment::b, BackboneCFragment::y)
-                            | (BackboneNFragment::c, BackboneCFragment::z) => "",
-                            (BackboneNFragment::a, BackboneCFragment::y) => "-CO",
-                            (BackboneNFragment::a, BackboneCFragment::z) => "-CHNO",
-                            (BackboneNFragment::b, BackboneCFragment::x) => "+CO",
-                            (BackboneNFragment::b, BackboneCFragment::z) => "-NH",
-                            (BackboneNFragment::c, BackboneCFragment::x) => "+CHNO",
-                            (BackboneNFragment::c, BackboneCFragment::y) => "+NH",
-                        }
-                    )
-                },
-            ),
-        });
+            | FragmentType::YComposition(_, _) => {
+                if let Some(formula) = &self.formula {
+                    // TODO: better way of storing?
+                    write!(&mut output, "f{{{formula}}}",).unwrap();
+                } else {
+                    write!(&mut output, "?",).unwrap();
+                }
+            }
+            FragmentType::Internal(Some(name), a, b) => write!(
+                &mut output,
+                "m{}:{}{}",
+                a.sequence_index + 1,
+                b.sequence_index + 1,
+                match name {
+                    (BackboneNFragment::a, BackboneCFragment::x)
+                    | (BackboneNFragment::b, BackboneCFragment::y)
+                    | (BackboneNFragment::c, BackboneCFragment::z) => "",
+                    (BackboneNFragment::a, BackboneCFragment::y) => "-CO",
+                    (BackboneNFragment::a, BackboneCFragment::z) => "-CHNO",
+                    (BackboneNFragment::b, BackboneCFragment::x) => "+CO",
+                    (BackboneNFragment::b, BackboneCFragment::z) => "-NH",
+                    (BackboneNFragment::c, BackboneCFragment::x) => "+CHNO",
+                    (BackboneNFragment::c, BackboneCFragment::y) => "+NH",
+                }
+            )
+            .unwrap(),
+            FragmentType::Internal(None, a, b) => write!(
+                &mut output,
+                "m{}:{}",
+                a.sequence_index + 1,
+                b.sequence_index + 1
+            )
+            .unwrap(),
+        }
         // More losses
         for loss in &self.neutral_loss {
-            output.push_str(&match loss {
-                NeutralLoss::SideChainLoss(_, aa) => format!("-r[sidechain_{aa}]"),
-                l => l.to_string(),
-            });
+            match loss {
+                NeutralLoss::SideChainLoss(_, aa) => {
+                    write!(&mut output, "-r[sidechain_{aa}]").unwrap();
+                }
+                l => write!(&mut output, "{l}").unwrap(),
+            }
         }
         // Isotopes: not handled
         // Charge state
         if self.charge.value != 1 {
-            output.push_str(&format!("^{}", self.charge.value));
+            write!(&mut output, "^{}", self.charge.value).unwrap();
         }
         // Deviation
         match self.deviation {
-            Some(Tolerance::Absolute(abs)) => output.push_str(&format!("/{}", abs.value)),
-            Some(Tolerance::Relative(ppm)) => output.push_str(&format!("/{}ppm", ppm.value)),
+            Some(Tolerance::Absolute(abs)) => write!(&mut output, "/{}", abs.value).unwrap(),
+            Some(Tolerance::Relative(ppm)) => write!(&mut output, "/{}ppm", ppm.value).unwrap(),
             None => (),
         }
         // Confidence
         if let Some(confidence) = self.confidence {
-            output.push_str(&format!("*{confidence}"));
+            write!(&mut output, "*{confidence}").unwrap();
         }
         output
     }
@@ -290,7 +352,7 @@ impl Fragment {
                 ion: annotation.clone(),
                 peptidoform_ion_index: Some(peptidoform_ion_index),
                 peptidoform_index: Some(peptidoform_index),
-                neutral_loss: losses.map(Clone::clone).unwrap_or_default(),
+                neutral_loss: losses.cloned().unwrap_or_default(),
                 deviation: None,
                 confidence: None,
                 auxiliary: false,
@@ -330,7 +392,7 @@ impl Fragment {
                 ion: annotation.with_variant(*variant),
                 peptidoform_ion_index: Some(peptidoform_ion_index),
                 peptidoform_index: Some(peptidoform_index),
-                neutral_loss: losses.map(|l| l.clone()).unwrap_or_default(),
+                neutral_loss: losses.cloned().unwrap_or_default(),
                 deviation: None,
                 confidence: None,
                 auxiliary: false,

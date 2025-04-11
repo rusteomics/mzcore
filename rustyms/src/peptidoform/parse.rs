@@ -34,10 +34,10 @@ struct LinearPeptideResult {
 }
 
 impl Peptidoform<Linked> {
-    /// Convenience wrapper to parse a linear peptide in ProForma notation, to handle all possible ProForma sequences look at [`CompoundPeptidoform::pro_forma`].
+    /// Convenience wrapper to parse a linear peptide in ProForma notation, to handle all possible ProForma sequences look at [`CompoundPeptidoformIon::pro_forma`].
     /// # Errors
-    /// It gives an error when the peptide is not correctly formatted. (Also see the `CompoundPeptidoform` main function for this.)
-    /// It additionally gives an error if the peptide specified was chimeric (see [`CompoundPeptidoform::singular`] and [`Peptidoform::singular`]).
+    /// It gives an error when the peptide is not correctly formatted. (Also see the `CompoundPeptidoformIon` main function for this.)
+    /// It additionally gives an error if the peptide specified was chimeric (see [`CompoundPeptidoformIon::singular`] and [`PeptidoformIon::singular`]).
     pub fn pro_forma(
         value: &str,
         custom_database: Option<&CustomDatabase>,

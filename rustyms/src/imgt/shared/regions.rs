@@ -35,7 +35,7 @@ impl Germlines {
             ChainType::LightKappa => self.k.insert(germline),
             ChainType::LightLambda => self.l.insert(germline),
             ChainType::Iota => self.i.insert(germline),
-        };
+        }
     }
 }
 

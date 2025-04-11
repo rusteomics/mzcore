@@ -241,7 +241,7 @@ impl MonoSaccharide {
         // Get the prefix mods
         if !line[index..].starts_with("dig") && !line[index..].starts_with("dha") {
             if let Some(o) = line[index..].take_any(PREFIX_SUBSTITUENTS, |e| {
-                substituents.extend(std::iter::repeat(*e).take(amount));
+                substituents.extend(std::iter::repeat_n(*e, amount));
             }) {
                 index += o;
             }
@@ -333,14 +333,14 @@ impl MonoSaccharide {
                 if let Some(o) = line[index..].take_any(DOUBLE_LINKED_POSTFIX_SUBSTITUENTS, |e| {
                     sugar.substituents.extend(
                         e.iter()
-                            .flat_map(|s| std::iter::repeat(s).take(double_amount))
+                            .flat_map(|s| std::iter::repeat_n(s, double_amount))
                             .copied(),
                     );
                     if single_amount > 0 {
                         sugar.substituents.extend(
                             e.iter()
                                 .filter(|s| **s != GlycanSubstituent::Water)
-                                .flat_map(|s| std::iter::repeat(s).take(single_amount))
+                                .flat_map(|s| std::iter::repeat_n(s, single_amount))
                                 .copied(),
                         );
                     }
@@ -361,15 +361,13 @@ impl MonoSaccharide {
             } else {
                 // Mod or an element
                 if let Some(o) = line[index..].take_any(POSTFIX_SUBSTITUENTS, |e| {
-                    sugar
-                        .substituents
-                        .extend(std::iter::repeat(*e).take(amount));
+                    sugar.substituents.extend(std::iter::repeat_n(*e, amount));
                 }) {
                     index += o;
                 } else if let Some(o) = line[index..].take_any(ELEMENT_PARSE_LIST, |e| {
                     sugar
                         .substituents
-                        .extend(std::iter::repeat(GlycanSubstituent::Element(*e)).take(amount));
+                        .extend(std::iter::repeat_n(GlycanSubstituent::Element(*e), amount));
                 }) {
                     index += o;
                 } else {

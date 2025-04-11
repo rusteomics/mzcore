@@ -261,7 +261,7 @@ pub fn next_char(chars: &[u8], start: usize, char: u8) -> Option<usize> {
 /// Find the enclosed text by the given symbols, assumes a single open is already read just before the start, guarantees to only pick full characters
 pub fn end_of_enclosure(text: &str, start: usize, open: u8, close: u8) -> Option<usize> {
     let mut state = 1;
-    for (i, ch) in text[start..].as_bytes().iter().enumerate() {
+    for (i, ch) in text.as_bytes()[start..].iter().enumerate() {
         // Check if this byte is a full character (is_char_boundary also works on index==len)
         if text.is_char_boundary(start + i) && text.is_char_boundary(start + i + 1) {
             if *ch == open {
@@ -428,7 +428,7 @@ where
     let mut new = one;
     for (key, value) in two {
         let v = new.entry(key).or_default();
-        *v *= value
+        *v *= value;
     }
     new
 }

@@ -426,7 +426,7 @@ pub fn write_csv(
             f,
             "{}",
             row.into_iter()
-                .chain(std::iter::repeat(String::new()).take(len))
+                .chain(std::iter::repeat_n(String::new(), len))
                 .join(&separator)
         )?;
     }

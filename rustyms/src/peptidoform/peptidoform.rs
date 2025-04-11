@@ -7,7 +7,7 @@ use crate::{
     helper_functions::{self, merge_hashmap, peptide_range_contains, RangeExtension},
     model::{get_all_sidechain_losses, GlycanModel},
     modification::{
-        self, CrossLinkName, GnoComposition, LinkerSpecificity, Modification, SimpleModification,
+        CrossLinkName, GnoComposition, LinkerSpecificity, Modification, SimpleModification,
         SimpleModificationInner,
     },
     molecular_charge::{CachedCharge, MolecularCharge},
@@ -80,7 +80,7 @@ use std::{
 /// slightly underspecified but rustyms allows higher charged carriers, e.g. Zn 2+, and complete
 /// chemical formulas. If this peptide is part of a [`Peptidoform`] (and so tagged [`Linked`])
 /// setting the charge carriers is not allowed on the peptides but
-/// [`Peptidoform::set_charge_carriers`] can be used.
+/// [`Peptidoform::charge_carriers`] can be used.
 /// ```text
 /// PEPTIDE/3[1Zn+2,1H+1]
 /// ```
@@ -316,7 +316,7 @@ impl<Complexity> Peptidoform<Complexity> {
         self.mark()
     }
 
-    /// Create a new [`LinearPeptide`], if you want an empty peptide look at [`LinearPeptide::default`].
+    /// Create a new [`Peptidoform`], if you want an empty peptide look at [`Peptidoform::default`].
     /// Potentially the `.collect()` or `.into()` methods can be useful as well.
     #[must_use]
     pub fn new<OtherComplexity: AtMax<Complexity>>(
@@ -543,7 +543,7 @@ impl<Complexity> Peptidoform<Complexity> {
                     } => {
                         if !ignore_peptides.contains(peptide) {
                             found_peptides.push(*peptide);
-                        };
+                        }
                         let (neutral, _, _) = side.allowed_rules(linker);
                         Some(
                             neutral
@@ -1447,7 +1447,7 @@ impl<Complexity> Peptidoform<Complexity> {
         }
     }
     /// Get all labile modifications
-    pub(super) fn get_labile_mut_inner(&mut self) -> &mut Vec<SimpleModification> {
+    pub(super) const fn get_labile_mut_inner(&mut self) -> &mut Vec<SimpleModification> {
         &mut self.labile
     }
 }

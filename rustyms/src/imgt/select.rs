@@ -73,19 +73,11 @@ impl<
     /// Get the selected alleles
     pub fn germlines(self) -> impl Iterator<Item = Allele<'static>> {
         super::all_germlines()
-            .filter(move |g| {
-                self.species
-                    .as_ref()
-                    .map_or(true, |s| s.contains(&g.species))
-            })
+            .filter(move |g| self.species.as_ref().is_none_or(|s| s.contains(&g.species)))
             .flat_map(|g| g.into_iter().map(|c| (g.species, c.0, c.1)))
-            .filter(move |(_, kind, _)| self.chains.as_ref().map_or(true, |k| k.contains(kind)))
+            .filter(move |(_, kind, _)| self.chains.as_ref().is_none_or(|k| k.contains(kind)))
             .flat_map(|(species, _, c)| c.into_iter().map(move |g| (species, g.0, g.1)))
-            .filter(move |(_, gene, _)| {
-                self.genes
-                    .as_ref()
-                    .map_or(true, |s| contains_gene(s, *gene))
-            })
+            .filter(move |(_, gene, _)| self.genes.as_ref().is_none_or(|s| contains_gene(s, *gene)))
             .flat_map(|(species, _, germlines)| germlines.iter().map(move |a| (species, a)))
             .flat_map(move |(species, germline)| {
                 germline
@@ -100,19 +92,11 @@ impl<
     /// Get the selected alleles in parallel fashion, only available if you enable the feature "rayon" (on by default)
     pub fn par_germlines(self) -> impl ParallelIterator<Item = Allele<'static>> {
         super::par_germlines()
-            .filter(move |g| {
-                self.species
-                    .as_ref()
-                    .map_or(true, |s| s.contains(&g.species))
-            })
+            .filter(move |g| self.species.as_ref().is_none_or(|s| s.contains(&g.species)))
             .flat_map(|g| g.into_par_iter().map(|c| (g.species, c.0, c.1)))
-            .filter(move |(_, kind, _)| self.chains.as_ref().map_or(true, |k| k.contains(kind)))
+            .filter(move |(_, kind, _)| self.chains.as_ref().is_none_or(|k| k.contains(kind)))
             .flat_map(|(species, _, c)| c.into_par_iter().map(move |g| (species, g.0, g.1)))
-            .filter(move |(_, gene, _)| {
-                self.genes
-                    .as_ref()
-                    .map_or(true, |s| contains_gene(s, *gene))
-            })
+            .filter(move |(_, gene, _)| self.genes.as_ref().is_none_or(|s| contains_gene(s, *gene)))
             .flat_map(|(species, _, germlines)| {
                 germlines.into_par_iter().map(move |a| (species, a))
             })
@@ -178,7 +162,7 @@ pub struct Allele<'a> {
     pub annotations: &'a [(Annotation, usize)],
 }
 
-impl<'a> Allele<'a> {
+impl Allele<'_> {
     /// Get the IMGT name for this allele
     pub fn name(&self) -> String {
         format!("{}*{:02}", self.gene, self.number)
@@ -190,7 +174,7 @@ impl<'a> Allele<'a> {
     }
 }
 
-impl<'a> AnnotatedPeptide for Allele<'a> {
+impl AnnotatedPeptide for Allele<'_> {
     type Complexity = UnAmbiguous;
     fn peptide(&self) -> &Peptidoform<Self::Complexity> {
         self.sequence
