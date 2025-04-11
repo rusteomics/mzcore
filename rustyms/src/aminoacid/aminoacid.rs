@@ -369,6 +369,35 @@ impl AminoAcid {
         Self::Valine,
     ];
 
+    /// All amino acids (including I/L/J/B/Z but excluding X)
+    pub const ALL_AMINO_ACIDS: &'static [Self] = &[
+        Self::Alanine,
+        Self::AmbiguousAsparagine,
+        Self::AmbiguousGlutamine,
+        Self::AmbiguousLeucine,
+        Self::Arginine,
+        Self::Asparagine,
+        Self::AsparticAcid,
+        Self::Cysteine,
+        Self::GlutamicAcid,
+        Self::Glutamine,
+        Self::Glycine,
+        Self::Histidine,
+        Self::Isoleucine,
+        Self::Leucine,
+        Self::Lysine,
+        Self::Methionine,
+        Self::Phenylalanine,
+        Self::Proline,
+        Self::Pyrrolysine,
+        Self::Selenocysteine,
+        Self::Serine,
+        Self::Threonine,
+        Self::Tryptophan,
+        Self::Tyrosine,
+        Self::Valine,
+    ];
+
     // TODO: generalise over used storage type, so using molecularformula, monoisotopic mass, or average mass, also make sure that AAs can return these numbers in a const fashion
     #[expect(clippy::too_many_lines, clippy::too_many_arguments)]
     pub(crate) fn fragments(

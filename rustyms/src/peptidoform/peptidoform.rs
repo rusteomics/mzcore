@@ -431,10 +431,7 @@ impl<Complexity> Peptidoform<Complexity> {
                     if let Modification::Ambiguous { .. } = f {
                         acc
                     } else {
-                        let attachment = all_peptides[peptidoform_index]
-                            .sequence
-                            .first()
-                            .map(|s| s.aminoacid.aminoacid());
+                        let attachment = self.sequence.first().map(|s| s.aminoacid.aminoacid());
                         let (formula, specific, _seen) = f.formula_inner(
                             all_peptides,
                             visited_peptides,
@@ -1522,7 +1519,7 @@ impl<Complexity: AtMax<Linear>> Peptidoform<Complexity> {
         let mut result = Vec::new();
 
         for (index, start) in sites.iter().enumerate() {
-            for end in sites.iter().skip(index).take(max_missed_cleavages + 1) {
+            for end in sites.iter().skip(index + 1).take(max_missed_cleavages + 1) {
                 result.push(self.sub_peptide((*start)..*end));
             }
         }
