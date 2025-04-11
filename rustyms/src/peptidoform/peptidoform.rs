@@ -1511,7 +1511,12 @@ impl<Complexity: AtMax<Linear>> Peptidoform<Complexity> {
     }
 
     /// Digest this sequence with the given protease and the given maximal number of missed cleavages.
-    pub fn digest(&self, protease: &Protease, max_missed_cleavages: usize) -> Vec<Self> {
+    pub fn digest(
+        &self,
+        protease: &Protease,
+        max_missed_cleavages: usize,
+        size_range: impl RangeBounds<usize>,
+    ) -> Vec<Self> {
         let mut sites = vec![0];
         sites.extend_from_slice(&protease.match_locations(&self.sequence));
         sites.push(self.len());
@@ -1520,7 +1525,9 @@ impl<Complexity: AtMax<Linear>> Peptidoform<Complexity> {
 
         for (index, start) in sites.iter().enumerate() {
             for end in sites.iter().skip(index + 1).take(max_missed_cleavages + 1) {
-                result.push(self.sub_peptide((*start)..*end));
+                if size_range.contains(&(end - start)) {
+                    result.push(self.sub_peptide((*start)..*end));
+                }
             }
         }
         result

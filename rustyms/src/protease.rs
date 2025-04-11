@@ -118,18 +118,6 @@ pub mod known_proteases {
         ])
     });
 
-    /// Elastase cuts after Alanine (A), Glycine (G), Serine (S), Valine (V), Isoleucine (I), Leucine (L)
-    pub static ELASTASE: LazyLock<Protease> = LazyLock::new(|| {
-        Protease::c_terminal_of(vec![
-            AminoAcid::Alanine,
-            AminoAcid::Glycine,
-            AminoAcid::Serine,
-            AminoAcid::Valine,
-            AminoAcid::Isoleucine,
-            AminoAcid::Leucine,
-        ])
-    });
-
     /// `AspN` cuts before Aspartic acid (D)
     pub static ASPN: LazyLock<Protease> =
         LazyLock::new(|| Protease::n_terminal_of(vec![AminoAcid::AsparticAcid]));
