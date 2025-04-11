@@ -1,5 +1,6 @@
-use std::num::NonZeroU16;
-use std::sync::OnceLock;
+use std::{num::NonZeroU16, sync::LazyLock};
+
+use bincode::config::Configuration;
 
 use crate::system::{da, fraction, Ratio};
 
@@ -12,9 +13,9 @@ impl Element {
             isotope.is_none()
         } else {
             isotope.map_or_else(
-                || elemental_data()[self as usize - 1].0.is_some(),
+                || ELEMENTAL_DATA[self as usize - 1].0.is_some(),
                 |isotope| {
-                    elemental_data()[self as usize - 1]
+                    ELEMENTAL_DATA[self as usize - 1]
                         .2
                         .iter()
                         .any(|(ii, _, _)| *ii == isotope.get())
@@ -25,7 +26,7 @@ impl Element {
 
     /// Get all available isotopes (N, mass, abundance)
     pub fn isotopes(self) -> &'static [(u16, Mass, f64)] {
-        &elemental_data()[self as usize - 1].2
+        &ELEMENTAL_DATA[self as usize - 1].2
     }
 
     /// The mass of the specified isotope of this element (if that isotope exists)
@@ -34,10 +35,10 @@ impl Element {
             return Some(da(5.485_799_090_65e-4));
         }
         isotope.map_or_else(
-            || elemental_data()[self as usize - 1].0,
+            || ELEMENTAL_DATA[self as usize - 1].0,
             |isotope| {
                 // Specific isotope do not change anything
-                elemental_data()[self as usize - 1]
+                ELEMENTAL_DATA[self as usize - 1]
                     .2
                     .iter()
                     .find(|(ii, _, _)| *ii == isotope.get())
@@ -52,10 +53,10 @@ impl Element {
             return Some(da(5.485_799_090_65e-4));
         }
         isotope.map_or_else(
-            || elemental_data()[self as usize - 1].1,
+            || ELEMENTAL_DATA[self as usize - 1].1,
             |isotope| {
                 // Specific isotope do not change anything
-                elemental_data()[self as usize - 1]
+                ELEMENTAL_DATA[self as usize - 1]
                     .2
                     .iter()
                     .find(|(ii, _, _)| *ii == isotope.get())
@@ -72,7 +73,7 @@ impl Element {
         Some(
             if let Some(isotope) = isotope {
                 // Specific isotope do not change anything
-                elemental_data()[self as usize - 1]
+                ELEMENTAL_DATA[self as usize - 1]
                     .2
                     .iter()
                     .find(|(ii, _, _)| *ii == isotope.get())
@@ -80,7 +81,7 @@ impl Element {
             } else {
                 // (mass, chance)
                 let mut max = None;
-                for iso in &elemental_data()[self as usize - 1].2 {
+                for iso in &ELEMENTAL_DATA[self as usize - 1].2 {
                     let chance = iso.2 * f64::from(n);
                     if max.is_none_or(|m: (Mass, f64)| chance > m.1) {
                         max = Some((iso.1, chance));
@@ -95,11 +96,14 @@ impl Element {
 /// Get the elemental data
 /// # Panics
 /// It panics if the elemental data that is passed at compile time is not formatted correctly.
-pub fn elemental_data() -> &'static ElementalData {
-    ELEMENTAL_DATA_CELL
-        .get_or_init(|| bincode::deserialize(include_bytes!("databases/elements.dat")).unwrap())
-}
-static ELEMENTAL_DATA_CELL: OnceLock<ElementalData> = OnceLock::new();
+pub static ELEMENTAL_DATA: LazyLock<ElementalData> = LazyLock::new(|| {
+    bincode::serde::decode_from_slice::<ElementalData, Configuration>(
+        include_bytes!("databases/elements.dat"),
+        Configuration::default(),
+    )
+    .unwrap()
+    .0
+});
 
 #[cfg(test)]
 #[expect(clippy::missing_panics_doc)]

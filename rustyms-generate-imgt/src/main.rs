@@ -16,6 +16,7 @@ mod structs;
 
 use crate::shared::*;
 
+use bincode::config::Configuration;
 use itertools::Itertools;
 use rustyms::{
     peptidoform::{Annotation, Region},
@@ -60,7 +61,7 @@ fn main() {
 
     writeln!(
         output,
-        "// @generated\n#![allow(non_snake_case,non_upper_case_globals)]\nuse std::sync::OnceLock;\nuse super::shared::{{Germlines, Species}};"
+        "// @generated\n#![allow(non_snake_case,non_upper_case_globals)]\nuse std::sync::LazyLock;\nuse bincode::config::Configuration;\nuse super::shared::{{Germlines, Species}};"
     )
     .unwrap();
     writeln!(output, "/// Get the germlines for any of the available species. See the main documentation for which species have which data available.").unwrap();
@@ -93,8 +94,14 @@ _Number of genes / number of alleles_
 
         let mut file =
             std::fs::File::create(format!("rustyms/src/imgt/germlines/{species}.bin")).unwrap();
-        file.write_all(&bincode::serialize::<Germlines>(&germlines).unwrap())
-            .unwrap();
+        file.write_all(
+            &bincode::serde::encode_to_vec::<Germlines, Configuration>(
+                germlines,
+                Configuration::default(),
+            )
+            .unwrap(),
+        )
+        .unwrap();
     }
     // germlines
     writeln!(
@@ -104,7 +111,13 @@ _Number of genes / number of alleles_
     .unwrap();
 
     for species in &found_species {
-        writeln!(output, "Species::{0} => Some(lock_{0}()),", species.ident()).unwrap();
+        writeln!(
+            output,
+            "Species::{} => Some(&{}),",
+            species.ident(),
+            species.ident().to_ascii_uppercase()
+        )
+        .unwrap();
     }
     writeln!(output, "_=>None}}}}").unwrap();
     // all_germlines
@@ -116,7 +129,7 @@ pub fn all_germlines() -> impl std::iter::Iterator<Item = &'static Germlines> {{
     .unwrap();
     writeln!(output, "[").unwrap();
     for species in &found_species {
-        writeln!(output, "lock_{}(),", species.ident()).unwrap();
+        writeln!(output, "&*{},", species.ident().to_ascii_uppercase()).unwrap();
     }
     writeln!(output, "].into_iter()\n}}").unwrap();
     // par_germlines
@@ -131,16 +144,15 @@ pub fn par_germlines() -> impl rayon::prelude::ParallelIterator<Item = &'static 
     .unwrap();
     writeln!(output, "[").unwrap();
     for species in &found_species {
-        writeln!(output, "lock_{}(),", species.ident()).unwrap();
+        writeln!(output, "&*{},", species.ident().to_ascii_uppercase()).unwrap();
     }
     writeln!(output, "].into_par_iter()\n}}").unwrap();
 
     for species in &found_species {
         writeln!(
             output,
-"static LOCK_{0}: OnceLock<Germlines> = OnceLock::new();
-fn lock_{0}()->&'static Germlines{{LOCK_{0}.get_or_init(|| {{bincode::deserialize(include_bytes!(\"{species}.bin\")).unwrap()}})}}",
-            species.ident(),
+"static {0}: LazyLock<Germlines> = LazyLock::new(|| {{bincode::serde::decode_from_slice::<Germlines, Configuration>(include_bytes!(\"{species}.bin\"),Configuration::default(),).unwrap().0}});",
+            species.ident().to_ascii_uppercase(),
         )
         .unwrap();
     }

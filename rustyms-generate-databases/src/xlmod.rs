@@ -1,5 +1,6 @@
 use std::{io::Write, path::Path};
 
+use bincode::config::Configuration;
 use itertools::Itertools;
 use thin_vec::ThinVec;
 
@@ -24,7 +25,13 @@ pub fn build_xlmod_ontology(out_dir: &Path) {
         .collect::<Vec<_>>();
     println!("Found {} XLMOD modifications", final_mods.len());
     mods_file
-        .write_all(&bincode::serialize::<OntologyModificationList>(&final_mods).unwrap())
+        .write_all(
+            &bincode::serde::encode_to_vec::<OntologyModificationList, Configuration>(
+                final_mods,
+                Configuration::default(),
+            )
+            .unwrap(),
+        )
         .unwrap();
 }
 

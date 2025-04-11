@@ -1,5 +1,6 @@
 use std::{io::Write, iter, path::Path, sync::LazyLock};
 
+use bincode::config::Configuration;
 use regex::Regex;
 
 use crate::{formula::MolecularFormula, NeutralLoss};
@@ -17,8 +18,14 @@ pub fn build_unimod_ontology(out_dir: &Path) {
     let mut file = std::fs::File::create(dest_path).unwrap();
     let final_mods = mods.into_iter().map(|m| m.into_mod()).collect::<Vec<_>>();
     println!("Found {} Unimod modifications", final_mods.len());
-    file.write_all(&bincode::serialize::<OntologyModificationList>(&final_mods).unwrap())
-        .unwrap();
+    file.write_all(
+        &bincode::serde::encode_to_vec::<OntologyModificationList, Configuration>(
+            final_mods,
+            Configuration::default(),
+        )
+        .unwrap(),
+    )
+    .unwrap();
 }
 
 static REGEX_POSITION: LazyLock<Regex> =

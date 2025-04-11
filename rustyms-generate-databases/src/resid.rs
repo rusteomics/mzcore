@@ -10,6 +10,7 @@ use super::{
 };
 use crate::{formula::MultiChemical, MolecularFormula};
 
+use bincode::config::Configuration;
 use roxmltree::*;
 
 pub fn build_resid_ontology(out_dir: &Path) {
@@ -19,8 +20,14 @@ pub fn build_resid_ontology(out_dir: &Path) {
     let mut file = std::fs::File::create(dest_path).unwrap();
     let final_mods = mods.into_iter().map(|m| m.into_mod()).collect::<Vec<_>>();
     println!("Found {} RESID modifications", final_mods.len());
-    file.write_all(&bincode::serialize::<OntologyModificationList>(&final_mods).unwrap())
-        .unwrap();
+    file.write_all(
+        &bincode::serde::encode_to_vec::<OntologyModificationList, Configuration>(
+            final_mods,
+            Configuration::default(),
+        )
+        .unwrap(),
+    )
+    .unwrap();
 }
 
 fn parse_resid() -> Vec<OntologyModification> {

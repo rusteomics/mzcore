@@ -1,7 +1,8 @@
 //! The available ontologies
 
-use std::sync::OnceLock;
+use std::sync::LazyLock;
 
+use bincode::config::Configuration;
 use itertools::Itertools;
 
 pub use crate::modification::OntologyModificationList;
@@ -20,11 +21,11 @@ impl Ontology {
     /// Get the modifications lookup list for this ontology
     pub fn lookup(self, custom_database: Option<&CustomDatabase>) -> &OntologyModificationList {
         match self {
-            Self::Gnome => gnome_ontology(),
-            Self::Psimod => psimod_ontology(),
-            Self::Unimod => unimod_ontology(),
-            Self::Resid => resid_ontology(),
-            Self::Xlmod => xlmod_ontology(),
+            Self::Gnome => &GNOME,
+            Self::Psimod => &PSIMOD,
+            Self::Unimod => &UNIMOD,
+            Self::Resid => &RESID,
+            Self::Xlmod => &XLMOD,
             Self::Custom => custom_database.map_or(&EMPTY_LIST, |c| c),
         }
     }
@@ -121,37 +122,55 @@ impl Ontology {
 /// Get the unimod ontology
 /// # Panics
 /// Panics when the modifications are not correctly provided at compile time, always report a panic if it occurs here.
-fn unimod_ontology() -> &'static OntologyModificationList {
-    UNIMOD_CELL
-        .get_or_init(|| bincode::deserialize(include_bytes!("databases/unimod.dat")).unwrap())
-}
+static UNIMOD: LazyLock<OntologyModificationList> = LazyLock::new(|| {
+    bincode::serde::decode_from_slice::<OntologyModificationList, Configuration>(
+        include_bytes!("databases/unimod.dat"),
+        Configuration::default(),
+    )
+    .unwrap()
+    .0
+});
 /// Get the PSI-MOD ontology
 /// # Panics
 /// Panics when the modifications are not correctly provided at compile time, always report a panic if it occurs here.
-fn psimod_ontology() -> &'static OntologyModificationList {
-    PSIMOD_CELL
-        .get_or_init(|| bincode::deserialize(include_bytes!("databases/psimod.dat")).unwrap())
-}
+static PSIMOD: LazyLock<OntologyModificationList> = LazyLock::new(|| {
+    bincode::serde::decode_from_slice::<OntologyModificationList, Configuration>(
+        include_bytes!("databases/psimod.dat"),
+        Configuration::default(),
+    )
+    .unwrap()
+    .0
+});
 /// Get the Gnome ontology
 /// # Panics
 /// Panics when the modifications are not correctly provided at compile time, always report a panic if it occurs here.
-fn gnome_ontology() -> &'static OntologyModificationList {
-    GNOME_CELL.get_or_init(|| bincode::deserialize(include_bytes!("databases/gnome.dat")).unwrap())
-}
+static GNOME: LazyLock<OntologyModificationList> = LazyLock::new(|| {
+    bincode::serde::decode_from_slice::<OntologyModificationList, Configuration>(
+        include_bytes!("databases/gnome.dat"),
+        Configuration::default(),
+    )
+    .unwrap()
+    .0
+});
 /// Get the Resid ontology
 /// # Panics
 /// Panics when the modifications are not correctly provided at compile time, always report a panic if it occurs here.
-fn resid_ontology() -> &'static OntologyModificationList {
-    RESID_CELL.get_or_init(|| bincode::deserialize(include_bytes!("databases/resid.dat")).unwrap())
-}
+static RESID: LazyLock<OntologyModificationList> = LazyLock::new(|| {
+    bincode::serde::decode_from_slice::<OntologyModificationList, Configuration>(
+        include_bytes!("databases/resid.dat"),
+        Configuration::default(),
+    )
+    .unwrap()
+    .0
+});
 /// Get the Xlmod ontology
 /// # Panics
 /// Panics when the modifications are not correctly provided at compile time, always report a panic if it occurs here.
-fn xlmod_ontology() -> &'static OntologyModificationList {
-    XLMOD_CELL.get_or_init(|| bincode::deserialize(include_bytes!("databases/xlmod.dat")).unwrap())
-}
-static UNIMOD_CELL: OnceLock<OntologyModificationList> = OnceLock::new();
-static PSIMOD_CELL: OnceLock<OntologyModificationList> = OnceLock::new();
-static GNOME_CELL: OnceLock<OntologyModificationList> = OnceLock::new();
-static RESID_CELL: OnceLock<OntologyModificationList> = OnceLock::new();
-static XLMOD_CELL: OnceLock<OntologyModificationList> = OnceLock::new();
+static XLMOD: LazyLock<OntologyModificationList> = LazyLock::new(|| {
+    bincode::serde::decode_from_slice::<OntologyModificationList, Configuration>(
+        include_bytes!("databases/xlmod.dat"),
+        Configuration::default(),
+    )
+    .unwrap()
+    .0
+});

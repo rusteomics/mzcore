@@ -1,5 +1,7 @@
 use std::{io::Write, path::Path};
 
+use bincode::config::Configuration;
+
 use crate::formula::MolecularFormula;
 
 use super::{
@@ -17,8 +19,14 @@ pub fn build_psi_mod_ontology(out_dir: &Path) {
     let mut file = std::fs::File::create(dest_path).unwrap();
     let final_mods = mods.into_iter().map(|m| m.into_mod()).collect::<Vec<_>>();
     println!("Found {} PSI-MOD modifications", final_mods.len());
-    file.write_all(&bincode::serialize::<OntologyModificationList>(&final_mods).unwrap())
-        .unwrap();
+    file.write_all(
+        &bincode::serde::encode_to_vec::<OntologyModificationList, Configuration>(
+            final_mods,
+            Configuration::default(),
+        )
+        .unwrap(),
+    )
+    .unwrap();
 }
 
 fn parse_psi_mod() -> Vec<OntologyModification> {

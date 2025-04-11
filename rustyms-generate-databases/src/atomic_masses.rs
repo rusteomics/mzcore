@@ -1,5 +1,7 @@
 use std::{io::Write, path::Path};
 
+use bincode::config::Configuration;
+
 use crate::{system::f64::da, Element, ElementalData};
 
 use super::csv::parse_csv;
@@ -156,8 +158,14 @@ pub fn build_atomic_masses(out_dir: &Path) {
             )
         })
         .collect();
-    file.write_all(&bincode::serialize::<ElementalData>(&elements).unwrap())
-        .unwrap();
+    file.write_all(
+        &bincode::serde::encode_to_vec::<ElementalData, Configuration>(
+            elements,
+            Configuration::default(),
+        )
+        .unwrap(),
+    )
+    .unwrap();
 }
 
 fn get_ciaaw_number(text: &str) -> Result<f64, String> {

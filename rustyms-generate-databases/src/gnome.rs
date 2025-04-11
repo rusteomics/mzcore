@@ -7,6 +7,7 @@ use super::{
     GnoSubsumption, ModificationId, SimpleModificationInner,
 };
 
+use bincode::config::Configuration;
 use thin_vec::ThinVec;
 
 pub fn build_gnome_ontology(out_dir: &Path) {
@@ -57,8 +58,14 @@ pub fn build_gnome_ontology(out_dir: &Path) {
         .map(|m| (None, m.id.name.clone(), m.into_mod()))
         .collect::<OntologyModificationList>();
     println!("Found {} GNOme modifications", final_mods.len());
-    file.write_all(&bincode::serialize::<OntologyModificationList>(&final_mods).unwrap())
-        .unwrap();
+    file.write_all(
+        &bincode::serde::encode_to_vec::<OntologyModificationList, Configuration>(
+            final_mods,
+            Configuration::default(),
+        )
+        .unwrap(),
+    )
+    .unwrap();
 }
 
 fn find_mass(mods: &HashMap<String, GNOmeModification>, mut name: String) -> Option<f64> {
