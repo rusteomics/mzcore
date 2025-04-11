@@ -1,13 +1,8 @@
 name: Python CI
 
 on:
-  push:
-    branches:
-      - release
-    tags:
-      - "*"
-  pull_request:
-  workflow_dispatch:
+  release:
+    -type: [publish]
 
 permissions:
   contents: read
