@@ -10,7 +10,7 @@ use crate::{AminoAcid, SequenceElement};
 /// a specificity at a certain position any amino acid that is contained in the set is allowed (see
 /// [`crate::CheckedAminoAcid::canonical_identical`]).
 ///
-/// A standard set of proteases can be found here [`known_proteases`]
+/// A standard set of proteases can be found here [`known_proteases`].
 ///
 /// # Examples
 ///
@@ -159,11 +159,55 @@ pub struct Protease {
 }
 
 impl Protease {
-    /// Define a simple protease that cuts exactly between the specified sequences.
-    pub fn new(n_term: Vec<AminoAcid>, c_term: Vec<AminoAcid>) -> Self {
+    /// Define a protease that cuts exactly between the specified sequences.
+    /// ```rust
+    /// # use rustyms::{Peptidoform, Protease, AminoAcid};
+    /// # let cetuximab = "QVQLKQSGPGLVQPSQSLSITCTVSGFSLTNYGVHWVRQSPGKGLEWLGVIWSGGNTDYNTPFTSRLSINKDNSKSQVFFKMNSLQSNDTAIYYCARALTYYDYEFAYWGQGTLVTVSAASTKGPSVFPLAPSSKSTSGGTAALGCLVKDYFPEPVTVSWNSGALTSGVHTFPAVLQSSGLYSLSSVVTVPSSSLGTQTYICNVNHKPSNTKVDKRVEPKSCDKTHTCPPCPAPELLGGPSVFLFPPKPKDTLMISRTPEVTCVVVDVSHEDPEVKFNWYVDGVEVHNAKTKPREEQYNSTYRVVSVLTVLHQDWLNGKEYKCKVSNKALPAPIEKTISKAKGQPREPQVYTLPPSREEMTKNQVSLTCLVKGFYPSDIAVEWESNGQPENNYKTTPPVLDSDGSFFLYSKLTVDKSRWQQGNVFSCSVMHEALHNHYTQKSLSLSPGK";
+    /// // FabDELLO is a protease designed to create Fabs from antibodies
+    /// // Define the cut site for FabDello "KSCDK / THTCPPCP"
+    /// let fab_dello = Protease::between_stretches(
+    ///     &"KSCDK".chars().map(|c| AminoAcid::try_from(c).unwrap()).collect::<Vec<_>>(),
+    ///     &"THTCPPCP".chars().map(|c| AminoAcid::try_from(c).unwrap()).collect::<Vec<_>>());
+    ///
+    /// // Get the sequence of the antibody Cetuximab
+    /// let sequence = Peptidoform::pro_forma(cetuximab, None).unwrap().into_linear().unwrap();
+    ///
+    /// // Run an in-silico digest with 0 missed cleavages
+    /// let digest = sequence.digest(&fab_dello, 0, ..);
+    ///
+    /// assert_eq!(digest.len(), 2);
+    /// ```
+    pub fn between_stretches(before: &[AminoAcid], after: &[AminoAcid]) -> Self {
         Self {
-            before: vec![Some(n_term)],
-            after: vec![Some(c_term)],
+            before: before.iter().map(|aa| Some(vec![*aa])).collect_vec(),
+            after: after.iter().map(|aa| Some(vec![*aa])).collect_vec(),
+        }
+    }
+
+    /// Define a protease that cuts exactly between the specified options before the site and the specified options after the site.
+    /// ```rust
+    /// # use rustyms::{Peptidoform, Protease, AminoAcid};
+    /// // Define a protease and sequence to digest
+    /// let chymotrypsin = Protease::between_options(
+    ///        vec![
+    ///            AminoAcid::Phenylalanine,
+    ///            AminoAcid::Tryptophan,
+    ///            AminoAcid::Tyrosine,
+    ///        ],
+    ///        Protease::get_exclusive(&[AminoAcid::Proline]),
+    ///    );
+    /// let sequence = Peptidoform::pro_forma("AFWYPLGF", None).unwrap().into_linear().unwrap();
+    ///
+    /// // Run an in-silico digest with 0 missed cleavages and only allow peptides ranging from 4 to 40 amino acids long
+    /// let digest = sequence.digest(&chymotrypsin, 0, 4..40);
+    ///
+    /// assert_eq!(digest.len(), 1);
+    /// assert_eq!(digest[0].to_string(), "YPLGF");
+    /// ```
+    pub fn between_options(before: Vec<AminoAcid>, after: Vec<AminoAcid>) -> Self {
+        Self {
+            before: vec![Some(before)],
+            after: vec![Some(after)],
         }
     }
 
@@ -229,7 +273,7 @@ pub mod known_proteases {
 
     /// `Trypsin` cuts after Lysine (K) or Arginine (R), unless followed by Proline (P)
     pub static TRYPSIN: LazyLock<Protease> = LazyLock::new(|| {
-        Protease::new(
+        Protease::between_options(
             vec![AminoAcid::Lysine, AminoAcid::Arginine],
             Protease::get_exclusive(&[AminoAcid::Proline]),
         )
@@ -237,7 +281,7 @@ pub mod known_proteases {
 
     /// `Chymotrypsin` cuts after Phenylalanine (F), Tryptophan (W), Tyrosine (Y), unless followed by Proline (P)
     pub static CHYMOTRYPSIN: LazyLock<Protease> = LazyLock::new(|| {
-        Protease::new(
+        Protease::between_options(
             vec![
                 AminoAcid::Phenylalanine,
                 AminoAcid::Tryptophan,
