@@ -2,14 +2,14 @@ use std::{io::Write, iter, path::Path, sync::LazyLock};
 
 use bincode::config::Configuration;
 use regex::Regex;
-
-use crate::{formula::MolecularFormula, NeutralLoss};
-
-use super::{
-    obo::OboOntology,
-    ontology_modification::{OntologyModification, OntologyModificationList, PlacementRule},
-    ModData,
+use rustyms::{
+    modification::Ontology, ontologies::OntologyModificationList, placement_rule::PlacementRule,
+    MolecularFormula, NeutralLoss,
 };
+
+use crate::ontology_modification::position_from_str;
+
+use super::{obo::OboOntology, ontology_modification::OntologyModification, ModData};
 
 pub fn build_unimod_ontology(out_dir: &Path) {
     let mods = parse_unimod();
@@ -53,7 +53,7 @@ fn parse_unimod() -> Vec<OntologyModification> {
                 .parse()
                 .expect("Incorrect unimod id, should be numerical"),
             name: obj.lines["name"][0].to_string(),
-            ontology: super::ontology_modification::Ontology::Unimod,
+            ontology: Ontology::Unimod,
             ..OntologyModification::default()
         };
         if let Some(values) = obj.lines.get("def") {
@@ -131,12 +131,12 @@ fn parse_unimod() -> Vec<OntologyModification> {
                 rules.extend(mod_rules.into_iter().filter_map(|rule| {
                     match (rule.0.as_str(), rule.1.as_str()) {
                         ("C-term", pos) => Some((
-                            vec![PlacementRule::Terminal(pos.try_into().unwrap())],
+                            vec![PlacementRule::Terminal(position_from_str(pos).unwrap())],
                             rule.2,
                             Vec::new(),
                         )),
                         ("N-term", pos) => Some((
-                            vec![PlacementRule::Terminal(pos.try_into().unwrap())],
+                            vec![PlacementRule::Terminal(position_from_str(pos).unwrap())],
                             rule.2,
                             Vec::new(),
                         )),
@@ -148,7 +148,7 @@ fn parse_unimod() -> Vec<OntologyModification> {
                                         c.try_into().unwrap_or_else(|_| panic!("Not an AA: {c}"))
                                     })
                                     .collect(),
-                                pos.try_into().unwrap(),
+                                position_from_str(pos).unwrap(),
                             )],
                             rule.2,
                             Vec::new(),

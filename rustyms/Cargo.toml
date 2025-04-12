@@ -11,13 +11,7 @@ categories = ["science::bioinformatics::proteomics"]
 keywords = ["spectra", "mass-spectrometry", "bio", "fragmentation", "proforma"]
 repository = "https://github.com/snijderlab/rustyms"
 readme = "README.md"
-include = [
-    "src/**/*",
-    "images/**/*",
-    "README.md",
-    "build.rs",
-    "benches/**/*",
-]
+include = ["src/**/*", "images/**/*", "README.md", "build.rs", "benches/**/*"]
 
 [dependencies]
 bincode = { workspace = true }
@@ -32,7 +26,7 @@ rayon = { workspace = true, optional = true }
 regex = { workspace = true }
 serde = { workspace = true }
 similar = { workspace = true }
-swash = {workspace = true, optional = true}
+swash = { workspace = true, optional = true }
 thin-vec = { workspace = true }
 uom = { workspace = true }
 zeno = { workspace = true, optional = true }
@@ -42,7 +36,7 @@ base64 = { workspace = true }
 iai-callgrind = { workspace = true }
 png = { workspace = true }
 serde_json = { workspace = true }
-directories = {workspace = true}
+directories = { workspace = true }
 
 [features]
 default = [
@@ -62,6 +56,7 @@ identification = []
 isotopes = ["probability", "ndarray"]
 glycan-render = []
 glycan-render-bitmap = ["zeno", "swash", "glycan-render"]
+internal-no-data = []
 
 [[bench]]
 name = "iai"

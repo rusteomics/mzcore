@@ -1,7 +1,5 @@
 use std::{num::NonZeroU16, sync::LazyLock};
 
-use bincode::config::Configuration;
-
 use crate::system::{da, fraction, Ratio};
 
 include!("shared/element.rs");
@@ -97,12 +95,19 @@ impl Element {
 /// # Panics
 /// It panics if the elemental data that is passed at compile time is not formatted correctly.
 pub static ELEMENTAL_DATA: LazyLock<ElementalData> = LazyLock::new(|| {
-    bincode::serde::decode_from_slice::<ElementalData, Configuration>(
-        include_bytes!("databases/elements.dat"),
-        Configuration::default(),
-    )
-    .unwrap()
-    .0
+    #[cfg(not(feature = "internal-no-data"))]
+    {
+        bincode::serde::decode_from_slice::<ElementalData, bincode::config::Configuration>(
+            include_bytes!("databases/elements.dat"),
+            bincode::config::Configuration::default(),
+        )
+        .unwrap()
+        .0
+    }
+    #[cfg(feature = "internal-no-data")]
+    {
+        Vec::new()
+    }
 });
 
 #[cfg(test)]

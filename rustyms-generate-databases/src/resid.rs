@@ -4,14 +4,16 @@ use std::{
     path::Path,
 };
 
-use super::{
-    ontology_modification::{OntologyModification, OntologyModificationList},
-    AminoAcid, ModData, Ontology, PlacementRule, Position,
-};
-use crate::{formula::MultiChemical, MolecularFormula};
+use super::{ontology_modification::OntologyModification, ModData};
 
 use bincode::config::Configuration;
 use roxmltree::*;
+use rustyms::{
+    modification::{LinkerSpecificity, Ontology},
+    ontologies::OntologyModificationList,
+    placement_rule::{PlacementRule, Position},
+    AminoAcid, MolecularFormula, MultiChemical,
+};
 
 pub fn build_resid_ontology(out_dir: &Path) {
     let mods = parse_resid();
@@ -226,7 +228,7 @@ fn parse_resid() -> Vec<OntologyModification> {
                 if let (Some(ModData::Linker { specificities, .. }), Some(aa)) = (&mut data, rule.1)
                 {
                     if rule.0 == aa {
-                        specificities.push(crate::LinkerSpecificity::Symmetric(
+                        specificities.push(LinkerSpecificity::Symmetric(
                             vec![PlacementRule::AminoAcid(
                                 vec![rule.0],
                                 rule.2.unwrap_or(Position::Anywhere),
@@ -235,7 +237,7 @@ fn parse_resid() -> Vec<OntologyModification> {
                             Vec::new(),
                         ))
                     } else {
-                        specificities.push(crate::LinkerSpecificity::Asymmetric(
+                        specificities.push(LinkerSpecificity::Asymmetric(
                             (
                                 vec![PlacementRule::AminoAcid(
                                     vec![rule.0],

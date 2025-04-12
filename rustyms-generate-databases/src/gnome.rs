@@ -1,13 +1,20 @@
 use std::{collections::HashMap, io::Write, path::Path, sync::Arc};
 
-use crate::{csv::parse_csv, glycan::*, SimpleModification};
-
-use super::{
-    obo::OboOntology, ontology_modification::OntologyModificationList, GnoComposition,
-    GnoSubsumption, ModificationId, SimpleModificationInner,
+use rustyms::{
+    identification::csv::parse_csv,
+    modification::{
+        GnoComposition, GnoSubsumption, ModificationId, SimpleModification, SimpleModificationInner,
+    },
+    ontologies::OntologyModificationList,
 };
 
+use super::obo::OboOntology;
+
 use bincode::config::Configuration;
+use rustyms::{
+    glycan::{GlycanStructure, MonoSaccharide},
+    modification::Ontology,
+};
 use thin_vec::ThinVec;
 
 pub fn build_gnome_ontology(out_dir: &Path) {
@@ -109,17 +116,14 @@ mod gnome_terms {
 use gnome_terms::*;
 use itertools::Itertools;
 
-impl std::str::FromStr for GnoSubsumption {
-    type Err = ();
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
-            SUBSUMPTION_MOLECULAR_WEIGHT => Ok(Self::AverageWeight),
-            SUBSUMPTION_BASECOMPOSITION => Ok(Self::BaseComposition),
-            SUBSUMPTION_COMPOSITION => Ok(Self::Composition),
-            SUBSUMPTION_TOPOLOGY => Ok(Self::Topology),
-            SUBSUMPTION_SACCHARIDE => Ok(Self::Saccharide),
-            _ => Err(()),
-        }
+fn gno_subsumption_from_str(s: &str) -> Result<GnoSubsumption, ()> {
+    match s {
+        SUBSUMPTION_MOLECULAR_WEIGHT => Ok(GnoSubsumption::AverageWeight),
+        SUBSUMPTION_BASECOMPOSITION => Ok(GnoSubsumption::BaseComposition),
+        SUBSUMPTION_COMPOSITION => Ok(GnoSubsumption::Composition),
+        SUBSUMPTION_TOPOLOGY => Ok(GnoSubsumption::Topology),
+        SUBSUMPTION_SACCHARIDE => Ok(GnoSubsumption::Saccharide),
+        _ => Err(()),
     }
 }
 
@@ -136,7 +140,7 @@ fn parse_gnome() -> HashMap<String, GNOmeModification> {
         // name: glycan of molecular weight 40.03 Da
         let modification = GNOmeModification {
             id: ModificationId {
-                ontology: super::Ontology::Gnome,
+                ontology: Ontology::Gnome,
                 name: obj.lines["id"][0][4..].to_ascii_lowercase(),
                 id: None,
                 description: obj.lines.get("def").map_or(String::new(), |d| {
@@ -173,7 +177,7 @@ fn parse_gnome() -> HashMap<String, GNOmeModification> {
             subsumption_level: obj
                 .lines
                 .get(HAS_SUBSUMPTION_CATEGORY)
-                .map(|s| s[0].parse().unwrap())
+                .map(|s| gno_subsumption_from_str(&s[0]).unwrap())
                 .unwrap_or_default(),
             structure_score: obj
                 .lines
@@ -366,7 +370,7 @@ impl GNOmeModification {
             } else if let Some(composition) = self.composition {
                 GnoComposition::Composition(composition)
             } else if let Some(mass) = self.weight {
-                GnoComposition::Weight(crate::system::f64::da(mass).into())
+                GnoComposition::Weight(rustyms::system::f64::da(mass).into())
             } else {
                 panic!("unreachable")
             },

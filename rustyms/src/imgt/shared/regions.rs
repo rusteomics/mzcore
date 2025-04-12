@@ -11,15 +11,15 @@ use super::species::Species;
 /// A selection of germlines from a single species.
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Germlines {
-    pub(crate) species: Species,
-    pub(crate) h: Chain,
-    pub(crate) k: Chain,
-    pub(crate) l: Chain,
-    pub(crate) i: Chain,
+    pub species: Species,
+    pub h: Chain,
+    pub k: Chain,
+    pub l: Chain,
+    pub i: Chain,
 }
 
 impl Germlines {
-    pub(crate) fn new(species: Species) -> Self {
+    pub fn new(species: Species) -> Self {
         Self {
             species,
             h: Chain::default(),
@@ -29,7 +29,7 @@ impl Germlines {
         }
     }
 
-    pub(crate) fn insert(&mut self, germline: Germline) {
+    pub fn insert(&mut self, germline: Germline) {
         match &germline.name.chain {
             ChainType::Heavy => self.h.insert(germline),
             ChainType::LightKappa => self.k.insert(germline),
@@ -114,7 +114,7 @@ pub struct Chain {
 impl Chain {
     /// # Panics
     /// It panics when it inserts an allele it has already placed (has to be filtered and ranked before)
-    pub(crate) fn insert(&mut self, mut germline: Germline) {
+    pub fn insert(&mut self, mut germline: Germline) {
         let db = match &germline.name.kind {
             GeneType::V => &mut self.variable,
             GeneType::J => &mut self.joining,
@@ -176,7 +176,7 @@ impl Chain {
         }
     }
 
-    pub(crate) fn doc_row(&self) -> String {
+    pub fn doc_row(&self) -> String {
         format!(
             "|{}/{}|{}/{}|{}/{}|",
             self.variable.len(),

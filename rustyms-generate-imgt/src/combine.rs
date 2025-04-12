@@ -3,6 +3,7 @@ use std::fmt::Write;
 
 use itertools::Itertools;
 use rustyms::align::AlignScoring;
+use rustyms::imgt::{AnnotatedSequence, Gene, Germline, Germlines, Species};
 use rustyms::peptidoform::{Annotation, Region};
 use rustyms::Peptidoform;
 use rustyms::UnAmbiguous;
@@ -10,7 +11,6 @@ use rustyms::UnAmbiguous;
 use crate::imgt_gene::IMGTGene;
 use crate::structs::DataItem;
 
-use crate::shared::{AnnotatedSequence, Gene, Germline, Germlines, Species};
 use crate::structs::SingleSeq;
 
 pub fn combine(

@@ -237,7 +237,7 @@ fn main() {
         rows.into_iter().map(|row| row.into_iter().collect_vec()).collect_vec()
     }).collect();
 
-    rustyms::csv::write_csv(
+    rustyms::identification::csv::write_csv(
         out_file,
         out_data.into_iter().map(|r| {
             r.into_iter()

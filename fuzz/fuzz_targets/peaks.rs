@@ -37,10 +37,14 @@ impl Read for StringReader<'_> {
 fn main() {
     fuzz!(|data: &[u8]| {
         if let Ok(s) = std::str::from_utf8(data) {
-            let csv = rustyms::csv::parse_csv_raw(BufReader::new(StringReader::new(s)), b',', None)
-                .unwrap();
-            let _: Vec<_> =
-                rustyms::identification::PeaksData::parse_many(csv, None, false).collect();
+            if let Ok(csv) = rustyms::identification::csv::parse_csv_raw(
+                BufReader::new(StringReader::new(s)),
+                b',',
+                None,
+            ) {
+                let _: Vec<_> =
+                    rustyms::identification::PeaksData::parse_many(csv, None, false).collect();
+            }
         }
     });
 }

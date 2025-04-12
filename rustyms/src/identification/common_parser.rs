@@ -1,6 +1,6 @@
 use crate::{
-    csv::CsvLine,
     error::{Context, CustomError},
+    identification::csv::CsvLine,
 };
 use std::{ops::Range, str::FromStr};
 
@@ -75,7 +75,7 @@ macro_rules! format_family {
                 custom_database: Option<&'a crate::ontologies::CustomDatabase>,
                 keep_all_columns: bool,
             ) -> Result<BoxedIdentifiedPeptideIter<'a, Self>, CustomError> {
-                crate::csv::parse_csv_raw(reader, $separator, $header).and_then(move |lines| {
+                crate::identification::csv::parse_csv_raw(reader, $separator, $header).and_then(move |lines| {
                     let mut i = Self::parse_many::<Box<dyn Iterator<Item = Result<Self::Source, CustomError>>>>(
                         Box::new(lines), custom_database, keep_all_columns);
                     if let Some(Err(e)) = i.peek() {

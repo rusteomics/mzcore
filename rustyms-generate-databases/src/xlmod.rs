@@ -2,15 +2,17 @@ use std::{io::Write, path::Path};
 
 use bincode::config::Configuration;
 use itertools::Itertools;
+use rustyms::{
+    modification::{LinkerSpecificity, Ontology},
+    ontologies::OntologyModificationList,
+    placement_rule::{PlacementRule, Position},
+    DiagnosticIon, MolecularFormula,
+};
 use thin_vec::ThinVec;
-
-use crate::{formula::MolecularFormula, LinkerSpecificity};
 
 use super::{
     obo::{OboOntology, OboValue},
-    ontology_modification::{
-        OntologyModification, OntologyModificationList, PlacementRule, Position,
-    },
+    ontology_modification::OntologyModification,
     ModData,
 };
 
@@ -152,16 +154,14 @@ fn parse_xlmod() -> Vec<OntologyModification> {
                 "reporterMass" | "CID_Fragment" => {
                     // reporterMass: "555.2481" xsd:double
                     // CID_Fragment: "828.5" xsd:double
-                    diagnostic_ions.push(crate::DiagnosticIon(
-                        MolecularFormula::with_additional_mass(
-                            if let OboValue::Float(n) = value[0] {
-                                n
-                            } else {
-                                dbg!(obj);
-                                unreachable!()
-                            },
-                        ),
-                    ))
+                    diagnostic_ions.push(DiagnosticIon(MolecularFormula::with_additional_mass(
+                        if let OboValue::Float(n) = value[0] {
+                            n
+                        } else {
+                            dbg!(obj);
+                            unreachable!()
+                        },
+                    )))
                 }
                 _ => {}
             }
@@ -184,7 +184,7 @@ fn parse_xlmod() -> Vec<OntologyModification> {
                 cross_ids,
                 synonyms,
                 id,
-                ontology: super::Ontology::Xlmod,
+                ontology: Ontology::Xlmod,
                 data: ModData::Linker {
                     length,
                     specificities: vec![if !origins.1.is_empty() {
@@ -207,7 +207,7 @@ fn parse_xlmod() -> Vec<OntologyModification> {
                 description,
                 cross_ids,
                 synonyms,
-                ontology: super::Ontology::Xlmod,
+                ontology: Ontology::Xlmod,
                 id,
                 data: ModData::Mod {
                     specificities: vec![(origins.0, Vec::new(), diagnostic_ions)],

@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 
 use super::{
     common_parser::{Location, OptionalColumn},
-    csv::{parse_csv, CsvLine},
+    identification::csv::{parse_csv, CsvLine},
     BoxedIdentifiedPeptideIter, IdentifiedPeptide, IdentifiedPeptideSource, MetaData,
 };
 

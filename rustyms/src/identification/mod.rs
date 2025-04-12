@@ -4,6 +4,7 @@
 mod common_parser;
 
 mod basic_csv;
+pub mod csv;
 mod deepnovofamily;
 mod fasta;
 mod general;

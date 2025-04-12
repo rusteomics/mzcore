@@ -1,8 +1,5 @@
 //! The available ontologies
 
-use std::sync::LazyLock;
-
-use bincode::config::Configuration;
 use itertools::Itertools;
 
 pub use crate::modification::OntologyModificationList;
@@ -19,14 +16,22 @@ static EMPTY_LIST: OntologyModificationList = Vec::new();
 
 impl Ontology {
     /// Get the modifications lookup list for this ontology
+    #[allow(unused_variables, clippy::unused_self)]
     pub fn lookup(self, custom_database: Option<&CustomDatabase>) -> &OntologyModificationList {
-        match self {
-            Self::Gnome => &GNOME,
-            Self::Psimod => &PSIMOD,
-            Self::Unimod => &UNIMOD,
-            Self::Resid => &RESID,
-            Self::Xlmod => &XLMOD,
-            Self::Custom => custom_database.map_or(&EMPTY_LIST, |c| c),
+        #[cfg(not(feature = "internal-no-data"))]
+        {
+            match self {
+                Self::Gnome => &databases::GNOME,
+                Self::Psimod => &databases::PSIMOD,
+                Self::Unimod => &databases::UNIMOD,
+                Self::Resid => &databases::RESID,
+                Self::Xlmod => &databases::XLMOD,
+                Self::Custom => custom_database.map_or(&EMPTY_LIST, |c| c),
+            }
+        }
+        #[cfg(feature = "internal-no-data")]
+        {
+            &EMPTY_LIST
         }
     }
 
@@ -118,59 +123,65 @@ impl Ontology {
         None
     }
 }
+#[cfg(not(feature = "internal-no-data"))]
+mod databases {
+    use crate::modification::OntologyModificationList;
+    use bincode::config::Configuration;
+    use std::sync::LazyLock;
 
-/// Get the unimod ontology
-/// # Panics
-/// Panics when the modifications are not correctly provided at compile time, always report a panic if it occurs here.
-static UNIMOD: LazyLock<OntologyModificationList> = LazyLock::new(|| {
-    bincode::serde::decode_from_slice::<OntologyModificationList, Configuration>(
-        include_bytes!("databases/unimod.dat"),
-        Configuration::default(),
-    )
-    .unwrap()
-    .0
-});
-/// Get the PSI-MOD ontology
-/// # Panics
-/// Panics when the modifications are not correctly provided at compile time, always report a panic if it occurs here.
-static PSIMOD: LazyLock<OntologyModificationList> = LazyLock::new(|| {
-    bincode::serde::decode_from_slice::<OntologyModificationList, Configuration>(
-        include_bytes!("databases/psimod.dat"),
-        Configuration::default(),
-    )
-    .unwrap()
-    .0
-});
-/// Get the Gnome ontology
-/// # Panics
-/// Panics when the modifications are not correctly provided at compile time, always report a panic if it occurs here.
-static GNOME: LazyLock<OntologyModificationList> = LazyLock::new(|| {
-    bincode::serde::decode_from_slice::<OntologyModificationList, Configuration>(
-        include_bytes!("databases/gnome.dat"),
-        Configuration::default(),
-    )
-    .unwrap()
-    .0
-});
-/// Get the Resid ontology
-/// # Panics
-/// Panics when the modifications are not correctly provided at compile time, always report a panic if it occurs here.
-static RESID: LazyLock<OntologyModificationList> = LazyLock::new(|| {
-    bincode::serde::decode_from_slice::<OntologyModificationList, Configuration>(
-        include_bytes!("databases/resid.dat"),
-        Configuration::default(),
-    )
-    .unwrap()
-    .0
-});
-/// Get the Xlmod ontology
-/// # Panics
-/// Panics when the modifications are not correctly provided at compile time, always report a panic if it occurs here.
-static XLMOD: LazyLock<OntologyModificationList> = LazyLock::new(|| {
-    bincode::serde::decode_from_slice::<OntologyModificationList, Configuration>(
-        include_bytes!("databases/xlmod.dat"),
-        Configuration::default(),
-    )
-    .unwrap()
-    .0
-});
+    /// Get the unimod ontology
+    /// # Panics
+    /// Panics when the modifications are not correctly provided at compile time, always report a panic if it occurs here.
+    pub static UNIMOD: LazyLock<OntologyModificationList> = LazyLock::new(|| {
+        bincode::serde::decode_from_slice::<OntologyModificationList, Configuration>(
+            include_bytes!("databases/unimod.dat"),
+            Configuration::default(),
+        )
+        .unwrap()
+        .0
+    });
+    /// Get the PSI-MOD ontology
+    /// # Panics
+    /// Panics when the modifications are not correctly provided at compile time, always report a panic if it occurs here.
+    pub static PSIMOD: LazyLock<OntologyModificationList> = LazyLock::new(|| {
+        bincode::serde::decode_from_slice::<OntologyModificationList, Configuration>(
+            include_bytes!("databases/psimod.dat"),
+            Configuration::default(),
+        )
+        .unwrap()
+        .0
+    });
+    /// Get the Gnome ontology
+    /// # Panics
+    /// Panics when the modifications are not correctly provided at compile time, always report a panic if it occurs here.
+    pub static GNOME: LazyLock<OntologyModificationList> = LazyLock::new(|| {
+        bincode::serde::decode_from_slice::<OntologyModificationList, Configuration>(
+            include_bytes!("databases/gnome.dat"),
+            Configuration::default(),
+        )
+        .unwrap()
+        .0
+    });
+    /// Get the Resid ontology
+    /// # Panics
+    /// Panics when the modifications are not correctly provided at compile time, always report a panic if it occurs here.
+    pub static RESID: LazyLock<OntologyModificationList> = LazyLock::new(|| {
+        bincode::serde::decode_from_slice::<OntologyModificationList, Configuration>(
+            include_bytes!("databases/resid.dat"),
+            Configuration::default(),
+        )
+        .unwrap()
+        .0
+    });
+    /// Get the Xlmod ontology
+    /// # Panics
+    /// Panics when the modifications are not correctly provided at compile time, always report a panic if it occurs here.
+    pub static XLMOD: LazyLock<OntologyModificationList> = LazyLock::new(|| {
+        bincode::serde::decode_from_slice::<OntologyModificationList, Configuration>(
+            include_bytes!("databases/xlmod.dat"),
+            Configuration::default(),
+        )
+        .unwrap()
+        .0
+    });
+}

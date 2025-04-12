@@ -37,9 +37,9 @@ mod scoring;
 #[cfg(test)]
 mod test_alignments;
 
-#[cfg(feature = "imgt")]
+#[cfg(all(feature = "imgt", not(feature = "internal-no-data")))]
 mod consecutive;
-#[cfg(feature = "imgt")]
+#[cfg(all(feature = "imgt", not(feature = "internal-no-data")))]
 pub use consecutive::*;
 
 pub use align_type::{AlignType, Side};

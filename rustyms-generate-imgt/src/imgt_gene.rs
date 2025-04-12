@@ -3,11 +3,11 @@ use std::fmt::Display;
 
 use itertools::Itertools;
 use rustyms::{
+    imgt::{AnnotatedSequence, Gene},
     peptidoform::{Annotation, Region},
     AminoAcid, CheckedAminoAcid,
 };
 
-use crate::shared::{AnnotatedSequence, Gene};
 use crate::structs::{Location, SequenceRegion, SingleSeq};
 use crate::{find_possible_n_glycan_locations, fix_j};
 

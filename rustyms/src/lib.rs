@@ -30,10 +30,6 @@ mod helper_functions;
 #[macro_use]
 mod formula;
 
-#[doc(hidden)]
-#[path = "shared/csv.rs"]
-pub mod csv;
-
 /// Contains logic surrounding amino acids, see [`AminoAcid`] for the main structure.
 pub mod aminoacid;
 mod checked_aminoacid;

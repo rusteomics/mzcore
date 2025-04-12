@@ -50,7 +50,7 @@ macro_rules! species {
             /// # Errors
             /// `Err` when the name could not be recognised (it is case sensitive).
             /// `Ok(None)` when it is recognised as a species used by IMGT, but it is not a proper species (vector/plasmid etc).
-            pub(crate) fn from_imgt(s: &str) -> Result<Option<Self>, ()> {
+            pub fn from_imgt(s: &str) -> Result<Option<Self>, ()> {
                 match s {
                     $($imgt => Ok(Some(Self::$identifier)),)*
                     "synthetic construct" | "synthetic construct (synthetic construct)" |

@@ -320,7 +320,7 @@ fn write_stack(path: &Path, points: &[Point]) {
         BufWriter::new(File::create(path).unwrap_or_else(|e| {
             panic!("Could not create file: '{}'\n{e}", path.to_string_lossy())
         }));
-    rustyms::csv::write_csv(
+    rustyms::identification::csv::write_csv(
         out_file,
         points.iter().map(|p| {
             [

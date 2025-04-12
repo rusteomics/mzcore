@@ -6,19 +6,15 @@ use std::{
     io::{BufReader, BufWriter, Write},
 };
 
-#[path = "../../rustyms/src/imgt/shared/mod.rs"]
-mod shared;
-
 mod combine;
 mod imgt_gene;
 mod parse;
 mod structs;
 
-use crate::shared::*;
-
 use bincode::config::Configuration;
 use itertools::Itertools;
 use rustyms::{
+    imgt::{Germlines, Species},
     peptidoform::{Annotation, Region},
     *,
 };

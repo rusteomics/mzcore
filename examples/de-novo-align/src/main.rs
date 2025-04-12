@@ -7,8 +7,7 @@ use itertools::{Itertools, MinMaxResult};
 use rayon::prelude::*;
 use rustyms::{
     align::{align, AlignType},
-    csv::write_csv,
-    identification::{open_identified_peptides_file, FastaData},
+    identification::{csv::write_csv, open_identified_peptides_file, FastaData},
     *,
 };
 

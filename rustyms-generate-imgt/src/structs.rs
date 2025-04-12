@@ -3,8 +3,10 @@ use std::ops::RangeInclusive;
 use std::str::FromStr;
 
 use crate::imgt_gene::IMGTGene;
-use crate::shared::{AnnotatedSequence, Gene, Species};
-use rustyms::{AminoAcid, IsAminoAcid};
+use rustyms::{
+    imgt::{AnnotatedSequence, Gene, Species},
+    AminoAcid, IsAminoAcid,
+};
 
 #[derive(Debug)]
 pub struct DataItem {

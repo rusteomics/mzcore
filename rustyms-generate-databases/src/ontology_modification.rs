@@ -2,11 +2,12 @@ use std::sync::Arc;
 
 use itertools::Itertools;
 use ordered_float::OrderedFloat;
-use serde::{Deserialize, Serialize};
-
-use crate::{
-    formula::MolecularFormula, AminoAcid, DiagnosticIon, LinkerSpecificity, ModificationId,
-    NeutralLoss, SimpleModification, SimpleModificationInner,
+use rustyms::{
+    modification::{
+        LinkerSpecificity, ModificationId, Ontology, SimpleModification, SimpleModificationInner,
+    },
+    placement_rule::{PlacementRule, Position},
+    DiagnosticIon, MolecularFormula, NeutralLoss,
 };
 
 use thin_vec::ThinVec;
@@ -143,35 +144,26 @@ impl OntologyModification {
     }
 }
 
-include!("../../rustyms/src/shared/placement_rule.rs");
-include!("../../rustyms/src/shared/ontology.rs");
+// pub fn position_from_u8(value: u8) -> Result<Position, String> {
+//     match value {
+//         b'1' => Ok(Position::Anywhere),
+//         b'2' => Ok(Position::Anywhere),
+//         b'3' => Ok(Position::AnyNTerm),
+//         b'4' => Ok(Position::AnyCTerm),
+//         b'5' => Ok(Position::ProteinNTerm),
+//         b'6' => Ok(Position::ProteinCTerm),
+//         n => Err(format!("Outside range: {n}")),
+//     }
+// }
 
-impl TryInto<Position> for u8 {
-    type Error = String;
-    fn try_into(self) -> Result<Position, Self::Error> {
-        match self {
-            b'1' => Ok(Position::Anywhere),
-            b'2' => Ok(Position::Anywhere),
-            b'3' => Ok(Position::AnyNTerm),
-            b'4' => Ok(Position::AnyCTerm),
-            b'5' => Ok(Position::ProteinNTerm),
-            b'6' => Ok(Position::ProteinCTerm),
-            n => Err(format!("Outside range: {n}")),
-        }
-    }
-}
-
-impl TryInto<Position> for &str {
-    type Error = String;
-    fn try_into(self) -> Result<Position, Self::Error> {
-        match self {
-            "" => Ok(Position::Anywhere),
-            "Anywhere" => Ok(Position::Anywhere),
-            "Any N-term" => Ok(Position::AnyNTerm),
-            "Any C-term" => Ok(Position::AnyCTerm),
-            "Protein N-term" => Ok(Position::ProteinNTerm),
-            "Protein C-term" => Ok(Position::ProteinCTerm),
-            n => Err(format!("Not valid position: {n}")),
-        }
+pub fn position_from_str(value: &str) -> Result<Position, String> {
+    match value {
+        "" => Ok(Position::Anywhere),
+        "Anywhere" => Ok(Position::Anywhere),
+        "Any N-term" => Ok(Position::AnyNTerm),
+        "Any C-term" => Ok(Position::AnyCTerm),
+        "Protein N-term" => Ok(Position::ProteinNTerm),
+        "Protein C-term" => Ok(Position::ProteinCTerm),
+        n => Err(format!("Not valid position: {n}")),
     }
 }

@@ -11,6 +11,8 @@ bincode = { workspace = true }
 itertools = { workspace = true }
 rustyms = { path = "../rustyms", default-features = false, features = [
     "align",
+    "imgt",
+    "internal-no-data",
 ] }
 serde = { workspace = true, features = ["derive", "rc"] }
 similar = { workspace = true }

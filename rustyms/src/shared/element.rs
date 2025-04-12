@@ -789,6 +789,7 @@ pub const COMMON_ELEMENT_PARSE_LIST: &[(&str, Element)] = &[
     ("p", Element::P),
 ];
 
+#[doc(hidden)]
 #[expect(clippy::redundant_pub_crate)]
 /// The shared type to send the data from all the elements from build time to compile time
-pub(crate) type ElementalData = Vec<(Option<Mass>, Option<Mass>, Vec<(u16, Mass, f64)>)>;
+pub type ElementalData = Vec<(Option<Mass>, Option<Mass>, Vec<(u16, Mass, f64)>)>;

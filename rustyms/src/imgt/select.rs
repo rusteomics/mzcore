@@ -1,4 +1,4 @@
-#[cfg(feature = "rayon")]
+#[cfg(all(feature = "rayon", not(feature = "internal-no-data")))]
 use rayon::prelude::*;
 use std::collections::HashSet;
 
@@ -9,6 +9,7 @@ pub use super::fancy::FancyDisplay;
 pub use super::shared::*;
 
 /// Get a specific germline
+#[cfg(not(feature = "internal-no-data"))]
 pub fn get_germline(
     species: Species,
     gene: Gene,
@@ -71,6 +72,7 @@ impl<
     > Selection<S1, S2>
 {
     /// Get the selected alleles
+    #[cfg(not(feature = "internal-no-data"))]
     pub fn germlines(self) -> impl Iterator<Item = Allele<'static>> {
         super::all_germlines()
             .filter(move |g| self.species.as_ref().is_none_or(|s| s.contains(&g.species)))
@@ -88,7 +90,7 @@ impl<
             .map(Into::into)
     }
 
-    #[cfg(feature = "rayon")]
+    #[cfg(all(feature = "rayon", not(feature = "internal-no-data")))]
     /// Get the selected alleles in parallel fashion, only available if you enable the feature "rayon" (on by default)
     pub fn par_germlines(self) -> impl ParallelIterator<Item = Allele<'static>> {
         super::par_germlines()
@@ -241,7 +243,7 @@ impl Germlines {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, not(feature = "internal-no-data")))]
 #[expect(clippy::missing_panics_doc)]
 mod tests {
     use std::collections::HashSet;
