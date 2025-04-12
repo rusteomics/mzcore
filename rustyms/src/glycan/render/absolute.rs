@@ -1,13 +1,12 @@
 use itertools::Itertools;
 
 use crate::{
-    fragment::GlycanPosition,
     glycan::{
         render::{
             element::GlycanRoot,
             shape::{Colour, Shape},
         },
-        GlycanBranchIndex, GlycanBranchMassIndex, GlycanStructure, RenderedGlycan,
+        GlycanBranchIndex, GlycanBranchMassIndex, GlycanPosition, GlycanStructure, RenderedGlycan,
     },
     Chemical,
 };

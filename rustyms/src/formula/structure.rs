@@ -2,8 +2,8 @@ use ordered_float::OrderedFloat;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    fragment::GlycanPosition, glycan::MonoSaccharide, AminoAcid, CrossLinkName, Element, Multi,
-    SequencePosition,
+    glycan::{GlycanPosition, MonoSaccharide},
+    AminoAcid, CrossLinkName, Element, Multi, SequencePosition,
 };
 use std::{
     fmt::Write,

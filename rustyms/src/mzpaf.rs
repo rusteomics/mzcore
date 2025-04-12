@@ -1,6 +1,6 @@
 //! WIP: mzPAF parser
 #![allow(dead_code)]
-use std::{ops::Range, sync::OnceLock};
+use std::{ops::Range, sync::LazyLock};
 
 use crate::{
     error::{Context, CustomError},
@@ -338,7 +338,7 @@ fn parse_ion(
                     Context::line(None, line, range.start_index(), 1),
                 ))
             }?;
-            mz_paf_named_molecules()
+            MZPAF_NAMED_MOLECULES
                 .iter()
                 .find_map(|n| (n.0 == name).then_some(n.1.clone()))
                 .map_or_else(
@@ -412,7 +412,7 @@ fn parse_neutral_loss(
 
             offset += 1 + last.0 + last.1.len_utf8() - first;
 
-            if let Some(formula) = mz_paf_named_molecules()
+            if let Some(formula) = MZPAF_NAMED_MOLECULES
                 .iter()
                 .find_map(|n| (n.0 == name).then_some(n.1.clone()))
             {
@@ -652,93 +652,89 @@ fn parse_confidence(
     }
 }
 
-fn mz_paf_named_molecules() -> &'static Vec<(&'static str, MolecularFormula)> {
-    MZPAF_NAMED_MOLECULES_CELL.get_or_init(|| {
-        vec![
-            ("hex", molecular_formula!(C 6 H 10 O 5)),
-            ("hexnac", molecular_formula!(C 8 H 13 N 1 O 5)),
-            ("dhex", molecular_formula!(C 6 H 10 O 4)),
-            ("neuac", molecular_formula!(C 11 H 17 N 1 O 8)),
-            ("neugc", molecular_formula!(C 11 H 17 N 1 O 9)),
-            ("tmt126", molecular_formula!(C 8 N 1 H 15)),
-            ("tmt127n", molecular_formula!(C 8 [15 N 1] H 15)),
-            ("tmt127c", molecular_formula!(C 7 [13 C 1] N 1 H 15)),
-            ("tmt128n", molecular_formula!(C 7 [13 C 1] [15 N 1] H 15)),
-            ("tmt128c", molecular_formula!(C 6 [13 C 2] N 1 H 15)),
-            ("tmt129n", molecular_formula!(C 6 [13 C 2] [15 N 1] H 15)),
-            ("tmt129c", molecular_formula!(C 5 [13 C 3] N 1 H 15)),
-            ("tmt130n", molecular_formula!(C 5 [13 C 3] [15 N 1] H 15)),
-            ("tmt130c", molecular_formula!(C 4 [13 C 4] N 1 H 15)),
-            ("tmt131n", molecular_formula!(C 4 [13 C 4] [15 N 1] H 15)),
-            ("tmt131c", molecular_formula!(C 3 [13 C 5] N 1 H 15)),
-            ("tmt132n", molecular_formula!(C 3 [13 C 5] [15 N 1] H 15)),
-            ("tmt132c", molecular_formula!(C 2 [13 C 6] N 1 H 15)),
-            ("tmt133n", molecular_formula!(C 2 [13 C 6] [15 N 1] H 15)),
-            ("tmt133c", molecular_formula!(C 1 [13 C 7] N 1 H 15)),
-            ("tmt134n", molecular_formula!(C 1 [13 C 7] [15 N 1] H 15)),
-            ("tmt134c", molecular_formula!(C 0 [13 C 8] N 1 H 15)),
-            ("tmt135n", molecular_formula!(C 0 [13 C 8] [15 N 1] H 15)),
-            ("tmtzero", molecular_formula!(C 12 H 20 N 2 O 2)),
-            ("tmtpro_zero", molecular_formula!(C 15 H 25 N 3 O 3)),
-            ("tmt2plex", molecular_formula!(C 11 [ 13 C 1] H 20 N 2 O 2)),
-            (
-                "tmt6plex",
-                molecular_formula!(C 8 [13 C 5] H 20 N 1 [ 15 N 1] O 2),
-            ),
-            (
-                "tmtpro",
-                molecular_formula!(C 8 [13 C 7] H 25 [15 N 2] N 1 O 3),
-            ),
-            ("itraq113", molecular_formula!(C 6 N 2 H 12)),
-            ("itraq114", molecular_formula!(C 5 [13 C 1] N 2 H 12)),
-            (
-                "itraq115",
-                molecular_formula!(C 5 [13 C 1] N 1 [15 N 1] H 12),
-            ),
-            (
-                "itraq116",
-                molecular_formula!(C 4 [13 C 2] N 1 [15 N 1] H 12),
-            ),
-            (
-                "itraq117",
-                molecular_formula!(C 3 [13 C 3] N 1 [15 N 1] H 12),
-            ),
-            ("itraq118", molecular_formula!(C 3 [13 C 3] [15 N 2] H 12)),
-            ("itraq119", molecular_formula!(C 4 [13 C 2] [15 N 2] H 12)),
-            ("itraq121", molecular_formula!([13 C 6] [15 N 2] H 12)),
-            (
-                "itraq4plex",
-                molecular_formula!(C 4 [13 C 3] H 12 N 1 [15 N 1] O 1),
-            ),
-            (
-                "itraq8plex",
-                molecular_formula!(C 7 [13 C 7] H 24 N 3 [15 N 1] O 3),
-            ),
-            ("tmt126-etd", molecular_formula!(C 7 N 1 H 15)),
-            ("tmt127n-etd", molecular_formula!(C 7 [15 N 1] H 15)),
-            ("tmt127c-etd", molecular_formula!(C 6 [13 C 1] N 1 H 15)),
-            (
-                "tmt128n-etd",
-                molecular_formula!(C 6 [13 C 1] [15 N 1] H 15),
-            ),
-            ("tmt128c-etd", molecular_formula!(C 5 [13 C 2] N 1 H 15)),
-            (
-                "tmt129n-etd",
-                molecular_formula!(C 5 [13 C 2] [15 N 1] H 15),
-            ),
-            ("tmt129c-etd", molecular_formula!(C 4 [13 C 3] N 1 H 15)),
-            (
-                "tmt130n-etd",
-                molecular_formula!(C 4 [13 C 3] [15 N 1] H 15),
-            ),
-            ("tmt130c-etd", molecular_formula!(C 3 [13 C 4] N 1 H 15)),
-            (
-                "tmt131n-etd",
-                molecular_formula!(C 3 [13 C 4] [15 N 1] H 15),
-            ),
-            ("tmt131c-etd", molecular_formula!(C 2 [13 C 5] N 1 H 15)),
-        ]
-    })
-}
-
-static MZPAF_NAMED_MOLECULES_CELL: OnceLock<Vec<(&str, MolecularFormula)>> = OnceLock::new();
+static MZPAF_NAMED_MOLECULES: LazyLock<Vec<(&str, MolecularFormula)>> = LazyLock::new(|| {
+    vec![
+        ("hex", molecular_formula!(C 6 H 10 O 5)),
+        ("hexnac", molecular_formula!(C 8 H 13 N 1 O 5)),
+        ("dhex", molecular_formula!(C 6 H 10 O 4)),
+        ("neuac", molecular_formula!(C 11 H 17 N 1 O 8)),
+        ("neugc", molecular_formula!(C 11 H 17 N 1 O 9)),
+        ("tmt126", molecular_formula!(C 8 N 1 H 15)),
+        ("tmt127n", molecular_formula!(C 8 [15 N 1] H 15)),
+        ("tmt127c", molecular_formula!(C 7 [13 C 1] N 1 H 15)),
+        ("tmt128n", molecular_formula!(C 7 [13 C 1] [15 N 1] H 15)),
+        ("tmt128c", molecular_formula!(C 6 [13 C 2] N 1 H 15)),
+        ("tmt129n", molecular_formula!(C 6 [13 C 2] [15 N 1] H 15)),
+        ("tmt129c", molecular_formula!(C 5 [13 C 3] N 1 H 15)),
+        ("tmt130n", molecular_formula!(C 5 [13 C 3] [15 N 1] H 15)),
+        ("tmt130c", molecular_formula!(C 4 [13 C 4] N 1 H 15)),
+        ("tmt131n", molecular_formula!(C 4 [13 C 4] [15 N 1] H 15)),
+        ("tmt131c", molecular_formula!(C 3 [13 C 5] N 1 H 15)),
+        ("tmt132n", molecular_formula!(C 3 [13 C 5] [15 N 1] H 15)),
+        ("tmt132c", molecular_formula!(C 2 [13 C 6] N 1 H 15)),
+        ("tmt133n", molecular_formula!(C 2 [13 C 6] [15 N 1] H 15)),
+        ("tmt133c", molecular_formula!(C 1 [13 C 7] N 1 H 15)),
+        ("tmt134n", molecular_formula!(C 1 [13 C 7] [15 N 1] H 15)),
+        ("tmt134c", molecular_formula!(C 0 [13 C 8] N 1 H 15)),
+        ("tmt135n", molecular_formula!(C 0 [13 C 8] [15 N 1] H 15)),
+        ("tmtzero", molecular_formula!(C 12 H 20 N 2 O 2)),
+        ("tmtpro_zero", molecular_formula!(C 15 H 25 N 3 O 3)),
+        ("tmt2plex", molecular_formula!(C 11 [ 13 C 1] H 20 N 2 O 2)),
+        (
+            "tmt6plex",
+            molecular_formula!(C 8 [13 C 5] H 20 N 1 [ 15 N 1] O 2),
+        ),
+        (
+            "tmtpro",
+            molecular_formula!(C 8 [13 C 7] H 25 [15 N 2] N 1 O 3),
+        ),
+        ("itraq113", molecular_formula!(C 6 N 2 H 12)),
+        ("itraq114", molecular_formula!(C 5 [13 C 1] N 2 H 12)),
+        (
+            "itraq115",
+            molecular_formula!(C 5 [13 C 1] N 1 [15 N 1] H 12),
+        ),
+        (
+            "itraq116",
+            molecular_formula!(C 4 [13 C 2] N 1 [15 N 1] H 12),
+        ),
+        (
+            "itraq117",
+            molecular_formula!(C 3 [13 C 3] N 1 [15 N 1] H 12),
+        ),
+        ("itraq118", molecular_formula!(C 3 [13 C 3] [15 N 2] H 12)),
+        ("itraq119", molecular_formula!(C 4 [13 C 2] [15 N 2] H 12)),
+        ("itraq121", molecular_formula!([13 C 6] [15 N 2] H 12)),
+        (
+            "itraq4plex",
+            molecular_formula!(C 4 [13 C 3] H 12 N 1 [15 N 1] O 1),
+        ),
+        (
+            "itraq8plex",
+            molecular_formula!(C 7 [13 C 7] H 24 N 3 [15 N 1] O 3),
+        ),
+        ("tmt126-etd", molecular_formula!(C 7 N 1 H 15)),
+        ("tmt127n-etd", molecular_formula!(C 7 [15 N 1] H 15)),
+        ("tmt127c-etd", molecular_formula!(C 6 [13 C 1] N 1 H 15)),
+        (
+            "tmt128n-etd",
+            molecular_formula!(C 6 [13 C 1] [15 N 1] H 15),
+        ),
+        ("tmt128c-etd", molecular_formula!(C 5 [13 C 2] N 1 H 15)),
+        (
+            "tmt129n-etd",
+            molecular_formula!(C 5 [13 C 2] [15 N 1] H 15),
+        ),
+        ("tmt129c-etd", molecular_formula!(C 4 [13 C 3] N 1 H 15)),
+        (
+            "tmt130n-etd",
+            molecular_formula!(C 4 [13 C 3] [15 N 1] H 15),
+        ),
+        ("tmt130c-etd", molecular_formula!(C 3 [13 C 4] N 1 H 15)),
+        (
+            "tmt131n-etd",
+            molecular_formula!(C 3 [13 C 4] [15 N 1] H 15),
+        ),
+        ("tmt131c-etd", molecular_formula!(C 2 [13 C 5] N 1 H 15)),
+    ]
+});

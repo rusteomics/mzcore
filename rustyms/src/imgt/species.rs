@@ -27,20 +27,23 @@ macro_rules! species {
                     $(Self::$identifier => $common,)*
                 }
             }
+
             /// The name IMGT uses to identify this species, eg `Homo sapiens (human)`
             pub const fn imgt_name(&self) -> &'static str {
                 match self {
                     $(Self::$identifier => $imgt,)*
                 }
             }
+
             /// The common name for this species, eg `Homo sapiens`
             pub const fn scientific_name(&self) -> &'static str {
                 match self {
                     $(Self::$identifier => $scientific,)*
                 }
             }
+
             /// The enum name for this species, eg `HomoSapiens`
-            pub(crate) const fn ident(&self) -> &'static str {
+            pub const fn ident(&self) -> &'static str {
                 match self {
                     $(Self::$identifier => stringify!($identifier),)*
                 }

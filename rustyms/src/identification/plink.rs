@@ -1,4 +1,8 @@
-use std::{ops::Range, path::PathBuf, sync::Arc};
+use std::{
+    ops::Range,
+    path::PathBuf,
+    sync::{Arc, LazyLock},
+};
 
 use crate::{
     error::{Context, CustomError},
@@ -196,23 +200,13 @@ format_family!(
                     .monoisotopic_mass()
                     - (parsed.peptide_type == PLinkPeptideType::Hydrolysed).then(|| molecular_formula!(H 2 O 1).monoisotopic_mass()).unwrap_or_default();
 
-            let known_linkers = KNOWN_CROSS_LINKERS
-            .get_or_init(|| [
-                Ontology::Unimod.find_id(1898, None).unwrap(), // DSS: U:Xlink:DSS[138]
-                Ontology::Xlmod.find_id(2002, None).unwrap(), // DSS heavy: X:DSS-d4
-                Ontology::Psimod.find_id(34, None).unwrap(), // Disulfide: M:L-cystine (cross-link)
-                Ontology::Unimod.find_id(1905, None).unwrap(), // BS2G: U:Xlink:BS2G[96]
-                Ontology::Xlmod.find_id(2008, None).unwrap(), // BS2G heavy: X:BS2G-d4
-                Ontology::Xlmod.find_id(2010, None).unwrap(), // DMTMM: X:1-ethyl-3-(3-Dimethylaminopropyl)carbodiimide hydrochloride
-                Ontology::Unimod.find_id(1896, None).unwrap(), // DSSO: U:Xlink:DSSO[158]
-            ].into_iter().map(|m| (m.formula().monoisotopic_mass(), m)).collect());
             let custom_linkers = custom_database.map_or(
                 Vec::new(),
                 |c| c.iter().filter(|(_,_,m)|
                     matches!(**m, SimpleModificationInner::Linker{..})).map(|(_,_,m)| (m.formula().monoisotopic_mass(), m.clone())
                 ).collect());
 
-            let fitting = known_linkers.iter().chain(custom_linkers.iter()).filter(|(mass, _)| Tolerance::<Mass>::Absolute(Mass::new::<crate::system::dalton>(0.001)).within(mass, &left_over)).map(|(_, m)| m).collect_vec();
+            let fitting = &KNOWN_CROSS_LINKERS.iter().chain(custom_linkers.iter()).filter(|(mass, _)| Tolerance::<Mass>::Absolute(Mass::new::<crate::system::dalton>(0.001)).within(mass, &left_over)).map(|(_, m)| m).collect_vec();
 
             match fitting.len() {
                 0 => return Err(CustomError::error("Invalid pLink peptide", format!("The correct cross-linker could not be identified with mass {:.3} Da, if a non default cross-linker was used add this as a custom linker modification.", left_over.value), source.full_context())),
@@ -258,7 +252,6 @@ format_family!(
         }
 
         if let Some(m) = IDENTIFER_REGEX
-            .get_or_init(|| regex::Regex::new(r"([^/]+)\.(\d+)\.\d+.\d+.\d+.\w+").unwrap())
             .captures(&parsed.title)
         {
             parsed.raw_file = Some(m.get(1).unwrap().as_str().into());
@@ -269,10 +262,23 @@ format_family!(
 );
 
 /// The Regex to match against pLink title fields
-static IDENTIFER_REGEX: std::sync::OnceLock<regex::Regex> = std::sync::OnceLock::new();
+static IDENTIFER_REGEX: LazyLock<regex::Regex> =
+    LazyLock::new(|| regex::Regex::new(r"([^/]+)\.(\d+)\.\d+.\d+.\d+.\w+").unwrap());
 /// The static known cross-linkers
-static KNOWN_CROSS_LINKERS: std::sync::OnceLock<Vec<(Mass, SimpleModification)>> =
-    std::sync::OnceLock::new();
+static KNOWN_CROSS_LINKERS: LazyLock<Vec<(Mass, SimpleModification)>> = LazyLock::new(|| {
+    [
+        Ontology::Unimod.find_id(1898, None).unwrap(), // DSS: U:Xlink:DSS[138]
+        Ontology::Xlmod.find_id(2002, None).unwrap(),  // DSS heavy: X:DSS-d4
+        Ontology::Psimod.find_id(34, None).unwrap(),   // Disulfide: M:L-cystine (cross-link)
+        Ontology::Unimod.find_id(1905, None).unwrap(), // BS2G: U:Xlink:BS2G[96]
+        Ontology::Xlmod.find_id(2008, None).unwrap(),  // BS2G heavy: X:BS2G-d4
+        Ontology::Xlmod.find_id(2010, None).unwrap(), // DMTMM: X:1-ethyl-3-(3-Dimethylaminopropyl)carbodiimide hydrochloride
+        Ontology::Unimod.find_id(1896, None).unwrap(), // DSSO: U:Xlink:DSSO[158]
+    ]
+    .into_iter()
+    .map(|m| (m.formula().monoisotopic_mass(), m))
+    .collect()
+});
 
 /// separate the pLink format of 'pep(pos)-pep(pos)' in all possible combinations
 /// # Errors

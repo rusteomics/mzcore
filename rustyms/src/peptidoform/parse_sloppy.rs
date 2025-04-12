@@ -1,4 +1,4 @@
-use std::sync::{Arc, OnceLock};
+use std::sync::{Arc, LazyLock};
 
 use regex::Regex;
 use serde::{Deserialize, Serialize};
@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 use crate::{
     checked_aminoacid::CheckedAminoAcid,
     error::{Context, CustomError},
-    glycan::glycan_parse_list,
+    glycan::GLYCAN_PARSE_LIST,
     helper_functions::{end_of_enclosure, parse_named_counter, ResultExtensions},
     modification::{Modification, Ontology, SimpleModification, SimpleModificationInner},
     ontologies::CustomDatabase,
@@ -226,9 +226,12 @@ impl Peptidoform<SemiAmbiguous> {
     }
 }
 
-static SLOPPY_MOD_OPAIR_REGEX: OnceLock<Regex> = OnceLock::new();
-static SLOPPY_MOD_ON_REGEX: OnceLock<Regex> = OnceLock::new();
-static SLOPPY_MOD_NUMERIC_END_REGEX: OnceLock<Regex> = OnceLock::new();
+static SLOPPY_MOD_OPAIR_REGEX: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"(?:[^:]+:)?(.*) (?:(?:on)|(?:from)) ([A-Z])").unwrap());
+static SLOPPY_MOD_ON_REGEX: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"(.*)\s*\([- @a-zA-Z]+\)").unwrap());
+static SLOPPY_MOD_NUMERIC_END_REGEX: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"(.*)\d+").unwrap());
 
 impl Modification {
     /// Parse a modification defined by sloppy names
@@ -254,7 +257,7 @@ impl Modification {
                     _ => None
                 }
             })
-            .or_else(|| {SLOPPY_MOD_OPAIR_REGEX.get_or_init(|| {Regex::new(r"(?:[^:]+:)?(.*) (?:(?:on)|(?:from)) ([A-Z])").unwrap()})
+            .or_else(|| {SLOPPY_MOD_OPAIR_REGEX
                 .captures(name)
                 .and_then(|capture| {
                     let pos = capture[2].chars().next().and_then(|a| AminoAcid::try_from(a).ok().map(|a| SequenceElement::new(CheckedAminoAcid::new(a), None)));
@@ -262,7 +265,7 @@ impl Modification {
                         .ok_or_else(|| {
                             parse_named_counter(
                                 &capture[1].to_ascii_lowercase(),
-                                glycan_parse_list(),
+                                &GLYCAN_PARSE_LIST,
                                 false,
                             )
                             .map(|g| Arc::new(SimpleModificationInner::Glycan(g)))
@@ -272,7 +275,7 @@ impl Modification {
                 })
                 .or_else(|| {
                     // Common sloppy naming: `modification (AAs)` also accepts `modification (Protein N-term)`
-                    SLOPPY_MOD_ON_REGEX.get_or_init(|| {Regex::new(r"(.*)\s*\([- @a-zA-Z]+\)").unwrap()})
+                    SLOPPY_MOD_ON_REGEX
                         .captures(name)
                         .and_then(|capture| {
                             Self::find_name(&capture[1], position, custom_database)
@@ -280,7 +283,7 @@ impl Modification {
                 })
                 .or_else(|| {
                     // Common sloppy naming: `modification1`
-                    SLOPPY_MOD_NUMERIC_END_REGEX.get_or_init(|| {Regex::new(r"(.*)\d+").unwrap()})
+                    SLOPPY_MOD_NUMERIC_END_REGEX
                         .captures(name)
                         .and_then(|capture| {
                             Self::find_name(&capture[1], position, custom_database)

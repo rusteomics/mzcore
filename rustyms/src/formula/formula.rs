@@ -1,15 +1,12 @@
+use std::fmt::Write;
+
 use crate::{
-    fragment::GlycanPosition,
+    formula::{AmbiguousLabel, MolecularFormula},
+    glycan::GlycanPosition,
     system::{da, fraction, Mass, OrderedMass, Ratio},
     MassMode,
 };
-use std::fmt::Write;
 
-#[macro_use]
-#[path = "shared/formula/mod.rs"]
-mod formula_shared;
-
-pub use formula_shared::*;
 use itertools::Itertools;
 
 impl From<&MolecularFormula> for OrderedMass {

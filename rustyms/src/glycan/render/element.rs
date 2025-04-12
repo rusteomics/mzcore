@@ -2,15 +2,12 @@ use std::f32::consts::PI;
 
 use itertools::Itertools;
 
-use crate::{
-    fragment::GlycanPosition,
-    glycan::{
-        render::{
-            absolute::{AbsolutePositionedGlycan, OuterModifications},
-            shape::{Colour, Shape},
-        },
-        GlycanBranchIndex, GlycanBranchMassIndex, GlycanDirection,
+use crate::glycan::{
+    render::{
+        absolute::{AbsolutePositionedGlycan, OuterModifications},
+        shape::{Colour, Shape},
     },
+    GlycanBranchIndex, GlycanBranchMassIndex, GlycanDirection, GlycanPosition,
 };
 
 /// A rendered glycan, contains all information needed to render this to svg or a bitmap.

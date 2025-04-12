@@ -7,7 +7,10 @@ use crate::{
     Peptidoform, SemiAmbiguous, SloppyParsingParameters,
 };
 
-use std::path::{Path, PathBuf};
+use std::{
+    path::{Path, PathBuf},
+    sync::LazyLock,
+};
 
 use serde::{Deserialize, Serialize};
 
@@ -48,7 +51,6 @@ format_family!(
 
     fn post_process(_source: &CsvLine, mut parsed: Self, _custom_database: Option<&CustomDatabase>) -> Result<Self, CustomError> {
         if let Some(m) = IDENTIFER_REGEX
-            .get_or_init(|| regex::Regex::new(r"^(.*):index=(\d+)$").unwrap())
             .captures(&parsed.title)
         {
             parsed.raw_file = Some(PathBuf::from(m.get(1).unwrap().as_str()));
@@ -59,7 +61,8 @@ format_family!(
 );
 
 /// The Regex to match against PowerNovo scan fields
-static IDENTIFER_REGEX: std::sync::OnceLock<regex::Regex> = std::sync::OnceLock::new();
+static IDENTIFER_REGEX: LazyLock<regex::Regex> =
+    LazyLock::new(|| regex::Regex::new(r"^(.*):index=(\d+)$").unwrap());
 
 impl From<PowerNovoData> for IdentifiedPeptide {
     fn from(value: PowerNovoData) -> Self {

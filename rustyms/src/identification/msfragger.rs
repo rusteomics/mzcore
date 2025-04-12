@@ -1,4 +1,7 @@
-use std::path::{Path, PathBuf};
+use std::{
+    path::{Path, PathBuf},
+    sync::LazyLock,
+};
 
 //Spectrum	Spectrum.File	Peptide	Modified sequence	Extended.Peptide	Prev.AA	Next.AA	Peptide.Length	Charge	Retention	Observed.Mass	Calibrated.Observed.Mass	Observed.M.Z	Calibrated.Observed.M.Z	Calculated.Peptide.Mass	Calculated.M.Z	Delta.Mass	Expectation	Hyperscore	Nextscore	PeptideProphet.Probability	Number.of.Enzymatic.Termini	Number.of.Missed.Cleavages	Protein.Start	Protein.End	Intensity	Assigned.Modifications	Observed.Modifications	Purity	Is.Unique	Protein	Protein.ID	Entry.Name	Gene	Protein.Description	Mapped.Genes	Mapped.Proteins	condition	group
 use crate::{
@@ -98,7 +101,6 @@ format_family!(
     fn post_process(_source: &CsvLine, mut parsed: Self, _custom_database: Option<&CustomDatabase>) -> Result<Self, CustomError> {
         if let SpectrumId::Native(native) = &parsed.scan {
             if let Some(m) = IDENTIFER_REGEX
-                .get_or_init(|| regex::Regex::new(r"([^/]+)\.(\d+)\.\d+.\d+").unwrap())
                 .captures(native)
             {
                 parsed.raw_file = Some(m.get(1).unwrap().as_str().into());
@@ -114,7 +116,8 @@ format_family!(
 );
 
 /// The Regex to match against MSFragger scan fields
-static IDENTIFER_REGEX: std::sync::OnceLock<regex::Regex> = std::sync::OnceLock::new();
+static IDENTIFER_REGEX: LazyLock<regex::Regex> =
+    LazyLock::new(|| regex::Regex::new(r"([^/]+)\.(\d+)\.\d+.\d+").unwrap());
 
 impl From<MSFraggerData> for IdentifiedPeptide {
     fn from(value: MSFraggerData) -> Self {

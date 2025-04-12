@@ -11,7 +11,7 @@ use serde::{Deserialize, Serialize};
 use std::{
     num::NonZeroU16,
     ops::Range,
-    sync::{Arc, OnceLock},
+    sync::{Arc, LazyLock},
 };
 
 use regex::Regex;
@@ -87,7 +87,9 @@ impl SimpleModificationInner {
     }
 }
 
-static MOD_REGEX: OnceLock<Regex> = OnceLock::new();
+static MOD_REGEX: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r"^(([^:#]*)(?::([^#]+))?)(?:#([0-9A-Za-z]+)(?:\((\d+\.\d+)\))?)?$").unwrap()
+});
 
 enum SingleReturnModification {
     None,
@@ -134,10 +136,7 @@ fn parse_single_modification(
     custom_database: Option<&CustomDatabase>,
 ) -> Result<SingleReturnModification, CustomError> {
     // Parse the whole intricate structure of the single modification (see here in action: https://regex101.com/r/pW5gsj/1)
-    let regex = MOD_REGEX.get_or_init(|| {
-        Regex::new(r"^(([^:#]*)(?::([^#]+))?)(?:#([0-9A-Za-z]+)(?:\((\d+\.\d+)\))?)?$").unwrap()
-    });
-    if let Some(groups) = regex.captures(full_modification) {
+    if let Some(groups) = MOD_REGEX.captures(full_modification) {
         // Capture the full mod name (head:tail), head, tail, ambiguous group, and localisation score
         let (full, head, tail, label_group, localisation_score) = (
             groups

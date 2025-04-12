@@ -6,7 +6,7 @@ use crate::peptidoform::{AnnotatedPeptide, Annotation, Region, UnAmbiguous};
 use crate::Peptidoform;
 
 pub use super::fancy::FancyDisplay;
-pub use super::shared::*;
+pub use super::*;
 
 /// Get a specific germline
 #[cfg(not(feature = "internal-no-data"))]

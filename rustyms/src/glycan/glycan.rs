@@ -1,11 +1,11 @@
-use std::{fmt::Display, hash::Hash, sync::OnceLock};
+use std::{fmt::Display, hash::Hash};
 
-use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 
 use crate::{
     error::{Context, CustomError},
     formula::{Chemical, MolecularFormula},
+    glycan::lists::*,
     Element, SequencePosition, ELEMENT_PARSE_LIST,
 };
 
@@ -37,7 +37,7 @@ pub struct MonoSaccharide {
 }
 
 impl MonoSaccharide {
-    fn equivalent(&self, other: &Self, precise: bool) -> bool {
+    pub fn equivalent(&self, other: &Self, precise: bool) -> bool {
         self.base_sugar.equivalent(&other.base_sugar, precise)
             && self.substituents == other.substituents
             && (!precise
@@ -146,7 +146,7 @@ impl MonoSaccharide {
         Self::simplify_composition(
             crate::helper_functions::parse_named_counter(
                 &text.to_ascii_lowercase(),
-                glycan_parse_list(),
+                GLYCAN_PARSE_LIST.as_slice(),
                 false,
             )
             .map_err(|e| {

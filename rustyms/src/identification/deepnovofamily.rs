@@ -1,4 +1,4 @@
-use std::sync::OnceLock;
+use std::sync::LazyLock;
 
 use crate::{
     error::CustomError,
@@ -26,7 +26,30 @@ static ID_ERROR: (&str, &str) =  (
     "Invalid DeepNovoFamily line",
     "This column is not a valid ID but it is required to be in this peaks format\nExamples of valid IDs: '1234' & 'F2:1234'");
 
-static PARAMETERS_LOCK: OnceLock<SloppyParsingParameters> = OnceLock::new();
+static PARAMETERS: LazyLock<SloppyParsingParameters> = LazyLock::new(|| SloppyParsingParameters {
+    mod_indications: (
+        Some("mod"),
+        vec![
+            (
+                AminoAcid::Asparagine,
+                Ontology::Unimod.find_id(7, None).unwrap(),
+            ),
+            (
+                AminoAcid::Glutamine,
+                Ontology::Unimod.find_id(7, None).unwrap(),
+            ),
+            (
+                AminoAcid::Cysteine,
+                Ontology::Unimod.find_id(6, None).unwrap(),
+            ),
+            (
+                AminoAcid::Methionine,
+                Ontology::Unimod.find_id(35, None).unwrap(),
+            ),
+        ],
+    ),
+    ..Default::default()
+});
 
 format_family!(
     /// The format for any DeepNovoFamily file
@@ -43,15 +66,7 @@ format_family!(
                     location.full_line(),
                     location.location.clone(),
                     custom_database,
-                    PARAMETERS_LOCK.get_or_init(|| SloppyParsingParameters{
-                        mod_indications: (Some("mod"), vec![
-                            (AminoAcid::Asparagine, Ontology::Unimod.find_id(7, None).unwrap()),
-                            (AminoAcid::Glutamine, Ontology::Unimod.find_id(7, None).unwrap()),
-                            (AminoAcid::Cysteine, Ontology::Unimod.find_id(6, None).unwrap()),
-                            (AminoAcid::Methionine, Ontology::Unimod.find_id(35, None).unwrap()),
-                        ]),
-                        ..Default::default()
-                    })
+                    &PARAMETERS
                 )).transpose();
         score: Option<f64>, |location: Location, _| location.or_empty().parse::<f64>(NUMBER_ERROR);
         local_confidence: Option<Vec<f64>>, |location: Location, _| location.or_empty()

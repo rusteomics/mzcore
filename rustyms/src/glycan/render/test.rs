@@ -2,9 +2,8 @@
 use base64::Engine;
 use swash::{scale::ScaleContext, CacheKey, FontRef};
 
-use crate::{
-    fragment::GlycanPosition,
-    glycan::{render::element::GlycanSelection, GlycanDirection, GlycanRoot, GlycanStructure},
+use crate::glycan::{
+    render::element::GlycanSelection, GlycanDirection, GlycanPosition, GlycanRoot, GlycanStructure,
 };
 use std::{
     fmt::Write,

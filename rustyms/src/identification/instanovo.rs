@@ -7,7 +7,10 @@ use crate::{
     Peptidoform, SemiAmbiguous, SloppyParsingParameters,
 };
 
-use std::path::{Path, PathBuf};
+use std::{
+    path::{Path, PathBuf},
+    sync::LazyLock,
+};
 
 use serde::{Deserialize, Serialize};
 
@@ -22,8 +25,15 @@ static NUMBER_ERROR: (&str, &str) = (
     "This column is not a number but it is required to be a number in this format",
 );
 
-static BUILT_IN_MODIFICATIONS: std::sync::OnceLock<SloppyParsingParameters> =
-    std::sync::OnceLock::new();
+static BUILT_IN_MODIFICATIONS: LazyLock<SloppyParsingParameters> =
+    LazyLock::new(|| SloppyParsingParameters {
+        replace_mass_modifications: Some(vec![
+            Ontology::Unimod.find_id(35, None).unwrap(),
+            Ontology::Unimod.find_id(21, None).unwrap(),
+            Ontology::Unimod.find_id(4, None).unwrap(),
+        ]),
+        ..Default::default()
+    });
 
 format_family!(
     /// The format for any InstaNovo file
@@ -40,13 +50,7 @@ format_family!(
             location.full_line(),
             location.location.clone(),
             custom_database,
-            BUILT_IN_MODIFICATIONS.get_or_init(|| SloppyParsingParameters {
-                replace_mass_modifications: Some(
-                    vec![Ontology::Unimod.find_id(35, None).unwrap(), Ontology::Unimod.find_id(21, None).unwrap(), Ontology::Unimod.find_id(4, None).unwrap()]
-                ),
-                ..Default::default()
-            }
-        ));
+            &BUILT_IN_MODIFICATIONS);
 
         score: f64, |location: Location, _| location.parse::<f64>(NUMBER_ERROR);
         local_confidence: Vec<f64>, |location: Location, _| location
