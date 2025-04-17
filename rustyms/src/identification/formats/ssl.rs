@@ -2,7 +2,7 @@ use crate::{
     error::CustomError,
     identification::{
         common_parser::{OptionalColumn, OptionalLocation},
-        IdentifiedPeptide, IdentifiedPeptideSource, MetaData,
+        IdentifiedPeptidoform, IdentifiedPeptidoformSource, MetaData,
     },
     ontologies::CustomDatabase,
     system::{isize::Charge, MassOverCharge, Time},
@@ -13,10 +13,10 @@ use std::path::{Path, PathBuf};
 
 use serde::{Deserialize, Serialize};
 
-use super::{
+use crate::identification::{
     common_parser::Location,
     csv::{parse_csv, CsvLine},
-    BoxedIdentifiedPeptideIter,
+    BoxedIdentifiedPeptideIter, IdentifiedPeptidoformVersion,
 };
 
 static NUMBER_ERROR: (&str, &str) = (
@@ -56,7 +56,7 @@ format_family!(
     }
 );
 
-impl From<SpectrumSequenceListData> for IdentifiedPeptide {
+impl From<SpectrumSequenceListData> for IdentifiedPeptidoform {
     fn from(value: SpectrumSequenceListData) -> Self {
         Self {
             score: value.score,
@@ -89,7 +89,9 @@ pub const SSL: SpectrumSequenceListFormat = SpectrumSequenceListFormat {
 };
 
 /// All possible SpectrumSequenceList versions
-#[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Default, Serialize, Deserialize)]
+#[derive(
+    Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Default, Serialize, Deserialize,
+)]
 #[expect(clippy::upper_case_acronyms)]
 pub enum SpectrumSequenceListVersion {
     #[default]
@@ -99,12 +101,19 @@ pub enum SpectrumSequenceListVersion {
 
 impl std::fmt::Display for SpectrumSequenceListVersion {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::result::Result<(), std::fmt::Error> {
-        write!(
-            f,
-            "{}",
-            match self {
-                Self::SSL => "",
-            }
-        )
+        write!(f, "{}", self.name())
+    }
+}
+
+impl IdentifiedPeptidoformVersion<SpectrumSequenceListFormat> for SpectrumSequenceListVersion {
+    fn format(self) -> SpectrumSequenceListFormat {
+        match self {
+            Self::SSL => SSL,
+        }
+    }
+    fn name(self) -> &'static str {
+        match self {
+            Self::SSL => "",
+        }
     }
 }

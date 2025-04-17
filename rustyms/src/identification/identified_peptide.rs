@@ -11,17 +11,10 @@ use serde::{Deserialize, Serialize};
 use crate::{
     error::CustomError,
     formula::MultiChemical,
-    identification::{
-        deepnovofamily::DeepNovoFamilyData, fasta::FastaData, fasta::FastaIdentifier,
-        instanovo::InstaNovoData, novob::NovoBData, novor::NovorData, opair::OpairData,
-        peaks::PeaksData, pepnet::PepNetData, plink::PLinkData, powernovo::PowerNovoData,
-        system::MassOverCharge, MSFraggerData, MZTabData, MaxQuantData, PLGSData, SageData,
-        SpectrumSequenceListData,
-    },
+    identification::*,
     ontologies::CustomDatabase,
     peptidoform::{SemiAmbiguous, SimpleLinear},
-    system::usize::Charge,
-    system::{OrderedTime, Time},
+    system::{usize::Charge, MassOverCharge, OrderedTime, Time},
     Peptidoform, PeptidoformIon,
 };
 
@@ -29,7 +22,7 @@ use super::{BasicCSVData, CompoundPeptidoformIon};
 
 /// A peptide that is identified by a de novo or database matching program
 #[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
-pub struct IdentifiedPeptide {
+pub struct IdentifiedPeptidoform {
     /// The score -1.0..=1.0 if a score was available in the original format
     pub score: Option<f64>,
     /// The local confidence, if available, in range -1.0..=1.0
@@ -80,68 +73,68 @@ pub enum MetaData {
 
 /// A peptide as stored in a identified peptide file, either a simple linear one or a cross-linked peptidoform
 #[derive(Debug, Clone)]
-pub enum ReturnedPeptide<'a> {
+pub enum ReturnedPeptidoform<'a> {
     /// A semi ambiguous linear peptide
-    LinearSemiAmbiguous(&'a Peptidoform<SemiAmbiguous>),
+    PeptidoformSemiAmbiguous(&'a Peptidoform<SemiAmbiguous>),
     /// A simple linear peptide
-    LinearSimpleLinear(&'a Peptidoform<SimpleLinear>),
+    PeptidoformSimpleLinear(&'a Peptidoform<SimpleLinear>),
     /// A (potentially) cross-linked peptidoform
-    Peptidoform(&'a PeptidoformIon),
+    PeptidoformIon(&'a PeptidoformIon),
     /// A (potentially) cross-linked chimeric set of peptidoforms
-    CompoundPeptidoform(Cow<'a, CompoundPeptidoformIon>),
+    CompoundPeptidoformIon(Cow<'a, CompoundPeptidoformIon>),
 }
 
-impl MultiChemical for ReturnedPeptide<'_> {
+impl MultiChemical for ReturnedPeptidoform<'_> {
     fn formulas_inner(
         &self,
         _sequence_index: super::SequencePosition,
         _peptidoform_index: usize,
     ) -> super::Multi<super::MolecularFormula> {
         match self {
-            Self::LinearSemiAmbiguous(p) => p.formulas(),
-            Self::LinearSimpleLinear(p) => p.formulas(),
-            Self::Peptidoform(p) => p.formulas(),
-            Self::CompoundPeptidoform(p) => p.formulas(),
+            Self::PeptidoformSemiAmbiguous(p) => p.formulas(),
+            Self::PeptidoformSimpleLinear(p) => p.formulas(),
+            Self::PeptidoformIon(p) => p.formulas(),
+            Self::CompoundPeptidoformIon(p) => p.formulas(),
         }
     }
 }
 
-impl std::fmt::Display for ReturnedPeptide<'_> {
+impl std::fmt::Display for ReturnedPeptidoform<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::LinearSemiAmbiguous(p) => write!(f, "{p}"),
-            Self::LinearSimpleLinear(p) => write!(f, "{p}"),
-            Self::Peptidoform(p) => write!(f, "{p}"),
-            Self::CompoundPeptidoform(p) => write!(f, "{p}"),
+            Self::PeptidoformSemiAmbiguous(p) => write!(f, "{p}"),
+            Self::PeptidoformSimpleLinear(p) => write!(f, "{p}"),
+            Self::PeptidoformIon(p) => write!(f, "{p}"),
+            Self::CompoundPeptidoformIon(p) => write!(f, "{p}"),
         }
     }
 }
 
-impl<'a> ReturnedPeptide<'a> {
+impl<'a> ReturnedPeptidoform<'a> {
     /// Get the underlying peptide, or None if the underlying result was a peptidoform
-    pub fn peptide(self) -> Option<Cow<'a, Peptidoform<SimpleLinear>>> {
+    pub fn peptidoform(self) -> Option<Cow<'a, Peptidoform<SimpleLinear>>> {
         match self {
-            Self::LinearSemiAmbiguous(p) => Some(Cow::Owned(p.clone().into())),
-            Self::LinearSimpleLinear(p) => Some(Cow::Borrowed(p)),
-            Self::Peptidoform(_) | Self::CompoundPeptidoform(_) => None,
+            Self::PeptidoformSemiAmbiguous(p) => Some(Cow::Owned(p.clone().into())),
+            Self::PeptidoformSimpleLinear(p) => Some(Cow::Borrowed(p)),
+            Self::PeptidoformIon(_) | Self::CompoundPeptidoformIon(_) => None,
         }
     }
     /// Get the underlying result as a peptidoform, if it was a peptide make a new peptidoform from it
-    pub fn peptidoform(self) -> Option<Cow<'a, PeptidoformIon>> {
+    pub fn peptidoform_ion(self) -> Option<Cow<'a, PeptidoformIon>> {
         match self {
-            Self::LinearSemiAmbiguous(p) => Some(Cow::Owned(p.clone().into())),
-            Self::LinearSimpleLinear(p) => Some(Cow::Owned(p.clone().into())),
-            Self::Peptidoform(p) => Some(Cow::Borrowed(p)),
-            Self::CompoundPeptidoform(_) => None,
+            Self::PeptidoformSemiAmbiguous(p) => Some(Cow::Owned(p.clone().into())),
+            Self::PeptidoformSimpleLinear(p) => Some(Cow::Owned(p.clone().into())),
+            Self::PeptidoformIon(p) => Some(Cow::Borrowed(p)),
+            Self::CompoundPeptidoformIon(_) => None,
         }
     }
     /// Get the underlying result as a compound peptidoform, if it was a peptide make a new peptidoform from it
-    pub fn compound_peptidoform(self) -> Cow<'a, CompoundPeptidoformIon> {
+    pub fn compound_peptidoform_ion(self) -> Cow<'a, CompoundPeptidoformIon> {
         match self {
-            Self::LinearSemiAmbiguous(p) => Cow::Owned(p.clone().into()),
-            Self::LinearSimpleLinear(p) => Cow::Owned(p.clone().into()),
-            Self::Peptidoform(p) => Cow::Owned(p.clone().into()),
-            Self::CompoundPeptidoform(p) => p,
+            Self::PeptidoformSemiAmbiguous(p) => Cow::Owned(p.clone().into()),
+            Self::PeptidoformSimpleLinear(p) => Cow::Owned(p.clone().into()),
+            Self::PeptidoformIon(p) => Cow::Owned(p.clone().into()),
+            Self::CompoundPeptidoformIon(p) => p,
         }
     }
     /// Display this peptidoform.
@@ -158,17 +151,21 @@ impl<'a> ReturnedPeptide<'a> {
         specification_compliant: bool,
     ) -> std::fmt::Result {
         match self {
-            Self::LinearSemiAmbiguous(p) => p.display(f, show_global_mods, specification_compliant),
-            Self::LinearSimpleLinear(p) => p.display(f, show_global_mods, specification_compliant),
-            Self::Peptidoform(p) => p.display(f, show_global_mods, specification_compliant),
-            Self::CompoundPeptidoform(p) => p.display(f, specification_compliant),
+            Self::PeptidoformSemiAmbiguous(p) => {
+                p.display(f, show_global_mods, specification_compliant)
+            }
+            Self::PeptidoformSimpleLinear(p) => {
+                p.display(f, show_global_mods, specification_compliant)
+            }
+            Self::PeptidoformIon(p) => p.display(f, show_global_mods, specification_compliant),
+            Self::CompoundPeptidoformIon(p) => p.display(f, specification_compliant),
         }
     }
 }
 
-impl IdentifiedPeptide {
+impl IdentifiedPeptidoform {
     /// Get the peptide, as pLink can have cross-linked peptides the return type is either a simple peptide or a cross-linked peptidoform
-    pub fn peptide(&self) -> Option<ReturnedPeptide<'_>> {
+    pub fn peptidoform(&self) -> Option<ReturnedPeptidoform<'_>> {
         match &self.metadata {
             MetaData::Novor(NovorData { peptide, .. })
             | MetaData::InstaNovo(InstaNovoData { peptide, .. })
@@ -176,33 +173,33 @@ impl IdentifiedPeptide {
             | MetaData::PepNet(PepNetData { peptide, .. })
             | MetaData::PowerNovo(PowerNovoData { peptide, .. })
             | MetaData::Sage(SageData { peptide, .. }) => {
-                Some(ReturnedPeptide::LinearSemiAmbiguous(peptide))
+                Some(ReturnedPeptidoform::PeptidoformSemiAmbiguous(peptide))
             }
             MetaData::PLGS(PLGSData { peptide, .. }) => {
-                Some(ReturnedPeptide::LinearSimpleLinear(peptide))
+                Some(ReturnedPeptidoform::PeptidoformSimpleLinear(peptide))
             }
             MetaData::Peaks(PeaksData { peptide, .. }) => {
                 if peptide.1.len() == 1 {
-                    Some(ReturnedPeptide::LinearSemiAmbiguous(&peptide.1[0]))
+                    Some(ReturnedPeptidoform::PeptidoformSemiAmbiguous(&peptide.1[0]))
                 } else {
-                    Some(ReturnedPeptide::CompoundPeptidoform(Cow::Owned(
+                    Some(ReturnedPeptidoform::CompoundPeptidoformIon(Cow::Owned(
                         peptide.1.clone().into(),
                     )))
                 }
             }
             MetaData::BasicCSV(BasicCSVData { sequence, .. }) => Some(
-                ReturnedPeptide::CompoundPeptidoform(Cow::Borrowed(sequence)),
+                ReturnedPeptidoform::CompoundPeptidoformIon(Cow::Borrowed(sequence)),
             ),
             MetaData::MSFragger(MSFraggerData { peptide, .. })
             | MetaData::SpectrumSequenceList(SpectrumSequenceListData { peptide, .. })
             | MetaData::MaxQuant(MaxQuantData { peptide, .. })
             | MetaData::MZTab(MZTabData { peptide, .. })
-            | MetaData::DeepNovoFamily(DeepNovoFamilyData { peptide, .. }) => {
-                peptide.as_ref().map(ReturnedPeptide::LinearSemiAmbiguous)
-            }
-            MetaData::Fasta(f) => Some(ReturnedPeptide::LinearSemiAmbiguous(f.peptide())),
+            | MetaData::DeepNovoFamily(DeepNovoFamilyData { peptide, .. }) => peptide
+                .as_ref()
+                .map(ReturnedPeptidoform::PeptidoformSemiAmbiguous),
+            MetaData::Fasta(f) => Some(ReturnedPeptidoform::PeptidoformSemiAmbiguous(f.peptide())),
             MetaData::PLink(PLinkData { peptidoform, .. }) => {
-                Some(ReturnedPeptide::Peptidoform(peptidoform))
+                Some(ReturnedPeptidoform::PeptidoformIon(peptidoform))
             }
             MetaData::NovoB(NovoBData {
                 score_forward,
@@ -214,61 +211,46 @@ impl IdentifiedPeptide {
                 if score_forward >= score_reverse {
                     peptide_forward
                         .as_ref()
-                        .map(ReturnedPeptide::LinearSemiAmbiguous)
+                        .map(ReturnedPeptidoform::PeptidoformSemiAmbiguous)
                 } else {
                     peptide_reverse
                         .as_ref()
-                        .map(ReturnedPeptide::LinearSemiAmbiguous)
+                        .map(ReturnedPeptidoform::PeptidoformSemiAmbiguous)
                 }
             }
         }
     }
 
-    /// Get the name of the format
-    pub const fn format_name(&self) -> &'static str {
+    /// Get the format and version for this peptidoform
+    pub const fn format(&self) -> KnownFileFormat {
         match &self.metadata {
-            MetaData::BasicCSV(_) => "CSV",
-            MetaData::SpectrumSequenceList(_) => "SpectrumSequenceList",
-            MetaData::DeepNovoFamily(_) => "DeepNovo Family",
-            MetaData::Fasta(_) => "Fasta",
-            MetaData::InstaNovo(_) => "InstaNovo",
-            MetaData::MaxQuant(_) => "MaxQuant",
-            MetaData::MSFragger(_) => "MSFragger",
-            MetaData::MZTab(_) => "mzTab",
-            MetaData::NovoB(_) => "NovoB",
-            MetaData::Novor(_) => "Novor",
-            MetaData::Opair(_) => "OPair",
-            MetaData::Peaks(_) => "PEAKS",
-            MetaData::PepNet(_) => "PepNet",
-            MetaData::PLGS(_) => "ProteinLynx Global Server",
-            MetaData::PLink(_) => "pLink",
-            MetaData::PowerNovo(_) => "PowerNovo",
-            MetaData::Sage(_) => "Sage",
-        }
-    }
-
-    /// Get the format version detected
-    pub fn format_version(&self) -> String {
-        match &self.metadata {
+            MetaData::BasicCSV(BasicCSVData { version, .. }) => KnownFileFormat::BasicCSV(*version),
             MetaData::SpectrumSequenceList(SpectrumSequenceListData { version, .. }) => {
-                version.to_string()
+                KnownFileFormat::SpectrumSequenceList(*version)
             }
-            MetaData::DeepNovoFamily(DeepNovoFamilyData { version, .. }) => version.to_string(),
-            MetaData::BasicCSV(BasicCSVData { version, .. }) => version.to_string(),
-            MetaData::Fasta(_) => "Fasta".to_string(),
-            MetaData::InstaNovo(InstaNovoData { version, .. }) => version.to_string(),
-            MetaData::MaxQuant(MaxQuantData { version, .. }) => version.to_string(),
-            MetaData::MSFragger(MSFraggerData { version, .. }) => version.to_string(),
-            MetaData::MZTab(_) => "mzTab 1.0".to_string(),
-            MetaData::NovoB(NovoBData { version, .. }) => version.to_string(),
-            MetaData::Novor(NovorData { version, .. }) => version.to_string(),
-            MetaData::Opair(OpairData { version, .. }) => version.to_string(),
-            MetaData::Peaks(PeaksData { version, .. }) => version.to_string(),
-            MetaData::PepNet(PepNetData { version, .. }) => version.to_string(),
-            MetaData::PLGS(PLGSData { version, .. }) => version.to_string(),
-            MetaData::PLink(PLinkData { version, .. }) => version.to_string(),
-            MetaData::PowerNovo(PowerNovoData { version, .. }) => version.to_string(),
-            MetaData::Sage(SageData { version, .. }) => version.to_string(),
+            MetaData::DeepNovoFamily(DeepNovoFamilyData { version, .. }) => {
+                KnownFileFormat::DeepNovoFamily(*version)
+            }
+            MetaData::Fasta(_) => KnownFileFormat::Fasta,
+            MetaData::InstaNovo(InstaNovoData { version, .. }) => {
+                KnownFileFormat::InstaNovo(*version)
+            }
+            MetaData::MaxQuant(MaxQuantData { version, .. }) => KnownFileFormat::MaxQuant(*version),
+            MetaData::MSFragger(MSFraggerData { version, .. }) => {
+                KnownFileFormat::MSFragger(*version)
+            }
+            MetaData::MZTab(_) => KnownFileFormat::MZTab,
+            MetaData::NovoB(NovoBData { version, .. }) => KnownFileFormat::NovoB(*version),
+            MetaData::Novor(NovorData { version, .. }) => KnownFileFormat::Novor(*version),
+            MetaData::Opair(OpairData { version, .. }) => KnownFileFormat::Opair(*version),
+            MetaData::Peaks(PeaksData { version, .. }) => KnownFileFormat::Peaks(*version),
+            MetaData::PepNet(PepNetData { version, .. }) => KnownFileFormat::PepNet(*version),
+            MetaData::PLGS(PLGSData { version, .. }) => KnownFileFormat::PLGS(*version),
+            MetaData::PLink(PLinkData { version, .. }) => KnownFileFormat::PLink(*version),
+            MetaData::PowerNovo(PowerNovoData { version, .. }) => {
+                KnownFileFormat::PowerNovo(*version)
+            }
+            MetaData::Sage(SageData { version, .. }) => KnownFileFormat::Sage(*version),
         }
     }
 
@@ -628,7 +610,7 @@ impl IdentifiedPeptide {
             _ => {
                 let exp_mass = self.experimental_mass()?;
                 let theo_mass = self
-                    .peptide()
+                    .peptidoform()
                     .and_then(|p| p.formulas().to_vec().pop())
                     .map(|f| f.monoisotopic_mass())?;
 
@@ -641,7 +623,7 @@ impl IdentifiedPeptide {
     pub fn mass_error(&self) -> Option<crate::system::Mass> {
         let exp_mass = self.experimental_mass()?;
         let theo_mass = self
-            .peptide()
+            .peptidoform()
             .and_then(|p| p.formulas().to_vec().pop())
             .map(|f| f.monoisotopic_mass())?;
 
@@ -811,8 +793,16 @@ impl SpectrumId {
     }
 }
 
+/// A version for an identified peptide version
+pub trait IdentifiedPeptidoformVersion<Format>: Copy {
+    /// The format for this version
+    fn format(self) -> Format;
+    /// The name for this version
+    fn name(self) -> &'static str;
+}
+
 /// The required methods for any source of identified peptides
-pub trait IdentifiedPeptideSource
+pub trait IdentifiedPeptidoformSource
 where
     Self: std::marker::Sized,
 {
@@ -823,7 +813,7 @@ where
     type Format: Clone;
 
     /// The version type
-    type Version: Display;
+    type Version: Display + IdentifiedPeptidoformVersion<Self::Format>;
 
     /// Parse a single identified peptide from its source and return the detected format
     /// # Errors
@@ -844,17 +834,18 @@ where
         keep_all_columns: bool,
     ) -> Result<Self, CustomError>;
 
-    /// Parse a source of multiple peptides automatically determining the format to use by the first item
+    /// Parse a source of multiple peptides using the given format or automatically determining the format to use by the first item
     /// # Errors
     /// When the source is not a valid peptide
     fn parse_many<I: Iterator<Item = Result<Self::Source, CustomError>>>(
         iter: I,
         custom_database: Option<&CustomDatabase>,
         keep_all_columns: bool,
-    ) -> IdentifiedPeptideIter<Self, I> {
-        IdentifiedPeptideIter {
+        format: Option<Self::Format>,
+    ) -> IdentifiedPeptidoformIter<Self, I> {
+        IdentifiedPeptidoformIter {
             iter: Box::new(iter),
-            format: None,
+            format,
             custom_database,
             keep_all_columns,
             peek: None,
@@ -868,6 +859,7 @@ where
         path: impl AsRef<std::path::Path>,
         custom_database: Option<&CustomDatabase>,
         keep_all_columns: bool,
+        version: Option<Self::Version>,
     ) -> Result<BoxedIdentifiedPeptideIter<Self>, CustomError>;
 
     /// Parse a reader with identified peptides.
@@ -877,6 +869,7 @@ where
         reader: impl std::io::Read + 'a,
         custom_database: Option<&'a CustomDatabase>,
         keep_all_columns: bool,
+        version: Option<Self::Version>,
     ) -> Result<BoxedIdentifiedPeptideIter<'a, Self>, CustomError>;
 
     /// Allow post processing of the peptide
@@ -893,19 +886,19 @@ where
 }
 
 /// Convenience type to not have to type out long iterator types
-pub type BoxedIdentifiedPeptideIter<'lifetime, T> = IdentifiedPeptideIter<
+pub type BoxedIdentifiedPeptideIter<'lifetime, T> = IdentifiedPeptidoformIter<
     'lifetime,
     T,
     Box<
-        dyn Iterator<Item = Result<<T as IdentifiedPeptideSource>::Source, CustomError>>
+        dyn Iterator<Item = Result<<T as IdentifiedPeptidoformSource>::Source, CustomError>>
             + 'lifetime,
     >,
 >;
 
 /// An iterator returning parsed identified peptides
-pub struct IdentifiedPeptideIter<
+pub struct IdentifiedPeptidoformIter<
     'lifetime,
-    R: IdentifiedPeptideSource,
+    R: IdentifiedPeptidoformSource,
     I: Iterator<Item = Result<R::Source, CustomError>>,
 > {
     iter: Box<I>,
@@ -915,8 +908,10 @@ pub struct IdentifiedPeptideIter<
     peek: Option<Result<R, CustomError>>,
 }
 
-impl<R: IdentifiedPeptideSource + Clone, I: Iterator<Item = Result<R::Source, CustomError>>>
-    IdentifiedPeptideIter<'_, R, I>
+impl<
+        R: IdentifiedPeptidoformSource + Clone,
+        I: Iterator<Item = Result<R::Source, CustomError>>,
+    > IdentifiedPeptidoformIter<'_, R, I>
 where
     R::Format: 'static,
 {
@@ -954,8 +949,8 @@ where
     }
 }
 
-impl<R: IdentifiedPeptideSource, I: Iterator<Item = Result<R::Source, CustomError>>> Iterator
-    for IdentifiedPeptideIter<'_, R, I>
+impl<R: IdentifiedPeptidoformSource, I: Iterator<Item = Result<R::Source, CustomError>>> Iterator
+    for IdentifiedPeptidoformIter<'_, R, I>
 where
     R::Format: 'static,
 {
@@ -991,15 +986,16 @@ where
     }
 }
 
-impl<'lifetime, R, I> IdentifiedPeptideIter<'lifetime, R, I>
+impl<'lifetime, R, I> IdentifiedPeptidoformIter<'lifetime, R, I>
 where
-    R: IdentifiedPeptideSource + Into<IdentifiedPeptide> + 'lifetime,
+    R: IdentifiedPeptidoformSource + Into<IdentifiedPeptidoform> + 'lifetime,
     I: Iterator<Item = Result<R::Source, CustomError>> + 'lifetime,
     R::Format: 'static,
 {
-    pub(super) fn into_box(
+    /// Make this into a generic boxed iterator for merging with other identified peptidoform formats
+    pub fn into_box(
         self,
-    ) -> Box<dyn Iterator<Item = Result<IdentifiedPeptide, CustomError>> + 'lifetime> {
+    ) -> Box<dyn Iterator<Item = Result<IdentifiedPeptidoform, CustomError>> + 'lifetime> {
         Box::new(self.map(|p: Result<R, CustomError>| match p {
             Ok(p) => Ok(p.into()),
             Err(e) => Err(e),
@@ -1013,7 +1009,7 @@ where
 /// * See errors at``test_identified_peptide()``
 #[expect(clippy::missing_panics_doc)]
 #[cfg(test)]
-pub fn test_format<T: IdentifiedPeptideSource + Into<IdentifiedPeptide>>(
+pub fn test_format<T: IdentifiedPeptidoformSource + Into<IdentifiedPeptidoform>>(
     reader: impl std::io::Read,
     custom_database: Option<&CustomDatabase>,
     allow_mass_mods: bool,
@@ -1025,20 +1021,27 @@ where
     T::Version: std::fmt::Display,
 {
     let mut number = 0;
-    for peptide in T::parse_reader(reader, custom_database, false).map_err(|e| e.to_string())? {
-        let peptide: IdentifiedPeptide = peptide.map_err(|e| e.to_string())?.into();
+    for peptide in
+        T::parse_reader(reader, custom_database, false, None).map_err(|e| e.to_string())?
+    {
+        let peptide: IdentifiedPeptidoform = peptide.map_err(|e| e.to_string())?.into();
         number += 1;
 
         test_identified_peptide(&peptide, allow_mass_mods, expect_lc)?;
 
-        if format
-            .as_ref()
-            .is_some_and(|f| f.to_string() != peptide.format_version())
-        {
+        if format.as_ref().is_some_and(|f| {
+            peptide
+                .format()
+                .version()
+                .is_some_and(|version| f.to_string() != version)
+        }) {
             return Err(format!(
                 "Peptide {} was detected as the wrong version ({} instead of {})",
                 peptide.id(),
-                peptide.format_version(),
+                peptide
+                    .format()
+                    .version()
+                    .unwrap_or_else(|| "-".to_string()),
                 format.unwrap(),
             ));
         }
@@ -1056,13 +1059,13 @@ where
 #[expect(clippy::missing_panics_doc)]
 #[cfg(test)]
 pub fn test_identified_peptide(
-    peptide: &IdentifiedPeptide,
+    peptide: &IdentifiedPeptidoform,
     allow_mass_mods: bool,
     expect_lc: bool,
 ) -> Result<(), String> {
     if peptide
-        .peptide()
-        .and_then(ReturnedPeptide::peptide)
+        .peptidoform()
+        .and_then(ReturnedPeptidoform::peptidoform)
         .map(|p| p.len())
         != peptide.local_confidence().map(<[f64]>::len)
     {
@@ -1072,7 +1075,7 @@ pub fn test_identified_peptide(
                 peptide.id()
             ));
         } else if peptide.local_confidence.is_some() {
-            return Err(format!("The local confidence ({}) does not have the same number of elements as the peptide ({}) for peptide {}", peptide.local_confidence().map_or(0, <[f64]>::len), peptide.peptide().and_then(ReturnedPeptide::peptide).map_or(0,|p| p.len()), peptide.id()));
+            return Err(format!("The local confidence ({}) does not have the same number of elements as the peptide ({}) for peptide {}", peptide.local_confidence().map_or(0, <[f64]>::len), peptide.peptidoform().and_then(ReturnedPeptidoform::peptidoform).map_or(0,|p| p.len()), peptide.id()));
         }
     }
     if peptide.score.is_some_and(|s| !(-1.0..=1.0).contains(&s)) {
@@ -1094,8 +1097,8 @@ pub fn test_identified_peptide(
         ));
     }
     if !allow_mass_mods
-        && peptide.peptide().is_some_and(|p| {
-            p.compound_peptidoform().peptidoforms().any(|p| {
+        && peptide.peptidoform().is_some_and(|p| {
+            p.compound_peptidoform_ion().peptidoforms().any(|p| {
                 p.sequence().iter().any(|s| {
                     s.modifications.iter().any(|m| {
                         m.simple().is_some_and(|m| {
@@ -1109,18 +1112,18 @@ pub fn test_identified_peptide(
         return Err(format!(
             "Peptide {} contains mass modifications, sequence {}",
             peptide.id(),
-            peptide.peptide().unwrap(),
+            peptide.peptidoform().unwrap(),
         ));
     }
-    if let Err(err) = peptide.peptide().map_or(Ok(()), |p| {
-        p.compound_peptidoform()
+    if let Err(err) = peptide.peptidoform().map_or(Ok(()), |p| {
+        p.compound_peptidoform_ion()
             .peptidoforms()
             .try_for_each(Peptidoform::enforce_modification_rules)
     }) {
         return Err(format!(
             "Peptide {} contains misplaced modifications, sequence {}\n{}",
             peptide.id(),
-            peptide.peptide().unwrap(),
+            peptide.peptidoform().unwrap(),
             err
         ));
     }

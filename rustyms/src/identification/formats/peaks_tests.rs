@@ -2,7 +2,7 @@
 use std::{io::BufReader, sync::Arc};
 
 use crate::{
-    identification::{test_format, IdentifiedPeptideSource, PeaksData, PeaksVersion},
+    identification::{test_format, IdentifiedPeptidoformSource, PeaksData, PeaksVersion},
     modification::SimpleModificationInner,
     molecular_formula,
 };
@@ -225,8 +225,13 @@ fn peaks_db_protein_peptide() {
 
 #[test]
 fn full_peaks_file() {
-    for pep in
-        PeaksData::parse_file("data/200305_HER_test_04_DENOVO_excerpt.csv", None, false).unwrap()
+    for pep in PeaksData::parse_file(
+        "data/200305_HER_test_04_DENOVO_excerpt.csv",
+        None,
+        false,
+        None,
+    )
+    .unwrap()
     {
         if let Err(e) = pep {
             panic!("{}", e);

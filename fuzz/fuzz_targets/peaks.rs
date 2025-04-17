@@ -1,7 +1,7 @@
 use std::io::BufReader;
 
 use afl::*;
-use rustyms::identification::IdentifiedPeptideSource;
+use rustyms::identification::IdentifiedPeptidoformSource;
 
 use std::io::Read;
 use std::io::Result;

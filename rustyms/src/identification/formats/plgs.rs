@@ -9,13 +9,12 @@ use crate::{
 };
 use serde::{Deserialize, Serialize};
 
-use super::{
+use crate::identification::{
     common_parser::{Location, OptionalColumn, OptionalLocation},
     csv::{parse_csv, CsvLine},
-    fasta::FastaIdentifier,
     placement_rule::PlacementRule,
-    BoxedIdentifiedPeptideIter, IdentifiedPeptide, IdentifiedPeptideSource, MetaData,
-    SequencePosition,
+    BoxedIdentifiedPeptideIter, FastaIdentifier, IdentifiedPeptidoform,
+    IdentifiedPeptidoformSource, IdentifiedPeptidoformVersion, MetaData, SequencePosition,
 };
 
 static NUMBER_ERROR: (&str, &str) = (
@@ -145,7 +144,7 @@ format_family!(
     }
 );
 
-impl From<PLGSData> for IdentifiedPeptide {
+impl From<PLGSData> for IdentifiedPeptidoform {
     fn from(value: PLGSData) -> Self {
         Self {
             score: Some(2.0 / (1.0 + 1.3_f64.powf(-value.peptide_score)) - 1.0),
@@ -275,7 +274,9 @@ pub const VERSION_3_0: PLGSFormat = PLGSFormat {
 };
 
 /// All possible PLGS versions
-#[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Default, Serialize, Deserialize)]
+#[derive(
+    Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Default, Serialize, Deserialize,
+)]
 pub enum PLGSVersion {
     /// Current PLGS version
     #[default]
@@ -284,12 +285,19 @@ pub enum PLGSVersion {
 
 impl std::fmt::Display for PLGSVersion {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::result::Result<(), std::fmt::Error> {
-        write!(
-            f,
-            "{}",
-            match self {
-                Self::V3_0 => "v3.0",
-            }
-        )
+        write!(f, "{}", self.name())
+    }
+}
+
+impl IdentifiedPeptidoformVersion<PLGSFormat> for PLGSVersion {
+    fn format(self) -> PLGSFormat {
+        match self {
+            Self::V3_0 => VERSION_3_0,
+        }
+    }
+    fn name(self) -> &'static str {
+        match self {
+            Self::V3_0 => "v3.0",
+        }
     }
 }

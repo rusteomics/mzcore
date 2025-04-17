@@ -11,13 +11,13 @@ use crate::{
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 
-use super::{
+use crate::identification::{
     common_parser::{Location, OptionalColumn, OptionalLocation},
     csv::{parse_csv, CsvLine},
-    fasta::FastaIdentifier,
     modification::SimpleModification,
     peptidoform::PeptideModificationSearch,
-    BoxedIdentifiedPeptideIter, IdentifiedPeptide, IdentifiedPeptideSource, MetaData, Modification,
+    BoxedIdentifiedPeptideIter, FastaIdentifier, IdentifiedPeptidoform,
+    IdentifiedPeptidoformSource, IdentifiedPeptidoformVersion, MetaData, Modification,
 };
 
 static NUMBER_ERROR: (&str, &str) = (
@@ -131,7 +131,7 @@ format_family!(
     }
 );
 
-impl From<PeaksData> for IdentifiedPeptide {
+impl From<PeaksData> for IdentifiedPeptidoform {
     fn from(value: PeaksData) -> Self {
         Self {
             score: value
@@ -565,7 +565,9 @@ pub const DB_PROTEIN_PEPTIDE: PeaksFormat = PeaksFormat {
 };
 
 /// All possible peaks versions
-#[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Default, Serialize, Deserialize)]
+#[derive(
+    Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Default, Serialize, Deserialize,
+)]
 #[expect(clippy::upper_case_acronyms)]
 pub enum PeaksVersion {
     /// An older version of a PEAKS export
@@ -593,21 +595,37 @@ pub enum PeaksVersion {
 
 impl std::fmt::Display for PeaksVersion {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::result::Result<(), std::fmt::Error> {
-        write!(
-            f,
-            "{}",
-            match self {
-                Self::X => "X",
-                Self::XPatched => "X patched",
-                Self::XPlus => "X+",
-                Self::DBPeptide => "DB peptide",
-                Self::DBPSM => "DB PSM",
-                Self::DBProteinPeptide => "DB protein peptide",
-                Self::Ab => "Ab",
-                Self::V11 => "11",
-                Self::V11Features => "11 features",
-                Self::V12 => "12",
-            }
-        )
+        write!(f, "{}", self.name())
+    }
+}
+
+impl IdentifiedPeptidoformVersion<PeaksFormat> for PeaksVersion {
+    fn format(self) -> PeaksFormat {
+        match self {
+            Self::X => X,
+            Self::XPatched => X_PATCHED,
+            Self::XPlus => XPLUS,
+            Self::DBPeptide => DB_PEPTIDE,
+            Self::DBPSM => DB_PSM,
+            Self::DBProteinPeptide => DB_PROTEIN_PEPTIDE,
+            Self::Ab => AB,
+            Self::V11 => V11,
+            Self::V11Features => V11_FEATURES,
+            Self::V12 => V12,
+        }
+    }
+    fn name(self) -> &'static str {
+        match self {
+            Self::X => "X",
+            Self::XPatched => "X patched",
+            Self::XPlus => "X+",
+            Self::DBPeptide => "DB peptide",
+            Self::DBPSM => "DB PSM",
+            Self::DBProteinPeptide => "DB protein peptide",
+            Self::Ab => "Ab",
+            Self::V11 => "11",
+            Self::V11Features => "11 features",
+            Self::V12 => "12",
+        }
     }
 }

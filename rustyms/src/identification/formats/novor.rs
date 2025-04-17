@@ -1,7 +1,8 @@
-use super::{
+use crate::identification::{
     common_parser::{Location, OptionalColumn},
     csv::{parse_csv, CsvLine},
-    BoxedIdentifiedPeptideIter, IdentifiedPeptide, IdentifiedPeptideSource, MetaData,
+    BoxedIdentifiedPeptideIter, IdentifiedPeptidoform, IdentifiedPeptidoformSource,
+    IdentifiedPeptidoformVersion, MetaData,
 };
 use crate::{
     error::CustomError,
@@ -58,7 +59,7 @@ format_family!(
     }
 );
 
-impl From<NovorData> for IdentifiedPeptide {
+impl From<NovorData> for IdentifiedPeptidoform {
     fn from(value: NovorData) -> Self {
         Self {
             score: Some((value.score / 100.0).clamp(-1.0, 1.0)),
@@ -72,7 +73,9 @@ impl From<NovorData> for IdentifiedPeptide {
 }
 
 /// All available Novor versions
-#[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Default, Serialize, Deserialize)]
+#[derive(
+    Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Default, Serialize, Deserialize,
+)]
 pub enum NovorVersion {
     /// An older version for the denovo file
     #[default]
@@ -86,16 +89,26 @@ pub enum NovorVersion {
 }
 impl std::fmt::Display for NovorVersion {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::result::Result<(), std::fmt::Error> {
-        write!(
-            f,
-            "{}",
-            match self {
-                Self::OldDenovo => "Older Denovo",
-                Self::OldPSM => "Older PSM",
-                Self::NewDenovo => "New Denovo",
-                Self::NewPSM => "New PSM",
-            }
-        )
+        write!(f, "{}", self.name())
+    }
+}
+
+impl IdentifiedPeptidoformVersion<NovorFormat> for NovorVersion {
+    fn format(self) -> NovorFormat {
+        match self {
+            Self::OldDenovo => OLD_DENOVO,
+            Self::OldPSM => OLD_PSM,
+            Self::NewDenovo => NEW_DENOVO,
+            Self::NewPSM => NEW_PSM,
+        }
+    }
+    fn name(self) -> &'static str {
+        match self {
+            Self::OldDenovo => "Older Denovo",
+            Self::OldPSM => "Older PSM",
+            Self::NewDenovo => "New Denovo",
+            Self::NewPSM => "New PSM",
+        }
     }
 }
 

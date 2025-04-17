@@ -3,11 +3,11 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use super::{
+use crate::identification::{
     common_parser::Location,
     csv::{parse_csv, CsvLine},
-    fasta::FastaIdentifier,
-    BoxedIdentifiedPeptideIter, IdentifiedPeptide, IdentifiedPeptideSource, MetaData,
+    BoxedIdentifiedPeptideIter, FastaIdentifier, IdentifiedPeptidoform,
+    IdentifiedPeptidoformSource, IdentifiedPeptidoformVersion, MetaData,
 };
 use crate::{
     error::{Context, CustomError},
@@ -192,7 +192,7 @@ format_family!(
     optional { }
 );
 
-impl From<OpairData> for IdentifiedPeptide {
+impl From<OpairData> for IdentifiedPeptidoform {
     fn from(value: OpairData) -> Self {
         Self {
             score: Some(value.score / 100.0),
@@ -203,7 +203,9 @@ impl From<OpairData> for IdentifiedPeptide {
 }
 
 /// All possible peaks versions
-#[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Default, Serialize, Deserialize)]
+#[derive(
+    Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Default, Serialize, Deserialize,
+)]
 pub enum OpairVersion {
     /// The single known version
     #[default]
@@ -219,6 +221,19 @@ impl std::fmt::Display for OpairVersion {
                 Self::Opair => "",
             }
         )
+    }
+}
+
+impl IdentifiedPeptidoformVersion<OpairFormat> for OpairVersion {
+    fn format(self) -> OpairFormat {
+        match self {
+            Self::Opair => O_PAIR,
+        }
+    }
+    fn name(self) -> &'static str {
+        match self {
+            Self::Opair => "",
+        }
     }
 }
 

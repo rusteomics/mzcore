@@ -1,6 +1,6 @@
 use crate::{
     error::CustomError,
-    identification::{IdentifiedPeptide, IdentifiedPeptideSource, MetaData},
+    identification::{IdentifiedPeptidoform, IdentifiedPeptidoformSource, MetaData},
     ontologies::CustomDatabase,
     system::Ratio,
     Peptidoform, SemiAmbiguous, SloppyParsingParameters,
@@ -8,10 +8,10 @@ use crate::{
 
 use serde::{Deserialize, Serialize};
 
-use super::{
+use crate::identification::{
     common_parser::Location,
     csv::{parse_csv, CsvLine},
-    BoxedIdentifiedPeptideIter,
+    BoxedIdentifiedPeptideIter, IdentifiedPeptidoformVersion,
 };
 
 static NUMBER_ERROR: (&str, &str) = (
@@ -43,7 +43,7 @@ format_family!(
     optional { }
 );
 
-impl From<PepNetData> for IdentifiedPeptide {
+impl From<PepNetData> for IdentifiedPeptidoform {
     fn from(value: PepNetData) -> Self {
         Self {
             score: Some(value.score),
@@ -63,7 +63,9 @@ pub const PEPNET_V1_0: PepNetFormat = PepNetFormat {
 };
 
 /// All possible PepNet versions
-#[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Default, Serialize, Deserialize)]
+#[derive(
+    Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Default, Serialize, Deserialize,
+)]
 pub enum PepNetVersion {
     #[default]
     /// PepNet version 1.0
@@ -72,12 +74,19 @@ pub enum PepNetVersion {
 
 impl std::fmt::Display for PepNetVersion {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::result::Result<(), std::fmt::Error> {
-        write!(
-            f,
-            "{}",
-            match self {
-                Self::V1_0 => "v1.0",
-            }
-        )
+        write!(f, "{}", self.name())
+    }
+}
+
+impl IdentifiedPeptidoformVersion<PepNetFormat> for PepNetVersion {
+    fn format(self) -> PepNetFormat {
+        match self {
+            Self::V1_0 => PEPNET_V1_0,
+        }
+    }
+    fn name(self) -> &'static str {
+        match self {
+            Self::V1_0 => "v1.0",
+        }
     }
 }

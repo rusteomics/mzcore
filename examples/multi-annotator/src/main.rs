@@ -13,7 +13,7 @@ use itertools::Itertools;
 use mzdata::io::{MZFileReader, SpectrumSource};
 use rayon::prelude::*;
 use rustyms::{
-    identification::IdentifiedPeptideSource,
+    identification::IdentifiedPeptidoformSource,
     model::MatchingParameters,
     spectrum::{Score, Scores},
     *,

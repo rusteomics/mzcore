@@ -13,7 +13,7 @@ use serde::{Deserialize, Serialize};
 use crate::{
     error::{Context, CustomError},
     helper_functions::{check_extension, explain_number_error},
-    identification::{IdentifiedPeptide, MetaData, SpectrumId, SpectrumIds},
+    identification::{IdentifiedPeptidoform, MetaData, SpectrumId, SpectrumIds},
     modification::SimpleModification,
     ontologies::CustomDatabase,
     system::{usize::Charge, MassOverCharge, Time},
@@ -721,7 +721,7 @@ impl<'a> PSMLine<'a> {
     }
 }
 
-impl From<MZTabData> for IdentifiedPeptide {
+impl From<MZTabData> for IdentifiedPeptidoform {
     fn from(value: MZTabData) -> Self {
         Self {
             score: (!value.search_engine.is_empty())
