@@ -17,7 +17,7 @@
 //! ```
 //! _Generated using this algorithm bound to a cli tool: <https://github.com/snijderlab/align-cli>_
 //! ```rust
-//! use rustyms::{*, align::*};
+//! use rustyms::{prelude::*, sequence::SimpleLinear, align::*};
 //! let a = Peptidoform::pro_forma("ANA", None).unwrap().into_simple_linear().unwrap();
 //! let b = Peptidoform::pro_forma("AGGA", None).unwrap().into_simple_linear().unwrap();
 //! let alignment = align::<4, SimpleLinear, SimpleLinear>(&a, &b, AlignScoring::default(), AlignType::GLOBAL);
@@ -60,7 +60,7 @@ pub mod matrix {
 #[cfg(test)]
 #[expect(clippy::missing_panics_doc)]
 mod tests {
-    use crate::{peptidoform::SimpleLinear, Peptidoform};
+    use crate::sequence::{Peptidoform, SimpleLinear};
 
     use super::{scoring::AlignScoring, AlignType, Alignment};
 

@@ -1,6 +1,7 @@
 use itertools::Itertools;
 
 use crate::{
+    chemistry::Chemical,
     glycan::{
         render::{
             element::GlycanRoot,
@@ -8,7 +9,6 @@ use crate::{
         },
         GlycanBranchIndex, GlycanBranchMassIndex, GlycanPosition, GlycanStructure, RenderedGlycan,
     },
-    Chemical,
 };
 
 use super::element::GlycanSelection;

@@ -2,10 +2,9 @@ use std::{io::Write, path::Path};
 
 use bincode::config::Configuration;
 use rustyms::{
-    modification::Ontology,
-    ontologies::OntologyModificationList,
-    placement_rule::{PlacementRule, Position},
-    MolecularFormula,
+    chemistry::MolecularFormula,
+    ontology::{Ontology, OntologyModificationList},
+    sequence::{PlacementRule, Position},
 };
 
 use super::{obo::OboOntology, ontology_modification::OntologyModification, ModData};
@@ -136,7 +135,7 @@ fn parse_psi_mod() -> Vec<OntologyModification> {
 
 #[cfg(test)]
 mod tests {
-    use rustyms::{molecular_formula, MolecularFormula};
+    use rustyms::{chemistry::MolecularFormula, molecular_formula};
 
     #[test]
     fn parse_molecular_formula() {

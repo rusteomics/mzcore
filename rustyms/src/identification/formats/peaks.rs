@@ -2,23 +2,21 @@ use std::path::{Path, PathBuf};
 
 use crate::{
     error::CustomError,
-    identification::PeaksFamilyId,
-    ontologies::CustomDatabase,
-    peptidoform::{SemiAmbiguous, SloppyParsingParameters},
+    identification::{
+        common_parser::{Location, OptionalColumn, OptionalLocation},
+        csv::{parse_csv, CsvLine},
+        BoxedIdentifiedPeptideIter, FastaIdentifier, IdentifiedPeptidoform,
+        IdentifiedPeptidoformSource, IdentifiedPeptidoformVersion, MetaData, PeaksFamilyId,
+    },
+    ontology::CustomDatabase,
+    sequence::{
+        AminoAcid, Modification, PeptideModificationSearch, Peptidoform, SemiAmbiguous,
+        SimpleModification, SloppyParsingParameters,
+    },
     system::{usize::Charge, Mass, MassOverCharge, Time},
-    Peptidoform,
 };
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
-
-use crate::identification::{
-    common_parser::{Location, OptionalColumn, OptionalLocation},
-    csv::{parse_csv, CsvLine},
-    modification::SimpleModification,
-    peptidoform::PeptideModificationSearch,
-    BoxedIdentifiedPeptideIter, FastaIdentifier, IdentifiedPeptidoform,
-    IdentifiedPeptidoformSource, IdentifiedPeptidoformVersion, MetaData, Modification,
-};
 
 static NUMBER_ERROR: (&str, &str) = (
     "Invalid Peaks line",
@@ -36,8 +34,8 @@ format_family!(
     PeaksData,
     PeaksVersion, [&V12, &V11, &V11_FEATURES, &XPLUS, &AB, &X_PATCHED, &X, &DB_PEPTIDE, &DB_PSM, &DB_PROTEIN_PEPTIDE], b',', None;
     required {
-        peptide: (Option<crate::AminoAcid>, Vec<Peptidoform<SemiAmbiguous>>, Option<crate::AminoAcid>), |location: Location, custom_database: Option<&CustomDatabase>| {
-            let n_flanking: Option<crate::AminoAcid> =
+        peptide: (Option<AminoAcid>, Vec<Peptidoform<SemiAmbiguous>>, Option<AminoAcid>), |location: Location, custom_database: Option<&CustomDatabase>| {
+            let n_flanking: Option<AminoAcid> =
                 (location.as_str().chars().nth(1) == Some('.'))
                 .then(|| location.as_str().chars().next().unwrap().try_into().map_err(|()|
                     CustomError::error(
@@ -45,7 +43,7 @@ format_family!(
                         "This flanking residue is not a valid amino acid",
                         crate::error::Context::line(Some(location.line.line_index()), location.full_line(), location.location.start, 1)))).transpose()?;
 
-            let c_flanking: Option<crate::AminoAcid> =
+            let c_flanking: Option<AminoAcid> =
             (location.as_str().chars().nth_back(1) == Some('.'))
             .then(|| location.as_str().chars().next_back().unwrap().try_into().map_err(|()|
                     CustomError::error(
@@ -123,7 +121,7 @@ format_family!(
         if let Some(ptm) = parsed.ptm.clone() {
             for pep in &mut parsed.peptide.1 {
                 *pep = PeptideModificationSearch::in_modifications(ptm.clone())
-                    .tolerance(super::Tolerance::Absolute(super::system::da(0.05)))
+                    .tolerance(crate::quantities::Tolerance::Absolute(super::system::da(0.05)))
                     .search(pep.clone());
             }
         }

@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use crate::{AminoAcid, SequencePosition};
+use crate::sequence::{AminoAcid, SequencePosition};
 
 use super::{GlycanBranchIndex, GlycanBranchMassIndex};
 

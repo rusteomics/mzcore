@@ -3,8 +3,8 @@ use std::{io::BufReader, sync::Arc};
 
 use crate::{
     identification::{test_format, IdentifiedPeptidoformSource, PeaksData, PeaksVersion},
-    modification::SimpleModificationInner,
     molecular_formula,
+    sequence::SimpleModificationInner,
 };
 
 #[test]

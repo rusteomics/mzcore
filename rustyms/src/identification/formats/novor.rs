@@ -1,15 +1,14 @@
-use crate::identification::{
-    common_parser::{Location, OptionalColumn},
-    csv::{parse_csv, CsvLine},
-    BoxedIdentifiedPeptideIter, IdentifiedPeptidoform, IdentifiedPeptidoformSource,
-    IdentifiedPeptidoformVersion, MetaData,
-};
 use crate::{
     error::CustomError,
-    ontologies::CustomDatabase,
-    peptidoform::{SemiAmbiguous, SloppyParsingParameters},
+    identification::{
+        common_parser::{Location, OptionalColumn},
+        csv::{parse_csv, CsvLine},
+        BoxedIdentifiedPeptideIter, IdentifiedPeptidoform, IdentifiedPeptidoformSource,
+        IdentifiedPeptidoformVersion, MetaData,
+    },
+    ontology::CustomDatabase,
+    sequence::{Peptidoform, SemiAmbiguous, SloppyParsingParameters},
     system::{usize::Charge, Mass, MassOverCharge, Time},
-    Peptidoform,
 };
 use serde::{Deserialize, Serialize};
 

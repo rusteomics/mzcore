@@ -1,15 +1,15 @@
 use std::fmt::Debug;
 
 use crate::{
-    model::GlycanModel,
-    peptidoform::{AtMax, SimpleLinear},
+    align::{
+        align_type::*, alignment::Score, diagonal_array::DiagonalArray, piece::*, scoring::*,
+        Alignment,
+    },
+    annotation::model::GlycanModel,
+    chemistry::{MassMode, MolecularFormula},
+    quantities::{Multi, WithinTolerance},
+    sequence::{AtMax, Peptidoform, SequenceElement, SequencePosition, SimpleLinear},
     system::Mass,
-    MassMode, MolecularFormula, Multi, Peptidoform, SequenceElement, SequencePosition,
-    WithinTolerance,
-};
-
-use super::{
-    align_type::*, alignment::Score, diagonal_array::DiagonalArray, piece::*, scoring::*, Alignment,
 };
 
 // TODO: no way of handling terminal modifications yet
@@ -486,8 +486,11 @@ impl std::ops::IndexMut<[usize; 2]> for Matrix {
 mod tests {
     use super::score;
     use crate::{
-        align::scoring::AlignScoring, model::GlycanModel, CheckedAminoAcid, MolecularFormula,
-        Multi, SequenceElement, SequencePosition,
+        align::scoring::AlignScoring,
+        annotation::model::GlycanModel,
+        chemistry::MolecularFormula,
+        quantities::Multi,
+        sequence::{CheckedAminoAcid, SequenceElement, SequencePosition},
     };
 
     #[test]

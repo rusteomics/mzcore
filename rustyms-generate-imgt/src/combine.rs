@@ -2,11 +2,11 @@ use std::collections::HashMap;
 use std::fmt::Write;
 
 use itertools::Itertools;
-use rustyms::align::AlignScoring;
-use rustyms::imgt::{AnnotatedSequence, Gene, Germline, Germlines, Species};
-use rustyms::peptidoform::{Annotation, Region};
-use rustyms::Peptidoform;
-use rustyms::UnAmbiguous;
+use rustyms::{
+    align::AlignScoring,
+    imgt::{AnnotatedSequence, Gene, Germline, Germlines, Species},
+    sequence::{Annotation, Peptidoform, Region, UnAmbiguous},
+};
 
 use crate::imgt_gene::IMGTGene;
 use crate::structs::DataItem;

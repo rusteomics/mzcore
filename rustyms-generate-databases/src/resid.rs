@@ -9,10 +9,9 @@ use super::{ontology_modification::OntologyModification, ModData};
 use bincode::config::Configuration;
 use roxmltree::*;
 use rustyms::{
-    modification::{LinkerSpecificity, Ontology},
-    ontologies::OntologyModificationList,
-    placement_rule::{PlacementRule, Position},
-    AminoAcid, MolecularFormula, MultiChemical,
+    chemistry::{MolecularFormula, MultiChemical},
+    ontology::{Ontology, OntologyModificationList},
+    sequence::{AminoAcid, LinkerSpecificity, PlacementRule, Position},
 };
 
 pub fn build_resid_ontology(out_dir: &Path) {

@@ -8,6 +8,7 @@ use rayon::prelude::*;
 use rustyms::{
     align::{align, AlignType},
     identification::{csv::write_csv, open_identified_peptides_file, FastaData},
+    sequence::SemiAmbiguous,
     *,
 };
 

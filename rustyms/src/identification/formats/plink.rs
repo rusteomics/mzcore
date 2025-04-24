@@ -4,29 +4,29 @@ use std::{
     sync::{Arc, LazyLock},
 };
 
+use itertools::Itertools;
+use serde::{Deserialize, Serialize};
+
 use crate::{
+    chemistry::Chemical,
     error::{Context, CustomError},
-    formula::Chemical,
     helper_functions::explain_number_error,
     identification::{
         common_parser::{Location, OptionalColumn, OptionalLocation},
         csv::{parse_csv, CsvLine},
-        modification::SimpleModification,
-        BoxedIdentifiedPeptideIter, IdentifiedPeptidoform, IdentifiedPeptidoformSource, MetaData,
-        Modification,
+        BoxedIdentifiedPeptideIter, IdentifiedPeptidoform, IdentifiedPeptidoformSource,
+        IdentifiedPeptidoformVersion, MetaData,
     },
-    modification::{Ontology, SimpleModificationInner},
     molecular_formula,
-    ontologies::CustomDatabase,
+    ontology::CustomDatabase,
+    ontology::Ontology,
+    quantities::{Tolerance, WithinTolerance},
+    sequence::{
+        CrossLinkName, Modification, Peptidoform, PeptidoformIon, SequencePosition,
+        SimpleModification, SimpleModificationInner, SloppyParsingParameters,
+    },
     system::{usize::Charge, Mass},
-    tolerance::WithinTolerance,
-    CrossLinkName, Peptidoform, PeptidoformIon, SequencePosition, SloppyParsingParameters,
-    Tolerance,
 };
-use itertools::Itertools;
-use serde::{Deserialize, Serialize};
-
-use crate::identification::IdentifiedPeptidoformVersion;
 
 static NUMBER_ERROR: (&str, &str) = (
     "Invalid pLink line",

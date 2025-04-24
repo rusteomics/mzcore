@@ -3,8 +3,10 @@ use std::{io::Write, iter, path::Path, sync::LazyLock};
 use bincode::config::Configuration;
 use regex::Regex;
 use rustyms::{
-    modification::Ontology, ontologies::OntologyModificationList, placement_rule::PlacementRule,
-    MolecularFormula, NeutralLoss,
+    chemistry::MolecularFormula,
+    fragment::NeutralLoss,
+    ontology::{Ontology, OntologyModificationList},
+    sequence::PlacementRule,
 };
 
 use crate::ontology_modification::position_from_str;

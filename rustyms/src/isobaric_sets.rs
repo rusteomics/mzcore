@@ -3,13 +3,15 @@ use std::cmp::Ordering;
 use itertools::Itertools;
 
 use crate::{
-    checked_aminoacid::CheckedAminoAcid,
-    model::GlycanModel,
-    modification::{Modification, SimpleModification, SimpleModificationInner},
-    peptidoform::SimpleLinear,
-    placement_rule::{PlacementRule, Position},
+    annotation::model::GlycanModel,
+    chemistry::Chemical,
+    quantities::Tolerance,
+    sequence::{
+        AminoAcid, CheckedAminoAcid, Modification, Peptidoform, PlacementRule, Position,
+        SemiAmbiguous, SequenceElement, SequencePosition, SimpleLinear, SimpleModification,
+        SimpleModificationInner,
+    },
     system::{fraction, Mass, Ratio},
-    AminoAcid, Chemical, Peptidoform, SemiAmbiguous, SequenceElement, SequencePosition, Tolerance,
 };
 
 /// A list of building blocks for a sequence defined by its sequence elements and its mass.

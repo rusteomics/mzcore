@@ -9,7 +9,7 @@ use std::{
     str::FromStr,
 };
 
-use crate::SequencePosition;
+use crate::sequence::SequencePosition;
 
 pub fn peptide_range_contains(
     range: &impl RangeBounds<usize>,

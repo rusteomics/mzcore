@@ -13,12 +13,17 @@ use itertools::Itertools;
 use mzdata::io::{MZFileReader, SpectrumSource};
 use rayon::prelude::*;
 use rustyms::{
+    annotation::{
+        model::{FragmentationModel, MatchingParameters},
+        AnnotatableSpectrum, AnnotatedPeak, Score, Scores,
+    },
+    chemistry::MassMode,
+    fragment::Fragment,
     identification::IdentifiedPeptidoformSource,
-    model::MatchingParameters,
-    spectrum::{Score, Scores},
+    sequence::{AminoAcid, SequencePosition},
+    spectrum::PeakSpectrum,
     *,
 };
-use spectrum::{AnnotatedPeak, PeakSpectrum};
 
 #[derive(Parser)]
 struct Cli {

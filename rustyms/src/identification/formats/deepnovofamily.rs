@@ -1,22 +1,20 @@
 use std::sync::LazyLock;
 
+use serde::{Deserialize, Serialize};
+
 use crate::{
     error::CustomError,
     identification::PeaksFamilyId,
-    ontologies::CustomDatabase,
-    peptidoform::{SemiAmbiguous, SloppyParsingParameters},
+    identification::{
+        common_parser::{Location, OptionalColumn, OptionalLocation},
+        csv::{parse_csv, CsvLine},
+        ontology::Ontology,
+        BoxedIdentifiedPeptideIter, IdentifiedPeptidoform, IdentifiedPeptidoformSource,
+        IdentifiedPeptidoformVersion, MetaData,
+    },
+    ontology::CustomDatabase,
+    sequence::{AminoAcid, Peptidoform, SemiAmbiguous, SloppyParsingParameters},
     system::{usize::Charge, MassOverCharge},
-    Peptidoform,
-};
-
-use serde::{Deserialize, Serialize};
-
-use crate::identification::{
-    common_parser::{Location, OptionalColumn, OptionalLocation},
-    csv::{parse_csv, CsvLine},
-    modification::Ontology,
-    AminoAcid, BoxedIdentifiedPeptideIter, IdentifiedPeptidoform, IdentifiedPeptidoformSource,
-    IdentifiedPeptidoformVersion, MetaData,
 };
 
 static NUMBER_ERROR: (&str, &str) = (

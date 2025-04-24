@@ -1,9 +1,9 @@
 use crate::{
     error::CustomError,
     identification::{IdentifiedPeptidoform, IdentifiedPeptidoformSource, MetaData},
-    ontologies::CustomDatabase,
+    ontology::CustomDatabase,
+    sequence::{Peptidoform, SemiAmbiguous, SloppyParsingParameters},
     system::Ratio,
-    Peptidoform, SemiAmbiguous, SloppyParsingParameters,
 };
 
 use serde::{Deserialize, Serialize};

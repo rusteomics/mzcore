@@ -1,20 +1,17 @@
 use crate::{
     error::CustomError,
+    identification::{
+        common_parser::Location,
+        csv::{parse_csv, CsvLine},
+        BoxedIdentifiedPeptideIter, IdentifiedPeptidoformVersion,
+    },
     identification::{IdentifiedPeptidoform, IdentifiedPeptidoformSource, MetaData},
-    modification::Ontology,
-    ontologies::CustomDatabase,
-    system::Ratio,
-    system::{usize::Charge, Mass},
-    AminoAcid, Peptidoform, SemiAmbiguous, SloppyParsingParameters,
+    ontology::{CustomDatabase, Ontology},
+    sequence::{AminoAcid, Peptidoform, SemiAmbiguous, SequenceElement, SloppyParsingParameters},
+    system::{usize::Charge, Mass, Ratio},
 };
 
 use serde::{Deserialize, Serialize};
-
-use crate::identification::{
-    common_parser::Location,
-    csv::{parse_csv, CsvLine},
-    BoxedIdentifiedPeptideIter, IdentifiedPeptidoformVersion, SequenceElement,
-};
 
 use std::sync::LazyLock;
 

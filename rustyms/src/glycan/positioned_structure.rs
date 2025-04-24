@@ -5,12 +5,12 @@ use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    formula::{Chemical, MolecularFormula},
+    annotation::model::{FragmentationModel, GlycanModel},
+    chemistry::{CachedCharge, Chemical, MolecularFormula},
     fragment::{Fragment, FragmentType, GlycanBreakPos},
-    model::GlycanModel,
-    molecular_charge::CachedCharge,
+    quantities::Multi,
+    sequence::{AminoAcid, SequencePosition},
     system::usize::Charge,
-    AminoAcid, FragmentationModel, Multi, SequencePosition,
 };
 
 use crate::uom::num_traits::Zero;

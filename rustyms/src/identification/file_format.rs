@@ -2,7 +2,7 @@ use std::{fmt::Display, path::Path};
 
 use serde::{Deserialize, Serialize};
 
-use crate::{error::CustomError, identification::*, ontologies::CustomDatabase};
+use crate::{error::CustomError, identification::*, ontology::CustomDatabase};
 
 /// A file format that is fully known
 #[derive(Clone, PartialEq, Eq, Debug, Copy, Serialize, Deserialize)]

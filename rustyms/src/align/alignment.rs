@@ -11,19 +11,15 @@ use super::align_type::*;
 use super::piece::*;
 use super::scoring::*;
 
-use crate::align::mass_alignment::determine_final_score;
-use crate::align::mass_alignment::score_pair;
-use crate::helper_functions::next_num;
-use crate::model::GlycanModel;
-use crate::peptidoform::AtMax;
-use crate::peptidoform::Linear;
-use crate::system::Mass;
-use crate::system::Ratio;
-use crate::MolecularFormula;
-use crate::Multi;
-use crate::Peptidoform;
-use crate::SequencePosition;
-use crate::SimpleLinear;
+use crate::{
+    align::mass_alignment::{determine_final_score, score_pair},
+    annotation::model::GlycanModel,
+    chemistry::MolecularFormula,
+    helper_functions::next_num,
+    quantities::Multi,
+    sequence::{AtMax, Linear, Peptidoform, SequencePosition, SimpleLinear},
+    system::{Mass, Ratio},
+};
 
 /// An alignment of two reads. It has either a reference to the two sequences to prevent overzealous use of memory, or if needed use [`Self::to_owned`] to get a variant that clones the sequences and so can be used in more places.
 #[derive(Debug, Serialize, Deserialize)]
@@ -601,8 +597,8 @@ pub struct Score {
 mod tests {
     use crate::{
         align::{align, AlignScoring, AlignType},
-        peptidoform::SimpleLinear,
-        AminoAcid, MultiChemical, Peptidoform,
+        chemistry::MultiChemical,
+        sequence::{AminoAcid, Peptidoform, SimpleLinear},
     };
 
     #[test]

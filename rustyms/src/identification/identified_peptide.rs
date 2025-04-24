@@ -9,16 +9,16 @@ use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 
 use crate::{
+    chemistry::{MolecularFormula, MultiChemical},
     error::CustomError,
-    formula::MultiChemical,
     identification::*,
-    ontologies::CustomDatabase,
-    peptidoform::{SemiAmbiguous, SimpleLinear},
+    ontology::CustomDatabase,
+    sequence::{
+        CompoundPeptidoformIon, Peptidoform, PeptidoformIon, SemiAmbiguous, SequencePosition,
+        SimpleLinear,
+    },
     system::{usize::Charge, MassOverCharge, OrderedTime, Time},
-    Peptidoform, PeptidoformIon,
 };
-
-use super::{BasicCSVData, CompoundPeptidoformIon};
 
 /// A peptide that is identified by a de novo or database matching program
 #[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
@@ -87,9 +87,9 @@ pub enum ReturnedPeptidoform<'a> {
 impl MultiChemical for ReturnedPeptidoform<'_> {
     fn formulas_inner(
         &self,
-        _sequence_index: super::SequencePosition,
+        _sequence_index: SequencePosition,
         _peptidoform_index: usize,
-    ) -> super::Multi<super::MolecularFormula> {
+    ) -> super::quantities::Multi<MolecularFormula> {
         match self {
             Self::PeptidoformSemiAmbiguous(p) => p.formulas(),
             Self::PeptidoformSimpleLinear(p) => p.formulas(),
@@ -1102,7 +1102,7 @@ pub fn test_identified_peptide(
                 p.sequence().iter().any(|s| {
                     s.modifications.iter().any(|m| {
                         m.simple().is_some_and(|m| {
-                            matches!(**m, crate::modification::SimpleModificationInner::Mass(_))
+                            matches!(**m, crate::sequence::SimpleModificationInner::Mass(_))
                         })
                     })
                 })

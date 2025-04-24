@@ -7,12 +7,11 @@ use ordered_float::OrderedFloat;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    spectrum::{AnnotatableSpectrum, AnnotatedPeak, PeakSpectrum},
+    spectrum::PeakSpectrum,
     system::{
         f64::{Mass, MassOverCharge, Ratio, Time},
         usize::Charge,
     },
-    AnnotatedSpectrum, CompoundPeptidoformIon, Tolerance, WithinTolerance,
 };
 
 /// A raw spectrum (meaning not annotated yet)
@@ -31,7 +30,7 @@ pub struct RawSpectrum {
     /// The found precursor intensity
     pub intensity: Option<f64>,
     /// The peaks of which this spectrum consists
-    spectrum: Vec<RawPeak>,
+    pub(crate) spectrum: Vec<RawPeak>,
     /// MGF: if present the SEQUENCE line
     pub sequence: Option<String>,
     /// MGF TITLE: if present the raw file where this mgf was made from
@@ -110,46 +109,6 @@ impl RawSpectrum {
         }
 
         self.spectrum = new_spectrum;
-    }
-}
-
-impl AnnotatableSpectrum for RawSpectrum {
-    type Tolerance = Tolerance<MassOverCharge>;
-
-    fn empty_annotated(&self, peptide: CompoundPeptidoformIon) -> AnnotatedSpectrum {
-        AnnotatedSpectrum {
-            title: self.title.clone(),
-            num_scans: self.num_scans,
-            rt: self.rt,
-            charge: self.charge,
-            mass: self.mass,
-            peptide,
-            spectrum: self
-                .spectrum
-                .iter()
-                .map(AnnotatedPeak::background)
-                .collect(),
-        }
-    }
-
-    fn search(&self, query: MassOverCharge, tolerance: Self::Tolerance) -> Option<usize> {
-        let index = self
-            .spectrum
-            .binary_search_by(|p| p.mz.value.total_cmp(&query.value))
-            .unwrap_or_else(|i| i);
-
-        // Check index-1, index and index+1 (if existing) to find the one with the lowest ppm
-        let mut closest = (0, f64::INFINITY);
-        for i in if index == 0 { 0 } else { index - 1 }..=(index + 1).min(self.spectrum.len() - 1) {
-            let ppm = self.spectrum[i].ppm(query).value;
-            if ppm < closest.1 {
-                closest = (i, ppm);
-            }
-        }
-
-        tolerance
-            .within(&self.spectrum[closest.0].mz, &query)
-            .then_some(closest.0)
     }
 }
 

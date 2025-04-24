@@ -1,21 +1,22 @@
 use crate::{
+    chemistry::MolecularFormula,
     error::CustomError,
+    fragment::NeutralLoss,
     helper_functions::explain_number_error,
-    modification::SimpleModification,
-    ontologies::CustomDatabase,
-    peptidoform::SimpleLinear,
+    identification::{
+        common_parser::{Location, OptionalColumn, OptionalLocation},
+        csv::{parse_csv, CsvLine},
+        BoxedIdentifiedPeptideIter, FastaIdentifier, IdentifiedPeptidoform,
+        IdentifiedPeptidoformSource, IdentifiedPeptidoformVersion, MetaData,
+    },
+    ontology::CustomDatabase,
+    sequence::{
+        AminoAcid, MUPSettings, Modification, Peptidoform, PlacementRule, Position,
+        SequencePosition, SimpleLinear, SimpleModification,
+    },
     system::{usize::Charge, Mass, MassOverCharge, Time},
-    AminoAcid, Modification, MolecularFormula, NeutralLoss, Peptidoform,
 };
 use serde::{Deserialize, Serialize};
-
-use crate::identification::{
-    common_parser::{Location, OptionalColumn, OptionalLocation},
-    csv::{parse_csv, CsvLine},
-    placement_rule::PlacementRule,
-    BoxedIdentifiedPeptideIter, FastaIdentifier, IdentifiedPeptidoform,
-    IdentifiedPeptidoformSource, IdentifiedPeptidoformVersion, MetaData, SequencePosition,
-};
 
 static NUMBER_ERROR: (&str, &str) = (
     "Invalid PLGS line",
@@ -131,7 +132,7 @@ format_family!(
         for (m, aa, index) in &parsed.peptide_modifications {
             if let Some(index) = index {
                 parsed.peptide.add_simple_modification(SequencePosition::Index(*index), m.clone());
-            } else if !parsed.peptide.add_unknown_position_modification(m.clone(), .., &crate::MUPSettings{position: Some(vec![PlacementRule::AminoAcid(vec![*aa], crate::placement_rule::Position::Anywhere)]), .. Default::default()})
+            } else if !parsed.peptide.add_unknown_position_modification(m.clone(), .., &MUPSettings{position: Some(vec![PlacementRule::AminoAcid(vec![*aa], Position::Anywhere)]), .. Default::default()})
             {
                 return Err(CustomError::error(
                     "Modification of unknown position cannot be placed",

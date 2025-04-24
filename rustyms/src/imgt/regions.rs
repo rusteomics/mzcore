@@ -1,8 +1,5 @@
 #![allow(dead_code)]
-use crate::{
-    peptidoform::{Annotation, Region},
-    Peptidoform, UnAmbiguous,
-};
+use crate::sequence::{Annotation, Peptidoform, Region, UnAmbiguous};
 use serde::{Deserialize, Serialize};
 use std::{fmt::Display, str::FromStr};
 

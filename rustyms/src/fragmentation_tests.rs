@@ -1,19 +1,18 @@
 #![allow(clippy::missing_panics_doc)]
 use crate::{
-    model::*,
-    modification::ModificationId,
+    annotation::model::*,
+    chemistry::{AmbiguousLabel, MassMode},
+    ontology::{CustomDatabase, Ontology},
+    sequence::{
+        AminoAcid, CompoundPeptidoformIon, LinkerSpecificity, ModificationId, Peptidoform,
+        PlacementRule, Position, SimpleModificationInner,
+    },
     system::{ratio::ppm, usize::Charge, MassOverCharge, Ratio},
     *,
 };
 
-use std::sync::Arc;
-
-use self::{
-    modification::SimpleModificationInner, ontologies::CustomDatabase,
-    placement_rule::PlacementRule,
-};
-
 use itertools::Itertools;
+use std::sync::Arc;
 
 #[test]
 fn triple_a() {
@@ -524,10 +523,10 @@ fn custom_database() -> CustomDatabase {
             Some(0),
             "dsso".to_string(),
             Arc::new(SimpleModificationInner::Linker {
-                specificities: vec![modification::LinkerSpecificity::Symmetric(
+                specificities: vec![LinkerSpecificity::Symmetric(
                     vec![PlacementRule::AminoAcid(
                         vec![AminoAcid::Lysine],
-                        placement_rule::Position::Anywhere,
+                        Position::Anywhere,
                     )],
                     vec![(
                         molecular_formula!(C 3 O 2 H 1 N -1),
@@ -539,7 +538,7 @@ fn custom_database() -> CustomDatabase {
                 id: ModificationId {
                     name: "DSSO".to_string(),
                     id: Some(0),
-                    ontology: modification::Ontology::Custom,
+                    ontology: Ontology::Custom,
                     ..ModificationId::default()
                 },
                 length: None,
@@ -549,10 +548,10 @@ fn custom_database() -> CustomDatabase {
             Some(1),
             "disulfide".to_string(),
             Arc::new(SimpleModificationInner::Linker {
-                specificities: vec![modification::LinkerSpecificity::Symmetric(
+                specificities: vec![LinkerSpecificity::Symmetric(
                     vec![PlacementRule::AminoAcid(
                         vec![AminoAcid::Cysteine],
-                        placement_rule::Position::Anywhere,
+                        Position::Anywhere,
                     )],
                     vec![(molecular_formula!(H - 1), molecular_formula!(H - 1))],
                     Vec::new(),
@@ -561,7 +560,7 @@ fn custom_database() -> CustomDatabase {
                 id: ModificationId {
                     name: "Disulfide".to_string(),
                     id: Some(1),
-                    ontology: modification::Ontology::Custom,
+                    ontology: Ontology::Custom,
                     ..ModificationId::default()
                 },
                 length: None,

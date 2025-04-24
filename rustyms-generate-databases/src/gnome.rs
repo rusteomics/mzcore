@@ -1,20 +1,17 @@
 use std::{collections::HashMap, io::Write, path::Path, sync::Arc};
 
 use rustyms::{
+    glycan::{GlycanStructure, MonoSaccharide},
     identification::csv::parse_csv,
-    modification::{
+    ontology::{Ontology, OntologyModificationList},
+    sequence::{
         GnoComposition, GnoSubsumption, ModificationId, SimpleModification, SimpleModificationInner,
     },
-    ontologies::OntologyModificationList,
 };
 
 use super::obo::OboOntology;
 
 use bincode::config::Configuration;
-use rustyms::{
-    glycan::{GlycanStructure, MonoSaccharide},
-    modification::Ontology,
-};
 use thin_vec::ThinVec;
 
 pub fn build_gnome_ontology(out_dir: &Path) {

@@ -3,11 +3,13 @@ use std::sync::Arc;
 use itertools::Itertools;
 use ordered_float::OrderedFloat;
 use rustyms::{
-    modification::{
-        LinkerSpecificity, ModificationId, Ontology, SimpleModification, SimpleModificationInner,
+    chemistry::MolecularFormula,
+    fragment::{DiagnosticIon, NeutralLoss},
+    ontology::Ontology,
+    sequence::{
+        LinkerSpecificity, ModificationId, PlacementRule, Position, SimpleModification,
+        SimpleModificationInner,
     },
-    placement_rule::{PlacementRule, Position},
-    DiagnosticIon, MolecularFormula, NeutralLoss,
 };
 
 use thin_vec::ThinVec;

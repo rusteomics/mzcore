@@ -3,11 +3,12 @@
 use itertools::Itertools;
 
 use crate::{
+    annotation::model::{FragmentationModel, GlycanModel},
+    chemistry::{CachedCharge, Chemical, MolecularFormula},
     fragment::{DiagnosticPosition, Fragment, FragmentType},
-    model::GlycanModel,
-    molecular_charge::CachedCharge,
+    quantities::Multi,
+    sequence::{AminoAcid, SequencePosition},
     system::usize::Charge,
-    AminoAcid, Chemical, FragmentationModel, MolecularFormula, Multi, SequencePosition,
 };
 
 use super::glycan::MonoSaccharide;
@@ -194,6 +195,7 @@ mod tests {
     use itertools::Itertools;
 
     use crate::{
+        chemistry::Chemical,
         glycan::{
             glycan::{
                 BaseSugar, Configuration, GlycanSubstituent, HexoseIsomer, MonoSaccharide,
@@ -201,7 +203,7 @@ mod tests {
             },
             lists::GLYCAN_PARSE_LIST,
         },
-        Chemical,
+        molecular_formula,
     };
 
     #[test]

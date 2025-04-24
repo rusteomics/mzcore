@@ -1,15 +1,18 @@
 use std::path::{Path, PathBuf};
 
-use crate::{
-    error::CustomError, ontologies::CustomDatabase, system::usize::Charge, CompoundPeptidoformIon,
-};
 use serde::{Deserialize, Serialize};
 
-use crate::identification::{
-    common_parser::{Location, OptionalColumn},
-    csv::{parse_csv, CsvLine},
-    BoxedIdentifiedPeptideIter, IdentifiedPeptidoform, IdentifiedPeptidoformSource,
-    IdentifiedPeptidoformVersion, MetaData,
+use crate::{
+    error::CustomError,
+    identification::{
+        common_parser::{Location, OptionalColumn},
+        csv::{parse_csv, CsvLine},
+        BoxedIdentifiedPeptideIter, IdentifiedPeptidoform, IdentifiedPeptidoformSource,
+        IdentifiedPeptidoformVersion, MetaData,
+    },
+    ontology::CustomDatabase,
+    sequence::CompoundPeptidoformIon,
+    system::usize::Charge,
 };
 
 static NUMBER_ERROR: (&str, &str) = (

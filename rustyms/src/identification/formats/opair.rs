@@ -3,18 +3,17 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use crate::identification::{
-    common_parser::Location,
-    csv::{parse_csv, CsvLine},
-    BoxedIdentifiedPeptideIter, FastaIdentifier, IdentifiedPeptidoform,
-    IdentifiedPeptidoformSource, IdentifiedPeptidoformVersion, MetaData,
-};
 use crate::{
     error::{Context, CustomError},
-    ontologies::CustomDatabase,
-    peptidoform::{SemiAmbiguous, SloppyParsingParameters},
+    identification::{
+        common_parser::Location,
+        csv::{parse_csv, CsvLine},
+        BoxedIdentifiedPeptideIter, FastaIdentifier, IdentifiedPeptidoform,
+        IdentifiedPeptidoformSource, IdentifiedPeptidoformVersion, MetaData,
+    },
+    ontology::CustomDatabase,
+    sequence::{AminoAcid, Peptidoform, SemiAmbiguous, SloppyParsingParameters},
     system::{usize::Charge, Mass, MassOverCharge, Time},
-    AminoAcid, Peptidoform,
 };
 use serde::{Deserialize, Serialize};
 

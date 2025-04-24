@@ -15,8 +15,7 @@ use bincode::config::Configuration;
 use itertools::Itertools;
 use rustyms::{
     imgt::{Germlines, Species},
-    peptidoform::{Annotation, Region},
-    *,
+    sequence::{AminoAcid, Annotation, Region},
 };
 use structs::{Location, SequenceRegion};
 

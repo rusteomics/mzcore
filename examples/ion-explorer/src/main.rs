@@ -18,11 +18,13 @@ use mzdata::{
 };
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use rustyms::{
-    fragment::{FragmentKind, FragmentType},
+    annotation::model::{
+        ChargeRange, FragmentationModel, PrimaryIonSeries, SatelliteIonSeries, SatelliteLocation,
+    },
+    chemistry::MassMode,
+    fragment::{Fragment, FragmentKind, FragmentType},
     identification::{SpectrumId, SpectrumIds},
-    model::{ChargeRange, PrimaryIonSeries, SatelliteIonSeries, SatelliteLocation},
-    modification::SimpleModification,
-    *,
+    sequence::{AminoAcid, CompoundPeptidoformIon, SimpleModification},
 };
 
 #[derive(Parser)]

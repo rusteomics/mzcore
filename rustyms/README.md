@@ -29,9 +29,9 @@ this crate enables the reading of [mgf](rawfile::mgf), doing [spectrum annotatio
 ```rust
 # fn main() -> Result<(), rustyms::error::CustomError> {
 # let raw_file_path = "data/annotated_example.mgf";
-use rustyms::{*, model::*, system::{usize::Charge, e}};
+use rustyms::{prelude::*, system::{usize::Charge, e}};
 // Open example raw data (this is the built in mgf reader, look into mzdata for more advanced raw file readers)
-let spectrum = rawfile::mgf::open(raw_file_path)?;
+let spectrum = rustyms::spectrum::mgf::open(raw_file_path)?;
 // Parse the given ProForma definition
 let peptide = CompoundPeptidoformIon::pro_forma("[Gln->pyro-Glu]-QVQEVSERTHGGNFD", None)?;
 // Generate theoretical fragments for this peptide given EThcD fragmentation
@@ -50,7 +50,7 @@ assert!(fdr.peaks_sigma() > 2.0);
 
 ```rust
 # fn main() -> Result<(), rustyms::error::CustomError> {
-use rustyms::{*, align::*};
+use rustyms::{prelude::*, sequence::SimpleLinear, align::*};
 // Check how this peptide compares to a similar peptide (using the feature `align`)
 let first_peptide = Peptidoform::pro_forma("IVQEVT", None)?.into_simple_linear().unwrap();
 let second_peptide = Peptidoform::pro_forma("LVQVET", None)?.into_simple_linear().unwrap();

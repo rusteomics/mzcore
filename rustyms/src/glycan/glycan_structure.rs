@@ -1,20 +1,24 @@
 //! Handle glycan structures
-use std::str::FromStr;
-use std::{fmt::Display, hash::Hash};
+use std::{
+    ops::Range,
+    str::FromStr,
+    {fmt::Display, hash::Hash},
+};
 
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 
-use super::glycan::{BaseSugar, MonoSaccharide};
-use super::lists::GLYCAN_PARSE_LIST;
-use super::{GlycanBranchIndex, GlycanBranchMassIndex, PositionedGlycanStructure};
 use crate::{
+    chemistry::{Chemical, MolecularFormula},
     error::{Context, CustomError},
-    formula::{Chemical, MolecularFormula},
+    glycan::{
+        glycan::{BaseSugar, MonoSaccharide},
+        lists::GLYCAN_PARSE_LIST,
+        {GlycanBranchIndex, GlycanBranchMassIndex, PositionedGlycanStructure},
+    },
+    helper_functions::{end_of_enclosure, next_char},
+    sequence::SequencePosition,
 };
-
-use crate::helper_functions::{end_of_enclosure, next_char};
-use std::ops::Range;
 
 /// Rose tree representation of glycan structure
 #[allow(dead_code)]
@@ -168,7 +172,7 @@ impl Display for GlycanStructure {
 impl Chemical for GlycanStructure {
     fn formula_inner(
         &self,
-        sequence_index: crate::SequencePosition,
+        sequence_index: SequencePosition,
         peptidoform_index: usize,
     ) -> MolecularFormula {
         self.sugar.formula_inner(sequence_index, peptidoform_index)
@@ -349,6 +353,7 @@ impl GlycanStructure {
 #[expect(clippy::missing_panics_doc)]
 mod test {
     use super::*;
+    use crate::molecular_formula;
 
     #[test]
     fn parse_glycan_structure_01() {

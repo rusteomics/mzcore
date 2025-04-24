@@ -1,7 +1,11 @@
 use std::{io::Write, path::Path};
 
 use bincode::config::Configuration;
-use rustyms::{identification::csv::parse_csv, system::da, Element, ElementalData};
+use rustyms::{
+    chemistry::{Element, ElementalData},
+    identification::csv::parse_csv,
+    system::da,
+};
 
 pub fn build_atomic_masses(out_dir: &Path) {
     let mut atomic_weights = vec![None; 118];

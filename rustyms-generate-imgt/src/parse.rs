@@ -2,7 +2,7 @@ use crate::structs::{AASequence, DataItem, Location, Region};
 use crate::{complement, imgt_gene::IMGTGene, translate};
 use itertools::Itertools;
 use rustyms::imgt::Species;
-use rustyms::AminoAcid;
+use rustyms::sequence::AminoAcid;
 use std::collections::HashMap;
 use std::io::{BufRead, BufReader};
 

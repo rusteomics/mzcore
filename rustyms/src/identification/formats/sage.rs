@@ -3,10 +3,9 @@ use std::path::{Path, PathBuf};
 use crate::{
     error::CustomError,
     identification::SpectrumId,
-    ontologies::CustomDatabase,
-    peptidoform::SemiAmbiguous,
+    ontology::CustomDatabase,
+    sequence::{Peptidoform, SemiAmbiguous},
     system::{usize::Charge, Mass, Ratio, Time},
-    Peptidoform,
 };
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};

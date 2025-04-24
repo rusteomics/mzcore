@@ -4,8 +4,7 @@ use std::fmt::Display;
 use itertools::Itertools;
 use rustyms::{
     imgt::{AnnotatedSequence, Gene},
-    peptidoform::{Annotation, Region},
-    AminoAcid, CheckedAminoAcid,
+    sequence::{AminoAcid, Annotation, CheckedAminoAcid, Region},
 };
 
 use crate::structs::{Location, SequenceRegion, SingleSeq};

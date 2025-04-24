@@ -41,7 +41,7 @@ macro_rules! format_family {
             type Source = CsvLine;
             type Format = $format;
             type Version = $version;
-            fn parse(source: &Self::Source, custom_database: Option<&crate::ontologies::CustomDatabase>, keep_all_columns: bool) -> Result<(Self, &'static Self::Format), CustomError> {
+            fn parse(source: &Self::Source, custom_database: Option<&crate::ontology::CustomDatabase>, keep_all_columns: bool) -> Result<(Self, &'static Self::Format), CustomError> {
                 let mut errors = Vec::new();
                 for format in $versions {
                     match Self::parse_specific(source, format, custom_database, keep_all_columns) {
@@ -57,7 +57,7 @@ macro_rules! format_family {
             }
             fn parse_file(
                 path: impl AsRef<std::path::Path>,
-                custom_database: Option<&crate::ontologies::CustomDatabase>,
+                custom_database: Option<&crate::ontology::CustomDatabase>,
                 keep_all_columns: bool,
                 version: Option<$version>,
             ) -> Result<BoxedIdentifiedPeptideIter<Self>, CustomError> {
@@ -74,7 +74,7 @@ macro_rules! format_family {
             }
             fn parse_reader<'a>(
                 reader: impl std::io::Read + 'a,
-                custom_database: Option<&'a crate::ontologies::CustomDatabase>,
+                custom_database: Option<&'a crate::ontology::CustomDatabase>,
                 keep_all_columns: bool,
                 version: Option<$version>,
             ) -> Result<BoxedIdentifiedPeptideIter<'a, Self>, CustomError> {
@@ -90,7 +90,7 @@ macro_rules! format_family {
                 })
             }
             #[allow(clippy::redundant_closure_call)] // Macro magic
-            fn parse_specific(source: &Self::Source, format: &$format, custom_database: Option<&crate::ontologies::CustomDatabase>, keep_all_columns: bool) -> Result<Self, CustomError> {
+            fn parse_specific(source: &Self::Source, format: &$format, custom_database: Option<&crate::ontology::CustomDatabase>, keep_all_columns: bool) -> Result<Self, CustomError> {
                 #[allow(unused_imports)]
                 use crate::helper_functions::InvertResult;
 

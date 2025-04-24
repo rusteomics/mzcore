@@ -1,18 +1,22 @@
-use crate::{
-    error::{Context, CustomError},
-    helper_functions::explain_number_error,
-    identification::{IdentifiedPeptidoform, MetaData},
-    peptidoform::{AnnotatedPeptide, Annotation, Region, SemiAmbiguous},
-    AminoAcid, Peptidoform, SequenceElement,
-};
-use itertools::Itertools;
-use serde::{Deserialize, Serialize};
 use std::{
     io::{BufRead, BufReader},
     num::ParseIntError,
     ops::Range,
     path::Path,
     str::FromStr,
+};
+
+use itertools::Itertools;
+use serde::{Deserialize, Serialize};
+
+use crate::{
+    error::{Context, CustomError},
+    helper_functions::explain_number_error,
+    identification::{IdentifiedPeptidoform, MetaData},
+    sequence::{
+        AminoAcid, AnnotatedPeptide, Annotation, Peptidoform, Region, SemiAmbiguous,
+        SequenceElement,
+    },
 };
 
 /// A single parsed line of a fasta file

@@ -3,10 +3,10 @@ use std::{io::Write, path::Path};
 use bincode::config::Configuration;
 use itertools::Itertools;
 use rustyms::{
-    modification::{LinkerSpecificity, Ontology},
-    ontologies::OntologyModificationList,
-    placement_rule::{PlacementRule, Position},
-    DiagnosticIon, MolecularFormula,
+    chemistry::MolecularFormula,
+    fragment::DiagnosticIon,
+    ontology::{Ontology, OntologyModificationList},
+    sequence::{LinkerSpecificity, PlacementRule, Position},
 };
 use thin_vec::ThinVec;
 

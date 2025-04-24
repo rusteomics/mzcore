@@ -1,12 +1,3 @@
-use crate::{
-    error::CustomError,
-    identification::{
-        common_parser::OptionalColumn, IdentifiedPeptidoform, IdentifiedPeptidoformSource, MetaData,
-    },
-    ontologies::CustomDatabase,
-    Peptidoform, SemiAmbiguous, SloppyParsingParameters,
-};
-
 use std::{
     path::{Path, PathBuf},
     sync::LazyLock,
@@ -14,10 +5,17 @@ use std::{
 
 use serde::{Deserialize, Serialize};
 
-use crate::identification::{
-    common_parser::Location,
-    csv::{parse_csv, CsvLine},
-    BoxedIdentifiedPeptideIter, IdentifiedPeptidoformVersion,
+use crate::{
+    error::CustomError,
+    identification::{
+        common_parser::Location,
+        common_parser::OptionalColumn,
+        csv::{parse_csv, CsvLine},
+        BoxedIdentifiedPeptideIter, IdentifiedPeptidoform, IdentifiedPeptidoformSource,
+        IdentifiedPeptidoformVersion, MetaData,
+    },
+    ontology::CustomDatabase,
+    sequence::{Peptidoform, SemiAmbiguous, SloppyParsingParameters},
 };
 
 static NUMBER_ERROR: (&str, &str) = (

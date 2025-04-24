@@ -5,7 +5,7 @@ use std::str::FromStr;
 use crate::imgt_gene::IMGTGene;
 use rustyms::{
     imgt::{AnnotatedSequence, Gene, Species},
-    AminoAcid, IsAminoAcid,
+    sequence::{AminoAcid, IsAminoAcid},
 };
 
 #[derive(Debug)]
@@ -71,7 +71,7 @@ impl Display for Region {
 }
 
 pub type SequenceRegion = (
-    rustyms::peptidoform::Region,
+    rustyms::sequence::Region,
     (Vec<AminoAcid>, Location, String),
 );
 

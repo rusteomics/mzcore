@@ -3,10 +3,11 @@ use std::{fmt::Display, hash::Hash};
 use serde::{Deserialize, Serialize};
 
 use crate::{
+    chemistry::{Chemical, Element, MolecularFormula, ELEMENT_PARSE_LIST},
     error::{Context, CustomError},
-    formula::{Chemical, MolecularFormula},
     glycan::lists::*,
-    Element, SequencePosition, ELEMENT_PARSE_LIST,
+    molecular_formula,
+    sequence::SequencePosition,
 };
 
 /// Glycan absolute configuration

@@ -2,7 +2,7 @@ use std::path::Path;
 
 use super::{
     error::{Context, CustomError},
-    ontologies::CustomDatabase,
+    ontology::CustomDatabase,
     BasicCSVData, DeepNovoFamilyData, FastaData, IdentifiedPeptidoform, IdentifiedPeptidoformIter,
     IdentifiedPeptidoformSource, InstaNovoData, MSFraggerData, MZTabData, MaxQuantData, NovoBData,
     NovorData, OpairData, PLGSData, PLinkData, PeaksData, PepNetData, PowerNovoData, SageData,
