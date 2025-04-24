@@ -1,6 +1,7 @@
 mod element;
 #[macro_use]
 mod formula;
+#[cfg(feature = "isotopes")]
 mod isotopes;
 mod mass_mode;
 mod molecular_charge;
