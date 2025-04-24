@@ -16,11 +16,11 @@ use crate::{
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 
-use super::{
+use crate::identification::{
     common_parser::{Location, OptionalColumn, OptionalLocation},
     csv::{parse_csv, CsvLine},
-    fasta::FastaIdentifier,
-    BoxedIdentifiedPeptideIter, IdentifiedPeptide, IdentifiedPeptideSource, MetaData,
+    BoxedIdentifiedPeptideIter, FastaIdentifier, IdentifiedPeptidoform,
+    IdentifiedPeptidoformSource, IdentifiedPeptidoformVersion, MetaData,
 };
 
 static NUMBER_ERROR: (&str, &str) = (
@@ -119,7 +119,7 @@ format_family!(
 static IDENTIFER_REGEX: LazyLock<regex::Regex> =
     LazyLock::new(|| regex::Regex::new(r"([^/]+)\.(\d+)\.\d+.\d+").unwrap());
 
-impl From<MSFraggerData> for IdentifiedPeptide {
+impl From<MSFraggerData> for IdentifiedPeptidoform {
     fn from(value: MSFraggerData) -> Self {
         Self {
             score: Some(value.hyperscore),
@@ -130,7 +130,9 @@ impl From<MSFraggerData> for IdentifiedPeptide {
 }
 
 /// All possible MSFragger versions
-#[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Default, Serialize, Deserialize)]
+#[derive(
+    Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Default, Serialize, Deserialize,
+)]
 pub enum MSFraggerVersion {
     /// Version 21
     #[default]
@@ -141,14 +143,22 @@ pub enum MSFraggerVersion {
 
 impl std::fmt::Display for MSFraggerVersion {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::result::Result<(), std::fmt::Error> {
-        write!(
-            f,
-            "{}",
-            match self {
-                Self::V21 => "v21",
-                Self::V22 => "v22",
-            }
-        )
+        write!(f, "{}", self.name())
+    }
+}
+
+impl IdentifiedPeptidoformVersion<MSFraggerFormat> for MSFraggerVersion {
+    fn format(self) -> MSFraggerFormat {
+        match self {
+            Self::V21 => V21,
+            Self::V22 => V22,
+        }
+    }
+    fn name(self) -> &'static str {
+        match self {
+            Self::V21 => "v21",
+            Self::V22 => "v22",
+        }
     }
 }
 

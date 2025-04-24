@@ -9,10 +9,11 @@ use crate::{
 };
 use serde::{Deserialize, Serialize};
 
-use super::{
+use crate::identification::{
     common_parser::{Location, OptionalColumn, OptionalLocation},
     csv::{parse_csv, CsvLine},
-    BoxedIdentifiedPeptideIter, IdentifiedPeptide, IdentifiedPeptideSource, MetaData,
+    BoxedIdentifiedPeptideIter, IdentifiedPeptidoform, IdentifiedPeptidoformSource,
+    IdentifiedPeptidoformVersion, MetaData,
 };
 
 static NUMBER_ERROR: (&str, &str) = (
@@ -101,7 +102,7 @@ format_family!(
     }
 );
 
-impl From<MaxQuantData> for IdentifiedPeptide {
+impl From<MaxQuantData> for IdentifiedPeptidoform {
     fn from(value: MaxQuantData) -> Self {
         Self {
             score: (!value.score.is_nan())
@@ -113,7 +114,9 @@ impl From<MaxQuantData> for IdentifiedPeptide {
 }
 
 /// All possible MaxQuant versions
-#[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Default, Serialize, Deserialize)]
+#[derive(
+    Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Default, Serialize, Deserialize,
+)]
 pub enum MaxQuantVersion {
     /// msms.txt
     #[default]
@@ -129,16 +132,26 @@ pub enum MaxQuantVersion {
 
 impl std::fmt::Display for MaxQuantVersion {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::result::Result<(), std::fmt::Error> {
-        write!(
-            f,
-            "{}",
-            match self {
-                Self::MSMS => "msms",
-                Self::MSMSScans => "msmsScans",
-                Self::NovoMSMSScans => "de novo msmsScans",
-                Self::Silac => "SILAC evidence",
-            }
-        )
+        write!(f, "{}", self.name())
+    }
+}
+
+impl IdentifiedPeptidoformVersion<MaxQuantFormat> for MaxQuantVersion {
+    fn format(self) -> MaxQuantFormat {
+        match self {
+            Self::MSMS => MSMS,
+            Self::MSMSScans => MSMS_SCANS,
+            Self::NovoMSMSScans => NOVO_MSMS_SCANS,
+            Self::Silac => SILAC,
+        }
+    }
+    fn name(self) -> &'static str {
+        match self {
+            Self::MSMS => "msms",
+            Self::MSMSScans => "msmsScans",
+            Self::NovoMSMSScans => "de novo msmsScans",
+            Self::Silac => "SILAC evidence",
+        }
     }
 }
 

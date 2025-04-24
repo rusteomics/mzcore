@@ -11,11 +11,12 @@ use crate::{
 
 use serde::{Deserialize, Serialize};
 
-use super::{
+use crate::identification::{
     common_parser::{Location, OptionalColumn, OptionalLocation},
     csv::{parse_csv, CsvLine},
     modification::Ontology,
-    AminoAcid, BoxedIdentifiedPeptideIter, IdentifiedPeptide, IdentifiedPeptideSource, MetaData,
+    AminoAcid, BoxedIdentifiedPeptideIter, IdentifiedPeptidoform, IdentifiedPeptidoformSource,
+    IdentifiedPeptidoformVersion, MetaData,
 };
 
 static NUMBER_ERROR: (&str, &str) = (
@@ -91,7 +92,7 @@ format_family!(
     }
 );
 
-impl From<DeepNovoFamilyData> for IdentifiedPeptide {
+impl From<DeepNovoFamilyData> for IdentifiedPeptidoform {
     fn from(value: DeepNovoFamilyData) -> Self {
         Self {
             score: value.score.map(|score| (2.0 / (1.0 + (-score).exp()))),
@@ -145,7 +146,9 @@ pub const POINTNOVOFAMILY: DeepNovoFamilyFormat = DeepNovoFamilyFormat {
 };
 
 /// All possible DeepNovoFamily versions
-#[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Default, Serialize, Deserialize)]
+#[derive(
+    Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Default, Serialize, Deserialize,
+)]
 pub enum DeepNovoFamilyVersion {
     #[default]
     /// DeepNovo version 0.0.1
@@ -156,13 +159,21 @@ pub enum DeepNovoFamilyVersion {
 
 impl std::fmt::Display for DeepNovoFamilyVersion {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::result::Result<(), std::fmt::Error> {
-        write!(
-            f,
-            "{}",
-            match self {
-                Self::DeepNovoV0_0_1 => "DeepNovo v0.0.1",
-                Self::PointNovoFamily => "PointNovo v0.0.1 / PGPointNovo v1.0.6 / BiatNovo v0.1",
-            }
-        )
+        write!(f, "{}", self.name())
+    }
+}
+
+impl IdentifiedPeptidoformVersion<DeepNovoFamilyFormat> for DeepNovoFamilyVersion {
+    fn format(self) -> DeepNovoFamilyFormat {
+        match self {
+            Self::DeepNovoV0_0_1 => DEEPNOVO_V0_0_1,
+            Self::PointNovoFamily => POINTNOVOFAMILY,
+        }
+    }
+    fn name(self) -> &'static str {
+        match self {
+            Self::DeepNovoV0_0_1 => "DeepNovo v0.0.1",
+            Self::PointNovoFamily => "PointNovo v0.0.1 / PGPointNovo v1.0.6 / BiatNovo v0.1",
+        }
     }
 }

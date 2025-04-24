@@ -31,8 +31,8 @@ fn main() {
         .unwrap()
         .filter_map(|p| p.ok())
         .filter_map(|p| {
-            p.peptide()
-                .and_then(|p| p.peptide())
+            p.peptidoform()
+                .and_then(|p| p.peptidoform())
                 .and_then(|p| p.into_owned().into_semi_ambiguous())
                 .map(|lp| (p, lp))
         })
@@ -128,8 +128,8 @@ fn main() {
                 (
                     "Peptide length".to_string(),
                     peptide
-                        .peptide()
-                        .and_then(|p| p.peptide())
+                        .peptidoform()
+                        .and_then(|p| p.peptidoform())
                         .map_or(0, |p| p.len())
                         .to_string(),
                 ),

@@ -12,7 +12,7 @@ use crate::{
         common_parser::{Location, OptionalColumn, OptionalLocation},
         csv::{parse_csv, CsvLine},
         modification::SimpleModification,
-        BoxedIdentifiedPeptideIter, IdentifiedPeptide, IdentifiedPeptideSource, MetaData,
+        BoxedIdentifiedPeptideIter, IdentifiedPeptidoform, IdentifiedPeptidoformSource, MetaData,
         Modification,
     },
     modification::{Ontology, SimpleModificationInner},
@@ -25,6 +25,8 @@ use crate::{
 };
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
+
+use crate::identification::IdentifiedPeptidoformVersion;
 
 static NUMBER_ERROR: (&str, &str) = (
     "Invalid pLink line",
@@ -384,7 +386,7 @@ fn plink_separate(
     }
 }
 
-impl From<PLinkData> for IdentifiedPeptide {
+impl From<PLinkData> for IdentifiedPeptidoform {
     fn from(value: PLinkData) -> Self {
         Self {
             score: Some(1.0 - value.score),
@@ -395,7 +397,9 @@ impl From<PLinkData> for IdentifiedPeptide {
 }
 
 /// The different types of peptides a cross-link experiment can result in
-#[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Default, Serialize, Deserialize)]
+#[derive(
+    Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Default, Serialize, Deserialize,
+)]
 pub enum PLinkPeptideType {
     #[default]
     /// No cross-linkers
@@ -463,7 +467,9 @@ pub const V2_3: PLinkFormat = PLinkFormat {
 };
 
 /// All possible pLink versions
-#[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Default, Serialize, Deserialize)]
+#[derive(
+    Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Default, Serialize, Deserialize,
+)]
 pub enum PLinkVersion {
     /// Built for pLink version 2.3.11, likely works more broadly
     #[default]
@@ -472,12 +478,19 @@ pub enum PLinkVersion {
 
 impl std::fmt::Display for PLinkVersion {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::result::Result<(), std::fmt::Error> {
-        write!(
-            f,
-            "{}",
-            match self {
-                Self::V2_3 => "v2.3",
-            }
-        )
+        write!(f, "{}", self.name())
+    }
+}
+
+impl IdentifiedPeptidoformVersion<PLinkFormat> for PLinkVersion {
+    fn format(self) -> PLinkFormat {
+        match self {
+            Self::V2_3 => V2_3,
+        }
+    }
+    fn name(self) -> &'static str {
+        match self {
+            Self::V2_3 => "v2.3",
+        }
     }
 }

@@ -13,7 +13,7 @@ macro_rules! format_family {
      required { $($(#[doc = $rdoc:expr])? $rname:ident: $rtyp:ty, $rf:expr;)* }
      optional { $($(#[doc = $odoc:expr])? $oname:ident: $otyp:ty, $of:expr;)*}
      $($post_process:item)?) => {
-        use super::common_parser::{HasLocation};
+        use super::super::common_parser::{HasLocation};
 
         #[non_exhaustive]
         #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, Default, Serialize, Deserialize)]
@@ -37,7 +37,7 @@ macro_rules! format_family {
             columns: Option<Vec<(std::sync::Arc<String>, String)>>,
         }
 
-        impl IdentifiedPeptideSource for $data {
+        impl IdentifiedPeptidoformSource for $data {
             type Source = CsvLine;
             type Format = $format;
             type Version = $version;
@@ -59,10 +59,12 @@ macro_rules! format_family {
                 path: impl AsRef<std::path::Path>,
                 custom_database: Option<&crate::ontologies::CustomDatabase>,
                 keep_all_columns: bool,
+                version: Option<$version>,
             ) -> Result<BoxedIdentifiedPeptideIter<Self>, CustomError> {
+                let format = version.map(|v| v.format());
                 parse_csv(path, $separator, $header).and_then(|lines| {
                     let mut i = Self::parse_many::<Box<dyn Iterator<Item = Result<Self::Source, CustomError>>>>(
-                        Box::new(lines), custom_database, keep_all_columns);
+                        Box::new(lines), custom_database, keep_all_columns, format);
                     if let Some(Err(e)) = i.peek() {
                         Err(e.clone())
                     } else {
@@ -74,10 +76,12 @@ macro_rules! format_family {
                 reader: impl std::io::Read + 'a,
                 custom_database: Option<&'a crate::ontologies::CustomDatabase>,
                 keep_all_columns: bool,
+                version: Option<$version>,
             ) -> Result<BoxedIdentifiedPeptideIter<'a, Self>, CustomError> {
+                let format = version.map(|v| v.format());
                 crate::identification::csv::parse_csv_raw(reader, $separator, $header).and_then(move |lines| {
                     let mut i = Self::parse_many::<Box<dyn Iterator<Item = Result<Self::Source, CustomError>>>>(
-                        Box::new(lines), custom_database, keep_all_columns);
+                        Box::new(lines), custom_database, keep_all_columns, format);
                     if let Some(Err(e)) = i.peek() {
                         Err(e.clone())
                     } else {

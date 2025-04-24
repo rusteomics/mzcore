@@ -5,10 +5,11 @@ use crate::{
 };
 use serde::{Deserialize, Serialize};
 
-use super::{
+use crate::identification::{
     common_parser::{Location, OptionalColumn},
-    identification::csv::{parse_csv, CsvLine},
-    BoxedIdentifiedPeptideIter, IdentifiedPeptide, IdentifiedPeptideSource, MetaData,
+    csv::{parse_csv, CsvLine},
+    BoxedIdentifiedPeptideIter, IdentifiedPeptidoform, IdentifiedPeptidoformSource,
+    IdentifiedPeptidoformVersion, MetaData,
 };
 
 static NUMBER_ERROR: (&str, &str) = (
@@ -36,7 +37,7 @@ format_family!(
     }
 );
 
-impl From<BasicCSVData> for IdentifiedPeptide {
+impl From<BasicCSVData> for IdentifiedPeptidoform {
     fn from(value: BasicCSVData) -> Self {
         Self {
             score: None,
@@ -47,22 +48,31 @@ impl From<BasicCSVData> for IdentifiedPeptide {
 }
 
 /// All possible basic CSV versions
-#[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Default, Serialize, Deserialize)]
+#[derive(
+    Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Default, Serialize, Deserialize,
+)]
 pub enum BasicCSVVersion {
     /// msms.txt
     #[default]
     Basic,
 }
 
+impl IdentifiedPeptidoformVersion<BasicCSVFormat> for BasicCSVVersion {
+    fn format(self) -> BasicCSVFormat {
+        match self {
+            Self::Basic => BASIC,
+        }
+    }
+    fn name(self) -> &'static str {
+        match self {
+            Self::Basic => "Basic",
+        }
+    }
+}
+
 impl std::fmt::Display for BasicCSVVersion {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::result::Result<(), std::fmt::Error> {
-        write!(
-            f,
-            "{}",
-            match self {
-                Self::Basic => "Basic",
-            }
-        )
+        write!(f, "{}", self.name())
     }
 }
 

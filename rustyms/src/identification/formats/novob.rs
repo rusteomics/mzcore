@@ -1,6 +1,6 @@
 use crate::{
     error::CustomError,
-    identification::{IdentifiedPeptide, IdentifiedPeptideSource, MetaData},
+    identification::{IdentifiedPeptidoform, IdentifiedPeptidoformSource, MetaData},
     modification::Ontology,
     ontologies::CustomDatabase,
     system::Ratio,
@@ -10,10 +10,10 @@ use crate::{
 
 use serde::{Deserialize, Serialize};
 
-use super::{
+use crate::identification::{
     common_parser::Location,
     csv::{parse_csv, CsvLine},
-    BoxedIdentifiedPeptideIter, SequenceElement,
+    BoxedIdentifiedPeptideIter, IdentifiedPeptidoformVersion, SequenceElement,
 };
 
 use std::sync::LazyLock;
@@ -110,7 +110,7 @@ format_family!(
     optional { }
 );
 
-impl From<NovoBData> for IdentifiedPeptide {
+impl From<NovoBData> for IdentifiedPeptidoform {
     fn from(value: NovoBData) -> Self {
         Self {
             score: Some(value.score_forward.max(value.score_reverse)),
@@ -137,7 +137,9 @@ pub const NOVOB_V0_0_1: NovoBFormat = NovoBFormat {
 };
 
 /// All possible NovoB versions
-#[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Default, Serialize, Deserialize)]
+#[derive(
+    Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Default, Serialize, Deserialize,
+)]
 pub enum NovoBVersion {
     #[default]
     /// NovoB version 0.0.1
@@ -146,12 +148,19 @@ pub enum NovoBVersion {
 
 impl std::fmt::Display for NovoBVersion {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::result::Result<(), std::fmt::Error> {
-        write!(
-            f,
-            "{}",
-            match self {
-                Self::V0_0_1 => "v0.0.1",
-            }
-        )
+        write!(f, "{}", self.name())
+    }
+}
+
+impl IdentifiedPeptidoformVersion<NovoBFormat> for NovoBVersion {
+    fn format(self) -> NovoBFormat {
+        match self {
+            Self::V0_0_1 => NOVOB_V0_0_1,
+        }
+    }
+    fn name(self) -> &'static str {
+        match self {
+            Self::V0_0_1 => "v0.0.1",
+        }
     }
 }

@@ -1,7 +1,7 @@
 use std::io::BufReader;
 
 use afl::*;
-use rustyms::identification::IdentifiedPeptideSource;
+use rustyms::identification::IdentifiedPeptidoformSource;
 
 use std::io::Read;
 use std::io::Result;
@@ -43,7 +43,8 @@ fn main() {
                 None,
             ) {
                 let _: Vec<_> =
-                    rustyms::identification::PeaksData::parse_many(csv, None, false).collect();
+                    rustyms::identification::PeaksData::parse_many(csv, None, false, None)
+                        .collect();
             }
         }
     });

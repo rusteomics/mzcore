@@ -794,25 +794,31 @@ pub const COMMON_ELEMENT_PARSE_LIST: &[(&str, Element)] = &[
 ];
 
 #[doc(hidden)]
-#[expect(clippy::redundant_pub_crate)]
 /// The shared type to send the data from all the elements from build time to compile time
 pub type ElementalData = Vec<(Option<Mass>, Option<Mass>, Vec<(u16, Mass, f64)>)>;
 
 impl Element {
     /// Validate this isotope to have a defined mass
     pub fn is_valid(self, isotope: Option<NonZeroU16>) -> bool {
-        if self == Self::Electron {
-            isotope.is_none()
-        } else {
-            isotope.map_or_else(
-                || ELEMENTAL_DATA[self as usize - 1].0.is_some(),
-                |isotope| {
-                    ELEMENTAL_DATA[self as usize - 1]
-                        .2
-                        .iter()
-                        .any(|(ii, _, _)| *ii == isotope.get())
-                },
-            )
+        #[cfg(not(feature = "internal-no-data"))]
+        {
+            if self == Self::Electron {
+                isotope.is_none()
+            } else {
+                isotope.map_or_else(
+                    || ELEMENTAL_DATA[self as usize - 1].0.is_some(),
+                    |isotope| {
+                        ELEMENTAL_DATA[self as usize - 1]
+                            .2
+                            .iter()
+                            .any(|(ii, _, _)| *ii == isotope.get())
+                    },
+                )
+            }
+        }
+        #[cfg(feature = "internal-no-data")]
+        {
+            true
         }
     }
 
@@ -913,5 +919,10 @@ mod test {
             molecular_formula!(C 6 O 5 H 10).hill_notation(),
             "C6H10O5".to_string()
         );
+    }
+
+    #[test]
+    fn correct_feature() {
+        assert!(!cfg!(feature = "internal-no-data"));
     }
 }

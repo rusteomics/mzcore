@@ -1,6 +1,6 @@
 use crate::{
     error::CustomError,
-    identification::{IdentifiedPeptide, IdentifiedPeptideSource, MetaData},
+    identification::{IdentifiedPeptidoform, IdentifiedPeptidoformSource, MetaData},
     modification::Ontology,
     ontologies::CustomDatabase,
     system::{usize::Charge, MassOverCharge},
@@ -14,10 +14,10 @@ use std::{
 
 use serde::{Deserialize, Serialize};
 
-use super::{
+use crate::identification::{
     common_parser::Location,
     csv::{parse_csv, CsvLine},
-    BoxedIdentifiedPeptideIter,
+    BoxedIdentifiedPeptideIter, IdentifiedPeptidoformVersion,
 };
 
 static NUMBER_ERROR: (&str, &str) = (
@@ -62,7 +62,7 @@ format_family!(
     optional { }
 );
 
-impl From<InstaNovoData> for IdentifiedPeptide {
+impl From<InstaNovoData> for IdentifiedPeptidoform {
     fn from(value: InstaNovoData) -> Self {
         Self {
             score: Some(2.0 / (1.0 + 1.01_f64.powf(-value.score))),
@@ -91,7 +91,9 @@ pub const INSTANOVO_V1_0_0: InstaNovoFormat = InstaNovoFormat {
 };
 
 /// All possible InstaNovo versions
-#[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Default, Serialize, Deserialize)]
+#[derive(
+    Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Default, Serialize, Deserialize,
+)]
 pub enum InstaNovoVersion {
     #[default]
     /// InstaNovo version 1.0.0
@@ -100,12 +102,19 @@ pub enum InstaNovoVersion {
 
 impl std::fmt::Display for InstaNovoVersion {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::result::Result<(), std::fmt::Error> {
-        write!(
-            f,
-            "{}",
-            match self {
-                Self::V1_0_0 => "v1.0.0",
-            }
-        )
+        write!(f, "{}", self.name())
+    }
+}
+
+impl IdentifiedPeptidoformVersion<InstaNovoFormat> for InstaNovoVersion {
+    fn format(self) -> InstaNovoFormat {
+        match self {
+            Self::V1_0_0 => INSTANOVO_V1_0_0,
+        }
+    }
+    fn name(self) -> &'static str {
+        match self {
+            Self::V1_0_0 => "v1.0.0",
+        }
     }
 }

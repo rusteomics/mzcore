@@ -1,7 +1,7 @@
 use crate::{
     error::CustomError,
     identification::{
-        common_parser::OptionalColumn, IdentifiedPeptide, IdentifiedPeptideSource, MetaData,
+        common_parser::OptionalColumn, IdentifiedPeptidoform, IdentifiedPeptidoformSource, MetaData,
     },
     ontologies::CustomDatabase,
     Peptidoform, SemiAmbiguous, SloppyParsingParameters,
@@ -14,10 +14,10 @@ use std::{
 
 use serde::{Deserialize, Serialize};
 
-use super::{
+use crate::identification::{
     common_parser::Location,
     csv::{parse_csv, CsvLine},
-    BoxedIdentifiedPeptideIter,
+    BoxedIdentifiedPeptideIter, IdentifiedPeptidoformVersion,
 };
 
 static NUMBER_ERROR: (&str, &str) = (
@@ -64,7 +64,7 @@ format_family!(
 static IDENTIFER_REGEX: LazyLock<regex::Regex> =
     LazyLock::new(|| regex::Regex::new(r"^(.*):index=(\d+)$").unwrap());
 
-impl From<PowerNovoData> for IdentifiedPeptide {
+impl From<PowerNovoData> for IdentifiedPeptidoform {
     fn from(value: PowerNovoData) -> Self {
         Self {
             score: Some(value.score),
@@ -86,7 +86,9 @@ pub const POWERNOVO_V1_0_1: PowerNovoFormat = PowerNovoFormat {
 };
 
 /// All possible PowerNovo versions
-#[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Default, Serialize, Deserialize)]
+#[derive(
+    Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Default, Serialize, Deserialize,
+)]
 pub enum PowerNovoVersion {
     #[default]
     /// PowerNovo version 1.0.1
@@ -95,12 +97,19 @@ pub enum PowerNovoVersion {
 
 impl std::fmt::Display for PowerNovoVersion {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::result::Result<(), std::fmt::Error> {
-        write!(
-            f,
-            "{}",
-            match self {
-                Self::V1_0_1 => "v1.0.1",
-            }
-        )
+        write!(f, "{}", self.name())
+    }
+}
+
+impl IdentifiedPeptidoformVersion<PowerNovoFormat> for PowerNovoVersion {
+    fn format(self) -> PowerNovoFormat {
+        match self {
+            Self::V1_0_1 => POWERNOVO_V1_0_1,
+        }
+    }
+    fn name(self) -> &'static str {
+        match self {
+            Self::V1_0_1 => "v1.0.1",
+        }
     }
 }

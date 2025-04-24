@@ -191,7 +191,8 @@ static MODEL_EACID: LazyLock<FragmentationModel> = LazyLock::new(|| Fragmentatio
     y: PrimaryIonSeries::default()
         .neutral_losses(vec![NeutralLoss::Loss(molecular_formula!(H 2 O 1))]),
     z: PrimaryIonSeries::default()
-        .neutral_losses(vec![NeutralLoss::Loss(molecular_formula!(H 2 O 1))]),
+        .neutral_losses(vec![NeutralLoss::Loss(molecular_formula!(H 2 O 1))])
+        .variants(vec![0, 1]),
     precursor: (
         vec![NeutralLoss::Loss(molecular_formula!(H 2 O 1))],
         Vec::new(),

@@ -238,7 +238,6 @@ impl Modification {
     /// # Errors
     /// If the name is not in Unimod, PSI-MOD, the custom database, or the predefined list of common trivial names.
     /// Or if this is the case when the modification follows a known structure (eg `mod (AAs)`).
-    #[expect(clippy::missing_panics_doc)]
     pub fn sloppy_modification(
         line: &str,
         location: std::ops::Range<usize>,

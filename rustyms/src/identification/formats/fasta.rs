@@ -1,7 +1,7 @@
 use crate::{
     error::{Context, CustomError},
     helper_functions::explain_number_error,
-    identification::{IdentifiedPeptide, MetaData},
+    identification::{IdentifiedPeptidoform, MetaData},
     peptidoform::{AnnotatedPeptide, Annotation, Region, SemiAmbiguous},
     AminoAcid, Peptidoform, SequenceElement,
 };
@@ -687,7 +687,7 @@ fn trim_whitespace(line: &str, range: Range<usize>) -> Range<usize> {
     range.start + start..range.end - end
 }
 
-impl From<FastaData> for IdentifiedPeptide {
+impl From<FastaData> for IdentifiedPeptidoform {
     fn from(value: FastaData) -> Self {
         Self {
             score: None,

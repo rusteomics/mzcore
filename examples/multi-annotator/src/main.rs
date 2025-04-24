@@ -13,7 +13,7 @@ use itertools::Itertools;
 use mzdata::io::{MZFileReader, SpectrumSource};
 use rayon::prelude::*;
 use rustyms::{
-    identification::IdentifiedPeptideSource,
+    identification::IdentifiedPeptidoformSource,
     model::MatchingParameters,
     spectrum::{Score, Scores},
     *,
@@ -76,6 +76,7 @@ fn main() {
         args.in_path,
         custom_database.as_ref(),
         true,
+        None,
     )
     .expect("Invalid input file")
     .filter_map(|a| a.ok())

@@ -11,10 +11,11 @@ use crate::{
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 
-use super::{
+use crate::identification::{
     common_parser::Location,
     csv::{parse_csv, CsvLine},
-    BoxedIdentifiedPeptideIter, IdentifiedPeptide, IdentifiedPeptideSource, MetaData,
+    BoxedIdentifiedPeptideIter, IdentifiedPeptidoform, IdentifiedPeptidoformSource,
+    IdentifiedPeptidoformVersion, MetaData,
 };
 
 static NUMBER_ERROR: (&str, &str) = (
@@ -71,7 +72,7 @@ format_family!(
     optional { }
 );
 
-impl From<SageData> for IdentifiedPeptide {
+impl From<SageData> for IdentifiedPeptidoform {
     fn from(value: SageData) -> Self {
         Self {
             score: Some(value.sage_discriminant_score.clamp(-1.0, 1.0)),
@@ -123,7 +124,9 @@ pub const VERSION_0_14: SageFormat = SageFormat {
 };
 
 /// All possible Sage versions
-#[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Default, Serialize, Deserialize)]
+#[derive(
+    Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Default, Serialize, Deserialize,
+)]
 pub enum SageVersion {
     /// Current sage version
     #[default]
@@ -132,12 +135,19 @@ pub enum SageVersion {
 
 impl std::fmt::Display for SageVersion {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::result::Result<(), std::fmt::Error> {
-        write!(
-            f,
-            "{}",
-            match self {
-                Self::V0_14 => "v0.14",
-            }
-        )
+        write!(f, "{}", self.name())
+    }
+}
+
+impl IdentifiedPeptidoformVersion<SageFormat> for SageVersion {
+    fn format(self) -> SageFormat {
+        match self {
+            Self::V0_14 => VERSION_0_14,
+        }
+    }
+    fn name(self) -> &'static str {
+        match self {
+            Self::V0_14 => "v0.14",
+        }
     }
 }
