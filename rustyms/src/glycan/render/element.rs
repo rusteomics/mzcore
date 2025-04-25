@@ -11,6 +11,7 @@ use crate::glycan::{
 };
 
 /// A rendered glycan, contains all information needed to render this to svg or a bitmap.
+#[derive(Debug)]
 pub struct RenderedGlycan {
     /// The size of the canvas
     pub(super) size: (f32, f32),
@@ -162,6 +163,7 @@ impl GlycanSelection<'static> {
 
 impl AbsolutePositionedGlycan {
     /// Render this glycan to the internal rendering representation, returns None if the root break contains an invalid position.
+    #[expect(clippy::many_single_char_names, clippy::too_many_arguments)] // Doing geometry
     pub(super) fn render<'a>(
         &'a self,
         basis: GlycanRoot,
@@ -219,8 +221,10 @@ impl AbsolutePositionedGlycan {
                         stroke_size,
                     });
                     let x1 = (sugar_size / 2.0).mul_add(0.5f32.mul_add(PI, -angle).cos(), base_x);
-                    let y1 = (sugar_size / 2.0).mul_add(-0.5f32.mul_add(PI, -angle).sin(), base_y);
-                    let x2 = (sugar_size / 2.0).mul_add(-0.5f32.mul_add(PI, -angle).cos(), base_x);
+                    let y1 =
+                        (sugar_size / 2.0).mul_add((-0.5f32).mul_add(PI, -angle).sin(), base_y);
+                    let x2 =
+                        (sugar_size / 2.0).mul_add((-0.5f32).mul_add(PI, -angle).cos(), base_x);
                     let y2 = (sugar_size / 2.0).mul_add(0.5f32.mul_add(PI, -angle).sin(), base_y);
                     buffer.push(Element::Line {
                         from: pick_point((x1, y1), direction),
@@ -919,8 +923,8 @@ impl AbsolutePositionedGlycan {
                 stroke_size,
             });
             let x1 = (sugar_size / 2.0).mul_add(0.5f32.mul_add(PI, -angle).cos(), base_x);
-            let y1 = (sugar_size / 2.0).mul_add(-0.5f32.mul_add(PI, -angle).sin(), base_y);
-            let x2 = (sugar_size / 2.0).mul_add(-0.5f32.mul_add(PI, -angle).cos(), base_x);
+            let y1 = (sugar_size / 2.0).mul_add((-0.5f32).mul_add(PI, -angle).sin(), base_y);
+            let x2 = (sugar_size / 2.0).mul_add((-0.5f32).mul_add(PI, -angle).cos(), base_x);
             let y2 = (sugar_size / 2.0).mul_add(0.5f32.mul_add(PI, -angle).sin(), base_y);
             buffer.push(Element::Line {
                 from: pick_point((x1, y1), direction),

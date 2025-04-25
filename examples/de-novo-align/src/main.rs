@@ -1,3 +1,4 @@
+//! Align many peptides to a database using mass based alignment
 use std::{collections::HashMap, fs::File, io::BufWriter};
 
 use align::AlignScoring;
@@ -7,12 +8,14 @@ use itertools::{Itertools, MinMaxResult};
 use rayon::prelude::*;
 use rustyms::{
     align::{align, AlignType},
-    identification::{csv::write_csv, open_identified_peptides_file, FastaData},
+    identification::{
+        csv::write_csv, open_identified_peptides_file, FastaData, ReturnedPeptidoform,
+    },
     sequence::SemiAmbiguous,
     *,
 };
 
-#[derive(Parser)]
+#[derive(Parser, Debug)]
 struct Cli {
     /// The input identified peptides file
     #[arg(short, long)]
@@ -30,10 +33,10 @@ fn main() {
     let out_file = BufWriter::new(File::create(args.out_path).unwrap());
     let peptides = open_identified_peptides_file(args.peptides, None, false)
         .unwrap()
-        .filter_map(|p| p.ok())
+        .filter_map(Result::ok)
         .filter_map(|p| {
             p.peptidoform()
-                .and_then(|p| p.peptidoform())
+                .and_then(ReturnedPeptidoform::peptidoform)
                 .and_then(|p| p.into_owned().into_semi_ambiguous())
                 .map(|lp| (p, lp))
         })
@@ -130,7 +133,7 @@ fn main() {
                     "Peptide length".to_string(),
                     peptide
                         .peptidoform()
-                        .and_then(|p| p.peptidoform())
+                        .and_then(ReturnedPeptidoform::peptidoform)
                         .map_or(0, |p| p.len())
                         .to_string(),
                 ),

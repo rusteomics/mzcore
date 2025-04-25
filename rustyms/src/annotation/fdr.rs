@@ -153,7 +153,7 @@ impl AnnotatedSpectrum {
 }
 
 /// A false discovery rate for an annotation to a spectrum
-#[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
+#[derive(Clone, Copy, PartialEq, Debug, Serialize, Deserialize)]
 pub struct Fdr {
     /// The fraction of the total (assumed to be true) peaks that could be annotated
     pub peaks_actual: f64,
@@ -172,34 +172,34 @@ pub struct Fdr {
 impl Fdr {
     /// Get the false discovery rate (as a fraction).
     /// The average number of false peaks annotated divided by the average number of annotated peaks.
-    pub fn peaks_fdr(&self) -> f64 {
+    pub fn peaks_fdr(self) -> f64 {
         self.peaks_average_false / self.peaks_actual
     }
 
     /// Get the number of standard deviations the number of annotated peaks is from the average number of false annotations.
-    pub fn peaks_sigma(&self) -> f64 {
+    pub fn peaks_sigma(self) -> f64 {
         (self.peaks_actual - self.peaks_average_false) / self.peaks_standard_deviation_false
     }
 
     /// Get the peaks score of this annotation. Defined as the log2 of the sigma.
-    pub fn peaks_score(&self) -> f64 {
+    pub fn peaks_score(self) -> f64 {
         self.peaks_sigma().log2()
     }
 
     /// Get the false discovery rate (as a fraction).
     /// The average number of false intensity annotated divided by the average number of annotated intensity.
-    pub fn intensity_fdr(&self) -> f64 {
+    pub fn intensity_fdr(self) -> f64 {
         self.intensity_average_false / self.intensity_actual
     }
 
     /// Get the number of standard deviations the annotated intensity is from the average false annotations.
-    pub fn intensity_sigma(&self) -> f64 {
+    pub fn intensity_sigma(self) -> f64 {
         (self.intensity_actual - self.intensity_average_false)
             / self.intensity_standard_deviation_false
     }
 
     /// Get the intensity score of this annotation. Defined as the log2 of the sigma.
-    pub fn intensity_score(&self) -> f64 {
+    pub fn intensity_score(self) -> f64 {
         self.intensity_sigma().log2()
     }
 }

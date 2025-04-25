@@ -321,7 +321,7 @@ pub struct Scores {
 }
 
 /// The scores for a single fragment series for a single peptide in an annotated spectrum
-#[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
+#[derive(Clone, Copy, PartialEq, Debug, Serialize, Deserialize)]
 pub enum Score {
     /// A score for a something that has peptide position coverage
     Position {

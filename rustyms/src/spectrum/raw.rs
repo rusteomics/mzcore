@@ -86,7 +86,7 @@ impl RawSpectrum {
                 .map(|(f, l)| ((l.mz.value - f.mz.value) / window_size).round() as usize * top)
                 .unwrap_or_default(),
         );
-        let mut spectrum = self.spectrum.iter().cloned().peekable();
+        let mut spectrum = self.spectrum.iter().copied().peekable();
         let mut window = 1;
         let mut peaks = Vec::new();
 
@@ -101,7 +101,7 @@ impl RawSpectrum {
             new_spectrum.extend(
                 peaks
                     .iter()
-                    .cloned()
+                    .copied()
                     .k_largest_by(top, |a, b| a.mz.value.total_cmp(&b.mz.value)),
             );
             peaks.clear();
@@ -144,7 +144,7 @@ impl PeakSpectrum for RawSpectrum {
             .spectrum
             .binary_search_by(|a| a.mz.value.total_cmp(&low.value))
         {
-            Result::Ok(idx) | Result::Err(idx) => {
+            Ok(idx) | Err(idx) => {
                 let mut idx = idx.saturating_sub(1);
                 while idx > 0 && self.spectrum[idx].mz.value.total_cmp(&low.value) != Ordering::Less
                 {
@@ -157,7 +157,7 @@ impl PeakSpectrum for RawSpectrum {
         let right_idx = match self.spectrum[left_idx..]
             .binary_search_by(|a| a.mz.value.total_cmp(&high.value))
         {
-            Result::Ok(idx) | Err(idx) => {
+            Ok(idx) | Err(idx) => {
                 let mut idx = idx + left_idx;
                 while idx < self.spectrum.len()
                     && self.spectrum[idx].mz.value.total_cmp(&high.value) != Ordering::Greater
@@ -181,7 +181,7 @@ impl PeakSpectrum for RawSpectrum {
 }
 
 /// A raw peak
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
 pub struct RawPeak {
     /// The mz value of this peak
     pub mz: MassOverCharge,

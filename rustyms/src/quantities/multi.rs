@@ -336,30 +336,19 @@ where
     }
 }
 
-impl<M> std::iter::FromIterator<M> for Multi<M> {
+impl<M> FromIterator<M> for Multi<M> {
     fn from_iter<T: IntoIterator<Item = M>>(iter: T) -> Self {
         Self(iter.into_iter().collect())
     }
 }
 
-impl<'a, M: Clone + 'a> std::iter::FromIterator<&'a M> for Multi<M> {
+impl<'a, M: Clone + 'a> FromIterator<&'a M> for Multi<M> {
     fn from_iter<T: IntoIterator<Item = &'a M>>(iter: T) -> Self {
         Self(iter.into_iter().cloned().collect())
     }
 }
 
-#[expect(dead_code)]
-impl crate::quantities::Multi<MolecularFormula> {
-    pub(crate) fn with_labels(self, labels: &[AmbiguousLabel]) -> Self {
-        Self(
-            self.0
-                .iter()
-                .cloned()
-                .map(|o| o.with_labels(labels))
-                .collect(),
-        )
-    }
-
+impl Multi<MolecularFormula> {
     pub(crate) fn with_label(self, label: &AmbiguousLabel) -> Self {
         Self(
             self.0

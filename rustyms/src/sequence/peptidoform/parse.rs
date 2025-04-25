@@ -46,7 +46,7 @@ impl Peptidoform<Linked> {
                 CustomError::error(
                     "Complex peptide found",
                     "A linear peptide was expected but a chimeric peptide was found.",
-                    crate::error::Context::Show {
+                    Context::Show {
                         line: value.to_string(),
                     },
                 )
@@ -56,7 +56,7 @@ impl Peptidoform<Linked> {
                     CustomError::error(
                         "Complex peptide found",
                         "A linear peptide was expected but a cross linked peptidoform was found.",
-                        crate::error::Context::Show {
+                        Context::Show {
                             line: value.to_string(),
                         },
                     )
@@ -80,7 +80,7 @@ impl PeptidoformIon {
                 CustomError::error(
                     "Complex peptide found",
                     "A linear peptide was expected but a chimeric peptide was found.",
-                    crate::error::Context::Show {
+                    Context::Show {
                         line: value.to_string(),
                     },
                 )
@@ -642,7 +642,7 @@ pub(super) fn global_modifications(
 /// Parse a set of placement rules.
 /// # Errors
 /// When any rule is invalid.
-pub fn parse_placement_rules(
+pub(super) fn parse_placement_rules(
     line: &str,
     range: std::ops::Range<usize>,
 ) -> Result<Vec<PlacementRule>, CustomError> {

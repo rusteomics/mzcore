@@ -129,7 +129,7 @@ impl<T> TryFrom<&str> for Tolerance<T>
 where
     Self: FromStr,
 {
-    type Error = <Self as std::str::FromStr>::Err;
+    type Error = <Self as FromStr>::Err;
     fn try_from(value: &str) -> Result<Self, Self::Error> {
         value.parse()
     }

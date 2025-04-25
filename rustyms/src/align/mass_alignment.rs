@@ -355,7 +355,7 @@ impl Debug for Matrix {
 }
 
 impl Matrix {
-    pub fn new(a: usize, b: usize) -> Self {
+    pub(super) fn new(a: usize, b: usize) -> Self {
         Self {
             value: vec![vec![Piece::default(); b + 1]; a + 1],
             a,
@@ -364,7 +364,7 @@ impl Matrix {
     }
 
     #[expect(clippy::cast_possible_wrap)]
-    pub fn global_start(&mut self, is_a: bool, scoring: AlignScoring<'_>) {
+    pub(super) fn global_start(&mut self, is_a: bool, scoring: AlignScoring<'_>) {
         let max = if is_a { self.a } else { self.b };
         for index in 0..=max {
             self.value[if is_a { index } else { 0 }][if is_a { 0 } else { index }] = Piece::new(
@@ -386,7 +386,7 @@ impl Matrix {
         }
     }
 
-    pub fn trace_path(
+    pub(super) fn trace_path(
         &self,
         ty: AlignType,
         high: (isize, usize, usize),
@@ -396,7 +396,7 @@ impl Matrix {
 
         // Loop back to left side
         while ty.left.global() || !(high.1 == 0 && high.2 == 0) {
-            let value = self.value[high.1][high.2].clone();
+            let value = self.value[high.1][high.2];
             if value.step_a == 0 && value.step_b == 0 || !ty.left.global() && value.score < 0 {
                 break;
             }
@@ -447,21 +447,23 @@ impl Matrix {
     /// # Safety
     /// This function assumes the index to be valid. Not upholding this does an out of bounds unsafe [`Vec::get_unchecked`].
     /// A debug assertion hold up this promise on debug builds.
-    pub unsafe fn get_unchecked(&self, index: [usize; 2]) -> &Piece {
+    pub(super) unsafe fn get_unchecked(&self, index: [usize; 2]) -> &Piece {
         debug_assert!(self.value.len() > index[0]);
         debug_assert!(self.value[index[0]].len() > index[1]);
-        self.value.get_unchecked(index[0]).get_unchecked(index[1])
+        unsafe { self.value.get_unchecked(index[0]).get_unchecked(index[1]) }
     }
 
     /// # Safety
     /// This function assumes the index to be valid. Not upholding this does an out of bounds unsafe [`Vec::get_unchecked_mut`].
     /// A debug assertion hold up this promise on debug builds.
-    pub unsafe fn get_unchecked_mut(&mut self, index: [usize; 2]) -> &mut Piece {
+    pub(super) unsafe fn get_unchecked_mut(&mut self, index: [usize; 2]) -> &mut Piece {
         debug_assert!(self.value.len() > index[0]);
         debug_assert!(self.value[index[0]].len() > index[1]);
-        self.value
-            .get_unchecked_mut(index[0])
-            .get_unchecked_mut(index[1])
+        unsafe {
+            self.value
+                .get_unchecked_mut(index[0])
+                .get_unchecked_mut(index[1])
+        }
     }
 }
 

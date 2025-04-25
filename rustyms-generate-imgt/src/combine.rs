@@ -13,7 +13,7 @@ use crate::structs::DataItem;
 
 use crate::structs::SingleSeq;
 
-pub fn combine(
+pub(crate) fn combine(
     data: impl Iterator<Item = Result<DataItem, String>>,
 ) -> (
     HashMap<Species, Germlines>,
@@ -56,7 +56,7 @@ pub fn combine(
                 name: seq.name.clone(),
                 alleles: vec![(seq.allele, vec![TemporarySequence::from_single(seq)])],
             },
-        ))
+        ));
     }
 
     // Save temp seqs in final data structure
@@ -69,8 +69,8 @@ pub fn combine(
         // }
         grouped
             .entry(species)
-            .or_insert(Germlines::new(species))
-            .insert(entry.finalise())
+            .or_insert_with(|| Germlines::new(species))
+            .insert(entry.finalise());
     }
     (grouped, errors)
 }
@@ -88,12 +88,10 @@ impl TemporaryGermline {
                     .find(|s| s.sequence == single.sequence.sequence)
             {
                 s.add_single(single);
-                // Keep everything sorted
-                al.1.sort();
             } else {
                 al.1.push(TemporarySequence::from_single(single));
-                al.1.sort();
             }
+            al.1.sort();
         } else {
             // If not found
             self.alleles
@@ -113,7 +111,7 @@ impl TemporaryGermline {
                         a,
                         seqs.iter()
                             .find(|s| !s.sequence.is_empty())
-                            .map(|s| s.annotated_sequence())?,
+                            .map(TemporarySequence::annotated_sequence)?,
                     ))
                 })
                 .collect(),
@@ -146,10 +144,10 @@ impl std::fmt::Display for TemporaryGermline {
                     },
                     seq.acc.iter().join(" ")
                 )?;
-                write!(f, "{}├─SEQ:", main_branch,)?;
+                write!(f, "{main_branch}├─SEQ:")?;
                 let seq_str = seq.sequence.to_string();
                 if seq_str.chars().count() < 90 {
-                    writeln!(f, " {}", seq_str)?;
+                    writeln!(f, " {seq_str}")?;
                 } else {
                     writeln!(f)?;
                     let lines = seq_str
@@ -159,18 +157,18 @@ impl std::fmt::Display for TemporaryGermline {
                         .map(|c| c.iter().collect::<String>())
                         .collect_vec();
                     for line in lines {
-                        writeln!(f, "{}│ {}", main_branch, line)?;
+                        writeln!(f, "{main_branch}│ {line}")?;
                     }
                 }
 
-                write!(f, "{}├─REG: ", main_branch,)?;
+                write!(f, "{main_branch}├─REG: ")?;
                 let regions = seq.regions();
                 if regions.len() > 1 {
                     writeln!(f)?;
                 }
                 for region in &regions {
                     if regions.len() > 1 {
-                        write!(f, "{}│    ⊕ ", main_branch,)?;
+                        write!(f, "{main_branch}│    ⊕ ")?;
                     }
                     writeln!(
                         f,
@@ -182,14 +180,14 @@ impl std::fmt::Display for TemporaryGermline {
                         region.1.iter().map(|i| seq.acc[*i].clone()).join(" "),
                     )?;
                 }
-                write!(f, "{}├─ANN: ", main_branch,)?;
+                write!(f, "{main_branch}├─ANN: ")?;
                 let conserved = seq.conserved();
                 if conserved.len() > 1 {
                     writeln!(f)?;
                 }
                 for cons in &conserved {
                     if conserved.len() > 1 {
-                        write!(f, "{}│    ⊕ ", main_branch,)?;
+                        write!(f, "{main_branch}│    ⊕ ")?;
                     }
                     writeln!(
                         f,
@@ -215,8 +213,7 @@ impl std::fmt::Display for TemporaryGermline {
                     .stats();
                     writeln!(
                         f,
-                        "{}├─ALLELE DIF: {} AAs",
-                        main_branch,
+                        "{main_branch}├─ALLELE DIF: {} AAs",
                         alignment.length - alignment.identical,
                     )?;
                 }
@@ -230,15 +227,13 @@ impl std::fmt::Display for TemporaryGermline {
                     .stats();
                     writeln!(
                         f,
-                        "{}├─OPTION DIF: {} AAs",
-                        main_branch,
+                        "{main_branch}├─OPTION DIF: {} AAs",
                         alignment.length - alignment.identical,
                     )?;
                 }
                 writeln!(
                     f,
-                    "{}└{}DNA: {} sequence(s)",
-                    main_branch,
+                    "{main_branch}└{}DNA: {} sequence(s)",
                     if SHOW_DNA { "┬" } else { "─" },
                     seq.dna.len()
                 )?;
@@ -254,8 +249,7 @@ impl std::fmt::Display for TemporaryGermline {
                         for (line_i, line) in lines.iter().enumerate() {
                             writeln!(
                                 f,
-                                "{} {}{}",
-                                main_branch,
+                                "{main_branch} {}{}",
                                 if line_i == 0 {
                                     if di == seq.dna.len() - 1 {
                                         '└'
@@ -272,8 +266,7 @@ impl std::fmt::Display for TemporaryGermline {
                         }
                         writeln!(
                             f,
-                            "{} {} supported by {}",
-                            main_branch,
+                            "{main_branch} {} supported by {}",
                             if di == seq.dna.len() - 1 { ' ' } else { '│' },
                             dna.1.iter().map(|i| seq.acc[*i].clone()).join(" "),
                         )?;

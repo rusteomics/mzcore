@@ -13,7 +13,7 @@ use crate::ontology_modification::position_from_str;
 
 use super::{obo::OboOntology, ontology_modification::OntologyModification, ModData};
 
-pub fn build_unimod_ontology(out_dir: &Path) {
+pub(crate) fn build_unimod_ontology(out_dir: &Path) {
     let mods = parse_unimod();
 
     let dest_path = Path::new(&out_dir).join("unimod.dat");
@@ -121,8 +121,6 @@ fn parse_unimod() -> Vec<OntologyModification> {
                         }
                         mod_rules[index].2.push(loss);
                     }
-                } else {
-                    continue;
                 }
             }
             if let ModData::Mod {
@@ -132,12 +130,7 @@ fn parse_unimod() -> Vec<OntologyModification> {
             {
                 rules.extend(mod_rules.into_iter().filter_map(|rule| {
                     match (rule.0.as_str(), rule.1.as_str()) {
-                        ("C-term", pos) => Some((
-                            vec![PlacementRule::Terminal(position_from_str(pos).unwrap())],
-                            rule.2,
-                            Vec::new(),
-                        )),
-                        ("N-term", pos) => Some((
+                        ("C-term" | "N-term", pos) => Some((
                             vec![PlacementRule::Terminal(position_from_str(pos).unwrap())],
                             rule.2,
                             Vec::new(),

@@ -131,7 +131,7 @@ system! {
 #[allow(unused_imports)]
 pub mod f64 {
     mod mks {
-        pub use super::super::*;
+        pub(super) use super::super::*;
     }
 
     Q!(self::mks, f64);
@@ -144,7 +144,7 @@ pub mod f64 {
 
     /// Annotate the given number as being in Da
     pub fn da(v: f64) -> Mass {
-        Mass::new::<super::mass::dalton>(v)
+        Mass::new::<dalton>(v)
     }
 }
 
@@ -152,7 +152,7 @@ pub mod f64 {
 #[allow(unused_imports)]
 pub mod usize {
     mod mks {
-        pub use super::super::*;
+        pub(super) use super::super::*;
     }
 
     Q!(self::mks, usize);
@@ -168,7 +168,7 @@ pub mod usize {
 #[allow(unused_imports)]
 pub mod isize {
     mod mks {
-        pub use super::super::*;
+        pub(super) use super::super::*;
     }
 
     Q!(self::mks, isize);
@@ -182,39 +182,39 @@ pub mod isize {
 
 impl usize::Charge {
     /// Convert a usize charge to f64 for computations
-    pub fn to_float(self) -> f64::Charge {
-        f64::Charge::new::<crate::system::e>(self.value as f64)
+    pub fn to_float(self) -> Charge {
+        Charge::new::<e>(self.value as f64)
     }
 }
 
 impl isize::Charge {
     /// Convert an isize charge to f64 for computations
-    pub fn to_float(self) -> f64::Charge {
-        f64::Charge::new::<crate::system::e>(self.value as f64)
+    pub fn to_float(self) -> Charge {
+        Charge::new::<e>(self.value as f64)
     }
 }
 
 impl MassOverCharge {
     /// Absolute ppm error between this mz and the given other
     pub fn ppm(self, b: Self) -> Ratio {
-        Ratio::new::<crate::system::ratio::ppm>(((self - b).abs() / self.abs()).value * 1e6)
+        Ratio::new::<ratio::ppm>(((self - b).abs() / self.abs()).value * 1e6)
     }
 
     /// Signed ppm error between this mz and the given other
     pub fn signed_ppm(self, b: Self) -> Ratio {
-        Ratio::new::<crate::system::ratio::ppm>(((self - b) / self).value * 1e6)
+        Ratio::new::<ratio::ppm>(((self - b) / self).value * 1e6)
     }
 }
 
 impl Mass {
     /// Absolute ppm error between this mass and the given other
     pub fn ppm(self, b: Self) -> Ratio {
-        Ratio::new::<crate::system::ratio::ppm>(((self - b).abs() / self.abs()).value * 1e6)
+        Ratio::new::<ratio::ppm>(((self - b).abs() / self.abs()).value * 1e6)
     }
 
     /// Signed ppm error between this mass and the given other
     pub fn signed_ppm(self, b: Self) -> Ratio {
-        Ratio::new::<crate::system::ratio::ppm>(((self - b) / self).value * 1e6)
+        Ratio::new::<ratio::ppm>(((self - b) / self).value * 1e6)
     }
 }
 

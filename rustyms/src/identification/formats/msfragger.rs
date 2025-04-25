@@ -139,7 +139,7 @@ pub enum MSFraggerVersion {
 }
 
 impl std::fmt::Display for MSFraggerVersion {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::result::Result<(), std::fmt::Error> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Error> {
         write!(f, "{}", self.name())
     }
 }

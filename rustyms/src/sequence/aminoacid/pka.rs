@@ -172,6 +172,7 @@ impl AminoAcidPKa {
 }
 
 /// pKa values from Lide, D. R. (1991). Handbook of Chemistry and Physics: A Ready Reference Book of Chemical and Physical Data.
+#[derive(Debug, Clone, Copy)]
 pub struct PKaLide1991;
 
 impl PKaSource<AminoAcid> for PKaLide1991 {
@@ -214,6 +215,7 @@ impl PKaSource<AminoAcid> for PKaLide1991 {
 }
 
 /// pKa values from Lehninger, A. L., Nelson, D. L., & Cox, M. M. (2005). Lehninger Principles of Biochemistry. Macmillan.
+#[derive(Debug, Clone, Copy)]
 pub struct PKaLehninger;
 
 impl PKaSource<AminoAcid> for PKaLehninger {
@@ -259,7 +261,7 @@ impl PKaSource<AminoAcid> for PKaLehninger {
 #[expect(clippy::float_cmp, clippy::missing_panics_doc)]
 mod tests {
     use super::*;
-    use crate::sequence::{Peptidoform, SemiAmbiguous, SimpleModification};
+    use crate::sequence::SimpleModification;
 
     // Helper to create a Peptidoform from a list of amino acids
     fn create_peptidoform(aas: &str) -> Peptidoform<SemiAmbiguous> {

@@ -13,9 +13,9 @@ use super::{GlobalModification, Linear};
 
 /// Validate all cross links
 /// # Errors
-/// If there is a cross link with more then 2 locations. Or if there never is a definition for this cross link.
+/// If there is a cross link with more than 2 locations. Or if there never is a definition for this cross link.
 /// Or if there are peptides that cannot be reached from the first peptide.
-pub fn cross_links(
+pub(super) fn cross_links(
     peptides: Vec<Peptidoform<Linear>>,
     cross_links_found: BTreeMap<usize, Vec<(usize, SequencePosition)>>,
     cross_link_lookup: &[(CrossLinkName, Option<SimpleModification>)],

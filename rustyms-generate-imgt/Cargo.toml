@@ -14,8 +14,6 @@ rustyms = { path = "../rustyms", default-features = false, features = [
     "imgt",
     "internal-no-data",
 ] }
-serde = { workspace = true, features = ["derive", "rc"] }
-similar = { workspace = true }
 
 [features]
 rayon = []

@@ -142,8 +142,8 @@ impl PeptidoformIon {
                     | SimpleModificationInner::Mass(_)
             ) {
                 Some((
-                    CrossLinkSide::Symmetric(std::collections::BTreeSet::default()),
-                    CrossLinkSide::Symmetric(std::collections::BTreeSet::default()),
+                    CrossLinkSide::Symmetric(BTreeSet::default()),
+                    CrossLinkSide::Symmetric(BTreeSet::default()),
                 ))
             } else {
                 match (left, right) {

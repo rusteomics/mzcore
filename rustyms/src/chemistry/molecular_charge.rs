@@ -8,6 +8,7 @@ use crate::{
 };
 use serde::{Deserialize, Serialize};
 
+/// A [`MolecularCharge`] that caches the options for each charge, to not calculate this every time
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct CachedCharge {
     charge: MolecularCharge,
@@ -16,6 +17,7 @@ pub struct CachedCharge {
 }
 
 impl CachedCharge {
+    /// Get the main charge
     pub fn charge(&self) -> Charge {
         self.number
     }
@@ -229,10 +231,7 @@ impl std::fmt::Display for MolecularCharge {
 #[cfg(test)]
 #[expect(clippy::missing_panics_doc)]
 mod tests {
-    use crate::{
-        chemistry::{Chemical, MolecularCharge},
-        molecular_formula,
-    };
+    use crate::chemistry::{Chemical, MolecularCharge};
 
     #[test]
     fn simple_charge_options() {

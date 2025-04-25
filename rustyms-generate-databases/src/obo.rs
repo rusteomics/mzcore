@@ -3,20 +3,20 @@ use std::{collections::HashMap, fs::File, io::BufReader, path::Path};
 use flate2::bufread::GzDecoder;
 
 #[derive(Debug, Default, Clone)]
-pub struct OboOntology {
+pub(crate) struct OboOntology {
     pub headers: Vec<(String, String)>,
     pub objects: Vec<OboObject>,
 }
 
 #[derive(Debug, Default, Clone)]
-pub struct OboObject {
+pub(crate) struct OboObject {
     pub name: String,
     pub lines: HashMap<String, Vec<String>>,
     pub property_values: HashMap<String, Vec<OboValue>>,
 }
 
 #[derive(Debug, Clone)]
-pub enum OboValue {
+pub(crate) enum OboValue {
     String(String),
     Float(f64),
     Integer(isize),
@@ -35,7 +35,7 @@ impl std::fmt::Display for OboValue {
 }
 
 impl OboOntology {
-    pub fn from_file(path: impl AsRef<Path>) -> Result<OboOntology, String> {
+    pub(crate) fn from_file(path: impl AsRef<Path>) -> Result<OboOntology, String> {
         let file = File::open(path.as_ref()).map_err(|e| e.to_string())?;
         if path
             .as_ref()
@@ -56,7 +56,8 @@ impl OboOntology {
             let line = line.map_err(|e| e.to_string())?.trim_end().to_string();
             if line.is_empty() {
                 continue;
-            } else if line.starts_with('[') && line.ends_with(']') {
+            }
+            if line.starts_with('[') && line.ends_with(']') {
                 if let Some(obj) = recent_obj {
                     obo.objects.push(obj);
                 }
@@ -74,7 +75,14 @@ impl OboOntology {
                             .rfind(|(_, c)| *c == ' ')
                             .map(|(i, _)| i)
                             .unwrap();
-                        if first_space != last_space {
+                        if first_space == last_space {
+                            let name = value_line[..first_space].trim();
+                            let value = value_line[first_space..].trim().trim_matches('"');
+                            obj.property_values
+                                .entry(name.to_string())
+                                .or_insert(Vec::new())
+                                .push(OboValue::String(value.to_string()));
+                        } else {
                             let name = value_line[..first_space].trim().trim_end_matches(':');
                             let value =
                                 value_line[first_space..last_space].trim().trim_matches('"');
@@ -111,14 +119,7 @@ impl OboOntology {
                                     dt => {
                                         unreachable!("Undefined datatype: '{dt}' in line: '{line}'")
                                     }
-                                })
-                        } else {
-                            let name = value_line[..first_space].trim();
-                            let value = value_line[first_space..].trim().trim_matches('"');
-                            obj.property_values
-                                .entry(name.to_string())
-                                .or_insert(Vec::new())
-                                .push(OboValue::String(value.to_string()));
+                                });
                         }
                     } else {
                         obj.lines
@@ -141,7 +142,7 @@ impl OboOntology {
 }
 
 impl OboObject {
-    pub fn new(name: &str) -> Self {
+    pub(crate) fn new(name: &str) -> Self {
         Self {
             name: name.to_string(),
             ..Self::default()

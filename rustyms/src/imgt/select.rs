@@ -4,8 +4,7 @@ use std::collections::HashSet;
 
 use crate::sequence::{AnnotatedPeptide, Annotation, Peptidoform, Region, UnAmbiguous};
 
-pub use super::fancy::FancyDisplay;
-pub use super::*;
+pub(super) use super::*;
 
 /// Get a specific germline
 #[cfg(not(feature = "internal-no-data"))]
@@ -111,6 +110,7 @@ impl<
     }
 }
 
+#[cfg(not(feature = "internal-no-data"))]
 fn contains_gene(s: &HashSet<GeneType>, gene: GeneType) -> bool {
     s.contains(&gene) || matches!(gene, GeneType::C(_)) && s.contains(&GeneType::C(None))
 }
@@ -137,6 +137,7 @@ pub enum AlleleSelection {
 }
 
 impl AlleleSelection {
+    #[cfg(not(feature = "internal-no-data"))]
     const fn take_num(self) -> usize {
         match self {
             Self::First => 1,

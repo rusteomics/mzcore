@@ -25,40 +25,64 @@ impl std::fmt::Display for dyn IsAminoAcid {
 #[derive(
     Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Default, Serialize, Deserialize,
 )]
-#[expect(missing_docs)]
 pub enum AminoAcid {
+    /// Ala, A
     #[default]
     Alanine = 0,
+    /// Arg, R
     Arginine,
+    /// Asn, N
     Asparagine,
+    /// Asp, D
     AsparticAcid,
+    /// Cys, C
     Cysteine,
+    /// Gln, Q
     Glutamine,
+    /// Glu, E
     GlutamicAcid,
+    /// Gly, G
     Glycine,
+    /// His, H
     Histidine,
+    /// Ile, I
     Isoleucine,
+    /// Leu, L
     Leucine,
+    /// Lys, K
     Lysine,
+    /// Met, M
     Methionine,
+    /// Phe, F
     Phenylalanine,
+    /// Pro, P
     Proline,
+    /// Ser, S
     Serine,
+    /// Thr, T
     Threonine,
+    /// Trp, W
     Tryptophan,
+    /// Tyr, Y
     Tyrosine,
+    /// Val, V
     Valine,
+    /// Asx, B
     AmbiguousAsparagine,
+    /// Xle, J
     AmbiguousLeucine,
+    /// Glx, Z
     AmbiguousGlutamine,
+    /// Sec, U
     Selenocysteine,
+    /// Pyl, O
     Pyrrolysine,
+    /// Xxx, X
     Unknown,
 }
-//ARNDCQEGHILKMFPSTWYVBJZUOX
 
 /// The error that a given sequence is not a valid codon
-#[derive(Debug)]
+#[derive(Debug, Copy, Clone)]
 pub struct NotACodon;
 
 impl std::fmt::Display for NotACodon {

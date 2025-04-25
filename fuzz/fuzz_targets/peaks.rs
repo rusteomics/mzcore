@@ -1,13 +1,15 @@
+//! Fuzz target for Peaks CSV file parsing
 use std::io::BufReader;
 
 use afl::*;
-use rustyms::identification::IdentifiedPeptidoformSource;
+use rustyms::identification::{csv, IdentifiedPeptidoformSource, PeaksData};
 
 use std::io::Read;
 use std::io::Result;
 use std::slice::Iter;
 
-// Thanks to crate 'stringreader'
+/// Thanks to crate 'stringreader'
+#[derive(Debug)]
 pub struct StringReader<'a> {
     iter: Iter<'a, u8>,
 }
@@ -37,14 +39,8 @@ impl Read for StringReader<'_> {
 fn main() {
     fuzz!(|data: &[u8]| {
         if let Ok(s) = std::str::from_utf8(data) {
-            if let Ok(csv) = rustyms::identification::csv::parse_csv_raw(
-                BufReader::new(StringReader::new(s)),
-                b',',
-                None,
-            ) {
-                let _: Vec<_> =
-                    rustyms::identification::PeaksData::parse_many(csv, None, false, None)
-                        .collect();
+            if let Ok(csv) = csv::parse_csv_raw(BufReader::new(StringReader::new(s)), b',', None) {
+                let _unused: Vec<_> = PeaksData::parse_many(csv, None, false, None).collect();
             }
         }
     });

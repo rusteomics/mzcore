@@ -52,8 +52,8 @@ impl CsvLine {
         self.fields.len()
     }
     /// Get the context applicable to the specified column
-    pub fn column_context(&self, column: usize) -> crate::error::Context {
-        crate::error::Context::line(
+    pub fn column_context(&self, column: usize) -> Context {
+        Context::line(
             Some(self.line_index),
             self.line.clone(),
             self.fields[column].1.start,
@@ -61,8 +61,8 @@ impl CsvLine {
         )
     }
     /// Get the context for the specified range in the original line
-    pub fn range_context(&self, range: std::ops::Range<usize>) -> crate::error::Context {
-        crate::error::Context::line(
+    pub fn range_context(&self, range: Range<usize>) -> Context {
+        Context::line(
             Some(self.line_index()),
             self.line.clone(),
             range.start,
@@ -70,8 +70,8 @@ impl CsvLine {
         )
     }
     /// Get the context for the whole line
-    pub fn full_context(&self) -> crate::error::Context {
-        crate::error::Context::full_line(self.line_index, self.line.clone())
+    pub fn full_context(&self) -> Context {
+        Context::full_line(self.line_index, self.line.clone())
     }
     /// Get the range of a specified column
     pub fn range(&self, index: usize) -> &Range<usize> {
@@ -167,7 +167,7 @@ pub fn parse_csv(
         CustomError::error(
             "Could not open file",
             e,
-            crate::error::Context::Show {
+            Context::Show {
                 line: path.as_ref().to_string_lossy().to_string(),
             },
         )
@@ -211,7 +211,7 @@ pub fn parse_csv_raw<T: std::io::Read>(
     }
     if skip {
         // Actually consume this line
-        let _ = lines.next();
+        let _unused = lines.next();
     }
     let column_headers = if let Some(header) = provided_header {
         header.into_iter().map(Arc::new).collect()
@@ -235,6 +235,7 @@ pub fn parse_csv_raw<T: std::io::Read>(
 }
 
 /// An iterator returning CSV lines
+#[derive(Debug)]
 pub struct CsvLineIter<T: std::io::Read> {
     lines: std::iter::Peekable<std::iter::Enumerate<std::io::Lines<BufReader<T>>>>,
     header: Vec<Arc<String>>,

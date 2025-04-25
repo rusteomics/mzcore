@@ -67,11 +67,11 @@ pub enum Modification {
 #[derive(Clone, PartialEq, Eq, Debug, Serialize, Deserialize)]
 pub enum CrossLinkSide {
     /// The cross-link is symmetric, or if asymmetric it can be placed in both orientations
-    Symmetric(std::collections::BTreeSet<usize>),
+    Symmetric(BTreeSet<usize>),
     /// The cross-link is asymmetric and this is the 'left' side
-    Left(std::collections::BTreeSet<usize>),
+    Left(BTreeSet<usize>),
     /// The cross-link is asymmetric and this is the 'right' side
-    Right(std::collections::BTreeSet<usize>),
+    Right(BTreeSet<usize>),
 }
 
 impl PartialOrd for CrossLinkSide {
@@ -97,7 +97,6 @@ impl Ord for CrossLinkSide {
 
 impl std::hash::Hash for CrossLinkSide {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        use itertools::Itertools;
         let (i, r) = match self {
             Self::Symmetric(r) => (0, r),
             Self::Left(r) => (1, r),
@@ -114,7 +113,7 @@ impl std::hash::Hash for CrossLinkSide {
 }
 
 /// A modification on an amino acid, wrapped in an [`std::sync::Arc`] to not have to clone modifications from databases.
-pub type SimpleModification = std::sync::Arc<SimpleModificationInner>;
+pub type SimpleModification = Arc<SimpleModificationInner>;
 
 /// A modification on an amino acid
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Debug, Serialize, Deserialize, Hash)]
@@ -242,7 +241,7 @@ pub enum GnoSubsumption {
     Saccharide,
 }
 
-impl std::fmt::Display for GnoSubsumption {
+impl Display for GnoSubsumption {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::AverageWeight => write!(f, "Average weight"),
@@ -945,10 +944,10 @@ impl Modification {
         seq: &SequenceElement<T>,
         position: SequencePosition,
     ) -> RulePossible {
-        self.simple().map_or(
-            RulePossible::Symmetric(std::collections::BTreeSet::new()),
-            |s| s.is_possible(seq, position),
-        )
+        self.simple()
+            .map_or(RulePossible::Symmetric(BTreeSet::new()), |s| {
+                s.is_possible(seq, position)
+            })
     }
 
     /// Generate theoretical fragments for side chains (glycans)

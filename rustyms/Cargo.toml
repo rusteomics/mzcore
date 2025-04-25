@@ -14,7 +14,6 @@ readme = "README.md"
 include = ["src/**/*", "images/**/*", "README.md", "build.rs", "benches/**/*"]
 
 [dependencies]
-bincode = { workspace = true }
 flate2 = { workspace = true }
 itertools = { workspace = true }
 mzdata = { workspace = true, optional = true }

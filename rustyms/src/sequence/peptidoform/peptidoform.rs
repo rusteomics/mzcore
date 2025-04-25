@@ -20,7 +20,7 @@ use crate::{
         PeptidePosition,
     },
     glycan::MonoSaccharide,
-    helper_functions::{self, merge_hashmap, peptide_range_contains, RangeExtension},
+    helper_functions::{merge_hashmap, peptide_range_contains, RangeExtension},
     molecular_formula,
     quantities::Multi,
     sequence::{
@@ -445,10 +445,7 @@ impl<Complexity> Peptidoform<Complexity> {
                             glycan_model,
                             attachment,
                         );
-                        (
-                            acc.0 * formula,
-                            crate::helper_functions::merge_hashmap(acc.1, specific),
-                        )
+                        (acc.0 * formula, merge_hashmap(acc.1, specific))
                     }
                 });
         let terminus = molecular_formula!(H 1);
@@ -487,10 +484,7 @@ impl<Complexity> Peptidoform<Complexity> {
                             glycan_model,
                             attachment,
                         );
-                        (
-                            acc.0 * formula,
-                            crate::helper_functions::merge_hashmap(acc.1, specific),
-                        )
+                        (acc.0 * formula, merge_hashmap(acc.1, specific))
                     }
                 });
         let terminus = molecular_formula!(H 1 O 1);
@@ -690,7 +684,7 @@ impl<Complexity> Peptidoform<Complexity> {
                     );
                     (
                         previous_aa_formulas.0 * f,
-                        crate::helper_functions::merge_hashmap(previous_aa_formulas.1, specific),
+                        merge_hashmap(previous_aa_formulas.1, specific),
                         previous_aa_formulas.2.union(&s).cloned().collect(),
                     )
                 },
@@ -813,14 +807,11 @@ impl<Complexity> Peptidoform<Complexity> {
                     .collect_vec()
             })
             .fold((Multi::default(), HashMap::new()), |acc, v| {
-                (
-                    acc.0 * v.0,
-                    crate::helper_functions::merge_hashmap(acc.1, v.1),
-                )
+                (acc.0 * v.0, merge_hashmap(acc.1, v.1))
             });
         (
             formulas * all_ambiguous_options,
-            crate::helper_functions::merge_hashmap(specific, all_ambiguous_specific),
+            merge_hashmap(specific, all_ambiguous_specific),
             seen,
         )
     }
@@ -1224,7 +1215,7 @@ impl<Complexity> Peptidoform<Complexity> {
             glycan_model,
         );
         let mut formulas: Multi<MolecularFormula> = n * c;
-        let mut formulas_specific = helper_functions::merge_hashmap(n_specific, c_specific);
+        let mut formulas_specific = merge_hashmap(n_specific, c_specific);
         let mut placed = vec![false; self.modifications_of_unknown_position.len()];
         let mut seen = HashSet::new();
         for (index, pos) in self.sequence.iter().enumerate() {
@@ -1862,7 +1853,7 @@ where
             labile: Vec::new(),
             n_term: Vec::new(),
             c_term: Vec::new(),
-            sequence: value.into_iter().map(std::convert::Into::into).collect(),
+            sequence: value.into_iter().map(Into::into).collect(),
             modifications_of_unknown_position: Vec::new(),
             charge_carriers: None,
             marker: PhantomData,

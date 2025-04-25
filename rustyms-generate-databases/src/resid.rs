@@ -14,12 +14,15 @@ use rustyms::{
     sequence::{AminoAcid, LinkerSpecificity, PlacementRule, Position},
 };
 
-pub fn build_resid_ontology(out_dir: &Path) {
+pub(crate) fn build_resid_ontology(out_dir: &Path) {
     let mods = parse_resid();
 
     let dest_path = Path::new(&out_dir).join("resid.dat");
-    let mut file = std::fs::File::create(dest_path).unwrap();
-    let final_mods = mods.into_iter().map(|m| m.into_mod()).collect::<Vec<_>>();
+    let mut file = File::create(dest_path).unwrap();
+    let final_mods = mods
+        .into_iter()
+        .map(OntologyModification::into_mod)
+        .collect::<Vec<_>>();
     println!("Found {} RESID modifications", final_mods.len());
     file.write_all(
         &bincode::serde::encode_to_vec::<OntologyModificationList, Configuration>(
@@ -39,7 +42,7 @@ fn parse_resid() -> Vec<OntologyModification> {
     )
     .read_to_string(&mut buf)
     .expect("Could not read RESID xml file");
-    let document = roxmltree::Document::parse_with_options(
+    let document = Document::parse_with_options(
         &buf,
         ParsingOptions {
             allow_dtd: true,
@@ -69,19 +72,16 @@ fn parse_resid() -> Vec<OntologyModification> {
                             match name_node.tag_name().name() {
                                 "Name" => {
                                     modification.name =
-                                        name_node.text().unwrap_or_default().to_string()
+                                        name_node.text().unwrap_or_default().to_string();
                                 }
-                                "AlternateName" => modification
-                                    .synonyms
-                                    .push(name_node.text().unwrap_or_default().to_string()),
-                                "SystematicName" => modification
+                                "AlternateName" | "SystematicName" => modification
                                     .synonyms
                                     .push(name_node.text().unwrap_or_default().to_string()),
                                 "Xref" => {
                                     if let Some((a, b)) =
                                         name_node.text().unwrap_or_default().split_once(':')
                                     {
-                                        modification.cross_ids.push((a.to_string(), b.to_string()))
+                                        modification.cross_ids.push((a.to_string(), b.to_string()));
                                     } else {
                                         panic!("Invalid Xref content")
                                     }
@@ -127,7 +127,7 @@ fn parse_resid() -> Vec<OntologyModification> {
                                 if let Some((a, b)) =
                                     ref_node.text().unwrap_or_default().split_once(':')
                                 {
-                                    modification.cross_ids.push((a.to_string(), b.to_string()))
+                                    modification.cross_ids.push((a.to_string(), b.to_string()));
                                 } else {
                                     panic!("Invalid Xref content")
                                 }
@@ -174,7 +174,7 @@ fn parse_resid() -> Vec<OntologyModification> {
                                     if let Some((a, b)) =
                                         rule_node.text().unwrap_or_default().split_once(':')
                                     {
-                                        modification.cross_ids.push((a.to_string(), b.to_string()))
+                                        modification.cross_ids.push((a.to_string(), b.to_string()));
                                     } else {
                                         panic!("Invalid Xref content")
                                     }
@@ -234,7 +234,7 @@ fn parse_resid() -> Vec<OntologyModification> {
                             )],
                             Vec::new(),
                             Vec::new(),
-                        ))
+                        ));
                     } else {
                         specificities.push(LinkerSpecificity::Asymmetric(
                             (
@@ -249,7 +249,7 @@ fn parse_resid() -> Vec<OntologyModification> {
                             ),
                             Vec::new(),
                             Vec::new(),
-                        ))
+                        ));
                     }
                 } else if let (Some(ModData::Mod { specificities }), None) = (&mut data, rule.1) {
                     specificities.push((
@@ -259,7 +259,7 @@ fn parse_resid() -> Vec<OntologyModification> {
                         )],
                         Vec::new(),
                         Vec::new(),
-                    ))
+                    ));
                 } else {
                     println!(
                         "RESID: Modification is both cross-linker and normal modification {}",

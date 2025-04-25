@@ -1,3 +1,4 @@
+//! parse the IMGT database and generate the sequences in a format for rustyms
 #![allow(clippy::redundant_pub_crate)]
 
 use std::{
@@ -87,8 +88,7 @@ _Number of genes / number of alleles_
         .unwrap();
         found_species.push(species);
 
-        let mut file =
-            std::fs::File::create(format!("rustyms/src/imgt/germlines/{species}.bin")).unwrap();
+        let mut file = File::create(format!("rustyms/src/imgt/germlines/{species}.bin")).unwrap();
         file.write_all(
             &bincode::serde::encode_to_vec::<Germlines, Configuration>(
                 germlines,

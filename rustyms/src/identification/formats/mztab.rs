@@ -83,7 +83,7 @@ impl MZTabData {
             CustomError::error(
                 "Could not open file",
                 e,
-                crate::error::Context::Show {
+                Context::Show {
                     line: path.as_ref().to_string_lossy().to_string(),
                 },
             )
@@ -742,7 +742,7 @@ impl From<MZTabData> for IdentifiedPeptidoform {
 }
 
 /// A flanking residue for a sequence, N or C terminal agnostic
-#[derive(Clone, PartialEq, Eq, Debug, Default, Serialize, Deserialize)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug, Default, Serialize, Deserialize)]
 pub enum FlankingResidue {
     /// The flanking residue is unknown (for example in de novo data)
     #[default]
@@ -753,8 +753,8 @@ pub enum FlankingResidue {
     AminoAcid(AminoAcid),
 }
 
-impl std::str::FromStr for FlankingResidue {
-    type Err = <AminoAcid as std::str::FromStr>::Err;
+impl FromStr for FlankingResidue {
+    type Err = <AminoAcid as FromStr>::Err;
     fn from_str(value: &str) -> Result<Self, Self::Err> {
         match value.trim() {
             "null" => Ok(Self::Unknown),
@@ -787,7 +787,7 @@ pub struct CVTerm {
     pub comment: String,
 }
 
-impl std::str::FromStr for CVTerm {
+impl FromStr for CVTerm {
     type Err = CustomError;
     fn from_str(value: &str) -> Result<Self, CustomError> {
         let value = value.trim();
@@ -812,7 +812,7 @@ impl std::str::FromStr for CVTerm {
 
 /// The reliability of a PSM
 #[expect(missing_docs)]
-#[derive(Clone, PartialEq, Eq, Debug, Default, Serialize, Deserialize)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug, Default, Serialize, Deserialize)]
 pub enum PSMReliability {
     High,
     Medium,
@@ -837,7 +837,7 @@ enum MZTabLine {
     MTD(usize, String, Vec<Range<usize>>),
     /// Peptide header line
     PSH(usize, String, Vec<Range<usize>>),
-    /// Peptide line, stored as hashmap with the columns names from PSH
+    /// Peptide line, stored as hash map with the columns names from PSH
     PSM(usize, String, Vec<Range<usize>>),
 }
 

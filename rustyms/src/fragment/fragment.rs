@@ -473,10 +473,7 @@ impl Display for Fragment {
             self.mz(MassMode::Monoisotopic)
                 .map_or(String::new(), |mz| mz.value.to_string()),
             self.charge.value,
-            self.neutral_loss
-                .iter()
-                .map(std::string::ToString::to_string)
-                .join("")
+            self.neutral_loss.iter().map(ToString::to_string).join("")
         )
     }
 }
@@ -579,7 +576,7 @@ pub enum SatelliteLabel {
     B,
 }
 
-impl std::fmt::Display for SatelliteLabel {
+impl Display for SatelliteLabel {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
@@ -665,7 +662,8 @@ pub enum FragmentType {
     Precursor,
 }
 
-impl std::cmp::Ord for FragmentType {
+impl Ord for FragmentType {
+    #[allow(clippy::match_same_arms)] // This ordering is helpful for human readers
     fn cmp(&self, other: &Self) -> Ordering {
         // Sort of type first (precursor/abcxyz/dw/v)
         match (self, other) {
@@ -757,7 +755,7 @@ impl std::cmp::Ord for FragmentType {
     }
 }
 
-impl std::cmp::PartialOrd for FragmentType {
+impl PartialOrd for FragmentType {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         Some(self.cmp(other))
     }
@@ -1166,7 +1164,7 @@ impl GlycanBreakPos {
     }
 }
 
-impl std::fmt::Display for GlycanBreakPos {
+impl Display for GlycanBreakPos {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}{}", self.label(), self.position().label())
     }
@@ -1175,9 +1173,6 @@ impl std::fmt::Display for GlycanBreakPos {
 #[cfg(test)]
 #[expect(clippy::missing_panics_doc)]
 mod tests {
-
-    use crate::{chemistry::MultiChemical, sequence::AminoAcid};
-
     use super::*;
 
     #[test]

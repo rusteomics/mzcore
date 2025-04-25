@@ -14,7 +14,6 @@ crate-type = ["cdylib"]
 pyo3 = { workspace = true }
 rustyms = { path = "../rustyms" }
 ordered-float = { workspace = true }
-thin-vec = { workspace = true }
 
 [lints]
 workspace = true

@@ -136,7 +136,7 @@ impl SatelliteIonSeries {
     }
 }
 
-impl std::default::Default for SatelliteIonSeries {
+impl Default for SatelliteIonSeries {
     fn default() -> Self {
         Self {
             location: SatelliteLocation::default(),
@@ -228,7 +228,7 @@ impl PrimaryIonSeries {
     }
 }
 
-impl std::default::Default for PrimaryIonSeries {
+impl Default for PrimaryIonSeries {
     fn default() -> Self {
         Self {
             location: Location::All,
@@ -350,7 +350,9 @@ impl FragmentationModel {
 }
 
 /// A location, or range of locations where an ion can be generated
-#[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Default, Debug, Serialize, Deserialize)]
+#[derive(
+    Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Hash, Default, Debug, Serialize, Deserialize,
+)]
 pub enum Location {
     /// Skip the given number from the N terminal side
     SkipN(usize),
@@ -378,18 +380,18 @@ impl Location {
     /// Determine if an ion is possible on this location
     /// # Panics
     /// If the peptide position is a terminal position
-    pub const fn possible(&self, position: PeptidePosition) -> bool {
+    pub const fn possible(self, position: PeptidePosition) -> bool {
         let SequencePosition::Index(sequence_index) = position.sequence_index else {
             panic!("Not allowed to call possible with a terminal PeptidePosition")
         };
         match self {
-            Self::SkipN(n) => sequence_index >= *n,
+            Self::SkipN(n) => sequence_index >= n,
             Self::SkipNC(n, c) => {
-                sequence_index >= *n && position.sequence_length - sequence_index > *c
+                sequence_index >= n && position.sequence_length - sequence_index > c
             }
-            Self::TakeN { skip, take } => sequence_index >= *skip && sequence_index < *skip + *take,
-            Self::SkipC(n) => position.sequence_length - sequence_index > *n,
-            Self::TakeC(n) => position.sequence_length - sequence_index <= *n,
+            Self::TakeN { skip, take } => sequence_index >= skip && sequence_index < skip + take,
+            Self::SkipC(n) => position.sequence_length - sequence_index > n,
+            Self::TakeC(n) => position.sequence_length - sequence_index <= n,
             Self::All => position.series_number != position.sequence_length,
             Self::None => false,
         }

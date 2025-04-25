@@ -73,14 +73,14 @@ impl Context {
     }
 
     /// Creates a new context when only a line (eg filename) can be shown
-    pub fn show(line: impl std::string::ToString) -> Self {
+    pub fn show(line: impl ToString) -> Self {
         Self::Show {
             line: line.to_string().replace('\t', " "),
         }
     }
 
     /// Creates a new context when a full line is faulty and no special position can be annotated
-    pub fn full_line(line_index: usize, line: impl std::string::ToString) -> Self {
+    pub fn full_line(line_index: usize, line: impl ToString) -> Self {
         Self::FullLine {
             line_index,
             line: line.to_string().replace('\t', " "),
@@ -90,7 +90,7 @@ impl Context {
     /// Creates a new context when a special position can be annotated on a line
     pub fn line(
         line_index: Option<usize>,
-        line: impl std::string::ToString,
+        line: impl ToString,
         offset: usize,
         length: usize,
     ) -> Self {
@@ -105,7 +105,7 @@ impl Context {
     /// Create a context highlighting a certain range on a single line
     pub fn line_range(
         line_index: Option<usize>,
-        line: impl std::string::ToString,
+        line: impl ToString,
         range: impl RangeBounds<usize>,
     ) -> Self {
         let line = line.to_string();

@@ -16,13 +16,13 @@ use super::{
     ModData,
 };
 
-pub fn build_xlmod_ontology(out_dir: &Path) {
+pub(crate) fn build_xlmod_ontology(out_dir: &Path) {
     let mods = parse_xlmod();
 
     let mut mods_file = std::fs::File::create(Path::new(&out_dir).join("xlmod.dat")).unwrap();
     let final_mods = mods
         .into_iter()
-        .map(|m| m.into_mod())
+        .map(OntologyModification::into_mod)
         .sorted_unstable()
         .collect::<Vec<_>>();
     println!("Found {} XLMOD modifications", final_mods.len());
@@ -161,7 +161,7 @@ fn parse_xlmod() -> Vec<OntologyModification> {
                             dbg!(obj);
                             unreachable!()
                         },
-                    )))
+                    )));
                 }
                 _ => {}
             }
@@ -173,7 +173,7 @@ fn parse_xlmod() -> Vec<OntologyModification> {
         if let Some(mass) = mass {
             // Ignore the mass if a formula is set
             if formula.is_none() {
-                formula = Some(MolecularFormula::with_additional_mass(mass.0))
+                formula = Some(MolecularFormula::with_additional_mass(mass.0));
             }
         }
         if sites == Some(2) || !origins.1.is_empty() {
@@ -187,14 +187,14 @@ fn parse_xlmod() -> Vec<OntologyModification> {
                 ontology: Ontology::Xlmod,
                 data: ModData::Linker {
                     length,
-                    specificities: vec![if !origins.1.is_empty() {
+                    specificities: vec![if origins.1.is_empty() {
+                        LinkerSpecificity::Symmetric(origins.0, Vec::new(), diagnostic_ions)
+                    } else {
                         LinkerSpecificity::Asymmetric(
                             (origins.0, origins.1),
                             Vec::new(),
                             diagnostic_ions,
                         )
-                    } else {
-                        LinkerSpecificity::Symmetric(origins.0, Vec::new(), diagnostic_ions)
                     }],
                 },
             });

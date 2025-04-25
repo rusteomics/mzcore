@@ -24,13 +24,15 @@ impl RenderedGlycan {
     ) -> (Vec<u8>, usize) {
         let mask_factor = if format == Format::Alpha { 1 } else { 4 };
         let image_width = self.size.0.ceil() as usize;
-        let mut image = std::iter::repeat([
-            self.background[0],
-            self.background[1],
-            self.background[2],
-            0,
-        ])
-        .take(image_width * self.size.1.ceil() as usize)
+        let mut image = std::iter::repeat_n(
+            [
+                self.background[0],
+                self.background[1],
+                self.background[2],
+                0,
+            ],
+            image_width * self.size.1.ceil() as usize,
+        )
         .flatten()
         .collect_vec();
 

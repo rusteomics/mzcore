@@ -66,7 +66,7 @@ impl PeakSpectrum for AnnotatedSpectrum {
             .spectrum
             .binary_search_by(|a| a.experimental_mz.value.total_cmp(&low.value))
         {
-            Result::Ok(idx) | Result::Err(idx) => {
+            Ok(idx) | Err(idx) => {
                 let mut idx = idx.saturating_sub(1);
                 while idx > 0
                     && self.spectrum[idx]
@@ -84,7 +84,7 @@ impl PeakSpectrum for AnnotatedSpectrum {
         let right_idx = match self.spectrum[left_idx..]
             .binary_search_by(|a| a.experimental_mz.value.total_cmp(&high.value))
         {
-            Result::Ok(idx) | Err(idx) => {
+            Ok(idx) | Err(idx) => {
                 let mut idx = idx + left_idx;
                 while idx < self.spectrum.len()
                     && self.spectrum[idx]

@@ -11,7 +11,7 @@ use std::{
 
 use crate::sequence::SequencePosition;
 
-pub fn peptide_range_contains(
+pub(crate) fn peptide_range_contains(
     range: &impl RangeBounds<usize>,
     peptide_length: usize,
     position: SequencePosition,
@@ -23,7 +23,7 @@ pub fn peptide_range_contains(
     }
 }
 
-pub trait ResultExtensions<T, E> {
+pub(crate) trait ResultExtensions<T, E> {
     /// # Errors
     /// If any of the errors contained within has an error.
     fn flat_err(self) -> Result<T, E>;
@@ -47,7 +47,7 @@ impl<T, E> ResultExtensions<T, E> for Result<Result<T, E>, E> {
     }
 }
 
-pub trait InvertResult<T, E> {
+pub(crate) trait InvertResult<T, E> {
     /// # Errors
     /// If any of the errors contained within has an error.
     fn invert(self) -> Result<Option<T>, E>;
@@ -70,7 +70,7 @@ impl<T, E> InvertResult<T, E> for Option<Result<Option<T>, E>> {
     }
 }
 
-pub trait RangeExtension
+pub(crate) trait RangeExtension
 where
     Self: Sized,
 {
@@ -84,22 +84,22 @@ where
 impl<Ra: RangeBounds<usize>> RangeExtension for Ra {
     fn start_index(&self) -> usize {
         match self.start_bound() {
-            std::ops::Bound::Unbounded => 0,
-            std::ops::Bound::Included(s) => *s,
-            std::ops::Bound::Excluded(s) => s + 1,
+            Bound::Unbounded => 0,
+            Bound::Included(s) => *s,
+            Bound::Excluded(s) => s + 1,
         }
     }
 
     fn end_index(&self, upper_bound: usize) -> usize {
         match self.end_bound() {
-            std::ops::Bound::Unbounded => upper_bound,
-            std::ops::Bound::Included(s) => *s.min(&upper_bound),
-            std::ops::Bound::Excluded(s) => ((*s).saturating_sub(1)).min(upper_bound),
+            Bound::Unbounded => upper_bound,
+            Bound::Included(s) => *s.min(&upper_bound),
+            Bound::Excluded(s) => ((*s).saturating_sub(1)).min(upper_bound),
         }
     }
 }
 
-pub trait RangeMaths<Other>
+pub(crate) trait RangeMaths<Other>
 where
     Self: Sized,
 {
@@ -173,7 +173,7 @@ impl RangeMaths<usize> for Range<usize> {
 
 /// # Errors
 /// If the name cannot be recognised or a number is not valid.
-pub fn parse_named_counter<T: Clone>(
+pub(crate) fn parse_named_counter<T: Clone>(
     value: &str,
     names: &[(String, T)],
     allow_negative: bool,
@@ -222,7 +222,7 @@ pub fn parse_named_counter<T: Clone>(
 }
 
 /// Split a string into chunks of text separated by whitespace with the offset before each chunk returned for nice error generation.
-pub fn split_ascii_whitespace(input: &str) -> Vec<(usize, &str)> {
+pub(crate) fn split_ascii_whitespace(input: &str) -> Vec<(usize, &str)> {
     let mut index = input.chars().take_while(char::is_ascii_whitespace).count();
     let mut chunks = Vec::new();
     while index < input.len() {
@@ -241,7 +241,7 @@ pub fn split_ascii_whitespace(input: &str) -> Vec<(usize, &str)> {
 }
 
 /// Helper function to check extensions in filenames
-pub fn check_extension(filename: impl AsRef<Path>, extension: impl AsRef<Path>) -> bool {
+pub(crate) fn check_extension(filename: impl AsRef<Path>, extension: impl AsRef<Path>) -> bool {
     filename
         .as_ref()
         .extension()
@@ -249,7 +249,7 @@ pub fn check_extension(filename: impl AsRef<Path>, extension: impl AsRef<Path>) 
 }
 
 /// Get the index of the next copy of the given char (looking at the byte value, does not guarantee full character)
-pub fn next_char(chars: &[u8], start: usize, char: u8) -> Option<usize> {
+pub(crate) fn next_char(chars: &[u8], start: usize, char: u8) -> Option<usize> {
     for (i, ch) in chars[start..].iter().enumerate() {
         if *ch == char {
             return Some(start + i);
@@ -259,7 +259,7 @@ pub fn next_char(chars: &[u8], start: usize, char: u8) -> Option<usize> {
 }
 
 /// Find the enclosed text by the given symbols, assumes a single open is already read just before the start, guarantees to only pick full characters
-pub fn end_of_enclosure(text: &str, start: usize, open: u8, close: u8) -> Option<usize> {
+pub(crate) fn end_of_enclosure(text: &str, start: usize, open: u8, close: u8) -> Option<usize> {
     let mut state = 1;
     for (i, ch) in text.as_bytes()[start..].iter().enumerate() {
         // Check if this byte is a full character (is_char_boundary also works on index==len)
@@ -279,7 +279,7 @@ pub fn end_of_enclosure(text: &str, start: usize, open: u8, close: u8) -> Option
 
 /// Find the enclosed text by the given symbols, assumes a single open is already read just before the start.
 /// This also takes brackets '[]' into account and these take precedence over the enclosure searched for.
-pub fn end_of_enclosure_with_brackets(
+pub(crate) fn end_of_enclosure_with_brackets(
     text: &str,
     start: usize,
     open: u8,
@@ -318,7 +318,11 @@ pub fn end_of_enclosure_with_brackets(
 /// If the text is not valid UTF-8.
 /// # Errors
 /// Returns none if the number is too big to fit in a `isize`.
-pub fn next_num(chars: &[u8], mut start: usize, allow_only_sign: bool) -> Option<(usize, isize)> {
+pub(crate) fn next_num(
+    chars: &[u8],
+    mut start: usize,
+    allow_only_sign: bool,
+) -> Option<(usize, isize)> {
     let mut sign = 1;
     let mut sign_set = false;
     if chars.get(start) == Some(&b'-') {
@@ -349,12 +353,12 @@ pub fn next_num(chars: &[u8], mut start: usize, allow_only_sign: bool) -> Option
 }
 
 /// A number of characters, used as length or index
-pub type Characters = usize;
+pub(crate) type Characters = usize;
 
 /// Get the next number starting at the character range given, returns length in characters and the number.
 /// # Errors
 /// Returns none if the number is too big to fit in a `isize`.
-pub fn next_number<const ALLOW_SIGN: bool, const FLOATING_POINT: bool, Number: FromStr>(
+pub(crate) fn next_number<const ALLOW_SIGN: bool, const FLOATING_POINT: bool, Number: FromStr>(
     line: &str,
     range: impl RangeBounds<Characters>,
 ) -> Option<(Characters, bool, Result<Number, Number::Err>)> {
@@ -412,7 +416,7 @@ pub fn next_number<const ALLOW_SIGN: bool, const FLOATING_POINT: bool, Number: F
 }
 
 /// Get a canonicalised u64 for f64 to be able to hash f64, based on the `ordered_float` crate (MIT license)
-pub fn f64_bits(value: f64) -> u64 {
+pub(crate) fn f64_bits(value: f64) -> u64 {
     if value.is_nan() {
         0x7ff8_0000_0000_0000_u64 // CANONICAL_NAN_BITS
     } else {
@@ -420,7 +424,7 @@ pub fn f64_bits(value: f64) -> u64 {
     }
 }
 
-pub fn merge_hashmap<K, V>(one: HashMap<K, V>, two: HashMap<K, V>) -> HashMap<K, V>
+pub(crate) fn merge_hashmap<K, V>(one: HashMap<K, V>, two: HashMap<K, V>) -> HashMap<K, V>
 where
     V: std::ops::MulAssign + Default,
     K: Eq + Hash,
@@ -436,7 +440,7 @@ where
 /// Implement a binary operator for all ref cases after the implementation for the ref-ref case (assumes deref operator works)
 macro_rules! impl_binop_ref_cases {
     (impl $imp:ident, $method:ident for $t:ty, $u:ty, $o:ty) => {
-        impl<'a> $imp<$u> for &'a $t {
+        impl $imp<$u> for &'_ $t {
             type Output = $o;
 
             #[inline]
@@ -466,7 +470,7 @@ macro_rules! impl_binop_ref_cases {
 }
 
 /// To be used as `The xx number ` + the explanation from here (does not have a dot).
-pub const fn explain_number_error(error: &ParseIntError) -> &'static str {
+pub(crate) const fn explain_number_error(error: &ParseIntError) -> &'static str {
     match error.kind() {
         IntErrorKind::Empty => "is empty",
         IntErrorKind::InvalidDigit => "contains an invalid character",

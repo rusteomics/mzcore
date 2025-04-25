@@ -1,15 +1,4 @@
 #![doc = include_str!("../README.md")]
-#![warn(clippy::all, clippy::pedantic, clippy::nursery, missing_docs)]
-#![allow(
-    clippy::must_use_candidate,
-    clippy::cast_precision_loss,
-    clippy::cast_possible_truncation,
-    clippy::cast_sign_loss,
-    clippy::wildcard_imports,
-    clippy::module_name_repetitions,
-    clippy::too_many_lines,
-    clippy::too_long_first_doc_paragraph
-)]
 
 #[cfg(feature = "align")]
 /// Only available with feature `align`.
@@ -53,7 +42,9 @@ pub mod prelude {
         Chemical, Element, MassMode, MolecularCharge, MolecularFormula, MultiChemical,
     };
     pub use crate::fragment::Fragment;
-    pub use crate::isobaric_sets::{building_blocks, find_isobaric_sets};
+    pub use crate::isobaric_sets::{
+        building_blocks, find_isobaric_sets, BuildingBlocks, TerminalBuildingBlocks,
+    };
     pub use crate::sequence::{
         AminoAcid, CheckedAminoAcid, CompoundPeptidoformIon, IsAminoAcid, Peptidoform,
         PeptidoformIon, Protease, SequenceElement, SequencePosition,
@@ -67,13 +58,7 @@ extern crate uom;
 #[cfg(test)]
 #[expect(clippy::missing_panics_doc)]
 mod test {
-    use crate::{
-        annotation::{
-            model::{FragmentationModel, MatchingParameters},
-            AnnotatableSpectrum,
-        },
-        prelude::*,
-    };
+    use crate::prelude::*;
 
     use super::*;
 

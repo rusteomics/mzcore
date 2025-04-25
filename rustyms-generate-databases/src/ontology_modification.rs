@@ -15,7 +15,7 @@ use rustyms::{
 use thin_vec::ThinVec;
 
 #[derive(Debug, Default)]
-pub struct OntologyModification {
+pub(crate) struct OntologyModification {
     pub formula: MolecularFormula,
     pub name: String,
     pub ontology: Ontology,
@@ -27,7 +27,7 @@ pub struct OntologyModification {
 }
 
 #[derive(Debug)]
-pub enum ModData {
+pub(crate) enum ModData {
     Mod {
         specificities: Vec<(Vec<PlacementRule>, Vec<NeutralLoss>, Vec<DiagnosticIon>)>,
     },
@@ -47,7 +47,7 @@ impl Default for ModData {
 
 impl OntologyModification {
     /// Simplify the placement rules
-    pub fn simplify_rules(&mut self) {
+    pub(crate) fn simplify_rules(&mut self) {
         match &mut self.data {
             ModData::Mod {
                 specificities: ref mut rules,
@@ -109,7 +109,7 @@ impl OntologyModification {
         }
     }
 
-    pub fn into_mod(mut self) -> (Option<usize>, String, SimpleModification) {
+    pub(crate) fn into_mod(mut self) -> (Option<usize>, String, SimpleModification) {
         self.simplify_rules();
         let id = ModificationId {
             ontology: self.ontology,
@@ -158,10 +158,9 @@ impl OntologyModification {
 //     }
 // }
 
-pub fn position_from_str(value: &str) -> Result<Position, String> {
+pub(crate) fn position_from_str(value: &str) -> Result<Position, String> {
     match value {
-        "" => Ok(Position::Anywhere),
-        "Anywhere" => Ok(Position::Anywhere),
+        "" | "Anywhere" => Ok(Position::Anywhere),
         "Any N-term" => Ok(Position::AnyNTerm),
         "Any C-term" => Ok(Position::AnyCTerm),
         "Protein N-term" => Ok(Position::ProteinNTerm),

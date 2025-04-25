@@ -1,6 +1,5 @@
-pub use super::*;
-use std::fmt::Display;
-use std::fmt::Write;
+pub(super) use super::*;
+use std::fmt::{Display, Write};
 
 /// Display things and allow the use of fancy non ascii characters
 pub trait FancyDisplay: Display {

@@ -4,15 +4,13 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     error::CustomError,
-    identification::PeaksFamilyId,
     identification::{
         common_parser::{Location, OptionalColumn, OptionalLocation},
         csv::{parse_csv, CsvLine},
-        ontology::Ontology,
         BoxedIdentifiedPeptideIter, IdentifiedPeptidoform, IdentifiedPeptidoformSource,
-        IdentifiedPeptidoformVersion, MetaData,
+        IdentifiedPeptidoformVersion, MetaData, PeaksFamilyId,
     },
-    ontology::CustomDatabase,
+    ontology::{CustomDatabase, Ontology},
     sequence::{AminoAcid, Peptidoform, SemiAmbiguous, SloppyParsingParameters},
     system::{usize::Charge, MassOverCharge},
 };
@@ -156,7 +154,7 @@ pub enum DeepNovoFamilyVersion {
 }
 
 impl std::fmt::Display for DeepNovoFamilyVersion {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::result::Result<(), std::fmt::Error> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Error> {
         write!(f, "{}", self.name())
     }
 }

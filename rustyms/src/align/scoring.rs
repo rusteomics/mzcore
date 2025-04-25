@@ -91,7 +91,7 @@ impl Default for AlignScoring<'static> {
             gap_start: -4,
             gap_extend: -1,
             matrix: matrices::BLOSUM62,
-            tolerance: crate::quantities::Tolerance::new_ppm(10.0),
+            tolerance: Tolerance::new_ppm(10.0),
             mass_mode: MassMode::Monoisotopic,
         }
     }
@@ -99,7 +99,7 @@ impl Default for AlignScoring<'static> {
 
 /// Matrices from: <https://www.ncbi.nlm.nih.gov/IEB/ToolBox/CPP_DOC/lxr/source/src/util/tables/> and <https://www.ncbi.nlm.nih.gov/IEB/ToolBox/C_DOC/lxr/source/data/>.
 /// The UO columns are added by me (see top left for the original matrix used by me) (B/J/Z is the rounded down average of the corresponding non ambiguous AAs) (All these are exactly the same for all matrices).
-pub mod matrices {
+pub(super) mod matrices {
     use crate::sequence::AminoAcid;
     /// BLOSUM45 matrix
     pub const BLOSUM45: &[[i8; AminoAcid::TOTAL_NUMBER]; AminoAcid::TOTAL_NUMBER] =

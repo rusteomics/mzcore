@@ -7,7 +7,7 @@ use rustyms::{
     system::da,
 };
 
-pub fn build_atomic_masses(out_dir: &Path) {
+pub(crate) fn build_atomic_masses(out_dir: &Path) {
     let mut atomic_weights = vec![None; 118];
     let mut isotopic_abundances = vec![Vec::new(); 118];
     let mut atomic_masses = vec![Vec::new(); 118];
@@ -40,9 +40,9 @@ pub fn build_atomic_masses(out_dir: &Path) {
             .unwrap();
         let mass = mass
             .parse::<f64>()
-            .map_err(|e| format!("{}@{}", e, mass))
+            .map_err(|e| format!("{e}@{mass}"))
             .unwrap();
-        atomic_masses[element as usize - 1].push((isotope, mass))
+        atomic_masses[element as usize - 1].push((isotope, mass));
     }
 
     let mut last_element = 0;
@@ -81,7 +81,7 @@ pub fn build_atomic_masses(out_dir: &Path) {
 
         let isotope = isotope.parse::<usize>().unwrap();
 
-        isotopic_abundances[element - 1].push((isotope, get_ciaaw_number(&abundance).unwrap()))
+        isotopic_abundances[element - 1].push((isotope, get_ciaaw_number(&abundance).unwrap()));
     }
 
     let table = parse_csv(
@@ -126,8 +126,7 @@ pub fn build_atomic_masses(out_dir: &Path) {
                         isotopic_abundance
                             .iter()
                             .find(|(ai, _)| ai == i)
-                            .map(|(_, a)| *a)
-                            .unwrap_or(0.0),
+                            .map_or(0.0, |(_, a)| *a),
                     )
                 })
                 .collect::<Vec<_>>();
@@ -177,12 +176,12 @@ fn get_ciaaw_number(text: &str) -> Result<f64, String> {
     if text.starts_with('[') {
         let (low, high) = text[1..text.len() - 1]
             .split_once(',')
-            .ok_or(format!("Not a valid range: {text}"))?;
+            .ok_or_else(|| format!("Not a valid range: {text}"))?;
         Ok((parse(low)? + parse(high)?) / 2.0)
     } else if text.ends_with(')') {
         Ok(parse(
             text.split_once('(')
-                .ok_or(format!("Not valid error indication: {text}"))?
+                .ok_or_else(|| format!("Not valid error indication: {text}"))?
                 .0,
         )?)
     } else {

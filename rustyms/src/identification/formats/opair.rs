@@ -212,7 +212,7 @@ pub enum OpairVersion {
 }
 
 impl std::fmt::Display for OpairVersion {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::result::Result<(), std::fmt::Error> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Error> {
         write!(
             f,
             "{}",
@@ -284,7 +284,9 @@ pub const O_PAIR: OpairFormat = OpairFormat {
     all_site_specific_localisation_probabilities: "allsitespecificlocalizationprobability",
 };
 
-#[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Default, Serialize, Deserialize)]
+#[derive(
+    Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Default, Serialize, Deserialize,
+)]
 #[expect(missing_docs)]
 pub enum OpairMatchKind {
     #[default]
@@ -294,7 +296,7 @@ pub enum OpairMatchKind {
 }
 
 impl std::fmt::Display for OpairMatchKind {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::result::Result<(), std::fmt::Error> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Error> {
         write!(
             f,
             "{}",

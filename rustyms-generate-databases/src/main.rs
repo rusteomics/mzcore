@@ -1,3 +1,4 @@
+//! Parse modification ontologies and generate the binary blobs for rustyms
 use std::path::Path;
 
 mod atomic_masses;

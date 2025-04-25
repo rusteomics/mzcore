@@ -1,7 +1,7 @@
 /// A possibly limited diagonal array that is implemented as a single continuous slice of memory.
 /// It consists of a
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct DiagonalArray<T> {
+pub(super) struct DiagonalArray<T> {
     len: usize,
     max_depth: usize,
     data: Box<[T]>,
@@ -36,26 +36,26 @@ impl<T> DiagonalArray<T> {
     /// # Safety
     /// This function assumes the index to be valid. Not upholding this does an out of bounds unsafe [`[T]::get_unchecked`].
     /// A debug assertion hold up this promise on debug builds.
-    pub unsafe fn get_unchecked(&self, index: [usize; 2]) -> &T {
+    pub(super) unsafe fn get_unchecked(&self, index: [usize; 2]) -> &T {
         debug_assert!(self.validate_indices(index));
         let index = Self::length(index[0], self.max_depth) + index[1];
-        self.data.get_unchecked(index)
+        unsafe { self.data.get_unchecked(index) }
     }
 
     /// # Safety
     /// This function assumes the index to be valid. Not upholding this does an out of bounds unsafe [`[T]::get_unchecked_mut`].
     /// A debug assertion hold up this promise on debug builds.
     #[expect(dead_code)]
-    pub unsafe fn get_unchecked_mut(&mut self, index: [usize; 2]) -> &mut T {
+    pub(super) unsafe fn get_unchecked_mut(&mut self, index: [usize; 2]) -> &mut T {
         debug_assert!(self.validate_indices(index));
         let index = Self::length(index[0], self.max_depth) + index[1];
-        self.data.get_unchecked_mut(index)
+        unsafe { self.data.get_unchecked_mut(index) }
     }
 }
 
 impl<T: Default + Clone> DiagonalArray<T> {
     /// Create a new diagonal array of the correct size, with all values initialised to the default value of the type, with up to and including the depth given in `max_depth`
-    pub fn new(len: usize, max_depth: u16) -> Self {
+    pub(super) fn new(len: usize, max_depth: u16) -> Self {
         Self {
             len,
             max_depth: max_depth as usize,

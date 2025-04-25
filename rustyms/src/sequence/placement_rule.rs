@@ -208,7 +208,7 @@ impl FromStr for Position {
 #[expect(clippy::missing_panics_doc)]
 mod tests {
 
-    use crate::sequence::{CheckedAminoAcid, RulePossible, SequencePosition};
+    use crate::sequence::{CheckedAminoAcid, RulePossible};
 
     use super::*;
     #[test]

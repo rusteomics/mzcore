@@ -86,6 +86,7 @@ fn parse_annotation(
     ))
 }
 
+#[derive(Debug)]
 pub struct PeakAnnotation {
     auxiliary: bool,
     analyte_number: Option<usize>,
@@ -96,6 +97,7 @@ pub struct PeakAnnotation {
     confidence: Option<f64>,
 }
 
+#[derive(Debug)]
 enum IonType {
     Unknown(Option<usize>),
     MainSeries(char, usize),

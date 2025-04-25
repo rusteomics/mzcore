@@ -42,11 +42,7 @@ impl<S: SpectrumLike> AnnotatableSpectrum for S {
         }
     }
 
-    fn search(
-        &self,
-        query: crate::system::MassOverCharge,
-        tolerance: Self::Tolerance,
-    ) -> Option<usize> {
+    fn search(&self, query: MassOverCharge, tolerance: Self::Tolerance) -> Option<usize> {
         self.peaks().search(query.value, tolerance)
     }
 }

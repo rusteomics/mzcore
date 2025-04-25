@@ -110,7 +110,7 @@ pub struct MUPSettings {
     pub(crate) colocalise_modifications_of_unknown_position: bool,
 }
 
-impl std::default::Default for MUPSettings {
+impl Default for MUPSettings {
     fn default() -> Self {
         Self {
             position: None,
@@ -123,7 +123,6 @@ impl std::default::Default for MUPSettings {
 
 /// # Errors
 /// It returns an error when the given line cannot be read as a single modification.
-#[expect(clippy::missing_panics_doc)]
 fn parse_single_modification(
     line: &str,
     full_modification: &str,

@@ -1,12 +1,14 @@
 use std::path::Path;
 
-use super::{
+use crate::{
     error::{Context, CustomError},
+    identification::{
+        BasicCSVData, DeepNovoFamilyData, FastaData, IdentifiedPeptidoform,
+        IdentifiedPeptidoformIter, IdentifiedPeptidoformSource, InstaNovoData, MSFraggerData,
+        MZTabData, MaxQuantData, NovoBData, NovorData, OpairData, PLGSData, PLinkData, PeaksData,
+        PepNetData, PowerNovoData, SageData, SpectrumSequenceListData,
+    },
     ontology::CustomDatabase,
-    BasicCSVData, DeepNovoFamilyData, FastaData, IdentifiedPeptidoform, IdentifiedPeptidoformIter,
-    IdentifiedPeptidoformSource, InstaNovoData, MSFraggerData, MZTabData, MaxQuantData, NovoBData,
-    NovorData, OpairData, PLGSData, PLinkData, PeaksData, PepNetData, PowerNovoData, SageData,
-    SpectrumSequenceListData,
 };
 
 // TODO:

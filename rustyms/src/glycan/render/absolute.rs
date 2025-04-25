@@ -307,7 +307,7 @@ impl AbsolutePositionedGlycan {
             // The tree is cut here
             if breakages.iter().any(|b| b.0 == 0) {
                 return (0, true, lx, rx);
-            };
+            }
 
             let total_branches = tree.branches.len() + tree.sides.len();
             let (depth, break_top, left_offset, right_offset) = match total_branches {

@@ -10,7 +10,7 @@ use crate::{
     sequence::AminoAcid,
 };
 
-use super::built_in::glycan_losses;
+use super::built_in::GLYCAN_LOSSES;
 
 /// The settings for glycan fragmentation
 #[derive(Clone, PartialEq, Eq, Hash, Debug, Serialize, Deserialize)]
@@ -100,7 +100,7 @@ impl GlycanModel {
             allow_structural: true,
             compositional_range: 1..=10,
             neutral_losses: Vec::new(),
-            specific_neutral_losses: glycan_losses().clone(),
+            specific_neutral_losses: GLYCAN_LOSSES.clone(),
             default_peptide_fragment: GlycanPeptideFragment::CORE_AND_FREE,
             peptide_fragment_rules: Vec::new(),
             oxonium_charge_range: ChargeRange::ONE,

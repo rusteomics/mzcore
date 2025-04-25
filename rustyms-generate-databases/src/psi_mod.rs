@@ -9,7 +9,7 @@ use rustyms::{
 
 use super::{obo::OboOntology, ontology_modification::OntologyModification, ModData};
 
-pub fn build_psi_mod_ontology(out_dir: &Path) {
+pub(crate) fn build_psi_mod_ontology(out_dir: &Path) {
     let mods = parse_psi_mod();
 
     let dest_path = Path::new(&out_dir).join("psimod.dat");
@@ -121,7 +121,7 @@ fn parse_psi_mod() -> Vec<OntologyModification> {
         }
         if origins.is_empty() || all_aminoacids {
             if let Some(term) = term {
-                rules.push((vec![PlacementRule::Terminal(term)], Vec::new(), Vec::new()))
+                rules.push((vec![PlacementRule::Terminal(term)], Vec::new(), Vec::new()));
             }
         }
         modification.data = ModData::Mod {

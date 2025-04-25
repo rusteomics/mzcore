@@ -5,23 +5,23 @@ use serde::{Deserialize, Serialize};
 use crate::{error::CustomError, identification::*, ontology::CustomDatabase};
 
 /// A file format that is fully known
-#[derive(Clone, PartialEq, Eq, Debug, Copy, Serialize, Deserialize)]
+#[derive(Clone, PartialEq, Eq, Debug, Copy, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 #[allow(clippy::upper_case_acronyms, missing_docs)]
 pub enum KnownFileFormat {
     BasicCSV(BasicCSVVersion),
     DeepNovoFamily(DeepNovoFamilyVersion),
     Fasta,
     InstaNovo(InstaNovoVersion),
-    MSFragger(MSFraggerVersion),
     MaxQuant(MaxQuantVersion),
+    MSFragger(MSFraggerVersion),
     MZTab,
     NovoB(NovoBVersion),
     Novor(NovorVersion),
     Opair(OpairVersion),
+    Peaks(PeaksVersion),
     PepNet(PepNetVersion),
     PLGS(PLGSVersion),
     PLink(PLinkVersion),
-    Peaks(PeaksVersion),
     PowerNovo(PowerNovoVersion),
     Sage(SageVersion),
     SpectrumSequenceList(SpectrumSequenceListVersion),
@@ -32,7 +32,6 @@ impl KnownFileFormat {
     pub const fn name(self) -> &'static str {
         match self {
             Self::BasicCSV(_) => "CSV",
-            Self::SpectrumSequenceList(_) => "SpectrumSequenceList",
             Self::DeepNovoFamily(_) => "DeepNovo Family",
             Self::Fasta => "Fasta",
             Self::InstaNovo(_) => "InstaNovo",
@@ -48,15 +47,15 @@ impl KnownFileFormat {
             Self::PLink(_) => "pLink",
             Self::PowerNovo(_) => "PowerNovo",
             Self::Sage(_) => "Sage",
+            Self::SpectrumSequenceList(_) => "SpectrumSequenceList",
         }
     }
 
     /// Get the format version
     pub fn version(self) -> Option<String> {
         match self {
-            Self::SpectrumSequenceList(version) => Some(version.to_string()),
-            Self::DeepNovoFamily(version) => Some(version.to_string()),
             Self::BasicCSV(version) => Some(version.to_string()),
+            Self::DeepNovoFamily(version) => Some(version.to_string()),
             Self::Fasta => None,
             Self::InstaNovo(version) => Some(version.to_string()),
             Self::MaxQuant(version) => Some(version.to_string()),
@@ -71,6 +70,7 @@ impl KnownFileFormat {
             Self::PLink(version) => Some(version.to_string()),
             Self::PowerNovo(version) => Some(version.to_string()),
             Self::Sage(version) => Some(version.to_string()),
+            Self::SpectrumSequenceList(version) => Some(version.to_string()),
         }
     }
 }
@@ -86,32 +86,62 @@ impl Display for KnownFileFormat {
     }
 }
 
+impl From<KnownFileFormat> for FileFormat {
+    fn from(value: KnownFileFormat) -> Self {
+        match value {
+            KnownFileFormat::BasicCSV(version) => Self::BasicCSV(Some(version)),
+            KnownFileFormat::DeepNovoFamily(version) => Self::DeepNovoFamily(Some(version)),
+            KnownFileFormat::Fasta => Self::Fasta,
+            KnownFileFormat::InstaNovo(version) => Self::InstaNovo(Some(version)),
+            KnownFileFormat::MaxQuant(version) => Self::MaxQuant(Some(version)),
+            KnownFileFormat::MSFragger(version) => Self::MSFragger(Some(version)),
+            KnownFileFormat::MZTab => Self::MZTab,
+            KnownFileFormat::NovoB(version) => Self::NovoB(Some(version)),
+            KnownFileFormat::Novor(version) => Self::Novor(Some(version)),
+            KnownFileFormat::Opair(version) => Self::Opair(Some(version)),
+            KnownFileFormat::Peaks(version) => Self::Peaks(Some(version)),
+            KnownFileFormat::PepNet(version) => Self::PepNet(Some(version)),
+            KnownFileFormat::PLGS(version) => Self::PLGS(Some(version)),
+            KnownFileFormat::PLink(version) => Self::PLink(Some(version)),
+            KnownFileFormat::PowerNovo(version) => Self::PowerNovo(Some(version)),
+            KnownFileFormat::Sage(version) => Self::Sage(Some(version)),
+            KnownFileFormat::SpectrumSequenceList(version) => {
+                Self::SpectrumSequenceList(Some(version))
+            }
+        }
+    }
+}
+
 /// A file format that might not be (fully) known
-#[derive(Clone, PartialEq, Eq, Debug, Copy, Serialize, Deserialize)]
+#[derive(Clone, PartialEq, Eq, Debug, Copy, Serialize, Deserialize, Default)]
 #[allow(clippy::upper_case_acronyms, missing_docs)]
 pub enum FileFormat {
-    Undefined,
     BasicCSV(Option<BasicCSVVersion>),
     DeepNovoFamily(Option<DeepNovoFamilyVersion>),
     Fasta,
     InstaNovo(Option<InstaNovoVersion>),
-    MSFragger(Option<MSFraggerVersion>),
     MaxQuant(Option<MaxQuantVersion>),
+    MSFragger(Option<MSFraggerVersion>),
     MZTab,
     NovoB(Option<NovoBVersion>),
     Novor(Option<NovorVersion>),
     Opair(Option<OpairVersion>),
+    Peaks(Option<PeaksVersion>),
     PepNet(Option<PepNetVersion>),
     PLGS(Option<PLGSVersion>),
     PLink(Option<PLinkVersion>),
-    Peaks(Option<PeaksVersion>),
     PowerNovo(Option<PowerNovoVersion>),
     Sage(Option<SageVersion>),
-    SSL(Option<SpectrumSequenceListVersion>),
+    SpectrumSequenceList(Option<SpectrumSequenceListVersion>),
+    #[default]
+    Undefined,
 }
 
 impl FileFormat {
-    /// Open a file with this file format
+    /// Open a file with this file format. If the file format is [`Self::Undefined`] it uses
+    /// [`open_identified_peptides_file`] to automatically try all possible options based on the
+    /// extension. If the file format is specific format but without a defined version, for example
+    /// `Self::Peaks(None)`, all known versions are tried and the first successful one is assumed.
     /// # Errors
     /// If the file is not valid according to the file format chosen
     pub fn open<'a>(
@@ -123,7 +153,6 @@ impl FileFormat {
         CustomError,
     > {
         match self {
-            Self::Undefined => open_identified_peptides_file(path, custom_database, false),
             Self::BasicCSV(version) => {
                 BasicCSVData::parse_file(path, custom_database, false, version)
                     .map(IdentifiedPeptidoformIter::into_box)
@@ -174,10 +203,11 @@ impl FileFormat {
             }
             Self::Sage(version) => SageData::parse_file(path, custom_database, false, version)
                 .map(IdentifiedPeptidoformIter::into_box),
-            Self::SSL(version) => {
+            Self::SpectrumSequenceList(version) => {
                 SpectrumSequenceListData::parse_file(path, custom_database, false, version)
                     .map(IdentifiedPeptidoformIter::into_box)
             }
+            Self::Undefined => open_identified_peptides_file(path, custom_database, false),
         }
     }
 }

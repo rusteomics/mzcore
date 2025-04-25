@@ -11,7 +11,7 @@ use crate::{
 };
 
 /// Glycan absolute configuration
-#[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Serialize, Deserialize)]
+#[derive(Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Serialize, Deserialize)]
 pub enum Configuration {
     /// D configuration
     D,
@@ -39,22 +39,22 @@ pub struct MonoSaccharide {
 
 impl MonoSaccharide {
     pub fn equivalent(&self, other: &Self, precise: bool) -> bool {
-        self.base_sugar.equivalent(&other.base_sugar, precise)
+        self.base_sugar.equivalent(other.base_sugar, precise)
             && self.substituents == other.substituents
             && (!precise
                 || (self.furanose == other.furanose && self.configuration == other.configuration))
     }
 }
 
-impl std::cmp::PartialEq for MonoSaccharide {
+impl PartialEq for MonoSaccharide {
     fn eq(&self, other: &Self) -> bool {
         self.equivalent(other, true)
     }
 }
 
-impl std::cmp::Eq for MonoSaccharide {}
+impl Eq for MonoSaccharide {}
 
-impl std::hash::Hash for MonoSaccharide {
+impl Hash for MonoSaccharide {
     fn hash<H: std::hash::Hasher>(&self, hasher: &mut H) {
         self.base_sugar.hash(hasher);
         self.substituents.hash(hasher);
@@ -526,7 +526,7 @@ impl Display for MonoSaccharide {
 }
 
 /// The base sugar of a monosaccharide, optionally with the isomeric state saved as well.
-#[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Serialize, Deserialize)]
+#[derive(Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Serialize, Deserialize)]
 pub enum BaseSugar {
     /// Edge case, no sugar at all, because ProForma enforces that a separate phosphate and sulphate have to be handled.
     None,
@@ -551,7 +551,7 @@ pub enum BaseSugar {
 }
 
 impl BaseSugar {
-    fn equivalent(&self, other: &Self, precise: bool) -> bool {
+    fn equivalent(self, other: Self, precise: bool) -> bool {
         match (self, other) {
             (Self::None, Self::None)
             | (Self::Sugar, Self::Sugar)
@@ -612,7 +612,7 @@ impl Chemical for BaseSugar {
 
 /// Any 4 carbon glycan
 #[allow(dead_code)]
-#[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Serialize, Deserialize)]
+#[derive(Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Serialize, Deserialize)]
 pub enum TetroseIsomer {
     /// Ery
     Erythrose,
@@ -622,7 +622,7 @@ pub enum TetroseIsomer {
 
 /// Any 5 carbon glycan
 #[allow(dead_code)]
-#[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Serialize, Deserialize)]
+#[derive(Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Serialize, Deserialize)]
 pub enum PentoseIsomer {
     /// Rib
     Ribose,
@@ -638,7 +638,7 @@ pub enum PentoseIsomer {
 
 /// Any 6 carbon glycan
 #[allow(dead_code)]
-#[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Serialize, Deserialize)]
+#[derive(Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Serialize, Deserialize)]
 pub enum HexoseIsomer {
     /// glc
     Glucose,
@@ -668,7 +668,7 @@ pub enum HexoseIsomer {
 
 /// Any 7 carbon glycan
 #[allow(dead_code)]
-#[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Serialize, Deserialize)]
+#[derive(Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Serialize, Deserialize)]
 pub enum HeptoseIsomer {
     /// gro-manHep
     GlyceroMannoHeptopyranose, // TODO: Does this indicate some mods?
@@ -681,7 +681,7 @@ pub enum HeptoseIsomer {
 /// from other sources that cannot be tracked in other ways in the current structure. Any isomer
 /// used that does not have the correct monosaccharide substituents applied is meaningless.
 #[allow(dead_code)]
-#[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Serialize, Deserialize)]
+#[derive(Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Serialize, Deserialize)]
 pub enum NonoseIsomer {
     /// 3-Deoxy-D-glycero-D-galacto-non-2-ulopyranosonic acid
     Kdn,

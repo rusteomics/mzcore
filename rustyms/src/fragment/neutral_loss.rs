@@ -126,7 +126,7 @@ impl Display for NeutralLoss {
     }
 }
 
-impl std::ops::Add<&NeutralLoss> for &MolecularFormula {
+impl Add<&NeutralLoss> for &MolecularFormula {
     type Output = MolecularFormula;
     fn add(self, rhs: &NeutralLoss) -> Self::Output {
         match rhs {
@@ -136,7 +136,7 @@ impl std::ops::Add<&NeutralLoss> for &MolecularFormula {
     }
 }
 
-impl std::ops::AddAssign<&NeutralLoss> for MolecularFormula {
+impl AddAssign<&NeutralLoss> for MolecularFormula {
     fn add_assign(&mut self, rhs: &NeutralLoss) {
         match rhs {
             NeutralLoss::Gain(mol) => *self += mol,
@@ -151,7 +151,7 @@ impl AddAssign<NeutralLoss> for MolecularFormula {
     }
 }
 
-impl std::ops::Add<&NeutralLoss> for &Multi<MolecularFormula> {
+impl Add<&NeutralLoss> for &Multi<MolecularFormula> {
     type Output = Multi<MolecularFormula>;
     fn add(self, rhs: &NeutralLoss) -> Self::Output {
         match rhs {

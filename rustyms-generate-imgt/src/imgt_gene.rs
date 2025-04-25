@@ -11,7 +11,7 @@ use crate::structs::{Location, SequenceRegion, SingleSeq};
 use crate::{find_possible_n_glycan_locations, fix_j};
 
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub struct IMGTGene {
+pub(crate) struct IMGTGene {
     pub acc: String,
     pub key: String,
     pub location: Location,
@@ -20,7 +20,7 @@ pub struct IMGTGene {
 }
 
 impl IMGTGene {
-    pub fn finish(self) -> Result<SingleSeq, String> {
+    pub(crate) fn finish(self) -> Result<SingleSeq, String> {
         let (regions, additional_annotations) = self.get_regions()?;
 
         let sequence: Vec<AminoAcid> = regions.iter().flat_map(|reg| reg.1 .0.clone()).collect();
@@ -47,7 +47,7 @@ impl IMGTGene {
                     .location
                     .find_aa_location(&regions)
                     .map(|index| (conserved_map[key.as_str()].clone(), index))
-                    .ok_or(format!("Cannot find location of '{key}' '{region}'"))
+                    .ok_or_else(|| format!("Cannot find location of '{key}' '{region}'"))
             })
             .collect::<Result<Vec<_>, _>>()?;
         conserved.extend(
@@ -60,7 +60,7 @@ impl IMGTGene {
         Ok(SingleSeq {
             name,
             allele,
-            acc: self.acc.clone(),
+            acc: self.acc,
             sequence: AnnotatedSequence::new(
                 sequence
                     .iter()
@@ -206,7 +206,7 @@ impl IMGTGene {
     fn get_region(&self, region: &Region, key: &str) -> Result<SequenceRegion, String> {
         self.regions
             .get(key)
-            .ok_or(format!("Could not find {key}"))
+            .ok_or_else(|| format!("Could not find {key}"))
             .and_then(|region| {
                 region
                     .found_seq
@@ -220,7 +220,7 @@ impl IMGTGene {
                         final_seq.extend(seq.1 .0.clone());
                         (final_seq, region.location.clone(), seq.0.clone())
                     })
-                    .map_err(|e| e.to_owned())
+                    .map_err(ToOwned::to_owned)
             })
             .map(|res| (region.clone(), res))
     }

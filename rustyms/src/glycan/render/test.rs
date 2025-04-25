@@ -11,7 +11,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
-pub struct Font {
+pub(super) struct Font {
     // Full content of the font file
     data: Vec<u8>,
     // Offset to the table directory
@@ -21,7 +21,7 @@ pub struct Font {
 }
 
 impl Font {
-    pub fn from_file(path: PathBuf, index: usize) -> Option<Self> {
+    pub(super) fn from_file(path: PathBuf, index: usize) -> Option<Self> {
         // Read the full font file
         let data = std::fs::read(path).ok()?;
         // Create a temporary font reference for the first font in the file.
@@ -36,7 +36,7 @@ impl Font {
 
     // Create the transient font reference for accessing this crate's
     // functionality.
-    pub fn as_ref(&self) -> FontRef {
+    pub(super) fn as_ref(&self) -> FontRef {
         // Note that you'll want to initialize the struct directly here as
         // using any of the FontRef constructors will generate a new key which,
         // while completely safe, will nullify the performance optimizations of
@@ -109,7 +109,7 @@ fn test_rendering() {
         let structure = GlycanStructure::from_short_iupac(iupac, 0..iupac.len(), 0).unwrap();
         let rendered = structure
             .render(
-                crate::glycan::render::GlycanRoot::Text("pep".to_string()),
+                GlycanRoot::Text("pep".to_string()),
                 COLUMN_SIZE,
                 SUGAR_SIZE,
                 STROKE_SIZE,
@@ -476,7 +476,7 @@ fn test_rendering() {
         let structure =
             GlycanStructure::from_short_iupac(codes[index].1, 0..codes[index].1.len(), 0).unwrap();
         if let Some(rendered) = structure.render(
-            crate::glycan::render::GlycanRoot::Symbol,
+            GlycanRoot::Symbol,
             COLUMN_SIZE,
             SUGAR_SIZE,
             STROKE_SIZE,

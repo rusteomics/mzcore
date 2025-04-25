@@ -30,7 +30,7 @@ enum MassMode {
 /// symbol : str
 ///
 #[pyclass]
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub struct Element(rustyms::chemistry::Element);
 
 #[pymethods]
@@ -103,7 +103,7 @@ impl Element {
 
 impl std::fmt::Display for Element {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "{:?}", self)
+        write!(f, "{self:?}")
     }
 }
 
@@ -141,7 +141,7 @@ impl MolecularFormula {
             .collect::<Vec<_>>();
         let formula = rustyms::chemistry::MolecularFormula::new(elements.as_slice(), &[])
             .ok_or_else(|| PyValueError::new_err("Invalid isotopes"))?;
-        Ok(MolecularFormula(formula))
+        Ok(Self(formula))
     }
 
     fn __repr__(&self) -> String {
@@ -233,18 +233,22 @@ impl MolecularFormula {
         &self,
         substitutions: Vec<(Element, Option<u16>)>,
     ) -> PyResult<Self> {
-        match self.0.with_global_isotope_modifications(
-            substitutions
-                .iter()
-                .map(|(e, i)| (e.0, (*i).and_then(NonZeroU16::new)))
-                .collect::<Vec<_>>()
-                .as_slice(),
-        ) {
-            Some(formula) => Ok(MolecularFormula(formula)),
-            None => Err(PyValueError::new_err(
-                "Invalid global isotope modifications",
-            )),
-        }
+        self.0
+            .with_global_isotope_modifications(
+                substitutions
+                    .iter()
+                    .map(|(e, i)| (e.0, (*i).and_then(NonZeroU16::new)))
+                    .collect::<Vec<_>>()
+                    .as_slice(),
+            )
+            .map_or_else(
+                || {
+                    Err(PyValueError::new_err(
+                        "Invalid global isotope modifications",
+                    ))
+                },
+                |formula| Ok(Self(formula)),
+            )
     }
 
     /// Get the number of electrons (the only charged species, any ionic species is saved as that element +/- the correct number of electrons). The inverse of that number is given as the charge.
@@ -347,12 +351,13 @@ impl MolecularFormula {
     /// -------
     /// list[str]
     fn ambiguous_labels(&self) -> Vec<String> {
-        self.0.labels().iter().map(|a| a.to_string()).collect()
+        self.0.labels().iter().map(ToString::to_string).collect()
     }
 }
 
 /// A selection of ions that together define the charge of a peptidoform.
 #[pyclass]
+#[derive(Debug)]
 pub struct MolecularCharge(rustyms::chemistry::MolecularCharge);
 
 #[pymethods]
@@ -370,7 +375,7 @@ impl MolecularCharge {
     ///
     #[new]
     fn new(charge_carriers: Vec<(i32, MolecularFormula)>) -> Self {
-        MolecularCharge(rustyms::chemistry::MolecularCharge {
+        Self(rustyms::chemistry::MolecularCharge {
             charge_carriers: charge_carriers
                 .iter()
                 .map(|(n, mol)| (*n as isize, mol.0.clone()))
@@ -384,7 +389,7 @@ impl MolecularCharge {
             self.0
                 .charge_carriers
                 .iter()
-                .map(|(n, mol)| format!("({}, {})", n, mol))
+                .map(|(n, mol)| format!("({n}, {mol})"))
                 .collect::<Vec<_>>()
                 .join(", ")
         )
@@ -403,7 +408,7 @@ impl MolecularCharge {
     ///
     #[classmethod]
     fn proton(_cls: &Bound<'_, PyType>, charge: i32) -> Self {
-        MolecularCharge(rustyms::chemistry::MolecularCharge::proton(charge as isize))
+        Self(rustyms::chemistry::MolecularCharge::proton(charge as isize))
     }
 
     /// List of counts and molecular formulas for the charge carriers.
@@ -430,17 +435,17 @@ impl MolecularCharge {
 ///    The name of the amino acid.
 ///
 #[pyclass]
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub struct AminoAcid(rustyms::sequence::AminoAcid);
 
 #[pymethods]
 impl AminoAcid {
     #[new]
     fn new(name: &str) -> PyResult<Self> {
-        match rustyms::sequence::AminoAcid::try_from(name) {
-            Ok(aa) => Ok(AminoAcid(aa)),
-            Err(_) => Err(PyValueError::new_err("Invalid amino acid")),
-        }
+        rustyms::sequence::AminoAcid::try_from(name).map_or_else(
+            |_| Err(PyValueError::new_err("Invalid amino acid")),
+            |aa| Ok(Self(aa)),
+        )
     }
 
     fn __str__(&self) -> String {
@@ -510,7 +515,7 @@ impl AminoAcid {
 
 impl std::fmt::Display for AminoAcid {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "{:?}", self)
+        write!(f, "{self:?}",)
     }
 }
 
@@ -536,7 +541,7 @@ impl SimpleModification {
             &mut vec![],
             None,
         ) {
-            Ok((modification, _)) => Ok(SimpleModification(modification.defined().unwrap())),
+            Ok((modification, _)) => Ok(Self(modification.defined().unwrap())),
             Err(_) => Err(PyValueError::new_err("Invalid modification")),
         }
     }
@@ -671,7 +676,7 @@ impl Fragment {
     /// int | None
     ///
     #[getter]
-    fn peptidoform_index(&self) -> Option<usize> {
+    const fn peptidoform_index(&self) -> Option<usize> {
         self.0.peptidoform_index
     }
 
@@ -682,7 +687,7 @@ impl Fragment {
     /// int | None
     ///
     #[getter]
-    fn peptidoform_ion_index(&self) -> Option<usize> {
+    const fn peptidoform_ion_index(&self) -> Option<usize> {
         self.0.peptidoform_ion_index
     }
 
@@ -697,17 +702,19 @@ impl Fragment {
         self.0
             .neutral_loss
             .iter()
-            .map(|nl| nl.to_string())
+            .map(ToString::to_string)
             .collect()
     }
 }
 
 /// All types of fragments.
 #[pyclass]
+#[derive(Debug)]
 pub struct FragmentType(rustyms::fragment::FragmentType);
 
 /// One block in a sequence meaning an amino acid and its accompanying modifications.
 #[pyclass]
+#[derive(Debug)]
 pub struct SequenceElement(rustyms::sequence::SequenceElement<Linked>);
 
 #[pymethods]
@@ -728,7 +735,7 @@ impl SequenceElement {
     /// AminoAcid
     ///
     #[getter]
-    fn aminoacid(&self) -> AminoAcid {
+    const fn aminoacid(&self) -> AminoAcid {
         AminoAcid(self.0.aminoacid.aminoacid())
     }
 
@@ -754,7 +761,7 @@ impl SequenceElement {
     /// int | None
     ///
     #[getter]
-    fn ambiguous(&self) -> Option<std::num::NonZeroU32> {
+    const fn ambiguous(&self) -> Option<std::num::NonZeroU32> {
         self.0.ambiguous
     }
 }
@@ -809,7 +816,7 @@ fn match_model(
 ///     The parameters
 ///
 #[pyclass]
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct MatchingParameters(rustyms::annotation::model::MatchingParameters);
 
 #[pymethods]
@@ -817,7 +824,7 @@ impl MatchingParameters {
     /// Create default parameters
     #[staticmethod]
     fn new() -> Self {
-        MatchingParameters(rustyms::annotation::model::MatchingParameters::default())
+        Self(rustyms::annotation::model::MatchingParameters::default())
     }
 
     /// Set the tolerance to a certain ppm value
@@ -844,7 +851,7 @@ impl MatchingParameters {
 ///     The position
 ///
 #[pyclass]
-#[derive(Clone)]
+#[derive(Clone, Copy, Debug)]
 pub struct SequencePosition(rustyms::sequence::SequencePosition);
 
 #[pymethods]
@@ -852,28 +859,25 @@ impl SequencePosition {
     /// Create a N-terminal position
     #[staticmethod]
     fn n_term() -> Self {
-        SequencePosition(rustyms::sequence::SequencePosition::NTerm)
+        Self(rustyms::sequence::SequencePosition::NTerm)
     }
 
     /// Create a position based on index (0-based indexing)
     #[staticmethod]
     fn index(index: usize) -> Self {
-        SequencePosition(rustyms::sequence::SequencePosition::Index(index))
+        Self(rustyms::sequence::SequencePosition::Index(index))
     }
 
     /// Create a C-terminal position
     #[staticmethod]
     fn c_term() -> Self {
-        SequencePosition(rustyms::sequence::SequencePosition::CTerm)
+        Self(rustyms::sequence::SequencePosition::CTerm)
     }
 
     /// Check if this is a N-terminal position
     #[getter]
     fn is_n_term(&self) -> bool {
-        matches!(
-            self,
-            SequencePosition(rustyms::sequence::SequencePosition::NTerm)
-        )
+        matches!(self, Self(rustyms::sequence::SequencePosition::NTerm))
     }
 
     /// Get the index of this position, if it is a terminal position this returns None.
@@ -902,7 +906,7 @@ impl SequencePosition {
 ///     The ProForma string.
 ///
 #[pyclass]
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct CompoundPeptidoformIon(rustyms::sequence::CompoundPeptidoformIon);
 
 #[pymethods]
@@ -918,13 +922,13 @@ impl CompoundPeptidoformIon {
     /// Create a new compound peptidoform ion from a peptidoform ion.
     #[staticmethod]
     fn from_peptidoform_ion(peptidoform: PeptidoformIon) -> Self {
-        CompoundPeptidoformIon(peptidoform.0.into())
+        Self(peptidoform.0.into())
     }
 
     /// Create a new compound peptidoform ion from a peptidoform.
     #[staticmethod]
     fn from_peptidoform(peptidoform: Peptidoform) -> Self {
-        CompoundPeptidoformIon(peptidoform.0.into())
+        Self(peptidoform.0.into())
     }
 
     /// Get all peptidoform ions making up this compound peptidoform.
@@ -994,7 +998,7 @@ impl CompoundPeptidoformIon {
 ///     The ProForma string.
 ///
 #[pyclass]
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct PeptidoformIon(rustyms::sequence::PeptidoformIon);
 
 #[pymethods]
@@ -1010,7 +1014,7 @@ impl PeptidoformIon {
     /// Create a new peptidoform ion from a peptidoform.
     #[staticmethod]
     fn from_peptidoform(peptidoform: Peptidoform) -> Self {
-        PeptidoformIon(peptidoform.0.clone().into())
+        Self(peptidoform.0.into())
     }
 
     /// Get all peptidoforms making up this peptidoform ion.
@@ -1080,7 +1084,7 @@ impl PeptidoformIon {
 ///     The ProForma string.
 ///
 #[pyclass]
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Peptidoform(rustyms::sequence::Peptidoform<Linked>);
 
 #[pymethods]
@@ -1225,8 +1229,8 @@ impl Peptidoform {
     /// -------
     /// Peptidoform
     ///
-    fn reverse(&self) -> Peptidoform {
-        Peptidoform(self.0.reverse())
+    fn reverse(&self) -> Self {
+        Self(self.0.reverse())
     }
 
     /// Gives the formulas for the whole peptidoform. With the global isotope modifications applied. (Any B/Z will result in multiple possible formulas.)
@@ -1375,7 +1379,7 @@ impl std::fmt::Display for AnnotatedPeak {
             self.intensity(),
             self.annotation()
                 .iter()
-                .map(|x| x.__repr__())
+                .map(Fragment::__repr__)
                 .collect::<Vec<_>>()
                 .join(", ")
         )
@@ -1406,6 +1410,7 @@ impl std::fmt::Display for AnnotatedPeak {
 /// RawSpectrum
 ///
 #[pyclass]
+#[derive(Debug)]
 pub struct RawSpectrum(rustyms::spectrum::RawSpectrum);
 
 #[pymethods]
@@ -1462,7 +1467,7 @@ impl RawSpectrum {
             .collect::<Vec<_>>();
 
         spectrum.extend(peaks);
-        RawSpectrum(spectrum)
+        Self(spectrum)
     }
 
     fn __repr__(&self) -> String {
@@ -1475,7 +1480,7 @@ impl RawSpectrum {
             self.mass().map_or("None".to_string(), |v| v.to_string()),
             self.spectrum()
                 .iter()
-                .map(|x| x.to_string())
+                .map(ToString::to_string)
                 .collect::<Vec<_>>()
                 .join(", ")
         )
@@ -1581,7 +1586,7 @@ impl RawSpectrum {
         let fragments = peptidoform.0.generate_theoretical_fragments(
             self.0
                 .charge
-                .unwrap_or(rustyms::system::usize::Charge::new::<rustyms::system::e>(1)),
+                .unwrap_or_else(|| rustyms::system::usize::Charge::new::<rustyms::system::e>(1)),
             &rusty_model,
         );
         Ok(AnnotatedSpectrum(self.0.annotate(
@@ -1599,6 +1604,7 @@ impl RawSpectrum {
 
 /// An annotated spectrum.
 #[pyclass]
+#[derive(Debug)]
 pub struct AnnotatedSpectrum(rustyms::annotation::AnnotatedSpectrum);
 
 #[pymethods]
@@ -1724,7 +1730,7 @@ impl std::fmt::Display for CustomError {
     }
 }
 
-impl std::convert::From<CustomError> for PyErr {
+impl From<CustomError> for PyErr {
     fn from(value: CustomError) -> Self {
         PyValueError::new_err(value)
     }
