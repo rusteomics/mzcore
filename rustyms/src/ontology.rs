@@ -200,7 +200,7 @@ mod databases {
     /// Get the unimod ontology
     /// # Panics
     /// Panics when the modifications are not correctly provided at compile time, always report a panic if it occurs here.
-    pub static UNIMOD: LazyLock<OntologyModificationList> = LazyLock::new(|| {
+    pub(super) static UNIMOD: LazyLock<OntologyModificationList> = LazyLock::new(|| {
         bincode::serde::decode_from_slice::<OntologyModificationList, Configuration>(
             include_bytes!("databases/unimod.dat"),
             Configuration::default(),
@@ -211,7 +211,7 @@ mod databases {
     /// Get the PSI-MOD ontology
     /// # Panics
     /// Panics when the modifications are not correctly provided at compile time, always report a panic if it occurs here.
-    pub static PSIMOD: LazyLock<OntologyModificationList> = LazyLock::new(|| {
+    pub(super) static PSIMOD: LazyLock<OntologyModificationList> = LazyLock::new(|| {
         bincode::serde::decode_from_slice::<OntologyModificationList, Configuration>(
             include_bytes!("databases/psimod.dat"),
             Configuration::default(),
@@ -222,7 +222,7 @@ mod databases {
     /// Get the Gnome ontology
     /// # Panics
     /// Panics when the modifications are not correctly provided at compile time, always report a panic if it occurs here.
-    pub static GNOME: LazyLock<OntologyModificationList> = LazyLock::new(|| {
+    pub(super) static GNOME: LazyLock<OntologyModificationList> = LazyLock::new(|| {
         bincode::serde::decode_from_slice::<OntologyModificationList, Configuration>(
             include_bytes!("databases/gnome.dat"),
             Configuration::default(),
@@ -233,7 +233,7 @@ mod databases {
     /// Get the Resid ontology
     /// # Panics
     /// Panics when the modifications are not correctly provided at compile time, always report a panic if it occurs here.
-    pub static RESID: LazyLock<OntologyModificationList> = LazyLock::new(|| {
+    pub(super) static RESID: LazyLock<OntologyModificationList> = LazyLock::new(|| {
         bincode::serde::decode_from_slice::<OntologyModificationList, Configuration>(
             include_bytes!("databases/resid.dat"),
             Configuration::default(),
@@ -244,7 +244,7 @@ mod databases {
     /// Get the Xlmod ontology
     /// # Panics
     /// Panics when the modifications are not correctly provided at compile time, always report a panic if it occurs here.
-    pub static XLMOD: LazyLock<OntologyModificationList> = LazyLock::new(|| {
+    pub(super) static XLMOD: LazyLock<OntologyModificationList> = LazyLock::new(|| {
         bincode::serde::decode_from_slice::<OntologyModificationList, Configuration>(
             include_bytes!("databases/xlmod.dat"),
             Configuration::default(),
