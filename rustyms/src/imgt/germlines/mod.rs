@@ -81,7 +81,7 @@ pub fn germlines(species: Species) -> Option<&'static Germlines> {
     }
 }
 /// Get all germlines in one iterator, see the main documentation for more information about the available germlines
-pub fn all_germlines() -> impl std::iter::Iterator<Item = &'static Germlines> {
+pub(super) fn all_germlines() -> impl std::iter::Iterator<Item = &'static Germlines> {
     [
         &*ANARHICHASMINOR,
         &*BOSTAURUS,
