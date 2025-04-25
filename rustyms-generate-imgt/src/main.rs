@@ -101,7 +101,7 @@ _Number of genes / number of alleles_
     // germlines
     writeln!(
         output,
-        "pub fn germlines(species: Species) -> Option<&'static Germlines> {{match species {{"
+        "pub(super) fn germlines(species: Species) -> Option<&'static Germlines> {{match species {{"
     )
     .unwrap();
 
@@ -119,7 +119,7 @@ _Number of genes / number of alleles_
     writeln!(
         output,
 "/// Get all germlines in one iterator, see the main documentation for more information about the available germlines
-pub(super) fn all_germlines() -> impl std::iter::Iterator<Item = &'static Germlines> {{"
+pub(super) fn all_germlines() -> impl Iterator<Item = &'static Germlines> {{"
     )
     .unwrap();
     writeln!(output, "[").unwrap();
@@ -134,7 +134,7 @@ pub(super) fn all_germlines() -> impl std::iter::Iterator<Item = &'static Germli
 #[cfg(feature = \"rayon\")]
 use rayon::prelude::*;
 #[cfg(feature = \"rayon\")]
-pub fn par_germlines() -> impl rayon::prelude::ParallelIterator<Item = &'static Germlines> {{"
+pub(super) fn par_germlines() -> impl ParallelIterator<Item = &'static Germlines> {{"
     )
     .unwrap();
     writeln!(output, "[").unwrap();

@@ -13,7 +13,7 @@ pub fn get_germline(
     gene: Gene,
     allele: Option<usize>,
 ) -> Option<Allele<'static>> {
-    super::germlines(species).and_then(|g| g.find(species, gene, allele))
+    germlines(species).and_then(|g| g.find(species, gene, allele))
 }
 
 /// The selection rules for iterating over a selection of germlines.
@@ -72,7 +72,7 @@ impl<
     /// Get the selected alleles
     #[cfg(not(feature = "internal-no-data"))]
     pub fn germlines(self) -> impl Iterator<Item = Allele<'static>> {
-        super::all_germlines()
+        all_germlines()
             .filter(move |g| self.species.as_ref().is_none_or(|s| s.contains(&g.species)))
             .flat_map(|g| g.into_iter().map(|c| (g.species, c.0, c.1)))
             .filter(move |(_, kind, _)| self.chains.as_ref().is_none_or(|k| k.contains(kind)))
@@ -91,7 +91,7 @@ impl<
     #[cfg(all(feature = "rayon", not(feature = "internal-no-data")))]
     /// Get the selected alleles in parallel fashion, only available if you enable the feature "rayon" (on by default)
     pub fn par_germlines(self) -> impl ParallelIterator<Item = Allele<'static>> {
-        super::par_germlines()
+        par_germlines()
             .filter(move |g| self.species.as_ref().is_none_or(|s| s.contains(&g.species)))
             .flat_map(|g| g.into_par_iter().map(|c| (g.species, c.0, c.1)))
             .filter(move |(_, kind, _)| self.chains.as_ref().is_none_or(|k| k.contains(kind)))

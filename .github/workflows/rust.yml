@@ -30,6 +30,9 @@ jobs:
         cargo build -p rustyms --no-default-features --features mzdata
         cargo build -p rustyms --no-default-features --features glycan-render
         cargo build -p rustyms --no-default-features --features glycan-render-bitmap
+        cargo build -p rustyms --no-default-features --features imgt,rayon
+        cargo build -p rustyms --no-default-features --features imgt,rayon,align
+        cargo build -p rustyms --no-default-features --features imgt,align
   
   fmt:
     runs-on: ubuntu-latest

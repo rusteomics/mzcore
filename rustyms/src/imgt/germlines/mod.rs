@@ -4,7 +4,7 @@ use super::{Germlines, Species};
 use bincode::config::Configuration;
 use std::sync::LazyLock;
 /// Get the germlines for any of the available species. See the main documentation for which species have which data available.
-pub fn germlines(species: Species) -> Option<&'static Germlines> {
+pub(super) fn germlines(species: Species) -> Option<&'static Germlines> {
     match species {
         Species::AnarhichasMinor => Some(&ANARHICHASMINOR),
         Species::BosTaurus => Some(&BOSTAURUS),
@@ -81,7 +81,7 @@ pub fn germlines(species: Species) -> Option<&'static Germlines> {
     }
 }
 /// Get all germlines in one iterator, see the main documentation for more information about the available germlines
-pub(super) fn all_germlines() -> impl std::iter::Iterator<Item = &'static Germlines> {
+pub(super) fn all_germlines() -> impl Iterator<Item = &'static Germlines> {
     [
         &*ANARHICHASMINOR,
         &*BOSTAURUS,
@@ -161,7 +161,7 @@ pub(super) fn all_germlines() -> impl std::iter::Iterator<Item = &'static Germli
 #[cfg(feature = "rayon")]
 use rayon::prelude::*;
 #[cfg(feature = "rayon")]
-pub fn par_germlines() -> impl rayon::prelude::ParallelIterator<Item = &'static Germlines> {
+pub(super) fn par_germlines() -> impl ParallelIterator<Item = &'static Germlines> {
     [
         &*ANARHICHASMINOR,
         &*BOSTAURUS,
