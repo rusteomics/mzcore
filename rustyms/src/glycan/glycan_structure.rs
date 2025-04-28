@@ -465,7 +465,7 @@ mod test {
 
         assert_eq!(
             structure.to_string(),
-            "HexNAc(HexNAc(Hex(Hex(HexNAc(Hexf(NonNAAc))),Hex(HexNAc(Hexf)))))"
+            "HexNAc(HexNAc(Hex(Hex(HexNAc(Hexf(NonAcAN))),Hex(HexNAc(Hexf)))))"
         );
     }
 
