@@ -7,9 +7,9 @@ use identification::SpectrumIds;
 use itertools::{Itertools, MinMaxResult};
 use rayon::prelude::*;
 use rustyms::{
-    align::{align, AlignType},
+    align::{AlignType, align},
     identification::{
-        csv::write_csv, open_identified_peptides_file, FastaData, ReturnedPeptidoform,
+        FastaData, ReturnedPeptidoform, csv::write_csv, open_identified_peptides_file,
     },
     sequence::SemiAmbiguous,
     *,

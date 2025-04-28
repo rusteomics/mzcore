@@ -384,10 +384,7 @@ mod tests {
                 "20230512_l1_um3_rodri078_sa_ext00_pro1_1_200_1h_a.ScanId;v=1;d1=3120.3120.3_INDEX0"
             ),
             (
-                Some(
-                    "20230512_l1_um3_rodri078_sa_ext00_pro1_1_200_1h_a"
-                        .to_string()
-                ),
+                Some("20230512_l1_um3_rodri078_sa_ext00_pro1_1_200_1h_a".to_string()),
                 Some(3120),
                 None,
                 None,
@@ -403,10 +400,7 @@ mod tests {
                 "20230512_l1_um3_rodri078_sa_ext00_pro1_1_200_1h_a.ScanId;v=1;d1=10287.10287.4_INDEX6510"
             ),
             (
-                Some(
-                    "20230512_l1_um3_rodri078_sa_ext00_pro1_1_200_1h_a"
-                        .to_string()
-                ),
+                Some("20230512_l1_um3_rodri078_sa_ext00_pro1_1_200_1h_a".to_string()),
                 Some(10287),
                 None,
                 None,
@@ -422,10 +416,7 @@ mod tests {
                 "20230512_l1_um3_rodri078_sa_ext00_pro1_1_200_1h_a.ScanId;v=1;d1=14660.14660.3_INDEX10481"
             ),
             (
-                Some(
-                    "20230512_l1_um3_rodri078_sa_ext00_pro1_1_200_1h_a"
-                        .to_string()
-                ),
+                Some("20230512_l1_um3_rodri078_sa_ext00_pro1_1_200_1h_a".to_string()),
                 Some(14660),
                 None,
                 None,

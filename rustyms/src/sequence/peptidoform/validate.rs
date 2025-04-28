@@ -26,14 +26,22 @@ pub(super) fn cross_links(
         let definition = &cross_link_lookup[id];
         if let Some(linker) = &definition.1 {
             match locations.len() {
-                0 => {return Err(CustomError::error(
-                    "Invalid cross-link",
-                    format!("The cross-link named '{}' has no listed locations, this is an internal error please report this", definition.0),
-                    Context::full_line(0, line),
-                ))},
+                0 => {
+                    return Err(CustomError::error(
+                        "Invalid cross-link",
+                        format!(
+                            "The cross-link named '{}' has no listed locations, this is an internal error please report this",
+                            definition.0
+                        ),
+                        Context::full_line(0, line),
+                    ));
+                }
                 1 => {
                     let (index, position) = locations[0];
-                    if linker.is_possible(&peptidoform.0[index][position], position).any_possible() {
+                    if linker
+                        .is_possible(&peptidoform.0[index][position], position)
+                        .any_possible()
+                    {
                         peptidoform.0[index].add_simple_modification(position, linker.clone());
                     } else {
                         let rules = linker.placement_rules();
@@ -44,33 +52,51 @@ pub(super) fn cross_links(
                                 match position {
                                     SequencePosition::NTerm => "the N-terminus".to_string(),
                                     SequencePosition::CTerm => "the C-terminus".to_string(),
-                                    SequencePosition::Index(index) =>
-                                        format!("the side chain of {} at index {index}", peptidoform.0[index][position].aminoacid),
+                                    SequencePosition::Index(index) => format!(
+                                        "the side chain of {} at index {index}",
+                                        peptidoform.0[index][position].aminoacid
+                                    ),
                                 },
                                 if rules.is_empty() {
                                     String::new()
                                 } else {
-                                    format!(", this modification is only allowed at the following locations: {}", rules.join(", "))
+                                    format!(
+                                        ", this modification is only allowed at the following locations: {}",
+                                        rules.join(", ")
+                                    )
                                 }
                             ),
                             Context::full_line(0, line),
                         ));
                     }
-                },
+                }
                 2 => {
-                    if !peptidoform.add_cross_link(locations[0], locations[1], linker.clone(), definition.0.clone()) {
+                    if !peptidoform.add_cross_link(
+                        locations[0],
+                        locations[1],
+                        linker.clone(),
+                        definition.0.clone(),
+                    ) {
                         return Err(CustomError::error(
                             "Invalid cross-link",
-                            format!("The cross-link named '{}' cannot be placed according to its location specificities", definition.0),
+                            format!(
+                                "The cross-link named '{}' cannot be placed according to its location specificities",
+                                definition.0
+                            ),
                             Context::full_line(0, line),
-                        ))
+                        ));
                     }
-                },
-                _ => {return Err(CustomError::error(
-                    "Invalid cross-link",
-                    format!("The cross-link named '{}' has more than 2 attachment locations, only cross-links spanning two locations are allowed", definition.0),
-                    Context::full_line(0, line),
-                ))}
+                }
+                _ => {
+                    return Err(CustomError::error(
+                        "Invalid cross-link",
+                        format!(
+                            "The cross-link named '{}' has more than 2 attachment locations, only cross-links spanning two locations are allowed",
+                            definition.0
+                        ),
+                        Context::full_line(0, line),
+                    ));
+                }
             }
         } else {
             let (c, name, description) = if definition.0 == CrossLinkName::Branch {
@@ -80,7 +106,10 @@ pub(super) fn cross_links(
             };
             return Err(CustomError::error(
                 "Invalid cross-link",
-                format!("The cross-link named '{0}' is never defined, for example for {name}{description} define it like: '[{c}:{name}{0}]'", definition.0),
+                format!(
+                    "The cross-link named '{0}' is never defined, for example for {name}{description} define it like: '[{c}:{name}{0}]'",
+                    definition.0
+                ),
                 Context::full_line(0, line),
             ));
         }
@@ -115,7 +144,7 @@ pub(super) fn cross_links(
         return Err(CustomError::error(
             "Unconnected peptidoform",
             "Not all peptides in this peptidoform are connected with cross-links or branches, if separate peptides were intended use the chimeric notation `+` instead of the peptidoform notation `//`.",
-             Context::full_line(0, line),
+            Context::full_line(0, line),
         ));
     }
 
@@ -163,9 +192,9 @@ impl Peptidoform<Linear> {
             if let Some(m) = &entry.modification {
                 if !self.add_unknown_position_modification(m.clone(), .., &entry.as_settings()) {
                     return Err(CustomError::error(
-                    "Modification of unknown position cannot be placed", 
-                    "There is no position where this modification can be placed based on the placement rules in the database.",
-                     Context::show(modification)
+                        "Modification of unknown position cannot be placed",
+                        "There is no position where this modification can be placed based on the placement rules in the database.",
+                        Context::show(modification),
                     ));
                 }
             } else {
@@ -195,9 +224,9 @@ impl Peptidoform<Linear> {
                 &super::MUPSettings::default(),
             ) {
                 return Err(CustomError::error(
-                    "Modification of unknown position on a range cannot be placed", 
-                    "There is no position where this modification can be placed based on the placement rules in the database.", 
-                    Context::show(modification)
+                    "Modification of unknown position on a range cannot be placed",
+                    "There is no position where this modification can be placed based on the placement rules in the database.",
+                    Context::show(modification),
                 ));
             }
         }

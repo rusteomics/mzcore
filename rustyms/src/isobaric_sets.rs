@@ -11,7 +11,7 @@ use crate::{
         SemiAmbiguous, SequenceElement, SequencePosition, SimpleLinear, SimpleModification,
         SimpleModificationInner,
     },
-    system::{fraction, Mass, Ratio},
+    system::{Mass, Ratio, fraction},
 };
 
 /// A list of building blocks for a sequence defined by its sequence elements and its mass.
@@ -254,7 +254,10 @@ pub fn find_isobaric_sets(
         })
         .unwrap_or_default();
     let bounds = (bounds.0 - base_mass, bounds.1 - base_mass);
-    assert!(bounds.0.value > 0.0, "Cannot have a base selection that has a weight within the tolerance of the intended final mass for isobaric search.");
+    assert!(
+        bounds.0.value > 0.0,
+        "Cannot have a base selection that has a weight within the tolerance of the intended final mass for isobaric search."
+    );
     let (n_term, center, c_term) = building_blocks(amino_acids, fixed, variable);
 
     IsobaricSetIterator::new(n_term, c_term, center, bounds, base)

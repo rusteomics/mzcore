@@ -11,7 +11,7 @@ use rustyms::{
 
 use crate::ontology_modification::position_from_str;
 
-use super::{obo::OboOntology, ontology_modification::OntologyModification, ModData};
+use super::{ModData, obo::OboOntology, ontology_modification::OntologyModification};
 
 pub(crate) fn build_unimod_ontology(out_dir: &Path) {
     let mods = parse_unimod();

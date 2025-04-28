@@ -1,7 +1,7 @@
 #![allow(clippy::missing_panics_doc)]
 use std::io::BufReader;
 
-use crate::identification::{test_format, DeepNovoFamilyData, DeepNovoFamilyVersion};
+use crate::identification::{DeepNovoFamilyData, DeepNovoFamilyVersion, test_format};
 
 #[test]
 fn deepnovo() {

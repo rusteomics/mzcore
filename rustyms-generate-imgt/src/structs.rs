@@ -61,7 +61,7 @@ impl Display for Region {
                 |e| format!("<NO SEQ!>: {e}"),
                 |seq| seq
                     .1
-                     .0
+                    .0
                     .iter()
                     .map(|a| a.pro_forma_definition())
                     .collect::<String>()
@@ -111,10 +111,10 @@ impl Location {
     pub(crate) fn find_aa_location(&self, sections: &[SequenceRegion]) -> Option<usize> {
         let mut start = 0;
         for section in sections {
-            if let Some(index) = section.1 .1.get_aa_loc(self) {
+            if let Some(index) = section.1.1.get_aa_loc(self) {
                 return Some(start + index.start());
             }
-            start += section.1 .0.len();
+            start += section.1.0.len();
         }
         None
     }

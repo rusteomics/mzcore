@@ -1,7 +1,7 @@
 #![allow(clippy::missing_panics_doc)]
 use std::io::BufReader;
 
-use crate::identification::{test_format, PowerNovoData, PowerNovoVersion};
+use crate::identification::{PowerNovoData, PowerNovoVersion, test_format};
 
 #[test]
 fn powernovo() {

@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     quantities::Tolerance,
-    system::{mz, MassOverCharge},
+    system::{MassOverCharge, mz},
 };
 
 /// Parameters for the matching, allowing control over when a match is allowed.

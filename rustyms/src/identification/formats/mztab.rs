@@ -20,7 +20,7 @@ use crate::{
         AminoAcid, PeptideModificationSearch, Peptidoform, ReturnModification, SemiAmbiguous,
         SimpleModification, SimpleModificationInner, SloppyParsingParameters,
     },
-    system::{usize::Charge, MassOverCharge, Time},
+    system::{MassOverCharge, Time, usize::Charge},
 };
 
 /// Peptide data from a mzTab file

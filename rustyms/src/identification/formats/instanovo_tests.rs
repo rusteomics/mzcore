@@ -1,5 +1,5 @@
 #![allow(clippy::missing_panics_doc)]
-use crate::identification::{test_format, InstaNovoData, InstaNovoVersion};
+use crate::identification::{InstaNovoData, InstaNovoVersion, test_format};
 use std::io::BufReader;
 
 #[test]

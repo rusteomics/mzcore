@@ -205,7 +205,11 @@ pub fn parse_csv_raw<T: std::io::Read>(
             if c.len_utf8() == 1 {
                 separator = c as u8;
             } else {
-                return Err(CustomError::error("Unicode value separators not supported", "This is a character that takes more than 1 byte to represent in Unicode, this is not supported in parsing CSV files.", Context::line(Some(0), format!("sep={sep}"), 4, sep.len())));
+                return Err(CustomError::error(
+                    "Unicode value separators not supported",
+                    "This is a character that takes more than 1 byte to represent in Unicode, this is not supported in parsing CSV files.",
+                    Context::line(Some(0), format!("sep={sep}"), 4, sep.len()),
+                ));
             }
         }
     }

@@ -62,7 +62,7 @@ pub mod matrix {
 mod tests {
     use crate::sequence::{Peptidoform, SimpleLinear};
 
-    use super::{scoring::AlignScoring, AlignType, Alignment};
+    use super::{AlignType, Alignment, scoring::AlignScoring};
 
     fn align<'a, const STEPS: u16>(
         a: &'a Peptidoform<SimpleLinear>,

@@ -1,5 +1,5 @@
 use crate::{
-    annotation::model::{get_all_sidechain_losses, ChargeRange, FragmentationModel},
+    annotation::model::{ChargeRange, FragmentationModel, get_all_sidechain_losses},
     fragment::{NeutralLoss, PeptidePosition},
     sequence::{AminoAcid, Peptidoform, SequencePosition},
 };
@@ -53,9 +53,9 @@ impl PossibleIons<'_> {
                 .as_ref()
                 .map(|o| (o.0.len() + 1) * o.2.len())
                 .unwrap_or_default()
-            + self.d.0.len() * 2 * (self.d.1 .0.len() + 1) * self.d.1 .2.len()
-            + self.v.0.len() * (self.v.1 .0.len() + 1) * self.v.1 .2.len()
-            + self.w.0.len() * 2 * (self.w.1 .0.len() + 1) * self.w.1 .2.len()
+            + self.d.0.len() * 2 * (self.d.1.0.len() + 1) * self.d.1.2.len()
+            + self.v.0.len() * (self.v.1.0.len() + 1) * self.v.1.2.len()
+            + self.w.0.len() * 2 * (self.w.1.0.len() + 1) * self.w.1.2.len()
             + self
                 .x
                 .as_ref()

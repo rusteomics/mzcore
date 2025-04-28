@@ -23,11 +23,11 @@ impl IMGTGene {
     pub(crate) fn finish(self) -> Result<SingleSeq, String> {
         let (regions, additional_annotations) = self.get_regions()?;
 
-        let sequence: Vec<AminoAcid> = regions.iter().flat_map(|reg| reg.1 .0.clone()).collect();
-        let dna: String = regions.iter().map(|reg| reg.1 .2.clone()).collect();
+        let sequence: Vec<AminoAcid> = regions.iter().flat_map(|reg| reg.1.0.clone()).collect();
+        let dna: String = regions.iter().map(|reg| reg.1.2.clone()).collect();
         let region_lengths = regions
             .iter()
-            .map(|reg| (reg.0.clone(), reg.1 .0.len()))
+            .map(|reg| (reg.0.clone(), reg.1.0.len()))
             .collect();
         let conserved_map = HashMap::from([
             ("1st-CYS", Annotation::Conserved),
@@ -91,7 +91,7 @@ impl IMGTGene {
             }
             "J-GENE" => {
                 let j = self.get_region(&Region::Framework(4), "J-REGION")?;
-                let motif = j.1 .0.iter().tuple_windows().position(|(a, b, _, d)| {
+                let motif = j.1.0.iter().tuple_windows().position(|(a, b, _, d)| {
                     (*a == AminoAcid::Tryptophan || *a == AminoAcid::Phenylalanine)
                         && *b == AminoAcid::Glycine
                         && *d == AminoAcid::Glycine
@@ -217,7 +217,7 @@ impl IMGTGene {
                             .map(|aa| vec![aa])
                             .filter(|_| region.shift != 2)
                             .unwrap_or_default();
-                        final_seq.extend(seq.1 .0.clone());
+                        final_seq.extend(seq.1.0.clone());
                         (final_seq, region.location.clone(), seq.0.clone())
                     })
                     .map_err(ToOwned::to_owned)

@@ -206,11 +206,7 @@ impl Location<'_> {
 
     pub(super) fn ignore(self, pattern: &str) -> Option<Self> {
         let text = self.as_str();
-        if text == pattern {
-            None
-        } else {
-            Some(self)
-        }
+        if text == pattern { None } else { Some(self) }
     }
 
     pub(super) fn trim_end_matches(mut self, pattern: &str) -> Self {

@@ -2,7 +2,7 @@ use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    annotation::{model::MatchingParameters, AnnotatedSpectrum},
+    annotation::{AnnotatedSpectrum, model::MatchingParameters},
     chemistry::MassMode,
     fragment::Fragment,
     quantities::WithinTolerance,

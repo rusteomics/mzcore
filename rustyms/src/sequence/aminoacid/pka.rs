@@ -3,7 +3,7 @@
 use serde::{Deserialize, Serialize};
 
 use crate::sequence::{
-    properties::ChargeClass, AminoAcid, AtMax, Peptidoform, SemiAmbiguous, SimpleModificationInner,
+    AminoAcid, AtMax, Peptidoform, SemiAmbiguous, SimpleModificationInner, properties::ChargeClass,
 };
 
 use super::is_amino_acid::IsAminoAcid;

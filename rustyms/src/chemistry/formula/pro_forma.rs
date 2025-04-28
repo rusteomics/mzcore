@@ -1,7 +1,7 @@
 use crate::{
-    chemistry::{Element, MolecularFormula, COMMON_ELEMENT_PARSE_LIST, ELEMENT_PARSE_LIST},
+    chemistry::{COMMON_ELEMENT_PARSE_LIST, ELEMENT_PARSE_LIST, Element, MolecularFormula},
     error::{Context, CustomError},
-    helper_functions::{explain_number_error, RangeExtension},
+    helper_functions::{RangeExtension, explain_number_error},
 };
 use std::{num::NonZeroU16, ops::RangeBounds};
 
@@ -133,9 +133,11 @@ impl MolecularFormula {
                         if !Self::add(&mut result, (parsed_element, Some(isotope), num)) {
                             return Err(CustomError::error(
                                 "Invalid ProForma molecular formula",
-                                format!("Invalid isotope ({isotope}) added for element ({parsed_element})"),
+                                format!(
+                                    "Invalid isotope ({isotope}) added for element ({parsed_element})"
+                                ),
                                 Context::line(None, value, index, len),
-                            ),);
+                            ));
                         }
                         element = None;
                         index += len + 1;
@@ -205,8 +207,13 @@ impl MolecularFormula {
                     }
                     return Err(CustomError::error(
                         "Invalid ProForma molecular formula",
-                            "A charge tag was not set up properly, a charge tag should be formed as ':z<sign><number>'",
-                        Context::line(None, value, index - 1, if bytes.len() < index {1} else {2}),
+                        "A charge tag was not set up properly, a charge tag should be formed as ':z<sign><number>'",
+                        Context::line(
+                            None,
+                            value,
+                            index - 1,
+                            if bytes.len() < index { 1 } else { 2 },
+                        ),
                     ));
                 }
                 _ => {

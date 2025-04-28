@@ -2,7 +2,7 @@
 use std::{io::BufReader, sync::Arc};
 
 use crate::{
-    identification::{test_format, IdentifiedPeptidoformSource, PeaksData, PeaksVersion},
+    identification::{IdentifiedPeptidoformSource, PeaksData, PeaksVersion, test_format},
     molecular_formula,
     sequence::SimpleModificationInner,
 };
@@ -262,7 +262,9 @@ fn fuzz_crashes() {
                 }
                 Err(err) => {
                     all_passing = false;
-                    println!("---- identification::peaks_tests::fuzz_crashes::{name} crash report ----\n{err:#?}\n");
+                    println!(
+                        "---- identification::peaks_tests::fuzz_crashes::{name} crash report ----\n{err:#?}\n"
+                    );
                 }
             }
         }
@@ -293,7 +295,9 @@ fn fuzz_hangs() {
                 }
                 Err(err) => {
                     all_passing = false;
-                    println!("---- identification::peaks_tests::fuzz_hangs::{name} crash report ----\n{err:#?}\n");
+                    println!(
+                        "---- identification::peaks_tests::fuzz_hangs::{name} crash report ----\n{err:#?}\n"
+                    );
                 }
             }
         }

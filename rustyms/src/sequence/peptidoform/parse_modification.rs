@@ -19,7 +19,7 @@ use crate::{
         AmbiguousLookup, AmbiguousLookupEntry, CrossLinkLookup, CrossLinkName, PlacementRule,
         SimpleModification, SimpleModificationInner,
     },
-    system::{dalton, Mass},
+    system::{Mass, dalton},
 };
 
 impl SimpleModificationInner {
@@ -418,10 +418,10 @@ fn parse_single_modification(
                         .is_some_and(|l| *l != linker)
                     {
                         return Err(CustomError::error(
-                                "Invalid branch definition", 
-                                "A branch definition has to be identical at both sites, or only defined at one site.", 
-                                Context::line(None, line, offset+full.1, full.2)
-                            ));
+                            "Invalid branch definition",
+                            "A branch definition has to be identical at both sites, or only defined at one site.",
+                            Context::line(None, line, offset + full.1, full.2),
+                        ));
                     }
                     cross_link_lookup[index].1 = Some(linker);
                 }
@@ -448,9 +448,9 @@ fn parse_single_modification(
                         .is_some_and(|l| *l != linker)
                     {
                         return Err(CustomError::error(
-                            "Invalid cross-link definition", 
-                            "A cross-link definition has to be identical at both sites, or only defined at one site.", 
-                            Context::line(None, line, offset+full.1, full.2)
+                            "Invalid cross-link definition",
+                            "A cross-link definition has to be identical at both sites, or only defined at one site.",
+                            Context::line(None, line, offset + full.1, full.2),
                         ));
                     }
                     cross_link_lookup[index].1 = Some(linker);
@@ -503,26 +503,31 @@ fn handle_ambiguous_modification(
     // Handle all possible cases of having a modification found at this position and having a modification defined in the ambiguous lookup
     match (modification, found_definition) {
         // Have a mod defined here and already in the lookup (error)
-        (Ok(Some(_)), Some((_, true))) => Err(
-            CustomError::error(
-                "Invalid ambiguous modification",
-                "An ambiguous modification cannot be placed twice (for one of the modifications leave out the modification and only provide the group name)",
-                context,
-            )),
+        (Ok(Some(_)), Some((_, true))) => Err(CustomError::error(
+            "Invalid ambiguous modification",
+            "An ambiguous modification cannot be placed twice (for one of the modifications leave out the modification and only provide the group name)",
+            context,
+        )),
         // Have a mod defined here, the name present in the lookup but not yet the mod
         (Ok(Some(m)), Some((index, false))) => {
             ambiguous_lookup[index].modification = Some(m);
-            Ok(SingleReturnModification::Modification(ReturnModification::Ambiguous(index, localisation_score, true)))
-        },
+            Ok(SingleReturnModification::Modification(
+                ReturnModification::Ambiguous(index, localisation_score, true),
+            ))
+        }
         // No mod defined, but the name is present in the lookup
-        (Ok(None), Some((index, _))) => Ok(SingleReturnModification::Modification(ReturnModification::Ambiguous(index, localisation_score, false))),
+        (Ok(None), Some((index, _))) => Ok(SingleReturnModification::Modification(
+            ReturnModification::Ambiguous(index, localisation_score, false),
+        )),
         // The mod is not already in the lookup
         (Ok(m), None) => {
             let index = ambiguous_lookup.len();
             let preferred = m.is_some();
             ambiguous_lookup.push(AmbiguousLookupEntry::new(group_name, m));
-            Ok(SingleReturnModification::Modification(ReturnModification::Ambiguous(index, localisation_score, preferred)))
-        },
+            Ok(SingleReturnModification::Modification(
+                ReturnModification::Ambiguous(index, localisation_score, preferred),
+            ))
+        }
         // Earlier error
         (Err(e), _) => Err(e),
     }

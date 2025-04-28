@@ -184,6 +184,8 @@ impl PositionedGlycanStructure {
         full_formula: &Multi<MolecularFormula>,
         attachment: Option<(AminoAcid, SequencePosition)>,
     ) -> Vec<Fragment> {
+        let charges_other = charge_carriers.range(model.glycan.other_charge_range);
+        let charges_oxonium = charge_carriers.range(model.glycan.oxonium_charge_range);
         model
             .glycan
             .allow_structural
@@ -192,9 +194,7 @@ impl PositionedGlycanStructure {
                 let mut base_fragments = self
                     .oxonium_fragments(peptidoform_ion_index, peptidoform_index, attachment)
                     .into_iter()
-                    .flat_map(|f| {
-                        f.with_charge_range(charge_carriers, model.glycan.oxonium_charge_range)
-                    })
+                    .flat_map(|f| f.with_charge_range_slice(&charges_oxonium))
                     .flat_map(|f| f.with_neutral_losses(&model.glycan.neutral_losses))
                     .collect_vec();
                 // Generate all Y fragments
@@ -226,9 +226,7 @@ impl PositionedGlycanStructure {
                                 )
                             })
                         })
-                        .flat_map(|f| {
-                            f.with_charge_range(charge_carriers, model.glycan.other_charge_range)
-                        })
+                        .flat_map(|f| f.with_charge_range_slice(&charges_other))
                         .flat_map(|f| f.with_neutral_losses(&model.glycan.neutral_losses)),
                 );
                 // Generate all diagnostic ions
@@ -240,9 +238,7 @@ impl PositionedGlycanStructure {
                         &model.glycan,
                     )
                     .into_iter()
-                    .flat_map(|f| {
-                        f.with_charge_range(charge_carriers, model.glycan.oxonium_charge_range)
-                    }),
+                    .flat_map(|f| f.with_charge_range_slice(&charges_oxonium)),
                 );
                 base_fragments
             })

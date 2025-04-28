@@ -1,7 +1,7 @@
 #![allow(clippy::missing_panics_doc)]
 use std::io::BufReader;
 
-use crate::identification::{test_format, NovoBData, NovoBVersion};
+use crate::identification::{NovoBData, NovoBVersion, test_format};
 
 #[test]
 fn novob() {

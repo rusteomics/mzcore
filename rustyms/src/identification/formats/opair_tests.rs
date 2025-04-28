@@ -1,7 +1,7 @@
 #![allow(clippy::missing_panics_doc)]
 use std::io::BufReader;
 
-use crate::identification::{test_format, OpairData, OpairVersion};
+use crate::identification::{OpairData, OpairVersion, test_format};
 
 #[test]
 fn opair() {

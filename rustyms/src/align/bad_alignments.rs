@@ -1,7 +1,7 @@
 #![allow(clippy::missing_panics_doc)]
 
 use crate::{
-    align::{align, AlignScoring, AlignType},
+    align::{AlignScoring, AlignType, align},
     sequence::{Peptidoform, SimpleLinear},
 };
 

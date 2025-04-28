@@ -140,7 +140,7 @@ pub fn open_identified_peptides_file<'a>(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::identification::{test_format, MSFraggerVersion, SageVersion};
+    use crate::identification::{MSFraggerVersion, SageVersion, test_format};
     use std::fs::File;
     use std::io::BufReader;
 

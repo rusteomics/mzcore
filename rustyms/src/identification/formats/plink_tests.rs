@@ -1,7 +1,7 @@
 #![allow(clippy::missing_panics_doc)]
 use std::io::BufReader;
 
-use crate::identification::{test_format, PLinkData, PLinkVersion};
+use crate::identification::{PLinkData, PLinkVersion, test_format};
 
 #[test]
 fn plink() {

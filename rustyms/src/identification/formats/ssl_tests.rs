@@ -1,7 +1,7 @@
 #![allow(clippy::missing_panics_doc)]
 use std::io::BufReader;
 
-use crate::identification::{test_format, SpectrumSequenceListData, SpectrumSequenceListVersion};
+use crate::identification::{SpectrumSequenceListData, SpectrumSequenceListVersion, test_format};
 
 #[test]
 fn cascadia_v0_0_5() {

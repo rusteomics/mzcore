@@ -6,9 +6,9 @@ use crate::{
     molecular_formula,
     ontology::Ontology,
     sequence::{
-        peptidoform::parse::{global_modifications, parse_charge_state},
         AminoAcid, CompoundPeptidoformIon, CrossLinkName, GlobalModification, ModificationId,
         Peptidoform, PeptidoformIon, PlacementRule, Position, SimpleModificationInner,
+        peptidoform::parse::{global_modifications, parse_charge_state},
     },
     system::{da, usize::Charge},
 };
@@ -437,14 +437,20 @@ fn dimeric_peptide() {
 
     // With two different sequences
     let dimeric = CompoundPeptidoformIon::pro_forma("AA+CC", None).unwrap();
-    let fragments = dbg!(dimeric
-        .generate_theoretical_fragments(Charge::new::<crate::system::charge::e>(1), &test_model));
+    let fragments =
+        dbg!(dimeric.generate_theoretical_fragments(
+            Charge::new::<crate::system::charge::e>(1),
+            &test_model
+        ));
     assert_eq!(fragments.len(), 4); // aA, aC, pAA, pCC
 
     // With two identical sequences
     let dimeric = CompoundPeptidoformIon::pro_forma("AA+AA", None).unwrap();
-    let fragments = dbg!(dimeric
-        .generate_theoretical_fragments(Charge::new::<crate::system::charge::e>(1), &test_model));
+    let fragments =
+        dbg!(dimeric.generate_theoretical_fragments(
+            Charge::new::<crate::system::charge::e>(1),
+            &test_model
+        ));
     assert_eq!(fragments.len(), 4); // aA, pAA (both twice once for each peptide)
 }
 

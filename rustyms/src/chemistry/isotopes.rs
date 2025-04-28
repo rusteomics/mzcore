@@ -1,6 +1,6 @@
 use crate::chemistry::MolecularFormula;
 use itertools::Itertools;
-use ndarray::{arr1, concatenate, s, Array1, Axis};
+use ndarray::{Array1, Axis, arr1, concatenate, s};
 use probability::distribution::{Binomial, Discrete};
 use std::cmp::Ordering;
 

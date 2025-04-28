@@ -8,12 +8,12 @@ use crate::{
     chemistry::{MolecularCharge, MolecularFormula},
     error::{Context, CustomError},
     fragment::NeutralLoss,
-    helper_functions::{explain_number_error, next_number, Characters, RangeExtension, RangeMaths},
+    helper_functions::{Characters, RangeExtension, RangeMaths, explain_number_error, next_number},
     molecular_formula,
     ontology::Ontology,
     quantities::Tolerance,
     sequence::{AminoAcid, SimpleModification},
-    system::{e, isize::Charge, mz, MassOverCharge},
+    system::{MassOverCharge, e, isize::Charge, mz},
 };
 // TODO: custom errors are off as they assume the input to be Bytes but now get Character offsets.
 
@@ -69,9 +69,10 @@ fn parse_annotation(
     if let Some(adduct) = &adduct_type {
         if adduct.charge() != charge {
             return Err(CustomError::error(
-                "Invalid mzPAF annotation", 
-                "The defined charge should be identical to the total charge as defined in the adduct ions", 
-                Context::line_range(None, line, range)));
+                "Invalid mzPAF annotation",
+                "The defined charge should be identical to the total charge as defined in the adduct ions",
+                Context::line_range(None, line, range),
+            ));
         }
     }
     Ok((

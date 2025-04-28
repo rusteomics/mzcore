@@ -331,11 +331,14 @@ impl CompoundPeptidoformIon {
                     braces_start = None;
                     index += 1;
                     while chars.get(index) == Some(&b'[') {
-                        let end_index = end_of_enclosure(line, index+1, b'[', b']').ok_or_else(||CustomError::error(
-                            "Invalid ranged ambiguous modification",
-                            "No valid closing delimiter",
-                            Context::line(None, line, index, 1),
-                        ))?;
+                        let end_index =
+                            end_of_enclosure(line, index + 1, b'[', b']').ok_or_else(|| {
+                                CustomError::error(
+                                    "Invalid ranged ambiguous modification",
+                                    "No valid closing delimiter",
+                                    Context::line(None, line, index, 1),
+                                )
+                            })?;
                         let modification = SimpleModificationInner::parse_pro_forma(
                             line, index + 1..end_index,
                             &mut ambiguous_lookup, cross_link_lookup, custom_database,
@@ -354,7 +357,7 @@ impl CompoundPeptidoformIon {
                 }
                 (false, b'/') => {
                     // Chimeric peptide
-                    if chars.get(index+1) == Some(&b'/') {
+                    if chars.get(index + 1) == Some(&b'/') {
                         index += 2; // Potentially this can be followed by another peptide
                         ending = End::CrossLink;
                     } else {
@@ -369,37 +372,47 @@ impl CompoundPeptidoformIon {
                     break;
                 }
                 (is_c_term, b'[') => {
-                    let end_index = end_of_enclosure(line, index+1, b'[', b']').ok_or_else(||CustomError::error(
-                        "Invalid modification",
-                        "No valid closing delimiter",
-                        Context::line(None, line, index, 1),
-                    ))?;
-                    let (modification,_) = SimpleModificationInner::parse_pro_forma(
-                        line, index + 1..end_index,
-                        &mut ambiguous_lookup, cross_link_lookup, custom_database,
+                    let end_index =
+                        end_of_enclosure(line, index + 1, b'[', b']').ok_or_else(|| {
+                            CustomError::error(
+                                "Invalid modification",
+                                "No valid closing delimiter",
+                                Context::line(None, line, index, 1),
+                            )
+                        })?;
+                    let (modification, _) = SimpleModificationInner::parse_pro_forma(
+                        line,
+                        index + 1..end_index,
+                        &mut ambiguous_lookup,
+                        cross_link_lookup,
+                        custom_database,
                     )?;
-                    let start_index = index +1;
+                    let start_index = index + 1;
                     index = end_index + 1;
                     if is_c_term {
-                        if let Some(m) =
-                            match modification {
-                                ReturnModification::Defined(simple) => Ok(Some(simple)),
-                                ReturnModification::CrossLinkReferenced(id) =>
-                                    {cross_link_found_positions.push((id, SequencePosition::CTerm)); Ok(None)},
-                                ReturnModification::Ambiguous(id, localisation_score, preferred) => {
-                                    ambiguous_found_positions.push((
-                                        SequencePosition::CTerm,
-                                        preferred,
-                                        id,
-                                        localisation_score,
-                                    ));
-                                    Ok(None)
-                                }
-                            }? {
+                        if let Some(m) = match modification {
+                            ReturnModification::Defined(simple) => Ok(Some(simple)),
+                            ReturnModification::CrossLinkReferenced(id) => {
+                                cross_link_found_positions.push((id, SequencePosition::CTerm));
+                                Ok(None)
+                            }
+                            ReturnModification::Ambiguous(id, localisation_score, preferred) => {
+                                ambiguous_found_positions.push((
+                                    SequencePosition::CTerm,
+                                    preferred,
+                                    id,
+                                    localisation_score,
+                                ));
+                                Ok(None)
+                            }
+                        }? {
                             peptide.add_simple_c_term(m);
                         }
 
-                        if index + 1 < chars.len() && chars[index] == b'/' && chars[index+1] != b'/' {
+                        if index + 1 < chars.len()
+                            && chars[index] == b'/'
+                            && chars[index + 1] != b'/'
+                        {
                             let (buf, charge_carriers) = parse_charge_state(line, index)?;
                             index = buf;
                             peptide = peptide.charge_carriers(Some(charge_carriers));
@@ -407,7 +420,7 @@ impl CompoundPeptidoformIon {
                         if index < chars.len() && chars[index] == b'+' {
                             index += 1; // If a peptide in a chimeric definition contains a C terminal modification
                             ending = End::Chimeric;
-                        } else if index + 1 < chars.len() && chars[index..=index+1] == *b"//" {
+                        } else if index + 1 < chars.len() && chars[index..=index + 1] == *b"//" {
                             index += 2; // If a peptide in a cross-linked definition contains a C terminal modification
                             ending = End::CrossLink;
                         }
@@ -415,22 +428,32 @@ impl CompoundPeptidoformIon {
                         break;
                     }
 
-                    if let Some((sequence_index, aa)) = peptide.sequence_mut().iter_mut().enumerate().next_back() {
+                    if let Some((sequence_index, aa)) =
+                        peptide.sequence_mut().iter_mut().enumerate().next_back()
+                    {
                         match modification {
-                            ReturnModification::Defined(m) => aa.modifications.push(Modification::Simple(m)),
-                            ReturnModification::Ambiguous(id, localisation_score, preferred) =>
-                                ambiguous_found_positions.push((SequencePosition::Index(sequence_index), preferred, id, localisation_score)),
-                            ReturnModification::CrossLinkReferenced(id) =>
-                                cross_link_found_positions.push((id, SequencePosition::Index(sequence_index))),
+                            ReturnModification::Defined(m) => {
+                                aa.modifications.push(Modification::Simple(m))
+                            }
+                            ReturnModification::Ambiguous(id, localisation_score, preferred) => {
+                                ambiguous_found_positions.push((
+                                    SequencePosition::Index(sequence_index),
+                                    preferred,
+                                    id,
+                                    localisation_score,
+                                ))
+                            }
+                            ReturnModification::CrossLinkReferenced(id) => {
+                                cross_link_found_positions
+                                    .push((id, SequencePosition::Index(sequence_index)))
+                            }
                         }
                     } else {
-                        return Err(
-                            CustomError::error(
-                                "Invalid modification",
-                                "A modification cannot be placed before any amino acid, did you want to use an N terminal modification ('[mod]-AA..')? or did you want a modification of unknown position ('[mod]?AA..')?",
-                                Context::line(None, line, start_index, index - start_index - 1),
-                            )
-                        )
+                        return Err(CustomError::error(
+                            "Invalid modification",
+                            "A modification cannot be placed before any amino acid, did you want to use an N terminal modification ('[mod]-AA..')? or did you want a modification of unknown position ('[mod]?AA..')?",
+                            Context::line(None, line, start_index, index - start_index - 1),
+                        ));
                     }
                 }
                 (false, b'-') => {
@@ -445,23 +468,25 @@ impl CompoundPeptidoformIon {
                 }
                 (false, ch) => {
                     peptide.sequence_mut().push(SequenceElement::new(
-                        CheckedAminoAcid::<SemiAmbiguous>::try_from(ch).map_err(|()| CustomError::error(
-                            "Invalid amino acid",
-                            "This character is not a valid amino acid",
-                            Context::line(None, line, index, 1),
-                        ))?.into(),
+                        CheckedAminoAcid::<SemiAmbiguous>::try_from(ch)
+                            .map_err(|()| {
+                                CustomError::error(
+                                    "Invalid amino acid",
+                                    "This character is not a valid amino acid",
+                                    Context::line(None, line, index, 1),
+                                )
+                            })?
+                            .into(),
                         ambiguous_aa,
                     ));
                     index += 1;
                 }
                 (true, _) => {
-                    return Err(
-                        CustomError::error(
-                            "Parsing error",
-                            "A singular hyphen cannot exist ('-'), if this is part of a c-terminus follow the format 'AA-[modification]'",
-                            Context::line(None, line, index, 1),
-                        )
-                    )
+                    return Err(CustomError::error(
+                        "Parsing error",
+                        "A singular hyphen cannot exist ('-'), if this is part of a c-terminus follow the format 'AA-[modification]'",
+                        Context::line(None, line, index, 1),
+                    ));
                 }
             }
         }
@@ -901,7 +926,7 @@ pub(super) fn parse_charge_state(
                         "Invalid adduct ion",
                         "The adduct ion number should be preceded by a sign",
                         Context::line(None, line, offset + set.len() - charge_len - 1, 1),
-                    ))
+                    ));
                 }
             };
 

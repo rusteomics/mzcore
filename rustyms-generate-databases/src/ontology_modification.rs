@@ -50,7 +50,7 @@ impl OntologyModification {
     pub(crate) fn simplify_rules(&mut self) {
         match &mut self.data {
             ModData::Mod {
-                specificities: ref mut rules,
+                specificities: rules,
             } => {
                 let mut new = Vec::new();
                 for rule in rules.iter() {

@@ -4,7 +4,7 @@ use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    chemistry::{Chemical, Element, MolecularFormula, ELEMENT_PARSE_LIST},
+    chemistry::{Chemical, ELEMENT_PARSE_LIST, Element, MolecularFormula},
     error::{Context, CustomError},
     glycan::lists::*,
     molecular_formula,
@@ -214,7 +214,7 @@ impl MonoSaccharide {
                                 line_index: Some(line_index),
                                 line: original_line.to_string(),
                                 offset: start_index,
-                                length: index-start_index+5,
+                                length: index - start_index + 5,
                             },
                         ));
                     }

@@ -63,6 +63,8 @@ impl MonoSaccharide {
             Self::composition_options(composition, model.glycan.compositional_range.clone());
 
         // Generate compositional B and Y ions
+        let charges_other = charge_carriers.range(model.glycan.other_charge_range);
+        let charges_oxonium = charge_carriers.range(model.glycan.oxonium_charge_range);
         for composition in compositions {
             let formula: MolecularFormula = composition
                 .iter()
@@ -78,9 +80,10 @@ impl MonoSaccharide {
                     peptidoform_index,
                     FragmentType::BComposition(composition.clone(), attachment),
                 )
-                .with_charge_range(charge_carriers, model.glycan.oxonium_charge_range)
+                .with_charge_range_slice(&charges_oxonium)
                 .flat_map(|o| o.with_neutral_losses(&model.glycan.neutral_losses)),
             );
+
             fragments.extend(full_formula.to_vec().iter().flat_map(|base| {
                 Fragment::new(
                     base - &formula,
@@ -89,7 +92,7 @@ impl MonoSaccharide {
                     peptidoform_index,
                     FragmentType::YComposition(composition.clone(), attachment),
                 )
-                .with_charge_range(charge_carriers, model.glycan.other_charge_range)
+                .with_charge_range_slice(&charges_other)
                 .flat_map(|o| o.with_neutral_losses(&model.glycan.neutral_losses))
             }));
         }
@@ -106,9 +109,7 @@ impl MonoSaccharide {
                         &model.glycan,
                     )
                     .into_iter()
-                    .flat_map(|d| {
-                        d.with_charge_range(charge_carriers, model.glycan.oxonium_charge_range)
-                    }),
+                    .flat_map(|d| d.with_charge_range_slice(&charges_oxonium)),
             );
         }
 

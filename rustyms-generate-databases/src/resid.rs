@@ -4,7 +4,7 @@ use std::{
     path::Path,
 };
 
-use super::{ontology_modification::OntologyModification, ModData};
+use super::{ModData, ontology_modification::OntologyModification};
 
 use bincode::config::Configuration;
 use roxmltree::*;

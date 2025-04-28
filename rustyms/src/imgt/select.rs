@@ -65,9 +65,9 @@ impl<S1: std::hash::BuildHasher, S2: std::hash::BuildHasher> Selection<S1, S2> {
 }
 
 impl<
-        S1: std::hash::BuildHasher + Clone + Send + Sync,
-        S2: std::hash::BuildHasher + Clone + Send + Sync,
-    > Selection<S1, S2>
+    S1: std::hash::BuildHasher + Clone + Send + Sync,
+    S2: std::hash::BuildHasher + Clone + Send + Sync,
+> Selection<S1, S2>
 {
     /// Get the selected alleles
     #[cfg(not(feature = "internal-no-data"))]

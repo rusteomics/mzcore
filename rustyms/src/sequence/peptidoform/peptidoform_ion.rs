@@ -239,7 +239,10 @@ impl PeptidoformIon {
                 .map(Peptidoform::get_global)
                 .tuple_windows()
                 .all(|(a, b)| a == b);
-            assert!(global_equal, "Not all global isotope modifications on all peptides on this peptidoform are identical");
+            assert!(
+                global_equal,
+                "Not all global isotope modifications on all peptides on this peptidoform are identical"
+            );
             let empty = Vec::new();
             let global = self
                 .peptidoforms()

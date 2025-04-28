@@ -1,7 +1,7 @@
 use crate::{
-    chemistry::{MolecularFormula, ELEMENT_PARSE_LIST},
+    chemistry::{ELEMENT_PARSE_LIST, MolecularFormula},
     error::{Context, CustomError},
-    helper_functions::{explain_number_error, RangeExtension},
+    helper_functions::{RangeExtension, explain_number_error},
 };
 use std::{num::NonZeroU16, ops::RangeBounds};
 

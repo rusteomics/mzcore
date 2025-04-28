@@ -3,7 +3,7 @@ use std::io::{BufRead, BufReader};
 
 use crate::{
     error::CustomError,
-    identification::{test_identified_peptide, IdentifiedPeptidoform, MZTabData},
+    identification::{IdentifiedPeptidoform, MZTabData, test_identified_peptide},
 };
 
 #[test]

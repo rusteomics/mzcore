@@ -5,16 +5,16 @@ use crate::{
     identification::SpectrumId,
     ontology::CustomDatabase,
     sequence::{Peptidoform, SemiAmbiguous},
-    system::{usize::Charge, Mass, Ratio, Time},
+    system::{Mass, Ratio, Time, usize::Charge},
 };
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 
 use crate::identification::{
-    common_parser::Location,
-    csv::{parse_csv, CsvLine},
     BoxedIdentifiedPeptideIter, IdentifiedPeptidoform, IdentifiedPeptidoformSource,
     IdentifiedPeptidoformVersion, MetaData,
+    common_parser::Location,
+    csv::{CsvLine, parse_csv},
 };
 
 static NUMBER_ERROR: (&str, &str) = (

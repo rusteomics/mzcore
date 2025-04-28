@@ -1,7 +1,7 @@
 #![allow(clippy::missing_panics_doc)]
 use std::io::BufReader;
 
-use crate::identification::{test_format, PLGSData, PLGSVersion};
+use crate::identification::{PLGSData, PLGSVersion, test_format};
 
 #[test]
 fn plgs_fragment() {

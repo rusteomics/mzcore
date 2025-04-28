@@ -40,15 +40,15 @@ pub mod system;
 /// A subset of the types and traits that are envisioned to be used the most, importing this is a good starting point for working with the crate
 pub mod prelude {
     pub use crate::annotation::{
-        model::{FragmentationModel, MatchingParameters},
         AnnotatableSpectrum,
+        model::{FragmentationModel, MatchingParameters},
     };
     pub use crate::chemistry::{
         Chemical, Element, MassMode, MolecularCharge, MolecularFormula, MultiChemical,
     };
     pub use crate::fragment::Fragment;
     pub use crate::isobaric_sets::{
-        building_blocks, find_isobaric_sets, BuildingBlocks, TerminalBuildingBlocks,
+        BuildingBlocks, TerminalBuildingBlocks, building_blocks, find_isobaric_sets,
     };
     pub use crate::sequence::{
         AminoAcid, CheckedAminoAcid, CompoundPeptidoformIon, IsAminoAcid, Peptidoform,

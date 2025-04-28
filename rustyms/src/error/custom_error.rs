@@ -260,7 +260,10 @@ mod tests {
         };
         let a = CustomError::warning("test", "test error", Context::range(&pos1, &pos2));
         println!("{a}");
-        assert_eq!(format!("{a}"), "warning: test\n  ╷\n1 │ hello world\n2 │ this is a multiline\n3 │ piece of teXt\n  ╵\ntest error\n");
+        assert_eq!(
+            format!("{a}"),
+            "warning: test\n  ╷\n1 │ hello world\n2 │ this is a multiline\n3 │ piece of teXt\n  ╵\ntest error\n"
+        );
         assert!(a.is_warning());
         assert_eq!(pos2.text, "");
         assert_eq!(pos2.line_index, 3);

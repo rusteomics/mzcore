@@ -8,11 +8,11 @@ use serde::{Deserialize, Serialize};
 use crate::{
     error::CustomError,
     identification::{
-        common_parser::Location,
-        common_parser::OptionalColumn,
-        csv::{parse_csv, CsvLine},
         BoxedIdentifiedPeptideIter, IdentifiedPeptidoform, IdentifiedPeptidoformSource,
         IdentifiedPeptidoformVersion, MetaData,
+        common_parser::Location,
+        common_parser::OptionalColumn,
+        csv::{CsvLine, parse_csv},
     },
     ontology::CustomDatabase,
     sequence::{Peptidoform, SemiAmbiguous, SloppyParsingParameters},

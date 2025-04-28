@@ -7,7 +7,7 @@ use rustyms::{
     sequence::{PlacementRule, Position},
 };
 
-use super::{obo::OboOntology, ontology_modification::OntologyModification, ModData};
+use super::{ModData, obo::OboOntology, ontology_modification::OntologyModification};
 
 pub(crate) fn build_psi_mod_ontology(out_dir: &Path) {
     let mods = parse_psi_mod();

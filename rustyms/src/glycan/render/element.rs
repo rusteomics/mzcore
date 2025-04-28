@@ -3,11 +3,11 @@ use std::f32::consts::PI;
 use itertools::Itertools;
 
 use crate::glycan::{
+    GlycanBranchIndex, GlycanBranchMassIndex, GlycanDirection, GlycanPosition,
     render::{
         absolute::{AbsolutePositionedGlycan, OuterModifications},
         shape::{Colour, Shape},
     },
-    GlycanBranchIndex, GlycanBranchMassIndex, GlycanDirection, GlycanPosition,
 };
 
 /// A rendered glycan, contains all information needed to render this to svg or a bitmap.

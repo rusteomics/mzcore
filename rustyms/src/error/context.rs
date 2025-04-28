@@ -354,7 +354,9 @@ impl Context {
                                 )?;
                                 last_offset = high.1 + high.2;
                             } else {
-                                eprintln!("A highlight in a range error message is detected to overlap with a previous highlight, it is skipped.");
+                                eprintln!(
+                                    "A highlight in a range error message is detected to overlap with a previous highlight, it is skipped."
+                                );
                                 // Panicking on error gave the following very intense error message (in test code):
                                 // `thread panicked while panicking. aborting. ... (exit code: 0xc000001d, STATUS_ILLEGAL_INSTRUCTION)`
                                 // To prevent other people from panicking upon seeing this error message this error is not raised currently.

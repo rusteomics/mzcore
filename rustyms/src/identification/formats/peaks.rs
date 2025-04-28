@@ -3,17 +3,17 @@ use std::path::{Path, PathBuf};
 use crate::{
     error::CustomError,
     identification::{
-        common_parser::{Location, OptionalColumn, OptionalLocation},
-        csv::{parse_csv, CsvLine},
         BoxedIdentifiedPeptideIter, FastaIdentifier, IdentifiedPeptidoform,
         IdentifiedPeptidoformSource, IdentifiedPeptidoformVersion, MetaData, PeaksFamilyId,
+        common_parser::{Location, OptionalColumn, OptionalLocation},
+        csv::{CsvLine, parse_csv},
     },
     ontology::CustomDatabase,
     sequence::{
         AminoAcid, Modification, PeptideModificationSearch, Peptidoform, SemiAmbiguous,
         SimpleModification, SloppyParsingParameters,
     },
-    system::{usize::Charge, Mass, MassOverCharge, Time},
+    system::{Mass, MassOverCharge, Time, usize::Charge},
 };
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
@@ -22,9 +22,9 @@ static NUMBER_ERROR: (&str, &str) = (
     "Invalid Peaks line",
     "This column is not a number but it is required to be a number in this peaks format",
 );
-static ID_ERROR: (&str, &str) =  (
+static ID_ERROR: (&str, &str) = (
     "Invalid Peaks line",
-    "This column is not a valid peaks ID but it is required to be in this peaks format\nExamples of valid IDs: '1234', 'F2:1234', 'F2:1234 12345'"
+    "This column is not a valid peaks ID but it is required to be in this peaks format\nExamples of valid IDs: '1234', 'F2:1234', 'F2:1234 12345'",
 );
 
 format_family!(

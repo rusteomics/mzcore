@@ -1,11 +1,11 @@
 use itertools::Itertools;
 use swash::{
-    scale::{Render, ScaleContext, Source},
     FontRef,
+    scale::{Render, ScaleContext, Source},
 };
 use zeno::{Fill, Format, Mask, PathBuilder, Point, Scratch, Stroke, Vector};
 
-use crate::glycan::{render::element::Element, RenderedGlycan};
+use crate::glycan::{RenderedGlycan, render::element::Element};
 
 use super::element::{TextAnchor, TextBaseline};
 

@@ -6,8 +6,8 @@ use std::{
     fs::File,
     io::{BufReader, BufWriter},
     sync::{
-        atomic::{AtomicUsize, Ordering},
         Arc,
+        atomic::{AtomicUsize, Ordering},
     },
 };
 
@@ -19,12 +19,12 @@ use mzdata::io::{MZFileReader, SpectrumSource};
 use rayon::prelude::*;
 use rustyms::{
     annotation::{
-        model::{FragmentationModel, MatchingParameters},
         AnnotatableSpectrum, AnnotatedPeak, Score, Scores,
+        model::{FragmentationModel, MatchingParameters},
     },
     chemistry::MassMode,
     fragment::Fragment,
-    identification::{csv::write_csv, BasicCSVData, IdentifiedPeptidoformSource},
+    identification::{BasicCSVData, IdentifiedPeptidoformSource, csv::write_csv},
     sequence::{AminoAcid, SequencePosition},
     spectrum::PeakSpectrum,
     *,

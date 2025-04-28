@@ -1,7 +1,7 @@
 #![allow(clippy::missing_panics_doc)]
 use std::io::BufReader;
 
-use crate::identification::{test_format, NovorData, NovorVersion};
+use crate::identification::{NovorData, NovorVersion, test_format};
 
 #[test]
 fn novor_old_denovo() {

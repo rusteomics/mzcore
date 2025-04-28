@@ -340,7 +340,10 @@ impl<T> SequenceElement<T> {
                         if rules.is_empty() {
                             String::new()
                         } else {
-                            format!(", this modification is only allowed at the following locations: {}", rules.join(", "))
+                            format!(
+                                ", this modification is only allowed at the following locations: {}",
+                                rules.join(", ")
+                            )
                         }
                     ),
                     Context::none(),

@@ -11,7 +11,7 @@ use crate::{
         AminoAcid, GnoComposition, Modification, Position, SimpleModification,
         SimpleModificationInner,
     },
-    system::{ratio::ppm, Mass, Ratio},
+    system::{Mass, Ratio, ratio::ppm},
 };
 
 use super::Peptidoform;

@@ -1,7 +1,7 @@
 use crate::{
-    chemistry::{Element, MolecularFormula, ELEMENT_PARSE_LIST},
+    chemistry::{ELEMENT_PARSE_LIST, Element, MolecularFormula},
     error::{Context, CustomError},
-    helper_functions::{self, explain_number_error, RangeExtension},
+    helper_functions::{self, RangeExtension, explain_number_error},
 };
 use std::{num::NonZeroU16, ops::RangeBounds};
 
@@ -38,9 +38,9 @@ impl MolecularFormula {
                     (Some(NonZeroU16::new(2).unwrap()), Element::H)
                 } else {
                     return Err(CustomError::error(
-                        "Invalid Xlmod molecular formula", 
-                        "A deuterium cannot have a defined isotope as deuterium is by definition always isotope 2 of hydrogen", 
-                        Context::line(None, value, offset+usize::from(negative), isotope_len)
+                        "Invalid Xlmod molecular formula",
+                        "A deuterium cannot have a defined isotope as deuterium is by definition always isotope 2 of hydrogen",
+                        Context::line(None, value, offset + usize::from(negative), isotope_len),
                     ));
                 }
             } else {

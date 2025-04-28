@@ -539,18 +539,27 @@ impl FastaData {
         let total_regions_len: usize = self.regions.iter().map(|(_, l)| *l).sum();
         if total_regions_len > 0 && total_regions_len != self.peptide.len() {
             Err(CustomError::error(
-                "Invalid regions definition", 
-                format!("The 'REGIONS' definition is invalid, the total length of the regions ({}) has to be identical to the length of the peptide ({})", total_regions_len, self.peptide.len()), 
-                Context::full_line(self.line_index, &self.full_header)))
+                "Invalid regions definition",
+                format!(
+                    "The 'REGIONS' definition is invalid, the total length of the regions ({}) has to be identical to the length of the peptide ({})",
+                    total_regions_len,
+                    self.peptide.len()
+                ),
+                Context::full_line(self.line_index, &self.full_header),
+            ))
         } else if self
             .annotations
             .iter()
             .any(|(_, p)| *p >= self.peptide.len())
         {
             Err(CustomError::error(
-                "Invalid annotations definition", 
-                format!("The 'ANNOTATIONS' definition is invalid, on of the annotations is out of range of the peptide (length {})", self.peptide.len()),
-                 Context::full_line(self.line_index, &self.full_header)))
+                "Invalid annotations definition",
+                format!(
+                    "The 'ANNOTATIONS' definition is invalid, on of the annotations is out of range of the peptide (length {})",
+                    self.peptide.len()
+                ),
+                Context::full_line(self.line_index, &self.full_header),
+            ))
         } else if total_regions_len > 0 {
             Ok(self)
         } else {
@@ -722,9 +731,11 @@ fn parse_header() {
     assert_eq!(identifier.name(), "EntryName");
     assert_eq!(identifier.accession(), "UniqueIdentifier");
     assert_eq!(header.description(), "ProteinName");
-    assert!(header
-        .tags()
-        .any(|(k, v)| k == "PE" && v == "ProteinExistence"));
+    assert!(
+        header
+            .tags()
+            .any(|(k, v)| k == "PE" && v == "ProteinExistence")
+    );
     assert_eq!(header.regions().len(), 3);
     assert_eq!(header.regions()[0], (Region::Framework(1), 12));
     assert_eq!(header.annotations().len(), 2);

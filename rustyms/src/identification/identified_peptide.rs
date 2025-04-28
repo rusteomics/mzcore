@@ -10,7 +10,7 @@ use crate::{
         CompoundPeptidoformIon, Peptidoform, PeptidoformIon, SemiAmbiguous, SequencePosition,
         SimpleLinear,
     },
-    system::{usize::Charge, MassOverCharge, OrderedTime, Time},
+    system::{MassOverCharge, OrderedTime, Time, usize::Charge},
 };
 
 /// A peptide that is identified by a de novo or database matching program

@@ -118,10 +118,8 @@ pub struct IdentifiedPeptidoformIter<
     peek: Option<Result<R, CustomError>>,
 }
 
-impl<
-        R: IdentifiedPeptidoformSource + Clone,
-        I: Iterator<Item = Result<R::Source, CustomError>>,
-    > IdentifiedPeptidoformIter<'_, R, I>
+impl<R: IdentifiedPeptidoformSource + Clone, I: Iterator<Item = Result<R::Source, CustomError>>>
+    IdentifiedPeptidoformIter<'_, R, I>
 where
     R::Format: 'static,
 {

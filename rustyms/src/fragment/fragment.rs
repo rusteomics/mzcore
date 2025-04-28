@@ -438,6 +438,14 @@ impl Fragment {
             .map(move |c| self.with_charge(&c))
     }
 
+    /// Create a copy of this fragment with the given charges
+    pub fn with_charge_range_slice(
+        self,
+        charges: &[MolecularCharge],
+    ) -> impl Iterator<Item = Self> {
+        charges.iter().map(move |c| self.with_charge(c))
+    }
+
     /// Create a copy of this fragment with the given neutral loss
     #[must_use]
     pub fn with_neutral_loss(&self, neutral_loss: &NeutralLoss) -> Self {

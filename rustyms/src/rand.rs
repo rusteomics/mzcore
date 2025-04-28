@@ -6,7 +6,7 @@ use crate::{
     chemistry::{Element, MolecularFormula},
     glycan::{BaseSugar, GlycanStructure, GlycanSubstituent, MonoSaccharide},
     sequence::SimpleModificationInner,
-    system::{dalton, Mass, OrderedMass},
+    system::{Mass, OrderedMass, dalton},
 };
 
 impl Distribution<SimpleModificationInner> for StandardUniform {

@@ -5,23 +5,24 @@ use serde::{Deserialize, Serialize};
 use crate::{
     error::CustomError,
     identification::{
-        common_parser::{Location, OptionalColumn, OptionalLocation},
-        csv::{parse_csv, CsvLine},
         BoxedIdentifiedPeptideIter, IdentifiedPeptidoform, IdentifiedPeptidoformSource,
         IdentifiedPeptidoformVersion, MetaData, PeaksFamilyId,
+        common_parser::{Location, OptionalColumn, OptionalLocation},
+        csv::{CsvLine, parse_csv},
     },
     ontology::{CustomDatabase, Ontology},
     sequence::{AminoAcid, Peptidoform, SemiAmbiguous, SloppyParsingParameters},
-    system::{usize::Charge, MassOverCharge},
+    system::{MassOverCharge, usize::Charge},
 };
 
 static NUMBER_ERROR: (&str, &str) = (
     "Invalid DeepNovoFamily line",
     "This column is not a number but it is required to be a number in this format",
 );
-static ID_ERROR: (&str, &str) =  (
+static ID_ERROR: (&str, &str) = (
     "Invalid DeepNovoFamily line",
-    "This column is not a valid ID but it is required to be in this peaks format\nExamples of valid IDs: '1234' & 'F2:1234'");
+    "This column is not a valid ID but it is required to be in this peaks format\nExamples of valid IDs: '1234' & 'F2:1234'",
+);
 
 static PARAMETERS: LazyLock<SloppyParsingParameters> = LazyLock::new(|| SloppyParsingParameters {
     mod_indications: (

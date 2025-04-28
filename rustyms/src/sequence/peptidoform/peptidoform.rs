@@ -13,14 +13,14 @@ use ordered_float::OrderedFloat;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    annotation::model::{get_all_sidechain_losses, FragmentationModel, GlycanModel},
+    annotation::model::{FragmentationModel, GlycanModel, get_all_sidechain_losses},
     chemistry::{AmbiguousLabel, CachedCharge, Element, MolecularCharge, MolecularFormula},
     fragment::{
         DiagnosticIon, DiagnosticPosition, Fragment, FragmentKind, FragmentType, NeutralLoss,
         PeptidePosition,
     },
     glycan::MonoSaccharide,
-    helper_functions::{merge_hashmap, peptide_range_contains, RangeExtension},
+    helper_functions::{RangeExtension, merge_hashmap, peptide_range_contains},
     molecular_formula,
     quantities::Multi,
     sequence::{

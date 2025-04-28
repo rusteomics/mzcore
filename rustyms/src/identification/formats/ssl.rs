@@ -5,14 +5,14 @@ use serde::{Deserialize, Serialize};
 use crate::{
     error::CustomError,
     identification::{
-        common_parser::{Location, OptionalColumn, OptionalLocation},
-        csv::{parse_csv, CsvLine},
         BoxedIdentifiedPeptideIter, IdentifiedPeptidoform, IdentifiedPeptidoformSource,
         IdentifiedPeptidoformVersion, MetaData,
+        common_parser::{Location, OptionalColumn, OptionalLocation},
+        csv::{CsvLine, parse_csv},
     },
     ontology::CustomDatabase,
     sequence::{Peptidoform, SemiAmbiguous},
-    system::{isize::Charge, MassOverCharge, Time},
+    system::{MassOverCharge, Time, isize::Charge},
 };
 
 static NUMBER_ERROR: (&str, &str) = (

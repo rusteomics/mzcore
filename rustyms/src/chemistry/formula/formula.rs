@@ -3,7 +3,7 @@ use std::fmt::Write;
 use crate::{
     chemistry::{AmbiguousLabel, MassMode, MolecularFormula},
     glycan::GlycanPosition,
-    system::{da, fraction, Mass, OrderedMass, Ratio},
+    system::{Mass, OrderedMass, Ratio, da, fraction},
 };
 
 use itertools::Itertools;

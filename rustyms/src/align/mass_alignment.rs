@@ -2,8 +2,8 @@ use std::fmt::Debug;
 
 use crate::{
     align::{
-        align_type::*, alignment::Score, diagonal_array::DiagonalArray, piece::*, scoring::*,
-        Alignment,
+        Alignment, align_type::*, alignment::Score, diagonal_array::DiagonalArray, piece::*,
+        scoring::*,
     },
     annotation::model::GlycanModel,
     chemistry::{MassMode, MolecularFormula},

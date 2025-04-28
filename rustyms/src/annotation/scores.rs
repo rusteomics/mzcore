@@ -4,7 +4,7 @@ use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    annotation::{model::MatchingParameters, AnnotatedSpectrum},
+    annotation::{AnnotatedSpectrum, model::MatchingParameters},
     chemistry::MassMode,
     fragment::{Fragment, FragmentKind},
     sequence::{Peptidoform, UnAmbiguous},

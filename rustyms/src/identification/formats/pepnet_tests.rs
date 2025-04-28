@@ -1,7 +1,7 @@
 #![allow(clippy::missing_panics_doc)]
 use std::io::BufReader;
 
-use crate::identification::{test_format, PepNetData, PepNetVersion};
+use crate::identification::{PepNetData, PepNetVersion, test_format};
 
 #[test]
 fn pepnet() {

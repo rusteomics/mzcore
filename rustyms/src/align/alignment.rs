@@ -599,7 +599,7 @@ pub struct Score {
 #[expect(clippy::missing_panics_doc)]
 mod tests {
     use crate::{
-        align::{align, AlignScoring, AlignType},
+        align::{AlignScoring, AlignType, align},
         chemistry::MultiChemical,
         sequence::{AminoAcid, Peptidoform, SimpleLinear},
     };

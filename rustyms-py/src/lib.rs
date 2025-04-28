@@ -630,8 +630,10 @@ impl Fragment {
             Self::formula(self),
             self.charge(),
             self.ion().0,
-            self.peptidoform_ion_index().map_or("-".to_string(), |p| p.to_string()),
-            self.peptidoform_index().map_or("-".to_string(), |p| p.to_string()),
+            self.peptidoform_ion_index()
+                .map_or("-".to_string(), |p| p.to_string()),
+            self.peptidoform_index()
+                .map_or("-".to_string(), |p| p.to_string()),
             self.neutral_loss(),
         )
     }

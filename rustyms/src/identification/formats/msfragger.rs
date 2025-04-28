@@ -10,14 +10,14 @@ use crate::{
     error::{Context, CustomError},
     helper_functions::explain_number_error,
     identification::{
-        common_parser::{Location, OptionalColumn, OptionalLocation},
-        csv::{parse_csv, CsvLine},
         BoxedIdentifiedPeptideIter, FastaIdentifier, IdentifiedPeptidoform,
         IdentifiedPeptidoformSource, IdentifiedPeptidoformVersion, MetaData, SpectrumId,
+        common_parser::{Location, OptionalColumn, OptionalLocation},
+        csv::{CsvLine, parse_csv},
     },
     ontology::CustomDatabase,
     sequence::{Peptidoform, SemiAmbiguous, SloppyParsingParameters},
-    system::{usize::Charge, Mass, MassOverCharge, Time},
+    system::{Mass, MassOverCharge, Time, usize::Charge},
 };
 
 static NUMBER_ERROR: (&str, &str) = (

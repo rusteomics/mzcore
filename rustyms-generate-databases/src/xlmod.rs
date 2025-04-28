@@ -11,9 +11,9 @@ use rustyms::{
 use thin_vec::ThinVec;
 
 use super::{
+    ModData,
     obo::{OboOntology, OboValue},
     ontology_modification::OntologyModification,
-    ModData,
 };
 
 pub(crate) fn build_xlmod_ontology(out_dir: &Path) {

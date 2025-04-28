@@ -6,12 +6,12 @@ use serde::{Deserialize, Serialize};
 use crate::{
     error::{Context, CustomError},
     glycan::GLYCAN_PARSE_LIST,
-    helper_functions::{end_of_enclosure, parse_named_counter, ResultExtensions},
+    helper_functions::{ResultExtensions, end_of_enclosure, parse_named_counter},
     ontology::{CustomDatabase, Ontology},
     sequence::{
-        peptidoform::parse_modification, AminoAcid, CheckedAminoAcid, Modification,
-        PeptideModificationSearch, Peptidoform, SemiAmbiguous, SequenceElement, SequencePosition,
-        SimpleModification, SimpleModificationInner,
+        AminoAcid, CheckedAminoAcid, Modification, PeptideModificationSearch, Peptidoform,
+        SemiAmbiguous, SequenceElement, SequencePosition, SimpleModification,
+        SimpleModificationInner, peptidoform::parse_modification,
     },
     system::Mass,
 };

@@ -9,9 +9,9 @@ use crate::{
 use serde::{Deserialize, Serialize};
 
 use crate::identification::{
-    common_parser::Location,
-    csv::{parse_csv, CsvLine},
     BoxedIdentifiedPeptideIter, IdentifiedPeptidoformVersion,
+    common_parser::Location,
+    csv::{CsvLine, parse_csv},
 };
 
 static NUMBER_ERROR: (&str, &str) = (

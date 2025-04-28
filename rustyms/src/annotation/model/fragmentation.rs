@@ -9,7 +9,7 @@ use crate::{
     annotation::model::{ChargeRange, GlycanModel},
     chemistry::MultiChemical,
     fragment::{NeutralLoss, PeptidePosition},
-    sequence::{AminoAcid, Peptidoform, SequenceElement, SequencePosition, BACKBONE},
+    sequence::{AminoAcid, BACKBONE, Peptidoform, SequenceElement, SequencePosition},
 };
 
 /// A model for the fragmentation, allowing control over what theoretical fragments to generate.

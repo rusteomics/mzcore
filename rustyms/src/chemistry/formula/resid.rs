@@ -1,7 +1,7 @@
 use crate::{
-    chemistry::{Element, MolecularFormula, ELEMENT_PARSE_LIST},
+    chemistry::{ELEMENT_PARSE_LIST, Element, MolecularFormula},
     error::{Context, CustomError},
-    helper_functions::{next_num, RangeExtension},
+    helper_functions::{RangeExtension, next_num},
     quantities::Multi,
 };
 use std::ops::RangeBounds;

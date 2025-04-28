@@ -6,7 +6,7 @@ use uom::fmt::DisplayStyle;
 
 use crate::{
     quantities::Multi,
-    system::{da, Mass, MassOverCharge, OrderedMass, OrderedRatio, Ratio},
+    system::{Mass, MassOverCharge, OrderedMass, OrderedRatio, Ratio, da},
 };
 
 /// A tolerance around a given unit for searching purposes

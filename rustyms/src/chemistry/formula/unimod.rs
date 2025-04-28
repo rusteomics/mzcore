@@ -7,7 +7,7 @@ use crate::{
     chemistry::{Chemical, Element, MolecularFormula},
     error::{Context, CustomError},
     glycan::MonoSaccharide,
-    helper_functions::{explain_number_error, RangeExtension},
+    helper_functions::{RangeExtension, explain_number_error},
     sequence::SequencePosition,
 };
 
@@ -63,62 +63,111 @@ impl MolecularFormula {
         let mut last_name = String::new();
         while index < end {
             match value.as_bytes()[index] {
-            b'(' => {
-                let length = value.chars().skip(index+1).take_while(|c| *c == '-' || *c == '+' || c.is_ascii_digit()).count();
-                let num = value[index+1..index+1+length].parse::<i32>()
-                    .map_err(|err|
-                        CustomError::error(
-                            "Invalid Unimod chemical formula", 
-                            format!("The element amount {}", explain_number_error(&err)),
-                            Context::line(None, value, index+1, length)))?;
-                match parse_unimod_composition_brick(value, last_name_index as usize..last_name_index as usize+last_name.len())? {
-                    Brick::Element(el) => {if !formula.add((el, isotope.take(), num)) {
-                        return Err(CustomError::error("Invalid Unimod chemical formula", "An element or isotope without a defined mass was found", Context::line_range(None, value,last_name_index as usize..last_name_index as usize+last_name.len())));
-                    }},
-                    Brick::Formula(f) => formula += f*num,
-                }
-                last_name.clear();
-                last_name_index = -1;
-                index += length + 2;
-                if value.as_bytes()[index-1] != b')' {
-                    return Err(CustomError::error("Invalid Unimod chemical formula", "The amount of an element should be closed by ')'", Context::line(None, value, index-1, 1)));
-                }
-            }
-            b' ' => {
-                if !last_name.is_empty() {
-                    match parse_unimod_composition_brick(value, last_name_index as usize..last_name_index as usize+last_name.len())? {
-                        Brick::Element(el) => {if !formula.add((el, isotope.take(), 1)) {
-                            return Err(CustomError::error("Invalid Unimod chemical formula", "An element or isotope without a defined mass was found", Context::line_range(None, value,last_name_index as usize..last_name_index as usize+last_name.len())));
-                        }},
-                        Brick::Formula(f) => formula += f,
+                b'(' => {
+                    let length = value
+                        .chars()
+                        .skip(index + 1)
+                        .take_while(|c| *c == '-' || *c == '+' || c.is_ascii_digit())
+                        .count();
+                    let num = value[index + 1..index + 1 + length]
+                        .parse::<i32>()
+                        .map_err(|err| {
+                            CustomError::error(
+                                "Invalid Unimod chemical formula",
+                                format!("The element amount {}", explain_number_error(&err)),
+                                Context::line(None, value, index + 1, length),
+                            )
+                        })?;
+                    match parse_unimod_composition_brick(
+                        value,
+                        last_name_index as usize..last_name_index as usize + last_name.len(),
+                    )? {
+                        Brick::Element(el) => {
+                            if !formula.add((el, isotope.take(), num)) {
+                                return Err(CustomError::error(
+                                    "Invalid Unimod chemical formula",
+                                    "An element or isotope without a defined mass was found",
+                                    Context::line_range(
+                                        None,
+                                        value,
+                                        last_name_index as usize
+                                            ..last_name_index as usize + last_name.len(),
+                                    ),
+                                ));
+                            }
                         }
+                        Brick::Formula(f) => formula += f * num,
+                    }
                     last_name.clear();
                     last_name_index = -1;
+                    index += length + 2;
+                    if value.as_bytes()[index - 1] != b')' {
+                        return Err(CustomError::error(
+                            "Invalid Unimod chemical formula",
+                            "The amount of an element should be closed by ')'",
+                            Context::line(None, value, index - 1, 1),
+                        ));
+                    }
                 }
-                index += 1;
-            }
-            n if n.is_ascii_digit() => {
-                let length = value.chars().skip(index).take_while(char::is_ascii_digit).count();
-                isotope = Some(value[index..index+length].parse::<NonZeroU16>()
-                    .map_err(|err|
-                        CustomError::error(
-                            "Invalid Unimod chemical formula", 
-                            format!("The isotope {}", explain_number_error(&err)),
-                            Context::line(None, value, index, length)))?);
-                index += length;
-            },
-            n if n.is_ascii_alphabetic() => {
-                last_name.push(n as char);
-                if last_name_index == -1 {
-                    last_name_index = isize::try_from(index).unwrap();
+                b' ' => {
+                    if !last_name.is_empty() {
+                        match parse_unimod_composition_brick(
+                            value,
+                            last_name_index as usize..last_name_index as usize + last_name.len(),
+                        )? {
+                            Brick::Element(el) => {
+                                if !formula.add((el, isotope.take(), 1)) {
+                                    return Err(CustomError::error(
+                                        "Invalid Unimod chemical formula",
+                                        "An element or isotope without a defined mass was found",
+                                        Context::line_range(
+                                            None,
+                                            value,
+                                            last_name_index as usize
+                                                ..last_name_index as usize + last_name.len(),
+                                        ),
+                                    ));
+                                }
+                            }
+                            Brick::Formula(f) => formula += f,
+                        }
+                        last_name.clear();
+                        last_name_index = -1;
+                    }
+                    index += 1;
                 }
-                index += 1;
+                n if n.is_ascii_digit() => {
+                    let length = value
+                        .chars()
+                        .skip(index)
+                        .take_while(char::is_ascii_digit)
+                        .count();
+                    isotope = Some(value[index..index + length].parse::<NonZeroU16>().map_err(
+                        |err| {
+                            CustomError::error(
+                                "Invalid Unimod chemical formula",
+                                format!("The isotope {}", explain_number_error(&err)),
+                                Context::line(None, value, index, length),
+                            )
+                        },
+                    )?);
+                    index += length;
+                }
+                n if n.is_ascii_alphabetic() => {
+                    last_name.push(n as char);
+                    if last_name_index == -1 {
+                        last_name_index = isize::try_from(index).unwrap();
+                    }
+                    index += 1;
+                }
+                _ => {
+                    return Err(CustomError::error(
+                        "Invalid Unimod chemical formula",
+                        "Unexpected character, use an element or one of the unimod shorthands. Eg: 'H(13) C(12) N O(3)'.",
+                        Context::line(None, value, index, 1),
+                    ));
+                }
             }
-            _ => return Err(CustomError::error(
-            "Invalid Unimod chemical formula", 
-            "Unexpected character, use an element or one of the unimod shorthands. Eg: 'H(13) C(12) N O(3)'.",
-                        Context::line(None, value, index, 1))),
-        }
         }
         if !last_name.is_empty() {
             match parse_unimod_composition_brick(

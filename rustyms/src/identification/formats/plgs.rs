@@ -4,17 +4,17 @@ use crate::{
     fragment::NeutralLoss,
     helper_functions::explain_number_error,
     identification::{
-        common_parser::{Location, OptionalColumn, OptionalLocation},
-        csv::{parse_csv, CsvLine},
         BoxedIdentifiedPeptideIter, FastaIdentifier, IdentifiedPeptidoform,
         IdentifiedPeptidoformSource, IdentifiedPeptidoformVersion, MetaData,
+        common_parser::{Location, OptionalColumn, OptionalLocation},
+        csv::{CsvLine, parse_csv},
     },
     ontology::CustomDatabase,
     sequence::{
         AminoAcid, MUPSettings, Modification, Peptidoform, PlacementRule, Position,
         SequencePosition, SimpleLinear, SimpleModification,
     },
-    system::{usize::Charge, Mass, MassOverCharge, Time},
+    system::{Mass, MassOverCharge, Time, usize::Charge},
 };
 use serde::{Deserialize, Serialize};
 

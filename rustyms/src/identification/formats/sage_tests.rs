@@ -1,7 +1,7 @@
 #![allow(clippy::missing_panics_doc)]
 use std::io::BufReader;
 
-use crate::identification::{test_format, SageData, SageVersion};
+use crate::identification::{SageData, SageVersion, test_format};
 
 #[test]
 fn sage() {

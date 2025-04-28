@@ -1,6 +1,6 @@
 use std::{num::NonZeroU16, sync::LazyLock};
 
-use crate::system::{da, fraction, Ratio};
+use crate::system::{Ratio, da, fraction};
 
 use serde::{Deserialize, Serialize};
 

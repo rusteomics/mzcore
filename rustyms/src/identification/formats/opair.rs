@@ -6,14 +6,14 @@ use std::{
 use crate::{
     error::{Context, CustomError},
     identification::{
-        common_parser::Location,
-        csv::{parse_csv, CsvLine},
         BoxedIdentifiedPeptideIter, FastaIdentifier, IdentifiedPeptidoform,
         IdentifiedPeptidoformSource, IdentifiedPeptidoformVersion, MetaData,
+        common_parser::Location,
+        csv::{CsvLine, parse_csv},
     },
     ontology::CustomDatabase,
     sequence::{AminoAcid, Peptidoform, SemiAmbiguous, SloppyParsingParameters},
-    system::{usize::Charge, Mass, MassOverCharge, Time},
+    system::{Mass, MassOverCharge, Time, usize::Charge},
 };
 use serde::{Deserialize, Serialize};
 
