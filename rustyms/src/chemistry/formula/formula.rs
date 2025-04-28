@@ -205,7 +205,6 @@ mod tests {
         annotation::model::ChargeRange,
         chemistry::{MolecularCharge, MolecularFormula, MultiChemical},
         fragment::Fragment,
-        molecular_formula,
         sequence::AminoAcid,
     };
 

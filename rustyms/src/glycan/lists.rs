@@ -42,15 +42,15 @@ pub(crate) const BASE_SUGARS: &[(&str, BaseSugar, &[GlycanSubstituent])] = &[
     (
         "neu",
         BaseSugar::Nonose(None),
-        &[GlycanSubstituent::Amino, GlycanSubstituent::Acid],
+        &[GlycanSubstituent::Acid, GlycanSubstituent::Amino],
     ),
     (
         "sia",
         BaseSugar::Nonose(None),
         &[
+            GlycanSubstituent::Acid,
             GlycanSubstituent::Amino,
             GlycanSubstituent::Deoxy,
-            GlycanSubstituent::Acid,
         ],
     ),
     (
@@ -65,7 +65,7 @@ pub(crate) const BASE_SUGARS: &[(&str, BaseSugar, &[GlycanSubstituent])] = &[
     (
         "kdo",
         BaseSugar::Octose,
-        &[GlycanSubstituent::Deoxy, GlycanSubstituent::Acid],
+        &[GlycanSubstituent::Acid, GlycanSubstituent::Deoxy],
     ),
     (
         "fuc",
@@ -158,29 +158,29 @@ pub(crate) const BASE_SUGARS: &[(&str, BaseSugar, &[GlycanSubstituent])] = &[
         "dha",
         BaseSugar::Heptose(None),
         &[
+            GlycanSubstituent::Acid,
+            GlycanSubstituent::Acid,
             GlycanSubstituent::Deoxy,
-            GlycanSubstituent::Acid,
-            GlycanSubstituent::Acid,
         ],
     ),
     (
         "bac",
         BaseSugar::Hexose(Some(HexoseIsomer::Glucose)),
         &[
+            GlycanSubstituent::Amino,
+            GlycanSubstituent::Amino,
             GlycanSubstituent::Deoxy,
-            GlycanSubstituent::Amino,
-            GlycanSubstituent::Amino,
         ],
     ),
     (
         "pse",
         BaseSugar::Nonose(Some(NonoseIsomer::Pse)),
         &[
-            GlycanSubstituent::Amino,
-            GlycanSubstituent::Deoxy,
-            GlycanSubstituent::Amino,
-            GlycanSubstituent::Deoxy,
             GlycanSubstituent::Acid,
+            GlycanSubstituent::Amino,
+            GlycanSubstituent::Amino,
+            GlycanSubstituent::Deoxy,
+            GlycanSubstituent::Deoxy,
         ],
     ),
     (
@@ -254,7 +254,7 @@ pub(crate) const DOUBLE_LINKED_POSTFIX_SUBSTITUENTS: &[(&str, &[GlycanSubstituen
     ("n", &[GlycanSubstituent::Water]),
     (
         "p",
-        &[GlycanSubstituent::Water, GlycanSubstituent::Phosphate],
+        &[GlycanSubstituent::Phosphate, GlycanSubstituent::Water],
     ),
 ];
 
@@ -394,8 +394,8 @@ pub(crate) static GLYCAN_PARSE_LIST: LazyLock<Vec<(String, MonoSaccharide)>> =
                     base_sugar: BaseSugar::Hexose(None),
                     substituents: vec![
                         GlycanSubstituent::Acid,
-                        GlycanSubstituent::Didehydro,
                         GlycanSubstituent::Deoxy,
+                        GlycanSubstituent::Didehydro,
                     ],
                     proforma_name: Some("en,a-Hex".to_string()),
                     furanose: false,
@@ -666,7 +666,7 @@ pub(crate) static GLYCAN_PARSE_LIST: LazyLock<Vec<(String, MonoSaccharide)>> =
                 "kdo".to_string(),
                 MonoSaccharide {
                     base_sugar: BaseSugar::Octose,
-                    substituents: vec![GlycanSubstituent::Deoxy, GlycanSubstituent::Acid],
+                    substituents: vec![GlycanSubstituent::Acid, GlycanSubstituent::Deoxy],
                     proforma_name: Some("Oct".to_string()),
                     furanose: false,
                     configuration: None,
@@ -687,9 +687,9 @@ pub(crate) static GLYCAN_PARSE_LIST: LazyLock<Vec<(String, MonoSaccharide)>> =
                 MonoSaccharide {
                     base_sugar: BaseSugar::Nonose(Some(NonoseIsomer::Kdn)),
                     substituents: vec![
+                        GlycanSubstituent::Acid,
                         GlycanSubstituent::Amino,
                         GlycanSubstituent::Deoxy,
-                        GlycanSubstituent::Acid,
                     ],
                     proforma_name: Some("Non".to_string()),
                     furanose: false,
@@ -701,9 +701,9 @@ pub(crate) static GLYCAN_PARSE_LIST: LazyLock<Vec<(String, MonoSaccharide)>> =
                 MonoSaccharide {
                     base_sugar: BaseSugar::Nonose(None),
                     substituents: vec![
+                        GlycanSubstituent::Acid,
                         GlycanSubstituent::Amino,
                         GlycanSubstituent::Deoxy,
-                        GlycanSubstituent::Acid,
                     ],
                     proforma_name: Some("Non".to_string()),
                     furanose: false,
@@ -725,9 +725,9 @@ pub(crate) static GLYCAN_PARSE_LIST: LazyLock<Vec<(String, MonoSaccharide)>> =
                 MonoSaccharide {
                     base_sugar: BaseSugar::Nonose(None),
                     substituents: vec![
-                        GlycanSubstituent::Amino,
                         GlycanSubstituent::Acetyl,
                         GlycanSubstituent::Acid,
+                        GlycanSubstituent::Amino,
                     ],
                     proforma_name: Some("NeuAc".to_string()),
                     furanose: false,
@@ -739,9 +739,9 @@ pub(crate) static GLYCAN_PARSE_LIST: LazyLock<Vec<(String, MonoSaccharide)>> =
                 MonoSaccharide {
                     base_sugar: BaseSugar::Nonose(None),
                     substituents: vec![
-                        GlycanSubstituent::Amino,
                         GlycanSubstituent::Acetyl,
                         GlycanSubstituent::Acid,
+                        GlycanSubstituent::Amino,
                     ],
                     proforma_name: Some("NeuAc".to_string()),
                     furanose: false,
@@ -753,9 +753,9 @@ pub(crate) static GLYCAN_PARSE_LIST: LazyLock<Vec<(String, MonoSaccharide)>> =
                 MonoSaccharide {
                     base_sugar: BaseSugar::Nonose(None),
                     substituents: vec![
+                        GlycanSubstituent::Acid,
                         GlycanSubstituent::Amino,
                         GlycanSubstituent::Glycolyl,
-                        GlycanSubstituent::Acid,
                     ],
                     proforma_name: Some("NeuGc".to_string()),
                     furanose: false,
@@ -767,9 +767,9 @@ pub(crate) static GLYCAN_PARSE_LIST: LazyLock<Vec<(String, MonoSaccharide)>> =
                 MonoSaccharide {
                     base_sugar: BaseSugar::Nonose(None),
                     substituents: vec![
+                        GlycanSubstituent::Acid,
                         GlycanSubstituent::Amino,
                         GlycanSubstituent::Glycolyl,
-                        GlycanSubstituent::Acid,
                     ],
                     proforma_name: Some("NeuGc".to_string()),
                     furanose: false,
@@ -781,9 +781,9 @@ pub(crate) static GLYCAN_PARSE_LIST: LazyLock<Vec<(String, MonoSaccharide)>> =
                 MonoSaccharide {
                     base_sugar: BaseSugar::Nonose(None),
                     substituents: vec![
+                        GlycanSubstituent::Acid,
                         GlycanSubstituent::Amino,
                         GlycanSubstituent::Deoxy,
-                        GlycanSubstituent::Acid,
                     ],
                     proforma_name: Some("Neu".to_string()),
                     furanose: false,
@@ -886,9 +886,9 @@ pub(crate) static GLYCAN_PARSE_LIST: LazyLock<Vec<(String, MonoSaccharide)>> =
                 MonoSaccharide {
                     base_sugar: BaseSugar::Nonose(None),
                     substituents: vec![
-                        GlycanSubstituent::Amino,
                         GlycanSubstituent::Acetyl,
                         GlycanSubstituent::Acid,
+                        GlycanSubstituent::Amino,
                     ],
                     proforma_name: Some("NeuAc".to_string()),
                     furanose: false,
@@ -900,9 +900,9 @@ pub(crate) static GLYCAN_PARSE_LIST: LazyLock<Vec<(String, MonoSaccharide)>> =
                 MonoSaccharide {
                     base_sugar: BaseSugar::Nonose(None),
                     substituents: vec![
-                        GlycanSubstituent::Amino,
                         GlycanSubstituent::Acetyl,
                         GlycanSubstituent::Acid,
+                        GlycanSubstituent::Amino,
                     ],
                     proforma_name: Some("NeuAc".to_string()),
                     furanose: false,
@@ -914,9 +914,9 @@ pub(crate) static GLYCAN_PARSE_LIST: LazyLock<Vec<(String, MonoSaccharide)>> =
                 MonoSaccharide {
                     base_sugar: BaseSugar::Nonose(None),
                     substituents: vec![
+                        GlycanSubstituent::Acid,
                         GlycanSubstituent::Amino,
                         GlycanSubstituent::Glycolyl,
-                        GlycanSubstituent::Acid,
                     ],
                     proforma_name: Some("NeuGc".to_string()),
                     furanose: false,

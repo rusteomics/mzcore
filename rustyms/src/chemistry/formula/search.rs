@@ -7,6 +7,8 @@ use crate::{
 };
 
 /// Find the molecular formulas that fit the mass given the tolerance using only the provided elements.
+/// # Panics
+/// If one of the given isotopes is not valid for the given element, see [`Element::is_valid`].
 pub fn find_formulas(
     mass: Mass,
     tolerance: Tolerance<Mass>,

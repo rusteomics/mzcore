@@ -1,5 +1,6 @@
 use std::{fmt::Display, hash::Hash};
 
+use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 
 use crate::{
@@ -38,6 +39,10 @@ pub struct MonoSaccharide {
 }
 
 impl MonoSaccharide {
+    /// Check if this monosacharide is similar to another, this checks if the
+    /// [`BaseSugar::equivalent`] is true (passing the precise flag there as well) and if the
+    /// substituents are identical. If the precise flag is on it also checks if the furanose and
+    /// configuration state are the same as well.
     pub fn equivalent(&self, other: &Self, precise: bool) -> bool {
         self.base_sugar.equivalent(other.base_sugar, precise)
             && self.substituents == other.substituents
@@ -74,7 +79,7 @@ impl MonoSaccharide {
     pub fn new(sugar: BaseSugar, substituents: &[GlycanSubstituent]) -> Self {
         Self {
             base_sugar: sugar,
-            substituents: substituents.to_owned(),
+            substituents: substituents.iter().copied().sorted().collect(),
             furanose: false,
             configuration: None,
             proforma_name: None,
@@ -264,7 +269,7 @@ impl MonoSaccharide {
         for sug in BASE_SUGARS {
             if line[index..].starts_with(sug.0) {
                 index += sug.0.len();
-                sugar = Some((sug.1.clone(), sug.2));
+                sugar = Some((sug.1, sug.2));
                 break;
             }
         }
@@ -382,6 +387,7 @@ impl MonoSaccharide {
             }
         }
         index += line[index..].ignore(&["?"]); // I guess to indicate partial structures
+        sugar.substituents.sort();
         Ok((sugar, index))
     }
 

@@ -325,14 +325,14 @@ mod tests {
 
     use super::*;
 
-    pub struct ProteaseTestCase {
+    pub(super) struct ProteaseTestCase {
         pub sequence: Peptidoform<Linear>,
         pub expected_cut_sites: Vec<usize>,
         pub expected_peptides: Vec<Peptidoform<Linear>>,
     }
 
     /// Generic test function for all proteases
-    pub fn test_protease(protease: &Protease, test_case: &ProteaseTestCase) {
+    pub(super) fn test_protease(protease: &Protease, test_case: &ProteaseTestCase) {
         // Test cut sites
         let cut_sites = protease.match_locations(test_case.sequence.sequence());
 

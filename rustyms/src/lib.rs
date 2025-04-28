@@ -17,17 +17,22 @@ mod fragmentation_tests;
 #[macro_use]
 mod helper_functions;
 
+/// Contains all things related to annotations (MS2 spectrum annotations that is).
 pub mod annotation;
+/// Contains all things related to the underlying chemistry.
 pub mod chemistry;
 pub mod error;
+/// Contains all things related to fragments and fragmentation.
 pub mod fragment;
 pub mod glycan;
 mod isobaric_sets;
 pub mod ontology;
+/// Contains all things related to tolerances and structures to handle multiple mass/formula options.
 pub mod quantities;
 #[cfg(feature = "rand")]
 /// Only available with features `rand`.
 mod rand;
+/// Contains all things related to sequences, amongst others amino acids and peptidoforms.
 pub mod sequence;
 pub mod spectrum;
 pub mod system;

@@ -8,14 +8,20 @@ use super::species::Species;
 /// A selection of germlines from a single species.
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Germlines {
+    /// The species of this selection of germlines
     pub species: Species,
+    /// All heavy chain options
     pub h: Chain,
+    /// All kappa light chain options
     pub k: Chain,
+    /// All lambda light chain options
     pub l: Chain,
+    /// All iota chain options
     pub i: Chain,
 }
 
 impl Germlines {
+    /// Create a new empty collection
     pub fn new(species: Species) -> Self {
         Self {
             species,
@@ -26,6 +32,7 @@ impl Germlines {
         }
     }
 
+    /// Insert a germline into this collection
     pub fn insert(&mut self, germline: Germline) {
         match &germline.name.chain {
             ChainType::Heavy => self.h.insert(germline),
@@ -173,6 +180,7 @@ impl Chain {
         }
     }
 
+    /// Create a row for use in the documentation of the numbers of different sequences available
     pub fn doc_row(&self) -> String {
         format!(
             "|{}/{}|{}/{}|{}/{}|",

@@ -2,6 +2,8 @@
 #![allow(dead_code)]
 use std::{ops::Range, sync::LazyLock};
 
+use serde::{Deserialize, Serialize};
+
 use crate::{
     chemistry::{MolecularCharge, MolecularFormula},
     error::{Context, CustomError},
@@ -86,7 +88,8 @@ fn parse_annotation(
     ))
 }
 
-#[derive(Debug)]
+/// An mzPAF single peak annotation.
+#[derive(Debug, Clone, PartialEq, PartialOrd, Serialize, Deserialize)]
 pub struct PeakAnnotation {
     auxiliary: bool,
     analyte_number: Option<usize>,
@@ -97,7 +100,7 @@ pub struct PeakAnnotation {
     confidence: Option<f64>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq, PartialOrd, Serialize, Deserialize)]
 enum IonType {
     Unknown(Option<usize>),
     MainSeries(char, usize),

@@ -7,7 +7,7 @@ use crate::{identification::*, sequence::Peptidoform};
 /// * If the peptide was not identified as the correct version of the format (see parameters).
 /// * See errors at [`test_identified_peptide`]
 #[expect(clippy::missing_panics_doc)]
-pub fn test_format<T: IdentifiedPeptidoformSource + Into<IdentifiedPeptidoform>>(
+pub(super) fn test_format<T: IdentifiedPeptidoformSource + Into<IdentifiedPeptidoform>>(
     reader: impl std::io::Read,
     custom_database: Option<&crate::ontology::CustomDatabase>,
     allow_mass_mods: bool,
@@ -55,7 +55,7 @@ where
 /// * If any of the local scores is outside of range -1.0..=1.0.
 /// * If the peptide contains mass modifications (see parameters).
 #[expect(clippy::missing_panics_doc)]
-pub fn test_identified_peptide(
+pub(super) fn test_identified_peptide(
     peptide: &IdentifiedPeptidoform,
     allow_mass_mods: bool,
     expect_lc: bool,

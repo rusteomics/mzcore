@@ -51,8 +51,8 @@ macro_rules! species {
 
             /// Get the species name from IMGT name tag.
             /// # Errors
-            /// `Err` when the name could not be recognised (it is case sensitive).
-            /// `Ok(None)` when it is recognised as a species used by IMGT, but it is not a proper species (vector/plasmid etc).
+            /// `Err` when the name could not be recognised (it is case-sensitive).
+            /// `Ok(None)` when it is recognised as a species used by IMGT, but it is not a proper species (vector/plasmid etc.).
             pub fn from_imgt(s: &str) -> Result<Option<Self>, ()> {
                 match s {
                     $($imgt => Ok(Some(Self::$identifier)),)*
