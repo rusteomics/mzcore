@@ -6,7 +6,11 @@ use std::num::NonZeroU16;
 use ordered_float::OrderedFloat;
 use pyo3::{exceptions::PyValueError, prelude::*, types::PyType};
 
-use rustyms::{AnnotatableSpectrum, Chemical, IsAminoAcid, Linked, MultiChemical};
+use rustyms::{
+    annotation::AnnotatableSpectrum,
+    chemistry::{Chemical, MultiChemical},
+    sequence::{IsAminoAcid, Linked},
+};
 
 /// Mass mode enum.
 #[pyclass(eq, eq_int)]
@@ -26,14 +30,14 @@ enum MassMode {
 /// symbol : str
 ///
 #[pyclass]
-#[derive(Debug, Clone)]
-pub struct Element(rustyms::Element);
+#[derive(Debug, Clone, Copy)]
+pub struct Element(rustyms::chemistry::Element);
 
 #[pymethods]
 impl Element {
     #[new]
     fn new(symbol: &str) -> PyResult<Self> {
-        rustyms::Element::try_from(symbol)
+        rustyms::chemistry::Element::try_from(symbol)
             .map(Element)
             .map_err(|_| PyValueError::new_err("Invalid element symbol."))
     }
@@ -99,7 +103,7 @@ impl Element {
 
 impl std::fmt::Display for Element {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "{:?}", self)
+        write!(f, "{self:?}")
     }
 }
 
@@ -109,7 +113,7 @@ impl std::fmt::Display for Element {
 ///
 #[pyclass]
 #[derive(Debug, Clone)]
-pub struct MolecularFormula(rustyms::MolecularFormula);
+pub struct MolecularFormula(rustyms::chemistry::MolecularFormula);
 
 #[pymethods]
 impl MolecularFormula {
@@ -135,9 +139,9 @@ impl MolecularFormula {
             .iter()
             .map(|(e, i, n)| (e.0, (*i).and_then(NonZeroU16::new), *n))
             .collect::<Vec<_>>();
-        let formula = rustyms::MolecularFormula::new(elements.as_slice(), &[])
+        let formula = rustyms::chemistry::MolecularFormula::new(elements.as_slice(), &[])
             .ok_or_else(|| PyValueError::new_err("Invalid isotopes"))?;
-        Ok(MolecularFormula(formula))
+        Ok(Self(formula))
     }
 
     fn __repr__(&self) -> String {
@@ -160,7 +164,7 @@ impl MolecularFormula {
     ///
     #[classmethod]
     fn from_pro_forma(_cls: &Bound<'_, PyType>, proforma: &str) -> PyResult<Self> {
-        rustyms::MolecularFormula::from_pro_forma(proforma, .., false, false, true)
+        rustyms::chemistry::MolecularFormula::from_pro_forma(proforma, .., false, false, true)
             .map(MolecularFormula)
             .map_err(|e| PyValueError::new_err(format!("Invalid ProForma string: {}", e)))
     }
@@ -177,7 +181,7 @@ impl MolecularFormula {
     ///
     #[classmethod]
     fn from_psi_mod(_cls: &Bound<'_, PyType>, psi_mod: &str) -> PyResult<Self> {
-        rustyms::MolecularFormula::from_psi_mod(psi_mod, ..)
+        rustyms::chemistry::MolecularFormula::from_psi_mod(psi_mod, ..)
             .map(MolecularFormula)
             .map_err(|e| PyValueError::new_err(format!("Invalid PSI-MOD string: {}", e)))
     }
@@ -229,18 +233,22 @@ impl MolecularFormula {
         &self,
         substitutions: Vec<(Element, Option<u16>)>,
     ) -> PyResult<Self> {
-        match self.0.with_global_isotope_modifications(
-            substitutions
-                .iter()
-                .map(|(e, i)| (e.0, (*i).and_then(NonZeroU16::new)))
-                .collect::<Vec<_>>()
-                .as_slice(),
-        ) {
-            Some(formula) => Ok(MolecularFormula(formula)),
-            None => Err(PyValueError::new_err(
-                "Invalid global isotope modifications",
-            )),
-        }
+        self.0
+            .with_global_isotope_modifications(
+                substitutions
+                    .iter()
+                    .map(|(e, i)| (e.0, (*i).and_then(NonZeroU16::new)))
+                    .collect::<Vec<_>>()
+                    .as_slice(),
+            )
+            .map_or_else(
+                || {
+                    Err(PyValueError::new_err(
+                        "Invalid global isotope modifications",
+                    ))
+                },
+                |formula| Ok(Self(formula)),
+            )
     }
 
     /// Get the number of electrons (the only charged species, any ionic species is saved as that element +/- the correct number of electrons). The inverse of that number is given as the charge.
@@ -343,13 +351,14 @@ impl MolecularFormula {
     /// -------
     /// list[str]
     fn ambiguous_labels(&self) -> Vec<String> {
-        self.0.labels().iter().map(|a| a.to_string()).collect()
+        self.0.labels().iter().map(ToString::to_string).collect()
     }
 }
 
 /// A selection of ions that together define the charge of a peptidoform.
 #[pyclass]
-pub struct MolecularCharge(rustyms::MolecularCharge);
+#[derive(Debug)]
+pub struct MolecularCharge(rustyms::chemistry::MolecularCharge);
 
 #[pymethods]
 impl MolecularCharge {
@@ -366,7 +375,7 @@ impl MolecularCharge {
     ///
     #[new]
     fn new(charge_carriers: Vec<(i32, MolecularFormula)>) -> Self {
-        MolecularCharge(rustyms::MolecularCharge {
+        Self(rustyms::chemistry::MolecularCharge {
             charge_carriers: charge_carriers
                 .iter()
                 .map(|(n, mol)| (*n as isize, mol.0.clone()))
@@ -380,7 +389,7 @@ impl MolecularCharge {
             self.0
                 .charge_carriers
                 .iter()
-                .map(|(n, mol)| format!("({}, {})", n, mol))
+                .map(|(n, mol)| format!("({n}, {mol})"))
                 .collect::<Vec<_>>()
                 .join(", ")
         )
@@ -399,7 +408,7 @@ impl MolecularCharge {
     ///
     #[classmethod]
     fn proton(_cls: &Bound<'_, PyType>, charge: i32) -> Self {
-        MolecularCharge(rustyms::MolecularCharge::proton(charge as isize))
+        Self(rustyms::chemistry::MolecularCharge::proton(charge as isize))
     }
 
     /// List of counts and molecular formulas for the charge carriers.
@@ -426,17 +435,17 @@ impl MolecularCharge {
 ///    The name of the amino acid.
 ///
 #[pyclass]
-#[derive(Debug)]
-pub struct AminoAcid(rustyms::AminoAcid);
+#[derive(Debug, Clone, Copy)]
+pub struct AminoAcid(rustyms::sequence::AminoAcid);
 
 #[pymethods]
 impl AminoAcid {
     #[new]
     fn new(name: &str) -> PyResult<Self> {
-        match rustyms::AminoAcid::try_from(name) {
-            Ok(aa) => Ok(AminoAcid(aa)),
-            Err(_) => Err(PyValueError::new_err("Invalid amino acid")),
-        }
+        rustyms::sequence::AminoAcid::try_from(name).map_or_else(
+            |_| Err(PyValueError::new_err("Invalid amino acid")),
+            |aa| Ok(Self(aa)),
+        )
     }
 
     fn __str__(&self) -> String {
@@ -506,7 +515,7 @@ impl AminoAcid {
 
 impl std::fmt::Display for AminoAcid {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "{:?}", self)
+        write!(f, "{self:?}",)
     }
 }
 
@@ -519,20 +528,20 @@ impl std::fmt::Display for AminoAcid {
 ///
 #[pyclass]
 #[derive(Debug, Clone)]
-pub struct SimpleModification(rustyms::modification::SimpleModification);
+pub struct SimpleModification(rustyms::sequence::SimpleModification);
 
 #[pymethods]
 impl SimpleModification {
     #[new]
     fn new(name: &str) -> PyResult<Self> {
-        match rustyms::modification::SimpleModificationInner::try_from(
+        match rustyms::sequence::SimpleModificationInner::parse_pro_forma(
             name,
             0..name.len(),
             &mut vec![],
             &mut vec![],
             None,
         ) {
-            Ok((modification, _)) => Ok(SimpleModification(modification.defined().unwrap())),
+            Ok((modification, _)) => Ok(Self(modification.defined().unwrap())),
             Err(_) => Err(PyValueError::new_err("Invalid modification")),
         }
     }
@@ -575,7 +584,7 @@ impl SimpleModification {
 ///
 #[pyclass]
 #[derive(Debug, Clone)]
-pub struct Modification(rustyms::Modification);
+pub struct Modification(rustyms::sequence::Modification);
 
 #[pymethods]
 impl Modification {
@@ -611,7 +620,7 @@ impl Modification {
 /// A theoretical fragment of a peptidoform.
 #[pyclass]
 #[derive(Debug)]
-pub struct Fragment(rustyms::Fragment);
+pub struct Fragment(rustyms::fragment::Fragment);
 
 #[pymethods]
 impl Fragment {
@@ -667,7 +676,7 @@ impl Fragment {
     /// int | None
     ///
     #[getter]
-    fn peptidoform_index(&self) -> Option<usize> {
+    const fn peptidoform_index(&self) -> Option<usize> {
         self.0.peptidoform_index
     }
 
@@ -678,7 +687,7 @@ impl Fragment {
     /// int | None
     ///
     #[getter]
-    fn peptidoform_ion_index(&self) -> Option<usize> {
+    const fn peptidoform_ion_index(&self) -> Option<usize> {
         self.0.peptidoform_ion_index
     }
 
@@ -693,18 +702,20 @@ impl Fragment {
         self.0
             .neutral_loss
             .iter()
-            .map(|nl| nl.to_string())
+            .map(ToString::to_string)
             .collect()
     }
 }
 
 /// All types of fragments.
 #[pyclass]
+#[derive(Debug)]
 pub struct FragmentType(rustyms::fragment::FragmentType);
 
 /// One block in a sequence meaning an amino acid and its accompanying modifications.
 #[pyclass]
-pub struct SequenceElement(rustyms::SequenceElement<Linked>);
+#[derive(Debug)]
+pub struct SequenceElement(rustyms::sequence::SequenceElement<Linked>);
 
 #[pymethods]
 impl SequenceElement {
@@ -724,7 +735,7 @@ impl SequenceElement {
     /// AminoAcid
     ///
     #[getter]
-    fn aminoacid(&self) -> AminoAcid {
+    const fn aminoacid(&self) -> AminoAcid {
         AminoAcid(self.0.aminoacid.aminoacid())
     }
 
@@ -750,7 +761,7 @@ impl SequenceElement {
     /// int | None
     ///
     #[getter]
-    fn ambiguous(&self) -> Option<std::num::NonZeroU32> {
+    const fn ambiguous(&self) -> Option<std::num::NonZeroU32> {
         self.0.ambiguous
     }
 }
@@ -769,15 +780,31 @@ enum FragmentationModel {
 }
 
 /// Helper function to match a [`FragmentationModel`] to a rustyms Model.
-fn match_model(model: &FragmentationModel) -> PyResult<rustyms::FragmentationModel> {
+fn match_model(
+    model: &FragmentationModel,
+) -> PyResult<rustyms::annotation::model::FragmentationModel> {
     match model {
-        FragmentationModel::All => Ok(rustyms::FragmentationModel::all().clone()),
-        FragmentationModel::CidHcd => Ok(rustyms::FragmentationModel::cid_hcd().clone()),
-        FragmentationModel::Etd => Ok(rustyms::FragmentationModel::etd().clone()),
-        FragmentationModel::Ethcd => Ok(rustyms::FragmentationModel::ethcd().clone()),
-        FragmentationModel::Ead => Ok(rustyms::FragmentationModel::ead().clone()),
-        FragmentationModel::Eacid => Ok(rustyms::FragmentationModel::eacid().clone()),
-        FragmentationModel::Uvpd => Ok(rustyms::FragmentationModel::uvpd().clone()),
+        FragmentationModel::All => {
+            Ok(rustyms::annotation::model::FragmentationModel::all().clone())
+        }
+        FragmentationModel::CidHcd => {
+            Ok(rustyms::annotation::model::FragmentationModel::cid_hcd().clone())
+        }
+        FragmentationModel::Etd => {
+            Ok(rustyms::annotation::model::FragmentationModel::etd().clone())
+        }
+        FragmentationModel::Ethcd => {
+            Ok(rustyms::annotation::model::FragmentationModel::ethcd().clone())
+        }
+        FragmentationModel::Ead => {
+            Ok(rustyms::annotation::model::FragmentationModel::ead().clone())
+        }
+        FragmentationModel::Eacid => {
+            Ok(rustyms::annotation::model::FragmentationModel::eacid().clone())
+        }
+        FragmentationModel::Uvpd => {
+            Ok(rustyms::annotation::model::FragmentationModel::uvpd().clone())
+        }
     }
 }
 
@@ -789,28 +816,28 @@ fn match_model(model: &FragmentationModel) -> PyResult<rustyms::FragmentationMod
 ///     The parameters
 ///
 #[pyclass]
-#[derive(Clone)]
-pub struct MatchingParameters(rustyms::model::MatchingParameters);
+#[derive(Debug, Clone)]
+pub struct MatchingParameters(rustyms::annotation::model::MatchingParameters);
 
 #[pymethods]
 impl MatchingParameters {
     /// Create default parameters
     #[staticmethod]
     fn new() -> Self {
-        MatchingParameters(rustyms::model::MatchingParameters::default())
+        Self(rustyms::annotation::model::MatchingParameters::default())
     }
 
     /// Set the tolerance to a certain ppm value
     #[setter]
     fn tolerance_ppm(&mut self, tolerance: f64) {
-        self.0.tolerance = rustyms::Tolerance::new_ppm(tolerance);
+        self.0.tolerance = rustyms::quantities::Tolerance::new_ppm(tolerance);
     }
 
     /// Set the tolerance to a certain absolute Thompson value
     #[setter]
     fn tolerance_thompson(&mut self, tolerance: f64) {
         self.0.tolerance =
-            rustyms::Tolerance::new_absolute(rustyms::system::MassOverCharge::new::<
+            rustyms::quantities::Tolerance::new_absolute(rustyms::system::MassOverCharge::new::<
                 rustyms::system::mz,
             >(tolerance));
     }
@@ -824,40 +851,40 @@ impl MatchingParameters {
 ///     The position
 ///
 #[pyclass]
-#[derive(Clone)]
-pub struct SequencePosition(rustyms::SequencePosition);
+#[derive(Clone, Copy, Debug)]
+pub struct SequencePosition(rustyms::sequence::SequencePosition);
 
 #[pymethods]
 impl SequencePosition {
     /// Create a N-terminal position
     #[staticmethod]
     fn n_term() -> Self {
-        SequencePosition(rustyms::SequencePosition::NTerm)
+        Self(rustyms::sequence::SequencePosition::NTerm)
     }
 
     /// Create a position based on index (0-based indexing)
     #[staticmethod]
     fn index(index: usize) -> Self {
-        SequencePosition(rustyms::SequencePosition::Index(index))
+        Self(rustyms::sequence::SequencePosition::Index(index))
     }
 
     /// Create a C-terminal position
     #[staticmethod]
     fn c_term() -> Self {
-        SequencePosition(rustyms::SequencePosition::CTerm)
+        Self(rustyms::sequence::SequencePosition::CTerm)
     }
 
     /// Check if this is a N-terminal position
     #[getter]
     fn is_n_term(&self) -> bool {
-        matches!(self, SequencePosition(rustyms::SequencePosition::NTerm))
+        matches!(self, Self(rustyms::sequence::SequencePosition::NTerm))
     }
 
     /// Get the index of this position, if it is a terminal position this returns None.
     #[getter]
     fn get_index(&self) -> Option<usize> {
         match self.0 {
-            rustyms::SequencePosition::Index(i) => Some(i),
+            rustyms::sequence::SequencePosition::Index(i) => Some(i),
             _ => None,
         }
     }
@@ -865,7 +892,10 @@ impl SequencePosition {
     /// Check if this is a C-terminal position
     #[getter]
     fn is_c_term(&self) -> bool {
-        matches!(self, SequencePosition(rustyms::SequencePosition::CTerm))
+        matches!(
+            self,
+            SequencePosition(rustyms::sequence::SequencePosition::CTerm)
+        )
     }
 }
 /// A compound peptidoform ion with all data as provided by ProForma 2.0.
@@ -876,15 +906,15 @@ impl SequencePosition {
 ///     The ProForma string.
 ///
 #[pyclass]
-#[derive(Clone)]
-pub struct CompoundPeptidoformIon(rustyms::CompoundPeptidoformIon);
+#[derive(Clone, Debug)]
+pub struct CompoundPeptidoformIon(rustyms::sequence::CompoundPeptidoformIon);
 
 #[pymethods]
 impl CompoundPeptidoformIon {
     /// Create a new compound peptidoform ion from a ProForma string.
     #[new]
     fn new(proforma: &str) -> Result<Self, CustomError> {
-        rustyms::CompoundPeptidoformIon::pro_forma(proforma, None)
+        rustyms::sequence::CompoundPeptidoformIon::pro_forma(proforma, None)
             .map(CompoundPeptidoformIon)
             .map_err(CustomError)
     }
@@ -892,13 +922,13 @@ impl CompoundPeptidoformIon {
     /// Create a new compound peptidoform ion from a peptidoform ion.
     #[staticmethod]
     fn from_peptidoform_ion(peptidoform: PeptidoformIon) -> Self {
-        CompoundPeptidoformIon(peptidoform.0.into())
+        Self(peptidoform.0.into())
     }
 
     /// Create a new compound peptidoform ion from a peptidoform.
     #[staticmethod]
     fn from_peptidoform(peptidoform: Peptidoform) -> Self {
-        CompoundPeptidoformIon(peptidoform.0.into())
+        Self(peptidoform.0.into())
     }
 
     /// Get all peptidoform ions making up this compound peptidoform.
@@ -968,15 +998,15 @@ impl CompoundPeptidoformIon {
 ///     The ProForma string.
 ///
 #[pyclass]
-#[derive(Clone)]
-pub struct PeptidoformIon(rustyms::PeptidoformIon);
+#[derive(Clone, Debug)]
+pub struct PeptidoformIon(rustyms::sequence::PeptidoformIon);
 
 #[pymethods]
 impl PeptidoformIon {
     /// Create a new peptidoform ion from a ProForma string. Panics
     #[new]
     fn new(proforma: &str) -> Result<Self, CustomError> {
-        rustyms::PeptidoformIon::pro_forma(proforma, None)
+        rustyms::sequence::PeptidoformIon::pro_forma(proforma, None)
             .map(PeptidoformIon)
             .map_err(CustomError)
     }
@@ -984,7 +1014,7 @@ impl PeptidoformIon {
     /// Create a new peptidoform ion from a peptidoform.
     #[staticmethod]
     fn from_peptidoform(peptidoform: Peptidoform) -> Self {
-        PeptidoformIon(peptidoform.0.clone().into())
+        Self(peptidoform.0.into())
     }
 
     /// Get all peptidoforms making up this peptidoform ion.
@@ -1054,15 +1084,15 @@ impl PeptidoformIon {
 ///     The ProForma string.
 ///
 #[pyclass]
-#[derive(Clone)]
-pub struct Peptidoform(rustyms::Peptidoform<Linked>);
+#[derive(Clone, Debug)]
+pub struct Peptidoform(rustyms::sequence::Peptidoform<Linked>);
 
 #[pymethods]
 impl Peptidoform {
     /// Create a new peptidoform from a ProForma string.
     #[new]
     fn new(proforma: &str) -> Result<Self, CustomError> {
-        rustyms::Peptidoform::pro_forma(proforma, None)
+        rustyms::sequence::Peptidoform::pro_forma(proforma, None)
             .map(Peptidoform)
             .map_err(CustomError)
     }
@@ -1199,8 +1229,8 @@ impl Peptidoform {
     /// -------
     /// Peptidoform
     ///
-    fn reverse(&self) -> Peptidoform {
-        Peptidoform(self.0.reverse())
+    fn reverse(&self) -> Self {
+        Self(self.0.reverse())
     }
 
     /// Gives the formulas for the whole peptidoform. With the global isotope modifications applied. (Any B/Z will result in multiple possible formulas.)
@@ -1289,7 +1319,7 @@ impl std::fmt::Display for RawPeak {
 
 #[pyclass]
 /// Represents an annotated peak in a mass spectrometry spectrum.
-struct AnnotatedPeak(rustyms::spectrum::AnnotatedPeak);
+struct AnnotatedPeak(rustyms::annotation::AnnotatedPeak);
 
 #[pymethods]
 impl AnnotatedPeak {
@@ -1349,7 +1379,7 @@ impl std::fmt::Display for AnnotatedPeak {
             self.intensity(),
             self.annotation()
                 .iter()
-                .map(|x| x.__repr__())
+                .map(Fragment::__repr__)
                 .collect::<Vec<_>>()
                 .join(", ")
         )
@@ -1380,7 +1410,8 @@ impl std::fmt::Display for AnnotatedPeak {
 /// RawSpectrum
 ///
 #[pyclass]
-pub struct RawSpectrum(rustyms::RawSpectrum);
+#[derive(Debug)]
+pub struct RawSpectrum(rustyms::spectrum::RawSpectrum);
 
 #[pymethods]
 impl RawSpectrum {
@@ -1418,7 +1449,7 @@ impl RawSpectrum {
         precursor_charge: Option<usize>,
         precursor_mass: Option<f64>,
     ) -> Self {
-        let mut spectrum = rustyms::RawSpectrum::default();
+        let mut spectrum = rustyms::spectrum::RawSpectrum::default();
         spectrum.title = title.to_string();
         spectrum.num_scans = num_scans;
         spectrum.rt = rt.map(rustyms::system::Time::new::<rustyms::system::s>);
@@ -1436,7 +1467,7 @@ impl RawSpectrum {
             .collect::<Vec<_>>();
 
         spectrum.extend(peaks);
-        RawSpectrum(spectrum)
+        Self(spectrum)
     }
 
     fn __repr__(&self) -> String {
@@ -1449,7 +1480,7 @@ impl RawSpectrum {
             self.mass().map_or("None".to_string(), |v| v.to_string()),
             self.spectrum()
                 .iter()
-                .map(|x| x.to_string())
+                .map(ToString::to_string)
                 .collect::<Vec<_>>()
                 .join(", ")
         )
@@ -1555,7 +1586,7 @@ impl RawSpectrum {
         let fragments = peptidoform.0.generate_theoretical_fragments(
             self.0
                 .charge
-                .unwrap_or(rustyms::system::usize::Charge::new::<rustyms::system::e>(1)),
+                .unwrap_or_else(|| rustyms::system::usize::Charge::new::<rustyms::system::e>(1)),
             &rusty_model,
         );
         Ok(AnnotatedSpectrum(self.0.annotate(
@@ -1563,9 +1594,9 @@ impl RawSpectrum {
             &fragments,
             &parameters.0,
             match mode {
-                MassMode::Monoisotopic => rustyms::MassMode::Monoisotopic,
-                MassMode::Average => rustyms::MassMode::Average,
-                MassMode::MostAbundant => rustyms::MassMode::MostAbundant,
+                MassMode::Monoisotopic => rustyms::chemistry::MassMode::Monoisotopic,
+                MassMode::Average => rustyms::chemistry::MassMode::Average,
+                MassMode::MostAbundant => rustyms::chemistry::MassMode::MostAbundant,
             },
         )))
     }
@@ -1573,7 +1604,8 @@ impl RawSpectrum {
 
 /// An annotated spectrum.
 #[pyclass]
-pub struct AnnotatedSpectrum(rustyms::AnnotatedSpectrum);
+#[derive(Debug)]
+pub struct AnnotatedSpectrum(rustyms::annotation::AnnotatedSpectrum);
 
 #[pymethods]
 impl AnnotatedSpectrum {
@@ -1698,7 +1730,7 @@ impl std::fmt::Display for CustomError {
     }
 }
 
-impl std::convert::From<CustomError> for PyErr {
+impl From<CustomError> for PyErr {
     fn from(value: CustomError) -> Self {
         PyValueError::new_err(value)
     }

@@ -1,3 +1,4 @@
+//! parse the IMGT database and generate the sequences in a format for rustyms
 #![allow(clippy::redundant_pub_crate)]
 
 use std::{
@@ -6,21 +7,16 @@ use std::{
     io::{BufReader, BufWriter, Write},
 };
 
-#[path = "../../rustyms/src/imgt/shared/mod.rs"]
-mod shared;
-
 mod combine;
 mod imgt_gene;
 mod parse;
 mod structs;
 
-use crate::shared::*;
-
 use bincode::config::Configuration;
 use itertools::Itertools;
 use rustyms::{
-    peptidoform::{Annotation, Region},
-    *,
+    imgt::{Germlines, Species},
+    sequence::{AminoAcid, Annotation, Region},
 };
 use structs::{Location, SequenceRegion};
 
@@ -61,7 +57,7 @@ fn main() {
 
     writeln!(
         output,
-        "// @generated\n#![allow(non_snake_case,non_upper_case_globals)]\nuse std::sync::LazyLock;\nuse bincode::config::Configuration;\nuse super::shared::{{Germlines, Species}};"
+        "// @generated\n#![allow(non_snake_case,non_upper_case_globals)]\nuse std::sync::LazyLock;\nuse bincode::config::Configuration;\nuse super::{{Germlines, Species}};"
     )
     .unwrap();
     writeln!(output, "/// Get the germlines for any of the available species. See the main documentation for which species have which data available.").unwrap();
@@ -92,8 +88,7 @@ _Number of genes / number of alleles_
         .unwrap();
         found_species.push(species);
 
-        let mut file =
-            std::fs::File::create(format!("rustyms/src/imgt/germlines/{species}.bin")).unwrap();
+        let mut file = File::create(format!("rustyms/src/imgt/germlines/{species}.bin")).unwrap();
         file.write_all(
             &bincode::serde::encode_to_vec::<Germlines, Configuration>(
                 germlines,
@@ -106,7 +101,7 @@ _Number of genes / number of alleles_
     // germlines
     writeln!(
         output,
-        "pub fn germlines(species: Species) -> Option<&'static Germlines> {{match species {{"
+        "pub(super) fn germlines(species: Species) -> Option<&'static Germlines> {{match species {{"
     )
     .unwrap();
 
@@ -124,7 +119,7 @@ _Number of genes / number of alleles_
     writeln!(
         output,
 "/// Get all germlines in one iterator, see the main documentation for more information about the available germlines
-pub fn all_germlines() -> impl std::iter::Iterator<Item = &'static Germlines> {{"
+pub(super) fn all_germlines() -> impl Iterator<Item = &'static Germlines> {{"
     )
     .unwrap();
     writeln!(output, "[").unwrap();
@@ -139,7 +134,7 @@ pub fn all_germlines() -> impl std::iter::Iterator<Item = &'static Germlines> {{
 #[cfg(feature = \"rayon\")]
 use rayon::prelude::*;
 #[cfg(feature = \"rayon\")]
-pub fn par_germlines() -> impl rayon::prelude::ParallelIterator<Item = &'static Germlines> {{"
+pub(super) fn par_germlines() -> impl ParallelIterator<Item = &'static Germlines> {{"
     )
     .unwrap();
     writeln!(output, "[").unwrap();

@@ -2,7 +2,7 @@
 
 use crate::{
     align::{align, AlignScoring, AlignType},
-    Peptidoform, SimpleLinear,
+    sequence::{Peptidoform, SimpleLinear},
 };
 
 #[test]

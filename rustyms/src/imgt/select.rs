@@ -1,20 +1,19 @@
-#[cfg(feature = "rayon")]
+#[cfg(all(feature = "rayon", not(feature = "internal-no-data")))]
 use rayon::prelude::*;
 use std::collections::HashSet;
 
-use crate::peptidoform::{AnnotatedPeptide, Annotation, Region, UnAmbiguous};
-use crate::Peptidoform;
+use crate::sequence::{AnnotatedPeptide, Annotation, Peptidoform, Region, UnAmbiguous};
 
-pub use super::fancy::FancyDisplay;
-pub use super::shared::*;
+pub(super) use super::*;
 
 /// Get a specific germline
+#[cfg(not(feature = "internal-no-data"))]
 pub fn get_germline(
     species: Species,
     gene: Gene,
     allele: Option<usize>,
 ) -> Option<Allele<'static>> {
-    super::germlines(species).and_then(|g| g.find(species, gene, allele))
+    germlines(species).and_then(|g| g.find(species, gene, allele))
 }
 
 /// The selection rules for iterating over a selection of germlines.
@@ -71,8 +70,9 @@ impl<
     > Selection<S1, S2>
 {
     /// Get the selected alleles
+    #[cfg(not(feature = "internal-no-data"))]
     pub fn germlines(self) -> impl Iterator<Item = Allele<'static>> {
-        super::all_germlines()
+        all_germlines()
             .filter(move |g| self.species.as_ref().is_none_or(|s| s.contains(&g.species)))
             .flat_map(|g| g.into_iter().map(|c| (g.species, c.0, c.1)))
             .filter(move |(_, kind, _)| self.chains.as_ref().is_none_or(|k| k.contains(kind)))
@@ -88,10 +88,10 @@ impl<
             .map(Into::into)
     }
 
-    #[cfg(feature = "rayon")]
+    #[cfg(all(feature = "rayon", not(feature = "internal-no-data")))]
     /// Get the selected alleles in parallel fashion, only available if you enable the feature "rayon" (on by default)
     pub fn par_germlines(self) -> impl ParallelIterator<Item = Allele<'static>> {
-        super::par_germlines()
+        par_germlines()
             .filter(move |g| self.species.as_ref().is_none_or(|s| s.contains(&g.species)))
             .flat_map(|g| g.into_par_iter().map(|c| (g.species, c.0, c.1)))
             .filter(move |(_, kind, _)| self.chains.as_ref().is_none_or(|k| k.contains(kind)))
@@ -110,6 +110,7 @@ impl<
     }
 }
 
+#[cfg(not(feature = "internal-no-data"))]
 fn contains_gene(s: &HashSet<GeneType>, gene: GeneType) -> bool {
     s.contains(&gene) || matches!(gene, GeneType::C(_)) && s.contains(&GeneType::C(None))
 }
@@ -136,6 +137,7 @@ pub enum AlleleSelection {
 }
 
 impl AlleleSelection {
+    #[cfg(not(feature = "internal-no-data"))]
     const fn take_num(self) -> usize {
         match self {
             Self::First => 1,
@@ -241,7 +243,7 @@ impl Germlines {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, not(feature = "internal-no-data")))]
 #[expect(clippy::missing_panics_doc)]
 mod tests {
     use std::collections::HashSet;

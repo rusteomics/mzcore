@@ -37,11 +37,7 @@ impl CustomError {
     /// * `short_desc` - A short description of the error, generally used as title line.
     /// * `long_desc` -  A longer description of the error, presented below the context to give more information and helpful feedback.
     /// * `context` - The context, in the most general sense this produces output which leads the user to the right place in the code or file.
-    pub fn error(
-        short_desc: impl std::string::ToString,
-        long_desc: impl std::string::ToString,
-        context: Context,
-    ) -> Self {
+    pub fn error(short_desc: impl ToString, long_desc: impl ToString, context: Context) -> Self {
         Self {
             content: Box::new(InnerError {
                 warning: false,
@@ -60,11 +56,7 @@ impl CustomError {
     /// * `short_desc` - A short description of the error, generally used as title line.
     /// * `long_desc` -  A longer description of the error, presented below the context to give more information and helpful feedback.
     /// * `context` - The context, in the most general sense this produces output which leads the user to the right place in the code or file.
-    pub fn warning(
-        short_desc: impl std::string::ToString,
-        long_desc: impl std::string::ToString,
-        context: Context,
-    ) -> Self {
+    pub fn warning(short_desc: impl ToString, long_desc: impl ToString, context: Context) -> Self {
         Self {
             content: Box::new(InnerError {
                 warning: true,
@@ -109,7 +101,7 @@ impl CustomError {
 
     /// Create a copy of the error with a new long description
     #[must_use]
-    pub fn with_long_description(&self, long_desc: impl std::string::ToString) -> Self {
+    pub fn with_long_description(&self, long_desc: impl ToString) -> Self {
         Self {
             content: Box::new(InnerError {
                 long_description: long_desc.to_string(),
@@ -120,10 +112,7 @@ impl CustomError {
 
     /// Create a copy of the error with the given suggestions
     #[must_use]
-    pub fn with_suggestions(
-        &self,
-        suggestions: impl IntoIterator<Item = impl std::string::ToString>,
-    ) -> Self {
+    pub fn with_suggestions(&self, suggestions: impl IntoIterator<Item = impl ToString>) -> Self {
         Self {
             content: Box::new(InnerError {
                 suggestions: suggestions.into_iter().map(|s| s.to_string()).collect(),
@@ -134,7 +123,7 @@ impl CustomError {
 
     /// Set the version of the underlying format
     #[must_use]
-    pub fn with_version(self, version: impl std::string::ToString) -> Self {
+    pub fn with_version(self, version: impl ToString) -> Self {
         Self {
             content: Box::new(InnerError {
                 version: version.to_string(),

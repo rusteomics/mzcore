@@ -2,7 +2,9 @@ use super::scoring::MatchType;
 use serde::{Deserialize, Serialize};
 
 /// A piece in an alignment, determining what step was taken in the alignment and how this impacted the score
-#[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Default, Serialize, Deserialize)]
+#[derive(
+    Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Default, Serialize, Deserialize,
+)]
 pub struct Piece {
     /// The total score of the path up till now
     pub score: isize,

@@ -1,6 +1,6 @@
 use crate::{
-    csv::CsvLine,
     error::{Context, CustomError},
+    identification::csv::CsvLine,
 };
 use std::{ops::Range, str::FromStr};
 
@@ -13,7 +13,7 @@ macro_rules! format_family {
      required { $($(#[doc = $rdoc:expr])? $rname:ident: $rtyp:ty, $rf:expr;)* }
      optional { $($(#[doc = $odoc:expr])? $oname:ident: $otyp:ty, $of:expr;)*}
      $($post_process:item)?) => {
-        use super::common_parser::{HasLocation};
+        use super::super::common_parser::HasLocation;
 
         #[non_exhaustive]
         #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, Default, Serialize, Deserialize)]
@@ -37,11 +37,11 @@ macro_rules! format_family {
             columns: Option<Vec<(std::sync::Arc<String>, String)>>,
         }
 
-        impl IdentifiedPeptideSource for $data {
+        impl IdentifiedPeptidoformSource for $data {
             type Source = CsvLine;
             type Format = $format;
             type Version = $version;
-            fn parse(source: &Self::Source, custom_database: Option<&crate::ontologies::CustomDatabase>, keep_all_columns: bool) -> Result<(Self, &'static Self::Format), CustomError> {
+            fn parse(source: &Self::Source, custom_database: Option<&crate::ontology::CustomDatabase>, keep_all_columns: bool) -> Result<(Self, &'static Self::Format), CustomError> {
                 let mut errors = Vec::new();
                 for format in $versions {
                     match Self::parse_specific(source, format, custom_database, keep_all_columns) {
@@ -57,12 +57,14 @@ macro_rules! format_family {
             }
             fn parse_file(
                 path: impl AsRef<std::path::Path>,
-                custom_database: Option<&crate::ontologies::CustomDatabase>,
+                custom_database: Option<&crate::ontology::CustomDatabase>,
                 keep_all_columns: bool,
+                version: Option<$version>,
             ) -> Result<BoxedIdentifiedPeptideIter<Self>, CustomError> {
+                let format = version.map(|v| v.format());
                 parse_csv(path, $separator, $header).and_then(|lines| {
                     let mut i = Self::parse_many::<Box<dyn Iterator<Item = Result<Self::Source, CustomError>>>>(
-                        Box::new(lines), custom_database, keep_all_columns);
+                        Box::new(lines), custom_database, keep_all_columns, format);
                     if let Some(Err(e)) = i.peek() {
                         Err(e.clone())
                     } else {
@@ -72,12 +74,14 @@ macro_rules! format_family {
             }
             fn parse_reader<'a>(
                 reader: impl std::io::Read + 'a,
-                custom_database: Option<&'a crate::ontologies::CustomDatabase>,
+                custom_database: Option<&'a crate::ontology::CustomDatabase>,
                 keep_all_columns: bool,
+                version: Option<$version>,
             ) -> Result<BoxedIdentifiedPeptideIter<'a, Self>, CustomError> {
-                crate::csv::parse_csv_raw(reader, $separator, $header).and_then(move |lines| {
+                let format = version.map(|v| v.format());
+                crate::identification::csv::parse_csv_raw(reader, $separator, $header).and_then(move |lines| {
                     let mut i = Self::parse_many::<Box<dyn Iterator<Item = Result<Self::Source, CustomError>>>>(
-                        Box::new(lines), custom_database, keep_all_columns);
+                        Box::new(lines), custom_database, keep_all_columns, format);
                     if let Some(Err(e)) = i.peek() {
                         Err(e.clone())
                     } else {
@@ -86,7 +90,7 @@ macro_rules! format_family {
                 })
             }
             #[allow(clippy::redundant_closure_call)] // Macro magic
-            fn parse_specific(source: &Self::Source, format: &$format, custom_database: Option<&crate::ontologies::CustomDatabase>, keep_all_columns: bool) -> Result<Self, CustomError> {
+            fn parse_specific(source: &Self::Source, format: &$format, custom_database: Option<&crate::ontology::CustomDatabase>, keep_all_columns: bool) -> Result<Self, CustomError> {
                 #[allow(unused_imports)]
                 use crate::helper_functions::InvertResult;
 
@@ -124,7 +128,7 @@ macro_rules! format_family {
     serde::Serialize,
     serde::Deserialize,
 )]
-pub enum OptionalColumn {
+pub(super) enum OptionalColumn {
     /// This column is not avalable in this version
     #[default]
     NotAvailable,
@@ -138,7 +142,7 @@ impl OptionalColumn {
     /// Open the column
     /// # Errors
     /// while creating the correct error messages for missing columns
-    pub fn open_column(self, source: &CsvLine) -> Result<Option<Location>, CustomError> {
+    pub(super) fn open_column(self, source: &CsvLine) -> Result<Option<Location>, CustomError> {
         match self {
             Self::NotAvailable => Ok(None),
             Self::Optional(s) => Ok(source.column(s).ok()),
@@ -147,7 +151,7 @@ impl OptionalColumn {
     }
 }
 
-pub trait HasLocation {
+pub(super) trait HasLocation {
     /// Get the specified column.
     /// # Errors
     /// If the column does not exist.
@@ -168,33 +172,17 @@ impl HasLocation for CsvLine {
 
 /// The base location type to keep track of the location of to be parsed pieces in the monadic parser combinators below
 #[derive(Clone)]
-pub struct Location<'a> {
+pub(super) struct Location<'a> {
     pub(super) line: &'a CsvLine,
     pub(super) location: Range<usize>,
 }
 
-impl<'a> Location<'a> {
-    pub fn len(&self) -> usize {
+impl Location<'_> {
+    pub(super) fn len(&self) -> usize {
         self.location.len()
     }
 
-    #[expect(dead_code)]
-    pub fn column(column: usize, source: &'a CsvLine) -> Self {
-        Location {
-            line: source,
-            location: source.range(column).clone(),
-        }
-    }
-
-    #[expect(dead_code)]
-    pub fn optional_column(column: Option<usize>, source: &'a CsvLine) -> Option<Self> {
-        column.map(|index| Location {
-            line: source,
-            location: source.range(index).clone(),
-        })
-    }
-
-    pub fn array(self, sep: char) -> std::vec::IntoIter<Self> {
+    pub(super) fn array(self, sep: char) -> std::vec::IntoIter<Self> {
         let mut offset = 0;
         let mut output = Vec::new();
         for part in self.as_str().split(sep) {
@@ -207,7 +195,7 @@ impl<'a> Location<'a> {
         output.into_iter()
     }
 
-    pub fn or_empty(self) -> Option<Self> {
+    pub(super) fn or_empty(self) -> Option<Self> {
         let text = self.as_str();
         if text.is_empty() || text == "-" {
             None
@@ -216,7 +204,7 @@ impl<'a> Location<'a> {
         }
     }
 
-    pub fn ignore(self, pattern: &str) -> Option<Self> {
+    pub(super) fn ignore(self, pattern: &str) -> Option<Self> {
         let text = self.as_str();
         if text == pattern {
             None
@@ -225,14 +213,14 @@ impl<'a> Location<'a> {
         }
     }
 
-    pub fn trim_end_matches(mut self, pattern: &str) -> Self {
+    pub(super) fn trim_end_matches(mut self, pattern: &str) -> Self {
         let trimmed = self.as_str().trim_end_matches(pattern);
         let dif = self.location.len() - trimmed.len();
         self.location = self.location.start..self.location.end - dif;
         self
     }
 
-    pub fn trim_start_matches(mut self, pattern: &str) -> Self {
+    pub(super) fn trim_start_matches(mut self, pattern: &str) -> Self {
         let trimmed = self.as_str().trim_start_matches(pattern);
         let dif = self.location.len() - trimmed.len();
         self.location = self.location.start + dif..self.location.end;
@@ -241,7 +229,7 @@ impl<'a> Location<'a> {
 
     /// # Errors
     /// If the parse method fails. See [`FromStr::parse`].
-    pub fn parse<T: FromStr>(self, base_error: (&str, &str)) -> Result<T, CustomError> {
+    pub(super) fn parse<T: FromStr>(self, base_error: (&str, &str)) -> Result<T, CustomError> {
         self.as_str().trim().parse().map_err(|_| {
             CustomError::error(
                 base_error.0,
@@ -253,7 +241,7 @@ impl<'a> Location<'a> {
 
     /// # Errors
     /// If the provided parse method fails.
-    pub fn parse_with<T>(
+    pub(super) fn parse_with<T>(
         self,
         f: impl Fn(Self) -> Result<T, CustomError>,
     ) -> Result<T, CustomError> {
@@ -262,7 +250,10 @@ impl<'a> Location<'a> {
 
     /// # Errors
     /// If the text could not be read as a valid id.
-    pub fn get_id(self, base_error: (&str, &str)) -> Result<(Option<usize>, usize), CustomError> {
+    pub(super) fn get_id(
+        self,
+        base_error: (&str, &str),
+    ) -> Result<(Option<usize>, usize), CustomError> {
         if let Some((start, end)) = self.as_str().split_once(':') {
             Ok((
                 Some(
@@ -284,19 +275,19 @@ impl<'a> Location<'a> {
         }
     }
 
-    pub fn get_string(self) -> String {
+    pub(super) fn get_string(self) -> String {
         self.as_str().to_string()
     }
 
-    pub fn as_str(&self) -> &str {
+    pub(super) fn as_str(&self) -> &str {
         &self.line.line()[self.location.clone()]
     }
 
-    pub fn full_line(&self) -> &str {
+    pub(super) fn full_line(&self) -> &str {
         self.line.line()
     }
 
-    pub fn context(&self) -> Context {
+    pub(super) fn context(&self) -> Context {
         Context::line_range(
             Some(self.line.line_index()),
             self.full_line(),
@@ -304,7 +295,7 @@ impl<'a> Location<'a> {
         )
     }
 
-    pub fn trim(&self) -> Self {
+    pub(super) fn trim(&self) -> Self {
         let start_trim = self.as_str().trim_start().len();
         let end_trim = self.as_str().trim_end().len();
         let length = self.as_str().len();
@@ -316,11 +307,11 @@ impl<'a> Location<'a> {
         }
     }
 
-    pub fn apply(self, f: impl FnOnce(Self) -> Self) -> Self {
+    pub(super) fn apply(self, f: impl FnOnce(Self) -> Self) -> Self {
         f(self)
     }
 
-    pub fn split_once(self, p: char) -> Option<(Self, Self)> {
+    pub(super) fn split_once(self, p: char) -> Option<(Self, Self)> {
         self.as_str().split_once(p).map(|(start, end)| {
             (
                 Self {
@@ -337,7 +328,7 @@ impl<'a> Location<'a> {
 }
 
 #[expect(dead_code)]
-pub trait OptionalLocation<'a> {
+pub(super) trait OptionalLocation<'a> {
     fn or_empty(self) -> Option<Location<'a>>;
     /// # Errors
     /// If the parse method fails. See [`FromStr::parse`].

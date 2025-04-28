@@ -1,22 +1,20 @@
+use crate::structs::{AASequence, DataItem, Location, Region};
 use crate::{complement, imgt_gene::IMGTGene, translate};
-use crate::{
-    shared::Species,
-    structs::{AASequence, DataItem, Location, Region},
-};
 use itertools::Itertools;
-use rustyms::AminoAcid;
+use rustyms::imgt::Species;
+use rustyms::sequence::AminoAcid;
 use std::collections::HashMap;
 use std::io::{BufRead, BufReader};
 
 /// Parse the IMGT file
-pub fn parse_dat<T: std::io::Read>(
+pub(crate) fn parse_dat<T: std::io::Read>(
     reader: BufReader<T>,
 ) -> impl Iterator<Item = Result<DataItem, String>> {
     reader
         .lines()
         .batching(|f| {
             let mut data = PreDataItem::default();
-            for line in f.filter_map(|i| i.ok()) {
+            for line in f.filter_map(Result::ok) {
                 if parse_dat_line(&mut data, &line) {
                     return Some(data);
                 }
@@ -48,14 +46,14 @@ fn parse_dat_line(data: &mut PreDataItem, line: &str) -> bool {
                 .filter(|s| !s.is_empty()),
         ),
         "FH" if line.starts_with("FH   Key") => {
-            data.ft_key_width = line.find("Location").expect("Incorrect FH line") - 5
+            data.ft_key_width = line.find("Location").expect("Incorrect FH line") - 5;
         }
         "FT" => data.ft.push(line[5..].to_string()),
         "OS" if data.os.is_none() => {
             data.os = Species::from_imgt(line[5..].trim()).unwrap_or_else(|()| {
                 println!("Not a species name: `{line}`");
                 None
-            })
+            });
         }
         "  " => data.sq.extend(
             line.chars()
@@ -102,7 +100,7 @@ impl DataItem {
                 continue;
             }
             if let Some(current) = &mut current {
-                DataItem::parse_ft_line(&line, current, &mut is_sequence)?;
+                Self::parse_ft_line(&line, current, &mut is_sequence)?;
             }
         }
         if let Some(region) = current.take() {
@@ -249,7 +247,7 @@ impl DataItem {
                 {
                     gene.regions.insert(region.key.clone(), region);
                 } else {
-                    self.regions.push(region)
+                    self.regions.push(region);
                 }
             } else if let Some(gene) = self
                 .genes
@@ -258,7 +256,7 @@ impl DataItem {
             {
                 gene.regions.insert(region.key.clone(), region);
             } else {
-                self.regions.push(region)
+                self.regions.push(region);
             }
         }
     }

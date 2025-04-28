@@ -2,25 +2,27 @@ use std::{io::Write, path::Path};
 
 use bincode::config::Configuration;
 use itertools::Itertools;
+use rustyms::{
+    chemistry::MolecularFormula,
+    fragment::DiagnosticIon,
+    ontology::{Ontology, OntologyModificationList},
+    sequence::{LinkerSpecificity, PlacementRule, Position},
+};
 use thin_vec::ThinVec;
-
-use crate::{formula::MolecularFormula, LinkerSpecificity};
 
 use super::{
     obo::{OboOntology, OboValue},
-    ontology_modification::{
-        OntologyModification, OntologyModificationList, PlacementRule, Position,
-    },
+    ontology_modification::OntologyModification,
     ModData,
 };
 
-pub fn build_xlmod_ontology(out_dir: &Path) {
+pub(crate) fn build_xlmod_ontology(out_dir: &Path) {
     let mods = parse_xlmod();
 
     let mut mods_file = std::fs::File::create(Path::new(&out_dir).join("xlmod.dat")).unwrap();
     let final_mods = mods
         .into_iter()
-        .map(|m| m.into_mod())
+        .map(OntologyModification::into_mod)
         .sorted_unstable()
         .collect::<Vec<_>>();
     println!("Found {} XLMOD modifications", final_mods.len());
@@ -152,16 +154,14 @@ fn parse_xlmod() -> Vec<OntologyModification> {
                 "reporterMass" | "CID_Fragment" => {
                     // reporterMass: "555.2481" xsd:double
                     // CID_Fragment: "828.5" xsd:double
-                    diagnostic_ions.push(crate::DiagnosticIon(
-                        MolecularFormula::with_additional_mass(
-                            if let OboValue::Float(n) = value[0] {
-                                n
-                            } else {
-                                dbg!(obj);
-                                unreachable!()
-                            },
-                        ),
-                    ))
+                    diagnostic_ions.push(DiagnosticIon(MolecularFormula::with_additional_mass(
+                        if let OboValue::Float(n) = value[0] {
+                            n
+                        } else {
+                            dbg!(obj);
+                            unreachable!()
+                        },
+                    )));
                 }
                 _ => {}
             }
@@ -173,7 +173,7 @@ fn parse_xlmod() -> Vec<OntologyModification> {
         if let Some(mass) = mass {
             // Ignore the mass if a formula is set
             if formula.is_none() {
-                formula = Some(MolecularFormula::with_additional_mass(mass.0))
+                formula = Some(MolecularFormula::with_additional_mass(mass.0));
             }
         }
         if sites == Some(2) || !origins.1.is_empty() {
@@ -184,17 +184,17 @@ fn parse_xlmod() -> Vec<OntologyModification> {
                 cross_ids,
                 synonyms,
                 id,
-                ontology: super::Ontology::Xlmod,
+                ontology: Ontology::Xlmod,
                 data: ModData::Linker {
                     length,
-                    specificities: vec![if !origins.1.is_empty() {
+                    specificities: vec![if origins.1.is_empty() {
+                        LinkerSpecificity::Symmetric(origins.0, Vec::new(), diagnostic_ions)
+                    } else {
                         LinkerSpecificity::Asymmetric(
                             (origins.0, origins.1),
                             Vec::new(),
                             diagnostic_ions,
                         )
-                    } else {
-                        LinkerSpecificity::Symmetric(origins.0, Vec::new(), diagnostic_ions)
                     }],
                 },
             });
@@ -207,7 +207,7 @@ fn parse_xlmod() -> Vec<OntologyModification> {
                 description,
                 cross_ids,
                 synonyms,
-                ontology: super::Ontology::Xlmod,
+                ontology: Ontology::Xlmod,
                 id,
                 data: ModData::Mod {
                     specificities: vec![(origins.0, Vec::new(), diagnostic_ions)],

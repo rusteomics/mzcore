@@ -1,16 +1,20 @@
 use std::{collections::HashMap, io::Write, path::Path, sync::Arc};
 
-use crate::{csv::parse_csv, glycan::*, SimpleModification};
-
-use super::{
-    obo::OboOntology, ontology_modification::OntologyModificationList, GnoComposition,
-    GnoSubsumption, ModificationId, SimpleModificationInner,
+use rustyms::{
+    glycan::{GlycanStructure, MonoSaccharide},
+    identification::csv::parse_csv,
+    ontology::{Ontology, OntologyModificationList},
+    sequence::{
+        GnoComposition, GnoSubsumption, ModificationId, SimpleModification, SimpleModificationInner,
+    },
 };
+
+use super::obo::OboOntology;
 
 use bincode::config::Configuration;
 use thin_vec::ThinVec;
 
-pub fn build_gnome_ontology(out_dir: &Path) {
+pub(crate) fn build_gnome_ontology(out_dir: &Path) {
     // Get all the basic info
     let mut mods = parse_gnome();
     let read_mods = mods.clone();
@@ -79,47 +83,44 @@ fn find_mass(mods: &HashMap<String, GNOmeModification>, mut name: String) -> Opt
 
 #[expect(dead_code)]
 mod gnome_terms {
-    pub const SUBSUMPTION_MOLECULAR_WEIGHT: &str = "GNO:00000012";
-    pub const SUBSUMPTION_BASECOMPOSITION: &str = "GNO:00000013";
-    pub const SUBSUMPTION_COMPOSITION: &str = "GNO:00000014";
-    pub const SUBSUMPTION_TOPOLOGY: &str = "GNO:00000015";
-    pub const SUBSUMPTION_SACCHARIDE: &str = "GNO:00000016";
+    pub(super) const SUBSUMPTION_MOLECULAR_WEIGHT: &str = "GNO:00000012";
+    pub(super) const SUBSUMPTION_BASECOMPOSITION: &str = "GNO:00000013";
+    pub(super) const SUBSUMPTION_COMPOSITION: &str = "GNO:00000014";
+    pub(super) const SUBSUMPTION_TOPOLOGY: &str = "GNO:00000015";
+    pub(super) const SUBSUMPTION_SACCHARIDE: &str = "GNO:00000016";
 
-    pub const HAS_SUBSUMPTION_CATEGORY: &str = "GNO:00000021";
-    pub const HAS_GLYTOUCAN_ID: &str = "GNO:00000022";
-    pub const HAS_GLYTOUCAN_LINK: &str = "GNO:00000023";
-    pub const IS_SUBSUMED_BY: &str = "GNO:00000024";
-    pub const IS_RESTRICTION_MEMBER: &str = "GNO:00000025";
+    pub(super) const HAS_SUBSUMPTION_CATEGORY: &str = "GNO:00000021";
+    pub(super) const HAS_GLYTOUCAN_ID: &str = "GNO:00000022";
+    pub(super) const HAS_GLYTOUCAN_LINK: &str = "GNO:00000023";
+    pub(super) const IS_SUBSUMED_BY: &str = "GNO:00000024";
+    pub(super) const IS_RESTRICTION_MEMBER: &str = "GNO:00000025";
     /// Is the basic composition the same, meaning the same monosaccharides (without isomeric information)
-    pub const HAS_BASECOMPOSITION: &str = "GNO:00000033";
+    pub(super) const HAS_BASECOMPOSITION: &str = "GNO:00000033";
     /// Is the composition the same, meaning the same monosaccharides
-    pub const HAS_COMPOSITION: &str = "GNO:00000034";
+    pub(super) const HAS_COMPOSITION: &str = "GNO:00000034";
     /// Is the basic structure the same (if anomeric and linkage information are thrown overboard)
-    pub const HAS_TOPOLOGY: &str = "GNO:00000035";
+    pub(super) const HAS_TOPOLOGY: &str = "GNO:00000035";
     /// Is the linked structure the same (if anomeric and reducing end ring information are thrown overboard)
-    pub const HAS_ARCHETYPE: &str = "GNO:00000036";
-    pub const HAS_STRUCTURE_BROWSER_LINK: &str = "GNO:00000041";
-    pub const HAS_COMPOSITION_BROWSER_LINK: &str = "GNO:00000042";
-    pub const SHORTUCKB_COMPOSITION: &str = "GNO:00000101";
+    pub(super) const HAS_ARCHETYPE: &str = "GNO:00000036";
+    pub(super) const HAS_STRUCTURE_BROWSER_LINK: &str = "GNO:00000041";
+    pub(super) const HAS_COMPOSITION_BROWSER_LINK: &str = "GNO:00000042";
+    pub(super) const SHORTUCKB_COMPOSITION: &str = "GNO:00000101";
     /// Indicates the precision of the definition, lower is better, 0 is a fully defined glycan
-    pub const HAS_STRUCTURE_CHARACTERISATION_SCORE: &str = "GNO:00000102";
-    pub const HAS_BYONIC_NAME: &str = "GNO:00000202";
+    pub(super) const HAS_STRUCTURE_CHARACTERISATION_SCORE: &str = "GNO:00000102";
+    pub(super) const HAS_BYONIC_NAME: &str = "GNO:00000202";
 }
 
 use gnome_terms::*;
 use itertools::Itertools;
 
-impl std::str::FromStr for GnoSubsumption {
-    type Err = ();
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
-            SUBSUMPTION_MOLECULAR_WEIGHT => Ok(Self::AverageWeight),
-            SUBSUMPTION_BASECOMPOSITION => Ok(Self::BaseComposition),
-            SUBSUMPTION_COMPOSITION => Ok(Self::Composition),
-            SUBSUMPTION_TOPOLOGY => Ok(Self::Topology),
-            SUBSUMPTION_SACCHARIDE => Ok(Self::Saccharide),
-            _ => Err(()),
-        }
+fn gno_subsumption_from_str(s: &str) -> Result<GnoSubsumption, ()> {
+    match s {
+        SUBSUMPTION_MOLECULAR_WEIGHT => Ok(GnoSubsumption::AverageWeight),
+        SUBSUMPTION_BASECOMPOSITION => Ok(GnoSubsumption::BaseComposition),
+        SUBSUMPTION_COMPOSITION => Ok(GnoSubsumption::Composition),
+        SUBSUMPTION_TOPOLOGY => Ok(GnoSubsumption::Topology),
+        SUBSUMPTION_SACCHARIDE => Ok(GnoSubsumption::Saccharide),
+        _ => Err(()),
     }
 }
 
@@ -136,14 +137,14 @@ fn parse_gnome() -> HashMap<String, GNOmeModification> {
         // name: glycan of molecular weight 40.03 Da
         let modification = GNOmeModification {
             id: ModificationId {
-                ontology: super::Ontology::Gnome,
+                ontology: Ontology::Gnome,
                 name: obj.lines["id"][0][4..].to_ascii_lowercase(),
                 id: None,
                 description: obj.lines.get("def").map_or(String::new(), |d| {
                     d[0].trim_matches("\"[] ".chars().collect_vec().as_slice())
                         .to_string()
                 }),
-                synonyms: obj.lines.get("synonym").map_or(ThinVec::new(), |s| {
+                synonyms: obj.lines.get("synonym").map_or_else(ThinVec::new, |s| {
                     s.iter()
                         .filter_map(|s| s[1..].split_once('"').map(|(s, _)| s.to_string()))
                         .collect()
@@ -173,14 +174,14 @@ fn parse_gnome() -> HashMap<String, GNOmeModification> {
             subsumption_level: obj
                 .lines
                 .get(HAS_SUBSUMPTION_CATEGORY)
-                .map(|s| s[0].parse().unwrap())
+                .map(|s| gno_subsumption_from_str(&s[0]).unwrap())
                 .unwrap_or_default(),
             structure_score: obj
                 .lines
                 .get(HAS_STRUCTURE_CHARACTERISATION_SCORE)
                 .map(|s| s[0].parse().unwrap()),
             is_a: obj.lines["is_a"][0].trim()[4..]
-                .split_once("!")
+                .split_once('!')
                 .unwrap()
                 .0
                 .trim()
@@ -291,11 +292,11 @@ fn parse_gnome_structures() -> HashMap<String, GlycosmosList> {
                                 .into_iter()
                                 .flat_map(|p| p.split(','))
                                 .map(|p| p.split_once(':').unwrap())
-                                .chunk_by(|(species, _)| species.to_string())
+                                .chunk_by(|(species, _)| (*species).to_string())
                                 .into_iter()
                                 .map(|(species, locations)| {
                                     (
-                                        species.to_string(),
+                                        (*species).to_string(),
                                         locations
                                             .into_iter()
                                             .map(|location| {
@@ -322,12 +323,11 @@ fn parse_gnome_structures() -> HashMap<String, GlycosmosList> {
             }
         }
     }
-    if errors > 0 {
-        panic!(
-            "Total glycan structure reading errors: {errors} total read {}",
-            glycans.len()
-        );
-    }
+    assert!(
+        errors <= 0,
+        "Total glycan structure reading errors: {errors} total read {}",
+        glycans.len()
+    );
     glycans
 }
 
@@ -366,7 +366,7 @@ impl GNOmeModification {
             } else if let Some(composition) = self.composition {
                 GnoComposition::Composition(composition)
             } else if let Some(mass) = self.weight {
-                GnoComposition::Weight(crate::system::f64::da(mass).into())
+                GnoComposition::Weight(rustyms::system::f64::da(mass).into())
             } else {
                 panic!("unreachable")
             },

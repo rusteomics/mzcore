@@ -1,18 +1,15 @@
 use std::{io::Write, path::Path};
 
 use bincode::config::Configuration;
-
-use crate::formula::MolecularFormula;
-
-use super::{
-    obo::OboOntology,
-    ontology_modification::{
-        OntologyModification, OntologyModificationList, PlacementRule, Position,
-    },
-    ModData,
+use rustyms::{
+    chemistry::MolecularFormula,
+    ontology::{Ontology, OntologyModificationList},
+    sequence::{PlacementRule, Position},
 };
 
-pub fn build_psi_mod_ontology(out_dir: &Path) {
+use super::{obo::OboOntology, ontology_modification::OntologyModification, ModData};
+
+pub(crate) fn build_psi_mod_ontology(out_dir: &Path) {
     let mods = parse_psi_mod();
 
     let dest_path = Path::new(&out_dir).join("psimod.dat");
@@ -46,7 +43,7 @@ fn parse_psi_mod() -> Vec<OntologyModification> {
                 .parse()
                 .expect("Incorrect psi mod id, should be numerical"),
             name: obj.lines["name"][0].to_string(),
-            ontology: super::ontology_modification::Ontology::Psimod,
+            ontology: Ontology::Psimod,
             ..OntologyModification::default()
         };
         if let Some(values) = obj.lines.get("def") {
@@ -124,7 +121,7 @@ fn parse_psi_mod() -> Vec<OntologyModification> {
         }
         if origins.is_empty() || all_aminoacids {
             if let Some(term) = term {
-                rules.push((vec![PlacementRule::Terminal(term)], Vec::new(), Vec::new()))
+                rules.push((vec![PlacementRule::Terminal(term)], Vec::new(), Vec::new()));
             }
         }
         modification.data = ModData::Mod {
@@ -138,14 +135,16 @@ fn parse_psi_mod() -> Vec<OntologyModification> {
 
 #[cfg(test)]
 mod tests {
+    use rustyms::{chemistry::MolecularFormula, molecular_formula};
+
     #[test]
     fn parse_molecular_formula() {
         assert_eq!(
-            crate::MolecularFormula::from_psi_mod("(12)C -5 (13)C 5 H 0 N 0 O 0 S 0", ..).unwrap(),
+            MolecularFormula::from_psi_mod("(12)C -5 (13)C 5 H 0 N 0 O 0 S 0", ..).unwrap(),
             molecular_formula!([12 C -5] [13 C 5] H 0 N 0 O 0 S 0)
         );
         assert_eq!(
-            crate::MolecularFormula::from_psi_mod("(12)C -9 (13)C 9", ..).unwrap(),
+            MolecularFormula::from_psi_mod("(12)C -9 (13)C 9", ..).unwrap(),
             molecular_formula!([12 C -9] [13 C 9])
         );
     }

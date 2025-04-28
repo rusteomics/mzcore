@@ -1,11 +1,12 @@
 #![allow(dead_code)]
 use std::borrow::Cow;
 
-use crate::Peptidoform;
-
-use super::{AlignType, MatchType, Score};
-
 use serde::{Deserialize, Serialize};
+
+use crate::{
+    align::{AlignType, MatchType, Score},
+    sequence::Peptidoform,
+};
 
 type MultiAlignment<'lifetime, Complexity> = Vec<MultiAlignmentLine<'lifetime, Complexity>>;
 

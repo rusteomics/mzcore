@@ -3,10 +3,10 @@ use std::num::NonZeroU16;
 use rand::distr::{Distribution, StandardUniform};
 
 use crate::{
+    chemistry::{Element, MolecularFormula},
     glycan::{BaseSugar, GlycanStructure, GlycanSubstituent, MonoSaccharide},
-    modification::SimpleModificationInner,
+    sequence::SimpleModificationInner,
     system::{dalton, Mass, OrderedMass},
-    Element, MolecularFormula,
 };
 
 impl Distribution<SimpleModificationInner> for StandardUniform {

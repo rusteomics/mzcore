@@ -20,15 +20,18 @@
 
 mod fancy;
 #[rustfmt::skip]
+#[cfg(not(feature="internal-no-data"))]
 mod germlines;
+mod regions;
 mod select;
-mod shared;
+mod species;
 
 pub use fancy::*;
-#[cfg(feature = "rayon")]
+#[cfg(all(feature = "rayon", not(feature = "internal-no-data")))]
 use germlines::par_germlines;
+#[cfg(not(feature = "internal-no-data"))]
 use germlines::{all_germlines, germlines};
 
+pub use regions::*;
 pub use select::*;
-#[expect(unused_imports)]
-pub use shared::*;
+pub use species::*;

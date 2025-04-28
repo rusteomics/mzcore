@@ -1,15 +1,17 @@
 //! Handle monosaccharides
 
+use itertools::Itertools;
+
 use crate::{
+    annotation::model::{FragmentationModel, GlycanModel},
+    chemistry::{CachedCharge, Chemical, MolecularFormula},
     fragment::{DiagnosticPosition, Fragment, FragmentType},
-    model::GlycanModel,
-    molecular_charge::CachedCharge,
+    quantities::Multi,
+    sequence::{AminoAcid, SequencePosition},
     system::usize::Charge,
-    AminoAcid, FragmentationModel, Multi,
 };
 
-include!("../shared/glycan.rs");
-include!("../shared/glycan_lists.rs");
+use super::glycan::MonoSaccharide;
 
 impl MonoSaccharide {
     /// Generate the composition used for searching on glycans
@@ -190,7 +192,19 @@ impl MonoSaccharide {
 #[cfg(test)]
 #[expect(clippy::missing_panics_doc)]
 mod tests {
-    use super::*;
+    use itertools::Itertools;
+
+    use crate::{
+        chemistry::Chemical,
+        glycan::{
+            glycan::{
+                BaseSugar, Configuration, GlycanSubstituent, HexoseIsomer, MonoSaccharide,
+                PentoseIsomer,
+            },
+            lists::GLYCAN_PARSE_LIST,
+        },
+        molecular_formula,
+    };
 
     #[test]
     fn pro_forma_compliance() {
@@ -222,7 +236,7 @@ mod tests {
         ];
         for (name, formula) in cases {
             assert_eq!(
-                glycan_parse_list()
+                GLYCAN_PARSE_LIST
                     .iter()
                     .find(|p| p.0 == *name)
                     .unwrap_or_else(|| panic!("Assumed {name} would be defined"))

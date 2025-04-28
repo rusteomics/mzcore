@@ -1,15 +1,14 @@
 use itertools::Itertools;
 
 use crate::{
-    fragment::GlycanPosition,
+    chemistry::Chemical,
     glycan::{
         render::{
             element::GlycanRoot,
             shape::{Colour, Shape},
         },
-        GlycanBranchIndex, GlycanBranchMassIndex, GlycanStructure, RenderedGlycan,
+        GlycanBranchIndex, GlycanBranchMassIndex, GlycanPosition, GlycanStructure, RenderedGlycan,
     },
-    Chemical,
 };
 
 use super::element::GlycanSelection;
@@ -308,7 +307,7 @@ impl AbsolutePositionedGlycan {
             // The tree is cut here
             if breakages.iter().any(|b| b.0 == 0) {
                 return (0, true, lx, rx);
-            };
+            }
 
             let total_branches = tree.branches.len() + tree.sides.len();
             let (depth, break_top, left_offset, right_offset) = match total_branches {

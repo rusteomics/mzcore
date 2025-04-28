@@ -7,12 +7,11 @@ use ordered_float::OrderedFloat;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    spectrum::{AnnotatableSpectrum, AnnotatedPeak, PeakSpectrum},
+    spectrum::PeakSpectrum,
     system::{
         f64::{Mass, MassOverCharge, Ratio, Time},
         usize::Charge,
     },
-    AnnotatedSpectrum, CompoundPeptidoformIon, Tolerance, WithinTolerance,
 };
 
 /// A raw spectrum (meaning not annotated yet)
@@ -31,7 +30,7 @@ pub struct RawSpectrum {
     /// The found precursor intensity
     pub intensity: Option<f64>,
     /// The peaks of which this spectrum consists
-    spectrum: Vec<RawPeak>,
+    pub(crate) spectrum: Vec<RawPeak>,
     /// MGF: if present the SEQUENCE line
     pub sequence: Option<String>,
     /// MGF TITLE: if present the raw file where this mgf was made from
@@ -87,7 +86,7 @@ impl RawSpectrum {
                 .map(|(f, l)| ((l.mz.value - f.mz.value) / window_size).round() as usize * top)
                 .unwrap_or_default(),
         );
-        let mut spectrum = self.spectrum.iter().cloned().peekable();
+        let mut spectrum = self.spectrum.iter().copied().peekable();
         let mut window = 1;
         let mut peaks = Vec::new();
 
@@ -102,7 +101,7 @@ impl RawSpectrum {
             new_spectrum.extend(
                 peaks
                     .iter()
-                    .cloned()
+                    .copied()
                     .k_largest_by(top, |a, b| a.mz.value.total_cmp(&b.mz.value)),
             );
             peaks.clear();
@@ -110,46 +109,6 @@ impl RawSpectrum {
         }
 
         self.spectrum = new_spectrum;
-    }
-}
-
-impl AnnotatableSpectrum for RawSpectrum {
-    type Tolerance = Tolerance<MassOverCharge>;
-
-    fn empty_annotated(&self, peptide: CompoundPeptidoformIon) -> AnnotatedSpectrum {
-        AnnotatedSpectrum {
-            title: self.title.clone(),
-            num_scans: self.num_scans,
-            rt: self.rt,
-            charge: self.charge,
-            mass: self.mass,
-            peptide,
-            spectrum: self
-                .spectrum
-                .iter()
-                .map(AnnotatedPeak::background)
-                .collect(),
-        }
-    }
-
-    fn search(&self, query: MassOverCharge, tolerance: Self::Tolerance) -> Option<usize> {
-        let index = self
-            .spectrum
-            .binary_search_by(|p| p.mz.value.total_cmp(&query.value))
-            .unwrap_or_else(|i| i);
-
-        // Check index-1, index and index+1 (if existing) to find the one with the lowest ppm
-        let mut closest = (0, f64::INFINITY);
-        for i in if index == 0 { 0 } else { index - 1 }..=(index + 1).min(self.spectrum.len() - 1) {
-            let ppm = self.spectrum[i].ppm(query).value;
-            if ppm < closest.1 {
-                closest = (i, ppm);
-            }
-        }
-
-        tolerance
-            .within(&self.spectrum[closest.0].mz, &query)
-            .then_some(closest.0)
     }
 }
 
@@ -185,7 +144,7 @@ impl PeakSpectrum for RawSpectrum {
             .spectrum
             .binary_search_by(|a| a.mz.value.total_cmp(&low.value))
         {
-            Result::Ok(idx) | Result::Err(idx) => {
+            Ok(idx) | Err(idx) => {
                 let mut idx = idx.saturating_sub(1);
                 while idx > 0 && self.spectrum[idx].mz.value.total_cmp(&low.value) != Ordering::Less
                 {
@@ -198,7 +157,7 @@ impl PeakSpectrum for RawSpectrum {
         let right_idx = match self.spectrum[left_idx..]
             .binary_search_by(|a| a.mz.value.total_cmp(&high.value))
         {
-            Result::Ok(idx) | Err(idx) => {
+            Ok(idx) | Err(idx) => {
                 let mut idx = idx + left_idx;
                 while idx < self.spectrum.len()
                     && self.spectrum[idx].mz.value.total_cmp(&high.value) != Ordering::Greater
@@ -222,7 +181,7 @@ impl PeakSpectrum for RawSpectrum {
 }
 
 /// A raw peak
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
 pub struct RawPeak {
     /// The mz value of this peak
     pub mz: MassOverCharge,

@@ -13,10 +13,8 @@ itertools = { workspace = true }
 ordered-float = { workspace = true }
 regex = { workspace = true }
 roxmltree = { workspace = true }
-serde = { workspace = true }
-similar = { workspace = true }
 thin-vec = { workspace = true }
-uom = { workspace = true }
+rustyms = { path = "../rustyms", features = ["internal-no-data"] }
 
 [features]
 rayon = []

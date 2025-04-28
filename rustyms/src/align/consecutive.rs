@@ -2,8 +2,7 @@ use crate::{
     align::AlignScoring,
     align::*,
     imgt::*,
-    peptidoform::{AnnotatedPeptide, AtMax, Region, SimpleLinear, UnAmbiguous},
-    *,
+    sequence::{AnnotatedPeptide, AtMax, Linear, Peptidoform, Region, SimpleLinear, UnAmbiguous},
 };
 use std::collections::HashSet;
 

@@ -11,19 +11,15 @@ use super::align_type::*;
 use super::piece::*;
 use super::scoring::*;
 
-use crate::align::mass_alignment::determine_final_score;
-use crate::align::mass_alignment::score_pair;
-use crate::helper_functions::next_num;
-use crate::model::GlycanModel;
-use crate::peptidoform::AtMax;
-use crate::peptidoform::Linear;
-use crate::system::Mass;
-use crate::system::Ratio;
-use crate::MolecularFormula;
-use crate::Multi;
-use crate::Peptidoform;
-use crate::SequencePosition;
-use crate::SimpleLinear;
+use crate::{
+    align::mass_alignment::{determine_final_score, score_pair},
+    annotation::model::GlycanModel,
+    chemistry::MolecularFormula,
+    helper_functions::next_num,
+    quantities::Multi,
+    sequence::{AtMax, Linear, Peptidoform, SequencePosition, SimpleLinear},
+    system::{Mass, Ratio},
+};
 
 /// An alignment of two reads. It has either a reference to the two sequences to prevent overzealous use of memory, or if needed use [`Self::to_owned`] to get a variant that clones the sequences and so can be used in more places.
 #[derive(Debug, Serialize, Deserialize)]
@@ -116,7 +112,7 @@ impl<A, B> Ord for Alignment<'_, A, B> {
 
 impl<'lifetime, A: AtMax<SimpleLinear>, B: AtMax<SimpleLinear>> Alignment<'lifetime, A, B> {
     /// Recreate an alignment from a path, the path is [`Self::short`].
-    #[expect(clippy::missing_panics_doc)]
+    #[expect(clippy::missing_panics_doc, clippy::too_many_arguments)]
     pub fn create_from_path(
         seq_a: &'lifetime Peptidoform<A>,
         seq_b: &'lifetime Peptidoform<B>,
@@ -245,8 +241,9 @@ impl<'lifetime, A: AtMax<SimpleLinear>, B: AtMax<SimpleLinear>> Alignment<'lifet
                         .collect_vec()
                 }
                 MatchType::Rotation => {
-                    let local_score =
-                        scoring.mass_base as isize + scoring.rotated as isize * a as isize;
+                    let local_score = scoring.mass_base as isize
+                        + scoring.rotated as isize
+                            * isize::try_from(a).expect("Could not fit number in isize");
                     score += local_score;
                     index_a += a as usize;
                     index_b += b as usize;
@@ -260,7 +257,9 @@ impl<'lifetime, A: AtMax<SimpleLinear>, B: AtMax<SimpleLinear>> Alignment<'lifet
                 }
                 MatchType::Isobaric => {
                     let local_score = scoring.mass_base as isize
-                        + scoring.isobaric as isize * (a + b) as isize / 2;
+                        + scoring.isobaric as isize
+                            * isize::try_from(a + b).expect("Could not fit number in isize")
+                            / 2;
                     score += local_score;
                     index_a += a as usize;
                     index_b += b as usize;
@@ -532,7 +531,7 @@ impl<A: AtMax<Linear>, B: AtMax<Linear>> Alignment<'_, A, B> {
 }
 
 /// Statistics for an alignment with some helper functions to easily retrieve the number of interest.
-#[derive(Clone, PartialEq, Eq, Hash, Debug, Serialize, Deserialize)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, Serialize, Deserialize)]
 pub struct Stats {
     /// The total number of identical positions
     pub identical: usize,
@@ -548,7 +547,7 @@ pub struct Stats {
 
 impl Stats {
     /// Get the identity as fraction.
-    pub fn identity(&self) -> f64 {
+    pub fn identity(self) -> f64 {
         if self.length == 0 {
             0.0
         } else {
@@ -557,7 +556,7 @@ impl Stats {
     }
 
     /// Get the mass similarity as fraction.
-    pub fn mass_similarity(&self) -> f64 {
+    pub fn mass_similarity(self) -> f64 {
         if self.length == 0 {
             0.0
         } else {
@@ -566,7 +565,7 @@ impl Stats {
     }
 
     /// Get the similarity as fraction.
-    pub fn similarity(&self) -> f64 {
+    pub fn similarity(self) -> f64 {
         if self.length == 0 {
             0.0
         } else {
@@ -575,7 +574,7 @@ impl Stats {
     }
 
     /// Get the gaps as fraction.
-    pub fn gaps_fraction(&self) -> f64 {
+    pub fn gaps_fraction(self) -> f64 {
         if self.length == 0 {
             0.0
         } else {
@@ -601,8 +600,8 @@ pub struct Score {
 mod tests {
     use crate::{
         align::{align, AlignScoring, AlignType},
-        peptidoform::SimpleLinear,
-        AminoAcid, MultiChemical, Peptidoform,
+        chemistry::MultiChemical,
+        sequence::{AminoAcid, Peptidoform, SimpleLinear},
     };
 
     #[test]

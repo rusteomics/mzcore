@@ -1,9 +1,14 @@
+//! Annotate many peptides at once
+
 #![allow(non_snake_case)] // charge_independent_Y needs the capital as it means the glycan fragmentation
 use std::{
     collections::BTreeMap,
     fs::File,
     io::{BufReader, BufWriter},
-    sync::{atomic::AtomicUsize, Arc},
+    sync::{
+        atomic::{AtomicUsize, Ordering},
+        Arc,
+    },
 };
 
 use clap::Parser;
@@ -13,14 +18,19 @@ use itertools::Itertools;
 use mzdata::io::{MZFileReader, SpectrumSource};
 use rayon::prelude::*;
 use rustyms::{
-    identification::IdentifiedPeptideSource,
-    model::MatchingParameters,
-    spectrum::{Score, Scores},
+    annotation::{
+        model::{FragmentationModel, MatchingParameters},
+        AnnotatableSpectrum, AnnotatedPeak, Score, Scores,
+    },
+    chemistry::MassMode,
+    fragment::Fragment,
+    identification::{csv::write_csv, BasicCSVData, IdentifiedPeptidoformSource},
+    sequence::{AminoAcid, SequencePosition},
+    spectrum::PeakSpectrum,
     *,
 };
-use spectrum::{AnnotatedPeak, PeakSpectrum};
 
-#[derive(Parser)]
+#[derive(Parser, Debug)]
 struct Cli {
     /// The input csv file, should have the following columns: 'raw_file' (full path), 'scan_index', 'z', 'sequence', and can have 'mode' (etd/td_etd/ethcd/etcad/eacid/ead/hcd/cid/all/none, defaults to the global model)
     #[arg(short, long)]
@@ -72,16 +82,12 @@ fn main() {
     } else {
         Some(serde_json::from_reader(BufReader::new(File::open(path).unwrap())).unwrap())
     };
-    let files = rustyms::identification::BasicCSVData::parse_file(
-        args.in_path,
-        custom_database.as_ref(),
-        true,
-    )
-    .expect("Invalid input file")
-    .filter_map(|a| a.ok())
-    .into_group_map_by(|l| l.raw_file.clone());
+    let files = BasicCSVData::parse_file(args.in_path, custom_database.as_ref(), true, None)
+        .expect("Invalid input file")
+        .filter_map(Result::ok)
+        .into_group_map_by(|l| l.raw_file.clone());
     let out_file = BufWriter::new(File::create(args.out_path).unwrap());
-    let total_peptides = files.values().map(|f| f.len()).sum::<usize>();
+    let total_peptides = files.values().map(Vec::len).sum::<usize>();
     let peptides_counter = AtomicUsize::default();
     let raw_file_counter = AtomicUsize::default();
     println!("Raw files: 0/{}, Peptides: 0/{total_peptides}", files.len());
@@ -226,23 +232,21 @@ fn main() {
                     eprintln!("Could not find scan index {} for file {}", line.scan_index, file_name.to_string_lossy());
                     None
                 }
-            })
-            .collect::<Vec<_>>();
+            }).map(|row| row.into_iter().collect_vec()).collect_vec();
         println!(
             "Raw files: {}/{}, Peptides: {}/{total_peptides}",
-            raw_file_counter.fetch_add(1, std::sync::atomic::Ordering::Relaxed) + 1,
+            raw_file_counter.fetch_add(1, Ordering::Relaxed) + 1,
             files.len(),
-            peptides_counter.fetch_add(lines.len(), std::sync::atomic::Ordering::Relaxed) + lines.len(),
+            peptides_counter.fetch_add(lines.len(), Ordering::Relaxed) + lines.len(),
         );
-        rows.into_iter().map(|row| row.into_iter().collect_vec()).collect_vec()
+        rows
     }).collect();
 
-    rustyms::csv::write_csv(
+    write_csv(
         out_file,
-        out_data.into_iter().map(|r| {
-            r.into_iter()
-                .map(|(k, v)| (std::sync::Arc::<std::string::String>::unwrap_or_clone(k), v))
-        }),
+        out_data
+            .into_iter()
+            .map(|r| r.into_iter().map(|(k, v)| (Arc::unwrap_or_clone(k), v))),
         ',',
     )
     .unwrap();

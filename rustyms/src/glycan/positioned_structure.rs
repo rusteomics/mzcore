@@ -4,17 +4,18 @@ use std::{hash::Hash, ops::RangeInclusive};
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 
-use super::MonoSaccharide;
 use crate::{
-    formula::{Chemical, MolecularFormula},
-    fragment::{Fragment, FragmentType, GlycanBreakPos, GlycanPosition},
-    model::GlycanModel,
-    molecular_charge::CachedCharge,
+    annotation::model::{FragmentationModel, GlycanModel},
+    chemistry::{CachedCharge, Chemical, MolecularFormula},
+    fragment::{Fragment, FragmentType, GlycanBreakPos},
+    quantities::Multi,
+    sequence::{AminoAcid, SequencePosition},
     system::usize::Charge,
-    AminoAcid, FragmentationModel, Multi, SequencePosition,
 };
 
 use crate::uom::num_traits::Zero;
+
+use super::{glycan::MonoSaccharide, position::GlycanPosition};
 
 /// The index in the branches as stored in the structure
 pub type GlycanBranchIndex = usize;

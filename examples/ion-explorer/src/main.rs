@@ -1,4 +1,5 @@
-#![allow(non_snake_case)] // charge_independent_Y needs the capital as it means the glycan fragmentation
+//! Explore common masses around fragments to detect which fragments actually occur
+
 use std::{
     collections::BTreeMap,
     fs::File,
@@ -18,11 +19,13 @@ use mzdata::{
 };
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use rustyms::{
-    fragment::{FragmentKind, FragmentType},
+    annotation::model::{
+        ChargeRange, FragmentationModel, PrimaryIonSeries, SatelliteIonSeries, SatelliteLocation,
+    },
+    chemistry::MassMode,
+    fragment::{Fragment, FragmentKind, FragmentType},
     identification::{SpectrumId, SpectrumIds},
-    model::{ChargeRange, PrimaryIonSeries, SatelliteIonSeries, SatelliteLocation},
-    modification::SimpleModification,
-    *,
+    sequence::{AminoAcid, CompoundPeptidoformIon, SimpleModification},
 };
 
 #[derive(Parser)]
@@ -92,7 +95,7 @@ fn main() {
         false,
     )
     .expect("Could not open identified peptides file")
-    .filter_map(|a| a.ok())
+    .filter_map(Result::ok)
     .into_group_map_by(|l| match l.scans() {
         SpectrumIds::FileKnown(spectra) => spectra.first().map(|s| s.0.clone()),
         _ => None,
@@ -116,7 +119,7 @@ fn main() {
             if peptide.charge().is_none() {
                 continue;
             }
-            if let Some(cpi) = peptide.peptide() {
+            if let Some(cpi) = peptide.peptidoform() {
                 let id = match peptide.scans() {
                     SpectrumIds::FileKnown(spectra) => {
                         spectra.first().and_then(|s| s.1.first().cloned())
@@ -129,7 +132,7 @@ fn main() {
                     Some(SpectrumId::Native(n)) => file.get_spectrum_by_id(&n),
                     _ => continue,
                 } {
-                    let cpi = cpi.compound_peptidoform();
+                    let cpi = cpi.compound_peptidoform_ion();
                     let fragments =
                         cpi.generate_theoretical_fragments(peptide.charge().unwrap(), &model);
                     extract_and_merge(
@@ -226,7 +229,7 @@ fn merge_stack(
         match points.binary_search_by(|p| p.mass.total_cmp(&normalised_mass)) {
             Ok(index) => {
                 points[index].count += 1;
-                points[index].total_intensity += found_peak.intensity as f64;
+                points[index].total_intensity += f64::from(found_peak.intensity);
             }
             Err(index) => {
                 points.insert(
@@ -258,7 +261,7 @@ struct Stack {
 impl Stack {
     fn store(&self, base_path: &Path) {
         write_stack(&base_path.join("start.csv"), &self.start);
-        for (key, stack) in self.fragments.iter() {
+        for (key, stack) in &self.fragments {
             let path = match key {
                 (i, None, el, mode) => base_path.join(format!(
                     "fragment_{i}_{}_{}.csv",
@@ -305,13 +308,13 @@ fn merge_points(points: &mut Vec<Point>, other: &[Point]) {
     }
 }
 
-impl rayon::iter::FromParallelIterator<Stack> for Stack {
+impl rayon::iter::FromParallelIterator<Self> for Stack {
     fn from_par_iter<I>(par_iter: I) -> Self
     where
-        I: rayon::prelude::IntoParallelIterator<Item = Stack>,
+        I: rayon::prelude::IntoParallelIterator<Item = Self>,
     {
         let par_iter = par_iter.into_par_iter();
-        par_iter.reduce(Stack::default, |acc, s| acc.merge(&s))
+        par_iter.reduce(Self::default, |acc, s| acc.merge(&s))
     }
 }
 
@@ -320,7 +323,7 @@ fn write_stack(path: &Path, points: &[Point]) {
         BufWriter::new(File::create(path).unwrap_or_else(|e| {
             panic!("Could not create file: '{}'\n{e}", path.to_string_lossy())
         }));
-    rustyms::csv::write_csv(
+    rustyms::identification::csv::write_csv(
         out_file,
         points.iter().map(|p| {
             [
