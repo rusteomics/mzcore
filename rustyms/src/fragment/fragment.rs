@@ -24,13 +24,13 @@ use crate::{
     molecular_formula,
     quantities::{Multi, Tolerance},
     sequence::{
-        AminoAcid, IsAminoAcid, Modification, SemiAmbiguous, SequenceElement, SequencePosition,
-        BACKBONE,
+        AminoAcid, BACKBONE, IsAminoAcid, Modification, SemiAmbiguous, SequenceElement,
+        SequencePosition,
     },
     system::{
+        OrderedMassOverCharge,
         f64::{MassOverCharge, Ratio},
         usize::Charge,
-        OrderedMassOverCharge,
     },
 };
 

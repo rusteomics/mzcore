@@ -92,12 +92,12 @@ impl PositionedGlycanStructure {
             vec![
                 (
                     self.formula_inner(SequencePosition::default(), peptidoform_index),
-                    vec![GlycanBreakPos::End(self.position(attachment))],
+                    vec![GlycanBreakPos::End(self.position(attachment, false))],
                     depth + u8::from(!self.sugar.is_fucose()),
                 ),
                 (
                     MolecularFormula::default(),
-                    vec![GlycanBreakPos::Y(self.position(attachment))],
+                    vec![GlycanBreakPos::Y(self.position(attachment, false))],
                     depth,
                 ),
             ]
@@ -141,7 +141,7 @@ impl PositionedGlycanStructure {
                 .chain(std::iter::once((
                     // add the option of it breaking here
                     MolecularFormula::default(),
-                    vec![GlycanBreakPos::Y(self.position(attachment))],
+                    vec![GlycanBreakPos::Y(self.position(attachment, false))],
                     depth,
                 )))
                 .collect()
@@ -160,7 +160,7 @@ impl PositionedGlycanStructure {
             peptidoform_ion_index,
             peptidoform_index,
             crate::fragment::DiagnosticPosition::Glycan(
-                self.position(attachment),
+                self.position(attachment, false),
                 self.sugar.clone(),
             ),
             true,
@@ -264,7 +264,7 @@ impl PositionedGlycanStructure {
                     peptidoform_ion_index,
                     peptidoform_index,
                     FragmentType::B {
-                        b: self.position(attachment),
+                        b: self.position(attachment, true),
                         y: breakages
                             .iter()
                             .filter(|b| matches!(b, GlycanBreakPos::Y(_)))
@@ -289,10 +289,18 @@ impl PositionedGlycanStructure {
         base_fragments
     }
 
-    fn position(&self, attachment: Option<(AminoAcid, SequencePosition)>) -> GlycanPosition {
+    fn position(
+        &self,
+        attachment: Option<(AminoAcid, SequencePosition)>,
+        outer: bool,
+    ) -> GlycanPosition {
         GlycanPosition {
             inner_depth: self.inner_depth,
-            series_number: self.outer_depth + 1,
+            series_number: if outer {
+                self.outer_depth + 1
+            } else {
+                self.inner_depth
+            },
             branch: self.branch.clone(),
             attachment,
         }

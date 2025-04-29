@@ -12,10 +12,10 @@ use crate::{
     error::{Context, CustomError},
     helper_functions::explain_number_error,
     identification::{
-        common_parser::{Location, OptionalColumn, OptionalLocation},
-        csv::{parse_csv, CsvLine},
         BoxedIdentifiedPeptideIter, IdentifiedPeptidoform, IdentifiedPeptidoformSource,
         IdentifiedPeptidoformVersion, MetaData,
+        common_parser::{Location, OptionalColumn, OptionalLocation},
+        csv::{CsvLine, parse_csv},
     },
     molecular_formula,
     ontology::CustomDatabase,
@@ -25,7 +25,7 @@ use crate::{
         CrossLinkName, Modification, Peptidoform, PeptidoformIon, SequencePosition,
         SimpleModification, SimpleModificationInner, SloppyParsingParameters,
     },
-    system::{usize::Charge, Mass},
+    system::{Mass, usize::Charge},
 };
 
 static NUMBER_ERROR: (&str, &str) = (

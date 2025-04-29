@@ -65,8 +65,8 @@ impl MonoSaccharide {
         // Generate compositional B and Y ions
         let charges_other = charge_carriers.range(model.glycan.other_charge_range);
         let charges_oxonium = charge_carriers.range(model.glycan.oxonium_charge_range);
-        for composition in compositions {
-            let formula: MolecularFormula = composition
+        for fragment_composition in compositions {
+            let formula: MolecularFormula = fragment_composition
                 .iter()
                 .map(|s| {
                     s.0.formula_inner(SequencePosition::default(), peptidoform_index) * s.1 as i32
@@ -78,7 +78,7 @@ impl MonoSaccharide {
                     Charge::default(),
                     peptidoform_ion_index,
                     peptidoform_index,
-                    FragmentType::BComposition(composition.clone(), attachment),
+                    FragmentType::BComposition(fragment_composition.clone(), attachment),
                 )
                 .with_charge_range_slice(&charges_oxonium)
                 .flat_map(|o| o.with_neutral_losses(&model.glycan.neutral_losses)),
@@ -90,7 +90,10 @@ impl MonoSaccharide {
                     Charge::default(),
                     peptidoform_ion_index,
                     peptidoform_index,
-                    FragmentType::YComposition(composition.clone(), attachment),
+                    FragmentType::YComposition(
+                        Self::composition_left_over(composition, &fragment_composition),
+                        attachment,
+                    ),
                 )
                 .with_charge_range_slice(&charges_other)
                 .flat_map(|o| o.with_neutral_losses(&model.glycan.neutral_losses))
@@ -114,6 +117,27 @@ impl MonoSaccharide {
         }
 
         fragments
+    }
+
+    fn composition_left_over(
+        composition: &[(Self, isize)],
+        remove: &[(Self, isize)],
+    ) -> Vec<(Self, isize)> {
+        let mut output = Vec::new();
+        'outer: for part in composition {
+            for other in remove {
+                if part.0 == other.0 {
+                    if part.1 - other.1 != 0 {
+                        output.push((part.0.clone(), part.1 - other.1));
+                    }
+                    continue 'outer;
+                }
+            }
+            if part.1 != 0 {
+                output.push((part.0.clone(), part.1));
+            }
+        }
+        output
     }
 
     /// Get all unique combinations of monosaccharides within the given range of number of monosaccharides used
