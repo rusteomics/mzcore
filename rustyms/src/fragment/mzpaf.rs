@@ -90,7 +90,7 @@ fn parse_annotation(
 }
 
 /// An mzPAF single peak annotation.
-#[derive(Debug, Clone, PartialEq, PartialOrd, Serialize, Deserialize)]
+#[derive(Clone, Debug, Deserialize, PartialEq, PartialOrd, Serialize)]
 pub struct PeakAnnotation {
     auxiliary: bool,
     analyte_number: Option<usize>,
@@ -101,7 +101,7 @@ pub struct PeakAnnotation {
     confidence: Option<f64>,
 }
 
-#[derive(Debug, Clone, PartialEq, PartialOrd, Serialize, Deserialize)]
+#[derive(Clone, Debug, Deserialize, PartialEq, PartialOrd, Serialize)]
 enum IonType {
     Unknown(Option<usize>),
     MainSeries(char, usize),

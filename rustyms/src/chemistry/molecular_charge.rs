@@ -9,7 +9,7 @@ use crate::{
 use serde::{Deserialize, Serialize};
 
 /// A [`MolecularCharge`] that caches the options for each charge, to not calculate this every time
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct CachedCharge {
     charge: MolecularCharge,
     options: HashMap<Charge, Vec<MolecularCharge>>,
@@ -61,7 +61,7 @@ impl From<&MolecularCharge> for CachedCharge {
 }
 
 /// A selection of ions that together define the charge of a peptide
-#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Debug, Serialize, Deserialize, Hash)]
+#[derive(Clone, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 pub struct MolecularCharge {
     /// The ions that together define the charge of the peptide.
     /// The first number is the amount of times this adduct ion occurs, the molecular formula is the full formula for the adduct ion.

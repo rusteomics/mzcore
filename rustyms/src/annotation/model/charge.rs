@@ -9,7 +9,7 @@ use crate::system::{e, isize::Charge};
 /// charge carriers + all options for the remainder within the limits of the precursor
 /// charge carriers.
 #[non_exhaustive]
-#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, PartialOrd, Ord, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 pub struct ChargeRange {
     /// Start point
     pub start: ChargePoint,
@@ -57,7 +57,7 @@ impl ChargeRange {
 }
 
 /// A reference point for charge range definition.
-#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, PartialOrd, Ord, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 pub enum ChargePoint {
     /// Relative to the precursor, with the given offset.
     Relative(isize),

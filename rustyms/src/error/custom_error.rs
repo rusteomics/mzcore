@@ -6,12 +6,12 @@ use std::fmt;
 
 /// An error. Stored as a pointer to a structure on the heap to prevent large sizes which could be
 /// detrimental to performance for the happy path.
-#[derive(Serialize, Deserialize, PartialEq, Clone, Eq, Hash)]
+#[derive(Clone, Deserialize, Eq, Hash, PartialEq, Serialize)]
 pub struct CustomError {
     content: Box<InnerError>,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Eq, Hash)]
+#[derive(Clone, Deserialize, Eq, Hash, PartialEq, Serialize)]
 struct InnerError {
     /// The level of the error, defining how it should be handled
     warning: bool,

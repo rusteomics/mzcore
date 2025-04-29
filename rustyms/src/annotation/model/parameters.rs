@@ -9,7 +9,7 @@ use crate::{
 
 /// Parameters for the matching, allowing control over when a match is allowed.
 #[non_exhaustive]
-#[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 pub struct MatchingParameters {
     /// The matching tolerance
     pub tolerance: Tolerance<MassOverCharge>,

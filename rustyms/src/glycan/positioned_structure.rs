@@ -23,7 +23,7 @@ pub type GlycanBranchIndex = usize;
 pub type GlycanBranchMassIndex = usize;
 
 /// Rose tree representation of glycan structure
-#[derive(Debug, Eq, PartialEq, Clone, Hash, Serialize, Deserialize)]
+#[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
 pub struct PositionedGlycanStructure {
     pub(super) sugar: MonoSaccharide,
     pub(super) branches: Vec<PositionedGlycanStructure>,

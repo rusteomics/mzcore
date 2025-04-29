@@ -98,7 +98,7 @@ enum SingleReturnModification {
 }
 
 /// Settings for a modification of unknown position
-#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 pub struct MUPSettings {
     /// The additional placement rules
     pub(crate) position: Option<Vec<PlacementRule>>,
@@ -534,7 +534,7 @@ fn handle_ambiguous_modification(
 }
 
 /// A modification as returned by the parser
-#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 pub enum ReturnModification {
     /// A fully self contained modification
     Defined(SimpleModification),
@@ -556,7 +556,7 @@ impl ReturnModification {
 }
 
 /// Intermediate representation of a global modification
-#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Debug, Serialize, Deserialize, Hash)]
+#[derive(Clone, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 pub enum GlobalModification {
     /// A global isotope modification
     Isotope(Element, Option<NonZeroU16>),

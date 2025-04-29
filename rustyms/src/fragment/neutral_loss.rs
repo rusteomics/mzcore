@@ -14,7 +14,7 @@ use crate::{
 };
 
 /// All possible neutral losses
-#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Debug, Serialize, Deserialize, Hash)]
+#[derive(Clone, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 pub enum NeutralLoss {
     /// Gain of a specific formula
     Gain(MolecularFormula),
@@ -25,7 +25,7 @@ pub enum NeutralLoss {
 }
 
 /// A diagnostic ion, defined in M (not MH+) chemical formula
-#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Debug, Serialize, Deserialize, Hash)]
+#[derive(Clone, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 pub struct DiagnosticIon(pub MolecularFormula);
 
 impl NeutralLoss {

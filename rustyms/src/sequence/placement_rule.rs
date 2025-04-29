@@ -14,7 +14,7 @@ use crate::{
 };
 
 /// A rule determining the placement of a modification
-#[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 pub enum PlacementRule {
     /// Placed on an aminoacid on the given position
     AminoAcid(Vec<AminoAcid>, Position),

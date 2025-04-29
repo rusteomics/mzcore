@@ -252,7 +252,7 @@ type ItemKey = (
     Option<String>,
 );
 
-#[derive(Default, Debug)]
+#[derive(Debug, Default)]
 struct Stack {
     start: Vec<Point>,
     fragments: BTreeMap<ItemKey, Vec<Point>>,
@@ -337,7 +337,7 @@ fn write_stack(path: &Path, points: &[Point]) {
     .unwrap();
 }
 
-#[derive(Debug, Clone)]
+#[derive(Clone, Debug)]
 struct Point {
     mass: f64,
     count: usize,

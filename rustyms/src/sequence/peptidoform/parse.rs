@@ -17,7 +17,7 @@ use crate::{
 
 use super::{GlobalModification, Linear, ReturnModification, SemiAmbiguous};
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, Eq, PartialEq)]
 enum End {
     Empty,
     CrossLink,

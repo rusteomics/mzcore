@@ -22,7 +22,7 @@ use crate::{
 
 /// Rose tree representation of glycan structure
 #[allow(dead_code)]
-#[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 pub struct GlycanStructure {
     pub(super) sugar: MonoSaccharide,
     pub(super) branches: Vec<GlycanStructure>,

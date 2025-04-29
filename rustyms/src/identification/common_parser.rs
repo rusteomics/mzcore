@@ -16,7 +16,7 @@ macro_rules! format_family {
         use super::super::common_parser::HasLocation;
 
         #[non_exhaustive]
-        #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, Default, Serialize, Deserialize)]
+        #[derive(Clone, Debug, Default, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
         #[doc = $format_doc]
         pub struct $format {
             $($rname: &'static str,)*
@@ -25,7 +25,7 @@ macro_rules! format_family {
         }
 
         #[non_exhaustive]
-        #[derive(Clone, PartialEq, Debug, Default, Serialize, Deserialize)]
+        #[derive(Clone, Debug, Default, Deserialize, PartialEq, Serialize)]
         #[doc = $data_doc]
         #[expect(missing_docs)]
         pub struct $data {

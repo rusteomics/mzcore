@@ -88,7 +88,7 @@ use crate::{
 /// PEPTIDE/3[1Zn+2,1H+1]
 /// ```
 ///
-#[derive(PartialOrd, Ord, Debug, Serialize, Deserialize)]
+#[derive(Debug, Deserialize, Ord, PartialOrd, Serialize)]
 pub struct Peptidoform<Complexity> {
     /// Global isotope modifications, saved as the element and the species that
     /// all occurrence of that element will consist of. For example (N, 15) will
@@ -112,7 +112,7 @@ pub struct Peptidoform<Complexity> {
 }
 
 /// An entry in the ambiguous lookup
-#[derive(PartialOrd, Ord, Debug, Serialize, Deserialize, Eq, PartialEq, Clone, Hash)]
+#[derive(Clone, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 struct AmbiguousEntry {
     /// The allowed locations for this modification
     positions: Vec<SequencePosition>,

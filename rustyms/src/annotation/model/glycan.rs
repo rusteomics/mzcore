@@ -13,7 +13,7 @@ use crate::{
 use super::built_in::GLYCAN_LOSSES;
 
 /// The settings for glycan fragmentation
-#[derive(Clone, PartialEq, Eq, Hash, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
 pub struct GlycanModel {
     /// Allows fragments from glycans with defined structures (i.e. GNO modifications)
     pub allow_structural: bool,
@@ -149,7 +149,7 @@ impl GlycanModel {
 }
 
 /// Rules to determine the glycan fragmentation for glycans on other fragments.
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
 pub struct GlycanPeptideFragment {
     /// The full glycan stays attached
     full: bool,

@@ -284,7 +284,7 @@ impl std::fmt::Display for TemporaryGermline {
     }
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, Eq, PartialEq)]
 struct TemporarySequence {
     acc: Vec<String>,
     sequence: Peptidoform<UnAmbiguous>,

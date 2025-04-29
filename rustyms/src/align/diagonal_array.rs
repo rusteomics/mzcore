@@ -1,6 +1,6 @@
 /// A possibly limited diagonal array that is implemented as a single continuous slice of memory.
 /// It consists of a
-#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub(super) struct DiagonalArray<T> {
     len: usize,
     max_depth: usize,

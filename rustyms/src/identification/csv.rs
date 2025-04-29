@@ -20,7 +20,7 @@ use crate::{
 };
 
 /// A single line in a CSV file
-#[derive(Clone, Eq, PartialEq, Hash, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
 pub struct CsvLine {
     line_index: usize,
     line: String,

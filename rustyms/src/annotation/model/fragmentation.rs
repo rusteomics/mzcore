@@ -14,7 +14,7 @@ use crate::{
 
 /// A model for the fragmentation, allowing control over what theoretical fragments to generate.
 #[non_exhaustive]
-#[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 pub struct FragmentationModel {
     /// a series ions
     pub a: PrimaryIonSeries,
@@ -54,7 +54,7 @@ pub struct FragmentationModel {
 }
 
 /// The settings for any satellite ion series
-#[derive(Clone, PartialEq, Eq, Hash, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
 pub struct SatelliteIonSeries {
     /// Which locations are assumed to lead to fragmentation
     pub location: SatelliteLocation,
@@ -150,7 +150,7 @@ impl Default for SatelliteIonSeries {
 }
 
 /// The settings for any primary ion series
-#[derive(Clone, PartialEq, Eq, Hash, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
 pub struct PrimaryIonSeries {
     /// Which locations are assumed to lead to fragmentation
     pub location: Location,
@@ -400,7 +400,7 @@ impl Location {
 
 /// The locations for a satellite ion. These are defined to form for any location where the parent
 /// ion forms. And the maximal distance from the original backbone cleavage can be defined.
-#[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Default, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Default, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 pub struct SatelliteLocation {
     /// A set of rules each indicate a set of aminoacids and the (0 based) distance they can occur
     /// away from the original cleavage.

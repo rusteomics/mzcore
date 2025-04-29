@@ -16,7 +16,7 @@ use crate::{
 };
 
 /// A single peptidoform ion, can contain multiple peptidoforms
-#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Debug, Default, Serialize, Deserialize, Hash)]
+#[derive(Clone, Debug, Default, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 pub struct PeptidoformIon(pub(crate) Vec<Peptidoform<Linked>>);
 
 impl PeptidoformIon {

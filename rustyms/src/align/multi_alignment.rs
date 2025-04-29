@@ -10,7 +10,7 @@ use crate::{
 
 type MultiAlignment<'lifetime, Complexity> = Vec<MultiAlignmentLine<'lifetime, Complexity>>;
 
-#[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 struct MultiAlignmentLine<'lifetime, Complexity> {
     sequence: Cow<'lifetime, Peptidoform<Complexity>>,
     path: Vec<MultiPiece>,
@@ -20,7 +20,7 @@ struct MultiAlignmentLine<'lifetime, Complexity> {
     maximal_step: u16,
 }
 
-#[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Default, Serialize, Deserialize)]
+#[derive(Clone, Debug, Default, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 struct MultiPiece {
     score: isize,
     local_score: isize,

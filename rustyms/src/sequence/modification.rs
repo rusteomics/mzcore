@@ -29,7 +29,7 @@ use crate::{
 };
 
 /// A modification on an amino acid
-#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 pub enum Modification {
     /// Any of the simple modifications
     Simple(SimpleModification),
@@ -64,7 +64,7 @@ pub enum Modification {
 /// Indicate the cross-link side, it contains a set of all placement rules that apply for the placed
 /// location to find all possible ways of breaking and/or neutral losses. These numbers are the
 /// index into the [`LinkerSpecificity`] rules.
-#[derive(Clone, PartialEq, Eq, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub enum CrossLinkSide {
     /// The cross-link is symmetric, or if asymmetric it can be placed in both orientations
     Symmetric(BTreeSet<usize>),
@@ -116,7 +116,7 @@ impl std::hash::Hash for CrossLinkSide {
 pub type SimpleModification = Arc<SimpleModificationInner>;
 
 /// A modification on an amino acid
-#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Debug, Serialize, Deserialize, Hash)]
+#[derive(Clone, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 pub enum SimpleModificationInner {
     /// A modification defined with a monoisotopic mass shift
     Mass(OrderedMass),
@@ -166,7 +166,7 @@ pub enum SimpleModificationInner {
 }
 
 /// A modification id/name
-#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Debug, Serialize, Deserialize, Hash, Default)]
+#[derive(Clone, Debug, Default, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 pub struct ModificationId {
     /// The ontology where this linker is defined
     pub ontology: Ontology,
@@ -183,7 +183,7 @@ pub struct ModificationId {
 }
 
 /// The name of a cross-link
-#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Debug, Serialize, Deserialize, Hash)]
+#[derive(Clone, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 pub enum CrossLinkName {
     /// A branch
     Branch,
@@ -192,7 +192,7 @@ pub enum CrossLinkName {
 }
 
 /// The linker position specificities for a linker
-#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Debug, Serialize, Deserialize, Hash)]
+#[derive(Clone, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 pub enum LinkerSpecificity {
     /// A symmetric specificity where both ends have the same specificity.
     /// The first list is all possible positions. The second list is all
@@ -213,7 +213,7 @@ pub enum LinkerSpecificity {
 }
 
 /// All possible compositions in the GNO ontology
-#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Debug, Serialize, Deserialize, Hash)]
+#[derive(Clone, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 pub enum GnoComposition {
     /// Only the mass is known
     Weight(OrderedMass),
@@ -294,7 +294,7 @@ impl Display for ModificationId {
 }
 
 /// The result of checking if a modification can be placed somewhere.
-#[derive(Debug, PartialEq, Eq, Serialize, Deserialize, Clone)]
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub enum RulePossible {
     /// This modification cannot be placed
     No,
@@ -1024,7 +1024,7 @@ impl SimpleModificationInner {
 pub type AmbiguousLookup = Vec<AmbiguousLookupEntry>;
 
 /// An entry in the ambiguous lookup
-#[derive(Debug, Clone)]
+#[derive(Clone, Debug)]
 pub struct AmbiguousLookupEntry {
     /// The name of the modification
     pub name: String,

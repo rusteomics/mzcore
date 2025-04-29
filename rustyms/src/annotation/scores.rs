@@ -311,7 +311,7 @@ impl AnnotatedSpectrum {
 }
 
 /// The scores for an annotated spectrum
-#[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 #[non_exhaustive]
 pub struct Scores {
     /// The scores, based on unique formulas for all peptides combined or based on positions for single peptides.
@@ -321,7 +321,7 @@ pub struct Scores {
 }
 
 /// The scores for a single fragment series for a single peptide in an annotated spectrum
-#[derive(Clone, Copy, PartialEq, Debug, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, Deserialize, PartialEq, Serialize)]
 pub enum Score {
     /// A score for a something that has peptide position coverage
     Position {
@@ -349,7 +349,7 @@ pub enum Score {
     },
 }
 /// A single statistic that has a total number and a subset of that found
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 #[non_exhaustive]
 pub struct Recovered<T> {
     /// The number actually found

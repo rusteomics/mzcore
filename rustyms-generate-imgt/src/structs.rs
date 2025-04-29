@@ -30,7 +30,7 @@ impl Display for DataItem {
     }
 }
 
-#[derive(Clone, Debug, Hash, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub(crate) struct Region {
     pub acc: String,
     pub key: String,
@@ -75,7 +75,7 @@ pub(crate) type SequenceRegion = (
     (Vec<AminoAcid>, Location, String),
 );
 
-#[derive(Clone, Debug, Hash, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub(crate) enum Location {
     Normal(RangeInclusive<usize>),
     Complement(RangeInclusive<usize>),
@@ -240,7 +240,7 @@ impl FromStr for Location {
     }
 }
 
-#[derive(Clone, Hash, Eq, PartialEq)]
+#[derive(Clone, Eq, Hash, PartialEq)]
 pub(crate) struct AASequence(pub Vec<AminoAcid>);
 
 impl std::fmt::Debug for AASequence {

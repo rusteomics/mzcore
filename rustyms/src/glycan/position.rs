@@ -5,7 +5,7 @@ use crate::sequence::{AminoAcid, SequencePosition};
 use super::{GlycanBranchIndex, GlycanBranchMassIndex};
 
 /// The definition of the position of an ion inside a glycan
-#[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 pub struct GlycanPosition {
     /// The depth starting at the amino acid
     pub inner_depth: usize,

@@ -16,7 +16,7 @@ use crate::{
 };
 
 /// An annotated spectrum
-#[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 pub struct AnnotatedSpectrum {
     /// The title (as used in MGF)
     pub title: String,
@@ -112,7 +112,7 @@ impl PeakSpectrum for AnnotatedSpectrum {
 }
 
 /// An annotated peak
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct AnnotatedPeak {
     /// The experimental mz
     pub experimental_mz: MassOverCharge,

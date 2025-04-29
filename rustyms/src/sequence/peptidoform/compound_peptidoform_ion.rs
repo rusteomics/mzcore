@@ -16,7 +16,7 @@ use crate::{
 /// A single set of cross-linked peptides is a [`PeptidoformIon`]. A ProForma entry with two chimeric
 /// peptides will be saved as one [`CompoundPeptidoformIon`] with two [`PeptidoformIon`]s that each
 /// contain one of the [`Peptidoform`]s.
-#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Debug, Serialize, Deserialize, Hash, Default)]
+#[derive(Clone, Debug, Default, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 pub struct CompoundPeptidoformIon(pub(super) Vec<PeptidoformIon>);
 
 impl CompoundPeptidoformIon {

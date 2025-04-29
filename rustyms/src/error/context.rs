@@ -5,7 +5,7 @@ use std::{
 };
 
 /// A struct to define the context of an error message
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
 pub enum Context {
     /// When no context can be given
     None,
@@ -389,7 +389,7 @@ impl fmt::Display for Context {
     }
 }
 
-#[derive(Debug, Eq, PartialEq, Copy, Clone)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 /// A position in a file for use in parsing/lexing
 pub struct FilePosition<'a> {
     /// The remaining text (as ref so no copies)

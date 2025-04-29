@@ -2,20 +2,20 @@ use std::{collections::HashMap, fs::File, io::BufReader, path::Path};
 
 use flate2::bufread::GzDecoder;
 
-#[derive(Debug, Default, Clone)]
+#[derive(Clone, Debug, Default)]
 pub(crate) struct OboOntology {
     pub headers: Vec<(String, String)>,
     pub objects: Vec<OboObject>,
 }
 
-#[derive(Debug, Default, Clone)]
+#[derive(Clone, Debug, Default)]
 pub(crate) struct OboObject {
     pub name: String,
     pub lines: HashMap<String, Vec<String>>,
     pub property_values: HashMap<String, Vec<OboValue>>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Clone, Debug)]
 pub(crate) enum OboValue {
     String(String),
     Float(f64),

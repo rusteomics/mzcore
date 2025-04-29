@@ -14,7 +14,7 @@ use rustyms::{
 
 /// Mass mode enum.
 #[pyclass(eq, eq_int)]
-#[derive(PartialEq, Eq)]
+#[derive(Eq, PartialEq)]
 enum MassMode {
     Monoisotopic,
     Average,
@@ -30,7 +30,7 @@ enum MassMode {
 /// symbol : str
 ///
 #[pyclass]
-#[derive(Debug, Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub struct Element(rustyms::chemistry::Element);
 
 #[pymethods]
@@ -112,7 +112,7 @@ impl std::fmt::Display for Element {
 /// A molecular formula: a selection of elements of specified isotopes together forming a structure.
 ///
 #[pyclass]
-#[derive(Debug, Clone)]
+#[derive(Clone, Debug)]
 pub struct MolecularFormula(rustyms::chemistry::MolecularFormula);
 
 #[pymethods]
@@ -435,7 +435,7 @@ impl MolecularCharge {
 ///    The name of the amino acid.
 ///
 #[pyclass]
-#[derive(Debug, Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub struct AminoAcid(rustyms::sequence::AminoAcid);
 
 #[pymethods]
@@ -527,7 +527,7 @@ impl std::fmt::Display for AminoAcid {
 ///   The name of the modification. Any simple modification as allowed in ProForma (no ambiguous or cross-linked modifications).
 ///
 #[pyclass]
-#[derive(Debug, Clone)]
+#[derive(Clone, Debug)]
 pub struct SimpleModification(rustyms::sequence::SimpleModification);
 
 #[pymethods]
@@ -583,7 +583,7 @@ impl SimpleModification {
 ///   The name of the modification.
 ///
 #[pyclass]
-#[derive(Debug, Clone)]
+#[derive(Clone, Debug)]
 pub struct Modification(rustyms::sequence::Modification);
 
 #[pymethods]
@@ -770,7 +770,7 @@ impl SequenceElement {
 
 /// Fragmentation model enum.
 #[pyclass(eq, eq_int)]
-#[derive(PartialEq, Eq)]
+#[derive(Eq, PartialEq)]
 enum FragmentationModel {
     All,
     CidHcd,
@@ -818,7 +818,7 @@ fn match_model(
 ///     The parameters
 ///
 #[pyclass]
-#[derive(Debug, Clone)]
+#[derive(Clone, Debug)]
 pub struct MatchingParameters(rustyms::annotation::model::MatchingParameters);
 
 #[pymethods]

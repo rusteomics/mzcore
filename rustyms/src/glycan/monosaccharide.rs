@@ -6,12 +6,11 @@ use crate::{
     annotation::model::{FragmentationModel, GlycanModel},
     chemistry::{CachedCharge, Chemical, MolecularFormula},
     fragment::{DiagnosticPosition, Fragment, FragmentType},
+    glycan::MonoSaccharide,
     quantities::Multi,
     sequence::{AminoAcid, SequencePosition},
     system::usize::Charge,
 };
-
-use super::glycan::MonoSaccharide;
 
 impl MonoSaccharide {
     /// Generate the composition used for searching on glycans

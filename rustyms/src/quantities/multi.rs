@@ -14,7 +14,7 @@ use crate::{
 
 /// A collection of potentially multiple of the generic type, it is used be able to easily
 /// combine multiple of this multi struct into all possible combinations.
-#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize, Hash)]
+#[derive(Clone, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 pub struct Multi<M>(Rc<[M]>);
 
 impl<M: Eq + std::hash::Hash + Clone> Multi<M> {

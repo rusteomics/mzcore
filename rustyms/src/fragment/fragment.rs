@@ -35,7 +35,7 @@ use crate::{
 };
 
 /// A theoretical fragment
-#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, Serialize, Deserialize, Default)]
+#[derive(Clone, Debug, Default, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 pub struct Fragment {
     /// The theoretical composition
     pub formula: Option<MolecularFormula>,
@@ -487,7 +487,7 @@ impl Display for Fragment {
 }
 
 // /// An isotope annotation.
-// #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+// #[derive(Clone, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 // pub struct MatchedIsotopeDistribution {
 //     /// The index of the matched peak in the spectrum, if found
 //     pub peak_index: Option<usize>,
@@ -556,7 +556,7 @@ impl PeptidePosition {
 }
 
 /// Any position on a glycan or a peptide
-#[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 pub enum DiagnosticPosition {
     /// A position on a glycan
     Glycan(GlycanPosition, MonoSaccharide),
@@ -599,7 +599,7 @@ impl Display for SatelliteLabel {
 }
 
 /// The possible types of fragments
-#[derive(Clone, Eq, PartialEq, Hash, Debug, Serialize, Deserialize, Default)]
+#[derive(Clone, Debug, Default, Deserialize, Eq, Hash, PartialEq, Serialize)]
 #[expect(non_camel_case_types)]
 pub enum FragmentType {
     /// a
@@ -1024,7 +1024,7 @@ impl Display for FragmentType {
 }
 
 /// The possible kinds of N terminal backbone fragments.
-#[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 #[expect(non_camel_case_types)]
 pub enum BackboneNFragment {
     /// a
@@ -1050,7 +1050,7 @@ impl Display for BackboneNFragment {
 }
 
 /// The possible kinds of C terminal backbone fragments.
-#[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 #[expect(non_camel_case_types)]
 pub enum BackboneCFragment {
     /// x
@@ -1076,7 +1076,7 @@ impl Display for BackboneCFragment {
 }
 
 /// The possible kinds of fragments, same options as [`FragmentType`] but without any additional data
-#[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 #[expect(non_camel_case_types)]
 pub enum FragmentKind {
     /// a
@@ -1144,7 +1144,7 @@ impl Display for FragmentKind {
 }
 
 /// All positions where a glycan can break
-#[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 pub enum GlycanBreakPos {
     /// No breaks just until the end of a chain
     End(GlycanPosition),

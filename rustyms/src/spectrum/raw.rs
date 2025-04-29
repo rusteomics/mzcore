@@ -15,7 +15,7 @@ use crate::{
 };
 
 /// A raw spectrum (meaning not annotated yet)
-#[derive(Default, Clone, PartialEq, PartialOrd, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Default, Deserialize, PartialEq, PartialOrd, Serialize)]
 pub struct RawSpectrum {
     /// The title (as used in MGF)
     pub title: String,
@@ -181,7 +181,7 @@ impl PeakSpectrum for RawSpectrum {
 }
 
 /// A raw peak
-#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, Deserialize, Serialize)]
 pub struct RawPeak {
     /// The mz value of this peak
     pub mz: MassOverCharge,

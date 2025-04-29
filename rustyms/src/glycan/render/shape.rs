@@ -417,7 +417,7 @@ impl MonoSaccharide {
 }
 
 /// All colours from Symbol Nomenclature For Glycans (SNFG)
-#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(super) enum Colour {
     Background,
     Blue,
@@ -450,7 +450,7 @@ impl Colour {
 }
 
 /// All symbols from Symbol Nomenclature For Glycans (SNFG)
-#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(super) enum Shape {
     Circle,
     Square,

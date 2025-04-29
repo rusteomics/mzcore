@@ -23,7 +23,7 @@ pub struct RenderedGlycan {
     pub midpoint: f32,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Clone, Debug)]
 pub(super) enum Element {
     Line {
         from: (f32, f32),
@@ -73,14 +73,14 @@ pub(super) enum Element {
     },
 }
 
-#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(super) enum TextAnchor {
     Start,
     Middle,
     End,
 }
 
-#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(super) enum TextBaseline {
     Hanging,
     Middle,
@@ -130,7 +130,7 @@ pub(super) enum TextBaseline {
 /// Note that this writes all SVGs after each other to the variable `output`. Also note that this writes
 /// all modifications that did not fit inside the image in the variable `footnotes` and this will need to
 /// be dealt with by the caller, as indicated in [`GlycanStructure::render`](crate::glycan::GlycanStructure::render).
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
+#[derive(Clone, Debug, Default, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub enum GlycanRoot {
     /// No symbol, this will also not draw a line from the root sugar
     #[default]
@@ -146,7 +146,7 @@ pub enum GlycanRoot {
 }
 
 /// The selected (part) of a glycan to render, using [`Self::FULL`] is a shortcut to get the full glycan.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum GlycanSelection<'a> {
     /// A subtree of the glycan, with potentially a break of the root of the subtree and breaks in the branches.
     /// If no breaks are specified the full glycan is shown. The root is the first monosaccharide to be included

@@ -17,7 +17,7 @@ use crate::{
 };
 
 /// Parameters to control the parsing of 'sloppy' ProForma sequences.
-#[derive(Debug, Clone, Default, Eq, PartialEq, Hash, Serialize, Deserialize)]
+#[derive(Clone, Debug, Default, Deserialize, Eq, Hash, PartialEq, Serialize)]
 #[serde(bound(deserialize = "'de: 'static"))]
 pub struct SloppyParsingParameters {
     /// Ignore a prefix lowercase n as in `n[211]GC[779]RQSSEEK` as this indicates an N terminal modification in MSFragger

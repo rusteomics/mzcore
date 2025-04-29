@@ -219,7 +219,7 @@ impl Mass {
 }
 
 /// A wrapper around [`Ratio`] which implements Eq/Ord/Hash to help in auto deriving these on other structs.
-#[derive(Copy, Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, Deserialize, Serialize)]
 pub struct OrderedRatio(Ratio);
 
 impl OrderedRatio {
@@ -287,7 +287,7 @@ impl std::hash::Hash for OrderedRatio {
 }
 
 /// A wrapper around [`Mass`] which implements Eq/Ord/Hash to help in auto deriving these on other structs.
-#[derive(Copy, Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, Deserialize, Serialize)]
 pub struct OrderedMass(Mass);
 
 impl OrderedMass {
@@ -355,7 +355,7 @@ impl std::hash::Hash for OrderedMass {
 }
 
 /// A wrapper around [`Mass`] which implements Eq/Ord/Hash to help in auto deriving these on other structs.
-#[derive(Copy, Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, Deserialize, Serialize)]
 pub struct OrderedMassOverCharge(MassOverCharge);
 
 impl OrderedMassOverCharge {
@@ -423,7 +423,7 @@ impl std::hash::Hash for OrderedMassOverCharge {
 }
 
 /// A wrapper around [`Time`] which implements Eq/Ord/Hash to help in auto deriving these on other structs.
-#[derive(Copy, Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, Deserialize, Serialize)]
 pub struct OrderedTime(Time);
 
 impl OrderedTime {

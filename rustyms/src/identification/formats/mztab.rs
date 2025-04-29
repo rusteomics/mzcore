@@ -24,7 +24,7 @@ use crate::{
 };
 
 /// Peptide data from a mzTab file
-#[derive(Clone, PartialEq, Debug, Default, Serialize, Deserialize)]
+#[derive(Clone, Debug, Default, Deserialize, PartialEq, Serialize)]
 pub struct MZTabData {
     /// The peptide's sequence corresponding to the PSM
     pub peptide: Option<Peptidoform<SemiAmbiguous>>,
@@ -659,7 +659,7 @@ impl MZTabData {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 struct PSMLine<'a> {
     line_index: usize,
     header: &'a [String],
@@ -742,7 +742,7 @@ impl From<MZTabData> for IdentifiedPeptidoform {
 }
 
 /// A flanking residue for a sequence, N or C terminal agnostic
-#[derive(Clone, Copy, PartialEq, Eq, Debug, Default, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
 pub enum FlankingResidue {
     /// The flanking residue is unknown (for example in de novo data)
     #[default]
@@ -775,7 +775,7 @@ impl std::fmt::Display for FlankingResidue {
 }
 
 /// A CV term
-#[derive(Clone, PartialEq, Eq, Debug, Default, Serialize, Deserialize)]
+#[derive(Clone, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
 pub struct CVTerm {
     /// The ontology
     pub ontology: String,
@@ -812,7 +812,7 @@ impl FromStr for CVTerm {
 
 /// The reliability of a PSM
 #[expect(missing_docs)]
-#[derive(Clone, Copy, PartialEq, Eq, Debug, Default, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
 pub enum PSMReliability {
     High,
     Medium,

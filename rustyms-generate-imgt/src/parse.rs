@@ -305,7 +305,7 @@ impl DataItem {
     }
 }
 
-#[derive(Default, Debug)]
+#[derive(Debug, Default)]
 struct PreDataItem {
     id: String,
     kw: Vec<String>,

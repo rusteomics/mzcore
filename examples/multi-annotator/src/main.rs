@@ -30,7 +30,7 @@ use rustyms::{
     *,
 };
 
-#[derive(Parser, Debug)]
+#[derive(Debug, Parser)]
 struct Cli {
     /// The input csv file, should have the following columns: 'raw_file' (full path), 'scan_index', 'z', 'sequence', and can have 'mode' (etd/td_etd/ethcd/etcad/eacid/ead/hcd/cid/all/none, defaults to the global model)
     #[arg(short, long)]

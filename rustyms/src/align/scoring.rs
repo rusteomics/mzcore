@@ -30,7 +30,7 @@ pub enum MatchType {
 /// * A higher score for `rotated` is needed to ensure rotation preference over `isobaric`.
 /// * The `matrix` should be chosen to have higher scores than the rotated score to prevent spurious
 ///   rotations from being added.
-#[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug)]
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct AlignScoring<'a> {
     /// The score for a mismatch, this is used as the full score of that step.
     ///

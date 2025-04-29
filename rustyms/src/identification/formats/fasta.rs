@@ -21,7 +21,7 @@ use crate::{
 
 /// A single parsed line of a fasta file
 #[allow(missing_docs)]
-#[derive(Clone, PartialEq, Eq, Debug, Serialize, Deserialize, Hash)]
+#[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
 pub struct FastaData {
     identifier: FastaIdentifier<Range<usize>>,
     description: Range<usize>,
@@ -60,7 +60,7 @@ impl AnnotatedPeptide for FastaData {
 
 /// A fasta identifier following the NCBI identifier definition
 #[expect(missing_docs)]
-#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Debug, Serialize, Deserialize, Hash)]
+#[derive(Clone, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 #[expect(clippy::upper_case_acronyms)]
 pub enum FastaIdentifier<T> {
     Undefined(T),

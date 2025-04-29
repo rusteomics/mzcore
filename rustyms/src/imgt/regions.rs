@@ -6,7 +6,7 @@ use std::{fmt::Display, str::FromStr};
 use super::species::Species;
 
 /// A selection of germlines from a single species.
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct Germlines {
     /// The species of this selection of germlines
     pub species: Species,
@@ -91,7 +91,7 @@ impl<'a> IntoParallelIterator for &'a Germlines {
 }
 
 /// The intermediate representation for a chain
-#[derive(Serialize, Deserialize, Default, Debug)]
+#[derive(Debug, Default, Deserialize, Serialize)]
 pub struct Chain {
     /// All V/variable germlines
     pub variable: Vec<Germline>,
@@ -272,7 +272,7 @@ impl<'a> IntoParallelIterator for &'a Chain {
 }
 
 /// Intermediate representation for germline
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct Germline {
     /// The name for the germline
     pub name: Gene,
@@ -306,7 +306,7 @@ impl<'a> IntoParallelIterator for &'a Germline {
 }
 
 /// Intermediate representation for annotated sequence
-#[derive(Clone, Serialize, Deserialize, Debug)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct AnnotatedSequence {
     /// The sequence
     pub sequence: Peptidoform<UnAmbiguous>,
@@ -333,7 +333,7 @@ impl AnnotatedSequence {
 }
 
 /// A germline gene name, broken up in its constituent parts.
-#[derive(Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, Clone, Debug)]
+#[derive(Clone, Debug, Deserialize, Eq, Ord, PartialEq, PartialOrd, Serialize)]
 pub struct Gene {
     /// The chain of this gene (heavy/kappa etc)
     pub chain: ChainType,
@@ -500,7 +500,7 @@ impl Gene {
 }
 
 /// Any chain type of germline
-#[derive(Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Hash, Debug)]
+#[derive(Clone, Copy, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 pub enum ChainType {
     /// Heavy chain
     Heavy = 0,
@@ -554,7 +554,7 @@ impl Display for ChainType {
 }
 
 /// Any gene in a germline, eg variable, joining
-#[derive(Debug, PartialEq, Eq, Serialize, Deserialize, PartialOrd, Ord, Clone, Hash, Copy)]
+#[derive(Clone, Copy, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 pub enum GeneType {
     /// Variable
     V,
@@ -566,7 +566,7 @@ pub enum GeneType {
 
 /// Any type of constant gene
 #[allow(missing_docs)]
-#[derive(Debug, PartialEq, Eq, Serialize, Deserialize, PartialOrd, Ord, Clone, Copy, Hash)]
+#[derive(Clone, Copy, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 pub enum Constant {
     A,
     D,

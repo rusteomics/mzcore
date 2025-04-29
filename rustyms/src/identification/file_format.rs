@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use crate::{error::CustomError, identification::*, ontology::CustomDatabase};
 
 /// A file format that is fully known
-#[derive(Clone, PartialEq, Eq, Debug, Copy, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 #[allow(clippy::upper_case_acronyms, missing_docs)]
 pub enum KnownFileFormat {
     BasicCSV(BasicCSVVersion),
@@ -113,7 +113,7 @@ impl From<KnownFileFormat> for FileFormat {
 }
 
 /// A file format that might not be (fully) known
-#[derive(Clone, PartialEq, Eq, Debug, Copy, Serialize, Deserialize, Default)]
+#[derive(Clone, Copy, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
 #[allow(clippy::upper_case_acronyms, missing_docs)]
 pub enum FileFormat {
     BasicCSV(Option<BasicCSVVersion>),

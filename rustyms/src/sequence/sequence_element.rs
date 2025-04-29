@@ -24,7 +24,7 @@ use crate::{
 };
 
 /// One block in a sequence meaning an aminoacid and its accompanying modifications
-#[derive(Default, PartialOrd, Ord, Debug, Serialize, Deserialize)]
+#[derive(Debug, Default, Deserialize, Ord, PartialOrd, Serialize)]
 pub struct SequenceElement<T> {
     /// The aminoacid
     pub aminoacid: CheckedAminoAcid<T>,

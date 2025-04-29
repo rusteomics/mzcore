@@ -45,7 +45,7 @@ use serde::{Deserialize, Serialize};
 
 /// A region on an antibody
 #[expect(missing_docs)]
-#[derive(Clone, PartialEq, Eq, Hash, Serialize, Deserialize, Debug)]
+#[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
 pub enum Region {
     Framework(usize),
     ComplementarityDeterminingRegion(usize),
@@ -61,7 +61,7 @@ pub enum Region {
 }
 
 /// A sequence annotation
-#[derive(Clone, PartialEq, Eq, Hash, Serialize, Deserialize, Debug)]
+#[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
 pub enum Annotation {
     /// A conserved residue
     Conserved,

@@ -139,7 +139,7 @@ fn calculate_charge(pH: f64, ionizable: &[(ChargeClass, f64)]) -> f64 {
     charge
 }
 /// The pKa for a specific Amino Acid
-#[derive(Copy, Clone, PartialEq, PartialOrd, Debug, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, Deserialize, PartialEq, PartialOrd, Serialize)]
 pub struct AminoAcidPKa {
     n_term: f64,
     sidechain: Option<f64>,
@@ -172,7 +172,7 @@ impl AminoAcidPKa {
 }
 
 /// pKa values from Lide, D. R. (1991). Handbook of Chemistry and Physics: A Ready Reference Book of Chemical and Physical Data.
-#[derive(Debug, Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub struct PKaLide1991;
 
 impl PKaSource<AminoAcid> for PKaLide1991 {
@@ -215,7 +215,7 @@ impl PKaSource<AminoAcid> for PKaLide1991 {
 }
 
 /// pKa values from Lehninger, A. L., Nelson, D. L., & Cox, M. M. (2005). Lehninger Principles of Biochemistry. Macmillan.
-#[derive(Debug, Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub struct PKaLehninger;
 
 impl PKaSource<AminoAcid> for PKaLehninger {

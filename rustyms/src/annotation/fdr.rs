@@ -153,7 +153,7 @@ impl AnnotatedSpectrum {
 }
 
 /// A false discovery rate for an annotation to a spectrum
-#[derive(Clone, Copy, PartialEq, Debug, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, Deserialize, PartialEq, Serialize)]
 pub struct Fdr {
     /// The fraction of the total (assumed to be true) peaks that could be annotated
     pub peaks_actual: f64,

@@ -120,7 +120,7 @@ pub fn modification_search_glycan(
 
 /// Search for named modifications based on mass and/or chemical formula modifications in a peptide.
 /// The struct is intended to be reused if multiple peptides need the same replacement strategy.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct PeptideModificationSearch {
     /// If true forces the closest if there are multiple modifications within tolerance, if there are two as close it will still not provide any name
     force_closest: bool,

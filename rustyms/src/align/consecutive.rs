@@ -9,7 +9,7 @@ use std::collections::HashSet;
 use itertools::Itertools;
 
 /// A consecutive alignment, which align one sequence to multiple sequences.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ConsecutiveAlignment<'lifetime, A> {
     /// All underlying alignments, per gene there is a vector containing all options for that gene.
     pub alignments: Vec<Vec<(Allele<'lifetime>, Alignment<'lifetime, UnAmbiguous, A>)>>,

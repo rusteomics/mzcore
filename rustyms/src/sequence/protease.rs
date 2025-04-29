@@ -150,7 +150,7 @@ use crate::sequence::{AminoAcid, SequenceElement};
 /// assert!(digest_missed.iter().any(|p| p.to_string() == "AHKDGFFGVHPDTFFAPHPHYFFT"));
 /// assert!(digest_missed.iter().any(|p| p.to_string() == "VHPDTFFAPHPHYFFTSWNVPG"));
 /// ```
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
 pub struct Protease {
     /// The amino acids n terminal of the cut site.
     pub before: Vec<Option<Vec<AminoAcid>>>,

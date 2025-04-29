@@ -82,7 +82,7 @@ pub enum AminoAcid {
 }
 
 /// The error that a given sequence is not a valid codon
-#[derive(Debug, Copy, Clone)]
+#[derive(Clone, Copy, Debug)]
 pub struct NotACodon;
 
 impl std::fmt::Display for NotACodon {

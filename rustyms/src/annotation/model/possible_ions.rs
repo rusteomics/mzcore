@@ -11,7 +11,7 @@ pub type PossiblePrimaryIons<'a> = (Vec<Vec<NeutralLoss>>, ChargeRange, &'a [i8]
 pub type PossibleSatelliteIons<'a> = (Vec<(AminoAcid, u8)>, PossiblePrimaryIons<'a>);
 
 /// A struct to handle all possible fragments that could be generated on a single location
-#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Debug, Hash)]
+#[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 #[non_exhaustive]
 pub struct PossibleIons<'a> {
     /// a series ions

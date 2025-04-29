@@ -22,7 +22,7 @@ use crate::{
 };
 
 /// An alignment of two reads. It has either a reference to the two sequences to prevent overzealous use of memory, or if needed use [`Self::to_owned`] to get a variant that clones the sequences and so can be used in more places.
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct Alignment<'lifetime, A, B> {
     /// The first sequence
     pub(super) seq_a: Cow<'lifetime, Peptidoform<A>>,
@@ -466,7 +466,7 @@ impl<A: AtMax<Linear>, B: AtMax<Linear>> Alignment<'_, A, B> {
     /// It has three additional classes `{a}(:{b})?(r|i)` and `{a}m` denoting any special step with the given a and b step size, if b is not given it is the same as a.
     /// `r` is rotation, `i` is isobaric, and `m` is identity but mass mismatch (modification).
     pub fn short(&self) -> String {
-        #[derive(PartialEq, Eq)]
+        #[derive(Eq, PartialEq)]
         enum StepType {
             Insertion,
             Deletion,
@@ -531,7 +531,7 @@ impl<A: AtMax<Linear>, B: AtMax<Linear>> Alignment<'_, A, B> {
 }
 
 /// Statistics for an alignment with some helper functions to easily retrieve the number of interest.
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
 pub struct Stats {
     /// The total number of identical positions
     pub identical: usize,
@@ -584,7 +584,7 @@ impl Stats {
 }
 
 /// The score of an alignment
-#[derive(Clone, Copy, Ord, PartialOrd, PartialEq, Eq, Hash, Debug, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 pub struct Score {
     /// The normalised score (absolute / max)
     pub normalised: OrderedFloat<f64>,

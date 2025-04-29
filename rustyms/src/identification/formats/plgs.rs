@@ -156,7 +156,7 @@ impl From<PLGSData> for IdentifiedPeptidoform {
 }
 
 /// PLGS curation categories
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Ord, Default, PartialOrd, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, Default, Deserialize, Eq, Ord, PartialEq, PartialOrd, Serialize)]
 pub enum PLGSCuration {
     /// Good
     #[default]

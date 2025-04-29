@@ -14,7 +14,7 @@ use crate::{
 /// the underlying amino acid. Any marked as [`SemiAmbiguous`] or higher can contain B/Z (ambiguous
 /// asparagine/glutamine) while any marked as [`UnAmbiguous`] can only contain amino acids with a
 /// single defined chemical formula.
-#[derive(Ord, PartialOrd, Debug, Serialize, Deserialize)]
+#[derive(Debug, Deserialize, Ord, PartialOrd, Serialize)]
 pub struct CheckedAminoAcid<T> {
     /// The underlying amino acid
     aminoacid: AminoAcid,

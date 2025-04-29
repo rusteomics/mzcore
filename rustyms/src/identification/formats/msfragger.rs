@@ -234,7 +234,7 @@ pub const V22: MSFraggerFormat = MSFraggerFormat {
 };
 
 /// The scans identifier for a MSFragger identification
-#[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Default, Serialize, Deserialize)]
+#[derive(Clone, Debug, Default, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 pub struct MSFraggerID {
     /// The file, if defined
     pub file: PathBuf,

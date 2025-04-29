@@ -17,7 +17,7 @@ pub fn get_germline(
 }
 
 /// The selection rules for iterating over a selection of germlines.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Selection<S1: std::hash::BuildHasher, S2: std::hash::BuildHasher> {
     /// The species you want, None allows all, otherwise only the species specified will be returned
     pub species: Option<HashSet<Species, S1>>,
@@ -128,7 +128,7 @@ impl<S1: std::hash::BuildHasher, S2: std::hash::BuildHasher> Default for Selecti
 }
 
 /// The allele handling strategy
-#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub enum AlleleSelection {
     /// Return all alleles
     All,
@@ -148,7 +148,7 @@ impl AlleleSelection {
 
 /// A returned allele
 #[non_exhaustive] // Do not let anyone build it themselves
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Allele<'a> {
     /// The species where this gene originates from
     pub species: Species,

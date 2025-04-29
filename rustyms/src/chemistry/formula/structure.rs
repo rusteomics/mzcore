@@ -18,7 +18,7 @@ use crate::{
 
 /// A molecular formula, a selection of elements of specified isotopes together forming a structure
 #[allow(clippy::unsafe_derive_deserialize)]
-#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Default, Serialize, Deserialize)]
+#[derive(Clone, Debug, Default, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 pub struct MolecularFormula {
     /// Save all constituent parts as the element in question, the isotope (or None for natural distribution), and the number of this part
     /// The elements will be sorted on element/isotope and deduplicated, guaranteed to only contain valid isotopes.
@@ -31,7 +31,7 @@ pub struct MolecularFormula {
 }
 
 /// Keep track of what ambiguous option is used
-#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 pub enum AmbiguousLabel {
     /// An ambiguous amino acid, with the actual amino acid used tracked
     AminoAcid {

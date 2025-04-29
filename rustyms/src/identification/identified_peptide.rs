@@ -14,7 +14,7 @@ use crate::{
 };
 
 /// A peptide that is identified by a de novo or database matching program
-#[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 pub struct IdentifiedPeptidoform {
     /// The score -1.0..=1.0 if a score was available in the original format
     pub score: Option<f64>,
@@ -25,7 +25,7 @@ pub struct IdentifiedPeptidoform {
 }
 
 /// The definition of all special metadata for all types of identified peptides that can be read
-#[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 #[expect(clippy::upper_case_acronyms)]
 pub enum MetaData {
     /// A basic CSV format
@@ -65,7 +65,7 @@ pub enum MetaData {
 }
 
 /// A peptide as stored in a identified peptide file, either a simple linear one or a cross-linked peptidoform
-#[derive(Debug, Clone)]
+#[derive(Clone, Debug)]
 pub enum ReturnedPeptidoform<'a> {
     /// A semi ambiguous linear peptide
     PeptidoformSemiAmbiguous(&'a Peptidoform<SemiAmbiguous>),

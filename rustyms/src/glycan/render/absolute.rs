@@ -205,7 +205,7 @@ impl GlycanStructure {
 }
 
 /// An absolute positioned glycan.
-#[derive(Debug, Clone)]
+#[derive(Clone, Debug)]
 pub(super) struct AbsolutePositionedGlycan {
     /// The depth of this sugar along the main axis of the glycan, starting at 0 at the top (in the leaves)
     pub(super) y: usize,
@@ -235,7 +235,7 @@ pub(super) struct AbsolutePositionedGlycan {
     pub(super) sides: Vec<AbsolutePositionedGlycan>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Clone, Debug)]
 /// Modifications that are to be shown outside of the monosaccharide
 pub(super) enum OuterModifications {
     /// Too long of a text, or it did not fit, so show as a footnote
@@ -246,7 +246,7 @@ pub(super) enum OuterModifications {
     Empty,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
 /// The direction of the rendered glycan
 pub enum GlycanDirection {
     /// A top down tree, with the root at the bottom
@@ -256,7 +256,7 @@ pub enum GlycanDirection {
 }
 
 /// A subtree of a rendered glycan, used to restrict the canvas for glycan fragments
-#[derive(Debug, Clone)]
+#[derive(Clone, Debug)]
 pub(super) struct SubTree<'a> {
     /// The root for this sub tree
     pub(super) tree: &'a AbsolutePositionedGlycan,

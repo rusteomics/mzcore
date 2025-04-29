@@ -10,7 +10,7 @@ use crate::{
 };
 
 /// A tolerance around a given unit for searching purposes
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 pub enum Tolerance<T> {
     /// A relative search tolerance
     Relative(OrderedRatio),

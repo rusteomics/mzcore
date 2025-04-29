@@ -15,7 +15,7 @@ use rustyms::{
     *,
 };
 
-#[derive(Parser, Debug)]
+#[derive(Debug, Parser)]
 struct Cli {
     /// The input identified peptides file
     #[arg(short, long)]
