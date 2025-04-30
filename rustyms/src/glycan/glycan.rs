@@ -557,7 +557,10 @@ pub enum BaseSugar {
 }
 
 impl BaseSugar {
-    fn equivalent(self, other: Self, precise: bool) -> bool {
+    /// Check if these two sugars are equivalent, meaning that both are the same type tetrose,
+    /// hexose, nonose etc. If the `precise` flag is turned on the isomeric state has to be the
+    /// same as well. So in that case `Hexose(Galactose)` is not equivalent to `Hexose(Mannose)`.
+    pub fn equivalent(self, other: Self, precise: bool) -> bool {
         match (self, other) {
             (Self::None, Self::None)
             | (Self::Sugar, Self::Sugar)

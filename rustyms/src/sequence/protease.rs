@@ -8,7 +8,7 @@ use crate::sequence::{AminoAcid, SequenceElement};
 /// A protease defined by it ability to cut at any site identified by the right amino acids at the n and c terminal.
 /// Each position is identified by an option, a none means that there is no specificity at this position. If there is
 /// a specificity at a certain position any amino acid that is contained in the set is allowed (see
-/// [`crate::CheckedAminoAcid::canonical_identical`]).
+/// [`crate::sequence::CheckedAminoAcid::canonical_identical`]).
 ///
 /// A standard set of proteases can be found here [`known_proteases`].
 ///

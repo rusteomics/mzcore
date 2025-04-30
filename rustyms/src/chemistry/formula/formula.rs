@@ -9,7 +9,7 @@ use crate::{
 use itertools::Itertools;
 
 impl From<&MolecularFormula> for OrderedMass {
-    /// Create an ordered mass from the monoisotopic mass (needed for [`Multi<MolecularFormula>`](crate::Multi))
+    /// Create an ordered mass from the monoisotopic mass (needed for [`Multi<MolecularFormula>`](crate::quantities::Multi))
     fn from(value: &MolecularFormula) -> Self {
         value.monoisotopic_mass().into()
     }

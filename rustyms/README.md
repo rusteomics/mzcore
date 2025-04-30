@@ -1,11 +1,12 @@
 # Match those fragments!
 
 Handle mass spectrometry data in Rust. This crate is set up to handle very complex peptides with
-loads of ambiguity and complexity. It pivots around the [`CompoundPeptidoformIon`], [`PeptidoformIon`] and [`Peptidoform`]
-which encode the [ProForma](https://github.com/HUPO-PSI/ProForma) specification. Additionally
-this crate enables the reading of [mgf](rawfile::mgf), doing [spectrum annotation](RawSpectrum::annotate)
-(BU/MD/TD), finding [isobaric sequences](find_isobaric_sets), doing [alignments of peptides](align::align)
-, accessing the [IMGT germline database](imgt), and [reading identified peptide files](identification).
+loads of ambiguity and complexity. It pivots around the [`CompoundPeptidoformIon`](crate::sequence::CompoundPeptidoformIon), 
+[`PeptidoformIon`](crate::sequence::PeptidoformIon) and [`Peptidoform`](crate::sequence::Peptidoform) which encode the 
+[ProForma](https://github.com/HUPO-PSI/ProForma) specification. Additionally, this crate enables the
+reading of [mgf](spectrum::mgf), doing [spectrum annotation](crate::annotation::AnnotatableSpectrum::annotate)
+(BU/MD/TD), finding [isobaric sequences](crate::prelude::find_isobaric_sets), doing [alignments of peptides](crate::align::align)
+, accessing the [IMGT germline database](crate::imgt), and [reading identified peptide files](crate::identification).
 
 ## Library features
 
@@ -20,7 +21,7 @@ this crate enables the reading of [mgf](rawfile::mgf), doing [spectrum annotatio
  - Match spectra to the generated fragments
  - [Align peptides based on mass](https://pubs.acs.org/doi/10.1021/acs.jproteome.4c00188)
  - Fast access to the IMGT database of antibody germlines
- - Reading of multiple identified peptide file formats (Fasta, MaxQuant, MSFragger, Novor, OPair, Peaks, and Sage)
+ - Reading of multiple identified peptide file formats (Fasta, MaxQuant, MSFragger, Novor, OPair, Peaks, Sage, and many more)
  - Exhaustively fuzz tested for reliability (using [cargo-afl](https://crates.io/crates/cargo-afl))
  - Extensive use of [uom](https://docs.rs/uom/latest/uom/) for compile time unit checking
 

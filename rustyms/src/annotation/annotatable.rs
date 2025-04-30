@@ -6,9 +6,9 @@ use crate::{
 use super::AnnotatedSpectrum;
 
 /// A spectrum that can be annotated. Within rustyms this is implemented for the build in
-/// [mgf reader](crate::rawfile::mgf) and for mzdata [`SpectrumLike`](mzdata::prelude::SpectrumLike).
+/// [mgf reader](crate::spectrum::mgf) and for mzdata [`SpectrumLike`](mzdata::prelude::SpectrumLike).
 /// For up to date information see that crate, but at the moment of writing this supports mgf, mzML,
-/// indexed mzML, mzMLb, and Thermo RAW. Note that any 'Missing' and
+/// indexed mzML, mzMLb, Thermo RAW, and Bruker TDF. Note that any 'Missing' and
 /// [`RawData`](mzdata::spectrum::RawSpectrum) from mzdata result in an empty annotated spectrum.
 /// Also note that the feature `mzdata` is required for the mzdata spectra to work.
 pub trait AnnotatableSpectrum {
@@ -16,7 +16,7 @@ pub trait AnnotatableSpectrum {
     type Tolerance: From<crate::quantities::Tolerance<MassOverCharge>> + Copy;
 
     /// Create an empty annotated spectrum, which is required to fill the spectrum vector with
-    /// [`blank`](crate::spectrum::AnnotatedPeak::background) annotated peaks.
+    /// [`blank`](crate::annotation::AnnotatedPeak::background) annotated peaks.
     fn empty_annotated(&self, peptide: CompoundPeptidoformIon) -> AnnotatedSpectrum;
 
     /// Search for a specific mz within the tolerance. Has to return the index in the annotated
@@ -24,7 +24,8 @@ pub trait AnnotatableSpectrum {
     fn search(&self, query: MassOverCharge, tolerance: Self::Tolerance) -> Option<usize>;
 
     /// Annotate this spectrum with the given peptidoform and given fragments see
-    /// [`crate::CompoundPeptidoformIon::generate_theoretical_fragments`].
+    /// [`crate::sequence::CompoundPeptidoformIon::generate_theoretical_fragments`]
+    /// to generate the fragments.
     fn annotate(
         &self,
         peptide: CompoundPeptidoformIon,

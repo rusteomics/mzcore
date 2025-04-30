@@ -43,9 +43,9 @@ pub struct Fragment {
     pub charge: Charge,
     /// The annotation for this fragment
     pub ion: FragmentType,
-    /// The peptidoform this fragment comes from, saved as the index into the list of peptidoform in the overarching [`crate::CompoundPeptidoformIon`] struct
+    /// The peptidoform this fragment comes from, saved as the index into the list of peptidoform in the overarching [`crate::sequence::CompoundPeptidoformIon`] struct
     pub peptidoform_ion_index: Option<usize>,
-    /// The peptide this fragment comes from, saved as the index into the list of peptides in the overarching [`crate::PeptidoformIon`] struct
+    /// The peptide this fragment comes from, saved as the index into the list of peptides in the overarching [`crate::sequence::PeptidoformIon`] struct
     pub peptidoform_index: Option<usize>,
     /// Any neutral losses applied
     pub neutral_loss: Vec<NeutralLoss>,
