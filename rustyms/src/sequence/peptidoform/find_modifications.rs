@@ -84,7 +84,7 @@ pub fn modification_search_formula<'a>(
 /// Search for glycans in the GNOme database that have a similar composition. To detect similar
 /// composition is converts all monosaccharides into molecular formulas then deduplicate this list.
 /// This 'canonical composition' is then compared to the canonical composition for all GNOme
-/// modofication. Setting `search_topologies` to true allows any GNOme topology modification as
+/// modification. Setting `search_topologies` to true allows any GNOme topology modification as
 /// well as composition modification.
 ///
 /// It returns the list of possible modifications.

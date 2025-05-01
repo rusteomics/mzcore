@@ -25,10 +25,6 @@ pub(crate) fn combine(
 
     for element in data.flatten() {
         let species = element.species;
-        // println!("{element}");
-        // if species != Species::HomoSapiens {
-        //     continue;
-        // }
         for gene in element.genes {
             match gene.clone().finish() {
                 Ok(gene) => temp.push((species, gene)),
@@ -37,7 +33,6 @@ pub(crate) fn combine(
                 }
             }
         }
-        //writeln!(output, "{}", element.unwrap()).unwrap();
     }
 
     // Combine temp seqs
@@ -61,12 +56,6 @@ pub(crate) fn combine(
 
     // Save temp seqs in final data structure
     for (species, entry) in deduped_temp {
-        // if species == Species::HomoSapiens
-        //     && entry.name.kind == crate::shared::GeneType::C(Some(crate::shared::Constant::M))
-        //     && entry.name.chain == crate::shared::ChainType::Heavy
-        // {
-        //     println!("{}", entry);
-        // }
         grouped
             .entry(species)
             .or_insert_with(|| Germlines::new(species))

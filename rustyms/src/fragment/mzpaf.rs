@@ -417,7 +417,6 @@ fn parse_neutral_loss(
                 .take_while(|(_, c)| *c != ']')
                 .last()
                 .unwrap();
-            //Ok(first..last.0 + last.1.len_utf8());
             let name = line[first..last.0 + last.1.len_utf8()].to_ascii_lowercase();
 
             offset += 1 + last.0 + last.1.len_utf8() - first;

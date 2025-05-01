@@ -607,7 +607,7 @@ mod tests {
     #[test]
     fn mass_difference() {
         // Test if the mass difference calculation is correct for some harder alignments.
-        // A has an ambiguous AA, B and C have the two options, while D has a sub peptide of A.
+        // A has an ambiguous AA, B, and C have the two options, while D has a sub peptide of A.
         let a = Peptidoform::pro_forma("AABAA", None)
             .unwrap()
             .into_simple_linear()

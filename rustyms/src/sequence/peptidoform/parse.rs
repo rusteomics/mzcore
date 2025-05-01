@@ -719,7 +719,7 @@ pub(super) fn parse_placement_rules(
     Ok(result)
 }
 
-/// If the text is recognised as a unknown mods list it is Some(..), if it has errors during parsing Some(Err(..))
+/// If the text is recognised as an unknown mods list it is Some(...), if it has errors during parsing Some(Err(...))
 /// The returned happy path contains the mods and the index from where to continue parsing.
 /// # Errors
 /// Give all errors when the text cannot be read as mods of unknown position.

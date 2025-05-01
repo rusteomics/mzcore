@@ -170,7 +170,7 @@ impl<T> SequenceElement<T> {
         )
     }
 
-    /// Get the molecular formulas for this position with the ambiguous modifications placed on the very first placed (and updating this in `placed`), without any global isotype modifications
+    /// Get the molecular formulas for this position with the ambiguous modifications placed on the very first placed (and updating this in `placed`), without any global isotope modifications
     #[expect(clippy::too_many_arguments)]
     pub(crate) fn formulas_greedy(
         &self,
@@ -199,7 +199,7 @@ impl<T> SequenceElement<T> {
         )
     }
 
-    /// Get the molecular formulas for this position with all ambiguous modifications, without any global isotype modifications
+    /// Get the molecular formulas for this position with all ambiguous modifications, without any global isotope modifications
     pub(crate) fn formulas_all(
         &self,
         all_peptidoforms: &[Peptidoform<Linked>],
@@ -226,7 +226,7 @@ impl<T> SequenceElement<T> {
         )
     }
 
-    /// Get the molecular formulas for this position with the ambiguous modifications placed on the very first placed (and updating this in `placed`), without any global isotype modifications
+    /// Get the molecular formulas for this position with the ambiguous modifications placed on the very first placed (and updating this in `placed`), without any global isotope modifications
     #[expect(clippy::too_many_arguments)]
     pub(crate) fn formulas_generic(
         &self,

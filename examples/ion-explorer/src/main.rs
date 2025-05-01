@@ -125,7 +125,7 @@ fn main() {
                         spectra.first().and_then(|s| s.1.first().cloned())
                     }
                     SpectrumIds::FileNotKnown(ids) => ids.first().cloned(),
-                    _ => None,
+                    SpectrumIds::None => None,
                 };
                 if let Some(spectrum) = match id {
                     Some(SpectrumId::Index(i)) => file.get_spectrum_by_index(i),
@@ -141,7 +141,7 @@ fn main() {
                         &fragments,
                         &cpi,
                         &args,
-                        peptide.mode().map(|m| m.to_string()),
+                        peptide.mode().map(ToString::to_string),
                     );
                 }
             }
@@ -269,7 +269,7 @@ impl Stack {
                         "{aa}{}",
                         mods.iter().map(|m| format!("[{m}]")).join("")
                     )),
-                    mode.as_ref().map_or("-".to_string(), |e| e.to_string())
+                    mode.as_ref().map_or("-".to_string(), ToString::to_string)
                 )),
                 (i, Some(d), el, mode) => base_path.join(format!(
                     "fragment_{d}{i}_{}_{}.csv",
@@ -277,7 +277,7 @@ impl Stack {
                         "{aa}{}",
                         mods.iter().map(|m| format!("[{m}]")).join("")
                     )),
-                    mode.as_ref().map_or("-".to_string(), |e| e.to_string())
+                    mode.as_ref().map_or("-".to_string(), ToString::to_string)
                 )),
             };
             write_stack(&path, stack);

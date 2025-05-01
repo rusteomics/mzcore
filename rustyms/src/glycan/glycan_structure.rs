@@ -35,11 +35,11 @@ impl GlycanStructure {
         Self { sugar, branches }
     }
 
-    /// Parse a short IUPAC glycan structure
+    /// Parse a short IUPAC glycan structure.
     /// # Panics
-    /// Panics if there is no single sugar found
+    /// If there is no single sugar found
     /// # Errors
-    /// Errors when the format is not correct, could be unknown monosaccharide, or an open brace
+    /// When the format is not correct, could be unknown monosaccharide, or an open brace
     pub fn from_short_iupac(
         line: &str,
         range: Range<usize>,

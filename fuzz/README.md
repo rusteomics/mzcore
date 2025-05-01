@@ -7,6 +7,8 @@ From root directory
 cargo-afl afl system-config
 cargo afl build --release -p rustyms-fuzz
 cargo afl fuzz -i fuzz/in_pro_forma -o out_pro_forma target/release/pro_forma
+cargo afl fuzz -i fuzz/in_pro_forma -o out_sloppy_pro_forma target/release/sloppy_pro_forma
+cargo afl fuzz -i fuzz/in_peaks -o out_peaks target/release/peaks
 ```
 Several fuzz targets are defined: `pro_forma`, `sloppy_pro_forma`, and `peaks`. The two peptide targets share the `in_pro_forma` directory with input examples. The peaks target has `in_peaks` as directory of input examples.
 
