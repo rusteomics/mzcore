@@ -51,6 +51,11 @@ impl<T> DiagonalArray<T> {
         let index = Self::length(index[0], self.max_depth) + index[1];
         unsafe { self.data.get_unchecked_mut(index) }
     }
+
+    /// Crate an iterator over all the values in this array
+    pub(super) fn iter(&self) -> impl Iterator<Item = &T> {
+        self.data.iter()
+    }
 }
 
 impl<T: Default + Clone> DiagonalArray<T> {
@@ -80,6 +85,14 @@ impl<T> std::ops::IndexMut<[usize; 2]> for DiagonalArray<T> {
         assert!(self.validate_indices(index));
         let index = Self::length(index[0], self.max_depth) + index[1];
         &mut self.data[index]
+    }
+}
+
+impl<T> IntoIterator for DiagonalArray<T> {
+    type IntoIter = std::vec::IntoIter<T>;
+    type Item = T;
+    fn into_iter(self) -> Self::IntoIter {
+        self.data.into_iter()
     }
 }
 
