@@ -62,5 +62,10 @@ internal-no-data = []
 name = "iai"
 harness = false
 
+[[bench]]
+name = "align"
+features = ["imgt", "align"]
+harness = false
+
 [lints]
 workspace = true
