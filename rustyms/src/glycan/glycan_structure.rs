@@ -14,7 +14,7 @@ use crate::{
     glycan::{
         glycan::{BaseSugar, MonoSaccharide},
         lists::GLYCAN_PARSE_LIST,
-        {GlycanBranchIndex, GlycanBranchMassIndex, PositionedGlycanStructure},
+        {GlycanBranchIndex, GlycanBranchMassIndex, GlycanPosition, PositionedGlycanStructure},
     },
     helper_functions::{end_of_enclosure, next_char},
     sequence::SequencePosition,
@@ -160,6 +160,97 @@ impl GlycanStructure {
                 self.branches.iter().map(Self::display_tree).join(",")
             )
         }
+    }
+
+    /// Check if this structure contains the given monosaccharide, see [`MonoSaccharide::equivalent`]
+    /// for details on how the matching happens. It is possible to only select a small part of this
+    /// glycan using the `root_break` and `branch_break` parameters. See
+    /// [`Subtree`](crate::glycan::render::GlycanSelection::Subtree) for more info on how this
+    /// selection works.
+    pub fn contains(
+        &self,
+        monosaccharide: &MonoSaccharide,
+        precise: bool,
+        root_break: Option<&GlycanPosition>,
+        branch_breaks: &[GlycanPosition],
+    ) -> Option<bool> {
+        fn check_subtree(
+            target: &MonoSaccharide,
+            precise: bool,
+            element: &GlycanStructure,
+            breaks: &[(usize, Vec<(GlycanBranchIndex, GlycanBranchMassIndex)>)],
+        ) -> bool {
+            let total_branches = element.branches.len();
+            if element.sugar.equivalent(target, precise) {
+                return true;
+            }
+            for (index, branch) in element.branches.iter().enumerate() {
+                if !((total_branches == 1 && breaks.iter().any(|b| b.0 == 1))
+                    || breaks
+                        .iter()
+                        .any(|b| b.0 == 1 && b.1.first().map(|b| b.0) == Some(index)))
+                    && check_subtree(
+                        target,
+                        precise,
+                        branch,
+                        &breaks
+                            .iter()
+                            .filter(|b| {
+                                (total_branches > 1 && b.1.first().map(|b| b.0) == Some(index)
+                                    || total_branches == 1)
+                                    && b.0 > 0
+                            })
+                            .map(|b| (b.0 - 1, b.1[usize::from(total_branches > 1)..].to_vec()))
+                            .collect_vec(),
+                    )
+                {
+                    return true;
+                }
+            }
+            false
+        }
+
+        let base = GlycanPosition {
+            inner_depth: 0,
+            series_number: 0,
+            branch: Vec::new(),
+            attachment: None,
+        };
+        let start = root_break.unwrap_or(&base);
+        let mut tree = self;
+        let mut depth = 0;
+        let mut branch_choices = start.branch.clone();
+        branch_choices.reverse();
+        while depth < start.inner_depth {
+            depth += 1;
+
+            let total_branches = tree.branches.len();
+            match total_branches {
+                0 => return None,
+                1 => tree = tree.branches.first()?,
+                _ => {
+                    let index = branch_choices.pop()?;
+                    tree = tree
+                        .branches
+                        .iter()
+                        .enumerate()
+                        .find(|(branch_index, _)| *branch_index == index.0)?
+                        .1;
+                }
+            }
+        }
+
+        let rules = branch_breaks
+            .iter()
+            .filter(|b| b.inner_depth >= start.inner_depth && b.branch.starts_with(&start.branch))
+            .map(|b| {
+                (
+                    b.inner_depth - start.inner_depth,
+                    b.branch[start.branch.len()..].to_vec(),
+                )
+            })
+            .collect_vec();
+        Some(check_subtree(monosaccharide, precise, tree, &rules))
     }
 }
 

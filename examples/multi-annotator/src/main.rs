@@ -23,9 +23,10 @@ use rustyms::{
         model::{FragmentationModel, MatchingParameters},
     },
     chemistry::MassMode,
-    fragment::Fragment,
+    fragment::{DiagnosticPosition, Fragment},
+    glycan::MonoSaccharide,
     identification::{BasicCSVData, IdentifiedPeptidoformSource, csv::write_csv},
-    sequence::{AminoAcid, SequencePosition},
+    sequence::{AminoAcid, GnoComposition, SequencePosition, SimpleModificationInner},
     spectrum::PeakSpectrum,
     *,
 };
@@ -66,6 +67,24 @@ struct Cli {
     /// To turn off loading the custom modifications database from the Annotator (if installed)
     #[arg(long)]
     no_custom_mods: bool,
+    /// Turns on specific counting for glycan fragments. This collects statistics for any fragment
+    /// that contains the given monosaccharide. It returns two columns for every given monosaccharide
+    /// one containing B numbers `{found}/{total}` and one containing Y numbers `{found}/{total}`.
+    ///
+    /// This parameters should be specified with monosaccharide names separated by commas.
+    #[arg(long, value_parser=monosaccharide_parser)]
+    glycan_buckets: Option<Vec<MonoSaccharide>>,
+}
+
+fn monosaccharide_parser(value: &str) -> Result<Vec<MonoSaccharide>, String> {
+    value
+        .split(',')
+        .map(|v| {
+            MonoSaccharide::from_short_iupac(v, 0, 0)
+                .map(|s| s.0)
+                .map_err(|e| e.to_string())
+        })
+        .collect()
 }
 
 fn select_model(text: &str, default: &'static FragmentationModel) -> &'static FragmentationModel {
@@ -105,6 +124,11 @@ fn main() {
     let raw_file_counter = AtomicUsize::default();
     println!("Raw files: 0/{}, Peptides: 0/{total_peptides}", files.len());
 
+    let precursor_mass = Arc::new("precursor_mass".to_string());
+    let column_y_independent = Arc::new("ion_Y_charge_independent".to_string());
+    let intensity_combined = Arc::new("intensity_combined".to_string());
+    let tic = Arc::new("total_ion_current".to_string());
+
     let out_data: Vec<_> =  files.par_iter().flat_map(|(file_name, lines)| {
         let mut file = mzdata::io::MZReaderType::open_path(file_name).unwrap();
 
@@ -127,6 +151,8 @@ fn main() {
                         .1[0][0];
 
                     let mut row: BTreeMap<Arc<String>, String> = line.full_csv_line().unwrap_or(&[]).iter().cloned().collect();
+
+                    row.insert(precursor_mass.clone(), line.sequence.formulas().unique().iter().map(|f| f.monoisotopic_mass().value.to_string()).join(";"));
 
                     if args.charge_independent_Y {
                         let unique_Y = fragments
@@ -153,13 +179,13 @@ fn main() {
                             .unique()
                             .count();
                         row.insert(
-                            Arc::new("ion_Y_charge_independent".to_string()),
+                            column_y_independent.clone(),
                             format!("{}", (unique_Y_found as f64 / unique_Y as f64),),
                         );
                     }
                     if args.report_intensity {
                         row.insert(
-                            Arc::new("intensity_combined".to_string()),
+                            intensity_combined.clone(),
                             match scores.score {
                                 Score::Position { intensity, .. }
                                 | Score::UniqueFormulas { intensity, .. } => {
@@ -168,7 +194,7 @@ fn main() {
                             },
                         );
                         row.insert(
-                            Arc::new("total_ion_current".to_string()),
+                            tic.clone(),
                             match scores.score {
                                 Score::Position { intensity, .. }
                                 | Score::UniqueFormulas { intensity, .. } => {
@@ -246,6 +272,95 @@ fn main() {
                                 Arc::new("ambiguous_Z_intensity".to_string()),
                                 stats.aminoacids.iter().filter(|aa| aa.optiona_a.0 == AminoAcid::GlutamicAcid).map(|aa| format!("{}|{}", aa.optiona_a.2.fraction(), aa.optiona_b.2.fraction())).join(";")
                             );
+                        }
+                    }
+                    if let Some(buckets) = args.glycan_buckets.as_ref() {
+                        #[derive(Debug)]
+                        struct Match<'a> {
+                            target: &'a MonoSaccharide,
+                            found_B: usize,
+                            total_B: usize,
+                            found_Y: usize,
+                            total_Y: usize,
+                        }
+
+                        let mut buckets = buckets.iter().map(|m| Match {target: m,found_B: 0, total_B: 0, found_Y: 0, total_Y: 0}).collect_vec();
+                        for (theoretical, f) in fragments.iter().map(|f| (true, f)).chain(annotated.spectrum().flat_map(|p| p.annotation.iter().map(|a| (false, a)))) {
+                            match &f.ion {
+                                FragmentType::Y(pos) => {
+                                    if let Some((_, seq)) = pos.first().and_then(|p| p.attachment) {
+                                        let element = &annotated.peptide.peptidoform_ions()[f.peptidoform_ion_index.unwrap_or_default()].peptidoforms()[f.peptidoform_index.unwrap_or_default()][seq];
+                                        if let Some(glycan) = element.modifications.iter().find_map(|m| match (*m).clone().into_simple().as_deref() {
+                                            Some(SimpleModificationInner::Gno { composition: GnoComposition::Topology(structure), .. } | SimpleModificationInner::GlycanStructure(structure)) => Some(structure.clone()), _ => None}) {
+                                                for bucket in &mut buckets {
+                                                    if glycan.contains(bucket.target, false, None, pos).unwrap_or_default() {
+                                                        if theoretical {
+                                                            bucket.total_Y += 1; }
+                                                        else {
+                                                            bucket.found_Y += 1 ;
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                    }
+                                },
+                                FragmentType::YComposition(composition, _) => {
+                                    for bucket in &mut buckets {
+                                        if composition.iter().any(|c| c.0.equivalent(bucket.target, false)) {
+                                            if theoretical {
+                                                bucket.total_Y += 1; }
+                                            else {
+                                                bucket.found_Y += 1 ;
+                                            }
+                                        }
+                                    }
+                                }
+                                FragmentType::B{b, y,end: _} => {
+                                    if let Some((_, seq)) = b.attachment.as_ref() {
+                                        let element = &annotated.peptide.peptidoform_ions()[f.peptidoform_ion_index.unwrap_or_default()].peptidoforms()[f.peptidoform_index.unwrap_or_default()][*seq];
+                                        if let Some(glycan) = element.modifications.iter().find_map(|m| match (*m).clone().into_simple().as_deref() {
+                                            Some(SimpleModificationInner::Gno { composition: GnoComposition::Topology(structure), .. } | SimpleModificationInner::GlycanStructure(structure)) => Some(structure.clone()), _ => None}) {
+                                                for bucket in &mut buckets {
+                                                    if glycan.contains(bucket.target, false, Some(b), y).unwrap_or_default() {
+                                                        if theoretical {
+                                                            bucket.total_B += 1; }
+                                                        else {
+                                                            bucket.found_B += 1 ;
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                    }
+                                },
+                                FragmentType::BComposition(composition, _) => {
+                                    for bucket in &mut buckets {
+                                        if composition.iter().any(|c| c.0.equivalent(bucket.target, false)) {
+                                            if theoretical {
+                                                bucket.total_B += 1; }
+                                            else {
+                                                bucket.found_B += 1 ;
+                                            }
+                                        }
+                                    }
+                                },
+                                FragmentType::Diagnostic(DiagnosticPosition::Glycan(_, sug) | DiagnosticPosition::GlycanCompositional(sug, _)) => {
+                                    for bucket in &mut buckets {
+                                        if sug.equivalent(bucket.target, false) {
+                                            if theoretical {
+                                                bucket.total_B += 1 ;}
+                                            else {
+                                                bucket.found_B += 1 ;
+                                            }
+                                        }
+                                    }
+                                }
+                                _ => ()
+                            }
+                        }
+
+                        for bucket in buckets {
+                            row.insert(Arc::new(format!("glycan_bucket_{}_B", bucket.target)), format!("{}/{}", bucket.found_B, bucket.total_B));
+                            row.insert(Arc::new(format!("glycan_bucket_{}_Y", bucket.target)), format!("{}/{}", bucket.found_Y, bucket.total_Y));
                         }
                     }
                     row.insert(
