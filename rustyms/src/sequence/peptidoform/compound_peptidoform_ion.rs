@@ -35,7 +35,11 @@ impl CompoundPeptidoformIon {
 
     /// Get all possible formulas for this compound peptidoform
     pub fn formulas(&self) -> Multi<MolecularFormula> {
-        self.0.iter().flat_map(|p| p.formulas().to_vec()).collect()
+        self.0
+            .iter()
+            .enumerate()
+            .flat_map(|(i, p)| p.formulas_inner(i).to_vec())
+            .collect()
     }
 
     /// Assume there is exactly one peptidoform in this compound peptidoform.

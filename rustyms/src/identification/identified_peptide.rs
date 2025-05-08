@@ -82,6 +82,7 @@ impl MultiChemical for ReturnedPeptidoform<'_> {
         &self,
         _sequence_index: SequencePosition,
         _peptidoform_index: usize,
+        _peptidoform_ion_index: usize,
     ) -> crate::quantities::Multi<MolecularFormula> {
         match self {
             Self::PeptidoformSemiAmbiguous(p) => p.formulas(),

@@ -207,6 +207,7 @@ impl<'lifetime, A: AtMax<SimpleLinear>, B: AtMax<SimpleLinear>> Alignment<'lifet
                                     false,
                                     SequencePosition::Index(index_a),
                                     0,
+                                    0,
                                     &GlycanModel::DISALLOW,
                                 )
                                 .0
@@ -220,6 +221,7 @@ impl<'lifetime, A: AtMax<SimpleLinear>, B: AtMax<SimpleLinear>> Alignment<'lifet
                                     &mut Vec::new(),
                                     false,
                                     SequencePosition::Index(index_b),
+                                    0,
                                     0,
                                     &GlycanModel::DISALLOW,
                                 )
@@ -405,6 +407,7 @@ impl<A: AtMax<Linear>, B: AtMax<Linear>> Alignment<'_, A, B> {
                             false,
                             SequencePosition::Index(index),
                             0,
+                            0,
                             &GlycanModel::DISALLOW,
                         )
                         .0
@@ -430,6 +433,7 @@ impl<A: AtMax<Linear>, B: AtMax<Linear>> Alignment<'_, A, B> {
                             &mut Vec::new(),
                             false,
                             SequencePosition::Index(index),
+                            0,
                             0,
                             &GlycanModel::DISALLOW,
                         )

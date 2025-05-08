@@ -39,8 +39,10 @@ pub enum AmbiguousLabel {
         option: AminoAcid,
         /// What location in the sequence are we talking about
         sequence_index: usize,
-        /// Peptide index
+        /// Peptidoform index
         peptidoform_index: usize,
+        /// Peptidoform ion index
+        peptidoform_ion_index: usize,
     },
     /// An ambiguous modification, with the actual position
     Modification {
@@ -48,8 +50,10 @@ pub enum AmbiguousLabel {
         id: usize,
         /// Which location
         sequence_index: SequencePosition,
-        /// Peptide index
+        /// Peptidoform index
         peptidoform_index: usize,
+        /// Peptidoform ion index
+        peptidoform_ion_index: usize,
     },
     /// The actual charge used, when there are multiple charge carriers
     ChargeCarrier(MolecularFormula),
@@ -107,7 +111,7 @@ impl<T: Chemical> Chemical for &Vec<T> {
 pub trait MultiChemical {
     /// Get all possible molecular formulas
     fn formulas(&self) -> Multi<MolecularFormula> {
-        self.formulas_inner(SequencePosition::default(), 0)
+        self.formulas_inner(SequencePosition::default(), 0, 0)
     }
 
     /// Get all possible molecular formulas while keeping track of all ambiguous labels
@@ -115,6 +119,7 @@ pub trait MultiChemical {
         &self,
         sequence_index: SequencePosition,
         peptidoform_index: usize,
+        peptidoform_ion_index: usize,
     ) -> Multi<MolecularFormula>;
 
     /// Get the charge of this chemical, it returns None if no charge is defined.
@@ -138,8 +143,10 @@ pub trait MultiChemical {
         &self,
         sequence_index: SequencePosition,
         peptidoform_index: usize,
+        peptidoform_ion_index: usize,
     ) -> Option<MolecularFormula> {
-        let formulas = self.formulas_inner(sequence_index, peptidoform_index);
+        let formulas =
+            self.formulas_inner(sequence_index, peptidoform_index, peptidoform_ion_index);
         (formulas.len() == 1).then_some(formulas.to_vec().pop().unwrap())
     }
 }

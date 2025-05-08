@@ -53,6 +53,7 @@ pub trait IsAminoAcid: MultiChemical {
         &self,
         sequence_index: SequencePosition,
         peptidoform_index: usize,
+        peptidoform_ion_index: usize,
     ) -> Cow<'_, Multi<MolecularFormula>>;
     /// The molecular formulas that can fragment for satellite ions (d and w). Commonly the fragment
     /// after the second carbon into the side chain. `MolecularFormula::default()` can be returned
@@ -62,5 +63,6 @@ pub trait IsAminoAcid: MultiChemical {
         &self,
         sequence_index: SequencePosition,
         peptidoform_index: usize,
+        peptidoform_ion_index: usize,
     ) -> Option<Cow<'_, Vec<(SatelliteLabel, MolecularFormula)>>>;
 }

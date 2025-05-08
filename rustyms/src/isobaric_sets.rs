@@ -131,6 +131,7 @@ pub fn building_blocks(
                     false,
                     SequencePosition::default(),
                     0,
+                    0,
                     &GlycanModel::DISALLOW,
                 )
                 .0
@@ -208,6 +209,7 @@ pub fn building_blocks(
                     &mut Vec::new(),
                     false,
                     position,
+                    0,
                     0,
                     &GlycanModel::DISALLOW,
                 )

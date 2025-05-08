@@ -1,3 +1,4 @@
+mod ambiguous;
 mod annotatable;
 mod annotated;
 mod fdr;
@@ -7,6 +8,7 @@ mod mzdata;
 mod scores;
 mod spectrum;
 
+pub use ambiguous::*;
 pub use annotatable::*;
 pub use annotated::*;
 pub use fdr::*;

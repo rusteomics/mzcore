@@ -104,6 +104,7 @@ impl Fragment {
                     .satellite_ion_fragments(
                         pos.sequence_index,
                         self.peptidoform_index.unwrap_or_default(),
+                        self.peptidoform_ion_index.unwrap_or_default(),
                     )
                     .and_then(|fragments| {
                         fragments
@@ -175,6 +176,7 @@ impl Fragment {
                     .satellite_ion_fragments(
                         pos.sequence_index,
                         self.peptidoform_index.unwrap_or_default(),
+                        self.peptidoform_ion_index.unwrap_or_default(),
                     )
                     .and_then(|fragments| {
                         fragments

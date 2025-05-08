@@ -30,6 +30,8 @@ use rustyms::{
     *,
 };
 
+/// The command line interface arguments
+#[allow(clippy::struct_excessive_bools)]
 #[derive(Debug, Parser)]
 struct Cli {
     /// The input csv file, should have the following columns: 'raw_file' (full path), 'scan_index', 'z', 'sequence', and can have 'mode' (etd/td_etd/ethcd/etcad/eacid/ead/hcd/cid/all/none, defaults to the global model)
@@ -50,6 +52,17 @@ struct Cli {
     /// Turns on reporting of I/L coverage by satellite ions, returns a list with a 0 (not covered) or 1 (covered) for each I or L in the peptide
     #[arg(long)]
     report_IL_satellite_coverage: bool,
+    /// Turns on reporting of ambiguous amino acids, returns a column for each ambiguous amino acid
+    /// (J/B/Z). This column it contains `{found_a}/{total_a}|{found_b}/{total_b}` if there are
+    /// multiple ambiguous amino acids the values are separated by semicolons and the options are
+    /// ordered by location in the peptidoform(s). For J the order is always I/L, for B D/N, for Z
+    /// E/Q.
+    ///
+    /// If `report_intensity` is also turned on an additional column is added per amino acid which
+    /// contains `{fraction_tic_annotated_a}|{fraction_tic_annotated_b}`. This follows the same
+    /// structure as the fragments column.
+    #[arg(long)]
+    report_ambiguous_amino_acids: bool,
     /// To turn off loading the custom modifications database from the Annotator (if installed)
     #[arg(long)]
     no_custom_mods: bool,
@@ -201,6 +214,39 @@ fn main() {
                                 },
                             ),
                         );
+                    }
+                    if args.report_ambiguous_amino_acids {
+                        let stats = annotated.ambigous_statistics(&fragments, &parameters, MassMode::Monoisotopic);
+                        row.insert(
+                            Arc::new("ambiguous_J_found".to_string()),
+                            stats.aminoacids.iter().filter(|aa| aa.optiona_a.0 == AminoAcid::Isoleucine).map(|aa| format!("{}/{}|{}/{}", aa.optiona_a.1.found, aa.optiona_a.1.total, aa.optiona_b.1.found, aa.optiona_b.1.total)).join(";")
+                        );
+                        if args.report_intensity {
+                            row.insert(
+                                Arc::new("ambiguous_J_intensity".to_string()),
+                                stats.aminoacids.iter().filter(|aa| aa.optiona_a.0 == AminoAcid::Isoleucine).map(|aa| format!("{}|{}", aa.optiona_a.2.fraction(), aa.optiona_b.2.fraction())).join(";")
+                            );
+                        }
+                        row.insert(
+                            Arc::new("ambiguous_B_found".to_string()),
+                            stats.aminoacids.iter().filter(|aa| aa.optiona_a.0 == AminoAcid::AsparticAcid).map(|aa| format!("{}/{}|{}/{}", aa.optiona_a.1.found, aa.optiona_a.1.total, aa.optiona_b.1.found, aa.optiona_b.1.total)).join(";")
+                        );
+                        if args.report_intensity {
+                            row.insert(
+                                Arc::new("ambiguous_B_intensity".to_string()),
+                                stats.aminoacids.iter().filter(|aa| aa.optiona_a.0 == AminoAcid::AsparticAcid).map(|aa| format!("{}|{}", aa.optiona_a.2.fraction(), aa.optiona_b.2.fraction())).join(";")
+                            );
+                        }
+                        row.insert(
+                            Arc::new("ambiguous_Z_found".to_string()),
+                            stats.aminoacids.iter().filter(|aa| aa.optiona_a.0 == AminoAcid::GlutamicAcid).map(|aa| format!("{}/{}|{}/{}", aa.optiona_a.1.found, aa.optiona_a.1.total, aa.optiona_b.1.found, aa.optiona_b.1.total)).join(";")
+                        );
+                        if args.report_intensity {
+                            row.insert(
+                                Arc::new("ambiguous_Z_intensity".to_string()),
+                                stats.aminoacids.iter().filter(|aa| aa.optiona_a.0 == AminoAcid::GlutamicAcid).map(|aa| format!("{}|{}", aa.optiona_a.2.fraction(), aa.optiona_b.2.fraction())).join(";")
+                            );
+                        }
                     }
                     row.insert(
                         Arc::new("ion_combined".to_string()),

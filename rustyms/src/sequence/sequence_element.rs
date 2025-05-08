@@ -152,6 +152,7 @@ impl<T> SequenceElement<T> {
         allow_ms_cleavable: bool,
         sequence_index: SequencePosition,
         peptidoform_index: usize,
+        peptidoform_ion_index: usize,
         glycan_model: &GlycanModel,
     ) -> (
         Multi<MolecularFormula>,
@@ -166,6 +167,7 @@ impl<T> SequenceElement<T> {
             allow_ms_cleavable,
             sequence_index,
             peptidoform_index,
+            peptidoform_ion_index,
             glycan_model,
         )
     }
@@ -181,6 +183,7 @@ impl<T> SequenceElement<T> {
         allow_ms_cleavable: bool,
         sequence_index: SequencePosition,
         peptidoform_index: usize,
+        peptidoform_ion_index: usize,
         glycan_model: &GlycanModel,
     ) -> (
         Multi<MolecularFormula>,
@@ -195,6 +198,7 @@ impl<T> SequenceElement<T> {
             allow_ms_cleavable,
             sequence_index,
             peptidoform_index,
+            peptidoform_ion_index,
             glycan_model,
         )
     }
@@ -208,6 +212,7 @@ impl<T> SequenceElement<T> {
         allow_ms_cleavable: bool,
         sequence_index: SequencePosition,
         peptidoform_index: usize,
+        peptidoform_ion_index: usize,
         glycan_model: &GlycanModel,
     ) -> (
         Multi<MolecularFormula>,
@@ -222,6 +227,7 @@ impl<T> SequenceElement<T> {
             allow_ms_cleavable,
             sequence_index,
             peptidoform_index,
+            peptidoform_ion_index,
             glycan_model,
         )
     }
@@ -237,6 +243,7 @@ impl<T> SequenceElement<T> {
         allow_ms_cleavable: bool,
         sequence_index: SequencePosition,
         peptidoform_index: usize,
+        peptidoform_ion_index: usize,
         glycan_model: &GlycanModel,
     ) -> (
         Multi<MolecularFormula>,
@@ -286,6 +293,7 @@ impl<T> SequenceElement<T> {
                         allow_ms_cleavable,
                         sequence_index,
                         peptidoform_index,
+                        peptidoform_ion_index,
                         glycan_model,
                         Some(self.aminoacid.aminoacid()),
                     );
@@ -302,9 +310,9 @@ impl<T> SequenceElement<T> {
                     )
                 },
             );
-        let own = self
-            .aminoacid
-            .formulas_inner(sequence_index, peptidoform_index);
+        let own =
+            self.aminoacid
+                .formulas_inner(sequence_index, peptidoform_index, peptidoform_ion_index);
         (
             formula * &own,
             specific.into_iter().map(|(k, v)| (k, v * &own)).collect(),

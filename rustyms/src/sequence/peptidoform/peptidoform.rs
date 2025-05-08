@@ -422,6 +422,7 @@ impl<Complexity> Peptidoform<Complexity> {
         applied_cross_links: &mut Vec<CrossLinkName>,
         allow_ms_cleavable: bool,
         peptidoform_index: usize,
+        peptidoform_ion_index: usize,
         glycan_model: &GlycanModel,
     ) -> (
         Multi<MolecularFormula>,
@@ -442,6 +443,7 @@ impl<Complexity> Peptidoform<Complexity> {
                             allow_ms_cleavable,
                             SequencePosition::NTerm,
                             peptidoform_index,
+                            peptidoform_ion_index,
                             glycan_model,
                             attachment,
                         );
@@ -461,6 +463,7 @@ impl<Complexity> Peptidoform<Complexity> {
         applied_cross_links: &mut Vec<CrossLinkName>,
         allow_ms_cleavable: bool,
         peptidoform_index: usize,
+        peptidoform_ion_index: usize,
         glycan_model: &GlycanModel,
     ) -> (
         Multi<MolecularFormula>,
@@ -481,6 +484,7 @@ impl<Complexity> Peptidoform<Complexity> {
                             allow_ms_cleavable,
                             SequencePosition::NTerm,
                             peptidoform_index,
+                            peptidoform_ion_index,
                             glycan_model,
                             attachment,
                         );
@@ -657,6 +661,7 @@ impl<Complexity> Peptidoform<Complexity> {
         applied_cross_links: &mut Vec<CrossLinkName>,
         allow_ms_cleavable: bool,
         peptidoform_index: usize,
+        peptidoform_ion_index: usize,
         glycan_model: &GlycanModel,
     ) -> (
         Multi<MolecularFormula>,
@@ -680,6 +685,7 @@ impl<Complexity> Peptidoform<Complexity> {
                         allow_ms_cleavable,
                         SequencePosition::Index(index),
                         peptidoform_index,
+                        peptidoform_ion_index,
                         glycan_model,
                     );
                     (
@@ -774,6 +780,7 @@ impl<Complexity> Peptidoform<Complexity> {
                                                 id,
                                                 sequence_index: *pos,
                                                 peptidoform_index,
+                                                peptidoform_ion_index,
                                             }),
                                         specific
                                             .into_iter()
@@ -792,6 +799,7 @@ impl<Complexity> Peptidoform<Complexity> {
                                                                 id,
                                                                 sequence_index: *pos,
                                                                 peptidoform_index,
+                                                                peptidoform_ion_index,
                                                             },
                                                         ),
                                                 )
@@ -852,6 +860,7 @@ impl<Complexity> Peptidoform<Complexity> {
                     &mut cross_links,
                     model.allow_cross_link_cleavage,
                     peptidoform_index,
+                    peptidoform_ion_index,
                     &model.glycan,
                 ),
                 model.modification_specific_neutral_losses,
@@ -860,6 +869,7 @@ impl<Complexity> Peptidoform<Complexity> {
                 &mut cross_links,
                 model.allow_cross_link_cleavage,
                 peptidoform_index,
+                peptidoform_ion_index,
                 &model.glycan,
             );
             let (c_term, c_term_specific, c_term_seen) = self.all_masses(
@@ -871,6 +881,7 @@ impl<Complexity> Peptidoform<Complexity> {
                     &mut cross_links,
                     model.allow_cross_link_cleavage,
                     peptidoform_index,
+                    peptidoform_ion_index,
                     &model.glycan,
                 ),
                 model.modification_specific_neutral_losses,
@@ -879,6 +890,7 @@ impl<Complexity> Peptidoform<Complexity> {
                 &mut cross_links,
                 model.allow_cross_link_cleavage,
                 peptidoform_index,
+                peptidoform_ion_index,
                 &model.glycan,
             );
             if !n_term_seen.is_disjoint(&c_term_seen) {
@@ -895,6 +907,7 @@ impl<Complexity> Peptidoform<Complexity> {
                             model.allow_cross_link_cleavage,
                             SequencePosition::Index(sequence_index),
                             peptidoform_index,
+                            peptidoform_ion_index,
                             &model.glycan,
                             Some(self.sequence[sequence_index].aminoacid.aminoacid()),
                         );
@@ -938,6 +951,7 @@ impl<Complexity> Peptidoform<Complexity> {
         // Generate precursor peak
         let (full_precursor, _precursor_specific, _all_cross_links) = self.formulas_inner(
             peptidoform_index,
+            peptidoform_ion_index,
             all_peptides,
             &[],
             &mut Vec::new(),
@@ -993,6 +1007,7 @@ impl<Complexity> Peptidoform<Complexity> {
         let full_formula = self
             .formulas_inner(
                 peptidoform_index,
+                peptidoform_ion_index,
                 all_peptides,
                 &[],
                 &mut Vec::new(),
@@ -1095,6 +1110,7 @@ impl<Complexity> Peptidoform<Complexity> {
         applied_cross_links: &mut Vec<CrossLinkName>,
         allow_ms_cleavable: bool,
         peptidoform_index: usize,
+        peptidoform_ion_index: usize,
         glycan_model: &GlycanModel,
     ) -> (
         Multi<MolecularFormula>,
@@ -1110,6 +1126,7 @@ impl<Complexity> Peptidoform<Complexity> {
             applied_cross_links,
             allow_ms_cleavable,
             peptidoform_index,
+            peptidoform_ion_index,
             glycan_model,
         );
         if apply_neutral_losses {
@@ -1149,6 +1166,7 @@ impl<Complexity> Peptidoform<Complexity> {
         applied_cross_links: &mut Vec<CrossLinkName>,
         allow_ms_cleavable: bool,
         peptidoform_index: usize,
+        peptidoform_ion_index: usize,
     ) -> Multi<MolecularFormula> {
         let mut formulas = Multi::default();
         let mut placed = vec![false; self.modifications_of_unknown_position.len()];
@@ -1162,6 +1180,7 @@ impl<Complexity> Peptidoform<Complexity> {
                     allow_ms_cleavable,
                     SequencePosition::Index(index),
                     peptidoform_index,
+                    peptidoform_ion_index,
                     &GlycanModel::DISALLOW,
                 )
                 .0;
@@ -1182,6 +1201,7 @@ impl<Complexity> Peptidoform<Complexity> {
     pub(crate) fn formulas_inner(
         &self,
         peptidoform_index: usize,
+        peptidoform_ion_index: usize,
         all_peptides: &[Peptidoform<Linked>],
         visited_peptides: &[usize],
         applied_cross_links: &mut Vec<CrossLinkName>,
@@ -1204,6 +1224,7 @@ impl<Complexity> Peptidoform<Complexity> {
             applied_cross_links,
             allow_ms_cleavable,
             peptidoform_index,
+            peptidoform_ion_index,
             glycan_model,
         );
         let (c, c_specific) = self.get_c_term_mass(
@@ -1212,6 +1233,7 @@ impl<Complexity> Peptidoform<Complexity> {
             applied_cross_links,
             allow_ms_cleavable,
             peptidoform_index,
+            peptidoform_ion_index,
             glycan_model,
         );
         let mut formulas: Multi<MolecularFormula> = n * c;
@@ -1227,6 +1249,7 @@ impl<Complexity> Peptidoform<Complexity> {
                 allow_ms_cleavable,
                 SequencePosition::Index(index),
                 peptidoform_index,
+                peptidoform_ion_index,
                 glycan_model,
             );
             formulas *= pos_f;
@@ -1557,11 +1580,26 @@ impl<Complexity: AtMax<Linear>> Peptidoform<Complexity> {
     /// Ignores any potential glycan fragmentation, assumes the glycan is always fully present.
     #[expect(clippy::missing_panics_doc)] // Can not panic (unless state is already corrupted)
     pub fn formulas(&self) -> Multi<MolecularFormula> {
-        let mut formulas: Multi<MolecularFormula> = self
-            .get_n_term_mass(&[], &[], &mut Vec::new(), false, 0, &GlycanModel::DISALLOW)
-            .0
-            * self
-                .get_c_term_mass(&[], &[], &mut Vec::new(), false, 0, &GlycanModel::DISALLOW)
+        let mut formulas: Multi<MolecularFormula> =
+            self.get_n_term_mass(
+                &[],
+                &[],
+                &mut Vec::new(),
+                false,
+                0,
+                0,
+                &GlycanModel::DISALLOW,
+            )
+            .0 * self
+                .get_c_term_mass(
+                    &[],
+                    &[],
+                    &mut Vec::new(),
+                    false,
+                    0,
+                    0,
+                    &GlycanModel::DISALLOW,
+                )
                 .0;
         let mut placed = vec![false; self.modifications_of_unknown_position.len()];
         for (index, pos) in self.sequence.iter().enumerate() {
@@ -1573,6 +1611,7 @@ impl<Complexity: AtMax<Linear>> Peptidoform<Complexity> {
                     &mut Vec::new(),
                     false,
                     SequencePosition::Index(index),
+                    0,
                     0,
                     &GlycanModel::DISALLOW,
                 )
@@ -1587,7 +1626,7 @@ impl<Complexity: AtMax<Linear>> Peptidoform<Complexity> {
 
     /// Gives all the formulas for the whole peptide with no C and N terminal modifications. With the global isotope modifications applied.
     pub fn bare_formulas(&self) -> Multi<MolecularFormula> {
-        self.bare_formulas_inner(&[], &[], &mut Vec::new(), false, 0)
+        self.bare_formulas_inner(&[], &[], &mut Vec::new(), false, 0, 0)
     }
 }
 
@@ -1597,7 +1636,15 @@ impl Peptidoform<UnAmbiguous> {
     #[expect(clippy::missing_panics_doc)] // Can not panic (unless state is already corrupted)
     pub fn formula(&self) -> MolecularFormula {
         let mut options = self
-            .formulas_inner(0, &[], &[], &mut Vec::new(), false, &GlycanModel::DISALLOW)
+            .formulas_inner(
+                0,
+                0,
+                &[],
+                &[],
+                &mut Vec::new(),
+                false,
+                &GlycanModel::DISALLOW,
+            )
             .0
             .to_vec();
         assert_eq!(options.len(), 1);
@@ -1608,7 +1655,7 @@ impl Peptidoform<UnAmbiguous> {
     #[expect(clippy::missing_panics_doc)] // Can not panic (unless state is already corrupted)
     pub fn bare_formula(&self) -> MolecularFormula {
         let mut options = self
-            .bare_formulas_inner(&[], &[], &mut Vec::new(), false, 0)
+            .bare_formulas_inner(&[], &[], &mut Vec::new(), false, 0, 0)
             .to_vec();
         assert_eq!(options.len(), 1);
         options.pop().unwrap()

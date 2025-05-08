@@ -47,11 +47,20 @@ impl PeptidoformIon {
     /// Assumes all peptides in this peptidoform are connected.
     /// If there are no peptides in this peptidoform it returns [`Multi::default`].
     pub fn formulas(&self) -> Multi<MolecularFormula> {
+        self.formulas_inner(0)
+    }
+
+    /// Gives all possible formulas for this peptidoform (including breakage of cross-links that can break).
+    /// Includes the full glycan, if there are any glycans.
+    /// Assumes all peptides in this peptidoform are connected.
+    /// If there are no peptides in this peptidoform it returns [`Multi::default`].
+    pub(crate) fn formulas_inner(&self, peptidoform_ion_index: usize) -> Multi<MolecularFormula> {
         self.0
             .first()
             .map(|p| {
                 p.formulas_inner(
                     0,
+                    peptidoform_ion_index,
                     &self.0,
                     &[],
                     &mut Vec::new(),

@@ -307,6 +307,7 @@ fn calculate_masses<const STEPS: u16>(
                         false,
                         SequencePosition::Index(i),
                         0,
+                        0,
                         &GlycanModel::DISALLOW,
                     )
                     .0
@@ -516,6 +517,7 @@ mod tests {
                             false,
                             SequencePosition::default(),
                             0,
+                            0,
                             &GlycanModel::DISALLOW,
                         )
                         .0)
@@ -533,6 +535,7 @@ mod tests {
                             &mut Vec::new(),
                             false,
                             SequencePosition::default(),
+                            0,
                             0,
                             &GlycanModel::DISALLOW,
                         )

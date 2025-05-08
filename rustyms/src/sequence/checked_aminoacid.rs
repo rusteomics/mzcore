@@ -310,17 +310,23 @@ impl<T> IsAminoAcid for CheckedAminoAcid<T> {
         &self,
         sequence_index: SequencePosition,
         peptidoform_index: usize,
+        peptidoform_ion_index: usize,
     ) -> Option<std::borrow::Cow<'_, Vec<(SatelliteLabel, MolecularFormula)>>> {
-        self.aminoacid
-            .satellite_ion_fragments(sequence_index, peptidoform_index)
+        self.aminoacid.satellite_ion_fragments(
+            sequence_index,
+            peptidoform_index,
+            peptidoform_ion_index,
+        )
     }
 
     fn side_chain(
         &self,
         sequence_index: SequencePosition,
         peptidoform_index: usize,
+        peptidoform_ion_index: usize,
     ) -> std::borrow::Cow<'_, Multi<MolecularFormula>> {
-        self.aminoacid.side_chain(sequence_index, peptidoform_index)
+        self.aminoacid
+            .side_chain(sequence_index, peptidoform_index, peptidoform_ion_index)
     }
 }
 
@@ -368,6 +374,7 @@ impl<T> MultiChemical for CheckedAminoAcid<T> {
         &self,
         sequence_index: SequencePosition,
         peptidoform_index: usize,
+        peptidoform_ion_index: usize,
     ) -> Multi<MolecularFormula> {
         self.into_unambiguous().map_or_else(|| {
             let SequencePosition::Index(sequence_index) = sequence_index else {
@@ -375,13 +382,13 @@ impl<T> MultiChemical for CheckedAminoAcid<T> {
             };
             match self.aminoacid {
             AminoAcid::AmbiguousAsparagine => vec![
-                molecular_formula!(H 6 C 4 O 2 N 2 (AmbiguousLabel::AminoAcid{option: AminoAcid::Asparagine, sequence_index, peptidoform_index})),
-                molecular_formula!(H 5 C 4 O 3 N 1 (AmbiguousLabel::AminoAcid{option: AminoAcid::AsparticAcid, sequence_index, peptidoform_index})),
+                molecular_formula!(H 6 C 4 O 2 N 2 (AmbiguousLabel::AminoAcid{option: AminoAcid::Asparagine, sequence_index, peptidoform_index, peptidoform_ion_index})),
+                molecular_formula!(H 5 C 4 O 3 N 1 (AmbiguousLabel::AminoAcid{option: AminoAcid::AsparticAcid, sequence_index, peptidoform_index, peptidoform_ion_index})),
             ]
             .into(),
             AminoAcid::AmbiguousGlutamine => vec![
-                molecular_formula!(H 8 C 5 O 2 N 2 (AmbiguousLabel::AminoAcid{option: AminoAcid::Glutamine, sequence_index, peptidoform_index})),
-                molecular_formula!(H 7 C 5 O 3 N 1 (AmbiguousLabel::AminoAcid{option: AminoAcid::GlutamicAcid, sequence_index, peptidoform_index})),
+                molecular_formula!(H 8 C 5 O 2 N 2 (AmbiguousLabel::AminoAcid{option: AminoAcid::Glutamine, sequence_index, peptidoform_index, peptidoform_ion_index})),
+                molecular_formula!(H 7 C 5 O 3 N 1 (AmbiguousLabel::AminoAcid{option: AminoAcid::GlutamicAcid, sequence_index, peptidoform_index, peptidoform_ion_index})),
             ]
             .into(),
             _ => unreachable!(),        }

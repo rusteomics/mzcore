@@ -292,6 +292,7 @@ impl Modification {
         allow_ms_cleavable: bool,
         sequence_index: SequencePosition,
         peptidoform_index: usize,
+        peptidoform_ion_index: usize,
         glycan_model: &GlycanModel,
         attachment: Option<AminoAcid>,
     ) -> (
@@ -388,6 +389,7 @@ impl Modification {
                             let (f, f_specific, seen) = all_peptides[*other_peptide]
                                 .formulas_inner(
                                     *other_peptide,
+                                    peptidoform_ion_index,
                                     all_peptides,
                                     visited_peptides,
                                     applied_cross_links,
@@ -405,6 +407,7 @@ impl Modification {
                     } else {
                         let (f, specific, mut seen) = all_peptides[*other_peptide].formulas_inner(
                             *other_peptide,
+                            peptidoform_ion_index,
                             all_peptides,
                             visited_peptides,
                             applied_cross_links,
