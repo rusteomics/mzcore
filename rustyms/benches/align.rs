@@ -3,6 +3,7 @@
 use std::{
     fs::File,
     io::{BufReader, BufWriter, prelude::*},
+    ops::RangeInclusive,
     time::{Duration, Instant},
 };
 
@@ -40,58 +41,33 @@ fn main() {
 
     let mut results = Vec::new();
 
+    let range_low =
+        Mass::new::<rustyms::system::dalton>(200.0)..=Mass::new::<rustyms::system::dalton>(300.0);
+    let range_med =
+        Mass::new::<rustyms::system::dalton>(300.0)..=Mass::new::<rustyms::system::dalton>(400.0);
+    let range_high =
+        Mass::new::<rustyms::system::dalton>(400.0)..=Mass::new::<rustyms::system::dalton>(500.0);
+
     // Do the benchmarking
     results.push(measure(bench_align, &(&germlines, &peptides), "Align"));
     results.push(measure(
         bench_index,
-        &(&germlines, &peptides),
+        &(&germlines, &peptides, None),
         "Index - none",
     ));
-    results.push(measure(
-        bench_index_1,
-        &(&germlines, &peptides),
-        "Index - 1",
-    ));
-    results.push(measure(
-        bench_index_2,
-        &(&germlines, &peptides),
-        "Index - 2",
-    ));
-    results.push(measure(
-        bench_index_3,
-        &(&germlines, &peptides),
-        "Index - 3",
-    ));
-    results.push(measure(
-        bench_index_4,
-        &(&germlines, &peptides),
-        "Index - 4",
-    ));
-    results.push(measure(
-        bench_index_5,
-        &(&germlines, &peptides),
-        "Index - 5",
-    ));
-    results.push(measure(
-        bench_index_6,
-        &(&germlines, &peptides),
-        "Index - 6",
-    ));
-    results.push(measure(
-        bench_index_7,
-        &(&germlines, &peptides),
-        "Index - 7",
-    ));
-    results.push(measure(
-        bench_index_8,
-        &(&germlines, &peptides),
-        "Index - 8",
-    ));
-    results.push(measure(
-        bench_index_9,
-        &(&germlines, &peptides),
-        "Index - 9",
-    ));
+    for matches in 1..10 {
+        for (name, range) in [
+            ("low", range_low.clone()),
+            ("med", range_med.clone()),
+            ("high", range_high.clone()),
+        ] {
+            results.push(measure(
+                bench_index,
+                &(&germlines, &peptides, Some((matches, range.clone()))),
+                &format!("Index - {matches} - {name}"),
+            ));
+        }
+    }
 
     // Save the results to a csv
     let mut sink = BufWriter::new(file);
@@ -107,13 +83,6 @@ fn main() {
     sink.flush().unwrap();
 }
 
-fn scoring() -> AlignScoring<'static> {
-    AlignScoring::<'_> {
-        tolerance: Tolerance::Absolute(Mass::new::<rustyms::system::dalton>(0.02).into()),
-        ..Default::default()
-    }
-}
-
 fn bench_align(data: &(&[Allele<'_>], &[Peptidoform<SemiAmbiguous>])) {
     let results: Vec<Vec<_>> = data
         .0
@@ -125,7 +94,7 @@ fn bench_align(data: &(&[Allele<'_>], &[Peptidoform<SemiAmbiguous>])) {
                     align::<4, UnAmbiguous, SemiAmbiguous>(
                         g.sequence,
                         p,
-                        scoring(),
+                        AlignScoring::default(),
                         AlignType::EITHER_GLOBAL,
                     )
                 })
@@ -134,157 +103,19 @@ fn bench_align(data: &(&[Allele<'_>], &[Peptidoform<SemiAmbiguous>])) {
         .collect();
 }
 
-fn bench_index(data: &(&[Allele<'_>], &[Peptidoform<SemiAmbiguous>])) {
+fn bench_index(
+    data: &(
+        &[Allele<'_>],
+        &[Peptidoform<SemiAmbiguous>],
+        Option<(u8, RangeInclusive<Mass>)>,
+    ),
+) {
     let index: OneToManyIndex<'_, 4, UnAmbiguous> = OneToManyIndex::new(
         data.0,
         MassMode::Monoisotopic,
-        scoring(),
+        AlignScoring::default(),
         AlignType::EITHER_GLOBAL,
-        None,
-    );
-
-    index.align(data.1);
-}
-
-fn bench_index_1(data: &(&[Allele<'_>], &[Peptidoform<SemiAmbiguous>])) {
-    let index: OneToManyIndex<'_, 4, UnAmbiguous> = OneToManyIndex::new(
-        data.0,
-        MassMode::Monoisotopic,
-        scoring(),
-        AlignType::EITHER_GLOBAL,
-        Some((
-            1,
-            Mass::new::<rustyms::system::dalton>(200.0)
-                ..=Mass::new::<rustyms::system::dalton>(300.0),
-        )),
-    );
-
-    index.align(data.1);
-}
-
-fn bench_index_2(data: &(&[Allele<'_>], &[Peptidoform<SemiAmbiguous>])) {
-    let index: OneToManyIndex<'_, 4, UnAmbiguous> = OneToManyIndex::new(
-        data.0,
-        MassMode::Monoisotopic,
-        scoring(),
-        AlignType::EITHER_GLOBAL,
-        Some((
-            2,
-            Mass::new::<rustyms::system::dalton>(200.0)
-                ..=Mass::new::<rustyms::system::dalton>(300.0),
-        )),
-    );
-
-    index.align(data.1);
-}
-
-fn bench_index_3(data: &(&[Allele<'_>], &[Peptidoform<SemiAmbiguous>])) {
-    let index: OneToManyIndex<'_, 4, UnAmbiguous> = OneToManyIndex::new(
-        data.0,
-        MassMode::Monoisotopic,
-        scoring(),
-        AlignType::EITHER_GLOBAL,
-        Some((
-            3,
-            Mass::new::<rustyms::system::dalton>(200.0)
-                ..=Mass::new::<rustyms::system::dalton>(300.0),
-        )),
-    );
-
-    index.align(data.1);
-}
-
-fn bench_index_4(data: &(&[Allele<'_>], &[Peptidoform<SemiAmbiguous>])) {
-    let index: OneToManyIndex<'_, 4, UnAmbiguous> = OneToManyIndex::new(
-        data.0,
-        MassMode::Monoisotopic,
-        scoring(),
-        AlignType::EITHER_GLOBAL,
-        Some((
-            4,
-            Mass::new::<rustyms::system::dalton>(200.0)
-                ..=Mass::new::<rustyms::system::dalton>(300.0),
-        )),
-    );
-
-    index.align(data.1);
-}
-
-fn bench_index_5(data: &(&[Allele<'_>], &[Peptidoform<SemiAmbiguous>])) {
-    let index: OneToManyIndex<'_, 4, UnAmbiguous> = OneToManyIndex::new(
-        data.0,
-        MassMode::Monoisotopic,
-        scoring(),
-        AlignType::EITHER_GLOBAL,
-        Some((
-            5,
-            Mass::new::<rustyms::system::dalton>(200.0)
-                ..=Mass::new::<rustyms::system::dalton>(300.0),
-        )),
-    );
-
-    index.align(data.1);
-}
-
-fn bench_index_6(data: &(&[Allele<'_>], &[Peptidoform<SemiAmbiguous>])) {
-    let index: OneToManyIndex<'_, 4, UnAmbiguous> = OneToManyIndex::new(
-        data.0,
-        MassMode::Monoisotopic,
-        scoring(),
-        AlignType::EITHER_GLOBAL,
-        Some((
-            6,
-            Mass::new::<rustyms::system::dalton>(200.0)
-                ..=Mass::new::<rustyms::system::dalton>(300.0),
-        )),
-    );
-
-    index.align(data.1);
-}
-
-fn bench_index_7(data: &(&[Allele<'_>], &[Peptidoform<SemiAmbiguous>])) {
-    let index: OneToManyIndex<'_, 4, UnAmbiguous> = OneToManyIndex::new(
-        data.0,
-        MassMode::Monoisotopic,
-        scoring(),
-        AlignType::EITHER_GLOBAL,
-        Some((
-            7,
-            Mass::new::<rustyms::system::dalton>(200.0)
-                ..=Mass::new::<rustyms::system::dalton>(300.0),
-        )),
-    );
-
-    index.align(data.1);
-}
-
-fn bench_index_8(data: &(&[Allele<'_>], &[Peptidoform<SemiAmbiguous>])) {
-    let index: OneToManyIndex<'_, 4, UnAmbiguous> = OneToManyIndex::new(
-        data.0,
-        MassMode::Monoisotopic,
-        scoring(),
-        AlignType::EITHER_GLOBAL,
-        Some((
-            8,
-            Mass::new::<rustyms::system::dalton>(200.0)
-                ..=Mass::new::<rustyms::system::dalton>(300.0),
-        )),
-    );
-
-    index.align(data.1);
-}
-
-fn bench_index_9(data: &(&[Allele<'_>], &[Peptidoform<SemiAmbiguous>])) {
-    let index: OneToManyIndex<'_, 4, UnAmbiguous> = OneToManyIndex::new(
-        data.0,
-        MassMode::Monoisotopic,
-        scoring(),
-        AlignType::EITHER_GLOBAL,
-        Some((
-            9,
-            Mass::new::<rustyms::system::dalton>(200.0)
-                ..=Mass::new::<rustyms::system::dalton>(300.0),
-        )),
+        data.2.clone(),
     );
 
     index.align(data.1);

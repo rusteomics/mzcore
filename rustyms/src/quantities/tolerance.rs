@@ -65,6 +65,21 @@ where
     }
 }
 
+impl Tolerance<OrderedMass> {
+    /// Find the bounds around a given value for this tolerance
+    pub fn bounds(&self, value: Mass) -> (Mass, Mass) {
+        match self {
+            Self::Relative(tolerance) => (
+                value
+                    * (Ratio::new::<crate::system::ratio::fraction>(1.0) - tolerance.into_inner()),
+                value
+                    * (Ratio::new::<crate::system::ratio::fraction>(1.0) + tolerance.into_inner()),
+            ),
+            Self::Absolute(tolerance) => (value - **tolerance, value + **tolerance),
+        }
+    }
+}
+
 impl<T: Display> Display for Tolerance<T> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(

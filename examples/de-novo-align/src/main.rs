@@ -7,10 +7,11 @@ use identification::SpectrumIds;
 use itertools::{Itertools, MinMaxResult};
 use rayon::prelude::*;
 use rustyms::{
-    align::{AlignType, align},
+    align::{AlignType, OneToManyIndex, align},
     identification::{
         FastaData, ReturnedPeptidoform, csv::write_csv, open_identified_peptides_file,
     },
+    prelude::MassMode,
     sequence::SemiAmbiguous,
     *,
 };
@@ -43,45 +44,39 @@ fn main() {
         .collect_vec();
     let database = FastaData::parse_file(args.database).unwrap();
 
+    let index: OneToManyIndex<'_, 4, SemiAmbiguous> = OneToManyIndex::new(
+        &database,
+        MassMode::Monoisotopic,
+        AlignScoring::default(),
+        AlignType::EITHER_GLOBAL,
+        None,
+    );
+
     let alignments: Vec<_> = peptides
         .par_iter()
         .flat_map(|(peptide, linear_peptide)| {
-            let alignments = database
-                .iter()
-                .map(|db| {
-                    (
-                        db,
-                        peptide,
-                        align::<4, SemiAmbiguous, SemiAmbiguous>(
-                            db.peptide(),
-                            linear_peptide,
-                            AlignScoring::default(),
-                            AlignType::EITHER_GLOBAL,
-                        ),
-                    )
-                })
-                .collect_vec();
+            let alignments = index.align_one(linear_peptide);
             let max = alignments
                 .iter()
-                .max_by(|a, b| a.2.normalised_score().total_cmp(&b.2.normalised_score()))
+                .max_by(|a, b| a.1.normalised_score().total_cmp(&b.1.normalised_score()))
                 .unwrap()
-                .2
+                .1
                 .normalised_score();
             let mut alignments = alignments
                 .into_iter()
-                .filter(|a| a.2.normalised_score() == max)
+                .filter(|a| a.1.normalised_score() == max)
                 .collect_vec();
             if alignments.len() == 1 {
-                let (d, p, a) = alignments.pop().unwrap();
-                vec![(d, p, a, true)]
+                let (i, a) = alignments.pop().unwrap();
+                vec![(i, peptide.clone(), a.to_owned(), true)]
             } else {
                 alignments
                     .into_iter()
-                    .map(|(d, p, a)| (d, p, a, false))
+                    .map(|(i, a)| (i, peptide.clone(), a.to_owned(), false))
                     .collect_vec()
             }
         })
-        .map(|(db, peptide, alignment, unique)| {
+        .map(|(index, peptide, alignment, unique)| {
             HashMap::from([
                 ("Peptide".to_string(), alignment.seq_b().to_string()),
                 (
@@ -101,7 +96,10 @@ fn main() {
                     "De novo score".to_string(),
                     peptide.score.map_or(String::new(), |s| s.to_string()),
                 ),
-                ("Protein".to_string(), db.identifier().to_string()),
+                (
+                    "Protein".to_string(),
+                    database[index].identifier().to_string(),
+                ),
                 (
                     "Alignment score".to_string(),
                     alignment.normalised_score().to_string(),
