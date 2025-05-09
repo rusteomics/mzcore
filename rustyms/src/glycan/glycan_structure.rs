@@ -166,10 +166,10 @@ impl GlycanStructure {
     /// for details on how the matching happens. It is possible to only select a small part of this
     /// glycan using the `root_break` and `branch_break` parameters. See
     /// [`Subtree`](crate::glycan::render::GlycanSelection::Subtree) for more info on how this
-    /// selection works.
+    /// selection works. Returns `None` when the root break is invalid.
     pub fn contains(
         &self,
-        monosaccharide: &MonoSaccharide,
+        target: &MonoSaccharide,
         precise: bool,
         root_break: Option<&GlycanPosition>,
         branch_breaks: &[GlycanPosition],
@@ -177,26 +177,26 @@ impl GlycanStructure {
         fn check_subtree(
             target: &MonoSaccharide,
             precise: bool,
-            element: &GlycanStructure,
-            breaks: &[(usize, Vec<(GlycanBranchIndex, GlycanBranchMassIndex)>)],
+            tree: &GlycanStructure,
+            branch_breaks: &[(usize, Vec<GlycanBranchIndex>)],
         ) -> bool {
-            let total_branches = element.branches.len();
-            if element.sugar.equivalent(target, precise) {
+            let total_branches = tree.branches.len();
+            if tree.sugar.equivalent(target, precise) {
                 return true;
             }
-            for (index, branch) in element.branches.iter().enumerate() {
-                if !((total_branches == 1 && breaks.iter().any(|b| b.0 == 1))
-                    || breaks
+            for (index, branch) in tree.branches.iter().enumerate() {
+                if !((total_branches == 1 && branch_breaks.iter().any(|b| b.0 == 1))
+                    || branch_breaks
                         .iter()
-                        .any(|b| b.0 == 1 && b.1.first().map(|b| b.0) == Some(index)))
+                        .any(|b| b.0 == 1 && b.1.first().copied() == Some(index)))
                     && check_subtree(
                         target,
                         precise,
                         branch,
-                        &breaks
+                        &branch_breaks
                             .iter()
                             .filter(|b| {
-                                (total_branches > 1 && b.1.first().map(|b| b.0) == Some(index)
+                                (total_branches > 1 && b.1.first().copied() == Some(index)
                                     || total_branches == 1)
                                     && b.0 > 0
                             })
@@ -224,8 +224,7 @@ impl GlycanStructure {
         while depth < start.inner_depth {
             depth += 1;
 
-            let total_branches = tree.branches.len();
-            match total_branches {
+            match tree.branches.len() {
                 0 => return None,
                 1 => tree = tree.branches.first()?,
                 _ => {
@@ -240,17 +239,20 @@ impl GlycanStructure {
             }
         }
 
-        let rules = branch_breaks
+        let branch_breaks = branch_breaks
             .iter()
             .filter(|b| b.inner_depth >= start.inner_depth && b.branch.starts_with(&start.branch))
             .map(|b| {
                 (
                     b.inner_depth - start.inner_depth,
-                    b.branch[start.branch.len()..].to_vec(),
+                    b.branch[start.branch.len()..]
+                        .iter()
+                        .map(|(i, _)| *i)
+                        .collect::<Vec<_>>(),
                 )
             })
             .collect_vec();
-        Some(check_subtree(monosaccharide, precise, tree, &rules))
+        Some(check_subtree(target, precise, tree, &branch_breaks))
     }
 }
 
@@ -618,6 +620,223 @@ mod test {
         assert_eq!(
             structure.to_string(),
             "HexNAc(HexNAc(Hex(Hex(HexNAc,HexNAc),Hex(Hex))))"
+        );
+    }
+
+    #[test]
+    fn contains() {
+        // G00053MO (HexNAc1Fuc1Hex1NeuAc1)
+        //     ▽
+        // ◇-○-◻-p
+        let structure = GlycanStructure::from_short_iupac(
+            "Neu5Ac(a2-3)Gal(b1-3)[Fuc(a1-4)]GlcNAc(b1-",
+            0..42,
+            0,
+        )
+        .unwrap();
+
+        let hex_nac = MonoSaccharide::from_short_iupac("HexNAc", 0, 0).unwrap().0;
+        let fuc = MonoSaccharide::from_short_iupac("Fuc", 0, 0).unwrap().0;
+        let hex = MonoSaccharide::from_short_iupac("Hex", 0, 0).unwrap().0;
+        let neu_ac = MonoSaccharide::from_short_iupac("NeuAc", 0, 0).unwrap().0;
+
+        assert!(structure.contains(&hex_nac, false, None, &[]).unwrap());
+        assert!(structure.contains(&fuc, false, None, &[]).unwrap());
+        assert!(structure.contains(&hex, false, None, &[]).unwrap());
+        assert!(structure.contains(&neu_ac, false, None, &[]).unwrap());
+
+        // Broken
+        assert!(
+            structure
+                .contains(
+                    &hex_nac,
+                    false,
+                    None,
+                    &[GlycanPosition {
+                        inner_depth: 1,
+                        series_number: 0,
+                        branch: vec![(0, 0)],
+                        attachment: None
+                    }]
+                )
+                .unwrap()
+        );
+        assert!(
+            structure
+                .contains(
+                    &hex_nac,
+                    false,
+                    None,
+                    &[GlycanPosition {
+                        inner_depth: 1,
+                        series_number: 0,
+                        branch: vec![(1, 1)],
+                        attachment: None
+                    }]
+                )
+                .unwrap()
+        );
+        assert!(
+            structure
+                .contains(
+                    &hex_nac,
+                    false,
+                    None,
+                    &[
+                        GlycanPosition {
+                            inner_depth: 1,
+                            series_number: 0,
+                            branch: vec![(1, 1)],
+                            attachment: None
+                        },
+                        GlycanPosition {
+                            inner_depth: 1,
+                            series_number: 0,
+                            branch: vec![(0, 0)],
+                            attachment: None
+                        }
+                    ]
+                )
+                .unwrap()
+        );
+        assert!(
+            structure
+                .contains(
+                    &fuc,
+                    false,
+                    None,
+                    &[GlycanPosition {
+                        inner_depth: 1,
+                        series_number: 0,
+                        branch: vec![(0, 0)],
+                        attachment: None
+                    }]
+                )
+                .unwrap()
+        );
+        assert!(
+            !structure
+                .contains(
+                    &fuc,
+                    false,
+                    None,
+                    &[GlycanPosition {
+                        inner_depth: 1,
+                        series_number: 0,
+                        branch: vec![(1, 1)],
+                        attachment: None
+                    }]
+                )
+                .unwrap()
+        );
+        assert!(
+            !structure
+                .contains(
+                    &fuc,
+                    false,
+                    None,
+                    &[
+                        GlycanPosition {
+                            inner_depth: 1,
+                            series_number: 0,
+                            branch: vec![(1, 1)],
+                            attachment: None
+                        },
+                        GlycanPosition {
+                            inner_depth: 1,
+                            series_number: 0,
+                            branch: vec![(0, 0)],
+                            attachment: None
+                        }
+                    ]
+                )
+                .unwrap()
+        );
+        // Root broken
+        assert!(
+            !structure
+                .contains(
+                    &fuc,
+                    false,
+                    Some(&GlycanPosition {
+                        inner_depth: 1,
+                        series_number: 0,
+                        branch: vec![(0, 0)],
+                        attachment: None
+                    }),
+                    &[]
+                )
+                .unwrap()
+        );
+        assert!(
+            structure
+                .contains(
+                    &fuc,
+                    false,
+                    Some(&GlycanPosition {
+                        inner_depth: 1,
+                        series_number: 0,
+                        branch: vec![(1, 1)],
+                        attachment: None
+                    }),
+                    &[]
+                )
+                .unwrap()
+        );
+        assert!(
+            structure
+                .contains(
+                    &hex,
+                    false,
+                    Some(&GlycanPosition {
+                        inner_depth: 1,
+                        series_number: 0,
+                        branch: vec![(0, 0)],
+                        attachment: None
+                    }),
+                    &[GlycanPosition {
+                        inner_depth: 2,
+                        series_number: 0,
+                        branch: vec![(0, 0)],
+                        attachment: None
+                    },]
+                )
+                .unwrap()
+        );
+        assert!(
+            !structure
+                .contains(
+                    &neu_ac,
+                    false,
+                    Some(&GlycanPosition {
+                        inner_depth: 1,
+                        series_number: 0,
+                        branch: vec![(0, 0)],
+                        attachment: None
+                    }),
+                    &[GlycanPosition {
+                        inner_depth: 2,
+                        series_number: 0,
+                        branch: vec![(0, 0)],
+                        attachment: None
+                    },]
+                )
+                .unwrap()
+        );
+        assert!(
+            structure
+                .contains(
+                    &neu_ac,
+                    false,
+                    Some(&GlycanPosition {
+                        inner_depth: 1,
+                        series_number: 0,
+                        branch: vec![(0, 0)],
+                        attachment: None
+                    }),
+                    &[]
+                )
+                .unwrap()
         );
     }
 }
