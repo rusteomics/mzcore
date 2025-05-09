@@ -72,19 +72,14 @@ struct Cli {
     /// one containing B numbers `{found}/{total}` and one containing Y numbers `{found}/{total}`.
     ///
     /// This parameters should be specified with monosaccharide names separated by commas.
-    #[arg(long, value_parser=monosaccharide_parser)]
-    glycan_buckets: Option<Vec<MonoSaccharide>>,
+    #[arg(long, value_parser=monosaccharide_parser, value_delimiter = ',')]
+    glycan_buckets: Vec<MonoSaccharide>,
 }
 
-fn monosaccharide_parser(value: &str) -> Result<Vec<MonoSaccharide>, String> {
-    value
-        .split(',')
-        .map(|v| {
-            MonoSaccharide::from_short_iupac(v, 0, 0)
-                .map(|s| s.0)
-                .map_err(|e| e.to_string())
-        })
-        .collect()
+fn monosaccharide_parser(value: &str) -> Result<MonoSaccharide, String> {
+    MonoSaccharide::from_short_iupac(value, 0, 0)
+        .map(|s| s.0)
+        .map_err(|e| e.to_string())
 }
 
 fn select_model(text: &str, default: &'static FragmentationModel) -> &'static FragmentationModel {
@@ -274,7 +269,7 @@ fn main() {
                             );
                         }
                     }
-                    if let Some(buckets) = args.glycan_buckets.as_ref() {
+                    if !args.glycan_buckets.is_empty() {
                         #[derive(Debug)]
                         struct Match<'a> {
                             target: &'a MonoSaccharide,
@@ -284,7 +279,7 @@ fn main() {
                             total_Y: usize,
                         }
 
-                        let mut buckets = buckets.iter().map(|m| Match {target: m,found_B: 0, total_B: 0, found_Y: 0, total_Y: 0}).collect_vec();
+                        let mut buckets = args.glycan_buckets.iter().map(|m| Match {target: m,found_B: 0, total_B: 0, found_Y: 0, total_Y: 0}).collect_vec();
                         for (theoretical, f) in fragments.iter().map(|f| (true, f)).chain(annotated.spectrum().flat_map(|p| p.annotation.iter().map(|a| (false, a)))) {
                             match &f.ion {
                                 FragmentType::Y(pos) => {
