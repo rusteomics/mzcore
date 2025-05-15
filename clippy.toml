@@ -5,6 +5,7 @@ doc-valid-idents = [
     "DeepNovo",
     "DeepNovoFamily",
     "EAciD",
+    "FragPipe",
     "GNOme",
     "InstaNovo",
     "MaxNovo",

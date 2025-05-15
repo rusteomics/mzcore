@@ -209,6 +209,17 @@ impl Location<'_> {
         if text == pattern { None } else { Some(self) }
     }
 
+    pub(super) fn skip(self, bytes: usize) -> Self {
+        Self {
+            line: self.line,
+            location: self
+                .location
+                .start
+                .saturating_add(bytes)
+                .min(self.location.end)..self.location.end,
+        }
+    }
+
     pub(super) fn trim_end_matches(mut self, pattern: &str) -> Self {
         let trimmed = self.as_str().trim_end_matches(pattern);
         let dif = self.location.len() - trimmed.len();

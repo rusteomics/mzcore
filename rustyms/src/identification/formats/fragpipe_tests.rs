@@ -1,16 +1,16 @@
 #![allow(clippy::missing_panics_doc)]
 use std::io::BufReader;
 
-use crate::identification::{MSFraggerData, MSFraggerVersion, test_format};
+use crate::identification::{FragPipeVersion, FragpipeData, test_format};
 
 #[test]
 fn msfragger_v21() {
-    match test_format::<MSFraggerData>(
+    match test_format::<FragpipeData>(
         BufReader::new(DATA_V21.as_bytes()),
         None,
         true,
         false,
-        Some(MSFraggerVersion::V21),
+        Some(FragPipeVersion::V20Or21),
     ) {
         Ok(n) => assert_eq!(n, 19),
         Err(e) => {
@@ -22,12 +22,12 @@ fn msfragger_v21() {
 
 #[test]
 fn msfragger_v21_manual() {
-    match test_format::<MSFraggerData>(
+    match test_format::<FragpipeData>(
         BufReader::new(DATA_V21_MANUAL.as_bytes()),
         None,
         true,
         false,
-        Some(MSFraggerVersion::V21),
+        Some(FragPipeVersion::V20Or21),
     ) {
         Ok(n) => assert_eq!(n, 19),
         Err(e) => {
@@ -39,12 +39,12 @@ fn msfragger_v21_manual() {
 
 #[test]
 fn msfragger_v22() {
-    match test_format::<MSFraggerData>(
+    match test_format::<FragpipeData>(
         BufReader::new(DATA_V22.as_bytes()),
         None,
         false,
         false,
-        Some(MSFraggerVersion::V22),
+        Some(FragPipeVersion::V22),
     ) {
         Ok(n) => assert_eq!(n, 19),
         Err(e) => {

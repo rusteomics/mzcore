@@ -3,10 +3,10 @@ use std::path::Path;
 use crate::{
     error::{Context, CustomError},
     identification::{
-        BasicCSVData, DeepNovoFamilyData, FastaData, IdentifiedPeptidoform,
-        IdentifiedPeptidoformIter, IdentifiedPeptidoformSource, InstaNovoData, MSFraggerData,
-        MZTabData, MaxQuantData, NovoBData, NovorData, OpairData, PLGSData, PLinkData, PeaksData,
-        PepNetData, PowerNovoData, SageData, SpectrumSequenceListData,
+        BasicCSVData, DeepNovoFamilyData, FastaData, FragpipeData, IdentifiedPeptidoform,
+        IdentifiedPeptidoformIter, IdentifiedPeptidoformSource, InstaNovoData, MZTabData,
+        MaxQuantData, NovoBData, NovorData, OpairData, PLGSData, PLinkData, PeaksData, PepNetData,
+        PowerNovoData, SageData, SpectrumSequenceListData,
     },
     ontology::CustomDatabase,
 };
@@ -74,7 +74,7 @@ pub fn open_identified_peptides_file<'a>(
                 )
                 .with_underlying_errors(vec![pe, ne, ie, le, pne, ple, be])
             }),
-        Some("tsv") => MSFraggerData::parse_file(path, custom_database, keep_all_columns, None)
+        Some("tsv") => FragpipeData::parse_file(path, custom_database, keep_all_columns, None)
             .map(IdentifiedPeptidoformIter::into_box)
             .or_else(|me| {
                 SageData::parse_file(path, custom_database, keep_all_columns, None)
@@ -140,7 +140,7 @@ pub fn open_identified_peptides_file<'a>(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::identification::{MSFraggerVersion, SageVersion, test_format};
+    use crate::identification::{FragPipeVersion, SageVersion, test_format};
     use std::fs::File;
     use std::io::BufReader;
 
@@ -163,12 +163,12 @@ mod tests {
 
     #[test]
     fn open_msfragger() {
-        match test_format::<MSFraggerData>(
+        match test_format::<FragpipeData>(
             BufReader::new(File::open("src/identification/test_files/msfragger_v21.tsv").unwrap()),
             None,
             true,
             false,
-            Some(MSFraggerVersion::V21),
+            Some(FragPipeVersion::V20Or21),
         ) {
             Ok(n) => assert_eq!(n, 19),
             Err(e) => {

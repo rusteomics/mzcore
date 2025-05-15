@@ -34,12 +34,12 @@ pub enum MetaData {
     DeepNovoFamily(DeepNovoFamilyData),
     /// Fasta metadata
     Fasta(FastaData),
+    /// FragPipe metadata
+    FragPipe(FragpipeData),
     /// MaxQuant metadata
     MaxQuant(MaxQuantData),
     /// InstaNovo metadata
     InstaNovo(InstaNovoData),
-    /// MSFragger metadata
-    MSFragger(MSFraggerData),
     /// mzTab metadata
     MZTab(MZTabData),
     /// NovoB metadata
@@ -161,7 +161,8 @@ impl IdentifiedPeptidoform {
     /// Get the peptide, as pLink can have cross-linked peptides the return type is either a simple peptide or a cross-linked peptidoform
     pub fn peptidoform(&self) -> Option<ReturnedPeptidoform<'_>> {
         match &self.metadata {
-            MetaData::Novor(NovorData { peptide, .. })
+            MetaData::FragPipe(FragpipeData { peptide, .. })
+            | MetaData::Novor(NovorData { peptide, .. })
             | MetaData::InstaNovo(InstaNovoData { peptide, .. })
             | MetaData::Opair(OpairData { peptide, .. })
             | MetaData::PepNet(PepNetData { peptide, .. })
@@ -184,8 +185,7 @@ impl IdentifiedPeptidoform {
             MetaData::BasicCSV(BasicCSVData { sequence, .. }) => Some(
                 ReturnedPeptidoform::CompoundPeptidoformIon(Cow::Borrowed(sequence)),
             ),
-            MetaData::MSFragger(MSFraggerData { peptide, .. })
-            | MetaData::SpectrumSequenceList(SpectrumSequenceListData { peptide, .. })
+            MetaData::SpectrumSequenceList(SpectrumSequenceListData { peptide, .. })
             | MetaData::MaxQuant(MaxQuantData { peptide, .. })
             | MetaData::MZTab(MZTabData { peptide, .. })
             | MetaData::DeepNovoFamily(DeepNovoFamilyData { peptide, .. }) => peptide
@@ -230,9 +230,7 @@ impl IdentifiedPeptidoform {
                 KnownFileFormat::InstaNovo(*version)
             }
             MetaData::MaxQuant(MaxQuantData { version, .. }) => KnownFileFormat::MaxQuant(*version),
-            MetaData::MSFragger(MSFraggerData { version, .. }) => {
-                KnownFileFormat::MSFragger(*version)
-            }
+            MetaData::FragPipe(FragpipeData { version, .. }) => KnownFileFormat::FragPipe(*version),
             MetaData::MZTab(_) => KnownFileFormat::MZTab,
             MetaData::NovoB(NovoBData { version, .. }) => KnownFileFormat::NovoB(*version),
             MetaData::Novor(NovorData { version, .. }) => KnownFileFormat::Novor(*version),
@@ -284,7 +282,7 @@ impl IdentifiedPeptidoform {
                 id.to_string()
             }
             MetaData::Fasta(f) => f.identifier().accession().to_string(),
-            MetaData::MSFragger(MSFraggerData { scan, .. }) => scan.to_string(),
+            MetaData::FragPipe(FragpipeData { scan, .. }) => scan.to_string(),
             MetaData::PLink(PLinkData { order, .. }) => order.to_string(),
             MetaData::MaxQuant(MaxQuantData {
                 id, scan_number, ..
@@ -335,7 +333,7 @@ impl IdentifiedPeptidoform {
             MetaData::Novor(NovorData { z, .. })
             | MetaData::Opair(OpairData { z, .. })
             | MetaData::Sage(SageData { z, .. })
-            | MetaData::MSFragger(MSFraggerData { z, .. })
+            | MetaData::FragPipe(FragpipeData { z, .. })
             | MetaData::MaxQuant(MaxQuantData { z, .. })
             | MetaData::NovoB(NovoBData { z, .. })
             | MetaData::PLGS(PLGSData { precursor_z: z, .. })
@@ -371,7 +369,7 @@ impl IdentifiedPeptidoform {
             | MetaData::PLGS(PLGSData {
                 precursor_rt: rt, ..
             })
-            | MetaData::MSFragger(MSFraggerData { rt, .. }) => Some(*rt),
+            | MetaData::FragPipe(FragpipeData { rt, .. }) => Some(*rt),
             MetaData::MaxQuant(MaxQuantData { rt, .. })
             | MetaData::Novor(NovorData { rt, .. })
             | MetaData::SpectrumSequenceList(SpectrumSequenceListData { rt, .. })
@@ -496,7 +494,7 @@ impl IdentifiedPeptidoform {
                 },
             ),
             MetaData::MZTab(MZTabData { spectra_ref, .. }) => spectra_ref.clone(),
-            MetaData::MSFragger(MSFraggerData { raw_file, scan, .. }) => {
+            MetaData::FragPipe(FragpipeData { raw_file, scan, .. }) => {
                 raw_file.clone().map_or_else(
                     || SpectrumIds::FileNotKnown(vec![scan.clone()]),
                     |raw_file| SpectrumIds::FileKnown(vec![(raw_file, vec![scan.clone()])]),
@@ -543,7 +541,7 @@ impl IdentifiedPeptidoform {
             | MetaData::PLGS(PLGSData {
                 precursor_mz: mz, ..
             })
-            | MetaData::MSFragger(MSFraggerData { mz, .. }) => Some(*mz),
+            | MetaData::FragPipe(FragpipeData { mz, .. }) => Some(*mz),
             MetaData::MZTab(MZTabData { mz, .. })
             | MetaData::MaxQuant(MaxQuantData { mz, .. })
             | MetaData::DeepNovoFamily(DeepNovoFamilyData { mz, .. }) => *mz,
@@ -575,7 +573,7 @@ impl IdentifiedPeptidoform {
                 ..
             })
             | MetaData::NovoB(NovoBData { mass, .. })
-            | MetaData::MSFragger(MSFraggerData { mass, .. })
+            | MetaData::FragPipe(FragpipeData { mass, .. })
             | MetaData::PLink(PLinkData { mass, .. })
             | MetaData::Sage(SageData { mass, .. }) => Some(*mass),
             MetaData::MaxQuant(MaxQuantData { mass, .. }) => *mass,
@@ -635,7 +633,7 @@ impl IdentifiedPeptidoform {
                 protein_description,
                 ..
             }) => Some(protein_description.clone()),
-            MetaData::MSFragger(MSFraggerData { protein, .. }) => Some(protein.clone()),
+            MetaData::FragPipe(FragpipeData { protein, .. }) => Some(protein.clone()),
             MetaData::MZTab(MZTabData { accession, .. }) => accession
                 .as_ref()
                 .map(|a| FastaIdentifier::Undefined(a.clone())),
@@ -660,7 +658,7 @@ impl IdentifiedPeptidoform {
             MetaData::Peaks(PeaksData { protein_id, .. }) => *protein_id,
             MetaData::Novor(NovorData { protein, .. }) => *protein,
             MetaData::PLGS(PLGSData { protein_id, .. }) => Some(*protein_id),
-            MetaData::MSFragger(_)
+            MetaData::FragPipe(_)
             | MetaData::MZTab(_)
             | MetaData::MaxQuant(_)
             | MetaData::Sage(_)
@@ -694,7 +692,7 @@ impl IdentifiedPeptidoform {
                 peptide,
                 ..
             }) => Some(*peptide_start..*peptide_start + peptide.len()),
-            MetaData::MSFragger(MSFraggerData {
+            MetaData::FragPipe(FragpipeData {
                 protein_start,
                 protein_end,
                 ..

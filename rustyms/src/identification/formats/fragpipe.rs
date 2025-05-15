@@ -16,33 +16,34 @@ use crate::{
         csv::{CsvLine, parse_csv},
     },
     ontology::CustomDatabase,
-    sequence::{Peptidoform, SemiAmbiguous, SloppyParsingParameters},
+    sequence::{Peptidoform, SemiAmbiguous, SequencePosition, SloppyParsingParameters},
     system::{Mass, MassOverCharge, Time, usize::Charge},
 };
 
 static NUMBER_ERROR: (&str, &str) = (
-    "Invalid MSFragger line",
-    "This column is not a number but it is required to be a number in this MSFragger format",
+    "Invalid FragPipe line",
+    "This column is not a number but it is required to be a number in this FragPipe format",
 );
 static IDENTIFIER_ERROR: (&str, &str) = (
-    "Invalid MSFragger line",
-    "This column is not a fasta identifier but is required to be one in this MSFragger format",
+    "Invalid FragPipe line",
+    "This column is not a fasta identifier but is required to be one in this FragPipe format",
 );
 static BOOL_ERROR: (&str, &str) = (
-    "Invalid MSFragger line",
-    "This column is not a boolean but it is required to be a boolean ('true' or 'false') in this MSFragger format",
+    "Invalid FragPipe line",
+    "This column is not a boolean but it is required to be a boolean ('true' or 'false') in this FragPipe format",
 );
 
+// TODO: it might be nice to be able to parse the glycan composition and put it on the peptide in the right location
 format_family!(
-    /// The format for any MSFragger file
-    MSFraggerFormat,
-    /// The data from any MSFragger file
-    MSFraggerData,
-    MSFraggerVersion, [&V21, &V22], b'\t', None;
+    /// The format for any FragPipe file
+    FragPipeFormat,
+    /// The data from any FragPipe file
+    FragpipeData,
+    FragPipeVersion, [&V20_OR_21, &V22], b'\t', None;
     required {
         scan: SpectrumId, |location: Location, _| Ok(SpectrumId::Native(location.get_string()));
         spectrum_file: PathBuf, |location: Location, _| Ok(location.get_string().into());
-        peptide: Option<Peptidoform<SemiAmbiguous>>, |location: Location, custom_database: Option<&CustomDatabase>| location.or_empty().parse_with(|location| Peptidoform::sloppy_pro_forma(
+        peptide: Peptidoform<SemiAmbiguous>, |location: Location, custom_database: Option<&CustomDatabase>| location.parse_with(|location| Peptidoform::sloppy_pro_forma(
             location.full_line(),
             location.location.clone(),
             custom_database,
@@ -78,7 +79,30 @@ format_family!(
         protein_start: usize, |location: Location, _| location.parse(NUMBER_ERROR);
         protein_end: usize, |location: Location, _| location.parse(NUMBER_ERROR);
         intensity: f64, |location: Location, _| location.parse(NUMBER_ERROR);
-        assigned_modifications: String, |location: Location, _| Ok(location.get_string());
+        assigned_modifications: Vec<(SequencePosition, f64)>, |location: Location, _| location.or_empty().array(',').map(|m| if let Some((head, tail)) = m.clone().split_once('(') {
+            let tail = tail.trim_end_matches(")");
+            Ok((
+            if head.as_str() == "N-term" {
+                SequencePosition::NTerm
+            } else if head.as_str() == "C-term" {
+                SequencePosition::CTerm
+            } else {
+                head.as_str()[..head.len()-1].parse::<usize>().map(|i| SequencePosition::Index(i-1)).map_err(|err| CustomError::error(
+                    "Invalid FragPipe modification location",
+                    format!("The location number {}", explain_number_error(&err)),
+                    head.context(),
+                ))?
+            },
+            tail.parse::<f64>(NUMBER_ERROR)?
+        ))
+        } else {
+            Err(CustomError::error(
+                "Invalid FragPipe modification",
+                "The format `location(modification)` could not be recognised",
+                m.context(),
+            ))
+        }).collect::<Result<Vec<_>, _>>();
+        observed_modifications: String, |location: Location, _| Ok(location.get_string());
         purity: f64, |location: Location, _| location.parse(NUMBER_ERROR);
         is_unique: bool, |location: Location, _| location.parse(BOOL_ERROR);
         protein: FastaIdentifier<String>, |location: Location, _| location.parse(IDENTIFIER_ERROR);
@@ -93,6 +117,19 @@ format_family!(
         raw_file: PathBuf, |location: Location, _| Ok(Some(location.get_string().into()));
         condition: String, |location: Location, _| Ok(Some(location.get_string()));
         group: String, |location: Location, _| Ok(Some(location.get_string()));
+        glycan_score: f64, |location: Location, _| location.or_empty().parse::<f64>(NUMBER_ERROR);
+        glycan_q_value: f64, |location: Location, _| location.or_empty().parse::<f64>(NUMBER_ERROR);
+        total_glycan_composition: String, |location: Location, _| Ok(location.or_empty().get_string());
+        msfragger_localisation: String, |location: Location, _| Ok(location.or_empty().get_string());
+        position_scores: Vec<f64>, |location: Location, _| {
+            let data = location.array(')').filter_map(|l| (l.len() > 2).then(|| l.skip(2).parse::<f64>(NUMBER_ERROR))).collect::<Result<Vec<_>, _>>()?;
+            if data.is_empty() {
+                Ok(None)
+            } else {
+                Ok(Some(data))
+            }
+        };
+        ions_best_position: usize, |location: Location, _| location.or_empty().parse::<usize>(NUMBER_ERROR);
     }
 
     fn post_process(_source: &CsvLine, mut parsed: Self, _custom_database: Option<&CustomDatabase>) -> Result<Self, CustomError> {
@@ -105,67 +142,73 @@ format_family!(
                     SpectrumId::Number(m.get(2).unwrap().as_str().parse::<usize>().unwrap());
             }
         }
-        if parsed.peptide.is_none() {
-            parsed.peptide.clone_from(&parsed.extended_peptide[1]);
+        for (location, mass) in &parsed.assigned_modifications {
+            let mass = crate::sequence::SimpleModificationInner::Mass(Mass::new::<crate::system::dalton>(*mass).into());
+            match location {
+                SequencePosition::NTerm => parsed.peptide.add_simple_n_term(mass.into()),
+                SequencePosition::Index(_) => parsed.peptide[*location].modifications.push(mass.into()),
+                SequencePosition::CTerm => parsed.peptide.add_simple_c_term(mass.into()),
+            }
+
         }
         Ok(parsed)
     }
 );
 
-/// The Regex to match against MSFragger scan fields
+/// The Regex to match against FragPipe scan fields
 static IDENTIFER_REGEX: LazyLock<regex::Regex> =
     LazyLock::new(|| regex::Regex::new(r"([^/]+)\.(\d+)\.\d+.\d+").unwrap());
 
-impl From<MSFraggerData> for IdentifiedPeptidoform {
-    fn from(value: MSFraggerData) -> Self {
+impl From<FragpipeData> for IdentifiedPeptidoform {
+    fn from(value: FragpipeData) -> Self {
         Self {
             score: Some(value.hyperscore),
             local_confidence: None,
-            metadata: MetaData::MSFragger(value),
+            metadata: MetaData::FragPipe(value),
         }
     }
 }
 
-/// All possible MSFragger versions
+/// All possible FragPipe versions
 #[derive(
     Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Default, Serialize, Deserialize,
 )]
-pub enum MSFraggerVersion {
-    /// Version 21
+pub enum FragPipeVersion {
+    /// Version 20 or 21
     #[default]
-    V21,
+    V20Or21,
     /// Version 22
     V22,
 }
 
-impl std::fmt::Display for MSFraggerVersion {
+impl std::fmt::Display for FragPipeVersion {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Error> {
         write!(f, "{}", self.name())
     }
 }
 
-impl IdentifiedPeptidoformVersion<MSFraggerFormat> for MSFraggerVersion {
-    fn format(self) -> MSFraggerFormat {
+impl IdentifiedPeptidoformVersion<FragPipeFormat> for FragPipeVersion {
+    fn format(self) -> FragPipeFormat {
         match self {
-            Self::V21 => V21,
+            Self::V20Or21 => V20_OR_21,
             Self::V22 => V22,
         }
     }
     fn name(self) -> &'static str {
         match self {
-            Self::V21 => "v21",
+            Self::V20Or21 => "v20/v21",
             Self::V22 => "v22",
         }
     }
 }
 
-/// v21
-pub const V21: MSFraggerFormat = MSFraggerFormat {
-    version: MSFraggerVersion::V21,
+/// v20 or v21
+pub const V20_OR_21: FragPipeFormat = FragPipeFormat {
+    version: FragPipeVersion::V20Or21,
     scan: "spectrum",
     raw_file: OptionalColumn::NotAvailable,
     spectrum_file: "spectrum file",
-    peptide: "modified peptide",
+    peptide: "peptide",
     extended_peptide: "extended peptide",
     z: "charge",
     rt: "retention",
@@ -183,6 +226,7 @@ pub const V21: MSFraggerFormat = MSFraggerFormat {
     protein_end: "protein end",
     intensity: "intensity",
     assigned_modifications: "assigned modifications",
+    observed_modifications: "observed modifications",
     purity: "purity",
     is_unique: "is unique",
     protein: "protein",
@@ -194,15 +238,21 @@ pub const V21: MSFraggerFormat = MSFraggerFormat {
     mapped_proteins: "mapped proteins",
     condition: OptionalColumn::Optional("condition"),
     group: OptionalColumn::Optional("group"),
+    glycan_score: OptionalColumn::Optional("glycan score"),
+    glycan_q_value: OptionalColumn::Optional("glycan q-value"),
+    total_glycan_composition: OptionalColumn::NotAvailable,
+    msfragger_localisation: OptionalColumn::Optional("msfragger localization"),
+    position_scores: OptionalColumn::NotAvailable,
+    ions_best_position: OptionalColumn::NotAvailable,
 };
 
 /// v22
-pub const V22: MSFraggerFormat = MSFraggerFormat {
-    version: MSFraggerVersion::V22,
+pub const V22: FragPipeFormat = FragPipeFormat {
+    version: FragPipeVersion::V22,
     scan: "spectrum",
     raw_file: OptionalColumn::NotAvailable,
     spectrum_file: "spectrum file",
-    peptide: "modified peptide",
+    peptide: "peptide",
     extended_peptide: "extended peptide",
     z: "charge",
     rt: "retention",
@@ -220,6 +270,7 @@ pub const V22: MSFraggerFormat = MSFraggerFormat {
     protein_end: "protein end",
     intensity: "intensity",
     assigned_modifications: "assigned modifications",
+    observed_modifications: "observed modifications",
     purity: "purity",
     is_unique: "is unique",
     protein: "protein",
@@ -231,18 +282,24 @@ pub const V22: MSFraggerFormat = MSFraggerFormat {
     mapped_proteins: "mapped proteins",
     condition: OptionalColumn::Optional("condition"),
     group: OptionalColumn::Optional("group"),
+    glycan_score: OptionalColumn::Optional("glycan score"),
+    glycan_q_value: OptionalColumn::Optional("glycan q-value"),
+    total_glycan_composition: OptionalColumn::Optional("total glycan composition"),
+    msfragger_localisation: OptionalColumn::Required("msfragger localization"),
+    position_scores: OptionalColumn::Required("position scores"),
+    ions_best_position: OptionalColumn::Required("ions best position"),
 };
 
 /// The scans identifier for a MSFragger identification
 #[derive(Clone, Debug, Default, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
-pub struct MSFraggerID {
+pub struct FragPipeID {
     /// The file, if defined
     pub file: PathBuf,
     /// The scan number triplet
     pub scan: (usize, usize, usize),
 }
 
-impl std::fmt::Display for MSFraggerID {
+impl std::fmt::Display for FragPipeID {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
@@ -255,7 +312,7 @@ impl std::fmt::Display for MSFraggerID {
     }
 }
 
-impl std::str::FromStr for MSFraggerID {
+impl std::str::FromStr for FragPipeID {
     type Err = CustomError;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let split = s.rsplitn(4, '.').collect_vec();
@@ -265,21 +322,21 @@ impl std::str::FromStr for MSFraggerID {
                 scan: (
                     split[2].parse().map_err(|err| {
                         CustomError::error(
-                            "Invalid MSFragger ID",
+                            "Invalid FragPipe ID",
                             format!("The scan number {}", explain_number_error(&err)),
                             Context::None,
                         )
                     })?,
                     split[1].parse().map_err(|err| {
                         CustomError::error(
-                            "Invalid MSFragger ID",
+                            "Invalid FragPipe ID",
                             format!("The scan number {}", explain_number_error(&err)),
                             Context::None,
                         )
                     })?,
                     split[0].parse().map_err(|err| {
                         CustomError::error(
-                            "Invalid MSFragger ID",
+                            "Invalid FragPipe ID",
                             format!("The scan number {}", explain_number_error(&err)),
                             Context::None,
                         )
@@ -288,8 +345,8 @@ impl std::str::FromStr for MSFraggerID {
             })
         } else {
             Err(CustomError::error(
-                "Invalid MSFragger ID",
-                "An MSFragger ID should consist of 4 parts separated by dots (file.scan.scan.scan)",
+                "Invalid FragPipe ID",
+                "An FragPipe ID should consist of 4 parts separated by dots (file.scan.scan.scan)",
                 Context::None,
             ))
         }

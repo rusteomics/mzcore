@@ -11,9 +11,9 @@ pub enum KnownFileFormat {
     BasicCSV(BasicCSVVersion),
     DeepNovoFamily(DeepNovoFamilyVersion),
     Fasta,
+    FragPipe(FragPipeVersion),
     InstaNovo(InstaNovoVersion),
     MaxQuant(MaxQuantVersion),
-    MSFragger(MSFraggerVersion),
     MZTab,
     NovoB(NovoBVersion),
     Novor(NovorVersion),
@@ -34,9 +34,9 @@ impl KnownFileFormat {
             Self::BasicCSV(_) => "CSV",
             Self::DeepNovoFamily(_) => "DeepNovo Family",
             Self::Fasta => "Fasta",
+            Self::FragPipe(_) => "FragPipe",
             Self::InstaNovo(_) => "InstaNovo",
             Self::MaxQuant(_) => "MaxQuant",
-            Self::MSFragger(_) => "MSFragger",
             Self::MZTab => "mzTab",
             Self::NovoB(_) => "NovoB",
             Self::Novor(_) => "Novor",
@@ -57,9 +57,9 @@ impl KnownFileFormat {
             Self::BasicCSV(version) => Some(version.to_string()),
             Self::DeepNovoFamily(version) => Some(version.to_string()),
             Self::Fasta => None,
+            Self::FragPipe(version) => Some(version.to_string()),
             Self::InstaNovo(version) => Some(version.to_string()),
             Self::MaxQuant(version) => Some(version.to_string()),
-            Self::MSFragger(version) => Some(version.to_string()),
             Self::MZTab => Some("1.0".to_string()),
             Self::NovoB(version) => Some(version.to_string()),
             Self::Novor(version) => Some(version.to_string()),
@@ -92,9 +92,9 @@ impl From<KnownFileFormat> for FileFormat {
             KnownFileFormat::BasicCSV(version) => Self::BasicCSV(Some(version)),
             KnownFileFormat::DeepNovoFamily(version) => Self::DeepNovoFamily(Some(version)),
             KnownFileFormat::Fasta => Self::Fasta,
+            KnownFileFormat::FragPipe(version) => Self::FragPipe(Some(version)),
             KnownFileFormat::InstaNovo(version) => Self::InstaNovo(Some(version)),
             KnownFileFormat::MaxQuant(version) => Self::MaxQuant(Some(version)),
-            KnownFileFormat::MSFragger(version) => Self::MSFragger(Some(version)),
             KnownFileFormat::MZTab => Self::MZTab,
             KnownFileFormat::NovoB(version) => Self::NovoB(Some(version)),
             KnownFileFormat::Novor(version) => Self::Novor(Some(version)),
@@ -119,9 +119,9 @@ pub enum FileFormat {
     BasicCSV(Option<BasicCSVVersion>),
     DeepNovoFamily(Option<DeepNovoFamilyVersion>),
     Fasta,
+    FragPipe(Option<FragPipeVersion>),
     InstaNovo(Option<InstaNovoVersion>),
     MaxQuant(Option<MaxQuantVersion>),
-    MSFragger(Option<MSFraggerVersion>),
     MZTab,
     NovoB(Option<NovoBVersion>),
     Novor(Option<NovorVersion>),
@@ -170,8 +170,8 @@ impl FileFormat {
                 InstaNovoData::parse_file(path, custom_database, false, version)
                     .map(IdentifiedPeptidoformIter::into_box)
             }
-            Self::MSFragger(version) => {
-                MSFraggerData::parse_file(path, custom_database, false, version)
+            Self::FragPipe(version) => {
+                FragpipeData::parse_file(path, custom_database, false, version)
                     .map(IdentifiedPeptidoformIter::into_box)
             }
             Self::MaxQuant(version) => {
