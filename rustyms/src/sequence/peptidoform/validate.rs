@@ -52,8 +52,8 @@ pub(super) fn cross_links(
                                 match position {
                                     SequencePosition::NTerm => "the N-terminus".to_string(),
                                     SequencePosition::CTerm => "the C-terminus".to_string(),
-                                    SequencePosition::Index(index) => format!(
-                                        "the side chain of {} at index {index}",
+                                    SequencePosition::Index(seq_index) => format!(
+                                        "the side chain of {} at index {seq_index}",
                                         peptidoform.0[index][position].aminoacid
                                     ),
                                 },

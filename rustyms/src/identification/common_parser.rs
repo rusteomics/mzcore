@@ -292,14 +292,18 @@ impl Location<'_> {
     }
 
     pub(super) fn trim(&self) -> Self {
-        let start_trim = self.as_str().trim_start().len();
-        let end_trim = self.as_str().trim_end().len();
-        let length = self.as_str().len();
+        let str = self.as_str();
+        let length = str.len();
+        let trimmed_start = length - str.trim_start().len();
+        let trimmed_end = length - str.trim_end().len();
 
         Self {
             line: self.line,
-            location: self.location.start + (length - start_trim)
-                ..self.location.end - (length - end_trim),
+            location: if self.location.start + trimmed_end > self.location.end - trimmed_end {
+                self.location.start..self.location.start
+            } else {
+                self.location.start + trimmed_start..self.location.end - trimmed_end
+            },
         }
     }
 

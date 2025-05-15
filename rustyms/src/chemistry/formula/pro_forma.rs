@@ -199,7 +199,7 @@ impl MolecularFormula {
                             CustomError::error(
                                 "Invalid ProForma molecular formula",
                                 format!("The charge number is {}", explain_number_error(&err)),
-                                Context::line(None, value, index, end - index),
+                                Context::line(None, value, index, end.saturating_sub(index)),
                             )
                         })?;
                         let _ = result.add((Element::Electron, None, -num));
@@ -211,7 +211,7 @@ impl MolecularFormula {
                         Context::line(
                             None,
                             value,
-                            index - 1,
+                            index.saturating_sub(1),
                             if bytes.len() < index { 1 } else { 2 },
                         ),
                     ));
@@ -270,4 +270,11 @@ impl MolecularFormula {
         }
         Ok(result)
     }
+}
+
+#[test]
+fn fuzz() {
+    let _a = MolecularFormula::from_pro_forma(":", .., true, true, true);
+    let _a = MolecularFormula::from_pro_forma(":1002\\[d2C-2]H2N", .., true, true, true);
+    let _a = MolecularFormula::from_pro_forma("+Wv:z-,33U", .., true, true, true);
 }
