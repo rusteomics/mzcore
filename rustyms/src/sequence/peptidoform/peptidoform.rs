@@ -11,6 +11,7 @@ use std::{
 use itertools::Itertools;
 use ordered_float::OrderedFloat;
 use serde::{Deserialize, Serialize};
+use thin_vec::ThinVec;
 
 use crate::{
     annotation::model::{FragmentationModel, GlycanModel, get_all_sidechain_losses},
@@ -93,18 +94,18 @@ pub struct Peptidoform<Complexity> {
     /// Global isotope modifications, saved as the element and the species that
     /// all occurrence of that element will consist of. For example (N, 15) will
     /// make all occurring nitrogen atoms be isotope 15.
-    global: Vec<(Element, Option<NonZeroU16>)>,
+    global: ThinVec<(Element, Option<NonZeroU16>)>,
     /// Labile modifications, which will not be found in the actual spectrum.
-    labile: Vec<SimpleModification>,
+    labile: ThinVec<SimpleModification>,
     /// N terminal modifications
-    n_term: Vec<Modification>,
+    n_term: ThinVec<Modification>,
     /// C terminal modifications
-    c_term: Vec<Modification>,
+    c_term: ThinVec<Modification>,
     /// The sequence of this peptide (includes local modifications)
     sequence: Vec<SequenceElement<Complexity>>,
     /// For each ambiguous modification list all possible positions it can be placed on.
     /// Indexed by the ambiguous modification id.
-    modifications_of_unknown_position: Vec<AmbiguousEntry>,
+    modifications_of_unknown_position: ThinVec<AmbiguousEntry>,
     /// The adduct ions, if specified
     charge_carriers: Option<MolecularCharge>,
     /// The marker indicating which level of complexity this peptide (potentially) uses
@@ -127,12 +128,12 @@ struct AmbiguousEntry {
 impl<Complexity> Default for Peptidoform<Complexity> {
     fn default() -> Self {
         Self {
-            global: Vec::new(),
-            labile: Vec::new(),
-            n_term: Vec::new(),
-            c_term: Vec::new(),
+            global: ThinVec::new(),
+            labile: ThinVec::new(),
+            n_term: ThinVec::new(),
+            c_term: ThinVec::new(),
             sequence: Vec::new(),
-            modifications_of_unknown_position: Vec::new(),
+            modifications_of_unknown_position: ThinVec::new(),
             charge_carriers: None,
             marker: PhantomData,
         }
@@ -343,25 +344,25 @@ impl<Complexity> Peptidoform<Complexity> {
     /// Set the N terminal modifications
     #[must_use]
     pub fn n_term(mut self, term: Vec<Modification>) -> Self {
-        self.n_term = term;
+        self.n_term = term.into();
         self
     }
 
     /// Set the C terminal modifications
     #[must_use]
     pub fn c_term(mut self, term: Vec<Modification>) -> Self {
-        self.c_term = term;
+        self.c_term = term.into();
         self
     }
 
     /// Set the N terminal modifications
     pub fn set_n_term(&mut self, term: Vec<Modification>) {
-        self.n_term = term;
+        self.n_term = term.into();
     }
 
     /// Set the C terminal modifications
     pub fn set_c_term(&mut self, term: Vec<Modification>) {
-        self.c_term = term;
+        self.c_term = term.into();
     }
 
     /// Get the number of amino acids making up this peptide
@@ -1464,7 +1465,7 @@ impl<Complexity> Peptidoform<Complexity> {
         }
     }
     /// Get all labile modifications
-    pub(super) const fn get_labile_mut_inner(&mut self) -> &mut Vec<SimpleModification> {
+    pub(super) const fn get_labile_mut_inner(&mut self) -> &mut ThinVec<SimpleModification> {
         &mut self.labile
     }
 }
@@ -1511,12 +1512,12 @@ impl<Complexity: AtMax<Linear>> Peptidoform<Complexity> {
             n_term: if index.contains(&0) {
                 self.n_term.clone()
             } else {
-                Vec::new()
+                ThinVec::new()
             },
             c_term: if index.contains(&(self.len() - 1)) {
                 self.c_term.clone()
             } else {
-                Vec::new()
+                ThinVec::new()
             },
             sequence: self.sequence[(index.start_bound().cloned(), index.end_bound().cloned())]
                 .to_vec(),
@@ -1669,7 +1670,7 @@ impl<Complexity: AtLeast<Linear>> Peptidoform<Complexity> {
     }
 
     /// Get the global isotope modifications
-    pub fn get_global_mut(&mut self) -> &mut Vec<(Element, Option<NonZeroU16>)> {
+    pub fn get_global_mut(&mut self) -> &mut ThinVec<(Element, Option<NonZeroU16>)> {
         &mut self.global
     }
 
@@ -1690,7 +1691,7 @@ impl<Complexity: AtLeast<Linear>> Peptidoform<Complexity> {
     }
 
     /// Get all labile modifications
-    pub fn get_labile_mut(&mut self) -> &mut Vec<SimpleModification> {
+    pub fn get_labile_mut(&mut self) -> &mut ThinVec<SimpleModification> {
         &mut self.labile
     }
 
@@ -1873,7 +1874,7 @@ impl<OwnComplexity: AtMax<SemiAmbiguous>> Peptidoform<OwnComplexity> {
                     .map(SequenceElement::mark)
                     .chain(other.sequence.into_iter().map(SequenceElement::mark))
                     .collect(),
-                modifications_of_unknown_position: Vec::new(),
+                modifications_of_unknown_position: ThinVec::new(),
                 charge_carriers: self.charge_carriers,
                 marker: PhantomData,
             })
@@ -1896,12 +1897,12 @@ where
 {
     fn from(value: Collection) -> Self {
         Self {
-            global: Vec::new(),
-            labile: Vec::new(),
-            n_term: Vec::new(),
-            c_term: Vec::new(),
+            global: ThinVec::new(),
+            labile: ThinVec::new(),
+            n_term: ThinVec::new(),
+            c_term: ThinVec::new(),
             sequence: value.into_iter().map(Into::into).collect(),
-            modifications_of_unknown_position: Vec::new(),
+            modifications_of_unknown_position: ThinVec::new(),
             charge_carriers: None,
             marker: PhantomData,
         }
