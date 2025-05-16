@@ -6,6 +6,7 @@ mod fasta;
 mod fragpipe;
 mod instanovo;
 mod maxquant;
+mod msfragger;
 mod mztab;
 mod novob;
 mod novor;
@@ -25,6 +26,7 @@ pub use fasta::*;
 pub use fragpipe::*;
 pub use instanovo::*;
 pub use maxquant::*;
+pub use msfragger::*;
 pub use mztab::*;
 pub use novob::*;
 pub use novor::*;
@@ -45,6 +47,8 @@ mod fragpipe_tests;
 mod instanovo_tests;
 #[cfg(test)]
 mod maxquant_tests;
+#[cfg(test)]
+mod msfragger_tests;
 #[cfg(test)]
 mod mztab_test;
 #[cfg(test)]

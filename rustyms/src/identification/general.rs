@@ -4,9 +4,9 @@ use crate::{
     error::{Context, CustomError},
     identification::{
         BasicCSVData, DeepNovoFamilyData, FastaData, FragpipeData, IdentifiedPeptidoform,
-        IdentifiedPeptidoformIter, IdentifiedPeptidoformSource, InstaNovoData, MZTabData,
-        MaxQuantData, NovoBData, NovorData, OpairData, PLGSData, PLinkData, PeaksData, PepNetData,
-        PowerNovoData, SageData, SpectrumSequenceListData,
+        IdentifiedPeptidoformIter, IdentifiedPeptidoformSource, InstaNovoData, MSFraggerData,
+        MZTabData, MaxQuantData, NovoBData, NovorData, OpairData, PLGSData, PLinkData, PeaksData,
+        PepNetData, PowerNovoData, SageData, SpectrumSequenceListData,
     },
     ontology::CustomDatabase,
 };
@@ -86,13 +86,18 @@ pub fn open_identified_peptides_file<'a>(
                     .map(IdentifiedPeptidoformIter::into_box)
                     .map_err(|pe| (me, se, pe))
             })
-            .map_err(|(me, se, pe)| {
+            .or_else(|(me, se, pe)| {
+                MSFraggerData::parse_file(path, custom_database, keep_all_columns, None)
+                    .map(IdentifiedPeptidoformIter::into_box)
+                    .map_err(|mfe| (me, se, pe, mfe))
+            })
+            .map_err(|(me, se, pe, mfe)| {
                 CustomError::error(
                     "Unknown file format",
-                    "Could not be recognised a MSFragger, PepNet or Sage file",
+                    "Could not be recognised a FragPipe, MSFragger, PepNet or Sage file",
                     Context::show(path.to_string_lossy()),
                 )
-                .with_underlying_errors(vec![me, se, pe])
+                .with_underlying_errors(vec![me, se, pe, mfe])
             }),
         Some("psmtsv") => {
             OpairData::parse_file(path, custom_database, keep_all_columns, None).map(IdentifiedPeptidoformIter::into_box)
