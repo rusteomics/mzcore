@@ -24,6 +24,7 @@ pub enum KnownFileFormat {
     PLink(PLinkVersion),
     PowerNovo(PowerNovoVersion),
     Sage(SageVersion),
+    MSFragger(MSFraggerVersion),
     SpectrumSequenceList(SpectrumSequenceListVersion),
 }
 
@@ -47,6 +48,7 @@ impl KnownFileFormat {
             Self::PLink(_) => "pLink",
             Self::PowerNovo(_) => "PowerNovo",
             Self::Sage(_) => "Sage",
+            Self::MSFragger(_) => "MSFragger",
             Self::SpectrumSequenceList(_) => "SpectrumSequenceList",
         }
     }
@@ -70,6 +72,7 @@ impl KnownFileFormat {
             Self::PLink(version) => Some(version.to_string()),
             Self::PowerNovo(version) => Some(version.to_string()),
             Self::Sage(version) => Some(version.to_string()),
+            Self::MSFragger(version) => Some(version.to_string()),
             Self::SpectrumSequenceList(version) => Some(version.to_string()),
         }
     }
@@ -105,6 +108,7 @@ impl From<KnownFileFormat> for FileFormat {
             KnownFileFormat::PLink(version) => Self::PLink(Some(version)),
             KnownFileFormat::PowerNovo(version) => Self::PowerNovo(Some(version)),
             KnownFileFormat::Sage(version) => Self::Sage(Some(version)),
+            KnownFileFormat::MSFragger(version) => Self::MSFragger(Some(version)),
             KnownFileFormat::SpectrumSequenceList(version) => {
                 Self::SpectrumSequenceList(Some(version))
             }
@@ -132,6 +136,7 @@ pub enum FileFormat {
     PLink(Option<PLinkVersion>),
     PowerNovo(Option<PowerNovoVersion>),
     Sage(Option<SageVersion>),
+    MSFragger(Option<MSFraggerVersion>),
     SpectrumSequenceList(Option<SpectrumSequenceListVersion>),
     #[default]
     Undefined,
@@ -197,6 +202,10 @@ impl FileFormat {
                 .map(IdentifiedPeptidoformIter::into_box),
             Self::PepNet(version) => PepNetData::parse_file(path, custom_database, false, version)
                 .map(IdentifiedPeptidoformIter::into_box),
+            Self::MSFragger(version) => {
+                MSFraggerData::parse_file(path, custom_database, false, version)
+                    .map(IdentifiedPeptidoformIter::into_box)
+            }
             Self::PowerNovo(version) => {
                 PowerNovoData::parse_file(path, custom_database, false, version)
                     .map(IdentifiedPeptidoformIter::into_box)

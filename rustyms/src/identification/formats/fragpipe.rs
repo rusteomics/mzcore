@@ -77,7 +77,7 @@ format_family!(
                     head.context(),
                 ))?
             },
-            Modification::sloppy_modification(tail.full_line(), tail.location.clone(), None, dbg!(custom_database))?
+            Modification::sloppy_modification(tail.full_line(), tail.location.clone(), None, custom_database)?
         ))
         } else {
             Err(CustomError::error(
