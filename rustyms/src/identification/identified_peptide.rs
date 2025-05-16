@@ -696,7 +696,7 @@ impl IdentifiedPeptidoform {
                 protein_start,
                 protein_end,
                 ..
-            }) => Some(*protein_start..*protein_end),
+            }) => protein_start.and_then(|start| protein_end.map(|end| start..end)),
             MetaData::MZTab(MZTabData { start, end, .. }) => start.and_then(|s| end.map(|e| s..e)),
             MetaData::InstaNovo(_)
             | MetaData::DeepNovoFamily(_)

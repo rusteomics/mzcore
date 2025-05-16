@@ -168,9 +168,8 @@ impl Ontology {
         code: &str,
         custom_database: Option<&CustomDatabase>,
     ) -> Option<SimpleModification> {
-        let code = code.to_ascii_lowercase();
         for option in self.lookup(custom_database) {
-            if option.1 == code {
+            if option.1.eq_ignore_ascii_case(code) {
                 return Some(option.2.clone());
             }
         }
