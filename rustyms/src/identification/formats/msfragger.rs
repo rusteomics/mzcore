@@ -1,10 +1,12 @@
+use std::{path::PathBuf, sync::LazyLock};
+
 use crate::{
     error::CustomError,
     helper_functions::explain_number_error,
     identification::{
         BoxedIdentifiedPeptideIter, IdentifiedPeptidoform, IdentifiedPeptidoformSource,
-        IdentifiedPeptidoformVersion, MetaData,
-        common_parser::{Location, OptionalLocation},
+        IdentifiedPeptidoformVersion, MetaData, SpectrumId,
+        common_parser::{Location, OptionalColumn, OptionalLocation},
         csv::{CsvLine, parse_csv},
     },
     ontology::CustomDatabase,
@@ -12,7 +14,7 @@ use crate::{
     sequence::{
         Modification, Peptidoform, SemiAmbiguous, SimpleModification, SloppyParsingParameters,
     },
-    system::{Mass, Time, usize::Charge},
+    system::{Mass, MassOverCharge, Time, usize::Charge},
 };
 use serde::{Deserialize, Serialize};
 
@@ -27,57 +29,48 @@ static IDENTIFIER_ERROR: (&str, &str) = (
     "This column is not a fasta identifier but is required to be one in this MSFragger format",
 );
 
+// TODO: it might be nice to be able to parse the glycan composition and put it on the peptide in the right location
+// TODO: in the localisation the lowercase character(s) indicate the position of the opensearch (observed modifications).
+// It would be best to use this to place the mod properly (also with the position scoring if present and the mod is ambiguous).
 format_family!(
     /// The format for MSFragger data
     MSFraggerFormat,
     /// The data for MSFragger data
     MSFraggerData,
-    MSFraggerVersion, [&VERSION_V4_2], b'\t', None;
+    MSFraggerVersion, [&VERSION_V4_2, &FRAGPIPE_V20_OR_21, &FRAGPIPE_V22, &PHILOSOPHER], b'\t', None;
     required {
-        scan_number: usize, |location: Location, _| location.parse(NUMBER_ERROR);
+        expectation_score: f64, |location: Location, _| location.parse::<f64>(NUMBER_ERROR);
+        hyper_score: f64, |location: Location, _| location.parse::<f64>(NUMBER_ERROR);
         mass: Mass, |location: Location, _| location.parse::<f64>(NUMBER_ERROR).map(Mass::new::<crate::system::dalton>);
-        rt: Time, |location: Location, _| location.parse::<f64>(NUMBER_ERROR).map(Time::new::<crate::system::time::min>);
-        z: Charge, |location: Location, _| location.parse::<usize>(NUMBER_ERROR).map(Charge::new::<crate::system::e>);
-        ion_mobility: f64, |location: Location, _| location.parse(NUMBER_ERROR);
-        rank: usize, |location: Location, _| location.parse(NUMBER_ERROR);
+        missed_cleavages: usize, |location: Location, _| location.parse(NUMBER_ERROR);
+        next_score: f64, |location: Location, _| location.parse(NUMBER_ERROR);
         peptide: Peptidoform<SemiAmbiguous>, |location: Location, custom_database: Option<&CustomDatabase>| location.parse_with(|location| {
             Peptidoform::sloppy_pro_forma(
                 location.full_line(),
                 location.location.clone(),
                 custom_database,
                 &SloppyParsingParameters {ignore_prefix_lowercase_n: true, ..Default::default()},
-            )});
+        )});
         protein: FastaIdentifier<String>, |location: Location, _| location.parse(IDENTIFIER_ERROR);
-        theoretical_mass: Mass, |location: Location, _| location.parse::<f64>(NUMBER_ERROR).map(Mass::new::<crate::system::dalton>);
-        delta_mass: Mass, |location: Location, _| location.parse::<f64>(NUMBER_ERROR).map(Mass::new::<crate::system::dalton>);
-        missed_cleavages: usize, |location: Location, _| location.parse(NUMBER_ERROR);
-        hyperscore: f64, |location: Location, _| location.parse(NUMBER_ERROR);
-        nextscore: f64, |location: Location, _| location.parse(NUMBER_ERROR);
-        expectscore: f64, |location: Location, _| location.parse(NUMBER_ERROR);
-        score_without_delta_mass: f64, |location: Location, _| location.parse(NUMBER_ERROR);
-        best_score_with_delta_mass: f64, |location: Location, _| location.parse(NUMBER_ERROR);
-        second_best_score_with_delta_mass: f64, |location: Location, _| location.parse(NUMBER_ERROR);
-        delta_score: f64, |location: Location, _| location.parse(NUMBER_ERROR);
-        num_matched_ions: usize, |location: Location, _| location.parse(NUMBER_ERROR);
-        tot_num_ions: usize, |location: Location, _| location.parse(NUMBER_ERROR);
-        num_tol_term: usize, |location: Location, _| location.parse(NUMBER_ERROR);
-        modification_info: Vec<(SequencePosition, SimpleModification)>, |location: Location, custom_database: Option<&CustomDatabase>| location.or_empty().array(',').map(|m| if let Some((head, tail)) = m.clone().split_once('(') {
+        rt: Time, |location: Location, _| location.parse::<f64>(NUMBER_ERROR).map(Time::new::<crate::system::time::min>);
+        scan: SpectrumId, |location: Location, _| Ok(SpectrumId::Native(location.get_string()));
+        modifications: Vec<(SequencePosition, SimpleModification)>, |location: Location, custom_database: Option<&CustomDatabase>| location.or_empty().array(',').map(|m| if let Some((head, tail)) = m.clone().split_once('(') {
             let head_trim = head.as_str().trim();
             Ok((
-            if head_trim.eq_ignore_ascii_case("N-term") {
-                SequencePosition::NTerm
-            } else if head_trim.eq_ignore_ascii_case("C-term") {
-                SequencePosition::CTerm
-            } else {
-                // Format: `14M` so take only the numeric part
-                head.as_str()[..head.len()-1].trim().parse::<usize>().map(|i| SequencePosition::Index(i-1)).map_err(|err| CustomError::error(
-                    "Invalid FragPipe modification location",
-                    format!("The location number {}", explain_number_error(&err)),
-                    head.context(),
-                ))?
-            },
-            Modification::sloppy_modification(tail.full_line(), tail.location.clone(), None, custom_database)?
-        ))
+                if head_trim.eq_ignore_ascii_case("N-term") {
+                    SequencePosition::NTerm
+                } else if head_trim.eq_ignore_ascii_case("C-term") {
+                    SequencePosition::CTerm
+                } else {
+                    // Format: `14M` so take only the numeric part
+                    head.as_str()[..head.len()-1].trim().parse::<usize>().map(|i| SequencePosition::Index(i-1)).map_err(|err| CustomError::error(
+                        "Invalid FragPipe modification location",
+                        format!("The location number {}", explain_number_error(&err)),
+                        head.context(),
+                    ))?
+                },
+                Modification::sloppy_modification(tail.full_line(), tail.location.clone(), None, custom_database)?
+            ))
         } else {
             Err(CustomError::error(
                 "Invalid FragPipe modification",
@@ -85,23 +78,102 @@ format_family!(
                 m.context(),
             ))
         }).collect::<Result<Vec<_>, _>>();
-
-        // modification_info,  best_locs, localization_scores
+        z: Charge, |location: Location, _| location.parse::<usize>(NUMBER_ERROR).map(Charge::new::<crate::system::e>);
     }
-    optional { }
+    optional {
+        best_score_with_delta_mass: f64, |location: Location, _| location.parse::<f64>(NUMBER_ERROR);
+        calibrated_experimental_mass: Mass, |location: Location, _| location.parse::<f64>(NUMBER_ERROR).map(Mass::new::<crate::system::dalton>);
+        calibrated_experimental_mz: MassOverCharge, |location: Location, _| location.parse::<f64>(NUMBER_ERROR).map(MassOverCharge::new::<crate::system::mz>);
+        condition: String, |location: Location, _| Ok(Some(location.get_string()));
+        delta_score: f64, |location: Location, _| location.parse::<f64>(NUMBER_ERROR);
+        entry_name: String, |location: Location, _| Ok(location.get_string());
+        enzymatic_termini: usize, |location: Location, _| location.parse::<usize>(NUMBER_ERROR);
+        extended_peptide: Box<[Option<Peptidoform<SemiAmbiguous>>; 3]>, |location: Location, custom_database: Option<&CustomDatabase>| {
+            let peptides = location.clone().array('.').map(|l| l.or_empty().parse_with(|location| Peptidoform::sloppy_pro_forma(
+                location.full_line(),
+                location.location.clone(),
+                custom_database,
+                &SloppyParsingParameters {ignore_prefix_lowercase_n: true, ..Default::default()},
+            ))).collect::<Result<Vec<_>,_>>()?;
+            if peptides.len() == 3 {
+                Ok(Box::new([peptides[0].clone(), peptides[1].clone(), peptides[2].clone()]))
+            } else {
+                Err(CustomError::error("Invalid extened peptide", "The extended peptide should contain the prefix.peptide.suffix for all peptides.", location.context()))
+            }
+        };
+        glycan_q_value: f64, |location: Location, _| location.or_empty().parse::<f64>(NUMBER_ERROR);
+        glycan_score: f64, |location: Location, _| location.or_empty().parse::<f64>(NUMBER_ERROR);
+        group: String, |location: Location, _| Ok(Some(location.get_string()));
+        intensity: f64, |location: Location, _| location.parse::<f64>(NUMBER_ERROR);
+        ion_mobility: f64, |location: Location, _| location.or_empty().parse::<f64>(NUMBER_ERROR);
+        ions_best_position: usize, |location: Location, _| location.or_empty().parse::<usize>(NUMBER_ERROR);
+        is_unique: bool, |location: Location, _| location.parse_with(|l| match l.as_str().to_ascii_lowercase().as_str() {
+            "true" => Ok(true),
+            "false" => Ok(false),
+            _ => Err(CustomError::error(
+                "Invalid FragPipe line",
+                "This column (Is Unique) is not a boolean but it is required to be a boolean ('true' or 'false') in this FragPipe format",
+                l.context(),
+            ))
+        });
+        msfragger_localisation: String, |location: Location, _| Ok(location.or_empty().get_string());
+        mz: MassOverCharge, |location: Location, _| location.parse::<f64>(NUMBER_ERROR).map(MassOverCharge::new::<crate::system::mz>);
+        gene: String, |location: Location, _| Ok(location.get_string());
+        mapped_genes: Vec<String>, |location: Location, _| Ok(location.get_string().split(',').map(|s| s.trim().to_string()).collect::<Vec<_>>());
+        mapped_proteins: Vec<String>, |location: Location, _| Ok(location.get_string().split(',').map(|s| s.trim().to_string()).collect::<Vec<_>>());
+        num_matched_ions: usize, |location: Location, _| location.parse::<usize>(NUMBER_ERROR);
+        num_tol_term: usize, |location: Location, _| location.parse::<usize>(NUMBER_ERROR);
+        open_search_modification: String, |location: Location, _| Ok(location.get_string());
+        peptide_prophet_probability: f64, |location: Location, _| location.parse::<f64>(NUMBER_ERROR);
+        position_scores: Vec<f64>, |location: Location, _| {
+            let data = location.array(')').filter_map(|l| (l.len() > 2).then(|| l.skip(2).parse::<f64>((
+                "Invalid FragPipe line",
+                "This position score is not a number but it is required to be a number in this FragPipe format",
+            )))).collect::<Result<Vec<_>, _>>()?;
+            if data.is_empty() {
+                Ok(None)
+            } else {
+                Ok(Some(data))
+            }
+        };
+        protein_description: String, |location: Location, _| Ok(location.get_string());
+        protein_end: usize, |location: Location, _| location.parse::<usize>(NUMBER_ERROR);
+        protein_id: String, |location: Location, _| Ok(location.get_string());
+        protein_start: usize, |location: Location, _| location.parse::<usize>(NUMBER_ERROR);
+        purity: f64, |location: Location, _| location.parse::<f64>(NUMBER_ERROR);
+        rank: usize, |location: Location, _| location.parse::<usize>(NUMBER_ERROR);
+        score_without_delta_mass: f64, |location: Location, _| location.parse::<f64>(NUMBER_ERROR);
+        second_best_score_with_delta_mass: f64, |location: Location, _| location.parse::<f64>(NUMBER_ERROR);
+        raw_file: PathBuf, |location: Location, _| Ok(Some(location.get_string().into()));
+        total_glycan_composition: String, |location: Location, _| Ok(location.or_empty().get_string());
+        tot_num_ions: usize, |location: Location, _| location.parse::<usize>(NUMBER_ERROR);
+    }
 
     fn post_process(_source: &CsvLine, mut parsed: Self, _custom_database: Option<&CustomDatabase>) -> Result<Self, CustomError> {
-        for (location, modification) in &parsed.modification_info {
+        if let SpectrumId::Native(native) = &parsed.scan {
+            if let Some(m) = IDENTIFER_REGEX
+                .captures(native)
+            {
+                parsed.raw_file = Some(m.get(1).unwrap().as_str().into());
+                parsed.scan =
+                    SpectrumId::Number(m.get(2).unwrap().as_str().parse::<usize>().unwrap());
+            }
+        }
+        for (location, modification) in &parsed.modifications {
             parsed.peptide.add_simple_modification(*location, modification.clone());
         }
         Ok(parsed)
     }
 );
 
+/// The Regex to match against MSFragger scan fields
+static IDENTIFER_REGEX: LazyLock<regex::Regex> =
+    LazyLock::new(|| regex::Regex::new(r"([^/]+)\.(\d+)\.\d+.\d+").unwrap());
+
 impl From<MSFraggerData> for IdentifiedPeptidoform {
     fn from(value: MSFraggerData) -> Self {
         Self {
-            score: Some(value.hyperscore / 100.0),
+            score: Some(value.hyper_score / 100.0),
             local_confidence: None,
             metadata: MetaData::MSFragger(value),
         }
@@ -116,6 +188,12 @@ pub enum MSFraggerVersion {
     /// Current MSFragger version
     #[default]
     V4_2,
+    /// Version 20 or 21
+    FragPipeV20Or21,
+    /// Version 22
+    FragPipeV22,
+    /// Philpsopher
+    Philosopher,
 }
 
 impl std::fmt::Display for MSFraggerVersion {
@@ -128,11 +206,17 @@ impl IdentifiedPeptidoformVersion<MSFraggerFormat> for MSFraggerVersion {
     fn format(self) -> MSFraggerFormat {
         match self {
             Self::V4_2 => VERSION_V4_2,
+            Self::FragPipeV20Or21 => FRAGPIPE_V20_OR_21,
+            Self::FragPipeV22 => FRAGPIPE_V22,
+            Self::Philosopher => PHILOSOPHER,
         }
     }
     fn name(self) -> &'static str {
         match self {
             Self::V4_2 => "v4.2",
+            Self::FragPipeV20Or21 => "FragPipe v20/v21",
+            Self::FragPipeV22 => "FragPipe v22",
+            Self::Philosopher => "Philosopher",
         }
     }
 }
@@ -140,26 +224,209 @@ impl IdentifiedPeptidoformVersion<MSFraggerFormat> for MSFraggerVersion {
 /// The only supported format for MSFragger data
 pub const VERSION_V4_2: MSFraggerFormat = MSFraggerFormat {
     version: MSFraggerVersion::V4_2,
-    scan_number: "scannum",
-    mass: "precursor_neutral_mass",
-    rt: "retention_time",
-    z: "charge",
-    ion_mobility: "ion_mobility",
-    rank: "hit_rank",
-    peptide: "peptide",
-    protein: "proteins",
-    theoretical_mass: "calc_neutral_pep_mass",
-    delta_mass: "massdiff",
+    best_score_with_delta_mass: OptionalColumn::Required("best_score_with_delta_mass"),
+    calibrated_experimental_mass: OptionalColumn::NotAvailable,
+    calibrated_experimental_mz: OptionalColumn::NotAvailable,
+    condition: OptionalColumn::NotAvailable,
+    delta_score: OptionalColumn::Required("delta_score"),
+    entry_name: OptionalColumn::NotAvailable,
+    enzymatic_termini: OptionalColumn::NotAvailable,
+    expectation_score: "expectscore",
+    extended_peptide: OptionalColumn::NotAvailable,
+    gene: OptionalColumn::NotAvailable,
+    glycan_q_value: OptionalColumn::NotAvailable,
+    glycan_score: OptionalColumn::NotAvailable,
+    group: OptionalColumn::NotAvailable,
+    hyper_score: "hyperscore",
+    intensity: OptionalColumn::NotAvailable,
+    ion_mobility: OptionalColumn::Required("ion_mobility"),
+    ions_best_position: OptionalColumn::NotAvailable,
+    is_unique: OptionalColumn::NotAvailable,
+    mapped_genes: OptionalColumn::NotAvailable,
+    mapped_proteins: OptionalColumn::NotAvailable,
+    mass: "precursor_neutral_mass", // Is this experimental M, if so this must be changed to MH+
     missed_cleavages: "num_missed_cleavages",
-    hyperscore: "hyperscore",
-    nextscore: "nextscore",
-    expectscore: "expectscore",
-    score_without_delta_mass: "score_without_delta_mass",
-    best_score_with_delta_mass: "best_score_with_delta_mass",
-    second_best_score_with_delta_mass: "second_best_score_with_delta_mass",
-    delta_score: "delta_score",
-    num_matched_ions: "num_matched_ions",
-    tot_num_ions: "tot_num_ions",
-    num_tol_term: "num_tol_term",
-    modification_info: "modification_info",
+    modifications: "modification_info",
+    msfragger_localisation: OptionalColumn::Required("best_locs"),
+    mz: OptionalColumn::NotAvailable,
+    next_score: "nextscore",
+    num_matched_ions: OptionalColumn::Required("num_matched_ions"),
+    num_tol_term: OptionalColumn::Required("num_tol_term"),
+    open_search_modification: OptionalColumn::NotAvailable,
+    peptide_prophet_probability: OptionalColumn::NotAvailable,
+    peptide: "peptide",
+    position_scores: OptionalColumn::Required("localization_scores"),
+    protein_description: OptionalColumn::NotAvailable,
+    protein_end: OptionalColumn::NotAvailable,
+    protein_id: OptionalColumn::NotAvailable,
+    protein_start: OptionalColumn::NotAvailable,
+    protein: "proteins",
+    purity: OptionalColumn::NotAvailable,
+    rank: OptionalColumn::Required("hit_rank"),
+    rt: "retention_time",
+    scan: "scannum",
+    score_without_delta_mass: OptionalColumn::Required("score_without_delta_mass"),
+    second_best_score_with_delta_mass: OptionalColumn::Required(
+        "second_best_score_with_delta_mass",
+    ),
+    raw_file: OptionalColumn::NotAvailable,
+    tot_num_ions: OptionalColumn::Required("tot_num_ions"),
+    total_glycan_composition: OptionalColumn::NotAvailable,
+    z: "charge",
+};
+
+/// Philosopher
+pub const PHILOSOPHER: MSFraggerFormat = MSFraggerFormat {
+    version: MSFraggerVersion::Philosopher,
+    best_score_with_delta_mass: OptionalColumn::NotAvailable,
+    calibrated_experimental_mass: OptionalColumn::Required("calibrated observed mass"),
+    calibrated_experimental_mz: OptionalColumn::Required("calibrated observed m/z"),
+    condition: OptionalColumn::Optional("condition"),
+    delta_score: OptionalColumn::NotAvailable,
+    entry_name: OptionalColumn::Required("entry name"),
+    enzymatic_termini: OptionalColumn::Required("number of enzymatic termini"),
+    expectation_score: "expectation",
+    extended_peptide: OptionalColumn::Optional("extended peptide"),
+    gene: OptionalColumn::Required("gene"),
+    glycan_q_value: OptionalColumn::Optional("glycan q-value"),
+    glycan_score: OptionalColumn::Optional("glycan score"),
+    group: OptionalColumn::Optional("group"),
+    hyper_score: "hyperscore",
+    intensity: OptionalColumn::Required("intensity"),
+    ion_mobility: OptionalColumn::Optional("ion mobility"),
+    ions_best_position: OptionalColumn::NotAvailable,
+    is_unique: OptionalColumn::Required("is unique"),
+    mapped_genes: OptionalColumn::Required("mapped genes"),
+    mapped_proteins: OptionalColumn::Required("mapped proteins"),
+    mass: "observed mass",
+    missed_cleavages: "number of missed cleavages",
+    modifications: "assigned modifications",
+    msfragger_localisation: OptionalColumn::Optional("msfragger localization"),
+    mz: OptionalColumn::Required("observed m/z"),
+    next_score: "nextscore",
+    num_matched_ions: OptionalColumn::NotAvailable,
+    num_tol_term: OptionalColumn::NotAvailable,
+    open_search_modification: OptionalColumn::Required("observed modifications"),
+    peptide_prophet_probability: OptionalColumn::Required("peptideprophet probability"),
+    peptide: "peptide",
+    position_scores: OptionalColumn::NotAvailable,
+    protein_description: OptionalColumn::Required("protein description"),
+    protein_end: OptionalColumn::NotAvailable,
+    protein_id: OptionalColumn::Required("protein id"),
+    protein_start: OptionalColumn::NotAvailable,
+    protein: "protein",
+    purity: OptionalColumn::Optional("purity"),
+    rank: OptionalColumn::NotAvailable,
+    rt: "retention",
+    scan: "spectrum",
+    score_without_delta_mass: OptionalColumn::NotAvailable,
+    second_best_score_with_delta_mass: OptionalColumn::NotAvailable,
+    raw_file: OptionalColumn::Optional("spectrum file"),
+    tot_num_ions: OptionalColumn::NotAvailable,
+    total_glycan_composition: OptionalColumn::NotAvailable,
+    z: "charge",
+};
+
+/// v20 or v21
+pub const FRAGPIPE_V20_OR_21: MSFraggerFormat = MSFraggerFormat {
+    version: MSFraggerVersion::FragPipeV20Or21,
+    best_score_with_delta_mass: OptionalColumn::NotAvailable,
+    calibrated_experimental_mass: OptionalColumn::Required("calibrated observed mass"),
+    calibrated_experimental_mz: OptionalColumn::Required("calibrated observed m/z"),
+    condition: OptionalColumn::Optional("condition"),
+    delta_score: OptionalColumn::NotAvailable,
+    entry_name: OptionalColumn::Required("entry name"),
+    enzymatic_termini: OptionalColumn::Required("number of enzymatic termini"),
+    expectation_score: "expectation",
+    extended_peptide: OptionalColumn::Optional("extended peptide"),
+    gene: OptionalColumn::Required("gene"),
+    glycan_q_value: OptionalColumn::Optional("glycan q-value"),
+    glycan_score: OptionalColumn::Optional("glycan score"),
+    group: OptionalColumn::Optional("group"),
+    hyper_score: "hyperscore",
+    intensity: OptionalColumn::Required("intensity"),
+    ion_mobility: OptionalColumn::Optional("ion mobility"),
+    ions_best_position: OptionalColumn::NotAvailable,
+    is_unique: OptionalColumn::Required("is unique"),
+    mapped_genes: OptionalColumn::Required("mapped genes"),
+    mapped_proteins: OptionalColumn::Required("mapped proteins"),
+    mass: "observed mass",
+    missed_cleavages: "number of missed cleavages",
+    modifications: "assigned modifications",
+    msfragger_localisation: OptionalColumn::Optional("msfragger localization"),
+    mz: OptionalColumn::Required("observed m/z"),
+    next_score: "nextscore",
+    num_matched_ions: OptionalColumn::NotAvailable,
+    num_tol_term: OptionalColumn::NotAvailable,
+    open_search_modification: OptionalColumn::Required("observed modifications"),
+    peptide_prophet_probability: OptionalColumn::Required("peptideprophet probability"),
+    peptide: "peptide",
+    position_scores: OptionalColumn::NotAvailable,
+    protein_description: OptionalColumn::Required("protein description"),
+    protein_end: OptionalColumn::Required("protein end"),
+    protein_id: OptionalColumn::Required("protein id"),
+    protein_start: OptionalColumn::Required("protein start"),
+    protein: "protein",
+    purity: OptionalColumn::Required("purity"),
+    rank: OptionalColumn::NotAvailable,
+    rt: "retention",
+    scan: "spectrum",
+    score_without_delta_mass: OptionalColumn::NotAvailable,
+    second_best_score_with_delta_mass: OptionalColumn::NotAvailable,
+    raw_file: OptionalColumn::Required("spectrum file"),
+    tot_num_ions: OptionalColumn::NotAvailable,
+    total_glycan_composition: OptionalColumn::NotAvailable,
+    z: "charge",
+};
+
+/// v22
+pub const FRAGPIPE_V22: MSFraggerFormat = MSFraggerFormat {
+    version: MSFraggerVersion::FragPipeV22,
+    best_score_with_delta_mass: OptionalColumn::NotAvailable,
+    calibrated_experimental_mass: OptionalColumn::Required("calibrated observed mass"),
+    calibrated_experimental_mz: OptionalColumn::Required("calibrated observed m/z"),
+    condition: OptionalColumn::Optional("condition"),
+    delta_score: OptionalColumn::NotAvailable,
+    entry_name: OptionalColumn::Required("entry name"),
+    enzymatic_termini: OptionalColumn::Required("number of enzymatic termini"),
+    expectation_score: "expectation",
+    extended_peptide: OptionalColumn::Required("extended peptide"),
+    gene: OptionalColumn::Required("gene"),
+    glycan_q_value: OptionalColumn::Optional("glycan q-value"),
+    glycan_score: OptionalColumn::Optional("glycan score"),
+    group: OptionalColumn::Optional("group"),
+    hyper_score: "hyperscore",
+    intensity: OptionalColumn::Required("intensity"),
+    ion_mobility: OptionalColumn::Optional("ion mobility"),
+    ions_best_position: OptionalColumn::Optional("ions best position"),
+    is_unique: OptionalColumn::Required("is unique"),
+    mapped_genes: OptionalColumn::Required("mapped genes"),
+    mapped_proteins: OptionalColumn::Required("mapped proteins"),
+    mass: "observed mass",
+    missed_cleavages: "number of missed cleavages",
+    modifications: "assigned modifications",
+    msfragger_localisation: OptionalColumn::Optional("msfragger localization"),
+    mz: OptionalColumn::Required("observed m/z"),
+    next_score: "nextscore",
+    num_matched_ions: OptionalColumn::NotAvailable,
+    num_tol_term: OptionalColumn::NotAvailable,
+    open_search_modification: OptionalColumn::Required("observed modifications"),
+    peptide_prophet_probability: OptionalColumn::Required("probability"),
+    peptide: "peptide",
+    position_scores: OptionalColumn::Optional("position scores"),
+    protein_description: OptionalColumn::Required("protein description"),
+    protein_end: OptionalColumn::Required("protein end"),
+    protein_id: OptionalColumn::Required("protein id"),
+    protein_start: OptionalColumn::Required("protein start"),
+    protein: "protein",
+    purity: OptionalColumn::Required("purity"),
+    rank: OptionalColumn::NotAvailable,
+    rt: "retention",
+    scan: "spectrum",
+    score_without_delta_mass: OptionalColumn::NotAvailable,
+    second_best_score_with_delta_mass: OptionalColumn::NotAvailable,
+    raw_file: OptionalColumn::Required("spectrum file"),
+    tot_num_ions: OptionalColumn::NotAvailable,
+    total_glycan_composition: OptionalColumn::Optional("total glycan composition"),
+    z: "charge",
 };

@@ -3,7 +3,6 @@
 mod basic_csv;
 mod deepnovofamily;
 mod fasta;
-mod fragpipe;
 mod instanovo;
 mod maxquant;
 mod msfragger;
@@ -23,7 +22,6 @@ use crate::*;
 pub use basic_csv::*;
 pub use deepnovofamily::*;
 pub use fasta::*;
-pub use fragpipe::*;
 pub use instanovo::*;
 pub use maxquant::*;
 pub use msfragger::*;
@@ -41,8 +39,6 @@ pub use ssl::*;
 
 #[cfg(test)]
 mod deepnovofamily_tests;
-#[cfg(test)]
-mod fragpipe_tests;
 #[cfg(test)]
 mod instanovo_tests;
 #[cfg(test)]

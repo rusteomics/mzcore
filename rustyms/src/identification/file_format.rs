@@ -11,7 +11,6 @@ pub enum KnownFileFormat {
     BasicCSV(BasicCSVVersion),
     DeepNovoFamily(DeepNovoFamilyVersion),
     Fasta,
-    FragPipe(FragPipeVersion),
     InstaNovo(InstaNovoVersion),
     MaxQuant(MaxQuantVersion),
     MZTab,
@@ -35,7 +34,6 @@ impl KnownFileFormat {
             Self::BasicCSV(_) => "CSV",
             Self::DeepNovoFamily(_) => "DeepNovo Family",
             Self::Fasta => "Fasta",
-            Self::FragPipe(_) => "FragPipe",
             Self::InstaNovo(_) => "InstaNovo",
             Self::MaxQuant(_) => "MaxQuant",
             Self::MZTab => "mzTab",
@@ -59,7 +57,6 @@ impl KnownFileFormat {
             Self::BasicCSV(version) => Some(version.to_string()),
             Self::DeepNovoFamily(version) => Some(version.to_string()),
             Self::Fasta => None,
-            Self::FragPipe(version) => Some(version.to_string()),
             Self::InstaNovo(version) => Some(version.to_string()),
             Self::MaxQuant(version) => Some(version.to_string()),
             Self::MZTab => Some("1.0".to_string()),
@@ -95,7 +92,6 @@ impl From<KnownFileFormat> for FileFormat {
             KnownFileFormat::BasicCSV(version) => Self::BasicCSV(Some(version)),
             KnownFileFormat::DeepNovoFamily(version) => Self::DeepNovoFamily(Some(version)),
             KnownFileFormat::Fasta => Self::Fasta,
-            KnownFileFormat::FragPipe(version) => Self::FragPipe(Some(version)),
             KnownFileFormat::InstaNovo(version) => Self::InstaNovo(Some(version)),
             KnownFileFormat::MaxQuant(version) => Self::MaxQuant(Some(version)),
             KnownFileFormat::MZTab => Self::MZTab,
@@ -123,7 +119,6 @@ pub enum FileFormat {
     BasicCSV(Option<BasicCSVVersion>),
     DeepNovoFamily(Option<DeepNovoFamilyVersion>),
     Fasta,
-    FragPipe(Option<FragPipeVersion>),
     InstaNovo(Option<InstaNovoVersion>),
     MaxQuant(Option<MaxQuantVersion>),
     MZTab,
@@ -173,10 +168,6 @@ impl FileFormat {
             }),
             Self::InstaNovo(version) => {
                 InstaNovoData::parse_file(path, custom_database, false, version)
-                    .map(IdentifiedPeptidoformIter::into_box)
-            }
-            Self::FragPipe(version) => {
-                FragpipeData::parse_file(path, custom_database, false, version)
                     .map(IdentifiedPeptidoformIter::into_box)
             }
             Self::MaxQuant(version) => {
