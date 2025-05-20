@@ -2,6 +2,7 @@ use std::{path::PathBuf, sync::LazyLock};
 
 use crate::{
     error::CustomError,
+    glycan::MonoSaccharide,
     helper_functions::explain_number_error,
     identification::{
         BoxedIdentifiedPeptideIter, IdentifiedPeptidoform, IdentifiedPeptidoformSource,
@@ -29,7 +30,7 @@ static IDENTIFIER_ERROR: (&str, &str) = (
     "This column is not a fasta identifier but is required to be one in this MSFragger format",
 );
 
-// TODO: it might be nice to be able to parse the glycan composition and put it on the peptide in the right location
+// TODO: it might be nice to be able to put the open modification on the peptide in the right location
 // TODO: in the localisation the lowercase character(s) indicate the position of the opensearch (observed modifications).
 // It would be best to use this to place the mod properly (also with the position scoring if present and the mod is ambiguous).
 format_family!(
@@ -123,7 +124,11 @@ format_family!(
         mapped_proteins: Vec<String>, |location: Location, _| Ok(location.get_string().split(',').map(|s| s.trim().to_string()).collect::<Vec<_>>());
         num_matched_ions: usize, |location: Location, _| location.parse::<usize>(NUMBER_ERROR);
         num_tol_term: usize, |location: Location, _| location.parse::<usize>(NUMBER_ERROR);
-        open_search_modification: String, |location: Location, _| Ok(location.get_string());
+        /// Either glycan 'HexNAc(4)Hex(5)Fuc(1)NeuAc(2) % 2350.8304' or mod 'Mod1: First isotopic peak (Theoretical: 1.0024)' 'Mod1: Deamidation (PeakApex: 0.9836, Theoretical: 0.9840)'
+        open_search_modification: MSFraggerOpenModification, |location: Location, _|
+            location.or_empty().parse_with(|location| location.as_str().find('%').map_or_else(
+                || Ok(MSFraggerOpenModification::Other(location.as_str().to_owned())),
+                |end| MonoSaccharide::from_msfragger_composition(&location.as_str()[..end]).map(MSFraggerOpenModification::Glycan)));
         peptide_prophet_probability: f64, |location: Location, _| location.parse::<f64>(NUMBER_ERROR);
         position_scores: Vec<f64>, |location: Location, _| {
             let data = location.array(')').filter_map(|l| (l.len() > 2).then(|| l.skip(2).parse::<f64>((
@@ -145,7 +150,9 @@ format_family!(
         score_without_delta_mass: f64, |location: Location, _| location.parse::<f64>(NUMBER_ERROR);
         second_best_score_with_delta_mass: f64, |location: Location, _| location.parse::<f64>(NUMBER_ERROR);
         raw_file: PathBuf, |location: Location, _| Ok(Some(location.get_string().into()));
-        total_glycan_composition: String, |location: Location, _| Ok(location.or_empty().get_string());
+        total_glycan_composition: Vec<(MonoSaccharide, isize)>, |location: Location, _| location.parse_with(|location| location.as_str().find('%').map_or_else(
+                || MonoSaccharide::from_msfragger_composition(location.as_str()),
+                |end| MonoSaccharide::from_msfragger_composition(&location.as_str()[..end])));
         tot_num_ions: usize, |location: Location, _| location.parse::<usize>(NUMBER_ERROR);
     }
 
@@ -178,6 +185,15 @@ impl From<MSFraggerData> for IdentifiedPeptidoform {
             metadata: MetaData::MSFragger(value),
         }
     }
+}
+
+/// A MSFragger open search modification
+#[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Serialize, Deserialize)]
+pub enum MSFraggerOpenModification {
+    /// A glycan composition
+    Glycan(Vec<(MonoSaccharide, isize)>),
+    /// Any other modification
+    Other(String),
 }
 
 /// All possible MSFragger versions
