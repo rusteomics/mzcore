@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 pub struct PeaksFamilyId {
     /// The file, if defined
     pub file: Option<usize>,
-    /// The scan(s)
+    /// The scan numbers
     pub scans: Vec<usize>,
 }
 

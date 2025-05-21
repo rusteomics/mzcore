@@ -2,12 +2,7 @@ use std::path::Path;
 
 use crate::{
     error::{Context, CustomError},
-    identification::{
-        BasicCSVData, DeepNovoFamilyData, FastaData, FragpipeData, IdentifiedPeptidoform,
-        IdentifiedPeptidoformIter, IdentifiedPeptidoformSource, InstaNovoData, MZTabData,
-        MaxQuantData, NovoBData, NovorData, OpairData, PLGSData, PLinkData, PeaksData, PepNetData,
-        PowerNovoData, SageData, SpectrumSequenceListData,
-    },
+    identification::*,
     ontology::CustomDatabase,
 };
 
@@ -74,25 +69,25 @@ pub fn open_identified_peptides_file<'a>(
                 )
                 .with_underlying_errors(vec![pe, ne, ie, le, pne, ple, be])
             }),
-        Some("tsv") => FragpipeData::parse_file(path, custom_database, keep_all_columns, None)
+        Some("tsv") => SageData::parse_file(path, custom_database, keep_all_columns, None)
             .map(IdentifiedPeptidoformIter::into_box)
-            .or_else(|me| {
-                SageData::parse_file(path, custom_database, keep_all_columns, None)
-                    .map(IdentifiedPeptidoformIter::into_box)
-                    .map_err(|se| (me, se))
-            })
-            .or_else(|(me, se)| {
+            .or_else(|se| {
                 PepNetData::parse_file(path, custom_database, keep_all_columns, None)
                     .map(IdentifiedPeptidoformIter::into_box)
-                    .map_err(|pe| (me, se, pe))
+                    .map_err(|pe| (se, pe))
             })
-            .map_err(|(me, se, pe)| {
+            .or_else(|(se, pe)| {
+                MSFraggerData::parse_file(path, custom_database, keep_all_columns, None)
+                    .map(IdentifiedPeptidoformIter::into_box)
+                    .map_err(|mfe| (se, pe, mfe))
+            })
+            .map_err(|(se, pe, mfe)| {
                 CustomError::error(
                     "Unknown file format",
-                    "Could not be recognised a MSFragger, PepNet or Sage file",
+                    "Could not be recognised a Sage, PepNet, or MSFragger file",
                     Context::show(path.to_string_lossy()),
                 )
-                .with_underlying_errors(vec![me, se, pe])
+                .with_underlying_errors(vec![se, pe, mfe])
             }),
         Some("psmtsv") => {
             OpairData::parse_file(path, custom_database, keep_all_columns, None).map(IdentifiedPeptidoformIter::into_box)
@@ -140,7 +135,6 @@ pub fn open_identified_peptides_file<'a>(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::identification::{FragPipeVersion, SageVersion, test_format};
     use std::fs::File;
     use std::io::BufReader;
 
@@ -163,12 +157,12 @@ mod tests {
 
     #[test]
     fn open_msfragger() {
-        match test_format::<FragpipeData>(
+        match test_format::<MSFraggerData>(
             BufReader::new(File::open("src/identification/test_files/msfragger_v21.tsv").unwrap()),
             None,
             true,
             false,
-            Some(FragPipeVersion::V20Or21),
+            Some(MSFraggerVersion::FragPipeV20Or21),
         ) {
             Ok(n) => assert_eq!(n, 19),
             Err(e) => {

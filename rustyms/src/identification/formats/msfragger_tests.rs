@@ -2,19 +2,36 @@
 use std::io::BufReader;
 
 use crate::{
-    identification::{FragPipeVersion, FragpipeData, test_format},
+    identification::{MSFraggerData, MSFraggerVersion, test_format},
     sequence::SimpleModificationInner,
     system::OrderedMass,
 };
 
 #[test]
-fn fragpipe_v21_a() {
-    match test_format::<FragpipeData>(
-        BufReader::new(DATA_V21_a.as_bytes()),
+fn msfragger_v4_2() {
+    match test_format::<MSFraggerData>(
+        BufReader::new(DATA_MSFRAGGER_V4_2.as_bytes()),
         None,
         true,
         false,
-        Some(FragPipeVersion::V20Or21),
+        Some(MSFraggerVersion::V4_2),
+    ) {
+        Ok(n) => assert_eq!(n, 17),
+        Err(e) => {
+            println!("{e}");
+            panic!("Failed identified peptides test");
+        }
+    }
+}
+
+#[test]
+fn fragpipe_v21_a() {
+    match test_format::<MSFraggerData>(
+        BufReader::new(DATA_FRAGIPE_V21_A.as_bytes()),
+        None,
+        true,
+        false,
+        Some(MSFraggerVersion::FragPipeV20Or21),
     ) {
         Ok(n) => assert_eq!(n, 19),
         Err(e) => {
@@ -26,12 +43,12 @@ fn fragpipe_v21_a() {
 
 #[test]
 fn fragpipe_v21_b() {
-    match test_format::<FragpipeData>(
-        BufReader::new(DATA_V21_B.as_bytes()),
+    match test_format::<MSFraggerData>(
+        BufReader::new(DATA_FRAGPIPE_V21_B.as_bytes()),
         None,
         true,
         false,
-        Some(FragPipeVersion::V20Or21),
+        Some(MSFraggerVersion::FragPipeV20Or21),
     ) {
         Ok(n) => assert_eq!(n, 19),
         Err(e) => {
@@ -43,12 +60,12 @@ fn fragpipe_v21_b() {
 
 #[test]
 fn fragpipe_v21_c() {
-    match test_format::<FragpipeData>(
-        BufReader::new(DATA_V21_C.as_bytes()),
+    match test_format::<MSFraggerData>(
+        BufReader::new(DATA_FRAGPIPE_V21_C.as_bytes()),
         None,
         true,
         false,
-        Some(FragPipeVersion::V20Or21),
+        Some(MSFraggerVersion::FragPipeV20Or21),
     ) {
         Ok(n) => assert_eq!(n, 19),
         Err(e) => {
@@ -60,12 +77,12 @@ fn fragpipe_v21_c() {
 
 #[test]
 fn fragpipe_philosopher_a() {
-    match test_format::<FragpipeData>(
+    match test_format::<MSFraggerData>(
         BufReader::new(DATA_PHILOSOPHER_A.as_bytes()),
         None,
         true,
         false,
-        Some(FragPipeVersion::Philosopher),
+        Some(MSFraggerVersion::Philosopher),
     ) {
         Ok(n) => assert_eq!(n, 19),
         Err(e) => {
@@ -77,12 +94,12 @@ fn fragpipe_philosopher_a() {
 
 #[test]
 fn fragpipe_philosopher_b() {
-    match test_format::<FragpipeData>(
+    match test_format::<MSFraggerData>(
         BufReader::new(DATA_PHILOSOPHER_B.as_bytes()),
         None,
         true,
         false,
-        Some(FragPipeVersion::Philosopher),
+        Some(MSFraggerVersion::Philosopher),
     ) {
         Ok(n) => assert_eq!(n, 19),
         Err(e) => {
@@ -94,12 +111,12 @@ fn fragpipe_philosopher_b() {
 
 #[test]
 fn fragpipe_philosopher_c() {
-    match test_format::<FragpipeData>(
+    match test_format::<MSFraggerData>(
         BufReader::new(DATA_PHILOSOPHER_C.as_bytes()),
         None,
         true,
         false,
-        Some(FragPipeVersion::Philosopher),
+        Some(MSFraggerVersion::Philosopher),
     ) {
         Ok(n) => assert_eq!(n, 19),
         Err(e) => {
@@ -111,8 +128,8 @@ fn fragpipe_philosopher_c() {
 
 #[test]
 fn fragpipe_v21_manual() {
-    match test_format::<FragpipeData>(
-        BufReader::new(DATA_V21_MANUAL.as_bytes()),
+    match test_format::<MSFraggerData>(
+        BufReader::new(DATA_FRAGPIPE_V21_MANUAL.as_bytes()),
         Some(&vec![(
             Some(0),
             "DB14".to_string(),
@@ -120,7 +137,7 @@ fn fragpipe_v21_manual() {
         )]),
         true,
         false,
-        Some(FragPipeVersion::V20Or21),
+        Some(MSFraggerVersion::FragPipeV20Or21),
     ) {
         Ok(n) => assert_eq!(n, 19),
         Err(e) => {
@@ -132,12 +149,12 @@ fn fragpipe_v21_manual() {
 
 #[test]
 fn fragpipe_v22() {
-    match test_format::<FragpipeData>(
-        BufReader::new(DATA_V22.as_bytes()),
+    match test_format::<MSFraggerData>(
+        BufReader::new(DATA_FRAGPIPE_V22.as_bytes()),
         None,
         false,
         false,
-        Some(FragPipeVersion::V22),
+        Some(MSFraggerVersion::FragPipeV22),
     ) {
         Ok(n) => assert_eq!(n, 19),
         Err(e) => {
@@ -147,7 +164,26 @@ fn fragpipe_v22() {
     }
 }
 
-const DATA_V21_MANUAL: &str = r"Spectrum	Spectrum File	Peptide	Modified Peptide	Extended Peptide	Prev AA	Next AA	Peptide Length	Charge	Retention	Observed Mass	Calibrated Observed Mass	Observed M/Z	Calibrated Observed M/Z	Calculated Peptide Mass	Calculated M/Z	Delta Mass	Expectation	Hyperscore	Nextscore	PeptideProphet Probability	Number of Enzymatic Termini	Number of Missed Cleavages	Protein Start	Protein End	Intensity	Assigned Modifications	Observed Modifications	Purity	Is Unique	Protein	Protein ID	Entry Name	Gene	Protein Description	Mapped Genes	Mapped Proteins	condition	group
+const DATA_MSFRAGGER_V4_2: &str = r"scannum	precursor_neutral_mass	retention_time	charge	ion_mobility	compensation_voltage	hit_rank	peptide	peptide_prev_aa	peptide_next_aa	proteins	num_matched_ions	tot_num_ions	calc_neutral_pep_mass	massdiff	num_tol_term	num_missed_cleavages	modification_info	hyperscore	nextscore	expectscore	best_locs	score_without_delta_mass	best_score_with_delta_mass	second_best_score_with_delta_mass	delta_score	localization_scores	fragments	fragment_intensities
+2073	3074.595215	13.622361	6	-1.000000	0	1	EVQLVESGGGLVQPGGSLRLSCAASGF	-	N	Herceptin	8	52	2718.333008	356.262207	2	0	N-term(43.006), 22C(58.01)	15.180000	15.180000	1.173679e+00	EVQLVESGGGLVQPGGSLRLSCAASGf	13.634319	15.180876	14.711061	0.469814	E(2.51)V(2.51)Q(2.51)L(5.32)V(5.32)E(6.67)S(6.67)G(6.67)G(8.16)G(8.16)L(8.16)V(11.10)Q(12.83)P(14.71)G(14.71)G(14.71)S(14.71)L(14.71)R(14.71)L(14.71)S(14.71)C(14.71)A(14.71)A(14.71)S(13.26)G(13.26)F(15.18)	nterm3^1;nterm5^1;nterm11^1;nterm12^1;nterm13^1;cterm1^1;cterm3^1;	16.61;15.34;12.93;18.18;19.65;9.94;12.28;
+2074	3074.595215	13.628484	6	-1.000000	0	1	MKMKMKLASFGLAAGLAAQVFLPY	-	N	sp|P00800|THER_BACTH Thermolysin OS=Bacillus thermoproteolyticus OX=1427 GN=npr PE=1 SV=3	9	46	2618.367432	456.227783	2	2	1M(15.9949), 3M(15.9949), 19Q(0.984)	16.295000	16.295000	3.558361e-01	MkmkmKLASFGLAAGLAAQVFLPY	16.295948	13.641782	11.809835	1.831946	M(11.81)K(13.64)M(13.64)K(13.64)M(13.64)K(11.80)L(11.80)A(11.80)S(9.80)F(6.48)G(6.48)L(4.92)A(4.92)A(4.92)G(4.92)L(4.92)A(6.14)A(6.14)Q(6.14)V(6.75)F(9.85)L(9.85)P(9.85)Y(9.85)	nterm8^1;nterm16^1;nterm19^1;nterm20^1;cterm5^1;cterm13^1;cterm15^1;cterm16^1;cterm19^1;	6.43;4.49;15.67;5.30;5.33;6.16;100.00;11.94;6.66;
+2075	3339.747070	13.636062	6	-1.000000	0	1	SVTRGATKGFVTAGHCGTVNATARIGGAVVGTF	F	A	sp|P00778|PRLA_LYSEN Alpha-lytic protease OS=Lysobacter enzymogenes OX=69 GN=alpha-LP PE=1 SV=3	9	64	3221.629395	118.117676	2	1	16C(58.01), 20N(0.984)	17.301001	15.949000	6.305940e-02	SVtRGATKGFVTAGHCGTVNATARIGGAVVGTF	15.715557	17.301384	16.949642	0.351742	S(15.67)V(15.67)T(17.30)R(15.38)G(15.38)A(15.38)T(15.38)K(15.38)G(15.38)F(15.38)V(15.38)T(16.95)A(16.95)G(16.95)H(15.36)C(15.36)G(13.48)T(11.90)V(11.90)N(10.44)A(10.44)T(10.44)A(10.44)R(10.44)I(10.44)G(9.32)G(9.32)A(5.97)V(5.97)V(5.97)G(4.41)T(4.41)F(4.41)	nterm2^1;cterm1^1;cterm6^1;cterm8^1;cterm14^1;cterm16^1;cterm17^1;cterm30^1;	27.56;13.92;28.29;15.10;18.83;13.52;23.21;13.86;
+2076	3339.747070	13.641664	6	-1.000000	0	1	PEPVTVSWNSGALTSGVHTFPAVLQSSGLY	F	S	Herceptin	10	58	3101.534424	238.212646	2	2	25Q(0.984)	17.992001	17.660000	2.382319e-01	pepvtvswNSGALTSGVHTFPAVLQSSGLY	13.115881	17.992252	16.078070	1.914183	P(17.99)E(17.99)P(17.99)V(17.99)T(17.99)V(17.99)S(17.99)W(17.99)N(16.08)S(12.52)G(12.52)A(14.39)L(14.39)T(12.62)S(12.62)G(10.74)V(10.74)H(10.74)T(10.72)F(7.67)P(7.67)A(7.67)V(4.09)L(6.23)Q(6.23)S(6.23)S(6.23)G(6.23)L(6.23)Y(6.23)	cterm8^1;cterm11^1;cterm12^1;cterm21^1;	10.14;12.46;14.58;17.42;
+2077	2421.281982	13.649193	5	-1.000000	0	1	GVSVVGIGRDKLGKIFYRALTQY	Y	L	sp|P00800|THER_BACTH Thermolysin OS=Bacillus thermoproteolyticus OX=1427 GN=npr PE=1 SV=3	9	44	2540.411133	-119.129150	2	2	22Q(0.984)	16.985001	15.099000	1.323203e+00	GVSVVGIGRDKLGKIFYRALtqy	16.985483	13.163342	11.085098	2.078243	G(3.82)V(3.82)S(6.62)V(8.19)V(9.63)G(9.63)I(9.63)G(8.20)R(9.77)D(9.16)K(9.16)L(9.16)G(9.16)K(9.16)I(9.16)F(9.16)Y(9.16)R(9.16)A(9.16)L(11.09)T(13.16)Q(13.16)Y(13.16)	nterm2^1;nterm3^1;nterm4^1;nterm8^1;nterm9^1;nterm19^1;cterm16^1;	16.44;22.90;16.09;10.67;13.32;11.13;11.85;
+2078	2421.281982	13.654797	5	-1.000000	0	1	NIKDTYIHWVRQAPGKGLEW	F	V	Herceptin	8	38	2411.238281	10.043701	2	2	1N(0.984)	14.759000	14.406000	1.531969e-01	NIkdTYIHWVRQAPGKGLEW	3.930607	14.759321	12.911961	1.847361	N(11.58)I(12.91)K(14.76)D(14.76)T(12.33)Y(12.33)I(12.33)H(12.33)W(12.33)V(8.99)R(8.99)Q(8.99)A(8.99)P(8.99)G(7.34)K(7.34)G(5.37)L(5.37)E(5.37)W(3.82)	nterm2^1;	4.75;
+2079	2984.622559	13.662412	5	-1.000000	0	1	EVQLVESGGGLVQPGGSLRLSCAASGF	-	N	Herceptin	10	52	2718.333008	266.289551	2	0	N-term(43.006), 22C(58.01)	18.666000	18.666000	6.124251e-02	EVQLVESGGGLVQPGGSLRlscaASGF	13.987984	18.666733	17.028152	1.638580	E(2.64)V(2.64)Q(2.64)L(5.83)V(6.97)E(8.46)S(8.46)G(8.46)G(8.46)G(9.88)L(9.88)V(11.50)Q(14.98)P(17.01)G(17.01)G(17.01)S(17.01)L(17.01)R(17.01)L(18.67)S(18.67)C(18.67)A(18.67)A(17.03)S(17.03)G(17.03)F(17.03)	nterm3^1;nterm4^1;nterm5^1;nterm11^1;nterm12^1;nterm13^1;cterm1^1;cterm4^1;	24.27;13.63;18.12;14.44;22.57;25.03;13.09;13.98;
+2080	2984.622559	13.667996	5	-1.000000	0	1	SNPNISYDIGPDNQRVLVNTKATIAAFR	W	-	sp|Q9R4J4|ASPN_PSEFR Peptidyl-Asp metalloendopeptidase (Fragment) OS=Pseudomonas fragi OX=296 PE=1 SV=2	12	54	3074.578369	-89.955811	2	2	4N(0.984)	23.254000	20.825001	3.643343e-03	SNPNISYdigpdnqrVLVNTKATIAAFR	7.289518	23.254360	21.788605	1.465755	S(14.25)N(14.25)P(16.19)N(18.23)I(18.69)S(20.84)Y(20.84)D(23.25)I(23.25)G(23.25)P(23.25)D(23.25)N(23.25)Q(23.25)R(23.25)V(21.79)L(17.96)V(15.69)N(11.31)T(9.42)K(9.42)A(9.42)T(9.42)I(9.42)A(9.42)A(9.42)F(9.42)R(9.42)	nterm3^1;cterm9^1;cterm10^1;	23.13;10.99;13.39;
+2081	3074.596680	13.675592	5	-1.000000	0	1	EVQLVESGGGLVQPGGSLRLSCAASGF	-	N	Herceptin	10	52	2718.333008	356.263672	2	0	N-term(43.006), 22C(58.01)	18.969999	18.969999	1.132468e-01	EVQLVESGGGLVQPGgslrlscaASGF	13.521492	18.970741	17.031956	1.938786	E(6.36)V(6.36)Q(6.36)L(8.17)V(8.17)E(10.11)S(8.86)G(8.86)G(10.55)G(10.55)L(10.55)V(10.55)Q(13.52)P(16.96)G(16.96)G(18.97)S(18.97)L(18.97)R(18.97)L(18.97)S(18.97)C(18.97)A(18.97)A(17.03)S(15.24)G(15.24)F(16.95)	nterm3^1;nterm5^1;nterm12^1;cterm1^1;cterm3^1;cterm4^1;	24.34;47.91;20.20;13.44;12.43;11.92;
+2082	3074.596680	13.681194	5	-1.000000	0	1	EVQLVESGGGLVQPGGSLRLSCAASGF	-	N	Herceptin	11	52	2718.333008	356.263672	2	0	N-term(43.006), 22C(58.01)	20.871000	18.868000	2.554171e-02	EVQLVESGGGLVQPGGSLRLSCAAsgf	13.381529	20.871445	18.959259	1.912186	E(3.56)V(3.56)Q(3.56)L(3.56)V(3.56)E(7.82)S(9.06)G(9.06)G(10.33)G(10.33)L(10.33)V(10.33)Q(12.85)P(15.97)G(13.90)G(17.25)S(17.25)L(17.25)R(17.25)L(17.25)S(18.96)C(18.96)A(18.96)A(18.96)S(20.87)G(20.87)F(20.87)	nterm5^1;nterm12^1;nterm20^1;cterm13^1;	70.48;23.09;15.10;35.26;
+2084	2421.280762	13.689959	6	-1.000000	0	1	VTAGHCGTVNATARIGGAVVGTF	F	A	sp|P00778|PRLA_LYSEN Alpha-lytic protease OS=Lysobacter enzymogenes OX=69 GN=alpha-LP PE=1 SV=3	8	44	2217.089111	204.191650	2	0	6C(58.01), 10N(0.984)	14.426000	13.369000	5.868135e-01	VTaghcgtVNATARIGGAVVGTF	7.956926	14.426064	12.985670	1.440394	V(12.61)T(12.61)A(14.43)G(14.43)H(14.43)C(14.43)G(14.43)T(14.43)V(12.99)N(12.99)A(9.47)T(9.47)A(9.47)R(9.47)I(9.47)G(9.47)G(9.47)A(10.02)V(8.36)V(6.97)G(6.97)T(6.97)F(5.73)	nterm2^1;nterm4^1;cterm6^1;cterm13^1;cterm15^1;	15.50;10.13;11.52;10.30;8.89;
+2085	2421.280762	13.696097	6	-1.000000	0	1	LQTEKLARTQAAAIEREFGAQF	Y	A	sp|P00778|PRLA_LYSEN Alpha-lytic protease OS=Lysobacter enzymogenes OX=69 GN=alpha-LP PE=1 SV=3	8	42	2477.302490	-56.021729	2	1		15.654000	15.654000	9.151661e-02	LQTEKLARTQAAAIEREFGAqF	10.463713	15.654007	13.701187	1.952820	L(6.96)Q(9.38)T(7.81)E(7.42)K(7.42)L(7.42)A(7.42)R(7.42)T(8.82)Q(8.82)A(8.82)A(10.23)A(11.91)I(11.91)E(11.91)R(11.91)E(11.91)F(11.91)G(11.91)A(13.70)Q(15.65)F(13.65)	nterm8^1;nterm11^1;nterm12^1;nterm19^1;nterm20^1;cterm21^1;	11.62;8.48;10.65;8.57;8.87;6.06;
+2086	3056.634277	13.703659	6	-1.000000	0	1	EVQLVESGGGLVQPGGSLRLSCAASGF	-	N	Herceptin	11	52	2718.333008	338.301270	2	0	N-term(43.006), 22C(58.01)	20.298000	20.298000	7.885799e-03	EVQLVESGGglVQPGGSLRLSCAASGF	12.884904	20.298710	18.737375	1.561335	E(11.08)V(11.08)Q(11.08)L(12.89)V(14.68)E(16.65)S(18.74)G(18.74)G(18.74)G(20.30)L(20.30)V(18.18)Q(18.18)P(18.18)G(14.50)G(14.50)S(14.50)L(14.50)R(14.50)L(14.50)S(14.50)C(14.50)A(14.50)A(13.18)S(11.24)G(11.24)F(9.44)	nterm1^1;nterm3^1;nterm4^1;nterm5^1;nterm6^1;cterm3^1;cterm4^1;	15.99;17.00;10.19;11.40;10.83;26.37;8.93;
+2087	3056.634277	13.709265	6	-1.000000	0	1	SNPNISYDIGPDNQRVLVNTKATIAAFR	W	-	sp|Q9R4J4|ASPN_PSEFR Peptidyl-Asp metalloendopeptidase (Fragment) OS=Pseudomonas fragi OX=296 PE=1 SV=2	11	54	3074.578369	-17.944092	2	2	4N(0.984)	20.537001	18.224001	1.740804e-02	SNPNISYdigpdnqrvLVNTKATIAAFR	11.015579	20.537373	18.165089	2.372284	S(12.41)N(14.25)P(13.80)N(15.92)I(18.17)S(18.17)Y(18.17)D(20.54)I(20.54)G(20.54)P(20.54)D(20.54)N(20.54)Q(20.54)R(20.54)V(20.54)L(16.79)V(14.65)N(10.74)T(8.75)K(8.75)A(8.75)T(8.75)I(8.75)A(8.75)A(8.75)F(8.75)R(10.70)	nterm3^1;cterm9^1;cterm10^1;cterm11^1;cterm26^1;	7.51;11.61;8.02;4.55;43.89;
+2088	3249.761719	13.716792	6	-1.000000	0	1	AARVFPGNDRAWVSLTSAQTLLPRVANGSSF	F	V	sp|P00778|PRLA_LYSEN Alpha-lytic protease OS=Lysobacter enzymogenes OX=69 GN=alpha-LP PE=1 SV=3	9	60	3287.716309	-37.954590	2	2		18.084000	16.794001	1.270574e-01	AARVFPGNDRawvsLTSAQTLLPRVANGSSF	10.518867	18.084278	16.064968	2.019310	A(7.91)A(7.91)R(7.91)V(11.79)F(13.57)P(13.57)G(13.57)N(15.53)D(15.53)R(15.53)A(18.08)W(18.08)V(18.08)S(18.08)L(16.06)T(14.20)S(14.20)A(14.20)Q(14.20)T(14.20)L(14.20)L(14.20)P(14.20)R(14.20)V(14.20)A(14.20)N(12.48)G(12.48)S(11.46)S(11.46)F(11.46)	nterm3^1;nterm4^1;nterm7^1;nterm10^1;cterm1^1;cterm2^1;cterm3^1;	27.08;12.38;13.43;76.67;12.05;13.33;11.90;
+2089	3249.761719	13.722396	6	-1.000000	0	1	AARVFPGNDRAWVSLTSAQTLLPRVANGSSF	F	V	sp|P00778|PRLA_LYSEN Alpha-lytic protease OS=Lysobacter enzymogenes OX=69 GN=alpha-LP PE=1 SV=3	8	60	3288.700195	-38.938477	2	2	27N(0.984)	15.656000	14.898000	1.625549e-01	AARVFPGNDRAWVSLTSAQTLLPRvaNGSSF	10.377532	15.656677	15.646425	0.010252	A(7.52)A(7.52)R(7.26)V(10.92)F(12.76)P(12.76)G(12.76)N(12.76)D(12.76)R(12.76)A(15.65)W(15.65)V(15.65)S(15.65)L(15.65)T(13.81)S(13.81)A(13.81)Q(13.81)T(13.81)L(13.81)L(13.81)P(13.81)R(13.81)V(15.66)A(15.66)N(13.77)G(12.09)S(12.09)S(12.09)F(12.09)	nterm3^1;nterm4^1;nterm10^1;nterm24^1;	10.07;10.24;96.58;8.09;
+2090	3265.765869	13.729992	6	-1.000000	0	1	SVTRGATKGFVTAGHCGTVNATARIGGAVVGTF	F	A	sp|P00778|PRLA_LYSEN Alpha-lytic protease OS=Lysobacter enzymogenes OX=69 GN=alpha-LP PE=1 SV=3	13	64	3220.645508	45.120361	2	1	16C(58.01)	25.290001	21.485001	1.128495e-03	SVTRGATKGFVTAGHCGTVNatarigGAVVGTF	25.290951	19.515972	19.084858	0.431114	S(15.28)V(13.26)T(14.27)R(12.49)G(13.84)A(13.84)T(15.40)K(15.40)G(15.40)F(15.40)V(15.40)T(15.40)A(17.20)G(17.20)H(15.38)C(15.38)G(17.14)T(17.14)V(17.14)N(19.08)A(19.52)T(19.52)A(19.52)R(19.52)I(19.52)G(19.52)G(18.13)A(16.45)V(16.45)V(16.45)G(14.15)T(14.15)F(16.74)	nterm2^1;nterm4^1;nterm6^1;nterm16^1;cterm6^1;cterm7^1;cterm13^1;cterm30^1;	17.78;18.76;15.90;16.05;29.26;15.79;20.60;15.61;";
+
+const DATA_FRAGPIPE_V21_MANUAL: &str = r"Spectrum	Spectrum File	Peptide	Modified Peptide	Extended Peptide	Prev AA	Next AA	Peptide Length	Charge	Retention	Observed Mass	Calibrated Observed Mass	Observed M/Z	Calibrated Observed M/Z	Calculated Peptide Mass	Calculated M/Z	Delta Mass	Expectation	Hyperscore	Nextscore	PeptideProphet Probability	Number of Enzymatic Termini	Number of Missed Cleavages	Protein Start	Protein End	Intensity	Assigned Modifications	Observed Modifications	Purity	Is Unique	Protein	Protein ID	Entry Name	Gene	Protein Description	Mapped Genes	Mapped Proteins	condition	group
 20240621_EX2_UM2_6579035_SA_EXT00_SS25_1A_Alk14_R1.21346.21346.2	D:\06-June\6579035\SS25\MSFragger_4-24\1_alk14_1\interact.pep.xml	GAQLSGGR	n[621]GAQLSGGR	.GAQLSGGR.GAPEPAQT	M	G	8	2	1811.7999	1364.8169	1364.8121	683.4157	683.4133	1364.814	683.4143	-0.0018	1.449549e-05	24.446	10.854	1	2	0	2	9	478745568	N-term(DB14 (N-term))		0	true	sp|A0A0U1RRL7|MMPOS_HUMAN	A0A0U1RRL7	MMPOS_HUMAN	MMP24OS	Protein MMP24OS			1_alk14_1	1_alk14
 20240621_EX2_UM2_6579035_SA_EXT00_SS25_1B_Alk14_R2.20911.20911.2	D:\06-June\6579035\SS25\MSFragger_4-24\1_alk14_2\interact.pep.xml	GAQLSGGR	n[621]GAQLSGGR	.GAQLSGGR.GAPEPAQT	M	G	8	2	1812.5955	1364.8169	1364.8116	683.4157	683.4131	1364.814	683.4143	-0.0023	1.071478e-05	24.441	10.843	1	2	0	2	9	405120480	N-term(DB14 (N-term))		0	true	sp|A0A0U1RRL7|MMPOS_HUMAN	A0A0U1RRL7	MMPOS_HUMAN	MMP24OS	Protein MMP24OS			1_alk14_2	1_alk14
 20240621_EX2_UM2_6579035_SA_EXT00_SS25_1C_Alk14_R3.20941.20941.2	D:\06-June\6579035\SS25\MSFragger_4-24\1_alk14_3\interact.pep.xml	GAQLSGGR	n[621]GAQLSGGR	.GAQLSGGR.GAPEPAQT	M	G	8	2	1815.257	1364.8164	1364.8118	683.4155	683.4132	1364.814	683.4143	-0.0022	0.0001124486	22.515	11.357	1	2	0	2	9	336166400	N-term(DB14 (N-term))		0	true	sp|A0A0U1RRL7|MMPOS_HUMAN	A0A0U1RRL7	MMPOS_HUMAN	MMP24OS	Protein MMP24OS			1_alk14_3	1_alk14
@@ -168,7 +204,7 @@ const DATA_V21_MANUAL: &str = r"Spectrum	Spectrum File	Peptide	Modified Peptide	
 20240621_EX2_UM2_6579035_SA_EXT00_SS25_4B_Alk16_PalmB_R1.15533.15533.4	D:\06-June\6579035\SS25\MSFragger_4-24\4_alk16_PalmB_1\interact.pep.xml	GSRVSREDFEWVYTDQPHADR	n[621]GSRVSREDFEWVYTDQPHADR	.GSRVSREDFEWVYTDQPHADR.RREIIAKY	M	R	21	4	1397.6398	3169.6094	3169.615	793.4096	793.411	3169.5945	793.4059	0.0205	0.0001729633	22.886	14.728	1	2	2	2	22	18261846	N-term(DB14 (N-term))		0	true	sp|O15121|DEGS1_HUMAN	O15121	DEGS1_HUMAN	DEGS1	Sphingolipid delta(4)-desaturase DES1			4_alk16_PalmB_1	4_alk16_PalmB
 20240621_EX2_UM2_6579035_SA_EXT00_SS25_5A_Alk16_Pal_R1.15538.15538.4	D:\06-June\6579035\SS25\MSFragger_4-24\5_alk16_Pal_1\interact.pep.xml	GSRVSREDFEWVYTDQPHADR	n[621]GSRVSREDFEWVYTDQPHADR	.GSRVSREDFEWVYTDQPHADR.RREIIAKY	M	R	21	4	1399.581	3169.5972	3169.6016	793.4066	793.4077	3169.5945	793.4059	0.007	2.785583e-08	29.282	12.917	1	2	2	2	22	23077696	N-term(DB14 (N-term))		0	true	sp|O15121|DEGS1_HUMAN	O15121	DEGS1_HUMAN	DEGS1	Sphingolipid delta(4)-desaturase DES1			5_alk16_Pal_1	5_alk16_Pal";
 
-const DATA_V21_a: &str = r"Spectrum	Spectrum File	Peptide	Modified Peptide	Extended Peptide	Prev AA	Next AA	Peptide Length	Charge	Retention	Observed Mass	Calibrated Observed Mass	Observed M/Z	Calibrated Observed M/Z	Calculated Peptide Mass	Calculated M/Z	Delta Mass	Expectation	Hyperscore	Nextscore	PeptideProphet Probability	Number of Enzymatic Termini	Number of Missed Cleavages	Protein Start	Protein End	Intensity	Assigned Modifications	Observed Modifications	Purity	Is Unique	Protein	Protein ID	Entry Name	Gene	Protein Description	Mapped Genes	Mapped Proteins
+const DATA_FRAGIPE_V21_A: &str = r"Spectrum	Spectrum File	Peptide	Modified Peptide	Extended Peptide	Prev AA	Next AA	Peptide Length	Charge	Retention	Observed Mass	Calibrated Observed Mass	Observed M/Z	Calibrated Observed M/Z	Calculated Peptide Mass	Calculated M/Z	Delta Mass	Expectation	Hyperscore	Nextscore	PeptideProphet Probability	Number of Enzymatic Termini	Number of Missed Cleavages	Protein Start	Protein End	Intensity	Assigned Modifications	Observed Modifications	Purity	Is Unique	Protein	Protein ID	Entry Name	Gene	Protein Description	Mapped Genes	Mapped Proteins
 20240206_EX1_UM3_6579035_SA_EXT00_SS16_pH7p5-single_res30k.03832.03832.3	D:\02-February\6579035\SS16\MSFragger3\4_res30k_1\interact.pep.xml	QVHPDTGISSK		VYVYKVIK.QVHPDTGISSK.AMGIMNSF	K	A	11	3	503.3970	1167.5969	1167.5906	390.2062	390.2041	1167.5884	390.2034	0.0022	0.00026471960000	21.3860	11.0140	0.9999	2	0	48	58	1.1243405E7			0.00	false	sp|O60814|H2B1K_HUMAN	O60814	H2B1K_HUMAN	H2BC12	Histone H2B type 1-K	H2BC1, H2BC11, H2BC12L, H2BC13, H2BC14, H2BC15, H2BC17, H2BC18, H2BC21, H2BC26, H2BC3, H2BC4, H2BC5, H2BC9	sp|P06899|H2B1J_HUMAN, sp|P23527|H2B1O_HUMAN, sp|P33778|H2B1B_HUMAN, sp|P57053|H2BFS_HUMAN, sp|P58876|H2B1D_HUMAN, sp|P62807|H2B1C_HUMAN, sp|Q16778|H2B2E_HUMAN, sp|Q5QNW6|H2B2F_HUMAN, sp|Q8N257|H2B3B_HUMAN, sp|Q93079|H2B1H_HUMAN, sp|Q96A08|H2B1A_HUMAN, sp|Q99877|H2B1N_HUMAN, sp|Q99879|H2B1M_HUMAN, sp|Q99880|H2B1L_HUMAN
 20240206_EX1_UM3_6579035_SA_EXT00_SS16_pH7p5-single_res30k.03833.03833.4	D:\02-February\6579035\SS16\MSFragger3\4_res30k_1\interact.pep.xml	LAQHITYVHQHSR		PDRDNDIR.LAQHITYVHQHSR.QPPSQFEP	R	Q	13	4	503.4661	1588.8329	1588.8269	398.2155	398.2140	1588.8221	398.2128	0.0047	0.00001598673000	26.5640	11.3860	0.9924	2	0	533	545	3841888.2			0.00	true	sp|P33993|MCM7_HUMAN	P33993	MCM7_HUMAN	MCM7	DNA replication licensing factor MCM7		
 20240206_EX1_UM3_6579035_SA_EXT00_SS16_pH7p5-single_res30k.03835.03835.3	D:\02-February\6579035\SS16\MSFragger3\4_res30k_1\interact.pep.xml	RVHPVSTMIK	RVHPVSTM[147]IK	ESIMKNIR.RVHPVSTMIK.GIYGIKDD	R	G	10	3	503.6042	1182.6621	1182.6564	395.2280	395.2261	1182.6542	395.2253	0.0022	0.05410656000000	15.5670	9.7440	0.9549	2	0	269	278	2613044.5	8M(15.9949)		0.00	true	sp|P00338|LDHA_HUMAN	P00338	LDHA_HUMAN	LDHA	L-lactate dehydrogenase A chain		
@@ -190,7 +226,7 @@ const DATA_V21_a: &str = r"Spectrum	Spectrum File	Peptide	Modified Peptide	Exten
 20240206_EX1_UM3_6579035_SA_EXT00_SS16_pH7p5-single_res30k.03926.03926.3	D:\02-February\6579035\SS16\MSFragger3\4_res30k_1\interact.pep.xml	EDSQRPGAHLTVK		EPKRAVSR.EDSQRPGAHLTVK.KIFVGGIK	R	K	13	3	510.5855	1436.7423	1436.7379	479.9214	479.9199	1436.7370	479.9196	0.0008	0.03654860000000	15.5510	11.6570	0.9056	2	1	93	105	655305.7			0.00	false	sp|P09651|ROA1_HUMAN	P09651	ROA1_HUMAN	HNRNPA1	Heterogeneous nuclear ribonucleoprotein A1	HNRNPA1L2	sp|Q32P51|RA1L2_HUMAN";
 
 // Source: RonenGabizon in https://github.com/Nesvilab/FragPipe/issues/1515
-const DATA_V21_B: &str = r"Spectrum	Spectrum File	Peptide	Modified Peptide	Extended Peptide	Prev AA	Next AA	Peptide Length	Charge	Retention	Observed Mass	Calibrated Observed Mass	Observed M/Z	Calibrated Observed M/Z	Calculated Peptide Mass	Calculated M/Z	Delta Mass	SpectralSim	RTScore	Expectation	Hyperscore	Nextscore	PeptideProphet Probability	Number of Enzymatic Termini	Number of Missed Cleavages	Protein Start	Protein End	Intensity	Assigned Modifications	Observed Modifications	Purity	Is Unique	Protein	Protein ID	Entry Name	Gene	Protein Description	Mapped Genes	Mapped Proteins
+const DATA_FRAGPIPE_V21_B: &str = r"Spectrum	Spectrum File	Peptide	Modified Peptide	Extended Peptide	Prev AA	Next AA	Peptide Length	Charge	Retention	Observed Mass	Calibrated Observed Mass	Observed M/Z	Calibrated Observed M/Z	Calculated Peptide Mass	Calculated M/Z	Delta Mass	SpectralSim	RTScore	Expectation	Hyperscore	Nextscore	PeptideProphet Probability	Number of Enzymatic Termini	Number of Missed Cleavages	Protein Start	Protein End	Intensity	Assigned Modifications	Observed Modifications	Purity	Is Unique	Protein	Protein ID	Entry Name	Gene	Protein Description	Mapped Genes	Mapped Proteins
 DMSO.100054.100054.0	D:\Users\Data_Starting_from_20240118\Ronen\24-03-20_MF637peptidebased\analysis\interact-DMSO_rank1.pep.xml	LLQAATNYHNGHTGQLSAITVFLLFGGSLAR		VPAVVVGR.LLQAATNYHNGHTGQLSAITVFLLFGGSLAR.IFTSIQET	R	I	31	4	7634.1390	3269.7197	3269.7197	818.4372	818.4372	3269.7307	818.4400	-0.0109	0.8799	19.4808	0.07303715000000	17.6168	17.6168	0.9846	2	0	170	200	0.0000			0.00	true	sp|O75352|MPU1_HUMAN	O75352	MPU1_HUMAN	MPDU1	Mannose-P-dolichol utilization defect 1 protein		
 DMSO.100154.100154.0	D:\Users\Data_Starting_from_20240118\Ronen\24-03-20_MF637peptidebased\analysis\interact-DMSO_rank1.pep.xml	NVGSAGVTVVIVRDDLLGFALR		VIFAGAQK.NVGSAGVTVVIVRDDLLGFALR.ECPSVIEY	K	E	22	3	7641.8135	2270.2690	2270.2690	757.7636	757.7636	2270.2747	757.7655	-0.0056	0.8306	2.4643	37.18849000000000	11.3840	11.3840	0.9726	2	1	201	222	0.0000			0.00	true	sp|Q9Y617|SERC_HUMAN	Q9Y617	SERC_HUMAN	PSAT1	Phosphoserine aminotransferase		
 DMSO.100166.100166.0	D:\Users\Data_Starting_from_20240118\Ronen\24-03-20_MF637peptidebased\analysis\interact-DMSO_rank1.pep.xml	KNAFASVILFGTNNSSSISGVWVFR		FQRIDKIR.KNAFASVILFGTNNSSSISGVWVFR.GQEIAFPI	R	G	25	3	7642.6426	2700.3950	2700.3950	901.1389	901.1389	2700.4023	901.1414	-0.0073	0.9816	7.3251	0.00000000000003	46.3119	46.3119	0.9953	2	1	354	378	0.0000			0.00	true	sp|P26641|EF1G_HUMAN	P26641	EF1G_HUMAN	EEF1G	Elongation factor 1-gamma		
@@ -212,7 +248,7 @@ DMSO.120282.120282.0	D:\Users\Data_Starting_from_20240118\Ronen\24-03-20_MF637pe
 DMSO.121692.121692.0	D:\Users\Data_Starting_from_20240118\Ronen\24-03-20_MF637peptidebased\analysis\interact-DMSO_rank1.pep.xml	KYSVWIGGSILASLSTFQQMWISK		KIIAPPER.KYSVWIGGSILASLSTFQQMWISK.QEYDESGP	R	Q	24	3	9285.1290	2729.4194	2729.4194	910.8137	910.8137	2729.4250	910.8156	-0.0056	0.9763	0.0644	0.00000000000000	64.1424	64.1424	0.9950	2	1	336	359	0.0000			0.00	false	sp|P60709|ACTB_HUMAN	P60709	ACTB_HUMAN	ACTB	Actin, cytoplasmic 1	ACTA2, ACTBL2, ACTC1, ACTG1, ACTG2	sp|P62736|ACTA_HUMAN, sp|P63261|ACTG_HUMAN, sp|P63267|ACTH_HUMAN, sp|P68032|ACTC_HUMAN, sp|Q562R1|ACTBL_HUMAN";
 
 // Source: Anastasia Yocum in https://github.com/Nesvilab/FragPipe/issues/995
-const DATA_V21_C: &str = r#"Spectrum	Spectrum File	Peptide	Modified Peptide	Prev AA	Next AA	Peptide Length	Charge	Retention	Observed Mass	Calibrated Observed Mass	Observed M/Z	Calibrated Observed M/Z	Calculated Peptide Mass	Calculated M/Z	Delta Mass	SpectralSim	RTScore	Expectation	Hyperscore	Nextscore	PeptideProphet Probability	Number of Enzymatic Termini	Number of Missed Cleavages	Protein Start	Protein End	Intensity	Assigned Modifications	Observed Modifications	M:15.9949	M:15.9949 Best Localization	STY:79.9663	STY:79.9663 Best Localization	Purity	Is Unique	Protein	Protein ID	Entry Name	Gene	Protein Description	Mapped Genes	Mapped Proteins	Quan Usage	MM000919_	MM000919_	MM000919_	MM000919_	MM000919_	MM000919_	MM000919_	MM000919_	MM000919_	MM000919_	MM000919_	MM000919_	MM000919_	MM000919_	MM000919_	MM000919_
+const DATA_FRAGPIPE_V21_C: &str = r#"Spectrum	Spectrum File	Peptide	Modified Peptide	Prev AA	Next AA	Peptide Length	Charge	Retention	Observed Mass	Calibrated Observed Mass	Observed M/Z	Calibrated Observed M/Z	Calculated Peptide Mass	Calculated M/Z	Delta Mass	SpectralSim	RTScore	Expectation	Hyperscore	Nextscore	PeptideProphet Probability	Number of Enzymatic Termini	Number of Missed Cleavages	Protein Start	Protein End	Intensity	Assigned Modifications	Observed Modifications	M:15.9949	M:15.9949 Best Localization	STY:79.9663	STY:79.9663 Best Localization	Purity	Is Unique	Protein	Protein ID	Entry Name	Gene	Protein Description	Mapped Genes	Mapped Proteins	Quan Usage	MM000919_	MM000919_	MM000919_	MM000919_	MM000919_	MM000919_	MM000919_	MM000919_	MM000919_	MM000919_	MM000919_	MM000919_	MM000919_	MM000919_	MM000919_	MM000919_
 MM000917.01311.01311.4	E:\Oshea_UPMC_TreatedOrganoids_phospho\out_Frag\MM000917\interact-MM000917.mod.pep.xml	HSHSHSPMSTR	nHSHS[167]HSPM[147]STR	R	R	11	4	530.7079	1662.7148	1662.7212	416.686	416.6876	1662.7258	416.6887	-0.0046	0.8597	-0.8415	0.02817008	16.589	16.589	1	2	0	94	104	239510.4062	"4S(79.9663), 8M(15.9949), N-term(304.2071)"		HSHSHSPM(1.000)STR	1	HS(0.019)HS(0.477)HS(0.477)PMS(0.014)T(0.013)R	0.477	0.87	TRUE	sp|P62995|TRA2B_HUMAN	P62995	TRA2B_HUMAN	TRA2B	Transformer-2 protein homolog beta			TRUE	1193.2773	1996.0081	1230.5387	981.5432	1162.543	680.6432	1275.1536	1007.7913	916.1712	1264.9233	1233.6211	1751.8347	1485.6498	1365.6246	1466.6675	1149.9076
 MM000917.01346.01346.3	E:\Oshea_UPMC_TreatedOrganoids_phospho\out_Frag\MM000917\interact-MM000917.mod.pep.xml	TSQSHDRR	nTSQS[167]HDRR	R	H	8	3	542.9895	1369.6335	1369.6367	457.5518	457.5528	1369.6423	457.5547	-0.0056	0.44	-0.7237	0.3384543	12.382	0	0.993	2	1	406	413	313112.9375	"4S(79.9663), N-term(304.2071)"				T(0.038)S(0.049)QS(0.913)HDRR	0.913	1	TRUE	sp|Q5T200|ZC3HD_HUMAN	Q5T200	ZC3HD_HUMAN	ZC3H13	Zinc finger CCCH domain-containing protein 13			TRUE	2976.8577	2786.4067	2768.9832	3381.9023	2108.6365	4403.2671	3393.5559	5208.1895	4932.6895	4416.1001	4028.2786	3943.7214	4686.5811	4806.3618	4153.6924	3468.2429
 MM000917.01348.01348.3	E:\Oshea_UPMC_TreatedOrganoids_phospho\out_Frag\MM000917\interact-MM000917.mod.pep.xml	SRSPQRR	nSRS[167]PQRR	R	G	7	3	543.7557	1269.6547	1269.657	424.2255	424.2263	1269.6627	424.2282	-0.0057	0.5995	-0.8248	1.416609	10.895	10.676	0.7368	2	2	525	531	1127217	"3S(79.9663), N-term(304.2071)"				S(0.063)RS(0.937)PQRR	0.937	0.85	TRUE	sp|Q9UQ35|SRRM2_HUMAN	Q9UQ35	SRRM2_HUMAN	SRRM2	Serine/arginine repetitive matrix protein 2			TRUE	13092.167	15978.7285	13607.4463	8751.79	13663.0176	8595.0068	13810.9912	10089.0889	11491.1191	8804.5156	8626.417	11962.0498	14881.4023	13715.4072	10646.5664	11340.6104
@@ -299,7 +335,7 @@ P2-2_1.02950.02950.2	TSYAQHQQVR		10	2	1031.3150	1216.5940	1216.5956	609.3043	609
 P2-2_1.02952.02952.2	SEERAEVAESR		11	2	1031.6240	1261.5862	1261.5876	631.8004	631.8011	1261.5897	631.8021	-0.0028	0.00092940000000	24.5710	12.6130	0.9750	2	1	0.0000	0.0000			true	tr|A7XZE4|A7XZE4_HUMAN	A7XZE4	A7XZE4_HUMAN	TPM2	Beta tropomyosin isoform 			true	1.0000	0.0000	0.0000	0.0000	0.0000	0.0000	0.0000	0.0000	0.0000	0.0000	0.0000
 P2-2_1.02958.02958.3	ARGGNIGDGGGAADR		15	3	1032.6890	1342.6343	1342.6335	448.5520	448.5518	1342.6337	448.5518	-0.0008	0.00000290700000	28.5530	12.2080	1.0000	2	1	0.0000	0.0000			true	sp|P55072|TERA_HUMAN	P55072	TERA_HUMAN	VCP	Transitional endoplasmic reticulum ATPase 			true	1.0000	0.0000	0.0000	0.0000	0.0000	0.0000	0.0000	0.0000	0.0000	0.0000	0.0000";
 
-const DATA_V22: &str = r"Spectrum	Spectrum File	Peptide	Modified Peptide	Extended Peptide	Prev AA	Next AA	Peptide Length	Charge	Retention	Observed Mass	Calibrated Observed Mass	Observed M/Z	Calibrated Observed M/Z	Calculated Peptide Mass	Calculated M/Z	Delta Mass	Expectation	Hyperscore	Nextscore	Probability	Number of Enzymatic Termini	Number of Missed Cleavages	Protein Start	Protein End	Intensity	Assigned Modifications	Observed Modifications	Purity	Is Unique	Protein	Protein ID	Entry Name	Gene	Protein Description	Mapped Genes	Mapped Proteins
+const DATA_FRAGPIPE_V22: &str = r"Spectrum	Spectrum File	Peptide	Modified Peptide	Extended Peptide	Prev AA	Next AA	Peptide Length	Charge	Retention	Observed Mass	Calibrated Observed Mass	Observed M/Z	Calibrated Observed M/Z	Calculated Peptide Mass	Calculated M/Z	Delta Mass	Expectation	Hyperscore	Nextscore	Probability	Number of Enzymatic Termini	Number of Missed Cleavages	Protein Start	Protein End	Intensity	Assigned Modifications	Observed Modifications	Purity	Is Unique	Protein	Protein ID	Entry Name	Gene	Protein Description	Mapped Genes	Mapped Proteins
 20240621_EX2_UM2_6579035_SA_EXT00_SS25_1A_Alk14_R1.04252.04252.2	D:\06-June\6579035\SS25\MSFragger_prenylation_saturation_2\alk14_1\interact.pep.xml	HAVSEGTK		IIPGEIAK.HAVSEGTK.AVTKYTSS	K	A	8	2	484.2465	827.4148	827.4143	414.7147	414.7144	827.4137	414.7141	0.0006	0.02229718000000	12.1070	0.0000	0.9783	2	0	110	117	321365.75			0.00	false	sp|P58876|H2B1D_HUMAN	P58876	H2B1D_HUMAN	H2BC5	Histone H2B type 1-D	H2BC1, H2BC11, H2BC12, H2BC12L, H2BC13, H2BC14, H2BC15, H2BC17, H2BC18, H2BC21, H2BC26, H2BC3, H2BC4, H2BC9, H2BK1	sp|A0A2R8Y619|H2BK1_HUMAN, sp|O60814|H2B1K_HUMAN, sp|P06899|H2B1J_HUMAN, sp|P23527|H2B1O_HUMAN, sp|P33778|H2B1B_HUMAN, sp|P57053|H2BFS_HUMAN, sp|P62807|H2B1C_HUMAN, sp|Q16778|H2B2E_HUMAN, sp|Q5QNW6|H2B2F_HUMAN, sp|Q8N257|H2B3B_HUMAN, sp|Q93079|H2B1H_HUMAN, sp|Q96A08|H2B1A_HUMAN, sp|Q99877|H2B1N_HUMAN, sp|Q99879|H2B1M_HUMAN, sp|Q99880|H2B1L_HUMAN
 20240621_EX2_UM2_6579035_SA_EXT00_SS25_1A_Alk14_R1.04340.04340.4	D:\06-June\6579035\SS25\MSFragger_prenylation_saturation_2\alk14_1\interact.pep.xml	HAVSEGTKAVTKYTSSK		IIPGEIAK.HAVSEGTKAVTKYTSSK.	K	-	17	4	494.4629	1792.9319	1792.9276	449.2403	449.2392	1792.9319	449.2403	-0.0042	0.00000000000000	44.7880	9.8410	1.0000	2	2	110	126	0			0.00	false	sp|P58876|H2B1D_HUMAN	P58876	H2B1D_HUMAN	H2BC5	Histone H2B type 1-D	H2BC1, H2BC13, H2BC14, H2BC15, H2BC17, H2BC18, H2BC21, H2BC26, H2BC3, H2BC4, H2BC9, H2BK1	sp|A0A2R8Y619|H2BK1_HUMAN, sp|P23527|H2B1O_HUMAN, sp|P33778|H2B1B_HUMAN, sp|P62807|H2B1C_HUMAN, sp|Q16778|H2B2E_HUMAN, sp|Q5QNW6|H2B2F_HUMAN, sp|Q8N257|H2B3B_HUMAN, sp|Q93079|H2B1H_HUMAN, sp|Q96A08|H2B1A_HUMAN, sp|Q99877|H2B1N_HUMAN, sp|Q99879|H2B1M_HUMAN, sp|Q99880|H2B1L_HUMAN
 20240621_EX2_UM2_6579035_SA_EXT00_SS25_1A_Alk14_R1.04491.04491.3	D:\06-June\6579035\SS25\MSFragger_prenylation_saturation_2\alk14_1\interact.pep.xml	RMHVQLSTSR		DNTEFQGK.RMHVQLSTSR.LRTAPGMG	K	L	10	3	506.0050	1213.6370	1213.6338	405.5529	405.5519	1213.6349	405.5522	-0.0011	0.00000000032271	22.2990	9.9590	1.0000	2	0	140	149	9287616.0			0.00	false	sp|Q9BWF3|RBM4_HUMAN	Q9BWF3	RBM4_HUMAN	RBM4	RNA-binding protein 4	RBM4B	sp|Q9BQ04|RBM4B_HUMAN
