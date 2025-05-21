@@ -36,11 +36,12 @@ pub struct AlignScoring<'a> {
     ///
     /// Default: -1.
     pub mismatch: i8,
-    /// The score for a step if the amino acids are identical but the mass of the sequence elements
-    /// are not the same. This is the case if either of the peptides has a modification at this
-    /// location.
+    /// The additional score for a step if the amino acids are identical but the mass of the sequence
+    /// elements are not the same. This is the case if either of the peptides has a modification at
+    /// this location. The local score for the step is calculated as follows:
+    /// `matrix_score + mass_mismatch`.
     ///
-    /// Default: 2.
+    /// Default: -1.
     pub mass_mismatch: i8,
     /// The base score for mass based steps, added to both rotated and isobaric steps.
     ///
@@ -84,7 +85,7 @@ impl Default for AlignScoring<'static> {
     fn default() -> Self {
         Self {
             mismatch: -1,
-            mass_mismatch: 2,
+            mass_mismatch: -1,
             mass_base: 1,
             rotated: 3,
             isobaric: 2,

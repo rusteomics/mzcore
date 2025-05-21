@@ -222,7 +222,9 @@ pub(super) fn score_pair<A: AtMax<SimpleLinear>, B: AtMax<SimpleLinear>>(
             Piece::new(score + local, local, MatchType::FullIdentity, 1, 1)
         }
         (true, false) => {
-            let local = scoring.mass_mismatch as isize;
+            let local = scoring.matrix[a.0.aminoacid.aminoacid() as usize]
+                [b.0.aminoacid.aminoacid() as usize] as isize
+                + scoring.mass_mismatch as isize;
             Piece::new(score + local, local, MatchType::IdentityMassMismatch, 1, 1)
         }
         (false, true) => Piece::new(
