@@ -1762,8 +1762,7 @@ impl<Complexity: AtLeast<SimpleLinear>> Peptidoform<Complexity> {
     /// Add an ambiguous modification on the given positions, the placement rules are NOT checked.
     /// The `positions` contains all sequence indices where that ambiguous modification is
     /// potentially located alongside the placement probability if known. If there is a preferred
-    /// position this can be indicated as well. If the modification would be placed on a terminal
-    /// but something is already placed there it is ignored.
+    /// position this can be indicated as well.
     /// # Errors
     /// When there are no possible locations return false, the modification is then not applied.
     #[must_use]
@@ -1925,6 +1924,14 @@ impl<I: SliceIndex<[SequenceElement<Complexity>]>, Complexity> Index<I>
 
     fn index(&self, index: I) -> &Self::Output {
         &self.sequence[index]
+    }
+}
+
+impl<I: SliceIndex<[SequenceElement<Complexity>]>, Complexity> IndexMut<I>
+    for Peptidoform<Complexity>
+{
+    fn index_mut(&mut self, index: I) -> &mut Self::Output {
+        &mut self.sequence[index]
     }
 }
 

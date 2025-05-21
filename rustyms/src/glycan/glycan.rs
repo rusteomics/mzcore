@@ -176,7 +176,7 @@ impl MonoSaccharide {
     /// * HexNAc(4)Hex(5)Fuc(1)NeuAc(1)
     /// # Errors
     /// When the composition could not be read. Or when any of the glycans occurs outside of the valid range
-    pub fn from_msfragger_composition(text: &str) -> Result<Vec<(Self, isize)>, CustomError> {
+    pub fn from_byonic_composition(text: &str) -> Result<Vec<(Self, isize)>, CustomError> {
         let mut index = 0;
         let mut output = Vec::new();
         while index < text.len() {
@@ -965,9 +965,9 @@ impl Chemical for GlycanSubstituent {
 fn msfragger_composition() {
     let proforma = MonoSaccharide::from_composition("HexNAc4Hex5Fuc1NeuAc2").unwrap();
     let msfragger =
-        MonoSaccharide::from_msfragger_composition("HexNAc(4)Hex(5)Fuc(1)NeuAc(2)").unwrap();
+        MonoSaccharide::from_byonic_composition("HexNAc(4)Hex(5)Fuc(1)NeuAc(2)").unwrap();
     assert_eq!(proforma, msfragger);
     let proforma = MonoSaccharide::from_composition("HexNAc4Hex5").unwrap();
-    let msfragger = MonoSaccharide::from_msfragger_composition("HexNAc(4)Hex(5)").unwrap();
+    let msfragger = MonoSaccharide::from_byonic_composition("HexNAc(4)Hex(5)").unwrap();
     assert_eq!(proforma, msfragger);
 }

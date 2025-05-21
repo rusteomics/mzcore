@@ -11,12 +11,15 @@ use crate::{
         csv::{CsvLine, parse_csv},
     },
     ontology::CustomDatabase,
-    prelude::SequencePosition,
+    prelude::{Chemical, SequencePosition},
+    quantities::{Tolerance, WithinTolerance},
     sequence::{
-        Modification, Peptidoform, SemiAmbiguous, SimpleModification, SloppyParsingParameters,
+        Modification, Peptidoform, SemiAmbiguous, SimpleLinear, SimpleModification,
+        SimpleModificationInner, SloppyParsingParameters,
     },
-    system::{Mass, MassOverCharge, Time, usize::Charge},
+    system::{Mass, MassOverCharge, OrderedMass, Time, usize::Charge},
 };
+use ordered_float::OrderedFloat;
 use serde::{Deserialize, Serialize};
 
 use super::FastaIdentifier;
@@ -45,13 +48,13 @@ format_family!(
         mass: Mass, |location: Location, _| location.parse::<f64>(NUMBER_ERROR).map(Mass::new::<crate::system::dalton>);
         missed_cleavages: usize, |location: Location, _| location.parse(NUMBER_ERROR);
         next_score: f64, |location: Location, _| location.parse(NUMBER_ERROR);
-        peptide: Peptidoform<SemiAmbiguous>, |location: Location, custom_database: Option<&CustomDatabase>| location.parse_with(|location| {
+        peptide: Peptidoform<SimpleLinear>, |location: Location, custom_database: Option<&CustomDatabase>| location.parse_with(|location| {
             Peptidoform::sloppy_pro_forma(
                 location.full_line(),
                 location.location.clone(),
                 custom_database,
                 &SloppyParsingParameters {ignore_prefix_lowercase_n: true, ..Default::default()},
-        )});
+        ).map(Into::into)});
         protein: FastaIdentifier<String>, |location: Location, _| location.parse(IDENTIFIER_ERROR);
         rt: Time, |location: Location, _| location.parse::<f64>(NUMBER_ERROR).map(Time::new::<crate::system::time::min>);
         scan: SpectrumId, |location: Location, _| Ok(SpectrumId::Native(location.get_string()));
@@ -117,20 +120,19 @@ format_family!(
                 l.context(),
             ))
         });
-        msfragger_localisation: String, |location: Location, _| Ok(location.or_empty().get_string());
         mz: MassOverCharge, |location: Location, _| location.parse::<f64>(NUMBER_ERROR).map(MassOverCharge::new::<crate::system::mz>);
         gene: String, |location: Location, _| Ok(location.get_string());
         mapped_genes: Vec<String>, |location: Location, _| Ok(location.get_string().split(',').map(|s| s.trim().to_string()).collect::<Vec<_>>());
         mapped_proteins: Vec<String>, |location: Location, _| Ok(location.get_string().split(',').map(|s| s.trim().to_string()).collect::<Vec<_>>());
         num_matched_ions: usize, |location: Location, _| location.parse::<usize>(NUMBER_ERROR);
         num_tol_term: usize, |location: Location, _| location.parse::<usize>(NUMBER_ERROR);
+        open_search_localisation: String, |location: Location, _| Ok(location.or_empty().get_string());
         /// Either glycan 'HexNAc(4)Hex(5)Fuc(1)NeuAc(2) % 2350.8304' or mod 'Mod1: First isotopic peak (Theoretical: 1.0024)' 'Mod1: Deamidation (PeakApex: 0.9836, Theoretical: 0.9840)'
         open_search_modification: MSFraggerOpenModification, |location: Location, _|
             location.or_empty().parse_with(|location| location.as_str().find('%').map_or_else(
                 || Ok(MSFraggerOpenModification::Other(location.as_str().to_owned())),
-                |end| MonoSaccharide::from_msfragger_composition(&location.as_str()[..end]).map(MSFraggerOpenModification::Glycan)));
-        peptide_prophet_probability: f64, |location: Location, _| location.parse::<f64>(NUMBER_ERROR);
-        position_scores: Vec<f64>, |location: Location, _| {
+                |end| MonoSaccharide::from_byonic_composition(&location.as_str()[..end]).map(MSFraggerOpenModification::Glycan)));
+        open_search_position_scores: Vec<f64>, |location: Location, _| {
             let data = location.array(')').filter_map(|l| (l.len() > 2).then(|| l.skip(2).parse::<f64>((
                 "Invalid FragPipe line",
                 "This position score is not a number but it is required to be a number in this FragPipe format",
@@ -141,6 +143,7 @@ format_family!(
                 Ok(Some(data))
             }
         };
+        peptide_prophet_probability: f64, |location: Location, _| location.parse::<f64>(NUMBER_ERROR);
         protein_description: String, |location: Location, _| Ok(location.get_string());
         protein_end: usize, |location: Location, _| location.parse::<usize>(NUMBER_ERROR);
         protein_id: String, |location: Location, _| Ok(location.get_string());
@@ -150,13 +153,14 @@ format_family!(
         score_without_delta_mass: f64, |location: Location, _| location.parse::<f64>(NUMBER_ERROR);
         second_best_score_with_delta_mass: f64, |location: Location, _| location.parse::<f64>(NUMBER_ERROR);
         raw_file: PathBuf, |location: Location, _| Ok(Some(location.get_string().into()));
-        total_glycan_composition: Vec<(MonoSaccharide, isize)>, |location: Location, _| location.parse_with(|location| location.as_str().find('%').map_or_else(
-                || MonoSaccharide::from_msfragger_composition(location.as_str()),
-                |end| MonoSaccharide::from_msfragger_composition(&location.as_str()[..end])));
+        total_glycan_composition: Vec<(MonoSaccharide, isize)>, |location: Location, _| location.or_empty().parse_with(|location| location.as_str().find('%').map_or_else(
+                || MonoSaccharide::from_byonic_composition(location.as_str()),
+                |end| MonoSaccharide::from_byonic_composition(&location.as_str()[..end])));
         tot_num_ions: usize, |location: Location, _| location.parse::<usize>(NUMBER_ERROR);
     }
 
     fn post_process(_source: &CsvLine, mut parsed: Self, _custom_database: Option<&CustomDatabase>) -> Result<Self, CustomError> {
+        // Parse the scan identifier to retrieve the file and number separately
         if let SpectrumId::Native(native) = &parsed.scan {
             if let Some(m) = IDENTIFER_REGEX
                 .captures(native)
@@ -166,8 +170,64 @@ format_family!(
                     SpectrumId::Number(m.get(2).unwrap().as_str().parse::<usize>().unwrap());
             }
         }
+        // Normal modifications
         for (location, modification) in &parsed.modifications {
             parsed.peptide.add_simple_modification(*location, modification.clone());
+        }
+        // Open modification - check for a glycan composition mod
+        if let Some(glycan) = match parsed.open_search_modification.as_ref() {Some(MSFraggerOpenModification::Glycan(glycan)) => Some(glycan), _ => None}.or(parsed.total_glycan_composition.as_ref()) {
+            let modification: SimpleModification = SimpleModificationInner::Glycan(glycan.clone()).into();
+            let target_mass = Mass::new::<crate::system::dalton>(glycan.iter().fold(0.0, |acc, (sugar, amount)| sugar.formula().monoisotopic_mass().value.mul_add(*amount as f64, acc)));
+            let mut placed = false;
+
+            // Check if the location field contains any lowercase chars indication the location
+            if let Some(location) = parsed.open_search_localisation.as_ref().map(|l| l.chars().enumerate().filter_map(|(i, c)| c.is_ascii_lowercase().then_some(i)).collect::<Vec<_>>()) {
+                match location.len() {
+                    0 => (),
+                    1 => {
+                        // Check if the modification is already placed as mass modification (this is not necessarily always present )
+                        let mut index = None;
+                        for (i, m) in parsed.peptide[location[0]].modifications.iter().enumerate() {
+                            if let Some(SimpleModificationInner::Mass(mass)) = m.simple().map(AsRef::as_ref) {
+                                if Tolerance::Absolute(Mass::new::<crate::system::dalton>(1.0)).within(&mass.into_inner(), &target_mass) {
+                                    index = Some(i);
+                                    break;
+                                }
+                            }
+                        }
+                        if let Some(index) = index {
+                            parsed.peptide[location[0]].modifications[index] = modification.clone().into();
+                        } else {
+                            parsed.peptide[location[0]].modifications.push(modification.clone().into());
+                        }
+                        placed = true;
+                    }
+                    _ => {
+                        // If there are multiple locations add this as an ambiguous modification
+                        let positions = parsed.open_search_position_scores.as_ref().map_or_else(|| location.iter().map(|i| (SequencePosition::Index(*i), None)).collect::<Vec<(_, _)>>(), |scores| location.iter().map(|i| SequencePosition::Index(*i)).zip(scores.iter().map(|s| Some(OrderedFloat(*s)))).collect::<Vec<(_, _)>>());
+                        let _ = parsed.peptide.add_ambiguous_modification(modification.clone(), None, &positions, None, None, false);
+                        placed = true;
+                    }
+                }
+            }
+            // If the location field does not exist or does not contain lowercase characters try to find the modification as a mass modification
+            if !placed {
+                let mut index = None;
+                for seq in parsed.peptide.sequence_mut() {
+                    for (i, m) in seq.modifications.iter().enumerate() {
+                        if let Some(SimpleModificationInner::Mass(mass)) = m.simple().map(AsRef::as_ref) {
+                            if Tolerance::Absolute(Mass::new::<crate::system::dalton>(1.0)).within(&mass.into_inner(), &target_mass) {
+                                index = Some(i);
+                                break;
+                            }
+                        }
+                    }
+                    if let Some(index) = index {
+                        seq.modifications[index] = modification.into();
+                        break;
+                    }
+                }
+            }
         }
         Ok(parsed)
     }
@@ -263,7 +323,7 @@ pub const VERSION_V4_2: MSFraggerFormat = MSFraggerFormat {
     mass: "precursor_neutral_mass", // Is this experimental M, if so this must be changed to MH+
     missed_cleavages: "num_missed_cleavages",
     modifications: "modification_info",
-    msfragger_localisation: OptionalColumn::Required("best_locs"),
+    open_search_localisation: OptionalColumn::Required("best_locs"),
     mz: OptionalColumn::NotAvailable,
     next_score: "nextscore",
     num_matched_ions: OptionalColumn::Required("num_matched_ions"),
@@ -271,7 +331,7 @@ pub const VERSION_V4_2: MSFraggerFormat = MSFraggerFormat {
     open_search_modification: OptionalColumn::NotAvailable,
     peptide_prophet_probability: OptionalColumn::NotAvailable,
     peptide: "peptide",
-    position_scores: OptionalColumn::Required("localization_scores"),
+    open_search_position_scores: OptionalColumn::Required("localization_scores"),
     protein_description: OptionalColumn::NotAvailable,
     protein_end: OptionalColumn::NotAvailable,
     protein_id: OptionalColumn::NotAvailable,
@@ -317,7 +377,7 @@ pub const PHILOSOPHER: MSFraggerFormat = MSFraggerFormat {
     mass: "observed mass",
     missed_cleavages: "number of missed cleavages",
     modifications: "assigned modifications",
-    msfragger_localisation: OptionalColumn::Optional("msfragger localization"),
+    open_search_localisation: OptionalColumn::Optional("msfragger localization"),
     mz: OptionalColumn::Required("observed m/z"),
     next_score: "nextscore",
     num_matched_ions: OptionalColumn::NotAvailable,
@@ -325,7 +385,7 @@ pub const PHILOSOPHER: MSFraggerFormat = MSFraggerFormat {
     open_search_modification: OptionalColumn::Required("observed modifications"),
     peptide_prophet_probability: OptionalColumn::Required("peptideprophet probability"),
     peptide: "peptide",
-    position_scores: OptionalColumn::NotAvailable,
+    open_search_position_scores: OptionalColumn::NotAvailable,
     protein_description: OptionalColumn::Required("protein description"),
     protein_end: OptionalColumn::NotAvailable,
     protein_id: OptionalColumn::Required("protein id"),
@@ -369,7 +429,7 @@ pub const FRAGPIPE_V20_OR_21: MSFraggerFormat = MSFraggerFormat {
     mass: "observed mass",
     missed_cleavages: "number of missed cleavages",
     modifications: "assigned modifications",
-    msfragger_localisation: OptionalColumn::Optional("msfragger localization"),
+    open_search_localisation: OptionalColumn::Optional("msfragger localization"),
     mz: OptionalColumn::Required("observed m/z"),
     next_score: "nextscore",
     num_matched_ions: OptionalColumn::NotAvailable,
@@ -377,7 +437,7 @@ pub const FRAGPIPE_V20_OR_21: MSFraggerFormat = MSFraggerFormat {
     open_search_modification: OptionalColumn::Required("observed modifications"),
     peptide_prophet_probability: OptionalColumn::Required("peptideprophet probability"),
     peptide: "peptide",
-    position_scores: OptionalColumn::NotAvailable,
+    open_search_position_scores: OptionalColumn::NotAvailable,
     protein_description: OptionalColumn::Required("protein description"),
     protein_end: OptionalColumn::Required("protein end"),
     protein_id: OptionalColumn::Required("protein id"),
@@ -421,7 +481,7 @@ pub const FRAGPIPE_V22: MSFraggerFormat = MSFraggerFormat {
     mass: "observed mass",
     missed_cleavages: "number of missed cleavages",
     modifications: "assigned modifications",
-    msfragger_localisation: OptionalColumn::Optional("msfragger localization"),
+    open_search_localisation: OptionalColumn::Optional("msfragger localization"),
     mz: OptionalColumn::Required("observed m/z"),
     next_score: "nextscore",
     num_matched_ions: OptionalColumn::NotAvailable,
@@ -429,7 +489,7 @@ pub const FRAGPIPE_V22: MSFraggerFormat = MSFraggerFormat {
     open_search_modification: OptionalColumn::Required("observed modifications"),
     peptide_prophet_probability: OptionalColumn::Required("probability"),
     peptide: "peptide",
-    position_scores: OptionalColumn::Optional("position scores"),
+    open_search_position_scores: OptionalColumn::Optional("position scores"),
     protein_description: OptionalColumn::Required("protein description"),
     protein_end: OptionalColumn::Required("protein end"),
     protein_id: OptionalColumn::Required("protein id"),

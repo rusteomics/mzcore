@@ -161,8 +161,7 @@ impl IdentifiedPeptidoform {
     /// Get the peptide, as pLink can have cross-linked peptides the return type is either a simple peptide or a cross-linked peptidoform
     pub fn peptidoform(&self) -> Option<ReturnedPeptidoform<'_>> {
         match &self.metadata {
-            MetaData::MSFragger(MSFraggerData { peptide, .. })
-            | MetaData::Novor(NovorData { peptide, .. })
+            MetaData::Novor(NovorData { peptide, .. })
             | MetaData::InstaNovo(InstaNovoData { peptide, .. })
             | MetaData::Opair(OpairData { peptide, .. })
             | MetaData::PepNet(PepNetData { peptide, .. })
@@ -170,7 +169,8 @@ impl IdentifiedPeptidoform {
             | MetaData::Sage(SageData { peptide, .. }) => {
                 Some(ReturnedPeptidoform::PeptidoformSemiAmbiguous(peptide))
             }
-            MetaData::PLGS(PLGSData { peptide, .. }) => {
+            MetaData::MSFragger(MSFraggerData { peptide, .. })
+            | MetaData::PLGS(PLGSData { peptide, .. }) => {
                 Some(ReturnedPeptidoform::PeptidoformSimpleLinear(peptide))
             }
             MetaData::Peaks(PeaksData { peptide, .. }) => {
@@ -428,7 +428,7 @@ impl IdentifiedPeptidoform {
             MetaData::DeepNovoFamily(DeepNovoFamilyData { scan, .. }) => SpectrumIds::FileNotKnown(
                 scan.iter()
                     .flat_map(|s| s.scans.clone())
-                    .map(SpectrumId::Index)
+                    .map(SpectrumId::Number)
                     .collect(),
             ),
 

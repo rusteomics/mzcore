@@ -279,6 +279,16 @@ pub(crate) static GLYCAN_PARSE_LIST: LazyLock<Vec<(String, MonoSaccharide)>> =
                 },
             ),
             (
+                "phospho".to_string(),
+                MonoSaccharide {
+                    base_sugar: BaseSugar::None,
+                    substituents: vec![GlycanSubstituent::Phosphate],
+                    proforma_name: Some("phosphate".to_string()),
+                    furanose: false,
+                    configuration: None,
+                },
+            ),
+            (
                 "sulfate".to_string(),
                 MonoSaccharide {
                     base_sugar: BaseSugar::None,
@@ -844,9 +854,9 @@ pub(crate) static GLYCAN_PARSE_LIST: LazyLock<Vec<(String, MonoSaccharide)>> =
             (
                 "p".to_string(),
                 MonoSaccharide {
-                    base_sugar: BaseSugar::Hexose(Some(HexoseIsomer::Mannose)),
+                    base_sugar: BaseSugar::None,
                     substituents: vec![GlycanSubstituent::Phosphate],
-                    proforma_name: Some("Hexphosphate".to_string()), // TODO: technically maybe not working when multiple are in there, think it through, should be two different elements,  both getting counts after them
+                    proforma_name: Some("phosphate".to_string()), // TODO: technically maybe not working when multiple are in there, think it through, should be two different elements,  both getting counts after them
                     furanose: false,
                     configuration: None,
                 },
