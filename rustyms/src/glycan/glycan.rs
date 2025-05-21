@@ -7,6 +7,7 @@ use crate::{
     chemistry::{Chemical, ELEMENT_PARSE_LIST, Element, MolecularFormula},
     error::{Context, CustomError},
     glycan::lists::*,
+    helper_functions::explain_number_error,
     molecular_formula,
     sequence::SequencePosition,
 };
@@ -167,6 +168,84 @@ impl MonoSaccharide {
                 isize::MIN,
                 isize::MAX
             ))
+        })
+    }
+
+    /// Parse the given text as a MSFragger glycan composition. Examples:
+    /// * HexNAc(5)Hex(3)Fuc(1)
+    /// * HexNAc(4)Hex(5)Fuc(1)NeuAc(1)
+    /// # Errors
+    /// When the composition could not be read. Or when any of the glycans occurs outside of the valid range
+    pub fn from_byonic_composition(text: &str) -> Result<Vec<(Self, isize)>, CustomError> {
+        let mut index = 0;
+        let mut output = Vec::new();
+        while index < text.len() {
+            if text[index..].starts_with(' ') {
+                index += 1;
+            } else if let Some(next_open_bracket) = text[index..].find('(') {
+                if let Some(next_close_bracket) = text[index + next_open_bracket..].find(')') {
+                    let name = text[index..index + next_open_bracket].trim();
+                    let mut sugar = None;
+                    for option in GLYCAN_PARSE_LIST.as_slice() {
+                        if option.0.eq_ignore_ascii_case(name) {
+                            sugar = Some(option.1.clone());
+                            break;
+                        }
+                    }
+                    let number = text[index + next_open_bracket + 1
+                        ..index + next_open_bracket + next_close_bracket]
+                        .trim()
+                        .parse::<isize>();
+                    output.push((
+                        sugar.ok_or_else(|| {
+                            CustomError::error(
+                                "Invalid MSFragger glycan composition",
+                                "The sugar name could not be recognised",
+                                Context::line(None, text, index, name.len()),
+                            )
+                        })?,
+                        number.map_err(|err| {
+                            CustomError::error(
+                                "Invalid MSFragger glycan composition",
+                                format!("Sugar count number is {}", explain_number_error(&err)),
+                                Context::line(
+                                    None,
+                                    text,
+                                    index + next_open_bracket + 1,
+                                    next_close_bracket - 1,
+                                ),
+                            )
+                        })?,
+                    ));
+                    index += next_open_bracket + next_close_bracket + 1;
+                } else {
+                    return Err(CustomError::error(
+                        "Invalid MSFragger glycan composition",
+                        "No closing bracket found ')'",
+                        Context::line(None, text, index + next_open_bracket, 1),
+                    ));
+                }
+            } else if text[index..].chars().all(|c| c.is_ascii_whitespace()) {
+                break; // Allow trailing whitespace
+            } else {
+                return Err(CustomError::error(
+                    "Invalid MSFragger glycan composition",
+                    "No opening bracket found but there is text left, the format expected is 'Sugar(Number)'",
+                    Context::line(None, text, index, 1),
+                ));
+            }
+        }
+
+        Self::simplify_composition(output).ok_or_else(|| {
+            CustomError::error(
+                "Invalid MSFragger glycan composition",
+                format!(
+                    "The occurrence of one monosaccharide species is outside of the range {} to {}",
+                    isize::MIN,
+                    isize::MAX
+                ),
+                Context::show(text),
+            )
         })
     }
 
@@ -880,4 +959,15 @@ impl Chemical for GlycanSubstituent {
         };
         side - molecular_formula!(O 1 H 1) // substituent so replaces a standard oxygen side chain
     }
+}
+
+#[test]
+fn msfragger_composition() {
+    let proforma = MonoSaccharide::from_composition("HexNAc4Hex5Fuc1NeuAc2").unwrap();
+    let msfragger =
+        MonoSaccharide::from_byonic_composition("HexNAc(4)Hex(5)Fuc(1)NeuAc(2)").unwrap();
+    assert_eq!(proforma, msfragger);
+    let proforma = MonoSaccharide::from_composition("HexNAc4Hex5").unwrap();
+    let msfragger = MonoSaccharide::from_byonic_composition("HexNAc(4)Hex(5)").unwrap();
+    assert_eq!(proforma, msfragger);
 }

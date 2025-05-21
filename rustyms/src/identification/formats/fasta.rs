@@ -278,9 +278,9 @@ impl std::fmt::Display for FastaIdentifier<String> {
     }
 }
 
-impl<T: Copy> FastaIdentifier<T> {
+impl<T> FastaIdentifier<T> {
     /// Get the accession or ID for this sequence
-    pub const fn accession(&self) -> T {
+    pub const fn accession(&self) -> &T {
         match self {
             Self::GenInfoBackboneSeqID(a)
             | Self::GenInfoBackboneMolType(a)
@@ -302,12 +302,12 @@ impl<T: Copy> FastaIdentifier<T> {
             | Self::TrEMBL(a, _)
             | Self::Undefined(a)
             | Self::Local(a)
-            | Self::PDB(_, a) => *a,
+            | Self::PDB(_, a) => a,
         }
     }
 
     /// Get the name, if no name is defined in this schema take the accession
-    pub const fn name(&self) -> T {
+    pub const fn name(&self) -> &T {
         match self {
             Self::GenInfoBackboneSeqID(n)
             | Self::GenInfoBackboneMolType(n)
@@ -329,7 +329,7 @@ impl<T: Copy> FastaIdentifier<T> {
             | Self::TrEMBL(_, n)
             | Self::Undefined(n)
             | Self::Local(n)
-            | Self::PDB(_, n) => *n,
+            | Self::PDB(_, n) => n,
         }
     }
 }
@@ -351,9 +351,12 @@ impl FromStr for FastaIdentifier<Range<usize>> {
             .collect_vec();
         let len = s.len();
         if pipes.is_empty() {
-            Ok(Self::Undefined(1..len))
+            Ok(Self::Undefined(usize::from(s.starts_with('>'))..len))
         } else {
-            match s[1..pipes[0]].to_ascii_lowercase().as_str() {
+            match s[usize::from(s.starts_with('>'))..pipes[0]]
+                .to_ascii_lowercase()
+                .as_str()
+            {
                 "lcl" => Ok(Self::Local(pipes[0] + 1..len)),
                 "bbs" => Ok(Self::GenInfoBackboneSeqID(pipes[0] + 1..len)),
                 "bbm" => Ok(Self::GenInfoBackboneMolType(pipes[0] + 1..len)),
@@ -728,8 +731,8 @@ fn parse_header() {
     let header = ">sp|UniqueIdentifier|EntryName ProteinName OS=OrganismName OX=OrganismIdentifier PE=ProteinExistence SV=SequenceVersion REGIONS=FR1:12;CDR1:6;FR2:13 ANNOTATIONS=C:12;Conserved:25";
     let header = FastaData::parse_header(0, header.to_string()).unwrap();
     let identifier = header.identifier();
-    assert_eq!(identifier.name(), "EntryName");
-    assert_eq!(identifier.accession(), "UniqueIdentifier");
+    assert_eq!(*identifier.name(), "EntryName");
+    assert_eq!(*identifier.accession(), "UniqueIdentifier");
     assert_eq!(header.description(), "ProteinName");
     assert!(
         header

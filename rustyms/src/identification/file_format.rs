@@ -11,7 +11,6 @@ pub enum KnownFileFormat {
     BasicCSV(BasicCSVVersion),
     DeepNovoFamily(DeepNovoFamilyVersion),
     Fasta,
-    FragPipe(FragPipeVersion),
     InstaNovo(InstaNovoVersion),
     MaxQuant(MaxQuantVersion),
     MZTab,
@@ -24,6 +23,7 @@ pub enum KnownFileFormat {
     PLink(PLinkVersion),
     PowerNovo(PowerNovoVersion),
     Sage(SageVersion),
+    MSFragger(MSFraggerVersion),
     SpectrumSequenceList(SpectrumSequenceListVersion),
 }
 
@@ -34,7 +34,6 @@ impl KnownFileFormat {
             Self::BasicCSV(_) => "CSV",
             Self::DeepNovoFamily(_) => "DeepNovo Family",
             Self::Fasta => "Fasta",
-            Self::FragPipe(_) => "FragPipe",
             Self::InstaNovo(_) => "InstaNovo",
             Self::MaxQuant(_) => "MaxQuant",
             Self::MZTab => "mzTab",
@@ -47,6 +46,7 @@ impl KnownFileFormat {
             Self::PLink(_) => "pLink",
             Self::PowerNovo(_) => "PowerNovo",
             Self::Sage(_) => "Sage",
+            Self::MSFragger(_) => "MSFragger",
             Self::SpectrumSequenceList(_) => "SpectrumSequenceList",
         }
     }
@@ -57,7 +57,6 @@ impl KnownFileFormat {
             Self::BasicCSV(version) => Some(version.to_string()),
             Self::DeepNovoFamily(version) => Some(version.to_string()),
             Self::Fasta => None,
-            Self::FragPipe(version) => Some(version.to_string()),
             Self::InstaNovo(version) => Some(version.to_string()),
             Self::MaxQuant(version) => Some(version.to_string()),
             Self::MZTab => Some("1.0".to_string()),
@@ -70,6 +69,7 @@ impl KnownFileFormat {
             Self::PLink(version) => Some(version.to_string()),
             Self::PowerNovo(version) => Some(version.to_string()),
             Self::Sage(version) => Some(version.to_string()),
+            Self::MSFragger(version) => Some(version.to_string()),
             Self::SpectrumSequenceList(version) => Some(version.to_string()),
         }
     }
@@ -92,7 +92,6 @@ impl From<KnownFileFormat> for FileFormat {
             KnownFileFormat::BasicCSV(version) => Self::BasicCSV(Some(version)),
             KnownFileFormat::DeepNovoFamily(version) => Self::DeepNovoFamily(Some(version)),
             KnownFileFormat::Fasta => Self::Fasta,
-            KnownFileFormat::FragPipe(version) => Self::FragPipe(Some(version)),
             KnownFileFormat::InstaNovo(version) => Self::InstaNovo(Some(version)),
             KnownFileFormat::MaxQuant(version) => Self::MaxQuant(Some(version)),
             KnownFileFormat::MZTab => Self::MZTab,
@@ -105,6 +104,7 @@ impl From<KnownFileFormat> for FileFormat {
             KnownFileFormat::PLink(version) => Self::PLink(Some(version)),
             KnownFileFormat::PowerNovo(version) => Self::PowerNovo(Some(version)),
             KnownFileFormat::Sage(version) => Self::Sage(Some(version)),
+            KnownFileFormat::MSFragger(version) => Self::MSFragger(Some(version)),
             KnownFileFormat::SpectrumSequenceList(version) => {
                 Self::SpectrumSequenceList(Some(version))
             }
@@ -119,7 +119,6 @@ pub enum FileFormat {
     BasicCSV(Option<BasicCSVVersion>),
     DeepNovoFamily(Option<DeepNovoFamilyVersion>),
     Fasta,
-    FragPipe(Option<FragPipeVersion>),
     InstaNovo(Option<InstaNovoVersion>),
     MaxQuant(Option<MaxQuantVersion>),
     MZTab,
@@ -132,6 +131,7 @@ pub enum FileFormat {
     PLink(Option<PLinkVersion>),
     PowerNovo(Option<PowerNovoVersion>),
     Sage(Option<SageVersion>),
+    MSFragger(Option<MSFraggerVersion>),
     SpectrumSequenceList(Option<SpectrumSequenceListVersion>),
     #[default]
     Undefined,
@@ -170,10 +170,6 @@ impl FileFormat {
                 InstaNovoData::parse_file(path, custom_database, false, version)
                     .map(IdentifiedPeptidoformIter::into_box)
             }
-            Self::FragPipe(version) => {
-                FragpipeData::parse_file(path, custom_database, false, version)
-                    .map(IdentifiedPeptidoformIter::into_box)
-            }
             Self::MaxQuant(version) => {
                 MaxQuantData::parse_file(path, custom_database, false, version)
                     .map(IdentifiedPeptidoformIter::into_box)
@@ -197,6 +193,10 @@ impl FileFormat {
                 .map(IdentifiedPeptidoformIter::into_box),
             Self::PepNet(version) => PepNetData::parse_file(path, custom_database, false, version)
                 .map(IdentifiedPeptidoformIter::into_box),
+            Self::MSFragger(version) => {
+                MSFraggerData::parse_file(path, custom_database, false, version)
+                    .map(IdentifiedPeptidoformIter::into_box)
+            }
             Self::PowerNovo(version) => {
                 PowerNovoData::parse_file(path, custom_database, false, version)
                     .map(IdentifiedPeptidoformIter::into_box)
