@@ -88,7 +88,7 @@ impl<Complexity: AtMax<SemiAmbiguous>> Peptidoform<Complexity> {
                 aa.modifications.iter().filter_map(|m| m.simple()),
                 (index == 0).then_some(self.get_n_term().iter().filter_map(|m| m.simple())),
                 (index == self.len() - 1)
-                    .then_some(self.get_n_term().iter().filter_map(|m| m.simple())),
+                    .then_some(self.get_c_term().iter().filter_map(|m| m.simple())),
             )?
             .sidechain()
             {
