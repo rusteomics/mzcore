@@ -97,35 +97,48 @@ impl std::error::Error for NotACodon {}
 impl AminoAcid {
     /// The total number of amino acids
     pub const TOTAL_NUMBER: usize = Self::Unknown as usize + 1;
-    /// Translate the dna codon into the corresponding amino acid according to the standard DNA codon table.
-    /// It returns None for a stop codon.
-    /// <https://en.wikipedia.org/wiki/DNA_and_RNA_codon_tables>
+    /// Translate the dna codon into the corresponding amino acid according to the standard DNA
+    /// codon table. The table is fully written out to support ambiguous bases in codons. It returns
+    /// `None` for a stop codon.
+    /// <https://www.insdc.org/submitting-standards/feature-table/#7.4.3>
     /// # Errors
     /// It returns `Err(NotACodon)` when the given codon is not a valid dna codon.
     #[allow(dead_code)]
     pub fn from_dna(dna: &str) -> Result<Option<Self>, NotACodon> {
         match dna.to_lowercase().as_str() {
-            "ttt" | "ttc" => Ok(Some(Self::Phenylalanine)),
-            "tta" | "ttg" | "ctt" | "ctc" | "cta" | "ctg" => Ok(Some(Self::Leucine)),
-            "att" | "atc" | "ata" => Ok(Some(Self::Isoleucine)),
+            "ttt" | "ttc" | "tty" => Ok(Some(Self::Phenylalanine)),
+            "tta" | "ttg" | "ctt" | "ctc" | "cta" | "ctg" | "ttr" | "ctn" | "ytr" | "yta"
+            | "ytg" | "ctm" | "ctr" | "ctw" | "cts" | "cty" | "ctk" | "ctv" | "cth" | "ctd"
+            | "ctb" => Ok(Some(Self::Leucine)),
+            "att" | "atc" | "ata" | "ath" | "aty" | "atm" => Ok(Some(Self::Isoleucine)),
             "atg" => Ok(Some(Self::Methionine)),
-            "gtt" | "gtc" | "gta" | "gtg" => Ok(Some(Self::Valine)),
-            "tct" | "tcc" | "tca" | "tcg" | "agt" | "agc" => Ok(Some(Self::Serine)),
-            "cct" | "ccc" | "cca" | "ccg" => Ok(Some(Self::Proline)),
-            "act" | "acc" | "aca" | "acg" => Ok(Some(Self::Threonine)),
-            "gct" | "gcc" | "gca" | "gcg" => Ok(Some(Self::Alanine)),
-            "tat" | "tac" => Ok(Some(Self::Tyrosine)),
-            "taa" | "tag" | "tga" => Ok(None),
-            "cat" | "cac" => Ok(Some(Self::Histidine)),
-            "caa" | "cag" => Ok(Some(Self::Glutamine)),
-            "aat" | "aac" => Ok(Some(Self::Asparagine)),
-            "cgt" | "cgc" | "cga" | "cgg" | "aga" | "agg" => Ok(Some(Self::Arginine)),
-            "aaa" | "aag" => Ok(Some(Self::Lysine)),
-            "gat" | "gac" => Ok(Some(Self::AsparticAcid)),
-            "gaa" | "gag" => Ok(Some(Self::GlutamicAcid)),
-            "tgt" | "tgc" => Ok(Some(Self::Cysteine)),
+            "gtt" | "gtc" | "gta" | "gtg" | "gtn" | "gtm" | "gtr" | "gtw" | "gts" | "gty"
+            | "gtk" | "gtv" | "gth" | "gtd" | "gtb" => Ok(Some(Self::Valine)),
+            "tct" | "tcc" | "tca" | "tcg" | "agt" | "agc" | "tcn" | "tcm" | "tcr" | "tcw"
+            | "tcs" | "tcy" | "tck" | "tcv" | "tch" | "tcd" | "tcb" | "agy" => {
+                Ok(Some(Self::Serine))
+            }
+            "cct" | "ccc" | "cca" | "ccg" | "ccn" | "ccm" | "ccr" | "ccw" | "ccs" | "ccy"
+            | "cck" | "ccv" | "cch" | "ccd" | "ccb" => Ok(Some(Self::Proline)),
+            "act" | "acc" | "aca" | "acg" | "acn" | "acm" | "acr" | "acw" | "acs" | "acy"
+            | "ack" | "acv" | "ach" | "acd" | "acb" => Ok(Some(Self::Threonine)),
+            "gct" | "gcc" | "gca" | "gcg" | "gcn" | "gcm" | "gcr" | "gcw" | "gcs" | "gcy"
+            | "gck" | "gcv" | "gch" | "gcd" | "gcb" => Ok(Some(Self::Alanine)),
+            "tat" | "tac" | "tay" => Ok(Some(Self::Tyrosine)),
+            "taa" | "tag" | "tga" | "tar" | "tra" => Ok(None),
+            "cat" | "cac" | "cay" => Ok(Some(Self::Histidine)),
+            "caa" | "cag" | "car" => Ok(Some(Self::Glutamine)),
+            "aat" | "aac" | "aay" => Ok(Some(Self::Asparagine)),
+            "cgt" | "cgc" | "cga" | "cgg" | "aga" | "agg" | "cgn" | "cgm" | "cgr" | "cgw"
+            | "cgs" | "cgy" | "cgk" | "cgv" | "cgh" | "cgd" | "cgb" | "agr" | "mgr" | "mga"
+            | "mgg" => Ok(Some(Self::Arginine)),
+            "aaa" | "aag" | "aar" => Ok(Some(Self::Lysine)),
+            "gat" | "gac" | "gay" => Ok(Some(Self::AsparticAcid)),
+            "gaa" | "gag" | "gar" => Ok(Some(Self::GlutamicAcid)),
+            "tgt" | "tgc" | "tgy" => Ok(Some(Self::Cysteine)),
             "tgg" => Ok(Some(Self::Tryptophan)),
-            "ggt" | "ggc" | "gga" | "ggg" => Ok(Some(Self::Glycine)),
+            "ggt" | "ggc" | "gga" | "ggg" | "ggn" | "ggm" | "ggr" | "ggw" | "ggs" | "ggy"
+            | "ggk" | "ggv" | "ggh" | "ggd" | "ggb" => Ok(Some(Self::Glycine)),
             _ => Err(NotACodon),
         }
     }
