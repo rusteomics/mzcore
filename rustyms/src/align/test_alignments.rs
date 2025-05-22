@@ -12,7 +12,7 @@ fn global_b() {
         "AEDTAVYYM[oxidation]QSW[oxidation]SR",
         AlignScoring::default(),
         AlignType::GLOBAL_B,
-        "8=1X3I2=",
+        "8=3X1m2X",
     );
 }
 
@@ -56,7 +56,7 @@ fn either_global_2() {
         "DLQLVESGGGLVQPGGSLRLSC[carboxymethyl]AASGF",
         AlignScoring::default(),
         AlignType::EITHER_GLOBAL,
-        "3X8=1X3=1X5=2i4=",
+        "3X8=1X3=1X5=1m1X4=",
     );
 }
 
