@@ -159,7 +159,8 @@ static MODEL_EAD: LazyLock<FragmentationModel> = LazyLock::new(|| FragmentationM
     y: PrimaryIonSeries::default()
         .neutral_losses(vec![NeutralLoss::Loss(molecular_formula!(H 2 O 1))]),
     z: PrimaryIonSeries::default()
-        .neutral_losses(vec![NeutralLoss::Loss(molecular_formula!(H 2 O 1))]),
+        .neutral_losses(vec![NeutralLoss::Loss(molecular_formula!(H 2 O 1))])
+        .variants(vec![0, 1]),
     precursor: (
         vec![NeutralLoss::Loss(molecular_formula!(H 2 O 1))],
         Vec::new(),
@@ -170,7 +171,29 @@ static MODEL_EAD: LazyLock<FragmentationModel> = LazyLock::new(|| FragmentationM
     modification_specific_neutral_losses: true,
     modification_specific_diagnostic_ions: Some(ChargeRange::ONE),
     glycan: GlycanModel::default_allow()
-        .neutral_losses(vec![NeutralLoss::Loss(molecular_formula!(H 2 O 1))]),
+        .neutral_losses(vec![NeutralLoss::Loss(molecular_formula!(H 2 O 1))])
+        .peptide_fragment_rules(vec![
+            (
+                vec![AminoAcid::Asparagine, AminoAcid::Tryptophan],
+                vec![FragmentKind::c, FragmentKind::z, FragmentKind::w],
+                GlycanPeptideFragment::FULL,
+            ),
+            (
+                vec![AminoAcid::Asparagine, AminoAcid::Tryptophan],
+                vec![FragmentKind::b, FragmentKind::y, FragmentKind::v],
+                GlycanPeptideFragment::CORE,
+            ),
+            (
+                vec![AminoAcid::Serine, AminoAcid::Threonine],
+                vec![FragmentKind::c, FragmentKind::z, FragmentKind::w],
+                GlycanPeptideFragment::FULL,
+            ),
+            (
+                vec![AminoAcid::Serine, AminoAcid::Threonine],
+                vec![FragmentKind::b, FragmentKind::y, FragmentKind::v],
+                GlycanPeptideFragment::FREE,
+            ),
+        ]),
     allow_cross_link_cleavage: true,
 });
 
