@@ -21,6 +21,7 @@ use crate::{
 // * neutral losses are either names encompassed by [] or formulas, but since isotopes are allowed in formulas seeing [] is ambiguous between a formula starting with an isotope or a name
 // * are isotopes supported in adduct ion additions? (I would assume so, but not clearly stated)
 // * page 12 styling for examples not right
+// * Is 'Adenosine' supposed to be a reporter ion? It is not in the list but it is used as an example
 
 /// Parse a mzPAF peak annotation line (can contain multiple annotations).
 /// # Errors
@@ -133,7 +134,7 @@ fn parse_analyte_number(
     next_number::<false, false, usize>(line, range.clone()).map_or_else(
         || Ok((range.clone(), None)),
         |num| {
-            if line.as_bytes().get(num.0).copied() != Some(b'@') {
+            if line.as_bytes().get(num.0 + 1).copied() != Some(b'@') {
                 return Err(CustomError::error(
                     "Invalid mzPAF analyte number",
                     "The analyte number should be followed by an at sign '@'",
@@ -394,7 +395,7 @@ fn parse_ion(
                     .unwrap();
                 Ok((
                     last.0 + last.1.len_utf8() - first,
-                    &line[range.clone()][first..last.0 + last.1.len_utf8()],
+                    &line[range.clone()][first + range.start_index()..range.start_index() + last.0 + last.1.len_utf8()],
                 ))
             } else {
                 Err(CustomError::error(
@@ -405,13 +406,13 @@ fn parse_ion(
             }?;
             MZPAF_NAMED_MOLECULES
                 .iter()
-                .find_map(|n| (n.0 == name).then_some(n.1.clone()))
+                .find_map(|n| (n.0.eq_ignore_ascii_case(name)).then_some(n.1.clone()))
                 .map_or_else(
                     || {
                         Err(CustomError::error(
                             "Unknown mzPAF named reporter ion",
                             "Unknown name",
-                            Context::line(None, line, range.start_index() + 1, len),
+                            Context::line(None, line, range.start_index() + 2, len),
                         ))
                     },
                     |formula| Ok((range.add_start(3 + len), IonType::Reporter(formula))),
@@ -436,7 +437,7 @@ fn parse_ion(
                 ))
             }?;
             let formula =
-                MolecularFormula::from_pro_forma(line, formula_range.clone(), false, false, true)?;
+                MolecularFormula::from_pro_forma(line, formula_range.clone(), false, false, true, false)?;
 
             Ok((
                 range.add_start(3 + formula_range.len()),
@@ -457,6 +458,7 @@ fn parse_ion(
     }
 }
 
+// TODO needs to backtrack once it detects an isotope
 fn parse_neutral_loss(
     line: &str,
     range: Range<usize>,
@@ -464,27 +466,41 @@ fn parse_neutral_loss(
     let mut offset = 0;
     let mut neutral_losses = Vec::new();
     while let Some(c @ (b'-' | b'+')) = line.as_bytes().get(range.start_index() + offset).copied() {
-        if line.as_bytes().get(range.start_index() + 1).copied() == Some(b'[') {
+        let mut amount = 1;
+        // Parse leading number to detect how many times this loss occured
+        if let Some(num) = next_number::<false, false, u16>(line, range.add_start(1 + offset)) {
+            amount = i32::from(num.2.map_err(|err| {
+                CustomError::error(
+                    "Invalid mzPAF neutral loss leading amount",
+                    format!("The neutral loss amount number {}", explain_number_error(&err)),
+                    Context::line(None, line, range.start_index() + 1 + offset, range.start_index() + 1 + offset + num.0),
+                )
+            })?);
+            offset += num.0;
+        }
+
+        if line.as_bytes().get(range.start_index() + 1 + offset).copied() == Some(b'[') {
             let last =
-                end_of_enclosure(line, range.start_index() + 2, b'[', b']').ok_or_else(|| {
+                end_of_enclosure(line, range.start_index() + 2 + offset, b'[', b']').ok_or_else(|| {
                     CustomError::error(
                         "Unknown mzPAF named neutral loss",
                         "Opening bracket for neutral loss name was not closed",
-                        Context::line(None, line, range.start_index() + 1, 1),
+                        Context::line(None, line, range.start_index() + 1 + offset, 1),
                     )
                 })?;
-            let first = range.start_index() + 2;
+            let first = range.start_index() + 2 + offset;
             let name = &line[first..last];
 
-            offset += 1 + last - first;
+            offset += 3 + last - first; // Sign, brackets, and the name
 
             if let Some(formula) = MZPAF_NAMED_MOLECULES
                 .iter()
                 .find_map(|n| (n.0.eq_ignore_ascii_case(name)).then_some(n.1.clone()))
             {
+                println!("Found: ['{}'] at {}..{}", &formula,  range.start_index() + offset - name.len() - 1,  range.start_index() +  offset);
                 neutral_losses.push(match c {
-                    b'+' => NeutralLoss::Gain(formula),
-                    b'-' => NeutralLoss::Loss(formula),
+                    b'+' => NeutralLoss::Gain(formula * amount),
+                    b'-' => NeutralLoss::Loss(formula * amount),
                     _ => unreachable!(),
                 });
             } else {
@@ -495,22 +511,24 @@ fn parse_neutral_loss(
                 ));
             }
         } else {
-            let first = range.start_index() + 1;
+            let first = range.start_index() + 1 + offset;
             let last = line[first..]
                 .char_indices()
                 .take_while(|(_, c)| c.is_ascii_alphanumeric()) // TODO check if isotopes are allowed here, theoretically yes, but not clearly specified in the spec
                 .last()
                 .unwrap();
-            let formula = MolecularFormula::from_pro_forma(
+            let formula = MolecularFormula::from_pro_forma( // TODO 'i' is seen as iodine while the thing should casing specific
                 line,
-                first..last.0 + last.1.len_utf8(),
+                first..first + last.0 + last.1.len_utf8(),
                 false,
                 false,
                 true,
+                false,
             )?;
+            println!("Found: '{}' at {}..{}", &formula,  range.start_index() + offset, range.start_index() + offset + 1 + last.0 + last.1.len_utf8());
             neutral_losses.push(match c {
-                b'+' => NeutralLoss::Gain(formula),
-                b'-' => NeutralLoss::Loss(formula),
+                b'+' => NeutralLoss::Gain(formula * amount),
+                b'-' => NeutralLoss::Loss(formula * amount),
                 _ => unreachable!(),
             });
             offset += 1 + last.0 + last.1.len_utf8();
@@ -537,30 +555,43 @@ fn parse_adduct_type(
         }
         let mut carriers = Vec::new();
         let mut offset = 2;
-        while let Some(number) = next_number::<true, false, isize>(line, range.add_start(offset)) {
-            let first = range.start_index() + offset + number.0;
+        println!("{}", &line[range.add_start(offset)]);
+         while let Some(c @ (b'-' | b'+')) = line.as_bytes().get(range.start_index() + offset).copied() {
+            offset += 1; // The sign
+            let mut amount = 1;
+            // Parse leading number to detect how many times this adduct occured
+            if let Some(num) = next_number::<false, false, u16>(line, range.add_start(1 + offset)) {
+                amount = i32::from(num.2.map_err(|err| {
+                    CustomError::error(
+                        "Invalid mzPAF adduct leading amount",
+                        format!("The adduct amount number {}", explain_number_error(&err)),
+                        Context::line(None, line, range.start_index() + 1 + offset, range.start_index() + 1 + offset + num.0),
+                    )
+                })?);
+                offset += num.0;
+            }
+            if c == b'-' {
+                amount *= -1;
+            }
+
+            let first = range.start_index() + offset;
             let last = line[first..]
                 .char_indices()
                 .take_while(|(_, c)| c.is_ascii_alphanumeric()) // TODO are isotopes allowed here?
-                .fold((0, 0, ' '), |acc, (index, c)| (acc.0 + 1, index, c));
+                .last().map_or(0, |last| last.0 + last.1.len_utf8());
             let formula = MolecularFormula::from_pro_forma(
                 line,
-                first..first + last.1 + last.2.len_utf8(),
+                first..first + last,
                 false,
                 false,
                 true,
+                false,
             )?;
             carriers.push((
-                number.2.map_err(|err| {
-                    CustomError::error(
-                        "Invalid mzPAF adduct ordinal",
-                        format!("The ordinal number {}", explain_number_error(&err)),
-                        Context::line(None, line, range.start_index() + offset, number.0),
-                    )
-                })?,
+                amount as isize,
                 formula,
             ));
-            offset += number.0 + last.0;
+            offset += last;
         }
         if line.as_bytes().get(range.start_index() + offset).copied() != Some(b']') {
             return Err(CustomError::error(

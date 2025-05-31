@@ -108,7 +108,7 @@ format_family!(
         fragment_mass: Mass, |location: Location, _| location.or_empty().parse(NUMBER_ERROR).map(|r| r.map(Mass::new::<crate::system::dalton>));
         fragment_type: String, |location: Location, _| Ok(location.get_string());
         fragment_index: usize, |location: Location, _| location.or_empty().parse::<usize>(NUMBER_ERROR);
-        fragment_neutral_loss: NeutralLoss, |location: Location, _| location.or_empty().ignore("None").map(|l| MolecularFormula::from_pro_forma(l.full_line(), l.location.clone(), false, false, false).map(NeutralLoss::Loss)).transpose();
+        fragment_neutral_loss: NeutralLoss, |location: Location, _| location.or_empty().ignore("None").map(|l| MolecularFormula::from_pro_forma(l.full_line(), l.location.clone(), false, false, false, true).map(NeutralLoss::Loss)).transpose();
         fragment_description: String, |location: Location, _| Ok(location.get_string());
         fragment_sequence: String, |location: Location, _| Ok(location.get_string());
         fragment_site: String, |location: Location, _| Ok(location.get_string());

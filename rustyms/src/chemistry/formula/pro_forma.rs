@@ -1,7 +1,7 @@
 use crate::{
     chemistry::{COMMON_ELEMENT_PARSE_LIST, ELEMENT_PARSE_LIST, Element, MolecularFormula},
     error::{Context, CustomError},
-    helper_functions::{RangeExtension, explain_number_error},
+    helper_functions::{RangeExtension, explain_number_error, str_eq, str_starts_with},
 };
 use std::{num::NonZeroU16, ops::RangeBounds};
 
@@ -41,6 +41,7 @@ impl MolecularFormula {
         allow_charge: bool,
         allow_empty: bool,
         allow_uncommon_elements: bool,
+        ignore_casing: bool,
     ) -> Result<Self, CustomError> {
         let (mut index, end) = range.bounds(value.len().saturating_sub(1));
         if allow_empty && value[index..=end].eq_ignore_ascii_case("(empty)") {
@@ -88,9 +89,7 @@ impl MolecularFormula {
                     } else {
                         COMMON_ELEMENT_PARSE_LIST
                     } {
-                        if value[index + isotope + ws1..index + isotope + ws1 + ele]
-                            .to_ascii_lowercase()
-                            == possible.0
+                        if str_eq(&value[index + isotope + ws1..index + isotope + ws1 + ele], possible.0, ignore_casing)
                         {
                             element = Some(possible.1);
                             break;
@@ -229,14 +228,13 @@ impl MolecularFormula {
                     let element_text: String = value[index..]
                         .chars()
                         .take(2)
-                        .collect::<String>()
-                        .to_ascii_lowercase();
+                        .collect::<String>();
                     for possible in if allow_uncommon_elements {
                         ELEMENT_PARSE_LIST
                     } else {
                         COMMON_ELEMENT_PARSE_LIST
                     } {
-                        if element_text.starts_with(possible.0) {
+                        if str_starts_with(&element_text, possible.0, ignore_casing) {
                             element = Some(possible.1);
                             index += possible.0.len();
                             continue 'main_parse_loop;
@@ -274,7 +272,7 @@ impl MolecularFormula {
 
 #[test]
 fn fuzz() {
-    let _a = MolecularFormula::from_pro_forma(":", .., true, true, true);
-    let _a = MolecularFormula::from_pro_forma(":1002\\[d2C-2]H2N", .., true, true, true);
-    let _a = MolecularFormula::from_pro_forma("+Wv:z-,33U", .., true, true, true);
+    let _a = MolecularFormula::from_pro_forma(":", .., true, true, true, true);
+    let _a = MolecularFormula::from_pro_forma(":1002\\[d2C-2]H2N", .., true, true, true, true);
+    let _a = MolecularFormula::from_pro_forma("+Wv:z-,33U", .., true, true, true, true);
 }

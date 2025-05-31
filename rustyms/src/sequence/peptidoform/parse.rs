@@ -946,6 +946,7 @@ pub(super) fn parse_charge_state(
                 true,
                 false,
                 true,
+                true,
             )?;
             let _ = formula.add((
                 Element::Electron,
