@@ -355,13 +355,13 @@ pub(crate) fn next_num(
 /// A number of characters, used as length or index
 pub(crate) type Characters = usize;
 
-/// Get the next number starting at the character range given, returns length in characters and the number.
+/// Get the next number starting at the byte range given, returns length in bytes and the number.
 /// # Errors
-/// Returns none if the number is too big to fit in a `isize`.
+/// Returns none if the number is too big to fit in a `Number`.
 pub(crate) fn next_number<const ALLOW_SIGN: bool, const FLOATING_POINT: bool, Number: FromStr>(
     line: &str,
-    range: impl RangeBounds<Characters>,
-) -> Option<(Characters, bool, Result<Number, Number::Err>)> {
+    range: impl RangeBounds<usize>,
+) -> Option<(usize, bool, Result<Number, Number::Err>)> {
     let start = match range.start_bound() {
         Bound::Unbounded => 0,
         Bound::Excluded(n) => n + 1,
@@ -374,8 +374,7 @@ pub(crate) fn next_number<const ALLOW_SIGN: bool, const FLOATING_POINT: bool, Nu
     };
     let mut positive = true;
     let mut sign_set = false;
-    let mut start_index = 0;
-    let mut chars = line.char_indices().skip(start).peekable();
+    let mut chars = line[start..=end].char_indices().peekable();
     if ALLOW_SIGN {
         match chars.peek() {
             Some((_, '-')) => {
@@ -391,16 +390,13 @@ pub(crate) fn next_number<const ALLOW_SIGN: bool, const FLOATING_POINT: bool, Nu
             let _ = chars.next();
         }
     }
-    if let Some(index) = chars.peek().map(|(index, _)| index) {
-        start_index = *index;
-    }
 
     let mut consumed = usize::from(sign_set);
     chars
         .take_while(|(_, c)| {
             if c.is_ascii_digit() || (FLOATING_POINT && ".eE+-".contains(*c)) {
                 consumed += 1;
-                consumed < end - start
+                true
             } else {
                 false
             }
@@ -410,7 +406,7 @@ pub(crate) fn next_number<const ALLOW_SIGN: bool, const FLOATING_POINT: bool, Nu
             (
                 consumed,
                 positive,
-                line[start_index..end_index + c.len_utf8()].parse::<Number>(),
+                line[start..start + end_index + c.len_utf8()].parse::<Number>(),
             )
         })
 }
