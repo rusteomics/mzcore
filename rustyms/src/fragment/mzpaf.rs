@@ -83,7 +83,11 @@ fn parse_annotation(
         if adduct.charge() != charge {
             return Err(CustomError::error(
                 "Invalid mzPAF annotation",
-                format!("The defined charge ({}) should be identical to the total charge ({}) as defined in the adduct ions", adduct.charge().value, charge.value),
+                format!(
+                    "The defined charge ({}) should be identical to the total charge ({}) as defined in the adduct ions",
+                    adduct.charge().value,
+                    charge.value
+                ),
                 Context::line_range(None, line, range),
             ));
         }

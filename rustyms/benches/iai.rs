@@ -1,6 +1,6 @@
 use std::hint::black_box;
 
-use rustyms::{align::*,prelude::*, sequence::SimpleLinear};
+use rustyms::{align::*, prelude::*, sequence::SimpleLinear};
 
 use iai_callgrind::{
     LibraryBenchmarkConfig, Tool, ValgrindTool, library_benchmark, library_benchmark_group, main,
