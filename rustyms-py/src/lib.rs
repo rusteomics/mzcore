@@ -10,7 +10,81 @@ use rustyms::{
     annotation::AnnotatableSpectrum,
     chemistry::{Chemical, MultiChemical},
     sequence::{IsAminoAcid, Linked},
+    system::dalton,
 };
+
+/// Function to find all sequences that match a specific mass. The returned sequences are returned in a deterministic order.
+///
+/// Parameters
+/// ----------
+/// mass : number
+///     The monoisotopic target mass
+/// tolerance : number
+///     The tolerance in ppm (parts per million)
+/// amino_acids : list[AminoAcid]
+///     The list of amino acids to use look into TODO to get a default list
+/// fixed : list[tuple[SimpleModification, list[AminoAcid]]]
+///     The list of fixed modifications, with a list of all allowed positions, if this list is empty the allowed places from the modification are used
+/// variable : list[tuple[SimpleModification, list[AminoAcid]]]
+///     The list of variable modifications, with a list of all allowed positions, if this list is empty the allowed places from the modification are used
+/// base : Peptidoform | None
+///     If present, the base sequence that is always assumed to be present, if this has multiple molecular formulas the lowest mass one is used
+///
+/// Returns
+/// -------
+/// list[Peptidoform]
+///
+#[pyfunction]
+fn find_isobaric_sets(
+    mass: f64,
+    tolerance: f64,
+    amino_acids: Vec<AminoAcid>,
+    fixed: Vec<(SimpleModification, Vec<AminoAcid>)>,
+    variable: Vec<(SimpleModification, Vec<AminoAcid>)>,
+    base: Option<Peptidoform>,
+) -> Vec<Peptidoform> {
+    let amino_acids = amino_acids.into_iter().map(|a| a.0).collect::<Vec<_>>();
+    let base = base.and_then(|b| b.0.into_simple_linear());
+    let fixed = fixed
+        .into_iter()
+        .map(|(m, r)| {
+            (
+                m.0,
+                (!r.is_empty()).then(|| {
+                    rustyms::sequence::PlacementRule::AminoAcid(
+                        r.into_iter().map(|a| a.0).collect(),
+                        rustyms::sequence::Position::Anywhere,
+                    )
+                }),
+            )
+        })
+        .collect::<Vec<_>>();
+    let variable = variable
+        .into_iter()
+        .map(|(m, r)| {
+            (
+                m.0,
+                (!r.is_empty()).then(|| {
+                    rustyms::sequence::PlacementRule::AminoAcid(
+                        r.into_iter().map(|a| a.0).collect(),
+                        rustyms::sequence::Position::Anywhere,
+                    )
+                }),
+            )
+        })
+        .collect::<Vec<_>>();
+
+    rustyms::prelude::find_isobaric_sets(
+        rustyms::system::Mass::new::<dalton>(mass),
+        rustyms::quantities::Tolerance::new_ppm(tolerance),
+        &amino_acids,
+        &fixed,
+        &variable,
+        base.as_ref(),
+    )
+    .map(|p| Peptidoform(p.into()))
+    .collect()
+}
 
 /// Mass mode enum.
 #[pyclass(eq, eq_int)]
@@ -1716,6 +1790,7 @@ fn rustyms_py03(_py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<RawSpectrum>()?;
     m.add_class::<SequenceElement>()?;
     m.add_class::<SimpleModification>()?;
+    m.add_function(wrap_pyfunction!(find_isobaric_sets, m)?)?;
     Ok(())
 }
 
