@@ -89,8 +89,11 @@ impl MolecularFormula {
                     } else {
                         COMMON_ELEMENT_PARSE_LIST
                     } {
-                        if str_eq(&value[index + isotope + ws1..index + isotope + ws1 + ele], possible.0, ignore_casing)
-                        {
+                        if str_eq(
+                            &value[index + isotope + ws1..index + isotope + ws1 + ele],
+                            possible.0,
+                            ignore_casing,
+                        ) {
                             element = Some(possible.1);
                             break;
                         }
@@ -225,10 +228,7 @@ impl MolecularFormula {
                             ));
                         }
                     }
-                    let element_text: String = value[index..]
-                        .chars()
-                        .take(2)
-                        .collect::<String>();
+                    let element_text: String = value[index..].chars().take(2).collect::<String>();
                     for possible in if allow_uncommon_elements {
                         ELEMENT_PARSE_LIST
                     } else {

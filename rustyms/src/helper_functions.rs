@@ -493,9 +493,5 @@ pub(crate) fn str_starts_with(a: &str, b: &str, ignore_casing: bool) -> bool {
             return false;
         }
     }
-    if a.len() >= b.len() {
-        true
-    } else {
-        false
-    }
+    if a.len() >= b.len() { true } else { false }
 }

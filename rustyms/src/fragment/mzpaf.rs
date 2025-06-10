@@ -197,9 +197,7 @@ fn parse_ion(
             } else {
                 (range.add_start(1_usize), None)
             };
-            if let Some(ordinal) =
-                next_number::<false, false, usize>(line, range.clone())
-            {
+            if let Some(ordinal) = next_number::<false, false, usize>(line, range.clone()) {
                 let (range, interpretation) = if line
                     .as_bytes()
                     .get(range.start_index() + ordinal.0)
@@ -210,8 +208,7 @@ fn parse_ion(
                         end_of_enclosure(line, range.start_index() + 1 + ordinal.0, b'{', b'}')
                     {
                         let interpretation = Peptidoform::pro_forma(
-                            &line[range.start_index() + ordinal.0 + 1
-                                ..location],
+                            &line[range.start_index() + ordinal.0 + 1..location],
                             custom_database,
                         );
                         (
@@ -230,7 +227,7 @@ fn parse_ion(
                     (range, None)
                 };
                 Ok((
-                    range.add_start( ordinal.0),
+                    range.add_start(ordinal.0),
                     IonType::MainSeries(
                         c,
                         sub,
@@ -395,7 +392,8 @@ fn parse_ion(
                     .unwrap();
                 Ok((
                     last.0 + last.1.len_utf8() - first,
-                    &line[range.clone()][first + range.start_index()..range.start_index() + last.0 + last.1.len_utf8()],
+                    &line[range.clone()][first + range.start_index()
+                        ..range.start_index() + last.0 + last.1.len_utf8()],
                 ))
             } else {
                 Err(CustomError::error(
@@ -436,8 +434,14 @@ fn parse_ion(
                     Context::line(None, line, range.start_index(), 1),
                 ))
             }?;
-            let formula =
-                MolecularFormula::from_pro_forma(line, formula_range.clone(), false, false, true, false)?;
+            let formula = MolecularFormula::from_pro_forma(
+                line,
+                formula_range.clone(),
+                false,
+                false,
+                true,
+                false,
+            )?;
 
             Ok((
                 range.add_start(3 + formula_range.len()),
@@ -472,16 +476,29 @@ fn parse_neutral_loss(
             amount = i32::from(num.2.map_err(|err| {
                 CustomError::error(
                     "Invalid mzPAF neutral loss leading amount",
-                    format!("The neutral loss amount number {}", explain_number_error(&err)),
-                    Context::line(None, line, range.start_index() + 1 + offset, range.start_index() + 1 + offset + num.0),
+                    format!(
+                        "The neutral loss amount number {}",
+                        explain_number_error(&err)
+                    ),
+                    Context::line(
+                        None,
+                        line,
+                        range.start_index() + 1 + offset,
+                        range.start_index() + 1 + offset + num.0,
+                    ),
                 )
             })?);
             offset += num.0;
         }
 
-        if line.as_bytes().get(range.start_index() + 1 + offset).copied() == Some(b'[') {
-            let last =
-                end_of_enclosure(line, range.start_index() + 2 + offset, b'[', b']').ok_or_else(|| {
+        if line
+            .as_bytes()
+            .get(range.start_index() + 1 + offset)
+            .copied()
+            == Some(b'[')
+        {
+            let last = end_of_enclosure(line, range.start_index() + 2 + offset, b'[', b']')
+                .ok_or_else(|| {
                     CustomError::error(
                         "Unknown mzPAF named neutral loss",
                         "Opening bracket for neutral loss name was not closed",
@@ -497,7 +514,12 @@ fn parse_neutral_loss(
                 .iter()
                 .find_map(|n| (n.0.eq_ignore_ascii_case(name)).then_some(n.1.clone()))
             {
-                println!("Found: ['{}'] at {}..{}", &formula,  range.start_index() + offset - name.len() - 1,  range.start_index() +  offset);
+                println!(
+                    "Found: ['{}'] at {}..{}",
+                    &formula,
+                    range.start_index() + offset - name.len() - 1,
+                    range.start_index() + offset
+                );
                 neutral_losses.push(match c {
                     b'+' => NeutralLoss::Gain(formula * amount),
                     b'-' => NeutralLoss::Loss(formula * amount),
@@ -517,7 +539,8 @@ fn parse_neutral_loss(
                 .take_while(|(_, c)| c.is_ascii_alphanumeric()) // TODO check if isotopes are allowed here, theoretically yes, but not clearly specified in the spec
                 .last()
                 .unwrap();
-            let formula = MolecularFormula::from_pro_forma( // TODO 'i' is seen as iodine while the thing should casing specific
+            let formula = MolecularFormula::from_pro_forma(
+                // TODO 'i' is seen as iodine while the thing should casing specific
                 line,
                 first..first + last.0 + last.1.len_utf8(),
                 false,
@@ -525,7 +548,12 @@ fn parse_neutral_loss(
                 true,
                 false,
             )?;
-            println!("Found: '{}' at {}..{}", &formula,  range.start_index() + offset, range.start_index() + offset + 1 + last.0 + last.1.len_utf8());
+            println!(
+                "Found: '{}' at {}..{}",
+                &formula,
+                range.start_index() + offset,
+                range.start_index() + offset + 1 + last.0 + last.1.len_utf8()
+            );
             neutral_losses.push(match c {
                 b'+' => NeutralLoss::Gain(formula * amount),
                 b'-' => NeutralLoss::Loss(formula * amount),
@@ -542,11 +570,7 @@ fn parse_adduct_type(
     range: Range<usize>,
 ) -> Result<(Range<usize>, Option<MolecularCharge>), CustomError> {
     if line.as_bytes().get(range.start_index()).copied() == Some(b'[') {
-        if line
-            .as_bytes()
-            .get(range.start_index() + 1).copied()
-            != Some(b'M')
-        {
+        if line.as_bytes().get(range.start_index() + 1).copied() != Some(b'M') {
             return Err(CustomError::error(
                 "Invalid mzPAF adduct type",
                 "The adduct type should start with 'M', as in '[M+nA]'",
@@ -556,7 +580,9 @@ fn parse_adduct_type(
         let mut carriers = Vec::new();
         let mut offset = 2;
         println!("{}", &line[range.add_start(offset)]);
-         while let Some(c @ (b'-' | b'+')) = line.as_bytes().get(range.start_index() + offset).copied() {
+        while let Some(c @ (b'-' | b'+')) =
+            line.as_bytes().get(range.start_index() + offset).copied()
+        {
             offset += 1; // The sign
             let mut amount = 1;
             // Parse leading number to detect how many times this adduct occured
@@ -565,7 +591,12 @@ fn parse_adduct_type(
                     CustomError::error(
                         "Invalid mzPAF adduct leading amount",
                         format!("The adduct amount number {}", explain_number_error(&err)),
-                        Context::line(None, line, range.start_index() + 1 + offset, range.start_index() + 1 + offset + num.0),
+                        Context::line(
+                            None,
+                            line,
+                            range.start_index() + 1 + offset,
+                            range.start_index() + 1 + offset + num.0,
+                        ),
                     )
                 })?);
                 offset += num.0;
@@ -578,7 +609,8 @@ fn parse_adduct_type(
             let last = line[first..]
                 .char_indices()
                 .take_while(|(_, c)| c.is_ascii_alphanumeric()) // TODO are isotopes allowed here?
-                .last().map_or(0, |last| last.0 + last.1.len_utf8());
+                .last()
+                .map_or(0, |last| last.0 + last.1.len_utf8());
             let formula = MolecularFormula::from_pro_forma(
                 line,
                 first..first + last,
@@ -587,10 +619,7 @@ fn parse_adduct_type(
                 true,
                 false,
             )?;
-            carriers.push((
-                amount as isize,
-                formula,
-            ));
+            carriers.push((amount as isize, formula));
             offset += last;
         }
         if line.as_bytes().get(range.start_index() + offset).copied() != Some(b']') {
@@ -609,10 +638,7 @@ fn parse_adduct_type(
     }
 }
 
-fn parse_charge(
-    line: &str,
-    range: Range<usize>,
-) -> Result<(Range<usize>, Charge), CustomError> {
+fn parse_charge(line: &str, range: Range<usize>) -> Result<(Range<usize>, Charge), CustomError> {
     if line.as_bytes().get(range.start_index()).copied() == Some(b'^') {
         let charge =
             next_number::<false, false, u32>(line, range.add_start(1_usize)).ok_or_else(|| {
@@ -688,8 +714,7 @@ fn parse_deviation(
                 Context::line_range(None, line, range.start + 1..range.start + 1 + number.0),
             )
         })?;
-        if line[range.start_index() + 1 + number.0..].starts_with("ppm")
-        {
+        if line[range.start_index() + 1 + number.0..].starts_with("ppm") {
             Ok((
                 range.add_start(1 + number.0 + 3),
                 Some(Tolerance::new_ppm(deviation)),
