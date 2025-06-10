@@ -14,7 +14,7 @@ use crate::{
     molecular_formula,
     ontology::{CustomDatabase, Ontology},
     quantities::Tolerance,
-    sequence::{AminoAcid, CompoundPeptidoformIon, Peptidoform, SemiAmbiguous, SimpleModification},
+    sequence::{AminoAcid, Peptidoform, SemiAmbiguous, SimpleModification},
     system::{MassOverCharge, e, isize::Charge, mz},
 };
 // TODO: ask about mzPAF spec:
@@ -22,6 +22,8 @@ use crate::{
 // * are isotopes supported in adduct ion additions? (I would assume so, but not clearly stated)
 // * page 12 styling for examples not right
 // * Is 'Adenosine' supposed to be a reporter ion? It is not in the list but it is used as an example
+// * Do we need to specify what class of thing is allowed for any ProForma entries, and maybe also what to do with brackets (which take priority)
+// * How are parsed supposed to know the charge of each adduct? Is there a list somewhere
 
 /// Parse a mzPAF peak annotation line (can contain multiple annotations).
 /// # Errors
@@ -81,7 +83,7 @@ fn parse_annotation(
         if adduct.charge() != charge {
             return Err(CustomError::error(
                 "Invalid mzPAF annotation",
-                "The defined charge should be identical to the total charge as defined in the adduct ions",
+                format!("The defined charge ({}) should be identical to the total charge ({}) as defined in the adduct ions", adduct.charge().value, charge.value),
                 Context::line_range(None, line, range),
             ));
         }
@@ -134,11 +136,11 @@ fn parse_analyte_number(
     next_number::<false, false, usize>(line, range.clone()).map_or_else(
         || Ok((range.clone(), None)),
         |num| {
-            if line.as_bytes().get(num.0 + 1).copied() != Some(b'@') {
+            if line.as_bytes().get(num.0 + range.start).copied() != Some(b'@') {
                 return Err(CustomError::error(
                     "Invalid mzPAF analyte number",
                     "The analyte number should be followed by an at sign '@'",
-                    Context::line(None, line, num.0, 1),
+                    Context::line(None, line, num.0 + range.start, 1),
                 ));
             }
             Ok((
@@ -147,7 +149,7 @@ fn parse_analyte_number(
                     CustomError::error(
                         "Invalid mzPAF analyte number",
                         format!("The analyte number number {}", explain_number_error(&err)),
-                        Context::line(None, line, 0, num.0),
+                        Context::line(None, line, range.start, num.0),
                     )
                 })?),
             ))
@@ -305,17 +307,13 @@ fn parse_ion(
                         Context::line(None, line, range.start_index(), 1),
                     )
                 })?;
-            if line[range.clone()].chars().nth(first_ordinal.0) != Some(':') {
+            if line[range.clone()].chars().nth(first_ordinal.0 + 1) != Some(':') {
                 return Err(CustomError::error(
                     "Invalid mzPAF internal ion ordinal separator",
                     "The internal ion ordinal separator should be a colon ':', like 'm4:6'",
                     Context::line(None, line, range.start_index() + 1 + first_ordinal.0, 1),
                 ));
             }
-            assert!(
-                line[range.clone()].chars().nth(first_ordinal.0) == Some(':'),
-                "Needs to be separated by colon"
-            );
             let second_ordinal = next_number::<false, false, usize>(
                 line,
                 range.add_start(2 + first_ordinal.0 as isize),
@@ -906,9 +904,9 @@ mzpaf_test!("p^2", positive_31);
 mzpaf_test!("p-H3PO4^2", positive_32);
 mzpaf_test!("p^4", positive_33);
 mzpaf_test!("p+H^3", positive_34);
-mzpaf_test!("p^3 ", positive_35);
+mzpaf_test!("p^3", positive_35);
 mzpaf_test!("p+2H^2", positive_36);
-mzpaf_test!("p^2 ", positive_37);
+mzpaf_test!("p^2", positive_37);
 mzpaf_test!("p+H^2", positive_38);
 mzpaf_test!("p+3H", positive_39);
 mzpaf_test!("p+2H", positive_40);
