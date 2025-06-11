@@ -1,11 +1,11 @@
 //! WIP: mzPAF parser
 #![allow(dead_code)]
-use std::{ops::Range, sync::LazyLock};
+use std::{num::NonZeroU16, ops::Range, sync::LazyLock};
 
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    chemistry::{MolecularCharge, MolecularFormula},
+    chemistry::{ELEMENT_PARSE_LIST, Element, MolecularCharge, MolecularFormula},
     error::{Context, CustomError},
     fragment::NeutralLoss,
     helper_functions::{
@@ -74,7 +74,7 @@ fn parse_annotation(
     let (left_range, analyte_number) = parse_analyte_number(line, left_range)?;
     let (left_range, ion) = parse_ion(line, left_range, custom_database)?;
     let (left_range, neutral_losses) = parse_neutral_loss(line, left_range)?;
-    // TODO: Parse isotopes (currently considered ambiguous with Iodine loss/gain)
+    let (left_range, isotopes) = parse_isotopes(line, left_range)?;
     let (left_range, adduct_type) = parse_adduct_type(line, left_range)?;
     let (left_range, charge) = parse_charge(line, left_range)?;
     let (left_range, deviation) = parse_deviation(line, left_range)?;
@@ -99,6 +99,7 @@ fn parse_annotation(
             analyte_number,
             ion,
             neutral_losses,
+            isotopes,
             charge: adduct_type.unwrap_or_else(|| MolecularCharge::proton(charge.value)),
             deviation,
             confidence,
@@ -113,9 +114,37 @@ pub struct PeakAnnotation {
     analyte_number: Option<usize>,
     ion: IonType,
     neutral_losses: Vec<NeutralLoss>,
+    isotopes: Vec<(i32, Isotope)>,
     charge: MolecularCharge,
     deviation: Option<Tolerance<MassOverCharge>>,
     confidence: Option<f64>,
+}
+
+impl std::fmt::Display for PeakAnnotation {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        if self.auxiliary {
+            write!(f, "&")?;
+        }
+        if let Some(number) = self.analyte_number {
+            write!(f, "{number}@")?;
+        }
+        write!(f, "{}", self.ion)?;
+        for loss in &self.neutral_losses {
+            write!(f, "{loss}")?;
+        }
+        let charge = self.charge.charge().value;
+        if self.charge != MolecularCharge::proton(charge) {
+            write!(f, "[M")?;
+            for (amount, option) in &self.charge.charge_carriers {
+                write!(f, "{amount}{option}")?;
+            }
+            write!(f, "]")?;
+        }
+        if charge != 1 {
+            write!(f, "^{charge}")?;
+        }
+        write!(f, "{:?}{:?}", self.deviation, self.confidence)
+    }
 }
 
 #[derive(Clone, Debug, Deserialize, PartialEq, PartialOrd, Serialize)]
@@ -128,6 +157,43 @@ enum IonType {
     Precursor,
     Reporter(MolecularFormula),
     Formula(MolecularFormula),
+}
+
+impl std::fmt::Display for IonType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Unknown(n) => write!(f, "?{}", n.map_or_else(String::new, |n| n.to_string())),
+            Self::MainSeries(series, sub, ordinal, interpretation) => {
+                write!(
+                    f,
+                    "{}{}{ordinal}{}",
+                    *series as char,
+                    sub.map_or_else(String::new, |s| (s as char).to_string()),
+                    interpretation
+                        .as_ref()
+                        .map_or_else(String::new, |i| format!("{{{i}}}"))
+                )
+            }
+            Self::Immonium(aa, m) => {
+                write!(
+                    f,
+                    "I{aa}{}",
+                    m.clone().map_or_else(String::new, |m| format!("[{m}]"))
+                )
+            }
+            Self::Internal(start, end) => write!(f, "m{start}:{end}"),
+            Self::Named(name) => write!(f, "r[{name}]"),
+            Self::Precursor => write!(f, "p"),
+            Self::Reporter(formula) | Self::Formula(formula) => write!(f, "f{{{formula}}}"),
+        }
+    }
+}
+
+#[derive(Clone, Debug, Deserialize, PartialEq, PartialOrd, Serialize)]
+enum Isotope {
+    General,
+    Average,
+    Specific(Element, NonZeroU16),
 }
 
 /// Parse a mzPAF analyte number. '1@...'
@@ -204,21 +270,19 @@ fn parse_ion(
                 (range.add_start(1_usize), None)
             };
             if let Some(ordinal) = next_number::<false, false, usize>(line, range.clone()) {
-                let (range, interpretation) = if line
-                    .as_bytes()
-                    .get(range.start_index() + ordinal.0)
-                    .copied()
+                let range = range.add_start(ordinal.0);
+                let (end, interpretation) = if line.as_bytes().get(range.start_index()).copied()
                     == Some(b'{')
                 {
                     if let Some(location) =
-                        end_of_enclosure(line, range.start_index() + 1 + ordinal.0, b'{', b'}')
+                        end_of_enclosure(line, range.start_index() + 1, b'{', b'}')
                     {
                         let interpretation = Peptidoform::pro_forma(
-                            &line[range.start_index() + ordinal.0 + 1..location],
+                            &line[range.start_index() + 1..location],
                             custom_database,
                         );
                         (
-                            range.add_start(ordinal.0 + location),
+                            location + 1,
                             Some(interpretation.unwrap().into_semi_ambiguous().unwrap()),
                         )
                         // TODO: proper error handling and add checks to the length of the sequence
@@ -226,14 +290,14 @@ fn parse_ion(
                         return Err(CustomError::error(
                             "Invalid mzPAF main series ion ordinal",
                             "The asserted interpretation should have a closed curly bracket, like '0@b2{LL}'",
-                            Context::line(None, line, range.start_index() + ordinal.0, 1),
+                            Context::line(None, line, range.start_index(), 1),
                         ));
                     }
                 } else {
-                    (range, None)
+                    (range.start_index(), None)
                 };
                 Ok((
-                    range.add_start(ordinal.0),
+                    end..range.end,
                     IonType::MainSeries(
                         c,
                         sub,
@@ -241,7 +305,12 @@ fn parse_ion(
                             CustomError::error(
                                 "Invalid mzPAF ion ordinal",
                                 format!("The ordinal number {}", explain_number_error(&err)),
-                                Context::line(None, line, range.start_index(), ordinal.0),
+                                Context::line(
+                                    None,
+                                    line,
+                                    range.start_index() - ordinal.0, // Maybe also offset for interpretation?
+                                    ordinal.0,
+                                ),
                             )
                         })?,
                         interpretation,
@@ -473,6 +542,7 @@ fn parse_neutral_loss(
     let mut neutral_losses = Vec::new();
     while let Some(c @ (b'-' | b'+')) = line.as_bytes().get(range.start_index() + offset).copied() {
         let mut amount = 1;
+        let mut num_offset = 0;
         // Parse leading number to detect how many times this loss occured
         if let Some(num) = next_number::<false, false, u16>(line, range.add_start(1 + offset)) {
             amount = i32::from(num.2.map_err(|err| {
@@ -491,6 +561,16 @@ fn parse_neutral_loss(
                 )
             })?);
             offset += num.0;
+            num_offset = num.0;
+        }
+
+        if line
+            .as_bytes()
+            .get(range.start_index() + 1 + offset)
+            .copied()
+            == Some(b'i')
+        {
+            return Ok((range.add_start(offset - num_offset), neutral_losses));
         }
 
         if line
@@ -516,12 +596,6 @@ fn parse_neutral_loss(
                 .iter()
                 .find_map(|n| (n.0.eq_ignore_ascii_case(name)).then_some(n.1.clone()))
             {
-                println!(
-                    "Found: ['{}'] at {}..{}",
-                    &formula,
-                    range.start_index() + offset - name.len() - 1,
-                    range.start_index() + offset
-                );
                 neutral_losses.push(match c {
                     b'+' => NeutralLoss::Gain(formula * amount),
                     b'-' => NeutralLoss::Loss(formula * amount),
@@ -550,12 +624,6 @@ fn parse_neutral_loss(
                 true,
                 false,
             )?;
-            println!(
-                "Found: '{}' at {}..{}",
-                &formula,
-                range.start_index() + offset,
-                range.start_index() + offset + 1 + last.0 + last.1.len_utf8()
-            );
             neutral_losses.push(match c {
                 b'+' => NeutralLoss::Gain(formula * amount),
                 b'-' => NeutralLoss::Loss(formula * amount),
@@ -565,6 +633,90 @@ fn parse_neutral_loss(
         }
     }
     Ok((range.add_start(offset), neutral_losses))
+}
+
+fn parse_isotopes(
+    line: &str,
+    range: Range<usize>,
+) -> Result<(Range<usize>, Vec<(i32, Isotope)>), CustomError> {
+    let mut offset = 0;
+    let mut isotopes = Vec::new();
+    while let Some(c @ (b'-' | b'+')) = line.as_bytes().get(range.start_index() + offset).copied() {
+        offset += 1;
+        let mut amount = 1;
+        // Parse leading number to detect how many times this isotope occured
+        if let Some(num) = next_number::<false, false, u16>(line, range.add_start(offset)) {
+            amount = i32::from(num.2.map_err(|err| {
+                CustomError::error(
+                    "Invalid mzPAF isotope leading amount",
+                    format!("The isotope amount number {}", explain_number_error(&err)),
+                    Context::line(None, line, range.start_index() + offset, num.0),
+                )
+            })?);
+            offset += num.0;
+        }
+        if c == b'-' {
+            amount *= -1;
+        }
+
+        // Check if i
+        if line.as_bytes().get(range.start_index() + offset).copied() != Some(b'i') {
+            return Err(CustomError::error(
+                "Invalid mzPAF isotope",
+                "An isotope should be indicated with a lowercase 'i', eg '+i', '+5i', '+2iA', '+i13C'",
+                Context::line(None, line, range.start_index() + offset, 1),
+            ));
+        }
+        offset += 1;
+
+        // Check if a specific isotope
+        if let Some(num) = next_number::<false, false, NonZeroU16>(line, range.add_start(offset)) {
+            let nucleon = NonZeroU16::from(num.2.map_err(|err| {
+                CustomError::error(
+                    "Invalid mzPAF isotope nucleon number",
+                    format!("The nucleon number {}", explain_number_error(&err)),
+                    Context::line(None, line, range.start_index() + offset, num.0),
+                )
+            })?);
+            offset += num.0;
+
+            let mut element = None;
+            for (code, el) in ELEMENT_PARSE_LIST {
+                if line[range.start + offset..].starts_with(code) {
+                    element = Some(*el);
+                    offset += code.len();
+                    break;
+                }
+            }
+            let element = element.ok_or_else(|| {
+                CustomError::error(
+                    "Invalid mzPAF isotope element",
+                    "No recognised element symbol was found",
+                    Context::line(None, line, range.start_index() + offset, 1),
+                )
+            })?;
+            if !element.is_valid(Some(nucleon)) {
+                let ln = element.symbol().len();
+                return Err(CustomError::error(
+                    "Invalid mzPAF isotope",
+                    format!(
+                        "The nucleon number {nucleon} does not have a defined mass for {element}",
+                    ),
+                    Context::line(None, line, range.start_index() + offset - ln, ln),
+                ));
+            }
+            isotopes.push((amount, Isotope::Specific(element, nucleon)));
+        } else {
+            // A or nothing
+            if line.as_bytes().get(range.start_index() + offset).copied() == Some(b'A') {
+                offset += 1;
+                isotopes.push((amount, Isotope::Average));
+            } else {
+                isotopes.push((amount, Isotope::General));
+            }
+        }
+    }
+    Ok((range.add_start(offset), isotopes))
 }
 
 fn parse_adduct_type(
@@ -581,7 +733,6 @@ fn parse_adduct_type(
         }
         let mut carriers = Vec::new();
         let mut offset = 2;
-        println!("{}", &line[range.add_start(offset)]);
         while let Some(c @ (b'-' | b'+')) =
             line.as_bytes().get(range.start_index() + offset).copied()
         {
@@ -664,34 +815,6 @@ fn parse_charge(line: &str, range: Range<usize>) -> Result<(Range<usize>, Charge
         Ok((range, Charge::new::<e>(1)))
     }
 }
-
-// fn parse_adduct(
-//     line: &str,
-//     range: Range<usize>,
-// ) -> Result<(Characters, MolecularFormula), CustomError> {
-//     if line[range.clone()].chars().next() == Some('^') {
-//         let charge =
-//             next_number::<false, false, u32>(line, range.add_start(1)).ok_or_else(|| {
-//                 CustomError::error(
-//                     "Invalid mzPAF charge",
-//                     "The number after the charge symbol should be present, eg '^2'.",
-//                     Context::line(None, line, range.start_index(), 1),
-//                 )
-//             })?;
-//         Ok((
-//             charge.0 + 1,
-//             Charge::new::<e>(charge.2.map_err(|err| {
-//                 CustomError::error(
-//                     "Invalid mzPAF charge",
-//                     format!("The charge number {}", explain_number_error(&err)),
-//                     Context::line(None, line, range.start_index() + 1, charge.0),
-//                 )
-//             })? as isize),
-//         ))
-//     } else {
-//         Ok((0, Charge::new::<e>(1)))
-//     }
-// }
 
 /// Parse a mzPAF deviation, either a ppm or mz deviation.
 /// # Errors
@@ -857,8 +980,11 @@ macro_rules! mzpaf_test {
         #[test]
         fn $name() {
             let res = $crate::fragment::parse_mzpaf($case, None);
-            println!("{}", $case);
-            assert!(res.is_ok(), "{}", res.err().unwrap());
+            if let Err(err) = res {
+                println!("Failed: '{}'", $case);
+                println!("{err}");
+                panic!("Failed test")
+            }
             // let back = res.as_ref().unwrap().to_string();
             // let res_back = $crate::fragment::parse_mzpaf(&back, None);
             // assert_eq!(res, res_back, "{} != {back}", $case);
@@ -892,7 +1018,9 @@ mzpaf_test!("0@b2{LL}", positive_15);
 mzpaf_test!("0@y1{K}", positive_16);
 mzpaf_test!("0@b2{LC[Carbamidomethyl]}", positive_17);
 mzpaf_test!("0@b1{[Acetyl]-M}", positive_18);
-mzpaf_test!("0@y4{M[Oxidation]ACK}-CH4OS[M+H+Na]^2", positive_19);
+mzpaf_test!("0@y4{M[Oxidation]ACK}-CH4OS[M+H+Na]^2", positive_19a);
+mzpaf_test!("0@y44{M[Oxidation]ACK}-CH4OS[M+H+Na]^2", positive_19b);
+mzpaf_test!("0@y444{M[Oxidation]ACK}-CH4OS[M+H+Na]^2", positive_19c);
 mzpaf_test!("m3:6", positive_20);
 mzpaf_test!("b3-C2H3NO", positive_21);
 mzpaf_test!("m3:6-CO", positive_22);
@@ -938,17 +1066,22 @@ mzpaf_test!("s{COc(c1)cccc1C#N}[M+H+Na]^2/1.29ppm", positive_61);
 mzpaf_test!("p-[Hex]", positive_62);
 mzpaf_test!("y2+CO-H2O", positive_63);
 mzpaf_test!("y2-H2O-NH3", positive_64);
-mzpaf_test!("p-[Hex]", positive_65);
-mzpaf_test!("p-[TMT6plex]-2H2O-HPO3", positive_66);
-mzpaf_test!("p-2[iTRAQ115]", positive_67);
-mzpaf_test!("p-[iTRAQ116]-CO-H2O-HPO3", positive_68);
-mzpaf_test!("y4[M+Na]", positive_69);
-mzpaf_test!("y5-H2O[M+H+Na]^2", positive_70);
-mzpaf_test!("&1@y7/-0.002", positive_71);
-mzpaf_test!("&y7/-0.001", positive_72);
-mzpaf_test!("y7/0.000*0.95", positive_73);
-mzpaf_test!("&y7/0.001", positive_74);
-mzpaf_test!("&y7/0.002", positive_75);
-mzpaf_test!("b6-H2O/-0.005,&y7/0.003", positive_76);
-mzpaf_test!("y12-H2O^2/7.4ppm*0.70", positive_77);
-mzpaf_test!("y12/3.4ppm*0.85,b9-NH3/5.2ppm*0.05", positive_78);
+mzpaf_test!("p-[TMT6plex]-2H2O-HPO3", positive_65);
+mzpaf_test!("p-2[iTRAQ115]", positive_66);
+mzpaf_test!("p-[iTRAQ116]-CO-H2O-HPO3", positive_67);
+mzpaf_test!("y12+i", positive_68);
+mzpaf_test!("y12+i13C", positive_69);
+mzpaf_test!("y12+i15N", positive_70);
+mzpaf_test!("y12+2i13C+i15N", positive_71);
+mzpaf_test!("y12+iA", positive_72);
+mzpaf_test!("y12+2iA", positive_73);
+mzpaf_test!("y4[M+Na]", positive_74);
+mzpaf_test!("y5-H2O[M+H+Na]^2", positive_75);
+mzpaf_test!("&1@y7/-0.002", positive_76);
+mzpaf_test!("&y7/-0.001", positive_77);
+mzpaf_test!("y7/0.000*0.95", positive_78);
+mzpaf_test!("&y7/0.001", positive_79);
+mzpaf_test!("&y7/0.002", positive_80);
+mzpaf_test!("b6-H2O/-0.005,&y7/0.003", positive_81);
+mzpaf_test!("y12-H2O^2/7.4ppm*0.70", positive_82);
+mzpaf_test!("y12/3.4ppm*0.85,b9-NH3/5.2ppm*0.05", positive_83);
