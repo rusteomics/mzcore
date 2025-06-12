@@ -13,7 +13,7 @@ use crate::{
     },
     ontology::CustomDatabase,
     sequence::{AminoAcid, Peptidoform, SemiAmbiguous, SloppyParsingParameters},
-    system::{Mass, MassOverCharge, Time, usize::Charge},
+    system::{Mass, MassOverCharge, Time, isize::Charge},
 };
 use serde::{Deserialize, Serialize};
 
@@ -33,7 +33,7 @@ format_family!(
         rt: Time, |location: Location, _| location.parse::<f64>(NUMBER_ERROR).map(Time::new::<crate::system::time::min>);
         precursor_scan_number: usize, |location: Location, _| location.parse(NUMBER_ERROR);
         mz: MassOverCharge, |location: Location, _| location.parse::<f64>(NUMBER_ERROR).map(MassOverCharge::new::<crate::system::mz>);
-        z: Charge, |location: Location, _| location.parse::<usize>(NUMBER_ERROR).map(Charge::new::<crate::system::e>);
+        z: Charge, |location: Location, _| location.parse::<isize>(NUMBER_ERROR).map(Charge::new::<crate::system::e>);
         mass: Mass, |location: Location, _| location.parse::<f64>(NUMBER_ERROR).map(Mass::new::<crate::system::dalton>);
         accession: String, |location: Location, _| Ok(location.get_string());
         organism: String, |location: Location, _| Ok(location.get_string());

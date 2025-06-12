@@ -12,7 +12,7 @@ use crate::{
     },
     ontology::{CustomDatabase, Ontology},
     sequence::{AminoAcid, Peptidoform, SemiAmbiguous, SloppyParsingParameters},
-    system::{MassOverCharge, usize::Charge},
+    system::{MassOverCharge, isize::Charge},
 };
 
 static NUMBER_ERROR: (&str, &str) = (
@@ -74,7 +74,7 @@ format_family!(
     optional {
         z: Charge, |location: Location, _| location
             .trim_end_matches(".0")
-            .parse::<usize>(NUMBER_ERROR)
+            .parse::<isize>(NUMBER_ERROR)
             .map(Charge::new::<crate::system::e>);
         mz: MassOverCharge, |location: Location, _| location.parse::<f64>(NUMBER_ERROR).map(MassOverCharge::new::<crate::system::mz>);
     }

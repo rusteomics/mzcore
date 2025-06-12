@@ -11,7 +11,7 @@ use crate::{
     spectrum::{PeakSpectrum, RawPeak},
     system::{
         f64::{Mass, MassOverCharge, Time},
-        usize::Charge,
+        isize::Charge,
     },
 };
 

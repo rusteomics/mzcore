@@ -25,7 +25,7 @@ use crate::{
         CrossLinkName, Modification, Peptidoform, PeptidoformIon, SequencePosition,
         SimpleModification, SimpleModificationInner, SloppyParsingParameters,
     },
-    system::{Mass, usize::Charge},
+    system::{Mass, isize::Charge},
 };
 
 static NUMBER_ERROR: (&str, &str) = (
@@ -46,7 +46,7 @@ format_family!(
     required {
         order: usize, |location: Location, _| location.parse::<usize>(NUMBER_ERROR);
         title: String, |location: Location, _| Ok(location.get_string());
-        z: Charge, |location: Location, _| location.parse::<usize>(NUMBER_ERROR).map(Charge::new::<crate::system::e>);
+        z: Charge, |location: Location, _| location.parse::<isize>(NUMBER_ERROR).map(Charge::new::<crate::system::e>);
         /// MH+ mass
         mass: Mass, |location: Location, _| location.parse::<f64>(NUMBER_ERROR).map(Mass::new::<crate::system::dalton>);
         /// MH+ mass

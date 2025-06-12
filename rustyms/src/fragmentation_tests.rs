@@ -7,7 +7,7 @@ use crate::{
         AminoAcid, CompoundPeptidoformIon, LinkerSpecificity, ModificationId, Peptidoform,
         PlacementRule, Position, SimpleModificationInner,
     },
-    system::{MassOverCharge, Ratio, ratio::ppm, usize::Charge},
+    system::{MassOverCharge, Ratio, isize::Charge, ratio::ppm},
     *,
 };
 
@@ -718,7 +718,7 @@ fn test(
     theoretical_fragments: &[(f64, &str)],
     peptide: impl Into<CompoundPeptidoformIon>,
     model: &FragmentationModel,
-    charge: usize,
+    charge: isize,
     allow_left_over_generated: bool,
     allow_double_theoretical: bool,
 ) {

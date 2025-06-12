@@ -30,7 +30,7 @@ reading of [mgf](spectrum::mgf), doing [spectrum annotation](crate::annotation::
 ```rust
 # fn main() -> Result<(), rustyms::error::CustomError> {
 # let raw_file_path = "data/annotated_example.mgf";
-use rustyms::{prelude::*, system::{usize::Charge, e}};
+use rustyms::{prelude::*, system::{isize::Charge, e}};
 // Open example raw data (this is the built in mgf reader, look into mzdata for more advanced raw file readers)
 let spectrum = rustyms::spectrum::mgf::open(raw_file_path)?;
 // Parse the given ProForma definition

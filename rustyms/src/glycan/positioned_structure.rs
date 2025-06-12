@@ -10,7 +10,7 @@ use crate::{
     fragment::{Fragment, FragmentType, GlycanBreakPos},
     quantities::Multi,
     sequence::{AminoAcid, SequencePosition},
-    system::usize::Charge,
+    system::isize::Charge,
 };
 
 use crate::uom::num_traits::Zero;

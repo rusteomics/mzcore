@@ -22,7 +22,7 @@ use crate::{
     system::{
         OrderedMassOverCharge,
         f64::{MassOverCharge, Ratio},
-        usize::Charge,
+        isize::Charge,
     },
 };
 
@@ -208,7 +208,10 @@ impl Fragment {
                 &mut output,
                 "I{}{}",
                 seq.aminoacid,
-                seq.modifications.iter().map(|m| format!("[{m}]")).join("") // TODO: how to handle ambiguous mods? maybe store somewhere which where applied for this fragment
+                seq.modifications
+                    .iter()
+                    .filter_map(|m| m.unimod_name().map(|name| format!("[{name}]")))
+                    .join("") // TODO: how to handle ambiguous mods? maybe store somewhere which where applied for this fragment
             )
             .unwrap(),
             FragmentType::Unknown(num) => write!(
@@ -403,16 +406,12 @@ impl Fragment {
     }
 
     /// Create a copy of this fragment with the given charge
-    /// # Panics
-    /// If the charge is negative.
     #[must_use]
     fn with_charge(&self, charge: &MolecularCharge) -> Self {
         let formula = charge
             .formula()
             .with_labels(&[AmbiguousLabel::ChargeCarrier(charge.formula())]);
-        let c = Charge::new::<crate::system::charge::e>(
-            usize::try_from(formula.charge().value).unwrap(),
-        );
+        let c = Charge::new::<crate::system::charge::e>(formula.charge().value);
         Self {
             formula: Some(self.formula.clone().unwrap_or_default() + &formula),
             charge: c,

@@ -498,6 +498,28 @@ impl Modification {
             Self::CrossLink { .. } => Vec::new(),
         }
     }
+
+    /// Get the name if this is a Unimod modification (for use in mzPAF)
+    pub(crate) fn unimod_name(&self) -> Option<&str> {
+        match self {
+            Self::Simple(s)
+            | Self::CrossLink { linker: s, .. }
+            | Self::Ambiguous {
+                modification: s, ..
+            } => match &**s {
+                SimpleModificationInner::Database {
+                    id:
+                        ModificationId {
+                            ontology: Ontology::Unimod,
+                            name,
+                            ..
+                        },
+                    ..
+                } => Some(name),
+                _ => None,
+            },
+        }
+    }
 }
 
 /// The structure to lookup ambiguous modifications, with a list of all modifications (the order is fixed) with for each modification their name and the actual modification itself (if already defined)

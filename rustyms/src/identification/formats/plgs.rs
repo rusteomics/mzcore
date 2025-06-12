@@ -14,7 +14,7 @@ use crate::{
         AminoAcid, MUPSettings, Modification, Peptidoform, PlacementRule, Position,
         SequencePosition, SimpleLinear, SimpleModification,
     },
-    system::{Mass, MassOverCharge, Time, usize::Charge},
+    system::{Mass, MassOverCharge, Time, isize::Charge},
 };
 use serde::{Deserialize, Serialize};
 

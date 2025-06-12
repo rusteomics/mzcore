@@ -74,7 +74,7 @@ mod test {
             .into_linear()
             .unwrap();
         let fragments = peptide.generate_theoretical_fragments(
-            system::usize::Charge::new::<system::e>(1),
+            system::isize::Charge::new::<system::e>(1),
             FragmentationModel::all(),
         );
         println!("{}", fragments.len());
@@ -88,7 +88,7 @@ mod test {
         let spectrum = spectrum::mgf::open("data/example.mgf").unwrap();
         let peptide = CompoundPeptidoformIon::pro_forma("WFWF", None).unwrap();
         let fragments = peptide
-            .generate_theoretical_fragments(system::usize::Charge::new::<system::e>(1), model);
+            .generate_theoretical_fragments(system::isize::Charge::new::<system::e>(1), model);
         let annotated =
             spectrum[0].annotate(peptide, &fragments, &parameters, MassMode::Monoisotopic);
         println!("{annotated:?}");

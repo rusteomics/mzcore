@@ -8,7 +8,7 @@ use crate::{
     identification::{IdentifiedPeptidoform, IdentifiedPeptidoformSource, MetaData},
     ontology::{CustomDatabase, Ontology},
     sequence::{AminoAcid, Peptidoform, SemiAmbiguous, SequenceElement, SloppyParsingParameters},
-    system::{Mass, Ratio, usize::Charge},
+    system::{Mass, Ratio, isize::Charge},
 };
 
 use serde::{Deserialize, Serialize};
@@ -81,7 +81,7 @@ format_family!(
 
     required {
         scan: usize, |location: Location, _| location.parse(NUMBER_ERROR);
-        z: Charge, |location: Location, _| location.parse::<usize>(NUMBER_ERROR).map(Charge::new::<crate::system::e>);
+        z: Charge, |location: Location, _| location.parse::<isize>(NUMBER_ERROR).map(Charge::new::<crate::system::e>);
         mass: Mass, |location: Location, _| location.parse::<f64>(NUMBER_ERROR).map(Mass::new::<crate::system::dalton>);
 
         score_forward: f64, |location: Location, _| location.parse::<f64>(NUMBER_ERROR);

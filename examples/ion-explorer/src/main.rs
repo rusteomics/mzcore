@@ -215,7 +215,7 @@ fn extract_and_merge(
 fn merge_stack(
     points: &mut Vec<Point>,
     slice: &[CentroidPeak],
-    charge: usize,
+    charge: isize,
     center: f64,
     resolution: f64,
     range: RangeInclusive<f64>,

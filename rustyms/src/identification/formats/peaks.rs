@@ -13,7 +13,7 @@ use crate::{
         AminoAcid, Modification, PeptideModificationSearch, Peptidoform, SemiAmbiguous,
         SimpleModification, SloppyParsingParameters,
     },
-    system::{Mass, MassOverCharge, Time, usize::Charge},
+    system::{Mass, MassOverCharge, Time, isize::Charge},
 };
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
@@ -80,7 +80,7 @@ format_family!(
             }).unique().collect::<Result<Vec<_>,_>>();
         scan_number: Vec<PeaksFamilyId>, |location: Location, _| location.or_empty()
                         .map_or(Ok(Vec::new()), |l| l.array(';').map(|v| v.parse(ID_ERROR)).collect::<Result<Vec<_>,_>>());
-        z: Charge, |location: Location, _| location.parse::<usize>(NUMBER_ERROR).map(Charge::new::<crate::system::e>);
+        z: Charge, |location: Location, _| location.parse::<isize>(NUMBER_ERROR).map(Charge::new::<crate::system::e>);
         alc: f64, |location: Location, _| location.parse::<f64>(NUMBER_ERROR);
         local_confidence: Vec<f64>, |location: Location, _| location
             .array(' ')

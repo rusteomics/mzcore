@@ -12,7 +12,7 @@ use crate::{
     },
     ontology::CustomDatabase,
     sequence::CompoundPeptidoformIon,
-    system::usize::Charge,
+    system::isize::Charge,
 };
 
 static NUMBER_ERROR: (&str, &str) = (
@@ -33,7 +33,7 @@ format_family!(
             custom_database,
         ));
         raw_file: PathBuf, |location: Location, _| Ok(Path::new(&location.get_string()).to_owned());
-        z: Charge, |location: Location, _| location.parse::<usize>(NUMBER_ERROR).map(Charge::new::<crate::system::e>);
+        z: Charge, |location: Location, _| location.parse::<isize>(NUMBER_ERROR).map(Charge::new::<crate::system::e>);
     }
     optional {
         mode: String, |location: Location, _| Ok(location.get_string());

@@ -1039,13 +1039,13 @@ impl CompoundPeptidoformIon {
     ///
     fn generate_theoretical_fragments(
         &self,
-        max_charge: usize,
+        max_charge: isize,
         model: &FragmentationModel,
     ) -> PyResult<Vec<Fragment>> {
         Ok(self
             .0
             .generate_theoretical_fragments(
-                rustyms::system::usize::Charge::new::<rustyms::system::e>(max_charge),
+                rustyms::system::isize::Charge::new::<rustyms::system::e>(max_charge),
                 &match_model(model)?,
             )
             .iter()
@@ -1125,13 +1125,13 @@ impl PeptidoformIon {
     ///
     fn generate_theoretical_fragments(
         &self,
-        max_charge: usize,
+        max_charge: isize,
         model: &FragmentationModel,
     ) -> PyResult<Vec<Fragment>> {
         Ok(self
             .0
             .generate_theoretical_fragments(
-                rustyms::system::usize::Charge::new::<rustyms::system::e>(max_charge),
+                rustyms::system::isize::Charge::new::<rustyms::system::e>(max_charge),
                 &match_model(model)?,
             )
             .iter()
@@ -1340,12 +1340,12 @@ impl Peptidoform {
     ///
     fn generate_theoretical_fragments(
         &self,
-        max_charge: usize,
+        max_charge: isize,
         model: &FragmentationModel,
     ) -> Option<Vec<Fragment>> {
         self.0.clone().into_linear().map(|p| {
             p.generate_theoretical_fragments(
-                rustyms::system::usize::Charge::new::<rustyms::system::e>(max_charge),
+                rustyms::system::isize::Charge::new::<rustyms::system::e>(max_charge),
                 &match_model(model).unwrap(),
             )
             .iter()
@@ -1501,7 +1501,7 @@ impl RawSpectrum {
     ///     The number of scans.
     /// rt : float
     ///     The retention time.
-    /// precursor_charge : float
+    /// precursor_charge : int
     ///     The found precursor charge.
     /// precursor_mass : float
     ///     The found precursor mass.
@@ -1522,7 +1522,7 @@ impl RawSpectrum {
         mz_array: Vec<f64>,
         intensity_array: Vec<f64>,
         rt: Option<f64>,
-        precursor_charge: Option<usize>,
+        precursor_charge: Option<isize>,
         precursor_mass: Option<f64>,
     ) -> Self {
         let mut spectrum = rustyms::spectrum::RawSpectrum::default();
@@ -1530,7 +1530,7 @@ impl RawSpectrum {
         spectrum.num_scans = num_scans;
         spectrum.rt = rt.map(rustyms::system::Time::new::<rustyms::system::s>);
         spectrum.charge =
-            precursor_charge.map(rustyms::system::usize::Charge::new::<rustyms::system::e>);
+            precursor_charge.map(rustyms::system::isize::Charge::new::<rustyms::system::e>);
         spectrum.mass = precursor_mass.map(rustyms::system::Mass::new::<rustyms::system::dalton>);
 
         let peaks = mz_array
@@ -1601,7 +1601,7 @@ impl RawSpectrum {
     /// -------
     /// float
     #[getter]
-    fn charge(&self) -> Option<usize> {
+    fn charge(&self) -> Option<isize> {
         self.0.charge.map(|v| v.value)
     }
 
@@ -1662,7 +1662,7 @@ impl RawSpectrum {
         let fragments = peptidoform.0.generate_theoretical_fragments(
             self.0
                 .charge
-                .unwrap_or_else(|| rustyms::system::usize::Charge::new::<rustyms::system::e>(1)),
+                .unwrap_or_else(|| rustyms::system::isize::Charge::new::<rustyms::system::e>(1)),
             &rusty_model,
         );
         Ok(AnnotatedSpectrum(self.0.annotate(
@@ -1740,7 +1740,7 @@ impl AnnotatedSpectrum {
     /// -------
     /// float
     #[getter]
-    fn charge(&self) -> Option<usize> {
+    fn charge(&self) -> Option<isize> {
         self.0.charge.map(|v| v.value)
     }
 

@@ -12,7 +12,7 @@ use crate::{
     },
     ontology::CustomDatabase,
     sequence::{Peptidoform, SemiAmbiguous, SloppyParsingParameters},
-    system::{Mass, MassOverCharge, Time, usize::Charge},
+    system::{Mass, MassOverCharge, Time, isize::Charge},
 };
 
 static NUMBER_ERROR: (&str, &str) = (
@@ -40,7 +40,7 @@ format_family!(
             custom_database,
             &SloppyParsingParameters::default()
         ));
-        z: Charge, |location: Location, _| location.parse::<usize>(NUMBER_ERROR).map(Charge::new::<crate::system::e>);
+        z: Charge, |location: Location, _| location.parse::<isize>(NUMBER_ERROR).map(Charge::new::<crate::system::e>);
         ty: String, |location: Location, _| Ok(location.get_string());
         pep: f64, |location: Location, _| location.parse(NUMBER_ERROR);
         score: f64, |location: Location, _| location.parse(NUMBER_ERROR);

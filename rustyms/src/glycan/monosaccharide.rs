@@ -9,7 +9,7 @@ use crate::{
     glycan::MonoSaccharide,
     quantities::Multi,
     sequence::{AminoAcid, SequencePosition},
-    system::usize::Charge,
+    system::isize::Charge,
 };
 
 impl MonoSaccharide {

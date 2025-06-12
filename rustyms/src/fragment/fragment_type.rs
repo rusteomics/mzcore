@@ -69,7 +69,7 @@ pub enum FragmentType {
         Option<(AminoAcid, SequencePosition)>,
     ),
     /// Immonium ion
-    Immonium(PeptidePosition, SequenceElement<SemiAmbiguous>),
+    Immonium(Option<PeptidePosition>, SequenceElement<SemiAmbiguous>),
     /// Precursor with amino acid side chain loss
     PrecursorSideChainLoss(PeptidePosition, AminoAcid),
     /// Diagnostic ion for a given position
@@ -204,7 +204,7 @@ impl FragmentType {
         }
     }
 
-    /// Get the position of this ion (or None if it is a precursor ion)
+    /// Get the position of this ion (or None if it is not known)
     pub const fn position(&self) -> Option<&PeptidePosition> {
         match self {
             Self::a(n, _)
@@ -217,8 +217,8 @@ impl FragmentType {
             | Self::y(n, _)
             | Self::z(n, _)
             | Self::Diagnostic(DiagnosticPosition::Peptide(n, _))
-            | Self::Immonium(n, _)
             | Self::PrecursorSideChainLoss(n, _) => Some(n),
+            Self::Immonium(n, _) => n.as_ref(),
             _ => None,
         }
     }
@@ -267,8 +267,8 @@ impl FragmentType {
             | Self::y(n, _)
             | Self::z(n, _)
             | Self::Diagnostic(DiagnosticPosition::Peptide(n, _))
-            | Self::Immonium(n, _)
             | Self::PrecursorSideChainLoss(n, _) => Some(n.series_number.to_string()),
+            Self::Immonium(n, _) => n.map(|n| n.series_number.to_string()),
             Self::Diagnostic(DiagnosticPosition::Glycan(n, _)) => Some(n.label()),
             Self::Y(bonds) => Some(bonds.iter().map(GlycanPosition::label).join("Y")),
             Self::B { b, y, end } => Some(

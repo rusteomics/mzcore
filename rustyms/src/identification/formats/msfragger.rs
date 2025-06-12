@@ -17,7 +17,7 @@ use crate::{
         Modification, Peptidoform, SemiAmbiguous, SimpleLinear, SimpleModification,
         SimpleModificationInner, SloppyParsingParameters,
     },
-    system::{Mass, MassOverCharge, OrderedMass, Time, usize::Charge},
+    system::{Mass, MassOverCharge, Time, isize::Charge},
 };
 use ordered_float::OrderedFloat;
 use serde::{Deserialize, Serialize};
@@ -82,7 +82,7 @@ format_family!(
                 m.context(),
             ))
         }).collect::<Result<Vec<_>, _>>();
-        z: Charge, |location: Location, _| location.parse::<usize>(NUMBER_ERROR).map(Charge::new::<crate::system::e>);
+        z: Charge, |location: Location, _| location.parse::<isize>(NUMBER_ERROR).map(Charge::new::<crate::system::e>);
     }
     optional {
         best_score_with_delta_mass: f64, |location: Location, _| location.parse::<f64>(NUMBER_ERROR);

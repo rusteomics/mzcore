@@ -10,7 +10,7 @@ use crate::{
     spectrum::PeakSpectrum,
     system::{
         f64::{Mass, MassOverCharge, Ratio, Time},
-        usize::Charge,
+        isize::Charge,
     },
 };
 

@@ -10,7 +10,7 @@ use crate::{
         CompoundPeptidoformIon, Peptidoform, PeptidoformIon, SemiAmbiguous, SequencePosition,
         SimpleLinear,
     },
-    system::{MassOverCharge, OrderedTime, Time, usize::Charge},
+    system::{MassOverCharge, OrderedTime, Time, isize::Charge},
 };
 
 /// A peptide that is identified by a de novo or database matching program
@@ -342,12 +342,10 @@ impl IdentifiedPeptidoform {
             | MetaData::MSFragger(MSFraggerData { z, .. })
             | MetaData::InstaNovo(InstaNovoData { z, .. })
             | MetaData::MZTab(MZTabData { z, .. })
-            | MetaData::BasicCSV(BasicCSVData { z, .. }) => Some(*z),
+            | MetaData::BasicCSV(BasicCSVData { z, .. })
+            | MetaData::SpectrumSequenceList(SpectrumSequenceListData { z, .. }) => Some(*z),
             MetaData::Peaks(PeaksData { z, .. })
             | MetaData::DeepNovoFamily(DeepNovoFamilyData { z, .. }) => *z,
-            MetaData::SpectrumSequenceList(SpectrumSequenceListData { z, .. }) => {
-                (z.value >= 0).then_some(Charge::new::<crate::system::charge::e>(z.value as usize))
-            }
             MetaData::Fasta(_) | MetaData::PowerNovo(_) | MetaData::PepNet(_) => None,
         }
     }

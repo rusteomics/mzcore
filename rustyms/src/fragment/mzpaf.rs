@@ -2,28 +2,25 @@
 #![allow(dead_code)]
 use std::{num::NonZeroU16, ops::Range, sync::LazyLock};
 
+use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 
 use crate::{
     chemistry::{ELEMENT_PARSE_LIST, Element, MolecularCharge, MolecularFormula},
     error::{Context, CustomError},
-    fragment::NeutralLoss,
+    fragment::{
+        DiagnosticPosition, Fragment, FragmentType, NeutralLoss, PeptidePosition, SatelliteLabel,
+    },
     helper_functions::{
         Characters, RangeExtension, RangeMaths, end_of_enclosure, explain_number_error, next_number,
     },
     molecular_formula,
     ontology::{CustomDatabase, Ontology},
+    prelude::{Chemical, CompoundPeptidoformIon, MultiChemical, SequenceElement},
     quantities::Tolerance,
     sequence::{AminoAcid, Peptidoform, SemiAmbiguous, SimpleModification},
-    system::{MassOverCharge, e, isize::Charge, mz},
+    system::{MassOverCharge, OrderedMassOverCharge, e, isize::Charge, mz},
 };
-// TODO: ask about mzPAF spec:
-// * neutral losses are either names encompassed by [] or formulas, but since isotopes are allowed in formulas seeing [] is ambiguous between a formula starting with an isotope or a name
-// * are isotopes supported in adduct ion additions? (I would assume so, but not clearly stated)
-// * page 12 styling for examples not right
-// * Is 'Adenosine' supposed to be a reporter ion? It is not in the list but it is used as an example
-// * Do we need to specify what class of thing is allowed for any ProForma entries, and maybe also what to do with brackets (which take priority)
-// * How are parsed supposed to know the charge of each adduct? Is there a list somewhere
 
 /// Parse a mzPAF peak annotation line (can contain multiple annotations).
 /// # Errors
@@ -116,8 +113,208 @@ pub struct PeakAnnotation {
     neutral_losses: Vec<NeutralLoss>,
     isotopes: Vec<(i32, Isotope)>,
     charge: MolecularCharge,
-    deviation: Option<Tolerance<MassOverCharge>>,
+    deviation: Option<Tolerance<OrderedMassOverCharge>>,
     confidence: Option<f64>,
+}
+
+impl PeakAnnotation {
+    fn to_fragment(self, interpretation: CompoundPeptidoformIon) -> Fragment {
+        // Get the peptidoform (assume no cross-linkers)
+        let peptidoform = self.analyte_number.filter(|n| *n > 0).and_then(|n| {
+            interpretation
+                .peptidoform_ions()
+                .get(n - 1)
+                .and_then(|p| p.peptidoforms().first())
+        });
+        let (formula, ion) = match self.ion {
+            IonType::Unknown(series) => (None, FragmentType::Unknown(series)),
+            IonType::MainSeries(series, sub, ordinal, specific_interpretation) => {
+                let specific_interpretation: Option<Peptidoform<crate::sequence::Linked>> =
+                    specific_interpretation.map(|p| p.into());
+                let peptidoform = specific_interpretation.as_ref().or_else(|| peptidoform);
+                let sequence_length = peptidoform.map_or(0, |p| p.len());
+                (
+                    None,
+                    match series {
+                        b'a' => FragmentType::a(
+                            PeptidePosition {
+                                sequence_index: crate::prelude::SequencePosition::Index(
+                                    ordinal - 1,
+                                ),
+                                series_number: ordinal,
+                                sequence_length,
+                            },
+                            0,
+                        ),
+                        b'b' => FragmentType::b(
+                            PeptidePosition {
+                                sequence_index: crate::prelude::SequencePosition::Index(
+                                    ordinal - 1,
+                                ),
+                                series_number: ordinal,
+                                sequence_length,
+                            },
+                            0,
+                        ),
+                        b'c' => FragmentType::c(
+                            PeptidePosition {
+                                sequence_index: crate::prelude::SequencePosition::Index(
+                                    ordinal - 1,
+                                ),
+                                series_number: ordinal,
+                                sequence_length,
+                            },
+                            0,
+                        ),
+                        b'd' => FragmentType::d(
+                            PeptidePosition {
+                                sequence_index: crate::prelude::SequencePosition::Index(
+                                    ordinal - 1,
+                                ),
+                                series_number: ordinal,
+                                sequence_length,
+                            },
+                            peptidoform
+                                .map(|p| p.sequence()[ordinal - 1].aminoacid.aminoacid())
+                                .unwrap_or(AminoAcid::Unknown),
+                            0,
+                            0,
+                            match sub {
+                                None => SatelliteLabel::None,
+                                Some(b'a') => SatelliteLabel::A,
+                                Some(b'b') => SatelliteLabel::B,
+                                _ => unreachable!(),
+                            },
+                        ),
+                        b'v' => FragmentType::v(
+                            PeptidePosition {
+                                sequence_index: crate::prelude::SequencePosition::Index(
+                                    sequence_length.saturating_sub(ordinal),
+                                ),
+                                series_number: ordinal,
+                                sequence_length,
+                            },
+                            peptidoform
+                                .map(|p| p.sequence()[ordinal - 1].aminoacid.aminoacid())
+                                .unwrap_or(AminoAcid::Unknown),
+                            0,
+                            0,
+                        ),
+                        b'w' => FragmentType::w(
+                            PeptidePosition {
+                                sequence_index: crate::prelude::SequencePosition::Index(
+                                    sequence_length.saturating_sub(ordinal),
+                                ),
+                                series_number: ordinal,
+                                sequence_length,
+                            },
+                            peptidoform
+                                .map(|p| p.sequence()[ordinal - 1].aminoacid.aminoacid())
+                                .unwrap_or(AminoAcid::Unknown),
+                            0,
+                            0,
+                            match sub {
+                                None => SatelliteLabel::None,
+                                Some(b'a') => SatelliteLabel::A,
+                                Some(b'b') => SatelliteLabel::B,
+                                _ => unreachable!(),
+                            },
+                        ),
+                        b'x' => FragmentType::x(
+                            PeptidePosition {
+                                sequence_index: crate::prelude::SequencePosition::Index(
+                                    sequence_length.saturating_sub(ordinal),
+                                ),
+                                series_number: ordinal,
+                                sequence_length,
+                            },
+                            0,
+                        ),
+                        b'y' => FragmentType::y(
+                            PeptidePosition {
+                                sequence_index: crate::prelude::SequencePosition::Index(
+                                    sequence_length.saturating_sub(ordinal),
+                                ),
+                                series_number: ordinal,
+                                sequence_length,
+                            },
+                            0,
+                        ),
+                        b'z' => FragmentType::z(
+                            PeptidePosition {
+                                sequence_index: crate::prelude::SequencePosition::Index(
+                                    sequence_length.saturating_sub(ordinal),
+                                ),
+                                series_number: ordinal,
+                                sequence_length,
+                            },
+                            0,
+                        ),
+                        _ => unreachable!(),
+                    },
+                )
+            }
+            IonType::Immonium(aa, m) => (
+                Some(
+                    aa.formulas().first().unwrap()
+                        + m.as_ref().map(|m| m.formula()).unwrap_or_default()
+                        - molecular_formula!(C 1 O 1),
+                ),
+                FragmentType::Immonium(
+                    None, // TODO allow empty
+                    if let Some(m) = m {
+                        SequenceElement::new(aa.into(), None).with_simple_modification(m)
+                    } else {
+                        SequenceElement::new(aa.into(), None)
+                    },
+                ),
+            ),
+            IonType::Internal(start, end) => {
+                let sequence_length = self
+                    .analyte_number
+                    .filter(|n| *n > 0)
+                    .and_then(|n| {
+                        interpretation
+                            .peptidoform_ions()
+                            .get(n - 1)
+                            .and_then(|p| p.peptidoforms().first())
+                    })
+                    .map_or(0, |p| p.len());
+                (
+                    None,
+                    FragmentType::Internal(
+                        None,
+                        PeptidePosition::n(
+                            crate::prelude::SequencePosition::Index(start - 1),
+                            sequence_length,
+                        ),
+                        PeptidePosition::n(
+                            crate::prelude::SequencePosition::Index(end - 1),
+                            sequence_length,
+                        ),
+                    ),
+                )
+            }
+            IonType::Named(_) => (None, FragmentType::Unknown(None)),
+            IonType::Formula(formula) => (Some(formula), FragmentType::Unknown(None)),
+            IonType::Precursor => (None, FragmentType::Precursor),
+            IonType::Reporter(formula) => (
+                Some(formula),
+                FragmentType::Diagnostic(DiagnosticPosition::Reporter),
+            ),
+        };
+        Fragment {
+            formula,
+            charge: self.charge.charge(),
+            ion,
+            peptidoform_ion_index: self.analyte_number.filter(|n| *n > 0).map(|n| n - 1),
+            peptidoform_index: Some(0), // TODO what to do with cross-linked stuff
+            neutral_loss: self.neutral_losses,
+            deviation: self.deviation.map(|v| v.into()),
+            confidence: self.confidence.map(|v| v.into()),
+            auxiliary: self.auxiliary,
+        }
+    }
 }
 
 impl std::fmt::Display for PeakAnnotation {
@@ -612,7 +809,7 @@ fn parse_neutral_loss(
             let first = range.start_index() + 1 + offset;
             let last = line[first..]
                 .char_indices()
-                .take_while(|(_, c)| c.is_ascii_alphanumeric()) // TODO check if isotopes are allowed here, theoretically yes, but not clearly specified in the spec
+                .take_while(|(_, c)| c.is_ascii_alphanumeric() || *c == '[' || *c == ']') // TODO check if isotopes are allowed here, theoretically yes, but not clearly specified in the spec
                 .last()
                 .unwrap();
             let formula = MolecularFormula::from_pro_forma(
@@ -822,7 +1019,7 @@ fn parse_charge(line: &str, range: Range<usize>) -> Result<(Range<usize>, Charge
 fn parse_deviation(
     line: &str,
     range: Range<usize>,
-) -> Result<(Range<usize>, Option<Tolerance<MassOverCharge>>), CustomError> {
+) -> Result<(Range<usize>, Option<Tolerance<OrderedMassOverCharge>>), CustomError> {
     if line.as_bytes().get(range.start_index()).copied() == Some(b'/') {
         let number =
             next_number::<true, true, f64>(line, range.add_start(1_usize)).ok_or_else(|| {
@@ -847,9 +1044,7 @@ fn parse_deviation(
         } else {
             Ok((
                 range.add_start(1 + number.0),
-                Some(Tolerance::new_absolute(MassOverCharge::new::<mz>(
-                    deviation,
-                ))),
+                Some(Tolerance::new_absolute(MassOverCharge::new::<mz>(deviation)).into()),
             ))
         }
     } else {
@@ -980,14 +1175,28 @@ macro_rules! mzpaf_test {
         #[test]
         fn $name() {
             let res = $crate::fragment::parse_mzpaf($case, None);
-            if let Err(err) = res {
-                println!("Failed: '{}'", $case);
-                println!("{err}");
-                panic!("Failed test")
-            }
-            // let back = res.as_ref().unwrap().to_string();
-            // let res_back = $crate::fragment::parse_mzpaf(&back, None);
-            // assert_eq!(res, res_back, "{} != {back}", $case);
+            match res {
+                Err(err) => {
+                    println!("Failed: '{}'", $case);
+                    println!("{err}");
+                    panic!("Failed test")
+                }
+                Ok(res) => {
+                    let back = res
+                        .into_iter()
+                        .map(|a| a.to_fragment(CompoundPeptidoformIon::default()).to_mzPAF())
+                        .join(",");
+                    let res = $crate::fragment::parse_mzpaf(&back, None);
+                    if let Err(err) = res {
+                        println!("Failed: '{}' was exported as '{back}'", $case);
+                        println!("{err}");
+                        panic!("Failed test")
+                    }
+                    // let back = res.as_ref().unwrap().to_string();
+                    // let res_back = $crate::fragment::parse_mzpaf(&back, None);
+                    // assert_eq!(res, res_back, "{} != {back}", $case);
+                }
+            };
         }
     };
     (ne $case:literal, $name:ident) => {

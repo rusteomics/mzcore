@@ -12,7 +12,7 @@ use crate::{
         CrossLinkName, CrossLinkSide, Linked, Modification, Peptidoform, RulePossible,
         SequencePosition, SimpleModification, SimpleModificationInner,
     },
-    system::usize::Charge,
+    system::isize::Charge,
 };
 
 /// A single peptidoform ion, can contain multiple peptidoforms

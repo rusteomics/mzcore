@@ -5,7 +5,7 @@ use crate::{
     identification::SpectrumId,
     ontology::CustomDatabase,
     sequence::{Peptidoform, SemiAmbiguous},
-    system::{Mass, Ratio, Time, usize::Charge},
+    system::{Mass, Ratio, Time, isize::Charge},
 };
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
@@ -66,7 +66,7 @@ format_family!(
         semi_enzymatic: bool, |location: Location, _| location.parse::<u8>(NUMBER_ERROR).map(|n| n != 0);
         spectrum_q: f64, |location: Location, _| location.parse(NUMBER_ERROR);
         theoretical_mass: Mass, |location: Location, _| location.parse::<f64>(NUMBER_ERROR).map(Mass::new::<crate::system::dalton>);
-        z: Charge, |location: Location, _| location.parse::<usize>(NUMBER_ERROR).map(Charge::new::<crate::system::e>);
+        z: Charge, |location: Location, _| location.parse::<isize>(NUMBER_ERROR).map(Charge::new::<crate::system::e>);
     }
     optional { }
 );

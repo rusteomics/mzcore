@@ -20,7 +20,7 @@ use crate::{
         AminoAcid, PeptideModificationSearch, Peptidoform, ReturnModification, SemiAmbiguous,
         SimpleModification, SimpleModificationInner, SloppyParsingParameters,
     },
-    system::{MassOverCharge, Time, usize::Charge},
+    system::{MassOverCharge, Time, isize::Charge},
 };
 
 /// Peptide data from a mzTab file
@@ -452,7 +452,7 @@ impl MZTabData {
                 } else {
                     value
                         .trim_end_matches(".0")
-                        .parse::<usize>()
+                        .parse::<isize>()
                         .map_err(|err| {
                             CustomError::error(
                                 "Invalid mzTab charge",

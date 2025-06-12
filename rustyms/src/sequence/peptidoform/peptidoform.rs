@@ -30,7 +30,7 @@ use crate::{
         SequenceElement, SequencePosition, SimpleLinear, SimpleModification,
         SimpleModificationInner, UnAmbiguous,
     },
-    system::usize::Charge,
+    system::isize::Charge,
 };
 
 /// A peptide with all data as specified by [ProForma](https://github.com/HUPO-PSI/ProForma).

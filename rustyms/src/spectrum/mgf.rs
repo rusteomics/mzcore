@@ -16,10 +16,10 @@ use crate::{
     system::{
         charge::e,
         f64::{Mass, MassOverCharge, Time},
+        isize::Charge,
         mass::dalton,
         mass_over_charge::mz,
         time::s,
-        usize::Charge,
     },
 };
 use flate2::bufread::GzDecoder;
