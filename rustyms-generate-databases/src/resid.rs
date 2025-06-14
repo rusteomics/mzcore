@@ -227,17 +227,18 @@ fn parse_resid() -> Vec<OntologyModification> {
                 if let (Some(ModData::Linker { specificities, .. }), Some(aa)) = (&mut data, rule.1)
                 {
                     if rule.0 == aa {
-                        specificities.push(LinkerSpecificity::Symmetric(
-                            vec![PlacementRule::AminoAcid(
+                        specificities.push(LinkerSpecificity::Symmetric {
+                            rules: vec![PlacementRule::AminoAcid(
                                 vec![rule.0],
                                 rule.2.unwrap_or(Position::Anywhere),
                             )],
-                            Vec::new(),
-                            Vec::new(),
-                        ));
+                            stubs: Vec::new(),
+                            neutral_losses: Vec::new(),
+                            diagnostic: Vec::new(),
+                        });
                     } else {
-                        specificities.push(LinkerSpecificity::Asymmetric(
-                            (
+                        specificities.push(LinkerSpecificity::Asymmetric {
+                            rules: (
                                 vec![PlacementRule::AminoAcid(
                                     vec![rule.0],
                                     rule.2.unwrap_or(Position::Anywhere),
@@ -247,9 +248,10 @@ fn parse_resid() -> Vec<OntologyModification> {
                                     rule.2.unwrap_or(Position::Anywhere),
                                 )],
                             ),
-                            Vec::new(),
-                            Vec::new(),
-                        ));
+                            stubs: Vec::new(),
+                            neutral_losses: Vec::new(),
+                            diagnostic: Vec::new(),
+                        });
                     }
                 } else if let (Some(ModData::Mod { specificities }), None) = (&mut data, rule.1) {
                     specificities.push((

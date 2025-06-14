@@ -71,17 +71,19 @@ pub enum LinkerSpecificity {
     /// A symmetric specificity where both ends have the same specificity.
     /// The first list is all possible positions. The second list is all
     /// stubs that can be left after cleaving or breaking of the cross-link.
-    Symmetric(
-        Vec<PlacementRule>,
-        Vec<(MolecularFormula, MolecularFormula)>,
-        Vec<DiagnosticIon>,
-    ),
+    Symmetric {
+        rules: Vec<PlacementRule>,
+        stubs: Vec<(MolecularFormula, MolecularFormula)>,
+        neutral_losses: Vec<NeutralLoss>,
+        diagnostic: Vec<DiagnosticIon>,
+    },
     /// An asymmetric specificity where both ends have a different specificity.
     /// The first list is all possible positions. The second list is all
     /// stubs that can be left after cleaving or breaking of the cross-link.
-    Asymmetric(
-        (Vec<PlacementRule>, Vec<PlacementRule>),
-        Vec<(MolecularFormula, MolecularFormula)>,
-        Vec<DiagnosticIon>,
-    ),
+    Asymmetric {
+        rules: (Vec<PlacementRule>, Vec<PlacementRule>),
+        stubs: Vec<(MolecularFormula, MolecularFormula)>,
+        neutral_losses: Vec<NeutralLoss>,
+        diagnostic: Vec<DiagnosticIon>,
+    },
 }

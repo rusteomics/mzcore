@@ -188,13 +188,19 @@ fn parse_xlmod() -> Vec<OntologyModification> {
                 data: ModData::Linker {
                     length,
                     specificities: vec![if origins.1.is_empty() {
-                        LinkerSpecificity::Symmetric(origins.0, Vec::new(), diagnostic_ions)
+                        LinkerSpecificity::Symmetric {
+                            rules: origins.0,
+                            stubs: Vec::new(),
+                            neutral_losses: Vec::new(),
+                            diagnostic: diagnostic_ions,
+                        }
                     } else {
-                        LinkerSpecificity::Asymmetric(
-                            (origins.0, origins.1),
-                            Vec::new(),
-                            diagnostic_ions,
-                        )
+                        LinkerSpecificity::Asymmetric {
+                            rules: (origins.0, origins.1),
+                            stubs: Vec::new(),
+                            neutral_losses: Vec::new(),
+                            diagnostic: diagnostic_ions,
+                        }
                     }],
                 },
             });

@@ -595,8 +595,8 @@ impl<Complexity> Peptidoform<Complexity> {
                     SimpleModificationInner::Linker { specificities, .. } => specificities
                         .iter()
                         .flat_map(|rule| match rule {
-                            LinkerSpecificity::Symmetric(_, _, ions)
-                            | LinkerSpecificity::Asymmetric(_, _, ions) => ions,
+                            LinkerSpecificity::Symmetric { diagnostic, .. }
+                            | LinkerSpecificity::Asymmetric { diagnostic, .. } => diagnostic,
                         })
                         .map(|diagnostic| {
                             (

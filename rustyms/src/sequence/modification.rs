@@ -222,9 +222,9 @@ impl CrossLinkSide {
         let selected_rules = match self {
             Self::Left(r) | Self::Right(r) | Self::Symmetric(r) => r,
         };
-        let mut neutral = Vec::new();
-        let mut stubs = Vec::new();
-        let mut diagnostic = Vec::new();
+        let mut all_neutral = Vec::new();
+        let mut all_stubs = Vec::new();
+        let mut all_diagnostic = Vec::new();
 
         match &**linker {
             SimpleModificationInner::Linker { specificities, .. } => {
@@ -234,21 +234,36 @@ impl CrossLinkSide {
                     .filter_map(|(i, r)| selected_rules.contains(&i).then_some(r))
                 {
                     match rule {
-                        LinkerSpecificity::Asymmetric(_, n, d) => {
-                            diagnostic.extend_from_slice(d);
+                        LinkerSpecificity::Asymmetric {
+                            diagnostic,
+                            stubs,
+                            neutral_losses,
+                            ..
+                        } => {
+                            all_neutral.extend_from_slice(&neutral_losses);
+                            all_diagnostic.extend_from_slice(&diagnostic);
                             match self {
-                                Self::Left(_) => stubs.extend(n.iter().cloned()),
+                                Self::Left(_) => all_stubs.extend(stubs.iter().cloned()),
                                 Self::Right(_) => {
-                                    stubs.extend(n.iter().map(|(l, r)| (r.clone(), l.clone())));
+                                    all_stubs
+                                        .extend(stubs.iter().map(|(l, r)| (r.clone(), l.clone())));
                                 }
-                                Self::Symmetric(_) => stubs.extend(n.iter().flat_map(|(l, r)| {
-                                    vec![(l.clone(), r.clone()), (r.clone(), l.clone())]
-                                })),
+                                Self::Symmetric(_) => {
+                                    all_stubs.extend(stubs.iter().flat_map(|(l, r)| {
+                                        vec![(l.clone(), r.clone()), (r.clone(), l.clone())]
+                                    }))
+                                }
                             }
                         }
-                        LinkerSpecificity::Symmetric(_, n, d) => {
-                            stubs.extend_from_slice(n);
-                            diagnostic.extend_from_slice(d);
+                        LinkerSpecificity::Symmetric {
+                            stubs,
+                            neutral_losses,
+                            diagnostic,
+                            ..
+                        } => {
+                            all_stubs.extend_from_slice(&stubs);
+                            all_neutral.extend_from_slice(&neutral_losses);
+                            all_diagnostic.extend_from_slice(&diagnostic);
                         }
                     }
                 }
@@ -259,13 +274,13 @@ impl CrossLinkSide {
                     .enumerate()
                     .filter_map(|(i, r)| selected_rules.contains(&i).then_some(r))
                 {
-                    neutral.extend_from_slice(&rule.1);
-                    diagnostic.extend_from_slice(&rule.2);
+                    all_neutral.extend_from_slice(&rule.1);
+                    all_diagnostic.extend_from_slice(&rule.2);
                 }
             }
             _ => (),
         }
-        (neutral, stubs, diagnostic)
+        (all_neutral, all_stubs, all_diagnostic)
     }
 }
 

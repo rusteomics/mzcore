@@ -391,20 +391,23 @@ impl<T> SequenceElement<T> {
                     SimpleModificationInner::Linker { specificities, .. } => {
                         for rule in specificities {
                             match rule {
-                                LinkerSpecificity::Symmetric(rules, _, ions) => {
+                                LinkerSpecificity::Symmetric {
+                                    rules, diagnostic, ..
+                                } => {
                                     if PlacementRule::any_possible(rules, self, position) {
-                                        diagnostic_ions.extend_from_slice(ions);
+                                        diagnostic_ions.extend_from_slice(&diagnostic);
                                     }
                                 }
-                                LinkerSpecificity::Asymmetric(
-                                    (rules_left, rules_right),
-                                    _,
-                                    ions,
-                                ) => {
+                                LinkerSpecificity::Asymmetric {
+                                    rules: (rules_left, rules_right),
+
+                                    diagnostic,
+                                    ..
+                                } => {
                                     if PlacementRule::any_possible(rules_left, self, position)
                                         || PlacementRule::any_possible(rules_right, self, position)
                                     {
-                                        diagnostic_ions.extend_from_slice(ions);
+                                        diagnostic_ions.extend_from_slice(&diagnostic);
                                     }
                                 }
                             }

@@ -219,14 +219,17 @@ impl SimpleModificationInner {
                 .iter()
                 .enumerate()
                 .map(|(index, spec)| match spec {
-                    LinkerSpecificity::Symmetric(rules, _, _) => {
+                    LinkerSpecificity::Symmetric { rules, .. } => {
                         if PlacementRule::any_possible(rules, seq, position) {
                             RulePossible::Symmetric(BTreeSet::from([index]))
                         } else {
                             RulePossible::No
                         }
                     }
-                    LinkerSpecificity::Asymmetric((rules_left, rules_right), _, _) => {
+                    LinkerSpecificity::Asymmetric {
+                        rules: (rules_left, rules_right),
+                        ..
+                    } => {
                         let left = PlacementRule::any_possible(rules_left, seq, position);
                         let right = PlacementRule::any_possible(rules_right, seq, position);
                         if left && right {
@@ -267,14 +270,17 @@ impl SimpleModificationInner {
                 .iter()
                 .enumerate()
                 .map(|(index, spec)| match spec {
-                    LinkerSpecificity::Symmetric(rules, _, _) => {
+                    LinkerSpecificity::Symmetric { rules, .. } => {
                         if PlacementRule::any_possible_aa(rules, aa, position) {
                             RulePossible::Symmetric(BTreeSet::from([index]))
                         } else {
                             RulePossible::No
                         }
                     }
-                    LinkerSpecificity::Asymmetric((rules_left, rules_right), _, _) => {
+                    LinkerSpecificity::Asymmetric {
+                        rules: (rules_left, rules_right),
+                        ..
+                    } => {
                         let left = PlacementRule::any_possible_aa(rules_left, aa, position);
                         let right = PlacementRule::any_possible_aa(rules_right, aa, position);
                         if left && right {
@@ -372,8 +378,11 @@ impl SimpleModificationInner {
             Self::Linker { specificities, .. } => specificities
                 .iter()
                 .flat_map(|set| match set {
-                    LinkerSpecificity::Symmetric(rules, _, _) => rules.clone(),
-                    LinkerSpecificity::Asymmetric((rules_a, rules_b), _, _) => rules_a
+                    LinkerSpecificity::Symmetric { rules, .. } => rules.clone(),
+                    LinkerSpecificity::Asymmetric {
+                        rules: (rules_a, rules_b),
+                        ..
+                    } => rules_a
                         .iter()
                         .cloned()
                         .chain(rules_b.iter().cloned())
