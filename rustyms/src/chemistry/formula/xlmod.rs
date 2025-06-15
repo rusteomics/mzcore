@@ -31,9 +31,8 @@ impl MolecularFormula {
                 ));
             }
             let element_len = block.len() - number - isotope_len - usize::from(negative);
-            let element = block[isotope_len + usize::from(negative)..block.len() - number]
-                .to_ascii_lowercase();
-            let (mut isotope, element) = if element == "d" {
+            let element = &block[isotope_len + usize::from(negative)..block.len() - number];
+            let (mut isotope, element) = if element == "D" {
                 if isotope_len == 0 {
                     (Some(NonZeroU16::new(2).unwrap()), Element::H)
                 } else {

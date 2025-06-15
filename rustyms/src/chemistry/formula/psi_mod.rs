@@ -1,7 +1,7 @@
 use crate::{
     chemistry::{ELEMENT_PARSE_LIST, MolecularFormula},
     error::{Context, CustomError},
-    helper_functions::{RangeExtension, explain_number_error},
+    helper_functions::{RangeExtension, explain_number_error, str_starts_with},
 };
 use std::{num::NonZeroU16, ops::RangeBounds};
 
@@ -99,10 +99,7 @@ impl MolecularFormula {
                     }
                     let mut found = false;
                     for possible in ELEMENT_PARSE_LIST {
-                        if value[index..(index + 2).min(value.len())]
-                            .to_ascii_lowercase()
-                            .starts_with(possible.0)
-                        {
+                        if str_starts_with(&value[index..], possible.0, true) {
                             element = Some(possible.1);
                             index += possible.0.len();
                             found = true;

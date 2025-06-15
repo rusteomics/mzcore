@@ -38,7 +38,7 @@ fn parse_resid() -> Vec<OntologyModification> {
     let mut buf = String::new();
     let _ = BufReader::new(
         File::open("rustyms-generate-databases/data/RESID-RESIDUES.XML")
-            .expect("Could not open RESID xml file"),
+            .expect("Could not open RESID xml file 'RESID-RESIDUES.XML'"),
     )
     .read_to_string(&mut buf)
     .expect("Could not read RESID xml file");

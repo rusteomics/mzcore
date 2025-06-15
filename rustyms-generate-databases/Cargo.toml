@@ -11,7 +11,6 @@ bincode = { workspace = true }
 flate2 = { workspace = true }
 itertools = { workspace = true }
 ordered-float = { workspace = true }
-regex = { workspace = true }
 roxmltree = { workspace = true }
 thin-vec = { workspace = true }
 rustyms = { path = "../rustyms", features = ["internal-no-data"] }

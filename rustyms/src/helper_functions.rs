@@ -489,9 +489,30 @@ pub(crate) fn str_eq(a: &str, b: &str, ignore_casing: bool) -> bool {
 /// Check if 'a' starts with 'b' with or without ignoring casing
 pub(crate) fn str_starts_with(a: &str, b: &str, ignore_casing: bool) -> bool {
     for (a, b) in a.chars().zip(b.chars()) {
-        if ignore_casing && !a.eq_ignore_ascii_case(&b) || a != b {
+        if ignore_casing && !a.eq_ignore_ascii_case(&b) || !ignore_casing && a != b {
             return false;
         }
     }
     if a.len() >= b.len() { true } else { false }
+}
+
+#[test]
+fn starts_with() {
+    assert!(str_starts_with("aaabbb", "a", false));
+    assert!(str_starts_with("aaabbb", "aa", false));
+    assert!(str_starts_with("aaabbb", "aaa", false));
+    assert!(!str_starts_with("aaabbb", "b", false));
+    assert!(!str_starts_with("aaabbb", "ab", false));
+    assert!(!str_starts_with("aaabbb", "aab", false));
+    assert!(str_starts_with("aaabbb", "a", true));
+    assert!(str_starts_with("aaabbb", "aa", true));
+    assert!(str_starts_with("aaabbb", "aaa", true));
+    assert!(str_starts_with("aaabbb", "A", true));
+    assert!(str_starts_with("aaabbb", "AA", true));
+    assert!(str_starts_with("aaabbb", "AAA", true));
+    assert!(str_starts_with("aaabbb", "aaA", true));
+    assert!(!str_starts_with("aaabbb", "A", false));
+    assert!(!str_starts_with("aaabbb", "AA", false));
+    assert!(!str_starts_with("aaabbb", "AAA", false));
+    assert!(!str_starts_with("aaabbb", "aaA", false));
 }

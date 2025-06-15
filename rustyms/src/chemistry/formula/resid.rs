@@ -1,7 +1,7 @@
 use crate::{
     chemistry::{ELEMENT_PARSE_LIST, Element, MolecularFormula},
     error::{Context, CustomError},
-    helper_functions::{RangeExtension, next_num},
+    helper_functions::{RangeExtension, next_num, str_starts_with},
     quantities::Multi,
 };
 use std::ops::RangeBounds;
@@ -41,26 +41,21 @@ impl MolecularFormula {
         let mut result = Self::default();
         while index <= end {
             trim(&mut index, value);
-            let element_text: String = value[index..]
-                .chars()
-                .take(2)
-                .collect::<String>()
-                .to_ascii_lowercase();
             let mut element = None;
             let mut amount: i32 = 1;
             for possible in ELEMENT_PARSE_LIST {
-                if element_text.starts_with(possible.0) {
+                if str_starts_with(&value[index..], possible.0, true) {
                     element = Some(possible.1);
                     index += possible.0.len();
                     break;
                 }
             }
             if element.is_none() {
-                if element_text.starts_with('+') {
+                if value[index..].starts_with('+') {
                     element = Some(Element::Electron);
                     index += 1;
                     amount = -1;
-                } else if element_text.starts_with('-') {
+                } else if value[index..].starts_with('-') {
                     element = Some(Element::Electron);
                     index += 1;
                 }

@@ -523,17 +523,18 @@ fn custom_database() -> CustomDatabase {
             Some(0),
             "dsso".to_string(),
             Arc::new(SimpleModificationInner::Linker {
-                specificities: vec![LinkerSpecificity::Symmetric(
-                    vec![PlacementRule::AminoAcid(
+                specificities: vec![LinkerSpecificity::Symmetric {
+                    rules: vec![PlacementRule::AminoAcid(
                         vec![AminoAcid::Lysine],
                         Position::Anywhere,
                     )],
-                    vec![(
+                    stubs: vec![(
                         molecular_formula!(C 3 O 2 H 1 N -1),
                         molecular_formula!(C 3 O 3 H 1 N -1 S 1),
                     )],
-                    Vec::new(),
-                )],
+                    neutral_losses: Vec::new(),
+                    diagnostic: Vec::new(),
+                }],
                 formula: molecular_formula!(C 6 O 5 H 2 N -2 S 1),
                 id: ModificationId {
                     name: "DSSO".to_string(),
@@ -548,14 +549,15 @@ fn custom_database() -> CustomDatabase {
             Some(1),
             "disulfide".to_string(),
             Arc::new(SimpleModificationInner::Linker {
-                specificities: vec![LinkerSpecificity::Symmetric(
-                    vec![PlacementRule::AminoAcid(
+                specificities: vec![LinkerSpecificity::Symmetric {
+                    rules: vec![PlacementRule::AminoAcid(
                         vec![AminoAcid::Cysteine],
                         Position::Anywhere,
                     )],
-                    vec![(molecular_formula!(H - 1), molecular_formula!(H - 1))],
-                    Vec::new(),
-                )],
+                    stubs: vec![(molecular_formula!(H - 1), molecular_formula!(H - 1))],
+                    neutral_losses: Vec::new(),
+                    diagnostic: Vec::new(),
+                }],
                 formula: molecular_formula!(C 6 O 5 H 2 N -2 S 1),
                 id: ModificationId {
                     name: "Disulfide".to_string(),

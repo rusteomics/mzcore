@@ -7,7 +7,7 @@ use crate::{
     chemistry::{Chemical, ELEMENT_PARSE_LIST, Element, MolecularFormula},
     error::{Context, CustomError},
     glycan::lists::*,
-    helper_functions::explain_number_error,
+    helper_functions::{explain_number_error, str_starts_with},
     molecular_formula,
     sequence::SequencePosition,
 };
@@ -504,7 +504,7 @@ impl ParseHelper for &str {
     fn take_any<T>(self, parse_list: &[(&str, T)], mut f: impl FnMut(&T)) -> Option<usize> {
         let mut found = None;
         for element in parse_list {
-            if self.starts_with(element.0) {
+            if str_starts_with(self, element.0, true) {
                 found = Some(element.0.len());
                 f(&element.1);
                 break;
