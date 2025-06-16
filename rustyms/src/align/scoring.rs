@@ -22,6 +22,20 @@ pub enum MatchType {
     Gap,
 }
 
+/// The pair mode of an alignment, which side is the peptidoform and which the database.
+#[derive(
+    Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Default, Serialize, Deserialize,
+)]
+pub enum PairMode {
+    /// Either database to database or peptidoform to peptidoform, meaning that modifications occurring in on have to occur in the other.
+    #[default]
+    Same,
+    /// The first sequence is a database the second a peptidoform, meaning that any modification in the first have to occur in the second, while any modification in the second does not have to occur in the first.
+    DatabaseToPeptidoform,
+    /// The first sequence is a peptidoform the second a database, meaning that any modification in the second have to occur in the first, while any modification in the first does not have to occur in the second.
+    PeptidoformToDatabase,
+}
+
 /// The scoring parameters for the mass alignment.
 ///
 /// Design parameters for the scoring systems are as follows:
@@ -37,11 +51,12 @@ pub struct AlignScoring<'a> {
     /// Default: -1.
     pub mismatch: i8,
     /// The additional score for a step if the amino acids are identical but the mass of the sequence
-    /// elements are not the same. This is the case if either of the peptides has a modification at
-    /// this location. The local score for the step is calculated as follows:
+    /// elements are not the same. This is the case if the pair mode is [`PairMode::DatabaseToPeptidoform`]
+    /// or [`PairMode::PeptidoformToDatabase`] and the peptidoform has a modification at this location
+    /// that does not occur in the database. The local score for the step is calculated as follows:
     /// `matrix_score + mass_mismatch`.
     ///
-    /// Default: -1.
+    /// Default: 0.
     pub mass_mismatch: i8,
     /// The base score for mass based steps, added to both rotated and isobaric steps.
     ///
@@ -79,13 +94,17 @@ pub struct AlignScoring<'a> {
     ///
     /// Default: Monoisotopic.
     pub mass_mode: MassMode,
+    /// The pair mode for the alignment.
+    ///
+    /// Default: Same.
+    pub pair: PairMode,
 }
 
 impl Default for AlignScoring<'static> {
     fn default() -> Self {
         Self {
             mismatch: -1,
-            mass_mismatch: -1,
+            mass_mismatch: 0,
             mass_base: 1,
             rotated: 3,
             isobaric: 2,
@@ -94,6 +113,7 @@ impl Default for AlignScoring<'static> {
             matrix: matrices::BLOSUM62,
             tolerance: Tolerance::new_ppm(10.0),
             mass_mode: MassMode::Monoisotopic,
+            pair: PairMode::Same,
         }
     }
 }

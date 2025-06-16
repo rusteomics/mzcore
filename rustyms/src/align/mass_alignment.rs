@@ -222,10 +222,30 @@ pub(super) fn score_pair<A: AtMax<SimpleLinear>, B: AtMax<SimpleLinear>>(
             Piece::new(score + local, local, MatchType::FullIdentity, 1, 1)
         }
         (true, false) => {
-            let local = scoring.matrix[a.0.aminoacid.aminoacid() as usize]
-                [b.0.aminoacid.aminoacid() as usize] as isize
-                + scoring.mass_mismatch as isize;
-            Piece::new(score + local, local, MatchType::IdentityMassMismatch, 1, 1)
+            // The assumption is that if the peptide has modifications and the mass do not match
+            // this element in the database this is caused by artefacts of some kind. While if
+            // there is a modification on the database this is encoded in the genome (or similar)
+            // and has to be present in order for the peptide to match properly.
+            //
+            // If both have modifications this is assumed to be caused by artefacts on the
+            // peptides side.
+            if (scoring.pair == PairMode::DatabaseToPeptidoform && !b.0.modifications.is_empty())
+                || (scoring.pair == PairMode::PeptidoformToDatabase
+                    && !a.0.modifications.is_empty())
+            {
+                let local = scoring.matrix[a.0.aminoacid.aminoacid() as usize]
+                    [b.0.aminoacid.aminoacid() as usize] as isize
+                    + scoring.mass_mismatch as isize;
+                Piece::new(score + local, local, MatchType::IdentityMassMismatch, 1, 1)
+            } else {
+                Piece::new(
+                    score + scoring.mismatch as isize,
+                    scoring.mismatch as isize,
+                    MatchType::Mismatch,
+                    1,
+                    1,
+                )
+            }
         }
         (false, true) => Piece::new(
             score + scoring.mass_base as isize + scoring.isobaric as isize,
