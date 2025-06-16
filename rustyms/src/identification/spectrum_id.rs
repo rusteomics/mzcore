@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use crate::system::OrderedTime;
 
 /// Multiple spectrum identifiers
-#[derive(Clone, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
+#[derive(Clone, Debug, Default, Deserialize, Eq, Hash, PartialEq, Serialize)]
 pub enum SpectrumIds {
     /// When no spectra references are known at all
     #[default]
@@ -17,7 +17,7 @@ pub enum SpectrumIds {
 }
 
 /// A spectrum identifier
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
 pub enum SpectrumId {
     /// A native id, the format differs between vendors
     Native(String),

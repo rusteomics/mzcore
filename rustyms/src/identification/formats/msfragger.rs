@@ -248,7 +248,7 @@ impl From<MSFraggerData> for IdentifiedPeptidoform {
 }
 
 /// A MSFragger open search modification
-#[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 pub enum MSFraggerOpenModification {
     /// A glycan composition
     Glycan(Vec<(MonoSaccharide, isize)>),

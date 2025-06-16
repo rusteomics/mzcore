@@ -182,7 +182,7 @@ impl AnnotatedSpectrum {
 }
 
 /// All statistics for ambiguous parts of the peptidoform definition
-#[derive(Debug, Clone)]
+#[derive(Clone, Debug)]
 pub struct AmbiguousStatistics {
     /// All ambiguous amino acids
     pub aminoacids: Vec<AmbiguousAminoAcid>,
@@ -191,7 +191,7 @@ pub struct AmbiguousStatistics {
 }
 
 /// The statistics on an ambiguous amino acid and the support for both options
-#[derive(Debug, Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub struct AmbiguousAminoAcid {
     /// What location in the sequence are we talking about
     pub sequence_index: usize,
@@ -206,7 +206,7 @@ pub struct AmbiguousAminoAcid {
 }
 
 /// The statistics on an ambiguous modification and the support for each of the possible locations
-#[derive(Debug, Clone)]
+#[derive(Clone, Debug)]
 pub struct AmbiguousModification {
     /// Which ambiguous modification
     pub id: usize,
