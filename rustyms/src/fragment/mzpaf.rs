@@ -2,7 +2,6 @@
 #![allow(dead_code)]
 use std::{num::NonZeroU16, ops::Range, sync::LazyLock};
 
-use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 
 use crate::{
@@ -130,9 +129,9 @@ impl PeakAnnotation {
             IonType::Unknown(series) => (None, FragmentType::Unknown(series)),
             IonType::MainSeries(series, sub, ordinal, specific_interpretation) => {
                 let specific_interpretation: Option<Peptidoform<crate::sequence::Linked>> =
-                    specific_interpretation.map(|p| p.into());
-                let peptidoform = specific_interpretation.as_ref().or_else(|| peptidoform);
-                let sequence_length = peptidoform.map_or(0, |p| p.len());
+                    specific_interpretation.map(Into::into);
+                let peptidoform = specific_interpretation.as_ref().or(peptidoform);
+                let sequence_length = peptidoform.map_or(0, Peptidoform::len);
                 (
                     None,
                     match series {
@@ -174,9 +173,9 @@ impl PeakAnnotation {
                                 series_number: ordinal,
                                 sequence_length,
                             },
-                            peptidoform
-                                .map(|p| p.sequence()[ordinal - 1].aminoacid.aminoacid())
-                                .unwrap_or(AminoAcid::Unknown),
+                            peptidoform.map_or(AminoAcid::Unknown, |p| {
+                                p.sequence()[ordinal - 1].aminoacid.aminoacid()
+                            }),
                             0,
                             0,
                             match sub {
@@ -194,9 +193,9 @@ impl PeakAnnotation {
                                 series_number: ordinal,
                                 sequence_length,
                             },
-                            peptidoform
-                                .map(|p| p.sequence()[ordinal - 1].aminoacid.aminoacid())
-                                .unwrap_or(AminoAcid::Unknown),
+                            peptidoform.map_or(AminoAcid::Unknown, |p| {
+                                p.sequence()[ordinal - 1].aminoacid.aminoacid()
+                            }),
                             0,
                             0,
                         ),
@@ -208,9 +207,9 @@ impl PeakAnnotation {
                                 series_number: ordinal,
                                 sequence_length,
                             },
-                            peptidoform
-                                .map(|p| p.sequence()[ordinal - 1].aminoacid.aminoacid())
-                                .unwrap_or(AminoAcid::Unknown),
+                            peptidoform.map_or(AminoAcid::Unknown, |p| {
+                                p.sequence()[ordinal - 1].aminoacid.aminoacid()
+                            }),
                             0,
                             0,
                             match sub {
@@ -262,11 +261,10 @@ impl PeakAnnotation {
                 ),
                 FragmentType::Immonium(
                     None, // TODO allow empty
-                    if let Some(m) = m {
-                        SequenceElement::new(aa.into(), None).with_simple_modification(m)
-                    } else {
-                        SequenceElement::new(aa.into(), None)
-                    },
+                    m.map_or_else(
+                        || SequenceElement::new(aa.into(), None),
+                        |m| SequenceElement::new(aa.into(), None).with_simple_modification(m),
+                    ),
                 ),
             ),
             IonType::Internal(start, end) => {
@@ -279,7 +277,7 @@ impl PeakAnnotation {
                             .get(n - 1)
                             .and_then(|p| p.peptidoforms().first())
                     })
-                    .map_or(0, |p| p.len());
+                    .map_or(0, Peptidoform::len);
                 (
                     None,
                     FragmentType::Internal(
@@ -310,8 +308,8 @@ impl PeakAnnotation {
             peptidoform_ion_index: self.analyte_number.filter(|n| *n > 0).map(|n| n - 1),
             peptidoform_index: Some(0), // TODO what to do with cross-linked stuff
             neutral_loss: self.neutral_losses,
-            deviation: self.deviation.map(|v| v.into()),
-            confidence: self.confidence.map(|v| v.into()),
+            deviation: self.deviation,
+            confidence: self.confidence.map(Into::into),
             auxiliary: self.auxiliary,
         }
     }
@@ -935,7 +933,7 @@ fn parse_adduct_type(
         {
             offset += 1; // The sign
             let mut amount = 1;
-            // Parse leading number to detect how many times this adduct occured
+            // Parse leading number to detect how many times this adduct occurred
             if let Some(num) = next_number::<false, false, u16>(line, range.add_start(1 + offset)) {
                 amount = i32::from(num.2.map_err(|err| {
                     CustomError::error(
@@ -988,6 +986,9 @@ fn parse_adduct_type(
     }
 }
 
+/// Parse mzPAF charge, eg `^2` `^-1`
+/// # Errors
+/// If there is nu number after the caret, or if the number is invalid (outside of range and the like).
 fn parse_charge(line: &str, range: Range<usize>) -> Result<(Range<usize>, Charge), CustomError> {
     if line.as_bytes().get(range.start_index()).copied() == Some(b'^') {
         let charge =
@@ -1000,13 +1001,26 @@ fn parse_charge(line: &str, range: Range<usize>) -> Result<(Range<usize>, Charge
             })?;
         Ok((
             range.add_start(charge.0 + 1),
-            Charge::new::<e>(charge.2.map_err(|err| {
-                CustomError::error(
-                    "Invalid mzPAF charge",
-                    format!("The charge number {}", explain_number_error(&err)),
-                    Context::line(None, line, range.start_index() + 1, charge.0),
-                )
-            })? as isize),
+            Charge::new::<e>(
+                isize::try_from(charge.2.map_err(|err| {
+                    CustomError::error(
+                        "Invalid mzPAF charge",
+                        format!("The charge number {}", explain_number_error(&err)),
+                        Context::line(None, line, range.start_index() + 1, charge.0),
+                    )
+                })?)
+                .map_err(|_| {
+                    CustomError::error(
+                        "Invalid mzPAF charge",
+                        format!(
+                            "The charge number is outside of the range of {}..{}",
+                            isize::MIN,
+                            isize::MAX
+                        ),
+                        Context::line(None, line, range.start_index() + 1, charge.0),
+                    )
+                })?,
+            ),
         ))
     } else {
         Ok((range, Charge::new::<e>(1)))
@@ -1044,7 +1058,9 @@ fn parse_deviation(
         } else {
             Ok((
                 range.add_start(1 + number.0),
-                Some(Tolerance::new_absolute(MassOverCharge::new::<mz>(deviation)).into()),
+                Some(Tolerance::new_absolute(MassOverCharge::new::<mz>(
+                    deviation,
+                ))),
             ))
         }
     } else {
@@ -1174,6 +1190,7 @@ macro_rules! mzpaf_test {
     ($case:literal, $name:ident) => {
         #[test]
         fn $name() {
+            use itertools::Itertools;
             let res = $crate::fragment::parse_mzpaf($case, None);
             match res {
                 Err(err) => {
@@ -1241,7 +1258,8 @@ mzpaf_test!("IH", positive_27);
 mzpaf_test!("IL-CH2", positive_28);
 mzpaf_test!("IC[Carbamidomethyl]", positive_29);
 mzpaf_test!("IY[Phospho]", positive_30);
-mzpaf_test!("p^2", positive_31);
+mzpaf_test!("p^2", positive_31a);
+mzpaf_test!("p^-2", positive_31b);
 mzpaf_test!("p-H3PO4^2", positive_32);
 mzpaf_test!("p^4", positive_33);
 mzpaf_test!("p+H^3", positive_34);

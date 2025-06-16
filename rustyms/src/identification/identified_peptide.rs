@@ -283,7 +283,7 @@ impl IdentifiedPeptidoform {
             MetaData::Sage(SageData { id, .. }) | MetaData::MZTab(MZTabData { id, .. }) => {
                 id.to_string()
             }
-            MetaData::Fasta(f) => f.identifier().accession().to_string(),
+            MetaData::Fasta(f) => (*f.identifier().accession()).to_string(),
             MetaData::MSFragger(MSFraggerData { scan, .. }) => scan.to_string(),
             MetaData::PLink(PLinkData { order, .. }) => order.to_string(),
             MetaData::MaxQuant(MaxQuantData {

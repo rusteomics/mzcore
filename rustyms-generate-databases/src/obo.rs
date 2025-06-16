@@ -49,7 +49,7 @@ impl OboOntology {
     }
 
     fn from_raw<T: std::io::BufRead>(reader: T) -> Result<Self, String> {
-        let mut obo = OboOntology::default();
+        let mut obo = Self::default();
         let mut recent_obj = None;
 
         for line in reader.lines() {

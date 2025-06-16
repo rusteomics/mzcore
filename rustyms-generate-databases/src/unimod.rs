@@ -22,7 +22,10 @@ pub(crate) fn build_unimod_ontology(out_dir: &Path) {
 
     let dest_path = Path::new(&out_dir).join("unimod.dat");
     let mut file = File::create(dest_path).unwrap();
-    let final_mods = mods.into_iter().map(|m| m.into_mod()).collect::<Vec<_>>();
+    let final_mods = mods
+        .into_iter()
+        .map(OntologyModification::into_mod)
+        .collect::<Vec<_>>();
     println!("Found {} Unimod modifications", final_mods.len());
     file.write_all(
         &bincode::serde::encode_to_vec::<OntologyModificationList, Configuration>(
@@ -71,6 +74,12 @@ fn parse_unimod() -> Vec<OntologyModification> {
                 }
             }
         }
+    }
+    if !errors.is_empty() {
+        for err in &errors {
+            println!("{err}");
+        }
+        panic!("{} Errors found while parsing Unimod", errors.len());
     }
     modifications
 }

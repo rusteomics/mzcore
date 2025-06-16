@@ -433,7 +433,7 @@ impl CompoundPeptidoformIon {
                     {
                         match modification {
                             ReturnModification::Defined(m) => {
-                                aa.modifications.push(Modification::Simple(m))
+                                aa.modifications.push(Modification::Simple(m));
                             }
                             ReturnModification::Ambiguous(id, localisation_score, preferred) => {
                                 ambiguous_found_positions.push((
@@ -441,11 +441,11 @@ impl CompoundPeptidoformIon {
                                     preferred,
                                     id,
                                     localisation_score,
-                                ))
+                                ));
                             }
                             ReturnModification::CrossLinkReferenced(id) => {
                                 cross_link_found_positions
-                                    .push((id, SequencePosition::Index(sequence_index)))
+                                    .push((id, SequencePosition::Index(sequence_index)));
                             }
                         }
                     } else {

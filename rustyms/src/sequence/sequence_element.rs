@@ -395,7 +395,7 @@ impl<T> SequenceElement<T> {
                                     rules, diagnostic, ..
                                 } => {
                                     if PlacementRule::any_possible(rules, self, position) {
-                                        diagnostic_ions.extend_from_slice(&diagnostic);
+                                        diagnostic_ions.extend_from_slice(diagnostic);
                                     }
                                 }
                                 LinkerSpecificity::Asymmetric {
@@ -407,7 +407,7 @@ impl<T> SequenceElement<T> {
                                     if PlacementRule::any_possible(rules_left, self, position)
                                         || PlacementRule::any_possible(rules_right, self, position)
                                     {
-                                        diagnostic_ions.extend_from_slice(&diagnostic);
+                                        diagnostic_ions.extend_from_slice(diagnostic);
                                     }
                                 }
                             }

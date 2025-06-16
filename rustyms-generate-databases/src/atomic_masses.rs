@@ -34,7 +34,7 @@ pub(crate) fn build_atomic_masses(out_dir: &Path) {
             .map_err(|e| e.to_string())
             .unwrap();
         let element = Element::try_from(nuclide.trim_start_matches(|c: char| c.is_ascii_digit()))
-            .map_err(|_| {
+            .map_err(|()| {
                 format!("Not a valid isotope+element, could not recognise element: {nuclide}")
             })
             .unwrap();
@@ -69,15 +69,13 @@ pub(crate) fn build_atomic_masses(out_dir: &Path) {
             continue;
         }
 
-        let element = if element.is_empty() {
-            last_element
-        } else {
+        if !element.is_empty() {
             last_element = element
                 .parse::<usize>()
                 .map_err(|_| format!("Not a valid number for element Z: {element}"))
                 .unwrap();
-            last_element
-        };
+        }
+        let element = last_element;
 
         let isotope = isotope.parse::<usize>().unwrap();
 

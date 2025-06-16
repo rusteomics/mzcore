@@ -353,7 +353,7 @@ impl Fragment {
                             .flat_map(|l| l.iter())
                             .sum::<MolecularFormula>(),
                 ),
-                charge: Charge::new::<crate::system::e>(charge.charge().value.try_into().unwrap()),
+                charge: Charge::new::<crate::system::e>(charge.charge().value),
                 ion: annotation.clone(),
                 peptidoform_ion_index: Some(peptidoform_ion_index),
                 peptidoform_index: Some(peptidoform_index),
@@ -393,7 +393,7 @@ impl Fragment {
                             .sum::<MolecularFormula>()
                         + molecular_formula!(H 1) * variant,
                 ),
-                charge: Charge::new::<crate::system::e>(charge.charge().value.try_into().unwrap()),
+                charge: Charge::new::<crate::system::e>(charge.charge().value),
                 ion: annotation.with_variant(*variant),
                 peptidoform_ion_index: Some(peptidoform_ion_index),
                 peptidoform_index: Some(peptidoform_index),

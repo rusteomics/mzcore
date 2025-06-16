@@ -53,6 +53,8 @@ impl GlycanStructure {
     }
 
     /// Build the rendered glycan.
+    /// # Panics
+    /// If any monosaccharide does not have a defined mass.
     fn position_absolute(
         &self,
         depth: usize,

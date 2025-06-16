@@ -837,10 +837,7 @@ impl<Complexity> Peptidoform<Complexity> {
         peptidoform_index: usize,
         all_peptides: &[Peptidoform<Linked>],
     ) -> Vec<Fragment> {
-        let default_charge = MolecularCharge::proton(
-            isize::try_from(max_charge.value)
-                .expect("Charge of the precursor cannot be higher then isize::MAX"),
-        );
+        let default_charge = MolecularCharge::proton(max_charge.value);
         let mut charge_carriers: CachedCharge = self
             .charge_carriers
             .as_ref()

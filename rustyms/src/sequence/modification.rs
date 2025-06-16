@@ -240,8 +240,8 @@ impl CrossLinkSide {
                             neutral_losses,
                             ..
                         } => {
-                            all_neutral.extend_from_slice(&neutral_losses);
-                            all_diagnostic.extend_from_slice(&diagnostic);
+                            all_neutral.extend_from_slice(neutral_losses);
+                            all_diagnostic.extend_from_slice(diagnostic);
                             match self {
                                 Self::Left(_) => all_stubs.extend(stubs.iter().cloned()),
                                 Self::Right(_) => {
@@ -251,7 +251,7 @@ impl CrossLinkSide {
                                 Self::Symmetric(_) => {
                                     all_stubs.extend(stubs.iter().flat_map(|(l, r)| {
                                         vec![(l.clone(), r.clone()), (r.clone(), l.clone())]
-                                    }))
+                                    }));
                                 }
                             }
                         }
@@ -261,9 +261,9 @@ impl CrossLinkSide {
                             diagnostic,
                             ..
                         } => {
-                            all_stubs.extend_from_slice(&stubs);
-                            all_neutral.extend_from_slice(&neutral_losses);
-                            all_diagnostic.extend_from_slice(&diagnostic);
+                            all_stubs.extend_from_slice(stubs);
+                            all_neutral.extend_from_slice(neutral_losses);
+                            all_diagnostic.extend_from_slice(diagnostic);
                         }
                     }
                 }

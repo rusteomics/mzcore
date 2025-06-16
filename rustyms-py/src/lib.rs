@@ -240,7 +240,7 @@ impl MolecularFormula {
     fn from_pro_forma(_cls: &Bound<'_, PyType>, proforma: &str) -> PyResult<Self> {
         rustyms::chemistry::MolecularFormula::from_pro_forma(proforma, .., false, false, true, true)
             .map(MolecularFormula)
-            .map_err(|e| PyValueError::new_err(format!("Invalid ProForma string: {}", e)))
+            .map_err(|e| PyValueError::new_err(format!("Invalid ProForma string: {e}")))
     }
 
     /// Create a new molecular formula from a PSI-MOD formula notation string.
@@ -257,7 +257,7 @@ impl MolecularFormula {
     fn from_psi_mod(_cls: &Bound<'_, PyType>, psi_mod: &str) -> PyResult<Self> {
         rustyms::chemistry::MolecularFormula::from_psi_mod(psi_mod, ..)
             .map(MolecularFormula)
-            .map_err(|e| PyValueError::new_err(format!("Invalid PSI-MOD string: {}", e)))
+            .map_err(|e| PyValueError::new_err(format!("Invalid PSI-MOD string: {e}")))
     }
 
     /// Add the given element to this formula (while keeping it ordered and simplified)
@@ -1531,7 +1531,7 @@ impl RawSpectrum {
         spectrum.rt = rt.map(rustyms::system::Time::new::<rustyms::system::s>);
         spectrum.charge =
             precursor_charge.map(rustyms::system::isize::Charge::new::<rustyms::system::e>);
-        spectrum.mass = precursor_mass.map(rustyms::system::Mass::new::<rustyms::system::dalton>);
+        spectrum.mass = precursor_mass.map(rustyms::system::Mass::new::<dalton>);
 
         let peaks = mz_array
             .into_iter()
@@ -1613,7 +1613,7 @@ impl RawSpectrum {
     ///
     #[getter]
     fn mass(&self) -> Option<f64> {
-        self.0.mass.map(|v| v.get::<rustyms::system::dalton>())
+        self.0.mass.map(|v| v.get::<dalton>())
     }
 
     /// The peaks of which this spectrum consists.
@@ -1695,7 +1695,7 @@ impl AnnotatedSpectrum {
             self.mass().map_or("None".to_string(), |v| v.to_string()),
             self.spectrum()
                 .iter()
-                .map(|x| x.to_string())
+                .map(ToString::to_string)
                 .collect::<Vec<_>>()
                 .join(", ")
         )
@@ -1752,7 +1752,7 @@ impl AnnotatedSpectrum {
     ///
     #[getter]
     fn mass(&self) -> Option<f64> {
-        self.0.mass.map(|v| v.get::<rustyms::system::dalton>())
+        self.0.mass.map(|v| v.get::<dalton>())
     }
 
     /// The peaks of which this spectrum consists.

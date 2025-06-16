@@ -14,7 +14,10 @@ pub(crate) fn build_psi_mod_ontology(out_dir: &Path) {
 
     let dest_path = Path::new(&out_dir).join("psimod.dat");
     let mut file = std::fs::File::create(dest_path).unwrap();
-    let final_mods = mods.into_iter().map(|m| m.into_mod()).collect::<Vec<_>>();
+    let final_mods = mods
+        .into_iter()
+        .map(OntologyModification::into_mod)
+        .collect::<Vec<_>>();
     println!("Found {} PSI-MOD modifications", final_mods.len());
     file.write_all(
         &bincode::serde::encode_to_vec::<OntologyModificationList, Configuration>(

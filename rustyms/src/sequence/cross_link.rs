@@ -69,21 +69,25 @@ pub enum CrossLinkName {
 #[derive(Clone, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 pub enum LinkerSpecificity {
     /// A symmetric specificity where both ends have the same specificity.
-    /// The first list is all possible positions. The second list is all
-    /// stubs that can be left after cleaving or breaking of the cross-link.
     Symmetric {
+        /// The placement rules for both ends.
         rules: Vec<PlacementRule>,
+        /// All stubs that can be left after cleaving or breaking of the cross-link.
         stubs: Vec<(MolecularFormula, MolecularFormula)>,
+        /// All possible neutral losses from the intact cross-linker.
         neutral_losses: Vec<NeutralLoss>,
+        /// All diagnostic ions from the cross-linker
         diagnostic: Vec<DiagnosticIon>,
     },
-    /// An asymmetric specificity where both ends have a different specificity.
-    /// The first list is all possible positions. The second list is all
-    /// stubs that can be left after cleaving or breaking of the cross-link.
+    /// An asymmetric specificity where both ends have a different specificity..
     Asymmetric {
+        /// The placement rules for both ends, these can be asymmetric thus are provided for 'right' and 'left' separately.
         rules: (Vec<PlacementRule>, Vec<PlacementRule>),
+        /// All stubs that can be left after cleaving or breaking of the cross-link. The stubs are specific for right and left in the same orientation as the rules.
         stubs: Vec<(MolecularFormula, MolecularFormula)>,
+        /// All possible neutral losses from the intact cross-linker.
         neutral_losses: Vec<NeutralLoss>,
+        /// All diagnostic ions from the cross-linker
         diagnostic: Vec<DiagnosticIon>,
     },
 }

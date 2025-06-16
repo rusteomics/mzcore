@@ -775,8 +775,9 @@ impl AbsolutePositionedGlycan {
             (sub_tree.tree.x + sub_tree.tree.width - sub_tree.left_offset - sub_tree.right_offset)
                 * column_size;
         let depth = sub_tree.depth as f32 + if sub_tree.break_top { 0.75 } else { 0.0 };
-        let height = depth * column_size
-            + if sub_tree.break_bottom {
+        let height = depth.mul_add(
+            column_size,
+            if sub_tree.break_bottom {
                 3.5 * stroke_size
             } else {
                 (match basis {
@@ -784,7 +785,8 @@ impl AbsolutePositionedGlycan {
                     GlycanRoot::Line | GlycanRoot::Symbol => 0.5,
                     GlycanRoot::Text(_) => 1.0,
                 }) * column_size
-            };
+            },
+        );
 
         let size = pick_point((width, height), direction);
 
