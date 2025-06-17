@@ -36,6 +36,20 @@ pub enum PairMode {
     PeptidoformToDatabase,
 }
 
+impl std::fmt::Display for PairMode {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{}",
+            match self {
+                Self::Same => "Same",
+                Self::DatabaseToPeptidoform => "Database to Peptidoform",
+                Self::PeptidoformToDatabase => "Peptidoform to Database",
+            }
+        )
+    }
+}
+
 /// The scoring parameters for the mass alignment.
 ///
 /// Design parameters for the scoring systems are as follows:

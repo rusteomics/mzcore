@@ -46,7 +46,7 @@ pub use align_type::{AlignType, Side};
 pub use alignment::{Alignment, Score, Stats};
 pub use mass_alignment::align;
 pub use piece::Piece;
-pub use scoring::{AlignScoring, MatchType};
+pub use scoring::{AlignScoring, MatchType, PairMode};
 
 /// Different scoring matrices that can be used.
 /// Matrices from: <https://www.ncbi.nlm.nih.gov/IEB/ToolBox/CPP_DOC/lxr/source/src/util/tables/> and <https://www.ncbi.nlm.nih.gov/IEB/ToolBox/C_DOC/lxr/source/data/>
