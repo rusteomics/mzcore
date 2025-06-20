@@ -199,7 +199,7 @@ pub(super) fn determine_final_score<A, B>(
         normalised: if maximal_score == 0 {
             ordered_float::OrderedFloat::default()
         } else {
-            ordered_float::OrderedFloat(absolute_score as f64 / maximal_score as f64)
+            ordered_float::OrderedFloat((absolute_score as f64 / maximal_score as f64).min(1.0))
         },
         max: maximal_score,
     }
