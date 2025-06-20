@@ -266,6 +266,19 @@ impl<Complexity> Peptidoform<Complexity> {
     }
 }
 
+impl<Complexity, OtherComplexity: AtLeast<Complexity>> AsRef<Peptidoform<OtherComplexity>>
+    for Peptidoform<Complexity>
+{
+    fn as_ref(&self) -> &Peptidoform<OtherComplexity> {
+        unsafe {
+            std::ptr::from_ref(self)
+                .cast::<Peptidoform<OtherComplexity>>()
+                .as_ref()
+                .expect("Invalid pointer in upcasting peptidoform complexity level")
+        }
+    }
+}
+
 impl<Complexity: HighestOf<Linear>> Peptidoform<Complexity> {
     /// Add global isotope modifications, if any is invalid it returns None
     #[must_use]
