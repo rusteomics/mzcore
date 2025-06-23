@@ -11,6 +11,8 @@ use super::align_type::*;
 use super::piece::*;
 use super::scoring::*;
 
+use crate::sequence::HasPeptidoform;
+use crate::sequence::SemiAmbiguous;
 use crate::{
     align::mass_alignment::{determine_final_score, score_pair},
     annotation::model::GlycanModel,
@@ -23,11 +25,11 @@ use crate::{
 
 /// An alignment of two reads. It has either a reference to the two sequences to prevent overzealous use of memory, or if needed use [`Self::to_owned`] to get a variant that clones the sequences and so can be used in more places.
 #[derive(Debug, Deserialize, Serialize)]
-pub struct Alignment<'lifetime, A, B> {
+pub struct Alignment<A, B> {
     /// The first sequence
-    pub(super) seq_a: Cow<'lifetime, Peptidoform<A>>,
+    pub(super) seq_a: A,
     /// The second sequence
-    pub(super) seq_b: Cow<'lifetime, Peptidoform<B>>,
+    pub(super) seq_b: B,
     /// The scores of this alignment
     pub(super) score: Score,
     /// The path or steps taken for the alignment
@@ -42,7 +44,7 @@ pub struct Alignment<'lifetime, A, B> {
     pub(super) maximal_step: u16,
 }
 
-impl<A, B> Clone for Alignment<'_, A, B> {
+impl<A: Clone, B: Clone> Clone for Alignment<A, B> {
     fn clone(&self) -> Self {
         Self {
             seq_a: self.seq_a.clone(),
@@ -57,7 +59,7 @@ impl<A, B> Clone for Alignment<'_, A, B> {
     }
 }
 
-impl<A, B> PartialEq for Alignment<'_, A, B> {
+impl<A: PartialEq, B: PartialEq> PartialEq for Alignment<A, B> {
     fn eq(&self, other: &Self) -> bool {
         self.seq_a == other.seq_a
             && self.seq_b == other.seq_b
@@ -70,7 +72,7 @@ impl<A, B> PartialEq for Alignment<'_, A, B> {
     }
 }
 
-impl<A, B> std::hash::Hash for Alignment<'_, A, B> {
+impl<A: std::hash::Hash, B: std::hash::Hash> std::hash::Hash for Alignment<A, B> {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
         self.seq_a.hash(state);
         self.seq_b.hash(state);
@@ -83,13 +85,13 @@ impl<A, B> std::hash::Hash for Alignment<'_, A, B> {
     }
 }
 
-impl<A, B> Eq for Alignment<'_, A, B> {}
+impl<A: PartialEq + Eq, B: PartialEq + Eq> Eq for Alignment<A, B> {}
 
-impl<A, B> Alignment<'_, A, B> {
+impl<A: Clone, B: Clone> Alignment<Cow<'_, A>, Cow<'_, B>> {
     /// Clone the referenced sequences to make an alignment that owns the sequences.
     /// This can be necessary in some context where the references cannot be guaranteed to stay as long as you need the alignment.
     #[must_use]
-    pub fn to_owned(&self) -> Alignment<'static, A, B> {
+    pub fn to_owned(&self) -> Alignment<Cow<'static, A>, Cow<'static, B>> {
         Alignment {
             seq_a: Cow::Owned(self.seq_a.clone().into_owned()),
             seq_b: Cow::Owned(self.seq_b.clone().into_owned()),
@@ -98,19 +100,21 @@ impl<A, B> Alignment<'_, A, B> {
     }
 }
 
-impl<A, B> PartialOrd for Alignment<'_, A, B> {
+impl<A: Eq, B: Eq> PartialOrd for Alignment<A, B> {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
         Some(self.cmp(other))
     }
 }
 
-impl<A, B> Ord for Alignment<'_, A, B> {
+impl<A: Eq, B: Eq> Ord for Alignment<A, B> {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
         self.score.normalised.cmp(&other.score.normalised)
     }
 }
 
-impl<'lifetime, A: AtMax<SimpleLinear>, B: AtMax<SimpleLinear>> Alignment<'lifetime, A, B> {
+impl<'lifetime, A: AtMax<SimpleLinear>, B: AtMax<SimpleLinear>>
+    Alignment<&'lifetime Peptidoform<A>, &'lifetime Peptidoform<B>>
+{
     /// Recreate an alignment from a path, the path is [`Self::short`].
     #[expect(clippy::missing_panics_doc, clippy::too_many_arguments)]
     pub fn create_from_path(
@@ -277,8 +281,8 @@ impl<'lifetime, A: AtMax<SimpleLinear>, B: AtMax<SimpleLinear>> Alignment<'lifet
             .collect_vec();
 
         Some(Self {
-            seq_a: Cow::Borrowed(seq_a),
-            seq_b: Cow::Borrowed(seq_b),
+            seq_a,
+            seq_b,
             score: determine_final_score(seq_a, seq_b, start_a, start_b, &path, scoring),
             path,
             start_a,
@@ -289,13 +293,13 @@ impl<'lifetime, A: AtMax<SimpleLinear>, B: AtMax<SimpleLinear>> Alignment<'lifet
     }
 }
 
-impl<A, B> Alignment<'_, A, B> {
+impl<A, B> Alignment<A, B> {
     /// The first sequence
-    pub fn seq_a(&self) -> &Peptidoform<A> {
+    pub const fn seq_a(&self) -> &A {
         &self.seq_a
     }
     /// The second sequence
-    pub fn seq_b(&self) -> &Peptidoform<B> {
+    pub const fn seq_b(&self) -> &B {
         &self.seq_b
     }
 
@@ -387,14 +391,15 @@ impl<A, B> Alignment<'_, A, B> {
     }
 }
 
-impl<A: AtMax<Linear>, B: AtMax<Linear>> Alignment<'_, A, B> {
+impl<A: HasPeptidoform<Linear>, B: HasPeptidoform<Linear>> Alignment<A, B> {
     /// The mass(es) for the matched portion of the first sequence TODO: this assumes no terminal mods
     pub fn mass_a(&self) -> Multi<MolecularFormula> {
+        let seq_a = self.seq_a().peptidoform();
         if self.align_type().left.global_a() && self.align_type().right.global_a() {
-            self.seq_a().bare_formulas()
+            seq_a.bare_formulas()
         } else {
-            let mut placed_a = vec![false; self.seq_a().number_of_ambiguous_modifications()];
-            self.seq_a()[self.start_a()..self.start_a() + self.len_a()]
+            let mut placed_a = vec![false; seq_a.number_of_ambiguous_modifications()];
+            seq_a[self.start_a()..self.start_a() + self.len_a()]
                 .iter()
                 .enumerate()
                 .fold(Multi::default(), |acc, (index, s)| {
@@ -417,11 +422,12 @@ impl<A: AtMax<Linear>, B: AtMax<Linear>> Alignment<'_, A, B> {
 
     /// The mass(es) for the matched portion of the second sequence
     pub fn mass_b(&self) -> Multi<MolecularFormula> {
+        let seq_b = self.seq_b().peptidoform();
         if self.align_type().left.global_b() && self.align_type().right.global_b() {
-            self.seq_b().bare_formulas()
+            seq_b.bare_formulas()
         } else {
-            let mut placed_b = vec![false; self.seq_b().number_of_ambiguous_modifications()];
-            self.seq_b()[self.start_b()..self.start_b() + self.len_b()]
+            let mut placed_b = vec![false; seq_b.number_of_ambiguous_modifications()];
+            seq_b[self.start_b()..self.start_b() + self.len_b()]
                 .iter()
                 .enumerate()
                 .fold(Multi::default(), |acc, (index, s)| {
@@ -630,7 +636,7 @@ mod tests {
             .unwrap();
 
         assert!(
-            align::<1, SimpleLinear, SimpleLinear>(
+            align::<1, &Peptidoform<SimpleLinear>, &Peptidoform<SimpleLinear>>(
                 &a,
                 &b,
                 AlignScoring::default(),
@@ -642,7 +648,7 @@ mod tests {
                 < f64::EPSILON
         );
         assert!(
-            align::<1, SimpleLinear, SimpleLinear>(
+            align::<1, &Peptidoform<SimpleLinear>, &Peptidoform<SimpleLinear>>(
                 &a,
                 &c,
                 AlignScoring::default(),
@@ -654,7 +660,7 @@ mod tests {
                 < f64::EPSILON
         );
         assert!(
-            align::<1, SimpleLinear, SimpleLinear>(
+            align::<1, &Peptidoform<SimpleLinear>, &Peptidoform<SimpleLinear>>(
                 &a,
                 &d,
                 AlignScoring::default(),
@@ -669,7 +675,7 @@ mod tests {
             - AminoAcid::AsparticAcid.formulas()[0].monoisotopic_mass())
         .value
         .abs();
-        let mass_diff_bc = align::<1, SimpleLinear, SimpleLinear>(
+        let mass_diff_bc = align::<1, &Peptidoform<SimpleLinear>, &Peptidoform<SimpleLinear>>(
             &b,
             &c,
             AlignScoring::default(),

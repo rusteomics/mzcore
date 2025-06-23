@@ -9,8 +9,9 @@ use rayon::prelude::*;
 use rustyms::{
     align::{AlignType, align},
     identification::{
-        FastaData, ReturnedPeptidoform, csv::write_csv, open_identified_peptides_file,
+        FastaData, IdentifiedPeptidoform, csv::write_csv, open_identified_peptides_file,
     },
+    prelude::Peptidoform,
     sequence::SemiAmbiguous,
     *,
 };
@@ -34,27 +35,26 @@ fn main() {
     let peptides = open_identified_peptides_file(args.peptides, None, false)
         .unwrap()
         .filter_map(Result::ok)
-        .filter_map(|p| {
-            p.peptidoform()
-                .and_then(ReturnedPeptidoform::peptidoform)
-                .and_then(|p| p.into_owned().into_semi_ambiguous())
-                .map(|lp| (p, lp))
-        })
+        .filter_map(|p| p.into_semi_ambiguous())
         .collect_vec();
     let database = FastaData::parse_file(args.database).unwrap();
 
     let alignments: Vec<_> = peptides
         .par_iter()
-        .flat_map(|(peptide, linear_peptide)| {
+        .flat_map(|peptide| {
             let alignments = database
                 .iter()
                 .map(|db| {
                     (
                         db,
                         peptide,
-                        align::<4, SemiAmbiguous, SemiAmbiguous>(
+                        align::<
+                            4,
+                            &Peptidoform<SemiAmbiguous>,
+                            &IdentifiedPeptidoform<SemiAmbiguous>,
+                        >(
                             db.peptide(),
-                            linear_peptide,
+                            peptide,
                             AlignScoring::default(),
                             AlignType::EITHER_GLOBAL,
                         ),

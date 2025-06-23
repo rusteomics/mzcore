@@ -38,7 +38,7 @@ fn setup_igha() -> (Peptidoform<SimpleLinear>, Peptidoform<SimpleLinear>) {
 #[bench::simple_1(setup_simple())]
 #[bench::igha_1(setup_igha())]
 pub fn align_1(setup: (Peptidoform<SimpleLinear>, Peptidoform<SimpleLinear>)) {
-    align::<1, SimpleLinear, SimpleLinear>(
+    align::<1, Peptidoform<SimpleLinear>, Peptidoform<SimpleLinear>>(
         &setup.0,
         &setup.1,
         AlignScoring::default(),

@@ -5,7 +5,10 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     identification::*,
-    sequence::{AtLeast, CompoundPeptidoformIon, Peptidoform, SemiAmbiguous, SimpleLinear},
+    sequence::{
+        AtLeast, AtMax, CompoundPeptidoformIon, HasPeptidoform, HasPeptidoformImpl, Linear,
+        Peptidoform, SemiAmbiguous, SimpleLinear,
+    },
     system::{MassOverCharge, OrderedTime, Time, isize::Charge},
 };
 
@@ -187,6 +190,37 @@ impl IdentifiedPeptidoform<SemiAmbiguous> {
             | MetaData::BasicCSV(_)
             | MetaData::PLink(_) => None,
         }
+    }
+}
+
+impl<Complexity: AtLeast<SimpleLinear>> IdentifiedPeptidoform<Complexity> {
+    /// Check if this identified peptidoform is simple linear (also returns if there is no peptidoform)
+    pub fn into_simple_linear(self) -> Option<IdentifiedPeptidoform<SemiAmbiguous>> {
+        self.compound_peptidoform_ion()
+            .is_none_or(|p| {
+                p.singular_peptidoform_ref()
+                    .is_some_and(Peptidoform::is_simple_linear)
+            })
+            .then(|| self.mark())
+    }
+}
+
+impl<Complexity: AtLeast<SemiAmbiguous>> IdentifiedPeptidoform<Complexity> {
+    /// Check if this identified peptidoform is semi ambiguous (also returns if there is no peptidoform)
+    pub fn into_semi_ambiguous(self) -> Option<IdentifiedPeptidoform<SemiAmbiguous>> {
+        self.compound_peptidoform_ion()
+            .is_none_or(|p| {
+                p.singular_peptidoform_ref()
+                    .is_some_and(Peptidoform::is_semi_ambiguous)
+            })
+            .then(|| self.mark())
+    }
+}
+
+impl HasPeptidoformImpl for IdentifiedPeptidoform<SemiAmbiguous> {
+    type Complexity = SemiAmbiguous;
+    fn peptidoform(&self) -> &Peptidoform<SemiAmbiguous> {
+        self.peptidoform()
     }
 }
 
