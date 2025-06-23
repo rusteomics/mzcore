@@ -1,3 +1,5 @@
+use std::marker::PhantomData;
+
 use crate::{
     chemistry::MolecularFormula,
     error::CustomError,
@@ -36,7 +38,7 @@ format_family!(
     PLGSFormat,
     /// The data from any PLGS file
     PLGSData,
-    PLGSVersion, [&VERSION_3_0], b',', None;
+    SimpleLinear, PLGSVersion, [&VERSION_3_0], b',', None;
     required {
         protein_id: usize, |location: Location, _| location.parse(NUMBER_ERROR);
         protein_entry: String, |location: Location, _| Ok(location.get_string());
@@ -145,12 +147,13 @@ format_family!(
     }
 );
 
-impl From<PLGSData> for IdentifiedPeptidoform {
+impl From<PLGSData> for IdentifiedPeptidoform<SimpleLinear> {
     fn from(value: PLGSData) -> Self {
         Self {
             score: Some(2.0 / (1.0 + 1.3_f64.powf(-value.peptide_score)) - 1.0),
             local_confidence: None,
             metadata: MetaData::PLGS(value),
+            marker: PhantomData,
         }
     }
 }

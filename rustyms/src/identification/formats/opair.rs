@@ -1,4 +1,5 @@
 use std::{
+    marker::PhantomData,
     ops::Range,
     path::{Path, PathBuf},
 };
@@ -26,7 +27,7 @@ format_family!(
     OpairFormat,
     /// The data for OPair data
     OpairData,
-    OpairVersion, [&O_PAIR], b'\t', None;
+    SemiAmbiguous, OpairVersion, [&O_PAIR], b'\t', None;
     required {
         raw_file: PathBuf, |location: Location, _| Ok(Path::new(&location.get_string()).to_owned());
         scan_number: usize, |location: Location, _| location.parse(NUMBER_ERROR);
@@ -191,12 +192,13 @@ format_family!(
     optional { }
 );
 
-impl From<OpairData> for IdentifiedPeptidoform {
+impl From<OpairData> for IdentifiedPeptidoform<SemiAmbiguous> {
     fn from(value: OpairData) -> Self {
         Self {
             score: Some(value.score / 100.0),
             local_confidence: None,
             metadata: MetaData::Opair(value),
+            marker: PhantomData,
         }
     }
 }

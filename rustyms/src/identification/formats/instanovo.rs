@@ -1,4 +1,5 @@
 use std::{
+    marker::PhantomData,
     path::{Path, PathBuf},
     sync::LazyLock,
 };
@@ -38,7 +39,7 @@ format_family!(
     InstaNovoFormat,
     /// The data from any InstaNovo file
     InstaNovoData,
-    InstaNovoVersion, [&INSTANOVO_V1_0_0], b',', None;
+    SemiAmbiguous, InstaNovoVersion, [&INSTANOVO_V1_0_0], b',', None;
     required {
         scan_number: usize, |location: Location, _| location.parse(NUMBER_ERROR);
         mz: MassOverCharge, |location: Location, _| location.parse::<f64>(NUMBER_ERROR).map(MassOverCharge::new::<crate::system::mz>);
@@ -60,7 +61,7 @@ format_family!(
     optional { }
 );
 
-impl From<InstaNovoData> for IdentifiedPeptidoform {
+impl From<InstaNovoData> for IdentifiedPeptidoform<SemiAmbiguous> {
     fn from(value: InstaNovoData) -> Self {
         Self {
             score: Some(2.0 / (1.0 + 1.01_f64.powf(-value.score))),
@@ -72,6 +73,7 @@ impl From<InstaNovoData> for IdentifiedPeptidoform {
                     .collect(),
             ),
             metadata: MetaData::InstaNovo(value),
+            marker: PhantomData,
         }
     }
 }

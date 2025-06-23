@@ -9,7 +9,7 @@ macro_rules! format_family {
      $format:ident,
      #[doc = $data_doc:expr]
      $data:ident,
-     $version:ident, $versions:expr, $separator:expr, $header:expr;
+     $complexity:ident, $version:ident, $versions:expr, $separator:expr, $header:expr;
      required { $($(#[doc = $rdoc:expr])? $rname:ident: $rtyp:ty, $rf:expr;)* }
      optional { $($(#[doc = $odoc:expr])? $oname:ident: $otyp:ty, $of:expr;)*}
      $($post_process:item)?) => {
@@ -40,6 +40,7 @@ macro_rules! format_family {
         impl IdentifiedPeptidoformSource for $data {
             type Source = CsvLine;
             type Format = $format;
+            type Complexity = $complexity;
             type Version = $version;
             fn parse(source: &Self::Source, custom_database: Option<&crate::ontology::CustomDatabase>, keep_all_columns: bool) -> Result<(Self, &'static Self::Format), CustomError> {
                 let mut errors = Vec::new();

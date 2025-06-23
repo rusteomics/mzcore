@@ -4,6 +4,7 @@ use crate::{
     error::{Context, CustomError},
     identification::*,
     ontology::CustomDatabase,
+    sequence::Linked,
 };
 
 // TODO:
@@ -19,8 +20,10 @@ pub fn open_identified_peptides_file<'a>(
     path: impl AsRef<Path>,
     custom_database: Option<&'a CustomDatabase>,
     keep_all_columns: bool,
-) -> Result<Box<dyn Iterator<Item = Result<IdentifiedPeptidoform, CustomError>> + 'a>, CustomError>
-{
+) -> Result<
+    Box<dyn Iterator<Item = Result<IdentifiedPeptidoform<Linked>, CustomError>> + 'a>,
+    CustomError,
+> {
     let path = path.as_ref();
     let actual_extension = path
         .extension()
@@ -94,7 +97,7 @@ pub fn open_identified_peptides_file<'a>(
         }
         Some("fasta" | "fas" | "fa" | "faa" | "mpfa") => FastaData::parse_file(path).map(|peptides| {
             Box::new(peptides.into_iter().map(|p| Ok(p.into())))
-                as Box<dyn Iterator<Item = Result<IdentifiedPeptidoform, CustomError>> + 'a>
+                as Box<dyn Iterator<Item = Result<IdentifiedPeptidoform<Linked>, CustomError>> + 'a>
         }),
         Some("txt") => {
             MaxQuantData::parse_file(path, custom_database, keep_all_columns, None)
@@ -115,7 +118,7 @@ pub fn open_identified_peptides_file<'a>(
         }
         Some("mztab") => MZTabData::parse_file(path, custom_database).map(|peptides| {
             Box::new(peptides.into_iter().map(|p| p.map(Into::into)))
-                as Box<dyn Iterator<Item = Result<IdentifiedPeptidoform, CustomError>> + 'a>
+                as Box<dyn Iterator<Item = Result<IdentifiedPeptidoform<Linked>, CustomError>> + 'a>
         }),
         Some("deepnovo_denovo") => {
             DeepNovoFamilyData::parse_file(path, custom_database, keep_all_columns, None).map(IdentifiedPeptidoformIter::into_box)

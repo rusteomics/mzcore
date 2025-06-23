@@ -1,3 +1,5 @@
+use std::marker::PhantomData;
+
 use crate::{
     error::CustomError,
     identification::{IdentifiedPeptidoform, IdentifiedPeptidoformSource, MetaData},
@@ -24,7 +26,7 @@ format_family!(
     PepNetFormat,
     /// The data from any PepNet file
     PepNetData,
-    PepNetVersion, [&PEPNET_V1_0], b'\t', None;
+    SemiAmbiguous, PepNetVersion, [&PEPNET_V1_0], b'\t', None;
     required {
         peptide: Peptidoform<SemiAmbiguous>, |location: Location, custom_database: Option<&CustomDatabase>| Peptidoform::sloppy_pro_forma(
             location.full_line(),
@@ -43,12 +45,13 @@ format_family!(
     optional { }
 );
 
-impl From<PepNetData> for IdentifiedPeptidoform {
+impl From<PepNetData> for IdentifiedPeptidoform<SemiAmbiguous> {
     fn from(value: PepNetData) -> Self {
         Self {
             score: Some(value.score),
             local_confidence: Some(value.local_confidence.clone()),
             metadata: MetaData::PepNet(value),
+            marker: PhantomData,
         }
     }
 }

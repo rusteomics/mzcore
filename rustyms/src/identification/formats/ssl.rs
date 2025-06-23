@@ -1,4 +1,7 @@
-use std::path::{Path, PathBuf};
+use std::{
+    marker::PhantomData,
+    path::{Path, PathBuf},
+};
 
 use serde::{Deserialize, Serialize};
 
@@ -25,7 +28,7 @@ format_family!(
     SpectrumSequenceListFormat,
     /// The data from any SSL file
     SpectrumSequenceListData,
-    SpectrumSequenceListVersion, [&SSL], b'\t', None;
+    SemiAmbiguous, SpectrumSequenceListVersion, [&SSL], b'\t', None;
     required {
         raw_file: PathBuf, |location: Location, _| Ok(Path::new(&location.get_string()).to_owned());
         scan: usize, |location: Location, _| location.parse(NUMBER_ERROR);
@@ -52,12 +55,13 @@ format_family!(
     }
 );
 
-impl From<SpectrumSequenceListData> for IdentifiedPeptidoform {
+impl From<SpectrumSequenceListData> for IdentifiedPeptidoform<SemiAmbiguous> {
     fn from(value: SpectrumSequenceListData) -> Self {
         Self {
             score: value.score,
             local_confidence: None,
             metadata: MetaData::SpectrumSequenceList(value),
+            marker: PhantomData,
         }
     }
 }

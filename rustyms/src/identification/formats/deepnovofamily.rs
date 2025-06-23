@@ -1,4 +1,4 @@
-use std::sync::LazyLock;
+use std::{marker::PhantomData, sync::LazyLock};
 
 use serde::{Deserialize, Serialize};
 
@@ -54,7 +54,7 @@ format_family!(
     DeepNovoFamilyFormat,
     /// The data from any DeepNovoFamily file
     DeepNovoFamilyData,
-    DeepNovoFamilyVersion, [&DEEPNOVO_V0_0_1, &POINTNOVOFAMILY], b'\t', None;
+    SemiAmbiguous, DeepNovoFamilyVersion, [&DEEPNOVO_V0_0_1, &POINTNOVOFAMILY], b'\t', None;
     required {
         scan: Vec<PeaksFamilyId>, |location: Location, _| location.or_empty()
             .map_or(Ok(Vec::new()), |l| l.array(';').map(|v| v.parse(ID_ERROR)).collect::<Result<Vec<_>,_>>());
@@ -89,7 +89,7 @@ format_family!(
     }
 );
 
-impl From<DeepNovoFamilyData> for IdentifiedPeptidoform {
+impl From<DeepNovoFamilyData> for IdentifiedPeptidoform<SemiAmbiguous> {
     fn from(value: DeepNovoFamilyData) -> Self {
         Self {
             score: value.score.map(|score| (2.0 / (1.0 + (-score).exp()))),
@@ -98,6 +98,7 @@ impl From<DeepNovoFamilyData> for IdentifiedPeptidoform {
                 .as_ref()
                 .map(|lc| lc.iter().map(|v| 2.0 / (1.0 + (-v).exp())).collect()),
             metadata: MetaData::DeepNovoFamily(value),
+            marker: PhantomData,
         }
     }
 }
@@ -111,7 +112,7 @@ fn interpolate_lc(local_confidence: Vec<f64>) -> Vec<f64> {
         if i == 0 {
             reinterpolated.push(local_confidence[i]);
         } else {
-            let average = (local_confidence[i - 1] + local_confidence[i]) / 2.0;
+            let average = f64::midpoint(local_confidence[i - 1], local_confidence[i]);
             reinterpolated.push(average);
         }
     }

@@ -1,4 +1,7 @@
-use std::path::{Path, PathBuf};
+use std::{
+    marker::PhantomData,
+    path::{Path, PathBuf},
+};
 
 use crate::{
     error::CustomError,
@@ -27,7 +30,7 @@ format_family!(
     SageFormat,
     /// The data from any Sage file
     SageData,
-    SageVersion, [&VERSION_0_14], b'\t', None;
+    SemiAmbiguous, SageVersion, [&VERSION_0_14], b'\t', None;
     required {
         aligned_rt: Ratio, |location: Location, _| location.parse(NUMBER_ERROR).map(Ratio::new::<crate::system::ratio::fraction>);
         decoy: bool, |location: Location, _| location.parse::<i8>(NUMBER_ERROR).map(|v| v == -1);
@@ -71,12 +74,13 @@ format_family!(
     optional { }
 );
 
-impl From<SageData> for IdentifiedPeptidoform {
+impl From<SageData> for IdentifiedPeptidoform<SemiAmbiguous> {
     fn from(value: SageData) -> Self {
         Self {
             score: Some(value.sage_discriminant_score.clamp(-1.0, 1.0)),
             local_confidence: None,
             metadata: MetaData::Sage(value),
+            marker: PhantomData,
         }
     }
 }

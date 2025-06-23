@@ -1,4 +1,4 @@
-use std::{path::PathBuf, sync::LazyLock};
+use std::{marker::PhantomData, path::PathBuf, sync::LazyLock};
 
 use crate::{
     error::CustomError,
@@ -41,7 +41,7 @@ format_family!(
     MSFraggerFormat,
     /// The data for MSFragger data
     MSFraggerData,
-    MSFraggerVersion, [&VERSION_V4_2, &FRAGPIPE_V20_OR_21, &FRAGPIPE_V22, &PHILOSOPHER], b'\t', None;
+    SimpleLinear, MSFraggerVersion, [&VERSION_V4_2, &FRAGPIPE_V20_OR_21, &FRAGPIPE_V22, &PHILOSOPHER], b'\t', None;
     required {
         expectation_score: f64, |location: Location, _| location.parse::<f64>(NUMBER_ERROR);
         hyper_score: f64, |location: Location, _| location.parse::<f64>(NUMBER_ERROR);
@@ -237,12 +237,13 @@ format_family!(
 static IDENTIFER_REGEX: LazyLock<regex::Regex> =
     LazyLock::new(|| regex::Regex::new(r"([^/]+)\.(\d+)\.\d+.\d+").unwrap());
 
-impl From<MSFraggerData> for IdentifiedPeptidoform {
+impl From<MSFraggerData> for IdentifiedPeptidoform<SimpleLinear> {
     fn from(value: MSFraggerData) -> Self {
         Self {
             score: Some(value.hyper_score / 100.0),
             local_confidence: None,
             metadata: MetaData::MSFragger(value),
+            marker: PhantomData,
         }
     }
 }

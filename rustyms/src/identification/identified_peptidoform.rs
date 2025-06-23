@@ -1,27 +1,25 @@
-use std::{borrow::Cow, ops::Range};
+use std::{borrow::Cow, marker::PhantomData, ops::Range};
 
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    chemistry::{MolecularFormula, MultiChemical},
     identification::*,
-    sequence::{
-        CompoundPeptidoformIon, Peptidoform, PeptidoformIon, SemiAmbiguous, SequencePosition,
-        SimpleLinear,
-    },
+    sequence::{AtLeast, CompoundPeptidoformIon, Peptidoform, SemiAmbiguous, SimpleLinear},
     system::{MassOverCharge, OrderedTime, Time, isize::Charge},
 };
 
-/// A peptide that is identified by a de novo or database matching program
+/// A peptide that is identified by a _de novo_ or database matching program
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
-pub struct IdentifiedPeptidoform {
+pub struct IdentifiedPeptidoform<Complexity> {
     /// The score -1.0..=1.0 if a score was available in the original format
     pub score: Option<f64>,
     /// The local confidence, if available, in range -1.0..=1.0
     pub local_confidence: Option<Vec<f64>>,
     /// The full metadata of this peptide
     pub metadata: MetaData,
+    /// The marker for the complexity, Linked means full [`CompoundPeptidoformIon`] anything below means [`Peptidoform`]
+    pub(super) marker: PhantomData<Complexity>,
 }
 
 /// The definition of all special metadata for all types of identified peptides that can be read
@@ -64,137 +62,113 @@ pub enum MetaData {
     SpectrumSequenceList(SpectrumSequenceListData),
 }
 
-/// A peptide as stored in a identified peptide file, either a simple linear one or a cross-linked peptidoform
-#[derive(Clone, Debug)]
-pub enum ReturnedPeptidoform<'a> {
-    /// A semi ambiguous linear peptide
-    PeptidoformSemiAmbiguous(&'a Peptidoform<SemiAmbiguous>),
-    /// A simple linear peptide
-    PeptidoformSimpleLinear(&'a Peptidoform<SimpleLinear>),
-    /// A (potentially) cross-linked peptidoform
-    PeptidoformIon(&'a PeptidoformIon),
-    /// A (potentially) cross-linked chimeric set of peptidoforms
-    CompoundPeptidoformIon(Cow<'a, CompoundPeptidoformIon>),
-}
-
-impl MultiChemical for ReturnedPeptidoform<'_> {
-    fn formulas_inner(
-        &self,
-        _sequence_index: SequencePosition,
-        _peptidoform_index: usize,
-        _peptidoform_ion_index: usize,
-    ) -> crate::quantities::Multi<MolecularFormula> {
-        match self {
-            Self::PeptidoformSemiAmbiguous(p) => p.formulas(),
-            Self::PeptidoformSimpleLinear(p) => p.formulas(),
-            Self::PeptidoformIon(p) => p.formulas(),
-            Self::CompoundPeptidoformIon(p) => p.formulas(),
-        }
-    }
-}
-
-impl std::fmt::Display for ReturnedPeptidoform<'_> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::PeptidoformSemiAmbiguous(p) => write!(f, "{p}"),
-            Self::PeptidoformSimpleLinear(p) => write!(f, "{p}"),
-            Self::PeptidoformIon(p) => write!(f, "{p}"),
-            Self::CompoundPeptidoformIon(p) => write!(f, "{p}"),
-        }
-    }
-}
-
-impl<'a> ReturnedPeptidoform<'a> {
-    /// Get the underlying peptide, or None if the underlying result was a peptidoform
-    pub fn peptidoform(self) -> Option<Cow<'a, Peptidoform<SimpleLinear>>> {
-        match self {
-            Self::PeptidoformSemiAmbiguous(p) => Some(Cow::Owned(p.clone().into())),
-            Self::PeptidoformSimpleLinear(p) => Some(Cow::Borrowed(p)),
-            Self::PeptidoformIon(_) | Self::CompoundPeptidoformIon(_) => None,
-        }
-    }
-    /// Get the underlying result as a peptidoform, if it was a peptide make a new peptidoform from it
-    pub fn peptidoform_ion(self) -> Option<Cow<'a, PeptidoformIon>> {
-        match self {
-            Self::PeptidoformSemiAmbiguous(p) => Some(Cow::Owned(p.clone().into())),
-            Self::PeptidoformSimpleLinear(p) => Some(Cow::Owned(p.clone().into())),
-            Self::PeptidoformIon(p) => Some(Cow::Borrowed(p)),
-            Self::CompoundPeptidoformIon(_) => None,
-        }
-    }
-    /// Get the underlying result as a compound peptidoform, if it was a peptide make a new peptidoform from it
-    pub fn compound_peptidoform_ion(self) -> Cow<'a, CompoundPeptidoformIon> {
-        match self {
-            Self::PeptidoformSemiAmbiguous(p) => Cow::Owned(p.clone().into()),
-            Self::PeptidoformSimpleLinear(p) => Cow::Owned(p.clone().into()),
-            Self::PeptidoformIon(p) => Cow::Owned(p.clone().into()),
-            Self::CompoundPeptidoformIon(p) => p,
-        }
-    }
-    /// Display this peptidoform.
-    /// `specification_compliant` Displays this peptidoform either normalised to the internal representation or as fully spec compliant ProForma
-    /// (no glycan structure or custom modifications).
-    /// # Panics
-    /// When some peptides do not have the same global isotope modifications.
-    /// # Errors
-    /// If the underlying formatter errors.
-    pub fn display(
-        &self,
-        f: &mut impl std::fmt::Write,
-        show_global_mods: bool,
-        specification_compliant: bool,
-    ) -> std::fmt::Result {
-        match self {
-            Self::PeptidoformSemiAmbiguous(p) => {
-                p.display(f, show_global_mods, specification_compliant)
-            }
-            Self::PeptidoformSimpleLinear(p) => {
-                p.display(f, show_global_mods, specification_compliant)
-            }
-            Self::PeptidoformIon(p) => p.display(f, show_global_mods, specification_compliant),
-            Self::CompoundPeptidoformIon(p) => p.display(f, specification_compliant),
-        }
-    }
-}
-
-impl IdentifiedPeptidoform {
-    /// Get the peptide, as pLink can have cross-linked peptides the return type is either a simple peptide or a cross-linked peptidoform
-    pub fn peptidoform(&self) -> Option<ReturnedPeptidoform<'_>> {
+impl<Complexity> IdentifiedPeptidoform<Complexity> {
+    /// If a peptidoform is present get the peptidoform, this has to convert to a compound peptidoform ion, so it is more efficient to use the borrowing versions when possible.
+    pub fn compound_peptidoform_ion(&self) -> Option<Cow<'_, CompoundPeptidoformIon>> {
         match &self.metadata {
             MetaData::Novor(NovorData { peptide, .. })
             | MetaData::InstaNovo(InstaNovoData { peptide, .. })
             | MetaData::Opair(OpairData { peptide, .. })
             | MetaData::PepNet(PepNetData { peptide, .. })
             | MetaData::PowerNovo(PowerNovoData { peptide, .. })
-            | MetaData::Sage(SageData { peptide, .. }) => {
-                Some(ReturnedPeptidoform::PeptidoformSemiAmbiguous(peptide))
-            }
+            | MetaData::Sage(SageData { peptide, .. }) => Some(Cow::Owned(peptide.clone().into())),
             MetaData::MSFragger(MSFraggerData { peptide, .. })
-            | MetaData::PLGS(PLGSData { peptide, .. }) => {
-                Some(ReturnedPeptidoform::PeptidoformSimpleLinear(peptide))
-            }
+            | MetaData::PLGS(PLGSData { peptide, .. }) => Some(Cow::Owned(peptide.clone().into())),
             MetaData::Peaks(PeaksData { peptide, .. }) => {
-                if peptide.1.len() == 1 {
-                    Some(ReturnedPeptidoform::PeptidoformSemiAmbiguous(&peptide.1[0]))
-                } else {
-                    Some(ReturnedPeptidoform::CompoundPeptidoformIon(Cow::Owned(
-                        peptide.1.clone().into(),
-                    )))
-                }
+                Some(Cow::Owned(peptide.1.clone().into()))
             }
-            MetaData::BasicCSV(BasicCSVData { sequence, .. }) => Some(
-                ReturnedPeptidoform::CompoundPeptidoformIon(Cow::Borrowed(sequence)),
-            ),
+            MetaData::BasicCSV(BasicCSVData { sequence, .. }) => Some(Cow::Borrowed(sequence)),
             MetaData::SpectrumSequenceList(SpectrumSequenceListData { peptide, .. })
             | MetaData::MaxQuant(MaxQuantData { peptide, .. })
             | MetaData::MZTab(MZTabData { peptide, .. })
-            | MetaData::DeepNovoFamily(DeepNovoFamilyData { peptide, .. }) => peptide
-                .as_ref()
-                .map(ReturnedPeptidoform::PeptidoformSemiAmbiguous),
-            MetaData::Fasta(f) => Some(ReturnedPeptidoform::PeptidoformSemiAmbiguous(f.peptide())),
-            MetaData::PLink(PLinkData { peptidoform, .. }) => {
-                Some(ReturnedPeptidoform::PeptidoformIon(peptidoform))
+            | MetaData::DeepNovoFamily(DeepNovoFamilyData { peptide, .. }) => {
+                peptide.as_ref().map(|p| Cow::Owned(p.clone().into()))
             }
+            MetaData::Fasta(f) => Some(Cow::Owned(f.peptide().clone().into())),
+            MetaData::PLink(PLinkData { peptidoform, .. }) => {
+                Some(Cow::Owned(peptidoform.clone().into()))
+            }
+            MetaData::NovoB(NovoBData {
+                score_forward,
+                score_reverse,
+                peptide_forward,
+                peptide_reverse,
+                ..
+            }) => if score_forward >= score_reverse {
+                peptide_forward.as_ref()
+            } else {
+                peptide_reverse.as_ref()
+            }
+            .map(|p| Cow::Owned(p.clone().into())),
+        }
+    }
+}
+
+impl IdentifiedPeptidoform<SimpleLinear> {
+    /// For all formats that contain a simple linear peptidoform (all except [`BasicCSV`](FileFormat::BasicCSV) and [`PLink`](FileFormat::PLink)) get a reference to the peptidoform.
+    pub fn peptidoform(&self) -> Option<&Peptidoform<SimpleLinear>> {
+        match &self.metadata {
+            MetaData::Novor(NovorData { peptide, .. })
+            | MetaData::InstaNovo(InstaNovoData { peptide, .. })
+            | MetaData::Opair(OpairData { peptide, .. })
+            | MetaData::PepNet(PepNetData { peptide, .. })
+            | MetaData::PowerNovo(PowerNovoData { peptide, .. })
+            | MetaData::Sage(SageData { peptide, .. }) => Some(peptide.as_ref()),
+            MetaData::MSFragger(MSFraggerData { peptide, .. })
+            | MetaData::PLGS(PLGSData { peptide, .. }) => Some(peptide),
+            MetaData::Peaks(PeaksData { peptide, .. }) => {
+                if peptide.1.len() == 1 {
+                    Some(peptide.1[0].as_ref())
+                } else {
+                    None
+                }
+            }
+            MetaData::SpectrumSequenceList(SpectrumSequenceListData { peptide, .. })
+            | MetaData::MaxQuant(MaxQuantData { peptide, .. })
+            | MetaData::MZTab(MZTabData { peptide, .. })
+            | MetaData::DeepNovoFamily(DeepNovoFamilyData { peptide, .. }) => {
+                peptide.as_ref().map(AsRef::as_ref)
+            }
+            MetaData::Fasta(f) => Some(f.peptide().as_ref()),
+            MetaData::NovoB(NovoBData {
+                score_forward,
+                score_reverse,
+                peptide_forward,
+                peptide_reverse,
+                ..
+            }) => if score_forward >= score_reverse {
+                peptide_forward.as_ref()
+            } else {
+                peptide_reverse.as_ref()
+            }
+            .map(AsRef::as_ref),
+            MetaData::BasicCSV(_) | MetaData::PLink(_) => None,
+        }
+    }
+}
+
+impl IdentifiedPeptidoform<SemiAmbiguous> {
+    /// For all formats that contain a simple linear peptidoform (all except [`MSFragger`](FileFormat::MSFragger), [`PLGS`](FileFormat::PLGS), [`BasicCSV`](FileFormat::BasicCSV) and [`PLink`](FileFormat::PLink)) get a reference to the peptidoform.
+    pub fn peptidoform(&self) -> Option<&Peptidoform<SemiAmbiguous>> {
+        match &self.metadata {
+            MetaData::Novor(NovorData { peptide, .. })
+            | MetaData::InstaNovo(InstaNovoData { peptide, .. })
+            | MetaData::Opair(OpairData { peptide, .. })
+            | MetaData::PepNet(PepNetData { peptide, .. })
+            | MetaData::PowerNovo(PowerNovoData { peptide, .. })
+            | MetaData::Sage(SageData { peptide, .. }) => Some(peptide),
+            MetaData::Peaks(PeaksData { peptide, .. }) => {
+                if peptide.1.len() == 1 {
+                    Some(&peptide.1[0])
+                } else {
+                    None
+                }
+            }
+            MetaData::SpectrumSequenceList(SpectrumSequenceListData { peptide, .. })
+            | MetaData::MaxQuant(MaxQuantData { peptide, .. })
+            | MetaData::MZTab(MZTabData { peptide, .. })
+            | MetaData::DeepNovoFamily(DeepNovoFamilyData { peptide, .. }) => peptide.as_ref(),
+            MetaData::Fasta(f) => Some(f.peptide()),
             MetaData::NovoB(NovoBData {
                 score_forward,
                 score_reverse,
@@ -203,16 +177,34 @@ impl IdentifiedPeptidoform {
                 ..
             }) => {
                 if score_forward >= score_reverse {
-                    peptide_forward
-                        .as_ref()
-                        .map(ReturnedPeptidoform::PeptidoformSemiAmbiguous)
+                    peptide_forward.as_ref()
                 } else {
-                    peptide_reverse
-                        .as_ref()
-                        .map(ReturnedPeptidoform::PeptidoformSemiAmbiguous)
+                    peptide_reverse.as_ref()
                 }
             }
+            MetaData::MSFragger(_)
+            | MetaData::PLGS(_)
+            | MetaData::BasicCSV(_)
+            | MetaData::PLink(_) => None,
         }
+    }
+}
+
+impl<Complexity> IdentifiedPeptidoform<Complexity> {
+    /// Mark this with the following complexity, be warned that the complexity level is not checked.
+    pub(super) fn mark<M>(self) -> IdentifiedPeptidoform<M> {
+        IdentifiedPeptidoform {
+            score: self.score,
+            local_confidence: self.local_confidence,
+            metadata: self.metadata,
+            marker: PhantomData,
+        }
+    }
+
+    /// Cast this identified peptidoform into a higher complexity level. This does not change the
+    /// content of the peptidoform. It only allows to pass this as higher complexity if needed.
+    pub fn cast<NewComplexity: AtLeast<Complexity>>(self) -> IdentifiedPeptidoform<NewComplexity> {
+        self.mark()
     }
 
     /// Get the format and version for this peptidoform
@@ -602,7 +594,7 @@ impl IdentifiedPeptidoform {
             _ => {
                 let exp_mass = self.experimental_mass()?;
                 let theo_mass = self
-                    .peptidoform()
+                    .compound_peptidoform_ion()
                     .and_then(|p| p.formulas().to_vec().pop())
                     .map(|f| f.monoisotopic_mass())?;
 
@@ -615,7 +607,7 @@ impl IdentifiedPeptidoform {
     pub fn mass_error(&self) -> Option<crate::system::Mass> {
         let exp_mass = self.experimental_mass()?;
         let theo_mass = self
-            .peptidoform()
+            .compound_peptidoform_ion()
             .and_then(|p| p.formulas().to_vec().pop())
             .map(|f| f.monoisotopic_mass())?;
 

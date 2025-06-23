@@ -1,5 +1,6 @@
 use std::{
     io::{BufRead, BufReader},
+    marker::PhantomData,
     num::ParseIntError,
     ops::Range,
     path::Path,
@@ -14,7 +15,7 @@ use crate::{
     helper_functions::explain_number_error,
     identification::{IdentifiedPeptidoform, MetaData},
     sequence::{
-        AminoAcid, AnnotatedPeptide, Annotation, Peptidoform, Region, SemiAmbiguous,
+        AminoAcid, AnnotatedPeptide, Annotation, Linked, Peptidoform, Region, SemiAmbiguous,
         SequenceElement,
     },
 };
@@ -703,13 +704,21 @@ fn trim_whitespace(line: &str, range: Range<usize>) -> Range<usize> {
     range.start + start..range.end - end
 }
 
-impl From<FastaData> for IdentifiedPeptidoform {
+impl From<FastaData> for IdentifiedPeptidoform<SemiAmbiguous> {
     fn from(value: FastaData) -> Self {
         Self {
             score: None,
             local_confidence: None,
             metadata: MetaData::Fasta(value),
+            marker: PhantomData,
         }
+    }
+}
+
+impl From<FastaData> for IdentifiedPeptidoform<Linked> {
+    fn from(value: FastaData) -> Self {
+        let tmp: IdentifiedPeptidoform<SemiAmbiguous> = value.into();
+        tmp.cast()
     }
 }
 

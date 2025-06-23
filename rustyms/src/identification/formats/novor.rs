@@ -1,3 +1,5 @@
+use std::marker::PhantomData;
+
 use crate::{
     error::CustomError,
     identification::{
@@ -22,7 +24,7 @@ format_family!(
     NovorFormat,
     /// The Novor data
     NovorData,
-    NovorVersion, [&OLD_DENOVO, &OLD_PSM, &NEW_DENOVO, &NEW_PSM], b',', None;
+    SemiAmbiguous, NovorVersion, [&OLD_DENOVO, &OLD_PSM, &NEW_DENOVO, &NEW_PSM], b',', None;
     required {
         scan_number: usize, |location: Location, _| location.parse(NUMBER_ERROR);
         mz: MassOverCharge, |location: Location, _| location.parse::<f64>(NUMBER_ERROR).map(MassOverCharge::new::<crate::system::mz>);
@@ -58,7 +60,7 @@ format_family!(
     }
 );
 
-impl From<NovorData> for IdentifiedPeptidoform {
+impl From<NovorData> for IdentifiedPeptidoform<SemiAmbiguous> {
     fn from(value: NovorData) -> Self {
         Self {
             score: Some((value.score / 100.0).clamp(-1.0, 1.0)),
@@ -67,6 +69,7 @@ impl From<NovorData> for IdentifiedPeptidoform {
                 .as_ref()
                 .map(|lc| lc.iter().map(|v| *v / 100.0).collect()),
             metadata: MetaData::Novor(value),
+            marker: PhantomData,
         }
     }
 }

@@ -1,4 +1,5 @@
 use std::{
+    marker::PhantomData,
     path::{Path, PathBuf},
     sync::LazyLock,
 };
@@ -28,7 +29,7 @@ format_family!(
     PowerNovoFormat,
     /// The data from any PowerNovo file
     PowerNovoData,
-    PowerNovoVersion, [&POWERNOVO_V1_0_1], b',', None;
+    SemiAmbiguous, PowerNovoVersion, [&POWERNOVO_V1_0_1], b',', None;
     required {
         title: String, |location: Location, _| Ok(location.get_string());
         peptide: Peptidoform<SemiAmbiguous>, |location: Location, custom_database: Option<&CustomDatabase>| Peptidoform::sloppy_pro_forma(
@@ -62,12 +63,13 @@ format_family!(
 static IDENTIFER_REGEX: LazyLock<regex::Regex> =
     LazyLock::new(|| regex::Regex::new(r"^(.*):index=(\d+)$").unwrap());
 
-impl From<PowerNovoData> for IdentifiedPeptidoform {
+impl From<PowerNovoData> for IdentifiedPeptidoform<SemiAmbiguous> {
     fn from(value: PowerNovoData) -> Self {
         Self {
             score: Some(value.score),
             local_confidence: Some(value.local_confidence.clone()),
             metadata: MetaData::PowerNovo(value),
+            marker: PhantomData,
         }
     }
 }

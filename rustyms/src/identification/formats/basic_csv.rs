@@ -1,4 +1,7 @@
-use std::path::{Path, PathBuf};
+use std::{
+    marker::PhantomData,
+    path::{Path, PathBuf},
+};
 
 use serde::{Deserialize, Serialize};
 
@@ -11,7 +14,7 @@ use crate::{
         csv::{CsvLine, parse_csv},
     },
     ontology::CustomDatabase,
-    sequence::CompoundPeptidoformIon,
+    sequence::{CompoundPeptidoformIon, Linked},
     system::isize::Charge,
 };
 
@@ -25,7 +28,7 @@ format_family!(
     BasicCSVFormat,
     /// The data from any basic CSV file
     BasicCSVData,
-    BasicCSVVersion, [&BASIC], b',', None;
+    Linked, BasicCSVVersion, [&BASIC], b',', None;
     required {
         scan_index: usize, |location: Location, _| location.parse::<usize>(NUMBER_ERROR);
         sequence: CompoundPeptidoformIon, |location: Location, custom_database: Option<&CustomDatabase>|location.parse_with(|location| CompoundPeptidoformIon::pro_forma(
@@ -40,12 +43,13 @@ format_family!(
     }
 );
 
-impl From<BasicCSVData> for IdentifiedPeptidoform {
+impl From<BasicCSVData> for IdentifiedPeptidoform<Linked> {
     fn from(value: BasicCSVData) -> Self {
         Self {
             score: None,
             local_confidence: None,
             metadata: MetaData::BasicCSV(value),
+            marker: PhantomData,
         }
     }
 }

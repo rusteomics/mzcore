@@ -7,7 +7,9 @@ use crate::{identification::*, sequence::Peptidoform};
 /// * If the peptide was not identified as the correct version of the format (see parameters).
 /// * See errors at [`test_identified_peptide`]
 #[expect(clippy::missing_panics_doc)]
-pub(super) fn test_format<T: IdentifiedPeptidoformSource + Into<IdentifiedPeptidoform>>(
+pub(super) fn test_format<
+    T: IdentifiedPeptidoformSource + Into<IdentifiedPeptidoform<T::Complexity>>,
+>(
     reader: impl std::io::Read,
     custom_database: Option<&crate::ontology::CustomDatabase>,
     allow_mass_mods: bool,
@@ -22,10 +24,11 @@ where
     for peptide in
         T::parse_reader(reader, custom_database, false, None).map_err(|e| e.to_string())?
     {
-        let peptide: IdentifiedPeptidoform = peptide.map_err(|e| e.to_string())?.into();
+        let peptide: IdentifiedPeptidoform<T::Complexity> =
+            peptide.map_err(|e| e.to_string())?.into();
         number += 1;
 
-        test_identified_peptide(&peptide, allow_mass_mods, expect_lc)?;
+        test_identified_peptidoform(&peptide, allow_mass_mods, expect_lc)?;
 
         if format.as_ref().is_some_and(|f| {
             peptide
@@ -55,55 +58,53 @@ where
 /// * If any of the local scores is outside of range -1.0..=1.0.
 /// * If the peptide contains mass modifications (see parameters).
 #[expect(clippy::missing_panics_doc)]
-pub(super) fn test_identified_peptide(
-    peptide: &IdentifiedPeptidoform,
+pub(super) fn test_identified_peptidoform<Complexity>(
+    peptidoform: &IdentifiedPeptidoform<Complexity>,
     allow_mass_mods: bool,
     expect_lc: bool,
 ) -> Result<(), String> {
-    if peptide
-        .peptidoform()
-        .and_then(ReturnedPeptidoform::peptidoform)
-        .map(|p| p.len())
-        != peptide.local_confidence().map(<[f64]>::len)
-    {
-        if expect_lc && peptide.local_confidence.is_none() {
+    let found_length = peptidoform
+        .compound_peptidoform_ion()
+        .and_then(|p| p.singular_peptidoform_ref().map(Peptidoform::len));
+    if found_length != peptidoform.local_confidence().map(<[f64]>::len) {
+        if expect_lc && peptidoform.local_confidence.is_none() {
             return Err(format!(
-                "No local confidence was provided for peptide {}",
-                peptide.id()
+                "No local confidence was provided for peptidoform {}",
+                peptidoform.id()
             ));
-        } else if peptide.local_confidence.is_some() {
+        } else if peptidoform.local_confidence.is_some() {
             return Err(format!(
-                "The local confidence ({}) does not have the same number of elements as the peptide ({}) for peptide {}",
-                peptide.local_confidence().map_or(0, <[f64]>::len),
-                peptide
-                    .peptidoform()
-                    .and_then(ReturnedPeptidoform::peptidoform)
-                    .map_or(0, |p| p.len()),
-                peptide.id()
+                "The local confidence ({}) does not have the same number of elements as the peptidoform ({}) for peptidoform {}",
+                peptidoform.local_confidence().map_or(0, <[f64]>::len),
+                found_length.unwrap_or_default(),
+                peptidoform.id()
             ));
         }
     }
-    if peptide.score.is_some_and(|s| !(-1.0..=1.0).contains(&s)) {
+    if peptidoform
+        .score
+        .is_some_and(|s| !(-1.0..=1.0).contains(&s))
+    {
         return Err(format!(
-            "The score {} for peptide {} is outside of range",
-            peptide.score.unwrap(),
-            peptide.id()
+            "The score {} for peptidoform {} is outside of range",
+            peptidoform.score.unwrap(),
+            peptidoform.id()
         ));
     }
-    if peptide
+    if peptidoform
         .local_confidence
         .as_ref()
         .is_some_and(|s| s.iter().any(|s| !(-1.0..=1.0).contains(s)))
     {
         return Err(format!(
-            "The local score {} for peptide {} is outside of range",
-            peptide.local_confidence().unwrap().iter().join(","),
-            peptide.id()
+            "The local score {} for peptidoform {} is outside of range",
+            peptidoform.local_confidence().unwrap().iter().join(","),
+            peptidoform.id()
         ));
     }
     if !allow_mass_mods
-        && peptide.peptidoform().is_some_and(|p| {
-            p.compound_peptidoform_ion().peptidoforms().any(|p| {
+        && peptidoform.compound_peptidoform_ion().is_some_and(|p| {
+            p.peptidoforms().any(|p| {
                 p.sequence().iter().any(|s| {
                     s.modifications.iter().any(|m| {
                         m.simple().is_some_and(|m| {
@@ -115,20 +116,19 @@ pub(super) fn test_identified_peptide(
         })
     {
         return Err(format!(
-            "Peptide {} contains mass modifications, sequence {}",
-            peptide.id(),
-            peptide.peptidoform().unwrap(),
+            "Peptidoform {} contains mass modifications, sequence {}",
+            peptidoform.id(),
+            peptidoform.compound_peptidoform_ion().unwrap(),
         ));
     }
-    if let Err(err) = peptide.peptidoform().map_or(Ok(()), |p| {
-        p.compound_peptidoform_ion()
-            .peptidoforms()
+    if let Err(err) = peptidoform.compound_peptidoform_ion().map_or(Ok(()), |p| {
+        p.peptidoforms()
             .try_for_each(Peptidoform::enforce_modification_rules)
     }) {
         return Err(format!(
             "Peptide {} contains misplaced modifications, sequence {}\n{}",
-            peptide.id(),
-            peptide.peptidoform().unwrap(),
+            peptidoform.id(),
+            peptidoform.compound_peptidoform_ion().unwrap(),
             err
         ));
     }

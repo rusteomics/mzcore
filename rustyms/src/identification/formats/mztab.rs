@@ -2,6 +2,7 @@ use std::{
     collections::HashMap,
     fs::File,
     io::{BufRead, BufReader},
+    marker::PhantomData,
     ops::Range,
     str::FromStr,
 };
@@ -17,8 +18,8 @@ use crate::{
     ontology::CustomDatabase,
     quantities::Tolerance,
     sequence::{
-        AminoAcid, PeptideModificationSearch, Peptidoform, ReturnModification, SemiAmbiguous,
-        SimpleModification, SimpleModificationInner, SloppyParsingParameters,
+        AminoAcid, Linked, PeptideModificationSearch, Peptidoform, ReturnModification,
+        SemiAmbiguous, SimpleModification, SimpleModificationInner, SloppyParsingParameters,
     },
     system::{MassOverCharge, Time, isize::Charge},
 };
@@ -721,7 +722,7 @@ impl<'a> PSMLine<'a> {
     }
 }
 
-impl From<MZTabData> for IdentifiedPeptidoform {
+impl From<MZTabData> for IdentifiedPeptidoform<SemiAmbiguous> {
     fn from(value: MZTabData) -> Self {
         Self {
             score: (!value.search_engine.is_empty())
@@ -737,7 +738,15 @@ impl From<MZTabData> for IdentifiedPeptidoform {
                 .filter(|v| !v.is_nan()),
             local_confidence: value.local_confidence.clone(),
             metadata: MetaData::MZTab(value),
+            marker: PhantomData,
         }
+    }
+}
+
+impl From<MZTabData> for IdentifiedPeptidoform<Linked> {
+    fn from(value: MZTabData) -> Self {
+        let tmp: IdentifiedPeptidoform<SemiAmbiguous> = value.into();
+        tmp.cast()
     }
 }
 

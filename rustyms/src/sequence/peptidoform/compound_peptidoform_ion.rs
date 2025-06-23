@@ -45,16 +45,22 @@ impl CompoundPeptidoformIon {
     /// Assume there is exactly one peptidoform in this compound peptidoform.
     #[doc(alias = "assume_linear")]
     pub fn singular(mut self) -> Option<PeptidoformIon> {
-        if self.0.len() == 1 {
-            self.0.pop()
-        } else {
-            None
-        }
+        (self.0.len() == 1).then(|| self.0.pop()).flatten()
+    }
+
+    /// Assume there is exactly one peptidoform in this compound peptidoform.
+    pub fn singular_ref(&self) -> Option<&PeptidoformIon> {
+        (self.0.len() == 1).then(|| &self.0[0])
     }
 
     /// Assume there is exactly one peptide in this compound peptidoform.
-    pub fn singular_peptide(self) -> Option<Peptidoform<Linked>> {
+    pub fn singular_peptidoform(self) -> Option<Peptidoform<Linked>> {
         self.singular().and_then(PeptidoformIon::singular)
+    }
+
+    /// Assume there is exactly one peptide in this compound peptidoform.
+    pub fn singular_peptidoform_ref(&self) -> Option<&Peptidoform<Linked>> {
+        self.singular_ref().and_then(PeptidoformIon::singular_ref)
     }
 
     /// Get all peptidoform ions making up this compound peptidoform.

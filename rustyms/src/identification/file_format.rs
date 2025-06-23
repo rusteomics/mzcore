@@ -2,7 +2,7 @@ use std::{fmt::Display, path::Path};
 
 use serde::{Deserialize, Serialize};
 
-use crate::{error::CustomError, identification::*, ontology::CustomDatabase};
+use crate::{error::CustomError, identification::*, ontology::CustomDatabase, sequence::Linked};
 
 /// A file format that is fully known
 #[derive(Clone, Copy, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
@@ -149,7 +149,7 @@ impl FileFormat {
         path: &Path,
         custom_database: Option<&'a CustomDatabase>,
     ) -> Result<
-        Box<dyn Iterator<Item = Result<IdentifiedPeptidoform, CustomError>> + 'a>,
+        Box<dyn Iterator<Item = Result<IdentifiedPeptidoform<Linked>, CustomError>> + 'a>,
         CustomError,
     > {
         match self {
@@ -162,8 +162,9 @@ impl FileFormat {
                     .map(IdentifiedPeptidoformIter::into_box)
             }
             Self::Fasta => FastaData::parse_file(path).map(|sequences| {
-                let b: Box<dyn Iterator<Item = Result<IdentifiedPeptidoform, CustomError>>> =
-                    Box::new(sequences.into_iter().map(|p| Ok(p.into())));
+                let b: Box<
+                    dyn Iterator<Item = Result<IdentifiedPeptidoform<Linked>, CustomError>>,
+                > = Box::new(sequences.into_iter().map(|p| Ok(p.into())));
                 b
             }),
             Self::InstaNovo(version) => {
@@ -175,8 +176,9 @@ impl FileFormat {
                     .map(IdentifiedPeptidoformIter::into_box)
             }
             Self::MZTab => MZTabData::parse_file(path, custom_database).map(|sequences| {
-                let b: Box<dyn Iterator<Item = Result<IdentifiedPeptidoform, CustomError>>> =
-                    Box::new(sequences.into_iter().map(|p| p.map(Into::into)));
+                let b: Box<
+                    dyn Iterator<Item = Result<IdentifiedPeptidoform<Linked>, CustomError>>,
+                > = Box::new(sequences.into_iter().map(|p| p.map(Into::into)));
                 b
             }),
             Self::NovoB(version) => NovoBData::parse_file(path, custom_database, false, version)

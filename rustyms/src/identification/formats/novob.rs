@@ -13,7 +13,7 @@ use crate::{
 
 use serde::{Deserialize, Serialize};
 
-use std::sync::LazyLock;
+use std::{marker::PhantomData, sync::LazyLock};
 
 static NUMBER_ERROR: (&str, &str) = (
     "Invalid NovoB line",
@@ -67,7 +67,7 @@ format_family!(
     NovoBFormat,
     /// The data from any NovoB file
     NovoBData,
-    NovoBVersion, [&NOVOB_V0_0_1], b'\t', Some(vec![
+    SemiAmbiguous, NovoBVersion, [&NOVOB_V0_0_1], b'\t', Some(vec![
         "mcount".to_string(),
         "charge".to_string(),
         "pepmass".to_string(),
@@ -107,12 +107,13 @@ format_family!(
     optional { }
 );
 
-impl From<NovoBData> for IdentifiedPeptidoform {
+impl From<NovoBData> for IdentifiedPeptidoform<SemiAmbiguous> {
     fn from(value: NovoBData) -> Self {
         Self {
             score: Some(value.score_forward.max(value.score_reverse)),
             local_confidence: None,
             metadata: MetaData::NovoB(value),
+            marker: PhantomData,
         }
     }
 }
