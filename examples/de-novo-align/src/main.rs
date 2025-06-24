@@ -9,10 +9,11 @@ use rayon::prelude::*;
 use rustyms::{
     align::{AlignType, align},
     identification::{
-        FastaData, IdentifiedPeptidoform, csv::write_csv, open_identified_peptides_file,
+        FastaData, IdentifiedPeptidoform, PeptidoformPresent, csv::write_csv,
+        open_identified_peptides_file,
     },
     prelude::Peptidoform,
-    sequence::SemiAmbiguous,
+    sequence::{HasPeptidoform, HasPeptidoformImpl, SemiAmbiguous},
     *,
 };
 
@@ -35,7 +36,7 @@ fn main() {
     let peptides = open_identified_peptides_file(args.peptides, None, false)
         .unwrap()
         .filter_map(Result::ok)
-        .filter_map(|p| p.into_semi_ambiguous())
+        .filter_map(IdentifiedPeptidoform::into_semi_ambiguous)
         .collect_vec();
     let database = FastaData::parse_file(args.database).unwrap();
 
@@ -51,7 +52,7 @@ fn main() {
                         align::<
                             4,
                             &Peptidoform<SemiAmbiguous>,
-                            &IdentifiedPeptidoform<SemiAmbiguous>,
+                            &IdentifiedPeptidoform<SemiAmbiguous, PeptidoformPresent>,
                         >(
                             db.peptide(),
                             peptide,
@@ -83,7 +84,10 @@ fn main() {
         })
         .map(|(db, peptide, alignment, unique)| {
             HashMap::from([
-                ("Peptide".to_string(), alignment.seq_b().to_string()),
+                (
+                    "Peptide".to_string(),
+                    alignment.seq_b().peptidoform().to_string(),
+                ),
                 (
                     "Spectra ref".to_string(),
                     match peptide.scans() {
@@ -115,7 +119,7 @@ fn main() {
                 ("Path".to_string(), alignment.short()),
                 (
                     "Mass".to_string(),
-                    match alignment.seq_b().formulas().mass_bounds() {
+                    match alignment.seq_b().peptidoform().formulas().mass_bounds() {
                         MinMaxResult::NoElements => "-".to_string(),
                         MinMaxResult::OneElement(m) => m.monoisotopic_mass().value.to_string(),
                         MinMaxResult::MinMax(min, max) => format!(
@@ -131,11 +135,7 @@ fn main() {
                 ),
                 (
                     "Peptide length".to_string(),
-                    peptide
-                        .peptidoform()
-                        .and_then(ReturnedPeptidoform::peptidoform)
-                        .map_or(0, |p| p.len())
-                        .to_string(),
+                    peptide.peptidoform().len().to_string(),
                 ),
                 (
                     "Retention time".to_string(),

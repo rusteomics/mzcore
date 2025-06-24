@@ -14,7 +14,7 @@ use serde::{Deserialize, Serialize};
 use crate::{
     error::{Context, CustomError},
     helper_functions::{check_extension, explain_number_error},
-    identification::{IdentifiedPeptidoform, MetaData, SpectrumId, SpectrumIds},
+    identification::{IdentifiedPeptidoform, MaybePeptidoform, MetaData, SpectrumId, SpectrumIds},
     ontology::CustomDatabase,
     quantities::Tolerance,
     sequence::{
@@ -722,7 +722,7 @@ impl<'a> PSMLine<'a> {
     }
 }
 
-impl From<MZTabData> for IdentifiedPeptidoform<SemiAmbiguous> {
+impl From<MZTabData> for IdentifiedPeptidoform<SemiAmbiguous, MaybePeptidoform> {
     fn from(value: MZTabData) -> Self {
         Self {
             score: (!value.search_engine.is_empty())
@@ -738,15 +738,9 @@ impl From<MZTabData> for IdentifiedPeptidoform<SemiAmbiguous> {
                 .filter(|v| !v.is_nan()),
             local_confidence: value.local_confidence.clone(),
             metadata: MetaData::MZTab(value),
-            marker: PhantomData,
+            complexity_marker: PhantomData,
+            peptidoform_availability_marker: PhantomData,
         }
-    }
-}
-
-impl From<MZTabData> for IdentifiedPeptidoform<Linked> {
-    fn from(value: MZTabData) -> Self {
-        let tmp: IdentifiedPeptidoform<SemiAmbiguous> = value.into();
-        tmp.cast()
     }
 }
 

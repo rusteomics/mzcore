@@ -8,7 +8,7 @@ use crate::{
     error::{Context, CustomError},
     identification::{
         BoxedIdentifiedPeptideIter, FastaIdentifier, IdentifiedPeptidoform,
-        IdentifiedPeptidoformSource, IdentifiedPeptidoformVersion, MetaData,
+        IdentifiedPeptidoformSource, IdentifiedPeptidoformVersion, MetaData, PeptidoformPresent,
         common_parser::Location,
         csv::{CsvLine, parse_csv},
     },
@@ -27,7 +27,7 @@ format_family!(
     OpairFormat,
     /// The data for OPair data
     OpairData,
-    SemiAmbiguous, OpairVersion, [&O_PAIR], b'\t', None;
+    SemiAmbiguous, PeptidoformPresent, OpairVersion, [&O_PAIR], b'\t', None;
     required {
         raw_file: PathBuf, |location: Location, _| Ok(Path::new(&location.get_string()).to_owned());
         scan_number: usize, |location: Location, _| location.parse(NUMBER_ERROR);
@@ -192,13 +192,14 @@ format_family!(
     optional { }
 );
 
-impl From<OpairData> for IdentifiedPeptidoform<SemiAmbiguous> {
+impl From<OpairData> for IdentifiedPeptidoform<SemiAmbiguous, PeptidoformPresent> {
     fn from(value: OpairData) -> Self {
         Self {
             score: Some(value.score / 100.0),
             local_confidence: None,
             metadata: MetaData::Opair(value),
-            marker: PhantomData,
+            complexity_marker: PhantomData,
+            peptidoform_availability_marker: PhantomData,
         }
     }
 }

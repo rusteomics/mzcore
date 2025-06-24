@@ -2,7 +2,9 @@ use std::marker::PhantomData;
 
 use crate::{
     error::CustomError,
-    identification::{IdentifiedPeptidoform, IdentifiedPeptidoformSource, MetaData},
+    identification::{
+        IdentifiedPeptidoform, IdentifiedPeptidoformSource, MetaData, PeptidoformPresent,
+    },
     ontology::CustomDatabase,
     sequence::{Peptidoform, SemiAmbiguous, SloppyParsingParameters},
     system::Ratio,
@@ -26,7 +28,7 @@ format_family!(
     PepNetFormat,
     /// The data from any PepNet file
     PepNetData,
-    SemiAmbiguous, PepNetVersion, [&PEPNET_V1_0], b'\t', None;
+    SemiAmbiguous, PeptidoformPresent, PepNetVersion, [&PEPNET_V1_0], b'\t', None;
     required {
         peptide: Peptidoform<SemiAmbiguous>, |location: Location, custom_database: Option<&CustomDatabase>| Peptidoform::sloppy_pro_forma(
             location.full_line(),
@@ -45,13 +47,14 @@ format_family!(
     optional { }
 );
 
-impl From<PepNetData> for IdentifiedPeptidoform<SemiAmbiguous> {
+impl From<PepNetData> for IdentifiedPeptidoform<SemiAmbiguous, PeptidoformPresent> {
     fn from(value: PepNetData) -> Self {
         Self {
             score: Some(value.score),
             local_confidence: Some(value.local_confidence.clone()),
             metadata: MetaData::PepNet(value),
-            marker: PhantomData,
+            complexity_marker: PhantomData,
+            peptidoform_availability_marker: PhantomData,
         }
     }
 }

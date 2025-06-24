@@ -31,8 +31,8 @@ pub fn align<const STEPS: u16, A: HasPeptidoform<SimpleLinear>, B: HasPeptidofor
     scoring: AlignScoring<'_>,
     align_type: AlignType,
 ) -> Alignment<A, B> {
-    let peptidoform_a = seq_a.peptidoform();
-    let peptidoform_b = seq_b.peptidoform();
+    let peptidoform_a = seq_a.cast_peptidoform();
+    let peptidoform_b = seq_b.cast_peptidoform();
     assert!(isize::try_from(peptidoform_a.len()).is_ok());
     assert!(isize::try_from(peptidoform_b.len()).is_ok());
 

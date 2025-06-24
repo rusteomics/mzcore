@@ -7,6 +7,7 @@ mod formats;
 mod general;
 mod identified_peptidoform;
 mod peaks_family_id;
+mod peptidoform_availability;
 mod source;
 mod spectrum_id;
 #[cfg(test)]
@@ -22,5 +23,6 @@ pub use formats::*;
 pub use general::*;
 pub use identified_peptidoform::*;
 pub use peaks_family_id::*;
+pub use peptidoform_availability::*;
 pub use source::*;
 pub use spectrum_id::*;

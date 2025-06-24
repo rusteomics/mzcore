@@ -5,7 +5,7 @@ use std::{
 
 use crate::{
     error::CustomError,
-    identification::SpectrumId,
+    identification::{PeptidoformPresent, SpectrumId},
     ontology::CustomDatabase,
     sequence::{Peptidoform, SemiAmbiguous},
     system::{Mass, Ratio, Time, isize::Charge},
@@ -30,7 +30,7 @@ format_family!(
     SageFormat,
     /// The data from any Sage file
     SageData,
-    SemiAmbiguous, SageVersion, [&VERSION_0_14], b'\t', None;
+    SemiAmbiguous, PeptidoformPresent, SageVersion, [&VERSION_0_14], b'\t', None;
     required {
         aligned_rt: Ratio, |location: Location, _| location.parse(NUMBER_ERROR).map(Ratio::new::<crate::system::ratio::fraction>);
         decoy: bool, |location: Location, _| location.parse::<i8>(NUMBER_ERROR).map(|v| v == -1);
@@ -74,13 +74,14 @@ format_family!(
     optional { }
 );
 
-impl From<SageData> for IdentifiedPeptidoform<SemiAmbiguous> {
+impl From<SageData> for IdentifiedPeptidoform<SemiAmbiguous, PeptidoformPresent> {
     fn from(value: SageData) -> Self {
         Self {
             score: Some(value.sage_discriminant_score.clamp(-1.0, 1.0)),
             local_confidence: None,
             metadata: MetaData::Sage(value),
-            marker: PhantomData,
+            complexity_marker: PhantomData,
+            peptidoform_availability_marker: PhantomData,
         }
     }
 }

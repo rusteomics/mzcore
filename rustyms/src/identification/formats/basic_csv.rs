@@ -9,7 +9,7 @@ use crate::{
     error::CustomError,
     identification::{
         BoxedIdentifiedPeptideIter, IdentifiedPeptidoform, IdentifiedPeptidoformSource,
-        IdentifiedPeptidoformVersion, MetaData,
+        IdentifiedPeptidoformVersion, MetaData, PeptidoformPresent,
         common_parser::{Location, OptionalColumn},
         csv::{CsvLine, parse_csv},
     },
@@ -28,7 +28,7 @@ format_family!(
     BasicCSVFormat,
     /// The data from any basic CSV file
     BasicCSVData,
-    Linked, BasicCSVVersion, [&BASIC], b',', None;
+    Linked, PeptidoformPresent, BasicCSVVersion, [&BASIC], b',', None;
     required {
         scan_index: usize, |location: Location, _| location.parse::<usize>(NUMBER_ERROR);
         sequence: CompoundPeptidoformIon, |location: Location, custom_database: Option<&CustomDatabase>|location.parse_with(|location| CompoundPeptidoformIon::pro_forma(
@@ -43,13 +43,14 @@ format_family!(
     }
 );
 
-impl From<BasicCSVData> for IdentifiedPeptidoform<Linked> {
+impl From<BasicCSVData> for IdentifiedPeptidoform<Linked, PeptidoformPresent> {
     fn from(value: BasicCSVData) -> Self {
         Self {
             score: None,
             local_confidence: None,
             metadata: MetaData::BasicCSV(value),
-            marker: PhantomData,
+            complexity_marker: PhantomData,
+            peptidoform_availability_marker: PhantomData,
         }
     }
 }

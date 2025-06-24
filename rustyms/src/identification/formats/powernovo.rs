@@ -10,9 +10,8 @@ use crate::{
     error::CustomError,
     identification::{
         BoxedIdentifiedPeptideIter, IdentifiedPeptidoform, IdentifiedPeptidoformSource,
-        IdentifiedPeptidoformVersion, MetaData,
-        common_parser::Location,
-        common_parser::OptionalColumn,
+        IdentifiedPeptidoformVersion, MetaData, PeptidoformPresent,
+        common_parser::{Location, OptionalColumn},
         csv::{CsvLine, parse_csv},
     },
     ontology::CustomDatabase,
@@ -29,7 +28,7 @@ format_family!(
     PowerNovoFormat,
     /// The data from any PowerNovo file
     PowerNovoData,
-    SemiAmbiguous, PowerNovoVersion, [&POWERNOVO_V1_0_1], b',', None;
+    SemiAmbiguous, PeptidoformPresent, PowerNovoVersion, [&POWERNOVO_V1_0_1], b',', None;
     required {
         title: String, |location: Location, _| Ok(location.get_string());
         peptide: Peptidoform<SemiAmbiguous>, |location: Location, custom_database: Option<&CustomDatabase>| Peptidoform::sloppy_pro_forma(
@@ -63,13 +62,14 @@ format_family!(
 static IDENTIFER_REGEX: LazyLock<regex::Regex> =
     LazyLock::new(|| regex::Regex::new(r"^(.*):index=(\d+)$").unwrap());
 
-impl From<PowerNovoData> for IdentifiedPeptidoform<SemiAmbiguous> {
+impl From<PowerNovoData> for IdentifiedPeptidoform<SemiAmbiguous, PeptidoformPresent> {
     fn from(value: PowerNovoData) -> Self {
         Self {
             score: Some(value.score),
             local_confidence: Some(value.local_confidence.clone()),
             metadata: MetaData::PowerNovo(value),
-            marker: PhantomData,
+            complexity_marker: PhantomData,
+            peptidoform_availability_marker: PhantomData,
         }
     }
 }

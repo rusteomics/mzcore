@@ -13,13 +13,13 @@ pub trait HasPeptidoformImpl {
     fn peptidoform(&self) -> &Peptidoform<Self::Complexity>;
 }
 
-/// A structure that has a reference to a peptidoform. Implement [HasPeptidoformImpl] instead.
+/// A structure that has a reference to a peptidoform. Implement [`HasPeptidoformImpl`] instead.
 #[diagnostic::on_unimplemented(
     message = "Implement HasPeptidoformImpl on this type instead of using this type directly"
 )]
 pub trait HasPeptidoform<Complexity> {
     /// Get a reference to a peptidoform.
-    fn peptidoform(&self) -> &Peptidoform<Complexity>;
+    fn cast_peptidoform(&self) -> &Peptidoform<Complexity>;
 }
 
 impl<Complexity> HasPeptidoformImpl for Peptidoform<Complexity> {
@@ -44,7 +44,7 @@ impl<T: HasPeptidoformImpl> HasPeptidoformImpl for Arc<T> {
 }
 
 impl<T: HasPeptidoformImpl, Complexity: AtLeast<T::Complexity>> HasPeptidoform<Complexity> for T {
-    fn peptidoform(&self) -> &Peptidoform<Complexity> {
+    fn cast_peptidoform(&self) -> &Peptidoform<Complexity> {
         self.peptidoform().as_ref()
     }
 }

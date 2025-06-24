@@ -1,7 +1,9 @@
 use std::fmt::Display;
 
 use crate::{
-    error::CustomError, identification::IdentifiedPeptidoform, ontology::CustomDatabase,
+    error::CustomError,
+    identification::{IdentifiedPeptidoform, MaybePeptidoform},
+    ontology::CustomDatabase,
     sequence::AtLeast,
 };
 
@@ -26,6 +28,9 @@ where
 
     /// The complexity marker type
     type Complexity;
+
+    /// The peptidoform availability marker type
+    type PeptidoformAvailability;
 
     /// The version type
     type Version: Display + IdentifiedPeptidoformVersion<Self::Format>;
@@ -202,16 +207,21 @@ where
 
 impl<'lifetime, Source, Iter> IdentifiedPeptidoformIter<'lifetime, Source, Iter>
 where
-    Source:
-        IdentifiedPeptidoformSource + Into<IdentifiedPeptidoform<Source::Complexity>> + 'lifetime,
+    Source: IdentifiedPeptidoformSource
+        + Into<IdentifiedPeptidoform<Source::Complexity, Source::PeptidoformAvailability>>
+        + 'lifetime,
     Iter: Iterator<Item = Result<Source::Source, CustomError>> + 'lifetime,
     Source::Format: 'static,
+    MaybePeptidoform: From<Source::PeptidoformAvailability>,
 {
     /// Make this into a generic boxed iterator for merging with other identified peptidoform formats
     pub fn into_box<Complexity: AtLeast<Source::Complexity>>(
         self,
-    ) -> Box<dyn Iterator<Item = Result<IdentifiedPeptidoform<Complexity>, CustomError>> + 'lifetime>
-    {
+    ) -> Box<
+        dyn Iterator<
+                Item = Result<IdentifiedPeptidoform<Complexity, MaybePeptidoform>, CustomError>,
+            > + 'lifetime,
+    > {
         Box::new(self.map(|p: Result<Source, CustomError>| match p {
             Ok(p) => Ok(p.into().cast()),
             Err(e) => Err(e),

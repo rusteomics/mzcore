@@ -119,7 +119,7 @@ fn main() {
             if peptide.charge().is_none() {
                 continue;
             }
-            if let Some(cpi) = peptide.peptidoform() {
+            if let Some(cpi) = peptide.compound_peptidoform_ion() {
                 let id = match peptide.scans() {
                     SpectrumIds::FileKnown(spectra) => {
                         spectra.first().and_then(|s| s.1.first().cloned())
@@ -132,7 +132,6 @@ fn main() {
                     Some(SpectrumId::Native(n)) => file.get_spectrum_by_id(&n),
                     _ => continue,
                 } {
-                    let cpi = cpi.compound_peptidoform_ion();
                     let fragments =
                         cpi.generate_theoretical_fragments(peptide.charge().unwrap(), &model);
                     extract_and_merge(
@@ -237,7 +236,7 @@ fn merge_stack(
                     Point {
                         mass: normalised_mass,
                         count: 1,
-                        total_intensity: found_peak.intensity as f64,
+                        total_intensity: f64::from(found_peak.intensity),
                     },
                 );
             }

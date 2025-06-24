@@ -7,7 +7,7 @@ use crate::{
     helper_functions::explain_number_error,
     identification::{
         BoxedIdentifiedPeptideIter, FastaIdentifier, IdentifiedPeptidoform,
-        IdentifiedPeptidoformSource, IdentifiedPeptidoformVersion, MetaData,
+        IdentifiedPeptidoformSource, IdentifiedPeptidoformVersion, MetaData, PeptidoformPresent,
         common_parser::{Location, OptionalColumn, OptionalLocation},
         csv::{CsvLine, parse_csv},
     },
@@ -38,7 +38,7 @@ format_family!(
     PLGSFormat,
     /// The data from any PLGS file
     PLGSData,
-    SimpleLinear, PLGSVersion, [&VERSION_3_0], b',', None;
+    SimpleLinear, PeptidoformPresent, PLGSVersion, [&VERSION_3_0], b',', None;
     required {
         protein_id: usize, |location: Location, _| location.parse(NUMBER_ERROR);
         protein_entry: String, |location: Location, _| Ok(location.get_string());
@@ -147,13 +147,14 @@ format_family!(
     }
 );
 
-impl From<PLGSData> for IdentifiedPeptidoform<SimpleLinear> {
+impl From<PLGSData> for IdentifiedPeptidoform<SimpleLinear, PeptidoformPresent> {
     fn from(value: PLGSData) -> Self {
         Self {
             score: Some(2.0 / (1.0 + 1.3_f64.powf(-value.peptide_score)) - 1.0),
             local_confidence: None,
             metadata: MetaData::PLGS(value),
-            marker: PhantomData,
+            complexity_marker: PhantomData,
+            peptidoform_availability_marker: PhantomData,
         }
     }
 }

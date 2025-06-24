@@ -9,7 +9,7 @@ use crate::{
     error::CustomError,
     identification::{
         BoxedIdentifiedPeptideIter, IdentifiedPeptidoform, IdentifiedPeptidoformSource,
-        IdentifiedPeptidoformVersion, MetaData,
+        IdentifiedPeptidoformVersion, MaybePeptidoform, MetaData,
         common_parser::{Location, OptionalColumn, OptionalLocation},
         csv::{CsvLine, parse_csv},
     },
@@ -28,7 +28,7 @@ format_family!(
     SpectrumSequenceListFormat,
     /// The data from any SSL file
     SpectrumSequenceListData,
-    SemiAmbiguous, SpectrumSequenceListVersion, [&SSL], b'\t', None;
+    SemiAmbiguous, MaybePeptidoform, SpectrumSequenceListVersion, [&SSL], b'\t', None;
     required {
         raw_file: PathBuf, |location: Location, _| Ok(Path::new(&location.get_string()).to_owned());
         scan: usize, |location: Location, _| location.parse(NUMBER_ERROR);
@@ -55,13 +55,14 @@ format_family!(
     }
 );
 
-impl From<SpectrumSequenceListData> for IdentifiedPeptidoform<SemiAmbiguous> {
+impl From<SpectrumSequenceListData> for IdentifiedPeptidoform<SemiAmbiguous, MaybePeptidoform> {
     fn from(value: SpectrumSequenceListData) -> Self {
         Self {
             score: value.score,
             local_confidence: None,
             metadata: MetaData::SpectrumSequenceList(value),
-            marker: PhantomData,
+            complexity_marker: PhantomData,
+            peptidoform_availability_marker: PhantomData,
         }
     }
 }

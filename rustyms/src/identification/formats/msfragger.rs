@@ -6,7 +6,7 @@ use crate::{
     helper_functions::explain_number_error,
     identification::{
         BoxedIdentifiedPeptideIter, IdentifiedPeptidoform, IdentifiedPeptidoformSource,
-        IdentifiedPeptidoformVersion, MetaData, SpectrumId,
+        IdentifiedPeptidoformVersion, MetaData, PeptidoformPresent, SpectrumId,
         common_parser::{Location, OptionalColumn, OptionalLocation},
         csv::{CsvLine, parse_csv},
     },
@@ -41,7 +41,7 @@ format_family!(
     MSFraggerFormat,
     /// The data for MSFragger data
     MSFraggerData,
-    SimpleLinear, MSFraggerVersion, [&VERSION_V4_2, &FRAGPIPE_V20_OR_21, &FRAGPIPE_V22, &PHILOSOPHER], b'\t', None;
+    SimpleLinear, PeptidoformPresent, MSFraggerVersion, [&VERSION_V4_2, &FRAGPIPE_V20_OR_21, &FRAGPIPE_V22, &PHILOSOPHER], b'\t', None;
     required {
         expectation_score: f64, |location: Location, _| location.parse::<f64>(NUMBER_ERROR);
         hyper_score: f64, |location: Location, _| location.parse::<f64>(NUMBER_ERROR);
@@ -237,13 +237,14 @@ format_family!(
 static IDENTIFER_REGEX: LazyLock<regex::Regex> =
     LazyLock::new(|| regex::Regex::new(r"([^/]+)\.(\d+)\.\d+.\d+").unwrap());
 
-impl From<MSFraggerData> for IdentifiedPeptidoform<SimpleLinear> {
+impl From<MSFraggerData> for IdentifiedPeptidoform<SimpleLinear, PeptidoformPresent> {
     fn from(value: MSFraggerData) -> Self {
         Self {
             score: Some(value.hyper_score / 100.0),
             local_confidence: None,
             metadata: MetaData::MSFragger(value),
-            marker: PhantomData,
+            complexity_marker: PhantomData,
+            peptidoform_availability_marker: PhantomData,
         }
     }
 }

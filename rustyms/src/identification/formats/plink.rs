@@ -14,7 +14,7 @@ use crate::{
     helper_functions::explain_number_error,
     identification::{
         BoxedIdentifiedPeptideIter, IdentifiedPeptidoform, IdentifiedPeptidoformSource,
-        IdentifiedPeptidoformVersion, MetaData,
+        IdentifiedPeptidoformVersion, MetaData, PeptidoformPresent,
         common_parser::{Location, OptionalColumn, OptionalLocation},
         csv::{CsvLine, parse_csv},
     },
@@ -42,7 +42,7 @@ format_family!(
     PLinkFormat,
     /// The data from any pLink file
     PLinkData,
-    Linked, PLinkVersion, [&V2_3], b',', None;
+    Linked, PeptidoformPresent, PLinkVersion, [&V2_3], b',', None;
     required {
         order: usize, |location: Location, _| location.parse::<usize>(NUMBER_ERROR);
         title: String, |location: Location, _| Ok(location.get_string());
@@ -386,13 +386,14 @@ fn plink_separate(
     }
 }
 
-impl From<PLinkData> for IdentifiedPeptidoform<Linked> {
+impl From<PLinkData> for IdentifiedPeptidoform<Linked, PeptidoformPresent> {
     fn from(value: PLinkData) -> Self {
         Self {
             score: Some(1.0 - value.score),
             local_confidence: None,
             metadata: MetaData::PLink(value),
-            marker: PhantomData,
+            complexity_marker: PhantomData,
+            peptidoform_availability_marker: PhantomData,
         }
     }
 }

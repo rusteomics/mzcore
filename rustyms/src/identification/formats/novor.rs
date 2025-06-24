@@ -4,7 +4,7 @@ use crate::{
     error::CustomError,
     identification::{
         BoxedIdentifiedPeptideIter, IdentifiedPeptidoform, IdentifiedPeptidoformSource,
-        IdentifiedPeptidoformVersion, MetaData,
+        IdentifiedPeptidoformVersion, MetaData, PeptidoformPresent,
         common_parser::{Location, OptionalColumn},
         csv::{CsvLine, parse_csv},
     },
@@ -24,7 +24,7 @@ format_family!(
     NovorFormat,
     /// The Novor data
     NovorData,
-    SemiAmbiguous, NovorVersion, [&OLD_DENOVO, &OLD_PSM, &NEW_DENOVO, &NEW_PSM], b',', None;
+    SemiAmbiguous, PeptidoformPresent, NovorVersion, [&OLD_DENOVO, &OLD_PSM, &NEW_DENOVO, &NEW_PSM], b',', None;
     required {
         scan_number: usize, |location: Location, _| location.parse(NUMBER_ERROR);
         mz: MassOverCharge, |location: Location, _| location.parse::<f64>(NUMBER_ERROR).map(MassOverCharge::new::<crate::system::mz>);
@@ -60,7 +60,7 @@ format_family!(
     }
 );
 
-impl From<NovorData> for IdentifiedPeptidoform<SemiAmbiguous> {
+impl From<NovorData> for IdentifiedPeptidoform<SemiAmbiguous, PeptidoformPresent> {
     fn from(value: NovorData) -> Self {
         Self {
             score: Some((value.score / 100.0).clamp(-1.0, 1.0)),
@@ -69,7 +69,8 @@ impl From<NovorData> for IdentifiedPeptidoform<SemiAmbiguous> {
                 .as_ref()
                 .map(|lc| lc.iter().map(|v| *v / 100.0).collect()),
             metadata: MetaData::Novor(value),
-            marker: PhantomData,
+            complexity_marker: PhantomData,
+            peptidoform_availability_marker: PhantomData,
         }
     }
 }

@@ -1,11 +1,11 @@
 use crate::{
     error::CustomError,
     identification::{
-        BoxedIdentifiedPeptideIter, IdentifiedPeptidoformVersion,
+        BoxedIdentifiedPeptideIter, IdentifiedPeptidoform, IdentifiedPeptidoformSource,
+        IdentifiedPeptidoformVersion, MaybePeptidoform, MetaData,
         common_parser::Location,
         csv::{CsvLine, parse_csv},
     },
-    identification::{IdentifiedPeptidoform, IdentifiedPeptidoformSource, MetaData},
     ontology::{CustomDatabase, Ontology},
     sequence::{AminoAcid, Peptidoform, SemiAmbiguous, SequenceElement, SloppyParsingParameters},
     system::{Mass, Ratio, isize::Charge},
@@ -67,7 +67,7 @@ format_family!(
     NovoBFormat,
     /// The data from any NovoB file
     NovoBData,
-    SemiAmbiguous, NovoBVersion, [&NOVOB_V0_0_1], b'\t', Some(vec![
+    SemiAmbiguous, MaybePeptidoform, NovoBVersion, [&NOVOB_V0_0_1], b'\t', Some(vec![
         "mcount".to_string(),
         "charge".to_string(),
         "pepmass".to_string(),
@@ -107,13 +107,14 @@ format_family!(
     optional { }
 );
 
-impl From<NovoBData> for IdentifiedPeptidoform<SemiAmbiguous> {
+impl From<NovoBData> for IdentifiedPeptidoform<SemiAmbiguous, MaybePeptidoform> {
     fn from(value: NovoBData) -> Self {
         Self {
             score: Some(value.score_forward.max(value.score_reverse)),
             local_confidence: None,
             metadata: MetaData::NovoB(value),
-            marker: PhantomData,
+            complexity_marker: PhantomData,
+            peptidoform_availability_marker: PhantomData,
         }
     }
 }

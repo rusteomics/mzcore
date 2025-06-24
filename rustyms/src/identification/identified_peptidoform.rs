@@ -6,23 +6,25 @@ use serde::{Deserialize, Serialize};
 use crate::{
     identification::*,
     sequence::{
-        AtLeast, AtMax, CompoundPeptidoformIon, HasPeptidoform, HasPeptidoformImpl, Linear,
-        Peptidoform, SemiAmbiguous, SimpleLinear,
+        AtLeast, CompoundPeptidoformIon, HasPeptidoformImpl, Peptidoform, SemiAmbiguous,
+        SimpleLinear,
     },
     system::{MassOverCharge, OrderedTime, Time, isize::Charge},
 };
 
 /// A peptide that is identified by a _de novo_ or database matching program
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
-pub struct IdentifiedPeptidoform<Complexity> {
+pub struct IdentifiedPeptidoform<Complexity, PeptidoformAvailability> {
     /// The score -1.0..=1.0 if a score was available in the original format
     pub score: Option<f64>,
     /// The local confidence, if available, in range -1.0..=1.0
     pub local_confidence: Option<Vec<f64>>,
     /// The full metadata of this peptide
     pub metadata: MetaData,
-    /// The marker for the complexity, Linked means full [`CompoundPeptidoformIon`] anything below means [`Peptidoform`]
-    pub(super) marker: PhantomData<Complexity>,
+    /// The marker for the complexity, Linked means full [`CompoundPeptidoformIon`] anything below means [`Peptidoform`], see [Complexity](crate::sequence::Complexity)
+    pub(super) complexity_marker: PhantomData<Complexity>,
+    /// The marker for availability of the peptidoform, see [`PeptidoformAvailability`]
+    pub(super) peptidoform_availability_marker: PhantomData<PeptidoformAvailability>,
 }
 
 /// The definition of all special metadata for all types of identified peptides that can be read
@@ -65,7 +67,9 @@ pub enum MetaData {
     SpectrumSequenceList(SpectrumSequenceListData),
 }
 
-impl<Complexity> IdentifiedPeptidoform<Complexity> {
+impl<Complexity, PeptidoformAvailability>
+    IdentifiedPeptidoform<Complexity, PeptidoformAvailability>
+{
     /// If a peptidoform is present get the peptidoform, this has to convert to a compound peptidoform ion, so it is more efficient to use the borrowing versions when possible.
     pub fn compound_peptidoform_ion(&self) -> Option<Cow<'_, CompoundPeptidoformIon>> {
         match &self.metadata {
@@ -107,9 +111,9 @@ impl<Complexity> IdentifiedPeptidoform<Complexity> {
     }
 }
 
-impl IdentifiedPeptidoform<SimpleLinear> {
+impl<PeptidoformAvailability> IdentifiedPeptidoform<SimpleLinear, PeptidoformAvailability> {
     /// For all formats that contain a simple linear peptidoform (all except [`BasicCSV`](FileFormat::BasicCSV) and [`PLink`](FileFormat::PLink)) get a reference to the peptidoform.
-    pub fn peptidoform(&self) -> Option<&Peptidoform<SimpleLinear>> {
+    fn inner_peptidoform(&self) -> Option<&Peptidoform<SimpleLinear>> {
         match &self.metadata {
             MetaData::Novor(NovorData { peptide, .. })
             | MetaData::InstaNovo(InstaNovoData { peptide, .. })
@@ -150,9 +154,9 @@ impl IdentifiedPeptidoform<SimpleLinear> {
     }
 }
 
-impl IdentifiedPeptidoform<SemiAmbiguous> {
+impl<PeptidoformAvailability> IdentifiedPeptidoform<SemiAmbiguous, PeptidoformAvailability> {
     /// For all formats that contain a simple linear peptidoform (all except [`MSFragger`](FileFormat::MSFragger), [`PLGS`](FileFormat::PLGS), [`BasicCSV`](FileFormat::BasicCSV) and [`PLink`](FileFormat::PLink)) get a reference to the peptidoform.
-    pub fn peptidoform(&self) -> Option<&Peptidoform<SemiAmbiguous>> {
+    fn inner_peptidoform(&self) -> Option<&Peptidoform<SemiAmbiguous>> {
         match &self.metadata {
             MetaData::Novor(NovorData { peptide, .. })
             | MetaData::InstaNovo(InstaNovoData { peptide, .. })
@@ -193,23 +197,27 @@ impl IdentifiedPeptidoform<SemiAmbiguous> {
     }
 }
 
-impl<Complexity: AtLeast<SimpleLinear>> IdentifiedPeptidoform<Complexity> {
-    /// Check if this identified peptidoform is simple linear (also returns if there is no peptidoform)
-    pub fn into_simple_linear(self) -> Option<IdentifiedPeptidoform<SemiAmbiguous>> {
+impl<Complexity, PeptidoformAvailability>
+    IdentifiedPeptidoform<Complexity, PeptidoformAvailability>
+{
+    /// Check if this identified peptidoform is simple linear and contains a peptide
+    pub fn into_simple_linear(
+        self,
+    ) -> Option<IdentifiedPeptidoform<SimpleLinear, PeptidoformPresent>> {
         self.compound_peptidoform_ion()
-            .is_none_or(|p| {
+            .is_some_and(|p| {
                 p.singular_peptidoform_ref()
                     .is_some_and(Peptidoform::is_simple_linear)
             })
             .then(|| self.mark())
     }
-}
 
-impl<Complexity: AtLeast<SemiAmbiguous>> IdentifiedPeptidoform<Complexity> {
-    /// Check if this identified peptidoform is semi ambiguous (also returns if there is no peptidoform)
-    pub fn into_semi_ambiguous(self) -> Option<IdentifiedPeptidoform<SemiAmbiguous>> {
+    /// Check if this identified peptidoform is semi ambiguous and contains a peptide
+    pub fn into_semi_ambiguous(
+        self,
+    ) -> Option<IdentifiedPeptidoform<SemiAmbiguous, PeptidoformPresent>> {
         self.compound_peptidoform_ion()
-            .is_none_or(|p| {
+            .is_some_and(|p| {
                 p.singular_peptidoform_ref()
                     .is_some_and(Peptidoform::is_semi_ambiguous)
             })
@@ -217,27 +225,74 @@ impl<Complexity: AtLeast<SemiAmbiguous>> IdentifiedPeptidoform<Complexity> {
     }
 }
 
-impl HasPeptidoformImpl for IdentifiedPeptidoform<SemiAmbiguous> {
+impl HasPeptidoformImpl for IdentifiedPeptidoform<SemiAmbiguous, PeptidoformPresent> {
     type Complexity = SemiAmbiguous;
     fn peptidoform(&self) -> &Peptidoform<SemiAmbiguous> {
-        self.peptidoform()
+        self.inner_peptidoform()
+            .expect("Identified peptidoform incorrectly marked as containing a peptidoform")
     }
 }
 
-impl<Complexity> IdentifiedPeptidoform<Complexity> {
+impl HasPeptidoformImpl for &IdentifiedPeptidoform<SemiAmbiguous, PeptidoformPresent> {
+    type Complexity = SemiAmbiguous;
+    fn peptidoform(&self) -> &Peptidoform<SemiAmbiguous> {
+        self.inner_peptidoform()
+            .expect("Identified peptidoform incorrectly marked as containing a peptidoform")
+    }
+}
+
+impl HasPeptidoformImpl for IdentifiedPeptidoform<SimpleLinear, PeptidoformPresent> {
+    type Complexity = SimpleLinear;
+    fn peptidoform(&self) -> &Peptidoform<SimpleLinear> {
+        self.inner_peptidoform()
+            .expect("Identified peptidoform incorrectly marked as containing a peptidoform")
+    }
+}
+
+impl HasPeptidoformImpl for &IdentifiedPeptidoform<SimpleLinear, PeptidoformPresent> {
+    type Complexity = SimpleLinear;
+    fn peptidoform(&self) -> &Peptidoform<SimpleLinear> {
+        self.inner_peptidoform()
+            .expect("Identified peptidoform incorrectly marked as containing a peptidoform")
+    }
+}
+
+impl IdentifiedPeptidoform<SemiAmbiguous, MaybePeptidoform> {
+    /// For all formats that contain a simple linear peptidoform (all except [`MSFragger`](FileFormat::MSFragger), [`PLGS`](FileFormat::PLGS), [`BasicCSV`](FileFormat::BasicCSV) and [`PLink`](FileFormat::PLink)) get a reference to the peptidoform.
+    pub fn peptidoform(&self) -> Option<&Peptidoform<SemiAmbiguous>> {
+        self.inner_peptidoform()
+    }
+}
+
+impl IdentifiedPeptidoform<SimpleLinear, MaybePeptidoform> {
+    /// For all formats that contain a simple linear peptidoform (all except [`BasicCSV`](FileFormat::BasicCSV) and [`PLink`](FileFormat::PLink)) get a reference to the peptidoform.
+    pub fn peptidoform(&self) -> Option<&Peptidoform<SimpleLinear>> {
+        self.inner_peptidoform()
+    }
+}
+
+impl<Complexity, PeptidoformAvailability>
+    IdentifiedPeptidoform<Complexity, PeptidoformAvailability>
+{
     /// Mark this with the following complexity, be warned that the complexity level is not checked.
-    pub(super) fn mark<M>(self) -> IdentifiedPeptidoform<M> {
+    pub(super) fn mark<C, A>(self) -> IdentifiedPeptidoform<C, A> {
         IdentifiedPeptidoform {
             score: self.score,
             local_confidence: self.local_confidence,
             metadata: self.metadata,
-            marker: PhantomData,
+            complexity_marker: PhantomData,
+            peptidoform_availability_marker: PhantomData,
         }
     }
 
     /// Cast this identified peptidoform into a higher complexity level. This does not change the
     /// content of the peptidoform. It only allows to pass this as higher complexity if needed.
-    pub fn cast<NewComplexity: AtLeast<Complexity>>(self) -> IdentifiedPeptidoform<NewComplexity> {
+    pub fn cast<
+        NewComplexity: AtLeast<Complexity>,
+        NewAvailability: From<PeptidoformAvailability>,
+    >(
+        self,
+    ) -> IdentifiedPeptidoform<NewComplexity, NewAvailability> {
         self.mark()
     }
 

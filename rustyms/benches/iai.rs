@@ -38,7 +38,7 @@ fn setup_igha() -> (Peptidoform<SimpleLinear>, Peptidoform<SimpleLinear>) {
 #[bench::simple_1(setup_simple())]
 #[bench::igha_1(setup_igha())]
 pub fn align_1(setup: (Peptidoform<SimpleLinear>, Peptidoform<SimpleLinear>)) {
-    align::<1, Peptidoform<SimpleLinear>, Peptidoform<SimpleLinear>>(
+    align::<1, &Peptidoform<SimpleLinear>, &Peptidoform<SimpleLinear>>(
         &setup.0,
         &setup.1,
         AlignScoring::default(),
@@ -55,7 +55,7 @@ pub fn align_1(setup: (Peptidoform<SimpleLinear>, Peptidoform<SimpleLinear>)) {
 #[bench::ambiguous_ab(setup("ANZRS", "ABQRS"))]
 // #[bench::igha_8(setup_igha(Some(8)))]
 pub fn align_4(setup: (Peptidoform<SimpleLinear>, Peptidoform<SimpleLinear>)) {
-    align::<4, SimpleLinear, SimpleLinear>(
+    align::<4, &Peptidoform<SimpleLinear>, &Peptidoform<SimpleLinear>>(
         &setup.0,
         &setup.1,
         AlignScoring::default(),
@@ -67,7 +67,7 @@ pub fn align_4(setup: (Peptidoform<SimpleLinear>, Peptidoform<SimpleLinear>)) {
 #[bench::simple_unbounded(setup_simple())]
 // #[bench::igha_8(setup_igha(Some(8)))]
 pub fn align_unbounded(setup: (Peptidoform<SimpleLinear>, Peptidoform<SimpleLinear>)) {
-    align::<{ u16::MAX }, SimpleLinear, SimpleLinear>(
+    align::<{ u16::MAX }, &Peptidoform<SimpleLinear>, &Peptidoform<SimpleLinear>>(
         &setup.0,
         &setup.1,
         AlignScoring::default(),

@@ -9,7 +9,7 @@ use crate::{
     error::CustomError,
     identification::{
         BoxedIdentifiedPeptideIter, IdentifiedPeptidoform, IdentifiedPeptidoformSource,
-        IdentifiedPeptidoformVersion, MetaData,
+        IdentifiedPeptidoformVersion, MaybePeptidoform, MetaData,
         common_parser::{Location, OptionalColumn, OptionalLocation},
         csv::{CsvLine, parse_csv},
     },
@@ -32,7 +32,7 @@ format_family!(
     MaxQuantFormat,
     /// The data from any MaxQuant file
     MaxQuantData,
-    SemiAmbiguous, MaxQuantVersion, [&MSMS, &NOVO_MSMS_SCANS, &MSMS_SCANS, &SILAC], b'\t', None;
+    SemiAmbiguous, MaybePeptidoform, MaxQuantVersion, [&MSMS, &NOVO_MSMS_SCANS, &MSMS_SCANS, &SILAC], b'\t', None;
     required {
         scan_number: Vec<usize>, |location: Location, _| location.or_empty().array(';').map(|s| s.parse(NUMBER_ERROR)).collect::<Result<Vec<usize>, CustomError>>();
         modifications: String, |location: Location, _| Ok(location.get_string());
@@ -104,14 +104,15 @@ format_family!(
     }
 );
 
-impl From<MaxQuantData> for IdentifiedPeptidoform<SemiAmbiguous> {
+impl From<MaxQuantData> for IdentifiedPeptidoform<SemiAmbiguous, MaybePeptidoform> {
     fn from(value: MaxQuantData) -> Self {
         Self {
             score: (!value.score.is_nan())
                 .then(|| 2.0 * (1.0 / (1.0 + 1.01_f64.powf(-value.score)) - 0.5)),
             local_confidence: None,
             metadata: MetaData::MaxQuant(value),
-            marker: PhantomData,
+            complexity_marker: PhantomData,
+            peptidoform_availability_marker: PhantomData,
         }
     }
 }

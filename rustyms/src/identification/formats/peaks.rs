@@ -8,6 +8,7 @@ use crate::{
     identification::{
         BoxedIdentifiedPeptideIter, FastaIdentifier, IdentifiedPeptidoform,
         IdentifiedPeptidoformSource, IdentifiedPeptidoformVersion, MetaData, PeaksFamilyId,
+        PeptidoformPresent,
         common_parser::{Location, OptionalColumn, OptionalLocation},
         csv::{CsvLine, parse_csv},
     },
@@ -35,7 +36,7 @@ format_family!(
     PeaksFormat,
     /// The data from any peaks file
     PeaksData,
-    SemiAmbiguous, PeaksVersion, [&V12, &V11, &V11_FEATURES, &XPLUS, &AB, &X_PATCHED, &X, &DB_PEPTIDE, &DB_PSM, &DB_PROTEIN_PEPTIDE], b',', None;
+    SemiAmbiguous, PeptidoformPresent, PeaksVersion, [&V12, &V11, &V11_FEATURES, &XPLUS, &AB, &X_PATCHED, &X, &DB_PEPTIDE, &DB_PSM, &DB_PROTEIN_PEPTIDE], b',', None;
     required {
         peptide: (Option<AminoAcid>, Vec<Peptidoform<SemiAmbiguous>>, Option<AminoAcid>), |location: Location, custom_database: Option<&CustomDatabase>| {
             let n_flanking: Option<AminoAcid> =
@@ -132,7 +133,7 @@ format_family!(
     }
 );
 
-impl From<PeaksData> for IdentifiedPeptidoform<SemiAmbiguous> {
+impl From<PeaksData> for IdentifiedPeptidoform<SemiAmbiguous, PeptidoformPresent> {
     fn from(value: PeaksData) -> Self {
         Self {
             score: value
@@ -149,7 +150,8 @@ impl From<PeaksData> for IdentifiedPeptidoform<SemiAmbiguous> {
                 .as_ref()
                 .map(|lc| lc.iter().map(|v| *v / 100.0).collect()),
             metadata: MetaData::Peaks(value),
-            marker: PhantomData,
+            complexity_marker: PhantomData,
+            peptidoform_availability_marker: PhantomData,
         }
     }
 }

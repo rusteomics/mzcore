@@ -394,7 +394,7 @@ impl<A, B> Alignment<A, B> {
 impl<A: HasPeptidoform<Linear>, B: HasPeptidoform<Linear>> Alignment<A, B> {
     /// The mass(es) for the matched portion of the first sequence TODO: this assumes no terminal mods
     pub fn mass_a(&self) -> Multi<MolecularFormula> {
-        let seq_a = self.seq_a().peptidoform();
+        let seq_a = self.seq_a().cast_peptidoform();
         if self.align_type().left.global_a() && self.align_type().right.global_a() {
             seq_a.bare_formulas()
         } else {
@@ -422,7 +422,7 @@ impl<A: HasPeptidoform<Linear>, B: HasPeptidoform<Linear>> Alignment<A, B> {
 
     /// The mass(es) for the matched portion of the second sequence
     pub fn mass_b(&self) -> Multi<MolecularFormula> {
-        let seq_b = self.seq_b().peptidoform();
+        let seq_b = self.seq_b().cast_peptidoform();
         if self.align_type().left.global_b() && self.align_type().right.global_b() {
             seq_b.bare_formulas()
         } else {

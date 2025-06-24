@@ -13,7 +13,7 @@ use serde::{Deserialize, Serialize};
 use crate::{
     error::{Context, CustomError},
     helper_functions::explain_number_error,
-    identification::{IdentifiedPeptidoform, MetaData},
+    identification::{IdentifiedPeptidoform, MetaData, PeptidoformPresent},
     sequence::{
         AminoAcid, AnnotatedPeptide, Annotation, Linked, Peptidoform, Region, SemiAmbiguous,
         SequenceElement,
@@ -704,21 +704,15 @@ fn trim_whitespace(line: &str, range: Range<usize>) -> Range<usize> {
     range.start + start..range.end - end
 }
 
-impl From<FastaData> for IdentifiedPeptidoform<SemiAmbiguous> {
+impl From<FastaData> for IdentifiedPeptidoform<SemiAmbiguous, PeptidoformPresent> {
     fn from(value: FastaData) -> Self {
         Self {
             score: None,
             local_confidence: None,
             metadata: MetaData::Fasta(value),
-            marker: PhantomData,
+            complexity_marker: PhantomData,
+            peptidoform_availability_marker: PhantomData,
         }
-    }
-}
-
-impl From<FastaData> for IdentifiedPeptidoform<Linked> {
-    fn from(value: FastaData) -> Self {
-        let tmp: IdentifiedPeptidoform<SemiAmbiguous> = value.into();
-        tmp.cast()
     }
 }
 

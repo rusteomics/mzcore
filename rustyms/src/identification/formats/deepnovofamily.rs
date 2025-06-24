@@ -6,7 +6,7 @@ use crate::{
     error::CustomError,
     identification::{
         BoxedIdentifiedPeptideIter, IdentifiedPeptidoform, IdentifiedPeptidoformSource,
-        IdentifiedPeptidoformVersion, MetaData, PeaksFamilyId,
+        IdentifiedPeptidoformVersion, MaybePeptidoform, MetaData, PeaksFamilyId,
         common_parser::{Location, OptionalColumn, OptionalLocation},
         csv::{CsvLine, parse_csv},
     },
@@ -54,7 +54,7 @@ format_family!(
     DeepNovoFamilyFormat,
     /// The data from any DeepNovoFamily file
     DeepNovoFamilyData,
-    SemiAmbiguous, DeepNovoFamilyVersion, [&DEEPNOVO_V0_0_1, &POINTNOVOFAMILY], b'\t', None;
+    SemiAmbiguous, MaybePeptidoform, DeepNovoFamilyVersion, [&DEEPNOVO_V0_0_1, &POINTNOVOFAMILY], b'\t', None;
     required {
         scan: Vec<PeaksFamilyId>, |location: Location, _| location.or_empty()
             .map_or(Ok(Vec::new()), |l| l.array(';').map(|v| v.parse(ID_ERROR)).collect::<Result<Vec<_>,_>>());
@@ -89,7 +89,7 @@ format_family!(
     }
 );
 
-impl From<DeepNovoFamilyData> for IdentifiedPeptidoform<SemiAmbiguous> {
+impl From<DeepNovoFamilyData> for IdentifiedPeptidoform<SemiAmbiguous, MaybePeptidoform> {
     fn from(value: DeepNovoFamilyData) -> Self {
         Self {
             score: value.score.map(|score| (2.0 / (1.0 + (-score).exp()))),
@@ -98,7 +98,8 @@ impl From<DeepNovoFamilyData> for IdentifiedPeptidoform<SemiAmbiguous> {
                 .as_ref()
                 .map(|lc| lc.iter().map(|v| 2.0 / (1.0 + (-v).exp())).collect()),
             metadata: MetaData::DeepNovoFamily(value),
-            marker: PhantomData,
+            complexity_marker: PhantomData,
+            peptidoform_availability_marker: PhantomData,
         }
     }
 }
