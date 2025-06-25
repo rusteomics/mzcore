@@ -7,7 +7,8 @@ use crate::{
     helper_functions::explain_number_error,
     identification::{
         BoxedIdentifiedPeptideIter, FastaIdentifier, IdentifiedPeptidoform,
-        IdentifiedPeptidoformSource, IdentifiedPeptidoformVersion, MetaData, PeptidoformPresent,
+        IdentifiedPeptidoformData, IdentifiedPeptidoformSource, IdentifiedPeptidoformVersion,
+        PeptidoformPresent,
         common_parser::{Location, OptionalColumn, OptionalLocation},
         csv::{CsvLine, parse_csv},
     },
@@ -152,7 +153,7 @@ impl From<PLGSData> for IdentifiedPeptidoform<SimpleLinear, PeptidoformPresent> 
         Self {
             score: Some(2.0 / (1.0 + 1.3_f64.powf(-value.peptide_score)) - 1.0),
             local_confidence: None,
-            metadata: MetaData::PLGS(value),
+            metadata: IdentifiedPeptidoformData::PLGS(value),
             complexity_marker: PhantomData,
             peptidoform_availability_marker: PhantomData,
         }

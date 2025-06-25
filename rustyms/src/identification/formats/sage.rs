@@ -15,7 +15,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::identification::{
     BoxedIdentifiedPeptideIter, IdentifiedPeptidoform, IdentifiedPeptidoformSource,
-    IdentifiedPeptidoformVersion, MetaData,
+    IdentifiedPeptidoformVersion, IdentifiedPeptidoformData,
     common_parser::Location,
     csv::{CsvLine, parse_csv},
 };
@@ -79,7 +79,7 @@ impl From<SageData> for IdentifiedPeptidoform<SemiAmbiguous, PeptidoformPresent>
         Self {
             score: Some(value.sage_discriminant_score.clamp(-1.0, 1.0)),
             local_confidence: None,
-            metadata: MetaData::Sage(value),
+            metadata: IdentifiedPeptidoformData::Sage(value),
             complexity_marker: PhantomData,
             peptidoform_availability_marker: PhantomData,
         }

@@ -13,7 +13,7 @@ use serde::{Deserialize, Serialize};
 use crate::{
     error::{Context, CustomError},
     helper_functions::explain_number_error,
-    identification::{IdentifiedPeptidoform, MetaData, PeptidoformPresent},
+    identification::{IdentifiedPeptidoform, IdentifiedPeptidoformData, PeptidoformPresent},
     sequence::{
         AminoAcid, AnnotatedPeptide, Annotation, Peptidoform, Region, SemiAmbiguous,
         SequenceElement,
@@ -709,7 +709,7 @@ impl From<FastaData> for IdentifiedPeptidoform<SemiAmbiguous, PeptidoformPresent
         Self {
             score: None,
             local_confidence: None,
-            metadata: MetaData::Fasta(value),
+            metadata: IdentifiedPeptidoformData::Fasta(value),
             complexity_marker: PhantomData,
             peptidoform_availability_marker: PhantomData,
         }

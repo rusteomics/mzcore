@@ -14,7 +14,7 @@ use crate::{
     helper_functions::explain_number_error,
     identification::{
         BoxedIdentifiedPeptideIter, IdentifiedPeptidoform, IdentifiedPeptidoformSource,
-        IdentifiedPeptidoformVersion, MetaData, PeptidoformPresent,
+        IdentifiedPeptidoformVersion, IdentifiedPeptidoformData, PeptidoformPresent,
         common_parser::{Location, OptionalColumn, OptionalLocation},
         csv::{CsvLine, parse_csv},
     },
@@ -391,7 +391,7 @@ impl From<PLinkData> for IdentifiedPeptidoform<Linked, PeptidoformPresent> {
         Self {
             score: Some(1.0 - value.score),
             local_confidence: None,
-            metadata: MetaData::PLink(value),
+            metadata: IdentifiedPeptidoformData::PLink(value),
             complexity_marker: PhantomData,
             peptidoform_availability_marker: PhantomData,
         }

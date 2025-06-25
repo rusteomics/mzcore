@@ -6,7 +6,7 @@ use crate::{
     helper_functions::explain_number_error,
     identification::{
         BoxedIdentifiedPeptideIter, IdentifiedPeptidoform, IdentifiedPeptidoformSource,
-        IdentifiedPeptidoformVersion, MetaData, PeptidoformPresent, SpectrumId,
+        IdentifiedPeptidoformVersion, IdentifiedPeptidoformData, PeptidoformPresent, SpectrumId,
         common_parser::{Location, OptionalColumn, OptionalLocation},
         csv::{CsvLine, parse_csv},
     },
@@ -242,7 +242,7 @@ impl From<MSFraggerData> for IdentifiedPeptidoform<SimpleLinear, PeptidoformPres
         Self {
             score: Some(value.hyper_score / 100.0),
             local_confidence: None,
-            metadata: MetaData::MSFragger(value),
+            metadata: IdentifiedPeptidoformData::MSFragger(value),
             complexity_marker: PhantomData,
             peptidoform_availability_marker: PhantomData,
         }

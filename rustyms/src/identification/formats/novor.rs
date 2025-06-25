@@ -4,7 +4,7 @@ use crate::{
     error::CustomError,
     identification::{
         BoxedIdentifiedPeptideIter, IdentifiedPeptidoform, IdentifiedPeptidoformSource,
-        IdentifiedPeptidoformVersion, MetaData, PeptidoformPresent,
+        IdentifiedPeptidoformVersion, IdentifiedPeptidoformData, PeptidoformPresent,
         common_parser::{Location, OptionalColumn},
         csv::{CsvLine, parse_csv},
     },
@@ -68,7 +68,7 @@ impl From<NovorData> for IdentifiedPeptidoform<SemiAmbiguous, PeptidoformPresent
                 .local_confidence
                 .as_ref()
                 .map(|lc| lc.iter().map(|v| *v / 100.0).collect()),
-            metadata: MetaData::Novor(value),
+            metadata: IdentifiedPeptidoformData::Novor(value),
             complexity_marker: PhantomData,
             peptidoform_availability_marker: PhantomData,
         }

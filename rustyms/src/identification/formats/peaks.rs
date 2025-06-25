@@ -7,7 +7,7 @@ use crate::{
     error::CustomError,
     identification::{
         BoxedIdentifiedPeptideIter, FastaIdentifier, IdentifiedPeptidoform,
-        IdentifiedPeptidoformSource, IdentifiedPeptidoformVersion, MetaData, PeaksFamilyId,
+        IdentifiedPeptidoformSource, IdentifiedPeptidoformVersion, IdentifiedPeptidoformData, PeaksFamilyId,
         PeptidoformPresent,
         common_parser::{Location, OptionalColumn, OptionalLocation},
         csv::{CsvLine, parse_csv},
@@ -149,7 +149,7 @@ impl From<PeaksData> for IdentifiedPeptidoform<SemiAmbiguous, PeptidoformPresent
                 .local_confidence
                 .as_ref()
                 .map(|lc| lc.iter().map(|v| *v / 100.0).collect()),
-            metadata: MetaData::Peaks(value),
+            metadata: IdentifiedPeptidoformData::Peaks(value),
             complexity_marker: PhantomData,
             peptidoform_availability_marker: PhantomData,
         }

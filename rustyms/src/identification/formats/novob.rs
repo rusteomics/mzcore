@@ -2,7 +2,7 @@ use crate::{
     error::CustomError,
     identification::{
         BoxedIdentifiedPeptideIter, IdentifiedPeptidoform, IdentifiedPeptidoformSource,
-        IdentifiedPeptidoformVersion, MaybePeptidoform, MetaData,
+        IdentifiedPeptidoformVersion, MaybePeptidoform, IdentifiedPeptidoformData,
         common_parser::Location,
         csv::{CsvLine, parse_csv},
     },
@@ -112,7 +112,7 @@ impl From<NovoBData> for IdentifiedPeptidoform<SemiAmbiguous, MaybePeptidoform> 
         Self {
             score: Some(value.score_forward.max(value.score_reverse)),
             local_confidence: None,
-            metadata: MetaData::NovoB(value),
+            metadata: IdentifiedPeptidoformData::NovoB(value),
             complexity_marker: PhantomData,
             peptidoform_availability_marker: PhantomData,
         }

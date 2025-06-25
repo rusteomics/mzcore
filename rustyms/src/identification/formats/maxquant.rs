@@ -9,7 +9,7 @@ use crate::{
     error::CustomError,
     identification::{
         BoxedIdentifiedPeptideIter, IdentifiedPeptidoform, IdentifiedPeptidoformSource,
-        IdentifiedPeptidoformVersion, MaybePeptidoform, MetaData,
+        IdentifiedPeptidoformVersion, MaybePeptidoform, IdentifiedPeptidoformData,
         common_parser::{Location, OptionalColumn, OptionalLocation},
         csv::{CsvLine, parse_csv},
     },
@@ -110,7 +110,7 @@ impl From<MaxQuantData> for IdentifiedPeptidoform<SemiAmbiguous, MaybePeptidofor
             score: (!value.score.is_nan())
                 .then(|| 2.0 * (1.0 / (1.0 + 1.01_f64.powf(-value.score)) - 0.5)),
             local_confidence: None,
-            metadata: MetaData::MaxQuant(value),
+            metadata: IdentifiedPeptidoformData::MaxQuant(value),
             complexity_marker: PhantomData,
             peptidoform_availability_marker: PhantomData,
         }

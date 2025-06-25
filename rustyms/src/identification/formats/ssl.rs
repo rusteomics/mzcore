@@ -9,7 +9,7 @@ use crate::{
     error::CustomError,
     identification::{
         BoxedIdentifiedPeptideIter, IdentifiedPeptidoform, IdentifiedPeptidoformSource,
-        IdentifiedPeptidoformVersion, MaybePeptidoform, MetaData,
+        IdentifiedPeptidoformVersion, MaybePeptidoform, IdentifiedPeptidoformData,
         common_parser::{Location, OptionalColumn, OptionalLocation},
         csv::{CsvLine, parse_csv},
     },
@@ -60,7 +60,7 @@ impl From<SpectrumSequenceListData> for IdentifiedPeptidoform<SemiAmbiguous, May
         Self {
             score: value.score,
             local_confidence: None,
-            metadata: MetaData::SpectrumSequenceList(value),
+            metadata: IdentifiedPeptidoformData::SpectrumSequenceList(value),
             complexity_marker: PhantomData,
             peptidoform_availability_marker: PhantomData,
         }

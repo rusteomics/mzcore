@@ -3,7 +3,7 @@ use std::marker::PhantomData;
 use crate::{
     error::CustomError,
     identification::{
-        IdentifiedPeptidoform, IdentifiedPeptidoformSource, MetaData, PeptidoformPresent,
+        IdentifiedPeptidoform, IdentifiedPeptidoformSource, IdentifiedPeptidoformData, PeptidoformPresent,
     },
     ontology::CustomDatabase,
     sequence::{Peptidoform, SemiAmbiguous, SloppyParsingParameters},
@@ -52,7 +52,7 @@ impl From<PepNetData> for IdentifiedPeptidoform<SemiAmbiguous, PeptidoformPresen
         Self {
             score: Some(value.score),
             local_confidence: Some(value.local_confidence.clone()),
-            metadata: MetaData::PepNet(value),
+            metadata: IdentifiedPeptidoformData::PepNet(value),
             complexity_marker: PhantomData,
             peptidoform_availability_marker: PhantomData,
         }

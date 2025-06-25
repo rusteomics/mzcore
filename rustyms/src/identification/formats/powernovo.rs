@@ -10,7 +10,7 @@ use crate::{
     error::CustomError,
     identification::{
         BoxedIdentifiedPeptideIter, IdentifiedPeptidoform, IdentifiedPeptidoformSource,
-        IdentifiedPeptidoformVersion, MetaData, PeptidoformPresent,
+        IdentifiedPeptidoformVersion, IdentifiedPeptidoformData, PeptidoformPresent,
         common_parser::{Location, OptionalColumn},
         csv::{CsvLine, parse_csv},
     },
@@ -67,7 +67,7 @@ impl From<PowerNovoData> for IdentifiedPeptidoform<SemiAmbiguous, PeptidoformPre
         Self {
             score: Some(value.score),
             local_confidence: Some(value.local_confidence.clone()),
-            metadata: MetaData::PowerNovo(value),
+            metadata: IdentifiedPeptidoformData::PowerNovo(value),
             complexity_marker: PhantomData,
             peptidoform_availability_marker: PhantomData,
         }

@@ -6,7 +6,7 @@ use crate::{
     error::CustomError,
     identification::{
         BoxedIdentifiedPeptideIter, IdentifiedPeptidoform, IdentifiedPeptidoformSource,
-        IdentifiedPeptidoformVersion, MaybePeptidoform, MetaData, PeaksFamilyId,
+        IdentifiedPeptidoformVersion, MaybePeptidoform, IdentifiedPeptidoformData, PeaksFamilyId,
         common_parser::{Location, OptionalColumn, OptionalLocation},
         csv::{CsvLine, parse_csv},
     },
@@ -97,7 +97,7 @@ impl From<DeepNovoFamilyData> for IdentifiedPeptidoform<SemiAmbiguous, MaybePept
                 .local_confidence
                 .as_ref()
                 .map(|lc| lc.iter().map(|v| 2.0 / (1.0 + (-v).exp())).collect()),
-            metadata: MetaData::DeepNovoFamily(value),
+            metadata: IdentifiedPeptidoformData::DeepNovoFamily(value),
             complexity_marker: PhantomData,
             peptidoform_availability_marker: PhantomData,
         }

@@ -10,7 +10,7 @@ use crate::{
     error::CustomError,
     identification::{
         BoxedIdentifiedPeptideIter, IdentifiedPeptidoform, IdentifiedPeptidoformSource,
-        IdentifiedPeptidoformVersion, MetaData, PeptidoformPresent,
+        IdentifiedPeptidoformVersion, IdentifiedPeptidoformData, PeptidoformPresent,
         common_parser::Location,
         csv::{CsvLine, parse_csv},
     },
@@ -72,7 +72,7 @@ impl From<InstaNovoData> for IdentifiedPeptidoform<SemiAmbiguous, PeptidoformPre
                     .map(|v| 2.0 / (1.0 + 1.25_f64.powf(-v)))
                     .collect(),
             ),
-            metadata: MetaData::InstaNovo(value),
+            metadata: IdentifiedPeptidoformData::InstaNovo(value),
             complexity_marker: PhantomData,
             peptidoform_availability_marker: PhantomData,
         }

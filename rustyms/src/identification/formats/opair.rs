@@ -8,7 +8,7 @@ use crate::{
     error::{Context, CustomError},
     identification::{
         BoxedIdentifiedPeptideIter, FastaIdentifier, IdentifiedPeptidoform,
-        IdentifiedPeptidoformSource, IdentifiedPeptidoformVersion, MetaData, PeptidoformPresent,
+        IdentifiedPeptidoformSource, IdentifiedPeptidoformVersion, IdentifiedPeptidoformData, PeptidoformPresent,
         common_parser::Location,
         csv::{CsvLine, parse_csv},
     },
@@ -197,7 +197,7 @@ impl From<OpairData> for IdentifiedPeptidoform<SemiAmbiguous, PeptidoformPresent
         Self {
             score: Some(value.score / 100.0),
             local_confidence: None,
-            metadata: MetaData::Opair(value),
+            metadata: IdentifiedPeptidoformData::Opair(value),
             complexity_marker: PhantomData,
             peptidoform_availability_marker: PhantomData,
         }

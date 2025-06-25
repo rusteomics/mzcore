@@ -14,7 +14,7 @@ use serde::{Deserialize, Serialize};
 use crate::{
     error::{Context, CustomError},
     helper_functions::{check_extension, explain_number_error},
-    identification::{IdentifiedPeptidoform, MaybePeptidoform, MetaData, SpectrumId, SpectrumIds},
+    identification::{IdentifiedPeptidoform, MaybePeptidoform, IdentifiedPeptidoformData, SpectrumId, SpectrumIds},
     ontology::CustomDatabase,
     quantities::Tolerance,
     sequence::{
@@ -737,7 +737,7 @@ impl From<MZTabData> for IdentifiedPeptidoform<SemiAmbiguous, MaybePeptidoform> 
                 })
                 .filter(|v| !v.is_nan()),
             local_confidence: value.local_confidence.clone(),
-            metadata: MetaData::MZTab(value),
+            metadata: IdentifiedPeptidoformData::MZTab(value),
             complexity_marker: PhantomData,
             peptidoform_availability_marker: PhantomData,
         }
