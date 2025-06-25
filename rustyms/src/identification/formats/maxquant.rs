@@ -1,19 +1,24 @@
 use std::{
+    borrow::Cow,
     marker::PhantomData,
+    ops::Range,
     path::{Path, PathBuf},
 };
 
+use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 
 use crate::{
     error::CustomError,
     identification::{
-        BoxedIdentifiedPeptideIter, IdentifiedPeptidoform, IdentifiedPeptidoformSource,
-        IdentifiedPeptidoformVersion, MaybePeptidoform, IdentifiedPeptidoformData,
+        BoxedIdentifiedPeptideIter, FastaIdentifier, IdentifiedPeptidoform,
+        IdentifiedPeptidoformData, IdentifiedPeptidoformSource, IdentifiedPeptidoformVersion,
+        KnownFileFormat, MaybePeptidoform, MetaData, SpectrumId, SpectrumIds,
         common_parser::{Location, OptionalColumn, OptionalLocation},
         csv::{CsvLine, parse_csv},
     },
     ontology::CustomDatabase,
+    prelude::CompoundPeptidoformIon,
     sequence::{Peptidoform, SemiAmbiguous, SloppyParsingParameters},
     system::{Mass, MassOverCharge, Time, isize::Charge},
 };
@@ -412,3 +417,90 @@ pub const SILAC: MaxQuantFormat = MaxQuantFormat {
     ty: "type",
     z: "charge",
 };
+
+impl MetaData for MaxQuantData {
+    fn compound_peptidoform_ion(&self) -> Option<Cow<'_, CompoundPeptidoformIon>> {
+        self.peptide.as_ref().map(|p| Cow::Owned(p.clone().into()))
+    }
+
+    fn format(&self) -> KnownFileFormat {
+        KnownFileFormat::MaxQuant(self.version)
+    }
+
+    fn id(&self) -> String {
+        self.id
+            .map_or_else(|| self.scan_number.iter().join(";"), |id| id.to_string())
+    }
+
+    fn confidence(&self) -> Option<f64> {
+        (!self.score.is_nan()).then(|| 2.0 * (1.0 / (1.0 + 1.01_f64.powf(-self.score)) - 0.5))
+    }
+
+    fn local_confidence(&self) -> Option<Cow<'_, [f64]>> {
+        None
+    }
+
+    fn original_confidence(&self) -> Option<f64> {
+        (self.score.is_normal() || self.score.is_subnormal()).then_some(self.score)
+    }
+
+    fn original_local_confidence(&self) -> Option<&[f64]> {
+        None
+    }
+
+    fn charge(&self) -> Option<Charge> {
+        Some(self.z)
+    }
+
+    fn mode(&self) -> Option<&str> {
+        self.mode.as_deref()
+    }
+
+    fn retention_time(&self) -> Option<Time> {
+        self.rt
+    }
+
+    fn scans(&self) -> SpectrumIds {
+        self.raw_file.as_ref().map_or_else(
+            || {
+                SpectrumIds::FileNotKnown(
+                    self.scan_number
+                        .iter()
+                        .copied()
+                        .map(SpectrumId::Number)
+                        .collect(),
+                )
+            },
+            |raw_file| {
+                SpectrumIds::FileKnown(vec![(
+                    raw_file.clone(),
+                    self.scan_number
+                        .iter()
+                        .copied()
+                        .map(SpectrumId::Number)
+                        .collect(),
+                )])
+            },
+        )
+    }
+
+    fn experimental_mz(&self) -> Option<MassOverCharge> {
+        self.mz
+    }
+
+    fn experimental_mass(&self) -> Option<Mass> {
+        self.mass
+    }
+
+    fn protein_name(&self) -> Option<FastaIdentifier<String>> {
+        None
+    }
+
+    fn protein_id(&self) -> Option<usize> {
+        None
+    }
+
+    fn protein_location(&self) -> Option<Range<usize>> {
+        None
+    }
+}

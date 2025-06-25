@@ -67,7 +67,7 @@ pub(super) fn test_identified_peptidoform<Complexity, PeptidoformAvailability>(
     let found_length = peptidoform
         .compound_peptidoform_ion()
         .and_then(|p| p.singular_peptidoform_ref().map(Peptidoform::len));
-    if found_length != peptidoform.local_confidence().map(<[f64]>::len) {
+    if found_length != peptidoform.local_confidence().map(|lc| lc.len()) {
         if expect_lc && peptidoform.local_confidence.is_none() {
             return Err(format!(
                 "No local confidence was provided for peptidoform {}",
@@ -76,7 +76,7 @@ pub(super) fn test_identified_peptidoform<Complexity, PeptidoformAvailability>(
         } else if peptidoform.local_confidence.is_some() {
             return Err(format!(
                 "The local confidence ({}) does not have the same number of elements as the peptidoform ({}) for peptidoform {}",
-                peptidoform.local_confidence().map_or(0, <[f64]>::len),
+                peptidoform.local_confidence().map_or(0, |lc| lc.len()),
                 found_length.unwrap_or_default(),
                 peptidoform.id()
             ));

@@ -1,18 +1,21 @@
-use std::{marker::PhantomData, sync::LazyLock};
+use std::{borrow::Cow, marker::PhantomData, ops::Range, sync::LazyLock};
 
+use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 
 use crate::{
     error::CustomError,
     identification::{
-        BoxedIdentifiedPeptideIter, IdentifiedPeptidoform, IdentifiedPeptidoformSource,
-        IdentifiedPeptidoformVersion, MaybePeptidoform, IdentifiedPeptidoformData, PeaksFamilyId,
+        BoxedIdentifiedPeptideIter, FastaIdentifier, IdentifiedPeptidoform,
+        IdentifiedPeptidoformData, IdentifiedPeptidoformSource, IdentifiedPeptidoformVersion,
+        KnownFileFormat, MaybePeptidoform, MetaData, PeaksFamilyId, SpectrumId, SpectrumIds,
         common_parser::{Location, OptionalColumn, OptionalLocation},
         csv::{CsvLine, parse_csv},
     },
     ontology::{CustomDatabase, Ontology},
+    prelude::CompoundPeptidoformIon,
     sequence::{AminoAcid, Peptidoform, SemiAmbiguous, SloppyParsingParameters},
-    system::{MassOverCharge, isize::Charge},
+    system::{Mass, MassOverCharge, Time, isize::Charge},
 };
 
 static NUMBER_ERROR: (&str, &str) = (
@@ -174,5 +177,80 @@ impl IdentifiedPeptidoformVersion<DeepNovoFamilyFormat> for DeepNovoFamilyVersio
             Self::DeepNovoV0_0_1 => "DeepNovo v0.0.1",
             Self::PointNovoFamily => "PointNovo v0.0.1 / PGPointNovo v1.0.6 / BiatNovo v0.1",
         }
+    }
+}
+
+impl MetaData for DeepNovoFamilyData {
+    fn compound_peptidoform_ion(&self) -> Option<Cow<'_, CompoundPeptidoformIon>> {
+        self.peptide.as_ref().map(|p| Cow::Owned(p.clone().into()))
+    }
+
+    fn format(&self) -> KnownFileFormat {
+        KnownFileFormat::DeepNovoFamily(self.version)
+    }
+
+    fn id(&self) -> String {
+        self.scan.iter().join(";")
+    }
+
+    fn confidence(&self) -> Option<f64> {
+        self.score.map(|score| (2.0 / (1.0 + (-score).exp())))
+    }
+
+    fn local_confidence(&self) -> Option<Cow<'_, [f64]>> {
+        self.local_confidence
+            .as_ref()
+            .map(|lc| lc.iter().map(|v| 2.0 / (1.0 + (-v).exp())).collect())
+    }
+
+    fn original_confidence(&self) -> Option<f64> {
+        self.score
+    }
+
+    fn original_local_confidence(&self) -> Option<&[f64]> {
+        self.local_confidence.as_deref()
+    }
+
+    fn charge(&self) -> Option<Charge> {
+        self.z
+    }
+
+    fn mode(&self) -> Option<&str> {
+        None
+    }
+
+    fn retention_time(&self) -> Option<Time> {
+        None
+    }
+
+    fn scans(&self) -> SpectrumIds {
+        SpectrumIds::FileNotKnown(
+            self.scan
+                .iter()
+                .flat_map(|s| s.scans.clone())
+                .map(SpectrumId::Number)
+                .collect(),
+        )
+    }
+
+    fn experimental_mz(&self) -> Option<MassOverCharge> {
+        self.mz
+    }
+
+    fn experimental_mass(&self) -> Option<Mass> {
+        self.mz
+            .and_then(|mz| self.z.map(|z| (mz, z)).map(|(mz, z)| mz * z.to_float()))
+    }
+
+    fn protein_name(&self) -> Option<FastaIdentifier<String>> {
+        None
+    }
+
+    fn protein_id(&self) -> Option<usize> {
+        None
+    }
+
+    fn protein_location(&self) -> Option<Range<usize>> {
+        None
     }
 }

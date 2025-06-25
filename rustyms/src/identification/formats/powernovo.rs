@@ -1,5 +1,7 @@
 use std::{
+    borrow::Cow,
     marker::PhantomData,
+    ops::Range,
     path::{Path, PathBuf},
     sync::LazyLock,
 };
@@ -9,13 +11,16 @@ use serde::{Deserialize, Serialize};
 use crate::{
     error::CustomError,
     identification::{
-        BoxedIdentifiedPeptideIter, IdentifiedPeptidoform, IdentifiedPeptidoformSource,
-        IdentifiedPeptidoformVersion, IdentifiedPeptidoformData, PeptidoformPresent,
+        BoxedIdentifiedPeptideIter, FastaIdentifier, IdentifiedPeptidoform,
+        IdentifiedPeptidoformData, IdentifiedPeptidoformSource, IdentifiedPeptidoformVersion,
+        KnownFileFormat, MetaData, PeptidoformPresent, SpectrumId, SpectrumIds,
         common_parser::{Location, OptionalColumn},
         csv::{CsvLine, parse_csv},
     },
     ontology::CustomDatabase,
+    prelude::CompoundPeptidoformIon,
     sequence::{Peptidoform, SemiAmbiguous, SloppyParsingParameters},
+    system::{Mass, MassOverCharge, Time, isize::Charge},
 };
 
 static NUMBER_ERROR: (&str, &str) = (
@@ -111,5 +116,78 @@ impl IdentifiedPeptidoformVersion<PowerNovoFormat> for PowerNovoVersion {
         match self {
             Self::V1_0_1 => "v1.0.1",
         }
+    }
+}
+
+impl MetaData for PowerNovoData {
+    fn compound_peptidoform_ion(&self) -> Option<Cow<'_, CompoundPeptidoformIon>> {
+        Some(Cow::Owned(self.peptide.clone().into()))
+    }
+
+    fn format(&self) -> KnownFileFormat {
+        KnownFileFormat::PowerNovo(self.version)
+    }
+
+    fn id(&self) -> String {
+        self.scan
+            .as_ref()
+            .map_or("-".to_string(), ToString::to_string)
+    }
+
+    fn confidence(&self) -> Option<f64> {
+        Some(self.score)
+    }
+
+    fn local_confidence(&self) -> Option<Cow<'_, [f64]>> {
+        Some(Cow::Borrowed(self.local_confidence.as_slice()))
+    }
+
+    fn original_confidence(&self) -> Option<f64> {
+        Some(self.score)
+    }
+
+    fn original_local_confidence(&self) -> Option<&[f64]> {
+        Some(self.local_confidence.as_slice())
+    }
+
+    fn charge(&self) -> Option<Charge> {
+        None
+    }
+
+    fn mode(&self) -> Option<&str> {
+        None
+    }
+
+    fn retention_time(&self) -> Option<Time> {
+        None
+    }
+
+    fn scans(&self) -> SpectrumIds {
+        self.scan.as_ref().map_or(SpectrumIds::None, |scan| {
+            self.raw_file.clone().map_or_else(
+                || SpectrumIds::FileNotKnown(vec![SpectrumId::Index(*scan)]),
+                |raw_file| SpectrumIds::FileKnown(vec![(raw_file, vec![SpectrumId::Index(*scan)])]),
+            )
+        })
+    }
+
+    fn experimental_mz(&self) -> Option<MassOverCharge> {
+        None
+    }
+
+    fn experimental_mass(&self) -> Option<Mass> {
+        None
+    }
+
+    fn protein_name(&self) -> Option<FastaIdentifier<String>> {
+        None
+    }
+
+    fn protein_id(&self) -> Option<usize> {
+        None
+    }
+
+    fn protein_location(&self) -> Option<Range<usize>> {
+        None
     }
 }

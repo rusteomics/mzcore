@@ -1,17 +1,18 @@
-use std::{marker::PhantomData, path::PathBuf, sync::LazyLock};
+use std::{borrow::Cow, marker::PhantomData, ops::Range, path::PathBuf, sync::LazyLock};
 
 use crate::{
     error::CustomError,
     glycan::MonoSaccharide,
     helper_functions::explain_number_error,
     identification::{
-        BoxedIdentifiedPeptideIter, IdentifiedPeptidoform, IdentifiedPeptidoformSource,
-        IdentifiedPeptidoformVersion, IdentifiedPeptidoformData, PeptidoformPresent, SpectrumId,
+        BoxedIdentifiedPeptideIter, IdentifiedPeptidoform, IdentifiedPeptidoformData,
+        IdentifiedPeptidoformSource, IdentifiedPeptidoformVersion, KnownFileFormat, MetaData,
+        PeptidoformPresent, SpectrumId, SpectrumIds,
         common_parser::{Location, OptionalColumn, OptionalLocation},
         csv::{CsvLine, parse_csv},
     },
     ontology::CustomDatabase,
-    prelude::{Chemical, SequencePosition},
+    prelude::{Chemical, CompoundPeptidoformIon, SequencePosition},
     quantities::{Tolerance, WithinTolerance},
     sequence::{
         Modification, Peptidoform, SemiAmbiguous, SimpleLinear, SimpleModification,
@@ -508,3 +509,73 @@ pub const FRAGPIPE_V22: MSFraggerFormat = MSFraggerFormat {
     total_glycan_composition: OptionalColumn::Optional("total glycan composition"),
     z: "charge",
 };
+
+impl MetaData for MSFraggerData {
+    fn compound_peptidoform_ion(&self) -> Option<Cow<'_, CompoundPeptidoformIon>> {
+        Some(Cow::Owned(self.peptide.clone().into()))
+    }
+
+    fn format(&self) -> KnownFileFormat {
+        KnownFileFormat::MSFragger(self.version)
+    }
+
+    fn id(&self) -> String {
+        self.scan.to_string()
+    }
+
+    fn confidence(&self) -> Option<f64> {
+        Some(self.hyper_score / 100.0)
+    }
+
+    fn local_confidence(&self) -> Option<Cow<'_, [f64]>> {
+        None
+    }
+
+    fn original_confidence(&self) -> Option<f64> {
+        Some(self.hyper_score)
+    }
+
+    fn original_local_confidence(&self) -> Option<&[f64]> {
+        None
+    }
+
+    fn charge(&self) -> Option<Charge> {
+        Some(self.z)
+    }
+
+    fn mode(&self) -> Option<&str> {
+        None
+    }
+
+    fn retention_time(&self) -> Option<Time> {
+        Some(self.rt)
+    }
+
+    fn scans(&self) -> SpectrumIds {
+        self.raw_file.clone().map_or_else(
+            || SpectrumIds::FileNotKnown(vec![self.scan.clone()]),
+            |raw_file| SpectrumIds::FileKnown(vec![(raw_file, vec![self.scan.clone()])]),
+        )
+    }
+
+    fn experimental_mz(&self) -> Option<MassOverCharge> {
+        self.mz
+    }
+
+    fn experimental_mass(&self) -> Option<Mass> {
+        Some(self.mass)
+    }
+
+    fn protein_name(&self) -> Option<FastaIdentifier<String>> {
+        Some(self.protein.clone())
+    }
+
+    fn protein_id(&self) -> Option<usize> {
+        None
+    }
+
+    fn protein_location(&self) -> Option<Range<usize>> {
+        self.protein_start
+            .and_then(|start| self.protein_end.map(|end| start..end))
+    }
+}

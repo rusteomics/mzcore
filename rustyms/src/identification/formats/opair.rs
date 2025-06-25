@@ -1,4 +1,5 @@
 use std::{
+    borrow::Cow,
     marker::PhantomData,
     ops::Range,
     path::{Path, PathBuf},
@@ -8,11 +9,13 @@ use crate::{
     error::{Context, CustomError},
     identification::{
         BoxedIdentifiedPeptideIter, FastaIdentifier, IdentifiedPeptidoform,
-        IdentifiedPeptidoformSource, IdentifiedPeptidoformVersion, IdentifiedPeptidoformData, PeptidoformPresent,
+        IdentifiedPeptidoformData, IdentifiedPeptidoformSource, IdentifiedPeptidoformVersion,
+        KnownFileFormat, MetaData, PeptidoformPresent, SpectrumId, SpectrumIds,
         common_parser::Location,
         csv::{CsvLine, parse_csv},
     },
     ontology::CustomDatabase,
+    prelude::CompoundPeptidoformIon,
     sequence::{AminoAcid, Peptidoform, SemiAmbiguous, SloppyParsingParameters},
     system::{Mass, MassOverCharge, Time, isize::Charge},
 };
@@ -309,5 +312,74 @@ impl std::fmt::Display for OpairMatchKind {
                 Self::Target => "Target",
             }
         )
+    }
+}
+
+impl MetaData for OpairData {
+    fn compound_peptidoform_ion(&self) -> Option<Cow<'_, CompoundPeptidoformIon>> {
+        Some(Cow::Owned(self.peptide.clone().into()))
+    }
+
+    fn format(&self) -> KnownFileFormat {
+        KnownFileFormat::Opair(self.version)
+    }
+
+    fn id(&self) -> String {
+        self.scan_number.to_string()
+    }
+
+    fn confidence(&self) -> Option<f64> {
+        Some(self.score / 100.0)
+    }
+
+    fn local_confidence(&self) -> Option<Cow<'_, [f64]>> {
+        None
+    }
+
+    fn original_confidence(&self) -> Option<f64> {
+        Some(self.score)
+    }
+
+    fn original_local_confidence(&self) -> Option<&[f64]> {
+        None
+    }
+
+    fn charge(&self) -> Option<Charge> {
+        Some(self.z)
+    }
+
+    fn mode(&self) -> Option<&str> {
+        None
+    }
+
+    fn retention_time(&self) -> Option<Time> {
+        Some(self.rt)
+    }
+
+    fn scans(&self) -> SpectrumIds {
+        SpectrumIds::FileKnown(vec![(
+            self.raw_file.clone(),
+            vec![SpectrumId::Number(self.scan_number)],
+        )])
+    }
+
+    fn experimental_mz(&self) -> Option<MassOverCharge> {
+        Some(self.mz)
+    }
+
+    fn experimental_mass(&self) -> Option<Mass> {
+        Some(self.mass)
+    }
+
+    fn protein_name(&self) -> Option<FastaIdentifier<String>> {
+        Some(self.protein_name.clone())
+    }
+
+    fn protein_id(&self) -> Option<usize> {
+        None
+    }
+
+    fn protein_location(&self) -> Option<Range<usize>> {
+        Some(self.protein_location.clone())
     }
 }

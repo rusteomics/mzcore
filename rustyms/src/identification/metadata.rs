@@ -21,7 +21,7 @@ pub trait MetaData {
     fn confidence(&self) -> Option<f64>;
 
     /// Get the local confidence, a score between -1 and 1 for each amino acid in the peptide
-    fn local_confidence(&self) -> Option<&[f64]>;
+    fn local_confidence(&self) -> Option<Cow<'_, [f64]>>;
 
     /// Get the original confidence
     fn original_confidence(&self) -> Option<f64>;

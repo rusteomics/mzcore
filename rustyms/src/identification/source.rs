@@ -2,7 +2,7 @@ use std::fmt::Display;
 
 use crate::{
     error::CustomError,
-    identification::{IdentifiedPeptidoform, MaybePeptidoform},
+    identification::{IdentifiedPeptidoform, MaybePeptidoform, MetaData},
     ontology::CustomDatabase,
     sequence::AtLeast,
 };
@@ -18,7 +18,7 @@ pub trait IdentifiedPeptidoformVersion<Format>: Copy {
 /// The required methods for any source of identified peptides
 pub trait IdentifiedPeptidoformSource
 where
-    Self: Sized,
+    Self: Sized + MetaData,
 {
     /// The source data where the peptides are parsed form
     type Source;

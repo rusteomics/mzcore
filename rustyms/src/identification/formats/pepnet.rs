@@ -1,13 +1,15 @@
-use std::marker::PhantomData;
+use std::{borrow::Cow, marker::PhantomData, ops::Range};
 
 use crate::{
     error::CustomError,
     identification::{
-        IdentifiedPeptidoform, IdentifiedPeptidoformSource, IdentifiedPeptidoformData, PeptidoformPresent,
+        FastaIdentifier, IdentifiedPeptidoform, IdentifiedPeptidoformData,
+        IdentifiedPeptidoformSource, KnownFileFormat, MetaData, PeptidoformPresent, SpectrumIds,
     },
     ontology::CustomDatabase,
+    prelude::CompoundPeptidoformIon,
     sequence::{Peptidoform, SemiAmbiguous, SloppyParsingParameters},
-    system::Ratio,
+    system::{Mass, MassOverCharge, Ratio, Time, isize::Charge},
 };
 
 use serde::{Deserialize, Serialize};
@@ -94,5 +96,71 @@ impl IdentifiedPeptidoformVersion<PepNetFormat> for PepNetVersion {
         match self {
             Self::V1_0 => "v1.0",
         }
+    }
+}
+
+impl MetaData for PepNetData {
+    fn compound_peptidoform_ion(&self) -> Option<Cow<'_, CompoundPeptidoformIon>> {
+        Some(Cow::Owned(self.peptide.clone().into()))
+    }
+
+    fn format(&self) -> KnownFileFormat {
+        KnownFileFormat::PepNet(self.version)
+    }
+
+    fn id(&self) -> String {
+        "-".to_string()
+    }
+
+    fn confidence(&self) -> Option<f64> {
+        Some(self.score)
+    }
+
+    fn local_confidence(&self) -> Option<Cow<'_, [f64]>> {
+        Some(Cow::Borrowed(self.local_confidence.as_slice()))
+    }
+
+    fn original_confidence(&self) -> Option<f64> {
+        Some(self.score)
+    }
+
+    fn original_local_confidence(&self) -> Option<&[f64]> {
+        Some(self.local_confidence.as_slice())
+    }
+
+    fn charge(&self) -> Option<Charge> {
+        None
+    }
+
+    fn mode(&self) -> Option<&str> {
+        None
+    }
+
+    fn retention_time(&self) -> Option<Time> {
+        None
+    }
+
+    fn scans(&self) -> SpectrumIds {
+        SpectrumIds::None
+    }
+
+    fn experimental_mz(&self) -> Option<MassOverCharge> {
+        None
+    }
+
+    fn experimental_mass(&self) -> Option<Mass> {
+        None
+    }
+
+    fn protein_name(&self) -> Option<FastaIdentifier<String>> {
+        None
+    }
+
+    fn protein_id(&self) -> Option<usize> {
+        None
+    }
+
+    fn protein_location(&self) -> Option<Range<usize>> {
+        None
     }
 }

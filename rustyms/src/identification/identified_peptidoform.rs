@@ -608,8 +608,10 @@ impl<Complexity, PeptidoformAvailability> MetaData
         self.score
     }
 
-    fn local_confidence(&self) -> Option<&[f64]> {
-        self.local_confidence.as_deref()
+    fn local_confidence(&self) -> Option<Cow<'_, [f64]>> {
+        self.local_confidence
+            .as_ref()
+            .map(|lc| Cow::Borrowed(lc.as_slice()))
     }
 
     fn original_confidence(&self) -> Option<f64> {

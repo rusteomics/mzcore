@@ -1,4 +1,4 @@
-use std::marker::PhantomData;
+use std::{borrow::Cow, marker::PhantomData, ops::Range};
 
 use crate::{
     chemistry::MolecularFormula,
@@ -8,16 +8,17 @@ use crate::{
     identification::{
         BoxedIdentifiedPeptideIter, FastaIdentifier, IdentifiedPeptidoform,
         IdentifiedPeptidoformData, IdentifiedPeptidoformSource, IdentifiedPeptidoformVersion,
-        PeptidoformPresent,
+        KnownFileFormat, MetaData, PeptidoformPresent, SpectrumId, SpectrumIds,
         common_parser::{Location, OptionalColumn, OptionalLocation},
         csv::{CsvLine, parse_csv},
     },
     ontology::CustomDatabase,
+    prelude::CompoundPeptidoformIon,
     sequence::{
         AminoAcid, MUPSettings, Modification, Peptidoform, PlacementRule, Position,
         SequencePosition, SimpleLinear, SimpleModification,
     },
-    system::{Mass, MassOverCharge, Time, isize::Charge},
+    system::{Mass, MassOverCharge, OrderedTime, Time, isize::Charge},
 };
 use serde::{Deserialize, Serialize};
 
@@ -305,5 +306,74 @@ impl IdentifiedPeptidoformVersion<PLGSFormat> for PLGSVersion {
         match self {
             Self::V3_0 => "v3.0",
         }
+    }
+}
+
+impl MetaData for PLGSData {
+    fn compound_peptidoform_ion(&self) -> Option<Cow<'_, CompoundPeptidoformIon>> {
+        Some(Cow::Owned(self.peptide.clone().into()))
+    }
+
+    fn format(&self) -> KnownFileFormat {
+        KnownFileFormat::PLGS(self.version)
+    }
+
+    fn id(&self) -> String {
+        self.peptide_component_id.to_string()
+    }
+
+    fn confidence(&self) -> Option<f64> {
+        Some(2.0 / (1.0 + 1.3_f64.powf(-self.peptide_score)) - 1.0)
+    }
+
+    fn local_confidence(&self) -> Option<Cow<'_, [f64]>> {
+        None
+    }
+
+    fn original_confidence(&self) -> Option<f64> {
+        Some(self.peptide_score)
+    }
+
+    fn original_local_confidence(&self) -> Option<&[f64]> {
+        None
+    }
+
+    fn charge(&self) -> Option<Charge> {
+        Some(self.precursor_z)
+    }
+
+    fn mode(&self) -> Option<&str> {
+        None
+    }
+
+    fn retention_time(&self) -> Option<Time> {
+        Some(self.precursor_rt)
+    }
+
+    fn scans(&self) -> SpectrumIds {
+        SpectrumIds::FileNotKnown(vec![SpectrumId::RetentionTime(
+            OrderedTime::from(self.precursor_lift_off_rt)
+                ..=OrderedTime::from(self.precursor_touch_down_rt),
+        )])
+    }
+
+    fn experimental_mz(&self) -> Option<MassOverCharge> {
+        Some(self.precursor_mz)
+    }
+
+    fn experimental_mass(&self) -> Option<Mass> {
+        Some(self.precursor_mass)
+    }
+
+    fn protein_name(&self) -> Option<FastaIdentifier<String>> {
+        Some(self.protein_description.clone())
+    }
+
+    fn protein_id(&self) -> Option<usize> {
+        Some(self.protein_id)
+    }
+
+    fn protein_location(&self) -> Option<Range<usize>> {
+        Some(self.peptide_start..self.peptide_start + self.peptide.len())
     }
 }
