@@ -24,7 +24,7 @@ use rustyms::{
     },
     chemistry::MassMode,
     fragment::{Fragment, FragmentKind, FragmentType},
-    identification::{SpectrumId, SpectrumIds},
+    identification::{MetaData, SpectrumId, SpectrumIds},
     sequence::{AminoAcid, CompoundPeptidoformIon, SimpleModification},
 };
 

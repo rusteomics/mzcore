@@ -9,7 +9,7 @@ use rayon::prelude::*;
 use rustyms::{
     align::{AlignType, align},
     identification::{
-        FastaData, IdentifiedPeptidoform, PeptidoformPresent, csv::write_csv,
+        FastaData, IdentifiedPeptidoform, MetaData, PeptidoformPresent, csv::write_csv,
         open_identified_peptides_file,
     },
     prelude::Peptidoform,

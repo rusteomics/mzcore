@@ -58,9 +58,5 @@ glycan-render = []
 glycan-render-bitmap = ["zeno", "swash", "glycan-render"]
 internal-no-data = []
 
-[[bench]]
-name = "iai"
-harness = false
-
 [lints]
 workspace = true
