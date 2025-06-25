@@ -4,22 +4,20 @@ use std::borrow::Cow;
 
 use itertools::Itertools;
 use ordered_float::OrderedFloat;
-use serde::Deserialize;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
-use super::align_type::*;
-use super::piece::*;
-use super::scoring::*;
-
-use crate::sequence::HasPeptidoform;
-use crate::sequence::SemiAmbiguous;
 use crate::{
-    align::mass_alignment::{determine_final_score, score_pair},
+    align::{
+        align_type::*,
+        mass_alignment::{determine_final_score, score_pair},
+        piece::*,
+        scoring::*,
+    },
     annotation::model::GlycanModel,
     chemistry::MolecularFormula,
     helper_functions::next_num,
     quantities::Multi,
-    sequence::{AtMax, Linear, Peptidoform, SequencePosition, SimpleLinear},
+    sequence::{AtMax, HasPeptidoform, Linear, Peptidoform, SequencePosition, SimpleLinear},
     system::{Mass, Ratio},
 };
 

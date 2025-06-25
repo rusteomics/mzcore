@@ -18,8 +18,8 @@ use crate::{
     ontology::CustomDatabase,
     quantities::Tolerance,
     sequence::{
-        AminoAcid, Linked, PeptideModificationSearch, Peptidoform, ReturnModification,
-        SemiAmbiguous, SimpleModification, SimpleModificationInner, SloppyParsingParameters,
+        AminoAcid, PeptideModificationSearch, Peptidoform, ReturnModification, SemiAmbiguous,
+        SimpleModification, SimpleModificationInner, SloppyParsingParameters,
     },
     system::{MassOverCharge, Time, isize::Charge},
 };

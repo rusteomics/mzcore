@@ -15,7 +15,7 @@ use crate::{
     helper_functions::explain_number_error,
     identification::{IdentifiedPeptidoform, MetaData, PeptidoformPresent},
     sequence::{
-        AminoAcid, AnnotatedPeptide, Annotation, Linked, Peptidoform, Region, SemiAmbiguous,
+        AminoAcid, AnnotatedPeptide, Annotation, Peptidoform, Region, SemiAmbiguous,
         SequenceElement,
     },
 };

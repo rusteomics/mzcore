@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use crate::{
     prelude::{CompoundPeptidoformIon, Peptidoform, PeptidoformIon},
-    sequence::{AtLeast, AtMax},
+    sequence::AtLeast,
 };
 
 /// A structure that has a reference to a peptidoform.
