@@ -112,7 +112,7 @@ impl<Complexity, PeptidoformAvailability>
 }
 
 impl<PeptidoformAvailability> IdentifiedPeptidoform<SimpleLinear, PeptidoformAvailability> {
-    /// For all formats that contain a simple linear peptidoform (all except [`BasicCSV`](FileFormat::BasicCSV) and [`PLink`](FileFormat::PLink)) get a reference to the peptidoform.
+    /// If this peptidoform contains a peptidoform that is valid as a simple linear peptidoform get a reference to the peptidoform.
     fn inner_peptidoform(&self) -> Option<&Peptidoform<SimpleLinear>> {
         match &self.metadata {
             MetaData::Novor(NovorData { peptide, .. })
@@ -149,13 +149,18 @@ impl<PeptidoformAvailability> IdentifiedPeptidoform<SimpleLinear, PeptidoformAva
                 peptide_reverse.as_ref()
             }
             .map(AsRef::as_ref),
-            MetaData::BasicCSV(_) | MetaData::PLink(_) => None,
+            MetaData::BasicCSV(BasicCSVData { sequence, .. }) => sequence
+                .singular_peptidoform_ref()
+                .and_then(|p| p.as_simple_linear()),
+            MetaData::PLink(PLinkData { peptidoform, .. }) => peptidoform
+                .singular_ref()
+                .and_then(|p| p.as_simple_linear()),
         }
     }
 }
 
 impl<PeptidoformAvailability> IdentifiedPeptidoform<SemiAmbiguous, PeptidoformAvailability> {
-    /// For all formats that contain a simple linear peptidoform (all except [`MSFragger`](FileFormat::MSFragger), [`PLGS`](FileFormat::PLGS), [`BasicCSV`](FileFormat::BasicCSV) and [`PLink`](FileFormat::PLink)) get a reference to the peptidoform.
+    /// If this peptidoform contains a peptidoform that is valid as a semi ambiguous peptidoform get a reference to the peptidoform.
     fn inner_peptidoform(&self) -> Option<&Peptidoform<SemiAmbiguous>> {
         match &self.metadata {
             MetaData::Novor(NovorData { peptide, .. })
@@ -189,10 +194,14 @@ impl<PeptidoformAvailability> IdentifiedPeptidoform<SemiAmbiguous, PeptidoformAv
                     peptide_reverse.as_ref()
                 }
             }
-            MetaData::MSFragger(_)
-            | MetaData::PLGS(_)
-            | MetaData::BasicCSV(_)
-            | MetaData::PLink(_) => None,
+            MetaData::MSFragger(MSFraggerData { peptide, .. })
+            | MetaData::PLGS(PLGSData { peptide, .. }) => peptide.as_semi_ambiguous(),
+            MetaData::BasicCSV(BasicCSVData { sequence, .. }) => sequence
+                .singular_peptidoform_ref()
+                .and_then(|p| p.as_semi_ambiguous()),
+            MetaData::PLink(PLinkData { peptidoform, .. }) => peptidoform
+                .singular_ref()
+                .and_then(|p| p.as_semi_ambiguous()),
         }
     }
 }
@@ -258,14 +267,14 @@ impl HasPeptidoformImpl for &IdentifiedPeptidoform<SimpleLinear, PeptidoformPres
 }
 
 impl IdentifiedPeptidoform<SemiAmbiguous, MaybePeptidoform> {
-    /// For all formats that contain a simple linear peptidoform (all except [`MSFragger`](FileFormat::MSFragger), [`PLGS`](FileFormat::PLGS), [`BasicCSV`](FileFormat::BasicCSV) and [`PLink`](FileFormat::PLink)) get a reference to the peptidoform.
+    /// If this peptidoform contains a peptidoform that is valid as a semi ambiguous peptidoform get a reference to the peptidoform.
     pub fn peptidoform(&self) -> Option<&Peptidoform<SemiAmbiguous>> {
         self.inner_peptidoform()
     }
 }
 
 impl IdentifiedPeptidoform<SimpleLinear, MaybePeptidoform> {
-    /// For all formats that contain a simple linear peptidoform (all except [`BasicCSV`](FileFormat::BasicCSV) and [`PLink`](FileFormat::PLink)) get a reference to the peptidoform.
+    /// If this peptidoform contains a peptidoform that is valid as a simple linear peptidoform get a reference to the peptidoform.
     pub fn peptidoform(&self) -> Option<&Peptidoform<SimpleLinear>> {
         self.inner_peptidoform()
     }

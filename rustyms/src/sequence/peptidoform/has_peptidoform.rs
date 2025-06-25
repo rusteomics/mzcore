@@ -13,9 +13,11 @@ pub trait HasPeptidoformImpl {
     fn peptidoform(&self) -> &Peptidoform<Self::Complexity>;
 }
 
-/// A structure that has a reference to a peptidoform. Implement [`HasPeptidoformImpl`] instead.
+/// A structure that has a reference to a peptidoform. Which can be retrieved at a specific
+/// [`Complexity`](crate::sequence::Complexity) level. Do not implement this trait directly
+/// implement [`HasPeptidoformImpl`] instead.
 #[diagnostic::on_unimplemented(
-    message = "Implement HasPeptidoformImpl on this type instead of using this type directly"
+    message = "Implement HasPeptidoformImpl instead of HasPeptidoform<Complexity>"
 )]
 pub trait HasPeptidoform<Complexity> {
     /// Get a reference to a peptidoform.
@@ -55,8 +57,44 @@ pub trait HasPeptidoformIon {
     fn peptidoform_ion(&self) -> &PeptidoformIon;
 }
 
+impl HasPeptidoformIon for PeptidoformIon {
+    fn peptidoform_ion(&self) -> &Self {
+        self
+    }
+}
+
+impl HasPeptidoformIon for &PeptidoformIon {
+    fn peptidoform_ion(&self) -> &PeptidoformIon {
+        self
+    }
+}
+
+impl<T: HasPeptidoformIon> HasPeptidoformIon for Arc<T> {
+    fn peptidoform_ion(&self) -> &PeptidoformIon {
+        self.as_ref().peptidoform_ion()
+    }
+}
+
 /// A structure that has a reference to a compound peptidoform ion.
 pub trait HasCompoundPeptidoformIon {
     /// Get a reference to a compound peptidoform ion.
     fn compound_peptidoform_ion(&self) -> &CompoundPeptidoformIon;
+}
+
+impl HasCompoundPeptidoformIon for CompoundPeptidoformIon {
+    fn compound_peptidoform_ion(&self) -> &Self {
+        self
+    }
+}
+
+impl HasCompoundPeptidoformIon for &CompoundPeptidoformIon {
+    fn compound_peptidoform_ion(&self) -> &CompoundPeptidoformIon {
+        self
+    }
+}
+
+impl<T: HasCompoundPeptidoformIon> HasCompoundPeptidoformIon for Arc<T> {
+    fn compound_peptidoform_ion(&self) -> &CompoundPeptidoformIon {
+        self.as_ref().compound_peptidoform_ion()
+    }
 }
