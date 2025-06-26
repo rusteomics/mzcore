@@ -41,11 +41,8 @@ static TYPE_ERROR: (&str, &str) = (
 );
 
 format_family!(
-    /// The format for any pLink file
-    PLinkFormat,
-    /// The data from any pLink file
-    PLinkData,
-    Linked, PeptidoformPresent, PLinkVersion, [&V2_3], b',', None;
+    PLink,
+    Linked, PeptidoformPresent, [&V2_3], b',', None;
     required {
         order: usize, |location: Location, _| location.parse::<usize>(NUMBER_ERROR);
         title: String, |location: Location, _| Ok(location.get_string());
@@ -385,18 +382,6 @@ fn plink_separate(
             }
             1 => Ok((location.location.clone(), None, None, None)),
             _ => unreachable!(),
-        }
-    }
-}
-
-impl From<PLinkData> for IdentifiedPeptidoform<Linked, PeptidoformPresent> {
-    fn from(value: PLinkData) -> Self {
-        Self {
-            score: Some(1.0 - value.score),
-            local_confidence: None,
-            metadata: IdentifiedPeptidoformData::PLink(value),
-            complexity_marker: PhantomData,
-            peptidoform_availability_marker: PhantomData,
         }
     }
 }

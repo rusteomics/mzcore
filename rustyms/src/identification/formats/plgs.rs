@@ -36,11 +36,8 @@ static CURATION_ERROR: (&str, &str) = (
 );
 
 format_family!(
-    /// The format for any PLGS file
-    PLGSFormat,
-    /// The data from any PLGS file
-    PLGSData,
-    SimpleLinear, PeptidoformPresent, PLGSVersion, [&VERSION_3_0], b',', None;
+    PLGS,
+    SimpleLinear, PeptidoformPresent, [&VERSION_3_0], b',', None;
     required {
         protein_id: usize, |location: Location, _| location.parse(NUMBER_ERROR);
         protein_entry: String, |location: Location, _| Ok(location.get_string());
@@ -148,18 +145,6 @@ format_family!(
         Ok(parsed)
     }
 );
-
-impl From<PLGSData> for IdentifiedPeptidoform<SimpleLinear, PeptidoformPresent> {
-    fn from(value: PLGSData) -> Self {
-        Self {
-            score: Some(2.0 / (1.0 + 1.3_f64.powf(-value.peptide_score)) - 1.0),
-            local_confidence: None,
-            metadata: IdentifiedPeptidoformData::PLGS(value),
-            complexity_marker: PhantomData,
-            peptidoform_availability_marker: PhantomData,
-        }
-    }
-}
 
 /// PLGS curation categories
 #[derive(Clone, Copy, Debug, Default, Deserialize, Eq, Ord, PartialEq, PartialOrd, Serialize)]

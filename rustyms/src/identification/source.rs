@@ -8,7 +8,7 @@ use crate::{
 };
 
 /// A version for an identified peptide version
-pub trait IdentifiedPeptidoformVersion<Format>: Copy {
+pub trait IdentifiedPeptidoformVersion<Format>: Copy + Display {
     /// The format for this version
     fn format(self) -> Format;
     /// The name for this version

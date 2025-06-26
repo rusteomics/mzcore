@@ -742,7 +742,7 @@ impl From<MZTabData> for IdentifiedPeptidoform<SemiAmbiguous, MaybePeptidoform> 
                 })
                 .filter(|v| !v.is_nan()),
             local_confidence: value.local_confidence.clone(),
-            metadata: IdentifiedPeptidoformData::MZTab(value),
+            data: IdentifiedPeptidoformData::MZTab(value),
             complexity_marker: PhantomData,
             peptidoform_availability_marker: PhantomData,
         }

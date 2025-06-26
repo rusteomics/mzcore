@@ -38,11 +38,8 @@ static IDENTIFIER_ERROR: (&str, &str) = (
 // TODO: in the localisation the lowercase character(s) indicate the position of the opensearch (observed modifications).
 // It would be best to use this to place the mod properly (also with the position scoring if present and the mod is ambiguous).
 format_family!(
-    /// The format for MSFragger data
-    MSFraggerFormat,
-    /// The data for MSFragger data
-    MSFraggerData,
-    SimpleLinear, PeptidoformPresent, MSFraggerVersion, [&VERSION_V4_2, &FRAGPIPE_V20_OR_21, &FRAGPIPE_V22, &PHILOSOPHER], b'\t', None;
+    MSFragger,
+    SimpleLinear, PeptidoformPresent, [&VERSION_V4_2, &FRAGPIPE_V20_OR_21, &FRAGPIPE_V22, &PHILOSOPHER], b'\t', None;
     required {
         expectation_score: f64, |location: Location, _| location.parse::<f64>(NUMBER_ERROR);
         hyper_score: f64, |location: Location, _| location.parse::<f64>(NUMBER_ERROR);
@@ -237,18 +234,6 @@ format_family!(
 /// The Regex to match against MSFragger scan fields
 static IDENTIFER_REGEX: LazyLock<regex::Regex> =
     LazyLock::new(|| regex::Regex::new(r"([^/]+)\.(\d+)\.\d+.\d+").unwrap());
-
-impl From<MSFraggerData> for IdentifiedPeptidoform<SimpleLinear, PeptidoformPresent> {
-    fn from(value: MSFraggerData) -> Self {
-        Self {
-            score: Some(value.hyper_score / 100.0),
-            local_confidence: None,
-            metadata: IdentifiedPeptidoformData::MSFragger(value),
-            complexity_marker: PhantomData,
-            peptidoform_availability_marker: PhantomData,
-        }
-    }
-}
 
 /// A MSFragger open search modification
 #[derive(Clone, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]

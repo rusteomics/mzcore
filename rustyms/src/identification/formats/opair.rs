@@ -26,11 +26,8 @@ static NUMBER_ERROR: (&str, &str) = (
     "This column is not a number but it is required to be a number in this OPair format",
 );
 format_family!(
-    /// The format for OPair data
-    OpairFormat,
-    /// The data for OPair data
-    OpairData,
-    SemiAmbiguous, PeptidoformPresent, OpairVersion, [&O_PAIR], b'\t', None;
+    Opair,
+    SemiAmbiguous, PeptidoformPresent, [&O_PAIR], b'\t', None;
     required {
         raw_file: PathBuf, |location: Location, _| Ok(Path::new(&location.get_string()).to_owned());
         scan_number: usize, |location: Location, _| location.parse(NUMBER_ERROR);
@@ -194,18 +191,6 @@ format_family!(
     }
     optional { }
 );
-
-impl From<OpairData> for IdentifiedPeptidoform<SemiAmbiguous, PeptidoformPresent> {
-    fn from(value: OpairData) -> Self {
-        Self {
-            score: Some(value.score / 100.0),
-            local_confidence: None,
-            metadata: IdentifiedPeptidoformData::Opair(value),
-            complexity_marker: PhantomData,
-            peptidoform_availability_marker: PhantomData,
-        }
-    }
-}
 
 /// All possible peaks versions
 #[derive(

@@ -27,12 +27,10 @@ static NUMBER_ERROR: (&str, &str) = (
     "This column is not a number but it is required to be a number in this format",
 );
 
+// The format for any [SSL file](https://skyline.ms/wiki/home/software/BiblioSpec/page.view?name=BiblioSpec%20input%20and%20output%20file%20formats).
 format_family!(
-    /// The format for any [SSL file](https://skyline.ms/wiki/home/software/BiblioSpec/page.view?name=BiblioSpec%20input%20and%20output%20file%20formats).
-    SpectrumSequenceListFormat,
-    /// The data from any SSL file
-    SpectrumSequenceListData,
-    SemiAmbiguous, MaybePeptidoform, SpectrumSequenceListVersion, [&SSL], b'\t', None;
+    SpectrumSequenceList,
+    SemiAmbiguous, MaybePeptidoform, [&SSL], b'\t', None;
     required {
         raw_file: PathBuf, |location: Location, _| Ok(Path::new(&location.get_string()).to_owned());
         scan: usize, |location: Location, _| location.parse(NUMBER_ERROR);
@@ -58,18 +56,6 @@ format_family!(
         ccs: f64, |location: Location, _| location.parse::<f64>(NUMBER_ERROR);
     }
 );
-
-impl From<SpectrumSequenceListData> for IdentifiedPeptidoform<SemiAmbiguous, MaybePeptidoform> {
-    fn from(value: SpectrumSequenceListData) -> Self {
-        Self {
-            score: value.score,
-            local_confidence: None,
-            metadata: IdentifiedPeptidoformData::SpectrumSequenceList(value),
-            complexity_marker: PhantomData,
-            peptidoform_availability_marker: PhantomData,
-        }
-    }
-}
 
 /// General type of SSL files
 pub const SSL: SpectrumSequenceListFormat = SpectrumSequenceListFormat {

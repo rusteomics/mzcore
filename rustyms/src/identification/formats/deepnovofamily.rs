@@ -53,11 +53,8 @@ static PARAMETERS: LazyLock<SloppyParsingParameters> = LazyLock::new(|| SloppyPa
 });
 
 format_family!(
-    /// The format for any DeepNovoFamily file
-    DeepNovoFamilyFormat,
-    /// The data from any DeepNovoFamily file
-    DeepNovoFamilyData,
-    SemiAmbiguous, MaybePeptidoform, DeepNovoFamilyVersion, [&DEEPNOVO_V0_0_1, &POINTNOVOFAMILY], b'\t', None;
+    DeepNovoFamily,
+    SemiAmbiguous, MaybePeptidoform, [&DEEPNOVO_V0_0_1, &POINTNOVOFAMILY], b'\t', None;
     required {
         scan: Vec<PeaksFamilyId>, |location: Location, _| location.or_empty()
             .map_or(Ok(Vec::new()), |l| l.array(';').map(|v| v.parse(ID_ERROR)).collect::<Result<Vec<_>,_>>());
@@ -91,21 +88,6 @@ format_family!(
         Ok(parsed)
     }
 );
-
-impl From<DeepNovoFamilyData> for IdentifiedPeptidoform<SemiAmbiguous, MaybePeptidoform> {
-    fn from(value: DeepNovoFamilyData) -> Self {
-        Self {
-            score: value.score.map(|score| (2.0 / (1.0 + (-score).exp()))),
-            local_confidence: value
-                .local_confidence
-                .as_ref()
-                .map(|lc| lc.iter().map(|v| 2.0 / (1.0 + (-v).exp())).collect()),
-            metadata: IdentifiedPeptidoformData::DeepNovoFamily(value),
-            complexity_marker: PhantomData,
-            peptidoform_availability_marker: PhantomData,
-        }
-    }
-}
 
 /// Interpolate the local confidence when the confidence between AAs is used instead of the confidence of a single AA
 #[expect(clippy::needless_pass_by_value)] // The return value will replace the given value, so moving is fine

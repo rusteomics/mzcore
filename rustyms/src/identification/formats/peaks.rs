@@ -35,11 +35,8 @@ static ID_ERROR: (&str, &str) = (
 );
 
 format_family!(
-    /// The format for any Peaks file
-    PeaksFormat,
-    /// The data from any peaks file
-    PeaksData,
-    SemiAmbiguous, PeptidoformPresent, PeaksVersion, [&V12, &V11, &V11_FEATURES, &XPLUS, &AB, &X_PATCHED, &X, &DB_PEPTIDE, &DB_PSM, &DB_PROTEIN_PEPTIDE], b',', None;
+    Peaks,
+    SemiAmbiguous, PeptidoformPresent, [&V12, &V11, &V11_FEATURES, &XPLUS, &AB, &X_PATCHED, &X, &DB_PEPTIDE, &DB_PSM, &DB_PROTEIN_PEPTIDE], b',', None;
     required {
         peptide: (Option<AminoAcid>, Vec<Peptidoform<SemiAmbiguous>>, Option<AminoAcid>), |location: Location, custom_database: Option<&CustomDatabase>| {
             let n_flanking: Option<AminoAcid> =
@@ -135,29 +132,6 @@ format_family!(
         Ok(parsed)
     }
 );
-
-impl From<PeaksData> for IdentifiedPeptidoform<SemiAmbiguous, PeptidoformPresent> {
-    fn from(value: PeaksData) -> Self {
-        Self {
-            score: value
-                .de_novo_score
-                .or(value.alc)
-                .map(|v| v / 100.0)
-                .or_else(|| {
-                    value
-                        .logp
-                        .map(|v| 2.0 * (1.0 / (1.0 + 1.025_f64.powf(-v)) - 0.5))
-                }),
-            local_confidence: value
-                .local_confidence
-                .as_ref()
-                .map(|lc| lc.iter().map(|v| *v / 100.0).collect()),
-            metadata: IdentifiedPeptidoformData::Peaks(value),
-            complexity_marker: PhantomData,
-            peptidoform_availability_marker: PhantomData,
-        }
-    }
-}
 
 /// An older version of a PEAKS export
 pub const X: PeaksFormat = PeaksFormat {

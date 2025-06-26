@@ -22,11 +22,8 @@ static NUMBER_ERROR: (&str, &str) = (
 );
 
 format_family!(
-    /// The format for Novor data
-    NovorFormat,
-    /// The Novor data
-    NovorData,
-    SemiAmbiguous, PeptidoformPresent, NovorVersion, [&OLD_DENOVO, &OLD_PSM, &NEW_DENOVO, &NEW_PSM], b',', None;
+    Novor,
+    SemiAmbiguous, PeptidoformPresent, [&OLD_DENOVO, &OLD_PSM, &NEW_DENOVO, &NEW_PSM], b',', None;
     required {
         scan_number: usize, |location: Location, _| location.parse(NUMBER_ERROR);
         mz: MassOverCharge, |location: Location, _| location.parse::<f64>(NUMBER_ERROR).map(MassOverCharge::new::<crate::system::mz>);
@@ -61,21 +58,6 @@ format_family!(
                     .collect::<Result<Vec<_>, _>>();
     }
 );
-
-impl From<NovorData> for IdentifiedPeptidoform<SemiAmbiguous, PeptidoformPresent> {
-    fn from(value: NovorData) -> Self {
-        Self {
-            score: Some((value.score / 100.0).clamp(-1.0, 1.0)),
-            local_confidence: value
-                .local_confidence
-                .as_ref()
-                .map(|lc| lc.iter().map(|v| *v / 100.0).collect()),
-            metadata: IdentifiedPeptidoformData::Novor(value),
-            complexity_marker: PhantomData,
-            peptidoform_availability_marker: PhantomData,
-        }
-    }
-}
 
 /// All available Novor versions
 #[derive(

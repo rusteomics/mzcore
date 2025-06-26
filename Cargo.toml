@@ -37,6 +37,7 @@ itertools = "0.14"
 mzdata = {version="0.54", default-features = false, features = ["miniz_oxide"]}
 ndarray = "0.16"
 ordered-float = { version = "5.0", features = ["serde"] }
+paste = "1.0"
 png = "0.17"
 probability = "0.20"
 pyo3 = "0.25"

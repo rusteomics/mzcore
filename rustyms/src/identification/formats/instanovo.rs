@@ -39,11 +39,8 @@ static BUILT_IN_MODIFICATIONS: LazyLock<SloppyParsingParameters> =
     });
 
 format_family!(
-    /// The format for any InstaNovo file
-    InstaNovoFormat,
-    /// The data from any InstaNovo file
-    InstaNovoData,
-    SemiAmbiguous, PeptidoformPresent, InstaNovoVersion, [&INSTANOVO_V1_0_0], b',', None;
+    InstaNovo,
+    SemiAmbiguous, PeptidoformPresent, [&INSTANOVO_V1_0_0], b',', None;
     required {
         scan_number: usize, |location: Location, _| location.parse(NUMBER_ERROR);
         mz: MassOverCharge, |location: Location, _| location.parse::<f64>(NUMBER_ERROR).map(MassOverCharge::new::<crate::system::mz>);
@@ -64,24 +61,6 @@ format_family!(
     }
     optional { }
 );
-
-impl From<InstaNovoData> for IdentifiedPeptidoform<SemiAmbiguous, PeptidoformPresent> {
-    fn from(value: InstaNovoData) -> Self {
-        Self {
-            score: Some(2.0 / (1.0 + 1.01_f64.powf(-value.score))),
-            local_confidence: Some(
-                value
-                    .local_confidence
-                    .iter()
-                    .map(|v| 2.0 / (1.0 + 1.25_f64.powf(-v)))
-                    .collect(),
-            ),
-            metadata: IdentifiedPeptidoformData::InstaNovo(value),
-            complexity_marker: PhantomData,
-            peptidoform_availability_marker: PhantomData,
-        }
-    }
-}
 
 /// The only known version of InstaNovo
 pub const INSTANOVO_V1_0_0: InstaNovoFormat = InstaNovoFormat {

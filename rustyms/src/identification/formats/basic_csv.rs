@@ -27,11 +27,8 @@ static NUMBER_ERROR: (&str, &str) = (
 );
 
 format_family!(
-    /// The format for any basic CSV file
-    BasicCSVFormat,
-    /// The data from any basic CSV file
-    BasicCSVData,
-    Linked, PeptidoformPresent, BasicCSVVersion, [&BASIC], b',', None;
+    BasicCSV,
+    Linked, PeptidoformPresent, [&BASIC], b',', None;
     required {
         scan_index: usize, |location: Location, _| location.parse::<usize>(NUMBER_ERROR);
         sequence: CompoundPeptidoformIon, |location: Location, custom_database: Option<&CustomDatabase>|location.parse_with(|location| CompoundPeptidoformIon::pro_forma(
@@ -45,18 +42,6 @@ format_family!(
         mode: String, |location: Location, _| Ok(location.get_string());
     }
 );
-
-impl From<BasicCSVData> for IdentifiedPeptidoform<Linked, PeptidoformPresent> {
-    fn from(value: BasicCSVData) -> Self {
-        Self {
-            score: None,
-            local_confidence: None,
-            metadata: IdentifiedPeptidoformData::BasicCSV(value),
-            complexity_marker: PhantomData,
-            peptidoform_availability_marker: PhantomData,
-        }
-    }
-}
 
 /// All possible basic CSV versions
 #[derive(

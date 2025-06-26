@@ -20,6 +20,7 @@ itertools = { workspace = true }
 mzdata = { workspace = true, optional = true }
 ndarray = { workspace = true, optional = true }
 ordered-float = { workspace = true }
+paste = { workspace = true, optional = true }
 probability = { workspace = true, optional = true }
 rand = { workspace = true, optional = true }
 rayon = { workspace = true, optional = true }
@@ -52,7 +53,7 @@ default = [
 ]
 imgt = []
 align = []
-identification = []
+identification = ["paste"]
 isotopes = ["probability", "ndarray"]
 glycan-render = []
 glycan-render-bitmap = ["zeno", "swash", "glycan-render"]

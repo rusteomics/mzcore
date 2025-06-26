@@ -31,11 +31,8 @@ static NUMBER_ERROR: (&str, &str) = (
 );
 
 format_family!(
-    /// The format for any Sage file
-    SageFormat,
-    /// The data from any Sage file
-    SageData,
-    SemiAmbiguous, PeptidoformPresent, SageVersion, [&VERSION_0_14], b'\t', None;
+    Sage,
+    SemiAmbiguous, PeptidoformPresent, [&VERSION_0_14], b'\t', None;
     required {
         aligned_rt: Ratio, |location: Location, _| location.parse(NUMBER_ERROR).map(Ratio::new::<crate::system::ratio::fraction>);
         decoy: bool, |location: Location, _| location.parse::<i8>(NUMBER_ERROR).map(|v| v == -1);
@@ -78,18 +75,6 @@ format_family!(
     }
     optional { }
 );
-
-impl From<SageData> for IdentifiedPeptidoform<SemiAmbiguous, PeptidoformPresent> {
-    fn from(value: SageData) -> Self {
-        Self {
-            score: Some(value.sage_discriminant_score.clamp(-1.0, 1.0)),
-            local_confidence: None,
-            metadata: IdentifiedPeptidoformData::Sage(value),
-            complexity_marker: PhantomData,
-            peptidoform_availability_marker: PhantomData,
-        }
-    }
-}
 
 /// An older version of a Sage export
 pub const VERSION_0_14: SageFormat = SageFormat {

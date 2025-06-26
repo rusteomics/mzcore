@@ -26,11 +26,8 @@ static NUMBER_ERROR: (&str, &str) = (
 );
 
 format_family!(
-    /// The format for any PepNet file
-    PepNetFormat,
-    /// The data from any PepNet file
-    PepNetData,
-    SemiAmbiguous, PeptidoformPresent, PepNetVersion, [&PEPNET_V1_0], b'\t', None;
+    PepNet,
+    SemiAmbiguous, PeptidoformPresent, [&PEPNET_V1_0], b'\t', None;
     required {
         peptide: Peptidoform<SemiAmbiguous>, |location: Location, custom_database: Option<&CustomDatabase>| Peptidoform::sloppy_pro_forma(
             location.full_line(),
@@ -48,18 +45,6 @@ format_family!(
     }
     optional { }
 );
-
-impl From<PepNetData> for IdentifiedPeptidoform<SemiAmbiguous, PeptidoformPresent> {
-    fn from(value: PepNetData) -> Self {
-        Self {
-            score: Some(value.score),
-            local_confidence: Some(value.local_confidence.clone()),
-            metadata: IdentifiedPeptidoformData::PepNet(value),
-            complexity_marker: PhantomData,
-            peptidoform_availability_marker: PhantomData,
-        }
-    }
-}
 
 /// The only known version of PepNet
 pub const PEPNET_V1_0: PepNetFormat = PepNetFormat {
@@ -150,6 +135,10 @@ impl MetaData for PepNetData {
 
     fn experimental_mass(&self) -> Option<Mass> {
         None
+    }
+
+    fn ppm_error(&self) -> Option<Ratio> {
+        Some(self.ppm_diff)
     }
 
     fn protein_name(&self) -> Option<FastaIdentifier<String>> {

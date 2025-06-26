@@ -33,11 +33,8 @@ static BOOL_ERROR: (&str, &str) = (
 );
 
 format_family!(
-    /// The format for any MaxQuant file
-    MaxQuantFormat,
-    /// The data from any MaxQuant file
-    MaxQuantData,
-    SemiAmbiguous, MaybePeptidoform, MaxQuantVersion, [&MSMS, &NOVO_MSMS_SCANS, &MSMS_SCANS, &SILAC], b'\t', None;
+    MaxQuant,
+    SemiAmbiguous, MaybePeptidoform, [&MSMS, &NOVO_MSMS_SCANS, &MSMS_SCANS, &SILAC], b'\t', None;
     required {
         scan_number: Vec<usize>, |location: Location, _| location.or_empty().array(';').map(|s| s.parse(NUMBER_ERROR)).collect::<Result<Vec<usize>, CustomError>>();
         modifications: String, |location: Location, _| Ok(location.get_string());
@@ -108,19 +105,6 @@ format_family!(
         total_ion_current: usize, |location: Location, _| location.parse::<usize>(NUMBER_ERROR);
     }
 );
-
-impl From<MaxQuantData> for IdentifiedPeptidoform<SemiAmbiguous, MaybePeptidoform> {
-    fn from(value: MaxQuantData) -> Self {
-        Self {
-            score: (!value.score.is_nan())
-                .then(|| 2.0 * (1.0 / (1.0 + 1.01_f64.powf(-value.score)) - 0.5)),
-            local_confidence: None,
-            metadata: IdentifiedPeptidoformData::MaxQuant(value),
-            complexity_marker: PhantomData,
-            peptidoform_availability_marker: PhantomData,
-        }
-    }
-}
 
 /// All possible MaxQuant versions
 #[derive(

@@ -65,11 +65,8 @@ static PARAMETERS: LazyLock<SloppyParsingParameters> = LazyLock::new(|| SloppyPa
 });
 
 format_family!(
-    /// The format for any NovoB file
-    NovoBFormat,
-    /// The data from any NovoB file
-    NovoBData,
-    SemiAmbiguous, MaybePeptidoform, NovoBVersion, [&NOVOB_V0_0_1], b'\t', Some(vec![
+    NovoB,
+    SemiAmbiguous, MaybePeptidoform, [&NOVOB_V0_0_1], b'\t', Some(vec![
         "mcount".to_string(),
         "charge".to_string(),
         "pepmass".to_string(),
@@ -108,18 +105,6 @@ format_family!(
     }
     optional { }
 );
-
-impl From<NovoBData> for IdentifiedPeptidoform<SemiAmbiguous, MaybePeptidoform> {
-    fn from(value: NovoBData) -> Self {
-        Self {
-            score: Some(value.score_forward.max(value.score_reverse)),
-            local_confidence: None,
-            metadata: IdentifiedPeptidoformData::NovoB(value),
-            complexity_marker: PhantomData,
-            peptidoform_availability_marker: PhantomData,
-        }
-    }
-}
 
 /// The only known version of NovoB
 pub const NOVOB_V0_0_1: NovoBFormat = NovoBFormat {
@@ -224,6 +209,14 @@ impl MetaData for NovoBData {
 
     fn experimental_mass(&self) -> Option<Mass> {
         Some(self.mass)
+    }
+
+    fn ppm_error(&self) -> Option<Ratio> {
+        Some(if self.score_forward >= self.score_reverse {
+            self.ppm_diff_forward
+        } else {
+            self.ppm_diff_reverse
+        })
     }
 
     fn protein_name(&self) -> Option<FastaIdentifier<String>> {

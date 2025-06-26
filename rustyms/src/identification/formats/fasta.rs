@@ -715,7 +715,7 @@ impl From<FastaData> for IdentifiedPeptidoform<SemiAmbiguous, PeptidoformPresent
         Self {
             score: None,
             local_confidence: None,
-            metadata: IdentifiedPeptidoformData::Fasta(value),
+            data: IdentifiedPeptidoformData::Fasta(value),
             complexity_marker: PhantomData,
             peptidoform_availability_marker: PhantomData,
         }

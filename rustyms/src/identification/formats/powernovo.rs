@@ -29,11 +29,8 @@ static NUMBER_ERROR: (&str, &str) = (
 );
 
 format_family!(
-    /// The format for any PowerNovo file
-    PowerNovoFormat,
-    /// The data from any PowerNovo file
-    PowerNovoData,
-    SemiAmbiguous, PeptidoformPresent, PowerNovoVersion, [&POWERNOVO_V1_0_1], b',', None;
+    PowerNovo,
+    SemiAmbiguous, PeptidoformPresent, [&POWERNOVO_V1_0_1], b',', None;
     required {
         title: String, |location: Location, _| Ok(location.get_string());
         peptide: Peptidoform<SemiAmbiguous>, |location: Location, custom_database: Option<&CustomDatabase>| Peptidoform::sloppy_pro_forma(
@@ -66,18 +63,6 @@ format_family!(
 /// The Regex to match against PowerNovo scan fields
 static IDENTIFER_REGEX: LazyLock<regex::Regex> =
     LazyLock::new(|| regex::Regex::new(r"^(.*):index=(\d+)$").unwrap());
-
-impl From<PowerNovoData> for IdentifiedPeptidoform<SemiAmbiguous, PeptidoformPresent> {
-    fn from(value: PowerNovoData) -> Self {
-        Self {
-            score: Some(value.score),
-            local_confidence: Some(value.local_confidence.clone()),
-            metadata: IdentifiedPeptidoformData::PowerNovo(value),
-            complexity_marker: PhantomData,
-            peptidoform_availability_marker: PhantomData,
-        }
-    }
-}
 
 /// The only known version of PowerNovo
 pub const POWERNOVO_V1_0_1: PowerNovoFormat = PowerNovoFormat {
