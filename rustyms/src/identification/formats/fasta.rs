@@ -18,7 +18,7 @@ use crate::{
         IdentifiedPeptidoform, IdentifiedPeptidoformData, KnownFileFormat, MetaData,
         PeptidoformPresent, SpectrumIds,
     },
-    prelude::CompoundPeptidoformIon,
+    prelude::{CompoundPeptidoformIon, HasPeptidoformImpl},
     sequence::{
         AminoAcid, AnnotatedPeptide, Annotation, Peptidoform, Region, SemiAmbiguous,
         SequenceElement,
@@ -52,11 +52,21 @@ impl PartialOrd for FastaData {
     }
 }
 
-impl AnnotatedPeptide for FastaData {
+impl HasPeptidoformImpl for FastaData {
     type Complexity = SemiAmbiguous;
-    fn peptide(&self) -> &Peptidoform<SemiAmbiguous> {
-        &self.peptide
+    fn peptidoform(&self) -> &Peptidoform<Self::Complexity> {
+        self.peptide()
     }
+}
+
+impl HasPeptidoformImpl for &FastaData {
+    type Complexity = SemiAmbiguous;
+    fn peptidoform(&self) -> &Peptidoform<Self::Complexity> {
+        self.peptide()
+    }
+}
+
+impl AnnotatedPeptide for FastaData {
     fn regions(&self) -> &[(Region, usize)] {
         &self.regions
     }

@@ -1,11 +1,7 @@
-use crate::sequence::{HasPeptidoformImpl, Peptidoform};
+use crate::sequence::HasPeptidoformImpl;
 
 /// An annotated peptide
-pub trait AnnotatedPeptide {
-    /// The complexity of the peptide
-    type Complexity;
-    /// Get the peptide
-    fn peptide(&self) -> &Peptidoform<Self::Complexity>;
+pub trait AnnotatedPeptide: HasPeptidoformImpl {
     /// Get the regions, as a list of the regions in order with the length of each region, these are
     /// required to be as long as the full peptide.
     fn regions(&self) -> &[(Region, usize)];
@@ -37,13 +33,6 @@ pub trait AnnotatedPeptide {
             .iter()
             .filter(move |a| a.1 == index)
             .map(|a| &a.0)
-    }
-}
-
-impl<T: AnnotatedPeptide> HasPeptidoformImpl for T {
-    type Complexity = T::Complexity;
-    fn peptidoform(&self) -> &Peptidoform<T::Complexity> {
-        self.peptide()
     }
 }
 
