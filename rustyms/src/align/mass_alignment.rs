@@ -24,10 +24,34 @@ use crate::{
 /// The [`AlignType`] controls the alignment behaviour, global/local or anything in between.
 /// # Panics
 /// It panics when the length of `seq_a` or `seq_b` is bigger than [`isize::MAX`].
-#[expect(clippy::too_many_lines)]
 pub fn align<const STEPS: u16, A: HasPeptidoform<SimpleLinear>, B: HasPeptidoform<SimpleLinear>>(
     seq_a: A,
     seq_b: B,
+    scoring: AlignScoring<'_>,
+    align_type: AlignType,
+) -> Alignment<A, B> {
+    let peptidoform_a = seq_a.cast_peptidoform();
+    let peptidoform_b = seq_b.cast_peptidoform();
+    let masses_a: DiagonalArray<Multi<Mass>> =
+        calculate_masses::<STEPS>(peptidoform_a, scoring.mass_mode);
+    let masses_b: DiagonalArray<Multi<Mass>> =
+        calculate_masses::<STEPS>(peptidoform_b, scoring.mass_mode);
+    align_cached::<STEPS, A, B>(seq_a, &masses_a, seq_b, &masses_b, scoring, align_type)
+}
+
+/// Do mass based alignment, but with precomputed masses, see [align] for the normal entry point variant.
+/// # Panics
+/// It panics when the length of `seq_a` or `seq_b` is bigger than [`isize::MAX`].
+#[expect(clippy::too_many_lines)]
+pub(super) fn align_cached<
+    const STEPS: u16,
+    A: HasPeptidoform<SimpleLinear>,
+    B: HasPeptidoform<SimpleLinear>,
+>(
+    seq_a: A,
+    masses_a: &DiagonalArray<Multi<Mass>>,
+    seq_b: B,
+    masses_b: &DiagonalArray<Multi<Mass>>,
     scoring: AlignScoring<'_>,
     align_type: AlignType,
 ) -> Alignment<A, B> {
@@ -38,10 +62,6 @@ pub fn align<const STEPS: u16, A: HasPeptidoform<SimpleLinear>, B: HasPeptidofor
 
     let mut matrix = Matrix::new(peptidoform_a.len(), peptidoform_b.len());
     let mut global_highest = (0, 0, 0);
-    let masses_a: DiagonalArray<Multi<Mass>> =
-        calculate_masses::<STEPS>(peptidoform_a, scoring.mass_mode);
-    let masses_b: DiagonalArray<Multi<Mass>> =
-        calculate_masses::<STEPS>(peptidoform_b, scoring.mass_mode);
     let zero: Multi<Mass> = Multi::default();
 
     if align_type.left.global_a() {
@@ -330,7 +350,7 @@ fn score<A: AtMax<SimpleLinear>, B: AtMax<SimpleLinear>>(
 }
 
 /// Get the masses of all sequence elements
-fn calculate_masses<const STEPS: u16>(
+pub(super) fn calculate_masses<const STEPS: u16>(
     sequence: &Peptidoform<impl AtMax<SimpleLinear>>,
     mass_mode: MassMode,
 ) -> DiagonalArray<Multi<Mass>> {

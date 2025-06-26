@@ -15,7 +15,7 @@ use crate::{
 /// A collection of potentially multiple of the generic type, it is used be able to easily
 /// combine multiple of this multi struct into all possible combinations.
 #[derive(Clone, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
-pub struct Multi<M>(Rc<[M]>);
+pub struct Multi<M>(Vec<M>);
 
 impl<M: Eq + std::hash::Hash + Clone> Multi<M> {
     /// Get all unique values
@@ -46,7 +46,7 @@ impl<M> Deref for Multi<M> {
 impl<M: Default> Default for Multi<M> {
     // Default is one empty M to make the cartesian product with a default return useful results
     fn default() -> Self {
-        Self(Rc::new([M::default()]))
+        Self(vec![M::default()])
     }
 }
 
@@ -297,13 +297,13 @@ where
 
 impl<M> From<M> for Multi<M> {
     fn from(value: M) -> Self {
-        Self(Rc::new([value]))
+        Self(vec![value])
     }
 }
 
 impl<M: Clone> From<&M> for Multi<M> {
     fn from(value: &M) -> Self {
-        Self(Rc::new([value.clone()]))
+        Self(vec![value.clone()])
     }
 }
 

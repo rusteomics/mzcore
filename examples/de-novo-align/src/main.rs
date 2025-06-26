@@ -1,20 +1,17 @@
 //! Align many peptides to a database using mass based alignment
-use std::{collections::HashMap, fs::File, io::BufWriter};
+use std::{collections::HashMap, fs::File, io::BufWriter, sync::Arc};
 
-use align::AlignScoring;
 use clap::Parser;
-use identification::SpectrumIds;
 use itertools::{Itertools, MinMaxResult};
 use rayon::prelude::*;
 use rustyms::{
-    align::{AlignType, align},
+    align::AlignScoring,
+    align::{AlignIndex, AlignType},
+    identification::SpectrumIds,
     identification::{
-        FastaData, IdentifiedPeptidoform, MetaData, PeptidoformPresent, csv::write_csv,
-        open_identified_peptides_file,
+        FastaData, IdentifiedPeptidoform, MetaData, csv::write_csv, open_identified_peptides_file,
     },
-    prelude::Peptidoform,
-    sequence::{HasPeptidoform, HasPeptidoformImpl, SemiAmbiguous},
-    *,
+    prelude::*,
 };
 
 #[derive(Debug, Parser)]
@@ -39,50 +36,34 @@ fn main() {
         .filter_map(IdentifiedPeptidoform::into_semi_ambiguous)
         .collect_vec();
     let database = FastaData::parse_file(args.database).unwrap();
+    let index = AlignIndex::<4, Arc<FastaData>>::new(
+        database.into_iter().map(Arc::new),
+        MassMode::Monoisotopic,
+        AlignScoring::default(),
+        AlignType::EITHER_GLOBAL,
+    );
 
-    let alignments: Vec<_> = peptides
-        .par_iter()
-        .flat_map(|peptide| {
-            let alignments = database
-                .iter()
-                .map(|db| {
-                    (
-                        db,
-                        peptide,
-                        align::<
-                            4,
-                            &Peptidoform<SemiAmbiguous>,
-                            &IdentifiedPeptidoform<SemiAmbiguous, PeptidoformPresent>,
-                        >(
-                            db.peptide(),
-                            peptide,
-                            AlignScoring::default(),
-                            AlignType::EITHER_GLOBAL,
-                        ),
-                    )
-                })
-                .collect_vec();
+    let alignments: Vec<_> = index
+        .par_align(peptides)
+        .flat_map(|alignments| {
+            let alignments = alignments.collect_vec();
             let max = alignments
                 .iter()
-                .max_by(|a, b| a.2.normalised_score().total_cmp(&b.2.normalised_score()))
+                .max_by(|a, b| a.normalised_score().total_cmp(&b.normalised_score()))
                 .unwrap()
-                .2
                 .normalised_score();
             let mut alignments = alignments
                 .into_iter()
-                .filter(|a| a.2.normalised_score() == max)
+                .filter(|a| a.normalised_score() == max)
                 .collect_vec();
             if alignments.len() == 1 {
-                let (d, p, a) = alignments.pop().unwrap();
-                vec![(d, p, a, true)]
+                let a = alignments.pop().unwrap();
+                vec![(a, true)]
             } else {
-                alignments
-                    .into_iter()
-                    .map(|(d, p, a)| (d, p, a, false))
-                    .collect_vec()
+                alignments.into_iter().map(|a| (a, false)).collect_vec()
             }
         })
-        .map(|(db, peptide, alignment, unique)| {
+        .map(|(alignment, unique)| {
             HashMap::from([
                 (
                     "Peptide".to_string(),
@@ -90,7 +71,7 @@ fn main() {
                 ),
                 (
                     "Spectra ref".to_string(),
-                    match peptide.scans() {
+                    match alignment.seq_b().scans() {
                         SpectrumIds::None => String::new(),
                         SpectrumIds::FileNotKnown(scans) => scans.iter().join(";"),
                         SpectrumIds::FileKnown(scans) => scans
@@ -103,9 +84,15 @@ fn main() {
                 ),
                 (
                     "De novo score".to_string(),
-                    peptide.score.map_or(String::new(), |s| s.to_string()),
+                    alignment
+                        .seq_b()
+                        .score
+                        .map_or(String::new(), |s| s.to_string()),
                 ),
-                ("Protein".to_string(), db.identifier().to_string()),
+                (
+                    "Protein".to_string(),
+                    alignment.seq_a().identifier().to_string(),
+                ),
                 (
                     "Alignment score".to_string(),
                     alignment.normalised_score().to_string(),
@@ -131,15 +118,20 @@ fn main() {
                 ),
                 (
                     "Z".to_string(),
-                    peptide.charge().map_or(0, |c| c.value).to_string(),
+                    alignment
+                        .seq_b()
+                        .charge()
+                        .map_or(0, |c| c.value)
+                        .to_string(),
                 ),
                 (
                     "Peptide length".to_string(),
-                    peptide.peptidoform().len().to_string(),
+                    alignment.seq_b().peptidoform().len().to_string(),
                 ),
                 (
                     "Retention time".to_string(),
-                    peptide
+                    alignment
+                        .seq_b()
                         .retention_time()
                         .map_or(f64::NAN, |t| t.value)
                         .to_string(),

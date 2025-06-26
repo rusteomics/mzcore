@@ -30,6 +30,7 @@ mod alignment;
 #[cfg(test)]
 mod bad_alignments;
 mod diagonal_array;
+mod index;
 mod mass_alignment;
 mod multi_alignment;
 mod piece;
@@ -44,6 +45,7 @@ pub use consecutive::*;
 
 pub use align_type::{AlignType, Side};
 pub use alignment::{Alignment, Score, Stats};
+pub use index::AlignIndex;
 pub use mass_alignment::align;
 pub use piece::Piece;
 pub use scoring::{AlignScoring, MatchType, PairMode};
