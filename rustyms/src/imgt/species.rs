@@ -1,6 +1,18 @@
 #![allow(dead_code, unreachable_patterns)]
 use serde::{Deserialize, Serialize};
-use std::fmt::Display;
+use std::{error::Error, fmt::Display};
+
+/// Error type to indicate that the given name was not a recognised species from the IMGT database
+#[derive(Debug, Default, Clone, Copy)]
+pub struct NotASpecies;
+
+impl Display for NotASpecies {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Not a species in the IMGT database")
+    }
+}
+
+impl Error for NotASpecies {}
 
 macro_rules! species {
     ($($identifier:ident, $common:expr, $imgt:expr, $scientific:expr)*) => {
@@ -53,7 +65,7 @@ macro_rules! species {
             /// # Errors
             /// `Err` when the name could not be recognised (it is case-sensitive).
             /// `Ok(None)` when it is recognised as a species used by IMGT, but it is not a proper species (vector/plasmid etc.).
-            pub fn from_imgt(s: &str) -> Result<Option<Self>, ()> {
+            pub fn from_imgt(s: &str) -> Result<Option<Self>, NotASpecies> {
                 match s {
                     $($imgt => Ok(Some(Self::$identifier)),)*
                     "synthetic construct" | "synthetic construct (synthetic construct)" |
@@ -89,7 +101,7 @@ macro_rules! species {
                     "Phagemid vector pMID21" |
                     "Enterobacteria phage M13 vector DY3F63"
                         => Ok(None),
-                    _ => Err(()),
+                    _ => Err(NotASpecies),
                 }
             }
         }

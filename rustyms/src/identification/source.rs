@@ -4,7 +4,7 @@ use crate::{
     error::CustomError,
     identification::{IdentifiedPeptidoform, MaybePeptidoform, MetaData},
     ontology::CustomDatabase,
-    sequence::AtLeast,
+    sequence::{AtLeast, Linked},
 };
 
 /// A version for an identified peptide version
@@ -104,6 +104,12 @@ where
         Ok(parsed)
     }
 }
+
+/// A general generic identified peptidoform iterator from any source format
+pub type GeneralIdentifiedPeptidoforms<'lifetime> = Box<
+    dyn Iterator<Item = Result<IdentifiedPeptidoform<Linked, MaybePeptidoform>, CustomError>>
+        + 'lifetime,
+>;
 
 /// Convenience type to not have to type out long iterator types
 pub type BoxedIdentifiedPeptideIter<'lifetime, T> = IdentifiedPeptidoformIter<

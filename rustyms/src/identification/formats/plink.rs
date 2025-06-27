@@ -8,6 +8,7 @@ use std::{
 
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
+use uom::ConstZero;
 
 use crate::{
     chemistry::Chemical,
@@ -53,7 +54,7 @@ format_family!(
         theoretical_mass: Mass, |location: Location, _| location.parse::<f64>(NUMBER_ERROR).map(Mass::new::<crate::system::dalton>);
         peptide_type: PLinkPeptideType, |location: Location, _| location.parse::<PLinkPeptideType>(TYPE_ERROR);
         peptidoform: PeptidoformIon, |location: Location, _| {
-            match plink_separate(location.clone(), "peptide")? {
+            match plink_separate(&location, "peptide")? {
                 (pep1, Some(pos1), Some(pep2), Some(pos2)) => {
                     let pep1 = Peptidoform::sloppy_pro_forma(location.full_line(), pep1, None, &SloppyParsingParameters::default())?;
                     let pep2 = Peptidoform::sloppy_pro_forma(location.full_line(), pep2, None, &SloppyParsingParameters::default())?;
@@ -125,7 +126,7 @@ format_family!(
         q_value: f64, |location: Location, _| location.parse::<f64>(NUMBER_ERROR);
         proteins: Vec<(String, Option<usize>, Option<String>, Option<usize>)>, |location: Location, _|  {
             location.array('/').filter(|l| !l.as_str().trim().is_empty()).map(|l| {
-                let separated = plink_separate(l.clone(), "protein")?;
+                let separated = plink_separate(&l, "protein")?;
 
                 Ok((l.full_line()[separated.0].trim().to_string(), separated.1.map(|(a, _)| a), separated.2.map(|p| l.full_line()[p].trim().to_string()), separated.3.map(|(a, _)| a)))
             })
@@ -200,7 +201,7 @@ format_family!(
                     .first()
                     .unwrap()
                     .monoisotopic_mass()
-                    - (parsed.peptide_type == PLinkPeptideType::Hydrolysed).then(|| molecular_formula!(H 2 O 1).monoisotopic_mass()).unwrap_or_default();
+                    - if parsed.peptide_type == PLinkPeptideType::Hydrolysed { molecular_formula!(H 2 O 1).monoisotopic_mass() } else { Mass::ZERO };
 
             let custom_linkers = custom_database.map_or(
                 Vec::new(),
@@ -286,7 +287,7 @@ static KNOWN_CROSS_LINKERS: LazyLock<Vec<(Mass, SimpleModification)>> = LazyLock
 /// # Errors
 /// If the format is invalid
 fn plink_separate(
-    location: Location<'_>,
+    location: &Location<'_>,
     field: &'static str,
 ) -> Result<
     (

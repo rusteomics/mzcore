@@ -64,5 +64,5 @@ pub trait IsAminoAcid: MultiChemical {
         sequence_index: SequencePosition,
         peptidoform_index: usize,
         peptidoform_ion_index: usize,
-    ) -> Option<Cow<'_, Vec<(SatelliteLabel, MolecularFormula)>>>;
+    ) -> Option<Cow<'_, [(SatelliteLabel, MolecularFormula)]>>;
 }

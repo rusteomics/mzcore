@@ -21,7 +21,7 @@ use std::{ops::Range, str::FromStr};
 ///
 /// # Notes
 /// * Do not forget to implement `MetaData` for the `<$format>Data` type, this will set up the logic
-///  for an automatic `From<format> for IdentifiedPeptidoformData` implementation.
+///   for an automatic `From<format> for IdentifiedPeptidoformData` implementation.
 /// * Do not forget to create a `<$format>Version` enum which contains all supported version of the
 ///   format, which additionally should implement `IdentifiedPeptidoformVersion`.
 /// * For each version a public constant should be generated that contains an instantiation of the

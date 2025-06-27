@@ -153,14 +153,7 @@ impl FileFormat {
         self,
         path: &Path,
         custom_database: Option<&'a CustomDatabase>,
-    ) -> Result<
-        Box<
-            dyn Iterator<
-                    Item = Result<IdentifiedPeptidoform<Linked, MaybePeptidoform>, CustomError>,
-                > + 'a,
-        >,
-        CustomError,
-    > {
+    ) -> Result<GeneralIdentifiedPeptidoforms<'a>, CustomError> {
         match self {
             Self::BasicCSV(version) => {
                 BasicCSVData::parse_file(path, custom_database, false, version)

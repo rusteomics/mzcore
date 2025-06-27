@@ -1,7 +1,4 @@
-use std::{
-    ops::{Add, AddAssign, Deref, Mul, MulAssign, Neg, Sub},
-    rc::Rc,
-};
+use std::ops::{Add, AddAssign, Deref, Mul, MulAssign, Neg, Sub};
 
 use itertools::{Itertools, MinMaxResult};
 use serde::{Deserialize, Serialize};
@@ -309,7 +306,7 @@ impl<M: Clone> From<&M> for Multi<M> {
 
 impl<M> From<Vec<M>> for Multi<M> {
     fn from(value: Vec<M>) -> Self {
-        Self(value.into())
+        Self(value)
     }
 }
 
@@ -361,13 +358,13 @@ impl Multi<MolecularFormula> {
 
     pub(crate) fn with_neutral_loss(self, loss: &NeutralLoss) -> Self {
         let mut new_options = Vec::with_capacity(self.0.len() * 2);
-        for option in self.0.iter() {
+        for option in &self.0 {
             new_options.push(match loss {
                 NeutralLoss::Gain(m) => option + m,
                 NeutralLoss::Loss(m) | NeutralLoss::SideChainLoss(m, _) => option - m,
             });
         }
         new_options.extend_from_slice(&self.0);
-        Self(new_options.into())
+        Self(new_options)
     }
 }
