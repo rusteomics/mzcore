@@ -355,7 +355,7 @@ pub(crate) fn next_num(
 /// A number of characters, used as length or index
 pub(crate) type Characters = usize;
 
-/// Get the next number starting at the byte range given, returns length in bytes and the number.
+/// Get the next number starting at the byte range given, returns length in bytes, boolean indicating if the number is positive, and the number.
 /// # Errors
 /// Returns none if the number is too big to fit in a `Number`.
 pub(crate) fn next_number<const ALLOW_SIGN: bool, const FLOATING_POINT: bool, Number: FromStr>(

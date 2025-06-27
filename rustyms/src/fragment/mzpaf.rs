@@ -17,8 +17,10 @@ use crate::{
     ontology::{CustomDatabase, Ontology},
     prelude::{Chemical, CompoundPeptidoformIon, MultiChemical, SequenceElement},
     quantities::Tolerance,
-    sequence::{AminoAcid, Peptidoform, SemiAmbiguous, SimpleModification},
-    system::{MassOverCharge, OrderedMassOverCharge, e, isize::Charge, mz},
+    sequence::{
+        AminoAcid, Peptidoform, SemiAmbiguous, SimpleModification, SimpleModificationInner,
+    },
+    system::{Mass, MassOverCharge, OrderedMassOverCharge, e, isize::Charge, mz},
 };
 
 /// Parse a mzPAF peak annotation line (can contain multiple annotations).
@@ -75,19 +77,6 @@ fn parse_annotation(
     let (left_range, charge) = parse_charge(line, left_range)?;
     let (left_range, deviation) = parse_deviation(line, left_range)?;
     let (left_range, confidence) = parse_confidence(line, left_range)?;
-    if let Some(adduct) = &adduct_type {
-        if adduct.charge() != charge {
-            return Err(CustomError::error(
-                "Invalid mzPAF annotation",
-                format!(
-                    "The defined charge ({}) should be identical to the total charge ({}) as defined in the adduct ions",
-                    adduct.charge().value,
-                    charge.value
-                ),
-                Context::line_range(None, line, range),
-            ));
-        }
-    }
     Ok((
         left_range,
         PeakAnnotation {
@@ -542,6 +531,16 @@ fn parse_ion(
                             &line[range.clone()][first..last.0 + last.1.len_utf8()],
                             None,
                         )
+                        .or_else(|| {
+                            line[range.clone()][first..last.0 + last.1.len_utf8()]
+                                .parse::<f64>()
+                                .ok()
+                                .map(|n| {
+                                    std::sync::Arc::new(SimpleModificationInner::Mass(
+                                        Mass::new::<crate::system::dalton>(n).into(),
+                                    ))
+                                })
+                        })
                         .ok_or_else(|| {
                             Ontology::Unimod.find_closest(
                                 &line[range.clone()][first..last.0 + last.1.len_utf8()],
@@ -714,7 +713,11 @@ fn parse_ion(
                 IonType::Formula(formula),
             ))
         }
-        Some(b's') => todo!("SIMLES not (yet) supported"), // TODO: return as Formula
+        Some(b's') => Err(CustomError::error(
+            "Unsupported feature",
+            "SMILES strings are currently not supported in mzPAF definitions",
+            Context::line(None, line, range.start, 1),
+        )), // TODO: return as Formula
         Some(_) => Err(CustomError::error(
             "Invalid ion",
             "An ion cannot start with this character",
@@ -759,11 +762,9 @@ fn parse_neutral_loss(
             num_offset = num.0;
         }
 
-        if line
-            .as_bytes()
-            .get(range.start_index() + 1 + offset)
-            .copied()
-            == Some(b'i')
+        println!("{}", &line[range.start_index() + 1 + offset..]);
+        if line[range.start_index() + 1 + offset..].starts_with('i')
+            || line[range.start_index() + 1 + offset..].starts_with("[M+")
         {
             return Ok((range.add_start(offset - num_offset), neutral_losses));
         }
@@ -796,6 +797,15 @@ fn parse_neutral_loss(
                     b'-' => NeutralLoss::Loss(formula * amount),
                     _ => unreachable!(),
                 });
+            } else if let Ok(formula) =
+                MolecularFormula::from_pro_forma(line, first - 1..=last, false, false, true, false)
+            {
+                // Catches the case of a single isotope as formula
+                neutral_losses.push(match c {
+                    b'+' => NeutralLoss::Gain(formula * amount),
+                    b'-' => NeutralLoss::Loss(formula * amount),
+                    _ => unreachable!(),
+                });
             } else {
                 return Err(CustomError::error(
                     "Unknown mzPAF named neutral loss",
@@ -807,13 +817,16 @@ fn parse_neutral_loss(
             let first = range.start_index() + 1 + offset;
             let last = line[first..]
                 .char_indices()
-                .take_while(|(_, c)| c.is_ascii_alphanumeric() || *c == '[' || *c == ']') // TODO check if isotopes are allowed here, theoretically yes, but not clearly specified in the spec
+                .take_while(|(_, c)| c.is_ascii_alphanumeric() || *c == '[' || *c == ']')
                 .last()
                 .unwrap();
+            let mut last = last.0 + last.1.len_utf8();
+            if line[first..first + last].ends_with("[M") {
+                last -= 2; // Detect any adduct types which might otherwise sneak in
+            }
             let formula = MolecularFormula::from_pro_forma(
-                // TODO 'i' is seen as iodine while the thing should casing specific
                 line,
-                first..first + last.0 + last.1.len_utf8(),
+                first..first + last,
                 false,
                 false,
                 true,
@@ -824,7 +837,7 @@ fn parse_neutral_loss(
                 b'-' => NeutralLoss::Loss(formula * amount),
                 _ => unreachable!(),
             });
-            offset += 1 + last.0 + last.1.len_utf8();
+            offset += 1 + last;
         }
     }
     Ok((range.add_start(offset), neutral_losses))
@@ -839,7 +852,7 @@ fn parse_isotopes(
     while let Some(c @ (b'-' | b'+')) = line.as_bytes().get(range.start_index() + offset).copied() {
         offset += 1;
         let mut amount = 1;
-        // Parse leading number to detect how many times this isotope occured
+        // Parse leading number to detect how many times this isotope occurred
         if let Some(num) = next_number::<false, false, u16>(line, range.add_start(offset)) {
             amount = i32::from(num.2.map_err(|err| {
                 CustomError::error(
@@ -919,6 +932,15 @@ fn parse_adduct_type(
     range: Range<usize>,
 ) -> Result<(Range<usize>, Option<MolecularCharge>), CustomError> {
     if line.as_bytes().get(range.start_index()).copied() == Some(b'[') {
+        let closing =
+            end_of_enclosure(line, range.start_index() + 1, b'[', b']').ok_or_else(|| {
+                CustomError::error(
+                    "Invalid mzPAF adduct type",
+                    "No closing bracket found for opening bracket of adduct type",
+                    Context::line(None, line, range.start_index(), 1),
+                )
+            })?; // Excluding the ']' closing bracket
+        println!("at: {}", &line[range.start..closing]);
         if line.as_bytes().get(range.start_index() + 1).copied() != Some(b'M') {
             return Err(CustomError::error(
                 "Invalid mzPAF adduct type",
@@ -927,14 +949,20 @@ fn parse_adduct_type(
             ));
         }
         let mut carriers = Vec::new();
-        let mut offset = 2;
+        let mut offset = 2; // '[M'
         while let Some(c @ (b'-' | b'+')) =
             line.as_bytes().get(range.start_index() + offset).copied()
         {
             offset += 1; // The sign
+            if range.start_index() + offset >= closing {
+                return Ok((
+                    range.add_start(offset + 2),
+                    Some(MolecularCharge::new(&carriers)),
+                ));
+            }
             let mut amount = 1;
             // Parse leading number to detect how many times this adduct occurred
-            if let Some(num) = next_number::<false, false, u16>(line, range.add_start(1 + offset)) {
+            if let Some(num) = next_number::<false, false, u16>(line, range.add_start(offset)) {
                 amount = i32::from(num.2.map_err(|err| {
                     CustomError::error(
                         "Invalid mzPAF adduct leading amount",
@@ -942,8 +970,8 @@ fn parse_adduct_type(
                         Context::line(
                             None,
                             line,
-                            range.start_index() + 1 + offset,
-                            range.start_index() + 1 + offset + num.0,
+                            range.start_index() + offset,
+                            range.start_index() + offset + num.0,
                         ),
                     )
                 })?);
@@ -956,9 +984,11 @@ fn parse_adduct_type(
             let first = range.start_index() + offset;
             let last = line[first..]
                 .char_indices()
-                .take_while(|(_, c)| c.is_ascii_alphanumeric()) // TODO are isotopes allowed here?
+                .take_while(|(_, c)| c.is_ascii_alphanumeric() || *c == '[' || *c == ']')
                 .last()
-                .map_or(0, |last| last.0 + last.1.len_utf8());
+                .map_or(0, |last| last.0 + last.1.len_utf8())
+                .min(closing - first); // Prevent the closing bracket from being used in an isotope
+            println!("fo: {}", &line[first..first + last]);
             let formula = MolecularFormula::from_pro_forma(
                 line,
                 first..first + last,
@@ -992,7 +1022,7 @@ fn parse_adduct_type(
 fn parse_charge(line: &str, range: Range<usize>) -> Result<(Range<usize>, Charge), CustomError> {
     if line.as_bytes().get(range.start_index()).copied() == Some(b'^') {
         let charge =
-            next_number::<false, false, u32>(line, range.add_start(1_usize)).ok_or_else(|| {
+            next_number::<true, false, isize>(line, range.add_start(1_usize)).ok_or_else(|| {
                 CustomError::error(
                     "Invalid mzPAF charge",
                     "The number after the charge symbol should be present, eg '^2'.",
@@ -1002,24 +1032,14 @@ fn parse_charge(line: &str, range: Range<usize>) -> Result<(Range<usize>, Charge
         Ok((
             range.add_start(charge.0 + 1),
             Charge::new::<e>(
-                isize::try_from(charge.2.map_err(|err| {
-                    CustomError::error(
-                        "Invalid mzPAF charge",
-                        format!("The charge number {}", explain_number_error(&err)),
-                        Context::line(None, line, range.start_index() + 1, charge.0),
-                    )
-                })?)
-                .map_err(|_| {
-                    CustomError::error(
-                        "Invalid mzPAF charge",
-                        format!(
-                            "The charge number is outside of the range of {}..{}",
-                            isize::MIN,
-                            isize::MAX
-                        ),
-                        Context::line(None, line, range.start_index() + 1, charge.0),
-                    )
-                })?,
+                if charge.1 { -1 } else { 1 }
+                    * charge.2.map_err(|err| {
+                        CustomError::error(
+                            "Invalid mzPAF charge",
+                            format!("The charge number {}", explain_number_error(&err)),
+                            Context::line(None, line, range.start_index() + 1, charge.0),
+                        )
+                    })?,
             ),
         ))
     } else {
@@ -1097,6 +1117,7 @@ fn parse_confidence(
     }
 }
 
+// TODO: update list
 static MZPAF_NAMED_MOLECULES: LazyLock<Vec<(&str, MolecularFormula)>> = LazyLock::new(|| {
     vec![
         ("hex", molecular_formula!(C 6 H 10 O 5)),
@@ -1226,89 +1247,94 @@ macro_rules! mzpaf_test {
     };
 }
 
-mzpaf_test!("b2-H2O/3.2ppm,b4-H2O^2/3.2ppm", positive_1);
-mzpaf_test!("b2-H2O/3.2ppm*0.75,b4-H2O^2/3.2ppm*0.25", positive_2);
-mzpaf_test!("1@y12/0.13,2@b9-NH3/0.23", positive_3);
-mzpaf_test!("0@y1{K}", positive_4);
-mzpaf_test!("0@y1{K}-NH3", positive_5);
-mzpaf_test!("y1/-1.4ppm", positive_6);
-mzpaf_test!("y1/-0.0002", positive_7);
-mzpaf_test!("y4-H2O+2i[M+H+Na]^2", positive_8);
-mzpaf_test!("?", positive_9);
-mzpaf_test!("?^3", positive_10);
-mzpaf_test!("?+2i^4", positive_11);
-mzpaf_test!("?17", positive_12);
-mzpaf_test!("?17+i/1.45ppm", positive_13);
-mzpaf_test!("?17-H2O/-0.87ppm", positive_14);
-mzpaf_test!("0@b2{LL}", positive_15);
-mzpaf_test!("0@y1{K}", positive_16);
-mzpaf_test!("0@b2{LC[Carbamidomethyl]}", positive_17);
-mzpaf_test!("0@b1{[Acetyl]-M}", positive_18);
-mzpaf_test!("0@y4{M[Oxidation]ACK}-CH4OS[M+H+Na]^2", positive_19a);
-mzpaf_test!("0@y44{M[Oxidation]ACK}-CH4OS[M+H+Na]^2", positive_19b);
-mzpaf_test!("0@y444{M[Oxidation]ACK}-CH4OS[M+H+Na]^2", positive_19c);
-mzpaf_test!("m3:6", positive_20);
-mzpaf_test!("b3-C2H3NO", positive_21);
-mzpaf_test!("m3:6-CO", positive_22);
-mzpaf_test!("m3:6-CO-H2O^2", positive_23);
-mzpaf_test!("m3:4/1.1ppm,m4:5/1.1ppm", positive_24);
-mzpaf_test!("m3:5", positive_25);
-mzpaf_test!("IY", positive_26);
-mzpaf_test!("IH", positive_27);
-mzpaf_test!("IL-CH2", positive_28);
-mzpaf_test!("IC[Carbamidomethyl]", positive_29);
-mzpaf_test!("IY[Phospho]", positive_30);
-mzpaf_test!("p^2", positive_31a);
-mzpaf_test!("p^-2", positive_31b);
-mzpaf_test!("p-H3PO4^2", positive_32);
-mzpaf_test!("p^4", positive_33);
-mzpaf_test!("p+H^3", positive_34);
-mzpaf_test!("p^3", positive_35);
-mzpaf_test!("p+2H^2", positive_36);
-mzpaf_test!("p^2", positive_37);
-mzpaf_test!("p+H^2", positive_38);
-mzpaf_test!("p+3H", positive_39);
-mzpaf_test!("p+2H", positive_40);
-mzpaf_test!("p+H", positive_41);
-mzpaf_test!("p", positive_42);
-mzpaf_test!("r[TMT127N]", positive_43);
-mzpaf_test!("r[iTRAQ114]", positive_44);
-mzpaf_test!("r[TMT6plex]", positive_45);
-mzpaf_test!("r[Hex]", positive_46);
-mzpaf_test!("r[Adenosine]", positive_47);
-mzpaf_test!("0@_{Urocanic Acid}", positive_48);
-mzpaf_test!("f{C13H9}/-0.55ppm", positive_49);
-mzpaf_test!("f{C12H9N}/0.06ppm", positive_50);
-mzpaf_test!("f{C13H9N}/-2.01ppm", positive_51);
-mzpaf_test!("f{C13H10N}/-0.11ppm", positive_52);
-mzpaf_test!("f{C13H11N}/-0.09ppm", positive_53);
-mzpaf_test!("f{C13H12N}/0.26ppm", positive_54);
-mzpaf_test!("f{C14H10N}/0.19ppm", positive_55);
-mzpaf_test!("f{C14H11N}/0.45ppm", positive_56);
-mzpaf_test!("f{C14H10NO}/0.03ppm", positive_57);
-mzpaf_test!("f{C16H22O}+i^3", positive_58);
-mzpaf_test!("f{C15[13C1]H22O}^3", positive_59);
-mzpaf_test!("s{CN=C=O}[M+H]/-0.55ppm", positive_60);
-mzpaf_test!("s{COc(c1)cccc1C#N}[M+H+Na]^2/1.29ppm", positive_61);
-mzpaf_test!("p-[Hex]", positive_62);
-mzpaf_test!("y2+CO-H2O", positive_63);
-mzpaf_test!("y2-H2O-NH3", positive_64);
-mzpaf_test!("p-[TMT6plex]-2H2O-HPO3", positive_65);
-mzpaf_test!("p-2[iTRAQ115]", positive_66);
-mzpaf_test!("p-[iTRAQ116]-CO-H2O-HPO3", positive_67);
-mzpaf_test!("y12+i", positive_68);
-mzpaf_test!("y12+i13C", positive_69);
-mzpaf_test!("y12+i15N", positive_70);
-mzpaf_test!("y12+2i13C+i15N", positive_71);
-mzpaf_test!("y12+iA", positive_72);
-mzpaf_test!("y12+2iA", positive_73);
-mzpaf_test!("y4[M+Na]", positive_74);
-mzpaf_test!("y5-H2O[M+H+Na]^2", positive_75);
-mzpaf_test!("&1@y7/-0.002", positive_76);
-mzpaf_test!("&y7/-0.001", positive_77);
-mzpaf_test!("y7/0.000*0.95", positive_78);
-mzpaf_test!("&y7/0.001", positive_79);
-mzpaf_test!("&y7/0.002", positive_80);
-mzpaf_test!("b6-H2O/-0.005,&y7/0.003", positive_81);
-mzpaf_test!("y12-H2O^2/7.4ppm*0.70", positive_82);
-mzpaf_test!("y12/3.4ppm*0.85,b9-NH3/5.2ppm*0.05", positive_83);
+mzpaf_test!("b2-H2O/3.2ppm,b4-H2O^2/3.2ppm", spec_positive_1);
+mzpaf_test!("b2-H2O/3.2ppm*0.75,b4-H2O^2/3.2ppm*0.25", spec_positive_2);
+mzpaf_test!("1@y12/0.13,2@b9-NH3/0.23", spec_positive_3);
+mzpaf_test!("0@y1{K}", spec_positive_4);
+mzpaf_test!("0@y1{K}-NH3", spec_positive_5);
+mzpaf_test!("y1/-1.4ppm", spec_positive_6);
+mzpaf_test!("y1/-0.0002", spec_positive_7);
+mzpaf_test!("y4-H2O+2i[M+H+Na]^2", spec_positive_8);
+mzpaf_test!("?", spec_positive_9);
+mzpaf_test!("?^3", spec_positive_10);
+mzpaf_test!("?+2i^4", spec_positive_11);
+mzpaf_test!("?17", spec_positive_12);
+mzpaf_test!("?17+i/1.45ppm", spec_positive_13);
+mzpaf_test!("?17-H2O/-0.87ppm", spec_positive_14);
+mzpaf_test!("0@b2{LL}", spec_positive_15);
+mzpaf_test!("0@y1{K}", spec_positive_16);
+mzpaf_test!("0@b2{LC[Carbamidomethyl]}", spec_positive_17);
+mzpaf_test!("0@b1{[Acetyl]-M}", spec_positive_18);
+mzpaf_test!("0@y4{M[Oxidation]ACK}-CH4OS[M+H+Na]^2", spec_positive_19a);
+mzpaf_test!("0@y44{M[Oxidation]ACK}-CH4OS[M+H+Na]^2", spec_positive_19b);
+mzpaf_test!("0@y444{M[Oxidation]ACK}-CH4OS[M+H+Na]^2", spec_positive_19c);
+mzpaf_test!("m3:6", spec_positive_20);
+mzpaf_test!("b3-C2H3NO", spec_positive_21);
+mzpaf_test!("m3:6-CO", spec_positive_22);
+mzpaf_test!("m3:6-CO-H2O^2", spec_positive_23);
+mzpaf_test!("m3:4/1.1ppm,m4:5/1.1ppm", spec_positive24);
+mzpaf_test!("m3:5", spec_positive_25);
+mzpaf_test!("IY", spec_positive_26);
+mzpaf_test!("IH", spec_positive_27);
+mzpaf_test!("IL-CH2", spec_positive_28);
+mzpaf_test!("IC[Carbamidomethyl]", spec_positive_29);
+mzpaf_test!("IY[Phospho]", spec_positive_30);
+mzpaf_test!("IC[+58.005]", spec_positive_31);
+mzpaf_test!("p^2", spec_positive_32a);
+mzpaf_test!("p^-2", spec_positive_32b);
+mzpaf_test!("p-H3PO4^2", spec_positive_33);
+mzpaf_test!("p^4", spec_positive_34);
+mzpaf_test!("p+H^3", spec_positive_35);
+mzpaf_test!("p^3", spec_positive_36);
+mzpaf_test!("p+2H^2", spec_positive_37);
+mzpaf_test!("p^2", spec_positive_38);
+mzpaf_test!("p+H^2", spec_positive_39);
+mzpaf_test!("p+3H", spec_positive_40);
+mzpaf_test!("p+2H", spec_positive_41);
+mzpaf_test!("p+H", spec_positive_42);
+mzpaf_test!("p", spec_positive_43);
+mzpaf_test!("r[TMT127N]", spec_positive_44);
+mzpaf_test!("r[iTRAQ114]", spec_positive_45);
+mzpaf_test!("r[TMT6plex]", spec_positive_46);
+mzpaf_test!("r[Hex]", spec_positive_47);
+mzpaf_test!("r[Adenosine]", spec_positive_48);
+mzpaf_test!("0@_{Urocanic Acid}", spec_positive_49);
+mzpaf_test!("f{C13H9}/-0.55ppm", spec_positive_50);
+mzpaf_test!("f{C12H9N}/0.06ppm", spec_positive_51);
+mzpaf_test!("f{C13H9N}/-2.01ppm", spec_positive_52);
+mzpaf_test!("f{C13H10N}/-0.11ppm", spec_positive_53);
+mzpaf_test!("f{C13H11N}/-0.09ppm", spec_positive_54);
+mzpaf_test!("f{C13H12N}/0.26ppm", spec_positive_55);
+mzpaf_test!("f{C14H10N}/0.19ppm", spec_positive_56);
+mzpaf_test!("f{C14H11N}/0.45ppm", spec_positive_57);
+mzpaf_test!("f{C14H10NO}/0.03ppm", spec_positive_58);
+mzpaf_test!("f{C16H22O}+i^3", spec_positive_59);
+mzpaf_test!("f{C15[13C1]H22O}^3", spec_positive_60);
+mzpaf_test!("s{CN=C=O}[M+H]/-0.55ppm", spec_positive_61);
+mzpaf_test!("s{COc(c1)cccc1C#N}[M+H+Na]^2/1.29ppm", spec_positive_62);
+mzpaf_test!("p-[Hex]", spec_positive_63);
+mzpaf_test!("y2+CO-H2O", spec_positive_64);
+mzpaf_test!("y2-H2O-NH3", spec_positive_65);
+mzpaf_test!("p-[TMT6plex]-2H2O-HPO3", spec_positive_66);
+mzpaf_test!("p-2[iTRAQ115]", spec_positive_67);
+mzpaf_test!("p-[iTRAQ116]-CO-H2O-HPO3", spec_positive_68);
+mzpaf_test!("y2-[2H1]-NH3", spec_positive_69);
+mzpaf_test!("y5-H2[18O1][M+Na]", spec_positive_70);
+mzpaf_test!("y12+i", spec_positive_71);
+mzpaf_test!("y12+i13C", spec_positive_72);
+mzpaf_test!("y12+i15N", spec_positive_73);
+mzpaf_test!("y12+2i13C+i15N", spec_positive_74);
+mzpaf_test!("y12+iA", spec_positive_75);
+mzpaf_test!("y12+2iA", spec_positive_76);
+mzpaf_test!("y4[M+Na]", spec_positive_77);
+mzpaf_test!("y5-H2O[M+H+Na]^2", spec_positive_78);
+mzpaf_test!("y6[M+[2H2]]", spec_positive_79);
+mzpaf_test!("y5[M+[15N1]H4]", spec_positive_80);
+mzpaf_test!("&1@y7/-0.002", spec_positive_81);
+mzpaf_test!("&y7/-0.001", spec_positive_82);
+mzpaf_test!("y7/0.000*0.95", spec_positive_83);
+mzpaf_test!("&y7/0.001", spec_positive_84);
+mzpaf_test!("&y7/0.002", spec_positive_85);
+mzpaf_test!("b6-H2O/-0.005,&y7/0.003", spec_positive_86);
+mzpaf_test!("y12-H2O^2/7.4ppm*0.70", spec_positive_87);
+mzpaf_test!("y12/3.4ppm*0.85,b9-NH3/5.2ppm*0.05", spec_positive_88);
