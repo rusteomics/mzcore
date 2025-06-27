@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::{rc::Rc, sync::Arc};
 
 use crate::{
     prelude::{CompoundPeptidoformIon, Peptidoform, PeptidoformIon},
@@ -39,6 +39,20 @@ impl<Complexity> HasPeptidoformImpl for &Peptidoform<Complexity> {
 }
 
 impl<T: HasPeptidoformImpl> HasPeptidoformImpl for Arc<T> {
+    type Complexity = T::Complexity;
+    fn peptidoform(&self) -> &Peptidoform<T::Complexity> {
+        self.as_ref().peptidoform()
+    }
+}
+
+impl<T: HasPeptidoformImpl> HasPeptidoformImpl for Rc<T> {
+    type Complexity = T::Complexity;
+    fn peptidoform(&self) -> &Peptidoform<T::Complexity> {
+        self.as_ref().peptidoform()
+    }
+}
+
+impl<T: HasPeptidoformImpl> HasPeptidoformImpl for Box<T> {
     type Complexity = T::Complexity;
     fn peptidoform(&self) -> &Peptidoform<T::Complexity> {
         self.as_ref().peptidoform()
