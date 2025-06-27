@@ -379,7 +379,7 @@ fn parse_single_modification(
                             None,
                             line,
                             offset + full.1,
-                            full.2,
+                            full.2
                         ))
                     }),
             }

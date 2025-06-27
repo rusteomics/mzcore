@@ -40,12 +40,7 @@ format_family!(
     optional {
         id: usize, |location: Location, _| location.parse::<usize>(NUMBER_ERROR);
         spectra_id: usize, |location: Location, _| location.parse::<usize>(NUMBER_ERROR);
-        fraction: usize, |location: Location, _| location
-            .apply(|l| Location {
-                line: l.line,
-                location: l.location.start + 1..l.location.end,
-            }) // Skip the F of the F{num} definition
-            .parse::<usize>(NUMBER_ERROR);
+        fraction: usize, |location: Location, _| location.skip(1).parse::<usize>(NUMBER_ERROR); // Skip the F of the F{num} definition
         rt: Time, |location: Location, _| location.parse::<f64>(NUMBER_ERROR).map(Time::new::<crate::system::time::min>);
         peptide_no_ptm: String, |location: Location, _| Ok(Some(location.get_string()));
         protein: usize, |location: Location, _| location.parse::<usize>(NUMBER_ERROR);

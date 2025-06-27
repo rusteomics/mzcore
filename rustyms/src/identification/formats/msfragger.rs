@@ -83,11 +83,11 @@ format_family!(
         z: Charge, |location: Location, _| location.parse::<isize>(NUMBER_ERROR).map(Charge::new::<crate::system::e>);
     }
     optional {
-        best_score_with_delta_mass: f64, |location: Location, _| location.parse::<f64>(NUMBER_ERROR);
+        best_score_with_delta_mass: f64, |location: Location, _| location.or_empty().parse::<f64>(NUMBER_ERROR);
         calibrated_experimental_mass: Mass, |location: Location, _| location.parse::<f64>(NUMBER_ERROR).map(Mass::new::<crate::system::dalton>);
         calibrated_experimental_mz: MassOverCharge, |location: Location, _| location.parse::<f64>(NUMBER_ERROR).map(MassOverCharge::new::<crate::system::mz>);
         condition: String, |location: Location, _| Ok(Some(location.get_string()));
-        delta_score: f64, |location: Location, _| location.parse::<f64>(NUMBER_ERROR);
+        delta_score: f64, |location: Location, _| location.or_empty().parse::<f64>(NUMBER_ERROR);
         entry_name: String, |location: Location, _| Ok(location.get_string());
         enzymatic_termini: usize, |location: Location, _| location.parse::<usize>(NUMBER_ERROR);
         extended_peptide: Box<[Option<Peptidoform<SemiAmbiguous>>; 3]>, |location: Location, custom_database: Option<&CustomDatabase>| {
@@ -148,8 +148,8 @@ format_family!(
         protein_start: usize, |location: Location, _| location.parse::<usize>(NUMBER_ERROR);
         purity: f64, |location: Location, _| location.parse::<f64>(NUMBER_ERROR);
         rank: usize, |location: Location, _| location.parse::<usize>(NUMBER_ERROR);
-        score_without_delta_mass: f64, |location: Location, _| location.parse::<f64>(NUMBER_ERROR);
-        second_best_score_with_delta_mass: f64, |location: Location, _| location.parse::<f64>(NUMBER_ERROR);
+        score_without_delta_mass: f64, |location: Location, _| location.or_empty().parse::<f64>(NUMBER_ERROR);
+        second_best_score_with_delta_mass: f64, |location: Location, _| location.or_empty().parse::<f64>(NUMBER_ERROR);
         raw_file: PathBuf, |location: Location, _| Ok(Some(location.get_string().into()));
         total_glycan_composition: Vec<(MonoSaccharide, isize)>, |location: Location, _| location.or_empty().parse_with(|location| location.as_str().find('%').map_or_else(
                 || MonoSaccharide::from_byonic_composition(location.as_str()),

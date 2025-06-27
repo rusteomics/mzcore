@@ -189,17 +189,18 @@ pub(super) trait HasLocation {
     /// Get the specified column.
     /// # Errors
     /// If the column does not exist.
-    fn column<'a>(&'a self, name: &str) -> Result<Location<'a>, CustomError>;
+    fn column<'a>(&'a self, name: &'a str) -> Result<Location<'a>, CustomError>;
 }
 
 impl HasLocation for CsvLine {
     /// Get the specified column
     /// # Errors
     /// If the given column does not exist
-    fn column<'a>(&'a self, name: &str) -> Result<Location<'a>, CustomError> {
+    fn column<'a>(&'a self, name: &'a str) -> Result<Location<'a>, CustomError> {
         self.index_column(name).map(|(_v, c)| Location {
             line: self,
             location: c.clone(),
+            column: Some(name),
         })
     }
 }
@@ -209,6 +210,7 @@ impl HasLocation for CsvLine {
 pub(super) struct Location<'a> {
     pub(super) line: &'a CsvLine,
     pub(super) location: Range<usize>,
+    pub(super) column: Option<&'a str>,
 }
 
 impl Location<'_> {
@@ -223,6 +225,7 @@ impl Location<'_> {
             output.push(Location {
                 line: self.line,
                 location: self.location.start + offset..self.location.start + offset + part.len(),
+                column: self.column,
             });
             offset += part.len() + 1;
         }
@@ -251,6 +254,7 @@ impl Location<'_> {
                 .start
                 .saturating_add(bytes)
                 .min(self.location.end)..self.location.end,
+            column: self.column,
         }
     }
 
@@ -275,7 +279,8 @@ impl Location<'_> {
             CustomError::error(
                 base_error.0,
                 base_error.1,
-                self.line.range_context(self.location),
+                self.line
+                    .range_context(self.location, self.column.map(ToString::to_string)),
             )
         })
     }
@@ -301,6 +306,7 @@ impl Location<'_> {
                     Self {
                         line: self.line,
                         location: self.location.start + 1..self.location.start + start.len(),
+                        column: self.column,
                     }
                     .parse(base_error)?,
                 ),
@@ -308,6 +314,7 @@ impl Location<'_> {
                     line: self.line,
                     location: self.location.start + start.len() + 1
                         ..self.location.start + start.len() + 1 + end.len(),
+                    column: self.column,
                 }
                 .parse(base_error)?,
             ))
@@ -329,10 +336,11 @@ impl Location<'_> {
     }
 
     pub(super) fn context(&self) -> Context {
-        Context::line_range(
+        Context::line_range_with_comment(
             Some(self.line.line_index()),
             self.full_line(),
             self.location.clone(),
+            self.column.map(ToString::to_string),
         )
     }
 
@@ -349,6 +357,7 @@ impl Location<'_> {
             } else {
                 self.location.start + trimmed_start..self.location.end - trimmed_end
             },
+            column: self.column,
         }
     }
 
@@ -362,10 +371,12 @@ impl Location<'_> {
                 Self {
                     line: self.line,
                     location: self.location.start..self.location.start + start.len(),
+                    column: self.column,
                 },
                 Self {
                     line: self.line,
                     location: self.location.end - end.len()..self.location.end,
+                    column: self.column,
                 },
             )
         })

@@ -53,20 +53,22 @@ impl CsvLine {
     }
     /// Get the context applicable to the specified column
     pub fn column_context(&self, column: usize) -> Context {
-        Context::line(
+        Context::line_with_comment(
             Some(self.line_index),
             self.line.clone(),
             self.fields[column].1.start,
             self.fields[column].1.len(),
+            Some(self.fields[column].0.as_str().to_string()),
         )
     }
     /// Get the context for the specified range in the original line
-    pub fn range_context(&self, range: Range<usize>) -> Context {
-        Context::line(
+    pub fn range_context(&self, range: Range<usize>, comment: Option<String>) -> Context {
+        Context::line_with_comment(
             Some(self.line_index()),
             self.line.clone(),
             range.start,
             range.len(),
+            comment,
         )
     }
     /// Get the context for the whole line
@@ -208,7 +210,7 @@ pub fn parse_csv_raw<T: std::io::Read>(
                 return Err(CustomError::error(
                     "Unicode value separators not supported",
                     "This is a character that takes more than 1 byte to represent in Unicode, this is not supported in parsing CSV files.",
-                    Context::line(Some(0), format!("sep={sep}"), 4, sep.len()),
+                    Context::line_with_comment(Some(0), format!("sep={sep}"), 4, sep.len(), None),
                 ));
             }
         }
