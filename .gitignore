@@ -16,5 +16,6 @@ out
 out_peaks
 out_pro_forma
 out_sloppy_pro_forma
+out_mzpaf
 examples/ion-explorer/data
 examples/ion-explorer/figures

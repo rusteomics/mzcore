@@ -34,5 +34,12 @@ test = false
 doc = false
 bench = false
 
+[[bin]]
+name = "mzpaf"
+path = "fuzz_targets/mzpaf.rs"
+test = false
+doc = false
+bench = false
+
 [lints]
 workspace = true
