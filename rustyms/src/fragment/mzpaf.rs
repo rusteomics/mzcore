@@ -96,7 +96,7 @@ fn parse_annotation(
 #[derive(Clone, Debug, Deserialize, PartialEq, PartialOrd, Serialize)]
 pub struct PeakAnnotation {
     auxiliary: bool,
-    analyte_number: Option<usize>,
+    analyte_number: usize,
     ion: IonType,
     neutral_losses: Vec<NeutralLoss>,
     isotopes: Vec<(i32, Isotope)>,
@@ -108,10 +108,10 @@ pub struct PeakAnnotation {
 impl PeakAnnotation {
     fn to_fragment(self, interpretation: CompoundPeptidoformIon) -> Fragment {
         // Get the peptidoform (assume no cross-linkers)
-        let peptidoform = self.analyte_number.filter(|n| *n > 0).and_then(|n| {
+        let peptidoform = self.analyte_number.checked_sub(1).and_then(|n| {
             interpretation
                 .peptidoform_ions()
-                .get(n - 1)
+                .get(n)
                 .and_then(|p| p.peptidoforms().first())
         });
         let (formula, ion) = match self.ion {
@@ -259,11 +259,11 @@ impl PeakAnnotation {
             IonType::Internal(start, end) => {
                 let sequence_length = self
                     .analyte_number
-                    .filter(|n| *n > 0)
+                    .checked_sub(1)
                     .and_then(|n| {
                         interpretation
                             .peptidoform_ions()
-                            .get(n - 1)
+                            .get(n)
                             .and_then(|p| p.peptidoforms().first())
                     })
                     .map_or(0, Peptidoform::len);
@@ -294,8 +294,8 @@ impl PeakAnnotation {
             formula,
             charge: self.charge.charge(),
             ion,
-            peptidoform_ion_index: self.analyte_number.filter(|n| *n > 0).map(|n| n - 1),
-            peptidoform_index: Some(0), // TODO what to do with cross-linked stuff
+            peptidoform_ion_index: self.analyte_number.checked_sub(1),
+            peptidoform_index: Some(0),
             neutral_loss: self.neutral_losses,
             deviation: self.deviation,
             confidence: self.confidence.map(Into::into),
@@ -309,10 +309,7 @@ impl std::fmt::Display for PeakAnnotation {
         if self.auxiliary {
             write!(f, "&")?;
         }
-        if let Some(number) = self.analyte_number {
-            write!(f, "{number}@")?;
-        }
-        write!(f, "{}", self.ion)?;
+        write!(f, "{}@{}", self.analyte_number, self.ion)?;
         for loss in &self.neutral_losses {
             write!(f, "{loss}")?;
         }
@@ -386,9 +383,9 @@ enum Isotope {
 fn parse_analyte_number(
     line: &str,
     range: Range<usize>,
-) -> Result<(Range<usize>, Option<usize>), CustomError> {
+) -> Result<(Range<usize>, usize), CustomError> {
     next_number::<false, false, usize>(line, range.clone()).map_or_else(
-        || Ok((range.clone(), None)),
+        || Ok((range.clone(), 1)),
         |num| {
             if line.as_bytes().get(num.0 + range.start).copied() != Some(b'@') {
                 return Err(CustomError::error(
@@ -399,13 +396,13 @@ fn parse_analyte_number(
             }
             Ok((
                 range.add_start(num.0 + 1),
-                Some(num.2.map_err(|err| {
+                num.2.map_err(|err| {
                     CustomError::error(
                         "Invalid mzPAF analyte number",
                         format!("The analyte number number {}", explain_number_error(&err)),
                         Context::line(None, line, range.start, num.0),
                     )
-                })?),
+                })?,
             ))
         },
     )
@@ -513,7 +510,7 @@ fn parse_ion(
             }
         }
         Some(b'I') => {
-            let amino_acid = line[range.clone()].chars().next().ok_or_else(|| {
+            let amino_acid = line[range.clone()].chars().nth(1).ok_or_else(|| {
                 CustomError::error(
                     "Invalid mzPAF immonium",
                     "The source amino acid for this immonium ion should be present like 'IA'",
@@ -760,7 +757,6 @@ fn parse_neutral_loss(
             num_offset = num.0;
         }
 
-        println!("{}", &line[range.start_index() + 1 + offset..]);
         if line[range.start_index() + 1 + offset..].starts_with('i')
             || line[range.start_index() + 1 + offset..].starts_with("[M+")
         {
@@ -944,7 +940,6 @@ fn parse_adduct_type(
                     Context::line(None, line, range.start_index(), 1),
                 )
             })?; // Excluding the ']' closing bracket
-        println!("at: {}", &line[range.start..closing]);
         if line.as_bytes().get(range.start_index() + 1).copied() != Some(b'M') {
             return Err(CustomError::error(
                 "Invalid mzPAF adduct type",
@@ -992,7 +987,6 @@ fn parse_adduct_type(
                 .last()
                 .map_or(0, |last| last.0 + last.1.len_utf8())
                 .min(closing - first); // Prevent the closing bracket from being used in an isotope
-            println!("fo: {}", &line[first..first + last]);
             let formula = MolecularFormula::from_pro_forma(
                 line,
                 first..first + last,
@@ -1225,18 +1219,36 @@ macro_rules! mzpaf_test {
                 }
                 Ok(res) => {
                     let back = res
-                        .into_iter()
-                        .map(|a| a.to_fragment(CompoundPeptidoformIon::default()).to_mzPAF())
+                        .iter()
+                        .map(|a| {
+                            a.clone()
+                                .to_fragment(CompoundPeptidoformIon::default())
+                                .to_mzPAF()
+                        })
                         .join(",");
-                    let res = $crate::fragment::parse_mzpaf(&back, None);
-                    if let Err(err) = res {
-                        println!("Failed: '{}' was exported as '{back}'", $case);
-                        println!("{err}");
-                        panic!("Failed test")
+                    let res_back = $crate::fragment::parse_mzpaf(&back, None);
+                    match res_back {
+                        Ok(res_back) => {
+                            let back_back = res_back
+                                .iter()
+                                .map(|a| {
+                                    a.clone()
+                                        .to_fragment(CompoundPeptidoformIon::default())
+                                        .to_mzPAF()
+                                })
+                                .join(",");
+                            assert_eq!(
+                                res, res_back,
+                                "{back} != {back_back} (from input: {})",
+                                $case
+                            )
+                        }
+                        Err(err) => {
+                            println!("Failed: '{}' was exported as '{back}'", $case);
+                            println!("{err}");
+                            panic!("Failed test")
+                        }
                     }
-                    // let back = res.as_ref().unwrap().to_string();
-                    // let res_back = $crate::fragment::parse_mzpaf(&back, None);
-                    // assert_eq!(res, res_back, "{} != {back}", $case);
                 }
             };
         }

@@ -51,11 +51,17 @@ pub struct Fragment {
 
 impl Fragment {
     /// Write the fragment as an mzPAF string
+    // TODO: figure out a way to handle the fallibility (when used on glycans/cross-linked stuff etc)
     #[allow(non_snake_case)]
     pub fn to_mzPAF(&self) -> String {
         let mut output = String::new();
         if self.auxiliary {
             output.push('&');
+        }
+        if let Some(number) = self.peptidoform_ion_index {
+            write!(&mut output, "{}@", number + 1).unwrap();
+        } else {
+            write!(&mut output, "0@").unwrap();
         }
         // Push the ion type info (plus maybe some neutral losses if needed)
         match &self.ion {
@@ -264,6 +270,12 @@ impl Fragment {
                 NeutralLoss::SideChainLoss(_, aa) => {
                     write!(&mut output, "-r[sidechain_{aa}]").unwrap();
                 }
+                NeutralLoss::Gain(1, mol) => {
+                    write!(&mut output, "+{mol}").unwrap();
+                }
+                NeutralLoss::Loss(1, mol) => {
+                    write!(&mut output, "-{mol}").unwrap();
+                }
                 l => write!(&mut output, "{l}").unwrap(),
             }
         }
@@ -275,7 +287,12 @@ impl Fragment {
         // Deviation
         match self.deviation {
             Some(Tolerance::Absolute(abs)) => write!(&mut output, "/{}", abs.value).unwrap(),
-            Some(Tolerance::Relative(ppm)) => write!(&mut output, "/{}ppm", ppm.value).unwrap(),
+            Some(Tolerance::Relative(ppm)) => write!(
+                &mut output,
+                "/{}ppm",
+                ppm.get::<crate::system::ratio::ppm>()
+            )
+            .unwrap(),
             None => (),
         }
         // Confidence
