@@ -95,7 +95,7 @@ fn parse_mod(node: &Node) -> Result<OntologyModification, String> {
     let mut cross_ids = Vec::new();
     let mut synonyms = Vec::new();
     let mut description = full_name.clone();
-    synonyms.push(full_name.clone());
+    synonyms.push(full_name);
     for child in node.children() {
         if child.has_tag_name("specificity") {
             let site = child.attribute("site").unwrap(); // Check if there is a way to recognise linkers
@@ -104,7 +104,7 @@ fn parse_mod(node: &Node) -> Result<OntologyModification, String> {
                 ("C-term" | "N-term", pos) => PlacementRule::Terminal(pos),
                 (aa, pos) => PlacementRule::AminoAcid(
                     aa.chars()
-                        .map(|c| c.try_into().unwrap_or_else(|_| panic!("Not an AA: {c}")))
+                        .map(|c| c.try_into().unwrap_or_else(|()| panic!("Not an AA: {c}")))
                         .collect(),
                     pos,
                 ),
@@ -116,13 +116,14 @@ fn parse_mod(node: &Node) -> Result<OntologyModification, String> {
                 })
                 .map(|loss| {
                     NeutralLoss::Loss(
+                        1,
                         MolecularFormula::from_unimod(loss.attribute("composition").unwrap(), ..)
                             .map_err(|e| e.to_string())
                             .expect("Invalid composition in neutral loss"),
                     )
                 })
                 .collect();
-            rules.push((rule, losses))
+            rules.push((rule, losses));
         }
         if child.has_tag_name("delta") {
             if let Some(composition) = child.attribute("composition") {
@@ -144,7 +145,7 @@ fn parse_mod(node: &Node) -> Result<OntologyModification, String> {
                 .to_string();
         }
         if child.has_tag_name("alt_name") {
-            synonyms.push(child.text().ok_or("Missing text for synonym")?.to_string())
+            synonyms.push(child.text().ok_or("Missing text for synonym")?.to_string());
         }
         if child.has_tag_name("xref") {
             let source = child
@@ -163,7 +164,7 @@ fn parse_mod(node: &Node) -> Result<OntologyModification, String> {
                 .children()
                 .find(|c| c.has_tag_name("url"))
                 .and_then(|c| c.text())
-                .map(|s| s.to_string())
+                .map(ToString::to_string)
                 .unwrap_or_default();
             if url.is_empty() {
                 cross_ids.push((source, text));

@@ -44,9 +44,18 @@ impl MolecularFormula {
         ignore_casing: bool,
     ) -> Result<Self, CustomError> {
         let (mut index, end) = range.bounds(value.len().saturating_sub(1));
-        if allow_empty && value[index..=end].eq_ignore_ascii_case("(empty)") {
-            return Ok(Self::default());
+        if index > end || end >= value.len() || value[index..=end].eq_ignore_ascii_case("(empty)") {
+            return if allow_empty {
+                Ok(Self::default())
+            } else {
+                Err(CustomError::error(
+                    "Invalid ProForma molecular formula",
+                    "The formula is empty",
+                    Context::line_range(None, value, range),
+                ))
+            };
         }
+
         let mut element = None;
         let bytes = value.as_bytes();
         let mut result = Self::default();
@@ -266,7 +275,15 @@ impl MolecularFormula {
                 ));
             }
         }
-        Ok(result)
+        if !allow_empty && result.is_empty() {
+            Err(CustomError::error(
+                "Invalid ProForma molecular formula",
+                "The formula is empty",
+                Context::line_range(None, value, range),
+            ))
+        } else {
+            Ok(result)
+        }
     }
 }
 
@@ -275,4 +292,6 @@ fn fuzz() {
     let _a = MolecularFormula::from_pro_forma(":", .., true, true, true, true);
     let _a = MolecularFormula::from_pro_forma(":1002\\[d2C-2]H2N", .., true, true, true, true);
     let _a = MolecularFormula::from_pro_forma("+Wv:z-,33U", .., true, true, true, true);
+    assert!(MolecularFormula::from_pro_forma("", .., true, false, true, true).is_err());
+    assert!(MolecularFormula::from_pro_forma("f{}", 2..2, true, false, true, true).is_err());
 }

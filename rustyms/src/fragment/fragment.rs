@@ -495,7 +495,7 @@ mod tests {
             0,
             FragmentType::Precursor,
         );
-        let loss = a.with_neutral_losses(&[NeutralLoss::Loss(molecular_formula!(H 2 O 1))]);
+        let loss = a.with_neutral_losses(&[NeutralLoss::Loss(1, molecular_formula!(H 2 O 1))]);
         dbg!(&a, &loss);
         assert_eq!(a.formula, loss[0].formula);
         assert_eq!(

@@ -457,16 +457,46 @@ impl Sub<&MolecularFormula> for &MolecularFormula {
 impl Mul<&i32> for &MolecularFormula {
     type Output = MolecularFormula;
     fn mul(self, rhs: &i32) -> Self::Output {
-        MolecularFormula {
-            additional_mass: self.additional_mass * f64::from(*rhs),
+        self.checked_mul_i32(*rhs)
+            .expect("Overflow in multiplying MolecularFormula")
+    }
+}
+
+impl Mul<&u16> for &MolecularFormula {
+    type Output = MolecularFormula;
+    fn mul(self, rhs: &u16) -> Self::Output {
+        self.checked_mul_u16(*rhs)
+            .expect("Overflow in multiplying MolecularFormula")
+    }
+}
+
+impl MolecularFormula {
+    /// Do checked multiplication to handle overflows gracefully
+    pub fn checked_mul_i32(&self, rhs: i32) -> Option<Self> {
+        Some(Self {
+            additional_mass: self.additional_mass * f64::from(rhs),
             elements: self
                 .elements
                 .iter()
                 .copied()
-                .map(|part| (part.0, part.1, part.2 * rhs))
-                .collect(),
+                .map(|part| Some((part.0, part.1, part.2.checked_mul(rhs)?)))
+                .collect::<Option<_>>()?,
             labels: self.labels.clone(),
-        }
+        })
+    }
+
+    /// Do checked multiplication to handle overflows gracefully
+    pub fn checked_mul_u16(&self, rhs: u16) -> Option<Self> {
+        Some(Self {
+            additional_mass: self.additional_mass * f64::from(rhs),
+            elements: self
+                .elements
+                .iter()
+                .copied()
+                .map(|part| Some((part.0, part.1, part.2.checked_mul(i32::from(rhs))?)))
+                .collect::<Option<_>>()?,
+            labels: self.labels.clone(),
+        })
     }
 }
 
@@ -489,6 +519,7 @@ impl Mul<&i8> for &MolecularFormula {
 impl_binop_ref_cases!(impl Add, add for MolecularFormula, MolecularFormula, MolecularFormula);
 impl_binop_ref_cases!(impl Sub, sub for MolecularFormula, MolecularFormula, MolecularFormula);
 impl_binop_ref_cases!(impl Mul, mul for MolecularFormula, i32, MolecularFormula);
+impl_binop_ref_cases!(impl Mul, mul for MolecularFormula, u16, MolecularFormula);
 impl_binop_ref_cases!(impl Mul, mul for MolecularFormula, i8, MolecularFormula);
 
 impl AddAssign<&Self> for MolecularFormula {

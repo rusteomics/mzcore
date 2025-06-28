@@ -363,8 +363,9 @@ impl Multi<MolecularFormula> {
         let mut new_options = Vec::with_capacity(self.0.len() * 2);
         for option in self.0.iter() {
             new_options.push(match loss {
-                NeutralLoss::Gain(m) => option + m,
-                NeutralLoss::Loss(m) | NeutralLoss::SideChainLoss(m, _) => option - m,
+                NeutralLoss::Gain(n, m) => option + m * n,
+                NeutralLoss::Loss(n, m) => option - m * n,
+                NeutralLoss::SideChainLoss(m, _) => option - m,
             });
         }
         new_options.extend_from_slice(&self.0);

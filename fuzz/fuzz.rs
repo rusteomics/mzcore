@@ -1,7 +1,8 @@
 #!/usr/bin/env -S cargo +nightly -Zscript
 
 ---
-edition = 2024
+[package]
+edition = "2024"
 [dependencies]
 clap = { version = "4.2", features = ["derive"] }
 ---
@@ -152,8 +153,12 @@ impl Stats {
     fn print(&self) {
         let duration = Duration::from_secs_f64(self.fuzz_time as f64 / self.jobs as f64);
         print!(
-            "\rtime: {duration:?}, cycles: {}, execs: {}, crashes: {} hangs: {}",
-            self.cycles_done, self.execs_done, self.saved_crashes, self.saved_hangs,
+            "\rtime: {}, cycles: {}, execs: {}, crashes: {} hangs: {}",
+            print_time(duration),
+            self.cycles_done,
+            self.execs_done,
+            self.saved_crashes,
+            self.saved_hangs,
         )
     }
 
@@ -209,4 +214,38 @@ fn minify(target: &str, jobs: u8) {
             count += 1;
         }
     }
+}
+
+fn print_time(time: Duration) -> String {
+    const BIG_SUFFIXES: &[(f64, &str)] = &[
+        (1.0, "s"),
+        (60.0, "m"),
+        (60.0 * 60.0, "h"),
+        (60.0 * 60.0 * 24.0, "d"),
+        (60.0 * 60.0 * 24.0 * 7.0, "w"),
+    ];
+    const SMALL_SUFFIXES: &[(f64, &str)] = &[
+        (1.0, "s"),
+        (1e-3, "ms"),
+        (1e-6, "μs"),
+        (1e-9, "ns"),
+        (1e-12, "ps"),
+        (1e-15, "fs"),
+    ];
+    const PRECISION: usize = 2;
+    let value = time.as_secs_f64();
+    let base = if value == 0.0 {
+        (1.0, "s")
+    } else if value <= 1.0 {
+        SMALL_SUFFIXES[(-((value.abs().log10() / 3.0).floor() as isize)
+            .clamp(-(SMALL_SUFFIXES.len() as isize - 1), 0)) as usize]
+    } else {
+        BIG_SUFFIXES
+            .iter()
+            .filter(|(v, _)| value > *v)
+            .last()
+            .unwrap()
+            .clone()
+    };
+    format!("{:.PRECISION$}{}", value / base.0, base.1)
 }
