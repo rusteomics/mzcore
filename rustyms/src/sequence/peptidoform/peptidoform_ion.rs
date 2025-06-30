@@ -103,11 +103,12 @@ impl PeptidoformIon {
 
     /// Assume there is exactly one peptide in this collection.
     pub fn singular(mut self) -> Option<Peptidoform<Linked>> {
-        if self.0.len() == 1 {
-            self.0.pop()
-        } else {
-            None
-        }
+        (self.0.len() == 1).then(|| self.0.pop()).flatten()
+    }
+
+    /// Assume there is exactly one peptide in this collection.
+    pub fn singular_ref(&self) -> Option<&Peptidoform<Linked>> {
+        (self.0.len() == 1).then(|| &self.0[0])
     }
 
     /// Get all peptides making up this peptidoform

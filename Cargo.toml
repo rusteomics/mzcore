@@ -32,11 +32,11 @@ bincode = { version = "2.0", features = ["serde"] }
 clap = { version = "4.5", features = ["derive", "cargo"] }
 directories = "6.0"
 flate2 = "1.0"
-iai-callgrind = "0.14"
 itertools = "0.14"
-mzdata = {version="0.53", default-features = false, features = ["miniz_oxide"]}
+mzdata = {version="0.54", default-features = false, features = ["miniz_oxide"]}
 ndarray = "0.16"
 ordered-float = { version = "5.0", features = ["serde"] }
+paste = "1.0"
 png = "0.17"
 probability = "0.20"
 pyo3 = "0.25"
@@ -118,3 +118,4 @@ too_long_first_doc_paragraph = "allow"
 too_many_lines = "allow"
 wildcard_imports = "allow"
 literal_string_with_formatting_args = "allow"
+unsafe_derive_deserialize = "allow"

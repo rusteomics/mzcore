@@ -82,11 +82,11 @@ impl IMGTGene {
             "V-GENE" => {
                 vec![
                     self.get_region(&Region::Framework(1), "FR1-IMGT")?,
-                    self.get_region(&Region::ComplementarityDeterminingRegion(1), "CDR1-IMGT")?,
+                    self.get_region(&Region::ComplementarityDetermining(1), "CDR1-IMGT")?,
                     self.get_region(&Region::Framework(2), "FR2-IMGT")?,
-                    self.get_region(&Region::ComplementarityDeterminingRegion(2), "CDR2-IMGT")?,
+                    self.get_region(&Region::ComplementarityDetermining(2), "CDR2-IMGT")?,
                     self.get_region(&Region::Framework(3), "FR3-IMGT")?,
-                    self.get_region(&Region::ComplementarityDeterminingRegion(3), "CDR3-IMGT")?,
+                    self.get_region(&Region::ComplementarityDetermining(3), "CDR3-IMGT")?,
                 ]
             }
             "J-GENE" => {
@@ -105,7 +105,7 @@ impl IMGTGene {
                 }
             }
             "D-GENE" => {
-                vec![self.get_region(&Region::ComplementarityDeterminingRegion(3), "D-REGION")?]
+                vec![self.get_region(&Region::ComplementarityDetermining(3), "D-REGION")?]
             }
             "C-GENE" => {
                 let mut seq = Vec::new();

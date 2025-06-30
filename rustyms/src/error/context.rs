@@ -39,6 +39,8 @@ pub enum Context {
         offset: usize,
         /// The length of the special position to be annotated.
         length: usize,
+        /// Any comment to show near the annotated position
+        comment: Option<String>,
     },
     /// To show multiple lines where an error occurred.
     Range {
@@ -99,6 +101,24 @@ impl Context {
             line: line.to_string().replace('\t', " "),
             offset,
             length,
+            comment: None,
+        }
+    }
+
+    /// Creates a new context when a special position can be annotated on a line
+    pub fn line_with_comment(
+        line_index: Option<usize>,
+        line: impl ToString,
+        offset: usize,
+        length: usize,
+        comment: Option<String>,
+    ) -> Self {
+        Self::Line {
+            line_index,
+            line: line.to_string().replace('\t', " "),
+            offset,
+            length,
+            comment,
         }
     }
 
@@ -107,6 +127,16 @@ impl Context {
         line_index: Option<usize>,
         line: impl ToString,
         range: impl RangeBounds<usize>,
+    ) -> Self {
+        Self::line_range_with_comment(line_index, line, range, None)
+    }
+
+    /// Create a context highlighting a certain range on a single line
+    pub fn line_range_with_comment(
+        line_index: Option<usize>,
+        line: impl ToString,
+        range: impl RangeBounds<usize>,
+        comment: Option<String>,
     ) -> Self {
         let line = line.to_string();
         match (range.start_bound(), range.end_bound()) {
@@ -119,7 +149,7 @@ impl Context {
                     Bound::Included(n) => *n,
                     Bound::Unbounded => 0,
                 };
-                Self::line(
+                Self::line_with_comment(
                     line_index,
                     &line,
                     start,
@@ -129,6 +159,7 @@ impl Context {
                         Bound::Unbounded => line.chars().count(),
                     }
                     .saturating_sub(start),
+                    comment,
                 )
             }
         }
@@ -143,6 +174,7 @@ impl Context {
                 line: String::new(),
                 offset: 0,
                 length: 3,
+                comment: None,
             }
         } else {
             Self::Line {
@@ -156,6 +188,7 @@ impl Context {
                     .replace('\t', " "),
                 offset: 0,
                 length: 3,
+                comment: None,
             }
         }
     }
@@ -168,6 +201,7 @@ impl Context {
                 line: start.text[..(end.column - start.column)].to_string(),
                 offset: start.column,
                 length: end.column - start.column,
+                comment: None,
             }
         } else {
             Self::Range {
@@ -192,12 +226,14 @@ impl Context {
                 line,
                 offset,
                 length,
+                comment,
                 ..
             } => Self::Line {
                 line_index: Some(line_index),
                 line,
                 offset,
                 length,
+                comment,
             },
             Self::Range { lines, offset, .. } => Self::Range {
                 start_line_index: line_index,
@@ -269,6 +305,7 @@ impl Context {
                 line,
                 offset,
                 length,
+                comment,
             } => {
                 let (start, end) = if line.len() > MAX_COLS {
                     let pad = MAX_COLS.saturating_sub(*length) / 2;
@@ -286,7 +323,7 @@ impl Context {
                 };
                 write!(
                     f,
-                    "\n{:pad$} ╷\n{:<pad$} │ {}{}{}\n{:pad$} · {}{}",
+                    "\n{:pad$} ╷\n{:<pad$} │ {}{}{}\n{:pad$} · {}{}{}",
                     "",
                     line_index.map_or(String::new(), |n| (n + 1).to_string()),
                     if start == 0 { "" } else { "…" },
@@ -299,6 +336,7 @@ impl Context {
                     } else {
                         "‾".repeat(*length)
                     },
+                    comment.as_deref().unwrap_or_default(),
                     pad = margin
                 )?;
             }

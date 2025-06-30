@@ -1,7 +1,7 @@
 use crate::structs::{AASequence, DataItem, Location, Region};
 use crate::{complement, imgt_gene::IMGTGene, translate};
 use itertools::Itertools;
-use rustyms::imgt::Species;
+use rustyms::imgt::{NotASpecies, Species};
 use rustyms::sequence::AminoAcid;
 use std::collections::HashMap;
 use std::io::{BufRead, BufReader};
@@ -50,7 +50,7 @@ fn parse_dat_line(data: &mut PreDataItem, line: &str) -> bool {
         }
         "FT" => data.ft.push(line[5..].to_string()),
         "OS" if data.os.is_none() => {
-            data.os = Species::from_imgt(line[5..].trim()).unwrap_or_else(|()| {
+            data.os = Species::from_imgt(line[5..].trim()).unwrap_or_else(|NotASpecies| {
                 println!("Not a species name: `{line}`");
                 None
             });

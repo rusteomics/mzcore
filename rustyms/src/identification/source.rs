@@ -1,9 +1,14 @@
 use std::fmt::Display;
 
-use crate::{error::CustomError, identification::IdentifiedPeptidoform, ontology::CustomDatabase};
+use crate::{
+    error::CustomError,
+    identification::{IdentifiedPeptidoform, MaybePeptidoform, MetaData},
+    ontology::CustomDatabase,
+    sequence::{AtLeast, Linked},
+};
 
 /// A version for an identified peptide version
-pub trait IdentifiedPeptidoformVersion<Format>: Copy {
+pub trait IdentifiedPeptidoformVersion<Format>: Copy + Display {
     /// The format for this version
     fn format(self) -> Format;
     /// The name for this version
@@ -13,13 +18,19 @@ pub trait IdentifiedPeptidoformVersion<Format>: Copy {
 /// The required methods for any source of identified peptides
 pub trait IdentifiedPeptidoformSource
 where
-    Self: Sized,
+    Self: Sized + MetaData,
 {
     /// The source data where the peptides are parsed form
     type Source;
 
     /// The format type
     type Format: Clone;
+
+    /// The complexity marker type
+    type Complexity;
+
+    /// The peptidoform availability marker type
+    type PeptidoformAvailability;
 
     /// The version type
     type Version: Display + IdentifiedPeptidoformVersion<Self::Format>;
@@ -94,6 +105,12 @@ where
     }
 }
 
+/// A general generic identified peptidoform iterator from any source format
+pub type GeneralIdentifiedPeptidoforms<'lifetime> = Box<
+    dyn Iterator<Item = Result<IdentifiedPeptidoform<Linked, MaybePeptidoform>, CustomError>>
+        + 'lifetime,
+>;
+
 /// Convenience type to not have to type out long iterator types
 pub type BoxedIdentifiedPeptideIter<'lifetime, T> = IdentifiedPeptidoformIter<
     'lifetime,
@@ -108,14 +125,14 @@ pub type BoxedIdentifiedPeptideIter<'lifetime, T> = IdentifiedPeptidoformIter<
 #[derive(Debug)]
 pub struct IdentifiedPeptidoformIter<
     'lifetime,
-    R: IdentifiedPeptidoformSource,
-    I: Iterator<Item = Result<R::Source, CustomError>>,
+    Source: IdentifiedPeptidoformSource,
+    Iter: Iterator<Item = Result<Source::Source, CustomError>>,
 > {
-    iter: Box<I>,
-    format: Option<R::Format>,
+    iter: Box<Iter>,
+    format: Option<Source::Format>,
     custom_database: Option<&'lifetime CustomDatabase>,
     keep_all_columns: bool,
-    peek: Option<Result<R, CustomError>>,
+    peek: Option<Result<Source, CustomError>>,
 }
 
 impl<R: IdentifiedPeptidoformSource + Clone, I: Iterator<Item = Result<R::Source, CustomError>>>
@@ -194,18 +211,25 @@ where
     }
 }
 
-impl<'lifetime, R, I> IdentifiedPeptidoformIter<'lifetime, R, I>
+impl<'lifetime, Source, Iter> IdentifiedPeptidoformIter<'lifetime, Source, Iter>
 where
-    R: IdentifiedPeptidoformSource + Into<IdentifiedPeptidoform> + 'lifetime,
-    I: Iterator<Item = Result<R::Source, CustomError>> + 'lifetime,
-    R::Format: 'static,
+    Source: IdentifiedPeptidoformSource
+        + Into<IdentifiedPeptidoform<Source::Complexity, Source::PeptidoformAvailability>>
+        + 'lifetime,
+    Iter: Iterator<Item = Result<Source::Source, CustomError>> + 'lifetime,
+    Source::Format: 'static,
+    MaybePeptidoform: From<Source::PeptidoformAvailability>,
 {
     /// Make this into a generic boxed iterator for merging with other identified peptidoform formats
-    pub fn into_box(
+    pub fn into_box<Complexity: AtLeast<Source::Complexity>>(
         self,
-    ) -> Box<dyn Iterator<Item = Result<IdentifiedPeptidoform, CustomError>> + 'lifetime> {
-        Box::new(self.map(|p: Result<R, CustomError>| match p {
-            Ok(p) => Ok(p.into()),
+    ) -> Box<
+        dyn Iterator<
+                Item = Result<IdentifiedPeptidoform<Complexity, MaybePeptidoform>, CustomError>,
+            > + 'lifetime,
+    > {
+        Box::new(self.map(|p: Result<Source, CustomError>| match p {
+            Ok(p) => Ok(p.into().cast()),
             Err(e) => Err(e),
         }))
     }

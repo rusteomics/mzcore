@@ -1,9 +1,15 @@
+use std::{borrow::Cow, marker::PhantomData, ops::Range};
+
 use crate::{
     error::CustomError,
-    identification::{IdentifiedPeptidoform, IdentifiedPeptidoformSource, MetaData},
+    identification::{
+        FastaIdentifier, IdentifiedPeptidoform, IdentifiedPeptidoformData,
+        IdentifiedPeptidoformSource, KnownFileFormat, MetaData, PeptidoformPresent, SpectrumIds,
+    },
     ontology::CustomDatabase,
+    prelude::CompoundPeptidoformIon,
     sequence::{Peptidoform, SemiAmbiguous, SloppyParsingParameters},
-    system::Ratio,
+    system::{Mass, MassOverCharge, Ratio, Time, isize::Charge},
 };
 
 use serde::{Deserialize, Serialize};
@@ -20,11 +26,8 @@ static NUMBER_ERROR: (&str, &str) = (
 );
 
 format_family!(
-    /// The format for any PepNet file
-    PepNetFormat,
-    /// The data from any PepNet file
-    PepNetData,
-    PepNetVersion, [&PEPNET_V1_0], b'\t', None;
+    PepNet,
+    SemiAmbiguous, PeptidoformPresent, [&PEPNET_V1_0], b'\t', None;
     required {
         peptide: Peptidoform<SemiAmbiguous>, |location: Location, custom_database: Option<&CustomDatabase>| Peptidoform::sloppy_pro_forma(
             location.full_line(),
@@ -42,16 +45,6 @@ format_family!(
     }
     optional { }
 );
-
-impl From<PepNetData> for IdentifiedPeptidoform {
-    fn from(value: PepNetData) -> Self {
-        Self {
-            score: Some(value.score),
-            local_confidence: Some(value.local_confidence.clone()),
-            metadata: MetaData::PepNet(value),
-        }
-    }
-}
 
 /// The only known version of PepNet
 pub const PEPNET_V1_0: PepNetFormat = PepNetFormat {
@@ -88,5 +81,75 @@ impl IdentifiedPeptidoformVersion<PepNetFormat> for PepNetVersion {
         match self {
             Self::V1_0 => "v1.0",
         }
+    }
+}
+
+impl MetaData for PepNetData {
+    fn compound_peptidoform_ion(&self) -> Option<Cow<'_, CompoundPeptidoformIon>> {
+        Some(Cow::Owned(self.peptide.clone().into()))
+    }
+
+    fn format(&self) -> KnownFileFormat {
+        KnownFileFormat::PepNet(self.version)
+    }
+
+    fn id(&self) -> String {
+        "-".to_string()
+    }
+
+    fn confidence(&self) -> Option<f64> {
+        Some(self.score)
+    }
+
+    fn local_confidence(&self) -> Option<Cow<'_, [f64]>> {
+        Some(Cow::Borrowed(self.local_confidence.as_slice()))
+    }
+
+    fn original_confidence(&self) -> Option<f64> {
+        Some(self.score)
+    }
+
+    fn original_local_confidence(&self) -> Option<&[f64]> {
+        Some(self.local_confidence.as_slice())
+    }
+
+    fn charge(&self) -> Option<Charge> {
+        None
+    }
+
+    fn mode(&self) -> Option<&str> {
+        None
+    }
+
+    fn retention_time(&self) -> Option<Time> {
+        None
+    }
+
+    fn scans(&self) -> SpectrumIds {
+        SpectrumIds::None
+    }
+
+    fn experimental_mz(&self) -> Option<MassOverCharge> {
+        None
+    }
+
+    fn experimental_mass(&self) -> Option<Mass> {
+        None
+    }
+
+    fn ppm_error(&self) -> Option<Ratio> {
+        Some(self.ppm_diff)
+    }
+
+    fn protein_name(&self) -> Option<FastaIdentifier<String>> {
+        None
+    }
+
+    fn protein_id(&self) -> Option<usize> {
+        None
+    }
+
+    fn protein_location(&self) -> Option<Range<usize>> {
+        None
     }
 }

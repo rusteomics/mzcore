@@ -1,7 +1,9 @@
 use std::{
+    borrow::Cow,
     collections::HashMap,
     fs::File,
     io::{BufRead, BufReader},
+    marker::PhantomData,
     ops::Range,
     str::FromStr,
 };
@@ -13,14 +15,18 @@ use serde::{Deserialize, Serialize};
 use crate::{
     error::{Context, CustomError},
     helper_functions::{check_extension, explain_number_error},
-    identification::{IdentifiedPeptidoform, MetaData, SpectrumId, SpectrumIds},
+    identification::{
+        FastaIdentifier, IdentifiedPeptidoform, IdentifiedPeptidoformData, KnownFileFormat,
+        MaybePeptidoform, MetaData, SpectrumId, SpectrumIds,
+    },
     ontology::CustomDatabase,
+    prelude::CompoundPeptidoformIon,
     quantities::Tolerance,
     sequence::{
         AminoAcid, PeptideModificationSearch, Peptidoform, ReturnModification, SemiAmbiguous,
         SimpleModification, SimpleModificationInner, SloppyParsingParameters,
     },
-    system::{MassOverCharge, Time, isize::Charge},
+    system::{Mass, MassOverCharge, Time, isize::Charge},
 };
 
 /// Peptide data from a mzTab file
@@ -721,7 +727,7 @@ impl<'a> PSMLine<'a> {
     }
 }
 
-impl From<MZTabData> for IdentifiedPeptidoform {
+impl From<MZTabData> for IdentifiedPeptidoform<SemiAmbiguous, MaybePeptidoform> {
     fn from(value: MZTabData) -> Self {
         Self {
             score: (!value.search_engine.is_empty())
@@ -736,7 +742,9 @@ impl From<MZTabData> for IdentifiedPeptidoform {
                 })
                 .filter(|v| !v.is_nan()),
             local_confidence: value.local_confidence.clone(),
-            metadata: MetaData::MZTab(value),
+            data: IdentifiedPeptidoformData::MZTab(value),
+            complexity_marker: PhantomData,
+            peptidoform_availability_marker: PhantomData,
         }
     }
 }
@@ -870,4 +878,94 @@ fn parse_mztab_reader<T: BufRead>(
             }
         })
     })
+}
+
+impl MetaData for MZTabData {
+    fn compound_peptidoform_ion(&self) -> Option<Cow<'_, CompoundPeptidoformIon>> {
+        self.peptide.as_ref().map(|p| Cow::Owned(p.clone().into()))
+    }
+
+    fn format(&self) -> KnownFileFormat {
+        KnownFileFormat::MZTab
+    }
+
+    fn id(&self) -> String {
+        self.id.to_string()
+    }
+
+    fn confidence(&self) -> Option<f64> {
+        (!self.search_engine.is_empty())
+            .then(|| {
+                (self
+                    .search_engine
+                    .iter()
+                    .filter_map(|(_, s, _)| *s)
+                    .sum::<f64>()
+                    / self.search_engine.len() as f64)
+                    .clamp(-1.0, 1.0)
+            })
+            .filter(|v| !v.is_nan())
+    }
+
+    fn local_confidence(&self) -> Option<Cow<'_, [f64]>> {
+        self.local_confidence
+            .as_ref()
+            .map(|lc| Cow::Borrowed(lc.as_slice()))
+    }
+
+    fn original_confidence(&self) -> Option<f64> {
+        (!self.search_engine.is_empty())
+            .then(|| {
+                (self
+                    .search_engine
+                    .iter()
+                    .filter_map(|(_, s, _)| *s)
+                    .sum::<f64>()
+                    / self.search_engine.len() as f64)
+                    .clamp(-1.0, 1.0)
+            })
+            .filter(|v| !v.is_nan())
+    }
+
+    fn original_local_confidence(&self) -> Option<&[f64]> {
+        self.local_confidence.as_deref()
+    }
+
+    fn charge(&self) -> Option<Charge> {
+        Some(self.z)
+    }
+
+    fn mode(&self) -> Option<&str> {
+        None
+    }
+
+    fn retention_time(&self) -> Option<Time> {
+        self.rt
+    }
+
+    fn scans(&self) -> SpectrumIds {
+        self.spectra_ref.clone()
+    }
+
+    fn experimental_mz(&self) -> Option<MassOverCharge> {
+        self.mz
+    }
+
+    fn experimental_mass(&self) -> Option<Mass> {
+        self.mz.map(|mz| mz * self.z.to_float())
+    }
+
+    fn protein_name(&self) -> Option<FastaIdentifier<String>> {
+        self.accession
+            .as_ref()
+            .map(|a| FastaIdentifier::Undefined(a.clone()))
+    }
+
+    fn protein_id(&self) -> Option<usize> {
+        None
+    }
+
+    fn protein_location(&self) -> Option<Range<usize>> {
+        self.start.and_then(|s| self.end.map(|e| s..e))
+    }
 }

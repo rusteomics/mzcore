@@ -122,7 +122,6 @@ pub fn building_blocks(
                 )
             })
             .flat_map(|(a, m)| {
-                #[expect(clippy::redundant_clone)] // not redundant
                 let mc = m.clone();
                 a.formulas_all(
                     &[],

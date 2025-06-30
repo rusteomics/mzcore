@@ -170,7 +170,7 @@ fn test_alignment(
         .unwrap()
         .into_simple_linear()
         .unwrap();
-    let alignment = align::<MAXIMAL_STEP, SimpleLinear, SimpleLinear>(
+    let alignment = align::<MAXIMAL_STEP, &Peptidoform<SimpleLinear>, &Peptidoform<SimpleLinear>>(
         &first_peptide,
         &second_peptide,
         scoring,

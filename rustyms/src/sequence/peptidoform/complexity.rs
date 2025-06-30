@@ -2,6 +2,14 @@
 //! Used for compile time checking for incorrect use of peptides.
 use serde::{Deserialize, Serialize};
 
+/// A trait to mark all levels of complexity
+pub trait Complexity {}
+impl Complexity for Linked {}
+impl Complexity for Linear {}
+impl Complexity for SimpleLinear {}
+impl Complexity for SemiAmbiguous {}
+impl Complexity for UnAmbiguous {}
+
 /// A [`crate::sequence::Peptidoform`] that (potentially) is linked, either with cross-links or branches
 #[derive(
     Debug, Default, Copy, Clone, PartialEq, PartialOrd, Ord, Eq, Hash, Serialize, Deserialize,

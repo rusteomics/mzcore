@@ -1,17 +1,18 @@
-use std::{path::PathBuf, sync::LazyLock};
+use std::{borrow::Cow, marker::PhantomData, ops::Range, path::PathBuf, sync::LazyLock};
 
 use crate::{
     error::CustomError,
     glycan::MonoSaccharide,
     helper_functions::explain_number_error,
     identification::{
-        BoxedIdentifiedPeptideIter, IdentifiedPeptidoform, IdentifiedPeptidoformSource,
-        IdentifiedPeptidoformVersion, MetaData, SpectrumId,
+        BoxedIdentifiedPeptideIter, IdentifiedPeptidoform, IdentifiedPeptidoformData,
+        IdentifiedPeptidoformSource, IdentifiedPeptidoformVersion, KnownFileFormat, MetaData,
+        PeptidoformPresent, SpectrumId, SpectrumIds,
         common_parser::{Location, OptionalColumn, OptionalLocation},
         csv::{CsvLine, parse_csv},
     },
     ontology::CustomDatabase,
-    prelude::{Chemical, SequencePosition},
+    prelude::{Chemical, CompoundPeptidoformIon, SequencePosition},
     quantities::{Tolerance, WithinTolerance},
     sequence::{
         Modification, Peptidoform, SemiAmbiguous, SimpleLinear, SimpleModification,
@@ -37,11 +38,8 @@ static IDENTIFIER_ERROR: (&str, &str) = (
 // TODO: in the localisation the lowercase character(s) indicate the position of the opensearch (observed modifications).
 // It would be best to use this to place the mod properly (also with the position scoring if present and the mod is ambiguous).
 format_family!(
-    /// The format for MSFragger data
-    MSFraggerFormat,
-    /// The data for MSFragger data
-    MSFraggerData,
-    MSFraggerVersion, [&VERSION_V4_2, &FRAGPIPE_V20_OR_21, &FRAGPIPE_V22, &PHILOSOPHER], b'\t', None;
+    MSFragger,
+    SimpleLinear, PeptidoformPresent, [&VERSION_V4_2, &FRAGPIPE_V20_OR_21, &FRAGPIPE_V22, &PHILOSOPHER], b'\t', None;
     required {
         expectation_score: f64, |location: Location, _| location.parse::<f64>(NUMBER_ERROR);
         hyper_score: f64, |location: Location, _| location.parse::<f64>(NUMBER_ERROR);
@@ -85,11 +83,11 @@ format_family!(
         z: Charge, |location: Location, _| location.parse::<isize>(NUMBER_ERROR).map(Charge::new::<crate::system::e>);
     }
     optional {
-        best_score_with_delta_mass: f64, |location: Location, _| location.parse::<f64>(NUMBER_ERROR);
+        best_score_with_delta_mass: f64, |location: Location, _| location.or_empty().parse::<f64>(NUMBER_ERROR);
         calibrated_experimental_mass: Mass, |location: Location, _| location.parse::<f64>(NUMBER_ERROR).map(Mass::new::<crate::system::dalton>);
         calibrated_experimental_mz: MassOverCharge, |location: Location, _| location.parse::<f64>(NUMBER_ERROR).map(MassOverCharge::new::<crate::system::mz>);
         condition: String, |location: Location, _| Ok(Some(location.get_string()));
-        delta_score: f64, |location: Location, _| location.parse::<f64>(NUMBER_ERROR);
+        delta_score: f64, |location: Location, _| location.or_empty().parse::<f64>(NUMBER_ERROR);
         entry_name: String, |location: Location, _| Ok(location.get_string());
         enzymatic_termini: usize, |location: Location, _| location.parse::<usize>(NUMBER_ERROR);
         extended_peptide: Box<[Option<Peptidoform<SemiAmbiguous>>; 3]>, |location: Location, custom_database: Option<&CustomDatabase>| {
@@ -150,8 +148,8 @@ format_family!(
         protein_start: usize, |location: Location, _| location.parse::<usize>(NUMBER_ERROR);
         purity: f64, |location: Location, _| location.parse::<f64>(NUMBER_ERROR);
         rank: usize, |location: Location, _| location.parse::<usize>(NUMBER_ERROR);
-        score_without_delta_mass: f64, |location: Location, _| location.parse::<f64>(NUMBER_ERROR);
-        second_best_score_with_delta_mass: f64, |location: Location, _| location.parse::<f64>(NUMBER_ERROR);
+        score_without_delta_mass: f64, |location: Location, _| location.or_empty().parse::<f64>(NUMBER_ERROR);
+        second_best_score_with_delta_mass: f64, |location: Location, _| location.or_empty().parse::<f64>(NUMBER_ERROR);
         raw_file: PathBuf, |location: Location, _| Ok(Some(location.get_string().into()));
         total_glycan_composition: Vec<(MonoSaccharide, isize)>, |location: Location, _| location.or_empty().parse_with(|location| location.as_str().find('%').map_or_else(
                 || MonoSaccharide::from_byonic_composition(location.as_str()),
@@ -236,16 +234,6 @@ format_family!(
 /// The Regex to match against MSFragger scan fields
 static IDENTIFER_REGEX: LazyLock<regex::Regex> =
     LazyLock::new(|| regex::Regex::new(r"([^/]+)\.(\d+)\.\d+.\d+").unwrap());
-
-impl From<MSFraggerData> for IdentifiedPeptidoform {
-    fn from(value: MSFraggerData) -> Self {
-        Self {
-            score: Some(value.hyper_score / 100.0),
-            local_confidence: None,
-            metadata: MetaData::MSFragger(value),
-        }
-    }
-}
 
 /// A MSFragger open search modification
 #[derive(Clone, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
@@ -506,3 +494,73 @@ pub const FRAGPIPE_V22: MSFraggerFormat = MSFraggerFormat {
     total_glycan_composition: OptionalColumn::Optional("total glycan composition"),
     z: "charge",
 };
+
+impl MetaData for MSFraggerData {
+    fn compound_peptidoform_ion(&self) -> Option<Cow<'_, CompoundPeptidoformIon>> {
+        Some(Cow::Owned(self.peptide.clone().into()))
+    }
+
+    fn format(&self) -> KnownFileFormat {
+        KnownFileFormat::MSFragger(self.version)
+    }
+
+    fn id(&self) -> String {
+        self.scan.to_string()
+    }
+
+    fn confidence(&self) -> Option<f64> {
+        Some(self.hyper_score / 100.0)
+    }
+
+    fn local_confidence(&self) -> Option<Cow<'_, [f64]>> {
+        None
+    }
+
+    fn original_confidence(&self) -> Option<f64> {
+        Some(self.hyper_score)
+    }
+
+    fn original_local_confidence(&self) -> Option<&[f64]> {
+        None
+    }
+
+    fn charge(&self) -> Option<Charge> {
+        Some(self.z)
+    }
+
+    fn mode(&self) -> Option<&str> {
+        None
+    }
+
+    fn retention_time(&self) -> Option<Time> {
+        Some(self.rt)
+    }
+
+    fn scans(&self) -> SpectrumIds {
+        self.raw_file.clone().map_or_else(
+            || SpectrumIds::FileNotKnown(vec![self.scan.clone()]),
+            |raw_file| SpectrumIds::FileKnown(vec![(raw_file, vec![self.scan.clone()])]),
+        )
+    }
+
+    fn experimental_mz(&self) -> Option<MassOverCharge> {
+        self.mz
+    }
+
+    fn experimental_mass(&self) -> Option<Mass> {
+        Some(self.mass)
+    }
+
+    fn protein_name(&self) -> Option<FastaIdentifier<String>> {
+        Some(self.protein.clone())
+    }
+
+    fn protein_id(&self) -> Option<usize> {
+        None
+    }
+
+    fn protein_location(&self) -> Option<Range<usize>> {
+        self.protein_start
+            .and_then(|start| self.protein_end.map(|end| start..end))
+    }
+}

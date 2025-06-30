@@ -19,7 +19,7 @@ fn test_alignment(peptide_one: &str, peptide_two: &str, path: &str) {
         .unwrap()
         .into_simple_linear()
         .unwrap();
-    let alignment = align::<4, SimpleLinear, SimpleLinear>(
+    let alignment = align::<4, &Peptidoform<SimpleLinear>, &Peptidoform<SimpleLinear>>(
         &first_peptide,
         &second_peptide,
         AlignScoring::default(),

@@ -1,7 +1,4 @@
-use std::{
-    ops::{Add, AddAssign, Deref, Mul, MulAssign, Neg, Sub},
-    rc::Rc,
-};
+use std::ops::{Add, AddAssign, Deref, Mul, MulAssign, Neg, Sub};
 
 use itertools::{Itertools, MinMaxResult};
 use serde::{Deserialize, Serialize};
@@ -15,7 +12,7 @@ use crate::{
 /// A collection of potentially multiple of the generic type, it is used be able to easily
 /// combine multiple of this multi struct into all possible combinations.
 #[derive(Clone, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
-pub struct Multi<M>(Rc<[M]>);
+pub struct Multi<M>(Vec<M>);
 
 impl<M: Eq + std::hash::Hash + Clone> Multi<M> {
     /// Get all unique values
@@ -46,7 +43,7 @@ impl<M> Deref for Multi<M> {
 impl<M: Default> Default for Multi<M> {
     // Default is one empty M to make the cartesian product with a default return useful results
     fn default() -> Self {
-        Self(Rc::new([M::default()]))
+        Self(vec![M::default()])
     }
 }
 
@@ -297,19 +294,19 @@ where
 
 impl<M> From<M> for Multi<M> {
     fn from(value: M) -> Self {
-        Self(Rc::new([value]))
+        Self(vec![value])
     }
 }
 
 impl<M: Clone> From<&M> for Multi<M> {
     fn from(value: &M) -> Self {
-        Self(Rc::new([value.clone()]))
+        Self(vec![value.clone()])
     }
 }
 
 impl<M> From<Vec<M>> for Multi<M> {
     fn from(value: Vec<M>) -> Self {
-        Self(value.into())
+        Self(value)
     }
 }
 
@@ -361,7 +358,7 @@ impl Multi<MolecularFormula> {
 
     pub(crate) fn with_neutral_loss(self, loss: &NeutralLoss) -> Self {
         let mut new_options = Vec::with_capacity(self.0.len() * 2);
-        for option in self.0.iter() {
+        for option in &self.0 {
             new_options.push(match loss {
                 NeutralLoss::Gain(n, m) => option + m * n,
                 NeutralLoss::Loss(n, m) => option - m * n,
@@ -369,6 +366,6 @@ impl Multi<MolecularFormula> {
             });
         }
         new_options.extend_from_slice(&self.0);
-        Self(new_options.into())
+        Self(new_options)
     }
 }

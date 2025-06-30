@@ -244,7 +244,7 @@ fn fix_j(
 
     (
         vec![
-            (Region::ComplementarityDeterminingRegion(3), cdr3),
+            (Region::ComplementarityDetermining(3), cdr3),
             (Region::Framework(4), fr4),
         ],
         annotations,

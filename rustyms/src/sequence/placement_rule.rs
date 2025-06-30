@@ -101,7 +101,7 @@ impl PlacementRule {
     pub fn is_possible_aa(&self, aa: AminoAcid, position: Position) -> bool {
         match self {
             Self::AminoAcid(allowed_aa, r_pos) => {
-                allowed_aa.iter().any(|a| *a == aa) && r_pos.is_possible_position(position)
+                allowed_aa.contains(&aa) && r_pos.is_possible_position(position)
             }
             Self::PsiModification(_, _) => false,
             Self::Terminal(r_pos) => {

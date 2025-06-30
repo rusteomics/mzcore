@@ -1,18 +1,26 @@
-use std::path::{Path, PathBuf};
+use std::{
+    borrow::Cow,
+    marker::PhantomData,
+    ops::Range,
+    path::{Path, PathBuf},
+};
 
 use crate::{
     error::CustomError,
-    identification::SpectrumId,
+    identification::{
+        FastaIdentifier, KnownFileFormat, MetaData, PeptidoformPresent, SpectrumId, SpectrumIds,
+    },
     ontology::CustomDatabase,
+    prelude::CompoundPeptidoformIon,
     sequence::{Peptidoform, SemiAmbiguous},
-    system::{Mass, Ratio, Time, isize::Charge},
+    system::{Mass, MassOverCharge, Ratio, Time, isize::Charge},
 };
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 
 use crate::identification::{
-    BoxedIdentifiedPeptideIter, IdentifiedPeptidoform, IdentifiedPeptidoformSource,
-    IdentifiedPeptidoformVersion, MetaData,
+    BoxedIdentifiedPeptideIter, IdentifiedPeptidoform, IdentifiedPeptidoformData,
+    IdentifiedPeptidoformSource, IdentifiedPeptidoformVersion,
     common_parser::Location,
     csv::{CsvLine, parse_csv},
 };
@@ -23,11 +31,8 @@ static NUMBER_ERROR: (&str, &str) = (
 );
 
 format_family!(
-    /// The format for any Sage file
-    SageFormat,
-    /// The data from any Sage file
-    SageData,
-    SageVersion, [&VERSION_0_14], b'\t', None;
+    Sage,
+    SemiAmbiguous, PeptidoformPresent, [&VERSION_0_14], b'\t', None;
     required {
         aligned_rt: Ratio, |location: Location, _| location.parse(NUMBER_ERROR).map(Ratio::new::<crate::system::ratio::fraction>);
         decoy: bool, |location: Location, _| location.parse::<i8>(NUMBER_ERROR).map(|v| v == -1);
@@ -70,16 +75,6 @@ format_family!(
     }
     optional { }
 );
-
-impl From<SageData> for IdentifiedPeptidoform {
-    fn from(value: SageData) -> Self {
-        Self {
-            score: Some(value.sage_discriminant_score.clamp(-1.0, 1.0)),
-            local_confidence: None,
-            metadata: MetaData::Sage(value),
-        }
-    }
-}
 
 /// An older version of a Sage export
 pub const VERSION_0_14: SageFormat = SageFormat {
@@ -148,5 +143,73 @@ impl IdentifiedPeptidoformVersion<SageFormat> for SageVersion {
         match self {
             Self::V0_14 => "v0.14",
         }
+    }
+}
+
+impl MetaData for SageData {
+    fn compound_peptidoform_ion(&self) -> Option<Cow<'_, CompoundPeptidoformIon>> {
+        Some(Cow::Owned(self.peptide.clone().into()))
+    }
+
+    fn format(&self) -> KnownFileFormat {
+        KnownFileFormat::Sage(self.version)
+    }
+
+    fn id(&self) -> String {
+        self.id.to_string()
+    }
+
+    fn confidence(&self) -> Option<f64> {
+        Some(self.sage_discriminant_score.clamp(-1.0, 1.0))
+    }
+
+    fn local_confidence(&self) -> Option<Cow<'_, [f64]>> {
+        None
+    }
+
+    fn original_confidence(&self) -> Option<f64> {
+        Some(self.sage_discriminant_score)
+    }
+
+    fn original_local_confidence(&self) -> Option<&[f64]> {
+        None
+    }
+
+    fn charge(&self) -> Option<Charge> {
+        Some(self.z)
+    }
+
+    fn mode(&self) -> Option<&str> {
+        None
+    }
+
+    fn retention_time(&self) -> Option<Time> {
+        Some(self.rt)
+    }
+
+    fn scans(&self) -> SpectrumIds {
+        SpectrumIds::FileKnown(vec![(self.raw_file.clone(), vec![self.scan.clone()])])
+    }
+
+    fn experimental_mz(&self) -> Option<MassOverCharge> {
+        Some(MassOverCharge::new::<crate::system::mz>(
+            self.mass.value / self.z.to_float().value,
+        ))
+    }
+
+    fn experimental_mass(&self) -> Option<Mass> {
+        Some(self.mass)
+    }
+
+    fn protein_name(&self) -> Option<FastaIdentifier<String>> {
+        None
+    }
+
+    fn protein_id(&self) -> Option<usize> {
+        None
+    }
+
+    fn protein_location(&self) -> Option<Range<usize>> {
+        None
     }
 }

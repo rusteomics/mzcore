@@ -311,7 +311,7 @@ impl<T> IsAminoAcid for CheckedAminoAcid<T> {
         sequence_index: SequencePosition,
         peptidoform_index: usize,
         peptidoform_ion_index: usize,
-    ) -> Option<std::borrow::Cow<'_, Vec<(SatelliteLabel, MolecularFormula)>>> {
+    ) -> Option<std::borrow::Cow<'_, [(SatelliteLabel, MolecularFormula)]>> {
         self.aminoacid.satellite_ion_fragments(
             sequence_index,
             peptidoform_index,

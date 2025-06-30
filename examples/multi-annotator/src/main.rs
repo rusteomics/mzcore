@@ -209,7 +209,7 @@ fn main() {
                     if args.report_IL_satellite_coverage {
                         row.insert(
                             Arc::new("IL_satellite_coverage".to_string()),
-                            annotated.peptide.clone().singular_peptide().map_or(
+                            annotated.peptide.clone().singular_peptidoform().map_or(
                                 String::new(),
                                 |p| {
                                     p.sequence()

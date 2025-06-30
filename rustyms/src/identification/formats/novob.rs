@@ -1,19 +1,21 @@
 use crate::{
     error::CustomError,
     identification::{
-        BoxedIdentifiedPeptideIter, IdentifiedPeptidoformVersion,
+        BoxedIdentifiedPeptideIter, FastaIdentifier, IdentifiedPeptidoform,
+        IdentifiedPeptidoformData, IdentifiedPeptidoformSource, IdentifiedPeptidoformVersion,
+        KnownFileFormat, MaybePeptidoform, MetaData, SpectrumId, SpectrumIds,
         common_parser::Location,
         csv::{CsvLine, parse_csv},
     },
-    identification::{IdentifiedPeptidoform, IdentifiedPeptidoformSource, MetaData},
     ontology::{CustomDatabase, Ontology},
+    prelude::CompoundPeptidoformIon,
     sequence::{AminoAcid, Peptidoform, SemiAmbiguous, SequenceElement, SloppyParsingParameters},
-    system::{Mass, Ratio, isize::Charge},
+    system::{Mass, MassOverCharge, Ratio, Time, isize::Charge},
 };
 
 use serde::{Deserialize, Serialize};
 
-use std::sync::LazyLock;
+use std::{borrow::Cow, marker::PhantomData, ops::Range, sync::LazyLock};
 
 static NUMBER_ERROR: (&str, &str) = (
     "Invalid NovoB line",
@@ -63,11 +65,8 @@ static PARAMETERS: LazyLock<SloppyParsingParameters> = LazyLock::new(|| SloppyPa
 });
 
 format_family!(
-    /// The format for any NovoB file
-    NovoBFormat,
-    /// The data from any NovoB file
-    NovoBData,
-    NovoBVersion, [&NOVOB_V0_0_1], b'\t', Some(vec![
+    NovoB,
+    SemiAmbiguous, MaybePeptidoform, [&NOVOB_V0_0_1], b'\t', Some(vec![
         "mcount".to_string(),
         "charge".to_string(),
         "pepmass".to_string(),
@@ -106,16 +105,6 @@ format_family!(
     }
     optional { }
 );
-
-impl From<NovoBData> for IdentifiedPeptidoform {
-    fn from(value: NovoBData) -> Self {
-        Self {
-            score: Some(value.score_forward.max(value.score_reverse)),
-            local_confidence: None,
-            metadata: MetaData::NovoB(value),
-        }
-    }
-}
 
 /// The only known version of NovoB
 pub const NOVOB_V0_0_1: NovoBFormat = NovoBFormat {
@@ -159,5 +148,86 @@ impl IdentifiedPeptidoformVersion<NovoBFormat> for NovoBVersion {
         match self {
             Self::V0_0_1 => "v0.0.1",
         }
+    }
+}
+
+impl MetaData for NovoBData {
+    fn compound_peptidoform_ion(&self) -> Option<Cow<'_, CompoundPeptidoformIon>> {
+        if self.score_forward >= self.score_reverse {
+            self.peptide_forward.as_ref()
+        } else {
+            self.peptide_reverse.as_ref()
+        }
+        .map(|p| Cow::Owned(p.clone().into()))
+    }
+
+    fn format(&self) -> KnownFileFormat {
+        KnownFileFormat::NovoB(self.version)
+    }
+
+    fn id(&self) -> String {
+        self.scan.to_string()
+    }
+
+    fn confidence(&self) -> Option<f64> {
+        Some(self.score_forward.max(self.score_reverse))
+    }
+
+    fn local_confidence(&self) -> Option<Cow<'_, [f64]>> {
+        None
+    }
+
+    fn original_confidence(&self) -> Option<f64> {
+        Some(self.score_forward.max(self.score_reverse))
+    }
+
+    fn original_local_confidence(&self) -> Option<&[f64]> {
+        None
+    }
+
+    fn charge(&self) -> Option<Charge> {
+        Some(self.z)
+    }
+
+    fn mode(&self) -> Option<&str> {
+        None
+    }
+
+    fn retention_time(&self) -> Option<Time> {
+        None
+    }
+
+    fn scans(&self) -> SpectrumIds {
+        SpectrumIds::FileNotKnown(vec![SpectrumId::Index(self.scan)])
+    }
+
+    fn experimental_mz(&self) -> Option<MassOverCharge> {
+        Some(MassOverCharge::new::<crate::system::mz>(
+            self.mass.value / self.z.to_float().value,
+        ))
+    }
+
+    fn experimental_mass(&self) -> Option<Mass> {
+        Some(self.mass)
+    }
+
+    fn ppm_error(&self) -> Option<Ratio> {
+        Some(if self.score_forward >= self.score_reverse {
+            self.ppm_diff_forward
+        } else {
+            self.ppm_diff_reverse
+        })
+    }
+
+    fn protein_name(&self) -> Option<FastaIdentifier<String>> {
+        None
+    }
+
+    fn protein_id(&self) -> Option<usize> {
+        None
+    }
+
+    fn protein_location(&self) -> Option<Range<usize>> {
+        None
     }
 }

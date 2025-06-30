@@ -2,7 +2,10 @@
 use rayon::prelude::*;
 use std::collections::HashSet;
 
-use crate::sequence::{AnnotatedPeptide, Annotation, Peptidoform, Region, UnAmbiguous};
+use crate::{
+    prelude::HasPeptidoformImpl,
+    sequence::{AnnotatedPeptide, Annotation, Peptidoform, Region, UnAmbiguous},
+};
 
 pub(super) use super::*;
 
@@ -176,11 +179,14 @@ impl Allele<'_> {
     }
 }
 
-impl AnnotatedPeptide for Allele<'_> {
+impl HasPeptidoformImpl for Allele<'_> {
     type Complexity = UnAmbiguous;
-    fn peptide(&self) -> &Peptidoform<Self::Complexity> {
+    fn peptidoform(&self) -> &Peptidoform<Self::Complexity> {
         self.sequence
     }
+}
+
+impl AnnotatedPeptide for Allele<'_> {
     fn annotations(&self) -> &[(Annotation, usize)] {
         self.annotations
     }

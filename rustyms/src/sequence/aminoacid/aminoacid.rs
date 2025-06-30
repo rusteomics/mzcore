@@ -470,7 +470,7 @@ impl IsAminoAcid for AminoAcid {
         sequence_index: SequencePosition,
         peptidoform_index: usize,
         peptidoform_ion_index: usize,
-    ) -> Option<Cow<'_, Vec<(SatelliteLabel, MolecularFormula)>>> {
+    ) -> Option<Cow<'_, [(SatelliteLabel, MolecularFormula)]>> {
         let SequencePosition::Index(sequence_index) = sequence_index else {
             return None;
         };

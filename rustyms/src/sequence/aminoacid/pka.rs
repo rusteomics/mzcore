@@ -110,7 +110,7 @@ impl<Complexity: AtMax<SemiAmbiguous>> Peptidoform<Complexity> {
 
         #[allow(clippy::while_float)]
         while (high - low) > EPSILON {
-            new_pi = (low + high) / 2.0;
+            new_pi = f64::midpoint(low, high);
             let charge = calculate_charge(new_pi, &ionizable);
 
             if charge > 0.0 {

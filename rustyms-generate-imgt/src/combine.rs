@@ -193,7 +193,11 @@ impl std::fmt::Display for TemporaryGermline {
                     ..Default::default()
                 };
                 if let Some(first_allele) = first_allele {
-                    let alignment = rustyms::align::align::<1, UnAmbiguous, UnAmbiguous>(
+                    let alignment = rustyms::align::align::<
+                        1,
+                        &Peptidoform<UnAmbiguous>,
+                        &Peptidoform<UnAmbiguous>,
+                    >(
                         first_allele,
                         &seq.sequence,
                         scoring,
@@ -207,7 +211,11 @@ impl std::fmt::Display for TemporaryGermline {
                     )?;
                 }
                 if let Some(reference) = reference {
-                    let alignment = rustyms::align::align::<1, UnAmbiguous, UnAmbiguous>(
+                    let alignment = rustyms::align::align::<
+                        1,
+                        &Peptidoform<UnAmbiguous>,
+                        &Peptidoform<UnAmbiguous>,
+                    >(
                         reference,
                         &seq.sequence,
                         scoring,
