@@ -905,7 +905,7 @@ impl<Complexity> Peptidoform<Complexity> {
             let position = PeptidePosition::n(SequencePosition::Index(sequence_index), self.len());
             let mut cross_links = Vec::new();
             let visited_peptides = vec![peptidoform_index];
-            let (n_term, n_term_specific, n_term_seen) = self.all_masses(
+            let (n_term, n_term_specific, n_term_seen, n_term_losses) = self.all_masses(
                 ..=sequence_index,
                 ..sequence_index,
                 &self.get_n_term_mass(
@@ -917,7 +917,6 @@ impl<Complexity> Peptidoform<Complexity> {
                     peptidoform_ion_index,
                     &model.glycan,
                 ),
-                model.modification_specific_neutral_losses,
                 all_peptides,
                 &visited_peptides,
                 &mut cross_links,
@@ -926,7 +925,7 @@ impl<Complexity> Peptidoform<Complexity> {
                 peptidoform_ion_index,
                 &model.glycan,
             );
-            let (c_term, c_term_specific, c_term_seen) = self.all_masses(
+            let (c_term, c_term_specific, c_term_seen, c_term_losses) = self.all_masses(
                 sequence_index..,
                 sequence_index + 1..,
                 &self.get_c_term_mass(
@@ -938,7 +937,6 @@ impl<Complexity> Peptidoform<Complexity> {
                     peptidoform_ion_index,
                     &model.glycan,
                 ),
-                model.modification_specific_neutral_losses,
                 all_peptides,
                 &visited_peptides,
                 &mut cross_links,
@@ -978,8 +976,8 @@ impl<Complexity> Peptidoform<Complexity> {
                     .aminoacid
                     .aminoacid()
                     .fragments(
-                        &(n_term, n_term_specific),
-                        &(c_term, c_term_specific),
+                        &(n_term, n_term_specific, n_term_losses),
+                        &(c_term, c_term_specific, c_term_losses),
                         &(modifications_total, modifications_specific),
                         &mut charge_carriers,
                         SequencePosition::Index(sequence_index),
@@ -1158,7 +1156,6 @@ impl<Complexity> Peptidoform<Complexity> {
             Multi<MolecularFormula>,
             HashMap<FragmentKind, Multi<MolecularFormula>>,
         ),
-        apply_neutral_losses: bool,
         all_peptides: &[Peptidoform<Linked>],
         visited_peptides: &[usize],
         applied_cross_links: &mut Vec<CrossLinkName>,
@@ -1170,8 +1167,9 @@ impl<Complexity> Peptidoform<Complexity> {
         Multi<MolecularFormula>,
         HashMap<FragmentKind, Multi<MolecularFormula>>,
         HashSet<CrossLinkName>,
+        Vec<Vec<NeutralLoss>>,
     ) {
-        let (ambiguous_mods_masses, mut specific, seen) = self.ambiguous_patterns(
+        let (ambiguous_mods_masses, specific, seen) = self.ambiguous_patterns(
             range.clone(),
             aa_range,
             base,
@@ -1183,26 +1181,15 @@ impl<Complexity> Peptidoform<Complexity> {
             peptidoform_ion_index,
             glycan_model,
         );
-        if apply_neutral_losses {
-            let neutral_losses = self.potential_neutral_losses(
-                range,
-                all_peptides,
-                peptidoform_index,
-                &mut Vec::new(),
-            );
-            let mut all_masses =
-                Vec::with_capacity(ambiguous_mods_masses.len() * (1 + neutral_losses.len()));
-            all_masses.extend(ambiguous_mods_masses.iter().cloned());
-            for loss in &neutral_losses {
-                all_masses.extend((ambiguous_mods_masses.clone() + loss.0.clone()).to_vec());
-                for option in specific.values_mut() {
-                    *option = option.clone().with_neutral_loss(&loss.0);
-                }
-            }
-            (all_masses.into(), specific, seen)
-        } else {
-            (ambiguous_mods_masses, specific, seen)
-        }
+        (
+            ambiguous_mods_masses,
+            specific,
+            seen,
+            self.potential_neutral_losses(range, all_peptides, peptidoform_index, &mut Vec::new())
+                .into_iter()
+                .map(|(n, _, _)| vec![n])
+                .collect(),
+        )
     }
 
     /// Get the total amount of ambiguous modifications

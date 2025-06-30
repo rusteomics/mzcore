@@ -391,6 +391,7 @@ impl Fragment {
         peptidoform_index: usize,
         annotation: &FragmentType,
         termini: &Multi<MolecularFormula>,
+        neutral_losses: &[Vec<NeutralLoss>],
         charge_carriers: &mut CachedCharge,
         settings: &PossiblePrimaryIons,
     ) -> Vec<Self> {
@@ -398,7 +399,11 @@ impl Fragment {
             .iter()
             .cartesian_product(theoretical_mass.iter())
             .cartesian_product(charge_carriers.range(settings.1))
-            .cartesian_product(std::iter::once(None).chain(settings.0.iter().map(Some)))
+            .cartesian_product(
+                std::iter::once(None)
+                    .chain(settings.0.iter().map(Some))
+                    .chain(neutral_losses.iter().map(Some)),
+            )
             .cartesian_product(settings.2.iter())
             .map(|((((term, mass), charge), losses), variant)| Self {
                 formula: Some(

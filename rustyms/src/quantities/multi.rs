@@ -5,7 +5,6 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     chemistry::{AmbiguousLabel, MolecularFormula},
-    fragment::NeutralLoss,
     system::OrderedMass,
 };
 
@@ -354,18 +353,5 @@ impl Multi<MolecularFormula> {
                 .map(|o| o.with_label(label.clone()))
                 .collect(),
         )
-    }
-
-    pub(crate) fn with_neutral_loss(self, loss: &NeutralLoss) -> Self {
-        let mut new_options = Vec::with_capacity(self.0.len() * 2);
-        for option in &self.0 {
-            new_options.push(match loss {
-                NeutralLoss::Gain(n, m) => option + m * n,
-                NeutralLoss::Loss(n, m) => option - m * n,
-                NeutralLoss::SideChainLoss(m, _) => option - m,
-            });
-        }
-        new_options.extend_from_slice(&self.0);
-        Self(new_options)
     }
 }

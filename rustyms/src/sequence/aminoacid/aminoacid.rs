@@ -7,7 +7,9 @@ use serde::{Deserialize, Serialize};
 use crate::{
     annotation::model::*,
     chemistry::{AmbiguousLabel, CachedCharge, MolecularFormula, MultiChemical},
-    fragment::{Fragment, FragmentKind, FragmentType, PeptidePosition, SatelliteLabel},
+    fragment::{
+        Fragment, FragmentKind, FragmentType, NeutralLoss, PeptidePosition, SatelliteLabel,
+    },
     molecular_formula,
     quantities::Multi,
     sequence::SequencePosition,
@@ -672,10 +674,12 @@ impl AminoAcid {
         n_term: &(
             Multi<MolecularFormula>,
             HashMap<FragmentKind, Multi<MolecularFormula>>,
+            Vec<Vec<NeutralLoss>>,
         ),
         c_term: &(
             Multi<MolecularFormula>,
             HashMap<FragmentKind, Multi<MolecularFormula>>,
+            Vec<Vec<NeutralLoss>>,
         ),
         modifications: &(
             Multi<MolecularFormula>,
@@ -709,6 +713,7 @@ impl AminoAcid {
                     peptidoform_index,
                     &FragmentType::a(n_pos, 0),
                     n_term.1.get(&FragmentKind::a).unwrap_or(&n_term.0),
+                    &n_term.2,
                     charge_carriers,
                     settings,
                 ));
@@ -728,6 +733,7 @@ impl AminoAcid {
                     peptidoform_index,
                     &FragmentType::b(n_pos, 0),
                     n_term.1.get(&FragmentKind::b).unwrap_or(&n_term.0),
+                    &n_term.2,
                     charge_carriers,
                     settings,
                 ));
@@ -747,6 +753,7 @@ impl AminoAcid {
                     peptidoform_index,
                     &FragmentType::c(n_pos, 0),
                     n_term.1.get(&FragmentKind::c).unwrap_or(&n_term.0),
+                    &n_term.2,
                     charge_carriers,
                     settings,
                 ));
@@ -774,6 +781,7 @@ impl AminoAcid {
                             peptidoform_index,
                             &FragmentType::d(n_pos, *aa, *distance, 0, *label),
                             n_term.1.get(&FragmentKind::d).unwrap_or(&n_term.0),
+                            &n_term.2,
                             charge_carriers,
                             &ions.d.1,
                         ));
@@ -797,6 +805,7 @@ impl AminoAcid {
                     peptidoform_index,
                     &FragmentType::v(c_pos, *aa, *distance, 0),
                     c_term.1.get(&FragmentKind::v).unwrap_or(&c_term.0),
+                    &c_term.2,
                     charge_carriers,
                     &ions.v.1,
                 ));
@@ -824,6 +833,7 @@ impl AminoAcid {
                             peptidoform_index,
                             &FragmentType::w(c_pos, *aa, *distance, 0, *label),
                             c_term.1.get(&FragmentKind::w).unwrap_or(&c_term.0),
+                            &c_term.2,
                             charge_carriers,
                             &ions.w.1,
                         ));
@@ -846,6 +856,7 @@ impl AminoAcid {
                     peptidoform_index,
                     &FragmentType::x(c_pos, 0),
                     c_term.1.get(&FragmentKind::x).unwrap_or(&c_term.0),
+                    &c_term.2,
                     charge_carriers,
                     settings,
                 ));
@@ -865,6 +876,7 @@ impl AminoAcid {
                     peptidoform_index,
                     &FragmentType::y(c_pos, 0),
                     c_term.1.get(&FragmentKind::y).unwrap_or(&c_term.0),
+                    &c_term.2,
                     charge_carriers,
                     settings,
                 ));
@@ -884,6 +896,7 @@ impl AminoAcid {
                     peptidoform_index,
                     &FragmentType::z(c_pos, 0),
                     c_term.1.get(&FragmentKind::z).unwrap_or(&c_term.0),
+                    &c_term.2,
                     charge_carriers,
                     settings,
                 ));
