@@ -186,10 +186,8 @@ impl PositionedGlycanStructure {
     ) -> Vec<Fragment> {
         let charges_other = charge_carriers.range(model.glycan.other_charge_range);
         let charges_oxonium = charge_carriers.range(model.glycan.oxonium_charge_range);
-        model
-            .glycan
-            .allow_structural
-            .then(|| {
+        if model.glycan.allow_structural {
+            {
                 // Get all base fragments from this node and all its children
                 let mut base_fragments = self
                     .oxonium_fragments(peptidoform_ion_index, peptidoform_index, attachment)
@@ -241,8 +239,10 @@ impl PositionedGlycanStructure {
                     .flat_map(|f| f.with_charge_range_slice(&charges_oxonium)),
                 );
                 base_fragments
-            })
-            .unwrap_or_default()
+            }
+        } else {
+            Vec::new()
+        }
     }
 
     /// Generate all fragments without charge and neutral loss options

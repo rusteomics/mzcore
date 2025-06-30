@@ -1,14 +1,21 @@
-use std::path::{Path, PathBuf};
+use std::{
+    borrow::Cow,
+    marker::PhantomData,
+    ops::Range,
+    path::{Path, PathBuf},
+};
 
 use crate::{
     error::CustomError,
     identification::{
         BoxedIdentifiedPeptideIter, FastaIdentifier, IdentifiedPeptidoform,
-        IdentifiedPeptidoformSource, IdentifiedPeptidoformVersion, MetaData, PeaksFamilyId,
+        IdentifiedPeptidoformData, IdentifiedPeptidoformSource, IdentifiedPeptidoformVersion,
+        KnownFileFormat, MetaData, PeaksFamilyId, PeptidoformPresent, SpectrumId, SpectrumIds,
         common_parser::{Location, OptionalColumn, OptionalLocation},
         csv::{CsvLine, parse_csv},
     },
     ontology::CustomDatabase,
+    prelude::CompoundPeptidoformIon,
     sequence::{
         AminoAcid, Modification, PeptideModificationSearch, Peptidoform, SemiAmbiguous,
         SimpleModification, SloppyParsingParameters,
@@ -28,11 +35,8 @@ static ID_ERROR: (&str, &str) = (
 );
 
 format_family!(
-    /// The format for any Peaks file
-    PeaksFormat,
-    /// The data from any peaks file
-    PeaksData,
-    PeaksVersion, [&V12, &V11, &V11_FEATURES, &XPLUS, &AB, &X_PATCHED, &X, &DB_PEPTIDE, &DB_PSM, &DB_PROTEIN_PEPTIDE], b',', None;
+    Peaks,
+    SemiAmbiguous, PeptidoformPresent, [&V13_DIA, &V12, &V11, &V11_FEATURES, &XPLUS, &AB, &X_PATCHED, &X, &DB_PEPTIDE, &DB_PSM, &DB_PROTEIN_PEPTIDE], b',', None;
     required {
         peptide: (Option<AminoAcid>, Vec<Peptidoform<SemiAmbiguous>>, Option<AminoAcid>), |location: Location, custom_database: Option<&CustomDatabase>| {
             let n_flanking: Option<AminoAcid> =
@@ -129,26 +133,47 @@ format_family!(
     }
 );
 
-impl From<PeaksData> for IdentifiedPeptidoform {
-    fn from(value: PeaksData) -> Self {
-        Self {
-            score: value
-                .de_novo_score
-                .or(value.alc)
-                .map(|v| v / 100.0)
-                .or_else(|| {
-                    value
-                        .logp
-                        .map(|v| 2.0 * (1.0 / (1.0 + 1.025_f64.powf(-v)) - 0.5))
-                }),
-            local_confidence: value
-                .local_confidence
-                .as_ref()
-                .map(|lc| lc.iter().map(|v| *v / 100.0).collect()),
-            metadata: MetaData::Peaks(value),
-        }
-    }
-}
+/// Version 13 Dia de novo missing: Delta RT, MS2 correlation, #precursors, gene, database, ion intensity, positional confidence
+pub const V13_DIA: PeaksFormat = PeaksFormat {
+    version: PeaksVersion::V13Dia,
+    scan_number: OptionalColumn::Required("scan"),
+    peptide: "peptide",
+    alc: OptionalColumn::Required("caa (%)"),
+    mz: "m/z",
+    z: OptionalColumn::Required("z"),
+    mass: OptionalColumn::Required("mass"),
+    rt: "rt",
+    area: "area sample 1",
+    ptm: OptionalColumn::Required("ptm"),
+    local_confidence: OptionalColumn::NotAvailable,
+    tag: OptionalColumn::Required("tag(>=0.0%)"),
+    mode: OptionalColumn::NotAvailable,
+    fraction: OptionalColumn::NotAvailable,
+    raw_file: OptionalColumn::Required("source file"),
+    feature: OptionalColumn::NotAvailable,
+    de_novo_score: OptionalColumn::NotAvailable,
+    predicted_rt: OptionalColumn::NotAvailable,
+    accession: OptionalColumn::Required("accession"),
+    ascore: OptionalColumn::NotAvailable,
+    found_by: OptionalColumn::Required("found by"),
+    logp: OptionalColumn::Required("-10lgp"),
+    feature_tryp_cid: OptionalColumn::NotAvailable,
+    feature_tryp_ead: OptionalColumn::NotAvailable,
+    area_tryp_ead: OptionalColumn::NotAvailable,
+    id: OptionalColumn::NotAvailable,
+    from_chimera: OptionalColumn::NotAvailable,
+    unique: OptionalColumn::NotAvailable,
+    protein_group: OptionalColumn::NotAvailable,
+    protein_id: OptionalColumn::NotAvailable,
+    protein_accession: OptionalColumn::NotAvailable,
+    start: OptionalColumn::NotAvailable,
+    end: OptionalColumn::NotAvailable,
+    quality: OptionalColumn::NotAvailable,
+    rt_begin: OptionalColumn::NotAvailable,
+    rt_end: OptionalColumn::NotAvailable,
+    precursor_id: OptionalColumn::NotAvailable,
+    k0_range: OptionalColumn::NotAvailable,
+};
 
 /// An older version of a PEAKS export
 pub const X: PeaksFormat = PeaksFormat {
@@ -589,6 +614,8 @@ pub enum PeaksVersion {
     /// Version 12
     #[default]
     V12,
+    /// Version 13 Dia
+    V13Dia,
 }
 
 impl std::fmt::Display for PeaksVersion {
@@ -610,6 +637,7 @@ impl IdentifiedPeptidoformVersion<PeaksFormat> for PeaksVersion {
             Self::V11 => V11,
             Self::V11Features => V11_FEATURES,
             Self::V12 => V12,
+            Self::V13Dia => V13_DIA,
         }
     }
     fn name(self) -> &'static str {
@@ -624,6 +652,114 @@ impl IdentifiedPeptidoformVersion<PeaksFormat> for PeaksVersion {
             Self::V11 => "11",
             Self::V11Features => "11 features",
             Self::V12 => "12",
+            Self::V13Dia => "V13 Dia",
         }
+    }
+}
+
+impl MetaData for PeaksData {
+    fn compound_peptidoform_ion(&self) -> Option<Cow<'_, CompoundPeptidoformIon>> {
+        Some(Cow::Owned(self.peptide.1.clone().into()))
+    }
+
+    fn format(&self) -> KnownFileFormat {
+        KnownFileFormat::Peaks(self.version)
+    }
+
+    fn id(&self) -> String {
+        self.id.map_or(
+            self.scan_number.as_ref().map_or(
+                self.feature
+                    .as_ref()
+                    .map_or("-".to_string(), ToString::to_string),
+                |s| s.iter().join(";"),
+            ),
+            |i| i.to_string(),
+        )
+    }
+
+    fn confidence(&self) -> Option<f64> {
+        self.de_novo_score
+            .or(self.alc)
+            .map(|v| v / 100.0)
+            .or_else(|| {
+                self.logp
+                    .map(|v| 2.0 * (1.0 / (1.0 + 1.025_f64.powf(-v)) - 0.5))
+            })
+    }
+
+    fn local_confidence(&self) -> Option<Cow<'_, [f64]>> {
+        self.local_confidence
+            .as_ref()
+            .map(|lc| lc.iter().map(|v| *v / 100.0).collect())
+    }
+
+    fn original_confidence(&self) -> Option<f64> {
+        self.de_novo_score.or(self.alc).or(self.logp)
+    }
+
+    fn original_local_confidence(&self) -> Option<&[f64]> {
+        self.local_confidence.as_deref()
+    }
+
+    fn charge(&self) -> Option<Charge> {
+        self.z
+    }
+
+    fn mode(&self) -> Option<&str> {
+        self.mode.as_deref()
+    }
+
+    fn retention_time(&self) -> Option<Time> {
+        Some(self.rt)
+    }
+
+    fn scans(&self) -> SpectrumIds {
+        self.scan_number
+            .as_ref()
+            .map_or(SpectrumIds::None, |scan_number| {
+                self.raw_file.clone().map_or_else(
+                    || {
+                        SpectrumIds::FileNotKnown(
+                            scan_number
+                                .iter()
+                                .flat_map(|s| s.scans.clone())
+                                .map(SpectrumId::Number)
+                                .collect(),
+                        )
+                    },
+                    |raw_file| {
+                        SpectrumIds::FileKnown(vec![(
+                            raw_file,
+                            scan_number
+                                .iter()
+                                .flat_map(|s| s.scans.clone())
+                                .map(SpectrumId::Number)
+                                .collect(),
+                        )])
+                    },
+                )
+            })
+    }
+
+    fn experimental_mz(&self) -> Option<MassOverCharge> {
+        Some(self.mz)
+    }
+
+    fn experimental_mass(&self) -> Option<Mass> {
+        self.mass
+            .map_or_else(|| self.z.map(|z| self.mz * z.to_float()), Some)
+    }
+
+    fn protein_name(&self) -> Option<FastaIdentifier<String>> {
+        self.protein_accession.clone()
+    }
+
+    fn protein_id(&self) -> Option<usize> {
+        self.protein_id
+    }
+
+    fn protein_location(&self) -> Option<Range<usize>> {
+        self.start.and_then(|s| self.end.map(|e| s..e))
     }
 }

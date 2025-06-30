@@ -4,43 +4,65 @@ use crate::{
 };
 use std::{ops::Range, str::FromStr};
 
+/// The way to set up a format family.
+///
+/// It starts with defining the name, complexity, peptidoform availability, all versions (parsing
+/// is tried in this order), which separator is used for CSV files (character separated values),
+/// and if needed the header for CSV files.
+///
+/// After that the columns are defined, first the required columns (present in all format versions)
+/// followed by the optional columns (missing/optional in at least one version). For each column,
+/// the name, type, and the lambda function to parse the text are given. Note that optional column
+/// types are automatically wrapped in an `Option` so no additional `Option` should be specified.
+///
+/// Lastly, a post processing function can be specified.
+///
+/// Please check the other file formats for how the precisely use the syntax.
+///
+/// # Notes
+/// * Do not forget to implement `MetaData` for the `<$format>Data` type, this will set up the logic
+///   for an automatic `From<format> for IdentifiedPeptidoformData` implementation.
+/// * Do not forget to create a `<$format>Version` enum which contains all supported version of the
+///   format, which additionally should implement `IdentifiedPeptidoformVersion`.
+/// * For each version a public constant should be generated that contains an instantiation of the
+///   `<$format>Format` type, these are also the ones that need to be listed in the versions list.
+///
 macro_rules! format_family {
-    (#[doc = $format_doc:expr]
-     $format:ident,
-     #[doc = $data_doc:expr]
-     $data:ident,
-     $version:ident, $versions:expr, $separator:expr, $header:expr;
+     ($format:ident,
+     $complexity:ident, $peptidoform_availability:ident, $versions:expr, $separator:expr, $header:expr;
      required { $($(#[doc = $rdoc:expr])? $rname:ident: $rtyp:ty, $rf:expr;)* }
      optional { $($(#[doc = $odoc:expr])? $oname:ident: $otyp:ty, $of:expr;)*}
-     $($post_process:item)?) => {
+     $($post_process:item)?) => {paste::paste!{
         use super::super::common_parser::HasLocation;
 
+        #[doc = "The type to contain the format description for " $format " files."]
         #[non_exhaustive]
         #[derive(Clone, Debug, Default, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
-        #[doc = $format_doc]
-        pub struct $format {
+        pub struct [<$format Format>] {
             $($rname: &'static str,)*
             $($oname: crate::identification::common_parser::OptionalColumn,)*
-            version: $version
+            version: [<$format Version>]
         }
 
+        #[doc = "The data for individual entries in " $format " files."]
         #[non_exhaustive]
         #[derive(Clone, Debug, Default, Deserialize, PartialEq, Serialize)]
-        #[doc = $data_doc]
-        #[expect(missing_docs)]
-        pub struct $data {
+        #[allow(missing_docs)]
+        pub struct [<$format Data>] {
             $($(#[doc = $rdoc])? pub $rname: $rtyp,)*
             $($(#[doc = $odoc])? pub $oname: Option<$otyp>,)*
             /// The version used to read in the data
-            pub version: $version,
+            pub version: [<$format Version>],
             /// The stored columns if kept
             columns: Option<Vec<(std::sync::Arc<String>, String)>>,
         }
 
-        impl IdentifiedPeptidoformSource for $data {
+        impl IdentifiedPeptidoformSource for [<$format Data>] {
             type Source = CsvLine;
-            type Format = $format;
-            type Version = $version;
+            type Format = [<$format Format>];
+            type Complexity = $complexity;
+            type PeptidoformAvailability = $peptidoform_availability;
+            type Version = [<$format Version>];
             fn parse(source: &Self::Source, custom_database: Option<&crate::ontology::CustomDatabase>, keep_all_columns: bool) -> Result<(Self, &'static Self::Format), CustomError> {
                 let mut errors = Vec::new();
                 for format in $versions {
@@ -59,7 +81,7 @@ macro_rules! format_family {
                 path: impl AsRef<std::path::Path>,
                 custom_database: Option<&crate::ontology::CustomDatabase>,
                 keep_all_columns: bool,
-                version: Option<$version>,
+                version: Option<Self::Version>,
             ) -> Result<BoxedIdentifiedPeptideIter<Self>, CustomError> {
                 let format = version.map(|v| v.format());
                 parse_csv(path, $separator, $header).and_then(|lines| {
@@ -76,7 +98,7 @@ macro_rules! format_family {
                 reader: impl std::io::Read + 'a,
                 custom_database: Option<&'a crate::ontology::CustomDatabase>,
                 keep_all_columns: bool,
-                version: Option<$version>,
+                version: Option<Self::Version>,
             ) -> Result<BoxedIdentifiedPeptideIter<'a, Self>, CustomError> {
                 let format = version.map(|v| v.format());
                 crate::identification::csv::parse_csv_raw(reader, $separator, $header).and_then(move |lines| {
@@ -90,7 +112,7 @@ macro_rules! format_family {
                 })
             }
             #[allow(clippy::redundant_closure_call)] // Macro magic
-            fn parse_specific(source: &Self::Source, format: &$format, custom_database: Option<&crate::ontology::CustomDatabase>, keep_all_columns: bool) -> Result<Self, CustomError> {
+            fn parse_specific(source: &Self::Source, format: &[<$format Format>], custom_database: Option<&crate::ontology::CustomDatabase>, keep_all_columns: bool) -> Result<Self, CustomError> {
                 #[allow(unused_imports)]
                 use crate::helper_functions::InvertResult;
 
@@ -105,13 +127,25 @@ macro_rules! format_family {
             $($post_process)?
         }
 
-        impl $data {
+        impl [<$format Data>] {
             /// Get all original columns from the CSV file, only available if the file was opened with the option `keep_all_columns` turned on.
             pub fn full_csv_line(&self) -> Option<&[(std::sync::Arc<String>, String)]> {
                 self.columns.as_deref()
             }
         }
-    };
+
+        impl From<[<$format Data>]> for IdentifiedPeptidoform<$complexity, $peptidoform_availability> {
+            fn from(value: [<$format Data>]) -> Self {
+                Self {
+                    score: value.confidence(),
+                    local_confidence: value.local_confidence().map(|v| v.to_vec()),
+                    data: IdentifiedPeptidoformData::$format(value),
+                    complexity_marker: PhantomData,
+                    peptidoform_availability_marker: PhantomData,
+                }
+            }
+        }
+    }};
 }
 
 /// The possible options for an optional column
@@ -155,17 +189,18 @@ pub(super) trait HasLocation {
     /// Get the specified column.
     /// # Errors
     /// If the column does not exist.
-    fn column<'a>(&'a self, name: &str) -> Result<Location<'a>, CustomError>;
+    fn column<'a>(&'a self, name: &'a str) -> Result<Location<'a>, CustomError>;
 }
 
 impl HasLocation for CsvLine {
     /// Get the specified column
     /// # Errors
     /// If the given column does not exist
-    fn column<'a>(&'a self, name: &str) -> Result<Location<'a>, CustomError> {
+    fn column<'a>(&'a self, name: &'a str) -> Result<Location<'a>, CustomError> {
         self.index_column(name).map(|(_v, c)| Location {
             line: self,
             location: c.clone(),
+            column: Some(name),
         })
     }
 }
@@ -175,6 +210,7 @@ impl HasLocation for CsvLine {
 pub(super) struct Location<'a> {
     pub(super) line: &'a CsvLine,
     pub(super) location: Range<usize>,
+    pub(super) column: Option<&'a str>,
 }
 
 impl Location<'_> {
@@ -189,6 +225,7 @@ impl Location<'_> {
             output.push(Location {
                 line: self.line,
                 location: self.location.start + offset..self.location.start + offset + part.len(),
+                column: self.column,
             });
             offset += part.len() + 1;
         }
@@ -217,6 +254,7 @@ impl Location<'_> {
                 .start
                 .saturating_add(bytes)
                 .min(self.location.end)..self.location.end,
+            column: self.column,
         }
     }
 
@@ -241,7 +279,8 @@ impl Location<'_> {
             CustomError::error(
                 base_error.0,
                 base_error.1,
-                self.line.range_context(self.location),
+                self.line
+                    .range_context(self.location, self.column.map(ToString::to_string)),
             )
         })
     }
@@ -267,6 +306,7 @@ impl Location<'_> {
                     Self {
                         line: self.line,
                         location: self.location.start + 1..self.location.start + start.len(),
+                        column: self.column,
                     }
                     .parse(base_error)?,
                 ),
@@ -274,6 +314,7 @@ impl Location<'_> {
                     line: self.line,
                     location: self.location.start + start.len() + 1
                         ..self.location.start + start.len() + 1 + end.len(),
+                    column: self.column,
                 }
                 .parse(base_error)?,
             ))
@@ -295,10 +336,11 @@ impl Location<'_> {
     }
 
     pub(super) fn context(&self) -> Context {
-        Context::line_range(
+        Context::line_range_with_comment(
             Some(self.line.line_index()),
             self.full_line(),
             self.location.clone(),
+            self.column.map(ToString::to_string),
         )
     }
 
@@ -315,6 +357,7 @@ impl Location<'_> {
             } else {
                 self.location.start + trimmed_start..self.location.end - trimmed_end
             },
+            column: self.column,
         }
     }
 
@@ -328,10 +371,12 @@ impl Location<'_> {
                 Self {
                     line: self.line,
                     location: self.location.start..self.location.start + start.len(),
+                    column: self.column,
                 },
                 Self {
                     line: self.line,
                     location: self.location.end - end.len()..self.location.end,
+                    column: self.column,
                 },
             )
         })

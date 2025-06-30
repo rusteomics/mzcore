@@ -294,6 +294,7 @@ impl MonoSaccharide {
                                 line: original_line.to_string(),
                                 offset: start_index,
                                 length: index - start_index + 5,
+                                comment: None,
                             },
                         ));
                     }
@@ -378,6 +379,7 @@ impl MonoSaccharide {
                         line: original_line.to_string(),
                         offset: index,
                         length: 3,
+                        comment: None,
                     },
                 )
             })?;
@@ -440,6 +442,7 @@ impl MonoSaccharide {
                             line: original_line.to_string(),
                             offset: index,
                             length: 2,
+                            comment: None,
                         },
                     ));
                 }

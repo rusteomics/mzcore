@@ -1,4 +1,6 @@
 use std::{
+    borrow::Cow,
+    marker::PhantomData,
     ops::Range,
     path::PathBuf,
     sync::{Arc, LazyLock},
@@ -6,26 +8,28 @@ use std::{
 
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
+use uom::ConstZero;
 
 use crate::{
     chemistry::Chemical,
     error::{Context, CustomError},
     helper_functions::explain_number_error,
     identification::{
-        BoxedIdentifiedPeptideIter, IdentifiedPeptidoform, IdentifiedPeptidoformSource,
-        IdentifiedPeptidoformVersion, MetaData,
+        BoxedIdentifiedPeptideIter, FastaIdentifier, IdentifiedPeptidoform,
+        IdentifiedPeptidoformData, IdentifiedPeptidoformSource, IdentifiedPeptidoformVersion,
+        KnownFileFormat, MetaData, PeptidoformPresent, SpectrumId, SpectrumIds,
         common_parser::{Location, OptionalColumn, OptionalLocation},
         csv::{CsvLine, parse_csv},
     },
     molecular_formula,
-    ontology::CustomDatabase,
-    ontology::Ontology,
+    ontology::{CustomDatabase, Ontology},
+    prelude::CompoundPeptidoformIon,
     quantities::{Tolerance, WithinTolerance},
     sequence::{
-        CrossLinkName, Modification, Peptidoform, PeptidoformIon, SequencePosition,
+        CrossLinkName, Linked, Modification, Peptidoform, PeptidoformIon, SequencePosition,
         SimpleModification, SimpleModificationInner, SloppyParsingParameters,
     },
-    system::{Mass, isize::Charge},
+    system::{Mass, MassOverCharge, Time, isize::Charge},
 };
 
 static NUMBER_ERROR: (&str, &str) = (
@@ -38,11 +42,8 @@ static TYPE_ERROR: (&str, &str) = (
 );
 
 format_family!(
-    /// The format for any pLink file
-    PLinkFormat,
-    /// The data from any pLink file
-    PLinkData,
-    PLinkVersion, [&V2_3], b',', None;
+    PLink,
+    Linked, PeptidoformPresent, [&V2_3], b',', None;
     required {
         order: usize, |location: Location, _| location.parse::<usize>(NUMBER_ERROR);
         title: String, |location: Location, _| Ok(location.get_string());
@@ -53,7 +54,7 @@ format_family!(
         theoretical_mass: Mass, |location: Location, _| location.parse::<f64>(NUMBER_ERROR).map(Mass::new::<crate::system::dalton>);
         peptide_type: PLinkPeptideType, |location: Location, _| location.parse::<PLinkPeptideType>(TYPE_ERROR);
         peptidoform: PeptidoformIon, |location: Location, _| {
-            match plink_separate(location.clone(), "peptide")? {
+            match plink_separate(&location, "peptide")? {
                 (pep1, Some(pos1), Some(pep2), Some(pos2)) => {
                     let pep1 = Peptidoform::sloppy_pro_forma(location.full_line(), pep1, None, &SloppyParsingParameters::default())?;
                     let pep2 = Peptidoform::sloppy_pro_forma(location.full_line(), pep2, None, &SloppyParsingParameters::default())?;
@@ -125,7 +126,7 @@ format_family!(
         q_value: f64, |location: Location, _| location.parse::<f64>(NUMBER_ERROR);
         proteins: Vec<(String, Option<usize>, Option<String>, Option<usize>)>, |location: Location, _|  {
             location.array('/').filter(|l| !l.as_str().trim().is_empty()).map(|l| {
-                let separated = plink_separate(l.clone(), "protein")?;
+                let separated = plink_separate(&l, "protein")?;
 
                 Ok((l.full_line()[separated.0].trim().to_string(), separated.1.map(|(a, _)| a), separated.2.map(|p| l.full_line()[p].trim().to_string()), separated.3.map(|(a, _)| a)))
             })
@@ -200,7 +201,7 @@ format_family!(
                     .first()
                     .unwrap()
                     .monoisotopic_mass()
-                    - (parsed.peptide_type == PLinkPeptideType::Hydrolysed).then(|| molecular_formula!(H 2 O 1).monoisotopic_mass()).unwrap_or_default();
+                    - if parsed.peptide_type == PLinkPeptideType::Hydrolysed { molecular_formula!(H 2 O 1).monoisotopic_mass() } else { Mass::ZERO };
 
             let custom_linkers = custom_database.map_or(
                 Vec::new(),
@@ -286,7 +287,7 @@ static KNOWN_CROSS_LINKERS: LazyLock<Vec<(Mass, SimpleModification)>> = LazyLock
 /// # Errors
 /// If the format is invalid
 fn plink_separate(
-    location: Location<'_>,
+    location: &Location<'_>,
     field: &'static str,
 ) -> Result<
     (
@@ -382,16 +383,6 @@ fn plink_separate(
             }
             1 => Ok((location.location.clone(), None, None, None)),
             _ => unreachable!(),
-        }
-    }
-}
-
-impl From<PLinkData> for IdentifiedPeptidoform {
-    fn from(value: PLinkData) -> Self {
-        Self {
-            score: Some(1.0 - value.score),
-            local_confidence: None,
-            metadata: MetaData::PLink(value),
         }
     }
 }
@@ -492,5 +483,86 @@ impl IdentifiedPeptidoformVersion<PLinkFormat> for PLinkVersion {
         match self {
             Self::V2_3 => "v2.3",
         }
+    }
+}
+
+impl MetaData for PLinkData {
+    fn compound_peptidoform_ion(&self) -> Option<Cow<'_, CompoundPeptidoformIon>> {
+        Some(Cow::Owned(self.peptidoform.clone().into()))
+    }
+
+    fn format(&self) -> KnownFileFormat {
+        KnownFileFormat::PLink(self.version)
+    }
+
+    fn id(&self) -> String {
+        self.order.to_string()
+    }
+
+    fn confidence(&self) -> Option<f64> {
+        Some(1.0 - self.score)
+    }
+
+    fn local_confidence(&self) -> Option<Cow<'_, [f64]>> {
+        None
+    }
+
+    fn original_confidence(&self) -> Option<f64> {
+        Some(self.score)
+    }
+
+    fn original_local_confidence(&self) -> Option<&[f64]> {
+        None
+    }
+
+    fn charge(&self) -> Option<Charge> {
+        Some(self.z)
+    }
+
+    fn mode(&self) -> Option<&str> {
+        None
+    }
+
+    fn retention_time(&self) -> Option<Time> {
+        None
+    }
+
+    fn scans(&self) -> SpectrumIds {
+        self.scan_number.map_or_else(
+            || SpectrumIds::FileNotKnown(vec![SpectrumId::Native(self.title.clone())]),
+            |scan_number| {
+                self.raw_file.clone().map_or_else(
+                    || SpectrumIds::FileNotKnown(vec![SpectrumId::Number(scan_number)]),
+                    |raw_file| {
+                        SpectrumIds::FileKnown(vec![(
+                            raw_file,
+                            vec![SpectrumId::Number(scan_number)],
+                        )])
+                    },
+                )
+            },
+        )
+    }
+
+    fn experimental_mz(&self) -> Option<MassOverCharge> {
+        Some(MassOverCharge::new::<crate::system::mz>(
+            self.mass.value / self.z.to_float().value,
+        ))
+    }
+
+    fn experimental_mass(&self) -> Option<Mass> {
+        Some(self.mass)
+    }
+
+    fn protein_name(&self) -> Option<FastaIdentifier<String>> {
+        None
+    }
+
+    fn protein_id(&self) -> Option<usize> {
+        None
+    }
+
+    fn protein_location(&self) -> Option<Range<usize>> {
+        None
     }
 }

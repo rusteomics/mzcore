@@ -1,18 +1,25 @@
-use std::path::{Path, PathBuf};
+use std::{
+    borrow::Cow,
+    marker::PhantomData,
+    ops::Range,
+    path::{Path, PathBuf},
+};
 
 use serde::{Deserialize, Serialize};
 
 use crate::{
     error::CustomError,
     identification::{
-        BoxedIdentifiedPeptideIter, IdentifiedPeptidoform, IdentifiedPeptidoformSource,
-        IdentifiedPeptidoformVersion, MetaData,
+        BoxedIdentifiedPeptideIter, FastaIdentifier, IdentifiedPeptidoform,
+        IdentifiedPeptidoformData, IdentifiedPeptidoformSource, IdentifiedPeptidoformVersion,
+        KnownFileFormat, MaybePeptidoform, MetaData, SpectrumId, SpectrumIds,
         common_parser::{Location, OptionalColumn, OptionalLocation},
         csv::{CsvLine, parse_csv},
     },
     ontology::CustomDatabase,
+    prelude::CompoundPeptidoformIon,
     sequence::{Peptidoform, SemiAmbiguous},
-    system::{MassOverCharge, Time, isize::Charge},
+    system::{Mass, MassOverCharge, Time, isize::Charge},
 };
 
 static NUMBER_ERROR: (&str, &str) = (
@@ -20,12 +27,10 @@ static NUMBER_ERROR: (&str, &str) = (
     "This column is not a number but it is required to be a number in this format",
 );
 
+// The format for any [SSL file](https://skyline.ms/wiki/home/software/BiblioSpec/page.view?name=BiblioSpec%20input%20and%20output%20file%20formats).
 format_family!(
-    /// The format for any [SSL file](https://skyline.ms/wiki/home/software/BiblioSpec/page.view?name=BiblioSpec%20input%20and%20output%20file%20formats).
-    SpectrumSequenceListFormat,
-    /// The data from any SSL file
-    SpectrumSequenceListData,
-    SpectrumSequenceListVersion, [&SSL], b'\t', None;
+    SpectrumSequenceList,
+    SemiAmbiguous, MaybePeptidoform, [&SSL], b'\t', None;
     required {
         raw_file: PathBuf, |location: Location, _| Ok(Path::new(&location.get_string()).to_owned());
         scan: usize, |location: Location, _| location.parse(NUMBER_ERROR);
@@ -51,16 +56,6 @@ format_family!(
         ccs: f64, |location: Location, _| location.parse::<f64>(NUMBER_ERROR);
     }
 );
-
-impl From<SpectrumSequenceListData> for IdentifiedPeptidoform {
-    fn from(value: SpectrumSequenceListData) -> Self {
-        Self {
-            score: value.score,
-            local_confidence: None,
-            metadata: MetaData::SpectrumSequenceList(value),
-        }
-    }
-}
 
 /// General type of SSL files
 pub const SSL: SpectrumSequenceListFormat = SpectrumSequenceListFormat {
@@ -111,5 +106,74 @@ impl IdentifiedPeptidoformVersion<SpectrumSequenceListFormat> for SpectrumSequen
         match self {
             Self::SSL => "",
         }
+    }
+}
+
+impl MetaData for SpectrumSequenceListData {
+    fn compound_peptidoform_ion(&self) -> Option<Cow<'_, CompoundPeptidoformIon>> {
+        self.peptide.as_ref().map(|p| Cow::Owned(p.clone().into()))
+    }
+
+    fn format(&self) -> KnownFileFormat {
+        KnownFileFormat::SpectrumSequenceList(self.version)
+    }
+
+    fn id(&self) -> String {
+        self.scan.to_string()
+    }
+
+    fn confidence(&self) -> Option<f64> {
+        self.score
+    }
+
+    fn local_confidence(&self) -> Option<Cow<'_, [f64]>> {
+        None
+    }
+
+    fn original_confidence(&self) -> Option<f64> {
+        self.score
+    }
+
+    fn original_local_confidence(&self) -> Option<&[f64]> {
+        None
+    }
+
+    fn charge(&self) -> Option<Charge> {
+        Some(self.z)
+    }
+
+    fn mode(&self) -> Option<&str> {
+        None
+    }
+
+    fn retention_time(&self) -> Option<Time> {
+        self.rt
+    }
+
+    fn scans(&self) -> SpectrumIds {
+        SpectrumIds::FileKnown(vec![(
+            self.raw_file.clone(),
+            vec![SpectrumId::Index(self.scan)],
+        )])
+    }
+
+    fn experimental_mz(&self) -> Option<MassOverCharge> {
+        None
+    }
+
+    fn experimental_mass(&self) -> Option<Mass> {
+        None
+    }
+
+    fn protein_name(&self) -> Option<FastaIdentifier<String>> {
+        None
+    }
+
+    fn protein_id(&self) -> Option<usize> {
+        None
+    }
+
+    fn protein_location(&self) -> Option<Range<usize>> {
+        None
     }
 }

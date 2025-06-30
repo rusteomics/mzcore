@@ -1,18 +1,24 @@
-use std::path::{Path, PathBuf};
+use std::{
+    borrow::Cow,
+    marker::PhantomData,
+    ops::Range,
+    path::{Path, PathBuf},
+};
 
 use serde::{Deserialize, Serialize};
 
 use crate::{
     error::CustomError,
     identification::{
-        BoxedIdentifiedPeptideIter, IdentifiedPeptidoform, IdentifiedPeptidoformSource,
-        IdentifiedPeptidoformVersion, MetaData,
+        BoxedIdentifiedPeptideIter, FastaIdentifier, IdentifiedPeptidoform,
+        IdentifiedPeptidoformData, IdentifiedPeptidoformSource, IdentifiedPeptidoformVersion,
+        KnownFileFormat, MetaData, PeptidoformPresent, SpectrumId, SpectrumIds,
         common_parser::{Location, OptionalColumn},
         csv::{CsvLine, parse_csv},
     },
     ontology::CustomDatabase,
-    sequence::CompoundPeptidoformIon,
-    system::isize::Charge,
+    sequence::{CompoundPeptidoformIon, Linked},
+    system::{Mass, MassOverCharge, Time, isize::Charge},
 };
 
 static NUMBER_ERROR: (&str, &str) = (
@@ -21,11 +27,8 @@ static NUMBER_ERROR: (&str, &str) = (
 );
 
 format_family!(
-    /// The format for any basic CSV file
-    BasicCSVFormat,
-    /// The data from any basic CSV file
-    BasicCSVData,
-    BasicCSVVersion, [&BASIC], b',', None;
+    BasicCSV,
+    Linked, PeptidoformPresent, [&BASIC], b',', None;
     required {
         scan_index: usize, |location: Location, _| location.parse::<usize>(NUMBER_ERROR);
         sequence: CompoundPeptidoformIon, |location: Location, custom_database: Option<&CustomDatabase>|location.parse_with(|location| CompoundPeptidoformIon::pro_forma(
@@ -39,16 +42,6 @@ format_family!(
         mode: String, |location: Location, _| Ok(location.get_string());
     }
 );
-
-impl From<BasicCSVData> for IdentifiedPeptidoform {
-    fn from(value: BasicCSVData) -> Self {
-        Self {
-            score: None,
-            local_confidence: None,
-            metadata: MetaData::BasicCSV(value),
-        }
-    }
-}
 
 /// All possible basic CSV versions
 #[derive(
@@ -88,3 +81,72 @@ pub const BASIC: BasicCSVFormat = BasicCSVFormat {
     z: "z",
     mode: OptionalColumn::Optional("mode"),
 };
+
+impl MetaData for BasicCSVData {
+    fn compound_peptidoform_ion(&self) -> Option<Cow<'_, CompoundPeptidoformIon>> {
+        Some(Cow::Borrowed(&self.sequence))
+    }
+
+    fn format(&self) -> KnownFileFormat {
+        KnownFileFormat::BasicCSV(self.version)
+    }
+
+    fn id(&self) -> String {
+        self.scan_index.to_string()
+    }
+
+    fn confidence(&self) -> Option<f64> {
+        None
+    }
+
+    fn local_confidence(&self) -> Option<Cow<'_, [f64]>> {
+        None
+    }
+
+    fn original_confidence(&self) -> Option<f64> {
+        None
+    }
+
+    fn original_local_confidence(&self) -> Option<&[f64]> {
+        None
+    }
+
+    fn charge(&self) -> Option<Charge> {
+        Some(self.z)
+    }
+
+    fn mode(&self) -> Option<&str> {
+        self.mode.as_deref()
+    }
+
+    fn retention_time(&self) -> Option<Time> {
+        None
+    }
+
+    fn scans(&self) -> SpectrumIds {
+        SpectrumIds::FileKnown(vec![(
+            self.raw_file.clone(),
+            vec![SpectrumId::Index(self.scan_index)],
+        )])
+    }
+
+    fn experimental_mz(&self) -> Option<MassOverCharge> {
+        None
+    }
+
+    fn experimental_mass(&self) -> Option<Mass> {
+        None
+    }
+
+    fn protein_name(&self) -> Option<FastaIdentifier<String>> {
+        None
+    }
+
+    fn protein_id(&self) -> Option<usize> {
+        None
+    }
+
+    fn protein_location(&self) -> Option<Range<usize>> {
+        None
+    }
+}

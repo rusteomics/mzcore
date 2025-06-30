@@ -8,7 +8,9 @@ use crate::{
     annotation::model::GlycanModel,
     chemistry::{MassMode, MolecularFormula},
     quantities::{Multi, WithinTolerance},
-    sequence::{AtMax, Peptidoform, SequenceElement, SequencePosition, SimpleLinear},
+    sequence::{
+        AtMax, HasPeptidoform, Peptidoform, SequenceElement, SequencePosition, SimpleLinear,
+    },
     system::Mass,
 };
 
@@ -22,20 +24,44 @@ use crate::{
 /// The [`AlignType`] controls the alignment behaviour, global/local or anything in between.
 /// # Panics
 /// It panics when the length of `seq_a` or `seq_b` is bigger than [`isize::MAX`].
-#[expect(clippy::too_many_lines)]
-pub fn align<'lifetime, const STEPS: u16, A: AtMax<SimpleLinear>, B: AtMax<SimpleLinear>>(
-    seq_a: &'lifetime Peptidoform<A>,
-    seq_b: &'lifetime Peptidoform<B>,
-    scoring: AlignScoring<'lifetime>,
+pub fn align<const STEPS: u16, A: HasPeptidoform<SimpleLinear>, B: HasPeptidoform<SimpleLinear>>(
+    seq_a: A,
+    seq_b: B,
+    scoring: AlignScoring<'_>,
     align_type: AlignType,
-) -> Alignment<'lifetime, A, B> {
-    assert!(isize::try_from(seq_a.len()).is_ok());
-    assert!(isize::try_from(seq_b.len()).is_ok());
+) -> Alignment<A, B> {
+    let peptidoform_a = seq_a.cast_peptidoform();
+    let peptidoform_b = seq_b.cast_peptidoform();
+    let masses_a: DiagonalArray<Multi<Mass>> =
+        calculate_masses::<STEPS>(peptidoform_a, scoring.mass_mode);
+    let masses_b: DiagonalArray<Multi<Mass>> =
+        calculate_masses::<STEPS>(peptidoform_b, scoring.mass_mode);
+    align_cached::<STEPS, A, B>(seq_a, &masses_a, seq_b, &masses_b, scoring, align_type)
+}
 
-    let mut matrix = Matrix::new(seq_a.len(), seq_b.len());
+/// Do mass based alignment, but with precomputed masses, see [align] for the normal entry point variant.
+/// # Panics
+/// It panics when the length of `seq_a` or `seq_b` is bigger than [`isize::MAX`].
+#[expect(clippy::too_many_lines)]
+pub(super) fn align_cached<
+    const STEPS: u16,
+    A: HasPeptidoform<SimpleLinear>,
+    B: HasPeptidoform<SimpleLinear>,
+>(
+    seq_a: A,
+    masses_a: &DiagonalArray<Multi<Mass>>,
+    seq_b: B,
+    masses_b: &DiagonalArray<Multi<Mass>>,
+    scoring: AlignScoring<'_>,
+    align_type: AlignType,
+) -> Alignment<A, B> {
+    let peptidoform_a = seq_a.cast_peptidoform();
+    let peptidoform_b = seq_b.cast_peptidoform();
+    assert!(isize::try_from(peptidoform_a.len()).is_ok());
+    assert!(isize::try_from(peptidoform_b.len()).is_ok());
+
+    let mut matrix = Matrix::new(peptidoform_a.len(), peptidoform_b.len());
     let mut global_highest = (0, 0, 0);
-    let masses_a: DiagonalArray<Multi<Mass>> = calculate_masses::<STEPS>(seq_a, scoring.mass_mode);
-    let masses_b: DiagonalArray<Multi<Mass>> = calculate_masses::<STEPS>(seq_b, scoring.mass_mode);
     let zero: Multi<Mass> = Multi::default();
 
     if align_type.left.global_a() {
@@ -45,8 +71,8 @@ pub fn align<'lifetime, const STEPS: u16, A: AtMax<SimpleLinear>, B: AtMax<Simpl
         matrix.global_start(false, scoring);
     }
 
-    for index_a in 1..=seq_a.len() {
-        for index_b in 1..=seq_b.len() {
+    for index_a in 1..=peptidoform_a.len() {
+        for index_b in 1..=peptidoform_b.len() {
             let mut highest = None;
             for len_a in 0..=index_a.min(STEPS as usize) {
                 for len_b in 0..=index_b.min(STEPS as usize) {
@@ -79,13 +105,13 @@ pub fn align<'lifetime, const STEPS: u16, A: AtMax<SimpleLinear>, B: AtMax<Simpl
                         Some(score_pair(
                             unsafe {
                                 (
-                                    seq_a.sequence().get_unchecked(index_a - 1),
+                                    peptidoform_a.sequence().get_unchecked(index_a - 1),
                                     masses_a.get_unchecked([index_a - 1, 0]),
                                 )
                             },
                             unsafe {
                                 (
-                                    seq_b.sequence().get_unchecked(index_b - 1),
+                                    peptidoform_b.sequence().get_unchecked(index_b - 1),
                                     masses_b.get_unchecked([index_b - 1, 0]),
                                 )
                             },
@@ -96,7 +122,9 @@ pub fn align<'lifetime, const STEPS: u16, A: AtMax<SimpleLinear>, B: AtMax<Simpl
                         score(
                             unsafe {
                                 (
-                                    seq_a.sequence().get_unchecked((index_a - len_a)..index_a),
+                                    peptidoform_a
+                                        .sequence()
+                                        .get_unchecked((index_a - len_a)..index_a),
                                     if len_a == 0 {
                                         &zero
                                     } else {
@@ -106,7 +134,9 @@ pub fn align<'lifetime, const STEPS: u16, A: AtMax<SimpleLinear>, B: AtMax<Simpl
                             },
                             unsafe {
                                 (
-                                    seq_b.sequence().get_unchecked((index_b - len_b)..index_b),
+                                    peptidoform_b
+                                        .sequence()
+                                        .get_unchecked((index_b - len_b)..index_b),
                                     if len_b == 0 {
                                         &zero
                                     } else {
@@ -140,11 +170,11 @@ pub fn align<'lifetime, const STEPS: u16, A: AtMax<SimpleLinear>, B: AtMax<Simpl
                 unsafe {
                     *matrix.get_unchecked_mut([index_a, index_b]) = score_pair(
                         (
-                            seq_a.sequence().get_unchecked(index_a - 1),
+                            peptidoform_a.sequence().get_unchecked(index_a - 1),
                             masses_a.get_unchecked([index_a - 1, 0]),
                         ),
                         (
-                            seq_b.sequence().get_unchecked(index_b - 1),
+                            peptidoform_b.sequence().get_unchecked(index_b - 1),
                             masses_b.get_unchecked([index_b - 1, 0]),
                         ),
                         scoring,
@@ -155,11 +185,19 @@ pub fn align<'lifetime, const STEPS: u16, A: AtMax<SimpleLinear>, B: AtMax<Simpl
         }
     }
     let (start_a, start_b, path) = matrix.trace_path(align_type, global_highest);
+    let score = determine_final_score(
+        peptidoform_a,
+        peptidoform_b,
+        start_a,
+        start_b,
+        &path,
+        scoring,
+    );
 
     Alignment {
-        seq_a: std::borrow::Cow::Borrowed(seq_a),
-        seq_b: std::borrow::Cow::Borrowed(seq_b),
-        score: determine_final_score(seq_a, seq_b, start_a, start_b, &path, scoring),
+        seq_a,
+        seq_b,
+        score,
         path,
         start_a,
         start_b,
@@ -312,7 +350,7 @@ fn score<A: AtMax<SimpleLinear>, B: AtMax<SimpleLinear>>(
 }
 
 /// Get the masses of all sequence elements
-fn calculate_masses<const STEPS: u16>(
+pub(super) fn calculate_masses<const STEPS: u16>(
     sequence: &Peptidoform<impl AtMax<SimpleLinear>>,
     mass_mode: MassMode,
 ) -> DiagonalArray<Multi<Mass>> {

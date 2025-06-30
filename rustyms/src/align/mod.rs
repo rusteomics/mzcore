@@ -20,7 +20,7 @@
 //! use rustyms::{prelude::*, sequence::SimpleLinear, align::*};
 //! let a = Peptidoform::pro_forma("ANA", None).unwrap().into_simple_linear().unwrap();
 //! let b = Peptidoform::pro_forma("AGGA", None).unwrap().into_simple_linear().unwrap();
-//! let alignment = align::<4, SimpleLinear, SimpleLinear>(&a, &b, AlignScoring::default(), AlignType::GLOBAL);
+//! let alignment = align::<4, &Peptidoform<SimpleLinear>, &Peptidoform<SimpleLinear>>(&a, &b, AlignScoring::default(), AlignType::GLOBAL);
 //! assert_eq!(alignment.short(), "1=1:2i1=");
 //! assert_eq!(alignment.ppm().value, 0.0);
 //! ```
@@ -30,6 +30,7 @@ mod alignment;
 #[cfg(test)]
 mod bad_alignments;
 mod diagonal_array;
+mod index;
 mod mass_alignment;
 mod multi_alignment;
 mod piece;
@@ -44,6 +45,7 @@ pub use consecutive::*;
 
 pub use align_type::{AlignType, Side};
 pub use alignment::{Alignment, Score, Stats};
+pub use index::AlignIndex;
 pub use mass_alignment::align;
 pub use piece::Piece;
 pub use scoring::{AlignScoring, MatchType, PairMode};
@@ -67,8 +69,8 @@ mod tests {
     fn align<'a, const STEPS: u16>(
         a: &'a Peptidoform<SimpleLinear>,
         b: &'a Peptidoform<SimpleLinear>,
-    ) -> Alignment<'a, SimpleLinear, SimpleLinear> {
-        super::align::<STEPS, SimpleLinear, SimpleLinear>(
+    ) -> Alignment<&'a Peptidoform<SimpleLinear>, &'a Peptidoform<SimpleLinear>> {
+        super::align::<STEPS, &Peptidoform<SimpleLinear>, &Peptidoform<SimpleLinear>>(
             a,
             b,
             AlignScoring::default(),

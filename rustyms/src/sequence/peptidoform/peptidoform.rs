@@ -205,6 +205,15 @@ impl<Complexity> Peptidoform<Complexity> {
         }
     }
 
+    /// Convert this peptide into a reference at complexity level [`Linear`].
+    pub fn as_linear(&self) -> Option<&Peptidoform<Linear>> {
+        if self.is_linear() {
+            Some(self.mark_ref())
+        } else {
+            None
+        }
+    }
+
     /// Check if this peptide does not use any of the features reserved for [`Linked`] or [`Linear`].
     ///
     /// This checks if this peptide does not have labile or global modifications and for the absence
@@ -225,6 +234,15 @@ impl<Complexity> Peptidoform<Complexity> {
         }
     }
 
+    /// Convert this peptide into a reference at complexity level [`SimpleLinear`].
+    pub fn as_simple_linear(&self) -> Option<&Peptidoform<SimpleLinear>> {
+        if self.is_simple_linear() {
+            Some(self.mark_ref())
+        } else {
+            None
+        }
+    }
+
     /// Check if this peptide does not use any of the features reserved for [`Linked`], [`Linear`],
     /// or [`SimpleLinear`].
     ///
@@ -239,6 +257,15 @@ impl<Complexity> Peptidoform<Complexity> {
     pub fn into_semi_ambiguous(self) -> Option<Peptidoform<SemiAmbiguous>> {
         if self.is_semi_ambiguous() {
             Some(self.mark())
+        } else {
+            None
+        }
+    }
+
+    /// Convert this peptide into a reference at complexity level [`SemiAmbiguous`].
+    pub fn as_semi_ambiguous(&self) -> Option<&Peptidoform<SemiAmbiguous>> {
+        if self.is_semi_ambiguous() {
+            Some(self.mark_ref())
         } else {
             None
         }
@@ -264,18 +291,22 @@ impl<Complexity> Peptidoform<Complexity> {
             None
         }
     }
+
+    /// Convert this peptide into a reference at complexity level [`UnAmbiguous`].
+    pub fn as_unambiguous(&self) -> Option<&Peptidoform<UnAmbiguous>> {
+        if self.is_unambiguous() {
+            Some(self.mark_ref())
+        } else {
+            None
+        }
+    }
 }
 
 impl<Complexity, OtherComplexity: AtLeast<Complexity>> AsRef<Peptidoform<OtherComplexity>>
     for Peptidoform<Complexity>
 {
     fn as_ref(&self) -> &Peptidoform<OtherComplexity> {
-        unsafe {
-            std::ptr::from_ref(self)
-                .cast::<Peptidoform<OtherComplexity>>()
-                .as_ref()
-                .expect("Invalid pointer in upcasting peptidoform complexity level")
-        }
+        self.mark_ref()
     }
 }
 
@@ -309,7 +340,7 @@ impl<Complexity: HighestOf<Linear>> Peptidoform<Complexity> {
 
 impl<Complexity> Peptidoform<Complexity> {
     /// Mark this peptide with the following complexity, be warned that the complexity level is not checked.
-    pub(super) fn mark<M>(self) -> Peptidoform<M> {
+    pub(super) fn mark<OtherComplexity>(self) -> Peptidoform<OtherComplexity> {
         Peptidoform {
             global: self.global,
             labile: self.labile,
@@ -323,6 +354,18 @@ impl<Complexity> Peptidoform<Complexity> {
             modifications_of_unknown_position: self.modifications_of_unknown_position,
             charge_carriers: self.charge_carriers,
             marker: PhantomData,
+        }
+    }
+
+    /// Mark this peptide with the following complexity, be warned that the complexity level is not checked.
+    /// # Panics
+    /// If the internal unsafe pointer casting fails to create a valid pointer.
+    const fn mark_ref<OtherComplexity>(&self) -> &Peptidoform<OtherComplexity> {
+        unsafe {
+            std::ptr::from_ref(self)
+                .cast::<Peptidoform<OtherComplexity>>()
+                .as_ref()
+                .expect("Invalid pointer in upcasting peptidoform complexity level")
         }
     }
 
@@ -350,7 +393,7 @@ impl<Complexity> Peptidoform<Complexity> {
 
     /// Get the sequence mutably for the peptide
     #[must_use]
-    pub fn sequence_mut(&mut self) -> &mut Vec<SequenceElement<Complexity>> {
+    pub const fn sequence_mut(&mut self) -> &mut Vec<SequenceElement<Complexity>> {
         &mut self.sequence
     }
 
@@ -1680,7 +1723,7 @@ impl<Complexity: AtLeast<Linear>> Peptidoform<Complexity> {
     }
 
     /// Get the global isotope modifications
-    pub fn get_global_mut(&mut self) -> &mut ThinVec<(Element, Option<NonZeroU16>)> {
+    pub const fn get_global_mut(&mut self) -> &mut ThinVec<(Element, Option<NonZeroU16>)> {
         &mut self.global
     }
 
@@ -1701,7 +1744,7 @@ impl<Complexity: AtLeast<Linear>> Peptidoform<Complexity> {
     }
 
     /// Get all labile modifications
-    pub fn get_labile_mut(&mut self) -> &mut ThinVec<SimpleModification> {
+    pub const fn get_labile_mut(&mut self) -> &mut ThinVec<SimpleModification> {
         &mut self.labile
     }
 
@@ -1711,7 +1754,7 @@ impl<Complexity: AtLeast<Linear>> Peptidoform<Complexity> {
     }
 
     /// Get the charge carriers, if there are any
-    pub fn get_charge_carriers_mut(&mut self) -> Option<&mut MolecularCharge> {
+    pub const fn get_charge_carriers_mut(&mut self) -> Option<&mut MolecularCharge> {
         self.charge_carriers.as_mut()
     }
 }

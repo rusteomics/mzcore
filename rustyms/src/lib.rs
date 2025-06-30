@@ -51,8 +51,9 @@ pub mod prelude {
         BuildingBlocks, TerminalBuildingBlocks, building_blocks, find_isobaric_sets,
     };
     pub use crate::sequence::{
-        AminoAcid, CheckedAminoAcid, CompoundPeptidoformIon, IsAminoAcid, Peptidoform,
-        PeptidoformIon, Protease, SequenceElement, SequencePosition,
+        AminoAcid, CheckedAminoAcid, CompoundPeptidoformIon, HasCompoundPeptidoformIon,
+        HasPeptidoformImpl, HasPeptidoformIon, IsAminoAcid, Peptidoform, PeptidoformIon, Protease,
+        SequenceElement, SequencePosition,
     };
     pub use crate::spectrum::RawSpectrum;
 }

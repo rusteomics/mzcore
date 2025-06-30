@@ -1,11 +1,7 @@
-use crate::sequence::Peptidoform;
+use crate::sequence::HasPeptidoformImpl;
 
 /// An annotated peptide
-pub trait AnnotatedPeptide {
-    /// The complexity of the peptide
-    type Complexity;
-    /// Get the peptide
-    fn peptide(&self) -> &Peptidoform<Self::Complexity>;
+pub trait AnnotatedPeptide: HasPeptidoformImpl {
     /// Get the regions, as a list of the regions in order with the length of each region, these are
     /// required to be as long as the full peptide.
     fn regions(&self) -> &[(Region, usize)];
@@ -48,7 +44,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
 pub enum Region {
     Framework(usize),
-    ComplementarityDeterminingRegion(usize),
+    ComplementarityDetermining(usize),
     Hinge(Option<usize>),
     ConstantHeavy(usize),
     ConstantLight,
@@ -75,7 +71,7 @@ impl std::fmt::Display for Region {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Framework(n) => write!(f, "FR{n}"),
-            Self::ComplementarityDeterminingRegion(n) => write!(f, "CDR{n}"),
+            Self::ComplementarityDetermining(n) => write!(f, "CDR{n}"),
             Self::Hinge(n) => write!(f, "H{}", n.map_or(String::new(), |n| n.to_string())),
             Self::ConstantHeavy(n) => write!(f, "CH{n}"),
             Self::ConstantLight => write!(f, "CL"),
@@ -100,7 +96,7 @@ impl std::str::FromStr for Region {
             cdr if cdr.starts_with("CDR") => cdr[3..]
                 .parse::<usize>()
                 .map_or(Self::Other(cdr.to_string()), |c| {
-                    Self::ComplementarityDeterminingRegion(c)
+                    Self::ComplementarityDetermining(c)
                 }),
             fr if fr.starts_with("FR") => fr[2..]
                 .parse::<usize>()

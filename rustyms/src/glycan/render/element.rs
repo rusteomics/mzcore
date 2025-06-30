@@ -1095,7 +1095,7 @@ fn text_location(
         if let Some((option, anchor)) = options.first() {
             let (x, y) = match *anchor {
                 TextAnchor::Start => (option.0, option.1),
-                TextAnchor::Middle => ((option.0 + option.2) / 2.0, option.1),
+                TextAnchor::Middle => (f32::midpoint(option.0, option.2), option.1),
                 TextAnchor::End => (option.2, option.1),
             };
             return Some((x, y, *anchor, text));

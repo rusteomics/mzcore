@@ -2,7 +2,12 @@ use std::{fmt::Display, path::Path};
 
 use serde::{Deserialize, Serialize};
 
-use crate::{error::CustomError, identification::*, ontology::CustomDatabase};
+use crate::{
+    error::CustomError,
+    identification::*,
+    ontology::CustomDatabase,
+    sequence::{Linked, SemiAmbiguous},
+};
 
 /// A file format that is fully known
 #[derive(Clone, Copy, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
@@ -148,10 +153,7 @@ impl FileFormat {
         self,
         path: &Path,
         custom_database: Option<&'a CustomDatabase>,
-    ) -> Result<
-        Box<dyn Iterator<Item = Result<IdentifiedPeptidoform, CustomError>> + 'a>,
-        CustomError,
-    > {
+    ) -> Result<GeneralIdentifiedPeptidoforms<'a>, CustomError> {
         match self {
             Self::BasicCSV(version) => {
                 BasicCSVData::parse_file(path, custom_database, false, version)
@@ -162,8 +164,13 @@ impl FileFormat {
                     .map(IdentifiedPeptidoformIter::into_box)
             }
             Self::Fasta => FastaData::parse_file(path).map(|sequences| {
-                let b: Box<dyn Iterator<Item = Result<IdentifiedPeptidoform, CustomError>>> =
-                    Box::new(sequences.into_iter().map(|p| Ok(p.into())));
+                let b: Box<
+                    dyn Iterator<
+                        Item = Result<IdentifiedPeptidoform<Linked, MaybePeptidoform>, CustomError>,
+                    >,
+                > = Box::new(sequences.into_iter().map(|p| {
+                    Ok(IdentifiedPeptidoform::<SemiAmbiguous, PeptidoformPresent>::from(p).cast())
+                }));
                 b
             }),
             Self::InstaNovo(version) => {
@@ -175,8 +182,15 @@ impl FileFormat {
                     .map(IdentifiedPeptidoformIter::into_box)
             }
             Self::MZTab => MZTabData::parse_file(path, custom_database).map(|sequences| {
-                let b: Box<dyn Iterator<Item = Result<IdentifiedPeptidoform, CustomError>>> =
-                    Box::new(sequences.into_iter().map(|p| p.map(Into::into)));
+                let b: Box<
+                    dyn Iterator<
+                        Item = Result<IdentifiedPeptidoform<Linked, MaybePeptidoform>, CustomError>,
+                    >,
+                > = Box::new(sequences.into_iter().map(|p| {
+                    p.map(|p| {
+                        IdentifiedPeptidoform::<SemiAmbiguous, MaybePeptidoform>::from(p).cast()
+                    })
+                }));
                 b
             }),
             Self::NovoB(version) => NovoBData::parse_file(path, custom_database, false, version)

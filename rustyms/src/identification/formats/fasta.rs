@@ -1,5 +1,7 @@
 use std::{
+    borrow::Cow,
     io::{BufRead, BufReader},
+    marker::PhantomData,
     num::ParseIntError,
     ops::Range,
     path::Path,
@@ -12,11 +14,16 @@ use serde::{Deserialize, Serialize};
 use crate::{
     error::{Context, CustomError},
     helper_functions::explain_number_error,
-    identification::{IdentifiedPeptidoform, MetaData},
+    identification::{
+        IdentifiedPeptidoform, IdentifiedPeptidoformData, KnownFileFormat, MetaData,
+        PeptidoformPresent, SpectrumIds,
+    },
+    prelude::{CompoundPeptidoformIon, HasPeptidoformImpl},
     sequence::{
         AminoAcid, AnnotatedPeptide, Annotation, Peptidoform, Region, SemiAmbiguous,
         SequenceElement,
     },
+    system::{Mass, MassOverCharge, Time, isize::Charge},
 };
 
 /// A single parsed line of a fasta file
@@ -45,11 +52,21 @@ impl PartialOrd for FastaData {
     }
 }
 
-impl AnnotatedPeptide for FastaData {
+impl HasPeptidoformImpl for FastaData {
     type Complexity = SemiAmbiguous;
-    fn peptide(&self) -> &Peptidoform<SemiAmbiguous> {
-        &self.peptide
+    fn peptidoform(&self) -> &Peptidoform<Self::Complexity> {
+        self.peptide()
     }
+}
+
+impl HasPeptidoformImpl for &FastaData {
+    type Complexity = SemiAmbiguous;
+    fn peptidoform(&self) -> &Peptidoform<Self::Complexity> {
+        self.peptide()
+    }
+}
+
+impl AnnotatedPeptide for FastaData {
     fn regions(&self) -> &[(Region, usize)] {
         &self.regions
     }
@@ -703,12 +720,14 @@ fn trim_whitespace(line: &str, range: Range<usize>) -> Range<usize> {
     range.start + start..range.end - end
 }
 
-impl From<FastaData> for IdentifiedPeptidoform {
+impl From<FastaData> for IdentifiedPeptidoform<SemiAmbiguous, PeptidoformPresent> {
     fn from(value: FastaData) -> Self {
         Self {
             score: None,
             local_confidence: None,
-            metadata: MetaData::Fasta(value),
+            data: IdentifiedPeptidoformData::Fasta(value),
+            complexity_marker: PhantomData,
+            peptidoform_availability_marker: PhantomData,
         }
     }
 }
@@ -743,4 +762,70 @@ fn parse_header() {
     assert_eq!(header.regions()[0], (Region::Framework(1), 12));
     assert_eq!(header.annotations().len(), 2);
     assert_eq!(header.annotations()[0], (Annotation::Conserved, 12));
+}
+
+impl MetaData for FastaData {
+    fn compound_peptidoform_ion(&self) -> Option<Cow<'_, CompoundPeptidoformIon>> {
+        Some(Cow::Owned(self.peptide().clone().into()))
+    }
+
+    fn format(&self) -> KnownFileFormat {
+        KnownFileFormat::Fasta
+    }
+
+    fn id(&self) -> String {
+        (*self.identifier().accession()).to_string()
+    }
+
+    fn confidence(&self) -> Option<f64> {
+        None
+    }
+
+    fn local_confidence(&self) -> Option<Cow<'_, [f64]>> {
+        None
+    }
+
+    fn original_confidence(&self) -> Option<f64> {
+        None
+    }
+
+    fn original_local_confidence(&self) -> Option<&[f64]> {
+        None
+    }
+
+    fn charge(&self) -> Option<Charge> {
+        None
+    }
+
+    fn mode(&self) -> Option<&str> {
+        None
+    }
+
+    fn retention_time(&self) -> Option<Time> {
+        None
+    }
+
+    fn scans(&self) -> SpectrumIds {
+        SpectrumIds::None
+    }
+
+    fn experimental_mz(&self) -> Option<MassOverCharge> {
+        None
+    }
+
+    fn experimental_mass(&self) -> Option<Mass> {
+        None
+    }
+
+    fn protein_name(&self) -> Option<FastaIdentifier<String>> {
+        None
+    }
+
+    fn protein_id(&self) -> Option<usize> {
+        None
+    }
+
+    fn protein_location(&self) -> Option<Range<usize>> {
+        None
+    }
 }

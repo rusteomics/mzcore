@@ -3,7 +3,10 @@ use std::io::{BufRead, BufReader};
 
 use crate::{
     error::CustomError,
-    identification::{IdentifiedPeptidoform, MZTabData, test_identified_peptide},
+    identification::{
+        IdentifiedPeptidoform, MZTabData, MaybePeptidoform, test_identified_peptidoform,
+    },
+    sequence::SemiAmbiguous,
 };
 
 #[test]
@@ -87,10 +90,10 @@ fn contranovo_v1_0_0() {
 fn open_file(reader: impl BufRead) -> Result<usize, CustomError> {
     let mut peptides = 0;
     for read in MZTabData::parse_reader(reader, None) {
-        let peptide: IdentifiedPeptidoform = read?.into();
+        let peptide: IdentifiedPeptidoform<SemiAmbiguous, MaybePeptidoform> = read?.into();
         peptides += 1;
 
-        test_identified_peptide(&peptide, false, false).unwrap();
+        test_identified_peptidoform(&peptide, false, false).unwrap();
     }
     Ok(peptides)
 }
