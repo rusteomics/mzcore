@@ -703,7 +703,7 @@ impl Fragment {
             "Fragment(formula='{:?}', charge={}, ion='{}', peptidoform_ion_index={}, peptidoform_index={}, neutral_loss='{:?}')",
             Self::formula(self),
             self.charge(),
-            self.ion().0,
+            self.ion(),
             self.peptidoform_ion_index()
                 .map_or("-".to_string(), |p| p.to_string()),
             self.peptidoform_index()
@@ -741,8 +741,8 @@ impl Fragment {
     /// str
     ///
     #[getter]
-    fn ion(&self) -> FragmentType {
-        FragmentType(self.0.ion.clone())
+    fn ion(&self) -> String {
+        self.0.ion.to_string()
     }
 
     /// The peptidoform this fragment comes from, saved as the index into the list of peptidoforms in the overarching crate::PeptidoformIon struct.
@@ -782,11 +782,6 @@ impl Fragment {
             .collect()
     }
 }
-
-/// All types of fragments.
-#[pyclass]
-#[derive(Debug)]
-pub struct FragmentType(rustyms::fragment::FragmentType);
 
 /// One block in a sequence meaning an amino acid and its accompanying modifications.
 #[pyclass]
@@ -1779,7 +1774,6 @@ fn rustyms_py03(_py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<Element>()?;
     m.add_class::<Fragment>()?;
     m.add_class::<FragmentationModel>()?;
-    m.add_class::<FragmentType>()?;
     m.add_class::<Peptidoform>()?;
     m.add_class::<MassMode>()?;
     m.add_class::<Modification>()?;
