@@ -79,7 +79,7 @@ pub enum LinkerSpecificity {
         /// All diagnostic ions from the cross-linker
         diagnostic: Vec<DiagnosticIon>,
     },
-    /// An asymmetric specificity where both ends have a different specificity..
+    /// An asymmetric specificity where both ends have a different specificity.
     Asymmetric {
         /// The placement rules for both ends, these can be asymmetric thus are provided for 'right' and 'left' separately.
         rules: (Vec<PlacementRule>, Vec<PlacementRule>),

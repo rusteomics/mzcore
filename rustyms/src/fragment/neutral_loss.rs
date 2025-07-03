@@ -4,7 +4,10 @@ use std::{
     str::FromStr,
 };
 
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize, Serialize,
+    de::{Error, Visitor},
+};
 
 use crate::{
     chemistry::MolecularFormula,
@@ -15,7 +18,7 @@ use crate::{
 };
 
 /// All possible neutral losses
-#[derive(Clone, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
+#[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 pub enum NeutralLoss {
     /// Gain of a specific formula
     Gain(u16, MolecularFormula),
@@ -23,6 +26,69 @@ pub enum NeutralLoss {
     Loss(u16, MolecularFormula),
     /// Loss of a side chain of an amino acid
     SideChainLoss(MolecularFormula, AminoAcid),
+}
+
+/// Possible internal values, needed to allow serde to still parse the older format which did not contain an amount value
+#[derive(Debug, Deserialize)]
+#[serde(untagged)]
+enum Field {
+    Formula(MolecularFormula),
+    Amount(u16, MolecularFormula),
+    SideChain(MolecularFormula, AminoAcid),
+}
+
+impl<'de> Deserialize<'de> for NeutralLoss {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        deserializer.deserialize_map(NeutralLossVisitor)
+    }
+}
+
+struct NeutralLossVisitor;
+
+impl<'de> Visitor<'de> for NeutralLossVisitor {
+    type Value = NeutralLoss;
+
+    fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+        formatter.write_str("a neutral loss")
+    }
+
+    fn visit_map<A>(self, mut map: A) -> Result<Self::Value, A::Error>
+    where
+        A: serde::de::MapAccess<'de>,
+    {
+        if let Some((key, value)) = map.next_entry::<&str, Field>()? {
+            match key {
+                "Loss" => match value {
+                    Field::Formula(f) => Ok(NeutralLoss::Loss(1, f)),
+                    Field::Amount(n, f) => Ok(NeutralLoss::Loss(n, f)),
+                    Field::SideChain(_, _) => Err(A::Error::custom(
+                        "a loss neutral loss cannot contain side chain loss information",
+                    )),
+                },
+                "Gain" => match value {
+                    Field::Formula(f) => Ok(NeutralLoss::Gain(1, f)),
+                    Field::Amount(n, f) => Ok(NeutralLoss::Gain(n, f)),
+                    Field::SideChain(_, _) => Err(A::Error::custom(
+                        "a gain neutral loss cannot contain side chain loss information",
+                    )),
+                },
+                "SideChainLoss" => match value {
+                    Field::SideChain(f, a) => Ok(NeutralLoss::SideChainLoss(f, a)),
+                    _ => Err(A::Error::custom(
+                        "a side chain neutral loss cannot contain basic loss/gain information",
+                    )),
+                },
+                v => Err(A::Error::custom(format!(
+                    "expected Loss/Gain/SideChainLoss not '{v}'"
+                ))),
+            }
+        } else {
+            Err(A::Error::custom("Empty neutral loss definition"))
+        }
+    }
 }
 
 /// A diagnostic ion, defined in M (not MH+) chemical formula
@@ -187,5 +253,38 @@ impl std::iter::Sum<NeutralLoss> for MolecularFormula {
             output += value;
         }
         output
+    }
+}
+
+#[cfg(test)]
+#[allow(clippy::missing_panics_doc)]
+mod tests {
+    use crate::{fragment::NeutralLoss, molecular_formula, prelude::AminoAcid};
+
+    #[test]
+    fn deserialise_json() {
+        let original = r#"{"Loss":{"elements":[["H",null,2],["O",null,1]],"additional_mass":0.0,"labels":[]}}"#;
+        let new = r#"{"Loss":[1,{"elements":[["H",null,2],["O",null,1]],"additional_mass":0.0,"labels":[]}]}"#;
+        let current = serde_json::to_string(&NeutralLoss::Loss(1, molecular_formula!(H 2 O 1)))
+            .expect("Could not serialise");
+
+        let original_v =
+            serde_json::from_str::<NeutralLoss>(original).expect("Could not deserialise original");
+        let new_v = serde_json::from_str::<NeutralLoss>(new).expect("Could not deserialise new");
+        let current_v =
+            serde_json::from_str::<NeutralLoss>(&current).expect("Could not deserialise current");
+
+        assert_eq!(original_v, new_v);
+        assert_eq!(current_v, new_v);
+
+        let side_chain_loss =
+            NeutralLoss::SideChainLoss(molecular_formula!(H 2 O 1), AminoAcid::Alanine);
+        let side_chain_loss_json =
+            serde_json::to_string(&side_chain_loss).expect("Could not serialise side chain loss");
+        println!("{side_chain_loss_json}");
+        let side_chain_loss_back = serde_json::from_str::<NeutralLoss>(&side_chain_loss_json)
+            .expect("Could not deserialise side chain loss");
+
+        assert_eq!(side_chain_loss, side_chain_loss_back);
     }
 }
