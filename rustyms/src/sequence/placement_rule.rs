@@ -7,6 +7,7 @@ use serde::{Deserialize, Serialize};
 use crate::{
     error::{Context, CustomError},
     ontology::Ontology,
+    parse_json::{ParseJson, use_serde},
     sequence::{
         AminoAcid, Modification, ModificationId, SequenceElement, SequencePosition,
         SimpleModificationInner,
@@ -24,6 +25,12 @@ pub enum PlacementRule {
     Terminal(Position),
     /// Just anywhere
     Anywhere,
+}
+
+impl ParseJson for PlacementRule {
+    fn from_json_value(value: serde_json::Value) -> Result<Self, CustomError> {
+        use_serde(value)
+    }
 }
 
 /// A position where a modification can be placed

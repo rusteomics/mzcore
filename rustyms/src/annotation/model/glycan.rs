@@ -152,9 +152,9 @@ impl GlycanModel {
 #[derive(Clone, Copy, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
 pub struct GlycanPeptideFragment {
     /// The full glycan stays attached
-    full: bool,
+    pub(super) full: bool,
     /// The glycan fragments and at any number of monosaccharides within the range (min, max, inclusive) stay attached (any fucoses on these fragments are always included and do not count towards the limit)
-    core: Option<(u8, u8)>,
+    pub(super) core: Option<(u8, u8)>,
 }
 
 impl std::ops::Add<&Self> for GlycanPeptideFragment {

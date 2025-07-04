@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use std::{error::Error, fmt::Display};
 
 /// Error type to indicate that the given name was not a recognised species from the IMGT database
-#[derive(Debug, Default, Clone, Copy)]
+#[derive(Clone, Copy, Debug, Default)]
 pub struct NotASpecies;
 
 impl Display for NotASpecies {

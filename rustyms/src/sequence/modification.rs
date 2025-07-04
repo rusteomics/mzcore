@@ -7,22 +7,24 @@ use serde::{Deserialize, Serialize};
 use std::{
     collections::{BTreeSet, HashMap, HashSet},
     fmt::{Display, Write},
+    path::Path,
     sync::Arc,
 };
 
 use crate::{
     annotation::model::{FragmentationModel, GlycanModel},
     chemistry::{AmbiguousLabel, CachedCharge, Chemical, MolecularFormula},
+    error::{Context, CustomError},
     fragment::*,
     glycan::{GlycanStructure, MonoSaccharide},
     helper_functions::merge_hashmap,
     molecular_formula,
-    ontology::Ontology,
+    ontology::{CustomDatabase, Ontology},
+    parse_json::{ParseJson, use_serde},
     quantities::Multi,
-    sequence::Linked,
     sequence::{
-        AminoAcid, MUPSettings, Peptidoform, PlacementRule, SequenceElement, SequencePosition,
-        SimpleModification, SimpleModificationInner,
+        AminoAcid, Linked, MUPSettings, Peptidoform, PlacementRule, SequenceElement,
+        SequencePosition, SimpleModification, SimpleModificationInner,
     },
     system::OrderedMass,
 };
@@ -79,6 +81,12 @@ pub struct ModificationId {
     pub cross_ids: thin_vec::ThinVec<(String, String)>,
 }
 
+impl ParseJson for ModificationId {
+    fn from_json_value(value: serde_json::Value) -> Result<Self, CustomError> {
+        use_serde(value)
+    }
+}
+
 /// All possible compositions in the GNO ontology
 #[derive(Clone, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 pub enum GnoComposition {
@@ -88,6 +96,12 @@ pub enum GnoComposition {
     Composition(Vec<(MonoSaccharide, isize)>),
     /// The (full) structure is known
     Topology(GlycanStructure),
+}
+
+impl ParseJson for GnoComposition {
+    fn from_json_value(value: serde_json::Value) -> Result<Self, CustomError> {
+        use_serde(value)
+    }
 }
 
 /// All possible subsumption levels in the GNOme database indicating different levels of description for a glycan species
@@ -106,6 +120,12 @@ pub enum GnoSubsumption {
     Topology,
     /// Indicates the topology, without reducing end ring and anomeric information
     Saccharide,
+}
+
+impl ParseJson for GnoSubsumption {
+    fn from_json_value(value: serde_json::Value) -> Result<Self, CustomError> {
+        use_serde(value)
+    }
 }
 
 impl Display for GnoSubsumption {
@@ -665,20 +685,43 @@ impl Display for CrossLinkName {
     }
 }
 
+/// Parse a custom modifications JSON string. The parser is guaranteed to be backwards compatible
+/// with any JSON made by the serde serialisation of the custom database in previous version of
+/// the library.
+/// # Errors
+/// If the string could not be parsed.
+pub fn parse_custom_modifications(path: &Path) -> Result<CustomDatabase, CustomError> {
+    let string = std::fs::read_to_string(path).map_err(|err| {
+        CustomError::error(
+            "Could not parse custom modifications file",
+            err,
+            Context::show(path.display()),
+        )
+    })?;
+    CustomDatabase::from_json(&string)
+}
+
+/// Parse a custom modifications JSON string. The parser is guaranteed to be backwards compatible
+/// with any JSON made by the serde serialisation of the custom database in previous version of
+/// the library.
+/// # Errors
+/// If the string could not be parsed.
+pub fn parse_custom_modifications_str(value: &str) -> Result<CustomDatabase, CustomError> {
+    CustomDatabase::from_json(value)
+}
+
 #[test]
 #[expect(clippy::missing_panics_doc)]
 fn test_reading_custom_modifications_json_2024() {
-    use serde_json;
     let data = include_str!("custom_modifications_2024.json");
-    let mods: Vec<(usize, String, SimpleModification)> = serde_json::from_str(data).unwrap();
+    let mods = parse_custom_modifications_str(data).unwrap();
     assert!(mods.len() > 1);
 }
 
 #[test]
 #[expect(clippy::missing_panics_doc)]
 fn test_reading_custom_modifications_json_2025() {
-    use serde_json;
     let data = include_str!("custom_modifications_20250207.json");
-    let mods: Vec<(usize, String, SimpleModification)> = serde_json::from_str(data).unwrap();
+    let mods = parse_custom_modifications_str(data).unwrap();
     assert!(mods.len() > 1);
 }

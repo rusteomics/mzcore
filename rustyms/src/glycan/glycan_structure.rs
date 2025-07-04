@@ -12,11 +12,12 @@ use crate::{
     chemistry::{Chemical, MolecularFormula},
     error::{Context, CustomError},
     glycan::{
+        GlycanBranchIndex, GlycanBranchMassIndex, GlycanPosition, PositionedGlycanStructure,
         glycan::{BaseSugar, MonoSaccharide},
         lists::GLYCAN_PARSE_LIST,
-        {GlycanBranchIndex, GlycanBranchMassIndex, GlycanPosition, PositionedGlycanStructure},
     },
     helper_functions::{end_of_enclosure, next_char},
+    parse_json::{ParseJson, use_serde},
     sequence::SequencePosition,
 };
 
@@ -439,6 +440,12 @@ impl GlycanStructure {
         let mut output = vec![(self.sugar.clone(), 1)];
         output.extend(self.branches.iter().flat_map(Self::composition_inner));
         output
+    }
+}
+
+impl ParseJson for GlycanStructure {
+    fn from_json_value(value: serde_json::Value) -> Result<Self, CustomError> {
+        use_serde(value)
     }
 }
 

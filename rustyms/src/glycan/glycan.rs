@@ -9,6 +9,7 @@ use crate::{
     glycan::lists::*,
     helper_functions::{explain_number_error, str_starts_with},
     molecular_formula,
+    parse_json::{ParseJson, use_serde},
     sequence::SequencePosition,
 };
 
@@ -66,6 +67,12 @@ impl Hash for MonoSaccharide {
         self.substituents.hash(hasher);
         self.furanose.hash(hasher);
         self.configuration.hash(hasher);
+    }
+}
+
+impl ParseJson for MonoSaccharide {
+    fn from_json_value(value: serde_json::Value) -> Result<Self, CustomError> {
+        use_serde(value)
     }
 }
 

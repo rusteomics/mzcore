@@ -11,6 +11,7 @@ use crate::{
         Fragment, FragmentKind, FragmentType, NeutralLoss, PeptidePosition, SatelliteLabel,
     },
     molecular_formula,
+    parse_json::{ParseJson, use_serde},
     quantities::Multi,
     sequence::SequencePosition,
 };
@@ -947,6 +948,12 @@ impl AminoAcid {
             | (Self::Glutamine | Self::GlutamicAcid, Self::AmbiguousGlutamine) => true,
             _ => false,
         }
+    }
+}
+
+impl ParseJson for AminoAcid {
+    fn from_json_value(value: serde_json::Value) -> Result<Self, crate::error::CustomError> {
+        use_serde(value)
     }
 }
 

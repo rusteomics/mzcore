@@ -3,6 +3,7 @@ use std::fmt::Write;
 use crate::{
     chemistry::{AmbiguousLabel, MassMode, MolecularFormula},
     glycan::GlycanPosition,
+    parse_json::{ParseJson, use_serde},
     system::{Mass, OrderedMass, Ratio, da, fraction},
 };
 
@@ -118,6 +119,12 @@ impl MolecularFormula {
                 write!(buffer, "{}<sub>{}</sub>", element.0, element.2).unwrap();
             }
         })
+    }
+}
+
+impl ParseJson for MolecularFormula {
+    fn from_json_value(value: serde_json::Value) -> Result<Self, crate::error::CustomError> {
+        use_serde(value)
     }
 }
 

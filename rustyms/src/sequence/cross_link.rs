@@ -1,12 +1,16 @@
 use itertools::Itertools;
-use serde::{
-    Deserialize, Serialize,
-    de::{Error, Visitor},
-};
+use serde::{Deserialize, Serialize};
+use serde_json::Value;
 
 use std::{cmp::Ordering, collections::BTreeSet};
 
-use crate::{chemistry::MolecularFormula, fragment::*, sequence::PlacementRule};
+use crate::{
+    chemistry::MolecularFormula,
+    error::{Context, CustomError},
+    fragment::*,
+    parse_json::{ParseJson, use_serde},
+    sequence::PlacementRule,
+};
 
 /// Indicate the cross-link side, it contains a set of all placement rules that apply for the placed
 /// location to find all possible ways of breaking and/or neutral losses. These numbers are the
@@ -59,6 +63,12 @@ impl std::hash::Hash for CrossLinkSide {
     }
 }
 
+impl ParseJson for CrossLinkSide {
+    fn from_json_value(value: Value) -> Result<Self, CustomError> {
+        use_serde(value)
+    }
+}
+
 /// The name of a cross-link
 #[derive(Clone, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 pub enum CrossLinkName {
@@ -68,8 +78,14 @@ pub enum CrossLinkName {
     Name(String),
 }
 
+impl ParseJson for CrossLinkName {
+    fn from_json_value(value: Value) -> Result<Self, CustomError> {
+        use_serde(value)
+    }
+}
+
 /// The linker position specificities for a linker
-#[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
+#[derive(Clone, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 pub enum LinkerSpecificity {
     /// A symmetric specificity where both ends have the same specificity.
     Symmetric {
@@ -95,112 +111,200 @@ pub enum LinkerSpecificity {
     },
 }
 
-/// Possible internal values, needed to allow serde to still parse the older format which did not contain a neutral loss value
-#[derive(Debug, Deserialize)]
-#[serde(untagged)]
-enum Field {
-    SymmetricOld(
-        Vec<PlacementRule>,
-        Vec<(MolecularFormula, MolecularFormula)>,
-        Vec<DiagnosticIon>,
-    ),
-    SymmetricNew {
-        rules: Vec<PlacementRule>,
-        stubs: Vec<(MolecularFormula, MolecularFormula)>,
-        neutral_losses: Vec<NeutralLoss>,
-        diagnostic: Vec<DiagnosticIon>,
-    },
-    AsymmetricOld(
-        (Vec<PlacementRule>, Vec<PlacementRule>),
-        Vec<(MolecularFormula, MolecularFormula)>,
-        Vec<DiagnosticIon>,
-    ),
-    AsymmetricNew {
-        rules: (Vec<PlacementRule>, Vec<PlacementRule>),
-        stubs: Vec<(MolecularFormula, MolecularFormula)>,
-        neutral_losses: Vec<NeutralLoss>,
-        diagnostic: Vec<DiagnosticIon>,
-    },
-}
-
-impl<'de> Deserialize<'de> for LinkerSpecificity {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: serde::Deserializer<'de>,
-    {
-        deserializer.deserialize_map(LinkerSpecificityVisitor)
-    }
-}
-
-struct LinkerSpecificityVisitor;
-
-impl<'de> Visitor<'de> for LinkerSpecificityVisitor {
-    type Value = LinkerSpecificity;
-
-    fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
-        formatter.write_str("a neutral loss")
-    }
-
-    fn visit_map<A>(self, mut map: A) -> Result<Self::Value, A::Error>
-    where
-        A: serde::de::MapAccess<'de>,
-    {
-        if let Some((key, value)) = map.next_entry::<&str, Field>()? {
-            match key {
-                "Symmetric" => match value {
-                    Field::SymmetricOld(rules, stubs, diagnostic) => {
-                        Ok(LinkerSpecificity::Symmetric {
-                            rules,
-                            stubs,
-                            neutral_losses: Vec::new(),
-                            diagnostic,
+impl ParseJson for LinkerSpecificity {
+    fn from_json_value(value: Value) -> Result<Self, CustomError> {
+        if let Value::Object(map) = value {
+            let (key, value) = map.into_iter().next().unwrap();
+            match key.as_str() {
+                "Symmetric" => {
+                    if let Value::Object(mut map) = value {
+                        Ok(Self::Symmetric {
+                            rules: Vec::<PlacementRule>::from_json_value(
+                                map.remove("rules").ok_or_else(|| {
+                                    CustomError::error(
+                                        "Invalid LinkerSpecificity",
+                                        "The required property 'rules' is missing",
+                                        Context::show(
+                                            map.iter()
+                                                .map(|(k, v)| format!("\"{k}\": {v}"))
+                                                .join(","),
+                                        ),
+                                    )
+                                })?,
+                            )?,
+                            stubs: Vec::<(MolecularFormula, MolecularFormula)>::from_json_value(
+                                map.remove("stubs").ok_or_else(|| {
+                                    CustomError::error(
+                                        "Invalid LinkerSpecificity",
+                                        "The required property 'stubs' is missing",
+                                        Context::show(
+                                            map.iter()
+                                                .map(|(k, v)| format!("\"{k}\": {v}"))
+                                                .join(","),
+                                        ),
+                                    )
+                                })?,
+                            )?,
+                            neutral_losses: Vec::<NeutralLoss>::from_json_value(
+                                map.remove("neutral_losses").ok_or_else(|| {
+                                    CustomError::error(
+                                        "Invalid LinkerSpecificity",
+                                        "The required property 'neutral_losses' is missing",
+                                        Context::show(
+                                            map.iter()
+                                                .map(|(k, v)| format!("\"{k}\": {v}"))
+                                                .join(","),
+                                        ),
+                                    )
+                                })?,
+                            )?,
+                            diagnostic: Vec::<DiagnosticIon>::from_json_value(
+                                map.remove("diagnostic").ok_or_else(|| {
+                                    CustomError::error(
+                                        "Invalid LinkerSpecificity",
+                                        "The required property 'diagnostic' is missing",
+                                        Context::show(
+                                            map.iter()
+                                                .map(|(k, v)| format!("\"{k}\": {v}"))
+                                                .join(","),
+                                        ),
+                                    )
+                                })?,
+                            )?,
                         })
+                    } else if let Value::Array(mut arr) = value {
+                        if arr.len() == 3 {
+                            let diagnostic =
+                                Vec::<DiagnosticIon>::from_json_value(arr.pop().unwrap())?;
+                            let stubs =
+                                Vec::<(MolecularFormula, MolecularFormula)>::from_json_value(
+                                    arr.pop().unwrap(),
+                                )?;
+                            let rules = Vec::<PlacementRule>::from_json_value(arr.pop().unwrap())?;
+
+                            Ok(Self::Symmetric {
+                                rules,
+                                stubs,
+                                neutral_losses: Vec::new(),
+                                diagnostic,
+                            })
+                        } else {
+                            Err(CustomError::error(
+                                "Invalid NeutralLoss",
+                                "The Symmetric is a sequence but does not have 3 children",
+                                Context::show(arr.iter().join(",")),
+                            ))
+                        }
+                    } else {
+                        Err(CustomError::error(
+                            "Invalid LinkerSpecificity",
+                            "The Symmetric value has to be a map or a sequence",
+                            Context::show(value),
+                        ))
                     }
-                    Field::SymmetricNew {
-                        rules,
-                        stubs,
-                        neutral_losses,
-                        diagnostic,
-                    } => Ok(LinkerSpecificity::Symmetric {
-                        rules,
-                        stubs,
-                        neutral_losses,
-                        diagnostic,
-                    }),
-                    _ => Err(A::Error::custom(
-                        "a symmetric linker specifity cannot contain asymmetric information",
-                    )),
-                },
-                "Asymmetric" => match value {
-                    Field::AsymmetricOld(rules, stubs, diagnostic) => {
-                        Ok(LinkerSpecificity::Asymmetric {
-                            rules,
-                            stubs,
-                            neutral_losses: Vec::new(),
-                            diagnostic,
+                }
+                "Asymmetric" => {
+                    if let Value::Object(mut map) = value {
+                        Ok(Self::Asymmetric {
+                            rules: <(Vec<PlacementRule>, Vec<PlacementRule>)>::from_json_value(
+                                map.remove("rules").ok_or_else(|| {
+                                    CustomError::error(
+                                        "Invalid LinkerSpecificity",
+                                        "The required property 'rules' is missing",
+                                        Context::show(
+                                            map.iter()
+                                                .map(|(k, v)| format!("\"{k}\": {v}"))
+                                                .join(","),
+                                        ),
+                                    )
+                                })?,
+                            )?,
+                            stubs: Vec::<(MolecularFormula, MolecularFormula)>::from_json_value(
+                                map.remove("stubs").ok_or_else(|| {
+                                    CustomError::error(
+                                        "Invalid LinkerSpecificity",
+                                        "The required property 'stubs' is missing",
+                                        Context::show(
+                                            map.iter()
+                                                .map(|(k, v)| format!("\"{k}\": {v}"))
+                                                .join(","),
+                                        ),
+                                    )
+                                })?,
+                            )?,
+                            neutral_losses: Vec::<NeutralLoss>::from_json_value(
+                                map.remove("neutral_losses").ok_or_else(|| {
+                                    CustomError::error(
+                                        "Invalid LinkerSpecificity",
+                                        "The required property 'neutral_losses' is missing",
+                                        Context::show(
+                                            map.iter()
+                                                .map(|(k, v)| format!("\"{k}\": {v}"))
+                                                .join(","),
+                                        ),
+                                    )
+                                })?,
+                            )?,
+                            diagnostic: Vec::<DiagnosticIon>::from_json_value(
+                                map.remove("diagnostic").ok_or_else(|| {
+                                    CustomError::error(
+                                        "Invalid LinkerSpecificity",
+                                        "The required property 'diagnostic' is missing",
+                                        Context::show(
+                                            map.iter()
+                                                .map(|(k, v)| format!("\"{k}\": {v}"))
+                                                .join(","),
+                                        ),
+                                    )
+                                })?,
+                            )?,
                         })
+                    } else if let Value::Array(mut arr) = value {
+                        if arr.len() == 3 {
+                            let diagnostic =
+                                Vec::<DiagnosticIon>::from_json_value(arr.pop().unwrap())?;
+                            let stubs =
+                                Vec::<(MolecularFormula, MolecularFormula)>::from_json_value(
+                                    arr.pop().unwrap(),
+                                )?;
+                            let rules =
+                                <(Vec<PlacementRule>, Vec<PlacementRule>)>::from_json_value(
+                                    arr.pop().unwrap(),
+                                )?;
+
+                            Ok(Self::Asymmetric {
+                                rules,
+                                stubs,
+                                neutral_losses: Vec::new(),
+                                diagnostic,
+                            })
+                        } else {
+                            Err(CustomError::error(
+                                "Invalid NeutralLoss",
+                                "The Asymmetric is a sequence but does not have 3 children",
+                                Context::show(arr.iter().join(",")),
+                            ))
+                        }
+                    } else {
+                        Err(CustomError::error(
+                            "Invalid LinkerSpecificity",
+                            "The Asymmetric value has to be a map or a sequence",
+                            Context::show(value),
+                        ))
                     }
-                    Field::AsymmetricNew {
-                        rules,
-                        stubs,
-                        neutral_losses,
-                        diagnostic,
-                    } => Ok(LinkerSpecificity::Asymmetric {
-                        rules,
-                        stubs,
-                        neutral_losses,
-                        diagnostic,
-                    }),
-                    _ => Err(A::Error::custom(
-                        "an asymmetric linker specifity cannot contain symmetric information",
-                    )),
-                },
-                v => Err(A::Error::custom(format!(
-                    "expected Symmetric/Asymmetric not '{v}'"
-                ))),
+                }
+                _ => Err(CustomError::error(
+                    "Invalid LinkerSpecificity",
+                    "The tag has to be Symmetric/Asymmetric",
+                    Context::show(key),
+                )),
             }
         } else {
-            Err(A::Error::custom("Empty linker specificity definition"))
+            Err(CustomError::error(
+                "Invalid LinkerSpecificity",
+                "The JSON value has to be a map",
+                Context::show(value),
+            ))
         }
     }
 }
@@ -211,6 +315,7 @@ mod tests {
     use crate::{
         fragment::{DiagnosticIon, NeutralLoss},
         molecular_formula,
+        parse_json::ParseJson,
         prelude::AminoAcid,
         sequence::{LinkerSpecificity, PlacementRule, Position},
     };
@@ -233,9 +338,8 @@ mod tests {
         let current_text =
             serde_json::to_string(&current).expect("Could not serialise linker specificity");
 
-        let _old =
-            serde_json::from_str::<LinkerSpecificity>(old).expect("Could not deserialise old json");
-        let current_back = serde_json::from_str::<LinkerSpecificity>(&current_text)
+        let _old = LinkerSpecificity::from_json(old).expect("Could not deserialise old json");
+        let current_back = LinkerSpecificity::from_json(&current_text)
             .expect("Could not deserialise current json");
 
         assert_eq!(current, current_back);

@@ -257,7 +257,7 @@ impl Modification {
                     Some(("m", tail)) => Ontology::Psimod.find_name(tail, None),
                     Some(("c", tail)) => Ontology::Custom.find_name(tail, custom_database),
                     _ => None
-                } 
+                }
             })
             .or_else( || {
                 name.trim().split_ascii_whitespace().next().and_then(|head| Self::find_name::<SemiAmbiguous>(head, position, custom_database))

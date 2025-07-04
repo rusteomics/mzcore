@@ -1,3 +1,5 @@
+use crate::parse_json::{ParseJson, use_serde};
+
 /// A position on a sequence
 #[derive(
     Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, serde::Serialize, serde::Deserialize,
@@ -58,5 +60,11 @@ impl SequencePosition {
             Self::Index(i) => Self::Index(peptide_length - i),
             Self::CTerm => Self::NTerm,
         }
+    }
+}
+
+impl ParseJson for SequencePosition {
+    fn from_json_value(value: serde_json::Value) -> Result<Self, crate::error::CustomError> {
+        use_serde(value)
     }
 }

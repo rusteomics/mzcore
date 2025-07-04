@@ -584,21 +584,3 @@ pub(super) static GLYCAN_LOSSES: LazyLock<Vec<(MonoSaccharide, bool, Vec<Neutral
             ),
         ]
     });
-
-#[test]
-#[expect(clippy::missing_panics_doc)]
-fn test_reading_custom_models_json_2024() {
-    use serde_json;
-    let data = include_str!("custom_model_2024.json");
-    let mods: Vec<(String, FragmentationModel)> = serde_json::from_str(data).unwrap();
-    assert!(mods.len() > 1);
-}
-
-#[test]
-#[expect(clippy::missing_panics_doc)]
-fn test_reading_custom_models_json_2025() {
-    use serde_json;
-    let data = include_str!("custom_model_20250528.json");
-    let mods: Vec<(String, FragmentationModel)> = serde_json::from_str(data).unwrap();
-    assert!(mods.len() > 1);
-}

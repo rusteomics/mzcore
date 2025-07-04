@@ -1,6 +1,8 @@
 use itertools::Itertools;
 use ordered_float::OrderedFloat;
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
+use thin_vec::ThinVec;
 
 use std::{
     collections::BTreeSet,
@@ -11,15 +13,17 @@ use std::{
 use crate::{
     annotation::model::{FragmentationModel, GlycanPeptideFragment},
     chemistry::{AmbiguousLabel, CachedCharge, Chemical, MolecularFormula},
+    error::{Context, CustomError},
     fragment::*,
     glycan::{GlycanStructure, MonoSaccharide},
     ontology::Ontology,
+    parse_json::ParseJson,
     quantities::Multi,
     sequence::{
         AminoAcid, GnoComposition, GnoSubsumption, LinkerSpecificity, ModificationId,
         PlacementRule, Position, RulePossible, SequenceElement, SequencePosition,
     },
-    system::OrderedMass,
+    system::{Mass, OrderedMass, dalton},
 };
 
 /// A modification on an amino acid, wrapped in an [`std::sync::Arc`] to not have to clone modifications from databases.
@@ -49,9 +53,9 @@ pub enum SimpleModificationInner {
         /// The underlying glycan motif, first is the human description, the second id the GNOme ID of the motif
         motif: Option<(String, String)>,
         /// Taxonomy of the animals in which this glycan is found, defined as a list of species name with taxonomy ID
-        taxonomy: thin_vec::ThinVec<(String, usize)>,
+        taxonomy: ThinVec<(String, usize)>,
         /// Locations of where the glycan exists
-        glycomeatlas: thin_vec::ThinVec<(String, Vec<(String, String)>)>,
+        glycomeatlas: ThinVec<(String, Vec<(String, String)>)>,
     },
     /// A modification from one of the modification ontologies
     Database {
@@ -457,5 +461,213 @@ impl SimpleModificationInner {
 impl Display for SimpleModificationInner {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         self.display(f, true)
+    }
+}
+
+impl ParseJson for SimpleModificationInner {
+    fn from_json_value(value: Value) -> Result<Self, CustomError> {
+        if let Value::Object(map) = value {
+            let (key, value) = map.into_iter().next().unwrap();
+            match key.as_str() {
+                "Mass" => {
+                    f64::from_json_value(value).map(|v| Self::Mass(Mass::new::<dalton>(v).into()))
+                }
+                "Formula" => MolecularFormula::from_json_value(value).map(Self::Formula),
+                "Glycan" => Vec::from_json_value(value).map(Self::Glycan),
+                "GlycanStructure" => {
+                    GlycanStructure::from_json_value(value).map(Self::GlycanStructure)
+                }
+                "Gno" => {
+                    if let Value::Object(mut map) = value {
+                        let context = |map: &serde_json::Map<String, Value>| {
+                            Context::show(
+                                map.iter().map(|(k, v)| format!("\"{k}\": {v}")).join(","),
+                            )
+                        };
+                        Ok(Self::Gno {
+                            composition: GnoComposition::from_json_value(
+                                map.remove("composition").ok_or_else(|| {
+                                    CustomError::error(
+                                        "Invalid SimpleModification",
+                                        "The required property 'composition' is missing",
+                                        context(&map),
+                                    )
+                                })?,
+                            )?,
+                            id: ModificationId::from_json_value(map.remove("id").ok_or_else(
+                                || {
+                                    CustomError::error(
+                                        "Invalid SimpleModification",
+                                        "The required property 'id' is missing",
+                                        context(&map),
+                                    )
+                                },
+                            )?)?,
+                            structure_score: Option::from_json_value(
+                                map.remove("structure_score").ok_or_else(|| {
+                                    CustomError::error(
+                                        "Invalid SimpleModification",
+                                        "The required property 'structure_score' is missing",
+                                        context(&map),
+                                    )
+                                })?,
+                            )?,
+                            subsumption_level: GnoSubsumption::from_json_value(
+                                map.remove("subsumption_level").ok_or_else(|| {
+                                    CustomError::error(
+                                        "Invalid SimpleModification",
+                                        "The required property 'subsumption_level' is missing",
+                                        context(&map),
+                                    )
+                                })?,
+                            )?,
+                            motif: Option::from_json_value(map.remove("motif").ok_or_else(
+                                || {
+                                    CustomError::error(
+                                        "Invalid SimpleModification",
+                                        "The required property 'motif' is missing",
+                                        context(&map),
+                                    )
+                                },
+                            )?)?,
+                            taxonomy: ThinVec::from_json_value(
+                                map.remove("taxonomy").ok_or_else(|| {
+                                    CustomError::error(
+                                        "Invalid SimpleModification",
+                                        "The required property 'taxonomy' is missing",
+                                        context(&map),
+                                    )
+                                })?,
+                            )?,
+                            glycomeatlas: ThinVec::from_json_value(
+                                map.remove("glycomeatlas").ok_or_else(|| {
+                                    CustomError::error(
+                                        "Invalid SimpleModification",
+                                        "The required property 'glycomeatlas' is missing",
+                                        context(&map),
+                                    )
+                                })?,
+                            )?,
+                        })
+                    } else {
+                        Err(CustomError::error(
+                            "Invalid Gno SimpleModification",
+                            "The value has to be a map",
+                            Context::show(key),
+                        ))
+                    }
+                }
+                "Database" => {
+                    if let Value::Object(mut map) = value {
+                        let context = |map: &serde_json::Map<String, Value>| {
+                            Context::show(
+                                map.iter().map(|(k, v)| format!("\"{k}\": {v}")).join(","),
+                            )
+                        };
+                        Ok(Self::Database {
+                            specificities: Vec::from_json_value(
+                                map.remove("specificities").ok_or_else(|| {
+                                    CustomError::error(
+                                        "Invalid SimpleModification",
+                                        "The required property 'specificities' is missing",
+                                        context(&map),
+                                    )
+                                })?,
+                            )?,
+                            formula: MolecularFormula::from_json_value(
+                                map.remove("formula").ok_or_else(|| {
+                                    CustomError::error(
+                                        "Invalid SimpleModification",
+                                        "The required property 'formula' is missing",
+                                        context(&map),
+                                    )
+                                })?,
+                            )?,
+                            id: ModificationId::from_json_value(map.remove("id").ok_or_else(
+                                || {
+                                    CustomError::error(
+                                        "Invalid SimpleModification",
+                                        "The required property 'id' is missing",
+                                        context(&map),
+                                    )
+                                },
+                            )?)?,
+                        })
+                    } else {
+                        Err(CustomError::error(
+                            "Invalid Database SimpleModification",
+                            "The value has to be a map",
+                            Context::show(key),
+                        ))
+                    }
+                }
+                "Linker" => {
+                    if let Value::Object(mut map) = value {
+                        let context = |map: &serde_json::Map<String, Value>| {
+                            Context::show(
+                                map.iter().map(|(k, v)| format!("\"{k}\": {v}")).join(","),
+                            )
+                        };
+                        Ok(Self::Linker {
+                            specificities: Vec::from_json_value(
+                                map.remove("specificities").ok_or_else(|| {
+                                    CustomError::error(
+                                        "Invalid SimpleModification",
+                                        "The required property 'specificities' is missing",
+                                        context(&map),
+                                    )
+                                })?,
+                            )?,
+                            formula: MolecularFormula::from_json_value(
+                                map.remove("formula").ok_or_else(|| {
+                                    CustomError::error(
+                                        "Invalid SimpleModification",
+                                        "The required property 'formula' is missing",
+                                        context(&map),
+                                    )
+                                })?,
+                            )?,
+                            id: ModificationId::from_json_value(map.remove("id").ok_or_else(
+                                || {
+                                    CustomError::error(
+                                        "Invalid SimpleModification",
+                                        "The required property 'id' is missing",
+                                        context(&map),
+                                    )
+                                },
+                            )?)?,
+                            length: Option::<f64>::from_json_value(
+                                map.remove("length").ok_or_else(|| {
+                                    CustomError::error(
+                                        "Invalid SimpleModification",
+                                        "The required property 'length' is missing",
+                                        context(&map),
+                                    )
+                                })?,
+                            )?
+                            .map(Into::into),
+                        })
+                    } else {
+                        Err(CustomError::error(
+                            "Invalid Database SimpleModification",
+                            "The value has to be a map",
+                            Context::show(key),
+                        ))
+                    }
+                }
+
+                _ => Err(CustomError::error(
+                    "Invalid SimpleModification",
+                    "The tag has to be Mass/Formula/Glycan/GlycanStructure/Gno/Database/Linker",
+                    Context::show(key),
+                )),
+            }
+        } else {
+            Err(CustomError::error(
+                "Invalid SimpleModification",
+                "The JSON value has to be a map",
+                Context::show(value),
+            ))
+        }
     }
 }

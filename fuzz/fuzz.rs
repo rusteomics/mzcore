@@ -16,7 +16,7 @@ use std::time::Duration;
 
 use std::thread;
 
-#[derive(Parser, Debug)]
+#[derive(Debug, Parser)]
 #[clap(version)]
 struct Args {
     #[clap(help = "Name of the target")]
