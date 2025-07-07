@@ -75,6 +75,7 @@ where
     Self: Sized,
 {
     fn start_index(&self) -> usize;
+    // Give the max of the end index (inclusive) or the upper bound
     fn end_index(&self, upper_bound: usize) -> usize;
     fn bounds(&self, upper_bound: usize) -> (usize, usize) {
         (self.start_index(), self.end_index(upper_bound))
@@ -362,16 +363,8 @@ pub(crate) fn next_number<const ALLOW_SIGN: bool, const FLOATING_POINT: bool, Nu
     line: &str,
     range: impl RangeBounds<usize>,
 ) -> Option<(usize, bool, Result<Number, Number::Err>)> {
-    let start = match range.start_bound() {
-        Bound::Unbounded => 0,
-        Bound::Excluded(n) => n + 1,
-        Bound::Included(n) => *n,
-    };
-    let end = match range.end_bound() {
-        Bound::Unbounded => line.chars().count(),
-        Bound::Excluded(n) => n - 1,
-        Bound::Included(n) => *n,
-    };
+    let start = range.start_index();
+    let end = range.end_index(line.len() - 1);
     let mut positive = true;
     let mut sign_set = false;
     let mut chars = line[start..=end].char_indices().peekable();

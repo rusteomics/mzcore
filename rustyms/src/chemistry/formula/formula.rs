@@ -85,22 +85,11 @@ impl MolecularFormula {
     pub fn hill_notation_fancy(&self) -> String {
         self.hill_notation_generic(|element, buffer| {
             if let Some(isotope) = element.1 {
-                write!(
-                    buffer,
-                    "{}{}{}",
-                    to_superscript_num(isotope.get()),
-                    element.0,
-                    to_subscript_num(element.2 as isize)
-                )
-                .unwrap();
-            } else {
-                write!(
-                    buffer,
-                    "{}{}",
-                    element.0,
-                    to_subscript_num(element.2 as isize)
-                )
-                .unwrap();
+                write!(buffer, "{}", to_superscript_num(isotope.get())).unwrap();
+            }
+            write!(buffer, "{}", element.0,).unwrap();
+            if element.2 != 1 {
+                write!(buffer, "{}", to_subscript_num(element.2 as isize)).unwrap();
             }
         })
     }
@@ -109,14 +98,11 @@ impl MolecularFormula {
     pub fn hill_notation_html(&self) -> String {
         self.hill_notation_generic(|element, buffer| {
             if let Some(isotope) = element.1 {
-                write!(
-                    buffer,
-                    "<sup>{isotope}</sup>{}<sub>{}</sub>",
-                    element.0, element.2
-                )
-                .unwrap();
-            } else {
-                write!(buffer, "{}<sub>{}</sub>", element.0, element.2).unwrap();
+                write!(buffer, "<sup>{isotope}</sup>",).unwrap();
+            }
+            write!(buffer, "{}", element.0,).unwrap();
+            if element.2 != 1 {
+                write!(buffer, "<sub>{}</sub>", element.2).unwrap();
             }
         })
     }

@@ -126,37 +126,77 @@ impl NeutralLoss {
     /// Generate a nice HTML notation for this `NeutralLoss`
     pub fn hill_notation_html(&self) -> String {
         match self {
-            Self::Loss(n, c) => format!("-{n}{}", c.hill_notation_html().trim_start_matches('+')),
+            Self::Loss(n, formula) => {
+                notation_helper('-', *n, formula, MolecularFormula::hill_notation_html, true)
+            }
             Self::SideChainLoss(_, aa) => format!("-sidechain_{aa}"),
-            Self::Gain(n, c) => format!("+{n}{}", c.hill_notation_html().trim_start_matches('+')),
+            Self::Gain(n, formula) => {
+                notation_helper('+', *n, formula, MolecularFormula::hill_notation_html, true)
+            }
         }
     }
 
     /// Generate a nice fancy notation for this `NeutralLoss`
     pub fn hill_notation_fancy(&self) -> String {
         match self {
-            Self::Loss(n, c) => format!("-{n}{}", c.hill_notation_fancy().trim_start_matches('+')),
+            Self::Loss(n, formula) => notation_helper(
+                '-',
+                *n,
+                formula,
+                MolecularFormula::hill_notation_fancy,
+                true,
+            ),
             Self::SideChainLoss(_, aa) => format!("-sidechain_{aa}"),
-            Self::Gain(n, c) => format!("+{n}{}", c.hill_notation_fancy().trim_start_matches('+')),
+            Self::Gain(n, formula) => notation_helper(
+                '+',
+                *n,
+                formula,
+                MolecularFormula::hill_notation_fancy,
+                true,
+            ),
         }
     }
 
     /// Generate a notation for this `NeutralLoss` with pure ASCII characters
     pub fn hill_notation(&self) -> String {
         match self {
-            Self::Loss(n, c) => format!("-{n}{}", c.hill_notation().trim_start_matches('+')),
+            Self::Loss(n, formula) => {
+                notation_helper('-', *n, formula, MolecularFormula::hill_notation, false)
+            }
             Self::SideChainLoss(_, aa) => format!("-sidechain_{aa}"),
-            Self::Gain(n, c) => format!("+{n}{}", c.hill_notation().trim_start_matches('+')),
+            Self::Gain(n, formula) => {
+                notation_helper('+', *n, formula, MolecularFormula::hill_notation, false)
+            }
         }
+    }
+}
+
+fn notation_helper(
+    sign: char,
+    n: u16,
+    formula: &MolecularFormula,
+    f: impl Fn(&MolecularFormula) -> String,
+    fancy: bool,
+) -> String {
+    if formula.elements().is_empty() && n != 1 {
+        format!(
+            "{sign}{n}{}{}",
+            if fancy { '×' } else { 'x' },
+            f(formula).trim_start_matches('+')
+        )
+    } else if n == 1 {
+        format!("{sign}{}", f(formula).trim_start_matches('+'))
+    } else {
+        format!("{sign}{n}{}", f(formula).trim_start_matches('+'))
     }
 }
 
 impl FromStr for NeutralLoss {
     type Err = CustomError;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        // Allow a numeric neutral loss
         if let Ok(number) = s.parse::<f64>() {
-            if number > 0.0 {
+            // Allow a simple numeric neutral loss
+            if number >= 0.0 {
                 Ok(Self::Gain(
                     1,
                     MolecularFormula::with_additional_mass(number),
@@ -166,6 +206,42 @@ impl FromStr for NeutralLoss {
                     1,
                     MolecularFormula::with_additional_mass(number.abs()),
                 ))
+            }
+        } else if (s.contains('x') && !s.contains("xe")) || s.contains('×') {
+            // Allow a factor times a numeric neutral loss
+            match s.split_once('x').or_else(|| s.split_once('×')) {
+                None => unreachable!(),
+                Some((start, end)) => {
+                    if start.starts_with('-') || start.starts_with('+') {
+                        let amount = start.parse::<i32>().map_err(|error|CustomError::error(
+                            "Invalid neutral loss",
+                            "The text before the times symbol should be a valid number, like: `-1x12`",
+                            Context::line_with_comment(None, s, 0, start.len(), Some(explain_number_error(&error).to_string())),
+                        ))?;
+                        let mass = end.parse::<f64>().map_err(|error|CustomError::error(
+                            "Invalid neutral loss",
+                            "The text after the times symbol should be a valid number, like: `-1x12`",
+                            Context::line_with_comment(None, s, 0, start.len(), Some(error.to_string())),
+                        ))?;
+                        if amount >= 0 {
+                            Ok(Self::Gain(
+                                amount as u16,
+                                MolecularFormula::with_additional_mass(mass),
+                            ))
+                        } else {
+                            Ok(Self::Loss(
+                                amount.unsigned_abs() as u16,
+                                MolecularFormula::with_additional_mass(mass),
+                            ))
+                        }
+                    } else {
+                        Err(CustomError::error(
+                            "Invalid neutral loss",
+                            "A neutral loss can only start with '+' or '-'",
+                            Context::line(None, s, 0, 1),
+                        ))
+                    }
+                }
             }
         } else if let Some(c) = s.chars().next() {
             // Or match a molecular formula
@@ -187,7 +263,7 @@ impl FromStr for NeutralLoss {
                             Context::line(None, s, 1, amount.0),
                         )
                     })?,
-                    amount.0,
+                    amount.0 + 1,
                 )
             } else {
                 (1, 1)
@@ -278,8 +354,13 @@ impl std::iter::Sum<NeutralLoss> for MolecularFormula {
 #[cfg(test)]
 #[allow(clippy::missing_panics_doc)]
 mod tests {
+    use std::str::FromStr;
+
     use crate::{
-        fragment::NeutralLoss, molecular_formula, parse_json::ParseJson, prelude::AminoAcid,
+        fragment::NeutralLoss,
+        molecular_formula,
+        parse_json::ParseJson,
+        prelude::{AminoAcid, MolecularFormula},
     };
 
     #[test]
@@ -305,5 +386,45 @@ mod tests {
             .expect("Could not deserialise side chain loss");
 
         assert_eq!(side_chain_loss, side_chain_loss_back);
+    }
+
+    #[test]
+    fn parse() {
+        assert_eq!(
+            NeutralLoss::from_str("-12"),
+            Ok(NeutralLoss::Loss(
+                1,
+                MolecularFormula::with_additional_mass(12.0)
+            ))
+        );
+        assert_eq!(
+            NeutralLoss::from_str("-1x12"),
+            Ok(NeutralLoss::Loss(
+                1,
+                MolecularFormula::with_additional_mass(12.0)
+            ))
+        );
+        assert_eq!(
+            NeutralLoss::from_str("-2x12"),
+            Ok(NeutralLoss::Loss(
+                2,
+                MolecularFormula::with_additional_mass(12.0)
+            ))
+        );
+        assert_eq!(
+            NeutralLoss::from_str("-2×12"),
+            Ok(NeutralLoss::Loss(
+                2,
+                MolecularFormula::with_additional_mass(12.0)
+            ))
+        );
+        assert_eq!(
+            NeutralLoss::from_str("-H2O"),
+            Ok(NeutralLoss::Loss(1, molecular_formula!(H 2 O 1)))
+        );
+        assert_eq!(
+            NeutralLoss::from_str("-2H2O"),
+            Ok(NeutralLoss::Loss(2, molecular_formula!(H 2 O 1)))
+        );
     }
 }
