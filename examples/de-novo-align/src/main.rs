@@ -39,12 +39,10 @@ fn main() {
     let index = AlignIndex::<4, Arc<FastaData>>::new(
         database.into_iter().map(Arc::new),
         MassMode::Monoisotopic,
-        AlignScoring::default(),
-        AlignType::EITHER_GLOBAL,
     );
 
     let alignments: Vec<_> = index
-        .par_align(peptides)
+        .par_align(peptides, AlignScoring::default(), AlignType::EITHER_GLOBAL)
         .flat_map(|alignments| {
             let alignments = alignments.collect_vec();
             let max = alignments
