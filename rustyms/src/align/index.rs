@@ -53,7 +53,7 @@ impl<'lifetime, const STEPS: u16, Source: HasPeptidoform<SimpleLinear> + Clone>
     pub fn align_one<'a, Other: HasPeptidoform<SimpleLinear> + Clone + 'a>(
         &'a self,
         other: Other,
-    ) -> impl Iterator<Item = Alignment<Source, Other>> {
+    ) -> impl ExactSizeIterator<Item = Alignment<Source, Other>> {
         let other_masses = calculate_masses::<STEPS>(other.cast_peptidoform(), self.mode);
 
         self.sequences
@@ -74,8 +74,34 @@ impl<'lifetime, const STEPS: u16, Source: HasPeptidoform<SimpleLinear> + Clone>
     pub fn align<'a, Other: HasPeptidoform<SimpleLinear> + Clone + 'a>(
         &'a self,
         others: impl IntoIterator<Item = Other>,
-    ) -> impl Iterator<Item = impl Iterator<Item = Alignment<Source, Other>>> {
+    ) -> impl Iterator<Item = impl ExactSizeIterator<Item = Alignment<Source, Other>>> {
         others.into_iter().map(|o| self.align_one(o))
+    }
+}
+
+impl<const STEPS: u16, Source: HasPeptidoform<SimpleLinear> + Clone + Sync + Send>
+    AlignIndex<'_, STEPS, Source>
+{
+    #[cfg(feature = "rayon")]
+    /// Align a single peptidoform to the index in parallel
+    pub fn par_align_one<'a, Other: HasPeptidoform<SimpleLinear> + Clone + 'a + Send + Sync>(
+        &'a self,
+        other: Other,
+    ) -> impl ParallelIterator<Item = Alignment<Source, Other>> {
+        let other_masses = calculate_masses::<STEPS>(other.cast_peptidoform(), self.mode);
+
+        self.sequences
+            .par_iter()
+            .map(move |(template, template_masses)| {
+                align_cached::<STEPS, Source, Other>(
+                    template.clone(),
+                    template_masses,
+                    other.clone(),
+                    &other_masses,
+                    self.scoring,
+                    self.align_type,
+                )
+            })
     }
 }
 
@@ -87,7 +113,7 @@ impl<const STEPS: u16, Source: HasPeptidoform<SimpleLinear> + Clone + Sync>
     pub fn par_align<'a, Other: HasPeptidoform<SimpleLinear> + Clone + 'a + Sync + Send>(
         &'a self,
         others: impl IntoParallelIterator<Item = Other>,
-    ) -> impl ParallelIterator<Item = impl Iterator<Item = Alignment<Source, Other>>> {
+    ) -> impl ParallelIterator<Item = impl ExactSizeIterator<Item = Alignment<Source, Other>>> {
         others.into_par_iter().map(|o| self.align_one(o))
     }
 }
