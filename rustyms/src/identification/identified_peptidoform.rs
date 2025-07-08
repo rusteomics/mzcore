@@ -58,6 +58,8 @@ pub enum IdentifiedPeptidoformData {
     PLink(PLinkData),
     /// PowerNovo metadata
     PowerNovo(PowerNovoData),
+    /// Proteoscape metadata
+    Proteoscape(ProteoscapeData),
     /// Sage metadata
     Sage(SageData),
     /// MSFragger metadata
@@ -75,6 +77,10 @@ impl<PeptidoformAvailability> IdentifiedPeptidoform<Linear, PeptidoformAvailabil
             | IdentifiedPeptidoformData::Opair(OpairData { peptide, .. })
             | IdentifiedPeptidoformData::PepNet(PepNetData { peptide, .. })
             | IdentifiedPeptidoformData::PowerNovo(PowerNovoData { peptide, .. })
+            | IdentifiedPeptidoformData::Proteoscape(ProteoscapeData {
+                peptide: (_, peptide, _),
+                ..
+            })
             | IdentifiedPeptidoformData::Sage(SageData { peptide, .. }) => Some(peptide.as_ref()),
             IdentifiedPeptidoformData::MSFragger(MSFraggerData { peptide, .. })
             | IdentifiedPeptidoformData::PLGS(PLGSData { peptide, .. }) => Some(peptide.as_ref()),
@@ -126,6 +132,10 @@ impl<PeptidoformAvailability> IdentifiedPeptidoform<SimpleLinear, PeptidoformAva
             | IdentifiedPeptidoformData::Opair(OpairData { peptide, .. })
             | IdentifiedPeptidoformData::PepNet(PepNetData { peptide, .. })
             | IdentifiedPeptidoformData::PowerNovo(PowerNovoData { peptide, .. })
+            | IdentifiedPeptidoformData::Proteoscape(ProteoscapeData {
+                peptide: (_, peptide, _),
+                ..
+            })
             | IdentifiedPeptidoformData::Sage(SageData { peptide, .. }) => Some(peptide.as_ref()),
             IdentifiedPeptidoformData::MSFragger(MSFraggerData { peptide, .. })
             | IdentifiedPeptidoformData::PLGS(PLGSData { peptide, .. }) => Some(peptide),
@@ -177,6 +187,10 @@ impl<PeptidoformAvailability> IdentifiedPeptidoform<SemiAmbiguous, PeptidoformAv
             | IdentifiedPeptidoformData::Opair(OpairData { peptide, .. })
             | IdentifiedPeptidoformData::PepNet(PepNetData { peptide, .. })
             | IdentifiedPeptidoformData::PowerNovo(PowerNovoData { peptide, .. })
+            | IdentifiedPeptidoformData::Proteoscape(ProteoscapeData {
+                peptide: (_, peptide, _),
+                ..
+            })
             | IdentifiedPeptidoformData::Sage(SageData { peptide, .. }) => Some(peptide),
             IdentifiedPeptidoformData::Peaks(PeaksData { peptide, .. }) => {
                 if peptide.1.len() == 1 {
@@ -231,6 +245,10 @@ impl<PeptidoformAvailability> IdentifiedPeptidoform<UnAmbiguous, PeptidoformAvai
             | IdentifiedPeptidoformData::Opair(OpairData { peptide, .. })
             | IdentifiedPeptidoformData::PepNet(PepNetData { peptide, .. })
             | IdentifiedPeptidoformData::PowerNovo(PowerNovoData { peptide, .. })
+            | IdentifiedPeptidoformData::Proteoscape(ProteoscapeData {
+                peptide: (_, peptide, _),
+                ..
+            })
             | IdentifiedPeptidoformData::Sage(SageData { peptide, .. }) => peptide.as_unambiguous(),
             IdentifiedPeptidoformData::Peaks(PeaksData { peptide, .. }) => {
                 if peptide.1.len() == 1 {
@@ -473,7 +491,7 @@ macro_rules! impl_metadata {
 }
 
 impl_metadata!(
-    formats: {BasicCSV,DeepNovoFamily,Fasta,MaxQuant,InstaNovo,MZTab,NovoB,Novor,Opair,Peaks,PepNet,PLGS,PLink,PowerNovo,Sage,MSFragger,SpectrumSequenceList};
+    formats: {BasicCSV,DeepNovoFamily,Fasta,MaxQuant,InstaNovo,MZTab,NovoB,Novor,Opair,Peaks,PepNet,PLGS,PLink,PowerNovo,Proteoscape,Sage,MSFragger,SpectrumSequenceList};
     functions: {
         fn compound_peptidoform_ion(&self) -> Option<Cow<'_, CompoundPeptidoformIon>>;
         fn format(&self) -> KnownFileFormat;

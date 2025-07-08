@@ -218,6 +218,10 @@ impl Location<'_> {
         self.location.len()
     }
 
+    pub(super) fn is_empty(&self) -> bool {
+        self.location.is_empty()
+    }
+
     pub(super) fn array(self, sep: char) -> std::vec::IntoIter<Self> {
         let mut offset = 0;
         let mut output = Vec::new();
@@ -380,6 +384,31 @@ impl Location<'_> {
                 },
             )
         })
+    }
+
+    /// Split twice on the character, split on the first and last occurrence of the given character.
+    /// So any additional occurrences of the characters are in the middle segment.
+    pub(super) fn split_twice(self, p: char) -> Option<(Self, Self, Self)> {
+        let (start, after) = self.as_str().split_once(p)?;
+        let (middle, end) = after.rsplit_once(p)?;
+        let start_middle = self.location.start + start.len() + p.len_utf8();
+        Some((
+            Self {
+                line: self.line,
+                location: self.location.start..self.location.start + start.len(),
+                column: self.column,
+            },
+            Self {
+                line: self.line,
+                location: start_middle..start_middle + middle.len(),
+                column: self.column,
+            },
+            Self {
+                line: self.line,
+                location: self.location.end - end.len()..self.location.end,
+                column: self.column,
+            },
+        ))
     }
 }
 

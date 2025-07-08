@@ -27,6 +27,7 @@ pub enum KnownFileFormat {
     PLGS(PLGSVersion),
     PLink(PLinkVersion),
     PowerNovo(PowerNovoVersion),
+    Proteoscape(ProteoscapeVersion),
     Sage(SageVersion),
     MSFragger(MSFraggerVersion),
     SpectrumSequenceList(SpectrumSequenceListVersion),
@@ -50,6 +51,7 @@ impl KnownFileFormat {
             Self::PLGS(_) => "ProteinLynx Global Server",
             Self::PLink(_) => "pLink",
             Self::PowerNovo(_) => "PowerNovo",
+            Self::Proteoscape(_) => "Proteoscape",
             Self::Sage(_) => "Sage",
             Self::MSFragger(_) => "MSFragger",
             Self::SpectrumSequenceList(_) => "SpectrumSequenceList",
@@ -73,6 +75,7 @@ impl KnownFileFormat {
             Self::PLGS(version) => Some(version.to_string()),
             Self::PLink(version) => Some(version.to_string()),
             Self::PowerNovo(version) => Some(version.to_string()),
+            Self::Proteoscape(version) => Some(version.to_string()),
             Self::Sage(version) => Some(version.to_string()),
             Self::MSFragger(version) => Some(version.to_string()),
             Self::SpectrumSequenceList(version) => Some(version.to_string()),
@@ -108,6 +111,7 @@ impl From<KnownFileFormat> for FileFormat {
             KnownFileFormat::PLGS(version) => Self::PLGS(Some(version)),
             KnownFileFormat::PLink(version) => Self::PLink(Some(version)),
             KnownFileFormat::PowerNovo(version) => Self::PowerNovo(Some(version)),
+            KnownFileFormat::Proteoscape(version) => Self::Proteoscape(Some(version)),
             KnownFileFormat::Sage(version) => Self::Sage(Some(version)),
             KnownFileFormat::MSFragger(version) => Self::MSFragger(Some(version)),
             KnownFileFormat::SpectrumSequenceList(version) => {
@@ -135,6 +139,7 @@ pub enum FileFormat {
     PLGS(Option<PLGSVersion>),
     PLink(Option<PLinkVersion>),
     PowerNovo(Option<PowerNovoVersion>),
+    Proteoscape(Option<ProteoscapeVersion>),
     Sage(Option<SageVersion>),
     MSFragger(Option<MSFraggerVersion>),
     SpectrumSequenceList(Option<SpectrumSequenceListVersion>),
@@ -213,6 +218,10 @@ impl FileFormat {
             }
             Self::PowerNovo(version) => {
                 PowerNovoData::parse_file(path, custom_database, false, version)
+                    .map(IdentifiedPeptidoformIter::into_box)
+            }
+            Self::Proteoscape(version) => {
+                ProteoscapeData::parse_file(path, custom_database, false, version)
                     .map(IdentifiedPeptidoformIter::into_box)
             }
             Self::Sage(version) => SageData::parse_file(path, custom_database, false, version)

@@ -15,6 +15,7 @@ mod pepnet;
 mod plgs;
 mod plink;
 mod powernovo;
+mod proteoscape;
 mod sage;
 mod ssl;
 
@@ -34,6 +35,7 @@ pub use pepnet::*;
 pub use plgs::*;
 pub use plink::*;
 pub use powernovo::*;
+pub use proteoscape::*;
 pub use sage::*;
 pub use ssl::*;
 
@@ -63,6 +65,8 @@ mod plgs_tests;
 mod plink_tests;
 #[cfg(test)]
 mod powernovo_tests;
+#[cfg(test)]
+mod proteoscape_tests;
 #[cfg(test)]
 mod sage_tests;
 #[cfg(test)]
