@@ -22,6 +22,7 @@ use crate::{
 };
 use ordered_float::OrderedFloat;
 use serde::{Deserialize, Serialize};
+use thin_vec::ThinVec;
 
 use super::FastaIdentifier;
 
@@ -41,11 +42,11 @@ format_family!(
     MSFragger,
     SimpleLinear, PeptidoformPresent, [&VERSION_V4_2, &FRAGPIPE_V20_OR_21, &FRAGPIPE_V22, &PHILOSOPHER], b'\t', None;
     required {
-        expectation_score: f64, |location: Location, _| location.parse::<f64>(NUMBER_ERROR);
+        expectation_score: f32, |location: Location, _| location.parse::<f32>(NUMBER_ERROR);
         hyper_score: f64, |location: Location, _| location.parse::<f64>(NUMBER_ERROR);
         mass: Mass, |location: Location, _| location.parse::<f64>(NUMBER_ERROR).map(Mass::new::<crate::system::dalton>);
         missed_cleavages: usize, |location: Location, _| location.parse(NUMBER_ERROR);
-        next_score: f64, |location: Location, _| location.parse(NUMBER_ERROR);
+        next_score: f32, |location: Location, _| location.parse(NUMBER_ERROR);
         peptide: Peptidoform<SimpleLinear>, |location: Location, custom_database: Option<&CustomDatabase>| location.parse_with(|location| {
             Peptidoform::sloppy_pro_forma(
                 location.full_line(),
@@ -56,7 +57,7 @@ format_family!(
         protein: FastaIdentifier<String>, |location: Location, _| location.parse(IDENTIFIER_ERROR);
         rt: Time, |location: Location, _| location.parse::<f64>(NUMBER_ERROR).map(Time::new::<crate::system::time::min>);
         scan: SpectrumId, |location: Location, _| Ok(SpectrumId::Native(location.get_string()));
-        modifications: Vec<(SequencePosition, SimpleModification)>, |location: Location, custom_database: Option<&CustomDatabase>| location.or_empty().array(',').map(|m| if let Some((head, tail)) = m.clone().split_once('(') {
+        modifications: ThinVec<(SequencePosition, SimpleModification)>, |location: Location, custom_database: Option<&CustomDatabase>| location.or_empty().array(',').map(|m| if let Some((head, tail)) = m.clone().split_once('(') {
             let head_trim = head.as_str().trim();
             Ok((
                 if head_trim.eq_ignore_ascii_case("N-term") {
@@ -79,15 +80,15 @@ format_family!(
                 "The format `location(modification)` could not be recognised",
                 m.context(),
             ))
-        }).collect::<Result<Vec<_>, _>>();
+        }).collect::<Result<ThinVec<_>, _>>();
         z: Charge, |location: Location, _| location.parse::<isize>(NUMBER_ERROR).map(Charge::new::<crate::system::e>);
     }
     optional {
-        best_score_with_delta_mass: f64, |location: Location, _| location.or_empty().parse::<f64>(NUMBER_ERROR);
+        best_score_with_delta_mass: f32, |location: Location, _| location.or_empty().parse::<f32>(NUMBER_ERROR);
         calibrated_experimental_mass: Mass, |location: Location, _| location.parse::<f64>(NUMBER_ERROR).map(Mass::new::<crate::system::dalton>);
         calibrated_experimental_mz: MassOverCharge, |location: Location, _| location.parse::<f64>(NUMBER_ERROR).map(MassOverCharge::new::<crate::system::mz>);
         condition: String, |location: Location, _| Ok(Some(location.get_string()));
-        delta_score: f64, |location: Location, _| location.or_empty().parse::<f64>(NUMBER_ERROR);
+        delta_score: f32, |location: Location, _| location.or_empty().parse::<f32>(NUMBER_ERROR);
         entry_name: String, |location: Location, _| Ok(location.get_string());
         enzymatic_termini: usize, |location: Location, _| location.parse::<usize>(NUMBER_ERROR);
         extended_peptide: Box<[Option<Peptidoform<SemiAmbiguous>>; 3]>, |location: Location, custom_database: Option<&CustomDatabase>| {
@@ -103,11 +104,11 @@ format_family!(
                 Err(CustomError::error("Invalid extened peptide", "The extended peptide should contain the prefix.peptide.suffix for all peptides.", location.context()))
             }
         };
-        glycan_q_value: f64, |location: Location, _| location.or_empty().parse::<f64>(NUMBER_ERROR);
-        glycan_score: f64, |location: Location, _| location.or_empty().parse::<f64>(NUMBER_ERROR);
+        glycan_q_value: f32, |location: Location, _| location.or_empty().parse::<f32>(NUMBER_ERROR);
+        glycan_score: f32, |location: Location, _| location.or_empty().parse::<f32>(NUMBER_ERROR);
         group: String, |location: Location, _| Ok(Some(location.get_string()));
-        intensity: f64, |location: Location, _| location.parse::<f64>(NUMBER_ERROR);
-        ion_mobility: f64, |location: Location, _| location.or_empty().parse::<f64>(NUMBER_ERROR);
+        intensity: f32, |location: Location, _| location.parse::<f32>(NUMBER_ERROR);
+        ion_mobility: f32, |location: Location, _| location.or_empty().parse::<f32>(NUMBER_ERROR);
         ions_best_position: usize, |location: Location, _| location.or_empty().parse::<usize>(NUMBER_ERROR);
         is_unique: bool, |location: Location, _| location.parse_with(|l| match l.as_str().to_ascii_lowercase().as_str() {
             "true" => Ok(true),
@@ -120,8 +121,8 @@ format_family!(
         });
         mz: MassOverCharge, |location: Location, _| location.parse::<f64>(NUMBER_ERROR).map(MassOverCharge::new::<crate::system::mz>);
         gene: String, |location: Location, _| Ok(location.get_string());
-        mapped_genes: Vec<String>, |location: Location, _| Ok(location.get_string().split(',').map(|s| s.trim().to_string()).collect::<Vec<_>>());
-        mapped_proteins: Vec<String>, |location: Location, _| Ok(location.get_string().split(',').map(|s| s.trim().to_string()).collect::<Vec<_>>());
+        mapped_genes: ThinVec<String>, |location: Location, _| Ok(location.get_string().split(',').map(|s| s.trim().to_string()).collect::<ThinVec<_>>());
+        mapped_proteins: ThinVec<String>, |location: Location, _| Ok(location.get_string().split(',').map(|s| s.trim().to_string()).collect::<ThinVec<_>>());
         num_matched_ions: usize, |location: Location, _| location.parse::<usize>(NUMBER_ERROR);
         num_tol_term: usize, |location: Location, _| location.parse::<usize>(NUMBER_ERROR);
         open_search_localisation: String, |location: Location, _| Ok(location.or_empty().get_string());
@@ -129,31 +130,31 @@ format_family!(
         open_search_modification: MSFraggerOpenModification, |location: Location, _|
             location.or_empty().parse_with(|location| location.as_str().find('%').map_or_else(
                 || Ok(MSFraggerOpenModification::Other(location.as_str().to_owned())),
-                |end| MonoSaccharide::from_byonic_composition(&location.as_str()[..end]).map(MSFraggerOpenModification::Glycan)));
-        open_search_position_scores: Vec<f64>, |location: Location, _| {
+                |end| MonoSaccharide::from_byonic_composition(&location.as_str()[..end]).map(|g| MSFraggerOpenModification::Glycan(g.into()))));
+        open_search_position_scores: ThinVec<f64>, |location: Location, _| {
             let data = location.array(')').filter_map(|l| (l.len() > 2).then(|| l.skip(2).parse::<f64>((
                 "Invalid FragPipe line",
                 "This position score is not a number but it is required to be a number in this FragPipe format",
-            )))).collect::<Result<Vec<_>, _>>()?;
+            )))).collect::<Result<ThinVec<_>, _>>()?;
             if data.is_empty() {
                 Ok(None)
             } else {
                 Ok(Some(data))
             }
         };
-        peptide_prophet_probability: f64, |location: Location, _| location.parse::<f64>(NUMBER_ERROR);
+        peptide_prophet_probability: f32, |location: Location, _| location.parse::<f32>(NUMBER_ERROR);
         protein_description: String, |location: Location, _| Ok(location.get_string());
-        protein_end: usize, |location: Location, _| location.parse::<usize>(NUMBER_ERROR);
+        protein_end: u16, |location: Location, _| location.parse::<u16>(NUMBER_ERROR);
         protein_id: String, |location: Location, _| Ok(location.get_string());
-        protein_start: usize, |location: Location, _| location.parse::<usize>(NUMBER_ERROR);
-        purity: f64, |location: Location, _| location.parse::<f64>(NUMBER_ERROR);
+        protein_start: u16, |location: Location, _| location.parse::<u16>(NUMBER_ERROR);
+        purity: f32, |location: Location, _| location.parse::<f32>(NUMBER_ERROR);
         rank: usize, |location: Location, _| location.parse::<usize>(NUMBER_ERROR);
-        score_without_delta_mass: f64, |location: Location, _| location.or_empty().parse::<f64>(NUMBER_ERROR);
-        second_best_score_with_delta_mass: f64, |location: Location, _| location.or_empty().parse::<f64>(NUMBER_ERROR);
+        score_without_delta_mass: f32, |location: Location, _| location.or_empty().parse::<f32>(NUMBER_ERROR);
+        second_best_score_with_delta_mass: f32, |location: Location, _| location.or_empty().parse::<f32>(NUMBER_ERROR);
         raw_file: PathBuf, |location: Location, _| Ok(Some(location.get_string().into()));
-        total_glycan_composition: Vec<(MonoSaccharide, isize)>, |location: Location, _| location.or_empty().parse_with(|location| location.as_str().find('%').map_or_else(
-                || MonoSaccharide::from_byonic_composition(location.as_str()),
-                |end| MonoSaccharide::from_byonic_composition(&location.as_str()[..end])));
+        total_glycan_composition: ThinVec<(MonoSaccharide, isize)>, |location: Location, _| location.or_empty().parse_with(|location| location.as_str().find('%').map_or_else(
+                || MonoSaccharide::from_byonic_composition(location.as_str()).map(ThinVec::from),
+                |end| MonoSaccharide::from_byonic_composition(&location.as_str()[..end]).map(ThinVec::from)));
         tot_num_ions: usize, |location: Location, _| location.parse::<usize>(NUMBER_ERROR);
     }
 
@@ -174,7 +175,7 @@ format_family!(
         }
         // Open modification - check for a glycan composition mod
         if let Some(glycan) = match parsed.open_search_modification.as_ref() {Some(MSFraggerOpenModification::Glycan(glycan)) => Some(glycan), _ => None}.or(parsed.total_glycan_composition.as_ref()) {
-            let modification: SimpleModification = SimpleModificationInner::Glycan(glycan.clone()).into();
+            let modification: SimpleModification = SimpleModificationInner::Glycan(glycan.to_vec()).into();
             let target_mass = Mass::new::<crate::system::dalton>(glycan.iter().fold(0.0, |acc, (sugar, amount)| sugar.formula().monoisotopic_mass().value.mul_add(*amount as f64, acc)));
             let mut placed = false;
 
@@ -239,7 +240,7 @@ static IDENTIFER_REGEX: LazyLock<regex::Regex> =
 #[derive(Clone, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 pub enum MSFraggerOpenModification {
     /// A glycan composition
-    Glycan(Vec<(MonoSaccharide, isize)>),
+    Glycan(ThinVec<(MonoSaccharide, isize)>),
     /// Any other modification
     Other(String),
 }
@@ -559,7 +560,7 @@ impl MetaData for MSFraggerData {
         None
     }
 
-    fn protein_location(&self) -> Option<Range<usize>> {
+    fn protein_location(&self) -> Option<Range<u16>> {
         self.protein_start
             .and_then(|start| self.protein_end.map(|end| start..end))
     }

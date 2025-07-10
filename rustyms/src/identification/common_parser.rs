@@ -331,6 +331,10 @@ impl Location<'_> {
         self.as_str().to_string()
     }
 
+    pub(super) fn get_boxed_str(self) -> Box<str> {
+        self.as_str().into()
+    }
+
     pub(super) fn as_str(&self) -> &str {
         &self.line.line()[self.location.clone()]
     }

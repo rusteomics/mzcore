@@ -508,6 +508,6 @@ impl_metadata!(
         fn mass_error(&self) -> Option<Mass>;
         fn protein_name(&self) -> Option<FastaIdentifier<String>>;
         fn protein_id(&self) -> Option<usize>;
-        fn protein_location(&self) -> Option<Range<usize>>;
+        fn protein_location(&self) -> Option<Range<u16>>;
     }
 );

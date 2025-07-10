@@ -111,8 +111,8 @@ format_family!(
         protein_group: usize, |location: Location, _| location.parse(NUMBER_ERROR).map(Some);
         protein_id: usize, |location: Location, _| location.parse(NUMBER_ERROR).map(Some);
         protein_accession: FastaIdentifier<String>, |location: Location, _|  location.parse(NUMBER_ERROR).map(Some);
-        start: usize, |location: Location, _| location.parse(NUMBER_ERROR).map(Some);
-        end: usize, |location: Location, _| location.parse(NUMBER_ERROR).map(Some);
+        start: u16, |location: Location, _| location.parse(NUMBER_ERROR).map(Some);
+        end: u16, |location: Location, _| location.parse(NUMBER_ERROR).map(Some);
         quality: f64, |location: Location, _| location.parse::<f64>(NUMBER_ERROR);
         rt_begin: Time, |location: Location, _| location.or_empty().parse::<f64>(NUMBER_ERROR).map(|o| o.map(Time::new::<crate::system::time::s>));
         rt_end: Time, |location: Location, _| location.or_empty().parse::<f64>(NUMBER_ERROR).map(|o| o.map(Time::new::<crate::system::time::s>));
@@ -759,7 +759,7 @@ impl MetaData for PeaksData {
         self.protein_id
     }
 
-    fn protein_location(&self) -> Option<Range<usize>> {
+    fn protein_location(&self) -> Option<Range<u16>> {
         self.start.and_then(|s| self.end.map(|e| s..e))
     }
 }

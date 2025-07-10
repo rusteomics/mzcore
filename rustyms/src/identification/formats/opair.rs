@@ -39,7 +39,7 @@ format_family!(
         accession: String, |location: Location, _| Ok(location.get_string());
         organism: String, |location: Location, _| Ok(location.get_string());
         protein_name: FastaIdentifier<String>, |location: Location, _| location.parse(NUMBER_ERROR);
-        protein_location: Range<usize>, |location: Location, _| location.parse_with(
+        protein_location: Range<u16>, |location: Location, _| location.parse_with(
             |loc| {
                 if loc.location.len() < 3 {
                     return Err(CustomError::error(
@@ -364,7 +364,7 @@ impl MetaData for OpairData {
         None
     }
 
-    fn protein_location(&self) -> Option<Range<usize>> {
+    fn protein_location(&self) -> Option<Range<u16>> {
         Some(self.protein_location.clone())
     }
 }

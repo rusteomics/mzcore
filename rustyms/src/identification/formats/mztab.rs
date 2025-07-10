@@ -68,9 +68,9 @@ pub struct MZTabData {
     /// The amino acide after this peptide
     pub following_aa: FlankingResidue,
     /// The start of this peptide in the containing protein (0-based)
-    pub start: Option<usize>,
+    pub start: Option<u16>,
     /// The end of this peptide in the containing protein (0-based)
-    pub end: Option<usize>,
+    pub end: Option<u16>,
     /// Casanovo specific additional metadata with the amino acid confidence
     pub local_confidence: Option<Vec<f64>>,
     /// Any additional metadata
@@ -590,7 +590,7 @@ impl MZTabData {
                 .optional_column("start")
                 .and_then(|(v, r)| {
                     (!v.eq_ignore_ascii_case("null")).then(|| {
-                        v.parse::<usize>().map_err(|err| {
+                        v.parse::<u16>().map_err(|err| {
                             CustomError::error(
                                 "Invalid mzTab start",
                                 format!("The start {}", explain_number_error(&err)),
@@ -604,7 +604,7 @@ impl MZTabData {
                 .optional_column("end")
                 .and_then(|(v, r)| {
                     (!v.eq_ignore_ascii_case("null")).then(|| {
-                        v.parse::<usize>().map_err(|err| {
+                        v.parse::<u16>().map_err(|err| {
                             CustomError::error(
                                 "Invalid mzTab end",
                                 format!("The end {}", explain_number_error(&err)),
@@ -965,7 +965,7 @@ impl MetaData for MZTabData {
         None
     }
 
-    fn protein_location(&self) -> Option<Range<usize>> {
+    fn protein_location(&self) -> Option<Range<u16>> {
         self.start.and_then(|s| self.end.map(|e| s..e))
     }
 }

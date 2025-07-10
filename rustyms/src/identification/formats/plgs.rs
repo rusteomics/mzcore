@@ -21,6 +21,7 @@ use crate::{
     system::{Mass, MassOverCharge, OrderedTime, Time, isize::Charge},
 };
 use serde::{Deserialize, Serialize};
+use thin_vec::ThinVec;
 
 static NUMBER_ERROR: (&str, &str) = (
     "Invalid PLGS line",
@@ -40,27 +41,27 @@ format_family!(
     SimpleLinear, PeptidoformPresent, [&VERSION_3_0], b',', None;
     required {
         protein_id: usize, |location: Location, _| location.parse(NUMBER_ERROR);
-        protein_entry: String, |location: Location, _| Ok(location.get_string());
-        protein_accession: String, |location: Location, _| Ok(location.get_string());
+        protein_entry: Box<str>, |location: Location, _| Ok(location.get_boxed_str());
+        protein_accession: Box<str>, |location: Location, _| Ok(location.get_boxed_str());
         protein_description: FastaIdentifier<String>, |location: Location, _| location.parse(IDENTIFIER_ERROR);
-        protein_db_type: String, |location: Location, _| Ok(location.get_string());
-        protein_score: f64, |location: Location, _| location.parse(NUMBER_ERROR);
-        protein_fpr: f64, |location: Location, _| location.parse(NUMBER_ERROR);
+        protein_db_type: Box<str>, |location: Location, _| Ok(location.get_boxed_str());
+        protein_score: f32, |location: Location, _| location.parse(NUMBER_ERROR);
+        protein_fpr: f32, |location: Location, _| location.parse(NUMBER_ERROR);
         protein_average_weight: Mass, |location: Location, _| location.parse(NUMBER_ERROR).map(Mass::new::<crate::system::dalton>);
-        protein_matched_products: usize, |location: Location, _| location.parse(NUMBER_ERROR);
-        protein_matched_peptides: usize, |location: Location, _| location.parse(NUMBER_ERROR);
-        protein_digest_peptides: usize, |location: Location, _| location.parse(NUMBER_ERROR);
-        protein_sequence_coverage: f64, |location: Location, _| location.parse(NUMBER_ERROR);
-        protein_matched_peptide_intensity_sum: f64, |location: Location, _| location.parse(NUMBER_ERROR);
-        protein_matched_peptide_intensity_top3: f64, |location: Location, _| location.parse(NUMBER_ERROR);
-        protein_matched_product_intensity_sum: f64, |location: Location, _| location.parse(NUMBER_ERROR);
-        protein_fmol_on_column: Option<f64>, |location: Location, _| location.or_empty().parse(NUMBER_ERROR);
-        protein_ngram_on_column: Option<f64>, |location: Location, _| location.or_empty().parse(NUMBER_ERROR);
+        protein_matched_products: u32, |location: Location, _| location.parse(NUMBER_ERROR);
+        protein_matched_peptides: u32, |location: Location, _| location.parse(NUMBER_ERROR);
+        protein_digest_peptides: u32, |location: Location, _| location.parse(NUMBER_ERROR);
+        protein_sequence_coverage: f32, |location: Location, _| location.parse(NUMBER_ERROR);
+        protein_matched_peptide_intensity_sum: f32, |location: Location, _| location.parse(NUMBER_ERROR);
+        protein_matched_peptide_intensity_top3: f32, |location: Location, _| location.parse(NUMBER_ERROR);
+        protein_matched_product_intensity_sum: f32, |location: Location, _| location.parse(NUMBER_ERROR);
+        protein_fmol_on_column: Option<f32>, |location: Location, _| location.or_empty().parse(NUMBER_ERROR);
+        protein_ngram_on_column: Option<f32>, |location: Location, _| location.or_empty().parse(NUMBER_ERROR);
         protein_auto_curate: PLGSCuration, |location: Location, _| location.parse(CURATION_ERROR);
-        peptide_rank: usize, |location: Location, _| location.parse(NUMBER_ERROR);
-        peptide_pass: String, |location: Location, _| Ok(location.get_string());
-        peptide_match_type: String, |location: Location, _| Ok(location.get_string());
-        peptide_modifications: Vec<(SimpleModification, AminoAcid, Option<usize>)>, |location: Location, custom_database: Option<&CustomDatabase>|
+        peptide_rank: u32, |location: Location, _| location.parse(NUMBER_ERROR);
+        peptide_pass: Box<str>, |location: Location, _| Ok(location.get_boxed_str());
+        peptide_match_type: Box<str>, |location: Location, _| Ok(location.get_boxed_str());
+        peptide_modifications: ThinVec<(SimpleModification, AminoAcid, Option<usize>)>, |location: Location, custom_database: Option<&CustomDatabase>|
             location.ignore("None").array(';').map(|l| {
                 let plus = l.as_str().find('+').ok_or_else(|| CustomError::error("Invalid PLGS modification", "A PLGS modification should be in the format 'modification+AA(pos)' and the plus '+' is missing.", l.context()))?;
                 let modification = Modification::sloppy_modification(l.full_line(), l.location.start..l.location.start+plus, None, custom_database)?;
@@ -70,58 +71,58 @@ format_family!(
                     Some(num.parse::<usize>().map_err(|err| CustomError::error("Invalid PLGS modification", format!("A PLGS modification should be in the format 'modification+AA(pos)' and the pos is {}", explain_number_error(&err)), l.context()))? - 1)
                 };
                 Ok((modification, aa, index))
-            }).collect::<Result<Vec<_>,_>>();
+            }).collect::<Result<ThinVec<_>,_>>();
         peptide: Peptidoform<SimpleLinear>, |location: Location, custom_database: Option<&CustomDatabase>| Peptidoform::pro_forma(location.as_str(), custom_database).map(|p|p.into_simple_linear().unwrap());
-        peptide_start: usize, |location: Location, _| location.parse(NUMBER_ERROR);
-        peptide_pi: f64, |location: Location, _| location.parse(NUMBER_ERROR);
-        peptide_component_id: usize, |location: Location, _| location.parse(NUMBER_ERROR);
-        peptide_matched_products: usize, |location: Location, _| location.parse(NUMBER_ERROR);
-        peptide_unique_products: usize, |location: Location, _| location.parse(NUMBER_ERROR);
-        peptide_consecutive_products: usize, |location: Location, _| location.parse(NUMBER_ERROR);
-        peptide_complementary_products: usize, |location: Location, _| location.parse(NUMBER_ERROR);
-        peptide_raw_score: f64, |location: Location, _| location.parse(NUMBER_ERROR);
+        peptide_start: u16, |location: Location, _| location.parse(NUMBER_ERROR);
+        peptide_pi: f32, |location: Location, _| location.parse(NUMBER_ERROR);
+        peptide_component_id: u32, |location: Location, _| location.parse(NUMBER_ERROR);
+        peptide_matched_products: u32, |location: Location, _| location.parse(NUMBER_ERROR);
+        peptide_unique_products: u32, |location: Location, _| location.parse(NUMBER_ERROR);
+        peptide_consecutive_products: u32, |location: Location, _| location.parse(NUMBER_ERROR);
+        peptide_complementary_products: u32, |location: Location, _| location.parse(NUMBER_ERROR);
+        peptide_raw_score: f32, |location: Location, _| location.parse(NUMBER_ERROR);
         peptide_score: f64, |location: Location, _| location.parse(NUMBER_ERROR);
         peptide_x_p_bond_identified: Option<bool>, |location: Location, _| Ok(location.or_empty().map(|l| l.as_str() == "Identified"));
         peptide_matched_product_intensity: usize, |location: Location, _| location.parse(NUMBER_ERROR);
-        peptide_matched_product_theoretical: f64, |location: Location, _| location.parse(NUMBER_ERROR);
-        peptide_matched_product_string: String, |location: Location, _| Ok(location.get_string());
+        peptide_matched_product_theoretical: f32, |location: Location, _| location.parse(NUMBER_ERROR);
+        peptide_matched_product_string: Box<str>, |location: Location, _| Ok(location.get_boxed_str());
         peptide_model_rt: Time, |location: Location, _| location.parse(NUMBER_ERROR).map(Time::new::<crate::system::time::min>);
         peptide_volume: usize, |location: Location, _| location.parse(NUMBER_ERROR);
-        peptide_csa: f64, |location: Location, _| location.parse(NUMBER_ERROR);
-        peptide_model_drift: f64, |location: Location, _| location.parse(NUMBER_ERROR);
-        peptide_relative_intensity: f64, |location: Location, _| location.parse(NUMBER_ERROR);
+        peptide_csa: f32, |location: Location, _| location.parse(NUMBER_ERROR);
+        peptide_model_drift: f32, |location: Location, _| location.parse(NUMBER_ERROR);
+        peptide_relative_intensity: f32, |location: Location, _| location.parse(NUMBER_ERROR);
         peptide_auto_curate: PLGSCuration, |location: Location, _| location.parse(CURATION_ERROR);
-        precursor_le_id: usize, |location: Location, _| location.parse(NUMBER_ERROR);
+        precursor_le_id: u32, |location: Location, _| location.parse(NUMBER_ERROR);
         precursor_mass: Mass, |location: Location, _| location.parse(NUMBER_ERROR).map(Mass::new::<crate::system::dalton>);
         precursor_rt: Time, |location: Location, _| location.parse(NUMBER_ERROR).map(Time::new::<crate::system::time::min>);
-        precursor_intensity: f64, |location: Location, _| location.parse(NUMBER_ERROR);
-        precursor_charge: f64, |location: Location, _| location.parse(NUMBER_ERROR);
+        precursor_intensity: f32, |location: Location, _| location.parse(NUMBER_ERROR);
+        precursor_charge: f32, |location: Location, _| location.parse(NUMBER_ERROR);
         precursor_z: Charge, |location: Location, _| location.parse(NUMBER_ERROR).map(Charge::new::<crate::system::charge::e>);
         precursor_mz: MassOverCharge, |location: Location, _| location.parse(NUMBER_ERROR).map(MassOverCharge::new::<crate::system::mass_over_charge::mz>);
-        precursor_fwhm: f64, |location: Location, _| location.parse(NUMBER_ERROR);
+        precursor_fwhm: f32, |location: Location, _| location.parse(NUMBER_ERROR);
         precursor_lift_off_rt: Time, |location: Location, _| location.parse(NUMBER_ERROR).map(Time::new::<crate::system::time::s>);
         precursor_inf_up_rt: Time, |location: Location, _| location.parse(NUMBER_ERROR).map(Time::new::<crate::system::time::s>);
         precursor_inf_down_rt: Time, |location: Location, _| location.parse(NUMBER_ERROR).map(Time::new::<crate::system::time::s>);
         precursor_touch_down_rt: Time, |location: Location, _| location.parse(NUMBER_ERROR).map(Time::new::<crate::system::time::s>);
-        precursor_rms_fwhm_delta: f64, |location: Location, _| location.parse(NUMBER_ERROR);
+        precursor_rms_fwhm_delta: f32, |location: Location, _| location.parse(NUMBER_ERROR);
     }
     optional {
         fragment_mass: Mass, |location: Location, _| location.or_empty().parse(NUMBER_ERROR).map(|r| r.map(Mass::new::<crate::system::dalton>));
-        fragment_type: String, |location: Location, _| Ok(location.get_string());
-        fragment_index: usize, |location: Location, _| location.or_empty().parse::<usize>(NUMBER_ERROR);
+        fragment_type: Box<str>, |location: Location, _| Ok(location.get_boxed_str());
+        fragment_index: u32, |location: Location, _| location.or_empty().parse::<u32>(NUMBER_ERROR);
         fragment_neutral_loss: NeutralLoss, |location: Location, _| location.or_empty().ignore("None").map(|l| MolecularFormula::from_pro_forma(l.full_line(), l.location.clone(), false, false, false, true).map(|f| NeutralLoss::Loss(1, f))).transpose();
-        fragment_description: String, |location: Location, _| Ok(location.get_string());
-        fragment_sequence: String, |location: Location, _| Ok(location.get_string());
-        fragment_site: String, |location: Location, _| Ok(location.get_string());
+        fragment_description: Box<str>, |location: Location, _| Ok(location.get_boxed_str());
+        fragment_sequence: Box<str>, |location: Location, _| Ok(location.get_boxed_str());
+        fragment_site: Box<str>, |location: Location, _| Ok(location.get_boxed_str());
         product_rank: isize, |location: Location, _| location.parse::<isize>(NUMBER_ERROR);
-        product_he_id: usize, |location: Location, _| location.or_empty().parse::<usize>(NUMBER_ERROR);
+        product_he_id: u32, |location: Location, _| location.or_empty().parse::<u32>(NUMBER_ERROR);
         product_mass: Mass, |location: Location, _| location.or_empty().parse(NUMBER_ERROR).map(|r| r.map(Mass::new::<crate::system::dalton>));
         product_mz: MassOverCharge, |location: Location, _| location.or_empty().parse(NUMBER_ERROR).map(|r| r.map(MassOverCharge::new::<crate::system::mass_over_charge::mz>));
         product_rt: Time, |location: Location, _| location.or_empty().parse(NUMBER_ERROR).map(|r| r.map(Time::new::<crate::system::time::min>));
         product_intensity: usize, |location: Location, _| location.or_empty().parse::<usize>(NUMBER_ERROR);
-        product_charge: f64, |location: Location, _| location.or_empty().parse::<f64>(NUMBER_ERROR);
+        product_charge: f32, |location: Location, _| location.or_empty().parse::<f32>(NUMBER_ERROR);
         product_z: Charge, |location: Location, _| location.or_empty().parse(NUMBER_ERROR).map(|r| r.map(Charge::new::<crate::system::charge::e>));
-        product_fwhm: f64, |location: Location, _| location.or_empty().parse::<f64>(NUMBER_ERROR);
+        product_fwhm: f32, |location: Location, _| location.or_empty().parse::<f32>(NUMBER_ERROR);
         product_lift_off_rt: Time, |location: Location, _| location.or_empty().parse(NUMBER_ERROR).map(|r| r.map(Time::new::<crate::system::time::s>));
         product_inf_up_rt: Time, |location: Location, _| location.or_empty().parse(NUMBER_ERROR).map(|r| r.map(Time::new::<crate::system::time::s>));
         product_inf_down_rt: Time, |location: Location, _| location.or_empty().parse(NUMBER_ERROR).map(|r| r.map(Time::new::<crate::system::time::s>));
@@ -358,7 +359,7 @@ impl MetaData for PLGSData {
         Some(self.protein_id)
     }
 
-    fn protein_location(&self) -> Option<Range<usize>> {
-        Some(self.peptide_start..self.peptide_start + self.peptide.len())
+    fn protein_location(&self) -> Option<Range<u16>> {
+        Some(self.peptide_start..self.peptide_start + self.peptide.len() as u16)
     }
 }

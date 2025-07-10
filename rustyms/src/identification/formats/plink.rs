@@ -562,7 +562,7 @@ impl MetaData for PLinkData {
         None
     }
 
-    fn protein_location(&self) -> Option<Range<usize>> {
+    fn protein_location(&self) -> Option<Range<u16>> {
         None
     }
 }

@@ -44,7 +44,7 @@ format_family!(
         rt: Time, |location: Location, _| location.parse::<f64>(NUMBER_ERROR).map(Time::new::<crate::system::time::min>);
         peptide_no_ptm: String, |location: Location, _| Ok(Some(location.get_string()));
         protein: usize, |location: Location, _| location.parse::<usize>(NUMBER_ERROR);
-        protein_start: usize, |location: Location, _| location.parse::<usize>(NUMBER_ERROR);
+        protein_start: u16, |location: Location, _| location.parse::<u16>(NUMBER_ERROR);
         protein_origin: String, |location: Location, _| Ok(Some(location.get_string()));
         protein_all: String, |location: Location, _| Ok(Some(location.get_string()));
         database_sequence: String, |location: Location, _| Ok(Some(location.get_string()));
@@ -269,7 +269,7 @@ impl MetaData for NovorData {
         self.protein
     }
 
-    fn protein_location(&self) -> Option<Range<usize>> {
-        self.protein_start.map(|s| s..s + self.peptide.len())
+    fn protein_location(&self) -> Option<Range<u16>> {
+        self.protein_start.map(|s| s..s + self.peptide.len() as u16)
     }
 }

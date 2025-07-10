@@ -76,7 +76,7 @@ pub trait MetaData {
     fn protein_id(&self) -> Option<usize>;
 
     /// Get the protein location if this was database matched data
-    fn protein_location(&self) -> Option<Range<usize>>;
+    fn protein_location(&self) -> Option<Range<u16>>;
 
     // Get the matched fragments, potentially with m/z and intensity
     // #[doc(hidden)]

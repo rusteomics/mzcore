@@ -7,6 +7,7 @@ use std::{
 
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
+use thin_vec::ThinVec;
 
 use crate::{
     error::CustomError,
@@ -36,9 +37,9 @@ format_family!(
     MaxQuant,
     SemiAmbiguous, MaybePeptidoform, [&MSMS, &NOVO_MSMS_SCANS, &MSMS_SCANS, &SILAC], b'\t', None;
     required {
-        scan_number: Vec<usize>, |location: Location, _| location.or_empty().array(';').map(|s| s.parse(NUMBER_ERROR)).collect::<Result<Vec<usize>, CustomError>>();
-        modifications: String, |location: Location, _| Ok(location.get_string());
-        proteins: String, |location: Location, _| Ok(location.get_string());
+        scan_number: ThinVec<usize>, |location: Location, _| location.or_empty().array(';').map(|s| s.parse(NUMBER_ERROR)).collect::<Result<ThinVec<usize>, CustomError>>();
+        modifications: Box<str>, |location: Location, _| Ok(location.get_boxed_str());
+        proteins: Box<str>, |location: Location, _| Ok(location.get_boxed_str());
         peptide: Option<Peptidoform<SemiAmbiguous>>, |location: Location, custom_database: Option<&CustomDatabase>| location.or_empty().parse_with(|location| Peptidoform::sloppy_pro_forma(
             location.full_line(),
             location.location.clone(),
@@ -46,62 +47,62 @@ format_family!(
             &SloppyParsingParameters::default()
         ));
         z: Charge, |location: Location, _| location.parse::<isize>(NUMBER_ERROR).map(Charge::new::<crate::system::e>);
-        ty: String, |location: Location, _| Ok(location.get_string());
-        pep: f64, |location: Location, _| location.parse(NUMBER_ERROR);
+        ty: Box<str>, |location: Location, _| Ok(location.get_boxed_str());
+        pep: f32, |location: Location, _| location.parse(NUMBER_ERROR);
         score: f64, |location: Location, _| location.parse(NUMBER_ERROR);
     }
     optional {
         raw_file: PathBuf, |location: Location, _| Ok(Path::new(&location.get_string()).to_owned());
-        all_modified_sequences: Vec<Peptidoform<SemiAmbiguous>>, |location: Location, custom_database: Option<&CustomDatabase>| location.array(';')
+        all_modified_sequences: ThinVec<Peptidoform<SemiAmbiguous>>, |location: Location, custom_database: Option<&CustomDatabase>| location.array(';')
                 .map(|s| Peptidoform::sloppy_pro_forma(s.line.line(), s.location, custom_database, &SloppyParsingParameters::default()))
-                .collect::<Result<Vec<Peptidoform<SemiAmbiguous>>, CustomError>>();
-        base_peak_intensity: f64, |location: Location, _| location.parse::<f64>(NUMBER_ERROR);
-        carbamidomethyl_c_probabilities: String, |location: Location, _| Ok(location.get_string());
-        carbamidomethyl_c_score_differences: String, |location: Location, _| Ok(location.get_string());
-        collision_energy: f64, |location: Location, _| location.parse::<f64>(NUMBER_ERROR);
-        delta_score: f64, |location: Location, _| location.parse::<f64>(NUMBER_ERROR);
+                .collect::<Result<ThinVec<Peptidoform<SemiAmbiguous>>, CustomError>>();
+        base_peak_intensity: f32, |location: Location, _| location.parse::<f32>(NUMBER_ERROR);
+        carbamidomethyl_c_probabilities: Box<str>, |location: Location, _| Ok(location.get_boxed_str());
+        carbamidomethyl_c_score_differences: Box<str>, |location: Location, _| Ok(location.get_boxed_str());
+        collision_energy: f32, |location: Location, _| location.parse::<f32>(NUMBER_ERROR);
+        delta_score: f32, |location: Location, _| location.parse::<f32>(NUMBER_ERROR);
         dn_c_mass: Mass, |location: Location, _| location.parse::<f64>(NUMBER_ERROR).map(Mass::new::<crate::system::dalton>);
-        dn_combined_score: f64, |location: Location, _| location.parse::<f64>(NUMBER_ERROR);
+        dn_combined_score: f32, |location: Location, _| location.parse::<f32>(NUMBER_ERROR);
         dn_missing_mass: Mass, |location: Location, _| location.parse::<f64>(NUMBER_ERROR).map(Mass::new::<crate::system::dalton>);
         dn_n_mass: Mass, |location: Location, _| location.parse::<f64>(NUMBER_ERROR).map(Mass::new::<crate::system::dalton>);
-        dn_sequence: String, |location: Location, _| Ok(location.get_string());
+        dn_sequence: Box<str>, |location: Location, _| Ok(location.get_boxed_str());
         evidence_id: usize, |location: Location, _| location.parse::<usize>(NUMBER_ERROR);
-        experiment: String, |location: Location, _| Ok(location.get_string());
-        mode: String, |location: Location, _| Ok(location.get_string());
-        genes: String, |location: Location, _| Ok(location.get_string());
+        experiment: Box<str>, |location: Location, _| Ok(location.get_boxed_str());
+        mode: Box<str>, |location: Location, _| Ok(location.get_boxed_str());
+        genes: Box<str>, |location: Location, _| Ok(location.get_boxed_str());
         id: usize, |location: Location, _| location.parse::<usize>(NUMBER_ERROR);
-        intensity_coverage: f64, |location: Location, _| location.parse::<f64>(NUMBER_ERROR);
-        intensity_h: f64, |location: Location, _| location.or_empty().parse::<f64>(NUMBER_ERROR);
-        intensity_l: f64, |location: Location, _| location.or_empty().parse::<f64>(NUMBER_ERROR);
-        intensity: f64, |location: Location, _| location.or_empty().parse::<f64>(NUMBER_ERROR);
+        intensity_coverage: f32, |location: Location, _| location.parse::<f32>(NUMBER_ERROR);
+        intensity_h: f32, |location: Location, _| location.or_empty().parse::<f32>(NUMBER_ERROR);
+        intensity_l: f32, |location: Location, _| location.or_empty().parse::<f32>(NUMBER_ERROR);
+        intensity: f32, |location: Location, _| location.or_empty().parse::<f32>(NUMBER_ERROR);
         isotope_index: isize, |location: Location, _| location.or_empty().parse::<isize>(NUMBER_ERROR);
         labeling_state: bool, |location: Location, _| location.or_empty().ignore("-1").parse::<u8>(BOOL_ERROR).map(|n| n.map(|n| n != 0));
-        localisation_probability: f64, |location: Location, _| location.parse::<f64>(NUMBER_ERROR);
-        mass_analyser: String, |location: Location, _| Ok(location.get_string());
+        localisation_probability: f32, |location: Location, _| location.parse::<f32>(NUMBER_ERROR);
+        mass_analyser: Box<str>, |location: Location, _| Ok(location.get_boxed_str());
         mass: Mass, |location: Location, _| location.parse::<f64>(NUMBER_ERROR).map(Mass::new::<crate::system::dalton>);
         missed_cleavages: usize, |location: Location, _| location.parse::<usize>(NUMBER_ERROR);
         modified_peptide_id: usize, |location: Location, _| location.parse::<usize>(NUMBER_ERROR);
         mz: MassOverCharge, |location: Location, _| location.parse::<f64>(NUMBER_ERROR).map(MassOverCharge::new::<crate::system::mz>);
-        nem_probabilities: String, |location: Location, _| Ok(location.get_string());
-        nem_score_differences: String, |location: Location, _| Ok(location.get_string());
+        nem_probabilities: Box<str>, |location: Location, _| Ok(location.get_boxed_str());
+        nem_score_differences: Box<str>, |location: Location, _| Ok(location.get_boxed_str());
         number_of_matches: usize, |location: Location, _| location.parse::<usize>(NUMBER_ERROR);
-        oxidation_m_probabilities: String, |location: Location, _| Ok(location.get_string());
-        oxidation_m_score_differences: String, |location: Location, _| Ok(location.get_string());
-        peak_coverage: f64, |location: Location, _| location.parse::<f64>(NUMBER_ERROR);
+        oxidation_m_probabilities: Box<str>, |location: Location, _| Ok(location.get_boxed_str());
+        oxidation_m_score_differences: Box<str>, |location: Location, _| Ok(location.get_boxed_str());
+        peak_coverage: f32, |location: Location, _| location.parse::<f32>(NUMBER_ERROR);
         peptide_id: usize, |location: Location, _| location.parse::<usize>(NUMBER_ERROR);
         precursor: usize, |location: Location, _| location.ignore("-1").parse::<usize>(NUMBER_ERROR);
-        precursor_intensity: f64, |location: Location, _| location.parse::<f64>(NUMBER_ERROR);
-        precursor_apex_function: f64, |location: Location, _| location.parse::<f64>(NUMBER_ERROR);
-        precursor_apex_offset: f64, |location: Location, _| location.parse::<f64>(NUMBER_ERROR);
-        precursor_apex_offset_time: f64, |location: Location, _| location.parse::<f64>(NUMBER_ERROR);
-        protein_group_ids: Vec<usize>, |location: Location, _| location.array(';').map(|p| p.parse::<usize>(NUMBER_ERROR)).collect::<Result<Vec<_>,_>>();
-        ration_h_l_normalised: f64, |location: Location, _| location.or_empty().parse::<f64>(NUMBER_ERROR);
-        ration_h_l: f64, |location: Location, _| location.or_empty().parse::<f64>(NUMBER_ERROR);
+        precursor_intensity: f32, |location: Location, _| location.parse::<f32>(NUMBER_ERROR);
+        precursor_apex_function: f32, |location: Location, _| location.parse::<f32>(NUMBER_ERROR);
+        precursor_apex_offset: f32, |location: Location, _| location.parse::<f32>(NUMBER_ERROR);
+        precursor_apex_offset_time: f32, |location: Location, _| location.parse::<f32>(NUMBER_ERROR);
+        protein_group_ids: ThinVec<usize>, |location: Location, _| location.array(';').map(|p| p.parse::<usize>(NUMBER_ERROR)).collect::<Result<ThinVec<_>,_>>();
+        ration_h_l_normalised: f32, |location: Location, _| location.or_empty().parse::<f32>(NUMBER_ERROR);
+        ration_h_l: f32, |location: Location, _| location.or_empty().parse::<f32>(NUMBER_ERROR);
         rt: Time, |location: Location, _| location.parse::<f64>(NUMBER_ERROR).map(Time::new::<crate::system::time::min>);
         scan_event_number: usize, |location: Location, _| location.parse::<usize>(NUMBER_ERROR);
         scan_index: usize, |location: Location, _| location.parse::<usize>(NUMBER_ERROR);
-        score_diff: f64, |location: Location, _| location.parse::<f64>(NUMBER_ERROR);
-        simple_mass_error_ppm: f64, |location: Location, _| location.parse::<f64>(NUMBER_ERROR);
+        score_diff: f32, |location: Location, _| location.parse::<f32>(NUMBER_ERROR);
+        simple_mass_error_ppm: f32, |location: Location, _| location.parse::<f32>(NUMBER_ERROR);
         total_ion_current: usize, |location: Location, _| location.parse::<usize>(NUMBER_ERROR);
     }
 );
@@ -484,7 +485,7 @@ impl MetaData for MaxQuantData {
         None
     }
 
-    fn protein_location(&self) -> Option<Range<usize>> {
+    fn protein_location(&self) -> Option<Range<u16>> {
         None
     }
 }

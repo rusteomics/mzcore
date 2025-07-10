@@ -185,7 +185,7 @@ impl MetaData for ProteoscapeData {
         None
     }
 
-    fn protein_location(&self) -> Option<Range<usize>> {
+    fn protein_location(&self) -> Option<Range<u16>> {
         None
     }
 }
