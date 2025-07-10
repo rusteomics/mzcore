@@ -17,7 +17,7 @@ use crate::{
 /// other sequences. This improves performance because it can cache some intermediate results.
 #[derive(Debug)]
 pub struct AlignIndex<const STEPS: u16, Source> {
-    sequences: Vec<(Source, DiagonalArray<Multi<Mass>>)>,
+    sequences: Vec<(Source, DiagonalArray<Multi<Mass>, STEPS>)>,
     mode: MassMode,
 }
 

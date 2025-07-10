@@ -61,8 +61,8 @@ format_family!(
 
                     let mut peptidoform = PeptidoformIon::from_vec(vec![pep1.into(), pep2.into()]).unwrap();
                     peptidoform.add_cross_link(
-                        (0, SequencePosition::Index(pos1.0.saturating_sub(1))),
-                        (1, SequencePosition::Index(pos2.0.saturating_sub(1))),
+                        (0, SequencePosition::Index(pos1.0.saturating_sub(1) as usize)),
+                        (1, SequencePosition::Index(pos2.0.saturating_sub(1) as usize)),
                         Arc::new(SimpleModificationInner::Mass(Mass::default().into())),
                         CrossLinkName::Name("1".to_string()),
                     );
@@ -73,8 +73,8 @@ format_family!(
 
                     let mut peptidoform = PeptidoformIon::from_vec(vec![pep.into()]).unwrap();
                     peptidoform.add_cross_link(
-                        (0, SequencePosition::Index(pos1.0.saturating_sub(1))),
-                        (0, SequencePosition::Index(pos2.0.saturating_sub(1))),
+                        (0, SequencePosition::Index(pos1.0.saturating_sub(1) as usize)),
+                        (0, SequencePosition::Index(pos2.0.saturating_sub(1) as usize)),
                         Arc::new(SimpleModificationInner::Mass(Mass::default().into())),
                         CrossLinkName::Name("1".to_string()),
                     );
@@ -82,7 +82,7 @@ format_family!(
                 }
                 (pep1, Some(pos1), None, None) => {
                     let mut pep = Peptidoform::sloppy_pro_forma(location.full_line(), pep1, None, &SloppyParsingParameters::default())?;
-                    pep[SequencePosition::Index(pos1.0.saturating_sub(1))].modifications.push( SimpleModificationInner::Mass(Mass::default().into()).into());
+                    pep[SequencePosition::Index(pos1.0.saturating_sub(1) as usize)].modifications.push( SimpleModificationInner::Mass(Mass::default().into()).into());
 
                     Ok(PeptidoformIon::from_vec(vec![pep.into()]).unwrap())
                 }
@@ -94,8 +94,8 @@ format_family!(
                 _ => unreachable!()
             }
         };
-        /// All modifications with their attachment, and their index (into the full peptidoform, so anything bigger then the first peptide matches in the second)
-        ptm: Vec<(SimpleModification, usize)>, |location: Location, custom_database: Option<&CustomDatabase>|
+        /// All modifications with their attachment, and their index (into the full peptidoform, so anything bigger than the first peptide matches in the second)
+        ptm: Vec<(SimpleModification, u16)>, |location: Location, custom_database: Option<&CustomDatabase>|
             location.ignore("null").array(';').map(|v| {
                 let v = v.trim();
                 let position_start = v.as_str().rfind('(').ok_or_else(||
@@ -108,7 +108,7 @@ format_family!(
                         "Invalid pLink modification",
                         "A pLink modification should follow the format 'Modification[AA](pos)' but the opening square bracket '[' was not found",
                         v.context()))?;
-                let position = v.full_line()[v.location.start+position_start+1..v.location.end-1].parse::<usize>().map_err(|err|
+                let position = v.full_line()[v.location.start+position_start+1..v.location.end-1].parse::<u16>().map_err(|err|
                     CustomError::error(
                         "Invalid pLink modification",
                         format!("A pLink modification should follow the format 'Modification[AA](pos)' but the position number {}", explain_number_error(&err)),
@@ -124,7 +124,7 @@ format_family!(
         /// Whether this peptide is a target (false) or decoy (true) peptide
         is_decoy: bool, |location: Location, _| Ok(location.as_str() == "1");
         q_value: f64, |location: Location, _| location.parse::<f64>(NUMBER_ERROR);
-        proteins: Vec<(String, Option<usize>, Option<String>, Option<usize>)>, |location: Location, _|  {
+        proteins: Vec<(String, Option<u16>, Option<String>, Option<u16>)>, |location: Location, _|  {
             location.array('/').filter(|l| !l.as_str().trim().is_empty()).map(|l| {
                 let separated = plink_separate(&l, "protein")?;
 
@@ -150,23 +150,24 @@ format_family!(
         let pep1 = parsed.peptidoform.peptidoforms()[0].len();
         let pep2 = parsed.peptidoform.peptidoforms().get(1).map_or(0, Peptidoform::len);
         for (m, index) in &parsed.ptm {
-            let pos = if *index == 0 {
+            let index = *index as usize;
+            let pos = if index == 0 {
                 (0, SequencePosition::NTerm)
-            } else if (1..=pep1).contains(index) {
+            } else if (1..=pep1).contains(&index) {
                 (0, SequencePosition::Index(index-1))
-            } else if *index == pep1+1 {
+            } else if index == pep1+1 {
                 (0, SequencePosition::CTerm)
-            } else if *index == pep1+2 {
+            } else if index == pep1+2 {
                 return Err(CustomError::error(
                     "Invalid modification location",
                     format!("A modification cannot be located here, at location {}, between the two peptides, presumable on the cross-linker", index+1),
                     source.full_context(),
                 ));
-            } else if *index == pep1+3 {
+            } else if index == pep1+3 {
                 (1, SequencePosition::NTerm)
-            } else if (pep1+4..=pep1+4+pep2).contains(index) {
+            } else if (pep1+4..=pep1+4+pep2).contains(&index) {
                 (1, SequencePosition::Index(index-(pep1+4)))
-            } else if *index == pep1+4+pep2+1 {
+            } else if index == pep1+4+pep2+1 {
                 (1, SequencePosition::CTerm)
             } else {
                 return Err(CustomError::error(
@@ -283,7 +284,7 @@ static KNOWN_CROSS_LINKERS: LazyLock<Vec<(Mass, SimpleModification)>> = LazyLock
     .collect()
 });
 
-/// separate the pLink format of 'pep(pos)-pep(pos)' in all possible combinations
+/// Separate the pLink format of 'pep(pos)-pep(pos)' in all possible combinations
 /// # Errors
 /// If the format is invalid
 fn plink_separate(
@@ -292,9 +293,9 @@ fn plink_separate(
 ) -> Result<
     (
         Range<usize>,
-        Option<(usize, Range<usize>)>,
+        Option<(u16, Range<usize>)>,
         Option<Range<usize>>,
-        Option<(usize, Range<usize>)>,
+        Option<(u16, Range<usize>)>,
     ),
     CustomError,
 > {
@@ -313,14 +314,14 @@ fn plink_separate(
 
         let pos1 =
             location.location.start + first_end + 1..location.location.start + peptide1.len();
-        let first_index = location.full_line()[pos1.clone()].parse::<usize>().map_err(|err|
+        let first_index = location.full_line()[pos1.clone()].parse::<u16>().map_err(|err|
             CustomError::error(
                 &title,
                 format!("A pLink {field} should follow the format 'PEP1(pos1)-PEP2(pos2)' but the position for PEP1 {}", explain_number_error(&err)),
                 Context::line_range(Some(location.line.line_index()), location.full_line(), pos1.clone())))?;
         let pos2 = location.location.start + peptide1.len() + 2 + second_end + 1
             ..location.location.start + peptide1.len() + 2 + peptide2.len() - 1;
-        let second_index = location.full_line()[pos2.clone()].parse::<usize>().map_err(|err|
+        let second_index = location.full_line()[pos2.clone()].parse::<u16>().map_err(|err|
             CustomError::error(
                 &title,
                 format!("A pLink {field} should follow the format 'PEP1(pos1)-PEP2(pos2)' but the position for PEP1 {}", explain_number_error(&err)),
@@ -348,13 +349,13 @@ fn plink_separate(
                 let end = location.location.end;
 
                 let pos1 = start_pos1..start_pos2 - 2;
-                let first_index = location.full_line()[pos1.clone()].parse::<usize>().map_err(|err|
+                let first_index = location.full_line()[pos1.clone()].parse::<u16>().map_err(|err|
                     CustomError::error(
                         &title,
                         format!("A pLink {field} should follow the format 'PEP(pos1)(pos2)' but the first position {}", explain_number_error(&err)),
                         Context::line_range(Some(location.line.line_index()), location.full_line(), pos1.clone())))?;
                 let pos2 = start_pos2..end - 1;
-                let second_index = location.full_line()[start_pos2..end-1].parse::<usize>().map_err(|err|
+                let second_index = location.full_line()[start_pos2..end-1].parse::<u16>().map_err(|err|
                     CustomError::error(
                         &title,
                         format!("A pLink {field} should follow the format 'PEP(pos1)(pos2)' but the second position {}", explain_number_error(&err)),
@@ -373,7 +374,7 @@ fn plink_separate(
                 let end = location.location.end;
 
                 let pos1 = start_pos1..end - 1;
-                let first_index = location.full_line()[pos1.clone()].parse::<usize>().map_err(|err|
+                let first_index = location.full_line()[pos1.clone()].parse::<u16>().map_err(|err|
                     CustomError::error(
                         &title,
                         format!("A pLink {field} should follow the format 'PEP(pos1)(pos2)' but the first position {}", explain_number_error(&err)),

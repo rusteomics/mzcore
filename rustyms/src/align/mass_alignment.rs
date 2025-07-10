@@ -32,9 +32,9 @@ pub fn align<const STEPS: u16, A: HasPeptidoform<SimpleLinear>, B: HasPeptidofor
 ) -> Alignment<A, B> {
     let peptidoform_a = seq_a.cast_peptidoform();
     let peptidoform_b = seq_b.cast_peptidoform();
-    let masses_a: DiagonalArray<Multi<Mass>> =
+    let masses_a: DiagonalArray<Multi<Mass>, STEPS> =
         calculate_masses::<STEPS>(peptidoform_a, scoring.mass_mode);
-    let masses_b: DiagonalArray<Multi<Mass>> =
+    let masses_b: DiagonalArray<Multi<Mass>, STEPS> =
         calculate_masses::<STEPS>(peptidoform_b, scoring.mass_mode);
     align_cached::<STEPS, A, B>(seq_a, &masses_a, seq_b, &masses_b, scoring, align_type)
 }
@@ -49,9 +49,9 @@ pub(super) fn align_cached<
     B: HasPeptidoform<SimpleLinear>,
 >(
     seq_a: A,
-    masses_a: &DiagonalArray<Multi<Mass>>,
+    masses_a: &DiagonalArray<Multi<Mass>, STEPS>,
     seq_b: B,
-    masses_b: &DiagonalArray<Multi<Mass>>,
+    masses_b: &DiagonalArray<Multi<Mass>, STEPS>,
     scoring: AlignScoring<'_>,
     align_type: AlignType,
 ) -> Alignment<A, B> {
@@ -353,8 +353,8 @@ fn score<A: AtMax<SimpleLinear>, B: AtMax<SimpleLinear>>(
 pub(super) fn calculate_masses<const STEPS: u16>(
     sequence: &Peptidoform<impl AtMax<SimpleLinear>>,
     mass_mode: MassMode,
-) -> DiagonalArray<Multi<Mass>> {
-    let mut array = DiagonalArray::new(sequence.len(), STEPS);
+) -> DiagonalArray<Multi<Mass>, STEPS> {
+    let mut array = DiagonalArray::new(sequence.len());
     for i in 0..sequence.len() {
         for j in 0..=i.min(STEPS as usize) {
             array[[i, j]] = sequence.sequence()[i - j..=i]

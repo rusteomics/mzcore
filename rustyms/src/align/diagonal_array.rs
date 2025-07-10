@@ -1,17 +1,19 @@
-/// A possibly limited diagonal array that is implemented as a single continuous slice of memory.
-/// It consists of a
+/// A diagonal array of limited depth that is implemented as a single continuous slice of memory.
 #[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
-pub(super) struct DiagonalArray<T> {
+pub(super) struct DiagonalArray<T, const DEPTH: u16> {
     len: usize,
-    max_depth: usize,
     data: Box<[T]>,
 }
 
-impl<T> DiagonalArray<T> {
-    /// Calculate the index of a given point (along the first axis; n) into the array with the given `max_depth` (m)
-    const fn length(n: usize, m: usize) -> usize {
-        let mi = if n >= m { m } else { n };
-        (mi + 1) * mi / 2 + n.saturating_sub(m) * m
+impl<T, const DEPTH: u16> DiagonalArray<T, DEPTH> {
+    /// Calculate the index of a given point (along the first axis; n) into the array
+    const fn length(n: usize) -> usize {
+        let mi = if n >= DEPTH as usize {
+            DEPTH as usize
+        } else {
+            n
+        };
+        (mi + 1) * mi / 2 + n.saturating_sub(DEPTH as usize) * DEPTH as usize
     }
 
     /// # Panics
@@ -24,7 +26,7 @@ impl<T> DiagonalArray<T> {
             self.len
         );
         assert!(
-            index[1] <= index[0] || index[1] <= self.max_depth,
+            index[1] <= index[0] || index[1] <= DEPTH as usize,
             "Second index {} is outside of diagonal array with length {} at first index {}",
             index[1],
             self.len,
@@ -38,7 +40,7 @@ impl<T> DiagonalArray<T> {
     /// A debug assertion hold up this promise on debug builds.
     pub(super) unsafe fn get_unchecked(&self, index: [usize; 2]) -> &T {
         debug_assert!(self.validate_indices(index));
-        let index = Self::length(index[0], self.max_depth) + index[1];
+        let index = Self::length(index[0]) + index[1];
         unsafe { self.data.get_unchecked(index) }
     }
 
@@ -48,37 +50,35 @@ impl<T> DiagonalArray<T> {
     #[expect(dead_code)]
     pub(super) unsafe fn get_unchecked_mut(&mut self, index: [usize; 2]) -> &mut T {
         debug_assert!(self.validate_indices(index));
-        let index = Self::length(index[0], self.max_depth) + index[1];
+        let index = Self::length(index[0]) + index[1];
         unsafe { self.data.get_unchecked_mut(index) }
     }
 }
 
-impl<T: Default + Clone> DiagonalArray<T> {
-    /// Create a new diagonal array of the correct size, with all values initialised to the default value of the type, with up to and including the depth given in `max_depth`
-    pub(super) fn new(len: usize, max_depth: u16) -> Self {
+impl<T: Default + Clone, const DEPTH: u16> DiagonalArray<T, DEPTH> {
+    /// Create a new diagonal array of the correct size, with all values initialised to the default value of the type
+    pub(super) fn new(len: usize) -> Self {
         Self {
             len,
-            max_depth: max_depth as usize,
-            data: vec![T::default(); Self::length(len, (max_depth as usize).saturating_add(1))]
-                .into(),
+            data: vec![T::default(); Self::length(len)].into(),
         }
     }
 }
 
-impl<T> std::ops::Index<[usize; 2]> for DiagonalArray<T> {
+impl<T, const DEPTH: u16> std::ops::Index<[usize; 2]> for DiagonalArray<T, DEPTH> {
     type Output = T;
     /// Index into the diagonal array
     fn index(&self, index: [usize; 2]) -> &Self::Output {
         assert!(self.validate_indices(index));
-        let index = Self::length(index[0], self.max_depth) + index[1];
+        let index = Self::length(index[0]) + index[1];
         &self.data[index]
     }
 }
 
-impl<T> std::ops::IndexMut<[usize; 2]> for DiagonalArray<T> {
+impl<T, const DEPTH: u16> std::ops::IndexMut<[usize; 2]> for DiagonalArray<T, DEPTH> {
     fn index_mut(&mut self, index: [usize; 2]) -> &mut Self::Output {
         assert!(self.validate_indices(index));
-        let index = Self::length(index[0], self.max_depth) + index[1];
+        let index = Self::length(index[0]) + index[1];
         &mut self.data[index]
     }
 }
@@ -90,7 +90,7 @@ mod tests {
 
     #[test]
     fn create() {
-        let mut array = DiagonalArray::<i8>::new(2, 2);
+        let mut array = DiagonalArray::<i8, 2>::new(2);
         array[[0, 0]] = 1;
         array[[1, 0]] = 2;
         array[[1, 1]] = 3;
