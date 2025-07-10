@@ -8,12 +8,17 @@ pub(super) struct DiagonalArray<T, const DEPTH: u16> {
 impl<T, const DEPTH: u16> DiagonalArray<T, DEPTH> {
     /// Calculate the index of a given point (along the first axis; n) into the array
     const fn length(n: usize) -> usize {
-        let mi = if n >= DEPTH as usize {
-            DEPTH as usize
+        Self::length_with_depth(n, DEPTH)
+    }
+
+    /// Calculate the index of a given point (along the first axis; n) into the array, with a given depth
+    const fn length_with_depth(n: usize, depth: u16) -> usize {
+        let mi = if n >= depth as usize {
+            depth as usize
         } else {
             n
         };
-        (mi + 1) * mi / 2 + n.saturating_sub(DEPTH as usize) * DEPTH as usize
+        (mi + 1) * mi / 2 + n.saturating_sub(depth as usize) * depth as usize
     }
 
     /// # Panics
@@ -60,7 +65,7 @@ impl<T: Default + Clone, const DEPTH: u16> DiagonalArray<T, DEPTH> {
     pub(super) fn new(len: usize) -> Self {
         Self {
             len,
-            data: vec![T::default(); Self::length(len)].into(),
+            data: vec![T::default(); Self::length_with_depth(len, DEPTH + 1)].into(),
         }
     }
 }
