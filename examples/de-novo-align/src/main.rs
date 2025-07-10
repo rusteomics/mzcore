@@ -9,14 +9,15 @@ use rustyms::{
     align::{AlignIndex, AlignType},
     identification::SpectrumIds,
     identification::{
-        FastaData, IdentifiedPeptidoform, MetaData, csv::write_csv, open_identified_peptides_file,
+        FastaData, IdentifiedPeptidoform, MetaData, csv::write_csv,
+        open_identified_peptidoforms_file,
     },
     prelude::*,
 };
 
 #[derive(Debug, Parser)]
 struct Cli {
-    /// The input identified peptides file
+    /// The input identified peptidoforms file
     #[arg(short, long)]
     peptides: String,
     /// The fasta database of known proteins
@@ -30,7 +31,7 @@ struct Cli {
 fn main() {
     let args = Cli::parse();
     let out_file = BufWriter::new(File::create(args.out_path).unwrap());
-    let peptides = open_identified_peptides_file(args.peptides, None, false)
+    let peptides = open_identified_peptidoforms_file(args.peptides, None, false)
         .unwrap()
         .filter_map(Result::ok)
         .filter_map(IdentifiedPeptidoform::into_semi_ambiguous)
@@ -42,7 +43,14 @@ fn main() {
     );
 
     let alignments: Vec<_> = index
-        .par_align(peptides, AlignScoring::default(), AlignType::EITHER_GLOBAL)
+        .par_align(
+            peptides,
+            AlignScoring {
+                pair: rustyms::align::PairMode::DatabaseToPeptidoform,
+                ..Default::default()
+            },
+            AlignType::EITHER_GLOBAL,
+        )
         .flat_map(|alignments| {
             let alignments = alignments.collect_vec();
             let max = alignments

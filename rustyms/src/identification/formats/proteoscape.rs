@@ -31,7 +31,6 @@ format_family!(
             location.clone().split_twice('.').ok_or_else(|| CustomError::error("Invalid Proteoscape line", "The peptide columns should contain the previous amino acids, the peptide, and the following amino acids separated by dots.", location.context())).and_then(|(before, peptide, after)| {
                 let before = before.trim_start_matches("-");
                 let after = after.trim_end_matches("-");
-                println!("{}", peptide.as_str());
                 Ok((
                     (!before.is_empty()).then(|| Peptidoform::sloppy_pro_forma(
                         before.full_line(),
@@ -101,7 +100,7 @@ impl IdentifiedPeptidoformVersion<ProteoscapeFormat> for ProteoscapeVersion {
     }
     fn name(self) -> &'static str {
         match self {
-            Self::V2025b => "Older Denovo",
+            Self::V2025b => "2025b",
         }
     }
 }

@@ -25,7 +25,7 @@ use rustyms::{
     chemistry::MassMode,
     fragment::{Fragment, FragmentKind, FragmentType},
     identification::{MetaData, SpectrumId, SpectrumIds},
-    sequence::{AminoAcid, CompoundPeptidoformIon, SimpleModification},
+    sequence::{AminoAcid, CompoundPeptidoformIon, SimpleModification, parse_custom_modifications},
 };
 
 #[derive(Parser)]
@@ -87,9 +87,9 @@ fn main() {
     let custom_database = if args.no_custom_mods || !path.exists() {
         None
     } else {
-        Some(serde_json::from_reader(BufReader::new(File::open(path).unwrap())).unwrap())
+        Some(parse_custom_modifications(&path).unwrap())
     };
-    let peptides = rustyms::identification::open_identified_peptides_file(
+    let peptides = rustyms::identification::open_identified_peptidoforms_file(
         &args.in_path,
         custom_database.as_ref(),
         false,

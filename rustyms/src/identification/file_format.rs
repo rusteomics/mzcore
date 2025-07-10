@@ -230,7 +230,7 @@ impl FileFormat {
                 SpectrumSequenceListData::parse_file(path, custom_database, false, version)
                     .map(IdentifiedPeptidoformIter::into_box)
             }
-            Self::Undefined => open_identified_peptides_file(path, custom_database, false),
+            Self::Undefined => open_identified_peptidoforms_file(path, custom_database, false),
         }
     }
 }

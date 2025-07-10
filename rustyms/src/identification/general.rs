@@ -16,7 +16,7 @@ use crate::{
 ///
 /// # Errors
 /// It errors if the filetype could not be determined or if opening the file errors.
-pub fn open_identified_peptides_file<'a>(
+pub fn open_identified_peptidoforms_file<'a>(
     path: impl AsRef<Path>,
     custom_database: Option<&'a CustomDatabase>,
     keep_all_columns: bool,
@@ -81,13 +81,18 @@ pub fn open_identified_peptides_file<'a>(
                     .map(IdentifiedPeptidoformIter::into_box)
                     .map_err(|mfe| (se, pe, mfe))
             })
-            .map_err(|(se, pe, mfe)| {
+            .or_else(|(se, pe, mfe)| {
+                ProteoscapeData::parse_file(path, custom_database, keep_all_columns, None)
+                    .map(IdentifiedPeptidoformIter::into_box)
+                    .map_err(|pse| (se, pe, mfe, pse))
+            })
+            .map_err(|(se, pe, mfe, pse)| {
                 CustomError::error(
                     "Unknown file format",
-                    "Could not be recognised a Sage, PepNet, or MSFragger file",
+                    "Could not be recognised a Sage, PepNet, MSFragger, or Proteoscape file",
                     Context::show(path.to_string_lossy()),
                 )
-                .with_underlying_errors(vec![se, pe, mfe])
+                .with_underlying_errors(vec![se, pe, mfe, pse])
             }),
         Some("psmtsv") => {
             OpairData::parse_file(path, custom_database, keep_all_columns, None).map(IdentifiedPeptidoformIter::into_box)

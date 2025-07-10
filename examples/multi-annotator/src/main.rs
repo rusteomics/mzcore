@@ -26,7 +26,10 @@ use rustyms::{
     fragment::{DiagnosticPosition, Fragment},
     glycan::MonoSaccharide,
     identification::{BasicCSVData, IdentifiedPeptidoformSource, csv::write_csv},
-    sequence::{AminoAcid, GnoComposition, SequencePosition, SimpleModificationInner},
+    sequence::{
+        AminoAcid, GnoComposition, SequencePosition, SimpleModificationInner,
+        parse_custom_modifications,
+    },
     spectrum::PeakSpectrum,
     *,
 };
@@ -35,7 +38,7 @@ use rustyms::{
 #[allow(clippy::struct_excessive_bools)]
 #[derive(Debug, Parser)]
 struct Cli {
-    /// The input csv file, should have the following columns: 'raw_file' (full path), 'scan_index', 'z', 'sequence', and can have 'mode' (etd/td_etd/ethcd/etcad/eacid/ead/hcd/cid/all/none, defaults to the global model)
+    /// The input csv file, should have the following columns: 'raw_file' (full path), 'scan_index' (0-based index in the raw file), 'z', 'sequence', and can have 'mode' (etd/td_etd/ethcd/etcad/eacid/ead/hcd/cid/all/none, defaults to the global model)
     #[arg(short, long)]
     in_path: String,
     /// The output path to output the resulting csv file
@@ -107,7 +110,7 @@ fn main() {
     let custom_database = if args.no_custom_mods || !path.exists() {
         None
     } else {
-        Some(serde_json::from_reader(BufReader::new(File::open(path).unwrap())).unwrap())
+        Some(parse_custom_modifications(&path).unwrap())
     };
     let files = BasicCSVData::parse_file(args.in_path, custom_database.as_ref(), true, None)
         .expect("Invalid input file")
