@@ -4,7 +4,7 @@
 use std::{
     collections::BTreeMap,
     fs::File,
-    io::{BufReader, BufWriter},
+    io::BufWriter,
     sync::{
         Arc,
         atomic::{AtomicUsize, Ordering},
@@ -104,19 +104,20 @@ fn main() {
     let model = select_model(&args.mode, FragmentationModel::all());
     let parameters = MatchingParameters::default();
     let path = ProjectDirs::from("com", "com.snijderlab.annotator", "")
-        .unwrap()
+        .expect("Could not generate Annotator configurationpath (needed to check if custom modifications are defined)")
         .config_dir()
         .join("../custom_modifications.json");
     let custom_database = if args.no_custom_mods || !path.exists() {
         None
     } else {
-        Some(parse_custom_modifications(&path).unwrap())
+        Some(parse_custom_modifications(&path).expect("Could not parse custom modifications file, if you do not need these you can skip parsing them using the appropriate flag"))
     };
     let files = BasicCSVData::parse_file(args.in_path, custom_database.as_ref(), true, None)
         .expect("Invalid input file")
         .filter_map(Result::ok)
         .into_group_map_by(|l| l.raw_file.clone());
-    let out_file = BufWriter::new(File::create(args.out_path).unwrap());
+    let out_file =
+        BufWriter::new(File::create(args.out_path).expect("Could not create out CSV file"));
     let total_peptides = files.values().map(Vec::len).sum::<usize>();
     let peptides_counter = AtomicUsize::default();
     let raw_file_counter = AtomicUsize::default();
@@ -128,7 +129,7 @@ fn main() {
     let tic = Arc::new("total_ion_current".to_string());
 
     let out_data: Vec<_> =  files.par_iter().flat_map(|(file_name, lines)| {
-        let mut file = mzdata::io::MZReaderType::open_path(file_name).unwrap();
+        let mut file = mzdata::io::MZReaderType::open_path(file_name).unwrap_or_else(|_| panic!("Could not open raw file: {}", file_name.to_string_lossy()));
 
         let rows = lines
             .iter()
@@ -408,5 +409,5 @@ fn main() {
             .map(|r| r.into_iter().map(|(k, v)| (Arc::unwrap_or_clone(k), v))),
         ',',
     )
-    .unwrap();
+    .expect("Could not write results in out CSV file");
 }

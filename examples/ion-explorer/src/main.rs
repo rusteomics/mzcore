@@ -3,7 +3,7 @@
 use std::{
     collections::BTreeMap,
     fs::File,
-    io::{BufReader, BufWriter},
+    io::BufWriter,
     ops::RangeInclusive,
     path::{Path, PathBuf},
 };

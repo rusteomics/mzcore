@@ -13,7 +13,6 @@ itertools = { workspace = true }
 mzdata = { workspace = true, default-features=false, features = ["mgf", "mzml"] }
 rayon = { workspace = true }
 rustyms = { path = "../../rustyms", default-features=false, features = ["mzdata", "identification"] }
-serde_json = { workspace = true }
 
 [lints]
 workspace = true
