@@ -56,17 +56,18 @@ impl Peptidoform<SemiAmbiguous> {
                 Context::line(None, line, location.start, 1),
             ));
         }
+
         let mut peptide = Self::default();
         let chars: &[u8] = line[location.clone()].as_bytes();
         peptide
             .sequence_mut()
-            .reserve(chars.iter().map(u8::is_ascii_uppercase).count()); // Reserve approximately the right length for the vector, this will overestimate in some cases but not by a lot
+            .reserve(chars.iter().map(u8::is_ascii_uppercase).count());
         let mut index = 0;
 
         while index < chars.len() {
             match chars[index] {
                 b'n' if parameters.ignore_prefix_lowercase_n && index == 0 => index += 1, //ignore
-                b',' | b'_' => index += 1,                                                //ignore
+                b',' | b'_' | b'-' => index += 1,
                 b'[' | b'(' => {
                     let (open, close) = if chars[index] == b'[' {
                         (b'[', b']')
@@ -168,14 +169,14 @@ impl Peptidoform<SemiAmbiguous> {
                         .take_while(|c| c.is_ascii_digit() || **c == b'.')
                         .count();
                     let modification = SimpleModificationInner::Mass(Mass::new::<crate::system::dalton>(
-                        line[location.start + index..location.start + index + length]
-                        .parse::<f64>()
-                        .map_err(|err|
-                            CustomError::error(
-                                "Invalid mass shift modification", 
-                                format!("Mass shift modification must be a valid number but this number is invalid: {err}"), 
-                                Context::line(None, line, location.start + index, length))
-                            )?).into()).into();
+                    line[location.start + index..location.start + index + length]
+                    .parse::<f64>()
+                    .map_err(|err|
+                        CustomError::error(
+                            "Invalid mass shift modification", 
+                            format!("Mass shift modification must be a valid number but this number is invalid: {err}"), 
+                            Context::line(None, line, location.start + index, length))
+                        )?).into()).into();
                     match peptide.sequence_mut().last_mut() {
                         Some(aa) => aa.modifications.push(Modification::Simple(modification)),
                         None => {
