@@ -254,6 +254,7 @@ impl Modification {
             .or_else( || {
                 match name.trim().to_lowercase().split_once(':') {
                     Some(("u", tail)) => Ontology::Unimod.find_name(tail, None),
+                    Some(("unimod", tail)) => Ontology::Unimod.find_id(tail.parse::<usize>().ok()?, None),
                     Some(("m", tail)) => Ontology::Psimod.find_name(tail, None),
                     Some(("c", tail)) => Ontology::Custom.find_name(tail, custom_database),
                     _ => None
