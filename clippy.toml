@@ -8,6 +8,7 @@ doc-valid-idents = [
     "FragPipe",
     "GNOme",
     "InstaNovo",
+    "InstaNovoPlus",
     "MaxNovo",
     "MaxQuant",
     "MSFragger",
