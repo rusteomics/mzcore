@@ -86,13 +86,18 @@ pub fn open_identified_peptidoforms_file<'a>(
                     .map(IdentifiedPeptidoformIter::into_box)
                     .map_err(|pse| (se, pe, mfe, pse))
             })
-            .map_err(|(se, pe, mfe, pse)| {
+            .or_else(|(se, pe, mfe, pse)| {
+                NovoBData::parse_file(path, custom_database, keep_all_columns, None)
+                    .map(IdentifiedPeptidoformIter::into_box)
+                    .map_err(|ne| (se, pe, mfe, pse, ne))
+            })
+            .map_err(|(se, pe, mfe, pse, ne)| {
                 CustomError::error(
                     "Unknown file format",
-                    "Could not be recognised a Sage, PepNet, MSFragger, or Proteoscape file",
+                    "Could not be recognised a Sage, PepNet, MSFragger, NovoB, or Proteoscape file",
                     Context::show(path.to_string_lossy()),
                 )
-                .with_underlying_errors(vec![se, pe, mfe, pse])
+                .with_underlying_errors(vec![se, pe, mfe, pse, ne])
             }),
         Some("psmtsv") => {
             OpairData::parse_file(path, custom_database, keep_all_columns, None).map(IdentifiedPeptidoformIter::into_box)
@@ -106,17 +111,17 @@ pub fn open_identified_peptidoforms_file<'a>(
             MaxQuantData::parse_file(path, custom_database, keep_all_columns, None)
             .map(IdentifiedPeptidoformIter::into_box)
             .or_else(|me| {
-                NovoBData::parse_file(path, custom_database, keep_all_columns, None)
+                PiHelixNovoData::parse_file(path, custom_database, keep_all_columns, None)
                     .map(IdentifiedPeptidoformIter::into_box)
-                    .map_err(|ne| (me, ne))
+                    .map_err(|hne| (me, hne))
             })
-            .map_err(|(me, ne)| {
+            .map_err(|(me, hne)| {
                 CustomError::error(
                     "Unknown file format",
-                    "Could not be recognised as either a MaxQuant or NovoB file",
+                    "Could not be recognised as either a MaxQuant or pi-HelixNovo file",
                     Context::show(path.to_string_lossy()),
                 )
-                .with_underlying_errors(vec![me, ne])
+                .with_underlying_errors(vec![me,hne])
             })
         }
         Some("mztab") => MZTabData::parse_file(path, custom_database).map(|peptides| {

@@ -12,6 +12,7 @@ mod novor;
 mod opair;
 mod peaks;
 mod pepnet;
+mod pihelixnovo;
 mod plgs;
 mod plink;
 mod powernovo;
@@ -32,6 +33,7 @@ pub use novor::*;
 pub use opair::*;
 pub use peaks::*;
 pub use pepnet::*;
+pub use pihelixnovo::*;
 pub use plgs::*;
 pub use plink::*;
 pub use powernovo::*;
@@ -59,6 +61,8 @@ mod opair_tests;
 mod peaks_tests;
 #[cfg(test)]
 mod pepnet_tests;
+#[cfg(test)]
+mod pihelixnovo_tests;
 #[cfg(test)]
 mod plgs_tests;
 #[cfg(test)]
