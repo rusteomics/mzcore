@@ -91,13 +91,18 @@ pub fn open_identified_peptidoforms_file<'a>(
                     .map(IdentifiedPeptidoformIter::into_box)
                     .map_err(|ne| (se, pe, mfe, pse, ne))
             })
-            .map_err(|(se, pe, mfe, pse, ne)| {
+            .or_else(|(se, pe, mfe, pse,  ne)| {
+                PiPrimeNovoData::parse_file(path, custom_database, keep_all_columns, None)
+                    .map(IdentifiedPeptidoformIter::into_box)
+                    .map_err(|pne| (se, pe, mfe, pse, ne, pne))
+            })
+            .map_err(|(se, pe, mfe, pse, ne, pne)| {
                 CustomError::error(
                     "Unknown file format",
-                    "Could not be recognised a Sage, PepNet, MSFragger, NovoB, or Proteoscape file",
+                    "Could not be recognised a Sage, PepNet, MSFragger, NovoB, pi-PrimeNovo or Proteoscape file",
                     Context::show(path.to_string_lossy()),
                 )
-                .with_underlying_errors(vec![se, pe, mfe, pse, ne])
+                .with_underlying_errors(vec![se, pe, mfe, pse, ne, pne])
             }),
         Some("psmtsv") => {
             OpairData::parse_file(path, custom_database, keep_all_columns, None).map(IdentifiedPeptidoformIter::into_box)

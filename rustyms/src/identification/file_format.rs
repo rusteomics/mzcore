@@ -20,6 +20,7 @@ pub enum KnownFileFormat {
     MaxQuant(MaxQuantVersion),
     MZTab,
     PiHelixNovo(PiHelixNovoVersion),
+    PiPrimeNovo(PiPrimeNovoVersion),
     NovoB(NovoBVersion),
     Novor(NovorVersion),
     Opair(OpairVersion),
@@ -45,6 +46,7 @@ impl KnownFileFormat {
             Self::MaxQuant(_) => "MaxQuant",
             Self::MZTab => "mzTab",
             Self::PiHelixNovo(_) => "pi-HelixNovo",
+            Self::PiPrimeNovo(_) => "pi-PrimeNovo",
             Self::NovoB(_) => "NovoB",
             Self::Novor(_) => "Novor",
             Self::Opair(_) => "OPair",
@@ -71,6 +73,7 @@ impl KnownFileFormat {
             Self::MZTab => Some("1.0".to_string()),
             Self::NovoB(version) => Some(version.to_string()),
             Self::PiHelixNovo(version) => Some(version.to_string()),
+            Self::PiPrimeNovo(version) => Some(version.to_string()),
             Self::Novor(version) => Some(version.to_string()),
             Self::Opair(version) => Some(version.to_string()),
             Self::Peaks(version) => Some(version.to_string()),
@@ -107,6 +110,7 @@ impl From<KnownFileFormat> for FileFormat {
             KnownFileFormat::MaxQuant(version) => Self::MaxQuant(Some(version)),
             KnownFileFormat::MZTab => Self::MZTab,
             KnownFileFormat::PiHelixNovo(version) => Self::PiHelixNovo(Some(version)),
+            KnownFileFormat::PiPrimeNovo(version) => Self::PiPrimeNovo(Some(version)),
             KnownFileFormat::NovoB(version) => Self::NovoB(Some(version)),
             KnownFileFormat::Novor(version) => Self::Novor(Some(version)),
             KnownFileFormat::Opair(version) => Self::Opair(Some(version)),
@@ -137,6 +141,7 @@ pub enum FileFormat {
     MZTab,
     NovoB(Option<NovoBVersion>),
     PiHelixNovo(Option<PiHelixNovoVersion>),
+    PiPrimeNovo(Option<PiPrimeNovoVersion>),
     Novor(Option<NovorVersion>),
     Opair(Option<OpairVersion>),
     Peaks(Option<PeaksVersion>),
@@ -205,6 +210,10 @@ impl FileFormat {
             }),
             Self::PiHelixNovo(version) => {
                 PiHelixNovoData::parse_file(path, custom_database, false, version)
+                    .map(IdentifiedPeptidoformIter::into_box)
+            }
+            Self::PiPrimeNovo(version) => {
+                PiPrimeNovoData::parse_file(path, custom_database, false, version)
                     .map(IdentifiedPeptidoformIter::into_box)
             }
             Self::NovoB(version) => NovoBData::parse_file(path, custom_database, false, version)
