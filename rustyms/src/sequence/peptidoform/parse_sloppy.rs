@@ -61,13 +61,13 @@ impl Peptidoform<SemiAmbiguous> {
         let chars: &[u8] = line[location.clone()].as_bytes();
         peptide
             .sequence_mut()
-            .reserve(chars.iter().map(u8::is_ascii_uppercase).count());
+            .reserve(chars.iter().map(u8::is_ascii_uppercase).count()); // Reserve approximately the right length for the vector, this will overestimate in some cases but not by a lot
         let mut index = 0;
 
         while index < chars.len() {
             match chars[index] {
                 b'n' if parameters.ignore_prefix_lowercase_n && index == 0 => index += 1, //ignore
-                b',' | b'_' | b'-' => index += 1,
+                b',' | b'_' | b'-' => index += 1,                                         //ignore
                 b'[' | b'(' => {
                     let (open, close) = if chars[index] == b'[' {
                         (b'[', b']')
