@@ -29,7 +29,7 @@ fn instanovo_v1_1_4() {
         None,
         false,
         true,
-        Some(InstaNovoVersion::V1_0_0),
+        Some(InstaNovoVersion::V1_1_4), // V1_0_0 works fine
     ) {
         Ok(n) => assert_eq!(n, 19),
         Err(e) => {
