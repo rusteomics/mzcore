@@ -16,8 +16,9 @@ use crate::{
     annotation::model::GlycanModel,
     chemistry::MolecularFormula,
     helper_functions::next_num,
+    prelude::HasPeptidoformImpl,
     quantities::Multi,
-    sequence::{AtMax, HasPeptidoform, Linear, Peptidoform, SequencePosition, SimpleLinear},
+    sequence::{AtMax, HasPeptidoform, Linear, SequencePosition, SimpleLinear},
     system::{Mass, Ratio},
 };
 
@@ -89,7 +90,7 @@ impl<A: Clone, B: Clone> Alignment<Cow<'_, A>, Cow<'_, B>> {
     /// Clone the referenced sequences to make an alignment that owns the sequences.
     /// This can be necessary in some context where the references cannot be guaranteed to stay as long as you need the alignment.
     #[must_use]
-    pub fn to_owned(&self) -> Alignment<Cow<'static, A>, Cow<'static, B>> {
+    pub fn to_owned(&self) -> Self {
         Alignment {
             seq_a: Cow::Owned(self.seq_a.clone().into_owned()),
             seq_b: Cow::Owned(self.seq_b.clone().into_owned()),
@@ -110,14 +111,18 @@ impl<A: Eq, B: Eq> Ord for Alignment<A, B> {
     }
 }
 
-impl<'lifetime, A: AtMax<SimpleLinear>, B: AtMax<SimpleLinear>>
-    Alignment<&'lifetime Peptidoform<A>, &'lifetime Peptidoform<B>>
+impl<'lifetime, A, B> Alignment<&'lifetime A, &'lifetime B>
+where
+    A: HasPeptidoformImpl,
+    A::Complexity: AtMax<SimpleLinear>,
+    B: HasPeptidoformImpl,
+    B::Complexity: AtMax<SimpleLinear>,
 {
     /// Recreate an alignment from a path, the path is [`Self::short`].
     #[expect(clippy::missing_panics_doc, clippy::too_many_arguments)]
     pub fn create_from_path(
-        seq_a: &'lifetime Peptidoform<A>,
-        seq_b: &'lifetime Peptidoform<B>,
+        seq_a: &'lifetime A,
+        seq_b: &'lifetime B,
         start_a: usize,
         start_b: usize,
         path: &str,
@@ -201,7 +206,7 @@ impl<'lifetime, A: AtMax<SimpleLinear>, B: AtMax<SimpleLinear>>
                 MatchType::FullIdentity | MatchType::IdentityMassMismatch | MatchType::Mismatch => {
                     (0..a)
                         .map(|_| {
-                            let mass_a = seq_a[index_a]
+                            let mass_a = seq_a.peptidoform()[index_a]
                                 .formulas_all(
                                     &[],
                                     &[],
@@ -216,7 +221,7 @@ impl<'lifetime, A: AtMax<SimpleLinear>, B: AtMax<SimpleLinear>>
                                 .iter()
                                 .map(MolecularFormula::monoisotopic_mass)
                                 .collect();
-                            let mass_b = seq_b[index_b]
+                            let mass_b = seq_b.peptidoform()[index_b]
                                 .formulas_all(
                                     &[],
                                     &[],
@@ -232,8 +237,8 @@ impl<'lifetime, A: AtMax<SimpleLinear>, B: AtMax<SimpleLinear>>
                                 .map(MolecularFormula::monoisotopic_mass)
                                 .collect();
                             let piece = score_pair(
-                                (&seq_a[index_a], &mass_a),
-                                (&seq_b[index_b], &mass_b),
+                                (&seq_a.peptidoform()[index_a], &mass_a),
+                                (&seq_b.peptidoform()[index_b], &mass_b),
                                 scoring,
                                 score,
                             );
@@ -281,7 +286,14 @@ impl<'lifetime, A: AtMax<SimpleLinear>, B: AtMax<SimpleLinear>>
         Some(Self {
             seq_a,
             seq_b,
-            score: determine_final_score(seq_a, seq_b, start_a, start_b, &path, scoring),
+            score: determine_final_score(
+                seq_a.peptidoform(),
+                seq_b.peptidoform(),
+                start_a,
+                start_b,
+                &path,
+                scoring,
+            ),
             path,
             start_a,
             start_b,
