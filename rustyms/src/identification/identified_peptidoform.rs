@@ -38,6 +38,10 @@ pub enum IdentifiedPeptidoformData {
     Fasta(FastaData),
     /// MaxQuant metadata
     MaxQuant(MaxQuantData),
+    /// pi-HelixNovo metadata
+    PiHelixNovo(PiHelixNovoData),
+    /// pi-PrimeNovo metadata
+    PiPrimeNovo(PiPrimeNovoData),
     /// InstaNovo metadata
     InstaNovo(InstaNovoData),
     /// mzTab metadata
@@ -75,6 +79,7 @@ impl<PeptidoformAvailability> IdentifiedPeptidoform<Linear, PeptidoformAvailabil
             IdentifiedPeptidoformData::Novor(NovorData { peptide, .. })
             | IdentifiedPeptidoformData::InstaNovo(InstaNovoData { peptide, .. })
             | IdentifiedPeptidoformData::Opair(OpairData { peptide, .. })
+            | IdentifiedPeptidoformData::PiHelixNovo(PiHelixNovoData { peptide, .. })
             | IdentifiedPeptidoformData::PepNet(PepNetData { peptide, .. })
             | IdentifiedPeptidoformData::PowerNovo(PowerNovoData { peptide, .. })
             | IdentifiedPeptidoformData::Proteoscape(ProteoscapeData {
@@ -96,6 +101,7 @@ impl<PeptidoformAvailability> IdentifiedPeptidoform<Linear, PeptidoformAvailabil
                 ..
             })
             | IdentifiedPeptidoformData::MaxQuant(MaxQuantData { peptide, .. })
+            | IdentifiedPeptidoformData::PiPrimeNovo(PiPrimeNovoData { peptide, .. })
             | IdentifiedPeptidoformData::MZTab(MZTabData { peptide, .. })
             | IdentifiedPeptidoformData::DeepNovoFamily(DeepNovoFamilyData { peptide, .. }) => {
                 peptide.as_ref().map(AsRef::as_ref)
@@ -129,6 +135,7 @@ impl<PeptidoformAvailability> IdentifiedPeptidoform<SimpleLinear, PeptidoformAva
         match &self.data {
             IdentifiedPeptidoformData::Novor(NovorData { peptide, .. })
             | IdentifiedPeptidoformData::InstaNovo(InstaNovoData { peptide, .. })
+            | IdentifiedPeptidoformData::PiHelixNovo(PiHelixNovoData { peptide, .. })
             | IdentifiedPeptidoformData::Opair(OpairData { peptide, .. })
             | IdentifiedPeptidoformData::PepNet(PepNetData { peptide, .. })
             | IdentifiedPeptidoformData::PowerNovo(PowerNovoData { peptide, .. })
@@ -151,6 +158,7 @@ impl<PeptidoformAvailability> IdentifiedPeptidoform<SimpleLinear, PeptidoformAva
                 ..
             })
             | IdentifiedPeptidoformData::MaxQuant(MaxQuantData { peptide, .. })
+            | IdentifiedPeptidoformData::PiPrimeNovo(PiPrimeNovoData { peptide, .. })
             | IdentifiedPeptidoformData::MZTab(MZTabData { peptide, .. })
             | IdentifiedPeptidoformData::DeepNovoFamily(DeepNovoFamilyData { peptide, .. }) => {
                 peptide.as_ref().map(AsRef::as_ref)
@@ -185,6 +193,7 @@ impl<PeptidoformAvailability> IdentifiedPeptidoform<SemiAmbiguous, PeptidoformAv
             IdentifiedPeptidoformData::Novor(NovorData { peptide, .. })
             | IdentifiedPeptidoformData::InstaNovo(InstaNovoData { peptide, .. })
             | IdentifiedPeptidoformData::Opair(OpairData { peptide, .. })
+            | IdentifiedPeptidoformData::PiHelixNovo(PiHelixNovoData { peptide, .. })
             | IdentifiedPeptidoformData::PepNet(PepNetData { peptide, .. })
             | IdentifiedPeptidoformData::PowerNovo(PowerNovoData { peptide, .. })
             | IdentifiedPeptidoformData::Proteoscape(ProteoscapeData {
@@ -204,6 +213,7 @@ impl<PeptidoformAvailability> IdentifiedPeptidoform<SemiAmbiguous, PeptidoformAv
                 ..
             })
             | IdentifiedPeptidoformData::MaxQuant(MaxQuantData { peptide, .. })
+            | IdentifiedPeptidoformData::PiPrimeNovo(PiPrimeNovoData { peptide, .. })
             | IdentifiedPeptidoformData::MZTab(MZTabData { peptide, .. })
             | IdentifiedPeptidoformData::DeepNovoFamily(DeepNovoFamilyData { peptide, .. }) => {
                 peptide.as_ref()
@@ -243,6 +253,7 @@ impl<PeptidoformAvailability> IdentifiedPeptidoform<UnAmbiguous, PeptidoformAvai
             IdentifiedPeptidoformData::Novor(NovorData { peptide, .. })
             | IdentifiedPeptidoformData::InstaNovo(InstaNovoData { peptide, .. })
             | IdentifiedPeptidoformData::Opair(OpairData { peptide, .. })
+            | IdentifiedPeptidoformData::PiHelixNovo(PiHelixNovoData { peptide, .. })
             | IdentifiedPeptidoformData::PepNet(PepNetData { peptide, .. })
             | IdentifiedPeptidoformData::PowerNovo(PowerNovoData { peptide, .. })
             | IdentifiedPeptidoformData::Proteoscape(ProteoscapeData {
@@ -262,6 +273,7 @@ impl<PeptidoformAvailability> IdentifiedPeptidoform<UnAmbiguous, PeptidoformAvai
                 ..
             })
             | IdentifiedPeptidoformData::MaxQuant(MaxQuantData { peptide, .. })
+            | IdentifiedPeptidoformData::PiPrimeNovo(PiPrimeNovoData { peptide, .. })
             | IdentifiedPeptidoformData::MZTab(MZTabData { peptide, .. })
             | IdentifiedPeptidoformData::DeepNovoFamily(DeepNovoFamilyData { peptide, .. }) => {
                 peptide.as_ref().and_then(|p| p.as_unambiguous())
@@ -491,7 +503,7 @@ macro_rules! impl_metadata {
 }
 
 impl_metadata!(
-    formats: {BasicCSV,DeepNovoFamily,Fasta,MaxQuant,InstaNovo,MZTab,NovoB,Novor,Opair,Peaks,PepNet,PLGS,PLink,PowerNovo,Proteoscape,Sage,MSFragger,SpectrumSequenceList};
+    formats: {BasicCSV,DeepNovoFamily,Fasta,MaxQuant,InstaNovo,MZTab,NovoB,Novor,Opair,Peaks,PepNet,PiHelixNovo,PiPrimeNovo,PLGS,PLink,PowerNovo,Proteoscape,Sage,MSFragger,SpectrumSequenceList};
     functions: {
         fn compound_peptidoform_ion(&self) -> Option<Cow<'_, CompoundPeptidoformIon>>;
         fn format(&self) -> KnownFileFormat;
