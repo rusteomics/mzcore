@@ -57,10 +57,10 @@ fn labelfree_sqi() {
 }
 
 #[test]
-fn labelfree_sqi_mods() {
+fn complex_mods() {
     assert_eq!(
-        open_file(BufReader::new(LABELFREE_SQI_MODS.as_bytes())).unwrap(),
-        12
+        open_file(BufReader::new(COMPLEX_MODS.as_bytes())).unwrap(),
+        14
     );
 }
 
@@ -730,7 +730,7 @@ PSM	LGLGIDEDDPTVDDTSAAVTEEMPPLEGDDDTSR	48	P07901	1	UniProtKB	2013_08	[MS,MS:1001
 PSM	TLTIVDTGIGMTK	49	P07901	1	UniProtKB	2013_08	[MS,MS:1001207,Mascot,]	36	11-UNIMOD:35	ms_run[6]:scan=1123	1132.62	3	450.5838508	450.583	R	A	88	100
 PSM	MPEETQTQDQPMEEEEVETFAFQAEIAQLMSLIINTFYSNK	50	P07901	1	UniProtKB	2013_08	[MS,MS:1001207,Mascot,]	11	0-UNIMOD:35	ms_run[6]:scan=3188	3184.08	2	2405.619464	2405.6084	-	E	1	41"#;
 
-const LABELFREE_SQI_MODS: &str = r"
+const COMPLEX_MODS: &str = r"
 MTD	mzTab-version	1.0.0
 MTD	mzTab-mode	Summary
 MTD	mzTab-type	Quantification
@@ -750,7 +750,6 @@ MTD	study_variable[1]-description	heat shock response of control
 MTD	study_variable[2]-description	heat shock response of treatment
 
 PRH	accession	description	taxid	species	database	database_version	search_engine	best_search_engine_score[1]	ambiguity_members	modifications	protein_abundance_study_variable[1]	protein_abundance_stdev_study_variable[1]	protein_abundance_std_error_study_variable[1]	protein_abundance_study_variable[2]	protein_abundance_stdev_study_variable[2]	protein_abundance_std_error_study_variable[2]
-COM	Accession	Description	Taxonomie ID	Species	Database	Version	Search Engine	best Mascot score	Ambiguity Members	Modifications	Abundance (HSPControl)	Standard Deviation (HSPControl)	Standard Error (HSPControl)	Abundance (HSPTreatment)	Standard Deviation (HSPTreatment)	Standard Error (HSPTreatment)
 PRT	P63017	Heat shock cognate 71 kDa protein	10090	Mus musculus	UniProtKB	2013_08	[MS,MS:1001207,Mascot,]	46	null	0	40.63833264	5.655317647	3.265099166	274.6104756	35.15499814	20.29674764
 PRT	P14602	Heat shock protein beta-1	10090	Mus musculus	UniProtKB	2013_08	[MS,MS:1001207,Mascot,]	100	Q340U4,Q5K0U2,P8L901	0	117235.3899	17568.59128	10143.23091	5135.628975	1014.552511	585.7521654
 PRT	Q8K0U4	Heat shock 70 kDa protein 12A	10090	Mus musculus	UniProtKB	2013_08	[MS,MS:1001207,Mascot,]	120	null	0	48.30102441	5.476244671	3.161711335	470.9562475	85.04568626	49.10114986
@@ -770,6 +769,14 @@ COM Standard mod using chemmod (formula)
 PSM	LGLGIDEDDPTVDDTSAAVTEEMPPLEGDDDTSR	48	P07901	1	UniProtKB	2013_08	[MS,MS:1001207,Mascot,]	3	23-CHEMMOD:+O	ms_run[6]:scan=2615	2611.08	2	1788.288824	1788.2886	K	M	695	728
 COM Standard mod using chemmod (mass)
 PSM	LGLGIDEDDPTVDDTSAAVTEEMPPLEGDDDTSR	48	P07901	1	UniProtKB	2013_08	[MS,MS:1001207,Mascot,]	3	23-CHEMMOD:+15.995	ms_run[6]:scan=2615	2611.08	2	1788.288824	1788.2886	K	M	695	728
+COM Ambiguous mod using unimod
+PSM	LGLGIDEDDPTVDDTSAAVTEEMPPLEGDDDTSR	48	P07901	1	UniProtKB	2013_08	[MS,MS:1001207,Mascot,]	3	null-UNIMOD:35	ms_run[6]:scan=2615	2611.08	2	1788.288824	1788.2886	K	M	695	728
+COM Ambiguous placed mod using unimod
+PSM	LGLGIDEDDPTVDDTSAAVTEEMPPLEGDDDTSR	48	P07901	1	UniProtKB	2013_08	[MS,MS:1001207,Mascot,]	3	0|23-UNIMOD:35	ms_run[6]:scan=2615	2611.08	2	1788.288824	1788.2886	K	M	695	728
+COM Ambiguous placed mod with probability using unimod
+PSM	LGLGIDEDDPTVDDTSAAVTEEMPPLEGDDDTSR	48	P07901	1	UniProtKB	2013_08	[MS,MS:1001207,Mascot,]	3	0[MS,MS:1001876, modification probability, 0.1]|23[MS,MS:1001876, modification probability, 0.9]-UNIMOD:35	ms_run[6]:scan=2615	2611.08	2	1788.288824	1788.2886	K	M	695	728
+COM Even more placed ambiguous mod using unimod
+PSM	LGLGIDEDDPTVDDTSAAVTEEMPPLEGDDDTSR	48	P07901	1	UniProtKB	2013_08	[MS,MS:1001207,Mascot,]	3	0|20|23|32-UNIMOD:35	ms_run[6]:scan=2615	2611.08	2	1788.288824	1788.2886	K	M	695	728
 COM Neutral loss (with position)
 PSM	LGLGIDEDDPTVDDTSAAVTEEMPPLEGDDDTSR	48	P07901	1	UniProtKB	2013_08	[MS,MS:1001207,Mascot,]	3	23-CHEMMOD:+15.995,23-[MS, MS:1001524, fragment neutral loss, 63.998285]	ms_run[6]:scan=2615	2611.08	2	1788.288824	1788.2886	K	M	695	728
 COM Neutral loss (without position)
