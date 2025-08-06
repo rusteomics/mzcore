@@ -56,6 +56,7 @@ impl Peptidoform<SemiAmbiguous> {
                 Context::line(None, line, location.start, 1),
             ));
         }
+
         let mut peptide = Self::default();
         let chars: &[u8] = line[location.clone()].as_bytes();
         peptide
@@ -168,14 +169,14 @@ impl Peptidoform<SemiAmbiguous> {
                         .take_while(|c| c.is_ascii_digit() || **c == b'.')
                         .count();
                     let modification = SimpleModificationInner::Mass(Mass::new::<crate::system::dalton>(
-                        line[location.start + index..location.start + index + length]
-                        .parse::<f64>()
-                        .map_err(|err|
-                            CustomError::error(
-                                "Invalid mass shift modification", 
-                                format!("Mass shift modification must be a valid number but this number is invalid: {err}"), 
-                                Context::line(None, line, location.start + index, length))
-                            )?).into()).into();
+                    line[location.start + index..location.start + index + length]
+                    .parse::<f64>()
+                    .map_err(|err|
+                        CustomError::error(
+                            "Invalid mass shift modification", 
+                            format!("Mass shift modification must be a valid number but this number is invalid: {err}"), 
+                            Context::line(None, line, location.start + index, length))
+                        )?).into()).into();
                     match peptide.sequence_mut().last_mut() {
                         Some(aa) => aa.modifications.push(Modification::Simple(modification)),
                         None => {
