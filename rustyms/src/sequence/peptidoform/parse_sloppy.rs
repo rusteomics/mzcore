@@ -67,7 +67,7 @@ impl Peptidoform<SemiAmbiguous> {
         while index < chars.len() {
             match chars[index] {
                 b'n' if parameters.ignore_prefix_lowercase_n && index == 0 => index += 1, //ignore
-                b',' | b'_' | b'-' => index += 1,                                         //ignore
+                b',' | b'_' => index += 1,                                                //ignore
                 b'[' | b'(' => {
                     let (open, close) = if chars[index] == b'[' {
                         (b'[', b']')

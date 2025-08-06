@@ -16,9 +16,8 @@ use crate::{
     annotation::model::GlycanModel,
     chemistry::MolecularFormula,
     helper_functions::next_num,
-    prelude::HasPeptidoformImpl,
     quantities::Multi,
-    sequence::{AtMax, HasPeptidoform, Linear, SequencePosition, SimpleLinear},
+    sequence::{HasPeptidoform, Linear, SequencePosition, SimpleLinear},
     system::{Mass, Ratio},
 };
 
@@ -113,10 +112,8 @@ impl<A: Eq, B: Eq> Ord for Alignment<A, B> {
 
 impl<'lifetime, A, B> Alignment<&'lifetime A, &'lifetime B>
 where
-    A: HasPeptidoformImpl,
-    A::Complexity: AtMax<SimpleLinear>,
-    B: HasPeptidoformImpl,
-    B::Complexity: AtMax<SimpleLinear>,
+    A: HasPeptidoform<SimpleLinear>,
+    B: HasPeptidoform<SimpleLinear>,
 {
     /// Recreate an alignment from a path, the path is [`Self::short`].
     #[expect(clippy::missing_panics_doc, clippy::too_many_arguments)]
@@ -206,7 +203,7 @@ where
                 MatchType::FullIdentity | MatchType::IdentityMassMismatch | MatchType::Mismatch => {
                     (0..a)
                         .map(|_| {
-                            let mass_a = seq_a.peptidoform()[index_a]
+                            let mass_a = seq_a.cast_peptidoform()[index_a]
                                 .formulas_all(
                                     &[],
                                     &[],
@@ -221,7 +218,7 @@ where
                                 .iter()
                                 .map(MolecularFormula::monoisotopic_mass)
                                 .collect();
-                            let mass_b = seq_b.peptidoform()[index_b]
+                            let mass_b = seq_b.cast_peptidoform()[index_b]
                                 .formulas_all(
                                     &[],
                                     &[],
@@ -237,8 +234,8 @@ where
                                 .map(MolecularFormula::monoisotopic_mass)
                                 .collect();
                             let piece = score_pair(
-                                (&seq_a.peptidoform()[index_a], &mass_a),
-                                (&seq_b.peptidoform()[index_b], &mass_b),
+                                (&seq_a.cast_peptidoform()[index_a], &mass_a),
+                                (&seq_b.cast_peptidoform()[index_b], &mass_b),
                                 scoring,
                                 score,
                             );
@@ -287,8 +284,8 @@ where
             seq_a,
             seq_b,
             score: determine_final_score(
-                seq_a.peptidoform(),
-                seq_b.peptidoform(),
+                seq_a.cast_peptidoform(),
+                seq_b.cast_peptidoform(),
                 start_a,
                 start_b,
                 &path,
