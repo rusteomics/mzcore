@@ -40,7 +40,7 @@ static BUILT_IN_MODIFICATIONS: LazyLock<SloppyParsingParameters> =
 
 format_family!(
     InstaNovo,
-    SemiAmbiguous, PeptidoformPresent, [&INSTANOVO_V1_0_0, &INSTANOVO_V1_1_4, &INSTANOVOPLUS_V1_1_4], b',', None;
+    SemiAmbiguous, PeptidoformPresent, [&INSTANOVO_V1_0_0, &INSTANOVOPLUS_V1_1_4], b',', None;
     required {
         scan_number: usize, |location: Location, _| location.parse(NUMBER_ERROR);
         mz: MassOverCharge, |location: Location, _| location.parse::<f64>(NUMBER_ERROR).map(MassOverCharge::new::<crate::system::mz>);
@@ -60,6 +60,7 @@ format_family!(
             .array(',')
             .map(|l| l.parse::<f64>(NUMBER_ERROR))
             .collect::<Result<Vec<_>, _>>();
+        used_model: UsedModel, |location: Location, _| location.parse::<UsedModel>(("Invalid InstaNovo line", "The selected model has to be 'diffusion' or 'transformer'."));
      }
 );
 
@@ -73,21 +74,9 @@ pub const INSTANOVO_V1_0_0: InstaNovoFormat = InstaNovoFormat {
     peptide: "preds",
     score: "log_probs",
     local_confidence: OptionalColumn::Required("token_log_probs"),
+    used_model: OptionalColumn::NotAvailable,
 };
 
-/// InstaNovo version 1.1.4
-pub const INSTANOVO_V1_1_4: InstaNovoFormat = InstaNovoFormat {
-    version: InstaNovoVersion::V1_1_4,
-    scan_number: "scan_number",
-    mz: "precursor_mz",
-    z: "precursor_charge",
-    raw_file: "experiment_name",
-    peptide: "preds",
-    score: "log_probs",
-    local_confidence: OptionalColumn::Required("token_log_probs"),
-};
-
-// TODO: Potentially add the other columns here as well?
 /// The only known version of InstaNovoPlus
 pub const INSTANOVOPLUS_V1_1_4: InstaNovoFormat = InstaNovoFormat {
     version: InstaNovoVersion::PlusV1_1_4,
@@ -97,7 +86,8 @@ pub const INSTANOVOPLUS_V1_1_4: InstaNovoFormat = InstaNovoFormat {
     raw_file: "experiment_name",
     peptide: "final_prediction",
     score: "final_log_probabilities",
-    local_confidence: OptionalColumn::NotAvailable,
+    local_confidence: OptionalColumn::NotAvailable, // TODO: parse the LC from the transformer column and only save the info of the transformer model is used
+    used_model: OptionalColumn::Required("selected_model"),
 };
 
 /// All possible InstaNovo versions
@@ -108,8 +98,6 @@ pub enum InstaNovoVersion {
     #[default]
     /// InstaNovo version 1.0.0
     V1_0_0,
-    /// InstaNovo version 1.1.4 without refinement
-    V1_1_4,
     /// InstaNovoPlus version 1.1.4 using refinement
     PlusV1_1_4,
 }
@@ -124,15 +112,48 @@ impl IdentifiedPeptidoformVersion<InstaNovoFormat> for InstaNovoVersion {
     fn format(self) -> InstaNovoFormat {
         match self {
             Self::V1_0_0 => INSTANOVO_V1_0_0,
-            Self::V1_1_4 => INSTANOVO_V1_1_4,
             Self::PlusV1_1_4 => INSTANOVOPLUS_V1_1_4,
         }
     }
     fn name(self) -> &'static str {
         match self {
             Self::V1_0_0 => "v1.0.0",
-            Self::V1_1_4 => "v1.1.4",
             Self::PlusV1_1_4 => "Plus v1.1.4",
+        }
+    }
+}
+
+/// The model that produced the final prediction for an InstaNovoPlus
+#[derive(Clone, Copy, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
+pub enum UsedModel {
+    /// The diffusion model
+    Diffusion,
+    /// The transformer model
+    Transformer,
+}
+
+impl std::fmt::Display for UsedModel {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Error> {
+        write!(
+            f,
+            "{}",
+            match self {
+                Self::Diffusion => "diffusion",
+                Self::Transformer => "transformer",
+            }
+        )
+    }
+}
+
+impl std::str::FromStr for UsedModel {
+    type Err = ();
+    fn from_str(value: &str) -> Result<Self, Self::Err> {
+        if value.eq_ignore_ascii_case("diffusion") {
+            Ok(Self::Diffusion)
+        } else if value.eq_ignore_ascii_case("transformer") {
+            Ok(Self::Transformer)
+        } else {
+            Err(())
         }
     }
 }

@@ -92,7 +92,7 @@ impl MetaData for PiHelixNovoData {
     }
 
     fn id(&self) -> String {
-        "-".to_string()
+        "-".to_string() // TODO: best would be to use the scan index in some way shape or form
     }
 
     fn confidence(&self) -> Option<f64> {
@@ -123,6 +123,9 @@ impl MetaData for PiHelixNovoData {
         None
     }
 
+    // TODO: maybe do this parsing as post processing right after parsing the line instead of every time this function is called.
+    // Related: this looks like a mgf title line, so I like the setup here that is very resilient to lines that are not in the same format.
+    // It might make sense though to have MGF title line processing somewhere more organised (maybe even call mzcore?)
     fn scans(&self) -> SpectrumIds {
         match (self.title.find("File:\""), self.title.find("NativeID:\"")) {
             (None, None) => SpectrumIds::None,

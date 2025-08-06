@@ -19,6 +19,7 @@ fn novob() {
         }
     }
 }
+
 #[test]
 fn novob_1() {
     match test_format::<NovoBData>(

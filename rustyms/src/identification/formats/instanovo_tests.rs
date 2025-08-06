@@ -19,9 +19,7 @@ fn instanovo_v1_0_0() {
     }
 }
 
-// FIXME: v1.0.0 and v1.1.4 have the same columns but the PTM definitions are different, that is why there should be a seperate test
-//          However, when I change the format to `InstaNovoVersion::V1_1_4`, there is an error:
-//          `Peptide 39 was detected as the wrong version (v1.0.0 instead of v1.1.4)`
+// v1.0.0 and v1.1.4 have the same columns but the PTM definitions are different, that is why there should be a seperate test
 #[test]
 fn instanovo_v1_1_4() {
     match test_format::<InstaNovoData>(
@@ -29,7 +27,7 @@ fn instanovo_v1_1_4() {
         None,
         false,
         true,
-        Some(InstaNovoVersion::V1_1_4), // V1_0_0 works fine
+        Some(InstaNovoVersion::V1_0_0),
     ) {
         Ok(n) => assert_eq!(n, 19),
         Err(e) => {

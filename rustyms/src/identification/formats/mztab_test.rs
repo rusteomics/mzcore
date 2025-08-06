@@ -83,6 +83,7 @@ fn contranovo_v1_0_0() {
         20
     );
 }
+
 #[test]
 fn adanovo_v1_0_0() {
     assert_eq!(

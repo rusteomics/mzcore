@@ -220,7 +220,21 @@ pub fn parse_csv_raw<T: std::io::Read>(
         let _unused = lines.next();
     }
     let column_headers = if let Some(header) = provided_header {
-        header.into_iter().map(Arc::new).collect()
+        let (_, column_headers) = lines.peek().ok_or_else(|| {
+            CustomError::error("Could parse csv file", "The file is empty", Context::None)
+        })?;
+        let header_line = column_headers
+            .as_ref()
+            .map_err(|err| CustomError::error("Could not read header line", err, Context::None))?;
+        let first_line = csv_separate(&header_line, separator)?
+            .into_iter()
+            .map(|r| Arc::new(header_line[r].to_lowercase()))
+            .collect_vec();
+        let provided_header = header.into_iter().map(Arc::new).collect();
+        if first_line == provided_header {
+            drop(lines.next()) // Ignore the first line if the first line is identical to the provided header
+        }
+        provided_header
     } else {
         let (_, column_headers) = lines.next().ok_or_else(|| {
             CustomError::error("Could parse csv file", "The file is empty", Context::None)
