@@ -5,7 +5,7 @@ use custom_error::*;
 use crate::{
     identification::*,
     ontology::CustomDatabase,
-    sequence::{Linked, SemiAmbiguous},
+    sequence::{Linked, SemiAmbiguous, SimpleLinear},
 };
 
 // TODO:
@@ -123,7 +123,7 @@ pub fn open_identified_peptidoforms_file<'a>(
         Some("mztab") => MZTabData::parse_file(path, custom_database).map(|peptides| {
             let a: Box<dyn Iterator<Item = Result<IdentifiedPeptidoform<Linked, MaybePeptidoform>, BoxedError>> + 'a>
                 = Box::new(peptides.into_iter().map(|p| p.map(|p| {
-                        IdentifiedPeptidoform::<SemiAmbiguous, MaybePeptidoform>::from(p).cast()
+                        IdentifiedPeptidoform::<SimpleLinear, MaybePeptidoform>::from(p).cast()
                     })));
             a
         }),

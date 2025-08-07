@@ -19,12 +19,12 @@ use crate::{
         FastaIdentifier, IdentifiedPeptidoform, IdentifiedPeptidoformData, KnownFileFormat,
         MaybePeptidoform, MetaData, SpectrumId, SpectrumIds,
     },
-    ontology::CustomDatabase,
-    prelude::CompoundPeptidoformIon,
+    ontology::{CustomDatabase, Ontology},
+    prelude::{CompoundPeptidoformIon, MolecularFormula},
     quantities::Tolerance,
     sequence::{
-        AminoAcid, PeptideModificationSearch, Peptidoform, ReturnModification, SemiAmbiguous,
-        SimpleModification, SimpleModificationInner, SloppyParsingParameters,
+        AminoAcid, MUPSettings, PeptideModificationSearch, Peptidoform, ReturnModification,
+        SimpleLinear, SimpleModification, SimpleModificationInner, SloppyParsingParameters,
     },
     system::{Mass, MassOverCharge, Time, isize::Charge},
 };
@@ -33,7 +33,7 @@ use crate::{
 #[derive(Clone, Debug, Default, Deserialize, PartialEq, Serialize)]
 pub struct MZTabData {
     /// The peptide's sequence corresponding to the PSM
-    pub peptide: Option<Peptidoform<SemiAmbiguous>>,
+    pub peptide: Option<Peptidoform<SimpleLinear>>,
     /// A unique identifier for a PSM within the file. If a PSM can be matched to
     /// multiple proteins, the same PSM should be represented on multiple rows with
     /// different accessions and the same PSM_ID.
@@ -84,10 +84,8 @@ impl MZTabData {
     pub fn parse_file(
         path: impl AsRef<std::path::Path>,
         custom_database: Option<&CustomDatabase>,
-    ) -> Result<
-        Box<dyn Iterator<Item = Result<Self, BoxedError<'static>>> + '_>,
-        BoxedError<'static>,
-    > {
+    ) -> Result<Box<dyn Iterator<Item = Result<Self, BoxedError<'static>>> + '_>, BoxedError<'static>>
+    {
         let file = File::open(path.as_ref()).map_err(|e| {
             BoxedError::error(
                 "Could not open file",
@@ -285,37 +283,24 @@ impl MZTabData {
             .required_column("modifications")
             .map_err(BoxedError::to_owned)?;
         let mut mod_index = mod_range.start;
-        let modifications: Vec<(usize, SimpleModification)> = mod_column
-            .split(',')
-            .flat_map(|definition| {
-                let pair = definition
-                    .split_once('-')
-                    .map(|(pos, _)| Ok((
-                        pos.parse::<usize>().map_err(|err| BoxedError::error(
-                        "Invalid modification position",
-                        format!("The position {}", explain_number_error(&err)),
-                        Context::line_range(Some(line.line_index as u32), line.line, mod_range.clone()),
-                    ))?,
-                    SimpleModificationInner::parse_pro_forma(
-                        line.line,
-                        mod_index+1+pos.len()..mod_index+definition.len(),
-                        &mut Vec::new(),
-                        &mut Vec::new(),
-                        custom_database)?.0.defined()
-                        .ok_or_else(
-                            || BoxedError::error(
-                                "Invalid modification",
-                                "A modification should be a fully defined modification, no cross-link or ambiguous modification",
-                                Context::line_range(Some(line.line_index as u32), line.line, mod_range.clone())))?)))
-                    .ok_or_else(
-                        || BoxedError::error(
-                            "Invalid modification",
-                            "A modification should be the position followed by a hyphen ('-') followed by the modification",
-                            Context::line_range(Some(line.line_index as u32), line.line, mod_range.clone())));
-                            mod_index += definition.len() + 1;
-                            pair
-            })
-            .collect::<Result<Vec<_>, BoxedError>>()?;
+        let modifications: Vec<MZTabReturnModification> =
+            if mod_column.eq_ignore_ascii_case("null") || mod_column == "0" {
+                Vec::new()
+            } else {
+                mod_column
+                    .split(',')
+                    .map(|definition| {
+                        let res = parse_modification(
+                            line.line,
+                            mod_index..mod_index + definition.len(),
+                            custom_database,
+                            line.line_index as u32,
+                        );
+                        mod_index = mod_index + definition.len() + 1;
+                        res
+                    })
+                    .collect::<Result<Vec<_>, BoxedError>>()?
+            };
 
         let mut result = Self {
             peptide: {
@@ -327,7 +312,7 @@ impl MZTabData {
                 if range.is_empty() {
                     None
                 } else {
-                    let mut peptide = Peptidoform::sloppy_pro_forma(
+                    let mut peptide: Peptidoform<SimpleLinear> = Peptidoform::sloppy_pro_forma(
                         line.line,
                         range,
                         custom_database,
@@ -335,16 +320,30 @@ impl MZTabData {
                             allow_unwrapped_modifications: true,
                             ..Default::default()
                         },
-                    )?;
-                    for (location, modification) in modifications {
-                        match location {
-                            0 => peptide.add_simple_n_term(modification),
-                            c if c == peptide.len() + 1 => {
-                                peptide.add_simple_c_term(modification);
+                    )?
+                    .into();
+                    for modification in modifications {
+                        match modification {
+                            MZTabReturnModification::Defined(location, modification) => {
+                                match location {
+                                    0 => peptide.add_simple_n_term(modification),
+                                    c if c == peptide.len() + 1 => {
+                                        peptide.add_simple_c_term(modification);
+                                    }
+                                    i => {
+                                        peptide.sequence_mut()[i - 1]
+                                            .add_simple_modification(modification);
+                                    }
+                                }
                             }
-                            i => {
-                                peptide.sequence_mut()[i - 1].add_simple_modification(modification);
+                            MZTabReturnModification::GlobalAmbiguous(modification) => {
+                                let _possible = peptide.add_unknown_position_modification(
+                                    modification,
+                                    0..peptide.len(),
+                                    &MUPSettings::default(),
+                                );
                             }
+                            _ => todo!(),
                         }
                     }
                     Some(
@@ -695,6 +694,165 @@ impl MZTabData {
     }
 }
 
+enum MZTabReturnModification {
+    GlobalAmbiguous(SimpleModification),
+    Ambiguous(Vec<(usize, Option<f64>)>, SimpleModification),
+    Defined(usize, SimpleModification),
+}
+
+fn parse_modification<'a>(
+    line: &'a str,
+    range: Range<usize>,
+    custom_database: Option<&CustomDatabase>,
+    line_index: u32,
+) -> Result<MZTabReturnModification, BoxedError<'a>> {
+    if let Some((pos, modification)) = line[range.clone()].split_once('-') {
+        let position = if pos.eq_ignore_ascii_case("null") {
+            Ok(None)
+        } else {
+            // TODO: handle multiple and handle probabilities
+            pos.parse::<usize>()
+                .map_err(|err| {
+                    BoxedError::error(
+                        "Invalid modification position",
+                        format!("The position {}", explain_number_error(&err)),
+                        Context::line_range(
+                            Some(line_index),
+                            line,
+                            range.start..range.start + pos.len(),
+                        ),
+                    )
+                })
+                .map(Some)
+        }?;
+
+        let modification = if let Some((tag, value)) = modification.split_once(':') {
+            let value_range = range.start + pos.len() + tag.len() + 2..range.end;
+            let value_context = Context::line_range(Some(line_index), line, value_range.clone());
+            if tag.eq_ignore_ascii_case("unimod") {
+                Ontology::Unimod
+                    .find_id(
+                        value.parse::<usize>().map_err(|err| {
+                            BoxedError::error(
+                                "Invalid unimod code",
+                                format!("The unimod modification {}", explain_number_error(&err)),
+                                value_context.clone(),
+                            )
+                        })?,
+                        None,
+                    )
+                    .ok_or_else(|| {
+                        BoxedError::error(
+                            "Invalid unimod code",
+                            "The given unimod modification does not exist",
+                            value_context.clone(),
+                        )
+                    })?
+            } else if tag.eq_ignore_ascii_case("mod") {
+                Ontology::Psimod
+                    .find_id(
+                        value.parse::<usize>().map_err(|err| {
+                            BoxedError::error(
+                                "Invalid PSI-MOD code",
+                                format!("The PSI-MOD modification {}", explain_number_error(&err)),
+                                value_context.clone(),
+                            )
+                        })?,
+                        None,
+                    )
+                    .ok_or_else(|| {
+                        BoxedError::error(
+                            "Invalid PSI-MOD code",
+                            "The given PSI-MOD modification does not exist",
+                            value_context.clone(),
+                        )
+                    })?
+            } else if tag.eq_ignore_ascii_case("custom") {
+                Ontology::Custom
+                    .find_id(
+                        value.parse::<usize>().map_err(|err| {
+                            BoxedError::error(
+                                "Invalid custom code",
+                                format!("The custom modification {}", explain_number_error(&err)),
+                                value_context.clone(),
+                            )
+                        })?,
+                        custom_database,
+                    )
+                    .ok_or_else(|| {
+                        BoxedError::error(
+                            "Invalid custom code",
+                            "The given custom modification does not exist",
+                            value_context.clone(),
+                        )
+                    })?
+            } else if tag.eq_ignore_ascii_case("chemmod") {
+                if let Ok(mass) = value.parse::<f64>() {
+                    SimpleModificationInner::Mass(Mass::new::<crate::system::dalton>(mass).into())
+                } else {
+                    let factor = match line.as_bytes()[value_range.start] {
+                        b'-' => -1,
+                        b'+' => 1,
+                        _ => {
+                            return Err(BoxedError::error(
+                                "Invalid mzTab modification",
+                                "A chemmod formula modification should be prepended by a sign",
+                                Context::line_range(
+                                    Some(line_index),
+                                    line,
+                                    range.start + pos.len() + 1
+                                        ..range.start + pos.len() + 1 + tag.len(),
+                                ),
+                            ));
+                        }
+                    };
+                    MolecularFormula::from_pro_forma(
+                        line,
+                        value_range.start + 1..value_range.end,
+                        false,
+                        false,
+                        true,
+                        true,
+                    )
+                    .map(|f| SimpleModificationInner::Formula(f * factor))?
+                }
+                .into()
+            } else {
+                return Err(BoxedError::error(
+                    "Invalid mzTab modification",
+                    "The modification should be prepended by a tag describing the kind of modification, the possible tags are: 'unimod', 'mod', and 'chemmod'",
+                    Context::line_range(
+                        Some(line_index),
+                        line,
+                        range.start + pos.len() + 1..range.start + pos.len() + 1 + tag.len(),
+                    ),
+                ));
+            }
+        } else {
+            return Err(BoxedError::error(
+                "Invalid mzTab modification",
+                "An mzTab modification should be in format 'tag:value' but the colon (':') is missing",
+                Context::line_range(
+                    Some(line_index),
+                    line,
+                    range.start + pos.len() + 1..range.end,
+                ),
+            ));
+        };
+
+        Ok(match position {
+            None => MZTabReturnModification::GlobalAmbiguous(modification),
+            Some(pos) => MZTabReturnModification::Defined(pos, modification),
+        })
+    } else {
+        Err(BoxedError::error(
+            "Invalid modification",
+            "A modification should be the position followed by a hyphen ('-') followed by the modification",
+            Context::line_range(Some(line_index), line, range),
+        ))
+    }
+}
+
 #[derive(Clone, Copy, Debug)]
 struct PSMLine<'a> {
     line_index: usize,
@@ -704,7 +862,7 @@ struct PSMLine<'a> {
 }
 
 impl<'a> PSMLine<'a> {
-    /// Form a indexable line out of a set of fields
+    /// Form an indexable line out of a set of fields
     /// # Errors
     /// When there is no header or the line has a different number of columns
     fn new(
@@ -760,7 +918,7 @@ impl<'a> PSMLine<'a> {
     }
 }
 
-impl From<MZTabData> for IdentifiedPeptidoform<SemiAmbiguous, MaybePeptidoform> {
+impl From<MZTabData> for IdentifiedPeptidoform<SimpleLinear, MaybePeptidoform> {
     fn from(value: MZTabData) -> Self {
         Self {
             score: (!value.search_engine.is_empty())

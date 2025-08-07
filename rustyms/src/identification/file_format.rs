@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 use crate::{
     identification::*,
     ontology::CustomDatabase,
-    sequence::{Linked, SemiAmbiguous},
+    sequence::{Linked, SemiAmbiguous, SimpleLinear},
 };
 
 /// A file format that is fully known
@@ -193,7 +193,7 @@ impl FileFormat {
                     >,
                 > = Box::new(sequences.into_iter().map(|p| {
                     p.map(|p| {
-                        IdentifiedPeptidoform::<SemiAmbiguous, MaybePeptidoform>::from(p).cast()
+                        IdentifiedPeptidoform::<SimpleLinear, MaybePeptidoform>::from(p).cast()
                     })
                 }));
                 b

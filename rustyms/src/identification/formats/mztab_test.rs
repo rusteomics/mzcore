@@ -7,7 +7,7 @@ use crate::{
     identification::{
         IdentifiedPeptidoform, MZTabData, MaybePeptidoform, test_identified_peptidoform,
     },
-    sequence::SemiAmbiguous,
+    sequence::SimpleLinear,
 };
 
 #[test]
@@ -99,7 +99,7 @@ fn contranovo_v1_0_0() {
 fn open_file(reader: impl BufRead) -> Result<usize, BoxedError<'static>> {
     let mut peptides = 0;
     for read in MZTabData::parse_reader(reader, None) {
-        let peptide: IdentifiedPeptidoform<SemiAmbiguous, MaybePeptidoform> =
+        let peptide: IdentifiedPeptidoform<SimpleLinear, MaybePeptidoform> =
             read.map_err(BoxedError::to_owned)?.into();
         peptides += 1;
 

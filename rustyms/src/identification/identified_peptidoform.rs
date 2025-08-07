@@ -96,8 +96,10 @@ impl<PeptidoformAvailability> IdentifiedPeptidoform<Linear, PeptidoformAvailabil
                 ..
             })
             | IdentifiedPeptidoformData::MaxQuant(MaxQuantData { peptide, .. })
-            | IdentifiedPeptidoformData::MZTab(MZTabData { peptide, .. })
             | IdentifiedPeptidoformData::DeepNovoFamily(DeepNovoFamilyData { peptide, .. }) => {
+                peptide.as_ref().map(AsRef::as_ref)
+            }
+            IdentifiedPeptidoformData::MZTab(MZTabData { peptide, .. }) => {
                 peptide.as_ref().map(AsRef::as_ref)
             }
             IdentifiedPeptidoformData::Fasta(f) => Some(f.peptide().as_ref()),
@@ -151,10 +153,10 @@ impl<PeptidoformAvailability> IdentifiedPeptidoform<SimpleLinear, PeptidoformAva
                 ..
             })
             | IdentifiedPeptidoformData::MaxQuant(MaxQuantData { peptide, .. })
-            | IdentifiedPeptidoformData::MZTab(MZTabData { peptide, .. })
             | IdentifiedPeptidoformData::DeepNovoFamily(DeepNovoFamilyData { peptide, .. }) => {
                 peptide.as_ref().map(AsRef::as_ref)
             }
+            IdentifiedPeptidoformData::MZTab(MZTabData { peptide, .. }) => peptide.as_ref(),
             IdentifiedPeptidoformData::Fasta(f) => Some(f.peptide().as_ref()),
             IdentifiedPeptidoformData::NovoB(NovoBData {
                 score_forward,
@@ -204,9 +206,11 @@ impl<PeptidoformAvailability> IdentifiedPeptidoform<SemiAmbiguous, PeptidoformAv
                 ..
             })
             | IdentifiedPeptidoformData::MaxQuant(MaxQuantData { peptide, .. })
-            | IdentifiedPeptidoformData::MZTab(MZTabData { peptide, .. })
             | IdentifiedPeptidoformData::DeepNovoFamily(DeepNovoFamilyData { peptide, .. }) => {
                 peptide.as_ref()
+            }
+            IdentifiedPeptidoformData::MZTab(MZTabData { peptide, .. }) => {
+                peptide.as_ref().and_then(|p| p.as_semi_ambiguous())
             }
             IdentifiedPeptidoformData::Fasta(f) => Some(f.peptide()),
             IdentifiedPeptidoformData::NovoB(NovoBData {
@@ -262,8 +266,10 @@ impl<PeptidoformAvailability> IdentifiedPeptidoform<UnAmbiguous, PeptidoformAvai
                 ..
             })
             | IdentifiedPeptidoformData::MaxQuant(MaxQuantData { peptide, .. })
-            | IdentifiedPeptidoformData::MZTab(MZTabData { peptide, .. })
             | IdentifiedPeptidoformData::DeepNovoFamily(DeepNovoFamilyData { peptide, .. }) => {
+                peptide.as_ref().and_then(|p| p.as_unambiguous())
+            }
+            IdentifiedPeptidoformData::MZTab(MZTabData { peptide, .. }) => {
                 peptide.as_ref().and_then(|p| p.as_unambiguous())
             }
             IdentifiedPeptidoformData::Fasta(f) => f.peptide().as_unambiguous(),
