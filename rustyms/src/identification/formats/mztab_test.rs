@@ -1,8 +1,9 @@
 #![allow(clippy::missing_panics_doc)]
 use std::io::{BufRead, BufReader};
 
+use custom_error::BoxedError;
+
 use crate::{
-    error::CustomError,
     identification::{
         IdentifiedPeptidoform, MZTabData, MaybePeptidoform, test_identified_peptidoform,
     },
@@ -95,10 +96,11 @@ fn contranovo_v1_0_0() {
 /// Open a MZTab file from the given reader.
 /// # Errors
 /// If any part of the process errors.
-fn open_file(reader: impl BufRead) -> Result<usize, CustomError> {
+fn open_file(reader: impl BufRead) -> Result<usize, BoxedError<'static>> {
     let mut peptides = 0;
     for read in MZTabData::parse_reader(reader, None) {
-        let peptide: IdentifiedPeptidoform<SemiAmbiguous, MaybePeptidoform> = read?.into();
+        let peptide: IdentifiedPeptidoform<SemiAmbiguous, MaybePeptidoform> =
+            read.map_err(BoxedError::to_owned)?.into();
         peptides += 1;
 
         test_identified_peptidoform(&peptide, false, false).unwrap();

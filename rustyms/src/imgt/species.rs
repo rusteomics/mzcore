@@ -1,6 +1,8 @@
 #![allow(dead_code, unreachable_patterns)]
-use serde::{Deserialize, Serialize};
 use std::{error::Error, fmt::Display};
+
+use custom_error::*;
+use serde::{Deserialize, Serialize};
 
 /// Error type to indicate that the given name was not a recognised species from the IMGT database
 #[derive(Clone, Copy, Debug, Default)]
@@ -113,7 +115,7 @@ macro_rules! species {
         ];
 
         impl std::str::FromStr for Species {
-            type Err = crate::error::CustomError;
+            type Err = BoxedError<'static>;
             fn from_str(s: &str) -> Result<Self, Self::Err> {
                 let s = s.trim().to_lowercase();
                 for (name, species) in SPECIES_PARSE_LIST {
@@ -129,7 +131,12 @@ macro_rules! species {
                     .map(|option| option.as_str())
                     .collect();
 
-                Err(crate::error::CustomError::error("Unknown species name", "The provided name could not be recognised as a species name.", crate::error::Context::show(s.as_str())).with_suggestions(similar::get_close_matches(s.as_str(), &options, 3, 0.75)))
+                Err(BoxedError::error(
+                        "Unknown species name",
+                        "The provided name could not be recognised as a species name.",
+                        Context::show(s.as_str())
+                    ).suggestions(similar::get_close_matches(s.as_str(), &options, 3, 0.75)).to_owned()
+                )
             }
         }
     };

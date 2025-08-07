@@ -5,12 +5,12 @@ use std::{
     path::Path,
 };
 
+use custom_error::*;
 use ordered_float::OrderedFloat;
 use regex::Regex;
 use uom::num_traits::Zero;
 
 use crate::{
-    error::{Context, CustomError},
     helper_functions::check_extension,
     spectrum::{PeakSpectrum, RawPeak, RawSpectrum},
     system::{
@@ -24,21 +24,21 @@ use crate::{
 };
 use flate2::bufread::GzDecoder;
 
-/// Open a MGF file and return the contained spectra.
+/// Open an MGF file and return the contained spectra.
 ///
 /// # Errors
 /// It returns an error when:
-/// * The file could not be opened
-/// * Any line in the file could not be read
-/// * When any expected number in the file is not a number
-/// * When there is only one column (separated by space or tab) on a data row
-pub fn open(path: impl AsRef<Path>) -> Result<Vec<RawSpectrum>, CustomError> {
+/// * The file could not be opened.
+/// * Any line in the file could not be read.
+/// * When any expected number in the file is not a number.
+/// * When there is only one column (separated by space or tab) on a data row.
+pub fn open(path: impl AsRef<Path>) -> Result<Vec<RawSpectrum>, BoxedError<'static>> {
     let path = path.as_ref();
     let file = File::open(path).map_err(|err| {
-        CustomError::error(
+        BoxedError::error(
             "Could not open file",
-            format!("Additional info: {err}"),
-            Context::show(path.display()),
+            err.to_string(),
+            Context::default().source(path.to_string_lossy()).to_owned(),
         )
     })?;
     if check_extension(path, "gz") {
@@ -48,31 +48,31 @@ pub fn open(path: impl AsRef<Path>) -> Result<Vec<RawSpectrum>, CustomError> {
     }
 }
 
-/// Open a MGF file and return the contained spectra. Open it from a raw buffered reader.
+/// Open an MGF file and return the contained spectra. Open it from a raw buffered reader.
 ///
 /// # Errors
 /// It returns an error when:
-/// * The file could not be opened
-/// * Any line in the file could not be read
-/// * When any expected number in the file is not a number
-/// * When there is only one column (separated by space or tab) on a data row
+/// * The file could not be opened.
+/// * Any line in the file could not be read.
+/// * When any expected number in the file is not a number.
+/// * When there is only one column (separated by space or tab) on a data row.
 #[expect(clippy::missing_panics_doc)]
-pub fn open_raw<T: std::io::Read>(reader: T) -> Result<Vec<RawSpectrum>, CustomError> {
+pub fn open_raw<T: std::io::Read>(reader: T) -> Result<Vec<RawSpectrum>, BoxedError<'static>> {
     let reader = BufReader::new(reader);
     let mut current = RawSpectrum::default();
     let mut output = Vec::new();
     for (line_index, line) in reader.lines().enumerate() {
         let line = line.map_err(|err| {
-            CustomError::error(
+            BoxedError::error(
                 "Could not read mgf file",
                 format!("Error while reading line: {err}"),
-                Context::show(format!("Line number {}", line_index + 1)),
+                Context::default().line_index(line_index as u32),
             )
         })?;
-        let base_error = CustomError::error(
+        let base_error = BoxedError::error(
             "Could not read mgf file",
             "..",
-            Context::full_line(line_index, line.clone()),
+            Context::full_line(line_index as u32, line.clone()),
         );
         match line.as_str() {
             "BEGIN IONS" | "" => (),
@@ -88,39 +88,44 @@ pub fn open_raw<T: std::io::Read>(reader: T) -> Result<Vec<RawSpectrum>, CustomE
                         None => {
                             current.mass =
                                 Some(Mass::new::<dalton>(value.parse().map_err(|_| {
-                                    base_error.with_long_description(format!(
-                                        "Not a number {key} for PEPMASS"
-                                    ))
+                                    base_error
+                                        .clone()
+                                        .long_description(format!("Not a number {key} for PEPMASS"))
                                 })?));
                         }
                         Some((mass, intensity)) => {
                             current.mass =
                                 Some(Mass::new::<dalton>(mass.parse().map_err(|_| {
-                                    base_error.with_long_description(format!(
-                                        "Not a number {key} for PEPMASS"
-                                    ))
+                                    base_error
+                                        .clone()
+                                        .long_description(format!("Not a number {key} for PEPMASS"))
                                 })?));
                             current.intensity = Some(intensity.parse().map_err(|_| {
-                                base_error.with_long_description(format!(
-                                    "Not a number {key} for PEPMASS"
-                                ))
+                                base_error
+                                    .clone()
+                                    .long_description(format!("Not a number {key} for PEPMASS"))
                             })?);
                         }
                     },
                     "CHARGE" => {
                         current.charge = Some(parse_charge(value).map_err(|()| {
                             base_error
-                                .with_long_description(format!("Not a number {key} for CHARGE"))
+                                .clone()
+                                .long_description(format!("Not a number {key} for CHARGE"))
                         })?);
                     }
                     "RT" => {
                         current.rt = Some(Time::new::<s>(value.parse().map_err(|_| {
-                            base_error.with_long_description(format!("Not a number {key} for RT"))
+                            base_error
+                                .clone()
+                                .long_description(format!("Not a number {key} for RT"))
                         })?));
                     }
                     "RTINSECONDS" => {
                         current.rt = Some(Time::new::<s>(value.parse().map_err(|_| {
-                            base_error.with_long_description(format!("Not a number {key} for RT"))
+                            base_error
+                                .clone()
+                                .long_description(format!("Not a number {key} for RT"))
                         })?));
                     }
                     "TITLE" => parse_title(value, &mut current),
@@ -128,7 +133,8 @@ pub fn open_raw<T: std::io::Read>(reader: T) -> Result<Vec<RawSpectrum>, CustomE
                     "NUM_SCANS" => {
                         current.num_scans = value.parse().map_err(|_| {
                             base_error
-                                .with_long_description(format!("Not a number {key} for NUM_SCANS"))
+                                .clone()
+                                .long_description(format!("Not a number {key} for NUM_SCANS"))
                         })?;
                     }
                     _ => (),
@@ -145,19 +151,23 @@ pub fn open_raw<T: std::io::Read>(reader: T) -> Result<Vec<RawSpectrum>, CustomE
                     intensity: OrderedFloat(0.0),
                 };
                 if split.len() < 2 {
-                    return Err(base_error.with_long_description("Not enough columns"));
+                    return Err(base_error.clone().long_description("Not enough columns"));
                 }
                 peak.mz = MassOverCharge::new::<mz>(split[0].parse().map_err(|_| {
-                    base_error.with_long_description(format!("Not a number {} for MZ", split[0]))
+                    base_error
+                        .clone()
+                        .long_description(format!("Not a number {} for MZ", split[0]))
                 })?);
                 peak.intensity = split[1].parse().map_err(|_| {
                     base_error
-                        .with_long_description(format!("Not a number {} for INTENSITY", split[1]))
+                        .clone()
+                        .long_description(format!("Not a number {} for INTENSITY", split[1]))
                 })?;
                 if split.len() >= 3 {
                     _ = parse_charge(split[2]).map_err(|()| {
                         base_error
-                            .with_long_description(format!("Not a number {} for CHARGE", split[2]))
+                            .clone()
+                            .long_description(format!("Not a number {} for CHARGE", split[2]))
                     })?;
                 }
                 current.add_peak(peak);
@@ -169,7 +179,7 @@ pub fn open_raw<T: std::io::Read>(reader: T) -> Result<Vec<RawSpectrum>, CustomE
 }
 
 /// # Errors
-/// When the charge could not be properly parsed. For example if it has a negative charge.
+/// When the charge could not be properly parsed. For example, if it has a negative charge.
 fn parse_charge(input: &str) -> Result<Charge, ()> {
     if input.ends_with('+') {
         Ok(Charge::new::<e>(
@@ -184,10 +194,10 @@ fn parse_charge(input: &str) -> Result<Charge, ()> {
 
 #[expect(clippy::missing_panics_doc)]
 fn parse_title(title: &str, spectrum: &mut RawSpectrum) {
-    // basic structure: <name>.<scan>.<scan>.<experiment?>? File:"<name>", NativeID:"(<header>) +"
+    // Basic structure: <name>.<scan>.<scan>.<experiment?>? File:"<name>", NativeID:"(<header>) +"
     let ms_convert_format: Regex =
         Regex::new(r#"(.+)\.(\d+)\.\d+\.\d* File:".*", NativeID:"(.+)""#).unwrap();
-    // other structure: <name>.ScanId;v=<num>;d1=<scan>.<scan>.<experiment?>_INDEX<index>
+    // Other structure: <name>.ScanId;v=<num>;d1=<scan>.<scan>.<experiment?>_INDEX<index>
     let other_format: Regex =
         Regex::new(r"(.+)\.ScanId;v=\d+;d1=(\d+)\.\d+\.\d*_INDEX(\d+)").unwrap();
 

@@ -9,7 +9,6 @@ use std::{
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    error::CustomError,
     identification::{
         BoxedIdentifiedPeptideIter, FastaIdentifier, IdentifiedPeptidoform,
         IdentifiedPeptidoformData, IdentifiedPeptidoformSource, IdentifiedPeptidoformVersion,
@@ -38,7 +37,7 @@ format_family!(
             location.location.clone(),
             custom_database,
             &SloppyParsingParameters::default(),
-        );
+        ).map_err(BoxedError::to_owned);
         score: f64, |location: Location, _| location.parse::<f64>(NUMBER_ERROR);
         local_confidence: Vec<f64>, |location: Location, _| location.array(' ')
             .map(|l| l.parse::<f64>(NUMBER_ERROR))
@@ -49,7 +48,7 @@ format_family!(
         scan: usize, |location: Location, _| location.parse::<usize>(NUMBER_ERROR);
     }
 
-    fn post_process(_source: &CsvLine, mut parsed: Self, _custom_database: Option<&CustomDatabase>) -> Result<Self, CustomError> {
+    fn post_process(_source: &CsvLine, mut parsed: Self, _custom_database: Option<&CustomDatabase>) -> Result<Self, BoxedError<'static>> {
         if let Some(m) = IDENTIFER_REGEX
             .captures(&parsed.title)
         {

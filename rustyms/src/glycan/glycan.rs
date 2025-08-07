@@ -1,11 +1,11 @@
 use std::{fmt::Display, hash::Hash};
 
+use custom_error::*;
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 
 use crate::{
     chemistry::{Chemical, ELEMENT_PARSE_LIST, Element, MolecularFormula},
-    error::{Context, CustomError},
     glycan::lists::*,
     helper_functions::{explain_number_error, str_starts_with},
     molecular_formula,
@@ -71,7 +71,7 @@ impl Hash for MonoSaccharide {
 }
 
 impl ParseJson for MonoSaccharide {
-    fn from_json_value(value: serde_json::Value) -> Result<Self, CustomError> {
+    fn from_json_value(value: serde_json::Value) -> Result<Self, BoxedError<'static>> {
         use_serde(value)
     }
 }
@@ -154,9 +154,9 @@ impl MonoSaccharide {
     /// Parse the given text (will be changed to lowercase) as a glycan composition.
     /// # Errors
     /// When the composition could not be read. Or when any of the glycans occurs outside of the valid range
-    pub fn from_composition(text: &str) -> Result<Vec<(Self, isize)>, CustomError> {
+    pub fn from_composition(text: &str) -> Result<Vec<(Self, isize)>, BoxedError> {
         let basic_error =
-            CustomError::error("Invalid glycan composition", "..", Context::show(text));
+            BoxedError::error("Invalid glycan composition", "..", Context::show(text));
         Self::simplify_composition(
             crate::helper_functions::parse_named_counter(
                 &text.to_ascii_lowercase(),
@@ -164,13 +164,13 @@ impl MonoSaccharide {
                 false,
             )
             .map_err(|e| {
-                basic_error.with_long_description(format!(
+                basic_error.clone().long_description(format!(
                     "This modification cannot be read as a valid glycan: {e}"
                 ))
             })?,
         )
         .ok_or_else(|| {
-            basic_error.with_long_description(format!(
+            basic_error.long_description(format!(
                 "The occurrence of one monosaccharide species is outside of the range {} to {}",
                 isize::MIN,
                 isize::MAX
@@ -183,7 +183,7 @@ impl MonoSaccharide {
     /// * HexNAc(4)Hex(5)Fuc(1)NeuAc(1)
     /// # Errors
     /// When the composition could not be read. Or when any of the glycans occurs outside of the valid range
-    pub fn from_byonic_composition(text: &str) -> Result<Vec<(Self, isize)>, CustomError> {
+    pub fn from_byonic_composition(text: &str) -> Result<Vec<(Self, isize)>, BoxedError> {
         let mut index = 0;
         let mut output = Vec::new();
         while index < text.len() {
@@ -205,14 +205,14 @@ impl MonoSaccharide {
                         .parse::<isize>();
                     output.push((
                         sugar.ok_or_else(|| {
-                            CustomError::error(
+                            BoxedError::error(
                                 "Invalid MSFragger glycan composition",
                                 "The sugar name could not be recognised",
                                 Context::line(None, text, index, name.len()),
                             )
                         })?,
                         number.map_err(|err| {
-                            CustomError::error(
+                            BoxedError::error(
                                 "Invalid MSFragger glycan composition",
                                 format!("Sugar count number is {}", explain_number_error(&err)),
                                 Context::line(
@@ -226,7 +226,7 @@ impl MonoSaccharide {
                     ));
                     index += next_open_bracket + next_close_bracket + 1;
                 } else {
-                    return Err(CustomError::error(
+                    return Err(BoxedError::error(
                         "Invalid MSFragger glycan composition",
                         "No closing bracket found ')'",
                         Context::line(None, text, index + next_open_bracket, 1),
@@ -235,7 +235,7 @@ impl MonoSaccharide {
             } else if text[index..].chars().all(|c| c.is_ascii_whitespace()) {
                 break; // Allow trailing whitespace
             } else {
-                return Err(CustomError::error(
+                return Err(BoxedError::error(
                     "Invalid MSFragger glycan composition",
                     "No opening bracket found but there is text left, the format expected is 'Sugar(Number)'",
                     Context::line(None, text, index, 1),
@@ -244,7 +244,7 @@ impl MonoSaccharide {
         }
 
         Self::simplify_composition(output).ok_or_else(|| {
-            CustomError::error(
+            BoxedError::error(
                 "Invalid MSFragger glycan composition",
                 format!(
                     "The occurrence of one monosaccharide species is outside of the range {} to {}",
@@ -263,8 +263,8 @@ impl MonoSaccharide {
     pub fn from_short_iupac(
         original_line: &str,
         start: usize,
-        line_index: usize,
-    ) -> Result<(Self, usize), CustomError> {
+        line_index: u32,
+    ) -> Result<(Self, usize), BoxedError> {
         let mut index = start;
         let line = original_line.to_ascii_lowercase();
         let bytes = line.as_bytes();
@@ -293,16 +293,15 @@ impl MonoSaccharide {
                     index += 7;
                     index += line[index..].ignore(&["-"]);
                     if !line[index..].starts_with("anhydro") {
-                        return Err(CustomError::error(
+                        return Err(BoxedError::error(
                             "Invalid iupac monosaccharide name",
                             "This internally linked glycan could not be parsed, expected Anhydro as modification",
-                            Context::Line {
-                                line_index: Some(line_index),
-                                line: original_line.to_string(),
-                                offset: start_index,
-                                length: index - start_index + 5,
-                                comment: None,
-                            },
+                            Context::line(
+                                Some(line_index),
+                                original_line,
+                                start_index,
+                                index - start_index + 5,
+                            ),
                         ));
                     }
                     index += 7;
@@ -378,16 +377,10 @@ impl MonoSaccharide {
                 alo
             })
             .ok_or_else(|| {
-                CustomError::error(
+                BoxedError::error(
                     "Invalid iupac monosaccharide name",
                     "This name could not be recognised as a standard iupac glycan name",
-                    Context::Line {
-                        line_index: Some(line_index),
-                        line: original_line.to_string(),
-                        offset: index,
-                        length: 3,
-                        comment: None,
-                    },
+                    Context::line(Some(line_index), original_line, index, 3),
                 )
             })?;
         // Furanose
@@ -441,16 +434,10 @@ impl MonoSaccharide {
                 }) {
                     index += o;
                 } else {
-                    return Err(CustomError::error(
+                    return Err(BoxedError::error(
                         "Invalid iupac monosaccharide name",
                         "No detected double linked glycan substituent was found, while the pattern for location is for a double linked substituent",
-                        Context::Line {
-                            line_index: Some(line_index),
-                            line: original_line.to_string(),
-                            offset: index,
-                            length: 2,
-                            comment: None,
-                        },
+                        Context::line(Some(line_index), original_line, index, 2),
                     ));
                 }
             } else {

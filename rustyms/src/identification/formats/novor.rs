@@ -1,7 +1,8 @@
 use std::{borrow::Cow, marker::PhantomData, ops::Range};
 
+use serde::{Deserialize, Serialize};
+
 use crate::{
-    error::CustomError,
     identification::{
         BoxedIdentifiedPeptideIter, FastaIdentifier, IdentifiedPeptidoform,
         IdentifiedPeptidoformData, IdentifiedPeptidoformSource, IdentifiedPeptidoformVersion,
@@ -14,7 +15,6 @@ use crate::{
     sequence::{Peptidoform, SemiAmbiguous, SloppyParsingParameters},
     system::{Mass, MassOverCharge, Time, isize::Charge},
 };
-use serde::{Deserialize, Serialize};
 
 static NUMBER_ERROR: (&str, &str) = (
     "Invalid Novor line",
@@ -35,7 +35,7 @@ format_family!(
             location.location.clone(),
             custom_database,
             &SloppyParsingParameters::default(),
-        );
+        ).map_err(BoxedError::to_owned);
     }
     optional {
         id: usize, |location: Location, _| location.parse::<usize>(NUMBER_ERROR);

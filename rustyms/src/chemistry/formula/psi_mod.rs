@@ -1,9 +1,11 @@
+use std::{num::NonZeroU16, ops::RangeBounds};
+
+use custom_error::*;
+
 use crate::{
     chemistry::{ELEMENT_PARSE_LIST, MolecularFormula},
-    error::{Context, CustomError},
     helper_functions::{RangeExtension, explain_number_error, str_starts_with},
 };
-use std::{num::NonZeroU16, ops::RangeBounds};
 
 impl MolecularFormula {
     /// PSI-MOD: `(12)C -5 (13)C 5 H 1 N 3 O -1 S 9`
@@ -11,7 +13,7 @@ impl MolecularFormula {
     /// If the formula is not valid according to the above specification, with some help on what is going wrong.
     /// # Panics
     /// It can panic if the string contains not UTF8 symbols.
-    pub fn from_psi_mod(value: &str, range: impl RangeBounds<usize>) -> Result<Self, CustomError> {
+    pub fn from_psi_mod(value: &str, range: impl RangeBounds<usize>) -> Result<Self, BoxedError> {
         let (mut index, end) = range.bounds(value.len());
         let mut isotope = None;
         let mut element = None;
@@ -25,7 +27,7 @@ impl MolecularFormula {
                         .skip(index)
                         .position(|c| *c == b')')
                         .ok_or_else(|| {
-                            CustomError::error(
+                            BoxedError::error(
                                 "Invalid PSI-MOD molecular formula",
                                 "No closing round bracket found",
                                 Context::line(None, value, index, 1),
@@ -35,7 +37,7 @@ impl MolecularFormula {
                         value[index + 1..index + len]
                             .parse::<NonZeroU16>()
                             .map_err(|err| {
-                                CustomError::error(
+                                BoxedError::error(
                                     "Invalid PSI-MOD molecular formula",
                                     format!("The isotope number {}", explain_number_error(&err)),
                                     Context::line(None, value, index + 1, len),
@@ -58,7 +60,7 @@ impl MolecularFormula {
                         |v| {
                             (
                                 v.parse::<i32>().map_err(|err| {
-                                    CustomError::error(
+                                    BoxedError::error(
                                         "Invalid PSI-MOD molecular formula",
                                         format!(
                                             "The isotope number {}",
@@ -73,7 +75,7 @@ impl MolecularFormula {
                     );
                     let num = num?;
                     if num != 0 && !Self::add(&mut result, (element.unwrap(), isotope, num)) {
-                        return Err(CustomError::error(
+                        return Err(BoxedError::error(
                             "Invalid PSI-MOD molecular formula",
                             format!(
                                 "An element without a defined mass ({}) was used",
@@ -90,7 +92,7 @@ impl MolecularFormula {
                 _ => {
                     if let Some(element) = element {
                         if !Self::add(&mut result, (element, None, 1)) {
-                            return Err(CustomError::error(
+                            return Err(BoxedError::error(
                                 "Invalid PSI-MOD molecular formula",
                                 format!("An element without a defined mass ({element}) was used"),
                                 Context::line(None, value, index - 1, 1),
@@ -107,7 +109,7 @@ impl MolecularFormula {
                         }
                     }
                     if !found {
-                        return Err(CustomError::error(
+                        return Err(BoxedError::error(
                             "Invalid PSI-MOD molecular formula",
                             "Not a valid character in formula",
                             Context::line(None, value, index, 1),
@@ -117,7 +119,7 @@ impl MolecularFormula {
             }
         }
         if isotope.is_some() || element.is_some() {
-            Err(CustomError::error(
+            Err(BoxedError::error(
                 "Invalid PSI-MOD molecular formula",
                 "Last element missed a count",
                 Context::line(None, value, index, 1),

@@ -4,7 +4,6 @@ use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    error::CustomError,
     identification::{
         BoxedIdentifiedPeptideIter, FastaIdentifier, IdentifiedPeptidoform,
         IdentifiedPeptidoformData, IdentifiedPeptidoformSource, IdentifiedPeptidoformVersion,
@@ -65,7 +64,7 @@ format_family!(
                     location.location.clone(),
                     custom_database,
                     &PARAMETERS
-                )).transpose();
+                ).map_err(BoxedError::to_owned)).transpose();
         score: Option<f64>, |location: Location, _| location.or_empty().parse::<f64>(NUMBER_ERROR);
         local_confidence: Option<Vec<f64>>, |location: Location, _| location.or_empty()
                 .optional_array(',').map(|array| array.map(|l| l.parse::<f64>(NUMBER_ERROR)).collect::<Result<Vec<_>, _>>())
@@ -79,7 +78,7 @@ format_family!(
         mz: MassOverCharge, |location: Location, _| location.parse::<f64>(NUMBER_ERROR).map(MassOverCharge::new::<crate::system::mz>);
     }
 
-    fn post_process(_source: &CsvLine, mut parsed: Self, _custom_database: Option<&CustomDatabase>) -> Result<Self, CustomError> {
+    fn post_process(_source: &CsvLine, mut parsed: Self, _custom_database: Option<&CustomDatabase>) -> Result<Self, BoxedError<'static>> {
         if parsed.local_confidence.as_ref().map(Vec::len)
             != parsed.peptide.as_ref().map(Peptidoform::len)
         {

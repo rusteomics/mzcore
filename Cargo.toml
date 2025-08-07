@@ -31,10 +31,11 @@ afl = "0.15"
 base64 = "0.22"
 bincode = { version = "2.0", features = ["serde"] }
 clap = { version = "4.5", features = ["derive", "cargo"] }
+custom_error = {git="https://github.com/douweschulte/custom_error", features = ["serde"]}
 directories = "6.0"
 flate2 = "1.0"
 itertools = "0.14"
-mzdata = {version="0.54", default-features = false, features = ["miniz_oxide"]}
+mzdata = {version="0.57", default-features = false, features = ["miniz_oxide"]}
 ndarray = "0.16"
 ordered-float = { version = "5.0", features = ["serde"] }
 paste = "1.0"

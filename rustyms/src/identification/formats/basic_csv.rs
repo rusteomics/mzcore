@@ -8,7 +8,6 @@ use std::{
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    error::CustomError,
     identification::{
         BoxedIdentifiedPeptideIter, FastaIdentifier, IdentifiedPeptidoform,
         IdentifiedPeptidoformData, IdentifiedPeptidoformSource, IdentifiedPeptidoformVersion,
@@ -34,7 +33,7 @@ format_family!(
         sequence: CompoundPeptidoformIon, |location: Location, custom_database: Option<&CustomDatabase>|location.parse_with(|location| CompoundPeptidoformIon::pro_forma(
             location.as_str(),
             custom_database,
-        ));
+        ).map_err(BoxedError::to_owned));
         raw_file: PathBuf, |location: Location, _| Ok(Path::new(&location.get_string()).to_owned());
         z: Charge, |location: Location, _| location.parse::<isize>(NUMBER_ERROR).map(Charge::new::<crate::system::e>);
     }

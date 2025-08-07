@@ -1,11 +1,11 @@
 use std::{collections::BTreeMap, num::NonZeroU16};
 
+use custom_error::*;
 use itertools::Itertools;
 use ordered_float::OrderedFloat;
 
 use crate::{
     chemistry::{Element, MolecularCharge, MolecularFormula},
-    error::{Context, CustomError},
     helper_functions::*,
     ontology::CustomDatabase,
     sequence::{
@@ -36,29 +36,25 @@ impl Peptidoform<Linked> {
     /// # Errors
     /// It gives an error when the peptide is not correctly formatted. (Also see the `CompoundPeptidoformIon` main function for this.)
     /// It additionally gives an error if the peptide specified was chimeric (see [`CompoundPeptidoformIon::singular`] and [`PeptidoformIon::singular`]).
-    pub fn pro_forma(
-        value: &str,
+    pub fn pro_forma<'a>(
+        value: &'a str,
         custom_database: Option<&CustomDatabase>,
-    ) -> Result<Self, CustomError> {
+    ) -> Result<Self, BoxedError<'a>> {
         CompoundPeptidoformIon::pro_forma(value, custom_database)?
             .singular()
             .ok_or_else(|| {
-                CustomError::error(
+                BoxedError::error(
                     "Complex peptide found",
                     "A linear peptide was expected but a chimeric peptide was found.",
-                    Context::Show {
-                        line: value.to_string(),
-                    },
+                    Context::show(value),
                 )
             })
             .and_then(|p| {
                 p.singular().ok_or_else(|| {
-                    CustomError::error(
+                    BoxedError::error(
                         "Complex peptide found",
                         "A linear peptide was expected but a cross linked peptidoform was found.",
-                        Context::Show {
-                            line: value.to_string(),
-                        },
+                        Context::show(value),
                     )
                 })
             })
@@ -70,19 +66,17 @@ impl PeptidoformIon {
     ///
     /// # Errors
     /// It fails when the string is not a valid ProForma string. Or when the string has multiple peptidoforms.
-    pub fn pro_forma(
-        value: &str,
+    pub fn pro_forma<'a>(
+        value: &'a str,
         custom_database: Option<&CustomDatabase>,
-    ) -> Result<Self, CustomError> {
+    ) -> Result<Self, BoxedError<'a>> {
         CompoundPeptidoformIon::pro_forma(value, custom_database)?
             .singular()
             .ok_or_else(|| {
-                CustomError::error(
+                BoxedError::error(
                     "Complex peptide found",
                     "A linear peptide was expected but a chimeric peptide was found.",
-                    Context::Show {
-                        line: value.to_string(),
-                    },
+                    Context::show(value),
                 )
             })
     }
@@ -93,10 +87,10 @@ impl CompoundPeptidoformIon {
     ///
     /// # Errors
     /// It fails when the string is not a valid ProForma string.
-    pub fn pro_forma(
-        value: &str,
+    pub fn pro_forma<'a>(
+        value: &'a str,
         custom_database: Option<&CustomDatabase>,
-    ) -> Result<Self, CustomError> {
+    ) -> Result<Self, BoxedError<'a>> {
         let mut peptidoforms = Vec::new();
         // Global modification(s)
         let (mut start, global_modifications) = global_modifications(value, 0, custom_database)?;
@@ -114,7 +108,7 @@ impl CompoundPeptidoformIon {
         }
 
         if peptidoforms.is_empty() {
-            Err(CustomError::error(
+            Err(BoxedError::error(
                 "No peptide found",
                 "The peptide definition is empty",
                 Context::full_line(0, value),
@@ -126,12 +120,12 @@ impl CompoundPeptidoformIon {
 
     /// # Errors
     /// It returns an error if the line is not a supported ProForma line.
-    fn parse_peptidoform(
-        line: &str,
+    fn parse_peptidoform<'a>(
+        line: &'a str,
         mut index: usize,
         global_modifications: &[GlobalModification],
         custom_database: Option<&CustomDatabase>,
-    ) -> Result<(PeptidoformIon, usize), CustomError> {
+    ) -> Result<(PeptidoformIon, usize), BoxedError<'a>> {
         let mut peptides = Vec::new();
         let mut ending = End::CrossLink;
         let mut cross_link_lookup = Vec::new();
@@ -146,13 +140,13 @@ impl CompoundPeptidoformIon {
                 .peptide
                 .apply_global_modifications(global_modifications)
             {
-                return Err(CustomError::error(
+                return Err(BoxedError::error(
                     "Invalid global isotope modification",
                     "There is an invalid global isotope modification",
                     Context::full_line(0, line),
                 ));
             } else if result.peptide.is_empty() {
-                return Err(CustomError::error(
+                return Err(BoxedError::error(
                     "No peptide found",
                     "The peptide definition is empty",
                     Context::full_line(0, line),
@@ -170,7 +164,7 @@ impl CompoundPeptidoformIon {
         }
 
         if peptides.is_empty() {
-            Err(CustomError::error(
+            Err(BoxedError::error(
                 "No peptide found",
                 "The peptidoform definition is empty",
                 Context::full_line(0, line),
@@ -189,14 +183,14 @@ impl CompoundPeptidoformIon {
     /// # Errors
     /// It returns an error if the line is not a supported ProForma line.
     #[expect(clippy::missing_panics_doc)] // Can not panic
-    fn parse_linear_peptide(
-        line: &str,
+    fn parse_linear_peptide<'a>(
+        line: &'a str,
         mut index: usize,
         custom_database: Option<&CustomDatabase>,
         cross_link_lookup: &mut CrossLinkLookup,
-    ) -> Result<LinearPeptideResult, CustomError> {
+    ) -> Result<LinearPeptideResult, BoxedError<'a>> {
         if line.trim().is_empty() {
-            return Err(CustomError::error(
+            return Err(BoxedError::error(
                 "Peptide sequence is empty",
                 "A peptide sequence cannot be empty",
                 Context::line(None, line, index, 1),
@@ -224,14 +218,12 @@ impl CompoundPeptidoformIon {
             global_unknown_position_mods(chars, index, line, custom_database, &mut ambiguous_lookup)
         {
             let (buf, mods) = result.map_err(|errors| {
-                CustomError::error(
+                BoxedError::error(
                     "Some unknown position modifications are invalid",
                     "See the underlying errors for more details.",
-                    Context::Show {
-                        line: line.to_string(),
-                    },
+                    Context::show(line),
                 )
-                .with_underlying_errors(errors)
+                .add_underlying_errors(errors)
             })?;
             index = buf;
 
@@ -244,7 +236,7 @@ impl CompoundPeptidoformIon {
 
         // N term modification
         if chars.get(index) == Some(&b'[') {
-            let end_index = end_of_enclosure(line, index+1, b'[', b']').and_then(|i| (chars.get(i+1) == Some(&b'-')).then_some(i+1)).ok_or_else(|| CustomError::error(
+            let end_index = end_of_enclosure(line, index+1, b'[', b']').and_then(|i| (chars.get(i+1) == Some(&b'-')).then_some(i+1)).ok_or_else(|| BoxedError::error(
                     "Invalid N terminal modification",
                     "No valid closing delimiter, an N terminal modification should be closed by ']-'",
                     Context::line(None, line, index, 1),
@@ -283,21 +275,21 @@ impl CompoundPeptidoformIon {
             match (c_term, chars[index]) {
                 (false, b'(') if chars.get(index + 1) == Some(&b'?') => {
                     if braces_start.is_some() {
-                        return Err(CustomError::error(
+                        return Err(BoxedError::error(
                             "Invalid ambiguous amino acid set",
                             "Ambiguous amino acid sets cannot be nested within ranged ambiguous modifications",
                             Context::line(None, line, index, 1),
                         ));
                     }
                     if ambiguous_aa.is_some() {
-                        return Err(CustomError::error(
+                        return Err(BoxedError::error(
                             "Invalid ambiguous amino acid set",
                             "Ambiguous amino acid sets cannot be nested within ambiguous amino acid sets",
                             Context::line(None, line, index, 1),
                         ));
                     }
                     ambiguous_aa = Some(ambiguous_aa_counter);
-                    ambiguous_aa_counter = ambiguous_aa_counter.checked_add(1).ok_or_else(|| CustomError::error(
+                    ambiguous_aa_counter = ambiguous_aa_counter.checked_add(1).ok_or_else(|| BoxedError::error(
                         "Invalid ambiguous amino acid set",
                         format!("There are too many ambiguous amino acid sets, there can only be {} in one linear peptide", std::num::NonZeroU32::MAX),
                         Context::line(None, line, index, 1),
@@ -310,14 +302,14 @@ impl CompoundPeptidoformIon {
                 }
                 (false, b'(') => {
                     if braces_start.is_some() {
-                        return Err(CustomError::error(
+                        return Err(BoxedError::error(
                             "Invalid ranged ambiguous modification",
                             "Ranged ambiguous modifications cannot be nested within ranged ambiguous modifications",
                             Context::line(None, line, index, 1),
                         ));
                     }
                     if ambiguous_aa.is_some() {
-                        return Err(CustomError::error(
+                        return Err(BoxedError::error(
                             "Invalid ranged ambiguous modification",
                             "Ranged ambiguous modifications cannot be nested within ambiguous amino acid sets",
                             Context::line(None, line, index, 1),
@@ -333,7 +325,7 @@ impl CompoundPeptidoformIon {
                     while chars.get(index) == Some(&b'[') {
                         let end_index =
                             end_of_enclosure(line, index + 1, b'[', b']').ok_or_else(|| {
-                                CustomError::error(
+                                BoxedError::error(
                                     "Invalid ranged ambiguous modification",
                                     "No valid closing delimiter",
                                     Context::line(None, line, index, 1),
@@ -342,7 +334,7 @@ impl CompoundPeptidoformIon {
                         let modification = SimpleModificationInner::parse_pro_forma(
                             line, index + 1..end_index,
                             &mut ambiguous_lookup, cross_link_lookup, custom_database,
-                        )?.0.defined().ok_or_else(|| CustomError::error(
+                        )?.0.defined().ok_or_else(|| BoxedError::error(
                             "Invalid ranged ambiguous modification",
                             "A ranged ambiguous modification has to be fully defined, so no ambiguous modification is allowed",
                             Context::line(None, line, index, 1),
@@ -374,7 +366,7 @@ impl CompoundPeptidoformIon {
                 (is_c_term, b'[') => {
                     let end_index =
                         end_of_enclosure(line, index + 1, b'[', b']').ok_or_else(|| {
-                            CustomError::error(
+                            BoxedError::error(
                                 "Invalid modification",
                                 "No valid closing delimiter",
                                 Context::line(None, line, index, 1),
@@ -449,7 +441,7 @@ impl CompoundPeptidoformIon {
                             }
                         }
                     } else {
-                        return Err(CustomError::error(
+                        return Err(BoxedError::error(
                             "Invalid modification",
                             "A modification cannot be placed before any amino acid, did you want to use an N terminal modification ('[mod]-AA..')? or did you want a modification of unknown position ('[mod]?AA..')?",
                             Context::line(None, line, start_index, index - start_index - 1),
@@ -470,7 +462,7 @@ impl CompoundPeptidoformIon {
                     peptide.sequence_mut().push(SequenceElement::new(
                         CheckedAminoAcid::<SemiAmbiguous>::try_from(ch)
                             .map_err(|()| {
-                                CustomError::error(
+                                BoxedError::error(
                                     "Invalid amino acid",
                                     "This character is not a valid amino acid",
                                     Context::line(None, line, index, 1),
@@ -482,7 +474,7 @@ impl CompoundPeptidoformIon {
                     index += 1;
                 }
                 (true, _) => {
-                    return Err(CustomError::error(
+                    return Err(BoxedError::error(
                         "Parsing error",
                         "A singular hyphen cannot exist ('-'), if this is part of a c-terminus follow the format 'AA-[modification]'",
                         Context::line(None, line, index, 1),
@@ -491,28 +483,28 @@ impl CompoundPeptidoformIon {
             }
         }
         if c_term {
-            return Err(CustomError::error(
+            return Err(BoxedError::error(
                 "Invalid peptide",
                 "A single hyphen cannot end the definition, if a C terminal modification is intended use 'SEQ-[MOD]'",
                 Context::line(None, line, line.len().saturating_sub(2), 1),
             ));
         }
         if let Some(pos) = braces_start {
-            return Err(CustomError::error(
+            return Err(BoxedError::error(
                 "Invalid peptide",
                 format!("Unclosed brace at amino acid position {pos}"),
                 Context::full_line(0, line),
             ));
         }
         if ambiguous_aa.is_some() {
-            return Err(CustomError::error(
+            return Err(BoxedError::error(
                 "Invalid peptide",
                 "Unclosed ambiguous amino acid group",
                 Context::full_line(0, line),
             ));
         }
         if peptide.is_empty() {
-            return Err(CustomError::error(
+            return Err(BoxedError::error(
                 "No amino acids found",
                 "The peptide definition is empty",
                 Context::full_line(0, line),
@@ -530,13 +522,13 @@ impl CompoundPeptidoformIon {
                 .collect_vec();
             let preferred = ambiguous.iter().find_map(|p| p.1.then_some(p.0));
             if !peptide.add_ambiguous_modification(ambiguous_lookup[id].modification.clone().ok_or_else(||
-                CustomError::error(
+                BoxedError::error(
                     "Invalid ambiguous modification",
                     format!("Ambiguous modification {} did not have a definition for the actual modification", ambiguous_lookup[id].name),
                     Context::full_line(0, line),
                 )
                 )?, Some(ambiguous_lookup[id].name.clone()), &positions, preferred, None,  true) {
-                return Err(CustomError::error(
+                return Err(BoxedError::error(
                     "Modification of unknown position cannot be placed", 
                     format!("There is no position where this ambiguous modification {} can be placed based on the placement rules in the database.", ambiguous_lookup[id].name),
                     Context::full_line(0, line),
@@ -564,17 +556,17 @@ impl CompoundPeptidoformIon {
 /// Parse global modifications
 /// # Errors
 /// If the global modifications are not defined to the specification
-pub(super) fn global_modifications(
-    line: &str,
+pub(super) fn global_modifications<'a>(
+    line: &'a str,
     mut index: usize,
     custom_database: Option<&CustomDatabase>,
-) -> Result<(usize, Vec<GlobalModification>), CustomError> {
+) -> Result<(usize, Vec<GlobalModification>), BoxedError<'a>> {
     let chars = line.as_bytes();
     let mut global_modifications = Vec::new();
     while index < chars.len() && chars[index] == b'<' {
         let end_index =
             end_of_enclosure_with_brackets(line, index + 1, b'<', b'>').ok_or_else(|| {
-                CustomError::error(
+                BoxedError::error(
                     "Global modification not closed",
                     "A global modification should be closed with a closing angle bracket '>'",
                     Context::line(None, line, index, 1),
@@ -583,14 +575,14 @@ pub(super) fn global_modifications(
         if let Some(offset) = next_char(chars, index, b'@') {
             let at_index = index + 1 + offset;
             if at_index > end_index {
-                return Err(CustomError::error(
+                return Err(BoxedError::error(
                     "Invalid global modification",
                     "A global modification should have an at '@' sign inside the enclosing angle brackets '<>'",
                     Context::line(None, line, index + 1, at_index - index - 2),
                 ));
             }
             if chars[index + 1] != b'[' || chars[at_index - 2] != b']' {
-                return Err(CustomError::error(
+                return Err(BoxedError::error(
                     "Invalid global modification",
                     "A global modification should always be enclosed in square brackets '[]'",
                     Context::line(None, line, index + 1, at_index - index - 2),
@@ -605,7 +597,7 @@ pub(super) fn global_modifications(
             )
             .map(|m| {
                 m.0.defined().ok_or_else(|| {
-                    CustomError::error(
+                    BoxedError::error(
                         "Invalid global modification",
                         "A global modification cannot be ambiguous or a cross-linker",
                         Context::line(None, line, index + 2, at_index - index - 4),
@@ -628,7 +620,7 @@ pub(super) fn global_modifications(
                 .collect::<String>();
             let el = &line[index + 1 + num.len()..end_index];
             let el: Element = el.try_into().map_err(|()| {
-                CustomError::error(
+                BoxedError::error(
                     "Invalid global modification",
                     "Could not determine the element",
                     Context::line(
@@ -640,14 +632,14 @@ pub(super) fn global_modifications(
                 )
             })?;
             let num = Some(num.parse::<NonZeroU16>().map_err(|err| {
-                CustomError::error(
+                BoxedError::error(
                     "Invalid global modification",
                     format!("The isotope number is {}", explain_number_error(&err)),
                     Context::line(None, line, index + 1, end_index - index),
                 )
             })?);
             if !el.is_valid(num) {
-                return Err(CustomError::error(
+                return Err(BoxedError::error(
                     "Invalid global modification",
                     format!(
                         "This element {el} does not have a defined weight {}",
@@ -670,14 +662,14 @@ pub(super) fn global_modifications(
 pub(super) fn parse_placement_rules(
     line: &str,
     range: std::ops::Range<usize>,
-) -> Result<Vec<PlacementRule>, CustomError> {
+) -> Result<Vec<PlacementRule>, BoxedError> {
     let mut result = Vec::new();
     for aa in line[range.clone()].split(',') {
         if aa.to_ascii_lowercase().starts_with("n-term") {
             if let Some((_, aa)) = aa.split_once(':') {
                 result.push(PlacementRule::AminoAcid(
                     vec![TryInto::<AminoAcid>::try_into(aa).map_err(|()| {
-                        CustomError::error(
+                        BoxedError::error(
                             "Invalid global modification",
                             "The location could not be read as an amino acid",
                             Context::line(None, line, range.start, range.len()),
@@ -692,7 +684,7 @@ pub(super) fn parse_placement_rules(
             if let Some((_, aa)) = aa.split_once(':') {
                 result.push(PlacementRule::AminoAcid(
                     vec![TryInto::<AminoAcid>::try_into(aa).map_err(|()| {
-                        CustomError::error(
+                        BoxedError::error(
                             "Invalid global modification",
                             "The location could not be read as an amino acid",
                             Context::line(None, line, range.start, range.len()),
@@ -706,7 +698,7 @@ pub(super) fn parse_placement_rules(
         } else {
             result.push(PlacementRule::AminoAcid(
                 vec![TryInto::<AminoAcid>::try_into(aa).map_err(|()| {
-                    CustomError::error(
+                    BoxedError::error(
                         "Invalid global modification",
                         "The location could not be read as an amino acid",
                         Context::line(None, line, range.start, range.len()),
@@ -723,26 +715,24 @@ pub(super) fn parse_placement_rules(
 /// The returned happy path contains the mods and the index from where to continue parsing.
 /// # Errors
 /// Give all errors when the text cannot be read as mods of unknown position.
-/// # Panics
-/// Breaks if the text is not valid UTF-8
-pub(super) fn global_unknown_position_mods(
-    chars: &[u8],
+pub(super) fn global_unknown_position_mods<'a>(
+    bytes: &'a [u8],
     start: usize,
-    line: &str,
+    line: &'a str,
     custom_database: Option<&CustomDatabase>,
     ambiguous_lookup: &mut AmbiguousLookup,
-) -> Option<Result<(usize, Vec<usize>), Vec<CustomError>>> {
+) -> Option<Result<(usize, Vec<usize>), Vec<BoxedError<'a>>>> {
     let mut index = start;
     let mut modifications = Vec::new();
     let mut errs = Vec::new();
     let mut cross_link_lookup = Vec::new();
 
     // Parse until no new modifications are found
-    while chars.get(index) == Some(&b'[') {
+    while bytes.get(index) == Some(&b'[') {
         let start_index = index;
-        index = next_char(chars, index + 1, b']')? + 1;
+        index = next_char(bytes, index + 1, b']')? + 1;
         let id = match SimpleModificationInner::parse_pro_forma(
-            std::str::from_utf8(chars).unwrap(),
+            line,
             start_index + 1..index - 1,
             ambiguous_lookup,
             &mut cross_link_lookup,
@@ -759,10 +749,10 @@ pub(super) fn global_unknown_position_mods(
                 id
             }
             Ok((ReturnModification::CrossLinkReferenced(_), _)) => {
-                errs.push(CustomError::error(
+                errs.push(BoxedError::error(
                     "Invalid unknown position modification",
                     "A modification of unknown position cannot be a cross-link",
-                    Context::line_range(None, line, start_index + 1..index),
+                    Context::line_range(None, line, (start_index + 1)..index),
                 ));
                 continue;
             }
@@ -771,23 +761,23 @@ pub(super) fn global_unknown_position_mods(
                 continue;
             }
         };
-        let number = if chars.get(index) == Some(&b'^') {
-            if let Some((len, num)) = next_num(chars, index + 1, false) {
+        let number = if bytes.get(index) == Some(&b'^') {
+            if let Some((len, num)) = next_num(bytes, index + 1, false) {
                 index += len + 1;
                 if num < 0 {
                     errs.push(
-                        CustomError::error("Invalid unknown position modification", "A modification of unknown position with multiple copies cannot have more a negative number of copies", Context::line(None, std::str::from_utf8(chars).unwrap(), index, 1)));
+                        BoxedError::error("Invalid unknown position modification", "A modification of unknown position with multiple copies cannot have more a negative number of copies", Context::line(None, std::str::from_utf8(bytes).unwrap(), index, 1)));
                     0
                 } else if num > i16::MAX as isize {
                     errs.push(
-                        CustomError::error("Invalid unknown position modification", format!("A modification of unknown position with multiple copies cannot have more then {} copies", i16::MAX), Context::line(None, std::str::from_utf8(chars).unwrap(), index, 1)));
+                        BoxedError::error("Invalid unknown position modification", format!("A modification of unknown position with multiple copies cannot have more then {} copies", i16::MAX), Context::line(None, std::str::from_utf8(bytes).unwrap(), index, 1)));
                     0
                 } else {
                     num as usize
                 }
             } else {
                 errs.push(
-                    CustomError::error("Invalid unknown position modification", "A modification of unknown position with multiple copies needs the copy number after the caret ('^') symbol", Context::line(None, std::str::from_utf8(chars).unwrap(), index, 1)));
+                    BoxedError::error("Invalid unknown position modification", "A modification of unknown position with multiple copies needs the copy number after the caret ('^') symbol", Context::line(None, std::str::from_utf8(bytes).unwrap(), index, 1)));
                 0
             }
         } else {
@@ -805,7 +795,7 @@ pub(super) fn global_unknown_position_mods(
             modifications.push(id);
         }
     }
-    if chars.get(index) == Some(&b'?') {
+    if bytes.get(index) == Some(&b'?') {
         Some(if errs.is_empty() {
             Ok((index + 1, modifications))
         } else {
@@ -820,16 +810,16 @@ pub(super) fn global_unknown_position_mods(
 /// Parse labile modifications `{mod}{mod2}`. These are assumed to fall off from the peptide in the MS.
 /// # Errors
 /// If the mods are not followed by a closing brace. Or if the mods are ambiguous.
-fn labile_modifications(
-    line: &str,
+fn labile_modifications<'a>(
+    line: &'a str,
     mut index: usize,
     custom_database: Option<&CustomDatabase>,
-) -> Result<(usize, Vec<SimpleModification>), CustomError> {
+) -> Result<(usize, Vec<SimpleModification>), BoxedError<'a>> {
     let chars = line.as_bytes();
     let mut labile = Vec::new();
     while chars.get(index) == Some(&b'{') {
         let end_index = end_of_enclosure(line, index + 1, b'{', b'}').ok_or_else(|| {
-            CustomError::error(
+            BoxedError::error(
                 "Invalid labile modification",
                 "No valid closing delimiter, a labile modification should be closed by '}'",
                 Context::line(None, line, index, 1),
@@ -846,7 +836,7 @@ fn labile_modifications(
             )
             .and_then(|m| {
                 m.0.defined().ok_or_else(|| {
-                    CustomError::error(
+                    BoxedError::error(
                         "Invalid labile modification",
                         "A labile modification cannot be ambiguous or a cross-linker",
                         Context::line(None, line, index + 1, end_index - 1 - index),
@@ -868,10 +858,10 @@ fn labile_modifications(
 pub(super) fn parse_charge_state(
     line: &str,
     index: usize,
-) -> Result<(usize, MolecularCharge), CustomError> {
+) -> Result<(usize, MolecularCharge), BoxedError> {
     let chars = line.as_bytes();
     let (charge_len, total_charge) = next_num(chars, index + 1, false).ok_or_else(|| {
-        CustomError::error(
+        BoxedError::error(
             "Invalid peptide charge state",
             "There should be a number dictating the total charge of the peptide",
             Context::line(None, line, index + 1, 1),
@@ -880,7 +870,7 @@ pub(super) fn parse_charge_state(
     if chars.get(index + 1 + charge_len) == Some(&b'[') {
         let end_index =
             end_of_enclosure(line, index + 2 + charge_len, b'[', b']').ok_or_else(|| {
-                CustomError::error(
+                BoxedError::error(
                     "Invalid adduct ion",
                     "No valid closing delimiter",
                     Context::line(None, line, index + 2 + charge_len, 1),
@@ -893,7 +883,7 @@ pub(super) fn parse_charge_state(
         for set in chars[index + 2 + charge_len..end_index].split(|c| *c == b',') {
             // num
             let (count_len, count) = next_num(chars, offset, true).ok_or_else(|| {
-                CustomError::error(
+                BoxedError::error(
                     "Invalid adduct ion",
                     "Invalid adduct ion count",
                     Context::line(None, line, offset, 1),
@@ -908,7 +898,7 @@ pub(super) fn parse_charge_state(
                 line[offset + set.len() - charge_len..offset + set.len()]
                     .parse::<i32>()
                     .map_err(|err| {
-                        CustomError::error(
+                        BoxedError::error(
                             "Invalid adduct ion",
                             format!("The adduct ion number {err}"),
                             Context::line(None, line, offset + set.len() - charge_len, charge_len),
@@ -922,7 +912,7 @@ pub(super) fn parse_charge_state(
                 Some(b'+') => (charge_len + 1, charge),
                 Some(b'-') => (charge_len + 1, -charge),
                 _ => {
-                    return Err(CustomError::error(
+                    return Err(BoxedError::error(
                         "Invalid adduct ion",
                         "The adduct ion number should be preceded by a sign",
                         Context::line(None, line, offset + set.len() - charge_len - 1, 1),
@@ -932,7 +922,7 @@ pub(super) fn parse_charge_state(
 
             // Check for empty formula
             if count_len + charge_len == set.len() {
-                return Err(CustomError::error(
+                return Err(BoxedError::error(
                     "Invalid adduct ion",
                     "The adduct ion should have a formula defined",
                     Context::line(None, line, offset, set.len()),
@@ -964,14 +954,14 @@ pub(super) fn parse_charge_state(
             offset += set.len() + 1;
             found_charge = found_charge
                 .checked_add(count.checked_mul(charge as isize).ok_or_else(|| {
-                    CustomError::error(
+                    BoxedError::error(
                         "Invalid peptide charge state",
                         "The peptide charge state is too big to store inside an isize",
                         Context::line(None, line, index, offset),
                     )
                 })?)
                 .ok_or_else(|| {
-                    CustomError::error(
+                    BoxedError::error(
                         "Invalid peptide charge state",
                         "The peptide charge state is too big to store inside an isize",
                         Context::line(None, line, index, offset),
@@ -981,7 +971,7 @@ pub(super) fn parse_charge_state(
         if total_charge == found_charge {
             Ok((end_index + 1, MolecularCharge::new(&charge_carriers)))
         } else {
-            Err(CustomError::error(
+            Err(BoxedError::error(
                 "Invalid peptide charge state",
                 "The peptide charge state number has to be equal to the sum of all separate adduct ions",
                 Context::line(None, line, index, offset),

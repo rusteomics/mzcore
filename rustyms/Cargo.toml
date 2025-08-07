@@ -7,7 +7,7 @@ publish = true
 rust-version.workspace = true
 version.workspace = true
 description = "A library to handle proteomic mass spectrometry data and match peptides to spectra."
-categories = ["science::bioinformatics::proteomics"]
+categories = ["science::bioinformatics::proteomics", "science::bioinformatics::sequence-analysis"]
 keywords = ["spectra", "mass-spectrometry", "bio", "fragmentation", "proforma"]
 repository = "https://github.com/snijderlab/rustyms"
 readme = "README.md"
@@ -15,6 +15,7 @@ include = ["src/**/*", "images/**/*", "README.md", "build.rs", "benches/**/*"]
 
 [dependencies]
 bincode = { workspace = true }
+custom_error = { workspace = true }
 flate2 = { workspace = true }
 itertools = { workspace = true }
 mzdata = { workspace = true, optional = true }

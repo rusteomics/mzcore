@@ -1,8 +1,10 @@
 use std::{borrow::Cow, marker::PhantomData, ops::Range};
 
+use serde::{Deserialize, Serialize};
+use thin_vec::ThinVec;
+
 use crate::{
     chemistry::MolecularFormula,
-    error::CustomError,
     fragment::NeutralLoss,
     helper_functions::explain_number_error,
     identification::{
@@ -20,8 +22,6 @@ use crate::{
     },
     system::{Mass, MassOverCharge, OrderedTime, Time, isize::Charge},
 };
-use serde::{Deserialize, Serialize};
-use thin_vec::ThinVec;
 
 static NUMBER_ERROR: (&str, &str) = (
     "Invalid PLGS line",
@@ -63,16 +63,16 @@ format_family!(
         peptide_match_type: Box<str>, |location: Location, _| Ok(location.get_boxed_str());
         peptide_modifications: ThinVec<(SimpleModification, AminoAcid, Option<usize>)>, |location: Location, custom_database: Option<&CustomDatabase>|
             location.ignore("None").array(';').map(|l| {
-                let plus = l.as_str().find('+').ok_or_else(|| CustomError::error("Invalid PLGS modification", "A PLGS modification should be in the format 'modification+AA(pos)' and the plus '+' is missing.", l.context()))?;
-                let modification = Modification::sloppy_modification(l.full_line(), l.location.start..l.location.start+plus, None, custom_database)?;
-                let aa = l.as_str()[plus+1..plus+2].parse::<AminoAcid>().map_err(|()| CustomError::error("Invalid PLGS modification", "A PLGS modification should be in the format 'modification+AA(pos)' and the amino acid is not valid", l.context()))?;
+                let plus = l.as_str().find('+').ok_or_else(|| BoxedError::error("Invalid PLGS modification", "A PLGS modification should be in the format 'modification+AA(pos)' and the plus '+' is missing.", l.context().to_owned()))?;
+                let modification = Modification::sloppy_modification(l.full_line(), l.location.start..l.location.start+plus, None, custom_database).map_err(BoxedError::to_owned)?;
+                let aa = l.as_str()[plus+1..plus+2].parse::<AminoAcid>().map_err(|()| BoxedError::error("Invalid PLGS modification", "A PLGS modification should be in the format 'modification+AA(pos)' and the amino acid is not valid", l.context().to_owned()))?;
                 let num = &l.as_str()[plus+3..l.len()-1];
                 let index = if num == "*" {None} else {
-                    Some(num.parse::<usize>().map_err(|err| CustomError::error("Invalid PLGS modification", format!("A PLGS modification should be in the format 'modification+AA(pos)' and the pos is {}", explain_number_error(&err)), l.context()))? - 1)
+                    Some(num.parse::<usize>().map_err(|err| BoxedError::error("Invalid PLGS modification", format!("A PLGS modification should be in the format 'modification+AA(pos)' and the pos is {}", explain_number_error(&err)), l.context().to_owned()))? - 1)
                 };
                 Ok((modification, aa, index))
             }).collect::<Result<ThinVec<_>,_>>();
-        peptide: Peptidoform<SimpleLinear>, |location: Location, custom_database: Option<&CustomDatabase>| Peptidoform::pro_forma(location.as_str(), custom_database).map(|p|p.into_simple_linear().unwrap());
+        peptide: Peptidoform<SimpleLinear>, |location: Location, custom_database: Option<&CustomDatabase>| Peptidoform::pro_forma(location.as_str(), custom_database).map(|p|p.into_simple_linear().unwrap()).map_err(BoxedError::to_owned);
         peptide_start: u16, |location: Location, _| location.parse(NUMBER_ERROR);
         peptide_pi: f32, |location: Location, _| location.parse(NUMBER_ERROR);
         peptide_component_id: u32, |location: Location, _| location.parse(NUMBER_ERROR);
@@ -110,7 +110,7 @@ format_family!(
         fragment_mass: Mass, |location: Location, _| location.or_empty().parse(NUMBER_ERROR).map(|r| r.map(Mass::new::<crate::system::dalton>));
         fragment_type: Box<str>, |location: Location, _| Ok(location.get_boxed_str());
         fragment_index: u32, |location: Location, _| location.or_empty().parse::<u32>(NUMBER_ERROR);
-        fragment_neutral_loss: NeutralLoss, |location: Location, _| location.or_empty().ignore("None").map(|l| MolecularFormula::from_pro_forma(l.full_line(), l.location.clone(), false, false, false, true).map(|f| NeutralLoss::Loss(1, f))).transpose();
+        fragment_neutral_loss: NeutralLoss, |location: Location, _| location.or_empty().ignore("None").map(|l| MolecularFormula::from_pro_forma(l.full_line(), l.location.clone(), false, false, false, true).map(|f| NeutralLoss::Loss(1, f)).map_err(BoxedError::to_owned)).transpose();
         fragment_description: Box<str>, |location: Location, _| Ok(location.get_boxed_str());
         fragment_sequence: Box<str>, |location: Location, _| Ok(location.get_boxed_str());
         fragment_site: Box<str>, |location: Location, _| Ok(location.get_boxed_str());
@@ -130,16 +130,16 @@ format_family!(
         precursor_product_delta_rt: Time, |location: Location, _| location.or_empty().parse(NUMBER_ERROR).map(|r| r.map(Time::new::<crate::system::time::s>));
     }
 
-    fn post_process(_source: &CsvLine, mut parsed: Self, _custom_database: Option<&CustomDatabase>) -> Result<Self, CustomError> {
+    fn post_process(_source: &CsvLine, mut parsed: Self, _custom_database: Option<&CustomDatabase>) -> Result<Self, BoxedError<'static>> {
         for (m, aa, index) in &parsed.peptide_modifications {
             if let Some(index) = index {
                 parsed.peptide.add_simple_modification(SequencePosition::Index(*index), m.clone());
             } else if !parsed.peptide.add_unknown_position_modification(m.clone(), .., &MUPSettings{position: Some(vec![PlacementRule::AminoAcid(vec![*aa], Position::Anywhere)]), .. Default::default()})
             {
-                return Err(CustomError::error(
-                    "Modification of unknown position cannot be placed",
-                    "There is no position where this ambiguous modification can be placed based on the placement rules in the database.",
-                    crate::error::Context::show(m),
+                return Err(BoxedError::error(
+                        "Modification of unknown position cannot be placed",
+                        "There is no position where this ambiguous modification can be placed based on the placement rules in the database.",
+                        Context::show(m.to_string()),
                     ));
             }
         }

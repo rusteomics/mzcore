@@ -1,9 +1,11 @@
+use std::{num::NonZeroU16, ops::RangeBounds};
+
+use custom_error::*;
+
 use crate::{
     chemistry::{ELEMENT_PARSE_LIST, Element, MolecularFormula},
-    error::{Context, CustomError},
     helper_functions::{self, RangeExtension, explain_number_error},
 };
-use std::{num::NonZeroU16, ops::RangeBounds};
 
 impl MolecularFormula {
     /// XLMOD: `C7 D10 H2 N4`
@@ -12,7 +14,7 @@ impl MolecularFormula {
     /// If the formula is not valid according to the above specification, with some help on what is going wrong.
     /// # Panics
     /// It can panic if the string contains not UTF8 symbols.
-    pub fn from_xlmod(value: &str, range: impl RangeBounds<usize>) -> Result<Self, CustomError> {
+    pub fn from_xlmod(value: &str, range: impl RangeBounds<usize>) -> Result<Self, BoxedError> {
         let (start, end) = range.bounds(value.len());
         let mut formula = Self::default();
         for (offset, block) in helper_functions::split_ascii_whitespace(&value[start..end]) {
@@ -24,7 +26,7 @@ impl MolecularFormula {
                 .count();
             let number = block.chars().rev().take_while(char::is_ascii_digit).count();
             if number + isotope_len + usize::from(negative) >= block.len() {
-                return Err(CustomError::error(
+                return Err(BoxedError::error(
                     "Invalid Xlmod molecular formula",
                     "No element is defined",
                     Context::line(None, value, offset, block.len()),
@@ -36,7 +38,7 @@ impl MolecularFormula {
                 if isotope_len == 0 {
                     (Some(NonZeroU16::new(2).unwrap()), Element::H)
                 } else {
-                    return Err(CustomError::error(
+                    return Err(BoxedError::error(
                         "Invalid Xlmod molecular formula",
                         "A deuterium cannot have a defined isotope as deuterium is by definition always isotope 2 of hydrogen",
                         Context::line(None, value, offset + usize::from(negative), isotope_len),
@@ -53,7 +55,7 @@ impl MolecularFormula {
                 if let Some(element) = found {
                     (None, element)
                 } else {
-                    return Err(CustomError::error(
+                    return Err(BoxedError::error(
                         "Invalid Xlmod molecular formula",
                         "Not a valid character in formula",
                         Context::line(
@@ -70,7 +72,7 @@ impl MolecularFormula {
                     block[usize::from(negative)..usize::from(negative) + isotope_len]
                         .parse::<NonZeroU16>()
                         .map_err(|err| {
-                            CustomError::error(
+                            BoxedError::error(
                                 "Invalid Xlmod molecular formula",
                                 format!("The isotope number {}", explain_number_error(&err)),
                                 Context::line(
@@ -90,7 +92,7 @@ impl MolecularFormula {
                     block[block.len() - number..block.len()]
                         .parse::<i32>()
                         .map_err(|err| {
-                            CustomError::error(
+                            BoxedError::error(
                                 "Invalid Xlmod molecular formula",
                                 format!("The element count {}", explain_number_error(&err)),
                                 Context::line(
@@ -103,7 +105,7 @@ impl MolecularFormula {
                         })?
                 };
             if !Self::add(&mut formula, (element, isotope, number)) {
-                return Err(CustomError::error(
+                return Err(BoxedError::error(
                     "Invalid Xlmod molecular formula",
                     format!(
                         "An element without a defined mass ({}{element}) was used",

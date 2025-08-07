@@ -13,14 +13,10 @@ macro_rules! parse_test {
         #[test]
         fn $name() {
             let res = $crate::sequence::CompoundPeptidoformIon::pro_forma($case, None);
-            let res_upper = $crate::sequence::CompoundPeptidoformIon::pro_forma(
-                &$case.to_ascii_uppercase(),
-                None,
-            );
-            let res_lower = $crate::sequence::CompoundPeptidoformIon::pro_forma(
-                &$case.to_ascii_lowercase(),
-                None,
-            );
+            let upper = $case.to_ascii_uppercase();
+            let lower = $case.to_ascii_lowercase();
+            let res_upper = $crate::sequence::CompoundPeptidoformIon::pro_forma(&upper, None);
+            let res_lower = $crate::sequence::CompoundPeptidoformIon::pro_forma(&lower, None);
             println!("{}", $case);
             assert!(res.is_ok(), "{}", res.err().unwrap());
             assert_eq!(res, res_upper);

@@ -1,12 +1,10 @@
 //! The available ontologies
 
+use custom_error::*;
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 
-use crate::{
-    error::{Context, CustomError},
-    sequence::SimpleModification,
-};
+use crate::sequence::SimpleModification;
 
 /// A database of custom modifications
 pub type CustomDatabase = OntologyModificationList;
@@ -104,13 +102,17 @@ impl Ontology {
     }
 
     /// Find the closest names in this ontology
-    pub fn find_closest(self, code: &str, custom_database: Option<&CustomDatabase>) -> CustomError {
-        CustomError::error(
+    pub fn find_closest<'a>(
+        self,
+        code: &'a str,
+        custom_database: Option<&CustomDatabase>,
+    ) -> BoxedError<'a> {
+        BoxedError::error(
             "Invalid modification",
             format!("The provided name does not exists in {}", self.name()),
             Context::show(code),
         )
-        .with_suggestions(Self::similar_names(&[self], code, custom_database))
+        .suggestions(Self::similar_names(&[self], code, custom_database))
     }
 
     /// # Panics
@@ -119,7 +121,7 @@ impl Ontology {
         ontologies: &[Self],
         code: &str,
         custom_database: Option<&CustomDatabase>,
-    ) -> CustomError {
+    ) -> BoxedError<'static> {
         assert!(!ontologies.is_empty());
         let names = if ontologies.len() > 1 {
             let mut names = ontologies[..ontologies.len() - 1]
@@ -132,12 +134,12 @@ impl Ontology {
         } else {
             ontologies[0].name().to_string()
         };
-        CustomError::error(
+        BoxedError::error(
             "Invalid modification",
             format!("The provided name does not exists in {names}"),
-            Context::show(code),
+            Context::show(code.to_string()),
         )
-        .with_suggestions(Self::similar_names(ontologies, code, custom_database))
+        .suggestions(Self::similar_names(ontologies, code, custom_database))
     }
 
     /// Get the closest similar names in the given ontologies. Finds both modifications and linkers

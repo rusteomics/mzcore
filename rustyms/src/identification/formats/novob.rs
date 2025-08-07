@@ -1,5 +1,8 @@
+use std::{borrow::Cow, marker::PhantomData, ops::Range, sync::LazyLock};
+
+use serde::{Deserialize, Serialize};
+
 use crate::{
-    error::CustomError,
     identification::{
         BoxedIdentifiedPeptideIter, FastaIdentifier, IdentifiedPeptidoform,
         IdentifiedPeptidoformData, IdentifiedPeptidoformSource, IdentifiedPeptidoformVersion,
@@ -12,10 +15,6 @@ use crate::{
     sequence::{AminoAcid, Peptidoform, SemiAmbiguous, SequenceElement, SloppyParsingParameters},
     system::{Mass, MassOverCharge, Ratio, Time, isize::Charge},
 };
-
-use serde::{Deserialize, Serialize};
-
-use std::{borrow::Cow, marker::PhantomData, ops::Range, sync::LazyLock};
 
 static NUMBER_ERROR: (&str, &str) = (
     "Invalid NovoB line",
@@ -91,7 +90,7 @@ format_family!(
                 location.location.clone(),
                 custom_database,
                 &PARAMETERS
-            )).transpose();
+            ).map_err(BoxedError::to_owned)).transpose();
 
         score_reverse: f64, |location: Location, _| location.parse::<f64>(NUMBER_ERROR);
         ppm_diff_reverse: Ratio, |location: Location, _| location.parse::<f64>(NUMBER_ERROR).map(Ratio::new::<crate::system::ratio::ppm>);
@@ -101,7 +100,7 @@ format_family!(
                 location.location.clone(),
                 custom_database,
                 &PARAMETERS,
-            )).transpose();
+            ).map_err(BoxedError::to_owned)).transpose();
     }
     optional { }
 );

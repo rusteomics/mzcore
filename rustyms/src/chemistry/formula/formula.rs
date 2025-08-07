@@ -109,7 +109,9 @@ impl MolecularFormula {
 }
 
 impl ParseJson for MolecularFormula {
-    fn from_json_value(value: serde_json::Value) -> Result<Self, crate::error::CustomError> {
+    fn from_json_value(
+        value: serde_json::Value,
+    ) -> Result<Self, custom_error::BoxedError<'static>> {
         use_serde(value)
     }
 }

@@ -8,12 +8,12 @@ use std::{
     str::FromStr,
 };
 
+use custom_error::*;
 use flate2::bufread::GzDecoder;
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    error::{Context, CustomError},
     helper_functions::{check_extension, explain_number_error},
     identification::{
         FastaIdentifier, IdentifiedPeptidoform, IdentifiedPeptidoformData, KnownFileFormat,
@@ -84,14 +84,17 @@ impl MZTabData {
     pub fn parse_file(
         path: impl AsRef<std::path::Path>,
         custom_database: Option<&CustomDatabase>,
-    ) -> Result<Box<dyn Iterator<Item = Result<Self, CustomError>> + '_>, CustomError> {
+    ) -> Result<
+        Box<dyn Iterator<Item = Result<Self, BoxedError<'static>>> + '_>,
+        BoxedError<'static>,
+    > {
         let file = File::open(path.as_ref()).map_err(|e| {
-            CustomError::error(
+            BoxedError::error(
                 "Could not open file",
-                e,
-                Context::Show {
-                    line: path.as_ref().to_string_lossy().to_string(),
-                },
+                e.to_string(),
+                Context::default()
+                    .source(path.as_ref().to_string_lossy())
+                    .to_owned(),
             )
         })?;
         if check_extension(path, "gz") {
@@ -111,7 +114,7 @@ impl MZTabData {
     pub fn parse_reader<'a, T: BufRead + 'a>(
         reader: T,
         custom_database: Option<&'a CustomDatabase>,
-    ) -> impl Iterator<Item = Result<Self, CustomError>> + 'a {
+    ) -> impl Iterator<Item = Result<Self, BoxedError<'static>>> + 'a {
         let mut search_engine_score_type: Vec<CVTerm> = Vec::new();
         let mut modifications: Vec<SimpleModification> = Vec::new();
         let mut raw_files: Vec<(Option<String>, Option<CVTerm>, Option<CVTerm>)> = Vec::new(); //path, file format, identifier type
@@ -125,9 +128,9 @@ impl MZTabData {
                             m if (m.starts_with("variable_mod[") || m.starts_with("fixed_mod[")) && m.ends_with(']') => {
                                 match CVTerm::from_str(&line[fields[2].clone()]).and_then(|term|
                                         (term.id.trim() != "MS:1002453" && term.id.trim()  != "MS:1002454").then(||
-                                            SimpleModificationInner::parse_pro_forma(term.id.trim(), 0..term.id.trim().len(), &mut Vec::new(), &mut Vec::new(), custom_database)).transpose()) {
+                                            SimpleModificationInner::parse_pro_forma(term.id.trim(), 0..term.id.trim().len(), &mut Vec::new(), &mut Vec::new(), custom_database).map_err(BoxedError::to_owned)).transpose()) {
                                     Ok(Some((ReturnModification::Defined(modification), _))) => if !modifications.contains(&modification) { modifications.push(modification)},
-                                    Ok(Some(_)) => return Some(Err(CustomError::error("Invalid modification in mzTab", "Modifications in mzTab have to be defeined, not ambiguous or cross-linkers", Context::line_range(Some(line_index), line, fields[2].clone())))),
+                                    Ok(Some(_)) => return Some(Err(BoxedError::error("Invalid modification in mzTab", "Modifications in mzTab have to be defined, not ambiguous or cross-linkers", Context::line_range(Some(line_index as u32), &line, fields[2].clone()).to_owned()))),
                                     Err(err) => return Some(Err(err)),
                                     Ok(None) => (),
                                 }
@@ -140,14 +143,14 @@ impl MZTabData {
                             }
                             m if m.starts_with("ms_run[") && m.ends_with("]-location") => {
                                 let index = match m.trim_start_matches("ms_run[").trim_end_matches("]-location").parse::<usize>().map_err(|err| {
-                                    CustomError::error(
+                                    BoxedError::error(
                                         "Invalid mzTab ms_run identifier",
                                         format!("The ms_run identifier {}", explain_number_error(&err)),
                                         Context::line_range(
-                                            Some(line_index),
+                                            Some(line_index as u32),
                                             &line,
                                             fields[1].clone(),
-                                        ),
+                                        ).to_owned(),
                                     )
                                 }) {
                                     Ok(i) => i - 1,
@@ -162,14 +165,14 @@ impl MZTabData {
                             },
                             m if m.starts_with("ms_run[") && m.ends_with("]-format") => {
                                 let index = match m.trim_start_matches("ms_run[").trim_end_matches("]-format").parse::<usize>().map_err(|err| {
-                                    CustomError::error(
+                                    BoxedError::error(
                                         "Invalid mzTab ms_run identifier",
                                         format!("The ms_run identifier {}", explain_number_error(&err)),
                                         Context::line_range(
-                                            Some(line_index),
+                                            Some(line_index as u32),
                                             &line,
                                             fields[1].clone(),
-                                        ),
+                                        ).to_owned(),
                                     )
                                 }) {
                                     Ok(i) => i - 1,
@@ -187,14 +190,14 @@ impl MZTabData {
                             },
                             m if m.starts_with("ms_run[") && m.ends_with("]-id_format") => {
                                 let index = match m.trim_start_matches("ms_run[").trim_end_matches("]-id_format").parse::<usize>().map_err(|err| {
-                                    CustomError::error(
+                                    BoxedError::error(
                                         "Invalid mzTab ms_run identifier",
                                         format!("The ms_run identifier {}", explain_number_error(&err)),
                                         Context::line_range(
-                                            Some(line_index),
+                                            Some(line_index as u32),
                                             &line,
                                             fields[1].clone(),
-                                        ),
+                                        ).to_owned(),
                                     )
                                 }) {
                                     Ok(i) => i - 1,
@@ -214,10 +217,10 @@ impl MZTabData {
                         }
                         None
                     } else {
-                        Some(Err(CustomError::error(
+                        Some(Err(BoxedError::error(
                             "Invalid MTD line",
                             "MTD lines should contain three columns (the tag, key, and value)",
-                            Context::full_line(line_index, line),
+                            Context::full_line(line_index as u32, line),
                         )))
                     }
                 }
@@ -247,10 +250,10 @@ impl MZTabData {
                         "end",
                     ] {
                         if !header.contains(&required.to_string()) {
-                            return Some(Err(CustomError::error(
+                            return Some(Err(BoxedError::error(
                                 "Invalid peptide table",
                                 format!("The required column '{required}' is not present"),
-                                Context::full_line(line_index, line),
+                                Context::full_line(line_index as u32, line),
                             )));
                         }
                     }
@@ -259,7 +262,8 @@ impl MZTabData {
                 }
                 Ok(MZTabLine::PSM(line_index, line, fields)) => Some(
                     PSMLine::new(line_index, peptide_header.as_deref(), &line, &fields)
-                        .and_then(|line| Self::from_line(line, &modifications, &search_engine_score_type, &raw_files, custom_database)),
+                        .and_then(|line| Self::from_line(line, &modifications, &search_engine_score_type, &raw_files, custom_database))
+                        .map_err(BoxedError::to_owned),
                 ),
                 Err(e) => Some(Err(e)),
             })
@@ -270,14 +274,16 @@ impl MZTabData {
     /// # Errors
     /// When not in the correct format
     #[expect(clippy::missing_panics_doc)]
-    fn from_line(
-        line: PSMLine<'_>,
+    fn from_line<'a>(
+        line: PSMLine<'a>,
         global_modifications: &[SimpleModification],
         search_engine_score_types: &[CVTerm],
         raw_files: &[(Option<String>, Option<CVTerm>, Option<CVTerm>)],
         custom_database: Option<&CustomDatabase>,
-    ) -> Result<Self, CustomError> {
-        let (mod_column, mod_range) = line.required_column("modifications")?;
+    ) -> Result<Self, BoxedError<'a>> {
+        let (mod_column, mod_range) = line
+            .required_column("modifications")
+            .map_err(BoxedError::to_owned)?;
         let mut mod_index = mod_range.start;
         let modifications: Vec<(usize, SimpleModification)> = mod_column
             .split(',')
@@ -285,10 +291,10 @@ impl MZTabData {
                 let pair = definition
                     .split_once('-')
                     .map(|(pos, _)| Ok((
-                        pos.parse::<usize>().map_err(|err| CustomError::error(
+                        pos.parse::<usize>().map_err(|err| BoxedError::error(
                         "Invalid modification position",
                         format!("The position {}", explain_number_error(&err)),
-                        Context::line_range(Some(line.line_index), line.line, mod_range.clone()),
+                        Context::line_range(Some(line.line_index as u32), line.line, mod_range.clone()),
                     ))?,
                     SimpleModificationInner::parse_pro_forma(
                         line.line,
@@ -297,23 +303,26 @@ impl MZTabData {
                         &mut Vec::new(),
                         custom_database)?.0.defined()
                         .ok_or_else(
-                            || CustomError::error(
+                            || BoxedError::error(
                                 "Invalid modification",
                                 "A modification should be a fully defined modification, no cross-link or ambiguous modification",
-                                Context::line_range(Some(line.line_index), line.line, mod_range.clone())))?)))
+                                Context::line_range(Some(line.line_index as u32), line.line, mod_range.clone())))?)))
                     .ok_or_else(
-                        || CustomError::error(
+                        || BoxedError::error(
                             "Invalid modification",
                             "A modification should be the position followed by a hyphen ('-') followed by the modification",
-                            Context::line_range(Some(line.line_index), line.line, mod_range.clone())));
+                            Context::line_range(Some(line.line_index as u32), line.line, mod_range.clone())));
                             mod_index += definition.len() + 1;
                             pair
             })
-            .collect::<Result<Vec<_>, CustomError>>()?;
+            .collect::<Result<Vec<_>, BoxedError>>()?;
 
         let mut result = Self {
             peptide: {
-                let range = line.required_column("sequence")?.1;
+                let range = line
+                    .required_column("sequence")
+                    .map_err(BoxedError::to_owned)?
+                    .1;
 
                 if range.is_empty() {
                     None
@@ -345,17 +354,22 @@ impl MZTabData {
                     )
                 }
             },
-            id: line.required_column("psm_id")?.0.parse().map_err(|err| {
-                CustomError::error(
-                    "Invalid mzTab PSM_ID",
-                    format!("The PSM_ID {}", explain_number_error(&err)),
-                    Context::line_range(
-                        Some(line.line_index),
-                        line.line,
-                        line.optional_column("psm_id").unwrap().1,
-                    ),
-                )
-            })?,
+            id: line
+                .required_column("psm_id")
+                .map_err(BoxedError::to_owned)?
+                .0
+                .parse()
+                .map_err(|err| {
+                    BoxedError::error(
+                        "Invalid mzTab PSM_ID",
+                        format!("The PSM_ID {}", explain_number_error(&err)),
+                        Context::line_range(
+                            Some(line.line_index as u32),
+                            line.line,
+                            line.optional_column("psm_id").unwrap().1,
+                        ),
+                    )
+                })?,
             accession: line
                 .optional_column("accession")
                 .and_then(|(v, _)| (!v.eq_ignore_ascii_case("null")).then(|| v.to_string())),
@@ -369,7 +383,9 @@ impl MZTabData {
                 .optional_column("database_version")
                 .and_then(|(v, _)| (!v.eq_ignore_ascii_case("null")).then(|| v.to_string())),
             search_engine: {
-                let (value, range) = line.required_column("search_engine")?;
+                let (value, range) = line
+                    .required_column("search_engine")
+                    .map_err(BoxedError::to_owned)?;
 
                 if value.trim().eq_ignore_ascii_case("null") {
                     Vec::new()
@@ -382,13 +398,13 @@ impl MZTabData {
                                 .and_then(|(v, _)| {
                                     (!v.eq_ignore_ascii_case("null")).then(|| {
                                         v.parse::<f64>().map_err(|err| {
-                                            CustomError::error(
+                                            BoxedError::error(
                                                 "Invalid mzTab search engine score",
                                                 format!(
                                         "The search engine score can not be parsed as f64: {err}"
                                     ),
                                                 Context::line_range(
-                                                    Some(line.line_index),
+                                                    Some(line.line_index as u32),
                                                     line.line,
                                                     line.optional_column(&format!(
                                                         "search_engine_score[{}]",
@@ -405,20 +421,20 @@ impl MZTabData {
                                 .and_then(|score| {
                                     CVTerm::from_str(s)
                                         .map_err(|e| {
-                                            e.with_context(Context::line_range(
-                                                Some(line.line_index),
+                                            e.context(Context::line_range(
+                                                Some(line.line_index as u32),
                                                 line.line,
                                                 range.clone(),
                                             ))
                                         })
-                                        .and_then(|engine| Ok((engine, score, search_engine_score_types.get(i).ok_or_else(|| CustomError::error("Missing search engine score type", "All search engines require a defined search type", Context::line_range(
-                                            Some(line.line_index),
+                                        .and_then(|engine| Ok((engine, score, search_engine_score_types.get(i).ok_or_else(|| BoxedError::error("Missing search engine score type", "All search engines require a defined search type", Context::line_range(
+                                            Some(line.line_index as u32),
                                             line.line,
                                             range.clone(),
                                         )))?.clone())))
                                 })
                         })
-                        .collect::<Result<Vec<_>, CustomError>>()?
+                        .collect::<Result<Vec<_>, BoxedError>>()?
                 }
             },
             reliability: line
@@ -427,10 +443,10 @@ impl MZTabData {
                     "1" => Ok(PSMReliability::High),
                     "2" => Ok(PSMReliability::Medium),
                     "3" => Ok(PSMReliability::Poor),
-                    _ => Err(CustomError::error(
+                    _ => Err(BoxedError::error(
                         "Invalid PSM reliability",
                         format!("A reliability should be 1, 2, or 3, '{v}' is invalid"),
-                        Context::line_range(Some(line.line_index), line.line, range),
+                        Context::line_range(Some(line.line_index as u32), line.line, range),
                     )),
                 })
                 .transpose()?,
@@ -440,10 +456,10 @@ impl MZTabData {
                     (!v.eq_ignore_ascii_case("null")).then(|| {
                         v.parse::<f64>()
                             .map_err(|err| {
-                                CustomError::error(
+                                BoxedError::error(
                                     "Invalid mzTab retention time",
                                     format!("The retention time can not be parsed as f64: {err}"),
-                                    Context::line_range(Some(line.line_index), line.line, r),
+                                    Context::line_range(Some(line.line_index as u32), line.line, r),
                                 )
                             })
                             .map(|v| Time::new::<crate::system::s>(v))
@@ -451,7 +467,9 @@ impl MZTabData {
                 })
                 .transpose()?,
             z: {
-                let (value, range) = line.required_column("charge")?;
+                let (value, range) = line
+                    .required_column("charge")
+                    .map_err(BoxedError::to_owned)?;
 
                 if value.trim().eq_ignore_ascii_case("null") {
                     Charge::new::<crate::system::e>(1)
@@ -460,10 +478,10 @@ impl MZTabData {
                         .trim_end_matches(".0")
                         .parse::<isize>()
                         .map_err(|err| {
-                            CustomError::error(
+                            BoxedError::error(
                                 "Invalid mzTab charge",
                                 format!("The charge {}", explain_number_error(&err)),
-                                Context::line_range(Some(line.line_index), line.line, range),
+                                Context::line_range(Some(line.line_index as u32), line.line, range),
                             )
                         })
                         .map(|v| Charge::new::<crate::system::e>(v))?
@@ -475,10 +493,10 @@ impl MZTabData {
                     (!v.eq_ignore_ascii_case("null")).then(|| {
                         v.parse::<f64>()
                             .map_err(|err| {
-                                CustomError::error(
+                                BoxedError::error(
                                     "Invalid mzTab experimental mz",
                                     format!("The experimental mz can not be parsed as f64: {err}"),
-                                    Context::line_range(Some(line.line_index), line.line, r),
+                                    Context::line_range(Some(line.line_index as u32), line.line, r),
                                 )
                             })
                             .map(|v| MassOverCharge::new::<crate::system::mz>(v))
@@ -487,16 +505,18 @@ impl MZTabData {
                 .transpose()?,
             uri: line.optional_column("uri").map(|(v, _)| v.to_string()),
             spectra_ref: {
-                let (value, range) = line.required_column("spectra_ref")?;
+                let (value, range) = line
+                    .required_column("spectra_ref")
+                    .map_err(BoxedError::to_owned)?;
                 let grouped = value
                 .split('|')
                 .map(|value|
                 value.split_once(':')
                 .ok_or_else(|| {
-                    CustomError::error(
+                    BoxedError::error(
                         "Invalid mzTab spectra_ref",
                         "The spectra_ref should be 'ms_run[x]:id'",
-                        Context::line_range(Some(line.line_index), line.line, range.clone()),
+                        Context::line_range(Some(line.line_index as u32), line.line, range.clone()),
                     )
                 })
                 .and_then(|(run, scan_id)| {
@@ -505,44 +525,44 @@ impl MZTabData {
                         .trim_end_matches(']')
                         .parse::<usize>()
                         .map_err(|err| {
-                            CustomError::error(
+                            BoxedError::error(
                                 "Invalid mzTab ms_run",
                                 format!("The ms_run identifier {}", explain_number_error(&err)),
                                 Context::line_range(
-                                    Some(line.line_index),
+                                    Some(line.line_index as u32),
                                     line.line,
                                     range.clone(),
                                 ),
                             )
                         })? - 1;
-                    let path = raw_files.get(index).ok_or_else(|| CustomError::error("Missing raw file definition", "All raw files should be defined in the MTD section before being used in the PSM Section", Context::line_range(
-                        Some(line.line_index),
+                    let path = raw_files.get(index).ok_or_else(|| BoxedError::error("Missing raw file definition", "All raw files should be defined in the MTD section before being used in the PSM Section", Context::line_range(
+                        Some(line.line_index as u32),
                         line.line,
                         range.clone(),
-                    )))?.0.as_ref().ok_or_else(|| CustomError::error("Missing raw file path definition", "The path is not defined for this raw file", Context::line_range(
-                        Some(line.line_index),
+                    )))?.0.as_ref().ok_or_else(|| BoxedError::error("Missing raw file path definition", "The path is not defined for this raw file", Context::line_range(
+                        Some(line.line_index as u32),
                         line.line,
                         range.clone(),
                     )))?;
 
                     let id = match scan_id.split_once('=') {
                         Some(("scan", num)) if num.chars().all(|c| c.is_ascii_digit()) => SpectrumId::Number(num.parse().map_err(|err| {
-                            CustomError::error(
+                            BoxedError::error(
                                 "Invalid mzTab spectra_ref scan number",
                                 format!("The spectra_ref scan number {}", explain_number_error(&err)),
                                 Context::line_range(
-                                    Some(line.line_index),
+                                    Some(line.line_index as u32),
                                     line.line,
                                     range.clone(),
                                 ),
                             )
                         })?),
                         Some(("index", index)) if index.chars().all(|c| c.is_ascii_digit()) => SpectrumId::Index(index.parse().map_err(|err| {
-                            CustomError::error(
+                            BoxedError::error(
                                 "Invalid mzTab spectra_ref index",
                                 format!("The spectra_ref index {}", explain_number_error(&err)),
                                 Context::line_range(
-                                    Some(line.line_index),
+                                    Some(line.line_index as u32),
                                     line.line,
                                     range.clone(),
                                 ),
@@ -552,7 +572,7 @@ impl MZTabData {
                     };
 
                     Ok((std::path::PathBuf::from(path), id))
-                })).collect::<Result<Vec<_>, CustomError>>()?
+                })).collect::<Result<Vec<_>, BoxedError>>()?
                 .into_iter()
                 .sorted_by(|(a, _), (b,_)| a.cmp(b))
                 .chunk_by(|(path, _)| path.clone());
@@ -564,37 +584,47 @@ impl MZTabData {
                         .collect(),
                 )
             },
-            preceding_aa: line.required_column("pre")?.0.parse().map_err(|()| {
-                CustomError::error(
-                    "Invalid preceding amino acid",
-                    "The pre column should contain null, -, or an aminoacid",
-                    Context::line_range(
-                        Some(line.line_index),
-                        line.line,
-                        line.optional_column("pre").unwrap().1,
-                    ),
-                )
-            })?,
-            following_aa: line.required_column("post")?.0.parse().map_err(|()| {
-                CustomError::error(
-                    "Invalid following amino acid",
-                    "The post column should contain null, -, or an aminoacid",
-                    Context::line_range(
-                        Some(line.line_index),
-                        line.line,
-                        line.optional_column("post").unwrap().1,
-                    ),
-                )
-            })?,
+            preceding_aa: line
+                .required_column("pre")
+                .map_err(BoxedError::to_owned)?
+                .0
+                .parse()
+                .map_err(|()| {
+                    BoxedError::error(
+                        "Invalid preceding amino acid",
+                        "The pre column should contain null, -, or an aminoacid",
+                        Context::line_range(
+                            Some(line.line_index as u32),
+                            line.line,
+                            line.optional_column("pre").unwrap().1,
+                        ),
+                    )
+                })?,
+            following_aa: line
+                .required_column("post")
+                .map_err(BoxedError::to_owned)?
+                .0
+                .parse()
+                .map_err(|()| {
+                    BoxedError::error(
+                        "Invalid following amino acid",
+                        "The post column should contain null, -, or an aminoacid",
+                        Context::line_range(
+                            Some(line.line_index as u32),
+                            line.line,
+                            line.optional_column("post").unwrap().1,
+                        ),
+                    )
+                })?,
             start: line
                 .optional_column("start")
                 .and_then(|(v, r)| {
                     (!v.eq_ignore_ascii_case("null")).then(|| {
                         v.parse::<u16>().map_err(|err| {
-                            CustomError::error(
+                            BoxedError::error(
                                 "Invalid mzTab start",
                                 format!("The start {}", explain_number_error(&err)),
-                                Context::line_range(Some(line.line_index), line.line, r),
+                                Context::line_range(Some(line.line_index as u32), line.line, r),
                             )
                         })
                     })
@@ -605,10 +635,10 @@ impl MZTabData {
                 .and_then(|(v, r)| {
                     (!v.eq_ignore_ascii_case("null")).then(|| {
                         v.parse::<u16>().map_err(|err| {
-                            CustomError::error(
+                            BoxedError::error(
                                 "Invalid mzTab end",
                                 format!("The end {}", explain_number_error(&err)),
-                                Context::line_range(Some(line.line_index), line.line, r),
+                                Context::line_range(Some(line.line_index as u32), line.line, r),
                             )
                         })
                     })
@@ -621,11 +651,11 @@ impl MZTabData {
                     v.split(',')
                         .map(|score| {
                             score.parse::<f64>().map_err(|err| {
-                                CustomError::error(
+                                BoxedError::error(
                                     "Invalid mzTab local confidence",
                                     format!("The local confidence can not be parsed: {err}"),
                                     Context::line_range(
-                                        Some(line.line_index),
+                                        Some(line.line_index as u32),
                                         line.line,
                                         r.clone(),
                                     ),
@@ -652,10 +682,10 @@ impl MZTabData {
         };
 
         result.local_confidence = result.local_confidence.as_ref().map(|lc| {
-            // Casanovo stores the confidence for N and C terminal modifications
+            // Casanovo stores the confidence for N and C terminal modifications.
             // As Casanovo has a double N terminal modification (+43.006-17.027) which could also
             // exist as two separate modifications the number of N terminal modifications is not a
-            // reliable measure to detrmine how many local confidence scores to ignore.
+            // reliable measure to determine how many local confidence scores to ignore.
             let c = result.peptide.as_ref().map_or(0, |p| p.get_c_term().len());
             let n = lc.len() - c - result.peptide.as_ref().map_or(0, Peptidoform::len);
             lc[n..lc.len() - c].to_vec()
@@ -682,12 +712,12 @@ impl<'a> PSMLine<'a> {
         header: Option<&'a [String]>,
         line: &'a str,
         fields: &'a [Range<usize>],
-    ) -> Result<Self, CustomError> {
+    ) -> Result<Self, BoxedError<'a>> {
         let header = header.ok_or_else(|| {
-            CustomError::error(
+            BoxedError::error(
                 "Missing PSH line",
                 "The PSH peptide header line should precede any PSM line",
-                Context::full_line(line_index, line),
+                Context::full_line(line_index as u32, line),
             )
         })?;
         if header.len() == fields.len() {
@@ -698,10 +728,10 @@ impl<'a> PSMLine<'a> {
                 fields,
             })
         } else {
-            Err(CustomError::error(
+            Err(BoxedError::error(
                 "Invalid PSM line",
                 "This PSM line does not have the same number of columns as the PSH line",
-                Context::full_line(line_index, line),
+                Context::full_line(line_index as u32, line),
             ))
         }
     }
@@ -716,12 +746,15 @@ impl<'a> PSMLine<'a> {
     /// Get a required columns
     /// # Errors
     /// If the column is not available
-    fn required_column(&self, column: &str) -> Result<(&str, Range<usize>), CustomError> {
+    fn required_column<'b>(
+        &'b self,
+        column: &str,
+    ) -> Result<(&'b str, Range<usize>), BoxedError<'b>> {
         self.optional_column(column).ok_or_else(|| {
-            CustomError::error(
+            BoxedError::error(
                 "Missing column",
                 format!("The column '{column}' is required but not present"),
-                Context::full_line(self.line_index, self.line),
+                Context::full_line(self.line_index as u32, self.line),
             )
         })
     }
@@ -796,8 +829,8 @@ pub struct CVTerm {
 }
 
 impl FromStr for CVTerm {
-    type Err = CustomError;
-    fn from_str(value: &str) -> Result<Self, CustomError> {
+    type Err = BoxedError<'static>;
+    fn from_str(value: &str) -> Result<Self, BoxedError<'static>> {
         let value = value.trim();
         if value.starts_with('[') && value.ends_with(']') {
             let value = &value[1..value.len() - 1];
@@ -809,10 +842,10 @@ impl FromStr for CVTerm {
                 comment: split.next().unwrap_or_default().trim().to_string(),
             })
         } else {
-            Err(CustomError::error(
+            Err(BoxedError::error(
                 "Invalid CV term",
-                "A CV term should be encolsed by '[]'",
-                Context::None,
+                "A CV term should be enclosed by '[]'",
+                Context::show(value).to_owned(),
             ))
         }
     }
@@ -854,27 +887,27 @@ enum MZTabLine {
 /// If the file is not a valid mzTab file
 fn parse_mztab_reader<T: BufRead>(
     reader: T,
-) -> impl Iterator<Item = Result<Option<MZTabLine>, CustomError>> {
+) -> impl Iterator<Item = Result<Option<MZTabLine>, BoxedError<'static>>> {
     reader.lines().enumerate().map(move |(line_index, line)| {
         line.map_err(|err| {
-            CustomError::error(
+            BoxedError::error(
                 "Could not read line",
-                err,
-                Context::full_line(line_index, "(failed)"),
+                err.to_string(),
+                Context::default().line_index(line_index as u32),
             )
         })
-        .and_then(|line| {
+        .and_then(move |line| {
             if line.trim().is_empty() {
                 Ok(None)
             } else {
-                crate::identification::csv::csv_separate(&line, b'\t').map(|fields| {
-                    match &line[fields[0].clone()] {
+                crate::identification::csv::csv_separate(&line, b'\t')
+                    .map_err(BoxedError::to_owned)
+                    .map(|fields| match &line[fields[0].clone()] {
                         "MTD" => Some(MZTabLine::MTD(line_index, line, fields)),
                         "PSH" => Some(MZTabLine::PSH(line_index, line, fields)),
                         "PSM" => Some(MZTabLine::PSM(line_index, line, fields)),
                         _ => None,
-                    }
-                })
+                    })
             }
         })
     })

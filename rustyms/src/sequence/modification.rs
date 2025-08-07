@@ -1,9 +1,5 @@
 //! Handle modification related issues, access provided if you want to dive deeply into modifications in your own code.
 
-use itertools::Itertools;
-use ordered_float::OrderedFloat;
-use serde::{Deserialize, Serialize};
-
 use std::{
     collections::{BTreeSet, HashMap, HashSet},
     fmt::{Display, Write},
@@ -11,10 +7,14 @@ use std::{
     sync::Arc,
 };
 
+use custom_error::*;
+use itertools::Itertools;
+use ordered_float::OrderedFloat;
+use serde::{Deserialize, Serialize};
+
 use crate::{
     annotation::model::{FragmentationModel, GlycanModel},
     chemistry::{AmbiguousLabel, CachedCharge, Chemical, MolecularFormula},
-    error::{Context, CustomError},
     fragment::*,
     glycan::{GlycanStructure, MonoSaccharide},
     helper_functions::merge_hashmap,
@@ -82,7 +82,7 @@ pub struct ModificationId {
 }
 
 impl ParseJson for ModificationId {
-    fn from_json_value(value: serde_json::Value) -> Result<Self, CustomError> {
+    fn from_json_value(value: serde_json::Value) -> Result<Self, BoxedError<'static>> {
         use_serde(value)
     }
 }
@@ -99,7 +99,7 @@ pub enum GnoComposition {
 }
 
 impl ParseJson for GnoComposition {
-    fn from_json_value(value: serde_json::Value) -> Result<Self, CustomError> {
+    fn from_json_value(value: serde_json::Value) -> Result<Self, BoxedError<'static>> {
         use_serde(value)
     }
 }
@@ -123,7 +123,7 @@ pub enum GnoSubsumption {
 }
 
 impl ParseJson for GnoSubsumption {
-    fn from_json_value(value: serde_json::Value) -> Result<Self, CustomError> {
+    fn from_json_value(value: serde_json::Value) -> Result<Self, BoxedError<'static>> {
         use_serde(value)
     }
 }
@@ -690,12 +690,12 @@ impl Display for CrossLinkName {
 /// the library.
 /// # Errors
 /// If the string could not be parsed.
-pub fn parse_custom_modifications(path: &Path) -> Result<CustomDatabase, CustomError> {
+pub fn parse_custom_modifications(path: &Path) -> Result<CustomDatabase, BoxedError<'static>> {
     let string = std::fs::read_to_string(path).map_err(|err| {
-        CustomError::error(
+        BoxedError::error(
             "Could not parse custom modifications file",
-            err,
-            Context::show(path.display()),
+            err.to_string(),
+            Context::default().source(path.to_string_lossy()).to_owned(),
         )
     })?;
     CustomDatabase::from_json(&string)
@@ -706,7 +706,7 @@ pub fn parse_custom_modifications(path: &Path) -> Result<CustomDatabase, CustomE
 /// the library.
 /// # Errors
 /// If the string could not be parsed.
-pub fn parse_custom_modifications_str(value: &str) -> Result<CustomDatabase, CustomError> {
+pub fn parse_custom_modifications_str(value: &str) -> Result<CustomDatabase, BoxedError<'static>> {
     CustomDatabase::from_json(value)
 }
 
