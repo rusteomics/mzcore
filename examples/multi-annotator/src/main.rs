@@ -1,6 +1,8 @@
 //! Annotate many peptides at once
-
 #![allow(non_snake_case)] // charge_independent_Y needs the capital as it means the glycan fragmentation
+
+use mzsignal as _; // To aid vesion selection
+
 use std::{
     collections::BTreeMap,
     fs::File,
