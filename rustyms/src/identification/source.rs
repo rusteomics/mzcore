@@ -63,7 +63,7 @@ where
         custom_database: Option<&CustomDatabase>,
         keep_all_columns: bool,
         format: Option<Self::Format>,
-    ) -> IdentifiedPeptidoformIter<Self, I> {
+    ) -> IdentifiedPeptidoformIter<'_, Self, I> {
         IdentifiedPeptidoformIter {
             iter: Box::new(iter),
             format,
@@ -81,7 +81,7 @@ where
         custom_database: Option<&CustomDatabase>,
         keep_all_columns: bool,
         version: Option<Self::Version>,
-    ) -> Result<BoxedIdentifiedPeptideIter<Self>, BoxedError<'static>>;
+    ) -> Result<BoxedIdentifiedPeptideIter<'_, Self>, BoxedError<'static>>;
 
     /// Parse a reader with identified peptides.
     /// # Errors

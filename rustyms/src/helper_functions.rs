@@ -352,6 +352,7 @@ pub(crate) fn split_with_brackets(
 }
 
 #[test]
+#[allow(clippy::missing_panics_doc)]
 fn test_split_with_brackets() {
     assert_eq!(
         split_with_brackets(

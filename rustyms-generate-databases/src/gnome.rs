@@ -241,7 +241,7 @@ fn parse_gnome_structures() -> HashMap<String, GlycosmosList> {
             match GlycanStructure::from_short_iupac(
                 line.line(),
                 line.range(1).clone(),
-                line.line_index() + 1,
+                (line.line_index() + 1) as u32,
             ) {
                 Ok(glycan) => {
                     glycans.insert(

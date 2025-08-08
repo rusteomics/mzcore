@@ -549,7 +549,9 @@ impl<Complexity> Peptidoform<Complexity> {
                     }
                 });
         let terminus = molecular_formula!(H 1 O 1);
-        specific.values_mut().for_each(|v| *v += terminus.clone());
+        for v in specific.values_mut() {
+            *v += terminus.clone();
+        }
         (base + terminus, specific)
     }
 

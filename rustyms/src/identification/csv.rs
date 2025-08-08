@@ -56,7 +56,7 @@ impl CsvLine {
     }
 
     /// Get the context applicable to the specified column
-    pub fn column_context(&self, column: usize) -> Context {
+    pub fn column_context(&self, column: usize) -> Context<'_> {
         Context::line_with_comment(
             Some(self.line_index as u32),
             &self.line,
@@ -82,7 +82,7 @@ impl CsvLine {
     }
 
     /// Get the context for the whole line
-    pub fn full_context(&self) -> Context {
+    pub fn full_context(&self) -> Context<'_> {
         Context::full_line(self.line_index as u32, &self.line)
     }
 
@@ -300,7 +300,7 @@ impl<T: std::io::Read> Iterator for CsvLineIter<T> {
 
 /// # Errors
 /// If the line is empty.
-pub(crate) fn csv_separate(line: &str, separator: u8) -> Result<Vec<Range<usize>>, BoxedError> {
+pub(crate) fn csv_separate(line: &str, separator: u8) -> Result<Vec<Range<usize>>, BoxedError<'_>> {
     if line.is_empty() {
         return Err(BoxedError::error(
             "Empty line",

@@ -44,7 +44,7 @@ impl MolecularFormula {
         allow_empty: bool,
         allow_uncommon_elements: bool,
         ignore_casing: bool,
-    ) -> Result<Self, BoxedError> {
+    ) -> Result<Self, BoxedError<'_>> {
         let (mut index, end) = range.bounds(value.len().saturating_sub(1));
         if index > end || end >= value.len() || value[index..=end].eq_ignore_ascii_case("(empty)") {
             return if allow_empty {
@@ -290,6 +290,7 @@ impl MolecularFormula {
 }
 
 #[test]
+#[allow(clippy::missing_panics_doc)]
 fn fuzz() {
     let _a = MolecularFormula::from_pro_forma(":", .., true, true, true, true);
     let _a = MolecularFormula::from_pro_forma(":1002\\[d2C-2]H2N", .., true, true, true, true);

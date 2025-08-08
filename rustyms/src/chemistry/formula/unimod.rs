@@ -19,7 +19,10 @@ enum Brick {
 
 /// # Errors
 /// Errors if the provided text is not a Unimod composition brick.
-fn parse_unimod_composition_brick(text: &str, range: Range<usize>) -> Result<Brick, BoxedError> {
+fn parse_unimod_composition_brick(
+    text: &str,
+    range: Range<usize>,
+) -> Result<Brick, BoxedError<'_>> {
     match text[range.clone()].to_lowercase().as_str() {
         "ac" => Ok(Brick::Formula(molecular_formula!(C 2 H 2 O 1))),
         "me" => Ok(Brick::Formula(molecular_formula!(C 1 H 2))),
@@ -53,7 +56,10 @@ impl MolecularFormula {
     /// If the formula is not valid according to the above specification, with some help on what is going wrong.
     /// # Panics
     /// It panics if the string contains not UTF8 symbols.
-    pub fn from_unimod(value: &str, range: impl RangeBounds<usize>) -> Result<Self, BoxedError> {
+    pub fn from_unimod(
+        value: &str,
+        range: impl RangeBounds<usize>,
+    ) -> Result<Self, BoxedError<'_>> {
         let (mut index, end) = range.bounds(value.len());
         assert!(value.is_ascii());
 

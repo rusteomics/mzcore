@@ -14,7 +14,7 @@ impl MolecularFormula {
     /// If the formula is not valid according to the above specification, with some help on what is going wrong.
     /// # Panics
     /// It can panic if the string contains not UTF8 symbols.
-    pub fn from_xlmod(value: &str, range: impl RangeBounds<usize>) -> Result<Self, BoxedError> {
+    pub fn from_xlmod(value: &str, range: impl RangeBounds<usize>) -> Result<Self, BoxedError<'_>> {
         let (start, end) = range.bounds(value.len());
         let mut formula = Self::default();
         for (offset, block) in helper_functions::split_ascii_whitespace(&value[start..end]) {

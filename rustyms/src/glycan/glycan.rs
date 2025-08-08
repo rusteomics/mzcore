@@ -154,7 +154,7 @@ impl MonoSaccharide {
     /// Parse the given text (will be changed to lowercase) as a glycan composition.
     /// # Errors
     /// When the composition could not be read. Or when any of the glycans occurs outside of the valid range
-    pub fn from_composition(text: &str) -> Result<Vec<(Self, isize)>, BoxedError> {
+    pub fn from_composition(text: &str) -> Result<Vec<(Self, isize)>, BoxedError<'_>> {
         let basic_error =
             BoxedError::error("Invalid glycan composition", "..", Context::show(text));
         Self::simplify_composition(
@@ -183,7 +183,7 @@ impl MonoSaccharide {
     /// * HexNAc(4)Hex(5)Fuc(1)NeuAc(1)
     /// # Errors
     /// When the composition could not be read. Or when any of the glycans occurs outside of the valid range
-    pub fn from_byonic_composition(text: &str) -> Result<Vec<(Self, isize)>, BoxedError> {
+    pub fn from_byonic_composition(text: &str) -> Result<Vec<(Self, isize)>, BoxedError<'_>> {
         let mut index = 0;
         let mut output = Vec::new();
         while index < text.len() {
@@ -264,7 +264,7 @@ impl MonoSaccharide {
         original_line: &str,
         start: usize,
         line_index: u32,
-    ) -> Result<(Self, usize), BoxedError> {
+    ) -> Result<(Self, usize), BoxedError<'_>> {
         let mut index = start;
         let line = original_line.to_ascii_lowercase();
         let bytes = line.as_bytes();
@@ -959,6 +959,7 @@ impl Chemical for GlycanSubstituent {
 }
 
 #[test]
+#[allow(clippy::missing_panics_doc)]
 fn msfragger_composition() {
     let proforma = MonoSaccharide::from_composition("HexNAc4Hex5Fuc1NeuAc2").unwrap();
     let msfragger =

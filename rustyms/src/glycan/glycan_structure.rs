@@ -45,7 +45,7 @@ impl GlycanStructure {
         line: &str,
         range: Range<usize>,
         line_index: u32,
-    ) -> Result<Self, BoxedError> {
+    ) -> Result<Self, BoxedError<'_>> {
         let mut offset = range.start;
         let mut branch = Self {
             sugar: MonoSaccharide::new(BaseSugar::Decose, &[]),
@@ -300,13 +300,13 @@ impl GlycanStructure {
     ///              └Fuc  └Hex-HexNAc
     /// # Errors
     /// Return an Err if the format is not correct.
-    pub fn parse(line: &str, range: Range<usize>) -> Result<Self, BoxedError> {
+    pub fn parse(line: &str, range: Range<usize>) -> Result<Self, BoxedError<'_>> {
         Self::parse_internal(line, range).map(|(g, _)| g)
     }
 
     /// # Errors
     /// Return an Err if the format is not correct
-    fn parse_internal(line: &str, range: Range<usize>) -> Result<(Self, usize), BoxedError> {
+    fn parse_internal(line: &str, range: Range<usize>) -> Result<(Self, usize), BoxedError<'_>> {
         // Parse at the start the first recognised glycan name
         if let Some(name) = GLYCAN_PARSE_LIST
             .iter()

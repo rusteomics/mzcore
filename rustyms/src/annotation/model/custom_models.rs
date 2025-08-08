@@ -29,7 +29,7 @@ pub fn parse_custom_models(
 /// If the string could not be parsed.
 pub fn parse_custom_models_str(
     value: &str,
-) -> Result<Vec<(String, FragmentationModel)>, BoxedError> {
+) -> Result<Vec<(String, FragmentationModel)>, BoxedError<'_>> {
     Vec::from_json(value)
 }
 

@@ -662,7 +662,7 @@ pub(super) fn global_modifications<'a>(
 pub(super) fn parse_placement_rules(
     line: &str,
     range: std::ops::Range<usize>,
-) -> Result<Vec<PlacementRule>, BoxedError> {
+) -> Result<Vec<PlacementRule>, BoxedError<'_>> {
     let mut result = Vec::new();
     for aa in line[range.clone()].split(',') {
         if aa.to_ascii_lowercase().starts_with("n-term") {
@@ -858,7 +858,7 @@ fn labile_modifications<'a>(
 pub(super) fn parse_charge_state(
     line: &str,
     index: usize,
-) -> Result<(usize, MolecularCharge), BoxedError> {
+) -> Result<(usize, MolecularCharge), BoxedError<'_>> {
     let chars = line.as_bytes();
     let (charge_len, total_charge) = next_num(chars, index + 1, false).ok_or_else(|| {
         BoxedError::error(

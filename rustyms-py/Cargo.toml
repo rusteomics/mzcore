@@ -11,9 +11,10 @@ name = "rustyms_py"
 crate-type = ["cdylib"]
 
 [dependencies]
+custom_error = { workspace = true }
+ordered-float = { workspace = true }
 pyo3 = { workspace = true }
 rustyms = { path = "../rustyms" }
-ordered-float = { workspace = true }
 
 [lints]
 workspace = true

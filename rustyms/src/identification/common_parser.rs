@@ -87,7 +87,7 @@ macro_rules! format_family {
                 custom_database: Option<&crate::ontology::CustomDatabase>,
                 keep_all_columns: bool,
                 version: Option<Self::Version>,
-            ) -> Result<BoxedIdentifiedPeptideIter<Self>, BoxedError<'static>> {
+            ) -> Result<BoxedIdentifiedPeptideIter<'_, Self>, BoxedError<'static>> {
                 let format = version.map(|v| v.format());
                 parse_csv(path, $separator, $header).and_then(|lines| {
                     let mut i = Self::parse_many::<Box<dyn Iterator<Item = Result<Self::Source, BoxedError>>>>(
@@ -186,7 +186,7 @@ impl OptionalColumn {
     pub(super) fn open_column(
         self,
         source: &CsvLine,
-    ) -> Result<Option<Location>, BoxedError<'static>> {
+    ) -> Result<Option<Location<'_>>, BoxedError<'static>> {
         match self {
             Self::NotAvailable => Ok(None),
             Self::Optional(s) => Ok(source.column(s).ok()),
@@ -332,35 +332,6 @@ impl<'a> Location<'a> {
         f(self)
     }
 
-    /// # Errors
-    /// If the text could not be read as a valid id.
-    pub(super) fn get_id(
-        self,
-        base_error: (&'static str, &'static str),
-    ) -> Result<(Option<usize>, usize), BoxedError<'static>> {
-        if let Some((start, end)) = self.as_str().split_once(':') {
-            Ok((
-                Some(
-                    Self {
-                        line: self.line,
-                        location: self.location.start + 1..self.location.start + start.len(),
-                        column: self.column,
-                    }
-                    .parse(base_error)?,
-                ),
-                Self {
-                    line: self.line,
-                    location: self.location.start + start.len() + 1
-                        ..self.location.start + start.len() + 1 + end.len(),
-                    column: self.column,
-                }
-                .parse(base_error)?,
-            ))
-        } else {
-            Ok((None, self.parse(base_error)?))
-        }
-    }
-
     pub(super) fn context(&'a self) -> Context<'a> {
         Context::line_range_with_comment(
             Some(self.line.line_index() as u32),
@@ -387,9 +358,9 @@ impl<'a> Location<'a> {
         }
     }
 
-    pub(super) fn apply(self, f: impl FnOnce(Self) -> Self) -> Self {
-        f(self)
-    }
+    // fn apply(self, f: impl FnOnce(Self) -> Self) -> Self {
+    //     f(self)
+    // }
 
     pub(super) fn split_once(self, p: char) -> Option<(Self, Self)> {
         self.as_str().split_once(p).map(|(start, end)| {
@@ -449,14 +420,7 @@ pub(super) trait OptionalLocation<'a> {
         self,
         f: impl Fn(Location<'a>) -> Result<T, BoxedError<'static>>,
     ) -> Result<Option<T>, BoxedError<'static>>;
-    /// # Errors
-    /// If the text could not be read as a valid id.
-    fn get_id(
-        self,
-        base_error: (&'static str, &'static str),
-    ) -> Result<Option<(Option<usize>, usize)>, BoxedError<'static>>;
     fn get_string(self) -> Option<String>;
-    fn apply(self, f: impl FnOnce(Location<'a>) -> Location<'a>) -> Option<Location<'a>>;
     type ArrayIter: Iterator<Item = Location<'a>>;
     fn array(self, sep: char) -> Self::ArrayIter;
     fn optional_array(self, sep: char) -> Option<Self::ArrayIter>;
@@ -479,17 +443,8 @@ impl<'a> OptionalLocation<'a> for Option<Location<'a>> {
     ) -> Result<Option<T>, BoxedError<'static>> {
         self.map(f).transpose()
     }
-    fn get_id(
-        self,
-        base_error: (&'static str, &'static str),
-    ) -> Result<Option<(Option<usize>, usize)>, BoxedError<'static>> {
-        self.map(|l| l.get_id(base_error)).transpose()
-    }
     fn get_string(self) -> Option<String> {
         self.map(Location::get_string)
-    }
-    fn apply(self, f: impl FnOnce(Location<'a>) -> Location<'a>) -> Self {
-        self.map(|s| s.apply(f))
     }
     type ArrayIter = std::vec::IntoIter<Location<'a>>;
     fn array(self, sep: char) -> Self::ArrayIter {

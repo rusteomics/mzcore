@@ -3,6 +3,7 @@
 
 #![allow(clippy::non_canonical_clone_impl)]
 #![allow(clippy::ignored_unit_patterns)]
+#![allow(clippy::float_cmp)]
 use std::ops::{Deref, DerefMut};
 
 use num_traits::Zero;
