@@ -314,6 +314,71 @@ pub(crate) fn end_of_enclosure_with_brackets(
     None
 }
 
+/// Split the given range based on the separator.
+/// This also takes brackets into account and these take precedence over the separator searched for.
+pub(crate) fn split_with_brackets(
+    text: &str,
+    range: Range<usize>,
+    separator: u8,
+    open: u8,
+    close: u8,
+) -> Vec<Range<usize>> {
+    let mut state: usize = 0;
+    let mut index = range.start;
+    let mut last_field = range.start;
+    let mut fields = Vec::new();
+    while index < range.end {
+        if !text.is_char_boundary(index) {
+            index += 1;
+            continue;
+        }
+        if index + 1 < text.len() && !text.is_char_boundary(index + 1) {
+            index += 1;
+            continue;
+        }
+        let ch = text.as_bytes()[index];
+        if ch == open {
+            state += 1;
+        } else if ch == close {
+            state = state.saturating_sub(1);
+        } else if ch == separator && state == 0 {
+            fields.push(last_field..index);
+            last_field = index + 1;
+        }
+        index += 1;
+    }
+    fields.push(last_field..index);
+    fields
+}
+
+#[test]
+fn test_split_with_brackets() {
+    assert_eq!(
+        split_with_brackets(
+            "23-CHEMMOD:+15.995,23-[MS, MS:1001524, fragment neutral loss, 63.998285]",
+            0..72,
+            b',',
+            b'[',
+            b']'
+        ),
+        vec![0..18, 19..72]
+    );
+    assert_eq!(
+        split_with_brackets(
+            "0[MS,MS:1001876, modification probability, 0.1]|23[MS,MS:1001876, modification probability, 0.9]-UNIMOD:35",
+            0..106,
+            b',',
+            b'[',
+            b']'
+        ),
+        vec![0..106]
+    );
+    assert_eq!(
+        split_with_brackets("0[,,,[,,]],,[,,l;]hj", 0..20, b',', b'[', b']'),
+        vec![0..10, 11..11, 12..20]
+    );
+}
+
 /// Get the next number, returns length in bytes and the number.
 /// # Panics
 /// If the text is not valid UTF-8.

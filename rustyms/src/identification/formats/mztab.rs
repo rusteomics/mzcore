@@ -11,22 +11,24 @@ use std::{
 use custom_error::*;
 use flate2::bufread::GzDecoder;
 use itertools::Itertools;
+use ordered_float::OrderedFloat;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    helper_functions::{check_extension, explain_number_error},
+    chemistry::MolecularFormula,
+    helper_functions::{check_extension, explain_number_error, next_number, split_with_brackets},
     identification::{
         FastaIdentifier, IdentifiedPeptidoform, IdentifiedPeptidoformData, KnownFileFormat,
         MaybePeptidoform, MetaData, SpectrumId, SpectrumIds,
     },
     ontology::{CustomDatabase, Ontology},
-    prelude::{CompoundPeptidoformIon, MolecularFormula},
     quantities::Tolerance,
     sequence::{
-        AminoAcid, MUPSettings, PeptideModificationSearch, Peptidoform, ReturnModification,
-        SimpleLinear, SimpleModification, SimpleModificationInner, SloppyParsingParameters,
+        AminoAcid, CompoundPeptidoformIon, MUPSettings, PeptideModificationSearch, Peptidoform,
+        ReturnModification, SequencePosition, SimpleLinear, SimpleModification,
+        SimpleModificationInner, SloppyParsingParameters,
     },
-    system::{Mass, MassOverCharge, Time, isize::Charge},
+    system::{Mass, MassOverCharge, Time, isize::Charge, usize},
 };
 
 /// Peptide data from a mzTab file
@@ -282,25 +284,18 @@ impl MZTabData {
         let (mod_column, mod_range) = line
             .required_column("modifications")
             .map_err(BoxedError::to_owned)?;
-        let mut mod_index = mod_range.start;
-        let modifications: Vec<MZTabReturnModification> =
-            if mod_column.eq_ignore_ascii_case("null") || mod_column == "0" {
-                Vec::new()
-            } else {
-                mod_column
-                    .split(',')
-                    .map(|definition| {
-                        let res = parse_modification(
-                            line.line,
-                            mod_index..mod_index + definition.len(),
-                            custom_database,
-                            line.line_index as u32,
-                        );
-                        mod_index = mod_index + definition.len() + 1;
-                        res
-                    })
-                    .collect::<Result<Vec<_>, BoxedError>>()?
-            };
+        let modifications: Vec<MZTabReturnModification> = if mod_column.eq_ignore_ascii_case("null")
+            || mod_column == "0"
+        {
+            Vec::new()
+        } else {
+            split_with_brackets(line.line, mod_range, b',', b'[', b']')
+                .into_iter()
+                .map(|field| {
+                    parse_modification(line.line, field, custom_database, line.line_index as u32)
+                })
+                .collect::<Result<Vec<_>, BoxedError>>()?
+        };
 
         let mut result = Self {
             peptide: {
@@ -325,16 +320,10 @@ impl MZTabData {
                     for modification in modifications {
                         match modification {
                             MZTabReturnModification::Defined(location, modification) => {
-                                match location {
-                                    0 => peptide.add_simple_n_term(modification),
-                                    c if c == peptide.len() + 1 => {
-                                        peptide.add_simple_c_term(modification);
-                                    }
-                                    i => {
-                                        peptide.sequence_mut()[i - 1]
-                                            .add_simple_modification(modification);
-                                    }
-                                }
+                                peptide.add_simple_modification(
+                                    SequencePosition::from_index(location, peptide.len()),
+                                    modification,
+                                );
                             }
                             MZTabReturnModification::GlobalAmbiguous(modification) => {
                                 let _possible = peptide.add_unknown_position_modification(
@@ -343,7 +332,25 @@ impl MZTabData {
                                     &MUPSettings::default(),
                                 );
                             }
-                            _ => todo!(),
+                            MZTabReturnModification::Ambiguous(pos, modification) => {
+                                let locations = pos
+                                    .into_iter()
+                                    .map(|(index, score)| {
+                                        (SequencePosition::from_index(index, peptide.len()), score)
+                                    })
+                                    .collect_vec();
+                                let _possible = peptide.add_ambiguous_modification(
+                                    modification,
+                                    None,
+                                    &locations,
+                                    None,
+                                    None,
+                                    true,
+                                );
+                            }
+                            MZTabReturnModification::NeutralLoss(_, _) => {
+                                // TODO: handle neutral losses
+                            }
                         }
                     }
                     Some(
@@ -696,10 +703,22 @@ impl MZTabData {
 
 enum MZTabReturnModification {
     GlobalAmbiguous(SimpleModification),
-    Ambiguous(Vec<(usize, Option<f64>)>, SimpleModification),
+    Ambiguous(Vec<(usize, Option<OrderedFloat<f64>>)>, SimpleModification),
     Defined(usize, SimpleModification),
+    NeutralLoss(Option<usize>, Mass),
 }
 
+/// Parse a single modification definition. These are quite complex in mzTab. Rough schema:
+/// ```ebnfish
+/// Modification: (<position>|'null')'-'<definition>
+/// Position: (<location>'|')*<location>
+/// Location: <int>('[' <CV term> ']')?
+/// Definition: 'unimod:'<int>|'mod:'<int>|'chemmod:'(<formula>|<float>)
+/// Neutral loss: (<int>'-')? <CV term>
+/// ```
+/// 
+/// # Errors
+/// If this is not a valid modification definition
 fn parse_modification<'a>(
     line: &'a str,
     range: Range<usize>,
@@ -707,29 +726,117 @@ fn parse_modification<'a>(
     line_index: u32,
 ) -> Result<MZTabReturnModification, BoxedError<'a>> {
     if let Some((pos, modification)) = line[range.clone()].split_once('-') {
-        let position = if pos.eq_ignore_ascii_case("null") {
+        let position: Option<Vec<(usize, Option<OrderedFloat<f64>>)>> = if pos
+            .eq_ignore_ascii_case("null")
+        {
             Ok(None)
         } else {
-            // TODO: handle multiple and handle probabilities
-            pos.parse::<usize>()
-                .map_err(|err| {
-                    BoxedError::error(
-                        "Invalid modification position",
-                        format!("The position {}", explain_number_error(&err)),
-                        Context::line_range(
-                            Some(line_index),
-                            line,
-                            range.start..range.start + pos.len(),
-                        ),
-                    )
-                })
-                .map(Some)
+            let mut index = range.start;
+            Ok(Some(
+                pos.split('|')
+                    .map(|single| {
+                        if let Some((offset, _, number)) =
+                            next_number::<false, false, usize>(line, index..index + single.len())
+                        {
+                            let res = number.map_err(|err| {
+                                BoxedError::error(
+                                    "Invalid modification position",
+                                    format!("The position {}", explain_number_error(&err)),
+                                    Context::line_range(
+                                        Some(line_index),
+                                        line,
+                                        index..index + offset,
+                                    ),
+                                )
+                            })?;
+                            
+                            let parameter = &single[offset..];
+                            let score = if !parameter.is_empty()
+                                && single[offset..].starts_with('[')
+                                && single.ends_with(']')
+                            {
+                                let value_range = CVTerm::parse_and_identify(line, index + offset..index+single.len(), "MS:1001876", "modification probability")?;
+                                Some(line[value_range.clone()].parse::<f64>().map(OrderedFloat).map_err(|err| BoxedError::error(
+                                                "Invalid modification position",
+                                                format!("The modification probability is not a valid number: {err}"),
+                                                Context::line_range(
+                                        Some(line_index),
+                                        line,
+                                        value_range
+                                    )
+                                )))
+                            } else if parameter.is_empty() {
+                                None
+                            } else {
+                                Some(Err(BoxedError::error(
+                                    "Invalid modification position",
+                                    "A modification position parameter should be enclosed in square brackets '[]'",
+                                    Context::line_range(
+                                        Some(line_index),
+                                        line,
+                                        index + offset..index + single.len(),
+                                    ),
+                                )))
+                            }.transpose()?;
+                            index += single.len() + 1;
+
+                            Ok((res, score))
+                        } else {
+                            Err(BoxedError::error(
+                                "Invalid modification position",
+                                "A modification position should start with a number",
+                                Context::line_range(
+                                    Some(line_index),
+                                    line,
+                                    index..index + single.len(),
+                                ),
+                            ))
+                        }
+                    })
+                    .collect::<Result<_, _>>()?,
+            ))
         }?;
 
-        let modification = if let Some((tag, value)) = modification.split_once(':') {
+        if modification.starts_with('[') && modification.ends_with(']') {
+            let value_range = CVTerm::parse_and_identify(
+                line,
+                range.start + pos.len() + 1..range.end,
+                "MS:1001524",
+                "fragment neutral loss",
+            )?;
+            let loss = line[value_range.clone()]
+                .parse::<f64>()
+                .map(|v| Mass::new::<crate::system::dalton>(v))
+                .map_err(|err| {
+                    BoxedError::error(
+                        "Invalid neutral loss",
+                        format!("The fragment neutral loss is not a valid number: {err}"),
+                        Context::line_range(Some(line_index), line, value_range),
+                    )
+                })?;
+
+            position.map_or_else(
+                || Ok(MZTabReturnModification::NeutralLoss(None, loss)),
+                |pos| {
+                    if pos.len() == 1 {
+                        Ok(MZTabReturnModification::NeutralLoss(Some(pos[0].0), loss))
+                    } else {
+                        Err(BoxedError::error(
+                            "Invalid neutral loss",
+                            "A neutral loss cannot be placed on multiple positions",
+                            Context::line_range(
+                                Some(line_index),
+                                line,
+                                range.start..range.start + pos.len(),
+                            ),
+                        ))
+                    }
+                },
+            )
+        } else if let Some((tag, value)) = modification.split_once(':') {
             let value_range = range.start + pos.len() + tag.len() + 2..range.end;
             let value_context = Context::line_range(Some(line_index), line, value_range.clone());
-            if tag.eq_ignore_ascii_case("unimod") {
+            let modification = if tag.eq_ignore_ascii_case("unimod") {
                 Ontology::Unimod
                     .find_id(
                         value.parse::<usize>().map_err(|err| {
@@ -827,9 +934,20 @@ fn parse_modification<'a>(
                         range.start + pos.len() + 1..range.start + pos.len() + 1 + tag.len(),
                     ),
                 ));
-            }
+            };
+
+            Ok(match position {
+                None => MZTabReturnModification::GlobalAmbiguous(modification),
+                Some(pos) => {
+                    if pos.len() == 1 {
+                        MZTabReturnModification::Defined(pos[0].0, modification)
+                    } else {
+                        MZTabReturnModification::Ambiguous(pos, modification)
+                    }
+                }
+            })
         } else {
-            return Err(BoxedError::error(
+            Err(BoxedError::error(
                 "Invalid mzTab modification",
                 "An mzTab modification should be in format 'tag:value' but the colon (':') is missing",
                 Context::line_range(
@@ -837,13 +955,22 @@ fn parse_modification<'a>(
                     line,
                     range.start + pos.len() + 1..range.end,
                 ),
-            ));
-        };
-
-        Ok(match position {
-            None => MZTabReturnModification::GlobalAmbiguous(modification),
-            Some(pos) => MZTabReturnModification::Defined(pos, modification),
-        })
+            ))
+        }
+    } else if line[range.clone()].starts_with('[') && line[range.clone()].ends_with(']') {
+        let value_range =
+            CVTerm::parse_and_identify(line, range, "MS:1001524", "fragment neutral loss")?;
+        line[value_range.clone()]
+            .parse::<f64>()
+            .map(|v| Mass::new::<crate::system::dalton>(v))
+            .map_err(|err| {
+                BoxedError::error(
+                    "Invalid neutral loss",
+                    format!("The fragment neutral loss is not a valid number: {err}"),
+                    Context::line_range(Some(line_index), line, value_range),
+                )
+            })
+            .map(|loss| MZTabReturnModification::NeutralLoss(None, loss))
     } else {
         Err(BoxedError::error(
             "Invalid modification",
@@ -918,6 +1045,19 @@ impl<'a> PSMLine<'a> {
     }
 }
 
+impl std::fmt::Display for PSMLine<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{}",
+            Context::default()
+                .line_index(self.line_index as u32)
+                .lines(0, self.line)
+                .add_highlights(self.fields.iter().map(|r| (0, r.clone())))
+        )
+    }
+}
+
 impl From<MZTabData> for IdentifiedPeptidoform<SimpleLinear, MaybePeptidoform> {
     fn from(value: MZTabData) -> Self {
         Self {
@@ -984,6 +1124,64 @@ pub struct CVTerm {
     pub term: String,
     /// Additional comments on the term, eg additional specification
     pub comment: String,
+}
+
+impl CVTerm {
+    /// Get a line parse the range as a cv term, check the id, and give back the comment/value (if any).
+    /// All done without any allocations.
+    /// # Errors
+    /// If the selected section is not enclosed in square brackets. Or if the Line has a different term id.
+    fn parse_and_identify<'a>(
+        line: &'a str,
+        range: Range<usize>,
+        required_id: &str,
+        required_term: &str,
+    ) -> Result<Range<usize>, BoxedError<'a>> {
+        let value = &line[range.clone()];
+        if value.starts_with('[') && value.ends_with(']') {
+            let value = &value[1..value.len() - 1];
+            let mut field = 0;
+            let mut field_index: Option<Range<usize>> = None;
+            let mut id = range.start..range.start;
+            for (index, c) in value.char_indices() {
+                let index = index + range.start + 1;
+                if c == ',' {
+                    if field == 1 {
+                        id = field_index.as_ref().map_or(index..index, Clone::clone);
+                    } 
+                    if field == 3 {
+                        // Just continue
+                    } else {
+                        field += 1;
+                        field_index = None;
+                    }
+                } else if !c.is_ascii_whitespace() {
+                    field_index = field_index.map_or_else(|| Some(index..index + c.len_utf8()), |range| Some(range.start..index + c.len_utf8()));
+                }
+            }
+            let comment =
+                field_index.map_or(range.end..range.end, |range| range);
+
+            if line[id.clone()].eq_ignore_ascii_case(required_id) {
+                Ok(comment)
+            } else {
+                Err(BoxedError::error(
+                    "Invalid CV term",
+                    format!(
+                        "A CV term with id {required_id} \"{required_term}\" was expected but id {} was found",
+                        &line[id]
+                    ),
+                    Context::line_range(None, line, range),
+                ))
+            }
+        } else {
+            Err(BoxedError::error(
+                "Invalid CV term",
+                "A CV term should be enclosed by '[]'",
+                Context::line_range(None, line, range),
+            ))
+        }
+    }
 }
 
 impl FromStr for CVTerm {

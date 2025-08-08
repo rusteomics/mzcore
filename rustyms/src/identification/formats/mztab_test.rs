@@ -61,7 +61,7 @@ fn labelfree_sqi() {
 fn complex_mods() {
     assert_eq!(
         open_file(BufReader::new(COMPLEX_MODS.as_bytes())).unwrap(),
-        14
+        16
     );
 }
 
