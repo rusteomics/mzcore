@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     identification::{
-        BoxedIdentifiedPeptideIter, FastaIdentifier, IdentifiedPeptidoform,
+        BoxedIdentifiedPeptideIter, FastaIdentifier, FlankingSequence, IdentifiedPeptidoform,
         IdentifiedPeptidoformData, IdentifiedPeptidoformSource, IdentifiedPeptidoformVersion,
         KnownFileFormat, MetaData, PeptidoformPresent, SpectrumId, SpectrumIds,
         common_parser::Location,
@@ -27,7 +27,7 @@ format_family!(
     required {
         scan_number: usize, |location: Location, _| location.parse(NUMBER_ERROR);
         /// Up to 3 leading amino acids (if present), the peptidoform itself, and up to 3 tailing amino acids (if present)
-        peptide: (Option<Peptidoform<SemiAmbiguous>>, Peptidoform<SemiAmbiguous>, Option<Peptidoform<SemiAmbiguous>>), |location: Location, custom_database: Option<&CustomDatabase>| {
+        peptide: (FlankingSequence, Peptidoform<SemiAmbiguous>, FlankingSequence), |location: Location, custom_database: Option<&CustomDatabase>| {
             location.clone().split_twice('.').ok_or_else(|| BoxedError::error("Invalid Proteoscape line", "The peptide columns should contain the previous amino acids, the peptide, and the following amino acids separated by dots.", location.context().to_owned())).and_then(|(before, peptide, after)| {
                 let before = before.trim_start_matches("-");
                 let after = after.trim_end_matches("-");
@@ -37,7 +37,8 @@ format_family!(
                         before.location.clone(),
                         custom_database,
                         &SloppyParsingParameters::default(),
-                    ).map_err(BoxedError::to_owned)).transpose()?,
+                    ).map_err(BoxedError::to_owned)).transpose()?
+                    .map_or(FlankingSequence::Terminal, |s| FlankingSequence::Sequence(Box::new(s))),
                     Peptidoform::sloppy_pro_forma(
                         peptide.full_line(),
                         peptide.location.clone(),
@@ -49,7 +50,8 @@ format_family!(
                         after.location.clone(),
                         custom_database,
                         &SloppyParsingParameters::default(),
-                    ).map_err(BoxedError::to_owned)).transpose()?,
+                    ).map_err(BoxedError::to_owned)).transpose()?
+                    .map_or(FlankingSequence::Terminal, |s| FlankingSequence::Sequence(Box::new(s))),
                 ))
             })
         };
@@ -186,6 +188,14 @@ impl MetaData for ProteoscapeData {
     }
 
     fn protein_location(&self) -> Option<Range<u16>> {
+        None
+    }
+
+    fn flanking_sequences(&self) -> (&FlankingSequence, &FlankingSequence) {
+        (&self.peptide.0, &self.peptide.2)
+    }
+
+    fn database(&self) -> Option<(&str, Option<&str>)> {
         None
     }
 }

@@ -19,7 +19,7 @@ use crate::{
     helper_functions::{check_extension, explain_number_error, next_number, split_with_brackets},
     identification::{
         FastaIdentifier, IdentifiedPeptidoform, IdentifiedPeptidoformData, KnownFileFormat,
-        MaybePeptidoform, MetaData, SpectrumId, SpectrumIds,
+        MaybePeptidoform, MetaData, SpectrumId, SpectrumIds, FlankingSequence,
     },
     ontology::{CustomDatabase, Ontology},
     quantities::Tolerance,
@@ -31,11 +31,11 @@ use crate::{
     system::{Mass, MassOverCharge, Time, isize::Charge, usize},
 };
 
-/// Peptide data from a mzTab file
+/// Peptidoform data from a mzTab file
 #[derive(Clone, Debug, Default, Deserialize, PartialEq, Serialize)]
 pub struct MZTabData {
-    /// The peptide's sequence corresponding to the PSM
-    pub peptide: Option<Peptidoform<SimpleLinear>>,
+    /// The sequence corresponding to the PSM
+    pub peptidoform: Option<Peptidoform<SimpleLinear>>,
     /// A unique identifier for a PSM within the file. If a PSM can be matched to
     /// multiple proteins, the same PSM should be represented on multiple rows with
     /// different accessions and the same PSM_ID.
@@ -46,14 +46,12 @@ pub struct MZTabData {
     /// Indicates whether the peptide sequence (coming from the PSM) is unique for
     /// this protein in respect to the searched database.
     pub unique: Option<bool>,
-    /// The protein database used for the search (could theoretically come from a
-    /// different species) and the peptide sequence comes from.
-    pub database: Option<String>,
-    /// The protein database's version
-    pub database_version: Option<String>,
+    /// The protein database used for the search together with the version of the 
+    /// database.
+    pub database: Option<(String, Option<String>)>,
     /// The search engines that identified this peptide, alongside their identified score and the CV term describing the score
     pub search_engine: Vec<(CVTerm, Option<f64>, CVTerm)>,
-    /// If available the estaimated reliability of the PSM.
+    /// The estimated reliability of the PSM. (Optional parameter)
     pub reliability: Option<PSMReliability>,
     /// The retention time for this peptide.
     pub rt: Option<Time>,
@@ -61,18 +59,14 @@ pub struct MZTabData {
     pub z: Charge,
     /// The experimental mz
     pub mz: Option<MassOverCharge>,
-    /// A URI pointing to the PSM's entry in the experiment it was identified in (e.g. the peptide’s PRIDE entry).
+    /// A URI pointing to the PSMs entry in the experiment it was identified in (e.g. the peptidoform PRIDE entry).
     pub uri: Option<String>,
     /// The spectra references grouped by raw file
     pub spectra_ref: SpectrumIds,
-    /// The amino acide before this peptide
-    pub preceding_aa: FlankingResidue,
-    /// The amino acide after this peptide
-    pub following_aa: FlankingResidue,
+    /// The flanking sequences around this peptide
+    pub flanking_sequence: (FlankingSequence, FlankingSequence),
     /// The start of this peptide in the containing protein (0-based)
-    pub start: Option<u16>,
-    /// The end of this peptide in the containing protein (0-based)
-    pub end: Option<u16>,
+    pub protein_location: Option<Range<u16>>,
     /// Casanovo specific additional metadata with the amino acid confidence
     pub local_confidence: Option<Vec<f64>>,
     /// Any additional metadata
@@ -298,7 +292,7 @@ impl MZTabData {
         };
 
         let mut result = Self {
-            peptide: {
+            peptidoform: {
                 let range = line
                     .required_column("sequence")
                     .map_err(BoxedError::to_owned)?
@@ -384,10 +378,10 @@ impl MZTabData {
                 .and_then(|(v, _)| (!v.eq_ignore_ascii_case("null")).then(|| v == "1")),
             database: line
                 .optional_column("database")
-                .and_then(|(v, _)| (!v.eq_ignore_ascii_case("null")).then(|| v.to_string())),
-            database_version: line
+                .and_then(|(v, _)| (!v.eq_ignore_ascii_case("null")).then(|| v.to_string()))
+                .map(|db| (db, line
                 .optional_column("database_version")
-                .and_then(|(v, _)| (!v.eq_ignore_ascii_case("null")).then(|| v.to_string())),
+                .and_then(|(v, _)| (!v.eq_ignore_ascii_case("null")).then(|| v.to_string())))),
             search_engine: {
                 let (value, range) = line
                     .required_column("search_engine")
@@ -590,39 +584,46 @@ impl MZTabData {
                         .collect(),
                 )
             },
-            preceding_aa: line
-                .required_column("pre")
-                .map_err(BoxedError::to_owned)?
-                .0
-                .parse()
-                .map_err(|()| {
-                    BoxedError::error(
+            flanking_sequence: {
+                let pre = line
+                    .required_column("pre")
+                    .map_err(BoxedError::to_owned)?;
+                let post = line
+                    .required_column("post")
+                    .map_err(BoxedError::to_owned)?;
+
+                let pre = match pre.0 {
+                    "null" => FlankingSequence::Unknown,
+                    "-" => FlankingSequence::Terminal,
+                    aa if aa.len() == 1 => FlankingSequence::AminoAcid(AminoAcid::from_str(aa).map_err(|()| BoxedError::error(
                         "Invalid preceding amino acid",
-                        "The pre column should contain null, -, or an aminoacid",
+                        "This is not a valid amino acid code",
                         Context::line_range(
                             Some(line.line_index as u32),
                             line.line,
-                            line.optional_column("pre").unwrap().1,
+                            pre.1,
                         ),
-                    )
-                })?,
-            following_aa: line
-                .required_column("post")
-                .map_err(BoxedError::to_owned)?
-                .0
-                .parse()
-                .map_err(|()| {
-                    BoxedError::error(
+                    ))?), 
+                    _ => FlankingSequence::Sequence(Box::new(Peptidoform::sloppy_pro_forma(line.line, pre.1, None, &SloppyParsingParameters::default())?)), 
+                };
+
+                let post = match post.0 {
+                    "null" => FlankingSequence::Unknown,
+                    "-" => FlankingSequence::Terminal,
+                    aa if aa.len() == 1 => FlankingSequence::AminoAcid(AminoAcid::from_str(aa).map_err(|()| BoxedError::error(
                         "Invalid following amino acid",
-                        "The post column should contain null, -, or an aminoacid",
+                        "This is not a valid amino acid code",
                         Context::line_range(
                             Some(line.line_index as u32),
                             line.line,
-                            line.optional_column("post").unwrap().1,
+                            post.1,
                         ),
-                    )
-                })?,
-            start: line
+                    ))?), 
+                    _ => FlankingSequence::Sequence(Box::new(Peptidoform::sloppy_pro_forma(line.line, post.1, None, &SloppyParsingParameters::default())?)), 
+                };
+                (pre, post)
+            },
+            protein_location: line
                 .optional_column("start")
                 .and_then(|(v, r)| {
                     (!v.eq_ignore_ascii_case("null")).then(|| {
@@ -635,21 +636,23 @@ impl MZTabData {
                         })
                     })
                 })
-                .transpose()?,
-            end: line
-                .optional_column("end")
-                .and_then(|(v, r)| {
-                    (!v.eq_ignore_ascii_case("null")).then(|| {
-                        v.parse::<u16>().map_err(|err| {
-                            BoxedError::error(
-                                "Invalid mzTab end",
-                                format!("The end {}", explain_number_error(&err)),
-                                Context::line_range(Some(line.line_index as u32), line.line, r),
-                            )
+                .transpose().and_then(|start| {
+                    let end = line
+                        .optional_column("end")
+                        .and_then(|(v, r)| {
+                            (!v.eq_ignore_ascii_case("null")).then(|| {
+                                v.parse::<u16>().map_err(|err| {
+                                    BoxedError::error(
+                                        "Invalid mzTab end",
+                                        format!("The end {}", explain_number_error(&err)),
+                                        Context::line_range(Some(line.line_index as u32), line.line, r),
+                                    )
+                                })
+                            })
                         })
-                    })
-                })
-                .transpose()?,
+                        .transpose()?;
+                    Ok(start.and_then(|s| end.map(|e| s..e)))
+            })?,
             local_confidence: line
                 .optional_column("opt_ms_run[1]_aa_scores")
                 .filter(|(lc, _)| !lc.trim().is_empty())
@@ -692,8 +695,8 @@ impl MZTabData {
             // As Casanovo has a double N terminal modification (+43.006-17.027) which could also
             // exist as two separate modifications the number of N terminal modifications is not a
             // reliable measure to determine how many local confidence scores to ignore.
-            let c = result.peptide.as_ref().map_or(0, |p| p.get_c_term().len());
-            let n = lc.len() - c - result.peptide.as_ref().map_or(0, Peptidoform::len);
+            let c = result.peptidoform.as_ref().map_or(0, |p| p.get_c_term().len());
+            let n = lc.len() - c - result.peptidoform.as_ref().map_or(0, Peptidoform::len);
             lc[n..lc.len() - c].to_vec()
         });
 
@@ -1080,39 +1083,6 @@ impl From<MZTabData> for IdentifiedPeptidoform<SimpleLinear, MaybePeptidoform> {
     }
 }
 
-/// A flanking residue for a sequence, N or C terminal agnostic
-#[derive(Clone, Copy, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
-pub enum FlankingResidue {
-    /// The flanking residue is unknown (for example in de novo data)
-    #[default]
-    Unknown,
-    /// The residue is terminal
-    Terminal,
-    /// The flanking residue
-    AminoAcid(AminoAcid),
-}
-
-impl FromStr for FlankingResidue {
-    type Err = <AminoAcid as FromStr>::Err;
-    fn from_str(value: &str) -> Result<Self, Self::Err> {
-        match value.trim() {
-            "null" => Ok(Self::Unknown),
-            "-" => Ok(Self::Terminal),
-            _ => AminoAcid::from_str(value).map(Self::AminoAcid),
-        }
-    }
-}
-
-impl std::fmt::Display for FlankingResidue {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::Unknown => write!(f, "Unknown"),
-            Self::Terminal => write!(f, "Terminal"),
-            Self::AminoAcid(a) => write!(f, "{a}"),
-        }
-    }
-}
-
 /// A CV term
 #[derive(Clone, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
 pub struct CVTerm {
@@ -1271,7 +1241,7 @@ fn parse_mztab_reader<T: BufRead>(
 
 impl MetaData for MZTabData {
     fn compound_peptidoform_ion(&self) -> Option<Cow<'_, CompoundPeptidoformIon>> {
-        self.peptide.as_ref().map(|p| Cow::Owned(p.clone().into()))
+        self.peptidoform.as_ref().map(|p| Cow::Owned(p.clone().into()))
     }
 
     fn format(&self) -> KnownFileFormat {
@@ -1355,6 +1325,14 @@ impl MetaData for MZTabData {
     }
 
     fn protein_location(&self) -> Option<Range<u16>> {
-        self.start.and_then(|s| self.end.map(|e| s..e))
+        self.protein_location.clone()
+    }
+    
+    fn flanking_sequences(&self) -> (&FlankingSequence, &FlankingSequence) {
+        (&self.flanking_sequence.0, &self.flanking_sequence.1)
+    }
+
+    fn database(&self) -> Option<(&str, Option<&str>)> {
+        self.database.as_ref().map(|(db, version)| (db.as_str(), version.as_deref()))
     }
 }

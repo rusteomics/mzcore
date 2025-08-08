@@ -10,10 +10,10 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     identification::{
-        BoxedIdentifiedPeptideIter, FastaIdentifier, IdentifiedPeptidoform,
+        BoxedIdentifiedPeptideIter, FastaIdentifier, FlankingSequence, IdentifiedPeptidoform,
         IdentifiedPeptidoformData, IdentifiedPeptidoformSource, IdentifiedPeptidoformVersion,
         KnownFileFormat, MetaData, PeptidoformPresent, SpectrumId, SpectrumIds,
-        common_parser::Location,
+        common_parser::{Location, OptionalLocation},
         csv::{CsvLine, parse_csv},
     },
     ontology::CustomDatabase,
@@ -40,7 +40,7 @@ format_family!(
         accession: String, |location: Location, _| Ok(location.get_string());
         organism: String, |location: Location, _| Ok(location.get_string());
         protein_name: FastaIdentifier<String>, |location: Location, _| location.parse(NUMBER_ERROR);
-        protein_location: Range<u16>, |location: Location, _| location.parse_with(
+        protein_location: Option<Range<u16>>, |location: Location, _| location.or_empty().parse_with(
             |loc| {
                 if loc.location.len() < 3 {
                     return Err(BoxedError::error(
@@ -87,36 +87,46 @@ format_family!(
             },
         );
         base_sequence: String, |location: Location, _| Ok(location.get_string());
-        flanking_residues: (AminoAcid, AminoAcid),|location: Location, _| location.parse_with(
+        flanking_residues: (FlankingSequence, FlankingSequence), |location: Location, _| location.parse_with(
             |loc| {
+                let n = loc.line.line().as_bytes()[loc.location.start];
+                let c = loc.line.line().as_bytes()[loc.location.end - 1];
                 Ok((
-                    AminoAcid::try_from(loc.line.line().as_bytes()[loc.location.start]).map_err(
-                        |()| {
-                            BoxedError::error(
-                                "Invalid Opair line",
-                                "The flanking residues could not be parsed as amino acids",
-                                Context::line(
-                                    Some(loc.line.line_index() as u32),
-                                    loc.line.line(),
-                                    loc.location.start,
-                                    1,
-                                ).to_owned(),
-                            )
-                        },
-                    )?,
-                    AminoAcid::try_from(loc.line.line().as_bytes()[loc.location.end - 1])
-                        .map_err(|()| {
-                            BoxedError::error(
-                                "Invalid Opair line",
-                                "The flanking residues could not be parsed as amino acids",
-                                Context::line(
-                                    Some(loc.line.line_index() as u32),
-                                    loc.line.line(),
-                                    loc.location.end - 1,
-                                    1,
-                                ).to_owned(),
-                            )
-                        })?
+                    if n == b'-' {
+                        FlankingSequence::Terminal
+                    } else {
+                        FlankingSequence::AminoAcid(AminoAcid::try_from(n).map_err(
+                            |()| {
+                                BoxedError::error(
+                                    "Invalid Opair line",
+                                    "The flanking residues could not be parsed as amino acids",
+                                    Context::line(
+                                        Some(loc.line.line_index() as u32),
+                                        loc.line.line(),
+                                        loc.location.start,
+                                        1,
+                                    ).to_owned(),
+                                )
+                            },
+                        )?)
+                    },
+                    if c == b'-' {
+                        FlankingSequence::Terminal
+                    } else {
+                        FlankingSequence::AminoAcid(AminoAcid::try_from(c).map_err(
+                            |()| {
+                                BoxedError::error(
+                                    "Invalid Opair line",
+                                    "The flanking residues could not be parsed as amino acids",
+                                    Context::line(
+                                        Some(loc.line.line_index() as u32),
+                                        loc.line.line(),
+                                        loc.location.end - 1,
+                                        1,
+                                    ).to_owned(),
+                                )
+                        })?)
+                    }
                 ))
             },
         );
@@ -365,6 +375,14 @@ impl MetaData for OpairData {
     }
 
     fn protein_location(&self) -> Option<Range<u16>> {
-        Some(self.protein_location.clone())
+        self.protein_location.clone()
+    }
+
+    fn flanking_sequences(&self) -> (&FlankingSequence, &FlankingSequence) {
+        (&self.flanking_residues.0, &self.flanking_residues.1)
+    }
+
+    fn database(&self) -> Option<(&str, Option<&str>)> {
+        None
     }
 }

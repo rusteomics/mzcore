@@ -8,7 +8,7 @@ use crate::{
     glycan::MonoSaccharide,
     helper_functions::explain_number_error,
     identification::{
-        BoxedIdentifiedPeptideIter, FastaIdentifier, IdentifiedPeptidoform,
+        BoxedIdentifiedPeptideIter, FastaIdentifier, FlankingSequence, IdentifiedPeptidoform,
         IdentifiedPeptidoformData, IdentifiedPeptidoformSource, IdentifiedPeptidoformVersion,
         KnownFileFormat, MetaData, PeptidoformPresent, SpectrumId, SpectrumIds,
         common_parser::{Location, OptionalColumn, OptionalLocation},
@@ -89,15 +89,18 @@ format_family!(
         delta_score: f32, |location: Location, _| location.or_empty().parse::<f32>(NUMBER_ERROR);
         entry_name: String, |location: Location, _| Ok(location.get_string());
         enzymatic_termini: usize, |location: Location, _| location.parse::<usize>(NUMBER_ERROR);
-        extended_peptide: Box<[Option<Peptidoform<SemiAmbiguous>>; 3]>, |location: Location, custom_database: Option<&CustomDatabase>| {
-            let peptides = location.clone().array('.').map(|l| l.or_empty().parse_with(|location| Peptidoform::sloppy_pro_forma(
+        extended_peptide: (FlankingSequence, Option<Peptidoform<SemiAmbiguous>>, FlankingSequence), |location: Location, custom_database: Option<&CustomDatabase>| {
+            let mut peptides = location.clone().array('.').map(|l| l.or_empty().parse_with(|location| Peptidoform::sloppy_pro_forma(
                 location.full_line(),
                 location.location.clone(),
                 custom_database,
                 &SloppyParsingParameters {ignore_prefix_lowercase_n: true, ..Default::default()},
             ).map_err(BoxedError::to_owned))).collect::<Result<Vec<_>,_>>()?;
             if peptides.len() == 3 {
-                Ok(Box::new([peptides[0].clone(), peptides[1].clone(), peptides[2].clone()]))
+                let suffix = peptides.pop().unwrap().map_or(FlankingSequence::Terminal, |s| FlankingSequence::Sequence(Box::new(s)));
+                let peptide = peptides.pop().unwrap();
+                let prefix = peptides.pop().unwrap().map_or(FlankingSequence::Terminal, |s| FlankingSequence::Sequence(Box::new(s)));
+                Ok((prefix, peptide, suffix))
             } else {
                 Err(BoxedError::error("Invalid extened peptide", "The extended peptide should contain the prefix.peptide.suffix for all peptides.", location.context().to_owned()))
             }
@@ -561,5 +564,16 @@ impl MetaData for MSFraggerData {
     fn protein_location(&self) -> Option<Range<u16>> {
         self.protein_start
             .and_then(|start| self.protein_end.map(|end| start..end))
+    }
+
+    fn flanking_sequences(&self) -> (&FlankingSequence, &FlankingSequence) {
+        self.extended_peptide.as_ref().map_or(
+            (&FlankingSequence::Unknown, &FlankingSequence::Unknown),
+            |extended| (&extended.0, &extended.2),
+        )
+    }
+
+    fn database(&self) -> Option<(&str, Option<&str>)> {
+        None
     }
 }

@@ -8,7 +8,7 @@ use crate::{
     fragment::NeutralLoss,
     helper_functions::explain_number_error,
     identification::{
-        BoxedIdentifiedPeptideIter, FastaIdentifier, IdentifiedPeptidoform,
+        BoxedIdentifiedPeptideIter, FastaIdentifier, FlankingSequence, IdentifiedPeptidoform,
         IdentifiedPeptidoformData, IdentifiedPeptidoformSource, IdentifiedPeptidoformVersion,
         KnownFileFormat, MetaData, PeptidoformPresent, SpectrumId, SpectrumIds,
         common_parser::{Location, OptionalColumn, OptionalLocation},
@@ -361,5 +361,13 @@ impl MetaData for PLGSData {
 
     fn protein_location(&self) -> Option<Range<u16>> {
         Some(self.peptide_start..self.peptide_start + self.peptide.len() as u16)
+    }
+
+    fn flanking_sequences(&self) -> (&FlankingSequence, &FlankingSequence) {
+        (&FlankingSequence::Unknown, &FlankingSequence::Unknown)
+    }
+
+    fn database(&self) -> Option<(&str, Option<&str>)> {
+        None
     }
 }

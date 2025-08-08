@@ -15,8 +15,8 @@ use serde::{Deserialize, Serialize};
 use crate::{
     helper_functions::explain_number_error,
     identification::{
-        IdentifiedPeptidoform, IdentifiedPeptidoformData, KnownFileFormat, MetaData,
-        PeptidoformPresent, SpectrumIds,
+        FlankingSequence, IdentifiedPeptidoform, IdentifiedPeptidoformData, KnownFileFormat,
+        MetaData, PeptidoformPresent, SpectrumIds,
     },
     prelude::{CompoundPeptidoformIon, HasPeptidoformImpl},
     sequence::{
@@ -826,6 +826,14 @@ impl MetaData for FastaData {
     }
 
     fn protein_location(&self) -> Option<Range<u16>> {
+        None
+    }
+
+    fn flanking_sequences(&self) -> (&FlankingSequence, &FlankingSequence) {
+        (&FlankingSequence::Unknown, &FlankingSequence::Unknown)
+    }
+
+    fn database(&self) -> Option<(&str, Option<&str>)> {
         None
     }
 }

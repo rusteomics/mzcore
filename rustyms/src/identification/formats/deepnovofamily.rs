@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     identification::{
-        BoxedIdentifiedPeptideIter, FastaIdentifier, IdentifiedPeptidoform,
+        BoxedIdentifiedPeptideIter, FastaIdentifier, FlankingSequence, IdentifiedPeptidoform,
         IdentifiedPeptidoformData, IdentifiedPeptidoformSource, IdentifiedPeptidoformVersion,
         KnownFileFormat, MaybePeptidoform, MetaData, PeaksFamilyId, SpectrumId, SpectrumIds,
         common_parser::{Location, OptionalColumn, OptionalLocation},
@@ -232,6 +232,14 @@ impl MetaData for DeepNovoFamilyData {
     }
 
     fn protein_location(&self) -> Option<Range<u16>> {
+        None
+    }
+
+    fn flanking_sequences(&self) -> (&FlankingSequence, &FlankingSequence) {
+        (&FlankingSequence::Unknown, &FlankingSequence::Unknown)
+    }
+
+    fn database(&self) -> Option<(&str, Option<&str>)> {
         None
     }
 }

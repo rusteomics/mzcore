@@ -10,7 +10,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     identification::{
-        BoxedIdentifiedPeptideIter, FastaIdentifier, IdentifiedPeptidoform,
+        BoxedIdentifiedPeptideIter, FastaIdentifier, FlankingSequence, IdentifiedPeptidoform,
         IdentifiedPeptidoformData, IdentifiedPeptidoformSource, IdentifiedPeptidoformVersion,
         KnownFileFormat, MetaData, PeaksFamilyId, PeptidoformPresent, SpectrumId, SpectrumIds,
         common_parser::{Location, OptionalColumn, OptionalLocation},
@@ -38,8 +38,8 @@ format_family!(
     Peaks,
     SemiAmbiguous, PeptidoformPresent, [&V13_DIA, &V12, &V11, &V11_FEATURES, &XPLUS, &AB, &X_PATCHED, &X, &DB_PEPTIDE, &DB_PSM, &DB_PROTEIN_PEPTIDE], b',', None;
     required {
-        peptide: (Option<AminoAcid>, Vec<Peptidoform<SemiAmbiguous>>, Option<AminoAcid>), |location: Location, custom_database: Option<&CustomDatabase>| {
-            let n_flanking: Option<AminoAcid> =
+        peptide: (FlankingSequence, Vec<Peptidoform<SemiAmbiguous>>, FlankingSequence), |location: Location, custom_database: Option<&CustomDatabase>| {
+            let n_flanking: Option<AminoAcid>  =
                 (location.as_str().chars().nth(1) == Some('.'))
                 .then(|| location.as_str().chars().next().unwrap().try_into().map_err(|()|
                     BoxedError::error(
@@ -54,6 +54,7 @@ format_family!(
                         "Invalid amino acid",
                         "This flanking residue is not a valid amino acid",
                         Context::line(Some(location.line.line_index() as u32), location.full_line(), location.location.end-1, location.location.end).to_owned()))).transpose()?;
+
             if c_flanking.is_none() && n_flanking.is_none() {
                 location.array(';').map(|l| Peptidoform::sloppy_pro_forma(
                     l.full_line(),
@@ -62,15 +63,19 @@ format_family!(
                     &SloppyParsingParameters::default()
                 ).map_err(BoxedError::to_owned)).unique()
                 .collect::<Result<Vec<_>,_>>()
-                .map(|sequences| (n_flanking, sequences, c_flanking))
+                .map(|sequences| (FlankingSequence::Unknown, sequences, FlankingSequence::Unknown))
             } else {
-            Peptidoform::sloppy_pro_forma(
-                location.full_line(),
-                n_flanking.map_or(location.location.start, |_| location.location.start+2)..c_flanking.map_or(location.location.end, |_| location.location.end-2),
-                custom_database,
-                &SloppyParsingParameters::default()
-            ).map_err(BoxedError::to_owned).map(|p| (n_flanking, vec![p], c_flanking))
-        }};
+                Peptidoform::sloppy_pro_forma(
+                    location.full_line(),
+                    n_flanking.map_or(location.location.start, |_| location.location.start+2)..c_flanking.map_or(location.location.end, |_| location.location.end-2),
+                    custom_database,
+                    &SloppyParsingParameters::default()
+                ).map_err(BoxedError::to_owned).map(|p| (
+                    n_flanking.map_or(FlankingSequence::Terminal, FlankingSequence::AminoAcid),
+                    vec![p],
+                    c_flanking.map_or(FlankingSequence::Terminal, FlankingSequence::AminoAcid)
+                ))
+            }};
         mz: MassOverCharge, |location: Location, _| location.parse::<f64>(NUMBER_ERROR).map(MassOverCharge::new::<crate::system::mz>);
         rt: Time, |location: Location, _| location.parse::<f64>(NUMBER_ERROR).map(Time::new::<crate::system::time::min>);
         area: Option<f64>, |location: Location, _| location.or_empty().parse(NUMBER_ERROR);
@@ -761,5 +766,13 @@ impl MetaData for PeaksData {
 
     fn protein_location(&self) -> Option<Range<u16>> {
         self.start.and_then(|s| self.end.map(|e| s..e))
+    }
+
+    fn flanking_sequences(&self) -> (&FlankingSequence, &FlankingSequence) {
+        (&self.peptide.0, &self.peptide.2)
+    }
+
+    fn database(&self) -> Option<(&str, Option<&str>)> {
+        None
     }
 }
