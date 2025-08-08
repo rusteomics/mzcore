@@ -17,7 +17,7 @@ impl MolecularFormula {
     pub fn from_resid(
         value: &str,
         range: impl RangeBounds<usize>,
-    ) -> Result<Multi<Self>, BoxedError> {
+    ) -> Result<Multi<Self>, BoxedError<'_>> {
         let mut multi = Vec::new();
         let mut start = 0;
         for part in value[range.start_index()..range.end_index(value.len())].split(',') {
@@ -38,7 +38,7 @@ impl MolecularFormula {
     pub fn from_resid_single(
         value: &str,
         range: impl RangeBounds<usize>,
-    ) -> Result<Self, BoxedError> {
+    ) -> Result<Self, BoxedError<'_>> {
         let (mut index, end) = range.bounds(value.len().saturating_sub(1));
         let mut result = Self::default();
         while index <= end {

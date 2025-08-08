@@ -99,6 +99,8 @@ pub trait MetaData {
 }
 
 /// A flanking sequence
+// Impossible to get the Sequence option smaller (size of a pointer plus alignment of a pointer so the discriminator is 8 bytes as well)
+#[allow(variant_size_differences)]
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize, Eq, Default)]
 pub enum FlankingSequence {
     /// If the flanking sequence is unknown (in _de novo_ for example)

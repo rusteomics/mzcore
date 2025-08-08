@@ -106,6 +106,7 @@ pub struct PeakAnnotation {
 }
 
 impl PeakAnnotation {
+    /// Convert a peak annotation into a fragment.
     fn to_fragment(self, interpretation: CompoundPeptidoformIon) -> Fragment {
         // Get the peptidoform (assume no cross-linkers)
         let peptidoform = self.analyte_number.checked_sub(1).and_then(|n| {
@@ -383,7 +384,7 @@ enum Isotope {
 fn parse_analyte_number(
     line: &str,
     range: Range<usize>,
-) -> Result<(Range<usize>, usize), BoxedError> {
+) -> Result<(Range<usize>, usize), BoxedError<'_>> {
     next_number::<false, false, usize>(line, range.clone()).map_or_else(
         || Ok((range.clone(), 1)),
         |num| {
@@ -730,7 +731,7 @@ fn parse_ion<'a>(
 fn parse_neutral_loss(
     line: &str,
     range: Range<usize>,
-) -> Result<(Range<usize>, Vec<NeutralLoss>), BoxedError> {
+) -> Result<(Range<usize>, Vec<NeutralLoss>), BoxedError<'_>> {
     let mut offset = 0;
     let mut neutral_losses = Vec::new();
     while let Some(c @ (b'-' | b'+')) = line.as_bytes().get(range.start_index() + offset).copied() {
@@ -846,7 +847,7 @@ fn parse_neutral_loss(
 fn parse_isotopes(
     line: &str,
     range: Range<usize>,
-) -> Result<(Range<usize>, Vec<(i32, Isotope)>), BoxedError> {
+) -> Result<(Range<usize>, Vec<(i32, Isotope)>), BoxedError<'_>> {
     let mut offset = 0;
     let mut isotopes = Vec::new();
     while let Some(c @ (b'-' | b'+')) = line.as_bytes().get(range.start_index() + offset).copied() {
@@ -930,7 +931,7 @@ fn parse_isotopes(
 fn parse_adduct_type(
     line: &str,
     range: Range<usize>,
-) -> Result<(Range<usize>, Option<MolecularCharge>), BoxedError> {
+) -> Result<(Range<usize>, Option<MolecularCharge>), BoxedError<'_>> {
     if line.as_bytes().get(range.start_index()).copied() == Some(b'[') {
         let closing =
             end_of_enclosure(line, range.start_index() + 1, b'[', b']').ok_or_else(|| {
@@ -1017,7 +1018,7 @@ fn parse_adduct_type(
 /// Parse mzPAF charge, eg `^2` `^-1`
 /// # Errors
 /// If there is nu number after the caret, or if the number is invalid (outside of range and the like).
-fn parse_charge(line: &str, range: Range<usize>) -> Result<(Range<usize>, Charge), BoxedError> {
+fn parse_charge(line: &str, range: Range<usize>) -> Result<(Range<usize>, Charge), BoxedError<'_>> {
     if line.as_bytes().get(range.start_index()).copied() == Some(b'^') {
         let charge =
             next_number::<true, false, isize>(line, range.add_start(1_usize)).ok_or_else(|| {
@@ -1051,7 +1052,7 @@ fn parse_charge(line: &str, range: Range<usize>) -> Result<(Range<usize>, Charge
 fn parse_deviation(
     line: &str,
     range: Range<usize>,
-) -> Result<(Range<usize>, Option<Tolerance<OrderedMassOverCharge>>), BoxedError> {
+) -> Result<(Range<usize>, Option<Tolerance<OrderedMassOverCharge>>), BoxedError<'_>> {
     if line.as_bytes().get(range.start_index()).copied() == Some(b'/') {
         let number =
             next_number::<true, true, f64>(line, range.add_start(1_usize)).ok_or_else(|| {
@@ -1092,7 +1093,7 @@ fn parse_deviation(
 fn parse_confidence(
     line: &str,
     range: Range<Characters>,
-) -> Result<(Range<Characters>, Option<f64>), BoxedError> {
+) -> Result<(Range<Characters>, Option<f64>), BoxedError<'_>> {
     if line.chars().nth(range.start_index()) == Some('*') {
         let number =
             next_number::<true, true, f64>(line, range.add_start(1_usize)).ok_or_else(|| {

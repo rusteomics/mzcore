@@ -13,7 +13,10 @@ impl MolecularFormula {
     /// If the formula is not valid according to the above specification, with some help on what is going wrong.
     /// # Panics
     /// It can panic if the string contains not UTF8 symbols.
-    pub fn from_psi_mod(value: &str, range: impl RangeBounds<usize>) -> Result<Self, BoxedError> {
+    pub fn from_psi_mod(
+        value: &str,
+        range: impl RangeBounds<usize>,
+    ) -> Result<Self, BoxedError<'_>> {
         let (mut index, end) = range.bounds(value.len());
         let mut isotope = None;
         let mut element = None;

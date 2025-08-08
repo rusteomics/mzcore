@@ -704,6 +704,7 @@ impl MZTabData {
     }
 }
 
+#[allow(dead_code)] // Neutral losses not yet handled
 enum MZTabReturnModification {
     GlobalAmbiguous(SimpleModification),
     Ambiguous(Vec<(usize, Option<OrderedFloat<f64>>)>, SimpleModification),
