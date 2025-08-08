@@ -1,5 +1,5 @@
 //! Handle positioned glycan structures
-use std::{hash::Hash, ops::RangeInclusive};
+use std::hash::Hash;
 
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
@@ -59,13 +59,16 @@ impl PositionedGlycanStructure {
     /// All core options, with the Y breakage positions leading to this fragment
     pub fn core_options(
         &self,
-        range: RangeInclusive<u8>,
+        range: (Option<usize>, Option<usize>),
         peptidoform_index: usize,
         attachment: Option<(AminoAcid, SequencePosition)>,
     ) -> Vec<(Vec<GlycanPosition>, MolecularFormula)> {
         self.internal_break_points(0, peptidoform_index, attachment)
             .iter()
-            .filter(|(_, _, depth)| range.contains(depth))
+            .filter(|(_, _, depth)| {
+                range.0.is_none_or(|s| *depth as usize >= s)
+                    && range.1.is_none_or(|e| *depth as usize <= e)
+            })
             .map(|(f, pos, _)| {
                 (
                     pos.iter()

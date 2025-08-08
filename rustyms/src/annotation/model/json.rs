@@ -318,15 +318,20 @@ impl ParseJson for GlycanModel {
                         )
                     })?,
                 )?,
-                compositional_range: RangeInclusive::from_json_value(
-                    map.remove("compositional_range").ok_or_else(|| {
+                compositional_range: {
+                    let key = map.remove("compositional_range").ok_or_else(|| {
                         BoxedError::error(
                             "Invalid GlycanModel",
                             "The required property 'compositional_range' is missing",
                             context(&map),
                         )
-                    })?,
-                )?,
+                    })?;
+                    // Try parsing it as a tuple or the old range definition
+                    <(Option<usize>, Option<usize>)>::from_json_value(key.clone()).or_else(|_| {
+                        RangeInclusive::from_json_value(key)
+                            .map(|range| (Some(*range.start()), Some(*range.end())))
+                    })
+                }?,
                 neutral_losses: Vec::from_json_value(map.remove("neutral_losses").ok_or_else(
                     || {
                         BoxedError::error(

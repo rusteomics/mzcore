@@ -129,10 +129,7 @@ impl SimpleModificationInner {
                 let mut options = Vec::new();
 
                 if let Some(range) = glycan_fragmentation.core() {
-                    for option in MonoSaccharide::composition_options(
-                        monosaccharides,
-                        *range.start() as usize..=*range.end() as usize,
-                    ) {
+                    for option in MonoSaccharide::composition_options(monosaccharides, range) {
                         options.push(
                             option
                                 .iter()
