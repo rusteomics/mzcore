@@ -62,6 +62,14 @@ format_family!(
             .collect::<Result<Vec<_>, _>>();
         used_model: UsedModel, |location: Location, _| location.parse::<UsedModel>(("Invalid InstaNovo line", "The selected model has to be 'diffusion' or 'transformer'."));
      }
+
+     fn post_process(_source: &CsvLine, mut parsed: Self, _custom_database: Option<&CustomDatabase>) -> Result<Self, CustomError> {
+        // Only keep the parsed local_confidence is the `UsedModel == Transformer`
+        if let Some(used_model) = parsed.used_model && used_model == UsedModel::Diffusion {
+            parsed.local_confidence = None;
+        }
+        Ok(parsed)
+    }
 );
 
 /// InstaNovo version 1.0.0
@@ -86,7 +94,7 @@ pub const INSTANOVOPLUS_V1_1_4: InstaNovoFormat = InstaNovoFormat {
     raw_file: "experiment_name",
     peptide: "final_prediction",
     score: "final_log_probabilities",
-    local_confidence: OptionalColumn::NotAvailable, // TODO: parse the LC from the transformer column and only save the info of the transformer model is used
+    local_confidence: OptionalColumn::Optional("transformer_token_log_probabilities"),
     used_model: OptionalColumn::Required("selected_model"),
 };
 
