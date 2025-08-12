@@ -1,23 +1,19 @@
 use std::{borrow::Cow, marker::PhantomData, ops::Range};
 
+use serde::{Deserialize, Serialize};
+
 use crate::{
-    error::CustomError,
     identification::{
-        FastaIdentifier, IdentifiedPeptidoform, IdentifiedPeptidoformData,
-        IdentifiedPeptidoformSource, KnownFileFormat, MetaData, PeptidoformPresent, SpectrumIds,
+        BoxedIdentifiedPeptideIter, FastaIdentifier, FlankingSequence, IdentifiedPeptidoform,
+        IdentifiedPeptidoformData, IdentifiedPeptidoformSource, IdentifiedPeptidoformVersion,
+        KnownFileFormat, MetaData, PeptidoformPresent, SpectrumIds,
+        common_parser::Location,
+        csv::{CsvLine, parse_csv},
     },
     ontology::CustomDatabase,
     prelude::CompoundPeptidoformIon,
     sequence::{Peptidoform, SemiAmbiguous, SloppyParsingParameters},
     system::{Mass, MassOverCharge, Ratio, Time, isize::Charge},
-};
-
-use serde::{Deserialize, Serialize};
-
-use crate::identification::{
-    BoxedIdentifiedPeptideIter, IdentifiedPeptidoformVersion,
-    common_parser::Location,
-    csv::{CsvLine, parse_csv},
 };
 
 static NUMBER_ERROR: (&str, &str) = (
@@ -34,7 +30,7 @@ format_family!(
             location.location.clone(),
             custom_database,
             &SloppyParsingParameters::default(),
-        );
+        ).map_err(BoxedError::to_owned);
         score: f64, |location: Location, _| location.parse::<f64>(NUMBER_ERROR);
         local_confidence: Vec<f64>, |location: Location, _| location
             .trim_start_matches("[").trim_end_matches("]")
@@ -150,6 +146,14 @@ impl MetaData for PepNetData {
     }
 
     fn protein_location(&self) -> Option<Range<u16>> {
+        None
+    }
+
+    fn flanking_sequences(&self) -> (&FlankingSequence, &FlankingSequence) {
+        (&FlankingSequence::Unknown, &FlankingSequence::Unknown)
+    }
+
+    fn database(&self) -> Option<(&str, Option<&str>)> {
         None
     }
 }

@@ -101,10 +101,12 @@ impl<PeptidoformAvailability> IdentifiedPeptidoform<Linear, PeptidoformAvailabil
                 ..
             })
             | IdentifiedPeptidoformData::MaxQuant(MaxQuantData { peptide, .. })
-            | IdentifiedPeptidoformData::PiPrimeNovo(PiPrimeNovoData { peptide, .. })
             | IdentifiedPeptidoformData::MZTab(MZTabData { peptide, .. })
             | IdentifiedPeptidoformData::DeepNovoFamily(DeepNovoFamilyData { peptide, .. }) => {
                 peptide.as_ref().map(AsRef::as_ref)
+            }
+            IdentifiedPeptidoformData::MZTab(MZTabData { peptidoform, .. }) => {
+                peptidoform.as_ref().map(AsRef::as_ref)
             }
             IdentifiedPeptidoformData::Fasta(f) => Some(f.peptide().as_ref()),
             IdentifiedPeptidoformData::NovoB(NovoBData {
@@ -158,11 +160,11 @@ impl<PeptidoformAvailability> IdentifiedPeptidoform<SimpleLinear, PeptidoformAva
                 ..
             })
             | IdentifiedPeptidoformData::MaxQuant(MaxQuantData { peptide, .. })
-            | IdentifiedPeptidoformData::PiPrimeNovo(PiPrimeNovoData { peptide, .. })
             | IdentifiedPeptidoformData::MZTab(MZTabData { peptide, .. })
             | IdentifiedPeptidoformData::DeepNovoFamily(DeepNovoFamilyData { peptide, .. }) => {
                 peptide.as_ref().map(AsRef::as_ref)
             }
+            IdentifiedPeptidoformData::MZTab(MZTabData { peptidoform, .. }) => peptidoform.as_ref(),
             IdentifiedPeptidoformData::Fasta(f) => Some(f.peptide().as_ref()),
             IdentifiedPeptidoformData::NovoB(NovoBData {
                 score_forward,
@@ -213,10 +215,12 @@ impl<PeptidoformAvailability> IdentifiedPeptidoform<SemiAmbiguous, PeptidoformAv
                 ..
             })
             | IdentifiedPeptidoformData::MaxQuant(MaxQuantData { peptide, .. })
-            | IdentifiedPeptidoformData::PiPrimeNovo(PiPrimeNovoData { peptide, .. })
             | IdentifiedPeptidoformData::MZTab(MZTabData { peptide, .. })
             | IdentifiedPeptidoformData::DeepNovoFamily(DeepNovoFamilyData { peptide, .. }) => {
                 peptide.as_ref()
+            }
+            IdentifiedPeptidoformData::MZTab(MZTabData { peptidoform, .. }) => {
+                peptidoform.as_ref().and_then(|p| p.as_semi_ambiguous())
             }
             IdentifiedPeptidoformData::Fasta(f) => Some(f.peptide()),
             IdentifiedPeptidoformData::NovoB(NovoBData {
@@ -273,10 +277,12 @@ impl<PeptidoformAvailability> IdentifiedPeptidoform<UnAmbiguous, PeptidoformAvai
                 ..
             })
             | IdentifiedPeptidoformData::MaxQuant(MaxQuantData { peptide, .. })
-            | IdentifiedPeptidoformData::PiPrimeNovo(PiPrimeNovoData { peptide, .. })
             | IdentifiedPeptidoformData::MZTab(MZTabData { peptide, .. })
             | IdentifiedPeptidoformData::DeepNovoFamily(DeepNovoFamilyData { peptide, .. }) => {
                 peptide.as_ref().and_then(|p| p.as_unambiguous())
+            }
+            IdentifiedPeptidoformData::MZTab(MZTabData { peptidoform, .. }) => {
+                peptidoform.as_ref().and_then(|p| p.as_unambiguous())
             }
             IdentifiedPeptidoformData::Fasta(f) => f.peptide().as_unambiguous(),
             IdentifiedPeptidoformData::NovoB(NovoBData {
@@ -521,5 +527,7 @@ impl_metadata!(
         fn protein_name(&self) -> Option<FastaIdentifier<String>>;
         fn protein_id(&self) -> Option<usize>;
         fn protein_location(&self) -> Option<Range<u16>>;
+        fn flanking_sequences(&self) -> (&FlankingSequence, &FlankingSequence);
+        fn database(&self) -> Option<(&str, Option<&str>)>;
     }
 );

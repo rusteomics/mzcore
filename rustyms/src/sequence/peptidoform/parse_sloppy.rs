@@ -1,10 +1,10 @@
 use std::sync::{Arc, LazyLock};
 
+use custom_error::*;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    error::{Context, CustomError},
     glycan::GLYCAN_PARSE_LIST,
     helper_functions::{ResultExtensions, end_of_enclosure, parse_named_counter},
     ontology::{CustomDatabase, Ontology},
@@ -68,14 +68,14 @@ impl Peptidoform<SemiAmbiguous> {
     /// # Errors
     /// If it does not fit the above description.
     #[expect(clippy::missing_panics_doc)] // Cannot panic
-    pub fn sloppy_pro_forma(
-        line: &str,
+    pub fn sloppy_pro_forma<'a>(
+        line: &'a str,
         location: std::ops::Range<usize>,
         custom_database: Option<&CustomDatabase>,
         parameters: &SloppyParsingParameters,
-    ) -> Result<Self, CustomError> {
+    ) -> Result<Self, BoxedError<'a>> {
         if line[location.clone()].trim().is_empty() {
-            return Err(CustomError::error(
+            return Err(BoxedError::error(
                 "Peptide sequence is empty",
                 "A peptide sequence cannot be empty",
                 Context::line(None, line, location.start, 1),
@@ -102,7 +102,7 @@ impl Peptidoform<SemiAmbiguous> {
                     let end_index =
                         end_of_enclosure(&line[location.clone()], index + 1, open, close)
                             .ok_or_else(|| {
-                                CustomError::error(
+                                BoxedError::error(
                                     "Invalid modification",
                                     "No valid closing delimiter",
                                     Context::line(None, line, location.start + index, 1),
@@ -170,14 +170,14 @@ impl Peptidoform<SemiAmbiguous> {
                             .find(|(aa, _)| *aa == seq.aminoacid.aminoacid())
                             .map(|(_, m)| seq.modifications.push(Modification::Simple(m.clone())))
                             .ok_or_else(|| {
-                                CustomError::error(
+                                BoxedError::error(
                                     "Invalid mod indication",
                                     "There is no given mod for this amino acid.",
                                     Context::line(None, line, location.start + index - 4, 4),
                                 )
                             })?,
                         None => {
-                            return Err(CustomError::error(
+                            return Err(BoxedError::error(
                                 "Invalid mod indication",
                                 "A mod indication should always follow an amino acid.",
                                 Context::line(None, line, location.start + index - 3, 3),
@@ -194,14 +194,14 @@ impl Peptidoform<SemiAmbiguous> {
                         .take_while(|c| c.is_ascii_digit() || **c == b'.')
                         .count();
                     let modification = SimpleModificationInner::Mass(Mass::new::<crate::system::dalton>(
-                    line[location.start + index..location.start + index + length]
-                    .parse::<f64>()
-                    .map_err(|err|
-                        CustomError::error(
-                            "Invalid mass shift modification", 
-                            format!("Mass shift modification must be a valid number but this number is invalid: {err}"), 
-                            Context::line(None, line, location.start + index, length))
-                        )?).into()).into();
+                        line[location.start + index..location.start + index + length]
+                        .parse::<f64>()
+                        .map_err(|err|
+                            BoxedError::error(
+                                "Invalid mass shift modification", 
+                                format!("Mass shift modification must be a valid number but this number is invalid: {err}"), 
+                                Context::line(None, line, location.start + index, length))
+                            )?).into()).into();
                     match peptide.sequence_mut().last_mut() {
                         Some(aa) => aa.modifications.push(Modification::Simple(modification)),
                         None => {
@@ -220,7 +220,7 @@ impl Peptidoform<SemiAmbiguous> {
                     } else {
                         peptide.sequence_mut().push(SequenceElement::new(
                             ch.try_into().map_err(|()| {
-                                CustomError::error(
+                                BoxedError::error(
                                     "Invalid amino acid",
                                     "This character is not a valid amino acid",
                                     Context::line(None, line, location.start + index, 1),
@@ -234,7 +234,7 @@ impl Peptidoform<SemiAmbiguous> {
             }
         }
         if peptide.is_empty() {
-            return Err(CustomError::error(
+            return Err(BoxedError::error(
                 "Peptide sequence is empty",
                 "A peptide sequence cannot be empty",
                 Context::line(None, line, location.start, location.len()),
@@ -267,12 +267,12 @@ impl Modification {
     /// # Errors
     /// If the name is not in Unimod, PSI-MOD, the custom database, or the predefined list of common trivial names.
     /// Or if this is the case when the modification follows a known structure (eg `mod (AAs)`).
-    pub fn sloppy_modification(
-        line: &str,
+    pub fn sloppy_modification<'a>(
+        line: &'a str,
         location: std::ops::Range<usize>,
         position: Option<&SequenceElement<SemiAmbiguous>>,
         custom_database: Option<&CustomDatabase>,
-    ) -> Result<SimpleModification, CustomError> {
+    ) -> Result<SimpleModification, BoxedError<'a>> {
         let full_context = Context::line(None, line, location.start, location.len());
         let name = &line[location];
 
@@ -322,15 +322,15 @@ impl Modification {
                         })
                 })
             }).ok_or_else(|| {
-                CustomError::error(
+                BoxedError::error(
                     "Could not interpret modification",
                     "Modifications have to be defined as a number, Unimod, or PSI-MOD name, if this is a custom modification make sure to add it to the database",
                     full_context,
-                ).with_suggestions(
+                ).suggestions(
                     Ontology::find_closest_many(
                         &[Ontology::Unimod, Ontology::Psimod],
                         &name.trim().to_lowercase(),
-                        custom_database).suggestions())
+                        custom_database).get_suggestions().iter().map(ToString::to_string))
             })
     }
 

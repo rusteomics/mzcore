@@ -1,3 +1,4 @@
+use custom_error::*;
 use itertools::Itertools;
 use ordered_float::OrderedFloat;
 use serde::{Deserialize, Serialize};
@@ -13,7 +14,6 @@ use std::{
 use crate::{
     annotation::model::{FragmentationModel, GlycanPeptideFragment},
     chemistry::{AmbiguousLabel, CachedCharge, Chemical, MolecularFormula},
-    error::{Context, CustomError},
     fragment::*,
     glycan::{GlycanStructure, MonoSaccharide},
     ontology::Ontology,
@@ -129,10 +129,7 @@ impl SimpleModificationInner {
                 let mut options = Vec::new();
 
                 if let Some(range) = glycan_fragmentation.core() {
-                    for option in MonoSaccharide::composition_options(
-                        monosaccharides,
-                        *range.start() as usize..=*range.end() as usize,
-                    ) {
+                    for option in MonoSaccharide::composition_options(monosaccharides, range) {
                         options.push(
                             option
                                 .iter()
@@ -465,7 +462,7 @@ impl Display for SimpleModificationInner {
 }
 
 impl ParseJson for SimpleModificationInner {
-    fn from_json_value(value: Value) -> Result<Self, CustomError> {
+    fn from_json_value(value: Value) -> Result<Self, BoxedError<'static>> {
         if let Value::Object(map) = value {
             let (key, value) = map.into_iter().next().unwrap();
             match key.as_str() {
@@ -487,7 +484,7 @@ impl ParseJson for SimpleModificationInner {
                         Ok(Self::Gno {
                             composition: GnoComposition::from_json_value(
                                 map.remove("composition").ok_or_else(|| {
-                                    CustomError::error(
+                                    BoxedError::error(
                                         "Invalid SimpleModification",
                                         "The required property 'composition' is missing",
                                         context(&map),
@@ -496,7 +493,7 @@ impl ParseJson for SimpleModificationInner {
                             )?,
                             id: ModificationId::from_json_value(map.remove("id").ok_or_else(
                                 || {
-                                    CustomError::error(
+                                    BoxedError::error(
                                         "Invalid SimpleModification",
                                         "The required property 'id' is missing",
                                         context(&map),
@@ -505,7 +502,7 @@ impl ParseJson for SimpleModificationInner {
                             )?)?,
                             structure_score: Option::from_json_value(
                                 map.remove("structure_score").ok_or_else(|| {
-                                    CustomError::error(
+                                    BoxedError::error(
                                         "Invalid SimpleModification",
                                         "The required property 'structure_score' is missing",
                                         context(&map),
@@ -514,7 +511,7 @@ impl ParseJson for SimpleModificationInner {
                             )?,
                             subsumption_level: GnoSubsumption::from_json_value(
                                 map.remove("subsumption_level").ok_or_else(|| {
-                                    CustomError::error(
+                                    BoxedError::error(
                                         "Invalid SimpleModification",
                                         "The required property 'subsumption_level' is missing",
                                         context(&map),
@@ -523,7 +520,7 @@ impl ParseJson for SimpleModificationInner {
                             )?,
                             motif: Option::from_json_value(map.remove("motif").ok_or_else(
                                 || {
-                                    CustomError::error(
+                                    BoxedError::error(
                                         "Invalid SimpleModification",
                                         "The required property 'motif' is missing",
                                         context(&map),
@@ -532,7 +529,7 @@ impl ParseJson for SimpleModificationInner {
                             )?)?,
                             taxonomy: ThinVec::from_json_value(
                                 map.remove("taxonomy").ok_or_else(|| {
-                                    CustomError::error(
+                                    BoxedError::error(
                                         "Invalid SimpleModification",
                                         "The required property 'taxonomy' is missing",
                                         context(&map),
@@ -541,7 +538,7 @@ impl ParseJson for SimpleModificationInner {
                             )?,
                             glycomeatlas: ThinVec::from_json_value(
                                 map.remove("glycomeatlas").ok_or_else(|| {
-                                    CustomError::error(
+                                    BoxedError::error(
                                         "Invalid SimpleModification",
                                         "The required property 'glycomeatlas' is missing",
                                         context(&map),
@@ -550,7 +547,7 @@ impl ParseJson for SimpleModificationInner {
                             )?,
                         })
                     } else {
-                        Err(CustomError::error(
+                        Err(BoxedError::error(
                             "Invalid Gno SimpleModification",
                             "The value has to be a map",
                             Context::show(key),
@@ -567,7 +564,7 @@ impl ParseJson for SimpleModificationInner {
                         Ok(Self::Database {
                             specificities: Vec::from_json_value(
                                 map.remove("specificities").ok_or_else(|| {
-                                    CustomError::error(
+                                    BoxedError::error(
                                         "Invalid SimpleModification",
                                         "The required property 'specificities' is missing",
                                         context(&map),
@@ -576,7 +573,7 @@ impl ParseJson for SimpleModificationInner {
                             )?,
                             formula: MolecularFormula::from_json_value(
                                 map.remove("formula").ok_or_else(|| {
-                                    CustomError::error(
+                                    BoxedError::error(
                                         "Invalid SimpleModification",
                                         "The required property 'formula' is missing",
                                         context(&map),
@@ -585,7 +582,7 @@ impl ParseJson for SimpleModificationInner {
                             )?,
                             id: ModificationId::from_json_value(map.remove("id").ok_or_else(
                                 || {
-                                    CustomError::error(
+                                    BoxedError::error(
                                         "Invalid SimpleModification",
                                         "The required property 'id' is missing",
                                         context(&map),
@@ -594,7 +591,7 @@ impl ParseJson for SimpleModificationInner {
                             )?)?,
                         })
                     } else {
-                        Err(CustomError::error(
+                        Err(BoxedError::error(
                             "Invalid Database SimpleModification",
                             "The value has to be a map",
                             Context::show(key),
@@ -611,7 +608,7 @@ impl ParseJson for SimpleModificationInner {
                         Ok(Self::Linker {
                             specificities: Vec::from_json_value(
                                 map.remove("specificities").ok_or_else(|| {
-                                    CustomError::error(
+                                    BoxedError::error(
                                         "Invalid SimpleModification",
                                         "The required property 'specificities' is missing",
                                         context(&map),
@@ -620,7 +617,7 @@ impl ParseJson for SimpleModificationInner {
                             )?,
                             formula: MolecularFormula::from_json_value(
                                 map.remove("formula").ok_or_else(|| {
-                                    CustomError::error(
+                                    BoxedError::error(
                                         "Invalid SimpleModification",
                                         "The required property 'formula' is missing",
                                         context(&map),
@@ -629,7 +626,7 @@ impl ParseJson for SimpleModificationInner {
                             )?,
                             id: ModificationId::from_json_value(map.remove("id").ok_or_else(
                                 || {
-                                    CustomError::error(
+                                    BoxedError::error(
                                         "Invalid SimpleModification",
                                         "The required property 'id' is missing",
                                         context(&map),
@@ -638,7 +635,7 @@ impl ParseJson for SimpleModificationInner {
                             )?)?,
                             length: Option::<f64>::from_json_value(
                                 map.remove("length").ok_or_else(|| {
-                                    CustomError::error(
+                                    BoxedError::error(
                                         "Invalid SimpleModification",
                                         "The required property 'length' is missing",
                                         context(&map),
@@ -648,7 +645,7 @@ impl ParseJson for SimpleModificationInner {
                             .map(Into::into),
                         })
                     } else {
-                        Err(CustomError::error(
+                        Err(BoxedError::error(
                             "Invalid Database SimpleModification",
                             "The value has to be a map",
                             Context::show(key),
@@ -656,17 +653,17 @@ impl ParseJson for SimpleModificationInner {
                     }
                 }
 
-                _ => Err(CustomError::error(
+                _ => Err(BoxedError::error(
                     "Invalid SimpleModification",
                     "The tag has to be Mass/Formula/Glycan/GlycanStructure/Gno/Database/Linker",
                     Context::show(key),
                 )),
             }
         } else {
-            Err(CustomError::error(
+            Err(BoxedError::error(
                 "Invalid SimpleModification",
                 "The JSON value has to be a map",
-                Context::show(value),
+                Context::show(value.to_string()),
             ))
         }
     }

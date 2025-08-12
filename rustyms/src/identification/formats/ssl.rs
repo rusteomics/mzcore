@@ -8,9 +8,8 @@ use std::{
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    error::CustomError,
     identification::{
-        BoxedIdentifiedPeptideIter, FastaIdentifier, IdentifiedPeptidoform,
+        BoxedIdentifiedPeptideIter, FastaIdentifier, FlankingSequence, IdentifiedPeptidoform,
         IdentifiedPeptidoformData, IdentifiedPeptidoformSource, IdentifiedPeptidoformVersion,
         KnownFileFormat, MaybePeptidoform, MetaData, SpectrumId, SpectrumIds,
         common_parser::{Location, OptionalColumn, OptionalLocation},
@@ -32,7 +31,7 @@ format_family!(
     SpectrumSequenceList,
     SemiAmbiguous, MaybePeptidoform, [&SSL], b'\t', None;
     required {
-        raw_file: PathBuf, |location: Location, _| Ok(Path::new(&location.get_string()).to_owned());
+        raw_file: PathBuf, |location: Location, _| Ok(Path::new(location.as_str()).to_owned());
         scan: usize, |location: Location, _| location.parse(NUMBER_ERROR);
         z: Charge, |location: Location, _| location
             .trim_end_matches(".0")
@@ -42,7 +41,7 @@ format_family!(
     optional {
         start_time: Time, |location: Location, _| location.parse::<f64>(NUMBER_ERROR).map(Time::new::<crate::system::time::min>);
         end_time: Time, |location: Location, _| location.parse::<f64>(NUMBER_ERROR).map(Time::new::<crate::system::time::min>);
-        peptide: Peptidoform<SemiAmbiguous>, |location: Location, custom_database: Option<&CustomDatabase>| Peptidoform::pro_forma(location.as_str(), custom_database).map(|p|p.into_semi_ambiguous().unwrap());
+        peptide: Peptidoform<SemiAmbiguous>, |location: Location, custom_database: Option<&CustomDatabase>| Peptidoform::pro_forma(location.as_str(), custom_database).map_err(BoxedError::to_owned).map(|p|p.into_semi_ambiguous().unwrap());
         score: f64, |location: Location, _| location.parse::<f64>(NUMBER_ERROR);
         score_type: String, |location: Location, _| Ok(location.get_string());
         rt: Time, |location: Location, _| location.parse::<f64>(NUMBER_ERROR).map(Time::new::<crate::system::time::min>);
@@ -174,6 +173,14 @@ impl MetaData for SpectrumSequenceListData {
     }
 
     fn protein_location(&self) -> Option<Range<u16>> {
+        None
+    }
+
+    fn flanking_sequences(&self) -> (&FlankingSequence, &FlankingSequence) {
+        (&FlankingSequence::Unknown, &FlankingSequence::Unknown)
+    }
+
+    fn database(&self) -> Option<(&str, Option<&str>)> {
         None
     }
 }

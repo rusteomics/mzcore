@@ -7,13 +7,13 @@ use std::{
     num::NonZeroU32,
 };
 
+use custom_error::*;
 use serde::{Deserialize, Serialize};
 use thin_vec::ThinVec;
 
 use crate::{
     annotation::model::GlycanModel,
     chemistry::{MolecularFormula, MultiChemical},
-    error::{Context, CustomError},
     fragment::{DiagnosticIon, FragmentKind},
     quantities::Multi,
     sequence::{
@@ -23,7 +23,7 @@ use crate::{
     },
 };
 
-/// One block in a sequence meaning an aminoacid and its accompanying modifications
+/// One block in a sequence meaning an aminoacid and it's accompanying modifications
 #[derive(Debug, Default, Deserialize, Ord, PartialOrd, Serialize)]
 pub struct SequenceElement<T> {
     /// The aminoacid
@@ -328,14 +328,14 @@ impl<T> SequenceElement<T> {
     pub(crate) fn enforce_modification_rules(
         &self,
         position: SequencePosition,
-    ) -> Result<(), CustomError> {
+    ) -> Result<(), BoxedError<'static>> {
         for modification in &self.modifications {
             if modification.is_possible(self, position) == RulePossible::No {
                 let rules = modification
                     .simple()
                     .map(|s| s.placement_rules())
                     .unwrap_or_default();
-                return Err(CustomError::error(
+                return Err(BoxedError::error(
                     "Modification incorrectly placed",
                     format!(
                         "Modification {modification} is not allowed on {}{}",

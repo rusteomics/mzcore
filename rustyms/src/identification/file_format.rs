@@ -1,12 +1,12 @@
 use std::{fmt::Display, path::Path};
 
+use custom_error::BoxedError;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    error::CustomError,
     identification::*,
     ontology::CustomDatabase,
-    sequence::{Linked, SemiAmbiguous},
+    sequence::{Linked, SemiAmbiguous, SimpleLinear},
 };
 
 /// A file format that is fully known
@@ -168,7 +168,7 @@ impl FileFormat {
         self,
         path: &Path,
         custom_database: Option<&'a CustomDatabase>,
-    ) -> Result<GeneralIdentifiedPeptidoforms<'a>, CustomError> {
+    ) -> Result<GeneralIdentifiedPeptidoforms<'a>, BoxedError<'static>> {
         match self {
             Self::BasicCSV(version) => {
                 BasicCSVData::parse_file(path, custom_database, false, version)
@@ -181,7 +181,7 @@ impl FileFormat {
             Self::Fasta => FastaData::parse_file(path).map(|sequences| {
                 let b: Box<
                     dyn Iterator<
-                        Item = Result<IdentifiedPeptidoform<Linked, MaybePeptidoform>, CustomError>,
+                        Item = Result<IdentifiedPeptidoform<Linked, MaybePeptidoform>, BoxedError>,
                     >,
                 > = Box::new(sequences.into_iter().map(|p| {
                     Ok(IdentifiedPeptidoform::<SemiAmbiguous, PeptidoformPresent>::from(p).cast())
@@ -199,11 +199,11 @@ impl FileFormat {
             Self::MZTab => MZTabData::parse_file(path, custom_database).map(|sequences| {
                 let b: Box<
                     dyn Iterator<
-                        Item = Result<IdentifiedPeptidoform<Linked, MaybePeptidoform>, CustomError>,
+                        Item = Result<IdentifiedPeptidoform<Linked, MaybePeptidoform>, BoxedError>,
                     >,
                 > = Box::new(sequences.into_iter().map(|p| {
                     p.map(|p| {
-                        IdentifiedPeptidoform::<SemiAmbiguous, MaybePeptidoform>::from(p).cast()
+                        IdentifiedPeptidoform::<SimpleLinear, MaybePeptidoform>::from(p).cast()
                     })
                 }));
                 b

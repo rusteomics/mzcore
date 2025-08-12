@@ -299,7 +299,7 @@ impl FragmentType {
     }
 
     /// Get the label for this fragment type, the first argument is the optional superscript prefix, the second is the main label
-    pub fn label(&self) -> (Option<String>, Cow<str>) {
+    pub fn label(&self) -> (Option<String>, Cow<'_, str>) {
         let get_label = |ion: &'static str, v: i8| {
             if v == 0 {
                 Cow::Borrowed(ion)

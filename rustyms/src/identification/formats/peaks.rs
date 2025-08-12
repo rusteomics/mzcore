@@ -5,10 +5,12 @@ use std::{
     path::{Path, PathBuf},
 };
 
+use itertools::Itertools;
+use serde::{Deserialize, Serialize};
+
 use crate::{
-    error::CustomError,
     identification::{
-        BoxedIdentifiedPeptideIter, FastaIdentifier, IdentifiedPeptidoform,
+        BoxedIdentifiedPeptideIter, FastaIdentifier, FlankingSequence, IdentifiedPeptidoform,
         IdentifiedPeptidoformData, IdentifiedPeptidoformSource, IdentifiedPeptidoformVersion,
         KnownFileFormat, MetaData, PeaksFamilyId, PeptidoformPresent, SpectrumId, SpectrumIds,
         common_parser::{Location, OptionalColumn, OptionalLocation},
@@ -22,8 +24,6 @@ use crate::{
     },
     system::{Mass, MassOverCharge, Time, isize::Charge},
 };
-use itertools::Itertools;
-use serde::{Deserialize, Serialize};
 
 static NUMBER_ERROR: (&str, &str) = (
     "Invalid Peaks line",
@@ -38,39 +38,44 @@ format_family!(
     Peaks,
     SemiAmbiguous, PeptidoformPresent, [&V13_DIA, &V12, &V11, &V11_FEATURES, &XPLUS, &AB, &X_PATCHED, &X, &DB_PEPTIDE, &DB_PSM, &DB_PROTEIN_PEPTIDE], b',', None;
     required {
-        peptide: (Option<AminoAcid>, Vec<Peptidoform<SemiAmbiguous>>, Option<AminoAcid>), |location: Location, custom_database: Option<&CustomDatabase>| {
-            let n_flanking: Option<AminoAcid> =
+        peptide: (FlankingSequence, Vec<Peptidoform<SemiAmbiguous>>, FlankingSequence), |location: Location, custom_database: Option<&CustomDatabase>| {
+            let n_flanking: Option<AminoAcid>  =
                 (location.as_str().chars().nth(1) == Some('.'))
                 .then(|| location.as_str().chars().next().unwrap().try_into().map_err(|()|
-                    CustomError::error(
+                    BoxedError::error(
                         "Invalid amino acid",
                         "This flanking residue is not a valid amino acid",
-                        crate::error::Context::line(Some(location.line.line_index()), location.full_line(), location.location.start, 1)))).transpose()?;
+                        Context::line(Some(location.line.line_index() as u32), location.full_line(), location.location.start, 1).to_owned()))).transpose()?;
 
             let c_flanking: Option<AminoAcid> =
             (location.as_str().chars().nth_back(1) == Some('.'))
             .then(|| location.as_str().chars().next_back().unwrap().try_into().map_err(|()|
-                    CustomError::error(
+                    BoxedError::error(
                         "Invalid amino acid",
                         "This flanking residue is not a valid amino acid",
-                        crate::error::Context::line(Some(location.line.line_index()), location.full_line(), location.location.end-1, location.location.end)))).transpose()?;
+                        Context::line(Some(location.line.line_index() as u32), location.full_line(), location.location.end-1, location.location.end).to_owned()))).transpose()?;
+
             if c_flanking.is_none() && n_flanking.is_none() {
                 location.array(';').map(|l| Peptidoform::sloppy_pro_forma(
                     l.full_line(),
                     l.location.clone(),
                     custom_database,
                     &SloppyParsingParameters::default()
-                )).unique()
+                ).map_err(BoxedError::to_owned)).unique()
                 .collect::<Result<Vec<_>,_>>()
-                .map(|sequences| (n_flanking, sequences, c_flanking))
+                .map(|sequences| (FlankingSequence::Unknown, sequences, FlankingSequence::Unknown))
             } else {
-            Peptidoform::sloppy_pro_forma(
-                location.full_line(),
-                n_flanking.map_or(location.location.start, |_| location.location.start+2)..c_flanking.map_or(location.location.end, |_| location.location.end-2),
-                custom_database,
-                &SloppyParsingParameters::default()
-            ).map(|p| (n_flanking, vec![p], c_flanking))
-        }};
+                Peptidoform::sloppy_pro_forma(
+                    location.full_line(),
+                    n_flanking.map_or(location.location.start, |_| location.location.start+2)..c_flanking.map_or(location.location.end, |_| location.location.end-2),
+                    custom_database,
+                    &SloppyParsingParameters::default()
+                ).map_err(BoxedError::to_owned).map(|p| (
+                    n_flanking.map_or(FlankingSequence::Terminal, FlankingSequence::AminoAcid),
+                    vec![p],
+                    c_flanking.map_or(FlankingSequence::Terminal, FlankingSequence::AminoAcid)
+                ))
+            }};
         mz: MassOverCharge, |location: Location, _| location.parse::<f64>(NUMBER_ERROR).map(MassOverCharge::new::<crate::system::mz>);
         rt: Time, |location: Location, _| location.parse::<f64>(NUMBER_ERROR).map(Time::new::<crate::system::time::min>);
         area: Option<f64>, |location: Location, _| location.or_empty().parse(NUMBER_ERROR);
@@ -80,7 +85,7 @@ format_family!(
         ptm: Vec<SimpleModification>, |location: Location, custom_database: Option<&CustomDatabase>|
             location.or_empty().array(';').map(|v| {
                 let v = v.trim();
-                Modification::sloppy_modification(v.full_line(), v.location.clone(), None, custom_database)
+                Modification::sloppy_modification(v.full_line(), v.location.clone(), None, custom_database).map_err(BoxedError::to_owned)
             }).unique().collect::<Result<Vec<_>,_>>();
         scan_number: Vec<PeaksFamilyId>, |location: Location, _| location.or_empty()
                         .map_or(Ok(Vec::new()), |l| l.array(';').map(|v| v.parse(ID_ERROR)).collect::<Result<Vec<_>,_>>());
@@ -120,7 +125,7 @@ format_family!(
         k0_range: std::ops::RangeInclusive<f64>, |location: Location, _| location.split_once('-').map(|(start, end)| Ok(start.parse(NUMBER_ERROR)?..=end.parse(NUMBER_ERROR)?));
     }
 
-    fn post_process(_source: &CsvLine, mut parsed: Self, _custom_database: Option<&CustomDatabase>) -> Result<Self, CustomError> {
+    fn post_process(_source: &CsvLine, mut parsed: Self, _custom_database: Option<&CustomDatabase>) -> Result<Self, BoxedError<'static>> {
         // Add the meaningful modifications to replace mass modifications
         if let Some(ptm) = parsed.ptm.clone() {
             for pep in &mut parsed.peptide.1 {
@@ -761,5 +766,13 @@ impl MetaData for PeaksData {
 
     fn protein_location(&self) -> Option<Range<u16>> {
         self.start.and_then(|s| self.end.map(|e| s..e))
+    }
+
+    fn flanking_sequences(&self) -> (&FlankingSequence, &FlankingSequence) {
+        (&self.peptide.0, &self.peptide.2)
+    }
+
+    fn database(&self) -> Option<(&str, Option<&str>)> {
+        None
     }
 }

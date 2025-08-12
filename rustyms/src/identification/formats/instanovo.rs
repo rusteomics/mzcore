@@ -9,9 +9,8 @@ use std::{
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    error::CustomError,
     identification::{
-        BoxedIdentifiedPeptideIter, FastaIdentifier, IdentifiedPeptidoform,
+        BoxedIdentifiedPeptideIter, FastaIdentifier, FlankingSequence, IdentifiedPeptidoform,
         IdentifiedPeptidoformData, IdentifiedPeptidoformSource, IdentifiedPeptidoformVersion,
         KnownFileFormat, MetaData, PeptidoformPresent, SpectrumId, SpectrumIds,
         common_parser::{Location, OptionalColumn},
@@ -50,7 +49,7 @@ format_family!(
             location.full_line(),
             location.location.clone(),
             custom_database,
-            &BUILT_IN_MODIFICATIONS);
+            &BUILT_IN_MODIFICATIONS).map_err(BoxedError::to_owned);
 
         score: f64, |location: Location, _| location.parse::<f64>(NUMBER_ERROR);
     }
@@ -236,6 +235,14 @@ impl MetaData for InstaNovoData {
     }
 
     fn protein_location(&self) -> Option<Range<u16>> {
+        None
+    }
+
+    fn flanking_sequences(&self) -> (&FlankingSequence, &FlankingSequence) {
+        (&FlankingSequence::Unknown, &FlankingSequence::Unknown)
+    }
+
+    fn database(&self) -> Option<(&str, Option<&str>)> {
         None
     }
 }

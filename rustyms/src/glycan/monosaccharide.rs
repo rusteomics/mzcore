@@ -144,9 +144,9 @@ impl MonoSaccharide {
     /// If any if the composition options has more then [`isize::MAX`] sugars.
     pub fn composition_options(
         composition: &[(Self, isize)],
-        range: std::ops::RangeInclusive<usize>,
+        range: (Option<usize>, Option<usize>),
     ) -> Vec<Vec<(Self, isize)>> {
-        if range == (0..=0) {
+        if range.1 == Some(0) {
             return Vec::new();
         }
         let mut options: Vec<Vec<(Self, isize)>> = Vec::new();
@@ -156,7 +156,7 @@ impl MonoSaccharide {
             // Always start fresh
             for n in 1..=sugar.1 as usize {
                 let new = vec![(sugar.0.clone(), isize::try_from(n).unwrap())];
-                if range.contains(&n) {
+                if range.0.is_none_or(|s| n >= s) && range.1.is_none_or(|s| n <= s) {
                     result.push(new.clone());
                 }
                 new_options.push(new);
@@ -168,11 +168,11 @@ impl MonoSaccharide {
                         let mut new = o.clone();
                         new.push((sugar.0.clone(), isize::try_from(n).unwrap()));
                         let size = new.iter().fold(0, |acc, (_, a)| acc + *a) as usize;
-                        match size.cmp(range.end()) {
-                            std::cmp::Ordering::Greater => (),             // Ignore
-                            std::cmp::Ordering::Equal => result.push(new), // Cannot get bigger
-                            std::cmp::Ordering::Less => {
-                                if size >= *range.start() {
+                        match range.1.map(|e| size.cmp(&e)) {
+                            Some(std::cmp::Ordering::Greater) => (), // Ignore
+                            None | Some(std::cmp::Ordering::Equal) => result.push(new), // Cannot get bigger
+                            Some(std::cmp::Ordering::Less) => {
+                                if range.0.is_none_or(|s| size >= s) {
                                     result.push(new.clone());
                                 }
                                 new_options.push(new); // Can get bigger
@@ -384,11 +384,12 @@ mod tests {
             (MonoSaccharide::new(BaseSugar::Hexose(None), &[]), 1),
             (MonoSaccharide::new(BaseSugar::Heptose(None), &[]), 2),
         ];
-        let options_0 = MonoSaccharide::composition_options(composition, 0..=0);
-        let options_1 = MonoSaccharide::composition_options(composition, 1..=1);
-        let options_2 = MonoSaccharide::composition_options(composition, 2..=2);
-        let options_3 = MonoSaccharide::composition_options(composition, 3..=3);
-        let options_0_3 = MonoSaccharide::composition_options(composition, 0..=3);
+        let options_0 = MonoSaccharide::composition_options(composition, (Some(0), Some(0)));
+        let options_1 = MonoSaccharide::composition_options(composition, (Some(1), Some(1)));
+        let options_2 = MonoSaccharide::composition_options(composition, (Some(2), Some(2)));
+        let options_3 = MonoSaccharide::composition_options(composition, (Some(3), Some(3)));
+        let options_none_3 = MonoSaccharide::composition_options(composition, (None, Some(3)));
+        let options_0_3 = MonoSaccharide::composition_options(composition, (Some(0), Some(3)));
         let human_readable = |options: &[Vec<(MonoSaccharide, isize)>]| {
             options
                 .iter()
@@ -418,6 +419,7 @@ mod tests {
             ),
             "0..=3 should be consistent with 0+1+2+3 separately"
         );
+        assert_eq!(&options_0_3, &options_none_3,);
         assert_eq!(human_readable(&options_1), "Hex1,Hep1", "Options 1");
         assert_eq!(human_readable(&options_2), "Hep2,Hex1&Hep1", "Options 2");
         assert_eq!(human_readable(&options_3), "Hex1&Hep2", "Options 3");

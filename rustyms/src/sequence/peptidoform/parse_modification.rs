@@ -4,14 +4,13 @@ use std::{
     sync::{Arc, LazyLock},
 };
 
+use custom_error::*;
 use ordered_float::OrderedFloat;
-use serde::{Deserialize, Serialize};
-
 use regex::Regex;
+use serde::{Deserialize, Serialize};
 
 use crate::{
     chemistry::{Element, MolecularFormula},
-    error::{Context, CustomError},
     glycan::{GlycanStructure, MonoSaccharide},
     helper_functions::*,
     ontology::{CustomDatabase, Ontology},
@@ -27,16 +26,16 @@ impl SimpleModificationInner {
     /// according to the lookup (which may be added to if necessary). The result
     /// is the modification, with, if applicable, its determined ambiguous group.
     /// # Errors
-    /// If it is not a valid modification return a `CustomError` explaining the error.
-    pub fn parse_pro_forma(
-        line: &str,
+    /// If it is not a valid modification return a `BoxedError` explaining the error.
+    pub fn parse_pro_forma<'a>(
+        line: &'a str,
         range: Range<usize>,
         ambiguous_lookup: &mut AmbiguousLookup,
         cross_link_lookup: &mut CrossLinkLookup,
         custom_database: Option<&CustomDatabase>,
-    ) -> Result<(ReturnModification, MUPSettings), CustomError> {
+    ) -> Result<(ReturnModification, MUPSettings), BoxedError<'a>> {
         // Because multiple modifications could be chained with the pipe operator
-        // the parsing iterates over all links until it finds one it understands
+        // the parsing iterates through all links until it finds one it understands
         // it then returns that one. If no 'understandable' links are found it
         // returns the last link, if this is an info it returns a mass shift of 0,
         // but if any of the links returned an error it returns the last error.
@@ -123,14 +122,14 @@ impl Default for MUPSettings {
 
 /// # Errors
 /// It returns an error when the given line cannot be read as a single modification.
-fn parse_single_modification(
-    line: &str,
-    full_modification: &str,
+fn parse_single_modification<'a>(
+    line: &'a str,
+    full_modification: &'a str,
     offset: usize,
     ambiguous_lookup: &mut AmbiguousLookup,
     cross_link_lookup: &mut CrossLinkLookup,
     custom_database: Option<&CustomDatabase>,
-) -> Result<SingleReturnModification, CustomError> {
+) -> Result<SingleReturnModification, BoxedError<'a>> {
     // Parse the whole intricate structure of the single modification (see here in action: https://regex101.com/r/pW5gsj/1)
     if let Some(groups) = MOD_REGEX.captures(full_modification) {
         // Capture the full mod name (head:tail), head, tail, ambiguous group, and localisation score
@@ -151,7 +150,7 @@ fn parse_single_modification(
                         .parse::<f64>()
                         .map(OrderedFloat::from)
                         .map_err(|_| {
-                            CustomError::error(
+                            BoxedError::error(
                         "Invalid modification localisation score",
                         "The ambiguous modification localisation score needs to be a valid number",
                         Context::line(None, line, offset + m.start(), m.len()),
@@ -162,7 +161,7 @@ fn parse_single_modification(
         );
 
         let modification = if let (Some(head), Some(tail)) = (head.as_ref(), tail) {
-            let basic_error = CustomError::error(
+            let basic_error = BoxedError::error(
                 "Invalid modification",
                 "..",
                 Context::line(None, line, offset + tail.1, tail.2),
@@ -170,35 +169,35 @@ fn parse_single_modification(
             match (head.0.as_str(), tail.0) {
                 ("unimod", tail) => {
                     let id = tail.parse::<usize>().map_err(|_| {
-                        basic_error
-                            .with_long_description("Unimod accession number should be a number")
+                        basic_error.clone()
+                            .long_description("Unimod accession number should be a number")
                     })?;
                     Ontology::Unimod
                         .find_id(id, custom_database)
                         .map(Some)
                         .ok_or_else(|| {
-                            basic_error.with_long_description(
+                            basic_error.clone().long_description(
                             "The supplied Unimod accession number is not an existing modification",
                         )
                         })
                 }
                 ("mod", tail) => {
                     let id = tail.parse::<usize>().map_err(|_| {
-                        basic_error
-                            .with_long_description("PSI-MOD accession number should be a number")
+                        basic_error.clone()
+                            .long_description("PSI-MOD accession number should be a number")
                     })?;
                     Ontology::Psimod
                         .find_id(id, custom_database)
                         .map(Some)
                         .ok_or_else(|| {
-                            basic_error.with_long_description(
+                            basic_error.clone().long_description(
                             "The supplied PSI-MOD accession number is not an existing modification",
                         )
                         })
                 }
                 ("resid", tail) => {
                     let id = tail[2..].parse::<usize>().map_err(|_| {
-                        basic_error.with_long_description(
+                        basic_error.clone().long_description(
                             "RESID accession number should be a number prefixed with 'AA'",
                         )
                     })?;
@@ -206,35 +205,35 @@ fn parse_single_modification(
                         .find_id(id, custom_database)
                         .map(Some)
                         .ok_or_else(|| {
-                            basic_error.with_long_description(
+                            basic_error.clone().long_description(
                             "The supplied Resid accession number is not an existing modification",
                         )
                         })
                 }
                 ("xlmod", tail) => {
                     let id = tail.parse::<usize>().map_err(|_| {
-                        basic_error
-                            .with_long_description("XLMOD accession number should be a number")
+                        basic_error.clone()
+                            .long_description("XLMOD accession number should be a number")
                     })?;
                     Ontology::Xlmod
                         .find_id(id, custom_database)
                         .map(Some)
                         .ok_or_else(|| {
-                            basic_error.with_long_description(
+                            basic_error.clone().long_description(
                             "The supplied XLMOD accession number is not an existing modification",
                         )
                         })
                 }
                 ("custom", tail) => {
                     let id = tail.parse::<usize>().map_err(|_| {
-                        basic_error
-                            .with_long_description("Custom accession number should be a number")
+                        basic_error.clone()
+                            .long_description("Custom accession number should be a number")
                     })?;
                     Ontology::Custom
                     .find_id(id, custom_database)
                     .map(Some)
                     .ok_or_else(|| {
-                        basic_error.with_long_description(
+                        basic_error.clone().long_description(
                                 "The supplied Custom accession number is not an existing modification",
                             )
                     })
@@ -247,7 +246,7 @@ fn parse_single_modification(
                     .map_err(|_| {
                         Ontology::Unimod
                             .find_closest(tail, custom_database)
-                            .with_context(basic_error.context().clone())
+                            .context(basic_error.get_context().clone())
                     }),
                 ("m", tail) => Ontology::Psimod
                     .find_name(tail, custom_database)
@@ -257,7 +256,7 @@ fn parse_single_modification(
                     .map_err(|_| {
                         Ontology::Psimod
                             .find_closest(tail, custom_database)
-                            .with_context(basic_error.context().clone())
+                            .context(basic_error.get_context().clone())
                     }),
                 ("r", tail) => Ontology::Resid
                     .find_name(tail, custom_database)
@@ -267,7 +266,7 @@ fn parse_single_modification(
                     .map_err(|_| {
                         Ontology::Resid
                             .find_closest(tail, custom_database)
-                            .with_context(basic_error.context().clone())
+                            .context(basic_error.get_context().clone())
                     }),
                 ("x", tail) => Ontology::Xlmod
                     .find_name(tail, custom_database)
@@ -277,7 +276,7 @@ fn parse_single_modification(
                     .map_err(|_| {
                         Ontology::Xlmod
                             .find_closest(tail, custom_database)
-                            .with_context(basic_error.context().clone())
+                            .context(basic_error.get_context().clone())
                     }),
                 ("c", tail) => Ontology::Custom
                     .find_name(tail, custom_database)
@@ -285,40 +284,40 @@ fn parse_single_modification(
                     .ok_or_else(|| {
                         Ontology::Custom
                             .find_closest(tail, custom_database)
-                            .with_context(basic_error.context().clone())
+                            .context(basic_error.get_context().clone())
                     }),
                 ("gno" | "g", tail) => Ontology::Gnome
                     .find_name(tail, custom_database)
                     .map(Some)
                     .ok_or_else(|| {
                         basic_error
-                            .with_long_description("This modification cannot be read as a GNO name")
+                            .long_description("This modification cannot be read as a GNO name")
                     }),
                 ("formula", tail) => Ok(Some(Arc::new(SimpleModificationInner::Formula(
                     MolecularFormula::from_pro_forma(tail, .., true, false, true, true).map_err(|e| {
-                        basic_error.with_long_description(format!(
+                        basic_error.long_description(format!(
                             "This modification cannot be read as a valid formula: {e}"
                         ))
                     })?,
                 )))),
                 ("glycan", tail) => Ok(Some(Arc::new(SimpleModificationInner::Glycan(
                     MonoSaccharide::from_composition(tail)
-                        .map_err(|err| err.with_context(basic_error.context().clone()))?,
+                        .map_err(|err| err.context(basic_error.get_context().clone()))?,
                 )))),
                 ("glycanstructure", _) => GlycanStructure::parse(
-                    &line.to_ascii_lowercase(),
+                    line,
                     offset + tail.1..offset + tail.1 + tail.2,
                 )
                 .map(|g| Some(Arc::new(SimpleModificationInner::GlycanStructure(g)))),
                 ("info", _) => Ok(None),
                 ("obs", tail) => numerical_mod(tail).map(Some).map_err(|_| {
-                    basic_error.with_long_description(
+                    basic_error.long_description(
                         "This modification cannot be read as a numerical modification",
                     )
                 }),
                 ("position", tail) => {
                     match super::parse::parse_placement_rules(tail, 0..tail.len()).map_err(
-                        |error| basic_error.with_long_description(error.long_description()),
+                        |error| basic_error.long_description(error.get_long_description().to_string()),
                     ) {
                         Ok(rules) => return Ok(SingleReturnModification::Positions(rules)),
                         Err(e) => Err(e),
@@ -326,7 +325,7 @@ fn parse_single_modification(
                 }
                 ("limit", tail) => {
                     match tail.parse::<usize>().map_err(|error| {
-                        basic_error.with_long_description(format!(
+                        basic_error.long_description(format!(
                             "Invalid limit for modification of unknown position, the number is {}",
                             explain_number_error(&error)
                         ))
@@ -337,7 +336,7 @@ fn parse_single_modification(
                 }
                 ("colocaliseplacedmodifications", tail) => {
                     match tail.parse::<bool>().map_err(|error| {
-                        basic_error.with_long_description(format!(
+                        basic_error.long_description(format!(
                             "Invalid setting for colocalise placed modifications for modification of unknown position, the boolean is {error}",
                         ))
                     }) {
@@ -347,7 +346,7 @@ fn parse_single_modification(
                 }
                 ("colocalisemodificationsofunknownposition", tail) => {
                     match tail.parse::<bool>().map_err(|error| {
-                        basic_error.with_long_description(format!(
+                        basic_error.long_description(format!(
                             "Invalid setting for colocalise modifications of unknown position for modification of unknown position, the boolean is {error}",
                         ))
                     }) {
@@ -372,10 +371,10 @@ fn parse_single_modification(
                             full.0,
                             custom_database,
                         )
-                        .with_long_description(
+                        .long_description(
                             "This modification cannot be read as a valid Unimod or PSI-MOD name.",
                         )
-                        .with_context(Context::line(
+                        .context(Context::line(
                             None,
                             line,
                             offset + full.1,
@@ -393,8 +392,8 @@ fn parse_single_modification(
                 .map(Some)
                 .map_err(|_|
                     Ontology::find_closest_many(&[Ontology::Unimod, Ontology::Psimod, Ontology::Gnome, Ontology::Xlmod, Ontology::Resid, Ontology::Custom], full.0, custom_database)
-                    .with_long_description("This modification cannot be read as a valid Unimod or PSI-MOD name, or as a numerical modification.")
-                    .with_context(Context::line(None, line, offset+full.1, full.2))
+                    .long_description("This modification cannot be read as a valid Unimod or PSI-MOD name, or as a numerical modification.")
+                    .context(Context::line(None, line, offset+full.1, full.2))
                 )
         };
 
@@ -417,7 +416,7 @@ fn parse_single_modification(
                         .as_ref()
                         .is_some_and(|l| *l != linker)
                     {
-                        return Err(CustomError::error(
+                        return Err(BoxedError::error(
                             "Invalid branch definition",
                             "A branch definition has to be identical at both sites, or only defined at one site.",
                             Context::line(None, line, offset + full.1, full.2),
@@ -447,7 +446,7 @@ fn parse_single_modification(
                         .as_ref()
                         .is_some_and(|l| *l != linker)
                     {
-                        return Err(CustomError::error(
+                        return Err(BoxedError::error(
                             "Invalid cross-link definition",
                             "A cross-link definition has to be identical at both sites, or only defined at one site.",
                             Context::line(None, line, offset + full.1, full.2),
@@ -475,7 +474,7 @@ fn parse_single_modification(
             })
         }
     } else {
-        Err(CustomError::error(
+        Err(BoxedError::error(
             "Invalid modification",
             "It does not match the ProForma definition for modifications",
             Context::line(None, line, offset, full_modification.len()),
@@ -486,13 +485,13 @@ fn parse_single_modification(
 /// Handle the logic for an ambiguous modification
 /// # Errors
 /// If the content of the ambiguous modification was already defined
-fn handle_ambiguous_modification(
-    modification: Result<Option<SimpleModification>, CustomError>,
+fn handle_ambiguous_modification<'a>(
+    modification: Result<Option<SimpleModification>, BoxedError<'a>>,
     group: (&str, usize, usize),
     localisation_score: Option<OrderedFloat<f64>>,
     ambiguous_lookup: &mut AmbiguousLookup,
-    context: Context,
-) -> Result<SingleReturnModification, CustomError> {
+    context: Context<'a>,
+) -> Result<SingleReturnModification, BoxedError<'a>> {
     let group_name = group.0.to_ascii_lowercase();
     // Search for a previous definition of this name, store as Some((index, modification_definition_present)) or None if there is no definition in place
     let found_definition = ambiguous_lookup
@@ -503,7 +502,7 @@ fn handle_ambiguous_modification(
     // Handle all possible cases of having a modification found at this position and having a modification defined in the ambiguous lookup
     match (modification, found_definition) {
         // Have a mod defined here and already in the lookup (error)
-        (Ok(Some(_)), Some((_, true))) => Err(CustomError::error(
+        (Ok(Some(_)), Some((_, true))) => Err(BoxedError::error(
             "Invalid ambiguous modification",
             "An ambiguous modification cannot be placed twice (for one of the modifications leave out the modification and only provide the group name)",
             context,

@@ -989,10 +989,10 @@ pub struct CompoundPeptidoformIon(rustyms::sequence::CompoundPeptidoformIon);
 impl CompoundPeptidoformIon {
     /// Create a new compound peptidoform ion from a ProForma string.
     #[new]
-    fn new(proforma: &str) -> Result<Self, CustomError> {
+    fn new(proforma: &str) -> Result<Self, BoxedError> {
         rustyms::sequence::CompoundPeptidoformIon::pro_forma(proforma, None)
             .map(CompoundPeptidoformIon)
-            .map_err(CustomError)
+            .map_err(BoxedError)
     }
 
     /// Create a new compound peptidoform ion from a peptidoform ion.
@@ -1081,10 +1081,10 @@ pub struct PeptidoformIon(rustyms::sequence::PeptidoformIon);
 impl PeptidoformIon {
     /// Create a new peptidoform ion from a ProForma string. Panics
     #[new]
-    fn new(proforma: &str) -> Result<Self, CustomError> {
+    fn new(proforma: &str) -> Result<Self, BoxedError> {
         rustyms::sequence::PeptidoformIon::pro_forma(proforma, None)
             .map(PeptidoformIon)
-            .map_err(CustomError)
+            .map_err(BoxedError)
     }
 
     /// Create a new peptidoform ion from a peptidoform.
@@ -1167,10 +1167,10 @@ pub struct Peptidoform(rustyms::sequence::Peptidoform<Linked>);
 impl Peptidoform {
     /// Create a new peptidoform from a ProForma string.
     #[new]
-    fn new(proforma: &str) -> Result<Self, CustomError> {
+    fn new(proforma: &str) -> Result<Self, BoxedError> {
         rustyms::sequence::Peptidoform::pro_forma(proforma, None)
             .map(Peptidoform)
-            .map_err(CustomError)
+            .map_err(BoxedError)
     }
 
     fn __str__(&self) -> String {
@@ -1775,7 +1775,7 @@ fn rustyms_py03(_py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<AnnotatedPeak>()?;
     m.add_class::<AnnotatedSpectrum>()?;
     m.add_class::<CompoundPeptidoformIon>()?;
-    m.add_class::<CustomError>()?;
+    m.add_class::<BoxedError>()?;
     m.add_class::<Element>()?;
     m.add_class::<Fragment>()?;
     m.add_class::<FragmentationModel>()?;
@@ -1794,21 +1794,21 @@ fn rustyms_py03(_py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
     Ok(())
 }
 
-/// Anerror withcontext where it originated
+/// An error with context where it originated
 #[pyclass]
 #[derive(Debug)]
-pub struct CustomError(rustyms::error::CustomError);
+pub struct BoxedError(custom_error::BoxedError<'static>);
 
-impl std::error::Error for CustomError {}
+impl std::error::Error for BoxedError {}
 
-impl std::fmt::Display for CustomError {
+impl std::fmt::Display for BoxedError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.0)
     }
 }
 
-impl From<CustomError> for PyErr {
-    fn from(value: CustomError) -> Self {
+impl From<BoxedError> for PyErr {
+    fn from(value: BoxedError) -> Self {
         PyValueError::new_err(value)
     }
 }

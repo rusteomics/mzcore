@@ -1,7 +1,8 @@
 use std::fmt::Display;
 
+use custom_error::BoxedError;
+
 use crate::{
-    error::CustomError,
     identification::{IdentifiedPeptidoform, MaybePeptidoform, MetaData},
     ontology::CustomDatabase,
     sequence::{AtLeast, Linked},
@@ -42,7 +43,7 @@ where
         source: &Self::Source,
         custom_database: Option<&CustomDatabase>,
         keep_all_columns: bool,
-    ) -> Result<(Self, &'static Self::Format), CustomError>;
+    ) -> Result<(Self, &'static Self::Format), BoxedError<'static>>;
 
     /// Parse a single identified peptide with the given format
     /// # Errors
@@ -52,17 +53,17 @@ where
         format: &Self::Format,
         custom_database: Option<&CustomDatabase>,
         keep_all_columns: bool,
-    ) -> Result<Self, CustomError>;
+    ) -> Result<Self, BoxedError<'static>>;
 
     /// Parse a source of multiple peptides using the given format or automatically determining the format to use by the first item
     /// # Errors
     /// When the source is not a valid peptide
-    fn parse_many<I: Iterator<Item = Result<Self::Source, CustomError>>>(
+    fn parse_many<I: Iterator<Item = Result<Self::Source, BoxedError<'static>>>>(
         iter: I,
         custom_database: Option<&CustomDatabase>,
         keep_all_columns: bool,
         format: Option<Self::Format>,
-    ) -> IdentifiedPeptidoformIter<Self, I> {
+    ) -> IdentifiedPeptidoformIter<'_, Self, I> {
         IdentifiedPeptidoformIter {
             iter: Box::new(iter),
             format,
@@ -80,7 +81,7 @@ where
         custom_database: Option<&CustomDatabase>,
         keep_all_columns: bool,
         version: Option<Self::Version>,
-    ) -> Result<BoxedIdentifiedPeptideIter<Self>, CustomError>;
+    ) -> Result<BoxedIdentifiedPeptideIter<'_, Self>, BoxedError<'static>>;
 
     /// Parse a reader with identified peptides.
     /// # Errors
@@ -90,7 +91,7 @@ where
         custom_database: Option<&'a CustomDatabase>,
         keep_all_columns: bool,
         version: Option<Self::Version>,
-    ) -> Result<BoxedIdentifiedPeptideIter<'a, Self>, CustomError>;
+    ) -> Result<BoxedIdentifiedPeptideIter<'a, Self>, BoxedError<'static>>;
 
     /// Allow post processing of the peptide
     /// # Errors
@@ -100,15 +101,16 @@ where
         source: &Self::Source,
         parsed: Self,
         custom_database: Option<&CustomDatabase>,
-    ) -> Result<Self, CustomError> {
+    ) -> Result<Self, BoxedError<'static>> {
         Ok(parsed)
     }
 }
 
 /// A general generic identified peptidoform iterator from any source format
 pub type GeneralIdentifiedPeptidoforms<'lifetime> = Box<
-    dyn Iterator<Item = Result<IdentifiedPeptidoform<Linked, MaybePeptidoform>, CustomError>>
-        + 'lifetime,
+    dyn Iterator<
+            Item = Result<IdentifiedPeptidoform<Linked, MaybePeptidoform>, BoxedError<'static>>,
+        > + 'lifetime,
 >;
 
 /// Convenience type to not have to type out long iterator types
@@ -116,7 +118,7 @@ pub type BoxedIdentifiedPeptideIter<'lifetime, T> = IdentifiedPeptidoformIter<
     'lifetime,
     T,
     Box<
-        dyn Iterator<Item = Result<<T as IdentifiedPeptidoformSource>::Source, CustomError>>
+        dyn Iterator<Item = Result<<T as IdentifiedPeptidoformSource>::Source, BoxedError<'static>>>
             + 'lifetime,
     >,
 >;
@@ -126,22 +128,24 @@ pub type BoxedIdentifiedPeptideIter<'lifetime, T> = IdentifiedPeptidoformIter<
 pub struct IdentifiedPeptidoformIter<
     'lifetime,
     Source: IdentifiedPeptidoformSource,
-    Iter: Iterator<Item = Result<Source::Source, CustomError>>,
+    Iter: Iterator<Item = Result<Source::Source, BoxedError<'static>>>,
 > {
     iter: Box<Iter>,
     format: Option<Source::Format>,
     custom_database: Option<&'lifetime CustomDatabase>,
     keep_all_columns: bool,
-    peek: Option<Result<Source, CustomError>>,
+    peek: Option<Result<Source, BoxedError<'static>>>,
 }
 
-impl<R: IdentifiedPeptidoformSource + Clone, I: Iterator<Item = Result<R::Source, CustomError>>>
-    IdentifiedPeptidoformIter<'_, R, I>
+impl<
+    R: IdentifiedPeptidoformSource + Clone,
+    I: Iterator<Item = Result<R::Source, BoxedError<'static>>>,
+> IdentifiedPeptidoformIter<'_, R, I>
 where
     R::Format: 'static,
 {
     /// Peek at the next item in the iterator
-    pub fn peek(&mut self) -> Option<Result<R, CustomError>> {
+    pub fn peek(&mut self) -> Option<Result<R, BoxedError<'static>>> {
         if self.peek.is_some() {
             return self.peek.clone();
         }
@@ -154,13 +158,13 @@ where
                     self.custom_database,
                     self.keep_all_columns,
                 )
+                .map_err(BoxedError::to_owned)
             })
         } else {
-            match self
-                .iter
-                .next()
-                .map(|source| R::parse(&source?, self.custom_database, self.keep_all_columns))
-            {
+            match self.iter.next().map(|source| {
+                R::parse(&source?, self.custom_database, self.keep_all_columns)
+                    .map_err(BoxedError::to_owned)
+            }) {
                 None => None,
                 Some(Ok((pep, format))) => {
                     self.format = Some(format.clone());
@@ -174,12 +178,12 @@ where
     }
 }
 
-impl<R: IdentifiedPeptidoformSource, I: Iterator<Item = Result<R::Source, CustomError>>> Iterator
-    for IdentifiedPeptidoformIter<'_, R, I>
+impl<R: IdentifiedPeptidoformSource, I: Iterator<Item = Result<R::Source, BoxedError<'static>>>>
+    Iterator for IdentifiedPeptidoformIter<'_, R, I>
 where
     R::Format: 'static,
 {
-    type Item = Result<R, CustomError>;
+    type Item = Result<R, BoxedError<'static>>;
     fn next(&mut self) -> Option<Self::Item> {
         if self.peek.is_some() {
             return self.peek.take();
@@ -193,13 +197,13 @@ where
                     self.custom_database,
                     self.keep_all_columns,
                 )
+                .map_err(BoxedError::to_owned)
             })
         } else {
-            match self
-                .iter
-                .next()
-                .map(|source| R::parse(&source?, self.custom_database, self.keep_all_columns))
-            {
+            match self.iter.next().map(|source| {
+                R::parse(&source?, self.custom_database, self.keep_all_columns)
+                    .map_err(BoxedError::to_owned)
+            }) {
                 None => None,
                 Some(Ok((pep, format))) => {
                     self.format = Some(format.clone());
@@ -216,7 +220,7 @@ where
     Source: IdentifiedPeptidoformSource
         + Into<IdentifiedPeptidoform<Source::Complexity, Source::PeptidoformAvailability>>
         + 'lifetime,
-    Iter: Iterator<Item = Result<Source::Source, CustomError>> + 'lifetime,
+    Iter: Iterator<Item = Result<Source::Source, BoxedError<'static>>> + 'lifetime,
     Source::Format: 'static,
     MaybePeptidoform: From<Source::PeptidoformAvailability>,
 {
@@ -225,10 +229,13 @@ where
         self,
     ) -> Box<
         dyn Iterator<
-                Item = Result<IdentifiedPeptidoform<Complexity, MaybePeptidoform>, CustomError>,
+                Item = Result<
+                    IdentifiedPeptidoform<Complexity, MaybePeptidoform>,
+                    BoxedError<'static>,
+                >,
             > + 'lifetime,
     > {
-        Box::new(self.map(|p: Result<Source, CustomError>| match p {
+        Box::new(self.map(|p: Result<Source, BoxedError>| match p {
             Ok(p) => Ok(p.into().cast()),
             Err(e) => Err(e),
         }))

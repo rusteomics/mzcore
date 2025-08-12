@@ -1,10 +1,12 @@
+use std::ops::RangeBounds;
+
+use custom_error::*;
+
 use crate::{
     chemistry::{ELEMENT_PARSE_LIST, Element, MolecularFormula},
-    error::{Context, CustomError},
     helper_functions::{RangeExtension, next_num, str_starts_with},
     quantities::Multi,
 };
-use std::ops::RangeBounds;
 
 impl MolecularFormula {
     /// Parse RESID formulas: `C 2 H 3 N 1 O 1 +` or `C 4 H 5 N 1 O 3, C 4 H 6 N 2 O 2`. If the `range` (byte range in the given line) is not specified it defaults to the full line.
@@ -15,7 +17,7 @@ impl MolecularFormula {
     pub fn from_resid(
         value: &str,
         range: impl RangeBounds<usize>,
-    ) -> Result<Multi<Self>, CustomError> {
+    ) -> Result<Multi<Self>, BoxedError<'_>> {
         let mut multi = Vec::new();
         let mut start = 0;
         for part in value[range.start_index()..range.end_index(value.len())].split(',') {
@@ -36,7 +38,7 @@ impl MolecularFormula {
     pub fn from_resid_single(
         value: &str,
         range: impl RangeBounds<usize>,
-    ) -> Result<Self, CustomError> {
+    ) -> Result<Self, BoxedError<'_>> {
         let (mut index, end) = range.bounds(value.len().saturating_sub(1));
         let mut result = Self::default();
         while index <= end {
@@ -67,7 +69,7 @@ impl MolecularFormula {
                     amount *= number.1 as i32;
                 }
                 if !result.add((element, None, amount)) {
-                    return Err(CustomError::error(
+                    return Err(BoxedError::error(
                         "Invalid RESID molecular formula",
                         "An element with undefined mass was used",
                         Context::line(
@@ -84,7 +86,7 @@ impl MolecularFormula {
                 }
                 trim(&mut index, value);
             } else {
-                return Err(CustomError::error(
+                return Err(BoxedError::error(
                     "Invalid RESID molecular formula",
                     format!("Not a valid character in formula, now has: {result:?}"),
                     Context::line(

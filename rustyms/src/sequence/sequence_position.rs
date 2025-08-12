@@ -61,10 +61,36 @@ impl SequencePosition {
             Self::CTerm => Self::NTerm,
         }
     }
+
+    /// Convert an index to a sequence position.
+    /// The index is defined as follows:
+    /// * `0` is N term
+    /// * `1..=peptide_length` is in the sequence
+    /// * `peptide_length + 1` is C term
+    ///
+    /// # Panics
+    /// Anything outside of this range will panic.
+    pub fn from_index(index: usize, peptide_length: usize) -> Self {
+        match index {
+            0 => Self::NTerm,
+            c if c == peptide_length + 1 => Self::CTerm,
+            i => {
+                if i <= peptide_length {
+                    Self::Index(i - 1)
+                } else {
+                    panic!(
+                        "Index {index} it outside of range for a peptide of length {peptide_length}"
+                    )
+                }
+            }
+        }
+    }
 }
 
 impl ParseJson for SequencePosition {
-    fn from_json_value(value: serde_json::Value) -> Result<Self, crate::error::CustomError> {
+    fn from_json_value(
+        value: serde_json::Value,
+    ) -> Result<Self, custom_error::BoxedError<'static>> {
         use_serde(value)
     }
 }

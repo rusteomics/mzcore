@@ -5,13 +5,15 @@ use std::{
     path::{Path, PathBuf},
 };
 
+use custom_error::*;
+use serde::{Deserialize, Serialize};
+
 use crate::{
-    error::{Context, CustomError},
     identification::{
-        BoxedIdentifiedPeptideIter, FastaIdentifier, IdentifiedPeptidoform,
+        BoxedIdentifiedPeptideIter, FastaIdentifier, FlankingSequence, IdentifiedPeptidoform,
         IdentifiedPeptidoformData, IdentifiedPeptidoformSource, IdentifiedPeptidoformVersion,
         KnownFileFormat, MetaData, PeptidoformPresent, SpectrumId, SpectrumIds,
-        common_parser::Location,
+        common_parser::{Location, OptionalLocation},
         csv::{CsvLine, parse_csv},
     },
     ontology::CustomDatabase,
@@ -19,7 +21,6 @@ use crate::{
     sequence::{AminoAcid, Peptidoform, SemiAmbiguous, SloppyParsingParameters},
     system::{Mass, MassOverCharge, Time, isize::Charge},
 };
-use serde::{Deserialize, Serialize};
 
 static NUMBER_ERROR: (&str, &str) = (
     "Invalid OPair line",
@@ -39,18 +40,18 @@ format_family!(
         accession: String, |location: Location, _| Ok(location.get_string());
         organism: String, |location: Location, _| Ok(location.get_string());
         protein_name: FastaIdentifier<String>, |location: Location, _| location.parse(NUMBER_ERROR);
-        protein_location: Range<u16>, |location: Location, _| location.parse_with(
+        protein_location: Option<Range<u16>>, |location: Location, _| location.or_empty().parse_with(
             |loc| {
                 if loc.location.len() < 3 {
-                    return Err(CustomError::error(
+                    return Err(BoxedError::error(
                         "Invalid Opair line",
                         "The location is not defined, it should be defined like this [<start> to <end>]",
                         Context::line(
-                            Some(loc.line.line_index()),
+                            Some(loc.line.line_index() as u32),
                             loc.line.line(),
                             loc.location.start,
                             loc.location.len(),
-                        ),
+                        ).to_owned(),
                     ))
                 }
                 let bytes =
@@ -65,57 +66,67 @@ format_family!(
                     loc.line.line()[loc.location.start + 1..loc.location.start + 1 + start]
                         .parse()
                         .map_err(|_| {
-                            CustomError::error(NUMBER_ERROR.0, NUMBER_ERROR.1, Context::line(
-                                Some(loc.line.line_index()),
+                            BoxedError::error(NUMBER_ERROR.0, NUMBER_ERROR.1, Context::line(
+                                Some(loc.line.line_index() as u32),
                                 loc.line.line(),
                                 loc.location.start + 1,
                                 start,
-                            ))
+                            )).to_owned()
                         })?..
                     loc.line.line()[loc.location.end - 1 - end..loc.location.end - 1]
                         .parse()
                         .map_err(|_| {
-                            CustomError::error(NUMBER_ERROR.0, NUMBER_ERROR.1, Context::line(
-                                Some(loc.line.line_index()),
+                            BoxedError::error(NUMBER_ERROR.0, NUMBER_ERROR.1, Context::line(
+                                Some(loc.line.line_index() as u32),
                                 loc.line.line(),
                                 loc.location.end - 1 - end,
                                 end,
-                            ))
+                            ).to_owned())
                         })?
                 )
             },
         );
         base_sequence: String, |location: Location, _| Ok(location.get_string());
-        flanking_residues: (AminoAcid, AminoAcid),|location: Location, _| location.parse_with(
+        flanking_residues: (FlankingSequence, FlankingSequence), |location: Location, _| location.parse_with(
             |loc| {
+                let n = loc.line.line().as_bytes()[loc.location.start];
+                let c = loc.line.line().as_bytes()[loc.location.end - 1];
                 Ok((
-                    AminoAcid::try_from(loc.line.line().as_bytes()[loc.location.start]).map_err(
-                        |()| {
-                            CustomError::error(
-                                "Invalid Opair line",
-                                "The flanking residues could not be parsed as amino acids",
-                                Context::line(
-                                    Some(loc.line.line_index()),
-                                    loc.line.line(),
-                                    loc.location.start,
-                                    1,
-                                ),
-                            )
-                        },
-                    )?,
-                    AminoAcid::try_from(loc.line.line().as_bytes()[loc.location.end - 1])
-                        .map_err(|()| {
-                            CustomError::error(
-                                "Invalid Opair line",
-                                "The flanking residues could not be parsed as amino acids",
-                                Context::line(
-                                    Some(loc.line.line_index()),
-                                    loc.line.line(),
-                                    loc.location.end - 1,
-                                    1,
-                                ),
-                            )
-                        })?
+                    if n == b'-' {
+                        FlankingSequence::Terminal
+                    } else {
+                        FlankingSequence::AminoAcid(AminoAcid::try_from(n).map_err(
+                            |()| {
+                                BoxedError::error(
+                                    "Invalid Opair line",
+                                    "The flanking residues could not be parsed as amino acids",
+                                    Context::line(
+                                        Some(loc.line.line_index() as u32),
+                                        loc.line.line(),
+                                        loc.location.start,
+                                        1,
+                                    ).to_owned(),
+                                )
+                            },
+                        )?)
+                    },
+                    if c == b'-' {
+                        FlankingSequence::Terminal
+                    } else {
+                        FlankingSequence::AminoAcid(AminoAcid::try_from(c).map_err(
+                            |()| {
+                                BoxedError::error(
+                                    "Invalid Opair line",
+                                    "The flanking residues could not be parsed as amino acids",
+                                    Context::line(
+                                        Some(loc.line.line_index() as u32),
+                                        loc.line.line(),
+                                        loc.location.end - 1,
+                                        1,
+                                    ).to_owned(),
+                                )
+                        })?)
+                    }
                 ))
             },
         );
@@ -124,7 +135,7 @@ format_family!(
             location.location.clone(),
             custom_database,
             &SloppyParsingParameters::default()
-        );
+        ).map_err(BoxedError::to_owned);
         mod_number: usize, |location: Location, _| location.parse(NUMBER_ERROR);
         theoretical_mass: Mass, |location: Location, _| location.parse::<f64>(NUMBER_ERROR).map(Mass::new::<crate::system::dalton>);
         score: f64, |location: Location, _| location.parse::<f64>(NUMBER_ERROR);
@@ -140,15 +151,15 @@ format_family!(
                 "T" => Ok(OpairMatchKind::Target),
                 "C" => Ok(OpairMatchKind::Contamination),
                 "D" => Ok(OpairMatchKind::Decoy),
-                _ => Err(CustomError::error(
+                _ => Err(BoxedError::error(
                     "Invalid Opair line",
                     "The kind column does not contain a valid value (T/C/D)",
                     Context::line(
-                        Some(loc.line.line_index()),
+                        Some(loc.line.line_index() as u32),
                         loc.line.line(),
                         loc.location.start,
                         loc.location.len(),
-                    ),
+                    ).to_owned(),
                 )),
             }
         });
@@ -166,24 +177,23 @@ format_family!(
             match &loc.line.line()[loc.location.clone()] {
                 "TRUE" => Ok(true),
                 "FALSE" => Ok(false),
-                _ => Err(CustomError::error(
+                _ => Err(BoxedError::error(
                     "Invalid Opair line",
                     "The N glycan motif check column does not contain a valid value (TRUE/FALSE)",
                     Context::line(
-                        Some(loc.line.line_index()),
+                        Some(loc.line.line_index() as u32),
                         loc.line.line(),
                         loc.location.start,
                         loc.location.len(),
-                    ),
+                    ).to_owned(),
                 )),
             }
         });
         r138_144: f64, |location: Location, _| location.parse(NUMBER_ERROR);
         plausible_glycan_structure: String, |location: Location, _| Ok(location.get_string());
         glycan_localisation_level: String, |location: Location, _| Ok(location
-            .get_string()
             .trim_start_matches("Level")
-            .to_string());
+            .get_string());
         glycan_peptide_site_specificity: String, |location: Location, _| Ok(location.get_string());
         glycan_protein_site_specificity:String, |location: Location, _| Ok(location.get_string());
         all_potential_glycan_localisations: String, |location: Location, _| Ok(location.get_string());
@@ -365,6 +375,14 @@ impl MetaData for OpairData {
     }
 
     fn protein_location(&self) -> Option<Range<u16>> {
-        Some(self.protein_location.clone())
+        self.protein_location.clone()
+    }
+
+    fn flanking_sequences(&self) -> (&FlankingSequence, &FlankingSequence) {
+        (&self.flanking_residues.0, &self.flanking_residues.1)
+    }
+
+    fn database(&self) -> Option<(&str, Option<&str>)> {
+        None
     }
 }

@@ -1,13 +1,16 @@
 use std::{borrow::Cow, marker::PhantomData, ops::Range, path::PathBuf, sync::LazyLock};
 
+use ordered_float::OrderedFloat;
+use serde::{Deserialize, Serialize};
+use thin_vec::ThinVec;
+
 use crate::{
-    error::CustomError,
     glycan::MonoSaccharide,
     helper_functions::explain_number_error,
     identification::{
-        BoxedIdentifiedPeptideIter, IdentifiedPeptidoform, IdentifiedPeptidoformData,
-        IdentifiedPeptidoformSource, IdentifiedPeptidoformVersion, KnownFileFormat, MetaData,
-        PeptidoformPresent, SpectrumId, SpectrumIds,
+        BoxedIdentifiedPeptideIter, FastaIdentifier, FlankingSequence, IdentifiedPeptidoform,
+        IdentifiedPeptidoformData, IdentifiedPeptidoformSource, IdentifiedPeptidoformVersion,
+        KnownFileFormat, MetaData, PeptidoformPresent, SpectrumId, SpectrumIds,
         common_parser::{Location, OptionalColumn, OptionalLocation},
         csv::{CsvLine, parse_csv},
     },
@@ -20,11 +23,6 @@ use crate::{
     },
     system::{Mass, MassOverCharge, Time, isize::Charge},
 };
-use ordered_float::OrderedFloat;
-use serde::{Deserialize, Serialize};
-use thin_vec::ThinVec;
-
-use super::FastaIdentifier;
 
 static NUMBER_ERROR: (&str, &str) = (
     "Invalid MSFragger line",
@@ -53,7 +51,7 @@ format_family!(
                 location.location.clone(),
                 custom_database,
                 &SloppyParsingParameters {ignore_prefix_lowercase_n: true, ..Default::default()},
-        ).map(Into::into)});
+        ).map(Into::into).map_err(BoxedError::to_owned)});
         protein: FastaIdentifier<String>, |location: Location, _| location.parse(IDENTIFIER_ERROR);
         rt: Time, |location: Location, _| location.parse::<f64>(NUMBER_ERROR).map(Time::new::<crate::system::time::min>);
         scan: SpectrumId, |location: Location, _| Ok(SpectrumId::Native(location.get_string()));
@@ -66,19 +64,19 @@ format_family!(
                     SequencePosition::CTerm
                 } else {
                     // Format: `14M` so take only the numeric part
-                    head.as_str()[..head.len()-1].trim().parse::<usize>().map(|i| SequencePosition::Index(i-1)).map_err(|err| CustomError::error(
+                    head.as_str()[..head.len()-1].trim().parse::<usize>().map(|i| SequencePosition::Index(i-1)).map_err(|err| BoxedError::error(
                         "Invalid FragPipe modification location",
                         format!("The location number {}", explain_number_error(&err)),
                         head.context(),
-                    ))?
+                    )).map_err(BoxedError::to_owned)?
                 },
-                Modification::sloppy_modification(tail.full_line(), tail.location.clone(), None, custom_database)?
+                Modification::sloppy_modification(tail.full_line(), tail.location.clone(), None, custom_database).map_err(BoxedError::to_owned)?
             ))
         } else {
-            Err(CustomError::error(
+            Err(BoxedError::error(
                 "Invalid FragPipe modification",
                 "The format `location(modification)` could not be recognised",
-                m.context(),
+                m.context().to_owned(),
             ))
         }).collect::<Result<ThinVec<_>, _>>();
         z: Charge, |location: Location, _| location.parse::<isize>(NUMBER_ERROR).map(Charge::new::<crate::system::e>);
@@ -91,17 +89,20 @@ format_family!(
         delta_score: f32, |location: Location, _| location.or_empty().parse::<f32>(NUMBER_ERROR);
         entry_name: String, |location: Location, _| Ok(location.get_string());
         enzymatic_termini: usize, |location: Location, _| location.parse::<usize>(NUMBER_ERROR);
-        extended_peptide: Box<[Option<Peptidoform<SemiAmbiguous>>; 3]>, |location: Location, custom_database: Option<&CustomDatabase>| {
-            let peptides = location.clone().array('.').map(|l| l.or_empty().parse_with(|location| Peptidoform::sloppy_pro_forma(
+        extended_peptide: (FlankingSequence, Option<Peptidoform<SemiAmbiguous>>, FlankingSequence), |location: Location, custom_database: Option<&CustomDatabase>| {
+            let mut peptides = location.clone().array('.').map(|l| l.or_empty().parse_with(|location| Peptidoform::sloppy_pro_forma(
                 location.full_line(),
                 location.location.clone(),
                 custom_database,
                 &SloppyParsingParameters {ignore_prefix_lowercase_n: true, ..Default::default()},
-            ))).collect::<Result<Vec<_>,_>>()?;
+            ).map_err(BoxedError::to_owned))).collect::<Result<Vec<_>,_>>()?;
             if peptides.len() == 3 {
-                Ok(Box::new([peptides[0].clone(), peptides[1].clone(), peptides[2].clone()]))
+                let suffix = peptides.pop().unwrap().map_or(FlankingSequence::Terminal, |s| FlankingSequence::Sequence(Box::new(s)));
+                let peptide = peptides.pop().unwrap();
+                let prefix = peptides.pop().unwrap().map_or(FlankingSequence::Terminal, |s| FlankingSequence::Sequence(Box::new(s)));
+                Ok((prefix, peptide, suffix))
             } else {
-                Err(CustomError::error("Invalid extened peptide", "The extended peptide should contain the prefix.peptide.suffix for all peptides.", location.context()))
+                Err(BoxedError::error("Invalid extened peptide", "The extended peptide should contain the prefix.peptide.suffix for all peptides.", location.context().to_owned()))
             }
         };
         glycan_q_value: f32, |location: Location, _| location.or_empty().parse::<f32>(NUMBER_ERROR);
@@ -113,10 +114,10 @@ format_family!(
         is_unique: bool, |location: Location, _| location.parse_with(|l| match l.as_str().to_ascii_lowercase().as_str() {
             "true" => Ok(true),
             "false" => Ok(false),
-            _ => Err(CustomError::error(
+            _ => Err(BoxedError::error(
                 "Invalid FragPipe line",
                 "This column (Is Unique) is not a boolean but it is required to be a boolean ('true' or 'false') in this FragPipe format",
-                l.context(),
+                l.context().to_owned(),
             ))
         });
         mz: MassOverCharge, |location: Location, _| location.parse::<f64>(NUMBER_ERROR).map(MassOverCharge::new::<crate::system::mz>);
@@ -130,7 +131,7 @@ format_family!(
         open_search_modification: MSFraggerOpenModification, |location: Location, _|
             location.or_empty().parse_with(|location| location.as_str().find('%').map_or_else(
                 || Ok(MSFraggerOpenModification::Other(location.as_str().to_owned())),
-                |end| MonoSaccharide::from_byonic_composition(&location.as_str()[..end]).map(|g| MSFraggerOpenModification::Glycan(g.into()))));
+                |end| MonoSaccharide::from_byonic_composition(&location.as_str()[..end]).map(|g| MSFraggerOpenModification::Glycan(g.into())).map_err(BoxedError::to_owned)));
         open_search_position_scores: ThinVec<f64>, |location: Location, _| {
             let data = location.array(')').filter_map(|l| (l.len() > 2).then(|| l.skip(2).parse::<f64>((
                 "Invalid FragPipe line",
@@ -153,12 +154,12 @@ format_family!(
         second_best_score_with_delta_mass: f32, |location: Location, _| location.or_empty().parse::<f32>(NUMBER_ERROR);
         raw_file: PathBuf, |location: Location, _| Ok(Some(location.get_string().into()));
         total_glycan_composition: ThinVec<(MonoSaccharide, isize)>, |location: Location, _| location.or_empty().parse_with(|location| location.as_str().find('%').map_or_else(
-                || MonoSaccharide::from_byonic_composition(location.as_str()).map(ThinVec::from),
-                |end| MonoSaccharide::from_byonic_composition(&location.as_str()[..end]).map(ThinVec::from)));
+                || MonoSaccharide::from_byonic_composition(location.as_str()).map(ThinVec::from).map_err(BoxedError::to_owned),
+                |end| MonoSaccharide::from_byonic_composition(&location.as_str()[..end]).map(ThinVec::from).map_err(BoxedError::to_owned)));
         tot_num_ions: usize, |location: Location, _| location.parse::<usize>(NUMBER_ERROR);
     }
 
-    fn post_process(_source: &CsvLine, mut parsed: Self, _custom_database: Option<&CustomDatabase>) -> Result<Self, CustomError> {
+    fn post_process(_source: &CsvLine, mut parsed: Self, _custom_database: Option<&CustomDatabase>) -> Result<Self, BoxedError<'static>> {
         // Parse the scan identifier to retrieve the file and number separately
         if let SpectrumId::Native(native) = &parsed.scan {
             if let Some(m) = IDENTIFER_REGEX
@@ -563,5 +564,16 @@ impl MetaData for MSFraggerData {
     fn protein_location(&self) -> Option<Range<u16>> {
         self.protein_start
             .and_then(|start| self.protein_end.map(|end| start..end))
+    }
+
+    fn flanking_sequences(&self) -> (&FlankingSequence, &FlankingSequence) {
+        self.extended_peptide.as_ref().map_or(
+            (&FlankingSequence::Unknown, &FlankingSequence::Unknown),
+            |extended| (&extended.0, &extended.2),
+        )
+    }
+
+    fn database(&self) -> Option<(&str, Option<&str>)> {
+        None
     }
 }

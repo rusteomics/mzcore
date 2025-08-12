@@ -1,12 +1,11 @@
-use itertools::Itertools;
 use std::collections::BTreeMap;
 
-use crate::{
-    error::{Context, CustomError},
-    sequence::{
-        AmbiguousLookup, CrossLinkName, Modification, Peptidoform, PeptidoformIon,
-        SequencePosition, SimpleModification,
-    },
+use custom_error::*;
+use itertools::Itertools;
+
+use crate::sequence::{
+    AmbiguousLookup, CrossLinkName, Modification, Peptidoform, PeptidoformIon, SequencePosition,
+    SimpleModification,
 };
 
 use super::{GlobalModification, Linear};
@@ -15,19 +14,19 @@ use super::{GlobalModification, Linear};
 /// # Errors
 /// If there is a cross link with more than 2 locations. Or if there never is a definition for this cross link.
 /// Or if there are peptides that cannot be reached from the first peptide.
-pub(super) fn cross_links(
+pub(super) fn cross_links<'a>(
     peptides: Vec<Peptidoform<Linear>>,
     cross_links_found: BTreeMap<usize, Vec<(usize, SequencePosition)>>,
     cross_link_lookup: &[(CrossLinkName, Option<SimpleModification>)],
-    line: &str,
-) -> Result<PeptidoformIon, CustomError> {
+    line: &'a str,
+) -> Result<PeptidoformIon, BoxedError<'a>> {
     let mut peptidoform = PeptidoformIon(peptides.into_iter().map(Into::into).collect());
     for (id, locations) in cross_links_found {
         let definition = &cross_link_lookup[id];
         if let Some(linker) = &definition.1 {
             match locations.len() {
                 0 => {
-                    return Err(CustomError::error(
+                    return Err(BoxedError::error(
                         "Invalid cross-link",
                         format!(
                             "The cross-link named '{}' has no listed locations, this is an internal error please report this",
@@ -45,7 +44,7 @@ pub(super) fn cross_links(
                         peptidoform.0[index].add_simple_modification(position, linker.clone());
                     } else {
                         let rules = linker.placement_rules();
-                        return Err(CustomError::error(
+                        return Err(BoxedError::error(
                             "Modification incorrectly placed",
                             format!(
                                 "Modification {linker} is not allowed on {}{}",
@@ -77,7 +76,7 @@ pub(super) fn cross_links(
                         linker.clone(),
                         definition.0.clone(),
                     ) {
-                        return Err(CustomError::error(
+                        return Err(BoxedError::error(
                             "Invalid cross-link",
                             format!(
                                 "The cross-link named '{}' cannot be placed according to its location specificities",
@@ -88,7 +87,7 @@ pub(super) fn cross_links(
                     }
                 }
                 _ => {
-                    return Err(CustomError::error(
+                    return Err(BoxedError::error(
                         "Invalid cross-link",
                         format!(
                             "The cross-link named '{}' has more than 2 attachment locations, only cross-links spanning two locations are allowed",
@@ -104,7 +103,7 @@ pub(super) fn cross_links(
             } else {
                 ("X", "DSS", "")
             };
-            return Err(CustomError::error(
+            return Err(BoxedError::error(
                 "Invalid cross-link",
                 format!(
                     "The cross-link named '{0}' is never defined, for example for {name}{description} define it like: '[{c}:{name}{0}]'",
@@ -141,7 +140,7 @@ pub(super) fn cross_links(
     }
 
     if found_peptides.len() != peptidoform.peptidoforms().len() {
-        return Err(CustomError::error(
+        return Err(BoxedError::error(
             "Unconnected peptidoform",
             "Not all peptides in this peptidoform are connected with cross-links or branches, if separate peptides were intended use the chimeric notation `+` instead of the peptidoform notation `//`.",
             Context::full_line(0, line),
@@ -186,22 +185,34 @@ impl Peptidoform<Linear> {
         &mut self,
         unknown_position_modifications: &[usize],
         ambiguous_lookup: &AmbiguousLookup,
-    ) -> Result<(), CustomError> {
+    ) -> Result<(), BoxedError<'static>> {
         for modification in unknown_position_modifications {
             let entry = &ambiguous_lookup[*modification];
             if let Some(m) = &entry.modification {
                 if !self.add_unknown_position_modification(m.clone(), .., &entry.as_settings()) {
-                    return Err(CustomError::error(
+                    return Err(BoxedError::error(
                         "Modification of unknown position cannot be placed",
                         "There is no position where this modification can be placed based on the placement rules in the database.",
-                        Context::show(modification),
+                        Context::show(format!(
+                            "Name: {}, Group: {}",
+                            entry.name,
+                            entry
+                                .group
+                                .map_or("(no group)".to_string(), |n| n.to_string())
+                        )),
                     ));
                 }
             } else {
-                return Err(CustomError::error(
+                return Err(BoxedError::error(
                     "Modification of unknown position was not defined",
                     "Please report this error",
-                    Context::show(modification),
+                    Context::show(format!(
+                        "Name: {}, Group: {}",
+                        entry.name,
+                        entry
+                            .group
+                            .map_or("(no group)".to_string(), |n| n.to_string())
+                    )),
                 ));
             }
         }
@@ -216,17 +227,17 @@ impl Peptidoform<Linear> {
     pub(super) fn apply_ranged_unknown_position_modification(
         &mut self,
         ranged_unknown_position_modifications: &[(usize, usize, SimpleModification)],
-    ) -> Result<(), CustomError> {
+    ) -> Result<(), BoxedError<'static>> {
         for (start, end, modification) in ranged_unknown_position_modifications {
             if !self.add_unknown_position_modification(
                 modification.clone(),
                 start..=end,
                 &super::MUPSettings::default(),
             ) {
-                return Err(CustomError::error(
+                return Err(BoxedError::error(
                     "Modification of unknown position on a range cannot be placed",
                     "There is no position where this modification can be placed based on the placement rules in the database.",
-                    Context::show(modification),
+                    Context::show(modification.to_string()),
                 ));
             }
         }
@@ -237,7 +248,7 @@ impl Peptidoform<Linear> {
 impl<T> Peptidoform<T> {
     /// # Errors
     /// If a modification rule is broken it returns an error.
-    pub(crate) fn enforce_modification_rules(&self) -> Result<(), CustomError> {
+    pub(crate) fn enforce_modification_rules(&self) -> Result<(), BoxedError<'static>> {
         for (position, seq) in self.iter(..) {
             seq.enforce_modification_rules(position.sequence_index)?;
         }

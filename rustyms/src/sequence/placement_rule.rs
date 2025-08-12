@@ -2,10 +2,10 @@
 
 use std::str::FromStr;
 
+use custom_error::*;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    error::{Context, CustomError},
     ontology::Ontology,
     parse_json::{ParseJson, use_serde},
     sequence::{
@@ -28,7 +28,7 @@ pub enum PlacementRule {
 }
 
 impl ParseJson for PlacementRule {
-    fn from_json_value(value: serde_json::Value) -> Result<Self, CustomError> {
+    fn from_json_value(value: serde_json::Value) -> Result<Self, BoxedError<'static>> {
         use_serde(value)
     }
 }
@@ -134,7 +134,7 @@ impl PlacementRule {
 }
 
 impl FromStr for PlacementRule {
-    type Err = CustomError;
+    type Err = BoxedError<'static>;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         if let Some((head, tail)) = s.split_once('@') {
             let aa: Vec<AminoAcid> = head
@@ -142,20 +142,20 @@ impl FromStr for PlacementRule {
                 .enumerate()
                 .map(|(i, c)| {
                     AminoAcid::try_from(c).map_err(|()| {
-                        CustomError::error(
+                        BoxedError::error(
                             "Invalid amino acid",
                             "Invalid amino acid in specified amino acids in placement rule",
-                            Context::line(None, s, i, 1),
+                            Context::line(None, s, i, 1).to_owned(),
                         )
                     })
                 })
                 .collect::<Result<Vec<_>, _>>()?;
             tail.parse().map_or_else(
                 |()| {
-                    Err(CustomError::error(
+                    Err(BoxedError::error(
                         "Invalid position",
                         "Use any of the following for the position: Anywhere, AnyNTerm, ProteinNTerm, AnyCTerm, ProteinCTerm",
-                        Context::line(None, s, head.len() + 1, tail.len()),
+                        Context::line(None, s, head.len() + 1, tail.len()).to_owned(),
                     ))
                 },
                 |position| Ok(Self::AminoAcid(aa, position)),
@@ -166,10 +166,10 @@ impl FromStr for PlacementRule {
                 pos => Self::Terminal(pos),
             })
         } else {
-            Err(CustomError::error(
+            Err(BoxedError::error(
                 "Invalid position",
                 "Use any of the following for the position: Anywhere, AnyNTerm, ProteinNTerm, AnyCTerm, ProteinCTerm",
-                Context::full_line(0, s),
+                Context::full_line(0, s).to_owned(),
             ))
         }
     }

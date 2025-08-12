@@ -83,7 +83,7 @@ impl FragmentationModel {
         &self,
         position: PeptidePosition,
         peptidoform: &Peptidoform<Complexity>,
-    ) -> PossibleIons {
+    ) -> PossibleIons<'_> {
         let SequencePosition::Index(sequence_index) = position.sequence_index else {
             panic!("Not allowed to call possible with a terminal PeptidePosition")
         };

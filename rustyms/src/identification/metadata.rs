@@ -1,8 +1,11 @@
 use std::{borrow::Cow, ops::Range};
 
+use serde::{Deserialize, Serialize};
+
 use crate::{
     identification::{FastaIdentifier, KnownFileFormat, SpectrumIds},
-    prelude::CompoundPeptidoformIon,
+    prelude::{AminoAcid, CompoundPeptidoformIon, Peptidoform},
+    sequence::SemiAmbiguous,
     system::{Mass, MassOverCharge, Ratio, Time, isize::Charge},
 };
 
@@ -78,6 +81,13 @@ pub trait MetaData {
     /// Get the protein location if this was database matched data
     fn protein_location(&self) -> Option<Range<u16>>;
 
+    /// Get the flanking sequences on the N and C terminal side.
+    /// The reported sequences are both in N to C direction.
+    fn flanking_sequences(&self) -> (&FlankingSequence, &FlankingSequence);
+
+    /// The database that was used for matching optionally with the version of the database
+    fn database(&self) -> Option<(&str, Option<&str>)>;
+
     // Get the matched fragments, potentially with m/z and intensity
     // #[doc(hidden)]
     // pub fn matched_fragments(
@@ -86,4 +96,20 @@ pub trait MetaData {
     //     // OPair, MaxQuant, PLGS
     //     None
     // }
+}
+
+/// A flanking sequence
+// Impossible to get the Sequence option smaller (size of a pointer plus alignment of a pointer so the discriminator is 8 bytes as well)
+#[allow(variant_size_differences)]
+#[derive(Clone, Debug, Deserialize, PartialEq, Serialize, Eq, Default)]
+pub enum FlankingSequence {
+    /// If the flanking sequence is unknown (in _de novo_ for example)
+    #[default]
+    Unknown,
+    /// If this is the terminus
+    Terminal,
+    /// If only a single amino acid is known (added to prevent overhead of needing to create a sequence)
+    AminoAcid(AminoAcid),
+    /// If a (smal part of the) sequence is known
+    Sequence(Box<Peptidoform<SemiAmbiguous>>),
 }

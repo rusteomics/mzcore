@@ -17,6 +17,7 @@ package.edition = "2024"
 package.license = "MIT OR Apache-2.0"
 package.rust-version = "1.85.0"
 package.version = "0.10.0"
+default-members = ["rustyms"]
 
 [profile.release]
 debug = true
@@ -30,6 +31,7 @@ afl = "0.15"
 base64 = "0.22"
 bincode = { version = "2.0", features = ["serde"] }
 clap = { version = "4.5", features = ["derive", "cargo"] }
+custom_error = {git="https://github.com/douweschulte/custom_error", features = ["serde"]}
 directories = "6.0"
 flate2 = "1.0"
 itertools = "0.14"

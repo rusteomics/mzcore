@@ -36,7 +36,7 @@ impl Font {
 
     // Create the transient font reference for accessing this crate's
     // functionality.
-    pub(super) fn as_ref(&self) -> FontRef {
+    pub(super) fn as_ref(&self) -> FontRef<'_> {
         // Note that you'll want to initialize the struct directly here as
         // using any of the FontRef constructors will generate a new key which,
         // while completely safe, will nullify the performance optimizations of

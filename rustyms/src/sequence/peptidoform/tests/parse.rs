@@ -1,5 +1,7 @@
 use std::{num::NonZeroU16, sync::Arc};
 
+use custom_error::*;
+
 use crate::{
     annotation::model::{FragmentationModel, PrimaryIonSeries},
     chemistry::{AmbiguousLabel, Element, MolecularCharge, MultiChemical},
@@ -15,7 +17,7 @@ use crate::{
 
 #[test]
 fn parse_global_modifications() {
-    let parse = |str: &str| global_modifications(str, 0, None);
+    let parse = |str: &str| global_modifications(str, 0, None).map_err(BoxedError::to_owned);
     assert_eq!(
         parse("<[+5]@D>"),
         Ok((
@@ -99,14 +101,16 @@ fn parse_global_modifications() {
 #[test]
 fn charge_state_positive() {
     let parse = |str: &str| {
-        parse_charge_state(str, 0).map(|(len, res)| {
-            assert_eq!(
-                len,
-                str.len(),
-                "Not full parsed: '{str}', amount parsed: {len} as '{res}'"
-            );
-            res
-        })
+        parse_charge_state(str, 0)
+            .map(|(len, res)| {
+                assert_eq!(
+                    len,
+                    str.len(),
+                    "Not full parsed: '{str}', amount parsed: {len} as '{res}'"
+                );
+                res
+            })
+            .map_err(BoxedError::to_owned)
     };
     assert_eq!(parse("/1"), Ok(MolecularCharge::proton(1)));
     assert_eq!(parse("/5"), Ok(MolecularCharge::proton(5)));
@@ -166,7 +170,7 @@ fn charge_state_positive() {
 
 #[test]
 fn charge_state_negative() {
-    let parse = |str: &str| parse_charge_state(str, 0);
+    let parse = |str: &str| parse_charge_state(str, 0).map_err(BoxedError::to_owned);
     assert!(parse("/3[+Fe+]").is_err());
     assert!(parse("/3[+Fe]").is_err());
     assert!(parse("/3[+Fe 1]").is_err());

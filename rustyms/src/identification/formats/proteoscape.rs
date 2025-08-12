@@ -1,9 +1,10 @@
 use std::{borrow::Cow, marker::PhantomData, ops::Range};
 
+use serde::{Deserialize, Serialize};
+
 use crate::{
-    error::CustomError,
     identification::{
-        BoxedIdentifiedPeptideIter, FastaIdentifier, IdentifiedPeptidoform,
+        BoxedIdentifiedPeptideIter, FastaIdentifier, FlankingSequence, IdentifiedPeptidoform,
         IdentifiedPeptidoformData, IdentifiedPeptidoformSource, IdentifiedPeptidoformVersion,
         KnownFileFormat, MetaData, PeptidoformPresent, SpectrumId, SpectrumIds,
         common_parser::Location,
@@ -14,7 +15,6 @@ use crate::{
     sequence::{Peptidoform, SemiAmbiguous, SloppyParsingParameters},
     system::{Mass, MassOverCharge, Time, isize::Charge},
 };
-use serde::{Deserialize, Serialize};
 
 static NUMBER_ERROR: (&str, &str) = (
     "Invalid Proteoscape line",
@@ -27,8 +27,8 @@ format_family!(
     required {
         scan_number: usize, |location: Location, _| location.parse(NUMBER_ERROR);
         /// Up to 3 leading amino acids (if present), the peptidoform itself, and up to 3 tailing amino acids (if present)
-        peptide: (Option<Peptidoform<SemiAmbiguous>>, Peptidoform<SemiAmbiguous>, Option<Peptidoform<SemiAmbiguous>>), |location: Location, custom_database: Option<&CustomDatabase>| {
-            location.clone().split_twice('.').ok_or_else(|| CustomError::error("Invalid Proteoscape line", "The peptide columns should contain the previous amino acids, the peptide, and the following amino acids separated by dots.", location.context())).and_then(|(before, peptide, after)| {
+        peptide: (FlankingSequence, Peptidoform<SemiAmbiguous>, FlankingSequence), |location: Location, custom_database: Option<&CustomDatabase>| {
+            location.clone().split_twice('.').ok_or_else(|| BoxedError::error("Invalid Proteoscape line", "The peptide columns should contain the previous amino acids, the peptide, and the following amino acids separated by dots.", location.context().to_owned())).and_then(|(before, peptide, after)| {
                 let before = before.trim_start_matches("-");
                 let after = after.trim_end_matches("-");
                 Ok((
@@ -37,19 +37,21 @@ format_family!(
                         before.location.clone(),
                         custom_database,
                         &SloppyParsingParameters::default(),
-                    )).transpose()?,
+                    ).map_err(BoxedError::to_owned)).transpose()?
+                    .map_or(FlankingSequence::Terminal, |s| FlankingSequence::Sequence(Box::new(s))),
                     Peptidoform::sloppy_pro_forma(
                         peptide.full_line(),
                         peptide.location.clone(),
                         custom_database,
                         &SloppyParsingParameters::default(),
-                    )?,
+                    ).map_err(BoxedError::to_owned)?,
                     (!after.is_empty()).then(|| Peptidoform::sloppy_pro_forma(
                         after.full_line(),
                         after.location.clone(),
                         custom_database,
                         &SloppyParsingParameters::default(),
-                    )).transpose()?,
+                    ).map_err(BoxedError::to_owned)).transpose()?
+                    .map_or(FlankingSequence::Terminal, |s| FlankingSequence::Sequence(Box::new(s))),
                 ))
             })
         };
@@ -67,10 +69,10 @@ format_family!(
         is_unique: bool, |location: Location, _| location.parse_with(|l| match l.as_str().to_ascii_lowercase().as_str() {
             "true" => Ok(true),
             "false" => Ok(false),
-            _ => Err(CustomError::error(
+            _ => Err(BoxedError::error(
                 "Invalid Proteoscape line",
                 "This column (Is Unique) is not a boolean but it is required to be a boolean ('true' or 'false') in this Proteoscape format",
-                l.context(),
+                l.context().to_owned(),
             ))
         });
     }
@@ -186,6 +188,14 @@ impl MetaData for ProteoscapeData {
     }
 
     fn protein_location(&self) -> Option<Range<u16>> {
+        None
+    }
+
+    fn flanking_sequences(&self) -> (&FlankingSequence, &FlankingSequence) {
+        (&self.peptide.0, &self.peptide.2)
+    }
+
+    fn database(&self) -> Option<(&str, Option<&str>)> {
         None
     }
 }

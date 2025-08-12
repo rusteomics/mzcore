@@ -1,6 +1,8 @@
 //! Annotate many peptides at once
-
 #![allow(non_snake_case)] // charge_independent_Y needs the capital as it means the glycan fragmentation
+
+use mzsignal as _; // To aid vesion selection
+
 use std::{
     collections::BTreeMap,
     fs::File,
@@ -129,7 +131,7 @@ fn main() {
     let tic = Arc::new("total_ion_current".to_string());
 
     let out_data: Vec<_> =  files.par_iter().flat_map(|(file_name, lines)| {
-        let mut file = mzdata::io::MZReaderType::open_path(file_name).unwrap_or_else(|_| panic!("Could not open raw file: {}", file_name.to_string_lossy()));
+        let mut file = mzdata::io::MZReaderType::open_path(file_name).unwrap_or_else(|err| {eprintln!("Could not open raw file: {}\nError: {err}", file_name.to_string_lossy()); std::process::exit(2)});
 
         let rows = lines
             .iter()

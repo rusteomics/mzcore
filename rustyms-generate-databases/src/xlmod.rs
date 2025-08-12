@@ -205,7 +205,7 @@ fn parse_xlmod() -> Vec<OntologyModification> {
                 },
             });
         } else if sites == Some(3) {
-            continue; // Ignore
+            // Ignore
         } else {
             mods.push(OntologyModification {
                 formula: formula.unwrap_or_default(),

@@ -1,16 +1,17 @@
 use std::{
+    borrow::Cow,
     fmt::Display,
     ops::{Add, AddAssign},
     str::FromStr,
 };
 
+use custom_error::*;
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use crate::{
     chemistry::MolecularFormula,
-    error::{Context, CustomError},
     helper_functions::{explain_number_error, next_number},
     parse_json::{ParseJson, use_serde},
     quantities::Multi,
@@ -29,24 +30,27 @@ pub enum NeutralLoss {
 }
 
 impl ParseJson for NeutralLoss {
-    fn from_json_value(value: Value) -> Result<Self, CustomError> {
+    fn from_json_value(value: Value) -> Result<Self, BoxedError<'static>> {
         let parse_inner = |value: Value, context: &str| {
             if let Value::Array(mut arr) = value {
                 if arr.len() == 2 {
                     if let Some(n) = arr[0].as_u64() {
                         Ok((
-                            u16::try_from(n).map_err(|_| CustomError::error("Invalid NeutralLoss", format!("The {context} amount is too big, the number has to be below {}", u16::MAX), Context::show(n)))?,
+                            u16::try_from(n).map_err(|_| BoxedError::error(
+                                "Invalid NeutralLoss", 
+                                format!("The {context} amount is too big, the number has to be below {}", u16::MAX), 
+                                Context::show(n.to_string())))?,
                             MolecularFormula::from_json_value(arr.pop().unwrap())?,
                         ))
                     } else {
-                        Err(CustomError::error(
+                        Err(BoxedError::error(
                             "Invalid NeutralLoss",
                             format!("The {context} amount is not a number"),
                             Context::show(arr[0].to_string()),
                         ))
                     }
                 } else {
-                    Err(CustomError::error(
+                    Err(BoxedError::error(
                         "Invalid NeutralLoss",
                         format!("The {context} is a sequence but does not have 2 children"),
                         Context::show(arr.iter().join(",")),
@@ -55,10 +59,10 @@ impl ParseJson for NeutralLoss {
             } else if value.is_object() {
                 Ok((1, MolecularFormula::from_json_value(value)?))
             } else {
-                Err(CustomError::error(
+                Err(BoxedError::error(
                     "Invalid NeutralLoss",
                     format!("The {context} has to be either a map or a sequence"),
-                    Context::show(value),
+                    Context::show(value.to_string()),
                 ))
             }
         };
@@ -74,31 +78,31 @@ impl ParseJson for NeutralLoss {
                             let formula = MolecularFormula::from_json_value(arr.pop().unwrap())?;
                             Ok(Self::SideChainLoss(formula, aa))
                         } else {
-                            Err(CustomError::error(
+                            Err(BoxedError::error(
                                 "Invalid NeutralLoss",
                                 "The SideChainLoss is a sequence but does not have 2 children",
                                 Context::show(arr.iter().join(",")),
                             ))
                         }
                     } else {
-                        Err(CustomError::error(
+                        Err(BoxedError::error(
                             "Invalid NeutralLoss",
                             "The SideChainLoss has to be a sequence",
-                            Context::show(value),
+                            Context::show(value.to_string()),
                         ))
                     }
                 }
-                _ => Err(CustomError::error(
+                _ => Err(BoxedError::error(
                     "Invalid NeutralLoss",
                     "The tag has to be Loss/Gain/SideChainLoss",
                     Context::show(key),
                 )),
             }
         } else {
-            Err(CustomError::error(
+            Err(BoxedError::error(
                 "Invalid NeutralLoss",
                 "The JSON value has to be a map",
-                Context::show(value),
+                Context::show(value.to_string()),
             ))
         }
     }
@@ -109,7 +113,7 @@ impl ParseJson for NeutralLoss {
 pub struct DiagnosticIon(pub MolecularFormula);
 
 impl ParseJson for DiagnosticIon {
-    fn from_json_value(value: Value) -> Result<Self, CustomError> {
+    fn from_json_value(value: Value) -> Result<Self, BoxedError<'static>> {
         use_serde(value)
     }
 }
@@ -192,7 +196,7 @@ fn notation_helper(
 }
 
 impl FromStr for NeutralLoss {
-    type Err = CustomError;
+    type Err = BoxedError<'static>;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         if let Ok(number) = s.parse::<f64>() {
             // Allow a simple numeric neutral loss
@@ -213,15 +217,15 @@ impl FromStr for NeutralLoss {
                 None => unreachable!(),
                 Some((start, end)) => {
                     if start.starts_with('-') || start.starts_with('+') {
-                        let amount = start.parse::<i32>().map_err(|error|CustomError::error(
+                        let amount = start.parse::<i32>().map_err(|error|BoxedError::error(
                             "Invalid neutral loss",
                             "The text before the times symbol should be a valid number, like: `-1x12`",
-                            Context::line_with_comment(None, s, 0, start.len(), Some(explain_number_error(&error).to_string())),
+                            Context::line_with_comment(None, s, 0, start.len(), Some(Cow::Owned(explain_number_error(&error).to_string()))).to_owned(),
                         ))?;
-                        let mass = end.parse::<f64>().map_err(|error|CustomError::error(
+                        let mass = end.parse::<f64>().map_err(|error|BoxedError::error(
                             "Invalid neutral loss",
                             "The text after the times symbol should be a valid number, like: `-1x12`",
-                            Context::line_with_comment(None, s, 0, start.len(), Some(error.to_string())),
+                            Context::line_with_comment(None, s, 0, start.len(), Some(Cow::Owned(error.to_string()))).to_owned(),
                         ))?;
                         if amount >= 0 {
                             Ok(Self::Gain(
@@ -235,10 +239,10 @@ impl FromStr for NeutralLoss {
                             ))
                         }
                     } else {
-                        Err(CustomError::error(
+                        Err(BoxedError::error(
                             "Invalid neutral loss",
                             "A neutral loss can only start with '+' or '-'",
-                            Context::line(None, s, 0, 1),
+                            Context::line(None, s, 0, 1).to_owned(),
                         ))
                     }
                 }
@@ -248,19 +252,19 @@ impl FromStr for NeutralLoss {
             let loss = match c {
                 '+' => Ok(false),
                 '-' => Ok(true),
-                _ => Err(CustomError::error(
+                _ => Err(BoxedError::error(
                     "Invalid neutral loss",
                     "A neutral loss can only start with '+' or '-'",
-                    Context::line(None, s, 0, 1),
+                    Context::line(None, s, 0, 1).to_owned(),
                 )),
             }?;
             let (amount, start) = if let Some(amount) = next_number::<false, false, u16>(s, 1..) {
                 (
                     amount.2.map_err(|err| {
-                        CustomError::error(
+                        BoxedError::error(
                             "Invalid neutral loss",
                             format!("The amount specifier {}", explain_number_error(&err)),
-                            Context::line(None, s, 1, amount.0),
+                            Context::line(None, s, 1, amount.0).to_owned(),
                         )
                     })?,
                     amount.0 + 1,
@@ -268,17 +272,18 @@ impl FromStr for NeutralLoss {
             } else {
                 (1, 1)
             };
-            let formula = MolecularFormula::from_pro_forma(s, start.., false, false, true, true)?;
+            let formula = MolecularFormula::from_pro_forma(s, start.., false, false, true, true)
+                .map_err(BoxedError::to_owned)?;
             Ok(if loss {
                 Self::Loss(amount, formula)
             } else {
                 Self::Gain(amount, formula)
             })
         } else {
-            Err(CustomError::error(
+            Err(BoxedError::error(
                 "Invalid neutral loss",
                 "A neutral loss cannot be an empty string",
-                Context::None,
+                Context::none(),
             ))
         }
     }

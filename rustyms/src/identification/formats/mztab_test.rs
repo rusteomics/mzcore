@@ -1,12 +1,13 @@
 #![allow(clippy::missing_panics_doc)]
 use std::io::{BufRead, BufReader};
 
+use custom_error::BoxedError;
+
 use crate::{
-    error::CustomError,
     identification::{
         IdentifiedPeptidoform, MZTabData, MaybePeptidoform, test_identified_peptidoform,
     },
-    sequence::SemiAmbiguous,
+    sequence::SimpleLinear,
 };
 
 #[test]
@@ -57,6 +58,14 @@ fn labelfree_sqi() {
 }
 
 #[test]
+fn complex_mods() {
+    assert_eq!(
+        open_file(BufReader::new(COMPLEX_MODS.as_bytes())).unwrap(),
+        16
+    );
+}
+
+#[test]
 fn casanovo_v3_2_0() {
     assert_eq!(
         open_file(BufReader::new(CASANOVO_V3_2_0_A.as_bytes())).unwrap(),
@@ -102,10 +111,11 @@ fn adanovo_v1_0_0() {
 /// Open a MZTab file from the given reader.
 /// # Errors
 /// If any part of the process errors.
-fn open_file(reader: impl BufRead) -> Result<usize, CustomError> {
+fn open_file(reader: impl BufRead) -> Result<usize, BoxedError<'static>> {
     let mut peptides = 0;
     for read in MZTabData::parse_reader(reader, None) {
-        let peptide: IdentifiedPeptidoform<SemiAmbiguous, MaybePeptidoform> = read?.into();
+        let peptide: IdentifiedPeptidoform<SimpleLinear, MaybePeptidoform> =
+            read.map_err(BoxedError::to_owned)?.into();
         peptides += 1;
 
         test_identified_peptidoform(&peptide, true, false).unwrap();
@@ -736,6 +746,66 @@ PSM	MIKLGLGIDEDDPTVDDTSAAVTEEMPPLEGDDDTSR	47	P07901	1	UniProtKB	2013_08	[MS,MS:1
 PSM	LGLGIDEDDPTVDDTSAAVTEEMPPLEGDDDTSR	48	P07901	1	UniProtKB	2013_08	[MS,MS:1001207,Mascot,]	3	23-UNIMOD:35	ms_run[6]:scan=2615	2611.08	2	1788.288824	1788.2886	K	M	695	728
 PSM	TLTIVDTGIGMTK	49	P07901	1	UniProtKB	2013_08	[MS,MS:1001207,Mascot,]	36	11-UNIMOD:35	ms_run[6]:scan=1123	1132.62	3	450.5838508	450.583	R	A	88	100
 PSM	MPEETQTQDQPMEEEEVETFAFQAEIAQLMSLIINTFYSNK	50	P07901	1	UniProtKB	2013_08	[MS,MS:1001207,Mascot,]	11	0-UNIMOD:35	ms_run[6]:scan=3188	3184.08	2	2405.619464	2405.6084	-	E	1	41"#;
+
+const COMPLEX_MODS: &str = r"
+MTD	mzTab-version	1.0.0
+MTD	mzTab-mode	Summary
+MTD	mzTab-type	Quantification
+MTD	description	mzTab example file for reporting a summary report of quantification data quantified on the protein level
+MTD	protein_search_engine_score[1]	[MS,MS:1001171,Mascot:score,]
+MTD	psm_search_engine_score[1]	[MS,MS:1001171,Mascot:score,]
+MTD	ms_run[1]-location	file://C:/path/to/my/file1.mzML
+MTD	ms_run[2]-location	file://C:/path/to/my/file2.mzML
+MTD	ms_run[3]-location	file://C:/path/to/my/file3.mzML
+MTD	ms_run[4]-location	file://C:/path/to/my/file4.mzML
+MTD	ms_run[5]-location	file://C:/path/to/my/file5.mzML
+MTD	ms_run[6]-location	file://C:/path/to/my/file6.mzML
+MTD	protein-quantification_unit	[PRIDE, PRIDE:0000393, Relative quantification unit,]
+MTD	fixed_mod[1]	[UNIMOD, UNIMOD:4, Carbamidomethyl, ]
+MTD	variable_mod[1]	[UNIMOD, UNIMOD:35, Oxidation, ]
+MTD	study_variable[1]-description	heat shock response of control
+MTD	study_variable[2]-description	heat shock response of treatment
+
+PRH	accession	description	taxid	species	database	database_version	search_engine	best_search_engine_score[1]	ambiguity_members	modifications	protein_abundance_study_variable[1]	protein_abundance_stdev_study_variable[1]	protein_abundance_std_error_study_variable[1]	protein_abundance_study_variable[2]	protein_abundance_stdev_study_variable[2]	protein_abundance_std_error_study_variable[2]
+PRT	P63017	Heat shock cognate 71 kDa protein	10090	Mus musculus	UniProtKB	2013_08	[MS,MS:1001207,Mascot,]	46	null	0	40.63833264	5.655317647	3.265099166	274.6104756	35.15499814	20.29674764
+PRT	P14602	Heat shock protein beta-1	10090	Mus musculus	UniProtKB	2013_08	[MS,MS:1001207,Mascot,]	100	Q340U4,Q5K0U2,P8L901	0	117235.3899	17568.59128	10143.23091	5135.628975	1014.552511	585.7521654
+PRT	Q8K0U4	Heat shock 70 kDa protein 12A	10090	Mus musculus	UniProtKB	2013_08	[MS,MS:1001207,Mascot,]	120	null	0	48.30102441	5.476244671	3.161711335	470.9562475	85.04568626	49.10114986
+PRT	Q61699	Heat shock protein 105 kDa	10090	Mus musculus	UniProtKB	2013_08	[MS,MS:1001207,Mascot,]	37	null	0	4471.580171	1756.397919	1014.056812	9823.949819	267.8320859	154.6329269
+PRT	P07901	Heat shock protein HSP 90-alpha	10090	Mus musculus	UniProtKB	2013_08	[MS,MS:1001207,Mascot,]	45	null	12-UNIMOD:35, 98-UNIMOD:35,727-UNIMOD:35	3468571.127	332005.0444	191683.2018	734432.1524	246781.4666	142479.3462
+
+PSH	sequence	PSM_ID	accession	unique	database	database_version	search_engine	search_engine_score[1]	modifications	spectra_ref	retention_time	charge	exp_mass_to_charge	calc_mass_to_charge	pre	post	start	end
+COM No mods so 'null' (technically incorrect if other lines have defined mods but common so should accept)
+PSM	MIKLGLGIDEDDPTVDDTSAAVTEEMPPLEGDDDTSR	47	P07901	1	UniProtKB	2013_08	[MS,MS:1001207,Mascot,]	29	null	ms_run[6]:scan=2880	2876.08	2	1974.40836	1974.3984	R	M	692	728
+COM No mods so '0'
+PSM	MIKLGLGIDEDDPTVDDTSAAVTEEMPPLEGDDDTSR	47	P07901	1	UniProtKB	2013_08	[MS,MS:1001207,Mascot,]	29	0	ms_run[6]:scan=2880	2876.08	2	1974.40836	1974.3984	R	M	692	728
+COM Standard mod using unimod
+PSM	LGLGIDEDDPTVDDTSAAVTEEMPPLEGDDDTSR	48	P07901	1	UniProtKB	2013_08	[MS,MS:1001207,Mascot,]	3	23-UNIMOD:35	ms_run[6]:scan=2615	2611.08	2	1788.288824	1788.2886	K	M	695	728
+COM Standard mod using psimod
+PSM	LGLGIDEDDPTVDDTSAAVTEEMPPLEGDDDTSR	48	P07901	1	UniProtKB	2013_08	[MS,MS:1001207,Mascot,]	3	23-MOD:00425	ms_run[6]:scan=2615	2611.08	2	1788.288824	1788.2886	K	M	695	728
+COM Standard mod using chemmod (formula)
+PSM	LGLGIDEDDPTVDDTSAAVTEEMPPLEGDDDTSR	48	P07901	1	UniProtKB	2013_08	[MS,MS:1001207,Mascot,]	3	23-CHEMMOD:+O	ms_run[6]:scan=2615	2611.08	2	1788.288824	1788.2886	K	M	695	728
+COM Standard mod using chemmod (mass)
+PSM	LGLGIDEDDPTVDDTSAAVTEEMPPLEGDDDTSR	48	P07901	1	UniProtKB	2013_08	[MS,MS:1001207,Mascot,]	3	23-CHEMMOD:+15.995	ms_run[6]:scan=2615	2611.08	2	1788.288824	1788.2886	K	M	695	728
+COM Ambiguous mod using unimod
+PSM	LGLGIDEDDPTVDDTSAAVTEEMPPLEGDDDTSR	48	P07901	1	UniProtKB	2013_08	[MS,MS:1001207,Mascot,]	3	null-UNIMOD:35	ms_run[6]:scan=2615	2611.08	2	1788.288824	1788.2886	K	M	695	728
+COM Ambiguous placed mod using unimod
+PSM	LGLGIDEDDPTVDDTSAAVTEEMPPLEGDDDTSR	48	P07901	1	UniProtKB	2013_08	[MS,MS:1001207,Mascot,]	3	0|23-UNIMOD:35	ms_run[6]:scan=2615	2611.08	2	1788.288824	1788.2886	K	M	695	728
+COM Ambiguous placed mod with probability using unimod
+PSM	LGLGIDEDDPTVDDTSAAVTEEMPPLEGDDDTSR	48	P07901	1	UniProtKB	2013_08	[MS,MS:1001207,Mascot,]	3	0[MS,MS:1001876, modification probability, 0.1]|23[MS,MS:1001876, modification probability, 0.9]-UNIMOD:35	ms_run[6]:scan=2615	2611.08	2	1788.288824	1788.2886	K	M	695	728
+COM Even more placed ambiguous mod using unimod
+PSM	LGLGIDEDDPTVDDTSAAVTEEMPPLEGDDDTSR	48	P07901	1	UniProtKB	2013_08	[MS,MS:1001207,Mascot,]	3	0|20|23|32-UNIMOD:35	ms_run[6]:scan=2615	2611.08	2	1788.288824	1788.2886	K	M	695	728
+COM Neutral loss (with position)
+PSM	LGLGIDEDDPTVDDTSAAVTEEMPPLEGDDDTSR	48	P07901	1	UniProtKB	2013_08	[MS,MS:1001207,Mascot,]	3	23-CHEMMOD:+15.995,23-[MS, MS:1001524, fragment neutral loss, 63.998285]	ms_run[6]:scan=2615	2611.08	2	1788.288824	1788.2886	K	M	695	728
+COM Neutral loss (without position)
+PSM	LGLGIDEDDPTVDDTSAAVTEEMPPLEGDDDTSR	48	P07901	1	UniProtKB	2013_08	[MS,MS:1001207,Mascot,]	3	23-CHEMMOD:+15.995,[MS, MS:1001524, fragment neutral loss, 63.998285]	ms_run[6]:scan=2615	2611.08	2	1788.288824	1788.2886	K	M	695	728
+COM Standard mod using unimod
+PSM	MPEETQTQDQPMEEEEVETFAFQAEIAQLMSLIINTFYSNK	50	P07901	1	UniProtKB	2013_08	[MS,MS:1001207,Mascot,]	11	0-UNIMOD:35	ms_run[6]:scan=3188	3184.08	2	2405.619464	2405.6084	-	E	1	41
+COM Standard mod using psimod
+PSM	MPEETQTQDQPMEEEEVETFAFQAEIAQLMSLIINTFYSNK	50	P07901	1	UniProtKB	2013_08	[MS,MS:1001207,Mascot,]	11	0-MOD:00425	ms_run[6]:scan=3188	3184.08	2	2405.619464	2405.6084	-	E	1	41
+COM Standard mod using chemmod (formula)
+PSM	MPEETQTQDQPMEEEEVETFAFQAEIAQLMSLIINTFYSNK	50	P07901	1	UniProtKB	2013_08	[MS,MS:1001207,Mascot,]	11	0-CHEMMOD:+O	ms_run[6]:scan=3188	3184.08	2	2405.619464	2405.6084	-	E	1	41
+COM Standard mod using chemmod (mass)
+PSM	MPEETQTQDQPMEEEEVETFAFQAEIAQLMSLIINTFYSNK	50	P07901	1	UniProtKB	2013_08	[MS,MS:1001207,Mascot,]	11	0-CHEMMOD:+15.995	ms_run[6]:scan=3188	3184.08	2	2405.619464	2405.6084	-	E	1	41";
 
 const CASANOVO_V3_2_0_A: &str = r"MTD	mzTab-version	1.0.0
 MTD	mzTab-mode	Summary

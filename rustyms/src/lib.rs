@@ -23,7 +23,6 @@ mod helper_functions;
 pub mod annotation;
 /// Contains all things related to the underlying chemistry.
 pub mod chemistry;
-pub mod error;
 /// Contains all things related to fragments and fragmentation.
 pub mod fragment;
 pub mod glycan;

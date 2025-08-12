@@ -1,9 +1,10 @@
 use std::{borrow::Cow, marker::PhantomData, ops::Range};
 
+use serde::{Deserialize, Serialize};
+
 use crate::{
-    error::CustomError,
     identification::{
-        BoxedIdentifiedPeptideIter, FastaIdentifier, IdentifiedPeptidoform,
+        BoxedIdentifiedPeptideIter, FastaIdentifier, FlankingSequence, IdentifiedPeptidoform,
         IdentifiedPeptidoformData, IdentifiedPeptidoformSource, IdentifiedPeptidoformVersion,
         KnownFileFormat, MetaData, PeptidoformPresent, SpectrumId, SpectrumIds,
         common_parser::{Location, OptionalColumn},
@@ -14,7 +15,6 @@ use crate::{
     sequence::{Peptidoform, SemiAmbiguous, SloppyParsingParameters},
     system::{Mass, MassOverCharge, Time, isize::Charge},
 };
-use serde::{Deserialize, Serialize};
 
 static NUMBER_ERROR: (&str, &str) = (
     "Invalid Novor line",
@@ -35,7 +35,7 @@ format_family!(
             location.location.clone(),
             custom_database,
             &SloppyParsingParameters::default(),
-        );
+        ).map_err(BoxedError::to_owned);
     }
     optional {
         id: usize, |location: Location, _| location.parse::<usize>(NUMBER_ERROR);
@@ -271,5 +271,13 @@ impl MetaData for NovorData {
 
     fn protein_location(&self) -> Option<Range<u16>> {
         self.protein_start.map(|s| s..s + self.peptide.len() as u16)
+    }
+
+    fn flanking_sequences(&self) -> (&FlankingSequence, &FlankingSequence) {
+        (&FlankingSequence::Unknown, &FlankingSequence::Unknown)
+    }
+
+    fn database(&self) -> Option<(&str, Option<&str>)> {
+        None
     }
 }

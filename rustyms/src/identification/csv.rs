@@ -1,6 +1,7 @@
 //! Methods for reading and parsing CSV files. (Internal use mostly).
 
 use std::{
+    borrow::Cow,
     collections::{BTreeMap, HashMap},
     fmt::Debug,
     fs::File,
@@ -10,14 +11,12 @@ use std::{
     sync::Arc,
 };
 
+use custom_error::*;
 use flate2::bufread::GzDecoder;
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 
-use crate::{
-    error::{Context, CustomError},
-    helper_functions::check_extension,
-};
+use crate::helper_functions::check_extension;
 
 /// A single line in a CSV file
 #[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
@@ -33,62 +32,78 @@ impl CsvLine {
     pub const fn line_index(&self) -> usize {
         self.line_index
     }
+
     /// Get the full line
     pub fn line(&self) -> &str {
         &self.line
     }
+
     /// Get the column headers
     pub fn headers(&self) -> impl Iterator<Item = &str> {
         self.fields.iter().map(|f| f.0.as_str())
     }
+
     /// Get the column values
     pub fn values(&self) -> impl Iterator<Item = (Arc<String>, &str)> {
         self.fields
             .iter()
             .map(|f| (f.0.clone(), &self.line[f.1.clone()]))
     }
+
     /// Get the number of columns
     pub fn number_of_columns(&self) -> usize {
         self.fields.len()
     }
+
     /// Get the context applicable to the specified column
-    pub fn column_context(&self, column: usize) -> Context {
+    pub fn column_context(&self, column: usize) -> Context<'_> {
         Context::line_with_comment(
-            Some(self.line_index),
-            self.line.clone(),
+            Some(self.line_index as u32),
+            &self.line,
             self.fields[column].1.start,
             self.fields[column].1.len(),
-            Some(self.fields[column].0.as_str().to_string()),
+            Some(Cow::Borrowed(self.fields[column].0.as_str())),
         )
     }
+
     /// Get the context for the specified range in the original line
-    pub fn range_context(&self, range: Range<usize>, comment: Option<String>) -> Context {
+    pub fn range_context<'a>(
+        &'a self,
+        range: Range<usize>,
+        comment: Option<Cow<'a, str>>,
+    ) -> Context<'a> {
         Context::line_with_comment(
-            Some(self.line_index()),
-            self.line.clone(),
+            Some(self.line_index as u32),
+            &self.line,
             range.start,
             range.len(),
             comment,
         )
     }
+
     /// Get the context for the whole line
-    pub fn full_context(&self) -> Context {
-        Context::full_line(self.line_index, self.line.clone())
+    pub fn full_context(&self) -> Context<'_> {
+        Context::full_line(self.line_index as u32, &self.line)
     }
+
     /// Get the range of a specified column
     pub fn range(&self, index: usize) -> &Range<usize> {
         &self.fields[index].1
     }
+
     /// Get the specified column, by column name
     /// # Errors
     /// If the given name is not a column header return an error
-    pub fn index_column(&self, name: &str) -> Result<(&str, &Range<usize>), CustomError> {
+    pub fn index_column<'a>(
+        &'a self,
+        name: &str,
+    ) -> Result<(&'a str, &'a Range<usize>), BoxedError<'a>> {
         self.fields
             .iter()
             .find(|f| *f.0 == *name)
             .map(|f| (&self.line[f.1.clone()], &f.1))
             .ok_or_else(|| {
-                CustomError::error(
+                BoxedError::error(
                     "Could not find given column",
                     format!("This CSV file does not contain the needed column '{name}'"),
                     self.full_context(),
@@ -99,29 +114,30 @@ impl CsvLine {
     /// Parse a column into the given format
     /// # Errors
     /// If erroneous extend the base error with the correct context and return that
-    pub fn parse_column<F: FromStr>(
-        &self,
+    pub fn parse_column<'a, F: FromStr>(
+        &'a self,
         column: usize,
-        base_error: &CustomError,
-    ) -> Result<F, CustomError> {
+        base_error: BoxedError<'a>,
+    ) -> Result<F, BoxedError<'a>> {
         self[column]
             .parse()
-            .map_err(|_| base_error.with_context(self.column_context(column)))
+            .map_err(|_| base_error.context(self.column_context(column)))
     }
+
     /// Parse a column into the given format
     /// # Errors
     /// If erroneous extend the base error with the correct context and return that
-    pub fn parse_column_or_empty<F: FromStr>(
-        &self,
+    pub fn parse_column_or_empty<'a, F: FromStr>(
+        &'a self,
         column: usize,
-        base_error: &CustomError,
-    ) -> Result<Option<F>, CustomError> {
+        base_error: BoxedError<'a>,
+    ) -> Result<Option<F>, BoxedError<'a>> {
         let text = &self[column];
         if text.is_empty() || text == "-" {
             Ok(None)
         } else {
             Ok(Some(text.parse().map_err(|_| {
-                base_error.with_context(self.column_context(column))
+                base_error.context(self.column_context(column))
             })?))
         }
     }
@@ -164,14 +180,14 @@ pub fn parse_csv(
     path: impl AsRef<std::path::Path>,
     separator: u8,
     provided_header: Option<Vec<String>>,
-) -> Result<Box<dyn Iterator<Item = Result<CsvLine, CustomError>>>, CustomError> {
+) -> Result<Box<dyn Iterator<Item = Result<CsvLine, BoxedError<'static>>>>, BoxedError<'static>> {
     let file = File::open(path.as_ref()).map_err(|e| {
-        CustomError::error(
+        BoxedError::error(
             "Could not open file",
-            e,
-            Context::Show {
-                line: path.as_ref().to_string_lossy().to_string(),
-            },
+            e.to_string(),
+            Context::default()
+                .source(path.as_ref().to_string_lossy())
+                .to_owned(),
         )
     })?;
     if check_extension(path, "gz") {
@@ -193,7 +209,7 @@ pub fn parse_csv_raw<T: std::io::Read>(
     reader: T,
     mut separator: u8,
     provided_header: Option<Vec<String>>,
-) -> Result<CsvLineIter<T>, CustomError> {
+) -> Result<CsvLineIter<T>, BoxedError<'static>> {
     let reader = BufReader::new(reader);
     let mut lines = reader.lines().enumerate().peekable();
     let mut skip = false;
@@ -207,7 +223,7 @@ pub fn parse_csv_raw<T: std::io::Read>(
             if c.len_utf8() == 1 {
                 separator = c as u8;
             } else {
-                return Err(CustomError::error(
+                return Err(BoxedError::error(
                     "Unicode value separators not supported",
                     "This is a character that takes more than 1 byte to represent in Unicode, this is not supported in parsing CSV files.",
                     Context::line_with_comment(Some(0), format!("sep={sep}"), 4, sep.len(), None),
@@ -237,11 +253,17 @@ pub fn parse_csv_raw<T: std::io::Read>(
         provided_header
     } else {
         let (_, column_headers) = lines.next().ok_or_else(|| {
-            CustomError::error("Could parse csv file", "The file is empty", Context::None)
+            BoxedError::error("Could parse csv file", "The file is empty", Context::none())
         })?;
-        let header_line = column_headers
-            .map_err(|err| CustomError::error("Could not read header line", err, Context::None))?;
-        csv_separate(&header_line, separator)?
+        let header_line = column_headers.map_err(|err| {
+            BoxedError::error(
+                "Could not read header line",
+                err.to_string(),
+                Context::none(),
+            )
+        })?;
+        csv_separate(&header_line, separator)
+            .map_err(BoxedError::to_owned)?
             .into_iter()
             .map(|r| Arc::new(header_line[r].to_lowercase()))
             .collect()
@@ -263,15 +285,15 @@ pub struct CsvLineIter<T: std::io::Read> {
 }
 
 impl<T: std::io::Read> Iterator for CsvLineIter<T> {
-    type Item = Result<CsvLine, CustomError>;
+    type Item = Result<CsvLine, BoxedError<'static>>;
     fn next(&mut self) -> Option<Self::Item> {
         self.lines.next().map(|(line_index, line)| {
-            let line = line.map_err(|err|CustomError::error(
+            let line = line.map_err(|err|BoxedError::error(
                     "Could not read line",
-                    err,
-                    Context::full_line(line_index, "(failed)"),
+                    err.to_string(),
+                    Context::default().line_index(line_index as u32),
                 ))?;
-            csv_separate(&line, self.separator).and_then(|row| {
+            csv_separate(&line, self.separator).map_err(BoxedError::to_owned).and_then(|row| {
                 if self.header.len() == row.len() {
                     Ok(CsvLine {
                         line_index,
@@ -279,10 +301,10 @@ impl<T: std::io::Read> Iterator for CsvLineIter<T> {
                         fields: self.header.iter().cloned().zip(row).collect(),
                     })
                 } else {
-                    Err(CustomError::error(
+                    Err(BoxedError::error(
                         "Incorrect number of columns",
                         format!("It does not have the correct number of columns. {} columns were expected but {} were found.", self.header.len(), row.len()),
-                        Context::full_line(line_index, line),
+                        Context::full_line(line_index as u32, line),
                     ))
                 }
             })
@@ -292,12 +314,12 @@ impl<T: std::io::Read> Iterator for CsvLineIter<T> {
 
 /// # Errors
 /// If the line is empty.
-pub(crate) fn csv_separate(line: &str, separator: u8) -> Result<Vec<Range<usize>>, CustomError> {
+pub(crate) fn csv_separate(line: &str, separator: u8) -> Result<Vec<Range<usize>>, BoxedError<'_>> {
     if line.is_empty() {
-        return Err(CustomError::error(
+        return Err(BoxedError::error(
             "Empty line",
             "The line is empty",
-            Context::None,
+            Context::none(),
         ));
     }
     let mut enclosed = None;
@@ -359,49 +381,13 @@ pub(crate) fn csv_separate(line: &str, separator: u8) -> Result<Vec<Range<usize>
 
 impl std::fmt::Display for CsvLine {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let mut line = self.line.clone();
-        let mut offset = 0;
-        let mut display_field = |range: &Range<usize>| match range.len() {
-            0 => {
-                line.insert(range.start + offset, '⌧'); // Insert an empty icon to be able to indicate a field of length 0
-                offset += '⌧'.len_utf8();
-                "ô".to_string()
-            }
-            1 => "^".to_string(),
-            n => {
-                let full = format!("{}-{}", range.start, range.end);
-                if full.len() <= n - 2 {
-                    format!("└{:·^w$}┘", full, w = n - 2)
-                } else {
-                    format!("└{}┘", "·".repeat(n - 2))
-                }
-            }
-        };
-        let mut fields = String::new();
-        let mut index = 0;
-        for (_name, field) in &self.fields {
-            if field.start >= index {
-                fields = format!(
-                    "{fields}{}{}",
-                    " ".repeat(field.start - index),
-                    display_field(field)
-                );
-                index = field.end;
-            } else {
-                fields = format!(
-                    "{fields}\n{}{}",
-                    " ".repeat(field.start),
-                    display_field(field)
-                );
-            }
-        }
-        write!(
+        writeln!(
             f,
-            "{}: {}\n{}{}",
-            self.line_index + 1,
-            line,
-            " ".repeat((self.line_index + 1).to_string().len() + 2),
-            fields
+            "{}",
+            Context::default()
+                .line_index(self.line_index as u32)
+                .lines(0, &self.line)
+                .add_highlights(self.fields.iter().map(|f| (0, f.1.clone())))
         )
     }
 }

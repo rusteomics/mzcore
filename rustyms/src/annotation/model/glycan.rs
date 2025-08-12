@@ -1,4 +1,8 @@
-use std::{collections::HashMap, hash::Hash, ops::RangeInclusive};
+use std::{
+    collections::HashMap,
+    hash::Hash,
+    ops::{Bound, RangeBounds},
+};
 
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
@@ -19,7 +23,7 @@ pub struct GlycanModel {
     pub allow_structural: bool,
     /// Allows fragments from glycans where only the composition is known (i.e. `Glycan:Hex1`).
     /// This allows any fragment containing any number of monosaccharides within this range.
-    pub compositional_range: RangeInclusive<usize>,
+    pub compositional_range: (Option<usize>, Option<usize>),
     /// The allowed neutral losses
     pub neutral_losses: Vec<NeutralLoss>,
     /// Allowed neutral losses on diagnostic ions based on monosaccharides with a flag to indicate precise isomeric state matching
@@ -43,14 +47,36 @@ impl GlycanModel {
             ..self
         }
     }
+
     /// Set the range of monosaccharides that can result in composition fragments, see [`Self::compositional_range`].
     #[must_use]
-    pub fn compositional_range(self, compositional_range: RangeInclusive<usize>) -> Self {
+    pub fn compositional_range(self, compositional_range: (Option<usize>, Option<usize>)) -> Self {
         Self {
             compositional_range,
             ..self
         }
     }
+
+    /// Set the range of monosaccharides that can result in composition fragments, see [`Self::compositional_range`].
+    #[must_use]
+    pub fn compositional_range_generic(self, compositional_range: impl RangeBounds<usize>) -> Self {
+        Self {
+            compositional_range: (
+                match compositional_range.start_bound() {
+                    Bound::Unbounded => None,
+                    Bound::Included(n) => Some(*n),
+                    Bound::Excluded(n) => Some(n + 1),
+                },
+                match compositional_range.end_bound() {
+                    Bound::Unbounded => None,
+                    Bound::Included(n) => Some(*n),
+                    Bound::Excluded(n) => Some(n - 1),
+                },
+            ),
+            ..self
+        }
+    }
+
     /// Replace the neutral losses
     #[must_use]
     pub fn neutral_losses(self, neutral_losses: Vec<NeutralLoss>) -> Self {
@@ -59,6 +85,7 @@ impl GlycanModel {
             ..self
         }
     }
+
     /// Replace the charge range for oxonium ions (B, internal fragments etc)
     #[must_use]
     pub fn oxonium_charge_range(self, oxonium_charge_range: ChargeRange) -> Self {
@@ -67,6 +94,7 @@ impl GlycanModel {
             ..self
         }
     }
+
     /// Replace the charge range for other glycan ions (Y etc)
     #[must_use]
     pub fn other_charge_range(self, other_charge_range: ChargeRange) -> Self {
@@ -75,6 +103,7 @@ impl GlycanModel {
             ..self
         }
     }
+
     /// Replace the default rules for glycans on peptide fragments
     #[must_use]
     pub fn default_peptide_fragment(self, default_peptide_fragment: GlycanPeptideFragment) -> Self {
@@ -83,6 +112,7 @@ impl GlycanModel {
             ..self
         }
     }
+
     /// Replace the specific rules for glycans on peptide fragments
     #[must_use]
     pub fn peptide_fragment_rules(
@@ -94,11 +124,12 @@ impl GlycanModel {
             ..self
         }
     }
+
     /// Default set for models that allow glycan fragmentation
     pub fn default_allow() -> Self {
         Self {
             allow_structural: true,
-            compositional_range: 1..=10,
+            compositional_range: (None, None),
             neutral_losses: Vec::new(),
             specific_neutral_losses: GLYCAN_LOSSES.clone(),
             default_peptide_fragment: GlycanPeptideFragment::CORE_AND_FREE,
@@ -107,10 +138,11 @@ impl GlycanModel {
             other_charge_range: ChargeRange::ONE_TO_PRECURSOR,
         }
     }
+
     /// Default set for models that disallow glycan fragmentation
     pub const DISALLOW: Self = Self {
         allow_structural: false,
-        compositional_range: 0..=0,
+        compositional_range: (None, Some(0)),
         neutral_losses: Vec::new(),
         specific_neutral_losses: Vec::new(),
         default_peptide_fragment: GlycanPeptideFragment::FULL,
@@ -154,7 +186,7 @@ pub struct GlycanPeptideFragment {
     /// The full glycan stays attached
     pub(super) full: bool,
     /// The glycan fragments and at any number of monosaccharides within the range (min, max, inclusive) stay attached (any fucoses on these fragments are always included and do not count towards the limit)
-    pub(super) core: Option<(u8, u8)>,
+    pub(super) core: Option<(Option<usize>, Option<usize>)>,
 }
 
 impl std::ops::Add<&Self> for GlycanPeptideFragment {
@@ -181,17 +213,17 @@ impl GlycanPeptideFragment {
     /// A default model that only allows core and free (0..=1)
     pub const CORE_AND_FREE: Self = Self {
         full: false,
-        core: Some((0, 1)),
+        core: Some((None, Some(1))),
     };
     /// A default model that only allows core (1..=1)
     pub const CORE: Self = Self {
         full: false,
-        core: Some((1, 1)),
+        core: Some((Some(1), Some(1))),
     };
     /// A default model that only allows free (0..=0)
     pub const FREE: Self = Self {
         full: false,
-        core: Some((0, 0)),
+        core: Some((None, Some(0))),
     };
 
     /// Get if this models allows full glycans on peptide fragments
@@ -200,8 +232,8 @@ impl GlycanPeptideFragment {
     }
 
     /// Get if this models allows core fragments on peptide fragments and the depth range of those fragments
-    pub fn core(self) -> Option<RangeInclusive<u8>> {
-        self.core.map(|(min, max)| min..=max)
+    pub fn core(self) -> Option<(Option<usize>, Option<usize>)> {
+        self.core
     }
 }
 

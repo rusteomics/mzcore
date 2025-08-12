@@ -5,24 +5,21 @@ use std::{
     path::{Path, PathBuf},
 };
 
+use itertools::Itertools;
+use serde::{Deserialize, Serialize};
+
 use crate::{
-    error::CustomError,
     identification::{
-        FastaIdentifier, KnownFileFormat, MetaData, PeptidoformPresent, SpectrumId, SpectrumIds,
+        BoxedIdentifiedPeptideIter, FastaIdentifier, FlankingSequence, IdentifiedPeptidoform,
+        IdentifiedPeptidoformData, IdentifiedPeptidoformSource, IdentifiedPeptidoformVersion,
+        KnownFileFormat, MetaData, PeptidoformPresent, SpectrumId, SpectrumIds,
+        common_parser::Location,
+        csv::{CsvLine, parse_csv},
     },
     ontology::CustomDatabase,
     prelude::CompoundPeptidoformIon,
     sequence::{Peptidoform, SemiAmbiguous},
     system::{Mass, MassOverCharge, Ratio, Time, isize::Charge},
-};
-use itertools::Itertools;
-use serde::{Deserialize, Serialize};
-
-use crate::identification::{
-    BoxedIdentifiedPeptideIter, IdentifiedPeptidoform, IdentifiedPeptidoformData,
-    IdentifiedPeptidoformSource, IdentifiedPeptidoformVersion,
-    common_parser::Location,
-    csv::{CsvLine, parse_csv},
 };
 
 static NUMBER_ERROR: (&str, &str) = (
@@ -54,7 +51,7 @@ format_family!(
         ms2_intensity: f64, |location: Location, _| location.parse(NUMBER_ERROR);
         scan: SpectrumId, |location: Location, _|Ok(SpectrumId::Native(location.get_string()));
         peptide_q: f64, |location: Location, _| location.parse(NUMBER_ERROR);
-        peptide: Peptidoform<SemiAmbiguous>, |location: Location, custom_database: Option<&CustomDatabase>| Peptidoform::pro_forma(location.as_str(), custom_database).map(|p|p.into_semi_ambiguous().unwrap());
+        peptide: Peptidoform<SemiAmbiguous>, |location: Location, custom_database: Option<&CustomDatabase>| Peptidoform::pro_forma(location.as_str(), custom_database).map_err(BoxedError::to_owned).map(|p|p.into_semi_ambiguous().unwrap());
         poisson: f64, |location: Location, _| location.parse(NUMBER_ERROR);
         posterior_error: f64, |location: Location, _| location.parse(NUMBER_ERROR);
         predicted_mobility: f64, |location: Location, _| location.parse(NUMBER_ERROR);
@@ -210,6 +207,14 @@ impl MetaData for SageData {
     }
 
     fn protein_location(&self) -> Option<Range<u16>> {
+        None
+    }
+
+    fn flanking_sequences(&self) -> (&FlankingSequence, &FlankingSequence) {
+        (&FlankingSequence::Unknown, &FlankingSequence::Unknown)
+    }
+
+    fn database(&self) -> Option<(&str, Option<&str>)> {
         None
     }
 }
