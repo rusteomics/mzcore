@@ -2,7 +2,7 @@ name: Python CI
 
 on:
   release:
-    -type: [publish]
+    types: [publish]
 
 permissions:
   contents: read
