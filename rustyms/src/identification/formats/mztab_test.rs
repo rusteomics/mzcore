@@ -84,12 +84,27 @@ fn casanovo_v4_2_1() {
         39
     );
 }
+#[test]
+fn casanovo_v5_0_0() {
+    assert_eq!(
+        open_file(BufReader::new(CASANOVO_V5_0_0.as_bytes())).unwrap(),
+        35
+    );
+}
 
 #[test]
 fn contranovo_v1_0_0() {
     assert_eq!(
         open_file(BufReader::new(CONTRANOVO_V1_0_0.as_bytes())).unwrap(),
         20
+    );
+}
+
+#[test]
+fn adanovo_v1_0_0() {
+    assert_eq!(
+        open_file(BufReader::new(ADANOVO_V1_0_0.as_bytes())).unwrap(),
+        18
     );
 }
 
@@ -103,7 +118,7 @@ fn open_file(reader: impl BufRead) -> Result<usize, BoxedError<'static>> {
             read.map_err(BoxedError::to_owned)?.into();
         peptides += 1;
 
-        test_identified_peptidoform(&peptide, false, false).unwrap();
+        test_identified_peptidoform(&peptide, true, false).unwrap();
     }
     Ok(peptides)
 }
@@ -1187,3 +1202,180 @@ PSM	LC+57.021N+0.984VNHKPSNTKVDKK	17	null	null	null	null	[MS, MS:1003281, Casano
 PSM	QGFTHGSSSSSSSYGGMDDYRDSSSSSSYR	18	null	null	null	null	[MS, MS:1003281, Casanovo, 0.1]	0.7401801645755768	null	null	5	634.659423828125	634.6592528068801	ms_run[1]:0	null	null	null	null	0.99973,0.96678,0.96881,0.89851,0.13645,0.91631,0.21930,0.95760,0.79096,0.69497,0.62939,0.94909,0.35126,0.95382,0.57183,0.99624,0.79961,0.53239,0.22228,0.73127,0.95536,0.75359,0.87812,0.89091,0.87671,0.92214,0.94474,0.26590,0.48543,0.94589
 PSM	-17.027QANC+57.021WGYTR	322	null	null	null	null	[MS, MS:1003281, Casanovo, 0.1]	0.8814870677888393	null	null	2	569.7229614257812	569.7403618168801	ms_run[1]:0	null	null	null	null	1.00000,1.00000,0.99930,0.91362,0.97486,0.11735,0.99734,0.99371,0.82866,0.99004
 PSM		1894	null	null	null	null	[MS, MS:1003281, Casanovo, 0.1]	nan	null	null	8	1906.1671142578125	3.25859705438	ms_run[1]:0	null	null	null	null	";
+
+const ADANOVO_V1_0_0: &str = r"MTD	mzTab-version	1.0.0
+MTD	mzTab-mode	Summary
+MTD	mzTab-type	Identification
+MTD	description	Adanovo identification file xxxxx
+MTD	software[1]	[MS, MS:1003281, Adanovo]
+MTD	psm_search_engine_score[1]	[MS, MS:1001143, search engine specific score for PSMs, ]
+MTD	fixed_mod[1]	[MS, MS:1002453, No fixed modifications searched, ]
+MTD	variable_mod[1]	[UNIMOD, UNIMOD:5, Carbamyl, ]
+MTD	variable_mod[1]-site	N-term
+MTD	variable_mod[2]	[UNIMOD, UNIMOD:1, Acetyl, ]
+MTD	variable_mod[2]-site	N-term
+MTD	variable_mod[3]	[UNIMOD, UNIMOD:385, Ammonia-loss, ]
+MTD	variable_mod[3]-site	N-term
+MTD	software[1]-setting[1]	model = /xxx/xxx/xxx.ckpt
+MTD	software[1]-setting[2]	config_filename = config.yaml
+MTD	software[1]-setting[3]	custom_encoder = None
+MTD	software[1]-setting[4]	dim_feedforward = 1024
+MTD	software[1]-setting[5]	dim_intensity = None
+MTD	software[1]-setting[6]	dim_model = 512
+MTD	software[1]-setting[7]	dropout = 0.0
+MTD	software[1]-setting[8]	every_n_train_steps = 50000
+MTD	software[1]-setting[9]	isotope_error_range = (0, 1)
+MTD	software[1]-setting[10]	learning_rate = 0.0005
+MTD	software[1]-setting[11]	logger = None
+MTD	software[1]-setting[12]	max_charge = 10
+MTD	software[1]-setting[13]	max_epochs = 30
+MTD	software[1]-setting[14]	max_iters = 600000
+MTD	software[1]-setting[15]	max_length = 100
+MTD	software[1]-setting[16]	max_mz = 2500.0
+MTD	software[1]-setting[17]	min_intensity = 0.01
+MTD	software[1]-setting[18]	min_mz = 50.0
+MTD	software[1]-setting[19]	min_peptide_len = 6
+MTD	software[1]-setting[20]	model_save_folder_path = saved_model/
+MTD	software[1]-setting[21]	n_beams = 5
+MTD	software[1]-setting[22]	n_head = 8
+MTD	software[1]-setting[23]	n_layers = 9
+MTD	software[1]-setting[24]	n_log = 1
+MTD	software[1]-setting[25]	n_peaks = 150
+MTD	software[1]-setting[26]	no_gpu = False
+MTD	software[1]-setting[27]	num_sanity_val_steps = 0
+MTD	software[1]-setting[28]	precursor_mass_tol = 50.0
+MTD	software[1]-setting[29]	predict_batch_size = 256
+MTD	software[1]-setting[30]	ptm_types = ['M(+15.99)', 'N(+.98)', 'Q(+.98)']
+MTD	software[1]-setting[31]	random_seed = 454
+MTD	software[1]-setting[32]	remove_precursor_tol = 2.0
+MTD	software[1]-setting[34]	save_model = True
+MTD	software[1]-setting[35]	save_weights_only = True
+MTD	software[1]-setting[36]	tb_summarywriter = None
+MTD	software[1]-setting[37]	top_match = 1
+MTD	software[1]-setting[38]	train_batch_size = 10
+MTD	software[1]-setting[39]	train_from_scratch = True
+MTD	software[1]-setting[40]	warmup_iters = 100000
+MTD	software[1]-setting[41]	weight_decay = 1e-05
+MTD	software[1]-setting[42]	n_workers = 2
+MTD	ms_run[1]-location	file:///xxx/xxx/xxx.mgf
+PSH	sequence	PSM_ID	accession	unique	database	database_version	search_engine	search_engine_score[1]	modifications	retention_time	charge	exp_mass_to_charge	calc_mass_to_charge	spectra_ref	pre	post	start	end	opt_ms_run[1]_aa_scores
+PSM	+43.006EIAELK	1	null	null	null	null	[MS, MS:1003281, Adanovo]	-0.2963899224996567	null	null	2.0	399.34885	373.20816131688	ms_run[1]:index=0	null	null	null	null	0.83216,0.45778,0.68741,0.83997,0.57638,0.53333,0.85005
+PSM	LILEELK	2	null	null	null	null	[MS, MS:1003281, Adanovo]	-0.5816780831664801	null	null	2.0	447.349	429.27076131688	ms_run[1]:index=3	null	null	null	null	0.52025,0.28387,0.42861,0.37298,0.34418,0.29527,0.39227
+PSM	+43.006-17.027EGEEEK	3	null	null	null	null	[MS, MS:1003281, Adanovo]	-0.3802630063146353	null	null	2.0	399.34814	373.6460908168801	ms_run[1]:index=15	null	null	null	null	0.68596,0.38739,0.59181,0.54725,0.50829,0.64235,0.78498
+PSM	M(+15.99)KELLEEHEELK	4	null	null	null	null	[MS, MS:1003281, Adanovo]	-0.5797051099630502	null	null	3.0	493.2235	515.26059636688	ms_run[1]:index=18	null	null	null	null	0.51490,0.30857,0.44217,0.51895,0.27416,0.41454,0.54352,0.36491,0.29716,0.41236,0.47040,0.69207
+PSM	EC(+57.02)GEM(+15.99)EEEHGC(+57.02)EEN(+.98)	5	null	null	null	null	[MS, MS:1003281, Adanovo]	-0.6582872937122981	null	null	3.0	550.219	585.8520093668801	ms_run[1]:index=27	null	null	null	null	0.49829,0.39566,0.52967,0.28216,0.32912,0.24518,0.31027,0.34011,0.28072,0.26802,0.52867,0.20459,0.35894,0.38343
+PSM	LEC(+57.02)LLELEEN(+.98)	6	null	null	null	null	[MS, MS:1003281, Adanovo]	-0.55656318298795	null	null	2.0	624.2379	631.7946693168801	ms_run[1]:index=30	null	null	null	null	0.51573,0.41917,0.36160,0.27868,0.35848,0.35060,0.32186,0.32625,0.56948,0.65424
+PSM	GEM(+15.99)PEHEELK	7	null	null	null	null	[MS, MS:1003281, Adanovo]	-0.47553970427675685	null	null	3.0	425.21613	405.51677770021337	ms_run[1]:index=36	null	null	null	null	0.70778,0.40408,0.43566,0.45333,0.43252,0.53933,0.29137,0.63866,0.55337,0.55073
+PSM	M(+15.99)C(+57.02)EEHAEEK	8	null	null	null	null	[MS, MS:1003281, Adanovo]	-0.5762234620749951	null	null	3.0	385.15396	393.4866017002134	ms_run[1]:index=39	null	null	null	null	0.54125,0.46095,0.36502,0.48258,0.27165,0.55069,0.50422,0.26128,0.58824
+PSM	ELLEELK	9	null	null	null	null	[MS, MS:1003281, Adanovo]	-0.5218491964042187	null	null	2.0	436.88058	437.25002581688005	ms_run[1]:index=48	null	null	null	null	0.51701,0.30945,0.49610,0.43260,0.37924,0.30729,0.64444
+PSM	EC(+57.02)LLEEHHEC(+57.02)EEN(+.98)	10	null	null	null	null	[MS, MS:1003281, Adanovo]	-0.6649651303887367	null	null	2.0	832.2426	864.8274353168799	ms_run[1]:index=54	null	null	null	null	0.36661,0.38333,0.36993,0.26764,0.25566,0.27456,0.36962,0.44051,0.26455,0.31490,0.31663,0.41728,0.48174
+PSM	AELHEGLEALC(+57.02)EEEN(+.98)	11	null	null	null	null	[MS, MS:1003281, Adanovo]	-0.5483541814610362	null	null	2.0	889.2353	872.3725323168801	ms_run[1]:index=60	null	null	null	null	0.32779,0.58044,0.53655,0.42949,0.38431,0.41258,0.71052,0.35212,0.32182,0.34612,0.41631,0.46138,0.29118,0.50282,0.42709
+PSM	Q(+.98)KHC(+57.02)AEEQHHENK	12	null	null	null	null	[MS, MS:1003281, Adanovo]	-0.5978434490306037	null	null	2.0	817.2119	838.3657108168799	ms_run[1]:index=63	null	null	null	null	0.51435,0.27801,0.44365,0.33759,0.29989,0.33715,0.65056,0.30266,0.45010,0.63911,0.44400,0.34859,0.38346
+PSM	EC(+57.02)HLHEPC(+57.02)EEELK	13	null	null	null	null	[MS, MS:1003281, Adanovo]	-0.6599697108779634	null	null	2.0	833.24475	855.36653081688	ms_run[1]:index=66	null	null	null	null	0.41598,0.23812,0.38860,0.44787,0.24051,0.24706,0.28328,0.51895,0.38747,0.34838,0.25759,0.50223,0.31436
+PSM	+43.006-17.027EGEEEK	14	null	null	null	null	[MS, MS:1003281, Adanovo]	-0.37315315939486027	null	null	2.0	399.34802	373.6460908168801	ms_run[1]:index=69	null	null	null	null	0.73597,0.42511,0.62338,0.53309,0.57620,0.49863,0.80898
+PSM	IEALM(+15.99)LELC(+57.02)EN(+.98)	15	null	null	null	null	[MS, MS:1003281, Adanovo]	-0.5414385503778856	null	null	2.0	681.2308	676.30962981688	ms_run[1]:index=72	null	null	null	null	0.47088,0.42874,0.28525,0.35193,0.41603,0.52875,0.26840,0.65748,0.29204,0.63688,0.43707
+PSM	IIAEEIIEELK	16	null	null	null	null	[MS, MS:1003281, Adanovo]	-0.35488584637641907	null	null	3.0	443.60464	433.9183877002133	ms_run[1]:index=75	null	null	null	null	0.63906,0.47484,0.56343,0.60255,0.74678,0.36096,0.69273,0.67348,0.60226,0.81058,0.75215
+PSM	EEIEELN(+.98)	17	null	null	null	null	[MS, MS:1003281, Adanovo]	-0.553612669929862	null	null	2.0	440.312	438.69528031688003	ms_run[1]:index=78	null	null	null	null	0.42456,0.27533,0.43876,0.38189,0.31244,0.39558,0.61934
+PSM	LLLEELN(+.98)	18	null	null	null	null	[MS, MS:1003281, Adanovo]	-0.540082280524075	null	null	2.0	458.6689	422.73675131688	ms_run[1]:index=84	null	null	null	null	0.50545,0.28324,0.47001,0.35971,0.38526,0.33875,0.60697";
+
+const CASANOVO_V5_0_0: &str = r"MTD	mzTab-version	1.0.0
+MTD	mzTab-mode	Summary
+MTD	mzTab-type	Identification
+MTD	description	Casanovo identification file casanovo_20250723104338
+MTD	software[1]	[MS, MS:1003281, Casanovo, 5.0.0]
+MTD	psm_search_engine_score[1]	[MS, MS:1001143, search engine specific score for PSMs, ]
+MTD	fixed_mod[1]	[MS, MS:1002453, No fixed modifications searched, ]
+MTD	variable_mod[1]	[MS, MS:1002454, No variable modifications searched,]
+MTD	software[1]-setting[1]	model = /xxx/xxx/casanovo_v5_0_0.ckpt
+MTD	software[1]-setting[2]	config_filename = tools/casanovo/casanovo.yaml
+MTD	software[1]-setting[3]	precursor_mass_tol = 50.0
+MTD	software[1]-setting[4]	isotope_error_range = (0, 1)
+MTD	software[1]-setting[5]	min_peptide_len = 6
+MTD	software[1]-setting[6]	max_peptide_len = 100
+MTD	software[1]-setting[7]	predict_batch_size = 1024
+MTD	software[1]-setting[8]	top_match = 1
+MTD	software[1]-setting[9]	accelerator = auto
+MTD	software[1]-setting[10]	devices = None
+MTD	software[1]-setting[11]	n_beams = 1
+MTD	software[1]-setting[12]	enzyme = trypsin
+MTD	software[1]-setting[13]	digestion = full
+MTD	software[1]-setting[14]	missed_cleavages = 0
+MTD	software[1]-setting[15]	max_mods = 1
+MTD	software[1]-setting[16]	allowed_fixed_mods = C:C[Carbamidomethyl]
+MTD	software[1]-setting[17]	allowed_var_mods = M:M[Oxidation],N:N[Deamidated],Q:Q[Deamidated],nterm:[Acetyl]-,nterm:[Carbamyl]-,nterm:[Ammonia-loss]-,nterm:[+25.980265]-
+MTD	software[1]-setting[18]	random_seed = 454
+MTD	software[1]-setting[19]	n_log = 1
+MTD	software[1]-setting[20]	tb_summarywriter = False
+MTD	software[1]-setting[21]	log_metrics = False
+MTD	software[1]-setting[22]	log_every_n_steps = 50
+MTD	software[1]-setting[23]	lance_dir = None
+MTD	software[1]-setting[24]	val_check_interval = 50000
+MTD	software[1]-setting[25]	min_peaks = 20
+MTD	software[1]-setting[26]	max_peaks = 150
+MTD	software[1]-setting[27]	min_mz = 50.0
+MTD	software[1]-setting[28]	max_mz = 2500.0
+MTD	software[1]-setting[29]	min_intensity = 0.01
+MTD	software[1]-setting[30]	remove_precursor_tol = 2.0
+MTD	software[1]-setting[31]	max_charge = 4
+MTD	software[1]-setting[32]	dim_model = 512
+MTD	software[1]-setting[33]	n_head = 8
+MTD	software[1]-setting[34]	dim_feedforward = 1024
+MTD	software[1]-setting[35]	n_layers = 9
+MTD	software[1]-setting[36]	dropout = 0.0
+MTD	software[1]-setting[37]	dim_intensity = None
+MTD	software[1]-setting[38]	warmup_iters = 100000
+MTD	software[1]-setting[39]	cosine_schedule_period_iters = 600000
+MTD	software[1]-setting[40]	learning_rate = 0.0005
+MTD	software[1]-setting[41]	weight_decay = 1e-05
+MTD	software[1]-setting[42]	train_label_smoothing = 0.01
+MTD	software[1]-setting[43]	train_batch_size = 32
+MTD	software[1]-setting[44]	max_epochs = 30
+MTD	software[1]-setting[45]	shuffle = True
+MTD	software[1]-setting[46]	shuffle_buffer_size = 10000
+MTD	software[1]-setting[47]	num_sanity_val_steps = 0
+MTD	software[1]-setting[48]	calculate_precision = False
+MTD	software[1]-setting[49]	accumulate_grad_batches = 1
+MTD	software[1]-setting[50]	gradient_clip_val = None
+MTD	software[1]-setting[51]	gradient_clip_algorithm = None
+MTD	software[1]-setting[52]	precision = 32-true
+MTD	software[1]-setting[53]	replace_isoleucine_with_leucine = True
+MTD	software[1]-setting[54]	reverse_peptides = True
+MTD	software[1]-setting[55]	massivekb_tokenizer = False
+MTD	software[1]-setting[57]	n_workers = 0
+MTD	ms_run[1]-location	file:///xxx/xxx/xxx.mzML
+PSH	sequence	PSM_ID	accession	unique	database	database_version	search_engine	search_engine_score[1]	modifications	retention_time	charge	exp_mass_to_charge	calc_mass_to_charge	spectra_ref	pre	post	start	end	opt_ms_run[1]_aa_scores
+PSM	SGGPSPAPK	1	null	null	null	null	[MS, MS:1003281, Casanovo, 5.0.0]	-0.9999869598877922	null	null	2	399.3488464355469	399.2112121582031	ms_run[1]:controllerType=0 controllerNumber=1 scan=39	null	null	null	null	0.59635,0.17797,0.26100,0.28299,0.16142,0.24069,0.17276,0.28309,0.89282
+PSM	SSADDLGTTLLSLLELLK	2	null	null	null	null	[MS, MS:1003281, Casanovo, 5.0.0]	-0.9999999999841948	null	null	2	947.7150268554688	945.0274658203125	ms_run[1]:controllerType=0 controllerNumber=1 scan=41	null	null	null	null	0.95906,0.20093,0.26486,0.14145,0.15215,0.32760,0.98329,0.37676,0.16901,0.28346,0.19773,0.12583,0.22744,0.17255,0.12429,0.18880,0.18548,0.58843
+PSM	SGGGGGGAQGC[Carbamidomethyl]	3	null	null	null	null	[MS, MS:1003281, Casanovo, 5.0.0]	-0.9999999035787468	null	null	2	431.070556640625	432.6668701171875	ms_run[1]:controllerType=0 controllerNumber=1 scan=43	null	null	null	null	0.43408,0.18529,0.50310,0.38556,0.19749,0.15053,0.13425,0.18722,0.14423,0.11608,0.50839
+PSM	[Acetyl]-SGGGPGPPSK	4	null	null	null	null	[MS, MS:1003281, Casanovo, 5.0.0]	-0.9999999125602201	null	null	2	447.3489990234375	441.7194519042969	ms_run[1]:controllerType=0 controllerNumber=1 scan=57	null	null	null	null	0.12465,0.37304,0.18067,0.18829,0.13063,0.11356,0.19623,0.28369,0.15539,0.43557
+PSM	GREEEEEEEEK	5	null	null	null	null	[MS, MS:1003281, Casanovo, 5.0.0]	-0.999999792534723	null	null	2	698.2583618164062	696.7916870117188	ms_run[1]:controllerType=0 controllerNumber=1 scan=71	null	null	null	null	0.94687,0.18794,0.19554,0.25920,0.24985,0.21264,0.24714,0.20307,0.16511,0.11890,0.44372
+PSM	ELQQLQDLLDHLSLLEELLK	6	null	null	null	null	[MS, MS:1003281, Casanovo, 5.0.0]	-0.9999999999999996	null	null	3	796.1614990234375	797.4440307617188	ms_run[1]:controllerType=0 controllerNumber=1 scan=76	null	null	null	null	0.37597,0.18036,0.22118,0.14772,0.33255,0.11386,0.15835,0.11590,0.16347,0.16560,0.13278,0.10783,0.11522,0.11478,0.22519,0.17355,0.12017,0.14290,0.14726,0.55911
+PSM	QREEEEEEEEEEEEEEEEC[Carbamidomethyl]EEEEEEK	7	null	null	null	null	[MS, MS:1003281, Casanovo, 5.0.0]	-1.0	null	null	3	1134.7386474609375	1144.084716796875	ms_run[1]:controllerType=0 controllerNumber=1 scan=93	null	null	null	null	0.42816,0.29301,0.44453,0.42439,0.42128,0.47140,0.49095,0.37821,0.43009,0.47720,0.53581,0.59175,0.50879,0.52956,0.51420,0.49362,0.45852,0.41592,0.89670,0.47379,0.45582,0.41898,0.29801,0.21821,0.14634,0.53600
+PSM	EELLLTDK	8	null	null	null	null	[MS, MS:1003281, Casanovo, 5.0.0]	-0.9999776791974	null	null	2	477.67254638671875	480.7659912109375	ms_run[1]:controllerType=0 controllerNumber=1 scan=121	null	null	null	null	0.68129,0.22155,0.16130,0.23245,0.12874,0.22102,0.16000,0.87475
+PSM	[Acetyl]-PVC[Carbamidomethyl]PPC[Carbamidomethyl]KPGR	9	null	null	null	null	[MS, MS:1003281, Casanovo, 5.0.0]	-0.9999960979780553	null	null	3	403.23388671875	403.8670959472656	ms_run[1]:controllerType=0 controllerNumber=1 scan=124	null	null	null	null	0.32107,0.20157,0.23797,0.19274,0.14355,0.14808,0.12452,0.99077,0.60460,0.83802
+PSM	RKEEEEEEEEEK	10	null	null	null	null	[MS, MS:1003281, Casanovo, 5.0.0]	-0.999999965789165	null	null	3	533.231689453125	531.5689697265625	ms_run[1]:controllerType=0 controllerNumber=1 scan=133	null	null	null	null	0.42140,0.23724,0.20555,0.18209,0.17230,0.23419,0.20076,0.25033,0.24932,0.18428,0.13669,0.72612
+PSM	EAEEEEEEEEEEK	11	null	null	null	null	[MS, MS:1003281, Casanovo, 5.0.0]	-0.999999973356017	null	null	2	816.2198486328125	819.3128662109375	ms_run[1]:controllerType=0 controllerNumber=1 scan=136	null	null	null	null	0.53804,0.27110,0.17375,0.25910,0.30957,0.31708,0.34377,0.23683,0.16821,0.19609,0.15732,0.14136,0.69879
+PSM	YSSSSSSSSPR	12	null	null	null	null	[MS, MS:1003281, Casanovo, 5.0.0]	-0.9999989114149912	null	null	2	564.2694091796875	566.249267578125	ms_run[1]:controllerType=0 controllerNumber=1 scan=167	null	null	null	null	0.70171,0.39680,0.36430,0.29555,0.26779,0.23523,0.16844,0.15733,0.13232,0.25895,0.64322
+PSM	GGGGGGGGGGGGGGRPK	13	null	null	null	null	[MS, MS:1003281, Casanovo, 5.0.0]	-0.99999582925102	null	null	3	403.234130859375	400.19390869140625	ms_run[1]:controllerType=0 controllerNumber=1 scan=189	null	null	null	null	0.70776,0.90406,0.66273,0.70408,0.60963,0.57250,0.61084,0.54742,0.71790,0.58811,0.33165,0.22987,0.15773,0.37848,0.27678,0.30472,0.77672
+PSM	QLALPELLVVPK	14	null	null	null	null	[MS, MS:1003281, Casanovo, 5.0.0]	-0.9999998875609393	null	null	3	436.8807678222656	440.6147766113281	ms_run[1]:controllerType=0 controllerNumber=1 scan=199	null	null	null	null	0.25857,0.25635,0.17196,0.14393,0.14372,0.11155,0.21468,0.49196,0.60372,0.39271,0.88576,0.24837
+PSM	[Carbamyl]-LLLLGC[Carbamidomethyl]C[Carbamidomethyl]	15	null	null	null	null	[MS, MS:1003281, Casanovo, 5.0.0]	-0.999996308992877	null	null	2	447.34796142578125	446.22491455078125	ms_run[1]:controllerType=0 controllerNumber=1 scan=211	null	null	null	null	0.08312,0.28042,0.14681,0.15335,0.10145,0.19651,0.36025
+PSM	HSSSSSDLLSLLSSLLK	16	null	null	null	null	[MS, MS:1003281, Casanovo, 5.0.0]	-0.999999999998855	null	null	2	889.7164916992188	887.4832763671875	ms_run[1]:controllerType=0 controllerNumber=1 scan=218	null	null	null	null	0.37070,0.31160,0.43732,0.19794,0.15554,0.12848,0.15495,0.25291,0.12090,0.13440,0.18279,0.18696,0.12612,0.13222,0.14979,0.14120,0.75500
+PSM	LLESDPTVLLLK	17	null	null	null	null	[MS, MS:1003281, Casanovo, 5.0.0]	-0.9999988653800074	null	null	2	670.760986328125	670.9053955078125	ms_run[1]:controllerType=0 controllerNumber=1 scan=223	null	null	null	null	0.46280,0.68932,0.21247,0.15397,0.19618,0.93220,0.50761,0.17408,0.16067,0.24310,0.22443,0.77678
+PSM	[Carbamyl]-LDHLLSLPAVLHVLLLLDK	18	null	null	null	null	[MS, MS:1003281, Casanovo, 5.0.0]	-0.9999999999419968	null	null	3	724.8385620117188	722.4400634765625	ms_run[1]:controllerType=0 controllerNumber=1 scan=230	null	null	null	null	0.17772,0.14757,0.11918,0.11774,0.14809,0.11861,0.15790,0.91458,0.49815,0.20627,0.45583,0.88731,0.43012,0.28093,0.14334,0.30903,0.34283,0.90772,0.90688
+PSM	LVKKEEEEEEEEK	19	null	null	null	null	[MS, MS:1003281, Casanovo, 5.0.0]	-0.9999999859338207	null	null	3	550.218994140625	549.9368286132812	ms_run[1]:controllerType=0 controllerNumber=1 scan=237	null	null	null	null	0.38000,0.14566,0.14159,0.28125,0.17474,0.25389,0.30832,0.24456,0.28999,0.29194,0.20304,0.14885,0.75356
+PSM	DGEEKEEEEEK	20	null	null	null	null	[MS, MS:1003281, Casanovo, 5.0.0]	-0.9999999022972759	null	null	3	452.8717346191406	450.8562927246094	ms_run[1]:controllerType=0 controllerNumber=1 scan=243	null	null	null	null	0.30078,0.39739,0.20755,0.26912,0.20245,0.19053,0.17851,0.18757,0.12231,0.16744,0.55907
+PSM	RPPPKDGKPGR	21	null	null	null	null	[MS, MS:1003281, Casanovo, 5.0.0]	-0.9999979442670792	null	null	3	403.23388671875	402.2351379394531	ms_run[1]:controllerType=0 controllerNumber=1 scan=252	null	null	null	null	0.36335,0.16339,0.19885,0.18242,0.17953,0.23461,0.20263,0.19672,0.98039,0.63766,0.92293
+PSM	THPQAC[Carbamidomethyl]EDC[Carbamidomethyl]K	22	null	null	null	null	[MS, MS:1003281, Casanovo, 5.0.0]	-0.99999920466189	null	null	2	624.2379150390625	623.2529296875	ms_run[1]:controllerType=0 controllerNumber=1 scan=261	null	null	null	null	0.85208,0.58106,0.21625,0.12921,0.15738,0.22049,0.13635,0.13987,0.20460,0.42968
+PSM	C[Carbamidomethyl]SGDGSDSGEK	105	null	null	null	null	[MS, MS:1003281, Casanovo, 5.0.0]	8.3084814e-08	null	null	2	550.2191162109375	549.7039184570312	ms_run[1]:controllerType=0 controllerNumber=1 scan=961	null	null	null	null	0.29728,0.23932,0.25024,0.13913,0.13902,0.14046,0.14880,0.92255,0.19775,0.16074,0.39822
+PSM	YSDLDSLLLLLK	106	null	null	null	null	[MS, MS:1003281, Casanovo, 5.0.0]	-0.9999999918367761	null	null	2	698.2569580078125	696.90283203125	ms_run[1]:controllerType=0 controllerNumber=1 scan=965	null	null	null	null	0.48096,0.17210,0.20898,0.40733,0.19388,0.12002,0.14344,0.12227,0.23196,0.16243,0.12438,0.61359
+PSM	SLHHLLK	107	null	null	null	null	[MS, MS:1003281, Casanovo, 5.0.0]	-0.9994409156497568	null	null	2	427.3794250488281	424.2610168457031	ms_run[1]:controllerType=0 controllerNumber=1 scan=977	null	null	null	null	0.98516,0.31854,0.27340,0.18984,0.18670,0.20127,0.92429
+PSM	MDHSDDSEEEK	108	null	null	null	null	[MS, MS:1003281, Casanovo, 5.0.0]	-0.9999972032703681	null	null	3	443.14166259765625	441.1664733886719	ms_run[1]:controllerType=0 controllerNumber=1 scan=992	null	null	null	null	0.45444,0.17720,0.28335,0.50172,0.21497,0.30580,0.27995,0.35337,0.25716,0.18569,0.79452
+PSM	[Acetyl]-KDEEEEEESK	109	null	null	null	null	[MS, MS:1003281, Casanovo, 5.0.0]	-0.9999998392910783	null	null	3	432.14508056640625	431.8491516113281	ms_run[1]:controllerType=0 controllerNumber=1 scan=1001	null	null	null	null	0.35470,0.11210,0.15587,0.18438,0.13478,0.18759,0.21998,0.16386,0.25294,0.61651
+PSM	QMDSSEHAPK	110	null	null	null	null	[MS, MS:1003281, Casanovo, 5.0.0]	-0.9999978059015575	null	null	3	375.8613586425781	377.16961669921875	ms_run[1]:controllerType=0 controllerNumber=1 scan=1011	null	null	null	null	0.45197,0.20620,0.21453,0.19088,0.12442,0.21058,0.40916,0.47804,0.20306,0.55902
+PSM	AYEREK	111	null	null	null	null	[MS, MS:1003281, Casanovo, 5.0.0]	-0.9997789439366898	null	null	2	393.37103271484375	398.2033996582031	ms_run[1]:controllerType=0 controllerNumber=1 scan=1013	null	null	null	null	0.65827,0.13301,0.30683,0.16845,0.12657,0.39030
+PSM	[Acetyl]-M[Oxidation]GGGFGPSK	112	null	null	null	null	[MS, MS:1003281, Casanovo, 5.0.0]	-0.9999985530319009	null	null	2	447.3476867675781	448.20257568359375	ms_run[1]:controllerType=0 controllerNumber=1 scan=1018	null	null	null	null	0.27612,0.50077,0.15311,0.14289,0.13286,0.23124,0.20015,0.23232,0.33811
+PSM	DGTEEKEEEEKPPSK	113	null	null	null	null	[MS, MS:1003281, Casanovo, 5.0.0]	-0.9999999968911	null	null	4	432.83270263671875	433.70343017578125	ms_run[1]:controllerType=0 controllerNumber=1 scan=1027	null	null	null	null	0.44574,0.65134,0.16856,0.44685,0.19783,0.26091,0.24327,0.14781,0.28356,0.20402,0.12936,0.39384,0.12469,0.30708,0.68663
+PSM	VYALKELLEK	114	null	null	null	null	[MS, MS:1003281, Casanovo, 5.0.0]	-0.9999976380302087	null	null	3	401.8896484375	402.5762023925781	ms_run[1]:controllerType=0 controllerNumber=1 scan=1048	null	null	null	null	0.97604,0.71053,0.15695,0.23433,0.16231,0.12265,0.17230,0.20047,0.14372,0.94734
+PSM	[Acetyl]-GEEQEEKPGR	115	null	null	null	null	[MS, MS:1003281, Casanovo, 5.0.0]	-0.9997432127129287	null	null	3	403.2336120605469	400.85455322265625	ms_run[1]:controllerType=0 controllerNumber=1 scan=1051	null	null	null	null	0.27362,0.47380,0.44399,0.29237,0.48777,0.22731,0.33616,0.99230,0.73173,0.56972
+PSM	DPEEEEEAAGHH	116	null	null	null	null	[MS, MS:1003281, Casanovo, 5.0.0]	-0.9999999679288862	null	null	3	450.55694580078125	450.51287841796875	ms_run[1]:controllerType=0 controllerNumber=1 scan=1053	null	null	null	null	0.78524,0.34287,0.15011,0.19529,0.22735,0.19947,0.18097,0.15955,0.23406,0.30160,0.17878,0.24851
+PSM	[Acetyl]-GGGGGGGPC[Carbamidomethyl]C[Carbamidomethyl]	117	null	null	null	null	[MS, MS:1003281, Casanovo, 5.0.0]	-0.9999997721433118	null	null	2	447.3478088378906	439.1500549316406	ms_run[1]:controllerType=0 controllerNumber=1 scan=1071	null	null	null	null	0.12611,0.42845,0.37714,0.16173,0.15369,0.13036,0.23697,0.11213,0.32371,0.40910";

@@ -33,9 +33,34 @@ pub struct SloppyParsingParameters {
 }
 
 impl Peptidoform<SemiAmbiguous> {
+    /// Read a sequence as a ProForma sequence, or if that fails try to read it as using
+    /// [`Self::sloppy_pro_forma`].
+    ///
+    /// # Errors
+    /// If both parsers fail. It returns an error that combines the feedback from both parsers.
+    pub fn pro_forma_or_sloppy(
+        line: &str,
+        location: std::ops::Range<usize>,
+        custom_database: Option<&CustomDatabase>,
+        parameters: &SloppyParsingParameters,
+    ) -> Result<Self, CustomError> {
+        Peptidoform::pro_forma(&line[location.clone()], custom_database).and_then(|p| p.into_semi_ambiguous().ok_or_else(|| 
+            CustomError::error(
+                "Peptidoform too complex",
+                "A peptidoform as used here should not contain any complex parts of the ProForma specification, only amino acids and simple placed modifications are allowed",
+                Context::line_range(None, line, location.clone()),
+            ))).or_else(|pro_forma_error| 
+                Self::sloppy_pro_forma(line, location.clone(), custom_database, parameters)
+                .map_err(|sloppy_error| 
+                    CustomError::error(
+                        "Invalid peptidoform", 
+                        "The sequence could not be parsed as a ProForma nor as a more loosly defined peptidoform, see the underlying errors for details", 
+                        Context::line_range(None, line, location.clone())).with_underlying_errors(vec![pro_forma_error, sloppy_error])))
+    }
+
     /// Read sloppy ProForma like sequences. Defined by the use of square or round braces to indicate
     /// modifications and missing any particular method of defining the N or C terminal modifications.
-    /// Additionally any underscores will be ignored both on the ends and inside the sequence.
+    /// Additionally, any underscores will be ignored both on the ends and inside the sequence.
     ///
     /// All modifications follow the same definitions as the strict ProForma syntax, if it cannot be
     /// parsed as a strict ProForma modification it falls back to [`Modification::sloppy_modification`].
@@ -169,14 +194,14 @@ impl Peptidoform<SemiAmbiguous> {
                         .take_while(|c| c.is_ascii_digit() || **c == b'.')
                         .count();
                     let modification = SimpleModificationInner::Mass(Mass::new::<crate::system::dalton>(
-                    line[location.start + index..location.start + index + length]
-                    .parse::<f64>()
-                    .map_err(|err|
-                        BoxedError::error(
-                            "Invalid mass shift modification", 
-                            format!("Mass shift modification must be a valid number but this number is invalid: {err}"), 
-                            Context::line(None, line, location.start + index, length))
-                        )?).into()).into();
+                        line[location.start + index..location.start + index + length]
+                        .parse::<f64>()
+                        .map_err(|err|
+                            BoxedError::error(
+                                "Invalid mass shift modification", 
+                                format!("Mass shift modification must be a valid number but this number is invalid: {err}"), 
+                                Context::line(None, line, location.start + index, length))
+                            )?).into()).into();
                     match peptide.sequence_mut().last_mut() {
                         Some(aa) => aa.modifications.push(Modification::Simple(modification)),
                         None => {
@@ -255,6 +280,7 @@ impl Modification {
             .or_else( || {
                 match name.trim().to_lowercase().split_once(':') {
                     Some(("u", tail)) => Ontology::Unimod.find_name(tail, None),
+                    Some(("unimod", tail)) => Ontology::Unimod.find_id(tail.parse::<usize>().ok()?, None),
                     Some(("m", tail)) => Ontology::Psimod.find_name(tail, None),
                     Some(("c", tail)) => Ontology::Custom.find_name(tail, custom_database),
                     _ => None

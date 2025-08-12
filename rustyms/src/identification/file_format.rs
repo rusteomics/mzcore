@@ -24,6 +24,8 @@ pub enum KnownFileFormat {
     Opair(OpairVersion),
     Peaks(PeaksVersion),
     PepNet(PepNetVersion),
+    PiHelixNovo(PiHelixNovoVersion),
+    PiPrimeNovo(PiPrimeNovoVersion),
     PLGS(PLGSVersion),
     PLink(PLinkVersion),
     PowerNovo(PowerNovoVersion),
@@ -42,12 +44,14 @@ impl KnownFileFormat {
             Self::Fasta => "Fasta",
             Self::InstaNovo(_) => "InstaNovo",
             Self::MaxQuant(_) => "MaxQuant",
-            Self::MZTab => "mzTab",
             Self::NovoB(_) => "NovoB",
             Self::Novor(_) => "Novor",
             Self::Opair(_) => "OPair",
             Self::Peaks(_) => "PEAKS",
             Self::PepNet(_) => "PepNet",
+            Self::MZTab => "mzTab",
+            Self::PiHelixNovo(_) => "pi-HelixNovo",
+            Self::PiPrimeNovo(_) => "pi-PrimeNovo",
             Self::PLGS(_) => "ProteinLynx Global Server",
             Self::PLink(_) => "pLink",
             Self::PowerNovo(_) => "PowerNovo",
@@ -72,6 +76,8 @@ impl KnownFileFormat {
             Self::Opair(version) => Some(version.to_string()),
             Self::Peaks(version) => Some(version.to_string()),
             Self::PepNet(version) => Some(version.to_string()),
+            Self::PiHelixNovo(version) => Some(version.to_string()),
+            Self::PiPrimeNovo(version) => Some(version.to_string()),
             Self::PLGS(version) => Some(version.to_string()),
             Self::PLink(version) => Some(version.to_string()),
             Self::PowerNovo(version) => Some(version.to_string()),
@@ -108,6 +114,8 @@ impl From<KnownFileFormat> for FileFormat {
             KnownFileFormat::Opair(version) => Self::Opair(Some(version)),
             KnownFileFormat::Peaks(version) => Self::Peaks(Some(version)),
             KnownFileFormat::PepNet(version) => Self::PepNet(Some(version)),
+            KnownFileFormat::PiHelixNovo(version) => Self::PiHelixNovo(Some(version)),
+            KnownFileFormat::PiPrimeNovo(version) => Self::PiPrimeNovo(Some(version)),
             KnownFileFormat::PLGS(version) => Self::PLGS(Some(version)),
             KnownFileFormat::PLink(version) => Self::PLink(Some(version)),
             KnownFileFormat::PowerNovo(version) => Self::PowerNovo(Some(version)),
@@ -136,6 +144,8 @@ pub enum FileFormat {
     Opair(Option<OpairVersion>),
     Peaks(Option<PeaksVersion>),
     PepNet(Option<PepNetVersion>),
+    PiHelixNovo(Option<PiHelixNovoVersion>),
+    PiPrimeNovo(Option<PiPrimeNovoVersion>),
     PLGS(Option<PLGSVersion>),
     PLink(Option<PLinkVersion>),
     PowerNovo(Option<PowerNovoVersion>),
@@ -198,6 +208,14 @@ impl FileFormat {
                 }));
                 b
             }),
+            Self::PiHelixNovo(version) => {
+                PiHelixNovoData::parse_file(path, custom_database, false, version)
+                    .map(IdentifiedPeptidoformIter::into_box)
+            }
+            Self::PiPrimeNovo(version) => {
+                PiPrimeNovoData::parse_file(path, custom_database, false, version)
+                    .map(IdentifiedPeptidoformIter::into_box)
+            }
             Self::NovoB(version) => NovoBData::parse_file(path, custom_database, false, version)
                 .map(IdentifiedPeptidoformIter::into_box),
             Self::Novor(version) => NovorData::parse_file(path, custom_database, false, version)

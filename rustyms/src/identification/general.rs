@@ -87,13 +87,23 @@ pub fn open_identified_peptidoforms_file<'a>(
                     .map(IdentifiedPeptidoformIter::into_box)
                     .map_err(|pse| (se, pe, mfe, pse))
             })
-            .map_err(|(se, pe, mfe, pse)| {
+            .or_else(|(se, pe, mfe, pse)| {
+                NovoBData::parse_file(path, custom_database, keep_all_columns, None)
+                    .map(IdentifiedPeptidoformIter::into_box)
+                    .map_err(|ne| (se, pe, mfe, pse, ne))
+            })
+            .or_else(|(se, pe, mfe, pse,  ne)| {
+                PiPrimeNovoData::parse_file(path, custom_database, keep_all_columns, None)
+                    .map(IdentifiedPeptidoformIter::into_box)
+                    .map_err(|pne| (se, pe, mfe, pse, ne, pne))
+            })
+            .map_err(|(se, pe, mfe, pse, ne, pne)| {
                 BoxedError::error(
                     "Unknown file format",
-                    "Could not be recognised a Sage, PepNet, MSFragger, or Proteoscape file",
+                    "Could not be recognised a Sage, PepNet, MSFragger, NovoB, π-PrimeNovo or Proteoscape file",
                     Context::default().source(path.to_string_lossy()).to_owned(),
                 )
-                .add_underlying_errors(vec![se, pe, mfe, pse])
+                .add_underlying_errors(vec![se, pe, mfe, pse, ne, pne])
             }),
         Some("psmtsv") => {
             OpairData::parse_file(path, custom_database, keep_all_columns, None).map(IdentifiedPeptidoformIter::into_box)
@@ -107,17 +117,17 @@ pub fn open_identified_peptidoforms_file<'a>(
             MaxQuantData::parse_file(path, custom_database, keep_all_columns, None)
             .map(IdentifiedPeptidoformIter::into_box)
             .or_else(|me| {
-                NovoBData::parse_file(path, custom_database, keep_all_columns, None)
+                PiHelixNovoData::parse_file(path, custom_database, keep_all_columns, None)
                     .map(IdentifiedPeptidoformIter::into_box)
-                    .map_err(|ne| (me, ne))
+                    .map_err(|hne| (me, hne))
             })
-            .map_err(|(me, ne)| {
-                BoxedError::error(
+            .map_err(|(me, he)| {
+                CustomError::error(
                     "Unknown file format",
-                    "Could not be recognised as either a MaxQuant or NovoB file",
+                    "Could not be recognised as either a MaxQuant or π-HelixNovo file",
                     Context::default().source(path.to_string_lossy()).to_owned(),
                 )
-                .add_underlying_errors(vec![me, ne])
+                .add_underlying_errors(vec![me, he])
             })
         }
         Some("mztab") => MZTabData::parse_file(path, custom_database).map(|peptides| {
