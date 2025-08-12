@@ -68,6 +68,9 @@ format_family!(
         if let Some(used_model) = parsed.used_model && used_model == UsedModel::Diffusion {
             parsed.local_confidence = None;
         }
+        if let Some(local_confidence) = parsed.local_confidence.as_mut() && !parsed.peptide.get_n_term().is_empty() {
+            *local_confidence = local_confidence[parsed.peptide.get_n_term().len()..].to_vec();
+        }
         Ok(parsed)
     }
 );
