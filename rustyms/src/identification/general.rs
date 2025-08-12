@@ -122,7 +122,7 @@ pub fn open_identified_peptidoforms_file<'a>(
                     .map_err(|hne| (me, hne))
             })
             .map_err(|(me, he)| {
-                CustomError::error(
+                BoxedError::error(
                     "Unknown file format",
                     "Could not be recognised as either a MaxQuant or π-HelixNovo file",
                     Context::default().source(path.to_string_lossy()).to_owned(),

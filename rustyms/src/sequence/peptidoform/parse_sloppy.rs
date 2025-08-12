@@ -38,24 +38,24 @@ impl Peptidoform<SemiAmbiguous> {
     ///
     /// # Errors
     /// If both parsers fail. It returns an error that combines the feedback from both parsers.
-    pub fn pro_forma_or_sloppy(
-        line: &str,
+    pub fn pro_forma_or_sloppy<'a>(
+        line: &'a str,
         location: std::ops::Range<usize>,
         custom_database: Option<&CustomDatabase>,
         parameters: &SloppyParsingParameters,
-    ) -> Result<Self, CustomError> {
+    ) -> Result<Self, BoxedError<'a>> {
         Peptidoform::pro_forma(&line[location.clone()], custom_database).and_then(|p| p.into_semi_ambiguous().ok_or_else(|| 
-            CustomError::error(
+            BoxedError::error(
                 "Peptidoform too complex",
                 "A peptidoform as used here should not contain any complex parts of the ProForma specification, only amino acids and simple placed modifications are allowed",
                 Context::line_range(None, line, location.clone()),
             ))).or_else(|pro_forma_error| 
                 Self::sloppy_pro_forma(line, location.clone(), custom_database, parameters)
                 .map_err(|sloppy_error| 
-                    CustomError::error(
+                    BoxedError::error(
                         "Invalid peptidoform", 
                         "The sequence could not be parsed as a ProForma nor as a more loosly defined peptidoform, see the underlying errors for details", 
-                        Context::line_range(None, line, location.clone())).with_underlying_errors(vec![pro_forma_error, sloppy_error])))
+                        Context::line_range(None, line, location.clone())).add_underlying_errors(vec![pro_forma_error, sloppy_error])))
     }
 
     /// Read sloppy ProForma like sequences. Defined by the use of square or round braces to indicate

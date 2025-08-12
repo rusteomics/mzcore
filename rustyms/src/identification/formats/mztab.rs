@@ -301,7 +301,7 @@ impl MZTabData {
                 if range.is_empty() {
                     None
                 } else {
-                    let mut peptide = Peptidoform::pro_forma_or_sloppy(
+                    let mut peptide: Peptidoform<SimpleLinear> = Peptidoform::pro_forma_or_sloppy(
                         line.line,
                         range,
                         custom_database,

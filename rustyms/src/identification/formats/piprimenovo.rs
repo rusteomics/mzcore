@@ -1,9 +1,8 @@
 use std::{borrow::Cow, marker::PhantomData, ops::Range};
 
 use crate::{
-    error::CustomError,
     identification::{
-        FastaIdentifier, IdentifiedPeptidoform, IdentifiedPeptidoformData,
+        FastaIdentifier, FlankingSequence, IdentifiedPeptidoform, IdentifiedPeptidoformData,
         IdentifiedPeptidoformSource, KnownFileFormat, MaybePeptidoform, MetaData, SpectrumId,
         SpectrumIds,
     },
@@ -22,7 +21,7 @@ use crate::identification::{
 };
 
 static NUMBER_ERROR: (&str, &str) = (
-    "Invalid pi-PrimeNovo line",
+    "Invalid π-PrimeNovo line",
     "This column is not a number but it is required to be a number in this format",
 );
 
@@ -36,7 +35,7 @@ format_family!(
             location.location.clone(),
             custom_database,
             &SloppyParsingParameters::default()
-        )).transpose();
+        ).map_err(BoxedError::to_owned)).transpose();
         score: f64, |location: Location, _| location.parse::<f64>(NUMBER_ERROR);
         z: Charge, |location: Location, _| location
             .parse::<isize>(NUMBER_ERROR)
@@ -45,7 +44,7 @@ format_family!(
     optional { }
 );
 
-/// The only known version of pi-PrimeNovo
+/// The only known version of π-PrimeNovo
 pub const PIPRIMENOVO_V0_1: PiPrimeNovoFormat = PiPrimeNovoFormat {
     version: PiPrimeNovoVersion::V0_1,
     title: "label",
@@ -54,13 +53,13 @@ pub const PIPRIMENOVO_V0_1: PiPrimeNovoFormat = PiPrimeNovoFormat {
     z: "charge",
 };
 
-/// All possible pi-PrimeNovo versions
+/// All possible π-PrimeNovo versions
 #[derive(
     Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Default, Serialize, Deserialize,
 )]
 pub enum PiPrimeNovoVersion {
     #[default]
-    /// pi-PrimeNovo version 1.1
+    /// π-PrimeNovo version 1.1
     V0_1,
 }
 
@@ -125,71 +124,7 @@ impl MetaData for PiPrimeNovoData {
     }
 
     fn scans(&self) -> SpectrumIds {
-        match (self.title.find("File:\""), self.title.find("NativeID:\"")) {
-            (None, None) => SpectrumIds::None,
-            (None, Some(native_id)) => {
-                let native_content_start = native_id + 10; // Skip 'NativeID:"'
-                self.title[native_content_start..].find('"').map_or(
-                    SpectrumIds::None,
-                    |native_end| {
-                        let native_id: SpectrumId = SpectrumId::Native(
-                            self.title[native_content_start..native_content_start + native_end]
-                                .to_string(),
-                        );
-
-                        SpectrumIds::FileNotKnown(vec![native_id])
-                    },
-                )
-            }
-            (Some(file_path), None) => {
-                let file_content_start = file_path + 6; // Skip 'File:"'
-
-                self.title[file_content_start..]
-                    .find('"')
-                    .map_or(SpectrumIds::None, |file_end| {
-                        let raw_file = self.title
-                            [file_content_start..file_content_start + file_end]
-                            .to_string();
-
-                        SpectrumIds::FileKnown(vec![(raw_file.into(), vec![])])
-                    })
-            }
-            (Some(file_path), Some(native_id)) => {
-                let file_content_start = file_path + 6; // Skip 'File:"'
-                let file_end = self.title[file_content_start..].find('"');
-
-                let native_content_start = native_id + 10; // Skip 'NativeID:"'
-                let native_end = self.title[native_content_start..].find('"');
-
-                match (file_end, native_end) {
-                    (None, None) => SpectrumIds::None,
-                    (None, Some(native_end)) => {
-                        let native_id: SpectrumId = SpectrumId::Native(
-                            self.title[native_content_start..native_content_start + native_end]
-                                .to_string(),
-                        );
-                        SpectrumIds::FileNotKnown(vec![native_id])
-                    }
-                    (Some(file_end), None) => {
-                        let raw_file = self.title
-                            [file_content_start..file_content_start + file_end]
-                            .to_string();
-
-                        SpectrumIds::FileKnown(vec![(raw_file.into(), vec![])])
-                    }
-                    (Some(file_end), Some(native_end)) => {
-                        let native_id: SpectrumId = SpectrumId::Native(
-                            self.title[native_content_start..native_content_start + native_end]
-                                .to_string(),
-                        );
-                        let raw_file = self.title
-                            [file_content_start..file_content_start + file_end]
-                            .to_string();
-                        SpectrumIds::FileKnown(vec![(raw_file.into(), vec![native_id])])
-                    }
-                }
-            }
-        }
+        SpectrumIds::FileNotKnown(vec![SpectrumId::Native(self.title.clone())])
     }
 
     fn experimental_mz(&self) -> Option<MassOverCharge> {
@@ -213,6 +148,14 @@ impl MetaData for PiPrimeNovoData {
     }
 
     fn protein_location(&self) -> Option<Range<u16>> {
+        None
+    }
+
+    fn flanking_sequences(&self) -> (&FlankingSequence, &FlankingSequence) {
+        (&FlankingSequence::Unknown, &FlankingSequence::Unknown)
+    }
+
+    fn database(&self) -> Option<(&str, Option<&str>)> {
         None
     }
 }

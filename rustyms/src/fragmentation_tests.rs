@@ -503,7 +503,7 @@ fn glycan_composition_fragmentation() {
     ];
     let model = FragmentationModel::none()
         .clone()
-        .glycan(GlycanModel::DISALLOW.compositional_range(0..=10));
+        .glycan(GlycanModel::DISALLOW.compositional_range_generic(0..=10));
     test(
         theoretical_fragments,
         Peptidoform::pro_forma("MVSHHN[Glycan:N4H5S1]LTTGATLINEQWLLTTAK", None)

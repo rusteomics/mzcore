@@ -101,7 +101,7 @@ impl<PeptidoformAvailability> IdentifiedPeptidoform<Linear, PeptidoformAvailabil
                 ..
             })
             | IdentifiedPeptidoformData::MaxQuant(MaxQuantData { peptide, .. })
-            | IdentifiedPeptidoformData::MZTab(MZTabData { peptide, .. })
+            | IdentifiedPeptidoformData::PiPrimeNovo(PiPrimeNovoData { peptide, .. })
             | IdentifiedPeptidoformData::DeepNovoFamily(DeepNovoFamilyData { peptide, .. }) => {
                 peptide.as_ref().map(AsRef::as_ref)
             }
@@ -160,7 +160,7 @@ impl<PeptidoformAvailability> IdentifiedPeptidoform<SimpleLinear, PeptidoformAva
                 ..
             })
             | IdentifiedPeptidoformData::MaxQuant(MaxQuantData { peptide, .. })
-            | IdentifiedPeptidoformData::MZTab(MZTabData { peptide, .. })
+            | IdentifiedPeptidoformData::PiPrimeNovo(PiPrimeNovoData { peptide, .. })
             | IdentifiedPeptidoformData::DeepNovoFamily(DeepNovoFamilyData { peptide, .. }) => {
                 peptide.as_ref().map(AsRef::as_ref)
             }
@@ -215,7 +215,7 @@ impl<PeptidoformAvailability> IdentifiedPeptidoform<SemiAmbiguous, PeptidoformAv
                 ..
             })
             | IdentifiedPeptidoformData::MaxQuant(MaxQuantData { peptide, .. })
-            | IdentifiedPeptidoformData::MZTab(MZTabData { peptide, .. })
+            | IdentifiedPeptidoformData::PiPrimeNovo(PiPrimeNovoData { peptide, .. })
             | IdentifiedPeptidoformData::DeepNovoFamily(DeepNovoFamilyData { peptide, .. }) => {
                 peptide.as_ref()
             }
@@ -277,7 +277,7 @@ impl<PeptidoformAvailability> IdentifiedPeptidoform<UnAmbiguous, PeptidoformAvai
                 ..
             })
             | IdentifiedPeptidoformData::MaxQuant(MaxQuantData { peptide, .. })
-            | IdentifiedPeptidoformData::MZTab(MZTabData { peptide, .. })
+            | IdentifiedPeptidoformData::PiPrimeNovo(PiPrimeNovoData { peptide, .. })
             | IdentifiedPeptidoformData::DeepNovoFamily(DeepNovoFamilyData { peptide, .. }) => {
                 peptide.as_ref().and_then(|p| p.as_unambiguous())
             }

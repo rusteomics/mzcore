@@ -1,9 +1,8 @@
 use std::{borrow::Cow, marker::PhantomData, ops::Range};
 
 use crate::{
-    error::CustomError,
     identification::{
-        FastaIdentifier, IdentifiedPeptidoform, IdentifiedPeptidoformData,
+        FastaIdentifier, FlankingSequence, IdentifiedPeptidoform, IdentifiedPeptidoformData,
         IdentifiedPeptidoformSource, KnownFileFormat, MetaData, PeptidoformPresent, SpectrumId,
         SpectrumIds,
     },
@@ -22,7 +21,7 @@ use crate::identification::{
 };
 
 static NUMBER_ERROR: (&str, &str) = (
-    "Invalid pi-HelixNovo line",
+    "Invalid π-HelixNovo line",
     "This column is not a number but it is required to be a number in this format",
 );
 
@@ -39,13 +38,13 @@ format_family!(
                 allow_unwrapped_modifications: true,
                 ..Default::default()
             },
-        );
+        ).map_err(BoxedError::to_owned);
         score: f64, |location: Location, _| location.parse::<f64>(NUMBER_ERROR);
     }
     optional { }
 );
 
-/// The only known version of pi-HelixNovo
+/// The only known version of π-HelixNovo
 pub const PIHELIXNOVO_V1_1: PiHelixNovoFormat = PiHelixNovoFormat {
     version: PiHelixNovoVersion::V1_1,
     title: "title",
@@ -53,13 +52,13 @@ pub const PIHELIXNOVO_V1_1: PiHelixNovoFormat = PiHelixNovoFormat {
     score: "score",
 };
 
-/// All possible pi-HelixNovo versions
+/// All possible π-HelixNovo versions
 #[derive(
     Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Default, Serialize, Deserialize,
 )]
 pub enum PiHelixNovoVersion {
     #[default]
-    /// pi-HelixNovo version 1.1
+    /// π-HelixNovo version 1.1
     V1_1,
 }
 
@@ -148,6 +147,14 @@ impl MetaData for PiHelixNovoData {
     }
 
     fn protein_location(&self) -> Option<Range<u16>> {
+        None
+    }
+
+    fn flanking_sequences(&self) -> (&FlankingSequence, &FlankingSequence) {
+        (&FlankingSequence::Unknown, &FlankingSequence::Unknown)
+    }
+
+    fn database(&self) -> Option<(&str, Option<&str>)> {
         None
     }
 }
