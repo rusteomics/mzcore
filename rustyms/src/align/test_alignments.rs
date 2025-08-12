@@ -9,10 +9,10 @@ use crate::{
 fn global_b() {
     test_alignment(
         "AEDTAVYYC[Carboxymethyl]SRWGGDGFYA",
-        "AEDTAVYYM[oxidation]QSW[oxidation]SR",
+        "AEDTAVYYM[oxidation]QSW[oxidation]SRW",
         AlignScoring::default(),
         AlignType::GLOBAL_B,
-        "8=3X1m2X",
+        "8=1X3I3=",
     );
 }
 
@@ -56,7 +56,7 @@ fn either_global_2() {
         "DLQLVESGGGLVQPGGSLRLSC[carboxymethyl]AASGF",
         AlignScoring::default(),
         AlignType::EITHER_GLOBAL,
-        "3X8=1X3=1X5=1m1X4=",
+        "3X8=1X3=1X5=2i4=",
     );
 }
 
@@ -89,7 +89,7 @@ fn either_global_5() {
         "DTLM[oxidation]LSRTPEVTC[carbamidomethyl]VVVN[deamidated]VSHEN[deamidated]PEVK",
         AlignScoring::default(),
         AlignType::EITHER_GLOBAL,
-        "3=1m1i7=1m3=1i4=1i4=",
+        "3=1X1i7=1X3=1i4=1i4=",
     );
 }
 

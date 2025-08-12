@@ -15,7 +15,7 @@ package.authors = [
 ]
 package.edition = "2024"
 package.license = "MIT OR Apache-2.0"
-package.rust-version = "1.85.0"
+package.rust-version = "1.88.0"
 package.version = "0.10.0"
 default-members = ["rustyms"]
 

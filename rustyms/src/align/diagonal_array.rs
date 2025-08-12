@@ -65,7 +65,7 @@ impl<T: Default + Clone, const DEPTH: u16> DiagonalArray<T, DEPTH> {
     pub(super) fn new(len: usize) -> Self {
         Self {
             len,
-            data: vec![T::default(); Self::length_with_depth(len, DEPTH + 1)].into(),
+            data: vec![T::default(); Self::length_with_depth(len, DEPTH.saturating_add(1))].into(),
         }
     }
 }
