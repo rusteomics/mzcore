@@ -123,75 +123,8 @@ impl MetaData for PiHelixNovoData {
         None
     }
 
-    // TODO: maybe do this parsing as post processing right after parsing the line instead of every time this function is called.
-    // Related: this looks like a mgf title line, so I like the setup here that is very resilient to lines that are not in the same format.
-    // It might make sense though to have MGF title line processing somewhere more organised (maybe even call mzcore?)
     fn scans(&self) -> SpectrumIds {
-        match (self.title.find("File:\""), self.title.find("NativeID:\"")) {
-            (None, None) => SpectrumIds::None,
-            (None, Some(native_id)) => {
-                let native_content_start = native_id + 10; // Skip 'NativeID:"'
-                self.title[native_content_start..].find('"').map_or(
-                    SpectrumIds::None,
-                    |native_end| {
-                        let native_id: SpectrumId = SpectrumId::Native(
-                            self.title[native_content_start..native_content_start + native_end]
-                                .to_string(),
-                        );
-
-                        SpectrumIds::FileNotKnown(vec![native_id])
-                    },
-                )
-            }
-            (Some(file_path), None) => {
-                let file_content_start = file_path + 6; // Skip 'File:"'
-
-                self.title[file_content_start..]
-                    .find('"')
-                    .map_or(SpectrumIds::None, |file_end| {
-                        let raw_file = self.title
-                            [file_content_start..file_content_start + file_end]
-                            .to_string();
-
-                        SpectrumIds::FileKnown(vec![(raw_file.into(), vec![])])
-                    })
-            }
-            (Some(file_path), Some(native_id)) => {
-                let file_content_start = file_path + 6; // Skip 'File:"'
-                let file_end = self.title[file_content_start..].find('"');
-
-                let native_content_start = native_id + 10; // Skip 'NativeID:"'
-                let native_end = self.title[native_content_start..].find('"');
-
-                match (file_end, native_end) {
-                    (None, None) => SpectrumIds::None,
-                    (None, Some(native_end)) => {
-                        let native_id: SpectrumId = SpectrumId::Native(
-                            self.title[native_content_start..native_content_start + native_end]
-                                .to_string(),
-                        );
-                        SpectrumIds::FileNotKnown(vec![native_id])
-                    }
-                    (Some(file_end), None) => {
-                        let raw_file = self.title
-                            [file_content_start..file_content_start + file_end]
-                            .to_string();
-
-                        SpectrumIds::FileKnown(vec![(raw_file.into(), vec![])])
-                    }
-                    (Some(file_end), Some(native_end)) => {
-                        let native_id: SpectrumId = SpectrumId::Native(
-                            self.title[native_content_start..native_content_start + native_end]
-                                .to_string(),
-                        );
-                        let raw_file = self.title
-                            [file_content_start..file_content_start + file_end]
-                            .to_string();
-                        SpectrumIds::FileKnown(vec![(raw_file.into(), vec![native_id])])
-                    }
-                }
-            }
-        }
+        SpectrumIds::FileNotKnown(vec![SpectrumId::Native(self.title.clone())])
     }
 
     fn experimental_mz(&self) -> Option<MassOverCharge> {
