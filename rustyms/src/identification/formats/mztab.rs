@@ -421,7 +421,7 @@ impl MZTabData {
                                 .and_then(|score| {
                                     CVTerm::from_str(s)
                                         .map_err(|e| {
-                                            e.context(Context::line_range(
+                                            e.replace_context(Context::line_range(
                                                 Some(line.line_index as u32),
                                                 line.line,
                                                 range.clone(),

@@ -121,7 +121,7 @@ impl CsvLine {
     ) -> Result<F, BoxedError<'a>> {
         self[column]
             .parse()
-            .map_err(|_| base_error.context(self.column_context(column)))
+            .map_err(|_| base_error.replace_context(self.column_context(column)))
     }
 
     /// Parse a column into the given format
@@ -137,7 +137,7 @@ impl CsvLine {
             Ok(None)
         } else {
             Ok(Some(text.parse().map_err(|_| {
-                base_error.context(self.column_context(column))
+                base_error.replace_context(self.column_context(column))
             })?))
         }
     }

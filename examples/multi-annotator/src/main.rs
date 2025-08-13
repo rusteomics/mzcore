@@ -114,10 +114,25 @@ fn main() {
     } else {
         Some(parse_custom_modifications(&path).expect("Could not parse custom modifications file, if you do not need these you can skip parsing them using the appropriate flag"))
     };
+    let mut errors = Vec::new();
     let files = BasicCSVData::parse_file(args.in_path, custom_database.as_ref(), true, None)
         .expect("Invalid input file")
-        .filter_map(Result::ok)
+        .filter_map(|v| match v {
+            Ok(v) => Some(v),
+            Err(e) => {
+                custom_error::combine_error(&mut errors, e);
+                None
+            }
+        })
         .into_group_map_by(|l| l.raw_file.clone());
+    if !errors.is_empty() {
+        for e in &errors {
+            println!("{e}");
+        }
+        println!(
+            "Errors were found while parsing the peptidoform CSV file, the program will continue but will ignore all failed lines"
+        );
+    }
     let out_file =
         BufWriter::new(File::create(args.out_path).expect("Could not create out CSV file"));
     let total_peptides = files.values().map(Vec::len).sum::<usize>();

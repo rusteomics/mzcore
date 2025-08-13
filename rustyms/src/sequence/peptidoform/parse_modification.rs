@@ -246,7 +246,7 @@ fn parse_single_modification<'a>(
                     .map_err(|_| {
                         Ontology::Unimod
                             .find_closest(tail, custom_database)
-                            .context(basic_error.get_context().clone())
+                            .replace_context(basic_error.get_contexts()[0].clone())
                     }),
                 ("m", tail) => Ontology::Psimod
                     .find_name(tail, custom_database)
@@ -256,7 +256,7 @@ fn parse_single_modification<'a>(
                     .map_err(|_| {
                         Ontology::Psimod
                             .find_closest(tail, custom_database)
-                            .context(basic_error.get_context().clone())
+                            .replace_context(basic_error.get_contexts()[0].clone())
                     }),
                 ("r", tail) => Ontology::Resid
                     .find_name(tail, custom_database)
@@ -266,7 +266,7 @@ fn parse_single_modification<'a>(
                     .map_err(|_| {
                         Ontology::Resid
                             .find_closest(tail, custom_database)
-                            .context(basic_error.get_context().clone())
+                            .replace_context(basic_error.get_contexts()[0].clone())
                     }),
                 ("x", tail) => Ontology::Xlmod
                     .find_name(tail, custom_database)
@@ -276,7 +276,7 @@ fn parse_single_modification<'a>(
                     .map_err(|_| {
                         Ontology::Xlmod
                             .find_closest(tail, custom_database)
-                            .context(basic_error.get_context().clone())
+                            .replace_context(basic_error.get_contexts()[0].clone())
                     }),
                 ("c", tail) => Ontology::Custom
                     .find_name(tail, custom_database)
@@ -284,7 +284,7 @@ fn parse_single_modification<'a>(
                     .ok_or_else(|| {
                         Ontology::Custom
                             .find_closest(tail, custom_database)
-                            .context(basic_error.get_context().clone())
+                            .replace_context(basic_error.get_contexts()[0].clone())
                     }),
                 ("gno" | "g", tail) => Ontology::Gnome
                     .find_name(tail, custom_database)
@@ -302,7 +302,7 @@ fn parse_single_modification<'a>(
                 )))),
                 ("glycan", tail) => Ok(Some(Arc::new(SimpleModificationInner::Glycan(
                     MonoSaccharide::from_composition(tail)
-                        .map_err(|err| err.context(basic_error.get_context().clone()))?,
+                        .map_err(|err| err.replace_context(basic_error.get_contexts()[0].clone()))?,
                 )))),
                 ("glycanstructure", _) => GlycanStructure::parse(
                     line,
@@ -374,7 +374,7 @@ fn parse_single_modification<'a>(
                         .long_description(
                             "This modification cannot be read as a valid Unimod or PSI-MOD name.",
                         )
-                        .context(Context::line(
+                        .replace_context(Context::line(
                             None,
                             line,
                             offset + full.1,
@@ -393,7 +393,7 @@ fn parse_single_modification<'a>(
                 .map_err(|_|
                     Ontology::find_closest_many(&[Ontology::Unimod, Ontology::Psimod, Ontology::Gnome, Ontology::Xlmod, Ontology::Resid, Ontology::Custom], full.0, custom_database)
                     .long_description("This modification cannot be read as a valid Unimod or PSI-MOD name, or as a numerical modification.")
-                    .context(Context::line(None, line, offset+full.1, full.2))
+                    .replace_context(Context::line(None, line, offset+full.1, full.2))
                 )
         };
 
