@@ -55,6 +55,9 @@ struct Cli {
     /// Turns on reporting of intensity statistics, the fraction of total TIC that could be annotated as well as the TIC for each spectrum
     #[arg(long)]
     report_intensity: bool,
+    /// Turns on reporting of false match rate statistics
+    #[arg(long)]
+    report_false_match_rate: bool,
     /// Turns on reporting of I/L coverage by satellite ions, returns a list with a 0 (not covered) or 1 (covered) for each I or L in the peptide
     #[arg(long)]
     report_IL_satellite_coverage: bool,
@@ -143,6 +146,8 @@ fn main() {
     let precursor_mass = Arc::new("precursor_mass".to_string());
     let column_y_independent = Arc::new("ion_Y_charge_independent".to_string());
     let intensity_combined = Arc::new("intensity_combined".to_string());
+    let peaks_fdr_column = Arc::new("peaks_fdr".to_string());
+    let intensity_fdr_column = Arc::new("intensity_fdr".to_string());
     let tic = Arc::new("total_ion_current".to_string());
 
     let out_data: Vec<_> =  files.par_iter().flat_map(|(file_name, lines)| {
@@ -226,6 +231,17 @@ fn main() {
                                 }
                             });
                         }
+                    }
+                    if args.report_false_match_rate {
+                        let (fdr, _) = annotated.fdr(&fragments, &parameters, MassMode::Monoisotopic);
+                        row.insert(
+                            peaks_fdr_column.clone(),
+                            fdr.peaks_fdr().to_string(),
+                        );
+                        row.insert(
+                            intensity_fdr_column.clone(),
+                            fdr.intensity_fdr().to_string(),
+                        );
                     }
                     if args.report_IL_satellite_coverage {
                         row.insert(

@@ -1,0 +1,16 @@
+[package]
+name = "peptidoform-file-converter"
+version = "0.1.0"
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+publish = false
+
+[dependencies]
+clap = { workspace = true }
+custom_error = { workspace = true }
+directories = { workspace = true }
+rustyms = { path = "../../rustyms", default-features=false, features = ["identification"] }
+
+[lints]
+workspace = true
