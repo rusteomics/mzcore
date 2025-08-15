@@ -14,6 +14,7 @@ mzdata = { workspace = true, features = ["mgf", "mzml", "thermo"] }
 rustyms = { path = "../../rustyms", default-features = false, features = [
     "mzdata",
     "identification",
+    "coloured-errors",
 ] }
 rayon = {workspace = true}
 

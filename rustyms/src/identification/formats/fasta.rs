@@ -441,7 +441,7 @@ impl FromStr for FastaIdentifier<Range<usize>> {
                     pipes.get(1).map_or(len, |s| *s + 1)..pipes.get(2).map_or(len, |s| *s),
                     pipes.get(2).map_or(len, |s| *s + 1)..len,
                 )),
-                _ => Ok(Self::Undefined(1..len)),
+                _ => Ok(Self::Undefined(0..len)),
             }
         }
     }

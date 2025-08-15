@@ -10,8 +10,7 @@ use clap::Parser;
 use custom_error::{BoxedError, Context, CustomErrorTrait};
 use directories::ProjectDirs;
 use rustyms::{
-    identification::{open_identified_peptidoforms_file, MetaData, SpectrumId, SpectrumIds},
-    prelude::*,
+    identification::{MetaData, SpectrumId, SpectrumIds, open_identified_peptidoforms_file},
     sequence::parse_custom_modifications,
 };
 
@@ -46,7 +45,7 @@ fn main() {
     };
     let mut out_file =
         BufWriter::new(File::create(args.out_path).expect("Could not create out CSV file"));
-    writeln!(&mut out_file, "sequence,scan_index,raw_file,z").unwrap();
+    writeln!(&mut out_file, "sequence,scan_index,raw_file,z,score,class").unwrap();
     let mut errors = Vec::new();
     for (peptidoform_index, peptidoform) in
         open_identified_peptidoforms_file(&args.in_path, custom_database.as_ref(), false)
@@ -112,8 +111,10 @@ fn main() {
                         .line_index(peptidoform_index as u32),
                 ))?;
             let charge = p.charge().map(|v| v.value).unwrap_or_default();
+            let score = p.original_confidence().unwrap_or_default();
+            let class = p.protein_name().map_or("Unknown",|id| if id.name().starts_with("rev_") {"Decoy"} else if id.accession().starts_with("Cont_") {"Contaminant"} else {"Main"});
             for (index, raw_file) in indices {
-                writeln!(&mut out_file, "\"{sequence}\",{index},\"{}\",{charge}",raw_file.display()).unwrap();
+                writeln!(&mut out_file, "\"{sequence}\",{index},\"{}\",{charge},{score},{class}",raw_file.display()).unwrap();
             }
             Ok((p
                 .compound_peptidoform_ion()

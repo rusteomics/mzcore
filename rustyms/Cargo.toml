@@ -58,6 +58,7 @@ isotopes = ["probability", "ndarray"]
 glycan-render = []
 glycan-render-bitmap = ["zeno", "swash", "glycan-render"]
 internal-no-data = []
+coloured-errors = ["custom_error/colored"]
 
 [lints]
 workspace = true

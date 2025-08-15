@@ -7,7 +7,7 @@ license.workspace = true
 publish = false
 
 [dependencies]
-rustyms = { path = "../../rustyms", default-features=false, features = ["align", "identification", "rayon"] }
+rustyms = { path = "../../rustyms", default-features=false, features = ["align", "identification", "rayon", "coloured-errors"] }
 clap = { workspace = true }
 itertools = { workspace = true }
 rayon = { workspace = true }

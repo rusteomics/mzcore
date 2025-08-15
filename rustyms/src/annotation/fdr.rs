@@ -73,6 +73,9 @@ impl AnnotatedSpectrum {
     fn internal_fdr(&self, mzs: &[MassOverCharge], parameters: &MatchingParameters) -> Fdr {
         let mut results = Vec::with_capacity(51);
         let total_intensity = self.spectrum.iter().map(|s| s.intensity.0).sum::<f64>();
+        if self.spectrum.is_empty() {
+            return Fdr::default();
+        }
 
         for offset in -25..=25 {
             let peaks = self
@@ -167,6 +170,19 @@ pub struct Fdr {
     pub intensity_average_false: f64,
     /// The standard deviation of the false intensity that could be annotated
     pub intensity_standard_deviation_false: f64,
+}
+
+impl Default for Fdr {
+    fn default() -> Self {
+        Self {
+            peaks_actual: 0.0,
+            peaks_average_false: 0.0,
+            peaks_standard_deviation_false: 0.0,
+            intensity_actual: 0.0,
+            intensity_average_false: 0.0,
+            intensity_standard_deviation_false: 0.0,
+        }
+    }
 }
 
 impl Fdr {

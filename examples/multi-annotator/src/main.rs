@@ -17,7 +17,11 @@ use clap::Parser;
 use directories::ProjectDirs;
 use fragment::FragmentType;
 use itertools::Itertools;
-use mzdata::io::{MZFileReader, SpectrumSource};
+use mzdata::{
+    io::{MZFileReader, SpectrumSource},
+    mzsignal::PeakPicker,
+    spectrum::{SignalContinuity, SpectrumLike},
+};
 use rayon::prelude::*;
 use rustyms::{
     annotation::{
@@ -158,8 +162,20 @@ fn main() {
             .filter_map(|line| {
                 let selected_model = line.mode.as_ref()
                     .map_or(model, |text| select_model(text, model));
-                if let Some(spectrum) = file.get_spectrum_by_index(line.scan_index)
+                if let Some(mut spectrum) = file.get_spectrum_by_index(line.scan_index)
                 {
+                    if spectrum.signal_continuity() == SignalContinuity::Profile {
+                        spectrum
+                            .pick_peaks_with(&PeakPicker::default())
+                            .unwrap_or_else(|err| {
+                                panic!(
+                                    "Spectrum could not be peak picked: {err}",
+                                )
+                            });
+                    } else if spectrum.arrays.is_some() && spectrum.peaks.is_none() {
+                        // USI spectra are mostly loaded as the binary array maps instead of peaks regardless of the signal continuity level
+                        spectrum.peaks = spectrum.arrays.as_ref().map(Into::into);
+                    }
                     let fragments = line.sequence.generate_theoretical_fragments(line.z, selected_model);
                     let annotated = spectrum.annotate(
                         line.sequence.clone(),

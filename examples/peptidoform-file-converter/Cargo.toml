@@ -10,7 +10,7 @@ publish = false
 clap = { workspace = true }
 custom_error = { workspace = true }
 directories = { workspace = true }
-rustyms = { path = "../../rustyms", default-features=false, features = ["identification"] }
+rustyms = { path = "../../rustyms", default-features=false, features = ["identification", "coloured-errors"] }
 
 [lints]
 workspace = true
