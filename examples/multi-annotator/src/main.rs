@@ -13,6 +13,8 @@ use std::{
     },
 };
 
+use custom_error::CombineErrorsExtender;
+
 use clap::Parser;
 use directories::ProjectDirs;
 use fragment::FragmentType;
@@ -44,13 +46,13 @@ use rustyms::{
 #[allow(clippy::struct_excessive_bools)]
 #[derive(Debug, Parser)]
 struct Cli {
-    /// The input csv file, should have the following columns: 'raw_file' (full path), 'scan_index' (0-based index in the raw file), 'z', 'sequence', and can have 'mode' (etd/td_etd/ethcd/etcad/eacid/ead/hcd/cid/all/none, defaults to the global model)
+    /// The input csv file, should have the following columns: `raw_file` (full path), `scan_index` (0-based index in the raw file), `z`, `sequence`, and can have `mode` (`etd`/`td_etd`/`ethcd`/`etcad`/`eacid`/`ead`/`hcd`/`cid`/`all`/`none`, defaults to the global model)
     #[arg(short, long)]
     in_path: String,
     /// The output path to output the resulting csv file
     #[arg(short, long)]
     out_path: String,
-    /// Global mode, will be overruled by line specific modes (etd/td_etd/ethcd/etcad/eacid/ead/hcd/cid/all/none)
+    /// Global mode, will be overruled by line specific modes (`etd`/`td_etd`/`ethcd`/`etcad`/`eacid`/`ead`/`hcd`/`cid`/`all`/`none`)
     #[arg(long, default_value_t = String::from("all"))]
     mode: String,
     /// Turns on reporting of glycan Y-ions in a charge independent manner
@@ -88,6 +90,9 @@ struct Cli {
     glycan_buckets: Vec<MonoSaccharide>,
 }
 
+/// Parse a monosaccharide from the string.
+/// # Errors
+/// If the string does not contain a well formed monosacchride.
 fn monosaccharide_parser(value: &str) -> Result<MonoSaccharide, String> {
     MonoSaccharide::from_short_iupac(value, 0, 0)
         .map(|s| s.0)
@@ -108,6 +113,13 @@ fn select_model(text: &str, default: &'static FragmentationModel) -> &'static Fr
     }
 }
 
+/// Run the multi annotator program
+/// # Panics
+/// * If the projectdirs could not be made.
+/// * If the custom modifications file could not be parsed.
+/// * If a selected spectrum could not be peak picked.
+/// * If the input file does not exist, or could not be recognised as a supported format.
+/// * If the output csv file could not be created, or written to.
 fn main() {
     let args = Cli::parse();
     let model = select_model(&args.mode, FragmentationModel::all());
@@ -121,22 +133,16 @@ fn main() {
     } else {
         Some(parse_custom_modifications(&path).expect("Could not parse custom modifications file, if you do not need these you can skip parsing them using the appropriate flag"))
     };
-    let mut errors = Vec::new();
-    let files = BasicCSVData::parse_file(args.in_path, custom_database.as_ref(), true, None)
-        .expect("Invalid input file")
-        .filter_map(|v| match v {
-            Ok(v) => Some(v),
-            Err(e) => {
-                custom_error::combine_error(&mut errors, e);
-                None
-            }
-        })
-        .into_group_map_by(|l| l.raw_file.clone());
-    if !errors.is_empty() {
-        for e in &errors {
-            println!("{e}");
+    let mut peptidoforms =
+        BasicCSVData::parse_file(args.in_path, custom_database.as_ref(), true, None)
+            .expect("Invalid input file")
+            .combine_errors();
+    let files = peptidoforms.into_group_map_by(|l| l.raw_file.clone());
+    if !peptidoforms.errors().is_empty() {
+        for e in peptidoforms.errors() {
+            eprintln!("{e}");
         }
-        println!(
+        eprintln!(
             "Errors were found while parsing the peptidoform CSV file, the program will continue but will ignore all failed lines"
         );
     }
