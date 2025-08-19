@@ -992,7 +992,7 @@ impl CompoundPeptidoformIon {
     fn new(proforma: &str) -> Result<Self, BoxedError> {
         rustyms::sequence::CompoundPeptidoformIon::pro_forma(proforma, None)
             .map(CompoundPeptidoformIon)
-            .map_err(BoxedError)
+            .map_err(|e| BoxedError(e.to_owned()))
     }
 
     /// Create a new compound peptidoform ion from a peptidoform ion.
@@ -1084,7 +1084,7 @@ impl PeptidoformIon {
     fn new(proforma: &str) -> Result<Self, BoxedError> {
         rustyms::sequence::PeptidoformIon::pro_forma(proforma, None)
             .map(PeptidoformIon)
-            .map_err(BoxedError)
+            .map_err(|e| BoxedError(e.to_owned()))
     }
 
     /// Create a new peptidoform ion from a peptidoform.
@@ -1170,7 +1170,7 @@ impl Peptidoform {
     fn new(proforma: &str) -> Result<Self, BoxedError> {
         rustyms::sequence::Peptidoform::pro_forma(proforma, None)
             .map(Peptidoform)
-            .map_err(BoxedError)
+            .map_err(|e| BoxedError(e.to_owned()))
     }
 
     fn __str__(&self) -> String {
@@ -1774,17 +1774,18 @@ fn rustyms_py03(_py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<AminoAcid>()?;
     m.add_class::<AnnotatedPeak>()?;
     m.add_class::<AnnotatedSpectrum>()?;
-    m.add_class::<CompoundPeptidoformIon>()?;
     m.add_class::<BoxedError>()?;
+    m.add_class::<CompoundPeptidoformIon>()?;
     m.add_class::<Element>()?;
     m.add_class::<Fragment>()?;
     m.add_class::<FragmentationModel>()?;
     m.add_class::<FragmentType>()?;
-    m.add_class::<Peptidoform>()?;
     m.add_class::<MassMode>()?;
+    m.add_class::<MatchingParameters>()?;
     m.add_class::<Modification>()?;
     m.add_class::<MolecularCharge>()?;
     m.add_class::<MolecularFormula>()?;
+    m.add_class::<Peptidoform>()?;
     m.add_class::<PeptidoformIon>()?;
     m.add_class::<RawPeak>()?;
     m.add_class::<RawSpectrum>()?;
@@ -1797,7 +1798,7 @@ fn rustyms_py03(_py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
 /// An error with context where it originated
 #[pyclass]
 #[derive(Debug)]
-pub struct BoxedError(custom_error::BoxedError<'static, BasicKind>);
+pub struct BoxedError(custom_error::BoxedError<'static, custom_error::BasicKind>);
 
 impl std::error::Error for BoxedError {}
 
