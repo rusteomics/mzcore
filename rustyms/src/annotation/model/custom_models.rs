@@ -11,9 +11,10 @@ use crate::{parse_json::ParseJson, prelude::FragmentationModel};
 /// If the file could not be opened or parsed.
 pub fn parse_custom_models(
     path: &Path,
-) -> Result<Vec<(String, FragmentationModel)>, BoxedError<'static>> {
+) -> Result<Vec<(String, FragmentationModel)>, BoxedError<'static, BasicKind>> {
     let string = std::fs::read_to_string(path).map_err(|err| {
-        BoxedError::error(
+        BoxedError::new(
+            BasicKind::Error,
             "Could not parse custom models file",
             err.to_string(),
             Context::default().source(path.to_string_lossy()).to_owned(),
@@ -29,7 +30,7 @@ pub fn parse_custom_models(
 /// If the string could not be parsed.
 pub fn parse_custom_models_str(
     value: &str,
-) -> Result<Vec<(String, FragmentationModel)>, BoxedError<'_>> {
+) -> Result<Vec<(String, FragmentationModel)>, BoxedError<'_, BasicKind>> {
     Vec::from_json(value)
 }
 

@@ -48,7 +48,7 @@ format_family!(
         scan: usize, |location: Location, _| location.parse::<usize>(NUMBER_ERROR);
     }
 
-    fn post_process(_source: &CsvLine, mut parsed: Self, _custom_database: Option<&CustomDatabase>) -> Result<Self, BoxedError<'static>> {
+    fn post_process(_source: &CsvLine, mut parsed: Self, _custom_database: Option<&CustomDatabase>) -> Result<Self, BoxedError<'static, BasicKind>> {
         if let Some(m) = IDENTIFER_REGEX
             .captures(&parsed.title)
         {

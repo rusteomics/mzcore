@@ -21,7 +21,7 @@ pub fn open_identified_peptidoforms_file<'a>(
     path: impl AsRef<Path>,
     custom_database: Option<&'a CustomDatabase>,
     keep_all_columns: bool,
-) -> Result<GeneralIdentifiedPeptidoforms<'a>, BoxedError<'static>> {
+) -> Result<GeneralIdentifiedPeptidoforms<'a>, BoxedError<'static, BasicKind>> {
     let path = path.as_ref();
     let actual_extension = path
         .extension()
@@ -63,7 +63,7 @@ pub fn open_identified_peptidoforms_file<'a>(
                     .map(IdentifiedPeptidoformIter::into_box)
                     .map_err(|be| (pe, ne, ie, le, pne, ple, be))
             }).map_err(|(pe, ne, ie, le, pne, ple, be)| {
-                BoxedError::error(
+                BoxedError::new(BasicKind::Error,
                     "Unknown file format",
                     "Could not be recognised as either a Peaks, Novor, InstaNovo, pLink, PowerNovo, PLGS, or basic file",
                     Context::default().source(path.to_string_lossy()).to_owned(),
@@ -98,7 +98,7 @@ pub fn open_identified_peptidoforms_file<'a>(
                     .map_err(|pne| (se, pe, mfe, pse, ne, pne))
             })
             .map_err(|(se, pe, mfe, pse, ne, pne)| {
-                BoxedError::error(
+                BoxedError::new(BasicKind::Error,
                     "Unknown file format",
                     "Could not be recognised a Sage, PepNet, MSFragger, NovoB, π-PrimeNovo or Proteoscape file",
                     Context::default().source(path.to_string_lossy()).to_owned(),
@@ -109,7 +109,7 @@ pub fn open_identified_peptidoforms_file<'a>(
             OpairData::parse_file(path, custom_database, keep_all_columns, None).map(IdentifiedPeptidoformIter::into_box)
         }
         Some("fasta" | "fas" | "fa" | "faa" | "mpfa") => FastaData::parse_file(path).map(|peptides| {
-            let a: Box<dyn Iterator<Item = Result<IdentifiedPeptidoform<Linked, MaybePeptidoform>, BoxedError>> + 'a>
+            let a: Box<dyn Iterator<Item = Result<IdentifiedPeptidoform<Linked, MaybePeptidoform>, BoxedError<'static, BasicKind>>> + 'a>
                 = Box::new(peptides.into_iter().map(|p| Ok(IdentifiedPeptidoform::<SemiAmbiguous, PeptidoformPresent>::from(p).cast())));
             a
         }),
@@ -122,7 +122,7 @@ pub fn open_identified_peptidoforms_file<'a>(
                     .map_err(|hne| (me, hne))
             })
             .map_err(|(me, he)| {
-                BoxedError::error(
+                BoxedError::new(BasicKind::Error,
                     "Unknown file format",
                     "Could not be recognised as either a MaxQuant or π-HelixNovo file",
                     Context::default().source(path.to_string_lossy()).to_owned(),
@@ -131,7 +131,7 @@ pub fn open_identified_peptidoforms_file<'a>(
             })
         }
         Some("mztab") => MZTabData::parse_file(path, custom_database).map(|peptides| {
-            let a: Box<dyn Iterator<Item = Result<IdentifiedPeptidoform<Linked, MaybePeptidoform>, BoxedError>> + 'a>
+            let a: Box<dyn Iterator<Item = Result<IdentifiedPeptidoform<Linked, MaybePeptidoform>, BoxedError<'static, BasicKind>>> + 'a>
                 = Box::new(peptides.into_iter().map(|p| p.map(|p| {
                         IdentifiedPeptidoform::<SimpleLinear, MaybePeptidoform>::from(p).cast()
                     })));
@@ -143,7 +143,7 @@ pub fn open_identified_peptidoforms_file<'a>(
         Some("ssl") => {
             SpectrumSequenceListData::parse_file(path, custom_database, keep_all_columns, None).map(IdentifiedPeptidoformIter::into_box)
         }
-        _ => Err(BoxedError::error(
+        _ => Err(BoxedError::new(BasicKind::Error,
             "Unknown extension",
             "Use CSV, SSL, TSV, TXT, PSMTSV, deepnovo_denovo, or Fasta, or any of these as a gzipped file (eg csv.gz).",
             Context::default().source(path.to_string_lossy()).to_owned(),

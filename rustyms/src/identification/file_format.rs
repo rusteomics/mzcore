@@ -1,6 +1,6 @@
 use std::{fmt::Display, path::Path};
 
-use custom_error::BoxedError;
+use custom_error::{BasicKind, BoxedError};
 use serde::{Deserialize, Serialize};
 
 use crate::{
@@ -168,7 +168,7 @@ impl FileFormat {
         self,
         path: &Path,
         custom_database: Option<&'a CustomDatabase>,
-    ) -> Result<GeneralIdentifiedPeptidoforms<'a>, BoxedError<'static>> {
+    ) -> Result<GeneralIdentifiedPeptidoforms<'a>, BoxedError<'static, BasicKind>> {
         match self {
             Self::BasicCSV(version) => {
                 BasicCSVData::parse_file(path, custom_database, false, version)
@@ -181,7 +181,10 @@ impl FileFormat {
             Self::Fasta => FastaData::parse_file(path).map(|sequences| {
                 let b: Box<
                     dyn Iterator<
-                        Item = Result<IdentifiedPeptidoform<Linked, MaybePeptidoform>, BoxedError>,
+                        Item = Result<
+                            IdentifiedPeptidoform<Linked, MaybePeptidoform>,
+                            BoxedError<'static, BasicKind>,
+                        >,
                     >,
                 > = Box::new(sequences.into_iter().map(|p| {
                     Ok(IdentifiedPeptidoform::<SemiAmbiguous, PeptidoformPresent>::from(p).cast())
@@ -199,7 +202,10 @@ impl FileFormat {
             Self::MZTab => MZTabData::parse_file(path, custom_database).map(|sequences| {
                 let b: Box<
                     dyn Iterator<
-                        Item = Result<IdentifiedPeptidoform<Linked, MaybePeptidoform>, BoxedError>,
+                        Item = Result<
+                            IdentifiedPeptidoform<Linked, MaybePeptidoform>,
+                            BoxedError<'static, BasicKind>,
+                        >,
                     >,
                 > = Box::new(sequences.into_iter().map(|p| {
                     p.map(|p| {

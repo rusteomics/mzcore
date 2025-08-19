@@ -115,7 +115,7 @@ macro_rules! species {
         ];
 
         impl std::str::FromStr for Species {
-            type Err = BoxedError<'static>;
+            type Err = BoxedError<'static, BasicKind>;
             fn from_str(s: &str) -> Result<Self, Self::Err> {
                 let s = s.trim().to_lowercase();
                 for (name, species) in SPECIES_PARSE_LIST {
@@ -131,7 +131,7 @@ macro_rules! species {
                     .map(|option| option.as_str())
                     .collect();
 
-                Err(BoxedError::error(
+                Err(BoxedError::new(BasicKind::Error,
                         "Unknown species name",
                         "The provided name could not be recognised as a species name.",
                         Context::show(s.as_str())

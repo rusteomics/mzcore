@@ -63,12 +63,12 @@ format_family!(
         peptide_match_type: Box<str>, |location: Location, _| Ok(location.get_boxed_str());
         peptide_modifications: ThinVec<(SimpleModification, AminoAcid, Option<usize>)>, |location: Location, custom_database: Option<&CustomDatabase>|
             location.ignore("None").array(';').map(|l| {
-                let plus = l.as_str().find('+').ok_or_else(|| BoxedError::error("Invalid PLGS modification", "A PLGS modification should be in the format 'modification+AA(pos)' and the plus '+' is missing.", l.context().to_owned()))?;
+                let plus = l.as_str().find('+').ok_or_else(|| BoxedError::new(BasicKind::Error,"Invalid PLGS modification", "A PLGS modification should be in the format 'modification+AA(pos)' and the plus '+' is missing.", l.context().to_owned()))?;
                 let modification = Modification::sloppy_modification(l.full_line(), l.location.start..l.location.start+plus, None, custom_database).map_err(BoxedError::to_owned)?;
-                let aa = l.as_str()[plus+1..plus+2].parse::<AminoAcid>().map_err(|()| BoxedError::error("Invalid PLGS modification", "A PLGS modification should be in the format 'modification+AA(pos)' and the amino acid is not valid", l.context().to_owned()))?;
+                let aa = l.as_str()[plus+1..plus+2].parse::<AminoAcid>().map_err(|()| BoxedError::new(BasicKind::Error,"Invalid PLGS modification", "A PLGS modification should be in the format 'modification+AA(pos)' and the amino acid is not valid", l.context().to_owned()))?;
                 let num = &l.as_str()[plus+3..l.len()-1];
                 let index = if num == "*" {None} else {
-                    Some(num.parse::<usize>().map_err(|err| BoxedError::error("Invalid PLGS modification", format!("A PLGS modification should be in the format 'modification+AA(pos)' and the pos is {}", explain_number_error(&err)), l.context().to_owned()))? - 1)
+                    Some(num.parse::<usize>().map_err(|err| BoxedError::new(BasicKind::Error,"Invalid PLGS modification", format!("A PLGS modification should be in the format 'modification+AA(pos)' and the pos is {}", explain_number_error(&err)), l.context().to_owned()))? - 1)
                 };
                 Ok((modification, aa, index))
             }).collect::<Result<ThinVec<_>,_>>();
@@ -130,13 +130,13 @@ format_family!(
         precursor_product_delta_rt: Time, |location: Location, _| location.or_empty().parse(NUMBER_ERROR).map(|r| r.map(Time::new::<crate::system::time::s>));
     }
 
-    fn post_process(_source: &CsvLine, mut parsed: Self, _custom_database: Option<&CustomDatabase>) -> Result<Self, BoxedError<'static>> {
+    fn post_process(_source: &CsvLine, mut parsed: Self, _custom_database: Option<&CustomDatabase>) -> Result<Self, BoxedError<'static, BasicKind>> {
         for (m, aa, index) in &parsed.peptide_modifications {
             if let Some(index) = index {
                 parsed.peptide.add_simple_modification(SequencePosition::Index(*index), m.clone());
             } else if !parsed.peptide.add_unknown_position_modification(m.clone(), .., &MUPSettings{position: Some(vec![PlacementRule::AminoAcid(vec![*aa], Position::Anywhere)]), .. Default::default()})
             {
-                return Err(BoxedError::error(
+                return Err(BoxedError::new(BasicKind::Error,
                         "Modification of unknown position cannot be placed",
                         "There is no position where this ambiguous modification can be placed based on the placement rules in the database.",
                         Context::show(m.to_string()),

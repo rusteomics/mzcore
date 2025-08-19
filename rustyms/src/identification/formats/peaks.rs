@@ -42,7 +42,7 @@ format_family!(
             let n_flanking: Option<AminoAcid>  =
                 (location.as_str().chars().nth(1) == Some('.'))
                 .then(|| location.as_str().chars().next().unwrap().try_into().map_err(|()|
-                    BoxedError::error(
+                    BoxedError::new(BasicKind::Error,
                         "Invalid amino acid",
                         "This flanking residue is not a valid amino acid",
                         Context::line(Some(location.line.line_index() as u32), location.full_line(), location.location.start, 1).to_owned()))).transpose()?;
@@ -50,7 +50,7 @@ format_family!(
             let c_flanking: Option<AminoAcid> =
             (location.as_str().chars().nth_back(1) == Some('.'))
             .then(|| location.as_str().chars().next_back().unwrap().try_into().map_err(|()|
-                    BoxedError::error(
+                    BoxedError::new(BasicKind::Error,
                         "Invalid amino acid",
                         "This flanking residue is not a valid amino acid",
                         Context::line(Some(location.line.line_index() as u32), location.full_line(), location.location.end-1, location.location.end).to_owned()))).transpose()?;
@@ -125,7 +125,7 @@ format_family!(
         k0_range: std::ops::RangeInclusive<f64>, |location: Location, _| location.split_once('-').map(|(start, end)| Ok(start.parse(NUMBER_ERROR)?..=end.parse(NUMBER_ERROR)?));
     }
 
-    fn post_process(_source: &CsvLine, mut parsed: Self, _custom_database: Option<&CustomDatabase>) -> Result<Self, BoxedError<'static>> {
+    fn post_process(_source: &CsvLine, mut parsed: Self, _custom_database: Option<&CustomDatabase>) -> Result<Self, BoxedError<'static, BasicKind>> {
         // Add the meaningful modifications to replace mass modifications
         if let Some(ptm) = parsed.ptm.clone() {
             for pep in &mut parsed.peptide.1 {

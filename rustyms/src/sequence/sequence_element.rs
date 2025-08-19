@@ -328,14 +328,14 @@ impl<T> SequenceElement<T> {
     pub(crate) fn enforce_modification_rules(
         &self,
         position: SequencePosition,
-    ) -> Result<(), BoxedError<'static>> {
+    ) -> Result<(), BoxedError<'static, BasicKind>> {
         for modification in &self.modifications {
             if modification.is_possible(self, position) == RulePossible::No {
                 let rules = modification
                     .simple()
                     .map(|s| s.placement_rules())
                     .unwrap_or_default();
-                return Err(BoxedError::error(
+                return Err(BoxedError::new(BasicKind::Error,
                     "Modification incorrectly placed",
                     format!(
                         "Modification {modification} is not allowed on {}{}",

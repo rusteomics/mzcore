@@ -28,7 +28,7 @@ format_family!(
         scan_number: usize, |location: Location, _| location.parse(NUMBER_ERROR);
         /// Up to 3 leading amino acids (if present), the peptidoform itself, and up to 3 tailing amino acids (if present)
         peptide: (FlankingSequence, Peptidoform<SemiAmbiguous>, FlankingSequence), |location: Location, custom_database: Option<&CustomDatabase>| {
-            location.clone().split_twice('.').ok_or_else(|| BoxedError::error("Invalid Proteoscape line", "The peptide columns should contain the previous amino acids, the peptide, and the following amino acids separated by dots.", location.context().to_owned())).and_then(|(before, peptide, after)| {
+            location.clone().split_twice('.').ok_or_else(|| BoxedError::new(BasicKind::Error,"Invalid Proteoscape line", "The peptide columns should contain the previous amino acids, the peptide, and the following amino acids separated by dots.", location.context().to_owned())).and_then(|(before, peptide, after)| {
                 let before = before.trim_start_matches("-");
                 let after = after.trim_end_matches("-");
                 Ok((
@@ -69,7 +69,7 @@ format_family!(
         is_unique: bool, |location: Location, _| location.parse_with(|l| match l.as_str().to_ascii_lowercase().as_str() {
             "true" => Ok(true),
             "false" => Ok(false),
-            _ => Err(BoxedError::error(
+            _ => Err(BoxedError::new(BasicKind::Error,
                 "Invalid Proteoscape line",
                 "This column (Is Unique) is not a boolean but it is required to be a boolean ('true' or 'false') in this Proteoscape format",
                 l.context().to_owned(),

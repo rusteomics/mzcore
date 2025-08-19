@@ -1195,6 +1195,7 @@ impl<Complexity> Peptidoform<Complexity> {
     }
 
     /// Get the total amount of ambiguous modifications
+    #[allow(dead_code)] // is used with some features but not all
     pub(crate) fn number_of_ambiguous_modifications(&self) -> usize {
         self.modifications_of_unknown_position.len()
     }

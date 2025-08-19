@@ -67,7 +67,7 @@ macro_rules! format_family {
             type PeptidoformAvailability = $peptidoform_availability;
             type Version = [<$format Version>];
 
-            fn parse(source: &Self::Source, custom_database: Option<&crate::ontology::CustomDatabase>, keep_all_columns: bool) -> Result<(Self, &'static Self::Format), BoxedError<'static>> {
+            fn parse(source: &Self::Source, custom_database: Option<&crate::ontology::CustomDatabase>, keep_all_columns: bool) -> Result<(Self, &'static Self::Format), BoxedError<'static, BasicKind>> {
                 let mut errors = Vec::new();
                 for format in $versions {
                     match Self::parse_specific(source, format, custom_database, keep_all_columns) {
@@ -75,7 +75,7 @@ macro_rules! format_family {
                         Err(err) => errors.push(err.version(format.version.to_string())),
                     }
                 }
-                Err(BoxedError::error(
+                Err(BoxedError::new(BasicKind::Error,
                     format!("Invalid {} line", stringify!($format)),
                     "The correct format could not be determined automatically",
                     source.full_context().to_owned(),
@@ -87,10 +87,10 @@ macro_rules! format_family {
                 custom_database: Option<&crate::ontology::CustomDatabase>,
                 keep_all_columns: bool,
                 version: Option<Self::Version>,
-            ) -> Result<BoxedIdentifiedPeptideIter<'_, Self>, BoxedError<'static>> {
+            ) -> Result<BoxedIdentifiedPeptideIter<'_, Self>, BoxedError<'static, BasicKind>> {
                 let format = version.map(|v| v.format());
                 parse_csv(path, $separator, $header).and_then(|lines| {
-                    let mut i = Self::parse_many::<Box<dyn Iterator<Item = Result<Self::Source, BoxedError>>>>(
+                    let mut i = Self::parse_many::<Box<dyn Iterator<Item = Result<Self::Source, BoxedError<'_, BasicKind>>>>>(
                         Box::new(lines), custom_database, keep_all_columns, format);
                     if let Some(Err(e)) = i.peek() {
                         Err(e.clone())
@@ -105,10 +105,10 @@ macro_rules! format_family {
                 custom_database: Option<&'a crate::ontology::CustomDatabase>,
                 keep_all_columns: bool,
                 version: Option<Self::Version>,
-            ) -> Result<BoxedIdentifiedPeptideIter<'a, Self>, BoxedError<'static>> {
+            ) -> Result<BoxedIdentifiedPeptideIter<'a, Self>, BoxedError<'static, BasicKind>> {
                 let format = version.map(|v| v.format());
                 crate::identification::csv::parse_csv_raw(reader, $separator, $header).and_then(move |lines| {
-                    let mut i = Self::parse_many::<Box<dyn Iterator<Item = Result<Self::Source, BoxedError>>>>(
+                    let mut i = Self::parse_many::<Box<dyn Iterator<Item = Result<Self::Source, BoxedError<'_, BasicKind>>>>>(
                         Box::new(lines), custom_database, keep_all_columns, format);
                     if let Some(Err(e)) = i.peek() {
                         Err(e.clone())
@@ -119,9 +119,16 @@ macro_rules! format_family {
             }
 
             #[allow(clippy::redundant_closure_call)] // Macro magic
-            fn parse_specific(source: &Self::Source, format: &[<$format Format>], custom_database: Option<&crate::ontology::CustomDatabase>, keep_all_columns: bool) -> Result<Self, BoxedError<'static>> {
+            fn parse_specific(source: &Self::Source, format: &[<$format Format>], custom_database: Option<&crate::ontology::CustomDatabase>, keep_all_columns: bool) -> Result<Self, BoxedError<'static, BasicKind>> {
                 #[allow(unused_imports)]
                 use crate::helper_functions::InvertResult;
+
+                /// Shadowing `Result::Ok` to inject the correct error type which otherwise leads
+                /// to the compiler complaining about its absence when a field cannot fail.
+                #[allow(non_snake_case, dead_code, clippy::missing_errors_doc)]
+                const fn Ok<T>(value: T) -> Result<T, BoxedError<'static, BasicKind>> {
+                    Result::Ok(value)
+                }
 
                 let parsed = Self {
                     $($rname: $rf(source.column(format.$rname).map_err(BoxedError::to_owned)?, custom_database)?,)*
@@ -186,7 +193,7 @@ impl OptionalColumn {
     pub(super) fn open_column(
         self,
         source: &CsvLine,
-    ) -> Result<Option<Location<'_>>, BoxedError<'static>> {
+    ) -> Result<Option<Location<'_>>, BoxedError<'static, BasicKind>> {
         match self {
             Self::NotAvailable => Ok(None),
             Self::Optional(s) => Ok(source.column(s).ok()),
@@ -199,14 +206,14 @@ pub(super) trait HasLocation {
     /// Get the specified column.
     /// # Errors
     /// If the column does not exist.
-    fn column<'a>(&'a self, name: &'a str) -> Result<Location<'a>, BoxedError<'static>>;
+    fn column<'a>(&'a self, name: &'a str) -> Result<Location<'a>, BoxedError<'static, BasicKind>>;
 }
 
 impl HasLocation for CsvLine {
     /// Get the specified column
     /// # Errors
     /// If the given column does not exist
-    fn column<'a>(&'a self, name: &'a str) -> Result<Location<'a>, BoxedError<'static>> {
+    fn column<'a>(&'a self, name: &'a str) -> Result<Location<'a>, BoxedError<'static, BasicKind>> {
         self.index_column(name)
             .map(|(_v, c)| Location {
                 line: self,
@@ -311,9 +318,10 @@ impl<'a> Location<'a> {
     pub(super) fn parse<T: FromStr>(
         self,
         base_error: (&'static str, &'static str),
-    ) -> Result<T, BoxedError<'static>> {
+    ) -> Result<T, BoxedError<'static, BasicKind>> {
         self.as_str().trim().parse().map_err(|_| {
-            BoxedError::error(
+            BoxedError::new(
+                BasicKind::Error,
                 base_error.0,
                 base_error.1,
                 self.line
@@ -327,8 +335,8 @@ impl<'a> Location<'a> {
     /// If the provided parse method fails.
     pub(super) fn parse_with<T>(
         self,
-        f: impl Fn(Self) -> Result<T, BoxedError<'static>>,
-    ) -> Result<T, BoxedError<'static>> {
+        f: impl Fn(Self) -> Result<T, BoxedError<'static, BasicKind>>,
+    ) -> Result<T, BoxedError<'static, BasicKind>> {
         f(self)
     }
 
@@ -413,13 +421,13 @@ pub(super) trait OptionalLocation<'a> {
     fn parse<T: FromStr>(
         self,
         base_error: (&'static str, &'static str),
-    ) -> Result<Option<T>, BoxedError<'static>>;
+    ) -> Result<Option<T>, BoxedError<'static, BasicKind>>;
     /// # Errors
     /// If the provided parse method fails.
     fn parse_with<T>(
         self,
-        f: impl Fn(Location<'a>) -> Result<T, BoxedError<'static>>,
-    ) -> Result<Option<T>, BoxedError<'static>>;
+        f: impl Fn(Location<'a>) -> Result<T, BoxedError<'static, BasicKind>>,
+    ) -> Result<Option<T>, BoxedError<'static, BasicKind>>;
     fn get_string(self) -> Option<String>;
     type ArrayIter: Iterator<Item = Location<'a>>;
     fn array(self, sep: char) -> Self::ArrayIter;
@@ -434,13 +442,13 @@ impl<'a> OptionalLocation<'a> for Option<Location<'a>> {
     fn parse<T: FromStr>(
         self,
         base_error: (&'static str, &'static str),
-    ) -> Result<Option<T>, BoxedError<'static>> {
+    ) -> Result<Option<T>, BoxedError<'static, BasicKind>> {
         self.map(|l| l.parse::<T>(base_error)).transpose()
     }
     fn parse_with<T>(
         self,
-        f: impl Fn(Location<'a>) -> Result<T, BoxedError<'static>>,
-    ) -> Result<Option<T>, BoxedError<'static>> {
+        f: impl Fn(Location<'a>) -> Result<T, BoxedError<'static, BasicKind>>,
+    ) -> Result<Option<T>, BoxedError<'static, BasicKind>> {
         self.map(f).transpose()
     }
     fn get_string(self) -> Option<String> {

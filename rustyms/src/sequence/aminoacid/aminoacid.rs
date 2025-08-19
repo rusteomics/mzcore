@@ -904,32 +904,30 @@ impl AminoAcid {
             }
         }
 
-        if allow_terminal.0 && allow_terminal.1 {
-            if let Some((charge, losses)) = &ions.immonium {
-                base_fragments.extend(Fragment::generate_all(
-                    &(self.formulas_inner(
-                        sequence_index,
-                        peptidoform_index,
-                        peptidoform_ion_index,
-                    ) * (modifications
+        if allow_terminal.0
+            && allow_terminal.1
+            && let Some((charge, losses)) = &ions.immonium
+        {
+            base_fragments.extend(Fragment::generate_all(
+                &(self.formulas_inner(sequence_index, peptidoform_index, peptidoform_ion_index)
+                    * (modifications
                         .1
                         .get(&FragmentKind::immonium)
                         .unwrap_or(&modifications.0)
                         - molecular_formula!(C 1 O 1))),
-                    peptidoform_ion_index,
-                    peptidoform_index,
-                    &FragmentType::Immonium(Some(n_pos), self.into()), // TODO: get the actual sequence element here
-                    &Multi::default(),
-                    &losses
-                        .iter()
-                        .filter(|(aa, _)| aa.contains(&self))
-                        .flat_map(|(_, l)| l.iter())
-                        .map(|l| vec![l.clone()])
-                        .collect::<Vec<_>>(),
-                    charge_carriers,
-                    *charge,
-                ));
-            }
+                peptidoform_ion_index,
+                peptidoform_index,
+                &FragmentType::Immonium(Some(n_pos), self.into()), // TODO: get the actual sequence element here
+                &Multi::default(),
+                &losses
+                    .iter()
+                    .filter(|(aa, _)| aa.contains(&self))
+                    .flat_map(|(_, l)| l.iter())
+                    .map(|l| vec![l.clone()])
+                    .collect::<Vec<_>>(),
+                charge_carriers,
+                *charge,
+            ));
         }
         base_fragments
     }
@@ -954,7 +952,7 @@ impl AminoAcid {
 impl ParseJson for AminoAcid {
     fn from_json_value(
         value: serde_json::Value,
-    ) -> Result<Self, custom_error::BoxedError<'static>> {
+    ) -> Result<Self, custom_error::BoxedError<'static, custom_error::BasicKind>> {
         use_serde(value)
     }
 }

@@ -82,7 +82,7 @@ pub struct ModificationId {
 }
 
 impl ParseJson for ModificationId {
-    fn from_json_value(value: serde_json::Value) -> Result<Self, BoxedError<'static>> {
+    fn from_json_value(value: serde_json::Value) -> Result<Self, BoxedError<'static, BasicKind>> {
         use_serde(value)
     }
 }
@@ -99,7 +99,7 @@ pub enum GnoComposition {
 }
 
 impl ParseJson for GnoComposition {
-    fn from_json_value(value: serde_json::Value) -> Result<Self, BoxedError<'static>> {
+    fn from_json_value(value: serde_json::Value) -> Result<Self, BoxedError<'static, BasicKind>> {
         use_serde(value)
     }
 }
@@ -123,7 +123,7 @@ pub enum GnoSubsumption {
 }
 
 impl ParseJson for GnoSubsumption {
-    fn from_json_value(value: serde_json::Value) -> Result<Self, BoxedError<'static>> {
+    fn from_json_value(value: serde_json::Value) -> Result<Self, BoxedError<'static, BasicKind>> {
         use_serde(value)
     }
 }
@@ -690,9 +690,9 @@ impl Display for CrossLinkName {
 /// the library.
 /// # Errors
 /// If the string could not be parsed.
-pub fn parse_custom_modifications(path: &Path) -> Result<CustomDatabase, BoxedError<'static>> {
+pub fn parse_custom_modifications(path: &Path) -> Result<CustomDatabase, BoxedError<'static, BasicKind>> {
     let string = std::fs::read_to_string(path).map_err(|err| {
-        BoxedError::error(
+        BoxedError::new(BasicKind::Error,
             "Could not parse custom modifications file",
             err.to_string(),
             Context::default().source(path.to_string_lossy()).to_owned(),
@@ -706,7 +706,7 @@ pub fn parse_custom_modifications(path: &Path) -> Result<CustomDatabase, BoxedEr
 /// the library.
 /// # Errors
 /// If the string could not be parsed.
-pub fn parse_custom_modifications_str(value: &str) -> Result<CustomDatabase, BoxedError<'static>> {
+pub fn parse_custom_modifications_str(value: &str) -> Result<CustomDatabase, BoxedError<'static, BasicKind>> {
     CustomDatabase::from_json(value)
 }
 

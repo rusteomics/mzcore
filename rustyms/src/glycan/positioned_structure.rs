@@ -191,7 +191,7 @@ impl PositionedGlycanStructure {
         let charges_oxonium = charge_carriers.range(model.glycan.oxonium_charge_range);
         if model.glycan.allow_structural {
             {
-                // Get all base fragments from this node and all its children
+                // Get all B fragments from this node and all its children
                 let mut base_fragments = self
                     .oxonium_fragments(peptidoform_ion_index, peptidoform_index, attachment)
                     .into_iter()

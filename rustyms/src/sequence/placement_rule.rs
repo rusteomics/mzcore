@@ -28,7 +28,7 @@ pub enum PlacementRule {
 }
 
 impl ParseJson for PlacementRule {
-    fn from_json_value(value: serde_json::Value) -> Result<Self, BoxedError<'static>> {
+    fn from_json_value(value: serde_json::Value) -> Result<Self, BoxedError<'static, BasicKind>> {
         use_serde(value)
     }
 }
@@ -134,7 +134,7 @@ impl PlacementRule {
 }
 
 impl FromStr for PlacementRule {
-    type Err = BoxedError<'static>;
+    type Err = BoxedError<'static, BasicKind>;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         if let Some((head, tail)) = s.split_once('@') {
             let aa: Vec<AminoAcid> = head
@@ -142,7 +142,7 @@ impl FromStr for PlacementRule {
                 .enumerate()
                 .map(|(i, c)| {
                     AminoAcid::try_from(c).map_err(|()| {
-                        BoxedError::error(
+                        BoxedError::new(BasicKind::Error,
                             "Invalid amino acid",
                             "Invalid amino acid in specified amino acids in placement rule",
                             Context::line(None, s, i, 1).to_owned(),
@@ -152,7 +152,7 @@ impl FromStr for PlacementRule {
                 .collect::<Result<Vec<_>, _>>()?;
             tail.parse().map_or_else(
                 |()| {
-                    Err(BoxedError::error(
+                    Err(BoxedError::new(BasicKind::Error,
                         "Invalid position",
                         "Use any of the following for the position: Anywhere, AnyNTerm, ProteinNTerm, AnyCTerm, ProteinCTerm",
                         Context::line(None, s, head.len() + 1, tail.len()).to_owned(),
@@ -166,7 +166,7 @@ impl FromStr for PlacementRule {
                 pos => Self::Terminal(pos),
             })
         } else {
-            Err(BoxedError::error(
+            Err(BoxedError::new(BasicKind::Error,
                 "Invalid position",
                 "Use any of the following for the position: Anywhere, AnyNTerm, ProteinNTerm, AnyCTerm, ProteinCTerm",
                 Context::full_line(0, s).to_owned(),

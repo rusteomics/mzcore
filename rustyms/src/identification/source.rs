@@ -1,6 +1,6 @@
 use std::fmt::Display;
 
-use custom_error::BoxedError;
+use custom_error::{BasicKind, BoxedError};
 
 use crate::{
     identification::{IdentifiedPeptidoform, MaybePeptidoform, MetaData},
@@ -43,7 +43,7 @@ where
         source: &Self::Source,
         custom_database: Option<&CustomDatabase>,
         keep_all_columns: bool,
-    ) -> Result<(Self, &'static Self::Format), BoxedError<'static>>;
+    ) -> Result<(Self, &'static Self::Format), BoxedError<'static, BasicKind>>;
 
     /// Parse a single identified peptide with the given format
     /// # Errors
@@ -53,12 +53,12 @@ where
         format: &Self::Format,
         custom_database: Option<&CustomDatabase>,
         keep_all_columns: bool,
-    ) -> Result<Self, BoxedError<'static>>;
+    ) -> Result<Self, BoxedError<'static, BasicKind>>;
 
     /// Parse a source of multiple peptides using the given format or automatically determining the format to use by the first item
     /// # Errors
     /// When the source is not a valid peptide
-    fn parse_many<I: Iterator<Item = Result<Self::Source, BoxedError<'static>>>>(
+    fn parse_many<I: Iterator<Item = Result<Self::Source, BoxedError<'static, BasicKind>>>>(
         iter: I,
         custom_database: Option<&CustomDatabase>,
         keep_all_columns: bool,
@@ -81,7 +81,7 @@ where
         custom_database: Option<&CustomDatabase>,
         keep_all_columns: bool,
         version: Option<Self::Version>,
-    ) -> Result<BoxedIdentifiedPeptideIter<'_, Self>, BoxedError<'static>>;
+    ) -> Result<BoxedIdentifiedPeptideIter<'_, Self>, BoxedError<'static, BasicKind>>;
 
     /// Parse a reader with identified peptides.
     /// # Errors
@@ -91,7 +91,7 @@ where
         custom_database: Option<&'a CustomDatabase>,
         keep_all_columns: bool,
         version: Option<Self::Version>,
-    ) -> Result<BoxedIdentifiedPeptideIter<'a, Self>, BoxedError<'static>>;
+    ) -> Result<BoxedIdentifiedPeptideIter<'a, Self>, BoxedError<'static, BasicKind>>;
 
     /// Allow post processing of the peptide
     /// # Errors
@@ -101,7 +101,7 @@ where
         source: &Self::Source,
         parsed: Self,
         custom_database: Option<&CustomDatabase>,
-    ) -> Result<Self, BoxedError<'static>> {
+    ) -> Result<Self, BoxedError<'static, BasicKind>> {
         Ok(parsed)
     }
 }
@@ -109,7 +109,10 @@ where
 /// A general generic identified peptidoform iterator from any source format
 pub type GeneralIdentifiedPeptidoforms<'lifetime> = Box<
     dyn Iterator<
-            Item = Result<IdentifiedPeptidoform<Linked, MaybePeptidoform>, BoxedError<'static>>,
+            Item = Result<
+                IdentifiedPeptidoform<Linked, MaybePeptidoform>,
+                BoxedError<'static, BasicKind>,
+            >,
         > + 'lifetime,
 >;
 
@@ -118,8 +121,12 @@ pub type BoxedIdentifiedPeptideIter<'lifetime, T> = IdentifiedPeptidoformIter<
     'lifetime,
     T,
     Box<
-        dyn Iterator<Item = Result<<T as IdentifiedPeptidoformSource>::Source, BoxedError<'static>>>
-            + 'lifetime,
+        dyn Iterator<
+                Item = Result<
+                    <T as IdentifiedPeptidoformSource>::Source,
+                    BoxedError<'static, BasicKind>,
+                >,
+            > + 'lifetime,
     >,
 >;
 
@@ -128,24 +135,24 @@ pub type BoxedIdentifiedPeptideIter<'lifetime, T> = IdentifiedPeptidoformIter<
 pub struct IdentifiedPeptidoformIter<
     'lifetime,
     Source: IdentifiedPeptidoformSource,
-    Iter: Iterator<Item = Result<Source::Source, BoxedError<'static>>>,
+    Iter: Iterator<Item = Result<Source::Source, BoxedError<'static, BasicKind>>>,
 > {
     iter: Box<Iter>,
     format: Option<Source::Format>,
     custom_database: Option<&'lifetime CustomDatabase>,
     keep_all_columns: bool,
-    peek: Option<Result<Source, BoxedError<'static>>>,
+    peek: Option<Result<Source, BoxedError<'static, BasicKind>>>,
 }
 
 impl<
     R: IdentifiedPeptidoformSource + Clone,
-    I: Iterator<Item = Result<R::Source, BoxedError<'static>>>,
+    I: Iterator<Item = Result<R::Source, BoxedError<'static, BasicKind>>>,
 > IdentifiedPeptidoformIter<'_, R, I>
 where
     R::Format: 'static,
 {
     /// Peek at the next item in the iterator
-    pub fn peek(&mut self) -> Option<Result<R, BoxedError<'static>>> {
+    pub fn peek(&mut self) -> Option<Result<R, BoxedError<'static, BasicKind>>> {
         if self.peek.is_some() {
             return self.peek.clone();
         }
@@ -178,12 +185,14 @@ where
     }
 }
 
-impl<R: IdentifiedPeptidoformSource, I: Iterator<Item = Result<R::Source, BoxedError<'static>>>>
-    Iterator for IdentifiedPeptidoformIter<'_, R, I>
+impl<
+    R: IdentifiedPeptidoformSource,
+    I: Iterator<Item = Result<R::Source, BoxedError<'static, BasicKind>>>,
+> Iterator for IdentifiedPeptidoformIter<'_, R, I>
 where
     R::Format: 'static,
 {
-    type Item = Result<R, BoxedError<'static>>;
+    type Item = Result<R, BoxedError<'static, BasicKind>>;
     fn next(&mut self) -> Option<Self::Item> {
         if self.peek.is_some() {
             return self.peek.take();
@@ -220,7 +229,7 @@ where
     Source: IdentifiedPeptidoformSource
         + Into<IdentifiedPeptidoform<Source::Complexity, Source::PeptidoformAvailability>>
         + 'lifetime,
-    Iter: Iterator<Item = Result<Source::Source, BoxedError<'static>>> + 'lifetime,
+    Iter: Iterator<Item = Result<Source::Source, BoxedError<'static, BasicKind>>> + 'lifetime,
     Source::Format: 'static,
     MaybePeptidoform: From<Source::PeptidoformAvailability>,
 {
@@ -231,13 +240,15 @@ where
         dyn Iterator<
                 Item = Result<
                     IdentifiedPeptidoform<Complexity, MaybePeptidoform>,
-                    BoxedError<'static>,
+                    BoxedError<'static, BasicKind>,
                 >,
             > + 'lifetime,
     > {
-        Box::new(self.map(|p: Result<Source, BoxedError>| match p {
-            Ok(p) => Ok(p.into().cast()),
-            Err(e) => Err(e),
-        }))
+        Box::new(self.map(
+            |p: Result<Source, BoxedError<'static, BasicKind>>| match p {
+                Ok(p) => Ok(p.into().cast()),
+                Err(e) => Err(e),
+            },
+        ))
     }
 }

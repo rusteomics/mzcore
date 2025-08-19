@@ -43,7 +43,7 @@ format_family!(
         protein_location: Option<Range<u16>>, |location: Location, _| location.or_empty().parse_with(
             |loc| {
                 if loc.location.len() < 3 {
-                    return Err(BoxedError::error(
+                    return Err(BoxedError::new(BasicKind::Error,
                         "Invalid Opair line",
                         "The location is not defined, it should be defined like this [<start> to <end>]",
                         Context::line(
@@ -66,7 +66,7 @@ format_family!(
                     loc.line.line()[loc.location.start + 1..loc.location.start + 1 + start]
                         .parse()
                         .map_err(|_| {
-                            BoxedError::error(NUMBER_ERROR.0, NUMBER_ERROR.1, Context::line(
+                            BoxedError::new(BasicKind::Error,NUMBER_ERROR.0, NUMBER_ERROR.1, Context::line(
                                 Some(loc.line.line_index() as u32),
                                 loc.line.line(),
                                 loc.location.start + 1,
@@ -76,7 +76,7 @@ format_family!(
                     loc.line.line()[loc.location.end - 1 - end..loc.location.end - 1]
                         .parse()
                         .map_err(|_| {
-                            BoxedError::error(NUMBER_ERROR.0, NUMBER_ERROR.1, Context::line(
+                            BoxedError::new(BasicKind::Error,NUMBER_ERROR.0, NUMBER_ERROR.1, Context::line(
                                 Some(loc.line.line_index() as u32),
                                 loc.line.line(),
                                 loc.location.end - 1 - end,
@@ -97,7 +97,7 @@ format_family!(
                     } else {
                         FlankingSequence::AminoAcid(AminoAcid::try_from(n).map_err(
                             |()| {
-                                BoxedError::error(
+                                BoxedError::new(BasicKind::Error,
                                     "Invalid Opair line",
                                     "The flanking residues could not be parsed as amino acids",
                                     Context::line(
@@ -115,7 +115,7 @@ format_family!(
                     } else {
                         FlankingSequence::AminoAcid(AminoAcid::try_from(c).map_err(
                             |()| {
-                                BoxedError::error(
+                                BoxedError::new(BasicKind::Error,
                                     "Invalid Opair line",
                                     "The flanking residues could not be parsed as amino acids",
                                     Context::line(
@@ -151,7 +151,7 @@ format_family!(
                 "T" => Ok(OpairMatchKind::Target),
                 "C" => Ok(OpairMatchKind::Contamination),
                 "D" => Ok(OpairMatchKind::Decoy),
-                _ => Err(BoxedError::error(
+                _ => Err(BoxedError::new(BasicKind::Error,
                     "Invalid Opair line",
                     "The kind column does not contain a valid value (T/C/D)",
                     Context::line(
@@ -177,7 +177,7 @@ format_family!(
             match &loc.line.line()[loc.location.clone()] {
                 "TRUE" => Ok(true),
                 "FALSE" => Ok(false),
-                _ => Err(BoxedError::error(
+                _ => Err(BoxedError::new(BasicKind::Error,
                     "Invalid Opair line",
                     "The N glycan motif check column does not contain a valid value (TRUE/FALSE)",
                     Context::line(

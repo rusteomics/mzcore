@@ -33,7 +33,7 @@ impl SimpleModificationInner {
         ambiguous_lookup: &mut AmbiguousLookup,
         cross_link_lookup: &mut CrossLinkLookup,
         custom_database: Option<&CustomDatabase>,
-    ) -> Result<(ReturnModification, MUPSettings), BoxedError<'a>> {
+    ) -> Result<(ReturnModification, MUPSettings), BoxedError<'a, BasicKind>> {
         // Because multiple modifications could be chained with the pipe operator
         // the parsing iterates through all links until it finds one it understands
         // it then returns that one. If no 'understandable' links are found it
@@ -129,7 +129,7 @@ fn parse_single_modification<'a>(
     ambiguous_lookup: &mut AmbiguousLookup,
     cross_link_lookup: &mut CrossLinkLookup,
     custom_database: Option<&CustomDatabase>,
-) -> Result<SingleReturnModification, BoxedError<'a>> {
+) -> Result<SingleReturnModification, BoxedError<'a, BasicKind>> {
     // Parse the whole intricate structure of the single modification (see here in action: https://regex101.com/r/pW5gsj/1)
     if let Some(groups) = MOD_REGEX.captures(full_modification) {
         // Capture the full mod name (head:tail), head, tail, ambiguous group, and localisation score
@@ -150,7 +150,7 @@ fn parse_single_modification<'a>(
                         .parse::<f64>()
                         .map(OrderedFloat::from)
                         .map_err(|_| {
-                            BoxedError::error(
+                            BoxedError::new(BasicKind::Error,
                         "Invalid modification localisation score",
                         "The ambiguous modification localisation score needs to be a valid number",
                         Context::line(None, line, offset + m.start(), m.len()),
@@ -161,7 +161,7 @@ fn parse_single_modification<'a>(
         );
 
         let modification = if let (Some(head), Some(tail)) = (head.as_ref(), tail) {
-            let basic_error = BoxedError::error(
+            let basic_error = BoxedError::new(BasicKind::Error,
                 "Invalid modification",
                 "..",
                 Context::line(None, line, offset + tail.1, tail.2),
@@ -416,7 +416,7 @@ fn parse_single_modification<'a>(
                         .as_ref()
                         .is_some_and(|l| *l != linker)
                     {
-                        return Err(BoxedError::error(
+                        return Err(BoxedError::new(BasicKind::Error,
                             "Invalid branch definition",
                             "A branch definition has to be identical at both sites, or only defined at one site.",
                             Context::line(None, line, offset + full.1, full.2),
@@ -446,7 +446,7 @@ fn parse_single_modification<'a>(
                         .as_ref()
                         .is_some_and(|l| *l != linker)
                     {
-                        return Err(BoxedError::error(
+                        return Err(BoxedError::new(BasicKind::Error,
                             "Invalid cross-link definition",
                             "A cross-link definition has to be identical at both sites, or only defined at one site.",
                             Context::line(None, line, offset + full.1, full.2),
@@ -474,7 +474,7 @@ fn parse_single_modification<'a>(
             })
         }
     } else {
-        Err(BoxedError::error(
+        Err(BoxedError::new(BasicKind::Error,
             "Invalid modification",
             "It does not match the ProForma definition for modifications",
             Context::line(None, line, offset, full_modification.len()),
@@ -486,12 +486,12 @@ fn parse_single_modification<'a>(
 /// # Errors
 /// If the content of the ambiguous modification was already defined
 fn handle_ambiguous_modification<'a>(
-    modification: Result<Option<SimpleModification>, BoxedError<'a>>,
+    modification: Result<Option<SimpleModification>, BoxedError<'a, BasicKind>>,
     group: (&str, usize, usize),
     localisation_score: Option<OrderedFloat<f64>>,
     ambiguous_lookup: &mut AmbiguousLookup,
     context: Context<'a>,
-) -> Result<SingleReturnModification, BoxedError<'a>> {
+) -> Result<SingleReturnModification, BoxedError<'a, BasicKind>> {
     let group_name = group.0.to_ascii_lowercase();
     // Search for a previous definition of this name, store as Some((index, modification_definition_present)) or None if there is no definition in place
     let found_definition = ambiguous_lookup
@@ -502,7 +502,7 @@ fn handle_ambiguous_modification<'a>(
     // Handle all possible cases of having a modification found at this position and having a modification defined in the ambiguous lookup
     match (modification, found_definition) {
         // Have a mod defined here and already in the lookup (error)
-        (Ok(Some(_)), Some((_, true))) => Err(BoxedError::error(
+        (Ok(Some(_)), Some((_, true))) => Err(BoxedError::new(BasicKind::Error,
             "Invalid ambiguous modification",
             "An ambiguous modification cannot be placed twice (for one of the modifications leave out the modification and only provide the group name)",
             context,

@@ -17,7 +17,7 @@ impl MolecularFormula {
     pub fn from_resid(
         value: &str,
         range: impl RangeBounds<usize>,
-    ) -> Result<Multi<Self>, BoxedError<'_>> {
+    ) -> Result<Multi<Self>, BoxedError<'_, BasicKind>> {
         let mut multi = Vec::new();
         let mut start = 0;
         for part in value[range.start_index()..range.end_index(value.len())].split(',') {
@@ -38,7 +38,7 @@ impl MolecularFormula {
     pub fn from_resid_single(
         value: &str,
         range: impl RangeBounds<usize>,
-    ) -> Result<Self, BoxedError<'_>> {
+    ) -> Result<Self, BoxedError<'_, BasicKind>> {
         let (mut index, end) = range.bounds(value.len().saturating_sub(1));
         let mut result = Self::default();
         while index <= end {
@@ -69,7 +69,7 @@ impl MolecularFormula {
                     amount *= number.1 as i32;
                 }
                 if !result.add((element, None, amount)) {
-                    return Err(BoxedError::error(
+                    return Err(BoxedError::new(BasicKind::Error,
                         "Invalid RESID molecular formula",
                         "An element with undefined mass was used",
                         Context::line(
@@ -86,7 +86,7 @@ impl MolecularFormula {
                 }
                 trim(&mut index, value);
             } else {
-                return Err(BoxedError::error(
+                return Err(BoxedError::new(BasicKind::Error,
                     "Invalid RESID molecular formula",
                     format!("Not a valid character in formula, now has: {result:?}"),
                     Context::line(

@@ -478,10 +478,10 @@ impl FastaData {
     /// Parse a single fasta file
     /// # Errors
     /// A custom error when it is not a valid fasta file
-    pub fn parse_file(path: impl AsRef<Path>) -> Result<Vec<Self>, BoxedError<'static>> {
+    pub fn parse_file(path: impl AsRef<Path>) -> Result<Vec<Self>, BoxedError<'static, BasicKind>> {
         let path = path.as_ref();
         let file = std::fs::File::open(path).map_err(|_| {
-            BoxedError::error(
+            BoxedError::new(BasicKind::Error,
                 "Failed reading fasta file",
                 "Error occurred while opening the file",
                 Context::default().source(path.to_string_lossy()).to_owned(),
@@ -497,14 +497,14 @@ impl FastaData {
     pub fn parse_reader(
         reader: impl BufRead,
         path: Option<&Path>,
-    ) -> Result<Vec<Self>, BoxedError<'static>> {
+    ) -> Result<Vec<Self>, BoxedError<'static, BasicKind>> {
         let mut sequences = Vec::new();
         let mut last_header = None;
         let mut last_sequence: Vec<SequenceElement<SemiAmbiguous>> = Vec::new();
 
         for (line_index, line) in reader.lines().enumerate() {
             let line = line.map_err(|_| {
-                BoxedError::error(
+                BoxedError::new(BasicKind::Error,
                     "Failed reading fasta file",
                     format!("Error occurred while reading line {}", line_index + 1),
                     path.map_or_else(Context::none, |p| {
@@ -532,7 +532,7 @@ impl FastaData {
                             c.try_into()
                                 .map(|aa: AminoAcid| SequenceElement::new(aa.into(), None))
                                 .map_err(|()| {
-                                    BoxedError::error(
+                                    BoxedError::new(BasicKind::Error,
                                         "Failed reading fasta file",
                                         "Character is not an amino acid",
                                         Context::line(Some(line_index as u32), &line, i, 1)
@@ -559,10 +559,10 @@ impl FastaData {
 
     /// # Errors
     /// If the total length of the regions is not identical to the length of the peptide, or if any of the annotations is outside of the peptide
-    fn validate(self) -> Result<Self, BoxedError<'static>> {
+    fn validate(self) -> Result<Self, BoxedError<'static, BasicKind>> {
         let total_regions_len: usize = self.regions.iter().map(|(_, l)| *l).sum();
         if total_regions_len > 0 && total_regions_len != self.peptide.len() {
-            Err(BoxedError::error(
+            Err(BoxedError::new(BasicKind::Error,
                 "Invalid regions definition",
                 format!(
                     "The 'REGIONS' definition is invalid, the total length of the regions ({}) has to be identical to the length of the peptide ({})",
@@ -576,7 +576,7 @@ impl FastaData {
             .iter()
             .any(|(_, p)| *p >= self.peptide.len())
         {
-            Err(BoxedError::error(
+            Err(BoxedError::new(BasicKind::Error,
                 "Invalid annotations definition",
                 format!(
                     "The 'ANNOTATIONS' definition is invalid, on of the annotations is out of range of the peptide (length {})",
@@ -598,7 +598,7 @@ impl FastaData {
     /// # Errors
     /// When the parsing of the fasta identifier is not succesful
     #[expect(clippy::missing_panics_doc)] // Regions and annotation parse cannot fail
-    fn parse_header(line_index: usize, full_header: String) -> Result<Self, BoxedError<'static>> {
+    fn parse_header(line_index: usize, full_header: String) -> Result<Self, BoxedError<'static, BasicKind>> {
         let first_space = full_header.find(' ').unwrap_or(full_header.len());
         let mut description = 0..0;
         let mut last_equals = None;
@@ -651,13 +651,13 @@ impl FastaData {
                     if let Some((region, n)) = region.split_once(':') {
                         Ok((
                             region.parse::<Region>().unwrap(),
-                            n.parse::<usize>().map_err(|err| BoxedError::error(
+                            n.parse::<usize>().map_err(|err| BoxedError::new(BasicKind::Error,
                             "Invalid regions definition", 
                             format!("The fasta header 'REGIONS' key, should contain regions followed by a colon, e.g. 'CDR3:6', but the number is {}", explain_number_error(&err)), 
                             Context::line(Some(line_index as u32), &full_header, tag.1.start + last, tag.1.start+index).to_owned()))?
                         ))
                     } else {
-                        Err(BoxedError::error(
+                        Err(BoxedError::new(BasicKind::Error,
                             "Invalid regions definition", 
                             "The fasta header 'REGIONS' key, should contain regions followed by a colon, e.g. 'CDR3:6'", 
                             Context::line(Some(line_index as u32), &full_header, tag.1.start + last, tag.1.start+index).to_owned()))
@@ -672,13 +672,13 @@ impl FastaData {
                     if let Some((region, n)) = region.split_once(':') {
                         Ok((
                             region.parse::<Annotation>().unwrap(),
-                            n.parse::<usize>().map_err(|err| BoxedError::error(
+                            n.parse::<usize>().map_err(|err| BoxedError::new(BasicKind::Error,
                             "Invalid annotations definition", 
                             format!("The fasta header 'ANNOTATIONS' key, should contain annotations followed by a colon, e.g. 'Conserved:6', but the number is {}", explain_number_error(&err)), 
                             Context::line(Some(line_index as u32), &full_header, tag.1.start + last, tag.1.start+index).to_owned()))?
                         ))
                     } else {
-                        Err(BoxedError::error(
+                        Err(BoxedError::new(BasicKind::Error,
                             "Invalid annotations definition", 
                             "The fasta header 'ANNOTATIONS' key, should contain annotations followed by a colon, e.g. 'Conserved:6'", 
                             Context::line(Some(line_index as u32), &full_header, tag.1.start + last, tag.1.start+index).to_owned()))
@@ -693,7 +693,7 @@ impl FastaData {
             identifier: full_header[0..first_space]
                 .parse::<FastaIdentifier<Range<usize>>>()
                 .map_err(|err| {
-                    BoxedError::error(
+                    BoxedError::new(BasicKind::Error,
                         "Failed reading fasta file",
                         format!(
                             "Error occurred parsing NCBI identifier: number {}",

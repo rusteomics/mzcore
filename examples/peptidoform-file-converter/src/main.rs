@@ -59,7 +59,7 @@ fn main() {
                     .iter()
                     .map(|id| match id {
                         SpectrumId::Index(id) => {
-                            Ok((*id, args.raw_file.as_ref().map(PathBuf::from).ok_or_else(|| BoxedError::error(
+                            Ok((*id, args.raw_file.as_ref().map(PathBuf::from).ok_or_else(|| BoxedError::new(BasicKind::Error,
                             "Missing raw file",
                             "This format does not store the raw file so this should be given via the command line arguments",
                             Context::default()
@@ -68,7 +68,7 @@ fn main() {
                         ))?))
                         }
                         SpectrumId::Number(id) => {
-                            Ok((id - 1, args.raw_file.as_ref().map(PathBuf::from).ok_or_else(|| BoxedError::error(
+                            Ok((id - 1, args.raw_file.as_ref().map(PathBuf::from).ok_or_else(|| BoxedError::new(BasicKind::Error,
                             "Missing raw file",
                             "This format does not store the raw file so this should be given via the command line arguments",
                             Context::default()
@@ -76,7 +76,7 @@ fn main() {
                                 .line_index(peptidoform_index as u32),
                         ))?))
                         }
-                        _ => Err(BoxedError::error(
+                        _ => Err(BoxedError::new(BasicKind::Error,
                             "Invalid spectrum id",
                             "Only spectrum indexes and spectrum numbers can be used",
                             Context::default()
@@ -91,7 +91,7 @@ fn main() {
                         ids.iter().map(|id| match id {
                             SpectrumId::Index(id) => Ok((*id, file.clone())),
                             SpectrumId::Number(id) => Ok((id - 1, file.clone())),
-                            _ => Err(BoxedError::error(
+                            _ => Err(BoxedError::new(BasicKind::Error,
                                 "Invalid spectrum id",
                                 "Only spectrum indexes and spectrum numbers can be used",
                                 Context::default()
@@ -103,7 +103,7 @@ fn main() {
                     .collect(),
             }?;
             let sequence = p
-                .compound_peptidoform_ion().ok_or_else(|| BoxedError::error(
+                .compound_peptidoform_ion().ok_or_else(|| BoxedError::new(BasicKind::Error,
                     "Missing sequence",
                     "This peptidoform misses a sequence",
                     Context::default()

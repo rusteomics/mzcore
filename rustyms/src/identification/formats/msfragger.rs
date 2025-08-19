@@ -54,7 +54,7 @@ format_family!(
         ).map(Into::into).map_err(BoxedError::to_owned)});
         protein: FastaIdentifier<String>, |location: Location, _| location.parse(IDENTIFIER_ERROR);
         rt: Time, |location: Location, _| location.parse::<f64>(NUMBER_ERROR).map(Time::new::<crate::system::time::min>);
-        scan: SpectrumId, |location: Location, _| Ok(SpectrumId::Native(location.get_string()));
+        scan: SpectrumId, |location: Location, _| Ok(location.clone().parse::<usize>(NUMBER_ERROR).map_or(SpectrumId::Native(location.get_string()), SpectrumId::Number));
         modifications: ThinVec<(SequencePosition, SimpleModification)>, |location: Location, custom_database: Option<&CustomDatabase>| location.or_empty().array(',').map(|m| if let Some((head, tail)) = m.clone().split_once('(') {
             let head_trim = head.as_str().trim();
             Ok((
@@ -64,7 +64,7 @@ format_family!(
                     SequencePosition::CTerm
                 } else {
                     // Format: `14M` so take only the numeric part
-                    head.as_str()[..head.len()-1].trim().parse::<usize>().map(|i| SequencePosition::Index(i-1)).map_err(|err| BoxedError::error(
+                    head.as_str()[..head.len()-1].trim().parse::<usize>().map(|i| SequencePosition::Index(i-1)).map_err(|err| BoxedError::new(BasicKind::Error,
                         "Invalid FragPipe modification location",
                         format!("The location number {}", explain_number_error(&err)),
                         head.context(),
@@ -73,7 +73,7 @@ format_family!(
                 Modification::sloppy_modification(tail.full_line(), tail.location.clone(), None, custom_database).map_err(BoxedError::to_owned)?
             ))
         } else {
-            Err(BoxedError::error(
+            Err(BoxedError::new(BasicKind::Error,
                 "Invalid FragPipe modification",
                 "The format `location(modification)` could not be recognised",
                 m.context().to_owned(),
@@ -102,7 +102,7 @@ format_family!(
                 let prefix = peptides.pop().unwrap().map_or(FlankingSequence::Terminal, |s| FlankingSequence::Sequence(Box::new(s)));
                 Ok((prefix, peptide, suffix))
             } else {
-                Err(BoxedError::error("Invalid extened peptide", "The extended peptide should contain the prefix.peptide.suffix for all peptides.", location.context().to_owned()))
+                Err(BoxedError::new(BasicKind::Error,"Invalid extened peptide", "The extended peptide should contain the prefix.peptide.suffix for all peptides.", location.context().to_owned()))
             }
         };
         glycan_q_value: f32, |location: Location, _| location.or_empty().parse::<f32>(NUMBER_ERROR);
@@ -114,7 +114,7 @@ format_family!(
         is_unique: bool, |location: Location, _| location.parse_with(|l| match l.as_str().to_ascii_lowercase().as_str() {
             "true" => Ok(true),
             "false" => Ok(false),
-            _ => Err(BoxedError::error(
+            _ => Err(BoxedError::new(BasicKind::Error,
                 "Invalid FragPipe line",
                 "This column (Is Unique) is not a boolean but it is required to be a boolean ('true' or 'false') in this FragPipe format",
                 l.context().to_owned(),
@@ -159,17 +159,16 @@ format_family!(
         tot_num_ions: usize, |location: Location, _| location.parse::<usize>(NUMBER_ERROR);
     }
 
-    fn post_process(_source: &CsvLine, mut parsed: Self, _custom_database: Option<&CustomDatabase>) -> Result<Self, BoxedError<'static>> {
+    fn post_process(_source: &CsvLine, mut parsed: Self, _custom_database: Option<&CustomDatabase>) -> Result<Self, BoxedError<'static, BasicKind>> {
         // Parse the scan identifier to retrieve the file and number separately
-        if let SpectrumId::Native(native) = &parsed.scan {
-            if let Some(m) = IDENTIFER_REGEX
+        if let SpectrumId::Native(native) = &parsed.scan
+            && let Some(m) = IDENTIFER_REGEX
                 .captures(native)
             {
                 parsed.raw_file = Some(m.get(1).unwrap().as_str().into());
                 parsed.scan =
                     SpectrumId::Number(m.get(2).unwrap().as_str().parse::<usize>().unwrap());
             }
-        }
         // Normal modifications
         for (location, modification) in &parsed.modifications {
             parsed.peptide.add_simple_modification(*location, modification.clone());
@@ -188,12 +187,11 @@ format_family!(
                         // Check if the modification is already placed as mass modification (this is not necessarily always present )
                         let mut index = None;
                         for (i, m) in parsed.peptide[location[0]].modifications.iter().enumerate() {
-                            if let Some(SimpleModificationInner::Mass(mass)) = m.simple().map(AsRef::as_ref) {
-                                if Tolerance::Absolute(Mass::new::<crate::system::dalton>(1.0)).within(&mass.into_inner(), &target_mass) {
+                            if let Some(SimpleModificationInner::Mass(mass)) = m.simple().map(AsRef::as_ref)
+                                && Tolerance::Absolute(Mass::new::<crate::system::dalton>(1.0)).within(&mass.into_inner(), &target_mass) {
                                     index = Some(i);
                                     break;
                                 }
-                            }
                         }
                         if let Some(index) = index {
                             parsed.peptide[location[0]].modifications[index] = modification.clone().into();
@@ -215,11 +213,9 @@ format_family!(
                 let mut index = None;
                 for seq in parsed.peptide.sequence_mut() {
                     for (i, m) in seq.modifications.iter().enumerate() {
-                        if let Some(SimpleModificationInner::Mass(mass)) = m.simple().map(AsRef::as_ref) {
-                            if Tolerance::Absolute(Mass::new::<crate::system::dalton>(1.0)).within(&mass.into_inner(), &target_mass) {
-                                index = Some(i);
-                                break;
-                            }
+                        if let Some(SimpleModificationInner::Mass(mass)) = m.simple().map(AsRef::as_ref) && Tolerance::Absolute(Mass::new::<crate::system::dalton>(1.0)).within(&mass.into_inner(), &target_mass) {
+                            index = Some(i);
+                            break;
                         }
                     }
                     if let Some(index) = index {

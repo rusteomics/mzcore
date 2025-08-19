@@ -90,7 +90,7 @@ impl SequencePosition {
 impl ParseJson for SequencePosition {
     fn from_json_value(
         value: serde_json::Value,
-    ) -> Result<Self, custom_error::BoxedError<'static>> {
+    ) -> Result<Self, custom_error::BoxedError<'static, custom_error::BasicKind>> {
         use_serde(value)
     }
 }

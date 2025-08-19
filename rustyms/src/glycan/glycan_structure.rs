@@ -45,7 +45,7 @@ impl GlycanStructure {
         line: &str,
         range: Range<usize>,
         line_index: u32,
-    ) -> Result<Self, BoxedError<'_>> {
+    ) -> Result<Self, BoxedError<'_, BasicKind>> {
         let mut offset = range.start;
         let mut branch = Self {
             sugar: MonoSaccharide::new(BaseSugar::Decose, &[]),
@@ -57,7 +57,7 @@ impl GlycanStructure {
         while offset < range.end {
             while bytes[offset] == b'[' {
                 let end = end_of_enclosure(line, offset + 1, b'[', b']').ok_or_else(|| {
-                    BoxedError::error(
+                    BoxedError::new(BasicKind::Error,
                         "Invalid iupac short glycan",
                         "No closing brace for branch",
                         Context::line(Some(line_index), line, offset, range.end - offset),
@@ -87,7 +87,7 @@ impl GlycanStructure {
             .pop()
             .map_or_else(
                 || {
-                    Err(BoxedError::error(
+                    Err(BoxedError::new(BasicKind::Error,
                         "Invalid iupac short glycan",
                         "No glycan found",
                         Context::line(Some(line_index), line.to_string(), range.start, range.len()),
@@ -279,7 +279,7 @@ impl Chemical for GlycanStructure {
 }
 
 impl FromStr for GlycanStructure {
-    type Err = BoxedError<'static>;
+    type Err = BoxedError<'static, BasicKind>;
     /// Parse a textual structure representation of a glycan (outside ProForma format).
     /// Example: Hex(Hex(HexNAc)) => Hex-Hex-HexNAc (linear)
     /// Example: Hex(Fuc,Hex(HexNAc,Hex(HexNAc)))
@@ -287,7 +287,7 @@ impl FromStr for GlycanStructure {
     ///              └Fuc  └Hex-HexNAc
     /// # Errors
     /// Return an Err if the format is not correct.
-    fn from_str(line: &str) -> Result<Self, BoxedError<'static>> {
+    fn from_str(line: &str) -> Result<Self, BoxedError<'static, BasicKind>> {
         Self::parse(line, 0..line.len()).map_err(BoxedError::to_owned)
     }
 }
@@ -300,13 +300,13 @@ impl GlycanStructure {
     ///              └Fuc  └Hex-HexNAc
     /// # Errors
     /// Return an Err if the format is not correct.
-    pub fn parse(line: &str, range: Range<usize>) -> Result<Self, BoxedError<'_>> {
+    pub fn parse(line: &str, range: Range<usize>) -> Result<Self, BoxedError<'_, BasicKind>> {
         Self::parse_internal(line, range).map(|(g, _)| g)
     }
 
     /// # Errors
     /// Return an Err if the format is not correct
-    fn parse_internal(line: &str, range: Range<usize>) -> Result<(Self, usize), BoxedError<'_>> {
+    fn parse_internal(line: &str, range: Range<usize>) -> Result<(Self, usize), BoxedError<'_, BasicKind>> {
         // Parse at the start the first recognised glycan name
         if let Some(name) = GLYCAN_PARSE_LIST
             .iter()
@@ -317,7 +317,7 @@ impl GlycanStructure {
             if line.as_bytes()[index] == b'(' {
                 // Find the end of this list
                 let end = end_of_enclosure(line, index + 1, b'(', b')').ok_or_else(|| {
-                    BoxedError::error(
+                    BoxedError::new(BasicKind::Error,
                         "Invalid glycan branch",
                         "No valid closing delimiter",
                         Context::line(None, line, index, 1),
@@ -332,7 +332,7 @@ impl GlycanStructure {
                 // Keep parsing until the end of this branch level (until the ')' is reached)
                 while index < end {
                     if line.as_bytes()[index] != b',' {
-                        return Err(BoxedError::error(
+                        return Err(BoxedError::new(BasicKind::Error,
                             "Invalid glycan structure",
                             "Branches should be separated by commas ','",
                             Context::line(None, line, index, 1),
@@ -360,7 +360,7 @@ impl GlycanStructure {
                 ))
             }
         } else {
-            Err(BoxedError::error(
+            Err(BoxedError::new(BasicKind::Error,
                 "Could not parse glycan structure",
                 "Could not parse the following part",
                 Context::line(None, line, range.start, range.len()),
@@ -444,7 +444,7 @@ impl GlycanStructure {
 }
 
 impl ParseJson for GlycanStructure {
-    fn from_json_value(value: serde_json::Value) -> Result<Self, BoxedError<'static>> {
+    fn from_json_value(value: serde_json::Value) -> Result<Self, BoxedError<'static, BasicKind>> {
         use_serde(value)
     }
 }

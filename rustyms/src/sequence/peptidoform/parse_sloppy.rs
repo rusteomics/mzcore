@@ -43,16 +43,16 @@ impl Peptidoform<SemiAmbiguous> {
         location: std::ops::Range<usize>,
         custom_database: Option<&CustomDatabase>,
         parameters: &SloppyParsingParameters,
-    ) -> Result<Self, BoxedError<'a>> {
+    ) -> Result<Self, BoxedError<'a, BasicKind>> {
         Peptidoform::pro_forma(&line[location.clone()], custom_database).and_then(|p| p.into_semi_ambiguous().ok_or_else(|| 
-            BoxedError::error(
+            BoxedError::new(BasicKind::Error,
                 "Peptidoform too complex",
                 "A peptidoform as used here should not contain any complex parts of the ProForma specification, only amino acids and simple placed modifications are allowed",
                 Context::line_range(None, line, location.clone()),
             ))).or_else(|pro_forma_error| 
                 Self::sloppy_pro_forma(line, location.clone(), custom_database, parameters)
                 .map_err(|sloppy_error| 
-                    BoxedError::error(
+                    BoxedError::new(BasicKind::Error,
                         "Invalid peptidoform", 
                         "The sequence could not be parsed as a ProForma nor as a more loosly defined peptidoform, see the underlying errors for details", 
                         Context::line_range(None, line, location.clone())).add_underlying_errors(vec![pro_forma_error, sloppy_error])))
@@ -73,9 +73,9 @@ impl Peptidoform<SemiAmbiguous> {
         location: std::ops::Range<usize>,
         custom_database: Option<&CustomDatabase>,
         parameters: &SloppyParsingParameters,
-    ) -> Result<Self, BoxedError<'a>> {
+    ) -> Result<Self, BoxedError<'a, BasicKind>> {
         if line[location.clone()].trim().is_empty() {
-            return Err(BoxedError::error(
+            return Err(BoxedError::new(BasicKind::Error,
                 "Peptide sequence is empty",
                 "A peptide sequence cannot be empty",
                 Context::line(None, line, location.start, 1),
@@ -102,7 +102,7 @@ impl Peptidoform<SemiAmbiguous> {
                     let end_index =
                         end_of_enclosure(&line[location.clone()], index + 1, open, close)
                             .ok_or_else(|| {
-                                BoxedError::error(
+                                BoxedError::new(BasicKind::Error,
                                     "Invalid modification",
                                     "No valid closing delimiter",
                                     Context::line(None, line, location.start + index, 1),
@@ -170,14 +170,14 @@ impl Peptidoform<SemiAmbiguous> {
                             .find(|(aa, _)| *aa == seq.aminoacid.aminoacid())
                             .map(|(_, m)| seq.modifications.push(Modification::Simple(m.clone())))
                             .ok_or_else(|| {
-                                BoxedError::error(
+                                BoxedError::new(BasicKind::Error,
                                     "Invalid mod indication",
                                     "There is no given mod for this amino acid.",
                                     Context::line(None, line, location.start + index - 4, 4),
                                 )
                             })?,
                         None => {
-                            return Err(BoxedError::error(
+                            return Err(BoxedError::new(BasicKind::Error,
                                 "Invalid mod indication",
                                 "A mod indication should always follow an amino acid.",
                                 Context::line(None, line, location.start + index - 3, 3),
@@ -197,7 +197,7 @@ impl Peptidoform<SemiAmbiguous> {
                         line[location.start + index..location.start + index + length]
                         .parse::<f64>()
                         .map_err(|err|
-                            BoxedError::error(
+                            BoxedError::new(BasicKind::Error,
                                 "Invalid mass shift modification", 
                                 format!("Mass shift modification must be a valid number but this number is invalid: {err}"), 
                                 Context::line(None, line, location.start + index, length))
@@ -220,7 +220,7 @@ impl Peptidoform<SemiAmbiguous> {
                     } else {
                         peptide.sequence_mut().push(SequenceElement::new(
                             ch.try_into().map_err(|()| {
-                                BoxedError::error(
+                                BoxedError::new(BasicKind::Error,
                                     "Invalid amino acid",
                                     "This character is not a valid amino acid",
                                     Context::line(None, line, location.start + index, 1),
@@ -234,7 +234,7 @@ impl Peptidoform<SemiAmbiguous> {
             }
         }
         if peptide.is_empty() {
-            return Err(BoxedError::error(
+            return Err(BoxedError::new(BasicKind::Error,
                 "Peptide sequence is empty",
                 "A peptide sequence cannot be empty",
                 Context::line(None, line, location.start, location.len()),
@@ -272,7 +272,7 @@ impl Modification {
         location: std::ops::Range<usize>,
         position: Option<&SequenceElement<SemiAmbiguous>>,
         custom_database: Option<&CustomDatabase>,
-    ) -> Result<SimpleModification, BoxedError<'a>> {
+    ) -> Result<SimpleModification, BoxedError<'a, BasicKind>> {
         let full_context = Context::line(None, line, location.start, location.len());
         let name = &line[location];
 
@@ -322,7 +322,7 @@ impl Modification {
                         })
                 })
             }).ok_or_else(|| {
-                BoxedError::error(
+                BoxedError::new(BasicKind::Error,
                     "Could not interpret modification",
                     "Modifications have to be defined as a number, Unimod, or PSI-MOD name, if this is a custom modification make sure to add it to the database",
                     full_context,

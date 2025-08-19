@@ -62,7 +62,7 @@ format_family!(
         used_model: UsedModel, |location: Location, _| location.parse::<UsedModel>(("Invalid InstaNovo line", "The selected model has to be 'diffusion' or 'transformer'."));
      }
 
-     fn post_process(_source: &CsvLine, mut parsed: Self, _custom_database: Option<&CustomDatabase>) -> Result<Self, BoxedError<'static>> {
+     fn post_process(_source: &CsvLine, mut parsed: Self, _custom_database: Option<&CustomDatabase>) -> Result<Self, BoxedError<'static, BasicKind>> {
         // Only keep the parsed local_confidence is the `UsedModel == Transformer`
         if let Some(used_model) = parsed.used_model && used_model == UsedModel::Diffusion {
             parsed.local_confidence = None;

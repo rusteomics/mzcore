@@ -16,7 +16,7 @@ impl MolecularFormula {
     pub fn from_psi_mod(
         value: &str,
         range: impl RangeBounds<usize>,
-    ) -> Result<Self, BoxedError<'_>> {
+    ) -> Result<Self, BoxedError<'_, BasicKind>> {
         let (mut index, end) = range.bounds(value.len());
         let mut isotope = None;
         let mut element = None;
@@ -30,7 +30,7 @@ impl MolecularFormula {
                         .skip(index)
                         .position(|c| *c == b')')
                         .ok_or_else(|| {
-                            BoxedError::error(
+                            BoxedError::new(BasicKind::Error,
                                 "Invalid PSI-MOD molecular formula",
                                 "No closing round bracket found",
                                 Context::line(None, value, index, 1),
@@ -40,7 +40,7 @@ impl MolecularFormula {
                         value[index + 1..index + len]
                             .parse::<NonZeroU16>()
                             .map_err(|err| {
-                                BoxedError::error(
+                                BoxedError::new(BasicKind::Error,
                                     "Invalid PSI-MOD molecular formula",
                                     format!("The isotope number {}", explain_number_error(&err)),
                                     Context::line(None, value, index + 1, len),
@@ -63,7 +63,7 @@ impl MolecularFormula {
                         |v| {
                             (
                                 v.parse::<i32>().map_err(|err| {
-                                    BoxedError::error(
+                                    BoxedError::new(BasicKind::Error,
                                         "Invalid PSI-MOD molecular formula",
                                         format!(
                                             "The isotope number {}",
@@ -78,7 +78,7 @@ impl MolecularFormula {
                     );
                     let num = num?;
                     if num != 0 && !Self::add(&mut result, (element.unwrap(), isotope, num)) {
-                        return Err(BoxedError::error(
+                        return Err(BoxedError::new(BasicKind::Error,
                             "Invalid PSI-MOD molecular formula",
                             format!(
                                 "An element without a defined mass ({}) was used",
@@ -95,7 +95,7 @@ impl MolecularFormula {
                 _ => {
                     if let Some(element) = element {
                         if !Self::add(&mut result, (element, None, 1)) {
-                            return Err(BoxedError::error(
+                            return Err(BoxedError::new(BasicKind::Error,
                                 "Invalid PSI-MOD molecular formula",
                                 format!("An element without a defined mass ({element}) was used"),
                                 Context::line(None, value, index - 1, 1),
@@ -112,7 +112,7 @@ impl MolecularFormula {
                         }
                     }
                     if !found {
-                        return Err(BoxedError::error(
+                        return Err(BoxedError::new(BasicKind::Error,
                             "Invalid PSI-MOD molecular formula",
                             "Not a valid character in formula",
                             Context::line(None, value, index, 1),
@@ -122,7 +122,7 @@ impl MolecularFormula {
             }
         }
         if isotope.is_some() || element.is_some() {
-            Err(BoxedError::error(
+            Err(BoxedError::new(BasicKind::Error,
                 "Invalid PSI-MOD molecular formula",
                 "Last element missed a count",
                 Context::line(None, value, index, 1),

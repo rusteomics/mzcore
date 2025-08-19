@@ -106,8 +106,9 @@ impl Ontology {
         self,
         code: &'a str,
         custom_database: Option<&CustomDatabase>,
-    ) -> BoxedError<'a> {
-        BoxedError::error(
+    ) -> BoxedError<'a, BasicKind> {
+        BoxedError::new(
+            BasicKind::Error,
             "Invalid modification",
             format!("The provided name does not exists in {}", self.name()),
             Context::show(code),
@@ -121,7 +122,7 @@ impl Ontology {
         ontologies: &[Self],
         code: &str,
         custom_database: Option<&CustomDatabase>,
-    ) -> BoxedError<'static> {
+    ) -> BoxedError<'static, BasicKind> {
         assert!(!ontologies.is_empty());
         let names = if ontologies.len() > 1 {
             let mut names = ontologies[..ontologies.len() - 1]
@@ -134,7 +135,8 @@ impl Ontology {
         } else {
             ontologies[0].name().to_string()
         };
-        BoxedError::error(
+        BoxedError::new(
+            BasicKind::Error,
             "Invalid modification",
             format!("The provided name does not exists in {names}"),
             Context::show(code.to_string()),

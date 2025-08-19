@@ -44,13 +44,13 @@ impl MolecularFormula {
         allow_empty: bool,
         allow_uncommon_elements: bool,
         ignore_casing: bool,
-    ) -> Result<Self, BoxedError<'_>> {
+    ) -> Result<Self, BoxedError<'_, BasicKind>> {
         let (mut index, end) = range.bounds(value.len().saturating_sub(1));
         if index > end || end >= value.len() || value[index..=end].eq_ignore_ascii_case("(empty)") {
             return if allow_empty {
                 Ok(Self::default())
             } else {
-                Err(BoxedError::error(
+                Err(BoxedError::new(BasicKind::Error,
                     "Invalid ProForma molecular formula",
                     "The formula is empty",
                     Context::line_range(None, value, range),
@@ -74,7 +74,7 @@ impl MolecularFormula {
                         .skip(index)
                         .position(|c| *c == b']')
                         .ok_or_else(|| {
-                            BoxedError::error(
+                            BoxedError::new(BasicKind::Error,
                                 "Invalid ProForma molecular formula",
                                 "No closing square bracket found",
                                 Context::line(None, value, index, 1),
@@ -122,7 +122,7 @@ impl MolecularFormula {
                             ..index + isotope + ws1 + ele + ws2 + num_len]
                             .parse::<i32>()
                             .map_err(|err| {
-                                BoxedError::error(
+                                BoxedError::new(BasicKind::Error,
                                     "Invalid ProForma molecular formula",
                                     format!("The element number {}", explain_number_error(&err)),
                                     Context::line(
@@ -136,7 +136,7 @@ impl MolecularFormula {
                         let isotope = value[index..index + isotope]
                             .parse::<NonZeroU16>()
                             .map_err(|err| {
-                                BoxedError::error(
+                                BoxedError::new(BasicKind::Error,
                                     "Invalid ProForma molecular formula",
                                     format!("The isotope number {}", explain_number_error(&err)),
                                     Context::line(None, value, index, isotope),
@@ -144,7 +144,7 @@ impl MolecularFormula {
                             })?;
 
                         if !Self::add(&mut result, (parsed_element, Some(isotope), num)) {
-                            return Err(BoxedError::error(
+                            return Err(BoxedError::new(BasicKind::Error,
                                 "Invalid ProForma molecular formula",
                                 format!(
                                     "Invalid isotope ({isotope}) added for element ({parsed_element})"
@@ -155,7 +155,7 @@ impl MolecularFormula {
                         element = None;
                         index += len + 1;
                     } else {
-                        return Err(BoxedError::error(
+                        return Err(BoxedError::new(BasicKind::Error,
                             "Invalid ProForma molecular formula",
                             "Invalid element",
                             Context::line(None, value, index + isotope, ele),
@@ -177,7 +177,7 @@ impl MolecularFormula {
                         |v| {
                             (
                                 v.parse::<i32>().map_err(|err| {
-                                    BoxedError::error(
+                                    BoxedError::new(BasicKind::Error,
                                         "Invalid ProForma molecular formula",
                                         format!(
                                             "The element number {}",
@@ -192,7 +192,7 @@ impl MolecularFormula {
                     );
                     let num = num?;
                     if num != 0 && !Self::add(&mut result, (element.unwrap(), None, num)) {
-                        return Err(BoxedError::error(
+                        return Err(BoxedError::new(BasicKind::Error,
                             "Invalid ProForma molecular formula",
                             format!(
                                 "An element without a defined mass ({}) was used",
@@ -209,7 +209,7 @@ impl MolecularFormula {
                     if Some(&b'z') == bytes.get(index + 1) {
                         index += 2;
                         let num = value[index..=end].parse::<i32>().map_err(|err| {
-                            BoxedError::error(
+                            BoxedError::new(BasicKind::Error,
                                 "Invalid ProForma molecular formula",
                                 format!("The charge number is {}", explain_number_error(&err)),
                                 Context::line(None, value, index, end.saturating_sub(index)),
@@ -218,7 +218,7 @@ impl MolecularFormula {
                         let _ = result.add((Element::Electron, None, -num));
                         break 'main_parse_loop;
                     }
-                    return Err(BoxedError::error(
+                    return Err(BoxedError::new(BasicKind::Error,
                         "Invalid ProForma molecular formula",
                         "A charge tag was not set up properly, a charge tag should be formed as ':z<sign><number>'",
                         Context::line(
@@ -232,7 +232,7 @@ impl MolecularFormula {
                 _ => {
                     if let Some(element) = element {
                         if !Self::add(&mut result, (element, None, 1)) {
-                            return Err(BoxedError::error(
+                            return Err(BoxedError::new(BasicKind::Error,
                                 "Invalid ProForma molecular formula",
                                 format!("An element without a defined mass ({element}) was used"),
                                 Context::line(None, value, index - 1, 1),
@@ -251,7 +251,7 @@ impl MolecularFormula {
                             continue 'main_parse_loop;
                         }
                     }
-                    return Err(BoxedError::error(
+                    return Err(BoxedError::new(BasicKind::Error,
                         "Invalid ProForma molecular formula",
                         "Not a valid character in formula",
                         Context::line(
@@ -270,7 +270,7 @@ impl MolecularFormula {
         }
         if let Some(element) = element {
             if !Self::add(&mut result, (element, None, 1)) {
-                return Err(BoxedError::error(
+                return Err(BoxedError::new(BasicKind::Error,
                     "Invalid ProForma molecular formula",
                     format!("An element without a defined mass ({element}) was used"),
                     Context::line(None, value, index - 1, 1),
@@ -278,7 +278,7 @@ impl MolecularFormula {
             }
         }
         if !allow_empty && result.is_empty() {
-            Err(BoxedError::error(
+            Err(BoxedError::new(BasicKind::Error,
                 "Invalid ProForma molecular formula",
                 "The formula is empty",
                 Context::line_range(None, value, range),

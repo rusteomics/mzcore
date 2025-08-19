@@ -1797,7 +1797,7 @@ fn rustyms_py03(_py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
 /// An error with context where it originated
 #[pyclass]
 #[derive(Debug)]
-pub struct BoxedError(custom_error::BoxedError<'static>);
+pub struct BoxedError(custom_error::BoxedError<'static, BasicKind>);
 
 impl std::error::Error for BoxedError {}
 
