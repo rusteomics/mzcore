@@ -161,7 +161,9 @@ impl MolecularFormula {
                     })
                     .collect();
 
-                // Make the lengths equal
+                // Make the result fit the data
+                // TODO: think about the need to extend the result length to include the full distribution length
+                // so length (result.len() + ditribution.len() - 1) but keep then filter the output based on the threshold
                 result
                     .append(
                         Axis(0),
@@ -181,7 +183,7 @@ impl MolecularFormula {
                     // The number of this element to add
                     let num = (shift / isotope_offset as usize).min(amount);
 
-                    // The mass of this
+                    // The mass of this TODO: result in too high masses if multiple isotopes (> 2) exist
                     let isotope_total_mass = isotope_mass * num as f64
                         + if first {
                             base.1 * (amount - num) as f64
