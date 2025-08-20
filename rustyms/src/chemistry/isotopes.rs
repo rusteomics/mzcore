@@ -114,7 +114,7 @@ impl MolecularFormula {
     /// chosen atoms for lower weighed isotopes into account.
     #[expect(clippy::missing_panics_doc)]
     pub fn isotopic_distribution_with_mass(&self, threshold: f64) -> Array1<(Mass, f64)> {
-        let mut result = arr1(&[(Mass::default(), 1.0)]);
+        let mut result = arr1(&[(Mass::default(), 1.0_f64)]);
         for (element, isotope, amount) in self.elements() {
             if isotope.is_some() || *amount <= 0 {
                 // TODO: think about negative numbers?
@@ -130,17 +130,18 @@ impl MolecularFormula {
                 // Only a single species, so no distribution is needed
                 continue;
             }
-            // Get the probability and base offset (mass) for all non base isotopes
+            // Get (offset, mass, probability) for the isotopes
             let base = isotopes[0];
             let isotopes = isotopes
                 .into_iter()
                 .skip(1)
-                .map(|i| (i.0 - base.0, base.1, i.2))
+                .map(|i| (i.0 - base.0, i.1, i.2))
                 .collect_vec();
 
-            for (offset, mass, probability) in isotopes {
+            let mut first = true; // TODO: initial try to fix the mass output if there are more than 2 isotopes but does not work yet
+            for (isotope_offset, isotope_mass, isotope_probability) in isotopes {
                 // Generate distribution (take already chosen into account?)
-                let binomial = Binomial::new(amount, probability);
+                let binomial = Binomial::new(amount, isotope_probability);
 
                 // See how many numbers are below the threshold from the end of the distribution
                 let tail = (0..=amount)
@@ -150,63 +151,71 @@ impl MolecularFormula {
                     .count();
 
                 // Get all numbers start to the tail threshold
-                let mut distribution: Array1<f64> = (0..=amount - tail)
+                let distribution: Array1<f64> = (0..=amount - tail)
                     .map(|t| binomial.mass(t))
                     .flat_map(|a| {
                         // Interweave the probability of this isotope with the mass difference to generate the correct distribution
                         std::iter::once(a)
                             .chain(std::iter::repeat(0.0))
-                            .take(offset as usize)
+                            .take(isotope_offset as usize)
                     })
                     .collect();
 
                 // Make the lengths equal
-                match result.len().cmp(&distribution.len()) {
-                    Ordering::Less => {
-                        result
-                            .append(
-                                Axis(0),
-                                Array1::from_elem(distribution.len() - result.len(), (mass, 0.0))
-                                    .view(),
-                            )
-                            .unwrap();
-                    }
-                    Ordering::Greater => {
-                        distribution
-                            .append(
-                                Axis(0),
-                                Array1::zeros(result.len() - distribution.len()).view(),
-                            )
-                            .unwrap();
-                    }
-                    Ordering::Equal => (),
-                }
+                result
+                    .append(
+                        Axis(0),
+                        Array1::from_elem(
+                            distribution.len().saturating_sub(result.len()),
+                            (Mass::default(), 0.0),
+                        )
+                        .view(),
+                    )
+                    .unwrap();
 
                 // Combine distribution with previous distribution
-                let mut new = Array1::from_elem(result.len(), (mass, 0.0));
-                for (i, probability) in distribution.into_iter().enumerate() {
+                let mut new = Array1::from_elem(result.len(), (Mass::default(), 0.0));
+
+                dbg!(&distribution);
+                for (shift, shift_probability) in distribution.into_iter().enumerate() {
+                    // The number of this element to add
+                    let num = (shift / isotope_offset as usize).min(amount);
+
+                    // The mass of this
+                    let isotope_total_mass = isotope_mass * num as f64
+                        + if first {
+                            base.1 * (amount - num) as f64
+                        } else {
+                            Mass::default()
+                        };
+                    println!(
+                        "E {element} {:.4} i {isotope_offset} p {isotope_probability} s {shift} n {num} p {shift_probability} im {:.4}",
+                        isotope_mass.value, isotope_total_mass.value
+                    );
                     new = new
                         .into_iter()
                         .zip(
-                            std::iter::repeat_n((mass, 0.0), i)
-                                .chain(result.iter().copied().take(result.len())),
+                            std::iter::repeat_n((Mass::default(), 0.0), shift)
+                                .chain(result.iter().copied()),
                         )
                         .map(|(new, old)| {
                             (
-                                new.0 + old.0 * old.1 + mass * probability,
-                                old.1.mul_add(probability, new.1),
+                                new.0 + (old.0 + isotope_total_mass) * (old.1 * shift_probability),
+                                old.1.mul_add(shift_probability, new.1),
                             )
                         })
                         .collect();
                 }
 
-                result = new;
+                result = new
+                    .into_iter()
+                    .map(|(mass, shift_probability)| (mass / shift_probability, shift_probability))
+                    .collect();
+                first = false;
+                dbg!(&result);
             }
         }
         result
-            .into_iter()
-            .map(|(mass, probability)| (mass, probability))
-            .collect()
     }
 }
 
