@@ -1,8 +1,10 @@
-use crate::chemistry::MolecularFormula;
+use std::cmp::Ordering;
+
 use itertools::Itertools;
 use ndarray::{Array1, Axis, arr1, concatenate, s};
 use probability::distribution::{Binomial, Discrete};
-use std::cmp::Ordering;
+
+use crate::{chemistry::MolecularFormula, system::Mass};
 
 impl MolecularFormula {
     /// Get the isotopic distribution, using the natural distribution as defined by CIAAW.
@@ -12,7 +14,7 @@ impl MolecularFormula {
     ///
     /// This approximation slightly overestimates the tail end of the distribution. Especially
     /// for species with multiple higher mass isotopes as it does not take the number of already
-    /// chosen atom for lower weighed isotopes into account.
+    /// chosen atoms for lower weighed isotopes into account.
     #[expect(clippy::missing_panics_doc)]
     pub fn isotopic_distribution(&self, threshold: f64) -> Array1<f64> {
         let mut result = arr1(&[1.0]);
@@ -100,5 +102,123 @@ impl MolecularFormula {
             }
         }
         result
+    }
+
+    /// Get the isotopic distribution, using the natural distribution as defined by CIAAW.
+    /// All elements are considered. The return is an array with the probability per offset.
+    /// The first element of the array is the base peak, every consecutive peak is 1 Dalton heavier.
+    /// The probability is normalized to (approximately) 1 total area.
+    ///
+    /// This approximation slightly overestimates the tail end of the distribution. Especially
+    /// for species with multiple higher mass isotopes as it does not take the number of already
+    /// chosen atoms for lower weighed isotopes into account.
+    #[expect(clippy::missing_panics_doc)]
+    pub fn isotopic_distribution_with_mass(&self, threshold: f64) -> Array1<(Mass, f64)> {
+        let mut result = arr1(&[(Mass::default(), 1.0)]);
+        for (element, isotope, amount) in self.elements() {
+            if isotope.is_some() || *amount <= 0 {
+                // TODO: think about negative numbers?
+                continue;
+            }
+            let amount = usize::try_from(*amount).unwrap();
+            let isotopes = element
+                .isotopes()
+                .iter()
+                .filter(|i| i.2 != 0.0)
+                .collect_vec();
+            if isotopes.len() < 2 {
+                // Only a single species, so no distribution is needed
+                continue;
+            }
+            // Get the probability and base offset (mass) for all non base isotopes
+            let base = isotopes[0];
+            let isotopes = isotopes
+                .into_iter()
+                .skip(1)
+                .map(|i| (i.0 - base.0, base.1, i.2))
+                .collect_vec();
+
+            for (offset, mass, probability) in isotopes {
+                // Generate distribution (take already chosen into account?)
+                let binomial = Binomial::new(amount, probability);
+
+                // See how many numbers are below the threshold from the end of the distribution
+                let tail = (0..=amount)
+                    .rev()
+                    .map(|t| binomial.mass(t))
+                    .take_while(|a| *a < threshold)
+                    .count();
+
+                // Get all numbers start to the tail threshold
+                let mut distribution: Array1<f64> = (0..=amount - tail)
+                    .map(|t| binomial.mass(t))
+                    .flat_map(|a| {
+                        // Interweave the probability of this isotope with the mass difference to generate the correct distribution
+                        std::iter::once(a)
+                            .chain(std::iter::repeat(0.0))
+                            .take(offset as usize)
+                    })
+                    .collect();
+
+                // Make the lengths equal
+                match result.len().cmp(&distribution.len()) {
+                    Ordering::Less => {
+                        result
+                            .append(
+                                Axis(0),
+                                Array1::from_elem(distribution.len() - result.len(), (mass, 0.0))
+                                    .view(),
+                            )
+                            .unwrap();
+                    }
+                    Ordering::Greater => {
+                        distribution
+                            .append(
+                                Axis(0),
+                                Array1::zeros(result.len() - distribution.len()).view(),
+                            )
+                            .unwrap();
+                    }
+                    Ordering::Equal => (),
+                }
+
+                // Combine distribution with previous distribution
+                let mut new = Array1::from_elem(result.len(), (mass, 0.0));
+                for (i, probability) in distribution.into_iter().enumerate() {
+                    new = new
+                        .into_iter()
+                        .zip(
+                            std::iter::repeat_n((mass, 0.0), i)
+                                .chain(result.iter().copied().take(result.len())),
+                        )
+                        .map(|(new, old)| {
+                            (
+                                new.0 + old.0 * old.1 + mass * probability,
+                                old.1.mul_add(probability, new.1),
+                            )
+                        })
+                        .collect();
+                }
+
+                result = new;
+            }
+        }
+        result
+            .into_iter()
+            .map(|(mass, probability)| (mass, probability))
+            .collect()
+    }
+}
+
+#[cfg(test)]
+mod test {
+    #[test]
+    fn with_mass() {
+        let formula = molecular_formula!(C 18 H 33 S 2 O 6 N 8);
+
+        let distribution = formula.isotopic_distribution_with_mass(0.001);
+        dbg!(distribution);
+
+        todo!();
     }
 }

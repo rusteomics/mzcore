@@ -340,10 +340,9 @@ impl MolecularFormula {
                 .elements
                 .iter()
                 .find(|e| e.0 == Element::H && e.1.is_none())
+                && hydrogen.2 != 0
             {
-                if hydrogen.2 != 0 {
-                    f(hydrogen, &mut buffer);
-                }
+                f(hydrogen, &mut buffer);
             }
             for element in self.elements.iter().filter(|e| {
                 !((e.0 == Element::H || e.0 == Element::C || e.0 == Element::Electron)
