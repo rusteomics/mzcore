@@ -1,10 +1,4 @@
-use std::{
-    borrow::Cow,
-    marker::PhantomData,
-    num::NonZeroU32,
-    ops::Range,
-    path::{Path, PathBuf},
-};
+use std::{borrow::Cow, marker::PhantomData, num::NonZeroU32, ops::Range, path::PathBuf};
 
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
@@ -42,7 +36,6 @@ format_family!(
     SemiAmbiguous, MaybePeptidoform, [&MSMS, &NOVO_MSMS_SCANS, &MSMS_SCANS, &SILAC], b'\t', None;
     required {
         scan_number: ThinVec<usize>, |location: Location, _| location.or_empty().array(';').map(|s| s.parse(NUMBER_ERROR)).collect::<Result<ThinVec<usize>, BoxedError<'_, BasicKind>>>();
-        modifications: Box<str>, |location: Location, _| Ok(location.get_boxed_str());
         proteins: Box<str>, |location: Location, _| Ok(location.get_boxed_str());
         peptide: Option<Peptidoform<SemiAmbiguous>>, |location: Location, custom_database: Option<&CustomDatabase>| location.or_empty().parse_with(|location| Peptidoform::sloppy_pro_forma(
             location.full_line(),
@@ -56,7 +49,6 @@ format_family!(
         score: f64, |location: Location, _| location.parse(NUMBER_ERROR);
     }
     optional {
-        raw_file: PathBuf, |location: Location, _| Ok(Path::new(&location.get_string()).to_owned());
         all_modified_sequences: ThinVec<Peptidoform<SemiAmbiguous>>, |location: Location, custom_database: Option<&CustomDatabase>| location.array(';')
                 .map(|s| Peptidoform::sloppy_pro_forma(s.line.line(), s.location, custom_database, &SloppyParsingParameters::default()).map_err(BoxedError::to_owned))
                 .collect::<Result<ThinVec<Peptidoform<SemiAmbiguous>>, BoxedError<'static, BasicKind>>>();
@@ -103,6 +95,7 @@ format_family!(
         protein_group_ids: ThinVec<usize>, |location: Location, _| location.array(';').map(|p| p.parse::<usize>(NUMBER_ERROR)).collect::<Result<ThinVec<_>,_>>();
         ration_h_l_normalised: f32, |location: Location, _| location.or_empty().parse::<f32>(NUMBER_ERROR);
         ration_h_l: f32, |location: Location, _| location.or_empty().parse::<f32>(NUMBER_ERROR);
+        raw_file: PathBuf, |location: Location, _| Ok(PathBuf::from(location.get_string()));
         rt: Time, |location: Location, _| location.parse::<f64>(NUMBER_ERROR).map(Time::new::<crate::system::time::min>);
         scan_event_number: usize, |location: Location, _| location.parse::<usize>(NUMBER_ERROR);
         scan_index: usize, |location: Location, _| location.parse::<usize>(NUMBER_ERROR);
@@ -195,8 +188,7 @@ pub const MSMS: MaxQuantFormat = MaxQuantFormat {
     localisation_probability: OptionalColumn::Required("localization prob"),
     mass_analyser: OptionalColumn::Required("mass analyzer"),
     mass: OptionalColumn::Required("mass"),
-    missed_cleavages: OptionalColumn::Required("missed cleavages"),
-    modifications: "modifications",
+    missed_cleavages: OptionalColumn::Optional("missed cleavages"),
     modified_peptide_id: OptionalColumn::Required("mod. peptide id"),
     mz: OptionalColumn::Required("m/z"),
     nem_probabilities: OptionalColumn::NotAvailable,
@@ -259,7 +251,6 @@ pub const MSMS_SCANS: MaxQuantFormat = MaxQuantFormat {
     mass_analyser: OptionalColumn::Required("mass analyzer"),
     mass: OptionalColumn::Required("mass"),
     missed_cleavages: OptionalColumn::NotAvailable,
-    modifications: "modifications",
     modified_peptide_id: OptionalColumn::NotAvailable,
     mz: OptionalColumn::Required("m/z"),
     nem_probabilities: OptionalColumn::NotAvailable,
@@ -322,7 +313,6 @@ pub const NOVO_MSMS_SCANS: MaxQuantFormat = MaxQuantFormat {
     mass_analyser: OptionalColumn::Required("mass analyzer"),
     mass: OptionalColumn::Required("mass"),
     missed_cleavages: OptionalColumn::NotAvailable,
-    modifications: "modifications",
     modified_peptide_id: OptionalColumn::NotAvailable,
     mz: OptionalColumn::Required("m/z"),
     nem_probabilities: OptionalColumn::NotAvailable,
@@ -387,7 +377,6 @@ pub const SILAC: MaxQuantFormat = MaxQuantFormat {
     mass_analyser: OptionalColumn::NotAvailable,
     mass: OptionalColumn::Required("mass"),
     missed_cleavages: OptionalColumn::NotAvailable,
-    modifications: "modifications",
     modified_peptide_id: OptionalColumn::Required("mod. peptide id"),
     mz: OptionalColumn::Required("m/z"),
     nem_probabilities: OptionalColumn::Required("nem probabilities"),
