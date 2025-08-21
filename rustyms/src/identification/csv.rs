@@ -100,7 +100,7 @@ impl CsvLine {
     ) -> Result<(&'a str, &'a Range<usize>), BoxedError<'a, BasicKind>> {
         self.fields
             .iter()
-            .find(|f| *f.0 == *name)
+            .find(|f| f.0.eq_ignore_ascii_case(name))
             .map(|f| (&self.line[f.1.clone()], &f.1))
             .ok_or_else(|| {
                 BoxedError::new(
@@ -221,6 +221,7 @@ pub fn parse_csv_raw<T: std::io::Read>(
     if let Some(sep) = lines
         .peek()
         .and_then(|(_, l)| l.as_ref().ok())
+        .map(|l| l.trim_start_matches("\u{feff}"))
         .and_then(|l| l.strip_prefix("sep="))
     {
         skip = true;
@@ -250,22 +251,25 @@ pub fn parse_csv_raw<T: std::io::Read>(
                 Context::default(),
             )
         })?;
-        let header_line = column_headers.as_ref().map_err(|err| {
-            BoxedError::new(
-                BasicKind::Error,
-                "Could not read header line",
-                err.to_string(),
-                Context::default(),
-            )
-        })?;
-        let first_line = csv_separate(&header_line, separator)
+        let header_line = column_headers
+            .as_ref()
+            .map_err(|err| {
+                BoxedError::new(
+                    BasicKind::Error,
+                    "Could not read header line",
+                    err.to_string(),
+                    Context::default(),
+                )
+            })?
+            .trim_start_matches("\u{feff}");
+        let first_line = csv_separate(header_line, separator)
             .map_err(BoxedError::to_owned)?
             .into_iter()
             .map(|r| Arc::new(header_line[r].to_lowercase()))
             .collect_vec();
         let provided_header = header.into_iter().map(Arc::new).collect();
         if first_line == provided_header {
-            drop(lines.next()) // Ignore the first line if the first line is identical to the provided header
+            drop(lines.next()); // Ignore the first line if the first line is identical to the provided header
         }
         provided_header
     } else {
@@ -285,7 +289,9 @@ pub fn parse_csv_raw<T: std::io::Read>(
                 Context::none(),
             )
         })?;
-        csv_separate(&header_line, separator)
+        let header_line = header_line.trim_start_matches("\u{feff}");
+
+        csv_separate(header_line, separator)
             .map_err(BoxedError::to_owned)?
             .into_iter()
             .map(|r| Arc::new(header_line[r].to_lowercase()))
