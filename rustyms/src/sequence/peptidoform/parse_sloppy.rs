@@ -259,6 +259,8 @@ static SLOPPY_MOD_OPAIR_REGEX: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"(?:[^:]+:)?(.*) (?:(?:on)|(?:from)) ([A-Z])").unwrap());
 static SLOPPY_MOD_ON_REGEX: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"(.*)\s*\([- @a-zA-Z]+\)").unwrap());
+static SLOPPY_MOD_MAXQUANT_REGEX: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"(.*)_[A-Z]+").unwrap());
 static SLOPPY_MOD_NUMERIC_END_REGEX: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"(.*)\d+").unwrap());
 
@@ -308,6 +310,14 @@ impl Modification {
                 .or_else(|| {
                     // Common sloppy naming: `modification (AAs)` also accepts `modification (Protein N-term)`
                     SLOPPY_MOD_ON_REGEX
+                        .captures(name)
+                        .and_then(|capture| {
+                            Self::find_name(&capture[1], position, custom_database)
+                        })
+                })
+                .or_else(|| {
+                    // Common sloppy naming: `modification_AA`
+                    SLOPPY_MOD_MAXQUANT_REGEX
                         .captures(name)
                         .and_then(|capture| {
                             Self::find_name(&capture[1], position, custom_database)

@@ -1,6 +1,7 @@
 use std::{
     borrow::Cow,
     marker::PhantomData,
+    num::NonZeroU32,
     ops::Range,
     path::{Path, PathBuf},
 };
@@ -10,6 +11,7 @@ use serde::{Deserialize, Serialize};
 use thin_vec::ThinVec;
 
 use crate::{
+    helper_functions::end_of_enclosure,
     identification::{
         BoxedIdentifiedPeptideIter, FastaIdentifier, FlankingSequence, IdentifiedPeptidoform,
         IdentifiedPeptidoformData, IdentifiedPeptidoformSource, IdentifiedPeptidoformVersion,
@@ -18,8 +20,8 @@ use crate::{
         csv::{CsvLine, parse_csv},
     },
     ontology::CustomDatabase,
-    prelude::CompoundPeptidoformIon,
-    sequence::{Peptidoform, SemiAmbiguous, SloppyParsingParameters},
+    prelude::{AminoAcid, CheckedAminoAcid, CompoundPeptidoformIon, SequenceElement},
+    sequence::{Modification, Peptidoform, SemiAmbiguous, SimpleLinear, SloppyParsingParameters},
     system::{Mass, MassOverCharge, Time, isize::Charge},
 };
 
@@ -62,9 +64,9 @@ format_family!(
         delta_score: f32, |location: Location, _| location.parse::<f32>(NUMBER_ERROR);
         dn_c_mass: Mass, |location: Location, _| location.parse::<f64>(NUMBER_ERROR).map(Mass::new::<crate::system::dalton>);
         dn_combined_score: f32, |location: Location, _| location.parse::<f32>(NUMBER_ERROR);
-        dn_missing_mass: Mass, |location: Location, _| location.parse::<f64>(NUMBER_ERROR).map(Mass::new::<crate::system::dalton>);
+        dn_complete: bool, |location: Location, _| Ok(location.as_str() == "+");
         dn_n_mass: Mass, |location: Location, _| location.parse::<f64>(NUMBER_ERROR).map(Mass::new::<crate::system::dalton>);
-        dn_sequence: Box<str>, |location: Location, _| Ok(location.get_boxed_str());
+        dn_sequence: Peptidoform<SimpleLinear>, |location: Location, custom_database: Option<&CustomDatabase>| parse_de_novo_sequence(location, custom_database);
         evidence_id: usize, |location: Location, _| location.parse::<usize>(NUMBER_ERROR);
         experiment: Box<str>, |location: Location, _| Ok(location.get_boxed_str());
         mode: Box<str>, |location: Location, _| Ok(location.get_boxed_str());
@@ -159,7 +161,7 @@ pub const MSMS: MaxQuantFormat = MaxQuantFormat {
     delta_score: OptionalColumn::Required("delta score"),
     dn_c_mass: OptionalColumn::NotAvailable,
     dn_combined_score: OptionalColumn::NotAvailable,
-    dn_missing_mass: OptionalColumn::NotAvailable,
+    dn_complete: OptionalColumn::NotAvailable,
     dn_n_mass: OptionalColumn::NotAvailable,
     dn_sequence: OptionalColumn::NotAvailable,
     evidence_id: OptionalColumn::Required("evidence id"),
@@ -222,7 +224,7 @@ pub const MSMS_SCANS: MaxQuantFormat = MaxQuantFormat {
     delta_score: OptionalColumn::NotAvailable,
     dn_c_mass: OptionalColumn::NotAvailable,
     dn_combined_score: OptionalColumn::NotAvailable,
-    dn_missing_mass: OptionalColumn::NotAvailable,
+    dn_complete: OptionalColumn::NotAvailable,
     dn_n_mass: OptionalColumn::NotAvailable,
     dn_sequence: OptionalColumn::NotAvailable,
     evidence_id: OptionalColumn::NotAvailable,
@@ -285,7 +287,7 @@ pub const NOVO_MSMS_SCANS: MaxQuantFormat = MaxQuantFormat {
     delta_score: OptionalColumn::NotAvailable,
     dn_c_mass: OptionalColumn::Required("dn cterm mass"),
     dn_combined_score: OptionalColumn::Required("dn combined score"),
-    dn_missing_mass: OptionalColumn::Required("dn missing mass"),
+    dn_complete: OptionalColumn::Required("dn complete"),
     dn_n_mass: OptionalColumn::Required("dn nterm mass"),
     dn_sequence: OptionalColumn::Required("dn sequence"),
     evidence_id: OptionalColumn::NotAvailable,
@@ -350,7 +352,7 @@ pub const SILAC: MaxQuantFormat = MaxQuantFormat {
     delta_score: OptionalColumn::Required("delta score"),
     dn_c_mass: OptionalColumn::NotAvailable,
     dn_combined_score: OptionalColumn::NotAvailable,
-    dn_missing_mass: OptionalColumn::NotAvailable,
+    dn_complete: OptionalColumn::NotAvailable,
     dn_n_mass: OptionalColumn::NotAvailable,
     dn_sequence: OptionalColumn::NotAvailable,
     evidence_id: OptionalColumn::NotAvailable,
@@ -494,5 +496,299 @@ impl MetaData for MaxQuantData {
 
     fn database(&self) -> Option<(&str, Option<&str>)> {
         None
+    }
+}
+
+fn parse_de_novo_sequence(
+    location: Location,
+    custom_database: Option<&CustomDatabase>,
+) -> Result<Peptidoform<SimpleLinear>, BoxedError<'static, BasicKind>> {
+    #[derive(Debug, PartialEq, Eq)]
+    enum Element {
+        Either(Vec<Vec<Element>>),
+        UnknownOrder(Vec<Element>),
+        Sequence(SequenceElement<SemiAmbiguous>),
+    }
+
+    impl Element {
+        /// Parse the next element and return the left over location
+        fn parse<'a>(
+            location: Location<'a>,
+            custom_database: Option<&CustomDatabase>,
+        ) -> Result<(Self, Location<'a>), BoxedError<'static, BasicKind>> {
+            match location.as_str().as_bytes()[0] {
+                b'{' => {
+                    if let Some(end) = end_of_enclosure(
+                        location.full_line(),
+                        location.location.start + 1,
+                        b'{',
+                        b'}',
+                    ) {
+                        let mut inner_location = Location {
+                            location: location.location.start + 1..end,
+                            ..location.clone()
+                        };
+                        let mut outer = Vec::new();
+                        let mut inner = Vec::new();
+                        while !inner_location.is_empty() {
+                            let next = Self::parse(inner_location, custom_database)?;
+                            inner.push(next.0);
+                            inner_location = next.1;
+                            if inner_location.as_str().as_bytes().first() == Some(&b'|') {
+                                inner_location.location.start += 1;
+                                outer.push(inner);
+                                inner = Vec::new();
+                            }
+                        }
+                        outer.push(inner);
+                        if outer.is_empty() {
+                            Err(BoxedError::new(
+                                BasicKind::Error,
+                                "Invalid MaxNovo de novo sequence",
+                                "No sequence within the curly braces",
+                                location.context().to_owned(),
+                            ))
+                        } else {
+                            Ok((
+                                Self::Either(outer),
+                                Location {
+                                    location: end + 1..location.location.end,
+                                    ..location.clone()
+                                },
+                            ))
+                        }
+                    } else {
+                        Err(BoxedError::new(
+                            BasicKind::Error,
+                            "Invalid MaxNovo de novo sequence",
+                            "The curly bracket is never closed",
+                            location.context().to_owned(),
+                        ))
+                    }
+                }
+                b'[' => {
+                    if let Some(end) = end_of_enclosure(
+                        location.full_line(),
+                        location.location.start + 1,
+                        b'[',
+                        b']',
+                    ) {
+                        let mut inner_location = Location {
+                            location: location.location.start + 1..end,
+                            ..location.clone()
+                        };
+                        let mut inner = Vec::new();
+                        while !inner_location.is_empty() {
+                            let next = Self::parse(inner_location, custom_database)?;
+                            inner.push(next.0);
+                            inner_location = next.1;
+                        }
+                        if inner.is_empty() {
+                            Err(BoxedError::new(
+                                BasicKind::Error,
+                                "Invalid MaxNovo de novo sequence",
+                                "No sequence within the square braces",
+                                location.context().to_owned(),
+                            ))
+                        } else {
+                            Ok((
+                                Self::UnknownOrder(inner),
+                                Location {
+                                    location: end + 1..location.location.end,
+                                    ..location.clone()
+                                },
+                            ))
+                        }
+                    } else {
+                        Err(BoxedError::new(
+                            BasicKind::Error,
+                            "Invalid MaxNovo de novo sequence",
+                            "The square bracket is never closed",
+                            location.context().to_owned(),
+                        ))
+                    }
+                }
+                aa => {
+                    let mut aa = SequenceElement::new(
+                        AminoAcid::try_from(aa)
+                            .map_err(|()| {
+                                BoxedError::new(
+                                    BasicKind::Error,
+                                    "Invalid MaxNovo de novo sequence",
+                                    "Invalid amino acid",
+                                    Context::line(
+                                        Some(location.line.line_index() as u32),
+                                        location.full_line(),
+                                        location.location.start,
+                                        1,
+                                    )
+                                    .to_owned(),
+                                )
+                            })?
+                            .into(),
+                        None,
+                    );
+                    let mut offset = location.location.start + 1;
+
+                    if location.as_str().as_bytes().get(1) == Some(&b'(') {
+                        if let Some(end) = end_of_enclosure(
+                            location.full_line(),
+                            location.location.start + 2,
+                            b'(',
+                            b')',
+                        ) {
+                            offset = end + 1;
+                            let modification = Modification::sloppy_modification(
+                                location.full_line(),
+                                location.location.start + 2..end,
+                                Some(&aa),
+                                custom_database,
+                            )
+                            .map_err(BoxedError::to_owned)?;
+                            aa.add_simple_modification(modification);
+                        } else {
+                            return Err(BoxedError::new(
+                                BasicKind::Error,
+                                "Invalid MaxNovo de novo sequence",
+                                "The round bracket is never closed",
+                                Context::line(
+                                    Some(location.line.line_index() as u32),
+                                    location.full_line(),
+                                    location.location.start + 1,
+                                    1,
+                                )
+                                .to_owned(),
+                            ));
+                        }
+                    }
+
+                    Ok((
+                        Self::Sequence(aa),
+                        Location {
+                            location: offset..location.location.end,
+                            ..location.clone()
+                        },
+                    ))
+                }
+            }
+        }
+
+        fn add_to_peptidoform(
+            self,
+            peptidoform: &mut Peptidoform<SimpleLinear>,
+            ambiguous_group_id: &mut NonZeroU32,
+            with_id: Option<NonZeroU32>,
+        ) {
+            match self {
+                Self::Either(mut outer) => {
+                    if outer.len() == 2
+                        && outer[0].len() == 1
+                        && outer[1].len() == 1
+                        && ((outer[0][0]
+                            == Self::Sequence(SequenceElement::new(
+                                CheckedAminoAcid::Isoleucine.into(),
+                                None,
+                            ))
+                            && outer[1][0]
+                                == Self::Sequence(SequenceElement::new(
+                                    CheckedAminoAcid::Leucine.into(),
+                                    None,
+                                )))
+                            || (outer[0][0]
+                                == Self::Sequence(SequenceElement::new(
+                                    CheckedAminoAcid::Leucine.into(),
+                                    None,
+                                ))
+                                && outer[1][0]
+                                    == Self::Sequence(SequenceElement::new(
+                                        CheckedAminoAcid::Isoleucine.into(),
+                                        None,
+                                    ))))
+                    {
+                        peptidoform.sequence_mut().push(SequenceElement::new(
+                            CheckedAminoAcid::AmbiguousLeucine.into(),
+                            with_id,
+                        ));
+                    } else {
+                        // FOr now just add the last branch but mark them as ambiguous
+                        let id = with_id.unwrap_or(*ambiguous_group_id);
+                        *ambiguous_group_id = ambiguous_group_id.saturating_add(1);
+                        for el in outer.pop().unwrap() {
+                            // The unwrap is fine because it is guaranteed to have at least one element
+                            el.add_to_peptidoform(peptidoform, ambiguous_group_id, Some(id));
+                        }
+                    }
+                }
+                Self::UnknownOrder(inner) => {
+                    let id = with_id.unwrap_or(*ambiguous_group_id);
+                    *ambiguous_group_id = ambiguous_group_id.saturating_add(1);
+                    for el in inner {
+                        el.add_to_peptidoform(peptidoform, ambiguous_group_id, Some(id));
+                    }
+                }
+                Self::Sequence(mut seq) => {
+                    seq.ambiguous = with_id;
+                    peptidoform.sequence_mut().push(seq.into());
+                }
+            }
+        }
+    }
+
+    if !location.as_str().is_ascii() {
+        return Err(BoxedError::new(
+            BasicKind::Error,
+            "Invalid MaxNovo DN sequence",
+            "A de novo sequence cannot contain non-ASCII characters",
+            location.context().to_owned(),
+        ));
+    }
+
+    let mut peptidoform = Peptidoform::default();
+    let mut ambiguous_group_id = NonZeroU32::MIN;
+
+    let mut inner_location = location.clone();
+    while !inner_location.is_empty() {
+        let next = Element::parse(inner_location, custom_database)?;
+        next.0
+            .add_to_peptidoform(&mut peptidoform, &mut ambiguous_group_id, None);
+        inner_location = next.1;
+    }
+
+    Ok(peptidoform)
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::identification::{
+        common_parser::Location, csv::CsvLine, formats::maxquant::parse_de_novo_sequence,
+    };
+
+    #[test]
+    fn de_novo_sequence() {
+        let expected = vec![
+            ("{I|L}{I|L}C", "JJC"),
+            ("[AG][CR]HHAN", "(?AG)(?CR)HHAN"),
+            (
+                "{M(Oxidation (M))|F}G{[QN]|[{E|Q(Deamidation (NQ))}{I|L}]|[KN]}W[C{E|Q(Deamidation (NQ))}]{D|N(Deamidation (NQ))}YQ",
+                "(?F)G(?KN)W(?CQ[U:Deamidated])(?N[U:Deamidated])YQ",
+            ),
+        ];
+
+        for (test, expected) in expected {
+            let test = parse_de_novo_sequence(
+                Location {
+                    line: &CsvLine {
+                        line_index: 0,
+                        line: test.to_string(),
+                        fields: Vec::new(),
+                    },
+                    location: 0..test.len(),
+                    column: None,
+                },
+                None,
+            )
+            .unwrap();
+            assert_eq!(test.to_string(), expected);
+        }
     }
 }

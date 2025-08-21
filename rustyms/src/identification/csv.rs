@@ -21,9 +21,9 @@ use crate::helper_functions::check_extension;
 /// A single line in a CSV file
 #[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
 pub struct CsvLine {
-    line_index: usize,
-    line: String,
-    fields: Vec<(Arc<String>, Range<usize>)>,
+    pub(super) line_index: usize,
+    pub(super) line: String,
+    pub(super) fields: Vec<(Arc<String>, Range<usize>)>,
 }
 
 #[allow(dead_code)]
@@ -103,7 +103,8 @@ impl CsvLine {
             .find(|f| *f.0 == *name)
             .map(|f| (&self.line[f.1.clone()], &f.1))
             .ok_or_else(|| {
-                BoxedError::new(BasicKind::Error,
+                BoxedError::new(
+                    BasicKind::Error,
                     "Could not find given column",
                     format!("This CSV file does not contain the needed column '{name}'"),
                     self.full_context(),
@@ -180,9 +181,13 @@ pub fn parse_csv(
     path: impl AsRef<std::path::Path>,
     separator: u8,
     provided_header: Option<Vec<String>>,
-) -> Result<Box<dyn Iterator<Item = Result<CsvLine, BoxedError<'static, BasicKind>>>>, BoxedError<'static, BasicKind>> {
+) -> Result<
+    Box<dyn Iterator<Item = Result<CsvLine, BoxedError<'static, BasicKind>>>>,
+    BoxedError<'static, BasicKind>,
+> {
     let file = File::open(path.as_ref()).map_err(|e| {
-        BoxedError::new(BasicKind::Error,
+        BoxedError::new(
+            BasicKind::Error,
             "Could not open file",
             e.to_string(),
             Context::default()
@@ -223,7 +228,8 @@ pub fn parse_csv_raw<T: std::io::Read>(
             if c.len_utf8() == 1 {
                 separator = c as u8;
             } else {
-                return Err(BoxedError::new(BasicKind::Error,
+                return Err(BoxedError::new(
+                    BasicKind::Error,
                     "Unicode value separators not supported",
                     "This is a character that takes more than 1 byte to represent in Unicode, this is not supported in parsing CSV files.",
                     Context::line_with_comment(Some(0), format!("sep={sep}"), 4, sep.len(), None),
@@ -237,14 +243,16 @@ pub fn parse_csv_raw<T: std::io::Read>(
     }
     let column_headers = if let Some(header) = provided_header {
         let (_, column_headers) = lines.peek().ok_or_else(|| {
-            BoxedError::new(BasicKind::Error,
+            BoxedError::new(
+                BasicKind::Error,
                 "Could parse csv file",
                 "The file is empty",
                 Context::default(),
             )
         })?;
         let header_line = column_headers.as_ref().map_err(|err| {
-            BoxedError::new(BasicKind::Error,
+            BoxedError::new(
+                BasicKind::Error,
                 "Could not read header line",
                 err.to_string(),
                 Context::default(),
@@ -262,10 +270,16 @@ pub fn parse_csv_raw<T: std::io::Read>(
         provided_header
     } else {
         let (_, column_headers) = lines.next().ok_or_else(|| {
-            BoxedError::new(BasicKind::Error,"Could parse csv file", "The file is empty", Context::none())
+            BoxedError::new(
+                BasicKind::Error,
+                "Could parse csv file",
+                "The file is empty",
+                Context::none(),
+            )
         })?;
         let header_line = column_headers.map_err(|err| {
-            BoxedError::new(BasicKind::Error,
+            BoxedError::new(
+                BasicKind::Error,
                 "Could not read header line",
                 err.to_string(),
                 Context::none(),
@@ -323,9 +337,13 @@ impl<T: std::io::Read> Iterator for CsvLineIter<T> {
 
 /// # Errors
 /// If the line is empty.
-pub(crate) fn csv_separate(line: &str, separator: u8) -> Result<Vec<Range<usize>>, BoxedError<'_, BasicKind>> {
+pub(crate) fn csv_separate(
+    line: &str,
+    separator: u8,
+) -> Result<Vec<Range<usize>>, BoxedError<'_, BasicKind>> {
     if line.is_empty() {
-        return Err(BoxedError::new(BasicKind::Error,
+        return Err(BoxedError::new(
+            BasicKind::Error,
             "Empty line",
             "The line is empty",
             Context::none(),
