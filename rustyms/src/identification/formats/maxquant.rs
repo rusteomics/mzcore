@@ -21,7 +21,10 @@ use crate::{
     },
     ontology::CustomDatabase,
     prelude::{AminoAcid, CheckedAminoAcid, CompoundPeptidoformIon, SequenceElement},
-    sequence::{Modification, Peptidoform, SemiAmbiguous, SimpleLinear, SloppyParsingParameters},
+    sequence::{
+        Modification, Peptidoform, SemiAmbiguous, SimpleLinear, SimpleModificationInner,
+        SloppyParsingParameters,
+    },
     system::{Mass, MassOverCharge, Time, isize::Charge},
 };
 
@@ -63,10 +66,11 @@ format_family!(
         collision_energy: f32, |location: Location, _| location.parse::<f32>(NUMBER_ERROR);
         delta_score: f32, |location: Location, _| location.parse::<f32>(NUMBER_ERROR);
         dn_c_mass: Mass, |location: Location, _| location.parse::<f64>(NUMBER_ERROR).map(Mass::new::<crate::system::dalton>);
+        /// The combined score is a combination of the complete score and the gap score. Both of these scores are ranked, and then the sum of the two ranks is taken and normalized to lie between 0 and 100.
         dn_combined_score: f32, |location: Location, _| location.parse::<f32>(NUMBER_ERROR);
         dn_complete: bool, |location: Location, _| Ok(location.as_str() == "+");
         dn_n_mass: Mass, |location: Location, _| location.parse::<f64>(NUMBER_ERROR).map(Mass::new::<crate::system::dalton>);
-        dn_sequence: Peptidoform<SimpleLinear>, |location: Location, custom_database: Option<&CustomDatabase>| parse_de_novo_sequence(location, custom_database);
+        dn_sequence: Peptidoform<SimpleLinear>, |location: Location, custom_database: Option<&CustomDatabase>| location.or_empty().map(|l| parse_de_novo_sequence(l, custom_database));
         evidence_id: usize, |location: Location, _| location.parse::<usize>(NUMBER_ERROR);
         experiment: Box<str>, |location: Location, _| Ok(location.get_boxed_str());
         mode: Box<str>, |location: Location, _| Ok(location.get_boxed_str());
@@ -105,6 +109,19 @@ format_family!(
         score_diff: f32, |location: Location, _| location.parse::<f32>(NUMBER_ERROR);
         simple_mass_error_ppm: f32, |location: Location, _| location.parse::<f32>(NUMBER_ERROR);
         total_ion_current: f32, |location: Location, _| location.parse::<f32>(NUMBER_ERROR);
+    }
+
+    fn post_process(_source: &CsvLine, mut parsed: Self, _custom_database: Option<&CustomDatabase>) -> Result<Self, BoxedError<'static, BasicKind>> {
+        if let Some(dn_sequence) = parsed.dn_sequence.as_mut() {
+            if let Some(n_mass) = parsed.dn_n_mass && n_mass != Mass::default() && !n_mass.is_nan() {
+                dn_sequence.add_simple_n_term(SimpleModificationInner::Mass(n_mass.into()).into());
+            }
+            if let Some(c_mass) = parsed.dn_c_mass && c_mass != Mass::default() && !c_mass.is_nan() {
+                dn_sequence.add_simple_c_term(SimpleModificationInner::Mass(c_mass.into()).into());
+            }
+        }
+
+        Ok(parsed)
     }
 );
 
@@ -499,6 +516,20 @@ impl MetaData for MaxQuantData {
     }
 }
 
+/// Parse a MaxNovo sequence
+/// # Errors
+/// If the sequence does not follow the MaxNovo format
+///
+/// # Specification (provided by MaxQuant)
+/// Three different kinds of brackets (round, square, and curly) can be found in a regex de-novo-
+/// sequence. The round brackets “()” contain the modification of the amino acid that is located
+/// on the left side of the brackets. For example M(Oxidation (M)). The square brackets “[]”
+/// contain two amino acids that their order cannot be distinguished by MaxNovo due to the
+/// absence of fragment ion peaks in the MS/MS scan. For example [WR] can be either WR or
+/// RW. The curly brackets “{}” contain amino acids that are separated by the pipe character “|”.
+/// The separated by “|” amino acids are equally possible to be at that position because they are
+/// isobaric or almost isobaric (up to mass tolerance error). For example {I|L} can be either I or L.
+#[expect(clippy::needless_pass_by_value)]
 fn parse_de_novo_sequence(
     location: Location,
     custom_database: Option<&CustomDatabase>,
@@ -512,6 +543,9 @@ fn parse_de_novo_sequence(
 
     impl Element {
         /// Parse the next element and return the left over location
+        /// # Errors
+        /// If the next section could not be parsed as a single sequence element
+        #[expect(clippy::needless_pass_by_value)]
         fn parse<'a>(
             location: Location<'a>,
             custom_database: Option<&CustomDatabase>,
@@ -673,6 +707,8 @@ fn parse_de_novo_sequence(
             }
         }
 
+        /// Add this sequence element to the given existing peptidoform
+        #[allow(clippy::missing_panics_doc)] // Cannot panic
         fn add_to_peptidoform(
             self,
             peptidoform: &mut Peptidoform<SimpleLinear>,
@@ -758,6 +794,7 @@ fn parse_de_novo_sequence(
 }
 
 #[cfg(test)]
+#[allow(clippy::missing_panics_doc)]
 mod tests {
     use crate::identification::{
         common_parser::Location, csv::CsvLine, formats::maxquant::parse_de_novo_sequence,
