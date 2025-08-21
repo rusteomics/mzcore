@@ -134,7 +134,7 @@ impl IdentifiedPeptidoformVersion<InstaNovoFormat> for InstaNovoVersion {
 }
 
 /// The model that produced the final prediction for an InstaNovoPlus
-#[derive(Clone, Copy, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
+#[derive(Clone, Copy, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 pub enum UsedModel {
     /// The diffusion model
     Diffusion,
