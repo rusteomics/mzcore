@@ -102,7 +102,7 @@ format_family!(
         scan_index: usize, |location: Location, _| location.parse::<usize>(NUMBER_ERROR);
         score_diff: f32, |location: Location, _| location.parse::<f32>(NUMBER_ERROR);
         simple_mass_error_ppm: f32, |location: Location, _| location.parse::<f32>(NUMBER_ERROR);
-        total_ion_current: usize, |location: Location, _| location.parse::<usize>(NUMBER_ERROR);
+        total_ion_current: f32, |location: Location, _| location.parse::<f32>(NUMBER_ERROR);
     }
 );
 
