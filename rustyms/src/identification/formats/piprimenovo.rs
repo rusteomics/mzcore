@@ -59,7 +59,7 @@ pub const PIPRIMENOVO_V0_1: PiPrimeNovoFormat = PiPrimeNovoFormat {
 )]
 pub enum PiPrimeNovoVersion {
     #[default]
-    /// π-PrimeNovo version 1.1
+    /// π-PrimeNovo version 0.1
     V0_1,
 }
 

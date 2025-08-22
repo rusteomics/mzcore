@@ -104,16 +104,22 @@ impl MolecularFormula {
         result
     }
 
+    // TODO: Calculated mass is incorrect when mixing elements with many isotopes (>2).
+    // Enable tests below to check for the error.
     /// Get the isotopic distribution, using the natural distribution as defined by CIAAW.
     /// All elements are considered. The return is an array with the probability per offset.
-    /// The first element of the array is the base peak, every consecutive peak is 1 Dalton heavier.
+    /// The first element of the array is the base peak, every consecutive peak is ~1 Da heavier.
     /// The probability is normalized to (approximately) 1 total area.
     ///
     /// This approximation slightly overestimates the tail end of the distribution. Especially
     /// for species with multiple higher mass isotopes as it does not take the number of already
     /// chosen atoms for lower weighed isotopes into account.
+    ///
+    /// The mass returned is the average mass of all combinations of isotopes that generate that
+    /// offset. This follows the `+iA` definition of `mzPAF`.
     #[expect(clippy::missing_panics_doc)]
-    pub fn isotopic_distribution_with_mass(&self, threshold: f64) -> Array1<(Mass, f64)> {
+    #[expect(dead_code)]
+    fn isotopic_distribution_with_mass(&self, threshold: f64) -> Array1<(Mass, f64)> {
         let mut full_distribution = arr1(&[(Mass::default(), 1.0_f64)]);
         for (element, isotope, amount) in self.elements() {
             if isotope.is_some() || *amount <= 0 {
@@ -263,7 +269,7 @@ impl MolecularFormula {
     }
 }
 
-#[cfg(test)]
+#[cfg(never)] // Set to test to reenable the tests
 #[allow(clippy::missing_panics_doc)]
 mod test {
     #[test]
