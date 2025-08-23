@@ -220,12 +220,16 @@ impl Fragment {
                     .join("") // TODO: how to handle ambiguous mods? maybe store somewhere which where applied for this fragment
             )
             .unwrap(),
-            FragmentType::Unknown(num) => write!(
-                &mut output,
-                "?{}",
-                num.map_or(String::new(), |u| u.to_string())
-            )
-            .unwrap(),
+            FragmentType::Unknown(num) => {
+                if let Some(num) = num {
+                    write!(&mut output, "?{num}",).unwrap();
+                } else if let Some(formula) = &self.formula {
+                    // TODO: better way of storing?
+                    write!(&mut output, "f{{{formula}}}",).unwrap();
+                } else {
+                    write!(&mut output, "?",).unwrap();
+                }
+            }
             FragmentType::Diagnostic(_)
             | FragmentType::B { .. }
             | FragmentType::BComposition(_, _)
@@ -286,10 +290,10 @@ impl Fragment {
         }
         // Deviation
         match self.deviation {
-            Some(Tolerance::Absolute(abs)) => write!(&mut output, "/{}", abs.value).unwrap(),
+            Some(Tolerance::Absolute(abs)) => write!(&mut output, "/{:.3}", abs.value).unwrap(),
             Some(Tolerance::Relative(ppm)) => write!(
                 &mut output,
-                "/{}ppm",
+                "/{:.3}ppm",
                 ppm.get::<crate::system::ratio::ppm>()
             )
             .unwrap(),
