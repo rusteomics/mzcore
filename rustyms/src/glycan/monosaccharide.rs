@@ -59,7 +59,7 @@ impl MonoSaccharide {
         }
         let mut fragments = Vec::new();
         let compositions =
-            Self::composition_options(composition, model.glycan.compositional_range.clone());
+            Self::composition_options(composition, model.glycan.compositional_range);
 
         // Generate compositional B and Y ions
         let charges_other = charge_carriers.range(model.glycan.other_charge_range);

@@ -51,7 +51,7 @@ impl CsvLine {
     }
 
     /// Get the number of columns
-    pub fn number_of_columns(&self) -> usize {
+    pub const fn number_of_columns(&self) -> usize {
         self.fields.len()
     }
 

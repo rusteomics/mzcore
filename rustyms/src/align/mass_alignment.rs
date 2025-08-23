@@ -214,23 +214,21 @@ pub(super) fn determine_final_score<A, B>(
     path: &[Piece],
     scoring: AlignScoring<'_>,
 ) -> Score {
-    let maximal_score = (seq_a.sequence()
+    let maximal_score = isize::midpoint(seq_a.sequence()
         [start_a..start_a + path.iter().map(|p| p.step_a as usize).sum::<usize>()]
         .iter()
         .map(|a| {
             scoring.matrix[a.aminoacid.aminoacid() as usize][a.aminoacid.aminoacid() as usize]
                 as isize
         })
-        .sum::<isize>()
-        + seq_b.sequence()
+        .sum::<isize>(), seq_b.sequence()
             [start_b..start_b + path.iter().map(|p| p.step_b as usize).sum::<usize>()]
             .iter()
             .map(|a| {
                 scoring.matrix[a.aminoacid.aminoacid() as usize][a.aminoacid.aminoacid() as usize]
                     as isize
             })
-            .sum::<isize>())
-        / 2;
+            .sum::<isize>());
     let absolute_score = path.last().map(|p| p.score).unwrap_or_default();
     Score {
         absolute: absolute_score,

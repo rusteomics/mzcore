@@ -232,7 +232,7 @@ impl GlycanPeptideFragment {
     }
 
     /// Get if this models allows core fragments on peptide fragments and the depth range of those fragments
-    pub fn core(self) -> Option<(Option<usize>, Option<usize>)> {
+    pub const fn core(self) -> Option<(Option<usize>, Option<usize>)> {
         self.core
     }
 }

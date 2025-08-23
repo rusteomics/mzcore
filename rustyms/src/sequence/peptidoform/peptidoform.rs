@@ -422,12 +422,12 @@ impl<Complexity> Peptidoform<Complexity> {
     }
 
     /// Get the number of amino acids making up this peptide
-    pub fn len(&self) -> usize {
+    pub const fn len(&self) -> usize {
         self.sequence.len()
     }
 
     /// Check if the sequence of this peptide is empty (does not contain any amino acids)
-    pub fn is_empty(&self) -> bool {
+    pub const fn is_empty(&self) -> bool {
         self.sequence.is_empty()
     }
 

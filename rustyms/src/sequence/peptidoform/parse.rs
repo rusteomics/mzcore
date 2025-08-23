@@ -799,18 +799,18 @@ pub(super) fn global_unknown_position_mods<'a>(
                 index += len + 1;
                 if num < 0 {
                     errs.push(
-                        BoxedError::new(BasicKind::Error,"Invalid unknown position modification", "A modification of unknown position with multiple copies cannot have more a negative number of copies", Context::line(None, std::str::from_utf8(bytes).unwrap(), index, 1)));
+                        BoxedError::new(BasicKind::Error,"Invalid unknown position modification", "A modification of unknown position with multiple copies cannot have more a negative number of copies", Context::line(None, line, index, 1)));
                     0
                 } else if num > i16::MAX as isize {
                     errs.push(
-                        BoxedError::new(BasicKind::Error,"Invalid unknown position modification", format!("A modification of unknown position with multiple copies cannot have more then {} copies", i16::MAX), Context::line(None, std::str::from_utf8(bytes).unwrap(), index, 1)));
+                        BoxedError::new(BasicKind::Error,"Invalid unknown position modification", format!("A modification of unknown position with multiple copies cannot have more then {} copies", i16::MAX), Context::line(None, line, index, 1)));
                     0
                 } else {
                     num as usize
                 }
             } else {
                 errs.push(
-                    BoxedError::new(BasicKind::Error,"Invalid unknown position modification", "A modification of unknown position with multiple copies needs the copy number after the caret ('^') symbol", Context::line(None, std::str::from_utf8(bytes).unwrap(), index, 1)));
+                    BoxedError::new(BasicKind::Error,"Invalid unknown position modification", "A modification of unknown position with multiple copies needs the copy number after the caret ('^') symbol", Context::line(None, line, index, 1)));
                 0
             }
         } else {
