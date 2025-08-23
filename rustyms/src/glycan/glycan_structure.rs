@@ -57,7 +57,8 @@ impl GlycanStructure {
         while offset < range.end {
             while bytes[offset] == b'[' {
                 let end = end_of_enclosure(line, offset + 1, b'[', b']').ok_or_else(|| {
-                    BoxedError::new(BasicKind::Error,
+                    BoxedError::new(
+                        BasicKind::Error,
                         "Invalid iupac short glycan",
                         "No closing brace for branch",
                         Context::line(Some(line_index), line, offset, range.end - offset),
@@ -87,7 +88,8 @@ impl GlycanStructure {
             .pop()
             .map_or_else(
                 || {
-                    Err(BoxedError::new(BasicKind::Error,
+                    Err(BoxedError::new(
+                        BasicKind::Error,
                         "Invalid iupac short glycan",
                         "No glycan found",
                         Context::line(Some(line_index), line.to_string(), range.start, range.len()),
@@ -306,7 +308,10 @@ impl GlycanStructure {
 
     /// # Errors
     /// Return an Err if the format is not correct
-    fn parse_internal(line: &str, range: Range<usize>) -> Result<(Self, usize), BoxedError<'_, BasicKind>> {
+    fn parse_internal(
+        line: &str,
+        range: Range<usize>,
+    ) -> Result<(Self, usize), BoxedError<'_, BasicKind>> {
         // Parse at the start the first recognised glycan name
         if let Some(name) = GLYCAN_PARSE_LIST
             .iter()
@@ -317,7 +322,8 @@ impl GlycanStructure {
             if line.as_bytes()[index] == b'(' {
                 // Find the end of this list
                 let end = end_of_enclosure(line, index + 1, b'(', b')').ok_or_else(|| {
-                    BoxedError::new(BasicKind::Error,
+                    BoxedError::new(
+                        BasicKind::Error,
                         "Invalid glycan branch",
                         "No valid closing delimiter",
                         Context::line(None, line, index, 1),
@@ -332,7 +338,8 @@ impl GlycanStructure {
                 // Keep parsing until the end of this branch level (until the ')' is reached)
                 while index < end {
                     if line.as_bytes()[index] != b',' {
-                        return Err(BoxedError::new(BasicKind::Error,
+                        return Err(BoxedError::new(
+                            BasicKind::Error,
                             "Invalid glycan structure",
                             "Branches should be separated by commas ','",
                             Context::line(None, line, index, 1),
@@ -360,7 +367,8 @@ impl GlycanStructure {
                 ))
             }
         } else {
-            Err(BoxedError::new(BasicKind::Error,
+            Err(BoxedError::new(
+                BasicKind::Error,
                 "Could not parse glycan structure",
                 "Could not parse the following part",
                 Context::line(None, line, range.start, range.len()),

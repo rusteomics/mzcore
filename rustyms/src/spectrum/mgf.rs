@@ -35,7 +35,8 @@ use flate2::bufread::GzDecoder;
 pub fn open(path: impl AsRef<Path>) -> Result<Vec<RawSpectrum>, BoxedError<'static, BasicKind>> {
     let path = path.as_ref();
     let file = File::open(path).map_err(|err| {
-        BoxedError::new(BasicKind::Error,
+        BoxedError::new(
+            BasicKind::Error,
             "Could not open file",
             err.to_string(),
             Context::default().source(path.to_string_lossy()).to_owned(),
@@ -57,19 +58,23 @@ pub fn open(path: impl AsRef<Path>) -> Result<Vec<RawSpectrum>, BoxedError<'stat
 /// * When any expected number in the file is not a number.
 /// * When there is only one column (separated by space or tab) on a data row.
 #[expect(clippy::missing_panics_doc)]
-pub fn open_raw<T: std::io::Read>(reader: T) -> Result<Vec<RawSpectrum>, BoxedError<'static, BasicKind>> {
+pub fn open_raw<T: std::io::Read>(
+    reader: T,
+) -> Result<Vec<RawSpectrum>, BoxedError<'static, BasicKind>> {
     let reader = BufReader::new(reader);
     let mut current = RawSpectrum::default();
     let mut output = Vec::new();
     for (line_index, line) in reader.lines().enumerate() {
         let line = line.map_err(|err| {
-            BoxedError::new(BasicKind::Error,
+            BoxedError::new(
+                BasicKind::Error,
                 "Could not read mgf file",
                 format!("Error while reading line: {err}"),
                 Context::default().line_index(line_index as u32),
             )
         })?;
-        let base_error = BoxedError::new(BasicKind::Error,
+        let base_error = BoxedError::new(
+            BasicKind::Error,
             "Could not read mgf file",
             "..",
             Context::full_line(line_index as u32, line.clone()),

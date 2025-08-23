@@ -161,7 +161,8 @@ fn parse_single_modification<'a>(
         );
 
         let modification = if let (Some(head), Some(tail)) = (head.as_ref(), tail) {
-            let basic_error = BoxedError::new(BasicKind::Error,
+            let basic_error = BoxedError::new(
+                BasicKind::Error,
                 "Invalid modification",
                 "..",
                 Context::line(None, line, offset + tail.1, tail.2),
@@ -416,7 +417,8 @@ fn parse_single_modification<'a>(
                         .as_ref()
                         .is_some_and(|l| *l != linker)
                     {
-                        return Err(BoxedError::new(BasicKind::Error,
+                        return Err(BoxedError::new(
+                            BasicKind::Error,
                             "Invalid branch definition",
                             "A branch definition has to be identical at both sites, or only defined at one site.",
                             Context::line(None, line, offset + full.1, full.2),
@@ -446,7 +448,8 @@ fn parse_single_modification<'a>(
                         .as_ref()
                         .is_some_and(|l| *l != linker)
                     {
-                        return Err(BoxedError::new(BasicKind::Error,
+                        return Err(BoxedError::new(
+                            BasicKind::Error,
                             "Invalid cross-link definition",
                             "A cross-link definition has to be identical at both sites, or only defined at one site.",
                             Context::line(None, line, offset + full.1, full.2),
@@ -474,7 +477,8 @@ fn parse_single_modification<'a>(
             })
         }
     } else {
-        Err(BoxedError::new(BasicKind::Error,
+        Err(BoxedError::new(
+            BasicKind::Error,
             "Invalid modification",
             "It does not match the ProForma definition for modifications",
             Context::line(None, line, offset, full_modification.len()),
@@ -502,7 +506,8 @@ fn handle_ambiguous_modification<'a>(
     // Handle all possible cases of having a modification found at this position and having a modification defined in the ambiguous lookup
     match (modification, found_definition) {
         // Have a mod defined here and already in the lookup (error)
-        (Ok(Some(_)), Some((_, true))) => Err(BoxedError::new(BasicKind::Error,
+        (Ok(Some(_)), Some((_, true))) => Err(BoxedError::new(
+            BasicKind::Error,
             "Invalid ambiguous modification",
             "An ambiguous modification cannot be placed twice (for one of the modifications leave out the modification and only provide the group name)",
             context,

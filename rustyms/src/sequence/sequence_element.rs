@@ -335,7 +335,8 @@ impl<T> SequenceElement<T> {
                     .simple()
                     .map(|s| s.placement_rules())
                     .unwrap_or_default();
-                return Err(BoxedError::new(BasicKind::Error,
+                return Err(BoxedError::new(
+                    BasicKind::Error,
                     "Modification incorrectly placed",
                     format!(
                         "Modification {modification} is not allowed on {}{}",

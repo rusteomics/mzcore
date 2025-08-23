@@ -44,14 +44,14 @@ impl Peptidoform<SemiAmbiguous> {
         custom_database: Option<&CustomDatabase>,
         parameters: &SloppyParsingParameters,
     ) -> Result<Self, BoxedError<'a, BasicKind>> {
-        Peptidoform::pro_forma(&line[location.clone()], custom_database).and_then(|p| p.into_semi_ambiguous().ok_or_else(|| 
+        Peptidoform::pro_forma(&line[location.clone()], custom_database).and_then(|p| p.into_semi_ambiguous().ok_or_else(||
             BoxedError::new(BasicKind::Error,
                 "Peptidoform too complex",
                 "A peptidoform as used here should not contain any complex parts of the ProForma specification, only amino acids and simple placed modifications are allowed",
                 Context::line_range(None, line, location.clone()),
-            ))).or_else(|pro_forma_error| 
+            ))).or_else(|pro_forma_error|
                 Self::sloppy_pro_forma(line, location.clone(), custom_database, parameters)
-                .map_err(|sloppy_error| 
+                .map_err(|sloppy_error|
                     BoxedError::new(BasicKind::Error,
                         "Invalid peptidoform", 
                         "The sequence could not be parsed as a ProForma nor as a more loosly defined peptidoform, see the underlying errors for details", 
@@ -75,7 +75,8 @@ impl Peptidoform<SemiAmbiguous> {
         parameters: &SloppyParsingParameters,
     ) -> Result<Self, BoxedError<'a, BasicKind>> {
         if line[location.clone()].trim().is_empty() {
-            return Err(BoxedError::new(BasicKind::Error,
+            return Err(BoxedError::new(
+                BasicKind::Error,
                 "Peptide sequence is empty",
                 "A peptide sequence cannot be empty",
                 Context::line(None, line, location.start, 1),
@@ -102,7 +103,8 @@ impl Peptidoform<SemiAmbiguous> {
                     let end_index =
                         end_of_enclosure(&line[location.clone()], index + 1, open, close)
                             .ok_or_else(|| {
-                                BoxedError::new(BasicKind::Error,
+                                BoxedError::new(
+                                    BasicKind::Error,
                                     "Invalid modification",
                                     "No valid closing delimiter",
                                     Context::line(None, line, location.start + index, 1),
@@ -170,14 +172,16 @@ impl Peptidoform<SemiAmbiguous> {
                             .find(|(aa, _)| *aa == seq.aminoacid.aminoacid())
                             .map(|(_, m)| seq.modifications.push(Modification::Simple(m.clone())))
                             .ok_or_else(|| {
-                                BoxedError::new(BasicKind::Error,
+                                BoxedError::new(
+                                    BasicKind::Error,
                                     "Invalid mod indication",
                                     "There is no given mod for this amino acid.",
                                     Context::line(None, line, location.start + index - 4, 4),
                                 )
                             })?,
                         None => {
-                            return Err(BoxedError::new(BasicKind::Error,
+                            return Err(BoxedError::new(
+                                BasicKind::Error,
                                 "Invalid mod indication",
                                 "A mod indication should always follow an amino acid.",
                                 Context::line(None, line, location.start + index - 3, 3),
@@ -220,7 +224,8 @@ impl Peptidoform<SemiAmbiguous> {
                     } else {
                         peptide.sequence_mut().push(SequenceElement::new(
                             ch.try_into().map_err(|()| {
-                                BoxedError::new(BasicKind::Error,
+                                BoxedError::new(
+                                    BasicKind::Error,
                                     "Invalid amino acid",
                                     "This character is not a valid amino acid",
                                     Context::line(None, line, location.start + index, 1),
@@ -234,7 +239,8 @@ impl Peptidoform<SemiAmbiguous> {
             }
         }
         if peptide.is_empty() {
-            return Err(BoxedError::new(BasicKind::Error,
+            return Err(BoxedError::new(
+                BasicKind::Error,
                 "Peptide sequence is empty",
                 "A peptide sequence cannot be empty",
                 Context::line(None, line, location.start, location.len()),

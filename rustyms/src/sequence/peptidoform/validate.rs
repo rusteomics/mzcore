@@ -26,7 +26,8 @@ pub(super) fn cross_links<'a>(
         if let Some(linker) = &definition.1 {
             match locations.len() {
                 0 => {
-                    return Err(BoxedError::new(BasicKind::Error,
+                    return Err(BoxedError::new(
+                        BasicKind::Error,
                         "Invalid cross-link",
                         format!(
                             "The cross-link named '{}' has no listed locations, this is an internal error please report this",
@@ -44,7 +45,8 @@ pub(super) fn cross_links<'a>(
                         peptidoform.0[index].add_simple_modification(position, linker.clone());
                     } else {
                         let rules = linker.placement_rules();
-                        return Err(BoxedError::new(BasicKind::Error,
+                        return Err(BoxedError::new(
+                            BasicKind::Error,
                             "Modification incorrectly placed",
                             format!(
                                 "Modification {linker} is not allowed on {}{}",
@@ -76,7 +78,8 @@ pub(super) fn cross_links<'a>(
                         linker.clone(),
                         definition.0.clone(),
                     ) {
-                        return Err(BoxedError::new(BasicKind::Error,
+                        return Err(BoxedError::new(
+                            BasicKind::Error,
                             "Invalid cross-link",
                             format!(
                                 "The cross-link named '{}' cannot be placed according to its location specificities",
@@ -87,7 +90,8 @@ pub(super) fn cross_links<'a>(
                     }
                 }
                 _ => {
-                    return Err(BoxedError::new(BasicKind::Error,
+                    return Err(BoxedError::new(
+                        BasicKind::Error,
                         "Invalid cross-link",
                         format!(
                             "The cross-link named '{}' has more than 2 attachment locations, only cross-links spanning two locations are allowed",
@@ -103,7 +107,8 @@ pub(super) fn cross_links<'a>(
             } else {
                 ("X", "DSS", "")
             };
-            return Err(BoxedError::new(BasicKind::Error,
+            return Err(BoxedError::new(
+                BasicKind::Error,
                 "Invalid cross-link",
                 format!(
                     "The cross-link named '{0}' is never defined, for example for {name}{description} define it like: '[{c}:{name}{0}]'",
@@ -140,7 +145,8 @@ pub(super) fn cross_links<'a>(
     }
 
     if found_peptides.len() != peptidoform.peptidoforms().len() {
-        return Err(BoxedError::new(BasicKind::Error,
+        return Err(BoxedError::new(
+            BasicKind::Error,
             "Unconnected peptidoform",
             "Not all peptides in this peptidoform are connected with cross-links or branches, if separate peptides were intended use the chimeric notation `+` instead of the peptidoform notation `//`.",
             Context::full_line(0, line),
@@ -190,7 +196,8 @@ impl Peptidoform<Linear> {
             let entry = &ambiguous_lookup[*modification];
             if let Some(m) = &entry.modification {
                 if !self.add_unknown_position_modification(m.clone(), .., &entry.as_settings()) {
-                    return Err(BoxedError::new(BasicKind::Error,
+                    return Err(BoxedError::new(
+                        BasicKind::Error,
                         "Modification of unknown position cannot be placed",
                         "There is no position where this modification can be placed based on the placement rules in the database.",
                         Context::show(format!(
@@ -203,7 +210,8 @@ impl Peptidoform<Linear> {
                     ));
                 }
             } else {
-                return Err(BoxedError::new(BasicKind::Error,
+                return Err(BoxedError::new(
+                    BasicKind::Error,
                     "Modification of unknown position was not defined",
                     "Please report this error",
                     Context::show(format!(
@@ -234,7 +242,8 @@ impl Peptidoform<Linear> {
                 start..=end,
                 &super::MUPSettings::default(),
             ) {
-                return Err(BoxedError::new(BasicKind::Error,
+                return Err(BoxedError::new(
+                    BasicKind::Error,
                     "Modification of unknown position on a range cannot be placed",
                     "There is no position where this modification can be placed based on the placement rules in the database.",
                     Context::show(modification.to_string()),

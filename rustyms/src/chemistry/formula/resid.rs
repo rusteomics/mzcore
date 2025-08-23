@@ -69,7 +69,8 @@ impl MolecularFormula {
                     amount *= number.1 as i32;
                 }
                 if !result.add((element, None, amount)) {
-                    return Err(BoxedError::new(BasicKind::Error,
+                    return Err(BoxedError::new(
+                        BasicKind::Error,
                         "Invalid RESID molecular formula",
                         "An element with undefined mass was used",
                         Context::line(
@@ -86,7 +87,8 @@ impl MolecularFormula {
                 }
                 trim(&mut index, value);
             } else {
-                return Err(BoxedError::new(BasicKind::Error,
+                return Err(BoxedError::new(
+                    BasicKind::Error,
                     "Invalid RESID molecular formula",
                     format!("Not a valid character in formula, now has: {result:?}"),
                     Context::line(

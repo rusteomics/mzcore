@@ -79,7 +79,8 @@ impl MolecularFormula {
                     let num = value[index + 1..index + 1 + length]
                         .parse::<i32>()
                         .map_err(|err| {
-                            BoxedError::new(BasicKind::Error,
+                            BoxedError::new(
+                                BasicKind::Error,
                                 "Invalid Unimod chemical formula",
                                 format!("The element amount {}", explain_number_error(&err)),
                                 Context::line(None, value, index + 1, length),
@@ -91,7 +92,8 @@ impl MolecularFormula {
                     )? {
                         Brick::Element(el) => {
                             if !formula.add((el, isotope.take(), num)) {
-                                return Err(BoxedError::new(BasicKind::Error,
+                                return Err(BoxedError::new(
+                                    BasicKind::Error,
                                     "Invalid Unimod chemical formula",
                                     "An element or isotope without a defined mass was found",
                                     Context::line_range(
@@ -109,7 +111,8 @@ impl MolecularFormula {
                     last_name_index = -1;
                     index += length + 2;
                     if value.as_bytes()[index - 1] != b')' {
-                        return Err(BoxedError::new(BasicKind::Error,
+                        return Err(BoxedError::new(
+                            BasicKind::Error,
                             "Invalid Unimod chemical formula",
                             "The amount of an element should be closed by ')'",
                             Context::line(None, value, index - 1, 1),
@@ -124,7 +127,8 @@ impl MolecularFormula {
                         )? {
                             Brick::Element(el) => {
                                 if !formula.add((el, isotope.take(), 1)) {
-                                    return Err(BoxedError::new(BasicKind::Error,
+                                    return Err(BoxedError::new(
+                                        BasicKind::Error,
                                         "Invalid Unimod chemical formula",
                                         "An element or isotope without a defined mass was found",
                                         Context::line_range(
@@ -151,7 +155,8 @@ impl MolecularFormula {
                         .count();
                     isotope = Some(value[index..index + length].parse::<NonZeroU16>().map_err(
                         |err| {
-                            BoxedError::new(BasicKind::Error,
+                            BoxedError::new(
+                                BasicKind::Error,
                                 "Invalid Unimod chemical formula",
                                 format!("The isotope {}", explain_number_error(&err)),
                                 Context::line(None, value, index, length),
@@ -168,7 +173,8 @@ impl MolecularFormula {
                     index += 1;
                 }
                 _ => {
-                    return Err(BoxedError::new(BasicKind::Error,
+                    return Err(BoxedError::new(
+                        BasicKind::Error,
                         "Invalid Unimod chemical formula",
                         "Unexpected character, use an element or one of the unimod shorthands. Eg: 'H(13) C(12) N O(3)'.",
                         Context::line(None, value, index, 1),
@@ -183,7 +189,8 @@ impl MolecularFormula {
             )? {
                 Brick::Element(el) => {
                     if !formula.add((el, isotope.take(), 1)) {
-                        return Err(BoxedError::new(BasicKind::Error,
+                        return Err(BoxedError::new(
+                            BasicKind::Error,
                             "Invalid Unimod chemical formula",
                             "An element or isotope without a defined mass was found",
                             Context::line_range(

@@ -23,13 +23,12 @@ use crate::{
     parse_json::{ParseJson, use_serde},
     quantities::Multi,
     sequence::{
-        AminoAcid, Linked, MUPSettings, Peptidoform, PlacementRule, SequenceElement,
-        SequencePosition, SimpleModification, SimpleModificationInner,
+        AminoAcid, CrossLinkName, CrossLinkSide, Linked, LinkerSpecificity, MUPSettings,
+        Peptidoform, PlacementRule, SequenceElement, SequencePosition, SimpleModification,
+        SimpleModificationInner,
     },
     system::OrderedMass,
 };
-
-use super::{CrossLinkName, CrossLinkSide, LinkerSpecificity};
 
 /// A modification on an amino acid
 #[derive(Clone, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
@@ -690,9 +689,12 @@ impl Display for CrossLinkName {
 /// the library.
 /// # Errors
 /// If the string could not be parsed.
-pub fn parse_custom_modifications(path: &Path) -> Result<CustomDatabase, BoxedError<'static, BasicKind>> {
+pub fn parse_custom_modifications(
+    path: &Path,
+) -> Result<CustomDatabase, BoxedError<'static, BasicKind>> {
     let string = std::fs::read_to_string(path).map_err(|err| {
-        BoxedError::new(BasicKind::Error,
+        BoxedError::new(
+            BasicKind::Error,
             "Could not parse custom modifications file",
             err.to_string(),
             Context::default().source(path.to_string_lossy()).to_owned(),
@@ -706,7 +708,9 @@ pub fn parse_custom_modifications(path: &Path) -> Result<CustomDatabase, BoxedEr
 /// the library.
 /// # Errors
 /// If the string could not be parsed.
-pub fn parse_custom_modifications_str(value: &str) -> Result<CustomDatabase, BoxedError<'static, BasicKind>> {
+pub fn parse_custom_modifications_str(
+    value: &str,
+) -> Result<CustomDatabase, BoxedError<'static, BasicKind>> {
     CustomDatabase::from_json(value)
 }
 

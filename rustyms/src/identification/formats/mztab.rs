@@ -18,8 +18,8 @@ use crate::{
     chemistry::MolecularFormula,
     helper_functions::{check_extension, explain_number_error, next_number, split_with_brackets},
     identification::{
-        FastaIdentifier, IdentifiedPeptidoform, IdentifiedPeptidoformData, KnownFileFormat,
-        MaybePeptidoform, MetaData, SpectrumId, SpectrumIds, FlankingSequence,
+        FastaIdentifier, FlankingSequence, IdentifiedPeptidoform, IdentifiedPeptidoformData,
+        KnownFileFormat, MaybePeptidoform, MetaData, SpectrumId, SpectrumIds,
     },
     ontology::{CustomDatabase, Ontology},
     quantities::Tolerance,
@@ -46,7 +46,7 @@ pub struct MZTabData {
     /// Indicates whether the peptide sequence (coming from the PSM) is unique for
     /// this protein in respect to the searched database.
     pub unique: Option<bool>,
-    /// The protein database used for the search together with the version of the 
+    /// The protein database used for the search together with the version of the
     /// database.
     pub database: Option<(String, Option<String>)>,
     /// The search engines that identified this peptide, alongside their identified score and the CV term describing the score
@@ -80,10 +80,13 @@ impl MZTabData {
     pub fn parse_file(
         path: impl AsRef<std::path::Path>,
         custom_database: Option<&CustomDatabase>,
-    ) -> Result<Box<dyn Iterator<Item = Result<Self, BoxedError<'static, BasicKind>>> + '_>, BoxedError<'static, BasicKind>>
-    {
+    ) -> Result<
+        Box<dyn Iterator<Item = Result<Self, BoxedError<'static, BasicKind>>> + '_>,
+        BoxedError<'static, BasicKind>,
+    > {
         let file = File::open(path.as_ref()).map_err(|e| {
-            BoxedError::new(BasicKind::Error,
+            BoxedError::new(
+                BasicKind::Error,
                 "Could not open file",
                 e.to_string(),
                 Context::default()
@@ -360,7 +363,8 @@ impl MZTabData {
                 .0
                 .parse()
                 .map_err(|err| {
-                    BoxedError::new(BasicKind::Error,
+                    BoxedError::new(
+                        BasicKind::Error,
                         "Invalid mzTab PSM_ID",
                         format!("The PSM_ID {}", explain_number_error(&err)),
                         Context::line_range(
@@ -379,9 +383,14 @@ impl MZTabData {
             database: line
                 .optional_column("database")
                 .and_then(|(v, _)| (!v.eq_ignore_ascii_case("null")).then(|| v.to_string()))
-                .map(|db| (db, line
-                .optional_column("database_version")
-                .and_then(|(v, _)| (!v.eq_ignore_ascii_case("null")).then(|| v.to_string())))),
+                .map(|db| {
+                    (
+                        db,
+                        line.optional_column("database_version").and_then(|(v, _)| {
+                            (!v.eq_ignore_ascii_case("null")).then(|| v.to_string())
+                        }),
+                    )
+                }),
             search_engine: {
                 let (value, range) = line
                     .required_column("search_engine")
@@ -443,7 +452,8 @@ impl MZTabData {
                     "1" => Ok(PSMReliability::High),
                     "2" => Ok(PSMReliability::Medium),
                     "3" => Ok(PSMReliability::Poor),
-                    _ => Err(BoxedError::new(BasicKind::Error,
+                    _ => Err(BoxedError::new(
+                        BasicKind::Error,
                         "Invalid PSM reliability",
                         format!("A reliability should be 1, 2, or 3, '{v}' is invalid"),
                         Context::line_range(Some(line.line_index as u32), line.line, range),
@@ -456,7 +466,8 @@ impl MZTabData {
                     (!v.eq_ignore_ascii_case("null")).then(|| {
                         v.parse::<f64>()
                             .map_err(|err| {
-                                BoxedError::new(BasicKind::Error,
+                                BoxedError::new(
+                                    BasicKind::Error,
                                     "Invalid mzTab retention time",
                                     format!("The retention time can not be parsed as f64: {err}"),
                                     Context::line_range(Some(line.line_index as u32), line.line, r),
@@ -478,7 +489,8 @@ impl MZTabData {
                         .trim_end_matches(".0")
                         .parse::<isize>()
                         .map_err(|err| {
-                            BoxedError::new(BasicKind::Error,
+                            BoxedError::new(
+                                BasicKind::Error,
                                 "Invalid mzTab charge",
                                 format!("The charge {}", explain_number_error(&err)),
                                 Context::line_range(Some(line.line_index as u32), line.line, range),
@@ -493,7 +505,8 @@ impl MZTabData {
                     (!v.eq_ignore_ascii_case("null")).then(|| {
                         v.parse::<f64>()
                             .map_err(|err| {
-                                BoxedError::new(BasicKind::Error,
+                                BoxedError::new(
+                                    BasicKind::Error,
                                     "Invalid mzTab experimental mz",
                                     format!("The experimental mz can not be parsed as f64: {err}"),
                                     Context::line_range(Some(line.line_index as u32), line.line, r),
@@ -585,41 +598,53 @@ impl MZTabData {
                 )
             },
             flanking_sequence: {
-                let pre = line
-                    .required_column("pre")
-                    .map_err(BoxedError::to_owned)?;
-                let post = line
-                    .required_column("post")
-                    .map_err(BoxedError::to_owned)?;
+                let pre = line.required_column("pre").map_err(BoxedError::to_owned)?;
+                let post = line.required_column("post").map_err(BoxedError::to_owned)?;
 
                 let pre = match pre.0 {
                     "null" => FlankingSequence::Unknown,
                     "-" => FlankingSequence::Terminal,
-                    aa if aa.len() == 1 => FlankingSequence::AminoAcid(AminoAcid::from_str(aa).map_err(|()| BoxedError::new(BasicKind::Error,
-                        "Invalid preceding amino acid",
-                        "This is not a valid amino acid code",
-                        Context::line_range(
-                            Some(line.line_index as u32),
-                            line.line,
-                            pre.1,
-                        ),
-                    ))?), 
-                    _ => FlankingSequence::Sequence(Box::new(Peptidoform::sloppy_pro_forma(line.line, pre.1, None, &SloppyParsingParameters::default())?)), 
+                    aa if aa.len() == 1 => {
+                        FlankingSequence::AminoAcid(AminoAcid::from_str(aa).map_err(|()| {
+                            BoxedError::new(
+                                BasicKind::Error,
+                                "Invalid preceding amino acid",
+                                "This is not a valid amino acid code",
+                                Context::line_range(Some(line.line_index as u32), line.line, pre.1),
+                            )
+                        })?)
+                    }
+                    _ => FlankingSequence::Sequence(Box::new(Peptidoform::sloppy_pro_forma(
+                        line.line,
+                        pre.1,
+                        None,
+                        &SloppyParsingParameters::default(),
+                    )?)),
                 };
 
                 let post = match post.0 {
                     "null" => FlankingSequence::Unknown,
                     "-" => FlankingSequence::Terminal,
-                    aa if aa.len() == 1 => FlankingSequence::AminoAcid(AminoAcid::from_str(aa).map_err(|()| BoxedError::new(BasicKind::Error,
-                        "Invalid following amino acid",
-                        "This is not a valid amino acid code",
-                        Context::line_range(
-                            Some(line.line_index as u32),
-                            line.line,
-                            post.1,
-                        ),
-                    ))?), 
-                    _ => FlankingSequence::Sequence(Box::new(Peptidoform::sloppy_pro_forma(line.line, post.1, None, &SloppyParsingParameters::default())?)), 
+                    aa if aa.len() == 1 => {
+                        FlankingSequence::AminoAcid(AminoAcid::from_str(aa).map_err(|()| {
+                            BoxedError::new(
+                                BasicKind::Error,
+                                "Invalid following amino acid",
+                                "This is not a valid amino acid code",
+                                Context::line_range(
+                                    Some(line.line_index as u32),
+                                    line.line,
+                                    post.1,
+                                ),
+                            )
+                        })?)
+                    }
+                    _ => FlankingSequence::Sequence(Box::new(Peptidoform::sloppy_pro_forma(
+                        line.line,
+                        post.1,
+                        None,
+                        &SloppyParsingParameters::default(),
+                    )?)),
                 };
                 (pre, post)
             },
@@ -628,7 +653,8 @@ impl MZTabData {
                 .and_then(|(v, r)| {
                     (!v.eq_ignore_ascii_case("null")).then(|| {
                         v.parse::<u16>().map_err(|err| {
-                            BoxedError::new(BasicKind::Error,
+                            BoxedError::new(
+                                BasicKind::Error,
                                 "Invalid mzTab start",
                                 format!("The start {}", explain_number_error(&err)),
                                 Context::line_range(Some(line.line_index as u32), line.line, r),
@@ -636,23 +662,29 @@ impl MZTabData {
                         })
                     })
                 })
-                .transpose().and_then(|start| {
+                .transpose()
+                .and_then(|start| {
                     let end = line
                         .optional_column("end")
                         .and_then(|(v, r)| {
                             (!v.eq_ignore_ascii_case("null")).then(|| {
                                 v.parse::<u16>().map_err(|err| {
-                                    BoxedError::new(BasicKind::Error,
+                                    BoxedError::new(
+                                        BasicKind::Error,
                                         "Invalid mzTab end",
                                         format!("The end {}", explain_number_error(&err)),
-                                        Context::line_range(Some(line.line_index as u32), line.line, r),
+                                        Context::line_range(
+                                            Some(line.line_index as u32),
+                                            line.line,
+                                            r,
+                                        ),
                                     )
                                 })
                             })
                         })
                         .transpose()?;
                     Ok(start.and_then(|s| end.map(|e| s..e)))
-            })?,
+                })?,
             local_confidence: line
                 .optional_column("opt_ms_run[1]_aa_scores")
                 .filter(|(lc, _)| !lc.trim().is_empty())
@@ -660,7 +692,8 @@ impl MZTabData {
                     v.split(',')
                         .map(|score| {
                             score.parse::<f64>().map_err(|err| {
-                                BoxedError::new(BasicKind::Error,
+                                BoxedError::new(
+                                    BasicKind::Error,
                                     "Invalid mzTab local confidence",
                                     format!("The local confidence can not be parsed: {err}"),
                                     Context::line_range(
@@ -695,7 +728,10 @@ impl MZTabData {
             // As Casanovo has a double N terminal modification (+43.006-17.027) which could also
             // exist as two separate modifications the number of N terminal modifications is not a
             // reliable measure to determine how many local confidence scores to ignore.
-            let c = result.peptidoform.as_ref().map_or(0, |p| p.get_c_term().len());
+            let c = result
+                .peptidoform
+                .as_ref()
+                .map_or(0, |p| p.get_c_term().len());
             let n = lc.len() - c - result.peptidoform.as_ref().map_or(0, Peptidoform::len);
             lc[n..lc.len() - c].to_vec()
         });
@@ -720,7 +756,7 @@ enum MZTabReturnModification {
 /// Definition: 'unimod:'<int>|'mod:'<int>|'chemmod:'(<formula>|<float>)
 /// Neutral loss: (<int>'-')? <CV term>
 /// ```
-/// 
+///
 /// # Errors
 /// If this is not a valid modification definition
 fn parse_modification<'a>(
@@ -753,7 +789,7 @@ fn parse_modification<'a>(
                                     ),
                                 )
                             })?;
-                            
+
                             let parameter = &single[offset..];
                             let score = if !parameter.is_empty()
                                 && single[offset..].starts_with('[')
@@ -812,7 +848,8 @@ fn parse_modification<'a>(
                 .parse::<f64>()
                 .map(|v| Mass::new::<crate::system::dalton>(v))
                 .map_err(|err| {
-                    BoxedError::new(BasicKind::Error,
+                    BoxedError::new(
+                        BasicKind::Error,
                         "Invalid neutral loss",
                         format!("The fragment neutral loss is not a valid number: {err}"),
                         Context::line_range(Some(line_index), line, value_range),
@@ -825,7 +862,8 @@ fn parse_modification<'a>(
                     if pos.len() == 1 {
                         Ok(MZTabReturnModification::NeutralLoss(Some(pos[0].0), loss))
                     } else {
-                        Err(BoxedError::new(BasicKind::Error,
+                        Err(BoxedError::new(
+                            BasicKind::Error,
                             "Invalid neutral loss",
                             "A neutral loss cannot be placed on multiple positions",
                             Context::line_range(
@@ -844,7 +882,8 @@ fn parse_modification<'a>(
                 Ontology::Unimod
                     .find_id(
                         value.parse::<usize>().map_err(|err| {
-                            BoxedError::new(BasicKind::Error,
+                            BoxedError::new(
+                                BasicKind::Error,
                                 "Invalid unimod code",
                                 format!("The unimod modification {}", explain_number_error(&err)),
                                 value_context.clone(),
@@ -853,7 +892,8 @@ fn parse_modification<'a>(
                         None,
                     )
                     .ok_or_else(|| {
-                        BoxedError::new(BasicKind::Error,
+                        BoxedError::new(
+                            BasicKind::Error,
                             "Invalid unimod code",
                             "The given unimod modification does not exist",
                             value_context.clone(),
@@ -863,7 +903,8 @@ fn parse_modification<'a>(
                 Ontology::Psimod
                     .find_id(
                         value.parse::<usize>().map_err(|err| {
-                            BoxedError::new(BasicKind::Error,
+                            BoxedError::new(
+                                BasicKind::Error,
                                 "Invalid PSI-MOD code",
                                 format!("The PSI-MOD modification {}", explain_number_error(&err)),
                                 value_context.clone(),
@@ -872,7 +913,8 @@ fn parse_modification<'a>(
                         None,
                     )
                     .ok_or_else(|| {
-                        BoxedError::new(BasicKind::Error,
+                        BoxedError::new(
+                            BasicKind::Error,
                             "Invalid PSI-MOD code",
                             "The given PSI-MOD modification does not exist",
                             value_context.clone(),
@@ -882,7 +924,8 @@ fn parse_modification<'a>(
                 Ontology::Custom
                     .find_id(
                         value.parse::<usize>().map_err(|err| {
-                            BoxedError::new(BasicKind::Error,
+                            BoxedError::new(
+                                BasicKind::Error,
                                 "Invalid custom code",
                                 format!("The custom modification {}", explain_number_error(&err)),
                                 value_context.clone(),
@@ -891,7 +934,8 @@ fn parse_modification<'a>(
                         custom_database,
                     )
                     .ok_or_else(|| {
-                        BoxedError::new(BasicKind::Error,
+                        BoxedError::new(
+                            BasicKind::Error,
                             "Invalid custom code",
                             "The given custom modification does not exist",
                             value_context.clone(),
@@ -905,7 +949,8 @@ fn parse_modification<'a>(
                         b'-' => -1,
                         b'+' => 1,
                         _ => {
-                            return Err(BoxedError::new(BasicKind::Error,
+                            return Err(BoxedError::new(
+                                BasicKind::Error,
                                 "Invalid mzTab modification",
                                 "A chemmod formula modification should be prepended by a sign",
                                 Context::line_range(
@@ -929,7 +974,8 @@ fn parse_modification<'a>(
                 }
                 .into()
             } else {
-                return Err(BoxedError::new(BasicKind::Error,
+                return Err(BoxedError::new(
+                    BasicKind::Error,
                     "Invalid mzTab modification",
                     "The modification should be prepended by a tag describing the kind of modification, the possible tags are: 'unimod', 'mod', and 'chemmod'",
                     Context::line_range(
@@ -951,7 +997,8 @@ fn parse_modification<'a>(
                 }
             })
         } else {
-            Err(BoxedError::new(BasicKind::Error,
+            Err(BoxedError::new(
+                BasicKind::Error,
                 "Invalid mzTab modification",
                 "An mzTab modification should be in format 'tag:value' but the colon (':') is missing",
                 Context::line_range(
@@ -968,7 +1015,8 @@ fn parse_modification<'a>(
             .parse::<f64>()
             .map(|v| Mass::new::<crate::system::dalton>(v))
             .map_err(|err| {
-                BoxedError::new(BasicKind::Error,
+                BoxedError::new(
+                    BasicKind::Error,
                     "Invalid neutral loss",
                     format!("The fragment neutral loss is not a valid number: {err}"),
                     Context::line_range(Some(line_index), line, value_range),
@@ -976,7 +1024,8 @@ fn parse_modification<'a>(
             })
             .map(|loss| MZTabReturnModification::NeutralLoss(None, loss))
     } else {
-        Err(BoxedError::new(BasicKind::Error,
+        Err(BoxedError::new(
+            BasicKind::Error,
             "Invalid modification",
             "A modification should be the position followed by a hyphen ('-') followed by the modification",
             Context::line_range(Some(line_index), line, range),
@@ -1003,7 +1052,8 @@ impl<'a> PSMLine<'a> {
         fields: &'a [Range<usize>],
     ) -> Result<Self, BoxedError<'a, BasicKind>> {
         let header = header.ok_or_else(|| {
-            BoxedError::new(BasicKind::Error,
+            BoxedError::new(
+                BasicKind::Error,
                 "Missing PSH line",
                 "The PSH peptide header line should precede any PSM line",
                 Context::full_line(line_index as u32, line),
@@ -1017,7 +1067,8 @@ impl<'a> PSMLine<'a> {
                 fields,
             })
         } else {
-            Err(BoxedError::new(BasicKind::Error,
+            Err(BoxedError::new(
+                BasicKind::Error,
                 "Invalid PSM line",
                 "This PSM line does not have the same number of columns as the PSH line",
                 Context::full_line(line_index as u32, line),
@@ -1040,7 +1091,8 @@ impl<'a> PSMLine<'a> {
         column: &str,
     ) -> Result<(&'b str, Range<usize>), BoxedError<'b, BasicKind>> {
         self.optional_column(column).ok_or_else(|| {
-            BoxedError::new(BasicKind::Error,
+            BoxedError::new(
+                BasicKind::Error,
                 "Missing column",
                 format!("The column '{column}' is required but not present"),
                 Context::full_line(self.line_index as u32, self.line),
@@ -1119,7 +1171,7 @@ impl CVTerm {
                 if c == ',' {
                     if field == 1 {
                         id = field_index.as_ref().map_or(index..index, Clone::clone);
-                    } 
+                    }
                     if field == 3 {
                         // Just continue
                     } else {
@@ -1127,16 +1179,19 @@ impl CVTerm {
                         field_index = None;
                     }
                 } else if !c.is_ascii_whitespace() {
-                    field_index = field_index.map_or_else(|| Some(index..index + c.len_utf8()), |range| Some(range.start..index + c.len_utf8()));
+                    field_index = field_index.map_or_else(
+                        || Some(index..index + c.len_utf8()),
+                        |range| Some(range.start..index + c.len_utf8()),
+                    );
                 }
             }
-            let comment =
-                field_index.map_or(range.end..range.end, |range| range);
+            let comment = field_index.map_or(range.end..range.end, |range| range);
 
             if line[id.clone()].eq_ignore_ascii_case(required_id) {
                 Ok(comment)
             } else {
-                Err(BoxedError::new(BasicKind::Error,
+                Err(BoxedError::new(
+                    BasicKind::Error,
                     "Invalid CV term",
                     format!(
                         "A CV term with id {required_id} \"{required_term}\" was expected but id {} was found",
@@ -1146,7 +1201,8 @@ impl CVTerm {
                 ))
             }
         } else {
-            Err(BoxedError::new(BasicKind::Error,
+            Err(BoxedError::new(
+                BasicKind::Error,
                 "Invalid CV term",
                 "A CV term should be enclosed by '[]'",
                 Context::line_range(None, line, range),
@@ -1169,7 +1225,8 @@ impl FromStr for CVTerm {
                 comment: split.next().unwrap_or_default().trim().to_string(),
             })
         } else {
-            Err(BoxedError::new(BasicKind::Error,
+            Err(BoxedError::new(
+                BasicKind::Error,
                 "Invalid CV term",
                 "A CV term should be enclosed by '[]'",
                 Context::show(value).to_owned(),
@@ -1217,7 +1274,8 @@ fn parse_mztab_reader<T: BufRead>(
 ) -> impl Iterator<Item = Result<Option<MZTabLine>, BoxedError<'static, BasicKind>>> {
     reader.lines().enumerate().map(move |(line_index, line)| {
         line.map_err(|err| {
-            BoxedError::new(BasicKind::Error,
+            BoxedError::new(
+                BasicKind::Error,
                 "Could not read line",
                 err.to_string(),
                 Context::default().line_index(line_index as u32),
@@ -1242,7 +1300,9 @@ fn parse_mztab_reader<T: BufRead>(
 
 impl MetaData for MZTabData {
     fn compound_peptidoform_ion(&self) -> Option<Cow<'_, CompoundPeptidoformIon>> {
-        self.peptidoform.as_ref().map(|p| Cow::Owned(p.clone().into()))
+        self.peptidoform
+            .as_ref()
+            .map(|p| Cow::Owned(p.clone().into()))
     }
 
     fn format(&self) -> KnownFileFormat {
@@ -1328,12 +1388,14 @@ impl MetaData for MZTabData {
     fn protein_location(&self) -> Option<Range<u16>> {
         self.protein_location.clone()
     }
-    
+
     fn flanking_sequences(&self) -> (&FlankingSequence, &FlankingSequence) {
         (&self.flanking_sequence.0, &self.flanking_sequence.1)
     }
 
     fn database(&self) -> Option<(&str, Option<&str>)> {
-        self.database.as_ref().map(|(db, version)| (db.as_str(), version.as_deref()))
+        self.database
+            .as_ref()
+            .map(|(db, version)| (db.as_str(), version.as_deref()))
     }
 }
