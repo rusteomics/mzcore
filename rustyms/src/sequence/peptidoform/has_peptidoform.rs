@@ -1,9 +1,6 @@
 use std::{rc::Rc, sync::Arc};
 
-use crate::{
-    prelude::{CompoundPeptidoformIon, Peptidoform, PeptidoformIon},
-    sequence::AtLeast,
-};
+use crate::sequence::{AtLeast, CompoundPeptidoformIon, Peptidoform, PeptidoformIon};
 
 /// A structure that has a reference to a peptidoform.
 pub trait HasPeptidoformImpl {

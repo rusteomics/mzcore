@@ -121,7 +121,8 @@ impl ParseJson for LinkerSpecificity {
                         Ok(Self::Symmetric {
                             rules: Vec::<PlacementRule>::from_json_value(
                                 map.remove("rules").ok_or_else(|| {
-                                    BoxedError::new(BasicKind::Error,
+                                    BoxedError::new(
+                                        BasicKind::Error,
                                         "Invalid LinkerSpecificity",
                                         "The required property 'rules' is missing",
                                         Context::show(
@@ -134,7 +135,8 @@ impl ParseJson for LinkerSpecificity {
                             )?,
                             stubs: Vec::<(MolecularFormula, MolecularFormula)>::from_json_value(
                                 map.remove("stubs").ok_or_else(|| {
-                                    BoxedError::new(BasicKind::Error,
+                                    BoxedError::new(
+                                        BasicKind::Error,
                                         "Invalid LinkerSpecificity",
                                         "The required property 'stubs' is missing",
                                         Context::show(
@@ -147,7 +149,8 @@ impl ParseJson for LinkerSpecificity {
                             )?,
                             neutral_losses: Vec::<NeutralLoss>::from_json_value(
                                 map.remove("neutral_losses").ok_or_else(|| {
-                                    BoxedError::new(BasicKind::Error,
+                                    BoxedError::new(
+                                        BasicKind::Error,
                                         "Invalid LinkerSpecificity",
                                         "The required property 'neutral_losses' is missing",
                                         Context::show(
@@ -160,7 +163,8 @@ impl ParseJson for LinkerSpecificity {
                             )?,
                             diagnostic: Vec::<DiagnosticIon>::from_json_value(
                                 map.remove("diagnostic").ok_or_else(|| {
-                                    BoxedError::new(BasicKind::Error,
+                                    BoxedError::new(
+                                        BasicKind::Error,
                                         "Invalid LinkerSpecificity",
                                         "The required property 'diagnostic' is missing",
                                         Context::show(
@@ -189,14 +193,16 @@ impl ParseJson for LinkerSpecificity {
                                 diagnostic,
                             })
                         } else {
-                            Err(BoxedError::new(BasicKind::Error,
+                            Err(BoxedError::new(
+                                BasicKind::Error,
                                 "Invalid NeutralLoss",
                                 "The Symmetric is a sequence but does not have 3 children",
                                 Context::show(arr.iter().join(",")),
                             ))
                         }
                     } else {
-                        Err(BoxedError::new(BasicKind::Error,
+                        Err(BoxedError::new(
+                            BasicKind::Error,
                             "Invalid LinkerSpecificity",
                             "The Symmetric value has to be a map or a sequence",
                             Context::show(value.to_string()),
@@ -208,7 +214,8 @@ impl ParseJson for LinkerSpecificity {
                         Ok(Self::Asymmetric {
                             rules: <(Vec<PlacementRule>, Vec<PlacementRule>)>::from_json_value(
                                 map.remove("rules").ok_or_else(|| {
-                                    BoxedError::new(BasicKind::Error,
+                                    BoxedError::new(
+                                        BasicKind::Error,
                                         "Invalid LinkerSpecificity",
                                         "The required property 'rules' is missing",
                                         Context::show(
@@ -221,7 +228,8 @@ impl ParseJson for LinkerSpecificity {
                             )?,
                             stubs: Vec::<(MolecularFormula, MolecularFormula)>::from_json_value(
                                 map.remove("stubs").ok_or_else(|| {
-                                    BoxedError::new(BasicKind::Error,
+                                    BoxedError::new(
+                                        BasicKind::Error,
                                         "Invalid LinkerSpecificity",
                                         "The required property 'stubs' is missing",
                                         Context::show(
@@ -234,7 +242,8 @@ impl ParseJson for LinkerSpecificity {
                             )?,
                             neutral_losses: Vec::<NeutralLoss>::from_json_value(
                                 map.remove("neutral_losses").ok_or_else(|| {
-                                    BoxedError::new(BasicKind::Error,
+                                    BoxedError::new(
+                                        BasicKind::Error,
                                         "Invalid LinkerSpecificity",
                                         "The required property 'neutral_losses' is missing",
                                         Context::show(
@@ -247,7 +256,8 @@ impl ParseJson for LinkerSpecificity {
                             )?,
                             diagnostic: Vec::<DiagnosticIon>::from_json_value(
                                 map.remove("diagnostic").ok_or_else(|| {
-                                    BoxedError::new(BasicKind::Error,
+                                    BoxedError::new(
+                                        BasicKind::Error,
                                         "Invalid LinkerSpecificity",
                                         "The required property 'diagnostic' is missing",
                                         Context::show(
@@ -279,28 +289,32 @@ impl ParseJson for LinkerSpecificity {
                                 diagnostic,
                             })
                         } else {
-                            Err(BoxedError::new(BasicKind::Error,
+                            Err(BoxedError::new(
+                                BasicKind::Error,
                                 "Invalid NeutralLoss",
                                 "The Asymmetric is a sequence but does not have 3 children",
                                 Context::show(arr.iter().join(",")),
                             ))
                         }
                     } else {
-                        Err(BoxedError::new(BasicKind::Error,
+                        Err(BoxedError::new(
+                            BasicKind::Error,
                             "Invalid LinkerSpecificity",
                             "The Asymmetric value has to be a map or a sequence",
                             Context::show(value.to_string()),
                         ))
                     }
                 }
-                _ => Err(BoxedError::new(BasicKind::Error,
+                _ => Err(BoxedError::new(
+                    BasicKind::Error,
                     "Invalid LinkerSpecificity",
                     "The tag has to be Symmetric/Asymmetric",
                     Context::show(key),
                 )),
             }
         } else {
-            Err(BoxedError::new(BasicKind::Error,
+            Err(BoxedError::new(
+                BasicKind::Error,
                 "Invalid LinkerSpecificity",
                 "The JSON value has to be a map",
                 Context::show(value.to_string()),
@@ -316,8 +330,7 @@ mod tests {
         fragment::{DiagnosticIon, NeutralLoss},
         molecular_formula,
         parse_json::ParseJson,
-        prelude::AminoAcid,
-        sequence::{LinkerSpecificity, PlacementRule, Position},
+        sequence::{AminoAcid, LinkerSpecificity, PlacementRule, Position},
     };
 
     #[test]

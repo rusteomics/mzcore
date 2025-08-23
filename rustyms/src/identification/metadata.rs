@@ -4,8 +4,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     identification::{FastaIdentifier, KnownFileFormat, SpectrumIds},
-    prelude::{AminoAcid, CompoundPeptidoformIon, Peptidoform},
-    sequence::SemiAmbiguous,
+    sequence::{AminoAcid, CompoundPeptidoformIon, Peptidoform, SemiAmbiguous},
     system::{Mass, MassOverCharge, Ratio, Time, isize::Charge},
 };
 

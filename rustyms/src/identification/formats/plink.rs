@@ -23,11 +23,10 @@ use crate::{
     },
     molecular_formula,
     ontology::{CustomDatabase, Ontology},
-    prelude::CompoundPeptidoformIon,
     quantities::{Tolerance, WithinTolerance},
     sequence::{
-        CrossLinkName, Linked, Modification, Peptidoform, PeptidoformIon, SequencePosition,
-        SimpleModification, SimpleModificationInner, SloppyParsingParameters,
+        CompoundPeptidoformIon, CrossLinkName, Linked, Modification, Peptidoform, PeptidoformIon,
+        SequencePosition, SimpleModification, SimpleModificationInner, SloppyParsingParameters,
     },
     system::{Mass, MassOverCharge, Time, isize::Charge},
 };

@@ -74,7 +74,7 @@ fn find_isobaric_sets(
         })
         .collect::<Vec<_>>();
 
-    rustyms::prelude::find_isobaric_sets(
+    rustyms::find_isobaric_sets(
         rustyms::system::Mass::new::<dalton>(mass),
         rustyms::quantities::Tolerance::new_ppm(tolerance),
         &amino_acids,

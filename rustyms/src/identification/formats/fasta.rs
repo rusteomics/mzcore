@@ -18,10 +18,9 @@ use crate::{
         FlankingSequence, IdentifiedPeptidoform, IdentifiedPeptidoformData, KnownFileFormat,
         MetaData, PeptidoformPresent, SpectrumIds,
     },
-    prelude::{CompoundPeptidoformIon, HasPeptidoformImpl},
     sequence::{
-        AminoAcid, AnnotatedPeptide, Annotation, Peptidoform, Region, SemiAmbiguous,
-        SequenceElement,
+        AminoAcid, AnnotatedPeptide, Annotation, CompoundPeptidoformIon, HasPeptidoformImpl,
+        Peptidoform, Region, SemiAmbiguous, SequenceElement,
     },
     system::{Mass, MassOverCharge, Time, isize::Charge},
 };
@@ -481,7 +480,8 @@ impl FastaData {
     pub fn parse_file(path: impl AsRef<Path>) -> Result<Vec<Self>, BoxedError<'static, BasicKind>> {
         let path = path.as_ref();
         let file = std::fs::File::open(path).map_err(|_| {
-            BoxedError::new(BasicKind::Error,
+            BoxedError::new(
+                BasicKind::Error,
                 "Failed reading fasta file",
                 "Error occurred while opening the file",
                 Context::default().source(path.to_string_lossy()).to_owned(),
@@ -504,7 +504,8 @@ impl FastaData {
 
         for (line_index, line) in reader.lines().enumerate() {
             let line = line.map_err(|_| {
-                BoxedError::new(BasicKind::Error,
+                BoxedError::new(
+                    BasicKind::Error,
                     "Failed reading fasta file",
                     format!("Error occurred while reading line {}", line_index + 1),
                     path.map_or_else(Context::none, |p| {
@@ -532,7 +533,8 @@ impl FastaData {
                             c.try_into()
                                 .map(|aa: AminoAcid| SequenceElement::new(aa.into(), None))
                                 .map_err(|()| {
-                                    BoxedError::new(BasicKind::Error,
+                                    BoxedError::new(
+                                        BasicKind::Error,
                                         "Failed reading fasta file",
                                         "Character is not an amino acid",
                                         Context::line(Some(line_index as u32), &line, i, 1)
@@ -562,7 +564,8 @@ impl FastaData {
     fn validate(self) -> Result<Self, BoxedError<'static, BasicKind>> {
         let total_regions_len: usize = self.regions.iter().map(|(_, l)| *l).sum();
         if total_regions_len > 0 && total_regions_len != self.peptide.len() {
-            Err(BoxedError::new(BasicKind::Error,
+            Err(BoxedError::new(
+                BasicKind::Error,
                 "Invalid regions definition",
                 format!(
                     "The 'REGIONS' definition is invalid, the total length of the regions ({}) has to be identical to the length of the peptide ({})",
@@ -576,7 +579,8 @@ impl FastaData {
             .iter()
             .any(|(_, p)| *p >= self.peptide.len())
         {
-            Err(BoxedError::new(BasicKind::Error,
+            Err(BoxedError::new(
+                BasicKind::Error,
                 "Invalid annotations definition",
                 format!(
                     "The 'ANNOTATIONS' definition is invalid, on of the annotations is out of range of the peptide (length {})",
@@ -598,7 +602,10 @@ impl FastaData {
     /// # Errors
     /// When the parsing of the fasta identifier is not succesful
     #[expect(clippy::missing_panics_doc)] // Regions and annotation parse cannot fail
-    fn parse_header(line_index: usize, full_header: String) -> Result<Self, BoxedError<'static, BasicKind>> {
+    fn parse_header(
+        line_index: usize,
+        full_header: String,
+    ) -> Result<Self, BoxedError<'static, BasicKind>> {
         let first_space = full_header.find(' ').unwrap_or(full_header.len());
         let mut description = 0..0;
         let mut last_equals = None;
@@ -693,7 +700,8 @@ impl FastaData {
             identifier: full_header[0..first_space]
                 .parse::<FastaIdentifier<Range<usize>>>()
                 .map_err(|err| {
-                    BoxedError::new(BasicKind::Error,
+                    BoxedError::new(
+                        BasicKind::Error,
                         "Failed reading fasta file",
                         format!(
                             "Error occurred parsing NCBI identifier: number {}",

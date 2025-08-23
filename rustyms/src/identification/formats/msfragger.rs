@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 use thin_vec::ThinVec;
 
 use crate::{
+    chemistry::Chemical,
     glycan::MonoSaccharide,
     helper_functions::explain_number_error,
     identification::{
@@ -15,11 +16,10 @@ use crate::{
         csv::{CsvLine, parse_csv},
     },
     ontology::CustomDatabase,
-    prelude::{Chemical, CompoundPeptidoformIon, SequencePosition},
     quantities::{Tolerance, WithinTolerance},
     sequence::{
-        Modification, Peptidoform, SemiAmbiguous, SimpleLinear, SimpleModification,
-        SimpleModificationInner, SloppyParsingParameters,
+        CompoundPeptidoformIon, Modification, Peptidoform, SemiAmbiguous, SequencePosition,
+        SimpleLinear, SimpleModification, SimpleModificationInner, SloppyParsingParameters,
     },
     system::{Mass, MassOverCharge, Time, isize::Charge},
 };

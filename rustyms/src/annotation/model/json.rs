@@ -6,12 +6,12 @@ use serde_json::Value;
 
 use crate::{
     annotation::model::{
-        ChargeRange, GlycanModel, GlycanPeptideFragment, Location, PrimaryIonSeries,
-        SatelliteIonSeries, SatelliteLocation,
+        ChargeRange, FragmentationModel, GlycanModel, GlycanPeptideFragment, Location,
+        PrimaryIonSeries, SatelliteIonSeries, SatelliteLocation,
     },
     fragment::{FragmentKind, NeutralLoss},
     parse_json::{ParseJson, use_serde},
-    prelude::{AminoAcid, FragmentationModel},
+    sequence::AminoAcid,
 };
 
 impl ParseJson for FragmentationModel {

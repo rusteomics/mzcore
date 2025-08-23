@@ -43,14 +43,16 @@ impl ParseJson for NeutralLoss {
                             MolecularFormula::from_json_value(arr.pop().unwrap())?,
                         ))
                     } else {
-                        Err(BoxedError::new(BasicKind::Error,
+                        Err(BoxedError::new(
+                            BasicKind::Error,
                             "Invalid NeutralLoss",
                             format!("The {context} amount is not a number"),
                             Context::show(arr[0].to_string()),
                         ))
                     }
                 } else {
-                    Err(BoxedError::new(BasicKind::Error,
+                    Err(BoxedError::new(
+                        BasicKind::Error,
                         "Invalid NeutralLoss",
                         format!("The {context} is a sequence but does not have 2 children"),
                         Context::show(arr.iter().join(",")),
@@ -59,7 +61,8 @@ impl ParseJson for NeutralLoss {
             } else if value.is_object() {
                 Ok((1, MolecularFormula::from_json_value(value)?))
             } else {
-                Err(BoxedError::new(BasicKind::Error,
+                Err(BoxedError::new(
+                    BasicKind::Error,
                     "Invalid NeutralLoss",
                     format!("The {context} has to be either a map or a sequence"),
                     Context::show(value.to_string()),
@@ -78,28 +81,32 @@ impl ParseJson for NeutralLoss {
                             let formula = MolecularFormula::from_json_value(arr.pop().unwrap())?;
                             Ok(Self::SideChainLoss(formula, aa))
                         } else {
-                            Err(BoxedError::new(BasicKind::Error,
+                            Err(BoxedError::new(
+                                BasicKind::Error,
                                 "Invalid NeutralLoss",
                                 "The SideChainLoss is a sequence but does not have 2 children",
                                 Context::show(arr.iter().join(",")),
                             ))
                         }
                     } else {
-                        Err(BoxedError::new(BasicKind::Error,
+                        Err(BoxedError::new(
+                            BasicKind::Error,
                             "Invalid NeutralLoss",
                             "The SideChainLoss has to be a sequence",
                             Context::show(value.to_string()),
                         ))
                     }
                 }
-                _ => Err(BoxedError::new(BasicKind::Error,
+                _ => Err(BoxedError::new(
+                    BasicKind::Error,
                     "Invalid NeutralLoss",
                     "The tag has to be Loss/Gain/SideChainLoss",
                     Context::show(key),
                 )),
             }
         } else {
-            Err(BoxedError::new(BasicKind::Error,
+            Err(BoxedError::new(
+                BasicKind::Error,
                 "Invalid NeutralLoss",
                 "The JSON value has to be a map",
                 Context::show(value.to_string()),
@@ -239,7 +246,8 @@ impl FromStr for NeutralLoss {
                             ))
                         }
                     } else {
-                        Err(BoxedError::new(BasicKind::Error,
+                        Err(BoxedError::new(
+                            BasicKind::Error,
                             "Invalid neutral loss",
                             "A neutral loss can only start with '+' or '-'",
                             Context::line(None, s, 0, 1).to_owned(),
@@ -252,7 +260,8 @@ impl FromStr for NeutralLoss {
             let loss = match c {
                 '+' => Ok(false),
                 '-' => Ok(true),
-                _ => Err(BoxedError::new(BasicKind::Error,
+                _ => Err(BoxedError::new(
+                    BasicKind::Error,
                     "Invalid neutral loss",
                     "A neutral loss can only start with '+' or '-'",
                     Context::line(None, s, 0, 1).to_owned(),
@@ -261,7 +270,8 @@ impl FromStr for NeutralLoss {
             let (amount, start) = if let Some(amount) = next_number::<false, false, u16>(s, 1..) {
                 (
                     amount.2.map_err(|err| {
-                        BoxedError::new(BasicKind::Error,
+                        BoxedError::new(
+                            BasicKind::Error,
                             "Invalid neutral loss",
                             format!("The amount specifier {}", explain_number_error(&err)),
                             Context::line(None, s, 1, amount.0).to_owned(),
@@ -280,7 +290,8 @@ impl FromStr for NeutralLoss {
                 Self::Gain(amount, formula)
             })
         } else {
-            Err(BoxedError::new(BasicKind::Error,
+            Err(BoxedError::new(
+                BasicKind::Error,
                 "Invalid neutral loss",
                 "A neutral loss cannot be an empty string",
                 Context::none(),
@@ -362,10 +373,8 @@ mod tests {
     use std::str::FromStr;
 
     use crate::{
-        fragment::NeutralLoss,
-        molecular_formula,
-        parse_json::ParseJson,
-        prelude::{AminoAcid, MolecularFormula},
+        chemistry::MolecularFormula, fragment::NeutralLoss, molecular_formula,
+        parse_json::ParseJson, sequence::AminoAcid,
     };
 
     #[test]

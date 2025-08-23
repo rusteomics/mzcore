@@ -14,9 +14,9 @@ use crate::{
         csv::{CsvLine, parse_csv},
     },
     ontology::CustomDatabase,
-    prelude::{AminoAcid, CheckedAminoAcid, CompoundPeptidoformIon, SequenceElement},
     sequence::{
-        Modification, Peptidoform, SemiAmbiguous, SimpleLinear, SimpleModificationInner,
+        AminoAcid, CheckedAminoAcid, CompoundPeptidoformIon, Modification, Peptidoform,
+        SemiAmbiguous, SequenceElement, SimpleLinear, SimpleModificationInner,
         SloppyParsingParameters,
     },
     system::{Mass, MassOverCharge, Time, isize::Charge},

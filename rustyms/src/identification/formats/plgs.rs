@@ -15,10 +15,9 @@ use crate::{
         csv::{CsvLine, parse_csv},
     },
     ontology::CustomDatabase,
-    prelude::CompoundPeptidoformIon,
     sequence::{
-        AminoAcid, MUPSettings, Modification, Peptidoform, PlacementRule, Position,
-        SequencePosition, SimpleLinear, SimpleModification,
+        AminoAcid, CompoundPeptidoformIon, MUPSettings, Modification, Peptidoform, PlacementRule,
+        Position, SequencePosition, SimpleLinear, SimpleModification,
     },
     system::{Mass, MassOverCharge, OrderedTime, Time, isize::Charge},
 };

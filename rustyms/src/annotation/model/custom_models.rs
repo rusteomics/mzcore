@@ -2,7 +2,7 @@ use std::path::Path;
 
 use custom_error::*;
 
-use crate::{parse_json::ParseJson, prelude::FragmentationModel};
+use crate::{annotation::model::FragmentationModel, parse_json::ParseJson};
 
 /// Parse a custom models JSON string. The parser is guaranteed to be backwards compatible
 /// with any JSON made by the serde serialisation of the custom models in previous version of

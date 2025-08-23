@@ -5,7 +5,9 @@ use custom_error::*;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    chemistry::{ELEMENT_PARSE_LIST, Element, MolecularCharge, MolecularFormula},
+    chemistry::{
+        Chemical, ELEMENT_PARSE_LIST, Element, MolecularCharge, MolecularFormula, MultiChemical,
+    },
     fragment::{
         DiagnosticPosition, Fragment, FragmentType, NeutralLoss, PeptidePosition, SatelliteLabel,
     },
@@ -14,10 +16,10 @@ use crate::{
     },
     molecular_formula,
     ontology::{CustomDatabase, Ontology},
-    prelude::{Chemical, CompoundPeptidoformIon, MultiChemical, SequenceElement, SequencePosition},
     quantities::Tolerance,
     sequence::{
-        AminoAcid, Linked, Peptidoform, SemiAmbiguous, SimpleModification, SimpleModificationInner,
+        AminoAcid, CompoundPeptidoformIon, Linked, Peptidoform, SemiAmbiguous, SequenceElement,
+        SequencePosition, SimpleModification, SimpleModificationInner,
     },
     system::{Mass, MassOverCharge, OrderedMassOverCharge, e, isize::Charge, mz},
 };

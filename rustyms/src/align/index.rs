@@ -7,7 +7,7 @@ use crate::{
         diagonal_array::DiagonalArray,
         mass_alignment::{align_cached, calculate_masses},
     },
-    prelude::MassMode,
+    chemistry::MassMode,
     quantities::Multi,
     sequence::{HasPeptidoform, SimpleLinear},
     system::Mass,

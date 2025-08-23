@@ -2,9 +2,8 @@
 use rayon::prelude::*;
 use std::collections::HashSet;
 
-use crate::{
-    prelude::HasPeptidoformImpl,
-    sequence::{AnnotatedPeptide, Annotation, Peptidoform, Region, UnAmbiguous},
+use crate::sequence::{
+    AnnotatedPeptide, Annotation, HasPeptidoformImpl, Peptidoform, Region, UnAmbiguous,
 };
 
 pub(super) use super::*;

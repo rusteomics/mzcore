@@ -7,8 +7,7 @@ use crate::{
         SpectrumIds,
     },
     ontology::CustomDatabase,
-    prelude::CompoundPeptidoformIon,
-    sequence::{Peptidoform, SemiAmbiguous, SloppyParsingParameters},
+    sequence::{CompoundPeptidoformIon, Peptidoform, SemiAmbiguous, SloppyParsingParameters},
     system::{Mass, MassOverCharge, Ratio, Time, isize::Charge},
 };
 
