@@ -478,6 +478,13 @@ impl IsAminoAcid for AminoAcid {
             return None;
         };
 
+        let label = |aa: Self| AmbiguousLabel::AminoAcid {
+            option: aa,
+            sequence_index,
+            peptidoform_index,
+            peptidoform_ion_index,
+        };
+
         match self {
             Self::Alanine
             | Self::Glycine
@@ -502,11 +509,11 @@ impl IsAminoAcid for AminoAcid {
             Self::AmbiguousAsparagine => Some(Cow::Owned(vec![
                 (
                     SatelliteLabel::None,
-                    molecular_formula!(H 2 C 1 N 1 O 1 (AmbiguousLabel::AminoAcid{option: Self::Asparagine, sequence_index, peptidoform_index, peptidoform_ion_index})),
+                    molecular_formula!(H 2 C 1 N 1 O 1 (label(Self::Asparagine))),
                 ),
                 (
                     SatelliteLabel::None,
-                    molecular_formula!(H 1 C 1 O 2 (AmbiguousLabel::AminoAcid{option: Self::AsparticAcid, sequence_index, peptidoform_index, peptidoform_ion_index})),
+                    molecular_formula!(H 1 C 1 O 2 (label(Self::AsparticAcid))),
                 ),
             ])),
             Self::Cysteine => Some(Cow::Owned(vec![(
@@ -524,11 +531,11 @@ impl IsAminoAcid for AminoAcid {
             Self::AmbiguousGlutamine => Some(Cow::Owned(vec![
                 (
                     SatelliteLabel::None,
-                    molecular_formula!(H 4 C 2 N 1 O 1 (AmbiguousLabel::AminoAcid{option: Self::Glutamine, sequence_index, peptidoform_index, peptidoform_ion_index})),
+                    molecular_formula!(H 4 C 2 N 1 O 1 (label(Self::Glutamine))),
                 ),
                 (
                     SatelliteLabel::None,
-                    molecular_formula!(H 3 C 2 O 2 (AmbiguousLabel::AminoAcid{option: Self::GlutamicAcid, sequence_index, peptidoform_index, peptidoform_ion_index})),
+                    molecular_formula!(H 3 C 2 O 2 (label(Self::GlutamicAcid))),
                 ),
             ])),
             Self::Isoleucine => Some(Cow::Owned(vec![
@@ -542,15 +549,15 @@ impl IsAminoAcid for AminoAcid {
             Self::AmbiguousLeucine => Some(Cow::Owned(vec![
                 (
                     SatelliteLabel::A,
-                    molecular_formula!(H 3 C 1 (AmbiguousLabel::AminoAcid{option: Self::Isoleucine, sequence_index, peptidoform_index, peptidoform_ion_index})),
+                    molecular_formula!(H 3 C 1 (label(Self::Isoleucine))),
                 ),
                 (
                     SatelliteLabel::B,
-                    molecular_formula!(H 5 C 2 (AmbiguousLabel::AminoAcid{option: Self::Isoleucine, sequence_index, peptidoform_index, peptidoform_ion_index})),
+                    molecular_formula!(H 5 C 2 (label(Self::Isoleucine))),
                 ),
                 (
                     SatelliteLabel::None,
-                    molecular_formula!(H 7 C 3 (AmbiguousLabel::AminoAcid{option: Self::Leucine, sequence_index, peptidoform_index, peptidoform_ion_index})),
+                    molecular_formula!(H 7 C 3 (label(Self::Leucine))),
                 ),
             ])),
             Self::Lysine => Some(Cow::Owned(vec![(

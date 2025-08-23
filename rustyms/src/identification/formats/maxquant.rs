@@ -523,7 +523,7 @@ fn parse_de_novo_sequence(
     location: Location,
     custom_database: Option<&CustomDatabase>,
 ) -> Result<Peptidoform<SimpleLinear>, BoxedError<'static, BasicKind>> {
-    #[derive(Debug, PartialEq, Eq)]
+    #[derive(Debug, Eq, PartialEq)]
     enum Element {
         Either(Vec<Vec<Element>>),
         UnknownOrder(Vec<Element>),

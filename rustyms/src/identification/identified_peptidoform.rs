@@ -5,8 +5,8 @@ use serde::{Deserialize, Serialize};
 use crate::{
     identification::*,
     sequence::{
-        AtLeast, CompoundPeptidoformIon, HasPeptidoformImpl, Linear, Peptidoform, SemiAmbiguous,
-        SimpleLinear, UnAmbiguous,
+        AtLeast, CompoundPeptidoformIon, HasPeptidoformImpl, Linear, Linked, Peptidoform,
+        SemiAmbiguous, SimpleLinear, UnAmbiguous,
     },
     system::{Mass, MassOverCharge, Ratio, Time, isize::Charge},
 };
@@ -313,50 +313,39 @@ impl<PeptidoformAvailability> IdentifiedPeptidoform<UnAmbiguous, PeptidoformAvai
 impl<Complexity, PeptidoformAvailability>
     IdentifiedPeptidoform<Complexity, PeptidoformAvailability>
 {
+    fn check<T>(
+        self,
+        f: impl Fn(&Peptidoform<Linked>) -> bool,
+    ) -> Option<IdentifiedPeptidoform<T, PeptidoformPresent>> {
+        self.compound_peptidoform_ion()
+            .is_some_and(|p| p.singular_peptidoform_ref().is_some_and(f))
+            .then(|| self.mark())
+    }
+
     /// Check if this identified peptidoform is linear and contains a peptide
     pub fn into_linear(self) -> Option<IdentifiedPeptidoform<Linear, PeptidoformPresent>> {
-        self.compound_peptidoform_ion()
-            .is_some_and(|p| {
-                p.singular_peptidoform_ref()
-                    .is_some_and(Peptidoform::is_linear)
-            })
-            .then(|| self.mark())
+        self.check(Peptidoform::is_linear)
     }
 
     /// Check if this identified peptidoform is simple linear and contains a peptide
     pub fn into_simple_linear(
         self,
     ) -> Option<IdentifiedPeptidoform<SimpleLinear, PeptidoformPresent>> {
-        self.compound_peptidoform_ion()
-            .is_some_and(|p| {
-                p.singular_peptidoform_ref()
-                    .is_some_and(Peptidoform::is_simple_linear)
-            })
-            .then(|| self.mark())
+        self.check(Peptidoform::is_simple_linear)
     }
 
     /// Check if this identified peptidoform is semi ambiguous and contains a peptide
     pub fn into_semi_ambiguous(
         self,
     ) -> Option<IdentifiedPeptidoform<SemiAmbiguous, PeptidoformPresent>> {
-        self.compound_peptidoform_ion()
-            .is_some_and(|p| {
-                p.singular_peptidoform_ref()
-                    .is_some_and(Peptidoform::is_semi_ambiguous)
-            })
-            .then(|| self.mark())
+        self.check(Peptidoform::is_semi_ambiguous)
     }
 
     /// Check if this identified peptidoform is unambiguous and contains a peptide
     pub fn into_unambiguous(
         self,
     ) -> Option<IdentifiedPeptidoform<UnAmbiguous, PeptidoformPresent>> {
-        self.compound_peptidoform_ion()
-            .is_some_and(|p| {
-                p.singular_peptidoform_ref()
-                    .is_some_and(Peptidoform::is_unambiguous)
-            })
-            .then(|| self.mark())
+        self.check(Peptidoform::is_unambiguous)
     }
 }
 
