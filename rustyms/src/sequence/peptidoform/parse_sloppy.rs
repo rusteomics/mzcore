@@ -872,8 +872,8 @@ impl Modification {
                         Some(1130)
                     }
                     AminoAcid::Cysteine => Some(550),
-                    AminoAcid::Valine => Some(1212),
-                    AminoAcid::Threonine => Some(1223),
+                    AminoAcid::Valine => Some(1223),
+                    AminoAcid::Threonine => Some(1212),
                     AminoAcid::Proline => Some(1176),
                     AminoAcid::Serine => Some(653),
                     AminoAcid::Alanine => Some(1054),
