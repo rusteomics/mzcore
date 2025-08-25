@@ -36,14 +36,12 @@ pub enum IdentifiedPeptidoformData {
     DeepNovoFamily(DeepNovoFamilyData),
     /// Fasta metadata
     Fasta(FastaData),
-    /// MaxQuant metadata
-    MaxQuant(MaxQuantData),
-    /// pi-HelixNovo metadata
-    PiHelixNovo(PiHelixNovoData),
-    /// pi-PrimeNovo metadata
-    PiPrimeNovo(PiPrimeNovoData),
     /// InstaNovo metadata
     InstaNovo(InstaNovoData),
+    /// MaxQuant metadata
+    MaxQuant(MaxQuantData),
+    /// MSFragger metadata
+    MSFragger(MSFraggerData),
     /// mzTab metadata
     MZTab(MZTabData),
     /// NovoB metadata
@@ -56,6 +54,10 @@ pub enum IdentifiedPeptidoformData {
     Peaks(PeaksData),
     /// PepNet metadata
     PepNet(PepNetData),
+    /// pi-HelixNovo metadata
+    PiHelixNovo(PiHelixNovoData),
+    /// pi-PrimeNovo metadata
+    PiPrimeNovo(PiPrimeNovoData),
     /// PLGS metadata
     PLGS(PLGSData),
     /// pLink metadata
@@ -66,8 +68,6 @@ pub enum IdentifiedPeptidoformData {
     Proteoscape(ProteoscapeData),
     /// Sage metadata
     Sage(SageData),
-    /// MSFragger metadata
-    MSFragger(MSFraggerData),
     /// SpectrumSequenceList metadata
     SpectrumSequenceList(SpectrumSequenceListData),
 }
