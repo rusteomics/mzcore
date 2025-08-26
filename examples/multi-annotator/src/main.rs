@@ -28,7 +28,7 @@ use rayon::prelude::*;
 use rustyms::{
     annotation::{
         AnnotatableSpectrum, AnnotatedPeak, Score, Scores,
-        model::{FragmentationModel, MatchingParameters},
+        model::{FragmentationModel, MatchingParameters, parse_custom_models},
     },
     chemistry::MassMode,
     fragment::{DiagnosticPosition, Fragment},
@@ -81,6 +81,9 @@ struct Cli {
     /// To turn off loading the custom modifications database from the Annotator (if installed)
     #[arg(long)]
     no_custom_mods: bool,
+    /// To turn off loading the custom models from the Annotator (if installed)
+    #[arg(long)]
+    no_custom_models: bool,
     /// Turns on specific counting for glycan fragments. This collects statistics for any fragment
     /// that contains the given monosaccharide. It returns two columns for every given monosaccharide
     /// one containing B numbers `{found}/{total}` and one containing Y numbers `{found}/{total}`.
@@ -99,7 +102,11 @@ fn monosaccharide_parser(value: &str) -> Result<MonoSaccharide, String> {
         .map_err(|e| e.to_string())
 }
 
-fn select_model(text: &str, default: &'static FragmentationModel) -> &'static FragmentationModel {
+fn select_model<'a>(
+    text: &str,
+    default: &'a FragmentationModel,
+    custom: Option<&'a [(String, FragmentationModel)]>,
+) -> &'a FragmentationModel {
     match text.to_ascii_lowercase().as_str() {
         "etd" => FragmentationModel::etd(),
         "td_etd" => FragmentationModel::td_etd(),
@@ -109,7 +116,11 @@ fn select_model(text: &str, default: &'static FragmentationModel) -> &'static Fr
         "hcd" | "cid" => FragmentationModel::cid_hcd(),
         "all" => FragmentationModel::all(),
         "none" => FragmentationModel::none(),
-        _ => default,
+        _ => custom.map_or(default, |m| {
+            m.iter()
+                .find_map(|(name, model)| name.eq_ignore_ascii_case(text).then_some(model))
+                .unwrap_or(default)
+        }),
     }
 }
 
@@ -122,17 +133,31 @@ fn select_model(text: &str, default: &'static FragmentationModel) -> &'static Fr
 /// * If the output csv file could not be created, or written to.
 fn main() {
     let args = Cli::parse();
-    let model = select_model(&args.mode, FragmentationModel::all());
+
     let parameters = MatchingParameters::default();
-    let path = ProjectDirs::from("com", "com.snijderlab.annotator", "")
-        .expect("Could not generate Annotator configurationpath (needed to check if custom modifications are defined)")
+    let custom_modifications_path = ProjectDirs::from("com", "com.snijderlab.annotator", "")
+        .expect("Could not generate Annotator configuration path (needed to check if custom modifications are defined)")
         .config_dir()
         .join("../custom_modifications.json");
-    let custom_database = if args.no_custom_mods || !path.exists() {
+    let custom_database = if args.no_custom_mods || !custom_modifications_path.exists() {
         None
     } else {
-        Some(parse_custom_modifications(&path).expect("Could not parse custom modifications file, if you do not need these you can skip parsing them using the appropriate flag"))
+        Some(parse_custom_modifications(&custom_modifications_path).expect("Could not parse custom modifications file, if you do not need these you can skip parsing them using the appropriate flag"))
     };
+    let custom_models_path = ProjectDirs::from("com", "com.snijderlab.annotator", "")
+        .expect("Could not generate Annotator configuration path (needed to check if custom models are defined)")
+        .config_dir()
+        .join("../custom_models.json");
+    let custom_models = if args.no_custom_models || !custom_models_path.exists() {
+        None
+    } else {
+        Some(parse_custom_models(&custom_models_path).expect("Could not parse custom models file, if you do not need these you can skip parsing them using the appropriate flag"))
+    };
+    let model = select_model(
+        &args.mode,
+        FragmentationModel::all(),
+        custom_models.as_deref(),
+    );
     let mut peptidoforms =
         BasicCSVData::parse_file(args.in_path, custom_database.as_ref(), true, None)
             .expect("Invalid input file")
@@ -167,7 +192,7 @@ fn main() {
             .iter()
             .filter_map(|line| {
                 let selected_model = line.mode.as_ref()
-                    .map_or(model, |text| select_model(text, model));
+                    .map_or(model, |text| select_model(text, model, custom_models.as_deref(),));
                 if let Some(mut spectrum) = file.get_spectrum_by_index(line.scan_index)
                 {
                     if spectrum.signal_continuity() == SignalContinuity::Profile {
