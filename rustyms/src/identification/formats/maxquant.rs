@@ -32,17 +32,34 @@ static BOOL_ERROR: (&str, &str) = (
 );
 
 format_family!(
+    /// This can contain data from the database match and the _de novo_ match at the same time when
+    /// run with MaxNovo. In that case the _de novo_ data will not be shown via the methods of the
+    /// [`MetaData`] trait. If access is needed solely to the _de novo_ data and not to the database
+    /// data the easiest way is detecting this case and overwriting the data in place.
+    /// ```rust
+    /// # use rustyme::prelude::*;
+    /// # identified_pepform = IdentifiedPeptidoform::default();
+    /// if let IdentifiedPeptidoformData::MaxQuant(ref mut mq) = identified_pepform.data
+    ///     && mq.format().version() == Some(MaxQuantVersion::NovoMSMSScans.to_string())
+    /// {
+    ///     mq.peptide = mq.dn_sequence.clone();
+    ///     identified_pepform.score = mq.dn_combined_score.map(|v| f64::from(v) / 100.0);
+    ///     mq.score = mq.dn_combined_score.map_or(0.0, f64::from);
+    /// }
+    /// ```
     MaxQuant,
-    SemiAmbiguous, MaybePeptidoform, [&MSMS, &NOVO_MSMS_SCANS, &MSMS_SCANS, &SILAC], b'\t', None;
+    SimpleLinear, MaybePeptidoform, [&MSMS, &NOVO_MSMS_SCANS, &MSMS_SCANS, &SILAC], b'\t', None;
     required {
         scan_number: ThinVec<usize>, |location: Location, _| location.or_empty().array(';').map(|s| s.parse(NUMBER_ERROR)).collect::<Result<ThinVec<usize>, BoxedError<'_, BasicKind>>>();
         proteins: Box<str>, |location: Location, _| Ok(location.get_boxed_str());
-        peptide: Option<Peptidoform<SemiAmbiguous>>, |location: Location, custom_database: Option<&CustomDatabase>| location.or_empty().parse_with(|location| Peptidoform::sloppy_pro_forma(
+        /// The database matched peptide, annotated as [`SimpleLinear`] to allow replacing it with the _de novo_ peptide, no features of the [`SimpleLinear`] complexity are used for the database peptides
+        peptide: Option<Peptidoform<SimpleLinear>>, |location: Location, custom_database: Option<&CustomDatabase>| location.or_empty().parse_with(|location| Peptidoform::sloppy_pro_forma(
             location.full_line(),
             location.location.clone(),
             custom_database,
             &SloppyParsingParameters::default()
-        ).map_err(BoxedError::to_owned));
+        ).map_err(BoxedError::to_owned))
+        .map(|p| p.map(Into::into));
         z: Charge, |location: Location, _| location.parse::<isize>(NUMBER_ERROR).map(Charge::new::<crate::system::e>);
         ty: Box<str>, |location: Location, _| Ok(location.get_boxed_str());
         pep: f32, |location: Location, _| location.parse(NUMBER_ERROR);

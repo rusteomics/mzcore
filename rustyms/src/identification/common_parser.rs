@@ -28,7 +28,8 @@ use crate::identification::csv::CsvLine;
 ///   `<$format>Format` type, these are also the ones that need to be listed in the versions list.
 ///
 macro_rules! format_family {
-     ($format:ident,
+     ($(#[doc = $ddoc:expr])*
+     $format:ident,
      $complexity:ident, $peptidoform_availability:ident, $versions:expr, $separator:expr, $header:expr;
      required { $($(#[doc = $rdoc:expr])? $rname:ident: $rtyp:ty, $rf:expr;)* }
      optional { $($(#[doc = $odoc:expr])? $oname:ident: $otyp:ty, $of:expr;)*}
@@ -48,6 +49,7 @@ macro_rules! format_family {
         }
 
         #[doc = "The data for individual entries in " $format " files."]
+        $(#[doc = $ddoc])*
         #[non_exhaustive]
         #[derive(Clone, Debug, Default, Deserialize, PartialEq, Serialize)]
         #[allow(missing_docs)]
