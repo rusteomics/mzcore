@@ -224,8 +224,8 @@ impl<A: ParseJson, B: ParseJson, C: ParseJson, D: ParseJson> ParseJson for (A, B
             if arr.len() == 4 {
                 let d = D::from_json_value(arr.pop().unwrap())?;
                 let c = C::from_json_value(arr.pop().unwrap())?;
-                let a = A::from_json_value(arr.pop().unwrap())?;
                 let b = B::from_json_value(arr.pop().unwrap())?;
+                let a = A::from_json_value(arr.pop().unwrap())?;
                 Ok((a, b, c, d))
             } else {
                 Err(BoxedError::new(
