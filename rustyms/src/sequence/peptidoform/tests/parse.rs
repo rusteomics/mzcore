@@ -488,3 +488,19 @@ fn hydrolysed_xl() {
 
     assert_eq!(peptide_xl.formula(), peptide_mod.formula());
 }
+
+#[test]
+fn multiple_n_mods() {
+    assert!(Peptidoform::pro_forma("[U:Carbamyl][+17.027]-EGEEEK", None).is_ok());
+}
+
+#[test]
+fn multiple_c_mods() {
+    assert!(Peptidoform::pro_forma("PEPTIDEG-[Methyl][Amidated]", None).is_ok());
+}
+
+#[test]
+fn ambiguous_aas() {
+    assert!(Peptidoform::pro_forma("[+320.85]-(?N[U:Deamidated])-[+432.85]", None).is_ok());
+    assert!(Peptidoform::pro_forma("[+1550.7049484934485]-T(?HQ[U:Deamidated])", None).is_ok());
+}

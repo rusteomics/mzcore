@@ -243,39 +243,54 @@ impl CompoundPeptidoformIon {
         let (mut index, labile) = labile_modifications(line, index, custom_database)?;
         peptide = peptide.labile(labile);
 
-        // N term modification
-        if chars.get(index) == Some(&b'[') {
-            let end_index = end_of_enclosure(line, index+1, b'[', b']').and_then(|i| (chars.get(i+1) == Some(&b'-')).then_some(i+1)).ok_or_else(|| BoxedError::new(BasicKind::Error,
-                    "Invalid N terminal modification",
-                    "No valid closing delimiter, an N terminal modification should be closed by ']-'",
-                    Context::line(None, line, index, 1),
-                ))?;
-            if let Some(m) = SimpleModificationInner::parse_pro_forma(
+        // N term modifications
+        let mut n_term_mods = Vec::new();
+        let mut n_end_seen = false;
+        let mut temp_index = index;
+        while chars.get(temp_index) == Some(&b'[') {
+            let end_index =
+                end_of_enclosure(line, temp_index + 1, b'[', b']').ok_or_else(|| {
+                    BoxedError::new(
+                        BasicKind::Error,
+                        "Invalid N term modification",
+                        "No valid closing delimiter",
+                        Context::line(None, line, temp_index, 1),
+                    )
+                })?;
+            n_term_mods.push(SimpleModificationInner::parse_pro_forma(
                 line,
-                index + 1..end_index - 1,
+                temp_index + 1..end_index,
                 &mut ambiguous_lookup,
                 cross_link_lookup,
                 custom_database,
-            )
-            .map(|m| match m.0 {
-                ReturnModification::Defined(simple) => Some(simple),
-                ReturnModification::CrossLinkReferenced(id) => {
-                    cross_link_found_positions.push((id, SequencePosition::NTerm));
-                    None
-                }
-                ReturnModification::Ambiguous(id, localisation_score, preferred) => {
-                    ambiguous_found_positions.push((
-                        SequencePosition::NTerm,
-                        preferred,
-                        id,
-                        localisation_score,
-                    ));
-                    None
-                }
-            })? {
-                peptide.add_simple_n_term(m);
+            )?);
+
+            temp_index = end_index + 1;
+
+            if chars.get(temp_index) == Some(&b'-') {
+                index = temp_index + 1;
+                n_end_seen = true;
+                break;
             }
-            index = end_index + 1;
+        }
+
+        if n_end_seen {
+            for (m, _mup) in n_term_mods {
+                match m {
+                    ReturnModification::Defined(simple) => peptide.add_simple_n_term(simple),
+                    ReturnModification::CrossLinkReferenced(id) => {
+                        cross_link_found_positions.push((id, SequencePosition::NTerm));
+                    }
+                    ReturnModification::Ambiguous(id, localisation_score, preferred) => {
+                        ambiguous_found_positions.push((
+                            SequencePosition::NTerm,
+                            preferred,
+                            id,
+                            localisation_score,
+                        ));
+                    }
+                }
+            }
         }
 
         // Rest of the sequence
@@ -397,11 +412,12 @@ impl CompoundPeptidoformIon {
                     let start_index = index + 1;
                     index = end_index + 1;
                     if is_c_term {
-                        if let Some(m) = match modification {
-                            ReturnModification::Defined(simple) => Some(simple),
+                        match modification {
+                            ReturnModification::Defined(simple) => {
+                                peptide.add_simple_c_term(simple);
+                            }
                             ReturnModification::CrossLinkReferenced(id) => {
                                 cross_link_found_positions.push((id, SequencePosition::CTerm));
-                                None
                             }
                             ReturnModification::Ambiguous(id, localisation_score, preferred) => {
                                 ambiguous_found_positions.push((
@@ -410,10 +426,49 @@ impl CompoundPeptidoformIon {
                                     id,
                                     localisation_score,
                                 ));
-                                None
                             }
-                        } {
-                            peptide.add_simple_c_term(m);
+                        }
+
+                        while chars.get(index) == Some(&b'[') {
+                            let end_index = end_of_enclosure(line, index + 1, b'[', b']')
+                                .ok_or_else(|| {
+                                    BoxedError::new(
+                                        BasicKind::Error,
+                                        "Invalid C term modification",
+                                        "No valid closing delimiter",
+                                        Context::line(None, line, index, 1),
+                                    )
+                                })?;
+                            let modification = SimpleModificationInner::parse_pro_forma(
+                                line,
+                                index + 1..end_index,
+                                &mut ambiguous_lookup,
+                                cross_link_lookup,
+                                custom_database,
+                            )?;
+
+                            match modification.0 {
+                                ReturnModification::Defined(simple) => {
+                                    peptide.add_simple_c_term(simple);
+                                }
+                                ReturnModification::CrossLinkReferenced(id) => {
+                                    cross_link_found_positions.push((id, SequencePosition::CTerm));
+                                }
+                                ReturnModification::Ambiguous(
+                                    id,
+                                    localisation_score,
+                                    preferred,
+                                ) => {
+                                    ambiguous_found_positions.push((
+                                        SequencePosition::CTerm,
+                                        preferred,
+                                        id,
+                                        localisation_score,
+                                    ));
+                                }
+                            }
+
+                            index = end_index + 1;
                         }
 
                         if index + 1 < chars.len()

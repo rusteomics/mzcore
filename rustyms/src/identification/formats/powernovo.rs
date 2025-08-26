@@ -28,7 +28,7 @@ static NUMBER_ERROR: (&str, &str) = (
 
 format_family!(
     PowerNovo,
-    SemiAmbiguous, PeptidoformPresent, [&POWERNOVO_V1_0_1], b',', None;
+    SemiAmbiguous, PeptidoformPresent, [&POWERNOVO_V1_0_17], b',', None;
     required {
         title: String, |location: Location, _| Ok(location.get_string());
         peptide: Peptidoform<SemiAmbiguous>, |location: Location, custom_database: Option<&CustomDatabase>| Peptidoform::sloppy_pro_forma(
@@ -63,8 +63,8 @@ static IDENTIFER_REGEX: LazyLock<regex::Regex> =
     LazyLock::new(|| regex::Regex::new(r"^(.*):index=(\d+)$").unwrap());
 
 /// The only known version of PowerNovo
-pub const POWERNOVO_V1_0_1: PowerNovoFormat = PowerNovoFormat {
-    version: PowerNovoVersion::V1_0_1,
+pub const POWERNOVO_V1_0_17: PowerNovoFormat = PowerNovoFormat {
+    version: PowerNovoVersion::V1_0_17,
     scan: OptionalColumn::NotAvailable,
     raw_file: OptionalColumn::NotAvailable,
     title: "spectrum name",
@@ -80,7 +80,7 @@ pub const POWERNOVO_V1_0_1: PowerNovoFormat = PowerNovoFormat {
 pub enum PowerNovoVersion {
     #[default]
     /// PowerNovo version 1.0.1
-    V1_0_1,
+    V1_0_17,
 }
 
 impl std::fmt::Display for PowerNovoVersion {
@@ -92,12 +92,12 @@ impl std::fmt::Display for PowerNovoVersion {
 impl IdentifiedPeptidoformVersion<PowerNovoFormat> for PowerNovoVersion {
     fn format(self) -> PowerNovoFormat {
         match self {
-            Self::V1_0_1 => POWERNOVO_V1_0_1,
+            Self::V1_0_17 => POWERNOVO_V1_0_17,
         }
     }
     fn name(self) -> &'static str {
         match self {
-            Self::V1_0_1 => "v1.0.1",
+            Self::V1_0_17 => "v1.0.17",
         }
     }
 }
