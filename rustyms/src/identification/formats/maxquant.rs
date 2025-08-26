@@ -37,8 +37,8 @@ format_family!(
     /// [`MetaData`] trait. If access is needed solely to the _de novo_ data and not to the database
     /// data the easiest way is detecting this case and overwriting the data in place.
     /// ```rust
-    /// # use rustyme::prelude::*;
-    /// # identified_pepform = IdentifiedPeptidoform::default();
+    /// # use rustyms::{prelude::*, identification::*, sequence::Linked};
+    /// # let mut identified_pepform: IdentifiedPeptidoform<Linked, PeptidoformPresent> = BasicCSVData::default().into();
     /// if let IdentifiedPeptidoformData::MaxQuant(ref mut mq) = identified_pepform.data
     ///     && mq.format().version() == Some(MaxQuantVersion::NovoMSMSScans.to_string())
     /// {

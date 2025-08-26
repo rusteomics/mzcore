@@ -28,7 +28,7 @@ reading of [mgf](spectrum::mgf), doing [spectrum annotation](crate::annotation::
 ## Example usage
 
 ```rust
-# fn main() -> Result<(), rustyms::error::BoxedError> {
+# fn main() -> Result<(), custom_error::BoxedError<'static, custom_error::BasicKind>> {
 # let raw_file_path = "data/annotated_example.mgf";
 use rustyms::{prelude::*, system::{isize::Charge, e}};
 // Open example raw data (this is the built in mgf reader, look into mzdata for more advanced raw file readers)
@@ -50,7 +50,7 @@ assert!(fdr.peaks_sigma() > 2.0);
 ```
 
 ```rust
-# fn main() -> Result<(), rustyms::error::BoxedError> {
+# fn main() -> Result<(), custom_error::BoxedError<'static, custom_error::BasicKind>> {
 use rustyms::{prelude::*, sequence::SimpleLinear, align::*};
 // Check how this peptide compares to a similar peptide (using the feature `align`)
 let first_peptide = Peptidoform::pro_forma("IVQEVT", None)?.into_simple_linear().unwrap();
@@ -59,7 +59,7 @@ let second_peptide = Peptidoform::pro_forma("LVQVET", None)?.into_simple_linear(
 // IVQEVT A
 // LVQVET B
 // ─  ╶╴
-let alignment = align::<4, SimpleLinear, SimpleLinear>(
+let alignment = align::<4, &Peptidoform<SimpleLinear>, &Peptidoform<SimpleLinear>>(
                   &first_peptide, 
                   &second_peptide,
                   AlignScoring::default(), 
