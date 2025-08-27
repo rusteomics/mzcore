@@ -67,6 +67,9 @@ struct Cli {
     /// Turns on reporting of I/L coverage by satellite ions, returns a list with a 0 (not covered) or 1 (covered) for each I or L in the peptide
     #[arg(long)]
     report_IL_satellite_coverage: bool,
+    /// Turns on reporting of fragments found and peaks annotated statistics
+    #[arg(long)]
+    report_basic_statistics: bool,
     /// Turns on reporting of ambiguous amino acids, returns a column for each ambiguous amino acid
     /// (J/B/Z). This column it contains `{found_a}/{total_a}|{found_b}/{total_b}` if there are
     /// multiple ambiguous amino acids the values are separated by semicolons and the options are
@@ -181,6 +184,8 @@ fn main() {
     let precursor_mass = Arc::new("precursor_mass".to_string());
     let column_y_independent = Arc::new("ion_Y_charge_independent".to_string());
     let intensity_combined = Arc::new("intensity_combined".to_string());
+    let fragments_found = Arc::new("fragments_found".to_string());
+    let peaks_annotated = Arc::new("peaks_annotated".to_string());
     let peaks_fdr_column = Arc::new("peaks_fdr".to_string());
     let intensity_fdr_column = Arc::new("intensity_fdr".to_string());
     let tic = Arc::new("total_ion_current".to_string());
@@ -278,6 +283,26 @@ fn main() {
                                 }
                             });
                         }
+                    }
+                    if args.report_basic_statistics {
+                        row.insert(
+                            fragments_found.clone(),
+                            match scores.score {
+                                Score::Position { fragments, .. }
+                                | Score::UniqueFormulas { fragments, .. } => {
+                                    fragments.fraction().to_string()
+                                }
+                            },
+                        );
+                        row.insert(
+                            peaks_annotated.clone(),
+                            match scores.score {
+                                Score::Position { peaks, .. }
+                                | Score::UniqueFormulas { peaks, .. } => {
+                                    peaks.fraction().to_string()
+                                }
+                            },
+                        );
                     }
                     if args.report_false_match_rate {
                         let (fdr, _) = annotated.fdr(&fragments, &parameters, MassMode::Monoisotopic);
