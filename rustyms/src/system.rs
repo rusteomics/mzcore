@@ -198,24 +198,24 @@ impl isize::Charge {
 impl MassOverCharge {
     /// Absolute ppm error between this mz and the given other
     pub fn ppm(self, b: Self) -> Ratio {
-        Ratio::new::<ratio::ppm>(((self - b).abs() / self.abs()).value * 1e6)
+        (self - b).abs() / self.abs()
     }
 
     /// Signed ppm error between this mz and the given other
     pub fn signed_ppm(self, b: Self) -> Ratio {
-        Ratio::new::<ratio::ppm>(((self - b) / self).value * 1e6)
+        (self - b) / self
     }
 }
 
 impl Mass {
     /// Absolute ppm error between this mass and the given other
     pub fn ppm(self, b: Self) -> Ratio {
-        Ratio::new::<ratio::ppm>(((self - b).abs() / self.abs()).value * 1e6)
+        (self - b).abs() / self.abs()
     }
 
     /// Signed ppm error between this mass and the given other
     pub fn signed_ppm(self, b: Self) -> Ratio {
-        Ratio::new::<ratio::ppm>(((self - b) / self).value * 1e6)
+        (self - b) / self
     }
 }
 
