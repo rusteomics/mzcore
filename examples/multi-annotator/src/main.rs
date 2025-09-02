@@ -21,6 +21,7 @@ use fragment::FragmentType;
 use itertools::Itertools;
 use mzdata::{
     io::{MZFileReader, SpectrumSource},
+    mzpeaks::peak_set::PeakSetVec,
     mzsignal::PeakPicker,
     spectrum::{SignalContinuity, SpectrumLike},
 };
@@ -94,6 +95,9 @@ struct Cli {
     /// This parameters should be specified with monosaccharide names separated by commas.
     #[arg(long, value_parser=monosaccharide_parser, value_delimiter = ',')]
     glycan_buckets: Vec<MonoSaccharide>,
+    /// Filter the MS2 spectra to only contain peaks above this intensity value.
+    #[arg(long)]
+    absolute_noise_threshold: Option<f32>,
 }
 
 /// Parse a monosaccharide from the string.
@@ -211,6 +215,9 @@ fn main() {
                     } else if spectrum.arrays.is_some() && spectrum.peaks.is_none() {
                         // USI spectra are mostly loaded as the binary array maps instead of peaks regardless of the signal continuity level
                         spectrum.peaks = spectrum.arrays.as_ref().map(Into::into);
+                    }
+                    if let Some(threshold) = args.absolute_noise_threshold && let Some(peaks) = spectrum.peaks.as_mut() { 
+                            peaks.peaks.retain(|p: &mzdata::mzpeaks::CentroidPeak| p.intensity > threshold); 
                     }
                     let fragments = line.sequence.generate_theoretical_fragments(line.z, selected_model);
                     let annotated = spectrum.annotate(
