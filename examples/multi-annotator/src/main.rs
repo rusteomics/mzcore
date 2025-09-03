@@ -149,7 +149,7 @@ fn select_model<'a>(
 fn main() {
     let args = Cli::parse();
 
-    let parameters = MatchingParameters::default();
+    let parameters = MatchingParameters::default().tolerance(args.tolerance);
     let custom_modifications_path = ProjectDirs::from("com", "com.snijderlab.annotator", "")
         .expect("Could not generate Annotator configuration path (needed to check if custom modifications are defined)")
         .config_dir()
