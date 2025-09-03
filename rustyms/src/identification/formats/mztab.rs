@@ -512,7 +512,7 @@ impl MZTabData {
                                     Context::line_range(Some(line.line_index as u32), line.line, r),
                                 )
                             })
-                            .map(|v| MassOverCharge::new::<crate::system::mz>(v))
+                            .map(|v| MassOverCharge::new::<crate::system::thomson>(v))
                     })
                 })
                 .transpose()?,

@@ -97,7 +97,7 @@ format_family!(
         precursor_intensity: f32, |location: Location, _| location.parse(NUMBER_ERROR);
         precursor_charge: f32, |location: Location, _| location.parse(NUMBER_ERROR);
         precursor_z: Charge, |location: Location, _| location.parse(NUMBER_ERROR).map(Charge::new::<crate::system::charge::e>);
-        precursor_mz: MassOverCharge, |location: Location, _| location.parse(NUMBER_ERROR).map(MassOverCharge::new::<crate::system::mass_over_charge::mz>);
+        precursor_mz: MassOverCharge, |location: Location, _| location.parse(NUMBER_ERROR).map(MassOverCharge::new::<crate::system::mass_over_charge::thomson>);
         precursor_fwhm: f32, |location: Location, _| location.parse(NUMBER_ERROR);
         precursor_lift_off_rt: Time, |location: Location, _| location.parse(NUMBER_ERROR).map(Time::new::<crate::system::time::s>);
         precursor_inf_up_rt: Time, |location: Location, _| location.parse(NUMBER_ERROR).map(Time::new::<crate::system::time::s>);
@@ -116,7 +116,7 @@ format_family!(
         product_rank: isize, |location: Location, _| location.parse::<isize>(NUMBER_ERROR);
         product_he_id: u32, |location: Location, _| location.or_empty().parse::<u32>(NUMBER_ERROR);
         product_mass: Mass, |location: Location, _| location.or_empty().parse(NUMBER_ERROR).map(|r| r.map(Mass::new::<crate::system::dalton>));
-        product_mz: MassOverCharge, |location: Location, _| location.or_empty().parse(NUMBER_ERROR).map(|r| r.map(MassOverCharge::new::<crate::system::mass_over_charge::mz>));
+        product_mz: MassOverCharge, |location: Location, _| location.or_empty().parse(NUMBER_ERROR).map(|r| r.map(MassOverCharge::new::<crate::system::mass_over_charge::thomson>));
         product_rt: Time, |location: Location, _| location.or_empty().parse(NUMBER_ERROR).map(|r| r.map(Time::new::<crate::system::time::min>));
         product_intensity: usize, |location: Location, _| location.or_empty().parse::<usize>(NUMBER_ERROR);
         product_charge: f32, |location: Location, _| location.or_empty().parse::<f32>(NUMBER_ERROR);

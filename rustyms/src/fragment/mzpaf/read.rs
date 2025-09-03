@@ -21,7 +21,7 @@ use crate::{
         AminoAcid, CompoundPeptidoformIon, Linked, Peptidoform, SemiAmbiguous, SequenceElement,
         SequencePosition, SimpleModification, SimpleModificationInner,
     },
-    system::{Mass, MassOverCharge, OrderedMassOverCharge, e, isize::Charge, mz},
+    system::{Mass, MassOverCharge, OrderedMassOverCharge, e, isize::Charge, thomson},
 };
 
 /// Parse a [mzPAF](https://www.psidev.info/mzPAF) peak annotation line (can contain multiple annotations).
@@ -1137,7 +1137,7 @@ fn parse_deviation(
         } else {
             Ok((
                 range.add_start(1 + number.0),
-                Some(Tolerance::new_absolute(MassOverCharge::new::<mz>(
+                Some(Tolerance::new_absolute(MassOverCharge::new::<thomson>(
                     deviation,
                 ))),
             ))

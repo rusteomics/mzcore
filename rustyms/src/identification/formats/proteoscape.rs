@@ -55,7 +55,7 @@ format_family!(
             })
         };
         xcorr_score: f64, |location: Location, _| location.parse::<f64>(NUMBER_ERROR);
-        mz: MassOverCharge, |location: Location, _| location.parse::<f64>(NUMBER_ERROR).map(MassOverCharge::new::<crate::system::mz>);
+        mz: MassOverCharge, |location: Location, _| location.parse::<f64>(NUMBER_ERROR).map(MassOverCharge::new::<crate::system::thomson>);
         rt: Time, |location: Location, _| location.parse::<f64>(NUMBER_ERROR).map(Time::new::<crate::system::time::s>);
         corrected_o_over_k0: f64, |location: Location, _| location.parse::<f64>(NUMBER_ERROR);
         protein: FastaIdentifier<String>, |location: Location, _|  location.parse(NUMBER_ERROR);

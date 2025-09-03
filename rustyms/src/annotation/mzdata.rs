@@ -24,7 +24,7 @@ impl<S: SpectrumLike> AnnotatableSpectrum for S {
                     .iter()
                     .map(|p| {
                         AnnotatedPeak::background(&RawPeak {
-                            mz: MassOverCharge::new::<crate::system::mz>(p.mz),
+                            mz: MassOverCharge::new::<crate::system::thomson>(p.mz),
                             intensity: ordered_float::OrderedFloat(f64::from(p.intensity)),
                         })
                     })
@@ -33,7 +33,7 @@ impl<S: SpectrumLike> AnnotatableSpectrum for S {
                     .iter()
                     .map(|p| {
                         AnnotatedPeak::background(&RawPeak {
-                            mz: MassOverCharge::new::<crate::system::mz>(p.neutral_mass), // TODO: This is M (not MH+) which is not very well supported in the current matching
+                            mz: MassOverCharge::new::<crate::system::thomson>(p.neutral_mass), // TODO: This is M (not MH+) which is not very well supported in the current matching
                             intensity: ordered_float::OrderedFloat(f64::from(p.intensity)),
                         })
                     })
@@ -51,7 +51,7 @@ impl From<crate::quantities::Tolerance<MassOverCharge>> for Tolerance {
     fn from(value: crate::quantities::Tolerance<MassOverCharge>) -> Self {
         match value {
             crate::quantities::Tolerance::Absolute(value) => {
-                Self::Da(value.get::<crate::system::mz>()) // This is in Thompson (verified with crate author)
+                Self::Da(value.get::<crate::system::thomson>()) // This is in thomson (verified with crate author)
             }
             crate::quantities::Tolerance::Relative(value) => {
                 Self::PPM(value.get::<crate::system::ratio::ppm>())

@@ -188,7 +188,7 @@ impl MetaData for SageData {
     }
 
     fn experimental_mz(&self) -> Option<MassOverCharge> {
-        Some(MassOverCharge::new::<crate::system::mz>(
+        Some(MassOverCharge::new::<crate::system::thomson>(
             self.mass.value / self.z.to_float().value,
         ))
     }

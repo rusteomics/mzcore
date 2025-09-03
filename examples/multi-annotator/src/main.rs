@@ -21,26 +21,17 @@ use fragment::FragmentType;
 use itertools::Itertools;
 use mzdata::{
     io::{MZFileReader, SpectrumSource},
-    mzpeaks::peak_set::PeakSetVec,
+    mzpeaks::{peak_set::PeakSetVec, PeakCollection},
     mzsignal::PeakPicker,
     spectrum::{SignalContinuity, SpectrumLike},
 };
 use rayon::prelude::*;
 use rustyms::{
     annotation::{
-        AnnotatableSpectrum, AnnotatedPeak, Score, Scores,
-        model::{FragmentationModel, MatchingParameters, parse_custom_models},
-    },
-    chemistry::MassMode,
-    fragment::{DiagnosticPosition, Fragment},
-    glycan::MonoSaccharide,
-    identification::{BasicCSVData, IdentifiedPeptidoformSource, csv::write_csv},
-    sequence::{
-        AminoAcid, GnoComposition, SequencePosition, SimpleModificationInner,
-        parse_custom_modifications,
-    },
-    spectrum::PeakSpectrum,
-    *,
+        model::{parse_custom_models, FragmentationModel, MatchingParameters}, AnnotatableSpectrum, AnnotatedPeak, Score, Scores
+    }, chemistry::MassMode, fragment::{DiagnosticPosition, Fragment}, glycan::MonoSaccharide, identification::{csv::write_csv, BasicCSVData, IdentifiedPeptidoformSource}, quantities::Tolerance, sequence::{
+        parse_custom_modifications, AminoAcid, GnoComposition, SequencePosition, SimpleModificationInner
+    }, spectrum::PeakSpectrum, system::MassOverCharge, *
 };
 
 /// The command line interface arguments
@@ -95,9 +86,21 @@ struct Cli {
     /// This parameters should be specified with monosaccharide names separated by commas.
     #[arg(long, value_parser=monosaccharide_parser, value_delimiter = ',')]
     glycan_buckets: Vec<MonoSaccharide>,
+    /// Filter the MS2 spectra to only contain peaks above this fraction of the intensity value of the TIC.
+    /// First the TIC filter is applied, then the base peak, then the absolute.
+    #[arg(long)]
+    tic_noise_threshold: Option<f32>,
+    /// Filter the MS2 spectra to only contain peaks above this fraction of the intensity value of the base peaks.
+    /// First the TIC filter is applied, then the base peak, then the absolute.
+    #[arg(long)]
+    basepeak_noise_threshold: Option<f32>,
     /// Filter the MS2 spectra to only contain peaks above this intensity value.
+    /// First the TIC filter is applied, then the base peak, then the absolute.
     #[arg(long)]
     absolute_noise_threshold: Option<f32>,
+    /// MS2 fragment match tolerance. Use a number followed by `ppm`, `Th`, `m/z`, or `mz` (capitalisation is ignored).
+    #[arg(short, long, default_value_t = Tolerance::new_ppm(20.0.into()), value_parser=mass_tolerance_parse)]
+    tolerance: Tolerance<MassOverCharge>,
 }
 
 /// Parse a monosaccharide from the string.
@@ -107,6 +110,11 @@ fn monosaccharide_parser(value: &str) -> Result<MonoSaccharide, String> {
     MonoSaccharide::from_short_iupac(value, 0, 0)
         .map(|s| s.0)
         .map_err(|e| e.to_string())
+}
+/// # Errors
+/// If the string is not `xxppm` or `xxth`.
+fn mass_tolerance_parse(input: &str) -> Result<Tolerance<MassOverCharge>, &'static str> {
+    input.parse().map_err(|()| "Invalid tolerance parameter")
 }
 
 fn select_model<'a>(
@@ -215,6 +223,14 @@ fn main() {
                     } else if spectrum.arrays.is_some() && spectrum.peaks.is_none() {
                         // USI spectra are mostly loaded as the binary array maps instead of peaks regardless of the signal continuity level
                         spectrum.peaks = spectrum.arrays.as_ref().map(Into::into);
+                    }
+                    if let Some(threshold) = args.tic_noise_threshold && let Some(peaks) = spectrum.peaks.as_mut() { 
+                        let threshold = peaks.total_ion_current() * threshold;
+                        peaks.peaks.retain(|p: &mzdata::mzpeaks::CentroidPeak| p.intensity > threshold); 
+                    }
+                    if let Some(threshold) = args.basepeak_noise_threshold && let Some(peaks) = spectrum.peaks.as_mut() { 
+                        let threshold = peaks.base_peak().map_or(0.0, |v| v.intensity  * threshold);
+                        peaks.peaks.retain(|p: &mzdata::mzpeaks::CentroidPeak| p.intensity > threshold); 
                     }
                     if let Some(threshold) = args.absolute_noise_threshold && let Some(peaks) = spectrum.peaks.as_mut() { 
                             peaks.peaks.retain(|p: &mzdata::mzpeaks::CentroidPeak| p.intensity > threshold); 

@@ -96,7 +96,7 @@ format_family!(
         mass: Mass, |location: Location, _| location.parse::<f64>(NUMBER_ERROR).map(Mass::new::<crate::system::dalton>);
         missed_cleavages: usize, |location: Location, _| location.parse::<usize>(NUMBER_ERROR);
         modified_peptide_id: usize, |location: Location, _| location.parse::<usize>(NUMBER_ERROR);
-        mz: MassOverCharge, |location: Location, _| location.parse::<f64>(NUMBER_ERROR).map(MassOverCharge::new::<crate::system::mz>);
+        mz: MassOverCharge, |location: Location, _| location.parse::<f64>(NUMBER_ERROR).map(MassOverCharge::new::<crate::system::thomson>);
         nem_probabilities: Box<str>, |location: Location, _| Ok(location.get_boxed_str());
         nem_score_differences: Box<str>, |location: Location, _| Ok(location.get_boxed_str());
         number_of_matches: usize, |location: Location, _| location.parse::<usize>(NUMBER_ERROR);

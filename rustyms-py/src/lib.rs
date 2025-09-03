@@ -909,9 +909,9 @@ impl MatchingParameters {
         self.0.tolerance = rustyms::quantities::Tolerance::new_ppm(tolerance);
     }
 
-    /// Set the tolerance to a certain absolute Thompson value
+    /// Set the tolerance to a certain absolute thomson value
     #[setter]
-    fn tolerance_thompson(&mut self, tolerance: f64) {
+    fn tolerance_thomson(&mut self, tolerance: f64) {
         self.0.tolerance =
             rustyms::quantities::Tolerance::new_absolute(rustyms::system::MassOverCharge::new::<
                 rustyms::system::mz,

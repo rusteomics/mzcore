@@ -84,7 +84,7 @@ format_family!(
     optional {
         best_score_with_delta_mass: f32, |location: Location, _| location.or_empty().parse::<f32>(NUMBER_ERROR);
         calibrated_experimental_mass: Mass, |location: Location, _| location.parse::<f64>(NUMBER_ERROR).map(Mass::new::<crate::system::dalton>);
-        calibrated_experimental_mz: MassOverCharge, |location: Location, _| location.parse::<f64>(NUMBER_ERROR).map(MassOverCharge::new::<crate::system::mz>);
+        calibrated_experimental_mz: MassOverCharge, |location: Location, _| location.parse::<f64>(NUMBER_ERROR).map(MassOverCharge::new::<crate::system::thomson>);
         condition: String, |location: Location, _| Ok(Some(location.get_string()));
         delta_score: f32, |location: Location, _| location.or_empty().parse::<f32>(NUMBER_ERROR);
         entry_name: String, |location: Location, _| Ok(location.get_string());
@@ -120,7 +120,7 @@ format_family!(
                 l.context().to_owned(),
             ))
         });
-        mz: MassOverCharge, |location: Location, _| location.parse::<f64>(NUMBER_ERROR).map(MassOverCharge::new::<crate::system::mz>);
+        mz: MassOverCharge, |location: Location, _| location.parse::<f64>(NUMBER_ERROR).map(MassOverCharge::new::<crate::system::thomson>);
         gene: String, |location: Location, _| Ok(location.get_string());
         mapped_genes: ThinVec<String>, |location: Location, _| Ok(location.get_string().split(',').map(|s| s.trim().to_string()).collect::<ThinVec<_>>());
         mapped_proteins: ThinVec<String>, |location: Location, _| Ok(location.get_string().split(',').map(|s| s.trim().to_string()).collect::<ThinVec<_>>());

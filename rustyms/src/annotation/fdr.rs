@@ -83,7 +83,7 @@ impl AnnotatedSpectrum {
                 .iter()
                 .map(|p| {
                     p.experimental_mz
-                        + MassOverCharge::new::<crate::system::mz>(
+                        + MassOverCharge::new::<crate::system::thomson>(
                             std::f64::consts::PI + f64::from(offset),
                         )
                 })

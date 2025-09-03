@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     quantities::Tolerance,
-    system::{MassOverCharge, mz},
+    system::{MassOverCharge, thomson},
 };
 
 /// Parameters for the matching, allowing control over when a match is allowed.
@@ -37,7 +37,8 @@ impl Default for MatchingParameters {
     fn default() -> Self {
         Self {
             tolerance: Tolerance::new_ppm(20.0),
-            mz_range: MassOverCharge::new::<mz>(0.0)..=MassOverCharge::new::<mz>(f64::MAX),
+            mz_range: MassOverCharge::new::<thomson>(0.0)
+                ..=MassOverCharge::new::<thomson>(f64::MAX),
         }
     }
 }

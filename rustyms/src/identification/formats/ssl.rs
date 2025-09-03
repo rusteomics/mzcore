@@ -45,7 +45,7 @@ format_family!(
         score_type: String, |location: Location, _| Ok(location.get_string());
         rt: Time, |location: Location, _| location.parse::<f64>(NUMBER_ERROR).map(Time::new::<crate::system::time::min>);
         adduct: String, |location: Location, _| Ok(location.get_string());
-        precursormz: MassOverCharge, |location: Location, _| location.parse::<f64>(NUMBER_ERROR).map(MassOverCharge::new::<crate::system::mz>);
+        precursormz: MassOverCharge, |location: Location, _| location.parse::<f64>(NUMBER_ERROR).map(MassOverCharge::new::<crate::system::thomson>);
         moleculename: String, |location: Location, _| Ok(location.get_string());
         inchikey: String, |location: Location, _| Ok(location.get_string());
         otherkeys: String, |location: Location, _| Ok(location.or_empty().get_string());

@@ -735,7 +735,7 @@ fn test(
         while index < calculated_fragments.len() {
             if calculated_fragments[index]
                 .mz(MassMode::Monoisotopic)
-                .map(|v| v.ppm(MassOverCharge::new::<system::mz>(goal.0)))
+                .map(|v| v.ppm(MassOverCharge::new::<system::thomson>(goal.0)))
                 .is_some_and(|v| v < Ratio::new::<ppm>(20.0))
             {
                 println!(

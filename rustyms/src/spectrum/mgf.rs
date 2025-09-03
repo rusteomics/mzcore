@@ -18,7 +18,7 @@ use crate::{
         f64::{Mass, MassOverCharge, Time},
         isize::Charge,
         mass::dalton,
-        mass_over_charge::mz,
+        mass_over_charge::thomson,
         time::s,
     },
 };
@@ -158,7 +158,7 @@ pub fn open_raw<T: std::io::Read>(
                 if split.len() < 2 {
                     return Err(base_error.clone().long_description("Not enough columns"));
                 }
-                peak.mz = MassOverCharge::new::<mz>(split[0].parse().map_err(|_| {
+                peak.mz = MassOverCharge::new::<thomson>(split[0].parse().map_err(|_| {
                     base_error
                         .clone()
                         .long_description(format!("Not a number {} for MZ", split[0]))

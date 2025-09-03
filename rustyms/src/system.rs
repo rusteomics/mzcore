@@ -82,7 +82,7 @@ pub mod mass_over_charge {
         /// Mass over charge (da/e)
         dimension: Q< P1, N1, Z0>;
         units {
-            @mz: 1.0; "mz", "mass_over_charge", "mass_over_charge";
+            @thomson: 1.0; "Th", "thomson", "thomson";
         }
     }
 }
@@ -139,7 +139,7 @@ pub mod f64 {
 
     pub use super::charge::e;
     pub use super::mass::dalton;
-    pub use super::mass_over_charge::mz;
+    pub use super::mass_over_charge::thomson;
     pub use super::ratio::fraction;
     pub use super::time::s;
 
@@ -160,7 +160,7 @@ pub mod usize {
 
     pub use super::charge::e;
     pub use super::mass::dalton;
-    pub use super::mass_over_charge::mz;
+    pub use super::mass_over_charge::thomson;
     pub use super::ratio::fraction;
     pub use super::time::s;
 }
@@ -176,7 +176,7 @@ pub mod isize {
 
     pub use super::charge::e;
     pub use super::mass::dalton;
-    pub use super::mass_over_charge::mz;
+    pub use super::mass_over_charge::thomson;
     pub use super::ratio::fraction;
     pub use super::time::s;
 }

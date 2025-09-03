@@ -25,7 +25,7 @@ format_family!(
     SemiAmbiguous, PeptidoformPresent, [&OLD_DENOVO, &OLD_PSM, &NEW_DENOVO, &NEW_PSM], b',', None;
     required {
         scan_number: usize, |location: Location, _| location.parse(NUMBER_ERROR);
-        mz: MassOverCharge, |location: Location, _| location.parse::<f64>(NUMBER_ERROR).map(MassOverCharge::new::<crate::system::mz>);
+        mz: MassOverCharge, |location: Location, _| location.parse::<f64>(NUMBER_ERROR).map(MassOverCharge::new::<crate::system::thomson>);
         z: Charge, |location: Location, _| location.parse::<isize>(NUMBER_ERROR).map(Charge::new::<crate::system::e>);
         mass: Mass, |location: Location, _| location.parse::<f64>(NUMBER_ERROR).map(Mass::new::<crate::system::dalton>);
         score: f64, |location: Location, _| location.parse::<f64>(NUMBER_ERROR);

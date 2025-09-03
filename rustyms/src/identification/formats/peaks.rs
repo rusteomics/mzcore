@@ -75,7 +75,7 @@ format_family!(
                     c_flanking.map_or(FlankingSequence::Terminal, FlankingSequence::AminoAcid)
                 ))
             }};
-        mz: MassOverCharge, |location: Location, _| location.parse::<f64>(NUMBER_ERROR).map(MassOverCharge::new::<crate::system::mz>);
+        mz: MassOverCharge, |location: Location, _| location.parse::<f64>(NUMBER_ERROR).map(MassOverCharge::new::<crate::system::thomson>);
         rt: Time, |location: Location, _| location.parse::<f64>(NUMBER_ERROR).map(Time::new::<crate::system::time::min>);
         area: Option<f64>, |location: Location, _| location.or_empty().parse(NUMBER_ERROR);
     }

@@ -41,7 +41,7 @@ format_family!(
     SemiAmbiguous, PeptidoformPresent, [&INSTANOVO_V1_0_0, &INSTANOVOPLUS_V1_1_4], b',', None;
     required {
         scan_number: usize, |location: Location, _| location.parse(NUMBER_ERROR);
-        mz: MassOverCharge, |location: Location, _| location.parse::<f64>(NUMBER_ERROR).map(MassOverCharge::new::<crate::system::mz>);
+        mz: MassOverCharge, |location: Location, _| location.parse::<f64>(NUMBER_ERROR).map(MassOverCharge::new::<crate::system::thomson>);
         z: Charge, |location: Location, _| location.parse::<isize>(NUMBER_ERROR).map(Charge::new::<crate::system::e>);
         raw_file: PathBuf, |location: Location, _| Ok(Path::new(&location.get_string()).to_owned());
         peptide: Peptidoform<SemiAmbiguous>, |location: Location, custom_database: Option<&CustomDatabase>| Peptidoform::sloppy_pro_forma(
