@@ -549,8 +549,8 @@ impl MetaData for MSFraggerData {
         Some(self.mass)
     }
 
-    fn protein_name(&self) -> Option<FastaIdentifier<String>> {
-        Some(self.protein.clone())
+    fn protein_names(&self) -> Option<Cow<'_, [FastaIdentifier<String>]>> {
+        Some(Cow::Borrowed(std::slice::from_ref(&self.protein)))
     }
 
     fn protein_id(&self) -> Option<usize> {

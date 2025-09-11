@@ -163,7 +163,7 @@ impl MetaData for SpectrumSequenceListData {
         None
     }
 
-    fn protein_name(&self) -> Option<FastaIdentifier<String>> {
+    fn protein_names(&self) -> Option<Cow<'_, [FastaIdentifier<String>]>> {
         None
     }
 

@@ -71,8 +71,8 @@ pub trait MetaData {
         })
     }
 
-    /// Get the protein name if this was database matched data
-    fn protein_name(&self) -> Option<FastaIdentifier<String>>;
+    /// Get the protein names if this was database matched data
+    fn protein_names(&self) -> Option<Cow<'_, [FastaIdentifier<String>]>>;
 
     /// Get the protein id if this was database matched data
     fn protein_id(&self) -> Option<usize>;

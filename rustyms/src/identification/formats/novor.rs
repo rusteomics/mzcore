@@ -260,7 +260,7 @@ impl MetaData for NovorData {
         Some(self.mass)
     }
 
-    fn protein_name(&self) -> Option<FastaIdentifier<String>> {
+    fn protein_names(&self) -> Option<Cow<'_, [FastaIdentifier<String>]>> {
         None
     }
 

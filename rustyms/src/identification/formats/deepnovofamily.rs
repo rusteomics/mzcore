@@ -224,7 +224,7 @@ impl MetaData for DeepNovoFamilyData {
             .and_then(|mz| self.z.map(|z| (mz, z)).map(|(mz, z)| mz * z.to_float()))
     }
 
-    fn protein_name(&self) -> Option<FastaIdentifier<String>> {
+    fn protein_names(&self) -> Option<Cow<'_, [FastaIdentifier<String>]>> {
         None
     }
 

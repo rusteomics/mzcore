@@ -162,7 +162,7 @@ impl MetaData for PowerNovoData {
         None
     }
 
-    fn protein_name(&self) -> Option<FastaIdentifier<String>> {
+    fn protein_names(&self) -> Option<Cow<'_, [FastaIdentifier<String>]>> {
         None
     }
 

@@ -138,7 +138,7 @@ impl MetaData for PiPrimeNovoData {
         None
     }
 
-    fn protein_name(&self) -> Option<FastaIdentifier<String>> {
+    fn protein_names(&self) -> Option<Cow<'_, [FastaIdentifier<String>]>> {
         None
     }
 

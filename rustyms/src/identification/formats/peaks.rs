@@ -755,8 +755,10 @@ impl MetaData for PeaksData {
             .map_or_else(|| self.z.map(|z| self.mz * z.to_float()), Some)
     }
 
-    fn protein_name(&self) -> Option<FastaIdentifier<String>> {
-        self.protein_accession.clone()
+    fn protein_names(&self) -> Option<Cow<'_, [FastaIdentifier<String>]>> {
+        self.protein_accession
+            .as_ref()
+            .map(|v| Cow::Borrowed(std::slice::from_ref(v)))
     }
 
     fn protein_id(&self) -> Option<usize> {

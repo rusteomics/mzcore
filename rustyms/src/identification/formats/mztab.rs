@@ -42,7 +42,7 @@ pub struct MZTabData {
     pub id: usize,
     /// The protein's accession the corresponding peptide sequence (coming from the
     /// PSM) is associated with.
-    pub accession: Option<String>,
+    pub accession: Option<FastaIdentifier<String>>,
     /// Indicates whether the peptide sequence (coming from the PSM) is unique for
     /// this protein in respect to the searched database.
     pub unique: Option<bool>,
@@ -374,9 +374,9 @@ impl MZTabData {
                         ),
                     )
                 })?,
-            accession: line
-                .optional_column("accession")
-                .and_then(|(v, _)| (!v.eq_ignore_ascii_case("null")).then(|| v.to_string())),
+            accession: line.optional_column("accession").and_then(|(v, _)| {
+                (!v.eq_ignore_ascii_case("null")).then(|| FastaIdentifier::Undefined(v.to_string()))
+            }),
             unique: line
                 .optional_column("unique")
                 .and_then(|(v, _)| (!v.eq_ignore_ascii_case("null")).then(|| v == "1")),
@@ -1375,10 +1375,10 @@ impl MetaData for MZTabData {
         self.mz.map(|mz| mz * self.z.to_float())
     }
 
-    fn protein_name(&self) -> Option<FastaIdentifier<String>> {
+    fn protein_names(&self) -> Option<Cow<'_, [FastaIdentifier<String>]>> {
         self.accession
             .as_ref()
-            .map(|a| FastaIdentifier::Undefined(a.clone()))
+            .map(|a| Cow::Borrowed(std::slice::from_ref(a)))
     }
 
     fn protein_id(&self) -> Option<usize> {

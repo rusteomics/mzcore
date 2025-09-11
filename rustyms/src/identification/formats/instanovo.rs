@@ -225,7 +225,7 @@ impl MetaData for InstaNovoData {
         Some(self.mz * self.z.to_float())
     }
 
-    fn protein_name(&self) -> Option<FastaIdentifier<String>> {
+    fn protein_names(&self) -> Option<Cow<'_, [FastaIdentifier<String>]>> {
         None
     }
 

@@ -3,9 +3,9 @@ use std::{
     marker::PhantomData,
     ops::Range,
     path::{Path, PathBuf},
+    str::FromStr,
 };
 
-use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 
 use crate::{
@@ -56,7 +56,14 @@ format_family!(
         predicted_mobility: f64, |location: Location, _| location.parse(NUMBER_ERROR);
         predicted_rt: Ratio, |location: Location, _| location.parse(NUMBER_ERROR).map(Ratio::new::<crate::system::ratio::fraction>);
         protein_q: f64, |location: Location, _| location.parse(NUMBER_ERROR);
-        proteins: Vec<String>, |location: Location, _| Ok(location.get_string().split(';').map(ToString::to_string).collect_vec());
+        proteins: Vec<FastaIdentifier<String>>, |location: Location, _| location.array(';').map(|v|
+            FastaIdentifier::<String>::from_str(v.as_str())
+            .map_err(|e| BoxedError::new(
+                BasicKind::Error,
+                "Could not parse Sage line",
+                format!("The protein identifier could not be parsed: {e}"),
+                v.context().to_owned()
+            ))).collect::<Result<Vec<FastaIdentifier<String>>, _>>();
         /// PSM ID
         id: usize, |location: Location, _| location.parse(NUMBER_ERROR);
         rank: usize, |location: Location, _| location.parse(NUMBER_ERROR);
@@ -197,8 +204,8 @@ impl MetaData for SageData {
         Some(self.mass)
     }
 
-    fn protein_name(&self) -> Option<FastaIdentifier<String>> {
-        None
+    fn protein_names(&self) -> Option<Cow<'_, [FastaIdentifier<String>]>> {
+        Some(Cow::Borrowed(&self.proteins))
     }
 
     fn protein_id(&self) -> Option<usize> {

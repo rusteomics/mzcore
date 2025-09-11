@@ -825,8 +825,8 @@ impl MetaData for FastaData {
         None
     }
 
-    fn protein_name(&self) -> Option<FastaIdentifier<String>> {
-        None
+    fn protein_names(&self) -> Option<Cow<'_, [FastaIdentifier<String>]>> {
+        Some(Cow::Owned(vec![self.identifier.as_string(self.header())]))
     }
 
     fn protein_id(&self) -> Option<usize> {

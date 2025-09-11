@@ -519,7 +519,7 @@ impl_metadata!(
         fn experimental_mass(&self) -> Option<Mass>;
         fn ppm_error(&self) -> Option<Ratio>;
         fn mass_error(&self) -> Option<Mass>;
-        fn protein_name(&self) -> Option<FastaIdentifier<String>>;
+        fn protein_names(&self) -> Option<Cow<'_, [FastaIdentifier<String>]>>;
         fn protein_id(&self) -> Option<usize>;
         fn protein_location(&self) -> Option<Range<u16>>;
         fn flanking_sequences(&self) -> (&FlankingSequence, &FlankingSequence);

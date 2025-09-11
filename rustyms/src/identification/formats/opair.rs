@@ -367,8 +367,8 @@ impl MetaData for OpairData {
         Some(self.mass)
     }
 
-    fn protein_name(&self) -> Option<FastaIdentifier<String>> {
-        Some(self.protein_name.clone())
+    fn protein_names(&self) -> Option<Cow<'_, [FastaIdentifier<String>]>> {
+        Some(Cow::Borrowed(std::slice::from_ref(&self.protein_name)))
     }
 
     fn protein_id(&self) -> Option<usize> {

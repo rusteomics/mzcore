@@ -1,4 +1,6 @@
-use std::{borrow::Cow, marker::PhantomData, num::NonZeroU32, ops::Range, path::PathBuf};
+use std::{
+    borrow::Cow, marker::PhantomData, num::NonZeroU32, ops::Range, path::PathBuf, str::FromStr,
+};
 
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
@@ -51,7 +53,14 @@ format_family!(
     SimpleLinear, MaybePeptidoform, [&MSMS, &NOVO_MSMS_SCANS, &MSMS_SCANS, &SILAC], b'\t', None;
     required {
         scan_number: ThinVec<usize>, |location: Location, _| location.or_empty().array(';').map(|s| s.parse(NUMBER_ERROR)).collect::<Result<ThinVec<usize>, BoxedError<'_, BasicKind>>>();
-        proteins: Box<str>, |location: Location, _| Ok(location.get_boxed_str());
+        proteins: Vec<FastaIdentifier<String>>, |location: Location, _| location.array(';').map(|v|
+            FastaIdentifier::<String>::from_str(v.as_str())
+            .map_err(|e| BoxedError::new(
+                BasicKind::Error,
+                "Could not parse MaxQuant line",
+                format!("The protein identifier could not be parsed: {e}"),
+                v.context().to_owned()
+            ))).collect::<Result<Vec<FastaIdentifier<String>>, _>>();
         /// The database matched peptide, annotated as [`SimpleLinear`] to allow replacing it with the _de novo_ peptide, no features of the [`SimpleLinear`] complexity are used for the database peptides
         peptide: Option<Peptidoform<SimpleLinear>>, |location: Location, custom_database: Option<&CustomDatabase>| location.or_empty().parse_with(|location| Peptidoform::sloppy_pro_forma(
             location.full_line(),
@@ -501,8 +510,8 @@ impl MetaData for MaxQuantData {
         self.mass
     }
 
-    fn protein_name(&self) -> Option<FastaIdentifier<String>> {
-        None
+    fn protein_names(&self) -> Option<Cow<'_, [FastaIdentifier<String>]>> {
+        Some(Cow::Borrowed(&self.proteins))
     }
 
     fn protein_id(&self) -> Option<usize> {

@@ -136,7 +136,7 @@ impl MetaData for PepNetData {
         Some(self.ppm_diff)
     }
 
-    fn protein_name(&self) -> Option<FastaIdentifier<String>> {
+    fn protein_names(&self) -> Option<Cow<'_, [FastaIdentifier<String>]>> {
         None
     }
 
