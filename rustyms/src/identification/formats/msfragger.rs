@@ -52,7 +52,10 @@ format_family!(
                 custom_database,
                 &SloppyParsingParameters {ignore_prefix_lowercase_n: true, ..Default::default()},
         ).map(Into::into).map_err(BoxedError::to_owned)});
-        protein: FastaIdentifier<String>, |location: Location, _| location.parse(IDENTIFIER_ERROR);
+        /// The full header of the fasta entry, split into the id and the rest of the line (without the separating space)
+        protein: (FastaIdentifier<String>, String), |location: Location, _| location.clone().split_once(' ').map_or_else(
+            || location.parse(IDENTIFIER_ERROR).map(|id| (id, String::new())),
+            |(id, tail)| id.parse(IDENTIFIER_ERROR).map(|id| (id, tail.get_string())));
         rt: Time, |location: Location, _| location.parse::<f64>(NUMBER_ERROR).map(Time::new::<crate::system::time::min>);
         scan: SpectrumId, |location: Location, _| Ok(location.clone().parse::<usize>(NUMBER_ERROR).map_or(SpectrumId::Native(location.get_string()), SpectrumId::Number));
         modifications: ThinVec<(SequencePosition, SimpleModification)>, |location: Location, custom_database: Option<&CustomDatabase>| location.or_empty().array(',').map(|m| if let Some((head, tail)) = m.clone().split_once('(') {
@@ -550,7 +553,7 @@ impl MetaData for MSFraggerData {
     }
 
     fn protein_names(&self) -> Option<Cow<'_, [FastaIdentifier<String>]>> {
-        Some(Cow::Borrowed(std::slice::from_ref(&self.protein)))
+        Some(Cow::Borrowed(std::slice::from_ref(&self.protein.0)))
     }
 
     fn protein_id(&self) -> Option<usize> {

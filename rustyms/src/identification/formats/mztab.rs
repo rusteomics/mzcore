@@ -375,7 +375,8 @@ impl MZTabData {
                     )
                 })?,
             accession: line.optional_column("accession").and_then(|(v, _)| {
-                (!v.eq_ignore_ascii_case("null")).then(|| FastaIdentifier::Undefined(v.to_string()))
+                (!v.eq_ignore_ascii_case("null"))
+                    .then(|| FastaIdentifier::Undefined(false, v.to_string()))
             }),
             unique: line
                 .optional_column("unique")
