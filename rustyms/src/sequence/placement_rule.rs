@@ -204,10 +204,10 @@ impl FromStr for Position {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s.to_ascii_lowercase().as_str() {
             "anywhere" => Ok(Self::Anywhere),
-            "anynterm" => Ok(Self::AnyNTerm),
-            "proteinnterm" => Ok(Self::ProteinNTerm),
-            "anycterm" => Ok(Self::AnyCTerm),
-            "proteincterm" => Ok(Self::ProteinCTerm),
+            "anynterm" | "anyn-term" => Ok(Self::AnyNTerm),
+            "proteinnterm" | "proteinn-term" => Ok(Self::ProteinNTerm),
+            "anycterm" | "anyc-term" => Ok(Self::AnyCTerm),
+            "proteincterm" | "proteinc-term" => Ok(Self::ProteinCTerm),
             _ => Err(()),
         }
     }

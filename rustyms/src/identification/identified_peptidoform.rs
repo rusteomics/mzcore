@@ -66,6 +66,8 @@ pub enum IdentifiedPeptidoformData {
     PowerNovo(PowerNovoData),
     /// Proteoscape metadata
     Proteoscape(ProteoscapeData),
+    /// pUniFind metadata
+    PUniFind(PUniFindData),
     /// Sage metadata
     Sage(SageData),
     /// SpectrumSequenceList metadata
@@ -82,6 +84,10 @@ impl<PeptidoformAvailability> IdentifiedPeptidoform<Linear, PeptidoformAvailabil
             | IdentifiedPeptidoformData::PiHelixNovo(PiHelixNovoData { peptide, .. })
             | IdentifiedPeptidoformData::PepNet(PepNetData { peptide, .. })
             | IdentifiedPeptidoformData::PowerNovo(PowerNovoData { peptide, .. })
+            | IdentifiedPeptidoformData::PUniFind(PUniFindData {
+                peptidoform: peptide,
+                ..
+            })
             | IdentifiedPeptidoformData::Proteoscape(ProteoscapeData {
                 peptide: (_, peptide, _),
                 ..
@@ -142,6 +148,10 @@ impl<PeptidoformAvailability> IdentifiedPeptidoform<SimpleLinear, PeptidoformAva
             | IdentifiedPeptidoformData::Opair(OpairData { peptide, .. })
             | IdentifiedPeptidoformData::PepNet(PepNetData { peptide, .. })
             | IdentifiedPeptidoformData::PowerNovo(PowerNovoData { peptide, .. })
+            | IdentifiedPeptidoformData::PUniFind(PUniFindData {
+                peptidoform: peptide,
+                ..
+            })
             | IdentifiedPeptidoformData::Proteoscape(ProteoscapeData {
                 peptide: (_, peptide, _),
                 ..
@@ -202,6 +212,10 @@ impl<PeptidoformAvailability> IdentifiedPeptidoform<SemiAmbiguous, PeptidoformAv
             | IdentifiedPeptidoformData::PiHelixNovo(PiHelixNovoData { peptide, .. })
             | IdentifiedPeptidoformData::PepNet(PepNetData { peptide, .. })
             | IdentifiedPeptidoformData::PowerNovo(PowerNovoData { peptide, .. })
+            | IdentifiedPeptidoformData::PUniFind(PUniFindData {
+                peptidoform: peptide,
+                ..
+            })
             | IdentifiedPeptidoformData::Proteoscape(ProteoscapeData {
                 peptide: (_, peptide, _),
                 ..
@@ -265,6 +279,10 @@ impl<PeptidoformAvailability> IdentifiedPeptidoform<UnAmbiguous, PeptidoformAvai
             | IdentifiedPeptidoformData::PiHelixNovo(PiHelixNovoData { peptide, .. })
             | IdentifiedPeptidoformData::PepNet(PepNetData { peptide, .. })
             | IdentifiedPeptidoformData::PowerNovo(PowerNovoData { peptide, .. })
+            | IdentifiedPeptidoformData::PUniFind(PUniFindData {
+                peptidoform: peptide,
+                ..
+            })
             | IdentifiedPeptidoformData::Proteoscape(ProteoscapeData {
                 peptide: (_, peptide, _),
                 ..
@@ -504,7 +522,7 @@ macro_rules! impl_metadata {
 }
 
 impl_metadata!(
-    formats: {BasicCSV,DeepNovoFamily,Fasta,MaxQuant,InstaNovo,MZTab,NovoB,Novor,Opair,Peaks,PepNet,PiHelixNovo,PiPrimeNovo,PLGS,PLink,PowerNovo,Proteoscape,Sage,MSFragger,SpectrumSequenceList};
+    formats: {BasicCSV,DeepNovoFamily,Fasta,MaxQuant,InstaNovo,MZTab,NovoB,Novor,Opair,Peaks,PepNet,PiHelixNovo,PiPrimeNovo,PLGS,PLink,PowerNovo,Proteoscape,PUniFind,Sage,MSFragger,SpectrumSequenceList};
     functions: {
         fn compound_peptidoform_ion(&self) -> Option<Cow<'_, CompoundPeptidoformIon>>;
         fn format(&self) -> KnownFileFormat;

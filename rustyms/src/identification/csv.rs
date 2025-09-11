@@ -357,6 +357,7 @@ pub(crate) fn csv_separate(
     }
     let mut enclosed = None;
     let mut was_enclosed = false;
+    let mut was_double = false;
     let mut row = Vec::new();
     let mut start = None;
     let mut last_non_whitespace = None;
@@ -365,17 +366,26 @@ pub(crate) fn csv_separate(
             (b'\"' | b'\'', None, None) => {
                 enclosed = Some(ch);
                 start = Some(index + 1);
+                was_double = false;
             }
             (c, Some(e), Some(s)) if c == e => {
-                enclosed = None;
-                if c.is_ascii_whitespace() {
-                    row.push(s..last_non_whitespace.unwrap_or(index));
+                // Ignore an 'escaped' enclosing token by doubling it up
+                if line.as_bytes().get(index + 1).copied() == Some(e) && !was_double {
+                    // skip the next one
+                    was_double = true;
+                } else if was_double {
+                    was_double = false;
                 } else {
-                    row.push(s..index);
+                    enclosed = None;
+                    if c.is_ascii_whitespace() {
+                        row.push(s..last_non_whitespace.unwrap_or(index));
+                    } else {
+                        row.push(s..index);
+                    }
+                    start = None;
+                    last_non_whitespace = None;
+                    was_enclosed = true;
                 }
-                start = None;
-                last_non_whitespace = None;
-                was_enclosed = true;
             }
             (sep, None, Some(s)) if sep == separator => {
                 if sep.is_ascii_whitespace() {

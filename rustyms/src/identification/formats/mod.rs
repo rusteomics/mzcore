@@ -18,6 +18,7 @@ mod plgs;
 mod plink;
 mod powernovo;
 mod proteoscape;
+mod punifind;
 mod sage;
 mod ssl;
 
@@ -40,6 +41,7 @@ pub use plgs::*;
 pub use plink::*;
 pub use powernovo::*;
 pub use proteoscape::*;
+pub use punifind::*;
 pub use sage::*;
 pub use ssl::*;
 
@@ -75,6 +77,8 @@ mod plink_tests;
 mod powernovo_tests;
 #[cfg(test)]
 mod proteoscape_tests;
+#[cfg(test)]
+mod punifind_tests;
 #[cfg(test)]
 mod sage_tests;
 #[cfg(test)]

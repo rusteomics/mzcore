@@ -10,7 +10,9 @@ use clap::Parser;
 use custom_error::{BasicKind, BoxedError, Context, CreateError};
 use directories::ProjectDirs;
 use rustyms::{
-    identification::{MetaData, SpectrumId, SpectrumIds, open_identified_peptidoforms_file},
+    identification::{
+        FastaIdentifier, MetaData, SpectrumId, SpectrumIds, open_identified_peptidoforms_file,
+    },
     sequence::parse_custom_modifications,
 };
 
@@ -112,7 +114,7 @@ fn main() {
                 ))?;
             let charge = p.charge().map(|v| v.value).unwrap_or_default();
             let score = p.original_confidence().unwrap_or_default();
-            let class = p.protein_name().map_or("Unknown",|id| if id.name().starts_with("rev_") {"Decoy"} else if id.accession().starts_with("Cont_") {"Contaminant"} else {"Main"});
+            let class = p.protein_names().map_or("Unknown",|ids| if ids.iter().any(FastaIdentifier::decoy) {"Decoy"} else {"Target"});
             for (index, raw_file) in indices {
                 writeln!(&mut out_file, "\"{sequence}\",{index},\"{}\",{charge},{score},{class}",raw_file.display()).unwrap();
             }
