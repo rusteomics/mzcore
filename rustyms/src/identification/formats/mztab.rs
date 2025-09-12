@@ -1071,7 +1071,11 @@ impl<'a> PSMLine<'a> {
             Err(BoxedError::new(
                 BasicKind::Error,
                 "Invalid PSM line",
-                "This PSM line does not have the same number of columns as the PSH line",
+                format!(
+                    "This PSM line does not have the same number of columns as the PSH line (PSH: {}, PSM: {})",
+                    header.len(),
+                    fields.len(),
+                ),
                 Context::full_line(line_index as u32, line),
             ))
         }

@@ -108,6 +108,14 @@ fn adanovo_v1_0_0() {
     );
 }
 
+#[test]
+fn maxquant_dia_paper() {
+    assert_eq!(
+        open_file(BufReader::new(MAXQUANT_DIA_PAPER.as_bytes())).unwrap(),
+        29
+    );
+}
+
 /// Open a MZTab file from the given reader.
 /// # Errors
 /// If any part of the process errors.
@@ -1379,3 +1387,66 @@ PSM	VYALKELLEK	114	null	null	null	null	[MS, MS:1003281, Casanovo, 5.0.0]	-0.9999
 PSM	[Acetyl]-GEEQEEKPGR	115	null	null	null	null	[MS, MS:1003281, Casanovo, 5.0.0]	-0.9997432127129287	null	null	3	403.2336120605469	400.85455322265625	ms_run[1]:controllerType=0 controllerNumber=1 scan=1051	null	null	null	null	0.27362,0.47380,0.44399,0.29237,0.48777,0.22731,0.33616,0.99230,0.73173,0.56972
 PSM	DPEEEEEAAGHH	116	null	null	null	null	[MS, MS:1003281, Casanovo, 5.0.0]	-0.9999999679288862	null	null	3	450.55694580078125	450.51287841796875	ms_run[1]:controllerType=0 controllerNumber=1 scan=1053	null	null	null	null	0.78524,0.34287,0.15011,0.19529,0.22735,0.19947,0.18097,0.15955,0.23406,0.30160,0.17878,0.24851
 PSM	[Acetyl]-GGGGGGGPC[Carbamidomethyl]C[Carbamidomethyl]	117	null	null	null	null	[MS, MS:1003281, Casanovo, 5.0.0]	-0.9999997721433118	null	null	2	447.3478088378906	439.1500549316406	ms_run[1]:controllerType=0 controllerNumber=1 scan=1071	null	null	null	null	0.12611,0.42845,0.37714,0.16173,0.15369,0.13036,0.23697,0.11213,0.32371,0.40910";
+
+const MAXQUANT_DIA_PAPER: &str = r"MTD	mzTab-version	1.0.0
+MTD	mzTab-mode	Complete
+MTD	mzTab-type	Identification
+MTD	title	null
+MTD	description	null
+MTD	software[1]	[MS, MS:1001583, MaxQuant,1.6.17.0]
+COM	[, CHEMMOD:57.0214637236, Carbamidomethyl (C),]
+MTD	fixed_mod[1]	[, , CHEMMOD:57.0214637236,]
+MTD	fixed_mod[1]-site	C
+MTD	fixed_mod[1]-position	Anywhere
+COM	[, CHEMMOD:15.9949146221, Oxidation (M),]
+MTD	variable_mod[1]	[, , CHEMMOD:15.9949146221,]
+MTD	variable_mod[1]-site	M
+MTD	variable_mod[1]-position	Anywhere
+COM	[, CHEMMOD:42.0105646863, Acetyl (Protein N-term),]
+MTD	variable_mod[2]	[, , CHEMMOD:42.0105646863,]
+MTD	variable_mod[2]-site	N-term
+MTD	variable_mod[2]-position	Protein N-term
+MTD	protein_search_engine_score[1]	[MS, MS:1003097, MaxQuant protein group-level score, ]
+MTD	peptide_search_engine_score[1]	[MS, MS:1003099, MaxQuant-DIA peptide PEP, ]
+MTD	psm_search_engine_score[1]	[MS, MS:1003100, MaxQuant-DIA score, ]
+MTD	psm_search_engine_score[2]	[MS, MS:1003101, MaxQuant-DIA PEP, ]
+MTD	ms_run[1]-format	[MS, MS:1000563, Thermo RAW format, ]
+MTD	ms_run[1]-location	file://D:/pavel/BoxCar/data002/dia/BOXCAR_SWATH_SingleShot/discovery/20201006_LU1_DaIt_Aurora5_HEK1_BOXCAR_SWATH_2ul.raw
+MTD	ms_run[1]-id_format	[MS, MS:1000768, Thermo nativeID format, ]
+MTD	ms_run[2]-format	[MS, MS:1000563, Thermo RAW format, ]
+MTD	ms_run[2]-location	file://D:/pavel/BoxCar/data002/dia/BOXCAR_SWATH_SingleShot/discovery/20201006_LU1_DaIt_Aurora5_HEK2_BOXCAR_SWATH_2ul.raw
+MTD	ms_run[2]-id_format	[MS, MS:1000768, Thermo nativeID format, ]
+MTD	ms_run[3]-format	[MS, MS:1000563, Thermo RAW format, ]
+MTD	ms_run[3]-location	file://D:/pavel/BoxCar/data002/dia/BOXCAR_SWATH_SingleShot/discovery/20201006_LU1_DaIt_Aurora5_HEK3_BOXCAR_SWATH_2ul.raw
+MTD	ms_run[3]-id_format	[MS, MS:1000768, Thermo nativeID format, ]
+
+PSH	sequence	PSM_ID	accession	unique	database	database_version	search_engine	search_engine_score[1]	search_engine_score[2]	modifications	retention_time	charge	exp_mass_to_charge	calc_mass_to_charge	spectra_ref	pre	post	start	end	opt_global_cv_MS:1002751_NIST_MSP_format	opt_global_cv_MS:1003102_NIST_msp_comment
+PSM	ILNFLMHPK	1	A0A494C028	0	D:\pavel\BoxCar\lib\discovery\homo_sapiens\UP000005640_9606.fasta;D:\pavel\BoxCar\lib\discovery\homo_sapiens\UP000005640_9606_additional.fasta;	null	[MS, MS:1003100, MaxQuant-DIA:score, 1.6.17.0]	8	0.0007259438	null	61.86906	3	371.5474	371.5477	ms_run[1]:scan=1197	R	P	184	192	20201006_LU1_DaIt_Aurora5_HEK1_BOXCAR_SWATH_2ul_msp.msp	reference num 1
+PSM	ILNFLMHPK	1	B4DFG0	0	D:\pavel\BoxCar\lib\discovery\homo_sapiens\UP000005640_9606.fasta;D:\pavel\BoxCar\lib\discovery\homo_sapiens\UP000005640_9606_additional.fasta;	null	[MS, MS:1003100, MaxQuant-DIA:score, 1.6.17.0]	8	0.0007259438	null	61.86906	3	371.5474	371.5477	ms_run[1]:scan=1197	R	P	151	159	20201006_LU1_DaIt_Aurora5_HEK1_BOXCAR_SWATH_2ul_msp.msp	reference num 1
+PSM	ILNFLMHPK	1	D6RDA2	0	D:\pavel\BoxCar\lib\discovery\homo_sapiens\UP000005640_9606.fasta;D:\pavel\BoxCar\lib\discovery\homo_sapiens\UP000005640_9606_additional.fasta;	null	[MS, MS:1003100, MaxQuant-DIA:score, 1.6.17.0]	8	0.0007259438	null	61.86906	3	371.5474	371.5477	ms_run[1]:scan=1197	R	P	112	120	20201006_LU1_DaIt_Aurora5_HEK1_BOXCAR_SWATH_2ul_msp.msp	reference num 1
+PSM	ILNFLMHPK	1	H0Y8X0	0	D:\pavel\BoxCar\lib\discovery\homo_sapiens\UP000005640_9606.fasta;D:\pavel\BoxCar\lib\discovery\homo_sapiens\UP000005640_9606_additional.fasta;	null	[MS, MS:1003100, MaxQuant-DIA:score, 1.6.17.0]	8	0.0007259438	null	61.86906	3	371.5474	371.5477	ms_run[1]:scan=1197	R	P	179	187	20201006_LU1_DaIt_Aurora5_HEK1_BOXCAR_SWATH_2ul_msp.msp	reference num 1
+PSM	ILNFLMHPK	1	H0Y993	0	D:\pavel\BoxCar\lib\discovery\homo_sapiens\UP000005640_9606.fasta;D:\pavel\BoxCar\lib\discovery\homo_sapiens\UP000005640_9606_additional.fasta;	null	[MS, MS:1003100, MaxQuant-DIA:score, 1.6.17.0]	8	0.0007259438	null	61.86906	3	371.5474	371.5477	ms_run[1]:scan=1197	R	P	179	187	20201006_LU1_DaIt_Aurora5_HEK1_BOXCAR_SWATH_2ul_msp.msp	reference num 1
+PSM	ILNFLMHPK	1	P35659	0	D:\pavel\BoxCar\lib\discovery\homo_sapiens\UP000005640_9606.fasta;D:\pavel\BoxCar\lib\discovery\homo_sapiens\UP000005640_9606_additional.fasta;	null	[MS, MS:1003100, MaxQuant-DIA:score, 1.6.17.0]	8	0.0007259438	null	61.86906	3	371.5474	371.5477	ms_run[1]:scan=1197	R	P	179	187	20201006_LU1_DaIt_Aurora5_HEK1_BOXCAR_SWATH_2ul_msp.msp	reference num 1
+PSM	ILNFLMHPK	1	P35659-2	0	D:\pavel\BoxCar\lib\discovery\homo_sapiens\UP000005640_9606.fasta;D:\pavel\BoxCar\lib\discovery\homo_sapiens\UP000005640_9606_additional.fasta;	null	[MS, MS:1003100, MaxQuant-DIA:score, 1.6.17.0]	8	0.0007259438	null	61.86906	3	371.5474	371.5477	ms_run[1]:scan=1197	R	P	145	153	20201006_LU1_DaIt_Aurora5_HEK1_BOXCAR_SWATH_2ul_msp.msp	reference num 1
+PSM	LIEVDDERK	2	A2A3R7	0	D:\pavel\BoxCar\lib\discovery\homo_sapiens\UP000005640_9606.fasta;D:\pavel\BoxCar\lib\discovery\homo_sapiens\UP000005640_9606_additional.fasta;	null	[MS, MS:1003100, MaxQuant-DIA:score, 1.6.17.0]	8	0.0007652104	null	21.17544	3	372.8678	372.868	ms_run[1]:scan=389	K	L	15	23	20201006_LU1_DaIt_Aurora5_HEK1_BOXCAR_SWATH_2ul_msp.msp	reference num 2
+PSM	LIEVDDERK	2	P62753	0	D:\pavel\BoxCar\lib\discovery\homo_sapiens\UP000005640_9606.fasta;D:\pavel\BoxCar\lib\discovery\homo_sapiens\UP000005640_9606_additional.fasta;	null	[MS, MS:1003100, MaxQuant-DIA:score, 1.6.17.0]	8	0.0007652104	null	21.17544	3	372.8678	372.868	ms_run[1]:scan=389	K	L	15	23	20201006_LU1_DaIt_Aurora5_HEK1_BOXCAR_SWATH_2ul_msp.msp	reference num 2
+PSM	VHIDIGADGR	3	P31942	0	D:\pavel\BoxCar\lib\discovery\homo_sapiens\UP000005640_9606.fasta;D:\pavel\BoxCar\lib\discovery\homo_sapiens\UP000005640_9606_additional.fasta;	null	[MS, MS:1003100, MaxQuant-DIA:score, 1.6.17.0]	8	0.0007433967	null	31.63646	3	351.5213	351.521	ms_run[1]:scan=596	R	A	223	232	20201006_LU1_DaIt_Aurora5_HEK1_BOXCAR_SWATH_2ul_msp.msp	reference num 3
+PSM	VHIDIGADGR	3	P31942-2	0	D:\pavel\BoxCar\lib\discovery\homo_sapiens\UP000005640_9606.fasta;D:\pavel\BoxCar\lib\discovery\homo_sapiens\UP000005640_9606_additional.fasta;	null	[MS, MS:1003100, MaxQuant-DIA:score, 1.6.17.0]	8	0.0007433967	null	31.63646	3	351.5213	351.521	ms_run[1]:scan=596	R	A	208	217	20201006_LU1_DaIt_Aurora5_HEK1_BOXCAR_SWATH_2ul_msp.msp	reference num 3
+PSM	VHIDIGADGR	3	P31942-3	0	D:\pavel\BoxCar\lib\discovery\homo_sapiens\UP000005640_9606.fasta;D:\pavel\BoxCar\lib\discovery\homo_sapiens\UP000005640_9606_additional.fasta;	null	[MS, MS:1003100, MaxQuant-DIA:score, 1.6.17.0]	8	0.0007433967	null	31.63646	3	351.5213	351.521	ms_run[1]:scan=596	R	A	174	183	20201006_LU1_DaIt_Aurora5_HEK1_BOXCAR_SWATH_2ul_msp.msp	reference num 3
+PSM	VHIDIGADGR	3	P31942-4	0	D:\pavel\BoxCar\lib\discovery\homo_sapiens\UP000005640_9606.fasta;D:\pavel\BoxCar\lib\discovery\homo_sapiens\UP000005640_9606_additional.fasta;	null	[MS, MS:1003100, MaxQuant-DIA:score, 1.6.17.0]	8	0.0007433967	null	31.63646	3	351.5213	351.521	ms_run[1]:scan=596	R	A	92	101	20201006_LU1_DaIt_Aurora5_HEK1_BOXCAR_SWATH_2ul_msp.msp	reference num 3
+PSM	VHIDIGADGR	3	P31942-5	0	D:\pavel\BoxCar\lib\discovery\homo_sapiens\UP000005640_9606.fasta;D:\pavel\BoxCar\lib\discovery\homo_sapiens\UP000005640_9606_additional.fasta;	null	[MS, MS:1003100, MaxQuant-DIA:score, 1.6.17.0]	8	0.0007433967	null	31.63646	3	351.5213	351.521	ms_run[1]:scan=596	R	A	92	101	20201006_LU1_DaIt_Aurora5_HEK1_BOXCAR_SWATH_2ul_msp.msp	reference num 3
+PSM	VHIDIGADGR	3	P31942-6	0	D:\pavel\BoxCar\lib\discovery\homo_sapiens\UP000005640_9606.fasta;D:\pavel\BoxCar\lib\discovery\homo_sapiens\UP000005640_9606_additional.fasta;	null	[MS, MS:1003100, MaxQuant-DIA:score, 1.6.17.0]	8	0.0007433967	null	31.63646	3	351.5213	351.521	ms_run[1]:scan=596	R	A	86	95	20201006_LU1_DaIt_Aurora5_HEK1_BOXCAR_SWATH_2ul_msp.msp	reference num 3
+PSM	LSEGFSIHTR	4	P20618	1	D:\pavel\BoxCar\lib\discovery\homo_sapiens\UP000005640_9606.fasta;D:\pavel\BoxCar\lib\discovery\homo_sapiens\UP000005640_9606_additional.fasta;	null	[MS, MS:1003100, MaxQuant-DIA:score, 1.6.17.0]	8	0.0009548356	null	35.47694	3	382.868	382.8683	ms_run[1]:scan=672	R	D	57	66	20201006_LU1_DaIt_Aurora5_HEK1_BOXCAR_SWATH_2ul_msp.msp	reference num 4
+PSM	VHIEIGPDGR	5	E9PCY7	0	D:\pavel\BoxCar\lib\discovery\homo_sapiens\UP000005640_9606.fasta;D:\pavel\BoxCar\lib\discovery\homo_sapiens\UP000005640_9606_additional.fasta;	null	[MS, MS:1003100, MaxQuant-DIA:score, 1.6.17.0]	8	0.0007840503	null	33.60837	3	364.8643	364.8647	ms_run[1]:scan=635	R	V	317	326	20201006_LU1_DaIt_Aurora5_HEK1_BOXCAR_SWATH_2ul_msp.msp	reference num 5
+PSM	VHIEIGPDGR	5	G8JLB6	0	D:\pavel\BoxCar\lib\discovery\homo_sapiens\UP000005640_9606.fasta;D:\pavel\BoxCar\lib\discovery\homo_sapiens\UP000005640_9606_additional.fasta;	null	[MS, MS:1003100, MaxQuant-DIA:score, 1.6.17.0]	8	0.0007840503	null	33.60837	3	364.8643	364.8647	ms_run[1]:scan=635	R	V	317	326	20201006_LU1_DaIt_Aurora5_HEK1_BOXCAR_SWATH_2ul_msp.msp	reference num 5
+PSM	VHIEIGPDGR	5	H0YB39	0	D:\pavel\BoxCar\lib\discovery\homo_sapiens\UP000005640_9606.fasta;D:\pavel\BoxCar\lib\discovery\homo_sapiens\UP000005640_9606_additional.fasta;	null	[MS, MS:1003100, MaxQuant-DIA:score, 1.6.17.0]	8	0.0007840503	null	33.60837	3	364.8643	364.8647	ms_run[1]:scan=635	R	V	192	201	20201006_LU1_DaIt_Aurora5_HEK1_BOXCAR_SWATH_2ul_msp.msp	reference num 5
+PSM	VHIEIGPDGR	5	H0YBD7	0	D:\pavel\BoxCar\lib\discovery\homo_sapiens\UP000005640_9606.fasta;D:\pavel\BoxCar\lib\discovery\homo_sapiens\UP000005640_9606_additional.fasta;	null	[MS, MS:1003100, MaxQuant-DIA:score, 1.6.17.0]	8	0.0007840503	null	33.60837	3	364.8643	364.8647	ms_run[1]:scan=635	R	V	131	140	20201006_LU1_DaIt_Aurora5_HEK1_BOXCAR_SWATH_2ul_msp.msp	reference num 5
+PSM	VHIEIGPDGR	5	H0YBG7	0	D:\pavel\BoxCar\lib\discovery\homo_sapiens\UP000005640_9606.fasta;D:\pavel\BoxCar\lib\discovery\homo_sapiens\UP000005640_9606_additional.fasta;	null	[MS, MS:1003100, MaxQuant-DIA:score, 1.6.17.0]	8	0.0007840503	null	33.60837	3	364.8643	364.8647	ms_run[1]:scan=635	R	V	73	82	20201006_LU1_DaIt_Aurora5_HEK1_BOXCAR_SWATH_2ul_msp.msp	reference num 5
+PSM	VHIEIGPDGR	5	P31943	0	D:\pavel\BoxCar\lib\discovery\homo_sapiens\UP000005640_9606.fasta;D:\pavel\BoxCar\lib\discovery\homo_sapiens\UP000005640_9606_additional.fasta;	null	[MS, MS:1003100, MaxQuant-DIA:score, 1.6.17.0]	8	0.0007840503	null	33.60837	3	364.8643	364.8647	ms_run[1]:scan=635	R	V	317	326	20201006_LU1_DaIt_Aurora5_HEK1_BOXCAR_SWATH_2ul_msp.msp	reference num 5
+PSM	VHIEIGPDGR	5	P52597	0	D:\pavel\BoxCar\lib\discovery\homo_sapiens\UP000005640_9606.fasta;D:\pavel\BoxCar\lib\discovery\homo_sapiens\UP000005640_9606_additional.fasta;	null	[MS, MS:1003100, MaxQuant-DIA:score, 1.6.17.0]	8	0.0007840503	null	33.60837	3	364.8643	364.8647	ms_run[1]:scan=635	R	V	317	326	20201006_LU1_DaIt_Aurora5_HEK1_BOXCAR_SWATH_2ul_msp.msp	reference num 5
+PSM	VHIEIGPDGR	5	P55795	0	D:\pavel\BoxCar\lib\discovery\homo_sapiens\UP000005640_9606.fasta;D:\pavel\BoxCar\lib\discovery\homo_sapiens\UP000005640_9606_additional.fasta;	null	[MS, MS:1003100, MaxQuant-DIA:score, 1.6.17.0]	8	0.0007840503	null	33.60837	3	364.8643	364.8647	ms_run[1]:scan=635	R	V	317	326	20201006_LU1_DaIt_Aurora5_HEK1_BOXCAR_SWATH_2ul_msp.msp	reference num 5
+PSM	SDPYLEFHK	6	A0A087WYQ3	0	D:\pavel\BoxCar\lib\discovery\homo_sapiens\UP000005640_9606.fasta;D:\pavel\BoxCar\lib\discovery\homo_sapiens\UP000005640_9606_additional.fasta;	null	[MS, MS:1003100, MaxQuant-DIA:score, 1.6.17.0]	8	0.0007621654	null	39.08084	3	379.1856	379.1855	ms_run[1]:scan=744	K	Q	159	167	20201006_LU1_DaIt_Aurora5_HEK1_BOXCAR_SWATH_2ul_msp.msp	reference num 6
+PSM	SDPYLEFHK	6	O75131	0	D:\pavel\BoxCar\lib\discovery\homo_sapiens\UP000005640_9606.fasta;D:\pavel\BoxCar\lib\discovery\homo_sapiens\UP000005640_9606_additional.fasta;	null	[MS, MS:1003100, MaxQuant-DIA:score, 1.6.17.0]	8	0.0007621654	null	39.08084	3	379.1856	379.1855	ms_run[1]:scan=744	K	Q	159	167	20201006_LU1_DaIt_Aurora5_HEK1_BOXCAR_SWATH_2ul_msp.msp	reference num 6
+PSM	FSDFLGLHSK	7	D6RC15	0	D:\pavel\BoxCar\lib\discovery\homo_sapiens\UP000005640_9606.fasta;D:\pavel\BoxCar\lib\discovery\homo_sapiens\UP000005640_9606_additional.fasta;	null	[MS, MS:1003100, MaxQuant-DIA:score, 1.6.17.0]	8	0.0007456864	null	56.63172	3	384.2015	384.2012	ms_run[1]:scan=1094	R	L	183	192	20201006_LU1_DaIt_Aurora5_HEK1_BOXCAR_SWATH_2ul_msp.msp	reference num 7
+PSM	FSDFLGLHSK	7	O60749	0	D:\pavel\BoxCar\lib\discovery\homo_sapiens\UP000005640_9606.fasta;D:\pavel\BoxCar\lib\discovery\homo_sapiens\UP000005640_9606_additional.fasta;	null	[MS, MS:1003100, MaxQuant-DIA:score, 1.6.17.0]	8	0.0007456864	null	56.63172	3	384.2015	384.2012	ms_run[1]:scan=1094	R	L	184	193	20201006_LU1_DaIt_Aurora5_HEK1_BOXCAR_SWATH_2ul_msp.msp	reference num 7
+PSM	FSDFLGLHSK	7	O60749-2	0	D:\pavel\BoxCar\lib\discovery\homo_sapiens\UP000005640_9606.fasta;D:\pavel\BoxCar\lib\discovery\homo_sapiens\UP000005640_9606_additional.fasta;	null	[MS, MS:1003100, MaxQuant-DIA:score, 1.6.17.0]	8	0.0007456864	null	56.63172	3	384.2015	384.2012	ms_run[1]:scan=1094	R	L	67	76	20201006_LU1_DaIt_Aurora5_HEK1_BOXCAR_SWATH_2ul_msp.msp	reference num 7";
