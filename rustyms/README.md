@@ -1,8 +1,8 @@
 # Match those fragments!
 
 Handle mass spectrometry data in Rust. This crate is set up to handle very complex peptides with
-loads of ambiguity and complexity. It pivots around the [`CompoundPeptidoformIon`](crate::sequence::CompoundPeptidoformIon), 
-[`PeptidoformIon`](crate::sequence::PeptidoformIon) and [`Peptidoform`](crate::sequence::Peptidoform) which encode the 
+loads of ambiguity and complexity. It pivots around the [`CompoundPeptidoformIon`](crate::sequence::CompoundPeptidoformIon),
+[`PeptidoformIon`](crate::sequence::PeptidoformIon) and [`Peptidoform`](crate::sequence::Peptidoform) which encode the
 [ProForma](https://github.com/HUPO-PSI/ProForma) specification. Additionally, this crate enables the
 reading of [mgf](spectrum::mgf), doing [spectrum annotation](crate::annotation::AnnotatableSpectrum::annotate)
 (BU/MD/TD), finding [isobaric sequences](crate::prelude::find_isobaric_sets), doing [alignments of peptides](crate::align::align)
@@ -41,7 +41,7 @@ let fragments = peptide.generate_theoretical_fragments(Charge::new::<e>(2), mode
 let parameters = MatchingParameters::default();
 // Annotate the raw data with the theoretical fragments
 let annotated = spectrum[0].annotate(peptide, &fragments, &parameters, MassMode::Monoisotopic);
-// Calculate a peak false discovery rate for this annotation 
+// Calculate a peak false discovery rate for this annotation
 let (fdr, _) = annotated.fdr(&fragments, &parameters, MassMode::Monoisotopic);
 // This is the incorrect sequence for this spectrum so the peak FDR will indicate this
 # dbg!(&fdr, fdr.peaks_sigma(), fdr.peaks_fdr(), fdr.peaks_score());
@@ -60,9 +60,9 @@ let second_peptide = Peptidoform::pro_forma("LVQVET", None)?.into_simple_linear(
 // LVQVET B
 // ─  ╶╴
 let alignment = align::<4, &Peptidoform<SimpleLinear>, &Peptidoform<SimpleLinear>>(
-                  &first_peptide, 
+                  &first_peptide,
                   &second_peptide,
-                  AlignScoring::default(), 
+                  AlignScoring::default(),
                   AlignType::GLOBAL);
 # dbg!(&alignment);
 // Calculate some more statistics on this alignment

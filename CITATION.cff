@@ -17,7 +17,7 @@ cff-version: 1.2.0
 identifiers:
   - description: Main paper (preprint)
     type: doi
-    value: 10.1101/2025.01.18.633732 
+    value: 10.1101/2025.01.18.633732
   - description: Mass alignment algorithm paper
     type: doi
     value: 10.1021/acs.jproteome.4c00188

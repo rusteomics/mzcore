@@ -37,8 +37,8 @@ impl ParseJson for NeutralLoss {
                     if let Some(n) = arr[0].as_u64() {
                         Ok((
                             u16::try_from(n).map_err(|_| BoxedError::new(BasicKind::Error,
-                                "Invalid NeutralLoss", 
-                                format!("The {context} amount is too big, the number has to be below {}", u16::MAX), 
+                                "Invalid NeutralLoss",
+                                format!("The {context} amount is too big, the number has to be below {}", u16::MAX),
                                 Context::show(n.to_string())))?,
                             MolecularFormula::from_json_value(arr.pop().unwrap())?,
                         ))

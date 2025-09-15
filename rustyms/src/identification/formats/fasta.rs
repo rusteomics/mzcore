@@ -748,14 +748,14 @@ impl FastaData {
                         Ok((
                             region.parse::<Region>().unwrap(),
                             n.parse::<usize>().map_err(|err| BoxedError::new(BasicKind::Error,
-                            "Invalid regions definition", 
-                            format!("The fasta header 'REGIONS' key, should contain regions followed by a colon, e.g. 'CDR3:6', but the number is {}", explain_number_error(&err)), 
+                            "Invalid regions definition",
+                            format!("The fasta header 'REGIONS' key, should contain regions followed by a colon, e.g. 'CDR3:6', but the number is {}", explain_number_error(&err)),
                             Context::line(Some(line_index as u32), &full_header, tag.1.start + last, tag.1.start+index).to_owned()))?
                         ))
                     } else {
                         Err(BoxedError::new(BasicKind::Error,
-                            "Invalid regions definition", 
-                            "The fasta header 'REGIONS' key, should contain regions followed by a colon, e.g. 'CDR3:6'", 
+                            "Invalid regions definition",
+                            "The fasta header 'REGIONS' key, should contain regions followed by a colon, e.g. 'CDR3:6'",
                             Context::line(Some(line_index as u32), &full_header, tag.1.start + last, tag.1.start+index).to_owned()))
                     }
                 }).collect::<Result<Vec<_>,_>>()?;
@@ -769,14 +769,14 @@ impl FastaData {
                         Ok((
                             region.parse::<Annotation>().unwrap(),
                             n.parse::<usize>().map_err(|err| BoxedError::new(BasicKind::Error,
-                            "Invalid annotations definition", 
-                            format!("The fasta header 'ANNOTATIONS' key, should contain annotations followed by a colon, e.g. 'Conserved:6', but the number is {}", explain_number_error(&err)), 
+                            "Invalid annotations definition",
+                            format!("The fasta header 'ANNOTATIONS' key, should contain annotations followed by a colon, e.g. 'Conserved:6', but the number is {}", explain_number_error(&err)),
                             Context::line(Some(line_index as u32), &full_header, tag.1.start + last, tag.1.start+index).to_owned()))?
                         ))
                     } else {
                         Err(BoxedError::new(BasicKind::Error,
-                            "Invalid annotations definition", 
-                            "The fasta header 'ANNOTATIONS' key, should contain annotations followed by a colon, e.g. 'Conserved:6'", 
+                            "Invalid annotations definition",
+                            "The fasta header 'ANNOTATIONS' key, should contain annotations followed by a colon, e.g. 'Conserved:6'",
                             Context::line(Some(line_index as u32), &full_header, tag.1.start + last, tag.1.start+index).to_owned()))
                     }
                 }).collect::<Result<Vec<_>,_>>()?;

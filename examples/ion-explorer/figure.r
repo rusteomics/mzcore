@@ -9,7 +9,7 @@ library(dplyr)
 #         geom_point() +
 #         scale_size_continuous(range = c(0.25, 3)) +
 #         xlab("Difference to theoretical ion (Da)") +
-#         theme_bw() 
+#         theme_bw()
 
 #     if (file == "fragment_y") {
 #         plot = plot + geom_vline(xintercept=0, linetype="dashed") + geom_vline(xintercept=+18.011-0.984, linetype="dashed") + geom_vline(xintercept=-25.979+18.011, linetype="dashed")
@@ -48,7 +48,7 @@ make_plot = function(fragment, element=NA, mode=NA) {
         geom_point() +
         scale_size_continuous(range = c(0.25, 3)) +
         xlab("Difference to theoretical ion (Da)") +
-        theme_bw() 
+        theme_bw()
 
     if (fragment == "y") {
         plot = plot + geom_vline(xintercept=0, linetype="dashed", alpha=0.25) + geom_vline(xintercept=0.984-18.011, linetype="dashed", alpha=0.25) + geom_vline(xintercept=25.979-18.011, linetype="dashed", alpha=0.25) + xlim(-50, 50)
@@ -74,16 +74,16 @@ compare_plot = function(fragment1, fragment2, element1, element2, mode1, mode2) 
         geom_point(data=data2, aes(x=mass, y=-count / max2, size=total_intensity / count), colour="red") +
         scale_size_continuous(range = c(0.125, 3)) +
         xlab("Difference to theoretical ion (Da)") +
-        theme_bw() 
+        theme_bw()
 
     if (fragment1 == "y" && fragment2 == "y") {
-        plot = plot + 
-            geom_vline(xintercept=0, linetype="dashed", alpha=0.25) + 
-            geom_vline(xintercept=0.984-18.011, linetype="dashed", alpha=0.25) + 
-            geom_vline(xintercept=0.984-18.011-15.023, linetype="dotted", alpha=0.25) + 
-            geom_vline(xintercept=0.984-18.011-29.039, linetype="dotted", alpha=0.25) + 
-            geom_vline(xintercept=0.984-18.011-43.088, linetype="dotted", alpha=0.25) + 
-            geom_vline(xintercept=25.979-18.011, linetype="dashed", alpha=0.25) + 
+        plot = plot +
+            geom_vline(xintercept=0, linetype="dashed", alpha=0.25) +
+            geom_vline(xintercept=0.984-18.011, linetype="dashed", alpha=0.25) +
+            geom_vline(xintercept=0.984-18.011-15.023, linetype="dotted", alpha=0.25) +
+            geom_vline(xintercept=0.984-18.011-29.039, linetype="dotted", alpha=0.25) +
+            geom_vline(xintercept=0.984-18.011-43.088, linetype="dotted", alpha=0.25) +
+            geom_vline(xintercept=25.979-18.011, linetype="dashed", alpha=0.25) +
             xlim(-75, 50)
     }
     if (fragment1 == "b" && fragment2 == "b") {

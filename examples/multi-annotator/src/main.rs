@@ -21,17 +21,28 @@ use fragment::FragmentType;
 use itertools::Itertools;
 use mzdata::{
     io::{MZFileReader, SpectrumSource},
-    mzpeaks::{peak_set::PeakSetVec, PeakCollection},
+    mzpeaks::{PeakCollection, peak_set::PeakSetVec},
     mzsignal::PeakPicker,
     spectrum::{SignalContinuity, SpectrumLike},
 };
 use rayon::prelude::*;
 use rustyms::{
     annotation::{
-        model::{parse_custom_models, FragmentationModel, MatchingParameters}, AnnotatableSpectrum, AnnotatedPeak, Score, Scores
-    }, chemistry::MassMode, fragment::{DiagnosticPosition, Fragment}, glycan::MonoSaccharide, identification::{csv::write_csv, BasicCSVData, IdentifiedPeptidoformSource}, quantities::Tolerance, sequence::{
-        parse_custom_modifications, AminoAcid, GnoComposition, SequencePosition, SimpleModificationInner
-    }, spectrum::PeakSpectrum, system::MassOverCharge, *
+        AnnotatableSpectrum, AnnotatedPeak, Score, Scores,
+        model::{FragmentationModel, MatchingParameters, parse_custom_models},
+    },
+    chemistry::MassMode,
+    fragment::{DiagnosticPosition, Fragment},
+    glycan::MonoSaccharide,
+    identification::{BasicCSVData, IdentifiedPeptidoformSource, csv::write_csv},
+    quantities::Tolerance,
+    sequence::{
+        AminoAcid, GnoComposition, SequencePosition, SimpleModificationInner,
+        parse_custom_modifications,
+    },
+    spectrum::PeakSpectrum,
+    system::MassOverCharge,
+    *,
 };
 
 /// The command line interface arguments
@@ -224,16 +235,16 @@ fn main() {
                         // USI spectra are mostly loaded as the binary array maps instead of peaks regardless of the signal continuity level
                         spectrum.peaks = spectrum.arrays.as_ref().map(Into::into);
                     }
-                    if let Some(threshold) = args.tic_noise_threshold && let Some(peaks) = spectrum.peaks.as_mut() { 
+                    if let Some(threshold) = args.tic_noise_threshold && let Some(peaks) = spectrum.peaks.as_mut() {
                         let threshold = peaks.total_ion_current() * threshold;
-                        peaks.peaks.retain(|p: &mzdata::mzpeaks::CentroidPeak| p.intensity > threshold); 
+                        peaks.peaks.retain(|p: &mzdata::mzpeaks::CentroidPeak| p.intensity > threshold);
                     }
-                    if let Some(threshold) = args.basepeak_noise_threshold && let Some(peaks) = spectrum.peaks.as_mut() { 
+                    if let Some(threshold) = args.basepeak_noise_threshold && let Some(peaks) = spectrum.peaks.as_mut() {
                         let threshold = peaks.base_peak().map_or(0.0, |v| v.intensity  * threshold);
-                        peaks.peaks.retain(|p: &mzdata::mzpeaks::CentroidPeak| p.intensity > threshold); 
+                        peaks.peaks.retain(|p: &mzdata::mzpeaks::CentroidPeak| p.intensity > threshold);
                     }
-                    if let Some(threshold) = args.absolute_noise_threshold && let Some(peaks) = spectrum.peaks.as_mut() { 
-                            peaks.peaks.retain(|p: &mzdata::mzpeaks::CentroidPeak| p.intensity > threshold); 
+                    if let Some(threshold) = args.absolute_noise_threshold && let Some(peaks) = spectrum.peaks.as_mut() {
+                            peaks.peaks.retain(|p: &mzdata::mzpeaks::CentroidPeak| p.intensity > threshold);
                     }
                     let fragments = line.sequence.generate_theoretical_fragments(line.z, selected_model);
                     let annotated = spectrum.annotate(

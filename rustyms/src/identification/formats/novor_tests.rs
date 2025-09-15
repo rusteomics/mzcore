@@ -76,7 +76,7 @@ F1,13719,451.720458984375,2,95.7,901.4269,-0.6,6,WM(O)HWVK,
 F1,9345,496.262512207031,2,95.6,990.5094,1.1,9,SSQSLLNSR,
 F1,9309,409.229461669922,2,95.6,816.4454,-1.2,7,QSLLNSR,";
 
-const DATA_NEW_DENOVO: &str = r"# id, scanNum, RT, mz(data), z, pepMass(denovo), err(data-denovo), ppm(1e6*err/(mz*z)), score, peptide, aaScore 
+const DATA_NEW_DENOVO: &str = r"# id, scanNum, RT, mz(data), z, pepMass(denovo), err(data-denovo), ppm(1e6*err/(mz*z)), score, peptide, aaScore
 0, 10234, 3058.1, 706.3292, 4, 2821.2907, -0.0032, -1.1, 24.8, MM(O)EKGPHTLNSPGRGMFM(O)TTLLDPE, 11-15-39-35-2-4-3-1-5-44-2-1-6-3-2-34-46-6-1-3-37-57-68-79-91
 1, 8236, 2472.1, 543.2781, 3, 1626.8154, -0.0029, -1.8, 73.1, DLAPGTYLHWVREA, 25-53-25-3-43-52-94-96-99-94-98-97-90-90
 2, 1846, 587.9, 446.7351, 2, 891.4491, 0.0065, 7.3, 40.9, FLWANEL, 69-42-63-79-8-24-1

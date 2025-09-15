@@ -38,7 +38,7 @@ fn parse_unimod_composition_brick(
                 Ok(Brick::Formula(ms.formula_inner(SequencePosition::default(),0)))
             } else {
                 Err(BoxedError::new(BasicKind::Error,
-                    "Invalid Unimod chemical formula", 
+                    "Invalid Unimod chemical formula",
                     "Unknown Unimod composition brick, use an element or one of the unimod shorthands. Eg: 'H(13) C(12) N O(3)'.",
                      Context::line_range(None, text, range)))
             }, |el| Ok(Brick::Element(el)))

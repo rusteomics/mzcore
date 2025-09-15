@@ -1,8 +1,8 @@
 use crate::parse_test;
 
 parse_test!(ne "[iT4plex]-EM[Oxidation]EVNES[ES[Phospho]PEK[iTRAQ4plex]-[Methyl]", hang_01);
-parse_test!(ne "[TRAQ4plex]-EM[ 
-    iTRAQ4plex]-EM[ 
+parse_test!(ne "[TRAQ4plex]-EM[
+    iTRAQ4plex]-EM[
      ", hang_02);
 parse_test!(ne "<< II0>", hang_03);
 parse_test!(ne "[iTRAQFplex]-EM[Oxidation]EVNES[Phospho]PEKniTREMK[XLMOD:02000#XL1]]EVTKSET:02000#XL1E[XLMOD[XLMOD:02  򆼡", hang_04);

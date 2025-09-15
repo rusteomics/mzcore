@@ -43,7 +43,7 @@ pub struct MZTabData {
     pub id: usize,
     /// The protein's accession the corresponding peptide sequence (coming from the
     /// PSM) is associated with.
-    pub protein: Option<Arc<Protein>>,
+    pub protein: Option<(String, Option<Arc<Protein>>)>,
     /// Indicates whether the peptide sequence (coming from the PSM) is unique for
     /// this protein in respect to the searched database.
     pub unique: Option<bool>,
@@ -256,13 +256,16 @@ impl MZTabData {
                     match PSMLine::new(line_index, protein_header.as_deref(), &line, &fields)
                         .and_then(|line| Protein::from_line(line)) {
                         Ok(protein) => {
+                            for name in &protein.ambiguity_members {
+                                proteins.insert(name.to_string(), protein.clone());
+                            }
                             proteins.insert(protein.accession.clone(), protein);
                             None
                         },
                         Err(err) => Some(Err(err.to_owned())),
                     }
                 }
-                
+
                 Ok(MZTabLine::PSH(line_index, line, fields)) => {
                     let header = fields
                         .into_iter()
@@ -417,15 +420,10 @@ impl MZTabData {
                         ),
                     )
                 })?,
-            protein: line.optional_column("accession").and_then(|(v, location)| {
+            protein: line.optional_column("accession").and_then(|(v, _)| {
                 (!v.eq_ignore_ascii_case("null"))
-                    .then(|| proteins.get(v).map(Clone::clone).ok_or_else(|| 
-                        BoxedError::new(
-                            BasicKind::Error, 
-                            "Invalid PSM line", 
-                            "The references protein is not defined",
-                             Context::line_range(Some(line.line_index as u32), line.line, location).to_owned())))
-            }).transpose()?,
+                    .then(|| (v.to_string(), proteins.get(v).map(Clone::clone)))
+            }), // TODO: when warnings are hooked up add a warning about the missing reference protein
             unique: line
                 .optional_column("unique")
                 .and_then(|(v, _)| (!v.eq_ignore_ascii_case("null")).then(|| v == "1")),
@@ -789,21 +787,35 @@ impl MZTabData {
     }
 }
 
+/// A protein definition from mzTab
 #[derive(Clone, Debug, Default, Deserialize, PartialEq, Serialize)]
 pub struct Protein {
+    /// The accession number, like 'Q340U4'
     pub accession: String,
+    /// The protein’s name and or description line.
     pub description: String,
+    /// The NCBI/NEWT taxonomy id for the species the protein was identified in.
     pub taxid: usize,
+    /// The human readable species the protein was identified in - this SHOULD be the NCBI entry’s name.
     pub species: String,
+    /// The protein database used for the search (could theoretically come from a different species).
     pub database: String,
+    /// The version of the database used, if there is no version the data.
     pub database_version: String,
+    /// The search engines that identified this protein along with their scores
     pub search_engine: Vec<(CVTerm, Option<f64>)>,
+    /// The reliability of this protein
     pub reliability: Option<Reliability>,
+    /// A list of all proteins that cannot be separated based on peptide evidence from this main protein.
     pub ambiguity_members: Vec<String>,
+    /// The reported modifications on this protein.
     pub modifications: String,
+    /// A URI pointing to the protein's source entry in the unit it was identified in (e.g., the PRIDE database or a local database / file identifier).
     pub uri: Option<String>,
+    /// The GO terms for this protein.
     pub go_terms: Vec<usize>,
-    pub protein_coverage: Option<f64>,
+    /// The coverage of this protein based on the peptidoforms in this file.
+    pub coverage: Option<f64>,
 }
 
 impl Protein {
@@ -863,7 +875,7 @@ impl Protein {
                 .transpose()?,
             ambiguity_members: line
                 .required_column("ambiguity_members")
-                .map(|(v, _)| v.split(',').map(|s| s.to_string()).collect())
+                .map(|(v, _)| v.split(',').map(|s| s.trim().to_string()).collect())
                 .map_err(BoxedError::to_owned)?,
             modifications: line
                 .required_column("modifications")
@@ -871,7 +883,7 @@ impl Protein {
                 .map_err(BoxedError::to_owned)?,
             uri: line.optional_column("uri").map(|(v, _)| v.to_string()),
             go_terms: Vec::new(),
-            protein_coverage: line
+            coverage: line
                 .optional_column("protein_coverage")
                 .map(|(v, location)| {
                     v.parse::<f64>().map_err(|e| {
@@ -1535,7 +1547,14 @@ impl MetaData for MZTabData {
     }
 
     fn protein_names(&self) -> Option<Cow<'_, [FastaIdentifier<String>]>> {
-        None //TODO: Get from the protein
+        self.protein.as_ref().map(|(accession, protein)| {
+            Cow::Owned(vec![FastaIdentifier::Undefined(
+                false,
+                protein
+                    .as_ref()
+                    .map_or_else(|| accession.clone(), |protein| protein.accession.clone()),
+            )])
+        })
     }
 
     fn protein_id(&self) -> Option<usize> {
