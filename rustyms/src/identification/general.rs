@@ -62,13 +62,17 @@ pub fn open_identified_peptidoforms_file<'a>(
                 BasicCSVData::parse_file(path, custom_database, keep_all_columns, None)
                     .map(IdentifiedPeptidoformIter::into_box)
                     .map_err(|be| (pe, ne, ie, le, pne, ple, be))
-            }).map_err(|(pe, ne, ie, le, pne, ple, be)| {
+            }).or_else(|(pe, ne, ie, le, pne, ple, be)| {
+                PUniFindData::parse_file(path, custom_database, keep_all_columns, None)
+                    .map(IdentifiedPeptidoformIter::into_box)
+                    .map_err(|pue| (pe, ne, ie, le, pne, ple, be, pue))
+            }).map_err(|(pe, ne, ie, le, pne, ple, be, pue)| {
                 BoxedError::new(BasicKind::Error,
                     "Unknown file format",
-                    "Could not be recognised as either a Peaks, Novor, InstaNovo, pLink, PowerNovo, PLGS, or basic file",
+                    "Could not be recognised as either a Peaks, Novor, InstaNovo, pLink, PowerNovo, PLGS, pUniFind, or basic file",
                     Context::default().source(path.to_string_lossy()).to_owned(),
                 )
-                .add_underlying_errors(vec![pe, ne, ie, le, pne, ple, be])
+                .add_underlying_errors(vec![pe, ne, ie, le, pne, ple, be, pue])
             }),
         Some("tsv") => SageData::parse_file(path, custom_database, keep_all_columns, None)
             .map(IdentifiedPeptidoformIter::into_box)
