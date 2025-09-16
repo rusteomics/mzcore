@@ -6,6 +6,7 @@ use std::{
     marker::PhantomData,
     ops::Range,
     str::FromStr,
+    sync::Arc,
 };
 
 use custom_error::*;
@@ -42,7 +43,7 @@ pub struct MZTabData {
     pub id: usize,
     /// The protein's accession the corresponding peptide sequence (coming from the
     /// PSM) is associated with.
-    pub accession: Option<FastaIdentifier<String>>,
+    pub protein: Option<(String, Option<Arc<Protein>>)>,
     /// Indicates whether the peptide sequence (coming from the PSM) is unique for
     /// this protein in respect to the searched database.
     pub unique: Option<bool>,
@@ -52,7 +53,7 @@ pub struct MZTabData {
     /// The search engines that identified this peptide, alongside their identified score and the CV term describing the score
     pub search_engine: Vec<(CVTerm, Option<f64>, CVTerm)>,
     /// The estimated reliability of the PSM. (Optional parameter)
-    pub reliability: Option<PSMReliability>,
+    pub reliability: Option<Reliability>,
     /// The retention time for this peptide.
     pub rt: Option<Time>,
     /// The charge for this peptide.
@@ -116,6 +117,8 @@ impl MZTabData {
         let mut modifications: Vec<SimpleModification> = Vec::new();
         let mut raw_files: Vec<(Option<String>, Option<CVTerm>, Option<CVTerm>)> = Vec::new(); //path, file format, identifier type
         let mut peptide_header: Option<Vec<String>> = None;
+        let mut protein_header: Option<Vec<String>> = None;
+        let mut proteins: HashMap<String, Arc<Protein>> = HashMap::new();
 
         parse_mztab_reader(reader).filter_map(move |item| {
             item.transpose().and_then(|item| match item {
@@ -221,6 +224,48 @@ impl MZTabData {
                         )))
                     }
                 }
+                Ok(MZTabLine::PRH(line_index, line, fields)) => {
+                    let header = fields
+                        .into_iter()
+                        .map(|field| line[field].to_ascii_lowercase())
+                        .collect_vec();
+                    // not checked: best_search_engine_score[n]
+                    for required in [
+                        "accession",
+                        "description",
+                        "taxid",
+                        "species",
+                        "database",
+                        "database_version",
+                        "search_engine",
+                        "ambiguity_members",
+                        "modifications",
+                    ] {
+                        if !header.contains(&required.to_string()) {
+                            return Some(Err(BoxedError::new(BasicKind::Error,
+                                "Invalid protein table",
+                                format!("The required column '{required}' is not present"),
+                                Context::full_line(line_index as u32, line),
+                            )));
+                        }
+                    }
+                    protein_header = Some(header);
+                    None
+                }
+                Ok(MZTabLine::PRT(line_index, line, fields)) => {
+                    match PSMLine::new(line_index, protein_header.as_deref(), &line, &fields)
+                        .and_then(|line| Protein::from_line(line)) {
+                        Ok(protein) => {
+                            for name in &protein.ambiguity_members {
+                                proteins.insert(name.to_string(), protein.clone());
+                            }
+                            proteins.insert(protein.accession.clone(), protein);
+                            None
+                        },
+                        Err(err) => Some(Err(err.to_owned())),
+                    }
+                }
+
                 Ok(MZTabLine::PSH(line_index, line, fields)) => {
                     let header = fields
                         .into_iter()
@@ -259,7 +304,7 @@ impl MZTabData {
                 }
                 Ok(MZTabLine::PSM(line_index, line, fields)) => Some(
                     PSMLine::new(line_index, peptide_header.as_deref(), &line, &fields)
-                        .and_then(|line| Self::from_line(line, &modifications, &search_engine_score_type, &raw_files, custom_database))
+                        .and_then(|line| Self::from_line(line, &modifications, &search_engine_score_type, &raw_files, custom_database, &proteins))
                         .map_err(BoxedError::to_owned),
                 ),
                 Err(e) => Some(Err(e)),
@@ -277,6 +322,7 @@ impl MZTabData {
         search_engine_score_types: &[CVTerm],
         raw_files: &[(Option<String>, Option<CVTerm>, Option<CVTerm>)],
         custom_database: Option<&CustomDatabase>,
+        proteins: &HashMap<String, Arc<Protein>>,
     ) -> Result<Self, BoxedError<'a, BasicKind>> {
         let (mod_column, mod_range) = line
             .required_column("modifications")
@@ -374,10 +420,10 @@ impl MZTabData {
                         ),
                     )
                 })?,
-            accession: line.optional_column("accession").and_then(|(v, _)| {
+            protein: line.optional_column("accession").and_then(|(v, _)| {
                 (!v.eq_ignore_ascii_case("null"))
-                    .then(|| FastaIdentifier::Undefined(false, v.to_string()))
-            }),
+                    .then(|| (v.to_string(), proteins.get(v).map(Clone::clone)))
+            }), // TODO: when warnings are hooked up add a warning about the missing reference protein
             unique: line
                 .optional_column("unique")
                 .and_then(|(v, _)| (!v.eq_ignore_ascii_case("null")).then(|| v == "1")),
@@ -450,9 +496,9 @@ impl MZTabData {
             reliability: line
                 .optional_column("reliability")
                 .map(|(v, range)| match v {
-                    "1" => Ok(PSMReliability::High),
-                    "2" => Ok(PSMReliability::Medium),
-                    "3" => Ok(PSMReliability::Poor),
+                    "1" => Ok(Reliability::High),
+                    "2" => Ok(Reliability::Medium),
+                    "3" => Ok(Reliability::Poor),
                     _ => Err(BoxedError::new(
                         BasicKind::Error,
                         "Invalid PSM reliability",
@@ -738,6 +784,120 @@ impl MZTabData {
         });
 
         Ok(result)
+    }
+}
+
+/// A protein definition from mzTab
+#[derive(Clone, Debug, Default, Deserialize, PartialEq, Serialize)]
+pub struct Protein {
+    /// The accession number, like 'Q340U4'
+    pub accession: String,
+    /// The protein’s name and or description line.
+    pub description: String,
+    /// The NCBI/NEWT taxonomy id for the species the protein was identified in.
+    pub taxid: usize,
+    /// The human readable species the protein was identified in - this SHOULD be the NCBI entry’s name.
+    pub species: String,
+    /// The protein database used for the search (could theoretically come from a different species).
+    pub database: String,
+    /// The version of the database used, if there is no version the data.
+    pub database_version: String,
+    /// The search engines that identified this protein along with their scores
+    pub search_engine: Vec<(CVTerm, Option<f64>)>,
+    /// The reliability of this protein
+    pub reliability: Option<Reliability>,
+    /// A list of all proteins that cannot be separated based on peptide evidence from this main protein.
+    pub ambiguity_members: Vec<String>,
+    /// The reported modifications on this protein.
+    pub modifications: String,
+    /// A URI pointing to the protein's source entry in the unit it was identified in (e.g., the PRIDE database or a local database / file identifier).
+    pub uri: Option<String>,
+    /// The GO terms for this protein.
+    pub go_terms: Vec<usize>,
+    /// The coverage of this protein based on the peptidoforms in this file.
+    pub coverage: Option<f64>,
+}
+
+impl Protein {
+    /// Parse a single PRT line
+    /// # Errors
+    /// When not in the correct format
+    fn from_line(line: PSMLine<'_>) -> Result<Arc<Self>, BoxedError<'static, BasicKind>> {
+        Ok(Arc::new(Self {
+            accession: line
+                .required_column("accession")
+                .map(|(v, _)| v.to_string())
+                .map_err(BoxedError::to_owned)?,
+            description: line
+                .required_column("description")
+                .map(|(v, _)| v.to_string())
+                .map_err(BoxedError::to_owned)?,
+            taxid: line
+                .required_column("taxid")
+                .and_then(|(v, location)| {
+                    v.parse::<usize>().map_err(|e| {
+                        BoxedError::new(
+                            BasicKind::Error,
+                            "Invalid PRT Line",
+                            format!("The taxid number {}", explain_number_error(&e)),
+                            Context::line_range(Some(line.line_index as u32), line.line, location),
+                        )
+                    })
+                })
+                .map_err(BoxedError::to_owned)?,
+            species: line
+                .required_column("species")
+                .map(|(v, _)| v.to_string())
+                .map_err(BoxedError::to_owned)?,
+            database: line
+                .required_column("database")
+                .map(|(v, _)| v.to_string())
+                .map_err(BoxedError::to_owned)?,
+            database_version: line
+                .required_column("database_version")
+                .map(|(v, _)| v.to_string())
+                .map_err(BoxedError::to_owned)?,
+            search_engine: Vec::new(),
+            reliability: line
+                .optional_column("reliability")
+                .map(|(v, range)| match v {
+                    "1" => Ok(Reliability::High),
+                    "2" => Ok(Reliability::Medium),
+                    "3" => Ok(Reliability::Poor),
+                    _ => Err(BoxedError::new(
+                        BasicKind::Error,
+                        "Invalid PRT reliability",
+                        format!("A reliability should be 1, 2, or 3, '{v}' is invalid"),
+                        Context::line_range(Some(line.line_index as u32), line.line, range)
+                            .to_owned(),
+                    )),
+                })
+                .transpose()?,
+            ambiguity_members: line
+                .required_column("ambiguity_members")
+                .map(|(v, _)| v.split(',').map(|s| s.trim().to_string()).collect())
+                .map_err(BoxedError::to_owned)?,
+            modifications: line
+                .required_column("modifications")
+                .map(|(v, _)| v.to_string())
+                .map_err(BoxedError::to_owned)?,
+            uri: line.optional_column("uri").map(|(v, _)| v.to_string()),
+            go_terms: Vec::new(),
+            coverage: line
+                .optional_column("protein_coverage")
+                .map(|(v, location)| {
+                    v.parse::<f64>().map_err(|e| {
+                        BoxedError::new(
+                            BasicKind::Error,
+                            "Invalid PRT Line",
+                            format!("The protein coverage {e}"),
+                            Context::line_range(Some(line.line_index as u32), line.line, location)
+                                .to_owned(),
+                        )
+                    })
+                })
+                .transpose()?,
+        }))
     }
 }
 
@@ -1071,7 +1231,11 @@ impl<'a> PSMLine<'a> {
             Err(BoxedError::new(
                 BasicKind::Error,
                 "Invalid PSM line",
-                "This PSM line does not have the same number of columns as the PSH line",
+                format!(
+                    "This PSM line does not have the same number of columns as the PSH line (PSH: {}, PSM: {})",
+                    header.len(),
+                    fields.len(),
+                ),
                 Context::full_line(line_index as u32, line),
             ))
         }
@@ -1239,14 +1403,14 @@ impl FromStr for CVTerm {
 /// The reliability of a PSM
 #[expect(missing_docs)]
 #[derive(Clone, Copy, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
-pub enum PSMReliability {
+pub enum Reliability {
     High,
     Medium,
     #[default]
     Poor,
 }
 
-impl std::fmt::Display for PSMReliability {
+impl std::fmt::Display for Reliability {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::High => write!(f, "High"),
@@ -1261,6 +1425,10 @@ impl std::fmt::Display for PSMReliability {
 enum MZTabLine {
     /// Metadata line
     MTD(usize, String, Vec<Range<usize>>),
+    /// Protein header line
+    PRH(usize, String, Vec<Range<usize>>),
+    /// Protein line
+    PRT(usize, String, Vec<Range<usize>>),
     /// Peptide header line
     PSH(usize, String, Vec<Range<usize>>),
     /// Peptide line, stored as hash map with the columns names from PSH
@@ -1290,6 +1458,8 @@ fn parse_mztab_reader<T: BufRead>(
                     .map_err(BoxedError::to_owned)
                     .map(|fields| match &line[fields[0].clone()] {
                         "MTD" => Some(MZTabLine::MTD(line_index, line, fields)),
+                        "PRH" => Some(MZTabLine::PRH(line_index, line, fields)),
+                        "PRT" => Some(MZTabLine::PRT(line_index, line, fields)),
                         "PSH" => Some(MZTabLine::PSH(line_index, line, fields)),
                         "PSM" => Some(MZTabLine::PSM(line_index, line, fields)),
                         _ => None,
@@ -1377,9 +1547,14 @@ impl MetaData for MZTabData {
     }
 
     fn protein_names(&self) -> Option<Cow<'_, [FastaIdentifier<String>]>> {
-        self.accession
-            .as_ref()
-            .map(|a| Cow::Borrowed(std::slice::from_ref(a)))
+        self.protein.as_ref().map(|(accession, protein)| {
+            Cow::Owned(vec![FastaIdentifier::Undefined(
+                false,
+                protein
+                    .as_ref()
+                    .map_or_else(|| accession.clone(), |protein| protein.accession.clone()),
+            )])
+        })
     }
 
     fn protein_id(&self) -> Option<usize> {

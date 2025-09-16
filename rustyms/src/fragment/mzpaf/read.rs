@@ -477,8 +477,8 @@ fn parse_ion<'a>(
                         interpretation.and_then(|i| {
                             i.into_semi_ambiguous()
                                 .ok_or_else(|| BoxedError::new(BasicKind::Error,
-                                    "Invalid mzPAF interpretation", 
-                                    "An mzPAF interpretation should be limited to `base-ProForma compliant` without any labile modifications", 
+                                    "Invalid mzPAF interpretation",
+                                    "An mzPAF interpretation should be limited to `base-ProForma compliant` without any labile modifications",
                                     Context::line_range(None, line, range.start_index()..location)))
                                 .map(|i| (location + 1, Some(i)))
                         })?

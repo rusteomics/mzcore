@@ -606,7 +606,7 @@ impl CompoundPeptidoformIon {
                 )
                 )?, Some(ambiguous_lookup[id].name.clone()), &positions, preferred, None,  true) {
                 return Err(BoxedError::new(BasicKind::Error,
-                    "Modification of unknown position cannot be placed", 
+                    "Modification of unknown position cannot be placed",
                     format!("There is no position where this ambiguous modification {} can be placed based on the placement rules in the database.", ambiguous_lookup[id].name),
                     Context::full_line(0, line),
                     ));

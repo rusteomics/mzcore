@@ -121,7 +121,7 @@ struct AmbiguousEntry {
     limit: Option<usize>,
     /// Determines if this modification can colocalise with other modifications of unknown position
     colocalise_modifications_of_unknown_position: bool,
-    /// Group, used for '^x'  
+    /// Group, used for '^x'
     group: Option<usize>,
 }
 

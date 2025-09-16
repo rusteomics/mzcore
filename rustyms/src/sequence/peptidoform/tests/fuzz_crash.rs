@@ -49,9 +49,9 @@ parse_test!(ne
     "[NCE//EMEVTK[XLMO[NCE//EMEVTK[XLMOD:02001UUUUUUJ[phlspho]",
     fuzz_40
 );
-parse_test!(ne "[+2EMEVEENa1#Xa+, 
+parse_test!(ne "[+2EMEVEENa1#Xa+,
 2SPEK/3[+2N+H+]", fuzz_41);
-parse_test!(ne "[PhosK[phlspho]d2NaE#Xa+, 
+parse_test!(ne "[PhosK[phlspho]d2NaE#Xa+,
 +H+]", fuzz_42);
 parse_test!(ne
     "UE+[Formula:}13Cd [12C-2UE+[Formula:}13Cd [1}13Cd [12C-2BE2NH2N]",

@@ -53,8 +53,8 @@ impl Peptidoform<SemiAmbiguous> {
                 Self::sloppy_pro_forma(line, location.clone(), custom_database, parameters)
                 .map_err(|sloppy_error|
                     BoxedError::new(BasicKind::Error,
-                        "Invalid peptidoform", 
-                        "The sequence could not be parsed as a ProForma nor as a more loosly defined peptidoform, see the underlying errors for details", 
+                        "Invalid peptidoform",
+                        "The sequence could not be parsed as a ProForma nor as a more loosly defined peptidoform, see the underlying errors for details",
                         Context::line_range(None, line, location.clone())).add_underlying_errors(vec![pro_forma_error, sloppy_error])))
     }
 
@@ -202,8 +202,8 @@ impl Peptidoform<SemiAmbiguous> {
                         .parse::<f64>()
                         .map_err(|err|
                             BoxedError::new(BasicKind::Error,
-                                "Invalid mass shift modification", 
-                                format!("Mass shift modification must be a valid number but this number is invalid: {err}"), 
+                                "Invalid mass shift modification",
+                                format!("Mass shift modification must be a valid number but this number is invalid: {err}"),
                                 Context::line(None, line, location.start + index, length))
                             )?).into()).into();
                     match peptide.sequence_mut().last_mut() {
