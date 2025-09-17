@@ -11,7 +11,7 @@ use crate::{
     sequence::{
         AtMax, HasPeptidoform, Peptidoform, SequenceElement, SequencePosition, SimpleLinear,
     },
-    system::Mass,
+    system::{Mass, dalton},
 };
 
 // TODO: no way of handling terminal modifications yet
@@ -62,7 +62,6 @@ pub(super) fn align_cached<
 
     let mut matrix = Matrix::new(peptidoform_a.len(), peptidoform_b.len());
     let mut global_highest = (0, 0, 0);
-    let zero: Multi<Mass> = Multi::default();
 
     if align_type.left.global_a() {
         matrix.global_start(true, scoring);
@@ -71,37 +70,104 @@ pub(super) fn align_cached<
         matrix.global_start(false, scoring);
     }
 
+    // These two arrays serve for optimizational purposes.
+    // In `score` routine equality of masses is checked
+    // between masses_a[index_a - len_a .. index_a] and masses_b[index_b - len_b .. index_b]
+    // ranges which is expensive.
+    // However, in most of the cases masses are very different there and the check fails.
+    // We precompute two following arrays:
+    // - ranges_a[index_a - len_a .. index_a] = (min_mass, max_mass)
+    // min_mass is the minimal mass that matches at least one mass in masses_a[index_a - len_a .. index_a].
+    // max_mass is the same for maximal mass.
+    // - ranges_b[index_b - len_b .. index_b] = (min_mass, max_mass)
+    // min_mass in the minimal mass across masses_b[index_b - len_b .. index_b].
+    // max_mass is the same for maximal mass.
+    // Then, before calling `score` we can perform a quick check whether
+    // the ranges overlap for given slices. If they do not overlap, we skip calling `score`
+    // as it is guaranteed that there are no two masses that are within tolerance.
+    let ranges_a = {
+        let mut ranges: DiagonalArray<(Mass, Mass), STEPS> =
+            DiagonalArray::new(peptidoform_a.len());
+        for i in 0..peptidoform_a.len() {
+            for j in 0..=i.min(STEPS as usize) {
+                let (min, max) = unsafe { masses_a.get_unchecked([i, j]) }.iter().fold(
+                    (
+                        Mass::new::<dalton>(f64::INFINITY),
+                        Mass::new::<dalton>(f64::NEG_INFINITY),
+                    ),
+                    |(min, max), &m| {
+                        let range = scoring.tolerance.bounds(m);
+                        (min.min(range.0), max.max(range.1))
+                    },
+                );
+                ranges[[i, j]] = (min, max);
+            }
+        }
+        ranges
+    };
+
+    let ranges_b = {
+        let mut ranges: DiagonalArray<(Mass, Mass), STEPS> =
+            DiagonalArray::new(peptidoform_b.len());
+        for i in 0..peptidoform_b.len() {
+            for j in 0..=i.min(STEPS as usize) {
+                let (min, max) = unsafe { masses_b.get_unchecked([i, j]) }.iter().fold(
+                    (
+                        Mass::new::<dalton>(f64::INFINITY),
+                        Mass::new::<dalton>(f64::NEG_INFINITY),
+                    ),
+                    |(min, max), &m| (min.min(m), max.max(m)),
+                );
+                ranges[[i, j]] = (min, max);
+            }
+        }
+        ranges
+    };
+
     for index_a in 1..=peptidoform_a.len() {
         for index_b in 1..=peptidoform_b.len() {
-            let mut highest = None;
-            for len_a in 0..=index_a.min(STEPS as usize) {
-                for len_b in 0..=index_b.min(STEPS as usize) {
-                    if len_a == 0 && len_b != 1
-                        || len_a != 1 && len_b == 0
-                        || len_a == 0 && len_b == 0
-                    {
-                        continue; // Do not allow double gaps, any double gaps will be counted as two gaps after each other
-                    }
+            // Returns the score for a gap transition.
+            // gap_a controls whether the gap is in a or b.
+            let score_gap = |gap_a: bool| {
+                let prev = if gap_a {
+                    unsafe { matrix.get_unchecked([index_a - 1, index_b]) }
+                } else {
+                    unsafe { matrix.get_unchecked([index_a, index_b - 1]) }
+                };
+
+                let is_first_step = prev.step_a == 0 && prev.step_b == 0;
+                let is_previous_gap = prev.step_a == 0 && !gap_a || prev.step_b == 0 && gap_a;
+                let is_gap_start = is_first_step || !is_previous_gap;
+                // First check the score to be used for affine gaps
+                let score = scoring.gap_extend as isize
+                    + scoring.gap_start as isize * isize::from(is_gap_start);
+
+                let len_a = if gap_a { 1 } else { 0 };
+                let len_b = if gap_a { 0 } else { 1 };
+                Piece::new(prev.score + score, score, MatchType::Gap, len_a, len_b)
+            };
+
+            // First try all gap possibilities.
+            let gap_score_a = score_gap(true);
+            let gap_score_b = score_gap(false);
+
+            let mut highest = if gap_score_a.score >= gap_score_b.score {
+                gap_score_a
+            } else {
+                gap_score_b
+            };
+
+            for len_a in 1..=index_a.min(STEPS as usize) {
+                let range_a = unsafe { ranges_a.get_unchecked([index_a - 1, len_a - 1]) };
+
+                for len_b in 1..=index_b.min(STEPS as usize) {
+                    let range_b = unsafe { ranges_b.get_unchecked([index_b - 1, len_b - 1]) };
+
                     let prev = unsafe { matrix.get_unchecked([index_a - len_a, index_b - len_b]) };
                     let base_score = prev.score;
 
                     // len_a and b are always <= STEPS
-                    let piece = if len_a == 0 || len_b == 0 {
-                        let is_first_step = prev.step_a == 0 && prev.step_b == 0;
-                        let is_previous_gap =
-                            prev.step_a == 0 && len_a == 0 || prev.step_b == 0 && len_b == 0;
-                        let is_gap_start = is_first_step || !is_previous_gap;
-                        // First check the score to be used for affine gaps
-                        let score = scoring.gap_extend as isize
-                            + scoring.gap_start as isize * isize::from(is_gap_start);
-                        Some(Piece::new(
-                            base_score + score,
-                            score,
-                            MatchType::Gap,
-                            len_a as u16,
-                            len_b as u16,
-                        ))
-                    } else if len_a == 1 && len_b == 1 {
+                    let piece = if len_a == 1 && len_b == 1 {
                         Some(score_pair(
                             unsafe {
                                 (
@@ -118,6 +184,9 @@ pub(super) fn align_cached<
                             scoring,
                             base_score,
                         ))
+                    // Ranges do not overlap, skip scoring.
+                    } else if range_a.0 > range_b.1 || range_b.0 > range_a.1 {
+                        None
                     } else {
                         score(
                             unsafe {
@@ -125,11 +194,7 @@ pub(super) fn align_cached<
                                     peptidoform_a
                                         .sequence()
                                         .get_unchecked((index_a - len_a)..index_a),
-                                    if len_a == 0 {
-                                        &zero
-                                    } else {
-                                        masses_a.get_unchecked([index_a - 1, len_a - 1])
-                                    },
+                                    masses_a.get_unchecked([index_a - 1, len_a - 1]),
                                 )
                             },
                             unsafe {
@@ -137,11 +202,7 @@ pub(super) fn align_cached<
                                     peptidoform_b
                                         .sequence()
                                         .get_unchecked((index_b - len_b)..index_b),
-                                    if len_b == 0 {
-                                        &zero
-                                    } else {
-                                        masses_b.get_unchecked([index_b - 1, len_b - 1])
-                                    },
+                                    masses_b.get_unchecked([index_b - 1, len_b - 1]),
                                 )
                             },
                             scoring,
@@ -149,36 +210,18 @@ pub(super) fn align_cached<
                         )
                     };
                     if let Some(p) = piece
-                        && (highest.is_none()
-                            || highest.as_ref().is_some_and(|h: &Piece| h.score < p.score))
+                        && p.score > highest.score
                     {
-                        highest = Some(p);
+                        highest = p;
                     }
                 }
             }
-            if let Some(highest) = highest {
-                if highest.score >= global_highest.0 {
-                    global_highest = (highest.score, index_a, index_b);
-                }
-                if align_type.left.global() || highest.score > 0 {
-                    unsafe {
-                        *matrix.get_unchecked_mut([index_a, index_b]) = highest;
-                    }
-                }
-            } else if align_type.left.global() {
+            if highest.score >= global_highest.0 {
+                global_highest = (highest.score, index_a, index_b);
+            }
+            if align_type.left.global() || highest.score > 0 {
                 unsafe {
-                    *matrix.get_unchecked_mut([index_a, index_b]) = score_pair(
-                        (
-                            peptidoform_a.sequence().get_unchecked(index_a - 1),
-                            masses_a.get_unchecked([index_a - 1, 0]),
-                        ),
-                        (
-                            peptidoform_b.sequence().get_unchecked(index_b - 1),
-                            masses_b.get_unchecked([index_b - 1, 0]),
-                        ),
-                        scoring,
-                        matrix.get_unchecked([index_a - 1, index_b - 1]).score,
-                    );
+                    *matrix.get_unchecked_mut([index_a, index_b]) = highest;
                 }
             }
         }
