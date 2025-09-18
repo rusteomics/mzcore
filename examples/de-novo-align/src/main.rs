@@ -1,5 +1,5 @@
 //! Align many peptides to a database using mass based alignment
-use std::{collections::HashMap, fs::File, io::BufWriter, sync::Arc};
+use std::{collections::BTreeMap, fs::File, io::BufWriter, sync::Arc};
 
 use clap::Parser;
 use itertools::{Itertools, MinMaxResult};
@@ -9,10 +9,11 @@ use rustyms::{
     align::{AlignIndex, AlignType},
     identification::SpectrumIds,
     identification::{
-        FastaData, IdentifiedPeptidoform, MetaData, csv::write_csv,
+        FastaData, IdentifiedPeptidoform, MetaData, PeptidoformPresent, csv::write_csv,
         open_identified_peptidoforms_file,
     },
     prelude::*,
+    sequence::SemiAmbiguous,
 };
 
 #[derive(Debug, Parser)]
@@ -26,6 +27,52 @@ struct Cli {
     /// Where to store the results
     #[arg(long)]
     out_path: String,
+    /// Run alignment sequentially instead of in parallel (useful for profiling)
+    #[arg(long)]
+    no_parallel: bool,
+}
+
+fn process_alignment_group<I>(
+    alignments: I,
+) -> Vec<(rustyms::align::Alignment<Arc<FastaData>, IdentifiedPeptidoform<SemiAmbiguous, PeptidoformPresent>>, bool)>
+where
+    I: Iterator<Item = rustyms::align::Alignment<Arc<FastaData>, IdentifiedPeptidoform<SemiAmbiguous, PeptidoformPresent>>>,
+{
+    let alignments = alignments.collect_vec();
+    let max = alignments
+        .iter()
+        .max_by(|a, b| a.normalised_score().total_cmp(&b.normalised_score()))
+        .unwrap()
+        .normalised_score();
+    let mut alignments = alignments
+        .into_iter()
+        .filter(|a| a.normalised_score() == max)
+        .collect_vec();
+    if alignments.len() == 1 {
+        let a = alignments.pop().unwrap();
+        vec![(a, true)]
+    } else {
+        alignments.into_iter().map(|a| (a, false)).collect_vec()
+    }
+}
+
+fn run_alignments(
+    index: &AlignIndex<4, Arc<FastaData>>,
+    peptides: Vec<IdentifiedPeptidoform<SemiAmbiguous, PeptidoformPresent>>,
+    scoring: AlignScoring,
+    sequential: bool,
+) -> Vec<(rustyms::align::Alignment<Arc<FastaData>, IdentifiedPeptidoform<SemiAmbiguous, PeptidoformPresent>>, bool)> {
+    if sequential {
+        index
+            .align(peptides, scoring, AlignType::EITHER_GLOBAL)
+            .flat_map(process_alignment_group)
+            .collect()
+    } else {
+        index
+            .par_align(peptides, scoring, AlignType::EITHER_GLOBAL)
+            .flat_map(process_alignment_group)
+            .collect()
+    }
 }
 
 fn main() {
@@ -42,35 +89,15 @@ fn main() {
         MassMode::Monoisotopic,
     );
 
-    let alignments: Vec<_> = index
-        .par_align(
-            peptides,
-            AlignScoring {
-                pair: rustyms::align::PairMode::DatabaseToPeptidoform,
-                ..Default::default()
-            },
-            AlignType::EITHER_GLOBAL,
-        )
-        .flat_map(|alignments| {
-            let alignments = alignments.collect_vec();
-            let max = alignments
-                .iter()
-                .max_by(|a, b| a.normalised_score().total_cmp(&b.normalised_score()))
-                .unwrap()
-                .normalised_score();
-            let mut alignments = alignments
-                .into_iter()
-                .filter(|a| a.normalised_score() == max)
-                .collect_vec();
-            if alignments.len() == 1 {
-                let a = alignments.pop().unwrap();
-                vec![(a, true)]
-            } else {
-                alignments.into_iter().map(|a| (a, false)).collect_vec()
-            }
-        })
+    let scoring = AlignScoring {
+        pair: rustyms::align::PairMode::DatabaseToPeptidoform,
+        ..Default::default()
+    };
+
+    let alignments: Vec<_> = run_alignments(&index, peptides, scoring, args.no_parallel)
+        .into_iter()
         .map(|(alignment, unique)| {
-            HashMap::from([
+            BTreeMap::from([
                 (
                     "Peptide".to_string(),
                     alignment.seq_b().peptidoform().to_string(),
