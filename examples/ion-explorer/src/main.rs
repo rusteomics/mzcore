@@ -158,9 +158,8 @@ fn extract_and_merge(
     args: &Cli,
     mode: Option<String>,
 ) {
-    let spectrum = match spectrum.peaks() {
-        RefPeakDataLevel::Centroid(c) => c,
-        _ => return,
+    let RefPeakDataLevel::Centroid(spectrum) = spectrum.peaks() else {
+        return;
     };
     for fragment in fragments {
         if let Some(mz) = fragment.mz(MassMode::Monoisotopic) {
@@ -264,19 +263,27 @@ impl Stack {
             let path = match key {
                 (i, None, el, mode) => base_path.join(format!(
                     "fragment_{i}_{}_{}.csv",
-                    el.as_ref().map_or("-".to_string(), |(aa, mods)| format!(
-                        "{aa}{}",
-                        mods.iter().map(|m| format!("[{m}]")).join("")
-                    )),
-                    mode.as_ref().map_or("-".to_string(), ToString::to_string)
+                    el.as_ref().map_or_else(
+                        || "-".to_string(),
+                        |(aa, mods)| format!(
+                            "{aa}{}",
+                            mods.iter().map(|m| format!("[{m}]")).join("")
+                        )
+                    ),
+                    mode.as_ref()
+                        .map_or_else(|| "-".to_string(), ToString::to_string)
                 )),
                 (i, Some(d), el, mode) => base_path.join(format!(
                     "fragment_{d}{i}_{}_{}.csv",
-                    el.as_ref().map_or("-".to_string(), |(aa, mods)| format!(
-                        "{aa}{}",
-                        mods.iter().map(|m| format!("[{m}]")).join("")
-                    )),
-                    mode.as_ref().map_or("-".to_string(), ToString::to_string)
+                    el.as_ref().map_or_else(
+                        || "-".to_string(),
+                        |(aa, mods)| format!(
+                            "{aa}{}",
+                            mods.iter().map(|m| format!("[{m}]")).join("")
+                        )
+                    ),
+                    mode.as_ref()
+                        .map_or_else(|| "-".to_string(), ToString::to_string)
                 )),
             };
             write_stack(&path, stack);

@@ -508,7 +508,9 @@ impl<Complexity> Peptidoform<Complexity> {
                     }
                 });
         let terminus = molecular_formula!(H 1);
-        specific.values_mut().for_each(|v| *v += terminus.clone());
+        for v in specific.values_mut() {
+            *v += terminus.clone();
+        }
         (base + terminus, specific)
     }
 
@@ -1430,14 +1432,13 @@ impl<Complexity> Peptidoform<Complexity> {
         for m in self.get_n_term() {
             let mut display_ambiguous = false;
 
-            if let Modification::Ambiguous { id, .. } = m {
-                if !placed_ambiguous.contains(id) && preferred_ambiguous_position[*id].is_none()
+            if let Modification::Ambiguous { id, .. } = m
+                && (!placed_ambiguous.contains(id) && preferred_ambiguous_position[*id].is_none()
                     || preferred_ambiguous_position[*id]
-                        .is_some_and(|p| p == SequencePosition::NTerm)
-                {
-                    display_ambiguous = true;
-                    placed_ambiguous.push(*id);
-                }
+                        .is_some_and(|p| p == SequencePosition::NTerm))
+            {
+                display_ambiguous = true;
+                placed_ambiguous.push(*id);
             }
 
             write!(f, "[")?;

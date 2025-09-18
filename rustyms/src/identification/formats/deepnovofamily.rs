@@ -176,7 +176,7 @@ impl MetaData for DeepNovoFamilyData {
     }
 
     fn confidence(&self) -> Option<f64> {
-        self.score.map(|score| (2.0 / (1.0 + (-score).exp())))
+        self.score.map(|score| 2.0 / (1.0 + (-score).exp()))
     }
 
     fn local_confidence(&self) -> Option<Cow<'_, [f64]>> {

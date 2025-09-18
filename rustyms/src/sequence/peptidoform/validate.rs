@@ -136,10 +136,11 @@ pub(super) fn cross_links<'a>(
                     .flat_map(|seq| &seq.modifications),
             )
         {
-            if let Modification::CrossLink { peptide, .. } = m {
-                if !found_peptides.contains(peptide) && !stack.contains(peptide) {
-                    stack.push(*peptide);
-                }
+            if let Modification::CrossLink { peptide, .. } = m
+                && !found_peptides.contains(peptide)
+                && !stack.contains(peptide)
+            {
+                stack.push(*peptide);
             }
         }
     }
@@ -205,7 +206,7 @@ impl Peptidoform<Linear> {
                             entry.name,
                             entry
                                 .group
-                                .map_or("(no group)".to_string(), |n| n.to_string())
+                                .map_or_else(|| "(no group)".to_string(), |n| n.to_string())
                         )),
                     ));
                 }
@@ -219,7 +220,7 @@ impl Peptidoform<Linear> {
                         entry.name,
                         entry
                             .group
-                            .map_or("(no group)".to_string(), |n| n.to_string())
+                            .map_or_else(|| "(no group)".to_string(), |n| n.to_string())
                     )),
                 ));
             }

@@ -88,7 +88,8 @@ fn maxquant_silac() {
     }
 }
 
-// #[test] TODO: enable when added
+#[ignore = "Format currently not supported but test already added to make it easy to enable when the parser is extended"]
+#[test]
 fn maxquant_all_peptides() {
     match test_format::<MaxQuantData>(
         BufReader::new(MAXNOVO_ALL_PEPTIDES.as_bytes()),

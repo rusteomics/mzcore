@@ -114,7 +114,7 @@ impl MetaData for PowerNovoData {
     fn id(&self) -> String {
         self.scan
             .as_ref()
-            .map_or("-".to_string(), ToString::to_string)
+            .map_or_else(|| "-".to_string(), ToString::to_string)
     }
 
     fn confidence(&self) -> Option<f64> {

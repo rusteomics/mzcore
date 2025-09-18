@@ -148,12 +148,11 @@ pub(super) fn align_cached<
                             base_score,
                         )
                     };
-                    if let Some(p) = piece {
-                        if highest.is_none()
-                            || highest.as_ref().is_some_and(|h: &Piece| h.score < p.score)
-                        {
-                            highest = Some(p);
-                        }
+                    if let Some(p) = piece
+                        && (highest.is_none()
+                            || highest.as_ref().is_some_and(|h: &Piece| h.score < p.score))
+                    {
+                        highest = Some(p);
                     }
                 }
             }

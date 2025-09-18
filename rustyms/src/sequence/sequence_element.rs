@@ -127,14 +127,13 @@ impl<T> SequenceElement<T> {
         write!(f, "{}", self.aminoacid)?;
         for m in &self.modifications {
             let mut display_ambiguous = false;
-            if let Modification::Ambiguous { id, .. } = m {
-                if !placed_ambiguous.contains(id) && preferred_ambiguous_location[*id].is_none()
+            if let Modification::Ambiguous { id, .. } = m
+                && (!placed_ambiguous.contains(id) && preferred_ambiguous_location[*id].is_none()
                     || preferred_ambiguous_location[*id]
-                        .is_some_and(|p| p == SequencePosition::Index(index))
-                {
-                    display_ambiguous = true;
-                    extra_placed.push(*id);
-                }
+                        .is_some_and(|p| p == SequencePosition::Index(index)))
+            {
+                display_ambiguous = true;
+                extra_placed.push(*id);
             }
             write!(f, "[")?;
             m.display(f, specification_compliant, display_ambiguous)?;

@@ -233,9 +233,10 @@ impl Germlines {
             .ok()
             .and_then(|g| {
                 let g = &genes[g];
-                allele.map_or(g.alleles.first(), |a| {
-                    g.alleles.iter().find(|(ga, _)| a == *ga)
-                })
+                allele.map_or_else(
+                    || g.alleles.first(),
+                    |a| g.alleles.iter().find(|(ga, _)| a == *ga),
+                )
             })
             .map(move |(a, seq)| Allele {
                 species,

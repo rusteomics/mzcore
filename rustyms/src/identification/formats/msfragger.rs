@@ -57,7 +57,7 @@ format_family!(
             || location.parse(IDENTIFIER_ERROR).map(|id| (id, String::new())),
             |(id, tail)| id.parse(IDENTIFIER_ERROR).map(|id| (id, tail.get_string())));
         rt: Time, |location: Location, _| location.parse::<f64>(NUMBER_ERROR).map(Time::new::<crate::system::time::min>);
-        scan: SpectrumId, |location: Location, _| Ok(location.clone().parse::<usize>(NUMBER_ERROR).map_or(SpectrumId::Native(location.get_string()), SpectrumId::Number));
+        scan: SpectrumId, |location: Location, _| Ok(location.clone().parse::<usize>(NUMBER_ERROR).map_or_else(|_| SpectrumId::Native(location.get_string()), SpectrumId::Number));
         modifications: ThinVec<(SequencePosition, SimpleModification)>, |location: Location, custom_database: Option<&CustomDatabase>| location.or_empty().array(',').map(|m| if let Some((head, tail)) = m.clone().split_once('(') {
             let head_trim = head.as_str().trim();
             Ok((

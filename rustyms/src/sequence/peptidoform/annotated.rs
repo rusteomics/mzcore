@@ -93,23 +93,23 @@ impl std::str::FromStr for Region {
             "CHS" => Self::SecratoryTail,
             "H" => Self::Hinge(None),
             "M" => Self::MembraneTail(None),
-            cdr if cdr.starts_with("CDR") => cdr[3..]
-                .parse::<usize>()
-                .map_or(Self::Other(cdr.to_string()), |c| {
-                    Self::ComplementarityDetermining(c)
-                }),
+            cdr if cdr.starts_with("CDR") => cdr[3..].parse::<usize>().map_or_else(
+                |_| Self::Other(cdr.to_string()),
+                Self::ComplementarityDetermining,
+            ),
             fr if fr.starts_with("FR") => fr[2..]
                 .parse::<usize>()
-                .map_or(Self::Other(fr.to_string()), Self::Framework),
+                .map_or_else(|_| Self::Other(fr.to_string()), Self::Framework),
             ch if ch.starts_with("CH") => ch[2..]
                 .parse::<usize>()
-                .map_or(Self::Other(ch.to_string()), Self::ConstantHeavy),
+                .map_or_else(|_| Self::Other(ch.to_string()), Self::ConstantHeavy),
             h if h.starts_with('H') => h[1..]
                 .parse::<usize>()
-                .map_or(Self::Other(h.to_string()), |c| Self::Hinge(Some(c))),
-            m if m.starts_with('M') => m[1..]
-                .parse::<usize>()
-                .map_or(Self::Other(m.to_string()), |c| Self::MembraneTail(Some(c))),
+                .map_or_else(|_| Self::Other(h.to_string()), |c| Self::Hinge(Some(c))),
+            m if m.starts_with('M') => m[1..].parse::<usize>().map_or_else(
+                |_| Self::Other(m.to_string()),
+                |c| Self::MembraneTail(Some(c)),
+            ),
             o => Self::Other(o.to_string()),
         })
     }

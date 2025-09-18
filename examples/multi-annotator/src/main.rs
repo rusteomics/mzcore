@@ -21,7 +21,7 @@ use fragment::FragmentType;
 use itertools::Itertools;
 use mzdata::{
     io::{MZFileReader, SpectrumSource},
-    mzpeaks::{PeakCollection, peak_set::PeakSetVec},
+    mzpeaks::PeakCollection,
     mzsignal::PeakPicker,
     spectrum::{SignalContinuity, SpectrumLike},
 };

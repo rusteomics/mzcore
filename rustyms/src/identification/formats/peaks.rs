@@ -671,13 +671,17 @@ impl MetaData for PeaksData {
     }
 
     fn id(&self) -> String {
-        self.id.map_or(
-            self.scan_number.as_ref().map_or(
-                self.feature
-                    .as_ref()
-                    .map_or("-".to_string(), ToString::to_string),
-                |s| s.iter().join(";"),
-            ),
+        self.id.map_or_else(
+            || {
+                self.scan_number.as_ref().map_or_else(
+                    || {
+                        self.feature
+                            .as_ref()
+                            .map_or_else(|| "-".to_string(), ToString::to_string)
+                    },
+                    |s| s.iter().join(";"),
+                )
+            },
             |i| i.to_string(),
         )
     }

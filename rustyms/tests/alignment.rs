@@ -3,8 +3,7 @@
 use rustyms::{
     align::{AlignIndex, AlignScoring, AlignType, align},
     identification::{
-        IdentifiedPeptidoform, PeptidoformPresent,
-        csv::{CsvLine, parse_csv},
+        IdentifiedPeptidoform, PeptidoformPresent, csv::parse_csv,
         open_identified_peptidoforms_file,
     },
     prelude::*,

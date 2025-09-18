@@ -97,16 +97,17 @@ impl MolecularFormula {
                 }
                 b' ' => index += 1,
                 _ => {
-                    if let Some(element) = element {
-                        if !Self::add(&mut result, (element, None, 1)) {
-                            return Err(BoxedError::new(
-                                BasicKind::Error,
-                                "Invalid PSI-MOD molecular formula",
-                                format!("An element without a defined mass ({element}) was used"),
-                                Context::line(None, value, index - 1, 1),
-                            ));
-                        }
+                    if let Some(element) = element
+                        && !Self::add(&mut result, (element, None, 1))
+                    {
+                        return Err(BoxedError::new(
+                            BasicKind::Error,
+                            "Invalid PSI-MOD molecular formula",
+                            format!("An element without a defined mass ({element}) was used"),
+                            Context::line(None, value, index - 1, 1),
+                        ));
                     }
+
                     let mut found = false;
                     for possible in ELEMENT_PARSE_LIST {
                         if str_starts_with(&value[index..], possible.0, true) {

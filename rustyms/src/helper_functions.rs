@@ -555,6 +555,7 @@ pub(crate) fn str_starts_with(a: &str, b: &str, ignore_casing: bool) -> bool {
     a.len() >= b.len()
 }
 
+#[allow(clippy::missing_panics_doc)]
 #[test]
 fn starts_with() {
     assert!(str_starts_with("aaabbb", "a", false));

@@ -240,15 +240,15 @@ impl MolecularFormula {
                     ));
                 }
                 _ => {
-                    if let Some(element) = element {
-                        if !Self::add(&mut result, (element, None, 1)) {
-                            return Err(BoxedError::new(
-                                BasicKind::Error,
-                                "Invalid ProForma molecular formula",
-                                format!("An element without a defined mass ({element}) was used"),
-                                Context::line(None, value, index - 1, 1),
-                            ));
-                        }
+                    if let Some(element) = element
+                        && !Self::add(&mut result, (element, None, 1))
+                    {
+                        return Err(BoxedError::new(
+                            BasicKind::Error,
+                            "Invalid ProForma molecular formula",
+                            format!("An element without a defined mass ({element}) was used"),
+                            Context::line(None, value, index - 1, 1),
+                        ));
                     }
                     let element_text: String = value[index..].chars().take(2).collect::<String>();
                     for possible in if allow_uncommon_elements {
@@ -280,15 +280,15 @@ impl MolecularFormula {
                 }
             }
         }
-        if let Some(element) = element {
-            if !Self::add(&mut result, (element, None, 1)) {
-                return Err(BoxedError::new(
-                    BasicKind::Error,
-                    "Invalid ProForma molecular formula",
-                    format!("An element without a defined mass ({element}) was used"),
-                    Context::line(None, value, index - 1, 1),
-                ));
-            }
+        if let Some(element) = element
+            && !Self::add(&mut result, (element, None, 1))
+        {
+            return Err(BoxedError::new(
+                BasicKind::Error,
+                "Invalid ProForma molecular formula",
+                format!("An element without a defined mass ({element}) was used"),
+                Context::line(None, value, index - 1, 1),
+            ));
         }
         if !allow_empty && result.is_empty() {
             Err(BoxedError::new(

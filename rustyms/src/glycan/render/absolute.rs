@@ -115,7 +115,7 @@ impl GlycanStructure {
                         .unwrap()
                 })
                 .enumerate()
-                .sorted_unstable_by(|a, b| (a.1.0.cmp(&b.1.0)))
+                .sorted_unstable_by(|a, b| a.1.0.cmp(&b.1.0))
             {
                 let mut new_path = path.to_vec();
                 new_path.push((branch_index, mass_index));
