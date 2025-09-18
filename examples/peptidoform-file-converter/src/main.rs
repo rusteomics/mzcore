@@ -49,6 +49,7 @@ fn main() {
         BufWriter::new(File::create(args.out_path).expect("Could not create out CSV file"));
     writeln!(&mut out_file, "sequence,scan_index,raw_file,z,score,class").unwrap();
     let mut errors = Vec::new();
+    let mut warnings = Vec::new();
     for (peptidoform_index, peptidoform) in
         open_identified_peptidoforms_file(&args.in_path, custom_database.as_ref(), false)
             .expect("Invalid input file")
@@ -78,13 +79,16 @@ fn main() {
                                 .line_index(peptidoform_index as u32),
                         ))?))
                         }
-                        _ => Err(BoxedError::new(BasicKind::Error,
+                        _ => {
+                            warnings.push(BoxedError::new(BasicKind::Warning,
                             "Invalid spectrum id",
-                            "Only spectrum indexes and spectrum numbers can be used",
+                            "Only spectrum indexes and spectrum numbers can be used, an empty scan number is used instead",
                             Context::default()
                                 .source(args.in_path.clone())
                                 .line_index(peptidoform_index as u32),
-                        )),
+                        ));
+                        Ok((0, PathBuf::new()))
+                    }
                     })
                     .collect(),
                 SpectrumIds::FileKnown(files) => files
@@ -126,9 +130,15 @@ fn main() {
         }
     }
     if errors.is_empty() {
+        for e in &warnings {
+            println!("{e}");
+        }
         println!("No errors, enjoy the new file!");
     } else {
         for e in &errors {
+            println!("{e}");
+        }
+        for e in &warnings {
             println!("{e}");
         }
         println!(

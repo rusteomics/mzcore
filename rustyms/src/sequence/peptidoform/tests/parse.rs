@@ -504,3 +504,11 @@ fn ambiguous_aas() {
     assert!(Peptidoform::pro_forma("[+320.85]-(?N[U:Deamidated])-[+432.85]", None).is_ok());
     assert!(Peptidoform::pro_forma("[+1550.7049484934485]-T(?HQ[U:Deamidated])", None).is_ok());
 }
+
+#[test]
+fn ambiguous_mods() {
+    let sequence = "[U:Oxidation#u0]?FTSPFVLASTNAGSINAPTVSDSRALARRFHFDM[#u0]NIEVISM[#u0]YSQNGKINM[#u0]PM[#u0]SVKTCDDE";
+    let parsed = Peptidoform::pro_forma(sequence, None).unwrap();
+    assert_eq!(sequence, parsed.to_string());
+    assert_eq!(parsed.get_ambiguous_modifications().len(), 1);
+}
