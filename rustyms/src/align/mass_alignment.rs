@@ -157,39 +157,43 @@ pub(super) fn align_cached<
                 gap_score_b
             };
 
+            // Now try matching single aminoacids.
+            let prev = unsafe { matrix.get_unchecked([index_a - 1, index_b - 1]) };
+            let pair_score = score_pair(
+                (
+                    unsafe { peptidoform_a.sequence().get_unchecked(index_a - 1) },
+                    unsafe { masses_a.get_unchecked([index_a - 1, 0]) },
+                ),
+                (
+                    unsafe { peptidoform_b.sequence().get_unchecked(index_b - 1) },
+                    unsafe { masses_b.get_unchecked([index_b - 1, 0]) },
+                ),
+                scoring,
+                prev.score,
+            );
+            if pair_score.score > highest.score {
+                highest = pair_score;
+            }
+
+            // Now try matching longer sequences.
             for len_a in 1..=index_a.min(STEPS as usize) {
                 let range_a = unsafe { ranges_a.get_unchecked([index_a - 1, len_a - 1]) };
 
-                for len_b in 1..=index_b.min(STEPS as usize) {
+                let min_len_b = if len_a == 1 { 2 } else { 1 };
+
+                for len_b in min_len_b..=index_b.min(STEPS as usize) {
                     let range_b = unsafe { ranges_b.get_unchecked([index_b - 1, len_b - 1]) };
-
-                    let prev = unsafe { matrix.get_unchecked([index_a - len_a, index_b - len_b]) };
-                    let base_score = prev.score;
-
+                    // Note that ranges are already expanded by tolerance, so
+                    // exact comparision is fine here.
+                    if range_a.0 > range_b.1 || range_b.0 > range_a.1 {
+                        continue;
+                    }
                     // len_a and b are always <= STEPS
-                    let piece = if len_a == 1 && len_b == 1 {
-                        Some(score_pair(
-                            unsafe {
-                                (
-                                    peptidoform_a.sequence().get_unchecked(index_a - 1),
-                                    masses_a.get_unchecked([index_a - 1, 0]),
-                                )
-                            },
-                            unsafe {
-                                (
-                                    peptidoform_b.sequence().get_unchecked(index_b - 1),
-                                    masses_b.get_unchecked([index_b - 1, 0]),
-                                )
-                            },
-                            scoring,
-                            base_score,
-                        ))
-                    // Ranges do not overlap, skip scoring.
-                    } else if scoring.tolerance.bounds(range_a.0).0 > range_b.1
-                        || scoring.tolerance.bounds(range_b.0).0 > range_a.1
-                    {
-                        None
-                    } else {
+                    let match_score = {
+                        let prev =
+                            unsafe { matrix.get_unchecked([index_a - len_a, index_b - len_b]) };
+                        let base_score = prev.score;
+
                         score(
                             unsafe {
                                 (
@@ -211,7 +215,7 @@ pub(super) fn align_cached<
                             base_score,
                         )
                     };
-                    if let Some(p) = piece
+                    if let Some(p) = match_score
                         && p.score > highest.score
                     {
                         highest = p;
