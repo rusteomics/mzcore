@@ -20,3 +20,4 @@ out_mzpaf
 examples/ion-explorer/data
 examples/ion-explorer/figures
 examples/multi-annotator/test-out2.csv
+rustyms/tests/pairwise_examples_new.csv

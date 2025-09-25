@@ -77,10 +77,20 @@ fn alignment_to_database() {
 /// Test for a set of randomly paired peptidoforms if the alignment algorithm still gives the same result
 #[test]
 fn pairwise() {
+    use std::io::Write;
+
     let lines: Vec<_> = parse_csv("tests/pairwise_examples.csv", b',', None)
         .unwrap()
         .filter_map(Result::ok)
         .collect();
+    let mut out =
+        std::io::BufWriter::new(std::fs::File::create("tests/pairwise_examples_new.csv").unwrap());
+    writeln!(
+        &mut out,
+        "a,b,path,score,absolute score,maximal score,identical,mass similar,gaps,length"
+    )
+    .unwrap();
+    let mut different_paths = Vec::new();
 
     for (id, line) in lines.iter().enumerate() {
         let a = Peptidoform::pro_forma(line.index_column("a").unwrap().0, None)
@@ -104,24 +114,46 @@ fn pairwise() {
             .0
             .parse()
             .unwrap();
-        let alignment = align::<4, Peptidoform<SimpleLinear>, Peptidoform<SimpleLinear>>(
-            a,
-            b,
+        let alignment = align::<4, &Peptidoform<SimpleLinear>, &Peptidoform<SimpleLinear>>(
+            &a,
+            &b,
             AlignScoring::default(),
             AlignType::GLOBAL,
         );
-        assert_eq!(
-            alignment.score().absolute,
-            absolute_score,
-            "Pair at line {}",
-            id + 2
+        let line_nm = id + 2;
+        let score = alignment.score();
+        let stats = alignment.stats();
+        assert_eq!(score.absolute, absolute_score, "Pair at line {line_nm}",);
+        assert_eq!(score.max, maximal_score, "Pair at line {line_nm}",);
+        if alignment.short() != path {
+            different_paths.push((alignment.short(), path, line_nm));
+        }
+        writeln!(
+            &mut out,
+            "{},{},{},{},{},{},{},{},{},{}",
+            line.index_column("a").unwrap().0,
+            line.index_column("b").unwrap().0,
+            alignment.short(),
+            score.normalised,
+            score.absolute,
+            score.max,
+            stats.identical,
+            stats.mass_similar,
+            stats.gaps,
+            stats.length
+        )
+        .unwrap();
+    }
+
+    if !different_paths.is_empty() {
+        for (found, expected, line) in &different_paths {
+            println!("Line {line}: found '{found}' instead of '{expected}'");
+        }
+
+        println!("See the newly created 'pairwise_examples_new.csv' for the full new data");
+        panic!(
+            "{} pairs had a different path (but are otherwise similarly optimal)",
+            different_paths.len()
         );
-        assert_eq!(
-            alignment.score().max,
-            maximal_score,
-            "Pair at line {}",
-            id + 2
-        );
-        assert_eq!(alignment.short(), path, "Pair at line {}", id + 2);
     }
 }
