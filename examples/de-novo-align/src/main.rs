@@ -34,9 +34,20 @@ struct Cli {
 
 fn process_alignment_group<I>(
     alignments: I,
-) -> Vec<(rustyms::align::Alignment<Arc<FastaData>, IdentifiedPeptidoform<SemiAmbiguous, PeptidoformPresent>>, bool)>
+) -> Vec<(
+    rustyms::align::Alignment<
+        Arc<FastaData>,
+        IdentifiedPeptidoform<SemiAmbiguous, PeptidoformPresent>,
+    >,
+    bool,
+)>
 where
-    I: Iterator<Item = rustyms::align::Alignment<Arc<FastaData>, IdentifiedPeptidoform<SemiAmbiguous, PeptidoformPresent>>>,
+    I: Iterator<
+        Item = rustyms::align::Alignment<
+            Arc<FastaData>,
+            IdentifiedPeptidoform<SemiAmbiguous, PeptidoformPresent>,
+        >,
+    >,
 {
     let alignments = alignments.collect_vec();
     let max = alignments
@@ -61,7 +72,13 @@ fn run_alignments(
     peptides: Vec<IdentifiedPeptidoform<SemiAmbiguous, PeptidoformPresent>>,
     scoring: AlignScoring,
     sequential: bool,
-) -> Vec<(rustyms::align::Alignment<Arc<FastaData>, IdentifiedPeptidoform<SemiAmbiguous, PeptidoformPresent>>, bool)> {
+) -> Vec<(
+    rustyms::align::Alignment<
+        Arc<FastaData>,
+        IdentifiedPeptidoform<SemiAmbiguous, PeptidoformPresent>,
+    >,
+    bool,
+)> {
     if sequential {
         index
             .align(peptides, scoring, AlignType::EITHER_GLOBAL)
