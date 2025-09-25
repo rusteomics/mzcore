@@ -142,8 +142,8 @@ pub(super) fn align_cached<
                 let score = scoring.gap_extend as isize
                     + scoring.gap_start as isize * isize::from(is_gap_start);
 
-                let len_a = if gap_a { 1 } else { 0 };
-                let len_b = if gap_a { 0 } else { 1 };
+                let len_a = u16::from(gap_a);
+                let len_b = u16::from(!gap_a);
                 Piece::new(prev.score + score, score, MatchType::Gap, len_a, len_b)
             };
 
@@ -185,7 +185,9 @@ pub(super) fn align_cached<
                             base_score,
                         ))
                     // Ranges do not overlap, skip scoring.
-                    } else if range_a.0 > range_b.1 || range_b.0 > range_a.1 {
+                    } else if scoring.tolerance.bounds(range_a.0).0 > range_b.1
+                        || scoring.tolerance.bounds(range_b.0).0 > range_a.1
+                    {
                         None
                     } else {
                         score(
