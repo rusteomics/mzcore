@@ -23,7 +23,7 @@ function make-imgt {
     curl https://www.imgt.org/download/LIGM-DB/imgt.dat.Z \
         | gunzip -c > rustyms-generate-imgt/data/imgt.dat \
         && echo "Serializing IMGT ..." \
-        && cargo run --bin rustyms-generate-imgt \
+        && cargo run -p rustyms-generate-imgt \
         || echo "Failed to download IMGT. I did not update it." >> /tmp/MESSAGES
 }
 
@@ -47,7 +47,7 @@ function make-ontologies {
 
 
     echo "Serializing the other databases..."
-    cargo run --bin rustyms-generate-databases
+    cargo run -p rustyms-generate-databases
 }
 
 
