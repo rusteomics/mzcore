@@ -35,7 +35,7 @@ function make-ontologies {
     mkdir -p ${db_data}
     curl https://raw.githubusercontent.com/HUPO-PSI/psi-mod-CV/refs/heads/master/PSI-MOD-newstyle.obo \
         > ${db_data}/PSI-MOD-newstyle.obo
-    curl http://www.unimod.org/obo/unimod.obo > ${db_data}/unimod.obo
+    curl https://unimod.org/xml/unimod.xml > ${db_data}/unimod.xml
     curl ftp://ftp.proteininformationresource.org/pir_databases/other_databases/resid/RESIDUES.XML \
         > ${db_data}/RESID-RESIDUES.XML
     curl https://raw.githubusercontent.com/HUPO-PSI/mzIdentML/master/cv/XLMOD.obo \
