@@ -15,7 +15,7 @@ include = ["src/**/*", "images/**/*", "README.md", "build.rs", "benches/**/*"]
 
 [dependencies]
 bincode = { workspace = true }
-custom_error = { workspace = true }
+context_error = { workspace = true }
 flate2 = { workspace = true }
 itertools = { workspace = true }
 mzdata = { workspace = true, optional = true }
@@ -58,7 +58,7 @@ isotopes = ["probability", "ndarray"]
 glycan-render = []
 glycan-render-bitmap = ["zeno", "swash", "glycan-render"]
 internal-no-data = []
-coloured-errors = ["custom_error/colored"]
+coloured-errors = ["context_error/colored"]
 
 [lints]
 workspace = true

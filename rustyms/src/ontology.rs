@@ -1,6 +1,6 @@
 //! The available ontologies
 
-use custom_error::*;
+use context_error::*;
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 

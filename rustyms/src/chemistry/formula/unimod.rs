@@ -3,7 +3,7 @@ use std::{
     ops::{Range, RangeBounds},
 };
 
-use custom_error::*;
+use context_error::*;
 
 use crate::{
     chemistry::{Chemical, Element, MolecularFormula},

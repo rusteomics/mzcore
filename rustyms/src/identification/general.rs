@@ -1,6 +1,6 @@
 use std::path::Path;
 
-use custom_error::*;
+use context_error::*;
 
 use crate::{
     identification::*,

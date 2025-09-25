@@ -1,7 +1,7 @@
 #![allow(dead_code, unreachable_patterns)]
 use std::{error::Error, fmt::Display};
 
-use custom_error::*;
+use context_error::*;
 use serde::{Deserialize, Serialize};
 
 /// Error type to indicate that the given name was not a recognised species from the IMGT database

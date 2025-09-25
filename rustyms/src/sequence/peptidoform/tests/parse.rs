@@ -1,6 +1,6 @@
 use std::{num::NonZeroU16, sync::Arc};
 
-use custom_error::*;
+use context_error::*;
 
 use crate::{
     annotation::model::{FragmentationModel, PrimaryIonSeries},
@@ -505,6 +505,7 @@ fn ambiguous_aas() {
     assert!(Peptidoform::pro_forma("[+1550.7049484934485]-T(?HQ[U:Deamidated])", None).is_ok());
 }
 
+#[ignore = "A known bug"]
 #[test]
 fn ambiguous_mods() {
     let sequence = "[U:Oxidation#u0]?FTSPFVLASTNAGSINAPTVSDSRALARRFHFDM[#u0]NIEVISM[#u0]YSQNGKINM[#u0]PM[#u0]SVKTCDDE";

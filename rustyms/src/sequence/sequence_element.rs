@@ -7,7 +7,7 @@ use std::{
     num::NonZeroU32,
 };
 
-use custom_error::*;
+use context_error::*;
 use serde::{Deserialize, Serialize};
 use thin_vec::ThinVec;
 

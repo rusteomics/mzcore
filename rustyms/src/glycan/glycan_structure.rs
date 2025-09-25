@@ -5,7 +5,7 @@ use std::{
     {fmt::Display, hash::Hash},
 };
 
-use custom_error::*;
+use context_error::*;
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 

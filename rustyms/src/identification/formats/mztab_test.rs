@@ -1,7 +1,7 @@
 #![allow(clippy::missing_panics_doc)]
 use std::io::{BufRead, BufReader};
 
-use custom_error::{BasicKind, BoxedError};
+use context_error::{BasicKind, BoxedError};
 
 use crate::{
     identification::{

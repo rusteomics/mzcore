@@ -7,7 +7,7 @@ use std::{
     sync::Arc,
 };
 
-use custom_error::*;
+use context_error::*;
 use itertools::Itertools;
 use ordered_float::OrderedFloat;
 use serde::{Deserialize, Serialize};

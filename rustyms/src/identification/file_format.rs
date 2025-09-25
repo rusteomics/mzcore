@@ -1,6 +1,6 @@
 use std::{fmt::Display, path::Path};
 
-use custom_error::{BasicKind, BoxedError};
+use context_error::{BasicKind, BoxedError};
 use serde::{Deserialize, Serialize};
 
 use crate::{

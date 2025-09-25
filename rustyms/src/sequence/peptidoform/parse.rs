@@ -1,6 +1,6 @@
 use std::{collections::BTreeMap, num::NonZeroU16};
 
-use custom_error::*;
+use context_error::*;
 use itertools::Itertools;
 use ordered_float::OrderedFloat;
 

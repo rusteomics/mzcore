@@ -8,7 +8,7 @@ publish = false
 
 [dependencies]
 clap = { workspace = true }
-custom_error = { workspace = true }
+context_error = { workspace = true }
 directories = { workspace = true }
 itertools = { workspace = true }
 mzdata = { workspace = true, default-features=false, features = ["mgf", "mzml", "thermo", "bruker_tdf"] }

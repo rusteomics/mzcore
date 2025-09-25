@@ -4,7 +4,7 @@ use itertools::Itertools;
 use serde::de::DeserializeOwned;
 use serde_json::Value;
 
-use custom_error::*;
+use context_error::*;
 
 /// Custom JSON parser, needed to allow backwards compatibility to older version of JSON formats.
 pub(crate) trait ParseJson: Sized {

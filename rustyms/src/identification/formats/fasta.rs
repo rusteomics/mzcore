@@ -8,7 +8,7 @@ use std::{
     str::FromStr,
 };
 
-use custom_error::*;
+use context_error::*;
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 

@@ -1,7 +1,7 @@
 //! WIP: mzPAF parser
 use std::{num::NonZeroU16, ops::Range, sync::LazyLock};
 
-use custom_error::*;
+use context_error::*;
 use serde::{Deserialize, Serialize};
 
 use crate::{

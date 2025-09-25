@@ -9,7 +9,7 @@ use std::{
     sync::Arc,
 };
 
-use custom_error::*;
+use context_error::*;
 use flate2::bufread::GzDecoder;
 use itertools::Itertools;
 use ordered_float::OrderedFloat;

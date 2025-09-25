@@ -4,7 +4,7 @@ use std::{
     sync::{Arc, LazyLock},
 };
 
-use custom_error::*;
+use context_error::*;
 use ordered_float::OrderedFloat;
 use regex::Regex;
 use serde::{Deserialize, Serialize};

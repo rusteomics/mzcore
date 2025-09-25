@@ -13,7 +13,7 @@ use std::{
     },
 };
 
-use custom_error::CombineErrorsExtender;
+use context_error::CombineErrorsExtender;
 
 use clap::Parser;
 use directories::ProjectDirs;

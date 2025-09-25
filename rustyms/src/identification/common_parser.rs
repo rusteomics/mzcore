@@ -1,6 +1,6 @@
 use std::{borrow::Cow, ops::Range, str::FromStr};
 
-use custom_error::*;
+use context_error::*;
 
 use crate::identification::csv::CsvLine;
 
@@ -35,7 +35,7 @@ macro_rules! format_family {
      optional { $($(#[doc = $odoc:expr])? $oname:ident: $otyp:ty, $of:expr;)*}
      $($post_process:item)?) => {paste::paste!{
         #[allow(unused_imports)] // Needed sometimes, but not all invocations of the macro
-        use custom_error::*;
+        use context_error::*;
 
         use super::super::common_parser::HasLocation;
 

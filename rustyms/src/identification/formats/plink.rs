@@ -6,7 +6,7 @@ use std::{
     sync::{Arc, LazyLock},
 };
 
-use custom_error::*;
+use context_error::*;
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use uom::ConstZero;

@@ -1,6 +1,6 @@
 use std::sync::{Arc, LazyLock};
 
-use custom_error::*;
+use context_error::*;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 

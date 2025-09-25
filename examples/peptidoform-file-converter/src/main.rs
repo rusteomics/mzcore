@@ -7,7 +7,7 @@ use std::{
 };
 
 use clap::Parser;
-use custom_error::{BasicKind, BoxedError, Context, CreateError};
+use context_error::{BasicKind, BoxedError, Context, CreateError};
 use directories::ProjectDirs;
 use rustyms::{
     identification::{
@@ -126,7 +126,7 @@ fn main() {
                 .compound_peptidoform_ion()
                 .map(std::borrow::Cow::into_owned),))
         }) {
-            custom_error::combine_error(&mut errors, error, ());
+            context_error::combine_error(&mut errors, error, ());
         }
     }
     if errors.is_empty() {

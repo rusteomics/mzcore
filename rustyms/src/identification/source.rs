@@ -1,6 +1,6 @@
 use std::fmt::Display;
 
-use custom_error::{BasicKind, BoxedError};
+use context_error::{BasicKind, BoxedError};
 
 use crate::{
     identification::{IdentifiedPeptidoform, MaybePeptidoform, MetaData},

@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 
-use custom_error::*;
+use context_error::*;
 use itertools::Itertools;
 
 use crate::sequence::{

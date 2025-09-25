@@ -1,6 +1,6 @@
 use std::ops::RangeBounds;
 
-use custom_error::*;
+use context_error::*;
 
 use crate::{
     chemistry::{ELEMENT_PARSE_LIST, Element, MolecularFormula},

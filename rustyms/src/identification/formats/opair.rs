@@ -5,7 +5,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use custom_error::*;
+use context_error::*;
 use serde::{Deserialize, Serialize};
 
 use crate::{
