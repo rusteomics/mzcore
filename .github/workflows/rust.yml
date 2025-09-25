@@ -61,5 +61,5 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     - name: Run tests
-      run: cargo test -p rustyms
+      run: cargo test -p rustyms --no-fail-fast
 
