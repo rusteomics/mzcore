@@ -1,11 +1,8 @@
 #![allow(clippy::missing_panics_doc)]
 //! Integration tests for alignments
-use mzalign::{AlignIndex, AlignScoring, AlignType, align};
+use mzalign::prelude::*;
 use mzcore::{prelude::*, sequence::SimpleLinear};
-use mzident::{
-    identification::{PeptidoformPresent, csv::parse_csv},
-    prelude::*,
-};
+use mzident::{PeptidoformPresent, csv::parse_csv, prelude::*};
 
 const MAB_SEQUENCE: &str = "GPGGGGSLPEVREKHEFLNRLKQLPLLESQIATIEQSAPSQSDQEQLFSNVQYFAHYCRKYAPLYAAEAKRVFSLEKKMSNYIQFKSKCRIEPVCLLLHGSPGAGKSVATNLIGRSLAEKLNSSVYSLPPDPDHFDGYKQQAVVIMDDLCQNPDGKDVSLFCQMVSSVDFVPPMAALEEKGILFTSPFVLASTNAGSINAPTVSDSRALARRFHFDMNIEVISMYSQNGKINMPMSVKTCDDECCPVNFKKCCPLVCGKAIQFIDRRTQVRYSLDMLVTEMFREYNHRHSVGTTLEALFQ";
 
@@ -55,7 +52,7 @@ fn alignment_to_database() {
             .align_one(
                 peptidoform,
                 AlignScoring {
-                    pair: mzalign::align::PairMode::DatabaseToPeptidoform,
+                    pair: PairMode::DatabaseToPeptidoform,
                     ..Default::default()
                 },
                 AlignType::GLOBAL_B,

@@ -240,7 +240,7 @@ fn peaks_v13_dia_de_novo() {
 #[test]
 fn full_peaks_file() {
     for pep in PeaksData::parse_file(
-        "data/200305_HER_test_04_DENOVO_excerpt.csv",
+        "../data/200305_HER_test_04_DENOVO_excerpt.csv",
         None,
         false,
         None,
@@ -256,7 +256,7 @@ fn full_peaks_file() {
 #[test]
 fn fuzz_crashes() {
     let mut all_passing = true;
-    for entry in std::fs::read_dir("src/identification/peaks_fuzz_tests").unwrap() {
+    for entry in std::fs::read_dir("src/peaks_fuzz_tests").unwrap() {
         let entry = entry.unwrap();
         let path = entry.path();
         let metadata = std::fs::metadata(&path).unwrap();
@@ -289,7 +289,7 @@ fn fuzz_crashes() {
 #[test]
 fn fuzz_hangs() {
     let mut all_passing = true;
-    for entry in std::fs::read_dir("src/identification/peaks_fuzz_tests").unwrap() {
+    for entry in std::fs::read_dir("src/peaks_fuzz_tests").unwrap() {
         let entry = entry.unwrap();
         let path = entry.path();
         let metadata = std::fs::metadata(&path).unwrap();

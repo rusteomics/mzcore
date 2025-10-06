@@ -229,7 +229,7 @@ mod tests {
     #[test]
     fn test_open() {
         let spectra =
-            open(std::env::var("CARGO_MANIFEST_DIR").unwrap() + "/data/example.mgf").unwrap();
+            open(std::env::var("CARGO_MANIFEST_DIR").unwrap() + "/../data/example.mgf").unwrap();
         assert_eq!(spectra.len(), 1);
         assert_eq!(spectra[0].spectrum().len(), 5);
         assert!(spectra[0][0].mz < spectra[0][1].mz);

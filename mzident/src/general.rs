@@ -165,7 +165,7 @@ mod tests {
     #[test]
     fn open_sage() {
         match test_format::<SageData>(
-            BufReader::new(File::open("src/identification/test_files/sage_v0_14.tsv").unwrap()),
+            BufReader::new(File::open("src/test_files/sage_v0_14.tsv").unwrap()),
             None,
             true,
             false,
@@ -182,7 +182,7 @@ mod tests {
     #[test]
     fn open_msfragger() {
         match test_format::<MSFraggerData>(
-            BufReader::new(File::open("src/identification/test_files/msfragger_v21.tsv").unwrap()),
+            BufReader::new(File::open("src/test_files/msfragger_v21.tsv").unwrap()),
             None,
             true,
             false,
