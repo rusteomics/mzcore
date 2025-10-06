@@ -257,7 +257,8 @@ impl<T> SequenceElement<T> {
                 } = m
                 {
                     place_ambiguous(*id).then(|| {
-                        let default = glycan_model.get_default_fragments();
+                        let default =
+                            glycan_model.get_default_fragments(Some(self.aminoacid.aminoacid()));
                         let specific =
                             glycan_model.get_specific_fragments(Some(self.aminoacid.aminoacid()));
                         (
@@ -362,7 +363,7 @@ impl<T> SequenceElement<T> {
     }
 
     /// Get all possible diagnostic ions
-    pub(crate) fn diagnostic_ions(
+    pub fn diagnostic_ions(
         &self,
         position: SequencePosition,
         n_term: &[Modification],

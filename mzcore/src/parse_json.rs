@@ -7,7 +7,7 @@ use serde_json::Value;
 use context_error::*;
 
 /// Custom JSON parser, needed to allow backwards compatibility to older version of JSON formats.
-pub(crate) trait ParseJson: Sized {
+pub trait ParseJson: Sized {
     /// Parse a JSON value element into this structure
     /// # Errors
     /// If the JSON is not valid to the format
@@ -33,9 +33,7 @@ pub(crate) trait ParseJson: Sized {
 /// # Errors
 /// If the JSON is not valid to the format
 #[expect(clippy::needless_pass_by_value)]
-pub(crate) fn use_serde<T: DeserializeOwned>(
-    value: Value,
-) -> Result<T, BoxedError<'static, BasicKind>> {
+pub fn use_serde<T: DeserializeOwned>(value: Value) -> Result<T, BoxedError<'static, BasicKind>> {
     serde_json::from_value(value.clone()).map_err(|err| {
         BoxedError::new(
             BasicKind::Error,

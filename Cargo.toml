@@ -1,6 +1,7 @@
 [workspace]
 members = [
     "rustyms",
+    "mzannotate",
     "mzcore",
     "mzcv",
     "rustyms-generate-databases",

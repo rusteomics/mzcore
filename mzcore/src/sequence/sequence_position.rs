@@ -101,7 +101,6 @@ impl ParseJson for SequencePosition {
 #[derive(
     Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Default, Debug, Serialize, Deserialize,
 )]
-#[non_exhaustive]
 pub struct PeptidePosition {
     /// The sequence index (0 based into the peptide sequence)
     pub sequence_index: SequencePosition,

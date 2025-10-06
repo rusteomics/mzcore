@@ -3,11 +3,8 @@
 use itertools::Itertools;
 
 use crate::{
-    chemistry::{CachedCharge, Chemical, MolecularFormula},
+    chemistry::{Chemical, MolecularFormula},
     glycan::MonoSaccharide,
-    quantities::Multi,
-    sequence::{AminoAcid, SequencePosition},
-    system::isize::Charge,
 };
 
 impl MonoSaccharide {
@@ -41,7 +38,7 @@ impl MonoSaccharide {
         composition
     }
 
-    fn composition_left_over(
+    pub fn composition_left_over(
         composition: &[(Self, isize)],
         remove: &[(Self, isize)],
     ) -> Vec<(Self, isize)> {

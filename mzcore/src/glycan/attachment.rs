@@ -1,14 +1,19 @@
 use std::collections::HashMap;
 
+use context_error::{BasicKind, BoxedError};
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 
-use crate::prelude::AminoAcid;
+use crate::{
+    parse_json::{ParseJson, use_serde},
+    prelude::AminoAcid,
+};
 
 /// Just keep the full glycan on the structure. This is the behaviour needed for most use cases.
 pub struct FullGlycan {}
 
 impl GlycanAttachement for FullGlycan {
-    fn get_default_fragments(&self) -> GlycanPeptideFragment {
+    fn get_default_fragments(&self, _attachment: Option<AminoAcid>) -> GlycanPeptideFragment {
         GlycanPeptideFragment::FULL
     }
 
@@ -22,7 +27,7 @@ impl GlycanAttachement for FullGlycan {
 
 pub trait GlycanAttachement {
     /// Get the default rules
-    fn get_default_fragments(&self) -> GlycanPeptideFragment;
+    fn get_default_fragments(&self, attachment: Option<AminoAcid>) -> GlycanPeptideFragment;
 
     /// Get the possible glycan peptide fragments based on this attachment location.
     /// This simplifies the rules somewhat to mostly contain unique rules in the fragment specific
@@ -90,6 +95,12 @@ impl GlycanPeptideFragment {
     }
 }
 
+impl ParseJson for GlycanPeptideFragment {
+    fn from_json_value(value: Value) -> Result<Self, BoxedError<'static, BasicKind>> {
+        use_serde(value)
+    }
+}
+
 /// The possible kinds of fragments, same options as [`FragmentType`] but without any additional data
 #[derive(Clone, Copy, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 #[expect(non_camel_case_types)]
@@ -131,5 +142,11 @@ impl std::fmt::Display for BackboneFragmentKind {
                 Self::z => "z",
             }
         )
+    }
+}
+
+impl ParseJson for BackboneFragmentKind {
+    fn from_json_value(value: Value) -> Result<Self, BoxedError<'static, BasicKind>> {
+        use_serde(value)
     }
 }

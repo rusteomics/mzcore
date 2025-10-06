@@ -201,6 +201,7 @@ impl MolecularFormula {
     }
 
     /// Get an empty molecular formula with only a mass of unspecified origin
+    #[must_use]
     pub fn with_additional_mass(additional_mass: f64) -> Self {
         Self {
             elements: ThinVec::new(),
@@ -210,12 +211,14 @@ impl MolecularFormula {
     }
 
     /// Add the following labels to this formula
-    pub(crate) fn with_labels(mut self, labels: &[AmbiguousLabel]) -> Self {
+    #[must_use]
+    pub fn with_labels(mut self, labels: &[AmbiguousLabel]) -> Self {
         self.labels.extend_from_slice(labels);
         self
     }
 
     /// Add the following label to this formula
+    #[must_use]
     pub(crate) fn with_label(mut self, label: AmbiguousLabel) -> Self {
         self.labels.push(label);
         self

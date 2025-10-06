@@ -22,10 +22,10 @@ use crate::{
     molecular_formula,
     quantities::Multi,
     sequence::{
-        AtLeast, AtMax, CheckedAminoAcid, CrossLinkName, GnoComposition, HighestOf, Linear, Linked,
-        LinkerSpecificity, MUPSettings, Modification, PeptidePosition, PlacementRule, Protease,
-        SemiAmbiguous, SequenceElement, SequencePosition, SimpleLinear, SimpleModification,
-        SimpleModificationInner, UnAmbiguous,
+        AtLeast, AtMax, CheckedAminoAcid, Complexity, CrossLinkName, GnoComposition, HighestOf,
+        Linear, Linked, LinkerSpecificity, MUPSettings, Modification, PeptidePosition,
+        PlacementRule, Protease, SemiAmbiguous, SequenceElement, SequencePosition, SimpleLinear,
+        SimpleModification, SimpleModificationInner, UnAmbiguous,
     },
     system::isize::Charge,
 };
@@ -469,7 +469,7 @@ impl<Complexity> Peptidoform<Complexity> {
     }
 
     /// The mass of the N terminal placed modifications. The global isotope modifications are NOT applied.
-    fn get_n_term_mass(
+    pub fn get_n_term_mass(
         &self,
         all_peptides: &[Peptidoform<Linked>],
         visited_peptides: &[usize],
@@ -512,7 +512,7 @@ impl<Complexity> Peptidoform<Complexity> {
     }
 
     /// The mass of the C terminal modifications. The global isotope modifications are NOT applied.
-    fn get_c_term_mass(
+    pub fn get_c_term_mass(
         &self,
         all_peptides: &[Peptidoform<Linked>],
         visited_peptides: &[usize],
@@ -555,10 +555,10 @@ impl<Complexity> Peptidoform<Complexity> {
     }
 
     /// Find all neutral losses in the given stretch of peptide (loss, peptide index, sequence index)
-    fn potential_neutral_losses(
+    pub fn potential_neutral_losses(
         &self,
         range: impl RangeBounds<usize>,
-        all_peptides: &[Peptidoform<Linked>],
+        all_peptides: &[Peptidoform<Linked>], // TODO: do not like this part
         peptidoform_index: usize,
         ignore_peptides: &mut Vec<usize>,
     ) -> Vec<(NeutralLoss, usize, SequencePosition)> {
@@ -624,8 +624,8 @@ impl<Complexity> Peptidoform<Complexity> {
             .collect()
     }
 
-    /// Iterate over a range in the peptide and keep track of the position
-    pub(super) fn iter(
+    /// Iterate over a range in the peptide and keep track of the position, this duplicates the N and C terminal sequence elements to TODO: fix
+    pub fn iter(
         &self,
         range: impl RangeBounds<usize>,
     ) -> impl DoubleEndedIterator<Item = (PeptidePosition, &SequenceElement<Complexity>)> + '_ {
@@ -778,7 +778,7 @@ impl<Complexity> Peptidoform<Complexity> {
                             } = m
                             {
                                 let aa = self[*pos].aminoacid.aminoacid();
-                                let default = glycan_model.get_default_fragments();
+                                let default = glycan_model.get_default_fragments(Some(aa));
                                 let specific = glycan_model.get_specific_fragments(Some(aa));
                                 (*mid == id).then(|| {
                                     (
@@ -841,7 +841,7 @@ impl<Complexity> Peptidoform<Complexity> {
     /// Applies ambiguous amino acids and modifications, and neutral losses (if allowed in the model).
     // TODO: take terminal ambiguous into account
     #[expect(clippy::too_many_arguments)]
-    fn all_masses(
+    pub fn all_masses(
         &self,
         range: impl RangeBounds<usize> + Clone,
         aa_range: impl RangeBounds<usize> + Clone,
@@ -1685,3 +1685,60 @@ into!(UnAmbiguous => Linear);
 into!(SemiAmbiguous => SimpleLinear);
 into!(UnAmbiguous => SimpleLinear);
 into!(UnAmbiguous => SemiAmbiguous);
+
+#[doc(hidden)]
+pub trait HiddenInternalMethods {
+    fn get_global(&self) -> &[(Element, Option<NonZeroU16>)];
+    fn get_labile(&self) -> &[SimpleModification];
+    fn get_charge_carriers(&self) -> Option<&MolecularCharge>;
+    fn formulas_inner(
+        &self,
+        peptidoform_index: usize,
+        peptidoform_ion_index: usize,
+        all_peptides: &[Peptidoform<Linked>],
+        visited_peptides: &[usize],
+        applied_cross_links: &mut Vec<CrossLinkName>,
+        allow_ms_cleavable: bool,
+        glycan_model: &impl GlycanAttachement,
+    ) -> (
+        Multi<MolecularFormula>,
+        HashMap<BackboneFragmentKind, Multi<MolecularFormula>>,
+        HashSet<CrossLinkName>,
+    );
+}
+
+impl<Complexity> HiddenInternalMethods for Peptidoform<Complexity> {
+    fn get_global(&self) -> &[(Element, Option<NonZeroU16>)] {
+        &self.global
+    }
+    fn get_labile(&self) -> &[SimpleModification] {
+        &self.labile
+    }
+    fn get_charge_carriers(&self) -> Option<&MolecularCharge> {
+        self.charge_carriers.as_ref()
+    }
+    fn formulas_inner(
+        &self,
+        peptidoform_index: usize,
+        peptidoform_ion_index: usize,
+        all_peptides: &[Peptidoform<Linked>],
+        visited_peptides: &[usize],
+        applied_cross_links: &mut Vec<CrossLinkName>,
+        allow_ms_cleavable: bool,
+        glycan_model: &impl GlycanAttachement,
+    ) -> (
+        Multi<MolecularFormula>,
+        HashMap<BackboneFragmentKind, Multi<MolecularFormula>>,
+        HashSet<CrossLinkName>,
+    ) {
+        self.formulas_inner(
+            peptidoform_index,
+            peptidoform_ion_index,
+            all_peptides,
+            visited_peptides,
+            applied_cross_links,
+            allow_ms_cleavable,
+            glycan_model,
+        )
+    }
+}

@@ -316,7 +316,8 @@ impl Modification {
     }
 
     /// Get the formula for the whole addition (or subtraction) for this modification
-    pub(crate) fn formula_inner(
+    #[doc(hidden)]
+    pub fn formula_inner(
         &self,
         all_peptides: &[Peptidoform<Linked>],
         visited_peptides: &[usize],
@@ -343,7 +344,7 @@ impl Modification {
                     ),
 
                     s => {
-                        let default_rules = glycan_model.get_default_fragments();
+                        let default_rules = glycan_model.get_default_fragments(attachment);
                         let specific_rules = glycan_model.get_specific_fragments(attachment);
 
                         let f = s.formula_inner(
@@ -386,7 +387,7 @@ impl Modification {
                             .formula_inner(
                                 sequence_index,
                                 peptidoform_index,
-                                glycan_model.get_default_fragments(),
+                                glycan_model.get_default_fragments(attachment),
                                 attachment,
                             )
                             .with_label(&AmbiguousLabel::CrossLinkBound(name.clone())),
@@ -398,7 +399,7 @@ impl Modification {
                     let link = linker.formula_inner(
                         sequence_index,
                         peptidoform_index,
-                        glycan_model.get_default_fragments(),
+                        glycan_model.get_default_fragments(attachment),
                         attachment,
                     );
                     let (_, stubs, _) = side.allowed_rules(linker);
@@ -507,8 +508,8 @@ impl Modification {
             })
     }
 
-    /// Get the name if this is a Unimod modification (for use in mzPAF)
-    pub(crate) fn unimod_name(&self) -> Option<&str> {
+    /// Get the name if this is an Unimod modification (for use in mzPAF)
+    pub fn unimod_name(&self) -> Option<&str> {
         match self {
             Self::Simple(s)
             | Self::CrossLink { linker: s, .. }

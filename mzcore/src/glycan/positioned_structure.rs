@@ -1,18 +1,13 @@
 //! Handle positioned glycan structures
 use std::hash::Hash;
 
-use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    chemistry::{CachedCharge, Chemical, MolecularFormula},
+    chemistry::{Chemical, MolecularFormula},
     glycan::position::GlycanBreakPos,
-    quantities::Multi,
     sequence::{AminoAcid, SequencePosition},
-    system::isize::Charge,
 };
-
-use crate::uom::num_traits::Zero;
 
 use super::{glycan::MonoSaccharide, position::GlycanPosition};
 
@@ -24,10 +19,10 @@ pub type GlycanBranchMassIndex = usize;
 /// Rose tree representation of glycan structure
 #[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
 pub struct PositionedGlycanStructure {
-    pub(super) sugar: MonoSaccharide,
-    pub(super) branches: Vec<PositionedGlycanStructure>,
-    pub(super) inner_depth: usize,
-    pub(super) outer_depth: usize,
+    pub sugar: MonoSaccharide,
+    pub branches: Vec<PositionedGlycanStructure>,
+    pub inner_depth: usize,
+    pub outer_depth: usize,
     /// The branches taken to get to this location (from the root) as the index in the branches and the index in the branches when sorted by mass.
     /// For a general glycan with a fucose on the first hexnac and a bisection after the core double
     /// hexnac + hex, this variable will contain an empty list for the root hexnac. For the fucose
@@ -36,7 +31,7 @@ pub struct PositionedGlycanStructure {
     /// bisection this variable will contain `[(1, 0), (0, 0)]`, indicating that it took the main
     /// branch (and not the fucose) and that it took the left branch for the second bisection which
     /// is heavier than the right branch.
-    pub(super) branch: Vec<(GlycanBranchIndex, GlycanBranchMassIndex)>,
+    pub branch: Vec<(GlycanBranchIndex, GlycanBranchMassIndex)>,
 }
 
 impl Chemical for PositionedGlycanStructure {
@@ -82,7 +77,7 @@ impl PositionedGlycanStructure {
     }
 
     /// All possible bonds that can be broken and the molecular formula that would be held over if these bonds all broke and the broken off parts are lost.
-    fn internal_break_points(
+    pub fn internal_break_points(
         &self,
         depth: u8,
         peptidoform_index: usize,
@@ -150,7 +145,7 @@ impl PositionedGlycanStructure {
         }
     }
 
-    fn position(
+    pub fn position(
         &self,
         attachment: Option<(AminoAcid, SequencePosition)>,
         outer: bool,
