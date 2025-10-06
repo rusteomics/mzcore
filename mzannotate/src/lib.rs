@@ -1,6 +1,4 @@
 #![doc = include_str!("../README.md")]
-#![expect(macro_use_extern_crate)] // Could not get uom to work without
-use bincode as _;
 
 #[cfg(test)]
 mod fragmentation_tests;

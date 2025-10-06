@@ -3,7 +3,6 @@ use std::collections::{HashMap, HashSet};
 use itertools::Itertools;
 use mzcore::{
     chemistry::{CachedCharge, DiagnosticIon},
-    glycan::MonoSaccharide,
     prelude::{
         CompoundPeptidoformIon, MolecularCharge, Peptidoform, PeptidoformIon, SequencePosition,
     },
@@ -192,7 +191,7 @@ pub(crate) fn generate_theoretical_fragments_inner<Complexity>(
     }
     for fragment in &mut output {
         fragment.formula = fragment.formula.as_ref().map(|f| {
-            f.with_global_isotope_modifications(&peptidoform.get_global())
+            f.with_global_isotope_modifications(peptidoform.get_global())
                 .expect("Invalid global isotope modification")
         });
     }
@@ -238,7 +237,7 @@ pub(crate) fn generate_theoretical_fragments_inner<Complexity>(
     );
     // Add amino acid side chain losses
     precursor_neutral_losses.extend(get_all_sidechain_losses(
-        &peptidoform.sequence(),
+        peptidoform.sequence(),
         &model.precursor.2,
     ));
     // Add all normal neutral losses
@@ -311,7 +310,7 @@ pub(crate) fn generate_theoretical_fragments_inner<Complexity>(
         match &**modification {
             SimpleModificationInner::Glycan(composition) => {
                 output.extend(crate::monosaccharide::theoretical_fragments(
-                    &composition,
+                    composition,
                     model,
                     peptidoform_ion_index,
                     peptidoform_index,
@@ -355,8 +354,8 @@ fn diagnostic_ions<Complexity>(
         .flat_map(|(pos, aa)| {
             aa.diagnostic_ions(
                 pos.sequence_index,
-                &peptidoform.get_n_term(),
-                &peptidoform.get_c_term(),
+                peptidoform.get_n_term(),
+                peptidoform.get_c_term(),
             )
             .into_iter()
             .map(move |diagnostic| {

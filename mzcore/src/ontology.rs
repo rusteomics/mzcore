@@ -34,7 +34,6 @@ pub enum Ontology {
 
 impl Ontology {
     /// Get the prefix character for the ontology
-    #[allow(dead_code)]
     pub const fn char(self) -> char {
         match self {
             Self::Unimod => 'U',
@@ -47,7 +46,6 @@ impl Ontology {
     }
 
     /// Get the accession number name for the ontology
-    #[allow(dead_code)]
     pub const fn name(self) -> &'static str {
         match self {
             Self::Unimod => "UNIMOD",

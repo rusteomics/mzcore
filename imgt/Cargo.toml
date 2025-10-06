@@ -1,0 +1,33 @@
+[package]
+name = "imgt"
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+publish = true
+rust-version.workspace = true
+version.workspace = true
+description = "A library to handle proteomic mass spectrometry data and match peptides to spectra."
+categories = [
+    "science::bioinformatics::proteomics",
+    "science::bioinformatics::sequence-analysis",
+]
+keywords = ["spectra", "mass-spectrometry", "bio", "fragmentation", "proforma"]
+repository = "https://github.com/snijderlab/rustyms"
+readme = "README.md"
+include = ["src/**/*", "images/**/*", "README.md", "benches/**/*"]
+
+[dependencies]
+mzcore = { path = "../mzcore" }
+
+bincode = { workspace = true }
+context_error = { workspace = true }
+rayon = { workspace = true, optional = true }
+serde = { workspace = true }
+similar = { workspace = true }
+
+[features]
+default = []
+coloured-errors = ["context_error/colored"]
+
+[lints]
+workspace = true

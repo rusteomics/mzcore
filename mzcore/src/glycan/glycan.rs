@@ -96,7 +96,6 @@ impl MonoSaccharide {
 
     /// Get this same monosaccharide but now with the given ProForma name
     #[must_use]
-    #[allow(dead_code)]
     pub fn with_name(self, name: &str) -> Self {
         Self {
             proforma_name: Some(name.to_string()),
@@ -106,7 +105,6 @@ impl MonoSaccharide {
 
     /// Set this saccharide up as to be a furanose
     #[must_use]
-    #[allow(dead_code)]
     pub fn furanose(self) -> Self {
         Self {
             furanose: true,
@@ -116,7 +114,6 @@ impl MonoSaccharide {
 
     /// Set this saccharide up to be a certain configuration
     #[must_use]
-    #[allow(dead_code)]
     pub fn configuration(self, configuration: Configuration) -> Self {
         Self {
             configuration: Some(configuration),
@@ -710,7 +707,6 @@ impl Chemical for BaseSugar {
 }
 
 /// Any 4 carbon glycan
-#[allow(dead_code)]
 #[derive(Clone, Copy, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 pub enum TetroseIsomer {
     /// Ery
@@ -720,7 +716,6 @@ pub enum TetroseIsomer {
 }
 
 /// Any 5 carbon glycan
-#[allow(dead_code)]
 #[derive(Clone, Copy, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 pub enum PentoseIsomer {
     /// Rib
@@ -736,7 +731,6 @@ pub enum PentoseIsomer {
 }
 
 /// Any 6 carbon glycan
-#[allow(dead_code)]
 #[derive(Clone, Copy, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 pub enum HexoseIsomer {
     /// glc
@@ -766,7 +760,6 @@ pub enum HexoseIsomer {
 }
 
 /// Any 7 carbon glycan
-#[allow(dead_code)]
 #[derive(Clone, Copy, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 pub enum HeptoseIsomer {
     /// gro-manHep
@@ -779,7 +772,6 @@ pub enum HeptoseIsomer {
 /// applied to be meaningful). These are to be used only to store isomeric state that was inferred
 /// from other sources that cannot be tracked in other ways in the current structure. Any isomer
 /// used that does not have the correct monosaccharide substituents applied is meaningless.
-#[allow(dead_code)]
 #[derive(Clone, Copy, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 pub enum NonoseIsomer {
     /// 3-Deoxy-D-glycero-D-galacto-non-2-ulopyranosonic acid
@@ -796,7 +788,6 @@ pub enum NonoseIsomer {
 
 /// Any substituent on a monosaccharide.
 /// Source: <https://www.ncbi.nlm.nih.gov/glycans/snfg.html> table 3.
-#[allow(dead_code)]
 #[derive(Clone, Copy, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 pub enum GlycanSubstituent {
     ///`Am` N-acetimidoyl

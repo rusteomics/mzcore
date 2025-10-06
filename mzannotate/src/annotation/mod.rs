@@ -3,7 +3,6 @@ mod annotatable;
 mod annotated;
 mod fdr;
 pub mod model;
-#[cfg(feature = "mzdata")]
 mod mzdata;
 mod scores;
 mod spectrum;

@@ -9,7 +9,6 @@ use mzcore::{
 use crate::{
     annotation::model::GlycanModel,
     fragment::{DiagnosticPosition, FragmentType},
-    monosaccharide,
     prelude::{Fragment, FragmentationModel},
 };
 

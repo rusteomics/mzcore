@@ -2,13 +2,15 @@ use mzdata::{prelude::*, spectrum::RefPeakDataLevel};
 
 use crate::{
     annotation::{AnnotatableSpectrum, AnnotatedPeak, AnnotatedSpectrum},
-    sequence::CompoundPeptidoformIon,
     spectrum::RawPeak,
-    system::MassOverCharge,
+};
+use mzcore::{
+    sequence::CompoundPeptidoformIon,
+    system::{MassOverCharge, ratio::ppm},
 };
 
 impl<S: SpectrumLike> AnnotatableSpectrum for S {
-    type Tolerance = Tolerance;
+    type Tolerance = mzcore::quantities::Tolerance<MassOverCharge>;
 
     fn empty_annotated(&self, peptide: CompoundPeptidoformIon) -> AnnotatedSpectrum {
         AnnotatedSpectrum {
@@ -24,7 +26,7 @@ impl<S: SpectrumLike> AnnotatableSpectrum for S {
                     .iter()
                     .map(|p| {
                         AnnotatedPeak::background(&RawPeak {
-                            mz: MassOverCharge::new::<crate::system::thomson>(p.mz),
+                            mz: MassOverCharge::new::<mzcore::system::thomson>(p.mz),
                             intensity: ordered_float::OrderedFloat(f64::from(p.intensity)),
                         })
                     })
@@ -33,7 +35,7 @@ impl<S: SpectrumLike> AnnotatableSpectrum for S {
                     .iter()
                     .map(|p| {
                         AnnotatedPeak::background(&RawPeak {
-                            mz: MassOverCharge::new::<crate::system::thomson>(p.neutral_mass), // TODO: This is M (not MH+) which is not very well supported in the current matching
+                            mz: MassOverCharge::new::<mzcore::system::thomson>(p.neutral_mass), // TODO: This is M (not MH+) which is not very well supported in the current matching
                             intensity: ordered_float::OrderedFloat(f64::from(p.intensity)),
                         })
                     })
@@ -43,19 +45,28 @@ impl<S: SpectrumLike> AnnotatableSpectrum for S {
     }
 
     fn search(&self, query: MassOverCharge, tolerance: Self::Tolerance) -> Option<usize> {
-        self.peaks().search(query.value, tolerance)
+        self.peaks().search(
+            query.value,
+            match tolerance {
+                mzcore::quantities::Tolerance::Absolute(mz) => Tolerance::Da(mz.value),
+                mzcore::quantities::Tolerance::Relative(ratio) => {
+                    Tolerance::PPM(ratio.get::<ppm>())
+                }
+            },
+        )
     }
 }
 
-impl From<crate::quantities::Tolerance<MassOverCharge>> for Tolerance {
-    fn from(value: crate::quantities::Tolerance<MassOverCharge>) -> Self {
-        match value {
-            crate::quantities::Tolerance::Absolute(value) => {
-                Self::Da(value.get::<crate::system::thomson>()) // This is in thomson (verified with crate author)
-            }
-            crate::quantities::Tolerance::Relative(value) => {
-                Self::PPM(value.get::<crate::system::ratio::ppm>())
-            }
-        }
-    }
-}
+// TODO: fix somehow
+// impl From<mzcore::quantities::Tolerance<MassOverCharge>> for Tolerance {
+//     fn from(value: mzcore::quantities::Tolerance<MassOverCharge>) -> Self {
+//         match value {
+//             mzcore::quantities::Tolerance::Absolute(value) => {
+//                 Self::Da(value.get::<mzcore::system::thomson>()) // This is in thomson (verified with crate author)
+//             }
+//             mzcore::quantities::Tolerance::Relative(value) => {
+//                 Self::PPM(value.get::<mzcore::system::ratio::ppm>())
+//             }
+//         }
+//     }
+// }

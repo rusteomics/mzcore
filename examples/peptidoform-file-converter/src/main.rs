@@ -9,11 +9,9 @@ use std::{
 use clap::Parser;
 use context_error::{BasicKind, BoxedError, Context, CreateError};
 use directories::ProjectDirs;
-use rustyms::{
-    identification::{
-        FastaIdentifier, MetaData, SpectrumId, SpectrumIds, open_identified_peptidoforms_file,
-    },
-    sequence::parse_custom_modifications,
+use mzcore::sequence::parse_custom_modifications;
+use mzident::{
+    FastaIdentifier, MetaData, SpectrumId, SpectrumIds, open_identified_peptidoforms_file,
 };
 
 /// The command line interface arguments

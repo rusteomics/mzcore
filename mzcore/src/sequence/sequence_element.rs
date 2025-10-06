@@ -1,5 +1,3 @@
-#![warn(dead_code)]
-
 use std::{
     collections::{HashMap, HashSet},
     fmt::Write,
@@ -13,12 +11,12 @@ use thin_vec::ThinVec;
 
 use crate::{
     chemistry::{DiagnosticIon, MolecularFormula, MultiChemical},
-    glycan::{BackboneFragmentKind, GlycanAttachement},
+    glycan::{BackboneFragmentKind, FullGlycan, GlycanAttachement},
     quantities::Multi,
     sequence::{
-        AtLeast, CheckedAminoAcid, CrossLinkName, Linked, LinkerSpecificity, Modification,
-        Peptidoform, PlacementRule, RulePossible, SequencePosition, SimpleModification,
-        SimpleModificationInner,
+        AtLeast, AtMax, CheckedAminoAcid, CrossLinkName, Linear, Linked, LinkerSpecificity,
+        Modification, Peptidoform, PlacementRule, RulePossible, SequencePosition,
+        SimpleModification, SimpleModificationInner,
     },
 };
 
@@ -428,5 +426,26 @@ where
 {
     fn from(value: T) -> Self {
         Self::new(value.into(), None)
+    }
+}
+
+impl<Complexity: AtMax<Linear>> MultiChemical for SequenceElement<Complexity> {
+    fn formulas_inner(
+        &self,
+        sequence_index: SequencePosition,
+        peptidoform_index: usize,
+        peptidoform_ion_index: usize,
+    ) -> Multi<MolecularFormula> {
+        self.formulas_all(
+            &[],
+            &[],
+            &mut Vec::new(),
+            false,
+            sequence_index,
+            peptidoform_index,
+            peptidoform_ion_index,
+            &FullGlycan {},
+        )
+        .0
     }
 }

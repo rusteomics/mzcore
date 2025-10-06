@@ -70,7 +70,6 @@ pub enum AmbiguousLabel {
 /// Any item that has a clearly defined single molecular formula
 pub trait Chemical {
     /// Get the molecular formula
-    #[allow(dead_code)]
     fn formula(&self) -> MolecularFormula {
         self.formula_inner(SequencePosition::default(), 0)
     }
@@ -123,7 +122,6 @@ pub trait MultiChemical {
     ) -> Multi<MolecularFormula>;
 
     /// Get the charge of this chemical, it returns None if no charge is defined.
-    #[allow(dead_code)]
     fn charge(&self) -> Option<crate::system::isize::Charge> {
         self.formulas()
             .first()
@@ -138,7 +136,6 @@ pub trait MultiChemical {
     }
 
     /// Return a single formula if this `MultiChemical` has only one possible formula while keeping track of all ambiguous labels
-    #[allow(dead_code)]
     fn single_formula_inner(
         &self,
         sequence_index: SequencePosition,
@@ -325,7 +322,6 @@ impl MolecularFormula {
     }
 
     /// The generic backbone to do the Hill notation sorting
-    #[allow(dead_code)]
     pub(in super::super) fn hill_notation_generic(
         &self,
         f: impl Fn(&(Element, Option<NonZeroU16>, i32), &mut String),

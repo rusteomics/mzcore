@@ -1,13 +1,14 @@
 [workspace]
 members = [
-    "rustyms",
     "mzannotate",
     "mzcore",
     "mzident",
+    "mzalign",
     "mzcv",
-    "rustyms-generate-databases",
-    "rustyms-generate-imgt",
-    "rustyms-py",
+    "imgt",
+    # "rustyms-generate-databases",
+    # "rustyms-generate-imgt",
+    # "rustyms-py",
     "fuzz",
     "examples/*",
 ]
@@ -21,7 +22,6 @@ package.edition = "2024"
 package.license = "MIT OR Apache-2.0"
 package.rust-version = "1.88.0"
 package.version = "0.11.0"
-default-members = ["rustyms"]
 
 [profile.release]
 debug = true

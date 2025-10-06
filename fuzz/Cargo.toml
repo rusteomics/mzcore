@@ -11,7 +11,9 @@ cargo-fuzz = true
 
 [dependencies]
 afl = { workspace = true }
-rustyms = { path = "../rustyms" }
+mzcore = { path = "../mzcore" }
+mzident = { path = "../mzident" }
+mzannotate = { path = "../mzannotate" }
 
 [[bin]]
 name = "pro_forma"
@@ -41,5 +43,8 @@ test = false
 doc = false
 bench = false
 
-[lints]
-workspace = true
+[lints.rust]
+unused_crate_dependencies = "allow"
+
+# [lints]
+# workspace = true

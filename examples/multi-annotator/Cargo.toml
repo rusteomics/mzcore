@@ -11,10 +11,19 @@ clap = { workspace = true }
 context_error = { workspace = true }
 directories = { workspace = true }
 itertools = { workspace = true }
-mzdata = { workspace = true, default-features=false, features = ["mgf", "mzml", "thermo", "bruker_tdf"] }
+mzdata = { workspace = true, default-features = false, features = [
+    "mgf",
+    "mzml",
+    "thermo",
+    "bruker_tdf",
+] }
 mzsignal = "1.0"
 rayon = { workspace = true }
-rustyms = { path = "../../rustyms", default-features=false, features = ["mzdata", "identification", "coloured-errors"] }
+mzcore = { path = "../../mzcore", default-features = false, features = [
+    "coloured-errors",
+] }
+mzannotate = { path = "../../mzannotate" }
+mzident = { path = "../../mzident" }
 
 [lints]
 workspace = true

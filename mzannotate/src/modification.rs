@@ -1,6 +1,5 @@
 use mzcore::{
     chemistry::CachedCharge,
-    glycan::MonoSaccharide,
     prelude::{AminoAcid, MolecularFormula, SequencePosition},
     quantities::Multi,
     sequence::{GnoComposition, Modification, SimpleModificationInner},
