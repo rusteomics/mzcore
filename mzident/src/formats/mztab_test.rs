@@ -3,9 +3,7 @@ use std::io::{BufRead, BufReader};
 
 use context_error::{BasicKind, BoxedError};
 
-use crate::{
-    IdentifiedPeptidoform, MZTabData, MaybePeptidoform, test_identified_peptidoform,
-};
+use crate::{IdentifiedPeptidoform, MZTabData, MaybePeptidoform, test_identified_peptidoform};
 use mzcore::sequence::SimpleLinear;
 
 #[test]
