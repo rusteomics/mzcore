@@ -11,7 +11,7 @@ use crate::{
         Peptidoform, PeptidoformIon, PlacementRule, Position, SimpleModificationInner,
         peptidoform::parse::{global_modifications, parse_charge_state},
     },
-    system::{da, isize::Charge},
+    system::da,
 };
 
 #[test]

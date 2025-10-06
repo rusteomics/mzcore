@@ -12,9 +12,7 @@ use std::{
 };
 
 use crate::{
-    chemistry::{
-        AmbiguousLabel, CachedCharge, Chemical, DiagnosticIon, MolecularFormula, NeutralLoss,
-    },
+    chemistry::{AmbiguousLabel, Chemical, DiagnosticIon, MolecularFormula, NeutralLoss},
     glycan::{GlycanPeptideFragment, GlycanStructure, MonoSaccharide},
     ontology::Ontology,
     parse_json::ParseJson,

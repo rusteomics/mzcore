@@ -10,6 +10,7 @@ use crate::{
 };
 
 /// Just keep the full glycan on the structure. This is the behaviour needed for most use cases.
+#[derive(Debug, Copy, Clone)]
 pub struct FullGlycan {}
 
 impl GlycanAttachement for FullGlycan {
@@ -25,6 +26,8 @@ impl GlycanAttachement for FullGlycan {
     }
 }
 
+/// Logic to get the rules on how glycans should be calculated. This is built-in to easily support
+/// fragmentation of glycans as is seen in CID fragmentation without code duplication.
 pub trait GlycanAttachement {
     /// Get the default rules
     fn get_default_fragments(&self, attachment: Option<AminoAcid>) -> GlycanPeptideFragment;

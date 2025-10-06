@@ -3,6 +3,7 @@ members = [
     "rustyms",
     "mzannotate",
     "mzcore",
+    "mzident",
     "mzcv",
     "rustyms-generate-databases",
     "rustyms-generate-imgt",

@@ -2,8 +2,7 @@ use std::{
     collections::HashMap,
     hash::Hash,
     num::{IntErrorKind, ParseIntError},
-    ops::{Bound, Range, RangeBounds},
-    path::Path,
+    ops::{Bound, RangeBounds},
     str::FromStr,
 };
 
@@ -45,29 +44,6 @@ impl<T, E> ResultExtensions<T, E> for Result<Result<T, E>, E> {
     }
 }
 
-pub(crate) trait InvertResult<T, E> {
-    /// # Errors
-    /// If any of the errors contained within has an error.
-    fn invert(self) -> Result<Option<T>, E>;
-}
-
-impl<T, E> InvertResult<T, E> for Option<Result<T, E>> {
-    fn invert(self) -> Result<Option<T>, E> {
-        self.map_or_else(|| Ok(None), |o| o.map(|v| Some(v)))
-    }
-}
-impl<T, E> InvertResult<T, E> for Option<Option<Result<T, E>>> {
-    fn invert(self) -> Result<Option<T>, E> {
-        self.flatten()
-            .map_or_else(|| Ok(None), |o| o.map(|v| Some(v)))
-    }
-}
-impl<T, E> InvertResult<T, E> for Option<Result<Option<T>, E>> {
-    fn invert(self) -> Result<Option<T>, E> {
-        self.map_or_else(|| Ok(None), |o| o)
-    }
-}
-
 pub(crate) trait RangeExtension
 where
     Self: Sized,
@@ -94,78 +70,6 @@ impl<Ra: RangeBounds<usize>> RangeExtension for Ra {
             Bound::Unbounded => upper_bound,
             Bound::Included(s) => *s.min(&upper_bound),
             Bound::Excluded(s) => ((*s).saturating_sub(1)).min(upper_bound),
-        }
-    }
-}
-
-pub(crate) trait RangeMaths<Other>
-where
-    Self: Sized,
-{
-    fn add_start(&self, amount: Other) -> Self;
-    fn add_end(&self, amount: Other) -> Self;
-    fn sub_start(&self, amount: Other) -> Self;
-    fn sub_end(&self, amount: Other) -> Self;
-}
-
-impl RangeMaths<isize> for Range<usize> {
-    fn add_start(&self, amount: isize) -> Self {
-        let new_start = self.start.saturating_add_signed(amount);
-        Self {
-            start: new_start,
-            end: self.end.max(new_start),
-        }
-    }
-    fn add_end(&self, amount: isize) -> Self {
-        let new_end = self.end.saturating_add_signed(amount);
-        Self {
-            start: self.start.min(new_end),
-            end: new_end,
-        }
-    }
-    fn sub_start(&self, amount: isize) -> Self {
-        let new_start = self.start.saturating_add_signed(-amount);
-        Self {
-            start: new_start,
-            end: self.end.max(new_start),
-        }
-    }
-    fn sub_end(&self, amount: isize) -> Self {
-        let new_end = self.end.saturating_add_signed(-amount);
-        Self {
-            start: self.start.min(new_end),
-            end: new_end,
-        }
-    }
-}
-
-impl RangeMaths<usize> for Range<usize> {
-    fn add_start(&self, amount: usize) -> Self {
-        let new_start = self.start.saturating_add(amount);
-        Self {
-            start: new_start,
-            end: self.end.max(new_start),
-        }
-    }
-    fn add_end(&self, amount: usize) -> Self {
-        let new_end = self.end.saturating_add(amount);
-        Self {
-            start: self.start.min(new_end),
-            end: new_end,
-        }
-    }
-    fn sub_start(&self, amount: usize) -> Self {
-        let new_start = self.start.saturating_add(amount);
-        Self {
-            start: new_start,
-            end: self.end.max(new_start),
-        }
-    }
-    fn sub_end(&self, amount: usize) -> Self {
-        let new_end = self.end.saturating_sub(amount);
-        Self {
-            start: self.start.min(new_end),
-            end: new_end,
         }
     }
 }
@@ -239,14 +143,6 @@ pub(crate) fn split_ascii_whitespace(input: &str) -> Vec<(usize, &str)> {
     chunks
 }
 
-/// Helper function to check extensions in filenames
-pub(crate) fn check_extension(filename: impl AsRef<Path>, extension: impl AsRef<Path>) -> bool {
-    filename
-        .as_ref()
-        .extension()
-        .is_some_and(|ext| ext.eq_ignore_ascii_case(extension.as_ref()))
-}
-
 /// Get the index of the next copy of the given char (looking at the byte value, does not guarantee full character)
 pub(crate) fn next_char(chars: &[u8], start: usize, char: u8) -> Option<usize> {
     for (i, ch) in chars[start..].iter().enumerate() {
@@ -312,72 +208,6 @@ pub(crate) fn end_of_enclosure_with_brackets(
     None
 }
 
-/// Split the given range based on the separator.
-/// This also takes brackets into account and these take precedence over the separator searched for.
-pub(crate) fn split_with_brackets(
-    text: &str,
-    range: Range<usize>,
-    separator: u8,
-    open: u8,
-    close: u8,
-) -> Vec<Range<usize>> {
-    let mut state: usize = 0;
-    let mut index = range.start;
-    let mut last_field = range.start;
-    let mut fields = Vec::new();
-    while index < range.end {
-        if !text.is_char_boundary(index) {
-            index += 1;
-            continue;
-        }
-        if index + 1 < text.len() && !text.is_char_boundary(index + 1) {
-            index += 1;
-            continue;
-        }
-        let ch = text.as_bytes()[index];
-        if ch == open {
-            state += 1;
-        } else if ch == close {
-            state = state.saturating_sub(1);
-        } else if ch == separator && state == 0 {
-            fields.push(last_field..index);
-            last_field = index + 1;
-        }
-        index += 1;
-    }
-    fields.push(last_field..index);
-    fields
-}
-
-#[test]
-#[allow(clippy::missing_panics_doc)]
-fn test_split_with_brackets() {
-    assert_eq!(
-        split_with_brackets(
-            "23-CHEMMOD:+15.995,23-[MS, MS:1001524, fragment neutral loss, 63.998285]",
-            0..72,
-            b',',
-            b'[',
-            b']'
-        ),
-        vec![0..18, 19..72]
-    );
-    assert_eq!(
-        split_with_brackets(
-            "0[MS,MS:1001876, modification probability, 0.1]|23[MS,MS:1001876, modification probability, 0.9]-UNIMOD:35",
-            0..106,
-            b',',
-            b'[',
-            b']'
-        ),
-        vec![0..106]
-    );
-    assert_eq!(
-        split_with_brackets("0[,,,[,,]],,[,,l;]hj", 0..20, b',', b'[', b']'),
-        vec![0..10, 11..11, 12..20]
-    );
-}
-
 /// Get the next number, returns length in bytes and the number.
 /// # Panics
 /// If the text is not valid UTF-8.
@@ -416,9 +246,6 @@ pub(crate) fn next_num(
         Some((usize::from(sign_set) + len, sign * num))
     }
 }
-
-/// A number of characters, used as length or index
-pub(crate) type Characters = usize;
 
 /// Get the next number starting at the byte range given, returns length in bytes, boolean indicating if the number is positive, and the number.
 /// # Errors

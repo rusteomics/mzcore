@@ -258,7 +258,7 @@ impl Peptidoform<Linear> {
 impl<T> Peptidoform<T> {
     /// # Errors
     /// If a modification rule is broken it returns an error.
-    pub(crate) fn enforce_modification_rules(&self) -> Result<(), BoxedError<'static, BasicKind>> {
+    pub fn enforce_modification_rules(&self) -> Result<(), BoxedError<'static, BasicKind>> {
         for (position, seq) in self.iter(..) {
             seq.enforce_modification_rules(position.sequence_index)?;
         }

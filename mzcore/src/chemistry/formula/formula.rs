@@ -8,7 +8,6 @@ use crate::{
 };
 
 use itertools::Itertools;
-use serde::{Deserialize, Serialize};
 
 impl From<&MolecularFormula> for OrderedMass {
     /// Create an ordered mass from the monoisotopic mass (needed for [`Multi<MolecularFormula>`](crate::quantities::Multi))
@@ -206,10 +205,7 @@ impl std::fmt::Display for MolecularFormula {
 #[cfg(test)]
 #[expect(clippy::missing_panics_doc)]
 mod tests {
-    use crate::{
-        chemistry::{ChargeRange, MolecularCharge, MolecularFormula, MultiChemical},
-        sequence::AminoAcid,
-    };
+    use crate::chemistry::MolecularFormula;
 
     #[test]
     fn sorted() {

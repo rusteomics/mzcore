@@ -100,13 +100,13 @@ enum SingleReturnModification {
 #[derive(Clone, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 pub struct MUPSettings {
     /// The additional placement rules
-    pub(crate) position: Option<Vec<PlacementRule>>,
+    pub position: Option<Vec<PlacementRule>>,
     /// The maximal number for a grouped mup (^x)
-    pub(crate) limit: Option<usize>,
+    pub limit: Option<usize>,
     /// Allow this mup to colocalise with placed modifications
-    pub(crate) colocalise_placed_modifications: bool,
+    pub colocalise_placed_modifications: bool,
     /// Allow this mup to colocalise with other mups
-    pub(crate) colocalise_modifications_of_unknown_position: bool,
+    pub colocalise_modifications_of_unknown_position: bool,
 }
 
 impl Default for MUPSettings {

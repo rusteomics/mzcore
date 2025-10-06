@@ -14,20 +14,16 @@ use serde::{Deserialize, Serialize};
 use thin_vec::ThinVec;
 
 use crate::{
-    chemistry::{
-        AmbiguousLabel, CachedCharge, Element, MolecularCharge, MolecularFormula, NeutralLoss,
-    },
-    glycan::{BackboneFragmentKind, FullGlycan, GlycanAttachement, MonoSaccharide},
+    chemistry::{AmbiguousLabel, Element, MolecularCharge, MolecularFormula, NeutralLoss},
+    glycan::{BackboneFragmentKind, FullGlycan, GlycanAttachement},
     helper_functions::{RangeExtension, merge_hashmap, peptide_range_contains},
     molecular_formula,
     quantities::Multi,
     sequence::{
-        AtLeast, AtMax, CheckedAminoAcid, Complexity, CrossLinkName, GnoComposition, HighestOf,
-        Linear, Linked, LinkerSpecificity, MUPSettings, Modification, PeptidePosition,
-        PlacementRule, Protease, SemiAmbiguous, SequenceElement, SequencePosition, SimpleLinear,
-        SimpleModification, SimpleModificationInner, UnAmbiguous,
+        AtLeast, AtMax, CheckedAminoAcid, CrossLinkName, HighestOf, Linear, Linked, MUPSettings,
+        Modification, PeptidePosition, PlacementRule, Protease, SemiAmbiguous, SequenceElement,
+        SequencePosition, SimpleLinear, SimpleModification, SimpleModificationInner, UnAmbiguous,
     },
-    system::isize::Charge,
 };
 
 /// A peptide with all data as specified by [ProForma](https://github.com/HUPO-PSI/ProForma).

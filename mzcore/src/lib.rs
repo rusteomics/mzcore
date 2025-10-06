@@ -10,6 +10,7 @@ pub mod chemistry;
 pub mod glycan;
 mod isobaric_sets;
 pub mod ontology;
+/// Contains logic to parse the custom modifications and custom models databases with backwards compatibility
 pub mod parse_json;
 /// Contains all things related to tolerances and structures to handle multiple mass/formula options.
 pub mod quantities;

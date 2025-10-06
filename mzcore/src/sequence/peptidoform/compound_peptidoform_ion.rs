@@ -7,7 +7,6 @@ use crate::{
     chemistry::MolecularFormula,
     quantities::Multi,
     sequence::{Linked, Peptidoform, PeptidoformIon},
-    system::isize::Charge,
 };
 
 /// A single full ProForma entry. This entry can contain multiple sets of cross-linked peptides.

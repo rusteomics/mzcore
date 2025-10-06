@@ -19,15 +19,11 @@ include = ["src/**/*", "images/**/*", "README.md", "benches/**/*"]
 [dependencies]
 bincode = { workspace = true }
 context_error = { workspace = true }
-flate2 = { workspace = true }
 itertools = { workspace = true }
-mzdata = { workspace = true, optional = true }
 ndarray = { workspace = true, optional = true }
 ordered-float = { workspace = true }
-paste = { workspace = true, optional = true }
 probability = { workspace = true, optional = true }
 rand = { workspace = true, optional = true }
-rayon = { workspace = true, optional = true }
 regex = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
@@ -43,20 +39,7 @@ png = { workspace = true }
 directories = { workspace = true }
 
 [features]
-default = [
-    "imgt",
-    "align",
-    "identification",
-    "rayon",
-    "isotopes",
-    "rand",
-    "mzdata",
-    "glycan-render",
-    "glycan-render-bitmap",
-]
-imgt = []
-align = []
-identification = ["paste"]
+default = []
 isotopes = ["probability", "ndarray"]
 glycan-render = []
 glycan-render-bitmap = ["zeno", "swash", "glycan-render"]
