@@ -8,7 +8,8 @@ errors.dat
 *.dat.Z
 *.dat
 *.html
-GNOme.obo
+*.obo
+*.owl
 glycosmos_glycans_list.csv
 .venv/
 docs/**/_build/

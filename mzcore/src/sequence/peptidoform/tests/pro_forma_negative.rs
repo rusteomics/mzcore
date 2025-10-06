@@ -1,0 +1,24 @@
+use crate::parse_test;
+
+parse_test!(ne "<D>A[UNIMODIFY:+2]+<D>A", negative_example_1);
+parse_test!(ne "A[+1]-", negative_example_2);
+parse_test!(ne "[Acetyl]-[Phospho]^2?EM[Oxidation]EVTSESPEK", negative_example_3);
+parse_test!(ne "PRT(EC[Carbamidomethyl]FRMS)[+19.0523]^2ISK", negative_example_4);
+parse_test!(ne "P(RT(ESFRMS)[+19.0523]IS)[+19.0523]K", negative_example_5);
+parse_test!(ne "MPGLVDSNPAPPESQEKKPLK(PCCACPETKKARDACIIEKGEEHCGHLIEAHKECMRALGFKI)[Oxidation]^2[half cystine][half cystine]", negative_example_6);
+parse_test!(ne "ELVIS[Phospho|INFO:newly]discovered]K", negative_example_7);
+parse_test!(ne "<[TMT6plex]>AA", negative_example_8);
+parse_test!(ne "<[TMT6plex#g1]@A>AA", negative_example_9);
+parse_test!(ne "<[TMT6plex#XL1]@A>AA", negative_example_10);
+parse_test!(ne "<[TMT6plex#BRANCH]@A>AA", negative_example_11);
+parse_test!(ne "{TMT6plex#g1}AA", negative_example_12);
+parse_test!(ne "{TMT6plex#XL1}AA", negative_example_13);
+parse_test!(ne "{TMT6plex#BRANCH}AA", negative_example_14);
+parse_test!(ne "AA//AA", negative_example_15);
+parse_test!(ne "AA(?A(A)[+1])AA", negative_example_16);
+parse_test!(ne "AA(A(?A))[+1]AA", negative_example_17);
+parse_test!(ne "[dehydro]^3?Q[gln->pyro-glu]S", negative_example_18);
+parse_test!(ne "(Q[gln->pyro-glu]S)[Dehydro]", negative_example_19);
+parse_test!(ne "()[Dehydro]S", negative_example_20);
+parse_test!(ne "S()[Dehydro]", negative_example_21);
+parse_test!(ne "AA[+1#xl1]/2//AA[#XL1]", negative_example_22);

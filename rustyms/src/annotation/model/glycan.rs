@@ -153,7 +153,7 @@ impl GlycanModel {
 
     /// Get the possible glycan peptide fragments based on this attachment location.
     /// This simplifies the rules somewhat to mostly contain unique rules in the fragment specific
-    /// rules. But it is not guarenteed to be fully unique.
+    /// rules. But it is not guaranteed to be fully unique.
     pub fn get_peptide_fragments(
         &self,
         attachment: Option<AminoAcid>,
