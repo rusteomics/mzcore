@@ -26,12 +26,8 @@ pub trait CVSource {
     type Data: CVData + 'static;
     /// The name of the CV, used to create the paths to store intermediate files and caches so has to be valid in that context
     fn cv_name() -> &'static str;
-    /// The file extension of the CV
-    fn cv_extension() -> &'static str;
-    /// The url where this CV can be found
-    fn cv_url() -> Option<&'static str>;
-    /// The url where this CV can be found
-    fn cv_compression() -> CVCompression;
+    /// The source files for the
+    fn files() -> &'static [CVFile];
     /// The static data of this CV
     fn static_data() -> Option<(CVVersion, &'static [Arc<Self::Data>])>;
     /// The default file stem (no extension).
@@ -53,8 +49,19 @@ pub trait CVSource {
     /// # Errors
     /// If the parsing failed.
     fn parse(
-        reader: HashBufReader<impl std::io::Read, impl Digest>,
+        reader: impl Iterator<Item = HashBufReader<Box<dyn std::io::Read>, impl Digest>>,
     ) -> Result<(CVVersion, impl Iterator<Item = Self::Data>), Vec<BoxedError<'static, CVError>>>;
+}
+
+pub struct CVFile {
+    /// The name of the CV, used to create the paths to store intermediate files and caches so has to be valid in that context
+    pub name: &'static str,
+    /// The file extension of the CV
+    pub extension: &'static str,
+    /// The url where this CV can be found
+    pub url: Option<&'static str>,
+    /// The source compression of this file
+    pub compression: CVCompression,
 }
 
 /// Version information for a CV

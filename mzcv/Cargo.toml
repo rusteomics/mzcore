@@ -23,7 +23,7 @@ reqwest = { workspace = true, optional = true }
 sha2 = { workspace = true }
 
 [features]
-# default = ["search-index"]
+default = ["search-index", "internet"]
 search-index = []
 internet = ["reqwest"]
 

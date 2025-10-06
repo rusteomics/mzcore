@@ -8,7 +8,7 @@ TODO:
 - [ ] Handle LZW compression from IMGT
 - [ ] Handle multiple files together
     - [ ] As fallback to get the file from different servers 
-    - [ ] Join multiple files into a single CVIndex (GNOme)
+    - [-] Join multiple files into a single CVIndex (GNOme)
 - [x] Write out errors when parsing file failed
 - [x] Auto detect version + date + hash of newly loaded data
 - [x] Always store the CV file compressed (using flate2)

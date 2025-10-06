@@ -5,7 +5,7 @@
 
 use std::{
     io::{BufReader, BufWriter, Write},
-    path::Path,
+    path::{Path, PathBuf},
     sync::Arc,
     time::SystemTime,
 };
@@ -95,7 +95,7 @@ impl<CV: CVSource> CVIndex<CV> {
         // If the cache failed try parsing the actual file, this could work because the cache might
         // have been built with an older version of the software with a different Data definition.
         // Inside update from path the cache is overwritten with the new info.
-        match result.update_from_path(None) {
+        match result.update_from_path([]) {
             Ok(()) => {
                 return (result, errors);
             }
@@ -143,99 +143,58 @@ impl<CV: CVSource> CVIndex<CV> {
     /// * Could not be opened.
     /// * Could not be parsed.
     /// * (only if the filename was overwritten) could not be moved to the default location.
-    pub fn update_from_path(
+    pub fn update_from_path<'a>(
         &mut self,
-        overwrite_path: Option<&Path>,
+        overwrite_path: impl IntoIterator<Item = Option<&'a Path>>,
     ) -> Result<(), BoxedError<'static, CVError>> {
-        let default_gz_path =
-            CV::default_stem().with_extension(format!("{}.gz", CV::cv_extension()));
-        let default_path = CV::default_stem().with_extension(CV::cv_extension());
-        let resolved_path = if let Some(path) = overwrite_path {
-            if !path.exists() {
-                return Err(BoxedError::new(
-                    CVError::FileDoesNotExist,
-                    "Given path does not exist",
-                    "The given overwrite path does not exist",
-                    Context::none().source(path.to_string_lossy()).to_owned(),
-                ));
-            }
-            path
-        } else if default_gz_path.exists() {
-            &default_gz_path
-        } else {
-            if !default_path.exists() {
-                return Err(BoxedError::new(
-                    CVError::FileDoesNotExist,
-                    "Default path does not exist",
-                    "The default path does not exist",
-                    Context::none()
-                        .source(default_gz_path.to_string_lossy())
-                        .to_owned(),
-                ));
-            }
-            &default_path
-        };
+        let stem = CV::default_stem();
+        type PATHS<'b> = (
+            bool,
+            std::path::PathBuf,
+            std::path::PathBuf,
+            Option<&'b Path>,
+        );
+        let mut readers: Vec<(
+            HashBufReader<Box<dyn std::io::Read>, sha2::Sha256>,
+            PATHS<'a>,
+        )> = CV::files()
+            .iter()
+            .zip(overwrite_path.into_iter().chain(std::iter::repeat(None)))
+            .map(|(file, overwrite_path)| {
+                let default_path = stem.with_extension(file.extension);
+                let default_gz_path = stem.with_extension(format!("{}.gz", file.extension));
+                let resolved_path = if let Some(path) = overwrite_path {
+                    if !path.exists() {
+                        return Err(BoxedError::new(
+                            CVError::FileDoesNotExist,
+                            "Given path does not exist",
+                            "The given overwrite path does not exist",
+                            Context::none().source(path.to_string_lossy()).to_owned(),
+                        ));
+                    }
+                    path
+                } else if default_gz_path.exists() {
+                    &default_gz_path
+                } else {
+                    if !default_path.exists() {
+                        return Err(BoxedError::new(
+                            CVError::FileDoesNotExist,
+                            "Default path does not exist",
+                            "The default path does not exist",
+                            Context::none()
+                                .source(default_gz_path.to_string_lossy())
+                                .to_owned(),
+                        ));
+                    }
+                    &default_path
+                };
 
-        let compressed = resolved_path
-            .extension()
-            .is_some_and(|ext| ext.eq_ignore_ascii_case("gz"));
+                let compressed = resolved_path
+                    .extension()
+                    .is_some_and(|ext| ext.eq_ignore_ascii_case("gz"));
 
-        let resolved_path_string = resolved_path.to_string_lossy().to_string();
-        let file = std::fs::File::open(resolved_path).map_err(|e| {
-            BoxedError::new(
-                CVError::FileCouldNotBeOpenend,
-                "CV file could not be openend",
-                e.to_string(),
-                Context::none().source(&resolved_path_string).to_owned(),
-            )
-        })?;
-
-        let (version, data): (CVVersion, Box<dyn Iterator<Item = CV::Data>>) = if compressed {
-            let (version, data) = CV::parse(HashBufReader::<_, sha2::Sha256>::new(
-                flate2::bufread::GzDecoder::new(BufReader::new(file)),
-            ))
-            .map_err(|errors| {
-                store_errors(resolved_path, &errors);
-                BoxedError::new(
-                    CVError::FileCouldNotBeParsed,
-                    "CV file could not be parsed",
-                    "",
-                    Context::none().source(&resolved_path_string).to_owned(),
-                )
-                .add_underlying_errors(errors)
-            })?;
-            (version, Box::new(data))
-        } else {
-            let (version, data) =
-                CV::parse(HashBufReader::<_, sha2::Sha256>::new(file)).map_err(|errors| {
-                    store_errors(resolved_path, &errors);
-                    BoxedError::new(
-                        CVError::FileCouldNotBeParsed,
-                        "CV file could not be parsed",
-                        "",
-                        Context::none().source(&resolved_path_string).to_owned(),
-                    )
-                    .add_underlying_errors(errors)
-                })?;
-            (version, Box::new(data))
-        };
-
-        // Update the data and cache
-        self.update(version, data.map(Arc::new))?;
-        if let Some(path) = overwrite_path {
-            // If it all worked and this was an overwrite file store the overwrite file at the default location
-            if compressed {
-                std::fs::rename(path, default_gz_path).map_err(|e| {
-                    BoxedError::new(
-                        CVError::FileCouldNotBeMoved,
-                        "CV file could not be moved",
-                        e.to_string(),
-                        Context::none().source(resolved_path_string).to_owned(),
-                    )
-                })?;
-            } else {
-                // If the overwrite file was not compressed compress while moving to the new location
-                let source_file = std::fs::File::open(resolved_path).map_err(|e| {
+                let resolved_path_string = resolved_path.to_string_lossy().to_string();
+                let file = std::fs::File::open(resolved_path).map_err(|e| {
                     BoxedError::new(
                         CVError::FileCouldNotBeOpenend,
                         "CV file could not be openend",
@@ -243,37 +202,95 @@ impl<CV: CVSource> CVIndex<CV> {
                         Context::none().source(&resolved_path_string).to_owned(),
                     )
                 })?;
-                let default_gz_file = std::fs::File::create(&default_gz_path).map_err(|e| {
-                    BoxedError::new(
-                        CVError::FileCouldNotBeMade,
-                        "CV file could not be made",
-                        e.to_string(),
-                        Context::none()
-                            .source(default_gz_path.to_string_lossy())
-                            .to_owned()
-                            .to_owned(),
+
+                Ok((
+                    if compressed {
+                        HashBufReader::<_, sha2::Sha256>::boxed(flate2::bufread::GzDecoder::new(
+                            BufReader::new(file),
+                        ))
+                    } else {
+                        HashBufReader::<_, sha2::Sha256>::boxed(file)
+                    },
+                    (
+                        compressed,
+                        resolved_path.to_owned(),
+                        default_gz_path.clone(),
+                        overwrite_path,
+                    ),
+                ))
+            })
+            .collect::<Result<Vec<_>, _>>()?;
+
+        let (readers, paths): (Vec<_>, Vec<_>) = readers.into_iter().unzip();
+
+        let (version, data) = CV::parse(readers.into_iter()).map_err(|errors| {
+            store_errors(&stem, &errors);
+            BoxedError::small(
+                CVError::FileCouldNotBeParsed,
+                "CV file could not be parsed",
+                "",
+            )
+            .add_underlying_errors(errors)
+        })?;
+
+        // Update the data and cache
+        self.update(version, data.map(Arc::new))?;
+
+        for (compressed, resolved_path, default_gz_path, overwrite_path) in paths {
+            if let Some(path) = overwrite_path {
+                let resolved_path_string = resolved_path.to_string_lossy().to_string();
+                // If it all worked and this was an overwrite file store the overwrite file at the default location
+                if compressed {
+                    std::fs::rename(path, default_gz_path).map_err(|e| {
+                        BoxedError::new(
+                            CVError::FileCouldNotBeMoved,
+                            "CV file could not be moved",
+                            e.to_string(),
+                            Context::none().source(resolved_path_string).to_owned(),
+                        )
+                    })?;
+                } else {
+                    // If the overwrite file was not compressed compress while moving to the new location
+                    let source_file = std::fs::File::open(&resolved_path).map_err(|e| {
+                        BoxedError::new(
+                            CVError::FileCouldNotBeOpenend,
+                            "CV file could not be openend",
+                            e.to_string(),
+                            Context::none().source(&resolved_path_string).to_owned(),
+                        )
+                    })?;
+                    let default_gz_file = std::fs::File::create(&default_gz_path).map_err(|e| {
+                        BoxedError::new(
+                            CVError::FileCouldNotBeMade,
+                            "CV file could not be made",
+                            e.to_string(),
+                            Context::none()
+                                .source(default_gz_path.to_string_lossy())
+                                .to_owned()
+                                .to_owned(),
+                        )
+                    })?;
+                    std::io::copy(
+                        &mut BufReader::new(source_file),
+                        &mut BufWriter::new(default_gz_file),
                     )
-                })?;
-                std::io::copy(
-                    &mut BufReader::new(source_file),
-                    &mut BufWriter::new(default_gz_file),
-                )
-                .map_err(|e| {
-                    BoxedError::new(
-                        CVError::FileCouldNotBeMoved,
-                        "CV file could not be moved",
-                        e.to_string(),
-                        Context::none().source(&resolved_path_string).to_owned(),
-                    )
-                })?;
-                std::fs::remove_file(resolved_path).map_err(|e| {
-                    BoxedError::new(
-                        CVError::FileCouldNotBeMoved,
-                        "Overwrite CV file could not be deleted",
-                        e.to_string(),
-                        Context::none().source(&resolved_path_string).to_owned(),
-                    )
-                })?;
+                    .map_err(|e| {
+                        BoxedError::new(
+                            CVError::FileCouldNotBeMoved,
+                            "CV file could not be moved",
+                            e.to_string(),
+                            Context::none().source(&resolved_path_string).to_owned(),
+                        )
+                    })?;
+                    std::fs::remove_file(&resolved_path).map_err(|e| {
+                        BoxedError::new(
+                            CVError::FileCouldNotBeMoved,
+                            "Overwrite CV file could not be deleted",
+                            e.to_string(),
+                            Context::none().source(&resolved_path_string).to_owned(),
+                        )
+                    })?;
+                }
             }
         }
         Ok(())
@@ -297,129 +314,137 @@ impl<CV: CVSource> CVIndex<CV> {
     #[cfg(feature = "internet")]
     pub fn update_from_url(
         &mut self,
-        overwrite_url: Option<&str>,
+        overwrite_urls: &[Option<&str>],
     ) -> Result<(), BoxedError<'static, CVError>> {
-        let url = overwrite_url.or_else(|| CV::cv_url()).ok_or_else(|| {
-            BoxedError::small(
-                CVError::CVUrlNotSet,
-                "Could not download CV",
-                "No URL was given or set as the default URL of this CV",
-            )
-        })?;
+        let paths = CV::files()
+            .iter()
+            .zip(overwrite_urls.iter().chain(std::iter::repeat(&None)))
+            .map(|(cv_file, overwrite_url)| {
+                let url = overwrite_url.or_else(|| cv_file.url).ok_or_else(|| {
+                    BoxedError::small(
+                        CVError::CVUrlNotSet,
+                        "Could not download CV",
+                        "No URL was given or set as the default URL of this CV",
+                    )
+                })?;
 
-        let download_path =
-            CV::default_stem().with_extension(format!("download.{}.gz", CV::cv_extension()));
-        let file = std::fs::File::create(&download_path).map_err(|e| {
-            BoxedError::new(
-                CVError::FileCouldNotBeMade,
-                "CV file could not be made",
-                e.to_string(),
-                Context::none()
-                    .source(download_path.to_string_lossy())
-                    .to_owned(),
-            )
-        })?;
-        let mut writer = BufWriter::new(file);
+                let download_path =
+                    CV::default_stem().with_extension(format!("download.{}.gz", cv_file.extension));
+                let file = std::fs::File::create(&download_path).map_err(|e| {
+                    BoxedError::new(
+                        CVError::FileCouldNotBeMade,
+                        "CV file could not be made",
+                        e.to_string(),
+                        Context::none()
+                            .source(download_path.to_string_lossy())
+                            .to_owned(),
+                    )
+                })?;
+                let mut writer = BufWriter::new(file);
 
-        let response = reqwest::blocking::get(url)
-            .map_err(|e| {
-                BoxedError::new(
-                    CVError::CVUrlCouldNotBeRead,
-                    "Could not download CV",
-                    e.to_string(),
-                    Context::none().source(url).to_owned(),
-                )
-            })?
-            .error_for_status()
-            .map_err(|e| {
-                BoxedError::new(
-                    CVError::CVUrlCouldNotBeRead,
-                    "Could not download CV",
-                    e.to_string(),
-                    Context::none().source(url).to_owned(),
-                )
-            })?;
-        // Decompress (if needed) then compress again to gz
-        match CV::cv_compression() {
-            CVCompression::None => {
-                let mut encoder = flate2::bufread::GzEncoder::new(
-                    BufReader::new(response),
-                    flate2::Compression::fast(),
-                );
-                std::io::copy(&mut encoder, &mut writer)
+                let response = reqwest::blocking::get(url)
+                    .map_err(|e| {
+                        BoxedError::new(
+                            CVError::CVUrlCouldNotBeRead,
+                            "Could not download CV",
+                            e.to_string(),
+                            Context::none().source(url).to_owned(),
+                        )
+                    })?
+                    .error_for_status()
+                    .map_err(|e| {
+                        BoxedError::new(
+                            CVError::CVUrlCouldNotBeRead,
+                            "Could not download CV",
+                            e.to_string(),
+                            Context::none().source(url).to_owned(),
+                        )
+                    })?;
+                // Decompress (if needed) then compress again to gz
+                match cv_file.compression {
+                    CVCompression::None => {
+                        let mut encoder = flate2::bufread::GzEncoder::new(
+                            BufReader::new(response),
+                            flate2::Compression::fast(),
+                        );
+                        std::io::copy(&mut encoder, &mut writer)
 
-                // response
-                // .copy_to(&mut writer)
-                // // .map(|_| ())
-                // .map_err(|e| e.to_string())
+                        // response
+                        // .copy_to(&mut writer)
+                        // // .map(|_| ())
+                        // .map_err(|e| e.to_string())
 
-                // Ok(0)
-            }
-            CVCompression::LZW => {
-                todo!()
-                // TODO: figure out LZW decompression
-                // LZW decompression did not work out
-                // let mut decoder = lzw::Decoder::new(lzw::MsbReader::new(), 8);
-                // let mut reader = BufReader::new(response);
+                        // Ok(0)
+                    }
+                    CVCompression::LZW => {
+                        todo!()
+                        // TODO: figure out LZW decompression
+                        // LZW decompression did not work out
+                        // let mut decoder = lzw::Decoder::new(lzw::MsbReader::new(), 8);
+                        // let mut reader = BufReader::new(response);
 
-                // loop {
-                //     let len = {
-                //         let buf = reader.fill_buf().unwrap();
-                //         if buf.is_empty() {
-                //             break;
-                //         }
-                //         let (len, bytes) = decoder.decode_bytes(buf).unwrap();
-                //         writer.write_all(bytes).unwrap();
-                //         len
-                //     };
-                //     reader.consume(len);
-                // }
+                        // loop {
+                        //     let len = {
+                        //         let buf = reader.fill_buf().unwrap();
+                        //         if buf.is_empty() {
+                        //             break;
+                        //         }
+                        //         let (len, bytes) = decoder.decode_bytes(buf).unwrap();
+                        //         writer.write_all(bytes).unwrap();
+                        //         len
+                        //     };
+                        //     reader.consume(len);
+                        // }
 
-                // Ok(())
+                        // Ok(())
 
-                // unlzw::unlzw(response, writer).unwrap();
-                // Ok(0)\
-                // let bytes: Vec<u32> = response
-                //     .bytes()
-                //     .unwrap()
-                //     .as_chunks::<4>()
-                //     .0
-                //     .iter()
-                //     .map(|bytes| u32::from_ne_bytes(*bytes))
-                //     .collect();
-                // let decompressed = lzw_compress::lzw::decompress(&bytes);
-                // writer.write_all(&decompressed).unwrap();
-                // let bytes: Vec<u32> = response
-                //     .bytes()
-                //     .unwrap()
-                //     .as_chunks::<4>()
-                //     .0
-                //     .iter()
-                //     .map(|bytes| u32::from_ne_bytes(*bytes))
-                //     .collect();
-                // let decompressed = lzw_compress::lzw::decompress(&bytes);
-                // std::io::copy(
-                //     &mut unlzw::LZWDecoder::new(BufReader::new(response)),
-                //     &mut writer,
-                // )
-                // .map_err(|e| e.to_string())
-                // let mut archive = unarc_rs::z::ZArchieve::new(response).unwrap();
-                // writer.write_all(&archive.read().unwrap()).unwrap();
-                // Ok(0)
-            }
-        }
-        .map_err(|e| {
-            BoxedError::new(
-                CVError::FileCouldNotBeMade,
-                "Could not download the CV file",
-                e.to_string(),
-                Context::none()
-                    .source(url)
-                    .lines(0, download_path.to_string_lossy())
-                    .to_owned(),
-            )
-        })?;
-        self.update_from_path(Some(&download_path))
+                        // unlzw::unlzw(response, writer).unwrap();
+                        // Ok(0)\
+                        // let bytes: Vec<u32> = response
+                        //     .bytes()
+                        //     .unwrap()
+                        //     .as_chunks::<4>()
+                        //     .0
+                        //     .iter()
+                        //     .map(|bytes| u32::from_ne_bytes(*bytes))
+                        //     .collect();
+                        // let decompressed = lzw_compress::lzw::decompress(&bytes);
+                        // writer.write_all(&decompressed).unwrap();
+                        // let bytes: Vec<u32> = response
+                        //     .bytes()
+                        //     .unwrap()
+                        //     .as_chunks::<4>()
+                        //     .0
+                        //     .iter()
+                        //     .map(|bytes| u32::from_ne_bytes(*bytes))
+                        //     .collect();
+                        // let decompressed = lzw_compress::lzw::decompress(&bytes);
+                        // std::io::copy(
+                        //     &mut unlzw::LZWDecoder::new(BufReader::new(response)),
+                        //     &mut writer,
+                        // )
+                        // .map_err(|e| e.to_string())
+                        // let mut archive = unarc_rs::z::ZArchieve::new(response).unwrap();
+                        // writer.write_all(&archive.read().unwrap()).unwrap();
+                        // Ok(0)
+                    }
+                }
+                .map_err(|e| {
+                    BoxedError::new(
+                        CVError::FileCouldNotBeMade,
+                        "Could not download the CV file",
+                        e.to_string(),
+                        Context::none()
+                            .source(url)
+                            .lines(0, download_path.to_string_lossy())
+                            .to_owned(),
+                    )
+                })?;
+                Ok(download_path)
+            })
+            .collect::<Result<Vec<_>, BoxedError<'static, CVError>>>()?;
+
+        self.update_from_path(paths.iter().map(|p| Some(Path::new(p))))
     }
 }
 

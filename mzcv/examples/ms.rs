@@ -1,23 +1,19 @@
 //! An example to show how to work with the MS ontology
-use std::io::{BufReader, Write};
+use std::io::Write;
 
 use bincode::{Decode, Encode};
 use context_error::{BoxedError, CreateError, FullErrorContent, StaticErrorContent};
 
 use mzcv::{
-    CVData, CVError, CVIndex, CVSource, CVVersion, HashBufReader, OboOntology, OboStanzaType,
+    CVData, CVError, CVFile, CVIndex, CVSource, CVVersion, HashBufReader, OboOntology,
+    OboStanzaType,
 };
 
 fn main() {
     let (mut ms, _) = CVIndex::<MS>::init();
     // ms.update_from_url(None).unwrap();
     ms.update_from_path(None).unwrap();
-    println!(
-        "Stored at: {}",
-        MS::default_stem()
-            .with_extension(MS::cv_extension())
-            .display()
-    );
+    println!("Stored at: {}", MS::default_stem().display());
     println!("Found {} MS items", ms.data().len());
 
     println!(
@@ -33,7 +29,7 @@ fn main() {
         ms.version().hash_hex(),
     );
 
-    let item = ms.get_by_index(1_000_016).unwrap();
+    let item = ms.get_by_index(&1_000_016).unwrap();
     assert_eq!(item.name, "scan start time");
 
     println!("Search for terms in the MS ontology (prefix with '==' to search for exact names)");
@@ -93,22 +89,22 @@ impl CVSource for MS {
     fn cv_name() -> &'static str {
         "MS"
     }
-    fn cv_extension() -> &'static str {
-        "obo"
-    }
-    fn cv_url() -> Option<&'static str> {
-        Some("http://purl.obolibrary.org/obo/ms.obo")
-    }
-    fn cv_compression() -> mzcv::CVCompression {
-        mzcv::CVCompression::None
+    fn files() -> &'static [CVFile] {
+        &[CVFile {
+            name: "MS",
+            extension: "obo",
+            url: Some("http://purl.obolibrary.org/obo/ms.obo"),
+            compression: mzcv::CVCompression::None,
+        }]
     }
     fn static_data() -> Option<(CVVersion, &'static [std::sync::Arc<Self::Data>])> {
         None
     }
     fn parse(
-        reader: HashBufReader<impl std::io::Read, impl sha2::Digest>,
+        mut reader: impl Iterator<Item = HashBufReader<Box<dyn std::io::Read>, impl sha2::Digest>>,
     ) -> Result<(CVVersion, impl Iterator<Item = Self::Data>), Vec<BoxedError<'static, CVError>>>
     {
+        let reader = reader.next().unwrap();
         OboOntology::from_raw(reader)
             .map_err(|e| {
                 vec![
@@ -129,7 +125,7 @@ impl CVSource for MS {
                         .map(|obj| {
                             let mut data = MSData {
                                 index: obj.id.1.parse().ok(),
-                                name: obj.lines["name"][0].to_string(),
+                                name: obj.lines["name"][0].0.to_string(),
                                 synonyms: obj.synonyms.iter().map(|s| s.synonym.clone()).collect(),
                                 ..Default::default()
                             };

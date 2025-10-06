@@ -70,6 +70,20 @@ impl<R: Read, H: sha2::Digest> HashBufReader<R, H> {
         }
     }
 
+    /// Create a new buffered reader that also calculates the hash of the file or stream.
+    pub fn boxed(r: R) -> HashBufReader<Box<dyn Read>, H>
+    where
+        R: 'static,
+    {
+        HashBufReader {
+            r: Box::new(r),
+            hash: H::new(),
+            buf: vec![0; 8192], // Same default buf size as `std::io::BufReader`
+            pos: 0,
+            filled: 0,
+        }
+    }
+
     /// Get the hash of the file or stream, this finalises the hasher and so also takes ownership of the [`HashBufReader`]
     pub fn hash(self) -> GenericArray<u8, H::OutputSize> {
         self.hash.finalize()
