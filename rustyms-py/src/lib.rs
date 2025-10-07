@@ -723,6 +723,17 @@ impl Fragment {
         self.0.formula.clone().map(MolecularFormula)
     }
 
+    /// Get the mzPAF annotation of this fragment.
+    ///
+    /// Returns
+    /// -------
+    /// str
+    ///
+    #[getter]
+    fn to_mz_paf(&self) -> String {
+        self.0.to_mz_paf()
+    }
+
     /// The charge.
     ///
     /// Returns
@@ -914,7 +925,7 @@ impl MatchingParameters {
     fn tolerance_thomson(&mut self, tolerance: f64) {
         self.0.tolerance =
             rustyms::quantities::Tolerance::new_absolute(rustyms::system::MassOverCharge::new::<
-                rustyms::system::mz,
+                rustyms::system::thomson,
             >(tolerance));
     }
 }
@@ -1063,6 +1074,79 @@ impl CompoundPeptidoformIon {
 
     fn __len__(&self) -> usize {
         self.0.peptidoform_ions().len()
+    }
+}
+
+/// A glycan structure
+///
+/// Parameters
+/// ----------
+/// iupac : str
+///     The iupac condensed definition.
+///
+#[pyclass]
+#[derive(Clone, Debug)]
+pub struct GlycanStructure(rustyms::glycan::GlycanStructure);
+
+#[pymethods]
+impl GlycanStructure {
+    /// Parse a glycan structure from the iupac condensed defiition.
+    #[new]
+    fn new(iupac: &str) -> Result<Self, BoxedError> {
+        rustyms::glycan::GlycanStructure::from_short_iupac(iupac, 0..iupac.len(), 0)
+            .map(GlycanStructure)
+            .map_err(|e| BoxedError(e.to_owned()))
+    }
+
+    /// Get the full formula for this glycan structure.
+    fn formula(&self) -> MolecularFormula {
+        MolecularFormula(self.0.formula())
+    }
+
+    /// Generate the theoretical fragments for this glycan structure, with the given maximal charge of the fragments,
+    /// and the given model.
+    ///
+    /// Parameters
+    /// ----------
+    /// max_charge : int
+    ///     The maximal charge of the fragments.
+    /// model : FragmentationModel
+    ///     The model to use for the fragmentation.
+    ///
+    /// Returns
+    /// -------
+    /// list[Fragment]
+    ///   The theoretical fragments.
+    ///
+    fn generate_theoretical_fragments(
+        &self,
+        max_charge: isize,
+        model: &FragmentationModel,
+    ) -> PyResult<Vec<Fragment>> {
+        let full = self.0.formula();
+        Ok(self
+            .0
+            .clone()
+            .determine_positions()
+            .generate_theoretical_fragments(
+                &match_model(model)?,
+                0,
+                0,
+                &mut rustyms::chemistry::MolecularCharge::proton(max_charge).into(),
+                &full.into(),
+                None,
+            )
+            .iter()
+            .map(|f| Fragment(f.clone()))
+            .collect())
+    }
+
+    fn __str__(&self) -> String {
+        self.0.to_string()
+    }
+
+    fn __repr__(&self) -> String {
+        format!("GlycanStructure({})", self.0)
     }
 }
 
@@ -1537,7 +1621,7 @@ impl RawSpectrum {
             .into_iter()
             .zip(intensity_array)
             .map(|(mz, i)| rustyms::spectrum::RawPeak {
-                mz: rustyms::system::MassOverCharge::new::<rustyms::system::mz>(mz),
+                mz: rustyms::system::MassOverCharge::new::<rustyms::system::thomson>(mz),
                 intensity: OrderedFloat(i),
             })
             .collect::<Vec<_>>();
@@ -1780,6 +1864,7 @@ fn rustyms_py03(_py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<Fragment>()?;
     m.add_class::<FragmentationModel>()?;
     m.add_class::<FragmentType>()?;
+    m.add_class::<GlycanStructure>()?;
     m.add_class::<MassMode>()?;
     m.add_class::<MatchingParameters>()?;
     m.add_class::<Modification>()?;
