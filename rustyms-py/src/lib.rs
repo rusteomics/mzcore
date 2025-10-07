@@ -867,31 +867,21 @@ enum FragmentationModel {
 }
 
 /// Helper function to match a [`FragmentationModel`] to a rustyms Model.
-fn match_model(
-    model: &FragmentationModel,
-) -> PyResult<rustyms::annotation::model::FragmentationModel> {
+fn match_model(model: &FragmentationModel) -> rustyms::annotation::model::FragmentationModel {
     match model {
-        FragmentationModel::All => {
-            Ok(rustyms::annotation::model::FragmentationModel::all().clone())
-        }
+        FragmentationModel::All => rustyms::annotation::model::FragmentationModel::all().clone(),
         FragmentationModel::CidHcd => {
-            Ok(rustyms::annotation::model::FragmentationModel::cid_hcd().clone())
+            rustyms::annotation::model::FragmentationModel::cid_hcd().clone()
         }
-        FragmentationModel::Etd => {
-            Ok(rustyms::annotation::model::FragmentationModel::etd().clone())
-        }
+        FragmentationModel::Etd => rustyms::annotation::model::FragmentationModel::etd().clone(),
         FragmentationModel::Ethcd => {
-            Ok(rustyms::annotation::model::FragmentationModel::ethcd().clone())
+            rustyms::annotation::model::FragmentationModel::ethcd().clone()
         }
-        FragmentationModel::Ead => {
-            Ok(rustyms::annotation::model::FragmentationModel::ead().clone())
-        }
+        FragmentationModel::Ead => rustyms::annotation::model::FragmentationModel::ead().clone(),
         FragmentationModel::Eacid => {
-            Ok(rustyms::annotation::model::FragmentationModel::eacid().clone())
+            rustyms::annotation::model::FragmentationModel::eacid().clone()
         }
-        FragmentationModel::Uvpd => {
-            Ok(rustyms::annotation::model::FragmentationModel::uvpd().clone())
-        }
+        FragmentationModel::Uvpd => rustyms::annotation::model::FragmentationModel::uvpd().clone(),
     }
 }
 
@@ -1052,16 +1042,15 @@ impl CompoundPeptidoformIon {
         &self,
         max_charge: isize,
         model: &FragmentationModel,
-    ) -> PyResult<Vec<Fragment>> {
-        Ok(self
-            .0
+    ) -> Vec<Fragment> {
+        self.0
             .generate_theoretical_fragments(
                 rustyms::system::isize::Charge::new::<rustyms::system::e>(max_charge),
-                &match_model(model)?,
+                &match_model(model),
             )
             .iter()
             .map(|f| Fragment(f.clone()))
-            .collect())
+            .collect()
     }
 
     fn __str__(&self) -> String {
@@ -1122,14 +1111,13 @@ impl GlycanStructure {
         &self,
         max_charge: isize,
         model: &FragmentationModel,
-    ) -> PyResult<Vec<Fragment>> {
+    ) -> Vec<Fragment> {
         let full = self.0.formula();
-        Ok(self
-            .0
+        self.0
             .clone()
             .determine_positions()
             .generate_theoretical_fragments(
-                &match_model(model)?,
+                &match_model(model),
                 0,
                 0,
                 &mut rustyms::chemistry::MolecularCharge::proton(max_charge).into(),
@@ -1138,7 +1126,7 @@ impl GlycanStructure {
             )
             .iter()
             .map(|f| Fragment(f.clone()))
-            .collect())
+            .collect()
     }
 
     fn __str__(&self) -> String {
@@ -1211,16 +1199,15 @@ impl PeptidoformIon {
         &self,
         max_charge: isize,
         model: &FragmentationModel,
-    ) -> PyResult<Vec<Fragment>> {
-        Ok(self
-            .0
+    ) -> Vec<Fragment> {
+        self.0
             .generate_theoretical_fragments(
                 rustyms::system::isize::Charge::new::<rustyms::system::e>(max_charge),
-                &match_model(model)?,
+                &match_model(model),
             )
-            .iter()
-            .map(|f| Fragment(f.clone()))
-            .collect())
+            .into_iter()
+            .map(|f| Fragment(f))
+            .collect()
     }
 
     fn __str__(&self) -> String {
@@ -1430,10 +1417,10 @@ impl Peptidoform {
         self.0.clone().into_linear().map(|p| {
             p.generate_theoretical_fragments(
                 rustyms::system::isize::Charge::new::<rustyms::system::e>(max_charge),
-                &match_model(model).unwrap(),
+                &match_model(model),
             )
-            .iter()
-            .map(|f| Fragment(f.clone()))
+            .into_iter()
+            .map(|f| Fragment(f))
             .collect()
         })
     }
@@ -1741,15 +1728,15 @@ impl RawSpectrum {
         model: &FragmentationModel,
         parameters: &MatchingParameters,
         mode: &MassMode,
-    ) -> PyResult<AnnotatedSpectrum> {
-        let rusty_model = match_model(model)?;
+    ) -> AnnotatedSpectrum {
+        let rusty_model = match_model(model);
         let fragments = peptidoform.0.generate_theoretical_fragments(
             self.0
                 .charge
                 .unwrap_or_else(|| rustyms::system::isize::Charge::new::<rustyms::system::e>(1)),
             &rusty_model,
         );
-        Ok(AnnotatedSpectrum(self.0.annotate(
+        AnnotatedSpectrum(self.0.annotate(
             peptidoform.0,
             &fragments,
             &parameters.0,
@@ -1758,7 +1745,7 @@ impl RawSpectrum {
                 MassMode::Average => rustyms::chemistry::MassMode::Average,
                 MassMode::MostAbundant => rustyms::chemistry::MassMode::MostAbundant,
             },
-        )))
+        ))
     }
 }
 
