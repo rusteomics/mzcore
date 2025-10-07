@@ -4,8 +4,9 @@ use mzcore::{
 };
 
 use crate::{
-    annotation::{AnnotatedSpectrum, Recovered, model::MatchingParameters},
+    annotation::{Recovered, model::MatchingParameters},
     fragment::Fragment,
+    spectrum::AnnotatedSpectrum,
 };
 
 impl AnnotatedSpectrum {
@@ -25,7 +26,7 @@ impl AnnotatedSpectrum {
                     .is_some_and(|mz| parameters.mz_range.contains(&mz))
             })
             .collect::<Vec<_>>();
-        let total_intensity: f32 = self.spectrum.iter().map(|p| p.intensity).sum();
+        let total_intensity: f32 = self.peaks.iter().map(|p| p.intensity).sum();
 
         let theoretical = |label: &AmbiguousLabel| {
             fragments
@@ -38,7 +39,7 @@ impl AnnotatedSpectrum {
                 .count() as u32
         };
         let annotated = |label: &AmbiguousLabel| {
-            self.spectrum.iter().fold((0_u32, 0.0), |acc, p| {
+            self.peaks.iter().fold((0_u32, 0.0), |acc, p| {
                 let count = p
                     .annotations
                     .iter()
@@ -74,9 +75,10 @@ impl AnnotatedSpectrum {
             aminoacids: Vec::new(),
             modifications: Vec::new(),
         };
-        for (peptidoform_ion_index, peptidoform_ion) in
-            self.peptide.peptidoform_ions().iter().enumerate()
-        {
+        for (peptidoform_ion_index, analyte) in self.analytes.iter().enumerate() {
+            let Some(peptidoform_ion) = &analyte.peptidoform_ion else {
+                continue;
+            };
             for (peptidoform_index, peptidoform) in
                 peptidoform_ion.peptidoforms().iter().enumerate()
             {

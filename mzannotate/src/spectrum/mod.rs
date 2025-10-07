@@ -1,11 +1,9 @@
 //! Spectrum related code
 
-pub mod mgf;
 mod peak;
 mod peaks;
-mod raw;
+mod spectrum;
 
-pub use mgf::*;
 pub use peak::*;
 pub use peaks::*;
-pub use raw::*;
+pub use spectrum::*;

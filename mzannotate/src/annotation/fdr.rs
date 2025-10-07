@@ -4,11 +4,11 @@ use mzcore::{
     quantities::WithinTolerance,
     system::{MassOverCharge, Ratio},
 };
+use mzdata::prelude::*;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    annotation::{AnnotatedSpectrum, model::MatchingParameters},
-    fragment::Fragment,
+    annotation::model::MatchingParameters, fragment::Fragment, spectrum::AnnotatedSpectrum,
 };
 
 impl AnnotatedSpectrum {
@@ -38,10 +38,10 @@ impl AnnotatedSpectrum {
             .collect_vec();
 
         let individual_peptides = self
-            .peptide
-            .peptidoform_ions()
+            .analytes
             .iter()
             .enumerate()
+            .filter_map(|a| a.1.peptidoform_ion.as_ref().map(|p| (a.0, p)))
             .map(|(peptidoform_ion_index, peptidoform)| {
                 peptidoform
                     .peptidoforms()
@@ -74,14 +74,14 @@ impl AnnotatedSpectrum {
 
     fn internal_fdr(&self, mzs: &[MassOverCharge], parameters: &MatchingParameters) -> Fdr {
         let mut results = Vec::with_capacity(51);
-        let total_intensity = self.spectrum.iter().map(|s| s.intensity).sum::<f32>();
-        if self.spectrum.is_empty() {
+        let total_intensity = self.peaks.iter().map(|s| s.intensity).sum::<f32>();
+        if self.peaks.is_empty() {
             return Fdr::default();
         }
 
         for offset in -25..=25 {
             let peaks = self
-                .spectrum
+                .peaks
                 .iter()
                 .map(|p| {
                     p.mz + MassOverCharge::new::<mzcore::system::thomson>(
@@ -102,7 +102,7 @@ impl AnnotatedSpectrum {
                 let mut closest = (0, Ratio::new::<mzcore::system::ratio::ppm>(f64::INFINITY));
                 #[expect(clippy::needless_range_loop)] // I like this better
                 for i in if index == 0 { 0 } else { index - 1 }
-                    ..=(index + 1).min(self.spectrum.len().saturating_sub(1))
+                    ..=(index + 1).min(self.peaks.len().saturating_sub(1))
                 {
                     let ppm = peaks[i].ppm(*mass);
                     if ppm < closest.1 {
@@ -110,18 +110,16 @@ impl AnnotatedSpectrum {
                     }
                 }
 
-                if parameters
-                    .tolerance
-                    .within(&self.spectrum[closest.0].mz, mass)
+                if parameters.tolerance.within(&self.peaks[closest.0].mz, mass)
                     && !peak_annotated[closest.0]
                 {
                     number_peaks_annotated += 1;
-                    intensity_annotated += self.spectrum[closest.0].intensity;
+                    intensity_annotated += self.peaks[closest.0].intensity;
                     peak_annotated[closest.0] = true;
                 }
             }
             results.push((
-                f64::from(number_peaks_annotated) / self.spectrum.len() as f64,
+                f64::from(number_peaks_annotated) / self.peaks.len() as f64,
                 intensity_annotated / total_intensity,
             ));
         }
@@ -140,13 +138,13 @@ impl AnnotatedSpectrum {
             / results.len() as f32)
             .sqrt();
         let actual: (u32, f32) = self
-            .spectrum
+            .peaks
             .iter()
             .filter(|p| !p.annotations.is_empty())
             .fold((0, 0.0), |acc, p| (acc.0 + 1, acc.1 + p.intensity));
 
         Fdr {
-            peaks_actual: f64::from(actual.0) / self.spectrum.len() as f64,
+            peaks_actual: f64::from(actual.0) / self.peaks.len() as f64,
             peaks_average_false: peaks_average,
             peaks_standard_deviation_false: peaks_st_dev,
             intensity_actual: actual.1 / total_intensity,

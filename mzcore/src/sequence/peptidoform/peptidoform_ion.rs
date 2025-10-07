@@ -98,6 +98,12 @@ impl PeptidoformIon {
         }
     }
 
+    /// Get the charge carriers
+    pub fn get_charge_carriers(&self) -> Option<&MolecularCharge> {
+        // Take the charge of the first peptidoform, as all are required to have the same charge
+        self.0.first().and_then(|p| p.get_charge_carriers())
+    }
+
     /// Add a cross-link to this peptidoform and check if it is placed according to its placement rules.
     /// The positions are first the peptide index and second the sequence index.
     pub fn add_cross_link(

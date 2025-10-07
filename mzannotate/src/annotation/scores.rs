@@ -5,11 +5,13 @@ use mzcore::{
     prelude::{MassMode, Peptidoform},
     sequence::UnAmbiguous,
 };
+use mzdata::prelude::*;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    annotation::{AnnotatedSpectrum, model::MatchingParameters},
+    annotation::model::MatchingParameters,
     fragment::{Fragment, FragmentKind},
+    spectrum::AnnotatedSpectrum,
 };
 
 impl AnnotatedSpectrum {
@@ -29,12 +31,12 @@ impl AnnotatedSpectrum {
                     .is_some_and(|mz| parameters.mz_range.contains(&mz))
             })
             .collect_vec();
-        let total_intensity: f32 = self.spectrum.iter().map(|p| p.intensity).sum();
+        let total_intensity: f32 = self.peaks.iter().map(|p| p.intensity).sum();
         let individual_peptides = self
-            .peptide
-            .peptidoform_ions()
+            .analytes
             .iter()
             .enumerate()
+            .filter_map(|a| a.1.peptidoform_ion.as_ref().map(|p| (a.0, p)))
             .map(|(peptidoform_ion_index, peptidoform)| {
                 peptidoform
                     .peptidoforms()
@@ -103,7 +105,7 @@ impl AnnotatedSpectrum {
         ion: Option<FragmentKind>,
     ) -> (Recovered<u32>, Recovered<u32>, f32) {
         let (peaks_annotated, fragments_found, intensity_annotated) = self
-            .spectrum
+            .peaks
             .iter()
             .filter_map(|p| {
                 let number = p
@@ -134,7 +136,7 @@ impl AnnotatedSpectrum {
             .count() as u32;
         (
             Recovered::new(fragments_found, total_fragments),
-            Recovered::new(peaks_annotated, self.spectrum.len() as u32),
+            Recovered::new(peaks_annotated, self.peaks.len() as u32),
             intensity_annotated,
         )
     }
@@ -148,7 +150,7 @@ impl AnnotatedSpectrum {
         ion: Option<FragmentKind>,
     ) -> (u32, u32) {
         (
-            self.spectrum
+            self.peaks
                 .iter()
                 .flat_map(|p| {
                     p.annotations
@@ -184,7 +186,7 @@ impl AnnotatedSpectrum {
         ion: Option<FragmentKind>,
     ) -> Recovered<u32> {
         let num_annotated = self
-            .spectrum
+            .peaks
             .iter()
             .flat_map(|p| {
                 p.annotations.iter().filter(|a| {

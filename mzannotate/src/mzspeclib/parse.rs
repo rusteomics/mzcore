@@ -5,8 +5,12 @@ use std::{
 };
 
 use indexmap::IndexMap;
-use mzcore::{prelude::CompoundPeptidoformIon, system::MassOverCharge};
+use mzcore::{
+    prelude::*,
+    system::{MassOverCharge, isize::Charge},
+};
 use mzdata::{
+    curie,
     mzpeaks::{peak_set::PeakSetVec, prelude::PeakCollectionMut},
     params::{CURIE, ControlledVocabulary, ParamValue},
 };
@@ -15,9 +19,9 @@ use crate::{
     fragment::{Fragment, parse_mz_paf},
     mzspeclib::{
         Analyte, Attribute, AttributeParseError, AttributeSet, Attributed, AttributedMut,
-        EntryType, IdType, Interpretation, LibraryHeader, LibrarySpectrum, Term,
+        EntryType, IdType, Interpretation, LibraryHeader, Term,
     },
-    spectrum::AnnotatedPeak,
+    spectrum::{AnnotatedPeak, AnnotatedSpectrum},
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
@@ -345,11 +349,34 @@ impl<R: Read> MzSpecLibParser<R> {
         }
         let id = self.parse_decl(&buf, "<Analyte=", ParserState::Analyte)?;
 
-        let mut analyte = Analyte::new(id, Vec::new());
+        let mut analyte = Analyte::new(id, None, None, Vec::new());
         loop {
             match self.read_attribute(&mut buf) {
                 Ok(attr) => {
-                    analyte.add_attribute(attr);
+                    if attr.name.accession == curie!(MS:1_003_270)
+                        && let mzdata::params::Value::String(value) = attr.value.scalar().as_ref()
+                    {
+                        let peptidoform_ion = PeptidoformIon::pro_forma(value, None).unwrap(); // TODO: handle error nicely
+                        if let Some(charge) = peptidoform_ion.get_charge_carriers() {
+                            let charge = charge.charge();
+                            if analyte.charge.is_some_and(|c| c != charge) {
+                                todo!("Throw nice error");
+                            } else if analyte.charge.is_none() {
+                                analyte.charge = Some(charge);
+                            }
+                        }
+                        analyte.peptidoform_ion = Some(peptidoform_ion);
+                    } else if attr.name.accession == curie!(MS:1_000_041)
+                        && let mzdata::params::Value::Int(value) = attr.value.scalar().as_ref()
+                    {
+                        let charge = Charge::new::<mzcore::system::e>(*value as isize);
+                        if analyte.charge.is_some_and(|c| c != charge) {
+                            todo!("Throw nice error");
+                        }
+                        analyte.charge = Some(charge);
+                    } else {
+                        analyte.add_attribute(attr);
+                    }
                 }
                 Err(e) => {
                     if buf.starts_with('<') {
@@ -368,7 +395,7 @@ impl<R: Read> MzSpecLibParser<R> {
         let mut last_group_id = 0;
 
         let attr_set_name = Term::new(
-            mzdata::curie!(MS:1003212),
+            mzdata::curie!(MS:1_003_212),
             "library attribute set name".into(),
         );
         let attr_sets: Vec<_> = analyte
@@ -516,7 +543,7 @@ impl<R: Read> MzSpecLibParser<R> {
         Ok(peak)
     }
 
-    fn read_spectrum(&mut self) -> Result<LibrarySpectrum, MzSpecLibTextParseError> {
+    fn read_spectrum(&mut self) -> Result<AnnotatedSpectrum, MzSpecLibTextParseError> {
         let mut buf = String::new();
 
         let z = self
@@ -526,7 +553,7 @@ impl<R: Read> MzSpecLibParser<R> {
             return Err(MzSpecLibTextParseError::EOF);
         }
         let id = self.parse_decl(&buf, "<Spectrum=", ParserState::Spectrum)?;
-        let mut spec = LibrarySpectrum::new(
+        let mut spec = AnnotatedSpectrum::new(
             id,
             0,
             Box::default(),
@@ -637,7 +664,7 @@ impl<R: Read> MzSpecLibParser<R> {
         Ok(spec)
     }
 
-    pub fn read_next(&mut self) -> Result<LibrarySpectrum, MzSpecLibTextParseError> {
+    pub fn read_next(&mut self) -> Result<AnnotatedSpectrum, MzSpecLibTextParseError> {
         self.read_spectrum()
     }
 
@@ -655,7 +682,7 @@ impl<R: Read> MzSpecLibParser<R> {
 }
 
 impl<R: Read> Iterator for MzSpecLibParser<R> {
-    type Item = Result<LibrarySpectrum, MzSpecLibTextParseError>;
+    type Item = Result<AnnotatedSpectrum, MzSpecLibTextParseError>;
 
     fn next(&mut self) -> Option<Self::Item> {
         if matches!(self.state, ParserState::EOF) {
@@ -769,14 +796,14 @@ impl<R: Read + Seek> MzSpecLibParser<R> {
 
     pub fn iter(
         &mut self,
-    ) -> impl Iterator<Item = Result<LibrarySpectrum, MzSpecLibTextParseError>> {
+    ) -> impl Iterator<Item = Result<AnnotatedSpectrum, MzSpecLibTextParseError>> {
         (0..self.len()).map(|i| self.get_spectrum_by_index(i).unwrap())
     }
 
     pub fn get_spectrum_by_key(
         &mut self,
         key: IdType,
-    ) -> Option<Result<LibrarySpectrum, MzSpecLibTextParseError>> {
+    ) -> Option<Result<AnnotatedSpectrum, MzSpecLibTextParseError>> {
         if !self.offsets.init
             && let Err(e) = self.build_index()
         {
@@ -794,7 +821,7 @@ impl<R: Read + Seek> MzSpecLibParser<R> {
     pub fn get_spectrum_by_index(
         &mut self,
         index: usize,
-    ) -> Option<Result<LibrarySpectrum, MzSpecLibTextParseError>> {
+    ) -> Option<Result<AnnotatedSpectrum, MzSpecLibTextParseError>> {
         if !self.offsets.init
             && let Err(e) = self.build_index()
         {
@@ -812,7 +839,7 @@ impl<R: Read + Seek> MzSpecLibParser<R> {
     pub fn get_spectrum_by_name(
         &mut self,
         name: &str,
-    ) -> Option<Result<LibrarySpectrum, MzSpecLibTextParseError>> {
+    ) -> Option<Result<AnnotatedSpectrum, MzSpecLibTextParseError>> {
         if !self.offsets.init
             && let Err(e) = self.build_index()
         {

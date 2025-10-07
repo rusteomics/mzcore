@@ -3,9 +3,7 @@ use mzcore::{
     system::MassOverCharge,
 };
 
-use crate::prelude::{Fragment, MatchingParameters};
-
-use super::AnnotatedSpectrum;
+use crate::prelude::{AnnotatedSpectrum, Fragment, MatchingParameters};
 
 /// A spectrum that can be annotated. Within rustyms this is implemented for the build in
 /// [mgf reader](crate::spectrum::mgf) and for mzdata [`SpectrumLike`](mzdata::prelude::SpectrumLike).
@@ -48,11 +46,8 @@ pub trait AnnotatableSpectrum {
                 // Get the index of the element closest to this value
                 if let Some(index) = Self::search(self, mz, tolerance) {
                     // Keep the theoretical fragments sorted to have the highest theoretical likelihood on top
-                    match annotated.spectrum[index]
-                        .annotations
-                        .binary_search(fragment)
-                    {
-                        Ok(ai) | Err(ai) => annotated.spectrum[index]
+                    match annotated.peaks[index].annotations.binary_search(fragment) {
+                        Ok(ai) | Err(ai) => annotated.peaks[index]
                             .annotations
                             .insert(ai, fragment.clone()),
                     }

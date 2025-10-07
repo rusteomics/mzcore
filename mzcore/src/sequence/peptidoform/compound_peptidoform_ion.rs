@@ -65,6 +65,11 @@ impl CompoundPeptidoformIon {
         &self.0
     }
 
+    /// Get all peptidoform ions making up this compound peptidoform.
+    pub fn into_peptidoform_ions(self) -> Vec<PeptidoformIon> {
+        self.0
+    }
+
     /// Get all peptidoforms making up this compound peptidoform.
     pub fn peptidoforms(&self) -> impl Iterator<Item = &Peptidoform<Linked>> {
         self.0.iter().flat_map(PeptidoformIon::peptidoforms)

@@ -1,6 +1,6 @@
 use std::io::{self, prelude::*};
 
-use crate::mzspeclib::{LibraryHeader, LibrarySpectrum};
+use crate::{mzspeclib::LibraryHeader, spectrum::AnnotatedSpectrum};
 
 /// A wrapper around a writer to write out annotated spectra as mzSpecLib files.
 #[derive(Debug)]
@@ -37,7 +37,7 @@ impl<W: Write> MzSpecLibTextWriter<W> {
     /// Write a spectrum to the stream
     /// # Errors
     /// If writing to the underlying stream failed.
-    pub fn write_spectrum(&mut self, spectrum: &LibrarySpectrum) -> io::Result<()> {
+    pub fn write_spectrum(&mut self, spectrum: &AnnotatedSpectrum) -> io::Result<()> {
         self.writer.write_all(spectrum.to_string().as_bytes())
     }
 }
