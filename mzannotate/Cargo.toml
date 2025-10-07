@@ -21,6 +21,7 @@ mzcore = { path = "../mzcore" }
 
 context_error = { workspace = true }
 flate2 = { workspace = true }
+indexmap = {workspace = true}
 itertools = { workspace = true }
 mzdata = { workspace = true }
 ordered-float = { workspace = true }

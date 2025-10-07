@@ -39,6 +39,7 @@ clap = { version = "4.5", features = ["derive", "cargo"] }
 context_error = { version = "0.1", features = ["serde"] }
 directories = "6.0"
 flate2 = "1.0"
+indexmap = "2.11"
 itertools = "0.14"
 mzdata = { version = "0.59", default-features = false }
 ndarray = "0.16"

@@ -12,6 +12,7 @@ pub mod glycan;
 mod helper_functions;
 mod modification;
 mod monosaccharide;
+pub mod mzspeclib;
 mod peptidoform;
 pub mod spectrum;
 
