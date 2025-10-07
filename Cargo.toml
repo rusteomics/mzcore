@@ -6,7 +6,7 @@ members = [
     "mzalign",
     "mzcv",
     "imgt",
-    # "rustyms-generate-databases",
+    "rustyms-generate-databases",
     # "rustyms-generate-imgt",
     # "rustyms-py",
     "fuzz",

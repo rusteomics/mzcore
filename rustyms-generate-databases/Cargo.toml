@@ -7,13 +7,15 @@ authors.workspace = true
 publish = false
 
 [dependencies]
+mzcore = { path = "../mzcore", features = ["internal-no-data"] }
+mzident = { path = "../mzident" }
+
 bincode = { workspace = true }
 flate2 = { workspace = true }
 itertools = { workspace = true }
 ordered-float = { workspace = true }
 roxmltree = { workspace = true }
 thin-vec = { workspace = true }
-rustyms = { path = "../rustyms", features = ["internal-no-data"] }
 
 [features]
 rayon = []

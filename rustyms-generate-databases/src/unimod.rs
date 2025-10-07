@@ -5,13 +5,12 @@ use std::{
 };
 
 use bincode::config::Configuration;
-use roxmltree::*;
-use rustyms::{
-    chemistry::MolecularFormula,
-    fragment::{DiagnosticIon, NeutralLoss},
+use mzcore::{
+    chemistry::{DiagnosticIon, MolecularFormula, NeutralLoss},
     ontology::{Ontology, OntologyModificationList},
     sequence::PlacementRule,
 };
+use roxmltree::*;
 
 use crate::ontology_modification::position_from_str;
 
