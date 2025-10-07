@@ -22,7 +22,6 @@ use mzannotate::{
     annotation::{Score, Scores, model::parse_custom_models},
     fragment::{DiagnosticPosition, FragmentType},
     prelude::*,
-    spectrum::PeakSpectrum,
 };
 use mzcore::{
     chemistry::MassMode,
