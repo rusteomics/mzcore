@@ -19,7 +19,7 @@ pub struct Term {
 
 impl PartialOrd for Term {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        Some(self.cmp(&other))
+        Some(self.cmp(other))
     }
 }
 
@@ -46,10 +46,10 @@ impl FromStr for Term {
     type Err = TermParserError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        if let Some((curie, name)) = s.split_once("|") {
+        if let Some((curie, name)) = s.split_once('|') {
             let curie: CURIE = curie.parse().map_err(TermParserError::CURIEError)?;
             let name = name.to_string().into_boxed_str();
-            Ok(Term::new(curie, name))
+            Ok(Self::new(curie, name))
         } else {
             Err(TermParserError::MissingPipe(s.to_string()))
         }
@@ -73,7 +73,7 @@ pub enum AttributeValueParseError {
     ParamValueParseError(ParamValueParseError),
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum AttributeValue {
     Scalar(Value),
     List(Vec<Value>),
@@ -83,9 +83,9 @@ pub enum AttributeValue {
 impl AttributeValue {
     pub fn scalar(&self) -> Cow<'_, Value> {
         match self {
-            AttributeValue::Scalar(value) => Cow::Borrowed(value),
-            AttributeValue::List(_) => Cow::Owned(Value::String(self.to_string())),
-            AttributeValue::Term(term) => Cow::Owned(Value::String(term.to_string())),
+            Self::Scalar(value) => Cow::Borrowed(value),
+            Self::List(_) => Cow::Owned(Value::String(self.to_string())),
+            Self::Term(term) => Cow::Owned(Value::String(term.to_string())),
         }
     }
 
@@ -130,19 +130,17 @@ impl From<Term> for AttributeValue {
 impl Display for AttributeValue {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            AttributeValue::Scalar(value) => write!(f, "{}", value),
-            AttributeValue::List(values) => {
-                for (i, val) in values.iter().enumerate() {
-                    write!(f, "{}", val)?;
-                    if i < values.len() - 1 {
-                        f.write_str(",")?;
+            Self::Scalar(value) => write!(f, "{value}"),
+            Self::List(values) => {
+                for (i, value) in values.iter().enumerate() {
+                    if i != 0 {
+                        write!(f, ",")?;
                     }
+                    write!(f, "{value}")?;
                 }
                 Ok(())
             }
-            AttributeValue::Term(attribute_name) => {
-                f.write_str(attribute_name.to_string().as_str())
-            }
+            Self::Term(attribute_name) => f.write_str(attribute_name.to_string().as_str()),
         }
     }
 }
@@ -173,38 +171,36 @@ impl FromStr for Attribute {
     type Err = AttributeParseError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        if s.starts_with("[") {
-            if let Some((group_id, rest)) = s[1..].split_once("]") {
+        if let Some(s) = s.strip_prefix('[') {
+            if let Some((group_id, rest)) = s.split_once(']') {
                 let group_id = match group_id.parse::<u32>() {
                     Ok(group_id) => group_id,
                     Err(e) => return Err(AttributeParseError::GroupIDParseError(e, s.to_string())),
                 };
-                if let Some((name, val)) = rest.split_once("=") {
+                if let Some((name, val)) = rest.split_once('=') {
                     let term: Term = name
                         .parse()
                         .map_err(|e| AttributeParseError::TermParserError(e, s.to_string()))?;
                     let value: AttributeValue = val
                         .parse()
                         .map_err(|e| AttributeParseError::ValueParseError(e, s.to_string()))?;
-                    Ok(Attribute::new(term, value, Some(group_id)))
+                    Ok(Self::new(term, value, Some(group_id)))
                 } else {
                     Err(AttributeParseError::MissingValueSeparator(s.to_string()))
                 }
             } else {
                 Err(Self::Err::Malformed(s.to_string()))
             }
+        } else if let Some((name, val)) = s.split_once('=') {
+            let term: Term = name
+                .parse()
+                .map_err(|e| AttributeParseError::TermParserError(e, s.to_string()))?;
+            let value: AttributeValue = val
+                .parse()
+                .map_err(|e| AttributeParseError::ValueParseError(e, s.to_string()))?;
+            Ok(Self::new(term, value, None))
         } else {
-            if let Some((name, val)) = s.split_once("=") {
-                let term: Term = name
-                    .parse()
-                    .map_err(|e| AttributeParseError::TermParserError(e, s.to_string()))?;
-                let value: AttributeValue = val
-                    .parse()
-                    .map_err(|e| AttributeParseError::ValueParseError(e, s.to_string()))?;
-                Ok(Attribute::new(term, value, None))
-            } else {
-                Err(AttributeParseError::MissingValueSeparator(s.to_string()))
-            }
+            Err(AttributeParseError::MissingValueSeparator(s.to_string()))
         }
     }
 }
@@ -221,8 +217,8 @@ impl Attribute {
     pub fn unit(unit: Unit, group_id: Option<u32>) -> Option<Self> {
         let (_, name) = unit.for_param();
         let accession = unit.to_curie()?;
-        Some(Attribute::new(
-            term!(UO:0000000|"unit"),
+        Some(Self::new(
+            term!(UO:0_000_000|"unit"),
             Term::new(accession, name.to_string().into_boxed_str()),
             group_id,
         ))
@@ -317,12 +313,9 @@ pub trait Attributed {
         self.attributes()
             .iter()
             .map(|v| v.group_id)
-            .reduce(|prev, new| match new {
-                Some(new) => match prev {
-                    Some(prev) => Some(prev.max(new)),
-                    None => Some(new),
-                },
-                None => prev,
+            .reduce(|prev, new| {
+                new.map(|new| prev.map_or(new, |prev| prev.max(new)))
+                    .or(prev)
             })
             .unwrap_or_default()
     }
@@ -396,7 +389,7 @@ pub(crate) use impl_attributed;
 
 impl Attributed for Vec<Attribute> {
     fn attributes(&self) -> &[Attribute] {
-        &self
+        self
     }
 }
 

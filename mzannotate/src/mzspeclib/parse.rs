@@ -7,16 +7,15 @@ use std::{
 use indexmap::IndexMap;
 use mzcore::prelude::CompoundPeptidoformIon;
 use mzdata::{
-    mzpeaks::prelude::PeakCollectionMut,
+    mzpeaks::{peak_set::PeakSetVec, prelude::PeakCollectionMut},
     params::{CURIE, ControlledVocabulary, ParamValue},
 };
 
 use crate::{
     fragment::{Fragment, parse_mz_paf},
     mzspeclib::{
-        Analyte, AnnotatedPeak, Attribute, AttributeParseError, AttributeSet,
-        AttributeValueParseError, Attributed, AttributedMut, EntryType, IdType, Interpretation,
-        LibraryHeader, LibrarySpectrum, Term,
+        Analyte, AnnotatedPeak, Attribute, AttributeParseError, AttributeSet, Attributed,
+        AttributedMut, EntryType, IdType, Interpretation, LibraryHeader, LibrarySpectrum, Term,
     },
 };
 
@@ -112,7 +111,10 @@ impl<R: Read> MzSpecLibParser<R> {
 
                     while buf.trim().is_empty() || buf.starts_with('#') {
                         let z1 = self.read_next_line(buf)?;
-                        if z1 == 0 { return Ok(z1) } else { z += z1 }
+                        if z1 == 0 {
+                            return Ok(z1);
+                        }
+                        z += z1;
                     }
                     Ok(z)
                 }
@@ -147,7 +149,7 @@ impl<R: Read> MzSpecLibParser<R> {
                     current_attribute_set.as_mut().unwrap().add_attribute(attr);
                 }
                 Err(e) => {
-                    if buf.starts_with("<") {
+                    if buf.starts_with('<') {
                         if buf.starts_with("<Spectrum=") {
                             if current_attribute_set.is_some() {
                                 let set = current_attribute_set.take().unwrap();
@@ -162,15 +164,15 @@ impl<R: Read> MzSpecLibParser<R> {
                             break;
                         } else if buf.starts_with("<AttributeSet") {
                             self.state = ParserState::AttributeSet;
-                            if let Some((_, rest)) = buf.trim().split_once(" ") {
-                                if !rest.ends_with(">") {
+                            if let Some((_, rest)) = buf.trim().split_once(' ') {
+                                if !rest.ends_with('>') {
                                     return Err(MzSpecLibTextParseError::InvalidContentAtState(
                                         buf,
                                         self.state,
                                         self.line_number,
                                     ));
                                 }
-                                if let Some((entry_tp, id)) = rest[..rest.len() - 1].split_once("=")
+                                if let Some((entry_tp, id)) = rest[..rest.len() - 1].split_once('=')
                                 {
                                     if current_attribute_set.is_some() {
                                         let set = current_attribute_set.take().unwrap();
@@ -220,7 +222,7 @@ impl<R: Read> MzSpecLibParser<R> {
                             ));
                         }
                     } else if buf.is_empty() {
-                        continue;
+                        // continue
                     } else {
                         return Err(e);
                     }
@@ -265,7 +267,7 @@ impl<R: Read> MzSpecLibParser<R> {
                     }
                 }
                 Err(e) => {
-                    if buf.starts_with("<") {
+                    if buf.starts_with('<') {
                         if buf.starts_with("<Spectrum=") {
                             self.state = ParserState::Spectrum;
                         } else if buf.starts_with("<AttributeSet") {
@@ -281,7 +283,7 @@ impl<R: Read> MzSpecLibParser<R> {
                         self.push_back_line(buf);
                         break;
                     } else if buf.is_empty() {
-                        continue;
+                        // continue
                     } else {
                         return Err(e);
                     }
@@ -307,15 +309,14 @@ impl<R: Read> MzSpecLibParser<R> {
         let id = if buf.starts_with(decl) {
             self.state = to_state;
             let buf_ = buf.trim();
-            if let Some((_, val)) = buf_[..buf_.len() - 1].split_once("=") {
-                let id = val.parse::<IdType>().map_err(|_| {
+            if let Some((_, val)) = buf_[..buf_.len() - 1].split_once('=') {
+                val.parse::<IdType>().map_err(|_| {
                     MzSpecLibTextParseError::InvalidContentAtState(
                         buf.to_string(),
                         self.state,
                         self.line_number,
                     )
-                })?;
-                id
+                })?
             } else {
                 return Err(MzSpecLibTextParseError::InvalidContentAtState(
                     buf.to_string(),
@@ -350,11 +351,11 @@ impl<R: Read> MzSpecLibParser<R> {
                     analyte.add_attribute(attr);
                 }
                 Err(e) => {
-                    if buf.starts_with("<") {
+                    if buf.starts_with('<') {
                         self.push_back_line(buf);
                         break;
                     } else if buf.trim().is_empty() {
-                        continue;
+                        // continue;
                     } else {
                         return Err(e);
                     }
@@ -417,11 +418,11 @@ impl<R: Read> MzSpecLibParser<R> {
                     if buf.starts_with("<InterpretationMember=") {
                         self.push_back_line(buf);
                         todo!();
-                    } else if buf.starts_with("<") {
+                    } else if buf.starts_with('<') {
                         self.push_back_line(buf);
                         break;
                     } else if buf.trim().is_empty() {
-                        continue;
+                        // continue;
                     } else {
                         return Err(e);
                     }
@@ -470,28 +471,22 @@ impl<R: Read> MzSpecLibParser<R> {
         buf: &str,
     ) -> Result<AnnotatedPeak<Fragment>, MzSpecLibTextParseError> {
         let buf = buf.trim();
-        let mut it = buf.split("\t");
+        let mut it = buf.split('\t');
 
-        let mz = match it.next().and_then(|v| v.parse::<f64>().ok()) {
-            Some(v) => v,
-            None => {
-                return Err(MzSpecLibTextParseError::InvalidContentAtState(
-                    buf.to_string(),
-                    ParserState::Peaks,
-                    self.line_number,
-                ));
-            }
+        let Some(mz) = it.next().and_then(|v| v.parse::<f64>().ok()) else {
+            return Err(MzSpecLibTextParseError::InvalidContentAtState(
+                buf.to_string(),
+                ParserState::Peaks,
+                self.line_number,
+            ));
         };
 
-        let intensity = match it.next().and_then(|v| v.parse::<f32>().ok()) {
-            Some(v) => v,
-            None => {
-                return Err(MzSpecLibTextParseError::InvalidContentAtState(
-                    buf.to_string(),
-                    ParserState::Peaks,
-                    self.line_number,
-                ));
-            }
+        let Some(intensity) = it.next().and_then(|v| v.parse::<f32>().ok()) else {
+            return Err(MzSpecLibTextParseError::InvalidContentAtState(
+                buf.to_string(),
+                ParserState::Peaks,
+                self.line_number,
+            ));
         };
 
         let mut peak = AnnotatedPeak::new(mz, intensity, 0, Vec::new(), Vec::new());
@@ -506,7 +501,7 @@ impl<R: Read> MzSpecLibParser<R> {
 
         match it.next() {
             Some(v) => {
-                peak.aggregations = v.split(",").map(|i| i.to_string()).collect();
+                peak.aggregations = v.split(',').map(ToString::to_string).collect();
             }
             None => return Ok(peak),
         }
@@ -531,7 +526,7 @@ impl<R: Read> MzSpecLibParser<R> {
             Vec::new(),
             Vec::new(),
             Vec::new(),
-            Default::default(),
+            PeakSetVec::default(),
         );
 
         loop {
@@ -551,7 +546,7 @@ impl<R: Read> MzSpecLibParser<R> {
                                 self.state,
                                 self.line_number,
                             )
-                        })? as usize
+                        })? as usize;
                     }
                     _ => spec.add_attribute(attr),
                 },
@@ -568,7 +563,7 @@ impl<R: Read> MzSpecLibParser<R> {
                         self.state = ParserState::Peaks;
                         break;
                     } else if buf.trim().is_empty() {
-                        continue;
+                        // continue
                     } else {
                         return Err(e);
                     }
@@ -619,7 +614,7 @@ impl<R: Read> MzSpecLibParser<R> {
                     break;
                 }
                 let buf_trimmed = buf.trim();
-                if buf_trimmed.starts_with("<") {
+                if buf_trimmed.starts_with('<') {
                     self.push_back_line(buf);
                     self.state = ParserState::Between;
                     break;
@@ -628,7 +623,7 @@ impl<R: Read> MzSpecLibParser<R> {
                     break;
                 }
 
-                let peak = self.parse_peak_line(&buf_trimmed)?;
+                let peak = self.parse_peak_line(buf_trimmed)?;
                 spec.peaks.push(peak);
             }
         }
@@ -652,7 +647,7 @@ impl<R: Read> MzSpecLibParser<R> {
     }
 }
 
-impl<R: io::Read> Iterator for MzSpecLibParser<R> {
+impl<R: Read> Iterator for MzSpecLibParser<R> {
     type Item = Result<LibrarySpectrum, MzSpecLibTextParseError>;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -713,7 +708,7 @@ impl LibraryIndex {
     }
 }
 
-impl<R: io::Read + io::Seek> MzSpecLibParser<R> {
+impl<R: Read + Seek> MzSpecLibParser<R> {
     pub fn build_index(&mut self) -> io::Result<()> {
         self.inner.rewind()?;
         self.line_cache.clear();
@@ -729,13 +724,13 @@ impl<R: io::Read + io::Seek> MzSpecLibParser<R> {
             }
 
             if buf.starts_with("<Spectrum=") {
-                let (_, rest) = buf.trim().split_once("=").unwrap();
-                if rest.ends_with(">") {
+                let (_, rest) = buf.trim().split_once('=').unwrap();
+                if let Some(key) = rest.strip_suffix('>') {
                     if let Some(current_record) = current_record {
                         offset_index.insert(current_record.index, current_record);
                     }
-                    current_record = Some(Default::default());
-                    if let Ok(key) = rest[..rest.len() - 1].parse::<IdType>() {
+                    current_record = Some(LibraryIndexRecord::default());
+                    if let Ok(key) = key.parse::<IdType>() {
                         let r = current_record.as_mut().unwrap();
                         r.index = index;
                         r.key = key;
@@ -775,10 +770,10 @@ impl<R: io::Read + io::Seek> MzSpecLibParser<R> {
         &mut self,
         key: IdType,
     ) -> Option<Result<LibrarySpectrum, MzSpecLibTextParseError>> {
-        if !self.offsets.init {
-            if let Err(e) = self.build_index() {
-                return Some(Err(MzSpecLibTextParseError::IOError(e)));
-            }
+        if !self.offsets.init
+            && let Err(e) = self.build_index()
+        {
+            return Some(Err(MzSpecLibTextParseError::IOError(e)));
         }
         let rec = self.offsets.get_by_key(key)?;
         if let Err(e) = self.inner.seek(io::SeekFrom::Start(rec.offset)) {
@@ -793,10 +788,10 @@ impl<R: io::Read + io::Seek> MzSpecLibParser<R> {
         &mut self,
         index: usize,
     ) -> Option<Result<LibrarySpectrum, MzSpecLibTextParseError>> {
-        if !self.offsets.init {
-            if let Err(e) = self.build_index() {
-                return Some(Err(MzSpecLibTextParseError::IOError(e)));
-            }
+        if !self.offsets.init
+            && let Err(e) = self.build_index()
+        {
+            return Some(Err(MzSpecLibTextParseError::IOError(e)));
         }
         let rec = self.offsets.get_by_index(index)?;
         if let Err(e) = self.inner.seek(io::SeekFrom::Start(rec.offset)) {
@@ -811,10 +806,10 @@ impl<R: io::Read + io::Seek> MzSpecLibParser<R> {
         &mut self,
         name: &str,
     ) -> Option<Result<LibrarySpectrum, MzSpecLibTextParseError>> {
-        if !self.offsets.init {
-            if let Err(e) = self.build_index() {
-                return Some(Err(MzSpecLibTextParseError::IOError(e)));
-            }
+        if !self.offsets.init
+            && let Err(e) = self.build_index()
+        {
+            return Some(Err(MzSpecLibTextParseError::IOError(e)));
         }
         let rec = self.offsets.get_by_name(name)?;
         if let Err(e) = self.inner.seek(io::SeekFrom::Start(rec.offset)) {
@@ -826,6 +821,7 @@ impl<R: io::Read + io::Seek> MzSpecLibParser<R> {
     }
 }
 
+#[allow(clippy::missing_panics_doc, clippy::missing_errors_doc)]
 #[cfg(test)]
 mod test {
     use std::fs;

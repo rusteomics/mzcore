@@ -337,14 +337,14 @@ impl Display for LibrarySpectrum {
         for attr in self.attributes() {
             writeln!(f, "{attr}")?;
         }
-        for analyte in self.analytes.iter() {
+        for analyte in &self.analytes {
             write!(f, "{analyte}")?;
         }
-        for interp in self.interpretations.iter() {
+        for interp in &self.interpretations {
             write!(f, "{interp}")?;
         }
         writeln!(f, "<Peaks>")?;
-        for p in self.peaks.iter() {
+        for p in &self.peaks {
             writeln!(f, "{p}")?;
         }
         Ok(())
@@ -353,15 +353,16 @@ impl Display for LibrarySpectrum {
 
 impl From<mzdata::Spectrum> for LibrarySpectrum {
     fn from(value: mzdata::Spectrum) -> Self {
-        let mut this = Self::default();
-        this.key = (value.index() + 1) as IdType;
-        this.index = value.index();
-        this.name = value
-            .description()
-            .title()
-            .map(|v| v.to_string())
-            .unwrap_or_else(|| value.id().to_string())
-            .into_boxed_str();
+        let mut this = Self {
+            key: (value.index() + 1) as IdType,
+            index: value.index(),
+            name: value
+                .description()
+                .title()
+                .map_or_else(|| value.id().to_string(), |v| v.to_string())
+                .into_boxed_str(),
+            ..Default::default()
+        };
 
         let mut group_id = this.find_last_group_id().unwrap_or_default() + 1;
 
@@ -488,15 +489,7 @@ impl From<mzdata::Spectrum> for LibrarySpectrum {
             this.peaks = value
                 .peaks()
                 .iter()
-                .map(|v| {
-                    AnnotatedPeak::new(
-                        v.mz(),
-                        v.intensity(),
-                        0,
-                        Default::default(),
-                        Default::default(),
-                    )
-                })
+                .map(|v| AnnotatedPeak::new(v.mz(), v.intensity(), 0, Vec::new(), Vec::new()))
                 .collect();
         }
 
