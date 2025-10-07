@@ -5,8 +5,8 @@ use mzcore::{
 };
 
 use crate::{
-    annotation::{AnnotatableSpectrum, AnnotatedPeak, AnnotatedSpectrum},
-    spectrum::RawSpectrum,
+    annotation::{AnnotatableSpectrum, AnnotatedSpectrum},
+    spectrum::{AnnotatedPeak, RawSpectrum},
 };
 
 impl AnnotatableSpectrum for RawSpectrum {
@@ -23,7 +23,10 @@ impl AnnotatableSpectrum for RawSpectrum {
             spectrum: self
                 .spectrum
                 .iter()
-                .map(AnnotatedPeak::background)
+                .enumerate()
+                .map(|(i, p)| {
+                    AnnotatedPeak::new(p.mz, p.intensity.0 as f32, i as u32, Vec::new(), Vec::new())
+                })
                 .collect(),
         }
     }

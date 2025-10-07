@@ -1,8 +1,8 @@
 use mzdata::{prelude::*, spectrum::RefPeakDataLevel};
 
 use crate::{
-    annotation::{AnnotatableSpectrum, AnnotatedPeak, AnnotatedSpectrum},
-    spectrum::RawPeak,
+    annotation::{AnnotatableSpectrum, AnnotatedSpectrum},
+    spectrum::{AnnotatedPeak, RawPeak},
 };
 use mzcore::{
     sequence::CompoundPeptidoformIon,
@@ -21,25 +21,10 @@ impl<S: SpectrumLike> AnnotatableSpectrum for S {
             mass: None,
             peptide,
             spectrum: match self.peaks() {
-                RefPeakDataLevel::Missing | RefPeakDataLevel::RawData(_) => Vec::new(),
-                RefPeakDataLevel::Centroid(data) => data
-                    .iter()
-                    .map(|p| {
-                        AnnotatedPeak::background(&RawPeak {
-                            mz: MassOverCharge::new::<mzcore::system::thomson>(p.mz),
-                            intensity: ordered_float::OrderedFloat(f64::from(p.intensity)),
-                        })
-                    })
-                    .collect(),
-                RefPeakDataLevel::Deconvoluted(data) => data
-                    .iter()
-                    .map(|p| {
-                        AnnotatedPeak::background(&RawPeak {
-                            mz: MassOverCharge::new::<mzcore::system::thomson>(p.neutral_mass), // TODO: This is M (not MH+) which is not very well supported in the current matching
-                            intensity: ordered_float::OrderedFloat(f64::from(p.intensity)),
-                        })
-                    })
-                    .collect(),
+                RefPeakDataLevel::Missing
+                | RefPeakDataLevel::RawData(_)
+                | RefPeakDataLevel::Deconvoluted(_) => Vec::new(), // TODO: handle deconvoluted data better
+                RefPeakDataLevel::Centroid(data) => data.iter().map(|p| p.clone().into()).collect(),
             },
         }
     }

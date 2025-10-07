@@ -29,7 +29,7 @@ impl AnnotatedSpectrum {
                     .is_some_and(|mz| parameters.mz_range.contains(&mz))
             })
             .collect_vec();
-        let total_intensity: f64 = self.spectrum.iter().map(|p| *p.intensity).sum();
+        let total_intensity: f32 = self.spectrum.iter().map(|p| p.intensity).sum();
         let individual_peptides = self
             .peptide
             .peptidoform_ions()
@@ -101,13 +101,13 @@ impl AnnotatedSpectrum {
         peptidoform_ion_index: Option<usize>,
         peptidoform_index: Option<usize>,
         ion: Option<FragmentKind>,
-    ) -> (Recovered<u32>, Recovered<u32>, f64) {
+    ) -> (Recovered<u32>, Recovered<u32>, f32) {
         let (peaks_annotated, fragments_found, intensity_annotated) = self
             .spectrum
             .iter()
             .filter_map(|p| {
                 let number = p
-                    .annotation
+                    .annotations
                     .iter()
                     .filter(|a| {
                         peptidoform_ion_index.is_none_or(|i| a.peptidoform_ion_index == Some(i))
@@ -118,7 +118,7 @@ impl AnnotatedSpectrum {
                 if number == 0 {
                     None
                 } else {
-                    Some((number, *p.intensity))
+                    Some((number, p.intensity))
                 }
             })
             .fold((0u32, 0u32, 0.0), |(n, f, intensity), p| {
@@ -151,7 +151,7 @@ impl AnnotatedSpectrum {
             self.spectrum
                 .iter()
                 .flat_map(|p| {
-                    p.annotation
+                    p.annotations
                         .iter()
                         .filter(|a| {
                             a.peptidoform_ion_index == Some(peptidoform_ion_index)
@@ -187,7 +187,7 @@ impl AnnotatedSpectrum {
             .spectrum
             .iter()
             .flat_map(|p| {
-                p.annotation.iter().filter(|a| {
+                p.annotations.iter().filter(|a| {
                     peptidoform_index.is_none_or(|i| a.peptidoform_index == Some(i))
                         && ion.is_none_or(|kind| a.ion.kind() == kind)
                 })
@@ -212,7 +212,7 @@ impl AnnotatedSpectrum {
         &self,
         fragments: &[&Fragment],
         peptide: Option<(usize, usize, &Peptidoform<T>)>,
-        total_intensity: f64,
+        total_intensity: f32,
     ) -> Vec<(FragmentKind, Score)> {
         [
             FragmentKind::a,

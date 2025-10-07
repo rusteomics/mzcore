@@ -1,5 +1,6 @@
 use std::{collections::HashMap, fmt::Display};
 
+use mzcore::system::MassOverCharge;
 use mzdata::{
     curie,
     mzpeaks::{MZPeakSetType, prelude::*},
@@ -14,13 +15,18 @@ use crate::{
         Attribute, AttributeSet, AttributeValue, Attributed, AttributedMut, EntryType, Term,
         impl_attributed,
     },
+    spectrum::AnnotatedPeak,
     term,
 };
 
+/// The header for a spectral library
 #[derive(Debug, Clone)]
 pub struct LibraryHeader {
+    /// The version of the format
     pub format_version: String,
+    /// The attributes for this library
     pub attributes: Vec<Attribute>,
+    /// The attribute classes for this library
     pub attribute_classes: HashMap<EntryType, Vec<AttributeSet>>,
 }
 
@@ -28,8 +34,8 @@ impl Default for LibraryHeader {
     fn default() -> Self {
         Self {
             format_version: "1.0".into(),
-            attributes: Default::default(),
-            attribute_classes: Default::default(),
+            attributes: Vec::new(),
+            attribute_classes: HashMap::new(),
         }
     }
 }
@@ -39,12 +45,12 @@ impl_attributed!(mut LibraryHeader);
 impl Display for LibraryHeader {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let version = Attribute::new(
-            Term::new(curie!(MS:1003186), "library format version".into()),
+            Term::new(curie!(MS:1_003_186), "library format version".into()),
             AttributeValue::Scalar(Value::String(self.format_version.clone())),
             None,
         );
         writeln!(f, "<MzSpecLib>\n{version}")?;
-        for attr in self.attributes.iter() {
+        for attr in &self.attributes {
             writeln!(f, "{attr}")?;
         }
         Ok(())
@@ -52,7 +58,8 @@ impl Display for LibraryHeader {
 }
 
 impl LibraryHeader {
-    pub fn new(
+    /// Create a new library header
+    pub const fn new(
         format_version: String,
         attributes: Vec<Attribute>,
         attribute_classes: HashMap<EntryType, Vec<AttributeSet>>,
@@ -62,103 +69,6 @@ impl LibraryHeader {
             attributes,
             attribute_classes,
         }
-    }
-}
-
-#[derive(Debug, Clone)]
-pub struct AnnotatedPeak<Annotation> {
-    pub mz: f64,
-    pub intensity: f32,
-    pub index: mzdata::mzpeaks::IndexType,
-    pub annotations: Vec<Annotation>,
-    pub aggregations: Vec<String>,
-}
-
-impl<A> Default for AnnotatedPeak<A> {
-    fn default() -> Self {
-        Self {
-            mz: f64::default(),
-            intensity: f32::default(),
-            index: mzdata::mzpeaks::IndexType::default(),
-            annotations: Vec::new(),
-            aggregations: Vec::new(),
-        }
-    }
-}
-
-impl<Annotation> AnnotatedPeak<Annotation> {
-    pub fn new(
-        mz: f64,
-        intensity: f32,
-        index: mzdata::mzpeaks::IndexType,
-        annotations: Vec<Annotation>,
-        aggregations: Vec<String>,
-    ) -> Self {
-        Self {
-            mz,
-            intensity,
-            index,
-            annotations,
-            aggregations,
-        }
-    }
-}
-
-impl<B> AnnotatedPeak<B> {
-    pub fn from<A>(value: AnnotatedPeak<A>) -> Self
-    where
-        B: From<A>,
-    {
-        Self {
-            mz: value.mz,
-            intensity: value.intensity,
-            index: value.index,
-            annotations: value.annotations.into_iter().map(From::from).collect(),
-            aggregations: value.aggregations,
-        }
-    }
-}
-
-impl<B> AnnotatedPeak<B> {
-    pub fn try_from<A>(value: AnnotatedPeak<A>) -> Result<Self, B::Error>
-    where
-        B: TryFrom<A>,
-    {
-        Ok(Self {
-            mz: value.mz,
-            intensity: value.intensity,
-            index: value.index,
-            annotations: value
-                .annotations
-                .into_iter()
-                .map(B::try_from)
-                .collect::<Result<Vec<_>, _>>()?,
-            aggregations: value.aggregations,
-        })
-    }
-}
-
-mzdata::mzpeaks::implement_centroidlike!(AnnotatedPeak<Fragment>, true);
-
-impl<A: Display> Display for AnnotatedPeak<A> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}\t{}", self.mz, self.intensity)?;
-
-        if !self.annotations.is_empty() {
-            f.write_str("\t")?;
-            for (i, a) in self.annotations.iter().enumerate() {
-                if i == 0 {
-                    write!(f, "{a}")?;
-                } else {
-                    write!(f, ",{a}")?;
-                }
-            }
-        }
-        if !self.aggregations.is_empty() {
-            f.write_str("\t")?;
-            write!(f, "{}", self.aggregations.join(","))?;
-        }
-        Ok(())
     }
 }
 
@@ -175,7 +85,7 @@ impl_attributed!(mut Analyte);
 impl Display for Analyte {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         writeln!(f, "<Analyte={}>", self.id)?;
-        for attr in self.attributes.iter() {
+        for attr in &self.attributes {
             writeln!(f, "{attr}")?;
         }
         Ok(())
@@ -183,7 +93,7 @@ impl Display for Analyte {
 }
 
 impl Analyte {
-    pub fn new(id: IdType, attributes: Vec<Attribute>) -> Self {
+    pub const fn new(id: IdType, attributes: Vec<Attribute>) -> Self {
         Self { id, attributes }
     }
 }
@@ -197,7 +107,7 @@ pub struct Interpretation {
 }
 
 impl Interpretation {
-    pub fn new(
+    pub const fn new(
         id: IdType,
         attributes: Vec<Attribute>,
         analyte_refs: Vec<IdType>,
@@ -221,20 +131,20 @@ impl Display for Interpretation {
             let val = AttributeValue::List(
                 self.analyte_refs
                     .iter()
-                    .map(|v| Value::Int((*v) as i64))
+                    .map(|v| Value::Int(i64::from(*v)))
                     .collect(),
             );
             let mixture_ids = Attribute::new(
-                Term::new(curie!(MS:1003163), "analyte mixture members".into()),
+                Term::new(curie!(MS:1_003_163), "analyte mixture members".into()),
                 val,
                 None,
             );
             writeln!(f, "{mixture_ids}")?;
         }
-        for attr in self.attributes.iter() {
+        for attr in &self.attributes {
             writeln!(f, "{attr}")?;
         }
-        for member in self.members.iter() {
+        for member in &self.members {
             write!(f, "{member}")?;
         }
         Ok(())
@@ -253,7 +163,7 @@ impl_attributed!(mut InterpretationMember);
 impl Display for InterpretationMember {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         writeln!(f, "<InterpretationMember={}>", self.id)?;
-        for attr in self.attributes.iter() {
+        for attr in &self.attributes {
             f.write_str(attr.to_string().as_str())?;
         }
         Ok(())
@@ -274,7 +184,7 @@ pub struct LibrarySpectrum {
 impl_attributed!(mut LibrarySpectrum);
 
 impl LibrarySpectrum {
-    pub fn new(
+    pub const fn new(
         key: IdType,
         index: usize,
         name: Box<str>,
@@ -295,7 +205,7 @@ impl LibrarySpectrum {
     }
 
     pub fn scan_number(&self) -> Option<usize> {
-        let (_, v) = self.find_by_id(curie!(MS:1003057))?;
+        let (_, v) = self.find_by_id(curie!(MS:1_003_057))?;
         v.value.scalar().to_i64().ok().map(|v| v as usize)
     }
 
@@ -422,7 +332,7 @@ impl From<mzdata::Spectrum> for LibrarySpectrum {
         for scan in value.acquisition().iter() {
             if let Some(filter_string) = scan.filter_string() {
                 let attr = Attribute::new(
-                    term!(MS:1000512|"filter string"),
+                    term!(MS:1_000_512|"filter string"),
                     Value::String(filter_string.to_string()),
                     None,
                 );
@@ -430,7 +340,7 @@ impl From<mzdata::Spectrum> for LibrarySpectrum {
             }
 
             let attr = Attribute::new(
-                term!(MS:1000016|"scan start time"),
+                term!(MS:1_000_016|"scan start time"),
                 Value::Float(scan.start_time),
                 Some(group_id),
             );
@@ -442,8 +352,8 @@ impl From<mzdata::Spectrum> for LibrarySpectrum {
             if scan.injection_time != 0.0 {
                 this.add_attribute_with_unit(
                     Attribute::new(
-                        term!(MS:1000927|"ion injection time"),
-                        Value::Float(scan.injection_time as f64),
+                        term!(MS:1_000_927|"ion injection time"),
+                        Value::Float(f64::from(scan.injection_time)),
                         Some(group_id),
                     ),
                     Unit::Millisecond,
@@ -459,7 +369,7 @@ impl From<mzdata::Spectrum> for LibrarySpectrum {
         if let Some(precursor) = value.precursor() {
             let ion = precursor.ion();
             this.add_attribute(Attribute::new(
-                term!(MS:1000744|"selected ion m/z"),
+                term!(MS:1_000_744|"selected ion m/z"),
                 Value::Float(ion.mz()),
                 Some(group_id),
             ));
@@ -467,14 +377,14 @@ impl From<mzdata::Spectrum> for LibrarySpectrum {
             group_id += 1;
             if let Some(z) = ion.charge() {
                 this.add_attribute(Attribute::new(
-                    term!(MS:1000041|"charge state"),
-                    Value::Int(z as i64),
+                    term!(MS:1_000_041|"charge state"),
+                    Value::Int(i64::from(z)),
                     None,
                 ));
             }
             this.add_attribute(Attribute::new(
-                term!(MS:1000042|"peak intensity"),
-                Value::Float(ion.intensity as f64),
+                term!(MS:1_000_042|"peak intensity"),
+                Value::Float(f64::from(ion.intensity)),
                 Some(group_id),
             ));
             this.add_attribute(Attribute::unit(Unit::MZ, Some(group_id)).unwrap());
@@ -489,7 +399,15 @@ impl From<mzdata::Spectrum> for LibrarySpectrum {
             this.peaks = value
                 .peaks()
                 .iter()
-                .map(|v| AnnotatedPeak::new(v.mz(), v.intensity(), 0, Vec::new(), Vec::new()))
+                .map(|v| {
+                    AnnotatedPeak::new(
+                        MassOverCharge::new::<mzcore::system::thomson>(v.mz()),
+                        v.intensity(),
+                        0,
+                        Vec::new(),
+                        Vec::new(),
+                    )
+                })
                 .collect();
         }
 

@@ -5,7 +5,7 @@ use std::{
 };
 
 use indexmap::IndexMap;
-use mzcore::prelude::CompoundPeptidoformIon;
+use mzcore::{prelude::CompoundPeptidoformIon, system::MassOverCharge};
 use mzdata::{
     mzpeaks::{peak_set::PeakSetVec, prelude::PeakCollectionMut},
     params::{CURIE, ControlledVocabulary, ParamValue},
@@ -14,9 +14,10 @@ use mzdata::{
 use crate::{
     fragment::{Fragment, parse_mz_paf},
     mzspeclib::{
-        Analyte, AnnotatedPeak, Attribute, AttributeParseError, AttributeSet, Attributed,
-        AttributedMut, EntryType, IdType, Interpretation, LibraryHeader, LibrarySpectrum, Term,
+        Analyte, Attribute, AttributeParseError, AttributeSet, Attributed, AttributedMut,
+        EntryType, IdType, Interpretation, LibraryHeader, LibrarySpectrum, Term,
     },
+    spectrum::AnnotatedPeak,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
@@ -489,7 +490,13 @@ impl<R: Read> MzSpecLibParser<R> {
             ));
         };
 
-        let mut peak = AnnotatedPeak::new(mz, intensity, 0, Vec::new(), Vec::new());
+        let mut peak = AnnotatedPeak::new(
+            MassOverCharge::new::<mzcore::system::thomson>(mz),
+            intensity,
+            0,
+            Vec::new(),
+            Vec::new(),
+        );
 
         match it.next() {
             Some(v) => {

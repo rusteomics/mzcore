@@ -25,7 +25,7 @@ impl AnnotatedSpectrum {
                     .is_some_and(|mz| parameters.mz_range.contains(&mz))
             })
             .collect::<Vec<_>>();
-        let total_intensity: f64 = self.spectrum.iter().map(|p| *p.intensity).sum();
+        let total_intensity: f32 = self.spectrum.iter().map(|p| p.intensity).sum();
 
         let theoretical = |label: &AmbiguousLabel| {
             fragments
@@ -40,7 +40,7 @@ impl AnnotatedSpectrum {
         let annotated = |label: &AmbiguousLabel| {
             self.spectrum.iter().fold((0_u32, 0.0), |acc, p| {
                 let count = p
-                    .annotation
+                    .annotations
                     .iter()
                     .filter(|f| {
                         f.formula
@@ -51,7 +51,7 @@ impl AnnotatedSpectrum {
                 if count == 0 {
                     acc
                 } else {
-                    (acc.0 + count as u32, acc.1 + p.intensity.0)
+                    (acc.0 + count as u32, acc.1 + p.intensity)
                 }
             })
         };
@@ -203,9 +203,9 @@ pub struct AmbiguousAminoAcid {
     /// Peptidoform ion index
     pub peptidoform_ion_index: usize,
     /// First option, the amino acid, the fraction of theoretical fragments found, and the fraction of TIC that is annotated
-    pub optiona_a: (AminoAcid, Recovered<u32>, Recovered<f64>),
+    pub optiona_a: (AminoAcid, Recovered<u32>, Recovered<f32>),
     /// Second option, the amino acid, the fraction of theoretical fragments found, and the fraction of TIC that is annotated
-    pub optiona_b: (AminoAcid, Recovered<u32>, Recovered<f64>),
+    pub optiona_b: (AminoAcid, Recovered<u32>, Recovered<f32>),
 }
 
 /// The statistics on an ambiguous modification and the support for each of the possible locations
@@ -218,5 +218,5 @@ pub struct AmbiguousModification {
     /// Peptidoform ion index
     pub peptidoform_ion_index: usize,
     /// All options, with the location, the fraction of theoretical fragments found, and the fraction of TIC that is annotated
-    pub options: Vec<(SequencePosition, Recovered<u32>, Recovered<f64>)>,
+    pub options: Vec<(SequencePosition, Recovered<u32>, Recovered<f32>)>,
 }

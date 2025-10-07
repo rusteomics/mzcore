@@ -48,9 +48,12 @@ pub trait AnnotatableSpectrum {
                 // Get the index of the element closest to this value
                 if let Some(index) = Self::search(self, mz, tolerance) {
                     // Keep the theoretical fragments sorted to have the highest theoretical likelihood on top
-                    match annotated.spectrum[index].annotation.binary_search(fragment) {
+                    match annotated.spectrum[index]
+                        .annotations
+                        .binary_search(fragment)
+                    {
                         Ok(ai) | Err(ai) => annotated.spectrum[index]
-                            .annotation
+                            .annotations
                             .insert(ai, fragment.clone()),
                     }
                 }

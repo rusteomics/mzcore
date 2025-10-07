@@ -74,7 +74,7 @@ impl AnnotatedSpectrum {
 
     fn internal_fdr(&self, mzs: &[MassOverCharge], parameters: &MatchingParameters) -> Fdr {
         let mut results = Vec::with_capacity(51);
-        let total_intensity = self.spectrum.iter().map(|s| s.intensity.0).sum::<f64>();
+        let total_intensity = self.spectrum.iter().map(|s| s.intensity).sum::<f32>();
         if self.spectrum.is_empty() {
             return Fdr::default();
         }
@@ -84,10 +84,9 @@ impl AnnotatedSpectrum {
                 .spectrum
                 .iter()
                 .map(|p| {
-                    p.experimental_mz
-                        + MassOverCharge::new::<mzcore::system::thomson>(
-                            std::f64::consts::PI + f64::from(offset),
-                        )
+                    p.mz + MassOverCharge::new::<mzcore::system::thomson>(
+                        std::f64::consts::PI + f64::from(offset),
+                    )
                 })
                 .collect_vec();
             let mut peak_annotated = vec![false; peaks.len()];
@@ -113,11 +112,11 @@ impl AnnotatedSpectrum {
 
                 if parameters
                     .tolerance
-                    .within(&self.spectrum[closest.0].experimental_mz, mass)
+                    .within(&self.spectrum[closest.0].mz, mass)
                     && !peak_annotated[closest.0]
                 {
                     number_peaks_annotated += 1;
-                    intensity_annotated += self.spectrum[closest.0].intensity.0;
+                    intensity_annotated += self.spectrum[closest.0].intensity;
                     peak_annotated[closest.0] = true;
                 }
             }
@@ -133,18 +132,18 @@ impl AnnotatedSpectrum {
             .sum::<f64>()
             / results.len() as f64)
             .sqrt();
-        let intensity_average = results.iter().map(|r| r.1).sum::<f64>() / results.len() as f64;
+        let intensity_average = results.iter().map(|r| r.1).sum::<f32>() / results.len() as f32;
         let intensity_st_dev = (results
             .iter()
             .map(|x| (x.1 - intensity_average).powi(2))
-            .sum::<f64>()
-            / results.len() as f64)
+            .sum::<f32>()
+            / results.len() as f32)
             .sqrt();
-        let actual: (u32, f64) = self
+        let actual: (u32, f32) = self
             .spectrum
             .iter()
-            .filter(|p| !p.annotation.is_empty())
-            .fold((0, 0.0), |acc, p| (acc.0 + 1, acc.1 + p.intensity.0));
+            .filter(|p| !p.annotations.is_empty())
+            .fold((0, 0.0), |acc, p| (acc.0 + 1, acc.1 + p.intensity));
 
         Fdr {
             peaks_actual: f64::from(actual.0) / self.spectrum.len() as f64,
@@ -167,11 +166,11 @@ pub struct Fdr {
     /// The standard deviation of the false peaks that could be annotated
     pub peaks_standard_deviation_false: f64,
     /// The fraction of the total (assumed to be true) intensity that could be annotated
-    pub intensity_actual: f64,
+    pub intensity_actual: f32,
     /// The average fraction of the false intensity that could be annotated
-    pub intensity_average_false: f64,
+    pub intensity_average_false: f32,
     /// The standard deviation of the false intensity that could be annotated
-    pub intensity_standard_deviation_false: f64,
+    pub intensity_standard_deviation_false: f32,
 }
 
 impl Default for Fdr {
@@ -206,18 +205,18 @@ impl Fdr {
 
     /// Get the false discovery rate (as a fraction).
     /// The average number of false intensity annotated divided by the average number of annotated intensity.
-    pub fn intensity_fdr(self) -> f64 {
+    pub fn intensity_fdr(self) -> f32 {
         self.intensity_average_false / self.intensity_actual
     }
 
     /// Get the number of standard deviations the annotated intensity is from the average false annotations.
-    pub fn intensity_sigma(self) -> f64 {
+    pub fn intensity_sigma(self) -> f32 {
         (self.intensity_actual - self.intensity_average_false)
             / self.intensity_standard_deviation_false
     }
 
     /// Get the intensity score of this annotation. Defined as the log2 of the sigma.
-    pub fn intensity_score(self) -> f64 {
+    pub fn intensity_score(self) -> f32 {
         self.intensity_sigma().log2()
     }
 }
