@@ -812,7 +812,10 @@ impl FragmentType {
 
     /// The labels for this fragment.
     ///
-    /// (Optional superscript prefix, main label, position label)
+    /// /// Returns
+    /// -------
+    /// list[str | None]
+    ///     (optional superscript prefix, main label, optional position label)
     ///
     #[getter]
     fn label(&self) -> (Option<String>, String, Option<String>) {
