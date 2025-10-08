@@ -3,39 +3,54 @@
 
 # Match those fragments!
 
-A peptide fragmentation matching library for Rust. Built to handle very complex peptidoforms in a sensible way.
+A set of libraries to handle peptide centric mass spectrometry calculations. Built to handle very complex peptidoforms in a sensible way. Centered around the following HUPO-PSI standards:
+- [ProForma](https://www.psidev.info/proforma)
+- [mzSpecLib](https://www.psidev.info/mzspeclib)
+- [mzPAF](https://www.psidev.info/mzpaf)
+- [mzTab](https://www.psidev.info/mztab-specifications)
+
+For raw data centered HUPO-PSI standards support (eg mzML, USI) see [mzdata](https://crates.io/crates/mzdata). 
 
 ## Features
 
- - Read [ProForma](https://github.com/HUPO-PSI/ProForma) sequences (complete 2.0 specification supported: 'level 2-ProForma + top-down compliant + cross-linking compliant + glycans compliant + mass spectrum compliant')
- - Generate theoretical fragments with control over the fragmentation model from any ProForma peptidoform
-   - Generate theoretical fragments for chimeric spectra
-   - Generate theoretical fragments for cross-links (also disulfides)
-   - Generate theoretical fragments for modifications of unknown position
-   - Generate peptide backbone (a, b, c, x, y, and z) and satellite ion fragments (d, v, and w)
-   - Generate glycan fragments (B, Y, and internal fragments)
- - Integrated with [mzdata](https://crates.io/crates/mzdata) for reading raw data files
- - Match spectra to the generated fragments
- - [Align peptides based on mass](https://pubs.acs.org/doi/10.1021/acs.jproteome.4c00188)
- - Fast access to the IMGT database of antibody germlines
- - Reading of multiple identified peptide file formats (among others: Fasta, MaxQuant, MSFragger, Novor, OPair, Peaks, and Sage)
- - Exhaustively fuzz tested for reliability (using [cargo-afl](https://crates.io/crates/cargo-afl))
- - Extensive use of [uom](https://docs.rs/uom/latest/uom/) for compile time unit checking
- - Python bindings are provided to several core components of the rustyms library. Go to the [Python documentation](https://rustyms.readthedocs.io/) for more information.
+- mzcore
+  - Read [ProForma](https://github.com/HUPO-PSI/ProForma) sequences (complete 2.0 specification supported: 'level 2-ProForma + top-down compliant + cross-linking compliant + glycans compliant + mass spectrum compliant')
+  - Extensive use of [uom](https://docs.rs/uom/latest/uom/) for compile time unit checking
+  - Exhaustively fuzz tested for reliability (using [cargo-afl](https://crates.io/crates/cargo-afl))
+  - Extensive support for glycans, including generating bitmap and vector images
+- mzannotate
+  - Generate theoretical fragments with control over the fragmentation model from any ProForma peptidoform
+    - Generate theoretical fragments for chimeric spectra
+    - Generate theoretical fragments for cross-links (also disulfides)
+    - Generate theoretical fragments for modifications of unknown position
+    - Generate peptide backbone (a, b, c, x, y, and z) and satellite ion fragments (d, v, and w)
+    - Generate glycan fragments (B, Y, and internal fragments)
+  - Integrated with [mzdata](https://crates.io/crates/mzdata) for reading raw data files
+  - Match spectra to the generated fragments
+- mzalign
+  - [Align peptides based on mass](https://pubs.acs.org/doi/10.1021/acs.jproteome.4c00188)
+  - Consecutive alignment of one sequence on a stretch of multiple sequences
+  - Indexed alignment for fast alignments for big datasets
+- imgt
+  - Fast access to the IMGT database of antibody germlines
+- mzident
+  - Reading of multiple identified peptide file formats (amongst others: Fasta, MaxQuant, MSFragger, Novor, OPair, Peaks, and Sage)
+- rustyms-py
+  - Python bindings are provided to several core components of the libraries. Go to the [Python documentation](https://rustyms.readthedocs.io/) for more information.
 
 # Folder organisation
 
-## rustyms
+## mzcore/mzalign/mzannotate/mzcv/mzident/imgt
 
-This is the main library. This contains all source code, databases (Unimod etc) and example data to run the rustyms library.
+These are the main librares. This contains all source code, databases (Unimod etc) and example data.
 
 ## examples
 
-Some examples on how to use the rustyms library are provided here, see the readme file in the examples themselves for more details.
+Some examples on how to use the libraries provided here, see the readme file in the examples themselves for more details.
 
 ## fuzz
 
-The harness to fuzz test the library for increased stability, see the readme for more details.
+The harness to fuzz test the libraries for increased stability, see the readme for more details.
 
 ## rustyms-py
 
