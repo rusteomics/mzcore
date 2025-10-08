@@ -12,7 +12,6 @@ crate-type = ["cdylib"]
 
 [dependencies]
 context_error = { workspace = true }
-ordered-float = { workspace = true }
 pyo3 = { workspace = true }
 mzcore = { path = "../mzcore", features=["isotopes"] }
 mzalign = { path = "../mzalign" }

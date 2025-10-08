@@ -1,17 +1,13 @@
 //! Python bindings to the mzcore library.
-#![allow(clippy::doc_markdown)]
+#![allow(clippy::doc_markdown, clippy::trivially_copy_pass_by_ref)]
 
 use std::fmt::Debug;
 use std::num::NonZeroU16;
 
-use ordered_float::OrderedFloat;
 use pyo3::{exceptions::PyValueError, prelude::*, types::PyType};
 
 use mzalign::AlignScoring;
-use mzannotate::{
-    annotation::AnnotatableSpectrum,
-    prelude::{GlycanFragmention, PeptidoformFragmentation},
-};
+use mzannotate::prelude::{GlycanFragmention, PeptidoformFragmentation};
 use mzcore::{
     chemistry::{Chemical, MultiChemical},
     sequence::{IsAminoAcid, Linked, SimpleLinear},
@@ -118,7 +114,7 @@ impl Element {
     fn new(symbol: &str) -> PyResult<Self> {
         mzcore::chemistry::Element::try_from(symbol)
             .map(Element)
-            .map_err(|_| PyValueError::new_err("Invalid element symbol."))
+            .map_err(|()| PyValueError::new_err("Invalid element symbol."))
     }
 
     fn __repr__(&self) -> String {
@@ -710,9 +706,9 @@ impl Fragment {
             self.charge(),
             self.ion().0,
             self.peptidoform_ion_index()
-                .map_or("-".to_string(), |p| p.to_string()),
+                .map_or_else(|| "-".to_string(), |p| p.to_string()),
             self.peptidoform_index()
-                .map_or("-".to_string(), |p| p.to_string()),
+                .map_or_else(|| "-".to_string(), |p| p.to_string()),
             self.neutral_loss(),
         )
     }
@@ -746,7 +742,7 @@ impl Fragment {
     /// int
     ///
     #[getter]
-    fn charge(&self) -> i16 {
+    const fn charge(&self) -> i16 {
         self.0.charge.value as i16
     }
 
@@ -1033,31 +1029,31 @@ pub struct SequencePosition(mzcore::sequence::SequencePosition);
 impl SequencePosition {
     /// Create a N-terminal position
     #[staticmethod]
-    fn n_term() -> Self {
+    const fn n_term() -> Self {
         Self(mzcore::sequence::SequencePosition::NTerm)
     }
 
     /// Create a position based on index (0-based indexing)
     #[staticmethod]
-    fn index(index: usize) -> Self {
+    const fn index(index: usize) -> Self {
         Self(mzcore::sequence::SequencePosition::Index(index))
     }
 
     /// Create a C-terminal position
     #[staticmethod]
-    fn c_term() -> Self {
+    const fn c_term() -> Self {
         Self(mzcore::sequence::SequencePosition::CTerm)
     }
 
     /// Check if this is a N-terminal position
     #[getter]
-    fn is_n_term(&self) -> bool {
-        matches!(self, Self(mzcore::sequence::SequencePosition::NTerm))
+    const fn is_n_term(&self) -> bool {
+        matches!(self.0, mzcore::sequence::SequencePosition::NTerm)
     }
 
     /// Get the index of this position, if it is a terminal position this returns None.
     #[getter]
-    fn get_index(&self) -> Option<usize> {
+    const fn get_index(&self) -> Option<usize> {
         match self.0 {
             mzcore::sequence::SequencePosition::Index(i) => Some(i),
             _ => None,
@@ -1066,11 +1062,8 @@ impl SequencePosition {
 
     /// Check if this is a C-terminal position
     #[getter]
-    fn is_c_term(&self) -> bool {
-        matches!(
-            self,
-            SequencePosition(mzcore::sequence::SequencePosition::CTerm)
-        )
+    const fn is_c_term(&self) -> bool {
+        matches!(self.0, mzcore::sequence::SequencePosition::CTerm)
     }
 }
 /// A compound peptidoform ion with all data as provided by ProForma 2.0.
@@ -1304,7 +1297,7 @@ impl PeptidoformIon {
                 &match_model(model),
             )
             .into_iter()
-            .map(|f| Fragment(f))
+            .map(Fragment)
             .collect()
     }
 
@@ -1350,7 +1343,7 @@ impl Peptidoform {
         format!("Peptidoform({})", self.0)
     }
 
-    fn __len__(&self) -> usize {
+    const fn __len__(&self) -> usize {
         self.0.len()
     }
 
@@ -1518,7 +1511,7 @@ impl Peptidoform {
                 &match_model(model),
             )
             .into_iter()
-            .map(|f| Fragment(f))
+            .map(Fragment)
             .collect()
         })
     }
@@ -1598,7 +1591,7 @@ impl AnnotatedPeak {
     /// float
     ///
     #[getter]
-    fn experimental_mz(&self) -> f64 {
+    const fn experimental_mz(&self) -> f64 {
         self.0.mz.value
     }
 
@@ -1609,7 +1602,7 @@ impl AnnotatedPeak {
     /// float
     ///
     #[getter]
-    fn intensity(&self) -> f32 {
+    const fn intensity(&self) -> f32 {
         self.0.intensity
     }
 
