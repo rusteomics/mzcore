@@ -4,10 +4,10 @@
 # Match those fragments!
 
 A set of libraries to handle peptide centric mass spectrometry calculations. Built to handle very complex peptidoforms in a sensible way. Centered around the following HUPO-PSI standards:
-- [ProForma](https://www.psidev.info/proforma)
-- [mzSpecLib](https://www.psidev.info/mzspeclib)
-- [mzPAF](https://www.psidev.info/mzpaf)
-- [mzTab](https://www.psidev.info/mztab-specifications)
+- [ProForma](https://www.psidev.info/proforma) A standard notation for proteo/peptidoforms allowing for highly complex definitions
+- [mzSpecLib](https://www.psidev.info/mzspeclib) A standard notation for spectral libraries
+- [mzPAF](https://www.psidev.info/mzpaf) A standard notation of peak fragment annotation
+- [mzTab](https://www.psidev.info/mztab-specifications) A standard notation for matched peptidoforms from database and _de novo_ searches
 
 For raw data centered HUPO-PSI standards support (eg mzML, USI) see [mzdata](https://crates.io/crates/mzdata). 
 
@@ -25,7 +25,8 @@ For raw data centered HUPO-PSI standards support (eg mzML, USI) see [mzdata](htt
     - Generate theoretical fragments for modifications of unknown position
     - Generate peptide backbone (a, b, c, x, y, and z) and satellite ion fragments (d, v, and w)
     - Generate glycan fragments (B, Y, and internal fragments)
-  - Integrated with [mzdata](https://crates.io/crates/mzdata) for reading raw data files
+  - Integrated with [mzdata](https://crates.io/crates/mzdata)
+  - Read and write [mzSpecLib](https://www.psidev.info/mzspeclib) and [mzPAF](https://www.psidev.info/mzpaf)
   - Match spectra to the generated fragments
 - mzalign
   - [Align peptides based on mass](https://pubs.acs.org/doi/10.1021/acs.jproteome.4c00188)
@@ -34,7 +35,7 @@ For raw data centered HUPO-PSI standards support (eg mzML, USI) see [mzdata](htt
 - imgt
   - Fast access to the IMGT database of antibody germlines
 - mzident
-  - Reading of multiple identified peptide file formats (amongst others: Fasta, MaxQuant, MSFragger, Novor, OPair, Peaks, and Sage)
+  - Reading of multiple identified peptide file formats (amongst others: [mzTab](https://www.psidev.info/mztab-specifications), Fasta, MaxQuant, MSFragger, Novor, OPair, Peaks, and Sage)
 - rustyms-py
   - Python bindings are provided to several core components of the libraries. Go to the [Python documentation](https://rustyms.readthedocs.io/) for more information.
 

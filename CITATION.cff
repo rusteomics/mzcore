@@ -1,6 +1,6 @@
-title: rustyms
-version: 0.9.0
-abstract:  A rust library for parsing Pro Forma peptides and matching them against MS spectra .
+title: mzcore
+version: 0.11.0
+abstract:  A set of Rust libraries for parsing ProForma peptides and matching them against MS spectra.
 authors:
   - affiliation: Utrecht University
     family-names: Schulte
@@ -13,6 +13,7 @@ authors:
   - affiliation: Utrecht University
     family-names: Heerdink
     given-names: Auke
+    orcid: https://orcid.org/0000-0002-8537-8285
 cff-version: 1.2.0
 identifiers:
   - description: Main paper (preprint)
@@ -26,12 +27,11 @@ identifiers:
     value: https://www.biorxiv.org/content/10.1101/2024.02.20.581155v1
   - description: Repository
     type: url
-    value: https://github.com/snijderlab/rustyms
+    value: https://github.com/rusteomics/mzcore
 keywords:
   - sequencing
-  - antibody
   - mass-spectrometry
   - de novo
 license: MIT OR Apache-2.0
 message: If you use this software, please cite it using these metadata.
-repository-code: https://github.com/snijderlab/rustyms
+repository-code: https://github.com/rusteomics/mzcore
