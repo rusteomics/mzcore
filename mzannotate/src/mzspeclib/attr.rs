@@ -14,7 +14,7 @@ pub enum TermParserError {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Term {
     pub accession: CURIE,
-    pub name: Box<str>,
+    pub name: Cow<'static, str>, // Static Cow to allow to have term in match arms
 }
 
 impl PartialOrd for Term {
@@ -34,11 +34,11 @@ impl Ord for Term {
 
 #[macro_export]
 macro_rules! term {
-    ($ns:ident:$accession:literal|$name:literal) => {
-        $crate::mzspeclib::Term::new(
-            mzdata::curie!($ns:$accession),
-            $name.to_string().into_boxed_str()
-        )
+    ($ns:ident:$accession:literal|$name:literal) =>  {
+        $crate::mzspeclib::Term {
+            accession: curie!($ns:$accession),
+            name: std::borrow::Cow::Borrowed($name)
+        }
     };
 }
 
@@ -48,17 +48,29 @@ impl FromStr for Term {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         if let Some((curie, name)) = s.split_once('|') {
             let curie: CURIE = curie.parse().map_err(TermParserError::CURIEError)?;
-            let name = name.to_string().into_boxed_str();
-            Ok(Self::new(curie, name))
+            Ok(Self::new(curie, name.to_string()))
         } else {
             Err(TermParserError::MissingPipe(s.to_string()))
         }
     }
 }
 
+impl TryFrom<mzdata::Param> for Term {
+    type Error = ();
+    fn try_from(value: mzdata::Param) -> Result<Self, ()> {
+        Ok(Self {
+            accession: value.curie().ok_or(())?,
+            name: value.name.into(),
+        })
+    }
+}
+
 impl Term {
-    pub fn new(accession: CURIE, name: Box<str>) -> Self {
-        Self { accession, name }
+    pub const fn new(accession: CURIE, name: String) -> Self {
+        Self {
+            accession,
+            name: Cow::Owned(name),
+        }
     }
 }
 
@@ -219,7 +231,7 @@ impl Attribute {
         let accession = unit.to_curie()?;
         Some(Self::new(
             term!(UO:0_000_000|"unit"),
-            Term::new(accession, name.to_string().into_boxed_str()),
+            Term::new(accession, name.to_string()),
             group_id,
         ))
     }

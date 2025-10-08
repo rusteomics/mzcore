@@ -4,6 +4,7 @@ use std::{
     io::{self, prelude::*},
 };
 
+use context_error::{BasicKind, BoxedError};
 use indexmap::IndexMap;
 use mzcore::{
     prelude::*,
@@ -13,15 +14,17 @@ use mzdata::{
     curie,
     mzpeaks::{peak_set::PeakSetVec, prelude::PeakCollectionMut},
     params::{CURIE, ControlledVocabulary, ParamValue},
+    spectrum::SpectrumDescription,
 };
 
 use crate::{
     fragment::{Fragment, parse_mz_paf},
     mzspeclib::{
         Analyte, Attribute, AttributeParseError, AttributeSet, Attributed, AttributedMut,
-        EntryType, IdType, Interpretation, LibraryHeader, Term,
+        EntryType, Id, Interpretation, LibraryHeader,
     },
     spectrum::{AnnotatedPeak, AnnotatedSpectrum},
+    term,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
@@ -50,6 +53,8 @@ pub enum MzSpecLibTextParseError {
     InvalidContentAtState(String, ParserState, u64),
     AttributeParseError(AttributeParseError, ParserState, u64),
     EOF,
+    InconsistentCharge,
+    InvalidProforma(BoxedError<'static, BasicKind>),
 }
 
 // impl From<MzSpecLibTextParseError> for io::Error {
@@ -315,7 +320,7 @@ impl<R: Read> MzSpecLibParser<R> {
             self.state = to_state;
             let buf_ = buf.trim();
             if let Some((_, val)) = buf_[..buf_.len() - 1].split_once('=') {
-                val.parse::<IdType>().map_err(|_| {
+                val.parse::<Id>().map_err(|_| {
                     MzSpecLibTextParseError::InvalidContentAtState(
                         buf.to_string(),
                         self.state,
@@ -339,6 +344,9 @@ impl<R: Read> MzSpecLibParser<R> {
         Ok(id)
     }
 
+    /// Parse an analyte from the stream.
+    /// # Errors
+    /// If the analyte
     fn read_analyte(&mut self) -> Result<Analyte, MzSpecLibTextParseError> {
         let mut buf = String::new();
         let z = self
@@ -356,11 +364,12 @@ impl<R: Read> MzSpecLibParser<R> {
                     if attr.name.accession == curie!(MS:1_003_270)
                         && let mzdata::params::Value::String(value) = attr.value.scalar().as_ref()
                     {
-                        let peptidoform_ion = PeptidoformIon::pro_forma(value, None).unwrap(); // TODO: handle error nicely
+                        let peptidoform_ion = PeptidoformIon::pro_forma(value, None)
+                            .map_err(|e| MzSpecLibTextParseError::InvalidProforma(e.to_owned()))?;
                         if let Some(charge) = peptidoform_ion.get_charge_carriers() {
                             let charge = charge.charge();
                             if analyte.charge.is_some_and(|c| c != charge) {
-                                todo!("Throw nice error");
+                                return Err(MzSpecLibTextParseError::InconsistentCharge);
                             } else if analyte.charge.is_none() {
                                 analyte.charge = Some(charge);
                             }
@@ -371,7 +380,12 @@ impl<R: Read> MzSpecLibParser<R> {
                     {
                         let charge = Charge::new::<mzcore::system::e>(*value as isize);
                         if analyte.charge.is_some_and(|c| c != charge) {
-                            todo!("Throw nice error");
+                            return Err(MzSpecLibTextParseError::InconsistentCharge);
+                        }
+                        if let Some(p) = analyte.peptidoform_ion.as_mut()
+                            && p.get_charge_carriers().is_none()
+                        {
+                            p.set_charge_carriers(Some(MolecularCharge::proton(charge.value)));
                         }
                         analyte.charge = Some(charge);
                     } else {
@@ -394,10 +408,7 @@ impl<R: Read> MzSpecLibParser<R> {
         let mut next_group_id = analyte.find_last_group_id().unwrap_or_default();
         let mut last_group_id = 0;
 
-        let attr_set_name = Term::new(
-            mzdata::curie!(MS:1_003_212),
-            "library attribute set name".into(),
-        );
+        let attr_set_name = term!(MS:1_003_212|"library attribute set name");
         let attr_sets: Vec<_> = analyte
             .find_all(&attr_set_name)
             .map(|v| v.value.to_string())
@@ -461,10 +472,7 @@ impl<R: Read> MzSpecLibParser<R> {
         let mut next_group_id = interp.find_last_group_id().unwrap_or_default();
         let mut last_group_id = 0;
 
-        let attr_set_name = Term::new(
-            mzdata::curie!(MS:1003212),
-            "library attribute set name".into(),
-        );
+        let attr_set_name = term!(MS:1003212|"library attribute set name");
         let attr_sets: Vec<_> = interp
             .find_all(&attr_set_name)
             .map(|v| v.value.to_string())
@@ -555,8 +563,7 @@ impl<R: Read> MzSpecLibParser<R> {
         let id = self.parse_decl(&buf, "<Spectrum=", ParserState::Spectrum)?;
         let mut spec = AnnotatedSpectrum::new(
             id,
-            0,
-            Box::default(),
+            SpectrumDescription::default(),
             Vec::new(),
             Vec::new(),
             Vec::new(),
@@ -569,12 +576,12 @@ impl<R: Read> MzSpecLibParser<R> {
                     CURIE {
                         controlled_vocabulary: ControlledVocabulary::MS,
                         accession: 1003061,
-                    } => spec.name = attr.value.to_string().into_boxed_str(),
+                    } => spec.description.id = attr.value.to_string(),
                     CURIE {
                         controlled_vocabulary: ControlledVocabulary::MS,
                         accession: 1003062,
                     } => {
-                        spec.index = attr.value.scalar().to_u64().map_err(|v| {
+                        spec.description.index = attr.value.scalar().to_u64().map_err(|v| {
                             MzSpecLibTextParseError::AttributeParseError(
                                 AttributeParseError::ValueParseError(v, buf.clone()),
                                 self.state,
@@ -608,10 +615,8 @@ impl<R: Read> MzSpecLibParser<R> {
         let mut next_group_id = spec.find_last_group_id().unwrap_or_default();
         let mut last_group_id = 0;
 
-        let attr_set_name = Term::new(
-            mzdata::curie!(MS:1003212),
-            "library attribute set name".into(),
-        );
+        let attr_set_name = term!(MS:1003212|"library attribute set name");
+
         let attr_sets: Vec<_> = spec
             .find_all(&attr_set_name)
             .map(|v| v.value.to_string())
@@ -695,7 +700,7 @@ impl<R: Read> Iterator for MzSpecLibParser<R> {
 #[derive(Debug, Default, Clone, PartialEq, Eq, PartialOrd)]
 pub struct LibraryIndexRecord {
     pub offset: u64,
-    pub key: IdType,
+    pub key: Id,
     pub index: usize,
     pub line_number: u64,
     pub name: Box<str>,
@@ -705,7 +710,7 @@ pub struct LibraryIndexRecord {
 pub struct LibraryIndex {
     pub init: bool,
     primary_index: IndexMap<usize, LibraryIndexRecord>,
-    key_index: HashMap<IdType, usize>,
+    key_index: HashMap<Id, usize>,
     name_index: HashMap<Box<str>, usize>,
 }
 
@@ -716,7 +721,7 @@ impl LibraryIndex {
         self.primary_index.insert(index, record);
     }
 
-    pub fn get_by_key(&self, key: IdType) -> Option<&LibraryIndexRecord> {
+    pub fn get_by_key(&self, key: Id) -> Option<&LibraryIndexRecord> {
         self.primary_index.get(self.key_index.get(&key)?)
     }
 
@@ -764,7 +769,7 @@ impl<R: Read + Seek> MzSpecLibParser<R> {
                         offset_index.insert(current_record.index, current_record);
                     }
                     current_record = Some(LibraryIndexRecord::default());
-                    if let Ok(key) = key.parse::<IdType>() {
+                    if let Ok(key) = key.parse::<Id>() {
                         let r = current_record.as_mut().unwrap();
                         r.index = index;
                         r.key = key;
@@ -802,7 +807,7 @@ impl<R: Read + Seek> MzSpecLibParser<R> {
 
     pub fn get_spectrum_by_key(
         &mut self,
-        key: IdType,
+        key: Id,
     ) -> Option<Result<AnnotatedSpectrum, MzSpecLibTextParseError>> {
         if !self.offsets.init
             && let Err(e) = self.build_index()

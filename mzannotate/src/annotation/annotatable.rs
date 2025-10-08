@@ -1,7 +1,5 @@
-use mzcore::{
-    prelude::{CompoundPeptidoformIon, MassMode},
-    system::MassOverCharge,
-};
+use mzcore::prelude::{CompoundPeptidoformIon, MassMode};
+use mzdata::mzpeaks::PeakCollection;
 
 use crate::prelude::{AnnotatedSpectrum, Fragment, MatchingParameters};
 
@@ -11,29 +9,27 @@ use crate::prelude::{AnnotatedSpectrum, Fragment, MatchingParameters};
 /// indexed mzML, mzMLb, Thermo RAW, and Bruker TDF. Note that any 'Missing' and
 /// [`RawData`](mzdata::spectrum::RawSpectrum) from mzdata result in an empty annotated spectrum.
 /// Also note that the feature `mzdata` is required for the mzdata spectra to work.
-pub trait AnnotatableSpectrum {
-    /// The tolerance type that should be used for searching peaks in the spectrum.
-    type Tolerance: From<mzcore::quantities::Tolerance<MassOverCharge>> + Copy;
-
+pub trait AnnotatableSpectrum: Sized {
     /// Create an empty annotated spectrum, which is required to fill the spectrum vector with
     /// [`blank`](crate::annotation::AnnotatedPeak::background) annotated peaks.
-    fn empty_annotated(&self, peptide: CompoundPeptidoformIon) -> AnnotatedSpectrum;
-
-    /// Search for a specific mz within the tolerance. Has to return the index in the annotated
-    /// spectrum vector for closest peak (if there is any).
-    fn search(&self, query: MassOverCharge, tolerance: Self::Tolerance) -> Option<usize>;
+    fn empty_annotated(self, peptide: CompoundPeptidoformIon) -> AnnotatedSpectrum;
 
     /// Annotate this spectrum with the given peptidoform and given fragments see
     /// [`crate::sequence::CompoundPeptidoformIon::generate_theoretical_fragments`]
     /// to generate the fragments.
     fn annotate(
-        &self,
+        self,
         peptide: CompoundPeptidoformIon,
         theoretical_fragments: &[Fragment],
         parameters: &MatchingParameters,
         mode: MassMode,
     ) -> AnnotatedSpectrum {
-        let tolerance = parameters.tolerance.into();
+        let tolerance = match parameters.tolerance {
+            mzcore::quantities::Tolerance::Absolute(mz) => mzdata::prelude::Tolerance::Da(mz.value),
+            mzcore::quantities::Tolerance::Relative(ratio) => {
+                mzdata::prelude::Tolerance::PPM(ratio.get::<mzcore::system::ratio::ppm>())
+            }
+        };
         let mut annotated = Self::empty_annotated(self, peptide);
 
         for fragment in theoretical_fragments {
@@ -44,7 +40,10 @@ pub trait AnnotatableSpectrum {
                 }
 
                 // Get the index of the element closest to this value
-                if let Some(index) = Self::search(self, mz, tolerance) {
+                if let Some(index) = annotated
+                    .peaks
+                    .search(mz.get::<mzcore::system::thomson>(), tolerance)
+                {
                     // Keep the theoretical fragments sorted to have the highest theoretical likelihood on top
                     match annotated.peaks[index].annotations.binary_search(fragment) {
                         Ok(ai) | Err(ai) => annotated.peaks[index]
@@ -56,5 +55,24 @@ pub trait AnnotatableSpectrum {
         }
 
         annotated
+    }
+}
+
+impl<T: Into<AnnotatedSpectrum>> AnnotatableSpectrum for T {
+    fn empty_annotated(self, peptide: CompoundPeptidoformIon) -> AnnotatedSpectrum {
+        let mut spectrum: AnnotatedSpectrum = self.into();
+        for (index, peptidoform_ion) in peptide.into_peptidoform_ions().into_iter().enumerate() {
+            let charge = peptidoform_ion
+                .get_charge_carriers()
+                .map(mzcore::chemistry::MolecularCharge::charge);
+            spectrum.add_analyte(crate::mzspeclib::Analyte::new(
+                index as u32,
+                Some(peptidoform_ion),
+                charge,
+                Vec::new(),
+            ));
+        }
+
+        spectrum
     }
 }

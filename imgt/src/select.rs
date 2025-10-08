@@ -139,7 +139,7 @@ pub enum AlleleSelection {
 }
 
 impl AlleleSelection {
-    #[cfg(not(feature = "internal-no-data"))]
+    #[allow(dead_code)] // If internal no data is turned on
     const fn take_num(self) -> usize {
         match self {
             Self::First => 1,
@@ -249,7 +249,7 @@ impl Germlines {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, not(feature = "internal-no-data")))]
 #[expect(clippy::missing_panics_doc)]
 mod tests {
     use std::collections::HashSet;

@@ -37,7 +37,7 @@ impl_attributed!(mut LibraryHeader);
 impl Display for LibraryHeader {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let version = Attribute::new(
-            Term::new(curie!(MS:1_003_186), "library format version".into()),
+            term!(MS:1_003_186|"library format version"),
             AttributeValue::Scalar(Value::String(self.format_version.clone())),
             None,
         );
@@ -65,14 +65,14 @@ impl LibraryHeader {
 }
 
 /// An ID
-pub type IdType = u32;
+pub type Id = u32;
 
 /// An analyte that resulted in the spectrum.
 #[derive(Default, Debug, Clone)]
 pub struct Analyte {
     /// The numeric id of this analyte
-    pub id: IdType,
-    /// The peptidoform, this can be missing if the analyte is not a peptidoform (uses term MS:1003270)
+    pub id: Id,
+    /// The peptidoform, this can be missing if the analyte is not a peptidoform (uses term MS:1003270) this also includes the charge if defined
     pub peptidoform_ion: Option<PeptidoformIon>,
     /// The charge (MS:1000041)
     pub charge: Option<Charge>,
@@ -102,7 +102,7 @@ impl Display for Analyte {
 impl Analyte {
     /// Create a new analyte
     pub const fn new(
-        id: IdType,
+        id: Id,
         peptidoform_ion: Option<PeptidoformIon>,
         charge: Option<Charge>,
         attributes: Vec<Attribute>,
@@ -118,17 +118,17 @@ impl Analyte {
 
 #[derive(Default, Debug, Clone)]
 pub struct Interpretation {
-    pub id: IdType,
+    pub id: Id,
     pub attributes: Vec<Attribute>,
-    pub analyte_refs: Vec<IdType>,
+    pub analyte_refs: Vec<Id>,
     pub members: Vec<InterpretationMember>,
 }
 
 impl Interpretation {
     pub const fn new(
-        id: IdType,
+        id: Id,
         attributes: Vec<Attribute>,
-        analyte_refs: Vec<IdType>,
+        analyte_refs: Vec<Id>,
         members: Vec<InterpretationMember>,
     ) -> Self {
         Self {
@@ -152,11 +152,8 @@ impl Display for Interpretation {
                     .map(|v| Value::Int(i64::from(*v)))
                     .collect(),
             );
-            let mixture_ids = Attribute::new(
-                Term::new(curie!(MS:1_003_163), "analyte mixture members".into()),
-                val,
-                None,
-            );
+            let mixture_ids =
+                Attribute::new(term!(MS:1_003_163|"analyte mixture members"), val, None);
             writeln!(f, "{mixture_ids}")?;
         }
         for attr in &self.attributes {
@@ -171,9 +168,9 @@ impl Display for Interpretation {
 
 #[derive(Default, Debug, Clone)]
 pub struct InterpretationMember {
-    pub id: IdType,
+    pub id: Id,
     pub attributes: Vec<Attribute>,
-    pub analyte_ref: IdType,
+    pub analyte_ref: Id,
 }
 
 impl_attributed!(mut InterpretationMember);

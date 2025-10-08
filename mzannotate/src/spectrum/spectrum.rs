@@ -6,24 +6,25 @@ use mzdata::{
     mzpeaks::{MZPeakSetType, prelude::*},
     params::{ParamDescribed, ParamLike, ParamValue, Unit, Value, ValueRef},
     prelude::{IonProperties, PrecursorSelection, SpectrumLike},
-    spectrum::SignalContinuity,
+    spectrum::{SignalContinuity, SpectrumDescription},
 };
 
 use crate::{
     fragment::Fragment,
     mzspeclib::{
-        Analyte, Attribute, Attributed, AttributedMut, IdType, Interpretation, Term,
-        impl_attributed,
+        Analyte, Attribute, Attributed, AttributedMut, Id, Interpretation, impl_attributed,
     },
     spectrum::AnnotatedPeak,
     term,
 };
 
+/// An annotated spectrum.
 #[derive(Default, Debug, Clone)]
 pub struct AnnotatedSpectrum {
-    pub key: IdType,
-    pub index: usize,
-    pub name: Box<str>,
+    /// The Id for a spectrum
+    pub key: Id,
+    /// The spectrum description
+    pub description: SpectrumDescription,
     pub attributes: Vec<Attribute>,
     pub analytes: Vec<Analyte>,
     pub interpretations: Vec<Interpretation>,
@@ -34,9 +35,8 @@ impl_attributed!(mut AnnotatedSpectrum);
 
 impl AnnotatedSpectrum {
     pub const fn new(
-        key: IdType,
-        index: usize,
-        name: Box<str>,
+        key: Id,
+        description: SpectrumDescription,
         attributes: Vec<Attribute>,
         analytes: Vec<Analyte>,
         interpretations: Vec<Interpretation>,
@@ -44,8 +44,7 @@ impl AnnotatedSpectrum {
     ) -> Self {
         Self {
             key,
-            index,
-            name,
+            description,
             attributes,
             analytes,
             interpretations,
@@ -58,7 +57,7 @@ impl AnnotatedSpectrum {
         v.value.scalar().to_i64().ok().map(|v| v as usize)
     }
 
-    pub fn analyte(&self, id: IdType) -> Option<&Analyte> {
+    pub fn analyte(&self, id: Id) -> Option<&Analyte> {
         self.analytes.iter().find(|v| v.id == id)
     }
 
@@ -68,12 +67,12 @@ impl AnnotatedSpectrum {
         self.analytes.push(analyte);
     }
 
-    pub fn remove_analyte(&mut self, id: IdType) -> Option<Analyte> {
+    pub fn remove_analyte(&mut self, id: Id) -> Option<Analyte> {
         let i = self.analytes.iter().position(|v| v.id == id)?;
         Some(self.analytes.remove(i))
     }
 
-    pub fn interpretation(&self, id: IdType) -> Option<&Interpretation> {
+    pub fn interpretation(&self, id: Id) -> Option<&Interpretation> {
         self.interpretations.iter().find(|v| v.id == id)
     }
 
@@ -83,7 +82,7 @@ impl AnnotatedSpectrum {
         self.interpretations.push(interpretation);
     }
 
-    pub fn remove_interpretation(&mut self, id: IdType) -> Option<Interpretation> {
+    pub fn remove_interpretation(&mut self, id: Id) -> Option<Interpretation> {
         let i = self.interpretations.iter().position(|v| v.id == id)?;
         Some(self.interpretations.remove(i))
     }
@@ -92,7 +91,14 @@ impl AnnotatedSpectrum {
 impl Display for AnnotatedSpectrum {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         writeln!(f, "<Spectrum={}>", self.key)?;
-        writeln!(f, "MS:1003061|library spectrum name={}", self.name)?;
+        writeln!(
+            f,
+            "MS:1003061|library spectrum name={}",
+            self.description
+                .title()
+                .map_or_else(|| self.description.id.clone(), |v| v.to_string())
+        )?;
+
         for attr in self.attributes() {
             writeln!(f, "{attr}")?;
         }
@@ -110,73 +116,93 @@ impl Display for AnnotatedSpectrum {
     }
 }
 
-impl From<mzdata::Spectrum> for AnnotatedSpectrum {
-    fn from(value: mzdata::Spectrum) -> Self {
+impl SpectrumLike<AnnotatedPeak<Fragment>, mzdata::mzpeaks::DeconvolutedPeak>
+    for AnnotatedSpectrum
+{
+    fn description(&self) -> &SpectrumDescription {
+        &self.description
+    }
+
+    fn description_mut(&mut self) -> &mut SpectrumDescription {
+        &mut self.description
+    }
+
+    fn peaks(
+        &'_ self,
+    ) -> mzdata::spectrum::RefPeakDataLevel<
+        '_,
+        AnnotatedPeak<Fragment>,
+        mzdata::mzpeaks::DeconvolutedPeak,
+    > {
+        mzdata::spectrum::RefPeakDataLevel::Centroid(&self.peaks)
+    }
+
+    fn raw_arrays(&'_ self) -> Option<&'_ mzdata::spectrum::BinaryArrayMap> {
+        None
+    }
+
+    fn into_peaks_and_description(
+        self,
+    ) -> (
+        mzdata::spectrum::PeakDataLevel<AnnotatedPeak<Fragment>, mzdata::mzpeaks::DeconvolutedPeak>,
+        SpectrumDescription,
+    ) {
+        (
+            mzdata::spectrum::PeakDataLevel::Centroid(self.peaks),
+            self.description,
+        )
+    }
+}
+
+// TODO: this now misses most of the params in the other storage facilities (analytes, attributes, etc)
+impl ParamDescribed for AnnotatedSpectrum {
+    fn params(&self) -> &[mzdata::params::Param] {
+        <SpectrumDescription as ParamDescribed>::params(&self.description)
+    }
+
+    fn params_mut(&mut self) -> &mut mzdata::params::ParamList {
+        <SpectrumDescription as ParamDescribed>::params_mut(&mut self.description)
+    }
+}
+
+#[allow(clippy::fallible_impl_from)] // Cannot fail, but cannot be proven to the compiler. 
+// Basically the Attribute::unit has to be fallible to handle Unit::Unknown, but the units are
+// known at compile time so this cannot happen.
+impl<S: SpectrumLike> From<S> for AnnotatedSpectrum {
+    fn from(value: S) -> Self {
         let mut this = Self {
-            key: (value.index() + 1) as IdType,
-            index: value.index(),
-            name: value
-                .description()
-                .title()
-                .map_or_else(|| value.id().to_string(), |v| v.to_string())
-                .into_boxed_str(),
+            key: (value.index() + 1) as Id,
+            description: value.description().clone(),
             ..Default::default()
         };
 
         let mut group_id = this.find_last_group_id().unwrap_or_default() + 1;
 
-        macro_rules! handle_param {
-            ($param:expr) => {
-                if matches!($param.value(), ValueRef::Empty) {
-                    todo!(
-                        "Don't know how to convert value-less params yet: {:?}",
-                        $param
-                    )
+        let handle_param = |param: &mzdata::Param, this: &mut Self, group_id: &mut u32| {
+            if matches!(param.value(), ValueRef::Empty) {
+                // Ignore empty params
+            } else if let Ok(term) = param.clone().try_into() {
+                if let Some(unit) = Attribute::unit(param.unit, Some(*group_id)) {
+                    this.add_attribute(Attribute::new(term, param.value.clone(), Some(*group_id)));
+                    this.add_attribute(unit);
+                    *group_id += 1;
                 } else {
-                    if $param.is_controlled() {
-                        if matches!($param.unit, Unit::Unknown) {
-                            this.add_attribute(Attribute::new(
-                                Term::new(
-                                    $param.curie().unwrap(),
-                                    $param.name.clone().into_boxed_str(),
-                                ),
-                                $param.value.clone(),
-                                None,
-                            ))
-                        } else {
-                            this.add_attribute(Attribute::new(
-                                Term::new(
-                                    $param.curie().unwrap(),
-                                    $param.name.clone().into_boxed_str(),
-                                ),
-                                $param.value.clone(),
-                                Some(group_id),
-                            ));
-                            this.add_attribute(
-                                Attribute::unit($param.unit, Some(group_id)).unwrap(),
-                            );
-                            group_id += 1;
-                        }
-                    } else {
-                        this.add_attribute(
-                            Attribute::new(
-                                term!(MS:1003275|"other attribute name"),
-                                Value::String($param.name().to_string()),
-                                Some(group_id)
-                            )
-                        );
-                        this.add_attribute(
-                            Attribute::new(
-                                term!(MS:1003276|"other attribute value"),
-                                $param.value.clone(),
-                                Some(group_id)
-                            )
-                        );
-                        group_id += 1;
-                    }
+                    this.add_attribute(Attribute::new(term, param.value.clone(), None));
                 }
-            };
-        }
+            } else {
+                this.add_attribute(Attribute::new(
+                    term!(MS:1003275|"other attribute name"),
+                    Value::String(param.name().to_string()),
+                    Some(*group_id),
+                ));
+                this.add_attribute(Attribute::new(
+                    term!(MS:1003276|"other attribute value"),
+                    param.value.clone(),
+                    Some(*group_id),
+                ));
+                *group_id += 1;
+            }
+        };
 
         for scan in value.acquisition().iter() {
             if let Some(filter_string) = scan.filter_string() {
@@ -212,7 +238,7 @@ impl From<mzdata::Spectrum> for AnnotatedSpectrum {
             }
 
             for param in scan.params() {
-                handle_param!(param);
+                handle_param(param, &mut this, &mut group_id);
             }
         }
         if let Some(precursor) = value.precursor() {
@@ -240,7 +266,7 @@ impl From<mzdata::Spectrum> for AnnotatedSpectrum {
             group_id += 1;
 
             for param in ion.params() {
-                handle_param!(param);
+                handle_param(param, &mut this, &mut group_id);
             }
         }
 
