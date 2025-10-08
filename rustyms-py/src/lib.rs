@@ -1682,7 +1682,9 @@ fn mzcore_py03(_py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<Fragment>()?;
     m.add_class::<FragmentationModel>()?;
     m.add_class::<FragmentKind>()?;
+    m.add_class::<FragmentKind>()?;
     m.add_class::<FragmentType>()?;
+    m.add_class::<GlycanStructure>()?;
     m.add_class::<GlycanStructure>()?;
     m.add_class::<MassMode>()?;
     m.add_class::<MatchingParameters>()?;
