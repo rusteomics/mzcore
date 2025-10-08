@@ -809,6 +809,17 @@ impl FragmentType {
     fn kind(&self) -> FragmentKind {
         self.0.kind().into()
     }
+
+    /// The labels for this fragment.
+    ///
+    /// (Optional superscript prefix, main label, position label)
+    ///
+    #[getter]
+    fn label(&self) -> (Option<String>, String, Option<String>) {
+        let (a, b) = self.0.label();
+        let c = self.0.position_label();
+        (a, b.to_string(), c)
+    }
 }
 
 /// The kind of fragment
@@ -852,26 +863,28 @@ pub enum FragmentKind {
     unknown,
 }
 
-impl Into<FragmentKind> for rustyms::fragment::FragmentKind {
-    fn into(self) -> FragmentKind {
-        match self {
-            Self::a => FragmentKind::a,
-            Self::b => FragmentKind::b,
-            Self::c => FragmentKind::c,
-            Self::d => FragmentKind::d,
-            Self::v => FragmentKind::v,
-            Self::w => FragmentKind::w,
-            Self::x => FragmentKind::x,
-            Self::y => FragmentKind::y,
-            Self::z => FragmentKind::z,
-            Self::Y => FragmentKind::Y,
-            Self::B => FragmentKind::B,
-            Self::immonium => FragmentKind::immonium,
-            Self::precursor_side_chain_loss => FragmentKind::precursor_side_chain_loss,
-            Self::diagnostic => FragmentKind::diagnostic,
-            Self::internal => FragmentKind::internal,
-            Self::precursor => FragmentKind::precursor,
-            Self::unknown => FragmentKind::unknown,
+impl From<rustyms::fragment::FragmentKind> for FragmentKind {
+    fn from(value: rustyms::fragment::FragmentKind) -> Self {
+        match value {
+            rustyms::fragment::FragmentKind::a => Self::a,
+            rustyms::fragment::FragmentKind::b => Self::b,
+            rustyms::fragment::FragmentKind::c => Self::c,
+            rustyms::fragment::FragmentKind::d => Self::d,
+            rustyms::fragment::FragmentKind::v => Self::v,
+            rustyms::fragment::FragmentKind::w => Self::w,
+            rustyms::fragment::FragmentKind::x => Self::x,
+            rustyms::fragment::FragmentKind::y => Self::y,
+            rustyms::fragment::FragmentKind::z => Self::z,
+            rustyms::fragment::FragmentKind::Y => Self::Y,
+            rustyms::fragment::FragmentKind::B => Self::B,
+            rustyms::fragment::FragmentKind::immonium => Self::immonium,
+            rustyms::fragment::FragmentKind::precursor_side_chain_loss => {
+                Self::precursor_side_chain_loss
+            }
+            rustyms::fragment::FragmentKind::diagnostic => Self::diagnostic,
+            rustyms::fragment::FragmentKind::internal => Self::internal,
+            rustyms::fragment::FragmentKind::precursor => Self::precursor,
+            rustyms::fragment::FragmentKind::unknown => Self::unknown,
         }
     }
 }
