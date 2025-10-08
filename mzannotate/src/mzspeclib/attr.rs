@@ -254,43 +254,41 @@ pub trait Attributed {
     fn attributes(&self) -> &[Attribute];
 
     fn find(&self, term: &Term) -> Option<(usize, &Attribute)> {
-        if let Some(i) = self.attributes().iter().position(|v| {
-            if v.name == *term {
-                true
-            } else if v.name.accession == curie!(MS:1003275) {
-                if let AttributeValue::Term(v) = &v.value {
-                    *v == *term
+        self.attributes()
+            .iter()
+            .position(|v| {
+                if v.name == *term {
+                    true
+                } else if v.name.accession == curie!(MS:1003275) {
+                    if let AttributeValue::Term(v) = &v.value {
+                        *v == *term
+                    } else {
+                        false
+                    }
                 } else {
                     false
                 }
-            } else {
-                false
-            }
-        }) {
-            Some((i, &self.attributes()[i]))
-        } else {
-            None
-        }
+            })
+            .map(|i| (i, &self.attributes()[i]))
     }
 
     fn find_by_id(&self, id: CURIE) -> Option<(usize, &Attribute)> {
-        if let Some(i) = self.attributes().iter().position(|v| {
-            if v.name.accession == id {
-                true
-            } else if v.name.accession == curie!(MS:1003275) {
-                if let AttributeValue::Term(v) = &v.value {
-                    v.accession == id
+        self.attributes()
+            .iter()
+            .position(|v| {
+                if v.name.accession == id {
+                    true
+                } else if v.name.accession == curie!(MS:1003275) {
+                    if let AttributeValue::Term(v) = &v.value {
+                        v.accession == id
+                    } else {
+                        false
+                    }
                 } else {
                     false
                 }
-            } else {
-                false
-            }
-        }) {
-            Some((i, &self.attributes()[i]))
-        } else {
-            None
-        }
+            })
+            .map(|i| (i, &self.attributes()[i]))
     }
 
     fn find_group(&self, group_id: u32) -> Vec<&Attribute> {

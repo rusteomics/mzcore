@@ -13,7 +13,7 @@ use mzcore::{
 use mzdata::{
     curie,
     mzpeaks::{peak_set::PeakSetVec, prelude::PeakCollectionMut},
-    params::{CURIE, ControlledVocabulary, ParamValue},
+    params::ParamValue,
     spectrum::SpectrumDescription,
 };
 
@@ -265,10 +265,7 @@ impl<R: Read> MzSpecLibParser<R> {
                 Ok(attr) => {
                     // TODO: switch to assigning these basic attributes to header fields
                     match attr.name.accession {
-                        CURIE {
-                            controlled_vocabulary: ControlledVocabulary::MS,
-                            accession: 1003186,
-                        } => {
+                        curie!(MS:1003186) => {
                             self.header.format_version = attr.value.to_string();
                         }
                         _ => {
@@ -573,14 +570,8 @@ impl<R: Read> MzSpecLibParser<R> {
         loop {
             match self.read_attribute(&mut buf) {
                 Ok(attr) => match attr.name.accession {
-                    CURIE {
-                        controlled_vocabulary: ControlledVocabulary::MS,
-                        accession: 1003061,
-                    } => spec.description.id = attr.value.to_string(),
-                    CURIE {
-                        controlled_vocabulary: ControlledVocabulary::MS,
-                        accession: 1003062,
-                    } => {
+                    curie!(MS:1003061) => spec.description.id = attr.value.to_string(),
+                    curie!(MS:1003062) => {
                         spec.description.index = attr.value.scalar().to_u64().map_err(|v| {
                             MzSpecLibTextParseError::AttributeParseError(
                                 AttributeParseError::ValueParseError(v, buf.clone()),

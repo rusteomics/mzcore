@@ -5,9 +5,8 @@
 
 use std::{
     io::{BufReader, BufWriter, Write},
-    path::{Path, PathBuf},
+    path::Path,
     sync::Arc,
-    time::SystemTime,
 };
 
 use context_error::{BoxedError, Context, CreateError};

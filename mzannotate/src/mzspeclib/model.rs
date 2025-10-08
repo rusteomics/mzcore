@@ -5,7 +5,7 @@ use mzdata::{curie, params::Value};
 
 use crate::{
     mzspeclib::{
-        Attribute, AttributeSet, AttributeValue, Attributed, AttributedMut, EntryType, Term,
+        Attribute, AttributeSet, AttributeValue, Attributed, AttributedMut, EntryType,
         impl_attributed,
     },
     term,
@@ -89,8 +89,11 @@ impl Display for Analyte {
             writeln!(
                 f,
                 "{}={sequence}",
-                term!(MS:1_003_270|"proforma peptidoform ion notation")
+                term!(MS:1003270|"proforma peptidoform ion notation")
             )?;
+        }
+        if let Some(charge) = &self.charge {
+            writeln!(f, "{}={}", term!(MS:1000041|"charge state"), charge.value)?;
         }
         for attr in &self.attributes {
             writeln!(f, "{attr}")?;
