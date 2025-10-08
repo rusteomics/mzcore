@@ -14,7 +14,9 @@ crate-type = ["cdylib"]
 context_error = { workspace = true }
 ordered-float = { workspace = true }
 pyo3 = { workspace = true }
-rustyms = { path = "../rustyms" }
+mzcore = { path = "../mzcore", features=["isotopes"] }
+mzalign = { path = "../mzalign" }
+mzannotate = { path = "../mzannotate" }
 
 [lints]
 workspace = true

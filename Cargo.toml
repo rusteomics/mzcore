@@ -8,7 +8,7 @@ members = [
     "imgt",
     "rustyms-generate-databases",
     # "rustyms-generate-imgt",
-    # "rustyms-py",
+    "rustyms-py",
     "fuzz",
     "examples/*",
 ]
