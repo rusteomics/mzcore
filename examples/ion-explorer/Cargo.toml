@@ -11,12 +11,12 @@ clap = { workspace = true }
 directories = { workspace = true }
 itertools = { workspace = true }
 mzdata = { workspace = true, features = ["mgf", "mzml", "thermo"] }
-rustyms = { path = "../../rustyms", default-features = false, features = [
-    "mzdata",
-    "identification",
+mzcore = { path = "../../mzcore", default-features = false, features = [
     "coloured-errors",
 ] }
-rayon = {workspace = true}
+mzident = { path = "../../mzident" }
+mzannotate = { path = "../../mzannotate" }
+rayon = { workspace = true }
 
 [lints]
 workspace = true

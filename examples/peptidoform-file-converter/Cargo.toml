@@ -10,7 +10,10 @@ publish = false
 clap = { workspace = true }
 context_error = { workspace = true }
 directories = { workspace = true }
-rustyms = { path = "../../rustyms", default-features=false, features = ["identification", "coloured-errors"] }
+mzcore = { path = "../../mzcore", default-features = false, features = [
+    "coloured-errors",
+] }
+mzident = { path = "../../mzident" }
 
 [lints]
 workspace = true

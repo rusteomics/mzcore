@@ -1,13 +1,13 @@
 use std::{collections::HashMap, io::Write, path::Path, sync::Arc};
 
-use rustyms::{
+use mzcore::{
     glycan::{GlycanStructure, MonoSaccharide},
-    identification::csv::parse_csv,
     ontology::{Ontology, OntologyModificationList},
     sequence::{
         GnoComposition, GnoSubsumption, ModificationId, SimpleModification, SimpleModificationInner,
     },
 };
+use mzident::csv::parse_csv;
 
 use super::obo::OboOntology;
 
@@ -366,7 +366,7 @@ impl GNOmeModification {
             } else if let Some(composition) = self.composition {
                 GnoComposition::Composition(composition)
             } else if let Some(mass) = self.weight {
-                GnoComposition::Weight(rustyms::system::f64::da(mass).into())
+                GnoComposition::Weight(mzcore::system::f64::da(mass).into())
             } else {
                 panic!("unreachable")
             },

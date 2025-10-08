@@ -3,18 +3,10 @@ use std::{collections::BTreeMap, fs::File, io::BufWriter, sync::Arc};
 
 use clap::Parser;
 use itertools::{Itertools, MinMaxResult};
+use mzalign::prelude::*;
+use mzcore::{prelude::*, sequence::SemiAmbiguous};
+use mzident::{FastaData, PeptidoformPresent, SpectrumIds, csv::write_csv, prelude::*};
 use rayon::prelude::*;
-use rustyms::{
-    align::AlignScoring,
-    align::{AlignIndex, AlignType},
-    identification::SpectrumIds,
-    identification::{
-        FastaData, IdentifiedPeptidoform, MetaData, PeptidoformPresent, csv::write_csv,
-        open_identified_peptidoforms_file,
-    },
-    prelude::*,
-    sequence::SemiAmbiguous,
-};
 
 #[derive(Debug, Parser)]
 struct Cli {
@@ -35,18 +27,12 @@ struct Cli {
 fn process_alignment_group<I>(
     alignments: I,
 ) -> Vec<(
-    rustyms::align::Alignment<
-        Arc<FastaData>,
-        IdentifiedPeptidoform<SemiAmbiguous, PeptidoformPresent>,
-    >,
+    Alignment<Arc<FastaData>, IdentifiedPeptidoform<SemiAmbiguous, PeptidoformPresent>>,
     bool,
 )>
 where
     I: Iterator<
-        Item = rustyms::align::Alignment<
-            Arc<FastaData>,
-            IdentifiedPeptidoform<SemiAmbiguous, PeptidoformPresent>,
-        >,
+        Item = Alignment<Arc<FastaData>, IdentifiedPeptidoform<SemiAmbiguous, PeptidoformPresent>>,
     >,
 {
     let alignments = alignments.collect_vec();
@@ -73,10 +59,7 @@ fn run_alignments(
     scoring: AlignScoring,
     sequential: bool,
 ) -> Vec<(
-    rustyms::align::Alignment<
-        Arc<FastaData>,
-        IdentifiedPeptidoform<SemiAmbiguous, PeptidoformPresent>,
-    >,
+    Alignment<Arc<FastaData>, IdentifiedPeptidoform<SemiAmbiguous, PeptidoformPresent>>,
     bool,
 )> {
     if sequential {
@@ -107,7 +90,7 @@ fn main() {
     );
 
     let scoring = AlignScoring {
-        pair: rustyms::align::PairMode::DatabaseToPeptidoform,
+        pair: PairMode::DatabaseToPeptidoform,
         ..Default::default()
     };
 

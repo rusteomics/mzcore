@@ -1,12 +1,10 @@
 use std::collections::HashMap;
 use std::fmt::Write;
 
+use imgt::{AnnotatedSequence, Gene, Germline, Germlines, Species};
 use itertools::Itertools;
-use rustyms::{
-    align::AlignScoring,
-    imgt::{AnnotatedSequence, Gene, Germline, Germlines, Species},
-    sequence::{Annotation, Peptidoform, Region, UnAmbiguous},
-};
+use mzalign::AlignScoring;
+use mzcore::sequence::{Annotation, Peptidoform, Region, UnAmbiguous};
 
 use crate::imgt_gene::IMGTGene;
 use crate::structs::DataItem;
@@ -189,21 +187,18 @@ impl std::fmt::Display for TemporaryGermline {
                     )?;
                 }
                 let scoring = AlignScoring::<'_> {
-                    matrix: rustyms::align::matrix::BLOSUM90,
+                    matrix: mzalign::matrix::BLOSUM90,
                     ..Default::default()
                 };
                 if let Some(first_allele) = first_allele {
-                    let alignment = rustyms::align::align::<
-                        1,
-                        &Peptidoform<UnAmbiguous>,
-                        &Peptidoform<UnAmbiguous>,
-                    >(
-                        first_allele,
-                        &seq.sequence,
-                        scoring,
-                        rustyms::align::AlignType::GLOBAL,
-                    )
-                    .stats();
+                    let alignment =
+                        mzalign::align::<1, &Peptidoform<UnAmbiguous>, &Peptidoform<UnAmbiguous>>(
+                            first_allele,
+                            &seq.sequence,
+                            scoring,
+                            mzalign::AlignType::GLOBAL,
+                        )
+                        .stats();
                     writeln!(
                         f,
                         "{main_branch}├─ALLELE DIF: {} AAs",
@@ -211,17 +206,14 @@ impl std::fmt::Display for TemporaryGermline {
                     )?;
                 }
                 if let Some(reference) = reference {
-                    let alignment = rustyms::align::align::<
-                        1,
-                        &Peptidoform<UnAmbiguous>,
-                        &Peptidoform<UnAmbiguous>,
-                    >(
-                        reference,
-                        &seq.sequence,
-                        scoring,
-                        rustyms::align::AlignType::GLOBAL,
-                    )
-                    .stats();
+                    let alignment =
+                        mzalign::align::<1, &Peptidoform<UnAmbiguous>, &Peptidoform<UnAmbiguous>>(
+                            reference,
+                            &seq.sequence,
+                            scoring,
+                            mzalign::AlignType::GLOBAL,
+                        )
+                        .stats();
                     writeln!(
                         f,
                         "{main_branch}├─OPTION DIF: {} AAs",

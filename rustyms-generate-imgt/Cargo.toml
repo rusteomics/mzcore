@@ -9,9 +9,11 @@ publish = false
 [dependencies]
 bincode = { workspace = true }
 itertools = { workspace = true }
-rustyms = { path = "../rustyms", default-features = false, features = [
-    "align",
-    "imgt",
+mzcore = { path = "../mzcore", default-features = false, features = [
+    "internal-no-data",
+] }
+mzalign = {path="../mzalign"}
+imgt = { path = "../imgt", features = [
     "internal-no-data",
 ] }
 

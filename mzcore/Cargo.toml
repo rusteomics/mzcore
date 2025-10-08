@@ -1,0 +1,50 @@
+[package]
+name = "mzcore"
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+publish = true
+rust-version.workspace = true
+version.workspace = true
+description = "A library to handle proteomic mass spectrometry data and match peptides to spectra."
+categories = [
+    "science::bioinformatics::proteomics",
+    "science::bioinformatics::sequence-analysis",
+]
+keywords = ["spectra", "mass-spectrometry", "bio", "fragmentation", "proforma"]
+repository = "https://github.com/snijderlab/rustyms"
+readme = "README.md"
+include = ["src/**/*", "images/**/*", "README.md", "benches/**/*"]
+
+[dependencies]
+bincode = { workspace = true }
+context_error = { workspace = true }
+itertools = { workspace = true }
+ndarray = { workspace = true, optional = true }
+ordered-float = { workspace = true }
+probability = { workspace = true, optional = true }
+rand = { workspace = true, optional = true }
+regex = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+similar = { workspace = true }
+swash = { workspace = true, optional = true }
+thin-vec = { workspace = true }
+uom = { workspace = true }
+zeno = { workspace = true, optional = true }
+
+[dev-dependencies]
+base64 = { workspace = true }
+png = { workspace = true }
+directories = { workspace = true }
+
+[features]
+default = []
+isotopes = ["probability", "ndarray"]
+glycan-render = []
+glycan-render-bitmap = ["zeno", "swash", "glycan-render"]
+internal-no-data = []
+coloured-errors = ["context_error/colored"]
+
+[lints]
+workspace = true

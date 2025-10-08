@@ -1,11 +1,9 @@
 use std::collections::HashMap;
 use std::fmt::Display;
 
+use imgt::{AnnotatedSequence, Gene};
 use itertools::Itertools;
-use rustyms::{
-    imgt::{AnnotatedSequence, Gene},
-    sequence::{AminoAcid, Annotation, CheckedAminoAcid, Region},
-};
+use mzcore::sequence::{AminoAcid, Annotation, CheckedAminoAcid, Region};
 
 use crate::structs::{Location, SequenceRegion, SingleSeq};
 use crate::{find_possible_n_glycan_locations, fix_j};

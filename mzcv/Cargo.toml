@@ -1,0 +1,39 @@
+[package]
+name = "mzcv"
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+publish = true
+rust-version.workspace = true
+version = "0.1.0"
+description = "Handle controlled vocanulaires (CVs) and ontologies, both statically and dynamically"
+categories = ["science::bioinformatics"]
+keywords = ["controlled-vocabulary", "bio", "ontology", "obo"]
+repository = "https://github.com/rusteomics/mzcore"
+readme = "README.md"
+include = ["src/**/*", "README.md"]
+
+[dependencies]
+bincode = { workspace = true }
+chrono = { workspace = true }
+context_error = { workspace = true }
+directories = { workspace = true }
+flate2 = { workspace = true }
+reqwest = { workspace = true, optional = true }
+sha2 = { workspace = true }
+
+[features]
+default = ["search-index", "internet"]
+search-index = []
+internet = ["reqwest"]
+
+[[example]]
+name = "imgt"
+required-features = ["internet", "search-index"]
+
+[[example]]
+name = "ms"
+required-features = ["internet", "search-index"]
+
+[lints]
+workspace = true

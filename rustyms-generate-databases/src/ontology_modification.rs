@@ -1,16 +1,15 @@
 use std::sync::Arc;
 
 use itertools::Itertools;
-use ordered_float::OrderedFloat;
-use rustyms::{
-    chemistry::MolecularFormula,
-    fragment::{DiagnosticIon, NeutralLoss},
+use mzcore::{
+    chemistry::{DiagnosticIon, MolecularFormula, NeutralLoss},
     ontology::Ontology,
     sequence::{
         LinkerSpecificity, ModificationId, PlacementRule, Position, SimpleModification,
         SimpleModificationInner,
     },
 };
+use ordered_float::OrderedFloat;
 
 use thin_vec::ThinVec;
 

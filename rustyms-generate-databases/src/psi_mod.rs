@@ -1,7 +1,7 @@
 use std::{io::Write, path::Path};
 
 use bincode::config::Configuration;
-use rustyms::{
+use mzcore::{
     chemistry::MolecularFormula,
     ontology::{Ontology, OntologyModificationList},
     sequence::{PlacementRule, Position},
@@ -138,7 +138,7 @@ fn parse_psi_mod() -> Vec<OntologyModification> {
 
 #[cfg(test)]
 mod tests {
-    use rustyms::{chemistry::MolecularFormula, molecular_formula};
+    use mzcore::{chemistry::MolecularFormula, molecular_formula};
 
     #[test]
     fn parse_molecular_formula() {

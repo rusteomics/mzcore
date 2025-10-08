@@ -2,7 +2,7 @@
 use std::io::BufReader;
 
 use afl::*;
-use rustyms::identification::{IdentifiedPeptidoformSource, PeaksData, csv};
+use mzident::{IdentifiedPeptidoformSource, PeaksData, csv};
 
 use std::io::Read;
 use std::io::Result;

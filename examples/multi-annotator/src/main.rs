@@ -17,33 +17,30 @@ use context_error::CombineErrorsExtender;
 
 use clap::Parser;
 use directories::ProjectDirs;
-use fragment::FragmentType;
 use itertools::Itertools;
+use mzannotate::{
+    annotation::{Score, Scores, model::parse_custom_models},
+    fragment::{DiagnosticPosition, FragmentType},
+    prelude::*,
+};
+use mzcore::{
+    chemistry::MassMode,
+    glycan::MonoSaccharide,
+    quantities::Tolerance,
+    sequence::{
+        AminoAcid, GnoComposition, SequencePosition, SimpleModificationInner,
+        parse_custom_modifications,
+    },
+    system::MassOverCharge,
+};
 use mzdata::{
     io::{MZFileReader, SpectrumSource},
     mzpeaks::PeakCollection,
     mzsignal::PeakPicker,
     spectrum::{SignalContinuity, SpectrumLike},
 };
+use mzident::{BasicCSVData, IdentifiedPeptidoformSource, csv::write_csv};
 use rayon::prelude::*;
-use rustyms::{
-    annotation::{
-        AnnotatableSpectrum, AnnotatedPeak, Score, Scores,
-        model::{FragmentationModel, MatchingParameters, parse_custom_models},
-    },
-    chemistry::MassMode,
-    fragment::{DiagnosticPosition, Fragment},
-    glycan::MonoSaccharide,
-    identification::{BasicCSVData, IdentifiedPeptidoformSource, csv::write_csv},
-    quantities::Tolerance,
-    sequence::{
-        AminoAcid, GnoComposition, SequencePosition, SimpleModificationInner,
-        parse_custom_modifications,
-    },
-    spectrum::PeakSpectrum,
-    system::MassOverCharge,
-    *,
-};
 
 /// The command line interface arguments
 #[allow(clippy::struct_excessive_bools)]
@@ -274,8 +271,8 @@ fn main() {
                             .unique()
                             .count();
                         let unique_Y_found = annotated
-                            .spectrum()
-                            .flat_map(|peak| &peak.annotation)
+                            .peaks.iter()
+                            .flat_map(|peak| &peak.annotations)
                             .filter_map(|fragment| {
                                 if let FragmentType::Y(pos) = &fragment.ion {
                                     Some(pos)
@@ -352,7 +349,7 @@ fn main() {
                     if args.report_IL_satellite_coverage {
                         row.insert(
                             Arc::new("IL_satellite_coverage".to_string()),
-                            annotated.peptide.clone().singular_peptidoform().map_or(
+                            annotated.analytes.first().and_then(|a| a.peptidoform_ion.as_ref().and_then(|p| p.singular_ref())).map_or(
                                 String::new(),
                                 |p| {
                                     p.sequence()
@@ -363,8 +360,8 @@ fn main() {
                                                 || s.aminoacid.aminoacid() == AminoAcid::Leucine
                                         })
                                         .map(|(i, _)| {
-                                            if annotated.spectrum().any(|p: &AnnotatedPeak| {
-                                                p.annotation.iter().any(|a: &Fragment| {
+                                            if annotated.peaks.iter().any(|p| {
+                                                p.annotations.iter().any(|a: &Fragment| {
                                                     matches!(a.ion, FragmentType::w(s, _, 0, _, _) | FragmentType::d(s, _, 0, _, _) if s.sequence_index
                                                     == SequencePosition::Index(i))
                                                 })
@@ -423,11 +420,11 @@ fn main() {
                         }
 
                         let mut buckets = args.glycan_buckets.iter().map(|m| Match {target: m,found_B: 0, total_B: 0, found_Y: 0, total_Y: 0}).collect_vec();
-                        for (theoretical, f) in fragments.iter().map(|f| (true, f)).chain(annotated.spectrum().flat_map(|p| p.annotation.iter().map(|a| (false, a)))) {
+                        for (theoretical, f) in fragments.iter().map(|f| (true, f)).chain(annotated.peaks.iter().flat_map(|p| p.annotations.iter().map(|a| (false, a)))) {
                             match &f.ion {
                                 FragmentType::Y(pos) => {
                                     if let Some((_, seq)) = pos.first().and_then(|p| p.attachment) {
-                                        let element = &annotated.peptide.peptidoform_ions()[f.peptidoform_ion_index.unwrap_or_default()].peptidoforms()[f.peptidoform_index.unwrap_or_default()][seq];
+                                        let element = &annotated.analytes.iter().find(|a| a.id as usize == f.peptidoform_ion_index.unwrap_or_default()).and_then(|a| a.peptidoform_ion.as_ref()).unwrap().peptidoforms()[f.peptidoform_index.unwrap_or_default()][seq];
                                         if let Some(glycan) = element.modifications.iter().find_map(|m| match (*m).clone().into_simple().as_deref() {
                                             Some(SimpleModificationInner::Gno { composition: GnoComposition::Topology(structure), .. } | SimpleModificationInner::GlycanStructure(structure)) => Some(structure.clone()), _ => None}) {
                                                 for bucket in &mut buckets {
@@ -455,7 +452,7 @@ fn main() {
                                 }
                                 FragmentType::B{b, y,end: _} => {
                                     if let Some((_, seq)) = b.attachment.as_ref() {
-                                        let element = &annotated.peptide.peptidoform_ions()[f.peptidoform_ion_index.unwrap_or_default()].peptidoforms()[f.peptidoform_index.unwrap_or_default()][*seq];
+                                        let element = &annotated.analytes.iter().find(|a| a.id as usize == f.peptidoform_ion_index.unwrap_or_default()).and_then(|a| a.peptidoform_ion.as_ref()).unwrap().peptidoforms()[f.peptidoform_index.unwrap_or_default()][*seq];
                                         if let Some(glycan) = element.modifications.iter().find_map(|m| match (*m).clone().into_simple().as_deref() {
                                             Some(SimpleModificationInner::Gno { composition: GnoComposition::Topology(structure), .. } | SimpleModificationInner::GlycanStructure(structure)) => Some(structure.clone()), _ => None}) {
                                                 for bucket in &mut buckets {

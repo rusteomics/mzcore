@@ -1,8 +1,8 @@
 use crate::structs::{AASequence, DataItem, Location, Region};
 use crate::{complement, imgt_gene::IMGTGene, translate};
+use imgt::{NotASpecies, Species};
 use itertools::Itertools;
-use rustyms::imgt::{NotASpecies, Species};
-use rustyms::sequence::AminoAcid;
+use mzcore::sequence::AminoAcid;
 use std::collections::HashMap;
 use std::io::{BufRead, BufReader};
 

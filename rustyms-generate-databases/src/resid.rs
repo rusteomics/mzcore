@@ -7,12 +7,12 @@ use std::{
 use super::{ModData, ontology_modification::OntologyModification};
 
 use bincode::config::Configuration;
-use roxmltree::*;
-use rustyms::{
+use mzcore::{
     chemistry::{MolecularFormula, MultiChemical},
     ontology::{Ontology, OntologyModificationList},
     sequence::{AminoAcid, LinkerSpecificity, PlacementRule, Position},
 };
+use roxmltree::*;
 
 pub(crate) fn build_resid_ontology(out_dir: &Path) {
     let mods = parse_resid();

@@ -2,9 +2,8 @@ use std::{io::Write, path::Path};
 
 use bincode::config::Configuration;
 use itertools::Itertools;
-use rustyms::{
-    chemistry::MolecularFormula,
-    fragment::DiagnosticIon,
+use mzcore::{
+    chemistry::{DiagnosticIon, MolecularFormula},
     ontology::{Ontology, OntologyModificationList},
     sequence::{LinkerSpecificity, PlacementRule, Position},
 };

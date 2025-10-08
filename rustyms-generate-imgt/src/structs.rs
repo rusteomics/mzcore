@@ -3,10 +3,8 @@ use std::ops::RangeInclusive;
 use std::str::FromStr;
 
 use crate::imgt_gene::IMGTGene;
-use rustyms::{
-    imgt::{AnnotatedSequence, Gene, Species},
-    sequence::{AminoAcid, IsAminoAcid},
-};
+use imgt::{AnnotatedSequence, Gene, Species};
+use mzcore::sequence::{AminoAcid, IsAminoAcid};
 
 #[derive(Debug)]
 pub(crate) struct DataItem {
@@ -70,10 +68,7 @@ impl Display for Region {
     }
 }
 
-pub(crate) type SequenceRegion = (
-    rustyms::sequence::Region,
-    (Vec<AminoAcid>, Location, String),
-);
+pub(crate) type SequenceRegion = (mzcore::sequence::Region, (Vec<AminoAcid>, Location, String));
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub(crate) enum Location {

@@ -11,22 +11,23 @@ use std::{
 use clap::Parser;
 use directories::ProjectDirs;
 use itertools::Itertools;
+use mzannotate::{
+    annotation::model::{PrimaryIonSeries, SatelliteIonSeries, SatelliteLocation},
+    fragment::{FragmentKind, FragmentType},
+    prelude::*,
+};
+use mzcore::{
+    chemistry::{ChargeRange, MassMode},
+    sequence::{AminoAcid, CompoundPeptidoformIon, SimpleModification, parse_custom_modifications},
+};
 use mzdata::{
     io::{MZFileReader, SpectrumSource},
     mzpeaks::{CentroidPeak, PeakCollection},
     prelude::SpectrumLike,
     spectrum::{MultiLayerSpectrum, RefPeakDataLevel},
 };
+use mzident::{SpectrumId, SpectrumIds, prelude::*};
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
-use rustyms::{
-    annotation::model::{
-        ChargeRange, FragmentationModel, PrimaryIonSeries, SatelliteIonSeries, SatelliteLocation,
-    },
-    chemistry::MassMode,
-    fragment::{Fragment, FragmentKind, FragmentType},
-    identification::{MetaData, SpectrumId, SpectrumIds},
-    sequence::{AminoAcid, CompoundPeptidoformIon, SimpleModification, parse_custom_modifications},
-};
 
 #[derive(Parser)]
 struct Cli {
@@ -89,17 +90,14 @@ fn main() {
     } else {
         Some(parse_custom_modifications(&path).unwrap())
     };
-    let peptides = rustyms::identification::open_identified_peptidoforms_file(
-        &args.in_path,
-        custom_database.as_ref(),
-        false,
-    )
-    .expect("Could not open identified peptides file")
-    .filter_map(Result::ok)
-    .into_group_map_by(|l| match l.scans() {
-        SpectrumIds::FileKnown(spectra) => spectra.first().map(|s| s.0.clone()),
-        _ => None,
-    });
+    let peptides =
+        open_identified_peptidoforms_file(&args.in_path, custom_database.as_ref(), false)
+            .expect("Could not open identified peptides file")
+            .filter_map(Result::ok)
+            .into_group_map_by(|l| match l.scans() {
+                SpectrumIds::FileKnown(spectra) => spectra.first().map(|s| s.0.clone()),
+                _ => None,
+            });
 
     let stack: Stack = peptides.par_iter().map(|(file, peptides)| {
         let mut stack = Stack::default();
@@ -329,7 +327,7 @@ fn write_stack(path: &Path, points: &[Point]) {
         BufWriter::new(File::create(path).unwrap_or_else(|e| {
             panic!("Could not create file: '{}'\n{e}", path.to_string_lossy())
         }));
-    rustyms::identification::csv::write_csv(
+    mzident::csv::write_csv(
         out_file,
         points.iter().map(|p| {
             [

@@ -1,15 +1,14 @@
-//! Python bindings to the rustyms library.
-#![allow(clippy::doc_markdown)]
+//! Python bindings to the mzcore library.
+#![allow(clippy::doc_markdown, clippy::trivially_copy_pass_by_ref)]
 
 use std::fmt::Debug;
 use std::num::NonZeroU16;
 
-use ordered_float::OrderedFloat;
 use pyo3::{exceptions::PyValueError, prelude::*, types::PyType};
 
-use rustyms::{
-    align::AlignScoring,
-    annotation::AnnotatableSpectrum,
+use mzalign::AlignScoring;
+use mzannotate::prelude::{GlycanFragmention, PeptidoformFragmentation};
+use mzcore::{
     chemistry::{Chemical, MultiChemical},
     sequence::{IsAminoAcid, Linked, SimpleLinear},
     system::dalton,
@@ -53,9 +52,9 @@ fn find_isobaric_sets(
             (
                 m.0,
                 (!r.is_empty()).then(|| {
-                    rustyms::sequence::PlacementRule::AminoAcid(
+                    mzcore::sequence::PlacementRule::AminoAcid(
                         r.into_iter().map(|a| a.0).collect(),
-                        rustyms::sequence::Position::Anywhere,
+                        mzcore::sequence::Position::Anywhere,
                     )
                 }),
             )
@@ -67,18 +66,18 @@ fn find_isobaric_sets(
             (
                 m.0,
                 (!r.is_empty()).then(|| {
-                    rustyms::sequence::PlacementRule::AminoAcid(
+                    mzcore::sequence::PlacementRule::AminoAcid(
                         r.into_iter().map(|a| a.0).collect(),
-                        rustyms::sequence::Position::Anywhere,
+                        mzcore::sequence::Position::Anywhere,
                     )
                 }),
             )
         })
         .collect::<Vec<_>>();
 
-    rustyms::prelude::find_isobaric_sets(
-        rustyms::system::Mass::new::<dalton>(mass),
-        rustyms::quantities::Tolerance::new_ppm(tolerance),
+    mzcore::prelude::find_isobaric_sets(
+        mzcore::system::Mass::new::<dalton>(mass),
+        mzcore::quantities::Tolerance::new_ppm(tolerance),
         &amino_acids,
         &fixed,
         &variable,
@@ -107,15 +106,15 @@ enum MassMode {
 ///
 #[pyclass]
 #[derive(Clone, Copy, Debug)]
-pub struct Element(rustyms::chemistry::Element);
+pub struct Element(mzcore::chemistry::Element);
 
 #[pymethods]
 impl Element {
     #[new]
     fn new(symbol: &str) -> PyResult<Self> {
-        rustyms::chemistry::Element::try_from(symbol)
+        mzcore::chemistry::Element::try_from(symbol)
             .map(Element)
-            .map_err(|_| PyValueError::new_err("Invalid element symbol."))
+            .map_err(|()| PyValueError::new_err("Invalid element symbol."))
     }
 
     fn __repr__(&self) -> String {
@@ -189,7 +188,7 @@ impl std::fmt::Display for Element {
 ///
 #[pyclass]
 #[derive(Clone, Debug)]
-pub struct MolecularFormula(rustyms::chemistry::MolecularFormula);
+pub struct MolecularFormula(mzcore::chemistry::MolecularFormula);
 
 #[pymethods]
 impl MolecularFormula {
@@ -215,7 +214,7 @@ impl MolecularFormula {
             .iter()
             .map(|(e, i, n)| (e.0, (*i).and_then(NonZeroU16::new), *n))
             .collect::<Vec<_>>();
-        let formula = rustyms::chemistry::MolecularFormula::new(elements.as_slice(), &[])
+        let formula = mzcore::chemistry::MolecularFormula::new(elements.as_slice(), &[])
             .ok_or_else(|| PyValueError::new_err("Invalid isotopes"))?;
         Ok(Self(formula))
     }
@@ -240,7 +239,7 @@ impl MolecularFormula {
     ///
     #[classmethod]
     fn from_pro_forma(_cls: &Bound<'_, PyType>, proforma: &str) -> PyResult<Self> {
-        rustyms::chemistry::MolecularFormula::from_pro_forma(proforma, .., false, false, true, true)
+        mzcore::chemistry::MolecularFormula::from_pro_forma(proforma, .., false, false, true, true)
             .map(MolecularFormula)
             .map_err(|e| PyValueError::new_err(format!("Invalid ProForma string: {e}")))
     }
@@ -257,7 +256,7 @@ impl MolecularFormula {
     ///
     #[classmethod]
     fn from_psi_mod(_cls: &Bound<'_, PyType>, psi_mod: &str) -> PyResult<Self> {
-        rustyms::chemistry::MolecularFormula::from_psi_mod(psi_mod, ..)
+        mzcore::chemistry::MolecularFormula::from_psi_mod(psi_mod, ..)
             .map(MolecularFormula)
             .map_err(|e| PyValueError::new_err(format!("Invalid PSI-MOD string: {e}")))
     }
@@ -434,7 +433,7 @@ impl MolecularFormula {
 /// A selection of ions that together define the charge of a peptidoform.
 #[pyclass]
 #[derive(Debug)]
-pub struct MolecularCharge(rustyms::chemistry::MolecularCharge);
+pub struct MolecularCharge(mzcore::chemistry::MolecularCharge);
 
 #[pymethods]
 impl MolecularCharge {
@@ -451,7 +450,7 @@ impl MolecularCharge {
     ///
     #[new]
     fn new(charge_carriers: Vec<(i32, MolecularFormula)>) -> Self {
-        Self(rustyms::chemistry::MolecularCharge {
+        Self(mzcore::chemistry::MolecularCharge {
             charge_carriers: charge_carriers
                 .iter()
                 .map(|(n, mol)| (*n as isize, mol.0.clone()))
@@ -484,7 +483,7 @@ impl MolecularCharge {
     ///
     #[classmethod]
     fn proton(_cls: &Bound<'_, PyType>, charge: i32) -> Self {
-        Self(rustyms::chemistry::MolecularCharge::proton(charge as isize))
+        Self(mzcore::chemistry::MolecularCharge::proton(charge as isize))
     }
 
     /// List of counts and molecular formulas for the charge carriers.
@@ -512,13 +511,13 @@ impl MolecularCharge {
 ///
 #[pyclass]
 #[derive(Clone, Copy, Debug)]
-pub struct AminoAcid(rustyms::sequence::AminoAcid);
+pub struct AminoAcid(mzcore::sequence::AminoAcid);
 
 #[pymethods]
 impl AminoAcid {
     #[new]
     fn new(name: &str) -> PyResult<Self> {
-        rustyms::sequence::AminoAcid::try_from(name).map_or_else(
+        mzcore::sequence::AminoAcid::try_from(name).map_or_else(
             |()| Err(PyValueError::new_err("Invalid amino acid")),
             |aa| Ok(Self(aa)),
         )
@@ -604,13 +603,13 @@ impl std::fmt::Display for AminoAcid {
 ///
 #[pyclass]
 #[derive(Clone, Debug)]
-pub struct SimpleModification(rustyms::sequence::SimpleModification);
+pub struct SimpleModification(mzcore::sequence::SimpleModification);
 
 #[pymethods]
 impl SimpleModification {
     #[new]
     fn new(name: &str) -> PyResult<Self> {
-        match rustyms::sequence::SimpleModificationInner::parse_pro_forma(
+        match mzcore::sequence::SimpleModificationInner::parse_pro_forma(
             name,
             0..name.len(),
             &mut vec![],
@@ -660,7 +659,7 @@ impl SimpleModification {
 ///
 #[pyclass]
 #[derive(Clone, Debug)]
-pub struct Modification(rustyms::sequence::Modification);
+pub struct Modification(mzcore::sequence::Modification);
 
 #[pymethods]
 impl Modification {
@@ -696,7 +695,7 @@ impl Modification {
 /// A theoretical fragment of a peptidoform.
 #[pyclass]
 #[derive(Debug)]
-pub struct Fragment(rustyms::fragment::Fragment);
+pub struct Fragment(mzannotate::fragment::Fragment);
 
 #[pymethods]
 impl Fragment {
@@ -707,9 +706,9 @@ impl Fragment {
             self.charge(),
             self.ion().0,
             self.peptidoform_ion_index()
-                .map_or("-".to_string(), |p| p.to_string()),
+                .map_or_else(|| "-".to_string(), |p| p.to_string()),
             self.peptidoform_index()
-                .map_or("-".to_string(), |p| p.to_string()),
+                .map_or_else(|| "-".to_string(), |p| p.to_string()),
             self.neutral_loss(),
         )
     }
@@ -743,7 +742,7 @@ impl Fragment {
     /// int
     ///
     #[getter]
-    fn charge(&self) -> i16 {
+    const fn charge(&self) -> i16 {
         self.0.charge.value as i16
     }
 
@@ -799,7 +798,7 @@ impl Fragment {
 /// All types of fragments.
 #[pyclass]
 #[derive(Debug)]
-pub struct FragmentType(rustyms::fragment::FragmentType);
+pub struct FragmentType(mzannotate::fragment::FragmentType);
 
 #[pymethods]
 impl FragmentType {
@@ -866,28 +865,28 @@ pub enum FragmentKind {
     unknown,
 }
 
-impl From<rustyms::fragment::FragmentKind> for FragmentKind {
-    fn from(value: rustyms::fragment::FragmentKind) -> Self {
+impl From<mzannotate::fragment::FragmentKind> for FragmentKind {
+    fn from(value: mzannotate::fragment::FragmentKind) -> Self {
         match value {
-            rustyms::fragment::FragmentKind::a => Self::a,
-            rustyms::fragment::FragmentKind::b => Self::b,
-            rustyms::fragment::FragmentKind::c => Self::c,
-            rustyms::fragment::FragmentKind::d => Self::d,
-            rustyms::fragment::FragmentKind::v => Self::v,
-            rustyms::fragment::FragmentKind::w => Self::w,
-            rustyms::fragment::FragmentKind::x => Self::x,
-            rustyms::fragment::FragmentKind::y => Self::y,
-            rustyms::fragment::FragmentKind::z => Self::z,
-            rustyms::fragment::FragmentKind::Y => Self::Y,
-            rustyms::fragment::FragmentKind::B => Self::B,
-            rustyms::fragment::FragmentKind::immonium => Self::immonium,
-            rustyms::fragment::FragmentKind::precursor_side_chain_loss => {
+            mzannotate::fragment::FragmentKind::a => Self::a,
+            mzannotate::fragment::FragmentKind::b => Self::b,
+            mzannotate::fragment::FragmentKind::c => Self::c,
+            mzannotate::fragment::FragmentKind::d => Self::d,
+            mzannotate::fragment::FragmentKind::v => Self::v,
+            mzannotate::fragment::FragmentKind::w => Self::w,
+            mzannotate::fragment::FragmentKind::x => Self::x,
+            mzannotate::fragment::FragmentKind::y => Self::y,
+            mzannotate::fragment::FragmentKind::z => Self::z,
+            mzannotate::fragment::FragmentKind::Y => Self::Y,
+            mzannotate::fragment::FragmentKind::B => Self::B,
+            mzannotate::fragment::FragmentKind::immonium => Self::immonium,
+            mzannotate::fragment::FragmentKind::precursor_side_chain_loss => {
                 Self::precursor_side_chain_loss
             }
-            rustyms::fragment::FragmentKind::diagnostic => Self::diagnostic,
-            rustyms::fragment::FragmentKind::internal => Self::internal,
-            rustyms::fragment::FragmentKind::precursor => Self::precursor,
-            rustyms::fragment::FragmentKind::unknown => Self::unknown,
+            mzannotate::fragment::FragmentKind::diagnostic => Self::diagnostic,
+            mzannotate::fragment::FragmentKind::internal => Self::internal,
+            mzannotate::fragment::FragmentKind::precursor => Self::precursor,
+            mzannotate::fragment::FragmentKind::unknown => Self::unknown,
         }
     }
 }
@@ -895,7 +894,7 @@ impl From<rustyms::fragment::FragmentKind> for FragmentKind {
 /// One block in a sequence meaning an amino acid and its accompanying modifications.
 #[pyclass]
 #[derive(Debug)]
-pub struct SequenceElement(rustyms::sequence::SequenceElement<Linked>);
+pub struct SequenceElement(mzcore::sequence::SequenceElement<Linked>);
 
 #[pymethods]
 impl SequenceElement {
@@ -959,22 +958,24 @@ enum FragmentationModel {
     Uvpd,
 }
 
-/// Helper function to match a [`FragmentationModel`] to a rustyms Model.
-fn match_model(model: &FragmentationModel) -> rustyms::annotation::model::FragmentationModel {
+/// Helper function to match a [`FragmentationModel`] to a mzcore Model.
+fn match_model(model: &FragmentationModel) -> mzannotate::annotation::model::FragmentationModel {
     match model {
-        FragmentationModel::All => rustyms::annotation::model::FragmentationModel::all().clone(),
+        FragmentationModel::All => mzannotate::annotation::model::FragmentationModel::all().clone(),
         FragmentationModel::CidHcd => {
-            rustyms::annotation::model::FragmentationModel::cid_hcd().clone()
+            mzannotate::annotation::model::FragmentationModel::cid_hcd().clone()
         }
-        FragmentationModel::Etd => rustyms::annotation::model::FragmentationModel::etd().clone(),
+        FragmentationModel::Etd => mzannotate::annotation::model::FragmentationModel::etd().clone(),
         FragmentationModel::Ethcd => {
-            rustyms::annotation::model::FragmentationModel::ethcd().clone()
+            mzannotate::annotation::model::FragmentationModel::ethcd().clone()
         }
-        FragmentationModel::Ead => rustyms::annotation::model::FragmentationModel::ead().clone(),
+        FragmentationModel::Ead => mzannotate::annotation::model::FragmentationModel::ead().clone(),
         FragmentationModel::Eacid => {
-            rustyms::annotation::model::FragmentationModel::eacid().clone()
+            mzannotate::annotation::model::FragmentationModel::eacid().clone()
         }
-        FragmentationModel::Uvpd => rustyms::annotation::model::FragmentationModel::uvpd().clone(),
+        FragmentationModel::Uvpd => {
+            mzannotate::annotation::model::FragmentationModel::uvpd().clone()
+        }
     }
 }
 
@@ -987,28 +988,28 @@ fn match_model(model: &FragmentationModel) -> rustyms::annotation::model::Fragme
 ///
 #[pyclass]
 #[derive(Clone, Debug)]
-pub struct MatchingParameters(rustyms::annotation::model::MatchingParameters);
+pub struct MatchingParameters(mzannotate::annotation::model::MatchingParameters);
 
 #[pymethods]
 impl MatchingParameters {
     /// Create default parameters
     #[staticmethod]
     fn new() -> Self {
-        Self(rustyms::annotation::model::MatchingParameters::default())
+        Self(mzannotate::annotation::model::MatchingParameters::default())
     }
 
     /// Set the tolerance to a certain ppm value
     #[setter]
     fn tolerance_ppm(&mut self, tolerance: f64) {
-        self.0.tolerance = rustyms::quantities::Tolerance::new_ppm(tolerance);
+        self.0.tolerance = mzcore::quantities::Tolerance::new_ppm(tolerance);
     }
 
     /// Set the tolerance to a certain absolute thomson value
     #[setter]
     fn tolerance_thomson(&mut self, tolerance: f64) {
         self.0.tolerance =
-            rustyms::quantities::Tolerance::new_absolute(rustyms::system::MassOverCharge::new::<
-                rustyms::system::thomson,
+            mzcore::quantities::Tolerance::new_absolute(mzcore::system::MassOverCharge::new::<
+                mzcore::system::thomson,
             >(tolerance));
     }
 }
@@ -1022,50 +1023,47 @@ impl MatchingParameters {
 ///
 #[pyclass]
 #[derive(Clone, Copy, Debug)]
-pub struct SequencePosition(rustyms::sequence::SequencePosition);
+pub struct SequencePosition(mzcore::sequence::SequencePosition);
 
 #[pymethods]
 impl SequencePosition {
     /// Create a N-terminal position
     #[staticmethod]
-    fn n_term() -> Self {
-        Self(rustyms::sequence::SequencePosition::NTerm)
+    const fn n_term() -> Self {
+        Self(mzcore::sequence::SequencePosition::NTerm)
     }
 
     /// Create a position based on index (0-based indexing)
     #[staticmethod]
-    fn index(index: usize) -> Self {
-        Self(rustyms::sequence::SequencePosition::Index(index))
+    const fn index(index: usize) -> Self {
+        Self(mzcore::sequence::SequencePosition::Index(index))
     }
 
     /// Create a C-terminal position
     #[staticmethod]
-    fn c_term() -> Self {
-        Self(rustyms::sequence::SequencePosition::CTerm)
+    const fn c_term() -> Self {
+        Self(mzcore::sequence::SequencePosition::CTerm)
     }
 
     /// Check if this is a N-terminal position
     #[getter]
-    fn is_n_term(&self) -> bool {
-        matches!(self, Self(rustyms::sequence::SequencePosition::NTerm))
+    const fn is_n_term(&self) -> bool {
+        matches!(self.0, mzcore::sequence::SequencePosition::NTerm)
     }
 
     /// Get the index of this position, if it is a terminal position this returns None.
     #[getter]
-    fn get_index(&self) -> Option<usize> {
+    const fn get_index(&self) -> Option<usize> {
         match self.0 {
-            rustyms::sequence::SequencePosition::Index(i) => Some(i),
+            mzcore::sequence::SequencePosition::Index(i) => Some(i),
             _ => None,
         }
     }
 
     /// Check if this is a C-terminal position
     #[getter]
-    fn is_c_term(&self) -> bool {
-        matches!(
-            self,
-            SequencePosition(rustyms::sequence::SequencePosition::CTerm)
-        )
+    const fn is_c_term(&self) -> bool {
+        matches!(self.0, mzcore::sequence::SequencePosition::CTerm)
     }
 }
 /// A compound peptidoform ion with all data as provided by ProForma 2.0.
@@ -1077,14 +1075,14 @@ impl SequencePosition {
 ///
 #[pyclass]
 #[derive(Clone, Debug)]
-pub struct CompoundPeptidoformIon(rustyms::sequence::CompoundPeptidoformIon);
+pub struct CompoundPeptidoformIon(mzcore::sequence::CompoundPeptidoformIon);
 
 #[pymethods]
 impl CompoundPeptidoformIon {
     /// Create a new compound peptidoform ion from a ProForma string.
     #[new]
     fn new(proforma: &str) -> Result<Self, BoxedError> {
-        rustyms::sequence::CompoundPeptidoformIon::pro_forma(proforma, None)
+        mzcore::sequence::CompoundPeptidoformIon::pro_forma(proforma, None)
             .map(CompoundPeptidoformIon)
             .map_err(|e| BoxedError(e.to_owned()))
     }
@@ -1138,7 +1136,7 @@ impl CompoundPeptidoformIon {
     ) -> Vec<Fragment> {
         self.0
             .generate_theoretical_fragments(
-                rustyms::system::isize::Charge::new::<rustyms::system::e>(max_charge),
+                mzcore::system::isize::Charge::new::<mzcore::system::e>(max_charge),
                 &match_model(model),
             )
             .iter()
@@ -1168,14 +1166,14 @@ impl CompoundPeptidoformIon {
 ///
 #[pyclass]
 #[derive(Clone, Debug)]
-pub struct GlycanStructure(rustyms::glycan::GlycanStructure);
+pub struct GlycanStructure(mzcore::glycan::GlycanStructure);
 
 #[pymethods]
 impl GlycanStructure {
     /// Parse a glycan structure from the iupac condensed defiition.
     #[new]
     fn new(iupac: &str) -> Result<Self, BoxedError> {
-        rustyms::glycan::GlycanStructure::from_short_iupac(iupac, 0..iupac.len(), 0)
+        mzcore::glycan::GlycanStructure::from_short_iupac(iupac, 0..iupac.len(), 0)
             .map(GlycanStructure)
             .map_err(|e| BoxedError(e.to_owned()))
     }
@@ -1213,7 +1211,7 @@ impl GlycanStructure {
                 &match_model(model),
                 0,
                 0,
-                &mut rustyms::chemistry::MolecularCharge::proton(max_charge).into(),
+                &mut mzcore::chemistry::MolecularCharge::proton(max_charge).into(),
                 &full.into(),
                 None,
             )
@@ -1240,14 +1238,14 @@ impl GlycanStructure {
 ///
 #[pyclass]
 #[derive(Clone, Debug)]
-pub struct PeptidoformIon(rustyms::sequence::PeptidoformIon);
+pub struct PeptidoformIon(mzcore::sequence::PeptidoformIon);
 
 #[pymethods]
 impl PeptidoformIon {
     /// Create a new peptidoform ion from a ProForma string. Panics
     #[new]
     fn new(proforma: &str) -> Result<Self, BoxedError> {
-        rustyms::sequence::PeptidoformIon::pro_forma(proforma, None)
+        mzcore::sequence::PeptidoformIon::pro_forma(proforma, None)
             .map(PeptidoformIon)
             .map_err(|e| BoxedError(e.to_owned()))
     }
@@ -1295,11 +1293,11 @@ impl PeptidoformIon {
     ) -> Vec<Fragment> {
         self.0
             .generate_theoretical_fragments(
-                rustyms::system::isize::Charge::new::<rustyms::system::e>(max_charge),
+                mzcore::system::isize::Charge::new::<mzcore::system::e>(max_charge),
                 &match_model(model),
             )
             .into_iter()
-            .map(|f| Fragment(f))
+            .map(Fragment)
             .collect()
     }
 
@@ -1325,14 +1323,14 @@ impl PeptidoformIon {
 ///
 #[pyclass]
 #[derive(Clone, Debug)]
-pub struct Peptidoform(rustyms::sequence::Peptidoform<Linked>);
+pub struct Peptidoform(mzcore::sequence::Peptidoform<Linked>);
 
 #[pymethods]
 impl Peptidoform {
     /// Create a new peptidoform from a ProForma string.
     #[new]
     fn new(proforma: &str) -> Result<Self, BoxedError> {
-        rustyms::sequence::Peptidoform::pro_forma(proforma, None)
+        mzcore::sequence::Peptidoform::pro_forma(proforma, None)
             .map(Peptidoform)
             .map_err(|e| BoxedError(e.to_owned()))
     }
@@ -1345,7 +1343,7 @@ impl Peptidoform {
         format!("Peptidoform({})", self.0)
     }
 
-    fn __len__(&self) -> usize {
+    const fn __len__(&self) -> usize {
         self.0.len()
     }
 
@@ -1509,11 +1507,11 @@ impl Peptidoform {
     ) -> Option<Vec<Fragment>> {
         self.0.clone().into_linear().map(|p| {
             p.generate_theoretical_fragments(
-                rustyms::system::isize::Charge::new::<rustyms::system::e>(max_charge),
+                mzcore::system::isize::Charge::new::<mzcore::system::e>(max_charge),
                 &match_model(model),
             )
             .into_iter()
-            .map(|f| Fragment(f))
+            .map(Fragment)
             .collect()
         })
     }
@@ -1536,16 +1534,11 @@ impl Peptidoform {
             .into_simple_linear()
             .and_then(|s| {
                 other.0.clone().into_simple_linear().map(|o| {
-                    rustyms::align::align::<
+                    mzalign::align::<
                         4,
-                        rustyms::sequence::Peptidoform<SimpleLinear>,
-                        rustyms::sequence::Peptidoform<SimpleLinear>,
-                    >(
-                        s,
-                        o,
-                        AlignScoring::default(),
-                        rustyms::align::AlignType::GLOBAL,
-                    )
+                        mzcore::sequence::Peptidoform<SimpleLinear>,
+                        mzcore::sequence::Peptidoform<SimpleLinear>,
+                    >(s, o, AlignScoring::default(), mzalign::AlignType::GLOBAL)
                 })
             })
             .map(Alignment)
@@ -1554,9 +1547,9 @@ impl Peptidoform {
 
 #[pyclass]
 struct Alignment(
-    rustyms::align::Alignment<
-        rustyms::sequence::Peptidoform<SimpleLinear>,
-        rustyms::sequence::Peptidoform<SimpleLinear>,
+    mzalign::Alignment<
+        mzcore::sequence::Peptidoform<SimpleLinear>,
+        mzcore::sequence::Peptidoform<SimpleLinear>,
     >,
 );
 
@@ -1577,46 +1570,8 @@ impl Alignment {
 }
 
 #[pyclass]
-struct RawPeak(rustyms::spectrum::RawPeak);
-
-#[pymethods]
-impl RawPeak {
-    fn __repr__(&self) -> String {
-        format!("RawPeak(mz={}, intensity={})", self.mz(), self.intensity())
-    }
-
-    /// The m/z value of the peak.
-    ///
-    /// Returns
-    /// -------
-    /// float
-    ///
-    #[getter]
-    fn mz(&self) -> f64 {
-        self.0.mz.value
-    }
-
-    /// The intensity of the peak.
-    ///
-    /// Returns
-    /// -------
-    /// float
-    ///
-    #[getter]
-    fn intensity(&self) -> f64 {
-        self.0.intensity.into_inner()
-    }
-}
-
-impl std::fmt::Display for RawPeak {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "({}, {})", self.mz(), self.intensity())
-    }
-}
-
-#[pyclass]
 /// Represents an annotated peak in a mass spectrometry spectrum.
-struct AnnotatedPeak(rustyms::annotation::AnnotatedPeak);
+struct AnnotatedPeak(mzannotate::spectrum::AnnotatedPeak<mzannotate::fragment::Fragment>);
 
 #[pymethods]
 impl AnnotatedPeak {
@@ -1636,8 +1591,8 @@ impl AnnotatedPeak {
     /// float
     ///
     #[getter]
-    fn experimental_mz(&self) -> f64 {
-        self.0.experimental_mz.value
+    const fn experimental_mz(&self) -> f64 {
+        self.0.mz.value
     }
 
     /// The intensity of the peak.
@@ -1647,8 +1602,8 @@ impl AnnotatedPeak {
     /// float
     ///
     #[getter]
-    fn intensity(&self) -> f64 {
-        self.0.intensity.into_inner()
+    const fn intensity(&self) -> f32 {
+        self.0.intensity
     }
 
     /// All annotations of the peak. Can be empty.
@@ -1660,7 +1615,7 @@ impl AnnotatedPeak {
     #[getter]
     fn annotation(&self) -> Vec<Fragment> {
         self.0
-            .annotation
+            .annotations
             .iter()
             .map(|x| Fragment(x.clone()))
             .collect()
@@ -1683,297 +1638,22 @@ impl std::fmt::Display for AnnotatedPeak {
     }
 }
 
-/// A raw spectrum (meaning not annotated yet)
-///
-/// Parameters
-/// ----------
-/// title : str
-///     The title of the spectrum.
-/// num_scans : int
-///     The number of scans.
-/// rt : float
-///     The retention time.
-/// precursor_charge : float
-///     The found precursor charge.
-/// precursor_mass : float
-///     The found precursor mass.
-/// mz_array : list[float]
-///     The m/z values of the peaks.
-/// intensity_array : list[float]
-///     The intensities of the peaks.
-///
-/// Returns
-/// -------
-/// RawSpectrum
-///
-#[pyclass]
-#[derive(Debug)]
-pub struct RawSpectrum(rustyms::spectrum::RawSpectrum);
-
-#[pymethods]
-impl RawSpectrum {
-    /// Create a new raw spectrum.
-    ///
-    /// Parameters
-    /// ----------
-    /// title : str
-    ///     The title of the spectrum.
-    /// num_scans : int
-    ///     The number of scans.
-    /// rt : float
-    ///     The retention time.
-    /// precursor_charge : int
-    ///     The found precursor charge.
-    /// precursor_mass : float
-    ///     The found precursor mass.
-    /// mz_array : list[float]
-    ///     The m/z values of the peaks.
-    /// intensity_array : list[float]
-    ///     The intensities of the peaks.
-    ///
-    /// Returns
-    /// -------
-    /// RawSpectrum
-    ///
-    #[new]
-    #[pyo3(signature = (title, num_scans, mz_array, intensity_array, rt=None, precursor_charge=None, precursor_mass=None))]
-    fn new(
-        title: &str,
-        num_scans: u64,
-        mz_array: Vec<f64>,
-        intensity_array: Vec<f64>,
-        rt: Option<f64>,
-        precursor_charge: Option<isize>,
-        precursor_mass: Option<f64>,
-    ) -> Self {
-        let mut spectrum = rustyms::spectrum::RawSpectrum::default();
-        spectrum.title = title.to_string();
-        spectrum.num_scans = num_scans;
-        spectrum.rt = rt.map(rustyms::system::Time::new::<rustyms::system::s>);
-        spectrum.charge =
-            precursor_charge.map(rustyms::system::isize::Charge::new::<rustyms::system::e>);
-        spectrum.mass = precursor_mass.map(rustyms::system::Mass::new::<dalton>);
-
-        let peaks = mz_array
-            .into_iter()
-            .zip(intensity_array)
-            .map(|(mz, i)| rustyms::spectrum::RawPeak {
-                mz: rustyms::system::MassOverCharge::new::<rustyms::system::thomson>(mz),
-                intensity: OrderedFloat(i),
-            })
-            .collect::<Vec<_>>();
-
-        spectrum.extend(peaks);
-        Self(spectrum)
-    }
-
-    fn __repr__(&self) -> String {
-        format!(
-            "RawSpectrum(title='{}', num_scans={}, rt={}, charge={}, mass={}, spectrum=[{}])",
-            self.title(),
-            self.num_scans(),
-            self.rt().map_or("None".to_string(), |v| v.to_string()),
-            self.charge().map_or("None".to_string(), |v| v.to_string()),
-            self.mass().map_or("None".to_string(), |v| v.to_string()),
-            self.spectrum()
-                .iter()
-                .map(ToString::to_string)
-                .collect::<Vec<_>>()
-                .join(", ")
-        )
-    }
-
-    /// The title.
-    ///
-    /// Returns
-    /// -------
-    /// str
-    ///
-    #[getter]
-    fn title(&self) -> String {
-        self.0.title.clone()
-    }
-
-    /// The number of scans.
-    ///
-    /// Returns
-    /// -------
-    /// int
-    ///
-    #[getter]
-    fn num_scans(&self) -> u64 {
-        self.0.num_scans
-    }
-
-    /// The retention time.
-    ///
-    /// Returns
-    /// -------
-    /// float | None
-    ///
-    #[getter]
-    fn rt(&self) -> Option<f64> {
-        self.0.rt.map(|v| v.value)
-    }
-
-    /// The found precursor charge.
-    ///
-    /// Returns
-    /// -------
-    /// float
-    #[getter]
-    fn charge(&self) -> Option<isize> {
-        self.0.charge.map(|v| v.value)
-    }
-
-    /// The found precursor mass in Daltons.
-    ///
-    /// Returns
-    /// -------
-    /// float
-    ///
-    #[getter]
-    fn mass(&self) -> Option<f64> {
-        self.0.mass.map(|v| v.get::<dalton>())
-    }
-
-    /// The peaks of which this spectrum consists.
-    ///
-    /// Returns
-    /// -------
-    /// list[RawPeak]
-    ///
-    #[getter]
-    fn spectrum(&self) -> Vec<RawPeak> {
-        self.0.clone().into_iter().map(RawPeak).collect()
-    }
-
-    /// Annotate this spectrum with the given peptidoform
-    ///
-    /// Parameters
-    /// ----------
-    /// peptidoform : CompoundPeptidoformIon
-    ///     The peptidoform to annotate the spectrum with.
-    /// model : FragmentationModel
-    ///     The model to use for the fragmentation.
-    /// parameters : MatchingParameters
-    ///     The parameters to use for the matching.
-    /// mode : MassMode
-    ///    The mode to use for the mass.
-    ///
-    /// Returns
-    /// -------
-    /// AnnotatedSpectrum
-    ///     The annotated spectrum.
-    ///
-    /// Raises
-    /// ------
-    /// ValueError
-    ///     If the model is not one of the valid models.
-    ///
-    #[pyo3(signature = (peptidoform, model, parameters, mode=&MassMode::Monoisotopic))]
-    fn annotate(
-        &self,
-        peptidoform: CompoundPeptidoformIon,
-        model: &FragmentationModel,
-        parameters: &MatchingParameters,
-        mode: &MassMode,
-    ) -> AnnotatedSpectrum {
-        let rusty_model = match_model(model);
-        let fragments = peptidoform.0.generate_theoretical_fragments(
-            self.0
-                .charge
-                .unwrap_or_else(|| rustyms::system::isize::Charge::new::<rustyms::system::e>(1)),
-            &rusty_model,
-        );
-        AnnotatedSpectrum(self.0.annotate(
-            peptidoform.0,
-            &fragments,
-            &parameters.0,
-            match mode {
-                MassMode::Monoisotopic => rustyms::chemistry::MassMode::Monoisotopic,
-                MassMode::Average => rustyms::chemistry::MassMode::Average,
-                MassMode::MostAbundant => rustyms::chemistry::MassMode::MostAbundant,
-            },
-        ))
-    }
-}
-
 /// An annotated spectrum.
 #[pyclass]
 #[derive(Debug)]
-pub struct AnnotatedSpectrum(rustyms::annotation::AnnotatedSpectrum);
+pub struct AnnotatedSpectrum(mzannotate::spectrum::AnnotatedSpectrum);
 
 #[pymethods]
 impl AnnotatedSpectrum {
     fn __repr__(&self) -> String {
         format!(
-            "AnnotatedSpectrum(title='{}', num_scans={}, rt={}, charge={}, mass={}, spectrum=[{}])",
-            self.title(),
-            self.num_scans(),
-            self.rt().map_or("None".to_string(), |v| v.to_string()),
-            self.charge().map_or("None".to_string(), |v| v.to_string()),
-            self.mass().map_or("None".to_string(), |v| v.to_string()),
+            "AnnotatedSpectrum(spectrum=[{}])",
             self.spectrum()
                 .iter()
                 .map(ToString::to_string)
                 .collect::<Vec<_>>()
                 .join(", ")
         )
-    }
-
-    /// The title.
-    ///
-    /// Returns
-    /// -------
-    /// str
-    ///
-    #[getter]
-    fn title(&self) -> String {
-        self.0.title.clone()
-    }
-
-    /// The number of scans.
-    ///
-    /// Returns
-    /// -------
-    /// int
-    ///
-    #[getter]
-    fn num_scans(&self) -> u64 {
-        self.0.num_scans
-    }
-
-    /// The retention time.
-    ///
-    /// Returns
-    /// -------
-    /// float
-    ///
-    #[getter]
-    fn rt(&self) -> Option<f64> {
-        self.0.rt.map(|v| v.value)
-    }
-
-    /// The found precursor charge.
-    ///
-    /// Returns
-    /// -------
-    /// float
-    #[getter]
-    fn charge(&self) -> Option<isize> {
-        self.0.charge.map(|v| v.value)
-    }
-
-    /// The found precursor mass in Daltons.
-    ///
-    /// Returns
-    /// -------
-    /// float
-    ///
-    #[getter]
-    fn mass(&self) -> Option<f64> {
-        self.0.mass.map(|v| v.get::<dalton>())
     }
 
     /// The peaks of which this spectrum consists.
@@ -1984,14 +1664,14 @@ impl AnnotatedSpectrum {
     ///
     #[getter]
     fn spectrum(&self) -> Vec<AnnotatedPeak> {
-        self.0.clone().into_iter().map(AnnotatedPeak).collect()
+        self.0.peaks.iter().cloned().map(AnnotatedPeak).collect()
     }
 }
 
-/// Python bindings to the rustyms library.
+/// Python bindings to the mzcore library.
 #[pymodule]
-#[pyo3(name = "rustyms")]
-fn rustyms_py03(_py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
+#[pyo3(name = "mzcore")]
+fn mzcore_py03(_py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<Alignment>()?;
     m.add_class::<AminoAcid>()?;
     m.add_class::<AnnotatedPeak>()?;
@@ -2002,7 +1682,9 @@ fn rustyms_py03(_py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<Fragment>()?;
     m.add_class::<FragmentationModel>()?;
     m.add_class::<FragmentKind>()?;
+    m.add_class::<FragmentKind>()?;
     m.add_class::<FragmentType>()?;
+    m.add_class::<GlycanStructure>()?;
     m.add_class::<GlycanStructure>()?;
     m.add_class::<MassMode>()?;
     m.add_class::<MatchingParameters>()?;
@@ -2011,8 +1693,6 @@ fn rustyms_py03(_py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<MolecularFormula>()?;
     m.add_class::<Peptidoform>()?;
     m.add_class::<PeptidoformIon>()?;
-    m.add_class::<RawPeak>()?;
-    m.add_class::<RawSpectrum>()?;
     m.add_class::<SequenceElement>()?;
     m.add_class::<SimpleModification>()?;
     m.add_function(wrap_pyfunction!(find_isobaric_sets, m)?)?;
