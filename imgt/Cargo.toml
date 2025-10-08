@@ -27,6 +27,7 @@ similar = { workspace = true }
 
 [features]
 default = []
+internal-no-data = []
 coloured-errors = ["context_error/colored"]
 
 [lints]

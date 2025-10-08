@@ -22,6 +22,7 @@
 
 mod fancy;
 #[rustfmt::skip]
+#[cfg(not(feature = "internal-no-data"))]
 mod germlines;
 mod regions;
 mod select;

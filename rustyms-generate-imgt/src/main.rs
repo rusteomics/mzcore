@@ -13,18 +13,16 @@ mod parse;
 mod structs;
 
 use bincode::config::Configuration;
+use imgt::{Germlines, Species};
 use itertools::Itertools;
-use rustyms::{
-    imgt::{Germlines, Species},
-    sequence::{AminoAcid, Annotation, Region},
-};
+use mzcore::sequence::{AminoAcid, Annotation, Region};
 use structs::{Location, SequenceRegion};
 
 fn main() {
     let file = File::open("rustyms-generate-imgt/data/imgt.dat")
         .expect("Please provide the 'imgt.dat' file in the 'rustyms-generate-imgt/data' directory in the root.");
-    let mut output = BufWriter::new(File::create("rustyms/src/imgt/germlines/mod.rs").unwrap());
-    let mut docs = BufWriter::new(File::create("rustyms/src/imgt/germlines/germlines.md").unwrap());
+    let mut output = BufWriter::new(File::create("imgt/src/germlines/mod.rs").unwrap());
+    let mut docs = BufWriter::new(File::create("imgt/src/germlines/germlines.md").unwrap());
     let mut error = BufWriter::new(File::create("errors.dat").unwrap());
     let data = parse::parse_dat(BufReader::new(file));
 
@@ -88,7 +86,7 @@ _Number of genes / number of alleles_
         .unwrap();
         found_species.push(species);
 
-        let mut file = File::create(format!("rustyms/src/imgt/germlines/{species}.bin")).unwrap();
+        let mut file = File::create(format!("imgt/src/germlines/{species}.bin")).unwrap();
         file.write_all(
             &bincode::serde::encode_to_vec::<Germlines, Configuration>(
                 germlines,

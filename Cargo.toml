@@ -7,7 +7,7 @@ members = [
     "mzcv",
     "imgt",
     "rustyms-generate-databases",
-    # "rustyms-generate-imgt",
+    "rustyms-generate-imgt",
     "rustyms-py",
     "fuzz",
     "examples/*",
