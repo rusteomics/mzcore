@@ -18,6 +18,7 @@
 //! * `internet` turns on downloading from the internet, as this pulls in `reqwest` this is made
 //!   optional to prevent relying on too many dependencies.
 
+mod curie;
 mod cv_error;
 mod cv_index;
 mod cv_source;
@@ -26,6 +27,7 @@ mod load;
 mod obo;
 mod text;
 
+pub use curie::*;
 pub use cv_error::*;
 pub use cv_index::*;
 pub use cv_source::*;
