@@ -113,7 +113,7 @@ impl MetaData for PiHelixNovoData {
         None
     }
 
-    fn mode(&self) -> Option<&str> {
+    fn mode(&self) -> Option<Cow<'_, str>> {
         None
     }
 

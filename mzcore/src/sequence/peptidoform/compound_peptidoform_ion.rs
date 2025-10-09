@@ -134,3 +134,9 @@ impl<Complexity> From<Vec<Peptidoform<Complexity>>> for CompoundPeptidoformIon {
         Self(value.into_iter().map(Into::into).collect())
     }
 }
+
+impl FromIterator<PeptidoformIon> for CompoundPeptidoformIon {
+    fn from_iter<T: IntoIterator<Item = PeptidoformIon>>(iter: T) -> Self {
+        Self(iter.into_iter().collect())
+    }
+}

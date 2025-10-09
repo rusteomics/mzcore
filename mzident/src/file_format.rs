@@ -13,6 +13,7 @@ use crate::*;
 #[derive(Clone, Copy, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 #[allow(clippy::upper_case_acronyms, missing_docs)]
 pub enum KnownFileFormat {
+    AnnotatedSpectrum,
     BasicCSV(BasicCSVVersion),
     DeepNovoFamily(DeepNovoFamilyVersion),
     Fasta,
@@ -40,6 +41,7 @@ impl KnownFileFormat {
     /// Get the name of the format
     pub const fn name(self) -> &'static str {
         match self {
+            Self::AnnotatedSpectrum => "mzSpecLib",
             Self::BasicCSV(_) => "CSV",
             Self::DeepNovoFamily(_) => "DeepNovo Family",
             Self::Fasta => "Fasta",
@@ -67,9 +69,9 @@ impl KnownFileFormat {
     /// Get the format version
     pub fn version(self) -> Option<String> {
         match self {
+            Self::AnnotatedSpectrum | Self::Fasta => None,
             Self::BasicCSV(version) => Some(version.to_string()),
             Self::DeepNovoFamily(version) => Some(version.to_string()),
-            Self::Fasta => None,
             Self::InstaNovo(version) => Some(version.to_string()),
             Self::MaxQuant(version) => Some(version.to_string()),
             Self::MZTab => Some("1.0".to_string()),
@@ -106,6 +108,7 @@ impl Display for KnownFileFormat {
 impl From<KnownFileFormat> for FileFormat {
     fn from(value: KnownFileFormat) -> Self {
         match value {
+            KnownFileFormat::AnnotatedSpectrum => Self::AnnotatedSpectrum,
             KnownFileFormat::BasicCSV(version) => Self::BasicCSV(Some(version)),
             KnownFileFormat::DeepNovoFamily(version) => Self::DeepNovoFamily(Some(version)),
             KnownFileFormat::Fasta => Self::Fasta,
@@ -137,6 +140,7 @@ impl From<KnownFileFormat> for FileFormat {
 #[derive(Clone, Copy, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
 #[allow(clippy::upper_case_acronyms, missing_docs)]
 pub enum FileFormat {
+    AnnotatedSpectrum,
     BasicCSV(Option<BasicCSVVersion>),
     DeepNovoFamily(Option<DeepNovoFamilyVersion>),
     Fasta,
@@ -175,6 +179,8 @@ impl FileFormat {
         custom_database: Option<&'a CustomDatabase>,
     ) -> Result<GeneralIdentifiedPeptidoforms<'a>, BoxedError<'static, BasicKind>> {
         match self {
+            #[cfg(feature = "mzannotate")]
+            Self::AnnotatedSpectrum => annotated_spectrum::parse_mzspeclib(path, custom_database),
             Self::BasicCSV(version) => {
                 BasicCSVData::parse_file(path, custom_database, false, version)
                     .map(IdentifiedPeptidoformIter::into_box)

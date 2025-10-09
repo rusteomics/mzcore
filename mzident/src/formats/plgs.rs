@@ -326,7 +326,7 @@ impl MetaData for PLGSData {
         Some(self.precursor_z)
     }
 
-    fn mode(&self) -> Option<&str> {
+    fn mode(&self) -> Option<Cow<'_, str>> {
         None
     }
 

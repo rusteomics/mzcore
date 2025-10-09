@@ -11,6 +11,7 @@ use crate::*;
 // TODO:
 // * Merge multiple annotations for the same spectrum (e.g. all candidates peaks export, take care not to lose info on chimeric spectra)
 // * Merge identical (or similar?) peptide sequences (for faster processing)
+// * Fix the case sensitivity on Linux (and mac?)
 
 /// Open the selected path and automatically determine the filetype. It will decompress gzipped
 /// files automatically.
@@ -117,6 +118,10 @@ pub fn open_identified_peptidoforms_file<'a>(
                 = Box::new(peptides.into_iter().map(|p| Ok(IdentifiedPeptidoform::<SemiAmbiguous, PeptidoformPresent>::from(p).cast())));
             a
         }),
+        #[cfg(feature = "mzannotate")]
+        Some("txt") if path.file_stem().is_some_and(|p| p.to_string_lossy().contains(".mzspeclib.")) => {
+            annotated_spectrum::parse_mzspeclib(path, custom_database)
+        }
         Some("txt") => {
             MaxQuantData::parse_file(path, custom_database, keep_all_columns, None)
             .map(IdentifiedPeptidoformIter::into_box)

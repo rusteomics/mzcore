@@ -35,7 +35,7 @@ pub trait MetaData {
     fn charge(&self) -> Option<Charge>;
 
     /// Which fragmentation mode was used, if known
-    fn mode(&self) -> Option<&str>; // TODO: should create an enum or use mzdata formats at some point
+    fn mode(&self) -> Option<Cow<'_, str>>; // TODO: should create an enum or use mzdata formats at some point
 
     /// The retention time, if known
     fn retention_time(&self) -> Option<Time>;

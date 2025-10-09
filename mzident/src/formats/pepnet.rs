@@ -112,7 +112,7 @@ impl MetaData for PepNetData {
         None
     }
 
-    fn mode(&self) -> Option<&str> {
+    fn mode(&self) -> Option<Cow<'_, str>> {
         None
     }
 

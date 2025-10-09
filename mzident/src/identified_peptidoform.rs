@@ -1,5 +1,8 @@
 use std::{borrow::Cow, marker::PhantomData, ops::Range};
 
+#[cfg(feature = "mzannotate")]
+use mzannotate::prelude::AnnotatedSpectrum;
+#[cfg(not(feature = "mzannotate"))]
 use serde::{Deserialize, Serialize};
 
 use crate::*;
@@ -12,7 +15,8 @@ use mzcore::{
 };
 
 /// A peptide that is identified by a _de novo_ or database matching program
-#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
+#[cfg_attr(not(feature = "mzannotate"), derive(Serialize, Deserialize))]
+#[derive(Clone, Debug)]
 pub struct IdentifiedPeptidoform<Complexity, PeptidoformAvailability> {
     /// The score -1.0..=1.0 if a score was available in the original format
     pub score: Option<f64>,
@@ -27,7 +31,8 @@ pub struct IdentifiedPeptidoform<Complexity, PeptidoformAvailability> {
 }
 
 /// The definition of all special metadata for all types of identified peptides that can be read
-#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
+#[cfg_attr(not(feature = "mzannotate"), derive(Serialize, Deserialize))]
+#[derive(Clone, Debug)]
 #[expect(clippy::upper_case_acronyms)]
 pub enum IdentifiedPeptidoformData {
     /// A basic CSV format
@@ -72,6 +77,9 @@ pub enum IdentifiedPeptidoformData {
     Sage(SageData),
     /// SpectrumSequenceList metadata
     SpectrumSequenceList(SpectrumSequenceListData),
+    /// An mzSpecLib spectrum (only available if the feature `mzannotate` is turned on)
+    #[cfg(feature = "mzannotate")]
+    AnnotatedSpectrum(AnnotatedSpectrum),
 }
 
 impl<PeptidoformAvailability> IdentifiedPeptidoform<Linear, PeptidoformAvailability> {
@@ -133,6 +141,18 @@ impl<PeptidoformAvailability> IdentifiedPeptidoform<Linear, PeptidoformAvailabil
                 .and_then(|p| p.as_linear()),
             IdentifiedPeptidoformData::PLink(PLinkData { peptidoform, .. }) => {
                 peptidoform.singular_ref().and_then(|p| p.as_linear())
+            }
+            #[cfg(feature = "mzannotate")]
+            IdentifiedPeptidoformData::AnnotatedSpectrum(spectrum) => {
+                use itertools::Itertools;
+
+                let ion = spectrum
+                    .analytes
+                    .iter()
+                    .filter_map(|a| a.peptidoform_ion.as_ref())
+                    .exactly_one()
+                    .ok()?;
+                ion.singular_ref().and_then(|p| p.as_linear())
             }
         }
     }
@@ -198,6 +218,18 @@ impl<PeptidoformAvailability> IdentifiedPeptidoform<SimpleLinear, PeptidoformAva
             IdentifiedPeptidoformData::PLink(PLinkData { peptidoform, .. }) => peptidoform
                 .singular_ref()
                 .and_then(|p| p.as_simple_linear()),
+            #[cfg(feature = "mzannotate")]
+            IdentifiedPeptidoformData::AnnotatedSpectrum(spectrum) => {
+                use itertools::Itertools;
+
+                let ion = spectrum
+                    .analytes
+                    .iter()
+                    .filter_map(|a| a.peptidoform_ion.as_ref())
+                    .exactly_one()
+                    .ok()?;
+                ion.singular_ref().and_then(|p| p.as_simple_linear())
+            }
         }
     }
 }
@@ -265,6 +297,18 @@ impl<PeptidoformAvailability> IdentifiedPeptidoform<SemiAmbiguous, PeptidoformAv
             IdentifiedPeptidoformData::PLink(PLinkData { peptidoform, .. }) => peptidoform
                 .singular_ref()
                 .and_then(|p| p.as_semi_ambiguous()),
+            #[cfg(feature = "mzannotate")]
+            IdentifiedPeptidoformData::AnnotatedSpectrum(spectrum) => {
+                use itertools::Itertools;
+
+                let ion = spectrum
+                    .analytes
+                    .iter()
+                    .filter_map(|a| a.peptidoform_ion.as_ref())
+                    .exactly_one()
+                    .ok()?;
+                ion.singular_ref().and_then(|p| p.as_semi_ambiguous())
+            }
         }
     }
 }
@@ -329,6 +373,18 @@ impl<PeptidoformAvailability> IdentifiedPeptidoform<UnAmbiguous, PeptidoformAvai
                 .and_then(|p| p.as_unambiguous()),
             IdentifiedPeptidoformData::PLink(PLinkData { peptidoform, .. }) => {
                 peptidoform.singular_ref().and_then(|p| p.as_unambiguous())
+            }
+            #[cfg(feature = "mzannotate")]
+            IdentifiedPeptidoformData::AnnotatedSpectrum(spectrum) => {
+                use itertools::Itertools;
+
+                let ion = spectrum
+                    .analytes
+                    .iter()
+                    .filter_map(|a| a.peptidoform_ion.as_ref())
+                    .exactly_one()
+                    .ok()?;
+                ion.singular_ref().and_then(|p| p.as_unambiguous())
             }
         }
     }
@@ -522,7 +578,7 @@ macro_rules! impl_metadata {
 }
 
 impl_metadata!(
-    formats: {BasicCSV,DeepNovoFamily,Fasta,MaxQuant,InstaNovo,MZTab,NovoB,Novor,Opair,Peaks,PepNet,PiHelixNovo,PiPrimeNovo,PLGS,PLink,PowerNovo,Proteoscape,PUniFind,Sage,MSFragger,SpectrumSequenceList};
+    formats: {BasicCSV,DeepNovoFamily,Fasta,MaxQuant,InstaNovo,MZTab,NovoB,Novor,Opair,Peaks,PepNet,PiHelixNovo,PiPrimeNovo,PLGS,PLink,PowerNovo,Proteoscape,PUniFind,Sage,MSFragger,SpectrumSequenceList,AnnotatedSpectrum};
     functions: {
         fn compound_peptidoform_ion(&self) -> Option<Cow<'_, CompoundPeptidoformIon>>;
         fn format(&self) -> KnownFileFormat;
@@ -530,7 +586,7 @@ impl_metadata!(
         fn original_confidence(&self) -> Option<f64>;
         fn original_local_confidence(&self) -> Option<&[f64]>;
         fn charge(&self) -> Option<Charge>;
-        fn mode(&self) -> Option<&str>;
+        fn mode(&self) -> Option<Cow<'_, str>>;
         fn retention_time(&self) -> Option<Time>;
         fn scans(&self) -> SpectrumIds;
         fn experimental_mz(&self) -> Option<MassOverCharge>;

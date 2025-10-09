@@ -158,7 +158,7 @@ impl MetaData for ProteoscapeData {
         Some(self.z)
     }
 
-    fn mode(&self) -> Option<&str> {
+    fn mode(&self) -> Option<Cow<'_, str>> {
         None
     }
 

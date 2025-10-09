@@ -4,6 +4,8 @@
 
 #[macro_use]
 mod common_parser;
+#[cfg(feature = "mzannotate")]
+mod annotated_spectrum;
 mod file_format;
 mod formats;
 mod general;
