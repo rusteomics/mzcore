@@ -138,7 +138,7 @@ fn main() {
                         &fragments,
                         &cpi,
                         &args,
-                        peptide.mode().map(ToString::to_string),
+                        peptide.mode().map(std::borrow::Cow::into_owned),
                     );
                 }
             }

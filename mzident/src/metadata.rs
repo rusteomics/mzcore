@@ -87,14 +87,19 @@ pub trait MetaData {
     /// The database that was used for matching optionally with the version of the database
     fn database(&self) -> Option<(&str, Option<&str>)>;
 
-    // Get the matched fragments, potentially with m/z and intensity
-    // #[doc(hidden)]
-    // pub fn matched_fragments(
-    //     &self,
-    // ) -> Option<Vec<(Option<MassOverCharge>, Option<f64>, Fragment)>> {
-    //     // OPair, MaxQuant, PLGS
-    //     None
-    // }
+    /// Get the annotated spectrum if this is encoded in the format
+    // TODO: built parsers for OPair, MaxQuant, PLGS
+    #[cfg(feature = "mzannotate")]
+    fn annotated_spectrum(&self) -> Option<Cow<'_, mzannotate::spectrum::AnnotatedSpectrum>> {
+        None
+    }
+
+    /// Check if this spectrum has an annotated spectrum available.
+    /// This can be overwritten to built a fater implementation is creating the spectrum needs to happen at runtime.
+    #[cfg(feature = "mzannotate")]
+    fn has_annotated_spectrum(&self) -> bool {
+        self.annotated_spectrum().is_some()
+    }
 }
 
 /// A flanking sequence

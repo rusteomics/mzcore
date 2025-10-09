@@ -41,7 +41,7 @@ impl Display for LibraryHeader {
             AttributeValue::Scalar(Value::String(self.format_version.clone())),
             None,
         );
-        writeln!(f, "<MzSpecLib>\n{version}")?;
+        writeln!(f, "<mzSpecLib>\n{version}")?;
         for attr in &self.attributes {
             writeln!(f, "{attr}")?;
         }

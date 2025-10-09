@@ -1,7 +1,7 @@
 use std::{borrow::Cow, fmt::Display, str::FromStr};
 
 use mzdata::{
-    curie,
+    Param, curie,
     params::{CURIE, CURIEParsingError, ParamValue, ParamValueParseError, Unit, Value},
 };
 
@@ -55,9 +55,9 @@ impl FromStr for Term {
     }
 }
 
-impl TryFrom<mzdata::Param> for Term {
+impl TryFrom<Param> for Term {
     type Error = ();
-    fn try_from(value: mzdata::Param) -> Result<Self, ()> {
+    fn try_from(value: Param) -> Result<Self, ()> {
         Ok(Self {
             accession: value.curie().ok_or(())?,
             name: value.name.into(),
@@ -70,6 +70,16 @@ impl Term {
         Self {
             accession,
             name: Cow::Owned(name),
+        }
+    }
+
+    pub fn to_param(self, value: Value, unit: Unit) -> Param {
+        Param {
+            name: self.name.to_string(),
+            value,
+            accession: Some(self.accession.accession),
+            controlled_vocabulary: Some(self.accession.controlled_vocabulary),
+            unit,
         }
     }
 }
@@ -112,8 +122,8 @@ impl FromStr for AttributeValue {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         if let Ok(term) = s.parse() {
             Ok(Self::Term(term))
-        } else if s.contains(",") {
-            let vals: Vec<Value> = s.split(",").flat_map(Value::from_str).collect();
+        } else if s.contains(',') {
+            let vals: Vec<Value> = s.split(',').flat_map(Value::from_str).collect();
             if vals.iter().all(|v| v.is_numeric() || v.is_boolean()) {
                 Ok(Self::List(vals))
             } else {
@@ -121,7 +131,11 @@ impl FromStr for AttributeValue {
                 Ok(Self::Scalar(v))
             }
         } else {
-            let v = Value::from_str(s)?;
+            let v = if s.starts_with('\"') && s.ends_with('\"') && s.len() > 1 {
+                Value::from_str(&s[1..s.len() - 1])
+            } else {
+                Value::from_str(s)
+            }?;
             Ok(Self::Scalar(v))
         }
     }
@@ -136,6 +150,12 @@ impl From<Value> for AttributeValue {
 impl From<Term> for AttributeValue {
     fn from(value: Term) -> Self {
         Self::Term(value)
+    }
+}
+
+impl From<AttributeValue> for Value {
+    fn from(value: AttributeValue) -> Self {
+        value.scalar().into_owned()
     }
 }
 

@@ -91,3 +91,19 @@ impl std::fmt::Display for GlycanBreakPos {
         write!(f, "{}{}", self.label(), self.position().label())
     }
 }
+
+/// The selected (part) of a glycan to render, using [`Self::FULL`] is a shortcut to get the full glycan.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum GlycanSelection<'a> {
+    /// A subtree of the glycan, with potentially a break of the root of the subtree and breaks in the branches.
+    /// If no breaks are specified the full glycan is shown. The root is the first monosaccharide to be included
+    /// in the rendering. The fragment will not include the indicated glycan positions for the branch breaks.
+    Subtree(Option<&'a GlycanPosition>, &'a [GlycanPosition]),
+    /// A single sugar, all it branches will be shown as broken.
+    SingleSugar(&'a GlycanPosition),
+}
+
+impl GlycanSelection<'static> {
+    /// A shorthand for a full glycan.
+    pub const FULL: Self = Self::Subtree(None, &[]);
+}

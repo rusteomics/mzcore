@@ -1,3 +1,4 @@
+use crate::fragment::mzpaf::write::ToMzPAF;
 use mzcore::sequence::CompoundPeptidoformIon;
 
 /// Create a parse test based on a given case and its name.
@@ -16,7 +17,7 @@ macro_rules! mzpaf_test {
                     panic!("Failed test")
                 }
                 Ok(res) => {
-                    let back = res.iter().map(|a| a.to_mz_paf()).join(",");
+                    let back = res.iter().map(|a| a.to_mz_paf_string()).join(",");
                     let res_back = $crate::fragment::parse_mz_paf(
                         &back,
                         None,
@@ -24,7 +25,7 @@ macro_rules! mzpaf_test {
                     );
                     match res_back {
                         Ok(res_back) => {
-                            let back_back = res_back.iter().map(|a| a.to_mz_paf()).join(",");
+                            let back_back = res_back.iter().map(|a| a.to_mz_paf_string()).join(",");
                             assert_eq!(
                                 back, back_back,
                                 "{back} != {back_back} (from input: {})",
@@ -154,3 +155,5 @@ mzpaf_test!(ne r"r[]", fuzz_6);
 mzpaf_test!(ne r"r[Adensosine", fuzz_7);
 mzpaf_test!(ne r"f{}", fuzz_8);
 mzpaf_test!(ne r"f{C2H6", fuzz_9);
+
+mzpaf_test!("IC[Carbamidomethyl]/-0.0008", hand_test_01);

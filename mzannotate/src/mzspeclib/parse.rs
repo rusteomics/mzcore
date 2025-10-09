@@ -4,8 +4,9 @@ use std::{
     io::{self, prelude::*},
 };
 
-use context_error::{BasicKind, BoxedError};
+use context_error::{BasicKind, BoxedError, Context, CreateError};
 use indexmap::IndexMap;
+use itertools::Itertools;
 use mzcore::{
     prelude::*,
     system::{MassOverCharge, isize::Charge},
@@ -13,15 +14,16 @@ use mzcore::{
 use mzdata::{
     curie,
     mzpeaks::{peak_set::PeakSetVec, prelude::PeakCollectionMut},
-    params::ParamValue,
-    spectrum::SpectrumDescription,
+    params::{ParamDescribed, ParamValue, Unit, Value},
+    spectrum::{Precursor, ScanEvent, SelectedIon, SpectrumDescription},
 };
 
 use crate::{
     fragment::{Fragment, parse_mz_paf},
+    helper_functions::explain_number_error,
     mzspeclib::{
-        Analyte, Attribute, AttributeParseError, AttributeSet, Attributed, AttributedMut,
-        EntryType, Id, Interpretation, LibraryHeader,
+        Analyte, Attribute, AttributeParseError, AttributeSet, AttributeValue, Attributed,
+        AttributedMut, EntryType, Id, Interpretation, LibraryHeader,
     },
     spectrum::{AnnotatedPeak, AnnotatedSpectrum},
     term,
@@ -54,7 +56,10 @@ pub enum MzSpecLibTextParseError {
     AttributeParseError(AttributeParseError, ParserState, u64),
     EOF,
     InconsistentCharge,
+    MissingUnit,
     InvalidProforma(BoxedError<'static, BasicKind>),
+    InvalidMzPAF(BoxedError<'static, BasicKind>),
+    RichError(BoxedError<'static, BasicKind>),
 }
 
 // impl From<MzSpecLibTextParseError> for io::Error {
@@ -307,36 +312,46 @@ impl<R: Read> MzSpecLibParser<R> {
         Ok(())
     }
 
-    fn parse_decl(
+    /// Parse an open declaration tag. Example: `<Spectrum=1>`
+    fn parse_open_declaration(
         &mut self,
         buf: &str,
-        decl: &str,
+        declaration: &str,
         to_state: ParserState,
     ) -> Result<u32, MzSpecLibTextParseError> {
-        let id = if buf.starts_with(decl) {
+        let id = if buf.starts_with(declaration) {
             self.state = to_state;
-            let buf_ = buf.trim();
-            if let Some((_, val)) = buf_[..buf_.len() - 1].split_once('=') {
-                val.parse::<Id>().map_err(|_| {
-                    MzSpecLibTextParseError::InvalidContentAtState(
-                        buf.to_string(),
-                        self.state,
-                        self.line_number,
-                    )
+            let trimmed_buf = buf.trim();
+            if let Some((_before, val)) = trimmed_buf[..trimmed_buf.len() - 1].split_once('=') {
+                val.parse::<Id>().map_err(|e| {
+                    MzSpecLibTextParseError::RichError(BoxedError::new(
+                        BasicKind::Error,
+                        "Invalid declaration",
+                        format!("The ID was {}", explain_number_error(&e)),
+                        Context::line(
+                            Some(self.line_number as u32),
+                            buf,
+                            declaration.len() + 1,
+                            buf.len() - declaration.len() - 1,
+                        )
+                        .to_owned(),
+                    ))
                 })?
             } else {
-                return Err(MzSpecLibTextParseError::InvalidContentAtState(
-                    buf.to_string(),
-                    self.state,
-                    self.line_number,
-                ));
+                return Err(MzSpecLibTextParseError::RichError(BoxedError::new(
+                    BasicKind::Error,
+                    "Invalid declaration",
+                    "The ID needs to contain an equals symbol `=` and this was missing",
+                    Context::full_line(self.line_number as u32, buf).to_owned(),
+                )));
             }
         } else {
-            return Err(MzSpecLibTextParseError::InvalidContentAtState(
-                buf.to_string(),
-                self.state,
-                self.line_number,
-            ));
+            return Err(MzSpecLibTextParseError::RichError(BoxedError::new(
+                BasicKind::Error,
+                "Invalid declaration",
+                format!("The declaration `{declaration}` was expected but not found"),
+                Context::full_line(self.line_number as u32, buf).to_owned(),
+            )));
         };
         Ok(id)
     }
@@ -352,14 +367,14 @@ impl<R: Read> MzSpecLibParser<R> {
         if z == 0 {
             return Err(MzSpecLibTextParseError::EOF);
         }
-        let id = self.parse_decl(&buf, "<Analyte=", ParserState::Analyte)?;
+        let id = self.parse_open_declaration(&buf, "<Analyte=", ParserState::Analyte)?;
 
         let mut analyte = Analyte::new(id, None, None, Vec::new());
         loop {
             match self.read_attribute(&mut buf) {
                 Ok(attr) => {
                     if attr.name.accession == curie!(MS:1_003_270)
-                        && let mzdata::params::Value::String(value) = attr.value.scalar().as_ref()
+                        && let Value::String(value) = attr.value.scalar().as_ref()
                     {
                         let peptidoform_ion = PeptidoformIon::pro_forma(value, None)
                             .map_err(|e| MzSpecLibTextParseError::InvalidProforma(e.to_owned()))?;
@@ -373,7 +388,7 @@ impl<R: Read> MzSpecLibParser<R> {
                         }
                         analyte.peptidoform_ion = Some(peptidoform_ion);
                     } else if attr.name.accession == curie!(MS:1_000_041)
-                        && let mzdata::params::Value::Int(value) = attr.value.scalar().as_ref()
+                        && let Value::Int(value) = attr.value.scalar().as_ref()
                     {
                         let charge = Charge::new::<mzcore::system::e>(*value as isize);
                         if analyte.charge.is_some_and(|c| c != charge) {
@@ -443,7 +458,8 @@ impl<R: Read> MzSpecLibParser<R> {
         if z == 0 {
             return Err(MzSpecLibTextParseError::EOF);
         }
-        let id = self.parse_decl(&buf, "<Interpretation=", ParserState::Interpretation)?;
+        let id =
+            self.parse_open_declaration(&buf, "<Interpretation=", ParserState::Interpretation)?;
         let mut interp = Interpretation::new(id, Vec::new(), Vec::new(), Vec::new());
         loop {
             match self.read_attribute(&mut buf) {
@@ -506,21 +522,47 @@ impl<R: Read> MzSpecLibParser<R> {
         let buf = buf.trim();
         let mut it = buf.split('\t');
 
-        let Some(mz) = it.next().and_then(|v| v.parse::<f64>().ok()) else {
-            return Err(MzSpecLibTextParseError::InvalidContentAtState(
-                buf.to_string(),
-                ParserState::Peaks,
-                self.line_number,
-            ));
-        };
+        let mz = it
+            .next()
+            .ok_or_else(|| {
+                MzSpecLibTextParseError::RichError(BoxedError::new(
+                    BasicKind::Error,
+                    "Peak m/z is missing",
+                    "At least two columns are neccessary in the peaks data lines",
+                    Context::full_line(self.line_number as u32, buf).to_owned(),
+                ))
+            })
+            .and_then(|v| {
+                v.parse::<f64>().map_err(|e| {
+                    MzSpecLibTextParseError::RichError(BoxedError::new(
+                        BasicKind::Error,
+                        "Peak m/z is not a number",
+                        e.to_string(),
+                        Context::full_line(self.line_number as u32, buf).to_owned(),
+                    ))
+                })
+            })?;
 
-        let Some(intensity) = it.next().and_then(|v| v.parse::<f32>().ok()) else {
-            return Err(MzSpecLibTextParseError::InvalidContentAtState(
-                buf.to_string(),
-                ParserState::Peaks,
-                self.line_number,
-            ));
-        };
+        let intensity = it
+            .next()
+            .ok_or_else(|| {
+                MzSpecLibTextParseError::RichError(BoxedError::new(
+                    BasicKind::Error,
+                    "Peak intensity is missing",
+                    "At least two columns are neccessary in the peaks data lines",
+                    Context::full_line(self.line_number as u32, buf).to_owned(),
+                ))
+            })
+            .and_then(|v| {
+                v.parse::<f32>().map_err(|e| {
+                    MzSpecLibTextParseError::RichError(BoxedError::new(
+                        BasicKind::Error,
+                        "Peak intensity is not a number",
+                        e.to_string(),
+                        Context::full_line(self.line_number as u32, buf).to_owned(),
+                    ))
+                })
+            })?;
 
         let mut peak = AnnotatedPeak::new(
             MassOverCharge::new::<mzcore::system::thomson>(mz),
@@ -532,7 +574,8 @@ impl<R: Read> MzSpecLibParser<R> {
 
         match it.next() {
             Some(v) => {
-                let annots = parse_mz_paf(v, None, &CompoundPeptidoformIon::default()).unwrap();
+                let annots = parse_mz_paf(v, None, &CompoundPeptidoformIon::default())
+                    .map_err(|e| MzSpecLibTextParseError::InvalidMzPAF(e.to_owned()))?;
                 peak.annotations = annots;
             }
             None => return Ok(peak),
@@ -557,7 +600,7 @@ impl<R: Read> MzSpecLibParser<R> {
         if z == 0 {
             return Err(MzSpecLibTextParseError::EOF);
         }
-        let id = self.parse_decl(&buf, "<Spectrum=", ParserState::Spectrum)?;
+        let id = self.parse_open_declaration(&buf, "<Spectrum=", ParserState::Spectrum)?;
         let mut spec = AnnotatedSpectrum::new(
             id,
             SpectrumDescription::default(),
@@ -567,10 +610,38 @@ impl<R: Read> MzSpecLibParser<R> {
             PeakSetVec::default(),
         );
 
+        // TODO: do better but should work for now
+        spec.description
+            .acquisition
+            .scans
+            .push(ScanEvent::default());
+        spec.description.precursor.push(Precursor::default());
+        spec.description.precursor[0]
+            .ions
+            .push(SelectedIon::default());
+
+        let mut term_collection = Vec::new();
+
         loop {
             match self.read_attribute(&mut buf) {
                 Ok(attr) => match attr.name.accession {
                     curie!(MS:1003061) => spec.description.id = attr.value.to_string(),
+                    curie!(MS:1000512) => spec.description.acquisition.scans[0].add_param(
+                        term!(MS:1000512|"filter string")
+                            .to_param(attr.value.into(), Unit::Dimensionless),
+                    ),
+                    curie!(MS:1000044) => {
+                        if let AttributeValue::Term(term) = attr.value {
+                            spec.description.precursor[0]
+                                .activation
+                                .add_param(term.to_param(Value::Empty, Unit::Dimensionless));
+                        } else {
+                            spec.description.precursor[0].activation.add_param(
+                                term!(MS:1000044|"dissociation method")
+                                    .to_param(attr.value.into(), Unit::Dimensionless),
+                            );
+                        }
+                    }
                     curie!(MS:1003062) => {
                         spec.description.index = attr.value.scalar().to_u64().map_err(|v| {
                             MzSpecLibTextParseError::AttributeParseError(
@@ -580,6 +651,11 @@ impl<R: Read> MzSpecLibParser<R> {
                             )
                         })? as usize;
                     }
+                    curie!(MS:1000894)
+                    | curie!(MS:1000045)
+                    | curie!(UO:0000000)
+                    | curie!(MS:1003275)
+                    | curie!(MS:1003276) => term_collection.push(attr),
                     _ => spec.add_attribute(attr),
                 },
                 Err(e) => {
@@ -602,6 +678,65 @@ impl<R: Read> MzSpecLibParser<R> {
                 }
             }
         }
+        for (_id, group) in term_collection
+            .into_iter()
+            .into_group_map_by(|t| t.group_id)
+        {
+            if let Some(Attribute {
+                value: AttributeValue::Scalar(Value::Float(rt)),
+                ..
+            }) = group
+                .iter()
+                .find(|a| a.name.accession == curie!(MS:1000894))
+            {
+                let Some(Attribute {
+                    value: AttributeValue::Term(term),
+                    ..
+                }) = group
+                    .iter()
+                    .find(|a| a.name.accession == curie!(UO:0000000))
+                else {
+                    return Err(MzSpecLibTextParseError::MissingUnit);
+                };
+
+                let unit = Unit::from_curie(&term.accession);
+
+                let mut scan = ScanEvent::default();
+                scan.start_time = rt
+                    * match unit {
+                        Unit::Minute => 1.0,
+                        _ => 60.0, // Assume seconds for anything else
+                    };
+                spec.description.acquisition.scans.push(scan);
+            } else if let Some(attr) = group
+                .iter()
+                .find(|a| a.name.accession == curie!(MS:1000045))
+            {
+                let Some(Attribute {
+                    value: AttributeValue::Term(term),
+                    ..
+                }) = group
+                    .iter()
+                    .find(|a| a.name.accession == curie!(UO:0000000))
+                else {
+                    return Err(MzSpecLibTextParseError::MissingUnit);
+                };
+
+                let unit = Unit::from_curie(&term.accession);
+
+                spec.description.precursor[0]
+                    .activation
+                    .add_param(attr.name.clone().to_param(attr.value.clone().into(), unit));
+            } else {
+                for attr in group {
+                    spec.add_attribute(attr);
+                }
+            }
+        }
+
+        spec.description.precursor[0]
+            .activation
+            ._extract_methods_from_params();
 
         let mut next_group_id = spec.find_last_group_id().unwrap_or_default();
         let mut last_group_id = 0;

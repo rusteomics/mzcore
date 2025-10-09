@@ -10,7 +10,7 @@ use crate::{
     IdentifiedPeptidoformData, KnownFileFormat, MaybePeptidoform, MetaData, SpectrumId,
     SpectrumIds,
 };
-use mzannotate::prelude::AnnotatedSpectrum;
+use mzannotate::{mzspeclib::MzSpecLibTextParseError, prelude::AnnotatedSpectrum};
 use mzcore::{
     ontology::CustomDatabase,
     prelude::CompoundPeptidoformIon,
@@ -122,6 +122,14 @@ impl MetaData for AnnotatedSpectrum {
     fn database(&self) -> Option<(&str, Option<&str>)> {
         None
     }
+
+    fn annotated_spectrum(&self) -> Option<Cow<'_, AnnotatedSpectrum>> {
+        Some(Cow::Borrowed(self))
+    }
+
+    fn has_annotated_spectrum(&self) -> bool {
+        true
+    }
 }
 
 impl From<AnnotatedSpectrum> for IdentifiedPeptidoform<Linked, MaybePeptidoform> {
@@ -162,13 +170,16 @@ pub(crate) fn parse_mzspeclib<'a>(
                 >,
             >,
         > = Box::new(parser.map(move |s| {
-            s.map(Into::into).map_err(|e| {
-                BoxedError::new(
+            s.map(Into::into).map_err(|e| match e {
+                MzSpecLibTextParseError::InvalidMzPAF(e)
+                | MzSpecLibTextParseError::InvalidProforma(e)
+                | MzSpecLibTextParseError::RichError(e) => e,
+                _ => BoxedError::new(
                     BasicKind::Error,
                     "Could not parse mzSpecLib spectrum",
                     format!("{e:?}"),
                     Context::none().source(path_string.clone()),
-                )
+                ),
             })
         }));
         b

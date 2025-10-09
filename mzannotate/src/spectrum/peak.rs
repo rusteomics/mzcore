@@ -1,8 +1,15 @@
 use std::fmt::Display;
 
 use mzcore::system::MassOverCharge;
-use mzdata::mzpeaks::prelude::*;
+use mzdata::{
+    mzpeaks::prelude::*,
+    spectrum::{
+        ArrayType, BinaryArrayMap, BinaryDataArrayType, DataArray, bindata::BinaryCompressionType,
+    },
+};
 use serde::{Deserialize, Serialize};
+
+use crate::fragment::ToMzPAF;
 
 /// An annotated peak. So a peak that contains some interpretation(s).
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -47,6 +54,29 @@ impl<Annotation> AnnotatedPeak<Annotation> {
             annotations,
             aggregations,
         }
+    }
+}
+
+impl<Annotation: ToMzPAF> AnnotatedPeak<Annotation> {
+    pub fn to_mz_speclib(&self, mut w: impl std::fmt::Write) -> std::fmt::Result {
+        write!(w, "{}\t{}", self.mz.value, self.intensity)?;
+
+        if !self.annotations.is_empty() {
+            write!(w, "\t")?;
+            for (i, a) in self.annotations.iter().enumerate() {
+                if i == 0 {
+                } else {
+                    write!(w, ",")?;
+                }
+                a.to_mz_paf(&mut w)?;
+            }
+        }
+        if !self.aggregations.is_empty() {
+            write!(w, "\t")?;
+            write!(w, "{}", self.aggregations.join(","))?;
+        }
+        writeln!(w)?;
+        Ok(())
     }
 }
 
@@ -206,5 +236,47 @@ impl<A: Display> Display for AnnotatedPeak<A> {
             write!(f, "{}", self.aggregations.join(","))?;
         }
         Ok(())
+    }
+}
+
+impl<A> mzdata::prelude::BuildArrayMapFrom for AnnotatedPeak<A> {
+    fn arrays_included(&self) -> Option<Vec<ArrayType>> {
+        Some(vec![ArrayType::MZArray, ArrayType::IntensityArray])
+    }
+
+    fn as_arrays(source: &[Self]) -> BinaryArrayMap {
+        let mut arrays = BinaryArrayMap::new();
+
+        let mut mz_array = DataArray::from_name_type_size(
+            &ArrayType::MZArray,
+            BinaryDataArrayType::Float64,
+            source.len() * BinaryDataArrayType::Float64.size_of(),
+        );
+        mz_array.unit = mzdata::params::Unit::MZ;
+
+        let mut intensity_array = DataArray::from_name_type_size(
+            &ArrayType::IntensityArray,
+            BinaryDataArrayType::Float32,
+            source.len() * BinaryDataArrayType::Float32.size_of(),
+        );
+        intensity_array.unit = mzdata::params::Unit::DetectorCounts;
+
+        mz_array.compression = BinaryCompressionType::Decoded;
+        intensity_array.compression = BinaryCompressionType::Decoded;
+
+        for p in source {
+            let mz: f64 = p.coordinate();
+            let inten: f32 = p.intensity();
+
+            let raw_bytes: [u8; size_of::<f64>()] = mz.to_le_bytes();
+            mz_array.data.extend_from_slice(&raw_bytes);
+
+            let raw_bytes: [u8; size_of::<f32>()] = inten.to_le_bytes();
+            intensity_array.data.extend_from_slice(&raw_bytes);
+        }
+
+        arrays.add(mz_array);
+        arrays.add(intensity_array);
+        arrays
     }
 }

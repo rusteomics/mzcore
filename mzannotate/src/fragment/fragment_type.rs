@@ -8,11 +8,9 @@ use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 
 use crate::fragment::DiagnosticPosition;
-#[cfg(feature = "glycan-render")]
-use crate::glycan::GlycanSelection;
 use mzcore::{
     chemistry::SatelliteLabel,
-    glycan::{BackboneFragmentKind, GlycanPosition, MonoSaccharide},
+    glycan::{BackboneFragmentKind, GlycanPosition, GlycanSelection, MonoSaccharide},
     prelude::*,
     sequence::{PeptidePosition, SemiAmbiguous},
 };
@@ -235,7 +233,6 @@ impl FragmentType {
 
     /// Get the glycan break positions of this ion (or None if not applicable), gives the sequence index, the root break, and the branch breaks.
     /// Only available with feature 'glycan-render'.
-    #[cfg(feature = "glycan-render")]
     pub fn glycan_break_positions(
         &self,
     ) -> Option<(Option<SequencePosition>, GlycanSelection<'_>)> {

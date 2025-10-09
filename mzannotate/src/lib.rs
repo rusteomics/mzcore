@@ -22,7 +22,7 @@ pub mod prelude {
         AnnotatableSpectrum,
         model::{FragmentationModel, MatchingParameters},
     };
-    pub use crate::fragment::Fragment;
+    pub use crate::fragment::{Fragment, ToMzPAF};
     pub use crate::glycan::GlycanFragmention;
     pub use crate::peptidoform::PeptidoformFragmentation;
     pub use crate::spectrum::{AnnotatedPeak, AnnotatedSpectrum};

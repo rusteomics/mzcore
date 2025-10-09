@@ -110,7 +110,7 @@ impl Display for AnnotatedSpectrum {
         }
         writeln!(f, "<Peaks>")?;
         for p in &self.peaks {
-            writeln!(f, "{p}")?;
+            p.to_mz_speclib(&mut *f)?;
         }
         Ok(())
     }

@@ -3,15 +3,14 @@ use itertools::Itertools;
 use crate::{
     chemistry::Chemical,
     glycan::{
-        GlycanBranchIndex, GlycanBranchMassIndex, GlycanPosition, GlycanStructure, RenderedGlycan,
+        GlycanBranchIndex, GlycanBranchMassIndex, GlycanPosition, GlycanSelection, GlycanStructure,
+        RenderedGlycan,
         render::{
             element::GlycanRoot,
             shape::{Colour, Shape},
         },
     },
 };
-
-use super::element::GlycanSelection;
 
 impl GlycanStructure {
     /// Render this glycan to the internal representation. This can then be rendered to SVG or a bitmap.

@@ -119,7 +119,7 @@ pub fn open_identified_peptidoforms_file<'a>(
             a
         }),
         #[cfg(feature = "mzannotate")]
-        Some("txt") if path.file_stem().is_some_and(|p| p.to_string_lossy().contains(".mzspeclib.")) => {
+        Some("txt") if path.file_stem().is_some_and(|p| p.to_string_lossy().contains(".mzspeclib")) => {
             annotated_spectrum::parse_mzspeclib(path, custom_database)
         }
         Some("txt") => {

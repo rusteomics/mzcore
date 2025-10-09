@@ -551,7 +551,7 @@ impl<Complexity, PeptidoformAvailability>
 /// out. Needs some macro fudging to allow for the proper syntax of just specifying a list of formats
 /// and a list of functions to implement.
 macro_rules! impl_metadata {
-    (formats: $format:tt; functions: {$(fn $function:ident(&self) -> $t:ty);+;}) => {
+    (formats: $format:tt; functions: {$($(#[cfg($cfg:expr)])?fn $function:ident(&self) -> $t:ty);+;}) => {
         impl<Complexity, PeptidoformAvailability> MetaData for IdentifiedPeptidoform<Complexity, PeptidoformAvailability> {
             /// Reuse the cached normalised confidence
             fn confidence(&self) -> Option<f64> {
@@ -568,7 +568,8 @@ macro_rules! impl_metadata {
             $(impl_metadata!(inner: formats: $format; function: $function -> $t);)+
         }
     };
-    (inner: formats: {$($format:ident),*}; function: $function:ident -> $t:ty) => {
+    (inner: formats: {$($format:ident),*}; function: $(#[cfg($cfg:expr)])?$function:ident -> $t:ty) => {
+        $(#[cfg($cfg)])?
         fn $function(&self) -> $t {
             match &self.data {
                 $(IdentifiedPeptidoformData::$format(d) => d.$function()),*
@@ -598,5 +599,9 @@ impl_metadata!(
         fn protein_location(&self) -> Option<Range<u16>>;
         fn flanking_sequences(&self) -> (&FlankingSequence, &FlankingSequence);
         fn database(&self) -> Option<(&str, Option<&str>)>;
+        #[cfg(feature = "mzannotate")]
+        fn annotated_spectrum(&self) -> Option<Cow<'_, AnnotatedSpectrum>>;
+        #[cfg(feature = "mzannotate")]
+        fn has_annotated_spectrum(&self) -> bool;
     }
 );

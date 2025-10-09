@@ -17,4 +17,4 @@ pub(crate) use lists::*;
 pub use position::*;
 pub use positioned_structure::*;
 #[cfg(feature = "glycan-render")]
-pub use render::{GlycanDirection, GlycanRoot, GlycanSelection, RenderedGlycan};
+pub use render::{GlycanDirection, GlycanRoot, RenderedGlycan};
