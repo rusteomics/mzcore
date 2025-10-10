@@ -31,6 +31,7 @@ codegen-units = 1
 # Bench profile inherits from release so only change the release settings
 
 [workspace.dependencies]
+mzdata = { path = "../mzdata", default-features = false }
 afl = "0.15"
 base64 = "0.22"
 bincode = { version = "2.0", features = ["serde"] }
@@ -41,7 +42,6 @@ directories = "6.0"
 flate2 = "1.0"
 indexmap = "2.11"
 itertools = "0.14"
-mzdata = { version = "0.60", default-features = false }
 ndarray = "0.16"
 ordered-float = { version = "5.0", features = ["serde"] }
 paste = "1.0"
@@ -66,6 +66,9 @@ uom = { version = "0.37", default-features = false, features = [
     "f64",
 ] }
 zeno = { version = "0.3.2" }
+
+[patch.crates-io]
+context_error = { path = "../context_error" }
 
 [workspace.lints.rust]
 ambiguous_negative_literals = "warn"

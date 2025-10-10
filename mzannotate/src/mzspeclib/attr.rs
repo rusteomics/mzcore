@@ -1,5 +1,6 @@
-use std::{borrow::Cow, fmt::Display, str::FromStr};
+use std::{borrow::Cow, collections::HashMap, fmt::Display, str::FromStr};
 
+use context_error::Context;
 use mzdata::{
     Param, curie,
     params::{CURIE, CURIEParsingError, ParamValue, ParamValueParseError, Unit, Value},
@@ -417,6 +418,8 @@ macro_rules! impl_attributed {
 
 pub(crate) use impl_attributed;
 
+use crate::mzspeclib::Id;
+
 impl Attributed for Vec<Attribute> {
     fn attributes(&self) -> &[Attribute] {
         self
@@ -441,13 +444,17 @@ impl AttributedMut for Vec<Attribute> {
 pub struct AttributeSet {
     pub id: String,
     pub namespace: EntryType,
-    pub attributes: Vec<Attribute>,
+    pub attributes: HashMap<Option<Id>, Vec<(Attribute, Context<'static>)>>,
 }
 
-impl_attributed!(mut AttributeSet);
+// impl_attributed!(mut AttributeSet);
 
 impl AttributeSet {
-    pub fn new(id: String, namespace: EntryType, attributes: Vec<Attribute>) -> Self {
+    pub fn new(
+        id: String,
+        namespace: EntryType,
+        attributes: HashMap<Option<Id>, Vec<(Attribute, Context<'static>)>>,
+    ) -> Self {
         Self {
             id,
             namespace,
