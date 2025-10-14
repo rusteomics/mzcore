@@ -483,7 +483,9 @@ impl MolecularCharge {
     ///
     #[classmethod]
     fn proton(_cls: &Bound<'_, PyType>, charge: i32) -> Self {
-        Self(mzcore::chemistry::MolecularCharge::proton(charge as isize))
+        Self(mzcore::chemistry::MolecularCharge::proton(
+            mzcore::system::isize::Charge::new::<mzcore::system::e>(charge as isize),
+        ))
     }
 
     /// List of counts and molecular formulas for the charge carriers.
@@ -1211,7 +1213,10 @@ impl GlycanStructure {
                 &match_model(model),
                 0,
                 0,
-                &mut mzcore::chemistry::MolecularCharge::proton(max_charge).into(),
+                &mut mzcore::chemistry::MolecularCharge::proton(
+                    mzcore::system::isize::Charge::new::<mzcore::system::e>(max_charge),
+                )
+                .into(),
                 &full.into(),
                 None,
             )

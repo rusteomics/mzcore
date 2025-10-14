@@ -519,7 +519,22 @@ impl<R: Read> MzSpecLibParser<R> {
         loop {
             match self.read_attribute(&mut buf) {
                 Ok(attr) => {
-                    interp.add_attribute(attr);
+                    if [
+                        curie!(MS:1003288), // number of unassigned peaks
+                        curie!(MS:1003079), // total unassigned intensity fraction
+                        curie!(MS:1003080), // top 20 peak unassigned intensity fraction
+                        curie!(MS:1003290), // number of unassigned peaks among top 20 peaks
+                        curie!(MS:1003289), // intensity of highest unassigned peak
+                        curie!(MS:1001975), // delta m/z
+                        curie!(MS:1003209), // monoisotopic m/z deviation
+                        curie!(UO:0000000), // unit (for m/z deviation)
+                    ]
+                    .contains(&attr.name.accession)
+                    {
+                        // Ignore, can be calculated easily on the fly
+                    } else {
+                        interp.add_attribute(attr);
+                    }
                 }
                 Err(e) => {
                     if buf.starts_with("<InterpretationMember=") {
@@ -745,7 +760,10 @@ impl<R: Read> MzSpecLibParser<R> {
         self.last_compound_peptidoform = spec
             .analytes
             .iter()
-            .filter_map(|a| a.peptidoform_ion.clone())
+            .filter_map(|a| match &a.target {
+                AnalyteTarget::PeptidoformIon(pep) => Some(pep.clone()),
+                _ => None,
+            })
             .collect();
 
         if matches!(self.state, ParserState::Peaks) {

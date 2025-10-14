@@ -28,7 +28,10 @@ impl MetaData for AnnotatedSpectrum {
         let cpi: CompoundPeptidoformIon = self
             .analytes
             .iter()
-            .filter_map(|a| a.peptidoform_ion.clone())
+            .filter_map(|a| match &a.target {
+                mzannotate::mzspeclib::AnalyteTarget::PeptidoformIon(pep) => Some(pep.clone()),
+                _ => None,
+            })
             .collect();
         cpi.peptidoform_ions()
             .is_empty()
@@ -63,7 +66,10 @@ impl MetaData for AnnotatedSpectrum {
     fn charge(&self) -> Option<Charge> {
         self.analytes
             .iter()
-            .filter_map(|a| a.peptidoform_ion.as_ref())
+            .filter_map(|a| match &a.target {
+                mzannotate::mzspeclib::AnalyteTarget::PeptidoformIon(pep) => Some(pep),
+                _ => None,
+            })
             .exactly_one()
             .ok()
             .and_then(|p| p.get_charge_carriers().map(|c| c.charge()))

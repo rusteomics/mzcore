@@ -1,8 +1,6 @@
 //! Annotate many peptides at once
 #![allow(non_snake_case)] // charge_independent_Y needs the capital as it means the glycan fragmentation
 
-use mzsignal as _; // To aid vesion selection
-
 use std::{
     collections::BTreeMap,
     fs::File,
@@ -21,6 +19,7 @@ use itertools::Itertools;
 use mzannotate::{
     annotation::{Score, Scores, model::parse_custom_models},
     fragment::{DiagnosticPosition, FragmentType},
+    mzspeclib::AnalyteTarget,
     prelude::*,
 };
 use mzcore::{
@@ -349,7 +348,10 @@ fn main() {
                     if args.report_IL_satellite_coverage {
                         row.insert(
                             Arc::new("IL_satellite_coverage".to_string()),
-                            annotated.analytes.first().and_then(|a| a.peptidoform_ion.as_ref().and_then(|p| p.singular_ref())).map_or(
+                            annotated.analytes.first().and_then(|a| match &a.target {
+                                    AnalyteTarget::PeptidoformIon(pep) => pep.singular_ref(),
+                                    _ => None,
+                                }).map_or(
                                 String::new(),
                                 |p| {
                                     p.sequence()
@@ -373,8 +375,7 @@ fn main() {
                                         })
                                         .collect()
                                 },
-                            ),
-                        );
+                            ));
                     }
                     if args.report_ambiguous_amino_acids {
                         let stats = annotated.ambigous_statistics(&fragments, &parameters, MassMode::Monoisotopic);
@@ -424,7 +425,10 @@ fn main() {
                             match &f.ion {
                                 FragmentType::Y(pos) => {
                                     if let Some((_, seq)) = pos.first().and_then(|p| p.attachment) {
-                                        let element = &annotated.analytes.iter().find(|a| a.id as usize == f.peptidoform_ion_index.unwrap_or_default()).and_then(|a| a.peptidoform_ion.as_ref()).unwrap().peptidoforms()[f.peptidoform_index.unwrap_or_default()][seq];
+                                        let element = &annotated.analytes.iter().find(|a| a.id as usize == f.peptidoform_ion_index.unwrap_or_default()).and_then(|a| match &a.target {
+                                    AnalyteTarget::PeptidoformIon(pep) => Some(pep),
+                                    _ => None,
+                                }).unwrap().peptidoforms()[f.peptidoform_index.unwrap_or_default()][seq];
                                         if let Some(glycan) = element.modifications.iter().find_map(|m| match (*m).clone().into_simple().as_deref() {
                                             Some(SimpleModificationInner::Gno { composition: GnoComposition::Topology(structure), .. } | SimpleModificationInner::GlycanStructure(structure)) => Some(structure.clone()), _ => None}) {
                                                 for bucket in &mut buckets {
@@ -452,7 +456,10 @@ fn main() {
                                 }
                                 FragmentType::B{b, y,end: _} => {
                                     if let Some((_, seq)) = b.attachment.as_ref() {
-                                        let element = &annotated.analytes.iter().find(|a| a.id as usize == f.peptidoform_ion_index.unwrap_or_default()).and_then(|a| a.peptidoform_ion.as_ref()).unwrap().peptidoforms()[f.peptidoform_index.unwrap_or_default()][*seq];
+                                        let element = &annotated.analytes.iter().find(|a| a.id as usize == f.peptidoform_ion_index.unwrap_or_default()).and_then(|a| match &a.target {
+                                    AnalyteTarget::PeptidoformIon(pep) => Some(pep),
+                                    _ => None,
+                                }).unwrap().peptidoforms()[f.peptidoform_index.unwrap_or_default()][*seq];
                                         if let Some(glycan) = element.modifications.iter().find_map(|m| match (*m).clone().into_simple().as_deref() {
                                             Some(SimpleModificationInner::Gno { composition: GnoComposition::Topology(structure), .. } | SimpleModificationInner::GlycanStructure(structure)) => Some(structure.clone()), _ => None}) {
                                                 for bucket in &mut buckets {

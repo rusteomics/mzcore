@@ -36,7 +36,10 @@ impl AnnotatedSpectrum {
             .analytes
             .iter()
             .enumerate()
-            .filter_map(|a| a.1.peptidoform_ion.as_ref().map(|p| (a.0, p)))
+            .filter_map(|a| match &a.1.target {
+                crate::mzspeclib::AnalyteTarget::PeptidoformIon(pep) => Some((a.0, pep)),
+                _ => None,
+            })
             .map(|(peptidoform_ion_index, peptidoform)| {
                 peptidoform
                     .peptidoforms()

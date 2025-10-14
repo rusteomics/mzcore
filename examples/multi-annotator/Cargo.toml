@@ -17,7 +17,6 @@ mzdata = { workspace = true, default-features = false, features = [
     "thermo",
     "bruker_tdf",
 ] }
-mzsignal = "1.0"
 rayon = { workspace = true }
 mzcore = { path = "../../mzcore", default-features = false, features = [
     "coloured-errors",

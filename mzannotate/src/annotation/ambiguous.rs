@@ -6,6 +6,7 @@ use mzcore::{
 use crate::{
     annotation::{Recovered, model::MatchingParameters},
     fragment::Fragment,
+    mzspeclib::AnalyteTarget,
     spectrum::AnnotatedSpectrum,
 };
 
@@ -76,7 +77,7 @@ impl AnnotatedSpectrum {
             modifications: Vec::new(),
         };
         for (peptidoform_ion_index, analyte) in self.analytes.iter().enumerate() {
-            let Some(peptidoform_ion) = &analyte.peptidoform_ion else {
+            let AnalyteTarget::PeptidoformIon(peptidoform_ion) = &analyte.target else {
                 continue;
             };
             for (peptidoform_index, peptidoform) in

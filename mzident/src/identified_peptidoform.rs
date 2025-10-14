@@ -145,11 +145,15 @@ impl<PeptidoformAvailability> IdentifiedPeptidoform<Linear, PeptidoformAvailabil
             #[cfg(feature = "mzannotate")]
             IdentifiedPeptidoformData::AnnotatedSpectrum(spectrum) => {
                 use itertools::Itertools;
+                use mzannotate::mzspeclib::AnalyteTarget;
 
                 let ion = spectrum
                     .analytes
                     .iter()
-                    .filter_map(|a| a.peptidoform_ion.as_ref())
+                    .filter_map(|a| match &a.target {
+                        AnalyteTarget::PeptidoformIon(pep) => Some(pep),
+                        _ => None,
+                    })
                     .exactly_one()
                     .ok()?;
                 ion.singular_ref().and_then(|p| p.as_linear())
@@ -221,11 +225,15 @@ impl<PeptidoformAvailability> IdentifiedPeptidoform<SimpleLinear, PeptidoformAva
             #[cfg(feature = "mzannotate")]
             IdentifiedPeptidoformData::AnnotatedSpectrum(spectrum) => {
                 use itertools::Itertools;
+                use mzannotate::mzspeclib::AnalyteTarget;
 
                 let ion = spectrum
                     .analytes
                     .iter()
-                    .filter_map(|a| a.peptidoform_ion.as_ref())
+                    .filter_map(|a| match &a.target {
+                        AnalyteTarget::PeptidoformIon(pep) => Some(pep),
+                        _ => None,
+                    })
                     .exactly_one()
                     .ok()?;
                 ion.singular_ref().and_then(|p| p.as_simple_linear())
@@ -304,7 +312,10 @@ impl<PeptidoformAvailability> IdentifiedPeptidoform<SemiAmbiguous, PeptidoformAv
                 let ion = spectrum
                     .analytes
                     .iter()
-                    .filter_map(|a| a.peptidoform_ion.as_ref())
+                    .filter_map(|a| match &a.target {
+                        mzannotate::mzspeclib::AnalyteTarget::PeptidoformIon(pep) => Some(pep),
+                        _ => None,
+                    })
                     .exactly_one()
                     .ok()?;
                 ion.singular_ref().and_then(|p| p.as_semi_ambiguous())
@@ -381,7 +392,10 @@ impl<PeptidoformAvailability> IdentifiedPeptidoform<UnAmbiguous, PeptidoformAvai
                 let ion = spectrum
                     .analytes
                     .iter()
-                    .filter_map(|a| a.peptidoform_ion.as_ref())
+                    .filter_map(|a| match &a.target {
+                        mzannotate::mzspeclib::AnalyteTarget::PeptidoformIon(pep) => Some(pep),
+                        _ => None,
+                    })
                     .exactly_one()
                     .ok()?;
                 ion.singular_ref().and_then(|p| p.as_unambiguous())

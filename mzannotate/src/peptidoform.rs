@@ -90,7 +90,8 @@ pub(crate) fn generate_theoretical_fragments_inner<Complexity>(
     peptidoform_index: usize,
     all_peptides: &[Peptidoform<Linked>],
 ) -> Vec<Fragment> {
-    let default_charge = MolecularCharge::proton(max_charge.value);
+    let default_charge =
+        MolecularCharge::proton(Charge::new::<mzcore::system::e>(max_charge.value));
     let mut charge_carriers: CachedCharge = peptidoform
         .get_charge_carriers()
         .unwrap_or(&default_charge)

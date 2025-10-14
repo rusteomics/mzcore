@@ -107,7 +107,8 @@ fn parse_annotation<'a>(
             ion,
             neutral_losses,
             isotopes,
-            charge: adduct_type.unwrap_or_else(|| MolecularCharge::proton(charge.value)),
+            charge: adduct_type
+                .unwrap_or_else(|| MolecularCharge::proton(Charge::new::<e>(charge.value))),
             deviation,
             confidence,
         },
@@ -324,7 +325,7 @@ impl std::fmt::Display for PeakAnnotation {
             write!(f, "{loss}")?;
         }
         let charge = self.charge.charge().value;
-        if self.charge != MolecularCharge::proton(charge) {
+        if self.charge != MolecularCharge::proton(Charge::new::<e>(charge)) {
             write!(f, "[M")?;
             for (amount, option) in &self.charge.charge_carriers {
                 write!(f, "{amount}{option}")?;
@@ -1332,7 +1333,7 @@ fn parse_correctly() {
     assert_eq!(parse_a.ion, IonType::MainSeries(b'y', None, 8, None));
     assert_eq!(parse_a.neutral_losses, Vec::new());
     assert_eq!(parse_a.isotopes, Vec::new());
-    assert_eq!(parse_a.charge, MolecularCharge::proton(2));
+    assert_eq!(parse_a.charge, MolecularCharge::proton(Charge::new::<e>(2)));
     assert_eq!(
         parse_a.deviation,
         Some(Tolerance::Absolute(
@@ -1353,7 +1354,7 @@ fn parse_correctly() {
     assert_eq!(parse_b.ion, IonType::MainSeries(b'y', None, 8, None));
     assert_eq!(parse_b.neutral_losses, Vec::new());
     assert_eq!(parse_b.isotopes, vec![(1, Isotope::General)]);
-    assert_eq!(parse_b.charge, MolecularCharge::proton(2));
+    assert_eq!(parse_b.charge, MolecularCharge::proton(Charge::new::<e>(2)));
     assert_eq!(
         parse_b.deviation,
         Some(Tolerance::Absolute(
