@@ -8,15 +8,15 @@ use std::{
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    BoxedIdentifiedPeptideIter, FastaIdentifier, FlankingSequence, IdentifiedPeptidoform,
-    IdentifiedPeptidoformData, IdentifiedPeptidoformSource, IdentifiedPeptidoformVersion,
-    KnownFileFormat, MetaData, PeptidoformPresent, SpectrumId, SpectrumIds,
+    BoxedIdentifiedPeptideIter, FastaIdentifier, IdentifiedPeptidoform, IdentifiedPeptidoformData,
+    IdentifiedPeptidoformSource, IdentifiedPeptidoformVersion, KnownFileFormat, MetaData,
+    PeptidoformPresent, SpectrumId, SpectrumIds,
     common_parser::{Location, OptionalColumn},
     csv::{CsvLine, parse_csv},
 };
 use mzcore::{
     ontology::CustomDatabase,
-    sequence::{CompoundPeptidoformIon, Linked},
+    sequence::{CompoundPeptidoformIon, FlankingSequence, Linked},
     system::{Mass, MassOverCharge, Time, isize::Charge},
 };
 

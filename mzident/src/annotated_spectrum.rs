@@ -6,7 +6,7 @@ use std::{
 };
 
 use crate::{
-    FastaIdentifier, FlankingSequence, GeneralIdentifiedPeptidoforms, IdentifiedPeptidoform,
+    FastaIdentifier, GeneralIdentifiedPeptidoforms, IdentifiedPeptidoform,
     IdentifiedPeptidoformData, KnownFileFormat, MaybePeptidoform, MetaData, SpectrumId,
     SpectrumIds,
 };
@@ -14,7 +14,7 @@ use mzannotate::{mzspeclib::MzSpecLibTextParseError, prelude::AnnotatedSpectrum}
 use mzcore::{
     ontology::CustomDatabase,
     prelude::CompoundPeptidoformIon,
-    sequence::Linked,
+    sequence::{FlankingSequence, Linked},
     system::isize::Charge,
     system::{Mass, MassOverCharge, Time},
 };
@@ -110,7 +110,17 @@ impl MetaData for AnnotatedSpectrum {
     }
 
     fn protein_names(&self) -> Option<Cow<'_, [FastaIdentifier<String>]>> {
-        None
+        Some(Cow::Owned(
+            self.analytes
+                .iter()
+                .flat_map(|a| &a.proteins)
+                .filter_map(|p| p.accession.clone())
+                .map(|a| {
+                    a.parse()
+                        .unwrap_or_else(|_| FastaIdentifier::Undefined(false, a.to_string()))
+                })
+                .collect(),
+        ))
     }
 
     fn protein_id(&self) -> Option<usize> {
@@ -122,7 +132,20 @@ impl MetaData for AnnotatedSpectrum {
     }
 
     fn flanking_sequences(&self) -> (&FlankingSequence, &FlankingSequence) {
-        (&FlankingSequence::Unknown, &FlankingSequence::Unknown)
+        (
+            self.analytes
+                .iter()
+                .flat_map(|a| &a.proteins)
+                .map(|p| &p.flanking_sequences.0)
+                .exactly_one()
+                .unwrap_or(FlankingSequence::UNKNOWN),
+            self.analytes
+                .iter()
+                .flat_map(|a| &a.proteins)
+                .map(|p| &p.flanking_sequences.1)
+                .exactly_one()
+                .unwrap_or(FlankingSequence::UNKNOWN),
+        )
     }
 
     fn database(&self) -> Option<(&str, Option<&str>)> {

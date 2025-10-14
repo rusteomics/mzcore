@@ -9,16 +9,17 @@ use context_error::*;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    BoxedIdentifiedPeptideIter, FastaIdentifier, FlankingSequence, IdentifiedPeptidoform,
-    IdentifiedPeptidoformData, IdentifiedPeptidoformSource, IdentifiedPeptidoformVersion,
-    KnownFileFormat, MetaData, PeptidoformPresent, SpectrumId, SpectrumIds,
+    BoxedIdentifiedPeptideIter, FastaIdentifier, IdentifiedPeptidoform, IdentifiedPeptidoformData,
+    IdentifiedPeptidoformSource, IdentifiedPeptidoformVersion, KnownFileFormat, MetaData,
+    PeptidoformPresent, SpectrumId, SpectrumIds,
     common_parser::{Location, OptionalLocation},
     csv::{CsvLine, parse_csv},
 };
 use mzcore::{
     ontology::CustomDatabase,
     sequence::{
-        AminoAcid, CompoundPeptidoformIon, Peptidoform, SemiAmbiguous, SloppyParsingParameters,
+        AminoAcid, CompoundPeptidoformIon, FlankingSequence, Peptidoform, SemiAmbiguous,
+        SloppyParsingParameters,
     },
     system::{Mass, MassOverCharge, Time, isize::Charge},
 };

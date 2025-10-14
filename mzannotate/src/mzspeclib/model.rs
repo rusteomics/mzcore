@@ -2,6 +2,7 @@ use std::{collections::HashMap, fmt::Display};
 
 use mzcore::{
     prelude::{IsAminoAcid, MolecularCharge, MolecularFormula, MultiChemical, PeptidoformIon},
+    sequence::FlankingSequence,
     system::isize::Charge,
 };
 use mzdata::{curie, params::Value};
@@ -77,6 +78,8 @@ pub struct Analyte {
     pub id: Id,
     /// The target itself
     pub target: AnalyteTarget,
+    /// The matched protein(s)
+    pub proteins: Vec<ProteinDescription>,
     /// Other attributes for this analyte
     pub attributes: Vec<Attribute>,
 }
@@ -102,6 +105,7 @@ impl Analyte {
         Self {
             id,
             target,
+            proteins: Vec::new(),
             attributes,
         }
     }
@@ -223,6 +227,33 @@ impl AnalyteTarget {
             }
         }
     }
+}
+
+#[derive(Default, Debug, Clone)]
+pub struct ProteinDescription {
+    pub id: Id,
+    pub flanking_sequences: (FlankingSequence, FlankingSequence),
+    /// The number of enzymatic termini (0, 1, or 2)
+    pub enzymatic_termini: Option<u8>,
+    /// The number of missed cleavages in the peptide
+    pub missed_cleavages: Option<u16>,
+    pub set_names: Vec<Box<str>>,
+    pub accession: Option<Box<str>>,
+    pub name: Option<Box<str>>,
+    pub description: Option<Box<str>>,
+    pub cleavage_agent: CleaveAgent,
+    pub species_scientific_name: Option<Box<str>>,
+    pub species_common_name: Option<Box<str>>,
+    /// NCBI species accession
+    pub species_accession: Option<u32>,
+}
+
+#[derive(Default, Debug, Clone)]
+pub enum CleaveAgent {
+    #[default]
+    Unknown,
+    Name(Box<str>),
+    Term(crate::mzspeclib::Term),
 }
 
 #[derive(Default, Debug, Clone)]

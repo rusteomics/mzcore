@@ -1,10 +1,8 @@
 use std::{borrow::Cow, ops::Range};
 
-use serde::{Deserialize, Serialize};
-
 use crate::{FastaIdentifier, KnownFileFormat, SpectrumIds};
 use mzcore::{
-    sequence::{AminoAcid, CompoundPeptidoformIon, Peptidoform, SemiAmbiguous},
+    sequence::{CompoundPeptidoformIon, FlankingSequence},
     system::{Mass, MassOverCharge, Ratio, Time, isize::Charge},
 };
 
@@ -95,25 +93,9 @@ pub trait MetaData {
     }
 
     /// Check if this spectrum has an annotated spectrum available.
-    /// This can be overwritten to built a fater implementation is creating the spectrum needs to happen at runtime.
+    /// This can be overwritten to built a faster implementation is creating the spectrum needs to happen at runtime.
     #[cfg(feature = "mzannotate")]
     fn has_annotated_spectrum(&self) -> bool {
         self.annotated_spectrum().is_some()
     }
-}
-
-/// A flanking sequence
-// Impossible to get the Sequence option smaller (size of a pointer plus alignment of a pointer so the discriminator is 8 bytes as well)
-#[allow(variant_size_differences)]
-#[derive(Clone, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
-pub enum FlankingSequence {
-    /// If the flanking sequence is unknown (in _de novo_ for example)
-    #[default]
-    Unknown,
-    /// If this is the terminus
-    Terminal,
-    /// If only a single amino acid is known (added to prevent overhead of needing to create a sequence)
-    AminoAcid(AminoAcid),
-    /// If a (smal part of the) sequence is known
-    Sequence(Box<Peptidoform<SemiAmbiguous>>),
 }

@@ -12,9 +12,9 @@ use serde::{Deserialize, Serialize};
 use uom::ConstZero;
 
 use crate::{
-    BoxedIdentifiedPeptideIter, FastaIdentifier, FlankingSequence, IdentifiedPeptidoform,
-    IdentifiedPeptidoformData, IdentifiedPeptidoformSource, IdentifiedPeptidoformVersion,
-    KnownFileFormat, MetaData, PeptidoformPresent, SpectrumId, SpectrumIds,
+    BoxedIdentifiedPeptideIter, FastaIdentifier, IdentifiedPeptidoform, IdentifiedPeptidoformData,
+    IdentifiedPeptidoformSource, IdentifiedPeptidoformVersion, KnownFileFormat, MetaData,
+    PeptidoformPresent, SpectrumId, SpectrumIds,
     common_parser::{Location, OptionalColumn, OptionalLocation},
     csv::{CsvLine, parse_csv},
     helper_functions::explain_number_error,
@@ -25,8 +25,9 @@ use mzcore::{
     ontology::{CustomDatabase, Ontology},
     quantities::{Tolerance, WithinTolerance},
     sequence::{
-        CompoundPeptidoformIon, CrossLinkName, Linked, Modification, Peptidoform, PeptidoformIon,
-        SequencePosition, SimpleModification, SimpleModificationInner, SloppyParsingParameters,
+        CompoundPeptidoformIon, CrossLinkName, FlankingSequence, Linked, Modification, Peptidoform,
+        PeptidoformIon, SequencePosition, SimpleModification, SimpleModificationInner,
+        SloppyParsingParameters,
     },
     system::{Mass, MassOverCharge, Time, isize::Charge},
 };

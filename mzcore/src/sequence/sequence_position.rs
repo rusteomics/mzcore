@@ -153,3 +153,24 @@ impl PeptidePosition {
         }
     }
 }
+
+/// A flanking sequence
+// Impossible to get the Sequence option smaller (size of a pointer plus alignment of a pointer so the discriminator is 8 bytes as well)
+#[allow(variant_size_differences)]
+#[derive(Clone, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
+pub enum FlankingSequence {
+    /// If the flanking sequence is unknown (in _de novo_ for example)
+    #[default]
+    Unknown,
+    /// If this is the terminus
+    Terminal,
+    /// If only a single amino acid is known (added to prevent overhead of needing to create a sequence)
+    AminoAcid(crate::sequence::AminoAcid),
+    /// If a (small part of the) sequence is known, always written in N to C direction
+    Sequence(Box<crate::sequence::Peptidoform<crate::sequence::SemiAmbiguous>>),
+}
+
+impl FlankingSequence {
+    /// A static reference to an unknown flanking sequence
+    pub const UNKNOWN: &Self = &Self::Unknown;
+}

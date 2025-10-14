@@ -3,9 +3,9 @@ use std::{borrow::Cow, marker::PhantomData, ops::Range, str::FromStr};
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    BoxedIdentifiedPeptideIter, FastaIdentifier, FlankingSequence, IdentifiedPeptidoform,
-    IdentifiedPeptidoformData, IdentifiedPeptidoformSource, IdentifiedPeptidoformVersion,
-    KnownFileFormat, MaybePeptidoform, MetaData, SpectrumId, SpectrumIds,
+    BoxedIdentifiedPeptideIter, FastaIdentifier, IdentifiedPeptidoform, IdentifiedPeptidoformData,
+    IdentifiedPeptidoformSource, IdentifiedPeptidoformVersion, KnownFileFormat, MaybePeptidoform,
+    MetaData, SpectrumId, SpectrumIds,
     common_parser::{Location, OptionalLocation},
     csv::{CsvLine, parse_csv},
 };
@@ -13,8 +13,8 @@ use mzcore::{
     ontology::CustomDatabase,
     prelude::{AminoAcid, SequencePosition},
     sequence::{
-        CompoundPeptidoformIon, Modification, Peptidoform, PlacementRule, Position, SemiAmbiguous,
-        SimpleModification, SloppyParsingParameters,
+        CompoundPeptidoformIon, FlankingSequence, Modification, Peptidoform, PlacementRule,
+        Position, SemiAmbiguous, SimpleModification, SloppyParsingParameters,
     },
     system::{Mass, MassOverCharge, Ratio, Time, isize::Charge},
 };

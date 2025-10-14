@@ -1,13 +1,15 @@
 use std::{borrow::Cow, marker::PhantomData, ops::Range};
 
 use crate::{
-    FastaIdentifier, FlankingSequence, IdentifiedPeptidoform, IdentifiedPeptidoformData,
-    IdentifiedPeptidoformSource, KnownFileFormat, MaybePeptidoform, MetaData, SpectrumId,
-    SpectrumIds,
+    FastaIdentifier, IdentifiedPeptidoform, IdentifiedPeptidoformData, IdentifiedPeptidoformSource,
+    KnownFileFormat, MaybePeptidoform, MetaData, SpectrumId, SpectrumIds,
 };
 use mzcore::{
     ontology::CustomDatabase,
-    sequence::{CompoundPeptidoformIon, Peptidoform, SemiAmbiguous, SloppyParsingParameters},
+    sequence::{
+        CompoundPeptidoformIon, FlankingSequence, Peptidoform, SemiAmbiguous,
+        SloppyParsingParameters,
+    },
     system::{Mass, MassOverCharge, Ratio, Time, isize::Charge},
 };
 

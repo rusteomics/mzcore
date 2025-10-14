@@ -8,8 +8,8 @@ use serde::{Deserialize, Serialize};
 use crate::*;
 use mzcore::{
     sequence::{
-        AtLeast, CompoundPeptidoformIon, HasPeptidoformImpl, Linear, Linked, Peptidoform,
-        SemiAmbiguous, SimpleLinear, UnAmbiguous,
+        AtLeast, CompoundPeptidoformIon, FlankingSequence, HasPeptidoformImpl, Linear, Linked,
+        Peptidoform, SemiAmbiguous, SimpleLinear, UnAmbiguous,
     },
     system::{Mass, MassOverCharge, Ratio, Time, isize::Charge},
 };

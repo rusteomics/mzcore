@@ -4,9 +4,9 @@ use serde::{Deserialize, Serialize};
 use thin_vec::ThinVec;
 
 use crate::{
-    BoxedIdentifiedPeptideIter, FastaIdentifier, FlankingSequence, IdentifiedPeptidoform,
-    IdentifiedPeptidoformData, IdentifiedPeptidoformSource, IdentifiedPeptidoformVersion,
-    KnownFileFormat, MetaData, PeptidoformPresent, SpectrumId, SpectrumIds,
+    BoxedIdentifiedPeptideIter, FastaIdentifier, IdentifiedPeptidoform, IdentifiedPeptidoformData,
+    IdentifiedPeptidoformSource, IdentifiedPeptidoformVersion, KnownFileFormat, MetaData,
+    PeptidoformPresent, SpectrumId, SpectrumIds,
     common_parser::{Location, OptionalColumn, OptionalLocation},
     csv::{CsvLine, parse_csv},
     helper_functions::explain_number_error,
@@ -15,8 +15,8 @@ use mzcore::{
     chemistry::{MolecularFormula, NeutralLoss},
     ontology::CustomDatabase,
     sequence::{
-        AminoAcid, CompoundPeptidoformIon, MUPSettings, Modification, Peptidoform, PlacementRule,
-        Position, SequencePosition, SimpleLinear, SimpleModification,
+        AminoAcid, CompoundPeptidoformIon, FlankingSequence, MUPSettings, Modification,
+        Peptidoform, PlacementRule, Position, SequencePosition, SimpleLinear, SimpleModification,
     },
     system::{Mass, MassOverCharge, OrderedTime, Time, isize::Charge},
 };

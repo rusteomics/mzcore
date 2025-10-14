@@ -13,13 +13,13 @@ use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    FlankingSequence, IdentifiedPeptidoform, IdentifiedPeptidoformData, KnownFileFormat, MetaData,
+    IdentifiedPeptidoform, IdentifiedPeptidoformData, KnownFileFormat, MetaData,
     PeptidoformPresent, SpectrumIds, helper_functions::explain_number_error,
 };
 use mzcore::{
     sequence::{
-        AminoAcid, AnnotatedPeptide, Annotation, CompoundPeptidoformIon, HasPeptidoformImpl,
-        Peptidoform, Region, SemiAmbiguous, SequenceElement,
+        AminoAcid, AnnotatedPeptide, Annotation, CompoundPeptidoformIon, FlankingSequence,
+        HasPeptidoformImpl, Peptidoform, Region, SemiAmbiguous, SequenceElement,
     },
     system::{Mass, MassOverCharge, Time, isize::Charge},
 };

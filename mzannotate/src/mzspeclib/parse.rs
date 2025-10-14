@@ -381,6 +381,7 @@ impl<R: Read> MzSpecLibParser<R> {
             return Err(MzSpecLibTextParseError::EOF);
         }
         let id = self.parse_open_declaration(&buf, "<Analyte=", ParserState::Analyte)?;
+        let mut groups: HashMap<u32, Vec<(Attribute, Context)>> = HashMap::new();
 
         let mut analyte = Analyte::new(id, AnalyteTarget::default(), Vec::new());
         loop {
@@ -452,7 +453,16 @@ impl<R: Read> MzSpecLibParser<R> {
                     {
                         // Ignore, can be calculated easily on the fly
                     } else {
-                        analyte.add_attribute(attr);
+                        if let Some(group_id) = attr.group_id {
+                            groups.entry(group_id).or_default().push((
+                                attr,
+                                Context::none()
+                                    .line_index(self.line_number as u32)
+                                    .lines(0, buf.clone()),
+                            ));
+                        } else {
+                            analyte.add_attribute(attr);
+                        }
                     }
                 }
                 Err(e) => {
@@ -468,9 +478,159 @@ impl<R: Read> MzSpecLibParser<R> {
             }
         }
 
+        for (id, group) in &groups {
+            let mut protein = crate::mzspeclib::ProteinDescription::default();
+            protein.id = *id;
+            let attr_sets: Vec<_> = group
+                .iter()
+                .filter(|(a, _)| a.name == term!(MS:1003212|"library attribute set name"))
+                .map(|(v, _)| v.value.to_string())
+                .collect();
+            for (attr, context) in group.iter().chain(
+                self.header
+                    .attribute_classes
+                    .get(&EntryType::Analyte)
+                    .into_iter()
+                    .flatten()
+                    .filter(|set| attr_sets.contains(&set.id))
+                    .flat_map(|a| a.attributes.values())
+                    .flatten(),
+            ) {
+                match attr.name.accession {
+                    curie!(MS:1003048) => {
+                        let termini = attr.value.scalar().to_u64().map_err(|e| {
+                            MzSpecLibTextParseError::RichError(BoxedError::new(
+                                BasicKind::Error,
+                                "Invalid number of enzymatic termini",
+                                e.to_string(),
+                                context.clone(),
+                            ))
+                        })?;
+                        if termini > 2 {
+                            return Err(MzSpecLibTextParseError::RichError(BoxedError::new(
+                                BasicKind::Error,
+                                "Invalid number of enzymatic termini",
+                                "The number of enzymatic termini can only be 0, 1, or 2.",
+                                context.clone(),
+                            )));
+                        }
+                        protein.enzymatic_termini = Some(termini as u8);
+                    }
+                    curie!(MS:1003044) => {
+                        let missed = attr.value.scalar().to_u64().map_err(|e| {
+                            MzSpecLibTextParseError::RichError(BoxedError::new(
+                                BasicKind::Error,
+                                "Invalid number of missed cleavages",
+                                e.to_string(),
+                                context.clone(),
+                            ))
+                        })?;
+                        if let Ok(missed) = missed.try_into() {
+                            protein.missed_cleavages = Some(missed);
+                        } else {
+                            return Err(MzSpecLibTextParseError::RichError(BoxedError::new(
+                                BasicKind::Error,
+                                "Invalid number of missed cleavages",
+                                "The number of missed cleavages has to be less than 2^16",
+                                context.clone(),
+                            )));
+                        }
+                    }
+                    curie!(MS:1001112) => {
+                        let value = attr.value.scalar().to_string();
+                        if value.eq_ignore_ascii_case("n-term") {
+                            protein.flanking_sequences.0 =
+                                mzcore::sequence::FlankingSequence::Terminal
+                        } else if let Ok(aa) = value.parse::<AminoAcid>() {
+                            protein.flanking_sequences.0 =
+                                mzcore::sequence::FlankingSequence::AminoAcid(aa)
+                        } else {
+                            return Err(MzSpecLibTextParseError::RichError(BoxedError::new(
+                                BasicKind::Error,
+                                "Invalid flanking sequence",
+                                "The N terminal flanking residue has to be 'N-term' or an amino acid.",
+                                context.clone(),
+                            )));
+                        }
+                    }
+                    curie!(MS:1001113) => {
+                        let value = attr.value.scalar().to_string();
+                        if value.eq_ignore_ascii_case("c-term") {
+                            protein.flanking_sequences.0 =
+                                mzcore::sequence::FlankingSequence::Terminal
+                        } else if let Ok(aa) = value.parse::<AminoAcid>() {
+                            protein.flanking_sequences.0 =
+                                mzcore::sequence::FlankingSequence::AminoAcid(aa)
+                        } else {
+                            return Err(MzSpecLibTextParseError::RichError(BoxedError::new(
+                                BasicKind::Error,
+                                "Invalid flanking sequence",
+                                "The C terminal flanking residue has to be 'C-term' or an amino acid.",
+                                context.clone(),
+                            )));
+                        }
+                    }
+                    curie!(MS:1003212) => protein
+                        .set_names
+                        .push(attr.value.scalar().to_string().into_boxed_str()),
+                    curie!(MS:1000885) => {
+                        // TODO: Make sure only the accession is stored here if the description is also provided
+                        protein.accession = Some(attr.value.scalar().to_string().into_boxed_str())
+                    }
+                    curie!(MS:1000886) => {
+                        protein.name = Some(attr.value.scalar().to_string().into_boxed_str())
+                    }
+                    curie!(MS:1001088) => {
+                        protein.description = Some(attr.value.scalar().to_string().into_boxed_str())
+                    }
+                    curie!(MS:1001468) => {
+                        protein.species_common_name =
+                            Some(attr.value.scalar().to_string().into_boxed_str())
+                    }
+                    curie!(MS:1001469) => {
+                        protein.species_scientific_name =
+                            Some(attr.value.scalar().to_string().into_boxed_str())
+                    }
+                    curie!(MS:1001467) => {
+                        let accession = attr.value.scalar().to_u64().map_err(|e| {
+                            MzSpecLibTextParseError::RichError(BoxedError::new(
+                                BasicKind::Error,
+                                "Invalid NCBI TaxID",
+                                e.to_string(),
+                                context.clone(),
+                            ))
+                        })?;
+                        if let Ok(accession) = accession.try_into() {
+                            protein.species_accession = Some(accession);
+                        } else {
+                            return Err(MzSpecLibTextParseError::RichError(BoxedError::new(
+                                BasicKind::Error,
+                                "Invalid NCBI TaxID",
+                                "The NCBI TaxID has to be less than 2^32",
+                                context.clone(),
+                            )));
+                        }
+                    }
+                    curie!(MS:1001045) => {
+                        if let AttributeValue::Term(term) = &attr.value {
+                            protein.cleavage_agent =
+                                crate::mzspeclib::CleaveAgent::Term(term.clone());
+                        } else {
+                            protein.cleavage_agent = crate::mzspeclib::CleaveAgent::Name(
+                                attr.value.scalar().to_string().into_boxed_str(),
+                            );
+                        }
+                    }
+                    _ => analyte.add_attribute(attr.clone()),
+                }
+                //
+            }
+            analyte.proteins.push(protein);
+        }
+
         let mut next_group_id = analyte.find_last_group_id().unwrap_or_default();
 
-        let attr_set_name = term!(MS:1_003_212|"library attribute set name");
+        let attr_set_name = term!(MS:1003212|"library attribute set name");
         let attr_sets: Vec<_> = analyte
             .find_all(&attr_set_name)
             .map(|v| v.value.to_string())

@@ -16,8 +16,8 @@ use ordered_float::OrderedFloat;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    FastaIdentifier, FlankingSequence, IdentifiedPeptidoform, IdentifiedPeptidoformData,
-    KnownFileFormat, MaybePeptidoform, MetaData, SpectrumId, SpectrumIds,
+    FastaIdentifier, IdentifiedPeptidoform, IdentifiedPeptidoformData, KnownFileFormat,
+    MaybePeptidoform, MetaData, SpectrumId, SpectrumIds,
     helper_functions::{check_extension, explain_number_error, next_number, split_with_brackets},
 };
 use mzcore::{
@@ -25,9 +25,9 @@ use mzcore::{
     ontology::{CustomDatabase, Ontology},
     quantities::Tolerance,
     sequence::{
-        AminoAcid, CompoundPeptidoformIon, MUPSettings, PeptideModificationSearch, Peptidoform,
-        ReturnModification, SequencePosition, SimpleLinear, SimpleModification,
-        SimpleModificationInner, SloppyParsingParameters,
+        AminoAcid, CompoundPeptidoformIon, FlankingSequence, MUPSettings,
+        PeptideModificationSearch, Peptidoform, ReturnModification, SequencePosition, SimpleLinear,
+        SimpleModification, SimpleModificationInner, SloppyParsingParameters,
     },
     system::{Mass, MassOverCharge, Time, isize::Charge, usize},
 };
