@@ -1,6 +1,9 @@
 use std::{collections::HashMap, fmt::Display};
 
-use mzcore::{prelude::PeptidoformIon, system::isize::Charge};
+use mzcore::{
+    prelude::{IsAminoAcid, MolecularCharge, MolecularFormula, MultiChemical, PeptidoformIon},
+    system::isize::Charge,
+};
 use mzdata::{curie, params::Value};
 
 use crate::{
@@ -37,7 +40,7 @@ impl_attributed!(mut LibraryHeader);
 impl Display for LibraryHeader {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let version = Attribute::new(
-            term!(MS:1_003_186|"library format version"),
+            term!(MS:1003186|"library format version"),
             AttributeValue::Scalar(Value::String(self.format_version.clone())),
             None,
         );
@@ -72,10 +75,8 @@ pub type Id = u32;
 pub struct Analyte {
     /// The numeric id of this analyte
     pub id: Id,
-    /// The peptidoform, this can be missing if the analyte is not a peptidoform (uses term MS:1003270) this also includes the charge if defined
-    pub peptidoform_ion: Option<PeptidoformIon>,
-    /// The charge (MS:1000041)
-    pub charge: Option<Charge>,
+    /// The target itself
+    pub target: AnalyteTarget,
     /// Other attributes for this analyte
     pub attributes: Vec<Attribute>,
 }
@@ -85,15 +86,8 @@ impl_attributed!(mut Analyte);
 impl Display for Analyte {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         writeln!(f, "<Analyte={}>", self.id)?;
-        if let Some(sequence) = &self.peptidoform_ion {
-            writeln!(
-                f,
-                "{}={sequence}",
-                term!(MS:1003270|"proforma peptidoform ion notation")
-            )?;
-        }
-        if let Some(charge) = &self.charge {
-            writeln!(f, "{}={}", term!(MS:1000041|"charge state"), charge.value)?;
+        for attr in self.target.terms() {
+            writeln!(f, "{attr}")?;
         }
         for attr in &self.attributes {
             writeln!(f, "{attr}")?;
@@ -104,17 +98,129 @@ impl Display for Analyte {
 
 impl Analyte {
     /// Create a new analyte
-    pub const fn new(
-        id: Id,
-        peptidoform_ion: Option<PeptidoformIon>,
-        charge: Option<Charge>,
-        attributes: Vec<Attribute>,
-    ) -> Self {
+    pub const fn new(id: Id, target: AnalyteTarget, attributes: Vec<Attribute>) -> Self {
         Self {
             id,
-            peptidoform_ion,
-            charge,
+            target,
             attributes,
+        }
+    }
+}
+
+/// The analyte itself
+#[derive(Debug, Clone)]
+pub enum AnalyteTarget {
+    /// For an unknown class of analytes, where the charge (MS:1000041) could be known
+    Unknown(Option<Charge>),
+    /// A peptidoform ion (MS:1003270), with the charge (MS:1000041) stored inside if known
+    PeptidoformIon(PeptidoformIon),
+    /// A molecular formula (MS:1000866), with the charge (MS:1000041) stored inside if known
+    MolecularFormula(MolecularFormula),
+}
+
+impl Default for AnalyteTarget {
+    fn default() -> Self {
+        Self::Unknown(None)
+    }
+}
+
+impl MultiChemical for AnalyteTarget {
+    fn formulas_inner(
+        &self,
+        _sequence_index: mzcore::prelude::SequencePosition,
+        _peptidoform_index: usize,
+        _peptidoform_ion_index: usize,
+    ) -> mzcore::quantities::Multi<MolecularFormula> {
+        match self {
+            Self::Unknown(_) => mzcore::quantities::Multi::default(),
+            Self::PeptidoformIon(pep) => pep.formulas(),
+            Self::MolecularFormula(f) => f.into(),
+        }
+    }
+}
+
+impl AnalyteTarget {
+    /// Update the charge to a new value. This does not change the definition of the peptidoform
+    /// ion if that already contains a charge with the same value. This means that any complex
+    /// charge carriers defined in ProForma will not be touched.
+    pub fn set_charge(&mut self, charge: Charge) {
+        match self {
+            Self::Unknown(c) => *c = Some(charge),
+            Self::PeptidoformIon(pep) => {
+                if pep
+                    .get_charge_carriers()
+                    .is_none_or(|c| c.charge() != charge)
+                {
+                    pep.set_charge_carriers(Some(MolecularCharge::proton(charge)))
+                }
+            }
+            Self::MolecularFormula(f) => f.set_charge(charge),
+        }
+    }
+
+    /// Used to write out the analyte target for mzSpecLib files
+    // TODO: look into other theoretical things I can easily generate
+    pub fn terms(&self) -> Vec<Attribute> {
+        match self {
+            Self::Unknown(None) => Vec::new(),
+            Self::Unknown(Some(c)) => vec![Attribute {
+                name: term!(MS:1000041|"charge state"),
+                value: AttributeValue::Scalar(Value::Int(c.value as i64)),
+                group_id: None,
+            }],
+            Self::PeptidoformIon(pep) => {
+                let mut attributes = vec![Attribute {
+                    name: term!(MS:1003270|"proforma peptidoform ion notation"),
+                    value: AttributeValue::Scalar(Value::String(pep.to_string())),
+                    group_id: None,
+                }];
+                if let Some(c) = pep.get_charge_carriers().map(MolecularCharge::charge)
+                    && c.value != 0
+                {
+                    attributes.push(Attribute {
+                        name: term!(MS:1000041|"charge state"),
+                        value: AttributeValue::Scalar(Value::Int(c.value as i64)),
+                        group_id: None,
+                    });
+                }
+                let f = pep.formulas();
+                if f.len() == 1 && f[0].additional_mass() == 0.0 {
+                    attributes.push(Attribute {
+                        name: term!(MS:1000866|"molecular formula"),
+                        value: AttributeValue::Scalar(Value::String(f[0].hill_notation_core())),
+                        group_id: None,
+                    });
+                }
+                if pep.peptidoforms().len() == 1 {
+                    attributes.push(Attribute {
+                        name: term!(MS:1000888|"stripped peptide sequence"),
+                        value: AttributeValue::Scalar(Value::String(
+                            pep.peptidoforms()[0]
+                                .sequence()
+                                .iter()
+                                .map(|s| s.aminoacid.aminoacid().one_letter_code().unwrap_or('X'))
+                                .collect(),
+                        )),
+                        group_id: None,
+                    });
+                }
+                attributes
+            }
+            Self::MolecularFormula(f) => {
+                let mut attributes = vec![Attribute {
+                    name: term!(MS:1000866|"molecular formula"),
+                    value: AttributeValue::Scalar(Value::String(f.hill_notation_core())),
+                    group_id: None,
+                }];
+                if f.charge().value != 0 {
+                    attributes.push(Attribute {
+                        name: term!(MS:1000041|"charge state"),
+                        value: AttributeValue::Scalar(Value::Int(f.charge().value as i64)),
+                        group_id: None,
+                    });
+                }
+                attributes
+            }
         }
     }
 }

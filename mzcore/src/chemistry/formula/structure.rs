@@ -316,6 +316,16 @@ impl MolecularFormula {
             })
     }
 
+    /// Set the charge. Only changes the number of electrons.
+    pub fn set_charge(&mut self, charge: crate::system::isize::Charge) {
+        if let Some(el) = self.elements.iter_mut().find(|e| e.0 == Element::Electron) {
+            el.2 = -charge.value as i32;
+        } else {
+            self.elements
+                .push((Element::Electron, None, -charge.value as i32));
+        }
+    }
+
     /// Check if the formula is empty (no elements and no additional mass)
     pub fn is_empty(&self) -> bool {
         self.elements.is_empty() && self.additional_mass == 0.0

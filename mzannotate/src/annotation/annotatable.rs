@@ -62,13 +62,9 @@ impl<T: Into<AnnotatedSpectrum>> AnnotatableSpectrum for T {
     fn empty_annotated(self, peptide: CompoundPeptidoformIon) -> AnnotatedSpectrum {
         let mut spectrum: AnnotatedSpectrum = self.into();
         for (index, peptidoform_ion) in peptide.into_peptidoform_ions().into_iter().enumerate() {
-            let charge = peptidoform_ion
-                .get_charge_carriers()
-                .map(mzcore::chemistry::MolecularCharge::charge);
             spectrum.add_analyte(crate::mzspeclib::Analyte::new(
                 index as u32,
-                Some(peptidoform_ion),
-                charge,
+                crate::mzspeclib::AnalyteTarget::PeptidoformIon(peptidoform_ion),
                 Vec::new(),
             ));
         }

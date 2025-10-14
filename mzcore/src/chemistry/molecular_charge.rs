@@ -71,10 +71,10 @@ pub struct MolecularCharge {
 impl MolecularCharge {
     /// Create a default charge state with only protons
     #[expect(clippy::missing_panics_doc)] // Cannot panic
-    pub fn proton(charge: isize) -> Self {
+    pub fn proton(charge: Charge) -> Self {
         Self {
             charge_carriers: vec![(
-                charge,
+                charge.value,
                 MolecularFormula::new(&[(Element::H, None, 1), (Element::Electron, None, -1)], &[])
                     .unwrap(),
             )],

@@ -1080,7 +1080,9 @@ pub(super) fn parse_charge_state(
         // If no adduct ions are provided assume it is just protons
         Ok((
             index + charge_len + 1,
-            MolecularCharge::proton(total_charge),
+            MolecularCharge::proton(crate::system::isize::Charge::new::<crate::system::e>(
+                total_charge,
+            )),
         ))
     }
 }

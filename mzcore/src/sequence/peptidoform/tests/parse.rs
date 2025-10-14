@@ -111,11 +111,36 @@ fn charge_state_positive() {
             })
             .map_err(BoxedError::to_owned)
     };
-    assert_eq!(parse("/1"), Ok(MolecularCharge::proton(1)));
-    assert_eq!(parse("/5"), Ok(MolecularCharge::proton(5)));
-    assert_eq!(parse("/-5"), Ok(MolecularCharge::proton(-5)));
-    assert_eq!(parse("/1[+H+]"), Ok(MolecularCharge::proton(1)));
-    assert_eq!(parse("/2[+H+,+H+]"), Ok(MolecularCharge::proton(2)));
+    assert_eq!(
+        parse("/1"),
+        Ok(MolecularCharge::proton(
+            crate::system::isize::Charge::new::<crate::system::e>(1)
+        ))
+    );
+    assert_eq!(
+        parse("/5"),
+        Ok(MolecularCharge::proton(
+            crate::system::isize::Charge::new::<crate::system::e>(5)
+        ))
+    );
+    assert_eq!(
+        parse("/-5"),
+        Ok(MolecularCharge::proton(
+            crate::system::isize::Charge::new::<crate::system::e>(-5)
+        ))
+    );
+    assert_eq!(
+        parse("/1[+H+]"),
+        Ok(MolecularCharge::proton(
+            crate::system::isize::Charge::new::<crate::system::e>(1)
+        ))
+    );
+    assert_eq!(
+        parse("/2[+H+,+H+]"),
+        Ok(MolecularCharge::proton(
+            crate::system::isize::Charge::new::<crate::system::e>(2)
+        ))
+    );
     assert_eq!(
         parse("/1[+Na+]"),
         Ok(MolecularCharge::new(&[(

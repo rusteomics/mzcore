@@ -23,8 +23,8 @@ use crate::{
     fragment::{Fragment, parse_mz_paf},
     helper_functions::explain_number_error,
     mzspeclib::{
-        Analyte, Attribute, AttributeParseError, AttributeSet, AttributeValue, Attributed,
-        AttributedMut, EntryType, Id, Interpretation, LibraryHeader,
+        Analyte, AnalyteTarget, Attribute, AttributeParseError, AttributeSet, AttributeValue,
+        Attributed, AttributedMut, EntryType, Id, Interpretation, LibraryHeader,
     },
     spectrum::{AnnotatedPeak, AnnotatedSpectrum},
     term,
@@ -382,42 +382,71 @@ impl<R: Read> MzSpecLibParser<R> {
         }
         let id = self.parse_open_declaration(&buf, "<Analyte=", ParserState::Analyte)?;
 
-        let mut analyte = Analyte::new(id, None, None, Vec::new());
+        let mut analyte = Analyte::new(id, AnalyteTarget::default(), Vec::new());
         loop {
             match self.read_attribute(&mut buf) {
                 Ok(attr) => {
                     if attr.name.accession == curie!(MS:1003270)
                         && let Value::String(value) = attr.value.scalar().as_ref()
                     {
-                        let peptidoform_ion = PeptidoformIon::pro_forma(value, None)
+                        let mut peptidoform_ion = PeptidoformIon::pro_forma(value, None)
                             .map_err(|e| MzSpecLibTextParseError::InvalidProforma(e.to_owned()))?;
-                        if let Some(charge) = peptidoform_ion.get_charge_carriers() {
-                            let charge = charge.charge();
-                            if analyte.charge.is_some_and(|c| c != charge) {
-                                return Err(MzSpecLibTextParseError::InconsistentCharge);
-                            } else if analyte.charge.is_none() {
-                                analyte.charge = Some(charge);
+                        if peptidoform_ion.get_charge_carriers().is_none() {
+                            match analyte.target {
+                                AnalyteTarget::Unknown(Some(c)) => {
+                                    peptidoform_ion
+                                        .set_charge_carriers(Some(MolecularCharge::proton(c)));
+                                }
+                                AnalyteTarget::MolecularFormula(f)
+                                    if peptidoform_ion.get_charge_carriers().is_none()
+                                        && f.charge().value != 0 =>
+                                {
+                                    peptidoform_ion.set_charge_carriers(Some(
+                                        MolecularCharge::proton(f.charge()),
+                                    ));
+                                }
+                                _ => (),
                             }
                         }
-                        analyte.peptidoform_ion = Some(peptidoform_ion);
+
+                        analyte.target = AnalyteTarget::PeptidoformIon(peptidoform_ion);
+                    } else if attr.name.accession == curie!(MS:1000866) {
+                        let value = attr.value.scalar().to_string();
+                        let mut formula = MolecularFormula::from_pro_forma(
+                            &value,
+                            0..value.len(),
+                            false,
+                            false,
+                            true,
+                            false,
+                        )
+                        .map_err(|e| MzSpecLibTextParseError::RichError(e.to_owned()))?;
+                        analyte.target = match analyte.target {
+                            AnalyteTarget::Unknown(c) => {
+                                if let Some(c) = c {
+                                    formula.set_charge(c);
+                                }
+                                AnalyteTarget::MolecularFormula(formula)
+                            }
+                            AnalyteTarget::MolecularFormula(_) => {
+                                AnalyteTarget::MolecularFormula(formula) // TODO: detect double definitions?
+                            }
+                            AnalyteTarget::PeptidoformIon(pep) => {
+                                AnalyteTarget::PeptidoformIon(pep) // TODO: detect incongruent definitions?
+                            }
+                        };
                     } else if attr.name.accession == curie!(MS:1000041)
                         && let Value::Int(value) = attr.value.scalar().as_ref()
                     {
                         let charge = Charge::new::<mzcore::system::e>(*value as isize);
-                        if analyte.charge.is_some_and(|c| c != charge) {
-                            return Err(MzSpecLibTextParseError::InconsistentCharge);
-                        }
-                        if let Some(p) = analyte.peptidoform_ion.as_mut()
-                            && p.get_charge_carriers().is_none()
-                        {
-                            p.set_charge_carriers(Some(MolecularCharge::proton(charge.value)));
-                        }
-                        analyte.charge = Some(charge);
+                        analyte.target.set_charge(charge);
                     } else if [
+                        curie!(MS:1000888), // Stripped peptide sequence
+                        curie!(MS:1001117),
                         curie!(MS:1003043),
-                        curie!(MS:1003243),
                         curie!(MS:1003053),
                         curie!(MS:1003054),
+                        curie!(MS:1003243),
                     ]
                     .contains(&attr.name.accession)
                     {
@@ -440,7 +469,6 @@ impl<R: Read> MzSpecLibParser<R> {
         }
 
         let mut next_group_id = analyte.find_last_group_id().unwrap_or_default();
-        let mut last_group_id = 0;
 
         let attr_set_name = term!(MS:1_003_212|"library attribute set name");
         let attr_sets: Vec<_> = analyte
@@ -510,7 +538,6 @@ impl<R: Read> MzSpecLibParser<R> {
         }
 
         let mut next_group_id = interp.find_last_group_id().unwrap_or_default();
-        let mut last_group_id = 0;
 
         let attr_set_name = term!(MS:1003212|"library attribute set name");
         let attr_sets: Vec<_> = interp

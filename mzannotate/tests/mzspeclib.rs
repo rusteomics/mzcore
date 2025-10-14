@@ -9,6 +9,7 @@ fn read_all_files() {
     let mut errors: HashMap<std::path::PathBuf, Vec<_>> = HashMap::new();
     let mut spectrum_unused_attributes = HashSet::new();
     let mut analyte_unused_attributes = HashSet::new();
+    let mut interpretation_unused_attributes = HashSet::new();
 
     for entry in std::fs::read_dir("../data").unwrap().flatten() {
         if entry
@@ -30,6 +31,13 @@ fn read_all_files() {
                         analyte_unused_attributes.extend(
                             spectrum
                                 .analytes
+                                .iter()
+                                .flat_map(|a| a.attributes.iter())
+                                .map(|a| a.name.clone()),
+                        );
+                        interpretation_unused_attributes.extend(
+                            spectrum
+                                .interpretations
                                 .iter()
                                 .flat_map(|a| a.attributes.iter())
                                 .map(|a| a.name.clone()),
@@ -57,17 +65,39 @@ fn read_all_files() {
     }
     println!();
 
+    println!("Unused analyte attributes:");
+    for attribute in &analyte_unused_attributes {
+        println!("{attribute}");
+    }
+    println!();
+
+    println!("Unused interpretation attributes:");
+    for attribute in &interpretation_unused_attributes {
+        println!("{attribute}");
+    }
+    println!();
+
     let total_errors = errors.values().map(Vec::len).sum::<usize>();
 
     println!(
-        "files: {files}, files with errors: {}, total errors: {total_errors}, ignored spectrum attributes: {}",
+        "files: {files}, files with errors: {}, total errors: {total_errors}, ignored spectrum attributes: {}, ignored analyte attributes: {}, ignored interpretation attributes: {}",
         errors.len(),
-        spectrum_unused_attributes.len()
+        spectrum_unused_attributes.len(),
+        analyte_unused_attributes.len(),
+        interpretation_unused_attributes.len(),
     );
 
     assert!(total_errors == 0, "some errors encountered");
     assert!(
         spectrum_unused_attributes.is_empty(),
         "Some spectrum attributes unused"
+    );
+    assert!(
+        analyte_unused_attributes.is_empty(),
+        "Some analyte attributes unused"
+    );
+    assert!(
+        interpretation_unused_attributes.is_empty(),
+        "Some interpretation attributes unused"
     );
 }
