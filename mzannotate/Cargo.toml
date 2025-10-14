@@ -35,3 +35,7 @@ coloured-errors = ["context_error/colored"]
 
 [lints]
 workspace = true
+
+[[test]]
+name = "mzspeclib"
+path = "tests/mzspeclib.rs"

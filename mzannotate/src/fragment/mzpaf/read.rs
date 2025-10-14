@@ -548,7 +548,7 @@ fn parse_ion<'a>(
                 )?;
                 let modification = &line[range.start_index() + 3..end];
                 Some((
-                    end - range.start_index(), // Length of mod + [ + ]
+                    end - range.start_index() - 1, // Length of mod + [ + ]
                     Ontology::Unimod
                         .find_name(modification, None)
                         .or_else(|| {
@@ -1072,7 +1072,7 @@ fn parse_adduct_type(
 
 /// Parse mzPAF charge, eg `^2` `^-1`
 /// # Errors
-/// If there is nu number after the caret, or if the number is invalid (outside of range and the like).
+/// If there is no number after the caret, or if the number is invalid (outside of range and the like).
 fn parse_charge(
     line: &str,
     range: Range<usize>,
@@ -1090,7 +1090,7 @@ fn parse_charge(
         Ok((
             range.add_start(charge.0 + 1),
             Charge::new::<e>(
-                if charge.1 { -1 } else { 1 }
+                if charge.1 { 1 } else { -1 }
                     * charge.2.map_err(|err| {
                         BoxedError::new(
                             BasicKind::Error,
@@ -1295,3 +1295,70 @@ static MZPAF_NAMED_MOLECULES: LazyLock<Vec<(&str, MolecularFormula)>> = LazyLock
         ("Thymine", molecular_formula!(C 5 H 6 N 2 O 2)),
     ]
 });
+
+#[test]
+fn neutral_loss() {
+    assert_eq!(
+        parse_neutral_loss("-H2O", 0..4),
+        Ok((
+            4..4,
+            vec![NeutralLoss::Loss(1, molecular_formula!(H 2 O 1))]
+        ))
+    );
+    assert_eq!(
+        parse_neutral_loss("+H2O", 0..4),
+        Ok((
+            4..4,
+            vec![NeutralLoss::Gain(1, molecular_formula!(H 2 O 1))]
+        ))
+    );
+    assert_eq!(
+        parse_neutral_loss("+NH3", 0..4),
+        Ok((
+            4..4,
+            vec![NeutralLoss::Gain(1, molecular_formula!(N 1 H 3))]
+        ))
+    );
+    assert_eq!(parse_neutral_loss("/-0.0008", 0..8), Ok((0..8, vec![])));
+}
+
+#[test]
+fn parse_correctly() {
+    let pep = CompoundPeptidoformIon::pro_forma("AAAAAAAAAA", None).unwrap();
+    let a = "y8^2/-0.0017";
+    let (_, parse_a) = parse_annotation(a, 0..a.len(), None).unwrap();
+    assert!(!parse_a.auxiliary);
+    assert_eq!(parse_a.analyte_number, 1);
+    assert_eq!(parse_a.ion, IonType::MainSeries(b'y', None, 8, None));
+    assert_eq!(parse_a.neutral_losses, Vec::new());
+    assert_eq!(parse_a.isotopes, Vec::new());
+    assert_eq!(parse_a.charge, MolecularCharge::proton(2));
+    assert_eq!(
+        parse_a.deviation,
+        Some(Tolerance::Absolute(
+            MassOverCharge::new::<thomson>(-0.0017).into()
+        )),
+    );
+    assert_eq!(parse_a.confidence, None);
+    let frag_a = parse_a.into_fragment(&pep);
+    assert_eq!(
+        frag_a.ion.position(),
+        Some(&PeptidePosition::c(SequencePosition::Index(2), 10))
+    );
+
+    let b = "y8+i^2/0.0002";
+    let (_, parse_b) = parse_annotation(b, 0..b.len(), None).unwrap();
+    assert!(!parse_b.auxiliary);
+    assert_eq!(parse_b.analyte_number, 1);
+    assert_eq!(parse_b.ion, IonType::MainSeries(b'y', None, 8, None));
+    assert_eq!(parse_b.neutral_losses, Vec::new());
+    assert_eq!(parse_b.isotopes, vec![(1, Isotope::General)]);
+    assert_eq!(parse_b.charge, MolecularCharge::proton(2));
+    assert_eq!(
+        parse_b.deviation,
+        Some(Tolerance::Absolute(
+            MassOverCharge::new::<thomson>(0.0002).into()
+        )),
+    );
+    assert_eq!(parse_b.confidence, None);
+}

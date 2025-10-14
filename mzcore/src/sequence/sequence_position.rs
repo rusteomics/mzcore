@@ -129,7 +129,7 @@ impl PeptidePosition {
             sequence_index,
             series_number: match sequence_index {
                 SequencePosition::NTerm => length,
-                SequencePosition::Index(i) => length - i,
+                SequencePosition::Index(i) => length.saturating_sub(i),
                 SequencePosition::CTerm => 0,
             },
             sequence_length: length,

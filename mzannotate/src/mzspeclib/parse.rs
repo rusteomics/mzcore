@@ -63,15 +63,6 @@ pub enum MzSpecLibTextParseError {
     RichError(BoxedError<'static, BasicKind>),
 }
 
-// impl From<MzSpecLibTextParseError> for io::Error {
-//     fn from(value: MzSpecLibTextParseError) -> Self {
-//         match value {
-//             MzSpecLibTextParseError::IOError(error) => error,
-//             e => io::Error::new(io::ErrorKind::Other, e),
-//         }
-//     }
-// }
-
 #[derive(Debug)]
 pub struct MzSpecLibParser<R: Read> {
     inner: io::BufReader<R>,
@@ -81,6 +72,7 @@ pub struct MzSpecLibParser<R: Read> {
     line_number: u64,
     offsets: LibraryIndex,
     last_error: bool,
+    last_compound_peptidoform: CompoundPeptidoformIon,
 }
 
 impl<R: Read> MzSpecLibParser<R> {
@@ -93,6 +85,7 @@ impl<R: Read> MzSpecLibParser<R> {
             line_number: 0,
             offsets: LibraryIndex::default(),
             last_error: false,
+            last_compound_peptidoform: CompoundPeptidoformIon::default(),
         };
         this.read_header()?;
         Ok(this)
@@ -393,7 +386,7 @@ impl<R: Read> MzSpecLibParser<R> {
         loop {
             match self.read_attribute(&mut buf) {
                 Ok(attr) => {
-                    if attr.name.accession == curie!(MS:1_003_270)
+                    if attr.name.accession == curie!(MS:1003270)
                         && let Value::String(value) = attr.value.scalar().as_ref()
                     {
                         let peptidoform_ion = PeptidoformIon::pro_forma(value, None)
@@ -407,7 +400,7 @@ impl<R: Read> MzSpecLibParser<R> {
                             }
                         }
                         analyte.peptidoform_ion = Some(peptidoform_ion);
-                    } else if attr.name.accession == curie!(MS:1_000_041)
+                    } else if attr.name.accession == curie!(MS:1000041)
                         && let Value::Int(value) = attr.value.scalar().as_ref()
                     {
                         let charge = Charge::new::<mzcore::system::e>(*value as isize);
@@ -420,6 +413,15 @@ impl<R: Read> MzSpecLibParser<R> {
                             p.set_charge_carriers(Some(MolecularCharge::proton(charge.value)));
                         }
                         analyte.charge = Some(charge);
+                    } else if [
+                        curie!(MS:1003043),
+                        curie!(MS:1003243),
+                        curie!(MS:1003053),
+                        curie!(MS:1003054),
+                    ]
+                    .contains(&attr.name.accession)
+                    {
+                        // Ignore, can be calculated easily on the fly
                     } else {
                         analyte.add_attribute(attr);
                     }
@@ -606,7 +608,7 @@ impl<R: Read> MzSpecLibParser<R> {
             Some(v) => {
                 let v = v.trim();
                 if !v.is_empty() && v != "?" {
-                    let annots = parse_mz_paf(v, None, &CompoundPeptidoformIon::default())
+                    let annots = parse_mz_paf(v, None, &self.last_compound_peptidoform)
                         .map_err(|e| MzSpecLibTextParseError::InvalidMzPAF(e.to_owned()))?;
                     peak.annotations = annots;
                 }
@@ -713,6 +715,12 @@ impl<R: Read> MzSpecLibParser<R> {
             .activation
             ._extract_methods_from_params();
 
+        self.last_compound_peptidoform = spec
+            .analytes
+            .iter()
+            .filter_map(|a| a.peptidoform_ion.clone())
+            .collect();
+
         if matches!(self.state, ParserState::Peaks) {
             loop {
                 let z = self
@@ -739,6 +747,7 @@ impl<R: Read> MzSpecLibParser<R> {
     }
 
     pub fn read_next(&mut self) -> Result<AnnotatedSpectrum, MzSpecLibTextParseError> {
+        self.last_compound_peptidoform = CompoundPeptidoformIon::default();
         if self.last_error {
             // If the last element went awry scan the buffer until the start of the next spectrum
             // is found, otherwise it generates an error for each skipped line.
@@ -780,6 +789,12 @@ fn parse_spectrum_attributes<'a>(
     attributes: impl Iterator<Item = (&'a Option<u32>, &'a Vec<(Attribute, Context<'static>)>)>,
     spectrum: &mut AnnotatedSpectrum,
 ) -> Result<(), MzSpecLibTextParseError> {
+    let mut last_group_id = spectrum
+        .attributes
+        .iter()
+        .filter_map(|a| a.group_id)
+        .max()
+        .unwrap_or_default();
     for (id, group) in attributes {
         if id.is_some() {
             let unit = if let Some((
@@ -800,23 +815,24 @@ fn parse_spectrum_attributes<'a>(
             if let Some((Attribute { value, .. }, context)) = group
                 .iter()
                 .find(|a| a.0.name.accession == curie!(MS:1000894))
+                && group.len() == 2
             {
                 spectrum.description.acquisition.scans[0].start_time =
-                    value.scalar().to_f32().map_err(|v| {
+                    f64::from(value.scalar().to_f32().map_err(|v| {
                         MzSpecLibTextParseError::RichError(BoxedError::new(
                             BasicKind::Error,
                             "Invalid attribute",
                             v.to_string(),
                             context.clone(),
                         ))
-                    })? as f64
-                        / match unit.ok_or(MzSpecLibTextParseError::MissingUnit)? {
-                            Unit::Minute => 60.0,
-                            _ => 1.0, // Assume seconds for anything else
-                        };
+                    })?) / match unit.ok_or(MzSpecLibTextParseError::MissingUnit)? {
+                        Unit::Minute => 60.0,
+                        _ => 1.0, // Assume seconds for anything else
+                    };
             } else if let Some((attr, context)) = group.iter().find(|a| {
                 a.0.name.accession == curie!(MS:1000045) || a.0.name.accession == curie!(MS:1000509)
-            }) {
+            }) && group.len() == 2
+            {
                 spectrum.description.precursor[0].activation.energy =
                     attr.value.scalar().to_f32().map_err(|v| {
                         MzSpecLibTextParseError::RichError(BoxedError::new(
@@ -839,10 +855,36 @@ fn parse_spectrum_attributes<'a>(
                         .clone()
                         .to_param(other.value.clone().into(), unit),
                 );
+            } else if let Some((value, _)) = group
+                .iter()
+                .find(|a| a.0.name.accession == curie!(MS:1003275))
+                && let Some((name, _)) = group
+                    .iter()
+                    .find(|a| a.0.name.accession == curie!(MS:1003276))
+                && group.len() == 2
+            {
+                spectrum.description.add_param(match &name.value {
+                    AttributeValue::Term(term) => mzdata::params::Param {
+                        accession: Some(term.accession.accession),
+                        name: term.name.to_string(),
+                        value: value.value.scalar().into_owned(),
+                        controlled_vocabulary: Some(term.accession.controlled_vocabulary),
+                        unit: Unit::Unknown,
+                    },
+                    e => mzdata::params::Param {
+                        accession: None,
+                        name: e.scalar().to_string(),
+                        value: value.value.scalar().into_owned(),
+                        controlled_vocabulary: None,
+                        unit: Unit::Unknown,
+                    },
+                });
             } else {
-                // TODO: duplicate ids could happen due to merging of multiple attribute sets
+                last_group_id += 1;
                 for attr in group {
-                    spectrum.add_attribute(attr.0.clone());
+                    let mut attr = attr.0.clone();
+                    attr.group_id = Some(last_group_id);
+                    spectrum.add_attribute(attr);
                 }
             }
         } else {

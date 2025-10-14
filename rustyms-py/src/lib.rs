@@ -7,7 +7,7 @@ use std::num::NonZeroU16;
 use pyo3::{exceptions::PyValueError, prelude::*, types::PyType};
 
 use mzalign::AlignScoring;
-use mzannotate::prelude::{GlycanFragmention, PeptidoformFragmentation};
+use mzannotate::prelude::{GlycanFragmention, PeptidoformFragmentation, ToMzPAF};
 use mzcore::{
     chemistry::{Chemical, MultiChemical},
     sequence::{IsAminoAcid, Linked, SimpleLinear},
@@ -732,7 +732,7 @@ impl Fragment {
     ///
     #[getter]
     fn to_mz_paf(&self) -> String {
-        self.0.to_mz_paf()
+        self.0.to_mz_paf_string()
     }
 
     /// The charge.

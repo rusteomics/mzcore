@@ -68,43 +68,72 @@ impl MolecularFormula {
         }
     }
 
+    /// Create a [Hill notation](https://en.wikipedia.org/wiki/Chemical_formula#Hill_system) from
+    /// this collection of elements merged with the ProForma notation for specific isotopes. This
+    /// only displays the elements part and not any potential charge.
+    pub fn hill_notation_core(&self) -> String {
+        self.hill_notation_generic(
+            |element, buffer| {
+                if let Some(isotope) = element.1 {
+                    write!(buffer, "[{}{}{}]", isotope, element.0, element.2,).unwrap();
+                } else {
+                    write!(buffer, "{}{}", element.0, element.2,).unwrap();
+                }
+            },
+            false,
+            false,
+        )
+    }
+
     /// Create a [Hill notation](https://en.wikipedia.org/wiki/Chemical_formula#Hill_system) from this collections of elements merged with the ProForma notation for specific isotopes
     pub fn hill_notation(&self) -> String {
-        self.hill_notation_generic(|element, buffer| {
-            if let Some(isotope) = element.1 {
-                write!(buffer, "[{}{}{}]", isotope, element.0, element.2,).unwrap();
-            } else {
-                write!(buffer, "{}{}", element.0, element.2,).unwrap();
-            }
-        })
+        self.hill_notation_generic(
+            |element, buffer| {
+                if let Some(isotope) = element.1 {
+                    write!(buffer, "[{}{}{}]", isotope, element.0, element.2,).unwrap();
+                } else {
+                    write!(buffer, "{}{}", element.0, element.2,).unwrap();
+                }
+            },
+            true,
+            true,
+        )
     }
 
     /// Create a [Hill notation](https://en.wikipedia.org/wiki/Chemical_formula#Hill_system) from this collections of
     /// elements merged with the ProForma notation for specific isotopes. Using fancy unicode characters for subscript
     /// and superscript numbers.
     pub fn hill_notation_fancy(&self) -> String {
-        self.hill_notation_generic(|element, buffer| {
-            if let Some(isotope) = element.1 {
-                write!(buffer, "{}", to_superscript_num(isotope.get())).unwrap();
-            }
-            write!(buffer, "{}", element.0,).unwrap();
-            if element.2 != 1 {
-                write!(buffer, "{}", to_subscript_num(element.2 as isize)).unwrap();
-            }
-        })
+        self.hill_notation_generic(
+            |element, buffer| {
+                if let Some(isotope) = element.1 {
+                    write!(buffer, "{}", to_superscript_num(isotope.get())).unwrap();
+                }
+                write!(buffer, "{}", element.0,).unwrap();
+                if element.2 != 1 {
+                    write!(buffer, "{}", to_subscript_num(element.2 as isize)).unwrap();
+                }
+            },
+            true,
+            true,
+        )
     }
 
     /// Create a [Hill notation](https://en.wikipedia.org/wiki/Chemical_formula#Hill_system) from this collections of elements encoded in HTML
     pub fn hill_notation_html(&self) -> String {
-        self.hill_notation_generic(|element, buffer| {
-            if let Some(isotope) = element.1 {
-                write!(buffer, "<sup>{isotope}</sup>",).unwrap();
-            }
-            write!(buffer, "{}", element.0,).unwrap();
-            if element.2 != 1 {
-                write!(buffer, "<sub>{}</sub>", element.2).unwrap();
-            }
-        })
+        self.hill_notation_generic(
+            |element, buffer| {
+                if let Some(isotope) = element.1 {
+                    write!(buffer, "<sup>{isotope}</sup>",).unwrap();
+                }
+                write!(buffer, "{}", element.0,).unwrap();
+                if element.2 != 1 {
+                    write!(buffer, "<sub>{}</sub>", element.2).unwrap();
+                }
+            },
+            true,
+            true,
+        )
     }
 }
 

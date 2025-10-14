@@ -69,7 +69,9 @@ pub(crate) fn check_extension(filename: impl AsRef<Path>, extension: impl AsRef<
         .is_some_and(|ext| ext.eq_ignore_ascii_case(extension.as_ref()))
 }
 
-/// Find the enclosed text by the given symbols, assumes a single open is already read just before the start, guarantees to only pick full characters
+/// Find the enclosed text by the given symbols, assumes a single open is already read just before
+/// the start, guarantees to only pick full characters. Returns the byte offset (including start)
+/// into the text where the closing bracket was found.
 pub(crate) fn end_of_enclosure(text: &str, start: usize, open: u8, close: u8) -> Option<usize> {
     let mut state = 1;
     for (i, ch) in text.as_bytes()[start..].iter().enumerate() {

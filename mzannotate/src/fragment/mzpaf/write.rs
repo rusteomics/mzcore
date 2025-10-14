@@ -195,9 +195,17 @@ impl ToMzPAF for Fragment {
             | FragmentType::BComposition(_, _)
             | FragmentType::Y(_)
             | FragmentType::YComposition(_, _) => {
-                if let Some(formula) = &self.formula {
+                if let Some(formula) = &self.formula
+                    && formula.charge().value != 0
+                {
                     // TODO: better way of storing?
-                    write!(w, "f{{{formula}}}",)?;
+                    write!(w, "f{{{}}}", formula.hill_notation_core())?;
+                    if formula.additional_mass() != 0.0 {
+                        write!(w, "{:+}", formula.additional_mass())?;
+                    }
+                    if formula.charge().value != 1 {
+                        write!(w, "^{:}", formula.charge().value)?;
+                    }
                 } else {
                     write!(w, "?",)?;
                 }
@@ -220,7 +228,7 @@ impl ToMzPAF for Fragment {
                 }
             )?,
             FragmentType::Internal(None, a, b) => {
-                write!(w, "m{}:{}", a.sequence_index + 1, b.sequence_index + 1)?
+                write!(w, "m{}:{}", a.sequence_index + 1, b.sequence_index + 1)?;
             }
         }
         // More losses
@@ -247,7 +255,7 @@ impl ToMzPAF for Fragment {
         match self.deviation {
             Some(Tolerance::Absolute(abs)) => write!(w, "/{:.3}", abs.value)?,
             Some(Tolerance::Relative(ppm)) => {
-                write!(w, "/{:.3}ppm", ppm.get::<mzcore::system::ratio::ppm>())?
+                write!(w, "/{:.3}ppm", ppm.get::<mzcore::system::ratio::ppm>())?;
             }
             None => (),
         }

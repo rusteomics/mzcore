@@ -440,6 +440,37 @@ fn glycan_structure_fragmentation() {
 }
 
 #[test]
+fn glycan_structure_fragmentation_2() {
+    #[expect(clippy::unreadable_literal)]
+    let theoretical_fragments = &[
+        (2339.075456541, "pep"),
+        (2542.154829056, "pep+N"),
+        (2745.234201571, "pep+N2"),
+        (2907.287024986, "pep+N2H1"),
+        (3110.366397502, "pep+N3H1"),
+        (3069.339848402, "pep+N2H2"),
+        (3231.392671817, "pep+N2H3"),
+        (3272.419220917, "pep+N3H2"),
+        (3434.472044332, "pep+N3H3"),
+    ];
+
+    let model = FragmentationModel::none()
+        .clone()
+        .glycan(GlycanModel::DISALLOW.allow_structural(true));
+    test(
+        theoretical_fragments,
+        Peptidoform::pro_forma("GLTFQQN[GNO:G75079FY]ASSMC[Carbamidomethyl]VPDQDTAIR", None)
+            .unwrap()
+            .into_linear()
+            .unwrap(),
+        &model,
+        4,
+        true,
+        true,
+    );
+}
+
+#[test]
 fn glycan_composition_fragmentation() {
     #[expect(clippy::unreadable_literal)]
     let theoretical_fragments = &[
@@ -733,6 +764,7 @@ fn test(
         peptide.generate_theoretical_fragments(Charge::new::<system::e>(charge), model);
     let mut found = Vec::new();
     let mut this_found;
+    let mut negative_numbers = Vec::new();
     for goal in theoretical_fragments {
         this_found = false;
         let mut index = 0;
@@ -743,10 +775,15 @@ fn test(
                 .is_some_and(|v| v < Ratio::new::<system::ratio::ppm>(20.0))
             {
                 println!(
-                    "Match: {}@{} with {} (labels: {})",
+                    "Match: {}@{} with {} ({} labels: {})",
                     goal.1,
                     goal.0,
                     calculated_fragments[index],
+                    calculated_fragments[index]
+                        .formula
+                        .as_ref()
+                        .unwrap()
+                        .hill_notation(),
                     calculated_fragments[index]
                         .formula
                         .as_ref()
@@ -762,6 +799,17 @@ fn test(
                     break;
                 }
             }
+            if calculated_fragments[index]
+                .formula
+                .as_ref()
+                .is_some_and(|f| {
+                    f.elements()
+                        .iter()
+                        .any(|e| e.0 != Element::Electron && e.2 < 1)
+                })
+            {
+                negative_numbers.push(calculated_fragments[index].clone());
+            }
             index += 1;
         }
         found.push(this_found);
@@ -769,7 +817,8 @@ fn test(
 
     for left in calculated_fragments.iter().sorted_by(|a, b| b.cmp(a)) {
         println!(
-            "Excess fragments: {left} (labels: {})",
+            "Excess fragments: {left} ({} labels: {})",
+            left.formula.as_ref().unwrap().hill_notation(),
             left.formula.as_ref().unwrap().labels().iter().join(",")
         );
     }
@@ -784,6 +833,7 @@ fn test(
         println!("Not found: {mass} {name}");
     }
     assert_eq!(not_found.len(), 0, "Not all needed fragments are found");
+
     if !allow_left_over_generated {
         assert_eq!(
             calculated_fragments.len(),
@@ -791,4 +841,12 @@ fn test(
             "Not all generated fragments are accounted for"
         );
     }
+
+    for frag in &negative_numbers {
+        println!(
+            "Negative elements: {frag} {}",
+            frag.formula.as_ref().unwrap().hill_notation(),
+        );
+    }
+    assert_eq!(negative_numbers.len(), 0, "There are negative numbers");
 }

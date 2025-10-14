@@ -1,0 +1,520 @@
+<mzSpecLib>
+MS:1003186|library format version=1.0
+MS:1003188|library name=human_serum.head.spectronaut
+MS:1003207|library creation software=MS:1001327|Spectronaut
+<AttributeSet Spectrum=all>
+<AttributeSet Analyte=all>
+<AttributeSet Interpretation=all>
+<Spectrum=1>
+MS:1003061|library spectrum name=AQIPILR/2
+MS:1003208|experimental precursor monoisotopic m/z=405.7634379
+MS:1000041|charge state=2
+MS:1003203|constituent spectrum file=file:///IK_221028_C19_lib2_01
+MS:1003072|spectrum origin type=MS:1003424|selected fragment theoretical m/z observed intensity spectrum
+MS:1003065|spectrum aggregation type=MS:1003067|consensus spectrum
+[1]MS:1003275|other attribute name=LabeledPeptide
+[1]MS:1003276|other attribute value=_AQIPILR_
+MS:1002476|ion mobility drift time=0.7629655
+MS:1001581|FAIMS compensation voltage=-60.0
+[2]MS:1000896|normalized retention time=28.658491
+[2]UO:0000000|unit=UO:0000031|minute
+[3]MS:1003275|other attribute name=ExcludeFromAssay
+[3]MS:1003276|other attribute value=False
+[4]MS:1003275|other attribute name=BGSInferenceId
+[4]MS:1003276|other attribute value=P04114
+[5]MS:1003275|other attribute name=AllowForNormalization
+[5]MS:1003276|other attribute value=True
+[6]MS:1003275|other attribute name=Workflow
+[6]MS:1003276|other attribute value=
+MS:1003059|number of peaks=6
+<Analyte=1>
+MS:1000888|stripped peptide sequence=AQIPILR
+MS:1003270|proforma peptidoform ion notation=AQIPILR/2
+MS:1001117|theoretical mass=809.5123227775299
+[1]MS:1000885|protein accession=P04114
+[1]MS:1000886|protein name=APOB_HUMAN
+[1]MS:1001088|protein description=Apolipoprotein B-100
+[2]MS:1001467|taxonomy: NCBI TaxID=9606
+[2]MS:1001469|taxonomy: scientific name=Homo sapiens
+[3]MS:1003275|other attribute name=IsProteotypic
+[3]MS:1003276|other attribute value=True
+[4]MS:1003275|other attribute name=FASTAName
+[4]MS:1003276|other attribute value=H_sapiens_uniprot_reviewed_cannonical_3AUP000005640_2-2022.08.12-15.33.51.77
+[5]MS:1003275|other attribute name=Database
+[5]MS:1003276|other attribute value=sp
+[6]MS:1003275|other attribute name=ProteinGroups
+[6]MS:1003276|other attribute value=P04114
+<Peaks>
+313.1870317	3.564491	b3/0.0
+401.2870801	3.3441753	y3/0.0
+498.339844	100.0	y4/0.0
+249.6735602	11.528888	y4^2/0.0
+611.423908	36.853043	y5/0.0
+481.3132956	5.708535	y4-NH3/0.0
+
+<Spectrum=2>
+MS:1003061|library spectrum name=AGVLFGMSDR/2
+MS:1003208|experimental precursor monoisotopic m/z=526.763309
+MS:1000041|charge state=2
+MS:1003203|constituent spectrum file=file:///IK_221028_C19_lib2_01
+MS:1003072|spectrum origin type=MS:1003424|selected fragment theoretical m/z observed intensity spectrum
+MS:1003065|spectrum aggregation type=MS:1003067|consensus spectrum
+[1]MS:1003275|other attribute name=LabeledPeptide
+[1]MS:1003276|other attribute value=_AGVLFGMSDR_
+MS:1002476|ion mobility drift time=0.8644136
+MS:1001581|FAIMS compensation voltage=-40.0
+[2]MS:1000896|normalized retention time=46.12812
+[2]UO:0000000|unit=UO:0000031|minute
+[3]MS:1003275|other attribute name=ExcludeFromAssay
+[3]MS:1003276|other attribute value=False
+[4]MS:1003275|other attribute name=BGSInferenceId
+[4]MS:1003276|other attribute value=P09172
+[5]MS:1003275|other attribute name=AllowForNormalization
+[5]MS:1003276|other attribute value=True
+[6]MS:1003275|other attribute name=Workflow
+[6]MS:1003276|other attribute value=
+MS:1003059|number of peaks=13
+<Analyte=1>
+MS:1000888|stripped peptide sequence=AGVLFGMSDR
+MS:1003270|proforma peptidoform ion notation=AGVLFGMSDR/2
+MS:1001117|theoretical mass=1051.5120650773501
+[1]MS:1000885|protein accession=P09172
+[1]MS:1000886|protein name=DOPO_HUMAN
+[1]MS:1001088|protein description=Dopamine beta-hydroxylase
+[2]MS:1001467|taxonomy: NCBI TaxID=9606
+[2]MS:1001469|taxonomy: scientific name=Homo sapiens
+[3]MS:1003275|other attribute name=IsProteotypic
+[3]MS:1003276|other attribute value=True
+[4]MS:1003275|other attribute name=FASTAName
+[4]MS:1003276|other attribute value=H_sapiens_uniprot_reviewed_cannonical_3AUP000005640_2-2022.08.12-15.33.51.77
+[5]MS:1003275|other attribute name=Database
+[5]MS:1003276|other attribute value=sp
+[6]MS:1003275|other attribute name=ProteinGroups
+[6]MS:1003276|other attribute value=P09172
+<Peaks>
+228.1342679	48.582985	b3/0.0
+377.1779236	4.8015785	y3/0.0
+341.2183319	4.1744895	b4/0.0
+508.2184085	5.056169	y4/0.0
+565.2398722	69.96272	y5/0.0
+712.3082861	100.0	y6/0.0
+825.3923501	51.118713	y7/0.0
+924.460764	1.5956572	y8/0.0
+360.1513752	3.1122544	y3-NH3/0.0
+491.1918601	1.0637656	y4-NH3/0.0
+694.2977213	1.3498487	y6-H2O/0.0
+695.2817378	2.9444132	y6-NH3/0.0
+359.1673588	2.1920948	y3-H2O/0.0
+
+<Spectrum=3>
+MS:1003061|library spectrum name=DEDNNLLTEK/2
+MS:1003208|experimental precursor monoisotopic m/z=595.7804071
+MS:1000041|charge state=2
+MS:1003203|constituent spectrum file=file:///IK_221028_C19_lib2_01
+MS:1003072|spectrum origin type=MS:1003424|selected fragment theoretical m/z observed intensity spectrum
+MS:1003065|spectrum aggregation type=MS:1003067|consensus spectrum
+[1]MS:1003275|other attribute name=LabeledPeptide
+[1]MS:1003276|other attribute value=_DEDNNLLTEK_
+MS:1002476|ion mobility drift time=0.90230334
+MS:1001581|FAIMS compensation voltage=-40.0
+[2]MS:1000896|normalized retention time=13.850179
+[2]UO:0000000|unit=UO:0000031|minute
+[3]MS:1003275|other attribute name=ExcludeFromAssay
+[3]MS:1003276|other attribute value=True
+[4]MS:1003275|other attribute name=BGSInferenceId
+[4]MS:1003276|other attribute value=P09486
+[5]MS:1003275|other attribute name=AllowForNormalization
+[5]MS:1003276|other attribute value=True
+[6]MS:1003275|other attribute name=Workflow
+[6]MS:1003276|other attribute value=
+MS:1003059|number of peaks=19
+<Analyte=1>
+MS:1000888|stripped peptide sequence=DEDNNLLTEK
+MS:1003270|proforma peptidoform ion notation=DEDNNLLTEK/2
+MS:1001117|theoretical mass=1189.54626122625
+[1]MS:1000885|protein accession=P09486
+[1]MS:1000886|protein name=SPRC_HUMAN
+[1]MS:1001088|protein description=SPARC
+[2]MS:1001467|taxonomy: NCBI TaxID=9606
+[2]MS:1001469|taxonomy: scientific name=Homo sapiens
+[3]MS:1003275|other attribute name=IsProteotypic
+[3]MS:1003276|other attribute value=True
+[4]MS:1003275|other attribute name=FASTAName
+[4]MS:1003276|other attribute value=H_sapiens_uniprot_reviewed_cannonical_3AUP000005640_2-2022.08.12-15.33.51.77
+[5]MS:1003275|other attribute name=Database
+[5]MS:1003276|other attribute value=sp
+[6]MS:1003275|other attribute name=ProteinGroups
+[6]MS:1003276|other attribute value=P09486
+<Peaks>
+360.1037556	14.370086	b3/0.0
+377.2030757	69.91263	y3/0.0
+490.2871397	47.727154	y4/0.0
+588.1896105	3.50105	b5/0.0
+603.3712037	20.282309	y5/0.0
+701.2736745	4.035067	b6/0.0
+717.4141311	24.80533	y6/0.0
+831.4570586	21.473965	y7/0.0
+946.4840016	100.0	y8/0.0
+342.0931908	5.760026	b3-H2O/0.0
+359.1925109	5.090061	y3-H2O/0.0
+472.2765749	4.874231	y4-H2O/0.0
+571.1630621	4.1113725	b5-NH3/0.0
+684.2471261	4.05031	b6-NH3/0.0
+700.3875827	3.518	y6-NH3/0.0
+814.4305102	7.3916	y7-NH3/0.0
+928.4734368	5.1134515	y8-H2O/0.0
+929.4574532	10.1338825	y8-NH3/0.0
+1075.526595	14.727533	y9/0.0
+
+<Spectrum=4>
+MS:1003061|library spectrum name=GWVTDGFSSLK/2
+MS:1003208|experimental precursor monoisotopic m/z=598.8009456
+MS:1000041|charge state=2
+MS:1003203|constituent spectrum file=file:///IK_221028_C19_lib2_01
+MS:1003072|spectrum origin type=MS:1003424|selected fragment theoretical m/z observed intensity spectrum
+MS:1003065|spectrum aggregation type=MS:1003067|consensus spectrum
+[1]MS:1003275|other attribute name=LabeledPeptide
+[1]MS:1003276|other attribute value=_GWVTDGFSSLK_
+MS:1002476|ion mobility drift time=0.92365193
+MS:1001581|FAIMS compensation voltage=-40.0
+[2]MS:1000896|normalized retention time=62.688942
+[2]UO:0000000|unit=UO:0000031|minute
+[3]MS:1003275|other attribute name=ExcludeFromAssay
+[3]MS:1003276|other attribute value=True
+[4]MS:1003275|other attribute name=BGSInferenceId
+[4]MS:1003276|other attribute value=P02656
+[5]MS:1003275|other attribute name=AllowForNormalization
+[5]MS:1003276|other attribute value=True
+[6]MS:1003275|other attribute name=Workflow
+[6]MS:1003276|other attribute value=
+MS:1003059|number of peaks=14
+<Analyte=1>
+MS:1000888|stripped peptide sequence=GWVTDGFSSLK
+MS:1003270|proforma peptidoform ion notation=GWVTDGFSSLK/2
+MS:1001117|theoretical mass=1195.5873381925899
+[1]MS:1000885|protein accession=P02656
+[1]MS:1000886|protein name=APOC3_HUMAN
+[1]MS:1001088|protein description=Apolipoprotein C-III
+[2]MS:1001467|taxonomy: NCBI TaxID=9606
+[2]MS:1001469|taxonomy: scientific name=Homo sapiens
+[3]MS:1003275|other attribute name=IsProteotypic
+[3]MS:1003276|other attribute value=True
+[4]MS:1003275|other attribute name=FASTAName
+[4]MS:1003276|other attribute value=H_sapiens_uniprot_reviewed_cannonical_3AUP000005640_2-2022.08.12-15.33.51.77
+[5]MS:1003275|other attribute name=Database
+[5]MS:1003276|other attribute value=sp
+[6]MS:1003275|other attribute name=ProteinGroups
+[6]MS:1003276|other attribute value=P02656
+<Peaks>
+343.1764671	3.8687427	b3/0.0
+347.2288965	6.1732	y3/0.0
+444.2241455	1.421	b4/0.0
+434.260925	9.774844	y4/0.0
+581.3293389	2.66143	y5/0.0
+638.3508026	19.109653	y6/0.0
+753.3777456	20.841564	y7/0.0
+854.4254241	60.931602	y8/0.0
+953.493838	36.67316	y9/0.0
+416.2503601	2.702636	y4-H2O/0.0
+735.3671808	2.1958628	y7-H2O/0.0
+836.4148593	4.374068	y8-H2O/0.0
+935.4832732	4.7364564	y9-H2O/0.0
+468.2452748	1.662614	y9-H2O^2/0.0
+
+<Spectrum=5>
+MS:1003061|library spectrum name=VTSIQDWVQK/2
+MS:1003208|experimental precursor monoisotopic m/z=602.3220451
+MS:1000041|charge state=2
+MS:1003203|constituent spectrum file=file:///IK_221028_C19_lib2_01
+MS:1003072|spectrum origin type=MS:1003424|selected fragment theoretical m/z observed intensity spectrum
+MS:1003065|spectrum aggregation type=MS:1003067|consensus spectrum
+[1]MS:1003275|other attribute name=LabeledPeptide
+[1]MS:1003276|other attribute value=_VTSIQDWVQK_
+MS:1002476|ion mobility drift time=0.9102522
+MS:1001581|FAIMS compensation voltage=-40.0
+[2]MS:1000896|normalized retention time=39.73143
+[2]UO:0000000|unit=UO:0000031|minute
+[3]MS:1003275|other attribute name=ExcludeFromAssay
+[3]MS:1003276|other attribute value=True
+[4]MS:1003275|other attribute name=BGSInferenceId
+[4]MS:1003276|other attribute value=P00738
+[5]MS:1003275|other attribute name=AllowForNormalization
+[5]MS:1003276|other attribute value=True
+[6]MS:1003275|other attribute name=Workflow
+[6]MS:1003276|other attribute value=
+MS:1003059|number of peaks=22
+<Analyte=1>
+MS:1000888|stripped peptide sequence=VTSIQDWVQK
+MS:1003270|proforma peptidoform ion notation=VTSIQDWVQK/2
+MS:1001117|theoretical mass=1202.62953735774
+[1]MS:1000885|protein accession=P00738
+[1]MS:1000886|protein name=HPT_HUMAN
+[1]MS:1001088|protein description=Haptoglobin
+[2]MS:1001467|taxonomy: NCBI TaxID=9606
+[2]MS:1001469|taxonomy: scientific name=Homo sapiens
+[3]MS:1003275|other attribute name=IsProteotypic
+[3]MS:1003276|other attribute value=True
+[4]MS:1003275|other attribute name=FASTAName
+[4]MS:1003276|other attribute value=H_sapiens_uniprot_reviewed_cannonical_3AUP000005640_2-2022.08.12-15.33.51.77
+[5]MS:1003275|other attribute name=Database
+[5]MS:1003276|other attribute value=sp
+[6]MS:1003275|other attribute name=ProteinGroups
+[6]MS:1003276|other attribute value=P00738
+<Peaks>
+288.1553973	13.402388	b3/0.0
+374.2397956	35.40592	y3/0.0
+560.3191085	46.133404	y4/0.0
+675.3460516	49.92076	y5/0.0
+803.4046291	88.30317	y6/0.0
+916.488693	35.01724	y7/0.0
+458.7479848	8.279677	y7^2/0.0
+1003.520721	100.0	y8/0.0
+1104.5684	49.551434	y9/0.0
+270.1448324	95.16555	b3-H2O/0.0
+785.3940643	24.796286	y6-H2O/0.0
+393.2006704	13.1079035	y6-H2O^2/0.0
+786.3780807	46.45572	y6-NH3/0.0
+985.5101566	7.3205233	y8-H2O/0.0
+493.2587166	4.255348	y8-H2O^2/0.0
+1086.557835	7.42398	y9-H2O/0.0
+201.1233688	88.65463	b4^2/0.0
+401.2394612	4.14027	b4/0.0
+552.7878382	4.422511	y9^2/0.0
+383.2288964	12.326735	b4-H2O/0.0
+986.4941731	24.063145	y8-NH3/0.0
+357.2132472	60.34427	y3-NH3/0.0
+
+<Spectrum=6>
+MS:1003061|library spectrum name=QELSEAEQATR/2
+MS:1003208|experimental precursor monoisotopic m/z=631.3045807
+MS:1000041|charge state=2
+MS:1003203|constituent spectrum file=file:///IK_221028_C19_lib2_01
+MS:1003072|spectrum origin type=MS:1003424|selected fragment theoretical m/z observed intensity spectrum
+MS:1003065|spectrum aggregation type=MS:1003067|consensus spectrum
+[1]MS:1003275|other attribute name=LabeledPeptide
+[1]MS:1003276|other attribute value=_QELSEAEQATR_
+MS:1002476|ion mobility drift time=0.92576075
+MS:1001581|FAIMS compensation voltage=-40.0
+[2]MS:1000896|normalized retention time=-14.638051
+[2]UO:0000000|unit=UO:0000031|minute
+[3]MS:1003275|other attribute name=ExcludeFromAssay
+[3]MS:1003276|other attribute value=True
+[4]MS:1003275|other attribute name=BGSInferenceId
+[4]MS:1003276|other attribute value=P01024
+[5]MS:1003275|other attribute name=AllowForNormalization
+[5]MS:1003276|other attribute value=True
+[6]MS:1003275|other attribute name=Workflow
+[6]MS:1003276|other attribute value=
+MS:1003059|number of peaks=15
+<Analyte=1>
+MS:1000888|stripped peptide sequence=QELSEAEQATR
+MS:1003270|proforma peptidoform ion notation=QELSEAEQATR/2
+MS:1001117|theoretical mass=1260.594608401
+[1]MS:1000885|protein accession=P01024
+[1]MS:1000886|protein name=CO3_HUMAN
+[1]MS:1001088|protein description=Complement C3
+[2]MS:1001467|taxonomy: NCBI TaxID=9606
+[2]MS:1001469|taxonomy: scientific name=Homo sapiens
+[3]MS:1003275|other attribute name=IsProteotypic
+[3]MS:1003276|other attribute value=True
+[4]MS:1003275|other attribute name=FASTAName
+[4]MS:1003276|other attribute value=H_sapiens_uniprot_reviewed_cannonical_3AUP000005640_2-2022.08.12-15.33.51.77
+[5]MS:1003275|other attribute name=Database
+[5]MS:1003276|other attribute value=sp
+[6]MS:1003275|other attribute name=ProteinGroups
+[6]MS:1003276|other attribute value=P01024
+<Peaks>
+371.192511	3.1688333	b3/0.0
+347.2037444	10.465045	y3/0.0
+475.2623219	23.276728	y4/0.0
+604.304915	37.09764	y5/0.0
+675.3420288	64.2233	y6/0.0
+804.3846219	37.812637	y7/0.0
+891.4166503	96.74726	y8/0.0
+1004.500714	100.0	y9/0.0
+353.1819462	4.8028316	b3-H2O/0.0
+354.1659627	5.46505	b3-NH3/0.0
+458.2357735	1.8879279	y4-NH3/0.0
+658.3154804	1.120537	y6-NH3/0.0
+786.3740571	7.649042	y7-H2O/0.0
+873.4060855	4.228747	y8-H2O/0.0
+986.4901495	1.3095266	y9-H2O/0.0
+
+<Spectrum=7>
+MS:1003061|library spectrum name=EEGTDLEVTANR/2
+MS:1003208|experimental precursor monoisotopic m/z=667.3151454
+MS:1000041|charge state=2
+MS:1003203|constituent spectrum file=file:///IK_221028_C19_lib2_01
+MS:1003072|spectrum origin type=MS:1003424|selected fragment theoretical m/z observed intensity spectrum
+MS:1003065|spectrum aggregation type=MS:1003067|consensus spectrum
+[1]MS:1003275|other attribute name=LabeledPeptide
+[1]MS:1003276|other attribute value=_EEGTDLEVTANR_
+MS:1002476|ion mobility drift time=0.94296074
+MS:1001581|FAIMS compensation voltage=-40.0
+[2]MS:1000896|normalized retention time=5.3526073
+[2]UO:0000000|unit=UO:0000031|minute
+[3]MS:1003275|other attribute name=ExcludeFromAssay
+[3]MS:1003276|other attribute value=True
+[4]MS:1003275|other attribute name=BGSInferenceId
+[4]MS:1003276|other attribute value=P20742
+[5]MS:1003275|other attribute name=AllowForNormalization
+[5]MS:1003276|other attribute value=True
+[6]MS:1003275|other attribute name=Workflow
+[6]MS:1003276|other attribute value=
+MS:1003059|number of peaks=9
+<Analyte=1>
+MS:1000888|stripped peptide sequence=EEGTDLEVTANR
+MS:1003270|proforma peptidoform ion notation=EEGTDLEVTANR/2
+MS:1001117|theoretical mass=1332.6157377683999
+[1]MS:1000885|protein accession=P20742
+[1]MS:1000886|protein name=PZP_HUMAN
+[1]MS:1001088|protein description=Pregnancy zone protein
+[2]MS:1001467|taxonomy: NCBI TaxID=9606
+[2]MS:1001469|taxonomy: scientific name=Homo sapiens
+[3]MS:1003275|other attribute name=IsProteotypic
+[3]MS:1003276|other attribute value=True
+[4]MS:1003275|other attribute name=FASTAName
+[4]MS:1003276|other attribute value=H_sapiens_uniprot_reviewed_cannonical_3AUP000005640_2-2022.08.12-15.33.51.77
+[5]MS:1003275|other attribute name=Database
+[5]MS:1003276|other attribute value=sp
+[6]MS:1003275|other attribute name=ProteinGroups
+[6]MS:1003276|other attribute value=P20742
+<Peaks>
+360.1989934	20.52395	y3/0.0
+461.2466719	85.759026	y4/0.0
+560.3150858	82.32931	y5/0.0
+689.3576789	100.0	y6/0.0
+802.4417428	79.06382	y7/0.0
+917.4686859	72.09271	y8/0.0
+1018.516364	21.396385	y9/0.0
+1075.537828	83.90465	y10/0.0
+671.3471141	8.983159	y6-H2O/0.0
+
+<Spectrum=8>
+MS:1003061|library spectrum name=C[Carbamidomethyl (C)]EEDEEFTC[Carbamidomethyl (C)]R/2
+MS:1003208|experimental precursor monoisotopic m/z=687.7504667
+MS:1000041|charge state=2
+MS:1003203|constituent spectrum file=file:///IK_221028_C19_lib2_01
+MS:1003072|spectrum origin type=MS:1003424|selected fragment theoretical m/z observed intensity spectrum
+MS:1003065|spectrum aggregation type=MS:1003067|consensus spectrum
+[1]MS:1003275|other attribute name=LabeledPeptide
+[1]MS:1003276|other attribute value=_C[Carbamidomethyl (C)]EEDEEFTC[Carbamidomethyl (C)]R_
+MS:1002476|ion mobility drift time=0.9011946
+MS:1001581|FAIMS compensation voltage=-40.0
+[2]MS:1000896|normalized retention time=-1.2823446
+[2]UO:0000000|unit=UO:0000031|minute
+[3]MS:1003275|other attribute name=ExcludeFromAssay
+[3]MS:1003276|other attribute value=True
+[4]MS:1003275|other attribute name=BGSInferenceId
+[4]MS:1003276|other attribute value=P00747
+[5]MS:1003275|other attribute name=AllowForNormalization
+[5]MS:1003276|other attribute value=True
+[6]MS:1003275|other attribute name=Workflow
+[6]MS:1003276|other attribute value=
+MS:1003059|number of peaks=17
+<Analyte=1>
+MS:1000888|stripped peptide sequence=CEEDEEFTCR
+MS:1003270|proforma peptidoform ion notation=C[Carbamidomethyl]EEDEEFTC[Carbamidomethyl]R/2
+MS:1001117|theoretical mass=1373.4863810338297
+[1]MS:1000885|protein accession=P00747
+[1]MS:1000886|protein name=PLMN_HUMAN
+[1]MS:1001088|protein description=Plasminogen
+[2]MS:1001467|taxonomy: NCBI TaxID=9606
+[2]MS:1001469|taxonomy: scientific name=Homo sapiens
+[3]MS:1003275|other attribute name=IsProteotypic
+[3]MS:1003276|other attribute value=True
+[4]MS:1003275|other attribute name=FASTAName
+[4]MS:1003276|other attribute value=H_sapiens_uniprot_reviewed_cannonical_3AUP000005640_2-2022.08.12-15.33.51.77
+[5]MS:1003275|other attribute name=Database
+[5]MS:1003276|other attribute value=sp
+[6]MS:1003275|other attribute name=ProteinGroups
+[6]MS:1003276|other attribute value=P00747
+<Peaks>
+419.1231111	14.944622	b3/0.0
+436.1972791	30.738253	y3/0.0
+534.1500542	9.713619	b4/0.0
+583.2656931	51.723152	y4/0.0
+712.3082861	50.78903	y5/0.0
+841.3508792	59.771255	y6/0.0
+956.3778223	75.695114	y7/0.0
+1085.420415	100.0	y8/0.0
+1214.463008	15.559877	y9/0.0
+401.1125463	9.39616	b3-H2O/0.0
+516.1394894	5.2136855	b4-H2O/0.0
+566.2391447	6.1200476	y4-NH3/0.0
+694.2977213	6.602107	y5-H2O/0.0
+823.3403144	10.601803	y6-H2O/0.0
+938.3672575	6.748549	y7-H2O/0.0
+1067.409851	26.568663	y8-H2O/0.0
+1196.452444	10.719879	y9-H2O/0.0
+
+<Spectrum=9>
+MS:1003061|library spectrum name=KQELSEAEQATR/2
+MS:1003208|experimental precursor monoisotopic m/z=695.3520622
+MS:1000041|charge state=2
+MS:1003203|constituent spectrum file=file:///IK_221028_C19_lib2_01
+MS:1003072|spectrum origin type=MS:1003424|selected fragment theoretical m/z observed intensity spectrum
+MS:1003065|spectrum aggregation type=MS:1003067|consensus spectrum
+[1]MS:1003275|other attribute name=LabeledPeptide
+[1]MS:1003276|other attribute value=_KQELSEAEQATR_
+MS:1002476|ion mobility drift time=0.9663669
+MS:1001581|FAIMS compensation voltage=-40.0
+[2]MS:1000896|normalized retention time=-26.474043
+[2]UO:0000000|unit=UO:0000031|minute
+[3]MS:1003275|other attribute name=ExcludeFromAssay
+[3]MS:1003276|other attribute value=True
+[4]MS:1003275|other attribute name=BGSInferenceId
+[4]MS:1003276|other attribute value=P01024
+[5]MS:1003275|other attribute name=AllowForNormalization
+[5]MS:1003276|other attribute value=True
+[6]MS:1003275|other attribute name=Workflow
+[6]MS:1003276|other attribute value=
+MS:1003059|number of peaks=29
+<Analyte=1>
+MS:1000888|stripped peptide sequence=KQELSEAEQATR
+MS:1003270|proforma peptidoform ion notation=KQELSEAEQATR/2
+MS:1001117|theoretical mass=1388.6895714149998
+[1]MS:1000885|protein accession=P01024
+[1]MS:1000886|protein name=CO3_HUMAN
+[1]MS:1001088|protein description=Complement C3
+[2]MS:1001467|taxonomy: NCBI TaxID=9606
+[2]MS:1001469|taxonomy: scientific name=Homo sapiens
+[3]MS:1003275|other attribute name=IsProteotypic
+[3]MS:1003276|other attribute value=True
+[4]MS:1003275|other attribute name=FASTAName
+[4]MS:1003276|other attribute value=H_sapiens_uniprot_reviewed_cannonical_3AUP000005640_2-2022.08.12-15.33.51.77
+[5]MS:1003275|other attribute name=Database
+[5]MS:1003276|other attribute value=sp
+[6]MS:1003275|other attribute name=ProteinGroups
+[6]MS:1003276|other attribute value=P01024
+<Peaks>
+386.2034101	7.7662497	b3/0.0
+347.2037444	3.2926106	y3/0.0
+499.2874741	6.734219	b4/0.0
+475.2623219	14.221682	y4/0.0
+586.3195025	1.5547751	b5/0.0
+604.304915	12.158777	y5/0.0
+715.3620955	3.230758	b6/0.0
+675.3420288	25.758886	y6/0.0
+786.3992093	1.9753934	b7/0.0
+804.3846219	22.087849	y7/0.0
+915.4418024	1.8401791	b8/0.0
+458.2245394	1.6086894	b8^2/0.0
+891.4166503	74.71736	y8/0.0
+1004.500714	54.28254	y9/0.0
+1114.537494	1.0495659	b10/0.0
+1133.543307	100.0	y10/0.0
+1261.601885	24.588951	y11/0.0
+631.3045807	2.1570513	y11^2/0.0
+368.1928453	3.4925315	b3-H2O/0.0
+369.1768617	2.9452903	b3-NH3/0.0
+481.2769092	1.0290943	b4-H2O/0.0
+458.2357735	1.8126523	y4-NH3/0.0
+873.4060855	2.0101676	y8-H2O/0.0
+1115.532743	6.641937	y10-H2O/0.0
+622.2992983	6.5424037	y11-H2O^2/0.0
+1243.59132	3.3419182	y11-H2O/0.0
+1244.575336	10.56645	y11-NH3/0.0
+482.2609257	1.1637812	b4-NH3/0.0
+330.177196	1.6216956	y3-NH3/0.0
+

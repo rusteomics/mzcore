@@ -325,6 +325,8 @@ impl MolecularFormula {
     pub(in super::super) fn hill_notation_generic(
         &self,
         f: impl Fn(&(Element, Option<NonZeroU16>, i32), &mut String),
+        show_mass: bool,
+        show_charge: bool,
     ) -> String {
         let mut buffer = String::new();
         if let Some(carbon) = self
@@ -358,10 +360,10 @@ impl MolecularFormula {
                 }
             }
         }
-        if self.additional_mass != 0.0 {
+        if show_mass && self.additional_mass != 0.0 {
             write!(&mut buffer, "{:+}", self.additional_mass).unwrap();
         }
-        if self.charge().value != 0 {
+        if show_charge && self.charge().value != 0 {
             write!(&mut buffer, ":z{:+}", self.charge().value).unwrap();
         }
         buffer
