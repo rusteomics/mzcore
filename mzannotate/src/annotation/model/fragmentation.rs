@@ -67,7 +67,7 @@ pub struct SatelliteIonSeries {
     /// The allowed charges
     pub charge_range: ChargeRange,
     /// The allowed ion variants (e.g. w vs w+1 vs w-1)
-    pub allowed_variants: Vec<i8>,
+    pub allowed_variants: Vec<Variant>,
 }
 
 impl SatelliteIonSeries {
@@ -163,7 +163,7 @@ pub struct PrimaryIonSeries {
     /// The allowed charges
     pub charge_range: ChargeRange,
     /// The allowed ion variants (e.g. a vs a+1 vs a+2)
-    pub allowed_variants: Vec<i8>,
+    pub allowed_variants: Vec<Variant>,
 }
 
 impl PrimaryIonSeries {

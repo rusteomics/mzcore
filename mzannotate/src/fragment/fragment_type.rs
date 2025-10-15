@@ -15,28 +15,31 @@ use mzcore::{
     sequence::{PeptidePosition, SemiAmbiguous},
 };
 
+/// A variant, meaning ±H so z· is variant +1 is z+H
+pub type Variant = i8;
+
 /// The possible types of fragments
 #[derive(Clone, Debug, Default, Deserialize, Eq, Hash, PartialEq, Serialize)]
 #[expect(non_camel_case_types)]
 pub enum FragmentType {
     /// a
-    a(PeptidePosition, i8),
+    a(PeptidePosition, Variant),
     /// b
-    b(PeptidePosition, i8),
+    b(PeptidePosition, Variant),
     /// c
-    c(PeptidePosition, i8),
+    c(PeptidePosition, Variant),
     /// d a position, originating amino acid, distance from a break, variant,
-    d(PeptidePosition, AminoAcid, u8, i8, SatelliteLabel),
+    d(PeptidePosition, AminoAcid, u8, Variant, SatelliteLabel),
     /// v
-    v(PeptidePosition, AminoAcid, u8, i8),
+    v(PeptidePosition, AminoAcid, u8, Variant),
     /// w
-    w(PeptidePosition, AminoAcid, u8, i8, SatelliteLabel),
+    w(PeptidePosition, AminoAcid, u8, Variant, SatelliteLabel),
     /// x
-    x(PeptidePosition, i8),
+    x(PeptidePosition, Variant),
     /// y
-    y(PeptidePosition, i8),
+    y(PeptidePosition, Variant),
     /// z
-    z(PeptidePosition, i8),
+    z(PeptidePosition, Variant),
     // glycan A fragment (Never generated)
     //A(GlycanPosition),
     /// glycan B fragment
@@ -189,7 +192,7 @@ impl PartialOrd for FragmentType {
 impl FragmentType {
     /// Get a main ion series fragment with the specified variant, or pass the fragment type through unchanged
     #[must_use]
-    pub fn with_variant(&self, variant: i8) -> Self {
+    pub fn with_variant(&self, variant: Variant) -> Self {
         match self {
             Self::a(p, _) => Self::a(*p, variant),
             Self::b(p, _) => Self::b(*p, variant),
