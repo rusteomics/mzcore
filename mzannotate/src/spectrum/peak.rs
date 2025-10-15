@@ -9,8 +9,6 @@ use mzdata::{
 };
 use serde::{Deserialize, Serialize};
 
-use crate::fragment::ToMzPAF;
-
 /// An annotated peak. So a peak that contains some interpretation(s).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AnnotatedPeak<Annotation> {
@@ -54,29 +52,6 @@ impl<Annotation> AnnotatedPeak<Annotation> {
             annotations,
             aggregations,
         }
-    }
-}
-
-impl<Annotation: ToMzPAF> AnnotatedPeak<Annotation> {
-    pub fn to_mz_speclib(&self, mut w: impl std::fmt::Write) -> std::fmt::Result {
-        write!(w, "{}\t{}", self.mz.value, self.intensity)?;
-
-        if !self.annotations.is_empty() {
-            write!(w, "\t")?;
-            for (i, a) in self.annotations.iter().enumerate() {
-                if i == 0 {
-                } else {
-                    write!(w, ",")?;
-                }
-                a.to_mz_paf(&mut w)?;
-            }
-        }
-        if !self.aggregations.is_empty() {
-            write!(w, "\t")?;
-            write!(w, "{}", self.aggregations.join(","))?;
-        }
-        writeln!(w)?;
-        Ok(())
     }
 }
 

@@ -83,9 +83,11 @@ impl MetaData for AnnotatedSpectrum {
     }
 
     fn retention_time(&self) -> Option<Time> {
-        Some(Time::new::<mzcore::system::time::s>(
-            self.description.acquisition.start_time(),
-        ))
+        self.description
+            .acquisition
+            .scans
+            .first()
+            .map(|s| Time::new::<mzcore::system::time::s>(s.start_time))
     }
 
     fn scans(&self) -> SpectrumIds {
@@ -93,20 +95,22 @@ impl MetaData for AnnotatedSpectrum {
     }
 
     fn experimental_mz(&self) -> Option<MassOverCharge> {
-        self.description.precursor.first().and_then(|p| {
-            p.ions
-                .first()
-                .map(|i| MassOverCharge::new::<mzcore::system::mass_over_charge::thomson>(i.mz))
-        })
+        self.description
+            .precursor
+            .first()
+            .and_then(|p| p.ions.first())
+            .map(|i| MassOverCharge::new::<mzcore::system::mass_over_charge::thomson>(i.mz))
     }
 
     fn experimental_mass(&self) -> Option<Mass> {
-        self.description.precursor.first().and_then(|p| {
-            p.ions.first().and_then(|i| {
+        self.description
+            .precursor
+            .first()
+            .and_then(|p| p.ions.first())
+            .and_then(|i| {
                 i.charge
                     .map(|c| Mass::new::<mzcore::system::mass::dalton>(i.mz * c as f64))
             })
-        })
     }
 
     fn protein_names(&self) -> Option<Cow<'_, [FastaIdentifier<String>]>> {
@@ -149,7 +153,7 @@ impl MetaData for AnnotatedSpectrum {
     }
 
     fn database(&self) -> Option<(&str, Option<&str>)> {
-        None
+        None // TODO: MS:1001013, MS:1001016
     }
 
     fn annotated_spectrum(&self) -> Option<Cow<'_, AnnotatedSpectrum>> {

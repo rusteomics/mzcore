@@ -198,7 +198,7 @@ format_family!(
                 - molecular_formula!(H 1 Electron -1).monoisotopic_mass()
                 - parsed
                     .peptidoform
-                    .formulas()
+                    .formulas() // TODO: this is the hot function this takes ~51% of runtime when parsing a pLink file
                     .first()
                     .unwrap()
                     .monoisotopic_mass()

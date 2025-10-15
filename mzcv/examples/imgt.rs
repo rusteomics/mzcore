@@ -5,17 +5,18 @@ use bincode::{Decode, Encode};
 use context_error::{BoxedError, CreateError, FullErrorContent, StaticErrorContent};
 
 use mzcv::{
-    CVData, CVError, CVIndex, CVSource, CVVersion, HashBufReader, OboOntology, OboStanzaType,
+    CVData, CVError, CVFile, CVIndex, CVSource, CVVersion, HashBufReader, OboOntology,
+    OboStanzaType,
 };
 use sha2::Digest;
 
 fn main() {
     let (mut imgt, _) = CVIndex::<IMGT>::init();
-    imgt.update_from_url(None).unwrap();
+    imgt.update_from_url(&[]).unwrap();
     println!(
         "Stored at: {}",
         IMGT::default_stem()
-            .with_extension(IMGT::cv_extension())
+            .with_extension(IMGT::files()[0].extension)
             .display()
     );
     println!("Found {} IMGT items", imgt.data().len());
@@ -89,22 +90,22 @@ impl CVSource for IMGT {
     fn cv_name() -> &'static str {
         "IMGT"
     }
-    fn cv_extension() -> &'static str {
-        "dat"
-    }
-    fn cv_url() -> Option<&'static str> {
-        Some("https://www.imgt.org/download/LIGM-DB/imgt.dat.Z")
-    }
-    fn cv_compression() -> mzcv::CVCompression {
-        mzcv::CVCompression::LZW
+    fn files() -> &'static [CVFile] {
+        &[CVFile {
+            name: "IMGT",
+            extension: "dat",
+            url: Some("https://www.imgt.org/download/LIGM-DB/imgt.dat.Z"),
+            compression: mzcv::CVCompression::LZW,
+        }]
     }
     fn static_data() -> Option<(CVVersion, &'static [std::sync::Arc<Self::Data>])> {
         None
     }
     fn parse(
-        reader: HashBufReader<impl std::io::Read, impl Digest>,
+        mut reader: impl Iterator<Item = HashBufReader<Box<dyn std::io::Read>, impl Digest>>,
     ) -> Result<(CVVersion, impl Iterator<Item = Self::Data>), Vec<BoxedError<'static, CVError>>>
     {
+        let reader = reader.next().unwrap();
         OboOntology::from_raw(reader)
             .map_err(|e| {
                 vec![
@@ -124,22 +125,15 @@ impl CVSource for IMGT {
                         .filter(|o| o.stanza_type == OboStanzaType::Term)
                         .map(|obj| {
                             let mut data = IMGTData {
-                                index: obj.lines["id"][0]
-                                    .split_once(':')
-                                    .expect("Incorrect psi ms id, should contain a colon")
-                                    .1
-                                    .parse()
-                                    .ok(),
-                                name: obj.lines["name"][0].to_string(),
-                                synonyms: obj.lines.get("synonym").cloned().unwrap_or_default(),
+                                index: obj.id.1.parse().ok(),
+                                name: obj.lines["name"][0].0.to_string(),
+                                synonyms: obj.synonyms.iter().map(|s| s.synonym.clone()).collect(),
                                 ..Default::default()
                             };
-                            let (def, ids) = obj.definition();
-                            data.definition = def.to_string();
-                            data.cross_ids = ids
-                                .into_iter()
-                                .map(|(r, i)| (r.map(ToString::to_string), i.to_string()))
-                                .collect();
+                            if let Some((def, ids, _, _)) = obj.definition {
+                                data.definition = def;
+                                data.cross_ids = ids;
+                            }
                             data
                         }),
                 )

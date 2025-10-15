@@ -708,6 +708,9 @@ impl<R: Read> MzSpecLibParser<R> {
             PeakSetVec::default(),
         );
 
+        // Set default assumptions on mzSpecLib files
+        spec.description.ms_level = 2;
+        spec.description.signal_continuity = mzdata::spectrum::SignalContinuity::Centroid;
         // TODO: do better but should work for now
         spec.description
             .acquisition
@@ -720,7 +723,6 @@ impl<R: Read> MzSpecLibParser<R> {
         spec.description.precursor[0]
             .ions
             .push(SelectedIon::default());
-        spec.description.signal_continuity = mzdata::spectrum::SignalContinuity::Centroid;
 
         let mut term_collection: HashMap<Option<u32>, Vec<(Attribute, Context<'static>)>> =
             HashMap::new();
@@ -897,8 +899,9 @@ fn parse_protein_attributes<'a>(
             }
         }
         curie!(MS:1001112) => {
-            let value = attribute.value.scalar().to_string();
-            if value.eq_ignore_ascii_case("n-term") {
+            let string = attribute.value.scalar().to_string();
+            let value = string.trim();
+            if value.eq_ignore_ascii_case("n-term") || value == "-" {
                 protein.flanking_sequences.0 = mzcore::sequence::FlankingSequence::Terminal
             } else if let Ok(aa) = value.parse::<AminoAcid>() {
                 protein.flanking_sequences.0 = mzcore::sequence::FlankingSequence::AminoAcid(aa)
@@ -912,11 +915,12 @@ fn parse_protein_attributes<'a>(
             }
         }
         curie!(MS:1001113) => {
-            let value = attribute.value.scalar().to_string();
-            if value.eq_ignore_ascii_case("c-term") {
-                protein.flanking_sequences.0 = mzcore::sequence::FlankingSequence::Terminal
+            let string = attribute.value.scalar().to_string();
+            let value = string.trim();
+            if value.eq_ignore_ascii_case("c-term") || value == "-" {
+                protein.flanking_sequences.1 = mzcore::sequence::FlankingSequence::Terminal
             } else if let Ok(aa) = value.parse::<AminoAcid>() {
-                protein.flanking_sequences.0 = mzcore::sequence::FlankingSequence::AminoAcid(aa)
+                protein.flanking_sequences.1 = mzcore::sequence::FlankingSequence::AminoAcid(aa)
             } else {
                 return Err(BoxedError::new(
                     BasicKind::Error,
@@ -930,8 +934,14 @@ fn parse_protein_attributes<'a>(
             .set_names
             .push(attribute.value.scalar().to_string().into_boxed_str()),
         curie!(MS:1000885) => {
-            // TODO: Make sure only the accession is stored here if the description is also provided
-            protein.accession = Some(attribute.value.scalar().to_string().into_boxed_str())
+            let string = attribute.value.scalar().to_string();
+            if let Some((acc, description)) = string.split_once(' ') {
+                // Make sure only the accession is stored here if the description is also provided
+                protein.accession = Some(acc.to_string().into_boxed_str());
+                protein.description = Some(description.to_string().into_boxed_str());
+            } else {
+                protein.accession = Some(string.into_boxed_str())
+            }
         }
         curie!(MS:1000886) => {
             protein.name = Some(attribute.value.scalar().to_string().into_boxed_str())
@@ -1025,6 +1035,31 @@ fn parse_spectrum_attributes<'a>(
                         Unit::Minute => 60.0,
                         _ => 1.0, // Assume seconds for anything else
                     };
+            } else if let Some((Attribute { value, .. }, context)) = group
+                .iter()
+                .find(|a| a.0.name.accession == curie!(MS:1000896))
+                && group.len() == 2
+            {
+                let rt = f64::from(value.scalar().to_f32().map_err(|v| {
+                    MzSpecLibTextParseError::RichError(BoxedError::new(
+                        BasicKind::Error,
+                        "Invalid attribute",
+                        v.to_string(),
+                        context.clone(),
+                    ))
+                })?) / match unit.ok_or(MzSpecLibTextParseError::MissingUnit)? {
+                    Unit::Minute => 60.0,
+                    _ => 1.0, // Assume seconds for anything else
+                };
+                // This is normalised time so if normal time is already set ignore this param
+                if spectrum.description.acquisition.scans[0].start_time == 0.0 {
+                    spectrum.description.acquisition.scans[0].start_time = rt;
+                } else {
+                    spectrum.description.acquisition.scans[0].add_param(
+                        term!(MS:1000896|"normalized retention time")
+                            .to_param(Value::Float(rt), Unit::Second),
+                    );
+                }
             } else if let Some((attr, context)) = group.iter().find(|a| {
                 a.0.name.accession == curie!(MS:1000045) || a.0.name.accession == curie!(MS:1000509)
             }) && group.len() == 2
@@ -1144,7 +1179,7 @@ fn parse_spectrum_attributes<'a>(
                             _ => {}
                         }
                     }
-                    curie!(MS:1000794) => {
+                    curie!(MS:1000794) => { // TODO: Also handle these when they are in a group with a unit
                         let limit = attr.value.scalar().to_f32().map_err(|v| {
                             MzSpecLibTextParseError::RichError(BoxedError::new(
                                 BasicKind::Error,
@@ -1202,11 +1237,45 @@ fn parse_spectrum_attributes<'a>(
                                 ))
                             })?;
                     }
+                    curie!(MS:1000744) => {
+                        spectrum.description.precursor[0].ions[0].mz =
+                            attr.value.scalar().to_f64().map_err(|v| {
+                                MzSpecLibTextParseError::RichError(BoxedError::new(
+                                    BasicKind::Error,
+                                    "Invalid attribute",
+                                    v.to_string(),
+                                    context.clone(),
+                                ))
+                            })?;
+                    }
+                    curie!(MS:1000041) => {
+                        spectrum.description.precursor[0].ions[0].charge =
+                            Some(attr.value.scalar().to_i32().map_err(|v| {
+                                MzSpecLibTextParseError::RichError(BoxedError::new(
+                                    BasicKind::Error,
+                                    "Invalid attribute",
+                                    v.to_string(),
+                                    context.clone(),
+                                ))
+                            })?);
+                    }
+                    curie!(MS:1002476) => {
+                        spectrum.description.acquisition.scans[0].add_param(term!(MS:1002476|"ion mobility drift time").to_param(attr.value.scalar().into_owned(), Unit::Unknown));
+                    }
+                    curie!(MS:1002815) => {
+                        spectrum.description.acquisition.scans[0].add_param(term!(MS:1002815|"inverse reduced ion mobility drift time").to_param(attr.value.scalar().into_owned(), Unit::Unknown));
+                    }
+                    curie!(MS:1001581) => {
+                        spectrum.description.acquisition.scans[0].add_param(term!(MS:1001581|"FAIMS compensation voltage").to_param(attr.value.scalar().into_owned(), Unit::Unknown));
+                    }
+                    curie!(MS:1003371) => {
+                        spectrum.description.acquisition.scans[0].add_param(term!(MS:1003371|"SELEXION compensation voltage").to_param(attr.value.scalar().into_owned(), Unit::Unknown));
+                    }
                     curie!(MS:1003063) => {
                         spectrum.description.add_param(
                             attr.name
                                 .clone()
-                                .to_param(attr.value.clone().into(), Unit::Dimensionless),
+                                .to_param(attr.value.clone().into(), Unit::Unknown),
                         );
                     }
                     curie!(MS:1003061) => spectrum.description.id = attr.value.to_string(),
@@ -1231,17 +1300,17 @@ fn parse_spectrum_attributes<'a>(
                     }
                     curie!(MS:1000512) => spectrum.description.acquisition.scans[0].add_param(
                         term!(MS:1000512|"filter string")
-                            .to_param(attr.value.clone().into(), Unit::Dimensionless),
+                            .to_param(attr.value.clone().into(), Unit::Unknown),
                     ),
                     curie!(MS:1000008) => {
                         if let AttributeValue::Term(term) = attr.value.clone() {
                             spectrum
                                 .description
-                                .add_param(term.to_param(Value::Empty, Unit::Dimensionless));
+                                .add_param(term.to_param(Value::Empty, Unit::Unknown));
                         } else {
                             spectrum.description.add_param(
                                 term!(MS:1000008|"ionization type")
-                                    .to_param(attr.value.clone().into(), Unit::Dimensionless),
+                                    .to_param(attr.value.clone().into(), Unit::Unknown),
                             );
                         }
                     }
@@ -1287,17 +1356,22 @@ fn parse_spectrum_attributes<'a>(
                             ))
                         })? as usize;
                     }
+                    curie!(MS:1000285) // TIC 
+                    | curie!(MS:1000505) // Base peak intensity
+                    | curie!(MS:1003059) // Number of peaks
+                    => (), // Ignore, can easily be caluclated on the fly
                     _ => {
                         if let AttributeValue::Term(term) = attr.value.clone() {
                             spectrum
                                 .description
                                 .add_param(term.to_param(Value::Empty, Unit::Dimensionless));
                         } else {
-                            spectrum.description.add_param(
-                                attr.name
-                                    .clone()
-                                    .to_param(attr.value.clone().into(), Unit::Dimensionless),
-                            );
+                            // spectrum.description.add_param(
+                            //     attr.name
+                            //         .clone()
+                            //         .to_param(attr.value.clone().into(), Unit::Dimensionless),
+                            // );
+                            spectrum.add_attribute(attr.clone());
                         }
                     }
                 }
@@ -1518,8 +1592,7 @@ mod test {
         // TODO: switch to assigning these basic attributes to header fields
         assert_eq!(header.attributes().len(), 1);
 
-        let spec = this.read_next()?;
-        eprintln!("{spec}");
+        let _spec = this.read_next()?;
 
         Ok(())
     }

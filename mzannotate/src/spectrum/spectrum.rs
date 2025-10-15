@@ -1,5 +1,3 @@
-use std::fmt::Display;
-
 use mzcore::system::MassOverCharge;
 use mzdata::{
     curie,
@@ -85,34 +83,6 @@ impl AnnotatedSpectrum {
     pub fn remove_interpretation(&mut self, id: Id) -> Option<Interpretation> {
         let i = self.interpretations.iter().position(|v| v.id == id)?;
         Some(self.interpretations.remove(i))
-    }
-}
-
-impl Display for AnnotatedSpectrum {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        writeln!(f, "<Spectrum={}>", self.key)?;
-        writeln!(
-            f,
-            "MS:1003061|library spectrum name={}",
-            self.description
-                .title()
-                .map_or_else(|| self.description.id.clone(), |v| v.to_string())
-        )?;
-
-        for attr in self.attributes() {
-            writeln!(f, "{attr}")?;
-        }
-        for analyte in &self.analytes {
-            write!(f, "{analyte}")?;
-        }
-        for interp in &self.interpretations {
-            write!(f, "{interp}")?;
-        }
-        writeln!(f, "<Peaks>")?;
-        for p in &self.peaks {
-            p.to_mz_speclib(&mut *f)?;
-        }
-        Ok(())
     }
 }
 
