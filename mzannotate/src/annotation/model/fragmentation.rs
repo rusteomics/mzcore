@@ -10,7 +10,7 @@ use mzcore::{
 };
 use serde::{Deserialize, Serialize};
 
-use crate::annotation::model::GlycanModel;
+use crate::{annotation::model::GlycanModel, fragment::Variant};
 
 /// A model for the fragmentation, allowing control over what theoretical fragments to generate.
 #[non_exhaustive]
