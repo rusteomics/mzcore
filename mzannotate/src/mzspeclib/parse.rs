@@ -25,6 +25,7 @@ use crate::{
     mzspeclib::{
         Analyte, AnalyteTarget, Attribute, AttributeParseError, AttributeSet, AttributeValue,
         Attributed, AttributedMut, EntryType, Id, Interpretation, LibraryHeader,
+        ProteinDescription,
     },
     spectrum::{AnnotatedPeak, AnnotatedSpectrum},
     term,
@@ -384,6 +385,7 @@ impl<R: Read> MzSpecLibParser<R> {
         let mut groups: HashMap<u32, Vec<(Attribute, Context)>> = HashMap::new();
 
         let mut analyte = Analyte::new(id, AnalyteTarget::default(), Vec::new());
+        let mut protein = ProteinDescription::default();
         loop {
             match self.read_attribute(&mut buf) {
                 Ok(attr) => {
@@ -460,13 +462,24 @@ impl<R: Read> MzSpecLibParser<R> {
                                     .line_index(self.line_number as u32)
                                     .lines(0, buf.clone()),
                             ));
-                        } else {
+                        } else if !parse_protein_attributes(
+                            &attr,
+                            &Context::none()
+                                .line_index(self.line_number as u32)
+                                .lines(0, buf.clone()),
+                            &mut protein,
+                        )
+                        .map_err(|e| MzSpecLibTextParseError::RichError(e))?
+                        {
                             analyte.add_attribute(attr);
                         }
                     }
                 }
                 Err(e) => {
                     if buf.starts_with('<') {
+                        if !protein.is_empty() {
+                            analyte.proteins.push(protein);
+                        }
                         self.push_back_line(buf);
                         break;
                     } else if buf.trim().is_empty() {
@@ -478,15 +491,17 @@ impl<R: Read> MzSpecLibParser<R> {
             }
         }
 
+        let mut next_group_id = analyte.find_last_group_id().unwrap_or_default();
+
         for (id, group) in &groups {
-            let mut protein = crate::mzspeclib::ProteinDescription::default();
+            let mut protein = ProteinDescription::default();
             protein.id = *id;
             let attr_sets: Vec<_> = group
                 .iter()
                 .filter(|(a, _)| a.name == term!(MS:1003212|"library attribute set name"))
                 .map(|(v, _)| v.value.to_string())
                 .collect();
-            for (attr, context) in group.iter().chain(
+            for (attribute, context) in group.iter().chain(
                 self.header
                     .attribute_classes
                     .get(&EntryType::Analyte)
@@ -496,172 +511,18 @@ impl<R: Read> MzSpecLibParser<R> {
                     .flat_map(|a| a.attributes.values())
                     .flatten(),
             ) {
-                match attr.name.accession {
-                    curie!(MS:1003048) => {
-                        let termini = attr.value.scalar().to_u64().map_err(|e| {
-                            MzSpecLibTextParseError::RichError(BoxedError::new(
-                                BasicKind::Error,
-                                "Invalid number of enzymatic termini",
-                                e.to_string(),
-                                context.clone(),
-                            ))
-                        })?;
-                        if termini > 2 {
-                            return Err(MzSpecLibTextParseError::RichError(BoxedError::new(
-                                BasicKind::Error,
-                                "Invalid number of enzymatic termini",
-                                "The number of enzymatic termini can only be 0, 1, or 2.",
-                                context.clone(),
-                            )));
-                        }
-                        protein.enzymatic_termini = Some(termini as u8);
-                    }
-                    curie!(MS:1003044) => {
-                        let missed = attr.value.scalar().to_u64().map_err(|e| {
-                            MzSpecLibTextParseError::RichError(BoxedError::new(
-                                BasicKind::Error,
-                                "Invalid number of missed cleavages",
-                                e.to_string(),
-                                context.clone(),
-                            ))
-                        })?;
-                        if let Ok(missed) = missed.try_into() {
-                            protein.missed_cleavages = Some(missed);
-                        } else {
-                            return Err(MzSpecLibTextParseError::RichError(BoxedError::new(
-                                BasicKind::Error,
-                                "Invalid number of missed cleavages",
-                                "The number of missed cleavages has to be less than 2^16",
-                                context.clone(),
-                            )));
-                        }
-                    }
-                    curie!(MS:1001112) => {
-                        let value = attr.value.scalar().to_string();
-                        if value.eq_ignore_ascii_case("n-term") {
-                            protein.flanking_sequences.0 =
-                                mzcore::sequence::FlankingSequence::Terminal
-                        } else if let Ok(aa) = value.parse::<AminoAcid>() {
-                            protein.flanking_sequences.0 =
-                                mzcore::sequence::FlankingSequence::AminoAcid(aa)
-                        } else {
-                            return Err(MzSpecLibTextParseError::RichError(BoxedError::new(
-                                BasicKind::Error,
-                                "Invalid flanking sequence",
-                                "The N terminal flanking residue has to be 'N-term' or an amino acid.",
-                                context.clone(),
-                            )));
-                        }
-                    }
-                    curie!(MS:1001113) => {
-                        let value = attr.value.scalar().to_string();
-                        if value.eq_ignore_ascii_case("c-term") {
-                            protein.flanking_sequences.0 =
-                                mzcore::sequence::FlankingSequence::Terminal
-                        } else if let Ok(aa) = value.parse::<AminoAcid>() {
-                            protein.flanking_sequences.0 =
-                                mzcore::sequence::FlankingSequence::AminoAcid(aa)
-                        } else {
-                            return Err(MzSpecLibTextParseError::RichError(BoxedError::new(
-                                BasicKind::Error,
-                                "Invalid flanking sequence",
-                                "The C terminal flanking residue has to be 'C-term' or an amino acid.",
-                                context.clone(),
-                            )));
-                        }
-                    }
-                    curie!(MS:1003212) => protein
-                        .set_names
-                        .push(attr.value.scalar().to_string().into_boxed_str()),
-                    curie!(MS:1000885) => {
-                        // TODO: Make sure only the accession is stored here if the description is also provided
-                        protein.accession = Some(attr.value.scalar().to_string().into_boxed_str())
-                    }
-                    curie!(MS:1000886) => {
-                        protein.name = Some(attr.value.scalar().to_string().into_boxed_str())
-                    }
-                    curie!(MS:1001088) => {
-                        protein.description = Some(attr.value.scalar().to_string().into_boxed_str())
-                    }
-                    curie!(MS:1001468) => {
-                        protein.species_common_name =
-                            Some(attr.value.scalar().to_string().into_boxed_str())
-                    }
-                    curie!(MS:1001469) => {
-                        protein.species_scientific_name =
-                            Some(attr.value.scalar().to_string().into_boxed_str())
-                    }
-                    curie!(MS:1001467) => {
-                        let accession = attr.value.scalar().to_u64().map_err(|e| {
-                            MzSpecLibTextParseError::RichError(BoxedError::new(
-                                BasicKind::Error,
-                                "Invalid NCBI TaxID",
-                                e.to_string(),
-                                context.clone(),
-                            ))
-                        })?;
-                        if let Ok(accession) = accession.try_into() {
-                            protein.species_accession = Some(accession);
-                        } else {
-                            return Err(MzSpecLibTextParseError::RichError(BoxedError::new(
-                                BasicKind::Error,
-                                "Invalid NCBI TaxID",
-                                "The NCBI TaxID has to be less than 2^32",
-                                context.clone(),
-                            )));
-                        }
-                    }
-                    curie!(MS:1001045) => {
-                        if let AttributeValue::Term(term) = &attr.value {
-                            protein.cleavage_agent =
-                                crate::mzspeclib::CleaveAgent::Term(term.clone());
-                        } else {
-                            protein.cleavage_agent = crate::mzspeclib::CleaveAgent::Name(
-                                attr.value.scalar().to_string().into_boxed_str(),
-                            );
-                        }
-                    }
-                    _ => analyte.add_attribute(attr.clone()),
+                if !parse_protein_attributes(attribute, context, &mut protein)
+                    .map_err(|e| MzSpecLibTextParseError::RichError(e))?
+                {
+                    let mut a = attribute.clone();
+                    a.group_id = Some(next_group_id);
+                    analyte.add_attribute(a);
                 }
-                //
             }
             analyte.proteins.push(protein);
+            next_group_id += 1;
         }
 
-        let mut next_group_id = analyte.find_last_group_id().unwrap_or_default();
-
-        let attr_set_name = term!(MS:1003212|"library attribute set name");
-        let attr_sets: Vec<_> = analyte
-            .find_all(&attr_set_name)
-            .map(|v| v.value.to_string())
-            .collect();
-        for name in attr_sets {
-            for attr_set in self
-                .header
-                .attribute_classes
-                .get(&EntryType::Analyte)
-                .into_iter()
-                .flatten()
-            {
-                if attr_set.id == name || attr_set.id == "all" {
-                    for (group_id, group) in &attr_set.attributes {
-                        if group_id.is_some() {
-                            next_group_id += 1;
-
-                            for (attr, _) in group {
-                                let mut attr = attr.clone();
-                                attr.group_id = Some(next_group_id);
-                                analyte.add_attribute(attr);
-                            }
-                        } else {
-                            analyte
-                                .attributes
-                                .extend(group.iter().map(|(a, _)| a).cloned());
-                        }
-                    }
-                }
-            }
-        }
         Ok(analyte)
     }
 
@@ -988,6 +849,136 @@ impl<R: Read> MzSpecLibParser<R> {
     pub fn into_inner(self) -> io::BufReader<R> {
         self.inner
     }
+}
+
+fn parse_protein_attributes<'a>(
+    attribute: &Attribute,
+    context: &Context<'a>,
+    protein: &mut ProteinDescription,
+) -> Result<bool, BoxedError<'a, BasicKind>> {
+    match attribute.name.accession {
+        curie!(MS:1003048) => {
+            let termini = attribute.value.scalar().to_u64().map_err(|e| {
+                BoxedError::new(
+                    BasicKind::Error,
+                    "Invalid number of enzymatic termini",
+                    e.to_string(),
+                    context.clone(),
+                )
+            })?;
+            if termini > 2 {
+                return Err(BoxedError::new(
+                    BasicKind::Error,
+                    "Invalid number of enzymatic termini",
+                    "The number of enzymatic termini can only be 0, 1, or 2.",
+                    context.clone(),
+                ));
+            }
+            protein.enzymatic_termini = Some(termini as u8);
+        }
+        curie!(MS:1003044) => {
+            let missed = attribute.value.scalar().to_u64().map_err(|e| {
+                BoxedError::new(
+                    BasicKind::Error,
+                    "Invalid number of missed cleavages",
+                    e.to_string(),
+                    context.clone(),
+                )
+            })?;
+            if let Ok(missed) = missed.try_into() {
+                protein.missed_cleavages = Some(missed);
+            } else {
+                return Err(BoxedError::new(
+                    BasicKind::Error,
+                    "Invalid number of missed cleavages",
+                    "The number of missed cleavages has to be less than 2^16",
+                    context.clone(),
+                ));
+            }
+        }
+        curie!(MS:1001112) => {
+            let value = attribute.value.scalar().to_string();
+            if value.eq_ignore_ascii_case("n-term") {
+                protein.flanking_sequences.0 = mzcore::sequence::FlankingSequence::Terminal
+            } else if let Ok(aa) = value.parse::<AminoAcid>() {
+                protein.flanking_sequences.0 = mzcore::sequence::FlankingSequence::AminoAcid(aa)
+            } else {
+                return Err(BoxedError::new(
+                    BasicKind::Error,
+                    "Invalid flanking sequence",
+                    "The N terminal flanking residue has to be 'N-term' or an amino acid.",
+                    context.clone(),
+                ));
+            }
+        }
+        curie!(MS:1001113) => {
+            let value = attribute.value.scalar().to_string();
+            if value.eq_ignore_ascii_case("c-term") {
+                protein.flanking_sequences.0 = mzcore::sequence::FlankingSequence::Terminal
+            } else if let Ok(aa) = value.parse::<AminoAcid>() {
+                protein.flanking_sequences.0 = mzcore::sequence::FlankingSequence::AminoAcid(aa)
+            } else {
+                return Err(BoxedError::new(
+                    BasicKind::Error,
+                    "Invalid flanking sequence",
+                    "The C terminal flanking residue has to be 'C-term' or an amino acid.",
+                    context.clone(),
+                ));
+            }
+        }
+        curie!(MS:1003212) => protein
+            .set_names
+            .push(attribute.value.scalar().to_string().into_boxed_str()),
+        curie!(MS:1000885) => {
+            // TODO: Make sure only the accession is stored here if the description is also provided
+            protein.accession = Some(attribute.value.scalar().to_string().into_boxed_str())
+        }
+        curie!(MS:1000886) => {
+            protein.name = Some(attribute.value.scalar().to_string().into_boxed_str())
+        }
+        curie!(MS:1001088) => {
+            protein.description = Some(attribute.value.scalar().to_string().into_boxed_str())
+        }
+        curie!(MS:1001468) => {
+            protein.species_common_name =
+                Some(attribute.value.scalar().to_string().into_boxed_str())
+        }
+        curie!(MS:1001469) => {
+            protein.species_scientific_name =
+                Some(attribute.value.scalar().to_string().into_boxed_str())
+        }
+        curie!(MS:1001467) => {
+            let accession = attribute.value.scalar().to_u64().map_err(|e| {
+                BoxedError::new(
+                    BasicKind::Error,
+                    "Invalid NCBI TaxID",
+                    e.to_string(),
+                    context.clone(),
+                )
+            })?;
+            if let Ok(accession) = accession.try_into() {
+                protein.species_accession = Some(accession);
+            } else {
+                return Err(BoxedError::new(
+                    BasicKind::Error,
+                    "Invalid NCBI TaxID",
+                    "The NCBI TaxID has to be less than 2^32",
+                    context.clone(),
+                ));
+            }
+        }
+        curie!(MS:1001045) => {
+            if let AttributeValue::Term(term) = &attribute.value {
+                protein.cleavage_agent = crate::mzspeclib::CleaveAgent::Term(term.clone());
+            } else {
+                protein.cleavage_agent = crate::mzspeclib::CleaveAgent::Name(
+                    attribute.value.scalar().to_string().into_boxed_str(),
+                );
+            }
+        }
+        _ => return Ok(false),
+    }
+    Ok(true)
 }
 
 fn parse_spectrum_attributes<'a>(

@@ -229,7 +229,7 @@ impl AnalyteTarget {
     }
 }
 
-#[derive(Default, Debug, Clone)]
+#[derive(Default, Debug, Clone, PartialEq, Eq)]
 pub struct ProteinDescription {
     pub id: Id,
     pub flanking_sequences: (FlankingSequence, FlankingSequence),
@@ -248,7 +248,14 @@ pub struct ProteinDescription {
     pub species_accession: Option<u32>,
 }
 
-#[derive(Default, Debug, Clone)]
+impl ProteinDescription {
+    /// Check if this description is any if any information is present
+    pub fn is_empty(&self) -> bool {
+        *self == Self::default()
+    }
+}
+
+#[derive(Default, Debug, Clone, PartialEq, Eq)]
 pub enum CleaveAgent {
     #[default]
     Unknown,
