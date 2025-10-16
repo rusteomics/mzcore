@@ -3,10 +3,7 @@ use std::{
     marker::PhantomData,
 };
 
-use mzdata::{
-    mzpeaks::{CentroidLike, peak_set::PeakSetVec},
-    prelude::*,
-};
+use mzdata::{mzpeaks::peak_set::PeakSetIter, prelude::*};
 
 use crate::{
     mzspeclib::{Attribute, Id, LibraryHeader},
@@ -69,6 +66,7 @@ impl<W: Write> MzSpecLibTextWriter<W, HeaderWritten> {
     /// # Errors
     /// If writing to the underlying stream failed.
     pub fn write_spectrum<S: MzSpecLibEncode>(&mut self, spectrum: &S) -> io::Result<()> {
+        // TODO: think about uniqueness guarantees for this key
         writeln!(&mut self.writer, "<Spectrum={}>", spectrum.key())?;
 
         for attr in spectrum.spectrum() {
@@ -76,13 +74,13 @@ impl<W: Write> MzSpecLibTextWriter<W, HeaderWritten> {
             writeln!(&mut self.writer, "{attr}")?;
         }
         for (id, attributes) in spectrum.analytes() {
-            write!(&mut self.writer, "<Analyte={id}>")?;
+            writeln!(&mut self.writer, "<Analyte={id}>")?;
             for attr in attributes {
                 writeln!(&mut self.writer, "{attr}")?;
             }
         }
         for (id, attributes) in spectrum.interpretations() {
-            write!(&mut self.writer, "<Interpretation={id}>")?;
+            writeln!(&mut self.writer, "<Interpretation={id}>")?;
             for attr in attributes {
                 writeln!(&mut self.writer, "{attr}")?;
             }
@@ -100,9 +98,8 @@ impl<W: Write> MzSpecLibTextWriter<W, HeaderWritten> {
                         write!(&mut self.writer, ",")?;
                     }
                     buffer.clear();
-                    a.to_mz_paf(&mut buffer)
-                        .map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
-                    self.writer.write_all(buffer.as_bytes())?
+                    a.to_mz_paf(&mut buffer).map_err(io::Error::other)?;
+                    self.writer.write_all(buffer.as_bytes())?;
                 }
             }
             if p.aggregations().next().is_some() {
@@ -122,7 +119,7 @@ impl<W: Write> MzSpecLibTextWriter<W, HeaderWritten> {
         spectra: impl IntoIterator<Item = &'a S>,
     ) -> io::Result<()> {
         for spectrum in spectra {
-            self.write_spectrum(spectrum)?
+            self.write_spectrum(spectrum)?;
         }
         Ok(())
     }
@@ -141,13 +138,15 @@ pub trait MzSpecLibEncode {
     /// The key for this spectrum
     fn key(&self) -> Id;
     /// The attributes for this spectrum
-    fn spectrum(&self) -> impl Iterator<Item = &Attribute>;
+    fn spectrum(&self) -> impl IntoIterator<Item = Attribute>;
+    /// The analyte attribute iterator
+    type AnalyteIter: IntoIterator<Item = Attribute>;
     /// The attributes for the analytes
-    fn analytes(&self) -> impl Iterator<Item = (Id, &[&Attribute])>;
+    fn analytes(&self) -> impl Iterator<Item = (Id, Self::AnalyteIter)>;
     /// The attributes for the interpretations
-    fn interpretations(&self) -> impl Iterator<Item = (Id, &[&Attribute])>;
+    fn interpretations(&self) -> impl Iterator<Item = (Id, &[Attribute])>;
     /// The peaks
-    fn peaks(&self) -> PeakSetVec<Self::P, mzdata::mzpeaks::MZ>;
+    fn peaks(&self) -> PeakSetIter<'_, Self::P>;
 }
 
 /// A peak that can be encoded for use in an mzSpecLib file
@@ -155,7 +154,7 @@ pub trait MzSpecLibPeakEncode: CentroidLike {
     /// The annotation type, need to be able to be written as mzPAF
     type A: ToMzPAF;
     /// The annotations
-    fn annotations(&self) -> impl Iterator<Item = Self::A>;
+    fn annotations(&self) -> impl Iterator<Item = &Self::A>;
     /// The aggregations
     fn aggregations(&self) -> impl Iterator<Item = &str>;
 }

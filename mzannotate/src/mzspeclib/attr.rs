@@ -6,15 +6,20 @@ use mzdata::{
     params::{CURIE, CURIEParsingError, ParamValue, ParamValueParseError, Unit, Value},
 };
 
+use crate::mzspeclib::Id;
+
 #[derive(Debug)]
 pub enum TermParserError {
     CURIEError(CURIEParsingError),
     MissingPipe(String),
 }
 
+/// A term, a CURIE plus its name
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Term {
+    /// The CURIE (eg MS:0000000)
     pub accession: CURIE,
+    /// The name
     pub name: Cow<'static, str>, // Static Cow to allow to have term in match arms
 }
 
@@ -25,20 +30,20 @@ impl PartialOrd for Term {
 }
 
 impl Ord for Term {
+    // TODO: only does sorting on accession, might be better to also sort on CV
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        if self.accession == other.accession {
-            return std::cmp::Ordering::Equal;
-        }
-        self.name.cmp(&other.name)
+        self.accession.accession.cmp(&other.accession.accession)
     }
 }
 
+/// Create a new term `term!(MS:1002357|PSM-level probability)`. The accession/name combination
+/// is not validated.
 #[macro_export]
 macro_rules! term {
-    ($ns:ident:$accession:literal|$name:literal) =>  {
+    ($ns:ident:$accession:literal|$($name:tt)+) =>  {
         $crate::mzspeclib::Term {
-            accession: curie!($ns:$accession),
-            name: std::borrow::Cow::Borrowed($name)
+            accession: mzdata::curie!($ns:$accession),
+            name: std::borrow::Cow::Borrowed(stringify!($($name)+))
         }
     };
 }
@@ -66,6 +71,16 @@ impl TryFrom<Param> for Term {
     }
 }
 
+impl TryFrom<&Param> for Term {
+    type Error = ();
+    fn try_from(value: &Param) -> Result<Self, ()> {
+        Ok(Self {
+            accession: value.curie().ok_or(())?,
+            name: value.name.clone().into(),
+        })
+    }
+}
+
 impl Term {
     pub const fn new(accession: CURIE, name: String) -> Self {
         Self {
@@ -89,11 +104,6 @@ impl Display for Term {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}|{}", self.accession, self.name)
     }
-}
-
-#[derive(Debug)]
-pub enum AttributeValueParseError {
-    ParamValueParseError(ParamValueParseError),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -173,7 +183,7 @@ impl Display for AttributeValue {
                 }
                 Ok(())
             }
-            Self::Term(attribute_name) => f.write_str(attribute_name.to_string().as_str()),
+            Self::Term(term) => write!(f, "{term}"),
         }
     }
 }
@@ -193,7 +203,7 @@ pub enum AttributeParseError {
     Malformed(String),
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Attribute {
     pub name: Term,
     pub value: AttributeValue,
@@ -251,10 +261,22 @@ impl Attribute {
         let (_, name) = unit.for_param();
         let accession = unit.to_curie()?;
         Some(Self::new(
-            term!(UO:0_000_000|"unit"),
+            term!(UO:0000000|unit),
             Term::new(accession, name.to_string()),
             group_id,
         ))
+    }
+}
+
+impl From<Attribute> for Param {
+    fn from(value: Attribute) -> Self {
+        Self {
+            name: value.name.name.to_string(),
+            value: value.value.into(),
+            accession: Some(value.name.accession.accession),
+            controlled_vocabulary: Some(value.name.accession.controlled_vocabulary),
+            unit: Unit::Unknown,
+        }
     }
 }
 
@@ -271,186 +293,19 @@ impl Display for Attribute {
     }
 }
 
-pub trait Attributed {
-    fn attributes(&self) -> &[Attribute];
-
-    fn find(&self, term: &Term) -> Option<(usize, &Attribute)> {
-        self.attributes()
-            .iter()
-            .position(|v| {
-                if v.name == *term {
-                    true
-                } else if v.name.accession == curie!(MS:1003275) {
-                    if let AttributeValue::Term(v) = &v.value {
-                        *v == *term
-                    } else {
-                        false
-                    }
-                } else {
-                    false
-                }
-            })
-            .map(|i| (i, &self.attributes()[i]))
-    }
-
-    fn find_by_id(&self, id: CURIE) -> Option<(usize, &Attribute)> {
-        self.attributes()
-            .iter()
-            .position(|v| {
-                if v.name.accession == id {
-                    true
-                } else if v.name.accession == curie!(MS:1003275) {
-                    if let AttributeValue::Term(v) = &v.value {
-                        v.accession == id
-                    } else {
-                        false
-                    }
-                } else {
-                    false
-                }
-            })
-            .map(|i| (i, &self.attributes()[i]))
-    }
-
-    fn find_group(&self, group_id: u32) -> Vec<&Attribute> {
-        self.attributes()
-            .iter()
-            .filter(|a| a.group_id == Some(group_id))
-            .collect()
-    }
-
-    fn find_all(&self, term: &Term) -> impl Iterator<Item = &Attribute> {
-        self.attributes().iter().filter(|v| {
-            if v.name == *term {
-                true
-            } else if v.name.accession == curie!(MS:1003275) {
-                if let AttributeValue::Term(v) = &v.value {
-                    *v == *term
-                } else {
-                    false
-                }
-            } else {
-                false
-            }
-        })
-    }
-
-    fn iter_attribute_groups(&self) -> impl Iterator<Item = Vec<&Attribute>> {
-        let last_group_id = self.find_last_group_id().unwrap_or_default();
-        (0..=last_group_id).map(|v| self.find_group(v))
-    }
-
-    fn find_last_group_id(&self) -> Option<u32> {
-        self.attributes()
-            .iter()
-            .map(|v| v.group_id)
-            .reduce(|prev, new| {
-                new.map(|new| prev.map_or(new, |prev| prev.max(new)))
-                    .or(prev)
-            })
-            .unwrap_or_default()
-    }
-}
-
-pub trait AttributedMut: Attributed {
-    fn attributes_mut(&mut self) -> &mut [Attribute];
-
-    fn find_group_mut(&mut self, group_id: u32) -> impl Iterator<Item = &mut Attribute> {
-        self.attributes_mut()
-            .iter_mut()
-            .filter(move |a| a.group_id == Some(group_id))
-    }
-
-    fn add_attribute(&mut self, attr: Attribute);
-
-    fn remove_attribute(&mut self, index: usize) -> Attribute;
-
-    fn extend_attributes(&mut self, attrs: impl IntoIterator<Item = Attribute>) {
-        for attr in attrs {
-            self.add_attribute(attr);
-        }
-    }
-
-    fn add_attribute_with_unit(
-        &mut self,
-        mut attr: Attribute,
-        unit: Unit,
-        group_id: Option<u32>,
-    ) -> Option<u32> {
-        let group_id =
-            Some(group_id.unwrap_or_else(|| self.find_last_group_id().unwrap_or_default() + 1));
-        attr.group_id = group_id;
-        self.add_attribute(attr);
-        if let Some(attr) = Attribute::unit(unit, group_id) {
-            self.add_attribute(attr);
-        }
-        group_id
-    }
-}
-
-macro_rules! impl_attributed {
-    ($t:ty) => {
-        impl Attributed for $t {
-            fn attributes(&self) -> &[Attribute] {
-                &self.attributes
-            }
-        }
-    };
-
-    (mut $t:ty) => {
-        impl_attributed!($t);
-
-        impl AttributedMut for $t {
-            fn attributes_mut(&mut self) -> &mut [Attribute] {
-                &mut self.attributes
-            }
-
-            fn add_attribute(&mut self, attr: Attribute) {
-                self.attributes.push(attr);
-            }
-
-            fn remove_attribute(&mut self, index: usize) -> Attribute {
-                self.attributes.remove(index)
-            }
-        }
-    };
-}
-
-pub(crate) use impl_attributed;
-
-use crate::mzspeclib::Id;
-
-impl Attributed for Vec<Attribute> {
-    fn attributes(&self) -> &[Attribute] {
-        self
-    }
-}
-
-impl AttributedMut for Vec<Attribute> {
-    fn attributes_mut(&mut self) -> &mut [Attribute] {
-        self
-    }
-
-    fn add_attribute(&mut self, attr: Attribute) {
-        self.push(attr);
-    }
-
-    fn remove_attribute(&mut self, index: usize) -> Attribute {
-        self.remove(index)
-    }
-}
-
-#[derive(Debug, Clone, PartialEq)]
+/// A set of attributes in the library header that contains global settings for all or a subset of spectra
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AttributeSet {
+    /// The id
     pub id: String,
+    /// The type of attributes
     pub namespace: EntryType,
+    /// The attributes themselves grouped by group id and with the original context to provide good error messages
     pub attributes: HashMap<Option<Id>, Vec<(Attribute, Context<'static>)>>,
 }
 
-// impl_attributed!(mut AttributeSet);
-
 impl AttributeSet {
-    pub fn new(
+    pub const fn new(
         id: String,
         namespace: EntryType,
         attributes: HashMap<Option<Id>, Vec<(Attribute, Context<'static>)>>,
@@ -477,10 +332,14 @@ impl PartialOrd for AttributeSet {
     }
 }
 
+/// All types of entries for global attribute sets
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum EntryType {
+    /// Spectrum attributes
     Spectrum,
+    /// Analyte attributes
     Analyte,
+    /// Interpretation attributes
     Interpretation,
     Cluster,
 }

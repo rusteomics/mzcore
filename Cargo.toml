@@ -31,7 +31,7 @@ codegen-units = 1
 # Bench profile inherits from release so only change the release settings
 
 [workspace.dependencies]
-mzdata = { path = "../mzdata", default-features = false }
+mzdata = { path = "../mzdata", default-features = false, features = ["nalgebra"] } # TODO: needed to not have mzsignal crash during compilation
 afl = "0.15"
 base64 = "0.22"
 bincode = { version = "2.0", features = ["serde"] }
@@ -117,10 +117,10 @@ unstable-syntax-pre-expansion = "deny"
 unused = { level = "warn", priority = -1 }
 unused_crate_dependencies = "warn"
 unused_extern_crates = "warn"
-unused_imports = "deny"
-unused-import-braces = "deny"
+unused_imports = "warn"
+unused-import-braces = "warn"
 unused-lifetimes = "deny"
-unused-qualifications = "deny"
+unused-qualifications = "warn"
 variant-size-differences = "warn"
 
 [workspace.lints.clippy]

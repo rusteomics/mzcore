@@ -5,13 +5,10 @@ use mzcore::{
     sequence::FlankingSequence,
     system::isize::Charge,
 };
-use mzdata::{curie, params::Value};
+use mzdata::{Param, params::Value};
 
 use crate::{
-    mzspeclib::{
-        Attribute, AttributeSet, AttributeValue, Attributed, AttributedMut, EntryType,
-        impl_attributed,
-    },
+    mzspeclib::{Attribute, AttributeSet, AttributeValue, EntryType},
     term,
 };
 
@@ -36,12 +33,10 @@ impl Default for LibraryHeader {
     }
 }
 
-impl_attributed!(mut LibraryHeader);
-
 impl Display for LibraryHeader {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let version = Attribute::new(
-            term!(MS:1003186|"library format version"),
+            term!(MS:1003186|library format version),
             AttributeValue::Scalar(Value::String(self.format_version.clone())),
             None,
         );
@@ -80,34 +75,31 @@ pub struct Analyte {
     pub target: AnalyteTarget,
     /// The matched protein(s)
     pub proteins: Vec<ProteinDescription>,
-    /// Other attributes for this analyte
-    pub attributes: Vec<Attribute>,
-}
-
-impl_attributed!(mut Analyte);
-
-impl Display for Analyte {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        writeln!(f, "<Analyte={}>", self.id)?;
-        for attr in self.target.terms() {
-            writeln!(f, "{attr}")?;
-        }
-        for attr in &self.attributes {
-            writeln!(f, "{attr}")?;
-        }
-        Ok(())
-    }
+    /// Other parameters
+    pub params: Vec<Param>,
 }
 
 impl Analyte {
     /// Create a new analyte
-    pub const fn new(id: Id, target: AnalyteTarget, attributes: Vec<Attribute>) -> Self {
+    pub const fn new(id: Id, target: AnalyteTarget) -> Self {
         Self {
             id,
             target,
             proteins: Vec::new(),
-            attributes,
+            params: Vec::new(),
         }
+    }
+
+    /// Get all attributes of this analyte
+    pub fn attributes(&self) -> Vec<Attribute> {
+        let mut result = self.target.terms();
+        result.extend(
+            self.proteins
+                .iter()
+                .enumerate()
+                .flat_map(|(i, p)| p.attributes(i as u32)),
+        );
+        result
     }
 }
 
@@ -155,7 +147,7 @@ impl AnalyteTarget {
                     .get_charge_carriers()
                     .is_none_or(|c| c.charge() != charge)
                 {
-                    pep.set_charge_carriers(Some(MolecularCharge::proton(charge)))
+                    pep.set_charge_carriers(Some(MolecularCharge::proton(charge)));
                 }
             }
             Self::MolecularFormula(f) => f.set_charge(charge),
@@ -168,13 +160,13 @@ impl AnalyteTarget {
         match self {
             Self::Unknown(None) => Vec::new(),
             Self::Unknown(Some(c)) => vec![Attribute {
-                name: term!(MS:1000041|"charge state"),
+                name: term!(MS:1000041|charge state),
                 value: AttributeValue::Scalar(Value::Int(c.value as i64)),
                 group_id: None,
             }],
             Self::PeptidoformIon(pep) => {
                 let mut attributes = vec![Attribute {
-                    name: term!(MS:1003270|"proforma peptidoform ion notation"),
+                    name: term!(MS:1003270|proforma peptidoform ion notation),
                     value: AttributeValue::Scalar(Value::String(pep.to_string())),
                     group_id: None,
                 }];
@@ -182,7 +174,7 @@ impl AnalyteTarget {
                     && c.value != 0
                 {
                     attributes.push(Attribute {
-                        name: term!(MS:1000041|"charge state"),
+                        name: term!(MS:1000041|charge state),
                         value: AttributeValue::Scalar(Value::Int(c.value as i64)),
                         group_id: None,
                     });
@@ -190,14 +182,14 @@ impl AnalyteTarget {
                 let f = pep.formulas();
                 if f.len() == 1 && f[0].additional_mass() == 0.0 {
                     attributes.push(Attribute {
-                        name: term!(MS:1000866|"molecular formula"),
+                        name: term!(MS:1000866|molecular formula),
                         value: AttributeValue::Scalar(Value::String(f[0].hill_notation_core())),
                         group_id: None,
                     });
                 }
                 if pep.peptidoforms().len() == 1 {
                     attributes.push(Attribute {
-                        name: term!(MS:1000888|"stripped peptide sequence"),
+                        name: term!(MS:1000888|stripped peptide sequence),
                         value: AttributeValue::Scalar(Value::String(
                             pep.peptidoforms()[0]
                                 .sequence()
@@ -212,13 +204,13 @@ impl AnalyteTarget {
             }
             Self::MolecularFormula(f) => {
                 let mut attributes = vec![Attribute {
-                    name: term!(MS:1000866|"molecular formula"),
+                    name: term!(MS:1000866|molecular formula),
                     value: AttributeValue::Scalar(Value::String(f.hill_notation_core())),
                     group_id: None,
                 }];
                 if f.charge().value != 0 {
                     attributes.push(Attribute {
-                        name: term!(MS:1000041|"charge state"),
+                        name: term!(MS:1000041|charge state),
                         value: AttributeValue::Scalar(Value::Int(f.charge().value as i64)),
                         group_id: None,
                     });
@@ -229,23 +221,35 @@ impl AnalyteTarget {
     }
 }
 
+/// All protein level metadata
 #[derive(Default, Debug, Clone, PartialEq, Eq)]
 pub struct ProteinDescription {
+    /// The id of the group / protein
     pub id: Id,
-    pub flanking_sequences: (FlankingSequence, FlankingSequence),
-    /// The number of enzymatic termini (0, 1, or 2)
-    pub enzymatic_termini: Option<u8>,
-    /// The number of missed cleavages in the peptide
-    pub missed_cleavages: Option<u16>,
-    pub set_names: Vec<Box<str>>,
+    /// Protein accession (MS:1000885) `sp|P12955|PEPD_HUMAN`
     pub accession: Option<Box<str>>,
+    /// Protein name (MS:1000886) `Alpha-enolase`
     pub name: Option<Box<str>>,
-    pub description: Option<Box<str>>,
+    /// The cleavage agent or protease (MS:1001045)
     pub cleavage_agent: CleaveAgent,
-    pub species_scientific_name: Option<Box<str>>,
-    pub species_common_name: Option<Box<str>>,
-    /// NCBI species accession
+    /// Protein description (MS:1001088)
+    pub description: Option<Box<str>>,
+    /// N (MS:1001112) and C (MS:1001113) terminal flanking sequences
+    pub flanking_sequences: (FlankingSequence, FlankingSequence),
+    /// NCBI species accession (MS:1001467)
     pub species_accession: Option<u32>,
+    /// The source species common name (MS:1001468)
+    pub species_common_name: Option<Box<str>>,
+    /// The source species scientific name (MS:1001469)
+    pub species_scientific_name: Option<Box<str>>,
+    /// The number of missed cleavages in the peptide (MS:1003044)
+    pub missed_cleavages: Option<u16>,
+    /// The number of enzymatic termini (0, 1, or 2) (MS:1003048)
+    pub enzymatic_termini: Option<u8>,
+    /// All set names for this protein (MS:1003212)
+    pub set_names: Vec<Box<str>>,
+    /// Other attributes
+    pub attributes: Vec<Attribute>,
 }
 
 impl ProteinDescription {
@@ -253,13 +257,136 @@ impl ProteinDescription {
     pub fn is_empty(&self) -> bool {
         *self == Self::default()
     }
+
+    /// Generate the attributes needed to describe to contents of this protein
+    pub fn attributes(&self, id: u32) -> Vec<Attribute> {
+        let mut attributes = Vec::new();
+        if let Some(acc) = &self.accession {
+            attributes.push(Attribute {
+                name: term!(MS:1000885|protein accession),
+                value: Value::String(acc.to_string()).into(),
+                group_id: Some(id),
+            });
+        }
+        if let Some(name) = &self.name {
+            attributes.push(Attribute {
+                name: term!(MS:1000886|protein name),
+                value: Value::String(name.to_string()).into(),
+                group_id: Some(id),
+            });
+        }
+        match &self.cleavage_agent {
+            CleaveAgent::Unknown => (),
+            CleaveAgent::Name(name) => attributes.push(Attribute {
+                name: term!(MS:1001045|cleavage agent name),
+                value: Value::String(name.to_string()).into(),
+                group_id: Some(id),
+            }),
+            CleaveAgent::Term(term) => attributes.push(Attribute {
+                name: term!(MS:1001045|cleavage agent name),
+                value: term.clone().into(),
+                group_id: Some(id),
+            }),
+        }
+        if let Some(desc) = &self.description {
+            attributes.push(Attribute {
+                name: term!(MS:1001088|protein description),
+                value: Value::String(desc.to_string()).into(),
+                group_id: Some(id),
+            });
+        }
+        if let Some(string) = match &self.flanking_sequences.0 {
+            FlankingSequence::Unknown => None,
+            FlankingSequence::Terminal => Some("N-term".to_string()),
+            FlankingSequence::AminoAcid(aa) => Some(aa.to_string()),
+            FlankingSequence::Sequence(pep) => pep
+                .sequence()
+                .first()
+                .and_then(|s| s.aminoacid.one_letter_code())
+                .map(|c| c.to_string()),
+        } {
+            attributes.push(Attribute {
+                name: term!(MS:1001112|n-terminal flanking residue),
+                value: Value::String(string).into(),
+                group_id: Some(id),
+            });
+        }
+        if let Some(string) = match &self.flanking_sequences.1 {
+            FlankingSequence::Unknown => None,
+            FlankingSequence::Terminal => Some("C-term".to_string()),
+            FlankingSequence::AminoAcid(aa) => Some(aa.to_string()),
+            FlankingSequence::Sequence(pep) => pep
+                .sequence()
+                .first()
+                .and_then(|s| s.aminoacid.one_letter_code())
+                .map(|c| c.to_string()),
+        } {
+            attributes.push(Attribute {
+                name: term!(MS:1001113|c-terminal flanking residue),
+                value: Value::String(string).into(),
+                group_id: Some(id),
+            });
+        }
+        if let Some(acc) = self.species_accession {
+            attributes.push(Attribute {
+                name: term!(MS:1001467|taxonomy: NCBI TaxID),
+                value: Value::Int(i64::from(acc)).into(),
+                group_id: Some(id),
+            });
+        }
+        if let Some(desc) = &self.species_common_name {
+            attributes.push(Attribute {
+                name: term!(MS:1001468|taxonomy: common name),
+                value: Value::String(desc.to_string()).into(),
+                group_id: Some(id),
+            });
+        }
+        if let Some(desc) = &self.species_scientific_name {
+            attributes.push(Attribute {
+                name: term!(MS:1001469|taxonomy: scientific name),
+                value: Value::String(desc.to_string()).into(),
+                group_id: Some(id),
+            });
+        }
+        if let Some(missed) = self.missed_cleavages {
+            attributes.push(Attribute {
+                name: term!(MS:1003044|number of missed cleavages),
+                value: Value::Int(i64::from(missed)).into(),
+                group_id: Some(id),
+            });
+        }
+        if let Some(termini) = self.enzymatic_termini {
+            attributes.push(Attribute {
+                name: term!(MS:1003048|number of enzymatic termini),
+                value: Value::Int(i64::from(termini)).into(),
+                group_id: Some(id),
+            });
+        }
+        for name in &self.set_names {
+            attributes.push(Attribute {
+                name: term!(MS:1003212|library attribute set name),
+                value: Value::String(name.to_string()).into(),
+                group_id: Some(id),
+            });
+        }
+        attributes.extend(self.attributes.iter().map(|a| {
+            let mut a = a.clone();
+            a.group_id = Some(id);
+            a
+        }));
+        attributes
+    }
 }
 
+/// A cleavage agent or protease
 #[derive(Default, Debug, Clone, PartialEq, Eq)]
 pub enum CleaveAgent {
+    /// Unknown
     #[default]
     Unknown,
+    /// Named
     Name(Box<str>),
+    /// With a CV term
     Term(crate::mzspeclib::Term),
 }
 
@@ -287,8 +414,6 @@ impl Interpretation {
     }
 }
 
-impl_attributed!(mut Interpretation);
-
 impl Display for Interpretation {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         writeln!(f, "<Interpretation={}>", self.id)?;
@@ -299,8 +424,7 @@ impl Display for Interpretation {
                     .map(|v| Value::Int(i64::from(*v)))
                     .collect(),
             );
-            let mixture_ids =
-                Attribute::new(term!(MS:1_003_163|"analyte mixture members"), val, None);
+            let mixture_ids = Attribute::new(term!(MS:1003163|analyte mixture members), val, None);
             writeln!(f, "{mixture_ids}")?;
         }
         for attr in &self.attributes {
@@ -319,8 +443,6 @@ pub struct InterpretationMember {
     pub attributes: Vec<Attribute>,
     pub analyte_ref: Id,
 }
-
-impl_attributed!(mut InterpretationMember);
 
 impl Display for InterpretationMember {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {

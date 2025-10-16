@@ -8,7 +8,6 @@ fn read_all_files() {
     let mut files = 0;
     let mut errors: HashMap<std::path::PathBuf, Vec<_>> = HashMap::new();
     let mut spectrum_unused_attributes = HashSet::new();
-    let mut analyte_unused_attributes = HashSet::new();
     let mut interpretation_unused_attributes = HashSet::new();
 
     for entry in std::fs::read_dir("../data").unwrap().flatten() {
@@ -26,13 +25,11 @@ fn read_all_files() {
             for spectrum in spectra {
                 match spectrum {
                     Ok(spectrum) => {
-                        spectrum_unused_attributes
-                            .extend(spectrum.attributes.iter().map(|a| a.name.clone()));
-                        analyte_unused_attributes.extend(
+                        spectrum_unused_attributes.extend(
                             spectrum
-                                .analytes
+                                .attributes
                                 .iter()
-                                .flat_map(|a| a.attributes.iter())
+                                .filter(|a| a.name != mzannotate::term!(MS:1003254|peak attribute))
                                 .map(|a| a.name.clone()),
                         );
                         interpretation_unused_attributes.extend(
@@ -65,12 +62,6 @@ fn read_all_files() {
     }
     println!();
 
-    println!("Unused analyte attributes:");
-    for attribute in &analyte_unused_attributes {
-        println!("{attribute}");
-    }
-    println!();
-
     println!("Unused interpretation attributes:");
     for attribute in &interpretation_unused_attributes {
         println!("{attribute}");
@@ -80,10 +71,9 @@ fn read_all_files() {
     let total_errors = errors.values().map(Vec::len).sum::<usize>();
 
     println!(
-        "files: {files}, files with errors: {}, total errors: {total_errors}, ignored spectrum attributes: {}, ignored analyte attributes: {}, ignored interpretation attributes: {}",
+        "files: {files}, files with errors: {}, total errors: {total_errors}, ignored spectrum attributes: {}, ignored interpretation attributes: {}",
         errors.len(),
         spectrum_unused_attributes.len(),
-        analyte_unused_attributes.len(),
         interpretation_unused_attributes.len(),
     );
 
@@ -91,10 +81,6 @@ fn read_all_files() {
     assert!(
         spectrum_unused_attributes.is_empty(),
         "Some spectrum attributes unused"
-    );
-    assert!(
-        analyte_unused_attributes.is_empty(),
-        "Some analyte attributes unused"
     );
     assert!(
         interpretation_unused_attributes.is_empty(),

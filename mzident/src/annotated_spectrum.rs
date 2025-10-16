@@ -13,7 +13,7 @@ use crate::{
 use mzannotate::{mzspeclib::MzSpecLibTextParseError, prelude::AnnotatedSpectrum};
 use mzcore::{
     ontology::CustomDatabase,
-    prelude::CompoundPeptidoformIon,
+    prelude::*,
     sequence::{FlankingSequence, Linked},
     system::isize::Charge,
     system::{Mass, MassOverCharge, Time},
@@ -72,7 +72,7 @@ impl MetaData for AnnotatedSpectrum {
             })
             .exactly_one()
             .ok()
-            .and_then(|p| p.get_charge_carriers().map(|c| c.charge()))
+            .and_then(|p| p.get_charge_carriers().map(MolecularCharge::charge))
     }
 
     fn mode(&self) -> Option<Cow<'_, str>> {
@@ -91,7 +91,23 @@ impl MetaData for AnnotatedSpectrum {
     }
 
     fn scans(&self) -> SpectrumIds {
-        SpectrumIds::FileNotKnown(vec![SpectrumId::Index(self.description.index)])
+        self.description
+            .params
+            .iter()
+            .find(|p| {
+                p.controlled_vocabulary
+                    .is_some_and(|cv| cv.prefix() == "MS")
+                    && p.accession == Some(1003203)
+            })
+            .map_or_else(
+                || SpectrumIds::FileNotKnown(vec![SpectrumId::Index(self.description.index)]),
+                |rawfile| {
+                    SpectrumIds::FileKnown(vec![(
+                        rawfile.value.to_string().into(),
+                        vec![SpectrumId::Index(self.description.index)],
+                    )])
+                },
+            )
     }
 
     fn experimental_mz(&self) -> Option<MassOverCharge> {
@@ -109,7 +125,7 @@ impl MetaData for AnnotatedSpectrum {
             .and_then(|p| p.ions.first())
             .and_then(|i| {
                 i.charge
-                    .map(|c| Mass::new::<mzcore::system::mass::dalton>(i.mz * c as f64))
+                    .map(|c| Mass::new::<mzcore::system::mass::dalton>(i.mz * f64::from(c)))
             })
     }
 

@@ -1,5 +1,3 @@
-use std::fmt::Display;
-
 use mzcore::system::MassOverCharge;
 use mzdata::{
     mzpeaks::prelude::*,
@@ -8,6 +6,8 @@ use mzdata::{
     },
 };
 use serde::{Deserialize, Serialize};
+
+use crate::prelude::ToMzPAF;
 
 /// An annotated peak. So a peak that contains some interpretation(s).
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -192,25 +192,17 @@ impl<A> From<mzdata::mzpeaks::CentroidPeak> for AnnotatedPeak<A> {
     }
 }
 
-impl<A: Display> Display for AnnotatedPeak<A> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}\t{}", self.mz.value, self.intensity)?;
+impl<A: ToMzPAF> crate::mzspeclib::MzSpecLibPeakEncode for AnnotatedPeak<A> {
+    type A = A;
 
-        if !self.annotations.is_empty() {
-            f.write_str("\t")?;
-            for (i, a) in self.annotations.iter().enumerate() {
-                if i == 0 {
-                    write!(f, "{a}")?;
-                } else {
-                    write!(f, ",{a}")?;
-                }
-            }
-        }
-        if !self.aggregations.is_empty() {
-            f.write_str("\t")?;
-            write!(f, "{}", self.aggregations.join(","))?;
-        }
-        Ok(())
+    /// The annotations
+    fn annotations(&self) -> impl Iterator<Item = &Self::A> {
+        self.annotations.iter()
+    }
+
+    /// The aggregations
+    fn aggregations(&self) -> impl Iterator<Item = &str> {
+        self.aggregations.iter().map(String::as_str)
     }
 }
 
