@@ -453,25 +453,23 @@ impl<R: Read> MzSpecLibParser<R> {
                     .contains(&attr.name.accession)
                     {
                         // Ignore, can be calculated easily on the fly
-                    } else {
-                        if let Some(group_id) = attr.group_id {
-                            groups.entry(group_id).or_default().push((
-                                attr,
-                                Context::none()
-                                    .line_index(self.line_number as u32)
-                                    .lines(0, buf.clone()),
-                            ));
-                        } else if !parse_protein_attributes(
-                            &attr,
-                            &Context::none()
+                    } else if let Some(group_id) = attr.group_id {
+                        groups.entry(group_id).or_default().push((
+                            attr,
+                            Context::none()
                                 .line_index(self.line_number as u32)
                                 .lines(0, buf.clone()),
-                            &mut protein,
-                        )
-                        .map_err(|e| MzSpecLibTextParseError::RichError(e))?
-                        {
-                            analyte.params.push(attr.into());
-                        }
+                        ));
+                    } else if !parse_protein_attributes(
+                        &attr,
+                        &Context::none()
+                            .line_index(self.line_number as u32)
+                            .lines(0, buf.clone()),
+                        &mut protein,
+                    )
+                    .map_err(|e| MzSpecLibTextParseError::RichError(e))?
+                    {
+                        analyte.params.push(attr.into());
                     }
                 }
                 Err(e) => {
@@ -566,11 +564,26 @@ impl<R: Read> MzSpecLibParser<R> {
         }
         let id =
             self.parse_open_declaration(&buf, "<Interpretation=", ParserState::Interpretation)?;
-        let mut interp = Interpretation::new(id, Vec::new(), Vec::new(), Vec::new());
+        let mut interp = Interpretation {
+            id,
+            ..Default::default()
+        };
         loop {
             match self.read_attribute(&mut buf) {
-                Ok(attr) => {
-                    if [
+                Ok(attribute) => {
+                    if attribute.name == term!(MS:1002357|PSM-level probability) {
+                        interp.probability =
+                            Some(attribute.value.scalar().to_f64().map_err(|e| {
+                                MzSpecLibTextParseError::RichError(BoxedError::new(
+                                    BasicKind::Error,
+                                    "Invalid PSM-level probability",
+                                    e.to_string(),
+                                    Context::none()
+                                        .line_index(self.line_number as u32)
+                                        .lines(0, buf.clone()),
+                                ))
+                            })?);
+                    } else if [
                         curie!(MS:1003288), // number of unassigned peaks
                         curie!(MS:1003079), // total unassigned intensity fraction
                         curie!(MS:1003080), // top 20 peak unassigned intensity fraction
@@ -580,11 +593,11 @@ impl<R: Read> MzSpecLibParser<R> {
                         curie!(MS:1003209), // monoisotopic m/z deviation
                         curie!(UO:0000000), // unit (for m/z deviation)
                     ]
-                    .contains(&attr.name.accession)
+                    .contains(&attribute.name.accession)
                     {
                         // Ignore, can be calculated easily on the fly
                     } else {
-                        interp.attributes.push(attr);
+                        interp.attributes.push(attribute);
                     }
                 }
                 Err(e) => {
@@ -988,6 +1001,12 @@ fn parse_protein_attributes<'a>(
         curie!(MS:1000886) => {
             protein.name = Some(attribute.value.scalar().to_string().into_boxed_str());
         }
+        curie!(MS:1001013) => {
+            protein.database_name = Some(attribute.value.scalar().to_string().into_boxed_str());
+        }
+        curie!(MS:1001016) => {
+            protein.database_version = Some(attribute.value.scalar().to_string().into_boxed_str());
+        }
         curie!(MS:1001088) => {
             protein.description = Some(attribute.value.scalar().to_string().into_boxed_str());
         }
@@ -1269,17 +1288,6 @@ fn parse_spectrum_attributes<'a>(
                                 ))
                             })?;
                     }
-                    curie!(MS:1000894) => {
-                        spectrum.description.acquisition.scans[0].start_time =
-                        attr.value.scalar().to_f64().map_err(|v| {
-                            MzSpecLibTextParseError::RichError(BoxedError::new(
-                                BasicKind::Error,
-                                "Invalid attribute",
-                                v.to_string(),
-                                context.clone(),
-                            ))
-                        })? / 60.0;
-                    }
                     curie!(MS:1000500) => {
                         spectrum.description.acquisition.scans[0].scan_windows[0].upper_bound =
                             attr.value.scalar().to_f32().map_err(|v| {
@@ -1290,6 +1298,17 @@ fn parse_spectrum_attributes<'a>(
                                     context.clone(),
                                 ))
                             })?;
+                    }
+                    curie!(MS:1000894) => {
+                        spectrum.description.acquisition.scans[0].start_time =
+                        attr.value.scalar().to_f64().map_err(|v| {
+                            MzSpecLibTextParseError::RichError(BoxedError::new(
+                                BasicKind::Error,
+                                "Invalid attribute",
+                                v.to_string(),
+                                context.clone(),
+                            ))
+                        })? / 60.0;
                     }
                     curie!(MS:1000744) => {
                         spectrum.description.precursor[0].ions[0].mz =

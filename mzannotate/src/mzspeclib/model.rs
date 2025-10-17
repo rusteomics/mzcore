@@ -230,6 +230,10 @@ pub struct ProteinDescription {
     pub accession: Option<Box<str>>,
     /// Protein name (MS:1000886) `Alpha-enolase`
     pub name: Option<Box<str>>,
+    /// Database name (MS:1001013)
+    pub database_name: Option<Box<str>>,
+    /// Database version (MS:1001016)
+    pub database_version: Option<Box<str>>,
     /// The cleavage agent or protease (MS:1001045)
     pub cleavage_agent: CleaveAgent,
     /// Protein description (MS:1001088)
@@ -272,6 +276,20 @@ impl ProteinDescription {
             attributes.push(Attribute {
                 name: term!(MS:1000886|protein name),
                 value: Value::String(name.to_string()).into(),
+                group_id: Some(id),
+            });
+        }
+        if let Some(name) = &self.database_name {
+            attributes.push(Attribute {
+                name: term!(MS:1001013|database name),
+                value: Value::String(name.to_string()).into(),
+                group_id: Some(id),
+            });
+        }
+        if let Some(version) = &self.database_version {
+            attributes.push(Attribute {
+                name: term!(MS:1001016|database version),
+                value: Value::String(version.to_string()).into(),
                 group_id: Some(id),
             });
         }
@@ -390,66 +408,47 @@ pub enum CleaveAgent {
     Term(crate::mzspeclib::Term),
 }
 
+/// An interpreattion, this gives details on how well the analytes match to the spectrum.
 #[derive(Default, Debug, Clone)]
 pub struct Interpretation {
+    /// The ID
     pub id: Id,
+    /// PSM level probability (MS:1002357) in range 0..=1
+    pub probability: Option<f64>,
+    /// Othe rattributes
     pub attributes: Vec<Attribute>,
+    /// Analyte mixture members (MS:1003163)
     pub analyte_refs: Vec<Id>,
-    pub members: Vec<InterpretationMember>,
+    /// The interpretation members, this links to a specific analyte and gives additional attributes
+    /// about the interpretation of that analyte.
+    pub members: HashMap<Id, Vec<Attribute>>,
 }
 
 impl Interpretation {
-    pub const fn new(
-        id: Id,
-        attributes: Vec<Attribute>,
-        analyte_refs: Vec<Id>,
-        members: Vec<InterpretationMember>,
-    ) -> Self {
-        Self {
-            id,
-            attributes,
-            analyte_refs,
-            members,
-        }
-    }
-}
-
-impl Display for Interpretation {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        writeln!(f, "<Interpretation={}>", self.id)?;
+    pub fn attributes(&self) -> Vec<Attribute> {
+        // TODO: add easily calculated attributes
+        let mut attributes = Vec::new();
         if !self.analyte_refs.is_empty() {
-            let val = AttributeValue::List(
-                self.analyte_refs
-                    .iter()
-                    .map(|v| Value::Int(i64::from(*v)))
-                    .collect(),
-            );
-            let mixture_ids = Attribute::new(term!(MS:1003163|analyte mixture members), val, None);
-            writeln!(f, "{mixture_ids}")?;
+            attributes.push(Attribute::new(
+                term!(MS:1003163|analyte mixture members),
+                AttributeValue::List(
+                    self.analyte_refs
+                        .iter()
+                        .map(|v| Value::Int(i64::from(*v)))
+                        .collect(),
+                ),
+                None,
+            ));
         }
-        for attr in &self.attributes {
-            writeln!(f, "{attr}")?;
+        if let Some(probability) = self.probability {
+            attributes.push(Attribute::new(
+                term!(MS:1002357|PSM-level probability),
+                Value::Float(probability),
+                None,
+            ));
         }
-        for member in &self.members {
-            write!(f, "{member}")?;
-        }
-        Ok(())
-    }
-}
+        attributes.extend_from_slice(&self.attributes);
 
-#[derive(Default, Debug, Clone)]
-pub struct InterpretationMember {
-    pub id: Id,
-    pub attributes: Vec<Attribute>,
-    pub analyte_ref: Id,
-}
-
-impl Display for InterpretationMember {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        writeln!(f, "<InterpretationMember={}>", self.id)?;
-        for attr in &self.attributes {
-            f.write_str(attr.to_string().as_str())?;
-        }
-        Ok(())
+        attributes
     }
 }

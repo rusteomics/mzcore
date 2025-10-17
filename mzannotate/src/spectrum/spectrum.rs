@@ -240,7 +240,6 @@ impl<S: SpectrumLike> From<S> for AnnotatedSpectrum {
     }
 }
 
-// TODO: actually output the parameters that are part of the spectrum description
 impl crate::mzspeclib::MzSpecLibEncode for AnnotatedSpectrum {
     /// The peak type
     type P = AnnotatedPeak<Fragment>;
@@ -263,12 +262,23 @@ impl crate::mzspeclib::MzSpecLibEncode for AnnotatedSpectrum {
     fn analytes(&self) -> impl Iterator<Item = (Id, Self::AnalyteIter)> {
         self.analytes.iter().map(|a| (a.id, a.attributes()))
     }
+    type InterpretationIter = Vec<Attribute>;
+    type InterpretationMemberIter = Vec<(Id, Vec<Attribute>)>;
 
     /// The attributes for the interpretations
-    fn interpretations(&self) -> impl Iterator<Item = (Id, &[Attribute])> {
-        self.interpretations
-            .iter()
-            .map(|i| (i.id, i.attributes.as_slice()))
+    fn interpretations(
+        &self,
+    ) -> impl Iterator<Item = (Id, Self::InterpretationIter, Self::InterpretationMemberIter)> {
+        self.interpretations.iter().map(|i| {
+            (
+                i.id,
+                i.attributes(),
+                i.members
+                    .iter()
+                    .map(|(id, attributes)| (*id, attributes.clone()))
+                    .collect(),
+            )
+        })
     }
 
     /// The peaks

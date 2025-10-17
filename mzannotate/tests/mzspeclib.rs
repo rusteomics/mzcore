@@ -37,6 +37,10 @@ fn read_all_files() {
                                 .interpretations
                                 .iter()
                                 .flat_map(|a| a.attributes.iter())
+                                .filter(|a| {
+                                    a.name != mzannotate::term!(MS:1002252|Comet:xcorr)
+                                        && a.name != mzannotate::term!(MS:1002354|PSM-level q-value)
+                                })
                                 .map(|a| a.name.clone()),
                         );
                     }

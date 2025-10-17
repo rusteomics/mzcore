@@ -48,7 +48,11 @@ impl MetaData for AnnotatedSpectrum {
     }
 
     fn confidence(&self) -> Option<f64> {
-        None
+        self.interpretations
+            .iter()
+            .filter_map(|i| i.probability)
+            .exactly_one()
+            .ok()
     }
 
     fn local_confidence(&self) -> Option<Cow<'_, [f64]>> {
@@ -56,7 +60,11 @@ impl MetaData for AnnotatedSpectrum {
     }
 
     fn original_confidence(&self) -> Option<f64> {
-        None
+        self.interpretations
+            .iter()
+            .filter_map(|i| i.probability)
+            .exactly_one()
+            .ok()
     }
 
     fn original_local_confidence(&self) -> Option<&[f64]> {
@@ -169,7 +177,25 @@ impl MetaData for AnnotatedSpectrum {
     }
 
     fn database(&self) -> Option<(&str, Option<&str>)> {
-        None // TODO: MS:1001013, MS:1001016
+        self.analytes
+            .iter()
+            .flat_map(|a| &a.proteins)
+            .map(|p| p.database_name.as_deref())
+            .exactly_one()
+            .ok()
+            .flatten()
+            .map(|name| {
+                (
+                    name,
+                    self.analytes
+                        .iter()
+                        .flat_map(|a| &a.proteins)
+                        .map(|p| p.database_version.as_deref())
+                        .exactly_one()
+                        .ok()
+                        .flatten(),
+                )
+            })
     }
 
     fn annotated_spectrum(&self) -> Option<Cow<'_, AnnotatedSpectrum>> {

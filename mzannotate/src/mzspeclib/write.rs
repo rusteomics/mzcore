@@ -79,10 +79,16 @@ impl<W: Write> MzSpecLibTextWriter<W, HeaderWritten> {
                 writeln!(&mut self.writer, "{attr}")?;
             }
         }
-        for (id, attributes) in spectrum.interpretations() {
+        for (id, attributes, members) in spectrum.interpretations() {
             writeln!(&mut self.writer, "<Interpretation={id}>")?;
             for attr in attributes {
                 writeln!(&mut self.writer, "{attr}")?;
+            }
+            for (id, attributes) in members {
+                writeln!(&mut self.writer, "<InterpretationMember={id}>",)?;
+                for attr in attributes {
+                    writeln!(&mut self.writer, "{attr}")?;
+                }
             }
         }
         writeln!(&mut self.writer, "<Peaks>")?;
@@ -143,8 +149,14 @@ pub trait MzSpecLibEncode {
     type AnalyteIter: IntoIterator<Item = Attribute>;
     /// The attributes for the analytes
     fn analytes(&self) -> impl Iterator<Item = (Id, Self::AnalyteIter)>;
+    /// The interpretation attribute iterator
+    type InterpretationIter: IntoIterator<Item = Attribute>;
+    /// The interpretation members iterator
+    type InterpretationMemberIter: IntoIterator<Item = (Id, Self::InterpretationIter)>;
     /// The attributes for the interpretations
-    fn interpretations(&self) -> impl Iterator<Item = (Id, &[Attribute])>;
+    fn interpretations(
+        &self,
+    ) -> impl Iterator<Item = (Id, Self::InterpretationIter, Self::InterpretationMemberIter)>;
     /// The peaks
     fn peaks(&self) -> PeakSetIter<'_, Self::P>;
 }
