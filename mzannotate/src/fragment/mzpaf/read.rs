@@ -1,4 +1,4 @@
-//! WIP: mzPAF parser
+//! mzPAF parser
 use std::{num::NonZeroU16, ops::Range, sync::LazyLock};
 
 use context_error::*;
@@ -27,7 +27,7 @@ use crate::{
 };
 
 /// Parse a [mzPAF](https://www.psidev.info/mzPAF) peak annotation line (can contain multiple annotations).
-/// mzPAF draft 18 of version 1.0 is supported. Except for the SMILES constructs.
+/// mzPAF version 1.0 is supported. Except for the SMILES constructs.
 ///
 /// # Errors
 /// When the annotation does not follow the format.
@@ -36,25 +36,51 @@ pub fn parse_mz_paf<'a>(
     custom_database: Option<&CustomDatabase>,
     interpretation: &CompoundPeptidoformIon,
 ) -> Result<Vec<Fragment>, BoxedError<'a, BasicKind>> {
-    parse_mz_paf_internal(line, custom_database).map(|annotations| {
-        annotations
-            .into_iter()
-            .map(|a| a.into_fragment(interpretation))
-            .collect()
-    })
+    parse_mz_paf_substring(
+        &Context::none().lines(0, line),
+        line,
+        0..line.len(),
+        custom_database,
+        interpretation,
+    )
+}
+
+/// This parses a substring of the given string as an mzPAF definition. Additionally, this allows
+/// passing a base context to allow to set the line index and source and other properties. Note
+/// that the base context is assumed to contain the full line at line index 0.
+///
+/// # Errors
+/// When the annotation does not follow the format.
+pub(crate) fn parse_mz_paf_substring<'a>(
+    base_context: &Context<'a>,
+    line: &'a str,
+    range: Range<usize>,
+    custom_database: Option<&CustomDatabase>,
+    interpretation: &CompoundPeptidoformIon,
+) -> Result<Vec<Fragment>, BoxedError<'a, BasicKind>> {
+    parse_intermediate_representation(base_context, line, range, custom_database).map(
+        |annotations| {
+            annotations
+                .into_iter()
+                .map(|a| a.into_fragment(interpretation))
+                .collect()
+        },
+    )
 }
 
 /// Parse a mzPAF line into the internal representation, see [`parse_mz_paf`] for more information.
 /// # Errors
 /// When the annotation does not follow the format.
-fn parse_mz_paf_internal<'a>(
+pub fn parse_intermediate_representation<'a>(
+    base_context: &Context<'a>,
     line: &'a str,
+    range: Range<usize>,
     custom_database: Option<&CustomDatabase>,
 ) -> Result<Vec<PeakAnnotation>, BoxedError<'a, BasicKind>> {
     let mut annotations = Vec::new();
 
     // Parse first
-    let (mut range, a) = parse_annotation(line, 0..line.len(), custom_database)?;
+    let (mut range, a) = parse_annotation(base_context, line, range, custom_database)?;
     annotations.push(a);
 
     // Parse any following
@@ -69,7 +95,7 @@ fn parse_mz_paf_internal<'a>(
                 Context::line(None, line, range.start_index(), 1),
             ));
         }
-        let (r, a) = parse_annotation(line, range, custom_database)?;
+        let (r, a) = parse_annotation(base_context, line, range, custom_database)?;
         range = r;
         annotations.push(a);
     }
@@ -81,6 +107,7 @@ fn parse_mz_paf_internal<'a>(
 /// # Errors
 /// When the annotation does not follow the format.
 fn parse_annotation<'a>(
+    base_context: &Context<'a>,
     line: &'a str,
     range: Range<usize>,
     custom_database: Option<&CustomDatabase>,
@@ -91,14 +118,14 @@ fn parse_annotation<'a>(
     } else {
         (range, false)
     };
-    let (left_range, analyte_number) = parse_analyte_number(line, left_range)?;
-    let (left_range, ion) = parse_ion(line, left_range, custom_database)?;
-    let (left_range, neutral_losses) = parse_neutral_loss(line, left_range)?;
-    let (left_range, isotopes) = parse_isotopes(line, left_range)?;
-    let (left_range, adduct_type) = parse_adduct_type(line, left_range)?;
-    let (left_range, charge) = parse_charge(line, left_range)?;
-    let (left_range, deviation) = parse_deviation(line, left_range)?;
-    let (left_range, confidence) = parse_confidence(line, left_range)?;
+    let (left_range, analyte_number) = parse_analyte_number(base_context, line, left_range)?;
+    let (left_range, ion) = parse_ion(base_context, line, left_range, custom_database)?;
+    let (left_range, neutral_losses) = parse_neutral_loss(base_context, line, left_range)?;
+    let (left_range, isotopes) = parse_isotopes(base_context, line, left_range)?;
+    let (left_range, adduct_type) = parse_adduct_type(base_context, line, left_range)?;
+    let (left_range, charge) = parse_charge(base_context, line, left_range)?;
+    let (left_range, deviation) = parse_deviation(base_context, line, left_range)?;
+    let (left_range, confidence) = parse_confidence(base_context, line, left_range)?;
     Ok((
         left_range,
         PeakAnnotation {
@@ -391,10 +418,11 @@ enum Isotope {
 /// Parse a mzPAF analyte number. '1@...'
 /// # Errors
 /// When the ion is not formatted correctly.
-fn parse_analyte_number(
-    line: &str,
+fn parse_analyte_number<'a>(
+    base_context: &Context<'a>,
+    line: &'a str,
     range: Range<usize>,
-) -> Result<(Range<usize>, usize), BoxedError<'_, BasicKind>> {
+) -> Result<(Range<usize>, usize), BoxedError<'a, BasicKind>> {
     next_number::<false, false, usize>(line, range.clone()).map_or_else(
         || Ok((range.clone(), 1)),
         |num| {
@@ -403,7 +431,9 @@ fn parse_analyte_number(
                     BasicKind::Error,
                     "Invalid mzPAF analyte number",
                     "The analyte number should be followed by an at sign '@'",
-                    Context::line(None, line, num.0 + range.start, 1),
+                    base_context
+                        .clone()
+                        .add_highlight((0, num.0 + range.start, 1)),
                 ));
             }
             Ok((
@@ -413,7 +443,7 @@ fn parse_analyte_number(
                         BasicKind::Error,
                         "Invalid mzPAF analyte number",
                         format!("The analyte number number {}", explain_number_error(&err)),
-                        Context::line(None, line, range.start, num.0),
+                        base_context.clone().add_highlight((0, range.start, num.0)),
                     )
                 })?,
             ))
@@ -425,6 +455,7 @@ fn parse_analyte_number(
 /// # Errors
 /// When the ion is not formatted correctly.
 fn parse_ion<'a>(
+    base_context: &Context<'a>,
     line: &'a str,
     range: Range<usize>,
     custom_database: Option<&CustomDatabase>,
@@ -441,7 +472,11 @@ fn parse_ion<'a>(
                             BasicKind::Error,
                             "Invalid mzPAF unknown ion ('?') ordinal",
                             format!("The ordinal number {}", explain_number_error(&err)),
-                            Context::line(None, line, range.start_index() + 1, ordinal.0),
+                            base_context.clone().add_highlight((
+                                0,
+                                range.start_index() + 1,
+                                ordinal.0,
+                            )),
                         )
                     })?)),
                 ))
@@ -458,7 +493,9 @@ fn parse_ion<'a>(
                         BasicKind::Error,
                         "Invalid mzPAF main series ion ordinal",
                         "Only for the satellite ions 'd' and 'w' does a subtype exist, like 'wa12'",
-                        Context::line(None, line, range.start_index(), 1),
+                        base_context
+                            .clone()
+                            .add_highlight((0, range.start_index(), 1)),
                     ));
                 }
                 (range.add_start(2_usize), Some(sub))
@@ -482,7 +519,7 @@ fn parse_ion<'a>(
                                 .ok_or_else(|| BoxedError::new(BasicKind::Error,
                                     "Invalid mzPAF interpretation",
                                     "An mzPAF interpretation should be limited to `base-ProForma compliant` without any labile modifications",
-                                    Context::line_range(None, line, range.start_index()..location)))
+                                    base_context.clone().add_highlight((0,range.start_index()..location))))
                                 .map(|i| (location + 1, Some(i)))
                         })?
                         // TODO: proper error handling and add checks to the length of the sequence
@@ -491,7 +528,9 @@ fn parse_ion<'a>(
                             BasicKind::Error,
                             "Invalid mzPAF main series ion ordinal",
                             "The asserted interpretation should have a closed curly bracket, like '0@b2{LL}'",
-                            Context::line(None, line, range.start_index(), 1),
+                            base_context
+                                .clone()
+                                .add_highlight((0, range.start_index(), 1)),
                         ));
                     }
                 } else {
@@ -507,12 +546,11 @@ fn parse_ion<'a>(
                                 BasicKind::Error,
                                 "Invalid mzPAF ion ordinal",
                                 format!("The ordinal number {}", explain_number_error(&err)),
-                                Context::line(
-                                    None,
-                                    line,
+                                base_context.clone().add_highlight((
+                                    0,
                                     range.start_index() - ordinal.0, // Maybe also offset for interpretation?
                                     ordinal.0,
-                                ),
+                                )),
                             )
                         })?,
                         interpretation,
@@ -523,7 +561,9 @@ fn parse_ion<'a>(
                     BasicKind::Error,
                     "Invalid mzPAF main series ion ordinal",
                     "For a main series ion the ordinal should be provided, like 'a12'",
-                    Context::line(None, line, range.start_index(), 1),
+                    base_context
+                        .clone()
+                        .add_highlight((0, range.start_index(), 1)),
                 ))
             }
         }
@@ -533,7 +573,9 @@ fn parse_ion<'a>(
                     BasicKind::Error,
                     "Invalid mzPAF immonium",
                     "The source amino acid for this immonium ion should be present like 'IA'",
-                    Context::line(None, line, range.start_index(), 1),
+                    base_context
+                        .clone()
+                        .add_highlight((0, range.start_index(), 1)),
                 )
             })?;
             let modification = if line[range.clone()].chars().nth(2) == Some('[') {
@@ -543,7 +585,9 @@ fn parse_ion<'a>(
                             BasicKind::Error,
                             "Invalid mzPAF immonium modification",
                             "The square brackets are not closed",
-                            Context::line(None, line, range.start_index(), 1),
+                            base_context
+                                .clone()
+                                .add_highlight((0, range.start_index(), 1)),
                         )
                     },
                 )?;
@@ -572,7 +616,9 @@ fn parse_ion<'a>(
                             BasicKind::Error,
                             "Invalid mzPAF immonium ion",
                             "The provided amino acid is not a known amino acid",
-                            Context::line(None, line, range.start_index() + 1, 1),
+                            base_context
+                                .clone()
+                                .add_highlight((0, range.start_index() + 1, 1)),
                         )
                     })?,
                     modification.map(|m| m.1),
@@ -586,7 +632,9 @@ fn parse_ion<'a>(
                         BasicKind::Error,
                         "Invalid mzPAF internal ion first ordinal",
                         "The first ordinal for an internal ion should be present",
-                        Context::line(None, line, range.start_index(), 1),
+                        base_context
+                            .clone()
+                            .add_highlight((0, range.start_index(), 1)),
                     )
                 })?;
             if line[range.clone()].chars().nth(first_ordinal.0 + 1) != Some(':') {
@@ -594,7 +642,11 @@ fn parse_ion<'a>(
                     BasicKind::Error,
                     "Invalid mzPAF internal ion ordinal separator",
                     "The internal ion ordinal separator should be a colon ':', like 'm4:6'",
-                    Context::line(None, line, range.start_index() + 1 + first_ordinal.0, 1),
+                    base_context.clone().add_highlight((
+                        0,
+                        range.start_index() + 1 + first_ordinal.0,
+                        1,
+                    )),
                 ));
             }
             let second_ordinal = next_number::<false, false, usize>(
@@ -606,7 +658,11 @@ fn parse_ion<'a>(
                     BasicKind::Error,
                     "Invalid mzPAF internal ion second ordinal",
                     "The second ordinal for an internal ion should be present",
-                    Context::line(None, line, range.start_index() + 1 + first_ordinal.0, 1),
+                    base_context.clone().add_highlight((
+                        0,
+                        range.start_index() + 1 + first_ordinal.0,
+                        1,
+                    )),
                 )
             })?;
             let first_location = first_ordinal.2.map_err(|err| {
@@ -614,7 +670,11 @@ fn parse_ion<'a>(
                     BasicKind::Error,
                     "Invalid mzPAF internal ion first ordinal",
                     format!("The ordinal number {}", explain_number_error(&err)),
-                    Context::line(None, line, range.start_index() + 1, first_ordinal.0),
+                    base_context.clone().add_highlight((
+                        0,
+                        range.start_index() + 1,
+                        first_ordinal.0,
+                    )),
                 )
             })?;
             let second_location = second_ordinal.2.map_err(|err| {
@@ -622,12 +682,11 @@ fn parse_ion<'a>(
                     BasicKind::Error,
                     "Invalid mzPAF internal ion second ordinal",
                     format!("The ordinal number {}", explain_number_error(&err)),
-                    Context::line(
-                        None,
-                        line,
+                    base_context.clone().add_highlight((
+                        0,
                         range.start_index() + 2 + first_ordinal.0,
                         second_ordinal.0,
-                    ),
+                    )),
                 )
             })?;
             Ok((
@@ -649,7 +708,9 @@ fn parse_ion<'a>(
                             BasicKind::Error,
                             "Invalid mzPAF named compound",
                             "The curly braces are not closed",
-                            Context::line(None, line, range.start_index() + 1, 1),
+                            base_context
+                                .clone()
+                                .add_highlight((0, range.start_index() + 1, 1)),
                         )
                     },
                 )?;
@@ -662,7 +723,9 @@ fn parse_ion<'a>(
                     BasicKind::Error,
                     "Invalid mzPAF named compound",
                     "A named compound must be named with curly braces '{}' after the '_'",
-                    Context::line(None, line, range.start_index(), 1),
+                    base_context
+                        .clone()
+                        .add_highlight((0, range.start_index(), 1)),
                 ))
             }?;
             Ok((range.add_start(3 + len), IonType::Named(name.to_string())))
@@ -677,7 +740,9 @@ fn parse_ion<'a>(
                             BasicKind::Error,
                             "Invalid mzPAF reference compound",
                             "The square brackets are not closed",
-                            Context::line(None, line, range.start_index() + 1, 1),
+                            base_context
+                                .clone()
+                                .add_highlight((0, range.start_index() + 1, 1)),
                         )
                     },
                 )?;
@@ -687,7 +752,9 @@ fn parse_ion<'a>(
                     BasicKind::Error,
                     "Invalid mzPAF reporter ion",
                     "A reporter ion must be named with square braces '[]' after the 'r'",
-                    Context::line(None, line, range.start_index(), 1),
+                    base_context
+                        .clone()
+                        .add_highlight((0, range.start_index(), 1)),
                 ))
             }?;
             MZPAF_NAMED_MOLECULES
@@ -699,7 +766,9 @@ fn parse_ion<'a>(
                             BasicKind::Error,
                             "Unknown mzPAF named reporter ion",
                             "Unknown name",
-                            Context::line_range(None, line, range.start_index() + 2..end),
+                            base_context
+                                .clone()
+                                .add_highlight((0, range.start_index() + 2..end)),
                         ))
                     },
                     |formula| Ok((end + 1..range.end, IonType::Reporter(formula))),
@@ -714,7 +783,9 @@ fn parse_ion<'a>(
                             BasicKind::Error,
                             "Invalid mzPAF formula fragment",
                             "The curly braces are not closed",
-                            Context::line(None, line, range.start_index() + 1, 1),
+                            base_context
+                                .clone()
+                                .add_highlight((0, range.start_index() + 1, 1)),
                         )
                     },
                 )?;
@@ -724,7 +795,9 @@ fn parse_ion<'a>(
                     BasicKind::Error,
                     "Invalid mzPAF formula",
                     "A formula must have the formula defined with curly braces '{}' after the 'f'",
-                    Context::line(None, line, range.start_index(), 1),
+                    base_context
+                        .clone()
+                        .add_highlight((0, range.start_index(), 1)),
                 ))
             }?;
             let formula = MolecularFormula::from_pro_forma(
@@ -745,19 +818,19 @@ fn parse_ion<'a>(
             BasicKind::Error,
             "Unsupported feature",
             "SMILES strings are currently not supported in mzPAF definitions",
-            Context::line(None, line, range.start, 1),
+            base_context.clone().add_highlight((0, range.start, 1)),
         )), // TODO: return as Formula
         Some(_) => Err(BoxedError::new(
             BasicKind::Error,
             "Invalid ion",
             "An ion cannot start with this character",
-            Context::line(None, line, range.start, 1),
+            base_context.clone().add_highlight((0, range.start, 1)),
         )),
         None => Err(BoxedError::new(
             BasicKind::Error,
             "Invalid ion",
             "An ion cannot be an empty string",
-            Context::line_range(None, line, range),
+            base_context.clone().add_highlight((0, range.start, 1)),
         )),
     }
 }
@@ -765,15 +838,16 @@ fn parse_ion<'a>(
 /// Parse a neutral loss from the string.
 /// # Errors
 /// If the a neutral loss is detected but is invalid.
-fn parse_neutral_loss(
-    line: &str,
+fn parse_neutral_loss<'a>(
+    base_context: &Context<'a>,
+    line: &'a str,
     range: Range<usize>,
-) -> Result<(Range<usize>, Vec<NeutralLoss>), BoxedError<'_, BasicKind>> {
+) -> Result<(Range<usize>, Vec<NeutralLoss>), BoxedError<'a, BasicKind>> {
     let mut offset = 0;
     let mut neutral_losses = Vec::new();
     while let Some(c @ (b'-' | b'+')) = line.as_bytes().get(range.start_index() + offset).copied() {
         let mut amount = 1;
-        let mut num_offset = 0;
+        let num_offset = 
         // Parse leading number to detect how many times this loss occured
         if let Some(num) = next_number::<false, false, u16>(line, range.add_start(1 + offset)) {
             amount = num.2.map_err(|err| {
@@ -784,17 +858,18 @@ fn parse_neutral_loss(
                         "The neutral loss amount number {}",
                         explain_number_error(&err)
                     ),
-                    Context::line(
-                        None,
-                        line,
+                    base_context.clone().add_highlight((
+                        0,
                         range.start_index() + 1 + offset,
                         range.start_index() + 1 + offset + num.0,
-                    ),
+                    )),
                 )
             })?;
             offset += num.0;
-            num_offset = num.0;
-        }
+            num.0
+        } else {
+            0
+        };
 
         if line[range.start_index() + 1 + offset..].starts_with('i')
             || line[range.start_index() + 1 + offset..].starts_with("[M+")
@@ -814,7 +889,11 @@ fn parse_neutral_loss(
                         BasicKind::Error,
                         "Unknown mzPAF named neutral loss",
                         "Opening bracket for neutral loss name was not closed",
-                        Context::line(None, line, range.start_index() + 1 + offset, 1),
+                        base_context.clone().add_highlight((
+                            0,
+                            range.start_index() + 1 + offset,
+                            1,
+                        )),
                     )
                 })?;
             let first = range.start_index() + 2 + offset;
@@ -845,7 +924,9 @@ fn parse_neutral_loss(
                     BasicKind::Error,
                     "Unknown mzPAF named neutral loss",
                     "Unknown name",
-                    Context::line(None, line, offset - name.len() - 1, name.len()),
+                    base_context
+                        .clone()
+                        .add_highlight((0, offset - name.len() - 1, name.len())),
                 ));
             }
         } else {
@@ -859,7 +940,7 @@ fn parse_neutral_loss(
                         BasicKind::Error,
                         "Invalid mzPAF",
                         "Empty neutral loss",
-                        Context::line_range(None, line, first..),
+                        base_context.clone().add_highlight((0, first..)),
                     )
                 })?;
             let mut last = last.0 + last.1.len_utf8();
@@ -888,10 +969,11 @@ fn parse_neutral_loss(
 /// Parse isotopes definition from the string.
 /// # Errors
 /// If the detected isotopes are detected but invalid.
-fn parse_isotopes(
+fn parse_isotopes<'a>(
+    base_context: &Context<'a>,
     line: &str,
     range: Range<usize>,
-) -> Result<(Range<usize>, Vec<(i32, Isotope)>), BoxedError<'_, BasicKind>> {
+) -> Result<(Range<usize>, Vec<(i32, Isotope)>), BoxedError<'a, BasicKind>> {
     let mut offset = 0;
     let mut isotopes = Vec::new();
     while let Some(c @ (b'-' | b'+')) = line.as_bytes().get(range.start_index() + offset).copied() {
@@ -904,7 +986,9 @@ fn parse_isotopes(
                     BasicKind::Error,
                     "Invalid mzPAF isotope leading amount",
                     format!("The isotope amount number {}", explain_number_error(&err)),
-                    Context::line(None, line, range.start_index() + offset, num.0),
+                    base_context
+                        .clone()
+                        .add_highlight((0, range.start_index() + offset, num.0)),
                 )
             })?);
             offset += num.0;
@@ -919,7 +1003,9 @@ fn parse_isotopes(
                 BasicKind::Error,
                 "Invalid mzPAF isotope",
                 "An isotope should be indicated with a lowercase 'i', eg '+i', '+5i', '+2iA', '+i13C'",
-                Context::line(None, line, range.start_index() + offset, 1),
+                base_context
+                    .clone()
+                    .add_highlight((0, range.start_index() + offset, 1)),
             ));
         }
         offset += 1;
@@ -931,7 +1017,9 @@ fn parse_isotopes(
                     BasicKind::Error,
                     "Invalid mzPAF isotope nucleon number",
                     format!("The nucleon number {}", explain_number_error(&err)),
-                    Context::line(None, line, range.start_index() + offset, num.0),
+                    base_context
+                        .clone()
+                        .add_highlight((0, range.start_index() + offset, num.0)),
                 )
             })?);
             offset += num.0;
@@ -949,7 +1037,9 @@ fn parse_isotopes(
                     BasicKind::Error,
                     "Invalid mzPAF isotope element",
                     "No recognised element symbol was found",
-                    Context::line(None, line, range.start_index() + offset, 1),
+                    base_context
+                        .clone()
+                        .add_highlight((0, range.start_index() + offset, 1)),
                 )
             })?;
             if !element.is_valid(Some(nucleon)) {
@@ -960,7 +1050,9 @@ fn parse_isotopes(
                     format!(
                         "The nucleon number {nucleon} does not have a defined mass for {element}",
                     ),
-                    Context::line(None, line, range.start_index() + offset - ln, ln),
+                    base_context
+                        .clone()
+                        .add_highlight((0, range.start_index() + offset - ln, ln)),
                 ));
             }
             isotopes.push((amount, Isotope::Specific(element, nucleon)));
@@ -980,10 +1072,11 @@ fn parse_isotopes(
 /// Parse adduct types from the string.
 /// # Errors
 /// If and adduct type is detected but is invalid.
-fn parse_adduct_type(
-    line: &str,
+fn parse_adduct_type<'a>(
+    base_context: &Context<'a>,
+    line: &'a str,
     range: Range<usize>,
-) -> Result<(Range<usize>, Option<MolecularCharge>), BoxedError<'_, BasicKind>> {
+) -> Result<(Range<usize>, Option<MolecularCharge>), BoxedError<'a, BasicKind>> {
     if line.as_bytes().get(range.start_index()).copied() == Some(b'[') {
         let closing =
             end_of_enclosure(line, range.start_index() + 1, b'[', b']').ok_or_else(|| {
@@ -991,7 +1084,9 @@ fn parse_adduct_type(
                     BasicKind::Error,
                     "Invalid mzPAF adduct type",
                     "No closing bracket found for opening bracket of adduct type",
-                    Context::line(None, line, range.start_index(), 1),
+                    base_context
+                        .clone()
+                        .add_highlight((0, range.start_index(), 1)),
                 )
             })?; // Excluding the ']' closing bracket
         if line.as_bytes().get(range.start_index() + 1).copied() != Some(b'M') {
@@ -999,7 +1094,9 @@ fn parse_adduct_type(
                 BasicKind::Error,
                 "Invalid mzPAF adduct type",
                 "The adduct type should start with 'M', as in '[M+nA]'",
-                Context::line(None, line, range.start_index() + 1, 1),
+                base_context
+                    .clone()
+                    .add_highlight((0, range.start_index() + 1, 1)),
             ));
         }
         let mut carriers = Vec::new();
@@ -1022,12 +1119,11 @@ fn parse_adduct_type(
                         BasicKind::Error,
                         "Invalid mzPAF adduct leading amount",
                         format!("The adduct amount number {}", explain_number_error(&err)),
-                        Context::line(
-                            None,
-                            line,
+                        base_context.clone().add_highlight((
+                            0,
                             range.start_index() + offset,
                             range.start_index() + offset + num.0,
-                        ),
+                        )),
                     )
                 })?);
                 offset += num.0;
@@ -1059,7 +1155,9 @@ fn parse_adduct_type(
                 BasicKind::Error,
                 "Invalid mzPAF adduct type",
                 "The adduct type should be closed with ']'",
-                Context::line(None, line, range.start_index() + offset, 1),
+                base_context
+                    .clone()
+                    .add_highlight((0, range.start_index() + offset, 1)),
             ));
         }
         Ok((
@@ -1074,10 +1172,11 @@ fn parse_adduct_type(
 /// Parse mzPAF charge, eg `^2` `^-1`
 /// # Errors
 /// If there is no number after the caret, or if the number is invalid (outside of range and the like).
-fn parse_charge(
-    line: &str,
+fn parse_charge<'a>(
+    base_context: &Context<'a>,
+    line: &'a str,
     range: Range<usize>,
-) -> Result<(Range<usize>, Charge), BoxedError<'_, BasicKind>> {
+) -> Result<(Range<usize>, Charge), BoxedError<'a, BasicKind>> {
     if line.as_bytes().get(range.start_index()).copied() == Some(b'^') {
         let charge =
             next_number::<true, false, isize>(line, range.add_start(1_usize)).ok_or_else(|| {
@@ -1085,7 +1184,9 @@ fn parse_charge(
                     BasicKind::Error,
                     "Invalid mzPAF charge",
                     "The number after the charge symbol should be present, eg '^2'.",
-                    Context::line(None, line, range.start_index(), 1),
+                    base_context
+                        .clone()
+                        .add_highlight((0, range.start_index(), 1)),
                 )
             })?;
         Ok((
@@ -1097,7 +1198,11 @@ fn parse_charge(
                             BasicKind::Error,
                             "Invalid mzPAF charge",
                             format!("The charge number {}", explain_number_error(&err)),
-                            Context::line(None, line, range.start_index() + 1, charge.0),
+                            base_context.clone().add_highlight((
+                                0,
+                                range.start_index() + 1,
+                                charge.0,
+                            )),
                         )
                     })?,
             ),
@@ -1110,10 +1215,11 @@ fn parse_charge(
 /// Parse a mzPAF deviation, either a ppm or mz deviation.
 /// # Errors
 /// When the deviation is not '<number>' or '<number>ppm'.
-fn parse_deviation(
-    line: &str,
+fn parse_deviation<'a>(
+    base_context: &Context<'a>,
+    line: &'a str,
     range: Range<usize>,
-) -> Result<(Range<usize>, Option<Tolerance<OrderedMassOverCharge>>), BoxedError<'_, BasicKind>> {
+) -> Result<(Range<usize>, Option<Tolerance<OrderedMassOverCharge>>), BoxedError<'a, BasicKind>> {
     if line.as_bytes().get(range.start_index()).copied() == Some(b'/') {
         let number =
             next_number::<true, true, f64>(line, range.add_start(1_usize)).ok_or_else(|| {
@@ -1121,7 +1227,9 @@ fn parse_deviation(
                     BasicKind::Error,
                     "Invalid mzPAF deviation",
                     "A deviation should be a number",
-                    Context::line_range(None, line, range.start..=range.start + 1),
+                    base_context
+                        .clone()
+                        .add_highlight((0, range.start..=range.start + 1)),
                 )
             })?;
         let deviation = number.2.map_err(|err| {
@@ -1129,7 +1237,9 @@ fn parse_deviation(
                 BasicKind::Error,
                 "Invalid mzPAF deviation",
                 format!("The deviation number {err}",),
-                Context::line_range(None, line, range.start + 1..range.start + 1 + number.0),
+                base_context
+                    .clone()
+                    .add_highlight((0, range.start + 1..range.start + 1 + number.0)),
             )
         })?;
         if line[range.start_index() + 1 + number.0..].starts_with("ppm") {
@@ -1153,10 +1263,11 @@ fn parse_deviation(
 /// Parse a mzPAF confidence.
 /// # Errors
 /// When the deviation is not '*<number>'.
-fn parse_confidence(
-    line: &str,
+fn parse_confidence<'a>(
+    base_context: &Context<'a>,
+    line: &'a str,
     range: Range<usize>,
-) -> Result<(Range<usize>, Option<f64>), BoxedError<'_, BasicKind>> {
+) -> Result<(Range<usize>, Option<f64>), BoxedError<'a, BasicKind>> {
     // TODO: the range is in characters
     if line.chars().nth(range.start_index()) == Some('*') {
         let number =
@@ -1165,7 +1276,9 @@ fn parse_confidence(
                     BasicKind::Error,
                     "Invalid mzPAF confidence",
                     "A confidence should be a number",
-                    Context::line_range(None, line, range.start..=range.start + 1),
+                    base_context
+                        .clone()
+                        .add_highlight((0, range.start..=range.start + 1)),
                 )
             })?;
         let confidence = number.2.map_err(|err| {
@@ -1173,7 +1286,9 @@ fn parse_confidence(
                 BasicKind::Error,
                 "Invalid mzPAF confidence",
                 format!("The confidence number {err}",),
-                Context::line_range(None, line, range.start + 1..range.start + 1 + number.0),
+                base_context
+                    .clone()
+                    .add_highlight((0, range.start + 1..range.start + 1 + number.0)),
             )
         })?;
         Ok((range.add_start(number.0 + 1), Some(confidence)))
@@ -1298,36 +1413,41 @@ static MZPAF_NAMED_MOLECULES: LazyLock<Vec<(&str, MolecularFormula)>> = LazyLock
 });
 
 #[test]
+#[allow(clippy::missing_panics_doc)]
 fn neutral_loss() {
     assert_eq!(
-        parse_neutral_loss("-H2O", 0..4),
+        parse_neutral_loss(&Context::none(), "-H2O", 0..4),
         Ok((
             4..4,
             vec![NeutralLoss::Loss(1, molecular_formula!(H 2 O 1))]
         ))
     );
     assert_eq!(
-        parse_neutral_loss("+H2O", 0..4),
+        parse_neutral_loss(&Context::none(), "+H2O", 0..4),
         Ok((
             4..4,
             vec![NeutralLoss::Gain(1, molecular_formula!(H 2 O 1))]
         ))
     );
     assert_eq!(
-        parse_neutral_loss("+NH3", 0..4),
+        parse_neutral_loss(&Context::none(), "+NH3", 0..4),
         Ok((
             4..4,
             vec![NeutralLoss::Gain(1, molecular_formula!(N 1 H 3))]
         ))
     );
-    assert_eq!(parse_neutral_loss("/-0.0008", 0..8), Ok((0..8, vec![])));
+    assert_eq!(
+        parse_neutral_loss(&Context::none(), "/-0.0008", 0..8),
+        Ok((0..8, vec![]))
+    );
 }
 
 #[test]
+#[allow(clippy::missing_panics_doc)]
 fn parse_correctly() {
     let pep = CompoundPeptidoformIon::pro_forma("AAAAAAAAAA", None).unwrap();
     let a = "y8^2/-0.0017";
-    let (_, parse_a) = parse_annotation(a, 0..a.len(), None).unwrap();
+    let (_, parse_a) = parse_annotation(&Context::none(), a, 0..a.len(), None).unwrap();
     assert!(!parse_a.auxiliary);
     assert_eq!(parse_a.analyte_number, 1);
     assert_eq!(parse_a.ion, IonType::MainSeries(b'y', None, 8, None));
@@ -1348,7 +1468,7 @@ fn parse_correctly() {
     );
 
     let b = "y8+i^2/0.0002";
-    let (_, parse_b) = parse_annotation(b, 0..b.len(), None).unwrap();
+    let (_, parse_b) = parse_annotation(&Context::none(), b, 0..b.len(), None).unwrap();
     assert!(!parse_b.auxiliary);
     assert_eq!(parse_b.analyte_number, 1);
     assert_eq!(parse_b.ion, IonType::MainSeries(b'y', None, 8, None));

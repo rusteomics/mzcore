@@ -2,6 +2,7 @@ use std::{
     collections::{HashMap, VecDeque},
     fmt::Display,
     io::{self, prelude::*},
+    path::PathBuf,
 };
 
 use context_error::{BasicKind, BoxedError, Context, CreateError};
@@ -20,7 +21,7 @@ use mzdata::{
 };
 
 use crate::{
-    fragment::{Fragment, parse_mz_paf},
+    fragment::{Fragment, parse_mz_paf_substring},
     helper_functions::explain_number_error,
     mzspeclib::{
         Analyte, AnalyteTarget, Attribute, AttributeParseError, AttributeSet, AttributeValue,
@@ -53,8 +54,8 @@ impl Display for ParserState {
 #[derive(Debug)]
 pub enum MzSpecLibTextParseError {
     IOError(io::Error),
-    InvalidContentAtState(String, ParserState, u64),
-    AttributeParseError(AttributeParseError, ParserState, u64),
+    InvalidContentAtState(String, ParserState, u32),
+    AttributeParseError(AttributeParseError, ParserState, u32),
     EOF,
     InconsistentCharge,
     MissingUnit,
@@ -69,20 +70,28 @@ pub struct MzSpecLibParser<R: Read> {
     header: LibraryHeader,
     state: ParserState,
     line_cache: VecDeque<String>,
-    line_number: u64,
+    line_index: u32,
+    path: Option<PathBuf>,
     offsets: LibraryIndex,
     last_error: bool,
     last_compound_peptidoform: CompoundPeptidoformIon,
 }
 
 impl<R: Read> MzSpecLibParser<R> {
-    pub fn new(reader: io::BufReader<R>) -> Result<Self, MzSpecLibTextParseError> {
+    /// Parse a mzSpecLib file from the given stream, the original filepath can be given for nicer error messages.
+    /// # Errors
+    /// If the file does not contain valid mzSpecLib data.
+    pub fn new(
+        reader: io::BufReader<R>,
+        path: Option<PathBuf>,
+    ) -> Result<Self, MzSpecLibTextParseError> {
         let mut this = Self {
             inner: reader,
             header: LibraryHeader::default(),
             state: ParserState::Initial,
             line_cache: VecDeque::new(),
-            line_number: 0,
+            line_index: 0,
+            path,
             offsets: LibraryIndex::default(),
             last_error: false,
             last_compound_peptidoform: CompoundPeptidoformIon::default(),
@@ -91,21 +100,28 @@ impl<R: Read> MzSpecLibParser<R> {
         Ok(this)
     }
 
-    pub fn header(&self) -> &LibraryHeader {
+    pub const fn header(&self) -> &LibraryHeader {
         &self.header
     }
 
-    pub fn header_mut(&mut self) -> &mut LibraryHeader {
+    pub const fn header_mut(&mut self) -> &mut LibraryHeader {
         &mut self.header
     }
 
-    pub fn line_number(&self) -> u64 {
-        self.line_number
+    fn current_context(&self) -> Context<'_> {
+        self.path.as_ref().map_or_else(
+            || Context::none().line_index(self.line_index),
+            |p| {
+                Context::none()
+                    .line_index(self.line_index)
+                    .source(p.to_string_lossy())
+            },
+        )
     }
 
     fn push_back_line(&mut self, line: String) {
         self.line_cache.push_front(line);
-        self.line_number -= 1;
+        self.line_index -= 1;
     }
 
     fn read_next_line(&mut self, buf: &mut String) -> io::Result<usize> {
@@ -114,7 +130,7 @@ impl<R: Read> MzSpecLibParser<R> {
             match self.inner.read_line(buf) {
                 Ok(mut z) => {
                     if z != 0 {
-                        self.line_number += 1;
+                        self.line_index += 1;
                     } else {
                         self.state = ParserState::EOF;
                         return Ok(0);
@@ -133,7 +149,7 @@ impl<R: Read> MzSpecLibParser<R> {
             }
         } else {
             *buf = self.line_cache.pop_front().unwrap();
-            self.line_number += 1;
+            self.line_index += 1;
             Ok(buf.len())
         }
     }
@@ -146,7 +162,7 @@ impl<R: Read> MzSpecLibParser<R> {
             return Err(MzSpecLibTextParseError::EOF);
         }
         buf.trim_ascii_end().parse().map_err(|e| {
-            MzSpecLibTextParseError::AttributeParseError(e, self.state, self.line_number)
+            MzSpecLibTextParseError::AttributeParseError(e, self.state, self.line_index)
         })
     }
 
@@ -166,7 +182,7 @@ impl<R: Read> MzSpecLibParser<R> {
                         .push((
                             attr,
                             Context::none()
-                                .line_index(self.line_number as u32)
+                                .line_index(self.line_index as u32)
                                 .lines(0, buf.clone()),
                         ));
                 }
@@ -191,7 +207,7 @@ impl<R: Read> MzSpecLibParser<R> {
                                     return Err(MzSpecLibTextParseError::InvalidContentAtState(
                                         buf,
                                         self.state,
-                                        self.line_number,
+                                        self.line_index,
                                     ));
                                 }
                                 if let Some((entry_tp, id)) = rest[..rest.len() - 1].split_once('=')
@@ -214,7 +230,7 @@ impl<R: Read> MzSpecLibParser<R> {
                                                 MzSpecLibTextParseError::InvalidContentAtState(
                                                     buf,
                                                     self.state,
-                                                    self.line_number,
+                                                    self.line_index,
                                                 ),
                                             );
                                         }
@@ -229,21 +245,21 @@ impl<R: Read> MzSpecLibParser<R> {
                                     return Err(MzSpecLibTextParseError::InvalidContentAtState(
                                         buf,
                                         self.state,
-                                        self.line_number,
+                                        self.line_index,
                                     ));
                                 }
                             } else {
                                 return Err(MzSpecLibTextParseError::InvalidContentAtState(
                                     buf,
                                     self.state,
-                                    self.line_number,
+                                    self.line_index,
                                 ));
                             }
                         } else {
                             return Err(MzSpecLibTextParseError::InvalidContentAtState(
                                 buf,
                                 self.state,
-                                self.line_number,
+                                self.line_index,
                             ));
                         }
                     } else if buf.is_empty() {
@@ -270,7 +286,7 @@ impl<R: Read> MzSpecLibParser<R> {
             return Err(MzSpecLibTextParseError::InvalidContentAtState(
                 buf,
                 ParserState::Initial,
-                self.line_number,
+                self.line_index,
             ));
         }
         self.state = ParserState::Header;
@@ -298,7 +314,7 @@ impl<R: Read> MzSpecLibParser<R> {
                             return Err(MzSpecLibTextParseError::InvalidContentAtState(
                                 buf,
                                 self.state,
-                                self.line_number,
+                                self.line_index,
                             ));
                         }
 
@@ -342,7 +358,7 @@ impl<R: Read> MzSpecLibParser<R> {
                         "Invalid declaration",
                         format!("The ID was {}", explain_number_error(&e)),
                         Context::line(
-                            Some(self.line_number as u32),
+                            Some(self.line_index as u32),
                             buf,
                             before.len() + 1,
                             val.len(),
@@ -355,7 +371,7 @@ impl<R: Read> MzSpecLibParser<R> {
                     BasicKind::Error,
                     "Invalid declaration",
                     "The ID needs to contain an equals symbol `=` and this was missing",
-                    Context::full_line(self.line_number as u32, buf).to_owned(),
+                    Context::full_line(self.line_index as u32, buf).to_owned(),
                 )));
             }
         } else {
@@ -363,7 +379,7 @@ impl<R: Read> MzSpecLibParser<R> {
                 BasicKind::Error,
                 "Invalid declaration",
                 format!("The declaration `{declaration}` was expected but not found"),
-                Context::full_line(self.line_number as u32, buf).to_owned(),
+                Context::full_line(self.line_index as u32, buf).to_owned(),
             )));
         };
         Ok(id)
@@ -444,11 +460,12 @@ impl<R: Read> MzSpecLibParser<R> {
                         analyte.target.set_charge(charge);
                     } else if [
                         curie!(MS:1000888), // Stripped peptide sequence
-                        curie!(MS:1001117),
-                        curie!(MS:1003043),
-                        curie!(MS:1003053),
-                        curie!(MS:1003054),
-                        curie!(MS:1003243),
+                        curie!(MS:1003043), // number of residues
+                        curie!(MS:1003053), // theoretical monoisotopic m/z
+                        curie!(MS:1003054), // theoretical average m/z
+                        curie!(MS:1000224), // molecular mass (average weight MH+)
+                        curie!(MS:1003243), // adduct ion mass (monoisotopic MH+)
+                        curie!(MS:1001117), // theoretical neutral mass (monoisotopic M)
                     ]
                     .contains(&attr.name.accession)
                     {
@@ -457,17 +474,17 @@ impl<R: Read> MzSpecLibParser<R> {
                         groups.entry(group_id).or_default().push((
                             attr,
                             Context::none()
-                                .line_index(self.line_number as u32)
+                                .line_index(self.line_index)
                                 .lines(0, buf.clone()),
                         ));
                     } else if !parse_protein_attributes(
                         &attr,
                         &Context::none()
-                            .line_index(self.line_number as u32)
+                            .line_index(self.line_index)
                             .lines(0, buf.clone()),
                         &mut protein,
                     )
-                    .map_err(|e| MzSpecLibTextParseError::RichError(e))?
+                    .map_err(MzSpecLibTextParseError::RichError)?
                     {
                         analyte.params.push(attr.into());
                     }
@@ -514,10 +531,7 @@ impl<R: Read> MzSpecLibParser<R> {
                     },
                 });
             } else {
-                let mut protein = ProteinDescription {
-                    id: *id,
-                    ..Default::default()
-                };
+                let mut protein = ProteinDescription::default();
                 let attr_sets: Vec<_> = group
                     .iter()
                     .filter(|(a, _)| a.name == term!(MS:1003212|library attribute set name))
@@ -579,7 +593,7 @@ impl<R: Read> MzSpecLibParser<R> {
                                     "Invalid PSM-level probability",
                                     e.to_string(),
                                     Context::none()
-                                        .line_index(self.line_number as u32)
+                                        .line_index(self.line_index as u32)
                                         .lines(0, buf.clone()),
                                 ))
                             })?);
@@ -668,6 +682,7 @@ impl<R: Read> MzSpecLibParser<R> {
         buf: &str,
     ) -> Result<AnnotatedPeak<Fragment>, MzSpecLibTextParseError> {
         let buf = buf.trim();
+        let mut mz_paf_offset = 0;
         let mut it = buf.split('\t');
 
         let mz = it
@@ -677,16 +692,17 @@ impl<R: Read> MzSpecLibParser<R> {
                     BasicKind::Error,
                     "Peak m/z is missing",
                     "At least two columns are neccessary in the peaks data lines",
-                    Context::full_line(self.line_number as u32, buf).to_owned(),
+                    Context::full_line(self.line_index as u32, buf).to_owned(),
                 ))
             })
             .and_then(|v| {
+                mz_paf_offset += v.len() + 1;
                 v.parse::<f64>().map_err(|e| {
                     MzSpecLibTextParseError::RichError(BoxedError::new(
                         BasicKind::Error,
                         "Peak m/z is not a number",
                         e.to_string(),
-                        Context::full_line(self.line_number as u32, buf).to_owned(),
+                        Context::full_line(self.line_index as u32, buf).to_owned(),
                     ))
                 })
             })?;
@@ -698,16 +714,17 @@ impl<R: Read> MzSpecLibParser<R> {
                     BasicKind::Error,
                     "Peak intensity is missing",
                     "At least two columns are neccessary in the peaks data lines",
-                    Context::full_line(self.line_number as u32, buf).to_owned(),
+                    Context::full_line(self.line_index as u32, buf).to_owned(),
                 ))
             })
             .and_then(|v| {
+                mz_paf_offset += v.len() + 1;
                 v.parse::<f32>().map_err(|e| {
                     MzSpecLibTextParseError::RichError(BoxedError::new(
                         BasicKind::Error,
                         "Peak intensity is not a number",
                         e.to_string(),
-                        Context::full_line(self.line_number as u32, buf).to_owned(),
+                        Context::full_line(self.line_index as u32, buf).to_owned(),
                     ))
                 })
             })?;
@@ -724,8 +741,14 @@ impl<R: Read> MzSpecLibParser<R> {
             Some(v) => {
                 let v = v.trim();
                 if !v.is_empty() && v != "?" {
-                    let annots = parse_mz_paf(v, None, &self.last_compound_peptidoform)
-                        .map_err(|e| MzSpecLibTextParseError::InvalidMzPAF(e.to_owned()))?;
+                    let annots = parse_mz_paf_substring(
+                        &self.current_context().lines(0, buf),
+                        buf,
+                        mz_paf_offset..mz_paf_offset + v.len(),
+                        None,
+                        &self.last_compound_peptidoform,
+                    )
+                    .map_err(|e| MzSpecLibTextParseError::InvalidMzPAF(e.to_owned()))?;
                     peak.annotations = annots;
                 }
             }
@@ -785,7 +808,7 @@ impl<R: Read> MzSpecLibParser<R> {
                 Ok(attr) => term_collection.entry(attr.group_id).or_default().push((
                     attr,
                     Context::none()
-                        .line_index(self.line_number as u32)
+                        .line_index(self.line_index as u32)
                         .lines(0, buf.clone()),
                 )),
                 Err(e) => {
@@ -1447,7 +1470,10 @@ fn parse_spectrum_attributes<'a>(
                     }
                     | curie!(MS:1000285) // TIC 
                     | curie!(MS:1000505) // Base peak intensity
+                    | curie!(MS:1000504) // Base peak m/z
                     | curie!(MS:1003059) // Number of peaks
+                    | curie!(MS:1000528) // Lowest observed m/z
+                    | curie!(MS:1000527) // Highest observed m/z
                     => (), // Ignore, can easily be caluclated on the fly
                     | curie!(MS:1000002) // sample name
                     | curie!(MS:1000031) // instrument model
@@ -1491,7 +1517,7 @@ pub struct LibraryIndexRecord {
     pub offset: u64,
     pub key: Id,
     pub index: usize,
-    pub line_number: u64,
+    pub line_index: u32,
     pub name: Box<str>,
 }
 
@@ -1541,7 +1567,7 @@ impl<R: Read + Seek> MzSpecLibParser<R> {
         self.inner.rewind()?;
         self.line_cache.clear();
         let mut buf = String::new();
-        let mut line_count = 0u64;
+        let mut line_count = 0;
         let mut offset_index = LibraryIndex::default();
         let mut offset = 0;
         let mut current_record: Option<LibraryIndexRecord> = None;
@@ -1563,7 +1589,7 @@ impl<R: Read + Seek> MzSpecLibParser<R> {
                         r.index = index;
                         r.key = key;
                         r.offset = offset;
-                        r.line_number = line_count;
+                        r.line_index = line_count;
                         index += 1;
                     }
                 }
@@ -1607,7 +1633,7 @@ impl<R: Read + Seek> MzSpecLibParser<R> {
         if let Err(e) = self.inner.seek(io::SeekFrom::Start(rec.offset)) {
             return Some(Err(MzSpecLibTextParseError::IOError(e)));
         }
-        self.line_number = rec.line_number;
+        self.line_index = rec.line_index;
         self.line_cache.clear();
         Some(self.read_next())
     }
@@ -1625,7 +1651,7 @@ impl<R: Read + Seek> MzSpecLibParser<R> {
         if let Err(e) = self.inner.seek(io::SeekFrom::Start(rec.offset)) {
             return Some(Err(MzSpecLibTextParseError::IOError(e)));
         }
-        self.line_number = rec.line_number;
+        self.line_index = rec.line_index;
         self.line_cache.clear();
         Some(self.read_next())
     }
@@ -1643,7 +1669,7 @@ impl<R: Read + Seek> MzSpecLibParser<R> {
         if let Err(e) = self.inner.seek(io::SeekFrom::Start(rec.offset)) {
             return Some(Err(MzSpecLibTextParseError::IOError(e)));
         }
-        self.line_number = rec.line_number;
+        self.line_index = rec.line_index;
         self.line_cache.clear();
         Some(self.read_next())
     }
@@ -1662,7 +1688,7 @@ mod test {
             fs::File::open("../data/chinese_hamster_hcd_selected_head.mzspeclib.txt").unwrap(),
         );
 
-        let mut this = MzSpecLibParser::new(buf).unwrap();
+        let mut this = MzSpecLibParser::new(buf, None).unwrap();
 
         this.build_index().unwrap();
 
@@ -1680,7 +1706,7 @@ mod test {
             fs::File::open("../data/chinese_hamster_hcd_selected_head.mzspeclib.txt").unwrap(),
         );
 
-        let mut this = MzSpecLibParser::new(buf)?;
+        let mut this = MzSpecLibParser::new(buf, None)?;
         let header = this.header();
         eprintln!("{header:?}");
         // TODO: switch to assigning these basic attributes to header fields

@@ -226,16 +226,17 @@ pub(crate) fn parse_mzspeclib<'a>(
 ) -> Result<GeneralIdentifiedPeptidoforms<'a>, BoxedError<'static, BasicKind>> {
     let path_string = path.to_string_lossy().to_string();
     let path_string_2 = path_string.clone();
-    mzannotate::mzspeclib::MzSpecLibParser::new(std::io::BufReader::new(
-        std::fs::File::open(path).map_err(|e| {
+    mzannotate::mzspeclib::MzSpecLibParser::new(
+        std::io::BufReader::new(std::fs::File::open(path).map_err(|e| {
             BoxedError::new(
                 BasicKind::Error,
                 "Could not open mzSpecLib file",
                 e.to_string(),
                 Context::none().source(path_string.clone()),
             )
-        })?,
-    ))
+        })?),
+        Some(path.to_path_buf()),
+    )
     .map(move |parser| {
         let b: Box<
             dyn Iterator<

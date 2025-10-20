@@ -8,7 +8,7 @@ use mzdata::{
 
 use crate::{
     fragment::Fragment,
-    mzspeclib::{Analyte, Attribute, Id, Interpretation, into_attributes},
+    mzspeclib::{Analyte, Attribute, Id, Interpretation, get_attributes},
     spectrum::AnnotatedPeak,
     term,
 };
@@ -251,10 +251,32 @@ impl crate::mzspeclib::MzSpecLibEncode for AnnotatedSpectrum {
 
     /// The attributes for this spectrum
     fn spectrum(&self) -> impl IntoIterator<Item = Attribute> {
-        self.attributes
-            .iter()
-            .cloned()
-            .chain(into_attributes(&self.description))
+        self.attributes.iter().cloned().chain(get_attributes(
+            &self.description,
+            Some(&{
+                // The `SummaryOps` trait from mzdata is private, so this is the exact implementation copy pasted into here
+                let state = self.peaks.iter().fold(
+                    (
+                        0.0,
+                        mzdata::mzpeaks::CentroidPeak::default(),
+                        (f64::INFINITY, f64::NEG_INFINITY),
+                    ),
+                    |(tic, bp, (mz_min, mz_max)), p| {
+                        (
+                            tic + p.intensity(),
+                            if p.intensity() > bp.intensity {
+                                p.as_centroid()
+                            } else {
+                                bp
+                            },
+                            (mz_min.min(p.mz()), mz_max.max(p.mz())),
+                        )
+                    },
+                );
+
+                mzdata::spectrum::SpectrumSummary::new(state.0, state.1, state.2, self.peaks.len())
+            }),
+        ))
     }
 
     type AnalyteIter = Vec<Attribute>;

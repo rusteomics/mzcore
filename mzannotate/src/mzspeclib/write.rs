@@ -109,6 +109,10 @@ impl<W: Write> MzSpecLibTextWriter<W, HeaderWritten> {
                 }
             }
             if p.aggregations().next().is_some() {
+                // If there are no annotations insert an empty cell
+                if p.annotations().next().is_none() {
+                    write!(&mut self.writer, "\t")?;
+                }
                 write!(&mut self.writer, "\t")?;
                 write!(&mut self.writer, "{}", p.aggregations().join(","))?;
             }

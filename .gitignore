@@ -10,6 +10,7 @@ errors.dat
 *.html
 *.obo
 *.owl
+*.out
 glycosmos_glycans_list.csv
 .venv/
 docs/**/_build/

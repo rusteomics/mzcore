@@ -1,7 +1,10 @@
 use std::{collections::HashMap, fmt::Display};
 
+use itertools::Itertools;
 use mzcore::{
-    prelude::{IsAminoAcid, MolecularCharge, MolecularFormula, MultiChemical, PeptidoformIon},
+    prelude::{
+        Chemical, IsAminoAcid, MolecularCharge, MolecularFormula, MultiChemical, PeptidoformIon,
+    },
     sequence::FlankingSequence,
     system::isize::Charge,
 };
@@ -67,7 +70,7 @@ impl LibraryHeader {
 pub type Id = u32;
 
 /// An analyte that resulted in the spectrum.
-#[derive(Default, Debug, Clone)]
+#[derive(Default, Debug, Clone, PartialEq, Eq)]
 pub struct Analyte {
     /// The numeric id of this analyte
     pub id: Id,
@@ -104,7 +107,7 @@ impl Analyte {
 }
 
 /// The analyte itself
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum AnalyteTarget {
     /// For an unknown class of analytes, where the charge (MS:1000041) could be known
     Unknown(Option<Charge>),
@@ -155,77 +158,115 @@ impl AnalyteTarget {
     }
 
     /// Used to write out the analyte target for mzSpecLib files
-    // TODO: look into other theoretical things I can easily generate
     pub fn terms(&self) -> Vec<Attribute> {
-        match self {
-            Self::Unknown(None) => Vec::new(),
-            Self::Unknown(Some(c)) => vec![Attribute {
+        let mut attributes = Vec::new();
+
+        if let Some(charge) = match self {
+            Self::Unknown(c) => *c,
+            Self::MolecularFormula(f) => (f.charge().value != 0).then_some(f.charge()),
+            Self::PeptidoformIon(pep) => pep.get_charge_carriers().map(MolecularCharge::charge),
+        } {
+            attributes.push(Attribute {
                 name: term!(MS:1000041|charge state),
-                value: AttributeValue::Scalar(Value::Int(c.value as i64)),
+                value: AttributeValue::Scalar(Value::Int(charge.value as i64)),
                 group_id: None,
-            }],
-            Self::PeptidoformIon(pep) => {
-                let mut attributes = vec![Attribute {
-                    name: term!(MS:1003270|proforma peptidoform ion notation),
-                    value: AttributeValue::Scalar(Value::String(pep.to_string())),
-                    group_id: None,
-                }];
-                if let Some(c) = pep.get_charge_carriers().map(MolecularCharge::charge)
-                    && c.value != 0
-                {
-                    attributes.push(Attribute {
-                        name: term!(MS:1000041|charge state),
-                        value: AttributeValue::Scalar(Value::Int(c.value as i64)),
-                        group_id: None,
-                    });
-                }
-                let f = pep.formulas();
-                if f.len() == 1 && f[0].additional_mass() == 0.0 {
-                    attributes.push(Attribute {
-                        name: term!(MS:1000866|molecular formula),
-                        value: AttributeValue::Scalar(Value::String(f[0].hill_notation_core())),
-                        group_id: None,
-                    });
-                }
-                if pep.peptidoforms().len() == 1 {
-                    attributes.push(Attribute {
-                        name: term!(MS:1000888|stripped peptide sequence),
-                        value: AttributeValue::Scalar(Value::String(
-                            pep.peptidoforms()[0]
-                                .sequence()
-                                .iter()
-                                .map(|s| s.aminoacid.aminoacid().one_letter_code().unwrap_or('X'))
-                                .collect(),
-                        )),
-                        group_id: None,
-                    });
-                }
-                attributes
-            }
-            Self::MolecularFormula(f) => {
-                let mut attributes = vec![Attribute {
+            });
+        }
+
+        if let Some(formula) = match self {
+            Self::Unknown(_) => None,
+            Self::MolecularFormula(f) => Some(f.clone()),
+            Self::PeptidoformIon(pep) => (pep.formulas()
+                + pep
+                    .get_charge_carriers()
+                    .map(Chemical::formula)
+                    .unwrap_or_default())
+            .to_vec()
+            .into_iter()
+            .exactly_one()
+            .ok(),
+        } {
+            if formula.additional_mass() == 0.0 {
+                attributes.push(Attribute {
                     name: term!(MS:1000866|molecular formula),
-                    value: AttributeValue::Scalar(Value::String(f.hill_notation_core())),
+                    value: AttributeValue::Scalar(Value::String(formula.hill_notation_core())),
                     group_id: None,
-                }];
-                if f.charge().value != 0 {
-                    attributes.push(Attribute {
-                        name: term!(MS:1000041|charge state),
-                        value: AttributeValue::Scalar(Value::Int(f.charge().value as i64)),
-                        group_id: None,
-                    });
-                }
-                attributes
+                });
+            }
+            let charge = formula.charge().value as f64;
+            if charge != 0.0 {
+                attributes.push(Attribute {
+                    name: term!(MS:1003053|theoretical monoisotopic m/z),
+                    value: AttributeValue::Scalar(Value::Float(
+                        formula.monoisotopic_mass().value / charge,
+                    )),
+                    group_id: None,
+                });
+                attributes.push(Attribute {
+                    name: term!(MS:1003054|theoretical average m/z),
+                    value: AttributeValue::Scalar(Value::Float(
+                        formula.average_weight().value / charge,
+                    )),
+                    group_id: None,
+                });
+            }
+            attributes.push(Attribute {
+                name: term!(MS:1003243|adduct ion mass),
+                value: AttributeValue::Scalar(Value::Float(formula.monoisotopic_mass().value)),
+                group_id: None,
+            });
+            attributes.push(Attribute {
+                name: term!(MS:1000224|molecular mass),
+                value: AttributeValue::Scalar(Value::Float(formula.average_weight().value)),
+                group_id: None,
+            });
+        }
+
+        if let Some(pep) = match self {
+            Self::Unknown(_) | Self::MolecularFormula(_) => None,
+            Self::PeptidoformIon(pep) => Some(pep),
+        } {
+            if let Ok(formula) = pep.formulas().to_vec().into_iter().exactly_one() {
+                attributes.push(Attribute {
+                    name: term!(MS:1001117|theoretical neutral mass),
+                    value: AttributeValue::Scalar(Value::Float(formula.monoisotopic_mass().value)),
+                    group_id: None,
+                });
+            }
+            attributes.push(Attribute {
+                name: term!(MS:1003270|proforma peptidoform ion notation),
+                value: AttributeValue::Scalar(Value::String(pep.to_string())),
+                group_id: None,
+            });
+            if pep.peptidoforms().len() == 1 {
+                attributes.push(Attribute {
+                    name: term!(MS:1000888|stripped peptide sequence),
+                    value: AttributeValue::Scalar(Value::String(
+                        pep.peptidoforms()[0]
+                            .sequence()
+                            .iter()
+                            .map(|s| s.aminoacid.aminoacid().one_letter_code().unwrap_or('X'))
+                            .collect(),
+                    )),
+                    group_id: None,
+                });
+                attributes.push(Attribute {
+                    name: term!(MS:1003043|number of residues),
+                    value: AttributeValue::Scalar(Value::Int(
+                        pep.peptidoforms()[0].sequence().len() as i64,
+                    )),
+                    group_id: None,
+                });
             }
         }
+
+        attributes
     }
 }
 
 /// All protein level metadata
 #[derive(Default, Debug, Clone, PartialEq, Eq)]
 pub struct ProteinDescription {
-    /// The id of the group / protein
-    pub id: Id,
     /// Protein accession (MS:1000885) `sp|P12955|PEPD_HUMAN`
     pub accession: Option<Box<str>>,
     /// Protein name (MS:1000886) `Alpha-enolase`
@@ -409,7 +450,7 @@ pub enum CleaveAgent {
 }
 
 /// An interpreattion, this gives details on how well the analytes match to the spectrum.
-#[derive(Default, Debug, Clone)]
+#[derive(Default, Debug, Clone, PartialEq)]
 pub struct Interpretation {
     /// The ID
     pub id: Id,

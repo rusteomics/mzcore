@@ -1,24 +1,35 @@
+use std::borrow::Cow;
+
 use crate::{
-    mzspeclib::{Attribute, Term},
+    mzspeclib::{Attribute, AttributeValue, Term},
     term,
 };
 
 use mzdata::{
-    params::Value,
-    spectrum::{IsolationWindowState, SpectrumDescription},
+    params::{CURIE, Value},
+    spectrum::{IsolationWindowState, ScanPolarity, SpectrumDescription, SpectrumSummary},
 };
 
 /// Create mzSpecLib attributes from a spectrum description
-pub fn into_attributes(description: &SpectrumDescription) -> Vec<Attribute> {
+pub fn get_attributes(
+    description: &SpectrumDescription,
+    summary: Option<&SpectrumSummary>,
+) -> Vec<Attribute> {
     let mut attributes = Vec::new();
     let mut group_id = 0;
 
-    // TODO: extend to all parsed attributes + all specific parameters at other levels
     if let Some(scan) = description.acquisition.scans.first() {
         if scan.start_time != 0.0 {
             attributes.push(Attribute::new(
                 term!(MS:1000894|retention time),
                 Value::Float(scan.start_time),
+                None,
+            ));
+        }
+        if let Some(filter) = scan.filter_string() {
+            attributes.push(Attribute::new(
+                term!(MS:1000512|filter string),
+                Value::String(filter.to_string()),
                 None,
             ));
         }
@@ -36,6 +47,20 @@ pub fn into_attributes(description: &SpectrumDescription) -> Vec<Attribute> {
         }
     }
     if let Some(precursor) = description.precursor.first() {
+        for dissociation in precursor.activation.methods() {
+            attributes.push(Attribute::new(
+                term!(MS:1000044|dissociation method),
+                AttributeValue::Term(Term {
+                    accession: CURIE {
+                        controlled_vocabulary: dissociation.controlled_vocabulary(),
+                        accession: dissociation.accession(),
+                    },
+                    name: Cow::Borrowed(dissociation.name()),
+                }),
+                None,
+            ));
+        }
+
         if precursor.activation.energy != 0.0 {
             attributes.push(Attribute::new(
                 term!(MS:1000509|activation energy),
@@ -52,26 +77,42 @@ pub fn into_attributes(description: &SpectrumDescription) -> Vec<Attribute> {
                 ));
                 attributes.push(Attribute::new(
                     term!(MS:1000828|isolation window lower offset),
-                    Value::Float(precursor.isolation_window.lower_bound.into()),
+                    Value::Float(
+                        f64::from(precursor.isolation_window.target)
+                            - f64::from(precursor.isolation_window.lower_bound),
+                    ),
                     None,
                 ));
                 attributes.push(Attribute::new(
                     term!(MS:1000829|isolation window upper offset),
-                    Value::Float(precursor.isolation_window.upper_bound.into()),
+                    Value::Float(
+                        f64::from(precursor.isolation_window.upper_bound)
+                            - f64::from(precursor.isolation_window.target),
+                    ),
                     None,
                 ));
             }
             IsolationWindowState::Offset => {
-                attributes.push(Attribute::new(
-                    term!(MS:1000828|isolation window lower offset),
-                    Value::Float(precursor.isolation_window.lower_bound.into()),
-                    None,
-                ));
-                attributes.push(Attribute::new(
-                    term!(MS:1000829|isolation window upper offset),
-                    Value::Float(precursor.isolation_window.upper_bound.into()),
-                    None,
-                ));
+                if precursor.isolation_window.lower_bound != 0.0 {
+                    attributes.push(Attribute::new(
+                        term!(MS:1000828|isolation window lower offset),
+                        Value::Float(
+                            f64::from(precursor.isolation_window.target)
+                                - f64::from(precursor.isolation_window.lower_bound),
+                        ),
+                        None,
+                    ));
+                }
+                if precursor.isolation_window.upper_bound != 0.0 {
+                    attributes.push(Attribute::new(
+                        term!(MS:1000829|isolation window upper offset),
+                        Value::Float(
+                            f64::from(precursor.isolation_window.upper_bound)
+                                - f64::from(precursor.isolation_window.target),
+                        ),
+                        None,
+                    ));
+                }
             }
             _ => (),
         }
@@ -88,6 +129,13 @@ pub fn into_attributes(description: &SpectrumDescription) -> Vec<Attribute> {
                     None,
                 ));
             }
+            if ion.intensity != 0.0 {
+                attributes.push(Attribute::new(
+                    term!(MS:1003085|previous MSn-1 scan precursor intensity),
+                    Value::Float(f64::from(ion.intensity)),
+                    None,
+                ));
+            }
         }
     }
 
@@ -99,16 +147,84 @@ pub fn into_attributes(description: &SpectrumDescription) -> Vec<Attribute> {
         ));
     }
     attributes.push(Attribute::new(
+        term!(MS:1003062|library spectrum index),
+        Value::Int(description.index as i64),
+        None,
+    ));
+    attributes.push(Attribute::new(
         term!(MS:1000511|ms level),
         Value::Int(description.ms_level.into()),
         None,
     ));
-    // TODO: add all already parsed data elements to the list
+    match description.polarity {
+        ScanPolarity::Positive => attributes.push(Attribute::new(
+            term!(MS:1000465|scan polarity),
+            AttributeValue::Term(term!(MS:1000130|positive scan)),
+            None,
+        )),
+        ScanPolarity::Negative => attributes.push(Attribute::new(
+            term!(MS:1000465|scan polarity),
+            AttributeValue::Term(term!(MS:1000129|negative scan)),
+            None,
+        )),
+        ScanPolarity::Unknown => (),
+    }
+
+    if let Some(summary) = summary {
+        attributes.push(Attribute::new(
+            term!(MS:1000285|total ion current),
+            Value::Float(f64::from(summary.tic)),
+            None,
+        ));
+        attributes.push(Attribute::new(
+            term!(MS:1000505|base peak intensity),
+            Value::Float(f64::from(summary.base_peak.intensity)),
+            None,
+        ));
+        attributes.push(Attribute::new(
+            term!(MS:1000504|base peak m/z),
+            Value::Float(summary.base_peak.mz),
+            None,
+        ));
+        attributes.push(Attribute::new(
+            term!(MS:1003059|number of peaks),
+            Value::Int(summary.count as i64),
+            None,
+        ));
+        attributes.push(Attribute::new(
+            term!(MS:1000528|lowest observed m/z),
+            Value::Float(summary.mz_range.0),
+            None,
+        ));
+        attributes.push(Attribute::new(
+            term!(MS:1000527|highest observed m/z),
+            Value::Float(summary.mz_range.1),
+            None,
+        ));
+    }
 
     for param in description
         .params
         .iter()
         .chain(description.acquisition.params.iter().flat_map(|p| p.iter()))
+        .chain(
+            description
+                .precursor
+                .iter()
+                .flat_map(|p| p.activation.params.iter()),
+        )
+        .chain(description.precursor.iter().flat_map(|p| {
+            p.ions
+                .iter()
+                .flat_map(|i| i.params.iter().flat_map(|p| p.iter()))
+        }))
+        .chain(
+            description
+                .acquisition
+                .scans
+                .iter()
+                .flat_map(|p| p.params.iter().flat_map(|p| p.iter())),
+        )
     {
         if let Ok(term) = param.try_into() {
             if let Some(curie) = param.unit.to_curie() {
@@ -119,9 +235,9 @@ pub fn into_attributes(description: &SpectrumDescription) -> Vec<Attribute> {
                 });
                 attributes.push(Attribute {
                     name: term!(UO:0000000|unit),
-                    value: crate::mzspeclib::AttributeValue::Term(Term {
+                    value: AttributeValue::Term(Term {
                         accession: curie,
-                        name: std::borrow::Cow::Borrowed(param.unit.for_param().1),
+                        name: Cow::Borrowed(param.unit.for_param().1),
                     }),
                     group_id: Some(group_id),
                 });
@@ -136,7 +252,7 @@ pub fn into_attributes(description: &SpectrumDescription) -> Vec<Attribute> {
         } else {
             attributes.push(Attribute {
                 name: term!(MS:1003275|other attribute name),
-                value: crate::mzspeclib::AttributeValue::Scalar(Value::String(param.name.clone())),
+                value: AttributeValue::Scalar(Value::String(param.name.clone())),
                 group_id: Some(group_id),
             });
             attributes.push(Attribute {
@@ -147,9 +263,9 @@ pub fn into_attributes(description: &SpectrumDescription) -> Vec<Attribute> {
             if let Some(curie) = param.unit.to_curie() {
                 attributes.push(Attribute {
                     name: term!(UO:0000000|unit),
-                    value: crate::mzspeclib::AttributeValue::Term(Term {
+                    value: AttributeValue::Term(Term {
                         accession: curie,
-                        name: std::borrow::Cow::Borrowed(param.unit.for_param().1),
+                        name: Cow::Borrowed(param.unit.for_param().1),
                     }),
                     group_id: Some(group_id),
                 });

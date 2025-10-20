@@ -1,7 +1,7 @@
 //! Test all present mzspeclib files
 use std::collections::{HashMap, HashSet};
 
-use mzannotate::mzspeclib::MzSpecLibParser;
+use mzannotate::mzspeclib::{MzSpecLibParser, MzSpecLibTextWriter};
 
 #[test]
 fn read_all_files() {
@@ -17,11 +17,14 @@ fn read_all_files() {
             .to_ascii_lowercase()
             .ends_with(".mzspeclib.txt")
         {
+            let mut parsed_spectra = Vec::new();
             files += 1;
-            let spectra = MzSpecLibParser::new(std::io::BufReader::new(
-                std::fs::File::open(entry.path()).unwrap(),
-            ))
+            let spectra = MzSpecLibParser::new(
+                std::io::BufReader::new(std::fs::File::open(entry.path()).unwrap()),
+                Some(entry.path()),
+            )
             .unwrap();
+            let header = spectra.header().clone();
             for spectrum in spectra {
                 match spectrum {
                     Ok(spectrum) => {
@@ -43,11 +46,36 @@ fn read_all_files() {
                                 })
                                 .map(|a| a.name.clone()),
                         );
+                        parsed_spectra.push(spectrum);
                     }
                     Err(e) => {
                         errors.entry(entry.path()).or_default().push(e);
                     }
                 }
+            }
+
+            let rewrite_path = entry.path().with_extension("txt.out");
+            let mut writer = MzSpecLibTextWriter::new(std::io::BufWriter::new(
+                std::fs::File::create(&rewrite_path).unwrap(),
+            ));
+            *writer.header_mut() = header;
+            let mut writer = writer.write_header().unwrap();
+            writer.write_spectra(&parsed_spectra).unwrap();
+            drop(writer);
+
+            let reparsed_spectra = MzSpecLibParser::new(
+                std::io::BufReader::new(std::fs::File::open(&rewrite_path).unwrap()),
+                Some(rewrite_path),
+            )
+            .unwrap()
+            .collect::<Result<Vec<_>, _>>()
+            .unwrap();
+
+            assert_eq!(parsed_spectra.len(), reparsed_spectra.len());
+
+            for (p, r) in parsed_spectra.iter().zip(reparsed_spectra.iter()) {
+                assert_eq!(p.peaks, r.peaks);
+                // The other information fields have too many issues with sort order and equivalence that equality is not a good test
             }
         }
     }
