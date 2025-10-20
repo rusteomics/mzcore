@@ -44,8 +44,10 @@ impl MolecularFormula {
     }
 
     /// The most abundant mass, meaning the isotope that will have the highest intensity.
-    /// It uses an averagine model for the isotopes so the mass will not reflect any isotopomer exact mass
-    /// but will be in the form of monoisotopic exact mass + n, where n is the integer dalton offset for that isomer.
+    /// It uses an averagine model for the isotopes so the mass will not reflect any isotopomer
+    /// exact mass but will be in the form of `monoisotopic exact mass + n * δ`. Where n is the
+    /// integer Dalton offset for that isomer and δ the difference between 13 C and 12 C
+    /// (1.0033548353399997 Da).
     ///
     /// Only available with crate feature 'isotopes'.
     #[cfg(feature = "isotopes")]
@@ -55,7 +57,7 @@ impl MolecularFormula {
             .iter()
             .enumerate()
             .max_by_key(|s| ordered_float::OrderedFloat(*s.1));
-        self.monoisotopic_mass() + da(max.map_or(0, |f| f.0) as f64)
+        self.monoisotopic_mass() + da(max.map_or(0.0, |f| f.0 as f64 * 1.0033548353399997)) // Offset of 12C to 13C
     }
 
     /// Get the mass in the given mode

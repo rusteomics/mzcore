@@ -22,6 +22,7 @@ fn read_all_files() {
             let spectra = MzSpecLibParser::new(
                 std::io::BufReader::new(std::fs::File::open(entry.path()).unwrap()),
                 Some(entry.path()),
+                None,
             )
             .unwrap();
             let header = spectra.header().clone();
@@ -66,6 +67,7 @@ fn read_all_files() {
             let reparsed_spectra = MzSpecLibParser::new(
                 std::io::BufReader::new(std::fs::File::open(&rewrite_path).unwrap()),
                 Some(rewrite_path),
+                None,
             )
             .unwrap()
             .collect::<Result<Vec<_>, _>>()

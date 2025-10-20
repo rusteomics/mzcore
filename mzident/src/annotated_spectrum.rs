@@ -222,50 +222,40 @@ impl From<AnnotatedSpectrum> for IdentifiedPeptidoform<Linked, MaybePeptidoform>
 // TODO: this should be done in the mzannotate crate
 pub(crate) fn parse_mzspeclib<'a>(
     path: &Path,
-    _custom_database: Option<&'a CustomDatabase>,
+    custom_database: Option<&'a CustomDatabase>,
 ) -> Result<GeneralIdentifiedPeptidoforms<'a>, BoxedError<'static, BasicKind>> {
     let path_string = path.to_string_lossy().to_string();
     let path_string_2 = path_string.clone();
-    mzannotate::mzspeclib::MzSpecLibParser::new(
-        std::io::BufReader::new(std::fs::File::open(path).map_err(|e| {
+    mzannotate::mzspeclib::MzSpecLibParser::from_file(path, custom_database)
+        .map(move |parser| {
+            let b: Box<
+                dyn Iterator<
+                    Item = Result<
+                        IdentifiedPeptidoform<Linked, MaybePeptidoform>,
+                        BoxedError<'static, BasicKind>,
+                    >,
+                >,
+            > = Box::new(parser.map(move |s| {
+                s.map(Into::into).map_err(|e| match e {
+                    MzSpecLibTextParseError::InvalidMzPAF(e)
+                    | MzSpecLibTextParseError::InvalidProforma(e)
+                    | MzSpecLibTextParseError::RichError(e) => e,
+                    _ => BoxedError::new(
+                        BasicKind::Error,
+                        "Could not parse mzSpecLib spectrum",
+                        format!("{e:?}"),
+                        Context::none().source(path_string.clone()),
+                    ),
+                })
+            }));
+            b
+        })
+        .map_err(|e| {
             BoxedError::new(
                 BasicKind::Error,
-                "Could not open mzSpecLib file",
-                e.to_string(),
-                Context::none().source(path_string.clone()),
+                "Could not parse mzSpecLib file",
+                format!("{e:?}"),
+                Context::none().source(path_string_2),
             )
-        })?),
-        Some(path.to_path_buf()),
-    )
-    .map(move |parser| {
-        let b: Box<
-            dyn Iterator<
-                Item = Result<
-                    IdentifiedPeptidoform<Linked, MaybePeptidoform>,
-                    BoxedError<'static, BasicKind>,
-                >,
-            >,
-        > = Box::new(parser.map(move |s| {
-            s.map(Into::into).map_err(|e| match e {
-                MzSpecLibTextParseError::InvalidMzPAF(e)
-                | MzSpecLibTextParseError::InvalidProforma(e)
-                | MzSpecLibTextParseError::RichError(e) => e,
-                _ => BoxedError::new(
-                    BasicKind::Error,
-                    "Could not parse mzSpecLib spectrum",
-                    format!("{e:?}"),
-                    Context::none().source(path_string.clone()),
-                ),
-            })
-        }));
-        b
-    })
-    .map_err(|e| {
-        BoxedError::new(
-            BasicKind::Error,
-            "Could not parse mzSpecLib file",
-            format!("{e:?}"),
-            Context::none().source(path_string_2),
-        )
-    })
+        })
 }

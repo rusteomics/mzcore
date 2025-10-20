@@ -2,7 +2,7 @@ use std::{borrow::Cow, collections::HashMap, fmt::Display, str::FromStr};
 
 use context_error::Context;
 use mzdata::{
-    Param, curie,
+    Param,
     params::{CURIE, CURIEParsingError, ParamValue, ParamValueParseError, Unit, Value},
 };
 
@@ -82,6 +82,7 @@ impl TryFrom<&Param> for Term {
 }
 
 impl Term {
+    /// Create a new term, the term is not validated
     pub const fn new(accession: CURIE, name: String) -> Self {
         Self {
             accession,
@@ -89,7 +90,8 @@ impl Term {
         }
     }
 
-    pub fn to_param(self, value: Value, unit: Unit) -> Param {
+    /// Create a [`Param`] from this term for use in mzdata.
+    pub fn into_param(self, value: Value, unit: Unit) -> Param {
         Param {
             name: self.name.to_string(),
             value,
@@ -106,14 +108,19 @@ impl Display for Term {
     }
 }
 
+/// A value for an attribute
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum AttributeValue {
+    /// A single value
     Scalar(Value),
+    /// A list of values
     List(Vec<Value>),
+    /// A term
     Term(Term),
 }
 
 impl AttributeValue {
+    /// Coerce this value into a scalar value, making a string of the list and term options.
     pub fn scalar(&self) -> Cow<'_, Value> {
         match self {
             Self::Scalar(value) => Cow::Borrowed(value),
@@ -122,6 +129,7 @@ impl AttributeValue {
         }
     }
 
+    /// Create a scalar attribute
     pub fn from_scalar(value: impl Into<Value>) -> Self {
         Self::Scalar(value.into())
     }
@@ -203,10 +211,14 @@ pub enum AttributeParseError {
     Malformed(String),
 }
 
+/// An attribute as present in a mzSpecLib file
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Attribute {
+    /// The term
     pub name: Term,
+    /// The value
     pub value: AttributeValue,
+    /// The group id (or non if not part of a group)
     pub group_id: Option<u32>,
 }
 
@@ -249,6 +261,7 @@ impl FromStr for Attribute {
 }
 
 impl Attribute {
+    /// Create a new attribute
     pub fn new(name: Term, value: impl Into<AttributeValue>, group_id: Option<u32>) -> Self {
         Self {
             name,
@@ -257,6 +270,7 @@ impl Attribute {
         }
     }
 
+    /// Create a new attribute describing the given unit. This returns `None` if the unit is [`Unit::Unknown`].
     pub fn unit(unit: Unit, group_id: Option<u32>) -> Option<Self> {
         let (_, name) = unit.for_param();
         let accession = unit.to_curie()?;
@@ -304,20 +318,6 @@ pub struct AttributeSet {
     pub attributes: HashMap<Option<Id>, Vec<(Attribute, Context<'static>)>>,
 }
 
-impl AttributeSet {
-    pub const fn new(
-        id: String,
-        namespace: EntryType,
-        attributes: HashMap<Option<Id>, Vec<(Attribute, Context<'static>)>>,
-    ) -> Self {
-        Self {
-            id,
-            namespace,
-            attributes,
-        }
-    }
-}
-
 impl PartialOrd for AttributeSet {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
         match self.id.partial_cmp(&other.id) {
@@ -341,5 +341,6 @@ pub enum EntryType {
     Analyte,
     /// Interpretation attributes
     Interpretation,
+    /// A cluster
     Cluster,
 }

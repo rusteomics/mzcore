@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     chemistry::MolecularFormula,
+    prelude::Chemical,
     quantities::Multi,
     sequence::{Linked, Peptidoform, PeptidoformIon},
 };
@@ -32,6 +33,21 @@ impl CompoundPeptidoformIon {
 
     /// Get all possible formulas for this compound peptidoform
     pub fn formulas(&self) -> Multi<MolecularFormula> {
+        self.0
+            .iter()
+            .enumerate()
+            .flat_map(|(i, p)| {
+                (p.formulas_inner(i)
+                    + p.get_charge_carriers()
+                        .map(Chemical::formula)
+                        .unwrap_or_default())
+                .to_vec()
+            })
+            .collect()
+    }
+
+    /// Get all possible neutral formulas for this compound peptidoform
+    pub fn neutral_formulas(&self) -> Multi<MolecularFormula> {
         self.0
             .iter()
             .enumerate()
