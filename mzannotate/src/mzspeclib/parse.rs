@@ -123,6 +123,7 @@ impl<'a, R: BufRead> MzSpecLibParser<'a, R> {
             line_index: 0,
             path,
             offsets: LibraryIndex {
+                // TODO: if this would be used right now the index is not yet built so returns nothing.
                 primary_index: IndexMap::new(),
                 name_index: HashMap::new(),
                 key_index: HashMap::new(),
