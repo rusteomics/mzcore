@@ -36,8 +36,8 @@ impl Ord for Term {
     }
 }
 
-/// Create a new term `term!(MS:1002357|PSM-level probability)`. The accession/name combination
-/// is not validated.
+/// Create a new term `term!(MS:1002357|PSM-level probability)`.
+/// The accession + name combination is not validated.
 #[macro_export]
 macro_rules! term {
     ($ns:ident:$accession:literal|$($name:tt)+) =>  {
@@ -133,6 +133,17 @@ impl AttributeValue {
     pub fn from_scalar(value: impl Into<Value>) -> Self {
         Self::Scalar(value.into())
     }
+
+    /// Check if these are equal, plus if one if a term and the other a string check if they contain the same info
+    pub(crate) fn equivalent(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Self::Term(t), Self::Scalar(Value::String(s)))
+            | (Self::Scalar(Value::String(s)), Self::Term(t)) => t.to_string() == *s,
+            (Self::Scalar(Value::Int(0)), Self::Scalar(Value::Float(0.0)))
+            | (Self::Scalar(Value::Float(0.0)), Self::Scalar(Value::Int(0))) => true,
+            (a, b) => a == b,
+        }
+    }
 }
 
 impl FromStr for AttributeValue {
@@ -208,7 +219,44 @@ pub enum AttributeParseError {
     ValueParseError(ParamValueParseError, String),
     GroupIDParseError(std::num::ParseIntError, String),
     MissingValueSeparator(String),
-    Malformed(String),
+    MissingClosingGroupBracket(String),
+}
+
+impl Display for AttributeParseError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{}",
+            match self {
+                Self::TermParserError(
+                    TermParserError::CURIEError(CURIEParsingError::AccessionParsingError(_)),
+                    _,
+                ) => "Accession not numeric",
+                Self::TermParserError(
+                    TermParserError::CURIEError(CURIEParsingError::MissingNamespaceSeparator),
+                    _,
+                ) => "There is no namespace",
+                Self::TermParserError(
+                    TermParserError::CURIEError(CURIEParsingError::UnknownControlledVocabulary(_)),
+                    _,
+                ) => "The controlled vocabulary is unknown",
+                Self::TermParserError(TermParserError::MissingPipe(_), _) =>
+                    "The term pipe symbol is missing, a term should be written like 'MS:1000896|normalized retention time'",
+                Self::ValueParseError(ParamValueParseError::FailedToExtractBuffer, _) =>
+                    "Invalid value for the attribute, expected a buffer",
+                Self::ValueParseError(ParamValueParseError::FailedToExtractFloat(_), _) =>
+                    "Invalid value for the attribute, expected a floating point",
+                Self::ValueParseError(ParamValueParseError::FailedToExtractInt(_), _) =>
+                    "Invalid value for the attribute, expected an integer",
+                Self::ValueParseError(ParamValueParseError::FailedToExtractString, _) =>
+                    "Invalid value for the attribute, expected a string",
+                Self::GroupIDParseError(_, _) => "The group id is not a valid number",
+                Self::MissingValueSeparator(_) => "The value separator '=' is missing",
+                Self::MissingClosingGroupBracket(_) =>
+                    "The group id closing bracket ']' is missing",
+            }
+        )
+    }
 }
 
 /// An attribute as present in a mzSpecLib file
@@ -244,7 +292,7 @@ impl FromStr for Attribute {
                     Err(AttributeParseError::MissingValueSeparator(s.to_string()))
                 }
             } else {
-                Err(Self::Err::Malformed(s.to_string()))
+                Err(Self::Err::MissingClosingGroupBracket(s.to_string()))
             }
         } else if let Some((name, val)) = s.split_once('=') {
             let term: Term = name

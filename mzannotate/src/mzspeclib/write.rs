@@ -8,13 +8,33 @@ use mzdata::{mzpeaks::peak_set::PeakSetIter, prelude::*};
 use crate::{
     mzspeclib::{Attribute, EntryType, Id, LibraryHeader},
     prelude::ToMzPAF,
-    term,
 };
 
 use itertools::Itertools;
 
-/// A wrapper around a writer to write out annotated spectra as mzSpecLib.txt files. To create a
-/// valid mzSpecLib file first the header has to be written before any spectra can be written.
+/// A wrapper around a writer to write out annotated spectra as mzSpecLib.txt files.
+///
+/// To create a valid mzSpecLib file first the header has to be written before any spectra can be
+/// written. The written spectra will check the library header to not write duplicate values to the
+/// file.
+///
+/// ```
+/// use mzannotate::prelude::*;
+/// // Create the file and open the writer, using a bufwriter is advised
+/// let file = std::fs::File::create("../data/test.mzSpecLib.txt").unwrap();
+/// let mut writer = MzSpecLibTextWriter::new(std::io::BufWriter::new(file));
+/// // Set any parameters needed in the header
+/// writer.header_mut().attributes.push(mzannotate::mzspeclib::Attribute::new(
+///     term!(MS:1003188|library name),
+///     mzdata::params::Value::String("Simple test library".to_string()),
+///     None));
+/// // Write the header, note that this gives you the writer back to prevent
+/// // writing the header twice or not writing the header at all.
+/// let mut writer = writer.write_header().unwrap();
+/// // Write the spectra, either one by one or a bigger group in one go
+/// writer.write_spectrum(&AnnotatedSpectrum::default()).unwrap();
+/// writer.write_spectra(&[AnnotatedSpectrum::default()]).unwrap();
+/// ```
 #[derive(Debug)]
 pub struct MzSpecLibTextWriter<Writer: Write, State> {
     writer: Writer,
@@ -75,21 +95,10 @@ impl<Writer: Write> MzSpecLibTextWriter<Writer, HeaderWritten> {
         writeln!(&mut self.writer, "<Spectrum={}>", spectrum.key())?;
 
         for attr in spectrum.spectrum() {
-            // Check if this attribute needs to be written. TODO: extend this to analytes and interpretations as well
-            if attr.name == term!(UO:0000000|unit)
-                || !self
-                    .header
-                    .attribute_classes
-                    .get(&EntryType::Spectrum)
-                    .iter()
-                    .flat_map(|s| s.iter())
-                    .filter(|s| s.id == "all")
-                    .any(|s| {
-                        s.attributes
-                            .values()
-                            .flat_map(|a| a.iter())
-                            .any(|a| a.0 == attr)
-                    })
+            // Check if this attribute needs to be written.
+            if !self
+                .header
+                .is_already_defined(&attr, EntryType::Spectrum, &["all"])
             {
                 writeln!(&mut self.writer, "{attr}")?;
             }
@@ -97,13 +106,24 @@ impl<Writer: Write> MzSpecLibTextWriter<Writer, HeaderWritten> {
         for (id, attributes) in spectrum.analytes() {
             writeln!(&mut self.writer, "<Analyte={id}>")?;
             for attr in attributes {
-                writeln!(&mut self.writer, "{attr}")?;
+                if !self
+                    .header
+                    .is_already_defined(&attr, EntryType::Analyte, &["all"])
+                // TODO: check the protein groups additional set
+                {
+                    writeln!(&mut self.writer, "{attr}")?;
+                }
             }
         }
         for (id, attributes, members) in spectrum.interpretations() {
             writeln!(&mut self.writer, "<Interpretation={id}>")?;
             for attr in attributes {
-                writeln!(&mut self.writer, "{attr}")?;
+                if !self
+                    .header
+                    .is_already_defined(&attr, EntryType::Interpretation, &["all"])
+                {
+                    writeln!(&mut self.writer, "{attr}")?;
+                }
             }
             for (id, attributes) in members {
                 writeln!(&mut self.writer, "<InterpretationMember={id}>",)?;

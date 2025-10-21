@@ -10,7 +10,7 @@ use crate::{
     IdentifiedPeptidoformData, KnownFileFormat, MaybePeptidoform, MetaData, SpectrumId,
     SpectrumIds,
 };
-use mzannotate::{mzspeclib::MzSpecLibTextParseError, prelude::AnnotatedSpectrum};
+use mzannotate::prelude::AnnotatedSpectrum;
 use mzcore::{
     ontology::CustomDatabase,
     prelude::*,
@@ -19,7 +19,7 @@ use mzcore::{
     system::{Mass, MassOverCharge, Time},
 };
 
-use context_error::{BasicKind, BoxedError, Context, CreateError};
+use context_error::{BasicKind, BoxedError, Context, CreateError, FullErrorContent};
 
 use itertools::Itertools;
 
@@ -225,8 +225,7 @@ pub(crate) fn parse_mzspeclib<'a>(
     custom_database: Option<&'a CustomDatabase>,
 ) -> Result<GeneralIdentifiedPeptidoforms<'a>, BoxedError<'static, BasicKind>> {
     let path_string = path.to_string_lossy().to_string();
-    let path_string_2 = path_string.clone();
-    mzannotate::mzspeclib::MzSpecLibParser::open_file(path, custom_database)
+    mzannotate::mzspeclib::MzSpecLibTextParser::open_file(path, custom_database)
         .map(move |parser| {
             let b: Box<
                 dyn Iterator<
@@ -236,17 +235,8 @@ pub(crate) fn parse_mzspeclib<'a>(
                     >,
                 >,
             > = Box::new(parser.map(move |s| {
-                s.map(Into::into).map_err(|e| match e {
-                    MzSpecLibTextParseError::InvalidMzPAF(e)
-                    | MzSpecLibTextParseError::InvalidProforma(e)
-                    | MzSpecLibTextParseError::RichError(e) => e,
-                    _ => BoxedError::new(
-                        BasicKind::Error,
-                        "Could not parse mzSpecLib spectrum",
-                        format!("{e:?}"),
-                        Context::none().source(path_string.clone()),
-                    ),
-                })
+                s.map(Into::into)
+                    .map_err(|e| e.convert(|_| BasicKind::Error))
             }));
             b
         })
@@ -255,7 +245,7 @@ pub(crate) fn parse_mzspeclib<'a>(
                 BasicKind::Error,
                 "Could not parse mzSpecLib file",
                 format!("{e:?}"),
-                Context::none().source(path_string_2),
+                Context::none().source(path_string),
             )
         })
 }

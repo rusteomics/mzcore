@@ -24,8 +24,10 @@ pub mod prelude {
     };
     pub use crate::fragment::{Fragment, ToMzPAF};
     pub use crate::glycan::GlycanFragmention;
+    pub use crate::mzspeclib::{MzSpecLibTextParser, MzSpecLibTextWriter};
     pub use crate::peptidoform::PeptidoformFragmentation;
     pub use crate::spectrum::{AnnotatedPeak, AnnotatedSpectrum};
+    pub use crate::term;
 }
 
 #[cfg(test)]

@@ -81,6 +81,26 @@ impl LibraryHeader {
             attribute_classes,
         }
     }
+
+    /// Check if this attribute is already set.
+    pub(crate) fn is_already_defined(
+        &self,
+        attribute: &Attribute,
+        entry: EntryType,
+        names: &[&str],
+    ) -> bool {
+        self.attribute_classes
+            .get(&entry)
+            .iter()
+            .flat_map(|s| s.iter())
+            .filter(|s| names.contains(&s.id.as_str()))
+            .any(|s| {
+                s.attributes
+                    .values()
+                    .flat_map(|a| a.iter())
+                    .any(|a| a.0.name == attribute.name && a.0.value.equivalent(&attribute.value))
+            })
+    }
 }
 
 /// An ID

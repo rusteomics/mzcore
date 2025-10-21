@@ -6,7 +6,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use context_error::{BasicKind, BoxedError, Context, CreateError};
+use context_error::{BoxedError, Context, CreateError, ErrorKind, FullErrorContent};
 use indexmap::IndexMap;
 use mzcore::{
     ontology::CustomDatabase,
@@ -34,17 +34,16 @@ use crate::{
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-pub enum ParserState {
+enum ParserState {
     Initial,
     Header,
     AttributeSet,
     Spectrum,
     Analyte,
     Interpretation,
-    InterpretationMember,
     Peaks,
     Between,
-    EOF,
+    Eof,
 }
 
 impl Display for ParserState {
@@ -53,22 +52,46 @@ impl Display for ParserState {
     }
 }
 
-#[derive(Debug)]
-pub enum MzSpecLibTextParseError {
-    IOError(io::Error),
-    InvalidContentAtState(String, ParserState, u32),
-    AttributeParseError(AttributeParseError, ParserState, u32),
-    EOF,
-    InconsistentCharge,
+/// The kind of error that can occur when reading an mzSpecLib file
+#[derive(Debug, Default, PartialEq, Eq, Clone, Copy)]
+pub enum MzSpecLibErrorKind {
+    /// An error concerning the underlying stream
+    #[default]
+    IO,
+    /// An error concerning the parsing of a declaration
+    Declaration,
+    /// An error concerning the parsing of an attribute
+    Attribute,
+    /// An error concerning the parsing of a peak
+    Peak,
+    /// The end of the file was found but more data was expected
+    Eof,
+    /// The state is inconsistent (for example the charge was defined multiple times with different values)
+    InconsistentState,
+    /// A unit was missing on an attribute that needs one
     MissingUnit,
-    InvalidProforma(BoxedError<'static, BasicKind>),
-    InvalidMzPAF(BoxedError<'static, BasicKind>),
-    RichError(BoxedError<'static, BasicKind>),
+    /// A ProForma string was invalid
+    ProForma,
+    /// An mzPAF string was invalid
+    MzPAF,
 }
 
-/// The state for a parser for mzSpecLib files
+impl ErrorKind for MzSpecLibErrorKind {
+    type Settings = ();
+    fn descriptor(&self) -> &'static str {
+        "error"
+    }
+    fn ignored(&self, _settings: Self::Settings) -> bool {
+        false
+    }
+    fn is_error(&self, _settings: Self::Settings) -> bool {
+        true
+    }
+}
+
+/// The state for a parser for mzSpecLib.txt files
 #[derive(Debug)]
-pub struct MzSpecLibParser<'custom_database, Reader: Read> {
+pub struct MzSpecLibTextParser<'custom_database, Reader: Read> {
     inner: Reader,
     header: LibraryHeader,
     state: ParserState,
@@ -83,22 +106,22 @@ pub struct MzSpecLibParser<'custom_database, Reader: Read> {
     custom_database: Option<&'custom_database CustomDatabase>,
 }
 
-impl<'a> MzSpecLibParser<'a, BufReader<File>> {
+impl<'a> MzSpecLibTextParser<'a, BufReader<File>> {
     /// Parse a mzSpecLib file from the given file.
     /// # Errors
     /// If the file does not contain valid mzSpecLib data.
     pub fn open_file(
         path: &Path,
         custom_database: Option<&'a CustomDatabase>,
-    ) -> Result<Self, MzSpecLibTextParseError> {
+    ) -> Result<Self, BoxedError<'static, MzSpecLibErrorKind>> {
         Self::open(
             BufReader::new(File::open(path).map_err(|e| {
-                MzSpecLibTextParseError::RichError(BoxedError::new(
-                    BasicKind::Error,
+                BoxedError::new(
+                    MzSpecLibErrorKind::IO,
                     "Could not open mzSpecLib file",
                     e.to_string(),
                     Context::none().source(path.to_string_lossy()).to_owned(),
-                ))
+                )
             })?),
             Some(path.to_path_buf()),
             custom_database,
@@ -106,7 +129,7 @@ impl<'a> MzSpecLibParser<'a, BufReader<File>> {
     }
 }
 
-impl<'a, R: BufRead> MzSpecLibParser<'a, R> {
+impl<'a, R: BufRead> MzSpecLibTextParser<'a, R> {
     /// Parse a mzSpecLib file from the given stream, the original filepath can be given for nicer error messages.
     /// # Errors
     /// If the file does not contain valid mzSpecLib data.
@@ -114,7 +137,7 @@ impl<'a, R: BufRead> MzSpecLibParser<'a, R> {
         reader: R,
         path: Option<PathBuf>,
         custom_database: Option<&'a CustomDatabase>,
-    ) -> Result<Self, MzSpecLibTextParseError> {
+    ) -> Result<Self, BoxedError<'static, MzSpecLibErrorKind>> {
         let mut this = Self {
             inner: reader,
             header: LibraryHeader::default(),
@@ -168,7 +191,7 @@ impl<'a, R: BufRead> MzSpecLibParser<'a, R> {
             if z != 0 {
                 self.line_index += 1;
             } else {
-                self.state = ParserState::EOF;
+                self.state = ParserState::Eof;
                 return Ok(0);
             }
 
@@ -183,19 +206,39 @@ impl<'a, R: BufRead> MzSpecLibParser<'a, R> {
         }
     }
 
-    fn read_attribute(&mut self, buf: &mut String) -> Result<Attribute, MzSpecLibTextParseError> {
-        let z = self
-            .read_next_line(buf)
-            .map_err(MzSpecLibTextParseError::IOError)?;
+    fn read_attribute(
+        &mut self,
+        buf: &mut String,
+    ) -> Result<Attribute, BoxedError<'static, MzSpecLibErrorKind>> {
+        let z = self.read_next_line(buf).map_err(|e| {
+            BoxedError::new(
+                MzSpecLibErrorKind::IO,
+                "IO error",
+                e.to_string(),
+                self.current_context().to_owned(),
+            )
+        })?;
         if z == 0 {
-            return Err(MzSpecLibTextParseError::EOF);
+            return Err(BoxedError::new(
+                MzSpecLibErrorKind::Eof,
+                "Early end of file",
+                "Expected to read an attribute but the file already ended.",
+                self.current_context().to_owned(),
+            ));
         }
-        buf.trim_ascii_end().parse().map_err(|e| {
-            MzSpecLibTextParseError::AttributeParseError(e, self.state, self.line_index)
-        })
+        buf.trim_ascii_end()
+            .parse()
+            .map_err(|e: AttributeParseError| {
+                BoxedError::new(
+                    MzSpecLibErrorKind::Attribute,
+                    "Invalid attribute",
+                    e.to_string(),
+                    self.current_context().to_owned(),
+                )
+            })
     }
 
-    fn read_attribute_sets(&mut self) -> Result<(), MzSpecLibTextParseError> {
+    fn read_attribute_sets(&mut self) -> Result<(), BoxedError<'static, MzSpecLibErrorKind>> {
         let mut buf = String::new();
         let mut current_attribute_set: Option<AttributeSet> = None;
 
@@ -233,10 +276,11 @@ impl<'a, R: BufRead> MzSpecLibParser<'a, R> {
                             self.state = ParserState::AttributeSet;
                             if let Some((_, rest)) = buf.trim().split_once(' ') {
                                 if !rest.ends_with('>') {
-                                    return Err(MzSpecLibTextParseError::InvalidContentAtState(
-                                        buf,
-                                        self.state,
-                                        self.line_index,
+                                    return Err(BoxedError::new(
+                                        MzSpecLibErrorKind::Declaration,
+                                        "Invalid attribute set",
+                                        "The closing bracket '>' is missing",
+                                        self.current_context().to_owned(),
                                     ));
                                 }
                                 if let Some((entry_tp, id)) = rest[..rest.len() - 1].split_once('=')
@@ -255,13 +299,12 @@ impl<'a, R: BufRead> MzSpecLibParser<'a, R> {
                                         "Interpretation" => EntryType::Interpretation,
                                         "Cluster" => EntryType::Cluster,
                                         _ => {
-                                            return Err(
-                                                MzSpecLibTextParseError::InvalidContentAtState(
-                                                    buf,
-                                                    self.state,
-                                                    self.line_index,
-                                                ),
-                                            );
+                                            return Err(BoxedError::new(
+                                                MzSpecLibErrorKind::Declaration,
+                                                "Invalid attribute set type",
+                                                "Use 'Spectrum', 'Analyte', 'Interpretation', or 'Cluster' and note that this is case sensitive",
+                                                self.current_context().to_owned(),
+                                            ));
                                         }
                                     };
                                     let set_id = id.to_string();
@@ -271,24 +314,27 @@ impl<'a, R: BufRead> MzSpecLibParser<'a, R> {
                                         attributes: HashMap::new(),
                                     });
                                 } else {
-                                    return Err(MzSpecLibTextParseError::InvalidContentAtState(
-                                        buf,
-                                        self.state,
-                                        self.line_index,
+                                    return Err(BoxedError::new(
+                                        MzSpecLibErrorKind::Declaration,
+                                        "Invalid attribute set",
+                                        "The id for the attribute set is missing, is should look like '<AttributeSet Spectrum=all>' and the equals '=' was missing",
+                                        self.current_context().to_owned(),
                                     ));
                                 }
                             } else {
-                                return Err(MzSpecLibTextParseError::InvalidContentAtState(
-                                    buf,
-                                    self.state,
-                                    self.line_index,
+                                return Err(BoxedError::new(
+                                    MzSpecLibErrorKind::Declaration,
+                                    "Invalid attribute set",
+                                    "The id for the attribute set is missing, is should look like '<AttributeSet Spectrum=all>' and the space was missing",
+                                    self.current_context().to_owned(),
                                 ));
                             }
                         } else {
-                            return Err(MzSpecLibTextParseError::InvalidContentAtState(
-                                buf,
-                                self.state,
-                                self.line_index,
+                            return Err(BoxedError::new(
+                                MzSpecLibErrorKind::Declaration,
+                                "Invalid declaration",
+                                "In the header only attribut sets can be defined '<AttributeSet Spectrum=all>' or a header can be followed by a '<Spectrum=XX>'",
+                                self.current_context().to_owned(),
                             ));
                         }
                     } else if buf.is_empty() {
@@ -302,20 +348,31 @@ impl<'a, R: BufRead> MzSpecLibParser<'a, R> {
         Ok(())
     }
 
-    fn read_header(&mut self) -> Result<(), MzSpecLibTextParseError> {
+    fn read_header(&mut self) -> Result<(), BoxedError<'static, MzSpecLibErrorKind>> {
         let mut buf = String::new();
-        let z = self
-            .read_next_line(&mut buf)
-            .map_err(MzSpecLibTextParseError::IOError)?;
+        let z = self.read_next_line(&mut buf).map_err(|e| {
+            BoxedError::new(
+                MzSpecLibErrorKind::IO,
+                "IO error",
+                e.to_string(),
+                self.current_context().to_owned(),
+            )
+        })?;
         if z == 0 {
-            return Err(MzSpecLibTextParseError::EOF);
+            return Err(BoxedError::new(
+                MzSpecLibErrorKind::Eof,
+                "Early end of file",
+                "Expected to read the header but the file already ended.",
+                self.current_context().to_owned(),
+            ));
         }
 
         if !buf.starts_with("<mzSpecLib>") {
-            return Err(MzSpecLibTextParseError::InvalidContentAtState(
-                buf,
-                ParserState::Initial,
-                self.line_index,
+            return Err(BoxedError::new(
+                MzSpecLibErrorKind::Declaration,
+                "Invalid file start",
+                "The first line in an mzSpecLib.txt file should be '<mzSpecLib>'",
+                self.current_context().to_owned(),
             ));
         }
         self.state = ParserState::Header;
@@ -340,10 +397,11 @@ impl<'a, R: BufRead> MzSpecLibParser<'a, R> {
                         } else if buf.starts_with("<AttributeSet") {
                             self.state = ParserState::AttributeSet;
                         } else {
-                            return Err(MzSpecLibTextParseError::InvalidContentAtState(
-                                buf,
-                                self.state,
-                                self.line_index,
+                            return Err(BoxedError::new(
+                                MzSpecLibErrorKind::Declaration,
+                                "Invalid declaration",
+                                "In the header only attribut sets can be defined '<AttributeSet Spectrum=all>' or a header can be followed by a '<Spectrum=XX>'",
+                                self.current_context().to_owned(),
                             ));
                         }
 
@@ -377,34 +435,34 @@ impl<'a, R: BufRead> MzSpecLibParser<'a, R> {
         buf: &str,
         declaration: &str,
         to_state: ParserState,
-    ) -> Result<u32, MzSpecLibTextParseError> {
+    ) -> Result<u32, BoxedError<'static, MzSpecLibErrorKind>> {
         let id = if buf.starts_with(declaration) {
             self.state = to_state;
             if let Some((before, val)) = buf[..buf.trim_ascii_end().len() - 1].split_once('=') {
                 val.trim().parse::<Id>().map_err(|e| {
-                    MzSpecLibTextParseError::RichError(BoxedError::new(
-                        BasicKind::Error,
+                    BoxedError::new(
+                        MzSpecLibErrorKind::Declaration,
                         "Invalid declaration",
                         format!("The ID was {}", explain_number_error(&e)),
                         Context::line(Some(self.line_index), buf, before.len() + 1, val.len())
                             .to_owned(),
-                    ))
+                    )
                 })?
             } else {
-                return Err(MzSpecLibTextParseError::RichError(BoxedError::new(
-                    BasicKind::Error,
+                return Err(BoxedError::new(
+                    MzSpecLibErrorKind::Declaration,
                     "Invalid declaration",
                     "The ID needs to contain an equals symbol `=` and this was missing",
                     Context::full_line(self.line_index, buf).to_owned(),
-                )));
+                ));
             }
         } else {
-            return Err(MzSpecLibTextParseError::RichError(BoxedError::new(
-                BasicKind::Error,
+            return Err(BoxedError::new(
+                MzSpecLibErrorKind::Declaration,
                 "Invalid declaration",
                 format!("The declaration `{declaration}` was expected but not found"),
                 Context::full_line(self.line_index, buf).to_owned(),
-            )));
+            ));
         };
         Ok(id)
     }
@@ -412,13 +470,23 @@ impl<'a, R: BufRead> MzSpecLibParser<'a, R> {
     /// Parse an analyte from the stream.
     /// # Errors
     /// If the analyte
-    fn read_analyte(&mut self) -> Result<Analyte, MzSpecLibTextParseError> {
+    fn read_analyte(&mut self) -> Result<Analyte, BoxedError<'static, MzSpecLibErrorKind>> {
         let mut buf = String::new();
-        let z = self
-            .read_next_line(&mut buf)
-            .map_err(MzSpecLibTextParseError::IOError)?;
+        let z = self.read_next_line(&mut buf).map_err(|e| {
+            BoxedError::new(
+                MzSpecLibErrorKind::IO,
+                "IO error",
+                e.to_string(),
+                self.current_context().to_owned(),
+            )
+        })?;
         if z == 0 {
-            return Err(MzSpecLibTextParseError::EOF);
+            return Err(BoxedError::new(
+                MzSpecLibErrorKind::Eof,
+                "Early end of file",
+                "Expected to read an analyte but the file already ended.",
+                self.current_context().to_owned(),
+            ));
         }
         let id = self.parse_open_declaration(&buf, "<Analyte=", ParserState::Analyte)?;
         let mut groups: HashMap<u32, Vec<(Attribute, Context)>> = HashMap::new();
@@ -433,7 +501,7 @@ impl<'a, R: BufRead> MzSpecLibParser<'a, R> {
                     {
                         let mut peptidoform_ion =
                             PeptidoformIon::pro_forma(value, self.custom_database).map_err(
-                                |e| MzSpecLibTextParseError::InvalidProforma(e.to_owned()),
+                                |e| e.to_owned().convert::<MzSpecLibErrorKind, BoxedError<'static, MzSpecLibErrorKind>>(|_| MzSpecLibErrorKind::ProForma),
                             )?;
                         if peptidoform_ion.get_charge_carriers().is_none() {
                             match analyte.target {
@@ -464,7 +532,7 @@ impl<'a, R: BufRead> MzSpecLibParser<'a, R> {
                             true,
                             false,
                         )
-                        .map_err(|e| MzSpecLibTextParseError::RichError(e.to_owned()))?;
+                        .map_err(|e| e.to_owned().convert::<MzSpecLibErrorKind, BoxedError<'static, MzSpecLibErrorKind>>(|_| MzSpecLibErrorKind::ProForma))?;
                         analyte.target = match analyte.target {
                             AnalyteTarget::Unknown(c) => {
                                 if let Some(c) = c {
@@ -509,9 +577,7 @@ impl<'a, R: BufRead> MzSpecLibParser<'a, R> {
                             .line_index(self.line_index)
                             .lines(0, buf.clone()),
                         &mut protein,
-                    )
-                    .map_err(MzSpecLibTextParseError::RichError)?
-                    {
+                    )? {
                         analyte.params.push(attr.into());
                     }
                 }
@@ -573,9 +639,7 @@ impl<'a, R: BufRead> MzSpecLibParser<'a, R> {
                         .flat_map(|a| a.attributes.values())
                         .flatten(),
                 ) {
-                    if !parse_protein_attributes(attribute, context, &mut protein)
-                        .map_err(MzSpecLibTextParseError::RichError)?
-                    {
+                    if !parse_protein_attributes(attribute, context, &mut protein)? {
                         protein.attributes.push(attribute.clone());
                     }
                 }
@@ -594,13 +658,25 @@ impl<'a, R: BufRead> MzSpecLibParser<'a, R> {
         Ok(analyte)
     }
 
-    fn read_interpretation(&mut self) -> Result<Interpretation, MzSpecLibTextParseError> {
+    fn read_interpretation(
+        &mut self,
+    ) -> Result<Interpretation, BoxedError<'static, MzSpecLibErrorKind>> {
         let mut buf = String::new();
-        let z = self
-            .read_next_line(&mut buf)
-            .map_err(MzSpecLibTextParseError::IOError)?;
+        let z = self.read_next_line(&mut buf).map_err(|e| {
+            BoxedError::new(
+                MzSpecLibErrorKind::IO,
+                "IO error",
+                e.to_string(),
+                self.current_context().to_owned(),
+            )
+        })?;
         if z == 0 {
-            return Err(MzSpecLibTextParseError::EOF);
+            return Err(BoxedError::new(
+                MzSpecLibErrorKind::Eof,
+                "Early end of file",
+                "Expected to read an interpretation but the file already ended.",
+                self.current_context().to_owned(),
+            ));
         }
         let id =
             self.parse_open_declaration(&buf, "<Interpretation=", ParserState::Interpretation)?;
@@ -614,14 +690,14 @@ impl<'a, R: BufRead> MzSpecLibParser<'a, R> {
                     if attribute.name == term!(MS:1002357|PSM-level probability) {
                         interp.probability =
                             Some(attribute.value.scalar().to_f64().map_err(|e| {
-                                MzSpecLibTextParseError::RichError(BoxedError::new(
-                                    BasicKind::Error,
+                                BoxedError::new(
+                                    MzSpecLibErrorKind::Attribute,
                                     "Invalid PSM-level probability",
                                     e.to_string(),
                                     Context::none()
                                         .line_index(self.line_index)
                                         .lines(0, buf.clone()),
-                                ))
+                                )
                             })?);
                     } else if [
                         curie!(MS:1003288), // number of unassigned peaks
@@ -706,7 +782,7 @@ impl<'a, R: BufRead> MzSpecLibParser<'a, R> {
     fn parse_peak_line(
         &self,
         buf: &str,
-    ) -> Result<AnnotatedPeak<Fragment>, MzSpecLibTextParseError> {
+    ) -> Result<AnnotatedPeak<Fragment>, BoxedError<'static, MzSpecLibErrorKind>> {
         let buf = buf.trim();
         let mut mz_paf_offset = 0;
         let mut it = buf.split('\t');
@@ -714,44 +790,44 @@ impl<'a, R: BufRead> MzSpecLibParser<'a, R> {
         let mz = it
             .next()
             .ok_or_else(|| {
-                MzSpecLibTextParseError::RichError(BoxedError::new(
-                    BasicKind::Error,
+                BoxedError::new(
+                    MzSpecLibErrorKind::Peak,
                     "Peak m/z is missing",
                     "At least two columns are neccessary in the peaks data lines",
                     Context::full_line(self.line_index, buf).to_owned(),
-                ))
+                )
             })
             .and_then(|v| {
                 mz_paf_offset += v.len() + 1;
                 v.parse::<f64>().map_err(|e| {
-                    MzSpecLibTextParseError::RichError(BoxedError::new(
-                        BasicKind::Error,
+                    BoxedError::new(
+                        MzSpecLibErrorKind::Peak,
                         "Peak m/z is not a number",
                         e.to_string(),
                         Context::full_line(self.line_index, buf).to_owned(),
-                    ))
+                    )
                 })
             })?;
 
         let intensity = it
             .next()
             .ok_or_else(|| {
-                MzSpecLibTextParseError::RichError(BoxedError::new(
-                    BasicKind::Error,
+                BoxedError::new(
+                    MzSpecLibErrorKind::Peak,
                     "Peak intensity is missing",
                     "At least two columns are neccessary in the peaks data lines",
                     Context::full_line(self.line_index, buf).to_owned(),
-                ))
+                )
             })
             .and_then(|v| {
                 mz_paf_offset += v.len() + 1;
                 v.parse::<f32>().map_err(|e| {
-                    MzSpecLibTextParseError::RichError(BoxedError::new(
-                        BasicKind::Error,
+                    BoxedError::new(
+                        MzSpecLibErrorKind::Peak,
                         "Peak intensity is not a number",
                         e.to_string(),
                         Context::full_line(self.line_index, buf).to_owned(),
-                    ))
+                    )
                 })
             })?;
 
@@ -774,7 +850,12 @@ impl<'a, R: BufRead> MzSpecLibParser<'a, R> {
                         self.custom_database,
                         &self.last_compound_peptidoform,
                     )
-                    .map_err(|e| MzSpecLibTextParseError::InvalidMzPAF(e.to_owned()))?;
+                    .map_err(|e| {
+                        e.to_owned()
+                            .convert::<MzSpecLibErrorKind, BoxedError<'static, MzSpecLibErrorKind>>(
+                                |_| MzSpecLibErrorKind::MzPAF,
+                            )
+                    })?;
                     peak.annotations = annots;
                 }
             }
@@ -794,14 +875,26 @@ impl<'a, R: BufRead> MzSpecLibParser<'a, R> {
     /// Read the next full spectrum. This assumes it is already at the "<Spectrum=XX>" line.
     /// # Errors
     /// IF the next spectrum contains data that is not a valid spectrum.
-    fn read_spectrum(&mut self) -> Result<AnnotatedSpectrum, MzSpecLibTextParseError> {
+    fn read_spectrum(
+        &mut self,
+    ) -> Result<AnnotatedSpectrum, BoxedError<'static, MzSpecLibErrorKind>> {
         let mut buf = String::new();
 
-        let z = self
-            .read_next_line(&mut buf)
-            .map_err(MzSpecLibTextParseError::IOError)?;
+        let z = self.read_next_line(&mut buf).map_err(|e| {
+            BoxedError::new(
+                MzSpecLibErrorKind::IO,
+                "IO error",
+                e.to_string(),
+                self.current_context().to_owned(),
+            )
+        })?;
         if z == 0 {
-            return Err(MzSpecLibTextParseError::EOF);
+            return Err(BoxedError::new(
+                MzSpecLibErrorKind::Eof,
+                "Early end of file",
+                "Expected to read a spectrum but the file already ended.",
+                self.current_context().to_owned(),
+            ));
         }
         let id = self.parse_open_declaration(&buf, "<Spectrum=", ParserState::Spectrum)?;
         let mut spec = AnnotatedSpectrum::new(
@@ -896,9 +989,14 @@ impl<'a, R: BufRead> MzSpecLibParser<'a, R> {
 
         if matches!(self.state, ParserState::Peaks) {
             loop {
-                let z = self
-                    .read_next_line(&mut buf)
-                    .map_err(MzSpecLibTextParseError::IOError)?;
+                let z = self.read_next_line(&mut buf).map_err(|e| {
+                    BoxedError::new(
+                        MzSpecLibErrorKind::IO,
+                        "IO error",
+                        e.to_string(),
+                        self.current_context().to_owned(),
+                    )
+                })?;
                 if z == 0 {
                     break;
                 }
@@ -926,7 +1024,9 @@ impl<'a, R: BufRead> MzSpecLibParser<'a, R> {
     ///
     /// # Errors
     /// If the next spectrum contains invalid data.
-    pub fn read_next(&mut self) -> Result<AnnotatedSpectrum, MzSpecLibTextParseError> {
+    pub fn read_next(
+        &mut self,
+    ) -> Result<AnnotatedSpectrum, BoxedError<'static, MzSpecLibErrorKind>> {
         self.last_compound_peptidoform = CompoundPeptidoformIon::default();
         if self.last_error {
             // If the last element went awry scan the buffer until the start of the next spectrum
@@ -935,11 +1035,21 @@ impl<'a, R: BufRead> MzSpecLibParser<'a, R> {
             let mut buf = String::new();
 
             loop {
-                let z = self
-                    .read_next_line(&mut buf)
-                    .map_err(MzSpecLibTextParseError::IOError)?;
+                let z = self.read_next_line(&mut buf).map_err(|e| {
+                    BoxedError::new(
+                        MzSpecLibErrorKind::IO,
+                        "IO error",
+                        e.to_string(),
+                        self.current_context().to_owned(),
+                    )
+                })?;
                 if z == 0 {
-                    return Err(MzSpecLibTextParseError::EOF);
+                    return Err(BoxedError::new(
+                        MzSpecLibErrorKind::Eof,
+                        "Early end of file",
+                        "Expected to read the next spectrum but the file already ended.",
+                        self.current_context().to_owned(),
+                    ));
                 }
                 if buf.starts_with("<Spectrum=") {
                     self.push_back_line(buf);
@@ -957,12 +1067,12 @@ fn parse_protein_attributes<'a>(
     attribute: &Attribute,
     context: &Context<'a>,
     protein: &mut ProteinDescription,
-) -> Result<bool, BoxedError<'a, BasicKind>> {
+) -> Result<bool, BoxedError<'a, MzSpecLibErrorKind>> {
     match attribute.name.accession {
         curie!(MS:1003048) => {
             let termini = attribute.value.scalar().to_u64().map_err(|e| {
                 BoxedError::new(
-                    BasicKind::Error,
+                    MzSpecLibErrorKind::Attribute,
                     "Invalid number of enzymatic termini",
                     e.to_string(),
                     context.clone(),
@@ -970,7 +1080,7 @@ fn parse_protein_attributes<'a>(
             })?;
             if termini > 2 {
                 return Err(BoxedError::new(
-                    BasicKind::Error,
+                    MzSpecLibErrorKind::Attribute,
                     "Invalid number of enzymatic termini",
                     "The number of enzymatic termini can only be 0, 1, or 2.",
                     context.clone(),
@@ -981,7 +1091,7 @@ fn parse_protein_attributes<'a>(
         curie!(MS:1003044) => {
             let missed = attribute.value.scalar().to_u64().map_err(|e| {
                 BoxedError::new(
-                    BasicKind::Error,
+                    MzSpecLibErrorKind::Attribute,
                     "Invalid number of missed cleavages",
                     e.to_string(),
                     context.clone(),
@@ -991,7 +1101,7 @@ fn parse_protein_attributes<'a>(
                 protein.missed_cleavages = Some(missed);
             } else {
                 return Err(BoxedError::new(
-                    BasicKind::Error,
+                    MzSpecLibErrorKind::Attribute,
                     "Invalid number of missed cleavages",
                     "The number of missed cleavages has to be less than 2^16",
                     context.clone(),
@@ -1007,7 +1117,7 @@ fn parse_protein_attributes<'a>(
                 protein.flanking_sequences.0 = mzcore::sequence::FlankingSequence::AminoAcid(aa);
             } else {
                 return Err(BoxedError::new(
-                    BasicKind::Error,
+                    MzSpecLibErrorKind::Attribute,
                     "Invalid flanking sequence",
                     "The N terminal flanking residue has to be 'N-term' or an amino acid.",
                     context.clone(),
@@ -1023,7 +1133,7 @@ fn parse_protein_attributes<'a>(
                 protein.flanking_sequences.1 = mzcore::sequence::FlankingSequence::AminoAcid(aa);
             } else {
                 return Err(BoxedError::new(
-                    BasicKind::Error,
+                    MzSpecLibErrorKind::Attribute,
                     "Invalid flanking sequence",
                     "The C terminal flanking residue has to be 'C-term' or an amino acid.",
                     context.clone(),
@@ -1066,7 +1176,7 @@ fn parse_protein_attributes<'a>(
         curie!(MS:1001467) => {
             let accession = attribute.value.scalar().to_u64().map_err(|e| {
                 BoxedError::new(
-                    BasicKind::Error,
+                    MzSpecLibErrorKind::Attribute,
                     "Invalid NCBI TaxID",
                     e.to_string(),
                     context.clone(),
@@ -1076,7 +1186,7 @@ fn parse_protein_attributes<'a>(
                 protein.species_accession = Some(accession);
             } else {
                 return Err(BoxedError::new(
-                    BasicKind::Error,
+                    MzSpecLibErrorKind::Attribute,
                     "Invalid NCBI TaxID",
                     "The NCBI TaxID has to be less than 2^32",
                     context.clone(),
@@ -1100,7 +1210,7 @@ fn parse_protein_attributes<'a>(
 fn parse_spectrum_attributes<'a>(
     attributes: impl Iterator<Item = (&'a Option<u32>, &'a Vec<(Attribute, Context<'static>)>)>,
     spectrum: &mut AnnotatedSpectrum,
-) -> Result<(), MzSpecLibTextParseError> {
+) -> Result<(), BoxedError<'static, MzSpecLibErrorKind>> {
     let mut last_group_id = spectrum
         .attributes
         .iter()
@@ -1131,13 +1241,20 @@ fn parse_spectrum_attributes<'a>(
             {
                 spectrum.description.acquisition.scans[0].start_time =
                     f64::from(value.scalar().to_f32().map_err(|v| {
-                        MzSpecLibTextParseError::RichError(BoxedError::new(
-                            BasicKind::Error,
+                        BoxedError::new(
+                            MzSpecLibErrorKind::Attribute,
                             "Invalid attribute",
                             v.to_string(),
                             context.clone(),
-                        ))
-                    })?) / match unit.ok_or(MzSpecLibTextParseError::MissingUnit)? {
+                        )
+                    })?) / match unit.ok_or_else(|| {
+                        BoxedError::new(
+                            MzSpecLibErrorKind::MissingUnit,
+                            "Invalid attribute",
+                            "MS:1000894|retention time needs a unit",
+                            context.clone(),
+                        )
+                    })? {
                         Unit::Minute => 60.0,
                         _ => 1.0, // Assume seconds for anything else
                     };
@@ -1147,13 +1264,20 @@ fn parse_spectrum_attributes<'a>(
                 && group.len() == 2
             {
                 let rt = f64::from(value.scalar().to_f32().map_err(|v| {
-                    MzSpecLibTextParseError::RichError(BoxedError::new(
-                        BasicKind::Error,
+                    BoxedError::new(
+                        MzSpecLibErrorKind::Attribute,
                         "Invalid attribute",
                         v.to_string(),
                         context.clone(),
-                    ))
-                })?) / match unit.ok_or(MzSpecLibTextParseError::MissingUnit)? {
+                    )
+                })?) / match unit.ok_or_else(|| {
+                    BoxedError::new(
+                        MzSpecLibErrorKind::MissingUnit,
+                        "Invalid attribute",
+                        "MS:1000896|normalized retention time needs a unit",
+                        context.clone(),
+                    )
+                })? {
                     Unit::Minute => 60.0,
                     _ => 1.0, // Assume seconds for anything else
                 };
@@ -1172,12 +1296,12 @@ fn parse_spectrum_attributes<'a>(
             {
                 spectrum.description.precursor[0].activation.energy =
                     attr.value.scalar().to_f32().map_err(|v| {
-                        MzSpecLibTextParseError::RichError(BoxedError::new(
-                            BasicKind::Error,
+                        BoxedError::new(
+                            MzSpecLibErrorKind::Attribute,
                             "Invalid attribute",
                             v.to_string(),
                             context.clone(),
-                        ))
+                        )
                     })?;
             } else if let Some(unit) = unit
                 && group.len() == 2
@@ -1231,12 +1355,12 @@ fn parse_spectrum_attributes<'a>(
                     curie!(MS:1003208) => {
                         let window = &mut spectrum.description.precursor[0].isolation_window;
                         window.target = attr.value.scalar().to_f32().map_err(|v| {
-                            MzSpecLibTextParseError::RichError(BoxedError::new(
-                                BasicKind::Error,
+                            BoxedError::new(
+                                MzSpecLibErrorKind::Attribute,
                                 "Invalid attribute",
                                 v.to_string(),
                                 context.clone(),
-                            ))
+                            )
                         })?;
                         if matches!(window.flags, IsolationWindowState::Offset) {
                             window.lower_bound = window.target - window.lower_bound;
@@ -1246,12 +1370,12 @@ fn parse_spectrum_attributes<'a>(
                     }
                     curie!(MS:1000828) => {
                         let offset = attr.value.scalar().to_f32().map_err(|v| {
-                            MzSpecLibTextParseError::RichError(BoxedError::new(
-                                BasicKind::Error,
+                            BoxedError::new(
+                                MzSpecLibErrorKind::Attribute,
                                 "Invalid attribute",
                                 v.to_string(),
                                 context.clone(),
-                            ))
+                            )
                         })?;
                         let window = &mut spectrum.description.precursor[0].isolation_window;
                         match window.flags {
@@ -1267,12 +1391,12 @@ fn parse_spectrum_attributes<'a>(
                     }
                     curie!(MS:1000829) => {
                         let offset = attr.value.scalar().to_f32().map_err(|v| {
-                            MzSpecLibTextParseError::RichError(BoxedError::new(
-                                BasicKind::Error,
+                            BoxedError::new(
+                                MzSpecLibErrorKind::Attribute,
                                 "Invalid attribute",
                                 v.to_string(),
                                 context.clone(),
-                            ))
+                            )
                         })?;
                         let window = &mut spectrum.description.precursor[0].isolation_window;
                         match window.flags {
@@ -1288,12 +1412,12 @@ fn parse_spectrum_attributes<'a>(
                     }
                     curie!(MS:1000794) => { // TODO: Also handle these when they are in a group with a unit
                         let limit = attr.value.scalar().to_f32().map_err(|v| {
-                            MzSpecLibTextParseError::RichError(BoxedError::new(
-                                BasicKind::Error,
+                            BoxedError::new(
+                                MzSpecLibErrorKind::Attribute,
                                 "Invalid attribute",
                                 v.to_string(),
                                 context.clone(),
-                            ))
+                            )
                         })?;
                         let window = &mut spectrum.description.precursor[0].isolation_window;
                         if matches!(
@@ -1306,12 +1430,12 @@ fn parse_spectrum_attributes<'a>(
                     }
                     curie!(MS:1000793) => {
                         let limit = attr.value.scalar().to_f32().map_err(|v| {
-                            MzSpecLibTextParseError::RichError(BoxedError::new(
-                                BasicKind::Error,
+                            BoxedError::new(
+                                MzSpecLibErrorKind::Attribute,
                                 "Invalid attribute",
                                 v.to_string(),
                                 context.clone(),
-                            ))
+                            )
                         })?;
                         let window = &mut spectrum.description.precursor[0].isolation_window;
                         if matches!(
@@ -1325,56 +1449,56 @@ fn parse_spectrum_attributes<'a>(
                     curie!(MS:1000501) => {
                         spectrum.description.acquisition.scans[0].scan_windows[0].lower_bound =
                             attr.value.scalar().to_f32().map_err(|v| {
-                                MzSpecLibTextParseError::RichError(BoxedError::new(
-                                    BasicKind::Error,
+                                BoxedError::new(
+                                    MzSpecLibErrorKind::Attribute,
                                     "Invalid attribute",
                                     v.to_string(),
                                     context.clone(),
-                                ))
+                                )
                             })?;
                     }
                     curie!(MS:1000500) => {
                         spectrum.description.acquisition.scans[0].scan_windows[0].upper_bound =
                             attr.value.scalar().to_f32().map_err(|v| {
-                                MzSpecLibTextParseError::RichError(BoxedError::new(
-                                    BasicKind::Error,
+                                BoxedError::new(
+                                    MzSpecLibErrorKind::Attribute,
                                     "Invalid attribute",
                                     v.to_string(),
                                     context.clone(),
-                                ))
+                                )
                             })?;
                     }
                     curie!(MS:1000894) => {
                         spectrum.description.acquisition.scans[0].start_time =
                         attr.value.scalar().to_f64().map_err(|v| {
-                            MzSpecLibTextParseError::RichError(BoxedError::new(
-                                BasicKind::Error,
+                            BoxedError::new(
+                                MzSpecLibErrorKind::Attribute,
                                 "Invalid attribute",
                                 v.to_string(),
                                 context.clone(),
-                            ))
+                            )
                         })? / 60.0;
                     }
                     curie!(MS:1000744) => {
                         spectrum.description.precursor[0].ions[0].mz =
                             attr.value.scalar().to_f64().map_err(|v| {
-                                MzSpecLibTextParseError::RichError(BoxedError::new(
-                                    BasicKind::Error,
+                                BoxedError::new(
+                                    MzSpecLibErrorKind::Attribute,
                                     "Invalid attribute",
                                     v.to_string(),
                                     context.clone(),
-                                ))
+                                )
                             })?;
                     }
                     curie!(MS:1000041) => {
                         spectrum.description.precursor[0].ions[0].charge =
                             Some(attr.value.scalar().to_i32().map_err(|v| {
-                                MzSpecLibTextParseError::RichError(BoxedError::new(
-                                    BasicKind::Error,
+                                BoxedError::new(
+                                    MzSpecLibErrorKind::Attribute,
                                     "Invalid attribute",
                                     v.to_string(),
                                     context.clone(),
-                                ))
+                                )
                             })?);
                     }
                     curie!(MS:1002476) => {
@@ -1400,20 +1524,20 @@ fn parse_spectrum_attributes<'a>(
                     curie!(MS:1000511) => {
                         spectrum.description.ms_level =
                             u8::try_from(attr.value.scalar().to_u64().map_err(|v| {
-                                MzSpecLibTextParseError::RichError(BoxedError::new(
-                                    BasicKind::Error,
+                                BoxedError::new(
+                                    MzSpecLibErrorKind::Attribute,
                                     "Invalid attribute",
                                     v.to_string(),
                                     context.clone(),
-                                ))
+                                )
                             })?)
                             .map_err(|_| {
-                                MzSpecLibTextParseError::RichError(BoxedError::new(
-                                    BasicKind::Error,
+                                BoxedError::new(
+                                    MzSpecLibErrorKind::Attribute,
                                     "Invalid attribute",
                                     "The MS level is too large of a number",
                                     context.clone(),
-                                ))
+                                )
                             })?;
                     }
                     curie!(MS:1000512) => spectrum.description.acquisition.scans[0].add_param(
@@ -1466,22 +1590,22 @@ fn parse_spectrum_attributes<'a>(
                     }
                     curie!(MS:1003062) => {
                         spectrum.description.index = attr.value.scalar().to_u64().map_err(|v| {
-                            MzSpecLibTextParseError::RichError(BoxedError::new(
-                                BasicKind::Error,
+                            BoxedError::new(
+                                MzSpecLibErrorKind::Attribute,
                                 "Invalid attribute",
                                 v.to_string(),
                                 context.clone(),
-                            ))
+                            )
                         })? as usize;
                     }
                     curie!(MS:1003085) => {
                         spectrum.description.precursor[0].ions[0].intensity = attr.value.scalar().to_f32().map_err(|v| {
-                            MzSpecLibTextParseError::RichError(BoxedError::new(
-                                BasicKind::Error,
+                            BoxedError::new(
+                                MzSpecLibErrorKind::Attribute,
                                 "Invalid attribute",
                                 v.to_string(),
                                 context.clone(),
-                            ))
+                            )
                         })?;
                     }
                     curie!(MS:1003086) => {
@@ -1523,11 +1647,11 @@ fn parse_spectrum_attributes<'a>(
     Ok(())
 }
 
-impl<R: BufRead> Iterator for MzSpecLibParser<'_, R> {
-    type Item = Result<AnnotatedSpectrum, MzSpecLibTextParseError>;
+impl<R: BufRead> Iterator for MzSpecLibTextParser<'_, R> {
+    type Item = Result<AnnotatedSpectrum, BoxedError<'static, MzSpecLibErrorKind>>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        if matches!(self.state, ParserState::EOF) {
+        if matches!(self.state, ParserState::Eof) {
             return None;
         }
         Some(self.read_next())
@@ -1595,7 +1719,7 @@ impl LibraryIndex {
     }
 }
 
-impl<R: BufRead + Seek> MzSpecLibParser<'_, R> {
+impl<R: BufRead + Seek> MzSpecLibTextParser<'_, R> {
     /// Build the spectrum index.
     ///
     /// # Errors
@@ -1675,15 +1799,25 @@ impl<R: BufRead + Seek> MzSpecLibParser<'_, R> {
     pub fn get_spectrum_by_key(
         &mut self,
         key: Id,
-    ) -> Option<Result<AnnotatedSpectrum, MzSpecLibTextParseError>> {
+    ) -> Option<Result<AnnotatedSpectrum, BoxedError<'static, MzSpecLibErrorKind>>> {
         if !self.offsets.done
-            && let Err(err) = self.build_index()
+            && let Err(e) = self.build_index()
         {
-            return Some(Err(MzSpecLibTextParseError::IOError(err)));
+            return Some(Err(BoxedError::new(
+                MzSpecLibErrorKind::IO,
+                "IO error",
+                e.to_string(),
+                self.current_context().to_owned(),
+            )));
         }
         let rec = self.offsets.get_by_key(key)?;
         if let Err(e) = self.inner.seek(io::SeekFrom::Start(rec.offset)) {
-            return Some(Err(MzSpecLibTextParseError::IOError(e)));
+            return Some(Err(BoxedError::new(
+                MzSpecLibErrorKind::IO,
+                "IO error",
+                e.to_string(),
+                self.current_context().to_owned(),
+            )));
         }
         self.line_index = rec.line_index;
         self.line_cache.clear();
@@ -1697,15 +1831,25 @@ impl<R: BufRead + Seek> MzSpecLibParser<'_, R> {
     pub fn get_spectrum_by_index(
         &mut self,
         index: usize,
-    ) -> Option<Result<AnnotatedSpectrum, MzSpecLibTextParseError>> {
+    ) -> Option<Result<AnnotatedSpectrum, BoxedError<'static, MzSpecLibErrorKind>>> {
         if !self.offsets.done
-            && let Err(err) = self.build_index()
+            && let Err(e) = self.build_index()
         {
-            return Some(Err(MzSpecLibTextParseError::IOError(err)));
+            return Some(Err(BoxedError::new(
+                MzSpecLibErrorKind::IO,
+                "IO error",
+                e.to_string(),
+                self.current_context().to_owned(),
+            )));
         }
         let rec = self.offsets.get_by_index(index)?;
         if let Err(e) = self.inner.seek(io::SeekFrom::Start(rec.offset)) {
-            return Some(Err(MzSpecLibTextParseError::IOError(e)));
+            return Some(Err(BoxedError::new(
+                MzSpecLibErrorKind::IO,
+                "IO error",
+                e.to_string(),
+                self.current_context().to_owned(),
+            )));
         }
         self.line_index = rec.line_index;
         self.line_cache.clear();
@@ -1719,15 +1863,25 @@ impl<R: BufRead + Seek> MzSpecLibParser<'_, R> {
     pub fn get_spectrum_by_name(
         &mut self,
         name: &str,
-    ) -> Option<Result<AnnotatedSpectrum, MzSpecLibTextParseError>> {
+    ) -> Option<Result<AnnotatedSpectrum, BoxedError<'static, MzSpecLibErrorKind>>> {
         if !self.offsets.done
-            && let Err(err) = self.build_index()
+            && let Err(e) = self.build_index()
         {
-            return Some(Err(MzSpecLibTextParseError::IOError(err)));
+            return Some(Err(BoxedError::new(
+                MzSpecLibErrorKind::IO,
+                "IO error",
+                e.to_string(),
+                self.current_context().to_owned(),
+            )));
         }
         let rec = self.offsets.get_by_name(name)?;
         if let Err(e) = self.inner.seek(io::SeekFrom::Start(rec.offset)) {
-            return Some(Err(MzSpecLibTextParseError::IOError(e)));
+            return Some(Err(BoxedError::new(
+                MzSpecLibErrorKind::IO,
+                "IO error",
+                e.to_string(),
+                self.current_context().to_owned(),
+            )));
         }
         self.line_index = rec.line_index;
         self.line_cache.clear();
@@ -1746,7 +1900,7 @@ mod test {
             File::open("../data/chinese_hamster_hcd_selected_head.mzspeclib.txt").unwrap(),
         );
 
-        let mut this = MzSpecLibParser::open(buf, None, None).unwrap();
+        let mut this = MzSpecLibTextParser::open(buf, None, None).unwrap();
 
         this.build_index().unwrap();
 
@@ -1768,12 +1922,12 @@ mod test {
     }
 
     #[test]
-    fn test_header() -> Result<(), MzSpecLibTextParseError> {
+    fn test_header() -> Result<(), BoxedError<'static, MzSpecLibErrorKind>> {
         let buf = BufReader::new(
             File::open("../data/chinese_hamster_hcd_selected_head.mzspeclib.txt").unwrap(),
         );
 
-        let mut this = MzSpecLibParser::open(buf, None, None)?;
+        let mut this = MzSpecLibTextParser::open(buf, None, None)?;
         let header = this.header();
         eprintln!("{header:?}");
         // TODO: switch to assigning these basic attributes to header fields

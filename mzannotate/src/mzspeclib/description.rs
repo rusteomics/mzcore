@@ -11,7 +11,7 @@ use mzdata::{
 };
 
 /// Create mzSpecLib attributes from a spectrum description
-pub fn get_attributes(
+pub fn get_spectrum_description_attributes(
     description: &SpectrumDescription,
     summary: Option<&SpectrumSummary>,
 ) -> Vec<Attribute> {

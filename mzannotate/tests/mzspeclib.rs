@@ -1,7 +1,7 @@
 //! Test all present mzspeclib files
 use std::collections::{HashMap, HashSet};
 
-use mzannotate::mzspeclib::{MzSpecLibParser, MzSpecLibTextWriter};
+use mzannotate::mzspeclib::{MzSpecLibTextParser, MzSpecLibTextWriter};
 
 #[test]
 fn read_all_files() {
@@ -19,7 +19,7 @@ fn read_all_files() {
         {
             let mut parsed_spectra = Vec::new();
             files += 1;
-            let spectra = MzSpecLibParser::open(
+            let spectra = MzSpecLibTextParser::open(
                 std::io::BufReader::new(std::fs::File::open(entry.path()).unwrap()),
                 Some(entry.path()),
                 None,
@@ -64,7 +64,7 @@ fn read_all_files() {
             writer.write_spectra(&parsed_spectra).unwrap();
             drop(writer);
 
-            let reparsed_spectra = MzSpecLibParser::open(
+            let reparsed_spectra = MzSpecLibTextParser::open(
                 std::io::BufReader::new(std::fs::File::open(&rewrite_path).unwrap()),
                 Some(rewrite_path),
                 None,
