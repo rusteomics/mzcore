@@ -226,7 +226,7 @@ pub(crate) fn parse_mzspeclib<'a>(
 ) -> Result<GeneralIdentifiedPeptidoforms<'a>, BoxedError<'static, BasicKind>> {
     let path_string = path.to_string_lossy().to_string();
     let path_string_2 = path_string.clone();
-    mzannotate::mzspeclib::MzSpecLibParser::from_file(path, custom_database)
+    mzannotate::mzspeclib::MzSpecLibParser::open_file(path, custom_database)
         .map(move |parser| {
             let b: Box<
                 dyn Iterator<

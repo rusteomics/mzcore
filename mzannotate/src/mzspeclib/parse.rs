@@ -68,8 +68,8 @@ pub enum MzSpecLibTextParseError {
 
 /// The state for a parser for mzSpecLib files
 #[derive(Debug)]
-pub struct MzSpecLibParser<'a, R: Read> {
-    inner: R,
+pub struct MzSpecLibParser<'custom_database, Reader: Read> {
+    inner: Reader,
     header: LibraryHeader,
     state: ParserState,
     line_cache: VecDeque<String>,
@@ -80,18 +80,18 @@ pub struct MzSpecLibParser<'a, R: Read> {
     last_error: bool,
     /// The last compound peptidoform ion, used when parsing the mzPAF peaks in a spectrum.
     last_compound_peptidoform: CompoundPeptidoformIon,
-    custom_database: Option<&'a CustomDatabase>,
+    custom_database: Option<&'custom_database CustomDatabase>,
 }
 
 impl<'a> MzSpecLibParser<'a, BufReader<File>> {
-    /// Parse a mzSpecLib file from the given stream, the original filepath can be given for nicer error messages.
+    /// Parse a mzSpecLib file from the given file.
     /// # Errors
     /// If the file does not contain valid mzSpecLib data.
-    pub fn from_file(
+    pub fn open_file(
         path: &Path,
         custom_database: Option<&'a CustomDatabase>,
     ) -> Result<Self, MzSpecLibTextParseError> {
-        Self::new(
+        Self::open(
             BufReader::new(File::open(path).map_err(|e| {
                 MzSpecLibTextParseError::RichError(BoxedError::new(
                     BasicKind::Error,
@@ -110,7 +110,7 @@ impl<'a, R: BufRead> MzSpecLibParser<'a, R> {
     /// Parse a mzSpecLib file from the given stream, the original filepath can be given for nicer error messages.
     /// # Errors
     /// If the file does not contain valid mzSpecLib data.
-    pub fn new(
+    pub fn open(
         reader: R,
         path: Option<PathBuf>,
         custom_database: Option<&'a CustomDatabase>,
@@ -123,10 +123,10 @@ impl<'a, R: BufRead> MzSpecLibParser<'a, R> {
             line_index: 0,
             path,
             offsets: LibraryIndex {
-                // TODO: if this would be used right now the index is not yet built so returns nothing.
-                primary_index: IndexMap::new(),
-                name_index: HashMap::new(),
-                key_index: HashMap::new(),
+                done: false,
+                primary: IndexMap::new(),
+                name: HashMap::new(),
+                key: HashMap::new(),
             },
             last_error: false,
             last_compound_peptidoform: CompoundPeptidoformIon::default(),
@@ -791,6 +791,9 @@ impl<'a, R: BufRead> MzSpecLibParser<'a, R> {
         Ok(peak)
     }
 
+    /// Read the next full spectrum. This assumes it is already at the "<Spectrum=XX>" line.
+    /// # Errors
+    /// IF the next spectrum contains data that is not a valid spectrum.
     fn read_spectrum(&mut self) -> Result<AnnotatedSpectrum, MzSpecLibTextParseError> {
         let mut buf = String::new();
 
@@ -918,6 +921,11 @@ impl<'a, R: BufRead> MzSpecLibParser<'a, R> {
         Ok(spec)
     }
 
+    /// Read the next spectrum. If the previous spectrum resulted in an error this will scan
+    /// forward until the next "<Spectrum=XX>" is found.
+    ///
+    /// # Errors
+    /// If the next spectrum contains invalid data.
     pub fn read_next(&mut self) -> Result<AnnotatedSpectrum, MzSpecLibTextParseError> {
         self.last_compound_peptidoform = CompoundPeptidoformIon::default();
         if self.last_error {
@@ -1488,7 +1496,7 @@ fn parse_spectrum_attributes<'a>(
                     | curie!(MS:1003059) // Number of peaks
                     | curie!(MS:1000528) // Lowest observed m/z
                     | curie!(MS:1000527) // Highest observed m/z
-                    => (), // Ignore, can easily be caluclated on the fly
+                    => (), // Ignore, can easily be calculated on the fly
                     | curie!(MS:1000002) // sample name
                     | curie!(MS:1000031) // instrument model
                     | curie!(MS:1000043) // intensity unit
@@ -1535,59 +1543,76 @@ pub struct LibraryIndexRecord {
     pub line_index: u32,
 }
 
+/// An index to find the byte offsets of all records in a file
 #[derive(Debug, Clone)]
 pub struct LibraryIndex {
-    primary_index: IndexMap<usize, LibraryIndexRecord>,
-    key_index: HashMap<Id, usize>,
-    name_index: HashMap<Box<str>, usize>,
+    /// Indicate if the full file is scanned yet
+    done: bool,
+    primary: IndexMap<usize, LibraryIndexRecord>,
+    key: HashMap<Id, usize>,
+    name: HashMap<Box<str>, usize>,
 }
 
 impl LibraryIndex {
-    pub fn insert(&mut self, index: usize, name: Box<str>, key: Id, record: LibraryIndexRecord) {
-        self.key_index.insert(key, index);
-        self.name_index.insert(name, index);
-        self.primary_index.insert(index, record);
+    /// Insert a record into the spectrum index
+    fn insert(
+        &mut self,
+        index: usize,
+        name: Option<Box<str>>,
+        key: Id,
+        record: LibraryIndexRecord,
+    ) {
+        self.key.insert(key, index);
+        if let Some(name) = name {
+            self.name.insert(name, index);
+        }
+        self.primary.insert(index, record);
     }
 
+    /// Get a record by ID
     pub fn get_by_key(&self, key: Id) -> Option<&LibraryIndexRecord> {
-        self.primary_index.get(self.key_index.get(&key)?)
+        self.primary.get(self.key.get(&key)?)
     }
 
+    /// Get a record by index
     pub fn get_by_index(&self, index: usize) -> Option<&LibraryIndexRecord> {
-        self.primary_index.get(&index)
+        self.primary.get(&index)
     }
 
+    /// Get a record by name/native ID
     pub fn get_by_name(&self, name: &str) -> Option<&LibraryIndexRecord> {
-        self.primary_index.get(self.name_index.get(name)?)
+        self.primary.get(self.name.get(name)?)
     }
 
-    #[allow(unused)]
-    pub fn iter(&self) -> indexmap::map::Iter<'_, usize, LibraryIndexRecord> {
-        self.primary_index.iter()
-    }
-
+    /// Get the number of spectra in the index
     pub fn len(&self) -> usize {
-        self.primary_index.len()
+        self.primary.len()
     }
 
+    /// Check if the spectrum index is empty
     pub fn is_empty(&self) -> bool {
-        self.primary_index.is_empty()
+        self.primary.is_empty()
     }
 }
 
 impl<R: BufRead + Seek> MzSpecLibParser<'_, R> {
+    /// Build the spectrum index.
+    ///
+    /// # Errors
+    /// When the underlying stream errors.
     pub fn build_index(&mut self) -> io::Result<()> {
         self.inner.rewind()?;
         self.line_cache.clear();
         let mut buf = String::new();
         let mut line_count = 0;
         let mut offset_index = LibraryIndex {
-            key_index: HashMap::new(),
-            primary_index: IndexMap::new(),
-            name_index: HashMap::new(),
+            done: false,
+            key: HashMap::new(),
+            primary: IndexMap::new(),
+            name: HashMap::new(),
         };
         let mut offset = 0;
-        let mut current_record: Option<(usize, Box<str>, Id, LibraryIndexRecord)> = None;
+        let mut current_record: Option<(usize, Option<Box<str>>, Id, LibraryIndexRecord)> = None;
         let mut index = 0;
         while let Ok(z) = self.read_next_line(&mut buf) {
             if z == 0 {
@@ -1595,26 +1620,31 @@ impl<R: BufRead + Seek> MzSpecLibParser<'_, R> {
             }
 
             if let Some(rest) = buf.strip_prefix("<Spectrum=")
-                && let Some(key) = rest.strip_suffix('>')
+                && let Some(key) = rest.trim().strip_suffix('>')
             {
-                if let Some((index, name, key, current_record)) = current_record {
-                    offset_index.insert(index, name, key, current_record);
+                if let Some((index, name, key, record)) = current_record {
+                    offset_index.insert(index, name, key, record);
                 }
-                current_record = Some((
-                    0,
-                    String::new().into_boxed_str(),
-                    0,
-                    LibraryIndexRecord::default(),
-                ));
                 if let Ok(key) = key.parse::<Id>() {
-                    // TODO: Name is never set so will always be an empty string
-                    let r = current_record.as_mut().unwrap();
-                    r.0 = index;
-                    r.2 = key;
-                    r.3.line_index = line_count;
-                    r.3.offset = offset;
+                    current_record = Some((
+                        index,
+                        None,
+                        key,
+                        LibraryIndexRecord {
+                            offset,
+                            line_index: line_count,
+                        },
+                    ));
                     index += 1;
+                } else {
+                    // This is an 'all' (or something like that) spectrum, so reset all info but do not increase the index number
+                    current_record = None;
                 }
+            }
+            if let Some(rest) = buf.strip_prefix("MS:1003061|library spectrum name=")
+                && let Some((_, name, _, _)) = &mut current_record
+            {
+                *name = Some(rest.trim().to_string().into_boxed_str());
             }
             line_count += 1;
             offset += z as u64;
@@ -1622,29 +1652,35 @@ impl<R: BufRead + Seek> MzSpecLibParser<'_, R> {
         if let Some((index, name, key, current_record)) = current_record {
             offset_index.insert(index, name, key, current_record);
         }
+        offset_index.done = true;
         self.offsets = offset_index;
         self.inner.rewind()?;
         Ok(())
     }
 
+    /// Get the total number of spectra in the spectrum index.
     pub fn len(&self) -> usize {
         self.offsets.len()
     }
 
+    /// See if the spectrum index is empty.
     pub fn is_empty(&self) -> bool {
         self.offsets.is_empty()
     }
 
-    pub fn iter(
-        &mut self,
-    ) -> impl Iterator<Item = Result<AnnotatedSpectrum, MzSpecLibTextParseError>> {
-        (0..self.len()).map(|i| self.get_spectrum_by_index(i).unwrap())
-    }
-
+    /// Get a spectrum by the ID, if the index is not yet built this first builds the index.
+    /// It returns None when the key does not exist and an error if the spectrum index could not
+    /// be built, the correct reader could not be repositioned to the correct location, or the
+    /// spectrum could not be correctly parsed.
     pub fn get_spectrum_by_key(
         &mut self,
         key: Id,
     ) -> Option<Result<AnnotatedSpectrum, MzSpecLibTextParseError>> {
+        if !self.offsets.done
+            && let Err(err) = self.build_index()
+        {
+            return Some(Err(MzSpecLibTextParseError::IOError(err)));
+        }
         let rec = self.offsets.get_by_key(key)?;
         if let Err(e) = self.inner.seek(io::SeekFrom::Start(rec.offset)) {
             return Some(Err(MzSpecLibTextParseError::IOError(e)));
@@ -1654,10 +1690,19 @@ impl<R: BufRead + Seek> MzSpecLibParser<'_, R> {
         Some(self.read_next())
     }
 
+    /// Get a spectrum by the index, if the index is not yet built this first builds the index.
+    /// It returns None when the index does not exist and an error if the spectrum index could not
+    /// be built, the correct reader could not be repositioned to the correct location, or the
+    /// spectrum could not be correctly parsed.
     pub fn get_spectrum_by_index(
         &mut self,
         index: usize,
     ) -> Option<Result<AnnotatedSpectrum, MzSpecLibTextParseError>> {
+        if !self.offsets.done
+            && let Err(err) = self.build_index()
+        {
+            return Some(Err(MzSpecLibTextParseError::IOError(err)));
+        }
         let rec = self.offsets.get_by_index(index)?;
         if let Err(e) = self.inner.seek(io::SeekFrom::Start(rec.offset)) {
             return Some(Err(MzSpecLibTextParseError::IOError(e)));
@@ -1667,10 +1712,19 @@ impl<R: BufRead + Seek> MzSpecLibParser<'_, R> {
         Some(self.read_next())
     }
 
+    /// Get a spectrum by the name, if the index is not yet built this first builds the index.
+    /// It returns None when the name does not exist and an error if the spectrum index could not
+    /// be built, the correct reader could not be repositioned to the correct location, or the
+    /// spectrum could not be correctly parsed.
     pub fn get_spectrum_by_name(
         &mut self,
         name: &str,
     ) -> Option<Result<AnnotatedSpectrum, MzSpecLibTextParseError>> {
+        if !self.offsets.done
+            && let Err(err) = self.build_index()
+        {
+            return Some(Err(MzSpecLibTextParseError::IOError(err)));
+        }
         let rec = self.offsets.get_by_name(name)?;
         if let Err(e) = self.inner.seek(io::SeekFrom::Start(rec.offset)) {
             return Some(Err(MzSpecLibTextParseError::IOError(e)));
@@ -1692,7 +1746,7 @@ mod test {
             File::open("../data/chinese_hamster_hcd_selected_head.mzspeclib.txt").unwrap(),
         );
 
-        let mut this = MzSpecLibParser::new(buf, None, None).unwrap();
+        let mut this = MzSpecLibParser::open(buf, None, None).unwrap();
 
         this.build_index().unwrap();
 
@@ -1702,6 +1756,15 @@ mod test {
 
         let spec = this.get_spectrum_by_index(3).unwrap().unwrap();
         assert_eq!(spec.key, 4);
+
+        let spec = this
+            .get_spectrum_by_name("AAAALGSHGSCSSEVEK/2_1(10,C,CAM)_50eV")
+            .unwrap()
+            .unwrap();
+        assert_eq!(spec.key, 6);
+
+        let spec = this.get_spectrum_by_index(6).unwrap().unwrap();
+        assert_eq!(spec.key, 7);
     }
 
     #[test]
@@ -1710,7 +1773,7 @@ mod test {
             File::open("../data/chinese_hamster_hcd_selected_head.mzspeclib.txt").unwrap(),
         );
 
-        let mut this = MzSpecLibParser::new(buf, None, None)?;
+        let mut this = MzSpecLibParser::open(buf, None, None)?;
         let header = this.header();
         eprintln!("{header:?}");
         // TODO: switch to assigning these basic attributes to header fields

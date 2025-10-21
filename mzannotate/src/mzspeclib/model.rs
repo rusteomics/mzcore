@@ -47,6 +47,23 @@ impl Display for LibraryHeader {
         for attr in &self.attributes {
             writeln!(f, "{attr}")?;
         }
+        for t in [
+            &EntryType::Spectrum,
+            &EntryType::Analyte,
+            &EntryType::Interpretation,
+            &EntryType::Cluster,
+        ] {
+            for group in self.attribute_classes.get(t).iter().flat_map(|s| s.iter()) {
+                writeln!(f, "<AttributeSet {t}={}>", group.id)?;
+                for attr in group
+                    .attributes
+                    .values()
+                    .flat_map(|a| a.iter().map(|(a, _)| a))
+                {
+                    writeln!(f, "{attr}")?;
+                }
+            }
+        }
         Ok(())
     }
 }

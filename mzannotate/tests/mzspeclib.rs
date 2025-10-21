@@ -19,7 +19,7 @@ fn read_all_files() {
         {
             let mut parsed_spectra = Vec::new();
             files += 1;
-            let spectra = MzSpecLibParser::new(
+            let spectra = MzSpecLibParser::open(
                 std::io::BufReader::new(std::fs::File::open(entry.path()).unwrap()),
                 Some(entry.path()),
                 None,
@@ -64,7 +64,7 @@ fn read_all_files() {
             writer.write_spectra(&parsed_spectra).unwrap();
             drop(writer);
 
-            let reparsed_spectra = MzSpecLibParser::new(
+            let reparsed_spectra = MzSpecLibParser::open(
                 std::io::BufReader::new(std::fs::File::open(&rewrite_path).unwrap()),
                 Some(rewrite_path),
                 None,

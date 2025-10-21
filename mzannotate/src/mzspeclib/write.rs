@@ -6,31 +6,33 @@ use std::{
 use mzdata::{mzpeaks::peak_set::PeakSetIter, prelude::*};
 
 use crate::{
-    mzspeclib::{Attribute, Id, LibraryHeader},
+    mzspeclib::{Attribute, EntryType, Id, LibraryHeader},
     prelude::ToMzPAF,
+    term,
 };
 
 use itertools::Itertools;
 
-/// A wrapper around a writer to write out annotated spectra as mzSpecLib files.
+/// A wrapper around a writer to write out annotated spectra as mzSpecLib.txt files. To create a
+/// valid mzSpecLib file first the header has to be written before any spectra can be written.
 #[derive(Debug)]
-pub struct MzSpecLibTextWriter<W: Write, S> {
-    writer: W,
+pub struct MzSpecLibTextWriter<Writer: Write, State> {
+    writer: Writer,
     header: LibraryHeader,
-    state: PhantomData<S>,
+    state: PhantomData<State>,
 }
 
-impl<W: Write, S> MzSpecLibTextWriter<W, S> {
+impl<Writer: Write, State> MzSpecLibTextWriter<Writer, State> {
     /// Get the library header that contains all the metadata for this library
     pub const fn header(&self) -> &LibraryHeader {
         &self.header
     }
 }
 
-impl<W: Write> MzSpecLibTextWriter<W, Initial> {
+impl<Writer: Write> MzSpecLibTextWriter<Writer, Initial> {
     /// Create a new writer. It is often advisable to wrap a writer in [`io::BufWriter`] to get
     /// buffered writing.
-    pub fn new(writer: W) -> Self {
+    pub fn new(writer: Writer) -> Self {
         let header: LibraryHeader = LibraryHeader::default();
         Self {
             writer,
@@ -48,9 +50,9 @@ impl<W: Write> MzSpecLibTextWriter<W, Initial> {
     /// and can only be done once.
     /// # Errors
     /// If writing to the underlying stream failed.
-    pub fn write_header(mut self) -> io::Result<MzSpecLibTextWriter<W, HeaderWritten>> {
+    pub fn write_header(mut self) -> io::Result<MzSpecLibTextWriter<Writer, HeaderWritten>> {
         self.writer.write_all(self.header.to_string().as_bytes())?;
-        Ok(MzSpecLibTextWriter::<W, HeaderWritten> {
+        Ok(MzSpecLibTextWriter::<Writer, HeaderWritten> {
             writer: self.writer,
             header: self.header,
             state: PhantomData,
@@ -61,17 +63,36 @@ impl<W: Write> MzSpecLibTextWriter<W, Initial> {
     // common terms+values across all spectra for more efficient encoding of the mzSpecLib file.
 }
 
-impl<W: Write> MzSpecLibTextWriter<W, HeaderWritten> {
+impl<Writer: Write> MzSpecLibTextWriter<Writer, HeaderWritten> {
     /// Write a spectrum to the stream. This can only be done once the header is written.
     /// # Errors
     /// If writing to the underlying stream failed.
-    pub fn write_spectrum<S: MzSpecLibEncode>(&mut self, spectrum: &S) -> io::Result<()> {
+    pub fn write_spectrum<Spectrum: MzSpecLibEncode>(
+        &mut self,
+        spectrum: &Spectrum,
+    ) -> io::Result<()> {
         // TODO: think about uniqueness guarantees for this key
         writeln!(&mut self.writer, "<Spectrum={}>", spectrum.key())?;
 
         for attr in spectrum.spectrum() {
-            // TODO: check for duplicates in the library header?
-            writeln!(&mut self.writer, "{attr}")?;
+            // Check if this attribute needs to be written. TODO: extend this to analytes and interpretations as well
+            if attr.name == term!(UO:0000000|unit)
+                || !self
+                    .header
+                    .attribute_classes
+                    .get(&EntryType::Spectrum)
+                    .iter()
+                    .flat_map(|s| s.iter())
+                    .filter(|s| s.id == "all")
+                    .any(|s| {
+                        s.attributes
+                            .values()
+                            .flat_map(|a| a.iter())
+                            .any(|a| a.0 == attr)
+                    })
+            {
+                writeln!(&mut self.writer, "{attr}")?;
+            }
         }
         for (id, attributes) in spectrum.analytes() {
             writeln!(&mut self.writer, "<Analyte={id}>")?;
@@ -124,9 +145,9 @@ impl<W: Write> MzSpecLibTextWriter<W, HeaderWritten> {
     /// Write spectra to the stream. This can only be done once the header is written.
     /// # Errors
     /// If writing to the underlying stream failed.
-    pub fn write_spectra<'a, S: MzSpecLibEncode + 'a>(
+    pub fn write_spectra<'a, Spectrum: MzSpecLibEncode + 'a>(
         &mut self,
-        spectra: impl IntoIterator<Item = &'a S>,
+        spectra: impl IntoIterator<Item = &'a Spectrum>,
     ) -> io::Result<()> {
         for spectrum in spectra {
             self.write_spectrum(spectrum)?;
@@ -137,8 +158,10 @@ impl<W: Write> MzSpecLibTextWriter<W, HeaderWritten> {
 
 /// The mzSpecLib file has been started but nothing has been written yet. First a header has to be
 /// written before any spectra can be written.
+#[allow(missing_debug_implementations, missing_copy_implementations)] // Marker ZST
 pub struct Initial;
 /// The mzSpecLib file has already been written with a header. Now spectra can be written.
+#[allow(missing_debug_implementations, missing_copy_implementations)] // Marker ZST
 pub struct HeaderWritten;
 
 /// A single spectrum that can be encoded as an mzSpecLib file
