@@ -8,6 +8,7 @@ use mzcore::{
     molecular_formula,
     prelude::AminoAcid,
 };
+use mzdata::meta::DissociationMethodTerm;
 
 use crate::annotation::model::{
     FragmentationModel, GlycanModel, Location, PrimaryIonSeries, SatelliteIonSeries,
@@ -88,7 +89,7 @@ static MODEL_UVPD: LazyLock<FragmentationModel> = LazyLock::new(|| Fragmentation
     allow_cross_link_cleavage: false,
 });
 
-static MODEL_ETHCD: LazyLock<FragmentationModel> = LazyLock::new(|| FragmentationModel {
+static MODEL_ETCID: LazyLock<FragmentationModel> = LazyLock::new(|| FragmentationModel {
     a: PrimaryIonSeries::default().location(Location::TakeN { skip: 0, take: 1 }),
     b: PrimaryIonSeries::default()
         .neutral_losses(vec![NeutralLoss::Loss(1, molecular_formula!(H 2 O 1))]),
@@ -302,7 +303,7 @@ static MODEL_EACID: LazyLock<FragmentationModel> = LazyLock::new(|| Fragmentatio
     allow_cross_link_cleavage: true,
 });
 
-static MODEL_CID_HCD: LazyLock<FragmentationModel> = LazyLock::new(|| FragmentationModel {
+static MODEL_CID: LazyLock<FragmentationModel> = LazyLock::new(|| FragmentationModel {
     a: PrimaryIonSeries::default()
         .location(Location::TakeN { skip: 0, take: 1 })
         .neutral_losses(vec![NeutralLoss::Loss(1, molecular_formula!(H 2 O 1))]),
@@ -475,9 +476,17 @@ impl FragmentationModel {
         LazyLock::force(&MODEL_UVPD)
     }
 
-    /// electron-transfer/higher-energy collisional dissociation
+    /// electron transfer collision induced dissociation
+    #[doc(alias = "ethcd")]
+    #[doc(alias = "etcad")]
+    pub fn etcid() -> &'static Self {
+        LazyLock::force(&MODEL_ETCID)
+    }
+
+    /// electron transfer collision induced dissociation
+    #[deprecated = "Renamed to more standardised name 'etcid'"]
     pub fn ethcd() -> &'static Self {
-        LazyLock::force(&MODEL_ETHCD)
+        LazyLock::force(&MODEL_ETCID)
     }
 
     /// EAD
@@ -490,9 +499,19 @@ impl FragmentationModel {
         LazyLock::force(&MODEL_EACID)
     }
 
+    /// CID
+    #[doc(alias = "hcd")]
+    #[doc(alias = "cid_hcd")]
+    #[doc(alias = "cad")]
+    #[doc(alias = "beamcid")]
+    pub fn cid() -> &'static Self {
+        LazyLock::force(&MODEL_CID)
+    }
+
     /// CID Hcd
+    #[deprecated = "Renamed to more standardised name 'cid'"]
     pub fn cid_hcd() -> &'static Self {
-        LazyLock::force(&MODEL_CID_HCD)
+        LazyLock::force(&MODEL_CID)
     }
 
     /// ETD 10.1002/jms.3919
@@ -503,6 +522,159 @@ impl FragmentationModel {
     /// Top Down ETD
     pub fn td_etd() -> &'static Self {
         LazyLock::force(&MODEL_TD_ETD)
+    }
+}
+
+/// All fragmentation models.
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, serde::Serialize, serde::Deserialize,
+)]
+#[allow(clippy::upper_case_acronyms, non_camel_case_types)]
+pub enum BuiltInFragmentationModel {
+    /// Wide model set up with most known fragments
+    All,
+    /// No fragmentation
+    None,
+    /// Ultra violet photo dissociation
+    UVPD,
+    /// Collision induced dissociation
+    CID,
+    /// Electron associated dissociation
+    EAD,
+    /// Electron associated dissociation with supplemental collision induced dissociation
+    EAciD,
+    /// Electron transfer dissociation
+    ETD,
+    /// Electron transfer dissociation set up for top down / middle down fragmentation
+    ETD_TD,
+    /// Electron transfer dissociation with supplemental collision induced dissociation
+    ETciD,
+}
+
+impl std::ops::Add for BuiltInFragmentationModel {
+    type Output = Self;
+    fn add(self, rhs: Self) -> Self::Output {
+        match (self, rhs) {
+            (a, Self::None) | (Self::None, a) => a,
+            (Self::ETD | Self::ETD_TD, Self::CID) | (Self::CID, Self::ETD | Self::ETD_TD) => {
+                Self::ETciD
+            }
+            (Self::EAD, Self::CID) | (Self::CID, Self::EAD) => Self::EAciD,
+            (_, _) => Self::All,
+        }
+    }
+}
+
+impl From<&str> for BuiltInFragmentationModel {
+    fn from(s: &str) -> Self {
+        match s.trim().to_ascii_lowercase().as_str() {
+            "none" | "" => Self::None,
+            "uvpd" => Self::UVPD,
+            "cid" | "hcd" | "beamcid" => Self::CID,
+            "ead" => Self::EAD,
+            "eacid" => Self::EAciD,
+            "etd" => Self::ETD,
+            "etd_td" | "td_etd" => Self::ETD_TD,
+            "ethcd" | "etcid" | "etcad" => Self::ETciD,
+            _ => Self::All,
+        }
+    }
+}
+
+impl From<DissociationMethodTerm> for BuiltInFragmentationModel {
+    fn from(s: DissociationMethodTerm) -> Self {
+        match s {
+            DissociationMethodTerm::ElectronCaptureDissociation
+            | DissociationMethodTerm::ElectronTransferDissociation
+            | DissociationMethodTerm::NegativeElectronTransferDissociation => Self::ETD,
+            DissociationMethodTerm::DissociationMethod
+            | DissociationMethodTerm::PlasmaDesorption
+            | DissociationMethodTerm::Photodissociation
+            | DissociationMethodTerm::PulsedQDissociation => Self::All,
+            DissociationMethodTerm::CollisionInducedDissociation
+            | DissociationMethodTerm::PostSourceDecay
+            | DissociationMethodTerm::SurfaceInducedDissociation
+            | DissociationMethodTerm::BlackbodyInfraredRadiativeDissociation
+            | DissociationMethodTerm::InfraredMultiphotonDissociation
+            | DissociationMethodTerm::SustainedOffResonanceIrradiation
+            | DissociationMethodTerm::BeamTypeCollisionInducedDissociation
+            | DissociationMethodTerm::LowEnergyCollisionInducedDissociation
+            | DissociationMethodTerm::InSourceCollisionInducedDissociation
+            | DissociationMethodTerm::LIFT
+            | DissociationMethodTerm::TrapTypeCollisionInducedDissociation
+            | DissociationMethodTerm::HigherEnergyBeamTypeCollisionInducedDissociation
+            | DissociationMethodTerm::SupplementalBeamTypeCollisionInducedDissociation
+            | DissociationMethodTerm::SupplementalCollisionInducedDissociation => Self::CID,
+            DissociationMethodTerm::UltravioletPhotodissociation => Self::UVPD,
+            DissociationMethodTerm::ElectronActivatedDissociation => Self::EAD,
+        }
+    }
+}
+
+impl From<&[DissociationMethodTerm]> for BuiltInFragmentationModel {
+    fn from(s: &[DissociationMethodTerm]) -> Self {
+        let mut method = Self::None;
+        for m in s {
+            method = method + (*m).into();
+        }
+        method
+    }
+}
+
+impl std::fmt::Display for BuiltInFragmentationModel {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{}",
+            match self {
+                Self::All => "All",
+                Self::None => "None",
+                Self::UVPD => "UVPD",
+                Self::CID => "CID",
+                Self::EAD => "EAD",
+                Self::EAciD => "EAciD",
+                Self::ETD => "ETD",
+                Self::ETD_TD => "ETD TD",
+                Self::ETciD => "ETciD",
+            }
+        )
+    }
+}
+
+impl BuiltInFragmentationModel {
+    /// Get the actual fragmentation model
+    pub fn model(self) -> &'static FragmentationModel {
+        match self {
+            Self::All => FragmentationModel::all(),
+            Self::None => FragmentationModel::none(),
+            Self::UVPD => FragmentationModel::uvpd(),
+            Self::CID => FragmentationModel::cid(),
+            Self::EAD => FragmentationModel::ead(),
+            Self::EAciD => FragmentationModel::eacid(),
+            Self::ETD => FragmentationModel::etd(),
+            Self::ETD_TD => FragmentationModel::td_etd(),
+            Self::ETciD => FragmentationModel::etcid(),
+        }
+    }
+
+    /// Get the terms to describe this model for mzdata
+    pub const fn terms(self) -> &'static [DissociationMethodTerm] {
+        match self {
+            Self::All => &[DissociationMethodTerm::DissociationMethod],
+            Self::None => &[],
+            Self::UVPD => &[DissociationMethodTerm::UltravioletPhotodissociation],
+            Self::CID => &[DissociationMethodTerm::CollisionInducedDissociation],
+            Self::EAD => &[DissociationMethodTerm::ElectronActivatedDissociation],
+            Self::EAciD => &[
+                DissociationMethodTerm::ElectronActivatedDissociation,
+                DissociationMethodTerm::SupplementalCollisionInducedDissociation,
+            ],
+            Self::ETD | Self::ETD_TD => &[DissociationMethodTerm::ElectronTransferDissociation],
+            Self::ETciD => &[
+                DissociationMethodTerm::ElectronTransferDissociation,
+                DissociationMethodTerm::SupplementalCollisionInducedDissociation,
+            ],
+        }
     }
 }
 

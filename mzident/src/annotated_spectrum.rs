@@ -19,7 +19,7 @@ use mzcore::{
     system::{Mass, MassOverCharge, Time},
 };
 
-use context_error::{BasicKind, BoxedError, Context, CreateError, FullErrorContent};
+use context_error::{BasicKind, BoxedError, FullErrorContent};
 
 use itertools::Itertools;
 
@@ -83,11 +83,21 @@ impl MetaData for AnnotatedSpectrum {
             .and_then(|p| p.get_charge_carriers().map(MolecularCharge::charge))
     }
 
+    #[allow(clippy::redundant_closure_for_method_calls)] // Do not want to have to reference mzdata
     fn mode(&self) -> Option<Cow<'_, str>> {
         self.description
             .precursor
             .first()
             .map(|p| Cow::Owned(p.activation.methods().iter().map(|d| d.name()).join("+")))
+    }
+
+    fn fragmentation_model(
+        &self,
+    ) -> Option<mzannotate::annotation::model::BuiltInFragmentationModel> {
+        self.description
+            .precursor
+            .first()
+            .map(|p| p.activation.methods().into())
     }
 
     fn retention_time(&self) -> Option<Time> {

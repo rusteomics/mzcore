@@ -6,7 +6,7 @@ use mzdata::{
         prelude::*,
     },
     params::{ParamDescribed, ParamLike, Unit, Value, ValueRef},
-    prelude::{IonProperties, PrecursorSelection, SpectrumLike},
+    prelude::{IonProperties, SpectrumLike},
     spectrum::{SignalContinuity, SpectrumDescription},
 };
 
@@ -181,8 +181,9 @@ impl<S: SpectrumLike> From<S> for AnnotatedSpectrum {
                 handle_param(param, &mut this);
             }
         }
-        if let Some(precursor) = value.precursor() {
-            let ion = precursor.ion();
+        if let Some(precursor) = value.precursor()
+            && let Some(ion) = precursor.ions.first()
+        {
             this.attributes.push(vec![
                 Attribute::new(term!(MS:1000744|selected ion m/z), Value::Float(ion.mz())),
                 Attribute::unit(Unit::MZ).unwrap(),

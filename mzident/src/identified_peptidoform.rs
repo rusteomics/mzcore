@@ -602,6 +602,8 @@ impl_metadata!(
         fn original_local_confidence(&self) -> Option<&[f64]>;
         fn charge(&self) -> Option<Charge>;
         fn mode(&self) -> Option<Cow<'_, str>>;
+        #[cfg(feature = "mzannotate")]
+        fn fragmentation_model(&self) -> Option<mzannotate::annotation::model::BuiltInFragmentationModel>;
         fn retention_time(&self) -> Option<Time>;
         fn scans(&self) -> SpectrumIds;
         fn experimental_mz(&self) -> Option<MassOverCharge>;

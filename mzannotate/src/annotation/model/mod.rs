@@ -8,6 +8,7 @@ mod json;
 mod parameters;
 mod possible_ions;
 
+pub use built_in::BuiltInFragmentationModel;
 pub use custom_models::*;
 pub use fragmentation::*;
 pub use glycan::*;

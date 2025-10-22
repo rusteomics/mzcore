@@ -134,5 +134,31 @@ pub(super) fn test_identified_peptidoform<Complexity, PeptidoformAvailability>(
             err
         ));
     }
+    #[cfg(feature = "mzannotate")]
+    if let Some(mode) = peptidoform.mode()
+        && let Some(model) = peptidoform.fragmentation_model()
+    {
+        use mzannotate::annotation::model::BuiltInFragmentationModel;
+
+        if (model == BuiltInFragmentationModel::All || model == BuiltInFragmentationModel::None)
+            && mode != "MIX"
+            && mode != "HCD/ETHCD"
+        {
+            return Err(format!(
+                "Peptide {} fragmentation model '{mode}' was not recognised",
+                peptidoform.id()
+            ));
+        }
+    } else if let Some(mode) = peptidoform.mode() {
+        return Err(format!(
+            "Peptide {} has no fragmentation model but mode is '{mode}'",
+            peptidoform.id()
+        ));
+    } else if let Some(model) = peptidoform.fragmentation_model() {
+        return Err(format!(
+            "Peptide {} has no mode but fragmentation model is '{model}'",
+            peptidoform.id()
+        ));
+    }
     Ok(())
 }

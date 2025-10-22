@@ -706,7 +706,7 @@ impl Fragment {
             "Fragment(formula='{:?}', charge={}, ion='{}', peptidoform_ion_index={}, peptidoform_index={}, neutral_loss='{:?}')",
             Self::formula(self),
             self.charge(),
-            self.ion().0,
+            self.ion().0, // TODO: this could crash
             self.peptidoform_ion_index()
                 .map_or_else(|| "-".to_string(), |p| p.to_string()),
             self.peptidoform_index()
@@ -952,30 +952,28 @@ impl SequenceElement {
 #[derive(Eq, PartialEq)]
 enum FragmentationModel {
     All,
-    CidHcd,
-    Etd,
-    Ethcd,
-    Ead,
-    Eacid,
-    Uvpd,
+    CID,
+    ETD,
+    ETciD,
+    EAD,
+    EAciD,
+    UVPD,
 }
 
 /// Helper function to match a [`FragmentationModel`] to a mzcore Model.
 fn match_model(model: &FragmentationModel) -> mzannotate::annotation::model::FragmentationModel {
     match model {
         FragmentationModel::All => mzannotate::annotation::model::FragmentationModel::all().clone(),
-        FragmentationModel::CidHcd => {
-            mzannotate::annotation::model::FragmentationModel::cid_hcd().clone()
+        FragmentationModel::CID => mzannotate::annotation::model::FragmentationModel::cid().clone(),
+        FragmentationModel::ETD => mzannotate::annotation::model::FragmentationModel::etd().clone(),
+        FragmentationModel::ETciD => {
+            mzannotate::annotation::model::FragmentationModel::etcid().clone()
         }
-        FragmentationModel::Etd => mzannotate::annotation::model::FragmentationModel::etd().clone(),
-        FragmentationModel::Ethcd => {
-            mzannotate::annotation::model::FragmentationModel::ethcd().clone()
-        }
-        FragmentationModel::Ead => mzannotate::annotation::model::FragmentationModel::ead().clone(),
-        FragmentationModel::Eacid => {
+        FragmentationModel::EAD => mzannotate::annotation::model::FragmentationModel::ead().clone(),
+        FragmentationModel::EAciD => {
             mzannotate::annotation::model::FragmentationModel::eacid().clone()
         }
-        FragmentationModel::Uvpd => {
+        FragmentationModel::UVPD => {
             mzannotate::annotation::model::FragmentationModel::uvpd().clone()
         }
     }

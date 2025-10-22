@@ -132,10 +132,10 @@ fn select_model<'a>(
     match text.to_ascii_lowercase().as_str() {
         "etd" => FragmentationModel::etd(),
         "td_etd" => FragmentationModel::td_etd(),
-        "ethcd" | "etcad" => FragmentationModel::ethcd(),
+        "ethcd" | "etcad" => FragmentationModel::etcid(),
         "eacid" => FragmentationModel::eacid(),
         "ead" => FragmentationModel::ead(),
-        "hcd" | "cid" => FragmentationModel::cid_hcd(),
+        "hcd" | "cid" => FragmentationModel::cid(),
         "all" => FragmentationModel::all(),
         "none" => FragmentationModel::none(),
         _ => custom.map_or(default, |m| {

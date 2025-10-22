@@ -33,7 +33,17 @@ pub trait MetaData {
     fn charge(&self) -> Option<Charge>;
 
     /// Which fragmentation mode was used, if known
-    fn mode(&self) -> Option<Cow<'_, str>>; // TODO: should create an enum or use mzdata formats at some point
+    fn mode(&self) -> Option<Cow<'_, str>>;
+
+    /// Which built-in fragmentation model this fragmentation mode matches to.
+    /// The default implementation matches on the textual output of [`MetaData::mode`].
+    /// If needed a custom implementation can be made.
+    #[cfg(feature = "mzannotate")]
+    fn fragmentation_model(
+        &self,
+    ) -> Option<mzannotate::annotation::model::BuiltInFragmentationModel> {
+        self.mode().map(|m| m.as_ref().into())
+    }
 
     /// The retention time, if known
     fn retention_time(&self) -> Option<Time>;
