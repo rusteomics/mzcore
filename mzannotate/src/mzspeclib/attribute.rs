@@ -1,23 +1,24 @@
-use std::{borrow::Cow, collections::HashMap, fmt::Display, str::FromStr};
+//! All code to make [`Attribute`]s and [`Term`]s
+use std::{borrow::Cow, fmt::Display, str::FromStr};
 
-use context_error::Context;
 use mzdata::{
     Param,
     params::{CURIE, CURIEParsingError, ParamValue, ParamValueParseError, Unit, Value},
 };
 
-use crate::mzspeclib::Id;
-
+/// An error when parsing a term.
 #[derive(Debug)]
 pub enum TermParserError {
+    /// The CURIE is invalid
     CURIEError(CURIEParsingError),
-    MissingPipe(String),
+    /// The pipe symbol is missing
+    MissingPipe,
 }
 
 /// A term, a CURIE plus its name
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Term {
-    /// The CURIE (eg MS:0000000)
+    /// The CURIE (e.g. MS:0000000)
     pub accession: CURIE,
     /// The name
     pub name: Cow<'static, str>, // Static Cow to allow to have term in match arms
@@ -56,7 +57,7 @@ impl FromStr for Term {
             let curie: CURIE = curie.parse().map_err(TermParserError::CURIEError)?;
             Ok(Self::new(curie, name.to_string()))
         } else {
-            Err(TermParserError::MissingPipe(s.to_string()))
+            Err(TermParserError::MissingPipe)
         }
     }
 }
@@ -213,13 +214,19 @@ impl From<Vec<Value>> for AttributeValue {
     }
 }
 
+/// An error when parsing an attribute
 #[derive(Debug)]
 pub enum AttributeParseError {
-    TermParserError(TermParserError, String),
-    ValueParseError(ParamValueParseError, String),
-    GroupIDParseError(std::num::ParseIntError, String),
-    MissingValueSeparator(String),
-    MissingClosingGroupBracket(String),
+    /// The term could not be parsed
+    TermParserError(TermParserError),
+    /// The value could not be parsed
+    ValueParseError(ParamValueParseError),
+    /// The group id was not numerical
+    GroupIDParseError(std::num::ParseIntError),
+    /// The equals '=' was missing
+    MissingValueSeparator,
+    /// The group id closing brace ']' was missing
+    MissingClosingGroupBracket,
 }
 
 impl Display for AttributeParseError {
@@ -228,32 +235,28 @@ impl Display for AttributeParseError {
             f,
             "{}",
             match self {
-                Self::TermParserError(
-                    TermParserError::CURIEError(CURIEParsingError::AccessionParsingError(_)),
-                    _,
-                ) => "Accession not numeric",
-                Self::TermParserError(
-                    TermParserError::CURIEError(CURIEParsingError::MissingNamespaceSeparator),
-                    _,
-                ) => "There is no namespace",
-                Self::TermParserError(
-                    TermParserError::CURIEError(CURIEParsingError::UnknownControlledVocabulary(_)),
-                    _,
-                ) => "The controlled vocabulary is unknown",
-                Self::TermParserError(TermParserError::MissingPipe(_), _) =>
+                Self::TermParserError(TermParserError::CURIEError(
+                    CURIEParsingError::AccessionParsingError(_),
+                )) => "Accession not numeric",
+                Self::TermParserError(TermParserError::CURIEError(
+                    CURIEParsingError::MissingNamespaceSeparator,
+                )) => "There is no namespace",
+                Self::TermParserError(TermParserError::CURIEError(
+                    CURIEParsingError::UnknownControlledVocabulary(_),
+                )) => "The controlled vocabulary is unknown",
+                Self::TermParserError(TermParserError::MissingPipe) =>
                     "The term pipe symbol is missing, a term should be written like 'MS:1000896|normalized retention time'",
-                Self::ValueParseError(ParamValueParseError::FailedToExtractBuffer, _) =>
+                Self::ValueParseError(ParamValueParseError::FailedToExtractBuffer) =>
                     "Invalid value for the attribute, expected a buffer",
-                Self::ValueParseError(ParamValueParseError::FailedToExtractFloat(_), _) =>
+                Self::ValueParseError(ParamValueParseError::FailedToExtractFloat(_)) =>
                     "Invalid value for the attribute, expected a floating point",
-                Self::ValueParseError(ParamValueParseError::FailedToExtractInt(_), _) =>
+                Self::ValueParseError(ParamValueParseError::FailedToExtractInt(_)) =>
                     "Invalid value for the attribute, expected an integer",
-                Self::ValueParseError(ParamValueParseError::FailedToExtractString, _) =>
+                Self::ValueParseError(ParamValueParseError::FailedToExtractString) =>
                     "Invalid value for the attribute, expected a string",
-                Self::GroupIDParseError(_, _) => "The group id is not a valid number",
-                Self::MissingValueSeparator(_) => "The value separator '=' is missing",
-                Self::MissingClosingGroupBracket(_) =>
-                    "The group id closing bracket ']' is missing",
+                Self::GroupIDParseError(_) => "The group id is not a valid number",
+                Self::MissingValueSeparator => "The value separator '=' is missing",
+                Self::MissingClosingGroupBracket => "The group id closing bracket ']' is missing",
             }
         )
     }
@@ -278,32 +281,26 @@ impl FromStr for Attribute {
             if let Some((group_id, rest)) = s.split_once(']') {
                 let group_id = match group_id.parse::<u32>() {
                     Ok(group_id) => group_id,
-                    Err(e) => return Err(AttributeParseError::GroupIDParseError(e, s.to_string())),
+                    Err(e) => return Err(AttributeParseError::GroupIDParseError(e)),
                 };
                 if let Some((name, val)) = rest.split_once('=') {
-                    let term: Term = name
-                        .parse()
-                        .map_err(|e| AttributeParseError::TermParserError(e, s.to_string()))?;
-                    let value: AttributeValue = val
-                        .parse()
-                        .map_err(|e| AttributeParseError::ValueParseError(e, s.to_string()))?;
+                    let term: Term = name.parse().map_err(AttributeParseError::TermParserError)?;
+                    let value: AttributeValue =
+                        val.parse().map_err(AttributeParseError::ValueParseError)?;
                     Ok(Self::new(term, value, Some(group_id)))
                 } else {
-                    Err(AttributeParseError::MissingValueSeparator(s.to_string()))
+                    Err(AttributeParseError::MissingValueSeparator)
                 }
             } else {
-                Err(Self::Err::MissingClosingGroupBracket(s.to_string()))
+                Err(Self::Err::MissingClosingGroupBracket)
             }
         } else if let Some((name, val)) = s.split_once('=') {
-            let term: Term = name
-                .parse()
-                .map_err(|e| AttributeParseError::TermParserError(e, s.to_string()))?;
-            let value: AttributeValue = val
-                .parse()
-                .map_err(|e| AttributeParseError::ValueParseError(e, s.to_string()))?;
+            let term: Term = name.parse().map_err(AttributeParseError::TermParserError)?;
+            let value: AttributeValue =
+                val.parse().map_err(AttributeParseError::ValueParseError)?;
             Ok(Self::new(term, value, None))
         } else {
-            Err(AttributeParseError::MissingValueSeparator(s.to_string()))
+            Err(AttributeParseError::MissingValueSeparator)
         }
     }
 }
@@ -352,58 +349,5 @@ impl Display for Attribute {
                 write!(f, "{}={}", self.name, self.value)
             }
         }
-    }
-}
-
-/// A set of attributes in the library header that contains global settings for all or a subset of spectra
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct AttributeSet {
-    /// The id
-    pub id: String,
-    /// The type of attributes
-    pub namespace: EntryType,
-    /// The attributes themselves grouped by group id and with the original context to provide good error messages
-    pub attributes: HashMap<Option<Id>, Vec<(Attribute, Context<'static>)>>,
-}
-
-impl PartialOrd for AttributeSet {
-    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        match self.id.partial_cmp(&other.id) {
-            Some(core::cmp::Ordering::Equal) => {}
-            ord => return ord,
-        }
-        match self.namespace.partial_cmp(&other.namespace) {
-            Some(core::cmp::Ordering::Equal) => {}
-            ord => return ord,
-        }
-        self.attributes.len().partial_cmp(&other.attributes.len())
-    }
-}
-
-/// All types of entries for global attribute sets
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub enum EntryType {
-    /// Spectrum attributes
-    Spectrum,
-    /// Analyte attributes
-    Analyte,
-    /// Interpretation attributes
-    Interpretation,
-    /// A cluster
-    Cluster,
-}
-
-impl Display for EntryType {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "{}",
-            match self {
-                Self::Spectrum => "Spectrum",
-                Self::Analyte => "Analyte",
-                Self::Interpretation => "Interpretation",
-                Self::Cluster => "Cluster",
-            }
-        )
     }
 }

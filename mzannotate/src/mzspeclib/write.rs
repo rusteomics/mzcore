@@ -3,11 +3,12 @@ use std::{
     marker::PhantomData,
 };
 
-use mzdata::{mzpeaks::peak_set::PeakSetIter, prelude::*};
+use mzdata::{mzpeaks::peak_set::PeakSetIter, params::Value, prelude::*};
 
 use crate::{
-    mzspeclib::{Attribute, EntryType, Id, LibraryHeader},
+    mzspeclib::{Attribute, AttributeValue, EntryType, Id, LibraryHeader},
     prelude::ToMzPAF,
+    term,
 };
 
 use itertools::Itertools;
@@ -71,7 +72,38 @@ impl<Writer: Write> MzSpecLibTextWriter<Writer, Initial> {
     /// # Errors
     /// If writing to the underlying stream failed.
     pub fn write_header(mut self) -> io::Result<MzSpecLibTextWriter<Writer, HeaderWritten>> {
-        self.writer.write_all(self.header.to_string().as_bytes())?;
+        let version = Attribute::new(
+            term!(MS:1003186|library format version),
+            AttributeValue::Scalar(Value::String(self.header.format_version.clone())),
+            None,
+        );
+        writeln!(&mut self.writer, "<mzSpecLib>\n{version}")?;
+        for attr in &self.header.attributes {
+            writeln!(&mut self.writer, "{attr}")?;
+        }
+        for t in [
+            &EntryType::Spectrum,
+            &EntryType::Analyte,
+            &EntryType::Interpretation,
+            &EntryType::Cluster,
+        ] {
+            for group in self
+                .header
+                .attribute_classes
+                .get(t)
+                .iter()
+                .flat_map(|s| s.iter())
+            {
+                writeln!(&mut self.writer, "<AttributeSet {t}={}>", group.id)?;
+                for attr in group
+                    .attributes
+                    .values()
+                    .flat_map(|a| a.iter().map(|(a, _)| a))
+                {
+                    writeln!(&mut self.writer, "{attr}")?;
+                }
+            }
+        }
         Ok(MzSpecLibTextWriter::<Writer, HeaderWritten> {
             writer: self.writer,
             header: self.header,

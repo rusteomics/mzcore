@@ -8,7 +8,7 @@ use mzdata::{
 
 use crate::{
     fragment::Fragment,
-    mzspeclib::{Analyte, Attribute, Id, Interpretation, get_spectrum_description_attributes},
+    mzspeclib::{Analyte, Attribute, Id, Interpretation, get_attributes_from_spectrum_description},
     spectrum::AnnotatedPeak,
     term,
 };
@@ -254,7 +254,7 @@ impl crate::mzspeclib::MzSpecLibEncode for AnnotatedSpectrum {
         self.attributes
             .iter()
             .cloned()
-            .chain(get_spectrum_description_attributes(
+            .chain(get_attributes_from_spectrum_description(
                 &self.description,
                 Some(&{
                     // The `SummaryOps` trait from mzdata is private, so this is the exact implementation copy pasted into here
