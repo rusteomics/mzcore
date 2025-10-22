@@ -1,6 +1,10 @@
 use mzcore::system::MassOverCharge;
 use mzdata::{
-    mzpeaks::{MZPeakSetType, peak_set::PeakSetIter, prelude::*},
+    mzpeaks::{
+        MZPeakSetType,
+        peak_set::{PeakSetIter, PeakSetVec},
+        prelude::*,
+    },
     params::{ParamDescribed, ParamLike, Unit, Value, ValueRef},
     prelude::{IonProperties, PrecursorSelection, SpectrumLike},
     spectrum::{SignalContinuity, SpectrumDescription},
@@ -8,20 +12,23 @@ use mzdata::{
 
 use crate::{
     fragment::Fragment,
-    mzspeclib::{Analyte, Attribute, Id, Interpretation, get_attributes_from_spectrum_description},
+    mzspeclib::{
+        Analyte, Attribute, Attributes, Id, Interpretation,
+        get_attributes_from_spectrum_description, merge_attributes,
+    },
     spectrum::AnnotatedPeak,
     term,
 };
 
 /// An annotated spectrum.
-#[derive(Default, Debug, Clone)]
+#[derive(Debug, Clone)]
 pub struct AnnotatedSpectrum {
     /// The Id for a spectrum
     pub key: Id,
     /// The spectrum description
     pub description: SpectrumDescription,
-    /// The attributes that could not be interpretated as elements on the spectrum description
-    pub attributes: Vec<Attribute>,
+    /// The attributes that could not be interpreted as elements on the spectrum description
+    pub attributes: Attributes,
     /// The analytes
     pub analytes: Vec<Analyte>,
     /// The interpretations
@@ -30,12 +37,25 @@ pub struct AnnotatedSpectrum {
     pub peaks: MZPeakSetType<AnnotatedPeak<Fragment>>,
 }
 
+impl Default for AnnotatedSpectrum {
+    fn default() -> Self {
+        Self {
+            key: 0,
+            description: SpectrumDescription::default(),
+            attributes: vec![Vec::new(); 1],
+            analytes: Vec::new(),
+            interpretations: Vec::new(),
+            peaks: PeakSetVec::default(),
+        }
+    }
+}
+
 impl AnnotatedSpectrum {
     /// Create a new annotated spectrum
     pub const fn new(
         key: Id,
         description: SpectrumDescription,
-        attributes: Vec<Attribute>,
+        attributes: Attributes,
         analytes: Vec<Analyte>,
         interpretations: Vec<Interpretation>,
         peaks: MZPeakSetType<AnnotatedPeak<Fragment>>,
@@ -111,112 +131,78 @@ impl<S: SpectrumLike> From<S> for AnnotatedSpectrum {
             ..Default::default()
         };
 
-        let mut group_id = this
-            .attributes
-            .iter()
-            .map(|v| v.group_id)
-            .reduce(|prev, new| {
-                new.map(|new| prev.map_or(new, |prev| prev.max(new)))
-                    .or(prev)
-            })
-            .unwrap_or_default()
-            .unwrap_or_default()
-            + 1;
-
-        let handle_param = |param: &mzdata::Param, this: &mut Self, group_id: &mut u32| {
+        let handle_param = |param: &mzdata::Param, this: &mut Self| {
             if matches!(param.value(), ValueRef::Empty) {
                 // Ignore empty params
             } else if let Ok(term) = param.clone().try_into() {
-                if let Some(unit) = Attribute::unit(param.unit, Some(*group_id)) {
-                    this.attributes.push(Attribute::new(
-                        term,
-                        param.value.clone(),
-                        Some(*group_id),
-                    ));
-                    this.attributes.push(unit);
-                    *group_id += 1;
-                } else {
+                if let Some(unit) = Attribute::unit(param.unit) {
                     this.attributes
-                        .push(Attribute::new(term, param.value.clone(), None));
+                        .push(vec![Attribute::new(term, param.value.clone()), unit]);
+                } else {
+                    this.attributes[0].push(Attribute::new(term, param.value.clone()));
                 }
             } else {
-                this.attributes.push(Attribute::new(
-                    term!(MS:1003275|other attribute name),
-                    Value::String(param.name().to_string()),
-                    Some(*group_id),
-                ));
-                this.attributes.push(Attribute::new(
-                    term!(MS:1003276|other attribute value),
-                    param.value.clone(),
-                    Some(*group_id),
-                ));
-                *group_id += 1;
+                this.attributes.push(vec![
+                    Attribute::new(
+                        term!(MS:1003275|other attribute name),
+                        Value::String(param.name().to_string()),
+                    ),
+                    Attribute::new(term!(MS:1003276|other attribute value), param.value.clone()),
+                ]);
             }
         };
 
         for scan in value.acquisition().iter() {
             if let Some(filter_string) = scan.filter_string() {
-                let attr = Attribute::new(
+                this.attributes[0].push(Attribute::new(
                     term!(MS:1000512|filter string),
                     Value::String(filter_string.to_string()),
-                    None,
-                );
-                this.attributes.push(attr);
+                ));
             }
 
             let attr = Attribute::new(
                 term!(MS:1000016|scan start time),
                 Value::Float(scan.start_time),
-                Some(group_id),
             );
-            let unit = Attribute::unit(Unit::Minute, Some(group_id)).unwrap();
-            this.attributes.push(attr);
-            this.attributes.push(unit);
-            group_id += 1;
+            let unit = Attribute::unit(Unit::Minute).unwrap();
+            this.attributes.push(vec![attr, unit]);
 
             if scan.injection_time != 0.0 {
-                this.attributes.push(Attribute::new(
-                    term!(MS:1000927|ion injection time),
-                    Value::Float(f64::from(scan.injection_time)),
-                    Some(group_id),
-                ));
-                this.attributes
-                    .push(Attribute::unit(Unit::Millisecond, Some(group_id)).unwrap());
-                group_id += 1;
+                this.attributes.push(vec![
+                    Attribute::new(
+                        term!(MS:1000927|ion injection time),
+                        Value::Float(f64::from(scan.injection_time)),
+                    ),
+                    Attribute::unit(Unit::Millisecond).unwrap(),
+                ]);
             }
 
             for param in scan.params() {
-                handle_param(param, &mut this, &mut group_id);
+                handle_param(param, &mut this);
             }
         }
         if let Some(precursor) = value.precursor() {
             let ion = precursor.ion();
-            this.attributes.push(Attribute::new(
-                term!(MS:1000744|selected ion m/z),
-                Value::Float(ion.mz()),
-                Some(group_id),
-            ));
-            this.attributes
-                .push(Attribute::unit(Unit::MZ, Some(group_id)).unwrap());
-            group_id += 1;
+            this.attributes.push(vec![
+                Attribute::new(term!(MS:1000744|selected ion m/z), Value::Float(ion.mz())),
+                Attribute::unit(Unit::MZ).unwrap(),
+            ]);
             if let Some(z) = ion.charge() {
-                this.attributes.push(Attribute::new(
+                this.attributes[0].push(Attribute::new(
                     term!(MS:1000041|charge state),
                     Value::Int(i64::from(z)),
-                    None,
                 ));
             }
-            this.attributes.push(Attribute::new(
-                term!(MS:1000042|peak intensity),
-                Value::Float(f64::from(ion.intensity)),
-                Some(group_id),
-            ));
-            this.attributes
-                .push(Attribute::unit(Unit::MZ, Some(group_id)).unwrap());
-            group_id += 1;
+            this.attributes.push(vec![
+                Attribute::new(
+                    term!(MS:1000042|peak intensity),
+                    Value::Float(f64::from(ion.intensity)),
+                ),
+                Attribute::unit(Unit::MZ).unwrap(),
+            ]);
 
             for param in ion.params() {
-                handle_param(param, &mut this, &mut group_id);
+                handle_param(param, &mut this);
             }
         }
 
@@ -250,55 +236,49 @@ impl crate::mzspeclib::MzSpecLibEncode for AnnotatedSpectrum {
     }
 
     /// The attributes for this spectrum
-    fn spectrum(&self) -> impl IntoIterator<Item = Attribute> {
-        self.attributes
-            .iter()
-            .cloned()
-            .chain(get_attributes_from_spectrum_description(
-                &self.description,
-                Some(&{
-                    // The `SummaryOps` trait from mzdata is private, so this is the exact implementation copy pasted into here
-                    let state = self.peaks.iter().fold(
+    fn spectrum(&self) -> Attributes {
+        let mut own = self.attributes.clone();
+        let other = get_attributes_from_spectrum_description(
+            &self.description,
+            Some(&{
+                // The `SummaryOps` trait from mzdata is private, so this is the exact implementation copy pasted into here
+                let state = self.peaks.iter().fold(
+                    (
+                        0.0,
+                        mzdata::mzpeaks::CentroidPeak::default(),
+                        (f64::INFINITY, f64::NEG_INFINITY),
+                    ),
+                    |(tic, bp, (mz_min, mz_max)), p| {
                         (
-                            0.0,
-                            mzdata::mzpeaks::CentroidPeak::default(),
-                            (f64::INFINITY, f64::NEG_INFINITY),
-                        ),
-                        |(tic, bp, (mz_min, mz_max)), p| {
-                            (
-                                tic + p.intensity(),
-                                if p.intensity() > bp.intensity {
-                                    p.as_centroid()
-                                } else {
-                                    bp
-                                },
-                                (mz_min.min(p.mz()), mz_max.max(p.mz())),
-                            )
-                        },
-                    );
+                            tic + p.intensity(),
+                            if p.intensity() > bp.intensity {
+                                p.as_centroid()
+                            } else {
+                                bp
+                            },
+                            (mz_min.min(p.mz()), mz_max.max(p.mz())),
+                        )
+                    },
+                );
 
-                    mzdata::spectrum::SpectrumSummary::new(
-                        state.0,
-                        state.1,
-                        state.2,
-                        self.peaks.len(),
-                    )
-                }),
-            ))
+                mzdata::spectrum::SpectrumSummary::new(state.0, state.1, state.2, self.peaks.len())
+            }),
+        );
+        merge_attributes(&mut own, &other);
+        own
     }
 
-    type AnalyteIter = Vec<Attribute>;
     /// The attributes for the analytes
-    fn analytes(&self) -> impl Iterator<Item = (Id, Self::AnalyteIter)> {
+    fn analytes(&self) -> impl Iterator<Item = (Id, Attributes)> {
         self.analytes.iter().map(|a| (a.id, a.attributes()))
     }
-    type InterpretationIter = Vec<Attribute>;
-    type InterpretationMemberIter = Vec<(Id, Vec<Attribute>)>;
+
+    type InterpretationMemberIter = Vec<(Id, Attributes)>;
 
     /// The attributes for the interpretations
     fn interpretations(
         &self,
-    ) -> impl Iterator<Item = (Id, Self::InterpretationIter, Self::InterpretationMemberIter)> {
+    ) -> impl Iterator<Item = (Id, Attributes, Self::InterpretationMemberIter)> {
         self.interpretations.iter().map(|i| {
             (
                 i.id,

@@ -216,7 +216,7 @@ impl<'a, R: BufRead> MzSpecLibTextParser<'a, R> {
     fn read_attribute(
         &mut self,
         buf: &mut String,
-    ) -> Result<Attribute, BoxedError<'static, MzSpecLibErrorKind>> {
+    ) -> Result<(Option<u32>, Attribute), BoxedError<'static, MzSpecLibErrorKind>> {
         let z = self.read_next_line(buf).map_err(|e| {
             BoxedError::new(
                 MzSpecLibErrorKind::IO,
@@ -233,16 +233,14 @@ impl<'a, R: BufRead> MzSpecLibTextParser<'a, R> {
                 self.current_context().lines(0, &*buf).to_owned(),
             ));
         }
-        buf.trim_ascii_end()
-            .parse()
-            .map_err(|e: AttributeParseError| {
-                BoxedError::new(
-                    MzSpecLibErrorKind::Attribute,
-                    "Invalid attribute",
-                    e.to_string(),
-                    self.current_context().lines(0, &*buf).to_owned(),
-                )
-            })
+        Attribute::parse(buf.trim_ascii_end()).map_err(|e: AttributeParseError| {
+            BoxedError::new(
+                MzSpecLibErrorKind::Attribute,
+                "Invalid attribute",
+                e.to_string(),
+                self.current_context().lines(0, &*buf).to_owned(),
+            )
+        })
     }
 
     /// Read attributes sets at the current point in the reader and store them in the header.
@@ -254,7 +252,7 @@ impl<'a, R: BufRead> MzSpecLibTextParser<'a, R> {
 
         loop {
             match self.read_attribute(&mut buf) {
-                Ok(attr) => {
+                Ok((group_id, attr)) => {
                     current_attribute_set
                         .as_mut()
                         .ok_or_else(|| {
@@ -267,7 +265,7 @@ impl<'a, R: BufRead> MzSpecLibTextParser<'a, R> {
                             )
                         })?
                         .attributes
-                        .entry(attr.group_id)
+                        .entry(group_id)
                         .or_default()
                         .push((attr, self.current_context().lines(0, &buf).to_owned()));
                 }
@@ -344,7 +342,7 @@ impl<'a, R: BufRead> MzSpecLibTextParser<'a, R> {
                             return Err(BoxedError::new(
                                 MzSpecLibErrorKind::Declaration,
                                 "Invalid declaration",
-                                "In the header only attribut sets can be defined '<AttributeSet Spectrum=all>' or a header can be followed by a '<Spectrum=XX>'",
+                                "In the header only attribute sets can be defined '<AttributeSet Spectrum=all>' or a header can be followed by a '<Spectrum=XX>'",
                                 self.current_context().lines(0, &buf).to_owned(),
                             ));
                         }
@@ -393,12 +391,19 @@ impl<'a, R: BufRead> MzSpecLibTextParser<'a, R> {
 
         loop {
             match self.read_attribute(&mut buf) {
-                Ok(attr) => match attr.name.accession {
+                Ok((group_id, attr)) => match attr.name.accession {
                     curie!(MS:1003186) => {
                         self.header.format_version = attr.value.to_string();
                     }
                     _ => {
-                        self.header.attributes.push(attr);
+                        let index = group_id.map_or(0, |i| i as usize + 1);
+                        if self.header.attributes.len() <= index {
+                            self.header.attributes.extend(std::iter::repeat_n(
+                                Vec::new(),
+                                index - self.header.attributes.len() + 1,
+                            ));
+                        }
+                        self.header.attributes[index].push(attr);
                     }
                 },
                 Err(e) => {
@@ -411,7 +416,7 @@ impl<'a, R: BufRead> MzSpecLibTextParser<'a, R> {
                             return Err(BoxedError::new(
                                 MzSpecLibErrorKind::Declaration,
                                 "Invalid declaration",
-                                "In the header only attribut sets can be defined '<AttributeSet Spectrum=all>' or a header can be followed by a '<Spectrum=XX>'",
+                                "In the header only attribute sets can be defined '<AttributeSet Spectrum=all>' or a header can be followed by a '<Spectrum=XX>'",
                                 self.current_context().lines(0, &buf).to_owned(),
                             ));
                         }
@@ -432,6 +437,13 @@ impl<'a, R: BufRead> MzSpecLibTextParser<'a, R> {
         }
 
         self.read_attribute_sets()?;
+
+        let mut first = true;
+        self.header.attributes.retain(|v| {
+            let retain = !v.is_empty() || first;
+            first = false;
+            retain
+        });
 
         Ok(())
     }
@@ -508,7 +520,7 @@ impl<'a, R: BufRead> MzSpecLibTextParser<'a, R> {
         let mut protein = ProteinDescription::default();
         loop {
             match self.read_attribute(&mut buf) {
-                Ok(attr) => {
+                Ok((group_id, attr)) => {
                     if attr.name.accession == curie!(MS:1003270)
                         && let Value::String(value) = attr.value.scalar().as_ref()
                     {
@@ -577,7 +589,7 @@ impl<'a, R: BufRead> MzSpecLibTextParser<'a, R> {
                     .contains(&attr.name.accession)
                     {
                         // Ignore, can be calculated easily on the fly
-                    } else if let Some(group_id) = attr.group_id {
+                    } else if let Some(group_id) = group_id {
                         groups
                             .entry(group_id)
                             .or_default()
@@ -693,11 +705,12 @@ impl<'a, R: BufRead> MzSpecLibTextParser<'a, R> {
             self.parse_open_declaration(&buf, "<Interpretation=", ParserState::Interpretation)?;
         let mut interp = Interpretation {
             id,
+            attributes: vec![Vec::new(); 1],
             ..Default::default()
         };
         loop {
             match self.read_attribute(&mut buf) {
-                Ok(attribute) => {
+                Ok((group_id, attribute)) => {
                     if attribute.name == term!(MS:1002357|PSM-level probability) {
                         interp.probability =
                             Some(attribute.value.scalar().to_f64().map_err(|e| {
@@ -722,7 +735,14 @@ impl<'a, R: BufRead> MzSpecLibTextParser<'a, R> {
                     {
                         // Ignore, can be calculated easily on the fly
                     } else {
-                        interp.attributes.push(attribute);
+                        let index = group_id.map_or(0, |i| i as usize + 1);
+                        if interp.attributes.len() <= index {
+                            interp.attributes.extend(std::iter::repeat_n(
+                                Vec::new(),
+                                index - interp.attributes.len() + 1,
+                            ));
+                        }
+                        interp.attributes[index].push(attribute);
                     }
                 }
                 Err(e) => {
@@ -741,19 +761,7 @@ impl<'a, R: BufRead> MzSpecLibTextParser<'a, R> {
             }
         }
 
-        let mut next_group_id = interp
-            .attributes
-            .iter()
-            .map(|v| v.group_id)
-            .reduce(|prev, new| {
-                new.map(|new| prev.map_or(new, |prev| prev.max(new)))
-                    .or(prev)
-            })
-            .unwrap_or_default()
-            .unwrap_or_default();
-
-        let attr_sets: Vec<_> = interp
-            .attributes
+        let attr_sets: Vec<_> = interp.attributes[0]
             .iter()
             .filter(|a| a.name == term!(MS:1003212|library attribute set name))
             .map(|v| v.value.to_string())
@@ -769,22 +777,22 @@ impl<'a, R: BufRead> MzSpecLibTextParser<'a, R> {
                 if attr_set.id == name || attr_set.id == "all" {
                     for (group_id, group) in &attr_set.attributes {
                         if group_id.is_some() {
-                            next_group_id += 1;
-
-                            for (attr, _) in group {
-                                let mut attr = attr.clone();
-                                attr.group_id = Some(next_group_id);
-                                interp.attributes.push(attr);
-                            }
-                        } else {
                             interp
                                 .attributes
-                                .extend(group.iter().map(|(a, _)| a).cloned());
+                                .push(group.iter().map(|(a, _)| a).cloned().collect());
+                        } else {
+                            interp.attributes[0].extend(group.iter().map(|(a, _)| a).cloned());
                         }
                     }
                 }
             }
         }
+        let mut first = true;
+        interp.attributes.retain(|v| {
+            let retain = !v.is_empty() || first;
+            first = false;
+            retain
+        });
         Ok(interp)
     }
 
@@ -917,15 +925,12 @@ impl<'a, R: BufRead> MzSpecLibTextParser<'a, R> {
                 self.current_context().to_owned(),
             ));
         }
-        let id = self.parse_open_declaration(&buf, "<Spectrum=", ParserState::Spectrum)?;
-        let mut spec = AnnotatedSpectrum::new(
-            id,
-            SpectrumDescription::default(),
-            Vec::new(),
-            Vec::new(),
-            Vec::new(),
-            PeakSetVec::default(),
-        );
+        let key = self.parse_open_declaration(&buf, "<Spectrum=", ParserState::Spectrum)?;
+        let mut spec = AnnotatedSpectrum {
+            key,
+            attributes: vec![Vec::new(); 1],
+            ..Default::default()
+        };
 
         // Set default assumptions on mzSpecLib files
         spec.description.ms_level = 2;
@@ -948,7 +953,7 @@ impl<'a, R: BufRead> MzSpecLibTextParser<'a, R> {
 
         loop {
             match self.read_attribute(&mut buf) {
-                Ok(attr) => term_collection.entry(attr.group_id).or_default().push((
+                Ok((group_id, attr)) => term_collection.entry(group_id).or_default().push((
                     attr,
                     self.current_context().to_owned().lines(0, buf.clone()),
                 )),
@@ -973,8 +978,7 @@ impl<'a, R: BufRead> MzSpecLibTextParser<'a, R> {
             }
         }
 
-        let set_names: Vec<_> = spec
-            .attributes
+        let set_names: Vec<_> = spec.attributes[0]
             .iter()
             .filter(|a| a.name == term!(MS:1003212|library attribute set name))
             .map(|v| v.value.to_string())
@@ -1286,6 +1290,38 @@ impl<R: BufRead + Seek> MzSpecLibTextParser<'_, R> {
         Some(self.read_next())
     }
 
+    /// Get a spectrum by the scan number (MS:1003057), if the index is not yet built this first
+    /// builds the index. It returns None when the key does not exist and an error if the spectrum
+    /// index could not be built, the correct reader could not be repositioned to the correct
+    /// location, or the spectrum could not be correctly parsed.
+    pub fn get_spectrum_by_scan_number(
+        &mut self,
+        scan_number: usize,
+    ) -> Option<Result<AnnotatedSpectrum, BoxedError<'static, MzSpecLibErrorKind>>> {
+        if !self.offsets.done
+            && let Err(e) = self.build_index()
+        {
+            return Some(Err(BoxedError::new(
+                MzSpecLibErrorKind::IO,
+                "IO error",
+                e.to_string(),
+                self.current_context().to_owned(),
+            )));
+        }
+        let rec = self.offsets.get_by_scan_number(scan_number)?;
+        if let Err(e) = self.inner.seek(io::SeekFrom::Start(rec.offset)) {
+            return Some(Err(BoxedError::new(
+                MzSpecLibErrorKind::IO,
+                "IO error",
+                e.to_string(),
+                self.current_context().to_owned(),
+            )));
+        }
+        self.line_index = rec.line_index;
+        self.line_cache.clear();
+        Some(self.read_next())
+    }
+
     /// Get a spectrum by the index, if the index is not yet built this first builds the index.
     /// It returns None when the index does not exist and an error if the spectrum index could not
     /// be built, the correct reader could not be repositioned to the correct location, or the
@@ -1318,10 +1354,10 @@ impl<R: BufRead + Seek> MzSpecLibTextParser<'_, R> {
         Some(self.read_next())
     }
 
-    /// Get a spectrum by the name, if the index is not yet built this first builds the index.
-    /// It returns None when the name does not exist and an error if the spectrum index could not
-    /// be built, the correct reader could not be repositioned to the correct location, or the
-    /// spectrum could not be correctly parsed.
+    /// Get a spectrum by the name (MS:1003061), if the index is not yet built this first builds
+    /// the index. It returns None when the name does not exist and an error if the spectrum index
+    /// could not be built, the correct reader could not be repositioned to the correct location,
+    /// or the spectrum could not be correctly parsed.
     pub fn get_spectrum_by_name(
         &mut self,
         name: &str,
@@ -1372,6 +1408,9 @@ mod test {
 
         let spec = this.get_spectrum_by_index(3).unwrap().unwrap();
         assert_eq!(spec.key, 4);
+
+        let spec = this.get_spectrum_by_scan_number(5538).unwrap().unwrap();
+        assert_eq!(spec.key, 1);
 
         let spec = this
             .get_spectrum_by_name("AAAALGSHGSCSSEVEK/2_1(10,C,CAM)_50eV")

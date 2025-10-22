@@ -6,7 +6,7 @@ use std::{
 use mzdata::{mzpeaks::peak_set::PeakSetIter, params::Value, prelude::*};
 
 use crate::{
-    mzspeclib::{Attribute, AttributeValue, EntryType, Id, LibraryHeader},
+    mzspeclib::{Attribute, AttributeValue, Attributes, EntryType, Id, LibraryHeader},
     prelude::ToMzPAF,
     term,
 };
@@ -25,10 +25,9 @@ use itertools::Itertools;
 /// let file = std::fs::File::create("../data/test.mzSpecLib.txt").unwrap();
 /// let mut writer = MzSpecLibTextWriter::new(std::io::BufWriter::new(file));
 /// // Set any parameters needed in the header
-/// writer.header_mut().attributes.push(mzannotate::mzspeclib::Attribute::new(
+/// writer.header_mut().attributes[0].push(mzannotate::mzspeclib::Attribute::new(
 ///     term!(MS:1003188|library name),
-///     mzdata::params::Value::String("Simple test library".to_string()),
-///     None));
+///     mzdata::params::Value::String("Simple test library".to_string())));
 /// // Write the header, note that this gives you the writer back to prevent
 /// // writing the header twice or not writing the header at all.
 /// let mut writer = writer.write_header().unwrap();
@@ -75,11 +74,16 @@ impl<Writer: Write> MzSpecLibTextWriter<Writer, Initial> {
         let version = Attribute::new(
             term!(MS:1003186|library format version),
             AttributeValue::Scalar(Value::String(self.header.format_version.clone())),
-            None,
         );
         writeln!(&mut self.writer, "<mzSpecLib>\n{version}")?;
-        for attr in &self.header.attributes {
-            writeln!(&mut self.writer, "{attr}")?;
+        for (id, group) in self.header.attributes.iter().enumerate() {
+            for attr in group {
+                if let Some(id) = id.checked_sub(1) {
+                    writeln!(&mut self.writer, "[{id}]{attr}")?;
+                } else {
+                    writeln!(&mut self.writer, "{attr}")?;
+                }
+            }
         }
         for t in [
             &EntryType::Spectrum,
@@ -95,12 +99,14 @@ impl<Writer: Write> MzSpecLibTextWriter<Writer, Initial> {
                 .flat_map(|s| s.iter())
             {
                 writeln!(&mut self.writer, "<AttributeSet {t}={}>", group.id)?;
-                for attr in group
-                    .attributes
-                    .values()
-                    .flat_map(|a| a.iter().map(|(a, _)| a))
-                {
-                    writeln!(&mut self.writer, "{attr}")?;
+                for (id, group) in &group.attributes {
+                    for (attr, _) in group {
+                        if let Some(id) = id {
+                            writeln!(&mut self.writer, "[{id}]{attr}")?;
+                        } else {
+                            writeln!(&mut self.writer, "{attr}")?;
+                        }
+                    }
                 }
             }
         }
@@ -126,41 +132,65 @@ impl<Writer: Write> MzSpecLibTextWriter<Writer, HeaderWritten> {
         // TODO: think about uniqueness guarantees for this key
         writeln!(&mut self.writer, "<Spectrum={}>", spectrum.key())?;
 
-        for attr in spectrum.spectrum() {
-            // Check if this attribute needs to be written.
-            if !self
-                .header
-                .is_already_defined(&attr, EntryType::Spectrum, &["all"])
-            {
-                writeln!(&mut self.writer, "{attr}")?;
+        for (id, group) in spectrum.spectrum().iter().enumerate() {
+            for attr in group {
+                // Check if this attribute needs to be written.
+                if !self
+                    .header
+                    .is_already_defined(&attr, EntryType::Spectrum, &["all"])
+                {
+                    if let Some(id) = id.checked_sub(1) {
+                        writeln!(&mut self.writer, "[{id}]{attr}")?;
+                    } else {
+                        writeln!(&mut self.writer, "{attr}")?;
+                    }
+                }
             }
         }
         for (id, attributes) in spectrum.analytes() {
             writeln!(&mut self.writer, "<Analyte={id}>")?;
-            for attr in attributes {
-                if !self
-                    .header
-                    .is_already_defined(&attr, EntryType::Analyte, &["all"])
-                // TODO: check the protein groups additional set
-                {
-                    writeln!(&mut self.writer, "{attr}")?;
+            for (id, group) in attributes.iter().enumerate() {
+                for attr in group {
+                    if !self
+                        .header
+                        .is_already_defined(&attr, EntryType::Analyte, &["all"])
+                    // TODO: check the protein groups additional set
+                    {
+                        if let Some(id) = id.checked_sub(1) {
+                            writeln!(&mut self.writer, "[{id}]{attr}")?;
+                        } else {
+                            writeln!(&mut self.writer, "{attr}")?;
+                        }
+                    }
                 }
             }
         }
         for (id, attributes, members) in spectrum.interpretations() {
             writeln!(&mut self.writer, "<Interpretation={id}>")?;
-            for attr in attributes {
-                if !self
-                    .header
-                    .is_already_defined(&attr, EntryType::Interpretation, &["all"])
-                {
-                    writeln!(&mut self.writer, "{attr}")?;
+            for (id, group) in attributes.iter().enumerate() {
+                for attr in group {
+                    if !self
+                        .header
+                        .is_already_defined(&attr, EntryType::Interpretation, &["all"])
+                    {
+                        if let Some(id) = id.checked_sub(1) {
+                            writeln!(&mut self.writer, "[{id}]{attr}")?;
+                        } else {
+                            writeln!(&mut self.writer, "{attr}")?;
+                        }
+                    }
                 }
             }
-            for (id, attributes) in members {
-                writeln!(&mut self.writer, "<InterpretationMember={id}>",)?;
-                for attr in attributes {
-                    writeln!(&mut self.writer, "{attr}")?;
+            for (key, attributes) in members {
+                writeln!(&mut self.writer, "<InterpretationMember={key}>",)?;
+                for (id, group) in attributes.iter().enumerate() {
+                    for attr in group {
+                        if let Some(id) = id.checked_sub(1) {
+                            writeln!(&mut self.writer, "[{id}]{attr}")?;
+                        } else {
+                            writeln!(&mut self.writer, "{attr}")?;
+                        }
+                    }
                 }
             }
         }
@@ -223,19 +253,15 @@ pub trait MzSpecLibEncode {
     /// The key for this spectrum
     fn key(&self) -> Id;
     /// The attributes for this spectrum
-    fn spectrum(&self) -> impl IntoIterator<Item = Attribute>;
-    /// The analyte attribute iterator
-    type AnalyteIter: IntoIterator<Item = Attribute>;
+    fn spectrum(&self) -> Attributes;
     /// The attributes for the analytes
-    fn analytes(&self) -> impl Iterator<Item = (Id, Self::AnalyteIter)>;
-    /// The interpretation attribute iterator
-    type InterpretationIter: IntoIterator<Item = Attribute>;
+    fn analytes(&self) -> impl Iterator<Item = (Id, Attributes)>;
     /// The interpretation members iterator
-    type InterpretationMemberIter: IntoIterator<Item = (Id, Self::InterpretationIter)>;
+    type InterpretationMemberIter: IntoIterator<Item = (Id, Attributes)>;
     /// The attributes for the interpretations
     fn interpretations(
         &self,
-    ) -> impl Iterator<Item = (Id, Self::InterpretationIter, Self::InterpretationMemberIter)>;
+    ) -> impl Iterator<Item = (Id, Attributes, Self::InterpretationMemberIter)>;
     /// The peaks
     fn peaks(&self) -> PeakSetIter<'_, Self::P>;
 }

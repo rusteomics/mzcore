@@ -2,7 +2,7 @@
 use std::borrow::Cow;
 
 use crate::{
-    mzspeclib::{Attribute, AttributeValue, MzSpecLibErrorKind, Term},
+    mzspeclib::{Attribute, AttributeValue, Attributes, MzSpecLibErrorKind, Term},
     term,
 };
 
@@ -17,41 +17,36 @@ use mzdata::{
 pub fn get_attributes_from_spectrum_description(
     description: &SpectrumDescription,
     summary: Option<&SpectrumSummary>,
-) -> Vec<Attribute> {
-    let mut attributes = Vec::new();
-    let mut group_id = 0;
+) -> Attributes {
+    let mut attributes = vec![Vec::new(); 1];
 
     if let Some(scan) = description.acquisition.scans.first() {
         if scan.start_time != 0.0 {
-            attributes.push(Attribute::new(
+            attributes[0].push(Attribute::new(
                 term!(MS:1000894|retention time),
                 Value::Float(scan.start_time),
-                None,
             ));
         }
         if let Some(filter) = scan.filter_string() {
-            attributes.push(Attribute::new(
+            attributes[0].push(Attribute::new(
                 term!(MS:1000512|filter string),
                 Value::String(filter.to_string()),
-                None,
             ));
         }
         if let Some(window) = scan.scan_windows.first() {
-            attributes.push(Attribute::new(
+            attributes[0].push(Attribute::new(
                 term!(MS:1000501|scan window lower limit),
                 Value::Float(window.lower_bound.into()),
-                None,
             ));
-            attributes.push(Attribute::new(
+            attributes[0].push(Attribute::new(
                 term!(MS:1000500|scan window upper limit),
                 Value::Float(window.upper_bound.into()),
-                None,
             ));
         }
     }
     if let Some(precursor) = description.precursor.first() {
         for dissociation in precursor.activation.methods() {
-            attributes.push(Attribute::new(
+            attributes[0].push(Attribute::new(
                 term!(MS:1000044|dissociation method),
                 AttributeValue::Term(Term {
                     accession: CURIE {
@@ -60,149 +55,128 @@ pub fn get_attributes_from_spectrum_description(
                     },
                     name: Cow::Borrowed(dissociation.name()),
                 }),
-                None,
             ));
         }
 
         if precursor.activation.energy != 0.0 {
-            attributes.push(Attribute::new(
+            attributes[0].push(Attribute::new(
                 term!(MS:1000509|activation energy),
                 Value::Float(precursor.activation.energy.into()),
-                None,
             ));
         }
         match precursor.isolation_window.flags {
             IsolationWindowState::Complete => {
-                attributes.push(Attribute::new(
+                attributes[0].push(Attribute::new(
                     term!(MS:1003208|experimental precursor monoisotopic m/z),
                     Value::Float(precursor.isolation_window.target.into()),
-                    None,
                 ));
-                attributes.push(Attribute::new(
+                attributes[0].push(Attribute::new(
                     term!(MS:1000828|isolation window lower offset),
                     Value::Float(
                         f64::from(precursor.isolation_window.target)
                             - f64::from(precursor.isolation_window.lower_bound),
                     ),
-                    None,
                 ));
-                attributes.push(Attribute::new(
+                attributes[0].push(Attribute::new(
                     term!(MS:1000829|isolation window upper offset),
                     Value::Float(
                         f64::from(precursor.isolation_window.upper_bound)
                             - f64::from(precursor.isolation_window.target),
                     ),
-                    None,
                 ));
             }
             IsolationWindowState::Offset => {
                 if precursor.isolation_window.lower_bound != 0.0 {
-                    attributes.push(Attribute::new(
+                    attributes[0].push(Attribute::new(
                         term!(MS:1000828|isolation window lower offset),
                         Value::Float(
                             f64::from(precursor.isolation_window.target)
                                 - f64::from(precursor.isolation_window.lower_bound),
                         ),
-                        None,
                     ));
                 }
                 if precursor.isolation_window.upper_bound != 0.0 {
-                    attributes.push(Attribute::new(
+                    attributes[0].push(Attribute::new(
                         term!(MS:1000829|isolation window upper offset),
                         Value::Float(
                             f64::from(precursor.isolation_window.upper_bound)
                                 - f64::from(precursor.isolation_window.target),
                         ),
-                        None,
                     ));
                 }
             }
             _ => (),
         }
         if let Some(ion) = precursor.ions.first() {
-            attributes.push(Attribute::new(
+            attributes[0].push(Attribute::new(
                 term!(MS:1000744|selected ion m/z),
                 Value::Float(ion.mz),
-                None,
             ));
             if let Some(c) = ion.charge {
-                attributes.push(Attribute::new(
+                attributes[0].push(Attribute::new(
                     term!(MS:1000041|charge state),
                     Value::Int(c.into()),
-                    None,
                 ));
             }
             if ion.intensity != 0.0 {
-                attributes.push(Attribute::new(
+                attributes[0].push(Attribute::new(
                     term!(MS:1003085|previous MSn-1 scan precursor intensity),
                     Value::Float(f64::from(ion.intensity)),
-                    None,
                 ));
             }
         }
     }
 
     if !description.id.is_empty() {
-        attributes.push(Attribute::new(
+        attributes[0].push(Attribute::new(
             term!(MS:1003061|library spectrum name),
             Value::String(description.id.clone()),
-            None,
         ));
     }
-    attributes.push(Attribute::new(
+    attributes[0].push(Attribute::new(
         term!(MS:1003062|library spectrum index),
         Value::Int(description.index as i64),
-        None,
     ));
-    attributes.push(Attribute::new(
+    attributes[0].push(Attribute::new(
         term!(MS:1000511|ms level),
         Value::Int(description.ms_level.into()),
-        None,
     ));
     match description.polarity {
-        ScanPolarity::Positive => attributes.push(Attribute::new(
+        ScanPolarity::Positive => attributes[0].push(Attribute::new(
             term!(MS:1000465|scan polarity),
             AttributeValue::Term(term!(MS:1000130|positive scan)),
-            None,
         )),
-        ScanPolarity::Negative => attributes.push(Attribute::new(
+        ScanPolarity::Negative => attributes[0].push(Attribute::new(
             term!(MS:1000465|scan polarity),
             AttributeValue::Term(term!(MS:1000129|negative scan)),
-            None,
         )),
         ScanPolarity::Unknown => (),
     }
 
     if let Some(summary) = summary {
-        attributes.push(Attribute::new(
+        attributes[0].push(Attribute::new(
             term!(MS:1000285|total ion current),
             Value::Float(f64::from(summary.tic)),
-            None,
         ));
-        attributes.push(Attribute::new(
+        attributes[0].push(Attribute::new(
             term!(MS:1000505|base peak intensity),
             Value::Float(f64::from(summary.base_peak.intensity)),
-            None,
         ));
-        attributes.push(Attribute::new(
+        attributes[0].push(Attribute::new(
             term!(MS:1000504|base peak m/z),
             Value::Float(summary.base_peak.mz),
-            None,
         ));
-        attributes.push(Attribute::new(
+        attributes[0].push(Attribute::new(
             term!(MS:1003059|number of peaks),
             Value::Int(summary.count as i64),
-            None,
         ));
-        attributes.push(Attribute::new(
+        attributes[0].push(Attribute::new(
             term!(MS:1000528|lowest observed m/z),
             Value::Float(summary.mz_range.0),
-            None,
         ));
-        attributes.push(Attribute::new(
+        attributes[0].push(Attribute::new(
             term!(MS:1000527|highest observed m/z),
             Value::Float(summary.mz_range.1),
-            None,
         ));
     }
 
@@ -231,49 +205,54 @@ pub fn get_attributes_from_spectrum_description(
     {
         if let Ok(term) = param.try_into() {
             if let Some(curie) = param.unit.to_curie() {
-                attributes.push(Attribute {
-                    name: term,
-                    value: param.value.clone().into(),
-                    group_id: Some(group_id),
-                });
-                attributes.push(Attribute {
-                    name: term!(UO:0000000|unit),
-                    value: AttributeValue::Term(Term {
-                        accession: curie,
-                        name: Cow::Borrowed(param.unit.for_param().1),
-                    }),
-                    group_id: Some(group_id),
-                });
-                group_id += 1;
+                attributes.push(vec![
+                    Attribute {
+                        name: term,
+                        value: param.value.clone().into(),
+                    },
+                    Attribute {
+                        name: term!(UO:0000000|unit),
+                        value: AttributeValue::Term(Term {
+                            accession: curie,
+                            name: Cow::Borrowed(param.unit.for_param().1),
+                        }),
+                    },
+                ]);
             } else {
-                attributes.push(Attribute {
+                attributes[0].push(Attribute {
                     name: term,
                     value: param.value.clone().into(),
-                    group_id: None,
                 });
             }
-        } else {
-            attributes.push(Attribute {
-                name: term!(MS:1003275|other attribute name),
-                value: AttributeValue::Scalar(Value::String(param.name.clone())),
-                group_id: Some(group_id),
-            });
-            attributes.push(Attribute {
-                name: term!(MS:1003276|other attribute value ),
-                value: param.value.clone().into(),
-                group_id: Some(group_id),
-            });
-            if let Some(curie) = param.unit.to_curie() {
-                attributes.push(Attribute {
+        } else if let Some(curie) = param.unit.to_curie() {
+            attributes.push(vec![
+                Attribute {
+                    name: term!(MS:1003275|other attribute name),
+                    value: AttributeValue::Scalar(Value::String(param.name.clone())),
+                },
+                Attribute {
+                    name: term!(MS:1003276|other attribute value ),
+                    value: param.value.clone().into(),
+                },
+                Attribute {
                     name: term!(UO:0000000|unit),
                     value: AttributeValue::Term(Term {
                         accession: curie,
                         name: Cow::Borrowed(param.unit.for_param().1),
                     }),
-                    group_id: Some(group_id),
-                });
-            }
-            group_id += 1;
+                },
+            ]);
+        } else {
+            attributes.push(vec![
+                Attribute {
+                    name: term!(MS:1003275|other attribute name),
+                    value: AttributeValue::Scalar(Value::String(param.name.clone())),
+                },
+                Attribute {
+                    name: term!(MS:1003276|other attribute value ),
+                    value: param.value.clone().into(),
+                },
+            ]);
         }
     }
     attributes
@@ -286,13 +265,8 @@ pub fn get_attributes_from_spectrum_description(
 pub(crate) fn populate_spectrum_description_from_attributes<'a>(
     attributes: impl Iterator<Item = (&'a Option<u32>, &'a Vec<(Attribute, Context<'static>)>)>,
     description: &mut SpectrumDescription,
-    spectrum_attributes: &mut Vec<Attribute>,
+    spectrum_attributes: &mut Attributes,
 ) -> Result<(), BoxedError<'static, MzSpecLibErrorKind>> {
-    let mut last_group_id = spectrum_attributes
-        .iter()
-        .filter_map(|a| a.group_id)
-        .max()
-        .unwrap_or_default();
     for (id, group) in attributes {
         if id.is_some() {
             let unit = if let Some((
@@ -420,12 +394,7 @@ pub(crate) fn populate_spectrum_description_from_attributes<'a>(
                     },
                 });
             } else {
-                last_group_id += 1;
-                for attr in group {
-                    let mut attr = attr.0.clone();
-                    attr.group_id = Some(last_group_id);
-                    spectrum_attributes.push(attr);
-                }
+                spectrum_attributes.push(group.iter().map(|(a, _)| a).cloned().collect());
             }
         } else {
             for (attr, context) in group {
@@ -716,7 +685,7 @@ pub(crate) fn populate_spectrum_description_from_attributes<'a>(
                         description.params.push(attr.clone().into());
                     }
                     _ => {
-                        spectrum_attributes.push(attr.clone());
+                        spectrum_attributes[0].push(attr.clone());
                     }
                 }
             }

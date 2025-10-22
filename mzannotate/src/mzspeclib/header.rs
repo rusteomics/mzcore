@@ -3,7 +3,7 @@ use std::{collections::HashMap, fmt::Display};
 
 use context_error::Context;
 
-use crate::mzspeclib::{Attribute, Id};
+use crate::mzspeclib::{Attribute, Attributes, Id};
 
 /// The header for a spectral library
 #[derive(Debug, Clone)]
@@ -11,7 +11,7 @@ pub struct LibraryHeader {
     /// The version of the format
     pub format_version: String,
     /// The attributes for this library
-    pub attributes: Vec<Attribute>,
+    pub attributes: Attributes,
     /// The attribute classes for this library
     pub attribute_classes: HashMap<EntryType, Vec<AttributeSet>>,
 }
@@ -20,7 +20,7 @@ impl Default for LibraryHeader {
     fn default() -> Self {
         Self {
             format_version: "1.0".into(),
-            attributes: Vec::new(),
+            attributes: vec![Vec::new(); 1],
             attribute_classes: HashMap::new(),
         }
     }
@@ -30,7 +30,7 @@ impl LibraryHeader {
     /// Create a new library header
     pub const fn new(
         format_version: String,
-        attributes: Vec<Attribute>,
+        attributes: Attributes,
         attribute_classes: HashMap<EntryType, Vec<AttributeSet>>,
     ) -> Self {
         Self {

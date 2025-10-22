@@ -8,7 +8,7 @@ use mzcore::{
 use mzdata::{Param, params::Value};
 
 use crate::{
-    mzspeclib::{Attribute, AttributeValue, Id, ProteinDescription},
+    mzspeclib::{Attribute, AttributeValue, Attributes, Id, ProteinDescription},
     term,
 };
 
@@ -37,14 +37,12 @@ impl Analyte {
     }
 
     /// Get all attributes of this analyte
-    pub fn attributes(&self) -> Vec<Attribute> {
+    pub fn attributes(&self) -> Attributes {
         let mut result = self.target.terms();
-        result.extend(
-            self.proteins
-                .iter()
-                .enumerate()
-                .flat_map(|(i, p)| p.attributes(i as u32)),
-        );
+        for protein in &self.proteins {
+            let res = protein.attributes();
+            result.push(res);
+        }
         result
     }
 }
@@ -101,18 +99,17 @@ impl AnalyteTarget {
     }
 
     /// Used to write out the analyte target for mzSpecLib files
-    pub fn terms(&self) -> Vec<Attribute> {
-        let mut attributes = Vec::new();
+    pub fn terms(&self) -> Attributes {
+        let mut attributes = vec![Vec::new(); 1];
 
         if let Some(charge) = match self {
             Self::Unknown(c) => *c,
             Self::MolecularFormula(f) => (f.charge().value != 0).then_some(f.charge()),
             Self::PeptidoformIon(pep) => pep.get_charge_carriers().map(MolecularCharge::charge),
         } {
-            attributes.push(Attribute {
+            attributes[0].push(Attribute {
                 name: term!(MS:1000041|charge state),
                 value: AttributeValue::Scalar(Value::Int(charge.value as i64)),
-                group_id: None,
             });
         }
 
@@ -130,38 +127,33 @@ impl AnalyteTarget {
             .ok(),
         } {
             if formula.additional_mass() == 0.0 {
-                attributes.push(Attribute {
+                attributes[0].push(Attribute {
                     name: term!(MS:1000866|molecular formula),
                     value: AttributeValue::Scalar(Value::String(formula.hill_notation_core())),
-                    group_id: None,
                 });
             }
             let charge = formula.charge().value as f64;
             if charge != 0.0 {
-                attributes.push(Attribute {
+                attributes[0].push(Attribute {
                     name: term!(MS:1003053|theoretical monoisotopic m/z),
                     value: AttributeValue::Scalar(Value::Float(
                         formula.monoisotopic_mass().value / charge,
                     )),
-                    group_id: None,
                 });
-                attributes.push(Attribute {
+                attributes[0].push(Attribute {
                     name: term!(MS:1003054|theoretical average m/z),
                     value: AttributeValue::Scalar(Value::Float(
                         formula.average_weight().value / charge,
                     )),
-                    group_id: None,
                 });
             }
-            attributes.push(Attribute {
+            attributes[0].push(Attribute {
                 name: term!(MS:1003243|adduct ion mass),
                 value: AttributeValue::Scalar(Value::Float(formula.monoisotopic_mass().value)),
-                group_id: None,
             });
-            attributes.push(Attribute {
+            attributes[0].push(Attribute {
                 name: term!(MS:1000224|molecular mass),
                 value: AttributeValue::Scalar(Value::Float(formula.average_weight().value)),
-                group_id: None,
             });
         }
 
@@ -170,19 +162,17 @@ impl AnalyteTarget {
             Self::PeptidoformIon(pep) => Some(pep),
         } {
             if let Ok(formula) = pep.formulas().to_vec().into_iter().exactly_one() {
-                attributes.push(Attribute {
+                attributes[0].push(Attribute {
                     name: term!(MS:1001117|theoretical neutral mass),
                     value: AttributeValue::Scalar(Value::Float(formula.monoisotopic_mass().value)),
-                    group_id: None,
                 });
             }
-            attributes.push(Attribute {
+            attributes[0].push(Attribute {
                 name: term!(MS:1003270|proforma peptidoform ion notation),
                 value: AttributeValue::Scalar(Value::String(pep.to_string())),
-                group_id: None,
             });
             if pep.peptidoforms().len() == 1 {
-                attributes.push(Attribute {
+                attributes[0].push(Attribute {
                     name: term!(MS:1000888|stripped peptide sequence),
                     value: AttributeValue::Scalar(Value::String(
                         pep.peptidoforms()[0]
@@ -191,14 +181,12 @@ impl AnalyteTarget {
                             .map(|s| s.aminoacid.aminoacid().one_letter_code().unwrap_or('X'))
                             .collect(),
                     )),
-                    group_id: None,
                 });
-                attributes.push(Attribute {
+                attributes[0].push(Attribute {
                     name: term!(MS:1003043|number of residues),
                     value: AttributeValue::Scalar(Value::Int(
                         pep.peptidoforms()[0].sequence().len() as i64,
                     )),
-                    group_id: None,
                 });
             }
         }

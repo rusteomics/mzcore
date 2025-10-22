@@ -53,34 +53,30 @@ impl ProteinDescription {
     }
 
     /// Generate the attributes needed to describe to contents of this protein
-    pub fn attributes(&self, id: u32) -> Vec<Attribute> {
+    pub fn attributes(&self) -> Vec<Attribute> {
         let mut attributes = Vec::new();
         if let Some(acc) = &self.accession {
             attributes.push(Attribute {
                 name: term!(MS:1000885|protein accession),
                 value: Value::String(acc.to_string()).into(),
-                group_id: Some(id),
             });
         }
         if let Some(name) = &self.name {
             attributes.push(Attribute {
                 name: term!(MS:1000886|protein name),
                 value: Value::String(name.to_string()).into(),
-                group_id: Some(id),
             });
         }
         if let Some(name) = &self.database_name {
             attributes.push(Attribute {
                 name: term!(MS:1001013|database name),
                 value: Value::String(name.to_string()).into(),
-                group_id: Some(id),
             });
         }
         if let Some(version) = &self.database_version {
             attributes.push(Attribute {
                 name: term!(MS:1001016|database version),
                 value: Value::String(version.to_string()).into(),
-                group_id: Some(id),
             });
         }
         match &self.cleavage_agent {
@@ -88,19 +84,16 @@ impl ProteinDescription {
             CleaveAgent::Name(name) => attributes.push(Attribute {
                 name: term!(MS:1001045|cleavage agent name),
                 value: Value::String(name.to_string()).into(),
-                group_id: Some(id),
             }),
             CleaveAgent::Term(term) => attributes.push(Attribute {
                 name: term!(MS:1001045|cleavage agent name),
                 value: term.clone().into(),
-                group_id: Some(id),
             }),
         }
         if let Some(desc) = &self.description {
             attributes.push(Attribute {
                 name: term!(MS:1001088|protein description),
                 value: Value::String(desc.to_string()).into(),
-                group_id: Some(id),
             });
         }
         if let Some(string) = match &self.flanking_sequences.0 {
@@ -116,7 +109,6 @@ impl ProteinDescription {
             attributes.push(Attribute {
                 name: term!(MS:1001112|n-terminal flanking residue),
                 value: Value::String(string).into(),
-                group_id: Some(id),
             });
         }
         if let Some(string) = match &self.flanking_sequences.1 {
@@ -132,56 +124,45 @@ impl ProteinDescription {
             attributes.push(Attribute {
                 name: term!(MS:1001113|c-terminal flanking residue),
                 value: Value::String(string).into(),
-                group_id: Some(id),
             });
         }
         if let Some(acc) = self.species_accession {
             attributes.push(Attribute {
                 name: term!(MS:1001467|taxonomy: NCBI TaxID),
                 value: Value::Int(i64::from(acc)).into(),
-                group_id: Some(id),
             });
         }
         if let Some(desc) = &self.species_common_name {
             attributes.push(Attribute {
                 name: term!(MS:1001468|taxonomy: common name),
                 value: Value::String(desc.to_string()).into(),
-                group_id: Some(id),
             });
         }
         if let Some(desc) = &self.species_scientific_name {
             attributes.push(Attribute {
                 name: term!(MS:1001469|taxonomy: scientific name),
                 value: Value::String(desc.to_string()).into(),
-                group_id: Some(id),
             });
         }
         if let Some(missed) = self.missed_cleavages {
             attributes.push(Attribute {
                 name: term!(MS:1003044|number of missed cleavages),
                 value: Value::Int(i64::from(missed)).into(),
-                group_id: Some(id),
             });
         }
         if let Some(termini) = self.enzymatic_termini {
             attributes.push(Attribute {
                 name: term!(MS:1003048|number of enzymatic termini),
                 value: Value::Int(i64::from(termini)).into(),
-                group_id: Some(id),
             });
         }
         for name in &self.set_names {
             attributes.push(Attribute {
                 name: term!(MS:1003212|library attribute set name),
                 value: Value::String(name.to_string()).into(),
-                group_id: Some(id),
             });
         }
-        attributes.extend(self.attributes.iter().map(|a| {
-            let mut a = a.clone();
-            a.group_id = Some(id);
-            a
-        }));
+        attributes.extend_from_slice(&self.attributes);
         attributes
     }
 

@@ -224,7 +224,6 @@ pub(crate) fn parse_mzspeclib<'a>(
     path: &Path,
     custom_database: Option<&'a CustomDatabase>,
 ) -> Result<GeneralIdentifiedPeptidoforms<'a>, BoxedError<'static, BasicKind>> {
-    let path_string = path.to_string_lossy().to_string();
     mzannotate::mzspeclib::MzSpecLibTextParser::open_file(path, custom_database)
         .map(move |parser| {
             let b: Box<
@@ -240,12 +239,5 @@ pub(crate) fn parse_mzspeclib<'a>(
             }));
             b
         })
-        .map_err(|e| {
-            BoxedError::new(
-                BasicKind::Error,
-                "Could not parse mzSpecLib file",
-                format!("{e:?}"),
-                Context::none().source(path_string),
-            )
-        })
+        .map_err(|e| e.convert(|_| BasicKind::Error))
 }

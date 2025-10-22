@@ -269,14 +269,28 @@ pub struct Attribute {
     pub name: Term,
     /// The value
     pub value: AttributeValue,
-    /// The group id (or non if not part of a group)
-    pub group_id: Option<u32>,
 }
 
-impl FromStr for Attribute {
-    type Err = AttributeParseError;
+impl Attribute {
+    /// Create a new attribute
+    pub fn new(name: Term, value: impl Into<AttributeValue>) -> Self {
+        Self {
+            name,
+            value: value.into(),
+        }
+    }
 
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
+    /// Create a new attribute describing the given unit. This returns `None` if the unit is [`Unit::Unknown`].
+    pub fn unit(unit: Unit) -> Option<Self> {
+        let (_, name) = unit.for_param();
+        let accession = unit.to_curie()?;
+        Some(Self::new(
+            term!(UO:0000000|unit),
+            Term::new(accession, name.to_string()),
+        ))
+    }
+
+    pub fn parse(s: &str) -> Result<(Option<u32>, Self), AttributeParseError> {
         if let Some(s) = s.strip_prefix('[') {
             if let Some((group_id, rest)) = s.split_once(']') {
                 let group_id = match group_id.parse::<u32>() {
@@ -287,43 +301,21 @@ impl FromStr for Attribute {
                     let term: Term = name.parse().map_err(AttributeParseError::TermParserError)?;
                     let value: AttributeValue =
                         val.parse().map_err(AttributeParseError::ValueParseError)?;
-                    Ok(Self::new(term, value, Some(group_id)))
+                    Ok((Some(group_id), Self::new(term, value)))
                 } else {
                     Err(AttributeParseError::MissingValueSeparator)
                 }
             } else {
-                Err(Self::Err::MissingClosingGroupBracket)
+                Err(AttributeParseError::MissingClosingGroupBracket)
             }
         } else if let Some((name, val)) = s.split_once('=') {
             let term: Term = name.parse().map_err(AttributeParseError::TermParserError)?;
             let value: AttributeValue =
                 val.parse().map_err(AttributeParseError::ValueParseError)?;
-            Ok(Self::new(term, value, None))
+            Ok((None, Self::new(term, value)))
         } else {
             Err(AttributeParseError::MissingValueSeparator)
         }
-    }
-}
-
-impl Attribute {
-    /// Create a new attribute
-    pub fn new(name: Term, value: impl Into<AttributeValue>, group_id: Option<u32>) -> Self {
-        Self {
-            name,
-            value: value.into(),
-            group_id,
-        }
-    }
-
-    /// Create a new attribute describing the given unit. This returns `None` if the unit is [`Unit::Unknown`].
-    pub fn unit(unit: Unit, group_id: Option<u32>) -> Option<Self> {
-        let (_, name) = unit.for_param();
-        let accession = unit.to_curie()?;
-        Some(Self::new(
-            term!(UO:0000000|unit),
-            Term::new(accession, name.to_string()),
-            group_id,
-        ))
     }
 }
 
@@ -341,13 +333,19 @@ impl From<Attribute> for Param {
 
 impl Display for Attribute {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self.group_id {
-            Some(i) => {
-                write!(f, "[{i}]{}={}", self.name, self.value)
-            }
-            None => {
-                write!(f, "{}={}", self.name, self.value)
-            }
-        }
+        write!(f, "{}={}", self.name, self.value)
+    }
+}
+
+/// A collection of attributes. They are grouped by group ID, the first is no group ID, after that it is 0 based index.
+pub type Attributes = Vec<Vec<Attribute>>;
+
+pub fn merge_attributes(a: &mut Attributes, b: &Attributes) {
+    if a.is_empty() {
+        a.push(Vec::new());
+    }
+    if !b.is_empty() {
+        a[0].extend_from_slice(&b[0]);
+        a.extend_from_slice(&b[1..]);
     }
 }
