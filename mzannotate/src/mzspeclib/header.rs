@@ -1,9 +1,7 @@
 //! Library headers and the attribute sets they can contain
 use std::{collections::HashMap, fmt::Display};
 
-use context_error::Context;
-
-use crate::mzspeclib::{Attribute, Attributes, Id};
+use crate::mzspeclib::{Attribute, Attributes};
 
 /// The header for a spectral library
 #[derive(Debug, Clone)]
@@ -54,9 +52,9 @@ impl LibraryHeader {
             .filter(|s| names.contains(&s.id.as_str()))
             .any(|s| {
                 s.attributes
-                    .values()
-                    .flat_map(|a| a.iter())
-                    .any(|a| a.0.name == attribute.name && a.0.value.equivalent(&attribute.value))
+                    .iter()
+                    .flatten()
+                    .any(|a| a.name == attribute.name && a.value.equivalent(&attribute.value))
             })
     }
 }
@@ -68,8 +66,8 @@ pub struct AttributeSet {
     pub id: String,
     /// The type of attributes
     pub namespace: EntryType,
-    /// The attributes themselves grouped by group id and with the original context to provide good error messages
-    pub attributes: HashMap<Option<Id>, Vec<(Attribute, Context<'static>)>>,
+    /// The attributes themselves
+    pub attributes: Attributes,
 }
 
 impl PartialOrd for AttributeSet {

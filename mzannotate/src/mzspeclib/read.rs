@@ -8,6 +8,7 @@ use std::{
 
 use context_error::{BoxedError, Context, CreateError, ErrorKind, FullErrorContent};
 use indexmap::IndexMap;
+use itertools::Itertools;
 use mzcore::{
     ontology::CustomDatabase,
     prelude::*,
@@ -15,9 +16,9 @@ use mzcore::{
 };
 use mzdata::{
     curie,
-    mzpeaks::{peak_set::PeakSetVec, prelude::PeakCollectionMut},
+    mzpeaks::prelude::PeakCollectionMut,
     params::{ParamValue, Unit, Value},
-    spectrum::{Precursor, ScanEvent, ScanWindow, SelectedIon, SpectrumDescription},
+    spectrum::{Precursor, ScanEvent, ScanWindow, SelectedIon},
 };
 
 use crate::{
@@ -25,7 +26,7 @@ use crate::{
     helper_functions::explain_number_error,
     mzspeclib::{
         Analyte, AnalyteTarget, Attribute, AttributeParseError, AttributeSet, AttributeValue,
-        EntryType, Id, Interpretation, LibraryHeader, ProteinDescription,
+        EntryType, Id, Interpretation, LibraryHeader, ProteinDescription, merge_attributes,
         populate_spectrum_description_from_attributes,
     },
     spectrum::{AnnotatedPeak, AnnotatedSpectrum},
@@ -93,6 +94,10 @@ impl ErrorKind for MzSpecLibErrorKind {
 pub struct MzSpecLibTextParser<'custom_database, Reader: Read> {
     inner: Reader,
     header: LibraryHeader,
+    header_attribute_sets_with_context: HashMap<
+        EntryType,
+        HashMap<String, HashMap<Option<u32>, Vec<(Attribute, Context<'static>)>>>,
+    >,
     state: ParserState,
     line_cache: VecDeque<String>,
     line_index: u32,
@@ -140,6 +145,7 @@ impl<'a, R: BufRead> MzSpecLibTextParser<'a, R> {
         let mut this = Self {
             inner: reader,
             header: LibraryHeader::default(),
+            header_attribute_sets_with_context: HashMap::default(),
             state: ParserState::Initial,
             line_cache: VecDeque::new(),
             line_index: 0,
@@ -247,8 +253,57 @@ impl<'a, R: BufRead> MzSpecLibTextParser<'a, R> {
     /// # Errors
     /// When an attribute set is invalid or if the structure is invalid.
     fn read_attribute_sets(&mut self) -> Result<(), BoxedError<'static, MzSpecLibErrorKind>> {
+        type IntermediateAttributeSet = (
+            EntryType,
+            String,
+            HashMap<Option<u32>, Vec<(Attribute, Context<'static>)>>,
+        );
+
+        fn store<R: Read>(
+            current_attribute_set: Option<IntermediateAttributeSet>,
+            parser: &mut MzSpecLibTextParser<'_, R>,
+        ) {
+            if let Some((namespace, id, attributes)) = current_attribute_set {
+                let mut attribute_vec = vec![Vec::new(); 1];
+                attribute_vec[0].extend(
+                    attributes
+                        .get(&None)
+                        .iter()
+                        .flat_map(|a| a.iter())
+                        .map(|(a, _)| a.clone()),
+                );
+                attribute_vec.extend(
+                    attributes
+                        .iter()
+                        .filter_map(|(g, a)| g.map(|g| (g, a)))
+                        .sorted_by_key(|(g, _)| *g)
+                        .map(|(_, a)| a.iter().map(|(a, _)| a).cloned().collect()),
+                );
+
+                parser
+                    .header
+                    .attribute_classes
+                    .entry(namespace)
+                    .or_default()
+                    .push(AttributeSet {
+                        id: id.clone(),
+                        namespace,
+                        attributes: attribute_vec,
+                    });
+                let base = parser
+                    .header_attribute_sets_with_context
+                    .entry(namespace)
+                    .or_default()
+                    .entry(id)
+                    .or_default();
+                for (key, value) in &attributes {
+                    base.entry(*key).or_default().extend_from_slice(value);
+                }
+            }
+        }
+
         let mut buf = String::new();
-        let mut current_attribute_set: Option<AttributeSet> = None;
+        let mut current_attribute_set: Option<IntermediateAttributeSet> = None;
 
         loop {
             match self.read_attribute(&mut buf) {
@@ -264,7 +319,7 @@ impl<'a, R: BufRead> MzSpecLibTextParser<'a, R> {
                                 self.current_context().lines(0, &buf).to_owned(),
                             )
                         })?
-                        .attributes
+                        .2
                         .entry(group_id)
                         .or_default()
                         .push((attr, self.current_context().lines(0, &buf).to_owned()));
@@ -272,13 +327,7 @@ impl<'a, R: BufRead> MzSpecLibTextParser<'a, R> {
                 Err(e) => {
                     if buf.starts_with('<') {
                         if buf.starts_with("<Spectrum=") {
-                            if let Some(set) = current_attribute_set.take() {
-                                self.header
-                                    .attribute_classes
-                                    .entry(set.namespace)
-                                    .or_default()
-                                    .push(set);
-                            }
+                            store(current_attribute_set.take(), self);
                             self.state = ParserState::Spectrum;
                             self.push_back_line(buf);
                             break;
@@ -295,13 +344,7 @@ impl<'a, R: BufRead> MzSpecLibTextParser<'a, R> {
                                 }
                                 if let Some((entry_tp, id)) = rest[..rest.len() - 1].split_once('=')
                                 {
-                                    if let Some(set) = current_attribute_set.take() {
-                                        self.header
-                                            .attribute_classes
-                                            .entry(set.namespace)
-                                            .or_default()
-                                            .push(set);
-                                    }
+                                    store(current_attribute_set.take(), self);
                                     let set_entry_tp = match entry_tp {
                                         "Spectrum" => EntryType::Spectrum,
                                         "Analyte" => EntryType::Analyte,
@@ -317,11 +360,8 @@ impl<'a, R: BufRead> MzSpecLibTextParser<'a, R> {
                                         }
                                     };
                                     let set_id = id.to_string();
-                                    current_attribute_set = Some(AttributeSet {
-                                        id: set_id,
-                                        namespace: set_entry_tp,
-                                        attributes: HashMap::new(),
-                                    });
+                                    current_attribute_set =
+                                        Some((set_entry_tp, set_id, HashMap::new()));
                                 } else {
                                     return Err(BoxedError::new(
                                         MzSpecLibErrorKind::Declaration,
@@ -650,13 +690,12 @@ impl<'a, R: BufRead> MzSpecLibTextParser<'a, R> {
                     .map(|(v, _)| v.value.to_string())
                     .collect();
                 for (attribute, context) in group.iter().chain(
-                    self.header
-                        .attribute_classes
+                    self.header_attribute_sets_with_context
                         .get(&EntryType::Analyte)
                         .into_iter()
                         .flatten()
-                        .filter(|set| attr_sets.contains(&set.id))
-                        .flat_map(|a| a.attributes.values())
+                        .filter(|set| attr_sets.contains(set.0))
+                        .flat_map(|a| a.1.values())
                         .flatten(),
                 ) {
                     if !protein.populate_from_attribute(attribute, context)? {
@@ -775,15 +814,7 @@ impl<'a, R: BufRead> MzSpecLibTextParser<'a, R> {
                 .flatten()
             {
                 if attr_set.id == name || attr_set.id == "all" {
-                    for (group_id, group) in &attr_set.attributes {
-                        if group_id.is_some() {
-                            interp
-                                .attributes
-                                .push(group.iter().map(|(a, _)| a).cloned().collect());
-                        } else {
-                            interp.attributes[0].extend(group.iter().map(|(a, _)| a).cloned());
-                        }
-                    }
+                    merge_attributes(&mut interp.attributes, &attr_set.attributes); // TODO: try to interpret the merged attributes as well.
                 }
             }
         }
@@ -989,12 +1020,15 @@ impl<'a, R: BufRead> MzSpecLibTextParser<'a, R> {
             &mut spec.description,
             &mut spec.attributes,
         )?;
-        if let Some(sets) = self.header.attribute_classes.get(&EntryType::Spectrum) {
+        if let Some(sets) = self
+            .header_attribute_sets_with_context
+            .get(&EntryType::Spectrum)
+        {
             populate_spectrum_description_from_attributes(
                 sets.iter()
                     .filter_map(|attr_set| {
-                        (set_names.contains(&attr_set.id) || attr_set.id == "all")
-                            .then_some(attr_set.attributes.iter())
+                        (set_names.contains(attr_set.0) || attr_set.0 == "all")
+                            .then_some(attr_set.1.iter())
                     })
                     .flatten(),
                 &mut spec.description,
@@ -1179,6 +1213,14 @@ impl<R: BufRead + Seek> MzSpecLibTextParser<'_, R> {
     /// # Errors
     /// When the underlying stream errors.
     pub fn build_index(&mut self) -> io::Result<()> {
+        type IntermediateRecord = (
+            usize,              // index
+            Id,                 // key
+            Option<Box<str>>,   // name (if found)
+            Option<usize>,      // scan number (if found)
+            LibraryIndexRecord, // record
+        );
+
         self.inner.rewind()?;
         self.line_cache.clear();
         let mut buf = String::new();
@@ -1191,13 +1233,7 @@ impl<R: BufRead + Seek> MzSpecLibTextParser<'_, R> {
             scan_number: HashMap::new(),
         };
         let mut offset = 0;
-        let mut current_record: Option<(
-            usize,
-            Id,
-            Option<Box<str>>,
-            Option<usize>,
-            LibraryIndexRecord,
-        )> = None;
+        let mut current_record: Option<IntermediateRecord> = None;
         let mut index = 0;
         while let Ok(z) = self.read_next_line(&mut buf) {
             if z == 0 {

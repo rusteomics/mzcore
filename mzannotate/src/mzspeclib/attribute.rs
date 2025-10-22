@@ -340,7 +340,7 @@ impl Display for Attribute {
 /// A collection of attributes. They are grouped by group ID, the first is no group ID, after that it is 0 based index.
 pub type Attributes = Vec<Vec<Attribute>>;
 
-pub fn merge_attributes(a: &mut Attributes, b: &Attributes) {
+pub(crate) fn merge_attributes(a: &mut Attributes, b: &Attributes) {
     if a.is_empty() {
         a.push(Vec::new());
     }

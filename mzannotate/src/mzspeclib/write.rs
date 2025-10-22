@@ -99,9 +99,9 @@ impl<Writer: Write> MzSpecLibTextWriter<Writer, Initial> {
                 .flat_map(|s| s.iter())
             {
                 writeln!(&mut self.writer, "<AttributeSet {t}={}>", group.id)?;
-                for (id, group) in &group.attributes {
-                    for (attr, _) in group {
-                        if let Some(id) = id {
+                for (id, group) in group.attributes.iter().enumerate() {
+                    for attr in group {
+                        if let Some(id) = id.checked_sub(1) {
                             writeln!(&mut self.writer, "[{id}]{attr}")?;
                         } else {
                             writeln!(&mut self.writer, "{attr}")?;
@@ -137,7 +137,7 @@ impl<Writer: Write> MzSpecLibTextWriter<Writer, HeaderWritten> {
                 // Check if this attribute needs to be written.
                 if !self
                     .header
-                    .is_already_defined(&attr, EntryType::Spectrum, &["all"])
+                    .is_already_defined(attr, EntryType::Spectrum, &["all"])
                 {
                     if let Some(id) = id.checked_sub(1) {
                         writeln!(&mut self.writer, "[{id}]{attr}")?;
@@ -153,7 +153,7 @@ impl<Writer: Write> MzSpecLibTextWriter<Writer, HeaderWritten> {
                 for attr in group {
                     if !self
                         .header
-                        .is_already_defined(&attr, EntryType::Analyte, &["all"])
+                        .is_already_defined(attr, EntryType::Analyte, &["all"])
                     // TODO: check the protein groups additional set
                     {
                         if let Some(id) = id.checked_sub(1) {
@@ -171,7 +171,7 @@ impl<Writer: Write> MzSpecLibTextWriter<Writer, HeaderWritten> {
                 for attr in group {
                     if !self
                         .header
-                        .is_already_defined(&attr, EntryType::Interpretation, &["all"])
+                        .is_already_defined(attr, EntryType::Interpretation, &["all"])
                     {
                         if let Some(id) = id.checked_sub(1) {
                             writeln!(&mut self.writer, "[{id}]{attr}")?;
