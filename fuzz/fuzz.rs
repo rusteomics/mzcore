@@ -25,7 +25,10 @@ struct Args {
     jobs: u8,
     #[clap(long, help = "Skip the set up part")]
     skip_setup: bool,
-    #[clap(long, help = "Skip the set up part")]
+    #[clap(
+        long,
+        help = "Minify the resulting crashes (run after a fuzzing campaign)"
+    )]
     minify: bool,
 }
 
@@ -72,7 +75,7 @@ fn main() {
                     });
                 } else {
                     s.spawn(|| {
-                        let i = id.fetch_add(1, Ordering::SeqCst);
+                        let i = id.fetch_add(1, Ordering::Relaxed);
                         let name = format!("f{i}");
                         Command::new("cargo")
                             .args([
@@ -85,7 +88,7 @@ fn main() {
             }
 
             s.spawn(|| {
-                thread::sleep(Duration::from_millis(2000));
+                thread::sleep(Duration::from_millis(10000));
                 loop {
                     thread::sleep(Duration::from_millis(1000));
                     Stats::get(&target, args.jobs);
