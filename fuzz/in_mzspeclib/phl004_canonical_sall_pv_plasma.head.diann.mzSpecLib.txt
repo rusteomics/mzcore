@@ -1,0 +1,358 @@
+<mzSpecLib>
+MS:1003186|library format version=1.0
+MS:1003188|library name=phl004_canonical_sall_pv_plasma.head.diann
+MS:1003207|library creation software=MS:1003253|DIA-NN
+<AttributeSet Spectrum=all>
+<AttributeSet Analyte=all>
+<AttributeSet Interpretation=all>
+<Spectrum=1>
+MS:1003061|library spectrum name=AAAAAAAAAAAAAAAASAGGK2
+MS:1000744|selected ion m/z=778.41296
+MS:1003203|constituent spectrum file=file:///home/andrew/hc-storage/diabetes_study/speclib/phl004_canonical_sall_pv.csv
+MS:1003072|spectrum origin type=MS:1003074|predicted spectrum
+MS:1003065|spectrum aggregation type=MS:1003074|predicted spectrum
+MS:1002476|ion mobility drift time=0.0
+MS:1000041|charge state=2
+MS:1003059|number of peaks=20
+[1]MS:1003275|other attribute name=ExcludeFromAssay
+[1]MS:1003276|other attribute value=False
+<Analyte=1>
+MS:1000888|stripped peptide sequence=AAAAAAAAAAAAAAAASAGGK
+MS:1003270|proforma peptidoform ion notation=AAAAAAAAAAAAAAAASAGGK/2
+MS:1001117|theoretical mass=1554.8114178831797
+[1]MS:1000885|protein accession=P0CG40
+[1]MS:1000886|protein name=SP9_HUMAN
+[2]MS:1003275|other attribute name=Proteotypic
+[2]MS:1003276|other attribute value=1
+[3]MS:1003275|other attribute name=ProteinGroup
+[3]MS:1003276|other attribute value=P0CG40
+<Peaks>
+427.22995	1.0	b6/0.0
+498.26706	0.88039231	b7/0.0
+569.3042	0.66275221	b8/0.0
+356.19284	0.58039355	b5/0.0
+640.34131	0.44118175	b9/0.0
+703.37335	0.40000239	y9/0.0
+916.48468	0.40000239	y12/0.0
+1129.5961	0.36078224	y15/0.0
+774.41046	0.34117815	y10/0.0
+845.44757	0.30195799	y11/0.0
+490.26199	0.301357	y6/0.0
+419.22488	0.29999879	y5/0.0
+1058.5588	0.25881943	y14/0.0
+632.33624	0.2572208	y8/0.0
+853.45264	0.18174933	b12/0.0
+987.52179	0.17647269	y13/0.0
+782.41553	0.13921174	b11/0.0
+924.48975	0.13725254	b13/0.0
+711.37842	0.11764847	b10/0.0
+1200.6332	0.10526822	y16/0.0
+
+<Spectrum=2>
+MS:1003061|library spectrum name=AAAAAAAAAAAAAAAASAGGK3
+MS:1000744|selected ion m/z=519.27777
+MS:1003203|constituent spectrum file=file:///home/andrew/hc-storage/diabetes_study/speclib/phl004_canonical_sall_pv.csv
+MS:1003072|spectrum origin type=MS:1003074|predicted spectrum
+MS:1003065|spectrum aggregation type=MS:1003074|predicted spectrum
+MS:1002476|ion mobility drift time=0.0
+MS:1000041|charge state=3
+MS:1003059|number of peaks=14
+[1]MS:1003275|other attribute name=ExcludeFromAssay
+[1]MS:1003276|other attribute value=False
+<Analyte=1>
+MS:1000888|stripped peptide sequence=AAAAAAAAAAAAAAAASAGGK
+MS:1003270|proforma peptidoform ion notation=AAAAAAAAAAAAAAAASAGGK/3
+MS:1001117|theoretical mass=1554.8114178831797
+[1]MS:1000885|protein accession=P0CG40
+[1]MS:1000886|protein name=SP9_HUMAN
+[2]MS:1003275|other attribute name=Proteotypic
+[2]MS:1003276|other attribute value=1
+[3]MS:1003275|other attribute name=ProteinGroup
+[3]MS:1003276|other attribute value=P0CG40
+<Peaks>
+703.37335	1.0	y9/0.0
+419.22488	0.75598669	y5/0.0
+498.26706	0.67160469	b7/0.0
+640.34131	0.61734796	b9/0.0
+569.3042	0.56162828	b8/0.0
+356.19284	0.51522595	b5/0.0
+427.22995	0.51522595	b6/0.0
+774.41046	0.48234525	y10/0.0
+561.29907	0.41774848	y7/0.0
+490.26199	0.37849048	y6/0.0
+648.33875	0.37133196	b18^2/0.0
+632.33624	0.32955998	y8/0.0
+711.37842	0.27849901	b10/0.0
+782.41553	0.23208249	b11/0.0
+
+<Spectrum=3>
+MS:1003061|library spectrum name=AAAAAAAAAAAAAAAGAGAGAK2
+MS:1000744|selected ion m/z=798.92627
+MS:1003203|constituent spectrum file=file:///home/andrew/hc-storage/diabetes_study/speclib/phl004_canonical_sall_pv.csv
+MS:1003072|spectrum origin type=MS:1003074|predicted spectrum
+MS:1003065|spectrum aggregation type=MS:1003074|predicted spectrum
+MS:1002476|ion mobility drift time=0.0
+MS:1000041|charge state=2
+MS:1003059|number of peaks=24
+[1]MS:1003275|other attribute name=ExcludeFromAssay
+[1]MS:1003276|other attribute value=False
+<Analyte=1>
+MS:1000888|stripped peptide sequence=AAAAAAAAAAAAAAAGAGAGAK
+MS:1003270|proforma peptidoform ion notation=AAAAAAAAAAAAAAAGAGAGAK/2
+MS:1001117|theoretical mass=1595.8379669841897
+[1]MS:1000885|protein accession=P55011
+[1]MS:1000886|protein name=S12A2_HUMAN
+[2]MS:1003275|other attribute name=Proteotypic
+[2]MS:1003276|other attribute value=1
+[3]MS:1003275|other attribute name=ProteinGroup
+[3]MS:1003276|other attribute value=P55011
+<Peaks>
+427.22995	1.0	b6/0.0
+356.19284	0.91602999	b5/0.0
+498.26706	0.83227003	b7/0.0
+569.3042	0.79017997	b8/0.0
+640.34131	0.59228998	b9/0.0
+815.43701	0.54980999	y11/0.0
+886.47412	0.51920998	y12/0.0
+531.28851	0.50638998	y7/0.0
+957.51123	0.49983999	y13/0.0
+673.36279	0.46117997	y9/0.0
+1028.5483	0.44073999	y14/0.0
+711.37842	0.42937002	b10/0.0
+744.3999	0.41159999	y10/0.0
+602.32562	0.40491998	y8/0.0
+782.41553	0.38191	b11/0.0
+403.22995	0.36974999	y5/0.0
+1099.5854	0.34740001	y15/0.0
+1170.6226	0.31896001	y16/0.0
+853.45264	0.27395001	b12/0.0
+474.26706	0.26207	y6/0.0
+995.52686	0.20731001	b14/0.0
+1241.6597	0.2052	y17/0.0
+924.48975	0.18191999	b13/0.0
+1312.6968	0.114	y18/0.0
+
+<Spectrum=4>
+MS:1003061|library spectrum name=AAAAAAAAAAAAAAAGAGAGAK3
+MS:1000744|selected ion m/z=532.95325
+MS:1003203|constituent spectrum file=file:///home/andrew/hc-storage/diabetes_study/speclib/phl004_canonical_sall_pv.csv
+MS:1003072|spectrum origin type=MS:1003074|predicted spectrum
+MS:1003065|spectrum aggregation type=MS:1003074|predicted spectrum
+MS:1002476|ion mobility drift time=0.0
+MS:1000041|charge state=3
+MS:1003059|number of peaks=20
+[1]MS:1003275|other attribute name=ExcludeFromAssay
+[1]MS:1003276|other attribute value=False
+<Analyte=1>
+MS:1000888|stripped peptide sequence=AAAAAAAAAAAAAAAGAGAGAK
+MS:1003270|proforma peptidoform ion notation=AAAAAAAAAAAAAAAGAGAGAK/3
+MS:1001117|theoretical mass=1595.8379669841897
+[1]MS:1000885|protein accession=P55011
+[1]MS:1000886|protein name=S12A2_HUMAN
+[2]MS:1003275|other attribute name=Proteotypic
+[2]MS:1003276|other attribute value=1
+[3]MS:1003275|other attribute name=ProteinGroup
+[3]MS:1003276|other attribute value=P55011
+<Peaks>
+531.28851	1.0	y7/0.0
+498.26706	0.82642001	b7/0.0
+427.22995	0.75252002	b6/0.0
+356.19284	0.71425998	b5/0.0
+602.32562	0.66922998	y8/0.0
+569.3042	0.56159002	b8/0.0
+673.36279	0.52272004	y9/0.0
+640.34131	0.47526002	b9/0.0
+711.37842	0.40158999	b10/0.0
+744.3999	0.39754999	y10/0.0
+403.22995	0.31963	y5/0.0
+462.7485	0.27653	b13^2/0.0
+782.41553	0.27631998	b11/0.0
+815.43701	0.24988998	y11/0.0
+474.26706	0.24581002	y6/0.0
+391.7114	0.18824001	b11^2/0.0
+853.45264	0.17081	b12/0.0
+886.47412	0.16329999	y12/0.0
+924.48975	0.10528	b13/0.0
+957.51123	0.091109999	y13/0.0
+
+<Spectrum=5>
+MS:1003061|library spectrum name=AAAAAAAAAAAAAAASGFAYPGTSER3
+MS:1000744|selected ion m/z=746.36969
+MS:1003203|constituent spectrum file=file:///home/andrew/hc-storage/diabetes_study/speclib/phl004_canonical_sall_pv.csv
+MS:1003072|spectrum origin type=MS:1003074|predicted spectrum
+MS:1003065|spectrum aggregation type=MS:1003074|predicted spectrum
+MS:1002476|ion mobility drift time=0.0
+MS:1000041|charge state=3
+MS:1003059|number of peaks=13
+[1]MS:1003275|other attribute name=ExcludeFromAssay
+[1]MS:1003276|other attribute value=False
+<Analyte=1>
+MS:1000888|stripped peptide sequence=AAAAAAAAAAAAAAASGFAYPGTSER
+MS:1003270|proforma peptidoform ion notation=AAAAAAAAAAAAAAASGFAYPGTSER/3
+MS:1001117|theoretical mass=2236.087258363109
+[1]MS:1000885|protein accession=P35453
+[1]MS:1000886|protein name=HXD13_HUMAN
+[2]MS:1003275|other attribute name=Proteotypic
+[2]MS:1003276|other attribute value=1
+[3]MS:1003275|other attribute name=ProteinGroup
+[3]MS:1003276|other attribute value=P35453
+<Peaks>
+646.31549	1.0	y6/0.0
+880.41589	0.72346348	y8/0.0
+498.26706	0.66272509	b7/0.0
+569.3042	0.60243261	b8/0.0
+356.19284	0.58793229	b5/0.0
+809.37878	0.48742947	y7/0.0
+711.37842	0.48370829	b10/0.0
+427.22995	0.48304707	b6/0.0
+1027.4844	0.38692665	y9/0.0
+853.45264	0.32992482	b12/0.0
+1171.5378	0.31720817	y11/0.0
+782.41553	0.21106207	b11/0.0
+640.34131	0.21104671	b9/0.0
+
+<Spectrum=6>
+MS:1003061|library spectrum name=AAAAAAAAAAAAAAASGFAYPGTSER4
+MS:1000744|selected ion m/z=560.02911
+MS:1003203|constituent spectrum file=file:///home/andrew/hc-storage/diabetes_study/speclib/phl004_canonical_sall_pv.csv
+MS:1003072|spectrum origin type=MS:1003074|predicted spectrum
+MS:1003065|spectrum aggregation type=MS:1003074|predicted spectrum
+MS:1002476|ion mobility drift time=0.0
+MS:1000041|charge state=4
+MS:1003059|number of peaks=11
+[1]MS:1003275|other attribute name=ExcludeFromAssay
+[1]MS:1003276|other attribute value=False
+<Analyte=1>
+MS:1000888|stripped peptide sequence=AAAAAAAAAAAAAAASGFAYPGTSER
+MS:1003270|proforma peptidoform ion notation=AAAAAAAAAAAAAAASGFAYPGTSER/4
+MS:1001117|theoretical mass=2236.087258363109
+[1]MS:1000885|protein accession=P35453
+[1]MS:1000886|protein name=HXD13_HUMAN
+[2]MS:1003275|other attribute name=Proteotypic
+[2]MS:1003276|other attribute value=1
+[3]MS:1003275|other attribute name=ProteinGroup
+[3]MS:1003276|other attribute value=P35453
+<Peaks>
+646.31549	1.0	y6/0.0
+356.19284	0.66913706	b5/0.0
+492.24124	0.59304374	y4/0.0
+498.26706	0.4210082	b7/0.0
+809.37878	0.4210082	y7/0.0
+569.3042	0.36934987	b8/0.0
+711.37842	0.344071	b10/0.0
+514.24579	0.33137658	y9^2/0.0
+427.22995	0.33042264	b6/0.0
+640.34131	0.31578368	b9/0.0
+586.27252	0.27729672	y11^2/0.0
+
+<Spectrum=7>
+MS:1003061|library spectrum name=AAAAAAAAAAK2
+MS:1000744|selected ion m/z=429.24561
+MS:1003203|constituent spectrum file=file:///home/andrew/hc-storage/diabetes_study/speclib/phl004_canonical_sall_pv.csv
+MS:1003072|spectrum origin type=MS:1003074|predicted spectrum
+MS:1003065|spectrum aggregation type=MS:1003074|predicted spectrum
+MS:1002476|ion mobility drift time=0.0
+MS:1000041|charge state=2
+MS:1003059|number of peaks=10
+[1]MS:1003275|other attribute name=ExcludeFromAssay
+[1]MS:1003276|other attribute value=False
+<Analyte=1>
+MS:1000888|stripped peptide sequence=AAAAAAAAAAK
+MS:1003270|proforma peptidoform ion notation=AAAAAAAAAAK/2
+MS:1001117|theoretical mass=856.4766655447999
+[1]MS:1000885|protein accession=P50914,P50458,A6NHT5,P15502,DECOY_Q9Y651,DECOY_O60341
+[2]MS:1003275|other attribute name=Proteotypic
+[2]MS:1003276|other attribute value=1
+[3]MS:1003275|other attribute name=ProteinGroup
+[3]MS:1003276|other attribute value=P50914,P50458,A6NHT5,P15502,DECOY_Q9Y651,DECOY_O60341
+<Peaks>
+573.33551	1.0	y7/0.0
+502.29837	0.84049195	y6/0.0
+644.37262	0.62802154	y8/0.0
+715.40973	0.53955686	y9/0.0
+356.19284	0.52399796	b5/0.0
+431.26126	0.46901798	y5/0.0
+427.22995	0.32801768	b6/0.0
+360.22415	0.30400032	y4/0.0
+498.26706	0.22399409	b7/0.0
+786.44684	0.19198385	y10/0.0
+
+<Spectrum=8>
+MS:1003061|library spectrum name=AAAAAAAAAAR2
+MS:1000744|selected ion m/z=443.24869
+MS:1003203|constituent spectrum file=file:///home/andrew/hc-storage/diabetes_study/speclib/phl004_canonical_sall_pv.csv
+MS:1003072|spectrum origin type=MS:1003074|predicted spectrum
+MS:1003065|spectrum aggregation type=MS:1003074|predicted spectrum
+MS:1002476|ion mobility drift time=0.0
+MS:1000041|charge state=2
+MS:1003059|number of peaks=9
+[1]MS:1003275|other attribute name=ExcludeFromAssay
+[1]MS:1003276|other attribute value=False
+<Analyte=1>
+MS:1000888|stripped peptide sequence=AAAAAAAAAAR
+MS:1003270|proforma peptidoform ion notation=AAAAAAAAAAR/2
+MS:1001117|theoretical mass=884.4828135543999
+[1]MS:1000885|protein accession=P47928,Q9Y651,DECOY_Q76L83,DECOY_Q8WXD9,DECOY_Q5VZB9,DECOY_P35453,DECOY_O14654,DECOY_P55011,DECOY_P0CG40
+[2]MS:1003275|other attribute name=Proteotypic
+[2]MS:1003276|other attribute value=1
+[3]MS:1003275|other attribute name=ProteinGroup
+[3]MS:1003276|other attribute value=P47928,Q9Y651,DECOY_Q76L83,DECOY_Q8WXD9,DECOY_Q5VZB9,DECOY_P35453,DECOY_O14654,DECOY_P55011,DECOY_P0CG40
+<Peaks>
+601.34161	1.0	y7/0.0
+530.3045	0.90602791	y6/0.0
+672.37872	0.83756346	y8/0.0
+356.19284	0.69194162	b5/0.0
+388.23029	0.52842641	y4/0.0
+459.2674	0.47519037	y5/0.0
+743.41583	0.39619291	y9/0.0
+427.22995	0.36180204	b6/0.0
+569.3042	0.20031726	b8/0.0
+
+<Spectrum=9>
+MS:1003061|library spectrum name=AAAAAAAAAASGAAIPPLIPPR2
+MS:1000744|selected ion m/z=950.04419
+MS:1003203|constituent spectrum file=file:///home/andrew/hc-storage/diabetes_study/speclib/phl004_canonical_sall_pv.csv
+MS:1003072|spectrum origin type=MS:1003074|predicted spectrum
+MS:1003065|spectrum aggregation type=MS:1003074|predicted spectrum
+MS:1002476|ion mobility drift time=0.0
+MS:1000041|charge state=2
+MS:1003059|number of peaks=25
+[1]MS:1003275|other attribute name=ExcludeFromAssay
+[1]MS:1003276|other attribute value=False
+<Analyte=1>
+MS:1000888|stripped peptide sequence=AAAAAAAAAASGAAIPPLIPPR
+MS:1003270|proforma peptidoform ion notation=AAAAAAAAAASGAAIPPLIPPR/2
+MS:1001117|theoretical mass=1898.0737805754497
+[1]MS:1000885|protein accession=O14654
+[1]MS:1000886|protein name=IRS4_HUMAN
+[2]MS:1003275|other attribute name=Proteotypic
+[2]MS:1003276|other attribute value=1
+[3]MS:1003275|other attribute name=ProteinGroup
+[3]MS:1003276|other attribute value=O14654
+<Peaks>
+789.49811	1.0	y7/0.0
+369.22449	0.58921003	y3/0.0
+427.22995	0.31046999	b6/0.0
+498.26706	0.30821002	b7/0.0
+569.3042	0.26800001	b8/0.0
+356.19284	0.25783998	b5/0.0
+640.34131	0.20063001	b9/0.0
+1101.6779	0.15594999	y11/0.0
+1188.71	0.15020999	y12/0.0
+902.58221	0.13153	y8/0.0
+1259.7471	0.1284	y13/0.0
+973.61932	0.11756	y9/0.0
+997.50616	0.11383001	b14/0.0
+711.37842	0.10726	b10/0.0
+1330.7842	0.10523	y14/0.0
+1110.5902	0.10514	b15/0.0
+926.46899	0.10461	b13/0.0
+1401.8213	0.080120005	y15/0.0
+855.43188	0.074140005	b12/0.0
+1044.6564	0.072379999	y10/0.0
+482.30853	0.067829996	y4/0.0
+798.41046	0.05923	b11/0.0
+1472.8584	0.055300001	y16/0.0
+692.44537	0.044360001	y6/0.0
+1543.8955	0.036620002	y17/0.0
+

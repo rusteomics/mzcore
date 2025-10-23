@@ -43,6 +43,13 @@ test = false
 doc = false
 bench = false
 
+[[bin]]
+name = "mzspeclib"
+path = "fuzz_targets/mzspeclib.rs"
+test = false
+doc = false
+bench = false
+
 [lints.rust]
 unused_crate_dependencies = "allow"
 
