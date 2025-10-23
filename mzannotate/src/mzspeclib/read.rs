@@ -463,7 +463,7 @@ impl<'a, R: BufRead> MzSpecLibTextParser<'a, R> {
 
                         self.push_back_line(buf);
                         break;
-                    } else if buf.is_empty() {
+                    } else if buf.is_empty() && e.get_kind() != MzSpecLibErrorKind::Eof {
                         // continue
                     } else {
                         return Err(e);
@@ -1473,5 +1473,23 @@ mod test {
         let _spec = this.read_next()?;
 
         Ok(())
+    }
+
+    #[test]
+    fn unknown_cv_value() {
+        let text = r"<mzSpecLib>
+MS:1003186|library format version=UW:0000000|text";
+
+        let res = MzSpecLibTextParser::open(text.as_bytes(), None, None);
+        assert!(res.is_err());
+    }
+
+    #[test]
+    fn unknown_cv_term_hang() {
+        let text = r"<mzSpecLib>
+MS:0000000|unknown=a";
+
+        let res = MzSpecLibTextParser::open(text.as_bytes(), None, None);
+        assert!(res.is_err());
     }
 }

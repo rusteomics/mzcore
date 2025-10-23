@@ -3,7 +3,10 @@ use std::{borrow::Cow, fmt::Display, str::FromStr};
 
 use mzdata::{
     Param,
-    params::{CURIE, CURIEParsingError, ParamValue, ParamValueParseError, Unit, Value},
+    params::{
+        CURIE, CURIEParsingError, ControlledVocabulary, ParamValue, ParamValueParseError, Unit,
+        Value,
+    },
 };
 
 /// An error when parsing a term.
@@ -13,6 +16,8 @@ pub enum TermParserError {
     CURIEError(CURIEParsingError),
     /// The pipe symbol is missing
     MissingPipe,
+    /// An unknown CV was used
+    UnknownControlledVocabulary,
 }
 
 /// A term, a CURIE plus its name
@@ -55,7 +60,11 @@ impl FromStr for Term {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         if let Some((curie, name)) = s.split_once('|') {
             let curie: CURIE = curie.parse().map_err(TermParserError::CURIEError)?;
-            Ok(Self::new(curie, name.to_string()))
+            if curie.controlled_vocabulary == ControlledVocabulary::Unknown {
+                Err(TermParserError::UnknownControlledVocabulary)
+            } else {
+                Ok(Self::new(curie, name.to_string()))
+            }
         } else {
             Err(TermParserError::MissingPipe)
         }
@@ -105,7 +114,12 @@ impl Term {
 
 impl Display for Term {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}|{}", self.accession, self.name)
+        // Displaying a CURIE with an unknown CV crashes
+        if self.accession.controlled_vocabulary == ControlledVocabulary::Unknown {
+            write!(f, "??:{}|{}", self.accession.accession, self.name)
+        } else {
+            write!(f, "{}|{}", self.accession, self.name)
+        }
     }
 }
 
@@ -246,6 +260,8 @@ impl Display for AttributeParseError {
                 )) => "The controlled vocabulary is unknown",
                 Self::TermParserError(TermParserError::MissingPipe) =>
                     "The term pipe symbol is missing, a term should be written like 'MS:1000896|normalized retention time'",
+                Self::TermParserError(TermParserError::UnknownControlledVocabulary) =>
+                    "An unknown controlled vocabulary was used",
                 Self::ValueParseError(ParamValueParseError::FailedToExtractBuffer) =>
                     "Invalid value for the attribute, expected a buffer",
                 Self::ValueParseError(ParamValueParseError::FailedToExtractFloat(_)) =>
