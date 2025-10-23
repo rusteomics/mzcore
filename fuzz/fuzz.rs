@@ -217,7 +217,15 @@ fn minify(target: &str, jobs: u8) {
             .expect("Failed to launch child");
         write!(child.stdin.take().unwrap(), "{}", &option).unwrap();
         if !child.wait().unwrap().success() {
-            writeln!(writer, "test!(r\"{option}\", test_{count});",).unwrap();
+            if option.contains("\"##") {
+                writeln!(writer, "test!(r###\"{option}\"###, test_{count});",).unwrap();
+            } else if option.contains("\"#") {
+                writeln!(writer, "test!(r##\"{option}\"##, test_{count});",).unwrap();
+            } else if option.contains('"') {
+                writeln!(writer, "test!(r#\"{option}\"#, test_{count});",).unwrap();
+            } else {
+                writeln!(writer, "test!(r\"{option}\", test_{count});",).unwrap();
+            }
             count += 1;
         }
     }

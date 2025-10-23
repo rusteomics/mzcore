@@ -155,5 +155,14 @@ mzpaf_test!(ne r"r[]", fuzz_6);
 mzpaf_test!(ne r"r[Adensosine", fuzz_7);
 mzpaf_test!(ne r"f{}", fuzz_8);
 mzpaf_test!(ne r"f{C2H6", fuzz_9);
+mzpaf_test!(ne r"m3:4/1.1ppm,m4:0/1.1ppm", fuzz_10);
+mzpaf_test!(ne r"m0:4/1.1ppm,m4:5/1.1ppm", fuzz_11);
+mzpaf_test!(ne r"0@v7{M[Oxidation]ACK}-CH3OS[M+H+Na]^2", fuzz_12);
+mzpaf_test!(ne r"0@w7{M[]},x5{M[]},x7{M[]}-H", fuzz_13);
+mzpaf_test!(ne r"a0", fuzz_14);
+mzpaf_test!(ne r"y5-H2[18O1][M+Na],y5[M+Na],y5[M+[15N1]H[15N1]H4],y12/3.4ppm*0.85,b0-NH3/5.2ppm*0.05", fuzz_15);
+mzpaf_test!(ne r"IX[ethyl],p-H95O9^8,IX[ethyl],p-H95O9^8,IX[ethyl],p-H95O9^8,IX[ethyl],c0", fuzz_16);
+mzpaf_test!(ne r"0@da8{M[Oxidation]ACK}-CH8OS[M+H+Na]^2", fuzz_17);
+mzpaf_test!(ne r"da0000000000000000000000000000000000", fuzz_18);
 
 mzpaf_test!("IC[Carbamidomethyl]/-0.0008", hand_test_01);
