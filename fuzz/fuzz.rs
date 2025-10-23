@@ -112,41 +112,42 @@ impl Stats {
     fn get(target: &str, jobs: u8) -> Option<()> {
         let stats = (-1..(jobs - 1) as i16)
             .map(|i| {
-                let name = if i == -1 {
-                    "fM".to_string()
-                } else {
-                    format!("f{i}")
-                };
-                let mut res = Self::default();
-                res.jobs = jobs;
-                for line in std::io::BufReader::new(
+                if let Some(file) =
                     std::fs::File::open(&format!("out_{target}/{name}/fuzzer_stats"))
-                        .expect(&format!("out_{target}/{name}/fuzzer_stats")),
-                )
-                .lines()
                 {
-                    let line = line.unwrap();
-                    let (tag, value) = line.split_once(':').unwrap();
-                    match tag.trim() {
-                        "fuzz_time" => {
-                            res.fuzz_time = value.trim().parse().unwrap();
+                    let name = if i == -1 {
+                        "fM".to_string()
+                    } else {
+                        format!("f{i}")
+                    };
+                    let mut res = Self::default();
+                    res.jobs = jobs;
+                    for line in std::io::BufReader::new(file).lines() {
+                        let line = line.unwrap();
+                        let (tag, value) = line.split_once(':').unwrap();
+                        match tag.trim() {
+                            "fuzz_time" => {
+                                res.fuzz_time = value.trim().parse().unwrap();
+                            }
+                            "cycles_done" => {
+                                res.cycles_done = value.trim().parse().unwrap();
+                            }
+                            "execs_done" => {
+                                res.execs_done = value.trim().parse().unwrap();
+                            }
+                            "saved_crashes" => {
+                                res.saved_crashes = value.trim().parse().unwrap();
+                            }
+                            "saved_hangs" => {
+                                res.saved_hangs = value.trim().parse().unwrap();
+                            }
+                            _ => (),
                         }
-                        "cycles_done" => {
-                            res.cycles_done = value.trim().parse().unwrap();
-                        }
-                        "execs_done" => {
-                            res.execs_done = value.trim().parse().unwrap();
-                        }
-                        "saved_crashes" => {
-                            res.saved_crashes = value.trim().parse().unwrap();
-                        }
-                        "saved_hangs" => {
-                            res.saved_hangs = value.trim().parse().unwrap();
-                        }
-                        _ => (),
                     }
+                    res
+                } else {
+                    Stats::default()
                 }
-                res
             })
             .sum::<Self>();
         stats.print();
