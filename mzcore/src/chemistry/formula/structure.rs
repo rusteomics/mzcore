@@ -615,7 +615,7 @@ impl std::iter::Sum<Self> for MolecularFormula {
 /// molecular_formula!(C 12 [13 C 1] H 24);
 /// ```
 /// # Panics
-/// It panics if the defined molecular formula is not valid. A formula is not valid if not existing isotopes are used
+/// It panics if the defined molecular formula is not valid. A formula is not valid if non existing isotopes are used
 /// or if an element is used that does not have a defined molecular weight (does not have natural abundance).
 macro_rules! molecular_formula {
     ($($tail:tt)*) => {

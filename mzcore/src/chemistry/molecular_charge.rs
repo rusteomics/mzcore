@@ -70,15 +70,17 @@ pub struct MolecularCharge {
 
 impl MolecularCharge {
     /// Create a default charge state with only protons
-    #[expect(clippy::missing_panics_doc)] // Cannot panic
     pub fn proton(charge: Charge) -> Self {
         Self {
-            charge_carriers: vec![(
-                charge.value,
-                MolecularFormula::new(&[(Element::H, None, 1), (Element::Electron, None, -1)], &[])
-                    .unwrap(),
-            )],
+            charge_carriers: vec![(charge.value, molecular_formula!(H 1 Electron -1 ))],
         }
+    }
+
+    /// Check if this molecular charge only consists of protons
+    pub fn is_proton(&self) -> bool {
+        self.charge_carriers
+            .iter()
+            .all(|(_, m)| *m == molecular_formula!(H 1 Electron -1 ))
     }
 
     /// Create a charge state with the given ions

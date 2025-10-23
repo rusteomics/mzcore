@@ -244,11 +244,16 @@ impl PeptidoformIon {
         }
 
         let mut first = true;
-        for p in self.peptidoforms() {
+        for (index, p) in self.peptidoforms().iter().enumerate() {
             if !first {
                 write!(f, "//")?;
             }
-            p.display(f, false, specification_compliant)?;
+            p.display(
+                f,
+                false,
+                index == self.peptidoforms().len() - 1,
+                specification_compliant,
+            )?;
             first = false;
         }
         Ok(())

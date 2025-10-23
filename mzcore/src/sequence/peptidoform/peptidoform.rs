@@ -214,7 +214,10 @@ impl<Complexity> Peptidoform<Complexity> {
         self.is_linear()
             && self.labile.is_empty()
             && self.global.is_empty()
-            && self.charge_carriers.is_none()
+            && self
+                .charge_carriers
+                .as_ref()
+                .is_none_or(MolecularCharge::is_proton)
     }
 
     /// Convert this peptide into [`SimpleLinear`].
@@ -1004,6 +1007,7 @@ impl<Complexity> Peptidoform<Complexity> {
         &self,
         f: &mut impl Write,
         show_global_mods: bool,
+        show_charge: bool,
         specification_compliant: bool,
     ) -> std::fmt::Result {
         if show_global_mods {
@@ -1157,7 +1161,9 @@ impl<Complexity> Peptidoform<Complexity> {
             m.display(f, specification_compliant, display_ambiguous)?;
             write!(f, "]")?;
         }
-        if let Some(c) = &self.charge_carriers {
+        if let Some(c) = &self.charge_carriers
+            && show_charge
+        {
             write!(f, "/{c}")?;
         }
         Ok(())
@@ -1571,7 +1577,7 @@ impl<OwnComplexity: AtMax<SemiAmbiguous>> Peptidoform<OwnComplexity> {
 
 impl<Complexity> Display for Peptidoform<Complexity> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        self.display(f, true, true)
+        self.display(f, true, true, true)
     }
 }
 
