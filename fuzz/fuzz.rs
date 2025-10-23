@@ -112,14 +112,13 @@ impl Stats {
     fn get(target: &str, jobs: u8) -> Option<()> {
         let stats = (-1..(jobs - 1) as i16)
             .map(|i| {
-                if let Some(file) =
-                    std::fs::File::open(&format!("out_{target}/{name}/fuzzer_stats"))
+                let name = if i == -1 {
+                    "fM".to_string()
+                } else {
+                    format!("f{i}")
+                };
+                if let Ok(file) = std::fs::File::open(&format!("out_{target}/{name}/fuzzer_stats"))
                 {
-                    let name = if i == -1 {
-                        "fM".to_string()
-                    } else {
-                        format!("f{i}")
-                    };
                     let mut res = Self::default();
                     res.jobs = jobs;
                     for line in std::io::BufReader::new(file).lines() {
@@ -155,7 +154,11 @@ impl Stats {
     }
 
     fn print(&self) {
-        let duration = Duration::from_secs_f64(self.fuzz_time as f64 / self.jobs as f64);
+        let duration = if self.fuzz_time > 0 {
+            Duration::from_secs_f64(self.fuzz_time as f64 / self.jobs as f64)
+        } else {
+            Duration::default()
+        };
         print!(
             "\rtime: {}, cycles: {}, execs: {}, crashes: {} hangs: {}",
             print_time(duration),
