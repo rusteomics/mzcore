@@ -96,7 +96,7 @@ pub trait MetaData {
     fn database(&self) -> Option<(&str, Option<&str>)>;
 
     /// Get the annotated spectrum if this is encoded in the format
-    // TODO: built parsers for OPair, MaxQuant, PLGS
+    // TODO: built parsers for OPair, MaxQuant, PLGS, MetaMorpheus
     #[cfg(feature = "mzannotate")]
     fn annotated_spectrum(&self) -> Option<Cow<'_, mzannotate::spectrum::AnnotatedSpectrum>> {
         None

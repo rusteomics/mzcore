@@ -362,6 +362,9 @@ impl Modification {
             "nem" => Ontology::Unimod.find_id(108, None),     // Nethylmaleimide
             "deamidation" => Ontology::Unimod.find_id(7, None), // deamidated
             "formylation" => Ontology::Unimod.find_id(122, None), // formyl
+            "sodium" => Ontology::Unimod.find_id(30, None),   // Cation:Na
+            "n-acetylserine" => Ontology::Psimod.find_id(60, None), // N-acetyl-L-serine
+            "n-acetylalanine" => Ontology::Psimod.find_id(50, None), // N-acetyl-L-alanine
             "pyro-glu" => Ontology::Unimod.find_id(
                 if position.is_some_and(|p| p.aminoacid.aminoacid() == AminoAcid::GlutamicAcid) {
                     27

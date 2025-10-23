@@ -45,6 +45,8 @@ pub enum IdentifiedPeptidoformData {
     InstaNovo(InstaNovoData),
     /// MaxQuant metadata
     MaxQuant(MaxQuantData),
+    /// MaxQuant metadata
+    MetaMorpheus(MetaMorpheusData),
     /// MSFragger metadata
     MSFragger(MSFraggerData),
     /// mzTab metadata
@@ -89,6 +91,7 @@ impl<PeptidoformAvailability> IdentifiedPeptidoform<Linear, PeptidoformAvailabil
             IdentifiedPeptidoformData::Novor(NovorData { peptide, .. })
             | IdentifiedPeptidoformData::InstaNovo(InstaNovoData { peptide, .. })
             | IdentifiedPeptidoformData::Opair(OpairData { peptide, .. })
+            | IdentifiedPeptidoformData::MetaMorpheus(MetaMorpheusData { peptide, .. })
             | IdentifiedPeptidoformData::PiHelixNovo(PiHelixNovoData { peptide, .. })
             | IdentifiedPeptidoformData::PepNet(PepNetData { peptide, .. })
             | IdentifiedPeptidoformData::PowerNovo(PowerNovoData { peptide, .. })
@@ -170,6 +173,7 @@ impl<PeptidoformAvailability> IdentifiedPeptidoform<SimpleLinear, PeptidoformAva
             | IdentifiedPeptidoformData::InstaNovo(InstaNovoData { peptide, .. })
             | IdentifiedPeptidoformData::PiHelixNovo(PiHelixNovoData { peptide, .. })
             | IdentifiedPeptidoformData::Opair(OpairData { peptide, .. })
+            | IdentifiedPeptidoformData::MetaMorpheus(MetaMorpheusData { peptide, .. })
             | IdentifiedPeptidoformData::PepNet(PepNetData { peptide, .. })
             | IdentifiedPeptidoformData::PowerNovo(PowerNovoData { peptide, .. })
             | IdentifiedPeptidoformData::PUniFind(PUniFindData {
@@ -249,6 +253,7 @@ impl<PeptidoformAvailability> IdentifiedPeptidoform<SemiAmbiguous, PeptidoformAv
             IdentifiedPeptidoformData::Novor(NovorData { peptide, .. })
             | IdentifiedPeptidoformData::InstaNovo(InstaNovoData { peptide, .. })
             | IdentifiedPeptidoformData::Opair(OpairData { peptide, .. })
+            | IdentifiedPeptidoformData::MetaMorpheus(MetaMorpheusData { peptide, .. })
             | IdentifiedPeptidoformData::PiHelixNovo(PiHelixNovoData { peptide, .. })
             | IdentifiedPeptidoformData::PepNet(PepNetData { peptide, .. })
             | IdentifiedPeptidoformData::PowerNovo(PowerNovoData { peptide, .. })
@@ -331,6 +336,7 @@ impl<PeptidoformAvailability> IdentifiedPeptidoform<UnAmbiguous, PeptidoformAvai
             IdentifiedPeptidoformData::Novor(NovorData { peptide, .. })
             | IdentifiedPeptidoformData::InstaNovo(InstaNovoData { peptide, .. })
             | IdentifiedPeptidoformData::Opair(OpairData { peptide, .. })
+            | IdentifiedPeptidoformData::MetaMorpheus(MetaMorpheusData { peptide, .. })
             | IdentifiedPeptidoformData::PiHelixNovo(PiHelixNovoData { peptide, .. })
             | IdentifiedPeptidoformData::PepNet(PepNetData { peptide, .. })
             | IdentifiedPeptidoformData::PowerNovo(PowerNovoData { peptide, .. })
@@ -593,7 +599,7 @@ macro_rules! impl_metadata {
 }
 
 impl_metadata!(
-    formats: {BasicCSV,DeepNovoFamily,Fasta,MaxQuant,InstaNovo,MZTab,NovoB,Novor,Opair,Peaks,PepNet,PiHelixNovo,PiPrimeNovo,PLGS,PLink,PowerNovo,Proteoscape,PUniFind,Sage,MSFragger,SpectrumSequenceList,AnnotatedSpectrum};
+    formats: {BasicCSV,DeepNovoFamily,Fasta,MaxQuant,MetaMorpheus,InstaNovo,MZTab,NovoB,Novor,Opair,Peaks,PepNet,PiHelixNovo,PiPrimeNovo,PLGS,PLink,PowerNovo,Proteoscape,PUniFind,Sage,MSFragger,SpectrumSequenceList,AnnotatedSpectrum};
     functions: {
         fn compound_peptidoform_ion(&self) -> Option<Cow<'_, CompoundPeptidoformIon>>;
         fn format(&self) -> KnownFileFormat;

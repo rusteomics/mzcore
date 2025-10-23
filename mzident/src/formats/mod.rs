@@ -5,6 +5,7 @@ mod deepnovofamily;
 mod fasta;
 mod instanovo;
 mod maxquant;
+mod metamorpheus;
 mod msfragger;
 mod mztab;
 mod novob;
@@ -27,6 +28,7 @@ pub use deepnovofamily::*;
 pub use fasta::*;
 pub use instanovo::*;
 pub use maxquant::*;
+pub use metamorpheus::*;
 pub use msfragger::*;
 pub use mztab::*;
 pub use novob::*;
@@ -50,6 +52,8 @@ mod deepnovofamily_tests;
 mod instanovo_tests;
 #[cfg(test)]
 mod maxquant_tests;
+#[cfg(test)]
+mod metamorpheus_tests;
 #[cfg(test)]
 mod msfragger_tests;
 #[cfg(test)]

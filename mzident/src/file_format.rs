@@ -19,6 +19,7 @@ pub enum KnownFileFormat {
     Fasta,
     InstaNovo(InstaNovoVersion),
     MaxQuant(MaxQuantVersion),
+    MetaMorpheus(MetaMorpheusVersion),
     MZTab,
     NovoB(NovoBVersion),
     Novor(NovorVersion),
@@ -47,6 +48,7 @@ impl KnownFileFormat {
             Self::Fasta => "Fasta",
             Self::InstaNovo(_) => "InstaNovo",
             Self::MaxQuant(_) => "MaxQuant",
+            Self::MetaMorpheus(_) => "MetaMorpheus",
             Self::NovoB(_) => "NovoB",
             Self::Novor(_) => "Novor",
             Self::Opair(_) => "OPair",
@@ -74,6 +76,7 @@ impl KnownFileFormat {
             Self::DeepNovoFamily(version) => Some(version.to_string()),
             Self::InstaNovo(version) => Some(version.to_string()),
             Self::MaxQuant(version) => Some(version.to_string()),
+            Self::MetaMorpheus(version) => Some(version.to_string()),
             Self::MZTab => Some("1.0".to_string()),
             Self::NovoB(version) => Some(version.to_string()),
             Self::Novor(version) => Some(version.to_string()),
@@ -114,6 +117,7 @@ impl From<KnownFileFormat> for FileFormat {
             KnownFileFormat::Fasta => Self::Fasta,
             KnownFileFormat::InstaNovo(version) => Self::InstaNovo(Some(version)),
             KnownFileFormat::MaxQuant(version) => Self::MaxQuant(Some(version)),
+            KnownFileFormat::MetaMorpheus(version) => Self::MetaMorpheus(Some(version)),
             KnownFileFormat::MZTab => Self::MZTab,
             KnownFileFormat::NovoB(version) => Self::NovoB(Some(version)),
             KnownFileFormat::Novor(version) => Self::Novor(Some(version)),
@@ -146,6 +150,7 @@ pub enum FileFormat {
     Fasta,
     InstaNovo(Option<InstaNovoVersion>),
     MaxQuant(Option<MaxQuantVersion>),
+    MetaMorpheus(Option<MetaMorpheusVersion>),
     MZTab,
     NovoB(Option<NovoBVersion>),
     Novor(Option<NovorVersion>),
@@ -208,6 +213,10 @@ impl FileFormat {
             }
             Self::MaxQuant(version) => {
                 MaxQuantData::parse_file(path, custom_database, false, version)
+                    .map(IdentifiedPeptidoformIter::into_box)
+            }
+            Self::MetaMorpheus(version) => {
+                MetaMorpheusData::parse_file(path, custom_database, false, version)
                     .map(IdentifiedPeptidoformIter::into_box)
             }
             Self::MZTab => MZTabData::parse_file(path, custom_database).map(|sequences| {
