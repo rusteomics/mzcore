@@ -306,6 +306,10 @@ impl Attribute {
         ))
     }
 
+    /// Parse an attribute from a string. Returns the group id (or None) and the attribute.
+    /// # Errors
+    /// If there is no valid attribute at this string.
+    // TODO: this would be nice to have as an error with context.
     pub fn parse(s: &str) -> Result<(Option<u32>, Self), AttributeParseError> {
         if let Some(s) = s.strip_prefix('[') {
             if let Some((group_id, rest)) = s.split_once(']') {

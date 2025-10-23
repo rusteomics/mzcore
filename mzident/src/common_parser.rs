@@ -416,7 +416,6 @@ impl<'a> Location<'a> {
 }
 
 pub(super) trait OptionalLocation<'a> {
-    fn or_empty(self) -> Option<Location<'a>>;
     /// # Errors
     /// If the parse method fails. See [`FromStr::parse`].
     fn parse<T: FromStr>(
@@ -437,9 +436,6 @@ pub(super) trait OptionalLocation<'a> {
 }
 
 impl<'a> OptionalLocation<'a> for Option<Location<'a>> {
-    fn or_empty(self) -> Self {
-        self.and_then(Location::or_empty)
-    }
     fn parse<T: FromStr>(
         self,
         base_error: (&'static str, &'static str),

@@ -13,7 +13,9 @@ use crate::{annotation::model::GlycanModel, fragment::FragmentType, prelude::*};
 
 use uom::num_traits::Zero;
 
+/// Helper trait to be able to define fragmentation on glycan structures.
 pub trait GlycanFragmention {
+    /// Generate theoretical fragments based on the model.
     fn generate_theoretical_fragments(
         &self,
         model: &FragmentationModel,

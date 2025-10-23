@@ -18,12 +18,16 @@ pub trait ToMzPAF {
         self.to_mz_paf(&mut output).unwrap(); // String writing cannot fail
         output
     }
+    /// Write the mzPAF encoding of this element to the writer.
+    /// # Errors
+    /// When the writer errors.
     fn to_mz_paf(&self, w: impl std::fmt::Write) -> std::fmt::Result;
 }
 
 impl ToMzPAF for Fragment {
     /// Write the fragment as a [mzPAF](https://www.psidev.info/mzPAF) string.
-    // TODO: figure out a way to handle the fallibility (when used on glycans/cross-linked stuff etc)
+    // TODO: figure out a way to handle the fallibility (when used on glycans/cross-linked stuff etc.)
+    #[expect(clippy::cognitive_complexity)] // It is a very big function but breaking it up might not benefit readers
     fn to_mz_paf(&self, mut w: impl std::fmt::Write) -> std::fmt::Result {
         if self.auxiliary {
             write!(w, "&")?;
@@ -179,7 +183,7 @@ impl ToMzPAF for Fragment {
                 seq.modifications
                     .iter()
                     .filter_map(|m| m.unimod_name().map(|name| format!("[{name}]")))
-                    .join("") // TODO: how to handle ambiguous mods? maybe store somewhere which where applied for this fragment
+                    .join("") // TODO: how to handle ambiguous mods? Maybe store somewhere which where applied for this fragment
             )?,
             FragmentType::Unknown(num) => {
                 if let Some(num) = num {

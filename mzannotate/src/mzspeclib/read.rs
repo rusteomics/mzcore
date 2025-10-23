@@ -22,7 +22,7 @@ use mzdata::{
 };
 
 use crate::{
-    fragment::{Fragment, parse_mz_paf_substring},
+    fragment::Fragment,
     helper_functions::explain_number_error,
     mzspeclib::{
         Analyte, AnalyteTarget, Attribute, AttributeParseError, AttributeSet, AttributeValue,
@@ -106,7 +106,7 @@ pub struct MzSpecLibTextParser<'custom_database, Reader: Read> {
     /// A flag to indicate is the last spectrum failed, if so it will scan to the start of the next spectrum next time a spectrum is requested.
     last_error: bool,
     /// The last compound peptidoform ion, used when parsing the mzPAF peaks in a spectrum.
-    last_compound_peptidoform: CompoundPeptidoformIon,
+    last_compound_peptidoform: Vec<(u32, AnalyteTarget)>,
     custom_database: Option<&'custom_database CustomDatabase>,
 }
 
@@ -158,7 +158,7 @@ impl<'a, R: BufRead> MzSpecLibTextParser<'a, R> {
                 scan_number: HashMap::new(),
             },
             last_error: false,
-            last_compound_peptidoform: CompoundPeptidoformIon::default(),
+            last_compound_peptidoform: Vec::new(),
             custom_database,
         };
         this.read_header()?;
@@ -901,7 +901,7 @@ impl<'a, R: BufRead> MzSpecLibTextParser<'a, R> {
             Some(v) => {
                 let v = v.trim();
                 if !v.is_empty() && v != "?" {
-                    let annots = parse_mz_paf_substring(
+                    let annots = Fragment::mz_paf_substring(
                         &self.current_context().lines(0, buf),
                         buf,
                         field_offset..field_offset + v.len(),
@@ -1043,10 +1043,7 @@ impl<'a, R: BufRead> MzSpecLibTextParser<'a, R> {
         self.last_compound_peptidoform = spec
             .analytes
             .iter()
-            .filter_map(|a| match &a.target {
-                AnalyteTarget::PeptidoformIon(pep) => Some(pep.clone()),
-                _ => None,
-            })
+            .map(|a| (a.id, a.target.clone()))
             .collect();
 
         if matches!(self.state, ParserState::Peaks) {
@@ -1089,7 +1086,7 @@ impl<'a, R: BufRead> MzSpecLibTextParser<'a, R> {
     pub fn read_next(
         &mut self,
     ) -> Result<AnnotatedSpectrum, BoxedError<'static, MzSpecLibErrorKind>> {
-        self.last_compound_peptidoform = CompoundPeptidoformIon::default();
+        self.last_compound_peptidoform = Vec::new();
         if self.last_error {
             // If the last element went awry scan the buffer until the start of the next spectrum
             // is found, otherwise it generates an error for each skipped line.

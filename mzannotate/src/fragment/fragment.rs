@@ -121,6 +121,7 @@ impl Fragment {
     /// # Panics
     /// When the charge range results in a negative charge
     #[must_use]
+    #[expect(clippy::too_many_arguments)] // Needs many different pieces of information
     pub fn generate_series(
         theoretical_mass: &Multi<MolecularFormula>,
         peptidoform_ion_index: usize,

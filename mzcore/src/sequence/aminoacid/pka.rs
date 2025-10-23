@@ -271,10 +271,10 @@ mod tests {
             .unwrap()
     }
 
+    type TestCase = (AminoAcid, Option<(f64, Option<f64>, f64)>);
+
     // Helper function to test pKa values for a given source
-    fn test_pka<Source: PKaSource<AminoAcid>>(
-        test_cases: &[(AminoAcid, Option<(f64, Option<f64>, f64)>)],
-    ) {
+    fn test_pka<Source: PKaSource<AminoAcid>>(test_cases: &[TestCase]) {
         for (aa, maybe_values) in test_cases {
             if let Some((n_term, sidechain, c_term)) = maybe_values {
                 let pka = Source::pKa(

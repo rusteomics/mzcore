@@ -1,4 +1,5 @@
-//! Test all present mzspeclib files
+//! Test all present mzSpecLib files
+#![allow(clippy::missing_panics_doc)]
 use std::collections::{HashMap, HashSet};
 
 use mzannotate::mzspeclib::{MzSpecLibTextParser, MzSpecLibTextWriter};

@@ -182,12 +182,13 @@ impl AnalyteTarget {
                             .collect(),
                     )),
                 });
-                attributes[0].push(Attribute {
-                    name: term!(MS:1003043|number of residues),
-                    value: AttributeValue::Scalar(Value::Int(
-                        pep.peptidoforms()[0].sequence().len() as i64,
-                    )),
-                });
+                // No reason to crash on a length that is a 'bit' big
+                if let Ok(v) = i64::try_from(pep.peptidoforms()[0].sequence().len()) {
+                    attributes[0].push(Attribute {
+                        name: term!(MS:1003043|number of residues),
+                        value: AttributeValue::Scalar(Value::Int(v)),
+                    });
+                }
             }
         }
 

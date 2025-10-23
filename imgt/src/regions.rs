@@ -58,7 +58,8 @@ impl<'a> IntoIterator for &'a Germlines {
 }
 
 impl Germlines {
-    fn iter(
+    /// Iterate over the chains
+    pub fn iter(
         &self,
     ) -> impl DoubleEndedIterator<Item = (ChainType, &Chain)> + ExactSizeIterator + '_ {
         [
@@ -229,7 +230,8 @@ impl<'a> IntoIterator for &'a Chain {
 }
 
 impl Chain {
-    fn iter(
+    /// Iterate over the genes
+    pub fn iter(
         &self,
     ) -> impl DoubleEndedIterator<Item = (GeneType, &[Germline])> + ExactSizeIterator + '_ {
         [
@@ -289,7 +291,8 @@ impl<'a> IntoIterator for &'a Germline {
 }
 
 impl Germline {
-    fn iter(&self) -> <&Self as IntoIterator>::IntoIter {
+    /// Iterate over the sequences
+    pub fn iter(&self) -> <&Self as IntoIterator>::IntoIter {
         self.into_iter()
     }
 }

@@ -11,20 +11,19 @@ use mzcore::{
 
 use crate::{annotation::model::PossibleIons, fragment::FragmentType, prelude::Fragment};
 
+/// The information from the N and C terminal to properly generate fragments
+type TerminalInfo = (
+    Multi<MolecularFormula>,
+    HashMap<BackboneFragmentKind, Multi<MolecularFormula>>,
+    Vec<Vec<NeutralLoss>>,
+);
+
 // TODO: generalise over used storage type, so using molecularformula, monoisotopic mass, or average mass, also make sure that AAs can return these numbers in a const fashion
 #[expect(clippy::too_many_lines, clippy::too_many_arguments)]
 pub(crate) fn fragments(
     aminoacid: AminoAcid,
-    n_term: &(
-        Multi<MolecularFormula>,
-        HashMap<BackboneFragmentKind, Multi<MolecularFormula>>,
-        Vec<Vec<NeutralLoss>>,
-    ),
-    c_term: &(
-        Multi<MolecularFormula>,
-        HashMap<BackboneFragmentKind, Multi<MolecularFormula>>,
-        Vec<Vec<NeutralLoss>>,
-    ),
+    n_term: &TerminalInfo,
+    c_term: &TerminalInfo,
     modifications: &(
         Multi<MolecularFormula>,
         HashMap<BackboneFragmentKind, Multi<MolecularFormula>>,

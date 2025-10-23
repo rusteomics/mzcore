@@ -1,4 +1,5 @@
 //! Align many peptides to a database using mass based alignment
+#![allow(clippy::type_complexity)]
 use std::{collections::BTreeMap, fs::File, io::BufWriter, sync::Arc};
 
 use clap::Parser;
@@ -39,14 +40,15 @@ where
     let max = alignments
         .iter()
         .max_by(|a, b| a.normalised_score().total_cmp(&b.normalised_score()))
-        .unwrap()
-        .normalised_score();
+        .map(Alignment::normalised_score)
+        .unwrap_or_default();
     let mut alignments = alignments
         .into_iter()
-        .filter(|a| a.normalised_score() == max)
+        .filter(|a| (a.normalised_score() - max).abs() < 1E-9)
         .collect_vec();
-    if alignments.len() == 1 {
-        let a = alignments.pop().unwrap();
+    if alignments.len() == 1
+        && let Some(a) = alignments.pop()
+    {
         vec![(a, true)]
     } else {
         alignments.into_iter().map(|a| (a, false)).collect_vec()
@@ -75,15 +77,16 @@ fn run_alignments(
     }
 }
 
+#[allow(clippy::missing_panics_doc)]
 fn main() {
     let args = Cli::parse();
-    let out_file = BufWriter::new(File::create(args.out_path).unwrap());
+    let out_file = BufWriter::new(File::create(args.out_path).expect("Could not create out file"));
     let peptides = open_identified_peptidoforms_file(args.peptides, None, false)
         .unwrap()
         .filter_map(Result::ok)
         .filter_map(IdentifiedPeptidoform::into_semi_ambiguous)
         .collect_vec();
-    let database = FastaData::parse_file(args.database).unwrap();
+    let database = FastaData::parse_file(args.database).expect("Could not open database");
     let index = AlignIndex::<4, Arc<FastaData>>::new(
         database.into_iter().map(Arc::new),
         MassMode::Monoisotopic,

@@ -471,7 +471,7 @@ impl MetaData for MaxQuantData {
     }
 
     fn mode(&self) -> Option<Cow<'_, str>> {
-        self.mode.as_deref().map(|m| Cow::Borrowed(m))
+        self.mode.as_deref().map(Cow::Borrowed)
     }
 
     fn retention_time(&self) -> Option<Time> {

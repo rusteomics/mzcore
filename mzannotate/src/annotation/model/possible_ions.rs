@@ -11,6 +11,8 @@ pub type PossiblePrimaryIons<'a> = (Vec<Vec<NeutralLoss>>, ChargeRange, &'a [i8]
 /// The possibilities for satellite ions, a list of all satellite ions with their amino acid and
 /// distance from the parent backbone cleavage, as well as all ion settings as for primary series.
 pub type PossibleSatelliteIons<'a> = (Vec<(AminoAcid, u8)>, PossiblePrimaryIons<'a>);
+/// The settings for immonium ions as a reference. The allowed charge range, and the allowed losses per amino acid.
+pub type ImmoniumSettingsRef<'a> = (ChargeRange, &'a [(Vec<AminoAcid>, Vec<NeutralLoss>)]);
 
 /// A struct to handle all possible fragments that could be generated on a single location
 #[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
@@ -35,7 +37,7 @@ pub struct PossibleIons<'a> {
     /// z series ions
     pub z: Option<PossiblePrimaryIons<'a>>,
     /// immonium
-    pub immonium: Option<(ChargeRange, &'a [(Vec<AminoAcid>, Vec<NeutralLoss>)])>,
+    pub immonium: Option<ImmoniumSettingsRef<'a>>,
 }
 
 impl PossibleIons<'_> {

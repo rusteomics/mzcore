@@ -153,6 +153,7 @@ fn select_model<'a>(
 /// * If a selected spectrum could not be peak picked.
 /// * If the input file does not exist, or could not be recognised as a supported format.
 /// * If the output csv file could not be created, or written to.
+#[allow(clippy::cognitive_complexity)]
 fn main() {
     let args = Cli::parse();
 

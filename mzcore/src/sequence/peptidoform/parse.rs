@@ -192,7 +192,7 @@ impl CompoundPeptidoformIon {
     #[expect(clippy::missing_panics_doc)] // Can not panic
     fn parse_linear_peptide<'a>(
         line: &'a str,
-        mut index: usize,
+        index: usize,
         custom_database: Option<&CustomDatabase>,
         cross_link_lookup: &mut CrossLinkLookup,
     ) -> Result<LinearPeptideResult, BoxedError<'a, BasicKind>> {
@@ -217,27 +217,21 @@ impl CompoundPeptidoformIon {
             usize,
             Option<OrderedFloat<f64>>,
         )> = Vec::new();
-        let mut unknown_position_modifications = Vec::new();
         let mut ranged_unknown_position_modifications = Vec::new();
         let mut ending = End::Empty;
 
         // Unknown position mods
-        if let Some(result) =
-            global_unknown_position_mods(chars, index, line, custom_database, &mut ambiguous_lookup)
-        {
-            let (buf, mods) = result.map_err(|errors| {
-                BoxedError::new(
-                    BasicKind::Error,
-                    "Some unknown position modifications are invalid",
-                    "See the underlying errors for more details.",
-                    Context::show(line),
-                )
-                .add_underlying_errors(errors)
-            })?;
-            index = buf;
-
-            unknown_position_modifications = mods;
-        }
+        let (index, unknown_position_modifications) =
+            global_unknown_position_mods(index, line, custom_database, &mut ambiguous_lookup)
+                .map_err(|errors| {
+                    BoxedError::new(
+                        BasicKind::Error,
+                        "Some unknown position modifications are invalid",
+                        "See the underlying errors for more details.",
+                        Context::show(line),
+                    )
+                    .add_underlying_errors(errors)
+                })?;
 
         // Labile modification(s)
         let (mut index, labile) = labile_modifications(line, index, custom_database)?;
@@ -803,21 +797,27 @@ pub(super) fn parse_placement_rules(
 /// # Errors
 /// Give all errors when the text cannot be read as mods of unknown position.
 pub(super) fn global_unknown_position_mods<'a>(
-    bytes: &'a [u8],
     start: usize,
     line: &'a str,
     custom_database: Option<&CustomDatabase>,
     ambiguous_lookup: &mut AmbiguousLookup,
-) -> Option<Result<(usize, Vec<usize>), Vec<BoxedError<'a, BasicKind>>>> {
+) -> Result<(usize, Vec<usize>), Vec<BoxedError<'a, BasicKind>>> {
     let mut index = start;
     let mut modifications = Vec::new();
     let mut errs = Vec::new();
     let mut cross_link_lookup = Vec::new();
 
     // Parse until no new modifications are found
-    while bytes.get(index) == Some(&b'[') {
+    while line.as_bytes().get(index) == Some(&b'[') {
         let start_index = index;
-        index = next_char(bytes, index + 1, b']')? + 1;
+        index = next_char(line.as_bytes(), index + 1, b']').ok_or_else(|| {
+            vec![BoxedError::new(
+                BasicKind::Error,
+                "Global unknown position modification not closed",
+                "All global unknown position modifications should be closed with a closing square bracket ']'",
+                Context::line(None, line, index, 1),
+            )]
+        })? + 1;
         let id = match SimpleModificationInner::parse_pro_forma(
             line,
             start_index + 1..index - 1,
@@ -849,8 +849,8 @@ pub(super) fn global_unknown_position_mods<'a>(
                 continue;
             }
         };
-        let number = if bytes.get(index) == Some(&b'^') {
-            if let Some((len, num)) = next_num(bytes, index + 1, false) {
+        let number = if line.as_bytes().get(index) == Some(&b'^') {
+            if let Some((len, num)) = next_num(line.as_bytes(), index + 1, false) {
                 index += len + 1;
                 if num < 0 {
                     errs.push(
@@ -883,15 +883,15 @@ pub(super) fn global_unknown_position_mods<'a>(
             modifications.push(id);
         }
     }
-    if bytes.get(index) == Some(&b'?') {
-        Some(if errs.is_empty() {
+    if line.as_bytes().get(index) == Some(&b'?') {
+        if errs.is_empty() {
             Ok((index + 1, modifications))
         } else {
             Err(errs)
-        })
+        }
     } else {
         ambiguous_lookup.clear(); // Any ambiguous N terminal modification was incorrectly already added to the lookup
-        None
+        Ok((start, Vec::new()))
     }
 }
 

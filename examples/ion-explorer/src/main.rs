@@ -12,7 +12,9 @@ use clap::Parser;
 use directories::ProjectDirs;
 use itertools::Itertools;
 use mzannotate::{
-    annotation::model::{PrimaryIonSeries, SatelliteIonSeries, SatelliteLocation},
+    annotation::model::{
+        BuiltInFragmentationModel, PrimaryIonSeries, SatelliteIonSeries, SatelliteLocation,
+    },
     fragment::{FragmentKind, FragmentType},
     prelude::*,
 };
@@ -60,6 +62,7 @@ struct Cli {
     after_fragment: f64,
 }
 
+#[allow(clippy::missing_panics_doc)]
 fn main() {
     let args = Cli::parse();
 
@@ -138,7 +141,7 @@ fn main() {
                         &fragments,
                         &cpi,
                         &args,
-                        peptide.mode().map(std::borrow::Cow::into_owned),
+                        peptide.fragmentation_model(),
                     );
                 }
             }
@@ -154,7 +157,7 @@ fn extract_and_merge(
     fragments: &[Fragment],
     peptidoform: &CompoundPeptidoformIon,
     args: &Cli,
-    mode: Option<String>,
+    mode: Option<BuiltInFragmentationModel>,
 ) {
     let RefPeakDataLevel::Centroid(spectrum) = spectrum.peaks() else {
         return;
@@ -177,10 +180,8 @@ fn extract_and_merge(
             let key = match fragment.ion {
                 FragmentType::d(_, _, d, _, _)
                 | FragmentType::v(_, _, d, _)
-                | FragmentType::w(_, _, d, _, _) => {
-                    (fragment.ion.kind(), Some(d), seq, mode.clone())
-                }
-                _ => (fragment.ion.kind(), None, seq, mode.clone()),
+                | FragmentType::w(_, _, d, _, _) => (fragment.ion.kind(), Some(d), seq, mode),
+                _ => (fragment.ion.kind(), None, seq, mode),
             };
             let low = mz.value - args.before_fragment / fragment.charge.value as f64;
             let high = mz.value + args.after_fragment / fragment.charge.value as f64;
@@ -245,7 +246,7 @@ type ItemKey = (
     FragmentKind,
     Option<u8>,
     Option<(AminoAcid, Vec<SimpleModification>)>,
-    Option<String>,
+    Option<BuiltInFragmentationModel>,
 );
 
 #[derive(Debug, Default)]
@@ -322,6 +323,8 @@ impl rayon::iter::FromParallelIterator<Self> for Stack {
     }
 }
 
+/// # Panics
+/// If the out file could not be created or could not be written to.
 fn write_stack(path: &Path, points: &[Point]) {
     let out_file =
         BufWriter::new(File::create(path).unwrap_or_else(|e| {

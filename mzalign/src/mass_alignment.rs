@@ -42,6 +42,7 @@ pub fn align<const STEPS: u16, A: HasPeptidoform<SimpleLinear>, B: HasPeptidofor
 /// # Panics
 /// It panics when the length of `seq_a` or `seq_b` is bigger than [`isize::MAX`].
 #[expect(clippy::too_many_lines)]
+#[allow(clippy::similar_names)]
 pub(super) fn align_cached<
     const STEPS: u16,
     A: HasPeptidoform<SimpleLinear>,

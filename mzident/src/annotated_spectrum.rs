@@ -229,7 +229,9 @@ impl From<AnnotatedSpectrum> for IdentifiedPeptidoform<Linked, MaybePeptidoform>
     }
 }
 
-// TODO: this should be done in the mzannotate crate
+/// Parse an mzSpecLib file into a general identified peptidoforms iterator.
+/// # Errors
+/// If the file is not a valid mzSpecLib file.
 pub(crate) fn parse_mzspeclib<'a>(
     path: &Path,
     custom_database: Option<&'a CustomDatabase>,

@@ -13,7 +13,9 @@ use mzdata::{
     spectrum::{IsolationWindowState, ScanPolarity, SpectrumDescription, SpectrumSummary},
 };
 
-/// Create mzSpecLib attributes from a spectrum description
+/// Create mzSpecLib attributes from a spectrum description.
+/// # Panics
+/// If the description.id does not fit in an i64.
 pub fn get_attributes_from_spectrum_description(
     description: &SpectrumDescription,
     summary: Option<&SpectrumSummary>,
@@ -135,7 +137,10 @@ pub fn get_attributes_from_spectrum_description(
     }
     attributes[0].push(Attribute::new(
         term!(MS:1003062|library spectrum index),
-        Value::Int(description.index as i64),
+        Value::Int(
+            i64::try_from(description.index)
+                .expect("A library index that does not fit in an i64 was used."),
+        ),
     ));
     attributes[0].push(Attribute::new(
         term!(MS:1000511|ms level),
@@ -166,10 +171,12 @@ pub fn get_attributes_from_spectrum_description(
             term!(MS:1000504|base peak m/z),
             Value::Float(summary.base_peak.mz),
         ));
-        attributes[0].push(Attribute::new(
-            term!(MS:1003059|number of peaks),
-            Value::Int(summary.count as i64),
-        ));
+        if let Ok(v) = i64::try_from(summary.count) {
+            attributes[0].push(Attribute::new(
+                term!(MS:1003059|number of peaks),
+                Value::Int(v),
+            ));
+        }
         attributes[0].push(Attribute::new(
             term!(MS:1000528|lowest observed m/z),
             Value::Float(summary.mz_range.0),

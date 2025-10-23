@@ -3,7 +3,6 @@ use std::{
     hash::Hash,
     num::{IntErrorKind, ParseIntError},
     ops::{Bound, Range, RangeBounds},
-    path::Path,
     str::FromStr,
 };
 
@@ -59,14 +58,6 @@ impl RangeMaths<usize> for Range<usize> {
             end: self.end.max(new_start),
         }
     }
-}
-
-/// Helper function to check extensions in filenames
-pub(crate) fn check_extension(filename: impl AsRef<Path>, extension: impl AsRef<Path>) -> bool {
-    filename
-        .as_ref()
-        .extension()
-        .is_some_and(|ext| ext.eq_ignore_ascii_case(extension.as_ref()))
 }
 
 /// Find the enclosed text by the given symbols, assumes a single open is already read just before

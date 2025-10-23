@@ -23,7 +23,10 @@ use crate::{
     prelude::{Fragment, FragmentationModel},
 };
 
+/// Helper trait to be able to define fragmentation methods on peptidoforms.
 pub trait PeptidoformFragmentation {
+    /// Generate theoretical fragments with the given maximal charge (ignored if the peptidoform
+    /// contains charge carriers) and the given model.
     fn generate_theoretical_fragments(
         &self,
         max_charge: Charge,

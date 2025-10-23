@@ -19,9 +19,13 @@ pub type GlycanBranchMassIndex = usize;
 /// Rose tree representation of glycan structure
 #[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
 pub struct PositionedGlycanStructure {
+    /// The sugar at this level
     pub sugar: MonoSaccharide,
+    /// All branches
     pub branches: Vec<PositionedGlycanStructure>,
+    /// The inner depth, the number of steps needed to get to the root / attached amino acid
     pub inner_depth: usize,
+    /// The outer depth, the number of steps needed to get to the closest leaf node
     pub outer_depth: usize,
     /// The branches taken to get to this location (from the root) as the index in the branches and the index in the branches when sorted by mass.
     /// For a general glycan with a fucose on the first hexnac and a bisection after the core double
@@ -145,6 +149,7 @@ impl PositionedGlycanStructure {
         }
     }
 
+    /// Get the glycan position for this level
     pub fn position(
         &self,
         attachment: Option<(AminoAcid, SequencePosition)>,

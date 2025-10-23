@@ -19,7 +19,6 @@ include = ["src/**/*", "images/**/*", "README.md", "benches/**/*"]
 [dependencies]
 mzcore = { path = "../mzcore" }
 
-bincode = { workspace = true }
 context_error = { workspace = true }
 rayon = { workspace = true, optional = true }
 serde = { workspace = true }

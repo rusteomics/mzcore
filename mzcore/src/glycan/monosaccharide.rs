@@ -38,6 +38,7 @@ impl MonoSaccharide {
         composition
     }
 
+    /// What is left over in a composition if the given set of monosaccharides is removed.
     pub fn composition_left_over(
         composition: &[(Self, isize)],
         remove: &[(Self, isize)],
@@ -61,7 +62,7 @@ impl MonoSaccharide {
 
     /// Get all unique combinations of monosaccharides within the given range of number of monosaccharides used
     /// # Panics
-    /// If any if the composition options has more then [`isize::MAX`] sugars.
+    /// If any if the composition options has more than [`isize::MAX`] sugars.
     pub fn composition_options(
         composition: &[(Self, isize)],
         range: (Option<usize>, Option<usize>),

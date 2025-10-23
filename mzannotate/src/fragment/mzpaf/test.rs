@@ -1,5 +1,4 @@
 use crate::fragment::mzpaf::write::ToMzPAF;
-use mzcore::sequence::CompoundPeptidoformIon;
 
 /// Create a parse test based on a given case and its name.
 #[macro_export]
@@ -8,8 +7,29 @@ macro_rules! mzpaf_test {
         #[test]
         fn $name() {
             use itertools::Itertools;
-            let res =
-                $crate::fragment::parse_mz_paf($case, None, &CompoundPeptidoformIon::default());
+            let basic_analytes = [
+                (
+                    1,
+                    $crate::mzspeclib::AnalyteTarget::PeptidoformIon(
+                        mzcore::sequence::PeptidoformIon::pro_forma(
+                            "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+                            None,
+                        )
+                        .unwrap(),
+                    ),
+                ),
+                (
+                    2,
+                    $crate::mzspeclib::AnalyteTarget::PeptidoformIon(
+                        mzcore::sequence::PeptidoformIon::pro_forma(
+                            "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+                            None,
+                        )
+                        .unwrap(),
+                    ),
+                ),
+            ];
+            let res = $crate::fragment::Fragment::mz_paf($case, None, &basic_analytes);
             match res {
                 Err(err) => {
                     println!("Failed: '{}'", $case);
@@ -18,11 +38,7 @@ macro_rules! mzpaf_test {
                 }
                 Ok(res) => {
                     let back = res.iter().map(|a| a.to_mz_paf_string()).join(",");
-                    let res_back = $crate::fragment::parse_mz_paf(
-                        &back,
-                        None,
-                        &CompoundPeptidoformIon::default(),
-                    );
+                    let res_back = $crate::fragment::Fragment::mz_paf(&back, None, &basic_analytes);
                     match res_back {
                         Ok(res_back) => {
                             let back_back = res_back.iter().map(|a| a.to_mz_paf_string()).join(",");
@@ -45,8 +61,7 @@ macro_rules! mzpaf_test {
     (ne $case:literal, $name:ident) => {
         #[test]
         fn $name() {
-            let res =
-                $crate::fragment::parse_mz_paf($case, None, &CompoundPeptidoformIon::default());
+            let res = $crate::fragment::Fragment::mz_paf($case, None, &[]);
             println!("{}\n{:?}", $case, res);
             assert!(res.is_err());
         }
@@ -157,12 +172,10 @@ mzpaf_test!(ne r"f{}", fuzz_8);
 mzpaf_test!(ne r"f{C2H6", fuzz_9);
 mzpaf_test!(ne r"m3:4/1.1ppm,m4:0/1.1ppm", fuzz_10);
 mzpaf_test!(ne r"m0:4/1.1ppm,m4:5/1.1ppm", fuzz_11);
-mzpaf_test!(ne r"0@v7{M[Oxidation]ACK}-CH3OS[M+H+Na]^2", fuzz_12);
-mzpaf_test!(ne r"0@w7{M[]},x5{M[]},x7{M[]}-H", fuzz_13);
-mzpaf_test!(ne r"a0", fuzz_14);
-mzpaf_test!(ne r"y5-H2[18O1][M+Na],y5[M+Na],y5[M+[15N1]H[15N1]H4],y12/3.4ppm*0.85,b0-NH3/5.2ppm*0.05", fuzz_15);
-mzpaf_test!(ne r"IX[ethyl],p-H95O9^8,IX[ethyl],p-H95O9^8,IX[ethyl],p-H95O9^8,IX[ethyl],c0", fuzz_16);
-mzpaf_test!(ne r"0@da8{M[Oxidation]ACK}-CH8OS[M+H+Na]^2", fuzz_17);
-mzpaf_test!(ne r"da0000000000000000000000000000000000", fuzz_18);
+mzpaf_test!(ne r"0@w7{M[]},x5{M[]},x7{M[]}-H", fuzz_12);
+mzpaf_test!(ne r"a0", fuzz_13);
+mzpaf_test!(ne r"y5-H2[18O1][M+Na],y5[M+Na],y5[M+[15N1]H[15N1]H4],y12/3.4ppm*0.85,b0-NH3/5.2ppm*0.05", fuzz_14);
+mzpaf_test!(ne r"IX[ethyl],p-H95O9^8,IX[ethyl],p-H95O9^8,IX[ethyl],p-H95O9^8,IX[ethyl],c0", fuzz_15);
+mzpaf_test!(ne r"da0000000000000000000000000000000000", fuzz_16);
 
 mzpaf_test!("IC[Carbamidomethyl]/-0.0008", hand_test_01);

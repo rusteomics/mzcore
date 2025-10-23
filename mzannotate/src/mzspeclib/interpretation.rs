@@ -36,6 +36,7 @@ impl Default for Interpretation {
 }
 
 impl Interpretation {
+    /// Get the attributes of this interpretation.
     pub fn attributes(&self) -> Attributes {
         // TODO: add easily calculated attributes
         let mut attributes = vec![Vec::new(); 1];

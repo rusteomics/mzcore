@@ -20,12 +20,10 @@ include = ["src/**/*", "images/**/*", "README.md", "benches/**/*"]
 mzcore = { path = "../mzcore" }
 
 context_error = { workspace = true }
-flate2 = { workspace = true }
-indexmap = {workspace = true}
+indexmap = { workspace = true }
 itertools = { workspace = true }
 mzdata = { workspace = true }
 ordered-float = { workspace = true }
-regex = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 uom = { workspace = true }

@@ -12,8 +12,12 @@ use serde::{Deserialize, Serialize};
 
 use crate::{annotation::model::GlycanModel, fragment::Variant};
 
+/// The settings for immonium ions. The allowed charge range, and the allowed losses per amino acid.
+pub type ImmoniumSettings = (ChargeRange, Vec<(Vec<AminoAcid>, Vec<NeutralLoss>)>);
+
 /// A model for the fragmentation, allowing control over what theoretical fragments to generate.
 #[non_exhaustive]
+#[allow(clippy::type_complexity)]
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 pub struct FragmentationModel {
     /// a series ions
@@ -42,7 +46,7 @@ pub struct FragmentationModel {
         ChargeRange,
     ),
     /// immonium ions
-    pub immonium: Option<(ChargeRange, Vec<(Vec<AminoAcid>, Vec<NeutralLoss>)>)>,
+    pub immonium: Option<ImmoniumSettings>,
     /// If the neutral losses specific for modifications should be generated
     pub modification_specific_neutral_losses: bool,
     /// If the diagnostic ions specific for modifications should be generated with the allowed charge range
@@ -314,10 +318,7 @@ impl FragmentationModel {
     }
     /// Set immonium
     #[must_use]
-    pub fn immonium(
-        self,
-        state: Option<(ChargeRange, Vec<(Vec<AminoAcid>, Vec<NeutralLoss>)>)>,
-    ) -> Self {
+    pub fn immonium(self, state: Option<ImmoniumSettings>) -> Self {
         Self {
             immonium: state,
             ..self
