@@ -271,8 +271,12 @@ impl Protease {
 pub mod known_proteases {
     use super::*;
 
-    /// `Trypsin` cuts after Lysine (K) or Arginine (R), unless followed by Proline (P)
-    pub static TRYPSIN: LazyLock<Protease> = LazyLock::new(|| {
+    /// `Trypsin` cuts after Lysine (K) or Arginine (R)
+    pub static TRYPSIN: LazyLock<Protease> =
+        LazyLock::new(|| Protease::c_terminal_of(vec![AminoAcid::Lysine, AminoAcid::Arginine]));
+
+    /// `Trypsin/P` cuts after Lysine (K) or Arginine (R), unless followed by Proline (P)
+    pub static TRYPSIN_P: LazyLock<Protease> = LazyLock::new(|| {
         Protease::between_options(
             vec![AminoAcid::Lysine, AminoAcid::Arginine],
             Protease::get_exclusive(&[AminoAcid::Proline]),
