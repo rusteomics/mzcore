@@ -206,7 +206,18 @@ impl<'a, R: BufRead> MzSpecLibTextParser<'a, R> {
             }
 
             while buf.trim().is_empty() || buf.starts_with('#') {
-                let z1 = self.read_next_line(buf)?;
+                buf.clear();
+                let z1 = if let Some(cached) = self.line_cache.pop_front() {
+                    *buf = cached;
+                    self.line_index += 1;
+                    buf.len()
+                } else {
+                    let z2 = self.inner.read_line(buf)?;
+                    if z2 != 0 {
+                        self.line_index += 1;
+                    }
+                    z2
+                };
                 if z1 == 0 {
                     return Ok(z1);
                 }
@@ -1487,6 +1498,19 @@ MS:1003186|library format version=UW:0000000|text";
 MS:0000000|unknown=a";
 
         let res = MzSpecLibTextParser::open(text.as_bytes(), None, None);
+        assert!(res.is_err());
+    }
+
+    #[test]
+    fn stack_overflow() {
+        let text = b"<mzSpecLib\n";
+        let bytes: Vec<u8> = text
+            .iter()
+            .copied()
+            .chain(std::iter::repeat_n(b'\n', 10000))
+            .collect();
+
+        let res = MzSpecLibTextParser::open(bytes.as_slice(), None, None);
         assert!(res.is_err());
     }
 }
