@@ -35,7 +35,11 @@ fn parse_psi_mod() -> Vec<OntologyModification> {
     let mut mods = Vec::new();
 
     for obj in obo.objects {
-        if obj.name != "Term" {
+        if obj.name != "Term"
+            || obj.lines["id"][0].trim().eq_ignore_ascii_case("MOD:00000")
+            || obj.lines["id"][0].trim().eq_ignore_ascii_case("MOD:00004")
+            || obj.lines["id"][0].trim().eq_ignore_ascii_case("MOD:00008")
+        {
             continue;
         }
         let mut modification = OntologyModification {

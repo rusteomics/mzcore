@@ -20,7 +20,9 @@ use xlmod::*;
 
 fn main() {
     let out_dir = Path::new("mzcore/src/databases");
-    std::fs::create_dir(out_dir).unwrap();
+    if !out_dir.exists() {
+        std::fs::create_dir(out_dir).unwrap();
+    }
     build_atomic_masses(out_dir);
     build_gnome_ontology(out_dir);
     build_psi_mod_ontology(out_dir);

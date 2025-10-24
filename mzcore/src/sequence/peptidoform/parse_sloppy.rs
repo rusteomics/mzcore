@@ -246,7 +246,12 @@ impl Peptidoform<SemiAmbiguous> {
                 Context::line(None, line, location.start, location.len()),
             ));
         }
-        peptide.enforce_modification_rules()?;
+        peptide.enforce_modification_rules_with_context(&Context::line(
+            None,
+            line,
+            location.start,
+            location.len(),
+        ))?;
         Ok(
             if let Some(modifications) = parameters.replace_mass_modifications.clone() {
                 PeptideModificationSearch::in_modifications(modifications)
@@ -356,15 +361,65 @@ impl Modification {
         custom_database: Option<&CustomDatabase>,
     ) -> Option<SimpleModification> {
         let name = name.trim().to_lowercase();
+        // TODO: quite some of these are listed as synonyms in psimod so it would be nice if synonym search could be turned on here (but only the exact ones)
         match name.as_str() {
-            "o" | "ox" => Ontology::Unimod.find_id(35, None), // oxidation
+            "o" | "ox" | "hydroxylation" => Ontology::Unimod.find_id(35, None), // oxidation
             "cam" | "carbamidomethylation" => Ontology::Unimod.find_id(4, None), // carbamidomethyl
-            "nem" => Ontology::Unimod.find_id(108, None),     // Nethylmaleimide
-            "deamidation" => Ontology::Unimod.find_id(7, None), // deamidated
-            "formylation" => Ontology::Unimod.find_id(122, None), // formyl
-            "sodium" => Ontology::Unimod.find_id(30, None),   // Cation:Na
-            "n-acetylserine" => Ontology::Psimod.find_id(60, None), // N-acetyl-L-serine
-            "n-acetylalanine" => Ontology::Psimod.find_id(50, None), // N-acetyl-L-alanine
+            "nem" => Ontology::Unimod.find_id(108, None),                       // Nethylmaleimide
+            "deamidation" | "deamidated asparagine" => Ontology::Unimod.find_id(7, None), // deamidated
+            "formylation" => Ontology::Unimod.find_id(122, None),                         // formyl
+            "methylation" => Ontology::Unimod.find_id(34, None),                          // methyl
+            "acetylation" => Ontology::Unimod.find_id(1, None),                           // acetyl
+            "crotonylation" => Ontology::Unimod.find_id(1363, None), // crotonyl
+            "reduction" => Ontology::Unimod.find_id(447, None),      // deoxy
+            "water loss" => Ontology::Unimod.find_id(23, None),      // dehydration
+            "ammonia loss" => Ontology::Unimod.find_id(385, None),   // ammonia-loss
+            "sodium" => Ontology::Unimod.find_id(30, None),          // Cation:Na
+            "calcium" => Ontology::Unimod.find_id(951, None),        // Cation:Ca[II]
+            "zinc" => Ontology::Unimod.find_id(954, None),           // Cation:Zn[II]
+            "n-acetylarginine" => Ontology::Psimod.find_id(359, None), // N2-acetyl-L-arginine
+            "n-acetylhistidine" => Ontology::Psimod.find_id(781, None), // N2-acetyl-L-histidine
+            "n-acetyllysine" => Ontology::Psimod.find_id(57, None),  // N2-acetyl-L-lysine
+            "n6-acetyllysine" => Ontology::Psimod.find_id(64, None), // N6-acetyl-L-lysine
+            "n-acetylaspartate" => Ontology::Psimod.find_id(51, None), // N-acetyl-L-aspartic acid
+            "n-acetylglutamate" => Ontology::Psimod.find_id(53, None), // N-acetyl-L-glutamic acid
+            "n-acetylcysteine" => Ontology::Psimod.find_id(52, None), // N-acetyl-L-cysteine
+            "n-acetylproline" => Ontology::Psimod.find_id(59, None), // N-acetyl-L-proline
+            "n-acetylserine" => Ontology::Psimod.find_id(60, None),  // N-acetyl-L-serine
+            "n-acetylthreonine" => Ontology::Psimod.find_id(61, None), // N-acetyl-L-threonine
+            "n-acetylasparagine" => Ontology::Psimod.find_id(780, None), // N-acetyl-L-asparagine
+            "n-acetylglutamine" => Ontology::Psimod.find_id(54, None), // N-acetyl-L-glutamine
+            "n-acetylphenylalanine" => Ontology::Psimod.find_id(784, None), // N-acetyl-L-phenylalanine
+            "n-acetyltyrosine" => Ontology::Psimod.find_id(62, None),       // N-acetyl-L-tyrosine
+            "n-acetyltryptophan" => Ontology::Psimod.find_id(785, None), // N2-acetyl-L-tryptophan
+            "n-acetylalanine" => Ontology::Psimod.find_id(50, None),     // N-acetyl-L-alanine
+            "n-acetylvaline" => Ontology::Psimod.find_id(63, None),      // N-acetyl-L-valine
+            "n-acetylisoleucine" => Ontology::Psimod.find_id(56, None),  // N-acetyl-L-isoleucine
+            "n-acetylleucine" => Ontology::Psimod.find_id(782, None),    // N-acetyl-L-leucine
+            "n-acetylmethionine" => Ontology::Psimod.find_id(58, None),  // N-acetyl-L-methionine
+            "4-hydroxyproline" => Ontology::Psimod.find_id(39, None),    // 4-hydroxy-L-proline
+            "5-hydroxylysine" => Ontology::Psimod.find_id(37, None),     // 5-hydroxy-L-lysine
+            "omega-n-methylarginine" => Ontology::Psimod.find_id(78, None), // omega-N-methyl-L-arginine
+            "tele-methylhistidine" => Ontology::Psimod.find_id(322, None),  // 1'-methyl-L-histidine
+            "oxidation to kynurenine" => Ontology::Psimod.find_id(462, None), // l-kynurenine
+            "proline pyrrole to pyrrolidine six member ring" => Ontology::Unimod.find_id(360, None), // pro->pyrrolidinone
+            "n6,n6,n6-trimethyllysine" => Ontology::Psimod.find_id(83, None), // N6,N6,N6-trimethyl-L-lysine
+            "n6,n6-dimethyllysine" => Ontology::Psimod.find_id(84, None), // N6,N6-dimethyl-L-lysine
+            "n6-methyllysine" => Ontology::Psimod.find_id(85, None),      // N6-methyl-L-lysine
+            "n6-succinyllysine" => Ontology::Psimod.find_id(1819, None),  // N6-succinyl-L-lysine
+            "5-glutamyl glycerylphosphorylethanolamine" => Ontology::Psimod.find_id(179, None), // L-glutamyl 5-glycerylphosphorylethanolamine
+            "methionine (r)-sulfoxide" => Ontology::Psimod.find_id(719, None), // L-methionine sulfoxide
+            "(3s)-3-hydroxyasparagine" => Ontology::Psimod.find_id(1401, None), // (2S,3S)-3-hydroxyasparagine
+            "dimethylated arginine" => Ontology::Psimod.find_id(783, None), // dimethylated L-arginine
+            "symmetric dimethylarginine" => Ontology::Psimod.find_id(76, None), // symmetric dimethyl-L-arginine
+            "citrullination" | "citrulline" => Ontology::Psimod.find_id(219, None), // L-citrinulline
+            "4-carboxyglutamate" => Ontology::Psimod.find_id(41, None), // L-gamma-carboxyglutamic acid
+            "n6-(pyridoxal phosphate)lysine" => Ontology::Psimod.find_id(128, None), // N6-pyridoxal phosphate-L-lysine
+            "n6-butyryllysine" => Ontology::Psimod.find_id(1781, None), // N6-butanoyl-L-lysine
+            "s-nitrosocysteine" => Ontology::Psimod.find_id(235, None), // S-nitrosyl-L-cysteine
+            "phosphoserine" | "phosphothreonine" | "phosphotyrosine" | "phosphorylation" => {
+                Ontology::Unimod.find_id(21, None)
+            } // Phospho
             "pyro-glu" => Ontology::Unimod.find_id(
                 if position.is_some_and(|p| p.aminoacid.aminoacid() == AminoAcid::GlutamicAcid) {
                     27

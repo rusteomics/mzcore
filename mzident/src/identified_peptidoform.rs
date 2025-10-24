@@ -91,7 +91,6 @@ impl<PeptidoformAvailability> IdentifiedPeptidoform<Linear, PeptidoformAvailabil
             IdentifiedPeptidoformData::Novor(NovorData { peptide, .. })
             | IdentifiedPeptidoformData::InstaNovo(InstaNovoData { peptide, .. })
             | IdentifiedPeptidoformData::Opair(OpairData { peptide, .. })
-            | IdentifiedPeptidoformData::MetaMorpheus(MetaMorpheusData { peptide, .. })
             | IdentifiedPeptidoformData::PiHelixNovo(PiHelixNovoData { peptide, .. })
             | IdentifiedPeptidoformData::PepNet(PepNetData { peptide, .. })
             | IdentifiedPeptidoformData::PowerNovo(PowerNovoData { peptide, .. })
@@ -139,7 +138,10 @@ impl<PeptidoformAvailability> IdentifiedPeptidoform<Linear, PeptidoformAvailabil
                 peptide_reverse.as_ref()
             }
             .map(AsRef::as_ref),
-            IdentifiedPeptidoformData::BasicCSV(BasicCSVData { sequence, .. }) => sequence
+            IdentifiedPeptidoformData::MetaMorpheus(MetaMorpheusData { peptide, .. })
+            | IdentifiedPeptidoformData::BasicCSV(BasicCSVData {
+                sequence: peptide, ..
+            }) => peptide
                 .singular_peptidoform_ref()
                 .and_then(|p| p.as_linear()),
             IdentifiedPeptidoformData::PLink(PLinkData { peptidoform, .. }) => {
@@ -173,7 +175,6 @@ impl<PeptidoformAvailability> IdentifiedPeptidoform<SimpleLinear, PeptidoformAva
             | IdentifiedPeptidoformData::InstaNovo(InstaNovoData { peptide, .. })
             | IdentifiedPeptidoformData::PiHelixNovo(PiHelixNovoData { peptide, .. })
             | IdentifiedPeptidoformData::Opair(OpairData { peptide, .. })
-            | IdentifiedPeptidoformData::MetaMorpheus(MetaMorpheusData { peptide, .. })
             | IdentifiedPeptidoformData::PepNet(PepNetData { peptide, .. })
             | IdentifiedPeptidoformData::PowerNovo(PowerNovoData { peptide, .. })
             | IdentifiedPeptidoformData::PUniFind(PUniFindData {
@@ -220,7 +221,10 @@ impl<PeptidoformAvailability> IdentifiedPeptidoform<SimpleLinear, PeptidoformAva
                 peptide_reverse.as_ref()
             }
             .map(AsRef::as_ref),
-            IdentifiedPeptidoformData::BasicCSV(BasicCSVData { sequence, .. }) => sequence
+            IdentifiedPeptidoformData::MetaMorpheus(MetaMorpheusData { peptide, .. })
+            | IdentifiedPeptidoformData::BasicCSV(BasicCSVData {
+                sequence: peptide, ..
+            }) => peptide
                 .singular_peptidoform_ref()
                 .and_then(|p| p.as_simple_linear()),
             IdentifiedPeptidoformData::PLink(PLinkData { peptidoform, .. }) => peptidoform
@@ -253,7 +257,6 @@ impl<PeptidoformAvailability> IdentifiedPeptidoform<SemiAmbiguous, PeptidoformAv
             IdentifiedPeptidoformData::Novor(NovorData { peptide, .. })
             | IdentifiedPeptidoformData::InstaNovo(InstaNovoData { peptide, .. })
             | IdentifiedPeptidoformData::Opair(OpairData { peptide, .. })
-            | IdentifiedPeptidoformData::MetaMorpheus(MetaMorpheusData { peptide, .. })
             | IdentifiedPeptidoformData::PiHelixNovo(PiHelixNovoData { peptide, .. })
             | IdentifiedPeptidoformData::PepNet(PepNetData { peptide, .. })
             | IdentifiedPeptidoformData::PowerNovo(PowerNovoData { peptide, .. })
@@ -304,7 +307,10 @@ impl<PeptidoformAvailability> IdentifiedPeptidoform<SemiAmbiguous, PeptidoformAv
             | IdentifiedPeptidoformData::PLGS(PLGSData { peptide, .. }) => {
                 peptide.as_semi_ambiguous()
             }
-            IdentifiedPeptidoformData::BasicCSV(BasicCSVData { sequence, .. }) => sequence
+            IdentifiedPeptidoformData::MetaMorpheus(MetaMorpheusData { peptide, .. })
+            | IdentifiedPeptidoformData::BasicCSV(BasicCSVData {
+                sequence: peptide, ..
+            }) => peptide
                 .singular_peptidoform_ref()
                 .and_then(|p| p.as_semi_ambiguous()),
             IdentifiedPeptidoformData::PLink(PLinkData { peptidoform, .. }) => peptidoform
@@ -336,7 +342,6 @@ impl<PeptidoformAvailability> IdentifiedPeptidoform<UnAmbiguous, PeptidoformAvai
             IdentifiedPeptidoformData::Novor(NovorData { peptide, .. })
             | IdentifiedPeptidoformData::InstaNovo(InstaNovoData { peptide, .. })
             | IdentifiedPeptidoformData::Opair(OpairData { peptide, .. })
-            | IdentifiedPeptidoformData::MetaMorpheus(MetaMorpheusData { peptide, .. })
             | IdentifiedPeptidoformData::PiHelixNovo(PiHelixNovoData { peptide, .. })
             | IdentifiedPeptidoformData::PepNet(PepNetData { peptide, .. })
             | IdentifiedPeptidoformData::PowerNovo(PowerNovoData { peptide, .. })
@@ -385,7 +390,10 @@ impl<PeptidoformAvailability> IdentifiedPeptidoform<UnAmbiguous, PeptidoformAvai
             }
             IdentifiedPeptidoformData::MSFragger(MSFraggerData { peptide, .. })
             | IdentifiedPeptidoformData::PLGS(PLGSData { peptide, .. }) => peptide.as_unambiguous(),
-            IdentifiedPeptidoformData::BasicCSV(BasicCSVData { sequence, .. }) => sequence
+            IdentifiedPeptidoformData::MetaMorpheus(MetaMorpheusData { peptide, .. })
+            | IdentifiedPeptidoformData::BasicCSV(BasicCSVData {
+                sequence: peptide, ..
+            }) => peptide
                 .singular_peptidoform_ref()
                 .and_then(|p| p.as_unambiguous()),
             IdentifiedPeptidoformData::PLink(PLinkData { peptidoform, .. }) => {

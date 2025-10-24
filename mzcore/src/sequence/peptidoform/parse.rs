@@ -613,7 +613,7 @@ impl CompoundPeptidoformIon {
         )?;
         peptide
             .apply_ranged_unknown_position_modification(&ranged_unknown_position_modifications)?;
-        peptide.enforce_modification_rules()?;
+        peptide.enforce_modification_rules_with_context(&Context::full_line(0, line))?;
 
         Ok(LinearPeptideResult {
             peptide,

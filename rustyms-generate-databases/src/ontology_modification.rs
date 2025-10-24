@@ -75,17 +75,16 @@ impl OntologyModification {
                                             PlacementRule::AminoAcid(new_aa, new_pos),
                                             PlacementRule::AminoAcid(aa, pos),
                                         ) = (new_position, position)
+                                            && *new_pos == *pos
                                         {
-                                            if *new_pos == *pos {
-                                                for a in aa {
-                                                    if !new_aa.contains(a) {
-                                                        new_aa.push(*a);
-                                                    }
+                                            for a in aa {
+                                                if !new_aa.contains(a) {
+                                                    new_aa.push(*a);
                                                 }
-                                                new_aa.sort_unstable();
-                                                pos_found = true;
-                                                break;
                                             }
+                                            new_aa.sort_unstable();
+                                            pos_found = true;
+                                            break;
                                         }
                                     }
                                     if !pos_found {

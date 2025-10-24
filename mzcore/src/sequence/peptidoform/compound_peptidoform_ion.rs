@@ -156,3 +156,13 @@ impl FromIterator<PeptidoformIon> for CompoundPeptidoformIon {
         Self(iter.into_iter().collect())
     }
 }
+
+impl<Complexity> FromIterator<Peptidoform<Complexity>> for CompoundPeptidoformIon {
+    fn from_iter<T: IntoIterator<Item = Peptidoform<Complexity>>>(iter: T) -> Self {
+        Self(
+            iter.into_iter()
+                .map(|p| PeptidoformIon(vec![p.mark()]))
+                .collect(),
+        )
+    }
+}

@@ -260,7 +260,19 @@ impl<T> Peptidoform<T> {
     /// If a modification rule is broken it returns an error.
     pub fn enforce_modification_rules(&self) -> Result<(), BoxedError<'static, BasicKind>> {
         for (position, seq) in self.iter(..) {
-            seq.enforce_modification_rules(position.sequence_index)?;
+            seq.enforce_modification_rules(position.sequence_index, &Context::none())?;
+        }
+        Ok(())
+    }
+
+    /// # Errors
+    /// If a modification rule is broken it returns an error.
+    pub(crate) fn enforce_modification_rules_with_context<'a>(
+        &self,
+        context: &Context<'a>,
+    ) -> Result<(), BoxedError<'a, BasicKind>> {
+        for (position, seq) in self.iter(..) {
+            seq.enforce_modification_rules(position.sequence_index, context)?;
         }
         Ok(())
     }

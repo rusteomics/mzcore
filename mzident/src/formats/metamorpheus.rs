@@ -129,12 +129,12 @@ format_family!(
                             },
                         )?))
                     }).collect::<Result<Vec<_>,_>>();
-        peptide: Peptidoform<SemiAmbiguous>, |location: Location, custom_database: Option<&CustomDatabase>| Peptidoform::sloppy_pro_forma(
+        peptide: CompoundPeptidoformIon, |location: Location, custom_database: Option<&CustomDatabase>| location.array('|').map(|location| Peptidoform::sloppy_pro_forma(
             location.full_line(),
             location.location.clone(),
             custom_database,
             &SloppyParsingParameters::default()
-        ).map_err(BoxedError::to_owned);
+        ).map_err(BoxedError::to_owned)).collect::<Result<CompoundPeptidoformIon,_>>();
         score: f64, |location: Location, _| location.parse::<f64>(NUMBER_ERROR);
         delta_score: f64, |location: Location, _| location.parse::<f64>(NUMBER_ERROR);
         notch: f64, |location: Location, _| location.parse::<f64>(NUMBER_ERROR);
@@ -144,7 +144,7 @@ format_family!(
         matched_ion_mass_error: String, |location: Location, _| Ok(location.get_string());
         matched_ion_ppm: String, |location: Location, _| Ok(location.get_string());
         matched_ion_counts: String,|location: Location, _| Ok(location.get_string());
-        kind: MetaMorpheusMatchKind, |location: Location, _| location.parse_with(|loc| {
+        kind: Vec<MetaMorpheusMatchKind>, |location: Location, _| location.array('|').map(|loc| {
             match &loc.line.line()[loc.location.clone()] {
                 "T" => Ok(MetaMorpheusMatchKind::Target),
                 "C" => Ok(MetaMorpheusMatchKind::Contamination),
@@ -160,7 +160,7 @@ format_family!(
                     ).to_owned(),
                 )),
             }
-        });
+        }).collect::<Result<Vec<_>,_>>();
         q_value: f64, |location: Location, _| location.parse(NUMBER_ERROR);
         pep: f64, |location: Location, _| location.parse(NUMBER_ERROR);
         pep_q_value: f64, |location: Location, _| location.parse(NUMBER_ERROR);

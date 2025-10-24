@@ -323,10 +323,11 @@ impl<T> SequenceElement<T> {
     /// If a rule has been broken.
     /// # Panics
     /// If any placement rule is placement on a PSI modification that does not exist.
-    pub(crate) fn enforce_modification_rules(
+    pub(crate) fn enforce_modification_rules<'a>(
         &self,
         position: SequencePosition,
-    ) -> Result<(), BoxedError<'static, BasicKind>> {
+        context: &Context<'a>,
+    ) -> Result<(), BoxedError<'a, BasicKind>> {
         for modification in &self.modifications {
             if modification.is_possible(self, position) == RulePossible::No {
                 let rules = modification
@@ -353,7 +354,7 @@ impl<T> SequenceElement<T> {
                             )
                         }
                     ),
-                    Context::none(),
+                    context.clone(),
                 ));
             }
         }
