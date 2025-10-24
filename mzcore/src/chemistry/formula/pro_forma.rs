@@ -147,13 +147,13 @@ impl MolecularFormula {
                                 )
                             })?;
 
-                        if !Self::add(&mut result, (parsed_element, Some(isotope), num)) {
+                        if let Err(err) =
+                            Self::add(&mut result, (parsed_element, Some(isotope), num))
+                        {
                             return Err(BoxedError::new(
                                 BasicKind::Error,
                                 "Invalid ProForma molecular formula",
-                                format!(
-                                    "Invalid isotope ({isotope}) added for element ({parsed_element})"
-                                ),
+                                err.reason(),
                                 Context::line(None, value, index, len),
                             ));
                         }
@@ -198,14 +198,13 @@ impl MolecularFormula {
                         },
                     );
                     let num = num?;
-                    if num != 0 && !Self::add(&mut result, (element.unwrap(), None, num)) {
+                    if num != 0
+                        && let Err(err) = Self::add(&mut result, (element.unwrap(), None, num))
+                    {
                         return Err(BoxedError::new(
                             BasicKind::Error,
                             "Invalid ProForma molecular formula",
-                            format!(
-                                "An element without a defined mass ({}) was used",
-                                element.unwrap()
-                            ),
+                            err.reason(),
                             Context::line(None, value, index - 1, 1),
                         ));
                     }
@@ -241,12 +240,12 @@ impl MolecularFormula {
                 }
                 _ => {
                     if let Some(element) = element
-                        && !Self::add(&mut result, (element, None, 1))
+                        && let Err(err) = Self::add(&mut result, (element, None, 1))
                     {
                         return Err(BoxedError::new(
                             BasicKind::Error,
                             "Invalid ProForma molecular formula",
-                            format!("An element without a defined mass ({element}) was used"),
+                            err.reason(),
                             Context::line(None, value, index - 1, 1),
                         ));
                     }
@@ -281,12 +280,12 @@ impl MolecularFormula {
             }
         }
         if let Some(element) = element
-            && !Self::add(&mut result, (element, None, 1))
+            && let Err(err) = Self::add(&mut result, (element, None, 1))
         {
             return Err(BoxedError::new(
                 BasicKind::Error,
                 "Invalid ProForma molecular formula",
-                format!("An element without a defined mass ({element}) was used"),
+                err.reason(),
                 Context::line(None, value, index - 1, 1),
             ));
         }

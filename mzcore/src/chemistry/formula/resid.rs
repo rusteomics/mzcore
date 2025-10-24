@@ -68,11 +68,11 @@ impl MolecularFormula {
                     index += number.0;
                     amount *= number.1 as i32;
                 }
-                if !result.add((element, None, amount)) {
+                if let Err(err) = result.add((element, None, amount)) {
                     return Err(BoxedError::new(
                         BasicKind::Error,
                         "Invalid RESID molecular formula",
-                        "An element with undefined mass was used",
+                        err.reason(),
                         Context::line(
                             None,
                             value,

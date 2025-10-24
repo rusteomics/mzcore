@@ -91,11 +91,11 @@ impl MolecularFormula {
                         last_name_index as usize..last_name_index as usize + last_name.len(),
                     )? {
                         Brick::Element(el) => {
-                            if !formula.add((el, isotope.take(), num)) {
+                            if let Err(err) = formula.add((el, isotope.take(), num)) {
                                 return Err(BoxedError::new(
                                     BasicKind::Error,
                                     "Invalid Unimod chemical formula",
-                                    "An element or isotope without a defined mass was found",
+                                    err.reason(),
                                     Context::line_range(
                                         None,
                                         value,
@@ -126,11 +126,11 @@ impl MolecularFormula {
                             last_name_index as usize..last_name_index as usize + last_name.len(),
                         )? {
                             Brick::Element(el) => {
-                                if !formula.add((el, isotope.take(), 1)) {
+                                if let Err(err) = formula.add((el, isotope.take(), 1)) {
                                     return Err(BoxedError::new(
                                         BasicKind::Error,
                                         "Invalid Unimod chemical formula",
-                                        "An element or isotope without a defined mass was found",
+                                        err.reason(),
                                         Context::line_range(
                                             None,
                                             value,
@@ -188,11 +188,11 @@ impl MolecularFormula {
                 last_name_index as usize..last_name_index as usize + last_name.len(),
             )? {
                 Brick::Element(el) => {
-                    if !formula.add((el, isotope.take(), 1)) {
+                    if let Err(err) = formula.add((el, isotope.take(), 1)) {
                         return Err(BoxedError::new(
                             BasicKind::Error,
                             "Invalid Unimod chemical formula",
-                            "An element or isotope without a defined mass was found",
+                            err.reason(),
                             Context::line_range(
                                 None,
                                 value,

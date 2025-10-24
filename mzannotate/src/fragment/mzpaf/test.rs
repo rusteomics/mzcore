@@ -178,6 +178,6 @@ mzpaf_test!(ne r"y5-H2[18O1][M+Na],y5[M+Na],y5[M+[15N1]H[15N1]H4],y12/3.4ppm*0.8
 mzpaf_test!(ne r"IX[ethyl],p-H95O9^8,IX[ethyl],p-H95O9^8,IX[ethyl],p-H95O9^8,IX[ethyl],c0", fuzz_15);
 mzpaf_test!(ne r"da0000000000000000000000000000000000", fuzz_16);
 mzpaf_test!(ne r"1@y66{/4743[07kli-,657kli-,6666666666666666660[13N1]Ca-000Ca657kli-,6666666i-,6666666666666666660[13N1]Ca-000Ca657kli-,666666666666666660[13N1]Ca-030Ca-00000Ca-00000Ca-0000Ca[13N1]Ca-0000Ca4m*0.7+,b dation]ACCa-001-,65[13N1]C666666666660[-0Ca-00[13N1]Ca-001Ca-+Ki-]}", fuzz_17);
-mzpaf_test!(r"1@f{H666666660H666666660H666666660H666666660}", fuzz_18); // TODO: bad error message
+mzpaf_test!(ne r"1@f{H666666660H666666660H666666660H666666660}", fuzz_18);
 
 mzpaf_test!("IC[Carbamidomethyl]/-0.0008", hand_test_01);

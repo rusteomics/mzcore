@@ -969,7 +969,7 @@ pub(super) fn parse_charge_state(
                 )
             })?;
         let mut offset = index + 2 + charge_len;
-        let mut charge_carriers = Vec::new();
+        let mut charge_carriers: Vec<(isize, MolecularFormula)> = Vec::new();
         let mut found_charge: isize = 0;
 
         for set in chars[index + 2 + charge_len..end_index].split(|c| *c == b',') {
@@ -1042,7 +1042,14 @@ pub(super) fn parse_charge_state(
 
             // Deduplicate
             if let Some((amount, _)) = charge_carriers.iter_mut().find(|(_, f)| *f == formula) {
-                *amount += count;
+                *amount = amount.checked_add(count).ok_or_else(|| {
+                    BoxedError::new(
+                        BasicKind::Error,
+                        "Invalid peptide charge amount",
+                        "The peptide charge amount is too big to store inside an isize",
+                        Context::line(None, line, index, offset),
+                    )
+                })?;
             } else {
                 charge_carriers.push((count, formula));
             }

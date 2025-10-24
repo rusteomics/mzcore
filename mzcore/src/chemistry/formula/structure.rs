@@ -148,6 +148,35 @@ pub trait MultiChemical {
     }
 }
 
+/// The errors that can occur when adding molecular formulas.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum MolecularFormulaError {
+    /// If the isotope for an added element is not valid, see [`Element::is_valid`].
+    IsotopeWithoutDefinedMass,
+    /// If overflow occurred.
+    Overflow,
+}
+
+impl MolecularFormulaError {
+    /// A human friendly description of the error
+    pub const fn reason(self) -> &'static str {
+        match self {
+            Self::IsotopeWithoutDefinedMass => {
+                "An element or isotope without a defined mass was used"
+            }
+            Self::Overflow => {
+                "The total amount for this element overflowed the underlying storage type"
+            }
+        }
+    }
+}
+
+impl std::fmt::Display for MolecularFormulaError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.reason())
+    }
+}
+
 impl MolecularFormula {
     /// Create a new molecular formula, if the chosen isotopes are not valid it returns None
     pub fn new(
@@ -227,11 +256,13 @@ impl MolecularFormula {
     }
 
     /// Add the given element to this formula (while keeping it ordered and simplified).
-    /// If the isotope for the added element is not valid it returns `false`. It also
-    /// does so if the addition of this element overflows the maximal number of atoms
-    /// in a formula.
-    #[must_use]
-    pub fn add(&mut self, element: (Element, Option<NonZeroU16>, i32)) -> bool {
+    /// # Errors
+    /// If the added element does not have a defined mass, or if the added element
+    /// overflows the total for that element.
+    pub fn add(
+        &mut self,
+        element: (Element, Option<NonZeroU16>, i32),
+    ) -> Result<(), MolecularFormulaError> {
         if element.0.is_valid(element.1) {
             let mut index = 0;
             let mut done = false;
@@ -245,7 +276,7 @@ impl MolecularFormula {
                         if let Some(n) = self.elements[index].2.checked_add(n) {
                             self.elements[index].2 = n;
                         } else {
-                            return false;
+                            return Err(MolecularFormulaError::Overflow);
                         }
                         done = true;
                     } else {
@@ -257,9 +288,9 @@ impl MolecularFormula {
                     done = true;
                 }
             }
-            true
+            Ok(())
         } else {
-            false
+            Err(MolecularFormulaError::IsotopeWithoutDefinedMass)
         }
     }
 

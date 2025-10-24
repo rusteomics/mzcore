@@ -112,14 +112,11 @@ impl MolecularFormula {
                             )
                         })?
                 };
-            if !Self::add(&mut formula, (element, isotope, number)) {
+            if let Err(err) = Self::add(&mut formula, (element, isotope, number)) {
                 return Err(BoxedError::new(
                     BasicKind::Error,
                     "Invalid Xlmod molecular formula",
-                    format!(
-                        "An element without a defined mass ({}{element}) was used",
-                        isotope.map_or_else(String::default, |i| i.to_string())
-                    ),
+                    err.reason(),
                     Context::line(
                         None,
                         value,

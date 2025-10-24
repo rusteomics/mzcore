@@ -208,22 +208,20 @@ impl<'a, R: BufRead> MzSpecLibTextParser<'a, R> {
             }
 
             while buf.trim().is_empty() || buf.starts_with('#') {
+                // Inlined the basis of 'read_next_line' to prevent stack overflows with recursively calling this function again
                 buf.clear();
-                let z1 = if let Some(cached) = self.line_cache.pop_front() {
+                let bytes_read = if let Some(cached) = self.line_cache.pop_front() {
                     *buf = cached;
-                    self.line_index += 1;
                     buf.len()
                 } else {
-                    let z2 = self.inner.read_line(buf)?;
-                    if z2 != 0 {
-                        self.line_index += 1;
-                    }
-                    z2
+                    self.inner.read_line(buf)?
                 };
-                if z1 == 0 {
-                    return Ok(z1);
+                if bytes_read == 0 {
+                    self.state = ParserState::Eof;
+                    return Ok(0);
                 }
-                z += z1;
+                self.line_index += 1;
+                z += bytes_read;
             }
             Ok(z)
         }
