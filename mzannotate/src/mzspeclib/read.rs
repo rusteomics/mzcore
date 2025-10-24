@@ -74,6 +74,8 @@ pub enum MzSpecLibErrorKind {
     ProForma,
     /// An mzPAF string was invalid
     MzPAF,
+    /// A currently unsupported feature of mzSpecLib was used. Interpretation members are currently unsupported.
+    UnsupportedFeature,
 }
 
 impl ErrorKind for MzSpecLibErrorKind {
@@ -797,8 +799,13 @@ impl<'a, R: BufRead> MzSpecLibTextParser<'a, R> {
                 }
                 Err(e) => {
                     if buf.starts_with("<InterpretationMember=") {
-                        self.push_back_line(buf);
-                        todo!();
+                        self.push_back_line(buf.clone());
+                        return Err(BoxedError::new(
+                            MzSpecLibErrorKind::UnsupportedFeature,
+                            "Unsupported mzSpecLib feature detected",
+                            "Interpretation members are currently not supported",
+                            self.current_context().lines(1, &buf).to_owned(),
+                        ));
                     } else if buf.starts_with('<') {
                         self.push_back_line(buf);
                         break;
