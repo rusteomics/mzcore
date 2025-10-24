@@ -147,6 +147,7 @@ impl AnalyteTarget {
                     )),
                 });
             }
+            // TODO: when PSI-MS gets new mass terms use those
             attributes[0].push(Attribute {
                 name: term!(MS:1003243|adduct ion mass),
                 value: AttributeValue::Scalar(Value::Float(formula.monoisotopic_mass().value)),

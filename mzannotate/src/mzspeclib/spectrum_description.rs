@@ -69,7 +69,7 @@ pub fn get_attributes_from_spectrum_description(
         match precursor.isolation_window.flags {
             IsolationWindowState::Complete => {
                 attributes[0].push(Attribute::new(
-                    term!(MS:1003208|experimental precursor monoisotopic m/z),
+                    term!(MS:1000827|isolation window target m/z),
                     Value::Float(precursor.isolation_window.target.into()),
                 ));
                 attributes[0].push(Attribute::new(
@@ -407,7 +407,7 @@ pub(crate) fn populate_spectrum_description_from_attributes<'a>(
             for (attr, context) in group {
                 #[allow(clippy::unnested_or_patterns)]
                 match attr.name.accession {
-                    curie!(MS:1003208) => {
+                    curie!(MS:1003208) | curie!(MS:1000827) => {
                         let window = &mut description.precursor[0].isolation_window;
                         window.target = attr.value.scalar().to_f32().map_err(|v| {
                             BoxedError::new(
