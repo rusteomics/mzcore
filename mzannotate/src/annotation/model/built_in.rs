@@ -2,9 +2,7 @@ use std::sync::LazyLock;
 
 use mzcore::{
     chemistry::{ChargePoint, ChargeRange, NeutralLoss},
-    glycan::{
-        BackboneFragmentKind, BaseSugar, GlycanPeptideFragment, GlycanSubstituent, MonoSaccharide,
-    },
+    glycan::{BaseSugar, GlycanPeptideFragment, GlycanSubstituent, MonoSaccharide},
     molecular_formula,
     prelude::AminoAcid,
 };
@@ -115,47 +113,8 @@ static MODEL_ETCID: LazyLock<FragmentationModel> = LazyLock::new(|| Fragmentatio
     immonium: None,
     modification_specific_neutral_losses: true,
     modification_specific_diagnostic_ions: Some(ChargeRange::ONE),
-    glycan: GlycanModel::default_allow()
-        .neutral_losses(vec![NeutralLoss::Loss(1, molecular_formula!(H 2 O 1))])
-        .default_peptide_fragment(GlycanPeptideFragment::FULL)
-        .peptide_fragment_rules(vec![
-            (
-                vec![AminoAcid::Asparagine, AminoAcid::Tryptophan],
-                vec![
-                    BackboneFragmentKind::c,
-                    BackboneFragmentKind::z,
-                    BackboneFragmentKind::w,
-                ],
-                GlycanPeptideFragment::FULL,
-            ),
-            (
-                vec![AminoAcid::Asparagine, AminoAcid::Tryptophan],
-                vec![
-                    BackboneFragmentKind::b,
-                    BackboneFragmentKind::y,
-                    BackboneFragmentKind::v,
-                ],
-                GlycanPeptideFragment::CORE,
-            ),
-            (
-                vec![AminoAcid::Serine, AminoAcid::Threonine],
-                vec![
-                    BackboneFragmentKind::c,
-                    BackboneFragmentKind::z,
-                    BackboneFragmentKind::w,
-                ],
-                GlycanPeptideFragment::FULL,
-            ),
-            (
-                vec![AminoAcid::Serine, AminoAcid::Threonine],
-                vec![
-                    BackboneFragmentKind::b,
-                    BackboneFragmentKind::y,
-                    BackboneFragmentKind::v,
-                ],
-                GlycanPeptideFragment::FREE,
-            ),
-        ]),
+    glycan: GlycanModel::default_exd_allow()
+        .neutral_losses(vec![NeutralLoss::Loss(1, molecular_formula!(H 2 O 1))]),
     allow_cross_link_cleavage: true,
 });
 
@@ -188,46 +147,8 @@ static MODEL_EAD: LazyLock<FragmentationModel> = LazyLock::new(|| FragmentationM
     immonium: Some((ChargeRange::ONE, IMMONIUM_LOSSES.clone())),
     modification_specific_neutral_losses: true,
     modification_specific_diagnostic_ions: Some(ChargeRange::ONE),
-    glycan: GlycanModel::default_allow()
-        .neutral_losses(vec![NeutralLoss::Loss(1, molecular_formula!(H 2 O 1))])
-        .peptide_fragment_rules(vec![
-            (
-                vec![AminoAcid::Asparagine, AminoAcid::Tryptophan],
-                vec![
-                    BackboneFragmentKind::c,
-                    BackboneFragmentKind::z,
-                    BackboneFragmentKind::w,
-                ],
-                GlycanPeptideFragment::FULL,
-            ),
-            (
-                vec![AminoAcid::Asparagine, AminoAcid::Tryptophan],
-                vec![
-                    BackboneFragmentKind::b,
-                    BackboneFragmentKind::y,
-                    BackboneFragmentKind::v,
-                ],
-                GlycanPeptideFragment::CORE,
-            ),
-            (
-                vec![AminoAcid::Serine, AminoAcid::Threonine],
-                vec![
-                    BackboneFragmentKind::c,
-                    BackboneFragmentKind::z,
-                    BackboneFragmentKind::w,
-                ],
-                GlycanPeptideFragment::FULL,
-            ),
-            (
-                vec![AminoAcid::Serine, AminoAcid::Threonine],
-                vec![
-                    BackboneFragmentKind::b,
-                    BackboneFragmentKind::y,
-                    BackboneFragmentKind::v,
-                ],
-                GlycanPeptideFragment::FREE,
-            ),
-        ]),
+    glycan: GlycanModel::default_exd_allow()
+        .neutral_losses(vec![NeutralLoss::Loss(1, molecular_formula!(H 2 O 1))]),
     allow_cross_link_cleavage: true,
 });
 
@@ -260,46 +181,8 @@ static MODEL_EACID: LazyLock<FragmentationModel> = LazyLock::new(|| Fragmentatio
     immonium: None,
     modification_specific_neutral_losses: true,
     modification_specific_diagnostic_ions: Some(ChargeRange::ONE),
-    glycan: GlycanModel::default_allow()
-        .neutral_losses(vec![NeutralLoss::Loss(1, molecular_formula!(H 2 O 1))])
-        .peptide_fragment_rules(vec![
-            (
-                vec![AminoAcid::Asparagine, AminoAcid::Tryptophan],
-                vec![
-                    BackboneFragmentKind::c,
-                    BackboneFragmentKind::z,
-                    BackboneFragmentKind::w,
-                ],
-                GlycanPeptideFragment::FULL,
-            ),
-            (
-                vec![AminoAcid::Asparagine, AminoAcid::Tryptophan],
-                vec![
-                    BackboneFragmentKind::b,
-                    BackboneFragmentKind::y,
-                    BackboneFragmentKind::v,
-                ],
-                GlycanPeptideFragment::CORE,
-            ),
-            (
-                vec![AminoAcid::Serine, AminoAcid::Threonine],
-                vec![
-                    BackboneFragmentKind::c,
-                    BackboneFragmentKind::z,
-                    BackboneFragmentKind::w,
-                ],
-                GlycanPeptideFragment::FULL,
-            ),
-            (
-                vec![AminoAcid::Serine, AminoAcid::Threonine],
-                vec![
-                    BackboneFragmentKind::b,
-                    BackboneFragmentKind::y,
-                    BackboneFragmentKind::v,
-                ],
-                GlycanPeptideFragment::FREE,
-            ),
-        ]),
+    glycan: GlycanModel::default_exd_allow()
+        .neutral_losses(vec![NeutralLoss::Loss(1, molecular_formula!(H 2 O 1))]),
     allow_cross_link_cleavage: true,
 });
 

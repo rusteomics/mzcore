@@ -56,7 +56,7 @@ impl GlycanStructure {
     /// If any monosaccharide does not have a defined mass.
     fn position_absolute(
         &self,
-        depth: usize,
+        depth: u32,
         path: &[(GlycanBranchIndex, GlycanBranchMassIndex)],
         footnotes: &mut Vec<String>,
     ) -> AbsolutePositionedGlycan {
@@ -91,7 +91,7 @@ impl GlycanStructure {
                 position: GlycanPosition {
                     inner_depth: depth,
                     series_number: depth,
-                    branch: path.to_vec(),
+                    branch: path.to_vec().into(),
                     attachment: None,
                 },
                 title: self.sugar.to_string(),
@@ -193,7 +193,7 @@ impl GlycanStructure {
                 position: GlycanPosition {
                     inner_depth: depth,
                     series_number: depth,
-                    branch: path.to_vec(),
+                    branch: path.to_vec().into(),
                     attachment: None,
                 },
                 title: self.sugar.to_string(),
@@ -272,7 +272,7 @@ pub(super) struct SubTree<'a> {
     /// If this fragment is bottomed by a breaking symbol, needed to calculate the correct height for the canvas
     pub(super) break_bottom: bool,
     /// All breaking branches, standardised to the linked root
-    pub(super) branch_breaks: Vec<(usize, Vec<(GlycanBranchIndex, GlycanBranchMassIndex)>)>,
+    pub(super) branch_breaks: Vec<(u32, Vec<(GlycanBranchIndex, GlycanBranchMassIndex)>)>,
 }
 
 impl AbsolutePositionedGlycan {
@@ -301,7 +301,7 @@ impl AbsolutePositionedGlycan {
         /// Calculate the maximal depth, break top, left and right offset
         fn canvas_size(
             tree: &AbsolutePositionedGlycan,
-            breakages: &[(usize, Vec<(GlycanBranchIndex, GlycanBranchMassIndex)>)],
+            breakages: &[(u32, Vec<(GlycanBranchIndex, GlycanBranchMassIndex)>)],
         ) -> (usize, bool, f32, f32) {
             let lx = (tree.x + tree.mid_point - 0.5).max(0.0);
             let rx = (tree.width - tree.mid_point - 0.5).max(0.0);

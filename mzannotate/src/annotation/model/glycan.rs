@@ -145,6 +145,51 @@ impl GlycanModel {
         }
     }
 
+    /// Default set for models that use electron based dissociation with some additional collision induced dissociation.
+    /// This sets the peptide fragment rules correctly.
+    pub fn default_exd_allow() -> Self {
+        Self::default_allow()
+            .default_peptide_fragment(GlycanPeptideFragment::FULL)
+            .peptide_fragment_rules(vec![
+                (
+                    vec![AminoAcid::Asparagine, AminoAcid::Tryptophan],
+                    vec![
+                        BackboneFragmentKind::c,
+                        BackboneFragmentKind::z,
+                        BackboneFragmentKind::w,
+                    ],
+                    GlycanPeptideFragment::FULL,
+                ),
+                (
+                    vec![AminoAcid::Asparagine, AminoAcid::Tryptophan],
+                    vec![
+                        BackboneFragmentKind::b,
+                        BackboneFragmentKind::y,
+                        BackboneFragmentKind::v,
+                    ],
+                    GlycanPeptideFragment::CORE,
+                ),
+                (
+                    vec![AminoAcid::Serine, AminoAcid::Threonine],
+                    vec![
+                        BackboneFragmentKind::c,
+                        BackboneFragmentKind::z,
+                        BackboneFragmentKind::w,
+                    ],
+                    GlycanPeptideFragment::FULL,
+                ),
+                (
+                    vec![AminoAcid::Serine, AminoAcid::Threonine],
+                    vec![
+                        BackboneFragmentKind::b,
+                        BackboneFragmentKind::y,
+                        BackboneFragmentKind::v,
+                    ],
+                    GlycanPeptideFragment::FREE,
+                ),
+            ])
+    }
+
     /// Default set for models that disallow glycan fragmentation
     pub const DISALLOW: Self = Self {
         allow_structural: false,

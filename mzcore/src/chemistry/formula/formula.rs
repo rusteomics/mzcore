@@ -137,6 +137,13 @@ impl MolecularFormula {
             true,
         )
     }
+
+    /// Check if this formula contains a negative number of any element (ignores a negative number of electrons).
+    pub fn contains_negative_amount(&self) -> bool {
+        self.elements()
+            .iter()
+            .any(|e| e.0 != crate::chemistry::Element::Electron && e.2 < 0)
+    }
 }
 
 impl ParseJson for MolecularFormula {

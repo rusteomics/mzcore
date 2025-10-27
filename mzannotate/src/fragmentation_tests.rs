@@ -471,6 +471,29 @@ fn glycan_structure_fragmentation_2() {
 }
 
 #[test]
+fn glycan_structure_fragmentation_3() {
+    let theoretical_fragments = &[
+        (3828.51, "pep"),
+        (1179.81, "Y6α/β+3"),
+        (1769.21, "Y6α/β+2"),
+        (3537.41, "Y6α/β+1"),
+    ];
+
+    let model = FragmentationModel::eacid();
+    test(
+        theoretical_fragments,
+        Peptidoform::pro_forma("HSHNN[GNO:G01020XL]NSSDLHPHK", None)
+            .unwrap()
+            .into_linear()
+            .unwrap(),
+        model,
+        4,
+        true,
+        true,
+    );
+}
+
+#[test]
 fn glycan_composition_fragmentation() {
     #[expect(clippy::unreadable_literal)]
     let theoretical_fragments = &[
@@ -799,20 +822,19 @@ fn test(
                     break;
                 }
             }
-            if calculated_fragments[index]
-                .formula
-                .as_ref()
-                .is_some_and(|f| {
-                    f.elements()
-                        .iter()
-                        .any(|e| e.0 != Element::Electron && e.2 < 1)
-                })
-            {
-                negative_numbers.push(calculated_fragments[index].clone());
-            }
             index += 1;
         }
         found.push(this_found);
+    }
+
+    for frag in &calculated_fragments {
+        if frag
+            .formula
+            .as_ref()
+            .is_some_and(MolecularFormula::contains_negative_amount)
+        {
+            negative_numbers.push(frag.clone());
+        }
     }
 
     for left in calculated_fragments.iter().sorted_by(|a, b| b.cmp(a)) {

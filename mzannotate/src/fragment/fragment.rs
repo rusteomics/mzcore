@@ -77,7 +77,8 @@ impl Fragment {
         }
     }
 
-    /// Generate a list of possible fragments from the list of possible preceding termini and neutral losses
+    /// Generate a list of possible fragments from the list of possible preceding termini and neutral losses.
+    /// Ignores any neutral loss that would result in a negative number of any element.
     /// # Panics
     /// When the charge range results in a negative charge
     #[expect(clippy::too_many_arguments)]
@@ -115,10 +116,16 @@ impl Fragment {
                 confidence: None,
                 auxiliary: false,
             })
+            .filter(|f| {
+                f.formula
+                    .as_ref()
+                    .is_some_and(|f| !f.contains_negative_amount())
+            })
             .collect()
     }
 
-    /// Generate a list of possible fragments from the list of possible preceding termini and neutral losses
+    /// Generate a list of possible fragments from the list of possible preceding termini and neutral losses.
+    /// Ignores any neutral loss that would result in a negative number of any element.
     /// # Panics
     /// When the charge range results in a negative charge
     #[must_use]
@@ -162,6 +169,11 @@ impl Fragment {
                 confidence: None,
                 auxiliary: false,
             })
+            .filter(|f| {
+                f.formula
+                    .as_ref()
+                    .is_some_and(|f| !f.contains_negative_amount())
+            })
             .collect()
     }
 
@@ -199,7 +211,7 @@ impl Fragment {
         charges.iter().map(move |c| self.with_charge(c))
     }
 
-    /// Create a copy of this fragment with the given neutral loss
+    /// Create a copy of this fragment with the given neutral loss. This could result in a molecular formula with an element with a negative amount, use [`MolecularFormula::contains_negative_amount`] to check for this.
     #[must_use]
     pub fn with_neutral_loss(&self, neutral_loss: &NeutralLoss) -> Self {
         let mut new_neutral_loss = self.neutral_loss.clone();
@@ -211,7 +223,7 @@ impl Fragment {
         }
     }
 
-    /// Create copies of this fragment with the given neutral losses (and a copy of this fragment itself)
+    /// Create copies of this fragment with the given neutral losses (and a copy of this fragment itself) ignores any neutral loss that would result in a negative element number.
     #[must_use]
     pub fn with_neutral_losses(&self, neutral_losses: &[NeutralLoss]) -> Vec<Self> {
         let mut output = Vec::with_capacity(neutral_losses.len() + 1);
@@ -219,7 +231,12 @@ impl Fragment {
         output.extend(
             neutral_losses
                 .iter()
-                .map(|loss| self.with_neutral_loss(loss)),
+                .map(|loss| self.with_neutral_loss(loss))
+                .filter(|f| {
+                    f.formula
+                        .as_ref()
+                        .is_some_and(|f| !f.contains_negative_amount())
+                }),
         );
         output
     }
