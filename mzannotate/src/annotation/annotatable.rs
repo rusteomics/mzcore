@@ -3,19 +3,19 @@ use mzdata::mzpeaks::PeakCollection;
 
 use crate::prelude::{AnnotatedSpectrum, Fragment, MatchingParameters};
 
-/// A spectrum that can be annotated. Within rustyms this is implemented for the build in
-/// [mgf reader](crate::spectrum::mgf) and for mzdata [`SpectrumLike`](mzdata::prelude::SpectrumLike).
-/// For up to date information see that crate, but at the moment of writing this supports mgf, mzML,
-/// indexed mzML, mzMLb, Thermo RAW, and Bruker TDF. Note that any 'Missing' and
+/// A spectrum that can be annotated. The best way to use this is with mzdata
+/// [`SpectrumLike`](mzdata::prelude::SpectrumLike). For up to date information see that crate, but
+/// at the moment of writing this supports mgf, mzML, indexed mzML, mzMLb, Thermo RAW, and Bruker
+/// TDF. Note this only takes the centroided data and that any 'Missing' and
 /// [`RawData`](mzdata::spectrum::RawSpectrum) from mzdata result in an empty annotated spectrum.
 /// Also note that the feature `mzdata` is required for the mzdata spectra to work.
 pub trait AnnotatableSpectrum: Sized {
-    /// Create an empty annotated spectrum, which is required to fill the spectrum vector with
-    /// [`blank`](crate::annotation::AnnotatedPeak::background) annotated peaks.
+    /// Create an empty annotated spectrum. This spectrum is assumed to contain all peaks but
+    /// without any annotations.
     fn empty_annotated(self, peptide: CompoundPeptidoformIon) -> AnnotatedSpectrum;
 
     /// Annotate this spectrum with the given peptidoform and given fragments see
-    /// [`crate::sequence::CompoundPeptidoformIon::generate_theoretical_fragments`]
+    /// [`crate::prelude::PeptidoformFragmentation::generate_theoretical_fragments`]
     /// to generate the fragments.
     fn annotate(
         self,

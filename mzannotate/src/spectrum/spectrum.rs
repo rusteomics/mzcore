@@ -23,7 +23,7 @@ use crate::{
 /// An annotated spectrum.
 #[derive(Debug, Clone)]
 pub struct AnnotatedSpectrum {
-    /// The Id for a spectrum
+    /// The ID for a spectrum
     pub key: Id,
     /// The spectrum description
     pub description: SpectrumDescription,
@@ -120,11 +120,11 @@ impl ParamDescribed for AnnotatedSpectrum {
     }
 }
 
-#[allow(clippy::fallible_impl_from)] // Cannot fail, but cannot be proven to the compiler. 
+#[expect(clippy::fallible_impl_from)] // Cannot fail, but cannot be proven to the compiler.
 // Basically the Attribute::unit has to be fallible to handle Unit::Unknown, but the units are
 // known at compile time so this cannot happen.
-impl<S: SpectrumLike> From<S> for AnnotatedSpectrum {
-    fn from(value: S) -> Self {
+impl<Spectrum: SpectrumLike> From<Spectrum> for AnnotatedSpectrum {
+    fn from(value: Spectrum) -> Self {
         let mut this = Self {
             key: (value.index() + 1) as Id,
             description: value.description().clone(),
@@ -229,7 +229,7 @@ impl<S: SpectrumLike> From<S> for AnnotatedSpectrum {
 
 impl crate::mzspeclib::MzSpecLibEncode for AnnotatedSpectrum {
     /// The peak type
-    type P = AnnotatedPeak<Fragment>;
+    type Peak = AnnotatedPeak<Fragment>;
 
     /// The key for this spectrum
     fn key(&self) -> Id {
@@ -293,7 +293,7 @@ impl crate::mzspeclib::MzSpecLibEncode for AnnotatedSpectrum {
     }
 
     /// The peaks
-    fn peaks(&self) -> PeakSetIter<'_, Self::P> {
+    fn peaks(&self) -> PeakSetIter<'_, Self::Peak> {
         self.peaks.iter()
     }
 }

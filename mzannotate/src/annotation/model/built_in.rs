@@ -514,7 +514,7 @@ impl FragmentationModel {
         LazyLock::force(&MODEL_CID)
     }
 
-    /// ETD 10.1002/jms.3919
+    /// ETD (10.1002/jms.3919)
     pub fn etd() -> &'static Self {
         LazyLock::force(&MODEL_ETD)
     }
@@ -525,7 +525,7 @@ impl FragmentationModel {
     }
 }
 
-/// All fragmentation models.
+/// All built-in fragmentation models.
 #[derive(
     Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, serde::Serialize, serde::Deserialize,
 )]
@@ -545,7 +545,7 @@ pub enum BuiltInFragmentationModel {
     EAciD,
     /// Electron transfer dissociation
     ETD,
-    /// Electron transfer dissociation set up for top down / middle down fragmentation
+    /// Electron transfer dissociation set up for top down/middle down fragmentation
     ETD_TD,
     /// Electron transfer dissociation with supplemental collision induced dissociation
     ETciD,

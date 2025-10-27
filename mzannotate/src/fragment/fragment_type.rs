@@ -6,6 +6,7 @@ use std::{
 
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
+use thin_vec::ThinVec;
 
 use crate::fragment::DiagnosticPosition;
 use mzcore::{
@@ -57,9 +58,9 @@ pub enum FragmentType {
         /// The root break
         b: GlycanPosition,
         /// The branch breakages
-        y: Vec<GlycanPosition>,
+        y: ThinVec<GlycanPosition>,
         /// All branches that are not broken
-        end: Vec<GlycanPosition>,
+        end: ThinVec<GlycanPosition>,
     },
     /// A B or internal glycan fragment for a glycan where only the composition is known, also saves the attachment (AA + sequence index)
     BComposition(

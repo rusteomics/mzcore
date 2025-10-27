@@ -25,8 +25,10 @@ pub trait ToMzPAF {
 }
 
 impl ToMzPAF for Fragment {
-    /// Write the fragment as a [mzPAF](https://www.psidev.info/mzPAF) string.
-    // TODO: figure out a way to handle the fallibility (when used on glycans/cross-linked stuff etc.)
+    /// Write the fragment as a [mzPAF](https://www.psidev.info/mzPAF) string. Note that mzPAF
+    /// does not have support for all complexities that are supported by this crate. So fragments
+    /// of glycans and cross-links for example can not be encoded in a way to keeps the semantics
+    /// fully intact.
     #[expect(clippy::cognitive_complexity)] // It is a very big function but breaking it up might not benefit readers
     fn to_mz_paf(&self, mut w: impl std::fmt::Write) -> std::fmt::Result {
         if self.auxiliary {

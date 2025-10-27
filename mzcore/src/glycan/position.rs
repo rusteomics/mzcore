@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use thin_vec::ThinVec;
 
 use crate::sequence::{AminoAcid, SequencePosition};
 
@@ -8,11 +9,11 @@ use super::{GlycanBranchIndex, GlycanBranchMassIndex};
 #[derive(Clone, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 pub struct GlycanPosition {
     /// The depth starting at the amino acid
-    pub inner_depth: usize,
+    pub inner_depth: u32,
     /// The series number (from the ion series terminal)
-    pub series_number: usize,
+    pub series_number: u32,
     /// The branch naming
-    pub branch: Vec<(GlycanBranchIndex, GlycanBranchMassIndex)>,
+    pub branch: ThinVec<(GlycanBranchIndex, GlycanBranchMassIndex)>,
     /// The aminoacid index where this glycan is attached
     pub attachment: Option<(AminoAcid, SequencePosition)>,
 }

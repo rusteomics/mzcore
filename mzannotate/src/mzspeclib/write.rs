@@ -249,7 +249,7 @@ pub struct HeaderWritten;
 /// A single spectrum that can be encoded as an mzSpecLib file
 pub trait MzSpecLibEncode {
     /// The peak type
-    type P: MzSpecLibPeakEncode;
+    type Peak: MzSpecLibPeakEncode;
     /// The key for this spectrum
     fn key(&self) -> Id;
     /// The attributes for this spectrum
@@ -263,7 +263,7 @@ pub trait MzSpecLibEncode {
         &self,
     ) -> impl Iterator<Item = (Id, Attributes, Self::InterpretationMemberIter)>;
     /// The peaks
-    fn peaks(&self) -> PeakSetIter<'_, Self::P>;
+    fn peaks(&self) -> PeakSetIter<'_, Self::Peak>;
 }
 
 /// A peak that can be encoded for use in an mzSpecLib file

@@ -4,7 +4,7 @@
 mod fragmentation_tests;
 
 mod aminoacid;
-/// Contains all things related to annotations (MS2 spectrum annotations that is).
+/// Contains all things related to annotations (fragment spectrum annotations that is).
 pub mod annotation;
 /// Contains all things related to fragments and fragmentation.
 pub mod fragment;
@@ -14,6 +14,7 @@ mod modification;
 mod monosaccharide;
 pub mod mzspeclib;
 mod peptidoform;
+/// Defines annotated spectra
 pub mod spectrum;
 
 /// A subset of the types and traits that are envisioned to be used the most, importing this is a good starting point for working with the crate

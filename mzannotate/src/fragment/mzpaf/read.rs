@@ -347,7 +347,7 @@ impl PeakAnnotation {
             ion,
             peptidoform_ion_index: self.analyte_number.checked_sub(1).map(|a| a as usize), // TODO: figure out how to handle this properly
             peptidoform_index: Some(0),
-            neutral_loss: self.neutral_losses,
+            neutral_loss: self.neutral_losses.into(),
             deviation: self.deviation,
             confidence: self.confidence.map(Into::into),
             auxiliary: self.auxiliary,

@@ -1,5 +1,3 @@
-//! Spectrum related code
-
 mod peak;
 mod spectrum;
 

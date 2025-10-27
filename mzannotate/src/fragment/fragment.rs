@@ -13,6 +13,7 @@ use mzcore::{
     quantities::{Multi, Tolerance},
     system::{self, MassOverCharge, OrderedMassOverCharge, Ratio, isize::Charge},
 };
+use thin_vec::ThinVec;
 
 use crate::{annotation::model::PossiblePrimaryIons, fragment::FragmentType};
 
@@ -25,12 +26,12 @@ pub struct Fragment {
     pub charge: Charge,
     /// The annotation for this fragment
     pub ion: FragmentType,
-    /// The peptidoform this fragment comes from, saved as the index into the list of peptidoform in the overarching [`crate::sequence::CompoundPeptidoformIon`] struct
+    /// The peptidoform this fragment comes from, saved as the index into the list of peptidoform in the overarching [`mzcore::sequence::CompoundPeptidoformIon`] struct
     pub peptidoform_ion_index: Option<usize>,
-    /// The peptide this fragment comes from, saved as the index into the list of peptides in the overarching [`crate::sequence::PeptidoformIon`] struct
+    /// The peptide this fragment comes from, saved as the index into the list of peptides in the overarching [`mzcore::sequence::PeptidoformIon`] struct
     pub peptidoform_index: Option<usize>,
     /// Any neutral losses applied
-    pub neutral_loss: Vec<NeutralLoss>,
+    pub neutral_loss: ThinVec<NeutralLoss>,
     /// m/z deviation, if known (from mzPAF)
     pub deviation: Option<Tolerance<OrderedMassOverCharge>>,
     /// Confidence in this annotation (from mzPAF)
@@ -69,7 +70,7 @@ impl Fragment {
             ion,
             peptidoform_ion_index: Some(peptidoform_ion_index),
             peptidoform_index: Some(peptidoform_index),
-            neutral_loss: Vec::new(),
+            neutral_loss: ThinVec::new(),
             deviation: None,
             confidence: None,
             auxiliary: false,
@@ -109,7 +110,7 @@ impl Fragment {
                 ion: annotation.clone(),
                 peptidoform_ion_index: Some(peptidoform_ion_index),
                 peptidoform_index: Some(peptidoform_index),
-                neutral_loss: losses.cloned().unwrap_or_default(),
+                neutral_loss: losses.cloned().unwrap_or_default().into(),
                 deviation: None,
                 confidence: None,
                 auxiliary: false,
@@ -156,7 +157,7 @@ impl Fragment {
                 ion: annotation.with_variant(*variant),
                 peptidoform_ion_index: Some(peptidoform_ion_index),
                 peptidoform_index: Some(peptidoform_index),
-                neutral_loss: losses.cloned().unwrap_or_default(),
+                neutral_loss: losses.cloned().unwrap_or_default().into(),
                 deviation: None,
                 confidence: None,
                 auxiliary: false,

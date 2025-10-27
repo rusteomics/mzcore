@@ -430,7 +430,7 @@ fn parse_single_modification<'a>(
                     ReturnModification::CrossLinkReferenced(index),
                 ))
             } else if let Some(name) = group.0.to_ascii_lowercase().strip_prefix("xl") {
-                let name = CrossLinkName::Name(name.to_string());
+                let name = CrossLinkName::Name(name.to_string().into_boxed_str());
                 let index = cross_link_lookup
                     .iter()
                     .position(|c| c.0 == name)

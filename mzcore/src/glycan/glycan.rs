@@ -3,6 +3,7 @@ use std::{fmt::Display, hash::Hash};
 use context_error::*;
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
+use thin_vec::ThinVec;
 
 use crate::{
     chemistry::{Chemical, ELEMENT_PARSE_LIST, Element, MolecularFormula},
@@ -34,10 +35,10 @@ pub enum Configuration {
 #[derive(Clone, Debug, Deserialize, Ord, PartialOrd, Serialize)]
 pub struct MonoSaccharide {
     pub(super) base_sugar: BaseSugar,
-    pub(super) substituents: Vec<GlycanSubstituent>,
+    pub(super) substituents: ThinVec<GlycanSubstituent>,
     pub(super) furanose: bool,
     pub(super) configuration: Option<Configuration>,
-    pub(super) proforma_name: Option<String>,
+    pub(super) proforma_name: Option<Box<str>>,
 }
 
 impl MonoSaccharide {
@@ -98,7 +99,7 @@ impl MonoSaccharide {
     #[must_use]
     pub fn with_name(self, name: &str) -> Self {
         Self {
-            proforma_name: Some(name.to_string()),
+            proforma_name: Some(name.to_string().into_boxed_str()),
             ..self
         }
     }
@@ -377,7 +378,7 @@ impl MonoSaccharide {
                         }
                         other => other,
                     },
-                    substituents,
+                    substituents: substituents.into(),
                     furanose: false,
                     configuration,
                     proforma_name: None,
@@ -605,15 +606,18 @@ impl Display for MonoSaccharide {
         write!(
             f,
             "{}",
-            self.proforma_name.clone().unwrap_or_else(|| format!(
-                "{}{}{}",
-                self.base_sugar,
-                if self.furanose { "f" } else { "" },
-                self.substituents
-                    .iter()
-                    .map(ToString::to_string)
-                    .collect::<String>()
-            ))
+            self.proforma_name
+                .as_ref()
+                .map(|s| s.to_string())
+                .unwrap_or_else(|| format!(
+                    "{}{}{}",
+                    self.base_sugar,
+                    if self.furanose { "f" } else { "" },
+                    self.substituents
+                        .iter()
+                        .map(ToString::to_string)
+                        .collect::<String>()
+                ))
         )
     }
 }

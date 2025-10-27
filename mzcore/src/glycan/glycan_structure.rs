@@ -8,6 +8,7 @@ use std::{
 use context_error::*;
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
+use thin_vec::ThinVec;
 
 use crate::{
     chemistry::{Chemical, MolecularFormula},
@@ -179,7 +180,7 @@ impl GlycanStructure {
             target: &MonoSaccharide,
             precise: bool,
             tree: &GlycanStructure,
-            branch_breaks: &[(usize, Vec<GlycanBranchIndex>)],
+            branch_breaks: &[(u32, Vec<GlycanBranchIndex>)],
         ) -> bool {
             let total_branches = tree.branches.len();
             if tree.sugar.equivalent(target, precise) {
@@ -214,7 +215,7 @@ impl GlycanStructure {
         let base = GlycanPosition {
             inner_depth: 0,
             series_number: 0,
-            branch: Vec::new(),
+            branch: ThinVec::new(),
             attachment: None,
         };
         let start = root_break.unwrap_or(&base);
@@ -385,9 +386,9 @@ impl GlycanStructure {
     /// When any of the masses in this glycan cannot be compared see [`f64::partial_cmp`].
     fn internal_pos(
         self,
-        inner_depth: usize,
+        inner_depth: u32,
         branch: &[(GlycanBranchIndex, GlycanBranchMassIndex)],
-    ) -> (PositionedGlycanStructure, usize) {
+    ) -> (PositionedGlycanStructure, u32) {
         // Sort the branches on decreasing molecular weight
         let branches = self
             .branches
@@ -402,7 +403,7 @@ impl GlycanStructure {
             .collect_vec();
 
         // Get the correct branch indices adding a new layer of indices when needed
-        let branches: Vec<(PositionedGlycanStructure, usize)> = if branches.len() == 1 {
+        let branches: Vec<(PositionedGlycanStructure, u32)> = if branches.len() == 1 {
             branches
                 .into_iter()
                 .map(|(_, b)| b.internal_pos(inner_depth + 1, branch))
@@ -668,7 +669,7 @@ mod test {
                     &[GlycanPosition {
                         inner_depth: 1,
                         series_number: 0,
-                        branch: vec![(0, 0)],
+                        branch: vec![(0, 0)].into(),
                         attachment: None
                     }]
                 )
@@ -683,7 +684,7 @@ mod test {
                     &[GlycanPosition {
                         inner_depth: 1,
                         series_number: 0,
-                        branch: vec![(1, 1)],
+                        branch: vec![(1, 1)].into(),
                         attachment: None
                     }]
                 )
@@ -699,13 +700,13 @@ mod test {
                         GlycanPosition {
                             inner_depth: 1,
                             series_number: 0,
-                            branch: vec![(1, 1)],
+                            branch: vec![(1, 1)].into(),
                             attachment: None
                         },
                         GlycanPosition {
                             inner_depth: 1,
                             series_number: 0,
-                            branch: vec![(0, 0)],
+                            branch: vec![(0, 0)].into(),
                             attachment: None
                         }
                     ]
@@ -721,7 +722,7 @@ mod test {
                     &[GlycanPosition {
                         inner_depth: 1,
                         series_number: 0,
-                        branch: vec![(0, 0)],
+                        branch: vec![(0, 0)].into(),
                         attachment: None
                     }]
                 )
@@ -736,7 +737,7 @@ mod test {
                     &[GlycanPosition {
                         inner_depth: 1,
                         series_number: 0,
-                        branch: vec![(1, 1)],
+                        branch: vec![(1, 1)].into(),
                         attachment: None
                     }]
                 )
@@ -752,13 +753,13 @@ mod test {
                         GlycanPosition {
                             inner_depth: 1,
                             series_number: 0,
-                            branch: vec![(1, 1)],
+                            branch: vec![(1, 1)].into(),
                             attachment: None
                         },
                         GlycanPosition {
                             inner_depth: 1,
                             series_number: 0,
-                            branch: vec![(0, 0)],
+                            branch: vec![(0, 0)].into(),
                             attachment: None
                         }
                     ]
@@ -774,7 +775,7 @@ mod test {
                     Some(&GlycanPosition {
                         inner_depth: 1,
                         series_number: 0,
-                        branch: vec![(0, 0)],
+                        branch: vec![(0, 0)].into(),
                         attachment: None
                     }),
                     &[]
@@ -789,7 +790,7 @@ mod test {
                     Some(&GlycanPosition {
                         inner_depth: 1,
                         series_number: 0,
-                        branch: vec![(1, 1)],
+                        branch: vec![(1, 1)].into(),
                         attachment: None
                     }),
                     &[]
@@ -804,13 +805,13 @@ mod test {
                     Some(&GlycanPosition {
                         inner_depth: 1,
                         series_number: 0,
-                        branch: vec![(0, 0)],
+                        branch: vec![(0, 0)].into(),
                         attachment: None
                     }),
                     &[GlycanPosition {
                         inner_depth: 2,
                         series_number: 0,
-                        branch: vec![(0, 0)],
+                        branch: vec![(0, 0)].into(),
                         attachment: None
                     },]
                 )
@@ -824,13 +825,13 @@ mod test {
                     Some(&GlycanPosition {
                         inner_depth: 1,
                         series_number: 0,
-                        branch: vec![(0, 0)],
+                        branch: vec![(0, 0)].into(),
                         attachment: None
                     }),
                     &[GlycanPosition {
                         inner_depth: 2,
                         series_number: 0,
-                        branch: vec![(0, 0)],
+                        branch: vec![(0, 0)].into(),
                         attachment: None
                     },]
                 )
@@ -844,7 +845,7 @@ mod test {
                     Some(&GlycanPosition {
                         inner_depth: 1,
                         series_number: 0,
-                        branch: vec![(0, 0)],
+                        branch: vec![(0, 0)].into(),
                         attachment: None
                     }),
                     &[]

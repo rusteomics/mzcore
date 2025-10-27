@@ -64,7 +64,7 @@ format_family!(
                         (0, SequencePosition::Index(pos1.0.saturating_sub(1) as usize)),
                         (1, SequencePosition::Index(pos2.0.saturating_sub(1) as usize)),
                         Arc::new(SimpleModificationInner::Mass(Mass::default().into())),
-                        CrossLinkName::Name("1".to_string()),
+                        CrossLinkName::Name("1".to_string().into_boxed_str()),
                     );
                     Ok(peptidoform)
                 }
@@ -76,7 +76,7 @@ format_family!(
                         (0, SequencePosition::Index(pos1.0.saturating_sub(1) as usize)),
                         (0, SequencePosition::Index(pos2.0.saturating_sub(1) as usize)),
                         Arc::new(SimpleModificationInner::Mass(Mass::default().into())),
-                        CrossLinkName::Name("1".to_string()),
+                        CrossLinkName::Name("1".to_string().into_boxed_str()),
                     );
                     Ok(peptidoform)
                 }
@@ -228,7 +228,7 @@ format_family!(
                             let mut remove = None;
                             for (index, mut m) in seq.modifications.iter_mut().enumerate() {
                                 if let Modification::CrossLink{name, linker, ..} = &mut m{
-                                    if name == &CrossLinkName::Name("1".to_string()) {
+                                    if name == &CrossLinkName::Name("1".to_string().into_boxed_str()) {
                                         *linker = fitting[0].clone();
 
                                         if is_n_term && m.is_possible(&seq_clone, SequencePosition::NTerm).any_possible() {

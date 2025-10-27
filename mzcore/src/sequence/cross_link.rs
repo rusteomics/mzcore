@@ -74,7 +74,7 @@ pub enum CrossLinkName {
     /// A branch
     Branch,
     /// A cross-link
-    Name(String),
+    Name(Box<str>),
 }
 
 impl ParseJson for CrossLinkName {

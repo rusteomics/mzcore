@@ -13,6 +13,7 @@ use mzcore::{
     },
     system::isize::Charge,
 };
+use thin_vec::ThinVec;
 
 use crate::{
     annotation::model::get_all_sidechain_losses,
@@ -84,7 +85,7 @@ fn peptidoform_ion_inner(
 /// Generate the theoretical fragments for this peptide, with the given maximal charge of the fragments, and the given model.
 /// With the global isotope modifications applied.
 /// # Panics
-/// Panics if the `max_charge` is bigger than [`isize::MAX`].
+/// If the global isotope replacement is invalid.
 pub(crate) fn generate_theoretical_fragments_inner<Complexity>(
     peptidoform: &Peptidoform<Complexity>,
     max_charge: Charge,
@@ -93,8 +94,7 @@ pub(crate) fn generate_theoretical_fragments_inner<Complexity>(
     peptidoform_index: usize,
     all_peptides: &[Peptidoform<Linked>],
 ) -> Vec<Fragment> {
-    let default_charge =
-        MolecularCharge::proton(Charge::new::<mzcore::system::e>(max_charge.value));
+    let default_charge = MolecularCharge::proton(max_charge);
     let mut charge_carriers: CachedCharge = peptidoform
         .get_charge_carriers()
         .unwrap_or(&default_charge)
@@ -299,7 +299,7 @@ pub(crate) fn generate_theoretical_fragments_inner<Complexity>(
                     ion: FragmentType::Diagnostic(pos),
                     peptidoform_ion_index: Some(peptidoform_ion_index),
                     peptidoform_index: Some(peptidoform_index),
-                    neutral_loss: Vec::new(),
+                    neutral_loss: ThinVec::new(),
                     deviation: None,
                     confidence: None,
                     auxiliary: false,
@@ -407,9 +407,8 @@ fn diagnostic_ions<Complexity>(
 impl<Complexity: AtMax<Linear>> PeptidoformFragmentation for Peptidoform<Complexity> {
     /// Generate the theoretical fragments for this peptide, with the given maximal charge of the fragments, and the given model.
     /// With the global isotope modifications applied.
-    ///
     /// # Panics
-    /// If `max_charge` outside the range `1..=u64::MAX`.
+    /// If the global isotope replacement is invalid.
     fn generate_theoretical_fragments(
         &self,
         max_charge: Charge,

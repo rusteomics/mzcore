@@ -1,4 +1,4 @@
-//! Handle positioned glycan structures
+//! Handle glycan fragmentation.
 
 use itertools::Itertools;
 use mzcore::{

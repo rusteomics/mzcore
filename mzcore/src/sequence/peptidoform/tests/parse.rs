@@ -436,7 +436,7 @@ fn parse_xl_intra() {
         (AminoAcid::Alanine.single_formula().unwrap() * 2)
             + molecular_formula!(C 8 H 10 O 2)
             + molecular_formula!(H 2 O 1).with_label(AmbiguousLabel::CrossLinkBound(
-                CrossLinkName::Name("test".to_string())
+                CrossLinkName::Name("test".to_string().into_boxed_str())
             ))
     );
 }
@@ -451,7 +451,7 @@ fn parse_xl_inter() {
             + molecular_formula!(C 8 H 10 O 2)
             + molecular_formula!(H 2 O 1) * 2_i32)
             .with_label(AmbiguousLabel::CrossLinkBound(CrossLinkName::Name(
-                "test".to_string()
+                "test".to_string().into_boxed_str()
             )))
     );
 }
