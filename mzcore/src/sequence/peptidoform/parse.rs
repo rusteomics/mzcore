@@ -342,6 +342,14 @@ impl CompoundPeptidoformIon {
                 }
                 (false, b')') if braces_start.is_some() => {
                     let start = braces_start.unwrap();
+                    if start == peptide.len() {
+                        return Err(BoxedError::new(
+                            BasicKind::Error,
+                            "Invalid ranged ambiguous modification",
+                            "The ranged ambiguous modification is placed on an empty range",
+                            Context::line_range(None, line, index - 1..index + 2),
+                        ));
+                    }
                     braces_start = None;
                     index += 1;
                     while chars.get(index) == Some(&b'[') {
@@ -792,6 +800,7 @@ pub(super) fn parse_placement_rules(
     Ok(result)
 }
 
+/// MUP: `[Mod][Mod]?AAA`
 /// If the text is recognised as an unknown mods list it is Some(...), if it has errors during parsing Some(Err(...))
 /// The returned happy path contains the mods and the index from where to continue parsing.
 /// # Errors
@@ -810,7 +819,7 @@ pub(super) fn global_unknown_position_mods<'a>(
     // Parse until no new modifications are found
     while line.as_bytes().get(index) == Some(&b'[') {
         let start_index = index;
-        index = next_char(line.as_bytes(), index + 1, b']').ok_or_else(|| {
+        index = end_of_enclosure(line, index + 1, b'[', b']').ok_or_else(|| {
             vec![BoxedError::new(
                 BasicKind::Error,
                 "Global unknown position modification not closed",

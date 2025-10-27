@@ -604,8 +604,9 @@ fn parse_ion<'a>(
                         .add_highlight((0, range.start_index(), 1)),
                 )
             })?;
-            let modification = if line[range.clone()].chars().nth(2) == Some('[') {
-                let end = end_of_enclosure(line, range.start_index() + 3, b'[', b']').ok_or_else(
+            let index = range.start_index()+1+amino_acid.len_utf8();
+            let modification = if line[index..range.end].starts_with('['){
+                let end = end_of_enclosure(line, index + 1, b'[', b']').ok_or_else(
                     || {
                         BoxedError::new(
                             BasicKind::Error,
@@ -613,11 +614,11 @@ fn parse_ion<'a>(
                             "The square brackets are not closed",
                             base_context
                                 .clone()
-                                .add_highlight((0, range.start_index(), 1)),
+                                .add_highlight((0, index, 1)),
                         )
                     },
                 )?;
-                let modification = &line[range.start_index() + 3..end];
+                let modification = &line[index + 1..end];
                 Some((
                     end - range.start_index() - 1, // Length of mod + [ + ]
                     Ontology::Unimod

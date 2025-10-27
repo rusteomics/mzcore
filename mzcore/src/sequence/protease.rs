@@ -388,7 +388,7 @@ mod tests {
         ];
 
         for test_case in test_cases {
-            test_protease(&known_proteases::TRYPSIN, &test_case);
+            test_protease(&known_proteases::TRYPSIN_P, &test_case);
         }
     }
 

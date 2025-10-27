@@ -194,6 +194,19 @@ impl Peptidoform<Linear> {
         ambiguous_lookup: &AmbiguousLookup,
     ) -> Result<(), BoxedError<'static, BasicKind>> {
         for modification in unknown_position_modifications {
+            // Check if this modification was already placed somewhere if so do not add it again
+            if self.sequence().iter().any(|s| {
+                s.modifications.iter().any(|m| {
+                    if let Modification::Ambiguous { id, .. } = m {
+                        id == modification
+                    } else {
+                        false
+                    }
+                })
+            }) {
+                continue;
+            }
+
             let entry = &ambiguous_lookup[*modification];
             if let Some(m) = &entry.modification {
                 if !self.add_unknown_position_modification(m.clone(), .., &entry.as_settings()) {

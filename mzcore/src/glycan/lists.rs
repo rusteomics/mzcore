@@ -821,53 +821,13 @@ pub(crate) static GLYCAN_PARSE_LIST: LazyLock<Vec<(String, MonoSaccharide)>> =
                     configuration: None,
                 },
             ),
-            (
-                "xxx".to_string(),
-                MonoSaccharide {
-                    base_sugar: BaseSugar::None,
-                    substituents: ThinVec::new(),
-                    proforma_name: Some("Xxx".to_string().into_boxed_str()),
-                    furanose: false,
-                    configuration: None,
-                },
-            ),
-            (
-                "aldi".to_string(),
-                MonoSaccharide {
-                    base_sugar: BaseSugar::None,
-                    substituents: vec![GlycanSubstituent::Alcohol].into(),
-                    proforma_name: None,
-                    furanose: false,
-                    configuration: None,
-                },
-            ),
-            (
-                "me".to_string(),
-                MonoSaccharide {
-                    base_sugar: BaseSugar::None,
-                    substituents: vec![GlycanSubstituent::Methyl].into(),
-                    proforma_name: None,
-                    furanose: false,
-                    configuration: None,
-                },
-            ),
             // Single letter codes, by defining them like this they will be read but exported to the standard ProForma codes
-            (
-                "x".to_string(),
-                MonoSaccharide {
-                    base_sugar: BaseSugar::None,
-                    substituents: vec![GlycanSubstituent::Acetyl].into(),
-                    proforma_name: None,
-                    furanose: false,
-                    configuration: None,
-                },
-            ),
             (
                 "p".to_string(),
                 MonoSaccharide {
                     base_sugar: BaseSugar::None,
                     substituents: vec![GlycanSubstituent::Phosphate].into(),
-                    proforma_name: Some("phosphate".to_string().into_boxed_str()), // TODO: technically maybe not working when multiple are in there, think it through, should be two different elements,  both getting counts after them
+                    proforma_name: Some("phosphate".to_string().into_boxed_str()), // TODO: technically maybe not working when multiple are in there, think it through, should be two different elements, both getting counts after them
                     furanose: false,
                     configuration: None,
                 },

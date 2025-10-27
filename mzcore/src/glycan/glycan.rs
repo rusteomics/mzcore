@@ -159,7 +159,7 @@ impl MonoSaccharide {
             "..",
             Context::show(text),
         );
-        Self::simplify_composition(
+        let result = Self::simplify_composition(
             crate::helper_functions::parse_named_counter(
                 &text.to_ascii_lowercase(),
                 GLYCAN_PARSE_LIST.as_slice(),
@@ -172,12 +172,17 @@ impl MonoSaccharide {
             })?,
         )
         .ok_or_else(|| {
-            basic_error.long_description(format!(
+            basic_error.clone().long_description(format!(
                 "The occurrence of one monosaccharide species is outside of the range {} to {}",
                 isize::MIN,
                 isize::MAX
             ))
-        })
+        })?;
+        if result.is_empty() {
+            Err(basic_error.long_description("The glycan does not contain any monosaccharides"))
+        } else {
+            Ok(result)
+        }
     }
 
     /// Parse the given text as a MSFragger glycan composition. Examples:
