@@ -1,6 +1,5 @@
 //! Fuzz target for parsing mzPAF sequences
 use afl::*;
-use mzcore::prelude::CompoundPeptidoformIon;
 
 fn main() {
     fuzz!(|data: &[u8]| {
