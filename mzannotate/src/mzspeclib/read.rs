@@ -600,13 +600,10 @@ impl<'a, R: BufRead> MzSpecLibTextParser<'a, R> {
                         analyte.target = AnalyteTarget::PeptidoformIon(peptidoform_ion);
                     } else if attr.name.accession == curie!(MS:1000866) {
                         let value = attr.value.scalar().to_string();
-                        let mut formula = MolecularFormula::from_pro_forma(
+                        let mut formula = MolecularFormula::from_pro_forma::<false,false>(
                             &value,
                             0..value.len(),
-                            false,
-                            false,
-                            true,
-                            false,
+                            
                         )
                         .map_err(|e| e.to_owned().convert::<MzSpecLibErrorKind, BoxedError<'static, MzSpecLibErrorKind>>(|_| MzSpecLibErrorKind::ProForma))?;
                         analyte.target = match analyte.target {

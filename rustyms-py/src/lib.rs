@@ -239,7 +239,7 @@ impl MolecularFormula {
     ///
     #[classmethod]
     fn from_pro_forma(_cls: &Bound<'_, PyType>, proforma: &str) -> PyResult<Self> {
-        mzcore::chemistry::MolecularFormula::from_pro_forma(proforma, .., false, false, true, true)
+        mzcore::chemistry::MolecularFormula::from_pro_forma::<false, false>(proforma, ..)
             .map(MolecularFormula)
             .map_err(|e| PyValueError::new_err(format!("Invalid ProForma string: {e}")))
     }
@@ -279,13 +279,15 @@ impl MolecularFormula {
     ///
     #[pyo3(signature = (element, isotope=None, n=1))]
     fn add(&mut self, element: &Element, isotope: Option<u16>, n: i32) -> PyResult<Option<()>> {
-        if self
+        if let Err(e) = self
             .0
             .add((element.0, isotope.and_then(NonZeroU16::new), n))
         {
-            Ok(None)
+            Err(PyValueError::new_err(format!(
+                "Invalid element or isotope: {e}"
+            )))
         } else {
-            Err(PyValueError::new_err("Invalid element or isotope"))
+            Ok(None)
         }
     }
 

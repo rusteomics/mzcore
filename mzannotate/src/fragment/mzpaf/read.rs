@@ -850,13 +850,10 @@ fn parse_ion<'a>(
                         .add_highlight((0, range.start_index(), 1)),
                 ))
             }?;
-            let formula = MolecularFormula::from_pro_forma(
+            let formula = MolecularFormula::from_pro_forma::<false,false>(
                 line,
                 formula_range.clone(),
-                false,
-                false,
-                true,
-                false,
+                
             )?;
 
             Ok((
@@ -961,7 +958,7 @@ fn parse_neutral_loss<'a>(
                     _ => unreachable!(),
                 });
             } else if let Ok(formula) =
-                MolecularFormula::from_pro_forma(line, first - 1..=last, false, false, true, false)
+                MolecularFormula::from_pro_forma::< false, false>(line, first - 1..=last)
             {
                 // Catches the case of a single isotope as formula
                 neutral_losses.push(match c {
@@ -997,13 +994,10 @@ fn parse_neutral_loss<'a>(
             if line[first..first + last].ends_with("[M") {
                 last -= 2; // Detect any adduct types which might otherwise sneak in
             }
-            let formula = MolecularFormula::from_pro_forma(
+            let formula = MolecularFormula::from_pro_forma::<false,false>(
                 line,
                 first..first + last,
-                false,
-                false,
-                true,
-                false,
+                
             )?;
             neutral_losses.push(match c {
                 b'+' => NeutralLoss::Gain(amount, formula),
@@ -1192,13 +1186,10 @@ fn parse_adduct_type<'a>(
                 .last()
                 .map_or(0, |last| last.0 + last.1.len_utf8())
                 .min(closing - first); // Prevent the closing bracket from being used in an isotope
-            let formula = MolecularFormula::from_pro_forma(
+            let formula = MolecularFormula::from_pro_forma::<false,false>(
                 line,
                 first..first + last,
-                false,
-                false,
-                true,
-                false,
+                
             )?;
             carriers.push((amount as isize, formula));
             offset += last;

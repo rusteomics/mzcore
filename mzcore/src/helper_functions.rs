@@ -361,15 +361,6 @@ pub(crate) const fn explain_number_error(error: &ParseIntError) -> &'static str 
     }
 }
 
-/// Check if two strings are equal with or without ignoring casing
-pub(crate) fn str_eq(a: &str, b: &str, ignore_casing: bool) -> bool {
-    if ignore_casing {
-        a.eq_ignore_ascii_case(b)
-    } else {
-        a == b
-    }
-}
-
 /// Check if 'a' starts with 'b' with or without ignoring casing
 pub(crate) fn str_starts_with(a: &str, b: &str, ignore_casing: bool) -> bool {
     for (a, b) in a.chars().zip(b.chars()) {

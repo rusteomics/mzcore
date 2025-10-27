@@ -1123,13 +1123,9 @@ fn parse_modification<'a>(
                             ));
                         }
                     };
-                    MolecularFormula::from_pro_forma(
+                    MolecularFormula::from_pro_forma::<false, false>(
                         line,
                         value_range.start + 1..value_range.end,
-                        false,
-                        false,
-                        true,
-                        true,
                     )
                     .map(|f| SimpleModificationInner::Formula(f * factor))?
                 }

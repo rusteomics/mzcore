@@ -611,10 +611,8 @@ impl Display for MonoSaccharide {
         write!(
             f,
             "{}",
-            self.proforma_name
-                .as_ref()
-                .map(|s| s.to_string())
-                .unwrap_or_else(|| format!(
+            self.proforma_name.as_ref().map_or_else(
+                || format!(
                     "{}{}{}",
                     self.base_sugar,
                     if self.furanose { "f" } else { "" },
@@ -622,7 +620,9 @@ impl Display for MonoSaccharide {
                         .iter()
                         .map(ToString::to_string)
                         .collect::<String>()
-                ))
+                ),
+                ToString::to_string
+            )
         )
     }
 }

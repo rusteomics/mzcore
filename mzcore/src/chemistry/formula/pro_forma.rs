@@ -3,8 +3,8 @@ use std::{num::NonZeroU16, ops::RangeBounds};
 use context_error::*;
 
 use crate::{
-    chemistry::{COMMON_ELEMENT_PARSE_LIST, ELEMENT_PARSE_LIST, Element, MolecularFormula},
-    helper_functions::{RangeExtension, explain_number_error, str_eq, str_starts_with},
+    chemistry::{ELEMENT_PARSE_LIST, Element, MolecularFormula},
+    helper_functions::{RangeExtension, explain_number_error},
 };
 
 impl MolecularFormula {
@@ -37,17 +37,13 @@ impl MolecularFormula {
     /// If the formula is not valid according to the above specification, with some help on what is going wrong.
     /// # Panics
     /// It can panic if the string contains not UTF8 symbols.
-    pub fn from_pro_forma(
+    pub fn from_pro_forma<const ALLOW_CHARGE: bool, const ALLOW_EMPTY: bool>(
         value: &str,
         range: impl RangeBounds<usize>,
-        allow_charge: bool,
-        allow_empty: bool,
-        allow_uncommon_elements: bool,
-        ignore_casing: bool,
     ) -> Result<Self, BoxedError<'_, BasicKind>> {
         let (mut index, end) = range.bounds(value.len().saturating_sub(1));
-        if index > end || end >= value.len() || value[index..=end].eq_ignore_ascii_case("(empty)") {
-            return if allow_empty {
+        if index > end || end >= value.len() || &value[index..=end] == "(empty)" {
+            return if ALLOW_EMPTY {
                 Ok(Self::default())
             } else {
                 Err(BoxedError::new(
@@ -97,16 +93,9 @@ impl MolecularFormula {
                         .take_while(|c| c.is_ascii_alphabetic())
                         .count();
 
-                    for possible in if allow_uncommon_elements {
-                        ELEMENT_PARSE_LIST
-                    } else {
-                        COMMON_ELEMENT_PARSE_LIST
-                    } {
-                        if str_eq(
-                            &value[index + isotope + ws1..index + isotope + ws1 + ele],
-                            possible.0,
-                            ignore_casing,
-                        ) {
+                    for possible in ELEMENT_PARSE_LIST {
+                        if &value[index + isotope + ws1..index + isotope + ws1 + ele] == possible.0
+                        {
                             element = Some(possible.1);
                             break;
                         }
@@ -212,7 +201,7 @@ impl MolecularFormula {
                     index += len;
                 }
                 b' ' => index += 1,
-                b':' if allow_charge => {
+                b':' if ALLOW_CHARGE => {
                     if Some(&b'z') == bytes.get(index + 1) {
                         index += 2;
                         let num = value[index..=end].parse::<i32>().map_err(|err| {
@@ -250,12 +239,8 @@ impl MolecularFormula {
                         ));
                     }
                     let element_text: String = value[index..].chars().take(2).collect::<String>();
-                    for possible in if allow_uncommon_elements {
-                        ELEMENT_PARSE_LIST
-                    } else {
-                        COMMON_ELEMENT_PARSE_LIST
-                    } {
-                        if str_starts_with(&element_text, possible.0, ignore_casing) {
+                    for possible in ELEMENT_PARSE_LIST {
+                        if element_text.starts_with(possible.0) {
                             element = Some(possible.1);
                             index += possible.0.len();
                             continue 'main_parse_loop;
@@ -289,7 +274,9 @@ impl MolecularFormula {
                 Context::line(None, value, index - 1, 1),
             ));
         }
-        if !allow_empty && result.is_empty() {
+        // Simplify
+        result.elements.retain(|el| el.2 != 0);
+        if !ALLOW_EMPTY && result.is_empty() {
             Err(BoxedError::new(
                 BasicKind::Error,
                 "Invalid ProForma molecular formula",
@@ -305,9 +292,9 @@ impl MolecularFormula {
 #[test]
 #[allow(clippy::missing_panics_doc)]
 fn fuzz() {
-    let _a = MolecularFormula::from_pro_forma(":", .., true, true, true, true);
-    let _a = MolecularFormula::from_pro_forma(":1002\\[d2C-2]H2N", .., true, true, true, true);
-    let _a = MolecularFormula::from_pro_forma("+Wv:z-,33U", .., true, true, true, true);
-    assert!(MolecularFormula::from_pro_forma("", .., true, false, true, true).is_err());
-    assert!(MolecularFormula::from_pro_forma("f{}", 2..2, true, false, true, true).is_err());
+    let _a = MolecularFormula::from_pro_forma::<true, true>(":", ..);
+    let _a = MolecularFormula::from_pro_forma::<true, true>(":1002\\[d2C-2]H2N", ..);
+    let _a = MolecularFormula::from_pro_forma::<true, true>("+Wv:z-,33U", ..);
+    assert!(MolecularFormula::from_pro_forma::<true, false>("", ..).is_err());
+    assert!(MolecularFormula::from_pro_forma::<true, false>("f{}", 2..2).is_err());
 }

@@ -1035,13 +1035,9 @@ pub(super) fn parse_charge_state(
             }
 
             // formula
-            let mut formula = MolecularFormula::from_pro_forma(
+            let mut formula = MolecularFormula::from_pro_forma::<true, false>(
                 line,
                 offset + count_len..offset + set.len() - charge_len,
-                true,
-                false,
-                true,
-                true,
             )?;
             let _ = formula.add((
                 Element::Electron,

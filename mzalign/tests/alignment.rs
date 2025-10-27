@@ -84,7 +84,7 @@ fn pairwise() {
         "a,b,path,score,absolute score,maximal score,identical,mass similar,gaps,length"
     )
     .unwrap();
-    let mut different_paths = Vec::new();
+    let mut differences = Vec::new();
 
     for (id, line) in lines.iter().enumerate() {
         let a = Peptidoform::pro_forma(line.index_column("a").unwrap().0, None)
@@ -117,10 +117,24 @@ fn pairwise() {
         let line_nm = id + 2;
         let score = alignment.score();
         let stats = alignment.stats();
-        assert_eq!(score.absolute, absolute_score, "Pair at line {line_nm}",);
-        assert_eq!(score.max, maximal_score, "Pair at line {line_nm}",);
+        if score.absolute != absolute_score {
+            differences.push((
+                "absolute score",
+                score.absolute.to_string(),
+                absolute_score.to_string(),
+                line_nm,
+            ));
+        }
+        if score.max != maximal_score {
+            differences.push((
+                "max score",
+                score.max.to_string(),
+                maximal_score.to_string(),
+                line_nm,
+            ));
+        }
         if alignment.short() != path {
-            different_paths.push((alignment.short(), path, line_nm));
+            differences.push(("path", alignment.short(), path.to_string(), line_nm));
         }
         writeln!(
             &mut out,
@@ -139,15 +153,12 @@ fn pairwise() {
         .unwrap();
     }
 
-    if !different_paths.is_empty() {
-        for (found, expected, line) in &different_paths {
-            println!("Line {line}: found '{found}' instead of '{expected}'");
+    if !differences.is_empty() {
+        for (what, found, expected, line) in &differences {
+            println!("Line {line}: found {what} '{found}' instead of '{expected}'");
         }
 
         println!("See the newly created 'pairwise_examples_new.csv' for the full new data");
-        panic!(
-            "{} pairs had a different path (but are otherwise similarly optimal)",
-            different_paths.len()
-        );
+        panic!("{} pairs had differences", differences.len());
     }
 }

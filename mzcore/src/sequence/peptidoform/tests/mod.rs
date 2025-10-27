@@ -26,6 +26,17 @@ macro_rules! parse_test {
             assert_eq!(res, res_back, "{} != {back}", $case);
         }
     };
+    (casing_specific $case:literal, $name:ident) => {
+        #[test]
+        fn $name() {
+            let res = $crate::sequence::CompoundPeptidoformIon::pro_forma($case, None);
+            println!("{}", $case);
+            assert!(res.is_ok(), "{}", res.err().unwrap());
+            let back = res.as_ref().unwrap().to_string();
+            let res_back = $crate::sequence::CompoundPeptidoformIon::pro_forma(&back, None);
+            assert_eq!(res, res_back, "{} != {back}", $case);
+        }
+    };
     (ne $case:literal, $name:ident) => {
         #[test]
         fn $name() {

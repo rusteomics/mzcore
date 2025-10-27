@@ -65,9 +65,9 @@ parse_test!(
 //     "PROT(EOC[Carbamidomethyl]FORMS)[+19.0523]ISK",
 //     positive_example_29
 // );
-parse_test!("SEQUEN[Formula:C12H20O2]CE", positive_example_30);
-parse_test!("SEQUEN[Formula:HN-1O2]CE", positive_example_31);
-parse_test!("SEQUEN[Formula:[13C2][12C-2]H2N]CE", positive_example_32);
+parse_test!(casing_specific "SEQUEN[Formula:C12H20O2]CE", positive_example_30);
+parse_test!(casing_specific "SEQUEN[Formula:HN-1O2]CE", positive_example_31);
+parse_test!(casing_specific "SEQUEN[Formula:[13C2][12C-2]H2N]CE", positive_example_32);
 parse_test!("SEQUEN[Glycan:HexNAc]CE", positive_example_33);
 parse_test!("EMEVTK[XLMOD:02001#XL1]SESPEK[#XL1]", positive_example_34);
 parse_test!("EMEVTK[XLMOD:02001#XL1]SESPEK", positive_example_35);
@@ -214,9 +214,9 @@ parse_test!("EM[U:+15.995]EVEES[U:+79.966]PEK", positive_example_92);
 parse_test!("EM[U:+15.995]EVEES[Obs:+79.978]PEK", positive_example_93);
 parse_test!("EM[U:+15.995]EVEES[Obs:+79.978]PEK", positive_example_94);
 parse_test!("RTAAX[+367.0537]WT", positive_example_95);
-parse_test!("SEQUEN[Formula:C12H20O2]CE", positive_example_96);
-parse_test!("SEQUEN[Formula:[13C2]CH6N]CE", positive_example_97);
-parse_test!("SEQUEN[Formula:[13C2][12C-2]H2N]CE", positive_example_98);
+parse_test!(casing_specific "SEQUEN[Formula:C12H20O2]CE", positive_example_96);
+parse_test!(casing_specific "SEQUEN[Formula:[13C2]CH6N]CE", positive_example_97);
+parse_test!(casing_specific "SEQUEN[Formula:[13C2][12C-2]H2N]CE", positive_example_98);
 parse_test!("SEQUEN[Glycan:HexNAc1Hex2]CE", positive_example_99);
 parse_test!(
     "[iTRAQ4plex]-EM[Oxidation]EVNES[Phospho]PEK",
@@ -330,9 +330,9 @@ parse_test!(
     "[U:iTRAQ4plex]-EM[U:Oxidation]EVNES[U:Phospho]PEK[U:iTRAQ4plex]-[U:Methyl]/3",
     positive_example_142
 );
-parse_test!("EMEVEESPEK/3[+2Na+,+H+]", positive_example_143);
-parse_test!("EMEVEESPEK/1[+2Na+,-H+]", positive_example_144);
-parse_test!("EMEVEESPEK/-2[2I-]", positive_example_145);
+parse_test!(casing_specific "EMEVEESPEK/3[+2Na+,+H+]", positive_example_143);
+parse_test!(casing_specific "EMEVEESPEK/1[+2Na+,-H+]", positive_example_144);
+parse_test!(casing_specific "EMEVEESPEK/-2[2I-]", positive_example_145);
 // parse_test!("EMEVEESPEK/-1[+e-]", positive_example_146);
 parse_test!("EMEVEESPEK/2+ELVISLIVER/3", positive_example_147);
 parse_test!("AA(?AA)", positive_example_148);
