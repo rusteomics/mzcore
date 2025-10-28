@@ -512,7 +512,7 @@ impl<'a, R: BufRead> MzSpecLibTextParser<'a, R> {
     ) -> Result<u32, BoxedError<'static, MzSpecLibErrorKind>> {
         let id = if buf.starts_with(declaration) {
             self.state = to_state;
-            if let Some((before, val)) = buf[..buf.trim_ascii_end().len() - 1].split_once('=') {
+            if let Some(stripped) = buf.trim_ascii_end().strip_suffix('>') && let Some((before, val)) = stripped.split_once('=') {
                 val.trim().parse::<Id>().map_err(|e| {
                     BoxedError::new(
                         MzSpecLibErrorKind::Declaration,
@@ -1495,6 +1495,17 @@ MS:1003186|library format version=UW:0000000|text";
     }
 
     #[test]
+    fn invalid_declaration() {
+        let text = r"<mzSpecLib>
+MS:1003186|library format version=1.0
+<Spectrum=1>擅";
+
+        let mut res = MzSpecLibTextParser::open(text.as_bytes(), None, None).unwrap();
+        let first = res.next().unwrap();
+        assert!(first.is_err());
+    }
+
+    #[test]
     fn unknown_cv_term_hang() {
         let text = r"<mzSpecLib>
 MS:0000000|unknown=a";
@@ -1505,7 +1516,7 @@ MS:0000000|unknown=a";
 
     #[test]
     fn stack_overflow() {
-        let text = b"<mzSpecLib\n";
+        let text = b"<mzSpecLib>\n";
         let bytes: Vec<u8> = text
             .iter()
             .copied()
