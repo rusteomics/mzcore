@@ -213,7 +213,7 @@ impl CompoundPeptidoformIon {
         peptidoforms.push(peptidoform);
 
         // Parse any following chimeric species
-        while start < line.len() {
+        while start < line.len() && start < range.end {
             let (peptidoform, tail) = handle!(
                 errors,
                 Self::parse_peptidoform(

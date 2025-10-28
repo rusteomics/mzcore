@@ -123,7 +123,7 @@ pub(super) fn test_identified_peptidoform<Complexity, PeptidoformAvailability>(
             peptidoform.compound_peptidoform_ion().unwrap(),
         ));
     }
-    if peptidoform.compound_peptidoform_ion().is_none_or(|p| {
+    if peptidoform.compound_peptidoform_ion().is_some_and(|p| {
         p.peptidoforms()
             .any(|p| !p.enforce_modification_rules().is_empty())
     }) {
