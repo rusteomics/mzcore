@@ -227,13 +227,13 @@ impl<'a, R: BufRead> MzSpecLibTextParser<'a, R> {
         }
     }
 
-    /// Read a single attribute from the current position.
+    /// Read a single attribute from the current position. Gives back the range of the value.
     /// # Errors
     /// If the current line is not a valid attribute.
     fn read_attribute(
         &mut self,
         buf: &mut String,
-    ) -> Result<(Option<u32>, Attribute), BoxedError<'static, MzSpecLibErrorKind>> {
+    ) -> Result<(Option<u32>, Attribute, std::ops::Range<usize>), BoxedError<'static, MzSpecLibErrorKind>> {
         let z = self.read_next_line(buf).map_err(|e| {
             BoxedError::new(
                 MzSpecLibErrorKind::IO,
@@ -318,7 +318,7 @@ impl<'a, R: BufRead> MzSpecLibTextParser<'a, R> {
 
         loop {
             match self.read_attribute(&mut buf) {
-                Ok((group_id, attr)) => {
+                Ok((group_id, attr, _range)) => {
                     current_attribute_set
                         .as_mut()
                         .ok_or_else(|| {
@@ -442,7 +442,7 @@ impl<'a, R: BufRead> MzSpecLibTextParser<'a, R> {
 
         loop {
             match self.read_attribute(&mut buf) {
-                Ok((group_id, attr)) => match attr.name.accession {
+                Ok((group_id, attr, _range)) => match attr.name.accession {
                     curie!(MS:1003186) => {
                         self.header.format_version = attr.value.to_string();
                     }
@@ -571,12 +571,12 @@ impl<'a, R: BufRead> MzSpecLibTextParser<'a, R> {
         let mut protein = ProteinDescription::default();
         loop {
             match self.read_attribute(&mut buf) {
-                Ok((group_id, attr)) => {
+                Ok((group_id, attr, range)) => {
                     if attr.name.accession == curie!(MS:1003270)
-                        && let Value::String(value) = attr.value.scalar().as_ref()
+                        && let Value::String(_value) = attr.value.scalar().as_ref()
                     {
-                        let mut peptidoform_ion =
-                            PeptidoformIon::pro_forma(value, self.custom_database).map_err(
+                        let (mut peptidoform_ion, _) =
+                            PeptidoformIon::pro_forma_inner(&self.current_context().lines(0, &buf).to_owned(), &buf, range.clone(), self.custom_database).map_err(|errs| BoxedError::new(context_error::BasicKind::Error, "Invalid ProForma definition", "The string could not be parsed as a ProForma definition", self.current_context().lines(0, &buf).add_highlight((0, range)).to_owned()).add_underlying_errors(errs)).map_err(
                                 |e| e.to_owned().convert::<MzSpecLibErrorKind, BoxedError<'static, MzSpecLibErrorKind>>(|_| MzSpecLibErrorKind::ProForma),
                             )?;
                         if peptidoform_ion.get_charge_carriers().is_none() {
@@ -757,7 +757,7 @@ impl<'a, R: BufRead> MzSpecLibTextParser<'a, R> {
         };
         loop {
             match self.read_attribute(&mut buf) {
-                Ok((group_id, attribute)) => {
+                Ok((group_id, attribute, range)) => {
                     if attribute.name == term!(MS:1002357|PSM-level probability) {
                         interp.probability =
                             Some(attribute.value.scalar().to_f64().map_err(|e| {
@@ -765,7 +765,7 @@ impl<'a, R: BufRead> MzSpecLibTextParser<'a, R> {
                                     MzSpecLibErrorKind::Attribute,
                                     "Invalid PSM-level probability",
                                     e.to_string(),
-                                    self.current_context().lines(0, &buf).to_owned(),
+                                    self.current_context().lines(0, &buf).add_highlight((0, range)).to_owned(),
                                 )
                             })?);
                     } else if [
@@ -914,7 +914,7 @@ impl<'a, R: BufRead> MzSpecLibTextParser<'a, R> {
             Some(v) => {
                 let v = v.trim();
                 if !v.is_empty() && v != "?" {
-                    let annots = Fragment::mz_paf_substring(
+                    let annots = Fragment::mz_paf_inner(
                         &self.current_context().lines(0, buf),
                         buf,
                         field_offset..field_offset + v.len(),
@@ -997,9 +997,9 @@ impl<'a, R: BufRead> MzSpecLibTextParser<'a, R> {
 
         loop {
             match self.read_attribute(&mut buf) {
-                Ok((group_id, attr)) => term_collection.entry(group_id).or_default().push((
+                Ok((group_id, attr, range)) => term_collection.entry(group_id).or_default().push((
                     attr,
-                    self.current_context().to_owned().lines(0, buf.clone()),
+                    self.current_context().to_owned().lines(0, buf.clone()).add_highlight((0, range)),
                 )),
                 Err(e) => {
                     if buf.starts_with("<Analyte=") {
@@ -1496,6 +1496,7 @@ MS:1003186|library format version=UW:0000000|text";
 
     #[test]
     fn invalid_declaration() {
+        // Fuzz panic: it crashed on having a more than 1 byte character at the end of a declaration
         let text = r"<mzSpecLib>
 MS:1003186|library format version=1.0
 <Spectrum=1>擅";

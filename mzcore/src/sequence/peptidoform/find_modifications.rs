@@ -491,13 +491,15 @@ impl PeptideModificationSearch {
 fn test_replacement() {
     let mut search = PeptideModificationSearch::in_ontologies(vec![Ontology::Unimod], None)
         .replace_formulas(true);
-    let peptide = Peptidoform::pro_forma("MSFNELT[79.9663]ESNKKSLM[+15.9949]E", None).unwrap();
-    let expected = Peptidoform::pro_forma("MSFNELT[Phospho]ESNKKSLM[Oxidation]E", None).unwrap();
+    let (peptide, _) = Peptidoform::pro_forma("MSFNELT[79.9663]ESNKKSLM[+15.9949]E", None).unwrap();
+    let (expected, _) =
+        Peptidoform::pro_forma("MSFNELT[Phospho]ESNKKSLM[Oxidation]E", None).unwrap();
     assert_eq!(search.search(peptide), expected);
-    let peptide = Peptidoform::pro_forma("Q[-17.02655]NKKSLM[+15.9949]E", None).unwrap();
-    let expected = Peptidoform::pro_forma("[Gln->pyro-glu]-QNKKSLM[Oxidation]E", None).unwrap();
+    let (peptide, _) = Peptidoform::pro_forma("Q[-17.02655]NKKSLM[+15.9949]E", None).unwrap();
+    let (expected, _) =
+        Peptidoform::pro_forma("[Gln->pyro-glu]-QNKKSLM[Oxidation]E", None).unwrap();
     assert_eq!(search.search(peptide), expected);
-    let peptide = Peptidoform::pro_forma("M[Formula:O1]KSLM[+15.9949]E", None).unwrap();
-    let expected = Peptidoform::pro_forma("M[Oxidation]KSLM[Oxidation]E", None).unwrap();
+    let (peptide, _) = Peptidoform::pro_forma("M[Formula:O1]KSLM[+15.9949]E", None).unwrap();
+    let (expected, _) = Peptidoform::pro_forma("M[Oxidation]KSLM[Oxidation]E", None).unwrap();
     assert_eq!(search.search(peptide), expected);
 }

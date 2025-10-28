@@ -192,7 +192,8 @@ impl Peptidoform<Linear> {
         &mut self,
         unknown_position_modifications: &[usize],
         ambiguous_lookup: &AmbiguousLookup,
-    ) -> Result<(), BoxedError<'static, BasicKind>> {
+    ) -> Result<(), Vec<BoxedError<'static, BasicKind>>> {
+        let mut errors = Vec::new();
         for modification in unknown_position_modifications {
             // Check if this modification was already placed somewhere if so do not add it again
             if self.sequence().iter().any(|s| {
@@ -210,10 +211,30 @@ impl Peptidoform<Linear> {
             let entry = &ambiguous_lookup[*modification];
             if let Some(m) = &entry.modification {
                 if !self.add_unknown_position_modification(m.clone(), .., &entry.as_settings()) {
-                    return Err(BoxedError::new(
+                    combine_error(
+                        &mut errors,
+                        BoxedError::new(
+                            BasicKind::Error,
+                            "Modification of unknown position cannot be placed",
+                            "There is no position where this modification can be placed based on the placement rules in the database.",
+                            Context::show(format!(
+                                "Name: {}, Group: {}",
+                                entry.name,
+                                entry
+                                    .group
+                                    .map_or_else(|| "(no group)".to_string(), |n| n.to_string())
+                            )),
+                        ),
+                        (),
+                    );
+                }
+            } else {
+                combine_error(
+                    &mut errors,
+                    BoxedError::new(
                         BasicKind::Error,
-                        "Modification of unknown position cannot be placed",
-                        "There is no position where this modification can be placed based on the placement rules in the database.",
+                        "Modification of unknown position was not defined",
+                        "Please report this error",
                         Context::show(format!(
                             "Name: {}, Group: {}",
                             entry.name,
@@ -221,24 +242,16 @@ impl Peptidoform<Linear> {
                                 .group
                                 .map_or_else(|| "(no group)".to_string(), |n| n.to_string())
                         )),
-                    ));
-                }
-            } else {
-                return Err(BoxedError::new(
-                    BasicKind::Error,
-                    "Modification of unknown position was not defined",
-                    "Please report this error",
-                    Context::show(format!(
-                        "Name: {}, Group: {}",
-                        entry.name,
-                        entry
-                            .group
-                            .map_or_else(|| "(no group)".to_string(), |n| n.to_string())
-                    )),
-                ));
+                    ),
+                    (),
+                );
             }
         }
-        Ok(())
+        if errors.is_empty() {
+            Ok(())
+        } else {
+            Err(errors)
+        }
     }
 
     /// Place all ranged unknown positions at all possible locations as ambiguous modifications
@@ -249,44 +262,61 @@ impl Peptidoform<Linear> {
     pub(super) fn apply_ranged_unknown_position_modification(
         &mut self,
         ranged_unknown_position_modifications: &[(usize, usize, SimpleModification)],
-    ) -> Result<(), BoxedError<'static, BasicKind>> {
+    ) -> Result<(), Vec<BoxedError<'static, BasicKind>>> {
+        let mut errors = Vec::new();
         for (start, end, modification) in ranged_unknown_position_modifications {
             if !self.add_unknown_position_modification(
                 modification.clone(),
                 start..=end,
                 &super::MUPSettings::default(),
             ) {
-                return Err(BoxedError::new(
-                    BasicKind::Error,
-                    "Modification of unknown position on a range cannot be placed",
-                    "There is no position where this modification can be placed based on the placement rules in the database.",
-                    Context::show(modification.to_string()),
-                ));
+                combine_error(
+                    &mut errors,
+                    BoxedError::new(
+                        BasicKind::Error,
+                        "Modification of unknown position on a range cannot be placed",
+                        "There is no position where this modification can be placed based on the placement rules in the database.",
+                        Context::show(modification.to_string()),
+                    ),
+                    (),
+                );
             }
         }
-        Ok(())
+        if errors.is_empty() {
+            Ok(())
+        } else {
+            Err(errors)
+        }
     }
 }
 
 impl<T> Peptidoform<T> {
-    /// # Errors
-    /// If a modification rule is broken it returns an error.
-    pub fn enforce_modification_rules(&self) -> Result<(), BoxedError<'static, BasicKind>> {
+    /// If a modification rule is broken it returns a warning.
+    pub fn enforce_modification_rules(&self) -> Vec<BoxedError<'static, BasicKind>> {
+        let mut warnings = Vec::new();
         for (position, seq) in self.iter(..) {
-            seq.enforce_modification_rules(position.sequence_index, &Context::none())?;
+            combine_errors(
+                &mut warnings,
+                seq.enforce_modification_rules(position.sequence_index, &Context::none()),
+                (),
+            );
         }
-        Ok(())
+        warnings
     }
 
-    /// # Errors
-    /// If a modification rule is broken it returns an error.
+    /// If a modification rule is broken it returns a warning.
     pub(crate) fn enforce_modification_rules_with_context<'a>(
         &self,
         context: &Context<'a>,
-    ) -> Result<(), BoxedError<'a, BasicKind>> {
+    ) -> Vec<BoxedError<'a, BasicKind>> {
+        let mut warnings = Vec::new();
         for (position, seq) in self.iter(..) {
-            seq.enforce_modification_rules(position.sequence_index, context)?;
+            combine_errors(
+                &mut warnings,
+                seq.enforce_modification_rules(position.sequence_index, context),
+                (),
+            );
         }
-        Ok(())
+        warnings
     }
 }

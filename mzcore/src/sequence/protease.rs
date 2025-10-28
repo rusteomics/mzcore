@@ -368,6 +368,7 @@ mod tests {
     fn str_to_peptidoform(str_peptide: &str) -> Peptidoform<Linear> {
         Peptidoform::pro_forma(str_peptide, None)
             .unwrap()
+            .0
             .into_linear()
             .unwrap()
     }

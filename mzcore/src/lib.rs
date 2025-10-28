@@ -38,3 +38,7 @@ pub mod prelude {
 
 #[macro_use]
 extern crate uom;
+
+/// The result of a parser, contains the result and a list of warnings if it succeeded and only a list of errors if it failed.
+pub type ParserResult<'a, T, Kind> =
+    Result<(T, Vec<context_error::BoxedError<'a, Kind>>), Vec<context_error::BoxedError<'a, Kind>>>;

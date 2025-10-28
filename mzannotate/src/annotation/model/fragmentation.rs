@@ -506,6 +506,7 @@ pub(crate) fn get_all_sidechain_losses<Complexity>(
 fn side_chain_losses() {
     let peptide = Peptidoform::pro_forma("FGGGTKLELKR", None)
         .unwrap()
+        .0
         .into_simple_linear()
         .unwrap();
     assert_eq!(

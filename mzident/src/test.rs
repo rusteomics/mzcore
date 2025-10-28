@@ -123,15 +123,14 @@ pub(super) fn test_identified_peptidoform<Complexity, PeptidoformAvailability>(
             peptidoform.compound_peptidoform_ion().unwrap(),
         ));
     }
-    if let Err(err) = peptidoform.compound_peptidoform_ion().map_or(Ok(()), |p| {
+    if peptidoform.compound_peptidoform_ion().is_none_or(|p| {
         p.peptidoforms()
-            .try_for_each(Peptidoform::enforce_modification_rules)
+            .any(|p| !p.enforce_modification_rules().is_empty())
     }) {
         return Err(format!(
-            "Peptide {} contains misplaced modifications, sequence {}\n{}",
+            "Peptide {} contains misplaced modifications, sequence {}",
             peptidoform.id(),
             peptidoform.compound_peptidoform_ion().unwrap(),
-            err
         ));
     }
     #[cfg(feature = "mzannotate")]

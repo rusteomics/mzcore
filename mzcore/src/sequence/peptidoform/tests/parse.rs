@@ -9,14 +9,18 @@ use crate::{
     sequence::{
         AminoAcid, CompoundPeptidoformIon, CrossLinkName, GlobalModification, ModificationId,
         Peptidoform, PeptidoformIon, PlacementRule, Position, SimpleModificationInner,
-        peptidoform::parse::{global_modifications, parse_charge_state},
+        peptidoform::parse::{global_modifications, parse_charge_state_2_0},
     },
     system::da,
 };
 
 #[test]
 fn parse_global_modifications() {
-    let parse = |str: &str| global_modifications(str, 0, None).map_err(BoxedError::to_owned);
+    let parse = |str: &str| {
+        global_modifications(&Context::none(), str, 0..str.len(), None)
+            .map(|((a, b), c)| (a, b, c.into_iter().map(BoxedError::to_owned).collect()))
+            .map_err(move |_| ())
+    };
     assert_eq!(
         parse("<[+5]@D>"),
         Ok((
@@ -24,7 +28,8 @@ fn parse_global_modifications() {
             vec![GlobalModification::Fixed(
                 PlacementRule::AminoAcid(vec![AminoAcid::AsparticAcid], Position::Anywhere),
                 Arc::new(SimpleModificationInner::Mass(da(5.0).into()))
-            )]
+            )],
+            Vec::new()
         ))
     );
     assert_eq!(
@@ -34,7 +39,8 @@ fn parse_global_modifications() {
             vec![GlobalModification::Fixed(
                 PlacementRule::AminoAcid(vec![AminoAcid::AsparticAcid], Position::Anywhere),
                 Arc::new(SimpleModificationInner::Mass(da(5.0).into()))
-            )]
+            )],
+            Vec::new()
         ))
     );
     assert_eq!(
@@ -44,7 +50,8 @@ fn parse_global_modifications() {
             vec![GlobalModification::Fixed(
                 PlacementRule::AminoAcid(vec![AminoAcid::AsparticAcid], Position::AnyNTerm),
                 Arc::new(SimpleModificationInner::Mass(da(5.0).into()))
-            )]
+            )],
+            Vec::new()
         ))
     );
     assert_eq!(
@@ -54,7 +61,8 @@ fn parse_global_modifications() {
             vec![GlobalModification::Fixed(
                 PlacementRule::AminoAcid(vec![AminoAcid::AsparticAcid], Position::AnyNTerm),
                 Arc::new(SimpleModificationInner::Mass(da(5.0).into()))
-            )]
+            )],
+            Vec::new()
         ))
     );
     assert_eq!(
@@ -64,21 +72,24 @@ fn parse_global_modifications() {
             vec![GlobalModification::Fixed(
                 PlacementRule::AminoAcid(vec![AminoAcid::AsparticAcid], Position::AnyCTerm),
                 Arc::new(SimpleModificationInner::Mass(da(5.0).into()))
-            )]
+            )],
+            Vec::new()
         ))
     );
     assert_eq!(
         parse("<D>"),
         Ok((
             3,
-            vec![GlobalModification::Isotope(Element::H, NonZeroU16::new(2))]
+            vec![GlobalModification::Isotope(Element::H, NonZeroU16::new(2))],
+            Vec::new()
         ))
     );
     assert_eq!(
         parse("<12C>"),
         Ok((
             5,
-            vec![GlobalModification::Isotope(Element::C, NonZeroU16::new(12))]
+            vec![GlobalModification::Isotope(Element::C, NonZeroU16::new(12))],
+            Vec::new()
         ))
     );
     assert!(parse("<D").is_err());
@@ -100,8 +111,8 @@ fn parse_global_modifications() {
 #[test]
 fn charge_state_positive() {
     let parse = |str: &str| {
-        parse_charge_state(str, 0)
-            .map(|(len, res)| {
+        parse_charge_state_2_0(str, 0)
+            .map(|((len, res), _)| {
                 assert_eq!(
                     len,
                     str.len(),
@@ -109,7 +120,7 @@ fn charge_state_positive() {
                 );
                 res
             })
-            .map_err(BoxedError::to_owned)
+            .map_err(|_| ())
     };
     assert_eq!(
         parse("/1"),
@@ -194,7 +205,11 @@ fn charge_state_positive() {
 
 #[test]
 fn charge_state_negative() {
-    let parse = |str: &str| parse_charge_state(str, 0).map_err(BoxedError::to_owned);
+    let parse = |str: &str| {
+        parse_charge_state_2_0(str, 0)
+            .map(|(a, _)| a)
+            .map_err(|_| ())
+    };
     assert!(parse("/3[+Fe+]").is_err());
     assert!(parse("/3[+Fe]").is_err());
     assert!(parse("/3[+Fe 1]").is_err());
@@ -211,8 +226,8 @@ fn charge_state_negative() {
 
 #[test]
 fn parse_glycan() {
-    let glycan = Peptidoform::pro_forma("A[Glycan:Hex]", None).unwrap();
-    let spaces = Peptidoform::pro_forma("A[Glycan:    Hex    ]", None).unwrap();
+    let (glycan, _) = Peptidoform::pro_forma("A[Glycan:Hex]", None).unwrap();
+    let (spaces, _) = Peptidoform::pro_forma("A[Glycan:    Hex    ]", None).unwrap();
     assert_eq!(glycan.len(), 1);
     assert_eq!(spaces.len(), 1);
     assert_eq!(glycan, spaces);
@@ -224,10 +239,12 @@ fn parse_glycan() {
 fn parse_formula() {
     let peptide = Peptidoform::pro_forma("A[Formula:C6H10O5]", None)
         .unwrap()
+        .0
         .into_linear()
         .unwrap();
     let glycan = Peptidoform::pro_forma("A[Glycan:Hex]", None)
         .unwrap()
+        .0
         .into_linear()
         .unwrap();
     assert_eq!(peptide.len(), 1);
@@ -239,10 +256,12 @@ fn parse_formula() {
 fn parse_labile() {
     let with = Peptidoform::pro_forma("{Formula:C6H10O5}A", None)
         .unwrap()
+        .0
         .into_linear()
         .unwrap();
     let without = Peptidoform::pro_forma("A", None)
         .unwrap()
+        .0
         .into_linear()
         .unwrap();
     assert_eq!(with.len(), 1);
@@ -256,8 +275,8 @@ fn parse_labile() {
 
 #[test]
 fn parse_ambiguous_modification() {
-    let with = Peptidoform::pro_forma("A[Phospho#g0]A[#g0]", None).unwrap();
-    let without = Peptidoform::pro_forma("AA", None).unwrap();
+    let (with, _) = Peptidoform::pro_forma("A[Phospho#g0]A[#g0]", None).unwrap();
+    let (without, _) = Peptidoform::pro_forma("AA", None).unwrap();
     assert_eq!(with.len(), 2);
     assert_eq!(without.len(), 2);
     assert_eq!(with[0].modifications.len(), 1);
@@ -268,12 +287,14 @@ fn parse_ambiguous_modification() {
     assert_eq!(
         Peptidoform::pro_forma("A[+12#g0]A[#g0]", None)
             .unwrap()
+            .0
             .to_string(),
         "A[+12#g0]A[#g0]".to_string()
     );
     assert_eq!(
         Peptidoform::pro_forma("A[#g0]A[+12#g0]", None)
             .unwrap()
+            .0
             .to_string(),
         "A[#g0]A[+12#g0]".to_string()
     );
@@ -282,20 +303,20 @@ fn parse_ambiguous_modification() {
 #[test]
 fn parse_terminal_ambiguous_modification() {
     // N-term
-    let unplaced_n = Peptidoform::pro_forma("[deamidated]?FAAQAA", None).unwrap();
+    let (unplaced_n, _) = Peptidoform::pro_forma("[deamidated]?FAAQAA", None).unwrap();
     assert!(unplaced_n.get_n_term()[0].is_ambiguous());
     assert_eq!(unplaced_n.sequence()[3].modifications.len(), 1);
     assert!(unplaced_n.sequence()[3].modifications[0].is_ambiguous());
-    let placed_n = Peptidoform::pro_forma("[deamidated#u1]-FAAQ[#u1]AA", None).unwrap();
+    let (placed_n, _) = Peptidoform::pro_forma("[deamidated#u1]-FAAQ[#u1]AA", None).unwrap();
     assert!(placed_n.get_n_term()[0].is_ambiguous());
     assert_eq!(placed_n.sequence()[3].modifications.len(), 1);
     assert!(placed_n.sequence()[3].modifications[0].is_ambiguous());
     // C-term
-    let unplaced_c = Peptidoform::pro_forma("[oxidation]?AHAMTEG", None).unwrap();
+    let (unplaced_c, _) = Peptidoform::pro_forma("[oxidation]?AHAMTEG", None).unwrap();
     assert!(unplaced_c.get_c_term()[0].is_ambiguous());
     assert_eq!(unplaced_c.sequence()[3].modifications.len(), 1);
     assert!(unplaced_c.sequence()[3].modifications[0].is_ambiguous());
-    let placed_c = Peptidoform::pro_forma("AHAM[oxidation#u1]TEG-[#u1]", None).unwrap();
+    let (placed_c, _) = Peptidoform::pro_forma("AHAM[oxidation#u1]TEG-[#u1]", None).unwrap();
     assert!(placed_c.get_c_term()[0].is_ambiguous());
     assert_eq!(placed_c.sequence()[3].modifications.len(), 1);
     assert!(placed_c.sequence()[3].modifications[0].is_ambiguous());
@@ -305,10 +326,12 @@ fn parse_terminal_ambiguous_modification() {
 fn parse_ambiguous_aminoacid() {
     let with = Peptidoform::pro_forma("(?AA)C(?A)(?A)", None)
         .unwrap()
+        .0
         .into_linear()
         .unwrap();
     let without = Peptidoform::pro_forma("AACAA", None)
         .unwrap()
+        .0
         .into_linear()
         .unwrap();
     assert_eq!(with.len(), 5);
@@ -323,6 +346,7 @@ fn parse_ambiguous_aminoacid() {
 fn parse_hard_tags() {
     let peptide = Peptidoform::pro_forma("A[Formula:C6H10O5|INFO:hello world 🦀]", None)
         .unwrap()
+        .0
         .into_linear()
         .unwrap();
     let glycan = Peptidoform::pro_forma(
@@ -330,6 +354,7 @@ fn parse_hard_tags() {
         None,
     )
     .unwrap()
+    .0
     .into_linear()
     .unwrap();
     assert_eq!(peptide.len(), 1);
@@ -341,10 +366,12 @@ fn parse_hard_tags() {
 fn parse_global() {
     let deuterium = Peptidoform::pro_forma("<D>A", None)
         .unwrap()
+        .0
         .into_linear()
         .unwrap();
     let nitrogen_15 = Peptidoform::pro_forma("<15N>A", None)
         .unwrap()
+        .0
         .into_linear()
         .unwrap();
     assert_eq!(deuterium.len(), 1);
@@ -362,8 +389,8 @@ fn parse_global() {
 
 #[test]
 fn parse_chimeric() {
-    let dimeric = CompoundPeptidoformIon::pro_forma("A+AA", None).unwrap();
-    let trimeric = dbg!(CompoundPeptidoformIon::pro_forma("A+AA-[+2]+AAA", None).unwrap());
+    let (dimeric, _) = CompoundPeptidoformIon::pro_forma("A+AA", None).unwrap();
+    let (trimeric, _) = dbg!(CompoundPeptidoformIon::pro_forma("A+AA-[+2]+AAA", None).unwrap());
     assert_eq!(dimeric.peptidoform_ions().len(), 2);
     assert_eq!(dimeric.peptidoform_ions()[0].peptidoforms()[0].len(), 1);
     assert_eq!(dimeric.peptidoform_ions()[1].peptidoforms()[0].len(), 2);
@@ -417,18 +444,18 @@ fn parse_custom() {
     ));
     assert!(peptide.is_ok());
     assert_eq!(
-        peptide.as_ref().unwrap().to_string(),
+        peptide.as_ref().unwrap().0.to_string(),
         "A[Formula:U1|INFO:Custom:WEEE]"
     );
     assert_eq!(
-        peptide.unwrap().formulas(),
+        peptide.unwrap().0.formulas(),
         molecular_formula!(C 3 H 7 N 1 O 2 U 1).into()
     );
 }
 
 #[test]
 fn parse_xl_intra() {
-    let peptide = PeptidoformIon::pro_forma("A[XLMOD:02001#XLTEST]A[#XLTEST]", None).unwrap();
+    let (peptide, _) = PeptidoformIon::pro_forma("A[XLMOD:02001#XLTEST]A[#XLTEST]", None).unwrap();
     println!("{peptide}");
     //dbg!(&singular.sequence[0].modifications);
     assert_eq!(
@@ -443,7 +470,8 @@ fn parse_xl_intra() {
 
 #[test]
 fn parse_xl_inter() {
-    let peptide = PeptidoformIon::pro_forma("A[XLMOD:02001#XLTEST]//A[#XLTEST]", None).unwrap();
+    let (peptide, _) =
+        PeptidoformIon::pro_forma("A[XLMOD:02001#XLTEST]//A[#XLTEST]", None).unwrap();
     //dbg!(&singular.sequence[0].modifications);
     assert_eq!(
         peptide.formulas().to_vec()[0],
@@ -458,7 +486,7 @@ fn parse_xl_inter() {
 
 #[test]
 fn parse_adduct_ions_01() {
-    let peptide = CompoundPeptidoformIon::pro_forma("A/2[2Na+]+A", None).unwrap();
+    let (peptide, _) = CompoundPeptidoformIon::pro_forma("A/2[2Na+]+A", None).unwrap();
     assert_eq!(peptide.peptidoform_ions().len(), 2);
     assert_eq!(
         peptide.peptidoform_ions()[0].peptidoforms()[0]
@@ -477,10 +505,12 @@ fn parse_adduct_ions_01() {
 fn hydrolysed_xl() {
     let peptide_xl = Peptidoform::pro_forma("EMEVTK[XLMOD:02001]SESPEK", None)
         .unwrap()
+        .0
         .into_unambiguous()
         .unwrap();
     let peptide_mod = Peptidoform::pro_forma("EMEVTK[Formula:C8H12O3]SESPEK", None)
         .unwrap()
+        .0
         .into_unambiguous()
         .unwrap();
 
@@ -507,7 +537,7 @@ fn ambiguous_aas() {
 #[test]
 fn ambiguous_mods() {
     let sequence = "[U:Oxidation#u0]?FTSPFVLASTNAGSINAPTVSDSRALARRFHFDM[#u0]NIEVISM[#u0]YSQNGKINM[#u0]PM[#u0]SVKTCDDE";
-    let parsed = Peptidoform::pro_forma(sequence, None).unwrap();
+    let (parsed, _) = Peptidoform::pro_forma(sequence, None).unwrap();
     assert_eq!(sequence, parsed.to_string());
     assert_eq!(parsed.get_ambiguous_modifications().len(), 1);
 }

@@ -12,16 +12,37 @@ macro_rules! parse_test {
     ($case:literal, $name:ident) => {
         #[test]
         fn $name() {
+            use itertools::Itertools;
             let res = $crate::sequence::CompoundPeptidoformIon::pro_forma($case, None);
             let upper = $case.to_ascii_uppercase();
             let lower = $case.to_ascii_lowercase();
             let res_upper = $crate::sequence::CompoundPeptidoformIon::pro_forma(&upper, None);
             let res_lower = $crate::sequence::CompoundPeptidoformIon::pro_forma(&lower, None);
             println!("{}", $case);
-            assert!(res.is_ok(), "{}", res.err().unwrap());
+            assert!(res.is_ok(), "{}", res.err().unwrap().into_iter().join("\n"));
             assert_eq!(res, res_upper);
             assert_eq!(res, res_lower);
-            let back = res.as_ref().unwrap().to_string();
+            let back = res.as_ref().unwrap().0.to_string();
+            let res_back = $crate::sequence::CompoundPeptidoformIon::pro_forma(&back, None);
+            assert_eq!(res, res_back, "{} != {back}", $case);
+        }
+    };
+    (ignore $case:literal, $name:ident) => {
+        #[test]
+        #[allow(clippy::ignore_without_reason)]
+        #[ignore]
+        fn $name() {
+            use itertools::Itertools;
+            let res = $crate::sequence::CompoundPeptidoformIon::pro_forma($case, None);
+            let upper = $case.to_ascii_uppercase();
+            let lower = $case.to_ascii_lowercase();
+            let res_upper = $crate::sequence::CompoundPeptidoformIon::pro_forma(&upper, None);
+            let res_lower = $crate::sequence::CompoundPeptidoformIon::pro_forma(&lower, None);
+            println!("{}", $case);
+            assert!(res.is_ok(), "{}", res.err().unwrap().into_iter().join("\n"));
+            assert_eq!(res, res_upper);
+            assert_eq!(res, res_lower);
+            let back = res.as_ref().unwrap().0.to_string();
             let res_back = $crate::sequence::CompoundPeptidoformIon::pro_forma(&back, None);
             assert_eq!(res, res_back, "{} != {back}", $case);
         }
@@ -29,10 +50,11 @@ macro_rules! parse_test {
     (casing_specific $case:literal, $name:ident) => {
         #[test]
         fn $name() {
+            use itertools::Itertools;
             let res = $crate::sequence::CompoundPeptidoformIon::pro_forma($case, None);
             println!("{}", $case);
-            assert!(res.is_ok(), "{}", res.err().unwrap());
-            let back = res.as_ref().unwrap().to_string();
+            assert!(res.is_ok(), "{}", res.err().unwrap().into_iter().join("\n"));
+            let back = res.as_ref().unwrap().0.to_string();
             let res_back = $crate::sequence::CompoundPeptidoformIon::pro_forma(&back, None);
             assert_eq!(res, res_back, "{} != {back}", $case);
         }

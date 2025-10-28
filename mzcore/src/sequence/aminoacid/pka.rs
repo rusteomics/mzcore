@@ -267,6 +267,7 @@ mod tests {
     fn create_peptidoform(aas: &str) -> Peptidoform<SemiAmbiguous> {
         Peptidoform::pro_forma(aas, None)
             .unwrap()
+            .0
             .into_semi_ambiguous()
             .unwrap()
     }

@@ -306,11 +306,13 @@ impl Attribute {
         ))
     }
 
-    /// Parse an attribute from a string. Returns the group id (or None) and the attribute.
+    /// Parse an attribute from a string. Returns the group id (or None), the attribute, and the byte range of the value.
     /// # Errors
     /// If there is no valid attribute at this string.
     // TODO: this would be nice to have as an error with context.
-    pub fn parse(s: &str) -> Result<(Option<u32>, Self), AttributeParseError> {
+    pub fn parse(
+        s: &str,
+    ) -> Result<(Option<u32>, Self, std::ops::Range<usize>), AttributeParseError> {
         if let Some(s) = s.strip_prefix('[') {
             if let Some((group_id, rest)) = s.split_once(']') {
                 let group_id = match group_id.parse::<u32>() {
@@ -321,7 +323,11 @@ impl Attribute {
                     let term: Term = name.parse().map_err(AttributeParseError::TermParserError)?;
                     let value: AttributeValue =
                         val.parse().map_err(AttributeParseError::ValueParseError)?;
-                    Ok((Some(group_id), Self::new(term, value)))
+                    Ok((
+                        Some(group_id),
+                        Self::new(term, value),
+                        s.len() - val.len()..s.len(),
+                    ))
                 } else {
                     Err(AttributeParseError::MissingValueSeparator)
                 }
@@ -332,7 +338,7 @@ impl Attribute {
             let term: Term = name.parse().map_err(AttributeParseError::TermParserError)?;
             let value: AttributeValue =
                 val.parse().map_err(AttributeParseError::ValueParseError)?;
-            Ok((None, Self::new(term, value)))
+            Ok((None, Self::new(term, value), s.len() - val.len()..s.len()))
         } else {
             Err(AttributeParseError::MissingValueSeparator)
         }

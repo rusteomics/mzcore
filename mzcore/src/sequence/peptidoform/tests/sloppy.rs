@@ -63,6 +63,7 @@ fn sloppy_msfragger() {
         .unwrap(),
         Peptidoform::pro_forma("[211]-GC[779]RQSSEEK", None)
             .unwrap()
+            .0
             .into_semi_ambiguous()
             .unwrap()
     );

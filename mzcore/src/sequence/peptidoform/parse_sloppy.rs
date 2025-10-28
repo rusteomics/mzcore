@@ -40,22 +40,22 @@ impl Peptidoform<SemiAmbiguous> {
     /// If both parsers fail. It returns an error that combines the feedback from both parsers.
     pub fn pro_forma_or_sloppy<'a>(
         line: &'a str,
-        location: std::ops::Range<usize>,
+        range: std::ops::Range<usize>,
         custom_database: Option<&CustomDatabase>,
         parameters: &SloppyParsingParameters,
     ) -> Result<Self, BoxedError<'a, BasicKind>> {
-        Peptidoform::pro_forma(&line[location.clone()], custom_database).and_then(|p| p.into_semi_ambiguous().ok_or_else(||
+        Peptidoform::pro_forma(&line[range.clone()], custom_database).map(|(a, _)| a).map_err(|errs| BoxedError::new(BasicKind::Error, "Invalid ProForma definition", "The string could not be parsed as a ProForma definition", Context::line_range(None, line, range.clone())).add_underlying_errors(errs)).and_then(|p| p.into_semi_ambiguous().ok_or_else(||
             BoxedError::new(BasicKind::Error,
                 "Peptidoform too complex",
                 "A peptidoform as used here should not contain any complex parts of the ProForma specification, only amino acids and simple placed modifications are allowed",
-                Context::line_range(None, line, location.clone()),
+                Context::line_range(None, line, range.clone()),
             ))).or_else(|pro_forma_error|
-                Self::sloppy_pro_forma(line, location.clone(), custom_database, parameters)
+                Self::sloppy_pro_forma(line, range.clone(), custom_database, parameters)
                 .map_err(|sloppy_error|
                     BoxedError::new(BasicKind::Error,
                         "Invalid peptidoform",
                         "The sequence could not be parsed as a ProForma nor as a more loosly defined peptidoform, see the underlying errors for details",
-                        Context::line_range(None, line, location.clone())).add_underlying_errors(vec![pro_forma_error, sloppy_error])))
+                        Context::line_range(None, line, range.clone())).add_underlying_errors(vec![pro_forma_error, sloppy_error])))
     }
 
     /// Read sloppy ProForma like sequences. Defined by the use of square or round braces to indicate
@@ -246,12 +246,21 @@ impl Peptidoform<SemiAmbiguous> {
                 Context::line(None, line, location.start, location.len()),
             ));
         }
-        peptide.enforce_modification_rules_with_context(&Context::line(
+        let warnings = peptide.enforce_modification_rules_with_context(&Context::line(
             None,
             line,
             location.start,
             location.len(),
-        ))?;
+        ));
+        if !warnings.is_empty() {
+            return Err(BoxedError::new(
+                BasicKind::Error,
+                "Invalid modifications",
+                "Modifications are only allowed on the places as defined in the database",
+                Context::line(None, line, location.start, location.len()),
+            )
+            .add_underlying_errors(warnings));
+        }
         Ok(
             if let Some(modifications) = parameters.replace_mass_modifications.clone() {
                 PeptideModificationSearch::in_modifications(modifications)

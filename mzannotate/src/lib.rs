@@ -42,6 +42,7 @@ mod test {
     fn simple_fragments() {
         let peptide = Peptidoform::pro_forma("WFWF", None)
             .unwrap()
+            .0
             .into_linear()
             .unwrap();
         let fragments = peptide.generate_theoretical_fragments(

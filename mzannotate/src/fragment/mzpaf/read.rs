@@ -32,7 +32,7 @@ impl Fragment {
         custom_database: Option<&CustomDatabase>,
         interpretation: &[(u32, AnalyteTarget)],
     ) -> Result<Vec<Self>, BoxedError<'a, BasicKind>> {
-        Self::mz_paf_substring(
+        Self::mz_paf_inner(
             &Context::none().lines(0, line),
             line,
             0..line.len(),
@@ -47,7 +47,7 @@ impl Fragment {
     ///
     /// # Errors
     /// When the annotation does not follow the format.
-    pub(crate) fn mz_paf_substring<'a>(
+    pub(crate) fn mz_paf_inner<'a>(
         base_context: &Context<'a>,
         line: &'a str,
         range: Range<usize>,
@@ -526,8 +526,8 @@ fn parse_ion<'a>(
                         let interpretation = Peptidoform::pro_forma(
                             &line[range.start_index() + 1..location],
                             custom_database,
-                        );
-                        interpretation.and_then(|i| {
+                        ).map_err(|errs| BoxedError::new(BasicKind::Error, "Invalid ProForma definition", "The string could not be parsed as a ProForma definition", Context::line_range(None, line, range.clone())).add_underlying_errors(errs));
+                        interpretation.and_then(|(i, _)| {
                             i.into_semi_ambiguous()
                                 .ok_or_else(|| BoxedError::new(BasicKind::Error,
                                     "Invalid mzPAF interpretation",
@@ -1492,7 +1492,7 @@ fn neutral_loss() {
 #[test]
 #[allow(clippy::missing_panics_doc)]
 fn parse_correctly() {
-    let pep = [(1_u32, AnalyteTarget::PeptidoformIon(mzcore::sequence::PeptidoformIon::pro_forma("AAAAAAAAAA", None).unwrap()))];
+    let pep = [(1_u32, AnalyteTarget::PeptidoformIon(mzcore::sequence::PeptidoformIon::pro_forma("AAAAAAAAAA", None).unwrap().0))];
     let a = "y8^2/-0.0017";
     let (_, parse_a) = parse_annotation(&Context::none(), a, 0..a.len(), None).unwrap();
     assert!(!parse_a.auxiliary);

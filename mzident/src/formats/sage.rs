@@ -50,7 +50,7 @@ format_family!(
         ms2_intensity: f64, |location: Location, _| location.parse(NUMBER_ERROR);
         scan: SpectrumId, |location: Location, _|Ok(SpectrumId::Native(location.get_string()));
         peptide_q: f64, |location: Location, _| location.parse(NUMBER_ERROR);
-        peptide: Peptidoform<SemiAmbiguous>, |location: Location, custom_database: Option<&CustomDatabase>| Peptidoform::pro_forma(location.as_str(), custom_database).map_err(BoxedError::to_owned).map(|p|p.into_semi_ambiguous().unwrap());
+        peptide: Peptidoform<SemiAmbiguous>, |location: Location, custom_database: Option<&CustomDatabase>| Peptidoform::pro_forma_inner(&location.context(), location.full_line(), location.location.clone(), custom_database).map_err(|errs| BoxedError::new(BasicKind::Error, "Invalid ProForma definition", "The string could not be parsed as a ProForma definition", location.context()).add_underlying_errors(errs)).map_err(BoxedError::to_owned).map(|(p, _)| p.into_semi_ambiguous().unwrap());
         poisson: f64, |location: Location, _| location.parse(NUMBER_ERROR);
         posterior_error: f64, |location: Location, _| location.parse(NUMBER_ERROR);
         predicted_mobility: f64, |location: Location, _| location.parse(NUMBER_ERROR);

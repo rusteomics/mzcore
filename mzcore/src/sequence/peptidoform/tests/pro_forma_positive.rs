@@ -3,7 +3,7 @@ use crate::parse_test;
 parse_test!("AA", positive_example_1);
 parse_test!("A[+1]", positive_example_2);
 parse_test!("AA[+1]", positive_example_3);
-//parse_test!("A(AAAA)[+1][+2]", positive_example_4);
+parse_test!(ignore "A(AAAA)[+1][+2]", positive_example_4);
 parse_test!("UWAKJDNLASNOIJPojkjjdakjn[U:Oxidation]", positive_example_5);
 parse_test!("[+1]-A[+1]-[+1]", positive_example_6);
 parse_test!("AA+AA", positive_example_7);
@@ -42,12 +42,12 @@ parse_test!(
     "<[S-carboxamidomethyl-L-cysteine]@C>ATPEILTCNSIGCLK",
     positive_example_21
 );
-//parse_test!("<[MOD:01090]@C>ATPEILTCNSIGCLK", positive_example_22);
-//parse_test!("[Phospho]?EM[Oxidation]EVTSESPEK", positive_example_23);
-//parse_test!(
-//    "[Phospho][Phospho]?[Acetyl]-EM[Oxidation]EVTSESPEK",
-//    positive_example_24
-//);
+parse_test!("<[MOD:01090]@C>ATPEILTCNSIGCLK", positive_example_22);
+parse_test!("[Phospho]?EM[Oxidation]EVTSESPEK", positive_example_23);
+parse_test!(ignore
+    "[Phospho][Phospho]?[Acetyl]-EM[Oxidation]EVTSESPEK",
+    positive_example_24
+);
 parse_test!(
     "EM[Oxidation]EVT[#g1]S[#g1]ES[Phospho#g1]PEK",
     positive_example_25
@@ -56,15 +56,15 @@ parse_test!(
     "EM[Oxidation]EVT[#g1(0.01)]S[#g1(0.09)]ES[Phospho#g1(0.90)]PEK",
     positive_example_26
 );
-// parse_test!(
-//     "[Phospho#s1]?EM[Oxidation]EVT[#s1(0.01)]S[#s1(0.90)]ES[#s1(0.90)]PEK",
-//     positive_example_27
-// );
-// parse_test!("PROT(EOSFORMS)[+19.0523]ISK", positive_example_28);
-// parse_test!(
-//     "PROT(EOC[Carbamidomethyl]FORMS)[+19.0523]ISK",
-//     positive_example_29
-// );
+parse_test!(
+    "[Phospho#s1]?EM[Oxidation]EVT[#s1(0.01)]S[#s1(0.90)]ES[#s1(0.90)]PEK",
+    positive_example_27
+);
+parse_test!("PROT(EOSFORMS)[+19.0523]ISK", positive_example_28);
+parse_test!(
+    "PROT(EOC[Carbamidomethyl]FORMS)[+19.0523]ISK",
+    positive_example_29
+);
 parse_test!(casing_specific "SEQUEN[Formula:C12H20O2]CE", positive_example_30);
 parse_test!(casing_specific "SEQUEN[Formula:HN-1O2]CE", positive_example_31);
 parse_test!(casing_specific "SEQUEN[Formula:[13C2][12C-2]H2N]CE", positive_example_32);
@@ -75,10 +75,10 @@ parse_test!(
     "SEK[XLMOD:02001#XL1]UENCE//EMEVTK[XLMOD:02001#XL1]SESPEK",
     positive_example_36
 );
-// parse_test!(
-//     "ETFGD[MOD:00093#BRANCH]//R[#BRANCH]ATER",
-//     positive_example_37
-// ); This modification cannot be placed on N termini (in the database), so invalid
+parse_test!(ignore
+    "ETFGD[MOD:00093#BRANCH]//R[#BRANCH]ATER",
+    positive_example_37
+); // This modification cannot be placed on N termini (in the database), so invalid
 parse_test!(
     "(?DQ)NGTWEM[Oxidation]ESNENFEGYM[Oxidation]K",
     positive_example_38
@@ -194,10 +194,10 @@ parse_test!(
 );
 parse_test!("EVTSEKC[UNIMOD:374#XL1]LEMSC[#XL1]EFD", positive_example_83);
 parse_test!("EVTSEKC[Dehydro#XL1]LEMSC[#XL1]EFD", positive_example_84);
-// parse_test!(
-//     "ETFGD[MOD:00093#BRANCH]//R[#BRANCH]ATER",
-//     positive_example_85
-// ); This modification cannot be placed on N termini (in the database), so invalid
+parse_test!(ignore
+    "ETFGD[MOD:00093#BRANCH]//R[#BRANCH]ATER",
+    positive_example_85
+); // This modification cannot be placed on N termini (in the database), so warning
 parse_test!(
     "AVTKYTSSK-[MOD:00134#BRANCH]//AGKQLEDGRTLSDYNIQKESTLHLVLRLRG-[#BRANCH]",
     positive_example_86
@@ -239,37 +239,40 @@ parse_test!(
     positive_example_104
 );
 parse_test!("{Glycan:Hex}{Glycan:NeuAc}EMEVNESPEK", positive_example_105);
-// parse_test!("[Phospho]?EM[Oxidation]EVTSESPEK", positive_example_106);
-// parse_test!(
-//     "[Phospho][Phospho]?[Acetyl]-EM[Oxidation]EVTSESPEK",
-//     positive_example_107
-// );
-// parse_test!(
-//     "[Phospho]^2?[Acetyl]-EM[Oxidation]EVTSESPEK",
-//     positive_example_108
-// );
-// parse_test!(
-//     "[Phospho]^2?[Acetyl]-EM[Oxidation]EVTSESPEK",
-//     positive_example_109
-// );
+parse_test!("[Phospho]?EM[Oxidation]EVTSESPEK", positive_example_106);
+parse_test!(ignore
+    "[Phospho][Phospho]?[Acetyl]-EM[Oxidation]EVTSESPEK",
+    positive_example_107
+);
+parse_test!(ignore
+    "[Phospho]^2?[Acetyl]-EM[Oxidation]EVTSESPEK",
+    positive_example_108
+);
+parse_test!(ignore
+    "[Phospho]^2?[Acetyl]-EM[Oxidation]EVTSESPEK",
+    positive_example_109
+);
 parse_test!(
     "EM[Oxidation]EVT[#g1]S[#g1]ES[Phospho#g1]PEK",
     positive_example_110
 );
-// parse_test!("PRT(ESFRMS)[+19.0523]ISK", positive_example_111);
-// parse_test!(
-//     "PRT(EC[Carbamidomethyl]FRMS)[+19.0523]ISK",
-//     positive_example_112
-// );
+parse_test!("PRT(ESFRMS)[+19.0523]ISK", positive_example_111);
+parse_test!(
+    "PRT(EC[Carbamidomethyl]FRMS)[+19.0523]ISK",
+    positive_example_112
+);
 parse_test!(
     "EM[Oxidation]EVT[#g1(0.01)]S[#g1(0.09)]ES[Phospho#g1(0.90)]PEK",
     positive_example_113
 );
-// parse_test!(
-//     "[Phospho#s1]?EM[Oxidation]EVT[#s1(0.01)]S[#s1(0.09)]ES[#s1(0.90)]PEK",
-//     positive_example_114
-// );
-// parse_test!("MPGLVDSNPAPPESQEKKPLK(PCCACPETKKARDACIIEKGEEHCGHLIEAHKECMRALGFKI)[Oxidation][Oxidation][half cystine][half cystine]", positive_example_115);
+parse_test!(
+    "[Phospho#s1]?EM[Oxidation]EVT[#s1(0.01)]S[#s1(0.09)]ES[#s1(0.90)]PEK",
+    positive_example_114
+);
+parse_test!(ignore
+    "MPGLVDSNPAPPESQEKKPLK(PCCACPETKKARDACIIEKGEEHCGHLIEAHKECMRALGFKI)[Oxidation][Oxidation][half cystine][half cystine]",
+    positive_example_115
+);
 parse_test!("<13C>ATPEILTVNSIGQLK", positive_example_116);
 parse_test!("<15N>ATPEILTVNSIGQLK", positive_example_117);
 parse_test!("<D>ATPEILTVNSIGQLK", positive_example_118);
@@ -278,16 +281,16 @@ parse_test!(
     "<[S-carboxamidomethyl-L-cysteine]@C>ATPEILTCNSIGCLK",
     positive_example_120
 );
-// parse_test!("<[MOD:01090]@C>ATPEILTCNSIGCLK", positive_example_121);
+parse_test!("<[MOD:01090]@C>ATPEILTCNSIGCLK", positive_example_121);
 parse_test!("<[Oxidation]@C,M>MTPEILTCNSIGCLK", positive_example_122);
-// parse_test!(
-//     "<[MOD:01090]@C>[Phospho]?EM[Oxidation]EVTSECSPEK",
-//     positive_example_123
-// );
-// parse_test!(
-//     "<[MOD:01090]@C>[Acetyl]-EM[Oxidation]EVTSECSPEK",
-//     positive_example_124
-// );
+parse_test!(ignore
+    "<[MOD:01090]@C>[Phospho]?EM[Oxidation]EVTSECSPEK",
+    positive_example_123
+);
+parse_test!(
+    "<[MOD:01090]@C>[Acetyl]-EM[Oxidation]EVTSECSPEK",
+    positive_example_124
+);
 parse_test!(
     "(?DQ)NGTWEM[Oxidation]ESNENFEGYM[Oxidation]K",
     positive_example_125
@@ -333,12 +336,13 @@ parse_test!(
 parse_test!(casing_specific "EMEVEESPEK/3[+2Na+,+H+]", positive_example_143);
 parse_test!(casing_specific "EMEVEESPEK/1[+2Na+,-H+]", positive_example_144);
 parse_test!(casing_specific "EMEVEESPEK/-2[2I-]", positive_example_145);
-// parse_test!("EMEVEESPEK/-1[+e-]", positive_example_146);
+parse_test!(ignore "EMEVEESPEK/-1[+e-]", positive_example_146);
 parse_test!("EMEVEESPEK/2+ELVISLIVER/3", positive_example_147);
 parse_test!("AA(?AA)", positive_example_148);
 parse_test!("AA(?AA)AA", positive_example_149);
-// parse_test!("[dehydro]^3?[gln->pyro-glu]-QSC", positive_example_150);
+parse_test!(ignore "[dehydro]^3?[gln->pyro-glu]-QSC", positive_example_150);
 parse_test!("[deamidated#1]-FEEAQ[#1]A", positive_example_151);
 parse_test!("[#1]-FEEAQ[deamidated#1]A", positive_example_152);
 parse_test!("AHAM[oxidation#1]TEG-[#1]", positive_example_153);
 parse_test!("AHAM[#1]TEG-[oxidation#1]", positive_example_154);
+parse_test!("<[Oxidation]@M><[Deamidated]@N>AAMNM", positive_example_155);

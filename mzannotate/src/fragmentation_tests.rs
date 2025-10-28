@@ -51,6 +51,7 @@ fn triple_a() {
         theoretical_fragments,
         Peptidoform::pro_forma("AAA", None)
             .unwrap()
+            .0
             .into_linear()
             .unwrap(),
         &model,
@@ -98,7 +99,9 @@ fn with_modifications() {
         .z(PrimaryIonSeries::default().variants(vec![0, 1]));
     test(
         theoretical_fragments,
-        Peptidoform::pro_forma("[Gln->pyro-Glu]-QAAM[Oxidation]", None).unwrap(),
+        Peptidoform::pro_forma("[Gln->pyro-Glu]-QAAM[Oxidation]", None)
+            .unwrap()
+            .0,
         &model,
         1,
         true,
@@ -186,6 +189,7 @@ fn higher_charges() {
         theoretical_fragments,
         Peptidoform::pro_forma("ACD", None)
             .unwrap()
+            .0
             .into_linear()
             .unwrap(),
         &model,
@@ -347,6 +351,7 @@ fn all_aminoacids() {
         theoretical_fragments,
         Peptidoform::pro_forma("ARNDCQEGHILKMFPSTWYV", None)
             .unwrap()
+            .0
             .into_linear()
             .unwrap(),
         &model,
@@ -430,6 +435,7 @@ fn glycan_structure_fragmentation() {
         theoretical_fragments,
         Peptidoform::pro_forma("MVSHHN[GNO:G43728NL]LTTGATLINEQWLLTTAK", None)
             .unwrap()
+            .0
             .into_linear()
             .unwrap(),
         &model,
@@ -461,6 +467,7 @@ fn glycan_structure_fragmentation_2() {
         theoretical_fragments,
         Peptidoform::pro_forma("GLTFQQN[GNO:G75079FY]ASSMC[Carbamidomethyl]VPDQDTAIR", None)
             .unwrap()
+            .0
             .into_linear()
             .unwrap(),
         &model,
@@ -484,6 +491,7 @@ fn glycan_structure_fragmentation_3() {
         theoretical_fragments,
         Peptidoform::pro_forma("HSHNN[GNO:G01020XL]NSSDLHPHK", None)
             .unwrap()
+            .0
             .into_linear()
             .unwrap(),
         model,
@@ -566,6 +574,7 @@ fn glycan_composition_fragmentation() {
         theoretical_fragments,
         Peptidoform::pro_forma("MVSHHN[Glycan:N4H5S1]LTTGATLINEQWLLTTAK", None)
             .unwrap()
+            .0
             .into_linear()
             .unwrap(),
         &model,
@@ -640,7 +649,7 @@ fn intra_link() {
         (619.2432264279929, "b4+"),
         (732.327290402381, "b5+"),
     ];
-    let peptide =
+    let (peptide, _) =
         CompoundPeptidoformIon::pro_forma("K[C:DSSO#XL1]GK[#XL1]FLK", Some(&custom_database()))
             .unwrap();
     let model = FragmentationModel::none()
@@ -668,7 +677,7 @@ fn intra_link() {
 
 #[test]
 fn ensure_no_double_xl_labels_breaking() {
-    let peptide =
+    let (peptide, _) =
         CompoundPeptidoformIon::pro_forma("EVQLVESGGGLVQPGGSLRLSC[C:Disulfide#XL1]AASGFNIKDTYIHWVRQAPGKGLEWVARIYPTNGYTRYADSVKGRFTISADTSKNTAYLQMNSLRAEDTAVYYC[#XL1]SRWGGDGFYAMDYWGQGTLVTVSSASTKGPSVFPLAPSSKSTSGGTAALGC[C:Disulfide#XL2]LVKDYFPEPVTVSWNSGALTSGVHTFPAVLQSSGLYSLSSVVTVPSSSLGTQTYIC[#XL2]NVNHKPSNTKVDKKVEPKSC[C:Disulfide#XL3]DKT//DIQMTQSPSSLSASVGDRVTITC[C:Disulfide#XL4]RASQDVNTAVAWYQQKPGKAPKLLIYSASFLYSGVPSRFSGSRSGTDFTLTISSLQPEDFATYYC[#XL4]QQHYTTPPTFGQGTKVEIKRTVAAPSVFIFPPSDEQLKSGTASVVC[C:Disulfide#XL5]LLNNFYPREAKVQWKVDNALQSGNSQESVTEQDSKDSTYSLSSTLTLSKADYEKHKVYAC[#XL5]EVTHQGLSSPVTKSFNRGEC[#XL3]", Some(&custom_database()))
             .unwrap();
     let model = FragmentationModel::none()
@@ -700,7 +709,7 @@ fn ensure_no_double_xl_labels_breaking() {
 
 #[test]
 fn ensure_no_double_xl_labels_non_breaking() {
-    let peptide =
+    let (peptide, _) =
         CompoundPeptidoformIon::pro_forma("EVQLVESGGGLVQPGGSLRLSC[C:Disulfide#XL1]AASGFNIKDTYIHWVRQAPGKGLEWVARIYPTNGYTRYADSVKGRFTISADTSKNTAYLQMNSLRAEDTAVYYC[#XL1]SRWGGDGFYAMDYWGQGTLVTVSSASTKGPSVFPLAPSSKSTSGGTAALGC[C:Disulfide#XL2]LVKDYFPEPVTVSWNSGALTSGVHTFPAVLQSSGLYSLSSVVTVPSSSLGTQTYIC[#XL2]NVNHKPSNTKVDKKVEPKSC[C:Disulfide#XL3]DKT//DIQMTQSPSSLSASVGDRVTITC[C:Disulfide#XL4]RASQDVNTAVAWYQQKPGKAPKLLIYSASFLYSGVPSRFSGSRSGTDFTLTISSLQPEDFATYYC[#XL4]QQHYTTPPTFGQGTKVEIKRTVAAPSVFIFPPSDEQLKSGTASVVC[C:Disulfide#XL5]LLNNFYPREAKVQWKVDNALQSGNSQESVTEQDSKDSTYSLSSTLTLSKADYEKHKVYAC[#XL5]EVTHQGLSSPVTKSFNRGEC[#XL3]", Some(&custom_database()))
             .unwrap();
     let model = FragmentationModel::none()
@@ -732,7 +741,7 @@ fn ensure_no_double_xl_labels_non_breaking() {
 
 #[test]
 fn ensure_no_double_xl_labels_small_breaking() {
-    let peptide = CompoundPeptidoformIon::pro_forma(
+    let (peptide, _) = CompoundPeptidoformIon::pro_forma(
         "EC[C:Disulfide#XL1]AC[#XL1]SC[C:Disulfide#XL3]D//DC[#XL3]",
         Some(&custom_database()),
     )
@@ -754,7 +763,7 @@ fn ensure_no_double_xl_labels_small_breaking() {
 
 #[test]
 fn ensure_no_double_xl_labels_small_non_breaking() {
-    let peptide = CompoundPeptidoformIon::pro_forma(
+    let (peptide, _) = CompoundPeptidoformIon::pro_forma(
         "EC[C:Disulfide#XL1]AC[#XL1]SC[C:Disulfide#XL3]D//DC[#XL3]",
         Some(&custom_database()),
     )

@@ -70,7 +70,7 @@ format_family!(
                 };
                 Ok((modification, aa, index))
             }).collect::<Result<ThinVec<_>,_>>();
-        peptide: Peptidoform<SimpleLinear>, |location: Location, custom_database: Option<&CustomDatabase>| Peptidoform::pro_forma(location.as_str(), custom_database).map(|p|p.into_simple_linear().unwrap()).map_err(BoxedError::to_owned);
+        peptide: Peptidoform<SimpleLinear>, |location: Location, custom_database: Option<&CustomDatabase>| Peptidoform::pro_forma_inner(&location.context(), location.full_line(), location.location.clone(), custom_database).map(|(p, _)| p.into_simple_linear().unwrap()).map_err(|errs| BoxedError::new(BasicKind::Error, "Invalid ProForma definition", "The string could not be parsed as a ProForma definition", location.context()).add_underlying_errors(errs)).map_err(BoxedError::to_owned);
         peptide_start: u16, |location: Location, _| location.parse(NUMBER_ERROR);
         peptide_pi: f32, |location: Location, _| location.parse(NUMBER_ERROR);
         peptide_component_id: u32, |location: Location, _| location.parse(NUMBER_ERROR);

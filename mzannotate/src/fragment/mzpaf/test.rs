@@ -15,7 +15,8 @@ macro_rules! mzpaf_test {
                             "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
                             None,
                         )
-                        .unwrap(),
+                        .unwrap()
+                        .0,
                     ),
                 ),
                 (
@@ -25,7 +26,8 @@ macro_rules! mzpaf_test {
                             "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
                             None,
                         )
-                        .unwrap(),
+                        .unwrap()
+                        .0,
                     ),
                 ),
             ];

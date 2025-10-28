@@ -40,7 +40,7 @@ format_family!(
     optional {
         start_time: Time, |location: Location, _| location.parse::<f64>(NUMBER_ERROR).map(Time::new::<mzcore::system::time::min>);
         end_time: Time, |location: Location, _| location.parse::<f64>(NUMBER_ERROR).map(Time::new::<mzcore::system::time::min>);
-        peptide: Peptidoform<SemiAmbiguous>, |location: Location, custom_database: Option<&CustomDatabase>| Peptidoform::pro_forma(location.as_str(), custom_database).map_err(BoxedError::to_owned).map(|p|p.into_semi_ambiguous().unwrap());
+        peptide: Peptidoform<SemiAmbiguous>, |location: Location, custom_database: Option<&CustomDatabase>| Peptidoform::pro_forma_inner(&location.context(), location.full_line(), location.location.clone(), custom_database).map_err(|errs| BoxedError::new(BasicKind::Error, "Invalid ProForma definition", "The string could not be parsed as a ProForma definition", location.context()).add_underlying_errors(errs)).map_err(BoxedError::to_owned).map(|(p, _)| p.into_semi_ambiguous().unwrap());
         score: f64, |location: Location, _| location.parse::<f64>(NUMBER_ERROR);
         score_type: String, |location: Location, _| Ok(location.get_string());
         rt: Time, |location: Location, _| location.parse::<f64>(NUMBER_ERROR).map(Time::new::<mzcore::system::time::min>);

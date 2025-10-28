@@ -522,6 +522,7 @@ mod tests {
     fn simple_isobaric_sets() {
         let pep = Peptidoform::pro_forma("AG", None)
             .unwrap()
+            .0
             .into_unambiguous()
             .unwrap();
         let sets: Vec<Peptidoform<SimpleLinear>> = find_isobaric_sets(
@@ -538,10 +539,12 @@ mod tests {
             &[
                 Peptidoform::pro_forma("GA", None)
                     .unwrap()
+                    .0
                     .into_simple_linear()
                     .unwrap(),
                 Peptidoform::pro_forma("Q", None)
                     .unwrap()
+                    .0
                     .into_simple_linear()
                     .unwrap(),
             ]

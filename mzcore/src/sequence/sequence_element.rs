@@ -318,47 +318,50 @@ impl<T> SequenceElement<T> {
         )
     }
 
-    /// Enforce the placement rules of predefined modifications.
-    /// # Errors
-    /// If a rule has been broken.
+    /// Enforce the placement rules of predefined modifications. Generates a warning for all modifications that are not placed according to the database rules.
     /// # Panics
     /// If any placement rule is placement on a PSI modification that does not exist.
     pub(crate) fn enforce_modification_rules<'a>(
         &self,
         position: SequencePosition,
         context: &Context<'a>,
-    ) -> Result<(), BoxedError<'a, BasicKind>> {
+    ) -> Vec<BoxedError<'a, BasicKind>> {
+        let mut warnings = Vec::new();
         for modification in &self.modifications {
             if modification.is_possible(self, position) == RulePossible::No {
                 let rules = modification
                     .simple()
                     .map(|s| s.placement_rules())
                     .unwrap_or_default();
-                return Err(BoxedError::new(
-                    BasicKind::Error,
-                    "Modification incorrectly placed",
-                    format!(
-                        "Modification {modification} is not allowed on {}{}",
-                        match position {
-                            SequencePosition::NTerm => "the N-terminus".to_string(),
-                            SequencePosition::CTerm => "the C-terminus".to_string(),
-                            SequencePosition::Index(index) =>
-                                format!("the side chain of {} at index {index}", self.aminoacid),
-                        },
-                        if rules.is_empty() {
-                            String::new()
-                        } else {
-                            format!(
-                                ", this modification is only allowed at the following locations: {}",
-                                rules.join(", ")
-                            )
-                        }
+                combine_error(
+                    &mut warnings,
+                    BoxedError::new(
+                        BasicKind::Warning,
+                        "Modification incorrectly placed",
+                        format!(
+                            "Modification {modification} is not allowed on {}{}",
+                            match position {
+                                SequencePosition::NTerm => "the N-terminus".to_string(),
+                                SequencePosition::CTerm => "the C-terminus".to_string(),
+                                SequencePosition::Index(index) =>
+                                    format!("the side chain of {} at index {index}", self.aminoacid),
+                            },
+                            if rules.is_empty() {
+                                String::new()
+                            } else {
+                                format!(
+                                    ", this modification is only allowed at the following locations: {}",
+                                    rules.join(", ")
+                                )
+                            }
+                        ),
+                        context.clone(),
                     ),
-                    context.clone(),
-                ));
+                    (),
+                );
             }
         }
-        Ok(())
+        warnings
     }
 
     /// Get all possible diagnostic ions

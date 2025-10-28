@@ -836,7 +836,7 @@ fn empty_lines() {
     assert_eq!(fasta.len(), 1);
     assert_eq!(
         fasta[0].peptide,
-        Peptidoform::pro_forma("AAAAAA", None).unwrap()
+        Peptidoform::pro_forma("AAAAAA", None).unwrap().0
     );
 }
 
