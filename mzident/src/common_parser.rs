@@ -32,7 +32,7 @@ macro_rules! format_family {
      $format:ident,
      $complexity:ident, $peptidoform_availability:ident, $versions:expr, $separator:expr, $header:expr;
      required { $($(#[doc = $rdoc:expr])? $rname:ident: $rtyp:ty, $rf:expr;)* }
-     optional { $($(#[doc = $odoc:expr])? $oname:ident: $otyp:ty, $of:expr;)*}
+     optional { $($(#[doc = $odoc:expr])? $(#[cfg(feature = $ocfg:literal)])? $oname:ident: $otyp:ty, $of:expr;)*}
      $($post_process:item)?) => {paste::paste!{
         #[allow(unused_imports)] // Needed sometimes, but not all invocations of the macro
         use context_error::*;
@@ -44,7 +44,7 @@ macro_rules! format_family {
         #[derive(Clone, Debug, Default, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
         pub struct [<$format Format>] {
             $($rname: &'static str,)*
-            $($oname: crate::common_parser::OptionalColumn,)*
+            $($(#[cfg(feature = $ocfg)])?  $oname: crate::common_parser::OptionalColumn,)*
             version: [<$format Version>]
         }
 
@@ -55,7 +55,7 @@ macro_rules! format_family {
         #[allow(missing_docs)]
         pub struct [<$format Data>] {
             $($(#[doc = $rdoc])? pub $rname: $rtyp,)*
-            $($(#[doc = $odoc])? pub $oname: Option<$otyp>,)*
+            $($(#[doc = $odoc])? $(#[cfg(feature = $ocfg)])?  pub $oname: Option<$otyp>,)*
             /// The version used to read in the data
             pub version: [<$format Version>],
             /// The stored columns if kept
@@ -134,7 +134,7 @@ macro_rules! format_family {
 
                 let parsed = Self {
                     $($rname: $rf(source.column(format.$rname).map_err(BoxedError::to_owned)?, custom_database)?,)*
-                    $($oname: format.$oname.open_column(source).and_then(|l: Option<Location>| l.map(|value: Location| $of(value, custom_database)).invert()).map_err(BoxedError::to_owned)?,)*
+                    $($(#[cfg(feature = $ocfg)])?  $oname: format.$oname.open_column(source).and_then(|l: Option<Location>| l.map(|value: Location| $of(value, custom_database)).invert()).map_err(BoxedError::to_owned)?,)*
                     version: format.version.clone(),
                     columns: keep_all_columns.then(|| source.values().map(|(h, v)| (h, v.to_string())).collect()),
                 };

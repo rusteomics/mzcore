@@ -17,6 +17,9 @@ mod peptidoform;
 /// Defines annotated spectra
 pub mod spectrum;
 
+/// Reexport mzdata to make it easier to get the exact same version.
+pub use mzdata;
+
 /// A subset of the types and traits that are envisioned to be used the most, importing this is a good starting point for working with the crate
 pub mod prelude {
     pub use crate::annotation::{

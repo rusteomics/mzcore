@@ -1,5 +1,6 @@
 mod fragment;
 mod fragment_type;
+mod maxquant;
 mod mzpaf;
 mod position;
 

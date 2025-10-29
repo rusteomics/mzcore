@@ -58,13 +58,19 @@ impl CsvLine {
 
     /// Get the context applicable to the specified column
     pub fn column_context(&self, column: usize) -> Context<'_> {
-        Context::line_with_comment(
-            Some(self.line_index as u32),
-            &self.line,
-            self.fields[column].1.start,
-            self.fields[column].1.len(),
-            Some(Cow::Borrowed(self.fields[column].0.as_str())),
-        )
+        let base = Context::none()
+            .line_index(self.line_index as u32)
+            .lines(0, &self.line)
+            .add_highlight((
+                0,
+                self.fields[column].1.clone(),
+                self.fields[column].0.as_str(),
+            ));
+        if let Some(source) = &self.file {
+            base.source(source.as_ref().as_ref())
+        } else {
+            base
+        }
     }
 
     /// Get the context for the specified range in the original line
@@ -73,18 +79,31 @@ impl CsvLine {
         range: Range<usize>,
         comment: Option<Cow<'a, str>>,
     ) -> Context<'a> {
-        Context::line_with_comment(
-            Some(self.line_index as u32),
-            &self.line,
-            range.start,
-            range.len(),
-            comment,
-        )
+        let base = Context::none()
+            .line_index(self.line_index as u32)
+            .lines(0, &self.line);
+        let base = if let Some(comment) = comment {
+            base.add_highlight((0, range, comment))
+        } else {
+            base.add_highlight((0, range))
+        };
+        if let Some(source) = &self.file {
+            base.source(source.as_ref().as_ref())
+        } else {
+            base
+        }
     }
 
     /// Get the context for the whole line
     pub fn full_context(&self) -> Context<'_> {
-        Context::full_line(self.line_index as u32, &self.line)
+        let base = Context::none()
+            .line_index(self.line_index as u32)
+            .lines(0, &self.line);
+        if let Some(source) = &self.file {
+            base.source(source.as_ref().as_ref())
+        } else {
+            base
+        }
     }
 
     /// Get the range of a specified column

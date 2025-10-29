@@ -939,7 +939,7 @@ fn parse_ion<'a>(
 /// Parse a neutral loss from the string.
 /// # Errors
 /// If the a neutral loss is detected but is invalid.
-fn parse_neutral_loss<'a>(
+pub(in crate::fragment) fn parse_neutral_loss<'a>(
     base_context: &Context<'a>,
     line: &'a str,
     range: Range<usize>,

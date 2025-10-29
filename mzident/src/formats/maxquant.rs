@@ -3,6 +3,8 @@ use std::{
 };
 
 use itertools::Itertools;
+#[cfg(feature = "mzannotate")]
+use mzannotate::prelude::AnnotatedPeak;
 use serde::{Deserialize, Serialize};
 use thin_vec::ThinVec;
 
@@ -128,15 +130,43 @@ format_family!(
         score_diff: f32, |location: Location, _| location.parse::<f32>(NUMBER_ERROR);
         simple_mass_error_ppm: f32, |location: Location, _| location.parse::<f32>(NUMBER_ERROR);
         total_ion_current: f32, |location: Location, _| location.parse::<f32>(NUMBER_ERROR);
+        #[cfg(feature = "mzannotate")]
+        spectrum: Vec<AnnotatedPeak<mzannotate::fragment::Fragment>>, |_, _| None;
     }
 
-    fn post_process(_source: &CsvLine, mut parsed: Self, _custom_database: Option<&CustomDatabase>) -> Result<Self, BoxedError<'static, BasicKind>> {
+    fn post_process(source: &CsvLine, mut parsed: Self, _custom_database: Option<&CustomDatabase>) -> Result<Self, BoxedError<'static, BasicKind>> {
         if let Some(dn_sequence) = parsed.dn_sequence.as_mut() {
             if let Some(n_mass) = parsed.dn_n_mass && n_mass != Mass::default() && !n_mass.is_nan() {
                 dn_sequence.add_simple_n_term(SimpleModificationInner::Mass(n_mass.into()).into());
             }
             if let Some(c_mass) = parsed.dn_c_mass && c_mass != Mass::default() && !c_mass.is_nan() {
                 dn_sequence.add_simple_c_term(SimpleModificationInner::Mass(c_mass.into()).into());
+            }
+        }
+
+        #[cfg(feature = "mzannotate")]
+        {
+            if let Ok((matches, match_range)) = source.index_column("matches") && let Ok((intensities, intensity_range)) = source.index_column("intensities") && let Ok((mzs, mz_range)) = source.index_column("masses") && !matches.is_empty() && !intensities.is_empty() && !mzs.is_empty(){
+                // y2;y5;y6;y7;y8;y9;y10;y11;y12;y13;y14;y15;y8-NH3;y30(2+);a2;b2;b3;b4;b5;b6;b7;b18;b25;b2-H2O;b3-H2O;b5-H2O;b14(2+);b22(2+);b26(2+)
+                // y2;y3;y4;y7;y10;y12;y13;c2;c5;c6;c10;c14;c32;c39;c40;c41;z°10;z°12;z°14;z°19;z°34;z°36;z°37;z'12;z'13;cm5;cp27;cp31;cp33;cp34;cp35;b2;b3;b4;b5;b6;b7;b10;b11;b27
+                let mut peaks = Vec::with_capacity(matches.chars().filter(|c| *c == ';').count());
+                let mut match_offset = 0;
+                let mut intensity_offset = 0;
+                let mut mz_offset = 0;
+                for (index, ((annotation, intensity), mz)) in matches.split(';').zip(intensities.split(';')).zip(mzs.split(';')).enumerate() {
+                    let mz_num = mz.parse::<f64>().map_err(|e| BoxedError::new(BasicKind::Error, "Invalid m/z", format!("A peak m/z is expected to be a number but: {e}"), source.range_context(mz_range.start+mz_offset..mz_range.start+mz_offset+mz.len(), None).to_owned()))?;
+                    let intensity_num = intensity.parse::<f32>().map_err(|e| BoxedError::new(BasicKind::Error, "Invalid intensity", format!("A peak intensity is expected to be a number but: {e}"), source.range_context(intensity_range.start+intensity_offset..intensity_range.start+intensity_offset+intensity.len(), None).to_owned()))?;
+                    peaks.push(AnnotatedPeak {
+                        mz: MassOverCharge::new::<mzcore::system::thomson>(mz_num),
+                        intensity: intensity_num,
+                        index: index as u32,
+                        annotations: Vec::new(),
+                        aggregations: Vec::new()});
+                    match_offset += annotation.len() + 1;
+                    intensity_offset += intensity.len() + 1;
+                    mz_offset += mz.len() + 1;
+                }
+                parsed.spectrum = Some(peaks);
             }
         }
 
@@ -243,6 +273,7 @@ pub const MSMS: MaxQuantFormat = MaxQuantFormat {
     score_diff: OptionalColumn::Required("score diff"),
     score: "score",
     simple_mass_error_ppm: OptionalColumn::Required("simple mass error [ppm]"),
+    spectrum: OptionalColumn::NotAvailable,
     total_ion_current: OptionalColumn::NotAvailable,
     ty: "type",
     z: "charge",
@@ -305,6 +336,7 @@ pub const MSMS_SCANS: MaxQuantFormat = MaxQuantFormat {
     score_diff: OptionalColumn::NotAvailable,
     score: "score",
     simple_mass_error_ppm: OptionalColumn::NotAvailable,
+    spectrum: OptionalColumn::NotAvailable,
     total_ion_current: OptionalColumn::Required("total ion current"),
     ty: "type",
     z: "charge",
@@ -367,6 +399,7 @@ pub const NOVO_MSMS_SCANS: MaxQuantFormat = MaxQuantFormat {
     score_diff: OptionalColumn::NotAvailable,
     score: "score",
     simple_mass_error_ppm: OptionalColumn::NotAvailable,
+    spectrum: OptionalColumn::NotAvailable,
     total_ion_current: OptionalColumn::Required("total ion current"),
     ty: "type",
     z: "charge",
@@ -431,6 +464,7 @@ pub const SILAC: MaxQuantFormat = MaxQuantFormat {
     score_diff: OptionalColumn::NotAvailable,
     score: "score",
     simple_mass_error_ppm: OptionalColumn::NotAvailable,
+    spectrum: OptionalColumn::NotAvailable,
     total_ion_current: OptionalColumn::NotAvailable,
     ty: "type",
     z: "charge",
@@ -528,6 +562,25 @@ impl MetaData for MaxQuantData {
 
     fn database(&self) -> Option<(&str, Option<&str>)> {
         None
+    }
+
+    #[cfg(feature = "mzannotate")]
+    fn annotated_spectrum(&self) -> Option<Cow<'_, mzannotate::spectrum::AnnotatedSpectrum>> {
+        self.spectrum.as_ref().map(|s| {
+            Cow::Owned(mzannotate::spectrum::AnnotatedSpectrum::new(
+                0,
+                mzannotate::mzdata::spectrum::SpectrumDescription::default(),
+                vec![Vec::new(); 1],
+                Vec::new(),
+                Vec::new(),
+                s.clone().into(),
+            ))
+        })
+    }
+
+    #[cfg(feature = "mzannotate")]
+    fn has_annotated_spectrum(&self) -> bool {
+        self.spectrum.is_some()
     }
 }
 

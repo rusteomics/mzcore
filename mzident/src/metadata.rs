@@ -103,7 +103,7 @@ pub trait MetaData {
     }
 
     /// Check if this spectrum has an annotated spectrum available.
-    /// This can be overwritten to built a faster implementation is creating the spectrum needs to happen at runtime.
+    /// This can be overwritten to built a faster implementation if creating the spectrum needs to happen at runtime.
     #[cfg(feature = "mzannotate")]
     fn has_annotated_spectrum(&self) -> bool {
         self.annotated_spectrum().is_some()
