@@ -785,7 +785,7 @@ impl FastaData {
         }
 
         Ok(Self {
-            identifier: full_header[0..first_space]
+            identifier: full_header[1..first_space]
                 .parse::<FastaIdentifier<Range<usize>>>()
                 .map_err(|err| {
                     BoxedError::new(

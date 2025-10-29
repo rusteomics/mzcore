@@ -11,10 +11,12 @@ fn overextended_rotation() {
 fn test_alignment(peptide_one: &str, peptide_two: &str, path: &str) {
     let first_peptide = Peptidoform::pro_forma(peptide_one, None)
         .unwrap()
+        .0
         .into_simple_linear()
         .unwrap();
     let second_peptide = Peptidoform::pro_forma(peptide_two, None)
         .unwrap()
+        .0
         .into_simple_linear()
         .unwrap();
     let alignment = align::<4, &Peptidoform<SimpleLinear>, &Peptidoform<SimpleLinear>>(

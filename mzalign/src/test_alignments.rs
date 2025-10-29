@@ -162,10 +162,12 @@ fn test_alignment(
     const MAXIMAL_STEP: u16 = 4;
     let first_peptide = Peptidoform::pro_forma(seq_a, None)
         .unwrap()
+        .0
         .into_simple_linear()
         .unwrap();
     let second_peptide = Peptidoform::pro_forma(seq_b, None)
         .unwrap()
+        .0
         .into_simple_linear()
         .unwrap();
     let alignment = align::<MAXIMAL_STEP, &Peptidoform<SimpleLinear>, &Peptidoform<SimpleLinear>>(

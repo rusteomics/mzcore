@@ -7,7 +7,7 @@ use mzident::{IdentifiedPeptidoformSource, PeaksData, csv};
 fn main() {
     fuzz!(|data: &[u8]| {
         if let Ok(s) = std::str::from_utf8(data)
-            && let Ok(csv) = csv::parse_csv_raw(BufReader::new(s.as_bytes()), b',', None)
+            && let Ok(csv) = csv::parse_csv_raw(BufReader::new(s.as_bytes()), b',', None, None)
         {
             let _unused: Vec<_> = PeaksData::parse_many(csv, None, false, None).collect();
         }

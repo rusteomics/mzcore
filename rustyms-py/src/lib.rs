@@ -6,6 +6,7 @@ use std::num::NonZeroU16;
 
 use pyo3::{exceptions::PyValueError, prelude::*, types::PyType};
 
+use context_error::CreateError;
 use mzalign::AlignScoring;
 use mzannotate::prelude::{GlycanFragmention, PeptidoformFragmentation, ToMzPAF};
 use mzcore::{
@@ -806,6 +807,11 @@ pub struct FragmentType(mzannotate::fragment::FragmentType);
 
 #[pymethods]
 impl FragmentType {
+    fn __repr__(&self) -> String {
+        let (sup, main, position) = self.label();
+        format!("FragmentType(sup='{sup:?}', main='{main}', position='{position:?}')",)
+    }
+
     /// The kind of fragment
     ///
     #[getter]
@@ -952,6 +958,7 @@ impl SequenceElement {
 /// Fragmentation model enum.
 #[pyclass(eq, eq_int)]
 #[derive(Eq, PartialEq)]
+#[allow(clippy::upper_case_acronyms)]
 enum FragmentationModel {
     All,
     CID,
@@ -1085,8 +1092,18 @@ impl CompoundPeptidoformIon {
     #[new]
     fn new(proforma: &str) -> Result<Self, BoxedError> {
         mzcore::sequence::CompoundPeptidoformIon::pro_forma(proforma, None)
-            .map(CompoundPeptidoformIon)
-            .map_err(|e| BoxedError(e.to_owned()))
+            .map(|(p, _)| Self(p))
+            .map_err(|e| {
+                BoxedError(
+                    context_error::BoxedError::new(
+                        context_error::BasicKind::Error,
+                        "Could not parse ProForma",
+                        "This text could not be read as a ProForma definition",
+                        context_error::Context::none().lines(0, proforma).to_owned(),
+                    )
+                    .add_underlying_errors(e.into_iter().map(context_error::BoxedError::to_owned)),
+                )
+            })
     }
 
     /// Create a new compound peptidoform ion from a peptidoform ion.
@@ -1251,8 +1268,18 @@ impl PeptidoformIon {
     #[new]
     fn new(proforma: &str) -> Result<Self, BoxedError> {
         mzcore::sequence::PeptidoformIon::pro_forma(proforma, None)
-            .map(|(p, _)| PeptidoformIon(p))
-            .map_err(|e| BoxedError(e.to_owned()))
+            .map(|(p, _)| Self(p))
+            .map_err(|e| {
+                BoxedError(
+                    context_error::BoxedError::new(
+                        context_error::BasicKind::Error,
+                        "Could not parse ProForma",
+                        "This text could not be read as a ProForma definition",
+                        context_error::Context::none().lines(0, proforma).to_owned(),
+                    )
+                    .add_underlying_errors(e.into_iter().map(context_error::BoxedError::to_owned)),
+                )
+            })
     }
 
     /// Create a new peptidoform ion from a peptidoform.
@@ -1336,8 +1363,18 @@ impl Peptidoform {
     #[new]
     fn new(proforma: &str) -> Result<Self, BoxedError> {
         mzcore::sequence::Peptidoform::pro_forma(proforma, None)
-            .map(Peptidoform)
-            .map_err(|e| BoxedError(e.to_owned()))
+            .map(|(p, _)| Self(p))
+            .map_err(|e| {
+                BoxedError(
+                    context_error::BoxedError::new(
+                        context_error::BasicKind::Error,
+                        "Could not parse ProForma",
+                        "This text could not be read as a ProForma definition",
+                        context_error::Context::none().lines(0, proforma).to_owned(),
+                    )
+                    .add_underlying_errors(e.into_iter().map(context_error::BoxedError::to_owned)),
+                )
+            })
     }
 
     fn __str__(&self) -> String {

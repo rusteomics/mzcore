@@ -581,18 +581,22 @@ mod tests {
         // A has an ambiguous AA, B, and C have the two options, while D has a sub peptide of A.
         let a = Peptidoform::pro_forma("AABAA", None)
             .unwrap()
+            .0
             .into_simple_linear()
             .unwrap();
         let b = Peptidoform::pro_forma("AANAA", None)
             .unwrap()
+            .0
             .into_simple_linear()
             .unwrap();
         let c = Peptidoform::pro_forma("AADAA", None)
             .unwrap()
+            .0
             .into_simple_linear()
             .unwrap();
         let d = Peptidoform::pro_forma("ADA", None)
             .unwrap()
+            .0
             .into_simple_linear()
             .unwrap();
 

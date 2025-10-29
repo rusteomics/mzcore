@@ -109,7 +109,7 @@ macro_rules! format_family {
                 version: Option<Self::Version>,
             ) -> Result<BoxedIdentifiedPeptideIter<'a, Self>, BoxedError<'static, BasicKind>> {
                 let format = version.map(|v| v.format());
-                crate::csv::parse_csv_raw(reader, $separator, $header).and_then(move |lines| {
+                crate::csv::parse_csv_raw(reader, $separator, $header, None).and_then(move |lines| {
                     let mut i = Self::parse_many::<Box<dyn Iterator<Item = Result<Self::Source, BoxedError<'_, BasicKind>>>>>(
                         Box::new(lines), custom_database, keep_all_columns, format);
                     if let Some(Err(e)) = i.peek() {
@@ -343,12 +343,19 @@ impl<'a> Location<'a> {
     }
 
     pub(super) fn context(&'a self) -> Context<'a> {
-        Context::line_range_with_comment(
-            Some(self.line.line_index() as u32),
-            self.full_line(),
-            self.location.clone(),
-            self.column.map(Cow::Borrowed),
-        )
+        let base = Context::none()
+            .line_index(self.line.line_index as u32)
+            .lines(0, self.full_line());
+        let base = if let Some(comment) = self.column {
+            base.add_highlight((0, self.location.clone(), comment))
+        } else {
+            base.add_highlight((0, self.location.clone()))
+        };
+        if let Some(source) = &self.line.file {
+            base.source(source.as_ref().as_ref())
+        } else {
+            base
+        }
     }
 
     pub(super) fn trim(&self) -> Self {

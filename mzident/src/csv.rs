@@ -24,6 +24,7 @@ pub struct CsvLine {
     pub(super) line_index: usize,
     pub(super) line: String,
     pub(super) fields: Vec<(Arc<String>, Range<usize>)>,
+    pub(super) file: Option<Arc<Box<str>>>,
 }
 
 #[allow(dead_code)]
@@ -185,14 +186,13 @@ pub fn parse_csv(
     Box<dyn Iterator<Item = Result<CsvLine, BoxedError<'static, BasicKind>>>>,
     BoxedError<'static, BasicKind>,
 > {
-    let file = File::open(path.as_ref()).map_err(|e| {
+    let path = path.as_ref();
+    let file = File::open(path).map_err(|e| {
         BoxedError::new(
             BasicKind::Error,
             "Could not open file",
             e.to_string(),
-            Context::default()
-                .source(path.as_ref().to_string_lossy())
-                .to_owned(),
+            Context::default().source(path.to_string_lossy()).to_owned(),
         )
     })?;
     if check_extension(path, "gz") {
@@ -200,9 +200,15 @@ pub fn parse_csv(
             GzDecoder::new(BufReader::new(file)),
             separator,
             provided_header,
+            Some(path.to_string_lossy().to_string().into_boxed_str()),
         )?))
     } else {
-        Ok(Box::new(parse_csv_raw(file, separator, provided_header)?))
+        Ok(Box::new(parse_csv_raw(
+            file,
+            separator,
+            provided_header,
+            Some(path.to_string_lossy().to_string().into_boxed_str()),
+        )?))
     }
 }
 
@@ -214,6 +220,7 @@ pub fn parse_csv_raw<T: std::io::Read>(
     reader: T,
     mut separator: u8,
     provided_header: Option<Vec<String>>,
+    path: Option<Box<str>>,
 ) -> Result<CsvLineIter<T>, BoxedError<'static, BasicKind>> {
     let reader = BufReader::new(reader);
     let mut lines = reader.lines().enumerate().peekable();
@@ -302,6 +309,7 @@ pub fn parse_csv_raw<T: std::io::Read>(
         lines,
         header: column_headers,
         separator,
+        file: path.map(Arc::new),
     })
 }
 
@@ -311,6 +319,7 @@ pub struct CsvLineIter<T: std::io::Read> {
     lines: std::iter::Peekable<std::iter::Enumerate<std::io::Lines<BufReader<T>>>>,
     header: Vec<Arc<String>>,
     separator: u8,
+    file: Option<Arc<Box<str>>>,
 }
 
 impl<T: std::io::Read> Iterator for CsvLineIter<T> {
@@ -328,6 +337,7 @@ impl<T: std::io::Read> Iterator for CsvLineIter<T> {
                         line_index,
                         line,
                         fields: self.header.iter().cloned().zip(row).collect(),
+                        file: self.file.clone(),
                     })
                 } else {
                     Err(BoxedError::new(BasicKind::Error,

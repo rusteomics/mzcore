@@ -27,7 +27,7 @@ pub fn open_identified_peptidoforms_file<'a>(
     let actual_extension = path
         .extension()
         .map(|ex| {
-            (ex == "gz")
+            ex.eq_ignore_ascii_case("gz")
                 .then_some(path)
                 .and_then(|p| p.file_stem())
                 .and_then(|p| Path::new(p).extension())

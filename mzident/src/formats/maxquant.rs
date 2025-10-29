@@ -831,6 +831,7 @@ mod tests {
                         line_index: 0,
                         line: test.to_string(),
                         fields: Vec::new(),
+                        file: None,
                     },
                     location: 0..test.len(),
                     column: None,
