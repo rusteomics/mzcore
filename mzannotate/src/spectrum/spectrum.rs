@@ -21,7 +21,7 @@ use crate::{
 };
 
 /// An annotated spectrum.
-#[derive(Debug, Clone)]
+#[derive(Clone, Debug)]
 pub struct AnnotatedSpectrum {
     /// The ID for a spectrum
     pub key: Id,

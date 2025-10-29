@@ -62,7 +62,7 @@ pub struct OboSynonym {
 }
 
 /// The type or scope for a synonym
-#[derive(Copy, Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Clone, Copy, Debug, Default, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub enum SynonymScope {
     /// An exact relation
     Exact,
@@ -89,7 +89,7 @@ impl std::str::FromStr for SynonymScope {
 }
 
 /// The type for an Obo stanza
-#[derive(Copy, Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Clone, Copy, Debug, Default, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub enum OboStanzaType {
     /// A Term stanza
     #[default]
@@ -567,7 +567,7 @@ impl OboStanza {
 }
 
 /// All possible errors when reading an Obo file
-#[derive(Copy, Clone, Default, PartialEq, Eq, PartialOrd, Ord, Debug)]
+#[derive(Clone, Copy, Debug, Default, Eq, Ord, PartialEq, PartialOrd)]
 pub enum OboError {
     /// If the file could not be opened
     #[default]

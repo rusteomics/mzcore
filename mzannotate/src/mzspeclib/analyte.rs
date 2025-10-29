@@ -13,7 +13,7 @@ use crate::{
 };
 
 /// An analyte that resulted in the spectrum.
-#[derive(Default, Debug, Clone, PartialEq, Eq)]
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct Analyte {
     /// The numeric id of this analyte
     pub id: Id,
@@ -48,7 +48,7 @@ impl Analyte {
 }
 
 /// The analyte itself
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub enum AnalyteTarget {
     /// For an unknown class of analytes, where the charge (MS:1000041) could be known
     Unknown(Option<Charge>),

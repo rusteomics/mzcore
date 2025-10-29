@@ -21,7 +21,7 @@ pub enum TermParserError {
 }
 
 /// A term, a CURIE plus its name
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct Term {
     /// The CURIE (e.g. MS:0000000)
     pub accession: CURIE,
@@ -124,7 +124,7 @@ impl Display for Term {
 }
 
 /// A value for an attribute
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub enum AttributeValue {
     /// A single value
     Scalar(Value),
@@ -279,7 +279,7 @@ impl Display for AttributeParseError {
 }
 
 /// An attribute as present in a mzSpecLib file
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Attribute {
     /// The term
     pub name: Term,

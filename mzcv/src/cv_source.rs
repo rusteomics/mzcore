@@ -65,7 +65,7 @@ pub struct CVFile {
 }
 
 /// Version information for a CV
-#[derive(Default, Encode, Decode, Debug)]
+#[derive(Debug, Decode, Default, Encode)]
 pub struct CVVersion {
     /// The last updated date as reported by the CV (year, month, day, hour, minute)
     pub last_updated: Option<(u16, u8, u8, u8, u8)>,
@@ -119,7 +119,7 @@ pub trait CVData: Encode + Decode<()> + Clone {
 }
 
 /// The used compression of the source CV.
-#[derive(Copy, Clone, Default, Debug)]
+#[derive(Clone, Copy, Debug, Default)]
 pub enum CVCompression {
     /// No compression
     #[default]

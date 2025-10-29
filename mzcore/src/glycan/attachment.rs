@@ -10,7 +10,7 @@ use crate::{
 };
 
 /// Just keep the full glycan on the structure. This is the behaviour needed for most use cases.
-#[derive(Debug, Copy, Clone)]
+#[derive(Clone, Copy, Debug)]
 pub struct FullGlycan {}
 
 impl GlycanAttachement for FullGlycan {

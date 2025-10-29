@@ -14,7 +14,7 @@ use crate::{
 };
 
 /// All protein level metadata
-#[derive(Default, Debug, Clone, PartialEq, Eq)]
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct ProteinDescription {
     /// Protein accession (MS:1000885) `sp|P12955|PEPD_HUMAN`
     pub accession: Option<Box<str>>,
@@ -316,7 +316,7 @@ impl ProteinDescription {
 }
 
 /// A cleavage agent or protease
-#[derive(Default, Debug, Clone, PartialEq, Eq)]
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub enum CleaveAgent {
     /// Unknown
     #[default]

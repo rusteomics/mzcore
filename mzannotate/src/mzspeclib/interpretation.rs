@@ -8,7 +8,7 @@ use crate::{
 };
 
 /// An interpretation, this gives details on how well the analytes match to the spectrum.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct Interpretation {
     /// The ID
     pub id: Id,

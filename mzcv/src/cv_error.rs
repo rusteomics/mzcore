@@ -2,7 +2,7 @@
 
 use context_error::ErrorKind;
 
-#[derive(Copy, Clone, PartialEq, Eq, Default, Debug)]
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 pub enum CVError {
     CacheDoesNotExist,
     CacheCouldNotBeOpenend,

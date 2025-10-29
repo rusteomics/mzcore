@@ -63,7 +63,7 @@ fn main() {
 
 struct IMGT {}
 
-#[derive(Clone, Decode, Encode, Debug, Default)]
+#[derive(Clone, Debug, Decode, Default, Encode)]
 struct IMGTData {
     index: Option<usize>,
     name: String,

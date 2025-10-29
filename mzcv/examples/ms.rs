@@ -62,7 +62,7 @@ fn main() {
 
 struct MS {}
 
-#[derive(Clone, Decode, Encode, Debug, Default)]
+#[derive(Clone, Debug, Decode, Default, Encode)]
 struct MSData {
     index: Option<usize>,
     name: String,

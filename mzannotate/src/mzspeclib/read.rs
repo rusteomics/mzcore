@@ -33,7 +33,7 @@ use crate::{
     term,
 };
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
 enum ParserState {
     Initial,
     Header,
@@ -53,7 +53,7 @@ impl Display for ParserState {
 }
 
 /// The kind of error that can occur when reading an mzSpecLib file
-#[derive(Debug, Default, PartialEq, Eq, Clone, Copy)]
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 pub enum MzSpecLibErrorKind {
     /// An error concerning the underlying stream
     #[default]
@@ -1158,7 +1158,7 @@ impl<R: BufRead> Iterator for MzSpecLibTextParser<'_, R> {
 }
 
 /// The start of a library item for indexed access
-#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, PartialOrd)]
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq, PartialOrd)]
 pub struct LibraryIndexRecord {
     /// The byte offset into the file
     pub offset: u64,
@@ -1167,7 +1167,7 @@ pub struct LibraryIndexRecord {
 }
 
 /// An index to find the byte offsets of all records in a file
-#[derive(Debug, Clone)]
+#[derive(Clone, Debug)]
 pub struct LibraryIndex {
     /// Indicate if the full file is scanned yet
     done: bool,

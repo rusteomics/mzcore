@@ -149,7 +149,7 @@ pub trait MultiChemical {
 }
 
 /// The errors that can occur when adding molecular formulas.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum MolecularFormulaError {
     /// If the isotope for an added element is not valid, see [`Element::is_valid`].
     IsotopeWithoutDefinedMass,

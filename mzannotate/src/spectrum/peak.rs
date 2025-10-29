@@ -10,7 +10,7 @@ use serde::{Deserialize, Serialize};
 use crate::prelude::ToMzPAF;
 
 /// An annotated peak. So a peak that contains some interpretation(s).
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct AnnotatedPeak<Annotation> {
     /// The mass over charge of the peaks
     pub mz: MassOverCharge,

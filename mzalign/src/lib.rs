@@ -92,6 +92,7 @@ mod tests {
     fn linear(aa: &str) -> Peptidoform<SimpleLinear> {
         Peptidoform::pro_forma(aa, None)
             .unwrap()
+            .0
             .into_simple_linear()
             .unwrap()
     }

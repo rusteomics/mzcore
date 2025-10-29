@@ -4,7 +4,7 @@ use std::{collections::HashMap, fmt::Display};
 use crate::mzspeclib::{Attribute, Attributes};
 
 /// The header for a spectral library
-#[derive(Debug, Clone)]
+#[derive(Clone, Debug)]
 pub struct LibraryHeader {
     /// The version of the format
     pub format_version: String,
@@ -60,7 +60,7 @@ impl LibraryHeader {
 }
 
 /// A set of attributes in the library header that contains global settings for all or a subset of spectra
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct AttributeSet {
     /// The id
     pub id: String,
@@ -85,7 +85,7 @@ impl PartialOrd for AttributeSet {
 }
 
 /// All types of entries for global attribute sets
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub enum EntryType {
     /// Spectrum attributes
     Spectrum,

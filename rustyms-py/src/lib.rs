@@ -1251,7 +1251,7 @@ impl PeptidoformIon {
     #[new]
     fn new(proforma: &str) -> Result<Self, BoxedError> {
         mzcore::sequence::PeptidoformIon::pro_forma(proforma, None)
-            .map(PeptidoformIon)
+            .map(|(p, _)| PeptidoformIon(p))
             .map_err(|e| BoxedError(e.to_owned()))
     }
 

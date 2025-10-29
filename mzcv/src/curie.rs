@@ -1,7 +1,7 @@
 use std::num::NonZeroU8;
 
 /// Controlled vocabularies all ontobee listed controlled vocabulaires are present as well as PRIDE and RESID
-#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[repr(u16)]
 #[allow(
@@ -1137,7 +1137,7 @@ impl std::fmt::Display for ControlledVocabulary {
 }
 
 /// A CURIE is a namespace + accession identifier
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Curie {
     /// The controlled vocabulary
@@ -1196,7 +1196,7 @@ impl std::str::FromStr for Curie {
 
 /// An accession code, Can either be a numeric code (u32 to 4 milion, so 9 fully utilised digits).
 /// Or it can be an ASCII alphanumeric code (case-sensitive) of 1 to 8 characters.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub enum AccessionCode {
     Numeric(u32),
     Alphanumeric(NonZeroU8, [u8; 7]),
@@ -1318,7 +1318,7 @@ impl std::str::FromStr for AccessionCode {
 }
 
 /// A term, a CURIE plus its name
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct Term {
     /// The CURIE (eg MS:0000000)
     pub accession: Curie,
