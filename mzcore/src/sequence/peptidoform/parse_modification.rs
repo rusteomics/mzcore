@@ -316,10 +316,8 @@ fn parse_single_modification<'a>(
                         "This modification cannot be read as a numerical modification",
                     )
                 }),
-                ("position", tail) => {
-                    match super::parse::parse_placement_rules(tail, 0..tail.len()).map_err(
-                        |error| basic_error.long_description(error.get_long_description().to_string()),
-                    ) {
+                ("position", _) => {
+                    match super::parse::parse_placement_rules(&Context::none().lines(0, line),line, offset + tail.1..offset + tail.1 + tail.2) {
                         Ok(rules) => return Ok(SingleReturnModification::Positions(rules)),
                         Err(e) => Err(e),
                     }

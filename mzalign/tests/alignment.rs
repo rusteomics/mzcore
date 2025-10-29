@@ -43,6 +43,7 @@ fn alignment_to_database() {
             .collect();
     let database = Peptidoform::pro_forma(MAB_SEQUENCE, None)
         .unwrap()
+        .0
         .into_simple_linear()
         .unwrap();
     let index = AlignIndex::<4, Peptidoform<SimpleLinear>>::new([database], MassMode::Monoisotopic);
@@ -89,10 +90,12 @@ fn pairwise() {
     for (id, line) in lines.iter().enumerate() {
         let a = Peptidoform::pro_forma(line.index_column("a").unwrap().0, None)
             .unwrap()
+            .0
             .into_simple_linear()
             .unwrap();
         let b = Peptidoform::pro_forma(line.index_column("b").unwrap().0, None)
             .unwrap()
+            .0
             .into_simple_linear()
             .unwrap();
         let path = line.index_column("path").unwrap().0;

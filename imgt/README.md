@@ -1,6 +1,6 @@
 # IMGT
 
-Handle the IMGT database of antibody germlines easily. 
+Handle the IMGT database of antibody germlines easily.
 
 ## Library features
 

@@ -376,12 +376,20 @@ impl CompoundPeptidoformIon {
         // Unknown position mods
         let (index, unknown_position_modifications) = handle!(
             errors,
-            global_unknown_position_mods(index, line, custom_database, &mut ambiguous_lookup)
+            global_unknown_position_mods(
+                base_context,
+                index,
+                line,
+                custom_database,
+                &mut ambiguous_lookup
+            )
         );
 
         // Labile modification(s)
-        let (mut index, labile) =
-            handle!(errors, labile_modifications(line, index, custom_database));
+        let (mut index, labile) = handle!(
+            errors,
+            labile_modifications(base_context, line, index, custom_database)
+        );
         peptide = peptide.labile(labile);
 
         // N term modifications
@@ -394,7 +402,7 @@ impl CompoundPeptidoformIon {
                         BasicKind::Error,
                         "Invalid N term modification",
                         "No valid closing delimiter",
-                        Context::line(None, line, temp_index, 1),
+                        base_context.clone().add_highlight((0, temp_index, 1))
                     )
             }));
             n_term_mods.push(
@@ -447,7 +455,7 @@ impl CompoundPeptidoformIon {
                                 BasicKind::Error,
                                 "Invalid ambiguous amino acid set",
                                 "Ambiguous amino acid sets cannot be nested within ranged ambiguous modifications",
-                                Context::line(None, line, index, 1),
+                                base_context.clone().add_highlight((0, index, 1)),
                             ),
                             (),
                         );
@@ -460,7 +468,7 @@ impl CompoundPeptidoformIon {
                                 BasicKind::Error,
                                 "Invalid ambiguous amino acid set",
                                 "Ambiguous amino acid sets cannot be nested within ambiguous amino acid sets",
-                                Context::line(None, line, index, 1),
+                                base_context.clone().add_highlight((0, index, 1)),
                             ),
                             (),
                         );
@@ -470,7 +478,7 @@ impl CompoundPeptidoformIon {
                     ambiguous_aa_counter = handle!(single errors, ambiguous_aa_counter.checked_add(1).ok_or_else(|| {BoxedError::new(BasicKind::Error,
                         "Invalid ambiguous amino acid set",
                         format!("There are too many ambiguous amino acid sets, there can only be {} in one linear peptide", std::num::NonZeroU32::MAX),
-                        Context::line(None, line, index, 1))}));
+                        base_context.clone().add_highlight((0, index, 1)))}));
                     index += 2;
                 }
                 (false, b')') if ambiguous_aa.is_some() => {
@@ -485,7 +493,7 @@ impl CompoundPeptidoformIon {
                                 BasicKind::Error,
                                 "Invalid ranged ambiguous modification",
                                 "Ranged ambiguous modifications cannot be nested within ranged ambiguous modifications",
-                                Context::line(None, line, index, 1),
+                                base_context.clone().add_highlight((0, index, 1)),
                             ),
                             (),
                         );
@@ -498,7 +506,7 @@ impl CompoundPeptidoformIon {
                                 BasicKind::Error,
                                 "Invalid ranged ambiguous modification",
                                 "Ranged ambiguous modifications cannot be nested within ambiguous amino acid sets",
-                                Context::line(None, line, index, 1),
+                                base_context.clone().add_highlight((0, index, 1)),
                             ),
                             (),
                         );
@@ -516,7 +524,9 @@ impl CompoundPeptidoformIon {
                                 BasicKind::Error,
                                 "Invalid ranged ambiguous modification",
                                 "The ranged ambiguous modification is placed on an empty range",
-                                Context::line_range(None, line, index - 1..index + 2),
+                                base_context
+                                    .clone()
+                                    .add_highlight((0, index - 1..index + 2)),
                             ),
                             (),
                         );
@@ -532,7 +542,7 @@ impl CompoundPeptidoformIon {
                                     BasicKind::Error,
                                     "Invalid ranged ambiguous modification",
                                     "No valid closing delimiter",
-                                    Context::line(None, line, index, 1),
+                                    base_context.clone().add_highlight((0, index, 1)),
                                 )
                         }));
                         let modification = handle!(single errors, SimpleModificationInner::parse_pro_forma(
@@ -541,7 +551,7 @@ impl CompoundPeptidoformIon {
                         ).and_then(|m| m.0.defined().ok_or_else(|| {BoxedError::new(BasicKind::Error,
                             "Invalid ranged ambiguous modification",
                             "A ranged ambiguous modification has to be fully defined, so no ambiguous modification is allowed",
-                            Context::line(None, line, index, 1))})));
+                            base_context.clone().add_highlight((0, index, 1)))})));
                         index = end_index + 1;
                         ranged_unknown_position_modifications.push((
                             start,
@@ -557,7 +567,7 @@ impl CompoundPeptidoformIon {
                         ending = End::CrossLink;
                     } else {
                         let (buf, charge_carriers) =
-                            handle!(errors, parse_charge_state_2_0(line, index));
+                            handle!(errors, parse_charge_state_2_0(base_context, line, index));
                         index = buf;
                         peptide = peptide.charge_carriers(Some(charge_carriers));
                         if index < chars.len() && chars[index] == b'+' {
@@ -574,7 +584,7 @@ impl CompoundPeptidoformIon {
                             BasicKind::Error,
                             "Invalid modification",
                             "No valid closing delimiter",
-                            Context::line(None, line, index, 1),
+                            base_context.clone().add_highlight((0, index, 1)),
                         )
                     }));
                     let (modification, _) = handle!(single errors, SimpleModificationInner::parse_pro_forma(
@@ -611,7 +621,7 @@ impl CompoundPeptidoformIon {
                                     BasicKind::Error,
                                     "Invalid C term modification",
                                     "No valid closing delimiter",
-                                    Context::line(None, line, index, 1),
+                                                                   base_context.clone().add_highlight((0, index, 1)),
                                 )
                             }));
                             let modification = handle!(single errors, SimpleModificationInner::parse_pro_forma(
@@ -651,7 +661,7 @@ impl CompoundPeptidoformIon {
                             && chars[index + 1] != b'/'
                         {
                             let (buf, charge_carriers) =
-                                handle!(errors, parse_charge_state_2_0(line, index));
+                                handle!(errors, parse_charge_state_2_0(base_context, line, index));
                             index = buf;
                             peptide = peptide.charge_carriers(Some(charge_carriers));
                         }
@@ -693,7 +703,7 @@ impl CompoundPeptidoformIon {
                                 BasicKind::Error,
                                 "Invalid modification",
                                 "A modification cannot be placed before any amino acid, did you want to use an N terminal modification ('[mod]-AA..')? or did you want a modification of unknown position ('[mod]?AA..')?",
-                                Context::line(None, line, start_index, index - start_index - 1),
+                                base_context.clone().add_highlight((0, start_index, index - start_index - 1)),
                             )
                         );
                     }
@@ -716,7 +726,7 @@ impl CompoundPeptidoformIon {
                                 BasicKind::Error,
                                 "Invalid amino acid",
                                 "This character is not a valid amino acid",
-                                Context::line(None, line, index, 1),
+                                base_context.clone().add_highlight((0, index, 1)),
                             )
                         }))
                         .into(),
@@ -732,7 +742,7 @@ impl CompoundPeptidoformIon {
                             BasicKind::Error,
                             "Parsing error",
                             "A singular hyphen cannot exist ('-'), if a C terminal modification is intended use 'SEQ-[MOD]'",
-                            Context::line(None, line, index, 1),
+                            base_context.clone().add_highlight((0, index, 1)),
                         )
                     );
                 }
@@ -746,7 +756,7 @@ impl CompoundPeptidoformIon {
                     BasicKind::Error,
                     "Invalid peptide",
                     "A single hyphen cannot end the definition, if a C terminal modification is intended use 'SEQ-[MOD]'",
-                    Context::line(None, line, line.len().saturating_sub(2), 1),
+                    base_context.clone().add_highlight((0, line.len().saturating_sub(2), 1)),
                 )
             );
         }
@@ -758,7 +768,7 @@ impl CompoundPeptidoformIon {
                     BasicKind::Error,
                     "Invalid peptide",
                     format!("Unclosed brace at amino acid position {pos}"),
-                    Context::full_line(0, line),
+                    base_context.clone().add_highlight((0, range)),
                 )
             );
         }
@@ -770,7 +780,7 @@ impl CompoundPeptidoformIon {
                     BasicKind::Error,
                     "Invalid peptide",
                     "Unclosed ambiguous amino acid group",
-                    Context::full_line(0, line),
+                    base_context.clone().add_highlight((0, range)),
                 )
             );
         }
@@ -782,7 +792,7 @@ impl CompoundPeptidoformIon {
                     BasicKind::Error,
                     "No amino acids found",
                     "The peptide definition is empty",
-                    Context::full_line(0, line),
+                    base_context.clone().add_highlight((0, range)),
                 )
             );
         }
@@ -815,7 +825,7 @@ impl CompoundPeptidoformIon {
                                 "There is no position where this ambiguous modification {} can be placed based on the placement rules in the database.",
                                 ambiguous_lookup[id].name
                             ),
-                            Context::full_line(0, line),
+                            base_context.clone().add_highlight((0, range.clone())),
                         ),
                         (),
                     );
@@ -830,7 +840,7 @@ impl CompoundPeptidoformIon {
                             "Ambiguous modification {} did not have a definition for the actual modification",
                             ambiguous_lookup[id].name
                         ),
-                        Context::full_line(0, line),
+                        base_context.clone().add_highlight((0, range.clone())),
                     ),
                     (),
                 );
@@ -963,7 +973,7 @@ pub(super) fn global_modifications<'a>(
                     continue;
                 }
             };
-            let rules = match parse_placement_rules(line, at_index..end_index) {
+            let rules = match parse_placement_rules(base_context, line, at_index..end_index) {
                 Ok(rules) => rules,
                 Err(err) => {
                     combine_error(&mut errors, err, ());
@@ -1055,10 +1065,11 @@ pub(super) fn global_modifications<'a>(
 /// Parse a set of placement rules.
 /// # Errors
 /// When any rule is invalid.
-pub(super) fn parse_placement_rules(
-    line: &str,
+pub(super) fn parse_placement_rules<'a>(
+    base_context: &Context<'a>,
+    line: &'a str,
     range: Range<usize>,
-) -> Result<Vec<PlacementRule>, BoxedError<'_, BasicKind>> {
+) -> Result<Vec<PlacementRule>, BoxedError<'a, BasicKind>> {
     let mut result = Vec::new();
     for aa in line[range.clone()].split(',') {
         if aa.to_ascii_lowercase().starts_with("n-term") {
@@ -1069,7 +1080,7 @@ pub(super) fn parse_placement_rules(
                             BasicKind::Error,
                             "Invalid global modification",
                             "The location could not be read as an amino acid",
-                            Context::line(None, line, range.start, range.len()),
+                            base_context.clone().add_highlight((0, range.clone())),
                         )
                     })?],
                     Position::AnyNTerm,
@@ -1085,7 +1096,7 @@ pub(super) fn parse_placement_rules(
                             BasicKind::Error,
                             "Invalid global modification",
                             "The location could not be read as an amino acid",
-                            Context::line(None, line, range.start, range.len()),
+                            base_context.clone().add_highlight((0, range.clone())),
                         )
                     })?],
                     Position::AnyCTerm,
@@ -1100,7 +1111,7 @@ pub(super) fn parse_placement_rules(
                         BasicKind::Error,
                         "Invalid global modification",
                         "The location could not be read as an amino acid",
-                        Context::line(None, line, range.start, range.len()),
+                        base_context.clone().add_highlight((0, range.clone())),
                     )
                 })?],
                 Position::Anywhere,
@@ -1116,6 +1127,7 @@ pub(super) fn parse_placement_rules(
 /// # Errors
 /// Give all errors when the text cannot be read as mods of unknown position.
 pub(super) fn global_unknown_position_mods<'a>(
+    base_context: &Context<'a>,
     start: usize,
     line: &'a str,
     custom_database: Option<&CustomDatabase>,
@@ -1134,7 +1146,7 @@ pub(super) fn global_unknown_position_mods<'a>(
                 BasicKind::Error,
                 "Global unknown position modification not closed",
                 "All global unknown position modifications should be closed with a closing square bracket ']'",
-                Context::line(None, line, index, 1),
+                base_context.clone().add_highlight((0, index, 1)),
             )]
         })? + 1;
         let id = match SimpleModificationInner::parse_pro_forma(
@@ -1159,7 +1171,9 @@ pub(super) fn global_unknown_position_mods<'a>(
                     BasicKind::Error,
                     "Invalid unknown position modification",
                     "A modification of unknown position cannot be a cross-link",
-                    Context::line_range(None, line, (start_index + 1)..index),
+                    base_context
+                        .clone()
+                        .add_highlight((0, (start_index + 1)..index)),
                 ));
                 continue;
             }
@@ -1173,18 +1187,30 @@ pub(super) fn global_unknown_position_mods<'a>(
                 index += len + 1;
                 if num < 0 {
                     errs.push(
-                        BoxedError::new(BasicKind::Error,"Invalid unknown position modification", "A modification of unknown position with multiple copies cannot have more a negative number of copies", Context::line(None, line, index, 1)));
+                        BoxedError::new(
+                            BasicKind::Error,
+                            "Invalid unknown position modification",
+                            "A modification of unknown position with multiple copies cannot have more a negative number of copies",
+                            base_context.clone().add_highlight((0, index, 1))));
                     0
                 } else if num > i16::MAX as isize {
                     errs.push(
-                        BoxedError::new(BasicKind::Error,"Invalid unknown position modification", format!("A modification of unknown position with multiple copies cannot have more then {} copies", i16::MAX), Context::line(None, line, index, 1)));
+                        BoxedError::new(
+                            BasicKind::Error,
+                            "Invalid unknown position modification",
+                            format!("A modification of unknown position with multiple copies cannot have more then {} copies", i16::MAX),
+                             base_context.clone().add_highlight((0, index, 1))));
                     0
                 } else {
                     num as usize
                 }
             } else {
                 errs.push(
-                    BoxedError::new(BasicKind::Error,"Invalid unknown position modification", "A modification of unknown position with multiple copies needs the copy number after the caret ('^') symbol", Context::line(None, line, index, 1)));
+                    BoxedError::new(
+                        BasicKind::Error,
+                        "Invalid unknown position modification",
+                        "A modification of unknown position with multiple copies needs the copy number after the caret ('^') symbol",
+                         base_context.clone().add_highlight((0, index, 1))));
                 0
             }
         } else {
@@ -1218,6 +1244,7 @@ pub(super) fn global_unknown_position_mods<'a>(
 /// # Errors
 /// If the mods are not followed by a closing brace. Or if the mods are ambiguous.
 fn labile_modifications<'a>(
+    base_context: &Context<'a>,
     line: &'a str,
     mut index: usize,
     custom_database: Option<&CustomDatabase>,
@@ -1233,7 +1260,7 @@ fn labile_modifications<'a>(
                     BasicKind::Error,
                     "Invalid labile modification",
                     "No valid closing delimiter, a labile modification should be closed by '}'",
-                    Context::line(None, line, index, 1),
+                    base_context.clone().add_highlight((0, index, 1)),
                 ),
                 (),
             );
@@ -1254,7 +1281,9 @@ fn labile_modifications<'a>(
                     BasicKind::Error,
                     "Invalid labile modification",
                     "A labile modification cannot be ambiguous or a cross-linker",
-                    Context::line(None, line, index + 1, end_index - 1 - index),
+                    base_context
+                        .clone()
+                        .add_highlight((0, index + 1, end_index - 1 - index)),
                 ),
                 (),
             ),
@@ -1275,10 +1304,11 @@ fn labile_modifications<'a>(
 /// If the charge state is not following the specification.
 /// # Panics
 /// Panics if the text is not UTF-8.
-pub(super) fn parse_charge_state_2_0(
-    line: &str,
+pub(super) fn parse_charge_state_2_0<'a>(
+    base_context: &Context<'a>,
+    line: &'a str,
     index: usize,
-) -> ParserResult<'_, (usize, MolecularCharge), BasicKind> {
+) -> ParserResult<'a, (usize, MolecularCharge), BasicKind> {
     let mut errors = Vec::new();
     let chars = line.as_bytes();
     let (charge_len, total_charge) = handle!(single errors, next_num(chars, index + 1, false)
@@ -1287,7 +1317,7 @@ pub(super) fn parse_charge_state_2_0(
             BasicKind::Error,
             "Invalid peptide charge state",
             "There should be a number dictating the total charge of the peptide",
-            Context::line(None, line, index + 1, 1),
+            base_context.clone().add_highlight((0, index + 1, 1))
         )
     }));
     if chars.get(index + 1 + charge_len) == Some(&b'[') {
@@ -1297,7 +1327,7 @@ pub(super) fn parse_charge_state_2_0(
                 BasicKind::Error,
                 "Invalid adduct ion",
                 "No valid closing delimiter",
-                Context::line(None, line, index + 2 + charge_len, 1),
+                base_context.clone().add_highlight((0, index + 2 + charge_len, 1))
             )
         }));
         let mut offset = index + 2 + charge_len;
@@ -1312,7 +1342,7 @@ pub(super) fn parse_charge_state_2_0(
                     BasicKind::Error,
                     "Invalid adduct ion",
                     "Invalid adduct ion count",
-                    Context::line(None, line, offset, 1),
+                    base_context.clone().add_highlight((0, index, 1))
                 )
             }));
 
@@ -1328,7 +1358,7 @@ pub(super) fn parse_charge_state_2_0(
                         BasicKind::Error,
                         "Invalid adduct ion",
                         format!("The adduct ion number {err}"),
-                        Context::line(None, line, offset + set.len() - charge_len, charge_len),
+                        base_context.clone().add_highlight((0, offset + set.len() - charge_len, charge_len))
                     )
                 }))
             };
@@ -1345,7 +1375,11 @@ pub(super) fn parse_charge_state_2_0(
                             BasicKind::Error,
                             "Invalid adduct ion",
                             "The adduct ion number should be preceded by a sign",
-                            Context::line(None, line, offset + set.len() - charge_len - 1, 1),
+                            base_context.clone().add_highlight((
+                                0,
+                                offset + set.len() - charge_len - 1,
+                                1,
+                            )),
                         ),
                         (),
                     );
@@ -1361,7 +1395,7 @@ pub(super) fn parse_charge_state_2_0(
                         BasicKind::Error,
                         "Invalid adduct ion",
                         "The adduct ion should have a formula defined",
-                        Context::line(None, line, offset, set.len()),
+                        base_context.clone().add_highlight((0, offset, set.len())),
                     ),
                     (),
                 );
@@ -1388,7 +1422,7 @@ pub(super) fn parse_charge_state_2_0(
                         BasicKind::Error,
                         "Invalid peptide charge amount",
                         "The peptide charge amount is too big to store inside an isize",
-                        Context::line(None, line, index, offset),
+                        base_context.clone().add_highlight((0, index, offset))
                     )
                 }));
             } else {
@@ -1405,7 +1439,7 @@ pub(super) fn parse_charge_state_2_0(
                             BasicKind::Error,
                             "Invalid peptide charge state",
                             "The peptide charge state is too big to store inside an isize",
-                            Context::line(None, line, index, offset),
+                            base_context.clone().add_highlight((0, index, offset))
                         )
                     })),
             )
@@ -1414,7 +1448,7 @@ pub(super) fn parse_charge_state_2_0(
                     BasicKind::Error,
                     "Invalid peptide charge state",
                     "The peptide charge state is too big to store inside an isize",
-                    Context::line(None, line, index, offset),
+                    base_context.clone().add_highlight((0, index, offset))
                 )
             }));
         }
@@ -1430,7 +1464,7 @@ pub(super) fn parse_charge_state_2_0(
                     BasicKind::Error,
                     "Invalid peptide charge state",
                     "The peptide charge state number has to be equal to the sum of all separate adduct ions",
-                    Context::line(None, line, index, offset),
+                    base_context.clone().add_highlight((0, index, offset)),
                 ),
                 (),
             );

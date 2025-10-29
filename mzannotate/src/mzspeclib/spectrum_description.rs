@@ -668,7 +668,7 @@ pub(crate) fn populate_spectrum_description_from_attributes<'a>(
                     curie!(MS:1000028) => { // detector resolution
                         description.acquisition.scans[0].add_param(attr.name.clone().into_param(attr.value.clone().into(), Unit::Unknown));
                     }
-                    | curie!(MS:1000285) // TIC 
+                    | curie!(MS:1000285) // TIC
                     | curie!(MS:1000505) // Base peak intensity
                     | curie!(MS:1000504) // Base peak m/z
                     | curie!(MS:1003059) // Number of peaks

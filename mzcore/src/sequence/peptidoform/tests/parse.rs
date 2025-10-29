@@ -111,7 +111,7 @@ fn parse_global_modifications() {
 #[test]
 fn charge_state_positive() {
     let parse = |str: &str| {
-        parse_charge_state_2_0(str, 0)
+        parse_charge_state_2_0(&Context::none(), str, 0)
             .map(|((len, res), _)| {
                 assert_eq!(
                     len,
@@ -206,7 +206,7 @@ fn charge_state_positive() {
 #[test]
 fn charge_state_negative() {
     let parse = |str: &str| {
-        parse_charge_state_2_0(str, 0)
+        parse_charge_state_2_0(&Context::none(), str, 0)
             .map(|(a, _)| a)
             .map_err(|_| ())
     };

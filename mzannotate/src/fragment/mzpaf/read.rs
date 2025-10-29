@@ -6,20 +6,26 @@ use serde::{Deserialize, Serialize};
 
 use mzcore::{
     chemistry::{
-        Chemical, Element, MolecularCharge, MolecularFormula, MultiChemical, NeutralLoss, SatelliteLabel, ELEMENT_PARSE_LIST
-    }, molecular_formula, ontology::{CustomDatabase, Ontology}, quantities::Tolerance, sequence::{
-        AminoAcid, Linked, PeptidePosition, Peptidoform, SemiAmbiguous,
-        SequenceElement, SequencePosition, SimpleModification, SimpleModificationInner,
-    }, system::{e, isize::Charge, thomson, Mass, MassOverCharge, OrderedMassOverCharge}
+        Chemical, ELEMENT_PARSE_LIST, Element, MolecularCharge, MolecularFormula, MultiChemical,
+        NeutralLoss, SatelliteLabel,
+    },
+    molecular_formula,
+    ontology::{CustomDatabase, Ontology},
+    quantities::Tolerance,
+    sequence::{
+        AminoAcid, Linked, PeptidePosition, Peptidoform, SemiAmbiguous, SequenceElement,
+        SequencePosition, SimpleModification, SimpleModificationInner,
+    },
+    system::{Mass, MassOverCharge, OrderedMassOverCharge, e, isize::Charge, thomson},
 };
 
 use crate::{
     fragment::*,
     helper_functions::{
-        end_of_enclosure, explain_number_error, next_number, RangeExtension, RangeMaths
-    }, mzspeclib::AnalyteTarget,
+        RangeExtension, RangeMaths, end_of_enclosure, explain_number_error, next_number,
+    },
+    mzspeclib::AnalyteTarget,
 };
-
 
 impl Fragment {
     /// Parse a [mzPAF](https://www.psidev.info/mzPAF) peak annotation line (can contain multiple annotations).
@@ -155,18 +161,39 @@ pub struct PeakAnnotation {
 impl PeakAnnotation {
     /// Convert a peak annotation into a fragment.
     /// # Errors
-    /// If the fragment refers to a non existing analyte, or if the referenced analyte is not a 
-    /// peptidoform ion when that is necessary, or when the fragment is outside of bounds for a 
+    /// If the fragment refers to a non existing analyte, or if the referenced analyte is not a
+    /// peptidoform ion when that is necessary, or when the fragment is outside of bounds for a
     /// peptidoform.
-    pub(crate) fn into_fragment<'a>(self, interpretation: &[(u32, AnalyteTarget)], context: &Context<'a>) -> Result<Fragment, BoxedError<'a, BasicKind>> {
+    pub(crate) fn into_fragment<'a>(
+        self,
+        interpretation: &[(u32, AnalyteTarget)],
+        context: &Context<'a>,
+    ) -> Result<Fragment, BoxedError<'a, BasicKind>> {
         // Get the peptidoform (assume no cross-linkers)
-        let target = if self.analyte_number == 0 {None} else {Some(&interpretation.iter().find(|(n, _)| *n == self.analyte_number).ok_or_else(|| BoxedError::new(BasicKind::Error, "Invalid mzPAF analyte number", "The analyte that is referenced does not exist", context.clone()))?.1)};
-        
+        let target = if self.analyte_number == 0 {
+            None
+        } else {
+            Some(
+                &interpretation
+                    .iter()
+                    .find(|(n, _)| *n == self.analyte_number)
+                    .ok_or_else(|| {
+                        BoxedError::new(
+                            BasicKind::Error,
+                            "Invalid mzPAF analyte number",
+                            "The analyte that is referenced does not exist",
+                            context.clone(),
+                        )
+                    })?
+                    .1,
+            )
+        };
+
         let (formula, ion) = match self.ion {
             IonType::Unknown(series) => (None, FragmentType::Unknown(series)),
             IonType::MainSeries(series, sub, ordinal, specific_interpretation) => {
                 let (sequence_length, n_aa, c_aa) = if let Some(target) = target {
-                     let specific_interpretation: Option<&Peptidoform<Linked>> =
+                    let specific_interpretation: Option<&Peptidoform<Linked>> =
                         specific_interpretation.as_ref().map(AsRef::as_ref);
                     let peptidoform= specific_interpretation.unwrap_or(match target {
                         AnalyteTarget::PeptidoformIon(pep) => {
@@ -180,13 +207,31 @@ impl PeakAnnotation {
                         }
                     });
                     let sequence_length = peptidoform.len();
-                    let Some(n_aa) = peptidoform.sequence().get(ordinal - 1).map(|a| a.aminoacid.aminoacid()) else {
-                        return Err(BoxedError::new(BasicKind::Error, "Invalid mzPAF peak annotation", "The referenced position does not exist in the analyte peptidoform", context.clone()));
+                    let Some(n_aa) = peptidoform
+                        .sequence()
+                        .get(ordinal - 1)
+                        .map(|a| a.aminoacid.aminoacid())
+                    else {
+                        return Err(BoxedError::new(
+                            BasicKind::Error,
+                            "Invalid mzPAF peak annotation",
+                            "The referenced position does not exist in the analyte peptidoform",
+                            context.clone(),
+                        ));
                     };
-                    let Some(c_aa) = sequence_length.checked_sub(ordinal).and_then(|i| peptidoform.sequence().get(i)).map(|a| a.aminoacid.aminoacid()) else {
-                        return Err(BoxedError::new(BasicKind::Error, "Invalid mzPAF peak annotation", "The referenced position does not exist in the analyte peptidoform", context.clone()));
+                    let Some(c_aa) = sequence_length
+                        .checked_sub(ordinal)
+                        .and_then(|i| peptidoform.sequence().get(i))
+                        .map(|a| a.aminoacid.aminoacid())
+                    else {
+                        return Err(BoxedError::new(
+                            BasicKind::Error,
+                            "Invalid mzPAF peak annotation",
+                            "The referenced position does not exist in the analyte peptidoform",
+                            context.clone(),
+                        ));
                     };
-                    (sequence_length, n_aa, c_aa) 
+                    (sequence_length, n_aa, c_aa)
                 } else {
                     (0, AminoAcid::Unknown, AminoAcid::Unknown)
                 };
@@ -298,12 +343,12 @@ impl PeakAnnotation {
                 )
             }
             IonType::Immonium(aa, m) => (
-                aa.formulas().first().map(|f| f
-                    + m.as_ref().map(|m| m.formula()).unwrap_or_default()
-                    - molecular_formula!(C 1 O 1),
-                ),
+                aa.formulas().first().map(|f| {
+                    f + m.as_ref().map(|m| m.formula()).unwrap_or_default()
+                        - molecular_formula!(C 1 O 1)
+                }),
                 FragmentType::Immonium(
-                    None, 
+                    None,
                     m.map_or_else(
                         || SequenceElement::new(aa.into(), None),
                         |m| SequenceElement::new(aa.into(), None).with_simple_modification(m),
@@ -316,12 +361,22 @@ impl PeakAnnotation {
                         pep.peptidoforms()[0].len() // TODO: this assumes no cross-linkers
                     }
                     Some(AnalyteTarget::MolecularFormula(_)) => {
-                        return Err(BoxedError::new(BasicKind::Error, "Invalid mzPAF peak annotation", "The peak annotation is a peptidoform main series fragment but the referenced analyte is a molecular formula.", context.clone()));
+                        return Err(BoxedError::new(
+                            BasicKind::Error,
+                            "Invalid mzPAF peak annotation",
+                            "The peak annotation is a peptidoform main series fragment but the referenced analyte is a molecular formula.",
+                            context.clone(),
+                        ));
                     }
                     Some(AnalyteTarget::Unknown(_)) => {
-                        return Err(BoxedError::new(BasicKind::Error, "Invalid mzPAF peak annotation", "The peak annotation is a peptidoform main series fragment but the referenced analyte does not contain a recognised analyte definition.", context.clone()));
+                        return Err(BoxedError::new(
+                            BasicKind::Error,
+                            "Invalid mzPAF peak annotation",
+                            "The peak annotation is a peptidoform main series fragment but the referenced analyte does not contain a recognised analyte definition.",
+                            context.clone(),
+                        ));
                     }
-                    None => 0
+                    None => 0,
                 };
 
                 (
@@ -526,7 +581,16 @@ fn parse_ion<'a>(
                         let interpretation = Peptidoform::pro_forma(
                             &line[range.start_index() + 1..location],
                             custom_database,
-                        ).map_err(|errs| BoxedError::new(BasicKind::Error, "Invalid ProForma definition", "The string could not be parsed as a ProForma definition", Context::line_range(None, line, range.clone())).add_underlying_errors(errs));
+                        )
+                        .map_err(|errs| {
+                            BoxedError::new(
+                                BasicKind::Error,
+                                "Invalid ProForma definition",
+                                "The string could not be parsed as a ProForma definition",
+                                Context::line_range(None, line, range.clone()),
+                            )
+                            .add_underlying_errors(errs)
+                        });
                         interpretation.and_then(|(i, _)| {
                             i.into_semi_ambiguous()
                                 .ok_or_else(|| BoxedError::new(BasicKind::Error,
@@ -566,20 +630,16 @@ fn parse_ion<'a>(
                         BasicKind::Error,
                         "Invalid mzPAF main series ion ordinal",
                         "The ion ordinal cannot be 0",
-                        base_context
-                            .clone()
-                            .add_highlight((0, range.start_index() - ordinal.0, // Maybe also offset for interpretation?
-                            ordinal.0,)),
+                        base_context.clone().add_highlight((
+                            0,
+                            range.start_index() - ordinal.0, // Maybe also offset for interpretation?
+                            ordinal.0,
+                        )),
                     ))
                 } else {
                     Ok((
                         end..range.end,
-                        IonType::MainSeries(
-                            c,
-                            sub,
-                            ordinal_num,
-                            interpretation,
-                        ),
+                        IonType::MainSeries(c, sub, ordinal_num, interpretation),
                     ))
                 }
             } else {
@@ -604,20 +664,16 @@ fn parse_ion<'a>(
                         .add_highlight((0, range.start_index(), 1)),
                 )
             })?;
-            let index = range.start_index()+1+amino_acid.len_utf8();
-            let modification = if line[index..range.end].starts_with('['){
-                let end = end_of_enclosure(line, index + 1, b'[', b']').ok_or_else(
-                    || {
-                        BoxedError::new(
-                            BasicKind::Error,
-                            "Invalid mzPAF immonium modification",
-                            "The square brackets are not closed",
-                            base_context
-                                .clone()
-                                .add_highlight((0, index, 1)),
-                        )
-                    },
-                )?;
+            let index = range.start_index() + 1 + amino_acid.len_utf8();
+            let modification = if line[index..range.end].starts_with('[') {
+                let end = end_of_enclosure(line, index + 1, b'[', b']').ok_or_else(|| {
+                    BoxedError::new(
+                        BasicKind::Error,
+                        "Invalid mzPAF immonium modification",
+                        "The square brackets are not closed",
+                        base_context.clone().add_highlight((0, index, 1)),
+                    )
+                })?;
                 let modification = &line[index + 1..end];
                 Some((
                     end - range.start_index() - 1, // Length of mod + [ + ]
@@ -716,32 +772,33 @@ fn parse_ion<'a>(
                     )),
                 )
             })?;
-             if first_location == 0 {
+            if first_location == 0 {
                 Err(BoxedError::new(
                     BasicKind::Error,
                     "Invalid mzPAF main series ion ordinal",
                     "The ion ordinal cannot be 0",
-                    base_context
-                        .clone()
-                        .add_highlight((0, range.start_index() + 1, 
-                        first_ordinal.0,)),
+                    base_context.clone().add_highlight((
+                        0,
+                        range.start_index() + 1,
+                        first_ordinal.0,
+                    )),
                 ))
             } else if second_location == 0 {
                 Err(BoxedError::new(
                     BasicKind::Error,
                     "Invalid mzPAF main series ion ordinal",
                     "The ion ordinal cannot be 0",
-                    base_context
-                        .clone()
-                        .add_highlight((0, range.start_index() + first_ordinal.0 + 2,
-                        second_ordinal.0,)),
+                    base_context.clone().add_highlight((
+                        0,
+                        range.start_index() + first_ordinal.0 + 2,
+                        second_ordinal.0,
+                    )),
                 ))
             } else {
                 Ok((
                     range.add_start(2 + first_ordinal.0 + second_ordinal.0),
                     IonType::Internal(first_location, second_location),
                 ))
-
             }
         }
         Some(b'_') => {
@@ -850,11 +907,8 @@ fn parse_ion<'a>(
                         .add_highlight((0, range.start_index(), 1)),
                 ))
             }?;
-            let formula = MolecularFormula::from_pro_forma::<false,false>(
-                line,
-                formula_range.clone(),
-                
-            )?;
+            let formula =
+                MolecularFormula::from_pro_forma::<false, false>(line, formula_range.clone())?;
 
             Ok((
                 range.add_start(3 + formula_range.len()),
@@ -894,7 +948,7 @@ fn parse_neutral_loss<'a>(
     let mut neutral_losses = Vec::new();
     while let Some(c @ (b'-' | b'+')) = line.as_bytes().get(range.start_index() + offset).copied() {
         let mut amount = 1;
-        let num_offset = 
+        let num_offset =
         // Parse leading number to detect how many times this loss occured
         if let Some(num) = next_number::<false, false, u16>(line, range.add_start(1 + offset)) {
             amount = num.2.map_err(|err| {
@@ -958,7 +1012,7 @@ fn parse_neutral_loss<'a>(
                     _ => unreachable!(),
                 });
             } else if let Ok(formula) =
-                MolecularFormula::from_pro_forma::< false, false>(line, first - 1..=last)
+                MolecularFormula::from_pro_forma::<false, false>(line, first - 1..=last)
             {
                 // Catches the case of a single isotope as formula
                 neutral_losses.push(match c {
@@ -994,11 +1048,8 @@ fn parse_neutral_loss<'a>(
             if line[first..first + last].ends_with("[M") {
                 last -= 2; // Detect any adduct types which might otherwise sneak in
             }
-            let formula = MolecularFormula::from_pro_forma::<false,false>(
-                line,
-                first..first + last,
-                
-            )?;
+            let formula =
+                MolecularFormula::from_pro_forma::<false, false>(line, first..first + last)?;
             neutral_losses.push(match c {
                 b'+' => NeutralLoss::Gain(amount, formula),
                 b'-' => NeutralLoss::Loss(amount, formula),
@@ -1186,11 +1237,8 @@ fn parse_adduct_type<'a>(
                 .last()
                 .map_or(0, |last| last.0 + last.1.len_utf8())
                 .min(closing - first); // Prevent the closing bracket from being used in an isotope
-            let formula = MolecularFormula::from_pro_forma::<false,false>(
-                line,
-                first..first + last,
-                
-            )?;
+            let formula =
+                MolecularFormula::from_pro_forma::<false, false>(line, first..first + last)?;
             carriers.push((amount as isize, formula));
             offset += last;
         }
@@ -1492,7 +1540,14 @@ fn neutral_loss() {
 #[test]
 #[allow(clippy::missing_panics_doc)]
 fn parse_correctly() {
-    let pep = [(1_u32, AnalyteTarget::PeptidoformIon(mzcore::sequence::PeptidoformIon::pro_forma("AAAAAAAAAA", None).unwrap().0))];
+    let pep = [(
+        1_u32,
+        AnalyteTarget::PeptidoformIon(
+            mzcore::sequence::PeptidoformIon::pro_forma("AAAAAAAAAA", None)
+                .unwrap()
+                .0,
+        ),
+    )];
     let a = "y8^2/-0.0017";
     let (_, parse_a) = parse_annotation(&Context::none(), a, 0..a.len(), None).unwrap();
     assert!(!parse_a.auxiliary);

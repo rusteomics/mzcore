@@ -233,7 +233,10 @@ impl<'a, R: BufRead> MzSpecLibTextParser<'a, R> {
     fn read_attribute(
         &mut self,
         buf: &mut String,
-    ) -> Result<(Option<u32>, Attribute, std::ops::Range<usize>), BoxedError<'static, MzSpecLibErrorKind>> {
+    ) -> Result<
+        (Option<u32>, Attribute, std::ops::Range<usize>),
+        BoxedError<'static, MzSpecLibErrorKind>,
+    > {
         let z = self.read_next_line(buf).map_err(|e| {
             BoxedError::new(
                 MzSpecLibErrorKind::IO,
@@ -512,7 +515,9 @@ impl<'a, R: BufRead> MzSpecLibTextParser<'a, R> {
     ) -> Result<u32, BoxedError<'static, MzSpecLibErrorKind>> {
         let id = if buf.starts_with(declaration) {
             self.state = to_state;
-            if let Some(stripped) = buf.trim_ascii_end().strip_suffix('>') && let Some((before, val)) = stripped.split_once('=') {
+            if let Some(stripped) = buf.trim_ascii_end().strip_suffix('>')
+                && let Some((before, val)) = stripped.split_once('=')
+            {
                 val.trim().parse::<Id>().map_err(|e| {
                     BoxedError::new(
                         MzSpecLibErrorKind::Declaration,
@@ -603,7 +608,7 @@ impl<'a, R: BufRead> MzSpecLibTextParser<'a, R> {
                         let mut formula = MolecularFormula::from_pro_forma::<false,false>(
                             &value,
                             0..value.len(),
-                            
+
                         )
                         .map_err(|e| e.to_owned().convert::<MzSpecLibErrorKind, BoxedError<'static, MzSpecLibErrorKind>>(|_| MzSpecLibErrorKind::ProForma))?;
                         analyte.target = match analyte.target {
@@ -765,7 +770,10 @@ impl<'a, R: BufRead> MzSpecLibTextParser<'a, R> {
                                     MzSpecLibErrorKind::Attribute,
                                     "Invalid PSM-level probability",
                                     e.to_string(),
-                                    self.current_context().lines(0, &buf).add_highlight((0, range)).to_owned(),
+                                    self.current_context()
+                                        .lines(0, &buf)
+                                        .add_highlight((0, range))
+                                        .to_owned(),
                                 )
                             })?);
                     } else if [
@@ -999,7 +1007,10 @@ impl<'a, R: BufRead> MzSpecLibTextParser<'a, R> {
             match self.read_attribute(&mut buf) {
                 Ok((group_id, attr, range)) => term_collection.entry(group_id).or_default().push((
                     attr,
-                    self.current_context().to_owned().lines(0, buf.clone()).add_highlight((0, range)),
+                    self.current_context()
+                        .to_owned()
+                        .lines(0, buf.clone())
+                        .add_highlight((0, range)),
                 )),
                 Err(e) => {
                     if buf.starts_with("<Analyte=") {

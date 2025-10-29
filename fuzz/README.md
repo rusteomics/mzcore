@@ -12,7 +12,7 @@ cargo afl fuzz -i fuzz/in_pro_forma -o out_pro_forma target/release/pro_forma
 cargo afl fuzz -i fuzz/in_pro_forma -o out_sloppy_pro_forma target/release/sloppy_pro_forma
 cargo afl fuzz -i fuzz/in_peaks -o out_peaks target/release/peaks
 ```
-Several fuzz targets are defined: `pro_forma`, `sloppy_pro_forma`, `peaks`. The all targets have an `in_<target>` directory with input examples. 
+Several fuzz targets are defined: `pro_forma`, `sloppy_pro_forma`, `peaks`. The all targets have an `in_<target>` directory with input examples.
 
 After running the fuzzer the following commands can be used to easily save all crashes into a single file.
 ```

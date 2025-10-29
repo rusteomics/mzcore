@@ -10,7 +10,7 @@ Handle fragment spectra annotation. Has support for [generating theoretical frag
    - Generate theoretical fragments for chimeric spectra
    - Generate theoretical fragments for cross-links (also disulfides)
    - Generate theoretical fragments for modifications of unknown position
-   - Generate peptide backbone (a, b, c, x, y, and z) and satellite (w, d, and v) ion fragments 
+   - Generate peptide backbone (a, b, c, x, y, and z) and satellite (w, d, and v) ion fragments
    - Generate glycan fragments (B, Y, and internal fragments)
  - Integrated with [mzdata](https://crates.io/crates/mzdata)
  - Match spectra to the generated fragments

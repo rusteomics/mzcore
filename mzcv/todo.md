@@ -7,7 +7,7 @@ TODO:
 - [ ] Handle indices that are not numeric (eg NCIT or GNOme ids)
 - [ ] Handle LZW compression from IMGT
 - [ ] Handle multiple files together
-    - [ ] As fallback to get the file from different servers 
+    - [ ] As fallback to get the file from different servers
     - [-] Join multiple files into a single CVIndex (GNOme)
 - [x] Write out errors when parsing file failed
 - [x] Auto detect version + date + hash of newly loaded data

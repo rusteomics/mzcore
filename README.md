@@ -9,7 +9,7 @@ A set of libraries to handle peptide centric mass spectrometry calculations. Bui
 - [mzPAF](https://www.psidev.info/mzpaf) A standard notation of peak fragment annotation
 - [mzTab](https://www.psidev.info/mztab-specifications) A standard notation for matched peptidoforms from database and _de novo_ searches
 
-For raw data centered HUPO-PSI standards support (eg mzML, USI) see [mzdata](https://crates.io/crates/mzdata). 
+For raw data centered HUPO-PSI standards support (eg mzML, USI) see [mzdata](https://crates.io/crates/mzdata).
 
 ## Features
 
