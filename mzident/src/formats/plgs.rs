@@ -108,7 +108,7 @@ format_family!(
         fragment_mass: Mass, |location: Location, _| location.or_empty().parse(NUMBER_ERROR).map(|r| r.map(Mass::new::<mzcore::system::dalton>));
         fragment_type: Box<str>, |location: Location, _| Ok(location.get_boxed_str());
         fragment_index: u32, |location: Location, _| location.or_empty().parse::<u32>(NUMBER_ERROR);
-        fragment_neutral_loss: NeutralLoss, |location: Location, _| location.or_empty().ignore("None").map(|l| MolecularFormula::from_pro_forma::<false, false>(l.full_line(), l.location.clone()).map(|f| NeutralLoss::Loss(1, f)).map_err(BoxedError::to_owned)).transpose();
+        fragment_neutral_loss: NeutralLoss, |location: Location, _| location.or_empty().ignore("None").map(|l| MolecularFormula::pro_forma_inner::<false, false>(&l.context(), l.full_line(), l.location.clone()).map(|f| NeutralLoss::Loss(1, f)).map_err(BoxedError::to_owned)).transpose();
         fragment_description: Box<str>, |location: Location, _| Ok(location.get_boxed_str());
         fragment_sequence: Box<str>, |location: Location, _| Ok(location.get_boxed_str());
         fragment_site: Box<str>, |location: Location, _| Ok(location.get_boxed_str());

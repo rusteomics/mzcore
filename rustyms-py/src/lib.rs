@@ -240,7 +240,7 @@ impl MolecularFormula {
     ///
     #[classmethod]
     fn from_pro_forma(_cls: &Bound<'_, PyType>, proforma: &str) -> PyResult<Self> {
-        mzcore::chemistry::MolecularFormula::from_pro_forma::<false, false>(proforma, ..)
+        mzcore::chemistry::MolecularFormula::pro_forma::<false, false>(proforma)
             .map(MolecularFormula)
             .map_err(|e| PyValueError::new_err(format!("Invalid ProForma string: {e}")))
     }

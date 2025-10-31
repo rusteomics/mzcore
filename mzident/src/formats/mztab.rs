@@ -1128,7 +1128,8 @@ fn parse_modification<'a>(
                             ));
                         }
                     };
-                    MolecularFormula::from_pro_forma::<false, false>(
+                    MolecularFormula::pro_forma_inner::<false, false>(
+                        &Context::none().lines(0, line),
                         line,
                         value_range.start + 1..value_range.end,
                     )

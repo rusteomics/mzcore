@@ -314,16 +314,16 @@ mod tests {
     #[test]
     fn pro_forma_spaces() {
         assert_eq!(
-            MolecularFormula::from_pro_forma::<false, false>("C1[13C1]H6", ..),
-            MolecularFormula::from_pro_forma::<false, false>("C 1 [ 13 C 1 ] H 6", ..)
+            MolecularFormula::pro_forma::<false, false>("C1[13C1]H6"),
+            MolecularFormula::pro_forma::<false, false>("C 1 [ 13 C 1 ] H 6")
         );
     }
 
     #[test]
     fn pro_forma_empty() {
         assert_eq!(
-            MolecularFormula::from_pro_forma::<false, true>("(empty)", ..),
-            MolecularFormula::from_pro_forma::<false, true>("H0", ..)
+            MolecularFormula::pro_forma::<false, true>("(empty)"),
+            MolecularFormula::pro_forma::<false, true>("H0")
         );
     }
 

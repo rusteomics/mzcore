@@ -37,10 +37,21 @@ impl MolecularFormula {
     /// If the formula is not valid according to the above specification, with some help on what is going wrong.
     /// # Panics
     /// It can panic if the string contains not UTF8 symbols.
-    pub fn from_pro_forma<const ALLOW_CHARGE: bool, const ALLOW_EMPTY: bool>(
+    pub fn pro_forma<const ALLOW_CHARGE: bool, const ALLOW_EMPTY: bool>(
         value: &str,
-        range: impl RangeBounds<usize>,
     ) -> Result<Self, BoxedError<'_, BasicKind>> {
+        Self::pro_forma_inner::<ALLOW_CHARGE, ALLOW_EMPTY>(
+            &Context::none().lines(0, value),
+            value,
+            0..value.len(),
+        )
+    }
+
+    pub fn pro_forma_inner<'a, const ALLOW_CHARGE: bool, const ALLOW_EMPTY: bool>(
+        base_context: &Context<'a>,
+        value: &'a str,
+        range: impl RangeBounds<usize>,
+    ) -> Result<Self, BoxedError<'a, BasicKind>> {
         let (mut index, end) = range.bounds(value.len().saturating_sub(1));
         if index > end || end >= value.len() || &value[index..=end] == "(empty)" {
             return if ALLOW_EMPTY {
@@ -50,7 +61,7 @@ impl MolecularFormula {
                     BasicKind::Error,
                     "Invalid ProForma molecular formula",
                     "The formula is empty",
-                    Context::line_range(None, value, range),
+                    base_context.clone().add_highlight((0, range)),
                 ))
             };
         }
@@ -75,7 +86,7 @@ impl MolecularFormula {
                                 BasicKind::Error,
                                 "Invalid ProForma molecular formula",
                                 "No closing square bracket found",
-                                Context::line(None, value, index, 1),
+                                base_context.clone().add_highlight((0, index, 1)),
                             )
                         })?;
                     let isotope = bytes
@@ -117,12 +128,11 @@ impl MolecularFormula {
                                     BasicKind::Error,
                                     "Invalid ProForma molecular formula",
                                     format!("The element number {}", explain_number_error(&err)),
-                                    Context::line(
-                                        None,
-                                        value,
+                                    base_context.clone().add_highlight((
+                                        0,
                                         index + isotope + ws1 + ele + ws2,
                                         num_len,
-                                    ),
+                                    )),
                                 )
                             })?;
                         let isotope = value[index..index + isotope]
@@ -132,7 +142,7 @@ impl MolecularFormula {
                                     BasicKind::Error,
                                     "Invalid ProForma molecular formula",
                                     format!("The isotope number {}", explain_number_error(&err)),
-                                    Context::line(None, value, index, isotope),
+                                    base_context.clone().add_highlight((0, index, isotope)),
                                 )
                             })?;
 
@@ -143,7 +153,7 @@ impl MolecularFormula {
                                 BasicKind::Error,
                                 "Invalid ProForma molecular formula",
                                 err.reason(),
-                                Context::line(None, value, index, len),
+                                base_context.clone().add_highlight((0, index, len)),
                             ));
                         }
                         element = None;
@@ -153,7 +163,9 @@ impl MolecularFormula {
                             BasicKind::Error,
                             "Invalid ProForma molecular formula",
                             "Invalid element",
-                            Context::line(None, value, index + isotope, ele),
+                            base_context
+                                .clone()
+                                .add_highlight((0, index + isotope, ele)),
                         ));
                     }
                 }
@@ -179,7 +191,7 @@ impl MolecularFormula {
                                             "The element number {}",
                                             explain_number_error(&err)
                                         ),
-                                        Context::line(None, value, index, v.len()),
+                                        base_context.clone().add_highlight((0, index, v.len())),
                                     )
                                 }),
                                 v.len(),
@@ -194,7 +206,11 @@ impl MolecularFormula {
                             BasicKind::Error,
                             "Invalid ProForma molecular formula",
                             err.reason(),
-                            Context::line(None, value, index - 1, 1),
+                            base_context.clone().add_highlight((
+                                0,
+                                index - element.unwrap().symbol().len(),
+                                element.unwrap().symbol().len(),
+                            )),
                         ));
                     }
                     element = None;
@@ -209,7 +225,11 @@ impl MolecularFormula {
                                 BasicKind::Error,
                                 "Invalid ProForma molecular formula",
                                 format!("The charge number is {}", explain_number_error(&err)),
-                                Context::line(None, value, index, end.saturating_sub(index)),
+                                base_context.clone().add_highlight((
+                                    0,
+                                    index,
+                                    end.saturating_sub(index),
+                                )),
                             )
                         })?;
                         let _ = result.add((Element::Electron, None, -num));
@@ -219,12 +239,11 @@ impl MolecularFormula {
                         BasicKind::Error,
                         "Invalid ProForma molecular formula",
                         "A charge tag was not set up properly, a charge tag should be formed as ':z<sign><number>'",
-                        Context::line(
-                            None,
-                            value,
+                        base_context.clone().add_highlight((
+                            0,
                             index.saturating_sub(1),
                             if bytes.len() < index { 1 } else { 2 },
-                        ),
+                        )),
                     ));
                 }
                 _ => {
@@ -235,7 +254,11 @@ impl MolecularFormula {
                             BasicKind::Error,
                             "Invalid ProForma molecular formula",
                             err.reason(),
-                            Context::line(None, value, index - 1, 1),
+                            base_context.clone().add_highlight((
+                                0,
+                                index - element.symbol().len(),
+                                element.symbol().len(),
+                            )),
                         ));
                     }
                     let element_text: String = value[index..].chars().take(2).collect::<String>();
@@ -250,16 +273,15 @@ impl MolecularFormula {
                         BasicKind::Error,
                         "Invalid ProForma molecular formula",
                         "Not a valid character in formula",
-                        Context::line(
-                            None,
-                            value,
+                        base_context.clone().add_highlight((
+                            0,
                             index,
                             value[index..]
                                 .chars()
                                 .next()
                                 .map(char::len_utf8)
                                 .unwrap_or_default(),
-                        ),
+                        )),
                     ));
                 }
             }
@@ -271,7 +293,11 @@ impl MolecularFormula {
                 BasicKind::Error,
                 "Invalid ProForma molecular formula",
                 err.reason(),
-                Context::line(None, value, index - 1, 1),
+                base_context.clone().add_highlight((
+                    0,
+                    index - element.symbol().len(),
+                    element.symbol().len(),
+                )),
             ));
         }
         // Simplify
@@ -281,7 +307,7 @@ impl MolecularFormula {
                 BasicKind::Error,
                 "Invalid ProForma molecular formula",
                 "The formula is empty",
-                Context::line_range(None, value, range),
+                base_context.clone().add_highlight((0, range)),
             ))
         } else {
             Ok(result)
@@ -292,9 +318,9 @@ impl MolecularFormula {
 #[test]
 #[allow(clippy::missing_panics_doc)]
 fn fuzz() {
-    let _a = MolecularFormula::from_pro_forma::<true, true>(":", ..);
-    let _a = MolecularFormula::from_pro_forma::<true, true>(":1002\\[d2C-2]H2N", ..);
-    let _a = MolecularFormula::from_pro_forma::<true, true>("+Wv:z-,33U", ..);
-    assert!(MolecularFormula::from_pro_forma::<true, false>("", ..).is_err());
-    assert!(MolecularFormula::from_pro_forma::<true, false>("f{}", 2..2).is_err());
+    let _a = MolecularFormula::pro_forma::<true, true>(":");
+    let _a = MolecularFormula::pro_forma::<true, true>(":1002\\[d2C-2]H2N");
+    let _a = MolecularFormula::pro_forma::<true, true>("+Wv:z-,33U");
+    assert!(MolecularFormula::pro_forma::<true, false>("").is_err());
+    assert!(MolecularFormula::pro_forma::<true, false>("f{}").is_err());
 }

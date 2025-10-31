@@ -857,8 +857,11 @@ fn parse_ion<'a>(
                         .add_highlight((0, range.start_index(), 1)),
                 ))
             }?;
-            let formula =
-                MolecularFormula::from_pro_forma::<false, false>(line, formula_range.clone())?;
+            let formula = MolecularFormula::pro_forma_inner::<false, false>(
+                base_context,
+                line,
+                formula_range.clone(),
+            )?;
 
             Ok((
                 range.add_start(3 + formula_range.len()),
@@ -961,9 +964,11 @@ pub(in crate::fragment) fn parse_neutral_loss<'a>(
                     b'-' => NeutralLoss::Loss(amount, formula),
                     _ => unreachable!(),
                 });
-            } else if let Ok(formula) =
-                MolecularFormula::from_pro_forma::<false, false>(line, first - 1..=last)
-            {
+            } else if let Ok(formula) = MolecularFormula::pro_forma_inner::<false, false>(
+                base_context,
+                line,
+                first - 1..=last,
+            ) {
                 // Catches the case of a single isotope as formula
                 neutral_losses.push(match c {
                     b'+' => NeutralLoss::Gain(amount, formula),
@@ -998,8 +1003,11 @@ pub(in crate::fragment) fn parse_neutral_loss<'a>(
             if line[first..first + last].ends_with("[M") {
                 last -= 2; // Detect any adduct types which might otherwise sneak in
             }
-            let formula =
-                MolecularFormula::from_pro_forma::<false, false>(line, first..first + last)?;
+            let formula = MolecularFormula::pro_forma_inner::<false, false>(
+                base_context,
+                line,
+                first..first + last,
+            )?;
             neutral_losses.push(match c {
                 b'+' => NeutralLoss::Gain(amount, formula),
                 b'-' => NeutralLoss::Loss(amount, formula),
@@ -1187,8 +1195,11 @@ fn parse_adduct_type<'a>(
                 .last()
                 .map_or(0, |last| last.0 + last.1.len_utf8())
                 .min(closing - first); // Prevent the closing bracket from being used in an isotope
-            let formula =
-                MolecularFormula::from_pro_forma::<false, false>(line, first..first + last)?;
+            let formula = MolecularFormula::pro_forma_inner::<false, false>(
+                base_context,
+                line,
+                first..first + last,
+            )?;
             carriers.push((amount as isize, formula));
             offset += last;
         }

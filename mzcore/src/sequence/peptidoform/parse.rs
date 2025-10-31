@@ -1413,7 +1413,8 @@ pub(super) fn parse_charge_state_2_0<'a>(
             }
 
             // formula
-            let mut formula = handle!(single errors, MolecularFormula::from_pro_forma::<true, false>(
+            let mut formula = handle!(single errors, MolecularFormula::pro_forma_inner::<true, false>(
+                base_context,
                 line,
                 offset + count_len..offset + set.len() - charge_len,
             ));

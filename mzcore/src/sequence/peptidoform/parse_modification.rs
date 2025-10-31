@@ -303,11 +303,9 @@ fn parse_single_modification<'a>(
                         vec![basic_error
                             .long_description("This modification cannot be read as a GNO name")]
                     }),
-                ("formula", tail) => Ok(Some(Arc::new(SimpleModificationInner::Formula(
-                    MolecularFormula::from_pro_forma::<true, false>(tail, ..).map_err(|e| {
-                       vec![ basic_error.long_description(format!(
-                            "This modification cannot be read as a valid formula: {e}"
-                        ))]
+                ("formula", _) => Ok(Some(Arc::new(SimpleModificationInner::Formula(
+                    MolecularFormula::pro_forma_inner::<true, false>(&Context::none().lines(0, line), line, offset + tail.1..offset + tail.1 + tail.2).map_err(|e| {
+                       vec![ e]
                     })?,
                 )))),
                 ("glycan", tail) => Ok(Some(Arc::new(SimpleModificationInner::Glycan(

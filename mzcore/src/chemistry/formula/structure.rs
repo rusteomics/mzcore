@@ -151,6 +151,8 @@ pub trait MultiChemical {
 /// The errors that can occur when adding molecular formulas.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum MolecularFormulaError {
+    /// If the element for an added element is not valid, see [`Element::is_valid`].
+    ElementWithoutDefinedMass,
     /// If the isotope for an added element is not valid, see [`Element::is_valid`].
     IsotopeWithoutDefinedMass,
     /// If overflow occurred.
@@ -161,9 +163,8 @@ impl MolecularFormulaError {
     /// A human friendly description of the error
     pub const fn reason(self) -> &'static str {
         match self {
-            Self::IsotopeWithoutDefinedMass => {
-                "An element or isotope without a defined mass was used"
-            }
+            Self::ElementWithoutDefinedMass => "An element without a defined mass was used",
+            Self::IsotopeWithoutDefinedMass => "An isotope without a defined mass was used",
             Self::Overflow => {
                 "The total amount for this element overflowed the underlying storage type"
             }
@@ -290,7 +291,11 @@ impl MolecularFormula {
             }
             Ok(())
         } else {
-            Err(MolecularFormulaError::IsotopeWithoutDefinedMass)
+            Err(if element.1.is_some() {
+                MolecularFormulaError::IsotopeWithoutDefinedMass
+            } else {
+                MolecularFormulaError::ElementWithoutDefinedMass
+            })
         }
     }
 

@@ -282,8 +282,12 @@ impl FromStr for NeutralLoss {
             } else {
                 (1, 1)
             };
-            let formula = MolecularFormula::from_pro_forma::<false, false>(s, start..)
-                .map_err(BoxedError::to_owned)?;
+            let formula = MolecularFormula::pro_forma_inner::<false, false>(
+                &Context::none().lines(0, s),
+                s,
+                start..,
+            )
+            .map_err(BoxedError::to_owned)?;
             Ok(if loss {
                 Self::Loss(amount, formula)
             } else {
