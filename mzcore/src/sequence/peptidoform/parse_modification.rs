@@ -54,7 +54,7 @@ impl SimpleModificationInner {
                 custom_database,
             ) {
                 Ok((result, w)) => {
-                    errors.extend_from_slice(&w);
+                    combine_errors(&mut errors, w, ());
                     match result {
                         SingleReturnModification::None => (),
                         SingleReturnModification::Modification(m) => modification = Some(m),
@@ -68,7 +68,7 @@ impl SimpleModificationInner {
                         }
                     }
                 }
-                Err(e) => errors.extend_from_slice(&e),
+                Err(e) => combine_errors(&mut errors, e, ()),
             }
             offset += part.len() + 1;
         }
@@ -479,10 +479,10 @@ fn parse_single_modification<'a>(
                     group,
                     localisation_score,
                     ambiguous_lookup,
-                    Context::line(None, line, offset + full.1, full.2),
+                    Context::line(None, line, offset + full.1 + 1, full.2),
                 )
                 .map(|(m, w)| {
-                    errors.extend_from_slice(&w);
+                    combine_errors(&mut errors, w, ());
                     (m, errors)
                 })
             }
@@ -520,7 +520,7 @@ fn handle_ambiguous_modification<'a>(
     let found_definition = ambiguous_lookup
         .iter()
         .enumerate()
-        .find(|(_, entry)| entry.name.eq_ignore_ascii_case(&group.0))
+        .find(|(_, entry)| entry.name.eq_ignore_ascii_case(group.0))
         .map(|(index, entry)| (index, entry.modification.as_ref()));
     // Handle all possible cases of having a modification found at this position and having a modification defined in the ambiguous lookup
     match (modification, found_definition) {

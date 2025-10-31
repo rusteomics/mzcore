@@ -621,7 +621,7 @@ impl SimpleModification {
             &mut vec![],
             None,
         ) {
-            Ok((modification, _)) => Ok(Self(modification.defined().unwrap())),
+            Ok(((modification, _), _)) => Ok(Self(modification.defined().unwrap())),
             Err(_) => Err(PyValueError::new_err("Invalid modification")),
         }
     }

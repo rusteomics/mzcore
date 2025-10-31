@@ -1020,9 +1020,6 @@ impl<Complexity> Peptidoform<Complexity> {
                 )?;
             }
         }
-        for labile in &self.labile {
-            write!(f, "{{{labile}}}")?;
-        }
         // Write any modification of unknown position that has no preferred location at the start of the peptide
         let mut any_ambiguous = false;
         let mut placed_ambiguous = Vec::new();
@@ -1109,6 +1106,9 @@ impl<Complexity> Peptidoform<Complexity> {
         }
         if any_ambiguous {
             write!(f, "?")?;
+        }
+        for labile in &self.labile {
+            write!(f, "{{{labile}}}")?;
         }
         let mut any_n = false;
         for m in self.get_n_term() {

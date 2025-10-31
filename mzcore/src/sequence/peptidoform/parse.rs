@@ -406,7 +406,7 @@ impl CompoundPeptidoformIon {
                     )
             }));
             n_term_mods.push(
-                handle!(single errors, SimpleModificationInner::parse_pro_forma(
+                handle!(errors, SimpleModificationInner::parse_pro_forma(
                     line,
                     temp_index + 1..end_index,
                     &mut ambiguous_lookup,
@@ -537,7 +537,6 @@ impl CompoundPeptidoformIon {
                     while chars.get(index) == Some(&b'[') {
                         let end_index = handle!(single errors,
                         end_of_enclosure(line, index + 1, b'[', b']').ok_or_else(|| {
-
                                 BoxedError::new(
                                     BasicKind::Error,
                                     "Invalid ranged ambiguous modification",
@@ -545,13 +544,17 @@ impl CompoundPeptidoformIon {
                                     base_context.clone().add_highlight((0, index, 1)),
                                 )
                         }));
-                        let modification = handle!(single errors, SimpleModificationInner::parse_pro_forma(
+                        let modification = handle!(errors, SimpleModificationInner::parse_pro_forma(
                             line, index + 1..end_index,
                             &mut ambiguous_lookup, cross_link_lookup, custom_database,
-                        ).and_then(|m| m.0.defined().ok_or_else(|| {BoxedError::new(BasicKind::Error,
+                        ).and_then(|((m, _mup_settings), mut w)| {
+                            let warnings = w.clone();
+                            m.defined().map(|m| (m, warnings)).ok_or_else(|| {
+                            w.push(BoxedError::new(BasicKind::Error,
                             "Invalid ranged ambiguous modification",
                             "A ranged ambiguous modification has to be fully defined, so no ambiguous modification is allowed",
-                            base_context.clone().add_highlight((0, index, 1)))})));
+                            base_context.clone().add_highlight((0, index, 1)))); 
+                            w})}));
                         index = end_index + 1;
                         ranged_unknown_position_modifications.push((
                             start,
@@ -587,7 +590,7 @@ impl CompoundPeptidoformIon {
                             base_context.clone().add_highlight((0, index, 1)),
                         )
                     }));
-                    let (modification, _) = handle!(single errors, SimpleModificationInner::parse_pro_forma(
+                    let (modification, _) = handle!(errors, SimpleModificationInner::parse_pro_forma(
                         line,
                         index + 1..end_index,
                         &mut ambiguous_lookup,
@@ -624,15 +627,18 @@ impl CompoundPeptidoformIon {
                                                                    base_context.clone().add_highlight((0, index, 1)),
                                 )
                             }));
-                            let modification = handle!(single errors, SimpleModificationInner::parse_pro_forma(
-                                line,
-                                index + 1..end_index,
-                                &mut ambiguous_lookup,
-                                cross_link_lookup,
-                                custom_database,
-                            ));
+                            let (modification, _) = handle!(
+                                errors,
+                                SimpleModificationInner::parse_pro_forma(
+                                    line,
+                                    index + 1..end_index,
+                                    &mut ambiguous_lookup,
+                                    cross_link_lookup,
+                                    custom_database,
+                                )
+                            );
 
-                            match modification.0 {
+                            match modification {
                                 ReturnModification::Defined(simple) => {
                                     peptide.add_simple_c_term(simple);
                                 }
@@ -944,15 +950,17 @@ pub(super) fn global_modifications<'a>(
                 );
                 continue;
             }
-            let modification = match SimpleModificationInner::parse_pro_forma(
+            let modification = handle!(errors, SimpleModificationInner::parse_pro_forma(
                 line,
                 start_index + 2..at_index - 2,
                 &mut Vec::new(),
                 &mut Vec::new(),
                 custom_database,
             )
-            .map(|m| {
-                m.0.defined().ok_or_else(|| {
+            .map(|((m, _mup_settings), mut warnings)| {
+                let w = warnings.clone();
+                m.defined().map(|m| (m, w)).ok_or_else(|| {
+                    warnings.push(
                     BoxedError::new(
                         BasicKind::Error,
                         "Invalid global modification",
@@ -962,17 +970,11 @@ pub(super) fn global_modifications<'a>(
                             start_index + 2,
                             at_index - start_index - 4,
                         )),
-                    )
+                    ));
+                    warnings
                 })
             })
-            .flat_err()
-            {
-                Ok(modification) => modification,
-                Err(err) => {
-                    combine_error(&mut errors, err, ());
-                    continue;
-                }
-            };
+            .flat_err());
             let rules = match parse_placement_rules(base_context, line, at_index..end_index) {
                 Ok(rules) => rules,
                 Err(err) => {
@@ -1156,17 +1158,20 @@ pub(super) fn global_unknown_position_mods<'a>(
             &mut cross_link_lookup,
             custom_database,
         ) {
-            Ok((ReturnModification::Defined(m), settings)) => {
+            Ok(((ReturnModification::Defined(m), settings), warnings)) => {
+                combine_errors(&mut errs, warnings, ());
                 let id = ambiguous_lookup.len();
                 ambiguous_lookup.push(AmbiguousLookupEntry::new(format!("u{id}"), Some(m)));
                 ambiguous_lookup[id].copy_settings(&settings);
                 id
             }
-            Ok((ReturnModification::Ambiguous(id, _, _), settings)) => {
+            Ok(((ReturnModification::Ambiguous(id, _, _), settings), warnings)) => {
+                combine_errors(&mut errs, warnings, ());
                 ambiguous_lookup[id].copy_settings(&settings);
                 id
             }
-            Ok((ReturnModification::CrossLinkReferenced(_), _)) => {
+            Ok(((ReturnModification::CrossLinkReferenced(_), _), warnings)) => {
+                combine_errors(&mut errs, warnings, ());
                 errs.push(BoxedError::new(
                     BasicKind::Error,
                     "Invalid unknown position modification",
@@ -1178,7 +1183,7 @@ pub(super) fn global_unknown_position_mods<'a>(
                 continue;
             }
             Err(e) => {
-                errs.push(e);
+                combine_errors(&mut errs, e, ());
                 continue;
             }
         };
@@ -1274,8 +1279,13 @@ fn labile_modifications<'a>(
             &mut Vec::new(),
             custom_database,
         ) {
-            Ok((ReturnModification::Defined(m), _)) => labile.push(m),
-            Ok(_) => combine_error(
+            Ok(((ReturnModification::Defined(m), _), warnings)) => {
+                combine_errors(&mut errors, warnings, ());
+                labile.push(m);
+            },
+            Ok((_, warnings)) => {
+                combine_errors(&mut errors, warnings, ());
+                combine_error(
                 &mut errors,
                 BoxedError::new(
                     BasicKind::Error,
@@ -1286,8 +1296,8 @@ fn labile_modifications<'a>(
                         .add_highlight((0, index + 1, end_index - 1 - index)),
                 ),
                 (),
-            ),
-            Err(e) => combine_error(&mut errors, e, ()),
+            );},
+            Err(e) => combine_errors(&mut errors, e, ()),
         }
         index = end_index + 1;
     }

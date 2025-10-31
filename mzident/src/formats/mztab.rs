@@ -128,7 +128,12 @@ impl MZTabData {
                             m if (m.starts_with("variable_mod[") || m.starts_with("fixed_mod[")) && m.ends_with(']') => {
                                 match CVTerm::from_str(&line[fields[2].clone()]).and_then(|term|
                                         (term.id.trim() != "MS:1002453" && term.id.trim()  != "MS:1002454").then(||
-                                            SimpleModificationInner::parse_pro_forma(term.id.trim(), 0..term.id.trim().len(), &mut Vec::new(), &mut Vec::new(), custom_database).map_err(BoxedError::to_owned)).transpose()) {
+                                            SimpleModificationInner::parse_pro_forma(term.id.trim(), 0..term.id.trim().len(), &mut Vec::new(), &mut Vec::new(), custom_database).map(|(m, _)| m).map_err(|errs| 
+                                                BoxedError::new(
+                                                    BasicKind::Error,
+                                                    "Invalid modification in mzTab", 
+                                                    "This modification could not be parsed correctly", 
+                                                    Context::line_range(Some(line_index as u32), &line, fields[2].clone()).to_owned()).add_underlying_errors(errs.into_iter().map(BoxedError::to_owned)).to_owned())).transpose()) {
                                     Ok(Some((ReturnModification::Defined(modification), _))) => if !modifications.contains(&modification) { modifications.push(modification)},
                                     Ok(Some(_)) => return Some(Err(BoxedError::new(BasicKind::Error,"Invalid modification in mzTab", "Modifications in mzTab have to be defined, not ambiguous or cross-linkers", Context::line_range(Some(line_index as u32), &line, fields[2].clone()).to_owned()))),
                                     Err(err) => return Some(Err(err)),
