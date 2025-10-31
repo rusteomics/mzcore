@@ -614,9 +614,8 @@ pub struct SimpleModification(mzcore::sequence::SimpleModification);
 impl SimpleModification {
     #[new]
     fn new(name: &str) -> PyResult<Self> {
-        match mzcore::sequence::SimpleModificationInner::parse_pro_forma(
+        match mzcore::sequence::SimpleModificationInner::pro_forma(
             name,
-            0..name.len(),
             &mut vec![],
             &mut vec![],
             None,

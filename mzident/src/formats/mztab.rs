@@ -128,7 +128,7 @@ impl MZTabData {
                             m if (m.starts_with("variable_mod[") || m.starts_with("fixed_mod[")) && m.ends_with(']') => {
                                 match CVTerm::from_str(&line[fields[2].clone()]).and_then(|term|
                                         (term.id.trim() != "MS:1002453" && term.id.trim()  != "MS:1002454").then(||
-                                            SimpleModificationInner::parse_pro_forma(term.id.trim(), 0..term.id.trim().len(), &mut Vec::new(), &mut Vec::new(), custom_database).map(|(m, _)| m).map_err(|errs| 
+                                            SimpleModificationInner::pro_forma(term.id.trim(), &mut Vec::new(), &mut Vec::new(), custom_database).map(|(m, _)| m).map_err(|errs| 
                                                 BoxedError::new(
                                                     BasicKind::Error,
                                                     "Invalid modification in mzTab", 

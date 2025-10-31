@@ -28,7 +28,28 @@ impl SimpleModificationInner {
     /// is the modification, with, if applicable, its determined ambiguous group.
     /// # Errors
     /// If it is not a valid modification return a `BoxedError` explaining the error.
-    pub fn parse_pro_forma<'a>(
+    pub fn pro_forma<'a>(
+        line: &'a str,
+        ambiguous_lookup: &mut AmbiguousLookup,
+        cross_link_lookup: &mut CrossLinkLookup,
+        custom_database: Option<&CustomDatabase>,
+    ) -> ParserResult<'a, (ReturnModification, MUPSettings), BasicKind> {
+        Self::pro_forma_inner(
+            &Context::none().lines(0, line),
+            line,
+            0..line.len(),
+            ambiguous_lookup,
+            cross_link_lookup,
+            custom_database,
+        )
+    }
+    /// Try to parse the modification. Any ambiguous modification will be numbered
+    /// according to the lookup (which may be added to if necessary). The result
+    /// is the modification, with, if applicable, its determined ambiguous group.
+    /// # Errors
+    /// If it is not a valid modification return a `BoxedError` explaining the error.
+    pub fn pro_forma_inner<'a>(
+        base_context: &Context<'a>,
         line: &'a str,
         range: Range<usize>,
         ambiguous_lookup: &mut AmbiguousLookup,
@@ -46,6 +67,7 @@ impl SimpleModificationInner {
         let mut offset = range.start;
         for part in line[range].split('|') {
             match parse_single_modification(
+                base_context,
                 line,
                 part,
                 offset,
@@ -131,6 +153,7 @@ impl Default for MUPSettings {
 /// # Errors
 /// It returns an error when the given line cannot be read as a single modification.
 fn parse_single_modification<'a>(
+    base_context: &Context<'a>,
     line: &'a str,
     full_modification: &'a str,
     offset: usize,
@@ -162,7 +185,7 @@ fn parse_single_modification<'a>(
                             vec![BoxedError::new(BasicKind::Error,
                         "Invalid modification localisation score",
                         "The ambiguous modification localisation score needs to be a valid number",
-                        Context::line(None, line, offset + m.start(), m.len()),
+                        base_context.clone().add_highlight((0, offset + m.start(), m.len())),
                     )]
                         })
                 })
@@ -174,7 +197,9 @@ fn parse_single_modification<'a>(
                 BasicKind::Error,
                 "Invalid modification",
                 "..",
-                Context::line(None, line, offset + tail.1, tail.2),
+                base_context
+                    .clone()
+                    .add_highlight((0, offset + tail.1, tail.2)),
             );
             match (head.0.as_str(), tail.0) {
                 ("unimod", tail) => {
@@ -216,7 +241,7 @@ fn parse_single_modification<'a>(
                         .map(Some)
                         .ok_or_else(|| {
                             vec![basic_error.clone().long_description(
-                            "The supplied Resid accession number is not an existing modification",
+                            "The supplied RESID accession number is not an existing modification",
                         )]
                         })
                 }
@@ -304,13 +329,13 @@ fn parse_single_modification<'a>(
                             .long_description("This modification cannot be read as a GNO name")]
                     }),
                 ("formula", _) => Ok(Some(Arc::new(SimpleModificationInner::Formula(
-                    MolecularFormula::pro_forma_inner::<true, false>(&Context::none().lines(0, line), line, offset + tail.1..offset + tail.1 + tail.2).map_err(|e| {
-                       vec![ e]
+                    MolecularFormula::pro_forma_inner::<true, false>(base_context, line, offset + tail.1..offset + tail.1 + tail.2).map_err(|e| {
+                       vec![e]
                     })?,
                 )))),
-                ("glycan", tail) => Ok(Some(Arc::new(SimpleModificationInner::Glycan(
-                    MonoSaccharide::from_composition(tail)
-                        .map_err(|err| vec![err.replace_context(basic_error.get_contexts()[0].clone())])?,
+                ("glycan", _) => Ok(Some(Arc::new(SimpleModificationInner::Glycan(
+                    MonoSaccharide::from_composition_inner(base_context, line, offset + tail.1..offset + tail.1 + tail.2)
+                        .map_err(|err| vec![err])?,
                 )))),
                 ("glycanstructure", _) => GlycanStructure::parse(
                     line,
@@ -324,7 +349,7 @@ fn parse_single_modification<'a>(
                     )]
                 }),
                 ("position", _) => {
-                    match super::parse::parse_placement_rules(&Context::none().lines(0, line),line, offset + tail.1..offset + tail.1 + tail.2) {
+                    match super::parse::parse_placement_rules(base_context, line, offset + tail.1..offset + tail.1 + tail.2) {
                         Ok(rules) => return Ok((SingleReturnModification::Positions(rules), errors)),
                         Err(e) => Err(vec![e]),
                     }
@@ -380,12 +405,9 @@ fn parse_single_modification<'a>(
                         .long_description(
                             "This modification cannot be read as a valid Unimod or PSI-MOD name.",
                         )
-                        .replace_context(Context::line(
-                            None,
-                            line,
-                            offset + full.1,
-                            full.2
-                        ))]
+                        .replace_context(
+                            base_context.clone().add_highlight((0, offset + full.1,
+                            full.2)),)]
                     }),
             }
         } else if full.0.is_empty() {
@@ -399,7 +421,7 @@ fn parse_single_modification<'a>(
                 .map_err(|_|
                     vec![Ontology::find_closest_many(&[Ontology::Unimod, Ontology::Psimod, Ontology::Gnome, Ontology::Xlmod, Ontology::Resid, Ontology::Custom], full.0, custom_database)
                     .long_description("This modification cannot be read as a valid Unimod or PSI-MOD name, or as a numerical modification.")
-                    .replace_context(Context::line(None, line, offset+full.1, full.2))]
+                    .replace_context(base_context.clone().add_highlight((0, offset+full.1, full.2)))]
                 )
         };
 
@@ -426,7 +448,9 @@ fn parse_single_modification<'a>(
                             BasicKind::Error,
                             "Invalid branch definition",
                             "A branch definition has to be identical at both sites, or only defined at one site.",
-                            Context::line(None, line, offset + full.1, full.2),
+                            base_context
+                                .clone()
+                                .add_highlight((0, offset + full.1, full.2)),
                         )]);
                     }
                     cross_link_lookup[index].1 = Some(linker);
@@ -460,7 +484,9 @@ fn parse_single_modification<'a>(
                             BasicKind::Error,
                             "Invalid cross-link definition",
                             "A cross-link definition has to be identical at both sites, or only defined at one site.",
-                            Context::line(None, line, offset + full.1, full.2),
+                            base_context
+                                .clone()
+                                .add_highlight((0, offset + full.1, full.2)),
                         )]);
                     }
                     cross_link_lookup[index].1 = Some(linker);
@@ -477,7 +503,9 @@ fn parse_single_modification<'a>(
                     group,
                     localisation_score,
                     ambiguous_lookup,
-                    Context::line(None, line, offset + full.1 + 1, full.2),
+                    base_context
+                        .clone()
+                        .add_highlight((0, offset + full.1 + 1, full.2)),
                 )
                 .map(|(m, w)| {
                     combine_errors(&mut errors, w, ());
@@ -499,7 +527,9 @@ fn parse_single_modification<'a>(
             BasicKind::Error,
             "Invalid modification",
             "It does not match the ProForma definition for modifications",
-            Context::line(None, line, offset, full_modification.len()),
+            base_context
+                .clone()
+                .add_highlight((0, offset, full_modification.len())),
         )])
     }
 }

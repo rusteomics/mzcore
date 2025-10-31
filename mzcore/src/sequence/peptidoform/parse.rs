@@ -406,7 +406,8 @@ impl CompoundPeptidoformIon {
                     )
             }));
             n_term_mods.push(
-                handle!(errors, SimpleModificationInner::parse_pro_forma(
+                handle!(errors, SimpleModificationInner::pro_forma_inner(
+                    base_context,
                     line,
                     temp_index + 1..end_index,
                     &mut ambiguous_lookup,
@@ -544,7 +545,8 @@ impl CompoundPeptidoformIon {
                                     base_context.clone().add_highlight((0, index, 1)),
                                 )
                         }));
-                        let modification = handle!(errors, SimpleModificationInner::parse_pro_forma(
+                        let modification = handle!(errors, SimpleModificationInner::pro_forma_inner(
+                            base_context,
                             line, index + 1..end_index,
                             &mut ambiguous_lookup, cross_link_lookup, custom_database,
                         ).and_then(|((m, _mup_settings), mut w)| {
@@ -590,7 +592,8 @@ impl CompoundPeptidoformIon {
                             base_context.clone().add_highlight((0, index, 1)),
                         )
                     }));
-                    let (modification, _) = handle!(errors, SimpleModificationInner::parse_pro_forma(
+                    let (modification, _) = handle!(errors, SimpleModificationInner::pro_forma_inner(
+                        base_context,
                         line,
                         index + 1..end_index,
                         &mut ambiguous_lookup,
@@ -629,7 +632,8 @@ impl CompoundPeptidoformIon {
                             }));
                             let (modification, _) = handle!(
                                 errors,
-                                SimpleModificationInner::parse_pro_forma(
+                                SimpleModificationInner::pro_forma_inner(
+                                    base_context,
                                     line,
                                     index + 1..end_index,
                                     &mut ambiguous_lookup,
@@ -950,7 +954,8 @@ pub(super) fn global_modifications<'a>(
                 );
                 continue;
             }
-            let modification = handle!(errors, SimpleModificationInner::parse_pro_forma(
+            let modification = handle!(errors, SimpleModificationInner::pro_forma_inner(
+                base_context,
                 line,
                 start_index + 2..at_index - 2,
                 &mut Vec::new(),
@@ -1151,7 +1156,8 @@ pub(super) fn global_unknown_position_mods<'a>(
                 base_context.clone().add_highlight((0, index, 1)),
             )]
         })? + 1;
-        let id = match SimpleModificationInner::parse_pro_forma(
+        let id = match SimpleModificationInner::pro_forma_inner(
+            base_context,
             line,
             start_index + 1..index - 1,
             ambiguous_lookup,
@@ -1272,7 +1278,8 @@ fn labile_modifications<'a>(
             return Err(errors);
         };
 
-        match SimpleModificationInner::parse_pro_forma(
+        match SimpleModificationInner::pro_forma_inner(
+            base_context,
             line,
             index + 1..end_index,
             &mut Vec::new(),

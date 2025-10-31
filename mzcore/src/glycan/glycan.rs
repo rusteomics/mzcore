@@ -153,15 +153,26 @@ impl MonoSaccharide {
     /// # Errors
     /// When the composition could not be read. Or when any of the glycans occurs outside of the valid range
     pub fn from_composition(text: &str) -> Result<Vec<(Self, isize)>, BoxedError<'_, BasicKind>> {
+        Self::from_composition_inner(&Context::none().lines(0, text), text, 0..text.len())
+    }
+
+    /// Parse the given text (will be changed to lowercase) as a glycan composition.
+    /// # Errors
+    /// When the composition could not be read. Or when any of the glycans occurs outside of the valid range
+    pub fn from_composition_inner<'a>(
+        base_context: &Context<'a>,
+        text: &str,
+        range: std::ops::Range<usize>,
+    ) -> Result<Vec<(Self, isize)>, BoxedError<'a, BasicKind>> {
         let basic_error = BoxedError::new(
             BasicKind::Error,
             "Invalid glycan composition",
             "..",
-            Context::show(text),
+            base_context.clone().add_highlight((0, range.clone())),
         );
         let result = Self::simplify_composition(
             crate::helper_functions::parse_named_counter(
-                &text.to_ascii_lowercase(),
+                &text[range].to_ascii_lowercase(),
                 GLYCAN_PARSE_LIST.as_slice(),
                 false,
             )
