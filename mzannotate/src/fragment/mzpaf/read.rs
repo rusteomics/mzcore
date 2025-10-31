@@ -191,7 +191,7 @@ impl PeakAnnotation {
 
         let (formula, ion) = match self.ion {
             IonType::Unknown(series) => (None, FragmentType::Unknown(series)),
-            IonType::MainSeries(series, sub, ordinal, specific_interpretation) => {
+            IonType::MainSeries(series, sub, ordinal, specific_interpretation, variant) => {
                 let (sequence_length, n_aa, c_aa) = if let Some(target) = target {
                     let specific_interpretation: Option<&Peptidoform<Linked>> =
                         specific_interpretation.as_ref().map(AsRef::as_ref);
@@ -244,7 +244,7 @@ impl PeakAnnotation {
                                 series_number: ordinal,
                                 sequence_length,
                             },
-                            0,
+                            variant,
                         ),
                         b'b' => FragmentType::b(
                             PeptidePosition {
@@ -252,7 +252,7 @@ impl PeakAnnotation {
                                 series_number: ordinal,
                                 sequence_length,
                             },
-                            0,
+                            variant,
                         ),
                         b'c' => FragmentType::c(
                             PeptidePosition {
@@ -260,7 +260,7 @@ impl PeakAnnotation {
                                 series_number: ordinal,
                                 sequence_length,
                             },
-                            0,
+                            variant,
                         ),
                         b'd' => FragmentType::d(
                             PeptidePosition {
@@ -270,7 +270,7 @@ impl PeakAnnotation {
                             },
                             n_aa,
                             0,
-                            0,
+                            variant,
                             sub,
                         ),
                         b'v' => FragmentType::v(
@@ -283,7 +283,7 @@ impl PeakAnnotation {
                             },
                             c_aa,
                             0,
-                            0,
+                            variant,
                         ),
                         b'w' => FragmentType::w(
                             PeptidePosition {
@@ -295,7 +295,7 @@ impl PeakAnnotation {
                             },
                             c_aa,
                             0,
-                            0,
+                            variant,
                             sub,
                         ),
                         b'x' => FragmentType::x(
@@ -306,7 +306,7 @@ impl PeakAnnotation {
                                 series_number: ordinal,
                                 sequence_length,
                             },
-                            0,
+                            variant,
                         ),
                         b'y' => FragmentType::y(
                             PeptidePosition {
@@ -316,7 +316,7 @@ impl PeakAnnotation {
                                 series_number: ordinal,
                                 sequence_length,
                             },
-                            0,
+                            variant,
                         ),
                         b'z' => FragmentType::z(
                             PeptidePosition {
@@ -326,7 +326,7 @@ impl PeakAnnotation {
                                 series_number: ordinal,
                                 sequence_length,
                             },
-                            0,
+                            variant,
                         ),
                         _ => unreachable!(),
                     },
@@ -400,30 +400,6 @@ impl PeakAnnotation {
     }
 }
 
-impl std::fmt::Display for PeakAnnotation {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        if self.auxiliary {
-            write!(f, "&")?;
-        }
-        write!(f, "{}@{}", self.analyte_number, self.ion)?;
-        for loss in &self.neutral_losses {
-            write!(f, "{loss}")?;
-        }
-        let charge = self.charge.charge().value;
-        if self.charge != MolecularCharge::proton(Charge::new::<e>(charge)) {
-            write!(f, "[M")?;
-            for (amount, option) in &self.charge.charge_carriers {
-                write!(f, "{amount}{option}")?;
-            }
-            write!(f, "]")?;
-        }
-        if charge != 1 {
-            write!(f, "^{charge}")?;
-        }
-        write!(f, "{:?}{:?}", self.deviation, self.confidence)
-    }
-}
-
 #[derive(Clone, Debug, Deserialize, PartialEq, PartialOrd, Serialize)]
 pub(crate) enum IonType {
     Unknown(Option<usize>),
@@ -433,6 +409,7 @@ pub(crate) enum IonType {
         SatelliteLabel,
         usize,
         Option<Peptidoform<SemiAmbiguous>>,
+        Variant,
     ),
     Immonium(AminoAcid, Option<SimpleModification>),
     Internal(usize, usize),
@@ -440,36 +417,6 @@ pub(crate) enum IonType {
     Precursor,
     Reporter(MolecularFormula),
     Formula(MolecularFormula),
-}
-
-impl std::fmt::Display for IonType {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::Unknown(n) => write!(f, "?{}", n.map_or_else(String::new, |n| n.to_string())),
-            Self::MainSeries(series, sub, ordinal, interpretation) => {
-                write!(
-                    f,
-                    "{}{}{ordinal}{}",
-                    *series as char,
-                    sub,
-                    interpretation
-                        .as_ref()
-                        .map_or_else(String::new, |i| format!("{{{i}}}"))
-                )
-            }
-            Self::Immonium(aa, m) => {
-                write!(
-                    f,
-                    "I{aa}{}",
-                    m.clone().map_or_else(String::new, |m| format!("[{m}]"))
-                )
-            }
-            Self::Internal(start, end) => write!(f, "m{start}:{end}"),
-            Self::Named(name) => write!(f, "r[{name}]"),
-            Self::Precursor => write!(f, "p"),
-            Self::Reporter(formula) | Self::Formula(formula) => write!(f, "f{{{formula}}}"),
-        }
-    }
 }
 
 #[derive(Clone, Debug, Deserialize, PartialEq, PartialOrd, Serialize)]
@@ -642,7 +589,7 @@ fn parse_ion<'a>(
                 } else {
                     Ok((
                         end..range.end,
-                        IonType::MainSeries(c, sub, ordinal_num, interpretation),
+                        IonType::MainSeries(c, sub, ordinal_num, interpretation, 0),
                     ))
                 }
             } else {
@@ -1557,7 +1504,7 @@ fn parse_correctly() {
     assert_eq!(parse_a.analyte_number, 1);
     assert_eq!(
         parse_a.ion,
-        IonType::MainSeries(b'y', SatelliteLabel::None, 8, None)
+        IonType::MainSeries(b'y', SatelliteLabel::None, 8, None, 0)
     );
     assert_eq!(parse_a.neutral_losses, Vec::new());
     assert_eq!(parse_a.isotopes, Vec::new());
@@ -1581,7 +1528,7 @@ fn parse_correctly() {
     assert_eq!(parse_b.analyte_number, 1);
     assert_eq!(
         parse_b.ion,
-        IonType::MainSeries(b'y', SatelliteLabel::None, 8, None)
+        IonType::MainSeries(b'y', SatelliteLabel::None, 8, None, 0)
     );
     assert_eq!(parse_b.neutral_losses, Vec::new());
     assert_eq!(parse_b.isotopes, vec![(1, Isotope::General)]);

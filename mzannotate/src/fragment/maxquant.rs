@@ -81,12 +81,11 @@ fn parse_intermediate_representation<'a>(
     }?;
 
     // modifier
-    // TODO: use!
     let modifier = line[range.start+1..range.end].chars().next().ok_or_else(|| {
         BoxedError::new(
             BasicKind::Error,
             "Invalid MaxQuant fragment annotation",
-            "The fragment annotation onoly contains an ion type but needs to contain at least also the series number",
+            "The fragment annotation only contains an ion type but needs to contain at least also the series number",
             base_context.clone().add_highlight((0, range.clone())),
         )
     })?;
@@ -95,6 +94,21 @@ fn parse_intermediate_representation<'a>(
     } else {
         Some(modifier)
     };
+
+    let variant = match (ion, modifier) {
+        (b'c', Some('p')) | (b'z', Some('°')) => Ok(1),
+        (b'c', Some('m')) => Ok(-1),
+        (b'z', Some('\'')) => Ok(2),
+        (_, Some(c)) => Err(BoxedError::new(
+            BasicKind::Error,
+            "Invalid MaxQuant fragment annotation",
+            "This ion variant indicator is not recognised",
+            base_context
+                .clone()
+                .add_highlight((0, range.start..range.start + 1 + c.len_utf8())),
+        )),
+        _ => Ok(0),
+    }?;
 
     // series number
     let num_range = range.start + 1 + modifier.map_or(0, char::len_utf8)..range.end;
@@ -165,7 +179,7 @@ fn parse_intermediate_representation<'a>(
             ))
         } else {
             MolecularCharge::proton(mzcore::system::isize::Charge::new::<mzcore::system::e>(
-                num as isize * -1,
+                -(num as isize),
             ))
         }
     } else if left.is_empty() {
@@ -184,7 +198,7 @@ fn parse_intermediate_representation<'a>(
     Ok(PeakAnnotation {
         auxiliary: false,
         analyte_number: 1,
-        ion: IonType::MainSeries(ion, SatelliteLabel::None, series_number, None),
+        ion: IonType::MainSeries(ion, SatelliteLabel::None, series_number, None, variant),
         neutral_losses,
         isotopes: Vec::new(),
         charge,
