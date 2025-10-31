@@ -148,14 +148,14 @@ fn parse_annotation<'a>(
 /// An mzPAF single peak annotation.
 #[derive(Clone, Debug, Deserialize, PartialEq, PartialOrd, Serialize)]
 pub struct PeakAnnotation {
-    auxiliary: bool,
-    analyte_number: u32,
-    ion: IonType,
-    neutral_losses: Vec<NeutralLoss>,
-    isotopes: Vec<(i32, Isotope)>,
-    charge: MolecularCharge,
-    deviation: Option<Tolerance<OrderedMassOverCharge>>,
-    confidence: Option<f64>,
+    pub(in crate::fragment) auxiliary: bool,
+    pub(in crate::fragment) analyte_number: u32,
+    pub(in crate::fragment) ion: IonType,
+    pub(in crate::fragment) neutral_losses: Vec<NeutralLoss>,
+    pub(in crate::fragment) isotopes: Vec<(i32, Isotope)>,
+    pub(in crate::fragment) charge: MolecularCharge,
+    pub(in crate::fragment) deviation: Option<Tolerance<OrderedMassOverCharge>>,
+    pub(in crate::fragment) confidence: Option<f64>,
 }
 
 impl PeakAnnotation {
@@ -271,12 +271,7 @@ impl PeakAnnotation {
                             n_aa,
                             0,
                             0,
-                            match sub {
-                                None => SatelliteLabel::None,
-                                Some(b'a') => SatelliteLabel::A,
-                                Some(b'b') => SatelliteLabel::B,
-                                _ => unreachable!(),
-                            },
+                            sub,
                         ),
                         b'v' => FragmentType::v(
                             PeptidePosition {
@@ -301,12 +296,7 @@ impl PeakAnnotation {
                             c_aa,
                             0,
                             0,
-                            match sub {
-                                None => SatelliteLabel::None,
-                                Some(b'a') => SatelliteLabel::A,
-                                Some(b'b') => SatelliteLabel::B,
-                                _ => unreachable!(),
-                            },
+                            sub,
                         ),
                         b'x' => FragmentType::x(
                             PeptidePosition {
@@ -435,9 +425,15 @@ impl std::fmt::Display for PeakAnnotation {
 }
 
 #[derive(Clone, Debug, Deserialize, PartialEq, PartialOrd, Serialize)]
-enum IonType {
+pub(crate) enum IonType {
     Unknown(Option<usize>),
-    MainSeries(u8, Option<u8>, usize, Option<Peptidoform<SemiAmbiguous>>),
+    /// Main series, char identifier for the series, optional sattelite label, the series number, and possibly the interpretation
+    MainSeries(
+        u8,
+        SatelliteLabel,
+        usize,
+        Option<Peptidoform<SemiAmbiguous>>,
+    ),
     Immonium(AminoAcid, Option<SimpleModification>),
     Internal(usize, usize),
     Named(String),
@@ -455,7 +451,7 @@ impl std::fmt::Display for IonType {
                     f,
                     "{}{}{ordinal}{}",
                     *series as char,
-                    sub.map_or_else(String::new, |s| (s as char).to_string()),
+                    sub,
                     interpretation
                         .as_ref()
                         .map_or_else(String::new, |i| format!("{{{i}}}"))
@@ -477,7 +473,7 @@ impl std::fmt::Display for IonType {
 }
 
 #[derive(Clone, Debug, Deserialize, PartialEq, PartialOrd, Serialize)]
-enum Isotope {
+pub(in crate::fragment) enum Isotope {
     General,
     Average,
     Specific(Element, NonZeroU16),
@@ -566,9 +562,16 @@ fn parse_ion<'a>(
                             .add_highlight((0, range.start_index(), 1)),
                     ));
                 }
-                (range.add_start(2_usize), Some(sub))
+                (
+                    range.add_start(2_usize),
+                    if sub == b'a' {
+                        SatelliteLabel::A
+                    } else {
+                        SatelliteLabel::B
+                    },
+                )
             } else {
-                (range.add_start(1_usize), None)
+                (range.add_start(1_usize), SatelliteLabel::None)
             };
             if let Some(ordinal) = next_number::<false, false, usize>(line, range.clone()) {
                 let range = range.add_start(ordinal.0);
@@ -1552,7 +1555,10 @@ fn parse_correctly() {
     let (_, parse_a) = parse_annotation(&Context::none(), a, 0..a.len(), None).unwrap();
     assert!(!parse_a.auxiliary);
     assert_eq!(parse_a.analyte_number, 1);
-    assert_eq!(parse_a.ion, IonType::MainSeries(b'y', None, 8, None));
+    assert_eq!(
+        parse_a.ion,
+        IonType::MainSeries(b'y', SatelliteLabel::None, 8, None)
+    );
     assert_eq!(parse_a.neutral_losses, Vec::new());
     assert_eq!(parse_a.isotopes, Vec::new());
     assert_eq!(parse_a.charge, MolecularCharge::proton(Charge::new::<e>(2)));
@@ -1573,7 +1579,10 @@ fn parse_correctly() {
     let (_, parse_b) = parse_annotation(&Context::none(), b, 0..b.len(), None).unwrap();
     assert!(!parse_b.auxiliary);
     assert_eq!(parse_b.analyte_number, 1);
-    assert_eq!(parse_b.ion, IonType::MainSeries(b'y', None, 8, None));
+    assert_eq!(
+        parse_b.ion,
+        IonType::MainSeries(b'y', SatelliteLabel::None, 8, None)
+    );
     assert_eq!(parse_b.neutral_losses, Vec::new());
     assert_eq!(parse_b.isotopes, vec![(1, Isotope::General)]);
     assert_eq!(parse_b.charge, MolecularCharge::proton(Charge::new::<e>(2)));

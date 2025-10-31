@@ -1,10 +1,10 @@
 use std::ops::Range;
 
 use context_error::{BasicKind, BoxedError, Context, CreateError};
-use mzcore::ontology::CustomDatabase;
+use mzcore::{chemistry::SatelliteLabel, prelude::*, sequence::SimpleLinear};
 
 use crate::{
-    fragment::{Fragment, PeakAnnotation},
+    fragment::{Fragment, IonType, PeakAnnotation},
     helper_functions::{explain_number_error, next_number},
     mzspeclib::AnalyteTarget,
 };
@@ -19,14 +19,12 @@ impl Fragment {
     /// When the annotation does not follow the format.
     pub fn maxquant<'a>(
         line: &'a str,
-        custom_database: Option<&CustomDatabase>,
-        interpretation: &[(u32, AnalyteTarget)],
+        interpretation: &Peptidoform<SimpleLinear>,
     ) -> Result<Self, BoxedError<'a, BasicKind>> {
         Self::maxquant_inner(
             &Context::none().lines(0, line),
             line,
             0..line.len(),
-            custom_database,
             interpretation,
         )
     }
@@ -37,15 +35,21 @@ impl Fragment {
     ///
     /// # Errors
     /// When the annotation does not follow the format.
-    pub(crate) fn maxquant_inner<'a>(
+    pub fn maxquant_inner<'a>(
         base_context: &Context<'a>,
         line: &'a str,
         range: Range<usize>,
-        custom_database: Option<&CustomDatabase>,
-        interpretation: &[(u32, AnalyteTarget)],
+        interpretation: &Peptidoform<SimpleLinear>,
     ) -> Result<Self, BoxedError<'a, BasicKind>> {
-        parse_intermediate_representation(base_context, line, range, custom_database)
-            .and_then(|annotations| annotations.into_fragment(interpretation, base_context))
+        parse_intermediate_representation(base_context, line, range).and_then(|annotations| {
+            annotations.into_fragment(
+                &[(
+                    1,
+                    AnalyteTarget::PeptidoformIon(interpretation.clone().into()),
+                )],
+                base_context,
+            )
+        })
     }
 }
 
@@ -53,10 +57,7 @@ fn parse_intermediate_representation<'a>(
     base_context: &Context<'a>,
     line: &'a str,
     range: Range<usize>,
-    custom_database: Option<&CustomDatabase>,
 ) -> Result<PeakAnnotation, BoxedError<'a, BasicKind>> {
-    // y2;y5;y6;y7;y8;y9;y10;y11;y12;y13;y14;y15;y8-NH3;y30(2+);a2;b2;b3;b4;b5;b6;b7;b18;b25;b2-H2O;b3-H2O;b5-H2O;b14(2+);b22(2+);b26(2+)
-    // y2;y3;y4;y7;y10;y12;y13;c2;c5;c6;c10;c14;c32;c39;c40;c41;z°10;z°12;z°14;z°19;z°34;z°36;z°37;z'12;z'13;cm5;cp27;cp31;cp33;cp34;cp35;b2;b3;b4;b5;b6;b7;b10;b11;b27
     // ion type
     let ion = line[range.clone()].chars().next().ok_or_else(|| {
         BoxedError::new(
@@ -66,8 +67,22 @@ fn parse_intermediate_representation<'a>(
             base_context.clone().add_highlight((0, range.clone())),
         )
     })?;
+
+    let ion = match u8::try_from(ion) {
+        Ok(ion @ (b'a' | b'b' | b'c' | b'x' | b'y' | b'z')) => Ok(ion),
+        _ => Err(BoxedError::new(
+            BasicKind::Error,
+            "Invalid MaxQuant fragment annotation",
+            "Only a/b/c/x/y/z ion serires are expected",
+            base_context
+                .clone()
+                .add_highlight((0, range.start..range.start + ion.len_utf8())),
+        )),
+    }?;
+
     // modifier
-    let modifier = line[range.clone()].chars().next().ok_or_else(|| {
+    // TODO: use!
+    let modifier = line[range.start+1..range.end].chars().next().ok_or_else(|| {
         BoxedError::new(
             BasicKind::Error,
             "Invalid MaxQuant fragment annotation",
@@ -80,8 +95,9 @@ fn parse_intermediate_representation<'a>(
     } else {
         Some(modifier)
     };
+
     // series number
-    let num_range = range.start + ion.len_utf8() + modifier.map_or(0, char::len_utf8)..range.end;
+    let num_range = range.start + 1 + modifier.map_or(0, char::len_utf8)..range.end;
     let (length, _, num) =
         next_number::<false, false, usize>(line, num_range.clone()).ok_or_else(|| {
             BoxedError::new(
@@ -91,7 +107,7 @@ fn parse_intermediate_representation<'a>(
                 base_context.clone().add_highlight((0, num_range.clone())),
             )
         })?;
-    let num = num.map_err(|err| {
+    let series_number = num.map_err(|err| {
         BoxedError::new(
             BasicKind::Error,
             "Invalid MaxQuant fragment series number",
@@ -99,22 +115,95 @@ fn parse_intermediate_representation<'a>(
             base_context.clone().add_highlight((0, num_range.clone())),
         )
     })?;
+
     // neutral losses
-    let (left, losses) = crate::fragment::mzpaf::parse_neutral_loss(
+    let (left, neutral_losses) = crate::fragment::mzpaf::parse_neutral_loss(
         base_context,
         line,
         num_range.start + length..num_range.end,
     )?;
 
     // charge
-    if line[left.clone()].starts_with('(') && line[left.clone()].ends_with(')') {
+    let charge = if line[left.clone()].starts_with('(') && line[left.clone()].ends_with(')') {
         let positive = match line[left.start + 1..left.end - 1].chars().last() {
-            Some('+') => true,
-            Some('-') => false,
-            Some(_) => (),
-            None => (),
-        };
-    }
+            Some('+') => Ok(true),
+            Some('-') => Ok(false),
+            Some(_) => Err(BoxedError::new(
+                BasicKind::Error,
+                "Invalid MaxQuant fragment annotation",
+                "The charge should be tailed by the sign, for example `(2+)`",
+                base_context
+                    .clone()
+                    .add_highlight((0, left.start + 1..left.end - 1)),
+            )),
+            None => Err(BoxedError::new(
+                BasicKind::Error,
+                "Invalid MaxQuant fragment annotation",
+                "The charge is empty, it should look like `(2+)`",
+                base_context
+                    .clone()
+                    .add_highlight((0, left.start + 1..left.end - 1)),
+            )),
+        }?;
 
-    todo!()
+        let num = line[left.start + 1..left.end - 2]
+            .parse::<u8>()
+            .map_err(|err| {
+                BoxedError::new(
+                    BasicKind::Error,
+                    "Invalid MaxQuant fragment charge",
+                    explain_number_error(&err),
+                    base_context
+                        .clone()
+                        .add_highlight((0, left.start + 1..left.end - 2)),
+                )
+            })?;
+
+        if positive {
+            MolecularCharge::proton(mzcore::system::isize::Charge::new::<mzcore::system::e>(
+                num as isize,
+            ))
+        } else {
+            MolecularCharge::proton(mzcore::system::isize::Charge::new::<mzcore::system::e>(
+                num as isize * -1,
+            ))
+        }
+    } else if left.is_empty() {
+        MolecularCharge::proton(mzcore::system::isize::Charge::new::<mzcore::system::e>(1))
+    } else {
+        return Err(BoxedError::new(
+            BasicKind::Error,
+            "Invalid MaxQuant fragment annotation",
+            "Could not parse charge, it should look like `(2+)` but the brackets are not found",
+            base_context
+                .clone()
+                .add_highlight((0, left.start + 1..left.end - 1)),
+        ));
+    };
+
+    Ok(PeakAnnotation {
+        auxiliary: false,
+        analyte_number: 1,
+        ion: IonType::MainSeries(ion, SatelliteLabel::None, series_number, None),
+        neutral_losses,
+        isotopes: Vec::new(),
+        charge,
+        deviation: None,
+        confidence: None,
+    })
+}
+
+#[test]
+fn maxquant_annotations() {
+    let peptide = Peptidoform::pro_forma(
+        "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+        None,
+    )
+    .unwrap()
+    .0
+    .into_simple_linear()
+    .unwrap();
+    for annotation in "y2;y5;y6;y7;y8;y9;y10;y11;y12;y13;y14;y15;y8-NH3;y30(2+);a2;b2;b3;b4;b5;b6;b7;b18;b25;b2-H2O;b3-H2O;b5-H2O;b14(2+);b22(2+);b26(2+);y2;y3;y4;y7;y10;y12;y13;c2;c5;c6;c10;c14;c32;c39;c40;c41;z°10;z°12;z°14;z°19;z°34;z°36;z°37;z'12;z'13;cm5;cp27;cp31;cp33;cp34;cp35;b2;b3;b4;b5;b6;b7;b10;b11;b27".split(';') {
+        Fragment::maxquant(annotation, &peptide).unwrap();
+    }
 }

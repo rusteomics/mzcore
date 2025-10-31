@@ -146,21 +146,27 @@ format_family!(
 
         #[cfg(feature = "mzannotate")]
         {
-            if let Ok((matches, match_range)) = source.index_column("matches") && let Ok((intensities, intensity_range)) = source.index_column("intensities") && let Ok((mzs, mz_range)) = source.index_column("masses") && !matches.is_empty() && !intensities.is_empty() && !mzs.is_empty(){
+            if let Some(peptidoform) = &parsed.peptide && let Ok((annotation, match_range)) = source.index_column("matches") && let Ok((intensities, intensity_range)) = source.index_column("intensities") && let Ok((mzs, mz_range)) = source.index_column("masses") && !annotation.is_empty() && !intensities.is_empty() && !mzs.is_empty(){
                 // y2;y5;y6;y7;y8;y9;y10;y11;y12;y13;y14;y15;y8-NH3;y30(2+);a2;b2;b3;b4;b5;b6;b7;b18;b25;b2-H2O;b3-H2O;b5-H2O;b14(2+);b22(2+);b26(2+)
                 // y2;y3;y4;y7;y10;y12;y13;c2;c5;c6;c10;c14;c32;c39;c40;c41;z°10;z°12;z°14;z°19;z°34;z°36;z°37;z'12;z'13;cm5;cp27;cp31;cp33;cp34;cp35;b2;b3;b4;b5;b6;b7;b10;b11;b27
-                let mut peaks = Vec::with_capacity(matches.chars().filter(|c| *c == ';').count());
+                let mut peaks = Vec::with_capacity(annotation.chars().filter(|c| *c == ';').count());
                 let mut match_offset = 0;
                 let mut intensity_offset = 0;
                 let mut mz_offset = 0;
-                for (index, ((annotation, intensity), mz)) in matches.split(';').zip(intensities.split(';')).zip(mzs.split(';')).enumerate() {
+                for (index, ((annotation, intensity), mz)) in annotation.split(';').zip(intensities.split(';')).zip(mzs.split(';')).enumerate() {
+                    let annotation_parsed = mzannotate::fragment::Fragment::maxquant_inner(
+                        &source.range_context(match_range.start+match_offset..match_range.start+match_offset+annotation.len(), None),
+                        &source.line,
+                        match_range.start+match_offset..match_range.start+match_offset+annotation.len(),
+                        peptidoform,
+                    ).map_err(|e| e.to_owned())?;
                     let mz_num = mz.parse::<f64>().map_err(|e| BoxedError::new(BasicKind::Error, "Invalid m/z", format!("A peak m/z is expected to be a number but: {e}"), source.range_context(mz_range.start+mz_offset..mz_range.start+mz_offset+mz.len(), None).to_owned()))?;
                     let intensity_num = intensity.parse::<f32>().map_err(|e| BoxedError::new(BasicKind::Error, "Invalid intensity", format!("A peak intensity is expected to be a number but: {e}"), source.range_context(intensity_range.start+intensity_offset..intensity_range.start+intensity_offset+intensity.len(), None).to_owned()))?;
                     peaks.push(AnnotatedPeak {
                         mz: MassOverCharge::new::<mzcore::system::thomson>(mz_num),
                         intensity: intensity_num,
                         index: index as u32,
-                        annotations: Vec::new(),
+                        annotations: vec![annotation_parsed],
                         aggregations: Vec::new()});
                     match_offset += annotation.len() + 1;
                     intensity_offset += intensity.len() + 1;
