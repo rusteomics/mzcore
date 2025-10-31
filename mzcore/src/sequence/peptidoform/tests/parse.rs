@@ -282,7 +282,12 @@ fn parse_ambiguous_modification() {
     assert_eq!(with[0].modifications.len(), 1);
     assert_eq!(with[1].modifications.len(), 1);
     assert!(CompoundPeptidoformIon::pro_forma("A[#g0]A[#g0]", None).is_err());
-    assert!(CompoundPeptidoformIon::pro_forma("A[Phospho#g0]A[Phospho#g0]", None).is_err());
+    assert!(
+        !CompoundPeptidoformIon::pro_forma("A[Phospho#g0]A[Phospho#g0]", None)
+            .unwrap()
+            .1
+            .is_empty()
+    );
     assert!(CompoundPeptidoformIon::pro_forma("A[Phospho#g0]A[#g0(0.o1)]", None).is_err());
     assert_eq!(
         Peptidoform::pro_forma("A[+12#g0]A[#g0]", None)

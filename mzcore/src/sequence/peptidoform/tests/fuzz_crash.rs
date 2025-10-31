@@ -177,7 +177,7 @@ parse_test!(ne "{Glycan:Hex0}A", fuzz_136);
 parse_test!(ne "()[Formula:[13C2][12C-2]H2N]CESIGCLK", fuzz_137);
 parse_test!(casing_specific "SEQU(EQ)[Formula:[13C2][12C-2]H2N]CE", fuzz_138);
 parse_test!(ne "[Formula:CCC-2]^9?CCE", fuzz_139);
-parse_test!("MERTK[XLMOD:02050#N][#N]", fuzz_140);
+parse_test!(casing_specific "MERTK[XLMOD:02050#N][#N]", fuzz_140);
 parse_test!(
     "{Glycan:Hex}[iTRAQ4plex]-LK(PCMRALGFKI)[Oxidation][5]uK[iTRAQ4plex]-[Methyl]",
     fuzz_141

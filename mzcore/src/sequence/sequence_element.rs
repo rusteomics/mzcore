@@ -108,13 +108,12 @@ impl<T> SequenceElement<T> {
     pub(crate) fn display(
         &self,
         f: &mut impl Write,
-        placed_ambiguous: &[usize],
+        placed_ambiguous: &mut Vec<usize>,
         preferred_ambiguous_location: &[Option<SequencePosition>],
         index: usize,
         last_ambiguous: Option<NonZeroU32>,
         specification_compliant: bool,
-    ) -> Result<Vec<usize>, std::fmt::Error> {
-        let mut extra_placed = Vec::new();
+    ) -> Result<(), std::fmt::Error> {
         if last_ambiguous.is_some() && last_ambiguous != self.ambiguous {
             write!(f, ")")?;
         }
@@ -125,18 +124,18 @@ impl<T> SequenceElement<T> {
         for m in &self.modifications {
             let mut display_ambiguous = false;
             if let Modification::Ambiguous { id, .. } = m
-                && (!placed_ambiguous.contains(id) && preferred_ambiguous_location[*id].is_none()
-                    || preferred_ambiguous_location[*id]
-                        .is_some_and(|p| p == SequencePosition::Index(index)))
+                && !placed_ambiguous.contains(id)
+                && preferred_ambiguous_location[*id]
+                    .is_none_or(|p| p == SequencePosition::Index(index))
             {
                 display_ambiguous = true;
-                extra_placed.push(*id);
+                placed_ambiguous.push(*id);
             }
             write!(f, "[")?;
             m.display(f, specification_compliant, display_ambiguous)?;
             write!(f, "]")?;
         }
-        Ok(extra_placed)
+        Ok(())
     }
 
     /// Get the molecular formulas for this position without any the ambiguous modifications

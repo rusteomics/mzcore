@@ -24,7 +24,7 @@ use mzcore::{
 /// tolerance : number
 ///     The tolerance in ppm (parts per million)
 /// amino_acids : list[AminoAcid]
-///     The list of amino acids to use look into TODO to get a default list
+///     The list of amino acids to use look into TODO: to get a default list
 /// fixed : list[tuple[SimpleModification, list[AminoAcid]]]
 ///     The list of fixed modifications, with a list of all allowed positions, if this list is empty the allowed places from the modification are used
 /// variable : list[tuple[SimpleModification, list[AminoAcid]]]

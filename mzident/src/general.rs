@@ -11,7 +11,6 @@ use crate::*;
 // TODO:
 // * Merge multiple annotations for the same spectrum (e.g. all candidates peaks export, take care not to lose info on chimeric spectra)
 // * Merge identical (or similar?) peptide sequences (for faster processing)
-// * Fix the case sensitivity on Linux (and mac?)
 
 /// Open the selected path and automatically determine the filetype. It will decompress gzipped
 /// files automatically.

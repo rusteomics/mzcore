@@ -1115,9 +1115,8 @@ impl<Complexity> Peptidoform<Complexity> {
             let mut display_ambiguous = false;
 
             if let Modification::Ambiguous { id, .. } = m
-                && (!placed_ambiguous.contains(id) && preferred_ambiguous_position[*id].is_none()
-                    || preferred_ambiguous_position[*id]
-                        .is_some_and(|p| p == SequencePosition::NTerm))
+                && !placed_ambiguous.contains(id)
+                && preferred_ambiguous_position[*id].is_none_or(|p| p == SequencePosition::NTerm)
             {
                 display_ambiguous = true;
                 placed_ambiguous.push(*id);
@@ -1133,14 +1132,14 @@ impl<Complexity> Peptidoform<Complexity> {
         }
         let mut last_ambiguous = None;
         for (index, position) in self.sequence.iter().enumerate() {
-            placed_ambiguous.extend(position.display(
+            position.display(
                 f,
-                &placed_ambiguous,
+                &mut placed_ambiguous,
                 &preferred_ambiguous_position,
                 index,
                 last_ambiguous,
                 specification_compliant,
-            )?);
+            )?;
             last_ambiguous = position.ambiguous;
         }
         if last_ambiguous.is_some() {
@@ -1149,8 +1148,11 @@ impl<Complexity> Peptidoform<Complexity> {
         let mut first = true;
         for m in self.get_c_term() {
             let mut display_ambiguous = false;
-            if let Modification::Ambiguous { id, .. } = m {
-                display_ambiguous = !placed_ambiguous.contains(id);
+            if let Modification::Ambiguous { id, .. } = m
+                && !placed_ambiguous.contains(id)
+                && preferred_ambiguous_position[*id].is_none_or(|p| p == SequencePosition::CTerm)
+            {
+                display_ambiguous = true;
                 placed_ambiguous.push(*id);
             }
             if first {
