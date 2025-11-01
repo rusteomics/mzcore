@@ -386,6 +386,8 @@ parse_test!("EVTK[X:Aryl azide#XL1]L//EK[#XL1]SEFD", positive_test_186);
 parse_test!(casing_specific "ED[MOD:00093#BRANCH]//D[#BRANCH]ATR", positive_test_187);
 parse_test!("NEEYN[GNO:G59626AS]K", positive_test_188);
 parse_test!("NEEYN[Glycan:Hex5HexNAc4NeuAc1]K", positive_test_189);
+parse_test!(ignore "NEEYN[Glycan:Hex5HexNAc4NeuAc1{C8H13[15N1]O5}1]K", positive_test_189a);
+parse_test!(ignore "NEEYN[Glycan:Hex5HexNAc4NeuAc1{C8H13N1O5Na1:z+1}1]K", positive_test_189b);
 parse_test!(casing_specific "SEQUEN[Formula:Zn1:z+2]CE", positive_test_190);
 parse_test!("PTI(MERMERME)[+32|Position:E]PTIDE", positive_test_191);
 parse_test!(ignore "[Oxidation|Limit:2]^4?PEPTIDE", positive_test_192);
