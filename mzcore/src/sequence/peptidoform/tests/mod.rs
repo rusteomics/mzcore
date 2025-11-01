@@ -31,6 +31,16 @@ macro_rules! parse_test {
             assert_eq!(res, res_back, "{} != {back}", $case);
         }
     };
+    (just_parse $case:literal, $name:ident) => {
+        #[test]
+        fn $name() {
+            use itertools::Itertools;
+            let res =
+                $crate::sequence::CompoundPeptidoformIon::pro_forma($case, None).map(|(a, _)| a);
+            println!("{}", $case);
+            assert!(res.is_ok(), "{}", res.err().unwrap().into_iter().join("\n"));
+        }
+    };
     (ignore $case:literal, $name:ident) => {
         #[test]
         #[allow(clippy::ignore_without_reason)]

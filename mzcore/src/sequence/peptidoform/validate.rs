@@ -3,9 +3,12 @@ use std::collections::BTreeMap;
 use context_error::*;
 use itertools::Itertools;
 
-use crate::sequence::{
-    AmbiguousLookup, CrossLinkName, Modification, Peptidoform, PeptidoformIon, SequencePosition,
-    SimpleModification,
+use crate::{
+    ParserResult,
+    sequence::{
+        AmbiguousLookup, CrossLinkName, Modification, Peptidoform, PeptidoformIon,
+        SequencePosition, SimpleModification,
+    },
 };
 
 use super::{GlobalModification, Linear};
@@ -19,22 +22,27 @@ pub(super) fn cross_links<'a>(
     cross_links_found: BTreeMap<usize, Vec<(usize, SequencePosition)>>,
     cross_link_lookup: &[(CrossLinkName, Option<SimpleModification>)],
     line: &'a str,
-) -> Result<PeptidoformIon, BoxedError<'a, BasicKind>> {
+) -> ParserResult<'a, PeptidoformIon, BasicKind> {
+    let mut errors = Vec::new();
     let mut peptidoform = PeptidoformIon(peptides.into_iter().map(Into::into).collect());
     for (id, locations) in cross_links_found {
         let definition = &cross_link_lookup[id];
         if let Some(linker) = &definition.1 {
             match locations.len() {
                 0 => {
-                    return Err(BoxedError::new(
-                        BasicKind::Error,
-                        "Invalid cross-link",
-                        format!(
-                            "The cross-link named '{}' has no listed locations, this is an internal error please report this",
-                            definition.0
+                    combine_error(
+                        &mut errors,
+                        BoxedError::new(
+                            BasicKind::Error,
+                            "Invalid cross-link",
+                            format!(
+                                "The cross-link named '{}' has no listed locations, this is an internal error please report this",
+                                definition.0
+                            ),
+                            Context::full_line(0, line),
                         ),
-                        Context::full_line(0, line),
-                    ));
+                        (),
+                    );
                 }
                 1 => {
                     let (index, position) = locations[0];
@@ -45,30 +53,34 @@ pub(super) fn cross_links<'a>(
                         peptidoform.0[index].add_simple_modification(position, linker.clone());
                     } else {
                         let rules = linker.placement_rules();
-                        return Err(BoxedError::new(
-                            BasicKind::Error,
-                            "Modification incorrectly placed",
-                            format!(
-                                "Modification {linker} is not allowed on {}{}",
-                                match position {
-                                    SequencePosition::NTerm => "the N-terminus".to_string(),
-                                    SequencePosition::CTerm => "the C-terminus".to_string(),
-                                    SequencePosition::Index(seq_index) => format!(
-                                        "the side chain of {} at index {seq_index}",
-                                        peptidoform.0[index][position].aminoacid
-                                    ),
-                                },
-                                if rules.is_empty() {
-                                    String::new()
-                                } else {
-                                    format!(
-                                        ", this modification is only allowed at the following locations: {}",
-                                        rules.join(", ")
-                                    )
-                                }
+                        combine_error(
+                            &mut errors,
+                            BoxedError::new(
+                                BasicKind::Warning,
+                                "Modification incorrectly placed",
+                                format!(
+                                    "Modification {linker} is not allowed on {}{}",
+                                    match position {
+                                        SequencePosition::NTerm => "the N-terminus".to_string(),
+                                        SequencePosition::CTerm => "the C-terminus".to_string(),
+                                        SequencePosition::Index(seq_index) => format!(
+                                            "the side chain of {} at index {seq_index}",
+                                            peptidoform.0[index][position].aminoacid
+                                        ),
+                                    },
+                                    if rules.is_empty() {
+                                        String::new()
+                                    } else {
+                                        format!(
+                                            ", this modification is only allowed at the following locations: {}",
+                                            rules.join(", ")
+                                        )
+                                    }
+                                ),
+                                Context::full_line(0, line),
                             ),
-                            Context::full_line(0, line),
-                        ));
+                            (),
+                        );
                     }
                 }
                 2 => {
@@ -78,27 +90,35 @@ pub(super) fn cross_links<'a>(
                         linker.clone(),
                         definition.0.clone(),
                     ) {
-                        return Err(BoxedError::new(
-                            BasicKind::Error,
-                            "Invalid cross-link",
-                            format!(
-                                "The cross-link named '{}' cannot be placed according to its location specificities",
-                                definition.0
+                        combine_error(
+                            &mut errors,
+                            BoxedError::new(
+                                BasicKind::Warning,
+                                "Invalid cross-link",
+                                format!(
+                                    "The cross-link named '{}' cannot be placed according to its location specificities",
+                                    definition.0
+                                ),
+                                Context::full_line(0, line),
                             ),
-                            Context::full_line(0, line),
-                        ));
+                            (),
+                        );
                     }
                 }
                 _ => {
-                    return Err(BoxedError::new(
-                        BasicKind::Error,
-                        "Invalid cross-link",
-                        format!(
-                            "The cross-link named '{}' has more than 2 attachment locations, only cross-links spanning two locations are allowed",
-                            definition.0
+                    combine_error(
+                        &mut errors,
+                        BoxedError::new(
+                            BasicKind::Error,
+                            "Invalid cross-link",
+                            format!(
+                                "The cross-link named '{}' has more than 2 attachment locations, only cross-links spanning two locations are allowed",
+                                definition.0
+                            ),
+                            Context::full_line(0, line),
                         ),
-                        Context::full_line(0, line),
-                    ));
+                        (),
+                    );
                 }
             }
         } else {
@@ -107,15 +127,19 @@ pub(super) fn cross_links<'a>(
             } else {
                 ("X", "DSS", "")
             };
-            return Err(BoxedError::new(
-                BasicKind::Error,
-                "Invalid cross-link",
-                format!(
-                    "The cross-link named '{0}' is never defined, for example for {name}{description} define it like: '[{c}:{name}{0}]'",
-                    definition.0
+            combine_error(
+                &mut errors,
+                BoxedError::new(
+                    BasicKind::Error,
+                    "Invalid cross-link",
+                    format!(
+                        "The cross-link named '{0}' is never defined, for example for {name}{description} define it like: '[{c}:{name}{0}]'",
+                        definition.0
+                    ),
+                    Context::full_line(0, line),
                 ),
-                Context::full_line(0, line),
-            ));
+                (),
+            );
         }
     }
 
@@ -146,15 +170,23 @@ pub(super) fn cross_links<'a>(
     }
 
     if found_peptides.len() != peptidoform.peptidoforms().len() {
-        return Err(BoxedError::new(
-            BasicKind::Error,
-            "Unconnected peptidoform",
-            "Not all peptides in this peptidoform are connected with cross-links or branches, if separate peptides were intended use the chimeric notation `+` instead of the peptidoform notation `//`.",
-            Context::full_line(0, line),
-        ));
+        combine_error(
+            &mut errors,
+            BoxedError::new(
+                BasicKind::Error,
+                "Unconnected peptidoform",
+                "Not all peptides in this peptidoform are connected with cross-links or branches, if separate peptides were intended use the chimeric notation `+` instead of the peptidoform notation `//`.",
+                Context::full_line(0, line),
+            ),
+            (),
+        );
     }
 
-    Ok(peptidoform)
+    if errors.iter().any(|e| e.get_kind().is_error(())) {
+        Err(errors)
+    } else {
+        Ok((peptidoform, errors))
+    }
 }
 
 impl Peptidoform<Linear> {

@@ -118,7 +118,7 @@ impl PeptidoformIon {
         if let (Some(pos_1), Some(pos_2)) = (pos_1, pos_2) {
             let left = linker.is_possible(pos_1, position_1.1);
             let right = linker.is_possible(pos_2, position_1.1);
-            let specificity = if matches!(
+            let (left, right, according_to_rules) = if matches!(
                 &*linker,
                 SimpleModificationInner::Formula(_)
                     | SimpleModificationInner::Glycan(_)
@@ -126,21 +126,27 @@ impl PeptidoformIon {
                     | SimpleModificationInner::Gno { .. }
                     | SimpleModificationInner::Mass(_)
             ) {
-                Some((
+                (
                     CrossLinkSide::Symmetric(BTreeSet::default()),
                     CrossLinkSide::Symmetric(BTreeSet::default()),
-                ))
+                    true,
+                )
             } else {
                 match (left, right) {
                     (RulePossible::Symmetric(a), RulePossible::Symmetric(b)) => {
                         let intersection: BTreeSet<usize> = a.intersection(&b).copied().collect();
                         if intersection.is_empty() {
-                            None
+                            (
+                                CrossLinkSide::Symmetric(BTreeSet::default()),
+                                CrossLinkSide::Symmetric(BTreeSet::default()),
+                                false,
+                            )
                         } else {
-                            Some((
+                            (
                                 CrossLinkSide::Symmetric(intersection.clone()),
                                 CrossLinkSide::Symmetric(intersection),
-                            ))
+                                true,
+                            )
                         }
                     }
                     (
@@ -149,12 +155,17 @@ impl PeptidoformIon {
                     ) => {
                         let intersection: BTreeSet<usize> = a.intersection(&b).copied().collect();
                         if intersection.is_empty() {
-                            None
+                            (
+                                CrossLinkSide::Symmetric(BTreeSet::default()),
+                                CrossLinkSide::Symmetric(BTreeSet::default()),
+                                false,
+                            )
                         } else {
-                            Some((
+                            (
                                 CrossLinkSide::Left(intersection.clone()),
                                 CrossLinkSide::Right(intersection),
-                            ))
+                                true,
+                            )
                         }
                     }
                     (
@@ -163,44 +174,49 @@ impl PeptidoformIon {
                     ) => {
                         let intersection: BTreeSet<usize> = a.intersection(&b).copied().collect();
                         if intersection.is_empty() {
-                            None
+                            (
+                                CrossLinkSide::Symmetric(BTreeSet::default()),
+                                CrossLinkSide::Symmetric(BTreeSet::default()),
+                                false,
+                            )
                         } else {
-                            Some((
+                            (
                                 CrossLinkSide::Right(intersection.clone()),
                                 CrossLinkSide::Left(intersection),
-                            ))
+                                true,
+                            )
                         }
                     }
-                    _ => None,
+                    _ => (
+                        CrossLinkSide::Symmetric(BTreeSet::default()),
+                        CrossLinkSide::Symmetric(BTreeSet::default()),
+                        false,
+                    ),
                 }
             };
-            if let Some((left, right)) = specificity {
-                self.0[position_1.0].add_modification(
-                    position_1.1,
-                    Modification::CrossLink {
-                        peptide: position_2.0,
-                        sequence_index: position_2.1,
-                        linker: linker.clone(),
-                        name: name.clone(),
-                        side: left,
-                    },
-                );
-                self.0[position_2.0].add_modification(
-                    position_2.1,
-                    Modification::CrossLink {
-                        peptide: position_1.0,
-                        sequence_index: position_1.1,
-                        linker,
-                        name,
-                        side: right,
-                    },
-                );
-                true
-            } else {
-                false
-            }
+            self.0[position_1.0].add_modification(
+                position_1.1,
+                Modification::CrossLink {
+                    peptide: position_2.0,
+                    sequence_index: position_2.1,
+                    linker: linker.clone(),
+                    name: name.clone(),
+                    side: left,
+                },
+            );
+            self.0[position_2.0].add_modification(
+                position_2.1,
+                Modification::CrossLink {
+                    peptide: position_1.0,
+                    sequence_index: position_1.1,
+                    linker,
+                    name,
+                    side: right,
+                },
+            );
+            according_to_rules
         } else {
-            false
+            false // TODO: maybe generate better error on invalid positions
         }
     }
 

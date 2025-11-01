@@ -5,15 +5,11 @@ use itertools::Itertools;
 use ordered_float::OrderedFloat;
 
 use crate::{
-    ParserResult,
-    chemistry::{Element, MolecularCharge, MolecularFormula},
-    helper_functions::*,
-    ontology::CustomDatabase,
-    sequence::{
+    ParserResult, chemistry::{Element, MolecularCharge, MolecularFormula}, helper_functions::*, molecular_formula, ontology::CustomDatabase, sequence::{
         AmbiguousLookup, AmbiguousLookupEntry, AminoAcid, CheckedAminoAcid, CompoundPeptidoformIon,
         CrossLinkLookup, Linked, Modification, Peptidoform, PeptidoformIon, PlacementRule,
         Position, SequenceElement, SequencePosition, SimpleModification, SimpleModificationInner,
-    },
+    }
 };
 
 use super::{GlobalModification, Linear, ReturnModification, SemiAmbiguous};
@@ -325,9 +321,7 @@ impl CompoundPeptidoformIon {
             );
             Err(errors)
         } else {
-            let peptidoform =
-                super::validate::cross_links(peptides, cross_links_found, &cross_link_lookup, line)
-                    .map_err(|err| vec![err])?;
+            let peptidoform = handle!(errors, super::validate::cross_links(peptides, cross_links_found, &cross_link_lookup, line));
 
             if errors.iter().any(|e| e.get_kind().is_error(())) {
                 Err(errors)
@@ -1420,16 +1414,22 @@ pub(super) fn parse_charge_state_2_0<'a>(
             }
 
             // formula
-            let mut formula = handle!(single errors, MolecularFormula::pro_forma_inner::<true, false>(
-                base_context,
-                line,
-                offset + count_len..offset + set.len() - charge_len,
-            ));
-            let _ = formula.add((
-                Element::Electron,
-                None,
-                formula.charge().value as i32 - charge,
-            ));
+            let formula_range = offset + count_len..offset + set.len() - charge_len;
+            let formula = if !formula_range.is_empty() && line[formula_range].eq_ignore_ascii_case("e") {
+                MolecularFormula::new(&[(Element::Electron, None, -charge)], &[]).unwrap()
+            } else {
+                let mut formula = handle!(single errors, MolecularFormula::pro_forma_inner::<true, false>(
+                    base_context,
+                    line,
+                    offset + count_len..offset + set.len() - charge_len,
+                ));
+                let _ = formula.add((
+                    Element::Electron,
+                    None,
+                    formula.charge().value as i32 - charge,
+                ));
+                formula
+            };
 
             // Deduplicate
             if let Some((amount, _)) = charge_carriers.iter_mut().find(|(_, f)| *f == formula) {
