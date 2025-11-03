@@ -17,7 +17,8 @@ readme = "README.md"
 include = ["src/**/*", "images/**/*", "README.md", "benches/**/*"]
 
 [dependencies]
-bincode = { workspace = true }
+mzcv = { path = "../mzcv" }
+bincode = { workspace = true, features = ["serde"] }
 context_error = { workspace = true }
 itertools = { workspace = true }
 ndarray = { workspace = true, optional = true }
@@ -27,6 +28,7 @@ rand = { workspace = true, optional = true }
 regex = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
+sha2 = {workspace = true}
 similar = { workspace = true }
 swash = { workspace = true, optional = true }
 thin-vec = { workspace = true }
@@ -43,6 +45,8 @@ default = []
 isotopes = ["probability", "ndarray"]
 glycan-render = []
 glycan-render-bitmap = ["zeno", "swash", "glycan-render"]
+search-index = ["mzcv/search-index"]
+internet = ["mzcv/internet"]
 internal-no-data = []
 coloured-errors = ["context_error/colored"]
 

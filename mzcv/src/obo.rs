@@ -18,7 +18,7 @@ pub struct OboOntology {
     /// differently with [`Self::from_raw`].
     pub hash: Vec<u8>,
     /// The other headers of the Obo file. (tag, value, trailing modifiers, comment)
-    pub headers: Vec<(String, String, Vec<(String, String)>, Option<String>)>,
+    pub headers: Vec<(String, String, Vec<Modifier>, Comment)>,
     /// All enclosed objects
     pub objects: Vec<OboStanza>,
 }
@@ -29,20 +29,22 @@ pub struct OboStanza {
     /// The stanza type
     pub stanza_type: OboStanzaType,
     /// The id, split into the CV and local identifiers, the local id is stored as string as some ontologies use non numeric values
-    pub id: (Option<String>, String),
-    pub definition: Option<(
-        String,
-        Vec<(Option<String>, String)>,
-        Vec<(String, String)>,
-        Option<String>,
-    )>,
+    pub id: OboID,
+    /// The `def` field.  (value, cross-ids, trailing modifiers, comment)
+    pub definition: Option<(String, Vec<OboID>, Vec<Modifier>, Comment)>,
     /// The synonyms for this stanza
     pub synonyms: Vec<OboSynonym>,
     /// The tags that are defined for this stanza (value, trialing modifiers, comment)
-    pub lines: HashMap<String, Vec<(String, Vec<(String, String)>, Option<String>)>>,
+    pub lines: HashMap<String, Vec<(String, Vec<Modifier>, Comment)>>,
     /// All property value tags parsed as the defined value type (value, trialing modifiers, comment)
-    pub property_values: HashMap<String, Vec<(OboValue, Vec<(String, String)>, Option<String>)>>,
+    pub property_values: HashMap<String, Vec<(OboValue, Vec<Modifier>, Comment)>>,
 }
+
+type OboID = (Option<String>, String);
+
+type Modifier = (String, String);
+
+type Comment = Option<String>;
 
 /// A synonym in an Obo stanza
 #[derive(Clone, Debug, Default)]
@@ -54,11 +56,11 @@ pub struct OboSynonym {
     /// Optional synonym type name
     pub type_name: Option<String>,
     /// The dbxref list
-    pub cross_references: Vec<(Option<String>, String)>,
+    pub cross_references: Vec<OboID>,
     /// The trailing modifiers
-    pub trailing_modifiers: Vec<(String, String)>,
+    pub trailing_modifiers: Vec<Modifier>,
     /// The comment
-    pub comment: Option<String>,
+    pub comment: Comment,
 }
 
 /// The type or scope for a synonym

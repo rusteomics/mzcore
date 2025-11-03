@@ -180,7 +180,7 @@ impl GlycanStructure {
             target: &MonoSaccharide,
             precise: bool,
             tree: &GlycanStructure,
-            branch_breaks: &[(u32, Vec<GlycanBranchIndex>)],
+            branch_breaks: &[(u16, Vec<GlycanBranchIndex>)],
         ) -> bool {
             let total_branches = tree.branches.len();
             if tree.sugar.equivalent(target, precise) {
@@ -386,9 +386,9 @@ impl GlycanStructure {
     /// When any of the masses in this glycan cannot be compared see [`f64::partial_cmp`].
     fn internal_pos(
         self,
-        inner_depth: u32,
+        inner_depth: u16,
         branch: &[(GlycanBranchIndex, GlycanBranchMassIndex)],
-    ) -> (PositionedGlycanStructure, u32) {
+    ) -> (PositionedGlycanStructure, u16) {
         // Sort the branches on decreasing molecular weight
         let branches = self
             .branches
@@ -403,7 +403,7 @@ impl GlycanStructure {
             .collect_vec();
 
         // Get the correct branch indices adding a new layer of indices when needed
-        let branches: Vec<(PositionedGlycanStructure, u32)> = if branches.len() == 1 {
+        let branches: Vec<(PositionedGlycanStructure, u16)> = if branches.len() == 1 {
             branches
                 .into_iter()
                 .map(|(_, b)| b.internal_pos(inner_depth + 1, branch))

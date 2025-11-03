@@ -2,6 +2,7 @@
 members = [
     "mzannotate",
     "mzcore",
+    "mzcore-update-ontologies",
     "mzident",
     "mzalign",
     "mzcv",

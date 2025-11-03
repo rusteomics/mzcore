@@ -75,7 +75,7 @@ pub struct ModificationId {
     /// Any synonyms
     pub synonyms: thin_vec::ThinVec<String>,
     /// Cross reference IDs
-    pub cross_ids: thin_vec::ThinVec<(String, String)>,
+    pub cross_ids: thin_vec::ThinVec<(Option<String>, String)>,
 }
 
 impl ParseJson for ModificationId {

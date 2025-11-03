@@ -147,8 +147,6 @@ format_family!(
         #[cfg(feature = "mzannotate")]
         {
             if let Some(peptidoform) = &parsed.peptide && let Ok((annotation, match_range)) = source.index_column("matches") && let Ok((intensities, intensity_range)) = source.index_column("intensities") && let Ok((mzs, mz_range)) = source.index_column("masses") && !annotation.is_empty() && !intensities.is_empty() && !mzs.is_empty(){
-                // y2;y5;y6;y7;y8;y9;y10;y11;y12;y13;y14;y15;y8-NH3;y30(2+);a2;b2;b3;b4;b5;b6;b7;b18;b25;b2-H2O;b3-H2O;b5-H2O;b14(2+);b22(2+);b26(2+)
-                // y2;y3;y4;y7;y10;y12;y13;c2;c5;c6;c10;c14;c32;c39;c40;c41;z°10;z°12;z°14;z°19;z°34;z°36;z°37;z'12;z'13;cm5;cp27;cp31;cp33;cp34;cp35;b2;b3;b4;b5;b6;b7;b10;b11;b27
                 let mut peaks = Vec::with_capacity(annotation.chars().filter(|c| *c == ';').count());
                 let mut match_offset = 0;
                 let mut intensity_offset = 0;
@@ -572,12 +570,27 @@ impl MetaData for MaxQuantData {
 
     #[cfg(feature = "mzannotate")]
     fn annotated_spectrum(&self) -> Option<Cow<'_, mzannotate::spectrum::AnnotatedSpectrum>> {
+        // TODO: create a generic function to convert a 'MetaData' into a spectrum description + analytes etc
         self.spectrum.as_ref().map(|s| {
+            use mzannotate::mzspeclib::Analyte;
+
             Cow::Owned(mzannotate::spectrum::AnnotatedSpectrum::new(
                 0,
                 mzannotate::mzdata::spectrum::SpectrumDescription::default(),
                 vec![Vec::new(); 1],
-                Vec::new(),
+                self.peptide
+                    .as_ref()
+                    .map(|pep| {
+                        vec![Analyte {
+                            id: 0,
+                            target: mzannotate::mzspeclib::AnalyteTarget::PeptidoformIon(
+                                pep.clone().into(),
+                            ),
+                            proteins: Vec::new(),
+                            params: Vec::new(),
+                        }]
+                    })
+                    .unwrap_or_default(),
                 Vec::new(),
                 s.clone().into(),
             ))

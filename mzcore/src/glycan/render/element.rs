@@ -169,7 +169,7 @@ impl AbsolutePositionedGlycan {
             direction: GlycanDirection,
             x_offset: f32,
             y_offset: f32,
-            breaks: &[(u32, Vec<(GlycanBranchIndex, GlycanBranchMassIndex)>)],
+            breaks: &[(u16, Vec<(GlycanBranchIndex, GlycanBranchMassIndex)>)],
             foreground: [u8; 3],
             background: [u8; 3],
             incoming_stroke: (f32, f32, f32, f32),

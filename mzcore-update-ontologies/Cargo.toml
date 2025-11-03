@@ -1,0 +1,24 @@
+[package]
+name = "mzcore-update-ontologies"
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+publish = false
+rust-version.workspace = true
+version.workspace = true
+description = "A library to handle proteomic mass spectrometry data and match peptides to spectra."
+repository = "https://github.com/rusteomics/mzcore"
+readme = "README.md"
+include = ["src/**/*", "images/**/*", "README.md", "benches/**/*"]
+
+[dependencies]
+mzcv = { path = "../mzcv", features = ["internet"] }
+mzcore = { path = "../mzcore" }
+
+[dev-dependencies]
+
+[features]
+default = []
+
+[lints]
+workspace = true

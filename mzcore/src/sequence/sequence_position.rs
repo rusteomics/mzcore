@@ -1,11 +1,9 @@
-use serde::{Deserialize, Serialize};
-
 use crate::parse_json::{ParseJson, use_serde};
 
+use serde::{Deserialize, Serialize};
+
 /// A position on a sequence
-#[derive(
-    Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, serde::Serialize, serde::Deserialize,
-)]
+#[derive(Clone, Copy, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 pub enum SequencePosition {
     /// N-terminal
     NTerm,

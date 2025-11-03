@@ -1,17 +1,18 @@
 use serde::{Deserialize, Serialize};
 use thin_vec::ThinVec;
 
-use crate::sequence::{AminoAcid, SequencePosition};
-
-use super::{GlycanBranchIndex, GlycanBranchMassIndex};
+use crate::{
+    glycan::{GlycanBranchIndex, GlycanBranchMassIndex},
+    sequence::{AminoAcid, SequencePosition},
+};
 
 /// The definition of the position of an ion inside a glycan
 #[derive(Clone, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 pub struct GlycanPosition {
     /// The depth starting at the amino acid
-    pub inner_depth: u32,
+    pub inner_depth: u16,
     /// The series number (from the ion series terminal)
-    pub series_number: u32,
+    pub series_number: u16,
     /// The branch naming
     pub branch: ThinVec<(GlycanBranchIndex, GlycanBranchMassIndex)>,
     /// The aminoacid index where this glycan is attached

@@ -5,8 +5,8 @@ use bincode::{Decode, Encode};
 use context_error::{BoxedError, CreateError, FullErrorContent, StaticErrorContent};
 
 use mzcv::{
-    CVData, CVError, CVFile, CVIndex, CVSource, CVVersion, HashBufReader, OboOntology,
-    OboStanzaType,
+    CVCacheBincode, CVData, CVError, CVFile, CVIndex, CVSource, CVVersion, HashBufReader,
+    OboOntology, OboStanzaType,
 };
 
 fn main() {
@@ -82,6 +82,7 @@ impl CVData for MSData {
     fn synonyms(&self) -> impl Iterator<Item = &str> {
         self.synonyms.iter().map(AsRef::as_ref)
     }
+    type Cache = CVCacheBincode<Self>;
 }
 
 impl CVSource for MS {
@@ -97,7 +98,7 @@ impl CVSource for MS {
             compression: mzcv::CVCompression::None,
         }]
     }
-    fn static_data() -> Option<(CVVersion, &'static [std::sync::Arc<Self::Data>])> {
+    fn static_data() -> Option<(CVVersion, Vec<Self::Data>)> {
         None
     }
     fn parse(

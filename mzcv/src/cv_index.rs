@@ -134,7 +134,7 @@ impl<CV: CVSource> CVIndex<CV> {
     }
 
     /// Create an empty CV
-    pub(crate) fn empty() -> Self {
+    pub fn empty() -> Self {
         Self {
             data: Vec::new(),
             index: HashMap::new(),

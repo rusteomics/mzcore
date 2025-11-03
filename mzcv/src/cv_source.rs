@@ -1,7 +1,5 @@
 //! The main traits any user of the CV logic needs to implement.
 
-use std::sync::Arc;
-
 use bincode::{Decode, Encode};
 use context_error::BoxedError;
 use directories::{BaseDirs, ProjectDirs};
@@ -29,7 +27,7 @@ pub trait CVSource {
     /// The source files for the
     fn files() -> &'static [CVFile];
     /// The static data of this CV
-    fn static_data() -> Option<(CVVersion, &'static [Arc<Self::Data>])>;
+    fn static_data() -> Option<(CVVersion, Vec<Self::Data>)>;
     /// The default file stem (no extension).
     /// # Panics
     /// If both [`ProjectDirs::from`] and [`BaseDirs::new`] failed to retrieve a suitable base folder.
@@ -65,7 +63,7 @@ pub struct CVFile {
 }
 
 /// Version information for a CV
-#[derive(Debug, Decode, Default, Encode)]
+#[derive(Clone, Debug, Decode, Default, Encode)]
 pub struct CVVersion {
     /// The last updated date as reported by the CV (year, month, day, hour, minute)
     pub last_updated: Option<(u16, u8, u8, u8, u8)>,
@@ -76,6 +74,13 @@ pub struct CVVersion {
 }
 
 impl CVVersion {
+    /// A nice representation of the date
+    pub fn last_updated(&self) -> Option<String> {
+        self.last_updated.map(|(year, month, day, hour, minute)| {
+            format!("{year:04}-{month:02}-{day:02} {hour:02}:{minute:02}")
+        })
+    }
+
     /// A nice string representation of the hash
     pub fn hash_hex(&self) -> String {
         use std::fmt::Write;
@@ -90,24 +95,8 @@ impl CVVersion {
 /// A data element from a CV. Note that technically an implementation could be made that does not
 /// have any index, name, or keywords for a data element. Such an element would be kept and stored
 /// but would not be accessible via anything else then [`crate::CVIndex::data`].
-pub trait CVData: Encode + Decode<()> + Clone {
+pub trait CVData: Clone {
     /// The type used for the index
-    // Example IDs:
-    // NCIT:C25330
-    // NCIT:R100
-    // NCIT:P383
-    // MS:1000014
-    // UO:0000245
-    // BAO_0000925
-    // BFO:0000015
-    // GAZ:00002933
-    // AfPO_0000233 // In URL
-    // BTO:0004947
-    // PRIDE:0000521
-    // MOD:01188
-    // XLMOD:07097
-    // GNO:G00001NT // Name and ID are identical
-    // GNO:00000015
     type Index: std::fmt::Debug + Clone + std::hash::Hash + Eq;
     /// The numerical index or id of the item.
     fn index(&self) -> Option<Self::Index>;
@@ -116,6 +105,73 @@ pub trait CVData: Encode + Decode<()> + Clone {
     fn name(&self) -> Option<&str>;
     /// Any synonyms that can be uniquely attributed to this data element.
     fn synonyms(&self) -> impl Iterator<Item = &str>;
+
+    /// The cache type, needed to be generic to handle serde (de)serialisation nicely
+    type Cache: CVCache<Self>;
+}
+
+pub trait CVCache<T>: Encode + Decode<()> {
+    fn construct(version: CVVersion, data: Vec<T>) -> Self;
+    fn deconstruct(self) -> (CVVersion, Vec<T>);
+}
+
+#[derive(Debug, Decode, Encode)]
+pub struct CVCacheBincode<D: Decode<()> + Encode> {
+    version: CVVersion,
+    data: Vec<D>,
+}
+
+impl<T: Encode + Decode<()>> CVCache<T> for CVCacheBincode<T> {
+    fn construct(version: CVVersion, data: Vec<T>) -> Self {
+        Self { version, data }
+    }
+    fn deconstruct(self) -> (CVVersion, Vec<T>) {
+        (self.version, self.data)
+    }
+}
+
+#[cfg(feature = "serde")]
+#[derive(Debug)]
+pub struct CVCacheSerde<D: serde::Serialize + for<'de> serde::Deserialize<'de>> {
+    version: CVVersion,
+    data: Vec<D>,
+}
+
+impl<D: serde::Serialize + for<'de> serde::Deserialize<'de>> Encode for CVCacheSerde<D> {
+    fn encode<E: bincode::enc::Encoder>(
+        &self,
+        encoder: &mut E,
+    ) -> Result<(), bincode::error::EncodeError> {
+        Encode::encode(&self.version, encoder)?;
+        Encode::encode(
+            &bincode::serde::encode_to_vec(&self.data, *encoder.config())?,
+            encoder,
+        )?;
+        Ok(())
+    }
+}
+
+impl<Context, T: serde::Serialize + for<'de> serde::Deserialize<'de>> Decode<Context>
+    for CVCacheSerde<T>
+{
+    fn decode<D: bincode::de::Decoder<Context = Context>>(
+        decoder: &mut D,
+    ) -> Result<Self, bincode::error::DecodeError> {
+        let version = Decode::decode(decoder)?;
+        let data: Vec<u8> = Decode::decode(decoder)?;
+        let (data, _) = bincode::serde::decode_from_slice(&data, *decoder.config())?;
+        Ok(Self { version, data })
+    }
+}
+
+#[cfg(feature = "serde")]
+impl<T: serde::Serialize + for<'de> serde::Deserialize<'de>> CVCache<T> for CVCacheSerde<T> {
+    fn construct(version: CVVersion, data: Vec<T>) -> Self {
+        Self { version, data }
+    }
+    fn deconstruct(self) -> (CVVersion, Vec<T>) {
+        (self.version, self.data)
+    }
 }
 
 /// The used compression of the source CV.

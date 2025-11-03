@@ -1,5 +1,22 @@
 use std::num::NonZeroU8;
 
+// Example IDs:
+// NCIT:C25330
+// NCIT:R100
+// NCIT:P383
+// MS:1000014
+// UO:0000245
+// BAO_0000925
+// BFO:0000015
+// GAZ:00002933
+// AfPO_0000233 // In URL
+// BTO:0004947
+// PRIDE:0000521
+// MOD:01188
+// XLMOD:07097
+// GNO:G00001NT // Name and ID are identical
+// GNO:00000015
+
 /// Controlled vocabularies all ontobee listed controlled vocabulaires are present as well as PRIDE and RESID
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
@@ -1197,6 +1214,7 @@ impl std::str::FromStr for Curie {
 /// An accession code, Can either be a numeric code (u32 to 4 milion, so 9 fully utilised digits).
 /// Or it can be an ASCII alphanumeric code (case-sensitive) of 1 to 8 characters.
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum AccessionCode {
     Numeric(u32),
     Alphanumeric(NonZeroU8, [u8; 7]),

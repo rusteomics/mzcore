@@ -7,9 +7,8 @@
 use std::ops::{Deref, DerefMut};
 
 use num_traits::Zero;
-use uom::*;
-
 use serde::{Deserialize, Serialize};
+use uom::*;
 
 use crate::helper_functions;
 

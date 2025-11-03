@@ -99,9 +99,14 @@ impl Chemical for SimpleModificationInner {
 impl SimpleModificationInner {
     /// Get a url for more information on this modification. Only defined for modifications from ontologies.
     pub fn ontology_url(&self) -> Option<String> {
+        self.description().and_then(ModificationId::url)
+    }
+
+    /// Get the description, only defined for modifications from ontologies.
+    pub const fn description(&self) -> Option<&ModificationId> {
         match self {
             Self::Mass(_) | Self::Formula(_) | Self::Glycan(_) | Self::GlycanStructure(_) => None,
-            Self::Database { id, .. } | Self::Linker { id, .. } | Self::Gno { id, .. } => id.url(),
+            Self::Database { id, .. } | Self::Linker { id, .. } | Self::Gno { id, .. } => Some(id),
         }
     }
 

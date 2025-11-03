@@ -11,7 +11,10 @@ use std::{
 
 use context_error::{BoxedError, Context, CreateError};
 
-use crate::{CVCompression, CVError, CVIndex, CVSource, CVVersion, hash_buf_reader::HashBufReader};
+use crate::{
+    CVCache, CVCompression, CVData, CVError, CVIndex, CVSource, CVVersion,
+    hash_buf_reader::HashBufReader,
+};
 
 impl<CV: CVSource> CVIndex<CV> {
     /// Build this CV from the standard cache location
@@ -26,7 +29,7 @@ impl<CV: CVSource> CVIndex<CV> {
             )
         })?;
         let mut reader = BufReader::new(file);
-        let (version, data): (CVVersion, Vec<CV::Data>) =
+        let cache: <CV::Data as CVData>::Cache =
             bincode::decode_from_std_read(&mut reader, bincode::config::standard()).map_err(
                 |e| {
                     BoxedError::new(
@@ -38,14 +41,23 @@ impl<CV: CVSource> CVIndex<CV> {
                 },
             )?;
         let mut result = Self::empty();
+        let (version, data) = cache.deconstruct();
         result.update_skip_rebuilding_cache(data.into_iter().map(Arc::new), version);
         Ok(result)
     }
 
-    /// Store this index in the standard cache
+    /// Store this index in the standard cache.
+    /// # Errors
+    /// If the file could not be written to.
     fn save_to_cache(&self) -> Result<(), BoxedError<'static, CVError>> {
-        let path = CV::default_stem().with_extension("bin");
-        let file = std::fs::File::create(&path).map_err(|e| {
+        self.save_to_cache_at(&CV::default_stem().with_extension("bin"))
+    }
+
+    /// Store this index at a certain location.
+    /// # Errors
+    /// If the file could not be written to.
+    pub fn save_to_cache_at(&self, path: &Path) -> Result<(), BoxedError<'static, CVError>> {
+        let file = std::fs::File::create(path).map_err(|e| {
             BoxedError::new(
                 CVError::CacheCouldNotBeOpenend,
                 "CV cache file could not be openend",
@@ -55,9 +67,9 @@ impl<CV: CVSource> CVIndex<CV> {
         })?;
         let mut writer = BufWriter::new(file);
         bincode::encode_into_std_write(
-            (
-                self.version(),
-                self.data().map(Arc::unwrap_or_clone).collect::<Vec<_>>(),
+            <CV::Data as CVData>::Cache::construct(
+                self.version().clone(),
+                self.data().map(Arc::unwrap_or_clone).collect(),
             ),
             &mut writer,
             bincode::config::standard(),
@@ -103,7 +115,7 @@ impl<CV: CVSource> CVIndex<CV> {
 
         // Load the static data
         if let Some((version, data)) = CV::static_data() {
-            result.update_skip_rebuilding_cache(data.iter().cloned(), version);
+            result.update_skip_rebuilding_cache(data.into_iter().map(Arc::new), version);
         }
 
         // Fall back with empty CV

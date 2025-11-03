@@ -21,15 +21,17 @@ directories = { workspace = true }
 flate2 = { workspace = true }
 reqwest = { workspace = true, optional = true }
 sha2 = { workspace = true }
+serde = {workspace = true, optional = true}
 
 [features]
-default = ["search-index", "internet"]
+default = ["search-index", "internet", "serde"]
+serde = ["dep:serde", "bincode/serde"]
 search-index = []
 internet = ["reqwest"]
 
-[[example]]
-name = "imgt"
-required-features = ["internet", "search-index"]
+#[[example]]
+#name = "imgt"
+#required-features = ["internet", "search-index"]
 
 [[example]]
 name = "ms"
