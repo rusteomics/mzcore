@@ -21,7 +21,7 @@ pub(crate) struct OntologyModification {
     pub id: usize,
     pub description: String,
     pub synonyms: ThinVec<String>,
-    pub cross_ids: ThinVec<(String, String)>,
+    pub cross_ids: ThinVec<(Option<String>, String)>,
     pub data: ModData,
 }
 

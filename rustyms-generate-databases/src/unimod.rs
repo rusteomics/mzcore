@@ -166,9 +166,16 @@ fn parse_mod(node: &Node) -> Result<OntologyModification, String> {
                 .map(ToString::to_string)
                 .unwrap_or_default();
             if url.is_empty() {
-                cross_ids.push((source, text));
+                cross_ids.push((Some(source), text));
             } else {
-                cross_ids.push((if source == "Misc. URL" { text } else { source }, url));
+                cross_ids.push((
+                    if source == "Misc. URL" {
+                        Some(text)
+                    } else {
+                        Some(source)
+                    },
+                    url,
+                ));
             }
         }
     }

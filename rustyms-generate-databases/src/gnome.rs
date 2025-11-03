@@ -31,13 +31,13 @@ pub(crate) fn build_gnome_ontology(out_dir: &Path) {
                 modification
                     .id
                     .cross_ids
-                    .push(("ChEBI".to_string(), chebi.to_string()));
+                    .push((Some("ChEBI".to_string()), chebi.to_string()));
             }
             if let Some(pubchem) = structure.pubchem {
                 modification
                     .id
                     .cross_ids
-                    .push(("PubChemCID".to_string(), pubchem.to_string()));
+                    .push((Some("PubChemCID".to_string()), pubchem.to_string()));
             }
             modification.motif = structure.motif.clone();
             modification.taxonomy = structure.taxonomy.clone().into();
@@ -128,6 +128,7 @@ fn parse_gnome() -> HashMap<String, GNOmeModification> {
     let obo = OboOntology::from_file("rustyms-generate-databases/data/GNOme.obo")
         .expect("Not a valid obo file");
     let mut mods = HashMap::new();
+    let mut errors = Vec::new();
 
     for obj in obo.objects {
         if obj.name != "Term" || !obj.lines.contains_key("is_a") {
@@ -152,22 +153,22 @@ fn parse_gnome() -> HashMap<String, GNOmeModification> {
                 cross_ids: obj
                     .property_values
                     .get(HAS_GLYTOUCAN_ID)
-                    .map(|v| ("GlyTouCan".to_string(), v[0].to_string()))
+                    .map(|v| (Some("GlyTouCan".to_string()), v[0].to_string()))
                     .into_iter()
                     .chain(
                         obj.property_values
                             .get(HAS_GLYTOUCAN_LINK)
-                            .map(|v| ("GlyTouCanURL".to_string(), v[0].to_string())),
+                            .map(|v| (Some("GlyTouCanURL".to_string()), v[0].to_string())),
                     )
                     .chain(
                         obj.property_values
                             .get(HAS_COMPOSITION_BROWSER_LINK)
-                            .map(|v| ("CompositionBrowser".to_string(), v[0].to_string())),
+                            .map(|v| (Some("CompositionBrowser".to_string()), v[0].to_string())),
                     )
                     .chain(
                         obj.property_values
                             .get(HAS_STRUCTURE_BROWSER_LINK)
-                            .map(|v| ("StructureBrowser".to_string(), v[0].to_string())),
+                            .map(|v| (Some("StructureBrowser".to_string()), v[0].to_string())),
                     )
                     .collect(),
             },
@@ -203,7 +204,15 @@ fn parse_gnome() -> HashMap<String, GNOmeModification> {
             composition: obj
                 .property_values
                 .get(SHORTUCKB_COMPOSITION)
-                .map(|lines| MonoSaccharide::from_composition(&lines[0].to_string()).unwrap()),
+                .and_then(
+                    |lines| match MonoSaccharide::from_composition(&lines[0].to_string()) {
+                        Ok(v) => Some(v),
+                        Err(e) => {
+                            errors.push(e.to_owned());
+                            None
+                        }
+                    },
+                ),
             topology: None, // Will be looked up later
             motif: None,
             taxonomy: ThinVec::new(),
@@ -211,6 +220,10 @@ fn parse_gnome() -> HashMap<String, GNOmeModification> {
         };
 
         mods.insert(modification.id.name.clone(), modification);
+    }
+
+    for error in errors {
+        println!("{error}");
     }
 
     mods

@@ -62,7 +62,7 @@ fn parse_psi_mod() -> Vec<OntologyModification> {
                 .split(',')
                 .filter(|s| !s.is_empty())
                 .map(|id| id.trim().split_once(':').unwrap())
-                .map(|(r, i)| (r.to_string(), i.to_string()))
+                .map(|(r, i)| (Some(r.to_string()), i.to_string()))
                 .collect();
         }
         if let Some(values) = obj.lines.get("synonym") {

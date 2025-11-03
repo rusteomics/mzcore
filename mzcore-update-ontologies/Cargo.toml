@@ -13,7 +13,7 @@ include = ["src/**/*", "images/**/*", "README.md", "benches/**/*"]
 
 [dependencies]
 mzcv = { path = "../mzcv", features = ["internet"] }
-mzcore = { path = "../mzcore" }
+mzcore = { path = "../mzcore", features = ["internal-no-data"] }
 
 [dev-dependencies]
 

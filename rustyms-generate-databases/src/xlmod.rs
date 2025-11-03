@@ -70,7 +70,7 @@ fn parse_xlmod() -> Vec<OntologyModification> {
             cross_ids = ids[1..ids.len() - 1]
                 .split(',')
                 .map(|id| id.trim().split_once(':').unwrap())
-                .map(|(r, i)| (r.to_string(), i.to_string()))
+                .map(|(r, i)| (Some(r.to_string()), i.to_string()))
                 .collect();
         }
         if let Some(values) = obj.lines.get("synonym") {

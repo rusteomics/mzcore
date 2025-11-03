@@ -81,7 +81,9 @@ fn parse_resid() -> Vec<OntologyModification> {
                                     if let Some((a, b)) =
                                         name_node.text().unwrap_or_default().split_once(':')
                                     {
-                                        modification.cross_ids.push((a.to_string(), b.to_string()));
+                                        modification
+                                            .cross_ids
+                                            .push((Some(a.to_string()), b.to_string()));
                                     } else {
                                         panic!("Invalid Xref content")
                                     }
@@ -127,7 +129,9 @@ fn parse_resid() -> Vec<OntologyModification> {
                                 if let Some((a, b)) =
                                     ref_node.text().unwrap_or_default().split_once(':')
                                 {
-                                    modification.cross_ids.push((a.to_string(), b.to_string()));
+                                    modification
+                                        .cross_ids
+                                        .push((Some(a.to_string()), b.to_string()));
                                 } else {
                                     panic!("Invalid Xref content")
                                 }
@@ -174,7 +178,9 @@ fn parse_resid() -> Vec<OntologyModification> {
                                     if let Some((a, b)) =
                                         rule_node.text().unwrap_or_default().split_once(':')
                                     {
-                                        modification.cross_ids.push((a.to_string(), b.to_string()));
+                                        modification
+                                            .cross_ids
+                                            .push((Some(a.to_string()), b.to_string()));
                                     } else {
                                         panic!("Invalid Xref content")
                                     }
