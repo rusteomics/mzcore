@@ -204,15 +204,15 @@ fn parse_gnome() -> HashMap<String, GNOmeModification> {
             composition: obj
                 .property_values
                 .get(SHORTUCKB_COMPOSITION)
-                .and_then(
-                    |lines| match MonoSaccharide::from_composition(&lines[0].to_string()) {
-                        Ok(v) => Some(v),
+                .and_then(|lines| {
+                    match MonoSaccharide::pro_forma_composition::<false>(&lines[0].to_string()) {
+                        Ok((v, _)) => Some(v),
                         Err(e) => {
-                            errors.push(e.to_owned());
+                            errors.extend(e.into_iter().map(|e| e.to_owned()));
                             None
                         }
-                    },
-                ),
+                    }
+                }),
             topology: None, // Will be looked up later
             motif: None,
             taxonomy: ThinVec::new(),

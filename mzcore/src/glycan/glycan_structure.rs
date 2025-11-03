@@ -17,7 +17,7 @@ use crate::{
         glycan::{BaseSugar, MonoSaccharide},
         lists::GLYCAN_PARSE_LIST,
     },
-    helper_functions::{end_of_enclosure, next_char},
+    helper_functions::{end_of_enclosure, next_char, str_starts_with},
     parse_json::{ParseJson, use_serde},
     sequence::SequencePosition,
 };
@@ -160,6 +160,22 @@ impl GlycanStructure {
                 "{}({})",
                 self.sugar,
                 self.branches.iter().map(Self::display_tree).join(",")
+            )
+        }
+    }
+
+    /// Recursively show the structure of this glycan
+    fn display_imporper_tree(&self) -> String {
+        if self.branches.is_empty() {
+            self.sugar.display_improper()
+        } else {
+            format!(
+                "{}({})",
+                self.sugar.display_improper(),
+                self.branches
+                    .iter()
+                    .map(Self::display_imporper_tree)
+                    .join(",")
             )
         }
     }
@@ -312,12 +328,12 @@ impl GlycanStructure {
         range: Range<usize>,
     ) -> Result<(Self, usize), BoxedError<'_, BasicKind>> {
         // Parse at the start the first recognised glycan name
-        if let Some(name) = GLYCAN_PARSE_LIST
+        if let Some((name, sugar)) = GLYCAN_PARSE_LIST
             .iter()
-            .find(|name| line[range.clone()].starts_with(&name.0))
+            .find(|name| str_starts_with::<true>(&line[range.clone()], &name.0))
         {
             // If the name is followed by a bracket parse a list of branches
-            let index = range.start + name.0.len();
+            let index = range.start + name.len();
             if line.as_bytes()[index] == b'(' {
                 // Find the end of this list
                 let end = end_of_enclosure(line, index + 1, b'(', b')').ok_or_else(|| {
@@ -351,7 +367,7 @@ impl GlycanStructure {
                 }
                 Ok((
                     Self {
-                        sugar: name.1.clone(),
+                        sugar: sugar.clone(),
                         branches,
                     },
                     end + 1,
@@ -359,10 +375,10 @@ impl GlycanStructure {
             } else {
                 Ok((
                     Self {
-                        sugar: name.1.clone(),
+                        sugar: sugar.clone(),
                         branches: Vec::new(),
                     },
-                    range.start + name.0.len(),
+                    range.start + name.len(),
                 ))
             }
         } else {
@@ -571,7 +587,7 @@ mod test {
         .unwrap();
 
         assert_eq!(
-            structure.to_string(),
+            structure.display_imporper_tree(),
             "HexNAc(HexNAc(Hex(Hex(HexNAc(Hexf(NonAcAN))),Hex(HexNAc(Hexf)))))"
         );
     }
@@ -586,7 +602,7 @@ mod test {
         .unwrap();
 
         assert_eq!(
-            structure.to_string(),
+            structure.display_imporper_tree(),
             "HexNAc(Hex(Hex(HexNAc(Hex)),Hex(HexNAc),HexNAc))"
         );
     }
@@ -600,7 +616,7 @@ mod test {
         .unwrap();
 
         assert_eq!(
-            structure.to_string(),
+            structure.display_imporper_tree(),
             "HexNAc(HexNAc(Hex(Hex(HexNAc),HexNAc,Hex(HexNAc(Hex)))))"
         );
     }
@@ -617,7 +633,7 @@ mod test {
         .unwrap();
 
         assert_eq!(
-            structure.to_string(),
+            structure.display_imporper_tree(),
             "HexNAc(Hex(Hex(HexNAc),HexNAc,Hex(HexNAc(Hexf))))"
         );
     }
@@ -632,7 +648,7 @@ mod test {
         .unwrap();
 
         assert_eq!(
-            structure.to_string(),
+            structure.display_imporper_tree(),
             "HexNAc(HexNAc(Hex(Hex(HexNAc,HexNAc),Hex(Hex))))"
         );
     }

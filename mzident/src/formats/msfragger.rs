@@ -135,7 +135,7 @@ format_family!(
         open_search_modification: MSFraggerOpenModification, |location: Location, _|
             location.or_empty().parse_with(|location| location.as_str().find('%').map_or_else(
                 || Ok(MSFraggerOpenModification::Other(location.as_str().to_owned())),
-                |end| MonoSaccharide::from_byonic_composition(&location.as_str()[..end]).map(|g| MSFraggerOpenModification::Glycan(g.into())).map_err(BoxedError::to_owned)));
+                |end| MonoSaccharide::byonic_composition(&location.as_str()[..end]).map(|g| MSFraggerOpenModification::Glycan(g.into())).map_err(BoxedError::to_owned)));
         open_search_position_scores: ThinVec<f64>, |location: Location, _| {
             let data = location.array(')').filter_map(|l| (l.len() > 2).then(|| l.skip(2).parse::<f64>((
                 "Invalid FragPipe line",
@@ -158,8 +158,8 @@ format_family!(
         second_best_score_with_delta_mass: f32, |location: Location, _| location.or_empty().parse::<f32>(NUMBER_ERROR);
         raw_file: PathBuf, |location: Location, _| Ok(Some(location.get_string().into()));
         total_glycan_composition: ThinVec<(MonoSaccharide, isize)>, |location: Location, _| location.or_empty().parse_with(|location| location.as_str().find('%').map_or_else(
-                || MonoSaccharide::from_byonic_composition(location.as_str()).map(ThinVec::from).map_err(BoxedError::to_owned),
-                |end| MonoSaccharide::from_byonic_composition(&location.as_str()[..end]).map(ThinVec::from).map_err(BoxedError::to_owned)));
+                || MonoSaccharide::byonic_composition(location.as_str()).map(ThinVec::from).map_err(BoxedError::to_owned),
+                |end| MonoSaccharide::byonic_composition(&location.as_str()[..end]).map(ThinVec::from).map_err(BoxedError::to_owned)));
         tot_num_ions: usize, |location: Location, _| location.parse::<usize>(NUMBER_ERROR);
     }
 

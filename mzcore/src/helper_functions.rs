@@ -8,6 +8,35 @@ use std::{
 
 use crate::sequence::SequencePosition;
 
+/// Handle a `ParserResult` by combining the errors into the `$errors` and returning from the enclosing scope if necessary.
+macro_rules! handle {
+    ($errors:ident, $call:expr) => {
+        match $call {
+            Ok((res, w)) => {
+                combine_errors(&mut $errors, w, ());
+                res
+            }
+            Err(errs) => {
+                combine_errors(&mut $errors, errs, ());
+                return Err($errors);
+            }
+        }
+    };
+    (single $errors:ident, $call:expr) => {
+        match $call {
+            Ok(res) => res,
+            Err(err) => {
+                combine_error(&mut $errors, err, ());
+                return Err($errors);
+            }
+        }
+    };
+    (fail $errors:ident, $error:expr) => {
+        combine_error(&mut $errors, $error, ());
+        return Err($errors);
+    };
+}
+
 pub(crate) fn peptide_range_contains(
     range: &impl RangeBounds<usize>,
     peptide_length: usize,
@@ -78,7 +107,7 @@ impl<Ra: RangeBounds<usize>> RangeExtension for Ra {
 /// If the name cannot be recognised or a number is not valid.
 pub(crate) fn parse_named_counter<T: Clone>(
     value: &str,
-    names: &[(String, T)],
+    names: &[(Box<str>, T)],
     allow_negative: bool,
 ) -> Result<Vec<(T, isize)>, String> {
     let mut index = 0;
@@ -89,7 +118,7 @@ pub(crate) fn parse_named_counter<T: Clone>(
         } else {
             let mut found = false;
             for name in names {
-                if value[index..].starts_with(&name.0) {
+                if str_starts_with::<true>(&value[index..], &name.0) {
                     index += name.0.len();
                     let num = &value[index..]
                         .chars()
@@ -315,7 +344,9 @@ where
     K: Eq + Hash + Clone,
 {
     for (key, value) in from {
-        let v = into.entry(key.clone()).or_insert(default_into.clone());
+        let v = into
+            .entry(key.clone())
+            .or_insert_with(|| default_into.clone());
         *v *= value.clone();
     }
     for (key, value) in &mut into {
@@ -371,33 +402,37 @@ pub(crate) const fn explain_number_error(error: &ParseIntError) -> &'static str 
 }
 
 /// Check if 'a' starts with 'b' with or without ignoring casing
-pub(crate) fn str_starts_with(a: &str, b: &str, ignore_casing: bool) -> bool {
-    for (a, b) in a.chars().zip(b.chars()) {
-        if ignore_casing && !a.eq_ignore_ascii_case(&b) || !ignore_casing && a != b {
-            return false;
+pub(crate) fn str_starts_with<const IGNORE_CASING: bool>(a: &str, b: &str) -> bool {
+    if a.len() >= b.len() {
+        for (a, b) in a.chars().zip(b.chars()) {
+            if IGNORE_CASING && !a.eq_ignore_ascii_case(&b) || !IGNORE_CASING && a != b {
+                return false;
+            }
         }
+        true
+    } else {
+        false
     }
-    a.len() >= b.len()
 }
 
 #[allow(clippy::missing_panics_doc)]
 #[test]
 fn starts_with() {
-    assert!(str_starts_with("aaabbb", "a", false));
-    assert!(str_starts_with("aaabbb", "aa", false));
-    assert!(str_starts_with("aaabbb", "aaa", false));
-    assert!(!str_starts_with("aaabbb", "b", false));
-    assert!(!str_starts_with("aaabbb", "ab", false));
-    assert!(!str_starts_with("aaabbb", "aab", false));
-    assert!(str_starts_with("aaabbb", "a", true));
-    assert!(str_starts_with("aaabbb", "aa", true));
-    assert!(str_starts_with("aaabbb", "aaa", true));
-    assert!(str_starts_with("aaabbb", "A", true));
-    assert!(str_starts_with("aaabbb", "AA", true));
-    assert!(str_starts_with("aaabbb", "AAA", true));
-    assert!(str_starts_with("aaabbb", "aaA", true));
-    assert!(!str_starts_with("aaabbb", "A", false));
-    assert!(!str_starts_with("aaabbb", "AA", false));
-    assert!(!str_starts_with("aaabbb", "AAA", false));
-    assert!(!str_starts_with("aaabbb", "aaA", false));
+    assert!(str_starts_with::<false>("aaabbb", "a"));
+    assert!(str_starts_with::<false>("aaabbb", "aa"));
+    assert!(str_starts_with::<false>("aaabbb", "aaa"));
+    assert!(!str_starts_with::<false>("aaabbb", "b"));
+    assert!(!str_starts_with::<false>("aaabbb", "ab"));
+    assert!(!str_starts_with::<false>("aaabbb", "aab"));
+    assert!(str_starts_with::<true>("aaabbb", "a"));
+    assert!(str_starts_with::<true>("aaabbb", "aa"));
+    assert!(str_starts_with::<true>("aaabbb", "aaa"));
+    assert!(str_starts_with::<true>("aaabbb", "A"));
+    assert!(str_starts_with::<true>("aaabbb", "AA"));
+    assert!(str_starts_with::<true>("aaabbb", "AAA"));
+    assert!(str_starts_with::<true>("aaabbb", "aaA"));
+    assert!(!str_starts_with::<false>("aaabbb", "A"));
+    assert!(!str_starts_with::<false>("aaabbb", "AA"));
+    assert!(!str_starts_with::<false>("aaabbb", "AAA"));
+    assert!(!str_starts_with::<false>("aaabbb", "aaA"));
 }

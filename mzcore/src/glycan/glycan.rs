@@ -47,7 +47,7 @@ impl MonoSaccharide {
     /// substituents are identical. If the precise flag is on it also checks if the furanose and
     /// configuration state are the same as well.
     pub fn equivalent(&self, other: &Self, precise: bool) -> bool {
-        self.base_sugar.equivalent(other.base_sugar, precise)
+        self.base_sugar.equivalent(&other.base_sugar, precise)
             && self.substituents == other.substituents
             && (!precise
                 || (self.furanose == other.furanose && self.configuration == other.configuration))
@@ -71,6 +71,19 @@ impl Hash for MonoSaccharide {
     }
 }
 
+impl Display for MonoSaccharide {
+    /// Display as valid ProForma glycan
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{}",
+            self.proforma_name
+                .as_ref()
+                .map_or_else(|| format!("{{{}}}", self.formula()), ToString::to_string)
+        )
+    }
+}
+
 impl ParseJson for MonoSaccharide {
     fn from_json_value(value: serde_json::Value) -> Result<Self, BoxedError<'static, BasicKind>> {
         use_serde(value)
@@ -78,6 +91,23 @@ impl ParseJson for MonoSaccharide {
 }
 
 impl MonoSaccharide {
+    pub(crate) fn display_improper(&self) -> String {
+        self.proforma_name.as_ref().map_or_else(
+            || {
+                format!(
+                    "{}{}{}",
+                    self.base_sugar,
+                    if self.furanose { "f" } else { "" },
+                    self.substituents
+                        .iter()
+                        .map(ToString::to_string)
+                        .collect::<String>()
+                )
+            },
+            ToString::to_string,
+        )
+    }
+
     /// Check if this is a fucose
     pub fn is_fucose(&self) -> bool {
         self.base_sugar == BaseSugar::Hexose(Some(HexoseIsomer::Galactose))
@@ -120,165 +150,6 @@ impl MonoSaccharide {
             configuration: Some(configuration),
             ..self
         }
-    }
-
-    /// Simplify a glycan composition to be sorted and deduplicated.
-    /// Returns None if overflow occurred, meaning that there where more than `isize::MAX` or less then `isize::MIN` monosaccharides for one species.
-    pub(crate) fn simplify_composition(
-        mut composition: Vec<(Self, isize)>,
-    ) -> Option<Vec<(Self, isize)>> {
-        // Sort on monosaccharide
-        composition.retain(|el| el.1 != 0);
-        composition.sort_unstable_by(|a, b| a.0.cmp(&b.0));
-
-        // Deduplicate
-        let mut max = composition.len().saturating_sub(1);
-        let mut index = 0;
-        while index < max {
-            let this = &composition[index];
-            let next = &composition[index + 1];
-            if this.0 == next.0 {
-                composition[index].1 = composition[index].1.checked_add(next.1)?;
-                composition.remove(index + 1);
-                max = max.saturating_sub(1);
-            } else {
-                index += 1;
-            }
-        }
-        composition.retain(|el| el.1 != 0);
-        Some(composition)
-    }
-
-    /// Parse the given text (will be changed to lowercase) as a glycan composition.
-    /// # Errors
-    /// When the composition could not be read. Or when any of the glycans occurs outside of the valid range
-    pub fn from_composition(text: &str) -> Result<Vec<(Self, isize)>, BoxedError<'_, BasicKind>> {
-        Self::from_composition_inner(&Context::none().lines(0, text), text, 0..text.len())
-    }
-
-    /// Parse the given text (will be changed to lowercase) as a glycan composition.
-    /// # Errors
-    /// When the composition could not be read. Or when any of the glycans occurs outside of the valid range
-    pub fn from_composition_inner<'a>(
-        base_context: &Context<'a>,
-        text: &str,
-        range: std::ops::Range<usize>,
-    ) -> Result<Vec<(Self, isize)>, BoxedError<'a, BasicKind>> {
-        let basic_error = BoxedError::new(
-            BasicKind::Error,
-            "Invalid glycan composition",
-            "..",
-            base_context.clone().add_highlight((0, range.clone())),
-        );
-        let result = Self::simplify_composition(
-            crate::helper_functions::parse_named_counter(
-                &text[range].to_ascii_lowercase(),
-                GLYCAN_PARSE_LIST.as_slice(),
-                false,
-            )
-            .map_err(|e| {
-                basic_error.clone().long_description(format!(
-                    "This modification cannot be read as a valid glycan: {e}"
-                ))
-            })?,
-        )
-        .ok_or_else(|| {
-            basic_error.clone().long_description(format!(
-                "The occurrence of one monosaccharide species is outside of the range {} to {}",
-                isize::MIN,
-                isize::MAX
-            ))
-        })?;
-        if result.is_empty() {
-            Err(basic_error.long_description("The glycan does not contain any monosaccharides"))
-        } else {
-            Ok(result)
-        }
-    }
-
-    /// Parse the given text as a MSFragger glycan composition. Examples:
-    /// * HexNAc(5)Hex(3)Fuc(1)
-    /// * HexNAc(4)Hex(5)Fuc(1)NeuAc(1)
-    /// # Errors
-    /// When the composition could not be read. Or when any of the glycans occurs outside of the valid range
-    pub fn from_byonic_composition(
-        text: &str,
-    ) -> Result<Vec<(Self, isize)>, BoxedError<'_, BasicKind>> {
-        let mut index = 0;
-        let mut output = Vec::new();
-        while index < text.len() {
-            if text[index..].starts_with(' ') {
-                index += 1;
-            } else if let Some(next_open_bracket) = text[index..].find('(') {
-                if let Some(next_close_bracket) = text[index + next_open_bracket..].find(')') {
-                    let name = text[index..index + next_open_bracket].trim();
-                    let mut sugar = None;
-                    for option in GLYCAN_PARSE_LIST.as_slice() {
-                        if option.0.eq_ignore_ascii_case(name) {
-                            sugar = Some(option.1.clone());
-                            break;
-                        }
-                    }
-                    let number = text[index + next_open_bracket + 1
-                        ..index + next_open_bracket + next_close_bracket]
-                        .trim()
-                        .parse::<isize>();
-                    output.push((
-                        sugar.ok_or_else(|| {
-                            BoxedError::new(
-                                BasicKind::Error,
-                                "Invalid MSFragger glycan composition",
-                                "The sugar name could not be recognised",
-                                Context::line(None, text, index, name.len()),
-                            )
-                        })?,
-                        number.map_err(|err| {
-                            BoxedError::new(
-                                BasicKind::Error,
-                                "Invalid MSFragger glycan composition",
-                                format!("Sugar count number is {}", explain_number_error(&err)),
-                                Context::line(
-                                    None,
-                                    text,
-                                    index + next_open_bracket + 1,
-                                    next_close_bracket - 1,
-                                ),
-                            )
-                        })?,
-                    ));
-                    index += next_open_bracket + next_close_bracket + 1;
-                } else {
-                    return Err(BoxedError::new(
-                        BasicKind::Error,
-                        "Invalid MSFragger glycan composition",
-                        "No closing bracket found ')'",
-                        Context::line(None, text, index + next_open_bracket, 1),
-                    ));
-                }
-            } else if text[index..].chars().all(|c| c.is_ascii_whitespace()) {
-                break; // Allow trailing whitespace
-            } else {
-                return Err(BoxedError::new(
-                    BasicKind::Error,
-                    "Invalid MSFragger glycan composition",
-                    "No opening bracket found but there is text left, the format expected is 'Sugar(Number)'",
-                    Context::line(None, text, index, 1),
-                ));
-            }
-        }
-
-        Self::simplify_composition(output).ok_or_else(|| {
-            BoxedError::new(
-                BasicKind::Error,
-                "Invalid MSFragger glycan composition",
-                format!(
-                    "The occurrence of one monosaccharide species is outside of the range {} to {}",
-                    isize::MIN,
-                    isize::MAX
-                ),
-                Context::show(text),
-            )
-        })
     }
 
     /// Parse a short IUPAC name from this string starting at `start` and returning,
@@ -381,7 +252,7 @@ impl MonoSaccharide {
         for sug in BASE_SUGARS {
             if line[index..].starts_with(sug.0) {
                 index += sug.0.len();
-                sugar = Some((sug.1, sug.2));
+                sugar = Some((sug.1.clone(), sug.2));
                 break;
             }
         }
@@ -529,7 +400,7 @@ impl ParseHelper for &str {
     fn take_any<T>(self, parse_list: &[(&str, T)], mut f: impl FnMut(&T)) -> Option<usize> {
         let mut found = None;
         for element in parse_list {
-            if str_starts_with(self, element.0, true) {
+            if str_starts_with::<true>(self, element.0) {
                 found = Some(element.0.len());
                 f(&element.1);
                 break;
@@ -617,32 +488,11 @@ impl Chemical for MonoSaccharide {
     }
 }
 
-impl Display for MonoSaccharide {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "{}",
-            self.proforma_name.as_ref().map_or_else(
-                || format!(
-                    "{}{}{}",
-                    self.base_sugar,
-                    if self.furanose { "f" } else { "" },
-                    self.substituents
-                        .iter()
-                        .map(ToString::to_string)
-                        .collect::<String>()
-                ),
-                ToString::to_string
-            )
-        )
-    }
-}
-
 /// The base sugar of a monosaccharide, optionally with the isomeric state saved as well.
-#[derive(Clone, Copy, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
+#[derive(Clone, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 pub enum BaseSugar {
-    /// Edge case, no sugar at all, because ProForma enforces that a separate phosphate and sulphate have to be handled.
-    None,
+    /// Edge case, no defined sugar.
+    Custom(MolecularFormula),
     /// 2 carbon base sugar
     Sugar,
     /// 3 carbon base sugar
@@ -667,10 +517,9 @@ impl BaseSugar {
     /// Check if these two sugars are equivalent, meaning that both are the same type tetrose,
     /// hexose, nonose etc. If the `precise` flag is turned on the isomeric state has to be the
     /// same as well. So in that case `Hexose(Galactose)` is not equivalent to `Hexose(Mannose)`.
-    pub fn equivalent(self, other: Self, precise: bool) -> bool {
+    pub fn equivalent(&self, other: &Self, precise: bool) -> bool {
         match (self, other) {
-            (Self::None, Self::None)
-            | (Self::Sugar, Self::Sugar)
+            (Self::Sugar, Self::Sugar)
             | (Self::Octose, Self::Octose)
             | (Self::Decose, Self::Decose)
             | (Self::Triose, Self::Triose) => true,
@@ -679,6 +528,7 @@ impl BaseSugar {
             (Self::Hexose(a), Self::Hexose(b)) => !precise || a == b,
             (Self::Heptose(a), Self::Heptose(b)) => !precise || a == b,
             (Self::Nonose(a), Self::Nonose(b)) => !precise || a == b,
+            (Self::Custom(a), Self::Custom(b)) => a == b,
             _ => false,
         }
     }
@@ -690,16 +540,16 @@ impl Display for BaseSugar {
             f,
             "{}",
             match self {
-                Self::None => "None",
-                Self::Sugar => "Sug",
-                Self::Triose => "Tri",
-                Self::Tetrose(_) => "Tet",
-                Self::Pentose(_) => "Pen",
-                Self::Hexose(_) => "Hex",
-                Self::Heptose(_) => "Hep",
-                Self::Octose => "Oct",
-                Self::Nonose(_) => "Non",
-                Self::Decose => "Dec",
+                Self::Custom(a) => format!("{{{a}}}"),
+                Self::Sugar => "Sug".to_string(),
+                Self::Triose => "Tri".to_string(),
+                Self::Tetrose(_) => "Tet".to_string(),
+                Self::Pentose(_) => "Pen".to_string(),
+                Self::Hexose(_) => "Hex".to_string(),
+                Self::Heptose(_) => "Hep".to_string(),
+                Self::Octose => "Oct".to_string(),
+                Self::Nonose(_) => "Non".to_string(),
+                Self::Decose => "Dec".to_string(),
             }
         )
     }
@@ -712,7 +562,7 @@ impl Chemical for BaseSugar {
         _peptidoform_index: usize,
     ) -> MolecularFormula {
         match self {
-            Self::None => MolecularFormula::default(),
+            Self::Custom(a) => a.clone(),
             Self::Sugar => molecular_formula!(H 2 C 2 O 1),
             Self::Triose => molecular_formula!(H 4 C 3 O 2),
             Self::Tetrose(_) => molecular_formula!(H 6 C 4 O 3),
@@ -986,11 +836,11 @@ impl Chemical for GlycanSubstituent {
 #[test]
 #[allow(clippy::missing_panics_doc)]
 fn msfragger_composition() {
-    let proforma = MonoSaccharide::from_composition("HexNAc4Hex5Fuc1NeuAc2").unwrap();
-    let msfragger =
-        MonoSaccharide::from_byonic_composition("HexNAc(4)Hex(5)Fuc(1)NeuAc(2)").unwrap();
-    assert_eq!(proforma, msfragger);
-    let proforma = MonoSaccharide::from_composition("HexNAc4Hex5").unwrap();
-    let msfragger = MonoSaccharide::from_byonic_composition("HexNAc(4)Hex(5)").unwrap();
-    assert_eq!(proforma, msfragger);
+    let (proforma, _) =
+        MonoSaccharide::pro_forma_composition::<true>("HexNAc4Hex5Fuc1NeuAc2").unwrap();
+    let byonic = MonoSaccharide::byonic_composition("HexNAc(4)Hex(5)Fuc(1)NeuAc(2)").unwrap();
+    assert_eq!(proforma, byonic);
+    let (proforma, _) = MonoSaccharide::pro_forma_composition::<true>("HexNAc4Hex5").unwrap();
+    let byonic = MonoSaccharide::byonic_composition("HexNAc(4)Hex(5)").unwrap();
+    assert_eq!(proforma, byonic);
 }

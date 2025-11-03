@@ -5,11 +5,16 @@ use itertools::Itertools;
 use ordered_float::OrderedFloat;
 
 use crate::{
-    ParserResult, chemistry::{Element, MolecularCharge, MolecularFormula}, helper_functions::*, molecular_formula, ontology::CustomDatabase, sequence::{
+    ParserResult,
+    chemistry::{Element, MolecularCharge, MolecularFormula},
+    helper_functions::*,
+    molecular_formula,
+    ontology::CustomDatabase,
+    sequence::{
         AmbiguousLookup, AmbiguousLookupEntry, AminoAcid, CheckedAminoAcid, CompoundPeptidoformIon,
         CrossLinkLookup, Linked, Modification, Peptidoform, PeptidoformIon, PlacementRule,
         Position, SequenceElement, SequencePosition, SimpleModification, SimpleModificationInner,
-    }
+    },
 };
 
 use super::{GlobalModification, Linear, ReturnModification, SemiAmbiguous};
@@ -26,35 +31,6 @@ struct LinearPeptideResult {
     index: usize,
     ending: End,
     cross_links: Vec<(usize, SequencePosition)>,
-}
-
-/// Handle a `ParserResult` by combining the errors into the `$errors` and returing from the enclosing scope if necessary.
-macro_rules! handle {
-    ($errors:ident, $call:expr) => {
-        match $call {
-            Ok((res, w)) => {
-                combine_errors(&mut $errors, w, ());
-                res
-            }
-            Err(errs) => {
-                combine_errors(&mut $errors, errs, ());
-                return Err($errors);
-            }
-        }
-    };
-    (single $errors:ident, $call:expr) => {
-        match $call {
-            Ok(res) => res,
-            Err(err) => {
-                combine_error(&mut $errors, err, ());
-                return Err($errors);
-            }
-        }
-    };
-    (fail $errors:ident, $error:expr) => {
-        combine_error(&mut $errors, $error, ());
-        return Err($errors);
-    };
 }
 
 impl Peptidoform<Linked> {
@@ -321,7 +297,10 @@ impl CompoundPeptidoformIon {
             );
             Err(errors)
         } else {
-            let peptidoform = handle!(errors, super::validate::cross_links(peptides, cross_links_found, &cross_link_lookup, line));
+            let peptidoform = handle!(
+                errors,
+                super::validate::cross_links(peptides, cross_links_found, &cross_link_lookup, line)
+            );
 
             if errors.iter().any(|e| e.get_kind().is_error(())) {
                 Err(errors)
@@ -399,16 +378,17 @@ impl CompoundPeptidoformIon {
                         base_context.clone().add_highlight((0, temp_index, 1))
                     )
             }));
-            n_term_mods.push(
-                handle!(errors, SimpleModificationInner::pro_forma_inner(
+            n_term_mods.push(handle!(
+                errors,
+                SimpleModificationInner::pro_forma_inner(
                     base_context,
                     line,
                     temp_index + 1..end_index,
                     &mut ambiguous_lookup,
                     cross_link_lookup,
                     custom_database,
-                )),
-            );
+                )
+            ));
 
             temp_index = end_index + 1;
 
@@ -549,7 +529,7 @@ impl CompoundPeptidoformIon {
                             w.push(BoxedError::new(BasicKind::Error,
                             "Invalid ranged ambiguous modification",
                             "A ranged ambiguous modification has to be fully defined, so no ambiguous modification is allowed",
-                            base_context.clone().add_highlight((0, index, 1)))); 
+                            base_context.clone().add_highlight((0, index, 1))));
                             w})}));
                         index = end_index + 1;
                         ranged_unknown_position_modifications.push((
@@ -586,14 +566,17 @@ impl CompoundPeptidoformIon {
                             base_context.clone().add_highlight((0, index, 1)),
                         )
                     }));
-                    let (modification, _) = handle!(errors, SimpleModificationInner::pro_forma_inner(
-                        base_context,
-                        line,
-                        index + 1..end_index,
-                        &mut ambiguous_lookup,
-                        cross_link_lookup,
-                        custom_database,
-                    ));
+                    let (modification, _) = handle!(
+                        errors,
+                        SimpleModificationInner::pro_forma_inner(
+                            base_context,
+                            line,
+                            index + 1..end_index,
+                            &mut ambiguous_lookup,
+                            cross_link_lookup,
+                            custom_database,
+                        )
+                    );
                     let start_index = index + 1;
                     index = end_index + 1;
                     if is_c_term {
@@ -948,32 +931,34 @@ pub(super) fn global_modifications<'a>(
                 );
                 continue;
             }
-            let modification = handle!(errors, SimpleModificationInner::pro_forma_inner(
-                base_context,
-                line,
-                start_index + 2..at_index - 2,
-                &mut Vec::new(),
-                &mut Vec::new(),
-                custom_database,
-            )
-            .map(|((m, _mup_settings), mut warnings)| {
-                let w = warnings.clone();
-                m.defined().map(|m| (m, w)).ok_or_else(|| {
-                    warnings.push(
-                    BoxedError::new(
-                        BasicKind::Error,
-                        "Invalid global modification",
-                        "A global modification cannot be ambiguous or a cross-linker",
-                        base_context.clone().add_highlight((
-                            0,
-                            start_index + 2,
-                            at_index - start_index - 4,
-                        )),
-                    ));
-                    warnings
+            let modification = handle!(
+                errors,
+                SimpleModificationInner::pro_forma_inner(
+                    base_context,
+                    line,
+                    start_index + 2..at_index - 2,
+                    &mut Vec::new(),
+                    &mut Vec::new(),
+                    custom_database,
+                )
+                .map(|((m, _mup_settings), mut warnings)| {
+                    let w = warnings.clone();
+                    m.defined().map(|m| (m, w)).ok_or_else(|| {
+                        warnings.push(BoxedError::new(
+                            BasicKind::Error,
+                            "Invalid global modification",
+                            "A global modification cannot be ambiguous or a cross-linker",
+                            base_context.clone().add_highlight((
+                                0,
+                                start_index + 2,
+                                at_index - start_index - 4,
+                            )),
+                        ));
+                        warnings
+                    })
                 })
-            })
-            .flat_err());
+                .flat_err()
+            );
             let rules = match parse_placement_rules(base_context, line, at_index..end_index) {
                 Ok(rules) => rules,
                 Err(err) => {
@@ -1283,21 +1268,22 @@ fn labile_modifications<'a>(
             Ok(((ReturnModification::Defined(m), _), warnings)) => {
                 combine_errors(&mut errors, warnings, ());
                 labile.push(m);
-            },
+            }
             Ok((_, warnings)) => {
                 combine_errors(&mut errors, warnings, ());
                 combine_error(
-                &mut errors,
-                BoxedError::new(
-                    BasicKind::Error,
-                    "Invalid labile modification",
-                    "A labile modification cannot be ambiguous or a cross-linker",
-                    base_context
-                        .clone()
-                        .add_highlight((0, index + 1, end_index - 1 - index)),
-                ),
-                (),
-            );},
+                    &mut errors,
+                    BoxedError::new(
+                        BasicKind::Error,
+                        "Invalid labile modification",
+                        "A labile modification cannot be ambiguous or a cross-linker",
+                        base_context
+                            .clone()
+                            .add_highlight((0, index + 1, end_index - 1 - index)),
+                    ),
+                    (),
+                );
+            }
             Err(e) => combine_errors(&mut errors, e, ()),
         }
         index = end_index + 1;
@@ -1415,7 +1401,9 @@ pub(super) fn parse_charge_state_2_0<'a>(
 
             // formula
             let formula_range = offset + count_len..offset + set.len() - charge_len;
-            let formula = if !formula_range.is_empty() && line[formula_range].eq_ignore_ascii_case("e") {
+            let formula = if !formula_range.is_empty()
+                && line[formula_range].eq_ignore_ascii_case("e")
+            {
                 MolecularFormula::new(&[(Element::Electron, None, -charge)], &[]).unwrap()
             } else {
                 let mut formula = handle!(single errors, MolecularFormula::pro_forma_inner::<true, false>(

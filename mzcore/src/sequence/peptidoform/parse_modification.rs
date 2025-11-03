@@ -334,8 +334,7 @@ fn parse_single_modification<'a>(
                     })?,
                 )))),
                 ("glycan", _) => Ok(Some(Arc::new(SimpleModificationInner::Glycan(
-                    MonoSaccharide::from_composition_inner(base_context, line, offset + tail.1..offset + tail.1 + tail.2)
-                        .map_err(|err| vec![err])?,
+                    handle!(errors, MonoSaccharide::pro_forma_composition_inner::<false>(base_context, line, offset + tail.1..offset + tail.1 + tail.2))
                 )))),
                 ("glycanstructure", _) => GlycanStructure::parse(
                     line,

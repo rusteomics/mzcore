@@ -157,7 +157,7 @@ mod tests {
             assert_eq!(
                 GLYCAN_PARSE_LIST
                     .iter()
-                    .find(|p| p.0 == *name)
+                    .find(|p| p.0.eq_ignore_ascii_case(*name))
                     .unwrap_or_else(|| panic!("Assumed {name} would be defined"))
                     .1
                     .formula(),
@@ -291,7 +291,7 @@ mod tests {
                 .map(|option| {
                     option
                         .iter()
-                        .map(|sug| format!("{}{}", sug.0, sug.1))
+                        .map(|sug| format!("{}{}", sug.0.display_improper(), sug.1))
                         .join("&")
                 })
                 .join(",")

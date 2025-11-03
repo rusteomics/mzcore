@@ -1,6 +1,7 @@
 //! Handle glycan related issues, access provided if you want to work with glycans on your own.
 
 mod attachment;
+mod composition;
 mod glycan;
 mod glycan_structure;
 mod lists;

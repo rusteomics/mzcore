@@ -234,12 +234,6 @@ fn to_superscript_num(input: u16) -> String {
     output
 }
 
-impl std::fmt::Display for MolecularFormula {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.hill_notation())
-    }
-}
-
 #[cfg(test)]
 #[expect(clippy::missing_panics_doc)]
 mod tests {

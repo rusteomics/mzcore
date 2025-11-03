@@ -50,6 +50,12 @@ impl std::fmt::Debug for MolecularFormula {
     }
 }
 
+impl std::fmt::Display for MolecularFormula {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.hill_notation())
+    }
+}
+
 /// Keep track of what ambiguous option is used
 #[derive(Clone, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 pub enum AmbiguousLabel {

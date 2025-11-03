@@ -46,7 +46,7 @@ impl MolecularFormula {
             let mut element = None;
             let mut amount: i32 = 1;
             for possible in ELEMENT_PARSE_LIST {
-                if str_starts_with(&value[index..], possible.0, true) {
+                if str_starts_with::<true>(&value[index..], possible.0) {
                     element = Some(possible.1);
                     index += possible.0.len();
                     break;
