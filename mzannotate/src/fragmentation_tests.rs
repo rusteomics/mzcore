@@ -502,6 +502,36 @@ fn glycan_structure_fragmentation_3() {
 }
 
 #[test]
+fn glycan_structure_fragmentation_4() {
+    let theoretical_fragments = &[
+        (561.2451, "pep"),
+        (399.1921, "Y0"),
+        (44.0501, "a1"),
+        (115.0872, "a2"),
+        (391.1831, "a3"),
+        (462.2202, "a4"),
+        (90.0561, "y1"),
+        (161.0932, "y2"),
+        (437.1891, "y3"),
+        (508.2262, "y4"),
+    ];
+
+    let model = FragmentationModel::eacid();
+    test(
+        theoretical_fragments,
+        Peptidoform::pro_forma("AAN[G:G09675LS]AA", None)
+            .unwrap()
+            .0
+            .into_linear()
+            .unwrap(),
+        model,
+        1,
+        true,
+        true,
+    );
+}
+
+#[test]
 fn glycan_composition_fragmentation() {
     #[expect(clippy::unreadable_literal)]
     let theoretical_fragments = &[

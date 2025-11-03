@@ -300,11 +300,8 @@ impl<T> SequenceElement<T> {
             .fold(
                 (Multi::default(), HashMap::new(), HashSet::new()),
                 |(am, asp, av), (m, sp, v)| {
-                    (
-                        am * m,
-                        crate::helper_functions::merge_hashmap(asp, sp),
-                        av.union(&v).cloned().collect(),
-                    )
+                    let merged = crate::helper_functions::merge_hashmap(asp, &sp, &am, &m);
+                    (am * m, merged, av.union(&v).cloned().collect())
                 },
             );
         let own =

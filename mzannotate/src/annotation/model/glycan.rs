@@ -152,39 +152,23 @@ impl GlycanModel {
             .default_peptide_fragment(GlycanPeptideFragment::FULL)
             .peptide_fragment_rules(vec![
                 (
-                    vec![AminoAcid::Asparagine, AminoAcid::Tryptophan],
                     vec![
-                        BackboneFragmentKind::c,
-                        BackboneFragmentKind::z,
-                        BackboneFragmentKind::w,
+                        AminoAcid::Asparagine,
+                        AminoAcid::Tryptophan,
+                        AminoAcid::Serine,
+                        AminoAcid::Threonine,
                     ],
+                    vec![BackboneFragmentKind::c, BackboneFragmentKind::z],
                     GlycanPeptideFragment::FULL,
                 ),
                 (
                     vec![AminoAcid::Asparagine, AminoAcid::Tryptophan],
-                    vec![
-                        BackboneFragmentKind::b,
-                        BackboneFragmentKind::y,
-                        BackboneFragmentKind::v,
-                    ],
+                    vec![BackboneFragmentKind::b, BackboneFragmentKind::y],
                     GlycanPeptideFragment::CORE,
                 ),
                 (
                     vec![AminoAcid::Serine, AminoAcid::Threonine],
-                    vec![
-                        BackboneFragmentKind::c,
-                        BackboneFragmentKind::z,
-                        BackboneFragmentKind::w,
-                    ],
-                    GlycanPeptideFragment::FULL,
-                ),
-                (
-                    vec![AminoAcid::Serine, AminoAcid::Threonine],
-                    vec![
-                        BackboneFragmentKind::b,
-                        BackboneFragmentKind::y,
-                        BackboneFragmentKind::v,
-                    ],
+                    vec![BackboneFragmentKind::b, BackboneFragmentKind::y],
                     GlycanPeptideFragment::FREE,
                 ),
             ])

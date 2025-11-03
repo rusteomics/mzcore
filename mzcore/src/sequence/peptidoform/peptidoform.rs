@@ -499,7 +499,8 @@ impl<Complexity> Peptidoform<Complexity> {
                             glycan_model,
                             attachment,
                         );
-                        (acc.0 * formula, merge_hashmap(acc.1, specific))
+                        let merged = merge_hashmap(acc.1, &specific, &acc.0, &formula);
+                        (acc.0 * formula, merged)
                     }
                 });
         let terminus = molecular_formula!(H 1);
@@ -542,7 +543,8 @@ impl<Complexity> Peptidoform<Complexity> {
                             glycan_model,
                             attachment,
                         );
-                        (acc.0 * formula, merge_hashmap(acc.1, specific))
+                        let merged = merge_hashmap(acc.1, &specific, &acc.0, &formula);
+                        (acc.0 * formula, merged)
                     }
                 });
         let terminus = molecular_formula!(H 1 O 1);
@@ -699,9 +701,15 @@ impl<Complexity> Peptidoform<Complexity> {
                         peptidoform_ion_index,
                         glycan_model,
                     );
+                    let merged = merge_hashmap(
+                        previous_aa_formulas.1,
+                        &specific,
+                        &previous_aa_formulas.0,
+                        &f,
+                    );
                     (
                         previous_aa_formulas.0 * f,
-                        merge_hashmap(previous_aa_formulas.1, specific),
+                        merged,
                         previous_aa_formulas.2.union(&s).cloned().collect(),
                     )
                 },
@@ -826,13 +834,16 @@ impl<Complexity> Peptidoform<Complexity> {
                     .collect_vec()
             })
             .fold((Multi::default(), HashMap::new()), |acc, v| {
-                (acc.0 * v.0, merge_hashmap(acc.1, v.1))
+                let merged = merge_hashmap(acc.1, &v.1, &acc.0, &v.0);
+                (acc.0 * v.0, merged)
             });
-        (
-            formulas * all_ambiguous_options,
-            merge_hashmap(specific, all_ambiguous_specific),
-            seen,
-        )
+        let merged = merge_hashmap(
+            specific,
+            &all_ambiguous_specific,
+            &formulas,
+            &all_ambiguous_options,
+        );
+        (formulas * all_ambiguous_options, merged, seen)
     }
 
     /// Generate all potential masses for the given stretch of amino acids alongside all peptides seen as part of a cross-link.
@@ -963,8 +974,8 @@ impl<Complexity> Peptidoform<Complexity> {
             peptidoform_ion_index,
             glycan_model,
         );
+        let mut formulas_specific = merge_hashmap(n_specific, &c_specific, &n, &c);
         let mut formulas: Multi<MolecularFormula> = n * c;
-        let mut formulas_specific = merge_hashmap(n_specific, c_specific);
         let mut placed = vec![false; self.modifications_of_unknown_position.len()];
         let mut seen = HashSet::new();
         for (index, pos) in self.sequence.iter().enumerate() {
@@ -979,8 +990,8 @@ impl<Complexity> Peptidoform<Complexity> {
                 peptidoform_ion_index,
                 glycan_model,
             );
+            formulas_specific = merge_hashmap(formulas_specific, &specific, &formulas, &pos_f);
             formulas *= pos_f;
-            formulas_specific = merge_hashmap(formulas_specific, specific);
             seen.extend(pos_seen);
         }
 

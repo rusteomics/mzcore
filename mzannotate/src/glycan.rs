@@ -180,3 +180,55 @@ fn leaf_fragments(
     );
     base_fragments
 }
+
+#[cfg(test)]
+#[allow(clippy::missing_panics_doc)]
+mod tests {
+    use mzcore::{
+        glycan::{BackboneFragmentKind, GlycanPeptideFragment},
+        molecular_formula,
+        prelude::*,
+        quantities::Multi,
+    };
+    use std::collections::HashMap;
+
+    use crate::annotation::model::GlycanModel;
+
+    #[test]
+    fn masses() {
+        let peptidoform = Peptidoform::pro_forma("AAN[G:G01357PS]AA", None).unwrap().0;
+        let mut model = GlycanModel::default_exd_allow();
+        model.peptide_fragment_rules.push((
+            vec![
+                AminoAcid::Asparagine,
+                AminoAcid::Tryptophan,
+                AminoAcid::Serine,
+                AminoAcid::Threonine,
+            ],
+            vec![BackboneFragmentKind::a, BackboneFragmentKind::x],
+            GlycanPeptideFragment::FREE,
+        ));
+
+        let (f, s, _, _) = peptidoform.all_masses(
+            ..,
+            ..,
+            &(Multi::default(), HashMap::default()),
+            &[],
+            &[],
+            &mut Vec::new(),
+            false,
+            0,
+            0,
+            &model,
+        );
+
+        let full = molecular_formula!(C 28 H 46 N 6 O 16);
+        let core = molecular_formula!(C 22 H 36 N 6 O 11);
+        let free = molecular_formula!(C 16 H 26 N 6 O 6);
+
+        assert_eq!(f, full.clone().into());
+        assert_eq!(s.get(&BackboneFragmentKind::a), Some(&free.into()));
+        assert_eq!(s.get(&BackboneFragmentKind::b), Some(&core.into()));
+        assert_eq!(s.get(&BackboneFragmentKind::c), Some(&full.into()));
+    }
+}

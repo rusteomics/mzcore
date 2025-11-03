@@ -304,17 +304,26 @@ pub(crate) fn f64_bits(value: f64) -> u64 {
     }
 }
 
-pub(crate) fn merge_hashmap<K, V>(one: HashMap<K, V>, two: HashMap<K, V>) -> HashMap<K, V>
+pub(crate) fn merge_hashmap<K, V>(
+    mut into: HashMap<K, V>,
+    from: &HashMap<K, V>,
+    default_into: &V,
+    default_from: &V,
+) -> HashMap<K, V>
 where
-    V: std::ops::MulAssign + Default,
-    K: Eq + Hash,
+    V: std::ops::MulAssign + Default + Clone,
+    K: Eq + Hash + Clone,
 {
-    let mut new = one;
-    for (key, value) in two {
-        let v = new.entry(key).or_default();
-        *v *= value;
+    for (key, value) in from {
+        let v = into.entry(key.clone()).or_insert(default_into.clone());
+        *v *= value.clone();
     }
-    new
+    for (key, value) in &mut into {
+        if from.get(key).is_none() {
+            *value *= default_from.clone();
+        }
+    }
+    into
 }
 
 /// Implement a binary operator for all ref cases after the implementation for the ref-ref case (assumes deref operator works)

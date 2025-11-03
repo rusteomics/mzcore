@@ -430,7 +430,7 @@ impl Modification {
                                     glycan_model,
                                 );
                             seen_peptides.extend(seen);
-                            specific = merge_hashmap(specific, f_specific);
+                            specific = merge_hashmap(specific, &f_specific, &link, &f);
                             (f * link)
                                 .with_label(&AmbiguousLabel::CrossLinkBound(name.clone()))
                                 .to_vec()
@@ -689,18 +689,23 @@ pub fn parse_custom_modifications_str(
     CustomDatabase::from_json(value)
 }
 
-#[test]
+#[cfg(test)]
 #[expect(clippy::missing_panics_doc)]
-fn test_reading_custom_modifications_json_2024() {
-    let data = include_str!("custom_modifications_2024.json");
-    let mods = parse_custom_modifications_str(data).unwrap();
-    assert!(mods.len() > 1);
-}
+mod test {
+    use super::*;
+    use crate::sequence::SimpleModificationInner;
 
-#[test]
-#[expect(clippy::missing_panics_doc)]
-fn test_reading_custom_modifications_json_2025() {
-    let data = include_str!("custom_modifications_20250207.json");
-    let mods = parse_custom_modifications_str(data).unwrap();
-    assert!(mods.len() > 1);
+    #[test]
+    fn test_reading_custom_modifications_json_2024() {
+        let data = include_str!("custom_modifications_2024.json");
+        let mods = parse_custom_modifications_str(data).unwrap();
+        assert!(mods.len() > 1);
+    }
+
+    #[test]
+    fn test_reading_custom_modifications_json_2025() {
+        let data = include_str!("custom_modifications_20250207.json");
+        let mods = parse_custom_modifications_str(data).unwrap();
+        assert!(mods.len() > 1);
+    }
 }

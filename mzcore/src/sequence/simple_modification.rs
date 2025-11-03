@@ -647,3 +647,49 @@ impl ParseJson for SimpleModificationInner {
         }
     }
 }
+
+#[cfg(test)]
+#[allow(clippy::missing_panics_doc)]
+mod tests {
+    use super::*;
+    use crate::molecular_formula;
+
+    #[test]
+    fn modification_masses() {
+        let ((modification, _), _) = SimpleModificationInner::pro_forma(
+            "G:G09675LS",
+            &mut Vec::new(),
+            &mut Vec::new(),
+            None,
+        )
+        .unwrap();
+        let modification = modification.defined().unwrap();
+        assert_eq!(
+            modification.formula_inner(
+                SequencePosition::Index(0),
+                0,
+                GlycanPeptideFragment::FULL,
+                None,
+            ),
+            molecular_formula!(C 6 H 10 O 5).into()
+        );
+        assert_eq!(
+            modification.formula_inner(
+                SequencePosition::Index(0),
+                0,
+                GlycanPeptideFragment::CORE,
+                None,
+            ),
+            molecular_formula!(C 6 H 10 O 5).into()
+        );
+        assert_eq!(
+            modification.formula_inner(
+                SequencePosition::Index(0),
+                0,
+                GlycanPeptideFragment::FREE,
+                None,
+            ),
+            Multi::default()
+        );
+    }
+}

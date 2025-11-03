@@ -18,7 +18,7 @@ use crate::{
 
 /// A molecular formula, a selection of elements of specified isotopes together forming a structure
 #[allow(clippy::unsafe_derive_deserialize)]
-#[derive(Clone, Debug, Default, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
+#[derive(Clone, Default, Deserialize, Hash, Ord, PartialOrd, Serialize)]
 pub struct MolecularFormula {
     /// Save all constituent parts as the element in question, the isotope (or None for natural distribution), and the number of this part
     /// The elements will be sorted on element/isotope and deduplicated, guaranteed to only contain valid isotopes.
@@ -28,6 +28,26 @@ pub struct MolecularFormula {
     /// The labels of sources of ambiguity/multiplicity
     #[serde(default)]
     pub(in super::super) labels: ThinVec<AmbiguousLabel>,
+}
+
+impl PartialEq for MolecularFormula {
+    fn eq(&self, other: &Self) -> bool {
+        self.elements == other.elements && self.additional_mass == other.additional_mass
+    }
+}
+
+impl Eq for MolecularFormula {}
+
+impl std::fmt::Debug for MolecularFormula {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        use itertools::Itertools;
+        write!(
+            f,
+            "{} [{}]",
+            self.hill_notation(),
+            self.labels.iter().map(ToString::to_string).join(",")
+        )
+    }
 }
 
 /// Keep track of what ambiguous option is used
