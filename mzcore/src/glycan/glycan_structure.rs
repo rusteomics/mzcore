@@ -328,10 +328,11 @@ impl GlycanStructure {
         range: Range<usize>,
     ) -> Result<(Self, usize), BoxedError<'_, BasicKind>> {
         // Parse at the start the first recognised glycan name
-        if let Some((name, sugar)) = GLYCAN_PARSE_LIST
-            .iter()
-            .find(|name| str_starts_with::<true>(&line[range.clone()], &name.0))
-        {
+        if let Some((name, sugar)) = GLYCAN_PARSE_LIST.iter().find(|(names, _)| {
+            names
+                .iter()
+                .any(|n| str_starts_with::<true>(&line[range.clone()], n))
+        }) {
             // If the name is followed by a bracket parse a list of branches
             let index = range.start + name.len();
             if line.as_bytes()[index] == b'(' {

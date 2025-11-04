@@ -12,9 +12,9 @@ use crate::{
     IdentifiedPeptidoformSource, IdentifiedPeptidoformVersion, KnownFileFormat, MetaData,
     PeptidoformPresent, SpectrumId, SpectrumIds,
     common_parser::{Location, OptionalColumn},
-    csv::{CsvLine, parse_csv},
 };
 use mzcore::{
+    csv::{CsvLine, parse_csv},
     ontology::CustomDatabase,
     sequence::{CompoundPeptidoformIon, FlankingSequence, Linked},
     system::{Mass, MassOverCharge, Time, isize::Charge},

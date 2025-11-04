@@ -24,18 +24,18 @@ sha2 = { workspace = true }
 serde = {workspace = true, optional = true}
 
 [features]
-default = ["search-index", "internet", "serde"]
+default = ["search-index", "http", "serde"]
 serde = ["dep:serde", "bincode/serde"]
 search-index = []
-internet = ["reqwest"]
+http = ["reqwest"]
 
 #[[example]]
 #name = "imgt"
-#required-features = ["internet", "search-index"]
+#required-features = ["http", "search-index"]
 
 [[example]]
 name = "ms"
-required-features = ["internet", "search-index"]
+required-features = ["http", "search-index"]
 
 [lints]
 workspace = true

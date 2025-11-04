@@ -1,24 +1,20 @@
 use std::{borrow::Cow, marker::PhantomData, ops::Range};
 
+use serde::{Deserialize, Serialize};
+
 use crate::{
-    FastaIdentifier, IdentifiedPeptidoform, IdentifiedPeptidoformData, IdentifiedPeptidoformSource,
-    KnownFileFormat, MetaData, PeptidoformPresent, SpectrumId, SpectrumIds,
+    BoxedIdentifiedPeptideIter, FastaIdentifier, IdentifiedPeptidoform, IdentifiedPeptidoformData,
+    IdentifiedPeptidoformSource, IdentifiedPeptidoformVersion, KnownFileFormat, MetaData,
+    PeptidoformPresent, SpectrumId, SpectrumIds, common_parser::Location,
 };
 use mzcore::{
+    csv::{CsvLine, parse_csv},
     ontology::CustomDatabase,
     sequence::{
         CompoundPeptidoformIon, FlankingSequence, Peptidoform, SemiAmbiguous,
         SloppyParsingParameters,
     },
     system::{Mass, MassOverCharge, Ratio, Time, isize::Charge},
-};
-
-use serde::{Deserialize, Serialize};
-
-use crate::{
-    BoxedIdentifiedPeptideIter, IdentifiedPeptidoformVersion,
-    common_parser::Location,
-    csv::{CsvLine, parse_csv},
 };
 
 static NUMBER_ERROR: (&str, &str) = (

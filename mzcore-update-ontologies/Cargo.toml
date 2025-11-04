@@ -12,7 +12,7 @@ readme = "README.md"
 include = ["src/**/*", "images/**/*", "README.md", "benches/**/*"]
 
 [dependencies]
-mzcv = { path = "../mzcv", features = ["internet"] }
+mzcv = { path = "../mzcv", features = ["http"] }
 mzcore = { path = "../mzcore", features = ["internal-no-data"] }
 
 [dev-dependencies]

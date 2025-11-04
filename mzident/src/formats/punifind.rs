@@ -7,9 +7,9 @@ use crate::{
     IdentifiedPeptidoformSource, IdentifiedPeptidoformVersion, KnownFileFormat, MaybePeptidoform,
     MetaData, SpectrumId, SpectrumIds,
     common_parser::{Location, OptionalLocation},
-    csv::{CsvLine, parse_csv},
 };
 use mzcore::{
+    csv::{CsvLine, parse_csv},
     ontology::CustomDatabase,
     prelude::{AminoAcid, SequencePosition},
     sequence::{

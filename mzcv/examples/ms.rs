@@ -12,7 +12,7 @@ use mzcv::{
 fn main() {
     let (mut ms, _) = CVIndex::<MS>::init();
     // ms.update_from_url(None).unwrap();
-    ms.update_from_path(None).unwrap();
+    ms.update_from_path(None, true).unwrap();
     println!("Stored at: {}", MS::default_stem().display());
     println!("Found {} MS items", ms.data().len());
 

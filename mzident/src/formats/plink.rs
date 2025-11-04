@@ -16,11 +16,11 @@ use crate::{
     IdentifiedPeptidoformSource, IdentifiedPeptidoformVersion, KnownFileFormat, MetaData,
     PeptidoformPresent, SpectrumId, SpectrumIds,
     common_parser::{Location, OptionalColumn, OptionalLocation},
-    csv::{CsvLine, parse_csv},
     helper_functions::explain_number_error,
 };
 use mzcore::{
     chemistry::Chemical,
+    csv::{CsvLine, parse_csv},
     molecular_formula,
     ontology::{CustomDatabase, Ontology},
     quantities::{Tolerance, WithinTolerance},

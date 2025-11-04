@@ -5,7 +5,7 @@ use regex::Regex;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    glycan::GLYCAN_PARSE_LIST,
+    glycan::{GLYCAN_PARSE_LIST, MonoSaccharide},
     helper_functions::{ResultExtensions, end_of_enclosure, parse_named_counter},
     ontology::{CustomDatabase, Ontology},
     sequence::{
@@ -317,12 +317,8 @@ impl Modification {
                     let pos = capture[2].chars().next().and_then(|a| AminoAcid::try_from(a).ok().map(|a| SequenceElement::new(CheckedAminoAcid::new(a), None)));
                     Self::find_name::<SemiAmbiguous>(&capture[1], position.or(pos.as_ref()), custom_database)
                         .ok_or_else(|| {
-                            parse_named_counter(
-                                &capture[1].to_ascii_lowercase(),
-                                &GLYCAN_PARSE_LIST,
-                                false,
-                            )
-                            .map(|g| Arc::new(SimpleModificationInner::Glycan(g)))
+                            MonoSaccharide::pro_forma_composition::<false>(&capture[1])
+                            .map(|(g, _)| Arc::new(SimpleModificationInner::Glycan(g)))
                         })
                         .flat_err()
                         .ok()

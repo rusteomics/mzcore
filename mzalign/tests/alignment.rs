@@ -1,8 +1,8 @@
 #![allow(clippy::missing_panics_doc, clippy::float_cmp)]
 //! Integration tests for alignments
 use mzalign::prelude::*;
-use mzcore::{prelude::*, sequence::SimpleLinear};
-use mzident::{PeptidoformPresent, csv::parse_csv, prelude::*};
+use mzcore::{csv::parse_csv, prelude::*, sequence::SimpleLinear};
+use mzident::{PeptidoformPresent, prelude::*};
 
 const MAB_SEQUENCE: &str = "GPGGGGSLPEVREKHEFLNRLKQLPLLESQIATIEQSAPSQSDQEQLFSNVQYFAHYCRKYAPLYAAEAKRVFSLEKKMSNYIQFKSKCRIEPVCLLLHGSPGAGKSVATNLIGRSLAEKLNSSVYSLPPDPDHFDGYKQQAVVIMDDLCQNPDGKDVSLFCQMVSSVDFVPPMAALEEKGILFTSPFVLASTNAGSINAPTVSDSRALARRFHFDMNIEVISMYSQNGKINMPMSVKTCDDECCPVNFKKCCPLVCGKAIQFIDRRTQVRYSLDMLVTEMFREYNHRHSVGTTLEALFQ";
 

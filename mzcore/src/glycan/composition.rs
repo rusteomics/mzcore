@@ -61,19 +61,54 @@ impl MonoSaccharide {
                 Self::new(crate::glycan::BaseSugar::Custom(formula), &[])
             } else {
                 let mut found = None;
-                for (name, sugar) in GLYCAN_PARSE_LIST.iter() {
-                    if str_starts_with::<true>(&line[index..end], name) {
-                        found = Some(sugar.clone());
-                        if STRICT {
-                            if let Some(pro_forma_name) = &sugar.proforma_name {
-                                if name != pro_forma_name {
+                for (names, sugar) in GLYCAN_PARSE_LIST.iter() {
+                    for name in names {
+                        if str_starts_with::<true>(&line[index..end], name) {
+                            found = Some(sugar.clone());
+                            if STRICT {
+                                if let Some(pro_forma_name) = &sugar.proforma_name {
+                                    if **name != **pro_forma_name {
+                                        combine_error(
+                                            &mut errors,
+                                            BoxedError::new(
+                                                BasicKind::Warning,
+                                                "Improper ProForma glycan",
+                                                format!(
+                                                    "While `{name}` can be unambiguously parsed the proper name in ProForma is `{pro_forma_name}`."
+                                                ),
+                                                base_context.clone().add_highlight((
+                                                    0,
+                                                    index,
+                                                    name.len(),
+                                                )),
+                                            ),
+                                            (),
+                                        );
+                                    } else if !line[index..end].starts_with(&**name) {
+                                        combine_error(
+                                            &mut errors,
+                                            BoxedError::new(
+                                                BasicKind::Warning,
+                                                "Improper ProForma glycan",
+                                                "This glycan was not written with the proper capitalisation.",
+                                                base_context.clone().add_highlight((
+                                                    0,
+                                                    index,
+                                                    name.len(),
+                                                )),
+                                            ),
+                                            (),
+                                        );
+                                    }
+                                } else {
                                     combine_error(
                                         &mut errors,
                                         BoxedError::new(
                                             BasicKind::Warning,
                                             "Improper ProForma glycan",
                                             format!(
-                                                "While `{name}` can be unambiguously parsed the proper name in ProForma is `{pro_forma_name}`."
+                                                "While `{name}` can be unambiguously parsed the proper way to write this in ProForma is `{{{}}}`.",
+                                                sugar.formula()
                                             ),
                                             base_context.clone().add_highlight((
                                                 0,
@@ -83,40 +118,11 @@ impl MonoSaccharide {
                                         ),
                                         (),
                                     );
-                                } else if !line[index..end].starts_with(&**name) {
-                                    combine_error(
-                                        &mut errors,
-                                        BoxedError::new(
-                                            BasicKind::Warning,
-                                            "Improper ProForma glycan",
-                                            "This glycan was not written with the proper capitalisation.",
-                                            base_context.clone().add_highlight((
-                                                0,
-                                                index,
-                                                name.len(),
-                                            )),
-                                        ),
-                                        (),
-                                    );
                                 }
-                            } else {
-                                combine_error(
-                                    &mut errors,
-                                    BoxedError::new(
-                                        BasicKind::Warning,
-                                        "Improper ProForma glycan",
-                                        format!(
-                                            "While `{name}` can be unambiguously parsed the proper way to write this in ProForma is `{{{}}}`.",
-                                            sugar.formula()
-                                        ),
-                                        base_context.clone().add_highlight((0, index, name.len())),
-                                    ),
-                                    (),
-                                );
                             }
+                            index += name.len();
+                            break;
                         }
-                        index += name.len();
-                        break;
                     }
                 }
                 handle!(single errors, found.ok_or_else(|| BoxedError::new(
@@ -226,9 +232,11 @@ impl MonoSaccharide {
                     let name = text[index..index + next_open_bracket].trim();
                     let mut sugar = None;
                     for option in GLYCAN_PARSE_LIST.as_slice() {
-                        if option.0.eq_ignore_ascii_case(name) {
-                            sugar = Some(option.1.clone());
-                            break;
+                        for o in &option.0 {
+                            if o.eq_ignore_ascii_case(name) {
+                                sugar = Some(option.1.clone());
+                                break;
+                            }
                         }
                     }
                     let number = text[index + next_open_bracket + 1

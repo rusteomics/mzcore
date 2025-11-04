@@ -8,7 +8,6 @@ publish = false
 
 [dependencies]
 mzcore = { path = "../mzcore", features = ["internal-no-data"] }
-mzident = { path = "../mzident" }
 
 bincode = { workspace = true }
 flate2 = { workspace = true }

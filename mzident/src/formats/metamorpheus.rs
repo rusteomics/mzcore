@@ -11,11 +11,10 @@ use serde::{Deserialize, Serialize};
 use crate::{
     BoxedIdentifiedPeptideIter, FastaIdentifier, IdentifiedPeptidoform, IdentifiedPeptidoformData,
     IdentifiedPeptidoformSource, IdentifiedPeptidoformVersion, KnownFileFormat, MetaData,
-    PeptidoformPresent, SpectrumId, SpectrumIds,
-    common_parser::Location,
-    csv::{CsvLine, parse_csv},
+    PeptidoformPresent, SpectrumId, SpectrumIds, common_parser::Location,
 };
 use mzcore::{
+    csv::{CsvLine, parse_csv},
     ontology::CustomDatabase,
     sequence::{
         AminoAcid, CompoundPeptidoformIon, FlankingSequence, Peptidoform, SemiAmbiguous,

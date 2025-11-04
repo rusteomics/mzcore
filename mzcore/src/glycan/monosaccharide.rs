@@ -128,41 +128,41 @@ mod tests {
     #[test]
     fn pro_forma_compliance() {
         let cases = &[
-            ("hep", molecular_formula!(H 12 C 7 O 6)),
-            ("phosphate", molecular_formula!(H 1 O 3 P 1)),
-            ("a-hex", molecular_formula!(H 8 C 6 O 6)),
-            ("sug", molecular_formula!(H 2 C 2 O 1)),
-            ("hexn", molecular_formula!(H 11 C 6 N 1 O 4)),
-            ("pen", molecular_formula!(H 8 C 5 O 4)),
-            ("tet", molecular_formula!(H 6 C 4 O 3)),
-            ("hexp", molecular_formula!(H 11 C 6 O 8 P 1)),
-            ("neu5ac", molecular_formula!(H 17 C 11 N 1 O 8)),
-            ("non", molecular_formula!(H 16 C 9 O 8)),
-            ("hexnac(s)", molecular_formula!(H 13 C 8 N 1 O 8 S 1)),
-            ("dec", molecular_formula!(H 18 C 10 O 9)),
-            ("en,a-hex", molecular_formula!(H 6 C 6 O 5)),
-            ("neu5gc", molecular_formula!(H 17 C 11 N 1 O 9)),
-            ("neu", molecular_formula!(H 15 C 9 N 1 O 7)),
-            ("hexnac", molecular_formula!(H 13 C 8 N 1 O 5)),
-            ("fuc", molecular_formula!(H 10 C 6 O 4)),
-            ("hexns", molecular_formula!(H 11 C 6 N 1 O 7 S 1)),
-            ("tri", molecular_formula!(H 4 C 3 O 2)),
-            ("oct", molecular_formula!(H 14 C 8 O 7)),
-            ("sulfate", molecular_formula!(O 3 S 1)),
-            ("d-hex", molecular_formula!(H 10 C 6 O 5)),
-            ("hex", molecular_formula!(H 10 C 6 O 5)),
-            ("hexs", molecular_formula!(H 10 C 6 O 8 S 1)),
+            ("Hex", molecular_formula!(H 10 C 6 O 5)),
+            ("HexNAc", molecular_formula!(H 13 C 8 N 1 O 5)),
+            ("HexS", molecular_formula!(H 10 C 6 O 8 S 1)),
+            ("HexP", molecular_formula!(H 11 C 6 O 8 P 1)),
+            ("HexNAcS", molecular_formula!(H 13 C 8 N 1 O 8 S 1)),
+            ("HexN", molecular_formula!(H 11 C 6 N 1 O 4)),
+            ("HexNS", molecular_formula!(H 11 C 6 N 1 O 7 S 1)),
+            ("dHex", molecular_formula!(H 10 C 6 O 5)),
+            ("aHex", molecular_formula!(H 8 C 6 O 6)),
+            ("en,aHex", molecular_formula!(H 6 C 6 O 5)),
+            ("Neu", molecular_formula!(H 15 C 9 N 1 O 7)),
+            ("NeuAc", molecular_formula!(H 17 C 11 N 1 O 8)),
+            ("NeuGc", molecular_formula!(H 17 C 11 N 1 O 9)),
+            ("Sug", molecular_formula!(H 2 C 2 O 1)),
+            ("Tri", molecular_formula!(H 4 C 3 O 2)),
+            ("Tet", molecular_formula!(H 6 C 4 O 3)),
+            ("Pen", molecular_formula!(H 8 C 5 O 4)),
+            ("Hep", molecular_formula!(H 12 C 7 O 6)),
+            ("Oct", molecular_formula!(H 14 C 8 O 7)),
+            ("Non", molecular_formula!(H 16 C 9 O 8)),
+            ("Dec", molecular_formula!(H 18 C 10 O 9)),
+            ("Fuc", molecular_formula!(H 10 C 6 O 4)),
+            ("Sulfate", molecular_formula!(O 3 S 1)),
+            ("Phosphate", molecular_formula!(H 1 O 3 P 1)),
         ];
         for (name, formula) in cases {
+            let found = GLYCAN_PARSE_LIST
+                .iter()
+                .find(|p| p.0.iter().any(|n| n == name))
+                .unwrap_or_else(|| panic!("Assumed {name} would be defined"));
+            assert_eq!(found.1.formula(), *formula, "Formula incorrect: {name}",);
             assert_eq!(
-                GLYCAN_PARSE_LIST
-                    .iter()
-                    .find(|p| p.0.eq_ignore_ascii_case(*name))
-                    .unwrap_or_else(|| panic!("Assumed {name} would be defined"))
-                    .1
-                    .formula(),
-                *formula,
-                "{name}",
+                found.1.to_string().as_str(),
+                *name,
+                "ProForma name set wrong: {name}",
             );
         }
     }

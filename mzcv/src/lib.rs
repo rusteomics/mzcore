@@ -15,7 +15,7 @@
 //! * `search-index` turns on the creation of a trigram index for faster fuzzy match searching.
 //!   With this function turned off fuzzy match searching is still available, but slower. The
 //!   creation of the index does take initial startup time and memory.
-//! * `internet` turns on downloading from the internet, as this pulls in `reqwest` this is made
+//! * `http` turns on downloading from the internet, as this pulls in `reqwest` this is made
 //!   optional to prevent relying on too many dependencies.
 
 mod curie;

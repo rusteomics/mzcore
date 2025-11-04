@@ -3,9 +3,9 @@ use std::{io::Write, path::Path};
 use bincode::config::Configuration;
 use mzcore::{
     chemistry::{Element, ElementalData},
+    csv::parse_csv,
     system::da,
 };
-use mzident::csv::parse_csv;
 
 pub(crate) fn build_atomic_masses(out_dir: &Path) {
     let mut atomic_weights = vec![None; 118];

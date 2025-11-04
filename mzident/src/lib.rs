@@ -18,8 +18,6 @@ mod spectrum_id;
 #[cfg(test)]
 mod test;
 
-pub mod csv;
-
 #[cfg(test)]
 use test::*;
 

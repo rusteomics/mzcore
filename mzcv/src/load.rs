@@ -106,7 +106,7 @@ impl<CV: CVSource> CVIndex<CV> {
         // If the cache failed try parsing the actual file, this could work because the cache might
         // have been built with an older version of the software with a different Data definition.
         // Inside update from path the cache is overwritten with the new info.
-        match result.update_from_path([]) {
+        match result.update_from_path([], true) {
             Ok(()) => {
                 return (result, errors);
             }
@@ -157,6 +157,7 @@ impl<CV: CVSource> CVIndex<CV> {
     pub fn update_from_path<'a>(
         &mut self,
         overwrite_path: impl IntoIterator<Item = Option<&'a Path>>,
+        remove_original: bool,
     ) -> Result<(), BoxedError<'static, CVError>> {
         let stem = CV::default_stem();
         type PATHS<'b> = (
@@ -293,14 +294,16 @@ impl<CV: CVSource> CVIndex<CV> {
                             Context::none().source(&resolved_path_string).to_owned(),
                         )
                     })?;
-                    std::fs::remove_file(&resolved_path).map_err(|e| {
-                        BoxedError::new(
-                            CVError::FileCouldNotBeMoved,
-                            "Overwrite CV file could not be deleted",
-                            e.to_string(),
-                            Context::none().source(&resolved_path_string).to_owned(),
-                        )
-                    })?;
+                    if remove_original {
+                        std::fs::remove_file(&resolved_path).map_err(|e| {
+                            BoxedError::new(
+                                CVError::FileCouldNotBeMoved,
+                                "Overwrite CV file could not be deleted",
+                                e.to_string(),
+                                Context::none().source(&resolved_path_string).to_owned(),
+                            )
+                        })?;
+                    }
                 }
             }
         }
@@ -322,7 +325,7 @@ impl<CV: CVSource> CVIndex<CV> {
     /// * The downloaded file could not be written to disk.
     ///
     /// Additionally, all errors from [`Self::update_from_path`].
-    #[cfg(feature = "internet")]
+    #[cfg(feature = "http")]
     pub fn update_from_url(
         &mut self,
         overwrite_urls: &[Option<&str>],
@@ -353,13 +356,31 @@ impl<CV: CVSource> CVIndex<CV> {
                 })?;
                 let mut writer = BufWriter::new(file);
 
-                let response = reqwest::blocking::get(url)
+                let url = reqwest::Url::try_from(url).map_err(|e| {
+                    BoxedError::new(
+                        CVError::CVUrlCouldNotBeRead,
+                        "Invalid CV URL",
+                        e.to_string(),
+                        Context::none().source(url).to_owned(),
+                    )
+                })?;
+
+                if !url.scheme().starts_with("http") {
+                    return Err(BoxedError::new(
+                        CVError::CVUrlCouldNotBeRead,
+                        "Invalid CV URL",
+                        "Only HTTP(s) files can be downloaded",
+                        Context::none().source(url.to_string()).to_owned(),
+                    ));
+                }
+
+                let response = reqwest::blocking::get(url.clone())
                     .map_err(|e| {
                         BoxedError::new(
                             CVError::CVUrlCouldNotBeRead,
                             "Could not download CV",
                             e.to_string(),
-                            Context::none().source(url).to_owned(),
+                            Context::none().source(url.to_string()).to_owned(),
                         )
                     })?
                     .error_for_status()
@@ -368,7 +389,7 @@ impl<CV: CVSource> CVIndex<CV> {
                             CVError::CVUrlCouldNotBeRead,
                             "Could not download CV",
                             e.to_string(),
-                            Context::none().source(url).to_owned(),
+                            Context::none().source(url.to_string()).to_owned(),
                         )
                     })?;
                 // Decompress (if needed) then compress again to gz
@@ -446,7 +467,7 @@ impl<CV: CVSource> CVIndex<CV> {
                         "Could not download the CV file",
                         e.to_string(),
                         Context::none()
-                            .source(url)
+                            .source(url.to_string())
                             .lines(0, download_path.to_string_lossy())
                             .to_owned(),
                     )
@@ -455,7 +476,7 @@ impl<CV: CVSource> CVIndex<CV> {
             })
             .collect::<Result<Vec<_>, BoxedError<'static, CVError>>>()?;
 
-        self.update_from_path(paths.iter().map(|p| Some(Path::new(p))))
+        self.update_from_path(paths.iter().map(|p| Some(Path::new(p))), true)
     }
 }
 

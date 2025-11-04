@@ -1,13 +1,13 @@
 use std::{collections::HashMap, io::Write, path::Path, sync::Arc};
 
 use mzcore::{
+    csv::parse_csv,
     glycan::{GlycanStructure, MonoSaccharide},
     ontology::{Ontology, OntologyModificationList},
     sequence::{
         GnoComposition, GnoSubsumption, ModificationId, SimpleModification, SimpleModificationInner,
     },
 };
-use mzident::csv::parse_csv;
 
 use super::obo::OboOntology;
 

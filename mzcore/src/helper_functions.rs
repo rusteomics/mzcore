@@ -3,6 +3,7 @@ use std::{
     hash::Hash,
     num::{IntErrorKind, ParseIntError},
     ops::{Bound, RangeBounds},
+    path::Path,
     str::FromStr,
 };
 
@@ -435,4 +436,12 @@ fn starts_with() {
     assert!(!str_starts_with::<false>("aaabbb", "AA"));
     assert!(!str_starts_with::<false>("aaabbb", "AAA"));
     assert!(!str_starts_with::<false>("aaabbb", "aaA"));
+}
+
+/// Helper function to check extensions in filenames
+pub(crate) fn check_extension(filename: impl AsRef<Path>, extension: impl AsRef<Path>) -> bool {
+    filename
+        .as_ref()
+        .extension()
+        .is_some_and(|ext| ext.eq_ignore_ascii_case(extension.as_ref()))
 }

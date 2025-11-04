@@ -2,7 +2,7 @@ use std::{borrow::Cow, ops::Range, str::FromStr};
 
 use context_error::*;
 
-use crate::csv::CsvLine;
+use mzcore::csv::CsvLine;
 
 /// The way to set up a format family.
 ///
@@ -109,7 +109,7 @@ macro_rules! format_family {
                 version: Option<Self::Version>,
             ) -> Result<BoxedIdentifiedPeptideIter<'a, Self>, BoxedError<'static, BasicKind>> {
                 let format = version.map(|v| v.format());
-                crate::csv::parse_csv_raw(reader, $separator, $header, None).and_then(move |lines| {
+                mzcore::csv::parse_csv_raw(reader, $separator, $header, None).and_then(move |lines| {
                     let mut i = Self::parse_many::<Box<dyn Iterator<Item = Result<Self::Source, BoxedError<'_, BasicKind>>>>>(
                         Box::new(lines), custom_database, keep_all_columns, format);
                     if let Some(Err(e)) = i.peek() {

@@ -13,9 +13,9 @@ use crate::{
     IdentifiedPeptidoformSource, IdentifiedPeptidoformVersion, KnownFileFormat, MetaData,
     PeaksFamilyId, PeptidoformPresent, SpectrumId, SpectrumIds,
     common_parser::{Location, OptionalColumn, OptionalLocation},
-    csv::{CsvLine, parse_csv},
 };
 use mzcore::{
+    csv::{CsvLine, parse_csv},
     ontology::CustomDatabase,
     sequence::{
         AminoAcid, CompoundPeptidoformIon, FlankingSequence, Modification,

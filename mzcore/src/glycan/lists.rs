@@ -269,11 +269,11 @@ pub(crate) const PREFIX_SUBSTITUENTS: &[(&str, GlycanSubstituent)] = &[
 ];
 
 /// All monosaccharides ordered to be able to parse glycans by matching them from the top
-pub(crate) static GLYCAN_PARSE_LIST: LazyLock<Vec<(Box<str>, MonoSaccharide)>> =
+pub(crate) static GLYCAN_PARSE_LIST: LazyLock<Vec<(Vec<&'static str>, MonoSaccharide)>> =
     LazyLock::new(|| {
         vec![
             (
-                "Phosphate".to_string().into_boxed_str(),
+                vec!["Phosphate", "Phospho"],
                 MonoSaccharide {
                     base_sugar: BaseSugar::Custom(MolecularFormula::default()),
                     substituents: vec![GlycanSubstituent::Phosphate].into(),
@@ -283,17 +283,7 @@ pub(crate) static GLYCAN_PARSE_LIST: LazyLock<Vec<(Box<str>, MonoSaccharide)>> =
                 },
             ),
             (
-                "Phospho".to_string().into_boxed_str(),
-                MonoSaccharide {
-                    base_sugar: BaseSugar::Custom(MolecularFormula::default()),
-                    substituents: vec![GlycanSubstituent::Phosphate].into(),
-                    proforma_name: Some("Phosphate".to_string().into_boxed_str()),
-                    furanose: false,
-                    configuration: None,
-                },
-            ),
-            (
-                "Sulfate".to_string().into_boxed_str(),
+                vec!["Sulfate"],
                 MonoSaccharide {
                     base_sugar: BaseSugar::Custom(MolecularFormula::default()),
                     substituents: vec![GlycanSubstituent::Sulfate].into(),
@@ -303,7 +293,7 @@ pub(crate) static GLYCAN_PARSE_LIST: LazyLock<Vec<(Box<str>, MonoSaccharide)>> =
                 },
             ),
             (
-                "Sug".to_string().into_boxed_str(),
+                vec!["Sug"],
                 MonoSaccharide {
                     base_sugar: BaseSugar::Sugar,
                     substituents: ThinVec::new(),
@@ -313,7 +303,7 @@ pub(crate) static GLYCAN_PARSE_LIST: LazyLock<Vec<(Box<str>, MonoSaccharide)>> =
                 },
             ),
             (
-                "Tri".to_string().into_boxed_str(),
+                vec!["Tri"],
                 MonoSaccharide {
                     base_sugar: BaseSugar::Triose,
                     substituents: ThinVec::new(),
@@ -323,7 +313,7 @@ pub(crate) static GLYCAN_PARSE_LIST: LazyLock<Vec<(Box<str>, MonoSaccharide)>> =
                 },
             ),
             (
-                "Tet".to_string().into_boxed_str(),
+                vec!["Tet"],
                 MonoSaccharide {
                     base_sugar: BaseSugar::Tetrose(None),
                     substituents: ThinVec::new(),
@@ -333,7 +323,7 @@ pub(crate) static GLYCAN_PARSE_LIST: LazyLock<Vec<(Box<str>, MonoSaccharide)>> =
                 },
             ),
             (
-                "Pent".to_string().into_boxed_str(),
+                vec!["Pent", "Pen", "Rib", "Ara", "Xyl", "Lyx"],
                 MonoSaccharide {
                     base_sugar: BaseSugar::Pentose(None),
                     substituents: ThinVec::new(),
@@ -343,67 +333,20 @@ pub(crate) static GLYCAN_PARSE_LIST: LazyLock<Vec<(Box<str>, MonoSaccharide)>> =
                 },
             ),
             (
-                "Pen".to_string().into_boxed_str(),
-                MonoSaccharide {
-                    base_sugar: BaseSugar::Pentose(None),
-                    substituents: ThinVec::new(),
-                    proforma_name: Some("Pen".to_string().into_boxed_str()),
-                    furanose: false,
-                    configuration: None,
-                },
-            ),
-            (
-                "Rib".to_string().into_boxed_str(),
-                MonoSaccharide {
-                    base_sugar: BaseSugar::Pentose(Some(PentoseIsomer::Ribose)),
-                    substituents: ThinVec::new(),
-                    proforma_name: Some("Pen".to_string().into_boxed_str()),
-                    furanose: false,
-                    configuration: None,
-                },
-            ),
-            (
-                "Ara".to_string().into_boxed_str(),
-                MonoSaccharide {
-                    base_sugar: BaseSugar::Pentose(Some(PentoseIsomer::Arabinose)),
-                    substituents: ThinVec::new(),
-                    proforma_name: Some("Pen".to_string().into_boxed_str()),
-                    furanose: false,
-                    configuration: None,
-                },
-            ),
-            (
-                "Xyl".to_string().into_boxed_str(),
-                MonoSaccharide {
-                    base_sugar: BaseSugar::Pentose(Some(PentoseIsomer::Xylose)),
-                    substituents: ThinVec::new(),
-                    proforma_name: Some("Pen".to_string().into_boxed_str()),
-                    furanose: false,
-                    configuration: None,
-                },
-            ),
-            (
-                "Lyx".to_string().into_boxed_str(),
-                MonoSaccharide {
-                    base_sugar: BaseSugar::Pentose(Some(PentoseIsomer::Lyxose)),
-                    substituents: ThinVec::new(),
-                    proforma_name: Some("Pen".to_string().into_boxed_str()),
-                    furanose: false,
-                    configuration: None,
-                },
-            ),
-            (
-                "a-Hex".to_string().into_boxed_str(),
+                vec![
+                    "a-Hex", "aHex", "HexA", "GlcA", "GalA", "ManA", "AllA", "AltA", "GulA",
+                    "IdoA", "TalA",
+                ],
                 MonoSaccharide {
                     base_sugar: BaseSugar::Hexose(None),
                     substituents: vec![GlycanSubstituent::Acid].into(),
-                    proforma_name: Some("a-Hex".to_string().into_boxed_str()),
+                    proforma_name: Some("aHex".to_string().into_boxed_str()),
                     furanose: false,
                     configuration: None,
                 },
             ),
             (
-                "en,a-Hex".to_string().into_boxed_str(),
+                vec!["en,a-Hex", "en,aHex"],
                 MonoSaccharide {
                     base_sugar: BaseSugar::Hexose(None),
                     substituents: vec![
@@ -412,114 +355,37 @@ pub(crate) static GLYCAN_PARSE_LIST: LazyLock<Vec<(Box<str>, MonoSaccharide)>> =
                         GlycanSubstituent::Didehydro,
                     ]
                     .into(),
-                    proforma_name: Some("en,a-Hex".to_string().into_boxed_str()),
+                    proforma_name: Some("en,aHex".to_string().into_boxed_str()),
                     furanose: false,
                     configuration: None,
                 },
             ),
             (
-                "d-Hex".to_string().into_boxed_str(),
+                vec!["d-Hex", "dHex"],
                 MonoSaccharide {
                     base_sugar: BaseSugar::Hexose(None),
                     substituents: ThinVec::new(),
-                    proforma_name: Some("d-Hex".to_string().into_boxed_str()),
+                    proforma_name: Some("dHex".to_string().into_boxed_str()),
                     furanose: false,
                     configuration: None,
                 },
             ),
             (
-                "dHhex".to_string().into_boxed_str(),
-                MonoSaccharide {
-                    base_sugar: BaseSugar::Hexose(None),
-                    substituents: ThinVec::new(),
-                    proforma_name: Some("d-Hex".to_string().into_boxed_str()),
-                    furanose: false,
-                    configuration: None,
-                },
-            ),
-            (
-                "HexNAc(S)".to_string().into_boxed_str(),
+                vec!["HexNAc(S)", "HexNAcS"],
                 MonoSaccharide {
                     base_sugar: BaseSugar::Hexose(None),
                     substituents: vec![GlycanSubstituent::NAcetyl, GlycanSubstituent::Sulfate]
                         .into(),
-                    proforma_name: Some("HexNAc(S)".to_string().into_boxed_str()),
+                    proforma_name: Some("HexNAcS".to_string().into_boxed_str()),
                     furanose: false,
                     configuration: None,
                 },
             ),
             (
-                "HexNAc".to_string().into_boxed_str(),
-                MonoSaccharide {
-                    base_sugar: BaseSugar::Hexose(None),
-                    substituents: vec![GlycanSubstituent::NAcetyl].into(),
-                    proforma_name: Some("HexNAc".to_string().into_boxed_str()),
-                    furanose: false,
-                    configuration: None,
-                },
-            ),
-            (
-                "GlcNAc".to_string().into_boxed_str(),
-                MonoSaccharide {
-                    base_sugar: BaseSugar::Hexose(Some(HexoseIsomer::Glucose)),
-                    substituents: vec![GlycanSubstituent::NAcetyl].into(),
-                    proforma_name: Some("HexNAc".to_string().into_boxed_str()),
-                    furanose: false,
-                    configuration: None,
-                },
-            ),
-            (
-                "GalNAc".to_string().into_boxed_str(),
-                MonoSaccharide {
-                    base_sugar: BaseSugar::Hexose(Some(HexoseIsomer::Galactose)),
-                    substituents: vec![GlycanSubstituent::NAcetyl].into(),
-                    proforma_name: Some("HexNAc".to_string().into_boxed_str()),
-                    furanose: false,
-                    configuration: None,
-                },
-            ),
-            (
-                "ManNAc".to_string().into_boxed_str(),
-                MonoSaccharide {
-                    base_sugar: BaseSugar::Hexose(Some(HexoseIsomer::Mannose)),
-                    substituents: vec![GlycanSubstituent::NAcetyl].into(),
-                    proforma_name: Some("HexNAc".to_string().into_boxed_str()),
-                    furanose: false,
-                    configuration: None,
-                },
-            ),
-            (
-                "AllNAc".to_string().into_boxed_str(),
-                MonoSaccharide {
-                    base_sugar: BaseSugar::Hexose(Some(HexoseIsomer::Allose)),
-                    substituents: vec![GlycanSubstituent::NAcetyl].into(),
-                    proforma_name: Some("HexNAc".to_string().into_boxed_str()),
-                    furanose: false,
-                    configuration: None,
-                },
-            ),
-            (
-                "AltNAc".to_string().into_boxed_str(),
-                MonoSaccharide {
-                    base_sugar: BaseSugar::Hexose(Some(HexoseIsomer::Altrose)),
-                    substituents: vec![GlycanSubstituent::NAcetyl].into(),
-                    proforma_name: Some("HexNAc".to_string().into_boxed_str()),
-                    furanose: false,
-                    configuration: None,
-                },
-            ),
-            (
-                "IdoNAc".to_string().into_boxed_str(),
-                MonoSaccharide {
-                    base_sugar: BaseSugar::Hexose(Some(HexoseIsomer::Idose)),
-                    substituents: vec![GlycanSubstituent::NAcetyl].into(),
-                    proforma_name: Some("HexNAc".to_string().into_boxed_str()),
-                    furanose: false,
-                    configuration: None,
-                },
-            ),
-            (
-                "TalNAc".to_string().into_boxed_str(),
+                vec![
+                    "HexNAc", "GlcNAc", "GalNAc", "ManNAc", "AllNAc", "AltNAc", "GulNAc", "IdoNAc",
+                    "TalNAc",
+                ],
                 MonoSaccharide {
                     base_sugar: BaseSugar::Hexose(Some(HexoseIsomer::Talose)),
                     substituents: vec![GlycanSubstituent::NAcetyl].into(),
@@ -529,7 +395,7 @@ pub(crate) static GLYCAN_PARSE_LIST: LazyLock<Vec<(Box<str>, MonoSaccharide)>> =
                 },
             ),
             (
-                "HexNS".to_string().into_boxed_str(),
+                vec!["HexNS"],
                 MonoSaccharide {
                     base_sugar: BaseSugar::Hexose(None),
                     substituents: vec![GlycanSubstituent::Amino, GlycanSubstituent::Sulfate].into(),
@@ -539,7 +405,7 @@ pub(crate) static GLYCAN_PARSE_LIST: LazyLock<Vec<(Box<str>, MonoSaccharide)>> =
                 },
             ),
             (
-                "HexN".to_string().into_boxed_str(),
+                vec!["HexN"],
                 MonoSaccharide {
                     base_sugar: BaseSugar::Hexose(None),
                     substituents: vec![GlycanSubstituent::Amino].into(),
@@ -549,7 +415,7 @@ pub(crate) static GLYCAN_PARSE_LIST: LazyLock<Vec<(Box<str>, MonoSaccharide)>> =
                 },
             ),
             (
-                "HexS".to_string().into_boxed_str(),
+                vec!["HexS"],
                 MonoSaccharide {
                     base_sugar: BaseSugar::Hexose(None),
                     substituents: vec![GlycanSubstituent::Sulfate].into(),
@@ -559,7 +425,7 @@ pub(crate) static GLYCAN_PARSE_LIST: LazyLock<Vec<(Box<str>, MonoSaccharide)>> =
                 },
             ),
             (
-                "HexP".to_string().into_boxed_str(),
+                vec!["HexP"],
                 MonoSaccharide {
                     base_sugar: BaseSugar::Hexose(None),
                     substituents: vec![GlycanSubstituent::Phosphate].into(),
@@ -569,87 +435,9 @@ pub(crate) static GLYCAN_PARSE_LIST: LazyLock<Vec<(Box<str>, MonoSaccharide)>> =
                 },
             ),
             (
-                "Hex".to_string().into_boxed_str(),
-                MonoSaccharide {
-                    base_sugar: BaseSugar::Hexose(None),
-                    substituents: ThinVec::new(),
-                    proforma_name: Some("Hex".to_string().into_boxed_str()),
-                    furanose: false,
-                    configuration: None,
-                },
-            ),
-            (
-                "Glc".to_string().into_boxed_str(),
-                MonoSaccharide {
-                    base_sugar: BaseSugar::Hexose(Some(HexoseIsomer::Glucose)),
-                    substituents: ThinVec::new(),
-                    proforma_name: Some("Hex".to_string().into_boxed_str()),
-                    furanose: false,
-                    configuration: None,
-                },
-            ),
-            (
-                "Gal".to_string().into_boxed_str(),
-                MonoSaccharide {
-                    base_sugar: BaseSugar::Hexose(Some(HexoseIsomer::Galactose)),
-                    substituents: ThinVec::new(),
-                    proforma_name: Some("Hex".to_string().into_boxed_str()),
-                    furanose: false,
-                    configuration: None,
-                },
-            ),
-            (
-                "Man".to_string().into_boxed_str(),
-                MonoSaccharide {
-                    base_sugar: BaseSugar::Hexose(Some(HexoseIsomer::Mannose)),
-                    substituents: ThinVec::new(),
-                    proforma_name: Some("Hex".to_string().into_boxed_str()),
-                    furanose: false,
-                    configuration: None,
-                },
-            ),
-            (
-                "All".to_string().into_boxed_str(),
-                MonoSaccharide {
-                    base_sugar: BaseSugar::Hexose(Some(HexoseIsomer::Allose)),
-                    substituents: ThinVec::new(),
-                    proforma_name: Some("Hex".to_string().into_boxed_str()),
-                    furanose: false,
-                    configuration: None,
-                },
-            ),
-            (
-                "Alt".to_string().into_boxed_str(),
-                MonoSaccharide {
-                    base_sugar: BaseSugar::Hexose(Some(HexoseIsomer::Altrose)),
-                    substituents: ThinVec::new(),
-                    proforma_name: Some("Hex".to_string().into_boxed_str()),
-                    furanose: false,
-                    configuration: None,
-                },
-            ),
-            (
-                "Gul".to_string().into_boxed_str(),
-                MonoSaccharide {
-                    base_sugar: BaseSugar::Hexose(Some(HexoseIsomer::Gulose)),
-                    substituents: ThinVec::new(),
-                    proforma_name: Some("Hex".to_string().into_boxed_str()),
-                    furanose: false,
-                    configuration: None,
-                },
-            ),
-            (
-                "Ido".to_string().into_boxed_str(),
-                MonoSaccharide {
-                    base_sugar: BaseSugar::Hexose(Some(HexoseIsomer::Idose)),
-                    substituents: ThinVec::new(),
-                    proforma_name: Some("Hex".to_string().into_boxed_str()),
-                    furanose: false,
-                    configuration: None,
-                },
-            ),
-            (
-                "Tal".to_string().into_boxed_str(),
+                vec![
+                    "Hex", "Glc", "Gal", "Man", "All", "Alt", "Gul", "Ido", "Tal",
+                ],
                 MonoSaccharide {
                     base_sugar: BaseSugar::Hexose(Some(HexoseIsomer::Talose)),
                     substituents: ThinVec::new(),
@@ -659,7 +447,7 @@ pub(crate) static GLYCAN_PARSE_LIST: LazyLock<Vec<(Box<str>, MonoSaccharide)>> =
                 },
             ),
             (
-                "Hep".to_string().into_boxed_str(),
+                vec!["Hep"],
                 MonoSaccharide {
                     base_sugar: BaseSugar::Heptose(None),
                     substituents: ThinVec::new(),
@@ -669,7 +457,7 @@ pub(crate) static GLYCAN_PARSE_LIST: LazyLock<Vec<(Box<str>, MonoSaccharide)>> =
                 },
             ),
             (
-                "Oct".to_string().into_boxed_str(),
+                vec!["Oct"],
                 MonoSaccharide {
                     base_sugar: BaseSugar::Octose,
                     substituents: ThinVec::new(),
@@ -679,7 +467,7 @@ pub(crate) static GLYCAN_PARSE_LIST: LazyLock<Vec<(Box<str>, MonoSaccharide)>> =
                 },
             ),
             (
-                "Kdo".to_string().into_boxed_str(),
+                vec!["Kdo"],
                 MonoSaccharide {
                     base_sugar: BaseSugar::Octose,
                     substituents: vec![GlycanSubstituent::Acid, GlycanSubstituent::Deoxy].into(),
@@ -689,7 +477,7 @@ pub(crate) static GLYCAN_PARSE_LIST: LazyLock<Vec<(Box<str>, MonoSaccharide)>> =
                 },
             ),
             (
-                "Non".to_string().into_boxed_str(),
+                vec!["Non"],
                 MonoSaccharide {
                     base_sugar: BaseSugar::Nonose(None),
                     substituents: ThinVec::new(),
@@ -699,7 +487,7 @@ pub(crate) static GLYCAN_PARSE_LIST: LazyLock<Vec<(Box<str>, MonoSaccharide)>> =
                 },
             ),
             (
-                "Kdn".to_string().into_boxed_str(),
+                vec!["Kdn"],
                 MonoSaccharide {
                     base_sugar: BaseSugar::Nonose(Some(NonoseIsomer::Kdn)),
                     substituents: vec![
@@ -714,7 +502,7 @@ pub(crate) static GLYCAN_PARSE_LIST: LazyLock<Vec<(Box<str>, MonoSaccharide)>> =
                 },
             ),
             (
-                "Sia".to_string().into_boxed_str(),
+                vec!["Sia"],
                 MonoSaccharide {
                     base_sugar: BaseSugar::Nonose(None),
                     substituents: vec![
@@ -729,7 +517,7 @@ pub(crate) static GLYCAN_PARSE_LIST: LazyLock<Vec<(Box<str>, MonoSaccharide)>> =
                 },
             ),
             (
-                "Dec".to_string().into_boxed_str(),
+                vec!["Dec"],
                 MonoSaccharide {
                     base_sugar: BaseSugar::Decose,
                     substituents: ThinVec::new(),
@@ -739,7 +527,7 @@ pub(crate) static GLYCAN_PARSE_LIST: LazyLock<Vec<(Box<str>, MonoSaccharide)>> =
                 },
             ),
             (
-                "Neu5Ac".to_string().into_boxed_str(),
+                vec!["Neu5Ac", "NeuAc"],
                 MonoSaccharide {
                     base_sugar: BaseSugar::Nonose(None),
                     substituents: vec![
@@ -754,22 +542,7 @@ pub(crate) static GLYCAN_PARSE_LIST: LazyLock<Vec<(Box<str>, MonoSaccharide)>> =
                 },
             ),
             (
-                "NeuAc".to_string().into_boxed_str(),
-                MonoSaccharide {
-                    base_sugar: BaseSugar::Nonose(None),
-                    substituents: vec![
-                        GlycanSubstituent::Acetyl,
-                        GlycanSubstituent::Acid,
-                        GlycanSubstituent::Amino,
-                    ]
-                    .into(),
-                    proforma_name: Some("NeuAc".to_string().into_boxed_str()),
-                    furanose: false,
-                    configuration: None,
-                },
-            ),
-            (
-                "Neu5Gc".to_string().into_boxed_str(),
+                vec!["Neu5Gc", "NeuGc"],
                 MonoSaccharide {
                     base_sugar: BaseSugar::Nonose(None),
                     substituents: vec![
@@ -784,22 +557,7 @@ pub(crate) static GLYCAN_PARSE_LIST: LazyLock<Vec<(Box<str>, MonoSaccharide)>> =
                 },
             ),
             (
-                "NeuGc".to_string().into_boxed_str(),
-                MonoSaccharide {
-                    base_sugar: BaseSugar::Nonose(None),
-                    substituents: vec![
-                        GlycanSubstituent::Acid,
-                        GlycanSubstituent::Amino,
-                        GlycanSubstituent::Glycolyl,
-                    ]
-                    .into(),
-                    proforma_name: Some("NeuGc".to_string().into_boxed_str()),
-                    furanose: false,
-                    configuration: None,
-                },
-            ),
-            (
-                "Neu".to_string().into_boxed_str(),
+                vec!["Neu"],
                 MonoSaccharide {
                     base_sugar: BaseSugar::Nonose(None),
                     substituents: vec![
@@ -814,7 +572,7 @@ pub(crate) static GLYCAN_PARSE_LIST: LazyLock<Vec<(Box<str>, MonoSaccharide)>> =
                 },
             ),
             (
-                "Fuc".to_string().into_boxed_str(),
+                vec!["Fuc"],
                 MonoSaccharide {
                     base_sugar: BaseSugar::Hexose(Some(HexoseIsomer::Galactose)),
                     substituents: vec![GlycanSubstituent::Deoxy].into(),
@@ -823,9 +581,39 @@ pub(crate) static GLYCAN_PARSE_LIST: LazyLock<Vec<(Box<str>, MonoSaccharide)>> =
                     configuration: None,
                 },
             ),
+            (
+                vec!["Xxx"],
+                MonoSaccharide {
+                    base_sugar: BaseSugar::Custom(MolecularFormula::default()),
+                    substituents: ThinVec::new(),
+                    proforma_name: None,
+                    furanose: false,
+                    configuration: None,
+                },
+            ),
+            (
+                vec!["Aldi"],
+                MonoSaccharide {
+                    base_sugar: BaseSugar::Custom(MolecularFormula::default()),
+                    substituents: vec![GlycanSubstituent::Alcohol].into(),
+                    proforma_name: None,
+                    furanose: false,
+                    configuration: None,
+                },
+            ),
+            (
+                vec!["Me"],
+                MonoSaccharide {
+                    base_sugar: BaseSugar::Custom(MolecularFormula::default()),
+                    substituents: vec![GlycanSubstituent::Methyl].into(),
+                    proforma_name: None,
+                    furanose: false,
+                    configuration: None,
+                },
+            ),
             // Single letter codes, by defining them like this they will be read but exported to the standard ProForma codes
             (
-                "P".to_string().into_boxed_str(),
+                vec!["P"],
                 MonoSaccharide {
                     base_sugar: BaseSugar::Custom(MolecularFormula::default()),
                     substituents: vec![GlycanSubstituent::Phosphate].into(),
@@ -835,7 +623,7 @@ pub(crate) static GLYCAN_PARSE_LIST: LazyLock<Vec<(Box<str>, MonoSaccharide)>> =
                 },
             ),
             (
-                "H".to_string().into_boxed_str(),
+                vec!["H"],
                 MonoSaccharide {
                     base_sugar: BaseSugar::Hexose(None),
                     substituents: ThinVec::new(),
@@ -845,7 +633,7 @@ pub(crate) static GLYCAN_PARSE_LIST: LazyLock<Vec<(Box<str>, MonoSaccharide)>> =
                 },
             ),
             (
-                "N".to_string().into_boxed_str(),
+                vec!["N"],
                 MonoSaccharide {
                     base_sugar: BaseSugar::Hexose(None),
                     substituents: vec![GlycanSubstituent::NAcetyl].into(),
@@ -855,7 +643,7 @@ pub(crate) static GLYCAN_PARSE_LIST: LazyLock<Vec<(Box<str>, MonoSaccharide)>> =
                 },
             ),
             (
-                "F".to_string().into_boxed_str(),
+                vec!["F"],
                 MonoSaccharide {
                     base_sugar: BaseSugar::Hexose(Some(HexoseIsomer::Galactose)),
                     substituents: vec![GlycanSubstituent::Deoxy].into(),
@@ -865,7 +653,7 @@ pub(crate) static GLYCAN_PARSE_LIST: LazyLock<Vec<(Box<str>, MonoSaccharide)>> =
                 },
             ),
             (
-                "S".to_string().into_boxed_str(),
+                vec!["S", "A"],
                 MonoSaccharide {
                     base_sugar: BaseSugar::Nonose(None),
                     substituents: vec![
@@ -880,22 +668,7 @@ pub(crate) static GLYCAN_PARSE_LIST: LazyLock<Vec<(Box<str>, MonoSaccharide)>> =
                 },
             ),
             (
-                "A".to_string().into_boxed_str(),
-                MonoSaccharide {
-                    base_sugar: BaseSugar::Nonose(None),
-                    substituents: vec![
-                        GlycanSubstituent::Acetyl,
-                        GlycanSubstituent::Acid,
-                        GlycanSubstituent::Amino,
-                    ]
-                    .into(),
-                    proforma_name: Some("NeuAc".to_string().into_boxed_str()),
-                    furanose: false,
-                    configuration: None,
-                },
-            ),
-            (
-                "G".to_string().into_boxed_str(),
+                vec!["G"],
                 MonoSaccharide {
                     base_sugar: BaseSugar::Nonose(None),
                     substituents: vec![
@@ -905,6 +678,16 @@ pub(crate) static GLYCAN_PARSE_LIST: LazyLock<Vec<(Box<str>, MonoSaccharide)>> =
                     ]
                     .into(),
                     proforma_name: Some("NeuGc".to_string().into_boxed_str()),
+                    furanose: false,
+                    configuration: None,
+                },
+            ),
+            (
+                vec!["X"],
+                MonoSaccharide {
+                    base_sugar: BaseSugar::Custom(MolecularFormula::default()),
+                    substituents: vec![GlycanSubstituent::Acetyl].into(),
+                    proforma_name: None,
                     furanose: false,
                     configuration: None,
                 },

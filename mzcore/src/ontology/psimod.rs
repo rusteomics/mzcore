@@ -55,15 +55,16 @@ impl CVSource for PsiMod {
         {
             use bincode::config::Configuration;
             use mzcv::CVCache;
-            let cache: <SimpleModificationInner as CVData>::Cache = bincode::decode_from_slice::<
-                <SimpleModificationInner as CVData>::Cache,
-                Configuration,
-            >(
-                include_bytes!("../databases/psimod_new.dat"),
-                Configuration::default(),
-            )
-            .unwrap()
-            .0;
+            let cache: <SimpleModificationInner as mzcv::CVData>::Cache =
+                bincode::decode_from_slice::<
+                    <SimpleModificationInner as mzcv::CVData>::Cache,
+                    Configuration,
+                >(
+                    include_bytes!("../databases/psimod_new.dat"),
+                    Configuration::default(),
+                )
+                .unwrap()
+                .0;
             Some(cache.deconstruct())
         }
         #[cfg(feature = "internal-no-data")]

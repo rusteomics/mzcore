@@ -1456,7 +1456,7 @@ fn parse_mztab_reader<T: BufRead>(
             if line.trim().is_empty() {
                 Ok(None)
             } else {
-                crate::csv::csv_separate(&line, b'\t')
+                mzcore::csv::csv_separate(&line, b'\t')
                     .map_err(BoxedError::to_owned)
                     .map(|fields| match &line[fields[0].clone()] {
                         "MTD" => Some(MZTabLine::MTD(line_index, line, fields)),

@@ -7,6 +7,8 @@ mod helper_functions;
 
 /// Contains all things related to the underlying chemistry.
 pub mod chemistry;
+/// Parse CSV files while keeping track of all necessary info to generate great error messages
+pub mod csv;
 pub mod glycan;
 mod isobaric_sets;
 pub mod ontology;

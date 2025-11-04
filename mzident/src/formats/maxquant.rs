@@ -13,10 +13,10 @@ use crate::{
     IdentifiedPeptidoformSource, IdentifiedPeptidoformVersion, KnownFileFormat, MaybePeptidoform,
     MetaData, SpectrumId, SpectrumIds,
     common_parser::{Location, OptionalColumn, OptionalLocation},
-    csv::{CsvLine, parse_csv},
     helper_functions::end_of_enclosure,
 };
 use mzcore::{
+    csv::{CsvLine, parse_csv},
     ontology::CustomDatabase,
     sequence::{
         AminoAcid, CheckedAminoAcid, CompoundPeptidoformIon, FlankingSequence, Modification,
@@ -883,7 +883,7 @@ fn parse_de_novo_sequence(
 #[cfg(test)]
 #[allow(clippy::missing_panics_doc)]
 mod tests {
-    use crate::{common_parser::Location, csv::CsvLine, formats::maxquant::parse_de_novo_sequence};
+    use crate::{common_parser::Location, formats::maxquant::parse_de_novo_sequence};
 
     #[test]
     fn de_novo_sequence() {
@@ -899,7 +899,7 @@ mod tests {
         for (test, expected) in expected {
             let test = parse_de_novo_sequence(
                 Location {
-                    line: &CsvLine {
+                    line: &mzcore::csv::CsvLine {
                         line_index: 0,
                         line: test.to_string(),
                         fields: Vec::new(),

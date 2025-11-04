@@ -8,7 +8,6 @@ use crate::{
     ParserResult,
     chemistry::{Element, MolecularCharge, MolecularFormula},
     helper_functions::*,
-    molecular_formula,
     ontology::CustomDatabase,
     sequence::{
         AmbiguousLookup, AmbiguousLookupEntry, AminoAcid, CheckedAminoAcid, CompoundPeptidoformIon,
