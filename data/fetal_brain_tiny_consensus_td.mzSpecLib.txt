@@ -1,0 +1,1793 @@
+<mzSpecLib>
+MS:1003186|library format version=1.0
+MS:1003187|library identifier=mzspec:PXL000001:fetal_brain_tiny_consensus_td
+MS:1003188|library name=fetal_brain_tiny_consensus_td
+MS:1003189|library description=A small example MS/MS consensus spectra library of 5 human fetal brain peptides, appended with 5 shuffle-and-reposition decoy spectra
+MS:1003190|library version=1.0
+MS:1001017|release date=2023-05-06T00:00:00
+[1]MS:1003207|library creation software=MS:1001477|SpectraST
+[1]MS:1003200|software version=6.0
+[1]MS:1003206|library creation log=COMPILE FROM /data/fetal_brain_tiny_consensus.splib"  [DECOY;c=TRUE;y=1;DPS=FALSE;I=]
+[1]MS:1003206|library creation log=> fetal_brain_tiny_consensus.splib : COMPILE FROM "/data/fetal_brain_tiny.splib"  [CONSENSUS;r=1;I=HCD;_QUO=0.6;_XNR=100;_WGT=SN;_DIS=TRUE;_XPK=150;_XPU=300;_BDN=FALSE;_TBD=FALSE]
+[1]MS:1003206|library creation log=> > fetal_brain_tiny.splib : COMPILE FROM "/data/fetal_brain.splib" ; FILTER for entries in probability table "/data/fetal_brain_tiny.txt"
+[1]MS:1003206|library creation log=> > > fetal_brain.splib : IMPORT FROM PepXML "/data/interact.pep.xml", (Comet against "UP000005640_9606.fasta" (AA); ) [P=0.9;q=9999;n=;g=FALSE;o=FALSE;I=;_RNT=0;_RDR=100000;_DCN=0;_NAA=6;_NPK=10;_MDF=9999;_CEN=FALSE;_XAN=FALSE;_BRK=FALSE;_BRM=FALSE;_IRT=;_IRR=FALSE]
+MS:1003203|constituent spectrum file=mzspec:PXD000561:Fetal_Brain_Gel_Velos_16_f16
+MS:1003204|constituent identification file=file://data/interact.pep.xml
+MS:1003205|constituent library file=mzspec:PXL000001:fetal_brain_tiny
+
+<AttributeSet Spectrum=all>
+MS:1000511|ms level=2
+MS:1000008|ionization type=MS:1000073|electrospray ionization
+MS:1000031|instrument model=MS:1000855|LTQ Velos
+MS:1000443|mass analyzer type=MS:1000484|orbitrap
+MS:1000044|dissociation method=MS:1000422|beam-type collision induced dissociation
+MS:1003213|mass spectrometry acquisition method=MS:1003221|data-dependent acquisition
+MS:1000465|scan polarity=MS:1000130|positive scan
+MS:1000043|intensity unit=MS:1000905|percent of base peak times 100
+[1]MS:1000045|collision energy=39.0
+[1]UO:0000000|unit=UO:0000266|electronvolt
+MS:1003072|spectrum origin type=MS:1003073|observed spectrum
+MS:1000002|sample name=human fetal brain
+[2]MS:1003254|peak attribute=MS:1003279|observation frequency of peak
+[2]MS:1003254|peak attribute=MS:1003285|standard deviation of m/z values of peak among replicates
+[2]MS:1003254|peak attribute=MS:1003286|coefficient of variation of intensity of peak among replicates
+
+<AttributeSet Spectrum=DECOY>
+MS:1003072|spectrum origin type=MS:1003195|shuffle-and-reposition decoy spectrum
+
+<AttributeSet Analyte=HUMAN_TRYPTIC>
+MS:1001467|taxonomy: NCBI TaxID=9606
+MS:1001468|taxonomy: common name=Human
+MS:1001469|taxonomy: scientific name=Homo sapiens
+MS:1001045|cleavage agent name=MS:1001251|Trypsin
+MS:1003048|number of enzymatic termini=2
+
+<Spectrum=1>
+MS:1003061|library spectrum name=FAC[Carbamidomethyl]HSASLTVR/3 (HCD)
+[1]MS:1000894|retention time=1189.6
+[1]UO:0000000|unit=UO:0000010|second
+[2]MS:1003065|spectrum aggregation type=MS:1003066|singleton spectrum
+[2]MS:1003070|number of replicate spectra used=1
+[2]MS:1003069|number of replicate spectra available=1
+[2]MS:1003299|contributing replicate spectrum USI=mzspec:PXL000001:fetal_brain_tiny:key:1
+MS:1000505|base peak intensity=160000.0
+MS:1003085|previous MSn-1 scan precursor intensity=630000.0
+MS:1000285|total ion current=920000.0
+MS:1003059|number of peaks=150
+[3]MS:1003275|other attribute name=Status
+[3]MS:1003276|other attribute value=Normal
+[4]MS:1003275|other attribute name=BinaryFileOffset
+[4]MS:1003276|other attribute value=937
+
+<Analyte=1>
+MS:1003270|proforma peptidoform ion notation=FAC[Carbamidomethyl]HSASLTVR/3
+MS:1000041|charge state=3
+MS:1003043|number of residues=11
+MS:1003243|adduct ion mass=1250.6299
+MS:1003053|theoretical monoisotopic m/z=416.8766
+MS:1003054|theoretical average m/z=417.148
+[1]MS:1003212|library attribute set name=HUMAN_TRYPTIC
+[1]MS:1000885|protein accession=sp|Q15233|NONO_HUMAN
+[1]MS:1000886|protein name=Non-POU domain-containing octamer-binding protein
+[1]MS:1003048|number of enzymatic termini=2
+[1]MS:1003044|number of missed cleavages=0
+[1]MS:1001112|n-terminal flanking residue=R
+[1]MS:1001113|c-terminal flanking residue=N
+
+<Interpretation=1>
+MS:1003290|number of unassigned peaks among top 20 peaks=0
+MS:1003288|number of unassigned peaks=60
+MS:1003080|top 20 peak unassigned intensity fraction=0.00
+MS:1003079|total unassigned intensity fraction=0.13
+MS:1002357|PSM-level probability=0.998
+
+<Peaks>
+103.0541	102.5	?
+110.0711	1329.4	IC[Carbamidomethyl]/-0.0008
+115.0863	110.9	?
+120.0696	86.4	?
+120.0736	83.6	y3-NH3^3/-0.0008
+120.0805	10000.0	a1/-0.0003,y2-H2O-NH3^2/0.0017
+120.0873	54.6	?
+121.0838	404.1	a1+i/0.0031
+129.1019	360.5	?
+130.0861	123.2	?
+131.0811	99.2	?
+133.0427	160.3	IA/-0.0008
+136.0753	79.2	?
+143.1174	68.8	y3-CO2-HCOOH^2/-0.0062
+147.1124	193.5	?
+158.0920	135.5	y1-NH3/-0.0004
+159.0754	85.8	m6:7/-0.001,m5:6/-0.001
+166.0609	54.3	?
+171.1120	59.6	y5-H2O-HCOOH^3/-0.0045
+173.1280	288.0	?
+175.1184	901.9	y1/-0.0005
+179.0921	62.4	?
+187.1437	90.6	?
+188.1206	78.5	y3^2/-0.0005
+191.1174	1317.8	a2/-0.0005
+192.1208	70.6	a2+i/0.0029
+201.1228	192.3	m7:8/-0.0005,m9:10/-0.0005
+204.0796	182.5	?
+207.0874	53.7	?
+212.1029	101.4	?
+215.0477	166.1	?
+219.1121	321.8	b2/-0.0007
+225.0975	227.9	m4:5/-0.0007
+232.0747	299.3	m2:3/-0.0004
+234.1437	76.6	?
+244.6068	164.6	a4^2/-0.0006
+253.0749	102.8	?
+257.1598	161.9	y2-NH3/-0.0011
+258.6043	268.7	b4^2/-0.0005
+260.1135	164.7	?
+270.1015	262.2	?
+271.6113	71.5	?
+272.1349	92.6	?
+274.1867	430.8	y2/-0.0007
+278.1238	183.4	?
+279.1732	54.2	y5-H2O^2/-0.0007
+279.6100	72.4	?
+281.0696	299.9	?
+288.1226	176.3	b3-C2H5NOS/-0.0117,a5^2/-0.0008
+292.5156	81.6	?
+293.1148	191.2	b5-H2O^2/-0.0008
+296.1338	52.5	m4:6/-0.0015
+298.0961	869.1	m3:4/-0.0007
+299.0991	63.8	m3:4+i/0.0022
+302.1197	277.1	b5^2/-0.0011
+314.6359	217.6	?
+315.1377	74.4	?
+323.6412	498.8	a6^2/-0.0008
+324.1423	86.1	a6+i^2/0.0003
+325.1879	77.1	?
+331.2090	85.7	?
+337.6400	88.9	b6^2/0.0006
+341.1375	61.2	?
+345.2202	288.8	y7-CO2^2/0.0013
+345.7208	84.1	y7-CO2+i^2/0.002
+358.1501	54.9	?
+358.2090	128.6	y7-H2O^2/0.0005,y3-NH3/0.0006
+367.1177	55.1	?
+367.1567	125.5	a7^2/-0.0012
+369.1331	510.6	m2:4/-0.0008
+372.1479	83.1	b7-H2O^2/-0.0023
+375.2339	2236.8	y3/-0.0011
+376.2388	170.9	y3+i/0.0038
+378.5281	69.6	?
+379.1420	84.1	b3/-0.0015
+385.1279	190.2	m3:5/-0.0009
+410.5533	60.5	?
+411.2064	66.4	p-NH3^3/0.0052
+414.6932	90.1	?
+416.2587	371.6	?
+416.3007	90.6	?
+416.5764	258.5	?
+416.7074	83.5	?
+417.0330	61.5	?
+417.2428	163.1	?
+417.2666	54.9	?
+426.7367	841.1	y8-H2O^2/-0.0013
+427.2378	327.2	y8-NH3^2/0.0078
+428.1702	82.9	?
+435.7415	1973.4	y8^2/-0.0017
+436.2435	547.6	y8+i^2/0.0002
+438.1538	174.3	?
+444.5459	55.1	?
+444.5755	74.1	?
+456.1647	306.3	m2:5/-0.0013,m3:6/-0.0013
+461.7705	144.9	?
+462.2682	59.3	?
+475.2431	53.8	?
+485.2510	92.6	y9-CO2-NH3^2/0.0007
+488.2062	121.7	b9^2/-0.0151,a4/-0.0013
+488.3179	756.5	y4/-0.0012
+489.2303	54.5	a4+i/0.0228
+489.3217	99.9	y4+i/0.0026
+497.7477	95.9	y9-2H2O^2/-0.0003
+498.2372	204.0	y9-H2O-NH3^2/-0.0028
+506.7518	756.1	y9-H2O^2/-0.0015
+507.2467	276.2	y9-NH3^2/0.0014
+507.2894	68.7	?
+507.7451	95.0	y9-NH3+i^2/-0.0002
+509.1907	160.9	?
+512.2926	83.5	?
+515.7569	1656.3	y9^2/-0.0017
+516.2006	188.2	b4/-0.0017
+516.2587	713.1	y9+i^2/0.0002
+525.1868	74.2	?
+527.2019	148.2	m2:6/-0.0012
+530.2917	129.4	?
+533.2639	73.7	y10-2H2O^2/-0.0027
+533.7563	178.5	y10-H2O-NH3^2/-0.0023
+542.2701	513.5	y10-H2O^2/-0.0018
+542.7714	233.8	y10-NH3^2/0.0075
+551.2755	2247.5	y10^2/-0.0017
+551.7769	893.2	y10+i^2/-0.0003
+557.3385	127.1	y5-H2O/-0.0021
+575.3495	1814.2	y5/-0.0016
+576.3529	354.5	y5+i/0.0018
+585.2261	54.1	b5-H2O/0.0023
+587.3358	130.6	?
+596.2268	74.0	?
+598.3326	67.7	?
+603.2326	137.8	b5/-0.0018
+614.2340	94.3	m2:7/-0.0011
+646.3868	1089.3	y6/-0.0015
+647.3889	280.9	y6+i/0.0007
+653.3604	156.3	?
+656.2595	82.9	b6-H2O/-0.0015,m3:8/-0.0226
+674.2709	200.4	b6/-0.0006
+715.4084	336.4	y7-H2O/-0.0013
+716.4114	88.7	y7-NH3/0.0176
+733.3059	72.6	a7/-0.0027
+733.4186	2638.8	y7/-0.0017
+734.4214	642.4	y7+i/0.0011
+743.2910	335.5	b7-H2O/-0.002
+744.2900	95.0	b7-NH3/0.013
+761.3024	468.4	b7/-0.0011
+762.3034	104.1	b7+i/-0.0001
+852.4667	166.1	y8-H2O/-0.0019
+853.4666	61.5	y8-NH3/0.014
+870.4782	861.8	y8/-0.001
+871.4819	226.4	y8+i/0.0027
+
+<Spectrum=2>
+MS:1003061|spectrum name=AVC[Carbamidomethyl]ASFSLTHR/3 (HCD)
+MS:1000505|base peak intensity=160000.0
+MS:1003085|previous MSn-1 scan precursor intensity=630000.0
+[1]MS:1000894|retention time=1189.6
+[1]UO:0000000|unit=UO:0000010|second
+[2]MS:1003065|spectrum aggregation type=MS:1003066|singleton spectrum
+[2]MS:1003070|number of replicate spectra used=1
+[2]MS:1003069|number of replicate spectra available=1
+[2]MS:1003299|contributing replicate spectrum USI=mzspec:PXL000001:fetal_brain_tiny:key:1
+MS:1003212|library attribute set name=DECOY
+MS:1000285|total ion current=920000.0
+MS:1003059|number of peaks=150
+[3]MS:1003259|related spectrum keys=1
+[3]MS:1003261|related spectrum description=spectrum of FAC[Carbamidomethyl]HSASLTVR/3 (HCD) from which decoy is derived
+[4]MS:1003275|other attribute name=Status
+[4]MS:1003276|other attribute value=Normal
+[5]MS:1003275|other attribute name=BinaryFileOffset
+[5]MS:1003276|other attribute value=5571
+
+<Analyte=1>
+MS:1003270|proforma peptidoform ion notation=AVC[Carbamidomethyl]ASFSLTHR/3
+MS:1000041|charge state=3
+MS:1003043|number of residues=11
+MS:1003243|adduct ion mass=1250.6299
+MS:1003053|theoretical monoisotopic m/z=416.8766
+MS:1003054|theoretical average m/z=417.148
+[1]MS:1003212|library attribute set name=HUMAN_TRYPTIC
+[1]MS:1000885|protein accession=DECOY_0_sp|Q15233|NONO_HUMAN
+[1]MS:1003048|number of enzymatic termini=2
+[1]MS:1003044|number of missed cleavages=0
+[1]MS:1001112|n-terminal flanking residue=R
+[1]MS:1001113|c-terminal flanking residue=N
+
+<Interpretation=1>
+MS:1003290|number of unassigned peaks among top 20 peaks=0
+MS:1003288|number of unassigned peaks=60
+MS:1003080|top 20 peak unassigned intensity fraction=0.00
+MS:1003079|total unassigned intensity fraction=0.13
+MS:1002357|PSM-level probability=0.998
+
+<Peaks>
+103.0541	102.5	?
+110.0711	1329.4	IC[Carbamidomethyl]/-0.0008
+115.0863	110.9	?
+120.0696	86.4	?
+120.0736	83.6	y3-NH3^3/-0.0008
+120.0805	10000.0	a1/-0.0003,y2-H2O-NH3^2/0.0017
+120.0873	54.6	?
+121.0838	404.1	a1+i/0.0031
+129.1019	360.5	?
+130.0861	123.2	?
+131.0811	99.2	?
+133.0427	160.3	IA/-0.0008
+136.0753	79.2	?
+143.1174	68.8	y3-CO2-HCOOH^2/-0.0062
+147.1124	193.5	?
+158.0920	135.5	y1-NH3/-0.0004
+159.0754	85.8	m6:7/-0.001,m5:6/-0.001
+166.0609	54.3	?
+171.1120	59.6	y5-H2O-HCOOH^3/-0.0045
+173.1280	288.0	?
+175.1184	901.9	y1/-0.0005
+179.0921	62.4	?
+187.1437	90.6	?
+187.5959	164.6	a4^2/-0.0006
+191.1174	1317.8	a2/-0.0005
+192.1208	70.6	a2+i/0.0029
+201.1229	192.3	m7:8/-0.0005
+201.5934	268.7	b4^2/-0.0005
+204.0796	182.5	?
+207.0874	53.7	?
+207.1159	78.5	y3^2/-0.0005
+212.1029	101.4	?
+215.0477	166.1	?
+219.1121	321.8	b2/-0.0007
+225.0975	227.9	m4:5/-0.0007
+232.0743	869.1	m3:4/-0.0007
+233.0772	63.8	m3:4+i/0.0022
+234.1437	76.6	?
+236.1039	191.2	b5-H2O^2/-0.0008
+240.1226	176.3	b3-C2H5NOS/-0.0117
+245.1088	277.1	b5^2/-0.0011
+253.0749	102.8	?
+260.1059	299.3	m2:3/-0.0004
+260.1135	164.7	?
+270.1015	262.2	?
+271.6113	71.5	?
+272.1349	92.6	?
+278.1238	183.4	?
+279.6100	72.4	?
+281.0696	299.9	?
+292.5156	81.6	?
+295.1502	161.9	y2-NH3/-0.0011
+298.1685	54.2	y5-H2O^2/-0.0007
+304.6459	498.8	a6^2/-0.0008
+305.1470	86.1	a6+i^2/0.0003
+306.1433	52.5	m4:6/-0.0015
+312.1772	430.8	y2/-0.0007
+314.6359	217.6	?
+315.1377	74.4	?
+318.6447	88.9	b6^2/0.0006
+319.1062	190.2	m3:5/-0.0009
+325.1879	77.1	?
+331.1420	84.1	b3/-0.0015
+331.1427	510.6	m2:4/-0.0008
+331.2090	85.7	?
+341.1375	61.2	?
+345.2202	288.8	y7-CO2^2/0.0013
+345.7208	84.1	y7-CO2+i^2/0.002
+348.1615	125.5	a7^2/-0.0012
+353.1526	83.1	b7-H2O^2/-0.0023
+358.1501	54.9	?
+358.2090	128.6	y7-H2O^2/0.0005,y3-NH3/0.0006
+367.1177	55.1	?
+375.2085	54.5	a4+i/0.0228
+375.2339	2236.8	y3/-0.0011
+376.2388	170.9	y3+i/0.0038
+378.5281	69.6	?
+410.5533	60.5	?
+411.2064	66.4	p-NH3^3/0.0052
+414.6932	90.1	?
+416.2587	371.6	?
+416.3007	90.6	?
+416.5764	258.5	?
+416.7074	83.5	?
+417.0330	61.5	?
+417.2428	163.1	?
+417.2666	54.9	?
+428.1702	82.9	?
+438.1538	174.3	?
+444.5459	55.1	?
+444.5755	74.1	?
+450.7367	841.1	y8-H2O^2/-0.0013
+451.2378	327.2	y8-NH3^2/0.0078
+456.1647	306.3	m2:5/-0.0013,m3:6/-0.0013
+459.7415	1973.4	y8^2/-0.0017
+460.2434	547.6	y8+i^2/0.0002
+461.7705	144.9	?
+462.2682	59.3	?
+469.2109	121.7	b9^2/-0.0151
+471.2043	54.1	b5-H2O/0.0023
+475.2431	53.8	?
+489.2108	137.8	b5/-0.0018
+507.2894	68.7	?
+509.1907	160.9	?
+509.2511	92.6	y9-CO2-NH3^2/0.0007
+512.2926	83.5	?
+516.2006	188.2	b4/-0.0017
+521.7477	95.9	y9-2H2O^2/-0.0003
+522.2372	204.0	y9-H2O-NH3^2/-0.0028
+525.1868	74.2	?
+526.3084	756.5	y4/-0.0012
+527.3122	99.9	y4+i/0.0026
+530.2917	129.4	?
+530.7518	756.1	y9-H2O^2/-0.0015
+531.2467	276.2	y9-NH3^2/0.0014
+531.7451	95.0	y9-NH3+i^2/-0.0002
+539.7569	1656.3	y9^2/-0.0017
+540.2588	713.1	y9+i^2/0.0002
+565.2427	148.2	m2:6/-0.0012
+571.2795	73.7	y10-2H2O^2/-0.0027
+571.7719	178.5	y10-H2O-NH3^2/-0.0023
+580.2857	513.5	y10-H2O^2/-0.0018
+580.7870	233.8	y10-NH3^2/0.0075
+587.3358	130.6	?
+589.2911	2247.5	y10^2/-0.0017
+589.7925	893.2	y10+i^2/-0.0003
+595.3290	127.1	y5-H2O/-0.0021
+596.2268	74.0	?
+598.3326	67.7	?
+613.3400	1814.2	y5/-0.0016
+614.3434	354.5	y5+i/0.0018
+618.2690	82.9	b6-H2O/-0.0015
+636.2804	200.4	b6/-0.0006
+652.2748	94.3	m2:7/-0.0011
+653.3604	156.3	?
+695.3154	72.6	a7/-0.0027
+705.3005	335.5	b7-H2O/-0.002
+706.2995	95.0	b7-NH3/0.013
+723.3119	468.4	b7/-0.0011
+724.3129	104.1	b7+i/-0.0001
+760.4085	1089.3	y6/-0.0015
+761.4107	280.9	y6+i/0.0007
+829.4302	336.4	y7-H2O/-0.0013
+830.4331	88.7	y7-NH3/0.0176
+847.4404	2638.8	y7/-0.0017
+848.4432	642.4	y7+i/0.0011
+900.4667	166.1	y8-H2O/-0.0019
+901.4666	61.5	y8-NH3/0.014
+918.4782	861.8	y8/-0.001
+919.4819	226.4	y8+i/0.0027
+
+<Spectrum=3>
+MS:1003061|library spectrum name=NVTLPAVFK/2 (HCD)
+[1]MS:1000894|retention time=2622.1
+[1]UO:0000000|unit=UO:0000010|second
+[1]MS:1003174|attribute maximum=3156.5
+[1]MS:1003175|attribute minimum=2554.4
+[2]MS:1003065|spectrum aggregation type=MS:1003067|consensus spectrum
+[2]MS:1003070|number of replicate spectra used=5
+[2]MS:1003069|number of replicate spectra available=5
+[2]MS:1003299|contributing replicate spectrum USI=PXL000001:fetal_brain_tiny:key:17
+[2]MS:1003299|contributing replicate spectrum USI=PXL000001:fetal_brain_tiny:key:18
+[2]MS:1003299|contributing replicate spectrum USI=PXL000001:fetal_brain_tiny:key:19
+[2]MS:1003299|contributing replicate spectrum USI=PXL000001:fetal_brain_tiny:key:20
+[2]MS:1003299|contributing replicate spectrum USI=PXL000001:fetal_brain_tiny:key:21
+[3]MS:1003295|summary statistics of replicates=MS:1003324|spectral dot product to aggregated spectrum
+[3]MS:1003176|attribute mean=0.91
+[3]MS:1003177|attribute standard deviation=0.07
+MS:1000505|base peak intensity=250000.0
+MS:1003085|previous MSn-1 scan precursor intensity=1500000.0
+MS:1001884|signal-to-noise ratio=200.0
+MS:1000285|total ion current=1500000.0
+MS:1003059|number of peaks=92
+[4]MS:1003275|other attribute name=Status
+[4]MS:1003276|other attribute value=Normal
+[5]MS:1003275|other attribute name=BinaryFileOffset
+[5]MS:1003276|other attribute value=10242
+
+<Analyte=1>
+MS:1003270|proforma peptidoform ion notation=NVTLPAVFK/2
+MS:1000041|charge state=2
+MS:1003043|number of residues=9
+MS:1003243|adduct ion mass=989.5899
+MS:1003053|theoretical monoisotopic m/z=494.7949
+MS:1003054|theoretical average m/z=495.1049
+[1]MS:1003212|library attribute set name=HUMAN_TRYPTIC
+[1]MS:1000885|protein accession=sp|P36578|RL4_HUMAN
+[1]MS:1000886|protein name=60S ribosomal protein L4
+[1]MS:1003044|number of missed cleavages=0
+[1]MS:1001112|n-terminal flanking residue=K
+[1]MS:1001113|c-terminal flanking residue=A
+
+<Interpretation=1>
+MS:1003290|number of unassigned peaks among top 20 peaks=6
+MS:1003288|number of unassigned peaks=41
+MS:1003080|top 20 peak unassigned intensity fraction=0.18
+MS:1003079|total unassigned intensity fraction=0.26
+[1]MS:1002357|PSM-level probability=0.9953
+[1]MS:1003176|attribute mean=0.9604
+[1]MS:1003177|attribute standard deviation=0.0311
+
+<Peaks>
+101.0708	187.4	?	0.600	0.0000	1.45
+110.0711	723.8	?	1.000	0.0000	1.36
+115.0500	72.7	b1/-0.0002	0.600	0.0000	0.28
+115.0864	147.5	?	1.000	0.0000	1.27
+120.0806	1760.8	?	1.000	0.0000	1.05
+121.0838	82.1	?	0.600	0.0000	0.56
+124.0756	84.1	?	0.600	0.0000	0.11
+127.0864	1309.1	?	1.000	0.0000	0.13
+129.1020	1620.5	y1-H2O/-0.0002	1.000	0.0000	1.03
+130.0860	656.7	y1-NH3/-0.0003	1.000	0.0000	0.68
+136.0754	784.7	?	0.800	0.0000	1.10
+141.1020	2648.7	?	1.000	0.0000	0.25
+143.1177	147.3	?	0.800	0.0000	0.58
+147.1125	1369.6	y1/-0.0003	1.000	0.0000	0.45
+158.0918	207.2	b3^2/0.005	0.800	0.0000	1.52
+159.0914	370.5	?	0.800	0.0000	1.10
+166.7778	81.9	?	0.800	0.0000	0.70
+169.0967	4986.3	b2-HCONH2/-0.0004,m5:6/-0.0004	1.000	0.0000	0.04
+169.1329	179.0	?	1.000	0.0000	1.08
+171.1126	75.5	m6:7/-0.0002	0.600	0.0000	0.30
+173.1279	260.1	?	1.000	0.0000	0.76
+175.1186	593.7	?	1.000	0.0000	1.24
+183.1123	182.9	b4-H2O-HCONH2^2/-0.0005	0.800	0.0000	0.70
+183.1488	292.7	?	1.000	0.0000	0.92
+186.1233	10000.0	a2/-0.0004	1.000	0.0000	0.00
+187.1436	907.1	?	1.000	0.0000	0.29
+197.0915	194.0	b2-NH3/-0.0006	0.800	0.0000	0.18
+197.1282	264.5	y3^2/-0.0002	1.000	0.0000	1.18
+199.1799	481.7	?	0.600	0.0000	0.86
+201.1230	388.3	m2:3/-0.0003,y4-HCOOH-NH3^2/-0.008	1.000	0.0000	1.14
+211.1435	288.3	m4:5/-0.0006	1.000	0.0000	0.60
+214.1181	1518.5	b2/-0.0005	1.000	0.0000	0.08
+215.1385	503.3	m3:4/-0.0005,y4-H2O-NH3^2/0.01	1.000	0.0000	0.25
+219.1488	194.8	?	0.800	0.0000	0.31
+233.1644	216.0	y2-CO2-NH3/-0.0004	0.600	0.0000	1.42
+240.1701	561.9	?	0.800	0.0000	0.07
+247.1437	124.7	m7:8/-0.0004	0.800	0.0000	0.45
+252.1336	94.4	b3-H2O-HCONH2/-0.0007	0.600	0.0000	0.58
+253.1176	125.7	b3-HCONH2-NH3/-0.0007	0.600	0.0000	0.17
+256.1285	262.4	?	0.800	0.0000	0.04
+268.1650	3648.4	m5:7/-0.0006	1.000	0.0000	0.09
+270.1442	115.3	b3-HCONH2/-0.0007	0.800	0.0000	0.21
+276.1702	331.2	y2-H2O/-0.0005,b6-HCONH2^2/0.0071	0.800	0.0000	0.15
+280.1288	159.7	b3-H2O-NH3/-0.0003	0.800	0.0000	0.22
+281.1127	256.4	b3-2NH3/-0.0005	0.800	0.0000	0.17
+281.1728	395.6	y5^2/-0.0006	0.800	0.0000	0.07
+282.1807	386.2	m4:6/-0.0005	0.800	0.0000	0.17
+294.1806	2839.3	y2/-0.0006	1.000	0.0000	0.10
+296.1965	185.8	?	0.800	0.0000	0.23
+297.1549	779.8	b3-H2O/-0.0009	1.000	0.0000	0.24
+298.1397	174.1	b3-NH3/-0.0	1.000	0.0011	0.65
+312.1911	301.1	m3:5/-0.0007	0.800	0.0000	0.09
+315.1658	416.5	b3/-0.0005	1.000	0.0000	0.40
+316.1657	91.9	b3+i/-0.0006	0.600	0.0000	0.35
+324.1913	301.1	?	0.800	0.0000	0.19
+348.1920	126.5	b7^2/-0.0159	0.600	0.0000	0.23
+351.2019	295.8	?	0.800	0.0000	0.82
+353.2540	259.2	?	0.800	0.0000	0.07
+355.2334	88.9	?	0.600	0.0000	0.02
+365.2175	196.6	b4-H2O-HCONH2/-0.0008	0.600	0.0000	0.10
+366.2008	86.2	b4-HCONH2-NH3/-0.0015	0.600	0.0000	0.14
+369.2125	183.1	?	0.600	0.0000	0.05
+381.2484	375.6	m4:7/-0.0012	0.800	0.0000	0.38
+383.2283	746.8	b4-HCONH2/-0.0006,m3:6/-0.0006	0.800	0.0000	0.08
+387.2384	902.1	?	1.000	0.0000	0.22
+393.2488	1157.0	y3/-0.0008	1.000	0.0000	0.10
+415.2327	792.1	m5:8/-0.0012	1.000	0.0000	0.07
+433.2432	177.5	?	0.600	0.0000	0.08
+448.2550	91.4	?	0.600	0.0000	0.13
+454.3009	224.3	?	0.800	0.0000	0.17
+464.2858	827.0	y4/-0.001,p-CO2-NH3^2/-0.001	0.800	0.0000	0.12
+474.2701	96.3	?	0.600	0.0013	0.05
+477.7676	102.4	p-2NH3^2/-0.0008	0.600	0.0000	0.21
+482.2954	364.0	m2:6/-0.0019,m3:7/-0.0019	0.800	0.0030	0.16
+492.2809	189.5	?	0.600	0.0000	0.05
+498.2698	120.0	?	0.800	0.0000	0.32
+500.3223	71.5	y5-CO2-NH3/-0.0008	0.600	0.0018	0.13
+516.2790	63.3	?	0.600	0.0025	0.17
+528.3163	98.4	m4:8/-0.0017	0.600	0.0000	0.19
+543.3272	176.8	y5-H2O/-0.0017	0.600	0.0000	0.04
+560.2574	125.4	?	0.600	0.0023	0.83
+561.3384	5865.1	y5/-0.0011	1.000	0.0000	0.03
+562.2862	94.1	b6-2NH3/-0.0009	0.600	0.0000	0.09
+611.3552	134.8	?	0.800	0.0030	1.07
+629.3602	52.0	m3:8/-0.0055	0.600	0.0000	0.11
+656.4097	83.8	y6-H2O/-0.0033	0.600	0.0019	0.33
+674.4224	893.3	y6/-0.0012	1.000	0.0015	0.14
+767.4426	66.5	?	0.600	0.0032	0.27
+775.4706	2217.6	y7/-0.0006	1.000	0.0000	0.11
+785.4557	87.9	?	0.600	0.0065	0.38
+866.5157	241.8	?	0.800	0.0020	0.05
+884.5254	514.4	?	0.800	0.0018	0.13
+
+<Spectrum=4>
+MS:1003061|spectrum name=VLTFPVANK/2 (HCD)
+[1]MS:1000894|retention time=2622.1
+[1]UO:0000000|unit=UO:0000010|second
+[1]MS:1003174|attribute maximum=3156.5
+[1]MS:1003175|attribute minimum=2554.4
+[2]MS:1003065|spectrum aggregation type=MS:1003067|consensus spectrum
+[2]MS:1003070|number of replicate spectra used=5
+[2]MS:1003069|number of replicate spectra available=5
+[2]MS:1003299|contributing replicate spectrum USI=PXL000001:fetal_brain_tiny:key:17
+[2]MS:1003299|contributing replicate spectrum USI=PXL000001:fetal_brain_tiny:key:18
+[2]MS:1003299|contributing replicate spectrum USI=PXL000001:fetal_brain_tiny:key:19
+[2]MS:1003299|contributing replicate spectrum USI=PXL000001:fetal_brain_tiny:key:20
+[2]MS:1003299|contributing replicate spectrum USI=PXL000001:fetal_brain_tiny:key:21
+[3]MS:1003295|summary statistics of replicates=MS:1003324|spectral dot product to aggregated spectrum
+[3]MS:1003176|attribute mean=0.91
+[3]MS:1003177|attribute standard deviation=0.07
+MS:1003212|library attribute set name=DECOY
+MS:1000505|base peak intensity=250000.0
+MS:1003085|previous MSn-1 scan precursor intensity=1500000.0
+MS:1001884|signal-to-noise ratio=200.0
+MS:1000285|total ion current=1500000.0
+MS:1003059|number of peaks=92
+[4]MS:1003259|related spectrum keys=3
+[4]MS:1003261|related spectrum description=spectrum of NVTLPAVFK/2 (HCD) from which decoy is derived
+[5]MS:1003275|other attribute name=Status
+[5]MS:1003276|other attribute value=Normal
+[6]MS:1003275|other attribute name=BinaryFileOffset
+[6]MS:1003276|other attribute value=14871
+
+<Analyte=1>
+MS:1003270|proforma peptidoform ion notation=VLTFPVANK/2
+MS:1000041|charge state=2
+MS:1003043|number of residues=9
+MS:1003243|adduct ion mass=989.5899
+MS:1003053|theoretical monoisotopic m/z=494.7949
+MS:1003054|theoretical average m/z=495.1049
+[1]MS:1003212|library attribute set name=HUMAN_TRYPTIC
+[1]MS:1000885|protein accession=DECOY_0_sp|P36578|RL4_HUMAN
+[1]MS:1003044|number of missed cleavages=0
+[1]MS:1001112|n-terminal flanking residue=K
+[1]MS:1001113|c-terminal flanking residue=A
+
+<Interpretation=1>
+MS:1003290|number of unassigned peaks among top 20 peaks=6
+MS:1003288|number of unassigned peaks=41
+MS:1003080|top 20 peak unassigned intensity fraction=0.18
+MS:1003079|total unassigned intensity fraction=0.26
+[1]MS:1002357|PSM-level probability=0.9953
+[1]MS:1003176|attribute mean=0.9604
+[1]MS:1003177|attribute standard deviation=0.0311
+
+<Peaks>
+101.0708	187.4	?	0.600	0.0000	1.45
+110.0711	723.8	?	1.000	0.0000	1.36
+115.0500	72.7	b1/-0.0002	0.600	0.0000	0.28
+115.0864	147.5	?	1.000	0.0000	1.27
+120.0806	1760.8	?	1.000	0.0000	1.05
+121.0838	82.1	?	0.600	0.0000	0.56
+124.0756	84.1	?	0.600	0.0000	0.11
+127.0864	1309.1	?	1.000	0.0000	0.13
+129.1020	1620.5	y1-H2O/-0.0002	1.000	0.0000	1.03
+130.0860	656.7	y1-NH3/-0.0003	1.000	0.0000	0.68
+136.0754	784.7	?	0.800	0.0000	1.10
+141.1020	2648.7	?	1.000	0.0000	0.25
+143.1177	147.3	?	0.800	0.0000	0.58
+147.1125	1369.6	y1/-0.0003	1.000	0.0000	0.45
+158.0918	207.2	b3^2/0.005	0.800	0.0000	1.52
+159.0914	370.5	?	0.800	0.0000	1.10
+166.7778	81.9	?	0.800	0.0000	0.70
+169.0967	4986.3	b2-HCONH2/-0.0004,m5:6/-0.0004	1.000	0.0000	0.04
+169.1329	179.0	?	1.000	0.0000	1.08
+171.1126	75.5	m6:7/-0.0002	0.600	0.0000	0.30
+173.1279	260.1	?	1.000	0.0000	0.76
+175.1186	593.7	?	1.000	0.0000	1.24
+183.1488	292.7	?	1.000	0.0000	0.92
+185.1644	10000.0	a2/-0.0004	1.000	0.0000	0.00
+186.0869	124.7	m7:8/-0.0004	0.800	0.0000	0.45
+187.1436	907.1	?	1.000	0.0000	0.29
+196.1326	194.0	b2-NH3/-0.0006	0.800	0.0000	0.18
+197.1282	264.5	y3^2/-0.0002	1.000	0.0000	1.18
+199.1799	481.7	?	0.600	0.0000	0.86
+199.6251	182.9	b4-H2O-HCONH2^2/-0.0005	0.800	0.0000	0.70
+200.1390	216.0	y2-CO2-NH3/-0.0004	0.600	0.0000	1.42
+213.1593	1518.5	b2/-0.0005	1.000	0.0000	0.08
+215.1387	388.3	m2:3/-0.0003	1.000	0.0000	1.14
+219.1488	194.8	?	0.800	0.0000	0.31
+240.1701	561.9	?	0.800	0.0000	0.07
+243.1447	331.2	y2-H2O/-0.0005	0.800	0.0000	0.15
+245.1279	288.3	m4:5/-0.0006	1.000	0.0000	0.60
+249.1229	503.3	m3:4/-0.0005	1.000	0.0000	0.25
+251.1747	94.4	b3-H2O-HCONH2/-0.0007	0.600	0.0000	0.58
+252.1587	125.7	b3-HCONH2-NH3/-0.0007	0.600	0.0000	0.17
+256.1285	262.4	?	0.800	0.0000	0.04
+261.1551	2839.3	y2/-0.0006	1.000	0.0000	0.10
+264.6601	395.6	y5^2/-0.0006	0.800	0.0000	0.07
+268.1650	3648.4	m5:7/-0.0006	1.000	0.0000	0.09
+269.1853	115.3	b3-HCONH2/-0.0007	0.800	0.0000	0.21
+279.1700	159.7	b3-H2O-NH3/-0.0003	0.800	0.0000	0.22
+280.1538	256.4	b3-2NH3/-0.0005	0.800	0.0000	0.17
+296.1960	779.8	b3-H2O/-0.0009	1.000	0.0000	0.24
+296.1965	185.8	?	0.800	0.0000	0.23
+297.1809	174.1	b3-NH3/-0.0	1.000	0.0011	0.65
+314.2069	416.5	b3/-0.0005	1.000	0.0000	0.40
+315.2068	91.9	b3+i/-0.0006	0.600	0.0000	0.35
+324.1913	301.1	?	0.800	0.0000	0.19
+332.1920	1157.0	y3/-0.0008	1.000	0.0000	0.10
+344.1964	386.2	m4:6/-0.0005	0.800	0.0000	0.17
+346.1754	301.1	m3:5/-0.0007	0.800	0.0000	0.09
+351.2019	295.8	?	0.800	0.0000	0.82
+353.2540	259.2	?	0.800	0.0000	0.07
+355.2334	88.9	?	0.600	0.0000	0.02
+364.7048	126.5	b7^2/-0.0159	0.600	0.0000	0.23
+369.2125	183.1	?	0.600	0.0000	0.05
+382.2073	792.1	m5:8/-0.0012	1.000	0.0000	0.07
+387.2384	902.1	?	1.000	0.0000	0.22
+398.2430	196.6	b4-H2O-HCONH2/-0.0008	0.600	0.0000	0.10
+399.2263	86.2	b4-HCONH2-NH3/-0.0015	0.600	0.0000	0.14
+415.2328	375.6	m4:7/-0.0012	0.800	0.0000	0.38
+416.2538	746.8	b4-HCONH2/-0.0006	0.800	0.0000	0.08
+431.2603	827.0	y4/-0.001	0.800	0.0000	0.12
+433.2432	177.5	?	0.600	0.0000	0.08
+448.2550	91.4	?	0.600	0.0000	0.13
+454.3009	224.3	?	0.800	0.0000	0.17
+474.2701	96.3	?	0.600	0.0013	0.05
+477.7676	102.4	p-2NH3^2/-0.0008	0.600	0.0000	0.21
+482.2954	364.0	m2:6/-0.0019,m3:7/-0.0019	0.800	0.0030	0.16
+492.2809	189.5	?	0.600	0.0000	0.05
+498.2698	120.0	?	0.800	0.0000	0.32
+500.3223	71.5	y5-CO2-NH3/-0.0008	0.600	0.0018	0.13
+510.3018	176.8	y5-H2O/-0.0017	0.600	0.0000	0.04
+516.2790	63.3	?	0.600	0.0025	0.17
+528.3129	5865.1	y5/-0.0011	1.000	0.0000	0.03
+529.2752	98.4	m4:8/-0.0017	0.600	0.0000	0.19
+560.2574	125.4	?	0.600	0.0023	0.83
+611.3552	134.8	?	0.800	0.0030	1.07
+623.3430	94.1	b6-2NH3/-0.0009	0.600	0.0000	0.09
+630.3191	52.0	m3:8/-0.0055	0.600	0.0000	0.11
+657.3686	83.8	y6-H2O/-0.0033	0.600	0.0019	0.33
+675.3812	893.3	y6/-0.0012	1.000	0.0015	0.14
+767.4426	66.5	?	0.600	0.0032	0.27
+776.4295	2217.6	y7/-0.0006	1.000	0.0000	0.11
+785.4557	87.9	?	0.600	0.0065	0.38
+866.5157	241.8	?	0.800	0.0020	0.05
+884.5254	514.4	?	0.800	0.0018	0.13
+
+<Spectrum=5>
+MS:1003061|library spectrum name=LPIFFFGTHETAFLGPK/3 (HCD)
+[1]MS:1000894|retention time=4164.1
+[1]UO:0000000|unit=UO:0000010|second
+[1]MS:1003174|attribute maximum=4784.4
+[1]MS:1003175|attribute minimum=4019.5
+[2]MS:1003065|spectrum aggregation type=MS:1003067|consensus spectrum
+[2]MS:1003070|number of replicate spectra used=10
+[2]MS:1003069|number of replicate spectra available=10
+[2]MS:1003299|contributing replicate spectrum USI=PXL000001:fetal_brain_tiny:key:7
+[2]MS:1003299|contributing replicate spectrum USI=PXL000001:fetal_brain_tiny:key:8
+[2]MS:1003299|contributing replicate spectrum USI=PXL000001:fetal_brain_tiny:key:9
+[2]MS:1003299|contributing replicate spectrum USI=PXL000001:fetal_brain_tiny:key:10
+[2]MS:1003299|contributing replicate spectrum USI=PXL000001:fetal_brain_tiny:key:11
+[2]MS:1003299|contributing replicate spectrum USI=PXL000001:fetal_brain_tiny:key:12
+[2]MS:1003299|contributing replicate spectrum USI=PXL000001:fetal_brain_tiny:key:13
+[2]MS:1003299|contributing replicate spectrum USI=PXL000001:fetal_brain_tiny:key:14
+[2]MS:1003299|contributing replicate spectrum USI=PXL000001:fetal_brain_tiny:key:15
+[2]MS:1003299|contributing replicate spectrum USI=PXL000001:fetal_brain_tiny:key:16
+[3]MS:1003295|summary statistics of replicates=MS:1003324|spectral dot product to aggregated spectrum
+[3]MS:1003176|attribute mean=0.95
+[3]MS:1003177|attribute standard deviation=0.03
+MS:1000505|base peak intensity=45000.0
+MS:1003085|previous MSn-1 scan precursor intensity=320000.0
+MS:1001884|signal-to-noise ratio=200.0
+MS:1000285|total ion current=600000.0
+MS:1003059|number of peaks=79
+[4]MS:1003275|other attribute name=Status
+[4]MS:1003276|other attribute value=Normal
+[5]MS:1003275|other attribute name=BinaryFileOffset
+[5]MS:1003276|other attribute value=19473
+
+<Analyte=1>
+MS:1003270|proforma peptidoform ion notation=LPIFFFGTHETAFLGPK/3
+MS:1000041|charge state=3
+MS:1003043|number of residues=17
+MS:1003243|adduct ion mass=1924.0356
+MS:1003053|theoretical monoisotopic m/z=641.3452
+MS:1003054|theoretical average m/z=641.7597
+[1]MS:1003212|library attribute set name=HUMAN_TRYPTIC
+[1]MS:1000885|protein accession=sp|O75475|PSIP1_HUMAN
+[1]MS:1000886|protein name=PC4 and SFRS1-interacting protein
+[1]MS:1003044|number of missed cleavages=0
+[1]MS:1001112|n-terminal flanking residue=K
+[1]MS:1001113|c-terminal flanking residue=D
+
+<Interpretation=1>
+MS:1003290|number of unassigned peaks among top 20 peaks=1
+MS:1003288|number of unassigned peaks=8
+MS:1003080|top 20 peak unassigned intensity fraction=0.05
+MS:1003079|total unassigned intensity fraction=0.07
+[1]MS:1002357|PSM-level probability=1.0
+[1]MS:1003176|attribute mean=0.9958
+[1]MS:1003177|attribute standard deviation=0.0083
+
+<Peaks>
+110.0711	1395.2	IT/-0.0008	1.000	0.0000	0.31
+120.0805	2405.2	IA/-0.0008,IF/-0.0008,II/-0.0008	1.000	0.0000	0.27
+129.1019	563.6	y1-H2O/-0.0003,y3-CO2^2/-0.0003	1.000	0.0000	0.54
+136.0756	377.1	?	0.800	0.0000	0.89
+147.1123	341.3	y1/-0.0005	0.900	0.0000	0.50
+173.1277	199.4	y5-CO2^3/0.0063	0.600	0.0000	0.62
+175.1185	252.6	?	0.700	0.0000	0.65
+183.1487	9053.2	a2/-0.0005,y2-CO2-NH3/-0.0005	1.000	0.0000	0.05
+184.1519	745.7	a2+i/0.0027	1.000	0.0000	0.10
+211.1435	6070.7	b2/-0.0006,m2:3/-0.0006	1.000	0.0000	0.03
+212.1467	553.9	b2+i/0.0026	0.900	0.0000	0.13
+233.1643	771.9	?	1.000	0.0000	0.19
+244.1650	1349.6	y2/-0.0006	1.000	0.0000	0.15
+261.1593	1018.4	m3:4/-0.0005,m13:14/-0.0005	1.000	0.0000	0.23
+267.1484	1052.1	y8-HCOOH-NH3^3/-0.0014	1.000	0.0000	0.21
+295.1435	1036.2	m4:5/-0.0006	0.900	0.0000	0.13
+301.1863	1807.7	y3/-0.0007,b5-NH3^2/0.0134	1.000	0.0000	0.13
+324.2273	430.7	b3/-0.0009	0.900	0.0000	0.21
+358.2116	1117.3	y7-H2O^2/0.0011,m2:4/-0.0009	1.000	0.0000	0.14
+408.2271	381.8	m3:5/-0.0011	0.700	0.0000	0.24
+414.2701	603.3	y4/-0.001	0.900	0.0000	0.18
+471.2960	235.6	b4/-0.0006	0.600	0.0000	0.24
+477.2841	270.0	y9-HCOOH^2/0.0203	0.600	0.0013	0.15
+500.2651	1224.0	y9^2/-0.0014	1.000	0.0000	0.20
+500.7667	571.3	y9+i^2/0.0002	0.900	0.0000	0.40
+505.2798	461.4	m2:5/-0.0011	0.900	0.0000	0.31
+550.7889	393.1	y10^2/-0.0015	0.700	0.0000	0.23
+561.3390	403.0	y5/-0.0005	0.800	0.0000	0.20
+577.3082	477.2	b16-HCOOH^3/-0.0001,b10-2H2O^2/0.013	0.800	0.0015	0.81
+579.2996	1255.6	y11^2/-0.0015	1.000	0.0014	0.17
+579.8010	661.9	y11+i^2/-0.0001	0.900	0.0013	0.25
+597.9793	289.9	y16-NH3^3/0.0043	0.600	0.0000	0.37
+603.6490	3189.5	y16^3/-0.0016	1.000	0.0000	0.10
+603.9831	3280.9	y16+i^3/-0.0007	1.000	0.0000	0.18
+604.3169	1504.2	y16+2i^3/-0.0002	0.900	0.0000	0.26
+604.6523	379.2	?	0.600	0.0017	0.75
+632.3762	450.1	y6/-0.0004	0.800	0.0013	0.13
+641.3042	1036.6	?	0.900	0.0025	0.85
+642.3176	384.3	?	0.700	0.0060	0.62
+643.8283	367.0	y12-H2O^2/-0.0017	0.800	0.0013	0.37
+652.8338	3216.0	y12^2/-0.0016	1.000	0.0000	0.13
+653.3354	2148.6	y12+i^2/0.0001	1.000	0.0000	0.11
+653.8362	581.7	y12+2i^2/0.0008	0.700	0.0000	0.28
+703.3496	471.3	y13-HCOOH^2/-0.0172	0.600	0.0010	0.69
+717.3632	335.6	y13-H2O^2/-0.001	0.600	0.0023	0.34
+717.8651	294.1	y13-NH3^2/0.0088	0.600	0.0045	0.13
+726.3677	4058.2	y13^2/-0.0018	1.000	0.0000	0.13
+726.8692	3352.9	y13+i^2/-0.0003	1.000	0.0000	0.09
+727.3688	1091.9	y13+2i^2/-0.0007	1.000	0.0013	0.23
+733.4228	1636.5	y7/-0.0015	0.900	0.0000	0.10
+734.4263	581.2	y7+i/0.002	0.900	0.0019	0.14
+790.8983	932.7	y14-H2O^2/-0.0001	1.000	0.0029	0.27
+791.3988	887.0	y14-NH3^2/0.0083	0.900	0.0012	0.23
+791.9009	360.1	y14-NH3+i^2/0.0104	0.800	0.0029	0.37
+799.9025	10000.0	y14^2/-0.0012	1.000	0.0000	0.07
+800.4035	9528.2	m8:14/0.0098	1.000	0.0000	0.07
+800.9056	3890.8	?	1.000	0.0000	0.16
+801.4074	449.4	m8:14+i/0.0137	0.700	0.0051	0.68
+847.4370	442.3	y15-H2O^2/-0.0035	0.800	0.0026	0.28
+847.9419	412.4	y15-NH3^2/0.0094	0.700	0.0025	0.33
+856.4449	3783.3	y15^2/-0.0008,b16-H2O-HCOOH^2/-0.0085	1.000	0.0010	0.11
+856.9459	3920.2	b16-HCOOH-NH3^2/0.0005	1.000	0.0000	0.14
+857.4488	1901.9	b16-CO2-H2O^2/-0.0125,m7:14/0.0336,m8:15/0.0336	1.000	0.0010	0.15
+862.4666	1955.9	y8/-0.0003	1.000	0.0019	0.11
+863.4695	844.4	y8+i/0.0026	1.000	0.0014	0.14
+904.9713	1593.2	y16^2/-0.0008	1.000	0.0010	0.13
+905.4725	1685.8	b8-H2O/-0.0194	1.000	0.0032	0.16
+905.9746	820.5	?	0.900	0.0013	0.26
+999.5247	1421.9	y9/-0.0011	1.000	0.0021	0.11
+1000.5262	713.1	y9+i/0.0004	0.900	0.0026	0.16
+1038.4635	288.9	m4:12/-0.0044,m5:13/-0.0044	0.700	0.0050	0.56
+1100.5712	467.0	y10/-0.0023	0.700	0.0037	0.14
+1157.5923	1585.8	y11/-0.0027	1.000	0.0011	0.12
+1158.5957	927.6	m6:16/0.0378	1.000	0.0041	0.20
+1159.6017	230.6	m6:16+i/0.0439	0.600	0.0052	0.28
+1298.6172	313.0	m3:13/-0.0032,m4:14/-0.0032,b12-HCOOH-NH3/-0.0396	0.600	0.0031	0.19
+1304.6611	986.9	y12/-0.0023	0.900	0.0019	0.14
+1305.6631	756.2	m5:16/0.0369	0.800	0.0028	0.11
+1451.7214	386.0	y13/-0.0104	0.600	0.0155	0.10
+
+<Spectrum=6>
+MS:1003061|library spectrum name=APFLLGEITFTGHFFPK/3 (HCD)
+[1]MS:1000894|retention time=4164.1
+[1]UO:0000000|unit=UO:0000010|second
+[1]MS:1003174|attribute maximum=4784.4
+[1]MS:1003175|attribute minimum=4019.5
+[2]MS:1003065|spectrum aggregation type=MS:1003067|consensus spectrum
+[2]MS:1003070|number of replicate spectra used=10
+[2]MS:1003069|number of replicate spectra available=10
+[2]MS:1003299|contributing replicate spectrum USI=PXL000001:fetal_brain_tiny:key:7
+[2]MS:1003299|contributing replicate spectrum USI=PXL000001:fetal_brain_tiny:key:8
+[2]MS:1003299|contributing replicate spectrum USI=PXL000001:fetal_brain_tiny:key:9
+[2]MS:1003299|contributing replicate spectrum USI=PXL000001:fetal_brain_tiny:key:10
+[2]MS:1003299|contributing replicate spectrum USI=PXL000001:fetal_brain_tiny:key:11
+[2]MS:1003299|contributing replicate spectrum USI=PXL000001:fetal_brain_tiny:key:12
+[2]MS:1003299|contributing replicate spectrum USI=PXL000001:fetal_brain_tiny:key:13
+[2]MS:1003299|contributing replicate spectrum USI=PXL000001:fetal_brain_tiny:key:14
+[2]MS:1003299|contributing replicate spectrum USI=PXL000001:fetal_brain_tiny:key:15
+[2]MS:1003299|contributing replicate spectrum USI=PXL000001:fetal_brain_tiny:key:16
+[3]MS:1003295|summary statistics of replicates=MS:1003324|spectral dot product to aggregated spectrum
+[3]MS:1003176|attribute mean=0.95
+[3]MS:1003177|attribute standard deviation=0.03
+MS:1003212|library attribute set name=DECOY
+MS:1000505|base peak intensity=45000.0
+MS:1000744|selected ion m/z=641.345
+MS:1003085|previous MSn-1 scan precursor intensity=320000.0
+MS:1001884|signal-to-noise ratio=200.0
+MS:1000285|total ion current=600000.0
+MS:1003059|number of peaks=79
+[4]MS:1003259|related spectrum keys=5
+[4]MS:1003261|related spectrum description=spectrum of LPIFFFGTHETAFLGPK/3 (HCD) from which decoy is derived
+[5]MS:1003275|other attribute name=Status
+[5]MS:1003276|other attribute value=Normal
+[6]MS:1003275|other attribute name=BinaryFileOffset
+[6]MS:1003276|other attribute value=24131
+
+<Analyte=1>
+MS:1003270|proforma peptidoform ion notation=APFLLGEITFTGHFFPK/3
+MS:1000041|charge state=3
+MS:1003043|number of residues=17
+MS:1003243|adduct ion mass=1924.0356
+MS:1003053|theoretical monoisotopic m/z=641.3452
+MS:1003054|theoretical average m/z=641.7597
+[1]MS:1003212|library attribute set name=HUMAN_TRYPTIC
+[1]MS:1000885|protein accession=DECOY_0_sp|O75475|PSIP1_HUMAN
+[1]MS:1000886|protein name=PC4 and SFRS1-interacting protein
+[1]MS:1003044|number of missed cleavages=0
+[1]MS:1001112|n-terminal flanking residue=K
+[1]MS:1001113|c-terminal flanking residue=D
+
+<Interpretation=1>
+MS:1003290|number of unassigned peaks among top 20 peaks=1
+MS:1003288|number of unassigned peaks=8
+MS:1003080|top 20 peak unassigned intensity fraction=0.05
+MS:1003079|total unassigned intensity fraction=0.07
+[1]MS:1002357|PSM-level probability=1.0
+[1]MS:1003176|attribute mean=0.9958
+[1]MS:1003177|attribute standard deviation=0.0083
+
+<Peaks>
+110.0711	1395.2	IT/-0.0008	1.000	0.0000	0.31
+120.0805	2405.2	IA/-0.0008,IF/-0.0008,II/-0.0008	1.000	0.0000	0.27
+129.1019	563.6	y1-H2O/-0.0003,y3-CO2^2/-0.0003	1.000	0.0000	0.54
+136.0756	377.1	?	0.800	0.0000	0.89
+147.1123	341.3	y1/-0.0005	0.900	0.0000	0.50
+173.1277	199.4	y5-CO2^3/0.0063	0.600	0.0000	0.62
+175.1185	252.6	?	0.700	0.0000	0.65
+183.1487	9053.2	a2/-0.0005,y2-CO2-NH3/-0.0005	1.000	0.0000	0.05
+184.1519	745.7	a2+i/0.0027	1.000	0.0000	0.10
+211.1435	6070.7	b2/-0.0006,m2:3/-0.0006	1.000	0.0000	0.03
+212.1467	553.9	b2+i/0.0026	0.900	0.0000	0.13
+227.1748	1036.2	m4:5/-0.0006	0.900	0.0000	0.13
+233.1643	771.9	?	1.000	0.0000	0.19
+244.1650	1349.6	y2/-0.0006	1.000	0.0000	0.15
+261.1593	1018.4	m3:4/-0.0005	1.000	0.0000	0.23
+306.4924	1052.1	y8-HCOOH-NH3^3/-0.0014	1.000	0.0000	0.21
+316.1647	430.7	b3/-0.0009	0.900	0.0000	0.21
+374.2427	381.8	m3:5/-0.0011	0.700	0.0000	0.24
+391.2333	1807.7	y3/-0.0007	1.000	0.0000	0.13
+408.2147	1117.3	y7-H2O^2/0.0011	1.000	0.0000	0.14
+429.2490	235.6	b4/-0.0006	0.600	0.0000	0.24
+471.2955	461.4	m2:5/-0.0011	0.900	0.0000	0.31
+518.2945	270.0	y9-HCOOH^2/0.0203	0.600	0.0013	0.15
+538.3014	603.3	y4/-0.001	0.900	0.0000	0.18
+541.2755	1224.0	y9^2/-0.0014	1.000	0.0000	0.20
+541.7771	571.3	y9+i^2/0.0002	0.900	0.0000	0.40
+577.3081	477.2	b16-HCOOH^3/-0.0001	0.800	0.0015	0.81
+597.8174	393.1	y10^2/-0.0015	0.700	0.0000	0.23
+604.6523	379.2	?	0.600	0.0017	0.75
+611.9950	289.9	y16-NH3^3/0.0043	0.600	0.0000	0.37
+617.6646	3189.5	y16^3/-0.0016	1.000	0.0000	0.10
+617.9988	3280.9	y16+i^3/-0.0007	1.000	0.0000	0.18
+618.3326	1504.2	y16+2i^3/-0.0002	0.900	0.0000	0.26
+632.3762	450.1	y6/-0.0004	0.800	0.0013	0.13
+641.3042	1036.6	?	0.900	0.0025	0.85
+642.3176	384.3	?	0.700	0.0060	0.62
+643.8283	367.0	y12-H2O^2/-0.0017	0.800	0.0013	0.37
+662.3387	1255.6	y11^2/-0.0015	1.000	0.0014	0.17
+662.8401	661.9	y11+i^2/-0.0001	0.900	0.0013	0.25
+675.3608	403.0	y5/-0.0005	0.800	0.0000	0.20
+690.8494	3216.0	y12^2/-0.0016	1.000	0.0000	0.13
+691.3511	2148.6	y12+i^2/0.0001	1.000	0.0000	0.11
+691.8518	581.7	y12+2i^2/0.0008	0.700	0.0000	0.28
+724.3731	471.3	y13-HCOOH^2/-0.0172	0.600	0.0010	0.69
+738.3867	335.6	y13-H2O^2/-0.001	0.600	0.0023	0.34
+738.8885	294.1	y13-NH3^2/0.0088	0.600	0.0045	0.13
+747.3912	4058.2	y13^2/-0.0018	1.000	0.0000	0.13
+747.8927	3352.9	y13+i^2/-0.0003	1.000	0.0000	0.09
+748.3923	1091.9	y13+2i^2/-0.0007	1.000	0.0013	0.23
+794.9297	932.7	y14-H2O^2/-0.0001	1.000	0.0029	0.27
+795.4301	887.0	y14-NH3^2/0.0083	0.900	0.0012	0.23
+795.9322	360.1	y14-NH3+i^2/0.0104	0.800	0.0029	0.37
+800.9056	3890.8	?	1.000	0.0000	0.16
+803.9338	10000.0	y14^2/-0.0012	1.000	0.0000	0.07
+804.4137	9528.2	m8:14/0.0098	1.000	0.0000	0.07
+805.4176	449.4	m8:14+i/0.0137	0.700	0.0051	0.68
+823.4519	1685.8	b8-H2O/-0.0194	1.000	0.0032	0.16
+833.4290	1636.5	y7/-0.0015	0.900	0.0000	0.10
+834.4325	581.2	y7+i/0.002	0.900	0.0019	0.14
+856.9459	3920.2	b16-HCOOH-NH3^2/0.0005	1.000	0.0000	0.14
+857.4487	1901.9	b16-CO2-H2O^2/-0.0125	1.000	0.0010	0.15
+868.4605	442.3	y15-H2O^2/-0.0035	0.800	0.0026	0.28
+868.9654	412.4	y15-NH3^2/0.0094	0.700	0.0025	0.33
+877.4684	3783.3	y15^2/-0.0008	1.000	0.0010	0.11
+905.9746	820.5	?	0.900	0.0013	0.26
+925.9948	1593.2	y16^2/-0.0008	1.000	0.0010	0.13
+932.5044	288.9	m4:12/-0.0044	0.700	0.0050	0.56
+980.4986	1955.9	y8/-0.0003	1.000	0.0019	0.11
+981.5015	844.4	y8+i/0.0026	1.000	0.0014	0.14
+1081.5454	1421.9	y9/-0.0011	1.000	0.0021	0.11
+1082.5469	713.1	y9+i/0.0004	0.900	0.0026	0.16
+1194.6283	467.0	y10/-0.0023	0.700	0.0037	0.14
+1216.6329	313.0	m3:13/-0.0032	0.600	0.0031	0.19
+1234.6269	927.6	m6:16/0.0378	1.000	0.0041	0.20
+1235.633	230.6	m6:16+i/0.0439	0.600	0.0052	0.28
+1323.6705	1585.8	y11/-0.0027	1.000	0.0011	0.12
+1347.7101	756.2	m5:16/0.0369	0.800	0.0028	0.11
+1380.6924	986.9	y12/-0.0023	0.900	0.0019	0.14
+1493.7683	386.0	y13/-0.0104	0.600	0.0155	0.10
+
+<Spectrum=7>
+MS:1003061|library spectrum name=LAQANGWGVM[Oxidation]VSHR/2 (HCD)
+[1]MS:1000894|retention time=1566.4
+[1]UO:0000000|unit=UO:0000010|second
+[1]MS:1003174|attribute maximum=1620.7
+[1]MS:1003175|attribute minimum=1501.0
+[2]MS:1003065|spectrum aggregation type=MS:1003067|consensus spectrum
+[2]MS:1003070|number of replicate spectra used=4
+[2]MS:1003069|number of replicate spectra available=4
+[2]MS:1003299|contributing replicate spectrum USI=PXL000001:fetal_brain_tiny:key:3
+[2]MS:1003299|contributing replicate spectrum USI=PXL000001:fetal_brain_tiny:key:4
+[2]MS:1003299|contributing replicate spectrum USI=PXL000001:fetal_brain_tiny:key:5
+[2]MS:1003299|contributing replicate spectrum USI=PXL000001:fetal_brain_tiny:key:6
+[3]MS:1003295|summary statistics of replicates=MS:1003324|spectral dot product to aggregated spectrum
+[3]MS:1003176|attribute mean=0.91
+[3]MS:1003177|attribute standard deviation=0.03
+MS:1000505|base peak intensity=80000.0
+MS:1003085|previous MSn-1 scan precursor intensity=1100000.0
+MS:1001884|signal-to-noise ratio=200.0
+MS:1000285|total ion current=1800000.0
+MS:1003059|number of peaks=150
+[4]MS:1003275|other attribute name=Status
+[4]MS:1003276|other attribute value=Normal
+[5]MS:1003275|other attribute name=BinaryFileOffset
+[5]MS:1003276|other attribute value=28703
+
+<Analyte=1>
+MS:1003270|proforma peptidoform ion notation=LAQANGWGVM[Oxidation]VSHR/2
+MS:1000041|charge state=2
+MS:1003043|number of residues=14
+MS:1003243|adduct ion mass=1542.7714
+MS:1003053|theoretical monoisotopic m/z=771.3857
+MS:1003054|theoretical average m/z=771.8813
+[1]MS:1003212|library attribute set name=HUMAN_TRYPTIC
+[1]MS:1000885|protein accession=sp|P06733|ENOA_HUMAN
+[1]MS:1000886|protein name=Alpha-enolase
+[1]MS:1003044|number of missed cleavages=0
+[1]MS:1001112|n-terminal flanking residue=K
+[1]MS:1001113|c-terminal flanking residue=S
+
+<Interpretation=1>
+MS:1003290|number of unassigned peaks among top 20 peaks=1
+MS:1003288|number of unassigned peaks=52
+MS:1003080|top 20 peak unassigned intensity fraction=0.03
+MS:1003079|total unassigned intensity fraction=0.18
+[1]MS:1002357|PSM-level probability=1.0
+[1]MS:1003176|attribute mean=0.9932
+[1]MS:1003177|attribute standard deviation=0.0056
+
+<Peaks>
+101.0708	10000.0	IA/-0.0007	1.000	0.0000	0.03
+102.0741	244.7	IA+i/0.0026	1.000	0.0000	0.18
+110.0711	790.9	IS/-0.0007	1.000	0.0000	0.37
+112.0867	301.9	y1-HCOOH-NH3/-0.0002	1.000	0.0000	0.32
+129.0655	270.0	?	1.000	0.0000	0.08
+129.1020	757.8	?	1.000	0.0000	0.39
+130.0860	275.1	?	1.000	0.0000	0.29
+136.0755	716.8	?	1.000	0.0000	0.58
+147.1124	521.5	?	0.750	0.0000	0.54
+154.0972	305.7	?	1.000	0.0000	0.39
+155.0811	1128.5	?	1.000	0.0000	0.08
+157.1332	3987.5	a2/-0.0003	1.000	0.0000	0.07
+158.0920	381.3	y1-NH3/-0.0004	1.000	0.0000	0.38
+159.0914	2546.8	IG/-0.0009	1.000	0.0000	0.17
+159.1000	342.0	?	1.000	0.0000	0.20
+172.1077	1837.6	?	1.000	0.0000	0.11
+175.1186	5433.5	y1/-0.0004	1.000	0.0000	0.17
+176.1216	292.6	y1+i/0.0026	0.750	0.0000	0.43
+182.0921	542.5	y3-2H2O^2/-0.006	1.000	0.0000	0.19
+183.0761	1540.9	?	1.000	0.0000	0.08
+183.1124	324.6	?	1.000	0.0000	0.61
+185.1281	4023.2	b2/-0.0004	1.000	0.0000	0.05
+186.1314	221.7	b2+i/0.003	1.000	0.0000	0.20
+197.1279	256.7	?	0.750	0.0000	0.60
+200.1025	5027.4	y3^2/-0.0061,m2:3/-0.0004,m3:4/-0.0004	1.000	0.0000	0.04
+201.1058	227.0	m2:3+i/0.0028	1.000	0.0000	0.20
+202.1544	741.2	?	1.000	0.0000	0.10
+216.1124	240.4	?	0.750	0.0000	0.11
+225.0975	296.4	m12:13/-0.0007	1.000	0.0000	0.18
+226.1184	225.8	?	1.000	0.0000	0.23
+244.0923	255.5	?	0.750	0.0000	0.05
+244.1074	475.1	m6:7/-0.0007,m7:8/-0.0007	1.000	0.0000	0.21
+244.1652	305.3	?	0.750	0.0000	0.36
+252.1446	203.0	?	0.750	0.0000	0.07
+254.1131	347.8	?	1.000	0.0000	0.19
+271.1395	1225.2	m2:4/-0.0005	1.000	0.0000	0.15
+272.1711	1968.6	?	1.000	0.0000	1.23
+285.1914	631.6	a3/-0.0008	1.000	0.0000	0.09
+295.1509	399.6	y2-NH3/-0.0004	1.000	0.0000	0.05
+296.1598	274.3	b3-NH3/-0.0006	1.000	0.0000	0.32
+297.1188	914.9	?	1.000	0.0000	0.13
+298.1029	454.7	?	0.750	0.0000	0.45
+299.1344	594.9	?	1.000	0.0000	0.08
+304.1323	202.7	m8:10/-0.0003	1.000	0.0000	0.35
+312.1773	1879.8	y2/-0.0006	1.000	0.0000	0.09
+313.1865	5408.9	b3/-0.0005	1.000	0.0000	0.06
+314.1904	464.7	b3+i/0.0034	1.000	0.0000	0.15
+315.1291	694.8	?	0.750	0.0000	0.32
+339.1783	206.9	?	0.750	0.0012	0.08
+339.2021	399.6	b4-HCONH2/-0.0006	1.000	0.0000	0.12
+354.1404	624.4	?	1.000	0.0000	0.85
+355.1242	816.6	?	0.750	0.0000	0.01
+356.2281	257.7	a4/-0.0012	1.000	0.0000	0.14
+359.1339	410.4	?	0.750	0.0000	0.06
+372.1513	277.8	?	0.750	0.0000	0.16
+382.1826	752.2	y3-NH3/-0.0007	1.000	0.0000	0.14
+383.1907	640.7	y7-2H2O^2/-0.0041	1.000	0.0000	0.08
+384.1664	334.7	?	1.000	0.0000	0.39
+384.2233	998.4	b4/-0.0008	1.000	0.0000	0.10
+386.1662	300.4	?	0.750	0.0000	0.49
+399.2090	3816.5	y3/-0.0009	1.000	0.0000	0.06
+400.2139	327.4	m6:9/0.0159	1.000	0.0011	0.13
+401.2050	436.9	y7^2/-0.0004	1.000	0.0010	0.29
+402.1767	505.1	?	0.750	0.0000	0.16
+407.1784	266.7	?	1.000	0.0000	0.22
+416.1564	322.7	?	0.750	0.0013	0.20
+430.1710	267.0	?	0.750	0.0000	0.18
+444.5615	1419.1	?	0.750	0.0016	1.05
+445.6368	229.9	?	0.750	0.0000	0.34
+453.7312	213.3	y8-CH4OS-NH3^2/-0.0015	1.000	0.0000	0.24
+481.2528	268.5	y4-NH3/0.001,b5-NH3/0.0122	0.750	0.0000	0.35
+482.2600	357.5	y9-CH4OS-NH3^2/0.0166,b10-CH4OS-NH3^2/0.0222	0.750	0.0010	0.23
+490.7551	248.6	y9-CH4OS^2/-0.0016,b10-CH4OS^2/0.004,y9-H2O-HCOOH^2/0.0073	0.750	0.0000	0.15
+494.2425	377.3	y8^2/-0.0026	1.000	0.0011	0.28
+495.1975	549.4	?	1.000	0.0000	0.32
+496.2615	203.0	?	0.750	0.0011	0.33
+498.2773	2085.7	y4/-0.001,b5/0.0102	1.000	0.0000	0.03
+499.2801	327.3	y4+i/0.0018	0.750	0.0016	0.15
+513.2073	531.1	?	0.750	0.0000	0.11
+522.7556	491.3	y9^2/-0.0002,b10^2/0.0054	1.000	0.0000	0.37
+523.1934	300.7	?	1.000	0.0000	0.39
+523.2559	218.6	b10+i^2/0.0057	0.750	0.0000	0.36
+524.2564	293.5	?	1.000	0.0014	0.14
+538.2613	406.5	b6-NH3/-0.0007	1.000	0.0000	0.98
+541.2028	625.2	?	0.750	0.0000	0.13
+548.2691	262.2	y10-H2O-HCONH2^2/0.0079,y10-HCOOH-NH3^2/0.0079	0.750	0.0000	0.22
+554.2916	569.1	?	1.000	0.0012	0.19
+564.2882	412.4	y5-CH4OS-NH3/-0.0007	1.000	0.0000	0.19
+580.2150	359.1	?	0.750	0.0011	0.28
+580.2676	482.2	?	0.750	0.0000	0.18
+581.3146	3106.0	y5-CH4OS/-0.0008,y5-H2O-HCOOH/0.017	1.000	0.0000	0.08
+582.3170	606.8	y5-CH4OS+i/0.0016	1.000	0.0000	0.30
+583.7889	288.4	y11-H2O-HCONH2^2/0.0091,y11-HCOOH-NH3^2/0.0091,b12-CH4OS^2/-0.0124	0.750	0.0000	0.11
+598.2240	680.1	?	0.750	0.0000	0.13
+630.2992	312.3	?	0.750	0.0015	0.13
+637.3405	252.1	?	1.000	0.0016	0.21
+638.8130	1101.7	y12-CH4OS-NH3^2/0.0003	1.000	0.0030	0.29
+639.3097	908.4	b13-2HCONH2^2/0.0012	0.750	0.0000	0.10
+645.3125	2140.7	y5/-0.0012	1.000	0.0000	0.09
+646.3166	484.1	m6:11/0.0149	1.000	0.0000	0.27
+662.3010	238.4	y12-2NH3^2/0.0024	0.750	0.0015	0.31
+670.8115	760.7	y12-NH3^2/-0.0003	1.000	0.0026	0.28
+671.3088	490.2	y12-NH3+i^2/-0.0031	1.000	0.0012	0.40
+680.3835	1325.0	y6-CH4OS/-0.0003,y6-H2O-HCOOH/0.0174	1.000	0.0000	0.14
+681.3871	297.0	y6-CH4OS+i/0.0033	1.000	0.0014	0.07
+720.3777	451.2	y7-CH4OS-NH3/-0.0011	1.000	0.0000	0.17
+737.4045	8053.0	y7-CH4OS/-0.0007,y7-H2O-HCOOH/0.017	1.000	0.0000	0.18
+738.4074	2307.3	y7-HCOOH-NH3/0.0358	1.000	0.0000	0.24
+744.3814	936.2	y6/-0.0007	1.000	0.0000	0.12
+745.3845	247.1	y6+i/0.0024	0.750	0.0019	0.24
+771.3916	432.5	p^2/0.0059	0.750	0.0028	0.34
+771.5119	1064.2	?	0.750	0.0037	0.32
+784.3752	262.3	y7-NH3/-0.0018,m2:9/0.0015	1.000	0.0000	0.34
+801.4032	5475.4	y7/-0.0004	1.000	0.0000	0.13
+802.4061	1539.9	y7+i/0.0025	1.000	0.0000	0.08
+906.4595	328.0	y8-CH4OS-NH3/0.0014	1.000	0.0015	0.30
+923.4845	3265.5	y8-CH4OS/-0.0001,y8-H2O-HCOOH/0.0177	1.000	0.0000	0.14
+924.4873	1267.1	y8-HCOOH-NH3/0.0364	1.000	0.0000	0.15
+963.4782	538.2	y9-CH4OS-NH3/-0.0013,b10-CH4OS-NH3/0.0099	1.000	0.0021	0.17
+964.4751	250.8	b10-CH4OS-NH3+i/0.0068	0.750	0.0023	0.31
+980.5049	7074.4	y9-CH4OS/-0.0012,b10-CH4OS/0.01,y9-H2O-HCOOH/0.0166	1.000	0.0000	0.07
+981.5075	2954.9	y9-HCOOH-NH3/0.0352	1.000	0.0011	0.04
+987.4817	1493.6	y8/-0.0012	1.000	0.0010	0.06
+988.4846	690.9	y8+i/0.0017	1.000	0.0020	0.12
+1044.5023	3161.0	y9/-0.0021,b10/0.0092	1.000	0.0000	0.08
+1045.5051	1324.1	y9+i/0.0008	1.000	0.0010	0.08
+1049.5256	334.7	y10-CH4OS-HCONH2/-0.0019	0.750	0.0013	0.36
+1077.5215	802.4	y10-CH4OS-NH3/-0.001	1.000	0.0025	0.46
+1078.5117	820.0	y10-CH4OS-NH3+i/-0.0107	1.000	0.0075	0.23
+1079.5091	309.3	y10-CH4OS-NH3+2i/-0.0133	0.750	0.0017	0.30
+1094.5512	2052.2	y10-CH4OS/0.0022,y10-H2O-HCOOH/0.02	1.000	0.0039	1.46
+1095.5361	7057.1	y10-H2O-HCONH2/0.0208,y10-HCOOH-NH3/0.0208	1.000	0.0087	0.28
+1096.5347	3920.0	y10-CO2-H2O/-0.0122,y10-HCONH2-NH3/0.0354	0.750	0.0013	0.07
+1141.5174	386.2	y10-NH3/-0.0034	0.750	0.0038	0.25
+1142.5094	324.4	y10-NH3+i/-0.0114	0.750	0.0045	0.17
+1148.5577	815.8	y11-CH4OS-NH3/-0.0018,b12-CH4OS-H2O/-0.027	1.000	0.0013	0.54
+1149.5534	536.3	b12-CH4OS-NH3/-0.0153	1.000	0.0050	0.16
+1159.5342	2711.8	?	1.000	0.0087	0.34
+1160.5320	1633.4	?	0.750	0.0000	0.09
+1165.5855	1879.3	y11-CH4OS/-0.0006,y11-H2O-HCOOH/0.0171	1.000	0.0037	1.47
+1166.5733	5855.7	b12-CH4OS/-0.022,y11-HCOOH-NH3/0.0209,y11-H2O-HCONH2/0.0209	1.000	0.0090	0.24
+1167.5705	3272.3	b12-H2O-HCONH2/0.009,y11-CO2-H2O/-0.0135,y11-HCONH2-NH3/0.0341	0.750	0.0000	0.08
+1212.5550	446.9	y11-NH3/-0.0028,b12-H2O/-0.028	0.750	0.0000	0.39
+1230.5712	2161.4	b12/-0.0224	1.000	0.0081	0.26
+1231.5690	1343.5	b12+i/-0.0245	0.750	0.0013	0.06
+1277.6068	681.5	b13-2HCONH2/-0.0027	1.000	0.0086	0.11
+1278.5989	404.5	b13-2HCONH2+i/-0.0106	0.750	0.0041	0.06
+1294.6325	588.9	y12-H2O-HCONH2/0.0216,y12-HCOOH-NH3/0.0216	1.000	0.0087	0.15
+1295.6279	397.8	y12-CO2-H2O/-0.0147,y12-HCONH2-NH3/0.033	0.750	0.0016	0.16
+1365.6695	240.7	y13-H2O-HCONH2/0.0215,y13-HCOOH-NH3/0.0215	1.000	0.0072	0.10
+
+<Spectrum=8>
+MS:1003061|library spectrum name=NLASQVGWGM[Oxidation]VHAR/2 (HCD)
+[1]MS:1000894|retention time=1566.4
+[1]UO:0000000|unit=UO:0000010|second
+[1]MS:1003174|attribute maximum=1620.7
+[1]MS:1003175|attribute minimum=1501.0
+[2]MS:1003065|spectrum aggregation type=MS:1003067|consensus spectrum
+[2]MS:1003070|number of replicate spectra used=4
+[2]MS:1003069|number of replicate spectra available=4
+[2]MS:1003299|contributing replicate spectrum USI=PXL000001:fetal_brain_tiny:key:3
+[2]MS:1003299|contributing replicate spectrum USI=PXL000001:fetal_brain_tiny:key:4
+[2]MS:1003299|contributing replicate spectrum USI=PXL000001:fetal_brain_tiny:key:5
+[2]MS:1003299|contributing replicate spectrum USI=PXL000001:fetal_brain_tiny:key:6
+[3]MS:1003295|summary statistics of replicates=MS:1003324|spectral dot product to aggregated spectrum
+[3]MS:1003176|attribute mean=0.91
+[3]MS:1003177|attribute standard deviation=0.03
+MS:1003212|library attribute set name=DECOY
+MS:1000505|base peak intensity=80000.0
+MS:1003085|previous MSn-1 scan precursor intensity=1100000.0
+MS:1001884|signal-to-noise ratio=200.0
+MS:1000285|total ion current=1800000.0
+MS:1003059|number of peaks=150
+[4]MS:1003259|related spectrum keys=7
+[4]MS:1003261|related spectrum description=spectrum of LAQANGWGVM[Oxidation]VSHR/2 (HCD) from which decoy is derived
+[5]MS:1003275|other attribute name=Status
+[5]MS:1003276|other attribute value=Normal
+[6]MS:1003275|other attribute name=BinaryFileOffset
+[6]MS:1003276|other attribute value=36607
+
+<Analyte=1>
+MS:1003270|proforma peptidoform ion notation=NLASQVGWGM[Oxidation]VHAR/2
+MS:1000041|charge state=2
+MS:1003043|number of residues=14
+MS:1003243|adduct ion mass=1542.7714
+MS:1003053|theoretical monoisotopic m/z=771.3857
+MS:1003054|theoretical average m/z=771.8813
+[1]MS:1003212|library attribute set name=HUMAN_TRYPTIC
+[1]MS:1000885|protein accession=DECOY_0_sp|P06733|ENOA_HUMAN
+[1]MS:1003044|number of missed cleavages=0
+[1]MS:1001112|n-terminal flanking residue=K
+[1]MS:1001113|c-terminal flanking residue=S
+
+<Interpretation=1>
+MS:1003290|number of unassigned peaks among top 20 peaks=1
+MS:1003288|number of unassigned peaks=52
+MS:1003080|top 20 peak unassigned intensity fraction=0.03
+MS:1003079|total unassigned intensity fraction=0.18
+[1]MS:1002357|PSM-level probability=1.0
+[1]MS:1003176|attribute mean=0.9932
+[1]MS:1003177|attribute standard deviation=0.0056
+
+<Peaks>
+101.0708	10000.0	IA/-0.0007	1.000	0.0000	0.03
+102.0741	244.7	IA+i/0.0026	1.000	0.0000	0.18
+110.0711	790.9	IS/-0.0007	1.000	0.0000	0.37
+112.0867	301.9	y1-HCOOH-NH3/-0.0002	1.000	0.0000	0.32
+129.0655	270.0	?	1.000	0.0000	0.08
+129.1020	757.8	?	1.000	0.0000	0.39
+130.0860	275.1	?	1.000	0.0000	0.29
+136.0755	716.8	?	1.000	0.0000	0.58
+147.1124	521.5	?	0.750	0.0000	0.54
+154.0972	305.7	?	1.000	0.0000	0.39
+155.0811	1128.5	?	1.000	0.0000	0.08
+157.1332	3987.5	a2/-0.0003	1.000	0.0000	0.07
+158.0920	381.3	y1-NH3/-0.0004	1.000	0.0000	0.38
+159.0914	2546.8	IG/-0.0009	1.000	0.0000	0.17
+159.1000	342.0	?	1.000	0.0000	0.20
+172.1077	1837.6	?	1.000	0.0000	0.11
+175.1186	5433.5	y1/-0.0004	1.000	0.0000	0.17
+176.1216	292.6	y1+i/0.0026	0.750	0.0000	0.43
+182.0921	542.5	y3-2H2O^2/-0.006	1.000	0.0000	0.19
+183.0761	1540.9	?	1.000	0.0000	0.08
+183.1124	324.6	?	1.000	0.0000	0.61
+186.1313	227.0	m2:3+i/0.0028	1.000	0.0000	0.20
+192.1050	5027.4	y3^2/-0.0061	1.000	0.0000	0.04
+197.1279	256.7	?	0.750	0.0000	0.60
+202.1544	741.2	?	1.000	0.0000	0.10
+209.1026	296.4	m12:13/-0.0007	1.000	0.0000	0.18
+216.1124	240.4	?	0.750	0.0000	0.11
+226.1184	225.8	?	1.000	0.0000	0.23
+228.1339	4023.2	b2/-0.0004	1.000	0.0000	0.05
+229.1291	399.6	y2-NH3/-0.0004	1.000	0.0000	0.05
+229.1373	221.7	b2+i/0.003	1.000	0.0000	0.20
+244.0923	255.5	?	0.750	0.0000	0.05
+244.1074	475.1	m6:7/-0.0007,m7:8/-0.0007	1.000	0.0000	0.21
+244.1652	305.3	?	0.750	0.0000	0.36
+246.1555	1879.8	y2/-0.0006	1.000	0.0000	0.09
+252.1446	203.0	?	0.750	0.0000	0.07
+254.1131	347.8	?	1.000	0.0000	0.19
+271.1757	631.6	a3/-0.0008	1.000	0.0000	0.09
+272.1600	1225.2	m2:4/-0.0005	1.000	0.0000	0.15
+272.1711	1968.6	?	1.000	0.0000	1.23
+282.1442	274.3	b3-NH3/-0.0006	1.000	0.0000	0.32
+297.1188	914.9	?	1.000	0.0000	0.13
+298.1029	454.7	?	0.750	0.0000	0.45
+299.1344	594.9	?	1.000	0.0000	0.08
+299.1709	5408.9	b3/-0.0005	1.000	0.0000	0.06
+300.1748	464.7	b3+i/0.0034	1.000	0.0000	0.15
+315.1291	694.8	?	0.750	0.0000	0.32
+339.1783	206.9	?	0.750	0.0012	0.08
+341.1813	399.6	b4-HCONH2/-0.0006	1.000	0.0000	0.12
+354.1404	624.4	?	1.000	0.0000	0.85
+355.1242	816.6	?	0.750	0.0000	0.01
+358.2073	257.7	a4/-0.0012	1.000	0.0000	0.14
+359.1339	410.4	?	0.750	0.0000	0.06
+366.1877	752.2	y3-NH3/-0.0007	1.000	0.0000	0.14
+372.1513	277.8	?	0.750	0.0000	0.16
+383.2141	3816.5	y3/-0.0009	1.000	0.0000	0.06
+384.1664	334.7	?	1.000	0.0000	0.39
+386.1662	300.4	?	0.750	0.0000	0.49
+386.2026	998.4	b4/-0.0008	1.000	0.0000	0.10
+391.1432	202.7	m8:10/-0.0003	1.000	0.0000	0.35
+400.2138	327.4	m6:9/0.0159	1.000	0.0011	0.13
+402.1767	505.1	?	0.750	0.0000	0.16
+407.1784	266.7	?	1.000	0.0000	0.22
+416.1564	322.7	?	0.750	0.0013	0.20
+418.6988	640.7	y7-2H2O^2/-0.0041	1.000	0.0000	0.08
+424.7102	213.3	y8-CH4OS-NH3^2/-0.0015	1.000	0.0000	0.24
+430.1710	267.0	?	0.750	0.0000	0.18
+436.7130	436.9	y7^2/-0.0004	1.000	0.0010	0.29
+444.5615	1419.1	?	0.750	0.0016	1.05
+445.6368	229.9	?	0.750	0.0000	0.34
+465.2216	377.3	y8^2/-0.0026	1.000	0.0011	0.28
+465.2578	268.5	y4-NH3/0.001	0.750	0.0000	0.35
+474.2625	357.5	y9-CH4OS-NH3^2/0.0166	0.750	0.0010	0.23
+482.2824	2085.7	y4/-0.001	1.000	0.0000	0.03
+482.7576	248.6	y9-CH4OS^2/-0.0016	0.750	0.0000	0.15
+483.2852	327.3	y4+i/0.0018	0.750	0.0016	0.15
+495.1975	549.4	?	1.000	0.0000	0.32
+496.2615	203.0	?	0.750	0.0011	0.33
+513.2073	531.1	?	0.750	0.0000	0.11
+514.7582	491.3	y9^2/-0.0002	1.000	0.0000	0.37
+523.1934	300.7	?	1.000	0.0000	0.39
+524.2564	293.5	?	1.000	0.0014	0.14
+531.2534	218.6	b10+i^2/0.0057	0.750	0.0000	0.36
+541.2028	625.2	?	0.750	0.0000	0.13
+547.2795	262.2	y10-H2O-HCONH2^2/0.0079	0.750	0.0000	0.22
+548.2932	412.4	y5-CH4OS-NH3/-0.0007	1.000	0.0000	0.19
+554.2916	569.1	?	1.000	0.0012	0.19
+565.3197	3106.0	y5-CH4OS/-0.0008	1.000	0.0000	0.08
+566.3221	606.8	y5-CH4OS+i/0.0016	1.000	0.0000	0.30
+580.2150	359.1	?	0.750	0.0011	0.28
+580.2676	482.2	?	0.750	0.0000	0.18
+590.7968	288.4	y11-H2O-HCONH2^2/0.0091	0.750	0.0000	0.11
+596.3032	406.5	b6-NH3/-0.0007	1.000	0.0000	0.98
+598.2240	680.1	?	0.750	0.0000	0.13
+617.3101	1101.7	y12-CH4OS-NH3^2/0.0003	1.000	0.0030	0.29
+622.3417	1325.0	y6-CH4OS/-0.0003	1.000	0.0000	0.14
+623.3453	297.0	y6-CH4OS+i/0.0033	1.000	0.0014	0.07
+629.3176	2140.7	y5/-0.0012	1.000	0.0000	0.09
+630.2992	312.3	?	0.750	0.0015	0.13
+637.3405	252.1	?	1.000	0.0016	0.21
+639.3096	908.4	b13-2HCONH2^2/0.0012	0.750	0.0000	0.10
+640.7981	238.4	y12-2NH3^2/0.0024	0.750	0.0015	0.31
+646.3166	484.1	m6:11/0.0149	1.000	0.0000	0.27
+649.3086	760.7	y12-NH3^2/-0.0003	1.000	0.0026	0.28
+649.8058	490.2	y12-NH3+i^2/-0.0031	1.000	0.0012	0.40
+686.3396	936.2	y6/-0.0007	1.000	0.0000	0.12
+687.3427	247.1	y6+i/0.0024	0.750	0.0019	0.24
+771.3916	432.5	p^2/0.0059	0.750	0.0028	0.34
+771.5119	1064.2	?	0.750	0.0037	0.32
+791.3936	451.2	y7-CH4OS-NH3/-0.0011	1.000	0.0000	0.17
+808.4206	8053.0	y7-CH4OS/-0.0007	1.000	0.0000	0.18
+809.4233	2307.3	y7-HCOOH-NH3/0.0358	1.000	0.0000	0.24
+848.4176	328.0	y8-CH4OS-NH3/0.0014	1.000	0.0015	0.30
+855.3912	262.3	y7-NH3/-0.0018	1.000	0.0000	0.34
+865.4426	3265.5	y8-CH4OS/-0.0001	1.000	0.0000	0.14
+866.4454	1267.1	y8-HCOOH-NH3/0.0364	1.000	0.0000	0.15
+872.4192	5475.4	y7/-0.0004	1.000	0.0000	0.13
+873.4221	1539.9	y7+i/0.0025	1.000	0.0000	0.08
+929.4398	1493.6	y8/-0.0012	1.000	0.0010	0.06
+930.4427	690.9	y8+i/0.0017	1.000	0.0020	0.12
+947.4833	538.2	y9-CH4OS-NH3/-0.0013	1.000	0.0021	0.17
+964.5099	7074.4	y9-CH4OS/-0.0012	1.000	0.0000	0.07
+965.5126	2954.9	y9-HCOOH-NH3/0.0352	1.000	0.0011	0.04
+980.4700	250.8	b10-CH4OS-NH3+i/0.0068	0.750	0.0023	0.31
+1028.5073	3161.0	y9/-0.0021	1.000	0.0000	0.08
+1029.5102	1324.1	y9+i/0.0008	1.000	0.0010	0.08
+1047.5464	334.7	y10-CH4OS-HCONH2/-0.0019	0.750	0.0013	0.36
+1075.5422	802.4	y10-CH4OS-NH3/-0.001	1.000	0.0025	0.46
+1076.5325	820.0	y10-CH4OS-NH3+i/-0.0107	1.000	0.0075	0.23
+1077.5299	309.3	y10-CH4OS-NH3+2i/-0.0133	0.750	0.0017	0.30
+1092.5719	2052.2	y10-CH4OS/0.0022	1.000	0.0039	1.46
+1093.5568	7057.1	y10-H2O-HCONH2/0.0208	1.000	0.0087	0.28
+1094.5554	3920.0	y10-CO2-H2O/-0.0122	0.750	0.0013	0.07
+1139.5381	386.2	y10-NH3/-0.0034	0.750	0.0038	0.25
+1140.5301	324.4	y10-NH3+i/-0.0114	0.750	0.0045	0.17
+1159.5342	2711.8	?	1.000	0.0087	0.34
+1160.5320	1633.4	?	0.750	0.0000	0.09
+1162.5734	815.8	y11-CH4OS-NH3/-0.0018	1.000	0.0013	0.54
+1179.6012	1879.3	y11-CH4OS/-0.0006	1.000	0.0037	1.47
+1215.5752	536.3	b12-CH4OS-NH3/-0.0153	1.000	0.0050	0.16
+1226.5707	446.9	y11-NH3/-0.0028	0.750	0.0000	0.39
+1232.5951	5855.7	b12-CH4OS/-0.022	1.000	0.0090	0.24
+1233.5923	3272.3	b12-H2O-HCONH2/0.009	0.750	0.0000	0.08
+1251.6267	588.9	y12-H2O-HCONH2/0.0216	1.000	0.0087	0.15
+1252.6221	397.8	y12-CO2-H2O/-0.0147	0.750	0.0016	0.16
+1277.6069	681.5	b13-2HCONH2/-0.0027	1.000	0.0086	0.11
+1278.5990	404.5	b13-2HCONH2+i/-0.0106	0.750	0.0041	0.06
+1296.5930	2161.4	b12/-0.0224	1.000	0.0081	0.26
+1297.5909	1343.5	b12+i/-0.0245	0.750	0.0013	0.06
+1364.7107	240.7	y13-H2O-HCONH2/0.0215	1.000	0.0072	0.10
+
+<Spectrum=9>
+MS:1003061|library spectrum name=HTGPNSPDTANDGFVR/2 (HCD)
+[1]MS:1000894|retention time=1175.3
+[1]UO:0000000|unit=UO:0000010|second
+[2]MS:1003065|spectrum aggregation type=MS:1003066|singleton spectrum
+[2]MS:1003070|number of replicate spectra used=1
+[2]MS:1003069|number of replicate spectra available=1
+[2]MS:1003299|contributing replicate spectrum USI=mzspec:PXL000001:fetal_brain_tiny:key:2
+MS:1000505|base peak intensity=160000.0
+MS:1003085|previous MSn-1 scan precursor intensity=1700000.0
+MS:1000285|total ion current=1800000.0
+MS:1003059|number of peaks=150
+[3]MS:1003275|other attribute name=Status
+[3]MS:1003276|other attribute value=Normal
+[4]MS:1003275|other attribute name=BinaryFileOffset
+[4]MS:1003276|other attribute value=43969
+
+<Analyte=1>
+MS:1003270|proforma peptidoform ion notation=HTGPNSPDTANDGFVR/2
+MS:1000041|charge state=2
+MS:1003043|number of residues=16
+MS:1003243|adduct ion mass=1685.7747
+MS:1003053|theoretical monoisotopic m/z=842.8873
+MS:1003054|theoretical average m/z=843.3785
+[1]MS:1003212|library attribute set name=HUMAN_TRYPTIC
+[1]MS:1000885|protein accession=sp|P31943|HNRH1_HUMAN
+[1]MS:1000886|protein name=Heterogeneous nuclear ribonucleoprotein H
+[1]MS:1003044|number of missed cleavages=0
+[1]MS:1001112|n-terminal flanking residue=K
+[1]MS:1001113|c-terminal flanking residue=L
+[2]MS:1003212|library attribute set name=HUMAN_TRYPTIC
+[2]MS:1000885|protein accession=sp|P55795|HNRH2_HUMAN
+[2]MS:1000886|protein name=Heterogeneous nuclear ribonucleoprotein H2
+[2]MS:1003044|number of missed cleavages=0
+[2]MS:1001112|n-terminal flanking residue=K
+[2]MS:1001113|c-terminal flanking residue=L
+
+<Interpretation=1>
+MS:1003290|number of unassigned peaks among top 20 peaks=5
+MS:1003288|number of unassigned peaks=50
+MS:1003080|top 20 peak unassigned intensity fraction=0.29
+MS:1003079|total unassigned intensity fraction=0.17
+MS:1002357|PSM-level probability=1.0
+
+<Peaks>
+102.0546	221.9	?
+110.0711	10000.0	a1/-0.0002
+111.0745	228.8	a1+i/0.0032
+120.0806	525.4	y2-H2O-NH3^2/0.0018
+127.0863	465.3	?
+129.1021	161.8	?
+136.0752	182.8	?
+138.0658	197.0	b1/-0.0004
+155.0811	218.1	m3:4/-0.0004
+156.0764	339.1	m3:4+i/-0.0051
+158.0917	141.3	y1-NH3/-0.0007
+166.0971	1682.6	?
+167.0923	316.5	?
+175.1185	1846.5	y1/-0.0005
+183.1123	229.7	?
+184.1076	189.1	?
+193.1078	585.1	?
+194.0919	606.3	?
+195.0872	1804.1	?
+201.1229	666.3	?
+202.1259	153.7	y3-H2O^2/-0.0003
+211.1070	216.8	?
+211.1184	2021.9	a2/-0.0006
+212.1023	783.0	m4:5/-0.0006
+221.1029	564.2	b2-H2O/-0.0004
+229.1181	337.9	?
+234.0979	1007.9	?
+239.1132	6571.7	b2/-0.0007
+240.1168	318.7	a5^2/-0.0049
+252.1086	814.2	?
+257.1600	392.6	y2-NH3/-0.0008
+260.1141	248.2	?
+266.1240	140.5	b6-H2O-HCONH2^2/0.0048
+269.1237	412.6	m3:5/-0.0007
+274.1870	245.4	y2/-0.0004
+278.1238	365.6	b3-H2O/-0.001
+281.1239	168.6	?
+282.1075	148.5	?
+296.1346	529.5	b3/-0.0007
+299.1343	483.4	m4:6/-0.0007,m5:7/-0.0007
+311.1347	212.0	?
+325.1495	149.9	?
+328.1616	118.9	b7-2H2O^2/0.0106
+338.1459	163.0	?
+356.1557	420.9	m3:6/-0.0008
+363.1975	129.8	?
+370.1708	155.0	m2:5/-0.0013
+392.2000	135.1	?
+404.2290	120.9	y3-NH3/-0.0002
+421.2553	146.7	y3/-0.0004
+439.1910	136.2	?
+457.2023	227.7	m2:6/-0.0019
+461.2484	217.3	y4-NH3/-0.0023
+462.2088	158.8	b5-HCONH2/-0.0008
+478.2758	6194.3	y4/-0.0014
+479.2791	975.9	y4+i/0.0018
+481.7481	122.1	?
+489.2206	244.1	b5-H2O/0.0001,y9-NH3^2/0.0008
+507.2306	345.6	b5/-0.0005
+511.2144	209.1	m4:8/-0.0003
+526.2635	158.1	?
+546.2588	329.1	y10^2/-0.0007
+548.2562	156.5	?
+558.2428	164.8	b6-2H2O/0.0009,y5-H2O-NH3/-0.0243,b12-2HCOOH^2/-0.0041,y11-HCOOH-NH3^2/-0.0166,y11-H2O-HCONH2^2/-0.0167
+559.2207	122.1	b6-H2O-NH3/-0.0052,b12-2HCONH2^2/-0.0102
+566.2685	172.8	a6/0.0004
+576.2491	545.2	y5-NH3/-0.0286,b6-H2O/-0.0034
+580.7687	133.8	y11-H2O^2/-0.0014
+593.3042	458.1	y5/0.0
+594.2621	298.1	b6/-0.0009
+597.2986	373.5	?
+598.3029	231.3	?
+614.2397	285.0	m7:12/-0.002
+631.3103	198.7	?
+690.3206	233.4	y6-NH3/-0.0
+695.3241	261.4	y13^2/0.0008
+695.8240	218.9	y13+i^2/0.0007
+707.3456	527.5	y6/-0.0015
+708.3516	122.9	y6+i/0.0044
+711.3395	204.7	b15-CO2-HCONH2^2/0.0136
+712.3370	237.8	?
+713.3407	189.4	?
+715.3186	194.8	y14-NH3^2/-0.0022,b8-HCONH2-HCOOH/0.0028,y7-HCOOH-NH3/-0.0336,y7-H2O-HCONH2/-0.0336
+778.3822	750.2	y7/-0.002,a8/0.0344
+779.3873	201.8	y7+i/0.0031
+788.3300	167.9	b8-H2O/-0.0022
+794.3530	139.7	?
+800.8830	172.6	?
+801.3776	154.5	?
+803.3535	290.9	?
+803.8568	271.9	?
+806.3432	262.1	b8/0.0004
+809.8851	184.4	?
+810.3845	164.9	?
+811.8682	447.9	p-HCONH2-NH3^2/0.0048,p-CO2-H2O^2/-0.019
+812.3688	367.8	p-CO2-NH3^2/-0.0104
+824.4252	183.3	?
+825.3751	270.1	p-H2O-NH3^2/0.0063
+825.4253	343.9	?
+825.8721	244.0	p-2NH3^2/0.0113
+826.4285	203.2	?
+833.8801	2151.1	p-H2O^2/-0.0019
+834.3821	1594.4	p-NH3^2/0.008,y8-HCONH2/-0.0284
+842.8856	1386.2	p^2/-0.0017
+843.3879	1216.0	b9-H2O-HCOOH/0.0135,y8-2H2O/-0.0229
+862.4197	125.4	y8-NH3/0.0144
+879.4315	3501.8	y8/-0.0004,a9/0.0359
+880.4341	1125.0	y8+i/0.0022
+961.4879	219.3	?
+962.4827	268.8	?
+963.4863	453.7	?
+977.4304	150.8	y9-NH3/-0.0019
+994.4573	750.6	y9/-0.0016
+995.4606	342.2	y9+i/0.0018
+1073.4949	162.7	y10-H2O/-0.0062
+1074.4883	347.2	y10-NH3/0.0032,b11-H2O/0.0284
+1090.5444	211.8	y11-2CO2/-0.0195
+1091.5087	5408.0	y10/-0.0029
+1092.5121	2064.3	b11/0.0416
+1160.5343	203.6	y11-H2O/0.0012
+1161.5374	179.1	y11-NH3/0.0203,b12-HCOOH/0.0454
+1178.5410	1715.1	y11/-0.0026
+1179.5427	851.4	a12/0.0402
+1189.4812	233.7	b12-H2O/-0.0057
+1207.4933	306.2	b12/-0.0041
+1208.5017	157.3	b12+i/0.0043
+1261.6119	175.8	?
+1264.5251	157.6	b13/0.0063
+1275.5612	349.1	y12-NH3/0.0011
+1276.5559	121.2	y12-NH3+i/-0.0041
+1292.5846	742.1	y12/-0.002
+1293.5840	427.1	y12+i/-0.0026
+1303.5583	183.0	?
+1371.6273	162.8	y13-H2O/-0.0015
+1372.6245	132.7	y13-NH3/0.0117
+1373.6029	133.1	m2:15/0.0061
+1389.6361	1454.8	y13/-0.0032
+1390.6405	923.4	y13+i/0.0012
+1411.5732	120.4	b14/-0.0141,y14-H2O-NH3/-0.0504
+1428.6465	245.3	y14-H2O/-0.0038
+1429.6368	528.7	y14-NH3/0.0026
+1430.6284	247.6	y14-NH3+i/-0.0058
+1446.6575	3889.1	y14/-0.0033,b15-H2O-HCOOH/0.0178
+1447.6595	2610.9	b15-H2O-HCONH2/0.0359,b15-HCOOH-NH3/0.0359
+1529.6875	169.1	y15-H2O/-0.0104
+1530.6842	199.0	y15-NH3/0.0023
+1547.7050	1393.1	y15/-0.0035
+1548.7089	896.1	y15+i/0.0004
+1557.6835	428.2	?
+1558.6853	283.1	?
+
+<Spectrum=10>
+MS:1003061|library spectrum name=HFDPDGPGSTAVNNTR/2 (HCD)
+[1]MS:1000894|retention time=1175.3
+[1]UO:0000000|unit=UO:0000010|second
+[2]MS:1003065|spectrum aggregation type=MS:1003066|singleton spectrum
+[2]MS:1003070|number of replicate spectra used=1
+[2]MS:1003069|number of replicate spectra available=1
+[2]MS:1003299|contributing replicate spectrum USI=mzspec:PXL000001:fetal_brain_tiny:key:2
+MS:1003212|library attribute set name=DECOY
+MS:1000505|base peak intensity=160000.0
+MS:1000744|selected ion m/z=842.887
+MS:1003085|previous MSn-1 scan precursor intensity=1700000.0
+MS:1000285|total ion current=1800000.0
+MS:1003059|number of peaks=150
+[3]MS:1003259|related spectrum keys=7
+[3]MS:1003261|related spectrum description=spectrum of HTGPNSPDTANDGFVR/2 (HCD) from which decoy is derived
+[4]MS:1003275|other attribute name=Status
+[4]MS:1003276|other attribute value=Normal
+[5]MS:1003275|other attribute name=BinaryFileOffset
+
+<Analyte=1>
+MS:1003270|proforma peptidoform ion notation=HFDPDGPGSTAVNNTR/2
+MS:1000041|charge state=2
+MS:1003043|number of residues=16
+MS:1003243|adduct ion mass=1685.7747
+MS:1003053|theoretical monoisotopic m/z=842.8873
+MS:1003054|theoretical average m/z=843.3785
+[1]MS:1003212|library attribute set name=HUMAN_TRYPTIC
+[1]MS:1000885|protein accession=DECOY_0_sp|P31943|HNRH1_HUMAN
+[1]MS:1000886|protein name=Heterogeneous nuclear ribonucleoprotein H
+[1]MS:1003044|number of missed cleavages=0
+[1]MS:1001112|n-terminal flanking residue=K
+[1]MS:1001113|c-terminal flanking residue=L
+[2]MS:1003212|library attribute set name=HUMAN_TRYPTIC
+[2]MS:1000885|protein accession=DECOY_0_sp|P55795|HNRH2_HUMAN
+[2]MS:1000886|protein name=Heterogeneous nuclear ribonucleoprotein H2
+[2]MS:1003044|number of missed cleavages=0
+[2]MS:1001112|n-terminal flanking residue=K
+[2]MS:1001113|c-terminal flanking residue=L
+
+<Interpretation=1>
+MS:1003290|number of unassigned peaks among top 20 peaks=5
+MS:1003288|number of unassigned peaks=50
+MS:1003080|top 20 peak unassigned intensity fraction=0.29
+MS:1003079|total unassigned intensity fraction=0.17
+MS:1002357|PSM-level probability=1.0
+
+<Peaks>
+102.0546	221.9	?
+110.0711	10000.0	a1/-0.0002
+111.0745	228.8	a1+i/0.0032
+120.0806	525.4	y2-H2O-NH3^2/0.0018
+127.0863	465.3	?
+129.1021	161.8	?
+136.0752	182.8	?
+138.0658	197.0	b1/-0.0004
+155.0811	218.1	m3:4/-0.0004
+156.0764	339.1	m3:4+i/-0.0051
+158.0917	141.3	y1-NH3/-0.0007
+166.0971	1682.6	?
+167.0923	316.5	?
+175.1185	1846.5	y1/-0.0005
+183.1123	229.7	?
+184.1076	189.1	?
+186.6028	153.7	y3-H2O^2/-0.0003
+193.1078	585.1	?
+194.0919	606.3	?
+195.0872	1804.1	?
+201.1229	666.3	?
+211.1070	216.8	?
+213.0864	783.0	m4:5/-0.0006
+229.1181	337.9	?
+234.0979	1007.9	?
+252.1086	814.2	?
+257.1391	2021.9	a2/-0.0006
+259.1393	392.6	y2-NH3/-0.0008
+260.1141	248.2	?
+267.1236	564.2	b2-H2O/-0.0004
+270.1078	483.4	m4:6/-0.0007
+276.1662	245.4	y2/-0.0004
+281.1239	168.6	?
+282.1075	148.5	?
+285.1339	6571.7	b2/-0.0007
+292.6219	318.7	a5^2/-0.0049
+303.6238	140.5	b6-H2O-HCONH2^2/0.0048
+311.1347	212.0	?
+325.1495	149.9	?
+328.1132	412.6	m3:5/-0.0007
+338.1459	163.0	?
+363.1975	129.8	?
+365.6614	118.9	b7-2H2O^2/0.0106
+373.1828	120.9	y3-NH3/-0.0002
+382.1500	365.6	b3-H2O/-0.001
+385.1346	420.9	m3:6/-0.0008
+390.2092	146.7	y3/-0.0004
+392.2000	135.1	?
+400.1608	529.5	b3/-0.0007
+424.1824	209.1	m4:8/-0.0003
+439.1910	136.2	?
+475.1810	155.0	m2:5/-0.0013
+481.7481	122.1	?
+487.2236	217.3	y4-NH3/-0.0023
+504.2511	6194.3	y4/-0.0014
+505.2543	975.9	y4+i/0.0018
+508.7589	329.1	y10^2/-0.0007
+513.2647	285.0	m7:12/-0.002
+526.2635	158.1	?
+528.2637	133.8	y11-H2O^2/-0.0014
+532.2019	227.7	m2:6/-0.0019
+548.2562	156.5	?
+567.2190	158.8	b5-HCONH2/-0.0008
+586.2657	545.2	y5-NH3/-0.0286
+594.2308	244.1	b5-H2O/0.0001
+597.2986	373.5	?
+598.3029	231.3	?
+603.3209	458.1	y5/0.0
+612.2408	345.6	b5/-0.0005
+631.3103	198.7	?
+633.2425	164.8	b6-2H2O/0.0009
+634.2204	122.1	b6-H2O-NH3/-0.0052
+641.2682	172.8	a6/0.0004
+643.3110	261.4	y13^2/0.0008
+643.8109	218.9	y13+i^2/0.0007
+657.3315	233.4	y6-NH3/-0.0
+669.2618	298.1	b6/-0.0009
+674.3565	527.5	y6/-0.0015
+675.3624	122.9	y6+i/0.0044
+692.3082	194.8	y14-NH3^2/-0.0022
+711.3395	204.7	b15-CO2-HCONH2^2/0.0136
+712.3370	237.8	?
+713.3407	189.4	?
+775.4037	750.2	y7/-0.002
+776.4088	201.8	y7+i/0.0031
+794.3530	139.7	?
+800.8830	172.6	?
+801.3776	154.5	?
+803.3535	290.9	?
+803.8568	271.9	?
+805.3242	167.9	b8-H2O/-0.0022
+806.3432	262.1	b8/0.0004
+809.8851	184.4	?
+810.3845	164.9	?
+811.8681	447.9	p-HCONH2-NH3^2/0.0048
+812.3687	367.8	p-CO2-NH3^2/-0.0104
+824.4252	183.3	?
+825.3751	270.1	p-H2O-NH3^2/0.0063
+825.4253	343.9	?
+825.8721	244.0	p-2NH3^2/0.0113
+826.4285	203.2	?
+833.8801	2151.1	p-H2O^2/-0.0019
+834.3821	1594.4	p-NH3^2/0.008,y8-HCONH2/-0.0284
+842.8856	1386.2	p^2/-0.0017
+843.3879	1216.0	b9-H2O-HCOOH/0.0135,y8-2H2O/-0.0229
+862.4197	125.4	y8-NH3/0.0144
+862.4373	3501.8	y8/-0.0004
+863.4399	1125.0	y8+i/0.0022
+902.4307	150.8	y9-NH3/-0.0019
+919.4576	750.6	y9/-0.0016
+920.4610	342.2	y9+i/0.0018
+961.4879	219.3	?
+962.4827	268.8	?
+963.4863	453.7	?
+985.5343	211.8	y11-2CO2/-0.0195
+998.4952	162.7	y10-H2O/-0.0062
+999.4886	347.2	y10-NH3/0.0032
+1016.5090	5408.0	y10/-0.0029
+1055.5241	203.6	y11-H2O/0.0012
+1056.5272	179.1	y11-NH3/0.0203
+1073.5308	1715.1	y11/-0.0026
+1082.4954	2064.3	b11/0.0416
+1153.5675	851.4	a12/0.0402
+1163.5059	233.7	b12-H2O/-0.0057
+1171.5349	349.1	y12-NH3/0.0011
+1172.5297	121.2	y12-NH3+i/-0.0041
+1181.5181	306.2	b12/-0.0041
+1182.5265	157.3	b12+i/0.0043
+1188.5584	742.1	y12/-0.002
+1189.5578	427.1	y12+i/-0.0026
+1261.6119	175.8	?
+1267.6011	162.8	y13-H2O/-0.0015
+1268.5983	132.7	y13-NH3/0.0117
+1285.6099	1454.8	y13/-0.0032
+1286.6143	923.4	y13+i/0.0012
+1295.5714	157.6	b13/0.0063
+1303.5583	183.0	?
+1373.6029	133.1	m2:15/0.0061
+1382.6257	245.3	y14-H2O/-0.0038
+1383.6161	528.7	y14-NH3/0.0026
+1384.6077	247.6	y14-NH3+i/-0.0058
+1400.6368	3889.1	y14/-0.0033
+1409.5939	120.4	b14/-0.0141
+1447.6596	2610.9	b15-H2O-HCONH2/0.0359
+1529.6875	169.1	y15-H2O/-0.0104
+1530.6842	199.0	y15-NH3/0.0023
+1547.7050	1393.1	y15/-0.0035
+1548.7089	896.1	y15+i/0.0004
+1557.6835	428.2	?
+1558.6853	283.1	?
+

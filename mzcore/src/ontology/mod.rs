@@ -1,3 +1,4 @@
+mod custom;
 mod gnome;
 mod ontology;
 mod ontology_modification;
@@ -6,6 +7,7 @@ mod resid;
 mod unimod;
 mod xlmod;
 
+pub use custom::*;
 pub use gnome::*;
 pub use ontology::*;
 pub use psimod::*;

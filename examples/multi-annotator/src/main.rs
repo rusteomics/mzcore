@@ -24,6 +24,7 @@ use mzannotate::{
 };
 use mzcore::{
     chemistry::MassMode,
+    csv::write_csv,
     glycan::MonoSaccharide,
     quantities::Tolerance,
     sequence::{
@@ -38,7 +39,7 @@ use mzdata::{
     mzsignal::PeakPicker,
     spectrum::{SignalContinuity, SpectrumLike},
 };
-use mzident::{BasicCSVData, IdentifiedPeptidoformSource, csv::write_csv};
+use mzident::{BasicCSVData, IdentifiedPeptidoformSource};
 use rayon::prelude::*;
 
 /// The command line interface arguments

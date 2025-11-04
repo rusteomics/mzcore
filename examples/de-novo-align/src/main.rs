@@ -5,8 +5,8 @@ use std::{collections::BTreeMap, fs::File, io::BufWriter, sync::Arc};
 use clap::Parser;
 use itertools::{Itertools, MinMaxResult};
 use mzalign::prelude::*;
-use mzcore::{prelude::*, sequence::SemiAmbiguous};
-use mzident::{FastaData, PeptidoformPresent, SpectrumIds, csv::write_csv, prelude::*};
+use mzcore::{csv::write_csv, prelude::*, sequence::SemiAmbiguous};
+use mzident::{FastaData, PeptidoformPresent, SpectrumIds, prelude::*};
 use rayon::prelude::*;
 
 #[derive(Debug, Parser)]

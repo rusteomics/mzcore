@@ -2,12 +2,189 @@
 
 use context_error::*;
 use itertools::Itertools;
+use mzcv::CVIndex;
 use serde::{Deserialize, Serialize};
 
-use crate::sequence::SimpleModification;
+use crate::{
+    ontology::{Custom, CustomDatabase, Gnome, PsiMod, Resid, Unimod, XlMod},
+    sequence::SimpleModification,
+};
 
-/// A database of custom modifications
-pub type CustomDatabase = OntologyModificationList;
+pub struct Ontologies {
+    custom: CVIndex<Custom>,
+    gnome: CVIndex<Gnome>,
+    psimod: CVIndex<PsiMod>,
+    resid: CVIndex<Resid>,
+    unimod: CVIndex<Unimod>,
+    xlmod: CVIndex<XlMod>,
+}
+
+impl Ontologies {
+    /// Initialize all ontologies, also returns all warnings detected when initialising the ontologies
+    pub fn init() -> (Self, Vec<BoxedError<'static, mzcv::CVError>>) {
+        let mut errors = Vec::new();
+        let (unimod, mut warnings) = CVIndex::init();
+        errors.append(&mut warnings);
+        let (psimod, mut warnings) = CVIndex::init();
+        errors.append(&mut warnings);
+        let (xlmod, mut warnings) = CVIndex::init();
+        errors.append(&mut warnings);
+        let (gnome, mut warnings) = CVIndex::init();
+        errors.append(&mut warnings);
+        let (resid, mut warnings) = CVIndex::init();
+        errors.append(&mut warnings);
+        let (custom, mut warnings) = CVIndex::init();
+        errors.append(&mut warnings);
+
+        (
+            Self {
+                custom,
+                gnome,
+                psimod,
+                resid,
+                unimod,
+                xlmod,
+            },
+            errors,
+        )
+    }
+
+    /// Find the closest names in the given ontologies, or if empty in all ontologies
+    pub fn find_closest(&self, ontologies: &[Ontology], term: &str) -> Vec<SimpleModification> {
+        let ontologies = if ontologies.is_empty() {
+            &[
+                Ontology::Unimod,
+                Ontology::Psimod,
+                Ontology::Xlmod,
+                Ontology::Gnome,
+                Ontology::Resid,
+                Ontology::Custom,
+            ]
+        } else {
+            ontologies
+        };
+
+        let mut options = Vec::new();
+        for ontology in ontologies {
+            options.append(&mut match ontology {
+                Ontology::Unimod => self.unimod.search(term, 5, 6),
+                Ontology::Psimod => self.psimod.search(term, 5, 6),
+                Ontology::Xlmod => self.xlmod.search(term, 5, 6),
+                Ontology::Gnome => self.gnome.search(term, 5, 6),
+                Ontology::Resid => self.resid.search(term, 5, 6),
+                Ontology::Custom => self.custom.search(term, 5, 6),
+            });
+        }
+
+        options
+    }
+
+    /// Find the given name in this ontology.
+    pub fn find_name(&self, ontologies: &[Ontology], term: &str) -> Option<SimpleModification> {
+        let ontologies = if ontologies.is_empty() {
+            &[
+                Ontology::Unimod,
+                Ontology::Psimod,
+                Ontology::Xlmod,
+                Ontology::Gnome,
+                Ontology::Resid,
+                Ontology::Custom,
+            ]
+        } else {
+            ontologies
+        };
+
+        for ontology in ontologies {
+            match ontology {
+                Ontology::Unimod => {
+                    if let Some(m) = self.unimod.get_by_name(term) {
+                        return Some(m);
+                    }
+                }
+                Ontology::Psimod => {
+                    if let Some(m) = self.psimod.get_by_name(term) {
+                        return Some(m);
+                    }
+                }
+                Ontology::Xlmod => {
+                    if let Some(m) = self.xlmod.get_by_name(term) {
+                        return Some(m);
+                    }
+                }
+                Ontology::Gnome => {
+                    if let Some(m) = self.gnome.get_by_name(term) {
+                        return Some(m);
+                    }
+                }
+                Ontology::Resid => {
+                    if let Some(m) = self.resid.get_by_name(term) {
+                        return Some(m);
+                    }
+                }
+                Ontology::Custom => {
+                    if let Some(m) = self.custom.get_by_name(term) {
+                        return Some(m);
+                    }
+                }
+            }
+        }
+
+        None
+    }
+
+    /// Find the given name in this ontology.
+    pub fn find_id(&self, ontologies: &[Ontology], id: usize) -> Option<SimpleModification> {
+        let ontologies = if ontologies.is_empty() {
+            &[
+                Ontology::Unimod,
+                Ontology::Psimod,
+                Ontology::Xlmod,
+                Ontology::Gnome,
+                Ontology::Resid,
+                Ontology::Custom,
+            ]
+        } else {
+            ontologies
+        };
+
+        for ontology in ontologies {
+            match ontology {
+                Ontology::Unimod => {
+                    if let Some(m) = self.unimod.get_by_index(&id) {
+                        return Some(m);
+                    }
+                }
+                Ontology::Psimod => {
+                    if let Some(m) = self.psimod.get_by_index(&id) {
+                        return Some(m);
+                    }
+                }
+                Ontology::Xlmod => {
+                    if let Some(m) = self.xlmod.get_by_index(&id) {
+                        return Some(m);
+                    }
+                }
+                Ontology::Gnome => {
+                    if let Some(m) = self.gnome.get_by_index(&id) {
+                        return Some(m);
+                    }
+                }
+                Ontology::Resid => {
+                    if let Some(m) = self.resid.get_by_index(&id) {
+                        return Some(m);
+                    }
+                }
+                Ontology::Custom => {
+                    if let Some(m) = self.custom.get_by_index(&id) {
+                        return Some(m);
+                    }
+                }
+            }
+        }
+
+        None
+    }
+}
 
 /// An empty list of modifications (needed for lifetime reasons)
 static EMPTY_LIST: OntologyModificationList = Vec::new();
@@ -191,66 +368,4 @@ impl Ontology {
         }
         None
     }
-}
-#[cfg(not(feature = "internal-no-data"))]
-mod databases {
-    use crate::ontology::OntologyModificationList;
-    use bincode::config::Configuration;
-    use std::sync::LazyLock;
-
-    /// Get the unimod ontology
-    /// # Panics
-    /// Panics when the modifications are not correctly provided at compile time, always report a panic if it occurs here.
-    pub(super) static UNIMOD: LazyLock<OntologyModificationList> = LazyLock::new(|| {
-        bincode::serde::decode_from_slice::<OntologyModificationList, Configuration>(
-            include_bytes!("../databases/unimod.dat"),
-            Configuration::default(),
-        )
-        .unwrap()
-        .0
-    });
-    /// Get the PSI-MOD ontology
-    /// # Panics
-    /// Panics when the modifications are not correctly provided at compile time, always report a panic if it occurs here.
-    pub(super) static PSIMOD: LazyLock<OntologyModificationList> = LazyLock::new(|| {
-        bincode::serde::decode_from_slice::<OntologyModificationList, Configuration>(
-            include_bytes!("../databases/psimod.dat"),
-            Configuration::default(),
-        )
-        .unwrap()
-        .0
-    });
-    /// Get the Gnome ontology
-    /// # Panics
-    /// Panics when the modifications are not correctly provided at compile time, always report a panic if it occurs here.
-    pub(super) static GNOME: LazyLock<OntologyModificationList> = LazyLock::new(|| {
-        bincode::serde::decode_from_slice::<OntologyModificationList, Configuration>(
-            include_bytes!("../databases/gnome.dat"),
-            Configuration::default(),
-        )
-        .unwrap()
-        .0
-    });
-    /// Get the Resid ontology
-    /// # Panics
-    /// Panics when the modifications are not correctly provided at compile time, always report a panic if it occurs here.
-    pub(super) static RESID: LazyLock<OntologyModificationList> = LazyLock::new(|| {
-        bincode::serde::decode_from_slice::<OntologyModificationList, Configuration>(
-            include_bytes!("../databases/resid.dat"),
-            Configuration::default(),
-        )
-        .unwrap()
-        .0
-    });
-    /// Get the Xlmod ontology
-    /// # Panics
-    /// Panics when the modifications are not correctly provided at compile time, always report a panic if it occurs here.
-    pub(super) static XLMOD: LazyLock<OntologyModificationList> = LazyLock::new(|| {
-        bincode::serde::decode_from_slice::<OntologyModificationList, Configuration>(
-            include_bytes!("../databases/xlmod.dat"),
-            Configuration::default(),
-        )
-        .unwrap()
-        .0
-    });
 }
