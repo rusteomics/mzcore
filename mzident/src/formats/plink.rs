@@ -124,11 +124,24 @@ format_family!(
         /// Whether this peptide is a target (false) or decoy (true) peptide
         is_decoy: bool, |location: Location, _| Ok(location.as_str() == "1");
         q_value: f64, |location: Location, _| location.parse::<f64>(NUMBER_ERROR);
-        proteins: Vec<(String, Option<u16>, Option<String>, Option<u16>)>, |location: Location, _|  {
+        /// The proteins, per protein the first protein, location, second protein, and location
+        proteins: Vec<(FastaIdentifier<String>, Option<u16>, Option<FastaIdentifier<String>>, Option<u16>)>, |location: Location, _|  {
             location.array('/').filter(|l| !l.as_str().trim().is_empty()).map(|l| {
                 let separated = plink_separate(&l, "Invalid pLink protein", "protein").map_err(BoxedError::to_owned)?;
 
-                Ok((l.full_line()[separated.0].trim().to_string(), separated.1.map(|(a, _)| a), separated.2.map(|p| l.full_line()[p].trim().to_string()), separated.3.map(|(a, _)| a)))
+                Ok(((
+                    l.full_line()[separated.0.clone()].trim()).parse().map_err(|err|
+                        BoxedError::new(BasicKind::Error,
+                        "Invalid pLink modification",
+                        format!("A pLink protein should be a valid fasta identifier but the number {}", explain_number_error(&err)),
+                        l.context().add_highlight((0, separated.0)).to_owned()))?,
+                    separated.1.map(|(a, _)| a),
+                    separated.2.map(|p| l.full_line()[p.clone()].trim().parse().map_err(|err|
+                        BoxedError::new(BasicKind::Error,
+                        "Invalid pLink modification",
+                        format!("A pLink protein should be a valid fasta identifier but the number {}", explain_number_error(&err)),
+                        l.context().add_highlight((0, p)).to_owned()))).transpose()?,
+                    separated.3.map(|(a, _)| a)))
             })
             .collect::<Result<Vec<_>, _>>()
         };
@@ -210,7 +223,7 @@ format_family!(
                     matches!(**m, SimpleModificationInner::Linker{..})).map(|(_,_,m)| (m.formula().monoisotopic_mass(), m.clone())
                 ).collect());
 
-            let fitting = &KNOWN_CROSS_LINKERS.iter().chain(custom_linkers.iter()).filter(|(mass, _)| Tolerance::<Mass>::Absolute(Mass::new::<mzcore::system::dalton>(0.001)).within(mass, &left_over)).map(|(_, m)| m).collect_vec();
+            let fitting = &KNOWN_CROSS_LINKERS.iter().chain(custom_linkers.iter()).filter(|(mass, _)| Tolerance::<Mass>::Absolute(Mass::new::<mzcore::system::dalton>(0.01)).within(mass, &left_over)).map(|(_, m)| m).collect_vec();
 
             match fitting.len() {
                 0 => return Err(BoxedError::new(BasicKind::Error,"Invalid pLink peptide", format!("The correct cross-linker could not be identified with mass {:.3} Da, if a non default cross-linker was used add this as a custom linker modification.", left_over.value), source.full_context().to_owned())),
@@ -268,16 +281,21 @@ format_family!(
 /// The Regex to match against pLink title fields
 static IDENTIFER_REGEX: LazyLock<regex::Regex> =
     LazyLock::new(|| regex::Regex::new(r"([^/]+)\.(\d+)\.\d+.\d+.\d+.\w+").unwrap());
+
 /// The static known cross-linkers
 static KNOWN_CROSS_LINKERS: LazyLock<Vec<(Mass, SimpleModification)>> = LazyLock::new(|| {
     [
-        Ontology::Unimod.find_id(1898, None).unwrap(), // DSS: U:Xlink:DSS[138]
-        Ontology::Xlmod.find_id(2002, None).unwrap(),  // DSS heavy: X:DSS-d4
-        Ontology::Psimod.find_id(34, None).unwrap(),   // Disulfide: M:L-cystine (cross-link)
+        Ontology::Psimod.find_id(34, None).unwrap(), // Disulfide: M:L-cystine (cross-link)
         Ontology::Unimod.find_id(1905, None).unwrap(), // BS2G: U:Xlink:BS2G[96]
-        Ontology::Xlmod.find_id(2008, None).unwrap(),  // BS2G heavy: X:BS2G-d4
-        Ontology::Xlmod.find_id(2010, None).unwrap(), // DMTMM: X:1-ethyl-3-(3-Dimethylaminopropyl)carbodiimide hydrochloride
+        Ontology::Xlmod.find_id(2008, None).unwrap(), // BS2G heavy: X:BS2G-d4
+        Ontology::Unimod.find_id(1898, None).unwrap(), // DSS: U:Xlink:DSS[138]
+        Ontology::Xlmod.find_id(2227, None).unwrap(), // Leiker_clv: X:PL
         Ontology::Unimod.find_id(1896, None).unwrap(), // DSSO: U:Xlink:DSSO[158]
+        Ontology::Unimod.find_id(1899, None).unwrap(), // DSBU: U:Xlink:BuUrBu[196]
+        Ontology::Xlmod.find_id(2115, None).unwrap(), // BAMG: X:BAMG
+        Ontology::Xlmod.find_id(2002, None).unwrap(), // DSS heavy: X:DSS-d4
+        Ontology::Unimod.find_id(2058, None).unwrap(), // PhoX: U:Xlink:DSPP[210]
+        Ontology::Xlmod.find_id(2010, None).unwrap(), // DMTMM: X:1-ethyl-3-(3-Dimethylaminopropyl)carbodiimide hydrochloride
     ]
     .into_iter()
     .map(|m| (m.formula().monoisotopic_mass(), m))
@@ -556,7 +574,15 @@ impl MetaData for PLinkData {
     }
 
     fn protein_names(&self) -> Option<Cow<'_, [FastaIdentifier<String>]>> {
-        None
+        Some(
+            self.proteins
+                .iter()
+                .flat_map(|p| p.2.as_ref().map_or_else(|| vec![&p.0], |p2| vec![&p.0, p2]))
+                .unique()
+                .cloned()
+                .collect_vec()
+                .into(),
+        )
     }
 
     fn protein_id(&self) -> Option<usize> {
@@ -564,7 +590,29 @@ impl MetaData for PLinkData {
     }
 
     fn protein_location(&self) -> Option<Range<u16>> {
-        None
+        if let Ok((_, loc, None, _)) = self.proteins.iter().exactly_one() {
+            // find loc in peptide by searching for the first location in the first peptide with a linker and calculating the correct offset from there
+            loc.and_then(|loc| {
+                self.peptidoform.peptidoforms().first().and_then(|p| {
+                    p.sequence()
+                        .iter()
+                        .position(|s| {
+                            s.modifications.iter().any(|m| {
+                                m.is_cross_link()
+                                    || m.clone().into_simple().is_some_and(|s| {
+                                        matches!(*s, SimpleModificationInner::Linker { .. })
+                                    })
+                            })
+                        })
+                        .and_then(|pos| {
+                            let base = loc.checked_sub(u16::try_from(pos).ok()?)?;
+                            Some(base..base + u16::try_from(p.len()).ok()?)
+                        })
+                })
+            })
+        } else {
+            None
+        }
     }
 
     fn flanking_sequences(&self) -> (&FlankingSequence, &FlankingSequence) {
