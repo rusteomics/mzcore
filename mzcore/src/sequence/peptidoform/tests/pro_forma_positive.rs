@@ -409,3 +409,5 @@ parse_test!("NEEYN+SEQUEN", positive_test_198);
 parse_test!("SEQUEN/2", positive_test_199);
 parse_test!(ignore "SEQUEN/[Na:z+1,H:z+1]", positive_test_200);
 parse_test!("SEQUEN-[b-type-ion]", positive_test_201);
+parse_test!("SEK[XLMOD:1711]UENC", positive_test_202);
+parse_test!("SEK[XLMOD:09070]UENC", positive_test_203);

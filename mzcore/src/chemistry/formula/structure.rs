@@ -466,32 +466,9 @@ impl Neg for MolecularFormula {
 impl Add<&MolecularFormula> for &MolecularFormula {
     type Output = MolecularFormula;
     fn add(self, rhs: &MolecularFormula) -> Self::Output {
-        let mut result = (*self).clone();
-        result.labels.extend_from_slice(&rhs.labels);
-        let mut index_result = 0;
-        let mut index_rhs = 0;
-        result.additional_mass += rhs.additional_mass;
-
-        while index_rhs < rhs.elements.len() {
-            let (el, i, n) = rhs.elements[index_rhs];
-            if index_result < result.elements.len() {
-                let (re, ri, _) = result.elements[index_result];
-                if el > re || (el == re && i > ri) {
-                    index_result += 1;
-                } else if el == re && i == ri {
-                    result.elements[index_result].2 += n;
-                    index_rhs += 1;
-                } else {
-                    result.elements.insert(index_result, (el, i, n));
-                    index_rhs += 1;
-                }
-            } else {
-                result.elements.push((el, i, n));
-                index_rhs += 1;
-            }
-        }
-        result.elements.retain(|el| el.2 != 0);
-        result
+        self.clone()
+            .checked_add(rhs)
+            .expect("Overflow in adding MolecularFormula")
     }
 }
 
@@ -583,6 +560,73 @@ impl MolecularFormula {
             labels: self.labels.clone(),
         })
     }
+
+    /// Do checked add to handle overflows gracefully
+    pub fn checked_add(mut self, rhs: &Self) -> Option<Self> {
+        self.ref_mut_checked_add(rhs).map(|()| self)
+    }
+
+    /// Do checked add to handle overflows gracefully
+    pub fn ref_mut_checked_add(&mut self, rhs: &Self) -> Option<()> {
+        self.labels.extend_from_slice(&rhs.labels);
+        let mut index_result = 0;
+        let mut index_rhs = 0;
+        self.additional_mass += rhs.additional_mass;
+
+        while index_rhs < rhs.elements.len() {
+            let (el, i, n) = rhs.elements[index_rhs];
+            if index_result < self.elements.len() {
+                let (re, ri, _) = self.elements[index_result];
+                if el > re || (el == re && i > ri) {
+                    index_result += 1;
+                } else if el == re && i == ri {
+                    self.elements[index_result].2 = self.elements[index_result].2.checked_add(n)?;
+                    index_rhs += 1;
+                } else {
+                    self.elements.insert(index_result, (el, i, n));
+                    index_rhs += 1;
+                }
+            } else {
+                self.elements.push((el, i, n));
+                index_rhs += 1;
+            }
+        }
+        self.elements.retain(|el| el.2 != 0);
+        Some(())
+    }
+
+    /// Do checked sub to handle overflows gracefully
+    pub fn checked_sub(mut self, rhs: &Self) -> Option<Self> {
+        self.ref_mut_checked_sub(rhs).map(|()| self)
+    }
+
+    /// Do checked sub to handle overflows gracefully
+    pub fn ref_mut_checked_sub(&mut self, rhs: &Self) -> Option<()> {
+        self.labels.extend_from_slice(&rhs.labels);
+        let mut index_result = 0;
+        let mut index_rhs = 0;
+        self.additional_mass -= rhs.additional_mass;
+        while index_rhs < rhs.elements.len() {
+            let (el, i, n) = rhs.elements[index_rhs];
+            if index_result < self.elements.len() {
+                let (re, ri, _) = self.elements[index_result];
+                if el > re || (el == re && i > ri) {
+                    index_result += 1;
+                } else if el == re && i == ri {
+                    self.elements[index_result].2 = self.elements[index_result].2.checked_sub(n)?;
+                    index_rhs += 1;
+                } else {
+                    self.elements.insert(index_result, (el, i, -n));
+                    index_rhs += 1;
+                }
+            } else {
+                self.elements.push((el, i, -n));
+                index_rhs += 1;
+            }
+        }
+        self.elements.retain(|el| el.2 != 0);
+        Some(())
+    }
 }
 
 impl Mul<&i8> for &MolecularFormula {
@@ -610,56 +654,15 @@ impl_binop_ref_cases!(impl Mul, mul for MolecularFormula, i8, MolecularFormula);
 
 impl AddAssign<&Self> for MolecularFormula {
     fn add_assign(&mut self, rhs: &Self) {
-        let mut index_self = 0;
-        let mut index_rhs = 0;
-        self.additional_mass += rhs.additional_mass;
-        self.labels.extend_from_slice(&rhs.labels);
-        while index_rhs < rhs.elements.len() {
-            let (el, i, n) = rhs.elements[index_rhs];
-            if index_self < self.elements.len() {
-                let (re, ri, _) = self.elements[index_self];
-                if el > re || (el == re && i > ri) {
-                    index_self += 1;
-                } else if el == re && i == ri {
-                    self.elements[index_self].2 += n;
-                    index_rhs += 1;
-                } else {
-                    self.elements.insert(index_self, (el, i, n));
-                    index_rhs += 1;
-                }
-            } else {
-                self.elements.push((el, i, n));
-                index_rhs += 1;
-            }
-        }
+        self.ref_mut_checked_add(rhs)
+            .expect("Overflow in adding MolecularFormula");
     }
 }
 
 impl SubAssign<&Self> for MolecularFormula {
     fn sub_assign(&mut self, rhs: &Self) {
-        self.labels.extend_from_slice(&rhs.labels);
-        let mut index_result = 0;
-        let mut index_rhs = 0;
-        self.additional_mass -= rhs.additional_mass;
-        while index_rhs < rhs.elements.len() {
-            let (el, i, n) = rhs.elements[index_rhs];
-            if index_result < self.elements.len() {
-                let (re, ri, _) = self.elements[index_result];
-                if el > re || (el == re && i > ri) {
-                    index_result += 1;
-                } else if el == re && i == ri {
-                    self.elements[index_result].2 -= n;
-                    index_rhs += 1;
-                } else {
-                    self.elements.insert(index_result, (el, i, -n));
-                    index_rhs += 1;
-                }
-            } else {
-                self.elements.push((el, i, -n));
-                index_rhs += 1;
-            }
-        }
-        self.elements.retain(|el| el.2 != 0);
+        self.ref_mut_checked_sub(rhs)
+            .expect("Overflow in subtracting MolecularFormula");
     }
 }
 

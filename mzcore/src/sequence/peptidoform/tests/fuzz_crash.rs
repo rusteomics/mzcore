@@ -182,3 +182,4 @@ parse_test!(just_parse "{Glycan:X1}A", fuzz_141);
 parse_test!(ne "{Glycan:Xxx1}A", fuzz_142);
 parse_test!("{Glycan:Xxx1Hex1}A", fuzz_143);
 parse_test!(ne "{Glycan:HHH1111111111111HHHFHHHHHHHHHHHHHnxFF}Za", fuzz_144);
+parse_test!(ne "{Glycan:H444444x444444444ffffffffffff44444444x444444444fffffffffffffffffffffx}A", fuzz_145);

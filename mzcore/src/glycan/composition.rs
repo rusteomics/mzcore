@@ -174,7 +174,9 @@ impl MonoSaccharide {
         if let Some(f) = composition
             .iter()
             .try_fold(MolecularFormula::default(), |acc, (s, n)| {
-                s.formula().checked_mul_isize(*n).map(|f| acc + f)
+                s.formula()
+                    .checked_mul_isize(*n)
+                    .and_then(|f| acc.checked_add(&f))
             })
         {
             if composition.is_empty() || f.is_empty() {

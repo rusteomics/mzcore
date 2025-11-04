@@ -171,6 +171,11 @@ impl Display for ModificationId {
                 self.ontology.char(),
                 self.name.to_ascii_uppercase()
             )
+        } else if self.ontology == Ontology::Xlmod
+            && let Some(id) = self.id
+            && (id == 1711 || id == 9070)
+        {
+            write!(f, "{}:{id}", self.ontology.name())
         } else {
             write!(f, "{}:{}", self.ontology.char(), self.name)
         }
