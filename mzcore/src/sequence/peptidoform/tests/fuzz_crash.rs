@@ -180,3 +180,5 @@ parse_test!(ne "[Formula:CCC-2]^9?CCE", fuzz_139);
 parse_test!(casing_specific "MERTK[XLMOD:02050#N][#N]", fuzz_140);
 parse_test!(just_parse "{Glycan:X1}A", fuzz_141);
 parse_test!(ne "{Glycan:Xxx1}A", fuzz_142);
+parse_test!("{Glycan:Xxx1Hex1}A", fuzz_143);
+parse_test!(ne "{Glycan:HHH1111111111111HHHFHHHHHHHHHHHHHnxFF}Za", fuzz_144);

@@ -318,20 +318,12 @@ impl SimpleModificationInner {
             Self::Glycan(monosaccharides) => write!(
                 f,
                 "Glycan:{}",
-                monosaccharides
-                    .iter()
-                    .fold(String::new(), |acc, m| acc + &format!("{}{}", m.0, m.1))
+                MonoSaccharide::display_composition(monosaccharides)
             )?,
             Self::GlycanStructure(glycan) if specification_compliant => write!(
                 f,
                 "Glycan:{}|INFO:Structure:{glycan}",
-                glycan
-                    .composition()
-                    .iter()
-                    .fold(String::new(), |mut acc, (g, a)| {
-                        write!(&mut acc, "{g}{a}").unwrap();
-                        acc
-                    })
+                MonoSaccharide::display_composition(&glycan.composition())
             )?,
             Self::GlycanStructure(glycan) => write!(f, "GlycanStructure:{glycan}")?,
             Self::Database {

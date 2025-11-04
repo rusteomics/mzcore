@@ -171,26 +171,39 @@ impl MonoSaccharide {
                 base_context.clone().add_highlight((0, range.clone())),
             )
         }));
-        let f: MolecularFormula = composition
+        if let Some(f) = composition
             .iter()
-            .fold(MolecularFormula::default(), |acc, (s, n)| {
-                acc + s.formula() * *n
-            });
-
-        if composition.is_empty() || f.is_empty() {
+            .try_fold(MolecularFormula::default(), |acc, (s, n)| {
+                s.formula().checked_mul_isize(*n).map(|f| acc + f)
+            })
+        {
+            if composition.is_empty() || f.is_empty() {
+                combine_error(
+                    &mut errors,
+                    BoxedError::new(
+                        BasicKind::Error,
+                        "Invalid ProForma glycan composition",
+                        "The glycan composition is empty",
+                        base_context.clone().add_highlight((0, range)),
+                    ),
+                    (),
+                );
+                Err(errors)
+            } else {
+                Ok((composition, errors))
+            }
+        } else {
             combine_error(
                 &mut errors,
                 BoxedError::new(
                     BasicKind::Error,
                     "Invalid ProForma glycan composition",
-                    "The glycan composition is empty",
-                    base_context.clone().add_highlight((0, range)),
+                    "The occurance of an element overflowed during calculation of the full molecular formula",
+                    base_context.clone().add_highlight((0, range.clone())),
                 ),
                 (),
             );
             Err(errors)
-        } else {
-            Ok((composition, errors))
         }
     }
 
@@ -200,7 +213,7 @@ impl MonoSaccharide {
         mut composition: Vec<(Self, isize)>,
     ) -> Option<Vec<(Self, isize)>> {
         // Sort on monosaccharide
-        composition.retain(|el| el.1 != 0);
+        composition.retain(|el| el.1 != 0 && !el.0.formula().is_empty());
         composition.sort_unstable_by(|a, b| a.0.cmp(&b.0));
 
         // Deduplicate
@@ -304,5 +317,12 @@ impl MonoSaccharide {
                 Context::show(text),
             )
         })
+    }
+
+    /// Display a composition as a ProForma glycan composition
+    pub fn display_composition(composition: &[(Self, isize)]) -> String {
+        composition
+            .iter()
+            .fold(String::new(), |acc, m| acc + &format!("{}{}", m.0, m.1))
     }
 }
