@@ -171,8 +171,13 @@ impl MonoSaccharide {
                 base_context.clone().add_highlight((0, range.clone())),
             )
         }));
+        let f: MolecularFormula = composition
+            .iter()
+            .fold(MolecularFormula::default(), |acc, (s, n)| {
+                acc + s.formula() * *n
+            });
 
-        if composition.is_empty() {
+        if composition.is_empty() || f.is_empty() {
             combine_error(
                 &mut errors,
                 BoxedError::new(

@@ -526,6 +526,14 @@ impl Sub<&MolecularFormula> for &MolecularFormula {
     }
 }
 
+impl Mul<&isize> for &MolecularFormula {
+    type Output = MolecularFormula;
+    fn mul(self, rhs: &isize) -> Self::Output {
+        self.checked_mul_isize(*rhs)
+            .expect("Overflow in multiplying MolecularFormula")
+    }
+}
+
 impl Mul<&i32> for &MolecularFormula {
     type Output = MolecularFormula;
     fn mul(self, rhs: &i32) -> Self::Output {
@@ -543,6 +551,11 @@ impl Mul<&u16> for &MolecularFormula {
 }
 
 impl MolecularFormula {
+    /// Do checked multiplication to handle overflows gracefully
+    pub fn checked_mul_isize(&self, rhs: isize) -> Option<Self> {
+        self.checked_mul_i32(i32::try_from(rhs).ok()?)
+    }
+
     /// Do checked multiplication to handle overflows gracefully
     pub fn checked_mul_i32(&self, rhs: i32) -> Option<Self> {
         Some(Self {
@@ -590,6 +603,7 @@ impl Mul<&i8> for &MolecularFormula {
 
 impl_binop_ref_cases!(impl Add, add for MolecularFormula, MolecularFormula, MolecularFormula);
 impl_binop_ref_cases!(impl Sub, sub for MolecularFormula, MolecularFormula, MolecularFormula);
+impl_binop_ref_cases!(impl Mul, mul for MolecularFormula, isize, MolecularFormula);
 impl_binop_ref_cases!(impl Mul, mul for MolecularFormula, i32, MolecularFormula);
 impl_binop_ref_cases!(impl Mul, mul for MolecularFormula, u16, MolecularFormula);
 impl_binop_ref_cases!(impl Mul, mul for MolecularFormula, i8, MolecularFormula);
