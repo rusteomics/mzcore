@@ -7,7 +7,7 @@ use crate::{DeepNovoFamilyData, DeepNovoFamilyVersion, test_format};
 fn deepnovo() {
     match test_format::<DeepNovoFamilyData>(
         BufReader::new(DEEPNOVO_V0_0_1.as_bytes()),
-        None,
+        &mzcore::ontology::STATIC_ONTOLOGIES,
         false,
         true,
         Some(DeepNovoFamilyVersion::DeepNovoV0_0_1),
@@ -24,7 +24,7 @@ fn deepnovo() {
 fn pointnovo() {
     match test_format::<DeepNovoFamilyData>(
         BufReader::new(POINTNOVO_V0_0_1.as_bytes()),
-        None,
+        &mzcore::ontology::STATIC_ONTOLOGIES,
         false,
         true,
         Some(DeepNovoFamilyVersion::PointNovoFamily),
@@ -41,7 +41,7 @@ fn pointnovo() {
 fn biatnovo() {
     match test_format::<DeepNovoFamilyData>(
         BufReader::new(BIATNOVO_V0_1.as_bytes()),
-        None,
+        &mzcore::ontology::STATIC_ONTOLOGIES,
         false,
         true,
         Some(DeepNovoFamilyVersion::PointNovoFamily),
@@ -58,7 +58,7 @@ fn biatnovo() {
 fn pgpointnovo() {
     match test_format::<DeepNovoFamilyData>(
         BufReader::new(PGPOINTNOVO_V1_0_6.as_bytes()),
-        None,
+        &mzcore::ontology::STATIC_ONTOLOGIES,
         false,
         true,
         Some(DeepNovoFamilyVersion::PointNovoFamily),

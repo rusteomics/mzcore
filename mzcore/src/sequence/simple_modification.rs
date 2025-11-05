@@ -360,14 +360,7 @@ impl SimpleModificationInner {
                     PlacementRule::Terminal(pos) => pos.to_string(),
                     PlacementRule::Anywhere => "Anywhere".to_string(),
                     PlacementRule::PsiModification(index, pos) => {
-                        format!(
-                            "{}@{pos}",
-                            Ontology::Psimod.find_id(*index, None).unwrap_or_else(|| {
-                                panic!(
-                    "Invalid PsiMod placement rule, non existing modification {index}"
-                )
-                            })
-                        )
+                        format!("MOD:{index:07}@{pos}")
                     }
                 })
                 .collect_vec(),
@@ -391,14 +384,7 @@ impl SimpleModificationInner {
                     PlacementRule::Terminal(pos) => pos.to_string(),
                     PlacementRule::Anywhere => "Anywhere".to_string(),
                     PlacementRule::PsiModification(index, pos) => {
-                        format!(
-                            "{}@{pos}",
-                            Ontology::Psimod.find_id(index, None).unwrap_or_else(|| {
-                                panic!(
-                "Invalid PsiMod placement rule, non existing modification {index}"
-            )
-                            })
-                        )
+                        format!("MOD:{index:07}@{pos}")
                     }
                 })
                 .collect_vec(),
@@ -644,7 +630,7 @@ impl ParseJson for SimpleModificationInner {
 #[allow(clippy::missing_panics_doc)]
 mod tests {
     use super::*;
-    use crate::molecular_formula;
+    use crate::{molecular_formula, ontology::Ontologies};
 
     #[test]
     fn modification_masses() {
@@ -652,7 +638,7 @@ mod tests {
             "G:G09675LS",
             &mut Vec::new(),
             &mut Vec::new(),
-            None,
+            &crate::ontology::STATIC_ONTOLOGIES,
         )
         .unwrap();
         let modification = modification.defined().unwrap();

@@ -387,7 +387,7 @@ pub(crate) static GLYCAN_PARSE_LIST: LazyLock<Vec<(Vec<&'static str>, MonoSaccha
                     "TalNAc",
                 ],
                 MonoSaccharide {
-                    base_sugar: BaseSugar::Hexose(Some(HexoseIsomer::Talose)),
+                    base_sugar: BaseSugar::Hexose(None),
                     substituents: vec![GlycanSubstituent::NAcetyl].into(),
                     proforma_name: Some("HexNAc".to_string().into_boxed_str()),
                     furanose: false,
@@ -439,7 +439,7 @@ pub(crate) static GLYCAN_PARSE_LIST: LazyLock<Vec<(Vec<&'static str>, MonoSaccha
                     "Hex", "Glc", "Gal", "Man", "All", "Alt", "Gul", "Ido", "Tal",
                 ],
                 MonoSaccharide {
-                    base_sugar: BaseSugar::Hexose(Some(HexoseIsomer::Talose)),
+                    base_sugar: BaseSugar::Hexose(None),
                     substituents: ThinVec::new(),
                     proforma_name: Some("Hex".to_string().into_boxed_str()),
                     furanose: false,

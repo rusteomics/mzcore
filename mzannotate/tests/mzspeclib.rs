@@ -23,7 +23,7 @@ fn read_all_files() {
             let spectra = MzSpecLibTextParser::open(
                 std::io::BufReader::new(std::fs::File::open(entry.path()).unwrap()),
                 Some(entry.path()),
-                None,
+                &mzcore::ontology::STATIC_ONTOLOGIES,
             )
             .unwrap();
             let header = spectra.header().clone();
@@ -70,7 +70,7 @@ fn read_all_files() {
             let reparsed_spectra = MzSpecLibTextParser::open(
                 std::io::BufReader::new(std::fs::File::open(&rewrite_path).unwrap()),
                 Some(rewrite_path),
-                None,
+                &mzcore::ontology::STATIC_ONTOLOGIES,
             )
             .unwrap()
             .collect::<Result<Vec<_>, _>>()

@@ -9,7 +9,7 @@ use crate::{
 };
 use mzcore::{
     csv::{CsvLine, parse_csv},
-    ontology::CustomDatabase,
+    ontology::Ontologies,
     sequence::{
         CompoundPeptidoformIon, FlankingSequence, Peptidoform, SemiAmbiguous,
         SloppyParsingParameters,
@@ -28,7 +28,7 @@ format_family!(
     required {
         scan_number: usize, |location: Location, _| location.parse(NUMBER_ERROR);
         /// Up to 3 leading amino acids (if present), the peptidoform itself, and up to 3 tailing amino acids (if present)
-        peptide: (FlankingSequence, Peptidoform<SemiAmbiguous>, FlankingSequence), |location: Location, custom_database: Option<&CustomDatabase>| {
+        peptide: (FlankingSequence, Peptidoform<SemiAmbiguous>, FlankingSequence), |location: Location, ontologies: &Ontologies| {
             location.clone().split_twice('.').ok_or_else(|| BoxedError::new(BasicKind::Error,"Invalid Proteoscape line", "The peptide columns should contain the previous amino acids, the peptide, and the following amino acids separated by dots.", location.context().to_owned())).and_then(|(before, peptide, after)| {
                 let before = before.trim_start_matches("-");
                 let after = after.trim_end_matches("-");
@@ -36,20 +36,20 @@ format_family!(
                     (!before.is_empty()).then(|| Peptidoform::sloppy_pro_forma(
                         before.full_line(),
                         before.location.clone(),
-                        custom_database,
+                        ontologies,
                         &SloppyParsingParameters::default(),
                     ).map_err(BoxedError::to_owned)).transpose()?
                     .map_or(FlankingSequence::Terminal, |s| FlankingSequence::Sequence(Box::new(s))),
                     Peptidoform::sloppy_pro_forma(
                         peptide.full_line(),
                         peptide.location.clone(),
-                        custom_database,
+                        ontologies,
                         &SloppyParsingParameters::default(),
                     ).map_err(BoxedError::to_owned)?,
                     (!after.is_empty()).then(|| Peptidoform::sloppy_pro_forma(
                         after.full_line(),
                         after.location.clone(),
-                        custom_database,
+                        ontologies,
                         &SloppyParsingParameters::default(),
                     ).map_err(BoxedError::to_owned)).transpose()?
                     .map_or(FlankingSequence::Terminal, |s| FlankingSequence::Sequence(Box::new(s))),

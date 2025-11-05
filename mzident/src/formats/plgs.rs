@@ -13,7 +13,7 @@ use crate::{
 use mzcore::{
     chemistry::{MolecularFormula, NeutralLoss},
     csv::{CsvLine, parse_csv},
-    ontology::CustomDatabase,
+    ontology::Ontologies,
     sequence::{
         AminoAcid, CompoundPeptidoformIon, FlankingSequence, MUPSettings, Modification,
         Peptidoform, PlacementRule, Position, SequencePosition, SimpleLinear, SimpleModification,
@@ -59,10 +59,10 @@ format_family!(
         peptide_rank: u32, |location: Location, _| location.parse(NUMBER_ERROR);
         peptide_pass: Box<str>, |location: Location, _| Ok(location.get_boxed_str());
         peptide_match_type: Box<str>, |location: Location, _| Ok(location.get_boxed_str());
-        peptide_modifications: ThinVec<(SimpleModification, AminoAcid, Option<usize>)>, |location: Location, custom_database: Option<&CustomDatabase>|
+        peptide_modifications: ThinVec<(SimpleModification, AminoAcid, Option<usize>)>, |location: Location, ontologies: &Ontologies|
             location.ignore("None").array(';').map(|l| {
                 let plus = l.as_str().find('+').ok_or_else(|| BoxedError::new(BasicKind::Error,"Invalid PLGS modification", "A PLGS modification should be in the format 'modification+AA(pos)' and the plus '+' is missing.", l.context().to_owned()))?;
-                let modification = Modification::sloppy_modification(l.full_line(), l.location.start..l.location.start+plus, None, custom_database).map_err(BoxedError::to_owned)?;
+                let modification = Modification::sloppy_modification(l.full_line(), l.location.start..l.location.start+plus, None, ontologies).map_err(BoxedError::to_owned)?;
                 let aa = l.as_str()[plus+1..plus+2].parse::<AminoAcid>().map_err(|()| BoxedError::new(BasicKind::Error,"Invalid PLGS modification", "A PLGS modification should be in the format 'modification+AA(pos)' and the amino acid is not valid", l.context().to_owned()))?;
                 let num = &l.as_str()[plus+3..l.len()-1];
                 let index = if num == "*" {None} else {
@@ -70,7 +70,7 @@ format_family!(
                 };
                 Ok((modification, aa, index))
             }).collect::<Result<ThinVec<_>,_>>();
-        peptide: Peptidoform<SimpleLinear>, |location: Location, custom_database: Option<&CustomDatabase>| Peptidoform::pro_forma_inner(&location.context(), location.full_line(), location.location.clone(), custom_database).map(|(p, _)| p.into_simple_linear().unwrap()).map_err(|errs| BoxedError::new(BasicKind::Error, "Invalid ProForma definition", "The string could not be parsed as a ProForma definition", location.context()).add_underlying_errors(errs)).map_err(BoxedError::to_owned);
+        peptide: Peptidoform<SimpleLinear>, |location: Location, ontologies: &Ontologies| Peptidoform::pro_forma_inner(&location.context(), location.full_line(), location.location.clone(), ontologies).map(|(p, _)| p.into_simple_linear().unwrap()).map_err(|errs| BoxedError::new(BasicKind::Error, "Invalid ProForma definition", "The string could not be parsed as a ProForma definition", location.context()).add_underlying_errors(errs)).map_err(BoxedError::to_owned);
         peptide_start: u16, |location: Location, _| location.parse(NUMBER_ERROR);
         peptide_pi: f32, |location: Location, _| location.parse(NUMBER_ERROR);
         peptide_component_id: u32, |location: Location, _| location.parse(NUMBER_ERROR);
@@ -128,7 +128,7 @@ format_family!(
         precursor_product_delta_rt: Time, |location: Location, _| location.or_empty().parse(NUMBER_ERROR).map(|r| r.map(Time::new::<mzcore::system::time::s>));
     }
 
-    fn post_process(_source: &CsvLine, mut parsed: Self, _custom_database: Option<&CustomDatabase>) -> Result<Self, BoxedError<'static, BasicKind>> {
+    fn post_process(_source: &CsvLine, mut parsed: Self, _ontologies: &Ontologies) -> Result<Self, BoxedError<'static, BasicKind>> {
         for (m, aa, index) in &parsed.peptide_modifications {
             if let Some(index) = index {
                 parsed.peptide.add_simple_modification(SequencePosition::Index(*index), m.clone());

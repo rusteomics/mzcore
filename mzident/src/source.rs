@@ -41,7 +41,7 @@ where
     /// When the source is not a valid peptide
     fn parse(
         source: &Self::Source,
-        custom_database: Option<&CustomDatabase>,
+        ontologies: &mzcore::ontology::Ontologies,
         keep_all_columns: bool,
     ) -> Result<(Self, &'static Self::Format), BoxedError<'static, BasicKind>>;
 
@@ -51,7 +51,7 @@ where
     fn parse_specific(
         source: &Self::Source,
         format: &Self::Format,
-        custom_database: Option<&CustomDatabase>,
+        ontologies: &mzcore::ontology::Ontologies,
         keep_all_columns: bool,
     ) -> Result<Self, BoxedError<'static, BasicKind>>;
 
@@ -60,14 +60,14 @@ where
     /// When the source is not a valid peptide
     fn parse_many<I: Iterator<Item = Result<Self::Source, BoxedError<'static, BasicKind>>>>(
         iter: I,
-        custom_database: Option<&CustomDatabase>,
+        ontologies: &mzcore::ontology::Ontologies,
         keep_all_columns: bool,
         format: Option<Self::Format>,
     ) -> IdentifiedPeptidoformIter<'_, Self, I> {
         IdentifiedPeptidoformIter {
             iter: Box::new(iter),
             format,
-            custom_database,
+            ontologies,
             keep_all_columns,
             peek: None,
         }
@@ -78,7 +78,7 @@ where
     /// Returns Err when the file could not be opened
     fn parse_file(
         path: impl AsRef<std::path::Path>,
-        custom_database: Option<&CustomDatabase>,
+        ontologies: &mzcore::ontology::Ontologies,
         keep_all_columns: bool,
         version: Option<Self::Version>,
     ) -> Result<BoxedIdentifiedPeptideIter<'_, Self>, BoxedError<'static, BasicKind>>;
@@ -88,7 +88,7 @@ where
     /// When the file is empty or no headers are present.
     fn parse_reader<'a>(
         reader: impl std::io::Read + 'a,
-        custom_database: Option<&'a CustomDatabase>,
+        ontologies: &'a mzcore::ontology::Ontologies,
         keep_all_columns: bool,
         version: Option<Self::Version>,
     ) -> Result<BoxedIdentifiedPeptideIter<'a, Self>, BoxedError<'static, BasicKind>>;
@@ -100,7 +100,7 @@ where
     fn post_process(
         source: &Self::Source,
         parsed: Self,
-        custom_database: Option<&CustomDatabase>,
+        ontologies: &mzcore::ontology::Ontologies,
     ) -> Result<Self, BoxedError<'static, BasicKind>> {
         Ok(parsed)
     }
@@ -131,7 +131,6 @@ pub type BoxedIdentifiedPeptideIter<'lifetime, T> = IdentifiedPeptidoformIter<
 >;
 
 /// An iterator returning parsed identified peptides
-#[derive(Debug)]
 pub struct IdentifiedPeptidoformIter<
     'lifetime,
     Source: IdentifiedPeptidoformSource,
@@ -139,7 +138,7 @@ pub struct IdentifiedPeptidoformIter<
 > {
     iter: Box<Iter>,
     format: Option<Source::Format>,
-    custom_database: Option<&'lifetime CustomDatabase>,
+    ontologies: &'lifetime mzcore::ontology::Ontologies,
     keep_all_columns: bool,
     peek: Option<Result<Source, BoxedError<'static, BasicKind>>>,
 }
@@ -159,17 +158,12 @@ where
 
         let peek = if let Some(format) = &self.format {
             self.iter.next().map(|source| {
-                R::parse_specific(
-                    &source?,
-                    format,
-                    self.custom_database,
-                    self.keep_all_columns,
-                )
-                .map_err(BoxedError::to_owned)
+                R::parse_specific(&source?, format, self.ontologies, self.keep_all_columns)
+                    .map_err(BoxedError::to_owned)
             })
         } else {
             match self.iter.next().map(|source| {
-                R::parse(&source?, self.custom_database, self.keep_all_columns)
+                R::parse(&source?, self.ontologies, self.keep_all_columns)
                     .map_err(BoxedError::to_owned)
             }) {
                 None => None,
@@ -200,17 +194,12 @@ where
 
         if let Some(format) = &self.format {
             self.iter.next().map(|source| {
-                R::parse_specific(
-                    &source?,
-                    format,
-                    self.custom_database,
-                    self.keep_all_columns,
-                )
-                .map_err(BoxedError::to_owned)
+                R::parse_specific(&source?, format, self.ontologies, self.keep_all_columns)
+                    .map_err(BoxedError::to_owned)
             })
         } else {
             match self.iter.next().map(|source| {
-                R::parse(&source?, self.custom_database, self.keep_all_columns)
+                R::parse(&source?, self.ontologies, self.keep_all_columns)
                     .map_err(BoxedError::to_owned)
             }) {
                 None => None,

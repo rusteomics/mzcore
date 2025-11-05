@@ -9,7 +9,7 @@ use crate::{
 };
 use mzcore::{
     csv::{CsvLine, parse_csv},
-    ontology::CustomDatabase,
+    ontology::Ontologies,
     sequence::{
         CompoundPeptidoformIon, FlankingSequence, Peptidoform, SemiAmbiguous,
         SloppyParsingParameters,
@@ -27,10 +27,10 @@ format_family!(
     SemiAmbiguous, PeptidoformPresent, [&PIHELIXNOVO_V1_1], b'\t', Some(vec!["title".to_string(),"peptide".to_string(),"score".to_string()]);
     required {
         title: String, |location: Location, _| Ok(location.get_string());
-        peptide: Peptidoform<SemiAmbiguous>, |location: Location, custom_database: Option<&CustomDatabase>| Peptidoform::sloppy_pro_forma(
+        peptide: Peptidoform<SemiAmbiguous>, |location: Location, ontologies: &Ontologies| Peptidoform::sloppy_pro_forma(
             location.full_line(),
             location.location.clone(),
-            custom_database,
+            ontologies,
             &SloppyParsingParameters {
                 allow_unwrapped_modifications: true,
                 ..Default::default()

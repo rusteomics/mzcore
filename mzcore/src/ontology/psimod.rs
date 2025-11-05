@@ -60,7 +60,7 @@ impl CVSource for PsiMod {
                     <SimpleModificationInner as mzcv::CVData>::Cache,
                     Configuration,
                 >(
-                    include_bytes!("../databases/psimod_new.dat"),
+                    include_bytes!("../databases/psimod.dat"),
                     Configuration::default(),
                 )
                 .unwrap()

@@ -1,13 +1,12 @@
 #![allow(clippy::missing_panics_doc)]
-use std::io::BufReader;
-
 use crate::{NovoBData, NovoBVersion, test_format};
+use std::io::BufReader;
 
 #[test]
 fn novob() {
     match test_format::<NovoBData>(
         BufReader::new(NOVOB_V0_0_1.as_bytes()),
-        None,
+        &mzcore::ontology::STATIC_ONTOLOGIES,
         false,
         false,
         Some(NovoBVersion::V0_0_1),
@@ -24,7 +23,7 @@ fn novob() {
 fn novob_1() {
     match test_format::<NovoBData>(
         BufReader::new(NOVOB_V0_0_1_2.as_bytes()),
-        None,
+        &mzcore::ontology::STATIC_ONTOLOGIES,
         false,
         false,
         Some(NovoBVersion::V0_0_1),

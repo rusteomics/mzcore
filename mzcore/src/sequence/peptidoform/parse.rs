@@ -8,7 +8,7 @@ use crate::{
     ParserResult,
     chemistry::{Element, MolecularCharge, MolecularFormula},
     helper_functions::*,
-    ontology::CustomDatabase,
+    ontology::Ontologies,
     sequence::{
         AmbiguousLookup, AmbiguousLookupEntry, AminoAcid, CheckedAminoAcid, CompoundPeptidoformIon,
         CrossLinkLookup, Linked, Modification, Peptidoform, PeptidoformIon, PlacementRule,
@@ -39,13 +39,13 @@ impl Peptidoform<Linked> {
     /// It additionally gives an error if the peptide specified was chimeric (see [`CompoundPeptidoformIon::singular`] and [`PeptidoformIon::singular`]).
     pub fn pro_forma<'a>(
         value: &'a str,
-        custom_database: Option<&CustomDatabase>,
+        ontologies: &Ontologies,
     ) -> ParserResult<'a, Self, BasicKind> {
         Self::pro_forma_inner(
             &Context::none().lines(0, value),
             value,
             0..value.len(),
-            custom_database,
+            ontologies,
         )
     }
 
@@ -59,10 +59,10 @@ impl Peptidoform<Linked> {
         base_context: &Context<'a>,
         line: &'a str,
         range: Range<usize>,
-        custom_database: Option<&CustomDatabase>,
+        ontologies: &Ontologies,
     ) -> ParserResult<'a, Self, BasicKind> {
         let (pep, mut warnings) =
-            PeptidoformIon::pro_forma_inner(base_context, line, range.clone(), custom_database)?;
+            PeptidoformIon::pro_forma_inner(base_context, line, range.clone(), ontologies)?;
         if let Some(pep) = pep.singular() {
             Ok((pep, warnings))
         } else {
@@ -88,13 +88,13 @@ impl PeptidoformIon {
     /// It fails when the string is not a valid ProForma string. Or when the string has multiple peptidoforms.
     pub fn pro_forma<'a>(
         value: &'a str,
-        custom_database: Option<&CustomDatabase>,
+        ontologies: &Ontologies,
     ) -> ParserResult<'a, Self, BasicKind> {
         Self::pro_forma_inner(
             &Context::none().lines(0, value),
             value,
             0..value.len(),
-            custom_database,
+            ontologies,
         )
     }
 
@@ -108,14 +108,10 @@ impl PeptidoformIon {
         base_context: &Context<'a>,
         line: &'a str,
         range: Range<usize>,
-        custom_database: Option<&CustomDatabase>,
+        ontologies: &Ontologies,
     ) -> ParserResult<'a, Self, BasicKind> {
-        let (pep, mut warnings) = CompoundPeptidoformIon::pro_forma_inner(
-            base_context,
-            line,
-            range.clone(),
-            custom_database,
-        )?;
+        let (pep, mut warnings) =
+            CompoundPeptidoformIon::pro_forma_inner(base_context, line, range.clone(), ontologies)?;
         if let Some(pep) = pep.singular() {
             Ok((pep, warnings))
         } else {
@@ -141,13 +137,13 @@ impl CompoundPeptidoformIon {
     /// It fails when the string is not a valid ProForma string.
     pub fn pro_forma<'a>(
         value: &'a str,
-        custom_database: Option<&CustomDatabase>,
+        ontologies: &Ontologies,
     ) -> ParserResult<'a, Self, BasicKind> {
         Self::pro_forma_inner(
             &Context::none().lines(0, value),
             value,
             0..value.len(),
-            custom_database,
+            ontologies,
         )
     }
 
@@ -161,14 +157,14 @@ impl CompoundPeptidoformIon {
         base_context: &Context<'a>,
         line: &'a str,
         range: Range<usize>,
-        custom_database: Option<&CustomDatabase>,
+        ontologies: &Ontologies,
     ) -> ParserResult<'a, Self, BasicKind> {
         let mut peptidoforms = Vec::new();
         let mut errors = Vec::new();
         // Global modifications
         let (mut start, global_modifications) = handle!(
             errors,
-            global_modifications(base_context, line, range.clone(), custom_database)
+            global_modifications(base_context, line, range.clone(), ontologies)
         );
         let (peptidoform, tail) = handle!(
             errors,
@@ -177,7 +173,7 @@ impl CompoundPeptidoformIon {
                 line,
                 start..range.end,
                 &global_modifications,
-                custom_database,
+                ontologies,
             )
         );
         start = tail;
@@ -192,7 +188,7 @@ impl CompoundPeptidoformIon {
                     line,
                     start..range.end,
                     &global_modifications,
-                    custom_database,
+                    ontologies,
                 )
             );
             peptidoforms.push(peptidoform);
@@ -223,7 +219,7 @@ impl CompoundPeptidoformIon {
         line: &'a str,
         range: Range<usize>,
         global_modifications: &[GlobalModification],
-        custom_database: Option<&CustomDatabase>,
+        ontologies: &Ontologies,
     ) -> ParserResult<'a, (PeptidoformIon, usize), BasicKind> {
         let mut index: usize = range.start;
         let mut peptides = Vec::new();
@@ -241,7 +237,7 @@ impl CompoundPeptidoformIon {
                     base_context,
                     line,
                     index..range.end,
-                    custom_database,
+                    ontologies,
                     &mut cross_link_lookup,
                 )
             );
@@ -316,7 +312,7 @@ impl CompoundPeptidoformIon {
         base_context: &Context<'a>,
         line: &'a str,
         range: Range<usize>,
-        custom_database: Option<&CustomDatabase>,
+        ontologies: &Ontologies,
         cross_link_lookup: &mut CrossLinkLookup,
     ) -> ParserResult<'a, LinearPeptideResult, BasicKind> {
         let mut errors = Vec::new();
@@ -352,7 +348,7 @@ impl CompoundPeptidoformIon {
                 base_context,
                 index,
                 line,
-                custom_database,
+                ontologies,
                 &mut ambiguous_lookup
             )
         );
@@ -360,7 +356,7 @@ impl CompoundPeptidoformIon {
         // Labile modification(s)
         let (mut index, labile) = handle!(
             errors,
-            labile_modifications(base_context, line, index, custom_database)
+            labile_modifications(base_context, line, index, ontologies)
         );
         peptide = peptide.labile(labile);
 
@@ -385,7 +381,7 @@ impl CompoundPeptidoformIon {
                     temp_index + 1..end_index,
                     &mut ambiguous_lookup,
                     cross_link_lookup,
-                    custom_database,
+                    ontologies,
                 )
             ));
 
@@ -521,7 +517,7 @@ impl CompoundPeptidoformIon {
                         let modification = handle!(errors, SimpleModificationInner::pro_forma_inner(
                             base_context,
                             line, index + 1..end_index,
-                            &mut ambiguous_lookup, cross_link_lookup, custom_database,
+                            &mut ambiguous_lookup, cross_link_lookup, ontologies,
                         ).and_then(|((m, _mup_settings), mut w)| {
                             let warnings = w.clone();
                             m.defined().map(|m| (m, warnings)).ok_or_else(|| {
@@ -573,7 +569,7 @@ impl CompoundPeptidoformIon {
                             index + 1..end_index,
                             &mut ambiguous_lookup,
                             cross_link_lookup,
-                            custom_database,
+                            ontologies,
                         )
                     );
                     let start_index = index + 1;
@@ -614,7 +610,7 @@ impl CompoundPeptidoformIon {
                                     index + 1..end_index,
                                     &mut ambiguous_lookup,
                                     cross_link_lookup,
-                                    custom_database,
+                                    ontologies,
                                 )
                             );
 
@@ -872,7 +868,7 @@ pub(super) fn global_modifications<'a>(
     base_context: &Context<'a>,
     line: &'a str,
     range: Range<usize>,
-    custom_database: Option<&CustomDatabase>,
+    ontologies: &Ontologies,
 ) -> ParserResult<'a, (usize, Vec<GlobalModification>), BasicKind> {
     let mut index = range.start;
     let mut errors = Vec::new();
@@ -938,7 +934,7 @@ pub(super) fn global_modifications<'a>(
                     start_index + 2..at_index - 2,
                     &mut Vec::new(),
                     &mut Vec::new(),
-                    custom_database,
+                    ontologies,
                 )
                 .map(|((m, _mup_settings), mut warnings)| {
                     let w = warnings.clone();
@@ -1115,7 +1111,7 @@ pub(super) fn global_unknown_position_mods<'a>(
     base_context: &Context<'a>,
     start: usize,
     line: &'a str,
-    custom_database: Option<&CustomDatabase>,
+    ontologies: &Ontologies,
     ambiguous_lookup: &mut AmbiguousLookup,
 ) -> ParserResult<'a, (usize, Vec<usize>), BasicKind> {
     let mut index = start;
@@ -1140,7 +1136,7 @@ pub(super) fn global_unknown_position_mods<'a>(
             start_index + 1..index - 1,
             ambiguous_lookup,
             &mut cross_link_lookup,
-            custom_database,
+            ontologies,
         ) {
             Ok(((ReturnModification::Defined(m), settings), warnings)) => {
                 combine_errors(&mut errs, warnings, ());
@@ -1236,7 +1232,7 @@ fn labile_modifications<'a>(
     base_context: &Context<'a>,
     line: &'a str,
     mut index: usize,
-    custom_database: Option<&CustomDatabase>,
+    ontologies: &Ontologies,
 ) -> ParserResult<'a, (usize, Vec<SimpleModification>), BasicKind> {
     let mut errors = Vec::new();
     let chars = line.as_bytes();
@@ -1262,7 +1258,7 @@ fn labile_modifications<'a>(
             index + 1..end_index,
             &mut Vec::new(),
             &mut Vec::new(),
-            custom_database,
+            ontologies,
         ) {
             Ok(((ReturnModification::Defined(m), _), warnings)) => {
                 combine_errors(&mut errors, warnings, ());

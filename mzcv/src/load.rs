@@ -122,6 +122,18 @@ impl<CV: CVSource> CVIndex<CV> {
         (result, errors)
     }
 
+    /// Initialise the data from the static data.
+    ///
+    /// All errors encountered in previous steps are returned.
+    pub fn init_static() -> Self {
+        let mut result = Self::empty();
+        // Load the static data
+        if let Some((version, data)) = CV::static_data() {
+            result.update_skip_rebuilding_cache(data.into_iter().map(Arc::new), version);
+        }
+        result
+    }
+
     /// Update the CV based on the given data, empties the CV before replacing all data with the new data.
     /// This additionally tries to save the new data to the cache.
     /// # Errors
@@ -129,7 +141,7 @@ impl<CV: CVSource> CVIndex<CV> {
     pub fn update(
         &mut self,
         version: CVVersion,
-        data: impl Iterator<Item = Arc<CV::Data>>,
+        data: impl IntoIterator<Item = Arc<CV::Data>>,
     ) -> Result<(), BoxedError<'static, CVError>> {
         self.update_skip_rebuilding_cache(data, version);
 

@@ -196,7 +196,10 @@ mod tests {
 
     #[test]
     fn masses() {
-        let peptidoform = Peptidoform::pro_forma("AAN[G:G01357PS]AA", None).unwrap().0;
+        let peptidoform =
+            Peptidoform::pro_forma("AAN[G:G01357PS]AA", &mzcore::ontology::STATIC_ONTOLOGIES)
+                .unwrap()
+                .0;
         let mut model = GlycanModel::default_exd_allow();
         model.peptide_fragment_rules.push((
             vec![

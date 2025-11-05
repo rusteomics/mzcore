@@ -12,11 +12,10 @@ use crate::{
 };
 use mzannotate::prelude::AnnotatedSpectrum;
 use mzcore::{
-    ontology::CustomDatabase,
+    ontology::Ontologies,
     prelude::*,
     sequence::{FlankingSequence, Linked},
-    system::isize::Charge,
-    system::{Mass, MassOverCharge, Time},
+    system::{Mass, MassOverCharge, Time, isize::Charge},
 };
 
 use context_error::{BasicKind, BoxedError, FullErrorContent};
@@ -234,9 +233,9 @@ impl From<AnnotatedSpectrum> for IdentifiedPeptidoform<Linked, MaybePeptidoform>
 /// If the file is not a valid mzSpecLib file.
 pub(crate) fn parse_mzspeclib<'a>(
     path: &Path,
-    custom_database: Option<&'a CustomDatabase>,
+    ontologies: &'a Ontologies,
 ) -> Result<GeneralIdentifiedPeptidoforms<'a>, BoxedError<'static, BasicKind>> {
-    mzannotate::mzspeclib::MzSpecLibTextParser::open_file(path, custom_database)
+    mzannotate::mzspeclib::MzSpecLibTextParser::open_file(path, ontologies)
         .map(move |parser| {
             let b: Box<
                 dyn Iterator<

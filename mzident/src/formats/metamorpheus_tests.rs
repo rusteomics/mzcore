@@ -7,7 +7,7 @@ use crate::{MetaMorpheusData, MetaMorpheusVersion, test_format};
 fn meta_morpheus_psm() {
     match test_format::<MetaMorpheusData>(
         BufReader::new(PSM.as_bytes()),
-        None,
+        &mzcore::ontology::STATIC_ONTOLOGIES,
         false,
         false,
         Some(MetaMorpheusVersion::MetaMorpheus),

@@ -9,12 +9,15 @@ const MAB_SEQUENCE: &str = "GPGGGGSLPEVREKHEFLNRLKQLPLLESQIATIEQSAPSQSDQEQLFSNVQ
 /// Test on many peptidoforms if alignment to itself always results in a perfect match
 #[test]
 fn identity() {
-    let peptidoforms: Vec<_> =
-        open_identified_peptidoforms_file("tests/example_peptidoforms.csv", None, false)
-            .unwrap()
-            .filter_map(Result::ok)
-            .filter_map(IdentifiedPeptidoform::into_simple_linear)
-            .collect();
+    let peptidoforms: Vec<_> = open_identified_peptidoforms_file(
+        "tests/example_peptidoforms.csv",
+        &mzcore::ontology::STATIC_ONTOLOGIES,
+        false,
+    )
+    .unwrap()
+    .filter_map(Result::ok)
+    .filter_map(IdentifiedPeptidoform::into_simple_linear)
+    .collect();
 
     for peptidoform in &peptidoforms {
         let alignment = align::<
@@ -35,13 +38,16 @@ fn identity() {
 /// Test for a set of peptidoforms from a database matcher if the match to the database is indeed perfect
 #[test]
 fn alignment_to_database() {
-    let peptidoforms: Vec<_> =
-        open_identified_peptidoforms_file("tests/example_peptidoforms.csv", None, false)
-            .unwrap()
-            .filter_map(Result::ok)
-            .filter_map(IdentifiedPeptidoform::into_simple_linear)
-            .collect();
-    let database = Peptidoform::pro_forma(MAB_SEQUENCE, None)
+    let peptidoforms: Vec<_> = open_identified_peptidoforms_file(
+        "tests/example_peptidoforms.csv",
+        &mzcore::ontology::STATIC_ONTOLOGIES,
+        false,
+    )
+    .unwrap()
+    .filter_map(Result::ok)
+    .filter_map(IdentifiedPeptidoform::into_simple_linear)
+    .collect();
+    let database = Peptidoform::pro_forma(MAB_SEQUENCE, &mzcore::ontology::STATIC_ONTOLOGIES)
         .unwrap()
         .0
         .into_simple_linear()
@@ -88,16 +94,22 @@ fn pairwise() {
     let mut differences = Vec::new();
 
     for (id, line) in lines.iter().enumerate() {
-        let a = Peptidoform::pro_forma(line.index_column("a").unwrap().0, None)
-            .unwrap()
-            .0
-            .into_simple_linear()
-            .unwrap();
-        let b = Peptidoform::pro_forma(line.index_column("b").unwrap().0, None)
-            .unwrap()
-            .0
-            .into_simple_linear()
-            .unwrap();
+        let a = Peptidoform::pro_forma(
+            line.index_column("a").unwrap().0,
+            &mzcore::ontology::STATIC_ONTOLOGIES,
+        )
+        .unwrap()
+        .0
+        .into_simple_linear()
+        .unwrap();
+        let b = Peptidoform::pro_forma(
+            line.index_column("b").unwrap().0,
+            &mzcore::ontology::STATIC_ONTOLOGIES,
+        )
+        .unwrap()
+        .0
+        .into_simple_linear()
+        .unwrap();
         let path = line.index_column("path").unwrap().0;
         let absolute_score: isize = line
             .index_column("absolute score")

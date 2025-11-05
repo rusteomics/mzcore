@@ -325,7 +325,10 @@ pub mod known_proteases {
 #[cfg(test)]
 #[allow(clippy::missing_panics_doc)]
 mod tests {
-    use crate::sequence::{Linear, Peptidoform};
+    use crate::{
+        ontology::Ontologies,
+        sequence::{Linear, Peptidoform},
+    };
 
     use super::*;
 
@@ -366,7 +369,7 @@ mod tests {
     }
 
     fn str_to_peptidoform(str_peptide: &str) -> Peptidoform<Linear> {
-        Peptidoform::pro_forma(str_peptide, None)
+        Peptidoform::pro_forma(str_peptide, &crate::ontology::STATIC_ONTOLOGIES)
             .unwrap()
             .0
             .into_linear()

@@ -17,6 +17,7 @@ use crate::{
     PeptidoformPresent, SpectrumIds, helper_functions::explain_number_error,
 };
 use mzcore::{
+    ontology::Ontologies,
     sequence::{
         AminoAcid, AnnotatedPeptide, Annotation, CompoundPeptidoformIon, FlankingSequence,
         HasPeptidoformImpl, Peptidoform, Region, SemiAmbiguous, SequenceElement,
@@ -537,7 +538,7 @@ impl FromStr for FastaIdentifier<Range<usize>> {
 impl FastaData {
     /// The identifier
     pub fn identifier(&self) -> FastaIdentifier<&str> {
-        self.identifier.as_str(&self.full_header)
+        self.identifier.as_str(&self.full_header[1..])
     }
 
     /// The description
@@ -836,7 +837,9 @@ fn empty_lines() {
     assert_eq!(fasta.len(), 1);
     assert_eq!(
         fasta[0].peptide,
-        Peptidoform::pro_forma("AAAAAA", None).unwrap().0
+        Peptidoform::pro_forma("AAAAAA", &mzcore::ontology::STATIC_ONTOLOGIES)
+            .unwrap()
+            .0
     );
 }
 

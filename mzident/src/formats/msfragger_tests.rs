@@ -2,13 +2,16 @@
 use std::io::BufReader;
 
 use crate::{MSFraggerData, MSFraggerVersion, test_format};
-use mzcore::{sequence::SimpleModificationInner, system::OrderedMass};
+use mzcore::{
+    prelude::MolecularFormula,
+    sequence::{ModificationId, SimpleModificationInner},
+};
 
 #[test]
 fn msfragger_v4_2() {
     match test_format::<MSFraggerData>(
         BufReader::new(DATA_MSFRAGGER_V4_2.as_bytes()),
-        None,
+        &mzcore::ontology::STATIC_ONTOLOGIES,
         true,
         false,
         Some(MSFraggerVersion::V4_2),
@@ -25,7 +28,7 @@ fn msfragger_v4_2() {
 fn msfragger_v4_2_decoy() {
     match test_format::<MSFraggerData>(
         BufReader::new(DATA_MSFRAGGER_V4_2_DECOY.as_bytes()),
-        None,
+        &mzcore::ontology::STATIC_ONTOLOGIES,
         true,
         false,
         Some(MSFraggerVersion::V4_2),
@@ -42,7 +45,7 @@ fn msfragger_v4_2_decoy() {
 fn msfragger_v4_2_missing_columns() {
     match test_format::<MSFraggerData>(
         BufReader::new(DATA_MSFRAGGER_V4_2_MISSING_COLUMNS.as_bytes()),
-        None,
+        &mzcore::ontology::STATIC_ONTOLOGIES,
         true,
         false,
         Some(MSFraggerVersion::V4_2),
@@ -59,7 +62,7 @@ fn msfragger_v4_2_missing_columns() {
 fn msfragger_v4_3_missing_columns() {
     match test_format::<MSFraggerData>(
         BufReader::new(DATA_MSFRAGGER_V4_3_MISSING_COLUMNS.as_bytes()),
-        None,
+        &mzcore::ontology::STATIC_ONTOLOGIES,
         true,
         false,
         Some(MSFraggerVersion::V4_2),
@@ -76,7 +79,7 @@ fn msfragger_v4_3_missing_columns() {
 fn fragpipe_v21_a() {
     match test_format::<MSFraggerData>(
         BufReader::new(DATA_FRAGIPE_V21_A.as_bytes()),
-        None,
+        &mzcore::ontology::STATIC_ONTOLOGIES,
         true,
         false,
         Some(MSFraggerVersion::FragPipeV20Or21),
@@ -93,7 +96,7 @@ fn fragpipe_v21_a() {
 fn fragpipe_v21_b() {
     match test_format::<MSFraggerData>(
         BufReader::new(DATA_FRAGPIPE_V21_B.as_bytes()),
-        None,
+        &mzcore::ontology::STATIC_ONTOLOGIES,
         true,
         false,
         Some(MSFraggerVersion::FragPipeV20Or21),
@@ -110,7 +113,7 @@ fn fragpipe_v21_b() {
 fn fragpipe_v21_c() {
     match test_format::<MSFraggerData>(
         BufReader::new(DATA_FRAGPIPE_V21_C.as_bytes()),
-        None,
+        &mzcore::ontology::STATIC_ONTOLOGIES,
         true,
         false,
         Some(MSFraggerVersion::FragPipeV20Or21),
@@ -127,7 +130,7 @@ fn fragpipe_v21_c() {
 fn fragpipe_philosopher_a() {
     match test_format::<MSFraggerData>(
         BufReader::new(DATA_PHILOSOPHER_A.as_bytes()),
-        None,
+        &mzcore::ontology::STATIC_ONTOLOGIES,
         true,
         false,
         Some(MSFraggerVersion::Philosopher),
@@ -144,7 +147,7 @@ fn fragpipe_philosopher_a() {
 fn fragpipe_philosopher_b() {
     match test_format::<MSFraggerData>(
         BufReader::new(DATA_PHILOSOPHER_B.as_bytes()),
-        None,
+        &mzcore::ontology::STATIC_ONTOLOGIES,
         true,
         false,
         Some(MSFraggerVersion::Philosopher),
@@ -161,7 +164,7 @@ fn fragpipe_philosopher_b() {
 fn fragpipe_philosopher_c() {
     match test_format::<MSFraggerData>(
         BufReader::new(DATA_PHILOSOPHER_C.as_bytes()),
-        None,
+        &mzcore::ontology::STATIC_ONTOLOGIES,
         true,
         false,
         Some(MSFraggerVersion::Philosopher),
@@ -178,10 +181,16 @@ fn fragpipe_philosopher_c() {
 fn fragpipe_v21_manual() {
     match test_format::<MSFraggerData>(
         BufReader::new(DATA_FRAGPIPE_V21_MANUAL.as_bytes()),
-        Some(&vec![(
-            Some(0),
-            "DB14".to_string(),
-            std::sync::Arc::new(SimpleModificationInner::Mass(OrderedMass::default())),
+        &mzcore::ontology::Ontologies::init_static().with_custom([std::sync::Arc::new(
+            SimpleModificationInner::Database {
+                specificities: Vec::new(),
+                formula: MolecularFormula::default(),
+                id: ModificationId {
+                    id: Some(0),
+                    name: "DB14".to_string(),
+                    ..Default::default()
+                },
+            },
         )]),
         true,
         false,
@@ -199,7 +208,7 @@ fn fragpipe_v21_manual() {
 fn fragpipe_v22() {
     match test_format::<MSFraggerData>(
         BufReader::new(DATA_FRAGPIPE_V22.as_bytes()),
-        None,
+        &mzcore::ontology::STATIC_ONTOLOGIES,
         false,
         false,
         Some(MSFraggerVersion::FragPipeV22),

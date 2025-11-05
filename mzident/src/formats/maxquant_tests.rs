@@ -1,13 +1,12 @@
 #![allow(clippy::missing_panics_doc)]
-use std::io::BufReader;
-
 use crate::{MaxQuantData, MaxQuantVersion, test_format};
+use std::io::BufReader;
 
 #[test]
 fn maxquant_msms() {
     match test_format::<MaxQuantData>(
         BufReader::new(MAXQUANT_MSMS.as_bytes()),
-        None,
+        &mzcore::ontology::STATIC_ONTOLOGIES,
         false,
         false,
         Some(MaxQuantVersion::MSMS),
@@ -24,7 +23,7 @@ fn maxquant_msms() {
 fn maxquant_msms_scans() {
     match test_format::<MaxQuantData>(
         BufReader::new(MAXQUANT_MSMS_SCANS.as_bytes()),
-        None,
+        &mzcore::ontology::STATIC_ONTOLOGIES,
         false,
         false,
         Some(MaxQuantVersion::MSMSScans),
@@ -41,7 +40,7 @@ fn maxquant_msms_scans() {
 fn maxquant_novo_msms_scans() {
     match test_format::<MaxQuantData>(
         BufReader::new(MAXQUANT_NOVO_MSMS_SCANS.as_bytes()),
-        None,
+        &mzcore::ontology::STATIC_ONTOLOGIES,
         false,
         false,
         Some(MaxQuantVersion::NovoMSMSScans),
@@ -58,7 +57,7 @@ fn maxquant_novo_msms_scans() {
 fn maxquant_novo_msms_scans_new() {
     match test_format::<MaxQuantData>(
         BufReader::new(MAXQUANT_NOVO_MSMS_SCANS_NEW.as_bytes()),
-        None,
+        &mzcore::ontology::STATIC_ONTOLOGIES,
         false,
         false,
         Some(MaxQuantVersion::NovoMSMSScans),
@@ -75,7 +74,7 @@ fn maxquant_novo_msms_scans_new() {
 fn maxquant_silac() {
     match test_format::<MaxQuantData>(
         BufReader::new(MAXQUANT_SILAC.as_bytes()),
-        None,
+        &mzcore::ontology::STATIC_ONTOLOGIES,
         false,
         false,
         Some(MaxQuantVersion::Silac),
@@ -93,7 +92,7 @@ fn maxquant_silac() {
 fn maxquant_all_peptides() {
     match test_format::<MaxQuantData>(
         BufReader::new(MAXNOVO_ALL_PEPTIDES.as_bytes()),
-        None,
+        &mzcore::ontology::STATIC_ONTOLOGIES,
         false,
         false,
         Some(MaxQuantVersion::MSMS),

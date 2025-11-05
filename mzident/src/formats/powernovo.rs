@@ -16,7 +16,7 @@ use crate::{
 };
 use mzcore::{
     csv::{CsvLine, parse_csv},
-    ontology::CustomDatabase,
+    ontology::Ontologies,
     sequence::{
         CompoundPeptidoformIon, FlankingSequence, Peptidoform, SemiAmbiguous,
         SloppyParsingParameters,
@@ -34,10 +34,10 @@ format_family!(
     SemiAmbiguous, PeptidoformPresent, [&POWERNOVO_V1_0_17], b',', None;
     required {
         title: String, |location: Location, _| Ok(location.get_string());
-        peptide: Peptidoform<SemiAmbiguous>, |location: Location, custom_database: Option<&CustomDatabase>| Peptidoform::sloppy_pro_forma(
+        peptide: Peptidoform<SemiAmbiguous>, |location: Location, ontologies: &Ontologies| Peptidoform::sloppy_pro_forma(
             location.full_line(),
             location.location.clone(),
-            custom_database,
+            ontologies,
             &SloppyParsingParameters::default(),
         ).map_err(BoxedError::to_owned);
         score: f64, |location: Location, _| location.parse::<f64>(NUMBER_ERROR);
@@ -50,7 +50,7 @@ format_family!(
         scan: usize, |location: Location, _| location.parse::<usize>(NUMBER_ERROR);
     }
 
-    fn post_process(_source: &CsvLine, mut parsed: Self, _custom_database: Option<&CustomDatabase>) -> Result<Self, BoxedError<'static, BasicKind>> {
+    fn post_process(_source: &CsvLine, mut parsed: Self, _ontologies: &Ontologies) -> Result<Self, BoxedError<'static, BasicKind>> {
         if let Some(m) = IDENTIFER_REGEX
             .captures(&parsed.title)
         {

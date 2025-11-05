@@ -7,7 +7,7 @@ use crate::{PUniFindData, PUniFindVersion, test_format};
 fn punifind() {
     match test_format::<PUniFindData>(
         BufReader::new(DATA.as_bytes()),
-        None,
+        &mzcore::ontology::STATIC_ONTOLOGIES,
         false,
         false,
         Some(PUniFindVersion::V0_1),

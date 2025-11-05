@@ -1,4 +1,4 @@
-use std::{borrow::Cow, marker::PhantomData, ops::Range, sync::LazyLock};
+use std::{borrow::Cow, marker::PhantomData, ops::Range, sync::OnceLock};
 
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
@@ -11,7 +11,7 @@ use crate::{
 };
 use mzcore::{
     csv::{CsvLine, parse_csv},
-    ontology::{CustomDatabase, Ontology},
+    ontology::Ontologies,
     sequence::{
         AminoAcid, CompoundPeptidoformIon, FlankingSequence, Peptidoform, SemiAmbiguous,
         SloppyParsingParameters,
@@ -28,30 +28,7 @@ static ID_ERROR: (&str, &str) = (
     "This column is not a valid ID but it is required to be in this peaks format\nExamples of valid IDs: '1234' & 'F2:1234'",
 );
 
-static PARAMETERS: LazyLock<SloppyParsingParameters> = LazyLock::new(|| SloppyParsingParameters {
-    mod_indications: (
-        Some("mod"),
-        vec![
-            (
-                AminoAcid::Asparagine,
-                Ontology::Unimod.find_id(7, None).unwrap(),
-            ),
-            (
-                AminoAcid::Glutamine,
-                Ontology::Unimod.find_id(7, None).unwrap(),
-            ),
-            (
-                AminoAcid::Cysteine,
-                Ontology::Unimod.find_id(6, None).unwrap(),
-            ),
-            (
-                AminoAcid::Methionine,
-                Ontology::Unimod.find_id(35, None).unwrap(),
-            ),
-        ],
-    ),
-    ..Default::default()
-});
+static PARAMETERS: OnceLock<SloppyParsingParameters> = OnceLock::new();
 
 format_family!(
     DeepNovoFamily,
@@ -60,12 +37,35 @@ format_family!(
         scan: Vec<PeaksFamilyId>, |location: Location, _| location.or_empty()
             .map_or(Ok(Vec::new()), |l| l.array(';').map(|v| v.parse(ID_ERROR)).collect::<Result<Vec<_>,_>>());
 
-        peptide: Option<Peptidoform<SemiAmbiguous>>, |location: Location, custom_database: Option<&CustomDatabase>|
+        peptide: Option<Peptidoform<SemiAmbiguous>>, |location: Location, ontologies: &Ontologies|
                 location.or_empty().map(|location| Peptidoform::sloppy_pro_forma(
                     location.full_line(),
                     location.location.clone(),
-                    custom_database,
-                    &PARAMETERS
+                    ontologies,
+                    &PARAMETERS.get_or_init(|| SloppyParsingParameters {
+                        mod_indications: (
+                            Some("mod"),
+                            vec![
+                                (
+                                    AminoAcid::Asparagine,
+                                    ontologies.unimod().get_by_index(&7).unwrap(),
+                                ),
+                                (
+                                    AminoAcid::Glutamine,
+                                    ontologies.unimod().get_by_index(&7).unwrap(),
+                                ),
+                                (
+                                    AminoAcid::Cysteine,
+                                    ontologies.unimod().get_by_index(&6).unwrap(),
+                                ),
+                                (
+                                    AminoAcid::Methionine,
+                                    ontologies.unimod().get_by_index(&3).unwrap(),
+                                ),
+                            ],
+                        ),
+                        ..Default::default()
+                    })
                 ).map_err(BoxedError::to_owned)).transpose();
         score: Option<f64>, |location: Location, _| location.or_empty().parse::<f64>(NUMBER_ERROR);
         local_confidence: Option<Vec<f64>>, |location: Location, _| location.or_empty()
@@ -80,7 +80,7 @@ format_family!(
         mz: MassOverCharge, |location: Location, _| location.parse::<f64>(NUMBER_ERROR).map(MassOverCharge::new::<mzcore::system::thomson>);
     }
 
-    fn post_process(_source: &CsvLine, mut parsed: Self, _custom_database: Option<&CustomDatabase>) -> Result<Self, BoxedError<'static, BasicKind>> {
+    fn post_process(_source: &CsvLine, mut parsed: Self, _ontologies: &Ontologies) -> Result<Self, BoxedError<'static, BasicKind>> {
         if parsed.local_confidence.as_ref().map(Vec::len)
             != parsed.peptide.as_ref().map(Peptidoform::len)
         {

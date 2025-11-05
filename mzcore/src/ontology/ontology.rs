@@ -1,14 +1,18 @@
 //! The available ontologies
 
+use std::sync::LazyLock;
+
 use context_error::*;
-use itertools::Itertools;
-use mzcv::CVIndex;
+use mzcv::{CVIndex, CVVersion};
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    ontology::{Custom, CustomDatabase, Gnome, PsiMod, Resid, Unimod, XlMod},
+    ontology::{Custom, Gnome, PsiMod, Resid, Unimod, XlMod},
     sequence::SimpleModification,
 };
+
+/// A single shared static access to the static data in the ontologies for cases where no runtime resolution is needed (like tests).
+pub static STATIC_ONTOLOGIES: LazyLock<Ontologies> = LazyLock::new(Ontologies::init_static);
 
 pub struct Ontologies {
     custom: CVIndex<Custom>,
@@ -47,6 +51,97 @@ impl Ontologies {
             },
             errors,
         )
+    }
+
+    /// Initialize all ontologies with their static data (or empty in the case of Custom)
+    pub fn init_static() -> Self {
+        Self {
+            custom: CVIndex::init_static(),
+            gnome: CVIndex::init_static(),
+            psimod: CVIndex::init_static(),
+            resid: CVIndex::init_static(),
+            unimod: CVIndex::init_static(),
+            xlmod: CVIndex::init_static(),
+        }
+    }
+
+    /// Initialize all ontologies with their empty indices
+    pub fn empty() -> Self {
+        Self {
+            custom: CVIndex::empty(),
+            gnome: CVIndex::empty(),
+            psimod: CVIndex::empty(),
+            resid: CVIndex::empty(),
+            unimod: CVIndex::empty(),
+            xlmod: CVIndex::empty(),
+        }
+    }
+
+    /// Update the custom database with the given data, mostly there to quickly create some test data
+    #[must_use]
+    pub fn with_custom(mut self, data: impl IntoIterator<Item = SimpleModification>) -> Self {
+        let _ignore = self.custom.update(CVVersion::default(), data);
+        self
+    }
+
+    /// Get Unimod
+    pub const fn unimod(&self) -> &CVIndex<Unimod> {
+        &self.unimod
+    }
+
+    /// Get Unimod
+    pub const fn unimod_mut(&mut self) -> &mut CVIndex<Unimod> {
+        &mut self.unimod
+    }
+
+    /// Get PSI-MOD
+    pub const fn psimod(&self) -> &CVIndex<PsiMod> {
+        &self.psimod
+    }
+
+    /// Get PSI-MOD
+    pub const fn psimod_mut(&mut self) -> &mut CVIndex<PsiMod> {
+        &mut self.psimod
+    }
+
+    /// Get XL-MOD
+    pub const fn xlmod(&self) -> &CVIndex<XlMod> {
+        &self.xlmod
+    }
+
+    /// Get XL-MOD
+    pub const fn xlmod_mut(&mut self) -> &mut CVIndex<XlMod> {
+        &mut self.xlmod
+    }
+
+    /// Get GNOme
+    pub const fn gnome(&self) -> &CVIndex<Gnome> {
+        &self.gnome
+    }
+
+    /// Get GNOme
+    pub const fn gnome_mut(&mut self) -> &mut CVIndex<Gnome> {
+        &mut self.gnome
+    }
+
+    /// Get RESID
+    pub const fn resid(&self) -> &CVIndex<Resid> {
+        &self.resid
+    }
+
+    /// Get RESID
+    pub const fn resid_mut(&mut self) -> &mut CVIndex<Resid> {
+        &mut self.resid
+    }
+
+    /// Get Custom
+    pub const fn custom(&self) -> &CVIndex<Custom> {
+        &self.custom
+    }
+
+    /// Get Custom
+    pub const fn custom_mut(&mut self) -> &mut CVIndex<Custom> {
+        &mut self.custom
     }
 
     /// Find the closest names in the given ontologies, or if empty in all ontologies
@@ -184,10 +279,32 @@ impl Ontologies {
 
         None
     }
-}
 
-/// An empty list of modifications (needed for lifetime reasons)
-static EMPTY_LIST: OntologyModificationList = Vec::new();
+    /// Get all modifications in the selected ontologies (or in all if the list is empty).
+    pub fn data(&self, ontologies: &[Ontology]) -> impl Iterator<Item = SimpleModification> {
+        let ontologies = if ontologies.is_empty() {
+            &[
+                Ontology::Unimod,
+                Ontology::Psimod,
+                Ontology::Xlmod,
+                Ontology::Gnome,
+                Ontology::Resid,
+                Ontology::Custom,
+            ]
+        } else {
+            ontologies
+        };
+
+        ontologies.iter().flat_map(|ontology| match ontology {
+            Ontology::Unimod => self.unimod().data(),
+            Ontology::Psimod => self.psimod().data(),
+            Ontology::Xlmod => self.xlmod().data(),
+            Ontology::Gnome => self.gnome().data(),
+            Ontology::Resid => self.resid().data(),
+            Ontology::Custom => self.custom().data(),
+        })
+    }
+}
 
 /// All allowed ontologies for modification names
 #[derive(
@@ -249,123 +366,5 @@ impl std::fmt::Display for Ontology {
                 Self::Custom => "Custom",
             },
         )
-    }
-}
-
-/// The shared type for contact between the build and compile steps
-pub type OntologyModificationList = Vec<(Option<usize>, String, SimpleModification)>;
-
-impl Ontology {
-    /// Get the modifications lookup list for this ontology
-    #[allow(unused_variables, clippy::unused_self)]
-    pub fn lookup(self, custom_database: Option<&CustomDatabase>) -> &OntologyModificationList {
-        #[cfg(not(feature = "internal-no-data"))]
-        {
-            match self {
-                Self::Gnome => &databases::GNOME,
-                Self::Psimod => &databases::PSIMOD,
-                Self::Unimod => &databases::UNIMOD,
-                Self::Resid => &databases::RESID,
-                Self::Xlmod => &databases::XLMOD,
-                Self::Custom => custom_database.map_or(&EMPTY_LIST, |c| c),
-            }
-        }
-        #[cfg(feature = "internal-no-data")]
-        {
-            &EMPTY_LIST
-        }
-    }
-
-    /// Find the closest names in this ontology
-    pub fn find_closest<'a>(
-        self,
-        code: &'a str,
-        custom_database: Option<&CustomDatabase>,
-    ) -> BoxedError<'a, BasicKind> {
-        BoxedError::new(
-            BasicKind::Error,
-            "Invalid modification",
-            format!("The provided name does not exists in {}", self.name()),
-            Context::show(code),
-        )
-        .suggestions(Self::similar_names(&[self], code, custom_database))
-    }
-
-    /// # Panics
-    /// Asserts that the ontology list is not empty.
-    pub fn find_closest_many(
-        ontologies: &[Self],
-        code: &str,
-        custom_database: Option<&CustomDatabase>,
-    ) -> BoxedError<'static, BasicKind> {
-        assert!(!ontologies.is_empty());
-        let names = if ontologies.len() > 1 {
-            let mut names = ontologies[..ontologies.len() - 1]
-                .iter()
-                .map(|o| o.name().to_string())
-                .collect_vec();
-            let last = names.len() - 1;
-            names[last] = format!("{} or {}", names[last], ontologies.last().unwrap().name());
-            names.join(", ")
-        } else {
-            ontologies[0].name().to_string()
-        };
-        BoxedError::new(
-            BasicKind::Error,
-            "Invalid modification",
-            format!("The provided name does not exists in {names}"),
-            Context::show(code.to_string()),
-        )
-        .suggestions(Self::similar_names(ontologies, code, custom_database))
-    }
-
-    /// Get the closest similar names in the given ontologies. Finds both modifications and linkers
-    pub fn similar_names(
-        ontologies: &[Self],
-        code: &str,
-        custom_database: Option<&CustomDatabase>,
-    ) -> Vec<String> {
-        let mut resulting = Vec::new();
-        for ontology in ontologies {
-            let options: Vec<&str> = ontology
-                .lookup(custom_database)
-                .iter()
-                .map(|option| option.1.as_str())
-                .collect();
-            resulting.extend(
-                similar::get_close_matches(code, &options, 3, 0.7)
-                    .iter()
-                    .map(|o| format!("{}:{}", ontology.char(), o)),
-            );
-        }
-        resulting
-    }
-
-    /// Find the given name in this ontology.
-    pub fn find_name(
-        self,
-        code: &str,
-        custom_database: Option<&CustomDatabase>,
-    ) -> Option<SimpleModification> {
-        for option in self.lookup(custom_database) {
-            if option.1.eq_ignore_ascii_case(code) {
-                return Some(option.2.clone());
-            }
-        }
-        None
-    }
-
-    /// Find the given id in this ontology
-    pub fn find_id(
-        self,
-        id: usize,
-        custom_database: Option<&CustomDatabase>,
-    ) -> Option<SimpleModification> {
-        for option in self.lookup(custom_database) {
-            if option.0.is_some_and(|i| i == id) {
-                return Some(option.2.clone());
-            }
-        }
-        None
     }
 }

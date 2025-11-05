@@ -13,7 +13,7 @@ pub(super) fn test_format<
         + Into<IdentifiedPeptidoform<T::Complexity, T::PeptidoformAvailability>>,
 >(
     reader: impl std::io::Read,
-    custom_database: Option<&mzcore::ontology::CustomDatabase>,
+    ontologies: &mzcore::ontology::Ontologies,
     allow_mass_mods: bool,
     expect_lc: bool,
     format: Option<T::Version>,
@@ -23,9 +23,7 @@ where
     T::Version: std::fmt::Display,
 {
     let mut number = 0;
-    for peptide in
-        T::parse_reader(reader, custom_database, false, None).map_err(|e| e.to_string())?
-    {
+    for peptide in T::parse_reader(reader, ontologies, false, None).map_err(|e| e.to_string())? {
         let peptide: IdentifiedPeptidoform<T::Complexity, T::PeptidoformAvailability> =
             peptide.map_err(|e| e.to_string())?.into();
         number += 1;

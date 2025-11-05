@@ -90,7 +90,7 @@ mod tests {
     }
 
     fn linear(aa: &str) -> Peptidoform<SimpleLinear> {
-        Peptidoform::pro_forma(aa, None)
+        Peptidoform::pro_forma(aa, &mzcore::ontology::STATIC_ONTOLOGIES)
             .unwrap()
             .0
             .into_simple_linear()

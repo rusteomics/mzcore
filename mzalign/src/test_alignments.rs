@@ -160,12 +160,12 @@ fn test_alignment(
     path: &str,
 ) {
     const MAXIMAL_STEP: u16 = 4;
-    let first_peptide = Peptidoform::pro_forma(seq_a, None)
+    let first_peptide = Peptidoform::pro_forma(seq_a, &mzcore::ontology::STATIC_ONTOLOGIES)
         .unwrap()
         .0
         .into_simple_linear()
         .unwrap();
-    let second_peptide = Peptidoform::pro_forma(seq_b, None)
+    let second_peptide = Peptidoform::pro_forma(seq_b, &mzcore::ontology::STATIC_ONTOLOGIES)
         .unwrap()
         .0
         .into_simple_linear()

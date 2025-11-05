@@ -7,7 +7,7 @@ fn main() {
             let _unused = mzcore::sequence::Peptidoform::sloppy_pro_forma(
                 s,
                 0..s.len(),
-                None,
+                &mzcore::ontology::STATIC_ONTOLOGIES,
                 &mzcore::sequence::SloppyParsingParameters::default(),
             );
         }

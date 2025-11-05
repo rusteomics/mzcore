@@ -1,13 +1,12 @@
 #![allow(clippy::missing_panics_doc)]
-use std::io::BufReader;
-
 use crate::{NovorData, NovorVersion, test_format};
+use std::io::BufReader;
 
 #[test]
 fn novor_old_denovo() {
     match test_format::<NovorData>(
         BufReader::new(DATA_OLD_DENOVO.as_bytes()),
-        None,
+        &mzcore::ontology::STATIC_ONTOLOGIES,
         false,
         false,
         Some(NovorVersion::OldDenovo),
@@ -24,7 +23,7 @@ fn novor_old_denovo() {
 fn novor_new_denovo() {
     match test_format::<NovorData>(
         BufReader::new(DATA_NEW_DENOVO.as_bytes()),
-        None,
+        &mzcore::ontology::STATIC_ONTOLOGIES,
         false,
         false,
         Some(NovorVersion::NewDenovo),
@@ -41,7 +40,7 @@ fn novor_new_denovo() {
 fn novor_new_psm() {
     match test_format::<NovorData>(
         BufReader::new(DATA_NEW_PSM.as_bytes()),
-        None,
+        &mzcore::ontology::STATIC_ONTOLOGIES,
         false,
         false,
         Some(NovorVersion::NewPSM),

@@ -504,7 +504,7 @@ pub(crate) fn get_all_sidechain_losses<Complexity>(
 #[test]
 #[allow(clippy::missing_panics_doc)]
 fn side_chain_losses() {
-    let peptide = Peptidoform::pro_forma("FGGGTKLELKR", None)
+    let peptide = Peptidoform::pro_forma("FGGGTKLELKR", &mzcore::ontology::STATIC_ONTOLOGIES)
         .unwrap()
         .0
         .into_simple_linear()

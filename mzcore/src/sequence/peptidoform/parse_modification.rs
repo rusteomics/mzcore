@@ -14,7 +14,7 @@ use crate::{
     chemistry::{Element, MolecularFormula},
     glycan::{GlycanStructure, MonoSaccharide},
     helper_functions::*,
-    ontology::{CustomDatabase, Ontology},
+    ontology::{Ontologies, Ontology},
     sequence::{
         AmbiguousLookup, AmbiguousLookupEntry, CrossLinkLookup, CrossLinkName, PlacementRule,
         SimpleModification, SimpleModificationInner,
@@ -32,7 +32,7 @@ impl SimpleModificationInner {
         line: &'a str,
         ambiguous_lookup: &mut AmbiguousLookup,
         cross_link_lookup: &mut CrossLinkLookup,
-        custom_database: Option<&CustomDatabase>,
+        ontologies: &Ontologies,
     ) -> ParserResult<'a, (ReturnModification, MUPSettings), BasicKind> {
         Self::pro_forma_inner(
             &Context::none().lines(0, line),
@@ -40,7 +40,7 @@ impl SimpleModificationInner {
             0..line.len(),
             ambiguous_lookup,
             cross_link_lookup,
-            custom_database,
+            ontologies,
         )
     }
     /// Try to parse the modification. Any ambiguous modification will be numbered
@@ -54,7 +54,7 @@ impl SimpleModificationInner {
         range: Range<usize>,
         ambiguous_lookup: &mut AmbiguousLookup,
         cross_link_lookup: &mut CrossLinkLookup,
-        custom_database: Option<&CustomDatabase>,
+        ontologies: &Ontologies,
     ) -> ParserResult<'a, (ReturnModification, MUPSettings), BasicKind> {
         let mut errors = Vec::new();
         // Because multiple modifications could be chained with the pipe operator
@@ -73,7 +73,7 @@ impl SimpleModificationInner {
                 offset,
                 ambiguous_lookup,
                 cross_link_lookup,
-                custom_database,
+                ontologies,
             ) {
                 Ok((result, w)) => {
                     combine_errors(&mut errors, w, ());
@@ -152,15 +152,15 @@ impl Default for MUPSettings {
 
 /// # Errors
 /// It returns an error when the given line cannot be read as a single modification.
-fn parse_single_modification<'a>(
-    base_context: &Context<'a>,
-    line: &'a str,
-    full_modification: &'a str,
+fn parse_single_modification<'error>(
+    base_context: &Context<'error>,
+    line: &'error str,
+    full_modification: &'error str,
     offset: usize,
     ambiguous_lookup: &mut AmbiguousLookup,
     cross_link_lookup: &mut CrossLinkLookup,
-    custom_database: Option<&CustomDatabase>,
-) -> ParserResult<'a, SingleReturnModification, BasicKind> {
+    ontologies: &Ontologies,
+) -> ParserResult<'error, SingleReturnModification, BasicKind> {
     let mut errors = Vec::new();
     // Parse the whole intricate structure of the single modification (see here in action: https://regex101.com/r/pW5gsj/1)
     if let Some(groups) = MOD_REGEX.captures(full_modification) {
@@ -207,8 +207,7 @@ fn parse_single_modification<'a>(
                         vec![basic_error.clone()
                             .long_description("Unimod accession number should be a number")]
                     })?;
-                    Ontology::Unimod
-                        .find_id(id, custom_database)
+                    ontologies.find_id(&[Ontology::Unimod], id)
                         .map(Some)
                         .ok_or_else(|| {
                             vec![basic_error.clone().long_description(
@@ -221,8 +220,7 @@ fn parse_single_modification<'a>(
                         vec![basic_error.clone()
                             .long_description("PSI-MOD accession number should be a number")]
                     })?;
-                    Ontology::Psimod
-                        .find_id(id, custom_database)
+                    ontologies.find_id(&[Ontology::Psimod], id)
                         .map(Some)
                         .ok_or_else(|| {
                             vec![basic_error.clone().long_description(
@@ -236,8 +234,7 @@ fn parse_single_modification<'a>(
                             "RESID accession number should be a number prefixed with 'AA'",
                         )]
                     })?;
-                    Ontology::Resid
-                        .find_id(id, custom_database)
+                    ontologies.find_id(&[Ontology::Resid], id)
                         .map(Some)
                         .ok_or_else(|| {
                             vec![basic_error.clone().long_description(
@@ -250,8 +247,7 @@ fn parse_single_modification<'a>(
                         vec![basic_error.clone()
                             .long_description("XLMOD accession number should be a number")]
                     })?;
-                    Ontology::Xlmod
-                        .find_id(id, custom_database)
+                    ontologies.find_id(&[Ontology::Xlmod], id)
                         .map(Some)
                         .ok_or_else(|| {
                             vec![basic_error.clone().long_description(
@@ -264,8 +260,7 @@ fn parse_single_modification<'a>(
                         vec![basic_error.clone()
                             .long_description("Custom accession number should be a number")]
                     })?;
-                    Ontology::Custom
-                    .find_id(id, custom_database)
+                    ontologies.find_id(&[Ontology::Custom], id)
                     .map(Some)
                     .ok_or_else(|| {
                         vec![basic_error.clone().long_description(
@@ -273,56 +268,60 @@ fn parse_single_modification<'a>(
                             )]
                     })
                 }
-                ("u", tail) => Ontology::Unimod
-                    .find_name(tail, custom_database)
+                ("u", tail) => ontologies.find_name(&[Ontology::Unimod], tail)
                     .ok_or_else(|| numerical_mod(tail))
                     .flat_err()
                     .map(Some)
                     .map_err(|_| {
-                        vec![Ontology::Unimod
-                            .find_closest(tail, custom_database)
-                            .replace_context(basic_error.get_contexts()[0].clone())]
+                        vec![
+                            basic_error.clone().long_description(
+                                "The modification could not be found in Unimod",
+                            ).suggestions(ontologies.find_closest(&[Ontology::Unimod], tail).into_iter().map(|m|m.to_string()))
+                        ]
                     }),
-                ("m", tail) => Ontology::Psimod
-                    .find_name(tail, custom_database)
+                ("m", tail) => ontologies.find_name(&[Ontology::Psimod], tail)
                     .ok_or_else(|| numerical_mod(tail))
                     .flat_err()
                     .map(Some)
                     .map_err(|_| {
-                        vec![Ontology::Psimod
-                            .find_closest(tail, custom_database)
-                            .replace_context(basic_error.get_contexts()[0].clone())]
+                        vec![
+                            basic_error.clone().long_description(
+                                "The modification could not be found in PSI-MOD",
+                            ).suggestions(ontologies.find_closest(&[Ontology::Psimod], tail).into_iter().map(|m|m.to_string()))
+                        ]
                     }),
-                ("r", tail) => Ontology::Resid
-                    .find_name(tail, custom_database)
+                ("r", tail) => ontologies.find_name(&[Ontology::Resid], tail)
                     .ok_or_else(|| numerical_mod(tail))
                     .flat_err()
                     .map(Some)
                     .map_err(|_| {
-                        vec![Ontology::Resid
-                            .find_closest(tail, custom_database)
-                            .replace_context(basic_error.get_contexts()[0].clone())]
+                        vec![
+                            basic_error.clone().long_description(
+                                "The modification could not be found in RESID",
+                            ).suggestions(ontologies.find_closest(&[Ontology::Resid], tail).into_iter().map(|m|m.to_string()))
+                        ]
                     }),
-                ("x", tail) => Ontology::Xlmod
-                    .find_name(tail, custom_database)
+                ("x", tail) => ontologies.find_name(&[Ontology::Xlmod], tail)
                     .ok_or_else(|| numerical_mod(tail))
                     .flat_err()
                     .map(Some)
                     .map_err(|_| {
-                        vec![Ontology::Xlmod
-                            .find_closest(tail, custom_database)
-                            .replace_context(basic_error.get_contexts()[0].clone())]
+                        vec![
+                            basic_error.clone().long_description(
+                                "The modification could not be found in XL-MOD",
+                            ).suggestions(ontologies.find_closest(&[Ontology::Xlmod], tail).into_iter().map(|m|m.to_string()))
+                        ]
                     }),
-                ("c", tail) => Ontology::Custom
-                    .find_name(tail, custom_database)
+                ("c", tail) => ontologies.custom().get_by_name(tail)
                     .map(Some)
                     .ok_or_else(|| {
-                        vec![Ontology::Custom
-                            .find_closest(tail, custom_database)
-                            .replace_context(basic_error.get_contexts()[0].clone())]
+                       vec![
+                            basic_error.clone().long_description(
+                                "The modification could not be found in Custom",
+                            ).suggestions(ontologies.find_closest(&[Ontology::Custom], tail).into_iter().map(|m|m.to_string()))
+                        ]
                     }),
-                ("gno" | "g", tail) => Ontology::Gnome
-                    .find_name(tail, custom_database)
+                ("gno" | "g", tail) => ontologies.gnome().get_by_name(tail)
                     .map(Some)
                     .ok_or_else(|| {
                         vec![basic_error
@@ -384,44 +383,57 @@ fn parse_single_modification<'a>(
                         Err(e) => Err(vec![e]),
                     }
                 }
-                (_, _) => Ontology::Unimod
-                    .find_name(full.0, custom_database)
-                    .or_else(|| Ontology::Psimod.find_name(full.0, custom_database))
+                (_, _) => ontologies.find_name(&[Ontology::Unimod, Ontology::Psimod], full.0)
                     .map(Some)
                     .ok_or_else(|| {
-                        vec![Ontology::find_closest_many(
-                            &[
-                                Ontology::Unimod,
+                        vec![
+                           basic_error.clone().replace_context(base_context
+                    .clone()
+                    .add_highlight((0, offset + full.1, full.2))).long_description(
+                                "The modification could not be found in Unimod or PSI-MOD",
+                            ).suggestions(ontologies.find_closest(&[Ontology::Unimod,
                                 Ontology::Psimod,
                                 Ontology::Gnome,
                                 Ontology::Xlmod,
                                 Ontology::Resid,
-                                Ontology::Custom,
-                            ],
-                            full.0,
-                            custom_database,
-                        )
-                        .long_description(
-                            "This modification cannot be read as a valid Unimod or PSI-MOD name.",
-                        )
-                        .replace_context(
-                            base_context.clone().add_highlight((0, offset + full.1,
-                            full.2)),)]
-                    }),
+                                Ontology::Custom,], full.0).into_iter().map(|m|m.to_string()))
+                        ]})
             }
         } else if full.0.is_empty() {
             Ok(None)
         } else {
-            Ontology::Unimod.find_name(full.0 , custom_database)
-                .or_else(|| Ontology::Psimod.find_name(full.0, custom_database))
-                .ok_or_else(|| numerical_mod(full.0))
-                .flat_err()
+            ontologies
+                .find_name(&[Ontology::Unimod, Ontology::Psimod], full.0)
+                .or_else(|| numerical_mod(full.0).ok())
                 .map(Some)
-                .map_err(|_|
-                    vec![Ontology::find_closest_many(&[Ontology::Unimod, Ontology::Psimod, Ontology::Gnome, Ontology::Xlmod, Ontology::Resid, Ontology::Custom], full.0, custom_database)
-                    .long_description("This modification cannot be read as a valid Unimod or PSI-MOD name, or as a numerical modification.")
-                    .replace_context(base_context.clone().add_highlight((0, offset+full.1, full.2)))]
-                )
+                .ok_or_else(|| {
+                    vec![
+                        BoxedError::new(
+                            BasicKind::Error,
+                            "Invalid modification",
+                            "The modification could not be found in Unimod or PSI-MOD or understood as a numerical modification",
+                            base_context
+                                .clone()
+                                .add_highlight((0, offset + full.1, full.2)),
+                        )
+                        .suggestions(
+                            ontologies
+                                .find_closest(
+                                    &[
+                                        Ontology::Unimod,
+                                        Ontology::Psimod,
+                                        Ontology::Gnome,
+                                        Ontology::Xlmod,
+                                        Ontology::Resid,
+                                        Ontology::Custom,
+                                    ],
+                                    full.0,
+                                )
+                                .into_iter()
+                                .map(|m| m.to_string()),
+                        ),
+                    ]
+                })
         };
 
         if let Some(group) = label_group {

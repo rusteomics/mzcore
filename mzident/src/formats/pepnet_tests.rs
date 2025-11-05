@@ -7,7 +7,7 @@ use crate::{PepNetData, PepNetVersion, test_format};
 fn pepnet() {
     match test_format::<PepNetData>(
         BufReader::new(PEPNET_V1_0.as_bytes()),
-        None,
+        &mzcore::ontology::STATIC_ONTOLOGIES,
         false,
         true,
         Some(PepNetVersion::V1_0),

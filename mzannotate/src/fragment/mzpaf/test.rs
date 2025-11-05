@@ -13,7 +13,7 @@ macro_rules! mzpaf_test {
                     $crate::mzspeclib::AnalyteTarget::PeptidoformIon(
                         mzcore::sequence::PeptidoformIon::pro_forma(
                             "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
-                            None,
+                            &mzcore::ontology::STATIC_ONTOLOGIES,
                         )
                         .unwrap()
                         .0,
@@ -24,14 +24,18 @@ macro_rules! mzpaf_test {
                     $crate::mzspeclib::AnalyteTarget::PeptidoformIon(
                         mzcore::sequence::PeptidoformIon::pro_forma(
                             "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
-                            None,
+                            &mzcore::ontology::STATIC_ONTOLOGIES,
                         )
                         .unwrap()
                         .0,
                     ),
                 ),
             ];
-            let res = $crate::fragment::Fragment::mz_paf($case, None, &basic_analytes);
+            let res = $crate::fragment::Fragment::mz_paf(
+                $case,
+                &mzcore::ontology::STATIC_ONTOLOGIES,
+                &basic_analytes,
+            );
             match res {
                 Err(err) => {
                     println!("Failed: '{}'", $case);
@@ -40,7 +44,11 @@ macro_rules! mzpaf_test {
                 }
                 Ok(res) => {
                     let back = res.iter().map(|a| a.to_mz_paf_string()).join(",");
-                    let res_back = $crate::fragment::Fragment::mz_paf(&back, None, &basic_analytes);
+                    let res_back = $crate::fragment::Fragment::mz_paf(
+                        &back,
+                        &mzcore::ontology::STATIC_ONTOLOGIES,
+                        &basic_analytes,
+                    );
                     match res_back {
                         Ok(res_back) => {
                             let back_back = res_back.iter().map(|a| a.to_mz_paf_string()).join(",");
@@ -63,7 +71,11 @@ macro_rules! mzpaf_test {
     (ne $case:literal, $name:ident) => {
         #[test]
         fn $name() {
-            let res = $crate::fragment::Fragment::mz_paf($case, None, &[]);
+            let res = $crate::fragment::Fragment::mz_paf(
+                $case,
+                &mzcore::ontology::STATIC_ONTOLOGIES,
+                &[],
+            );
             println!("{}\n{:?}", $case, res);
             assert!(res.is_err());
         }

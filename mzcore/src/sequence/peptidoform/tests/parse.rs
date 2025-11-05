@@ -1,11 +1,12 @@
 use std::{num::NonZeroU16, sync::Arc};
 
 use context_error::*;
+use mzcv::CVVersion;
 
 use crate::{
     chemistry::{AmbiguousLabel, Element, MolecularCharge, MultiChemical},
     molecular_formula,
-    ontology::Ontology,
+    ontology::{Ontologies, Ontology},
     sequence::{
         AminoAcid, CompoundPeptidoformIon, CrossLinkName, GlobalModification, ModificationId,
         Peptidoform, PeptidoformIon, PlacementRule, Position, SimpleModificationInner,
@@ -17,9 +18,14 @@ use crate::{
 #[test]
 fn parse_global_modifications() {
     let parse = |str: &str| {
-        global_modifications(&Context::none(), str, 0..str.len(), None)
-            .map(|((a, b), c)| (a, b, c.into_iter().map(BoxedError::to_owned).collect()))
-            .map_err(move |_| ())
+        global_modifications(
+            &Context::none(),
+            str,
+            0..str.len(),
+            &crate::ontology::STATIC_ONTOLOGIES,
+        )
+        .map(|((a, b), c)| (a, b, c.into_iter().map(BoxedError::to_owned).collect()))
+        .map_err(move |_| ())
     };
     assert_eq!(
         parse("<[+5]@D>"),
@@ -226,23 +232,27 @@ fn charge_state_negative() {
 
 #[test]
 fn parse_glycan() {
-    let (glycan, _) = Peptidoform::pro_forma("A[Glycan:Hex]", None).unwrap();
-    let (spaces, _) = Peptidoform::pro_forma("A[Glycan:    Hex    ]", None).unwrap();
+    let (glycan, _) =
+        Peptidoform::pro_forma("A[Glycan:Hex]", &crate::ontology::STATIC_ONTOLOGIES).unwrap();
+    let (spaces, _) =
+        Peptidoform::pro_forma("A[Glycan:    Hex    ]", &crate::ontology::STATIC_ONTOLOGIES)
+            .unwrap();
     assert_eq!(glycan.len(), 1);
     assert_eq!(spaces.len(), 1);
     assert_eq!(glycan, spaces);
-    let incorrect = CompoundPeptidoformIon::pro_forma("A[Glycan:Hec]", None);
+    let incorrect =
+        CompoundPeptidoformIon::pro_forma("A[Glycan:Hec]", &crate::ontology::STATIC_ONTOLOGIES);
     assert!(incorrect.is_err());
 }
 
 #[test]
 fn parse_formula() {
-    let peptide = Peptidoform::pro_forma("A[Formula:C6H10O5]", None)
+    let peptide = Peptidoform::pro_forma("A[Formula:C6H10O5]", &crate::ontology::STATIC_ONTOLOGIES)
         .unwrap()
         .0
         .into_linear()
         .unwrap();
-    let glycan = Peptidoform::pro_forma("A[Glycan:Hex]", None)
+    let glycan = Peptidoform::pro_forma("A[Glycan:Hex]", &crate::ontology::STATIC_ONTOLOGIES)
         .unwrap()
         .0
         .into_linear()
@@ -254,12 +264,12 @@ fn parse_formula() {
 
 #[test]
 fn parse_labile() {
-    let with = Peptidoform::pro_forma("{Formula:C6H10O5}A", None)
+    let with = Peptidoform::pro_forma("{Formula:C6H10O5}A", &crate::ontology::STATIC_ONTOLOGIES)
         .unwrap()
         .0
         .into_linear()
         .unwrap();
-    let without = Peptidoform::pro_forma("A", None)
+    let without = Peptidoform::pro_forma("A", &crate::ontology::STATIC_ONTOLOGIES)
         .unwrap()
         .0
         .into_linear()
@@ -275,29 +285,42 @@ fn parse_labile() {
 
 #[test]
 fn parse_ambiguous_modification() {
-    let (with, _) = Peptidoform::pro_forma("A[Phospho#g0]A[#g0]", None).unwrap();
-    let (without, _) = Peptidoform::pro_forma("AA", None).unwrap();
+    let (with, _) =
+        Peptidoform::pro_forma("A[Phospho#g0]A[#g0]", &crate::ontology::STATIC_ONTOLOGIES).unwrap();
+    let (without, _) = Peptidoform::pro_forma("AA", &crate::ontology::STATIC_ONTOLOGIES).unwrap();
     assert_eq!(with.len(), 2);
     assert_eq!(without.len(), 2);
     assert_eq!(with[0].modifications.len(), 1);
     assert_eq!(with[1].modifications.len(), 1);
-    assert!(CompoundPeptidoformIon::pro_forma("A[#g0]A[#g0]", None).is_err());
     assert!(
-        !CompoundPeptidoformIon::pro_forma("A[Phospho#g0]A[Phospho#g0]", None)
-            .unwrap()
-            .1
-            .is_empty()
+        CompoundPeptidoformIon::pro_forma("A[#g0]A[#g0]", &crate::ontology::STATIC_ONTOLOGIES)
+            .is_err()
     );
-    assert!(CompoundPeptidoformIon::pro_forma("A[Phospho#g0]A[#g0(0.o1)]", None).is_err());
+    assert!(
+        !CompoundPeptidoformIon::pro_forma(
+            "A[Phospho#g0]A[Phospho#g0]",
+            &crate::ontology::STATIC_ONTOLOGIES
+        )
+        .unwrap()
+        .1
+        .is_empty()
+    );
+    assert!(
+        CompoundPeptidoformIon::pro_forma(
+            "A[Phospho#g0]A[#g0(0.o1)]",
+            &crate::ontology::STATIC_ONTOLOGIES
+        )
+        .is_err()
+    );
     assert_eq!(
-        Peptidoform::pro_forma("A[+12#g0]A[#g0]", None)
+        Peptidoform::pro_forma("A[+12#g0]A[#g0]", &crate::ontology::STATIC_ONTOLOGIES)
             .unwrap()
             .0
             .to_string(),
         "A[+12#g0]A[#g0]".to_string()
     );
     assert_eq!(
-        Peptidoform::pro_forma("A[#g0]A[+12#g0]", None)
+        Peptidoform::pro_forma("A[#g0]A[+12#g0]", &crate::ontology::STATIC_ONTOLOGIES)
             .unwrap()
             .0
             .to_string(),
@@ -308,20 +331,30 @@ fn parse_ambiguous_modification() {
 #[test]
 fn parse_terminal_ambiguous_modification() {
     // N-term
-    let (unplaced_n, _) = Peptidoform::pro_forma("[deamidated]?FAAQAA", None).unwrap();
+    let (unplaced_n, _) =
+        Peptidoform::pro_forma("[deamidated]?FAAQAA", &crate::ontology::STATIC_ONTOLOGIES).unwrap();
     assert!(unplaced_n.get_n_term()[0].is_ambiguous());
     assert_eq!(unplaced_n.sequence()[3].modifications.len(), 1);
     assert!(unplaced_n.sequence()[3].modifications[0].is_ambiguous());
-    let (placed_n, _) = Peptidoform::pro_forma("[deamidated#u1]-FAAQ[#u1]AA", None).unwrap();
+    let (placed_n, _) = Peptidoform::pro_forma(
+        "[deamidated#u1]-FAAQ[#u1]AA",
+        &crate::ontology::STATIC_ONTOLOGIES,
+    )
+    .unwrap();
     assert!(placed_n.get_n_term()[0].is_ambiguous());
     assert_eq!(placed_n.sequence()[3].modifications.len(), 1);
     assert!(placed_n.sequence()[3].modifications[0].is_ambiguous());
     // C-term
-    let (unplaced_c, _) = Peptidoform::pro_forma("[oxidation]?AHAMTEG", None).unwrap();
+    let (unplaced_c, _) =
+        Peptidoform::pro_forma("[oxidation]?AHAMTEG", &crate::ontology::STATIC_ONTOLOGIES).unwrap();
     assert!(unplaced_c.get_c_term()[0].is_ambiguous());
     assert_eq!(unplaced_c.sequence()[3].modifications.len(), 1);
     assert!(unplaced_c.sequence()[3].modifications[0].is_ambiguous());
-    let (placed_c, _) = Peptidoform::pro_forma("AHAM[oxidation#u1]TEG-[#u1]", None).unwrap();
+    let (placed_c, _) = Peptidoform::pro_forma(
+        "AHAM[oxidation#u1]TEG-[#u1]",
+        &crate::ontology::STATIC_ONTOLOGIES,
+    )
+    .unwrap();
     assert!(placed_c.get_c_term()[0].is_ambiguous());
     assert_eq!(placed_c.sequence()[3].modifications.len(), 1);
     assert!(placed_c.sequence()[3].modifications[0].is_ambiguous());
@@ -329,12 +362,12 @@ fn parse_terminal_ambiguous_modification() {
 
 #[test]
 fn parse_ambiguous_aminoacid() {
-    let with = Peptidoform::pro_forma("(?AA)C(?A)(?A)", None)
+    let with = Peptidoform::pro_forma("(?AA)C(?A)(?A)", &crate::ontology::STATIC_ONTOLOGIES)
         .unwrap()
         .0
         .into_linear()
         .unwrap();
-    let without = Peptidoform::pro_forma("AACAA", None)
+    let without = Peptidoform::pro_forma("AACAA", &crate::ontology::STATIC_ONTOLOGIES)
         .unwrap()
         .0
         .into_linear()
@@ -349,14 +382,17 @@ fn parse_ambiguous_aminoacid() {
 
 #[test]
 fn parse_hard_tags() {
-    let peptide = Peptidoform::pro_forma("A[Formula:C6H10O5|INFO:hello world 🦀]", None)
-        .unwrap()
-        .0
-        .into_linear()
-        .unwrap();
+    let peptide = Peptidoform::pro_forma(
+        "A[Formula:C6H10O5|INFO:hello world 🦀]",
+        &crate::ontology::STATIC_ONTOLOGIES,
+    )
+    .unwrap()
+    .0
+    .into_linear()
+    .unwrap();
     let glycan = Peptidoform::pro_forma(
         "A[info:you can define a tag multiple times|Glycan:Hex|Formula:C6H10O5]",
-        None,
+        &crate::ontology::STATIC_ONTOLOGIES,
     )
     .unwrap()
     .0
@@ -369,12 +405,12 @@ fn parse_hard_tags() {
 
 #[test]
 fn parse_global() {
-    let deuterium = Peptidoform::pro_forma("<D>A", None)
+    let deuterium = Peptidoform::pro_forma("<D>A", &crate::ontology::STATIC_ONTOLOGIES)
         .unwrap()
         .0
         .into_linear()
         .unwrap();
-    let nitrogen_15 = Peptidoform::pro_forma("<15N>A", None)
+    let nitrogen_15 = Peptidoform::pro_forma("<15N>A", &crate::ontology::STATIC_ONTOLOGIES)
         .unwrap()
         .0
         .into_linear()
@@ -394,8 +430,12 @@ fn parse_global() {
 
 #[test]
 fn parse_chimeric() {
-    let (dimeric, _) = CompoundPeptidoformIon::pro_forma("A+AA", None).unwrap();
-    let (trimeric, _) = dbg!(CompoundPeptidoformIon::pro_forma("A+AA-[+2]+AAA", None).unwrap());
+    let (dimeric, _) =
+        CompoundPeptidoformIon::pro_forma("A+AA", &crate::ontology::STATIC_ONTOLOGIES).unwrap();
+    let (trimeric, _) = dbg!(
+        CompoundPeptidoformIon::pro_forma("A+AA-[+2]+AAA", &crate::ontology::STATIC_ONTOLOGIES)
+            .unwrap()
+    );
     assert_eq!(dimeric.peptidoform_ions().len(), 2);
     assert_eq!(dimeric.peptidoform_ions()[0].peptidoforms()[0].len(), 1);
     assert_eq!(dimeric.peptidoform_ions()[1].peptidoforms()[0].len(), 2);
@@ -415,38 +455,32 @@ fn parse_chimeric() {
 fn parse_unimod() {
     let peptide = dbg!(CompoundPeptidoformIon::pro_forma(
         "[U:Gln->pyro-Glu]-QE[Cation:Na]AA",
-        None
+        &crate::ontology::STATIC_ONTOLOGIES
     ));
     assert!(peptide.is_ok());
 }
 
 #[test]
 fn parse_custom() {
-    let peptide = dbg!(CompoundPeptidoformIon::pro_forma(
-        "A[C:WEEE]",
-        Some(&vec![(
-            Some(0),
-            "weee".to_string(),
-            SimpleModificationInner::Database {
-                formula: molecular_formula!(U 1),
-                specificities: vec![(
-                    vec![PlacementRule::AminoAcid(
-                        AminoAcid::CANONICAL_AMINO_ACIDS.to_vec(),
-                        Position::Anywhere
-                    )],
-                    Vec::new(),
-                    Vec::new()
+    let ontologies =
+        Ontologies::init_static().with_custom([Arc::new(SimpleModificationInner::Database {
+            formula: molecular_formula!(U 1),
+            specificities: vec![(
+                vec![PlacementRule::AminoAcid(
+                    AminoAcid::CANONICAL_AMINO_ACIDS.to_vec(),
+                    Position::Anywhere,
                 )],
-                id: ModificationId {
-                    ontology: Ontology::Custom,
-                    name: "WEEE".to_string(),
-                    id: Some(0),
-                    ..ModificationId::default()
-                }
-            }
-            .into()
-        )])
-    ));
+                Vec::new(),
+                Vec::new(),
+            )],
+            id: ModificationId {
+                ontology: Ontology::Custom,
+                name: "WEEE".to_string(),
+                id: Some(0),
+                ..ModificationId::default()
+            },
+        })]);
+    let peptide = dbg!(CompoundPeptidoformIon::pro_forma("A[C:WEEE]", &ontologies));
     assert!(peptide.is_ok());
     assert_eq!(
         peptide.as_ref().unwrap().0.to_string(),
@@ -460,7 +494,11 @@ fn parse_custom() {
 
 #[test]
 fn parse_xl_intra() {
-    let (peptide, _) = PeptidoformIon::pro_forma("A[XLMOD:02001#XLTEST]A[#XLTEST]", None).unwrap();
+    let (peptide, _) = PeptidoformIon::pro_forma(
+        "A[XLMOD:02001#XLTEST]A[#XLTEST]",
+        &crate::ontology::STATIC_ONTOLOGIES,
+    )
+    .unwrap();
     println!("{peptide}");
     //dbg!(&singular.sequence[0].modifications);
     assert_eq!(
@@ -475,8 +513,11 @@ fn parse_xl_intra() {
 
 #[test]
 fn parse_xl_inter() {
-    let (peptide, _) =
-        PeptidoformIon::pro_forma("A[XLMOD:02001#XLTEST]//A[#XLTEST]", None).unwrap();
+    let (peptide, _) = PeptidoformIon::pro_forma(
+        "A[XLMOD:02001#XLTEST]//A[#XLTEST]",
+        &crate::ontology::STATIC_ONTOLOGIES,
+    )
+    .unwrap();
     //dbg!(&singular.sequence[0].modifications);
     assert_eq!(
         peptide.formulas().to_vec()[0],
@@ -491,7 +532,9 @@ fn parse_xl_inter() {
 
 #[test]
 fn parse_adduct_ions_01() {
-    let (peptide, _) = CompoundPeptidoformIon::pro_forma("A/2[2Na+]+A", None).unwrap();
+    let (peptide, _) =
+        CompoundPeptidoformIon::pro_forma("A/2[2Na+]+A", &crate::ontology::STATIC_ONTOLOGIES)
+            .unwrap();
     assert_eq!(peptide.peptidoform_ions().len(), 2);
     assert_eq!(
         peptide.peptidoform_ions()[0].peptidoforms()[0]
@@ -508,41 +551,72 @@ fn parse_adduct_ions_01() {
 
 #[test]
 fn hydrolysed_xl() {
-    let peptide_xl = Peptidoform::pro_forma("EMEVTK[XLMOD:02001]SESPEK", None)
-        .unwrap()
-        .0
-        .into_unambiguous()
-        .unwrap();
-    let peptide_mod = Peptidoform::pro_forma("EMEVTK[Formula:C8H12O3]SESPEK", None)
-        .unwrap()
-        .0
-        .into_unambiguous()
-        .unwrap();
+    let peptide_xl = Peptidoform::pro_forma(
+        "EMEVTK[XLMOD:02001]SESPEK",
+        &crate::ontology::STATIC_ONTOLOGIES,
+    )
+    .unwrap()
+    .0
+    .into_unambiguous()
+    .unwrap();
+    let peptide_mod = Peptidoform::pro_forma(
+        "EMEVTK[Formula:C8H12O3]SESPEK",
+        &crate::ontology::STATIC_ONTOLOGIES,
+    )
+    .unwrap()
+    .0
+    .into_unambiguous()
+    .unwrap();
 
     assert_eq!(peptide_xl.formula(), peptide_mod.formula());
 }
 
 #[test]
 fn multiple_n_mods() {
-    assert!(Peptidoform::pro_forma("[U:Carbamyl][+17.027]-EGEEEK", None).is_ok());
+    assert!(
+        Peptidoform::pro_forma(
+            "[U:Carbamyl][+17.027]-EGEEEK",
+            &crate::ontology::STATIC_ONTOLOGIES
+        )
+        .is_ok()
+    );
 }
 
 #[test]
 fn multiple_c_mods() {
-    assert!(Peptidoform::pro_forma("PEPTIDEG-[Methyl][Amidated]", None).is_ok());
+    assert!(
+        Peptidoform::pro_forma(
+            "PEPTIDEG-[Methyl][Amidated]",
+            &crate::ontology::STATIC_ONTOLOGIES
+        )
+        .is_ok()
+    );
 }
 
 #[test]
 fn ambiguous_aas() {
-    assert!(Peptidoform::pro_forma("[+320.85]-(?N[U:Deamidated])-[+432.85]", None).is_ok());
-    assert!(Peptidoform::pro_forma("[+1550.7049484934485]-T(?HQ[U:Deamidated])", None).is_ok());
+    assert!(
+        Peptidoform::pro_forma(
+            "[+320.85]-(?N[U:Deamidated])-[+432.85]",
+            &crate::ontology::STATIC_ONTOLOGIES
+        )
+        .is_ok()
+    );
+    assert!(
+        Peptidoform::pro_forma(
+            "[+1550.7049484934485]-T(?HQ[U:Deamidated])",
+            &crate::ontology::STATIC_ONTOLOGIES
+        )
+        .is_ok()
+    );
 }
 
 #[ignore = "A known bug"]
 #[test]
 fn ambiguous_mods() {
     let sequence = "[U:Oxidation#u0]?FTSPFVLASTNAGSINAPTVSDSRALARRFHFDM[#u0]NIEVISM[#u0]YSQNGKINM[#u0]PM[#u0]SVKTCDDE";
-    let (parsed, _) = Peptidoform::pro_forma(sequence, None).unwrap();
+    let (parsed, _) =
+        Peptidoform::pro_forma(sequence, &crate::ontology::STATIC_ONTOLOGIES).unwrap();
     assert_eq!(sequence, parsed.to_string());
     assert_eq!(parsed.get_ambiguous_modifications().len(), 1);
 }

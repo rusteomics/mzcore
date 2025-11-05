@@ -104,8 +104,9 @@ impl<CV: CVSource> CVIndex<CV> {
             )
     }
 
-    /// Get the underlying data in insertion order
-    pub fn data(&self) -> impl ExactSizeIterator<Item = Arc<CV::Data>> + '_ {
+    /// Get the underlying data in insertion order. Note that the iterator is spelled out fully to
+    /// allow merging multiple CVs with the same data type but this should not be relied upon.
+    pub fn data(&self) -> std::iter::Cloned<std::slice::Iter<'_, Arc<<CV as CVSource>::Data>>> {
         self.data.iter().cloned()
     }
 
@@ -117,7 +118,7 @@ impl<CV: CVSource> CVIndex<CV> {
     /// Update without overwriting the cache (used when the data is loaded from the cache anyways)
     pub(crate) fn update_skip_rebuilding_cache(
         &mut self,
-        data: impl Iterator<Item = Arc<CV::Data>>,
+        data: impl IntoIterator<Item = Arc<CV::Data>>,
         version: CVVersion,
     ) {
         self.data.clear();

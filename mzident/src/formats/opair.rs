@@ -16,7 +16,7 @@ use crate::{
 };
 use mzcore::{
     csv::{CsvLine, parse_csv},
-    ontology::CustomDatabase,
+    ontology::Ontologies,
     sequence::{
         AminoAcid, CompoundPeptidoformIon, FlankingSequence, Peptidoform, SemiAmbiguous,
         SloppyParsingParameters,
@@ -132,10 +132,10 @@ format_family!(
                 ))
             },
         );
-        peptide: Peptidoform<SemiAmbiguous>, |location: Location, custom_database: Option<&CustomDatabase>| Peptidoform::sloppy_pro_forma(
+        peptide: Peptidoform<SemiAmbiguous>, |location: Location, ontologies: &Ontologies| Peptidoform::sloppy_pro_forma(
             location.full_line(),
             location.location.clone(),
-            custom_database,
+            ontologies,
             &SloppyParsingParameters::default()
         ).map_err(BoxedError::to_owned);
         mod_number: usize, |location: Location, _| location.parse(NUMBER_ERROR);

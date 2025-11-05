@@ -17,7 +17,7 @@ use crate::{
 };
 use mzcore::{
     csv::{CsvLine, parse_csv},
-    ontology::CustomDatabase,
+    ontology::Ontologies,
     sequence::{
         AminoAcid, CheckedAminoAcid, CompoundPeptidoformIon, FlankingSequence, Modification,
         Peptidoform, SemiAmbiguous, SequenceElement, SimpleLinear, SimpleModificationInner,
@@ -64,10 +64,10 @@ format_family!(
                 v.context().to_owned()
             ))).collect::<Result<Vec<FastaIdentifier<String>>, _>>();
         /// The database matched peptide, annotated as [`SimpleLinear`] to allow replacing it with the _de novo_ peptide, no features of the [`SimpleLinear`] complexity are used for the database peptides
-        peptide: Option<Peptidoform<SimpleLinear>>, |location: Location, custom_database: Option<&CustomDatabase>| location.or_empty().parse_with(|location| Peptidoform::sloppy_pro_forma(
+        peptide: Option<Peptidoform<SimpleLinear>>, |location: Location, ontologies: &Ontologies| location.or_empty().parse_with(|location| Peptidoform::sloppy_pro_forma(
             location.full_line(),
             location.location.clone(),
-            custom_database,
+            ontologies,
             &SloppyParsingParameters::default()
         ).map_err(BoxedError::to_owned))
         .map(|p| p.map(Into::into));
@@ -77,8 +77,8 @@ format_family!(
         score: f64, |location: Location, _| location.parse(NUMBER_ERROR);
     }
     optional {
-        all_modified_sequences: ThinVec<Peptidoform<SemiAmbiguous>>, |location: Location, custom_database: Option<&CustomDatabase>| location.array(';')
-                .map(|s| Peptidoform::sloppy_pro_forma(s.line.line(), s.location, custom_database, &SloppyParsingParameters::default()).map_err(BoxedError::to_owned))
+        all_modified_sequences: ThinVec<Peptidoform<SemiAmbiguous>>, |location: Location, ontologies: &Ontologies| location.array(';')
+                .map(|s| Peptidoform::sloppy_pro_forma(s.line.line(), s.location, ontologies, &SloppyParsingParameters::default()).map_err(BoxedError::to_owned))
                 .collect::<Result<ThinVec<Peptidoform<SemiAmbiguous>>, BoxedError<'static, BasicKind>>>();
         base_peak_intensity: f32, |location: Location, _| location.parse::<f32>(NUMBER_ERROR);
         carbamidomethyl_c_probabilities: Box<str>, |location: Location, _| Ok(location.get_boxed_str());
@@ -90,7 +90,7 @@ format_family!(
         dn_combined_score: f32, |location: Location, _| location.parse::<f32>(NUMBER_ERROR);
         dn_complete: bool, |location: Location, _| Ok(location.as_str() == "+");
         dn_n_mass: Mass, |location: Location, _| location.parse::<f64>(NUMBER_ERROR).map(Mass::new::<mzcore::system::dalton>);
-        dn_sequence: Peptidoform<SimpleLinear>, |location: Location, custom_database: Option<&CustomDatabase>| location.or_empty().map(|l| parse_de_novo_sequence(l, custom_database));
+        dn_sequence: Peptidoform<SimpleLinear>, |location: Location, ontologies: &Ontologies| location.or_empty().map(|l| parse_de_novo_sequence(l, ontologies));
         evidence_id: usize, |location: Location, _| location.parse::<usize>(NUMBER_ERROR);
         experiment: Box<str>, |location: Location, _| Ok(location.get_boxed_str());
         mode: Box<str>, |location: Location, _| Ok(location.get_boxed_str());
@@ -134,7 +134,7 @@ format_family!(
         spectrum: Vec<AnnotatedPeak<mzannotate::fragment::Fragment>>, |_, _| None;
     }
 
-    fn post_process(source: &CsvLine, mut parsed: Self, _custom_database: Option<&CustomDatabase>) -> Result<Self, BoxedError<'static, BasicKind>> {
+    fn post_process(source: &CsvLine, mut parsed: Self, _ontologies: &Ontologies) -> Result<Self, BoxedError<'static, BasicKind>> {
         if let Some(dn_sequence) = parsed.dn_sequence.as_mut() {
             if let Some(n_mass) = parsed.dn_n_mass && n_mass != Mass::default() && !n_mass.is_nan() {
                 dn_sequence.add_simple_n_term(SimpleModificationInner::Mass(n_mass.into()).into());
@@ -619,7 +619,7 @@ impl MetaData for MaxQuantData {
 #[expect(clippy::needless_pass_by_value)]
 fn parse_de_novo_sequence(
     location: Location,
-    custom_database: Option<&CustomDatabase>,
+    ontologies: &Ontologies,
 ) -> Result<Peptidoform<SimpleLinear>, BoxedError<'static, BasicKind>> {
     #[derive(Debug, Eq, PartialEq)]
     enum Element {
@@ -635,7 +635,7 @@ fn parse_de_novo_sequence(
         #[expect(clippy::needless_pass_by_value)]
         fn parse<'a>(
             location: Location<'a>,
-            custom_database: Option<&CustomDatabase>,
+            ontologies: &Ontologies,
         ) -> Result<(Self, Location<'a>), BoxedError<'static, BasicKind>> {
             match location.as_str().as_bytes()[0] {
                 b'{' => {
@@ -652,7 +652,7 @@ fn parse_de_novo_sequence(
                         let mut outer = Vec::new();
                         let mut inner = Vec::new();
                         while !inner_location.is_empty() {
-                            let next = Self::parse(inner_location, custom_database)?;
+                            let next = Self::parse(inner_location, ontologies)?;
                             inner.push(next.0);
                             inner_location = next.1;
                             if inner_location.as_str().as_bytes().first() == Some(&b'|') {
@@ -700,7 +700,7 @@ fn parse_de_novo_sequence(
                         };
                         let mut inner = Vec::new();
                         while !inner_location.is_empty() {
-                            let next = Self::parse(inner_location, custom_database)?;
+                            let next = Self::parse(inner_location, ontologies)?;
                             inner.push(next.0);
                             inner_location = next.1;
                         }
@@ -763,7 +763,7 @@ fn parse_de_novo_sequence(
                                 location.full_line(),
                                 location.location.start + 2..end,
                                 Some(&aa),
-                                custom_database,
+                                ontologies,
                             )
                             .map_err(BoxedError::to_owned)?;
                             aa.add_simple_modification(modification);
@@ -871,7 +871,7 @@ fn parse_de_novo_sequence(
 
     let mut inner_location = location.clone();
     while !inner_location.is_empty() {
-        let next = Element::parse(inner_location, custom_database)?;
+        let next = Element::parse(inner_location, ontologies)?;
         next.0
             .add_to_peptidoform(&mut peptidoform, &mut ambiguous_group_id, None);
         inner_location = next.1;
@@ -908,7 +908,7 @@ mod tests {
                     location: 0..test.len(),
                     column: None,
                 },
-                None,
+                &mzcore::ontology::STATIC_ONTOLOGIES,
             )
             .unwrap();
             assert_eq!(test.to_string(), expected);

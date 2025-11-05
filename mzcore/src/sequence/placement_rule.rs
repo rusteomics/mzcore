@@ -222,6 +222,7 @@ mod tests {
     use super::*;
     #[test]
     fn multi_level_rule() {
+        let ontologies = &crate::ontology::STATIC_ONTOLOGIES;
         assert!(
             !PlacementRule::PsiModification(30, Position::Anywhere).is_possible(
                 &SequenceElement::new(CheckedAminoAcid::Alanine, None),
@@ -231,7 +232,7 @@ mod tests {
         );
         let mut seq = SequenceElement::new(CheckedAminoAcid::Alanine, None);
         seq.modifications
-            .push(Ontology::Psimod.find_id(30, None).unwrap().into());
+            .push(ontologies.psimod().get_by_index(&30).unwrap().into());
         assert!(
             PlacementRule::PsiModification(30, Position::Anywhere)
                 .is_possible(&seq, SequencePosition::Index(0)),
@@ -241,6 +242,7 @@ mod tests {
 
     #[test]
     fn place_anywhere() {
+        let ontologies = &crate::ontology::STATIC_ONTOLOGIES;
         assert!(
             PlacementRule::AminoAcid(vec![AminoAcid::Glutamine], Position::Anywhere).is_possible(
                 &SequenceElement::new(CheckedAminoAcid::Q, None),
@@ -263,7 +265,7 @@ mod tests {
             "end"
         );
         assert_eq!(
-            Ontology::Unimod.find_id(7, None).unwrap().is_possible(
+            ontologies.unimod().get_by_index(&7).unwrap().is_possible(
                 &SequenceElement::new(CheckedAminoAcid::Q, None),
                 SequencePosition::CTerm
             ),

@@ -1,13 +1,15 @@
 #![allow(clippy::missing_panics_doc)]
 use std::io::BufReader;
 
+use mzcore::ontology::Ontologies;
+
 use crate::{SpectrumSequenceListData, SpectrumSequenceListVersion, test_format};
 
 #[test]
 fn cascadia_v0_0_5() {
     match test_format::<SpectrumSequenceListData>(
         BufReader::new(CASCADIA_V0_0_5.as_bytes()),
-        None,
+        &mzcore::ontology::STATIC_ONTOLOGIES,
         false,
         false,
         Some(SpectrumSequenceListVersion::SSL),
@@ -24,7 +26,7 @@ fn cascadia_v0_0_5() {
 fn small_molecule_example() {
     match test_format::<SpectrumSequenceListData>(
         BufReader::new(SMALL_MOLECULES_EXAMPLE.as_bytes()),
-        None,
+        &mzcore::ontology::STATIC_ONTOLOGIES,
         false,
         false,
         Some(SpectrumSequenceListVersion::SSL),
@@ -41,7 +43,7 @@ fn small_molecule_example() {
 fn peptide_example() {
     match test_format::<SpectrumSequenceListData>(
         BufReader::new(PEPTIDE_EXAMPLE.as_bytes()),
-        None,
+        &mzcore::ontology::STATIC_ONTOLOGIES,
         true,
         false,
         Some(SpectrumSequenceListVersion::SSL),

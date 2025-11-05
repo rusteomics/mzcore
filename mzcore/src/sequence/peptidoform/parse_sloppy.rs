@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 use crate::{
     glycan::{GLYCAN_PARSE_LIST, MonoSaccharide},
     helper_functions::{ResultExtensions, end_of_enclosure, parse_named_counter},
-    ontology::{CustomDatabase, Ontology},
+    ontology::{CustomDatabase, Ontologies, Ontology},
     sequence::{
         AminoAcid, CheckedAminoAcid, Modification, PeptideModificationSearch, Peptidoform,
         SemiAmbiguous, SequenceElement, SequencePosition, SimpleModification,
@@ -41,16 +41,16 @@ impl Peptidoform<SemiAmbiguous> {
     pub fn pro_forma_or_sloppy<'a>(
         line: &'a str,
         range: std::ops::Range<usize>,
-        custom_database: Option<&CustomDatabase>,
+        ontologies: &Ontologies,
         parameters: &SloppyParsingParameters,
     ) -> Result<Self, BoxedError<'a, BasicKind>> {
-        Peptidoform::pro_forma(&line[range.clone()], custom_database).map(|(a, _)| a).map_err(|errs| BoxedError::new(BasicKind::Error, "Invalid ProForma definition", "The string could not be parsed as a ProForma definition", Context::line_range(None, line, range.clone())).add_underlying_errors(errs)).and_then(|p| p.into_semi_ambiguous().ok_or_else(||
+        Peptidoform::pro_forma(&line[range.clone()], ontologies).map(|(a, _)| a).map_err(|errs| BoxedError::new(BasicKind::Error, "Invalid ProForma definition", "The string could not be parsed as a ProForma definition", Context::line_range(None, line, range.clone())).add_underlying_errors(errs)).and_then(|p| p.into_semi_ambiguous().ok_or_else(||
             BoxedError::new(BasicKind::Error,
                 "Peptidoform too complex",
                 "A peptidoform as used here should not contain any complex parts of the ProForma specification, only amino acids and simple placed modifications are allowed",
                 Context::line_range(None, line, range.clone()),
             ))).or_else(|pro_forma_error|
-                Self::sloppy_pro_forma(line, range.clone(), custom_database, parameters)
+                Self::sloppy_pro_forma(line, range.clone(), ontologies, parameters)
                 .map_err(|sloppy_error|
                     BoxedError::new(BasicKind::Error,
                         "Invalid peptidoform",
@@ -71,7 +71,7 @@ impl Peptidoform<SemiAmbiguous> {
     pub fn sloppy_pro_forma<'a>(
         line: &'a str,
         location: std::ops::Range<usize>,
-        custom_database: Option<&CustomDatabase>,
+        ontologies: &Ontologies,
         parameters: &SloppyParsingParameters,
     ) -> Result<Self, BoxedError<'a, BasicKind>> {
         if line[location.clone()].trim().is_empty() {
@@ -114,7 +114,7 @@ impl Peptidoform<SemiAmbiguous> {
                         line,
                         location.start + index + 1..location.start + end_index,
                         peptide.sequence().last(),
-                        custom_database,
+                        ontologies,
                     )
                     .map(Modification::Simple)?;
                     index = end_index + 1;
@@ -293,29 +293,29 @@ impl Modification {
         line: &'a str,
         location: std::ops::Range<usize>,
         position: Option<&SequenceElement<SemiAmbiguous>>,
-        custom_database: Option<&CustomDatabase>,
+        ontologies: &Ontologies,
     ) -> Result<SimpleModification, BoxedError<'a, BasicKind>> {
         let full_context = Context::line(None, line, location.start, location.len());
         let name = &line[location];
 
-        Self::find_name(name, position, custom_database)
+        Self::find_name(name, position, ontologies)
             .or_else( || {
                 match name.trim().to_lowercase().split_once(':') {
-                    Some(("u", tail)) => Ontology::Unimod.find_name(tail, None),
-                    Some(("unimod", tail)) => Ontology::Unimod.find_id(tail.parse::<usize>().ok()?, None),
-                    Some(("m", tail)) => Ontology::Psimod.find_name(tail, None),
-                    Some(("c", tail)) => Ontology::Custom.find_name(tail, custom_database),
+                    Some(("u", tail)) => ontologies.unimod().get_by_name(tail),
+                    Some(("unimod", tail)) => ontologies.unimod().get_by_index(&tail.parse::<usize>().ok()?),
+                    Some(("m", tail)) =>ontologies.psimod().get_by_name(tail),
+                    Some(("c", tail)) => ontologies.custom().get_by_name(tail),
                     _ => None
                 }
             })
             .or_else( || {
-                name.trim().split_ascii_whitespace().next().and_then(|head| Self::find_name::<SemiAmbiguous>(head, position, custom_database))
+                name.trim().split_ascii_whitespace().next().and_then(|head| Self::find_name::<SemiAmbiguous>(head, position, ontologies))
             })
             .or_else(|| {SLOPPY_MOD_OPAIR_REGEX
                 .captures(name)
                 .and_then(|capture| {
                     let pos = capture[2].chars().next().and_then(|a| AminoAcid::try_from(a).ok().map(|a| SequenceElement::new(CheckedAminoAcid::new(a), None)));
-                    Self::find_name::<SemiAmbiguous>(&capture[1], position.or(pos.as_ref()), custom_database)
+                    Self::find_name::<SemiAmbiguous>(&capture[1], position.or(pos.as_ref()), ontologies)
                         .ok_or_else(|| {
                             MonoSaccharide::pro_forma_composition::<false>(&capture[1])
                             .map(|(g, _)| Arc::new(SimpleModificationInner::Glycan(g)))
@@ -328,7 +328,7 @@ impl Modification {
                     SLOPPY_MOD_ON_REGEX
                         .captures(name)
                         .and_then(|capture| {
-                            Self::find_name(&capture[1], position, custom_database)
+                            Self::find_name(&capture[1], position, ontologies)
                         })
                 })
                 .or_else(|| {
@@ -336,7 +336,7 @@ impl Modification {
                     SLOPPY_MOD_MAXQUANT_REGEX
                         .captures(name)
                         .and_then(|capture| {
-                            Self::find_name(&capture[1], position, custom_database)
+                            Self::find_name(&capture[1], position, ontologies)
                         })
                 })
                 .or_else(|| {
@@ -344,7 +344,7 @@ impl Modification {
                     SLOPPY_MOD_NUMERIC_END_REGEX
                         .captures(name)
                         .and_then(|capture| {
-                            Self::find_name(&capture[1], position, custom_database)
+                            Self::find_name(&capture[1], position, ontologies)
                         })
                 })
             }).ok_or_else(|| {
@@ -353,86 +353,86 @@ impl Modification {
                     "Modifications have to be defined as a number, Unimod, or PSI-MOD name, if this is a custom modification make sure to add it to the database",
                     full_context,
                 ).suggestions(
-                    Ontology::find_closest_many(
+                    ontologies.find_closest(
                         &[Ontology::Unimod, Ontology::Psimod],
-                        &name.trim().to_lowercase(),
-                        custom_database).get_suggestions().iter().map(ToString::to_string))
+                        &name.trim().to_lowercase()).iter().map(ToString::to_string))
             })
     }
 
     fn find_name<T>(
         name: &str,
         position: Option<&SequenceElement<T>>,
-        custom_database: Option<&CustomDatabase>,
+        ontologies: &Ontologies,
     ) -> Option<SimpleModification> {
         let name = name.trim().to_lowercase();
         // TODO: quite some of these are listed as synonyms in psimod so it would be nice if synonym search could be turned on here (but only the exact ones)
         match name.as_str() {
-            "o" | "ox" | "hydroxylation" => Ontology::Unimod.find_id(35, None), // oxidation
-            "cam" | "carbamidomethylation" => Ontology::Unimod.find_id(4, None), // carbamidomethyl
-            "nem" => Ontology::Unimod.find_id(108, None),                       // Nethylmaleimide
-            "deamidation" | "deamidated asparagine" => Ontology::Unimod.find_id(7, None), // deamidated
-            "formylation" => Ontology::Unimod.find_id(122, None),                         // formyl
-            "methylation" => Ontology::Unimod.find_id(34, None),                          // methyl
-            "acetylation" => Ontology::Unimod.find_id(1, None),                           // acetyl
-            "crotonylation" => Ontology::Unimod.find_id(1363, None), // crotonyl
-            "reduction" => Ontology::Unimod.find_id(447, None),      // deoxy
-            "water loss" => Ontology::Unimod.find_id(23, None),      // dehydration
-            "ammonia loss" => Ontology::Unimod.find_id(385, None),   // ammonia-loss
-            "sodium" => Ontology::Unimod.find_id(30, None),          // Cation:Na
-            "calcium" => Ontology::Unimod.find_id(951, None),        // Cation:Ca[II]
-            "zinc" => Ontology::Unimod.find_id(954, None),           // Cation:Zn[II]
-            "n-acetylarginine" => Ontology::Psimod.find_id(359, None), // N2-acetyl-L-arginine
-            "n-acetylhistidine" => Ontology::Psimod.find_id(781, None), // N2-acetyl-L-histidine
-            "n-acetyllysine" => Ontology::Psimod.find_id(57, None),  // N2-acetyl-L-lysine
-            "n6-acetyllysine" => Ontology::Psimod.find_id(64, None), // N6-acetyl-L-lysine
-            "n-acetylaspartate" => Ontology::Psimod.find_id(51, None), // N-acetyl-L-aspartic acid
-            "n-acetylglutamate" => Ontology::Psimod.find_id(53, None), // N-acetyl-L-glutamic acid
-            "n-acetylcysteine" => Ontology::Psimod.find_id(52, None), // N-acetyl-L-cysteine
-            "n-acetylproline" => Ontology::Psimod.find_id(59, None), // N-acetyl-L-proline
-            "n-acetylserine" => Ontology::Psimod.find_id(60, None),  // N-acetyl-L-serine
-            "n-acetylthreonine" => Ontology::Psimod.find_id(61, None), // N-acetyl-L-threonine
-            "n-acetylasparagine" => Ontology::Psimod.find_id(780, None), // N-acetyl-L-asparagine
-            "n-acetylglutamine" => Ontology::Psimod.find_id(54, None), // N-acetyl-L-glutamine
-            "n-acetylphenylalanine" => Ontology::Psimod.find_id(784, None), // N-acetyl-L-phenylalanine
-            "n-acetyltyrosine" => Ontology::Psimod.find_id(62, None),       // N-acetyl-L-tyrosine
-            "n-acetyltryptophan" => Ontology::Psimod.find_id(785, None), // N2-acetyl-L-tryptophan
-            "n-acetylalanine" => Ontology::Psimod.find_id(50, None),     // N-acetyl-L-alanine
-            "n-acetylvaline" => Ontology::Psimod.find_id(63, None),      // N-acetyl-L-valine
-            "n-acetylisoleucine" => Ontology::Psimod.find_id(56, None),  // N-acetyl-L-isoleucine
-            "n-acetylleucine" => Ontology::Psimod.find_id(782, None),    // N-acetyl-L-leucine
-            "n-acetylmethionine" => Ontology::Psimod.find_id(58, None),  // N-acetyl-L-methionine
-            "4-hydroxyproline" => Ontology::Psimod.find_id(39, None),    // 4-hydroxy-L-proline
-            "5-hydroxylysine" => Ontology::Psimod.find_id(37, None),     // 5-hydroxy-L-lysine
-            "omega-n-methylarginine" => Ontology::Psimod.find_id(78, None), // omega-N-methyl-L-arginine
-            "tele-methylhistidine" => Ontology::Psimod.find_id(322, None),  // 1'-methyl-L-histidine
-            "oxidation to kynurenine" => Ontology::Psimod.find_id(462, None), // l-kynurenine
-            "proline pyrrole to pyrrolidine six member ring" => Ontology::Unimod.find_id(360, None), // pro->pyrrolidinone
-            "n6,n6,n6-trimethyllysine" => Ontology::Psimod.find_id(83, None), // N6,N6,N6-trimethyl-L-lysine
-            "n6,n6-dimethyllysine" => Ontology::Psimod.find_id(84, None), // N6,N6-dimethyl-L-lysine
-            "n6-methyllysine" => Ontology::Psimod.find_id(85, None),      // N6-methyl-L-lysine
-            "n6-succinyllysine" => Ontology::Psimod.find_id(1819, None),  // N6-succinyl-L-lysine
-            "5-glutamyl glycerylphosphorylethanolamine" => Ontology::Psimod.find_id(179, None), // L-glutamyl 5-glycerylphosphorylethanolamine
-            "methionine (r)-sulfoxide" => Ontology::Psimod.find_id(719, None), // L-methionine sulfoxide
-            "(3s)-3-hydroxyasparagine" => Ontology::Psimod.find_id(1401, None), // (2S,3S)-3-hydroxyasparagine
-            "dimethylated arginine" => Ontology::Psimod.find_id(783, None), // dimethylated L-arginine
-            "symmetric dimethylarginine" => Ontology::Psimod.find_id(76, None), // symmetric dimethyl-L-arginine
-            "citrullination" | "citrulline" => Ontology::Psimod.find_id(219, None), // L-citrinulline
-            "4-carboxyglutamate" => Ontology::Psimod.find_id(41, None), // L-gamma-carboxyglutamic acid
-            "n6-(pyridoxal phosphate)lysine" => Ontology::Psimod.find_id(128, None), // N6-pyridoxal phosphate-L-lysine
-            "n6-butyryllysine" => Ontology::Psimod.find_id(1781, None), // N6-butanoyl-L-lysine
-            "s-nitrosocysteine" => Ontology::Psimod.find_id(235, None), // S-nitrosyl-L-cysteine
+            "o" | "ox" | "hydroxylation" => ontologies.unimod().get_by_index(&35), // oxidation
+            "cam" | "carbamidomethylation" => ontologies.unimod().get_by_index(&4), // carbamidomethyl
+            "nem" => ontologies.unimod().get_by_index(&108), // Nethylmaleimide
+            "deamidation" | "deamidated asparagine" => ontologies.unimod().get_by_index(&7), // deamidated
+            "formylation" => ontologies.unimod().get_by_index(&122), // formyl
+            "methylation" => ontologies.unimod().get_by_index(&34),  // methyl
+            "acetylation" => ontologies.unimod().get_by_index(&1),   // acetyl
+            "crotonylation" => ontologies.unimod().get_by_index(&1363), // crotonyl
+            "reduction" => ontologies.unimod().get_by_index(&447),   // deoxy
+            "water loss" => ontologies.unimod().get_by_index(&23),   // dehydration
+            "ammonia loss" => ontologies.unimod().get_by_index(&385), // ammonia-loss
+            "sodium" => ontologies.unimod().get_by_index(&30),       // Cation:Na
+            "calcium" => ontologies.unimod().get_by_index(&951),     // Cation:Ca[II]
+            "zinc" => ontologies.unimod().get_by_index(&954),        // Cation:Zn[II]
+            "n-acetylarginine" => ontologies.psimod().get_by_index(&359), // N2-acetyl-L-arginine
+            "n-acetylhistidine" => ontologies.psimod().get_by_index(&781), // N2-acetyl-L-histidine
+            "n-acetyllysine" => ontologies.psimod().get_by_index(&57), // N2-acetyl-L-lysine
+            "n6-acetyllysine" => ontologies.psimod().get_by_index(&64), // N6-acetyl-L-lysine
+            "n-acetylaspartate" => ontologies.psimod().get_by_index(&51), // N-acetyl-L-aspartic acid
+            "n-acetylglutamate" => ontologies.psimod().get_by_index(&53), // N-acetyl-L-glutamic acid
+            "n-acetylcysteine" => ontologies.psimod().get_by_index(&52),  // N-acetyl-L-cysteine
+            "n-acetylproline" => ontologies.psimod().get_by_index(&59),   // N-acetyl-L-proline
+            "n-acetylserine" => ontologies.psimod().get_by_index(&60),    // N-acetyl-L-serine
+            "n-acetylthreonine" => ontologies.psimod().get_by_index(&61), // N-acetyl-L-threonine
+            "n-acetylasparagine" => ontologies.psimod().get_by_index(&780), // N-acetyl-L-asparagine
+            "n-acetylglutamine" => ontologies.psimod().get_by_index(&54), // N-acetyl-L-glutamine
+            "n-acetylphenylalanine" => ontologies.psimod().get_by_index(&784), // N-acetyl-L-phenylalanine
+            "n-acetyltyrosine" => ontologies.psimod().get_by_index(&62), // N-acetyl-L-tyrosine
+            "n-acetyltryptophan" => ontologies.psimod().get_by_index(&785), // N2-acetyl-L-tryptophan
+            "n-acetylalanine" => ontologies.psimod().get_by_index(&50),     // N-acetyl-L-alanine
+            "n-acetylvaline" => ontologies.psimod().get_by_index(&63),      // N-acetyl-L-valine
+            "n-acetylisoleucine" => ontologies.psimod().get_by_index(&56),  // N-acetyl-L-isoleucine
+            "n-acetylleucine" => ontologies.psimod().get_by_index(&782),    // N-acetyl-L-leucine
+            "n-acetylmethionine" => ontologies.psimod().get_by_index(&58),  // N-acetyl-L-methionine
+            "4-hydroxyproline" => ontologies.psimod().get_by_index(&39),    // 4-hydroxy-L-proline
+            "5-hydroxylysine" => ontologies.psimod().get_by_index(&37),     // 5-hydroxy-L-lysine
+            "omega-n-methylarginine" => ontologies.psimod().get_by_index(&78), // omega-N-methyl-L-arginine
+            "tele-methylhistidine" => ontologies.psimod().get_by_index(&322), // 1'-methyl-L-histidine
+            "oxidation to kynurenine" => ontologies.psimod().get_by_index(&462), // l-kynurenine
+            "proline pyrrole to pyrrolidine six member ring" => {
+                ontologies.unimod().get_by_index(&360)
+            } // pro->pyrrolidinone
+            "n6,n6,n6-trimethyllysine" => ontologies.psimod().get_by_index(&83), // N6,N6,N6-trimethyl-L-lysine
+            "n6,n6-dimethyllysine" => ontologies.psimod().get_by_index(&84), // N6,N6-dimethyl-L-lysine
+            "n6-methyllysine" => ontologies.psimod().get_by_index(&85),      // N6-methyl-L-lysine
+            "n6-succinyllysine" => ontologies.psimod().get_by_index(&1819),  // N6-succinyl-L-lysine
+            "5-glutamyl glycerylphosphorylethanolamine" => ontologies.psimod().get_by_index(&179), // L-glutamyl 5-glycerylphosphorylethanolamine
+            "methionine (r)-sulfoxide" => ontologies.psimod().get_by_index(&719), // L-methionine sulfoxide
+            "(3s)-3-hydroxyasparagine" => ontologies.psimod().get_by_index(&1401), // (2S,3S)-3-hydroxyasparagine
+            "dimethylated arginine" => ontologies.psimod().get_by_index(&783), // dimethylated L-arginine
+            "symmetric dimethylarginine" => ontologies.psimod().get_by_index(&76), // symmetric dimethyl-L-arginine
+            "citrullination" | "citrulline" => ontologies.psimod().get_by_index(&219), // L-citrinulline
+            "4-carboxyglutamate" => ontologies.psimod().get_by_index(&41), // L-gamma-carboxyglutamic acid
+            "n6-(pyridoxal phosphate)lysine" => ontologies.psimod().get_by_index(&128), // N6-pyridoxal phosphate-L-lysine
+            "n6-butyryllysine" => ontologies.psimod().get_by_index(&1781), // N6-butanoyl-L-lysine
+            "s-nitrosocysteine" => ontologies.psimod().get_by_index(&235), // S-nitrosyl-L-cysteine
             "phosphoserine" | "phosphothreonine" | "phosphotyrosine" | "phosphorylation" => {
-                Ontology::Unimod.find_id(21, None)
+                ontologies.unimod().get_by_index(&21)
             } // Phospho
-            "pyro-glu" => Ontology::Unimod.find_id(
-                if position.is_some_and(|p| p.aminoacid.aminoacid() == AminoAcid::GlutamicAcid) {
-                    27
-                } else {
-                    28
-                },
-                None,
-            ), // pyro Glu with the logic to pick the correct modification based on the amino acid it is placed on
+            "pyro-glu" => ontologies.unimod().get_by_index(&if position
+                .is_some_and(|p| p.aminoacid.aminoacid() == AminoAcid::GlutamicAcid)
+            {
+                27
+            } else {
+                28
+            }), // pyro Glu with the logic to pick the correct modification based on the amino acid it is placed on
             "sub a" => position
                 .filter(|p| p.modifications.is_empty())
                 .map(|p| p.aminoacid.aminoacid())
@@ -459,7 +459,7 @@ impl Modification {
                     AminoAcid::Valine => Some(667),
                     _ => None,
                 })
-                .and_then(|i| Ontology::Unimod.find_id(i, None)),
+                .and_then(|i| ontologies.unimod().get_by_index(&i)),
             "sub c" => position
                 .filter(|p| p.modifications.is_empty())
                 .map(|p| p.aminoacid.aminoacid())
@@ -486,7 +486,7 @@ impl Modification {
                     AminoAcid::Valine => Some(1213),
                     _ => None,
                 })
-                .and_then(|i| Ontology::Unimod.find_id(i, None)),
+                .and_then(|i| ontologies.unimod().get_by_index(&i)),
             "sub d" => position
                 .filter(|p| p.modifications.is_empty())
                 .map(|p| p.aminoacid.aminoacid())
@@ -513,7 +513,7 @@ impl Modification {
                     AminoAcid::Valine => Some(670),
                     _ => None,
                 })
-                .and_then(|i| Ontology::Unimod.find_id(i, None)),
+                .and_then(|i| ontologies.unimod().get_by_index(&i)),
             "sub e" => position
                 .filter(|p| p.modifications.is_empty())
                 .map(|p| p.aminoacid.aminoacid())
@@ -540,7 +540,7 @@ impl Modification {
                     AminoAcid::Valine => Some(668),
                     _ => None,
                 })
-                .and_then(|i| Ontology::Unimod.find_id(i, None)),
+                .and_then(|i| ontologies.unimod().get_by_index(&i)),
             "sub f" => position
                 .filter(|p| p.modifications.is_empty())
                 .map(|p| p.aminoacid.aminoacid())
@@ -567,7 +567,7 @@ impl Modification {
                     AminoAcid::Valine => Some(666),
                     _ => None,
                 })
-                .and_then(|i| Ontology::Unimod.find_id(i, None)),
+                .and_then(|i| ontologies.unimod().get_by_index(&i)),
             "sub g" => position
                 .filter(|p| p.modifications.is_empty())
                 .map(|p| p.aminoacid.aminoacid())
@@ -594,7 +594,7 @@ impl Modification {
                     AminoAcid::Valine => Some(672),
                     _ => None,
                 })
-                .and_then(|i| Ontology::Unimod.find_id(i, None)),
+                .and_then(|i| ontologies.unimod().get_by_index(&i)),
             "sub h" => position
                 .filter(|p| p.modifications.is_empty())
                 .map(|p| p.aminoacid.aminoacid())
@@ -621,7 +621,7 @@ impl Modification {
                     AminoAcid::Valine => Some(1214),
                     _ => None,
                 })
-                .and_then(|i| Ontology::Unimod.find_id(i, None)),
+                .and_then(|i| ontologies.unimod().get_by_index(&i)),
             "sub i" | "sub l" | "sub j" => position
                 .filter(|p| p.modifications.is_empty())
                 .map(|p| p.aminoacid.aminoacid())
@@ -646,7 +646,7 @@ impl Modification {
                     AminoAcid::Valine => Some(671),
                     _ => None,
                 })
-                .and_then(|i| Ontology::Unimod.find_id(i, None)),
+                .and_then(|i| ontologies.unimod().get_by_index(&i)),
             "sub k" => position
                 .filter(|p| p.modifications.is_empty())
                 .map(|p| p.aminoacid.aminoacid())
@@ -673,7 +673,7 @@ impl Modification {
                     AminoAcid::Glycine => Some(1106),
                     _ => None,
                 })
-                .and_then(|i| Ontology::Unimod.find_id(i, None)),
+                .and_then(|i| ontologies.unimod().get_by_index(&i)),
             "sub m" => position // Some mod options are available
                 .filter(|p| p.modifications.is_empty())
                 .map(|p| p.aminoacid.aminoacid())
@@ -700,7 +700,7 @@ impl Modification {
                     AminoAcid::Glycine => Some(1107),
                     _ => None,
                 })
-                .and_then(|i| Ontology::Unimod.find_id(i, None)),
+                .and_then(|i| ontologies.unimod().get_by_index(&i)),
             "sub n" => position
                 .filter(|p| p.modifications.is_empty())
                 .map(|p| p.aminoacid.aminoacid())
@@ -727,7 +727,7 @@ impl Modification {
                     AminoAcid::Glycine => Some(1108),
                     _ => None,
                 })
-                .and_then(|i| Ontology::Unimod.find_id(i, None)),
+                .and_then(|i| ontologies.unimod().get_by_index(&i)),
             "sub p" => position
                 .filter(|p| p.modifications.is_empty())
                 .map(|p| p.aminoacid.aminoacid())
@@ -754,7 +754,7 @@ impl Modification {
                     AminoAcid::Glycine => Some(1109),
                     _ => None,
                 })
-                .and_then(|i| Ontology::Unimod.find_id(i, None)),
+                .and_then(|i| ontologies.unimod().get_by_index(&i)),
             "sub q" => position
                 .filter(|p| p.modifications.is_empty())
                 .map(|p| p.aminoacid.aminoacid())
@@ -781,7 +781,7 @@ impl Modification {
                     AminoAcid::Glycine => Some(1110),
                     _ => None,
                 })
-                .and_then(|i| Ontology::Unimod.find_id(i, None)),
+                .and_then(|i| ontologies.unimod().get_by_index(&i)),
             "sub r" => position
                 .filter(|p| p.modifications.is_empty())
                 .map(|p| p.aminoacid.aminoacid())
@@ -808,7 +808,7 @@ impl Modification {
                     AminoAcid::Glycine => Some(578),
                     _ => None,
                 })
-                .and_then(|i| Ontology::Unimod.find_id(i, None)),
+                .and_then(|i| ontologies.unimod().get_by_index(&i)),
             "sub s" => position
                 .filter(|p| p.modifications.is_empty())
                 .map(|p| p.aminoacid.aminoacid())
@@ -835,7 +835,7 @@ impl Modification {
                     AminoAcid::Glycine => Some(572),
                     _ => None,
                 })
-                .and_then(|i| Ontology::Unimod.find_id(i, None)),
+                .and_then(|i| ontologies.unimod().get_by_index(&i)),
             "sub t" => position
                 .filter(|p| p.modifications.is_empty())
                 .map(|p| p.aminoacid.aminoacid())
@@ -862,7 +862,7 @@ impl Modification {
                     AminoAcid::Glycine => Some(1111),
                     _ => None,
                 })
-                .and_then(|i| Ontology::Unimod.find_id(i, None)),
+                .and_then(|i| ontologies.unimod().get_by_index(&i)),
             "sub v" => position
                 .filter(|p| p.modifications.is_empty())
                 .map(|p| p.aminoacid.aminoacid())
@@ -889,7 +889,7 @@ impl Modification {
                     AminoAcid::Glycine => Some(575),
                     _ => None,
                 })
-                .and_then(|i| Ontology::Unimod.find_id(i, None)),
+                .and_then(|i| ontologies.unimod().get_by_index(&i)),
             "sub w" => position
                 .filter(|p| p.modifications.is_empty())
                 .map(|p| p.aminoacid.aminoacid())
@@ -916,7 +916,7 @@ impl Modification {
                     AminoAcid::Glycine => Some(573),
                     _ => None,
                 })
-                .and_then(|i| Ontology::Unimod.find_id(i, None)),
+                .and_then(|i| ontologies.unimod().get_by_index(&i)),
             "sub y" => position
                 .filter(|p| p.modifications.is_empty())
                 .map(|p| p.aminoacid.aminoacid())
@@ -943,48 +943,48 @@ impl Modification {
                     AminoAcid::Glycine => Some(1112),
                     _ => None,
                 })
-                .and_then(|i| Ontology::Unimod.find_id(i, None)),
-            "ala->ile" | "ala->leu" | "ala->xle" => Ontology::Unimod.find_id(1125, None),
-            "cys->ile" | "cys->leu" | "cys->xle" => Ontology::Unimod.find_id(1126, None),
-            "asp->ile" | "asp->leu" | "asp->xle" => Ontology::Unimod.find_id(1127, None),
-            "glu->ile" | "glu->leu" | "glu->xle" => Ontology::Unimod.find_id(1128, None),
-            "phe->ile" | "phe->leu" | "phe->xle" => Ontology::Unimod.find_id(602, None),
-            "gly->ile" | "gly->leu" | "gly->xle" => Ontology::Unimod.find_id(1129, None),
-            "his->ile" | "his->leu" | "his->xle" => Ontology::Unimod.find_id(606, None),
-            "lys->ile" | "lys->leu" | "lys->xle" => Ontology::Unimod.find_id(590, None),
-            "met->ile" | "met->leu" | "met->xle" => Ontology::Unimod.find_id(608, None),
-            "asn->ile" | "asn->leu" | "asn->xle" => Ontology::Unimod.find_id(589, None),
-            "pro->ile" | "pro->leu" | "pro->xle" => Ontology::Unimod.find_id(604, None),
-            "gln->ile" | "gln->leu" | "gln->xle" => Ontology::Unimod.find_id(607, None),
-            "arg->ile" | "arg->leu" | "arg->xle" => Ontology::Unimod.find_id(609, None),
-            "ser->ile" | "ser->leu" | "ser->xle" => Ontology::Unimod.find_id(601, None),
-            "thr->ile" | "thr->leu" | "thr->xle" => Ontology::Unimod.find_id(588, None),
-            "val->ile" | "val->leu" | "val->xle" => Ontology::Unimod.find_id(605, None),
-            "trp->ile" | "trp->leu" | "trp->xle" => Ontology::Unimod.find_id(603, None),
-            "tyr->ile" | "tyr->leu" | "tyr->xle" => Ontology::Unimod.find_id(1130, None),
-            "ile->ala" | "leu->ala" | "xle->ala" => Ontology::Unimod.find_id(1047, None),
-            "ile->arg" | "leu->arg" | "xle->arg" => Ontology::Unimod.find_id(645, None),
-            "ile->asn" | "leu->asn" | "xle->asn" => Ontology::Unimod.find_id(622, None),
-            "ile->asp" | "leu->asp" | "xle->asp" => Ontology::Unimod.find_id(1069, None),
-            "ile->cys" | "leu->cys" | "xle->cys" => Ontology::Unimod.find_id(1059, None),
-            "ile->gln" | "leu->gln" | "xle->gln" => Ontology::Unimod.find_id(635, None),
-            "ile->glu" | "leu->glu" | "xle->glu" => Ontology::Unimod.find_id(1081, None),
-            "ile->his" | "leu->his" | "xle->his" => Ontology::Unimod.find_id(585, None),
-            "ile->gly" | "leu->gly" | "xle->gly" => Ontology::Unimod.find_id(1105, None),
-            "ile->lys" | "leu->lys" | "xle->lys" => Ontology::Unimod.find_id(600, None),
-            "ile->met" | "leu->met" | "xle->met" => Ontology::Unimod.find_id(614, None),
-            "ile->phe" | "leu->phe" | "xle->phe" => Ontology::Unimod.find_id(568, None),
-            "ile->pro" | "leu->pro" | "xle->pro" => Ontology::Unimod.find_id(629, None),
-            "ile->ser" | "leu->ser" | "xle->ser" => Ontology::Unimod.find_id(656, None),
-            "ile->thr" | "leu->thr" | "xle->thr" => Ontology::Unimod.find_id(664, None),
-            "ile->trp" | "leu->trp" | "xle->trp" => Ontology::Unimod.find_id(677, None),
-            "ile->tyr" | "leu->tyr" | "xle->tyr" => Ontology::Unimod.find_id(1248, None),
-            "ile->val" | "leu->val" | "xle->val" => Ontology::Unimod.find_id(671, None),
+                .and_then(|i| ontologies.unimod().get_by_index(&i)),
+            "ala->ile" | "ala->leu" | "ala->xle" => ontologies.unimod().get_by_index(&1125),
+            "cys->ile" | "cys->leu" | "cys->xle" => ontologies.unimod().get_by_index(&1126),
+            "asp->ile" | "asp->leu" | "asp->xle" => ontologies.unimod().get_by_index(&1127),
+            "glu->ile" | "glu->leu" | "glu->xle" => ontologies.unimod().get_by_index(&1128),
+            "phe->ile" | "phe->leu" | "phe->xle" => ontologies.unimod().get_by_index(&602),
+            "gly->ile" | "gly->leu" | "gly->xle" => ontologies.unimod().get_by_index(&1129),
+            "his->ile" | "his->leu" | "his->xle" => ontologies.unimod().get_by_index(&606),
+            "lys->ile" | "lys->leu" | "lys->xle" => ontologies.unimod().get_by_index(&590),
+            "met->ile" | "met->leu" | "met->xle" => ontologies.unimod().get_by_index(&608),
+            "asn->ile" | "asn->leu" | "asn->xle" => ontologies.unimod().get_by_index(&589),
+            "pro->ile" | "pro->leu" | "pro->xle" => ontologies.unimod().get_by_index(&604),
+            "gln->ile" | "gln->leu" | "gln->xle" => ontologies.unimod().get_by_index(&607),
+            "arg->ile" | "arg->leu" | "arg->xle" => ontologies.unimod().get_by_index(&609),
+            "ser->ile" | "ser->leu" | "ser->xle" => ontologies.unimod().get_by_index(&601),
+            "thr->ile" | "thr->leu" | "thr->xle" => ontologies.unimod().get_by_index(&588),
+            "val->ile" | "val->leu" | "val->xle" => ontologies.unimod().get_by_index(&605),
+            "trp->ile" | "trp->leu" | "trp->xle" => ontologies.unimod().get_by_index(&603),
+            "tyr->ile" | "tyr->leu" | "tyr->xle" => ontologies.unimod().get_by_index(&1130),
+            "ile->ala" | "leu->ala" | "xle->ala" => ontologies.unimod().get_by_index(&1047),
+            "ile->arg" | "leu->arg" | "xle->arg" => ontologies.unimod().get_by_index(&645),
+            "ile->asn" | "leu->asn" | "xle->asn" => ontologies.unimod().get_by_index(&622),
+            "ile->asp" | "leu->asp" | "xle->asp" => ontologies.unimod().get_by_index(&1069),
+            "ile->cys" | "leu->cys" | "xle->cys" => ontologies.unimod().get_by_index(&1059),
+            "ile->gln" | "leu->gln" | "xle->gln" => ontologies.unimod().get_by_index(&635),
+            "ile->glu" | "leu->glu" | "xle->glu" => ontologies.unimod().get_by_index(&1081),
+            "ile->his" | "leu->his" | "xle->his" => ontologies.unimod().get_by_index(&585),
+            "ile->gly" | "leu->gly" | "xle->gly" => ontologies.unimod().get_by_index(&1105),
+            "ile->lys" | "leu->lys" | "xle->lys" => ontologies.unimod().get_by_index(&600),
+            "ile->met" | "leu->met" | "xle->met" => ontologies.unimod().get_by_index(&614),
+            "ile->phe" | "leu->phe" | "xle->phe" => ontologies.unimod().get_by_index(&568),
+            "ile->pro" | "leu->pro" | "xle->pro" => ontologies.unimod().get_by_index(&629),
+            "ile->ser" | "leu->ser" | "xle->ser" => ontologies.unimod().get_by_index(&656),
+            "ile->thr" | "leu->thr" | "xle->thr" => ontologies.unimod().get_by_index(&664),
+            "ile->trp" | "leu->trp" | "xle->trp" => ontologies.unimod().get_by_index(&677),
+            "ile->tyr" | "leu->tyr" | "xle->tyr" => ontologies.unimod().get_by_index(&1248),
+            "ile->val" | "leu->val" | "xle->val" => ontologies.unimod().get_by_index(&671),
             _ => parse_modification::numerical_mod(&name)
                 .ok()
-                .or_else(|| Ontology::Unimod.find_name(&name, custom_database))
-                .or_else(|| Ontology::Psimod.find_name(&name, custom_database))
-                .or_else(|| Ontology::Custom.find_name(&name, custom_database)),
+                .or_else(|| ontologies.unimod().get_by_name(&name))
+                .or_else(|| ontologies.psimod().get_by_name(&name))
+                .or_else(|| ontologies.custom().get_by_name(&name)),
         }
     }
 }

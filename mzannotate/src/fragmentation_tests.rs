@@ -7,7 +7,7 @@ use crate::{
 use mzcore::{
     chemistry::AmbiguousLabel,
     molecular_formula,
-    ontology::{CustomDatabase, Ontology},
+    ontology::{Ontologies, Ontology},
     prelude::*,
     sequence::{
         LinkerSpecificity, ModificationId, PlacementRule, Position, SimpleModificationInner,
@@ -49,7 +49,7 @@ fn triple_a() {
         .z(PrimaryIonSeries::default().variants(vec![0, 1]));
     test(
         theoretical_fragments,
-        Peptidoform::pro_forma("AAA", None)
+        Peptidoform::pro_forma("AAA", &Ontologies::empty())
             .unwrap()
             .0
             .into_linear()
@@ -99,9 +99,12 @@ fn with_modifications() {
         .z(PrimaryIonSeries::default().variants(vec![0, 1]));
     test(
         theoretical_fragments,
-        Peptidoform::pro_forma("[Gln->pyro-Glu]-QAAM[Oxidation]", None)
-            .unwrap()
-            .0,
+        Peptidoform::pro_forma(
+            "[Gln->pyro-Glu]-QAAM[Oxidation]",
+            &mzcore::ontology::STATIC_ONTOLOGIES,
+        )
+        .unwrap()
+        .0,
         &model,
         1,
         true,
@@ -187,7 +190,7 @@ fn higher_charges() {
         .a(PrimaryIonSeries::default());
     test(
         theoretical_fragments,
-        Peptidoform::pro_forma("ACD", None)
+        Peptidoform::pro_forma("ACD", &mzcore::ontology::STATIC_ONTOLOGIES)
             .unwrap()
             .0
             .into_linear()
@@ -349,7 +352,7 @@ fn all_aminoacids() {
         .z(PrimaryIonSeries::default().variants(vec![0, 1]));
     test(
         theoretical_fragments,
-        Peptidoform::pro_forma("ARNDCQEGHILKMFPSTWYV", None)
+        Peptidoform::pro_forma("ARNDCQEGHILKMFPSTWYV", &mzcore::ontology::STATIC_ONTOLOGIES)
             .unwrap()
             .0
             .into_linear()
@@ -433,11 +436,14 @@ fn glycan_structure_fragmentation() {
         .glycan(GlycanModel::DISALLOW.allow_structural(true));
     test(
         theoretical_fragments,
-        Peptidoform::pro_forma("MVSHHN[GNO:G43728NL]LTTGATLINEQWLLTTAK", None)
-            .unwrap()
-            .0
-            .into_linear()
-            .unwrap(),
+        Peptidoform::pro_forma(
+            "MVSHHN[GNO:G43728NL]LTTGATLINEQWLLTTAK",
+            &mzcore::ontology::STATIC_ONTOLOGIES,
+        )
+        .unwrap()
+        .0
+        .into_linear()
+        .unwrap(),
         &model,
         1,
         true,
@@ -465,11 +471,14 @@ fn glycan_structure_fragmentation_2() {
         .glycan(GlycanModel::DISALLOW.allow_structural(true));
     test(
         theoretical_fragments,
-        Peptidoform::pro_forma("GLTFQQN[GNO:G75079FY]ASSMC[Carbamidomethyl]VPDQDTAIR", None)
-            .unwrap()
-            .0
-            .into_linear()
-            .unwrap(),
+        Peptidoform::pro_forma(
+            "GLTFQQN[GNO:G75079FY]ASSMC[Carbamidomethyl]VPDQDTAIR",
+            &mzcore::ontology::STATIC_ONTOLOGIES,
+        )
+        .unwrap()
+        .0
+        .into_linear()
+        .unwrap(),
         &model,
         4,
         true,
@@ -489,11 +498,14 @@ fn glycan_structure_fragmentation_3() {
     let model = FragmentationModel::eacid();
     test(
         theoretical_fragments,
-        Peptidoform::pro_forma("HSHNN[GNO:G01020XL]NSSDLHPHK", None)
-            .unwrap()
-            .0
-            .into_linear()
-            .unwrap(),
+        Peptidoform::pro_forma(
+            "HSHNN[GNO:G01020XL]NSSDLHPHK",
+            &mzcore::ontology::STATIC_ONTOLOGIES,
+        )
+        .unwrap()
+        .0
+        .into_linear()
+        .unwrap(),
         model,
         4,
         true,
@@ -519,7 +531,7 @@ fn glycan_structure_fragmentation_4() {
     let model = FragmentationModel::eacid();
     test(
         theoretical_fragments,
-        Peptidoform::pro_forma("AAN[G:G09675LS]AA", None)
+        Peptidoform::pro_forma("AAN[G:G09675LS]AA", &mzcore::ontology::STATIC_ONTOLOGIES)
             .unwrap()
             .0
             .into_linear()
@@ -602,11 +614,14 @@ fn glycan_composition_fragmentation() {
         .glycan(GlycanModel::DISALLOW.compositional_range_generic(0..=10));
     test(
         theoretical_fragments,
-        Peptidoform::pro_forma("MVSHHN[Glycan:N4H5S1]LTTGATLINEQWLLTTAK", None)
-            .unwrap()
-            .0
-            .into_linear()
-            .unwrap(),
+        Peptidoform::pro_forma(
+            "MVSHHN[Glycan:N4H5S1]LTTGATLINEQWLLTTAK",
+            &mzcore::ontology::STATIC_ONTOLOGIES,
+        )
+        .unwrap()
+        .0
+        .into_linear()
+        .unwrap(),
         &model,
         1,
         true,
@@ -614,58 +629,50 @@ fn glycan_composition_fragmentation() {
     );
 }
 
-fn custom_database() -> CustomDatabase {
-    vec![
-        (
-            Some(0),
-            "dsso".to_string(),
-            Arc::new(SimpleModificationInner::Linker {
-                specificities: vec![LinkerSpecificity::Symmetric {
-                    rules: vec![PlacementRule::AminoAcid(
-                        vec![AminoAcid::Lysine],
-                        Position::Anywhere,
-                    )],
-                    stubs: vec![(
-                        molecular_formula!(C 3 O 2 H 1 N -1),
-                        molecular_formula!(C 3 O 3 H 1 N -1 S 1),
-                    )],
-                    neutral_losses: Vec::new(),
-                    diagnostic: Vec::new(),
-                }],
-                formula: molecular_formula!(C 6 O 5 H 2 N -2 S 1),
-                id: ModificationId {
-                    name: "DSSO".to_string(),
-                    id: Some(0),
-                    ontology: Ontology::Custom,
-                    ..ModificationId::default()
-                },
-                length: None,
-            }),
-        ),
-        (
-            Some(1),
-            "disulfide".to_string(),
-            Arc::new(SimpleModificationInner::Linker {
-                specificities: vec![LinkerSpecificity::Symmetric {
-                    rules: vec![PlacementRule::AminoAcid(
-                        vec![AminoAcid::Cysteine],
-                        Position::Anywhere,
-                    )],
-                    stubs: vec![(molecular_formula!(H - 1), molecular_formula!(H - 1))],
-                    neutral_losses: Vec::new(),
-                    diagnostic: Vec::new(),
-                }],
-                formula: molecular_formula!(C 6 O 5 H 2 N -2 S 1),
-                id: ModificationId {
-                    name: "Disulfide".to_string(),
-                    id: Some(1),
-                    ontology: Ontology::Custom,
-                    ..ModificationId::default()
-                },
-                length: None,
-            }),
-        ),
-    ]
+fn custom_database() -> Ontologies {
+    Ontologies::init_static().with_custom([
+        Arc::new(SimpleModificationInner::Linker {
+            specificities: vec![LinkerSpecificity::Symmetric {
+                rules: vec![PlacementRule::AminoAcid(
+                    vec![AminoAcid::Lysine],
+                    Position::Anywhere,
+                )],
+                stubs: vec![(
+                    molecular_formula!(C 3 O 2 H 1 N -1),
+                    molecular_formula!(C 3 O 3 H 1 N -1 S 1),
+                )],
+                neutral_losses: Vec::new(),
+                diagnostic: Vec::new(),
+            }],
+            formula: molecular_formula!(C 6 O 5 H 2 N -2 S 1),
+            id: ModificationId {
+                name: "DSSO".to_string(),
+                id: Some(0),
+                ontology: Ontology::Custom,
+                ..ModificationId::default()
+            },
+            length: None,
+        }),
+        Arc::new(SimpleModificationInner::Linker {
+            specificities: vec![LinkerSpecificity::Symmetric {
+                rules: vec![PlacementRule::AminoAcid(
+                    vec![AminoAcid::Cysteine],
+                    Position::Anywhere,
+                )],
+                stubs: vec![(molecular_formula!(H - 1), molecular_formula!(H - 1))],
+                neutral_losses: Vec::new(),
+                diagnostic: Vec::new(),
+            }],
+            formula: molecular_formula!(C 6 O 5 H 2 N -2 S 1),
+            id: ModificationId {
+                name: "Disulfide".to_string(),
+                id: Some(1),
+                ontology: Ontology::Custom,
+                ..ModificationId::default()
+            },
+            length: None,
+        }),
+    ])
 }
 
 #[test]
@@ -680,8 +687,7 @@ fn intra_link() {
         (732.327290402381, "b5+"),
     ];
     let (peptide, _) =
-        CompoundPeptidoformIon::pro_forma("K[C:DSSO#XL1]GK[#XL1]FLK", Some(&custom_database()))
-            .unwrap();
+        CompoundPeptidoformIon::pro_forma("K[C:DSSO#XL1]GK[#XL1]FLK", &custom_database()).unwrap();
     let model = FragmentationModel::none()
         .clone()
         .b(PrimaryIonSeries::default())
@@ -708,7 +714,7 @@ fn intra_link() {
 #[test]
 fn ensure_no_double_xl_labels_breaking() {
     let (peptide, _) =
-        CompoundPeptidoformIon::pro_forma("EVQLVESGGGLVQPGGSLRLSC[C:Disulfide#XL1]AASGFNIKDTYIHWVRQAPGKGLEWVARIYPTNGYTRYADSVKGRFTISADTSKNTAYLQMNSLRAEDTAVYYC[#XL1]SRWGGDGFYAMDYWGQGTLVTVSSASTKGPSVFPLAPSSKSTSGGTAALGC[C:Disulfide#XL2]LVKDYFPEPVTVSWNSGALTSGVHTFPAVLQSSGLYSLSSVVTVPSSSLGTQTYIC[#XL2]NVNHKPSNTKVDKKVEPKSC[C:Disulfide#XL3]DKT//DIQMTQSPSSLSASVGDRVTITC[C:Disulfide#XL4]RASQDVNTAVAWYQQKPGKAPKLLIYSASFLYSGVPSRFSGSRSGTDFTLTISSLQPEDFATYYC[#XL4]QQHYTTPPTFGQGTKVEIKRTVAAPSVFIFPPSDEQLKSGTASVVC[C:Disulfide#XL5]LLNNFYPREAKVQWKVDNALQSGNSQESVTEQDSKDSTYSLSSTLTLSKADYEKHKVYAC[#XL5]EVTHQGLSSPVTKSFNRGEC[#XL3]", Some(&custom_database()))
+        CompoundPeptidoformIon::pro_forma("EVQLVESGGGLVQPGGSLRLSC[C:Disulfide#XL1]AASGFNIKDTYIHWVRQAPGKGLEWVARIYPTNGYTRYADSVKGRFTISADTSKNTAYLQMNSLRAEDTAVYYC[#XL1]SRWGGDGFYAMDYWGQGTLVTVSSASTKGPSVFPLAPSSKSTSGGTAALGC[C:Disulfide#XL2]LVKDYFPEPVTVSWNSGALTSGVHTFPAVLQSSGLYSLSSVVTVPSSSLGTQTYIC[#XL2]NVNHKPSNTKVDKKVEPKSC[C:Disulfide#XL3]DKT//DIQMTQSPSSLSASVGDRVTITC[C:Disulfide#XL4]RASQDVNTAVAWYQQKPGKAPKLLIYSASFLYSGVPSRFSGSRSGTDFTLTISSLQPEDFATYYC[#XL4]QQHYTTPPTFGQGTKVEIKRTVAAPSVFIFPPSDEQLKSGTASVVC[C:Disulfide#XL5]LLNNFYPREAKVQWKVDNALQSGNSQESVTEQDSKDSTYSLSSTLTLSKADYEKHKVYAC[#XL5]EVTHQGLSSPVTKSFNRGEC[#XL3]", &custom_database())
             .unwrap();
     let model = FragmentationModel::none()
         .clone()
@@ -740,7 +746,7 @@ fn ensure_no_double_xl_labels_breaking() {
 #[test]
 fn ensure_no_double_xl_labels_non_breaking() {
     let (peptide, _) =
-        CompoundPeptidoformIon::pro_forma("EVQLVESGGGLVQPGGSLRLSC[C:Disulfide#XL1]AASGFNIKDTYIHWVRQAPGKGLEWVARIYPTNGYTRYADSVKGRFTISADTSKNTAYLQMNSLRAEDTAVYYC[#XL1]SRWGGDGFYAMDYWGQGTLVTVSSASTKGPSVFPLAPSSKSTSGGTAALGC[C:Disulfide#XL2]LVKDYFPEPVTVSWNSGALTSGVHTFPAVLQSSGLYSLSSVVTVPSSSLGTQTYIC[#XL2]NVNHKPSNTKVDKKVEPKSC[C:Disulfide#XL3]DKT//DIQMTQSPSSLSASVGDRVTITC[C:Disulfide#XL4]RASQDVNTAVAWYQQKPGKAPKLLIYSASFLYSGVPSRFSGSRSGTDFTLTISSLQPEDFATYYC[#XL4]QQHYTTPPTFGQGTKVEIKRTVAAPSVFIFPPSDEQLKSGTASVVC[C:Disulfide#XL5]LLNNFYPREAKVQWKVDNALQSGNSQESVTEQDSKDSTYSLSSTLTLSKADYEKHKVYAC[#XL5]EVTHQGLSSPVTKSFNRGEC[#XL3]", Some(&custom_database()))
+        CompoundPeptidoformIon::pro_forma("EVQLVESGGGLVQPGGSLRLSC[C:Disulfide#XL1]AASGFNIKDTYIHWVRQAPGKGLEWVARIYPTNGYTRYADSVKGRFTISADTSKNTAYLQMNSLRAEDTAVYYC[#XL1]SRWGGDGFYAMDYWGQGTLVTVSSASTKGPSVFPLAPSSKSTSGGTAALGC[C:Disulfide#XL2]LVKDYFPEPVTVSWNSGALTSGVHTFPAVLQSSGLYSLSSVVTVPSSSLGTQTYIC[#XL2]NVNHKPSNTKVDKKVEPKSC[C:Disulfide#XL3]DKT//DIQMTQSPSSLSASVGDRVTITC[C:Disulfide#XL4]RASQDVNTAVAWYQQKPGKAPKLLIYSASFLYSGVPSRFSGSRSGTDFTLTISSLQPEDFATYYC[#XL4]QQHYTTPPTFGQGTKVEIKRTVAAPSVFIFPPSDEQLKSGTASVVC[C:Disulfide#XL5]LLNNFYPREAKVQWKVDNALQSGNSQESVTEQDSKDSTYSLSSTLTLSKADYEKHKVYAC[#XL5]EVTHQGLSSPVTKSFNRGEC[#XL3]", &custom_database())
             .unwrap();
     let model = FragmentationModel::none()
         .clone()
@@ -773,7 +779,7 @@ fn ensure_no_double_xl_labels_non_breaking() {
 fn ensure_no_double_xl_labels_small_breaking() {
     let (peptide, _) = CompoundPeptidoformIon::pro_forma(
         "EC[C:Disulfide#XL1]AC[#XL1]SC[C:Disulfide#XL3]D//DC[#XL3]",
-        Some(&custom_database()),
+        &custom_database(),
     )
     .unwrap();
     let model = FragmentationModel::none()
@@ -795,7 +801,7 @@ fn ensure_no_double_xl_labels_small_breaking() {
 fn ensure_no_double_xl_labels_small_non_breaking() {
     let (peptide, _) = CompoundPeptidoformIon::pro_forma(
         "EC[C:Disulfide#XL1]AC[#XL1]SC[C:Disulfide#XL3]D//DC[#XL3]",
-        Some(&custom_database()),
+        &custom_database(),
     )
     .unwrap();
     let model = FragmentationModel::none()

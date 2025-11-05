@@ -16,7 +16,7 @@ use crate::{
 };
 use mzcore::{
     csv::{CsvLine, parse_csv},
-    ontology::CustomDatabase,
+    ontology::Ontologies,
     sequence::{
         AminoAcid, CompoundPeptidoformIon, FlankingSequence, Modification,
         PeptideModificationSearch, Peptidoform, SemiAmbiguous, SimpleModification,
@@ -38,7 +38,7 @@ format_family!(
     Peaks,
     SemiAmbiguous, PeptidoformPresent, [&V13_DIA, &V12, &V11, &V11_FEATURES, &XPLUS, &AB, &X_PATCHED, &X, &DB_PEPTIDE, &DB_PSM, &DB_PROTEIN_PEPTIDE], b',', None;
     required {
-        peptide: (FlankingSequence, Vec<Peptidoform<SemiAmbiguous>>, FlankingSequence), |location: Location, custom_database: Option<&CustomDatabase>| {
+        peptide: (FlankingSequence, Vec<Peptidoform<SemiAmbiguous>>, FlankingSequence), |location: Location, ontologies: &Ontologies| {
             let n_flanking: Option<AminoAcid>  =
                 (location.as_str().chars().nth(1) == Some('.'))
                 .then(|| location.as_str().chars().next().unwrap().try_into().map_err(|()|
@@ -59,7 +59,7 @@ format_family!(
                 location.array(';').map(|l| Peptidoform::sloppy_pro_forma(
                     l.full_line(),
                     l.location.clone(),
-                    custom_database,
+                    ontologies,
                     &SloppyParsingParameters::default()
                 ).map_err(BoxedError::to_owned)).unique()
                 .collect::<Result<Vec<_>,_>>()
@@ -68,7 +68,7 @@ format_family!(
                 Peptidoform::sloppy_pro_forma(
                     location.full_line(),
                     n_flanking.map_or(location.location.start, |_| location.location.start+2)..c_flanking.map_or(location.location.end, |_| location.location.end-2),
-                    custom_database,
+                    ontologies,
                     &SloppyParsingParameters::default()
                 ).map_err(BoxedError::to_owned).map(|p| (
                     n_flanking.map_or(FlankingSequence::Terminal, FlankingSequence::AminoAcid),
@@ -82,10 +82,10 @@ format_family!(
     }
     optional {
         mass: Mass, |location: Location, _| location.parse::<f64>(NUMBER_ERROR).map(Mass::new::<mzcore::system::dalton>);
-        ptm: Vec<SimpleModification>, |location: Location, custom_database: Option<&CustomDatabase>|
+        ptm: Vec<SimpleModification>, |location: Location, ontologies: &Ontologies|
             location.or_empty().array(';').map(|v| {
                 let v = v.trim();
-                Modification::sloppy_modification(v.full_line(), v.location.clone(), None, custom_database).map_err(BoxedError::to_owned)
+                Modification::sloppy_modification(v.full_line(), v.location.clone(), None, ontologies).map_err(BoxedError::to_owned)
             }).unique().collect::<Result<Vec<_>,_>>();
         scan_number: Vec<PeaksFamilyId>, |location: Location, _| location.or_empty()
                         .map_or(Ok(Vec::new()), |l| l.array(';').map(|v| v.parse(ID_ERROR)).collect::<Result<Vec<_>,_>>());
@@ -125,7 +125,7 @@ format_family!(
         k0_range: std::ops::RangeInclusive<f64>, |location: Location, _| location.split_once('-').map(|(start, end)| Ok(start.parse(NUMBER_ERROR)?..=end.parse(NUMBER_ERROR)?));
     }
 
-    fn post_process(_source: &CsvLine, mut parsed: Self, _custom_database: Option<&CustomDatabase>) -> Result<Self, BoxedError<'static, BasicKind>> {
+    fn post_process(_source: &CsvLine, mut parsed: Self, _ontologies: &Ontologies) -> Result<Self, BoxedError<'static, BasicKind>> {
         // Add the meaningful modifications to replace mass modifications
         if let Some(ptm) = parsed.ptm.clone() {
             for pep in &mut parsed.peptide.1 {

@@ -2,7 +2,7 @@ use std::path::Path;
 
 use context_error::*;
 use mzcore::{
-    ontology::CustomDatabase,
+    ontology::Ontologies,
     sequence::{Linked, SemiAmbiguous, SimpleLinear},
 };
 
@@ -19,7 +19,7 @@ use crate::*;
 /// It errors if the filetype could not be determined or if opening the file errors.
 pub fn open_identified_peptidoforms_file<'a>(
     path: impl AsRef<Path>,
-    custom_database: Option<&'a CustomDatabase>,
+    ontologies: &'a Ontologies,
     keep_all_columns: bool,
 ) -> Result<GeneralIdentifiedPeptidoforms<'a>, BoxedError<'static, BasicKind>> {
     let path = path.as_ref();
@@ -34,36 +34,36 @@ pub fn open_identified_peptidoforms_file<'a>(
         })
         .map(|ex| ex.to_string_lossy().to_lowercase());
     match actual_extension.as_deref() {
-        Some("csv") => PeaksData::parse_file(path, custom_database, keep_all_columns, None)
+        Some("csv") => PeaksData::parse_file(path, ontologies, keep_all_columns, None)
             .map(IdentifiedPeptidoformIter::into_box)
             .or_else(|pe| {
-                NovorData::parse_file(path, custom_database, keep_all_columns, None)
+                NovorData::parse_file(path, ontologies, keep_all_columns, None)
                     .map(IdentifiedPeptidoformIter::into_box)
                     .map_err(|ne| (pe, ne))
             })
             .or_else(|(pe, ne)| {
-                InstaNovoData::parse_file(path, custom_database, keep_all_columns, None)
+                InstaNovoData::parse_file(path, ontologies, keep_all_columns, None)
                     .map(IdentifiedPeptidoformIter::into_box)
                     .map_err(|ie| (pe, ne, ie))
             })
             .or_else(|(pe, ne, ie)| {
-                PLinkData::parse_file(path, custom_database, keep_all_columns, None)
+                PLinkData::parse_file(path, ontologies, keep_all_columns, None)
                     .map(IdentifiedPeptidoformIter::into_box)
                     .map_err(|le| (pe, ne, ie, le))
             }).or_else(|(pe, ne, ie, le)| {
-                PowerNovoData::parse_file(path, custom_database, keep_all_columns, None)
+                PowerNovoData::parse_file(path, ontologies, keep_all_columns, None)
                     .map(IdentifiedPeptidoformIter::into_box)
                     .map_err(|pne| (pe, ne, ie, le, pne))
             }).or_else(|(pe, ne, ie, le, pne)| {
-                PLGSData::parse_file(path, custom_database, keep_all_columns, None)
+                PLGSData::parse_file(path, ontologies, keep_all_columns, None)
                     .map(IdentifiedPeptidoformIter::into_box)
                     .map_err(|ple| (pe, ne, ie, le, pne, ple))
             }).or_else(|(pe, ne, ie, le, pne, ple)| {
-                BasicCSVData::parse_file(path, custom_database, keep_all_columns, None)
+                BasicCSVData::parse_file(path, ontologies, keep_all_columns, None)
                     .map(IdentifiedPeptidoformIter::into_box)
                     .map_err(|be| (pe, ne, ie, le, pne, ple, be))
             }).or_else(|(pe, ne, ie, le, pne, ple, be)| {
-                PUniFindData::parse_file(path, custom_database, keep_all_columns, None)
+                PUniFindData::parse_file(path, ontologies, keep_all_columns, None)
                     .map(IdentifiedPeptidoformIter::into_box)
                     .map_err(|pue| (pe, ne, ie, le, pne, ple, be, pue))
             }).map_err(|(pe, ne, ie, le, pne, ple, be, pue)| {
@@ -74,30 +74,30 @@ pub fn open_identified_peptidoforms_file<'a>(
                 )
                 .add_underlying_errors(vec![pe, ne, ie, le, pne, ple, be, pue])
             }),
-        Some("tsv") => SageData::parse_file(path, custom_database, keep_all_columns, None)
+        Some("tsv") => SageData::parse_file(path, ontologies, keep_all_columns, None)
             .map(IdentifiedPeptidoformIter::into_box)
             .or_else(|se| {
-                PepNetData::parse_file(path, custom_database, keep_all_columns, None)
+                PepNetData::parse_file(path, ontologies, keep_all_columns, None)
                     .map(IdentifiedPeptidoformIter::into_box)
                     .map_err(|pe| (se, pe))
             })
             .or_else(|(se, pe)| {
-                MSFraggerData::parse_file(path, custom_database, keep_all_columns, None)
+                MSFraggerData::parse_file(path, ontologies, keep_all_columns, None)
                     .map(IdentifiedPeptidoformIter::into_box)
                     .map_err(|mfe| (se, pe, mfe))
             })
             .or_else(|(se, pe, mfe)| {
-                ProteoscapeData::parse_file(path, custom_database, keep_all_columns, None)
+                ProteoscapeData::parse_file(path, ontologies, keep_all_columns, None)
                     .map(IdentifiedPeptidoformIter::into_box)
                     .map_err(|pse| (se, pe, mfe, pse))
             })
             .or_else(|(se, pe, mfe, pse)| {
-                NovoBData::parse_file(path, custom_database, keep_all_columns, None)
+                NovoBData::parse_file(path, ontologies, keep_all_columns, None)
                     .map(IdentifiedPeptidoformIter::into_box)
                     .map_err(|ne| (se, pe, mfe, pse, ne))
             })
             .or_else(|(se, pe, mfe, pse,  ne)| {
-                PiPrimeNovoData::parse_file(path, custom_database, keep_all_columns, None)
+                PiPrimeNovoData::parse_file(path, ontologies, keep_all_columns, None)
                     .map(IdentifiedPeptidoformIter::into_box)
                     .map_err(|pne| (se, pe, mfe, pse, ne, pne))
             })
@@ -110,8 +110,8 @@ pub fn open_identified_peptidoforms_file<'a>(
                 .add_underlying_errors(vec![se, pe, mfe, pse, ne, pne])
             }),
         Some("psmtsv") => {
-            MetaMorpheusData::parse_file(path, custom_database, keep_all_columns, None).map(IdentifiedPeptidoformIter::into_box).or_else(|me| {
-                OpairData::parse_file(path, custom_database, keep_all_columns, None)
+            MetaMorpheusData::parse_file(path, ontologies, keep_all_columns, None).map(IdentifiedPeptidoformIter::into_box).or_else(|me| {
+                OpairData::parse_file(path, ontologies, keep_all_columns, None)
                     .map(IdentifiedPeptidoformIter::into_box)
                     .map_err(|oe| (me, oe))
             }).map_err(|(me, oe)| {
@@ -130,13 +130,13 @@ pub fn open_identified_peptidoforms_file<'a>(
         }),
         #[cfg(feature = "mzannotate")]
         Some("txt") if path.file_stem().is_some_and(|p| p.to_string_lossy().to_ascii_lowercase().contains(".mzspeclib")) => {
-            annotated_spectrum::parse_mzspeclib(path, custom_database)
+            annotated_spectrum::parse_mzspeclib(path, ontologies)
         }
         Some("txt") => {
-            MaxQuantData::parse_file(path, custom_database, keep_all_columns, None)
+            MaxQuantData::parse_file(path, ontologies, keep_all_columns, None)
             .map(IdentifiedPeptidoformIter::into_box)
             .or_else(|me| {
-                PiHelixNovoData::parse_file(path, custom_database, keep_all_columns, None)
+                PiHelixNovoData::parse_file(path, ontologies, keep_all_columns, None)
                     .map(IdentifiedPeptidoformIter::into_box)
                     .map_err(|hne| (me, hne))
             })
@@ -149,7 +149,7 @@ pub fn open_identified_peptidoforms_file<'a>(
                 .add_underlying_errors(vec![me, he])
             })
         }
-        Some("mztab") => MZTabData::parse_file(path, custom_database).map(|peptides| {
+        Some("mztab") => MZTabData::parse_file(path, ontologies).map(|peptides| {
             let a: Box<dyn Iterator<Item = Result<IdentifiedPeptidoform<Linked, MaybePeptidoform>, BoxedError<'static, BasicKind>>> + 'a>
                 = Box::new(peptides.into_iter().map(|p| p.map(|p| {
                         IdentifiedPeptidoform::<SimpleLinear, MaybePeptidoform>::from(p).cast()
@@ -157,10 +157,10 @@ pub fn open_identified_peptidoforms_file<'a>(
             a
         }),
         Some("deepnovo_denovo") => {
-            DeepNovoFamilyData::parse_file(path, custom_database, keep_all_columns, None).map(IdentifiedPeptidoformIter::into_box)
+            DeepNovoFamilyData::parse_file(path, ontologies, keep_all_columns, None).map(IdentifiedPeptidoformIter::into_box)
         },
         Some("ssl") => {
-            SpectrumSequenceListData::parse_file(path, custom_database, keep_all_columns, None).map(IdentifiedPeptidoformIter::into_box)
+            SpectrumSequenceListData::parse_file(path, ontologies, keep_all_columns, None).map(IdentifiedPeptidoformIter::into_box)
         }
         _ => Err(BoxedError::new(BasicKind::Error,
             "Unknown extension",
@@ -181,7 +181,7 @@ mod tests {
     fn open_sage() {
         match test_format::<SageData>(
             BufReader::new(File::open("src/test_files/sage_v0_14.tsv").unwrap()),
-            None,
+            &mzcore::ontology::STATIC_ONTOLOGIES,
             true,
             false,
             Some(SageVersion::V0_14),
@@ -198,7 +198,7 @@ mod tests {
     fn open_msfragger() {
         match test_format::<MSFraggerData>(
             BufReader::new(File::open("src/test_files/msfragger_v21.tsv").unwrap()),
-            None,
+            &mzcore::ontology::STATIC_ONTOLOGIES,
             true,
             false,
             Some(MSFraggerVersion::FragPipeV20Or21),

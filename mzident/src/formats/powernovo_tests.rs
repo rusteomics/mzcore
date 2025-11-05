@@ -7,7 +7,7 @@ use crate::{PowerNovoData, PowerNovoVersion, test_format};
 fn powernovo() {
     match test_format::<PowerNovoData>(
         BufReader::new(POWERNOVO_V1_0_17.as_bytes()),
-        None,
+        &mzcore::ontology::STATIC_ONTOLOGIES,
         false,
         true,
         Some(PowerNovoVersion::V1_0_17),

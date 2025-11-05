@@ -7,7 +7,7 @@ use crate::{ProteoscapeData, ProteoscapeVersion, test_format};
 fn proteoscape_db_v2025b() {
     match test_format::<ProteoscapeData>(
         BufReader::new(DATABASE_V2025B.as_bytes()),
-        None,
+        &mzcore::ontology::STATIC_ONTOLOGIES,
         true,
         false,
         Some(ProteoscapeVersion::V2025b),

@@ -1,5 +1,5 @@
 #![allow(clippy::missing_panics_doc)]
-use std::{io::BufReader, sync::Arc};
+use std::io::BufReader;
 
 use crate::{IdentifiedPeptidoformSource, PeaksData, PeaksVersion, test_format};
 use mzcore::{molecular_formula, sequence::SimpleModificationInner};
@@ -9,7 +9,7 @@ fn peaks_x() {
     assert_eq!(
         test_format::<PeaksData>(
             BufReader::new(DATA_X.as_bytes()),
-            None,
+            &mzcore::ontology::STATIC_ONTOLOGIES,
             false,
             true,
             Some(PeaksVersion::X),
@@ -24,7 +24,7 @@ fn peaks_x_patched() {
     assert_eq!(
         test_format::<PeaksData>(
             BufReader::new(DATA_X_PATCHED.as_bytes()),
-            None,
+            &mzcore::ontology::STATIC_ONTOLOGIES,
             false,
             true,
             Some(PeaksVersion::XPatched),
@@ -39,7 +39,7 @@ fn peaks_x_patched_sep() {
     assert_eq!(
         test_format::<PeaksData>(
             BufReader::new(DATA_X_PATCHED_SEP.as_bytes()),
-            None,
+            &mzcore::ontology::STATIC_ONTOLOGIES,
             false,
             true,
             Some(PeaksVersion::XPatched),
@@ -54,7 +54,7 @@ fn peaks_x_plus() {
     assert_eq!(
         test_format::<PeaksData>(
             BufReader::new(DATA_XPLUS.as_bytes()),
-            None,
+            &mzcore::ontology::STATIC_ONTOLOGIES,
             false,
             true,
             Some(PeaksVersion::XPlus),
@@ -69,7 +69,7 @@ fn peaks_11() {
     assert_eq!(
         test_format::<PeaksData>(
             BufReader::new(DATA_11.as_bytes()),
-            None,
+            &mzcore::ontology::STATIC_ONTOLOGIES,
             false,
             true,
             Some(PeaksVersion::V11),
@@ -83,7 +83,7 @@ fn peaks_11() {
 fn peaks_11_features() {
     match test_format::<PeaksData>(
         BufReader::new(DATA_11_FEATURES.as_bytes()),
-        None,
+        &mzcore::ontology::STATIC_ONTOLOGIES,
         true,
         false,
         Some(PeaksVersion::V11Features),
@@ -101,7 +101,7 @@ fn peaks_11_all_candidates() {
     assert_eq!(
         test_format::<PeaksData>(
             BufReader::new(DATA_11_ALL_CANDIDATES.as_bytes()),
-            None,
+            &mzcore::ontology::STATIC_ONTOLOGIES,
             false,
             true,
             Some(PeaksVersion::V11),
@@ -116,10 +116,16 @@ fn peaks_11_custom_modification() {
     assert_eq!(
         test_format::<PeaksData>(
             BufReader::new(DATA_11_CUSTOM_MODIFICATION.as_bytes()),
-            Some(&vec![(
-                Some(0),
-                "oxidation".to_string(),
-                Arc::new(SimpleModificationInner::Formula(molecular_formula!(O 1))),
+            &mzcore::ontology::Ontologies::init_static().with_custom([std::sync::Arc::new(
+                SimpleModificationInner::Database {
+                    specificities: Vec::new(),
+                    formula: molecular_formula!(O 1),
+                    id: mzcore::sequence::ModificationId {
+                        id: Some(0),
+                        name: "Oxidation".to_string(),
+                        ..Default::default()
+                    },
+                },
             )]),
             false,
             true,
@@ -135,7 +141,7 @@ fn peaks_12() {
     assert_eq!(
         test_format::<PeaksData>(
             BufReader::new(DATA_12.as_bytes()),
-            None,
+            &mzcore::ontology::STATIC_ONTOLOGIES,
             false,
             true,
             Some(PeaksVersion::V12)
@@ -150,7 +156,7 @@ fn peaks_ab() {
     assert_eq!(
         test_format::<PeaksData>(
             BufReader::new(DATA_AB.as_bytes()),
-            None,
+            &mzcore::ontology::STATIC_ONTOLOGIES,
             false,
             true,
             Some(PeaksVersion::Ab)
@@ -165,7 +171,7 @@ fn peaks_x_plus_sep() {
     assert_eq!(
         test_format::<PeaksData>(
             BufReader::new(DATA_X_PLUS_SEP.as_bytes()),
-            None,
+            &mzcore::ontology::STATIC_ONTOLOGIES,
             false,
             true,
             Some(PeaksVersion::XPlus)
@@ -180,7 +186,7 @@ fn peaks_db_peptide() {
     assert_eq!(
         test_format::<PeaksData>(
             BufReader::new(DATA_DB_PEPTIDE.as_bytes()),
-            None,
+            &mzcore::ontology::STATIC_ONTOLOGIES,
             false,
             false,
             Some(PeaksVersion::DBPeptide)
@@ -195,7 +201,7 @@ fn peaks_db_psm() {
     assert_eq!(
         test_format::<PeaksData>(
             BufReader::new(DATA_DB_PSM.as_bytes()),
-            None,
+            &mzcore::ontology::STATIC_ONTOLOGIES,
             false,
             false,
             Some(PeaksVersion::DBPSM)
@@ -210,7 +216,7 @@ fn peaks_db_protein_peptide() {
     assert_eq!(
         test_format::<PeaksData>(
             BufReader::new(DATA_DB_PROTEIN_PEPTIDE.as_bytes()),
-            None,
+            &mzcore::ontology::STATIC_ONTOLOGIES,
             false,
             false,
             Some(PeaksVersion::DBProteinPeptide)
@@ -224,7 +230,7 @@ fn peaks_db_protein_peptide() {
 fn peaks_v13_dia_de_novo() {
     match test_format::<PeaksData>(
         BufReader::new(DATA_13_DIA_DE_NOVO.as_bytes()),
-        None,
+        &mzcore::ontology::STATIC_ONTOLOGIES,
         false,
         false,
         Some(PeaksVersion::V13Dia),
@@ -241,7 +247,7 @@ fn peaks_v13_dia_de_novo() {
 fn full_peaks_file() {
     for pep in PeaksData::parse_file(
         "../data/200305_HER_test_04_DENOVO_excerpt.csv",
-        None,
+        &mzcore::ontology::STATIC_ONTOLOGIES,
         false,
         None,
     )
@@ -265,7 +271,7 @@ fn fuzz_crashes() {
             match std::panic::catch_unwind(|| {
                 test_format::<PeaksData>(
                     BufReader::new(std::fs::File::open(&path).unwrap()),
-                    None,
+                    &mzcore::ontology::STATIC_ONTOLOGIES,
                     false,
                     true,
                     Some(PeaksVersion::V11),
@@ -298,7 +304,7 @@ fn fuzz_hangs() {
             match std::panic::catch_unwind(|| {
                 test_format::<PeaksData>(
                     BufReader::new(std::fs::File::open(&path).unwrap()),
-                    None,
+                    &mzcore::ontology::STATIC_ONTOLOGIES,
                     false,
                     true,
                     Some(PeaksVersion::V11),

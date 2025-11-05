@@ -43,7 +43,7 @@ mod test {
 
     #[test]
     fn simple_fragments() {
-        let peptide = Peptidoform::pro_forma("WFWF", None)
+        let peptide = Peptidoform::pro_forma("WFWF", &mzcore::ontology::STATIC_ONTOLOGIES)
             .unwrap()
             .0
             .into_linear()

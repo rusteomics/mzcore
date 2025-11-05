@@ -3,7 +3,7 @@ use std::{
     marker::PhantomData,
     ops::Range,
     path::{Path, PathBuf},
-    sync::LazyLock,
+    sync::OnceLock,
 };
 
 use serde::{Deserialize, Serialize};
@@ -16,7 +16,7 @@ use crate::{
 };
 use mzcore::{
     csv::{CsvLine, parse_csv},
-    ontology::{CustomDatabase, Ontology},
+    ontology::{Ontologies, Ontology},
     sequence::{
         CompoundPeptidoformIon, FlankingSequence, Peptidoform, SemiAmbiguous,
         SloppyParsingParameters,
@@ -29,15 +29,7 @@ static NUMBER_ERROR: (&str, &str) = (
     "This column is not a number but it is required to be a number in this format",
 );
 
-static BUILT_IN_MODIFICATIONS: LazyLock<SloppyParsingParameters> =
-    LazyLock::new(|| SloppyParsingParameters {
-        replace_mass_modifications: Some(vec![
-            Ontology::Unimod.find_id(35, None).unwrap(),
-            Ontology::Unimod.find_id(21, None).unwrap(),
-            Ontology::Unimod.find_id(4, None).unwrap(),
-        ]),
-        ..Default::default()
-    });
+static BUILT_IN_MODIFICATIONS: OnceLock<SloppyParsingParameters> = OnceLock::new();
 
 format_family!(
     InstaNovo,
@@ -47,11 +39,18 @@ format_family!(
         mz: MassOverCharge, |location: Location, _| location.parse::<f64>(NUMBER_ERROR).map(MassOverCharge::new::<mzcore::system::thomson>);
         z: Charge, |location: Location, _| location.parse::<isize>(NUMBER_ERROR).map(Charge::new::<mzcore::system::e>);
         raw_file: PathBuf, |location: Location, _| Ok(Path::new(&location.get_string()).to_owned());
-        peptide: Peptidoform<SemiAmbiguous>, |location: Location, custom_database: Option<&CustomDatabase>| Peptidoform::sloppy_pro_forma(
+        peptide: Peptidoform<SemiAmbiguous>, |location: Location, ontologies: &Ontologies| Peptidoform::sloppy_pro_forma(
             location.full_line(),
             location.location.clone(),
-            custom_database,
-            &BUILT_IN_MODIFICATIONS).map_err(BoxedError::to_owned);
+            ontologies,
+            &BUILT_IN_MODIFICATIONS.get_or_init(|| SloppyParsingParameters {
+                replace_mass_modifications: Some(vec![
+                ontologies.unimod().get_by_index(&35).unwrap(),
+                ontologies.unimod().get_by_index(&21).unwrap(),
+                ontologies.unimod().get_by_index(&4).unwrap(),
+                ]),
+                ..Default::default()
+            })).map_err(BoxedError::to_owned);
 
         score: f64, |location: Location, _| location.parse::<f64>(NUMBER_ERROR);
     }
@@ -64,7 +63,7 @@ format_family!(
         used_model: UsedModel, |location: Location, _| location.parse::<UsedModel>(("Invalid InstaNovo line", "The selected model has to be 'diffusion' or 'transformer'."));
      }
 
-     fn post_process(_source: &CsvLine, mut parsed: Self, _custom_database: Option<&CustomDatabase>) -> Result<Self, BoxedError<'static, BasicKind>> {
+     fn post_process(_source: &CsvLine, mut parsed: Self, _ontologies: &Ontologies) -> Result<Self, BoxedError<'static, BasicKind>> {
         // Only keep the parsed local_confidence is the `UsedModel == Transformer`
         if let Some(used_model) = parsed.used_model && used_model == UsedModel::Diffusion {
             parsed.local_confidence = None;

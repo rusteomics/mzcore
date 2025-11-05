@@ -10,7 +10,7 @@ use mzcore::{
         NeutralLoss, SatelliteLabel,
     },
     molecular_formula,
-    ontology::{CustomDatabase, Ontology},
+    ontology::{CustomDatabase, Ontologies, Ontology},
     quantities::Tolerance,
     sequence::{
         AminoAcid, Linked, PeptidePosition, Peptidoform, SemiAmbiguous, SequenceElement,
@@ -35,14 +35,14 @@ impl Fragment {
     /// When the annotation does not follow the format.
     pub fn mz_paf<'a>(
         line: &'a str,
-        custom_database: Option<&CustomDatabase>,
+        ontologies: &Ontologies,
         interpretation: &[(u32, AnalyteTarget)],
     ) -> Result<Vec<Self>, BoxedError<'a, BasicKind>> {
         Self::mz_paf_inner(
             &Context::none().lines(0, line),
             line,
             0..line.len(),
-            custom_database,
+            ontologies,
             interpretation,
         )
     }
@@ -57,10 +57,10 @@ impl Fragment {
         base_context: &Context<'a>,
         line: &'a str,
         range: Range<usize>,
-        custom_database: Option<&CustomDatabase>,
+        ontologies: &Ontologies,
         interpretation: &[(u32, AnalyteTarget)],
     ) -> Result<Vec<Self>, BoxedError<'a, BasicKind>> {
-        parse_intermediate_representation(base_context, line, range, custom_database).and_then(
+        parse_intermediate_representation(base_context, line, range, ontologies).and_then(
             |annotations| {
                 annotations
                     .into_iter()
@@ -78,12 +78,12 @@ fn parse_intermediate_representation<'a>(
     base_context: &Context<'a>,
     line: &'a str,
     range: Range<usize>,
-    custom_database: Option<&CustomDatabase>,
+    ontologies: &Ontologies,
 ) -> Result<Vec<PeakAnnotation>, BoxedError<'a, BasicKind>> {
     let mut annotations = Vec::new();
 
     // Parse first
-    let (mut range, a) = parse_annotation(base_context, line, range, custom_database)?;
+    let (mut range, a) = parse_annotation(base_context, line, range, ontologies)?;
     annotations.push(a);
 
     // Parse any following
@@ -98,7 +98,7 @@ fn parse_intermediate_representation<'a>(
                 Context::line(None, line, range.start_index(), 1),
             ));
         }
-        let (r, a) = parse_annotation(base_context, line, range, custom_database)?;
+        let (r, a) = parse_annotation(base_context, line, range, ontologies)?;
         range = r;
         annotations.push(a);
     }
@@ -113,7 +113,7 @@ fn parse_annotation<'a>(
     base_context: &Context<'a>,
     line: &'a str,
     range: Range<usize>,
-    custom_database: Option<&CustomDatabase>,
+    ontologies: &Ontologies,
 ) -> Result<(Range<usize>, PeakAnnotation), BoxedError<'a, BasicKind>> {
     let (left_range, auxiliary) = if line.as_bytes().get(range.start_index()).copied() == Some(b'&')
     {
@@ -122,7 +122,7 @@ fn parse_annotation<'a>(
         (range, false)
     };
     let (left_range, analyte_number) = parse_analyte_number(base_context, line, left_range)?;
-    let (left_range, ion) = parse_ion(base_context, line, left_range, custom_database)?;
+    let (left_range, ion) = parse_ion(base_context, line, left_range, ontologies)?;
     let (left_range, neutral_losses) = parse_neutral_loss(base_context, line, left_range)?;
     let (left_range, isotopes) = parse_isotopes(base_context, line, left_range)?;
     let (left_range, adduct_type) = parse_adduct_type(base_context, line, left_range)?;
@@ -469,7 +469,7 @@ fn parse_ion<'a>(
     base_context: &Context<'a>,
     line: &'a str,
     range: Range<usize>,
-    custom_database: Option<&CustomDatabase>,
+    ontologies: &Ontologies,
 ) -> Result<(Range<usize>, IonType), BoxedError<'a, BasicKind>> {
     match line.as_bytes().get(range.start_index()).copied() {
         Some(b'?') => {
@@ -530,7 +530,7 @@ fn parse_ion<'a>(
                     {
                         let interpretation = Peptidoform::pro_forma(
                             &line[range.start_index() + 1..location],
-                            custom_database,
+                            ontologies,
                         )
                         .map_err(|errs| {
                             BoxedError::new(
@@ -627,8 +627,9 @@ fn parse_ion<'a>(
                 let modification = &line[index + 1..end];
                 Some((
                     end - range.start_index() - 1, // Length of mod + [ + ]
-                    Ontology::Unimod
-                        .find_name(modification, None)
+                    ontologies
+                        .unimod()
+                        .get_by_name(modification)
                         .or_else(|| {
                             modification.parse::<f64>().ok().map(|n| {
                                 std::sync::Arc::new(SimpleModificationInner::Mass(
@@ -636,7 +637,21 @@ fn parse_ion<'a>(
                                 ))
                             })
                         })
-                        .ok_or_else(|| Ontology::Unimod.find_closest(modification, None))?,
+                        .ok_or_else(|| {
+                            BoxedError::new(
+                                BasicKind::Error,
+                                "Invalid mzPAF immonium modification",
+                                "The square brackets are not closed",
+                                base_context.clone().add_highlight((0, index, 1)),
+                            )
+                            .suggestions(
+                                ontologies
+                                    .unimod()
+                                    .search(modification, 5, 6)
+                                    .iter()
+                                    .map(ToString::to_string),
+                            )
+                        })?,
                 ))
             } else {
                 None
@@ -1501,16 +1516,17 @@ fn neutral_loss() {
 #[test]
 #[allow(clippy::missing_panics_doc)]
 fn parse_correctly() {
+    let ontologies = Ontologies::empty();
     let pep = [(
         1_u32,
         AnalyteTarget::PeptidoformIon(
-            mzcore::sequence::PeptidoformIon::pro_forma("AAAAAAAAAA", None)
+            mzcore::sequence::PeptidoformIon::pro_forma("AAAAAAAAAA", &ontologies)
                 .unwrap()
                 .0,
         ),
     )];
     let a = "y8^2/-0.0017";
-    let (_, parse_a) = parse_annotation(&Context::none(), a, 0..a.len(), None).unwrap();
+    let (_, parse_a) = parse_annotation(&Context::none(), a, 0..a.len(), &ontologies).unwrap();
     assert!(!parse_a.auxiliary);
     assert_eq!(parse_a.analyte_number, 1);
     assert_eq!(
@@ -1534,7 +1550,7 @@ fn parse_correctly() {
     );
 
     let b = "y8+i^2/0.0002";
-    let (_, parse_b) = parse_annotation(&Context::none(), b, 0..b.len(), None).unwrap();
+    let (_, parse_b) = parse_annotation(&Context::none(), b, 0..b.len(), &ontologies).unwrap();
     assert!(!parse_b.auxiliary);
     assert_eq!(parse_b.analyte_number, 1);
     assert_eq!(

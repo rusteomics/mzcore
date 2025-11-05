@@ -10,7 +10,7 @@ use context_error::{BoxedError, Context, CreateError, ErrorKind, FullErrorConten
 use indexmap::IndexMap;
 use itertools::Itertools;
 use mzcore::{
-    ontology::CustomDatabase,
+    ontology::{CustomDatabase, Ontologies},
     prelude::*,
     system::{MassOverCharge, isize::Charge},
 };
@@ -92,8 +92,7 @@ impl ErrorKind for MzSpecLibErrorKind {
 }
 
 /// The state for a parser for mzSpecLib.txt files
-#[derive(Debug)]
-pub struct MzSpecLibTextParser<'custom_database, Reader: Read> {
+pub struct MzSpecLibTextParser<'ontologies, Reader: Read> {
     inner: Reader,
     header: LibraryHeader,
     header_attribute_sets_with_context: HashMap<
@@ -109,16 +108,16 @@ pub struct MzSpecLibTextParser<'custom_database, Reader: Read> {
     last_error: bool,
     /// The last compound peptidoform ion, used when parsing the mzPAF peaks in a spectrum.
     last_compound_peptidoform: Vec<(u32, AnalyteTarget)>,
-    custom_database: Option<&'custom_database CustomDatabase>,
+    ontologies: &'ontologies Ontologies,
 }
 
-impl<'a> MzSpecLibTextParser<'a, BufReader<File>> {
+impl<'ontologies> MzSpecLibTextParser<'ontologies, BufReader<File>> {
     /// Parse a mzSpecLib file from the given file.
     /// # Errors
     /// If the file does not contain valid mzSpecLib data.
     pub fn open_file(
         path: &Path,
-        custom_database: Option<&'a CustomDatabase>,
+        ontologies: &'ontologies Ontologies,
     ) -> Result<Self, BoxedError<'static, MzSpecLibErrorKind>> {
         Self::open(
             BufReader::new(File::open(path).map_err(|e| {
@@ -130,19 +129,19 @@ impl<'a> MzSpecLibTextParser<'a, BufReader<File>> {
                 )
             })?),
             Some(path.to_path_buf()),
-            custom_database,
+            ontologies,
         )
     }
 }
 
-impl<'a, R: BufRead> MzSpecLibTextParser<'a, R> {
+impl<'ontologies, R: BufRead> MzSpecLibTextParser<'ontologies, R> {
     /// Parse a mzSpecLib file from the given stream, the original filepath can be given for nicer error messages.
     /// # Errors
     /// If the file does not contain valid mzSpecLib data.
     pub fn open(
         reader: R,
         path: Option<PathBuf>,
-        custom_database: Option<&'a CustomDatabase>,
+        ontologies: &'ontologies Ontologies,
     ) -> Result<Self, BoxedError<'static, MzSpecLibErrorKind>> {
         let mut this = Self {
             inner: reader,
@@ -161,7 +160,7 @@ impl<'a, R: BufRead> MzSpecLibTextParser<'a, R> {
             },
             last_error: false,
             last_compound_peptidoform: Vec::new(),
-            custom_database,
+            ontologies,
         };
         this.read_header()?;
         Ok(this)
@@ -581,7 +580,7 @@ impl<'a, R: BufRead> MzSpecLibTextParser<'a, R> {
                         && let Value::String(_value) = attr.value.scalar().as_ref()
                     {
                         let (mut peptidoform_ion, _) =
-                            PeptidoformIon::pro_forma_inner(&self.current_context().lines(0, &buf).to_owned(), &buf, range.clone(), self.custom_database).map_err(|errs| BoxedError::new(context_error::BasicKind::Error, "Invalid ProForma definition", "The string could not be parsed as a ProForma definition", self.current_context().lines(0, &buf).add_highlight((0, range)).to_owned()).add_underlying_errors(errs)).map_err(
+                            PeptidoformIon::pro_forma_inner(&self.current_context().lines(0, &buf).to_owned(), &buf, range.clone(), self.ontologies).map_err(|errs| BoxedError::new(context_error::BasicKind::Error, "Invalid ProForma definition", "The string could not be parsed as a ProForma definition", self.current_context().lines(0, &buf).add_highlight((0, range)).to_owned()).add_underlying_errors(errs)).map_err(
                                 |e| e.to_owned().convert::<MzSpecLibErrorKind, BoxedError<'static, MzSpecLibErrorKind>>(|_| MzSpecLibErrorKind::ProForma),
                             )?;
                         if peptidoform_ion.get_charge_carriers().is_none() {
@@ -925,7 +924,7 @@ impl<'a, R: BufRead> MzSpecLibTextParser<'a, R> {
                         &self.current_context().lines(0, buf),
                         buf,
                         field_offset..field_offset + v.len(),
-                        self.custom_database,
+                        self.ontologies,
                         &self.last_compound_peptidoform,
                     )
                     .map_err(|e| {
@@ -1454,7 +1453,8 @@ mod test {
             File::open("../data/chinese_hamster_hcd_selected_head.mzspeclib.txt").unwrap(),
         );
 
-        let mut this = MzSpecLibTextParser::open(buf, None, None).unwrap();
+        let mut this =
+            MzSpecLibTextParser::open(buf, None, &mzcore::ontology::STATIC_ONTOLOGIES).unwrap();
 
         this.build_index().unwrap();
 
@@ -1484,7 +1484,7 @@ mod test {
             File::open("../data/chinese_hamster_hcd_selected_head.mzspeclib.txt").unwrap(),
         );
 
-        let mut this = MzSpecLibTextParser::open(buf, None, None)?;
+        let mut this = MzSpecLibTextParser::open(buf, None, &mzcore::ontology::STATIC_ONTOLOGIES)?;
         let header = this.header();
         eprintln!("{header:?}");
         // TODO: switch to assigning these basic attributes to header fields
@@ -1500,7 +1500,8 @@ mod test {
         let text = r"<mzSpecLib>
 MS:1003186|library format version=UW:0000000|text";
 
-        let res = MzSpecLibTextParser::open(text.as_bytes(), None, None);
+        let res =
+            MzSpecLibTextParser::open(text.as_bytes(), None, &mzcore::ontology::STATIC_ONTOLOGIES);
         assert!(res.is_err());
     }
 
@@ -1511,7 +1512,9 @@ MS:1003186|library format version=UW:0000000|text";
 MS:1003186|library format version=1.0
 <Spectrum=1>擅";
 
-        let mut res = MzSpecLibTextParser::open(text.as_bytes(), None, None).unwrap();
+        let mut res =
+            MzSpecLibTextParser::open(text.as_bytes(), None, &mzcore::ontology::STATIC_ONTOLOGIES)
+                .unwrap();
         let first = res.next().unwrap();
         assert!(first.is_err());
     }
@@ -1521,7 +1524,8 @@ MS:1003186|library format version=1.0
         let text = r"<mzSpecLib>
 MS:0000000|unknown=a";
 
-        let res = MzSpecLibTextParser::open(text.as_bytes(), None, None);
+        let res =
+            MzSpecLibTextParser::open(text.as_bytes(), None, &mzcore::ontology::STATIC_ONTOLOGIES);
         assert!(res.is_err());
     }
 
@@ -1534,7 +1538,8 @@ MS:0000000|unknown=a";
             .chain(std::iter::repeat_n(b'\n', 10000))
             .collect();
 
-        let res = MzSpecLibTextParser::open(bytes.as_slice(), None, None);
+        let res =
+            MzSpecLibTextParser::open(bytes.as_slice(), None, &mzcore::ontology::STATIC_ONTOLOGIES);
         assert!(res.is_err());
     }
 }

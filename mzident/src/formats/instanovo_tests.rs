@@ -6,7 +6,7 @@ use std::io::BufReader;
 fn instanovo_v1_0_0() {
     match test_format::<InstaNovoData>(
         BufReader::new(INSTANOVO_V1_0_0.as_bytes()),
-        None,
+        &mzcore::ontology::STATIC_ONTOLOGIES,
         false,
         true,
         Some(InstaNovoVersion::V1_0_0),
@@ -24,7 +24,7 @@ fn instanovo_v1_0_0() {
 fn instanovo_v1_1_4() {
     match test_format::<InstaNovoData>(
         BufReader::new(INSTANOVO_V1_1_4.as_bytes()),
-        None,
+        &mzcore::ontology::STATIC_ONTOLOGIES,
         false,
         true,
         Some(InstaNovoVersion::V1_0_0),
@@ -41,7 +41,7 @@ fn instanovo_v1_1_4() {
 fn instanovoplus_v1_1_4() {
     match test_format::<InstaNovoData>(
         BufReader::new(INSTANOVOPLUS_V1_1_4.as_bytes()),
-        None,
+        &mzcore::ontology::STATIC_ONTOLOGIES,
         false,
         false,
         Some(InstaNovoVersion::PlusV1_1_4),

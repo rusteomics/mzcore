@@ -13,7 +13,7 @@ fn main() {
         index.data().len()
     );
     index
-        .save_to_cache_at(std::path::Path::new("mzcore/src/databases/psimod_new.dat"))
+        .save_to_cache_at(std::path::Path::new("mzcore/src/databases/psimod.dat"))
         .unwrap();
     // RESID
     let path = std::path::Path::new("mzcore-update-ontologies/data/RESID.xml");
@@ -27,7 +27,7 @@ fn main() {
             index.data().len()
         );
         index
-            .save_to_cache_at(std::path::Path::new("mzcore/src/databases/resid_new.dat"))
+            .save_to_cache_at(std::path::Path::new("mzcore/src/databases/resid.dat"))
             .unwrap();
     } else {
         println!(
@@ -44,7 +44,7 @@ fn main() {
         index.data().len()
     );
     index
-        .save_to_cache_at(std::path::Path::new("mzcore/src/databases/xlmod_new.dat"))
+        .save_to_cache_at(std::path::Path::new("mzcore/src/databases/xlmod.dat"))
         .unwrap();
     // Unimod
     let mut index = CVIndex::<Unimod>::empty();
@@ -56,7 +56,7 @@ fn main() {
         index.data().len()
     );
     index
-        .save_to_cache_at(std::path::Path::new("mzcore/src/databases/unimod_new.dat"))
+        .save_to_cache_at(std::path::Path::new("mzcore/src/databases/unimod.dat"))
         .unwrap();
     // GNOme
     let mut index = CVIndex::<Gnome>::empty();
@@ -68,6 +68,6 @@ fn main() {
         index.data().len()
     );
     index
-        .save_to_cache_at(std::path::Path::new("mzcore/src/databases/gnome_new.dat"))
+        .save_to_cache_at(std::path::Path::new("mzcore/src/databases/gnome.dat"))
         .unwrap();
 }

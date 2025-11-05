@@ -80,7 +80,7 @@ impl MZTabData {
     /// If the file is not in the correct format
     pub fn parse_file(
         path: impl AsRef<std::path::Path>,
-        custom_database: Option<&CustomDatabase>,
+        ontologies: &mzcore::ontology::Ontologies,
     ) -> Result<
         Box<dyn Iterator<Item = Result<Self, BoxedError<'static, BasicKind>>> + '_>,
         BoxedError<'static, BasicKind>,
@@ -98,12 +98,12 @@ impl MZTabData {
         if check_extension(path, "gz") {
             Ok(Box::new(Self::parse_reader(
                 BufReader::new(GzDecoder::new(BufReader::new(file))),
-                custom_database,
+                ontologies,
             )))
         } else {
             Ok(Box::new(Self::parse_reader(
                 BufReader::new(file),
-                custom_database,
+                ontologies,
             )))
         }
     }
@@ -111,7 +111,7 @@ impl MZTabData {
     /// Parse a mzTab file directly from a buffered reader
     pub fn parse_reader<'a, T: BufRead + 'a>(
         reader: T,
-        custom_database: Option<&'a CustomDatabase>,
+        ontologies: &'a mzcore::ontology::Ontologies,
     ) -> impl Iterator<Item = Result<Self, BoxedError<'static, BasicKind>>> + 'a {
         let mut search_engine_score_type: Vec<CVTerm> = Vec::new();
         let mut modifications: Vec<SimpleModification> = Vec::new();
@@ -128,7 +128,7 @@ impl MZTabData {
                             m if (m.starts_with("variable_mod[") || m.starts_with("fixed_mod[")) && m.ends_with(']') => {
                                 match CVTerm::from_str(&line[fields[2].clone()]).and_then(|term|
                                         (term.id.trim() != "MS:1002453" && term.id.trim()  != "MS:1002454").then(||
-                                            SimpleModificationInner::pro_forma(term.id.trim(), &mut Vec::new(), &mut Vec::new(), custom_database).map(|(m, _)| m).map_err(|errs|
+                                            SimpleModificationInner::pro_forma(term.id.trim(), &mut Vec::new(), &mut Vec::new(), ontologies).map(|(m, _)| m).map_err(|errs|
                                                 BoxedError::new(
                                                     BasicKind::Error,
                                                     "Invalid modification in mzTab", 
@@ -309,7 +309,7 @@ impl MZTabData {
                 }
                 Ok(MZTabLine::PSM(line_index, line, fields)) => Some(
                     PSMLine::new(line_index, peptide_header.as_deref(), &line, &fields)
-                        .and_then(|line| Self::from_line(line, &modifications, &search_engine_score_type, &raw_files, custom_database, &proteins))
+                        .and_then(|line| Self::from_line(line, &modifications, &search_engine_score_type, &raw_files, ontologies, &proteins))
                         .map_err(BoxedError::to_owned),
                 ),
                 Err(e) => Some(Err(e)),
@@ -326,24 +326,23 @@ impl MZTabData {
         global_modifications: &[SimpleModification],
         search_engine_score_types: &[CVTerm],
         raw_files: &[(Option<String>, Option<CVTerm>, Option<CVTerm>)],
-        custom_database: Option<&CustomDatabase>,
+        ontologies: &mzcore::ontology::Ontologies,
         proteins: &HashMap<String, Arc<Protein>>,
     ) -> Result<Self, BoxedError<'a, BasicKind>> {
         let (mod_column, mod_range) = line
             .required_column("modifications")
             .map_err(BoxedError::to_owned)?;
-        let modifications: Vec<MZTabReturnModification> = if mod_column.eq_ignore_ascii_case("null")
-            || mod_column == "0"
-        {
-            Vec::new()
-        } else {
-            split_with_brackets(line.line, mod_range, b',', b'[', b']')
-                .into_iter()
-                .map(|field| {
-                    parse_modification(line.line, field, custom_database, line.line_index as u32)
-                })
-                .collect::<Result<Vec<_>, BoxedError<'_, BasicKind>>>()?
-        };
+        let modifications: Vec<MZTabReturnModification> =
+            if mod_column.eq_ignore_ascii_case("null") || mod_column == "0" {
+                Vec::new()
+            } else {
+                split_with_brackets(line.line, mod_range, b',', b'[', b']')
+                    .into_iter()
+                    .map(|field| {
+                        parse_modification(line.line, field, ontologies, line.line_index as u32)
+                    })
+                    .collect::<Result<Vec<_>, BoxedError<'_, BasicKind>>>()?
+            };
 
         let mut result = Self {
             peptidoform: {
@@ -358,7 +357,7 @@ impl MZTabData {
                     let mut peptide: Peptidoform<SimpleLinear> = Peptidoform::pro_forma_or_sloppy(
                         line.line,
                         range,
-                        custom_database,
+                        ontologies,
                         &SloppyParsingParameters {
                             allow_unwrapped_modifications: true,
                             ..Default::default()
@@ -669,7 +668,7 @@ impl MZTabData {
                     _ => FlankingSequence::Sequence(Box::new(Peptidoform::sloppy_pro_forma(
                         line.line,
                         pre.1,
-                        None,
+                        ontologies,
                         &SloppyParsingParameters::default(),
                     )?)),
                 };
@@ -694,7 +693,7 @@ impl MZTabData {
                     _ => FlankingSequence::Sequence(Box::new(Peptidoform::sloppy_pro_forma(
                         line.line,
                         post.1,
-                        None,
+                        ontologies,
                         &SloppyParsingParameters::default(),
                     )?)),
                 };
@@ -928,7 +927,7 @@ enum MZTabReturnModification {
 fn parse_modification<'a>(
     line: &'a str,
     range: Range<usize>,
-    custom_database: Option<&CustomDatabase>,
+    ontologies: &mzcore::ontology::Ontologies,
     line_index: u32,
 ) -> Result<MZTabReturnModification, BoxedError<'a, BasicKind>> {
     if let Some((pos, modification)) = line[range.clone()].split_once('-') {
@@ -1045,18 +1044,16 @@ fn parse_modification<'a>(
             let value_range = range.start + pos.len() + tag.len() + 2..range.end;
             let value_context = Context::line_range(Some(line_index), line, value_range.clone());
             let modification = if tag.eq_ignore_ascii_case("unimod") {
-                Ontology::Unimod
-                    .find_id(
-                        value.parse::<usize>().map_err(|err| {
-                            BoxedError::new(
-                                BasicKind::Error,
-                                "Invalid unimod code",
-                                format!("The unimod modification {}", explain_number_error(&err)),
-                                value_context.clone(),
-                            )
-                        })?,
-                        None,
-                    )
+                ontologies
+                    .unimod()
+                    .get_by_index(&value.parse::<usize>().map_err(|err| {
+                        BoxedError::new(
+                            BasicKind::Error,
+                            "Invalid unimod code",
+                            format!("The unimod modification {}", explain_number_error(&err)),
+                            value_context.clone(),
+                        )
+                    })?)
                     .ok_or_else(|| {
                         BoxedError::new(
                             BasicKind::Error,
@@ -1066,18 +1063,16 @@ fn parse_modification<'a>(
                         )
                     })?
             } else if tag.eq_ignore_ascii_case("mod") {
-                Ontology::Psimod
-                    .find_id(
-                        value.parse::<usize>().map_err(|err| {
-                            BoxedError::new(
-                                BasicKind::Error,
-                                "Invalid PSI-MOD code",
-                                format!("The PSI-MOD modification {}", explain_number_error(&err)),
-                                value_context.clone(),
-                            )
-                        })?,
-                        None,
-                    )
+                ontologies
+                    .psimod()
+                    .get_by_index(&value.parse::<usize>().map_err(|err| {
+                        BoxedError::new(
+                            BasicKind::Error,
+                            "Invalid PSI-MOD code",
+                            format!("The PSI-MOD modification {}", explain_number_error(&err)),
+                            value_context.clone(),
+                        )
+                    })?)
                     .ok_or_else(|| {
                         BoxedError::new(
                             BasicKind::Error,
@@ -1087,18 +1082,16 @@ fn parse_modification<'a>(
                         )
                     })?
             } else if tag.eq_ignore_ascii_case("custom") {
-                Ontology::Custom
-                    .find_id(
-                        value.parse::<usize>().map_err(|err| {
-                            BoxedError::new(
-                                BasicKind::Error,
-                                "Invalid custom code",
-                                format!("The custom modification {}", explain_number_error(&err)),
-                                value_context.clone(),
-                            )
-                        })?,
-                        custom_database,
-                    )
+                ontologies
+                    .custom()
+                    .get_by_index(&value.parse::<usize>().map_err(|err| {
+                        BoxedError::new(
+                            BasicKind::Error,
+                            "Invalid custom code",
+                            format!("The custom modification {}", explain_number_error(&err)),
+                            value_context.clone(),
+                        )
+                    })?)
                     .ok_or_else(|| {
                         BoxedError::new(
                             BasicKind::Error,

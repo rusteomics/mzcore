@@ -7,7 +7,7 @@ use crate::{SageData, SageVersion, test_format};
 fn sage() {
     match test_format::<SageData>(
         BufReader::new(DATA.as_bytes()),
-        None,
+        &mzcore::ontology::STATIC_ONTOLOGIES,
         true,
         false,
         Some(SageVersion::V0_14),
@@ -24,7 +24,7 @@ fn sage() {
 fn sage_decoy() {
     match test_format::<SageData>(
         BufReader::new(DATA_DECOY.as_bytes()),
-        None,
+        &mzcore::ontology::STATIC_ONTOLOGIES,
         true,
         false,
         Some(SageVersion::V0_14),

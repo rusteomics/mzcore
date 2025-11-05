@@ -43,7 +43,7 @@ impl CVSource for Unimod {
                     <SimpleModificationInner as mzcv::CVData>::Cache,
                     Configuration,
                 >(
-                    include_bytes!("../databases/unimod_new.dat"),
+                    include_bytes!("../databases/unimod.dat"),
                     Configuration::default(),
                 )
                 .unwrap()

@@ -9,12 +9,12 @@ fn overextended_rotation() {
 }
 
 fn test_alignment(peptide_one: &str, peptide_two: &str, path: &str) {
-    let first_peptide = Peptidoform::pro_forma(peptide_one, None)
+    let first_peptide = Peptidoform::pro_forma(peptide_one, &mzcore::ontology::STATIC_ONTOLOGIES)
         .unwrap()
         .0
         .into_simple_linear()
         .unwrap();
-    let second_peptide = Peptidoform::pro_forma(peptide_two, None)
+    let second_peptide = Peptidoform::pro_forma(peptide_two, &mzcore::ontology::STATIC_ONTOLOGIES)
         .unwrap()
         .0
         .into_simple_linear()

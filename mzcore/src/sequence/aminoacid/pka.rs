@@ -261,11 +261,11 @@ impl PKaSource<AminoAcid> for PKaLehninger {
 #[expect(clippy::float_cmp, clippy::missing_panics_doc)]
 mod tests {
     use super::*;
-    use crate::sequence::SimpleModification;
+    use crate::{ontology::Ontologies, sequence::SimpleModification};
 
     // Helper to create a Peptidoform from a list of amino acids
     fn create_peptidoform(aas: &str) -> Peptidoform<SemiAmbiguous> {
-        Peptidoform::pro_forma(aas, None)
+        Peptidoform::pro_forma(aas, &crate::ontology::STATIC_ONTOLOGIES)
             .unwrap()
             .0
             .into_semi_ambiguous()

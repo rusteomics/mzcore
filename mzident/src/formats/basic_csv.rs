@@ -15,7 +15,7 @@ use crate::{
 };
 use mzcore::{
     csv::{CsvLine, parse_csv},
-    ontology::CustomDatabase,
+    ontology::Ontologies,
     sequence::{CompoundPeptidoformIon, FlankingSequence, Linked},
     system::{Mass, MassOverCharge, Time, isize::Charge},
 };
@@ -30,7 +30,7 @@ format_family!(
     Linked, PeptidoformPresent, [&BASIC], b',', None;
     required {
         scan_index: usize, |location: Location, _| location.parse::<usize>(NUMBER_ERROR);
-        sequence: CompoundPeptidoformIon, |location: Location, custom_database: Option<&CustomDatabase>| CompoundPeptidoformIon::pro_forma_inner(&location.context(), location.full_line(), location.location.clone(), custom_database).map_err(|errs| BoxedError::new(BasicKind::Error, "Invalid ProForma definition", "The string could not be parsed as a ProForma definition", location.context()).add_underlying_errors(errs)).map_err(BoxedError::to_owned).map(|(p, _)| p);
+        sequence: CompoundPeptidoformIon, |location: Location, ontologies: &Ontologies| CompoundPeptidoformIon::pro_forma_inner(&location.context(), location.full_line(), location.location.clone(), ontologies).map_err(|errs| BoxedError::new(BasicKind::Error, "Invalid ProForma definition", "The string could not be parsed as a ProForma definition", location.context()).add_underlying_errors(errs)).map_err(BoxedError::to_owned).map(|(p, _)| p);
         raw_file: PathBuf, |location: Location, _| Ok(Path::new(&location.get_string()).to_owned());
         z: Charge, |location: Location, _| location.parse::<isize>(NUMBER_ERROR).map(Charge::new::<mzcore::system::e>);
     }

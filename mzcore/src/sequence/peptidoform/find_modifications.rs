@@ -1,11 +1,11 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, sync::Arc};
 
 use itertools::Itertools;
 
 use crate::{
     chemistry::{Chemical, MassMode, MolecularFormula},
     glycan::MonoSaccharide,
-    ontology::{CustomDatabase, Ontology},
+    ontology::{Ontologies, Ontology},
     quantities::{Tolerance, WithinTolerance},
     sequence::{
         AminoAcid, GnoComposition, Modification, Position, SimpleModification,
@@ -27,33 +27,19 @@ pub fn modification_search_mass<'a>(
     tolerance: Tolerance<Mass>,
     positions: Option<&'a [(Vec<AminoAcid>, Position)]>,
     mass_mode: MassMode,
-    custom_database: Option<&'a CustomDatabase>,
-) -> impl Iterator<Item = (Ontology, Option<usize>, String, SimpleModification)> + 'a {
-    [
-        Ontology::Unimod,
-        Ontology::Psimod,
-        Ontology::Gnome,
-        Ontology::Xlmod,
-        Ontology::Resid,
-        Ontology::Custom,
-    ]
-    .iter()
-    .flat_map(move |o| {
-        o.lookup(custom_database)
-            .iter()
-            .map(|(i, n, m)| (*o, *i, n, m))
-    })
-    .filter(move |(_, _, _, m)| tolerance.within(&mass, &m.formula().mass(mass_mode)))
-    .filter(move |(_, _, _, m)| {
-        positions.is_none()
-            || positions.is_some_and(|positions| {
+    ontologies: &'a Ontologies,
+) -> impl Iterator<Item = SimpleModification> + 'a {
+    ontologies
+        .data(&[])
+        .filter(move |m| tolerance.within(&mass, &m.formula().mass(mass_mode)))
+        .filter(move |m| {
+            positions.is_none_or(|positions| {
                 positions.iter().any(|(aas, p)| {
                     aas.iter()
                         .any(|aa| m.is_possible_aa(*aa, *p).any_possible())
                 })
             })
-    })
-    .map(|(o, i, n, m)| (o, i, n.clone(), m.clone()))
+        })
 }
 
 /// Search for modifications that have the exact same molecular formula as the given target.
@@ -61,24 +47,9 @@ pub fn modification_search_mass<'a>(
 /// It returns the list of possible modifications.
 pub fn modification_search_formula<'a>(
     formula: &'a MolecularFormula,
-    custom_database: Option<&'a CustomDatabase>,
-) -> impl Iterator<Item = (Ontology, Option<usize>, String, SimpleModification)> + 'a {
-    [
-        Ontology::Unimod,
-        Ontology::Psimod,
-        Ontology::Gnome,
-        Ontology::Xlmod,
-        Ontology::Resid,
-        Ontology::Custom,
-    ]
-    .iter()
-    .flat_map(move |o| {
-        o.lookup(custom_database)
-            .iter()
-            .map(|(i, n, m)| (*o, *i, n, m))
-    })
-    .filter(|(_, _, _, m)| *formula == m.formula())
-    .map(|(o, i, n, m)| (o, i, n.clone(), m.clone()))
+    ontologies: &'a Ontologies,
+) -> impl Iterator<Item = SimpleModification> + 'a {
+    ontologies.data(&[]).filter(|m| *formula == m.formula())
 }
 
 /// Search for glycans in the GNOme database that have a similar composition. To detect similar
@@ -91,37 +62,34 @@ pub fn modification_search_formula<'a>(
 pub fn modification_search_glycan(
     glycan: &[(MonoSaccharide, isize)],
     search_topologies: bool,
-) -> impl Iterator<Item = (Ontology, Option<usize>, String, SimpleModification)> {
+    ontologies: &Ontologies,
+) -> impl Iterator<Item = SimpleModification> {
     let search = MonoSaccharide::search_composition(glycan);
 
-    Ontology::Gnome
-        .lookup(None)
-        .iter()
-        .filter(move |(_, _, m)| {
-            if let SimpleModificationInner::Gno {
-                composition: GnoComposition::Topology(structure),
-                ..
-            } = &**m
-            {
-                search_topologies
-                    && MonoSaccharide::search_composition(&structure.composition()) == *search
-            } else if let SimpleModificationInner::Gno {
-                composition: GnoComposition::Composition(composition),
-                ..
-            } = &**m
-            {
-                MonoSaccharide::search_composition(composition) == *search
-            } else {
-                false
-            }
-        })
-        .map(|(i, n, m)| (Ontology::Gnome, *i, n.clone(), m.clone()))
+    ontologies.gnome().data().filter(move |m| {
+        if let SimpleModificationInner::Gno {
+            composition: GnoComposition::Topology(structure),
+            ..
+        } = &**m
+        {
+            search_topologies
+                && MonoSaccharide::search_composition(&structure.composition()) == *search
+        } else if let SimpleModificationInner::Gno {
+            composition: GnoComposition::Composition(composition),
+            ..
+        } = &**m
+        {
+            MonoSaccharide::search_composition(composition) == *search
+        } else {
+            false
+        }
+    })
 }
 
 /// Search for named modifications based on mass and/or chemical formula modifications in a peptide.
 /// The struct is intended to be reused if multiple peptides need the same replacement strategy.
-#[derive(Clone, Debug, PartialEq)]
-pub struct PeptideModificationSearch {
+#[derive(Clone)]
+pub struct PeptideModificationSearch<'ontologies> {
     /// If true forces the closest if there are multiple modifications within tolerance, if there are two as close it will still not provide any name
     force_closest: bool,
     /// If true also searches for named modifications for formula modifications
@@ -135,14 +103,14 @@ pub struct PeptideModificationSearch {
     /// The list of manually given modifications
     modifications: Vec<SimpleModification>,
     /// The list of ontologies to search from
-    ontologies: Vec<Ontology>,
+    selection: Vec<Ontology>,
     /// The custom modifications, if defined
-    custom_database: Option<CustomDatabase>,
+    ontologies: Option<&'ontologies Ontologies>,
     /// The cache to speed up processing from mod + AA to the replacement mod
     cache: HashMap<(Position, Option<AminoAcid>, SimpleModification), Option<SimpleModification>>,
 }
 
-impl Default for PeptideModificationSearch {
+impl Default for PeptideModificationSearch<'_> {
     fn default() -> Self {
         Self {
             force_closest: false,
@@ -151,14 +119,14 @@ impl Default for PeptideModificationSearch {
             mass_mode: MassMode::Monoisotopic,
             tolerance: Tolerance::Relative(Ratio::new::<ppm>(10.0).into()),
             modifications: Vec::new(),
-            ontologies: Vec::new(),
-            custom_database: None,
+            selection: Vec::new(),
+            ontologies: None,
             cache: HashMap::new(),
         }
     }
 }
 
-impl PeptideModificationSearch {
+impl<'ontologies> PeptideModificationSearch<'ontologies> {
     /// Search in the specified list of modifications
     pub fn in_modifications(modifications: Vec<SimpleModification>) -> Self {
         Self {
@@ -169,13 +137,10 @@ impl PeptideModificationSearch {
 
     /// Search in the given ontologies. Do not forget to add [`Ontology::Custom`] if you want to
     /// allow finding modification in the custom database.
-    pub fn in_ontologies(
-        ontologies: Vec<Ontology>,
-        custom_database: Option<CustomDatabase>,
-    ) -> Self {
+    pub fn in_ontologies(selection: Vec<Ontology>, ontologies: &'ontologies Ontologies) -> Self {
         Self {
-            ontologies,
-            custom_database,
+            selection,
+            ontologies: Some(ontologies),
             ..Self::default()
         }
     }
@@ -392,8 +357,8 @@ impl PeptideModificationSearch {
                         self.replace_formulas,
                         self.force_closest,
                         &self.modifications,
-                        &self.ontologies,
-                        self.custom_database.as_ref(),
+                        &self.selection,
+                        self.ontologies.as_deref(),
                         position,
                         aminoacid,
                         in_place,
@@ -412,8 +377,8 @@ impl PeptideModificationSearch {
         replace_formulas: bool,
         force_closest: bool,
         modifications: &[SimpleModification],
-        ontologies: &[Ontology],
-        custom_database: Option<&CustomDatabase>,
+        selection: &[Ontology],
+        ontologies: Option<&Ontologies>,
         position: Position,
         aminoacid: Option<AminoAcid>,
         in_place: &SimpleModification,
@@ -432,13 +397,15 @@ impl PeptideModificationSearch {
         let options: Vec<_> = if modifications.is_empty() {
             ontologies
                 .iter()
-                .flat_map(|o| o.lookup(custom_database))
-                .filter(|modification| {
-                    aminoacid
-                        .is_none_or(|aa| modification.2.is_possible_aa(aa, position).any_possible())
+                .flat_map(|o| {
+                    o.data(selection)
+                        .filter(|modification| {
+                            aminoacid.is_none_or(|aa| {
+                                modification.is_possible_aa(aa, position).any_possible()
+                            })
+                        })
+                        .filter(|modification| check_matches(in_place, modification))
                 })
-                .filter(|modification| check_matches(in_place, &modification.2))
-                .map(|(_, _, modification)| modification)
                 .collect()
         } else {
             modifications
@@ -448,6 +415,7 @@ impl PeptideModificationSearch {
                         .is_none_or(|aa| modification.is_possible_aa(aa, position).any_possible())
                 })
                 .filter(|modification| check_matches(in_place, modification))
+                .cloned()
                 .collect()
         };
         match options.len() {
@@ -489,17 +457,42 @@ impl PeptideModificationSearch {
 #[test]
 #[expect(clippy::missing_panics_doc)]
 fn test_replacement() {
-    let mut search = PeptideModificationSearch::in_ontologies(vec![Ontology::Unimod], None)
-        .replace_formulas(true);
-    let (peptide, _) = Peptidoform::pro_forma("MSFNELT[79.9663]ESNKKSLM[+15.9949]E", None).unwrap();
-    let (expected, _) =
-        Peptidoform::pro_forma("MSFNELT[Phospho]ESNKKSLM[Oxidation]E", None).unwrap();
+    let mut search = PeptideModificationSearch::in_ontologies(
+        vec![Ontology::Unimod],
+        &crate::ontology::STATIC_ONTOLOGIES,
+    )
+    .replace_formulas(true);
+    let (peptide, _) = Peptidoform::pro_forma(
+        "MSFNELT[79.9663]ESNKKSLM[+15.9949]E",
+        &crate::ontology::STATIC_ONTOLOGIES,
+    )
+    .unwrap();
+    let (expected, _) = Peptidoform::pro_forma(
+        "MSFNELT[Phospho]ESNKKSLM[Oxidation]E",
+        &crate::ontology::STATIC_ONTOLOGIES,
+    )
+    .unwrap();
     assert_eq!(search.search(peptide), expected);
-    let (peptide, _) = Peptidoform::pro_forma("Q[-17.02655]NKKSLM[+15.9949]E", None).unwrap();
-    let (expected, _) =
-        Peptidoform::pro_forma("[Gln->pyro-glu]-QNKKSLM[Oxidation]E", None).unwrap();
+    let (peptide, _) = Peptidoform::pro_forma(
+        "Q[-17.02655]NKKSLM[+15.9949]E",
+        &crate::ontology::STATIC_ONTOLOGIES,
+    )
+    .unwrap();
+    let (expected, _) = Peptidoform::pro_forma(
+        "[Gln->pyro-glu]-QNKKSLM[Oxidation]E",
+        &crate::ontology::STATIC_ONTOLOGIES,
+    )
+    .unwrap();
     assert_eq!(search.search(peptide), expected);
-    let (peptide, _) = Peptidoform::pro_forma("M[Formula:O1]KSLM[+15.9949]E", None).unwrap();
-    let (expected, _) = Peptidoform::pro_forma("M[Oxidation]KSLM[Oxidation]E", None).unwrap();
+    let (peptide, _) = Peptidoform::pro_forma(
+        "M[Formula:O1]KSLM[+15.9949]E",
+        &crate::ontology::STATIC_ONTOLOGIES,
+    )
+    .unwrap();
+    let (expected, _) = Peptidoform::pro_forma(
+        "M[Oxidation]KSLM[Oxidation]E",
+        &crate::ontology::STATIC_ONTOLOGIES,
+    )
+    .unwrap();
     assert_eq!(search.search(peptide), expected);
 }

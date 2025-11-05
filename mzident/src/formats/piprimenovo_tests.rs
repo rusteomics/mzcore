@@ -7,7 +7,7 @@ use crate::{PiPrimeNovoData, PiPrimeNovoVersion, test_format};
 fn piprimenovo() {
     match test_format::<PiPrimeNovoData>(
         BufReader::new(PIPRIMENOVO_V0_1.as_bytes()),
-        None,
+        &mzcore::ontology::STATIC_ONTOLOGIES,
         true,
         false,
         Some(PiPrimeNovoVersion::V0_1),

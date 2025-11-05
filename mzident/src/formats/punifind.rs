@@ -10,7 +10,7 @@ use crate::{
 };
 use mzcore::{
     csv::{CsvLine, parse_csv},
-    ontology::CustomDatabase,
+    ontology::Ontologies,
     prelude::{AminoAcid, SequencePosition},
     sequence::{
         CompoundPeptidoformIon, FlankingSequence, Modification, Peptidoform, PlacementRule,
@@ -44,19 +44,19 @@ format_family!(
         cos_similarity: f64, |location: Location, _| location.parse::<f64>(NUMBER_ERROR);
         rt: Time, |location: Location, _| location.parse::<f64>(NUMBER_ERROR).map(Time::new::<mzcore::system::time::s>);
         mass_error: Mass, |location: Location, _| location.parse::<f64>(NUMBER_ERROR).map(Mass::new::<mzcore::system::mass::dalton>);
-        peptidoform: Peptidoform<SemiAmbiguous>, |location: Location, custom_database: Option<&CustomDatabase>|
+        peptidoform: Peptidoform<SemiAmbiguous>, |location: Location, ontologies: &Ontologies|
             location.trim_start_matches("['").trim_end_matches("']").parse_with(|location| Peptidoform::sloppy_pro_forma(
                 location.full_line(),
                 location.location.clone(),
-                custom_database,
+                ontologies,
                 &SloppyParsingParameters::default(),
             ).map_err(BoxedError::to_owned));
 
-        modifications: Vec<(usize, SimpleModification, PlacementRule)>, |location: Location, custom_database: Option<&CustomDatabase>| location.or_empty().array(';').filter_map(
+        modifications: Vec<(usize, SimpleModification, PlacementRule)>, |location: Location, ontologies: &Ontologies| location.or_empty().array(';').filter_map(
             |location| location.clone().or_empty().map(|l| l.split_once(',').and_then(|(loc, modification)| modification.split_once('[').map(|(a, b)| (loc, a, b))).map(|(loc, modification, rule)|
             Ok((
                 loc.parse::<usize>(NUMBER_ERROR).map_err(BoxedError::to_owned)?,
-                Modification::sloppy_modification(modification.line.line(), modification.location, None, custom_database).map_err(BoxedError::to_owned)?,
+                Modification::sloppy_modification(modification.line.line(), modification.location, None, ontologies).map_err(BoxedError::to_owned)?,
                 rule.trim_end_matches("]").parse_with(|rule|
                     if let Result::Ok(position) = Position::from_str(rule.as_str()) && position != Position::Anywhere {
                         Ok(PlacementRule::Terminal(position))
@@ -72,7 +72,7 @@ format_family!(
     }
     optional { }
 
-    fn post_process(source: &CsvLine, mut parsed: Self, _custom_database: Option<&CustomDatabase>) -> Result<Self, BoxedError<'static, BasicKind>> {
+    fn post_process(source: &CsvLine, mut parsed: Self, _ontologies: &Ontologies) -> Result<Self, BoxedError<'static, BasicKind>> {
         for (index, m, rule) in &parsed.modifications {
             match rule {
                 PlacementRule::Terminal(Position::AnyNTerm | Position::ProteinNTerm) => parsed.peptidoform.add_simple_n_term(m.clone()),

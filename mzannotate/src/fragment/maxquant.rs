@@ -1,7 +1,7 @@
 use std::ops::Range;
 
 use context_error::{BasicKind, BoxedError, Context, CreateError};
-use mzcore::{chemistry::SatelliteLabel, prelude::*, sequence::SimpleLinear};
+use mzcore::{chemistry::SatelliteLabel, ontology::Ontologies, prelude::*, sequence::SimpleLinear};
 
 use crate::{
     fragment::{Fragment, IonType, PeakAnnotation},
@@ -211,7 +211,7 @@ fn parse_intermediate_representation<'a>(
 fn maxquant_annotations() {
     let peptide = Peptidoform::pro_forma(
         "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
-        None,
+        &Ontologies::empty(),
     )
     .unwrap()
     .0

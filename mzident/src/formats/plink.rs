@@ -3,7 +3,7 @@ use std::{
     marker::PhantomData,
     ops::Range,
     path::PathBuf,
-    sync::{Arc, LazyLock},
+    sync::{Arc, LazyLock, OnceLock},
 };
 
 use context_error::*;
@@ -22,7 +22,7 @@ use mzcore::{
     chemistry::Chemical,
     csv::{CsvLine, parse_csv},
     molecular_formula,
-    ontology::{CustomDatabase, Ontology},
+    ontology::{Ontologies, Ontology},
     quantities::{Tolerance, WithinTolerance},
     sequence::{
         CompoundPeptidoformIon, CrossLinkName, FlankingSequence, Linked, Modification, Peptidoform,
@@ -53,11 +53,11 @@ format_family!(
         /// MH+ mass
         theoretical_mass: Mass, |location: Location, _| location.parse::<f64>(NUMBER_ERROR).map(Mass::new::<mzcore::system::dalton>);
         peptide_type: PLinkPeptideType, |location: Location, _| location.parse::<PLinkPeptideType>(TYPE_ERROR);
-        peptidoform: PeptidoformIon, |location: Location, _| {
+        peptidoform: PeptidoformIon, |location: Location, ontologies: &Ontologies| {
             match plink_separate(&location, "Invalid pLink peptide", "peptide").map_err(BoxedError::to_owned)? {
                 (pep1, Some(pos1), Some(pep2), Some(pos2)) => {
-                    let pep1 = Peptidoform::sloppy_pro_forma(location.full_line(), pep1, None, &SloppyParsingParameters::default()).map_err(BoxedError::to_owned)?;
-                    let pep2 = Peptidoform::sloppy_pro_forma(location.full_line(), pep2, None, &SloppyParsingParameters::default()).map_err(BoxedError::to_owned)?;
+                    let pep1 = Peptidoform::sloppy_pro_forma(location.full_line(), pep1, ontologies, &SloppyParsingParameters::default()).map_err(BoxedError::to_owned)?;
+                    let pep2 = Peptidoform::sloppy_pro_forma(location.full_line(), pep2, ontologies, &SloppyParsingParameters::default()).map_err(BoxedError::to_owned)?;
 
                     let mut peptidoform = PeptidoformIon::from_vec(vec![pep1.into(), pep2.into()]).unwrap();
                     peptidoform.add_cross_link(
@@ -69,7 +69,7 @@ format_family!(
                     Ok(peptidoform)
                 }
                 (pep1, Some(pos1), None, Some(pos2)) => {
-                    let pep = Peptidoform::sloppy_pro_forma(location.full_line(), pep1, None, &SloppyParsingParameters::default()).map_err(BoxedError::to_owned)?;
+                    let pep = Peptidoform::sloppy_pro_forma(location.full_line(), pep1, ontologies, &SloppyParsingParameters::default()).map_err(BoxedError::to_owned)?;
 
                     let mut peptidoform = PeptidoformIon::from_vec(vec![pep.into()]).unwrap();
                     peptidoform.add_cross_link(
@@ -81,13 +81,13 @@ format_family!(
                     Ok(peptidoform)
                 }
                 (pep1, Some(pos1), None, None) => {
-                    let mut pep = Peptidoform::sloppy_pro_forma(location.full_line(), pep1, None, &SloppyParsingParameters::default()).map_err(BoxedError::to_owned)?;
+                    let mut pep = Peptidoform::sloppy_pro_forma(location.full_line(), pep1, ontologies, &SloppyParsingParameters::default()).map_err(BoxedError::to_owned)?;
                     pep[SequencePosition::Index(pos1.0.saturating_sub(1) as usize)].modifications.push( SimpleModificationInner::Mass(Mass::default().into()).into());
 
                     Ok(PeptidoformIon::from_vec(vec![pep.into()]).unwrap())
                 }
                 (pep1, None, None, None) => {
-                    let pep = Peptidoform::sloppy_pro_forma(location.full_line(), pep1, None, &SloppyParsingParameters::default()).map_err(BoxedError::to_owned)?;
+                    let pep = Peptidoform::sloppy_pro_forma(location.full_line(), pep1, ontologies, &SloppyParsingParameters::default()).map_err(BoxedError::to_owned)?;
 
                     Ok(PeptidoformIon::from_vec(vec![pep.into()]).unwrap())
                 }
@@ -95,7 +95,7 @@ format_family!(
             }
         };
         /// All modifications with their attachment, and their index (into the full peptidoform, so anything bigger than the first peptide matches in the second)
-        ptm: Vec<(SimpleModification, u16)>, |location: Location, custom_database: Option<&CustomDatabase>|
+        ptm: Vec<(SimpleModification, u16)>, |location: Location, ontologies: &Ontologies|
             location.ignore("null").array(';').map(|v| {
                 let v = v.trim();
                 let position_start = v.as_str().rfind('(').ok_or_else(||
@@ -114,7 +114,7 @@ format_family!(
                         format!("A pLink modification should follow the format 'Modification[AA](pos)' but the position number {}", explain_number_error(&err)),
                         v.context().to_owned()))?;
 
-                Ok((Modification::sloppy_modification(v.full_line(), v.location.start..v.location.start+location_start, None, custom_database).map_err(BoxedError::to_owned)?, position))
+                Ok((Modification::sloppy_modification(v.full_line(), v.location.start..v.location.start+location_start, None, ontologies).map_err(BoxedError::to_owned)?, position))
             }
         ).collect::<Result<Vec<_>,_>>();
         refined_score: f64, |location: Location, _| location.parse::<f64>(NUMBER_ERROR);
@@ -158,7 +158,7 @@ format_family!(
     }
 
     #[expect(clippy::similar_names)]
-    fn post_process(source: &CsvLine, mut parsed: Self, custom_database: Option<&CustomDatabase>) -> Result<Self, BoxedError<'static, BasicKind>> {
+    fn post_process(source: &CsvLine, mut parsed: Self, ontologies: &Ontologies) -> Result<Self, BoxedError<'static, BasicKind>> {
         // Add all modifications
         let pep1 = parsed.peptidoform.peptidoforms()[0].len();
         let pep2 = parsed.peptidoform.peptidoforms().get(1).map_or(0, Peptidoform::len);
@@ -217,13 +217,27 @@ format_family!(
                     .monoisotopic_mass()
                     - if parsed.peptide_type == PLinkPeptideType::Hydrolysed { molecular_formula!(H 2 O 1).monoisotopic_mass() } else { Mass::ZERO };
 
-            let custom_linkers = custom_database.map_or(
-                Vec::new(),
-                |c| c.iter().filter(|(_,_,m)|
-                    matches!(**m, SimpleModificationInner::Linker{..})).map(|(_,_,m)| (m.formula().monoisotopic_mass(), m.clone())
-                ).collect());
+            let custom_linkers: Vec<_> = ontologies.custom().data().filter(|m|
+                    matches!(**m, SimpleModificationInner::Linker{..})).map(|m| (m.formula().monoisotopic_mass(), m.clone())
+                ).collect();
 
-            let fitting = &KNOWN_CROSS_LINKERS.iter().chain(custom_linkers.iter()).filter(|(mass, _)| Tolerance::<Mass>::Absolute(Mass::new::<mzcore::system::dalton>(0.01)).within(mass, &left_over)).map(|(_, m)| m).collect_vec();
+            let fitting = &KNOWN_CROSS_LINKERS.get_or_init(|| {
+    [
+        ontologies.psimod().get_by_index(&34).unwrap(), // Disulfide: M:L-cystine (cross-link)
+        ontologies.unimod().get_by_index(&1905).unwrap(), // BS2G: U:Xlink:BS2G[96]
+        ontologies.xlmod().get_by_index(&2008).unwrap(), // BS2G heavy: X:BS2G-d4
+        ontologies.unimod().get_by_index(&1898).unwrap(), // DSS: U:Xlink:DSS[138]
+        ontologies.xlmod().get_by_index(&2227).unwrap(), // Leiker_clv: X:PL
+        ontologies.unimod().get_by_index(&1896).unwrap(), // DSSO: U:Xlink:DSSO[158]
+        ontologies.unimod().get_by_index(&1899).unwrap(), // DSBU: U:Xlink:BuUrBu[196]
+        ontologies.xlmod().get_by_index(&2115).unwrap(), // BAMG: X:BAMG
+        ontologies.xlmod().get_by_index(&2002).unwrap(), // DSS heavy: X:DSS-d4
+        ontologies.unimod().get_by_index(&2058).unwrap(), // PhoX: U:Xlink:DSPP[210]
+        ontologies.xlmod().get_by_index(&2010).unwrap(), // DMTMM: X:1-ethyl-3-(3-Dimethylaminopropyl)carbodiimide hydrochloride
+    ]
+    .into_iter()
+    .map(|m| (m.formula().monoisotopic_mass(), m))
+    .collect()}).iter().chain(custom_linkers.iter()).filter(|(mass, _)| Tolerance::<Mass>::Absolute(Mass::new::<mzcore::system::dalton>(0.01)).within(mass, &left_over)).map(|(_, m)| m).collect_vec();
 
             match fitting.len() {
                 0 => return Err(BoxedError::new(BasicKind::Error,"Invalid pLink peptide", format!("The correct cross-linker could not be identified with mass {:.3} Da, if a non default cross-linker was used add this as a custom linker modification.", left_over.value), source.full_context().to_owned())),
@@ -283,24 +297,7 @@ static IDENTIFER_REGEX: LazyLock<regex::Regex> =
     LazyLock::new(|| regex::Regex::new(r"([^/]+)\.(\d+)\.\d+.\d+.\d+.\w+").unwrap());
 
 /// The static known cross-linkers
-static KNOWN_CROSS_LINKERS: LazyLock<Vec<(Mass, SimpleModification)>> = LazyLock::new(|| {
-    [
-        Ontology::Psimod.find_id(34, None).unwrap(), // Disulfide: M:L-cystine (cross-link)
-        Ontology::Unimod.find_id(1905, None).unwrap(), // BS2G: U:Xlink:BS2G[96]
-        Ontology::Xlmod.find_id(2008, None).unwrap(), // BS2G heavy: X:BS2G-d4
-        Ontology::Unimod.find_id(1898, None).unwrap(), // DSS: U:Xlink:DSS[138]
-        Ontology::Xlmod.find_id(2227, None).unwrap(), // Leiker_clv: X:PL
-        Ontology::Unimod.find_id(1896, None).unwrap(), // DSSO: U:Xlink:DSSO[158]
-        Ontology::Unimod.find_id(1899, None).unwrap(), // DSBU: U:Xlink:BuUrBu[196]
-        Ontology::Xlmod.find_id(2115, None).unwrap(), // BAMG: X:BAMG
-        Ontology::Xlmod.find_id(2002, None).unwrap(), // DSS heavy: X:DSS-d4
-        Ontology::Unimod.find_id(2058, None).unwrap(), // PhoX: U:Xlink:DSPP[210]
-        Ontology::Xlmod.find_id(2010, None).unwrap(), // DMTMM: X:1-ethyl-3-(3-Dimethylaminopropyl)carbodiimide hydrochloride
-    ]
-    .into_iter()
-    .map(|m| (m.formula().monoisotopic_mass(), m))
-    .collect()
-});
+static KNOWN_CROSS_LINKERS: OnceLock<Vec<(Mass, SimpleModification)>> = OnceLock::new();
 
 /// Separate the pLink format of 'pep(pos)-pep(pos)' in all possible combinations
 /// # Errors

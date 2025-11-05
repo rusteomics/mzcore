@@ -4,7 +4,7 @@ use std::io::{BufRead, BufReader};
 use context_error::{BasicKind, BoxedError};
 
 use crate::{IdentifiedPeptidoform, MZTabData, MaybePeptidoform, test_identified_peptidoform};
-use mzcore::sequence::SimpleLinear;
+use mzcore::{ontology::Ontologies, sequence::SimpleLinear};
 
 #[test]
 fn pride_exp_excerpt_ac_1643() {
@@ -117,7 +117,7 @@ fn maxquant_dia_paper() {
 /// If any part of the process errors.
 fn open_file(reader: impl BufRead) -> Result<usize, BoxedError<'static, BasicKind>> {
     let mut peptides = 0;
-    for read in MZTabData::parse_reader(reader, None) {
+    for read in MZTabData::parse_reader(reader, &mzcore::ontology::STATIC_ONTOLOGIES) {
         let peptide: IdentifiedPeptidoform<SimpleLinear, MaybePeptidoform> =
             read.map_err(BoxedError::to_owned)?.into();
         peptides += 1;

@@ -15,7 +15,7 @@ use mzcore::{
     chemistry::Chemical,
     csv::{CsvLine, parse_csv},
     glycan::MonoSaccharide,
-    ontology::CustomDatabase,
+    ontology::Ontologies,
     quantities::{Tolerance, WithinTolerance},
     sequence::{
         CompoundPeptidoformIon, FlankingSequence, Modification, Peptidoform, SemiAmbiguous,
@@ -46,11 +46,11 @@ format_family!(
         mass: Mass, |location: Location, _| location.parse::<f64>(NUMBER_ERROR).map(Mass::new::<mzcore::system::dalton>);
         missed_cleavages: usize, |location: Location, _| location.parse(NUMBER_ERROR);
         next_score: f32, |location: Location, _| location.parse(NUMBER_ERROR);
-        peptide: Peptidoform<SimpleLinear>, |location: Location, custom_database: Option<&CustomDatabase>| location.parse_with(|location| {
+        peptide: Peptidoform<SimpleLinear>, |location: Location, ontologies: &Ontologies| location.parse_with(|location| {
             Peptidoform::sloppy_pro_forma(
                 location.full_line(),
                 location.location.clone(),
-                custom_database,
+                ontologies,
                 &SloppyParsingParameters {ignore_prefix_lowercase_n: true, ..Default::default()},
         ).map(Into::into).map_err(BoxedError::to_owned)});
         /// The full header of the fasta entry, split into the id and the rest of the line (without the separating space)
@@ -59,7 +59,7 @@ format_family!(
             |(id, tail)| id.parse(IDENTIFIER_ERROR).map(|id| (id, tail.get_string())));
         rt: Time, |location: Location, _| location.parse::<f64>(NUMBER_ERROR).map(Time::new::<mzcore::system::time::min>);
         scan: SpectrumId, |location: Location, _| Ok(location.clone().parse::<usize>(NUMBER_ERROR).map_or_else(|_| SpectrumId::Native(location.get_string()), SpectrumId::Number));
-        modifications: ThinVec<(SequencePosition, SimpleModification)>, |location: Location, custom_database: Option<&CustomDatabase>| location.or_empty().array(',').map(|m| if let Some((head, tail)) = m.clone().split_once('(') {
+        modifications: ThinVec<(SequencePosition, SimpleModification)>, |location: Location, ontologies: &Ontologies| location.or_empty().array(',').map(|m| if let Some((head, tail)) = m.clone().split_once('(') {
             let head_trim = head.as_str().trim();
             Ok((
                 if head_trim.eq_ignore_ascii_case("N-term") {
@@ -74,7 +74,7 @@ format_family!(
                         head.context(),
                     )).map_err(BoxedError::to_owned)?
                 },
-                Modification::sloppy_modification(tail.full_line(), tail.location.clone(), None, custom_database).map_err(BoxedError::to_owned)?
+                Modification::sloppy_modification(tail.full_line(), tail.location.clone(), None, ontologies).map_err(BoxedError::to_owned)?
             ))
         } else {
             Err(BoxedError::new(BasicKind::Error,
@@ -93,11 +93,11 @@ format_family!(
         delta_score: f32, |location: Location, _| location.or_empty().parse::<f32>(NUMBER_ERROR);
         entry_name: String, |location: Location, _| Ok(location.get_string());
         enzymatic_termini: usize, |location: Location, _| location.parse::<usize>(NUMBER_ERROR);
-        extended_peptide: (FlankingSequence, Option<Peptidoform<SemiAmbiguous>>, FlankingSequence), |location: Location, custom_database: Option<&CustomDatabase>| {
+        extended_peptide: (FlankingSequence, Option<Peptidoform<SemiAmbiguous>>, FlankingSequence), |location: Location, ontologies: &Ontologies| {
             let mut peptides = location.clone().array('.').map(|l| l.or_empty().parse_with(|location| Peptidoform::sloppy_pro_forma(
                 location.full_line(),
                 location.location.clone(),
-                custom_database,
+                ontologies,
                 &SloppyParsingParameters {ignore_prefix_lowercase_n: true, ..Default::default()},
             ).map_err(BoxedError::to_owned))).collect::<Result<Vec<_>,_>>()?;
             if peptides.len() == 3 {
@@ -163,7 +163,7 @@ format_family!(
         tot_num_ions: usize, |location: Location, _| location.parse::<usize>(NUMBER_ERROR);
     }
 
-    fn post_process(_source: &CsvLine, mut parsed: Self, _custom_database: Option<&CustomDatabase>) -> Result<Self, BoxedError<'static, BasicKind>> {
+    fn post_process(_source: &CsvLine, mut parsed: Self, _ontologies: &Ontologies) -> Result<Self, BoxedError<'static, BasicKind>> {
         // Parse the scan identifier to retrieve the file and number separately
         if let SpectrumId::Native(native) = &parsed.scan
             && let Some(m) = IDENTIFER_REGEX

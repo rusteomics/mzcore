@@ -2,7 +2,7 @@ use std::{fmt::Display, path::Path};
 
 use context_error::{BasicKind, BoxedError};
 use mzcore::{
-    ontology::CustomDatabase,
+    ontology::Ontologies,
     sequence::{Linked, SemiAmbiguous, SimpleLinear},
 };
 use serde::{Deserialize, Serialize};
@@ -181,17 +181,15 @@ impl FileFormat {
     pub fn open<'a>(
         self,
         path: &Path,
-        custom_database: Option<&'a CustomDatabase>,
+        ontologies: &'a Ontologies,
     ) -> Result<GeneralIdentifiedPeptidoforms<'a>, BoxedError<'static, BasicKind>> {
         match self {
             #[cfg(feature = "mzannotate")]
-            Self::AnnotatedSpectrum => annotated_spectrum::parse_mzspeclib(path, custom_database),
-            Self::BasicCSV(version) => {
-                BasicCSVData::parse_file(path, custom_database, false, version)
-                    .map(IdentifiedPeptidoformIter::into_box)
-            }
+            Self::AnnotatedSpectrum => annotated_spectrum::parse_mzspeclib(path, ontologies),
+            Self::BasicCSV(version) => BasicCSVData::parse_file(path, ontologies, false, version)
+                .map(IdentifiedPeptidoformIter::into_box),
             Self::DeepNovoFamily(version) => {
-                DeepNovoFamilyData::parse_file(path, custom_database, false, version)
+                DeepNovoFamilyData::parse_file(path, ontologies, false, version)
                     .map(IdentifiedPeptidoformIter::into_box)
             }
             Self::Fasta => FastaData::parse_file(path).map(|sequences| {
@@ -207,19 +205,15 @@ impl FileFormat {
                 }));
                 b
             }),
-            Self::InstaNovo(version) => {
-                InstaNovoData::parse_file(path, custom_database, false, version)
-                    .map(IdentifiedPeptidoformIter::into_box)
-            }
-            Self::MaxQuant(version) => {
-                MaxQuantData::parse_file(path, custom_database, false, version)
-                    .map(IdentifiedPeptidoformIter::into_box)
-            }
+            Self::InstaNovo(version) => InstaNovoData::parse_file(path, ontologies, false, version)
+                .map(IdentifiedPeptidoformIter::into_box),
+            Self::MaxQuant(version) => MaxQuantData::parse_file(path, ontologies, false, version)
+                .map(IdentifiedPeptidoformIter::into_box),
             Self::MetaMorpheus(version) => {
-                MetaMorpheusData::parse_file(path, custom_database, false, version)
+                MetaMorpheusData::parse_file(path, ontologies, false, version)
                     .map(IdentifiedPeptidoformIter::into_box)
             }
-            Self::MZTab => MZTabData::parse_file(path, custom_database).map(|sequences| {
+            Self::MZTab => MZTabData::parse_file(path, ontologies).map(|sequences| {
                 let b: Box<
                     dyn Iterator<
                         Item = Result<
@@ -235,50 +229,44 @@ impl FileFormat {
                 b
             }),
             Self::PiHelixNovo(version) => {
-                PiHelixNovoData::parse_file(path, custom_database, false, version)
+                PiHelixNovoData::parse_file(path, ontologies, false, version)
                     .map(IdentifiedPeptidoformIter::into_box)
             }
             Self::PiPrimeNovo(version) => {
-                PiPrimeNovoData::parse_file(path, custom_database, false, version)
+                PiPrimeNovoData::parse_file(path, ontologies, false, version)
                     .map(IdentifiedPeptidoformIter::into_box)
             }
-            Self::NovoB(version) => NovoBData::parse_file(path, custom_database, false, version)
+            Self::NovoB(version) => NovoBData::parse_file(path, ontologies, false, version)
                 .map(IdentifiedPeptidoformIter::into_box),
-            Self::Novor(version) => NovorData::parse_file(path, custom_database, false, version)
+            Self::Novor(version) => NovorData::parse_file(path, ontologies, false, version)
                 .map(IdentifiedPeptidoformIter::into_box),
-            Self::Opair(version) => OpairData::parse_file(path, custom_database, false, version)
+            Self::Opair(version) => OpairData::parse_file(path, ontologies, false, version)
                 .map(IdentifiedPeptidoformIter::into_box),
-            Self::PLGS(version) => PLGSData::parse_file(path, custom_database, false, version)
+            Self::PLGS(version) => PLGSData::parse_file(path, ontologies, false, version)
                 .map(IdentifiedPeptidoformIter::into_box),
-            Self::PLink(version) => PLinkData::parse_file(path, custom_database, false, version)
+            Self::PLink(version) => PLinkData::parse_file(path, ontologies, false, version)
                 .map(IdentifiedPeptidoformIter::into_box),
-            Self::Peaks(version) => PeaksData::parse_file(path, custom_database, false, version)
+            Self::Peaks(version) => PeaksData::parse_file(path, ontologies, false, version)
                 .map(IdentifiedPeptidoformIter::into_box),
-            Self::PepNet(version) => PepNetData::parse_file(path, custom_database, false, version)
+            Self::PepNet(version) => PepNetData::parse_file(path, ontologies, false, version)
                 .map(IdentifiedPeptidoformIter::into_box),
-            Self::MSFragger(version) => {
-                MSFraggerData::parse_file(path, custom_database, false, version)
-                    .map(IdentifiedPeptidoformIter::into_box)
-            }
-            Self::PowerNovo(version) => {
-                PowerNovoData::parse_file(path, custom_database, false, version)
-                    .map(IdentifiedPeptidoformIter::into_box)
-            }
+            Self::MSFragger(version) => MSFraggerData::parse_file(path, ontologies, false, version)
+                .map(IdentifiedPeptidoformIter::into_box),
+            Self::PowerNovo(version) => PowerNovoData::parse_file(path, ontologies, false, version)
+                .map(IdentifiedPeptidoformIter::into_box),
             Self::Proteoscape(version) => {
-                ProteoscapeData::parse_file(path, custom_database, false, version)
+                ProteoscapeData::parse_file(path, ontologies, false, version)
                     .map(IdentifiedPeptidoformIter::into_box)
             }
-            Self::PUniFind(version) => {
-                PUniFindData::parse_file(path, custom_database, false, version)
-                    .map(IdentifiedPeptidoformIter::into_box)
-            }
-            Self::Sage(version) => SageData::parse_file(path, custom_database, false, version)
+            Self::PUniFind(version) => PUniFindData::parse_file(path, ontologies, false, version)
+                .map(IdentifiedPeptidoformIter::into_box),
+            Self::Sage(version) => SageData::parse_file(path, ontologies, false, version)
                 .map(IdentifiedPeptidoformIter::into_box),
             Self::SpectrumSequenceList(version) => {
-                SpectrumSequenceListData::parse_file(path, custom_database, false, version)
+                SpectrumSequenceListData::parse_file(path, ontologies, false, version)
                     .map(IdentifiedPeptidoformIter::into_box)
             }
-            Self::Undefined => open_identified_peptidoforms_file(path, custom_database, false),
+            Self::Undefined => open_identified_peptidoforms_file(path, ontologies, false),
         }
     }
 }

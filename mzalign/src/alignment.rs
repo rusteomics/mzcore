@@ -579,22 +579,22 @@ mod tests {
     fn mass_difference() {
         // Test if the mass difference calculation is correct for some harder alignments.
         // A has an ambiguous AA, B, and C have the two options, while D has a sub peptide of A.
-        let a = Peptidoform::pro_forma("AABAA", None)
+        let a = Peptidoform::pro_forma("AABAA", &mzcore::ontology::STATIC_ONTOLOGIES)
             .unwrap()
             .0
             .into_simple_linear()
             .unwrap();
-        let b = Peptidoform::pro_forma("AANAA", None)
+        let b = Peptidoform::pro_forma("AANAA", &mzcore::ontology::STATIC_ONTOLOGIES)
             .unwrap()
             .0
             .into_simple_linear()
             .unwrap();
-        let c = Peptidoform::pro_forma("AADAA", None)
+        let c = Peptidoform::pro_forma("AADAA", &mzcore::ontology::STATIC_ONTOLOGIES)
             .unwrap()
             .0
             .into_simple_linear()
             .unwrap();
-        let d = Peptidoform::pro_forma("ADA", None)
+        let d = Peptidoform::pro_forma("ADA", &mzcore::ontology::STATIC_ONTOLOGIES)
             .unwrap()
             .0
             .into_simple_linear()

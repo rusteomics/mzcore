@@ -42,7 +42,7 @@ impl CVSource for XlMod {
                     <SimpleModificationInner as mzcv::CVData>::Cache,
                     Configuration,
                 >(
-                    include_bytes!("../databases/xlmod_new.dat"),
+                    include_bytes!("../databases/xlmod.dat"),
                     Configuration::default(),
                 )
                 .unwrap()

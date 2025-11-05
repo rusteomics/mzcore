@@ -1,4 +1,4 @@
-use std::{borrow::Cow, marker::PhantomData, ops::Range, sync::LazyLock};
+use std::{borrow::Cow, marker::PhantomData, ops::Range, sync::OnceLock};
 
 use serde::{Deserialize, Serialize};
 
@@ -9,7 +9,7 @@ use crate::{
 };
 use mzcore::{
     csv::{CsvLine, parse_csv},
-    ontology::{CustomDatabase, Ontology},
+    ontology::Ontologies,
     sequence::{
         AminoAcid, CompoundPeptidoformIon, FlankingSequence, Peptidoform, SemiAmbiguous,
         SequenceElement, SloppyParsingParameters,
@@ -23,46 +23,50 @@ static NUMBER_ERROR: (&str, &str) = (
 );
 
 /// Global parsing parameters
-static PARAMETERS: LazyLock<SloppyParsingParameters> = LazyLock::new(|| SloppyParsingParameters {
-    custom_alphabet: vec![
-        (
-            b's',
-            SequenceElement::new(AminoAcid::Serine.into(), None)
-                .with_simple_modification(Ontology::Unimod.find_id(21, None).unwrap()),
-        ),
-        (
-            b't',
-            SequenceElement::new(AminoAcid::Tyrosine.into(), None)
-                .with_simple_modification(Ontology::Unimod.find_id(21, None).unwrap()),
-        ),
-        (
-            b'y',
-            SequenceElement::new(AminoAcid::Threonine.into(), None)
-                .with_simple_modification(Ontology::Unimod.find_id(21, None).unwrap()),
-        ),
-        (
-            b'n',
-            SequenceElement::new(AminoAcid::Asparagine.into(), None)
-                .with_simple_modification(Ontology::Unimod.find_id(7, None).unwrap()),
-        ),
-        (
-            b'q',
-            SequenceElement::new(AminoAcid::Glutamine.into(), None)
-                .with_simple_modification(Ontology::Unimod.find_id(7, None).unwrap()),
-        ),
-        (
-            b'C',
-            SequenceElement::new(AminoAcid::Cysteine.into(), None)
-                .with_simple_modification(Ontology::Unimod.find_id(6, None).unwrap()),
-        ),
-        (
-            b'm',
-            SequenceElement::new(AminoAcid::Methionine.into(), None)
-                .with_simple_modification(Ontology::Unimod.find_id(35, None).unwrap()),
-        ),
-    ],
-    ..Default::default()
-});
+static PARAMETERS: OnceLock<SloppyParsingParameters> = OnceLock::new();
+
+fn parameters(ontologies: &Ontologies) -> &SloppyParsingParameters {
+    PARAMETERS.get_or_init(|| SloppyParsingParameters {
+        custom_alphabet: vec![
+            (
+                b's',
+                SequenceElement::new(AminoAcid::Serine.into(), None)
+                    .with_simple_modification(ontologies.unimod().get_by_index(&21).unwrap()),
+            ),
+            (
+                b't',
+                SequenceElement::new(AminoAcid::Tyrosine.into(), None)
+                    .with_simple_modification(ontologies.unimod().get_by_index(&21).unwrap()),
+            ),
+            (
+                b'y',
+                SequenceElement::new(AminoAcid::Threonine.into(), None)
+                    .with_simple_modification(ontologies.unimod().get_by_index(&21).unwrap()),
+            ),
+            (
+                b'n',
+                SequenceElement::new(AminoAcid::Asparagine.into(), None)
+                    .with_simple_modification(ontologies.unimod().get_by_index(&7).unwrap()),
+            ),
+            (
+                b'q',
+                SequenceElement::new(AminoAcid::Glutamine.into(), None)
+                    .with_simple_modification(ontologies.unimod().get_by_index(&7).unwrap()),
+            ),
+            (
+                b'C',
+                SequenceElement::new(AminoAcid::Cysteine.into(), None)
+                    .with_simple_modification(ontologies.unimod().get_by_index(&6).unwrap()),
+            ),
+            (
+                b'm',
+                SequenceElement::new(AminoAcid::Methionine.into(), None)
+                    .with_simple_modification(ontologies.unimod().get_by_index(&35).unwrap()),
+            ),
+        ],
+        ..Default::default()
+    })
+}
 
 format_family!(
     NovoB,
@@ -85,22 +89,22 @@ format_family!(
 
         score_forward: f64, |location: Location, _| location.parse::<f64>(NUMBER_ERROR);
         ppm_diff_forward: Ratio, |location: Location, _| location.parse::<f64>(NUMBER_ERROR).map(Ratio::new::<mzcore::system::ratio::ppm>);
-        peptide_forward: Option<Peptidoform<SemiAmbiguous>>, |location: Location, custom_database: Option<&CustomDatabase>|
+        peptide_forward: Option<Peptidoform<SemiAmbiguous>>, |location: Location, ontologies: &Ontologies|
             location.trim_start_matches("['").trim_end_matches("']").or_empty().map(|location| Peptidoform::sloppy_pro_forma(
                 location.full_line(),
                 location.location.clone(),
-                custom_database,
-                &PARAMETERS
+                ontologies,
+                parameters(ontologies)
             ).map_err(BoxedError::to_owned)).transpose();
 
         score_reverse: f64, |location: Location, _| location.parse::<f64>(NUMBER_ERROR);
         ppm_diff_reverse: Ratio, |location: Location, _| location.parse::<f64>(NUMBER_ERROR).map(Ratio::new::<mzcore::system::ratio::ppm>);
-        peptide_reverse: Option<Peptidoform<SemiAmbiguous>>, | location: Location, custom_database: Option<&CustomDatabase>|
+        peptide_reverse: Option<Peptidoform<SemiAmbiguous>>, | location: Location, ontologies: &Ontologies|
             location.trim_start_matches("['").trim_end_matches("']").or_empty().map(|location| Peptidoform::sloppy_pro_forma(
                 location.full_line(),
                 location.location.clone(),
-                custom_database,
-                &PARAMETERS,
+                ontologies,
+                parameters(ontologies),
             ).map_err(BoxedError::to_owned)).transpose();
     }
     optional { }

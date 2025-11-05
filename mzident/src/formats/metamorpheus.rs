@@ -15,7 +15,7 @@ use crate::{
 };
 use mzcore::{
     csv::{CsvLine, parse_csv},
-    ontology::CustomDatabase,
+    ontology::Ontologies,
     sequence::{
         AminoAcid, CompoundPeptidoformIon, FlankingSequence, Peptidoform, SemiAmbiguous,
         SloppyParsingParameters,
@@ -128,10 +128,10 @@ format_family!(
                             },
                         )?))
                     }).collect::<Result<Vec<_>,_>>();
-        peptide: CompoundPeptidoformIon, |location: Location, custom_database: Option<&CustomDatabase>| location.array('|').map(|location| Peptidoform::sloppy_pro_forma(
+        peptide: CompoundPeptidoformIon, |location: Location, ontologies: &Ontologies| location.array('|').map(|location| Peptidoform::sloppy_pro_forma(
             location.full_line(),
             location.location.clone(),
-            custom_database,
+            ontologies,
             &SloppyParsingParameters::default()
         ).map_err(BoxedError::to_owned)).collect::<Result<CompoundPeptidoformIon,_>>();
         score: f64, |location: Location, _| location.parse::<f64>(NUMBER_ERROR);

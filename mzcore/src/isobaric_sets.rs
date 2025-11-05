@@ -517,10 +517,13 @@ impl Iterator for IsobaricSetIterator {
 #[expect(clippy::missing_panics_doc)]
 mod tests {
 
+    use crate::ontology::Ontologies;
+
     use super::*;
     #[test]
     fn simple_isobaric_sets() {
-        let pep = Peptidoform::pro_forma("AG", None)
+        let ontologies = Ontologies::empty();
+        let pep = Peptidoform::pro_forma("AG", &ontologies)
             .unwrap()
             .0
             .into_unambiguous()
@@ -537,12 +540,12 @@ mod tests {
         assert_eq!(
             &sets,
             &[
-                Peptidoform::pro_forma("GA", None)
+                Peptidoform::pro_forma("GA", &ontologies)
                     .unwrap()
                     .0
                     .into_simple_linear()
                     .unwrap(),
-                Peptidoform::pro_forma("Q", None)
+                Peptidoform::pro_forma("Q", &ontologies)
                     .unwrap()
                     .0
                     .into_simple_linear()

@@ -7,7 +7,7 @@ use crate::{PLinkData, PLinkVersion, test_format};
 fn plink() {
     match test_format::<PLinkData>(
         BufReader::new(DATA_V2_3.as_bytes()),
-        None,
+        &mzcore::ontology::STATIC_ONTOLOGIES,
         false,
         false,
         Some(PLinkVersion::V2_3),

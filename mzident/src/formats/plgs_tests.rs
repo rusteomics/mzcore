@@ -7,7 +7,7 @@ use crate::{PLGSData, PLGSVersion, test_format};
 fn plgs_fragment() {
     match test_format::<PLGSData>(
         BufReader::new(DATA_FRAGMENT.as_bytes()),
-        None,
+        &mzcore::ontology::STATIC_ONTOLOGIES,
         true,
         false,
         Some(PLGSVersion::V3_0),
@@ -24,7 +24,7 @@ fn plgs_fragment() {
 fn plgs_peptide() {
     match test_format::<PLGSData>(
         BufReader::new(DATA_PEPTIDE.as_bytes()),
-        None,
+        &mzcore::ontology::STATIC_ONTOLOGIES,
         true,
         false,
         Some(PLGSVersion::V3_0),

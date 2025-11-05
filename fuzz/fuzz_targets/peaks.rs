@@ -10,7 +10,9 @@ fn main() {
             && let Ok(csv) =
                 mzcore::csv::parse_csv_raw(BufReader::new(s.as_bytes()), b',', None, None)
         {
-            let _unused: Vec<_> = PeaksData::parse_many(csv, None, false, None).collect();
+            let _unused: Vec<_> =
+                PeaksData::parse_many(csv, &mzcore::ontology::STATIC_ONTOLOGIES, false, None)
+                    .collect();
         }
     });
 }

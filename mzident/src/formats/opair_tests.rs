@@ -7,7 +7,7 @@ use crate::{OpairData, OpairVersion, test_format};
 fn opair() {
     match test_format::<OpairData>(
         BufReader::new(DATA.as_bytes()),
-        None,
+        &mzcore::ontology::STATIC_ONTOLOGIES,
         false,
         false,
         Some(OpairVersion::Opair),

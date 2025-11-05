@@ -7,7 +7,7 @@ use crate::{PiHelixNovoData, PiHelixNovoVersion, test_format};
 fn pihelixnovo() {
     match test_format::<PiHelixNovoData>(
         BufReader::new(PIHELIXNOVO_V1_1.as_bytes()),
-        None,
+        &mzcore::ontology::STATIC_ONTOLOGIES,
         true,
         false,
         Some(PiHelixNovoVersion::V1_1),

@@ -43,7 +43,7 @@ impl CVSource for Resid {
                     <SimpleModificationInner as mzcv::CVData>::Cache,
                     Configuration,
                 >(
-                    include_bytes!("../databases/resid_new.dat"),
+                    include_bytes!("../databases/resid.dat"),
                     Configuration::default(),
                 )
                 .unwrap()

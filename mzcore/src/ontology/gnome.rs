@@ -1,5 +1,5 @@
 //! Code to handle the GNOme ontology
-use std::collections::HashMap;
+use std::{collections::HashMap, path::Path};
 
 use context_error::{
     BoxedError, CreateError, FullErrorContent, StaticErrorContent, combine_errors,
@@ -52,7 +52,7 @@ impl CVSource for Gnome {
                     <SimpleModificationInner as mzcv::CVData>::Cache,
                     Configuration,
                 >(
-                    include_bytes!("../databases/gnome_new.dat"),
+                    include_bytes!("../databases/gnome.dat"),
                     Configuration::default(),
                 )
                 .unwrap()
@@ -64,10 +64,10 @@ impl CVSource for Gnome {
     }
 
     fn parse(
-        mut reader: impl Iterator<Item = HashBufReader<Box<dyn std::io::Read>, impl sha2::Digest>>,
+        mut readers: impl Iterator<Item = HashBufReader<Box<dyn std::io::Read>, impl sha2::Digest>>,
     ) -> Result<(CVVersion, impl Iterator<Item = Self::Data>), Vec<BoxedError<'static, CVError>>>
     {
-        let reader = reader.next().unwrap();
+        let reader = readers.next().unwrap();
         let (version, mut mods) = OboOntology::from_raw(reader)
             .map_err(|e| {
                 vec![
@@ -81,7 +81,7 @@ impl CVSource for Gnome {
             })
             .map(|obo| (obo.version(), parse_gnome(obo)))?;
         let read_mods = mods.clone();
-        let structures = parse_gnome_structures();
+        let structures = parse_gnome_structures(readers.next().unwrap());
 
         // Fill all known info points
         for modification in mods.values_mut() {
@@ -89,7 +89,7 @@ impl CVSource for Gnome {
                 modification.weight = find_mass(&read_mods, modification.is_a.clone());
             }
             if let Some(structure) = structures.get(&modification.id.name) {
-                modification.topology = Some(structure.structure.clone());
+                modification.topology = structure.structure.clone();
                 if let Some(chebi) = structure.chebi {
                     modification
                         .id
@@ -106,9 +106,11 @@ impl CVSource for Gnome {
                 modification.taxonomy = structure.taxonomy.clone().into();
                 modification.glycomeatlas = structure.glycomeatlas.clone().into();
             } else if let Some(id) = &modification.topology_id {
-                modification.topology = structures.get(id).map(|s| s.structure.clone());
+                modification.topology = structures.get(id).and_then(|s| s.structure.clone());
             }
-            if let Some(composition_id) = &modification.composition_id {
+            if modification.composition.is_none()
+                && let Some(composition_id) = &modification.composition_id
+            {
                 modification.composition = read_mods
                     .get(composition_id)
                     .and_then(|g| g.composition.clone());
@@ -209,7 +211,6 @@ fn parse_gnome(obo: OboOntology) -> HashMap<String, GNOmeModification> {
             continue;
         }
 
-        // name: glycan of molecular weight 40.03 Da
         let modification = GNOmeModification {
             id: ModificationId {
                 ontology: Ontology::Gnome,
@@ -297,8 +298,9 @@ fn parse_gnome(obo: OboOntology) -> HashMap<String, GNOmeModification> {
     mods
 }
 
+#[derive(Debug)]
 struct GlycosmosList {
-    structure: GlycanStructure,
+    structure: Option<GlycanStructure>,
     motif: Option<(String, String)>,
     chebi: Option<usize>,
     pubchem: Option<usize>,
@@ -306,103 +308,97 @@ struct GlycosmosList {
     glycomeatlas: Vec<(String, Vec<(String, String)>)>,
 }
 
-fn parse_gnome_structures() -> HashMap<String, GlycosmosList> {
+fn parse_gnome_structures(
+    file: HashBufReader<Box<dyn std::io::Read>, impl sha2::Digest>,
+) -> HashMap<String, GlycosmosList> {
     let mut glycans = HashMap::new();
     let mut errors = 0;
-    for line in crate::csv::parse_csv(
-        "rustyms-generate-databases/data/glycosmos_glycans_list.csv",
-        b',',
-        None,
-    )
-    .unwrap()
-    .skip(1)
-    {
+    for line in crate::csv::parse_csv_raw(file, b',', None, None).unwrap() {
         let line = line.unwrap();
-        if !line.index_column("iupac condensed").unwrap().0.is_empty() {
-            match GlycanStructure::from_short_iupac(
-                line.line(),
-                line.range(1).clone(),
-                (line.line_index() + 1) as u32,
-            ) {
-                Ok(glycan) => {
-                    glycans.insert(
-                        line.index_column("accession number")
-                            .unwrap()
-                            .0
-                            .to_lowercase(),
-                        GlycosmosList {
-                            structure: glycan,
-                            motif: line
-                                .index_column("motif name(s)")
-                                .ok()
-                                .filter(|p| !p.0.is_empty())
-                                .and_then(|p| p.0.split_once(':'))
-                                .map(|(n, i)| (n.to_string(), i.to_ascii_lowercase())),
-                            chebi: line
-                                .index_column("chebi")
-                                .ok()
-                                .map(|p| p.0.to_string())
-                                .filter(|p| !p.is_empty())
-                                .and_then(|p| p.parse::<usize>().ok()),
-                            pubchem: line
-                                .index_column("pubchem cid")
-                                .ok()
-                                .map(|p| p.0.to_string())
-                                .filter(|p| !p.is_empty())
-                                .and_then(|p| p.parse::<usize>().ok()),
-                            taxonomy: line
-                                .index_column("taxonomy")
-                                .ok()
-                                .filter(|p| !p.0.is_empty())
+
+        glycans.insert(
+            line.index_column("accession number").unwrap().0.to_string(),
+            GlycosmosList {
+                structure: line
+                    .index_column("iupac condensed")
+                    .ok()
+                    .filter(|p| !p.0.is_empty())
+                    .and_then(|(_, range)| {
+                        match GlycanStructure::from_short_iupac(
+                            line.line(),
+                            range.clone(),
+                            (line.line_index() + 1) as u32,
+                        ) {
+                            Ok(glycan) => Some(glycan),
+                            Err(error) => {
+                                if errors < 5 {
+                                    println!("{error}");
+                                }
+                                errors += 1;
+                                None
+                            }
+                        }
+                    }),
+                motif: line
+                    .index_column("motif name(s)")
+                    .ok()
+                    .filter(|p| !p.0.is_empty())
+                    .and_then(|p| p.0.split_once(':'))
+                    .map(|(n, i)| (n.to_string(), i.to_ascii_lowercase())),
+                chebi: line
+                    .index_column("chebi")
+                    .ok()
+                    .map(|p| p.0.to_string())
+                    .filter(|p| !p.is_empty())
+                    .and_then(|p| p.parse::<usize>().ok()),
+                pubchem: line
+                    .index_column("pubchem cid")
+                    .ok()
+                    .map(|p| p.0.to_string())
+                    .filter(|p| !p.is_empty())
+                    .and_then(|p| p.parse::<usize>().ok()),
+                taxonomy: line
+                    .index_column("taxonomy")
+                    .ok()
+                    .filter(|p| !p.0.is_empty())
+                    .into_iter()
+                    .flat_map(|p| {
+                        p.0.split(',').map(|s| {
+                            s.rsplit_once(':')
+                                .map(|(n, i)| (n.to_string(), i.parse::<usize>().unwrap()))
+                                .unwrap()
+                        })
+                    })
+                    .collect(),
+                glycomeatlas: line
+                    .index_column("glycomeatlas")
+                    .ok()
+                    .filter(|p| !p.0.is_empty())
+                    .map(|p| p.0)
+                    .into_iter()
+                    .flat_map(|p| p.split(','))
+                    .map(|p| p.split_once(':').unwrap())
+                    .chunk_by(|(species, _)| (*species).to_string())
+                    .into_iter()
+                    .map(|(species, locations)| {
+                        (
+                            (*species).to_string(),
+                            locations
                                 .into_iter()
-                                .flat_map(|p| {
-                                    p.0.split(',').map(|s| {
-                                        s.rsplit_once(':')
-                                            .map(|(n, i)| {
-                                                (n.to_string(), i.parse::<usize>().unwrap())
-                                            })
-                                            .unwrap()
-                                    })
+                                .map(|location| {
+                                    location
+                                        .1
+                                        .trim_end_matches(')')
+                                        .split_once('(')
+                                        .map(|(l, o)| (l.to_string(), o.to_string()))
+                                        .unwrap()
                                 })
                                 .collect(),
-                            glycomeatlas: line
-                                .index_column("glycomeatlas")
-                                .ok()
-                                .filter(|p| !p.0.is_empty())
-                                .map(|p| p.0)
-                                .into_iter()
-                                .flat_map(|p| p.split(','))
-                                .map(|p| p.split_once(':').unwrap())
-                                .chunk_by(|(species, _)| (*species).to_string())
-                                .into_iter()
-                                .map(|(species, locations)| {
-                                    (
-                                        (*species).to_string(),
-                                        locations
-                                            .into_iter()
-                                            .map(|location| {
-                                                location
-                                                    .1
-                                                    .trim_end_matches(')')
-                                                    .split_once('(')
-                                                    .map(|(l, o)| (l.to_string(), o.to_string()))
-                                                    .unwrap()
-                                            })
-                                            .collect(),
-                                    )
-                                })
-                                .collect(),
-                        },
-                    );
-                }
-                Err(error) => {
-                    if errors < 5 {
-                        println!("{error}");
-                    }
-                    errors += 1;
-                }
-            }
-        }
+                        )
+                    })
+                    .collect(),
+            },
+        );
     }
     assert!(
         errors <= 0,
@@ -442,7 +438,7 @@ struct GNOmeModification {
 impl TryFrom<GNOmeModification> for SimpleModificationInner {
     type Error = ();
     fn try_from(value: GNOmeModification) -> Result<Self, ()> {
-        Ok(SimpleModificationInner::Gno {
+        Ok(Self::Gno {
             composition: if let Some(structure) = value.topology {
                 GnoComposition::Topology(structure)
             } else if let Some(composition) = value.composition {
