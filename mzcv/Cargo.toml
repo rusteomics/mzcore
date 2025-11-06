@@ -24,7 +24,7 @@ sha2 = { workspace = true }
 serde = {workspace = true, optional = true}
 
 [features]
-default = ["search-index", "http", "serde"]
+default = []
 serde = ["dep:serde", "bincode/serde"]
 search-index = []
 http = ["reqwest"]

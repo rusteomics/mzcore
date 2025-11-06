@@ -1,10 +1,7 @@
-use crate::{
-    align::*,
-    imgt::*,
-    sequence::{
-        AnnotatedPeptide, AtMax, HasPeptidoform, Linear, Peptidoform, Region, SimpleLinear,
-        UnAmbiguous,
-    },
+use crate::*;
+use imgt::*;
+use mzcore::sequence::{
+    AnnotatedPeptide, AtMax, HasPeptidoform, Linear, Peptidoform, Region, SimpleLinear, UnAmbiguous,
 };
 use std::collections::HashSet;
 

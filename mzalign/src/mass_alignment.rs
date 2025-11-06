@@ -18,7 +18,7 @@ use mzcore::{
 // eg X[mass(W[oxidation]A)] should match WA
 
 /// Create an alignment of two peptides based on mass and homology.
-/// The substitution matrix is in the exact same order as the definition of [`AminoAcid`](crate::sequence::AminoAcid).
+/// The substitution matrix is in the exact same order as the definition of [`AminoAcid`](mzcore::sequence::AminoAcid).
 /// The [`AlignScoring`] sets the rules and exact scores while scoring.
 /// The [`AlignType`] controls the alignment behaviour, global/local or anything in between.
 /// # Panics

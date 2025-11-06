@@ -18,6 +18,7 @@ include = ["src/**/*", "images/**/*", "README.md", "benches/**/*"]
 
 [dependencies]
 mzcore = { path = "../mzcore" }
+imgt = { path = "../imgt", default-features = false, optional = true }
 
 itertools = { workspace = true }
 ordered-float = { workspace = true }
@@ -29,6 +30,11 @@ mzident = { path = "../mzident" }
 
 [features]
 default = []
+rayon = ["dep:rayon", "imgt/rayon"]
 
 [lints]
 workspace = true
+
+[package.metadata.docs.rs]
+cargo-args = ["-Zunstable-options", "-Zrustdoc-scrape-examples"]
+all-features = ["rayon", "imgt"]

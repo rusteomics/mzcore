@@ -1,32 +1,5 @@
 #![doc = include_str!("../README.md")]
 
-//! Code to make alignments of two peptides based on mass mistakes, and genetic information.
-//!
-//! A mass based alignment handles the case in which multiple amino acids are wrong, but the total mass
-//! of this set of amino acids is equal to the mass of a set of different amino acids on the other peptide.
-//! This is quite common in mass spectrometry where mistakes based on mass coincidences are very common.
-//! For example `N` has the same mass as `GG`, so if we want to make a mass spectrometry faithful alignment
-//! of `ANA` with `AGGA` the result should reflect this fact:
-//!
-//! ```text
-//! Identity: 0.500 (2/4), Similarity: 0.750 (3/4), Gaps: 0.000 (0/4), Score: 0.706 (12/17),
-//! Equal mass, Tolerance: 10 ppm, Alignment: global
-//! Start: A 0 B 0, Path: 1=1:2i1=
-//!
-//! AN·A A
-//! AGGA B
-//!  ╶╴
-//! ```
-//! _Generated using this algorithm bound to a cli tool: <https://github.com/snijderlab/align-cli>_
-//! ```rust
-//! use rustyms::{prelude::*, sequence::SimpleLinear, align::*};
-//! let a = Peptidoform::pro_forma("ANA", None).unwrap().into_simple_linear().unwrap();
-//! let b = Peptidoform::pro_forma("AGGA", None).unwrap().into_simple_linear().unwrap();
-//! let alignment = align::<4, &Peptidoform<SimpleLinear>, &Peptidoform<SimpleLinear>>(&a, &b, AlignScoring::default(), AlignType::GLOBAL);
-//! assert_eq!(alignment.short(), "1=1:2i1=");
-//! assert_eq!(alignment.ppm().value, 0.0);
-//! ```
-
 #[macro_use]
 mod helper_functions;
 
@@ -48,9 +21,9 @@ mod scoring;
 #[cfg(test)]
 mod test_alignments;
 
-#[cfg(all(feature = "imgt", not(feature = "internal-no-data")))]
+#[cfg(feature = "imgt")]
 mod consecutive;
-#[cfg(all(feature = "imgt", not(feature = "internal-no-data")))]
+#[cfg(feature = "imgt")]
 pub use consecutive::*;
 
 pub use align_type::{AlignType, Side};
