@@ -104,7 +104,7 @@ impl ParseJson for GlycanPeptideFragment {
     }
 }
 
-/// The possible kinds of fragments, same options as [`FragmentType`] but without any additional data
+/// The possible kinds of backbone fragments
 #[derive(Clone, Copy, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 #[expect(non_camel_case_types)]
 pub enum BackboneFragmentKind {

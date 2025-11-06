@@ -208,7 +208,7 @@ format_family!(
         if parsed.peptide_type != PLinkPeptideType::Common {
             // Find linker based on left over mass
             let left_over = parsed.theoretical_mass
-                - molecular_formula!(H 1 Electron -1).monoisotopic_mass()
+                - molecular_formula!(H 1 :z+1).monoisotopic_mass()
                 - parsed
                     .peptidoform
                     .formulas() // TODO: this is the hot function this takes ~51% of runtime when parsing a pLink file

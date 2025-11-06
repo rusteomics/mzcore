@@ -72,7 +72,7 @@ impl MolecularCharge {
     /// Create a default charge state with only protons
     pub fn proton(charge: Charge) -> Self {
         Self {
-            charge_carriers: vec![(charge.value, molecular_formula!(H 1 Electron -1 ))],
+            charge_carriers: vec![(charge.value, molecular_formula!(H 1 :z+1))],
         }
     }
 
@@ -80,7 +80,7 @@ impl MolecularCharge {
     pub fn is_proton(&self) -> bool {
         self.charge_carriers
             .iter()
-            .all(|(_, m)| *m == molecular_formula!(H 1 Electron -1 ))
+            .all(|(_, m)| *m == molecular_formula!(H 1 :z+1))
     }
 
     /// Create a charge state with the given ions
@@ -236,9 +236,9 @@ mod tests {
 
     #[test]
     fn simple_charge_options() {
-        let mc = MolecularCharge::new(&[(1, molecular_formula!(H 1 Electron -1))]);
+        let mc = MolecularCharge::new(&[(1, molecular_formula!(H 1 :z+1))]);
         let options = mc.options(crate::system::isize::Charge::new::<crate::system::e>(1));
         assert_eq!(options.len(), 1);
-        assert_eq!(options[0].formula(), molecular_formula!(H 1 Electron -1));
+        assert_eq!(options[0].formula(), molecular_formula!(H 1 :z+1));
     }
 }

@@ -31,6 +31,7 @@ pub mod prelude {
     pub use crate::isobaric_sets::{
         BuildingBlocks, TerminalBuildingBlocks, building_blocks, find_isobaric_sets,
     };
+    pub use crate::molecular_formula;
     pub use crate::sequence::{
         AminoAcid, CheckedAminoAcid, CompoundPeptidoformIon, HasCompoundPeptidoformIon,
         HasPeptidoformImpl, HasPeptidoformIon, IsAminoAcid, Peptidoform, PeptidoformIon, Protease,

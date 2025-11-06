@@ -16,6 +16,10 @@ use crate::{
     sequence::{AminoAcid, LinkerSpecificity, PlacementRule, Position, SimpleModificationInner},
 };
 
+/// RESID modifications
+///
+/// Note that because RESID is stored on a ftp server the automatic downloading does not work.
+#[allow(missing_copy_implementations, missing_debug_implementations)]
 pub struct Resid {}
 
 impl CVSource for Resid {
@@ -120,9 +124,8 @@ impl CVSource for Resid {
                         "FormulaBlock" => {
                             for formula_node in data_block.children() {
                                 if formula_node.has_tag_name("Formula") {
-                                    modification.formula = MolecularFormula::from_resid(
+                                    modification.formula = MolecularFormula::resid(
                                         formula_node.text().unwrap_or_default(),
-                                        ..,
                                     )
                                     .unwrap()
                                     .to_vec()
@@ -138,9 +141,8 @@ impl CVSource for Resid {
                                         formula_node.attribute("uids"),
                                         formula_node.attribute("link"),
                                         formula_node.attribute("label"),
-                                        MolecularFormula::from_resid_single(
+                                        MolecularFormula::resid_single(
                                             formula_node.text().unwrap_or_default(),
-                                            ..,
                                         )
                                         .unwrap(),
                                     ));

@@ -257,7 +257,7 @@ impl MolecularFormula {
     ///
     #[classmethod]
     fn from_psi_mod(_cls: &Bound<'_, PyType>, psi_mod: &str) -> PyResult<Self> {
-        mzcore::chemistry::MolecularFormula::from_psi_mod(psi_mod, ..)
+        mzcore::chemistry::MolecularFormula::psi_mod_inner(psi_mod, ..)
             .map(MolecularFormula)
             .map_err(|e| PyValueError::new_err(format!("Invalid PSI-MOD string: {e}")))
     }

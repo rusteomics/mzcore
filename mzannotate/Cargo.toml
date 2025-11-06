@@ -38,3 +38,6 @@ workspace = true
 [[test]]
 name = "mzspeclib"
 path = "tests/mzspeclib.rs"
+
+[package.metadata.docs.rs]
+cargo-args = ["-Zunstable-options", "-Zrustdoc-scrape-examples"]

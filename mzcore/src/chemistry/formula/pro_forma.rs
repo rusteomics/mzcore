@@ -8,8 +8,7 @@ use crate::{
 };
 
 impl MolecularFormula {
-    /// Parse ProForma formulas: `[13C2][12C-2]H2N`.
-    /// # The specification (copied from ProForma v2)
+    /// # ProForma v2 molecular formula specification (copied)
     /// As no widely accepted specification exists for expressing elemental formulas, we have adapted a standard with the following rules (taken from <https://github.com/rfellers/chemForma>):
     /// ## Formula Rule 1
     /// A formula will be composed of pairs of atoms and their corresponding cardinality (two Carbon atoms: C2). Pairs SHOULD be separated by spaces but are not required to be.
@@ -32,11 +31,27 @@ impl MolecularFormula {
     /// ## Allow charge
     /// Allows `:z{x}` to define the charge of a formula, eg `:z+1`, `:z-3`. As defined in ProForma 2.1.
     /// ## Allow empty
-    /// Allows the string `(empty)` to be used to denote an empty formula
+    /// Allows an empty string, `(empty)`, or a definition that leads to an empty formula (eg `H0` or `H4H-4`) to be used to denote an empty formula
     /// # Errors
     /// If the formula is not valid according to the above specification, with some help on what is going wrong.
-    /// # Panics
-    /// It can panic if the string contains not UTF8 symbols.
+    ///
+    /// ```rust
+    /// use mzcore::prelude::*;
+    /// // Examples from the spec
+    /// assert!(MolecularFormula::pro_forma::<false, false>("C12H20O2").is_ok());
+    /// assert!(MolecularFormula::pro_forma::<false, false>("C12 H20 O2").is_ok());
+    /// assert!(MolecularFormula::pro_forma::<false, false>("HN-1O2").is_ok());
+    /// assert!(MolecularFormula::pro_forma::<false, false>("[13C2][12C-2]H2N").is_ok());
+    /// assert!(MolecularFormula::pro_forma::<false, false>("[13C2]C-2H2N").is_ok());
+    /// // ProForma 2.1 style charges
+    /// assert!(MolecularFormula::pro_forma::<true, false>("N1H4:z+1").is_ok());
+    /// // Empty formulas only accepted if `ALLOW_EMPTY` is true
+    /// assert!(MolecularFormula::pro_forma::<false, false>("H0").is_err());
+    /// assert!(MolecularFormula::pro_forma::<false, true>("H0").is_ok());
+    /// assert!(MolecularFormula::pro_forma::<false, true>("(empty)").is_ok());
+    /// assert!(MolecularFormula::pro_forma::<false, true>("").is_ok());
+    /// assert!(MolecularFormula::pro_forma::<false, true>("H4H-4").is_ok());
+    /// ```
     pub fn pro_forma<const ALLOW_CHARGE: bool, const ALLOW_EMPTY: bool>(
         value: &str,
     ) -> Result<Self, BoxedError<'_, BasicKind>> {
@@ -47,6 +62,13 @@ impl MolecularFormula {
         )
     }
 
+    /// This parses a substring of the given string as a ProForma molecular formula definition.
+    /// Additionally, this allows passing a base context to allow to set the line index and source
+    /// and other properties. Note that the base context is assumed to contain the full line at
+    /// line index 0.
+    ///
+    /// # Errors
+    /// It fails when the string is not a valid ProForma molecular formula string.
     pub fn pro_forma_inner<'a, const ALLOW_CHARGE: bool, const ALLOW_EMPTY: bool>(
         base_context: &Context<'a>,
         value: &'a str,
@@ -70,8 +92,8 @@ impl MolecularFormula {
         let bytes = value.as_bytes();
         let mut result = Self::default();
         'main_parse_loop: while index <= end {
-            match bytes[index] {
-                b'[' => {
+            match (bytes[index], element) {
+                (b'[', _) => {
                     // Skip the open square bracket and leading spaces
                     index += 1 + bytes[index + 1..]
                         .iter()
@@ -169,38 +191,23 @@ impl MolecularFormula {
                         ));
                     }
                 }
-                b'-' | b'0'..=b'9' if element.is_some() => {
-                    let (num, len) = std::str::from_utf8(
-                        &bytes
-                            .iter()
-                            .skip(index)
-                            .take(end - index + 1) // Bind the maximal length if this is used as part of the molecular charge parsing
-                            .take_while(|c| c.is_ascii_digit() || **c == b'-')
-                            .copied()
-                            .collect::<Vec<_>>(),
-                    )
-                    .map_or_else(
-                        |e| panic!("Non UTF8 in ProForma molecular formula, error: {e}"),
-                        |v| {
-                            (
-                                v.parse::<i32>().map_err(|err| {
-                                    BoxedError::new(
-                                        BasicKind::Error,
-                                        "Invalid ProForma molecular formula",
-                                        format!(
-                                            "The element number {}",
-                                            explain_number_error(&err)
-                                        ),
-                                        base_context.clone().add_highlight((0, index, v.len())),
-                                    )
-                                }),
-                                v.len(),
-                            )
-                        },
-                    );
-                    let num = num?;
+                (b'-' | b'0'..=b'9', Some(ele)) => {
+                    let length = value[index..=end]
+                        .char_indices()
+                        .take_while(|(_, c)| c.is_ascii_digit() || *c == '-')
+                        .last()
+                        .map_or(0, |(i, c)| i + c.len_utf8());
+                    let num = value[index..index + length].parse::<i32>().map_err(|err| {
+                        BoxedError::new(
+                            BasicKind::Error,
+                            "Invalid ProForma molecular formula",
+                            format!("The element number {}", explain_number_error(&err)),
+                            base_context.clone().add_highlight((0, index, length)),
+                        )
+                    })?;
+
                     if num != 0
-                        && let Err(err) = Self::add(&mut result, (element.unwrap(), None, num))
+                        && let Err(err) = Self::add(&mut result, (ele, None, num))
                     {
                         return Err(BoxedError::new(
                             BasicKind::Error,
@@ -208,16 +215,16 @@ impl MolecularFormula {
                             err.reason(),
                             base_context.clone().add_highlight((
                                 0,
-                                index - element.unwrap().symbol().len(),
-                                element.unwrap().symbol().len(),
+                                index - ele.symbol().len(),
+                                ele.symbol().len(),
                             )),
                         ));
                     }
                     element = None;
-                    index += len;
+                    index += length;
                 }
-                b' ' => index += 1,
-                b':' if ALLOW_CHARGE => {
+                (b' ' | b'\t', _) => index += 1,
+                (b':', _) if ALLOW_CHARGE => {
                     if Some(&b'z') == bytes.get(index + 1) {
                         index += 2;
                         let num = value[index..=end].parse::<i32>().map_err(|err| {

@@ -1,47 +1,79 @@
-use std::ops::RangeBounds;
-
 use context_error::*;
 
 use crate::{
     chemistry::{ELEMENT_PARSE_LIST, Element, MolecularFormula},
-    helper_functions::{RangeExtension, next_num, str_starts_with},
+    helper_functions::{next_num, str_starts_with},
     quantities::Multi,
 };
 
 impl MolecularFormula {
-    /// Parse RESID formulas: `C 2 H 3 N 1 O 1 +` or `C 4 H 5 N 1 O 3, C 4 H 6 N 2 O 2`. If the `range` (byte range in the given line) is not specified it defaults to the full line.
+    /// Parse a molecular formula from a RESID formula.
     /// # Errors
-    /// If the formula is not valid according to the above specification, with some help on what is going wrong.
-    /// # Panics
-    /// It can panic if the string contains non UTF8 symbols.
-    pub fn from_resid(
-        value: &str,
-        range: impl RangeBounds<usize>,
-    ) -> Result<Multi<Self>, BoxedError<'_, BasicKind>> {
+    /// If the formula is not valid according to the PSI-MOD molecular formula format, with some help on what is going wrong.
+    /// ```rust
+    /// use mzcore::prelude::*;
+    /// assert_eq!(MolecularFormula::resid("C 2 H 3 N 1 O 1 +"), Ok(molecular_formula!(C 2 H 3 N 1 O 1 :z+1).into()));
+    /// assert!(dbg!(MolecularFormula::resid("C 4 H 5 N 1 O 3, C 4 H 6 N 2 O 2")).is_ok());
+    ///
+    /// ```
+    pub fn resid(value: &str) -> Result<Multi<Self>, BoxedError<'_, BasicKind>> {
+        Self::resid_inner(&Context::none().lines(0, value), value, 0..value.len())
+    }
+
+    /// This parses a substring of the given string as a PSI-MOD molecular formula definition.
+    /// Additionally, this allows passing a base context to allow to set the line index and source
+    /// and other properties. Note that the base context is assumed to contain the full line at
+    /// line index 0.
+    ///
+    /// # Errors
+    /// It fails when the string is not a valid PSI-MOD molecular formula string.
+    pub fn resid_inner<'a>(
+        base_context: &Context<'a>,
+        value: &'a str,
+        range: std::ops::Range<usize>,
+    ) -> Result<Multi<Self>, BoxedError<'a, BasicKind>> {
         let mut multi = Vec::new();
         let mut start = 0;
-        for part in value[range.start_index()..range.end_index(value.len())].split(',') {
-            multi.push(Self::from_resid_single(
+        for part in value[range.clone()].split(',') {
+            multi.push(Self::resid_single_inner(
+                base_context,
                 value,
-                range.start_index() + start..range.start_index() + start + part.len(),
+                range.start + start..range.start + start + part.len(),
             )?);
             start += part.len() + 1;
         }
         Ok(multi.into())
     }
 
-    /// Parse RESID formulas: `C 2 H 3 N 1 O 1 +` but does not allow multi formulas (split with commas). If the `range` (byte range in the given line) is not specified it defaults to the full line.
+    /// Parse a molecular formula from a RESID formula.
     /// # Errors
-    /// If the formula is not valid according to the above specification, with some help on what is going wrong.
-    /// # Panics
-    /// It can panic if the string contains non UTF8 symbols.
-    pub fn from_resid_single(
-        value: &str,
-        range: impl RangeBounds<usize>,
-    ) -> Result<Self, BoxedError<'_, BasicKind>> {
-        let (mut index, end) = range.bounds(value.len().saturating_sub(1));
+    /// If the formula is not valid according to the PSI-MOD molecular formula format, with some help on what is going wrong.
+    /// ```rust
+    /// use mzcore::prelude::*;
+    /// assert!(MolecularFormula::resid_single("C 2 H 3 N 1 O 1 +").is_ok());
+    /// assert!(MolecularFormula::resid_single("C 4 H 5 N 1 O 3, C 4 H 6 N 2 O 2").is_err());
+    ///
+    /// ```
+    pub fn resid_single(value: &str) -> Result<Self, BoxedError<'_, BasicKind>> {
+        Self::resid_single_inner(&Context::none().lines(0, value), value, 0..value.len())
+    }
+
+    /// This parses a substring of the given string as a PSI-MOD molecular formula definition.
+    /// Additionally, this allows passing a base context to allow to set the line index and source
+    /// and other properties. Note that the base context is assumed to contain the full line at
+    /// line index 0.
+    ///
+    /// # Errors
+    /// It fails when the string is not a valid PSI-MOD molecular formula string.
+    pub fn resid_single_inner<'a>(
+        base_context: &Context<'a>,
+        value: &'a str,
+        range: std::ops::Range<usize>,
+    ) -> Result<Self, BoxedError<'a, BasicKind>> {
+        let mut index = range.start;
+        let end = range.end.min(value.len());
         let mut result = Self::default();
-        while index <= end {
+        while index < end {
             trim(&mut index, value);
             let mut element = None;
             let mut amount: i32 = 1;
@@ -73,16 +105,9 @@ impl MolecularFormula {
                         BasicKind::Error,
                         "Invalid RESID molecular formula",
                         err.reason(),
-                        Context::line(
-                            None,
-                            value,
-                            index,
-                            value[index..]
-                                .chars()
-                                .next()
-                                .map(char::len_utf8)
-                                .unwrap_or_default(),
-                        ),
+                        base_context
+                            .clone()
+                            .add_highlight((0, index, element.symbol().len())),
                     ));
                 }
                 trim(&mut index, value);
@@ -91,16 +116,7 @@ impl MolecularFormula {
                     BasicKind::Error,
                     "Invalid RESID molecular formula",
                     format!("Not a valid character in formula, now has: {result:?}"),
-                    Context::line(
-                        None,
-                        value,
-                        index,
-                        value[index..]
-                            .chars()
-                            .next()
-                            .map(char::len_utf8)
-                            .unwrap_or_default(),
-                    ),
+                    base_context.clone().add_highlight((0, index, 1)),
                 ));
             }
         }

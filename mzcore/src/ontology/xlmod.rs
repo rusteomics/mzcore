@@ -15,6 +15,8 @@ use crate::{
     sequence::{LinkerSpecificity, PlacementRule, Position, SimpleModificationInner},
 };
 
+/// XL-MOD modifications
+#[allow(missing_copy_implementations, missing_debug_implementations)]
 pub struct XlMod {}
 
 impl CVSource for XlMod {
@@ -82,7 +84,7 @@ impl CVSource for XlMod {
                             .1
                             .parse()
                             .expect("Incorrect XLMOD id, should be numerical");
-                        let name = obj.lines["name"][0].0.to_string();
+                        let name = obj.lines["name"][0].0.clone();
 
                         let mut sites = None;
                         let mut length = None;
@@ -128,15 +130,13 @@ impl CVSource for XlMod {
                                 "deadEndFormula" => {
                                     sites = Some(1);
                                     formula = Some(
-                                        MolecularFormula::from_xlmod(&value[0].0.to_string(), ..)
-                                            .unwrap(),
+                                        MolecularFormula::xlmod(&value[0].0.to_string()).unwrap(),
                                     );
                                 }
                                 "bridgeFormula" => {
                                     sites = Some(2);
                                     formula = Some(
-                                        MolecularFormula::from_xlmod(&value[0].0.to_string(), ..)
-                                            .unwrap(),
+                                        MolecularFormula::xlmod(&value[0].0.to_string()).unwrap(),
                                     );
                                 }
                                 "specificities" => {

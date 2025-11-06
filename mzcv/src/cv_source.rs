@@ -7,7 +7,7 @@ use sha2::Digest;
 
 use crate::{CVError, hash_buf_reader::HashBufReader};
 
-/// Implement this trait to create a new CV. The best way of using this might be with a ZST (zero sized type).
+/// Implement this trait to create a new CV. The best way of using this is with a ZST (zero sized type).
 /// ```rust ignore
 /// struct Unimod {}
 ///
@@ -20,6 +20,8 @@ use crate::{CVError, hash_buf_reader::HashBufReader};
 /// }
 /// ```
 pub trait CVSource {
+    /// Set this constant to true to enable automatic writing of the CV when the cahe is updated
+    const AUTOMATICALLY_WRITE_UNCOMPRESSED: bool = false;
     /// The data item that is stored in the CV
     type Data: CVData + 'static;
     /// The name of the CV, used to create the paths to store intermediate files and caches so has to be valid in that context
@@ -49,16 +51,32 @@ pub trait CVSource {
     fn parse(
         reader: impl Iterator<Item = HashBufReader<Box<dyn std::io::Read>, impl Digest>>,
     ) -> Result<(CVVersion, impl Iterator<Item = Self::Data>), Vec<BoxedError<'static, CVError>>>;
+
+    /// Write out the data to the standard file, only need to implement this if
+    /// `AUTOMATICALLY_WRITE_UNCOMPRESSED` is set to true. This is used to write out data when the
+    /// main way of interacting with this structure is via the [`crate::CVIndex::update`] method.
+    /// So for custom modification CVs for example.
+    /// # Errors
+    /// When the underlying writer failed.
+    fn write_uncompressed<W: std::io::Write>(
+        _writer: W,
+        _version: &CVVersion,
+        _data: impl Iterator<Item = std::sync::Arc<Self::Data>>,
+    ) -> Result<(), BoxedError<'static, CVError>> {
+        Ok(())
+    }
 }
 
+/// The description of a file that is used to built a controlled vocabulary.
+#[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
 pub struct CVFile {
     /// The name of the CV, used to create the paths to store intermediate files and caches so has to be valid in that context
     pub name: &'static str,
     /// The file extension of the CV
     pub extension: &'static str,
-    /// The url where this CV can be found
+    /// The url where this CV can be found (note that only http/https downloading is supported)
     pub url: Option<&'static str>,
-    /// The source compression of this file
+    /// The source compression of this file (note that only uncompressed is currently supported)
     pub compression: CVCompression,
 }
 
@@ -110,11 +128,15 @@ pub trait CVData: Clone {
     type Cache: CVCache<Self>;
 }
 
-pub trait CVCache<T>: Encode + Decode<()> {
-    fn construct(version: CVVersion, data: Vec<T>) -> Self;
-    fn deconstruct(self) -> (CVVersion, Vec<T>);
+/// A trait to help setting the encoding/decoding for the [`CVData`]
+pub trait CVCache<Data>: Encode + Decode<()> {
+    /// Construct a cache
+    fn construct(version: CVVersion, data: Vec<Data>) -> Self;
+    /// Deconstruct a cache
+    fn deconstruct(self) -> (CVVersion, Vec<Data>);
 }
 
+/// A cache using [`bincode`]
 #[derive(Debug, Decode, Encode)]
 pub struct CVCacheBincode<D: Decode<()> + Encode> {
     version: CVVersion,
@@ -130,6 +152,7 @@ impl<T: Encode + Decode<()>> CVCache<T> for CVCacheBincode<T> {
     }
 }
 
+/// A cache using [`serde`]
 #[cfg(feature = "serde")]
 #[derive(Debug)]
 pub struct CVCacheSerde<D: serde::Serialize + for<'de> serde::Deserialize<'de>> {
@@ -175,7 +198,7 @@ impl<T: serde::Serialize + for<'de> serde::Deserialize<'de>> CVCache<T> for CVCa
 }
 
 /// The used compression of the source CV.
-#[derive(Clone, Copy, Debug, Default)]
+#[derive(Clone, Copy, Debug, Default, Eq, Ord, PartialEq, PartialOrd)]
 pub enum CVCompression {
     /// No compression
     #[default]

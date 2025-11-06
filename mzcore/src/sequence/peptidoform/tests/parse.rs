@@ -160,52 +160,43 @@ fn charge_state_positive() {
     );
     assert_eq!(
         parse("/1[+Na+]"),
-        Ok(MolecularCharge::new(&[(
-            1,
-            molecular_formula!(Na 1 Electron -1)
-        )]))
+        Ok(MolecularCharge::new(&[(1, molecular_formula!(Na 1 :z+1))]))
     );
     assert_eq!(
         parse("/3[2Na+1,1H1+1]"),
         Ok(MolecularCharge::new(&[
-            (2, molecular_formula!(Na 1 Electron -1)),
-            (1, molecular_formula!(H 1 Electron -1))
+            (2, molecular_formula!(Na 1 :z+1)),
+            (1, molecular_formula!(H 1 :z+1))
         ]))
     );
     assert_eq!(
         parse("/1[-OH-]"),
         Ok(MolecularCharge::new(&[(
             -1,
-            molecular_formula!(O 1 H 1 Electron 1)
+            molecular_formula!(O 1 H 1 :z-1)
         ),]))
     );
     assert_eq!(
         parse("/1[+N1H3+]"),
         Ok(MolecularCharge::new(&[(
             1,
-            molecular_formula!(N 1 H 3 Electron -1)
+            molecular_formula!(N 1 H 3 :z+1)
         ),]))
     );
     assert_eq!(
         parse("/1[+[15N1]+]"),
         Ok(MolecularCharge::new(&[(
             1,
-            molecular_formula!([15 N 1] Electron -1)
+            molecular_formula!([15 N 1] :z+1)
         ),]))
     );
     assert_eq!(
         parse("/3[+Fe+3]"),
-        Ok(MolecularCharge::new(&[(
-            1,
-            molecular_formula!(Fe 1 Electron -3)
-        ),]))
+        Ok(MolecularCharge::new(&[(1, molecular_formula!(Fe 1 :z+3)),]))
     );
     assert_eq!(
         parse("/3[+ Fe +3]"),
-        Ok(MolecularCharge::new(&[(
-            1,
-            molecular_formula!(Fe 1 Electron -3)
-        ),]))
+        Ok(MolecularCharge::new(&[(1, molecular_formula!(Fe 1 :z+3)),]))
     );
 }
 
@@ -541,7 +532,7 @@ fn parse_adduct_ions_01() {
             .get_charge_carriers()
             .unwrap()
             .charge_carriers,
-        vec![(2, molecular_formula!(Na 1 Electron -1))]
+        vec![(2, molecular_formula!(Na 1 :z+1))]
     );
     assert_eq!(
         peptide.peptidoform_ions()[0].peptidoforms()[0].sequence(),

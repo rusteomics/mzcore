@@ -14,6 +14,28 @@ use crate::{
 /// A single shared static access to the static data in the ontologies for cases where no runtime resolution is needed (like tests).
 pub static STATIC_ONTOLOGIES: LazyLock<Ontologies> = LazyLock::new(Ontologies::init_static);
 
+/// Handle all ProForma needed ontologies.
+///
+/// Get a copy via [`Self::init()`], [`Self::init_static()`] (or [`STATIC_ONTOLOGIES`]), or even
+/// [`Self::empty`]. Then find modifications using either [`Self::get_by_name`],
+/// , [`Self::search`], or the same methods on one particular ontology
+/// as `Self::unimod().get_by_index()`.
+///
+/// ```rust
+/// use mzcore::{molecular_formula, ontology::STATIC_ONTOLOGIES, prelude::*};
+/// // Using the static version to not do IO in test, but more logical in library users:
+/// // let ontologies = Self::init();
+/// let ontologies = &STATIC_ONTOLOGIES;
+/// // Get modifications by name
+/// let modification = ontologies.get_by_name(&[], "Oxidation").unwrap();
+/// assert_eq!(modification.formula(), molecular_formula!(O 1));
+/// // or by index from a particular ontology
+/// let modification2 = ontologies.unimod().get_by_index(&35).unwrap();
+/// assert_eq!(modification, modification2);
+/// // or search all (or a subset) for fuzzy matches
+/// let search = ontologies.search(&[], "Oxidated");
+/// assert!(search.contains(&modification));
+/// ```
 pub struct Ontologies {
     custom: CVIndex<Custom>,
     gnome: CVIndex<Gnome>,
@@ -21,6 +43,19 @@ pub struct Ontologies {
     resid: CVIndex<Resid>,
     unimod: CVIndex<Unimod>,
     xlmod: CVIndex<XlMod>,
+}
+
+impl std::fmt::Debug for Ontologies {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Ontologies")
+            .field("Unimod", &self.unimod.len())
+            .field("PSI-MOD", &self.psimod.len())
+            .field("XL-MOD", &self.xlmod.len())
+            .field("GNOme", &self.gnome.len())
+            .field("RESID", &self.resid.len())
+            .field("Custom", &self.custom.len())
+            .finish()
+    }
 }
 
 impl Ontologies {
@@ -77,10 +112,12 @@ impl Ontologies {
         }
     }
 
-    /// Update the custom database with the given data, mostly there to quickly create some test data
+    /// Update the custom database with the given data, mostly there to quickly create some test data.
+    /// This does not store the new data on the disk
     #[must_use]
     pub fn with_custom(mut self, data: impl IntoIterator<Item = SimpleModification>) -> Self {
-        let _ignore = self.custom.update(CVVersion::default(), data);
+        self.custom
+            .update_do_not_save_to_disk(CVVersion::default(), data);
         self
     }
 
@@ -145,7 +182,7 @@ impl Ontologies {
     }
 
     /// Find the closest names in the given ontologies, or if empty in all ontologies
-    pub fn find_closest(&self, ontologies: &[Ontology], term: &str) -> Vec<SimpleModification> {
+    pub fn search(&self, ontologies: &[Ontology], term: &str) -> Vec<SimpleModification> {
         let ontologies = if ontologies.is_empty() {
             &[
                 Ontology::Unimod,
@@ -175,7 +212,7 @@ impl Ontologies {
     }
 
     /// Find the given name in this ontology.
-    pub fn find_name(&self, ontologies: &[Ontology], term: &str) -> Option<SimpleModification> {
+    pub fn get_by_name(&self, ontologies: &[Ontology], term: &str) -> Option<SimpleModification> {
         let ontologies = if ontologies.is_empty() {
             &[
                 Ontology::Unimod,
@@ -218,59 +255,6 @@ impl Ontologies {
                 }
                 Ontology::Custom => {
                     if let Some(m) = self.custom.get_by_name(term) {
-                        return Some(m);
-                    }
-                }
-            }
-        }
-
-        None
-    }
-
-    /// Find the given name in this ontology.
-    pub fn find_id(&self, ontologies: &[Ontology], id: usize) -> Option<SimpleModification> {
-        let ontologies = if ontologies.is_empty() {
-            &[
-                Ontology::Unimod,
-                Ontology::Psimod,
-                Ontology::Xlmod,
-                Ontology::Gnome,
-                Ontology::Resid,
-                Ontology::Custom,
-            ]
-        } else {
-            ontologies
-        };
-
-        for ontology in ontologies {
-            match ontology {
-                Ontology::Unimod => {
-                    if let Some(m) = self.unimod.get_by_index(&id) {
-                        return Some(m);
-                    }
-                }
-                Ontology::Psimod => {
-                    if let Some(m) = self.psimod.get_by_index(&id) {
-                        return Some(m);
-                    }
-                }
-                Ontology::Xlmod => {
-                    if let Some(m) = self.xlmod.get_by_index(&id) {
-                        return Some(m);
-                    }
-                }
-                Ontology::Gnome => {
-                    if let Some(m) = self.gnome.get_by_index(&id) {
-                        return Some(m);
-                    }
-                }
-                Ontology::Resid => {
-                    if let Some(m) = self.resid.get_by_index(&id) {
-                        return Some(m);
-                    }
-                }
-                Ontology::Custom => {
-                    if let Some(m) = self.custom.get_by_index(&id) {
                         return Some(m);
                     }
                 }

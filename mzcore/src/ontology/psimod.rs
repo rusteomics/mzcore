@@ -15,6 +15,8 @@ use crate::{
     sequence::{PlacementRule, Position, SimpleModificationInner},
 };
 
+/// PSI-MOD modifications
+#[allow(missing_copy_implementations, missing_debug_implementations)]
 pub struct PsiMod {}
 
 impl CVData for SimpleModificationInner {
@@ -105,7 +107,7 @@ impl CVSource for PsiMod {
                                 .1
                                 .parse()
                                 .expect("Incorrect psi mod id, should be numerical"),
-                            name: obj.lines["name"][0].0.to_string(),
+                            name: obj.lines["name"][0].0.clone(),
                             ontology: Ontology::Psimod,
                             ..OntologyModification::default()
                         };
@@ -125,7 +127,7 @@ impl CVSource for PsiMod {
                                 match (id.as_str(), value) {
                                     ("DiffFormula", mzcv::OboValue::String(s)) => {
                                         modification.formula =
-                                            MolecularFormula::from_psi_mod(&s, ..).unwrap();
+                                            MolecularFormula::psi_mod(&s).unwrap();
                                     }
                                     ("Origin", mzcv::OboValue::String(value)) => {
                                         origins = value

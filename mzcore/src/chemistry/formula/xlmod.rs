@@ -1,4 +1,4 @@
-use std::{num::NonZeroU16, ops::RangeBounds};
+use std::num::NonZeroU16;
 
 use context_error::*;
 
@@ -8,16 +8,41 @@ use crate::{
 };
 
 impl MolecularFormula {
-    /// XLMOD: `C7 D10 H2 N4`
-    /// `-C1 -H2 O1` `C7 D10 H2 N4` `13C6 H6 O2`
+    /// Parse a molecular formula from an XL-MOD formula.
     /// # Errors
-    /// If the formula is not valid according to the above specification, with some help on what is going wrong.
-    /// # Panics
-    /// It can panic if the string contains not UTF8 symbols.
-    pub fn from_xlmod(
-        value: &str,
-        range: impl RangeBounds<usize>,
-    ) -> Result<Self, BoxedError<'_, BasicKind>> {
+    /// If the formula is not valid according to the XL-MOD molecular formula format, with some help on what is going wrong.
+    /// ```rust
+    /// use mzcore::prelude::*;
+    /// assert_eq!(
+    ///     MolecularFormula::xlmod("C7 D10 H2 N4").unwrap(),
+    ///     molecular_formula!(C 7 [2 H 10] H 2 N 4)
+    /// );
+    /// assert_eq!(
+    ///     MolecularFormula::xlmod("-C1 -H2 O1").unwrap(),
+    ///     molecular_formula!(C -1 H -2 O 1)
+    /// );
+    /// assert_eq!(
+    ///     MolecularFormula::xlmod("13C6 H6 O2").unwrap(),
+    ///     molecular_formula!([13 C 6] H 6 O 2)
+    /// );    ///
+    /// ```
+    pub fn xlmod(value: &str) -> Result<Self, BoxedError<'_, BasicKind>> {
+        Self::xlmod_inner(&Context::none().lines(0, value), value, 0..value.len())
+    }
+
+    /// This parses a substring of the given string as an XL-MOD molecular formula definition.
+    /// Additionally, this allows passing a base context to allow to set the line index and source
+    /// and other properties. Note that the base context is assumed to contain the full line at
+    /// line index 0.
+    ///
+    /// # Errors
+    /// It fails when the string is not a valid XL-MOD molecular formula string.
+    #[expect(clippy::missing_panics_doc)] // 2 is not zero, but that cannot be proven at compile time
+    pub fn xlmod_inner<'a>(
+        base_context: &Context<'a>,
+        value: &'a str,
+        range: std::ops::Range<usize>,
+    ) -> Result<Self, BoxedError<'a, BasicKind>> {
         let (start, end) = range.bounds(value.len());
         let mut formula = Self::default();
         for (offset, block) in helper_functions::split_ascii_whitespace(&value[start..end]) {
@@ -33,7 +58,7 @@ impl MolecularFormula {
                     BasicKind::Error,
                     "Invalid Xlmod molecular formula",
                     "No element is defined",
-                    Context::line(None, value, offset, block.len()),
+                    base_context.clone().add_highlight((0, offset, block.len())),
                 ));
             }
             let element_len = block.len() - number - isotope_len - usize::from(negative);
@@ -46,7 +71,11 @@ impl MolecularFormula {
                         BasicKind::Error,
                         "Invalid Xlmod molecular formula",
                         "A deuterium cannot have a defined isotope as deuterium is by definition always isotope 2 of hydrogen",
-                        Context::line(None, value, offset + usize::from(negative), isotope_len),
+                        base_context.clone().add_highlight((
+                            0,
+                            offset + usize::from(negative),
+                            isotope_len,
+                        )),
                     ));
                 }
             } else {
@@ -64,12 +93,11 @@ impl MolecularFormula {
                         BasicKind::Error,
                         "Invalid Xlmod molecular formula",
                         "Not a valid character in formula",
-                        Context::line(
-                            None,
-                            value,
+                        base_context.clone().add_highlight((
+                            0,
                             offset + usize::from(negative) + isotope_len,
                             element_len,
-                        ),
+                        )),
                     ));
                 }
             };
@@ -82,12 +110,11 @@ impl MolecularFormula {
                                 BasicKind::Error,
                                 "Invalid Xlmod molecular formula",
                                 format!("The isotope number {}", explain_number_error(&err)),
-                                Context::line(
-                                    None,
-                                    value,
+                                base_context.clone().add_highlight((
+                                    0,
                                     offset + usize::from(negative),
                                     isotope_len,
-                                ),
+                                )),
                             )
                         })?,
                 );
@@ -103,12 +130,11 @@ impl MolecularFormula {
                                 BasicKind::Error,
                                 "Invalid Xlmod molecular formula",
                                 format!("The element count {}", explain_number_error(&err)),
-                                Context::line(
-                                    None,
-                                    value,
+                                base_context.clone().add_highlight((
+                                    0,
                                     offset + usize::from(negative) + isotope_len + element_len,
                                     number,
-                                ),
+                                )),
                             )
                         })?
                 };
@@ -117,12 +143,11 @@ impl MolecularFormula {
                     BasicKind::Error,
                     "Invalid Xlmod molecular formula",
                     err.reason(),
-                    Context::line(
-                        None,
-                        value,
+                    base_context.clone().add_highlight((
+                        0,
                         offset + usize::from(negative),
                         isotope_len + element_len,
-                    ),
+                    )),
                 ));
             }
         }

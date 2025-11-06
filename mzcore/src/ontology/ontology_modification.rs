@@ -1,9 +1,7 @@
 use crate::{
     chemistry::{DiagnosticIon, MolecularFormula, NeutralLoss},
     ontology::Ontology,
-    sequence::{
-        LinkerSpecificity, ModificationId, PlacementRule, Position, SimpleModificationInner,
-    },
+    sequence::{LinkerSpecificity, ModificationId, PlacementRule, SimpleModificationInner},
 };
 use itertools::Itertools;
 use ordered_float::OrderedFloat;
@@ -132,28 +130,5 @@ impl From<OntologyModification> for SimpleModificationInner {
                 length,
             },
         }
-    }
-}
-
-// pub fn position_from_u8(value: u8) -> Result<Position, String> {
-//     match value {
-//         b'1' => Ok(Position::Anywhere),
-//         b'2' => Ok(Position::Anywhere),
-//         b'3' => Ok(Position::AnyNTerm),
-//         b'4' => Ok(Position::AnyCTerm),
-//         b'5' => Ok(Position::ProteinNTerm),
-//         b'6' => Ok(Position::ProteinCTerm),
-//         n => Err(format!("Outside range: {n}")),
-//     }
-// }
-
-pub(crate) fn position_from_str(value: &str) -> Result<Position, String> {
-    match value {
-        "" | "Anywhere" => Ok(Position::Anywhere),
-        "Any N-term" => Ok(Position::AnyNTerm),
-        "Any C-term" => Ok(Position::AnyCTerm),
-        "Protein N-term" => Ok(Position::ProteinNTerm),
-        "Protein C-term" => Ok(Position::ProteinCTerm),
-        n => Err(format!("Not valid position: {n}")),
     }
 }

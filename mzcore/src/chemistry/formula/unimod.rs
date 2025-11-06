@@ -1,7 +1,4 @@
-use std::{
-    num::NonZeroU16,
-    ops::{Range, RangeBounds},
-};
+use std::{num::NonZeroU16, ops::Range};
 
 use context_error::*;
 
@@ -47,30 +44,41 @@ fn parse_unimod_composition_brick(
 }
 
 impl MolecularFormula {
-    /// Parses Unimod compositions into molecular formulas. As Unimod compositions can have glycans in them these are reported as molecular formula.
-    /// ```text
-    /// H(25) C(8) 13C(7) N 15N(2) O(3)
-    /// H(6) C(4) N(2) dHex
-    /// ```
+    /// Parse a molecular formula from a Unimod formula.
     /// # Errors
-    /// If the formula is not valid according to the above specification, with some help on what is going wrong.
-    /// # Panics
-    /// It panics if the string contains not UTF8 symbols.
-    pub fn from_unimod(
-        value: &str,
-        range: impl RangeBounds<usize>,
-    ) -> Result<Self, BoxedError<'_, BasicKind>> {
+    /// If the formula is not valid according to the Unimod molecular formula format, with some help on what is going wrong.
+    /// ```rust
+    /// use mzcore::prelude::*;
+    /// assert!(MolecularFormula::unimod("H(25) C(8) 13C(7) N 15N(2) O(3)").is_ok());
+    /// assert!(MolecularFormula::unimod("H(6) C(4) N(2) dHex").is_ok());
+    /// assert_eq!(MolecularFormula::unimod("C(1) 13C(1) H(6)"), Ok(molecular_formula!(C 1 [13 C 1] H 6)));
+    ///
+    /// ```
+    pub fn unimod(value: &str) -> Result<Self, BoxedError<'_, BasicKind>> {
+        Self::unimod_inner(&Context::none().lines(0, value), value, 0..value.len())
+    }
+
+    /// This parses a substring of the given string as a Unimod molecular formula definition.
+    /// Additionally, this allows passing a base context to allow to set the line index and source
+    /// and other properties. Note that the base context is assumed to contain the full line at
+    /// line index 0.
+    ///
+    /// # Errors
+    /// It fails when the string is not a valid Unimod molecular formula string.
+    pub fn unimod_inner<'a>(
+        base_context: &Context<'a>,
+        value: &'a str,
+        range: Range<usize>,
+    ) -> Result<Self, BoxedError<'a, BasicKind>> {
         let (mut index, end) = range.bounds(value.len());
-        assert!(value.is_ascii());
 
         let mut formula = Self::default();
 
         let mut isotope = None;
-        let mut last_name_index = -1_isize;
-        let mut last_name = String::new();
+        let mut last_name: Option<(usize, String)> = None;
         while index < end {
-            match value.as_bytes()[index] {
-                b'(' => {
+            match (value.as_bytes()[index], last_name.as_ref()) {
+                (b'(', Some((last_name_i, last_name_s))) => {
                     let length = value
                         .chars()
                         .skip(index + 1)
@@ -83,12 +91,12 @@ impl MolecularFormula {
                                 BasicKind::Error,
                                 "Invalid Unimod chemical formula",
                                 format!("The element amount {}", explain_number_error(&err)),
-                                Context::line(None, value, index + 1, length),
+                                base_context.clone().add_highlight((0, index + 1, length)),
                             )
                         })?;
                     match parse_unimod_composition_brick(
                         value,
-                        last_name_index as usize..last_name_index as usize + last_name.len(),
+                        *last_name_i..last_name_i + last_name_s.len(),
                     )? {
                         Brick::Element(el) => {
                             if let Err(err) = formula.add((el, isotope.take(), num)) {
@@ -96,58 +104,53 @@ impl MolecularFormula {
                                     BasicKind::Error,
                                     "Invalid Unimod chemical formula",
                                     err.reason(),
-                                    Context::line_range(
-                                        None,
-                                        value,
-                                        last_name_index as usize
-                                            ..last_name_index as usize + last_name.len(),
-                                    ),
+                                    base_context.clone().add_highlight((
+                                        0,
+                                        *last_name_i..last_name_i + last_name_s.len(),
+                                    )),
                                 ));
                             }
                         }
                         Brick::Formula(f) => formula += f * num,
                     }
-                    last_name.clear();
-                    last_name_index = -1;
+                    last_name = None;
                     index += length + 2;
                     if value.as_bytes()[index - 1] != b')' {
                         return Err(BoxedError::new(
                             BasicKind::Error,
                             "Invalid Unimod chemical formula",
                             "The amount of an element should be closed by ')'",
-                            Context::line(None, value, index - 1, 1),
+                            base_context.clone().add_highlight((0, index - 1, 1)),
                         ));
                     }
                 }
-                b' ' => {
-                    if !last_name.is_empty() {
-                        match parse_unimod_composition_brick(
-                            value,
-                            last_name_index as usize..last_name_index as usize + last_name.len(),
-                        )? {
-                            Brick::Element(el) => {
-                                if let Err(err) = formula.add((el, isotope.take(), 1)) {
-                                    return Err(BoxedError::new(
-                                        BasicKind::Error,
-                                        "Invalid Unimod chemical formula",
-                                        err.reason(),
-                                        Context::line_range(
-                                            None,
-                                            value,
-                                            last_name_index as usize
-                                                ..last_name_index as usize + last_name.len(),
-                                        ),
-                                    ));
-                                }
+                (b' ', Some((last_name_i, last_name_s))) => {
+                    match parse_unimod_composition_brick(
+                        value,
+                        *last_name_i..last_name_i + last_name_s.len(),
+                    )? {
+                        Brick::Element(el) => {
+                            if let Err(err) = formula.add((el, isotope.take(), 1)) {
+                                return Err(BoxedError::new(
+                                    BasicKind::Error,
+                                    "Invalid Unimod chemical formula",
+                                    err.reason(),
+                                    base_context.clone().add_highlight((
+                                        0,
+                                        *last_name_i..last_name_i + last_name_s.len(),
+                                    )),
+                                ));
                             }
-                            Brick::Formula(f) => formula += f,
                         }
-                        last_name.clear();
-                        last_name_index = -1;
+                        Brick::Formula(f) => formula += f,
                     }
+                    last_name = None;
                     index += 1;
                 }
-                n if n.is_ascii_digit() => {
+                (b' ', None) => {
+                    index += 1;
+                }
+                (n, _) if n.is_ascii_digit() => {
                     let length = value
                         .chars()
                         .skip(index)
@@ -159,16 +162,17 @@ impl MolecularFormula {
                                 BasicKind::Error,
                                 "Invalid Unimod chemical formula",
                                 format!("The isotope {}", explain_number_error(&err)),
-                                Context::line(None, value, index, length),
+                                base_context.clone().add_highlight((0, index, length)),
                             )
                         },
                     )?);
                     index += length;
                 }
-                n if n.is_ascii_alphabetic() => {
-                    last_name.push(n as char);
-                    if last_name_index == -1 {
-                        last_name_index = isize::try_from(index).unwrap();
+                (n, _) if n.is_ascii_alphabetic() => {
+                    if let Some((_, name)) = last_name.as_mut() {
+                        name.push(n as char);
+                    } else {
+                        last_name = Some((index, (n as char).to_string()));
                     }
                     index += 1;
                 }
@@ -177,15 +181,15 @@ impl MolecularFormula {
                         BasicKind::Error,
                         "Invalid Unimod chemical formula",
                         "Unexpected character, use an element or one of the unimod shorthands. Eg: 'H(13) C(12) N O(3)'.",
-                        Context::line(None, value, index, 1),
+                        base_context.clone().add_highlight((0, index, 1)),
                     ));
                 }
             }
         }
-        if !last_name.is_empty() {
+        if let Some((last_name_i, last_name_s)) = last_name {
             match parse_unimod_composition_brick(
                 value,
-                last_name_index as usize..last_name_index as usize + last_name.len(),
+                last_name_i..last_name_i + last_name_s.len(),
             )? {
                 Brick::Element(el) => {
                     if let Err(err) = formula.add((el, isotope.take(), 1)) {
@@ -193,12 +197,9 @@ impl MolecularFormula {
                             BasicKind::Error,
                             "Invalid Unimod chemical formula",
                             err.reason(),
-                            Context::line_range(
-                                None,
-                                value,
-                                last_name_index as usize
-                                    ..last_name_index as usize + last_name.len(),
-                            ),
+                            base_context
+                                .clone()
+                                .add_highlight((0, last_name_i..last_name_i + last_name_s.len())),
                         ));
                     }
                 }

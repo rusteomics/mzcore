@@ -183,7 +183,7 @@ impl GlycanStructure {
     /// Check if this structure contains the given monosaccharide, see [`MonoSaccharide::equivalent`]
     /// for details on how the matching happens. It is possible to only select a small part of this
     /// glycan using the `root_break` and `branch_break` parameters. See
-    /// [`Subtree`](crate::glycan::render::GlycanSelection::Subtree) for more info on how this
+    /// [`Subtree`](crate::glycan::GlycanSelection::Subtree) for more info on how this
     /// selection works. Returns `None` when the root break is invalid.
     pub fn contains(
         &self,

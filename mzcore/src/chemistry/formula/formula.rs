@@ -290,22 +290,6 @@ mod tests {
     }
 
     #[test]
-    fn xlmod() {
-        assert_eq!(
-            MolecularFormula::from_xlmod("C7 D10 H2 N4", ..).unwrap(),
-            molecular_formula!(C 7 [2 H 10] H 2 N 4)
-        );
-        assert_eq!(
-            MolecularFormula::from_xlmod("-C1 -H2 O1", ..).unwrap(),
-            molecular_formula!(C -1 H -2 O 1)
-        );
-        assert_eq!(
-            MolecularFormula::from_xlmod("13C6 H6 O2", ..).unwrap(),
-            molecular_formula!([13 C 6] H 6 O 2)
-        );
-    }
-
-    #[test]
     fn pro_forma_spaces() {
         assert_eq!(
             MolecularFormula::pro_forma::<false, false>("C1[13C1]H6"),
@@ -318,22 +302,6 @@ mod tests {
         assert_eq!(
             MolecularFormula::pro_forma::<false, true>("(empty)"),
             MolecularFormula::pro_forma::<false, true>("H0")
-        );
-    }
-
-    #[test]
-    fn unimod() {
-        assert_eq!(
-            MolecularFormula::from_unimod("C(1) 13C(1) H(6)", ..),
-            Ok(molecular_formula!(C 1 [13 C 1] H 6))
-        );
-        assert_eq!(
-            MolecularFormula::from_unimod("H(25) C(8) 13C(7) N 15N(2) O(3)", ..),
-            Ok(molecular_formula!(H 25 C 8 [13 C 7] N 1 [15 N 2] O 3))
-        );
-        assert_eq!(
-            MolecularFormula::from_unimod("H(6) C(4) N(2) dHex", ..),
-            Ok(molecular_formula!(C 10 H 16 N 2 O 4))
         );
     }
 }

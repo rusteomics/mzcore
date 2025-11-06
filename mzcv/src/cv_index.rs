@@ -37,6 +37,16 @@ pub struct CVIndex<CV: CVSource> {
 }
 
 impl<CV: CVSource> CVIndex<CV> {
+    /// See if this CV does not contain any elements
+    pub const fn is_empty(&self) -> bool {
+        self.data.is_empty()
+    }
+
+    /// Get the number of data elements in this CV
+    pub const fn len(&self) -> usize {
+        self.data.len()
+    }
+
     /// Load a data item from index
     pub fn get_by_index(&self, index: &<CV::Data as CVData>::Index) -> Option<Arc<CV::Data>> {
         self.index.get(index).cloned()

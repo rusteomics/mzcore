@@ -25,7 +25,6 @@ itertools = { workspace = true }
 ndarray = { workspace = true, optional = true }
 ordered-float = { workspace = true }
 probability = { workspace = true, optional = true }
-rand = { workspace = true, optional = true }
 regex = { workspace = true }
 roxmltree = { workspace = true }
 serde = { workspace = true }
@@ -44,9 +43,9 @@ directories = { workspace = true }
 
 [features]
 default = []
-isotopes = ["probability", "ndarray"]
+isotopes = ["dep:probability", "dep:ndarray"]
 glycan-render = []
-glycan-render-bitmap = ["zeno", "swash", "glycan-render"]
+glycan-render-bitmap = ["dep:zeno", "dep:swash", "glycan-render"]
 search-index = ["mzcv/search-index"]
 http = ["mzcv/http"]
 internal-no-data = []
@@ -54,3 +53,7 @@ coloured-errors = ["context_error/colored"]
 
 [lints]
 workspace = true
+
+[package.metadata.docs.rs]
+cargo-args = ["-Zunstable-options", "-Zrustdoc-scrape-examples"]
+features = ["isotopes", "glycan-render-bitmap"]

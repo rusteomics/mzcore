@@ -11,10 +11,23 @@ use crate::{
 /// The shared type for contact between the build and compile steps
 pub type CustomDatabase = Vec<(Option<usize>, String, SimpleModification)>;
 
+/// Custom modifications
+///
+/// These can be used to handle `C:modification` and `Custom:0001` modifications in ProForma
+/// definitions. As these are custom made by the user there is no way of automatically updating
+/// from the internet. To parse these files the `custom_modifications.json` file is parsed with
+/// [`CustomDatabase::from_json_value`] which generates the modifications.
+///
+/// To update the modifications use [`mzcv::CVIndex::update`] or [`mzcv::CVIndex::update_from_path`].
+/// Both automatically write the cache and the original JSON file.
+#[allow(missing_copy_implementations, missing_debug_implementations)]
 pub struct Custom {}
 
 impl CVSource for Custom {
+    const AUTOMATICALLY_WRITE_UNCOMPRESSED: bool = true;
+
     type Data = SimpleModificationInner;
+
     fn cv_name() -> &'static str {
         "CUSTOM"
     }
@@ -36,9 +49,9 @@ impl CVSource for Custom {
         mut reader: impl Iterator<Item = HashBufReader<Box<dyn std::io::Read>, impl sha2::Digest>>,
     ) -> Result<(CVVersion, impl Iterator<Item = Self::Data>), Vec<BoxedError<'static, CVError>>>
     {
-        let reader = reader.next().unwrap();
+        let mut reader = reader.next().unwrap();
 
-        let json: serde_json::Value = serde_json::de::from_reader(reader).map_err(|err| {
+        let json: serde_json::Value = serde_json::de::from_reader(&mut reader).map_err(|err| {
             vec![BoxedError::new(
                 CVError::FileCouldNotBeParsed,
                 "Could not parse custom modifications file",
@@ -52,12 +65,37 @@ impl CVSource for Custom {
 
         Ok((
             CVVersion {
-                hash: Vec::new(),
+                hash: reader.hash().to_vec(),
                 last_updated: None,
                 version: None,
             },
             db.into_iter()
                 .map(|(_, _, s)| std::sync::Arc::unwrap_or_clone(s)),
         ))
+    }
+
+    fn write_uncompressed<W: std::io::Write>(
+        writer: W,
+        _version: &CVVersion,
+        data: impl Iterator<Item = std::sync::Arc<Self::Data>>,
+    ) -> Result<(), BoxedError<'static, CVError>> {
+        let value = data
+            .map(|m| {
+                (
+                    m.description().and_then(|i| i.id),
+                    m.description()
+                        .map_or_else(|| "UNNAMED".to_string(), |i| i.name.clone()),
+                    m,
+                )
+            })
+            .collect::<Vec<_>>();
+        serde_json::to_writer_pretty(writer, &value).map_err(|e| {
+            BoxedError::new(
+                CVError::FileCouldNotBeMade,
+                "Could not save custom modifications file",
+                e.to_string(),
+                Context::default(),
+            )
+        })
     }
 }

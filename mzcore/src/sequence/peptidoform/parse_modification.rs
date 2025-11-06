@@ -207,7 +207,7 @@ fn parse_single_modification<'error>(
                         vec![basic_error.clone()
                             .long_description("Unimod accession number should be a number")]
                     })?;
-                    ontologies.find_id(&[Ontology::Unimod], id)
+                    ontologies.unimod().get_by_index(&id)
                         .map(Some)
                         .ok_or_else(|| {
                             vec![basic_error.clone().long_description(
@@ -220,7 +220,7 @@ fn parse_single_modification<'error>(
                         vec![basic_error.clone()
                             .long_description("PSI-MOD accession number should be a number")]
                     })?;
-                    ontologies.find_id(&[Ontology::Psimod], id)
+                    ontologies.psimod().get_by_index(&id)
                         .map(Some)
                         .ok_or_else(|| {
                             vec![basic_error.clone().long_description(
@@ -234,7 +234,7 @@ fn parse_single_modification<'error>(
                             "RESID accession number should be a number prefixed with 'AA'",
                         )]
                     })?;
-                    ontologies.find_id(&[Ontology::Resid], id)
+                    ontologies.resid().get_by_index(&id)
                         .map(Some)
                         .ok_or_else(|| {
                             vec![basic_error.clone().long_description(
@@ -247,7 +247,7 @@ fn parse_single_modification<'error>(
                         vec![basic_error.clone()
                             .long_description("XLMOD accession number should be a number")]
                     })?;
-                    ontologies.find_id(&[Ontology::Xlmod], id)
+                    ontologies.xlmod().get_by_index(&id)
                         .map(Some)
                         .ok_or_else(|| {
                             vec![basic_error.clone().long_description(
@@ -260,7 +260,7 @@ fn parse_single_modification<'error>(
                         vec![basic_error.clone()
                             .long_description("Custom accession number should be a number")]
                     })?;
-                    ontologies.find_id(&[Ontology::Custom], id)
+                    ontologies.custom().get_by_index(&id)
                     .map(Some)
                     .ok_or_else(|| {
                         vec![basic_error.clone().long_description(
@@ -268,7 +268,7 @@ fn parse_single_modification<'error>(
                             )]
                     })
                 }
-                ("u", tail) => ontologies.find_name(&[Ontology::Unimod], tail)
+                ("u", tail) => ontologies.get_by_name(&[Ontology::Unimod], tail)
                     .ok_or_else(|| numerical_mod(tail))
                     .flat_err()
                     .map(Some)
@@ -276,10 +276,10 @@ fn parse_single_modification<'error>(
                         vec![
                             basic_error.clone().long_description(
                                 "The modification could not be found in Unimod",
-                            ).suggestions(ontologies.find_closest(&[Ontology::Unimod], tail).into_iter().map(|m|m.to_string()))
+                            ).suggestions(ontologies.search(&[Ontology::Unimod], tail).into_iter().map(|m|m.to_string()))
                         ]
                     }),
-                ("m", tail) => ontologies.find_name(&[Ontology::Psimod], tail)
+                ("m", tail) => ontologies.get_by_name(&[Ontology::Psimod], tail)
                     .ok_or_else(|| numerical_mod(tail))
                     .flat_err()
                     .map(Some)
@@ -287,10 +287,10 @@ fn parse_single_modification<'error>(
                         vec![
                             basic_error.clone().long_description(
                                 "The modification could not be found in PSI-MOD",
-                            ).suggestions(ontologies.find_closest(&[Ontology::Psimod], tail).into_iter().map(|m|m.to_string()))
+                            ).suggestions(ontologies.search(&[Ontology::Psimod], tail).into_iter().map(|m|m.to_string()))
                         ]
                     }),
-                ("r", tail) => ontologies.find_name(&[Ontology::Resid], tail)
+                ("r", tail) => ontologies.get_by_name(&[Ontology::Resid], tail)
                     .ok_or_else(|| numerical_mod(tail))
                     .flat_err()
                     .map(Some)
@@ -298,10 +298,10 @@ fn parse_single_modification<'error>(
                         vec![
                             basic_error.clone().long_description(
                                 "The modification could not be found in RESID",
-                            ).suggestions(ontologies.find_closest(&[Ontology::Resid], tail).into_iter().map(|m|m.to_string()))
+                            ).suggestions(ontologies.search(&[Ontology::Resid], tail).into_iter().map(|m|m.to_string()))
                         ]
                     }),
-                ("x", tail) => ontologies.find_name(&[Ontology::Xlmod], tail)
+                ("x", tail) => ontologies.get_by_name(&[Ontology::Xlmod], tail)
                     .ok_or_else(|| numerical_mod(tail))
                     .flat_err()
                     .map(Some)
@@ -309,7 +309,7 @@ fn parse_single_modification<'error>(
                         vec![
                             basic_error.clone().long_description(
                                 "The modification could not be found in XL-MOD",
-                            ).suggestions(ontologies.find_closest(&[Ontology::Xlmod], tail).into_iter().map(|m|m.to_string()))
+                            ).suggestions(ontologies.search(&[Ontology::Xlmod], tail).into_iter().map(|m|m.to_string()))
                         ]
                     }),
                 ("c", tail) => ontologies.custom().get_by_name(tail)
@@ -318,7 +318,7 @@ fn parse_single_modification<'error>(
                        vec![
                             basic_error.clone().long_description(
                                 "The modification could not be found in Custom",
-                            ).suggestions(ontologies.find_closest(&[Ontology::Custom], tail).into_iter().map(|m|m.to_string()))
+                            ).suggestions(ontologies.search(&[Ontology::Custom], tail).into_iter().map(|m|m.to_string()))
                         ]
                     }),
                 ("gno" | "g", tail) => ontologies.gnome().get_by_name(tail)
@@ -383,7 +383,7 @@ fn parse_single_modification<'error>(
                         Err(e) => Err(vec![e]),
                     }
                 }
-                (_, _) => ontologies.find_name(&[Ontology::Unimod, Ontology::Psimod], full.0)
+                (_, _) => ontologies.get_by_name(&[Ontology::Unimod, Ontology::Psimod], full.0)
                     .map(Some)
                     .ok_or_else(|| {
                         vec![
@@ -391,7 +391,7 @@ fn parse_single_modification<'error>(
                     .clone()
                     .add_highlight((0, offset + full.1, full.2))).long_description(
                                 "The modification could not be found in Unimod or PSI-MOD",
-                            ).suggestions(ontologies.find_closest(&[Ontology::Unimod,
+                            ).suggestions(ontologies.search(&[Ontology::Unimod,
                                 Ontology::Psimod,
                                 Ontology::Gnome,
                                 Ontology::Xlmod,
@@ -403,7 +403,7 @@ fn parse_single_modification<'error>(
             Ok(None)
         } else {
             ontologies
-                .find_name(&[Ontology::Unimod, Ontology::Psimod], full.0)
+                .get_by_name(&[Ontology::Unimod, Ontology::Psimod], full.0)
                 .or_else(|| numerical_mod(full.0).ok())
                 .map(Some)
                 .ok_or_else(|| {
@@ -418,7 +418,7 @@ fn parse_single_modification<'error>(
                         )
                         .suggestions(
                             ontologies
-                                .find_closest(
+                                .search(
                                     &[
                                         Ontology::Unimod,
                                         Ontology::Psimod,

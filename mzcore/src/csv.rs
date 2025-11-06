@@ -21,9 +21,13 @@ use crate::helper_functions::check_extension;
 /// A single line in a CSV file
 #[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
 pub struct CsvLine {
+    /// The 0 based line index
     pub line_index: usize,
+    /// The entire line
     pub line: String,
+    /// The fields (header, range in the line)
     pub fields: Vec<(Arc<String>, Range<usize>)>,
+    /// The file name (if known)
     pub file: Option<Arc<Box<str>>>,
 }
 

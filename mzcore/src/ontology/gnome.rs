@@ -1,5 +1,5 @@
 //! Code to handle the GNOme ontology
-use std::{collections::HashMap, path::Path};
+use std::collections::HashMap;
 
 use context_error::{
     BoxedError, CreateError, FullErrorContent, StaticErrorContent, combine_errors,
@@ -11,12 +11,13 @@ use mzcv::{CVError, CVFile, CVSource, CVVersion, HashBufReader, OboOntology, Obo
 use crate::{
     glycan::{GlycanStructure, MonoSaccharide},
     ontology::Ontology,
-    sequence::{
-        GnoComposition, GnoSubsumption, ModificationId, PlacementRule, Position,
-        SimpleModificationInner,
-    },
+    sequence::{GnoComposition, GnoSubsumption, ModificationId, SimpleModificationInner},
 };
 
+/// GNOme modifications
+///
+/// These integrate the GNOme ontology with the structures from glycosmos.
+#[allow(missing_copy_implementations, missing_debug_implementations)]
 pub struct Gnome {}
 
 impl CVSource for Gnome {
@@ -165,6 +166,9 @@ mod gnome_terms {
 use gnome_terms::*;
 use itertools::Itertools;
 
+/// Get the GNO Subsumption level.
+/// # Errors
+/// If this is not a known level.
 fn gno_subsumption_from_str(s: &str) -> Result<GnoSubsumption, ()> {
     match s {
         SUBSUMPTION_MOLECULAR_WEIGHT => Ok(GnoSubsumption::AverageWeight),
@@ -176,32 +180,9 @@ fn gno_subsumption_from_str(s: &str) -> Result<GnoSubsumption, ()> {
     }
 }
 
-fn read_placement_rules(bricks: &[String]) -> Vec<PlacementRule> {
-    if bricks.is_empty() {
-        vec![PlacementRule::Anywhere]
-    } else {
-        bricks
-            .iter()
-            .filter_map(|brick| {
-                if brick.len() == 1 {
-                    Some(PlacementRule::AminoAcid(
-                        vec![brick.try_into().unwrap()],
-                        Position::Anywhere,
-                    ))
-                } else if *brick == "Protein N-term" {
-                    Some(PlacementRule::Terminal(Position::ProteinNTerm))
-                } else if *brick == "Protein C-term" {
-                    Some(PlacementRule::Terminal(Position::ProteinCTerm))
-                } else if ["Thy"].contains(&brick.as_str()) {
-                    None
-                } else {
-                    panic!("Invalid placement rule: '{brick}'")
-                }
-            })
-            .collect()
-    }
-}
-
+/// Parse the GNOme ontology .obo file
+/// # Errors
+/// If the file is not valid.
 fn parse_gnome(obo: OboOntology) -> HashMap<String, GNOmeModification> {
     let mut mods = HashMap::new();
     let mut errors = Vec::new();
@@ -308,6 +289,9 @@ struct GlycosmosList {
     glycomeatlas: Vec<(String, Vec<(String, String)>)>,
 }
 
+/// Parse the glycosmos glycan structures .csv file
+/// # Panics
+/// If the file is not valid.
 fn parse_gnome_structures(
     file: HashBufReader<Box<dyn std::io::Read>, impl sha2::Digest>,
 ) -> HashMap<String, GlycosmosList> {

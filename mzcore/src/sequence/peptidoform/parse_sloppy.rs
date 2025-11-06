@@ -353,7 +353,7 @@ impl Modification {
                     "Modifications have to be defined as a number, Unimod, or PSI-MOD name, if this is a custom modification make sure to add it to the database",
                     full_context,
                 ).suggestions(
-                    ontologies.find_closest(
+                    ontologies.search(
                         &[Ontology::Unimod, Ontology::Psimod],
                         &name.trim().to_lowercase()).iter().map(ToString::to_string))
             })

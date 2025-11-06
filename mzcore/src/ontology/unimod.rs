@@ -11,11 +11,13 @@ use crate::{
     chemistry::{DiagnosticIon, MolecularFormula, NeutralLoss},
     ontology::{
         Ontology,
-        ontology_modification::{ModData, OntologyModification, position_from_str},
+        ontology_modification::{ModData, OntologyModification},
     },
     sequence::{PlacementRule, SimpleModificationInner},
 };
 
+/// Unimod modifications
+#[allow(missing_copy_implementations, missing_debug_implementations)]
 pub struct Unimod {}
 
 impl CVSource for Unimod {
@@ -128,7 +130,11 @@ fn parse_mod(node: &Node) -> Result<OntologyModification, String> {
     for child in node.children() {
         if child.has_tag_name("specificity") {
             let site = child.attribute("site").unwrap(); // Check if there is a way to recognise linkers
-            let position = position_from_str(child.attribute("position").unwrap())?;
+            let position = child
+                .attribute("position")
+                .map_or(Ok(crate::sequence::Position::Anywhere), |p| {
+                    p.parse().map_err(|()| format!("Invalid position '{p}'"))
+                })?;
             let rule = match (site, position) {
                 ("C-term" | "N-term", pos) => PlacementRule::Terminal(pos),
                 (aa, pos) => PlacementRule::AminoAcid(
@@ -146,7 +152,7 @@ fn parse_mod(node: &Node) -> Result<OntologyModification, String> {
                 .map(|loss| {
                     NeutralLoss::Loss(
                         1,
-                        MolecularFormula::from_unimod(loss.attribute("composition").unwrap(), ..)
+                        MolecularFormula::unimod(loss.attribute("composition").unwrap())
                             .map_err(|e| e.to_string())
                             .expect("Invalid composition in neutral loss"),
                     )
@@ -154,18 +160,17 @@ fn parse_mod(node: &Node) -> Result<OntologyModification, String> {
                 .collect();
             rules.push((rule, losses));
         }
-        if child.has_tag_name("delta") {
-            if let Some(composition) = child.attribute("composition") {
-                formula =
-                    MolecularFormula::from_unimod(composition, ..).map_err(|e| e.to_string())?;
-            }
+        if child.has_tag_name("delta")
+            && let Some(composition) = child.attribute("composition")
+        {
+            formula = MolecularFormula::unimod(composition).map_err(|e| e.to_string())?;
         }
-        if child.has_tag_name("Ignore") {
-            if let Some(composition) = child.attribute("composition") {
-                diagnostics.push(DiagnosticIon(
-                    MolecularFormula::from_unimod(composition, ..).map_err(|e| e.to_string())?,
-                ));
-            }
+        if child.has_tag_name("Ignore")
+            && let Some(composition) = child.attribute("composition")
+        {
+            diagnostics.push(DiagnosticIon(
+                MolecularFormula::unimod(composition).map_err(|e| e.to_string())?,
+            ));
         }
         if child.has_tag_name("misc_notes") {
             description = child

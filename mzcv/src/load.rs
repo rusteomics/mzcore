@@ -46,11 +46,19 @@ impl<CV: CVSource> CVIndex<CV> {
         Ok(result)
     }
 
-    /// Store this index in the standard cache.
+    /// Store this index in the standard cache. If the CV has
+    /// [`CV::AUTOMATICALLY_WRITE_UNCOMPRESSED`] set to true this also writes the standard file.
     /// # Errors
     /// If the file could not be written to.
     fn save_to_cache(&self) -> Result<(), BoxedError<'static, CVError>> {
-        self.save_to_cache_at(&CV::default_stem().with_extension("bin"))
+        self.save_to_cache_at(&CV::default_stem().with_extension("bin"))?;
+        if CV::AUTOMATICALLY_WRITE_UNCOMPRESSED {
+            self.save_to_file_at(
+                &CV::default_stem()
+                    .with_extension(CV::files().first().map_or("dat", |f| f.extension)),
+            )?;
+        }
+        Ok(())
     }
 
     /// Store this index at a certain location.
@@ -83,6 +91,22 @@ impl<CV: CVSource> CVIndex<CV> {
             )
         })?;
         Ok(())
+    }
+
+    /// Store the uncompressed file at a certain location.
+    /// # Errors
+    /// If the file could not be written to.
+    pub fn save_to_file_at(&self, path: &Path) -> Result<(), BoxedError<'static, CVError>> {
+        let file = std::fs::File::create(path).map_err(|e| {
+            BoxedError::new(
+                CVError::FileCouldNotBeOpenend,
+                "CV file could not be openend",
+                e.to_string(),
+                Context::none().source(path.to_string_lossy()).to_owned(),
+            )
+        })?;
+        let writer = BufWriter::new(file);
+        CV::write_uncompressed(writer, self.version(), self.data())
     }
 
     /// Initialise the data the first successful source from the list is returned:
@@ -148,6 +172,19 @@ impl<CV: CVSource> CVIndex<CV> {
         self.save_to_cache()
     }
 
+    /// Update the CV based on the given data, empties the CV before replacing all data with the new data.
+    /// This does not store the updated data to the disk, which might be useful for tests but otherwise
+    /// [`Self::update`] should be used.
+    /// # Errors
+    /// If the cache could not be saved to disk.
+    pub fn update_do_not_save_to_disk(
+        &mut self,
+        version: CVVersion,
+        data: impl IntoIterator<Item = Arc<CV::Data>>,
+    ) {
+        self.update_skip_rebuilding_cache(data, version);
+    }
+
     /// Update the CV from the default path (default name + default extension) or the given path.
     /// If no overwrite path was given this reads the default gzipped path or if that does not
     /// exist the default path. It will detect `.gz` on the overwrite path and do decompression on
@@ -171,16 +208,16 @@ impl<CV: CVSource> CVIndex<CV> {
         overwrite_path: impl IntoIterator<Item = Option<&'a Path>>,
         remove_original: bool,
     ) -> Result<(), BoxedError<'static, CVError>> {
-        let stem = CV::default_stem();
-        type PATHS<'b> = (
+        type Paths<'b> = (
             bool,
             std::path::PathBuf,
             std::path::PathBuf,
             Option<&'b Path>,
         );
-        let mut readers: Vec<(
+        let stem = CV::default_stem();
+        let readers: Vec<(
             HashBufReader<Box<dyn std::io::Read>, sha2::Sha256>,
-            PATHS<'a>,
+            Paths<'a>,
         )> = CV::files()
             .iter()
             .zip(overwrite_path.into_iter().chain(std::iter::repeat(None)))
