@@ -16,9 +16,6 @@ pub mod ontology;
 pub mod parse_json;
 /// Contains all things related to tolerances and structures to handle multiple mass/formula options.
 pub mod quantities;
-#[cfg(feature = "rand")]
-/// Only available with features `rand`.
-mod rand;
 /// Contains all things related to sequences, amongst others amino acids and peptidoforms.
 pub mod sequence;
 pub mod system;

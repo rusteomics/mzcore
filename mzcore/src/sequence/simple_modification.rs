@@ -630,7 +630,7 @@ impl ParseJson for SimpleModificationInner {
 #[allow(clippy::missing_panics_doc)]
 mod tests {
     use super::*;
-    use crate::{molecular_formula, ontology::Ontologies};
+    use crate::molecular_formula;
 
     #[test]
     fn modification_masses() {

@@ -69,7 +69,7 @@ impl MolecularFormula {
                     index += len + 1;
                 }
                 (b'-' | b'0'..=b'9', Some(ele)) => {
-                    let length = value[index..=end]
+                    let length = value[index..end]
                         .char_indices()
                         .take_while(|(_, c)| c.is_ascii_digit() || *c == '-')
                         .last()

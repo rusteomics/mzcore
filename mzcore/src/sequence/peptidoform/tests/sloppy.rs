@@ -1,10 +1,8 @@
 use std::sync::Arc;
 
-use mzcv::CVVersion;
-
 use crate::{
     molecular_formula,
-    ontology::{Ontologies, Ontology},
+    ontology::Ontology,
     parse_sloppy_test,
     sequence::{
         Modification, ModificationId, Peptidoform, SemiAmbiguous, SimpleModificationInner,

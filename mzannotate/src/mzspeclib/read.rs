@@ -10,7 +10,7 @@ use context_error::{BoxedError, Context, CreateError, ErrorKind, FullErrorConten
 use indexmap::IndexMap;
 use itertools::Itertools;
 use mzcore::{
-    ontology::{CustomDatabase, Ontologies},
+    ontology::Ontologies,
     prelude::*,
     system::{MassOverCharge, isize::Charge},
 };
@@ -92,6 +92,7 @@ impl ErrorKind for MzSpecLibErrorKind {
 }
 
 /// The state for a parser for mzSpecLib.txt files
+#[derive(Debug)]
 pub struct MzSpecLibTextParser<'ontologies, Reader: Read> {
     inner: Reader,
     header: LibraryHeader,

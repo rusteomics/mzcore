@@ -16,11 +16,12 @@ use crate::sequence::{AminoAcid, SequenceElement};
 ///
 /// ## Basic digestion with Trypsin
 /// ```rust
-/// # use rustyms::prelude::*;
-/// # use rustyms::sequence::known_proteases;
+/// # use mzcore::prelude::*;
+/// # use mzcore::sequence::known_proteases;
+/// # let ontologies = &mzcore::ontology::STATIC_ONTOLOGIES;
 /// // Define a protease and sequence to digest
 /// let trypsin = &known_proteases::TRYPSIN;
-/// let sequence = Peptidoform::pro_forma("SIADIRGGKSLAIEGCRTKM", None).unwrap().into_linear().unwrap();
+/// let sequence = Peptidoform::pro_forma("SIADIRGGKSLAIEGCRTKM", ontologies).unwrap().0.into_linear().unwrap();
 ///
 /// // Run an in-silico digest with 0 missed cleavages and only allow peptides ranging from 4 to 40 amino acids long
 /// let digest = sequence.digest(trypsin, 0, 4..40);
@@ -31,11 +32,12 @@ use crate::sequence::{AminoAcid, SequenceElement};
 ///
 /// ## Finding cut sites in a sequence
 /// ```rust
-/// # use rustyms::prelude::*;
-/// # use rustyms::sequence::known_proteases;
+/// # use mzcore::prelude::*;
+/// # use mzcore::sequence::known_proteases;
+/// # let ontologies = &mzcore::ontology::STATIC_ONTOLOGIES;
 /// // Define a protease and sequence to digest
 /// let trypsin = &known_proteases::TRYPSIN;
-/// let sequence = Peptidoform::pro_forma("SIADIRGRKM", None).unwrap().into_linear().unwrap();
+/// let sequence = Peptidoform::pro_forma("SIADIRGRKM", ontologies).unwrap().0.into_linear().unwrap();
 ///
 /// // Get all locations where trypsin would cut
 /// let cut_sites = trypsin.match_locations(sequence.sequence());
@@ -45,10 +47,11 @@ use crate::sequence::{AminoAcid, SequenceElement};
 ///
 /// ## Using different proteases
 /// ```rust
-/// # use rustyms::prelude::*;
-/// # use rustyms::sequence::known_proteases;
+/// # use mzcore::prelude::*;
+/// # use mzcore::sequence::known_proteases;
+/// # let ontologies = &mzcore::ontology::STATIC_ONTOLOGIES;
 /// // Define a sequence to digest
-/// let sequence = Peptidoform::pro_forma("FAREDKPGLF", None).unwrap().into_linear().unwrap();
+/// let sequence = Peptidoform::pro_forma("FAREDKPGLF", ontologies).unwrap().0.into_linear().unwrap();
 ///
 /// // Compare different digestion patterns
 /// let gluc_digest = sequence.digest(&known_proteases::GLUC, 0, 4..40);
@@ -60,12 +63,13 @@ use crate::sequence::{AminoAcid, SequenceElement};
 ///
 /// ## Creating a custom protease
 /// ```rust
-/// # use rustyms::prelude::*;
+/// # use mzcore::prelude::*;
+/// # let ontologies = &mzcore::ontology::STATIC_ONTOLOGIES;
 /// // Define a custom protease that cuts after Histidine (H)
 /// let his_protease = Protease::c_terminal_of(vec![AminoAcid::Histidine]);
 ///
 /// // Test it on a sequence
-/// let sequence = Peptidoform::pro_forma("AAHFGHKLM", None).unwrap().into_linear().unwrap();
+/// let sequence = Peptidoform::pro_forma("AAHFGHKLM", ontologies).unwrap().0.into_linear().unwrap();
 /// let digest = sequence.digest(&his_protease, 0, 1..40);
 ///
 /// assert_eq!(digest.len(), 3);
@@ -76,11 +80,12 @@ use crate::sequence::{AminoAcid, SequenceElement};
 ///
 /// ## Digestion with missed cleavages
 /// ```rust
-/// # use rustyms::prelude::*;
-/// # use rustyms::sequence::known_proteases;
+/// # use mzcore::prelude::*;
+/// # use mzcore::sequence::known_proteases;
+/// # let ontologies = &mzcore::ontology::STATIC_ONTOLOGIES;
 /// // Define a protease and sequence to digest
-/// let trypsin = &known_proteases::TRYPSIN;
-/// let sequence = Peptidoform::pro_forma("AARKFGKPLM", None).unwrap().into_linear().unwrap();
+/// let trypsin = &known_proteases::TRYPSIN_P;
+/// let sequence = Peptidoform::pro_forma("AARKFGKPLM", ontologies).unwrap().0.into_linear().unwrap();
 ///
 /// // With 0 missed cleavages
 /// let digest_0 = sequence.digest(trypsin, 0, 1..40);
@@ -93,8 +98,9 @@ use crate::sequence::{AminoAcid, SequenceElement};
 ///
 /// ## Digestion with a complex custom protease
 /// ```rust
-/// # use rustyms::prelude::*;
-/// # use rustyms::sequence::known_proteases;
+/// # use mzcore::prelude::*;
+/// # use mzcore::sequence::known_proteases;
+/// # let ontologies = &mzcore::ontology::STATIC_ONTOLOGIES;
 /// // A protease that:
 /// // 1. Requires two phenylalanine residues followed by any amino acid before the cut site (FF*)
 /// // 2. And requires any amino acid except proline followed by either histidine or tryptophan after the cut site (*H/W)
@@ -115,10 +121,8 @@ use crate::sequence::{AminoAcid, SequenceElement};
 /// // - Position 18: FF(G)-(V)H - valid cut site
 /// // - Position 26: FF(A)-(P)H - invalid due to proline after cut site
 /// // - Position 34: FF(T)-(S)W - valid cut site
-/// let long_sequence = Peptidoform::pro_forma("SLDARETFFMAHKDGFFGVHPDTFFAPHPHYFFTSWNVPG", None)
-///     .unwrap()
-///     .into_linear()
-///     .unwrap();
+/// let long_sequence = Peptidoform::pro_forma("SLDARETFFMAHKDGFFGVHPDTFFAPHPHYFFTSWNVPG", ontologies)
+///     .unwrap().0.into_linear().unwrap();
 ///
 /// // Find all cut sites
 /// let cut_sites = custom_protease.match_locations(long_sequence.sequence());
@@ -161,8 +165,9 @@ pub struct Protease {
 impl Protease {
     /// Define a protease that cuts exactly between the specified sequences.
     /// ```rust
-    /// # use rustyms::prelude::*;
+    /// # use mzcore::prelude::*;
     /// # let cetuximab = "QVQLKQSGPGLVQPSQSLSITCTVSGFSLTNYGVHWVRQSPGKGLEWLGVIWSGGNTDYNTPFTSRLSINKDNSKSQVFFKMNSLQSNDTAIYYCARALTYYDYEFAYWGQGTLVTVSAASTKGPSVFPLAPSSKSTSGGTAALGCLVKDYFPEPVTVSWNSGALTSGVHTFPAVLQSSGLYSLSSVVTVPSSSLGTQTYICNVNHKPSNTKVDKRVEPKSCDKTHTCPPCPAPELLGGPSVFLFPPKPKDTLMISRTPEVTCVVVDVSHEDPEVKFNWYVDGVEVHNAKTKPREEQYNSTYRVVSVLTVLHQDWLNGKEYKCKVSNKALPAPIEKTISKAKGQPREPQVYTLPPSREEMTKNQVSLTCLVKGFYPSDIAVEWESNGQPENNYKTTPPVLDSDGSFFLYSKLTVDKSRWQQGNVFSCSVMHEALHNHYTQKSLSLSPGK";
+    /// # let ontologies = &mzcore::ontology::STATIC_ONTOLOGIES;
     /// // FabDELLO is a protease designed to create Fabs from antibodies
     /// // Define the cut site for FabDello "KSCDK / THTCPPCP"
     /// let fab_dello = Protease::between_stretches(
@@ -170,7 +175,7 @@ impl Protease {
     ///     &"THTCPPCP".chars().map(|c| AminoAcid::try_from(c).unwrap()).collect::<Vec<_>>());
     ///
     /// // Get the sequence of the antibody Cetuximab
-    /// let sequence = Peptidoform::pro_forma(cetuximab, None).unwrap().into_linear().unwrap();
+    /// let sequence = Peptidoform::pro_forma(cetuximab, ontologies).unwrap().0.into_linear().unwrap();
     ///
     /// // Run an in-silico digest with 0 missed cleavages
     /// let digest = sequence.digest(&fab_dello, 0, ..);
@@ -186,7 +191,8 @@ impl Protease {
 
     /// Define a protease that cuts exactly between the specified options before the site and the specified options after the site.
     /// ```rust
-    /// # use rustyms::prelude::*;
+    /// # use mzcore::prelude::*;
+    /// # let ontologies = &mzcore::ontology::STATIC_ONTOLOGIES;
     /// // Define a protease and sequence to digest
     /// let chymotrypsin = Protease::between_options(
     ///        vec![
@@ -196,7 +202,7 @@ impl Protease {
     ///        ],
     ///        Protease::get_exclusive(&[AminoAcid::Proline]),
     ///    );
-    /// let sequence = Peptidoform::pro_forma("AFWYPLGF", None).unwrap().into_linear().unwrap();
+    /// let sequence = Peptidoform::pro_forma("AFWYPLGF", ontologies).unwrap().0.into_linear().unwrap();
     ///
     /// // Run an in-silico digest with 0 missed cleavages and only allow peptides ranging from 4 to 40 amino acids long
     /// let digest = sequence.digest(&chymotrypsin, 0, 4..40);
@@ -325,10 +331,7 @@ pub mod known_proteases {
 #[cfg(test)]
 #[allow(clippy::missing_panics_doc)]
 mod tests {
-    use crate::{
-        ontology::Ontologies,
-        sequence::{Linear, Peptidoform},
-    };
+    use crate::sequence::{Linear, Peptidoform};
 
     use super::*;
 

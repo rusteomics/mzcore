@@ -668,8 +668,7 @@ pub(super) static GLYCAN_LOSSES: LazyLock<Vec<(MonoSaccharide, bool, Vec<Neutral
                         GlycanSubstituent::Acetyl,
                         GlycanSubstituent::Acid,
                     ],
-                )
-                .with_name("NeuAc"),
+                ),
                 false,
                 vec![NeutralLoss::Loss(1, molecular_formula!(H 2 O 1))],
             ),
@@ -681,8 +680,7 @@ pub(super) static GLYCAN_LOSSES: LazyLock<Vec<(MonoSaccharide, bool, Vec<Neutral
                         GlycanSubstituent::Glycolyl,
                         GlycanSubstituent::Acid,
                     ],
-                )
-                .with_name("NeuGc"),
+                ),
                 false,
                 vec![NeutralLoss::Loss(1, molecular_formula!(H 2 O 1))],
             ),

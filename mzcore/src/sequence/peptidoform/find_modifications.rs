@@ -1,4 +1,4 @@
-use std::{collections::HashMap, sync::Arc};
+use std::collections::HashMap;
 
 use itertools::Itertools;
 
@@ -88,7 +88,7 @@ pub fn modification_search_glycan(
 
 /// Search for named modifications based on mass and/or chemical formula modifications in a peptide.
 /// The struct is intended to be reused if multiple peptides need the same replacement strategy.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct PeptideModificationSearch<'ontologies> {
     /// If true forces the closest if there are multiple modifications within tolerance, if there are two as close it will still not provide any name
     force_closest: bool,
@@ -358,7 +358,7 @@ impl<'ontologies> PeptideModificationSearch<'ontologies> {
                         self.force_closest,
                         &self.modifications,
                         &self.selection,
-                        self.ontologies.as_deref(),
+                        self.ontologies,
                         position,
                         aminoacid,
                         in_place,

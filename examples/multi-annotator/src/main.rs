@@ -26,11 +26,9 @@ use mzcore::{
     chemistry::MassMode,
     csv::write_csv,
     glycan::MonoSaccharide,
+    ontology::Ontologies,
     quantities::Tolerance,
-    sequence::{
-        AminoAcid, GnoComposition, SequencePosition, SimpleModificationInner,
-        parse_custom_modifications,
-    },
+    sequence::{AminoAcid, GnoComposition, SequencePosition, SimpleModificationInner},
     system::MassOverCharge,
 };
 use mzdata::{
@@ -81,9 +79,6 @@ struct Cli {
     /// structure as the fragments column.
     #[arg(long)]
     report_ambiguous_amino_acids: bool,
-    /// To turn off loading the custom modifications database from the Annotator (if installed)
-    #[arg(long)]
-    no_custom_mods: bool,
     /// To turn off loading the custom models from the Annotator (if installed)
     #[arg(long)]
     no_custom_models: bool,
@@ -159,15 +154,6 @@ fn main() {
     let args = Cli::parse();
 
     let parameters = MatchingParameters::default().tolerance(args.tolerance);
-    let custom_modifications_path = ProjectDirs::from("com", "com.snijderlab.annotator", "")
-        .expect("Could not generate Annotator configuration path (needed to check if custom modifications are defined)")
-        .config_dir()
-        .join("../custom_modifications.json");
-    let custom_database = if args.no_custom_mods || !custom_modifications_path.exists() {
-        None
-    } else {
-        Some(parse_custom_modifications(&custom_modifications_path).expect("Could not parse custom modifications file, if you do not need these you can skip parsing them using the appropriate flag"))
-    };
     let custom_models_path = ProjectDirs::from("com", "com.snijderlab.annotator", "")
         .expect("Could not generate Annotator configuration path (needed to check if custom models are defined)")
         .config_dir()
@@ -182,10 +168,10 @@ fn main() {
         FragmentationModel::all(),
         custom_models.as_deref(),
     );
-    let mut peptidoforms =
-        BasicCSVData::parse_file(args.in_path, custom_database.as_ref(), true, None)
-            .expect("Invalid input file")
-            .combine_errors(());
+    let ontologies = Ontologies::init().0;
+    let mut peptidoforms = BasicCSVData::parse_file(args.in_path, &ontologies, true, None)
+        .expect("Invalid input file")
+        .combine_errors(());
     let files = peptidoforms.into_group_map_by(|l| l.raw_file.clone());
     if !peptidoforms.errors().is_empty() {
         for e in peptidoforms.errors() {

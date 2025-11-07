@@ -160,6 +160,7 @@ pub struct CVCacheSerde<D: serde::Serialize + for<'de> serde::Deserialize<'de>> 
     data: Vec<D>,
 }
 
+#[cfg(feature = "serde")]
 impl<D: serde::Serialize + for<'de> serde::Deserialize<'de>> Encode for CVCacheSerde<D> {
     fn encode<E: bincode::enc::Encoder>(
         &self,
@@ -174,6 +175,7 @@ impl<D: serde::Serialize + for<'de> serde::Deserialize<'de>> Encode for CVCacheS
     }
 }
 
+#[cfg(feature = "serde")]
 impl<Context, T: serde::Serialize + for<'de> serde::Deserialize<'de>> Decode<Context>
     for CVCacheSerde<T>
 {
@@ -204,5 +206,6 @@ pub enum CVCompression {
     #[default]
     None,
     /// For LZW (.Z) compressed files like IMGT TODO: does not work yet
-    LZW,
+    #[deprecated = "Is not implemented yet"]
+    Lzw,
 }

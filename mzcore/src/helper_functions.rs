@@ -104,73 +104,34 @@ impl<Ra: RangeBounds<usize>> RangeExtension for Ra {
     }
 }
 
-/// # Errors
-/// If the name cannot be recognised or a number is not valid.
-pub(crate) fn parse_named_counter<T: Clone>(
-    value: &str,
-    names: &[(Box<str>, T)],
-    allow_negative: bool,
-) -> Result<Vec<(T, isize)>, String> {
-    let mut index = 0;
-    let mut output = Vec::new();
-    while index < value.len() {
-        if value[index..].starts_with(' ') {
-            index += 1;
-        } else {
-            let mut found = false;
-            for name in names {
-                if str_starts_with::<true>(&value[index..], &name.0) {
-                    index += name.0.len();
-                    let num = &value[index..]
-                        .chars()
-                        .skip_while(char::is_ascii_whitespace)
-                        .take_while(|c| c.is_ascii_digit() || (allow_negative && *c == '-'))
-                        .collect::<String>()
-                        .trim()
-                        .to_string();
-                    if num.is_empty() {
-                        output.push((name.1.clone(), 1));
-                    } else {
-                        output.push((
-                            name.1.clone(),
-                            num.parse()
-                                .map_err(|_| format!("Not a valid number '{num}'"))?,
-                        ));
-                        index += num.len()
-                            + value[index..]
-                                .chars()
-                                .take_while(char::is_ascii_whitespace)
-                                .count();
-                    }
-                    found = true;
-                    break; // Names loop
-                }
-            }
-            if !found {
-                return Err(format!("Name not recognised {}", &value[index..]));
-            }
-        }
-    }
-    Ok(output)
-}
-
 /// Split a string into chunks of text separated by whitespace with the offset before each chunk returned for nice error generation.
 pub(crate) fn split_ascii_whitespace(input: &str) -> Vec<(usize, &str)> {
     let mut index = input.chars().take_while(char::is_ascii_whitespace).count();
     let mut chunks = Vec::new();
     while index < input.len() {
         let chunk_len = input[index..]
-            .chars()
-            .take_while(|c| !c.is_ascii_whitespace())
-            .count();
+            .char_indices()
+            .take_while(|(_, c)| !c.is_ascii_whitespace())
+            .last()
+            .map_or(0, |(i, c)| i + c.len_utf8());
         chunks.push((index, &input[index..index + chunk_len]));
         index += chunk_len;
         index += input[index..]
-            .chars()
-            .take_while(char::is_ascii_whitespace)
-            .count();
+            .char_indices()
+            .take_while(|(_, c)| c.is_ascii_whitespace())
+            .last()
+            .map_or(0, |(i, c)| i + c.len_utf8());
     }
     chunks
+}
+
+#[test]
+#[allow(clippy::missing_panics_doc)]
+fn test_split_ascii_whitespace() {
+    assert_eq!(
+        split_ascii_whitespace("C7 D10 H2 N4"),
+        vec![(0, "C7"), (3, "D10"), (7, "H2"), (10, "N4")]
+    );
 }
 
 /// Get the index of the next copy of the given char (looking at the byte value, does not guarantee full character)

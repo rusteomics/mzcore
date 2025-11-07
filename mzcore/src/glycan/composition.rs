@@ -11,9 +11,12 @@ use crate::{
 };
 
 impl MonoSaccharide {
-    /// Parse the given text as a ProForma glycan composition. Examples:
-    /// * HexNAc5Hex3Fuc1
-    /// * HexNAc4Hex5Fuc1NeuAc1{C8H13N1O5Na1:z+1}1
+    /// Parse the given text as a ProForma glycan composition.
+    /// ```rust
+    /// use mzcore::glycan::MonoSaccharide;
+    /// assert!(MonoSaccharide::pro_forma_composition::<false>("HexNAc5Hex3Fuc1").is_ok());
+    /// assert!(MonoSaccharide::pro_forma_composition::<false>("HexNAc4Hex5Fuc1NeuAc1{C8H13N1O5Na1:z+1}1").is_ok());
+    /// ```
     /// # Errors
     /// When the composition could not be read. Or when any of the glycans numbers outside of the valid numerical range.
     /// Warns when the amount is missing.
@@ -27,9 +30,7 @@ impl MonoSaccharide {
         )
     }
 
-    /// Parse the given text as a ProForma glycan composition. Examples:
-    /// * HexNAc5Hex3Fuc1
-    /// * HexNAc4Hex5Fuc1NeuAc1{C8H13N1O5Na1:z+1}1
+    /// Parse the given text as a ProForma glycan composition.
     /// # Errors
     /// When the composition could not be read. Or when any of the glycans numbers outside of the valid numerical range.
     /// Warns when the amount is missing.
@@ -66,50 +67,31 @@ impl MonoSaccharide {
                         if str_starts_with::<true>(&line[index..end], name) {
                             found = Some(sugar.clone());
                             if STRICT {
-                                if let Some(pro_forma_name) = &sugar.proforma_name {
-                                    if **name != **pro_forma_name {
-                                        combine_error(
-                                            &mut errors,
-                                            BoxedError::new(
-                                                BasicKind::Warning,
-                                                "Improper ProForma glycan",
-                                                format!(
-                                                    "While `{name}` can be unambiguously parsed the proper name in ProForma is `{pro_forma_name}`."
-                                                ),
-                                                base_context.clone().add_highlight((
-                                                    0,
-                                                    index,
-                                                    name.len(),
-                                                )),
-                                            ),
-                                            (),
-                                        );
-                                    } else if !line[index..end].starts_with(&**name) {
-                                        combine_error(
-                                            &mut errors,
-                                            BoxedError::new(
-                                                BasicKind::Warning,
-                                                "Improper ProForma glycan",
-                                                "This glycan was not written with the proper capitalisation.",
-                                                base_context.clone().add_highlight((
-                                                    0,
-                                                    index,
-                                                    name.len(),
-                                                )),
-                                            ),
-                                            (),
-                                        );
-                                    }
-                                } else {
+                                let pro_forma_name = sugar.pro_forma_name();
+                                if **name != pro_forma_name {
                                     combine_error(
                                         &mut errors,
                                         BoxedError::new(
                                             BasicKind::Warning,
                                             "Improper ProForma glycan",
                                             format!(
-                                                "While `{name}` can be unambiguously parsed the proper way to write this in ProForma is `{{{}}}`.",
-                                                sugar.formula()
+                                                "While `{name}` can be unambiguously parsed the proper name in ProForma is `{pro_forma_name}`."
                                             ),
+                                            base_context.clone().add_highlight((
+                                                0,
+                                                index,
+                                                name.len(),
+                                            )),
+                                        ),
+                                        (),
+                                    );
+                                } else if !line[index..end].starts_with(&**name) {
+                                    combine_error(
+                                        &mut errors,
+                                        BoxedError::new(
+                                            BasicKind::Warning,
+                                            "Improper ProForma glycan",
+                                            "This glycan was not written with the proper capitalisation.",
                                             base_context.clone().add_highlight((
                                                 0,
                                                 index,

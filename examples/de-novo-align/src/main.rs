@@ -5,7 +5,7 @@ use std::{collections::BTreeMap, fs::File, io::BufWriter, sync::Arc};
 use clap::Parser;
 use itertools::{Itertools, MinMaxResult};
 use mzalign::prelude::*;
-use mzcore::{csv::write_csv, prelude::*, sequence::SemiAmbiguous};
+use mzcore::{csv::write_csv, ontology::Ontologies, prelude::*, sequence::SemiAmbiguous};
 use mzident::{FastaData, PeptidoformPresent, SpectrumIds, prelude::*};
 use rayon::prelude::*;
 
@@ -81,7 +81,7 @@ fn run_alignments(
 fn main() {
     let args = Cli::parse();
     let out_file = BufWriter::new(File::create(args.out_path).expect("Could not create out file"));
-    let peptides = open_identified_peptidoforms_file(args.peptides, None, false)
+    let peptides = open_identified_peptidoforms_file(args.peptides, &Ontologies::init().0, false)
         .unwrap()
         .filter_map(Result::ok)
         .filter_map(IdentifiedPeptidoform::into_semi_ambiguous)

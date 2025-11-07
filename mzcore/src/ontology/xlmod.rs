@@ -1,4 +1,4 @@
-//! Code to handle the XLMOD ontology
+//! Code to handle the XL-MOD ontology
 use context_error::{BoxedError, CreateError, FullErrorContent, StaticErrorContent};
 use thin_vec::ThinVec;
 

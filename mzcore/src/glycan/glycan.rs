@@ -1,4 +1,4 @@
-use std::{fmt::Display, hash::Hash};
+use std::{borrow::Cow, fmt::Display, hash::Hash};
 
 use context_error::*;
 use itertools::Itertools;
@@ -8,7 +8,7 @@ use thin_vec::ThinVec;
 use crate::{
     chemistry::{Chemical, ELEMENT_PARSE_LIST, Element, MolecularFormula},
     glycan::lists::*,
-    helper_functions::{explain_number_error, str_starts_with},
+    helper_functions::str_starts_with,
     molecular_formula,
     parse_json::{ParseJson, use_serde},
     sequence::SequencePosition,
@@ -38,7 +38,6 @@ pub struct MonoSaccharide {
     pub(super) substituents: ThinVec<GlycanSubstituent>,
     pub(super) furanose: bool,
     pub(super) configuration: Option<Configuration>,
-    pub(super) proforma_name: Option<Box<str>>,
 }
 
 impl MonoSaccharide {
@@ -74,13 +73,7 @@ impl Hash for MonoSaccharide {
 impl Display for MonoSaccharide {
     /// Display as valid ProForma glycan
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "{}",
-            self.proforma_name
-                .as_ref()
-                .map_or_else(|| format!("{{{}}}", self.formula()), ToString::to_string)
-        )
+        write!(f, "{}", self.pro_forma_name())
     }
 }
 
@@ -91,21 +84,121 @@ impl ParseJson for MonoSaccharide {
 }
 
 impl MonoSaccharide {
-    pub(crate) fn display_improper(&self) -> String {
-        self.proforma_name.as_ref().map_or_else(
-            || {
-                format!(
-                    "{}{}{}",
-                    self.base_sugar,
-                    if self.furanose { "f" } else { "" },
-                    self.substituents
-                        .iter()
-                        .map(ToString::to_string)
-                        .collect::<String>()
-                )
-            },
-            ToString::to_string,
-        )
+    /// Get the name that should be used to represent this monosaccharide in ProForma glycan compositions
+    pub fn pro_forma_name(&self) -> Cow<'static, str> {
+        match self.base_sugar {
+            BaseSugar::Sugar
+                if self.substituents.is_empty()
+                    && !self.furanose
+                    && self.configuration.is_none() =>
+            {
+                Cow::Borrowed("Sug")
+            }
+            BaseSugar::Triose
+                if self.substituents.is_empty()
+                    && !self.furanose
+                    && self.configuration.is_none() =>
+            {
+                Cow::Borrowed("Tri")
+            }
+            BaseSugar::Tetrose(_)
+                if self.substituents.is_empty()
+                    && !self.furanose
+                    && self.configuration.is_none() =>
+            {
+                Cow::Borrowed("Tet")
+            }
+            BaseSugar::Pentose(_)
+                if self.substituents.is_empty()
+                    && !self.furanose
+                    && self.configuration.is_none() =>
+            {
+                Cow::Borrowed("Pen")
+            }
+            BaseSugar::Hexose(isomer) if !self.furanose && self.configuration.is_none() => {
+                match *self.substituents.as_slice() {
+                    [] => Cow::Borrowed("Hex"),
+                    [GlycanSubstituent::Acid] => Cow::Borrowed("aHex"),
+                    [
+                        GlycanSubstituent::Acid,
+                        GlycanSubstituent::Deoxy,
+                        GlycanSubstituent::Didehydro,
+                    ] => Cow::Borrowed("en,aHex"),
+                    [GlycanSubstituent::Deoxy] if isomer == Some(HexoseIsomer::Galactose) => {
+                        Cow::Borrowed("Fuc")
+                    }
+                    [GlycanSubstituent::Deoxy] => Cow::Borrowed("dHex"),
+                    [GlycanSubstituent::NAcetyl, GlycanSubstituent::Sulfate] => {
+                        Cow::Borrowed("HexNAcS")
+                    }
+                    [GlycanSubstituent::Amino, GlycanSubstituent::Sulfate] => {
+                        Cow::Borrowed("HexNS")
+                    }
+                    [GlycanSubstituent::Amino] => Cow::Borrowed("HexN"),
+                    [GlycanSubstituent::NAcetyl] => Cow::Borrowed("HexNAc"),
+                    [GlycanSubstituent::Sulfate] => Cow::Borrowed("HexS"),
+                    [GlycanSubstituent::Phosphate] => Cow::Borrowed("HexP"),
+                    _ => Cow::Owned(format!("{{{}}}", self.formula())),
+                }
+            }
+            BaseSugar::Heptose(_)
+                if self.substituents.is_empty()
+                    && !self.furanose
+                    && self.configuration.is_none() =>
+            {
+                Cow::Borrowed("Hep")
+            }
+            BaseSugar::Octose
+                if self.substituents.is_empty()
+                    && !self.furanose
+                    && self.configuration.is_none() =>
+            {
+                Cow::Borrowed("Oct")
+            }
+            BaseSugar::Nonose(None) if !self.furanose && self.configuration.is_none() => {
+                match *self.substituents.as_slice() {
+                    [] => Cow::Borrowed("Non"),
+                    [
+                        GlycanSubstituent::Acetyl,
+                        GlycanSubstituent::Acid,
+                        GlycanSubstituent::Amino,
+                    ] => Cow::Borrowed("NeuAc"),
+                    [
+                        GlycanSubstituent::Acid,
+                        GlycanSubstituent::Amino,
+                        GlycanSubstituent::Glycolyl,
+                    ] => Cow::Borrowed("NeuGc"),
+                    [
+                        GlycanSubstituent::Acid,
+                        GlycanSubstituent::Amino,
+                        GlycanSubstituent::Deoxy,
+                    ] => Cow::Borrowed("Neu"),
+                    _ => Cow::Owned(format!("{{{}}}", self.formula())),
+                }
+            }
+            BaseSugar::Decose
+                if self.substituents.is_empty()
+                    && !self.furanose
+                    && self.configuration.is_none() =>
+            {
+                Cow::Borrowed("Dec")
+            }
+            BaseSugar::Custom(_)
+                if self.substituents == [GlycanSubstituent::Phosphate]
+                    && !self.furanose
+                    && self.configuration.is_none() =>
+            {
+                Cow::Borrowed("Phosphate")
+            }
+            BaseSugar::Custom(_)
+                if self.substituents == [GlycanSubstituent::Sulfate]
+                    && !self.furanose
+                    && self.configuration.is_none() =>
+            {
+                Cow::Borrowed("Sulfate")
+            }
+            _ => Cow::Owned(format!("{{{}}}", self.formula())),
+        }
     }
 
     /// Check if this is a fucose
@@ -121,16 +214,6 @@ impl MonoSaccharide {
             substituents: substituents.iter().copied().sorted().collect(),
             furanose: false,
             configuration: None,
-            proforma_name: None,
-        }
-    }
-
-    /// Get this same monosaccharide but now with the given ProForma name
-    #[must_use]
-    pub fn with_name(self, name: &str) -> Self {
-        Self {
-            proforma_name: Some(name.to_string().into_boxed_str()),
-            ..self
         }
     }
 
@@ -268,7 +351,6 @@ impl MonoSaccharide {
                     substituents: substituents.into(),
                     furanose: false,
                     configuration,
-                    proforma_name: None,
                 };
                 alo.substituents.extend(s.iter().copied());
                 alo

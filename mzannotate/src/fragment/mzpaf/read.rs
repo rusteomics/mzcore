@@ -10,7 +10,7 @@ use mzcore::{
         NeutralLoss, SatelliteLabel,
     },
     molecular_formula,
-    ontology::{CustomDatabase, Ontologies, Ontology},
+    ontology::Ontologies,
     quantities::Tolerance,
     sequence::{
         AminoAcid, Linked, PeptidePosition, Peptidoform, SemiAmbiguous, SequenceElement,

@@ -48,9 +48,12 @@ A<span class="y">GG</span>A <span class="n">B</span>
 
 _Generated using this algorithm bound to a cli tool: <https://github.com/snijderlab/align-cli>_
 ```rust
-use rustyms::{prelude::*, sequence::SimpleLinear, align::*};
-let a = Peptidoform::pro_forma("ANA", None).unwrap().into_simple_linear().unwrap();
-let b = Peptidoform::pro_forma("AGGA", None).unwrap().into_simple_linear().unwrap();
+use mzcore::{prelude::*, sequence::SimpleLinear};
+use mzalign::*;
+// For other use cases Ontologies::init() makes more sense.
+let ontologies = &mzcore::ontology::STATIC_ONTOLOGIES;
+let a = Peptidoform::pro_forma("ANA", ontologies).unwrap().0.into_simple_linear().unwrap();
+let b = Peptidoform::pro_forma("AGGA", ontologies).unwrap().0.into_simple_linear().unwrap();
 let alignment = align::<4, &Peptidoform<SimpleLinear>, &Peptidoform<SimpleLinear>>(&a, &b, AlignScoring::default(), AlignType::GLOBAL);
 assert_eq!(alignment.short(), "1=1:2i1=");
 assert_eq!(alignment.ppm().value, 0.0);
@@ -61,11 +64,11 @@ This extends the Smith-Waterman/Needleman-Wunsch alignment states (Match, Mismat
 1. Rotation: the same amino acids but in a different order, example: `AHK` on `KAH`.
 1. Isobaric: different amino acids (or different modifications) that have the same mass, example `N` on `GG`, or `M[Oxidation]` on `F`.
 
-As is visible in the examples the Rotation errors can be longer than just one amino acids, and Isobaric errors can even be of different lengths for the two peptidoforms. This means that these errors need special care to be visualised properly. Also because these need to handle these different lengths the main loop of the alignment needs to loop over all combinations of lengths from 1 to the maximum chosen length. This means that algorothmically speaking this alignment is slower than SW/NW.
+As is visible in the examples the Rotation errors can be longer than just one amino acids, and Isobaric errors can even be of different lengths for the two peptidoforms. This means that these errors need special care to be visualised properly. Also because these need to handle these different lengths the main loop of the alignment needs to loop over all combinations of lengths from 1 to the maximum chosen length. This means that algorithmically speaking this alignment is slower than SW/NW.
 
 ## AlignTypes
 
-Alignments can be done global (as is Needleman-Wunsch) or local (as is Smith-Waterman). Global means that both peptidoforms have to be fully matched, local means that both peptidoforms can have unmatched sequences on both sides of the match. Either global is a variation that enforces that at least one of the two peptidoforms has to be fully matched or said inversely only one peptidoform can have unmatched sequence. This can be used when it is known that sequences are related but neither is known _a priori_ to be a full superset of the other sequence. For example if you are matching a peptide to a database and the database does not contain the full protein sequence but only a part of the sequence (as is common in antibodies, those are built from three/four separate genes spliced together).
+Alignments can be done global (as is Needleman-Wunsch) or local (as is Smith-Waterman). Global means that both peptidoforms have to be fully matched, local means that both peptidoforms can have unmatched sequences on both sides of the match. Either global is a variation that enforces that at least one of the two peptidoforms has to be fully matched or said inversely only one peptidoform can have unmatched sequence. This can be used when it is known that sequences are related but neither is known _a priori_ to be a full superset of the other sequence. For example if you are matching a peptide to a database and the database does not contain the full protein sequence but only a part of the sequence. As is common in antibodies, those are built from three/four separate genes spliced together.
 
 <pre class="align-cli">Identity:&nbsp;0.176&nbsp;<span class="n">(3/17)</span>, Mass&nbsp;similarity:&nbsp;0.353&nbsp;<span class="n">(6/17)</span>, Similarity:&nbsp;0.176&nbsp;<span class="n">(3/17)</span>, Gaps:&nbsp;0.118&nbsp;<span class="n">(2/17)</span>, Score:&nbsp;0.100&nbsp;<span class="n">(9/90)</span>, Mass&nbsp;difference:&nbsp;240.101&nbsp;Da&nbsp;120.775&nbsp;‰
 Start: A 0 B 0, Path: <span class="n">1i3X2D2=1:2i1=6X</span>
@@ -94,7 +97,7 @@ Start: A 2 B 0, Path: <span class="n">1i3X2=1X1D2=3X1=</span>
 &nbsp;&nbsp;<span class="y">─</span><span class="r">xxx</span>  <span class="r">x</span><span class="y">+</span>  <span class="r">xxx</span></pre>
 _Either global, for both sides (left and right) only one peptidoform can have unmatched sequence_
 
-In this crate [`AlignType`](crate::AlignType) can be used to set these types of alingments. Note that this allows setting one of these types per side and per peptidoform. This allows for encoding as much knowledge into the alignment as possible. For example if one would build a tool to align an antibody sequence to germline V genes you could make it fixed to a global left alignment (emaning both sequences have to start together) and end with an either global right alignment if it is not known if the user will supply full antibody sequences or might even supply truncated V gene sequences as shown below.
+In this crate [`AlignType`](crate::AlignType) can be used to set these types of alignments. Note that this allows setting one of these types per side and per peptidoform. This allows for encoding as much knowledge into the alignment as possible. For example if one would build a tool to align an antibody sequence to germline V genes you could make it fixed to a global left alignment (meaning both sequences have to start together) and end with an either global right alignment if it is not known if the user will supply full antibody sequences or might even supply truncated V gene sequences as shown below.
 
 <pre class="align-cli">Selected: Mus musculus House mouse IGHV1-18-26*01 / IgV1-18-26*01
 Identity:&nbsp;0.847&nbsp;<span class="n">(83/98)</span>, Mass&nbsp;similarity:&nbsp;0.888&nbsp;<span class="n">(87/98)</span>, Similarity:&nbsp;0.847&nbsp;<span class="n">(83/98)</span>, Gaps:&nbsp;0.000&nbsp;<span class="n">(0/98)</span>, Score:&nbsp;0.848&nbsp;<span class="n">(440/519)</span>, Mass difference:&nbsp;127.979&nbsp;Da&nbsp;11.715&nbsp;‰
@@ -136,12 +139,14 @@ _Aligning a V gene with a beginning and end truncated antibody sequence, showing
 ## Example usage
 
 ```rust
-# fn main() -> Result<(), context_error::BoxedError<'static, context_error::BasicKind>> {
+# fn main() -> Result<(), Vec<context_error::BoxedError<'static, context_error::BasicKind>>> {
 use mzcore::{prelude::*, sequence::SimpleLinear};
 use mzalign::{prelude::*, align};
+// For other use cases Ontologies::init() makes more sense.
+let ontologies = &mzcore::ontology::STATIC_ONTOLOGIES;
 // Check how this peptide compares to a similar peptide (using the feature `align`)
-let first_peptide = Peptidoform::pro_forma("IVQEVT", None)?.into_simple_linear().unwrap();
-let second_peptide = Peptidoform::pro_forma("LVQVET", None)?.into_simple_linear().unwrap();
+let first_peptide = Peptidoform::pro_forma("IVQEVT", ontologies)?.0.into_simple_linear().unwrap();
+let second_peptide = Peptidoform::pro_forma("LVQVET", ontologies)?.0.into_simple_linear().unwrap();
 // Align the two peptides using mass based alignment
 // IVQEVT A
 // LVQVET B

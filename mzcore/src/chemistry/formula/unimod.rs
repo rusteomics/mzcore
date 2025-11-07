@@ -52,6 +52,7 @@ impl MolecularFormula {
     /// assert!(MolecularFormula::unimod("H(25) C(8) 13C(7) N 15N(2) O(3)").is_ok());
     /// assert!(MolecularFormula::unimod("H(6) C(4) N(2) dHex").is_ok());
     /// assert_eq!(MolecularFormula::unimod("C(1) 13C(1) H(6)"), Ok(molecular_formula!(C 1 [13 C 1] H 6)));
+    /// assert_eq!(MolecularFormula::unimod("Water"), Ok(molecular_formula!(H 2 O 1)));
     ///
     /// ```
     pub fn unimod(value: &str) -> Result<Self, BoxedError<'_, BasicKind>> {
@@ -76,7 +77,7 @@ impl MolecularFormula {
 
         let mut isotope = None;
         let mut last_name: Option<(usize, String)> = None;
-        while index < end {
+        while index <= end {
             match (value.as_bytes()[index], last_name.as_ref()) {
                 (b'(', Some((last_name_i, last_name_s))) => {
                     let length = value

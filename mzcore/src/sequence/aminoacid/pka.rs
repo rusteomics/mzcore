@@ -29,9 +29,10 @@ impl<Complexity: AtMax<SemiAmbiguous>> Peptidoform<Complexity> {
     ///
     /// # Example
     /// ```rust
-    /// # use rustyms::sequence::{Peptidoform, pka::{PKaSource, PKaLide1991}};
+    /// # use mzcore::sequence::{Peptidoform, pka::{PKaSource, PKaLide1991}};
+    /// # let ontologies = &mzcore::ontology::STATIC_ONTOLOGIES;
     /// // Create a SemiAmbiguous Peptidoform for glutamic acid (E) and Alanine (A)
-    /// let peptidoform = Peptidoform::pro_forma(&"EMEVEESPEK", None).unwrap().into_semi_ambiguous().unwrap();
+    /// let peptidoform = Peptidoform::pro_forma(&"EMEVEESPEK", ontologies).unwrap().0.into_semi_ambiguous().unwrap();
     /// let pi = peptidoform.isoelectic_point::<PKaLide1991>();
     /// // The calculated pI is approximately 3.57 based on Lide 1991 pKa values
     /// assert_eq!(pi.map(|v| (v * 100.0).round() / 100.0), Some(3.57));
@@ -261,7 +262,7 @@ impl PKaSource<AminoAcid> for PKaLehninger {
 #[expect(clippy::float_cmp, clippy::missing_panics_doc)]
 mod tests {
     use super::*;
-    use crate::{ontology::Ontologies, sequence::SimpleModification};
+    use crate::sequence::SimpleModification;
 
     // Helper to create a Peptidoform from a list of amino acids
     fn create_peptidoform(aas: &str) -> Peptidoform<SemiAmbiguous> {

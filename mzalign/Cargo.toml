@@ -27,6 +27,7 @@ serde = { workspace = true }
 
 [dev-dependencies]
 mzident = { path = "../mzident" }
+context_error = { workspace = true }
 
 [features]
 default = []

@@ -1,7 +1,7 @@
 use std::ops::Range;
 
 use context_error::{BasicKind, BoxedError, Context, CreateError};
-use mzcore::{chemistry::SatelliteLabel, ontology::Ontologies, prelude::*, sequence::SimpleLinear};
+use mzcore::{chemistry::SatelliteLabel, prelude::*, sequence::SimpleLinear};
 
 use crate::{
     fragment::{Fragment, IonType, PeakAnnotation},
@@ -53,6 +53,12 @@ impl Fragment {
     }
 }
 
+/// This parses a substring of the given string as a MaxQuant fragment definition. Additionally, this allows
+/// passing a base context to allow to set the line index and source and other properties. Note
+/// that the base context is assumed to contain the full line at line index 0.
+///
+/// # Errors
+/// When the annotation does not follow the format.
 fn parse_intermediate_representation<'a>(
     base_context: &Context<'a>,
     line: &'a str,
@@ -208,10 +214,11 @@ fn parse_intermediate_representation<'a>(
 }
 
 #[test]
+#[expect(clippy::missing_panics_doc)]
 fn maxquant_annotations() {
     let peptide = Peptidoform::pro_forma(
         "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
-        &Ontologies::empty(),
+        &mzcore::ontology::Ontologies::empty(),
     )
     .unwrap()
     .0

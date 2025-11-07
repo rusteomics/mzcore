@@ -5,9 +5,9 @@ use regex::Regex;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    glycan::{GLYCAN_PARSE_LIST, MonoSaccharide},
-    helper_functions::{ResultExtensions, end_of_enclosure, parse_named_counter},
-    ontology::{CustomDatabase, Ontologies, Ontology},
+    glycan::MonoSaccharide,
+    helper_functions::{ResultExtensions, end_of_enclosure},
+    ontology::{Ontologies, Ontology},
     sequence::{
         AminoAcid, CheckedAminoAcid, Modification, PeptideModificationSearch, Peptidoform,
         SemiAmbiguous, SequenceElement, SequencePosition, SimpleModification,

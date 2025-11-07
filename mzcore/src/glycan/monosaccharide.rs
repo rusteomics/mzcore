@@ -135,7 +135,7 @@ mod tests {
             ("HexNAcS", molecular_formula!(H 13 C 8 N 1 O 8 S 1)),
             ("HexN", molecular_formula!(H 11 C 6 N 1 O 4)),
             ("HexNS", molecular_formula!(H 11 C 6 N 1 O 7 S 1)),
-            ("dHex", molecular_formula!(H 10 C 6 O 5)),
+            ("dHex", molecular_formula!(H 10 C 6 O 4)),
             ("aHex", molecular_formula!(H 8 C 6 O 6)),
             ("en,aHex", molecular_formula!(H 6 C 6 O 5)),
             ("Neu", molecular_formula!(H 15 C 9 N 1 O 7)),
@@ -291,7 +291,7 @@ mod tests {
                 .map(|option| {
                     option
                         .iter()
-                        .map(|sug| format!("{}{}", sug.0.display_improper(), sug.1))
+                        .map(|sug| format!("{}{}", sug.0, sug.1))
                         .join("&")
                 })
                 .join(",")

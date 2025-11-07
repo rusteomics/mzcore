@@ -693,6 +693,7 @@ impl std::iter::Sum<Self> for MolecularFormula {
 /// use mzcore::prelude::*;
 /// molecular_formula!(C 12 [13 C 1] H 24);
 /// molecular_formula!(C 12 [13 C 1] H 24 :z+2);
+/// molecular_formula!(H 2 O);
 /// ```
 /// # Panics
 /// It panics if the defined molecular formula is not valid. A formula is not valid if non existing isotopes are used
@@ -710,11 +711,17 @@ macro_rules! formula_internal {
     ([$e:ident $n:literal $($tail:tt)*] -> [$($output:tt)*]) => {
         $crate::formula_internal!([$($tail)*] -> [$($output)*($crate::chemistry::Element::$e, None, $n),])
     };
+    ([$e:ident $($tail:tt)*] -> [$($output:tt)*]) => {
+        $crate::formula_internal!([$($tail)*] -> [$($output)*($crate::chemistry::Element::$e, None, 1),])
+    };
     ([[$i:literal $e:ident $n:literal] $($tail:tt)*] -> [$($output:tt)*]) => {
         $crate::formula_internal!([$($tail)*] -> [$($output)*($crate::chemistry::Element::$e, Some(std::num::NonZeroU16::new($i).unwrap()), $n),])
     };
     ([$e:ident $n:expr] -> [$($output:tt)*]) =>{
         $crate::formula_internal!([] -> [$($output)*($crate::chemistry::Element::$e, None, $n),])
+    };
+    ([$e:ident] -> [$($output:tt)*]) =>{
+        $crate::formula_internal!([] -> [$($output)*($crate::chemistry::Element::$e, None, 1),])
     };
     ([[$i:literal $e:ident] $n:expr] -> [$($output:tt)*]) =>{
         $crate::formula_internal!([] -> [$($output)*($crate::chemistry::Element::$e, Some(std::num::NonZeroU16::new($i).unwrap()), $n),])

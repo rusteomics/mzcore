@@ -278,7 +278,7 @@ impl OboOntology {
                             "The stanza types has to be any of Term, Typedef, or Instance",
                             base_context
                                 .clone()
-                                .lines(0, line.to_string())
+                                .lines(0, line.clone())
                                 .line_index(line_index as u32)
                                 .add_highlight((0, 1..=line.len() - 2)),
                         ));
@@ -535,7 +535,7 @@ impl OboOntology {
         if let Some(obj) = recent_obj {
             obo.objects.push(obj);
         }
-        obo.hash = reader.hash().to_vec();
+        obo.hash = reader.hash();
         Ok(obo)
     }
 
@@ -735,18 +735,6 @@ fn tokenise(text: &str) -> Result<Vec<(Option<char>, &str)>, char> {
         parts.push((None, text[s..].trim()));
     }
     Ok(parts)
-}
-
-/// Assumes one opening symbol is already read
-fn enclosed_by(text: &str, closing: char) -> Option<usize> {
-    let mut escaped = false;
-    for (index, char) in text.char_indices() {
-        if char == closing && !escaped {
-            return Some(index);
-        }
-        escaped = char == '\\';
-    }
-    None
 }
 
 fn parse_dbxref(text: &str) -> Vec<(Option<String>, String)> {

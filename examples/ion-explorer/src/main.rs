@@ -9,7 +9,6 @@ use std::{
 };
 
 use clap::Parser;
-use directories::ProjectDirs;
 use itertools::Itertools;
 use mzannotate::{
     annotation::model::{
@@ -20,7 +19,8 @@ use mzannotate::{
 };
 use mzcore::{
     chemistry::{ChargeRange, MassMode},
-    sequence::{AminoAcid, CompoundPeptidoformIon, SimpleModification, parse_custom_modifications},
+    ontology::Ontologies,
+    sequence::{AminoAcid, CompoundPeptidoformIon, SimpleModification},
 };
 use mzdata::{
     io::{MZFileReader, SpectrumSource},
@@ -45,9 +45,6 @@ struct Cli {
     /// The directory where to find non absolute raw files that are named in the peptides file
     #[arg(long)]
     raw_file_directory: Option<PathBuf>,
-    /// To turn off loading the custom modifications database from the Annotator (if installed)
-    #[arg(long)]
-    no_custom_mods: bool,
     /// The bin width of the mass bins
     #[arg(long, default_value = "0.25")]
     resolution: f64,
@@ -84,23 +81,13 @@ fn main() {
         .y(PrimaryIonSeries::default())
         .precursor(Vec::new(), Vec::new(), (0, None), ChargeRange::PRECURSOR);
 
-    let path = ProjectDirs::from("com", "com.snijderlab.annotator", "")
-        .unwrap()
-        .config_dir()
-        .join("../custom_modifications.json");
-    let custom_database = if args.no_custom_mods || !path.exists() {
-        None
-    } else {
-        Some(parse_custom_modifications(&path).unwrap())
-    };
-    let peptides =
-        open_identified_peptidoforms_file(&args.in_path, custom_database.as_ref(), false)
-            .expect("Could not open identified peptides file")
-            .filter_map(Result::ok)
-            .into_group_map_by(|l| match l.scans() {
-                SpectrumIds::FileKnown(spectra) => spectra.first().map(|s| s.0.clone()),
-                _ => None,
-            });
+    let peptides = open_identified_peptidoforms_file(&args.in_path, &Ontologies::init().0, false)
+        .expect("Could not open identified peptides file")
+        .filter_map(Result::ok)
+        .into_group_map_by(|l| match l.scans() {
+            SpectrumIds::FileKnown(spectra) => spectra.first().map(|s| s.0.clone()),
+            _ => None,
+        });
 
     let stack: Stack = peptides.par_iter().map(|(file, peptides)| {
         let mut stack = Stack::default();

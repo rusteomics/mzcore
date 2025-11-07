@@ -4,8 +4,6 @@
 
 use std::io::{BufRead, Read};
 
-use sha2::digest::generic_array::GenericArray;
-
 /// A [`std::io::BufReader`] inspired design that also calculates the Hash of the read file.
 #[derive(Debug)]
 pub struct HashBufReader<R, H> {
@@ -85,8 +83,8 @@ impl<R: Read, H: sha2::Digest> HashBufReader<R, H> {
     }
 
     /// Get the hash of the file or stream, this finalises the hasher and so also takes ownership of the [`HashBufReader`]
-    pub fn hash(self) -> GenericArray<u8, H::OutputSize> {
-        self.hash.finalize()
+    pub fn hash(self) -> Vec<u8> {
+        self.hash.finalize().to_vec()
     }
 
     /// Get the next line. It return `None` when the reader is exhausted, and `Some` otherwise.
@@ -136,6 +134,8 @@ impl<R: Read, H: sha2::Digest> Iterator for Lines<'_, R, H> {
 }
 
 /// Taken from the standard library [`std::io::Lines`] implementation but adapted for the stable std library interface
+/// # Errors
+/// When the underlying reader errors
 fn read_until<R: BufRead + ?Sized>(
     r: &mut R,
     delim: u8,

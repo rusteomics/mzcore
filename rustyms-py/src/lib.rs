@@ -257,7 +257,7 @@ impl MolecularFormula {
     ///
     #[classmethod]
     fn from_psi_mod(_cls: &Bound<'_, PyType>, psi_mod: &str) -> PyResult<Self> {
-        mzcore::chemistry::MolecularFormula::psi_mod_inner(psi_mod, ..)
+        mzcore::chemistry::MolecularFormula::psi_mod(psi_mod)
             .map(MolecularFormula)
             .map_err(|e| PyValueError::new_err(format!("Invalid PSI-MOD string: {e}")))
     }
@@ -618,7 +618,7 @@ impl SimpleModification {
             name,
             &mut vec![],
             &mut vec![],
-            None,
+            &mzcore::ontology::STATIC_ONTOLOGIES,
         ) {
             Ok(((modification, _), _)) => Ok(Self(modification.defined().unwrap())),
             Err(_) => Err(PyValueError::new_err("Invalid modification")),
@@ -1090,19 +1090,22 @@ impl CompoundPeptidoformIon {
     /// Create a new compound peptidoform ion from a ProForma string.
     #[new]
     fn new(proforma: &str) -> Result<Self, BoxedError> {
-        mzcore::sequence::CompoundPeptidoformIon::pro_forma(proforma, None)
-            .map(|(p, _)| Self(p))
-            .map_err(|e| {
-                BoxedError(
-                    context_error::BoxedError::new(
-                        context_error::BasicKind::Error,
-                        "Could not parse ProForma",
-                        "This text could not be read as a ProForma definition",
-                        context_error::Context::none().lines(0, proforma).to_owned(),
-                    )
-                    .add_underlying_errors(e.into_iter().map(context_error::BoxedError::to_owned)),
+        mzcore::sequence::CompoundPeptidoformIon::pro_forma(
+            proforma,
+            &mzcore::ontology::STATIC_ONTOLOGIES,
+        )
+        .map(|(p, _)| Self(p))
+        .map_err(|e| {
+            BoxedError(
+                context_error::BoxedError::new(
+                    context_error::BasicKind::Error,
+                    "Could not parse ProForma",
+                    "This text could not be read as a ProForma definition",
+                    context_error::Context::none().lines(0, proforma).to_owned(),
                 )
-            })
+                .add_underlying_errors(e.into_iter().map(context_error::BoxedError::to_owned)),
+            )
+        })
     }
 
     /// Create a new compound peptidoform ion from a peptidoform ion.
@@ -1266,7 +1269,7 @@ impl PeptidoformIon {
     /// Create a new peptidoform ion from a ProForma string. Panics
     #[new]
     fn new(proforma: &str) -> Result<Self, BoxedError> {
-        mzcore::sequence::PeptidoformIon::pro_forma(proforma, None)
+        mzcore::sequence::PeptidoformIon::pro_forma(proforma, &mzcore::ontology::STATIC_ONTOLOGIES)
             .map(|(p, _)| Self(p))
             .map_err(|e| {
                 BoxedError(
@@ -1361,7 +1364,7 @@ impl Peptidoform {
     /// Create a new peptidoform from a ProForma string.
     #[new]
     fn new(proforma: &str) -> Result<Self, BoxedError> {
-        mzcore::sequence::Peptidoform::pro_forma(proforma, None)
+        mzcore::sequence::Peptidoform::pro_forma(proforma, &mzcore::ontology::STATIC_ONTOLOGIES)
             .map(|(p, _)| Self(p))
             .map_err(|e| {
                 BoxedError(

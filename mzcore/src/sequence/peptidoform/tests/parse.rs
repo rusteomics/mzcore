@@ -1,7 +1,6 @@
 use std::{num::NonZeroU16, sync::Arc};
 
 use context_error::*;
-use mzcv::CVVersion;
 
 use crate::{
     chemistry::{AmbiguousLabel, Element, MolecularCharge, MultiChemical},

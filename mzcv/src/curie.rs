@@ -1166,8 +1166,9 @@ pub struct Curie {
 /// A curie. For documentation reasons a full term definition is also allowed. So both examples
 /// give the exact same `Curie` result:
 /// ```
-/// curie!(MS:1002357)
-/// curie!(MS:1002357|PSM-level probability)
+/// use mzcv::curie;
+/// curie!(MS:1002357);
+/// curie!(MS:1002357|PSM-level probability);
 /// ```
 #[macro_export]
 macro_rules! curie {
@@ -1188,10 +1189,14 @@ impl std::fmt::Display for Curie {
     }
 }
 
+/// An error that occured when parsing a CURIE
 #[derive(Debug)]
 pub enum CURIEParsingError {
+    /// The CV name was not recognised
     UnknownControlledVocabulary,
+    /// The accession code could not be parsed
     AccessionParsingError(AccessionCodeParseError),
+    /// No name separator ':' could be found
     MissingNamespaceSeparator,
 }
 
@@ -1199,12 +1204,12 @@ impl std::str::FromStr for Curie {
     type Err = CURIEParsingError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        if let Some((cv, accession)) = s.split_once(':').or(s.split_once('_')) {
+        if let Some((cv, accession)) = s.split_once(':').or_else(|| s.split_once('_')) {
             let cv = cv.parse::<ControlledVocabulary>().unwrap(); // Unknown CVs are handled with the CV::Unknown option
             let accession = accession
                 .parse()
-                .map_err(|e| CURIEParsingError::AccessionParsingError(e))?;
-            Ok(Curie { cv, accession })
+                .map_err(CURIEParsingError::AccessionParsingError)?;
+            Ok(Self { cv, accession })
         } else {
             Err(CURIEParsingError::MissingNamespaceSeparator)
         }
@@ -1216,7 +1221,9 @@ impl std::str::FromStr for Curie {
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum AccessionCode {
+    /// A strictly numeric code
     Numeric(u32),
+    /// An alphanumeric code, can be length 1 to 8 ASCII chars (no spaces allowed)
     Alphanumeric(NonZeroU8, [u8; 7]),
     // Maybe use ThinStr for dynamic strings, very likely this cannot be done together with an 8 byte inline string but it might be better in most ways
     //Big(ThinStr),
@@ -1239,7 +1246,7 @@ impl std::fmt::Display for AccessionCode {
 }
 
 /// Create an accession code, using this with a numeric code is match arm valid, using this with an alphanumeric code is const compatible.
-/// ```rust no-run
+/// ```rust ignore
 /// match curie!(MS:000111) {
 ///     curie!(MS:0000111) => (),
 ///     x if x == curie!(MS:H000111G) => (),
@@ -1300,10 +1307,14 @@ macro_rules! accession_code {
     };
 }
 
+/// An error when parsing an accession code
 #[derive(Debug)]
 pub enum AccessionCodeParseError {
+    /// An invalid character was encountered, only alphanumeric characters are allowed
     InvalidCharacters(String),
+    /// The accession code was over 8 bytes
     TooLong(String),
+    /// The accession code was empty
     Empty,
 }
 
@@ -1356,17 +1367,12 @@ macro_rules! term {
     };
 }
 
-#[allow(clippy::zero_prefixed_literal)]
-fn test() {
-    match curie!(MS:000111) {
-        curie!(MS:0000111) => (),
-        curie!(MS:0000112|hello world) => (),
-        x if x == curie!(MS:H000111G) => (),
-        _ => (),
-    }
-}
-
 #[cfg(test)]
+#[allow(
+    clippy::missing_panics_doc,
+    clippy::zero_prefixed_literal,
+    clippy::unnested_or_patterns
+)]
 mod tests {
     use crate::Curie;
 
@@ -1416,6 +1422,19 @@ mod tests {
         assert_eq!(
             "GNO:00000015".parse::<Curie>().unwrap(),
             curie!(GNO:00000015)
+        );
+    }
+
+    #[test]
+    fn match_arm() {
+        assert!(
+            match "NCIT:C25330".parse::<Curie>().unwrap() {
+                curie!(MS:0000111) | curie!(MS:0000112|hello world) => Err(()),
+                x if x == curie!(MS:H000111G) => Err(()),
+                x if x == curie!(NCIT:C25330) => Ok(()),
+                _ => Err(()),
+            }
+            .is_ok()
         );
     }
 }

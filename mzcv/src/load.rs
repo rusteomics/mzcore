@@ -12,12 +12,13 @@ use std::{
 use context_error::{BoxedError, Context, CreateError};
 
 use crate::{
-    CVCache, CVCompression, CVData, CVError, CVIndex, CVSource, CVVersion,
-    hash_buf_reader::HashBufReader,
+    CVCache, CVData, CVError, CVIndex, CVSource, CVVersion, hash_buf_reader::HashBufReader,
 };
 
 impl<CV: CVSource> CVIndex<CV> {
     /// Build this CV from the standard cache location
+    /// # Errors
+    /// If the cache could not be opened or parsed.
     fn load_from_cache() -> Result<Self, BoxedError<'static, CVError>> {
         let path = CV::default_stem().with_extension("bin");
         let file = std::fs::File::open(&path).map_err(|e| {
@@ -443,7 +444,7 @@ impl<CV: CVSource> CVIndex<CV> {
                     })?;
                 // Decompress (if needed) then compress again to gz
                 match cv_file.compression {
-                    CVCompression::None => {
+                    crate::CVCompression::None => {
                         let mut encoder = flate2::bufread::GzEncoder::new(
                             BufReader::new(response),
                             flate2::Compression::fast(),
@@ -457,7 +458,7 @@ impl<CV: CVSource> CVIndex<CV> {
 
                         // Ok(0)
                     }
-                    CVCompression::LZW => {
+                    crate::CVCompression::Lzw => {
                         todo!()
                         // TODO: figure out LZW decompression
                         // LZW decompression did not work out

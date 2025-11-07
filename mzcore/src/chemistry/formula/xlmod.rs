@@ -45,15 +45,15 @@ impl MolecularFormula {
     ) -> Result<Self, BoxedError<'a, BasicKind>> {
         let (start, end) = range.bounds(value.len());
         let mut formula = Self::default();
-        for (offset, block) in helper_functions::split_ascii_whitespace(&value[start..end]) {
+        for (offset, block) in helper_functions::split_ascii_whitespace(&value[start..=end]) {
             let negative = block.starts_with('-');
             let isotope_len = block
                 .chars()
                 .skip(usize::from(negative))
                 .take_while(char::is_ascii_digit)
                 .count();
-            let number = block.chars().rev().take_while(char::is_ascii_digit).count();
-            if number + isotope_len + usize::from(negative) >= block.len() {
+            let number_length = block.chars().rev().take_while(char::is_ascii_digit).count();
+            if number_length + isotope_len + usize::from(negative) >= block.len() {
                 return Err(BoxedError::new(
                     BasicKind::Error,
                     "Invalid Xlmod molecular formula",
@@ -61,8 +61,8 @@ impl MolecularFormula {
                     base_context.clone().add_highlight((0, offset, block.len())),
                 ));
             }
-            let element_len = block.len() - number - isotope_len - usize::from(negative);
-            let element = &block[isotope_len + usize::from(negative)..block.len() - number];
+            let element_len = block.len() - number_length - isotope_len - usize::from(negative);
+            let element = &block[isotope_len + usize::from(negative)..block.len() - number_length];
             let (mut isotope, element) = if element == "D" {
                 if isotope_len == 0 {
                     (Some(NonZeroU16::new(2).unwrap()), Element::H)
@@ -120,10 +120,10 @@ impl MolecularFormula {
                 );
             }
             let number = if negative { -1 } else { 1 }
-                * if number == 0 {
+                * if number_length == 0 {
                     1
                 } else {
-                    block[block.len() - number..block.len()]
+                    block[block.len() - number_length..]
                         .parse::<i32>()
                         .map_err(|err| {
                             BoxedError::new(
@@ -133,7 +133,7 @@ impl MolecularFormula {
                                 base_context.clone().add_highlight((
                                     0,
                                     offset + usize::from(negative) + isotope_len + element_len,
-                                    number,
+                                    number_length,
                                 )),
                             )
                         })?

@@ -698,7 +698,6 @@ pub fn parse_custom_modifications_str(
 #[expect(clippy::missing_panics_doc)]
 mod test {
     use super::*;
-    use crate::sequence::SimpleModificationInner;
 
     #[test]
     fn test_reading_custom_modifications_json_2024() {
