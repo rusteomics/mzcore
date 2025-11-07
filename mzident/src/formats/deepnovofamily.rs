@@ -42,7 +42,7 @@ format_family!(
                     location.full_line(),
                     location.location.clone(),
                     ontologies,
-                    &PARAMETERS.get_or_init(|| SloppyParsingParameters {
+                    PARAMETERS.get_or_init(|| SloppyParsingParameters {
                         mod_indications: (
                             Some("mod"),
                             vec![

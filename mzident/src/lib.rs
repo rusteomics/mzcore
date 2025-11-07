@@ -1,7 +1,5 @@
 #![doc = include_str!("../README.md")]
 
-//! Read in the annotations from peptide identification sources
-
 #[macro_use]
 mod common_parser;
 #[cfg(feature = "mzannotate")]

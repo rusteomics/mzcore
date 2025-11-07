@@ -17,7 +17,6 @@ use crate::{
     PeptidoformPresent, SpectrumIds, helper_functions::explain_number_error,
 };
 use mzcore::{
-    ontology::Ontologies,
     sequence::{
         AminoAcid, AnnotatedPeptide, Annotation, CompoundPeptidoformIon, FlankingSequence,
         HasPeptidoformImpl, Peptidoform, Region, SemiAmbiguous, SequenceElement,

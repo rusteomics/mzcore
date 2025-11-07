@@ -41,7 +41,8 @@ format_family!(
     /// [`MetaData`] trait. If access is needed solely to the _de novo_ data and not to the database
     /// data the easiest way is detecting this case and overwriting the data in place.
     /// ```rust
-    /// # use rustyms::{prelude::*, identification::*, sequence::Linked};
+    /// # use mzcore::{prelude::*, sequence::Linked};
+    /// # use mzident::*;
     /// # let mut identified_pepform: IdentifiedPeptidoform<Linked, PeptidoformPresent> = BasicCSVData::default().into();
     /// if let IdentifiedPeptidoformData::MaxQuant(ref mut mq) = identified_pepform.data
     ///     && mq.format().version() == Some(MaxQuantVersion::NovoMSMSScans.to_string())
@@ -157,7 +158,7 @@ format_family!(
                         &source.line,
                         match_range.start+match_offset..match_range.start+match_offset+annotation.len(),
                         peptidoform,
-                    ).map_err(|e| e.to_owned())?;
+                    ).map_err(BoxedError::to_owned)?;
                     let mz_num = mz.parse::<f64>().map_err(|e| BoxedError::new(BasicKind::Error, "Invalid m/z", format!("A peak m/z is expected to be a number but: {e}"), source.range_context(mz_range.start+mz_offset..mz_range.start+mz_offset+mz.len(), None).to_owned()))?;
                     let intensity_num = intensity.parse::<f32>().map_err(|e| BoxedError::new(BasicKind::Error, "Invalid intensity", format!("A peak intensity is expected to be a number but: {e}"), source.range_context(intensity_range.start+intensity_offset..intensity_range.start+intensity_offset+intensity.len(), None).to_owned()))?;
                     peaks.push(AnnotatedPeak {
