@@ -9,7 +9,7 @@ use crate::{
     sequence::{
         AminoAcid, CompoundPeptidoformIon, CrossLinkName, GlobalModification, ModificationId,
         Peptidoform, PeptidoformIon, PlacementRule, Position, SimpleModificationInner,
-        peptidoform::parse::{global_modifications, parse_charge_state_2_0},
+        peptidoform::{parse::{global_modifications, parse_charge_state_2_0}},
     },
     system::da,
 };
@@ -443,11 +443,14 @@ fn parse_chimeric() {
 
 #[test]
 fn parse_unimod() {
-    let peptide = dbg!(CompoundPeptidoformIon::pro_forma(
+    let peptide = CompoundPeptidoformIon::pro_forma(
         "[U:Gln->pyro-Glu]-QE[Cation:Na]AA",
         &crate::ontology::STATIC_ONTOLOGIES
-    ));
+    );
     assert!(peptide.is_ok());
+    let unimod = |name: &str| SimpleModificationInner::pro_forma(name, &mut Vec::new(), &mut Vec::new(), &crate::ontology::STATIC_ONTOLOGIES).unwrap().0;
+    assert_eq!(unimod("U:Deamidated"), unimod("U:Deamidation"));
+    assert_eq!(unimod("U:Deamidated"), unimod("U:Citrullination"));
 }
 
 #[test]

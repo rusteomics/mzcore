@@ -271,7 +271,7 @@ fn parse_single_modification<'error>(
                 ("u", name) => ontologies.unimod().get_by_name_or_synonym(name)
                     .map(|(name, m)| {
                         if !name {
-                            combine_error(&mut errors, BoxedError::new(BasicKind::Warning, "Used modification synonym", "The name of the modification should be used to unambiguously identify a modification", base_context.clone().add_highlight((0, offset + tail.1, tail.2, format!("use {m}")))), ());
+                            combine_error(&mut errors, BoxedError::new(BasicKind::Warning, "Used modification synonym", "The name of the modification should be used to unambiguously identify a modification instead of a synonym", base_context.clone().add_highlight((0, offset + full.1, full.2, format!("use {m}")))), ());
                         }
                         m})
                     .ok_or_else(|| numerical_mod(name))
