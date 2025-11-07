@@ -22,7 +22,7 @@ use mzcore::{
     chemistry::Chemical,
     csv::{CsvLine, parse_csv},
     molecular_formula,
-    ontology::{Ontologies, Ontology},
+    ontology::Ontologies,
     quantities::{Tolerance, WithinTolerance},
     sequence::{
         CompoundPeptidoformIon, CrossLinkName, FlankingSequence, Linked, Modification, Peptidoform,

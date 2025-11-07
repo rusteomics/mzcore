@@ -25,6 +25,10 @@ static NUMBER_ERROR: (&str, &str) = (
 /// Global parsing parameters
 static PARAMETERS: OnceLock<SloppyParsingParameters> = OnceLock::new();
 
+#[expect(
+    clippy::missing_panics_doc,
+    reason = "These mods are assumed to be in the ontology"
+)]
 fn parameters(ontologies: &Ontologies) -> &SloppyParsingParameters {
     PARAMETERS.get_or_init(|| SloppyParsingParameters {
         custom_alphabet: vec![

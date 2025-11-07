@@ -1,3 +1,4 @@
+use core::f32;
 use std::{
     fmt::Write,
     hash::Hash,
@@ -14,6 +15,7 @@ use crate::{
     glycan::{GlycanPosition, MonoSaccharide},
     quantities::Multi,
     sequence::{AminoAcid, CrossLinkName, SequencePosition},
+    system::f64,
 };
 
 /// A molecular formula, a selection of elements of specified isotopes together forming a structure

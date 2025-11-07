@@ -3,7 +3,7 @@ use context_error::{BoxedError, CreateError, FullErrorContent, StaticErrorConten
 
 use mzcv::{
     CVCacheSerde, CVData, CVError, CVFile, CVSource, CVVersion, HashBufReader, OboOntology,
-    OboStanzaType,
+    OboStanzaType, SynonymScope,
 };
 
 use crate::{
@@ -28,9 +28,12 @@ impl CVData for SimpleModificationInner {
         self.description().map(|d| d.name.as_str())
     }
     fn synonyms(&self) -> impl Iterator<Item = &str> {
-        self.description()
-            .into_iter()
-            .flat_map(|d| d.synonyms.iter().map(String::as_str))
+        self.description().into_iter().flat_map(|d| {
+            d.synonyms
+                .iter()
+                .filter(|(s, _)| *s == SynonymScope::Exact)
+                .map(|(_, s)| s.as_str())
+        })
     }
     type Cache = CVCacheSerde<Self>;
 }
@@ -57,16 +60,15 @@ impl CVSource for PsiMod {
         {
             use bincode::config::Configuration;
             use mzcv::CVCache;
-            let cache: <SimpleModificationInner as mzcv::CVData>::Cache =
-                bincode::decode_from_slice::<
-                    <SimpleModificationInner as mzcv::CVData>::Cache,
-                    Configuration,
-                >(
-                    include_bytes!("../databases/psimod.dat"),
-                    Configuration::default(),
-                )
-                .unwrap()
-                .0;
+            let cache: <SimpleModificationInner as CVData>::Cache = bincode::decode_from_slice::<
+                <SimpleModificationInner as CVData>::Cache,
+                Configuration,
+            >(
+                include_bytes!("../databases/psimod.dat"),
+                Configuration::default(),
+            )
+            .unwrap()
+            .0;
             Some(cache.deconstruct())
         }
         #[cfg(feature = "internal-no-data")]
@@ -116,7 +118,9 @@ impl CVSource for PsiMod {
                             modification.cross_ids = cross_ids.into();
                         }
                         for synonym in obj.synonyms {
-                            modification.synonyms.push(synonym.synonym); // TODO: retain the scope
+                            modification
+                                .synonyms
+                                .push((synonym.scope, synonym.synonym.clone())); // TODO: retain the scope
                         }
 
                         let mut rules = Vec::new();

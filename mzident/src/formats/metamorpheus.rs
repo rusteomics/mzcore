@@ -202,7 +202,7 @@ impl IdentifiedPeptidoformVersion<MetaMorpheusFormat> for MetaMorpheusVersion {
     }
 }
 
-/// The only supported format for MetaMorpheus data
+/// The only supported format for [`MetaMorpheus`] data
 pub const META_MORPHEUS: MetaMorpheusFormat = MetaMorpheusFormat {
     version: MetaMorpheusVersion::MetaMorpheus,
     contaminant: "contaminant",
@@ -265,7 +265,7 @@ impl std::fmt::Display for MetaMorpheusMatchKind {
 
 impl MetaData for MetaMorpheusData {
     fn compound_peptidoform_ion(&self) -> Option<Cow<'_, CompoundPeptidoformIon>> {
-        Some(Cow::Owned(self.peptide.clone().into()))
+        Some(Cow::Owned(self.peptide.clone()))
     }
 
     fn format(&self) -> KnownFileFormat {

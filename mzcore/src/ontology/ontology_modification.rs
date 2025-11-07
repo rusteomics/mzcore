@@ -4,8 +4,8 @@ use crate::{
     sequence::{LinkerSpecificity, ModificationId, PlacementRule, SimpleModificationInner},
 };
 use itertools::Itertools;
+use mzcv::SynonymScope;
 use ordered_float::OrderedFloat;
-
 use thin_vec::ThinVec;
 
 #[derive(Debug, Default)]
@@ -15,7 +15,7 @@ pub(crate) struct OntologyModification {
     pub ontology: Ontology,
     pub id: usize,
     pub description: String,
-    pub synonyms: ThinVec<String>,
+    pub synonyms: ThinVec<(SynonymScope, String)>,
     pub cross_ids: ThinVec<(Option<String>, String)>,
     pub data: ModData,
 }

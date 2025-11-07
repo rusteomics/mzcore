@@ -1,8 +1,6 @@
 #![allow(clippy::missing_panics_doc)]
 use std::io::BufReader;
 
-use mzcore::ontology::Ontologies;
-
 use crate::{SpectrumSequenceListData, SpectrumSequenceListVersion, test_format};
 
 #[test]

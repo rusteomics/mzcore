@@ -102,9 +102,12 @@ impl CVSource for Resid {
                                         modification.name =
                                             name_node.text().unwrap_or_default().to_string();
                                     }
-                                    "AlternateName" | "SystematicName" => modification
-                                        .synonyms
-                                        .push(name_node.text().unwrap_or_default().to_string()),
+                                    "AlternateName" | "SystematicName" => {
+                                        modification.synonyms.push((
+                                            mzcv::SynonymScope::Exact,
+                                            name_node.text().unwrap_or_default().to_string(),
+                                        ))
+                                    }
                                     "Xref" => {
                                         if let Some((a, b)) =
                                             name_node.text().unwrap_or_default().split_once(':')

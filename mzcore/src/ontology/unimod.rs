@@ -2,9 +2,7 @@
 use std::io::Read;
 
 use context_error::{BoxedError, CreateError};
-
-use mzcv::{CVError, CVFile, CVSource, CVVersion, HashBufReader};
-
+use mzcv::{CVError, CVFile, CVSource, CVVersion, HashBufReader, SynonymScope};
 use roxmltree::*;
 
 use crate::{
@@ -126,7 +124,7 @@ fn parse_mod(node: &Node) -> Result<OntologyModification, String> {
     let mut cross_ids = Vec::new();
     let mut synonyms = Vec::new();
     let mut description = full_name.clone();
-    synonyms.push(full_name);
+    synonyms.push((SynonymScope::Exact, full_name));
     for child in node.children() {
         if child.has_tag_name("specificity") {
             let site = child.attribute("site").unwrap(); // Check if there is a way to recognise linkers
@@ -179,7 +177,10 @@ fn parse_mod(node: &Node) -> Result<OntologyModification, String> {
                 .to_string();
         }
         if child.has_tag_name("alt_name") {
-            synonyms.push(child.text().ok_or("Missing text for synonym")?.to_string());
+            synonyms.push((
+                SynonymScope::Exact,
+                child.text().ok_or("Missing text for synonym")?.to_string(),
+            ));
         }
         if child.has_tag_name("xref") {
             let source = child

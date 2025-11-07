@@ -9,6 +9,7 @@ use std::{
 
 use context_error::*;
 use itertools::Itertools;
+use mzcv::SynonymScope;
 use ordered_float::OrderedFloat;
 use serde::{Deserialize, Serialize};
 
@@ -73,7 +74,7 @@ pub struct ModificationId {
     /// The description, mostly for search results
     pub description: String,
     /// Any synonyms
-    pub synonyms: thin_vec::ThinVec<String>,
+    pub synonyms: thin_vec::ThinVec<(SynonymScope, String)>,
     /// Cross reference IDs
     pub cross_ids: thin_vec::ThinVec<(Option<String>, String)>,
 }

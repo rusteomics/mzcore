@@ -47,6 +47,7 @@ type Modifier = (String, String);
 type Comment = Option<String>;
 
 /// A synonym in an Obo stanza
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Clone, Debug, Default)]
 pub struct OboSynonym {
     /// The synonym itself
@@ -64,6 +65,7 @@ pub struct OboSynonym {
 }
 
 /// The type or scope for a synonym
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Clone, Copy, Debug, Default, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub enum SynonymScope {
     /// An exact relation

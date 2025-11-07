@@ -121,7 +121,7 @@ pub trait CVData: Clone {
     /// The name of the item, this will be stored in a case insensitive manner in the
     /// [`crate::CVIndex`] but should be reported in the correct casing here.
     fn name(&self) -> Option<&str>;
-    /// Any synonyms that can be uniquely attributed to this data element.
+    /// Any synonyms that can be uniquely attributed to this data element. So EXACT synonyms from Obo files.
     fn synonyms(&self) -> impl Iterator<Item = &str>;
 
     /// The cache type, needed to be generic to handle serde (de)serialisation nicely

@@ -141,7 +141,7 @@ impl MetaData for PUniFindData {
     }
 
     fn id(&self) -> String {
-        self.title.to_string()
+        self.title.clone()
     }
 
     fn confidence(&self) -> Option<f64> {

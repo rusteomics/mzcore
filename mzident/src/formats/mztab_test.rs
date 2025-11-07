@@ -4,7 +4,7 @@ use std::io::{BufRead, BufReader};
 use context_error::{BasicKind, BoxedError};
 
 use crate::{IdentifiedPeptidoform, MZTabData, MaybePeptidoform, test_identified_peptidoform};
-use mzcore::{ontology::Ontologies, sequence::SimpleLinear};
+use mzcore::sequence::SimpleLinear;
 
 #[test]
 fn pride_exp_excerpt_ac_1643() {

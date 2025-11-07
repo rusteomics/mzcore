@@ -16,7 +16,7 @@ use crate::{
 };
 use mzcore::{
     csv::{CsvLine, parse_csv},
-    ontology::{Ontologies, Ontology},
+    ontology::Ontologies,
     sequence::{
         CompoundPeptidoformIon, FlankingSequence, Peptidoform, SemiAmbiguous,
         SloppyParsingParameters,
@@ -43,7 +43,7 @@ format_family!(
             location.full_line(),
             location.location.clone(),
             ontologies,
-            &BUILT_IN_MODIFICATIONS.get_or_init(|| SloppyParsingParameters {
+            BUILT_IN_MODIFICATIONS.get_or_init(|| SloppyParsingParameters {
                 replace_mass_modifications: Some(vec![
                 ontologies.unimod().get_by_index(&35).unwrap(),
                 ontologies.unimod().get_by_index(&21).unwrap(),

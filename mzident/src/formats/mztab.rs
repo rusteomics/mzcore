@@ -22,7 +22,6 @@ use crate::{
 };
 use mzcore::{
     chemistry::MolecularFormula,
-    ontology::{CustomDatabase, Ontology},
     quantities::Tolerance,
     sequence::{
         AminoAcid, CompoundPeptidoformIon, FlankingSequence, MUPSettings,
@@ -262,7 +261,7 @@ impl MZTabData {
                         .and_then(|line| Protein::from_line(line)) {
                         Ok(protein) => {
                             for name in &protein.ambiguity_members {
-                                proteins.insert(name.to_string(), protein.clone());
+                                proteins.insert(name.clone(), protein.clone());
                             }
                             proteins.insert(protein.accession.clone(), protein);
                             None
@@ -767,7 +766,7 @@ impl MZTabData {
                 })
                 .map(|(index, column)| {
                     (
-                        column.to_string(),
+                        column.clone(),
                         line.line[line.fields[index].clone()].to_string(),
                     )
                 })

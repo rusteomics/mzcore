@@ -3,10 +3,7 @@ use std::fmt::Display;
 use context_error::{BasicKind, BoxedError};
 
 use crate::{IdentifiedPeptidoform, MaybePeptidoform, MetaData};
-use mzcore::{
-    ontology::CustomDatabase,
-    sequence::{AtLeast, Linked},
-};
+use mzcore::sequence::{AtLeast, Linked};
 
 /// A version for an identified peptide version
 pub trait IdentifiedPeptidoformVersion<Format>: Copy + Display {
@@ -131,6 +128,7 @@ pub type BoxedIdentifiedPeptideIter<'lifetime, T> = IdentifiedPeptidoformIter<
 >;
 
 /// An iterator returning parsed identified peptides
+#[derive(Debug)]
 pub struct IdentifiedPeptidoformIter<
     'lifetime,
     Source: IdentifiedPeptidoformSource,

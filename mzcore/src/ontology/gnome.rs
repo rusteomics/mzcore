@@ -198,7 +198,11 @@ fn parse_gnome(obo: OboOntology) -> HashMap<String, GNOmeModification> {
                 name: obj.id.1,
                 id: None,
                 description: obj.definition.map_or_else(String::new, |d| d.0),
-                synonyms: obj.synonyms.iter().map(|s| s.synonym.clone()).collect(),
+                synonyms: obj
+                    .synonyms
+                    .iter()
+                    .map(|s| (s.scope, s.synonym.clone()))
+                    .collect(),
                 cross_ids: obj
                     .property_values
                     .get(HAS_GLYTOUCAN_ID)

@@ -268,15 +268,20 @@ fn parse_single_modification<'error>(
                             )]
                     })
                 }
-                ("u", tail) => ontologies.get_by_name(&[Ontology::Unimod], tail)
-                    .ok_or_else(|| numerical_mod(tail))
+                ("u", name) => ontologies.unimod().get_by_name_or_synonym(name)
+                    .map(|(name, m)| {
+                        if !name {
+                            combine_error(&mut errors, BoxedError::new(BasicKind::Warning, "Used modification synonym", "The name of the modification should be used to unambiguously identify a modification", base_context.clone().add_highlight((0, offset + tail.1, tail.2, format!("use {m}")))), ());
+                        }
+                        m})
+                    .ok_or_else(|| numerical_mod(name))
                     .flat_err()
                     .map(Some)
                     .map_err(|_| {
                         vec![
                             basic_error.clone().long_description(
                                 "The modification could not be found in Unimod",
-                            ).suggestions(ontologies.search(&[Ontology::Unimod], tail).into_iter().map(|m|m.to_string()))
+                            ).suggestions(ontologies.search(&[Ontology::Unimod], name).into_iter().map(|m|m.to_string()))
                         ]
                     }),
                 ("m", tail) => ontologies.get_by_name(&[Ontology::Psimod], tail)

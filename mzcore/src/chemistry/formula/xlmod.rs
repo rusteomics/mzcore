@@ -24,7 +24,7 @@ impl MolecularFormula {
     /// assert_eq!(
     ///     MolecularFormula::xlmod("13C6 H6 O2").unwrap(),
     ///     molecular_formula!([13 C 6] H 6 O 2)
-    /// );    ///
+    /// );  
     /// ```
     pub fn xlmod(value: &str) -> Result<Self, BoxedError<'_, BasicKind>> {
         Self::xlmod_inner(&Context::none().lines(0, value), value, 0..value.len())

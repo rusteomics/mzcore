@@ -58,6 +58,15 @@ impl<CV: CVSource> CVIndex<CV> {
         self.name.get(&name).cloned()
     }
 
+    /// Load a data item by name or if that fails by synonym, names are matched in a case insensitive manner. Returns a boolean indicating if it matches a name `true` or a synonym `false`
+    pub fn get_by_name_or_synonym(&self, name: &str) -> Option<(bool, Arc<CV::Data>)> {
+        let name = name.to_ascii_lowercase().into_boxed_str();
+        self.name
+            .get(&name)
+            .map(|m| (true, m.clone()))
+            .or_else(|| self.synonyms.get(&name).map(|m| (false, m.clone())))
+    }
+
     /// Search trough the name and synonyms lists to find the closest terms.
     /// This can be limited to a maximum amount of entries sent back and to a maximum edit distance with the search term.
     /// The results are sorted unstably on edit distance so multiple calls could return different lists.

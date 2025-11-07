@@ -100,7 +100,11 @@ impl CVSource for XlMod {
                             .definition
                             .as_ref()
                             .map_or_else(ThinVec::new, |d| d.1.clone().into());
-                        let synonyms = obj.synonyms.iter().map(|s| s.synonym.clone()).collect();
+                        let synonyms = obj
+                            .synonyms
+                            .iter()
+                            .map(|s| (s.scope, s.synonym.clone()))
+                            .collect();
 
                         for (id, value) in &obj.property_values {
                             match id.as_str() {
