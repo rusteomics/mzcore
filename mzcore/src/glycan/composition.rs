@@ -59,7 +59,7 @@ impl MonoSaccharide {
                 let formula = handle!(single errors,
                     MolecularFormula::pro_forma_inner::<true, false>(base_context, line, index + 1..index + 1+end_formula));
                 index += end_formula + 2;
-                Self::new(crate::glycan::BaseSugar::Custom(formula), &[])
+                Self::new(crate::glycan::BaseSugar::Custom(formula.into()), &[])
             } else {
                 let mut found = None;
                 for (names, sugar) in GLYCAN_PARSE_LIST.iter() {

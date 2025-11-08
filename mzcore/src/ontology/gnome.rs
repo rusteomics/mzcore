@@ -87,7 +87,7 @@ impl CVSource for Gnome {
         // Fill all known info points
         for modification in mods.values_mut() {
             if modification.weight.is_none() {
-                modification.weight = find_mass(&read_mods, modification.is_a.clone());
+                modification.weight = find_mass(&read_mods, modification.is_a.clone().into_boxed_str());
             }
             if let Some(structure) = structures.get(&modification.id.name) {
                 modification.topology = structure.structure.clone();
@@ -95,25 +95,25 @@ impl CVSource for Gnome {
                     modification
                         .id
                         .cross_ids
-                        .push((Some("ChEBI".to_string()), chebi.to_string()));
+                        .push((Some("ChEBI".into()), chebi.to_string().into_boxed_str()));
                 }
                 if let Some(pubchem) = structure.pubchem {
                     modification
                         .id
                         .cross_ids
-                        .push((Some("PubChemCID".to_string()), pubchem.to_string()));
+                        .push((Some("PubChemCID".into()), pubchem.to_string().into_boxed_str()));
                 }
                 modification.motif = structure.motif.clone();
                 modification.taxonomy = structure.taxonomy.clone().into();
                 modification.glycomeatlas = structure.glycomeatlas.clone().into();
             } else if let Some(id) = &modification.topology_id {
-                modification.topology = structures.get(id).and_then(|s| s.structure.clone());
+                modification.topology = structures.get(&id.clone().into_boxed_str()).and_then(|s| s.structure.clone());
             }
             if modification.composition.is_none()
                 && let Some(composition_id) = &modification.composition_id
             {
                 modification.composition = read_mods
-                    .get(composition_id)
+                    .get(&composition_id.clone().into_boxed_str())
                     .and_then(|g| g.composition.clone());
             }
         }
@@ -125,11 +125,11 @@ impl CVSource for Gnome {
     }
 }
 
-fn find_mass(mods: &HashMap<String, GNOmeModification>, mut name: String) -> Option<f64> {
+fn find_mass(mods: &HashMap<Box<str>, GNOmeModification>, mut name: Box<str>) -> Option<f64> {
     let mut mass = None;
     while mass.is_none() {
         mass = mods.get(&name)?.weight;
-        name.clone_from(&mods[&name].is_a);
+        name.clone_from(&mods[&name].is_a.clone().into_boxed_str());
     }
     mass
 }
@@ -183,7 +183,7 @@ fn gno_subsumption_from_str(s: &str) -> Result<GnoSubsumption, ()> {
 /// Parse the GNOme ontology .obo file
 /// # Errors
 /// If the file is not valid.
-fn parse_gnome(obo: OboOntology) -> HashMap<String, GNOmeModification> {
+fn parse_gnome(obo: OboOntology) -> HashMap<Box<str>, GNOmeModification> {
     let mut mods = HashMap::new();
     let mut errors = Vec::new();
 
@@ -197,7 +197,7 @@ fn parse_gnome(obo: OboOntology) -> HashMap<String, GNOmeModification> {
                 ontology: Ontology::Gnome,
                 name: obj.id.1,
                 id: None,
-                description: obj.definition.map_or_else(String::new, |d| d.0),
+                description: obj.definition.map_or_else(Box::default, |d| d.0),
                 synonyms: obj
                     .synonyms
                     .iter()
@@ -206,22 +206,22 @@ fn parse_gnome(obo: OboOntology) -> HashMap<String, GNOmeModification> {
                 cross_ids: obj
                     .property_values
                     .get(HAS_GLYTOUCAN_ID)
-                    .map(|v| (Some("GlyTouCan".to_string()), v[0].0.to_string()))
+                    .map(|v| (Some("GlyTouCan".into()), v[0].0.to_string().into_boxed_str()))
                     .into_iter()
                     .chain(
                         obj.property_values
                             .get(HAS_GLYTOUCAN_LINK)
-                            .map(|v| (Some("GlyTouCanURL".to_string()), v[0].0.to_string())),
+                            .map(|v| (Some("GlyTouCanURL".into()), v[0].0.to_string().into_boxed_str())),
                     )
                     .chain(
                         obj.property_values
                             .get(HAS_COMPOSITION_BROWSER_LINK)
-                            .map(|v| (Some("CompositionBrowser".to_string()), v[0].0.to_string())),
+                            .map(|v| (Some("CompositionBrowser".into()), v[0].0.to_string().into_boxed_str())),
                     )
                     .chain(
                         obj.property_values
                             .get(HAS_STRUCTURE_BROWSER_LINK)
-                            .map(|v| (Some("StructureBrowser".to_string()), v[0].0.to_string())),
+                            .map(|v| (Some("StructureBrowser".into()), v[0].0.to_string().into_boxed_str())),
                     )
                     .collect(),
             },
@@ -298,14 +298,14 @@ struct GlycosmosList {
 /// If the file is not valid.
 fn parse_gnome_structures(
     file: HashBufReader<Box<dyn std::io::Read>, impl sha2::Digest>,
-) -> HashMap<String, GlycosmosList> {
+) -> HashMap<Box<str>, GlycosmosList> {
     let mut glycans = HashMap::new();
     let mut errors = 0;
     for line in crate::csv::parse_csv_raw(file, b',', None, None).unwrap() {
         let line = line.unwrap();
 
         glycans.insert(
-            line.index_column("accession number").unwrap().0.to_string(),
+            line.index_column("accession number").unwrap().0.into(),
             GlycosmosList {
                 structure: line
                     .index_column("iupac condensed")

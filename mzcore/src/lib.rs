@@ -19,6 +19,7 @@ pub mod quantities;
 /// Contains all things related to sequences, amongst others amino acids and peptidoforms.
 pub mod sequence;
 pub mod system;
+mod space;
 
 /// A subset of the types and traits that are envisioned to be used the most, importing this is a good starting point for working with the crate
 pub mod prelude {

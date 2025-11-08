@@ -19,20 +19,26 @@ use crate::{
     },
     helper_functions::{end_of_enclosure, next_char, str_starts_with},
     parse_json::{ParseJson, use_serde},
-    sequence::SequencePosition,
+    sequence::SequencePosition, space::Space,
 };
 
 /// Rose tree representation of glycan structure
 #[derive(Clone, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 pub struct GlycanStructure {
     pub(super) sugar: MonoSaccharide,
-    pub(super) branches: Vec<GlycanStructure>,
+    pub(super) branches: ThinVec<GlycanStructure>,
+}
+
+impl Space for GlycanStructure {
+    fn space(&self) -> crate::space::UsedSpace {
+        (self.sugar.space() + self.branches.space()).set_total::<Self>()
+    }
 }
 
 impl GlycanStructure {
     /// Create a new glycan structure
-    pub const fn new(sugar: MonoSaccharide, branches: Vec<Self>) -> Self {
-        Self { sugar, branches }
+    pub fn new(sugar: MonoSaccharide, branches: Vec<Self>) -> Self {
+        Self { sugar, branches: branches.into() }
     }
 
     /// Parse a short IUPAC glycan structure.
@@ -48,7 +54,7 @@ impl GlycanStructure {
         let mut offset = range.start;
         let mut branch = Self {
             sugar: MonoSaccharide::new(BaseSugar::Decose, &[]),
-            branches: Vec::new(),
+            branches: ThinVec::new(),
         }; // Starting sugar, will be removed
         let mut last_branch: &mut Self = &mut branch;
         let bytes = line.as_bytes();
@@ -76,7 +82,7 @@ impl GlycanStructure {
 
             last_branch.branches.push(Self {
                 sugar: sugar.clone(),
-                branches: Vec::new(),
+                branches: ThinVec::new(),
             });
             last_branch = last_branch.branches.last_mut().unwrap();
 
@@ -126,7 +132,7 @@ impl GlycanStructure {
             // Define new sugar
             let mut new_sugar = Self {
                 sugar: old.sugar,
-                branches: Vec::new(),
+                branches: ThinVec::new(),
             };
             // If there is already some info in the new structure add that as a branch
             if let Some(new_structure) = new_structure {
@@ -331,7 +337,7 @@ impl GlycanStructure {
                 })?;
                 // Parse the first branch
                 let mut index = index + 1;
-                let mut branches = Vec::new();
+                let mut branches = ThinVec::new();
                 let (glycan, pos) = Self::parse_internal(line, index..end)?;
                 index = pos;
                 branches.push(glycan);
@@ -361,7 +367,7 @@ impl GlycanStructure {
                 Ok((
                     Self {
                         sugar: sugar.clone(),
-                        branches: Vec::new(),
+                        branches: ThinVec::new(),
                     },
                     range.start + name.len(),
                 ))
@@ -471,8 +477,8 @@ mod test {
                 sugar: MonoSaccharide::new(BaseSugar::Heptose(None), &[]),
                 branches: vec![GlycanStructure {
                     sugar: MonoSaccharide::new(BaseSugar::Hexose(None), &[]),
-                    branches: Vec::new()
-                }],
+                    branches: ThinVec::new()
+                }].into(),
             }
         );
     }
@@ -486,13 +492,13 @@ mod test {
                 branches: vec![
                     GlycanStructure {
                         sugar: MonoSaccharide::new(BaseSugar::Hexose(None), &[]),
-                        branches: Vec::new()
+                        branches: ThinVec::new()
                     },
                     GlycanStructure {
                         sugar: MonoSaccharide::new(BaseSugar::Heptose(None), &[]),
-                        branches: Vec::new()
+                        branches: ThinVec::new()
                     }
-                ],
+                ].into(),
             }
         );
     }
@@ -508,14 +514,14 @@ mod test {
                         sugar: MonoSaccharide::new(BaseSugar::Hexose(None), &[]),
                         branches: vec![GlycanStructure {
                             sugar: MonoSaccharide::new(BaseSugar::Hexose(None), &[]),
-                            branches: Vec::new()
-                        }]
+                            branches: ThinVec::new()
+                        }].into()
                     },
                     GlycanStructure {
                         sugar: MonoSaccharide::new(BaseSugar::Heptose(None), &[]),
-                        branches: Vec::new()
+                        branches: ThinVec::new()
                     }
-                ],
+                ].into(),
             }
         );
     }
@@ -535,16 +541,16 @@ mod test {
                                 sugar: MonoSaccharide::new(BaseSugar::Hexose(None), &[]),
                                 branches: vec![GlycanStructure {
                                     sugar: MonoSaccharide::new(BaseSugar::Heptose(None), &[]),
-                                    branches: Vec::new(),
-                                }],
+                                    branches: ThinVec::new(),
+                                }].into(),
                             },
                             GlycanStructure {
                                 sugar: MonoSaccharide::new(BaseSugar::Hexose(None), &[]),
-                                branches: Vec::new(),
+                                branches: ThinVec::new(),
                             },
-                        ],
-                    }],
-                }],
+                        ].into(),
+                    }].into(),
+                }].into(),
             }
         );
     }

@@ -25,14 +25,14 @@ impl CVData for SimpleModificationInner {
         self.description().and_then(|d| d.id)
     }
     fn name(&self) -> Option<&str> {
-        self.description().map(|d| d.name.as_str())
+        self.description().map(|d| d.name.as_ref())
     }
     fn synonyms(&self) -> impl Iterator<Item = &str> {
         self.description().into_iter().flat_map(|d| {
             d.synonyms
                 .iter()
                 .filter(|(s, _)| *s == SynonymScope::Exact)
-                .map(|(_, s)| s.as_str())
+                .map(|(_, s)| s.as_ref())
         })
     }
     type Cache = CVCacheSerde<Self>;
@@ -97,9 +97,9 @@ impl CVSource for PsiMod {
 
                     for obj in obo.objects {
                         if obj.stanza_type != OboStanzaType::Term
-                            || obj.id == (Some("MOD".to_string()), "00000".to_string())
-                            || obj.id == (Some("MOD".to_string()), "00004".to_string())
-                            || obj.id == (Some("MOD".to_string()), "00008".to_string())
+                            || obj.id == (Some("MOD".into()), "00000".into())
+                            || obj.id == (Some("MOD".into()), "00004".into())
+                            || obj.id == (Some("MOD".into()), "00008".into())
                         {
                             continue;
                         }
@@ -128,7 +128,7 @@ impl CVSource for PsiMod {
                         let mut term = None;
                         for (id, values) in obj.property_values {
                             for (value, _, _) in values {
-                                match (id.as_str(), value) {
+                                match (id.as_ref(), value) {
                                     ("DiffFormula", mzcv::OboValue::String(s)) => {
                                         modification.formula =
                                             MolecularFormula::psi_mod(&s).unwrap();

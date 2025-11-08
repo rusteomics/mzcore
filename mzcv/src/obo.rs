@@ -11,14 +11,14 @@ use crate::{CVVersion, hash_buf_reader::HashBufReader};
 #[derive(Clone, Debug, Default)]
 pub struct OboOntology {
     /// The data version
-    pub data_version: Option<String>,
+    pub data_version: Option<Box<str>>,
     /// The last updated date. (format: year, month, day, hour, min)
     pub date: Option<(u16, u8, u8, u8, u8)>,
     /// The hash of the file. This defaults to [`sha2::Sha256`] with [`Self::from_file`] but can be set
     /// differently with [`Self::from_raw`].
     pub hash: Vec<u8>,
     /// The other headers of the Obo file. (tag, value, trailing modifiers, comment)
-    pub headers: Vec<(String, String, Vec<Modifier>, Comment)>,
+    pub headers: Vec<(Box<str>, Box<str>, Vec<Modifier>, Comment)>,
     /// All enclosed objects
     pub objects: Vec<OboStanza>,
 }
@@ -31,31 +31,31 @@ pub struct OboStanza {
     /// The id, split into the CV and local identifiers, the local id is stored as string as some ontologies use non numeric values
     pub id: OboID,
     /// The `def` field.  (value, cross-ids, trailing modifiers, comment)
-    pub definition: Option<(String, Vec<OboID>, Vec<Modifier>, Comment)>,
+    pub definition: Option<(Box<str>, Vec<OboID>, Vec<Modifier>, Comment)>,
     /// The synonyms for this stanza
     pub synonyms: Vec<OboSynonym>,
     /// The tags that are defined for this stanza (value, trialing modifiers, comment)
-    pub lines: HashMap<String, Vec<(String, Vec<Modifier>, Comment)>>,
+    pub lines: HashMap<Box<str>, Vec<(Box<str>, Vec<Modifier>, Comment)>>,
     /// All property value tags parsed as the defined value type (value, trialing modifiers, comment)
-    pub property_values: HashMap<String, Vec<(OboValue, Vec<Modifier>, Comment)>>,
+    pub property_values: HashMap<Box<str>, Vec<(OboValue, Vec<Modifier>, Comment)>>,
 }
 
-type OboID = (Option<String>, String);
+type OboID = (Option<Box<str>>, Box<str>);
 
-type Modifier = (String, String);
+type Modifier = (Box<str>, Box<str>);
 
-type Comment = Option<String>;
+type Comment = Option<Box<str>>;
 
 /// A synonym in an Obo stanza
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Clone, Debug, Default)]
 pub struct OboSynonym {
     /// The synonym itself
-    pub synonym: String,
+    pub synonym: Box<str>,
     /// The type or scope of a synonym
     pub scope: SynonymScope,
     /// Optional synonym type name
-    pub type_name: Option<String>,
+    pub type_name: Option<Box<str>>,
     /// The dbxref list
     pub cross_references: Vec<OboID>,
     /// The trailing modifiers
@@ -313,7 +313,7 @@ impl OboOntology {
                             let name = value_line[..first_space].trim();
                             let value = value_line[first_space..].trim().trim_matches('"');
                             obj.property_values
-                                .entry(name.to_string())
+                                .entry(name.into())
                                 .or_insert(Vec::new())
                                 .push((
                                     OboValue::String(value.to_string()),
@@ -326,7 +326,7 @@ impl OboOntology {
                                 value_line[first_space..last_space].trim().trim_matches('"');
                             let unit = value_line[last_space..].trim();
                             obj.property_values
-                                .entry(name.to_string())
+                                .entry(name.into())
                                 .or_insert(Vec::new())
                                 .push((
                                     OboValue::parse(
@@ -456,7 +456,7 @@ impl OboOntology {
                         obj.definition = Some((def, cross_references, trailing_modifiers, comment));
                     } else {
                         obj.lines
-                            .entry(id.trim().to_string())
+                            .entry(id.trim().into())
                             .or_insert(Vec::new())
                             .push((unescape(value_line), trailing_modifiers, comment));
                     }
@@ -516,7 +516,7 @@ impl OboOntology {
                     }
                 } else {
                     obo.headers.push((
-                        id.to_string(),
+                        id.into(),
                         unescape(value_line),
                         trailing_modifiers,
                         comment,
@@ -545,20 +545,20 @@ impl OboOntology {
     pub fn version(&self) -> CVVersion {
         CVVersion {
             last_updated: self.date,
-            version: self.data_version.clone(),
+            version: self.data_version.as_ref().map(|v| v.to_string()),
             hash: self.hash.clone(),
         }
     }
 }
 
-fn unescape(value: &str) -> String {
+fn unescape(value: &str) -> Box<str> {
     let mut result = String::new();
     for c in value.trim().chars() {
         if c != '\\' {
             result.push(c);
         }
     }
-    result
+    result.into_boxed_str()
 }
 
 impl OboStanza {
@@ -612,7 +612,7 @@ impl ErrorKind for OboError {
 fn tokenise_obo_value_line<'a>(
     text: &'a str,
     context: Context<'static>,
-) -> Result<(&'a str, Vec<(String, String)>, Option<String>), BoxedError<'static, OboError>> {
+) -> Result<(&'a str, Vec<(Box<str>, Box<str>)>, Option<Box<str>>), BoxedError<'static, OboError>> {
     let mut trailing_start = None;
     let mut comment_start = None;
     let mut enclosed: Option<(char, usize)> = None;
@@ -739,7 +739,7 @@ fn tokenise(text: &str) -> Result<Vec<(Option<char>, &str)>, char> {
     Ok(parts)
 }
 
-fn parse_dbxref(text: &str) -> Vec<(Option<String>, String)> {
+fn parse_dbxref(text: &str) -> Vec<(Option<Box<str>>, Box<str>)> {
     text.split(',')
         .filter(|s| !s.is_empty())
         .map(|id| {

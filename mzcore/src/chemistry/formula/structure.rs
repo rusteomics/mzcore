@@ -15,6 +15,7 @@ use crate::{
     quantities::Multi,
     sequence::{AminoAcid, CrossLinkName, SequencePosition},
     system::f64,
+    space::{UsedSpace, Space},
 };
 
 /// A molecular formula, a selection of elements of specified isotopes together forming a structure
@@ -57,6 +58,12 @@ impl std::fmt::Display for MolecularFormula {
     }
 }
 
+impl Space for MolecularFormula {
+    fn space(&self) -> UsedSpace {
+        (self.elements.space() + self.additional_mass.space() + self.labels.space()).set_total::<Self>()
+    }
+}
+
 /// Keep track of what ambiguous option is used
 #[derive(Clone, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 pub enum AmbiguousLabel {
@@ -92,6 +99,20 @@ pub enum AmbiguousLabel {
     GlycanFragment(Vec<GlycanPosition>),
     /// A glycan fragment on a peptide fragment, with the monosaccharides that make up the fragment
     GlycanFragmentComposition(Vec<(MonoSaccharide, isize)>),
+}
+
+impl Space for AmbiguousLabel {
+    fn space(&self) -> UsedSpace {
+        (UsedSpace::stack(8) + match self {
+            Self::AminoAcid { option, sequence_index, peptidoform_index, peptidoform_ion_index } => option.space() + sequence_index.space() + peptidoform_index.space() + peptidoform_ion_index.space(),
+            Self::Modification { id, sequence_index, peptidoform_index, peptidoform_ion_index } => id.space() + sequence_index.space() + peptidoform_index.space() + peptidoform_ion_index.space(),
+            Self::ChargeCarrier(f) => f.space(),
+            Self::CrossLinkBound(n) => n.space(),
+            Self::CrossLinkBroken(n, f ) => n.space() + f.space(),
+            Self::GlycanFragment(f) => f.space(),
+            Self::GlycanFragmentComposition(f) => f.space(),
+        }).set_total::<Self>()
+    }
 }
 
 /// Any item that has a clearly defined single molecular formula

@@ -100,12 +100,12 @@ impl CVSource for Resid {
                                 match name_node.tag_name().name() {
                                     "Name" => {
                                         modification.name =
-                                            name_node.text().unwrap_or_default().to_string();
+                                            name_node.text().unwrap_or_default().into();
                                     }
                                     "AlternateName" | "SystematicName" => {
                                         modification.synonyms.push((
                                             mzcv::SynonymScope::Exact,
-                                            name_node.text().unwrap_or_default().to_string(),
+                                            name_node.text().unwrap_or_default().into(),
                                         ))
                                     }
                                     "Xref" => {
@@ -114,7 +114,7 @@ impl CVSource for Resid {
                                         {
                                             modification
                                                 .cross_ids
-                                                .push((Some(a.to_string()), b.to_string()));
+                                                .push((Some(a.into()), b.into()));
                                         } else {
                                             panic!("Invalid Xref content")
                                         }
@@ -160,7 +160,7 @@ impl CVSource for Resid {
                                     {
                                         modification
                                             .cross_ids
-                                            .push((Some(a.to_string()), b.to_string()));
+                                            .push((Some(a.into()), b.into()));
                                     } else {
                                         panic!("Invalid Xref content")
                                     }
@@ -168,7 +168,7 @@ impl CVSource for Resid {
                             }
                         }
                         "Comment" => {
-                            modification.description += data_block.text().unwrap_or_default();
+                            modification.description = format!("{}{}", modification.description, data_block.text().unwrap_or_default()).into_boxed_str();
                         }
                         "SequenceCode" => {
                             let mut rule =
@@ -211,7 +211,7 @@ impl CVSource for Resid {
                                         {
                                             modification
                                                 .cross_ids
-                                                .push((Some(a.to_string()), b.to_string()));
+                                                .push((Some(a.into()), b.into()));
                                         } else {
                                             panic!("Invalid Xref content")
                                         }

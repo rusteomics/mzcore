@@ -115,9 +115,9 @@ impl CVSource for Unimod {
 
 fn parse_mod(node: &Node) -> Result<OntologyModification, String> {
     let mut formula = MolecularFormula::default();
-    let full_name = node
+    let full_name: Box<str> = node
         .attribute("full_name")
-        .map(ToString::to_string)
+        .map(Into::into)
         .ok_or("No defined description for modification")?;
     let mut diagnostics = Vec::new();
     let mut rules = Vec::new();
@@ -174,38 +174,38 @@ fn parse_mod(node: &Node) -> Result<OntologyModification, String> {
             description = child
                 .text()
                 .ok_or("Missing text for notes in modification")?
-                .to_string();
+                .into();
         }
         if child.has_tag_name("alt_name") {
             synonyms.push((
                 SynonymScope::Exact,
-                child.text().ok_or("Missing text for synonym")?.to_string(),
+                child.text().ok_or("Missing text for synonym")?.into(),
             ));
         }
         if child.has_tag_name("xref") {
-            let source = child
+            let source: Box<str> = child
                 .children()
                 .find(|c| c.has_tag_name("source"))
                 .and_then(|c| c.text())
                 .unwrap()
-                .to_string();
-            let text = child
+                .into();
+            let text: Box<str> = child
                 .children()
                 .find(|c| c.has_tag_name("text"))
                 .and_then(|c| c.text())
                 .unwrap()
-                .to_string();
-            let url = child
+                .into();
+            let url: Box<str> = child
                 .children()
                 .find(|c| c.has_tag_name("url"))
                 .and_then(|c| c.text())
-                .map(ToString::to_string)
+                .map(Into::into)
                 .unwrap_or_default();
             if url.is_empty() {
                 cross_ids.push((Some(source), text));
             } else {
                 cross_ids.push((
-                    if source == "Misc. URL" {
+                    if *source == *"Misc. URL" {
                         Some(text)
                     } else {
                         Some(source)
@@ -218,7 +218,7 @@ fn parse_mod(node: &Node) -> Result<OntologyModification, String> {
     Ok(OntologyModification {
         name: node
             .attribute("title")
-            .map(ToString::to_string)
+            .map(Into::into)
             .ok_or("No defined name for modification")?,
         id: node
             .attribute("record_id")

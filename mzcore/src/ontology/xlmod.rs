@@ -95,7 +95,7 @@ impl CVSource for XlMod {
                         let description = obj
                             .definition
                             .as_ref()
-                            .map_or_else(String::new, |d| d.0.clone());
+                            .map_or_else(Box::default, |d| d.0.clone());
                         let cross_ids = obj
                             .definition
                             .as_ref()
@@ -107,7 +107,7 @@ impl CVSource for XlMod {
                             .collect();
 
                         for (id, value) in &obj.property_values {
-                            match id.as_str() {
+                            match id.as_ref() {
                                 "reactionSites" => {
                                     sites = if let OboValue::Integer(n) = value[0].0 {
                                         Some(u8::try_from(n).unwrap())

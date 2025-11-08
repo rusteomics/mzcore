@@ -1,4 +1,4 @@
-use crate::parse_json::{ParseJson, use_serde};
+use crate::{parse_json::{ParseJson, use_serde}, space::{Space, UsedSpace}};
 
 use serde::{Deserialize, Serialize};
 
@@ -11,6 +11,15 @@ pub enum SequencePosition {
     Index(usize),
     /// C-terminal
     CTerm,
+}
+
+impl Space for SequencePosition {
+    fn space(&self) -> UsedSpace {
+        match self {
+            Self::Index(_) => UsedSpace {stack: 16, ..Default::default()},
+            _ => UsedSpace {stack: 8,padding: 8, ..Default::default()},
+        }
+    }
 }
 
 /// Add to the index, the onus of making sure the index is still valid for the peptide is on the caller.

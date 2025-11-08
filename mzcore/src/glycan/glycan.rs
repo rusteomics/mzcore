@@ -11,7 +11,7 @@ use crate::{
     helper_functions::str_starts_with,
     molecular_formula,
     parse_json::{ParseJson, use_serde},
-    sequence::SequencePosition,
+    sequence::SequencePosition, space::{Space, UsedSpace},
 };
 
 /// Glycan absolute configuration
@@ -38,6 +38,12 @@ pub struct MonoSaccharide {
     pub(super) substituents: ThinVec<GlycanSubstituent>,
     pub(super) furanose: bool,
     pub(super) configuration: Option<Configuration>,
+}
+
+impl Space for MonoSaccharide {
+    fn space(&self) -> UsedSpace {
+        (self.base_sugar.space() + self.substituents.space() + self.furanose.space() + self.configuration.space()).set_total::<Self>()
+    }
 }
 
 impl MonoSaccharide {
@@ -574,7 +580,7 @@ impl Chemical for MonoSaccharide {
 #[derive(Clone, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 pub enum BaseSugar {
     /// Edge case, no defined sugar.
-    Custom(MolecularFormula),
+    Custom(Box<MolecularFormula>),
     /// 2 carbon base sugar
     Sugar,
     /// 3 carbon base sugar
@@ -593,6 +599,20 @@ pub enum BaseSugar {
     Nonose(Option<NonoseIsomer>),
     /// 10 carbon base sugar
     Decose,
+}
+
+impl Space for BaseSugar {
+    fn space(&self) -> UsedSpace {
+        (UsedSpace::stack(8) + match self {
+            Self::Custom(f) => f.space(),
+            Self::Tetrose(i) => i.space(),
+            Self::Pentose(i) => i.space(),
+            Self::Hexose(i) => i.space(),
+            Self::Heptose(i) => i.space(),
+            Self::Nonose(i) => i.space(),
+            _ => UsedSpace::default()
+        }).set_total::<Self>()
+    }
 }
 
 impl BaseSugar {
@@ -644,7 +664,7 @@ impl Chemical for BaseSugar {
         _peptidoform_index: usize,
     ) -> MolecularFormula {
         match self {
-            Self::Custom(a) => a.clone(),
+            Self::Custom(a) => a.as_ref().clone(),
             Self::Sugar => molecular_formula!(H 2 C 2 O 1),
             Self::Triose => molecular_formula!(H 4 C 3 O 2),
             Self::Tetrose(_) => molecular_formula!(H 6 C 4 O 3),

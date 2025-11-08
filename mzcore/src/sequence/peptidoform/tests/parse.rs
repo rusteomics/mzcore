@@ -468,7 +468,7 @@ fn parse_custom() {
             )],
             id: ModificationId {
                 ontology: Ontology::Custom,
-                name: "WEEE".to_string(),
+                name: "WEEE".to_string().into_boxed_str(),
                 id: Some(0),
                 ..ModificationId::default()
             },

@@ -14,19 +14,11 @@ use ordered_float::OrderedFloat;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    chemistry::{AmbiguousLabel, Chemical, DiagnosticIon, MolecularFormula, NeutralLoss},
-    glycan::{BackboneFragmentKind, GlycanAttachement, GlycanStructure, MonoSaccharide},
-    helper_functions::merge_hashmap,
-    molecular_formula,
-    ontology::{CustomDatabase, Ontology},
-    parse_json::{ParseJson, use_serde},
-    quantities::Multi,
-    sequence::{
+    chemistry::{AmbiguousLabel, Chemical, DiagnosticIon, MolecularFormula, NeutralLoss}, glycan::{BackboneFragmentKind, GlycanAttachement, GlycanStructure, MonoSaccharide}, helper_functions::merge_hashmap, molecular_formula, ontology::{CustomDatabase, Ontology}, parse_json::{ParseJson, use_serde}, quantities::Multi, sequence::{
         AminoAcid, CrossLinkName, CrossLinkSide, Linked, LinkerSpecificity, MUPSettings,
         Peptidoform, PlacementRule, SequenceElement, SequencePosition, SimpleModification,
         SimpleModificationInner,
-    },
-    system::OrderedMass,
+    }, space::{Space, UsedSpace}, system::OrderedMass
 };
 
 /// A modification on an amino acid
@@ -68,15 +60,21 @@ pub struct ModificationId {
     /// The ontology where this linker is defined
     pub ontology: Ontology,
     /// The name
-    pub name: String,
+    pub name: Box<str>,
     /// The id
     pub id: Option<usize>,
     /// The description, mostly for search results
-    pub description: String,
+    pub description: Box<str>,
     /// Any synonyms
-    pub synonyms: thin_vec::ThinVec<(SynonymScope, String)>,
+    pub synonyms: thin_vec::ThinVec<(SynonymScope, Box<str>)>,
     /// Cross reference IDs
-    pub cross_ids: thin_vec::ThinVec<(Option<String>, String)>,
+    pub cross_ids: thin_vec::ThinVec<(Option<Box<str>>, Box<str>)>,
+}
+
+impl Space for ModificationId {
+    fn space(&self) -> UsedSpace {
+        (self.ontology.space() + self.name.space() + self.id.space() + self.description.space() + self.synonyms.space() + self.cross_ids.space()).set_total::<Self>()
+    }
 }
 
 impl ParseJson for ModificationId {
@@ -94,6 +92,16 @@ pub enum GnoComposition {
     Composition(Vec<(MonoSaccharide, isize)>),
     /// The (full) structure is known
     Topology(GlycanStructure),
+}
+
+impl Space for GnoComposition {
+    fn space(&self) -> UsedSpace {
+        (UsedSpace::stack(8) + match self {
+            Self::Weight(w) => w.space(),
+            Self::Composition(c) => c.space(),
+            Self::Topology(t) => t.space(),
+        }).set_total::<Self>()
+    }
 }
 
 impl ParseJson for GnoComposition {

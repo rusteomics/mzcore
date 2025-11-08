@@ -11,7 +11,7 @@ use crate::{
     sequence::{
         AminoAcid, Modification, ModificationId, SequenceElement, SequencePosition,
         SimpleModificationInner,
-    },
+    }, space::{Space, UsedSpace},
 };
 
 /// A rule determining the placement of a modification
@@ -25,6 +25,17 @@ pub enum PlacementRule {
     Terminal(Position),
     /// Just anywhere
     Anywhere,
+}
+
+impl Space for PlacementRule {
+    fn space(&self) -> UsedSpace {
+        (UsedSpace::stack(8) + match self {
+            Self::AminoAcid(a, p) => a.space() + p.space(),
+            Self::PsiModification(i, p) => i.space() + p.space(),
+            Self::Terminal(p) => p.space(),
+            Self::Anywhere => UsedSpace::default()
+        }).set_total::<Self>()
+    }
 }
 
 impl ParseJson for PlacementRule {

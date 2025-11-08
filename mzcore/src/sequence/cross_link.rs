@@ -8,7 +8,7 @@ use serde_json::Value;
 use crate::{
     chemistry::{DiagnosticIon, MolecularFormula, NeutralLoss},
     parse_json::{ParseJson, use_serde},
-    sequence::PlacementRule,
+    sequence::PlacementRule, space::{Space, UsedSpace},
 };
 
 /// Indicate the cross-link side, it contains a set of all placement rules that apply for the placed
@@ -77,6 +77,15 @@ pub enum CrossLinkName {
     Name(Box<str>),
 }
 
+impl Space for CrossLinkName {
+    fn space(&self) -> UsedSpace {
+        match self {
+            Self::Branch => UsedSpace::stack(8),
+            Self::Name(n) => n.space() + UsedSpace::stack(8),
+        }.set_total::<Self>()
+    }
+}
+
 impl ParseJson for CrossLinkName {
     fn from_json_value(value: Value) -> Result<Self, BoxedError<'static, BasicKind>> {
         use_serde(value)
@@ -108,6 +117,15 @@ pub enum LinkerSpecificity {
         /// All diagnostic ions from the cross-linker
         diagnostic: Vec<DiagnosticIon>,
     },
+}
+
+impl Space for LinkerSpecificity {
+    fn space(&self) -> UsedSpace {
+        (UsedSpace::stack(8) + match self {
+            Self::Symmetric { rules, stubs, neutral_losses, diagnostic } => rules.space() + stubs.space() + neutral_losses.space() + diagnostic.space(),
+            Self::Asymmetric { rules, stubs, neutral_losses, diagnostic } => rules.space() + stubs.space() + neutral_losses.space() + diagnostic.space(),
+        }).set_total::<Self>()
+    }
 }
 
 impl ParseJson for LinkerSpecificity {

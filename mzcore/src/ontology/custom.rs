@@ -84,7 +84,7 @@ impl CVSource for Custom {
                 (
                     m.description().and_then(|i| i.id),
                     m.description()
-                        .map_or_else(|| "UNNAMED".to_string(), |i| i.name.clone()),
+                        .map_or_else(|| "UNNAMED".to_string(), |i| i.name.to_string()),
                     m,
                 )
             })

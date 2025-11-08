@@ -45,7 +45,7 @@ fn sloppy_names_custom() {
             formula: molecular_formula!(O 1),
             id: ModificationId {
                 ontology: Ontology::Custom,
-                name: "Test".to_string(),
+                name: "Test".to_string().into_boxed_str(),
                 id: Some(0),
                 ..Default::default()
             },

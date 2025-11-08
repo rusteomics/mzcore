@@ -15,7 +15,7 @@ use crate::{
     helper_functions::{explain_number_error, next_number},
     parse_json::{ParseJson, use_serde},
     quantities::Multi,
-    sequence::AminoAcid,
+    sequence::AminoAcid, space::{Space, UsedSpace},
 };
 
 /// All possible neutral losses
@@ -27,6 +27,15 @@ pub enum NeutralLoss {
     Loss(u16, MolecularFormula),
     /// Loss of a side chain of an amino acid
     SideChainLoss(MolecularFormula, AminoAcid),
+}
+
+impl Space for NeutralLoss {
+    fn space(&self) -> UsedSpace {
+        (UsedSpace::stack(8) + match self {
+            Self::Gain(a, f) | Self::Loss(a, f) => a.space() + f.space(),
+            Self::SideChainLoss(f, a) => f.space() + a.space()
+        }).set_total::<Self>()
+    }
 }
 
 impl ParseJson for NeutralLoss {
@@ -118,6 +127,12 @@ impl ParseJson for NeutralLoss {
 /// A diagnostic ion, defined in M (not MH+) chemical formula
 #[derive(Clone, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 pub struct DiagnosticIon(pub MolecularFormula);
+
+impl Space for DiagnosticIon {
+    fn space(&self) -> crate::space::UsedSpace {
+        self.0.space()
+    }
+}
 
 impl ParseJson for DiagnosticIon {
     fn from_json_value(value: Value) -> Result<Self, BoxedError<'static, BasicKind>> {

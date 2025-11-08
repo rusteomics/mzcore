@@ -11,12 +11,12 @@ use thin_vec::ThinVec;
 #[derive(Debug, Default)]
 pub(crate) struct OntologyModification {
     pub formula: MolecularFormula,
-    pub name: String,
+    pub name: Box<str>,
     pub ontology: Ontology,
     pub id: usize,
-    pub description: String,
-    pub synonyms: ThinVec<(SynonymScope, String)>,
-    pub cross_ids: ThinVec<(Option<String>, String)>,
+    pub description: Box<str>,
+    pub synonyms: ThinVec<(SynonymScope, Box<str>)>,
+    pub cross_ids: ThinVec<(Option<Box<str>>, Box<str>)>,
     pub data: ModData,
 }
 
@@ -108,7 +108,7 @@ impl From<OntologyModification> for SimpleModificationInner {
         value.simplify_rules();
         let id = ModificationId {
             ontology: value.ontology,
-            name: value.name.clone(),
+            name: value.name,
             id: Some(value.id),
             description: value.description,
             synonyms: value.synonyms,
