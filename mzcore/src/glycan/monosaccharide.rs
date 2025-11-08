@@ -319,4 +319,25 @@ mod tests {
         assert_eq!(human_readable(&options_2), "Hep2,Hex1&Hep1", "Options 2");
         assert_eq!(human_readable(&options_3), "Hex1&Hep2", "Options 3");
     }
+
+    #[test]
+    fn out_of_spec() {
+        let (res, w) = MonoSaccharide::pro_forma_composition::<false>("Man2ManP").unwrap();
+        assert_eq!(
+            res,
+            MonoSaccharide::pro_forma_composition::<true>("Hex3Phosphate1")
+                .unwrap()
+                .0
+        );
+        assert_eq!(w.len(), 2);
+        let (res, w) = MonoSaccharide::pro_forma_composition::<false>("Man2Man-1P").unwrap();
+        assert_eq!(
+            res,
+            MonoSaccharide::pro_forma_composition::<true>("Hex1Phosphate1")
+                .unwrap()
+                .0
+        );
+        assert_eq!(w.len(), 1);
+        // Maybe add warning that you are mixing single letter definitions with full names?
+    }
 }

@@ -2,8 +2,6 @@ use std::sync::LazyLock;
 
 use thin_vec::ThinVec;
 
-use crate::prelude::MolecularFormula;
-
 use super::glycan::{
     BaseSugar, GlycanSubstituent, HeptoseIsomer, HexoseIsomer, MonoSaccharide, NonoseIsomer,
     PentoseIsomer, TetroseIsomer,

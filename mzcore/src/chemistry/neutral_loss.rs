@@ -132,7 +132,7 @@ impl ParseJson for NeutralLoss {
 pub struct DiagnosticIon(pub MolecularFormula);
 
 impl Space for DiagnosticIon {
-    fn space(&self) -> crate::space::UsedSpace {
+    fn space(&self) -> UsedSpace {
         self.0.space()
     }
 }
