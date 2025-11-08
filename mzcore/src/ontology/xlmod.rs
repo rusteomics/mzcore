@@ -279,7 +279,7 @@ fn read_placement_rules(bricks: &[String]) -> Vec<PlacementRule> {
             .filter_map(|brick| {
                 if brick.len() == 1 {
                     Some(PlacementRule::AminoAcid(
-                        vec![brick.try_into().unwrap()],
+                        vec![brick.try_into().unwrap()].into(),
                         Position::Anywhere,
                     ))
                 } else if *brick == "Protein N-term" {

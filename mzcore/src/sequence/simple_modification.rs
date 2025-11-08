@@ -44,16 +44,16 @@ pub enum SimpleModificationInner {
         composition: GnoComposition,
         /// The id/name
         id: ModificationId,
-        /// The structure score
-        structure_score: Option<usize>,
+        /// The structure score, u16::MAX is used to indicate that no structure score is available
+        structure_score: u16,
         /// The subsumption level
         subsumption_level: GnoSubsumption,
         /// The underlying glycan motif, first is the human description, the second id the GNOme ID of the motif
-        motif: Option<(String, String)>,
+        motif: Option<(Box<str>, Box<str>)>,
         /// Taxonomy of the animals in which this glycan is found, defined as a list of species name with taxonomy ID
-        taxonomy: ThinVec<(String, usize)>,
+        taxonomy: ThinVec<(Box<str>, usize)>,
         /// Locations of where the glycan exists
-        glycomeatlas: ThinVec<(String, Vec<(String, String)>)>,
+        glycomeatlas: ThinVec<(Box<str>, ThinVec<(Box<str>, Box<str>)>)>,
     },
     /// A modification from one of the modification ontologies
     Database {
@@ -449,7 +449,8 @@ impl ParseJson for SimpleModificationInner {
                                         context(&map),
                                     )
                                 })?,
-                            )?,
+                            )?
+                            .unwrap_or(u16::MAX),
                             subsumption_level: GnoSubsumption::from_json_value(
                                 map.remove("subsumption_level").ok_or_else(|| {
                                     BoxedError::new(

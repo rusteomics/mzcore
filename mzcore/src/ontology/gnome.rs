@@ -87,7 +87,7 @@ impl CVSource for Gnome {
         // Fill all known info points
         for modification in mods.values_mut() {
             if modification.weight.is_none() {
-                modification.weight = find_mass(&read_mods, modification.is_a.clone().into_boxed_str());
+                modification.weight = find_mass(&read_mods, modification.is_a.clone().into());
             }
             if let Some(structure) = structures.get(&modification.id.name) {
                 modification.topology = structure.structure.clone();
@@ -98,22 +98,24 @@ impl CVSource for Gnome {
                         .push((Some("ChEBI".into()), chebi.to_string().into_boxed_str()));
                 }
                 if let Some(pubchem) = structure.pubchem {
-                    modification
-                        .id
-                        .cross_ids
-                        .push((Some("PubChemCID".into()), pubchem.to_string().into_boxed_str()));
+                    modification.id.cross_ids.push((
+                        Some("PubChemCID".into()),
+                        pubchem.to_string().into_boxed_str(),
+                    ));
                 }
                 modification.motif = structure.motif.clone();
                 modification.taxonomy = structure.taxonomy.clone().into();
                 modification.glycomeatlas = structure.glycomeatlas.clone().into();
             } else if let Some(id) = &modification.topology_id {
-                modification.topology = structures.get(&id.clone().into_boxed_str()).and_then(|s| s.structure.clone());
+                modification.topology = structures
+                    .get(id.as_ref())
+                    .and_then(|s| s.structure.clone());
             }
             if modification.composition.is_none()
                 && let Some(composition_id) = &modification.composition_id
             {
                 modification.composition = read_mods
-                    .get(&composition_id.clone().into_boxed_str())
+                    .get(composition_id.as_ref())
                     .and_then(|g| g.composition.clone());
             }
         }
@@ -129,7 +131,7 @@ fn find_mass(mods: &HashMap<Box<str>, GNOmeModification>, mut name: Box<str>) ->
     let mut mass = None;
     while mass.is_none() {
         mass = mods.get(&name)?.weight;
-        name.clone_from(&mods[&name].is_a.clone().into_boxed_str());
+        name.clone_from(&mods[&name].is_a);
     }
     mass
 }
@@ -193,38 +195,52 @@ fn parse_gnome(obo: OboOntology) -> HashMap<Box<str>, GNOmeModification> {
         }
 
         let modification = GNOmeModification {
-            id: ModificationId {
-                ontology: Ontology::Gnome,
-                name: obj.id.1,
-                id: None,
-                description: obj.definition.map_or_else(Box::default, |d| d.0),
-                synonyms: obj
-                    .synonyms
+            id: ModificationId::new(
+                Ontology::Gnome,
+                obj.id.1,
+                None,
+                Box::default(), // Description is never useful (either contains the mass or contains the ID never anything unique)
+                obj.synonyms
                     .iter()
                     .map(|s| (s.scope, s.synonym.clone()))
                     .collect(),
-                cross_ids: obj
-                    .property_values
+                obj.property_values
                     .get(HAS_GLYTOUCAN_ID)
-                    .map(|v| (Some("GlyTouCan".into()), v[0].0.to_string().into_boxed_str()))
+                    .map(|v| {
+                        (
+                            Some("GlyTouCan".into()),
+                            v[0].0.to_string().into_boxed_str(),
+                        )
+                    })
                     .into_iter()
-                    .chain(
-                        obj.property_values
-                            .get(HAS_GLYTOUCAN_LINK)
-                            .map(|v| (Some("GlyTouCanURL".into()), v[0].0.to_string().into_boxed_str())),
-                    )
+                    .chain(obj.property_values.get(HAS_GLYTOUCAN_LINK).map(|v| {
+                        (
+                            Some("GlyTouCanURL".into()),
+                            v[0].0.to_string().into_boxed_str(),
+                        )
+                    }))
                     .chain(
                         obj.property_values
                             .get(HAS_COMPOSITION_BROWSER_LINK)
-                            .map(|v| (Some("CompositionBrowser".into()), v[0].0.to_string().into_boxed_str())),
+                            .map(|v| {
+                                (
+                                    Some("CompositionBrowser".into()),
+                                    v[0].0.to_string().into_boxed_str(),
+                                )
+                            }),
                     )
                     .chain(
                         obj.property_values
                             .get(HAS_STRUCTURE_BROWSER_LINK)
-                            .map(|v| (Some("StructureBrowser".into()), v[0].0.to_string().into_boxed_str())),
+                            .map(|v| {
+                                (
+                                    Some("StructureBrowser".into()),
+                                    v[0].0.to_string().into_boxed_str(),
+                                )
+                            }),
                     )
                     .collect(),
-            },
+            ),
             subsumption_level: obj
                 .lines
                 .get(HAS_SUBSUMPTION_CATEGORY)
@@ -233,18 +249,19 @@ fn parse_gnome(obo: OboOntology) -> HashMap<Box<str>, GNOmeModification> {
             structure_score: obj
                 .lines
                 .get(HAS_STRUCTURE_CHARACTERISATION_SCORE)
-                .map(|s| s[0].0.parse().unwrap()),
+                .map_or(u16::MAX, |s| s[0].0.parse().unwrap()),
             is_a: obj.lines["is_a"][0].0.trim()[4..]
                 .trim()
-                .to_ascii_lowercase(),
+                .to_ascii_lowercase()
+                .into_boxed_str(),
             composition_id: obj
                 .property_values
                 .get(HAS_COMPOSITION)
-                .map(|lines| lines[0].0.to_string()),
+                .map(|lines| lines[0].0.to_string().into_boxed_str()),
             topology_id: obj
                 .property_values
                 .get(HAS_TOPOLOGY)
-                .map(|lines| lines[0].0.to_string()),
+                .map(|lines| lines[0].0.to_string().into_boxed_str()),
             weight: obj
                 .lines
                 .get("name")
@@ -286,11 +303,11 @@ fn parse_gnome(obo: OboOntology) -> HashMap<Box<str>, GNOmeModification> {
 #[derive(Debug)]
 struct GlycosmosList {
     structure: Option<GlycanStructure>,
-    motif: Option<(String, String)>,
+    motif: Option<(Box<str>, Box<str>)>,
     chebi: Option<usize>,
     pubchem: Option<usize>,
-    taxonomy: Vec<(String, usize)>,
-    glycomeatlas: Vec<(String, Vec<(String, String)>)>,
+    taxonomy: Vec<(Box<str>, usize)>,
+    glycomeatlas: ThinVec<(Box<str>, ThinVec<(Box<str>, Box<str>)>)>,
 }
 
 /// Parse the glycosmos glycan structures .csv file
@@ -332,7 +349,7 @@ fn parse_gnome_structures(
                     .ok()
                     .filter(|p| !p.0.is_empty())
                     .and_then(|p| p.0.split_once(':'))
-                    .map(|(n, i)| (n.to_string(), i.to_ascii_lowercase())),
+                    .map(|(n, i)| (n.into(), i.to_ascii_lowercase().into_boxed_str())),
                 chebi: line
                     .index_column("chebi")
                     .ok()
@@ -353,7 +370,7 @@ fn parse_gnome_structures(
                     .flat_map(|p| {
                         p.0.split(',').map(|s| {
                             s.rsplit_once(':')
-                                .map(|(n, i)| (n.to_string(), i.parse::<usize>().unwrap()))
+                                .map(|(n, i)| (n.into(), i.parse::<usize>().unwrap()))
                                 .unwrap()
                         })
                     })
@@ -370,7 +387,7 @@ fn parse_gnome_structures(
                     .into_iter()
                     .map(|(species, locations)| {
                         (
-                            (*species).to_string(),
+                            (*species).into(),
                             locations
                                 .into_iter()
                                 .map(|location| {
@@ -378,7 +395,7 @@ fn parse_gnome_structures(
                                         .1
                                         .trim_end_matches(')')
                                         .split_once('(')
-                                        .map(|(l, o)| (l.to_string(), o.to_string()))
+                                        .map(|(l, o)| (l.into(), o.into()))
                                         .unwrap()
                                 })
                                 .collect(),
@@ -402,25 +419,25 @@ struct GNOmeModification {
     /// subsumption level, indication to what extent this species is described
     subsumption_level: GnoSubsumption,
     /// id to prev in chain
-    is_a: String,
+    is_a: Box<str>,
     /// id of composition
-    composition_id: Option<String>,
+    composition_id: Option<Box<str>>,
     /// id of topology
-    topology_id: Option<String>,
+    topology_id: Option<Box<str>>,
     /// molecular weight if defined
     weight: Option<f64>,
     /// composition if defined
     composition: Option<Vec<(MonoSaccharide, isize)>>,
     /// structure if defined
     topology: Option<GlycanStructure>,
-    /// the score for the structure (0 if fully defined)
-    structure_score: Option<usize>,
+    /// The score for the structure (0 if fully defined, u16::MAX if not defined)
+    structure_score: u16,
     /// The underlying glycan motifs
-    motif: Option<(String, String)>,
+    motif: Option<(Box<str>, Box<str>)>,
     /// Taxonomy of where the glycan exists
-    taxonomy: ThinVec<(String, usize)>,
+    taxonomy: ThinVec<(Box<str>, usize)>,
     /// Locations of where the glycan exists
-    glycomeatlas: ThinVec<(String, Vec<(String, String)>)>,
+    glycomeatlas: ThinVec<(Box<str>, ThinVec<(Box<str>, Box<str>)>)>,
 }
 
 impl TryFrom<GNOmeModification> for SimpleModificationInner {

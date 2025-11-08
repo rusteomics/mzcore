@@ -8,7 +8,8 @@ use serde_json::Value;
 use crate::{
     chemistry::{DiagnosticIon, MolecularFormula, NeutralLoss},
     parse_json::{ParseJson, use_serde},
-    sequence::PlacementRule, space::{Space, UsedSpace},
+    sequence::PlacementRule,
+    space::{Space, UsedSpace},
 };
 
 /// Indicate the cross-link side, it contains a set of all placement rules that apply for the placed
@@ -80,9 +81,10 @@ pub enum CrossLinkName {
 impl Space for CrossLinkName {
     fn space(&self) -> UsedSpace {
         match self {
-            Self::Branch => UsedSpace::stack(8),
-            Self::Name(n) => n.space() + UsedSpace::stack(8),
-        }.set_total::<Self>()
+            Self::Branch => UsedSpace::default(),
+            Self::Name(n) => n.space(),
+        }
+        .set_total::<Self>()
     }
 }
 
@@ -121,10 +123,22 @@ pub enum LinkerSpecificity {
 
 impl Space for LinkerSpecificity {
     fn space(&self) -> UsedSpace {
-        (UsedSpace::stack(8) + match self {
-            Self::Symmetric { rules, stubs, neutral_losses, diagnostic } => rules.space() + stubs.space() + neutral_losses.space() + diagnostic.space(),
-            Self::Asymmetric { rules, stubs, neutral_losses, diagnostic } => rules.space() + stubs.space() + neutral_losses.space() + diagnostic.space(),
-        }).set_total::<Self>()
+        (UsedSpace::stack(1)
+            + match self {
+                Self::Symmetric {
+                    rules,
+                    stubs,
+                    neutral_losses,
+                    diagnostic,
+                } => rules.space() + stubs.space() + neutral_losses.space() + diagnostic.space(),
+                Self::Asymmetric {
+                    rules,
+                    stubs,
+                    neutral_losses,
+                    diagnostic,
+                } => rules.space() + stubs.space() + neutral_losses.space() + diagnostic.space(),
+            })
+        .set_total::<Self>()
     }
 }
 
@@ -357,7 +371,7 @@ mod tests {
             rules: vec![
                 PlacementRule::Terminal(Position::AnyNTerm),
                 PlacementRule::AminoAcid(
-                    vec![AminoAcid::Alanine, AminoAcid::Leucine],
+                    vec![AminoAcid::Alanine, AminoAcid::Leucine].into(),
                     Position::Anywhere,
                 ),
             ],

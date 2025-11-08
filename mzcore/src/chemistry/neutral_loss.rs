@@ -15,7 +15,8 @@ use crate::{
     helper_functions::{explain_number_error, next_number},
     parse_json::{ParseJson, use_serde},
     quantities::Multi,
-    sequence::AminoAcid, space::{Space, UsedSpace},
+    sequence::AminoAcid,
+    space::{Space, UsedSpace},
 };
 
 /// All possible neutral losses
@@ -31,10 +32,12 @@ pub enum NeutralLoss {
 
 impl Space for NeutralLoss {
     fn space(&self) -> UsedSpace {
-        (UsedSpace::stack(8) + match self {
-            Self::Gain(a, f) | Self::Loss(a, f) => a.space() + f.space(),
-            Self::SideChainLoss(f, a) => f.space() + a.space()
-        }).set_total::<Self>()
+        (UsedSpace::stack(1)
+            + match self {
+                Self::Gain(a, f) | Self::Loss(a, f) => a.space() + f.space(),
+                Self::SideChainLoss(f, a) => f.space() + a.space(),
+            })
+        .set_total::<Self>()
     }
 }
 

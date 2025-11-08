@@ -11,7 +11,8 @@ use crate::{
     helper_functions::str_starts_with,
     molecular_formula,
     parse_json::{ParseJson, use_serde},
-    sequence::SequencePosition, space::{Space, UsedSpace},
+    sequence::SequencePosition,
+    space::{Space, UsedSpace},
 };
 
 /// Glycan absolute configuration
@@ -42,7 +43,11 @@ pub struct MonoSaccharide {
 
 impl Space for MonoSaccharide {
     fn space(&self) -> UsedSpace {
-        (self.base_sugar.space() + self.substituents.space() + self.furanose.space() + self.configuration.space()).set_total::<Self>()
+        (self.base_sugar.space()
+            + self.substituents.space()
+            + self.furanose.space()
+            + self.configuration.space())
+        .set_total::<Self>()
     }
 }
 
@@ -603,15 +608,17 @@ pub enum BaseSugar {
 
 impl Space for BaseSugar {
     fn space(&self) -> UsedSpace {
-        (UsedSpace::stack(8) + match self {
-            Self::Custom(f) => f.space(),
-            Self::Tetrose(i) => i.space(),
-            Self::Pentose(i) => i.space(),
-            Self::Hexose(i) => i.space(),
-            Self::Heptose(i) => i.space(),
-            Self::Nonose(i) => i.space(),
-            _ => UsedSpace::default()
-        }).set_total::<Self>()
+        (UsedSpace::stack(1)
+            + match self {
+                Self::Custom(f) => f.space(),
+                Self::Tetrose(i) => i.space(),
+                Self::Pentose(i) => i.space(),
+                Self::Hexose(i) => i.space(),
+                Self::Heptose(i) => i.space(),
+                Self::Nonose(i) => i.space(),
+                _ => UsedSpace::default(),
+            })
+        .set_total::<Self>()
     }
 }
 

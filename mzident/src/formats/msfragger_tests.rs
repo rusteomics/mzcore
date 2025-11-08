@@ -6,6 +6,7 @@ use mzcore::{
     prelude::MolecularFormula,
     sequence::{ModificationId, SimpleModificationInner},
 };
+use thin_vec::ThinVec;
 
 #[test]
 fn msfragger_v4_2() {
@@ -185,11 +186,14 @@ fn fragpipe_v21_manual() {
             SimpleModificationInner::Database {
                 specificities: Vec::new(),
                 formula: MolecularFormula::default(),
-                id: ModificationId {
-                    id: Some(0),
-                    name: "DB14".to_string(),
-                    ..Default::default()
-                },
+                id: ModificationId::new(
+                    mzcore::ontology::Ontology::Custom,
+                    "DB14".into(),
+                    Some(0),
+                    Box::default(),
+                    ThinVec::default(),
+                    ThinVec::default(),
+                ),
             },
         )]),
         true,

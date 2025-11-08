@@ -1063,7 +1063,8 @@ pub(super) fn parse_placement_rules<'a>(
                             "The location could not be read as an amino acid",
                             base_context.clone().add_highlight((0, range.clone())),
                         )
-                    })?],
+                    })?]
+                    .into(),
                     Position::AnyNTerm,
                 ));
             } else {
@@ -1079,7 +1080,8 @@ pub(super) fn parse_placement_rules<'a>(
                             "The location could not be read as an amino acid",
                             base_context.clone().add_highlight((0, range.clone())),
                         )
-                    })?],
+                    })?]
+                    .into(),
                     Position::AnyCTerm,
                 ));
             } else {
@@ -1094,7 +1096,8 @@ pub(super) fn parse_placement_rules<'a>(
                         "The location could not be read as an amino acid",
                         base_context.clone().add_highlight((0, range.clone())),
                     )
-                })?],
+                })?]
+                .into(),
                 Position::Anywhere,
             ));
         }

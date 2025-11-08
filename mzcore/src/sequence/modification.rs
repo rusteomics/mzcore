@@ -12,13 +12,23 @@ use itertools::Itertools;
 use mzcv::SynonymScope;
 use ordered_float::OrderedFloat;
 use serde::{Deserialize, Serialize};
+use thin_vec::ThinVec;
 
 use crate::{
-    chemistry::{AmbiguousLabel, Chemical, DiagnosticIon, MolecularFormula, NeutralLoss}, glycan::{BackboneFragmentKind, GlycanAttachement, GlycanStructure, MonoSaccharide}, helper_functions::merge_hashmap, molecular_formula, ontology::{CustomDatabase, Ontology}, parse_json::{ParseJson, use_serde}, quantities::Multi, sequence::{
+    chemistry::{AmbiguousLabel, Chemical, DiagnosticIon, MolecularFormula, NeutralLoss},
+    glycan::{BackboneFragmentKind, GlycanAttachement, GlycanStructure, MonoSaccharide},
+    helper_functions::merge_hashmap,
+    molecular_formula,
+    ontology::{CustomDatabase, Ontology},
+    parse_json::{ParseJson, use_serde},
+    quantities::Multi,
+    sequence::{
         AminoAcid, CrossLinkName, CrossLinkSide, Linked, LinkerSpecificity, MUPSettings,
         Peptidoform, PlacementRule, SequenceElement, SequencePosition, SimpleModification,
         SimpleModificationInner,
-    }, space::{Space, UsedSpace}, system::OrderedMass
+    },
+    space::{Space, UsedSpace},
+    system::OrderedMass,
 };
 
 /// A modification on an amino acid
@@ -61,19 +71,57 @@ pub struct ModificationId {
     pub ontology: Ontology,
     /// The name
     pub name: Box<str>,
-    /// The id
-    pub id: Option<usize>,
-    /// The description, mostly for search results
+    /// The ID, `u32::MAX` is defined as not having an ID
+    id: u32,
+    /// The description or definition
     pub description: Box<str>,
     /// Any synonyms
-    pub synonyms: thin_vec::ThinVec<(SynonymScope, Box<str>)>,
+    pub synonyms: ThinVec<(SynonymScope, Box<str>)>,
     /// Cross reference IDs
-    pub cross_ids: thin_vec::ThinVec<(Option<Box<str>>, Box<str>)>,
+    pub cross_ids: ThinVec<(Option<Box<str>>, Box<str>)>,
+}
+
+impl ModificationId {
+    /// Create a new Modification ID
+    /// # Panics
+    /// If the id is equal to `u32::MAX` (only in debug mode, in release mode this is silently ignored and the id is set to None)
+    pub fn new(
+        ontology: Ontology,
+        name: Box<str>,
+        id: Option<u32>,
+        description: Box<str>,
+        synonyms: ThinVec<(SynonymScope, Box<str>)>,
+        cross_ids: ThinVec<(Option<Box<str>>, Box<str>)>,
+    ) -> Self {
+        debug_assert!(
+            id.is_none_or(|i| i != u32::MAX),
+            "Modification ID cannot be u32::MAX"
+        );
+        Self {
+            ontology,
+            name,
+            id: id.unwrap_or(u32::MAX),
+            description,
+            synonyms,
+            cross_ids,
+        }
+    }
+
+    /// Get the ID of this modification
+    pub fn id(&self) -> Option<u32> {
+        (self.id != u32::MAX).then_some(self.id)
+    }
 }
 
 impl Space for ModificationId {
     fn space(&self) -> UsedSpace {
-        (self.ontology.space() + self.name.space() + self.id.space() + self.description.space() + self.synonyms.space() + self.cross_ids.space()).set_total::<Self>()
+        (self.ontology.space()
+            + self.name.space()
+            + self.id.space()
+            + self.description.space()
+            + self.synonyms.space()
+            + self.cross_ids.space())
+        .set_total::<Self>()
     }
 }
 
@@ -96,11 +144,13 @@ pub enum GnoComposition {
 
 impl Space for GnoComposition {
     fn space(&self) -> UsedSpace {
-        (UsedSpace::stack(8) + match self {
-            Self::Weight(w) => w.space(),
-            Self::Composition(c) => c.space(),
-            Self::Topology(t) => t.space(),
-        }).set_total::<Self>()
+        (UsedSpace::stack(1)
+            + match self {
+                Self::Weight(w) => w.space(),
+                Self::Composition(c) => c.space(),
+                Self::Topology(t) => t.space(),
+            })
+        .set_total::<Self>()
     }
 }
 
@@ -152,11 +202,11 @@ impl ModificationId {
         match self.ontology {
             Ontology::Unimod => Some(format!(
                 "https://www.unimod.org/modifications_view.php?editid1={}",
-                self.id.unwrap_or_default()
+                self.id
             )),
             Ontology::Psimod => Some(format!(
                 "https://ontobee.org/ontology/MOD?iri=http://purl.obolibrary.org/obo/MOD_{:05}",
-                self.id.unwrap_or_default()
+                self.id
             )),
             Ontology::Gnome => Some(format!(
                 "http://glytoucan.org/Structures/Glycans/{}",
@@ -164,7 +214,7 @@ impl ModificationId {
             )),
             Ontology::Resid => Some(format!(
                 "https://proteininformationresource.org/cgi-bin/resid?id=AA{:04}",
-                self.id.unwrap_or_default()
+                self.id
             )),
             Ontology::Xlmod | Ontology::Custom => None,
         }
@@ -181,7 +231,7 @@ impl Display for ModificationId {
                 self.name.to_ascii_uppercase()
             )
         } else if self.ontology == Ontology::Xlmod
-            && let Some(id) = self.id
+            && let Some(id) = self.id()
             && (id == 1711 || id == 9070)
         {
             write!(f, "{}:{id}", self.ontology.name())

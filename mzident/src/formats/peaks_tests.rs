@@ -2,7 +2,11 @@
 use std::io::BufReader;
 
 use crate::{IdentifiedPeptidoformSource, PeaksData, PeaksVersion, test_format};
-use mzcore::{molecular_formula, sequence::SimpleModificationInner};
+use mzcore::{
+    molecular_formula,
+    sequence::{ModificationId, SimpleModificationInner},
+};
+use thin_vec::ThinVec;
 
 #[test]
 fn peaks_x() {
@@ -120,11 +124,14 @@ fn peaks_11_custom_modification() {
                 SimpleModificationInner::Database {
                     specificities: Vec::new(),
                     formula: molecular_formula!(O 1),
-                    id: mzcore::sequence::ModificationId {
-                        id: Some(0),
-                        name: "Oxidation".to_string(),
-                        ..Default::default()
-                    },
+                    id: ModificationId::new(
+                        mzcore::ontology::Ontology::Custom,
+                        "Oxidation".into(),
+                        Some(0),
+                        Box::default(),
+                        ThinVec::default(),
+                        ThinVec::default(),
+                    )
                 },
             )]),
             false,

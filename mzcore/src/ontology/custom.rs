@@ -82,7 +82,7 @@ impl CVSource for Custom {
         let value = data
             .map(|m| {
                 (
-                    m.description().and_then(|i| i.id),
+                    m.description().and_then(|i| i.id()),
                     m.description()
                         .map_or_else(|| "UNNAMED".to_string(), |i| i.name.to_string()),
                     m,

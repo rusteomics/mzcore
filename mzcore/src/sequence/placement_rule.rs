@@ -4,23 +4,24 @@ use std::str::FromStr;
 
 use context_error::*;
 use serde::{Deserialize, Serialize};
+use thin_vec::ThinVec;
 
 use crate::{
     ontology::Ontology,
     parse_json::{ParseJson, use_serde},
     sequence::{
-        AminoAcid, Modification, ModificationId, SequenceElement, SequencePosition,
-        SimpleModificationInner,
-    }, space::{Space, UsedSpace},
+        AminoAcid, Modification, SequenceElement, SequencePosition, SimpleModificationInner,
+    },
+    space::{Space, UsedSpace},
 };
 
 /// A rule determining the placement of a modification
 #[derive(Clone, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 pub enum PlacementRule {
     /// Placed on an aminoacid on the given position
-    AminoAcid(Vec<AminoAcid>, Position),
+    AminoAcid(ThinVec<AminoAcid>, Position),
     /// Placed on an another modification on the given position
-    PsiModification(usize, Position),
+    PsiModification(u32, Position),
     /// Placed on a terminal position
     Terminal(Position),
     /// Just anywhere
@@ -29,12 +30,14 @@ pub enum PlacementRule {
 
 impl Space for PlacementRule {
     fn space(&self) -> UsedSpace {
-        (UsedSpace::stack(8) + match self {
-            Self::AminoAcid(a, p) => a.space() + p.space(),
-            Self::PsiModification(i, p) => i.space() + p.space(),
-            Self::Terminal(p) => p.space(),
-            Self::Anywhere => UsedSpace::default()
-        }).set_total::<Self>()
+        (UsedSpace::stack(1)
+            + match self {
+                Self::AminoAcid(a, p) => a.space() + p.space(),
+                Self::PsiModification(i, p) => i.space() + p.space(),
+                Self::Terminal(p) => p.space(),
+                Self::Anywhere => UsedSpace::default(),
+            })
+        .set_total::<Self>()
     }
 }
 
@@ -88,17 +91,11 @@ impl PlacementRule {
             Self::PsiModification(mod_index, r_pos) => {
                 seq.modifications.iter().any(|m| {
                     if let Modification::Simple(sim) = m {
-                        if let SimpleModificationInner::Database {
-                            id:
-                                ModificationId {
-                                    ontology: Ontology::Psimod,
-                                    id,
-                                    ..
-                                },
-                            ..
-                        } = **sim
+                        if let SimpleModificationInner::Database { id, .. } = &**sim
+                            && id.ontology == Ontology::Psimod
+                            && let Some(i) = id.id()
                         {
-                            id.is_some_and(|i| i == *mod_index)
+                            i == *mod_index
                         } else {
                             false
                         }
@@ -170,7 +167,7 @@ impl FromStr for PlacementRule {
                         Context::line(None, s, head.len() + 1, tail.len()).to_owned(),
                     ))
                 },
-                |position| Ok(Self::AminoAcid(aa, position)),
+                |position| Ok(Self::AminoAcid(aa.into(), position)),
             )
         } else if let Ok(position) = s.parse() {
             Ok(match position {
@@ -255,24 +252,27 @@ mod tests {
     fn place_anywhere() {
         let ontologies = &crate::ontology::STATIC_ONTOLOGIES;
         assert!(
-            PlacementRule::AminoAcid(vec![AminoAcid::Glutamine], Position::Anywhere).is_possible(
-                &SequenceElement::new(CheckedAminoAcid::Q, None),
-                SequencePosition::NTerm
-            ),
+            PlacementRule::AminoAcid(vec![AminoAcid::Glutamine].into(), Position::Anywhere)
+                .is_possible(
+                    &SequenceElement::new(CheckedAminoAcid::Q, None),
+                    SequencePosition::NTerm
+                ),
             "start"
         );
         assert!(
-            PlacementRule::AminoAcid(vec![AminoAcid::Glutamine], Position::Anywhere).is_possible(
-                &SequenceElement::new(CheckedAminoAcid::Q, None),
-                SequencePosition::Index(2)
-            ),
+            PlacementRule::AminoAcid(vec![AminoAcid::Glutamine].into(), Position::Anywhere)
+                .is_possible(
+                    &SequenceElement::new(CheckedAminoAcid::Q, None),
+                    SequencePosition::Index(2)
+                ),
             "middle"
         );
         assert!(
-            PlacementRule::AminoAcid(vec![AminoAcid::Glutamine], Position::Anywhere).is_possible(
-                &SequenceElement::new(CheckedAminoAcid::Q, None),
-                SequencePosition::CTerm
-            ),
+            PlacementRule::AminoAcid(vec![AminoAcid::Glutamine].into(), Position::Anywhere)
+                .is_possible(
+                    &SequenceElement::new(CheckedAminoAcid::Q, None),
+                    SequencePosition::CTerm
+                ),
             "end"
         );
         assert_eq!(

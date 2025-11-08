@@ -19,7 +19,8 @@ use crate::{
     },
     helper_functions::{end_of_enclosure, next_char, str_starts_with},
     parse_json::{ParseJson, use_serde},
-    sequence::SequencePosition, space::Space,
+    sequence::SequencePosition,
+    space::Space,
 };
 
 /// Rose tree representation of glycan structure
@@ -38,7 +39,10 @@ impl Space for GlycanStructure {
 impl GlycanStructure {
     /// Create a new glycan structure
     pub fn new(sugar: MonoSaccharide, branches: Vec<Self>) -> Self {
-        Self { sugar, branches: branches.into() }
+        Self {
+            sugar,
+            branches: branches.into(),
+        }
     }
 
     /// Parse a short IUPAC glycan structure.
@@ -478,7 +482,8 @@ mod test {
                 branches: vec![GlycanStructure {
                     sugar: MonoSaccharide::new(BaseSugar::Hexose(None), &[]),
                     branches: ThinVec::new()
-                }].into(),
+                }]
+                .into(),
             }
         );
     }
@@ -498,7 +503,8 @@ mod test {
                         sugar: MonoSaccharide::new(BaseSugar::Heptose(None), &[]),
                         branches: ThinVec::new()
                     }
-                ].into(),
+                ]
+                .into(),
             }
         );
     }
@@ -515,13 +521,15 @@ mod test {
                         branches: vec![GlycanStructure {
                             sugar: MonoSaccharide::new(BaseSugar::Hexose(None), &[]),
                             branches: ThinVec::new()
-                        }].into()
+                        }]
+                        .into()
                     },
                     GlycanStructure {
                         sugar: MonoSaccharide::new(BaseSugar::Heptose(None), &[]),
                         branches: ThinVec::new()
                     }
-                ].into(),
+                ]
+                .into(),
             }
         );
     }
@@ -542,15 +550,19 @@ mod test {
                                 branches: vec![GlycanStructure {
                                     sugar: MonoSaccharide::new(BaseSugar::Heptose(None), &[]),
                                     branches: ThinVec::new(),
-                                }].into(),
+                                }]
+                                .into(),
                             },
                             GlycanStructure {
                                 sugar: MonoSaccharide::new(BaseSugar::Hexose(None), &[]),
                                 branches: ThinVec::new(),
                             },
-                        ].into(),
-                    }].into(),
-                }].into(),
+                        ]
+                        .into(),
+                    }]
+                    .into(),
+                }]
+                .into(),
             }
         );
     }

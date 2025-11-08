@@ -1,12 +1,24 @@
-use std::{num::NonZero, ops::{Add, AddAssign}};
+use crate::{
+    glycan::{
+        Configuration, GlycanSubstituent, HeptoseIsomer, HexoseIsomer, NonoseIsomer, PentoseIsomer,
+        TetroseIsomer,
+    },
+    ontology::Ontology,
+    prelude::{AminoAcid, Element},
+    sequence::{GnoSubsumption, Position, SimpleModificationInner},
+    system::OrderedMass,
+};
+use std::{
+    num::NonZero,
+    ops::{Add, AddAssign},
+};
 use thin_vec::ThinVec;
-use crate::{ glycan::{Configuration, GlycanSubstituent, HeptoseIsomer, HexoseIsomer, NonoseIsomer, PentoseIsomer, TetroseIsomer}, ontology::Ontology, prelude::{AminoAcid, Element}, sequence::{GnoSubsumption, Position, SimpleModificationInner}, system::OrderedMass};
 
 pub(crate) trait Space {
     fn space(&self) -> UsedSpace;
 }
 
-#[derive(Debug, Clone, Copy, Default)]
+#[derive(Clone, Copy, Debug, Default)]
 pub(crate) struct UsedSpace {
     pub(crate) stack: usize,
     pub(crate) padding: usize,
@@ -16,14 +28,20 @@ pub(crate) struct UsedSpace {
 }
 
 impl std::fmt::Display for UsedSpace {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result { 
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         writeln!(f, "Stack: {}", display_bytes(self.stack))?;
         writeln!(f, "Padding: {}", display_bytes(self.padding))?;
         writeln!(f, "Heap")?;
         writeln!(f, "- Used: {}", display_bytes(self.heap_used))?;
         writeln!(f, "- Padding: {}", display_bytes(self.heap_padding))?;
         writeln!(f, "- Unused: {}", display_bytes(self.heap_unused))?;
-        writeln!(f, "Total: {}", display_bytes(self.stack + self.padding + self.heap_used + self.heap_padding + self.heap_unused))
+        writeln!(
+            f,
+            "Total: {}",
+            display_bytes(
+                self.stack + self.padding + self.heap_used + self.heap_padding + self.heap_unused
+            )
+        )
     }
 }
 
@@ -54,7 +72,10 @@ impl UsedSpace {
     }
 
     pub(crate) fn set_total<Total>(self) -> Self {
-        Self {padding: size_of::<Total>() - self.stack, ..self}
+        Self {
+            padding: size_of::<Total>() - self.stack,
+            ..self
+        }
     }
 
     pub(crate) fn add_child(self, child: UsedSpace) -> Self {
@@ -63,7 +84,7 @@ impl UsedSpace {
             padding: self.padding,
             heap_used: self.heap_used + child.heap_used + child.stack,
             heap_padding: self.heap_padding + child.heap_padding + child.padding,
-            heap_unused: self.heap_unused + child.heap_unused
+            heap_unused: self.heap_unused + child.heap_unused,
         }
     }
 }
@@ -80,13 +101,13 @@ impl AddAssign for UsedSpace {
 
 impl Add for UsedSpace {
     type Output = Self;
-    fn add(self, rhs: Self) -> Self{
+    fn add(self, rhs: Self) -> Self {
         Self {
             stack: self.stack + rhs.stack,
             padding: self.padding + rhs.padding,
             heap_used: self.heap_used + rhs.heap_used,
             heap_padding: self.heap_padding + rhs.heap_padding,
-            heap_unused: self.heap_unused + rhs.heap_unused
+            heap_unused: self.heap_unused + rhs.heap_unused,
         }
     }
 }
@@ -97,12 +118,13 @@ impl<T: Space> Space for Vec<T> {
         for e in self {
             total += e.space();
         }
-        UsedSpace { 
-            stack: 24, 
-            padding: 0, 
-            heap_used: total.stack + total.heap_used, 
-            heap_padding: total.padding + total.heap_padding, 
-            heap_unused: total.heap_unused + (self.capacity() - self.len()) * size_of::<T>() }
+        UsedSpace {
+            stack: 24,
+            padding: 0,
+            heap_used: total.stack + total.heap_used,
+            heap_padding: total.padding + total.heap_padding,
+            heap_unused: total.heap_unused + (self.capacity() - self.len()) * size_of::<T>(),
+        }
     }
 }
 
@@ -112,33 +134,34 @@ impl<T: Space> Space for ThinVec<T> {
         for e in self {
             total += e.space();
         }
-        UsedSpace { 
-            stack: 8, 
-            padding: 0, 
-            heap_used: total.stack + total.heap_used, 
-            heap_padding: total.padding + total.heap_padding, 
-            heap_unused: total.heap_unused + (self.capacity() - self.len()) * size_of::<T>() }
+        UsedSpace {
+            stack: 8,
+            padding: 0,
+            heap_used: total.stack + total.heap_used,
+            heap_padding: total.padding + total.heap_padding,
+            heap_unused: total.heap_unused + (self.capacity() - self.len()) * size_of::<T>(),
+        }
     }
 }
 
-impl Space for String{
+impl Space for String {
     fn space(&self) -> UsedSpace {
-        UsedSpace { 
-            stack: 24, 
-            padding: 0, 
-            heap_used: self.len(), 
-            heap_padding: 0, 
-            heap_unused: (self.capacity() - self.len()) }
+        UsedSpace {
+            stack: 24,
+            padding: 0,
+            heap_used: self.len(),
+            heap_padding: 0,
+            heap_unused: (self.capacity() - self.len()),
+        }
     }
 }
 
 impl<T: Space> Space for Option<T> {
     fn space(&self) -> UsedSpace {
-        if let Some(t) = self {
-            t.space().set_total::<Self>()
-        } else {
-            UsedSpace::default().set_total::<Self>()
-        }
+        self.as_ref().map_or_else(
+            || UsedSpace::default().set_total::<Self>(),
+            |t| t.space().set_total::<Self>(),
+        )
     }
 }
 
@@ -150,21 +173,59 @@ impl<T: Space> Space for std::sync::Arc<T> {
 
 impl Space for Box<str> {
     fn space(&self) -> UsedSpace {
-         UsedSpace {stack: 8, padding: 0, heap_used: self.len(), heap_padding: 0, heap_unused: 0}
+        UsedSpace {
+            stack: 16,
+            padding: 0,
+            heap_used: self.len(),
+            heap_padding: 0,
+            heap_unused: 0,
+        }
+    }
+}
+
+impl<T: Space> Space for Box<T> {
+    fn space(&self) -> UsedSpace {
+        UsedSpace::stack(8).add_child(self.as_ref().space())
     }
 }
 
 impl Space for SimpleModificationInner {
     fn space(&self) -> UsedSpace {
         match self {
-            SimpleModificationInner::Mass(m) => m.space(),
-            SimpleModificationInner::Formula(f) => f.space(),
-            SimpleModificationInner::Glycan(g) => g.space(),
-            SimpleModificationInner::GlycanStructure(g) => g.space(),
-            SimpleModificationInner::Gno { composition, id, structure_score, subsumption_level, motif, taxonomy, glycomeatlas } => composition.space() + id.space() + structure_score.space() + subsumption_level.space() + motif.space() + taxonomy.space() + glycomeatlas.space(),
-            SimpleModificationInner::Database { specificities, formula, id } => specificities.space() + formula.space() + id.space(),
-            SimpleModificationInner::Linker { specificities, formula, id, length } => specificities.space() + formula.space() + id.space() + length.space(),
-        }.set_total::<Self>()
+            Self::Mass(m) => m.space(),
+            Self::Formula(f) => f.space(),
+            Self::Glycan(g) => g.space(),
+            Self::GlycanStructure(g) => g.space(),
+            Self::Gno {
+                composition,
+                id,
+                structure_score,
+                subsumption_level,
+                motif,
+                taxonomy,
+                glycomeatlas,
+            } => {
+                composition.space()
+                    + id.space()
+                    + structure_score.space()
+                    + subsumption_level.space()
+                    + motif.space()
+                    + taxonomy.space()
+                    + glycomeatlas.space()
+            }
+            Self::Database {
+                specificities,
+                formula,
+                id,
+            } => specificities.space() + formula.space() + id.space(),
+            Self::Linker {
+                specificities,
+                formula,
+                id,
+                length,
+            } => specificities.space() + formula.space() + id.space() + length.space(),
+        }
+        .set_total::<Self>()
     }
 }
 
@@ -248,15 +309,40 @@ simple_space!(mzcv::SynonymScope);
 
 #[test]
 fn gnome_space() {
-    let space = crate::ontology::STATIC_ONTOLOGIES.gnome().data().fold(UsedSpace::default(), |acc, e| acc + e.space());
-    let space_description = crate::ontology::STATIC_ONTOLOGIES.gnome().data().fold(UsedSpace::default(), |acc, e| if let Some(d) = e.description() {d.space() + acc} else {acc});
-    let space_structures = crate::ontology::STATIC_ONTOLOGIES.gnome().data().fold(UsedSpace::default(), |acc, e| if let SimpleModificationInner::Gno { composition: crate::sequence::GnoComposition::Topology(t), .. } = &*e {t.space() + acc} else {acc} );
-    println!("Total GNOme modifications: {}", crate::ontology::STATIC_ONTOLOGIES.gnome().data().len());
+    let space = crate::ontology::STATIC_ONTOLOGIES
+        .gnome()
+        .data()
+        .fold(UsedSpace::default(), |acc, e| acc + e.space());
+    let (number_ids, space_description) = crate::ontology::STATIC_ONTOLOGIES.gnome().data().fold(
+        (0_usize, UsedSpace::default()),
+        |acc, e| {
+            e.description()
+                .map_or(acc, |d| (acc.0 + 1, d.space() + acc.1))
+        },
+    );
+    let (number_structures, space_structures) = crate::ontology::STATIC_ONTOLOGIES
+        .gnome()
+        .data()
+        .fold((0_usize, UsedSpace::default()), |acc, e| {
+            if let SimpleModificationInner::Gno {
+                composition: crate::sequence::GnoComposition::Topology(t),
+                ..
+            } = &*e
+            {
+                (acc.0 + 1, t.space() + acc.1)
+            } else {
+                acc
+            }
+        });
+    println!(
+        "Total GNOme modifications: {}",
+        crate::ontology::STATIC_ONTOLOGIES.gnome().data().len()
+    );
     println!("All used space");
-    print!("{}", space);
-    println!("All used space for ModificationIds");
-    print!("{}", space_description);
-    println!("All used space for GlycanStructures");
-    print!("{}", space_structures);
+    print!("{space}");
+    println!("All used space for ModificationIds ({number_ids} in total)");
+    print!("{space_description}");
+    println!("All used space for GlycanStructures ({number_structures} in total)");
+    print!("{space_structures}");
     todo!();
 }

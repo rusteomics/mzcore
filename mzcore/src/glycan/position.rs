@@ -3,7 +3,8 @@ use thin_vec::ThinVec;
 
 use crate::{
     glycan::{GlycanBranchIndex, GlycanBranchMassIndex},
-    sequence::{AminoAcid, SequencePosition}, space::{Space, UsedSpace},
+    sequence::{AminoAcid, SequencePosition},
+    space::{Space, UsedSpace},
 };
 
 /// The definition of the position of an ion inside a glycan
@@ -21,7 +22,11 @@ pub struct GlycanPosition {
 
 impl Space for GlycanPosition {
     fn space(&self) -> UsedSpace {
-        (self.inner_depth.space() + self.series_number.space() + self.branch.space() + self.attachment.space()).set_total::<Self>()
+        (self.inner_depth.space()
+            + self.series_number.space()
+            + self.branch.space()
+            + self.attachment.space())
+        .set_total::<Self>()
     }
 }
 

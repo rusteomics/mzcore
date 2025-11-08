@@ -302,7 +302,7 @@ impl Modification {
             .or_else( || {
                 match name.trim().to_lowercase().split_once(':') {
                     Some(("u", tail)) => ontologies.unimod().get_by_name(tail),
-                    Some(("unimod", tail)) => ontologies.unimod().get_by_index(&tail.parse::<usize>().ok()?),
+                    Some(("unimod", tail)) => ontologies.unimod().get_by_index(&tail.parse::<u32>().ok()?),
                     Some(("m", tail)) =>ontologies.psimod().get_by_name(tail),
                     Some(("c", tail)) => ontologies.custom().get_by_name(tail),
                     _ => None

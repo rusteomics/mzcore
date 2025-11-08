@@ -112,9 +112,7 @@ impl CVSource for Resid {
                                         if let Some((a, b)) =
                                             name_node.text().unwrap_or_default().split_once(':')
                                         {
-                                            modification
-                                                .cross_ids
-                                                .push((Some(a.into()), b.into()));
+                                            modification.cross_ids.push((Some(a.into()), b.into()));
                                         } else {
                                             panic!("Invalid Xref content")
                                         }
@@ -158,9 +156,7 @@ impl CVSource for Resid {
                                     if let Some((a, b)) =
                                         ref_node.text().unwrap_or_default().split_once(':')
                                     {
-                                        modification
-                                            .cross_ids
-                                            .push((Some(a.into()), b.into()));
+                                        modification.cross_ids.push((Some(a.into()), b.into()));
                                     } else {
                                         panic!("Invalid Xref content")
                                     }
@@ -168,7 +164,12 @@ impl CVSource for Resid {
                             }
                         }
                         "Comment" => {
-                            modification.description = format!("{}{}", modification.description, data_block.text().unwrap_or_default()).into_boxed_str();
+                            modification.description = format!(
+                                "{}{}",
+                                modification.description,
+                                data_block.text().unwrap_or_default()
+                            )
+                            .into_boxed_str();
                         }
                         "SequenceCode" => {
                             let mut rule =
@@ -209,9 +210,7 @@ impl CVSource for Resid {
                                         if let Some((a, b)) =
                                             rule_node.text().unwrap_or_default().split_once(':')
                                         {
-                                            modification
-                                                .cross_ids
-                                                .push((Some(a.into()), b.into()));
+                                            modification.cross_ids.push((Some(a.into()), b.into()));
                                         } else {
                                             panic!("Invalid Xref content")
                                         }
@@ -267,7 +266,7 @@ impl CVSource for Resid {
                         if rule.0 == aa {
                             specificities.push(LinkerSpecificity::Symmetric {
                                 rules: vec![PlacementRule::AminoAcid(
-                                    vec![rule.0],
+                                    vec![rule.0].into(),
                                     rule.2.unwrap_or(Position::Anywhere),
                                 )],
                                 stubs: Vec::new(),
@@ -278,11 +277,11 @@ impl CVSource for Resid {
                             specificities.push(LinkerSpecificity::Asymmetric {
                                 rules: (
                                     vec![PlacementRule::AminoAcid(
-                                        vec![rule.0],
+                                        vec![rule.0].into(),
                                         rule.2.unwrap_or(Position::Anywhere),
                                     )],
                                     vec![PlacementRule::AminoAcid(
-                                        vec![aa],
+                                        vec![aa].into(),
                                         rule.2.unwrap_or(Position::Anywhere),
                                     )],
                                 ),
@@ -295,7 +294,7 @@ impl CVSource for Resid {
                     {
                         specificities.push((
                             vec![PlacementRule::AminoAcid(
-                                vec![rule.0],
+                                vec![rule.0].into(),
                                 rule.2.unwrap_or(Position::Anywhere),
                             )],
                             Vec::new(),

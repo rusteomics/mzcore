@@ -13,7 +13,7 @@ pub(crate) struct OntologyModification {
     pub formula: MolecularFormula,
     pub name: Box<str>,
     pub ontology: Ontology,
-    pub id: usize,
+    pub id: u32,
     pub description: Box<str>,
     pub synonyms: ThinVec<(SynonymScope, Box<str>)>,
     pub cross_ids: ThinVec<(Option<Box<str>>, Box<str>)>,
@@ -106,14 +106,14 @@ impl OntologyModification {
 impl From<OntologyModification> for SimpleModificationInner {
     fn from(mut value: OntologyModification) -> Self {
         value.simplify_rules();
-        let id = ModificationId {
-            ontology: value.ontology,
-            name: value.name,
-            id: Some(value.id),
-            description: value.description,
-            synonyms: value.synonyms,
-            cross_ids: value.cross_ids,
-        };
+        let id = ModificationId::new(
+            value.ontology,
+            value.name,
+            Some(value.id),
+            value.description,
+            value.synonyms,
+            value.cross_ids,
+        );
         match value.data {
             ModData::Mod { specificities } => Self::Database {
                 id,

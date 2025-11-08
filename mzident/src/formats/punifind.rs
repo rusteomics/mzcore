@@ -61,7 +61,7 @@ format_family!(
                     if let Result::Ok(position) = Position::from_str(rule.as_str()) && position != Position::Anywhere {
                         Ok(PlacementRule::Terminal(position))
                     } else if let Result::Ok(aa) = AminoAcid::from_str(rule.as_str()) {
-                        Ok(PlacementRule::AminoAcid(vec![aa], Position::Anywhere))
+                        Ok(PlacementRule::AminoAcid(vec![aa].into(), Position::Anywhere))
                     } else {
                         Err(BoxedError::new(BasicKind::Error, "Invalid pUniFind line", "The modification location should be either an amino acid or a terminal location", rule.context().to_owned()))
                     }

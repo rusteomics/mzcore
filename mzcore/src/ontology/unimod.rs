@@ -223,10 +223,7 @@ fn parse_mod(node: &Node) -> Result<OntologyModification, String> {
         id: node
             .attribute("record_id")
             .ok_or("No defined id for modification")
-            .and_then(|v| {
-                v.parse::<usize>()
-                    .map_err(|_| "Invalid id for modification")
-            })?,
+            .and_then(|v| v.parse::<u32>().map_err(|_| "Invalid id for modification"))?,
         ontology: Ontology::Unimod,
         description,
         synonyms: synonyms.into(),

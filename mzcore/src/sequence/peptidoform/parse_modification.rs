@@ -203,7 +203,7 @@ fn parse_single_modification<'error>(
             );
             match (head.0.as_str(), tail.0) {
                 ("unimod", tail) => {
-                    let id = tail.parse::<usize>().map_err(|_| {
+                    let id = tail.parse::<u32>().map_err(|_| {
                         vec![basic_error.clone()
                             .long_description("Unimod accession number should be a number")]
                     })?;
@@ -216,7 +216,7 @@ fn parse_single_modification<'error>(
                         })
                 }
                 ("mod", tail) => {
-                    let id = tail.parse::<usize>().map_err(|_| {
+                    let id = tail.parse::<u32>().map_err(|_| {
                         vec![basic_error.clone()
                             .long_description("PSI-MOD accession number should be a number")]
                     })?;
@@ -229,7 +229,7 @@ fn parse_single_modification<'error>(
                         })
                 }
                 ("resid", tail) => {
-                    let id = tail[2..].parse::<usize>().map_err(|_| {
+                    let id = tail[2..].parse::<u32>().map_err(|_| {
                         vec![basic_error.clone().long_description(
                             "RESID accession number should be a number prefixed with 'AA'",
                         )]
@@ -243,7 +243,7 @@ fn parse_single_modification<'error>(
                         })
                 }
                 ("xlmod", tail) => {
-                    let id = tail.parse::<usize>().map_err(|_| {
+                    let id = tail.parse::<u32>().map_err(|_| {
                         vec![basic_error.clone()
                             .long_description("XLMOD accession number should be a number")]
                     })?;
@@ -256,7 +256,7 @@ fn parse_single_modification<'error>(
                         })
                 }
                 ("custom", tail) => {
-                    let id = tail.parse::<usize>().map_err(|_| {
+                    let id = tail.parse::<u32>().map_err(|_| {
                         vec![basic_error.clone()
                             .long_description("Custom accession number should be a number")]
                     })?;

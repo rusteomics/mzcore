@@ -56,6 +56,12 @@ impl ParseJson for String {
     }
 }
 
+impl ParseJson for Box<str> {
+    fn from_json_value(value: Value) -> Result<Self, BoxedError<'static, BasicKind>> {
+        use_serde(value)
+    }
+}
+
 impl ParseJson for isize {
     fn from_json_value(value: Value) -> Result<Self, BoxedError<'static, BasicKind>> {
         use_serde(value)

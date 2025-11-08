@@ -1,4 +1,7 @@
-use crate::{parse_json::{ParseJson, use_serde}, space::{Space, UsedSpace}};
+use crate::{
+    parse_json::{ParseJson, use_serde},
+    space::{Space, UsedSpace},
+};
 
 use serde::{Deserialize, Serialize};
 
@@ -16,8 +19,15 @@ pub enum SequencePosition {
 impl Space for SequencePosition {
     fn space(&self) -> UsedSpace {
         match self {
-            Self::Index(_) => UsedSpace {stack: 16, ..Default::default()},
-            _ => UsedSpace {stack: 8,padding: 8, ..Default::default()},
+            Self::Index(_) => UsedSpace {
+                stack: 16,
+                ..Default::default()
+            },
+            _ => UsedSpace {
+                stack: 8,
+                padding: 8,
+                ..Default::default()
+            },
         }
     }
 }

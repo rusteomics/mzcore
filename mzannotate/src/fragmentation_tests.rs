@@ -17,6 +17,7 @@ use mzcore::{
 
 use itertools::Itertools;
 use std::sync::Arc;
+use thin_vec::ThinVec;
 
 #[test]
 fn triple_a() {
@@ -634,7 +635,7 @@ fn custom_database() -> Ontologies {
         Arc::new(SimpleModificationInner::Linker {
             specificities: vec![LinkerSpecificity::Symmetric {
                 rules: vec![PlacementRule::AminoAcid(
-                    vec![AminoAcid::Lysine],
+                    vec![AminoAcid::Lysine].into(),
                     Position::Anywhere,
                 )],
                 stubs: vec![(
@@ -645,18 +646,20 @@ fn custom_database() -> Ontologies {
                 diagnostic: Vec::new(),
             }],
             formula: molecular_formula!(C 6 O 5 H 2 N -2 S 1),
-            id: ModificationId {
-                name: "DSSO".to_string(),
-                id: Some(0),
-                ontology: Ontology::Custom,
-                ..ModificationId::default()
-            },
+            id: ModificationId::new(
+                Ontology::Custom,
+                "DSSO".into(),
+                Some(0),
+                Box::default(),
+                ThinVec::default(),
+                ThinVec::default(),
+            ),
             length: None,
         }),
         Arc::new(SimpleModificationInner::Linker {
             specificities: vec![LinkerSpecificity::Symmetric {
                 rules: vec![PlacementRule::AminoAcid(
-                    vec![AminoAcid::Cysteine],
+                    vec![AminoAcid::Cysteine].into(),
                     Position::Anywhere,
                 )],
                 stubs: vec![(molecular_formula!(H - 1), molecular_formula!(H - 1))],
@@ -664,12 +667,14 @@ fn custom_database() -> Ontologies {
                 diagnostic: Vec::new(),
             }],
             formula: molecular_formula!(C 6 O 5 H 2 N -2 S 1),
-            id: ModificationId {
-                name: "Disulfide".to_string(),
-                id: Some(1),
-                ontology: Ontology::Custom,
-                ..ModificationId::default()
-            },
+            id: ModificationId::new(
+                Ontology::Custom,
+                "Disulfide".into(),
+                Some(1),
+                Box::default(),
+                ThinVec::default(),
+                ThinVec::default(),
+            ),
             length: None,
         }),
     ])

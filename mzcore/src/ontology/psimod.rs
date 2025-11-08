@@ -20,9 +20,9 @@ use crate::{
 pub struct PsiMod {}
 
 impl CVData for SimpleModificationInner {
-    type Index = usize;
-    fn index(&self) -> Option<usize> {
-        self.description().and_then(|d| d.id)
+    type Index = u32;
+    fn index(&self) -> Option<u32> {
+        self.description().and_then(|d| d.id())
     }
     fn name(&self) -> Option<&str> {
         self.description().map(|d| d.name.as_ref())
@@ -160,7 +160,7 @@ impl CVSource for PsiMod {
                                 if origin.len() == 1 {
                                     rules.push((
                                         vec![PlacementRule::AminoAcid(
-                                            vec![origin.try_into().unwrap()],
+                                            vec![origin.try_into().unwrap()].into(),
                                             term.unwrap_or(Position::Anywhere),
                                         )],
                                         Vec::new(),

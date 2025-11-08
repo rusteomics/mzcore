@@ -1,6 +1,7 @@
 use std::{num::NonZeroU16, sync::Arc};
 
 use context_error::*;
+use thin_vec::ThinVec;
 
 use crate::{
     chemistry::{AmbiguousLabel, Element, MolecularCharge, MultiChemical},
@@ -9,7 +10,7 @@ use crate::{
     sequence::{
         AminoAcid, CompoundPeptidoformIon, CrossLinkName, GlobalModification, ModificationId,
         Peptidoform, PeptidoformIon, PlacementRule, Position, SimpleModificationInner,
-        peptidoform::{parse::{global_modifications, parse_charge_state_2_0}},
+        peptidoform::parse::{global_modifications, parse_charge_state_2_0},
     },
     system::da,
 };
@@ -31,7 +32,7 @@ fn parse_global_modifications() {
         Ok((
             8,
             vec![GlobalModification::Fixed(
-                PlacementRule::AminoAcid(vec![AminoAcid::AsparticAcid], Position::Anywhere),
+                PlacementRule::AminoAcid(vec![AminoAcid::AsparticAcid].into(), Position::Anywhere),
                 Arc::new(SimpleModificationInner::Mass(da(5.0).into()))
             )],
             Vec::new()
@@ -42,7 +43,7 @@ fn parse_global_modifications() {
         Ok((
             8,
             vec![GlobalModification::Fixed(
-                PlacementRule::AminoAcid(vec![AminoAcid::AsparticAcid], Position::Anywhere),
+                PlacementRule::AminoAcid(vec![AminoAcid::AsparticAcid].into(), Position::Anywhere),
                 Arc::new(SimpleModificationInner::Mass(da(5.0).into()))
             )],
             Vec::new()
@@ -53,7 +54,7 @@ fn parse_global_modifications() {
         Ok((
             15,
             vec![GlobalModification::Fixed(
-                PlacementRule::AminoAcid(vec![AminoAcid::AsparticAcid], Position::AnyNTerm),
+                PlacementRule::AminoAcid(vec![AminoAcid::AsparticAcid].into(), Position::AnyNTerm),
                 Arc::new(SimpleModificationInner::Mass(da(5.0).into()))
             )],
             Vec::new()
@@ -64,7 +65,7 @@ fn parse_global_modifications() {
         Ok((
             15,
             vec![GlobalModification::Fixed(
-                PlacementRule::AminoAcid(vec![AminoAcid::AsparticAcid], Position::AnyNTerm),
+                PlacementRule::AminoAcid(vec![AminoAcid::AsparticAcid].into(), Position::AnyNTerm),
                 Arc::new(SimpleModificationInner::Mass(da(5.0).into()))
             )],
             Vec::new()
@@ -75,7 +76,7 @@ fn parse_global_modifications() {
         Ok((
             15,
             vec![GlobalModification::Fixed(
-                PlacementRule::AminoAcid(vec![AminoAcid::AsparticAcid], Position::AnyCTerm),
+                PlacementRule::AminoAcid(vec![AminoAcid::AsparticAcid].into(), Position::AnyCTerm),
                 Arc::new(SimpleModificationInner::Mass(da(5.0).into()))
             )],
             Vec::new()
@@ -445,10 +446,19 @@ fn parse_chimeric() {
 fn parse_unimod() {
     let peptide = CompoundPeptidoformIon::pro_forma(
         "[U:Gln->pyro-Glu]-QE[Cation:Na]AA",
-        &crate::ontology::STATIC_ONTOLOGIES
+        &crate::ontology::STATIC_ONTOLOGIES,
     );
     assert!(peptide.is_ok());
-    let unimod = |name: &str| SimpleModificationInner::pro_forma(name, &mut Vec::new(), &mut Vec::new(), &crate::ontology::STATIC_ONTOLOGIES).unwrap().0;
+    let unimod = |name: &str| {
+        SimpleModificationInner::pro_forma(
+            name,
+            &mut Vec::new(),
+            &mut Vec::new(),
+            &crate::ontology::STATIC_ONTOLOGIES,
+        )
+        .unwrap()
+        .0
+    };
     assert_eq!(unimod("U:Deamidated"), unimod("U:Deamidation"));
     assert_eq!(unimod("U:Deamidated"), unimod("U:Citrullination"));
 }
@@ -460,18 +470,20 @@ fn parse_custom() {
             formula: molecular_formula!(U 1),
             specificities: vec![(
                 vec![PlacementRule::AminoAcid(
-                    AminoAcid::CANONICAL_AMINO_ACIDS.to_vec(),
+                    AminoAcid::CANONICAL_AMINO_ACIDS.into(),
                     Position::Anywhere,
                 )],
                 Vec::new(),
                 Vec::new(),
             )],
-            id: ModificationId {
-                ontology: Ontology::Custom,
-                name: "WEEE".to_string().into_boxed_str(),
-                id: Some(0),
-                ..ModificationId::default()
-            },
+            id: ModificationId::new(
+                Ontology::Custom,
+                "WEEE".into(),
+                Some(0),
+                Box::default(),
+                ThinVec::default(),
+                ThinVec::default(),
+            ),
         })]);
     let peptide = dbg!(CompoundPeptidoformIon::pro_forma("A[C:WEEE]", &ontologies));
     assert!(peptide.is_ok());

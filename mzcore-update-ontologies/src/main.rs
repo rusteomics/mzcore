@@ -36,9 +36,7 @@ fn main() {
     }
     // XLMOD
     let mut index = CVIndex::<XlMod>::empty();
-    index
-        .update_from_url(&[])
-        .unwrap();
+    index.update_from_url(&[]).unwrap();
     println!(
         "XLMOD version: {}, last updated: {}, modifications: {}",
         index.version().version.as_deref().unwrap_or("-"),

@@ -1,5 +1,7 @@
 use std::sync::Arc;
 
+use thin_vec::ThinVec;
+
 use crate::{
     molecular_formula,
     ontology::Ontology,
@@ -43,12 +45,14 @@ fn sloppy_names_custom() {
     let ontologies = crate::ontology::Ontologies::init_static().with_custom([Arc::new(
         SimpleModificationInner::Database {
             formula: molecular_formula!(O 1),
-            id: ModificationId {
-                ontology: Ontology::Custom,
-                name: "Test".to_string().into_boxed_str(),
-                id: Some(0),
-                ..Default::default()
-            },
+            id: ModificationId::new(
+                Ontology::Custom,
+                "Test".into(),
+                Some(0),
+                Box::default(),
+                ThinVec::default(),
+                ThinVec::default(),
+            ),
             specificities: Vec::new(),
         },
     )]);
