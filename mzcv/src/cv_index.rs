@@ -70,13 +70,20 @@ impl<CV: CVSource> CVIndex<CV> {
     /// Search trough the name and synonyms lists to find the closest terms.
     /// This can be limited to a maximum amount of entries sent back and to a maximum edit distance with the search term.
     /// The results are sorted unstably on edit distance so multiple calls could return different lists.
-    pub fn search(&self, term: &str, limit: usize, max_distance: usize) -> Vec<Arc<CV::Data>> {
+    ///
+    /// Returns the found mod, if this is based on name `true` or synonym `false` and the edit distance
+    pub fn search(
+        &self,
+        term: &str,
+        limit: usize,
+        max_distance: usize,
+    ) -> Vec<(Arc<CV::Data>, bool, usize)> {
         // Convert to lowercase, see if any name or synonym exactly matches before going over the trigram index and doing distance calculations
         let term = term.to_ascii_lowercase().into_boxed_str();
         self.name
             .get(&term)
-            .cloned()
-            .or_else(|| self.synonyms.get(&term).cloned())
+            .map(|v| (v.clone(), true, 0))
+            .or_else(|| self.synonyms.get(&term).map(|v| (v.clone(), false, 0)))
             .map_or_else(
                 || {
                     let mut results: Vec<(&str, usize)> = Vec::with_capacity(limit);
@@ -111,11 +118,15 @@ impl<CV: CVSource> CVIndex<CV> {
 
                     results
                         .into_iter()
-                        .filter_map(|(name, _)| {
+                        .filter_map(|(name, distance)| {
                             self.name
                                 .get(name)
-                                .or_else(|| self.synonyms.get(name))
-                                .cloned()
+                                .map(|m| (m.clone(), true, distance))
+                                .or_else(|| {
+                                    self.synonyms
+                                        .get(name)
+                                        .map(|m| (m.clone(), false, distance))
+                                })
                         })
                         .collect()
                 },

@@ -182,7 +182,7 @@ impl Ontologies {
     }
 
     /// Find the closest names in the given ontologies, or if empty in all ontologies
-    pub fn search(&self, ontologies: &[Ontology], term: &str) -> Vec<SimpleModification> {
+    pub fn search(&self, ontologies: &[Ontology], term: &str) -> Vec<(SimpleModification, bool)> {
         let ontologies = if ontologies.is_empty() {
             &[
                 Ontology::Unimod,
@@ -208,7 +208,13 @@ impl Ontologies {
             });
         }
 
+        options.sort_unstable_by(|a, b| a.2.cmp(&b.2).then(a.1.cmp(&b.1)).then(a.0.cmp(&b.0)));
+
         options
+            .into_iter()
+            .map(|(m, n, _)| (m, n))
+            .take(10)
+            .collect()
     }
 
     /// Find the given name in this ontology.

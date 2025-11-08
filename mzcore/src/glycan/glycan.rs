@@ -212,6 +212,11 @@ impl MonoSaccharide {
         }
     }
 
+    /// Get the base sugar of this monosaccharide
+    pub const fn base_sugar(&self) -> &BaseSugar {
+        &self.base_sugar
+    }
+
     /// Check if this is a fucose
     pub fn is_fucose(&self) -> bool {
         self.base_sugar == BaseSugar::Hexose(Some(HexoseIsomer::Galactose))

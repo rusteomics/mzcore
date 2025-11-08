@@ -355,7 +355,7 @@ impl Modification {
                 ).suggestions(
                     ontologies.search(
                         &[Ontology::Unimod, Ontology::Psimod],
-                        &name.trim().to_lowercase()).iter().map(ToString::to_string))
+                        &name.trim().to_lowercase()).iter().map(|(m, _)| m.to_string()))
             })
     }
 

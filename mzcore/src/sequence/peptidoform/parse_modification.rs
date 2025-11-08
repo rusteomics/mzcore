@@ -281,7 +281,7 @@ fn parse_single_modification<'error>(
                         vec![
                             basic_error.clone().long_description(
                                 "The modification could not be found in Unimod",
-                            ).suggestions(ontologies.search(&[Ontology::Unimod], name).into_iter().map(|m|m.to_string()))
+                            ).suggestions(ontologies.search(&[Ontology::Unimod], name).into_iter().map(|(m, _)|m.to_string()))
                         ]
                     }),
                 ("m", tail) => ontologies.get_by_name(&[Ontology::Psimod], tail)
@@ -292,7 +292,7 @@ fn parse_single_modification<'error>(
                         vec![
                             basic_error.clone().long_description(
                                 "The modification could not be found in PSI-MOD",
-                            ).suggestions(ontologies.search(&[Ontology::Psimod], tail).into_iter().map(|m|m.to_string()))
+                            ).suggestions(ontologies.search(&[Ontology::Psimod], tail).into_iter().map(|(m, _)|m.to_string()))
                         ]
                     }),
                 ("r", tail) => ontologies.get_by_name(&[Ontology::Resid], tail)
@@ -303,7 +303,7 @@ fn parse_single_modification<'error>(
                         vec![
                             basic_error.clone().long_description(
                                 "The modification could not be found in RESID",
-                            ).suggestions(ontologies.search(&[Ontology::Resid], tail).into_iter().map(|m|m.to_string()))
+                            ).suggestions(ontologies.search(&[Ontology::Resid], tail).into_iter().map(|(m, _)|m.to_string()))
                         ]
                     }),
                 ("x", tail) => ontologies.get_by_name(&[Ontology::Xlmod], tail)
@@ -314,7 +314,7 @@ fn parse_single_modification<'error>(
                         vec![
                             basic_error.clone().long_description(
                                 "The modification could not be found in XL-MOD",
-                            ).suggestions(ontologies.search(&[Ontology::Xlmod], tail).into_iter().map(|m|m.to_string()))
+                            ).suggestions(ontologies.search(&[Ontology::Xlmod], tail).into_iter().map(|(m, _)|m.to_string()))
                         ]
                     }),
                 ("c", tail) => ontologies.custom().get_by_name(tail)
@@ -323,7 +323,7 @@ fn parse_single_modification<'error>(
                        vec![
                             basic_error.clone().long_description(
                                 "The modification could not be found in Custom",
-                            ).suggestions(ontologies.search(&[Ontology::Custom], tail).into_iter().map(|m|m.to_string()))
+                            ).suggestions(ontologies.search(&[Ontology::Custom], tail).into_iter().map(|(m, _)|m.to_string()))
                         ]
                     }),
                 ("gno" | "g", tail) => ontologies.gnome().get_by_name(tail)
@@ -398,10 +398,9 @@ fn parse_single_modification<'error>(
                                 "The modification could not be found in Unimod or PSI-MOD",
                             ).suggestions(ontologies.search(&[Ontology::Unimod,
                                 Ontology::Psimod,
-                                Ontology::Gnome,
                                 Ontology::Xlmod,
                                 Ontology::Resid,
-                                Ontology::Custom,], full.0).into_iter().map(|m|m.to_string()))
+                                Ontology::Custom,], full.0).into_iter().map(|(m, _)| m.to_string()))
                         ]})
             }
         } else if full.0.is_empty() {
@@ -427,7 +426,6 @@ fn parse_single_modification<'error>(
                                     &[
                                         Ontology::Unimod,
                                         Ontology::Psimod,
-                                        Ontology::Gnome,
                                         Ontology::Xlmod,
                                         Ontology::Resid,
                                         Ontology::Custom,
@@ -435,7 +433,7 @@ fn parse_single_modification<'error>(
                                     full.0,
                                 )
                                 .into_iter()
-                                .map(|m| m.to_string()),
+                                .map(|(m, _)| m.to_string()),
                         ),
                     ]
                 })
