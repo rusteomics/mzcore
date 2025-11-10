@@ -153,3 +153,30 @@ pub(crate) const fn explain_number_error(error: &ParseIntError) -> &'static str 
         _ => "is not a valid number",
     }
 }
+
+/// Count the number of digits, but only if it did not use exponential notation
+pub(crate) fn float_digits(text: &str) -> Option<u8> {
+    if text.is_ascii()
+        && !text.eq_ignore_ascii_case("nan")
+        && !text.eq_ignore_ascii_case("+nan")
+        && !text.eq_ignore_ascii_case("-nan")
+        && !text.eq_ignore_ascii_case("inf")
+        && !text.eq_ignore_ascii_case("+inf")
+        && !text.eq_ignore_ascii_case("-inf")
+        && !text.eq_ignore_ascii_case("infinity")
+        && !text.eq_ignore_ascii_case("+infinity")
+        && !text.eq_ignore_ascii_case("-infinity")
+    {
+        let text = text
+            .as_bytes()
+            .iter()
+            .position(|b| *b == b'e' || *b == b'E')
+            .map_or(text, |pos| &text[..pos]);
+        text.as_bytes()
+            .iter()
+            .position(|b| *b == b'.')
+            .map_or(Some(0), |pos| u8::try_from(text[pos + 1..].len()).ok())
+    } else {
+        None
+    }
+}

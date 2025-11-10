@@ -5,19 +5,19 @@ edition.workspace = true
 license.workspace = true
 publish = true
 rust-version.workspace = true
-version.workspace = true
-description = "A library to handle proteomic mass spectrometry data and match peptides to spectra."
+version = "0.1.0"
+description = "Core logic for handling massspectrometry in Rust."
 categories = [
     "science::bioinformatics::proteomics",
     "science::bioinformatics::sequence-analysis",
 ]
 keywords = ["spectra", "mass-spectrometry", "bio", "fragmentation", "proforma"]
-repository = "https://github.com/snijderlab/rustyms"
+repository = "https://github.com/rusteomics/mzcore"
 readme = "README.md"
 include = ["src/**/*", "images/**/*", "README.md", "benches/**/*"]
 
 [dependencies]
-mzcv = { path = "../mzcv", features = ["serde"] }
+mzcv = { path = "../mzcv", version = "0.1.0", features = ["serde"] }
 bincode = { workspace = true, features = ["serde"] }
 context_error = { workspace = true }
 flate2 = { workspace = true }

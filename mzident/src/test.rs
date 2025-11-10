@@ -108,7 +108,10 @@ pub(super) fn test_identified_peptidoform<Complexity, PeptidoformAvailability>(
                 p.sequence().iter().any(|s| {
                     s.modifications.iter().any(|m| {
                         m.simple().is_some_and(|m| {
-                            matches!(**m, mzcore::sequence::SimpleModificationInner::Mass(_))
+                            matches!(
+                                **m,
+                                mzcore::sequence::SimpleModificationInner::Mass(_, _, _)
+                            )
                         })
                     })
                 })

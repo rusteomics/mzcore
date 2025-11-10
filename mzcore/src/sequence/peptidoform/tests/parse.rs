@@ -8,8 +8,9 @@ use crate::{
     molecular_formula,
     ontology::{Ontologies, Ontology},
     sequence::{
-        AminoAcid, CompoundPeptidoformIon, CrossLinkName, GlobalModification, ModificationId,
-        Peptidoform, PeptidoformIon, PlacementRule, Position, SimpleModificationInner,
+        AminoAcid, CompoundPeptidoformIon, CrossLinkName, GlobalModification, MassTag,
+        ModificationId, Peptidoform, PeptidoformIon, PlacementRule, Position,
+        SimpleModificationInner,
         peptidoform::parse::{global_modifications, parse_charge_state_2_0},
     },
     system::da,
@@ -33,51 +34,71 @@ fn parse_global_modifications() {
             8,
             vec![GlobalModification::Fixed(
                 PlacementRule::AminoAcid(vec![AminoAcid::AsparticAcid].into(), Position::Anywhere),
-                Arc::new(SimpleModificationInner::Mass(da(5.0).into()))
+                Arc::new(SimpleModificationInner::Mass(
+                    MassTag::None,
+                    da(5.0).into(),
+                    Some(0)
+                ))
             )],
             Vec::new()
         ))
     );
     assert_eq!(
-        parse("<[+5]@d>"),
+        parse("<[Obs:+5]@d>"),
         Ok((
-            8,
+            12,
             vec![GlobalModification::Fixed(
                 PlacementRule::AminoAcid(vec![AminoAcid::AsparticAcid].into(), Position::Anywhere),
-                Arc::new(SimpleModificationInner::Mass(da(5.0).into()))
+                Arc::new(SimpleModificationInner::Mass(
+                    MassTag::Observed,
+                    da(5.0).into(),
+                    Some(0)
+                ))
             )],
             Vec::new()
         ))
     );
     assert_eq!(
-        parse("<[+5]@N-term:D>"),
+        parse("<[U:+5.0]@N-term:D>"),
         Ok((
-            15,
+            19,
             vec![GlobalModification::Fixed(
                 PlacementRule::AminoAcid(vec![AminoAcid::AsparticAcid].into(), Position::AnyNTerm),
-                Arc::new(SimpleModificationInner::Mass(da(5.0).into()))
+                Arc::new(SimpleModificationInner::Mass(
+                    MassTag::Ontology(Ontology::Unimod),
+                    da(5.0).into(),
+                    Some(1)
+                ))
             )],
             Vec::new()
         ))
     );
     assert_eq!(
-        parse("<[+5]@n-term:D>"),
+        parse("<[+5.000]@n-term:D>"),
         Ok((
-            15,
+            19,
             vec![GlobalModification::Fixed(
                 PlacementRule::AminoAcid(vec![AminoAcid::AsparticAcid].into(), Position::AnyNTerm),
-                Arc::new(SimpleModificationInner::Mass(da(5.0).into()))
+                Arc::new(SimpleModificationInner::Mass(
+                    MassTag::None,
+                    da(5.0).into(),
+                    Some(3)
+                ))
             )],
             Vec::new()
         ))
     );
     assert_eq!(
-        parse("<[+5]@C-term:D>"),
+        parse("<[+5.0000000000]@C-term:D>"),
         Ok((
-            15,
+            26,
             vec![GlobalModification::Fixed(
                 PlacementRule::AminoAcid(vec![AminoAcid::AsparticAcid].into(), Position::AnyCTerm),
-                Arc::new(SimpleModificationInner::Mass(da(5.0).into()))
+                Arc::new(SimpleModificationInner::Mass(
+                    MassTag::None,
+                    da(5.0).into(),
+                    Some(10)
+                ))
             )],
             Vec::new()
         ))

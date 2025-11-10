@@ -345,7 +345,7 @@ impl<'ontologies> PeptideModificationSearch<'ontologies> {
         aminoacid: Option<AminoAcid>,
         in_place: &SimpleModification,
     ) -> Option<SimpleModification> {
-        if matches!(&**in_place, SimpleModificationInner::Mass(_))
+        if matches!(&**in_place, SimpleModificationInner::Mass(_, _, _))
             || self.replace_formulas && matches!(&**in_place, SimpleModificationInner::Formula(_))
         {
             self.cache
@@ -385,7 +385,7 @@ impl<'ontologies> PeptideModificationSearch<'ontologies> {
     ) -> Option<SimpleModification> {
         let check_matches =
             |in_place: &SimpleModification, provided: &SimpleModification| match &**in_place {
-                SimpleModificationInner::Mass(mass) => {
+                SimpleModificationInner::Mass(_, mass, _) => {
                     tolerance.within(&mass.into_inner(), &provided.formula().mass(mass_mode))
                 }
                 SimpleModificationInner::Formula(formula) if replace_formulas => {

@@ -406,3 +406,48 @@ pub(crate) fn check_extension(filename: impl AsRef<Path>, extension: impl AsRef<
         .extension()
         .is_some_and(|ext| ext.eq_ignore_ascii_case(extension.as_ref()))
 }
+
+/// Count the number of digits, but only if it did not use exponential notation
+pub(crate) fn float_digits(text: &str) -> Option<u8> {
+    if text.is_ascii()
+        && !text.eq_ignore_ascii_case("nan")
+        && !text.eq_ignore_ascii_case("+nan")
+        && !text.eq_ignore_ascii_case("-nan")
+        && !text.eq_ignore_ascii_case("inf")
+        && !text.eq_ignore_ascii_case("+inf")
+        && !text.eq_ignore_ascii_case("-inf")
+        && !text.eq_ignore_ascii_case("infinity")
+        && !text.eq_ignore_ascii_case("+infinity")
+        && !text.eq_ignore_ascii_case("-infinity")
+    {
+        let text = text
+            .as_bytes()
+            .iter()
+            .position(|b| *b == b'e' || *b == b'E')
+            .map_or(text, |pos| &text[..pos]);
+        text.as_bytes()
+            .iter()
+            .position(|b| *b == b'.')
+            .map_or(Some(0), |pos| u8::try_from(text[pos + 1..].len()).ok())
+    } else {
+        None
+    }
+}
+
+#[allow(clippy::missing_panics_doc)]
+#[test]
+fn test_float_digits() {
+    assert_eq!(float_digits("+3.14"), Some(2));
+    assert_eq!(float_digits("+3.1415"), Some(4));
+    assert_eq!(float_digits(".14"), Some(2));
+    assert_eq!(float_digits("1"), Some(0));
+    assert_eq!(float_digits("1."), Some(0));
+    assert_eq!(float_digits("1E2"), Some(0));
+    assert_eq!(float_digits("1.2E2"), Some(1));
+    assert_eq!(float_digits("1.2E-2"), Some(1));
+    assert_eq!(float_digits("1.21e2"), Some(2));
+    assert_eq!(float_digits("1.2E2222"), Some(1));
+    assert_eq!(float_digits("0006"), Some(0));
+    assert_eq!(float_digits("inf"), None);
+    assert_eq!(float_digits("NaN"), None);
+}

@@ -138,7 +138,7 @@ impl Space for ModificationId {
 
 impl ParseJson for ModificationId {
     fn from_json_value(value: serde_json::Value) -> Result<Self, BoxedError<'static, BasicKind>> {
-        use_serde(value)
+        use_serde(value) // TODO: extend
     }
 }
 

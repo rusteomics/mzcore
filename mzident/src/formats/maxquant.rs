@@ -138,10 +138,10 @@ format_family!(
     fn post_process(source: &CsvLine, mut parsed: Self, _ontologies: &Ontologies) -> Result<Self, BoxedError<'static, BasicKind>> {
         if let Some(dn_sequence) = parsed.dn_sequence.as_mut() {
             if let Some(n_mass) = parsed.dn_n_mass && n_mass != Mass::default() && !n_mass.is_nan() {
-                dn_sequence.add_simple_n_term(SimpleModificationInner::Mass(n_mass.into()).into());
+                dn_sequence.add_simple_n_term(SimpleModificationInner::Mass(mzcore::sequence::MassTag::None, n_mass.into(), None).into());
             }
             if let Some(c_mass) = parsed.dn_c_mass && c_mass != Mass::default() && !c_mass.is_nan() {
-                dn_sequence.add_simple_c_term(SimpleModificationInner::Mass(c_mass.into()).into());
+                dn_sequence.add_simple_c_term(SimpleModificationInner::Mass(mzcore::sequence::MassTag::None, c_mass.into(), None).into());
             }
         }
 

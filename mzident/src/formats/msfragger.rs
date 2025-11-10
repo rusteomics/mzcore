@@ -191,7 +191,7 @@ format_family!(
                         // Check if the modification is already placed as mass modification (this is not necessarily always present )
                         let mut index = None;
                         for (i, m) in parsed.peptide[location[0]].modifications.iter().enumerate() {
-                            if let Some(SimpleModificationInner::Mass(mass)) = m.simple().map(AsRef::as_ref)
+                            if let Some(SimpleModificationInner::Mass(_, mass, _)) = m.simple().map(AsRef::as_ref)
                                 && Tolerance::Absolute(Mass::new::<mzcore::system::dalton>(1.0)).within(&mass.into_inner(), &target_mass) {
                                     index = Some(i);
                                     break;
@@ -217,7 +217,7 @@ format_family!(
                 let mut index = None;
                 for seq in parsed.peptide.sequence_mut() {
                     for (i, m) in seq.modifications.iter().enumerate() {
-                        if let Some(SimpleModificationInner::Mass(mass)) = m.simple().map(AsRef::as_ref) && Tolerance::Absolute(Mass::new::<mzcore::system::dalton>(1.0)).within(&mass.into_inner(), &target_mass) {
+                        if let Some(SimpleModificationInner::Mass(_, mass, _)) = m.simple().map(AsRef::as_ref) && Tolerance::Absolute(Mass::new::<mzcore::system::dalton>(1.0)).within(&mass.into_inner(), &target_mass) {
                             index = Some(i);
                             break;
                         }

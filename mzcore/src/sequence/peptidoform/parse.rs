@@ -64,7 +64,11 @@ impl Peptidoform<Linked> {
         let (pep, mut warnings) =
             PeptidoformIon::pro_forma_inner(base_context, line, range.clone(), ontologies)?;
         if let Some(pep) = pep.singular() {
-            Ok((pep, warnings))
+            if warnings.iter().any(|e| e.get_kind().is_error(())) {
+                Err(warnings)
+            } else {
+                Ok((pep, warnings))
+            }
         } else {
             combine_error(
                 &mut warnings,

@@ -63,7 +63,7 @@ format_family!(
                     peptidoform.add_cross_link(
                         (0, SequencePosition::Index(pos1.0.saturating_sub(1) as usize)),
                         (1, SequencePosition::Index(pos2.0.saturating_sub(1) as usize)),
-                        Arc::new(SimpleModificationInner::Mass(Mass::default().into())),
+                        Arc::new(SimpleModificationInner::Mass(mzcore::sequence::MassTag::None, Mass::default().into(), None)),
                         CrossLinkName::Name("1".to_string().into_boxed_str()),
                     );
                     Ok(peptidoform)
@@ -75,14 +75,14 @@ format_family!(
                     peptidoform.add_cross_link(
                         (0, SequencePosition::Index(pos1.0.saturating_sub(1) as usize)),
                         (0, SequencePosition::Index(pos2.0.saturating_sub(1) as usize)),
-                        Arc::new(SimpleModificationInner::Mass(Mass::default().into())),
+                        Arc::new(SimpleModificationInner::Mass(mzcore::sequence::MassTag::None, Mass::default().into(), None)),
                         CrossLinkName::Name("1".to_string().into_boxed_str()),
                     );
                     Ok(peptidoform)
                 }
                 (pep1, Some(pos1), None, None) => {
                     let mut pep = Peptidoform::sloppy_pro_forma(location.full_line(), pep1, ontologies, &SloppyParsingParameters::default()).map_err(BoxedError::to_owned)?;
-                    pep[SequencePosition::Index(pos1.0.saturating_sub(1) as usize)].modifications.push( SimpleModificationInner::Mass(Mass::default().into()).into());
+                    pep[SequencePosition::Index(pos1.0.saturating_sub(1) as usize)].modifications.push( SimpleModificationInner::Mass(mzcore::sequence::MassTag::None, Mass::default().into(), None).into());
 
                     Ok(PeptidoformIon::from_vec(vec![pep.into()]).unwrap())
                 }
@@ -266,7 +266,7 @@ format_family!(
                                             c_term.push(m.clone());
                                         }
                                     }
-                                } else if Modification::Simple(Arc::new(SimpleModificationInner::Mass(Mass::default().into()))) == *m {
+                                } else if Modification::Simple(Arc::new(SimpleModificationInner::Mass(mzcore::sequence::MassTag::None, Mass::default().into(), None))) == *m {
                                     *m = Modification::Simple(fitting[0].clone());
                                 }
                             }

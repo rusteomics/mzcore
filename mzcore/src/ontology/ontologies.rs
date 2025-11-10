@@ -181,8 +181,13 @@ impl Ontologies {
         &mut self.custom
     }
 
-    /// Find the closest names in the given ontologies, or if empty in all ontologies
-    pub fn search(&self, ontologies: &[Ontology], term: &str) -> Vec<(SimpleModification, bool)> {
+    /// Find the closest names in the given ontologies, or if empty in all ontologies. Also
+    /// returns the matched synonym if a synonym was matched (if it was matched on a name returns None)
+    pub fn search(
+        &self,
+        ontologies: &[Ontology],
+        term: &str,
+    ) -> Vec<(SimpleModification, Option<String>)> {
         let ontologies = if ontologies.is_empty() {
             &[
                 Ontology::Unimod,
@@ -215,6 +220,63 @@ impl Ontologies {
             .map(|(m, n, _)| (m, n))
             .take(10)
             .collect()
+    }
+
+    /// Load a data item by name or if that fails by synonym, names are matched in a case insensitive manner. Returns a boolean indicating if it matches a name `true` or a synonym `false`
+    pub fn get_by_name_or_synonym(
+        &self,
+        ontologies: &[Ontology],
+        term: &str,
+    ) -> Option<(bool, SimpleModification)> {
+        let ontologies = if ontologies.is_empty() {
+            &[
+                Ontology::Unimod,
+                Ontology::Psimod,
+                Ontology::Xlmod,
+                Ontology::Gnome,
+                Ontology::Resid,
+                Ontology::Custom,
+            ]
+        } else {
+            ontologies
+        };
+
+        for ontology in ontologies {
+            match ontology {
+                Ontology::Unimod => {
+                    if let Some(m) = self.unimod.get_by_name_or_synonym(term) {
+                        return Some(m);
+                    }
+                }
+                Ontology::Psimod => {
+                    if let Some(m) = self.psimod.get_by_name_or_synonym(term) {
+                        return Some(m);
+                    }
+                }
+                Ontology::Xlmod => {
+                    if let Some(m) = self.xlmod.get_by_name_or_synonym(term) {
+                        return Some(m);
+                    }
+                }
+                Ontology::Gnome => {
+                    if let Some(m) = self.gnome.get_by_name_or_synonym(term) {
+                        return Some(m);
+                    }
+                }
+                Ontology::Resid => {
+                    if let Some(m) = self.resid.get_by_name_or_synonym(term) {
+                        return Some(m);
+                    }
+                }
+                Ontology::Custom => {
+                    if let Some(m) = self.custom.get_by_name_or_synonym(term) {
+                        return Some(m);
+                    }
+                }
+            }
+        }
+
+        None
     }
 
     /// Find the given name in this ontology.

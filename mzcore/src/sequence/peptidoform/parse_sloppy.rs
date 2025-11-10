@@ -9,7 +9,7 @@ use crate::{
     helper_functions::{ResultExtensions, end_of_enclosure},
     ontology::{Ontologies, Ontology},
     sequence::{
-        AminoAcid, CheckedAminoAcid, Modification, PeptideModificationSearch, Peptidoform,
+        AminoAcid, CheckedAminoAcid, MassTag, Modification, PeptideModificationSearch, Peptidoform,
         SemiAmbiguous, SequenceElement, SequencePosition, SimpleModification,
         SimpleModificationInner, peptidoform::parse_modification,
     },
@@ -197,7 +197,7 @@ impl Peptidoform<SemiAmbiguous> {
                         .iter()
                         .take_while(|c| c.is_ascii_digit() || **c == b'.')
                         .count();
-                    let modification = SimpleModificationInner::Mass(Mass::new::<crate::system::dalton>(
+                    let modification = SimpleModificationInner::Mass(MassTag::None, Mass::new::<crate::system::dalton>(
                         line[location.start + index..location.start + index + length]
                         .parse::<f64>()
                         .map_err(|err|
@@ -205,7 +205,7 @@ impl Peptidoform<SemiAmbiguous> {
                                 "Invalid mass shift modification",
                                 format!("Mass shift modification must be a valid number but this number is invalid: {err}"),
                                 Context::line(None, line, location.start + index, length))
-                            )?).into()).into();
+                            )?).into(), None).into();
                     match peptide.sequence_mut().last_mut() {
                         Some(aa) => aa.modifications.push(Modification::Simple(modification)),
                         None => {
@@ -980,7 +980,8 @@ impl Modification {
             "ile->trp" | "leu->trp" | "xle->trp" => ontologies.unimod().get_by_index(&677),
             "ile->tyr" | "leu->tyr" | "xle->tyr" => ontologies.unimod().get_by_index(&1248),
             "ile->val" | "leu->val" | "xle->val" => ontologies.unimod().get_by_index(&671),
-            _ => parse_modification::numerical_mod(&name)
+            _ => parse_modification::numerical_mod(MassTag::None, &name)
+                .map(|m| m.1)
                 .ok()
                 .or_else(|| ontologies.unimod().get_by_name(&name))
                 .or_else(|| ontologies.psimod().get_by_name(&name))

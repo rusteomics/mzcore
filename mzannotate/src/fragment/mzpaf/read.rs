@@ -22,7 +22,8 @@ use mzcore::{
 use crate::{
     fragment::*,
     helper_functions::{
-        RangeExtension, RangeMaths, end_of_enclosure, explain_number_error, next_number,
+        RangeExtension, RangeMaths, end_of_enclosure, explain_number_error, float_digits,
+        next_number,
     },
     mzspeclib::AnalyteTarget,
 };
@@ -633,7 +634,9 @@ fn parse_ion<'a>(
                         .or_else(|| {
                             modification.parse::<f64>().ok().map(|n| {
                                 std::sync::Arc::new(SimpleModificationInner::Mass(
+                                    mzcore::sequence::MassTag::None,
                                     Mass::new::<mzcore::system::dalton>(n).into(),
+                                    float_digits(modification),
                                 ))
                             })
                         })

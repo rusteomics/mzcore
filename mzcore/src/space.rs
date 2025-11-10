@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 use crate::{
     glycan::{
         Configuration, GlycanSubstituent, HeptoseIsomer, HexoseIsomer, NonoseIsomer, PentoseIsomer,
@@ -5,7 +6,7 @@ use crate::{
     },
     ontology::Ontology,
     prelude::{AminoAcid, Element},
-    sequence::{GnoSubsumption, Position, SimpleModificationInner},
+    sequence::{GnoSubsumption, MassTag, Position, SimpleModificationInner},
     system::OrderedMass,
 };
 use std::{
@@ -192,7 +193,7 @@ impl<T: Space> Space for Box<T> {
 impl Space for SimpleModificationInner {
     fn space(&self) -> UsedSpace {
         match self {
-            Self::Mass(m) => m.space(),
+            Self::Mass(t, m, d) => t.space() + m.space() + d.space(),
             Self::Formula(f) => f.space(),
             Self::Glycan(g) => g.space(),
             Self::GlycanStructure(g) => g.space(),
@@ -305,8 +306,10 @@ simple_space!(Position);
 simple_space!(Ontology);
 simple_space!(GnoSubsumption);
 simple_space!(OrderedMass);
+simple_space!(MassTag);
 simple_space!(mzcv::SynonymScope);
 
+#[ignore = "Only run when interested in the space taken up by GNOme"]
 #[test]
 fn gnome_space() {
     let space = crate::ontology::STATIC_ONTOLOGIES

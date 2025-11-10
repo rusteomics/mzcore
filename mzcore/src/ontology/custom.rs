@@ -65,7 +65,7 @@ impl CVSource for Custom {
 
         Ok((
             CVVersion {
-                hash: reader.hash().to_vec(),
+                hash: reader.hash(),
                 last_updated: None,
                 version: None,
             },
@@ -82,7 +82,8 @@ impl CVSource for Custom {
         let value = data
             .map(|m| {
                 (
-                    m.description().and_then(|i| i.id()),
+                    m.description()
+                        .and_then(crate::sequence::ModificationId::id),
                     m.description()
                         .map_or_else(|| "UNNAMED".to_string(), |i| i.name.to_string()),
                     m,

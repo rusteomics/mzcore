@@ -124,7 +124,7 @@ impl PeptidoformIon {
                     | SimpleModificationInner::Glycan(_)
                     | SimpleModificationInner::GlycanStructure(_)
                     | SimpleModificationInner::Gno { .. }
-                    | SimpleModificationInner::Mass(_)
+                    | SimpleModificationInner::Mass(_, _, _)
             ) {
                 (
                     CrossLinkSide::Symmetric(BTreeSet::default()),

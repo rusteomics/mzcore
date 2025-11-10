@@ -32,9 +32,7 @@ codegen-units = 1
 # Bench profile inherits from release so only change the release settings
 
 [workspace.dependencies]
-mzdata = { git = "https://github.com/douweschulte/mzdata", branch = "xy-support", default-features = false, features = [
-    "nalgebra",
-] } # TODO: needed to not have mzsignal crash during compilation
+mzdata = { version="0.62", default-features = false } 
 afl = "0.15"
 base64 = "0.22"
 bincode = { version = "2.0", features = ["serde"] }

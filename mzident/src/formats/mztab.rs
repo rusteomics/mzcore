@@ -18,7 +18,9 @@ use serde::{Deserialize, Serialize};
 use crate::{
     FastaIdentifier, IdentifiedPeptidoform, IdentifiedPeptidoformData, KnownFileFormat,
     MaybePeptidoform, MetaData, SpectrumId, SpectrumIds,
-    helper_functions::{check_extension, explain_number_error, next_number, split_with_brackets},
+    helper_functions::{
+        check_extension, explain_number_error, float_digits, next_number, split_with_brackets,
+    },
 };
 use mzcore::{
     chemistry::MolecularFormula,
@@ -1101,7 +1103,11 @@ fn parse_modification<'a>(
                     })?
             } else if tag.eq_ignore_ascii_case("chemmod") {
                 if let Ok(mass) = value.parse::<f64>() {
-                    SimpleModificationInner::Mass(Mass::new::<mzcore::system::dalton>(mass).into())
+                    SimpleModificationInner::Mass(
+                        mzcore::sequence::MassTag::None,
+                        Mass::new::<mzcore::system::dalton>(mass).into(),
+                        float_digits(value),
+                    )
                 } else {
                     let factor = match line.as_bytes()[value_range.start] {
                         b'-' => -1,

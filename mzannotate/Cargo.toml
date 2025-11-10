@@ -5,19 +5,19 @@ edition.workspace = true
 license.workspace = true
 publish = true
 rust-version.workspace = true
-version.workspace = true
-description = "A library to handle proteomic mass spectrometry data and match peptides to spectra."
+version = "0.1.0"
+description = "Handle fragmentation of (complex) peptidoforms."
 categories = [
     "science::bioinformatics::proteomics",
     "science::bioinformatics::sequence-analysis",
 ]
 keywords = ["spectra", "mass-spectrometry", "bio", "fragmentation", "proforma"]
-repository = "https://github.com/snijderlab/rustyms"
+repository = "https://github.com/rusteomics/mzcore"
 readme = "README.md"
 include = ["src/**/*", "images/**/*", "README.md", "benches/**/*"]
 
 [dependencies]
-mzcore = { path = "../mzcore" }
+mzcore = { path = "../mzcore", version = "0.1.0" }
 
 context_error = { workspace = true }
 indexmap = { workspace = true }

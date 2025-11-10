@@ -5,6 +5,7 @@ use std::{
 };
 
 use context_error::*;
+use itertools::Itertools;
 use ordered_float::OrderedFloat;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
@@ -16,8 +17,8 @@ use crate::{
     helper_functions::*,
     ontology::{Ontologies, Ontology},
     sequence::{
-        AmbiguousLookup, AmbiguousLookupEntry, CrossLinkLookup, CrossLinkName, PlacementRule,
-        SimpleModification, SimpleModificationInner,
+        AmbiguousLookup, AmbiguousLookupEntry, CrossLinkLookup, CrossLinkName, MassTag,
+        PlacementRule, SimpleModification, SimpleModificationInner,
     },
     system::{Mass, dalton},
 };
@@ -103,7 +104,9 @@ impl SimpleModificationInner {
             Ok((
                 (
                     modification.unwrap_or(ReturnModification::Defined(Arc::new(Self::Mass(
+                        MassTag::None,
                         Mass::default().into(),
+                        None,
                     )))),
                     settings,
                 ),
@@ -161,6 +164,93 @@ fn parse_single_modification<'error>(
     cross_link_lookup: &mut CrossLinkLookup,
     ontologies: &Ontologies,
 ) -> ParserResult<'error, SingleReturnModification, BasicKind> {
+    /// # Errors
+    /// If the modification could not be found
+    fn single_name_resolution<'a>(
+        ontologies: &Ontologies,
+        ontology: Ontology,
+        name: &'a str,
+        base_context: &Context<'a>,
+        range: Range<usize>,
+    ) -> ParserResult<'a, SimpleModification, BasicKind> {
+        name_resolution(
+            ontologies,
+            &[ontology],
+            &[ontology],
+            name,
+            base_context,
+            range,
+        )
+    }
+
+    /// # Errors
+    /// If the modification could not be found
+    fn name_resolution<'a>(
+        ontologies: &Ontologies,
+        match_selection: &[Ontology],
+        search_selection: &[Ontology],
+        name: &'a str,
+        base_context: &Context<'a>,
+        range: Range<usize>,
+    ) -> ParserResult<'a, SimpleModification, BasicKind> {
+        if let Some((by_name, modification)) =
+            ontologies.get_by_name_or_synonym(match_selection, name)
+        {
+            if by_name {
+                Ok((modification, Vec::new()))
+            } else {
+                Ok((
+                    modification.clone(),
+                    vec![BoxedError::new(
+                        BasicKind::Warning,
+                        "Used modification synonym",
+                        "The name of the modification should be used to unambiguously identify a modification instead of a synonym",
+                        base_context.clone().add_highlight((
+                            0,
+                            range,
+                            format!("use {modification}"),
+                        )),
+                    )],
+                ))
+            }
+        } else {
+            Err(vec![
+                BoxedError::new(
+                    BasicKind::Error,
+                    "Invalid modification",
+                    format!(
+                        "The modification could not be found in {}",
+                        if match_selection.len() == 1 {
+                            match_selection[0].to_string()
+                        } else if match_selection.len() == 2 {
+                            format!("{} or {}", match_selection[0], match_selection[1])
+                        } else if match_selection.is_empty() {
+                            "Unimod, PSI-MOD, XL-MOD, GNOme, RESID, or Custom".to_string()
+                        } else {
+                            format!(
+                                "{}, or {}",
+                                match_selection[..match_selection.len() - 1]
+                                    .iter()
+                                    .map(ToString::to_string)
+                                    .join(","),
+                                match_selection[match_selection.len() - 1]
+                            )
+                        }
+                    ),
+                    base_context.clone().add_highlight((0, range)),
+                )
+                .suggestions(
+                    ontologies
+                        .search(search_selection, name)
+                        .into_iter()
+                        .map(|(m, s)| {
+                            s.map_or_else(|| m.to_string(), |s| format!("`{s}` synonym for `{m}`"))
+                        }),
+                ),
+            ])
+        }
+    }
+
     let mut errors = Vec::new();
     // Parse the whole intricate structure of the single modification (see here in action: https://regex101.com/r/pW5gsj/1)
     if let Some(groups) = MOD_REGEX.captures(full_modification) {
@@ -268,70 +358,24 @@ fn parse_single_modification<'error>(
                             )]
                     })
                 }
-                ("u", name) => ontologies.unimod().get_by_name_or_synonym(name)
-                    .map(|(name, m)| {
-                        if !name {
-                            combine_error(&mut errors, BoxedError::new(BasicKind::Warning, "Used modification synonym", "The name of the modification should be used to unambiguously identify a modification instead of a synonym", base_context.clone().add_highlight((0, offset + full.1, full.2, format!("use {m}")))), ());
-                        }
-                        m})
-                    .ok_or_else(|| numerical_mod(name))
-                    .flat_err()
-                    .map(Some)
-                    .map_err(|_| {
-                        vec![
-                            basic_error.clone().long_description(
-                                "The modification could not be found in Unimod",
-                            ).suggestions(ontologies.search(&[Ontology::Unimod], name).into_iter().map(|(m, _)|m.to_string()))
-                        ]
-                    }),
-                ("m", tail) => ontologies.get_by_name(&[Ontology::Psimod], tail)
-                    .ok_or_else(|| numerical_mod(tail))
-                    .flat_err()
-                    .map(Some)
-                    .map_err(|_| {
-                        vec![
-                            basic_error.clone().long_description(
-                                "The modification could not be found in PSI-MOD",
-                            ).suggestions(ontologies.search(&[Ontology::Psimod], tail).into_iter().map(|(m, _)|m.to_string()))
-                        ]
-                    }),
-                ("r", tail) => ontologies.get_by_name(&[Ontology::Resid], tail)
-                    .ok_or_else(|| numerical_mod(tail))
-                    .flat_err()
-                    .map(Some)
-                    .map_err(|_| {
-                        vec![
-                            basic_error.clone().long_description(
-                                "The modification could not be found in RESID",
-                            ).suggestions(ontologies.search(&[Ontology::Resid], tail).into_iter().map(|(m, _)|m.to_string()))
-                        ]
-                    }),
-                ("x", tail) => ontologies.get_by_name(&[Ontology::Xlmod], tail)
-                    .ok_or_else(|| numerical_mod(tail))
-                    .flat_err()
-                    .map(Some)
-                    .map_err(|_| {
-                        vec![
-                            basic_error.clone().long_description(
-                                "The modification could not be found in XL-MOD",
-                            ).suggestions(ontologies.search(&[Ontology::Xlmod], tail).into_iter().map(|(m, _)|m.to_string()))
-                        ]
-                    }),
-                ("c", tail) => ontologies.custom().get_by_name(tail)
-                    .map(Some)
-                    .ok_or_else(|| {
-                       vec![
-                            basic_error.clone().long_description(
-                                "The modification could not be found in Custom",
-                            ).suggestions(ontologies.search(&[Ontology::Custom], tail).into_iter().map(|(m, _)|m.to_string()))
-                        ]
-                    }),
-                ("gno" | "g", tail) => ontologies.gnome().get_by_name(tail)
-                    .map(Some)
-                    .ok_or_else(|| {
-                        vec![basic_error
-                            .long_description("This modification cannot be read as a GNO name")]
-                    }),
+                ("u", name) => Ok(Some(handle!(errors, numerical_mod(MassTag::Ontology(Ontology::Unimod), name).map(|(_, m)| (m, Vec::new())).or_else(|_| 
+                    single_name_resolution(ontologies, Ontology::Unimod, name, base_context, offset+tail.1..offset+tail.1+tail.2)
+                )))),
+                ("m", name) => Ok(Some(handle!(errors, numerical_mod(MassTag::Ontology(Ontology::Psimod), name).map(|(_, m)| (m, Vec::new())).or_else(|_| 
+                    single_name_resolution(ontologies, Ontology::Psimod, name, base_context, offset+tail.1..offset+tail.1+tail.2)
+                )))),
+                ("r", name) => Ok(Some(handle!(errors, numerical_mod(MassTag::Ontology(Ontology::Resid), name).map(|(_, m)| (m, Vec::new())).or_else(|_| 
+                    single_name_resolution(ontologies, Ontology::Resid, name, base_context, offset+tail.1..offset+tail.1+tail.2)
+                )))),
+                ("x", name) => Ok(Some(handle!(errors, numerical_mod(MassTag::Ontology(Ontology::Xlmod), name).map(|(_, m)| (m, Vec::new())).or_else(|_| 
+                    single_name_resolution(ontologies, Ontology::Xlmod, name, base_context, offset+tail.1..offset+tail.1+tail.2)
+                )))),
+                ("c", name) => Ok(Some(handle!(errors, numerical_mod(MassTag::Ontology(Ontology::Custom), name).map(|(_, m)| (m, Vec::new())).or_else(|_| 
+                    single_name_resolution(ontologies, Ontology::Custom, name, base_context, offset+tail.1..offset+tail.1+tail.2)
+                )))),
+                ("gno" | "g", name) => Ok(Some(handle!(errors, numerical_mod(MassTag::Ontology(Ontology::Gnome), name).map(|(_, m)| (m, Vec::new())).or_else(|_| 
+                    single_name_resolution(ontologies, Ontology::Gnome, name, base_context, offset+tail.1..offset+tail.1+tail.2)
+                )))),
                 ("formula", _) => Ok(Some(Arc::new(SimpleModificationInner::Formula(
                     MolecularFormula::pro_forma_inner::<true, false>(base_context, line, offset + tail.1..offset + tail.1 + tail.2).map_err(|e| {
                        vec![e]
@@ -346,7 +390,7 @@ fn parse_single_modification<'error>(
                 )
                 .map(|g| Some(Arc::new(SimpleModificationInner::GlycanStructure(g)))).map_err(|e| vec![e]),
                 ("info", _) => Ok(None),
-                ("obs", tail) => numerical_mod(tail).map(Some).map_err(|_| {
+                ("obs", tail) => numerical_mod(MassTag::Observed,tail).map(|(_, m)| Some(m)).map_err(|_| {
                     vec![basic_error.long_description(
                         "This modification cannot be read as a numerical modification",
                     )]
@@ -388,55 +432,31 @@ fn parse_single_modification<'error>(
                         Err(e) => Err(vec![e]),
                     }
                 }
-                (_, _) => ontologies.get_by_name(&[Ontology::Unimod, Ontology::Psimod], full.0)
-                    .map(Some)
-                    .ok_or_else(|| {
-                        vec![
-                           basic_error.clone().replace_context(base_context
-                    .clone()
-                    .add_highlight((0, offset + full.1, full.2))).long_description(
-                                "The modification could not be found in Unimod or PSI-MOD",
-                            ).suggestions(ontologies.search(&[Ontology::Unimod,
-                                Ontology::Psimod,
-                                Ontology::Xlmod,
-                                Ontology::Resid,
-                                Ontology::Custom,], full.0).into_iter().map(|(m, _)| m.to_string()))
-                        ]})
+                (_, _) => Ok(Some(handle!(errors, name_resolution(
+                        ontologies,
+                        &[Ontology::Unimod, Ontology::Psimod],
+                        &[],
+                        full.0,
+                        base_context,
+                        offset + full.1..offset + full.1 + full.2
+                    ))))
             }
         } else if full.0.is_empty() {
             Ok(None)
         } else {
-            ontologies
-                .get_by_name(&[Ontology::Unimod, Ontology::Psimod], full.0)
-                .or_else(|| numerical_mod(full.0).ok())
-                .map(Some)
-                .ok_or_else(|| {
-                    vec![
-                        BoxedError::new(
-                            BasicKind::Error,
-                            "Invalid modification",
-                            "The modification could not be found in Unimod or PSI-MOD or understood as a numerical modification",
-                            base_context
-                                .clone()
-                                .add_highlight((0, offset + full.1, full.2)),
-                        )
-                        .suggestions(
-                            ontologies
-                                .search(
-                                    &[
-                                        Ontology::Unimod,
-                                        Ontology::Psimod,
-                                        Ontology::Xlmod,
-                                        Ontology::Resid,
-                                        Ontology::Custom,
-                                    ],
-                                    full.0,
-                                )
-                                .into_iter()
-                                .map(|(m, _)| m.to_string()),
-                        ),
-                    ]
-                })
+            Ok(Some(handle!(
+                errors,
+                numerical_mod(MassTag::None, full.0)
+                    .map(|(_, m)| (m, Vec::new()))
+                    .or_else(|_| name_resolution(
+                        ontologies,
+                        &[Ontology::Unimod, Ontology::Psimod],
+                        &[],
+                        full.0,
+                        base_context,
+                        offset + full.1..offset + full.1 + full.2
+                    ))
+            )))
         };
 
         if let Some(group) = label_group {
@@ -662,15 +682,25 @@ pub enum GlobalModification {
     Fixed(PlacementRule, SimpleModification),
 }
 
+/// Returns a mass modification is this text could be parsed as a number.
+/// It also returns a boolean indicating if a sign was present (`true`) or not present to be able to create a warning for strict ProForma handling.
 /// # Errors
 /// It returns an error when the text is not numerical
-pub(super) fn numerical_mod(text: &str) -> Result<SimpleModification, String> {
+pub(super) fn numerical_mod(
+    tag: MassTag,
+    text: &str,
+) -> Result<(bool, SimpleModification), String> {
     text.parse().map_or_else(
         |_| Err("Invalid number".to_string()),
         |n| {
-            Ok(Arc::new(SimpleModificationInner::Mass(
-                Mass::new::<dalton>(n).into(),
-            )))
+            Ok((
+                text.starts_with('-') || text.starts_with('+'),
+                Arc::new(SimpleModificationInner::Mass(
+                    tag,
+                    Mass::new::<dalton>(n).into(),
+                    float_digits(text),
+                )),
+            ))
         },
     )
 }

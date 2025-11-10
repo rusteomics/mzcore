@@ -77,13 +77,17 @@ impl<CV: CVSource> CVIndex<CV> {
         term: &str,
         limit: usize,
         max_distance: usize,
-    ) -> Vec<(Arc<CV::Data>, bool, usize)> {
+    ) -> Vec<(Arc<CV::Data>, Option<String>, usize)> {
         // Convert to lowercase, see if any name or synonym exactly matches before going over the trigram index and doing distance calculations
-        let term = term.to_ascii_lowercase().into_boxed_str();
+        let lowercase = term.to_ascii_lowercase().into_boxed_str();
         self.name
-            .get(&term)
-            .map(|v| (v.clone(), true, 0))
-            .or_else(|| self.synonyms.get(&term).map(|v| (v.clone(), false, 0)))
+            .get(&lowercase)
+            .map(|v| (v.clone(), None, 0))
+            .or_else(|| {
+                self.synonyms
+                    .get(&lowercase)
+                    .map(|v| (v.clone(), Some(term.to_string()), 0))
+            })
             .map_or_else(
                 || {
                     let mut results: Vec<(&str, usize)> = Vec::with_capacity(limit);
@@ -92,17 +96,17 @@ impl<CV: CVSource> CVIndex<CV> {
                     for (distance, t) in {
                         #[cfg(feature = "search-index")]
                         {
-                            tags(&term)
+                            tags(&lowercase)
                                 .filter_map(|tag| self.trigram_index.get(&tag))
                                 .flatten()
-                                .filter(|term| set.insert(*term))
+                                .filter(|term| set.insert(lowercase.clone()))
                         }
                         #[cfg(not(feature = "search-index"))]
                         {
                             self.name.keys().chain(self.synonyms.keys())
                         }
                     }
-                    .map(|t| (levenshtein_distance(&term, t), t))
+                    .map(|t| (levenshtein_distance(&lowercase, t), t))
                     .filter(|(distance, _)| *distance <= max_distance)
                     {
                         let index = results
@@ -121,11 +125,11 @@ impl<CV: CVSource> CVIndex<CV> {
                         .filter_map(|(name, distance)| {
                             self.name
                                 .get(name)
-                                .map(|m| (m.clone(), true, distance))
+                                .map(|m| (m.clone(), None, distance))
                                 .or_else(|| {
                                     self.synonyms
                                         .get(name)
-                                        .map(|m| (m.clone(), false, distance))
+                                        .map(|m| (m.clone(), Some(name.to_string()), distance))
                                 })
                         })
                         .collect()

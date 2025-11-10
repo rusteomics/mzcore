@@ -27,11 +27,35 @@ use crate::{
 /// A modification on an amino acid, wrapped in an [`std::sync::Arc`] to not have to clone modifications from databases.
 pub type SimpleModification = Arc<SimpleModificationInner>;
 
+/// A tag for a mass modification
+#[derive(
+    Clone, Copy, Debug, Default, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize,
+)]
+pub enum MassTag {
+    /// No tag
+    #[default]
+    None,
+    /// An ontology
+    Ontology(Ontology),
+    /// Obs:
+    Observed,
+}
+
+impl Display for MassTag {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::None => Ok(()),
+            Self::Ontology(o) => write!(f, "{}:", o.char()),
+            Self::Observed => write!(f, "Obs:"),
+        }
+    }
+}
+
 /// A modification on an amino acid
 #[derive(Clone, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 pub enum SimpleModificationInner {
-    /// A modification defined with a monoisotopic mass shift
-    Mass(OrderedMass),
+    /// A modification defined with a monoisotopic mass shift, the mass tag (if defined), the mass itself, and the number of digits it was defined with
+    Mass(MassTag, OrderedMass, Option<u8>),
     /// A modification defined with a molecular formula
     Formula(MolecularFormula),
     /// A glycan without a defined structure
@@ -105,7 +129,9 @@ impl SimpleModificationInner {
     /// Get the description, only defined for modifications from ontologies.
     pub const fn description(&self) -> Option<&ModificationId> {
         match self {
-            Self::Mass(_) | Self::Formula(_) | Self::Glycan(_) | Self::GlycanStructure(_) => None,
+            Self::Mass(_, _, _) | Self::Formula(_) | Self::Glycan(_) | Self::GlycanStructure(_) => {
+                None
+            }
             Self::Database { id, .. } | Self::Linker { id, .. } | Self::Gno { id, .. } => Some(id),
         }
     }
@@ -119,7 +145,7 @@ impl SimpleModificationInner {
         attachment: Option<AminoAcid>,
     ) -> Multi<MolecularFormula> {
         match self {
-            Self::Mass(m)
+            Self::Mass(_, m, _)
             | Self::Gno {
                 composition: GnoComposition::Weight(m),
                 ..
@@ -309,8 +335,11 @@ impl SimpleModificationInner {
     /// When the given writer errors.
     pub fn display(&self, f: &mut impl Write, specification_compliant: bool) -> std::fmt::Result {
         match self {
-            Self::Mass(m) => {
-                write!(f, "{:+}", m.value)?;
+            Self::Mass(tag, m, Some(digits)) => {
+                write!(f, "{tag}{:+.*}", *digits as usize, m.value)?;
+            }
+            Self::Mass(tag, m, None) => {
+                write!(f, "{tag}{:+}", m.value)?;
             }
             Self::Formula(elements) => {
                 write!(f, "Formula:{}", elements.hill_notation())?;
@@ -404,9 +433,8 @@ impl ParseJson for SimpleModificationInner {
         if let Value::Object(map) = value {
             let (key, value) = map.into_iter().next().unwrap();
             match key.as_str() {
-                "Mass" => {
-                    f64::from_json_value(value).map(|v| Self::Mass(Mass::new::<dalton>(v).into()))
-                }
+                "Mass" => f64::from_json_value(value)
+                    .map(|v| Self::Mass(MassTag::None, Mass::new::<dalton>(v).into(), None)), // TODO: add parser for new format
                 "Formula" => MolecularFormula::from_json_value(value).map(Self::Formula),
                 "Glycan" => Vec::from_json_value(value).map(Self::Glycan),
                 "GlycanStructure" => {
