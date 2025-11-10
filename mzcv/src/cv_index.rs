@@ -177,9 +177,44 @@ impl<CV: CVSource> CVIndex<CV> {
         }
     }
 
+    /// Remove a modification. Returns true if this element was sucessfully deletd and false if this element could not be found.
+    pub fn remove(&mut self, index: &<CV::Data as CVData>::Index) -> bool {
+        if let Some(pos) = self
+            .data
+            .iter()
+            .position(|m| m.index().is_some_and(|id| id == *index))
+        {
+            let m = self.data[pos].clone();
+            if let Some(name) = m.name() {
+                self.name.remove(name);
+                #[cfg(feature = "search-index")]
+                for tag in tags(&name) {
+                    self.trigram_index
+                        .entry(tag)
+                        .and_modify(|v| v.retain(|i| **i != *name));
+                }
+            }
+            for synonym in m.synonyms() {
+                self.synonyms.remove(synonym);
+                #[cfg(feature = "search-index")]
+                for tag in tags(&synonym) {
+                    self.trigram_index
+                        .entry(tag)
+                        .and_modify(|v| v.retain(|i| **i != *synonym));
+                }
+            }
+            self.index.remove(index);
+            self.data.remove(pos);
+            true
+        } else {
+            false
+        }
+    }
+
+    /// Add a single element to the ontology. This updates all indices but does not save it to disk.
     // TODO: what to do on duplicate insertions?
     #[allow(clippy::needless_pass_by_value)] // This fits the use case of update_skip_rebuilding_cache
-    fn add(&mut self, element: Arc<CV::Data>) {
+    pub fn add(&mut self, element: Arc<CV::Data>) {
         self.data.push(element.clone());
         if let Some(index) = element.index() {
             self.index.insert(index, element.clone());

@@ -111,6 +111,17 @@ impl ModificationId {
     pub fn id(&self) -> Option<u32> {
         (self.id != u32::MAX).then_some(self.id)
     }
+
+    /// Set the ID of this modification
+    /// # Panics
+    /// If the id is equal to `u32::MAX` (only in debug mode, in release mode this is silently ignored and the id is set to None)
+    pub fn set_id(&mut self, id: Option<u32>) {
+        debug_assert!(
+            id.is_none_or(|i| i != u32::MAX),
+            "Modification ID cannot be u32::MAX"
+        );
+        self.id = id.unwrap_or(u32::MAX);
+    }
 }
 
 impl Space for ModificationId {

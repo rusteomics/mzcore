@@ -649,7 +649,7 @@ fn parse_ion<'a>(
                                     .unimod()
                                     .search(modification, 5, 6)
                                     .iter()
-                                    .map(ToString::to_string),
+                                    .map(|(m, _, _)| m.to_string()),
                             )
                         })?,
                 ))

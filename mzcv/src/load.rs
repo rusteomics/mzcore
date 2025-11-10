@@ -51,7 +51,7 @@ impl<CV: CVSource> CVIndex<CV> {
     /// [`CV::AUTOMATICALLY_WRITE_UNCOMPRESSED`] set to true this also writes the standard file.
     /// # Errors
     /// If the file could not be written to.
-    fn save_to_cache(&self) -> Result<(), BoxedError<'static, CVError>> {
+    pub fn save_to_cache(&self) -> Result<(), BoxedError<'static, CVError>> {
         self.save_to_cache_at(&CV::default_stem().with_extension("bin"))?;
         if CV::AUTOMATICALLY_WRITE_UNCOMPRESSED {
             self.save_to_file_at(
