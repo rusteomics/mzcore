@@ -216,6 +216,7 @@ impl CVSource for XlMod {
                                     synonyms,
                                     id,
                                     ontology: Ontology::Xlmod,
+                                    obsolete: obj.obsolete,
                                     data: ModData::Linker {
                                         length,
                                         specificities: vec![if origins.1.is_empty() {
@@ -248,6 +249,7 @@ impl CVSource for XlMod {
                                     cross_ids,
                                     synonyms,
                                     ontology: Ontology::Xlmod,
+                                    obsolete: obj.obsolete,
                                     id,
                                     data: ModData::Mod {
                                         specificities: vec![(

@@ -230,5 +230,6 @@ fn parse_mod(node: &Node) -> Result<OntologyModification, String> {
                 .map(|(r, l)| (vec![r], l, diagnostics.clone()))
                 .collect(),
         },
+        obsolete: false,
     })
 }

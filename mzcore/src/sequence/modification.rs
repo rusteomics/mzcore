@@ -79,6 +79,8 @@ pub struct ModificationId {
     pub synonyms: ThinVec<(SynonymScope, Box<str>)>,
     /// Cross reference IDs
     pub cross_ids: ThinVec<(Option<Box<str>>, Box<str>)>,
+    /// Indicate if this modification is marked as obsolete
+    pub obsolete: bool,
 }
 
 impl ModificationId {
@@ -92,6 +94,7 @@ impl ModificationId {
         description: Box<str>,
         synonyms: ThinVec<(SynonymScope, Box<str>)>,
         cross_ids: ThinVec<(Option<Box<str>>, Box<str>)>,
+        obsolete: bool,
     ) -> Self {
         debug_assert!(
             id.is_none_or(|i| i != u32::MAX),
@@ -104,6 +107,7 @@ impl ModificationId {
             description,
             synonyms,
             cross_ids,
+            obsolete,
         }
     }
 

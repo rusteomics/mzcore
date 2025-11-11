@@ -11,9 +11,7 @@ use std::{
 
 use context_error::{BoxedError, Context, CreateError};
 
-use crate::{
-    CVData, CVError, CVIndex, CVSource, CVStructure, CVVersion, hash_buf_reader::HashBufReader,
-};
+use crate::{CVError, CVIndex, CVSource, CVStructure, CVVersion, hash_buf_reader::HashBufReader};
 
 impl<CV: CVSource> CVIndex<CV> {
     /// Build this CV from the standard cache location

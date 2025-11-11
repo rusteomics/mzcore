@@ -68,7 +68,7 @@ pub enum SimpleModificationInner {
         composition: GnoComposition,
         /// The id/name
         id: ModificationId,
-        /// The structure score, u16::MAX is used to indicate that no structure score is available
+        /// The structure score, [`u16::MAX`] is used to indicate that no structure score is available
         structure_score: u16,
         /// The subsumption level
         subsumption_level: GnoSubsumption,
@@ -107,7 +107,7 @@ impl bincode::Encode for SimpleModificationInner {
         encoder: &mut E,
     ) -> Result<(), bincode::error::EncodeError> {
         bincode::Encode::encode(
-            &bincode::serde::encode_to_vec(&self, *encoder.config())?,
+            &bincode::serde::encode_to_vec(self, *encoder.config())?,
             encoder,
         )?;
         Ok(())

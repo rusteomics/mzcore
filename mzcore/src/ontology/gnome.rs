@@ -240,6 +240,7 @@ fn parse_gnome(obo: OboOntology) -> HashMap<Box<str>, GNOmeModification> {
                             }),
                     )
                     .collect(),
+                obj.obsolete,
             ),
             subsumption_level: obj
                 .lines

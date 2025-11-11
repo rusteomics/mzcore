@@ -504,6 +504,7 @@ fn parse_custom() {
                 Box::default(),
                 ThinVec::default(),
                 ThinVec::default(),
+                false,
             ),
         })]);
     let peptide = dbg!(CompoundPeptidoformIon::pro_forma("A[C:WEEE]", &ontologies));

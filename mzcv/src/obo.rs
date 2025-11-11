@@ -38,6 +38,8 @@ pub struct OboStanza {
     pub lines: HashMap<Box<str>, Vec<(Box<str>, Vec<Modifier>, Comment)>>,
     /// All property value tags parsed as the defined value type (value, trialing modifiers, comment)
     pub property_values: HashMap<Box<str>, Vec<(OboValue, Vec<Modifier>, Comment)>>,
+    /// If the 'is_obsolete' property is set
+    pub obsolete: bool,
 }
 
 type OboID = (Option<Box<str>>, Box<str>);
@@ -454,6 +456,10 @@ impl OboOntology {
                         let def = unescape(parts[0].1);
                         let cross_references = parse_dbxref(parts[1].1);
                         obj.definition = Some((def, cross_references, trailing_modifiers, comment));
+                    } else if id == "is_obsolete" {
+                        if value_line.eq_ignore_ascii_case("true") {
+                            obj.obsolete = true;
+                        }
                     } else {
                         obj.lines
                             .entry(id.trim().into())
@@ -545,7 +551,7 @@ impl OboOntology {
     pub fn version(&self) -> CVVersion {
         CVVersion {
             last_updated: self.date,
-            version: self.data_version.as_ref().map(|v| v.to_string()),
+            version: self.data_version.as_ref().map(ToString::to_string),
             hash: self.hash.clone(),
         }
     }

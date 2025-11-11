@@ -8,7 +8,6 @@ use std::{
 };
 
 fn main() {
-    // RESID
     let path = std::path::Path::new("imgt-update/data/imgt.dat");
     if path.exists() {
         let mut index = CVIndex::<IMGT>::empty();

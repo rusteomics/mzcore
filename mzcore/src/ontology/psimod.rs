@@ -110,6 +110,7 @@ impl CVSource for PsiMod {
                                 .expect("Incorrect psi mod id, should be numerical"),
                             name: obj.lines["name"][0].0.clone(),
                             ontology: Ontology::Psimod,
+                            obsolete: obj.obsolete,
                             ..OntologyModification::default()
                         };
                         if let Some((description, cross_ids, _, _)) = obj.definition {

@@ -458,6 +458,27 @@ fn parse_single_modification<'error>(
                     ))
             )))
         };
+        let modification = modification?;
+
+        if let Some(modification) = &modification
+            && let Some(description) = modification.description()
+            && description.obsolete
+        {
+            combine_error(
+                &mut errors,
+                BoxedError::new(
+                    BasicKind::Warning,
+                    "Obsolete modification",
+                    "The used modification is marked obsolete",
+                    base_context.clone().add_highlight((
+                        0,
+                        offset + full.1..offset + full.1 + full.2,
+                        description.description.to_string(),
+                    )),
+                ),
+                (),
+            );
+        }
 
         if let Some(group) = label_group {
             if group.0.eq_ignore_ascii_case("branch") {
@@ -472,7 +493,7 @@ fn parse_single_modification<'error>(
                         },
                         |index| index,
                     );
-                if let Some(linker) = modification? {
+                if let Some(linker) = modification {
                     if cross_link_lookup[index]
                         .1
                         .as_ref()
@@ -508,7 +529,7 @@ fn parse_single_modification<'error>(
                         },
                         |index| index,
                     );
-                if let Some(linker) = modification? {
+                if let Some(linker) = modification {
                     if cross_link_lookup[index]
                         .1
                         .as_ref()
@@ -547,14 +568,12 @@ fn parse_single_modification<'error>(
                 })
             }
         } else {
-            modification.map(|m| {
-                (
-                    m.map_or(SingleReturnModification::None, |m| {
-                        SingleReturnModification::Modification(ReturnModification::Defined(m))
-                    }),
-                    errors,
-                )
-            })
+            Ok((
+                modification.map_or(SingleReturnModification::None, |m| {
+                    SingleReturnModification::Modification(ReturnModification::Defined(m))
+                }),
+                errors,
+            ))
         }
     } else {
         Err(vec![BoxedError::new(
@@ -572,7 +591,7 @@ fn parse_single_modification<'error>(
 /// # Errors
 /// If the content of the ambiguous modification was already defined
 fn handle_ambiguous_modification<'a>(
-    modification: Result<Option<SimpleModification>, Vec<BoxedError<'a, BasicKind>>>,
+    modification: Option<SimpleModification>,
     group: (&str, usize, usize),
     localisation_score: Option<OrderedFloat<f64>>,
     ambiguous_lookup: &mut AmbiguousLookup,
@@ -587,7 +606,7 @@ fn handle_ambiguous_modification<'a>(
     // Handle all possible cases of having a modification found at this position and having a modification defined in the ambiguous lookup
     match (modification, found_definition) {
         // Have a mod defined here and already in the lookup (error)
-        (Ok(Some(m)), Some((index, Some(f)))) => {
+        (Some(m), Some((index, Some(f)))) => {
             if *m == **f {
                 Ok((
                     SingleReturnModification::Modification(ReturnModification::Ambiguous(
@@ -612,7 +631,7 @@ fn handle_ambiguous_modification<'a>(
             }
         }
         // Have a mod defined here, the name present in the lookup but not yet the mod
-        (Ok(Some(m)), Some((index, None))) => {
+        (Some(m), Some((index, None))) => {
             ambiguous_lookup[index].modification = Some(m);
             Ok((
                 SingleReturnModification::Modification(ReturnModification::Ambiguous(
@@ -624,7 +643,7 @@ fn handle_ambiguous_modification<'a>(
             ))
         }
         // No mod defined, but the name is present in the lookup
-        (Ok(None), Some((index, _))) => Ok((
+        (None, Some((index, _))) => Ok((
             SingleReturnModification::Modification(ReturnModification::Ambiguous(
                 index,
                 localisation_score,
@@ -633,7 +652,7 @@ fn handle_ambiguous_modification<'a>(
             Vec::new(),
         )),
         // The mod is not already in the lookup
-        (Ok(m), None) => {
+        (m, None) => {
             let index = ambiguous_lookup.len();
             let preferred = m.is_some();
             ambiguous_lookup.push(AmbiguousLookupEntry::new(group.0.to_string(), m));
@@ -646,8 +665,6 @@ fn handle_ambiguous_modification<'a>(
                 Vec::new(),
             ))
         }
-        // Earlier error
-        (Err(e), _) => Err(e),
     }
 }
 

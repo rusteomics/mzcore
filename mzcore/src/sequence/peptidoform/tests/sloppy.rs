@@ -52,6 +52,7 @@ fn sloppy_names_custom() {
                 Box::default(),
                 ThinVec::default(),
                 ThinVec::default(),
+                false,
             ),
             specificities: Vec::new(),
         },

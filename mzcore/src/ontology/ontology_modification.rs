@@ -21,6 +21,7 @@ pub(crate) struct OntologyModification {
     pub synonyms: ThinVec<(SynonymScope, Box<str>)>,
     pub cross_ids: ThinVec<(Option<Box<str>>, Box<str>)>,
     pub data: ModData,
+    pub obsolete: bool,
 }
 
 #[derive(Debug)]
@@ -116,6 +117,7 @@ impl From<OntologyModification> for SimpleModificationInner {
             value.description,
             value.synonyms,
             value.cross_ids,
+            value.obsolete,
         );
         match value.data {
             ModData::Mod { specificities } => Self::Database {

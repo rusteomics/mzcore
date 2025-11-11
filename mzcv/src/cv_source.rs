@@ -138,22 +138,33 @@ pub enum CVCompression {
     Lzw,
 }
 
-/// A structure to contain [`CVData`] elements but leave the implementation up to the needs of the specific CV
+/// A structure to contain [`CVData`] elements but leave the implementation up to the needs of the specific CV.
 pub trait CVStructure<Data>: Default {
+    /// See if no data items are present
     fn is_empty(&self) -> bool;
+    /// The total number of data items present
     fn len(&self) -> usize;
+    /// Clear this entire structure
     fn clear(&mut self);
+    /// The iterator to use when the index and data items are requested
     type IterIndexed<'a>: Iterator<Item = (Self::Index, std::sync::Arc<Data>)>
     where
         Self: 'a;
+    /// Iterate over all data items and return both the index and the data item
     fn iter_indexed(&self) -> Self::IterIndexed<'_>;
+    /// The iterator to use when only the data items are requested
     type IterData<'a>: Iterator<Item = std::sync::Arc<Data>>
     where
         Self: 'a;
+    /// Iterate over all data items
     fn iter_data(&self) -> Self::IterData<'_>;
+    /// Add a sinlge data item to the structure
     fn add(&mut self, data: std::sync::Arc<Data>);
+    /// The indexing type
     type Index: Clone;
+    /// Get an element by the index
     fn index(&self, index: Self::Index) -> Option<std::sync::Arc<Data>>;
+    /// Remove an element based on the index
     fn remove(&mut self, index: Self::Index);
 }
 

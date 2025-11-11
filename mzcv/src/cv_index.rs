@@ -140,7 +140,7 @@ impl<CV: CVSource> CVIndex<CV> {
 
     /// Get the underlying data in insertion order. Note that the iterator is spelled out fully to
     /// allow merging multiple CVs with the same data type but this should not be relied upon.
-    pub fn data(&self) -> &CV::Structure {
+    pub const fn data(&self) -> &CV::Structure {
         &self.data
     }
 
@@ -205,13 +205,11 @@ impl<CV: CVSource> CVIndex<CV> {
 
     /// Remove a modification. Returns true if this element was successfully deleted and false if this element could not be found.
     pub fn remove(&mut self, index: &<CV::Data as CVData>::Index) -> bool {
-        let pos = self.data.iter_indexed().find_map(|(i, m)| {
-            m.index()
-                .is_some_and(|id| id == *index)
-                .then_some(i.clone())
-        });
-        if let Some(pos) = pos {
-            let m = self.data.index(pos.clone()).unwrap().clone();
+        let pos = self
+            .data
+            .iter_indexed()
+            .find(|(_, m)| m.index().is_some_and(|id| id == *index));
+        if let Some((pos, m)) = pos {
             if let Some(name) = m.name() {
                 self.name.remove(name.as_ref());
                 #[cfg(feature = "search-index")]

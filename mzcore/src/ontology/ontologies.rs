@@ -213,6 +213,10 @@ impl Ontologies {
             });
         }
 
+        // Filter out obsolete modifications
+        options.retain(|o| !o.0.description().is_some_and(|d| d.obsolete));
+
+        // Make them nicely stabelly sorted
         options.sort_unstable_by(|a, b| a.2.cmp(&b.2).then(a.1.cmp(&b.1)).then(a.0.cmp(&b.0)));
 
         options
