@@ -3,7 +3,7 @@
 use std::sync::LazyLock;
 
 use context_error::*;
-use mzcv::{CVIndex, CVVersion};
+use mzcv::{CVIndex, CVStructure, CVVersion};
 use serde::{Deserialize, Serialize};
 
 use crate::{
@@ -348,12 +348,12 @@ impl Ontologies {
         };
 
         ontologies.iter().flat_map(|ontology| match ontology {
-            Ontology::Unimod => self.unimod().data(),
-            Ontology::Psimod => self.psimod().data(),
-            Ontology::Xlmod => self.xlmod().data(),
-            Ontology::Gnome => self.gnome().data(),
-            Ontology::Resid => self.resid().data(),
-            Ontology::Custom => self.custom().data(),
+            Ontology::Unimod => self.unimod().data().iter_data(),
+            Ontology::Psimod => self.psimod().data().iter_data(),
+            Ontology::Xlmod => self.xlmod().data().iter_data(),
+            Ontology::Gnome => self.gnome().data().iter_data(),
+            Ontology::Resid => self.resid().data().iter_data(),
+            Ontology::Custom => self.custom().data().iter_data(),
         })
     }
 }

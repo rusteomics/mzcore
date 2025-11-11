@@ -1,11 +1,12 @@
+use bincode::{Decode, Encode};
 use mzcore::sequence::{Annotation, Peptidoform, Region, UnAmbiguous};
 use serde::{Deserialize, Serialize};
-use std::{fmt::Display, str::FromStr};
+use std::{fmt::Display, str::FromStr, sync::Arc};
 
 use super::species::Species;
 
 /// A selection of germlines from a single species.
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Decode, Deserialize, Encode, Serialize)]
 pub struct Germlines {
     /// The species of this selection of germlines
     pub species: Species,
@@ -91,28 +92,28 @@ impl<'a> IntoParallelIterator for &'a Germlines {
 }
 
 /// The intermediate representation for a chain
-#[derive(Debug, Default, Deserialize, Serialize)]
+#[derive(Debug, Decode, Default, Deserialize, Encode, Serialize)]
 pub struct Chain {
     /// All V/variable germlines
-    pub variable: Vec<Germline>,
+    pub variable: Vec<Arc<Germline>>,
     /// All J/joining germlines
-    pub joining: Vec<Germline>,
+    pub joining: Vec<Arc<Germline>>,
     /// All C/constant germlines
-    pub c: Vec<Germline>,
+    pub c: Vec<Arc<Germline>>,
     /// All A constant germlines
-    pub a: Vec<Germline>,
+    pub a: Vec<Arc<Germline>>,
     /// All D constant germlines
-    pub d: Vec<Germline>,
+    pub d: Vec<Arc<Germline>>,
     /// All E constant germlines
-    pub e: Vec<Germline>,
+    pub e: Vec<Arc<Germline>>,
     /// All G constant germlines
-    pub g: Vec<Germline>,
+    pub g: Vec<Arc<Germline>>,
     /// All M constant germlines
-    pub m: Vec<Germline>,
+    pub m: Vec<Arc<Germline>>,
     /// All O constant germlines
-    pub o: Vec<Germline>,
+    pub o: Vec<Arc<Germline>>,
     /// All T constant germlines
-    pub t: Vec<Germline>,
+    pub t: Vec<Arc<Germline>>,
 }
 
 impl Chain {
@@ -171,12 +172,15 @@ impl Chain {
                             "Not allowed to have multiple sequences for one allele in a germline"
                         )
                     }
-                    Err(allele_index) => db[index]
-                        .alleles
-                        .insert(allele_index, germline.alleles.pop().unwrap()),
+                    Err(allele_index) => Arc::get_mut(&mut db[index])
+                        .map(|g| {
+                            g.alleles
+                                .insert(allele_index, germline.alleles.pop().unwrap())
+                        })
+                        .expect("Multiple copies of Arc while building IMGT structure"),
                 }
             }
-            Err(index) => db.insert(index, germline),
+            Err(index) => db.insert(index, Arc::new(germline)),
         }
     }
 
@@ -209,8 +213,8 @@ impl Chain {
 }
 
 impl<'a> IntoIterator for &'a Chain {
-    type IntoIter = std::array::IntoIter<(GeneType, &'a [Germline]), 10>;
-    type Item = (GeneType, &'a [Germline]);
+    type IntoIter = std::array::IntoIter<(GeneType, &'a [Arc<Germline>]), 10>;
+    type Item = (GeneType, &'a [Arc<Germline>]);
 
     fn into_iter(self) -> Self::IntoIter {
         [
@@ -233,7 +237,8 @@ impl Chain {
     /// Iterate over the genes
     pub fn iter(
         &self,
-    ) -> impl DoubleEndedIterator<Item = (GeneType, &[Germline])> + ExactSizeIterator + '_ {
+    ) -> impl DoubleEndedIterator<Item = (GeneType, &[Arc<Germline>])> + ExactSizeIterator + '_
+    {
         [
             (GeneType::V, self.variable.as_slice()),
             (GeneType::J, self.joining.as_slice()),
@@ -252,8 +257,8 @@ impl Chain {
 
 #[cfg(feature = "rayon")]
 impl<'a> IntoParallelIterator for &'a Chain {
-    type Iter = rayon::array::IntoIter<(GeneType, &'a [Germline]), 10>;
-    type Item = (GeneType, &'a [Germline]);
+    type Iter = rayon::array::IntoIter<(GeneType, &'a [Arc<Germline>]), 10>;
+    type Item = (GeneType, &'a [Arc<Germline>]);
 
     fn into_par_iter(self) -> Self::Iter {
         [
@@ -273,8 +278,10 @@ impl<'a> IntoParallelIterator for &'a Chain {
 }
 
 /// Intermediate representation for germline
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Decode, Deserialize, Encode, Serialize)]
 pub struct Germline {
+    /// The species for this germline
+    pub species: Species,
     /// The name for the germline
     pub name: Gene,
     /// All alleles
@@ -308,7 +315,7 @@ impl<'a> IntoParallelIterator for &'a Germline {
 }
 
 /// Intermediate representation for annotated sequence
-#[derive(Clone, Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Decode, Deserialize, Encode, Serialize)]
 pub struct AnnotatedSequence {
     /// The sequence
     pub sequence: Peptidoform<UnAmbiguous>,
@@ -335,7 +342,9 @@ impl AnnotatedSequence {
 }
 
 /// A germline gene name, broken up in its constituent parts.
-#[derive(Clone, Debug, Deserialize, Eq, Ord, PartialEq, PartialOrd, Serialize)]
+#[derive(
+    Clone, Debug, Deserialize, Eq, Ord, PartialEq, PartialOrd, Serialize, Hash, Decode, Encode,
+)]
 pub struct Gene {
     /// The chain of this gene (heavy/kappa etc)
     pub chain: ChainType,
@@ -502,7 +511,9 @@ impl Gene {
 }
 
 /// Any chain type of germline
-#[derive(Clone, Copy, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
+#[derive(
+    Clone, Copy, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize, Decode, Encode,
+)]
 pub enum ChainType {
     /// Heavy chain
     Heavy = 0,
@@ -556,7 +567,9 @@ impl Display for ChainType {
 }
 
 /// Any gene in a germline, eg variable, joining
-#[derive(Clone, Copy, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
+#[derive(
+    Clone, Copy, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize, Decode, Encode,
+)]
 pub enum GeneType {
     /// Variable
     V,
@@ -568,7 +581,9 @@ pub enum GeneType {
 
 /// Any type of constant gene
 #[allow(missing_docs)]
-#[derive(Clone, Copy, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
+#[derive(
+    Clone, Copy, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize, Decode, Encode,
+)]
 pub enum Constant {
     A,
     D,

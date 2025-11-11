@@ -25,4 +25,5 @@ examples/ion-explorer/figures
 examples/multi-annotator/test-out2.csv
 mzalign/tests/pairwise_examples_new.csv
 !mzcore/src/databases/*
+!imgt/src/IMGT.dat
 data/test*

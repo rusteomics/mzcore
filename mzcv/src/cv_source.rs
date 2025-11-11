@@ -24,12 +24,14 @@ pub trait CVSource {
     const AUTOMATICALLY_WRITE_UNCOMPRESSED: bool = false;
     /// The data item that is stored in the CV
     type Data: CVData + 'static;
+    /// The type of the main datastructure to keep all data items (used to build any kind of hierarchy necessary)
+    type Structure: CVStructure<Self::Data> + Encode + Decode<()>;
     /// The name of the CV, used to create the paths to store intermediate files and caches so has to be valid in that context
     fn cv_name() -> &'static str;
     /// The source files for the
     fn files() -> &'static [CVFile];
     /// The static data of this CV
-    fn static_data() -> Option<(CVVersion, Vec<Self::Data>)>;
+    fn static_data() -> Option<(CVVersion, Self::Structure)>;
     /// The default file stem (no extension).
     /// # Panics
     /// If both [`ProjectDirs::from`] and [`BaseDirs::new`] failed to retrieve a suitable base folder.
@@ -50,7 +52,7 @@ pub trait CVSource {
     /// If the parsing failed.
     fn parse(
         reader: impl Iterator<Item = HashBufReader<Box<dyn std::io::Read>, impl Digest>>,
-    ) -> Result<(CVVersion, impl Iterator<Item = Self::Data>), Vec<BoxedError<'static, CVError>>>;
+    ) -> Result<(CVVersion, Self::Structure), Vec<BoxedError<'static, CVError>>>;
 
     /// Write out the data to the standard file, only need to implement this if
     /// `AUTOMATICALLY_WRITE_UNCOMPRESSED` is set to true. This is used to write out data when the
@@ -120,83 +122,9 @@ pub trait CVData: Clone {
     fn index(&self) -> Option<Self::Index>;
     /// The name of the item, this will be stored in a case insensitive manner in the
     /// [`crate::CVIndex`] but should be reported in the correct casing here.
-    fn name(&self) -> Option<&str>;
+    fn name(&self) -> Option<std::borrow::Cow<'_, str>>;
     /// Any synonyms that can be uniquely attributed to this data element. So EXACT synonyms from Obo files.
     fn synonyms(&self) -> impl Iterator<Item = &str>;
-
-    /// The cache type, needed to be generic to handle serde (de)serialisation nicely
-    type Cache: CVCache<Self>;
-}
-
-/// A trait to help setting the encoding/decoding for the [`CVData`]
-pub trait CVCache<Data>: Encode + Decode<()> {
-    /// Construct a cache
-    fn construct(version: CVVersion, data: Vec<Data>) -> Self;
-    /// Deconstruct a cache
-    fn deconstruct(self) -> (CVVersion, Vec<Data>);
-}
-
-/// A cache using [`bincode`]
-#[derive(Debug, Decode, Encode)]
-pub struct CVCacheBincode<D: Decode<()> + Encode> {
-    version: CVVersion,
-    data: Vec<D>,
-}
-
-impl<T: Encode + Decode<()>> CVCache<T> for CVCacheBincode<T> {
-    fn construct(version: CVVersion, data: Vec<T>) -> Self {
-        Self { version, data }
-    }
-    fn deconstruct(self) -> (CVVersion, Vec<T>) {
-        (self.version, self.data)
-    }
-}
-
-/// A cache using [`serde`]
-#[cfg(feature = "serde")]
-#[derive(Debug)]
-pub struct CVCacheSerde<D: serde::Serialize + for<'de> serde::Deserialize<'de>> {
-    version: CVVersion,
-    data: Vec<D>,
-}
-
-#[cfg(feature = "serde")]
-impl<D: serde::Serialize + for<'de> serde::Deserialize<'de>> Encode for CVCacheSerde<D> {
-    fn encode<E: bincode::enc::Encoder>(
-        &self,
-        encoder: &mut E,
-    ) -> Result<(), bincode::error::EncodeError> {
-        Encode::encode(&self.version, encoder)?;
-        Encode::encode(
-            &bincode::serde::encode_to_vec(&self.data, *encoder.config())?,
-            encoder,
-        )?;
-        Ok(())
-    }
-}
-
-#[cfg(feature = "serde")]
-impl<Context, T: serde::Serialize + for<'de> serde::Deserialize<'de>> Decode<Context>
-    for CVCacheSerde<T>
-{
-    fn decode<D: bincode::de::Decoder<Context = Context>>(
-        decoder: &mut D,
-    ) -> Result<Self, bincode::error::DecodeError> {
-        let version = Decode::decode(decoder)?;
-        let data: Vec<u8> = Decode::decode(decoder)?;
-        let (data, _) = bincode::serde::decode_from_slice(&data, *decoder.config())?;
-        Ok(Self { version, data })
-    }
-}
-
-#[cfg(feature = "serde")]
-impl<T: serde::Serialize + for<'de> serde::Deserialize<'de>> CVCache<T> for CVCacheSerde<T> {
-    fn construct(version: CVVersion, data: Vec<T>) -> Self {
-        Self { version, data }
-    }
-    fn deconstruct(self) -> (CVVersion, Vec<T>) {
-        (self.version, self.data)
-    }
 }
 
 /// The used compression of the source CV.
@@ -208,4 +136,59 @@ pub enum CVCompression {
     /// For LZW (.Z) compressed files like IMGT TODO: does not work yet
     #[deprecated = "Is not implemented yet"]
     Lzw,
+}
+
+/// A structure to contain [`CVData`] elements but leave the implementation up to the needs of the specific CV
+pub trait CVStructure<Data>: Default {
+    fn is_empty(&self) -> bool;
+    fn len(&self) -> usize;
+    fn clear(&mut self);
+    type IterIndexed<'a>: Iterator<Item = (Self::Index, std::sync::Arc<Data>)>
+    where
+        Self: 'a;
+    fn iter_indexed(&self) -> Self::IterIndexed<'_>;
+    type IterData<'a>: Iterator<Item = std::sync::Arc<Data>>
+    where
+        Self: 'a;
+    fn iter_data(&self) -> Self::IterData<'_>;
+    fn add(&mut self, data: std::sync::Arc<Data>);
+    type Index: Clone;
+    fn index(&self, index: Self::Index) -> Option<std::sync::Arc<Data>>;
+    fn remove(&mut self, index: Self::Index);
+}
+
+impl<T> CVStructure<T> for Vec<std::sync::Arc<T>> {
+    fn is_empty(&self) -> bool {
+        self.is_empty()
+    }
+    fn len(&self) -> usize {
+        self.len()
+    }
+    fn clear(&mut self) {
+        self.clear();
+    }
+    type IterIndexed<'a>
+        = std::iter::Enumerate<std::iter::Cloned<std::slice::Iter<'a, std::sync::Arc<T>>>>
+    where
+        T: 'a;
+    fn iter_indexed(&self) -> Self::IterIndexed<'_> {
+        self.iter().cloned().enumerate()
+    }
+    type IterData<'a>
+        = std::iter::Cloned<std::slice::Iter<'a, std::sync::Arc<T>>>
+    where
+        T: 'a;
+    fn iter_data(&self) -> Self::IterData<'_> {
+        self.iter().cloned()
+    }
+    fn add(&mut self, data: std::sync::Arc<T>) {
+        self.push(data);
+    }
+    type Index = usize;
+    fn index(&self, index: Self::Index) -> Option<std::sync::Arc<T>> {
+        self.get(index).cloned()
+    }
+    fn remove(&mut self, index: Self::Index) {
+        self.remove(index);
+    }
 }

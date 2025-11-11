@@ -1,17 +1,17 @@
 [workspace]
 members = [
-    "mzannotate",
-    "mzcore",
-    "mzcore-update-ontologies",
-    "mzident",
-    "mzalign",
-    "mzcv",
-    "imgt",
-    "rustyms-generate-databases",
-    "rustyms-generate-imgt",
-    "rustyms-py",
-    "fuzz",
     "examples/*",
+    "fuzz",
+    "imgt-update",
+    "imgt",
+    "mzalign",
+    "mzannotate",
+    "mzcore-update-ontologies",
+    "mzcore",
+    "mzcv",
+    "mzident",
+    "rustyms-generate-databases",
+    "rustyms-py",
 ]
 resolver = "2"
 package.authors = [
@@ -33,7 +33,7 @@ codegen-units = 1
 
 [workspace.dependencies]
 mzdata = { version="0.62", default-features = false } 
-afl = "0.15"
+afl = "0.17"
 base64 = "0.22"
 bincode = { version = "2.0", features = ["serde"] }
 chrono = "0.4"
@@ -43,12 +43,12 @@ directories = "6.0"
 flate2 = "1.0"
 indexmap = "2.11"
 itertools = "0.14"
-ndarray = "0.16"
+ndarray = "0.17"
 ordered-float = { version = "5.0", features = ["serde"] }
 paste = "1.0"
 png = "0.18"
 probability = "0.20"
-pyo3 = "0.26"
+pyo3 = "0.27"
 rand = "0.9"
 rayon = "1.10"
 regex = "1.11"

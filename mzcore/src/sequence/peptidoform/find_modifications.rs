@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
 use itertools::Itertools;
+use mzcv::CVStructure;
 
 use crate::{
     chemistry::{Chemical, MassMode, MolecularFormula},
@@ -66,7 +67,7 @@ pub fn modification_search_glycan(
 ) -> impl Iterator<Item = SimpleModification> {
     let search = MonoSaccharide::search_composition(glycan);
 
-    ontologies.gnome().data().filter(move |m| {
+    ontologies.gnome().data().iter_data().filter(move |m| {
         if let SimpleModificationInner::Gno {
             composition: GnoComposition::Topology(structure),
             ..

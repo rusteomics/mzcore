@@ -27,6 +27,7 @@ impl CVSource for Custom {
     const AUTOMATICALLY_WRITE_UNCOMPRESSED: bool = true;
 
     type Data = SimpleModificationInner;
+    type Structure = Vec<SimpleModification>;
 
     fn cv_name() -> &'static str {
         "CUSTOM"
@@ -41,14 +42,13 @@ impl CVSource for Custom {
         }]
     }
 
-    fn static_data() -> Option<(CVVersion, Vec<Self::Data>)> {
+    fn static_data() -> Option<(CVVersion, Self::Structure)> {
         None
     }
 
     fn parse(
         mut reader: impl Iterator<Item = HashBufReader<Box<dyn std::io::Read>, impl sha2::Digest>>,
-    ) -> Result<(CVVersion, impl Iterator<Item = Self::Data>), Vec<BoxedError<'static, CVError>>>
-    {
+    ) -> Result<(CVVersion, Self::Structure), Vec<BoxedError<'static, CVError>>> {
         let mut reader = reader.next().unwrap();
 
         let json: serde_json::Value = serde_json::de::from_reader(&mut reader).map_err(|err| {
@@ -69,8 +69,7 @@ impl CVSource for Custom {
                 last_updated: None,
                 version: None,
             },
-            db.into_iter()
-                .map(|(_, _, s)| std::sync::Arc::unwrap_or_clone(s)),
+            db.into_iter().map(|(_, _, s)| s).collect(),
         ))
     }
 

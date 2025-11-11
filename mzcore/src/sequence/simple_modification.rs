@@ -101,6 +101,29 @@ pub enum SimpleModificationInner {
     },
 }
 
+impl bincode::Encode for SimpleModificationInner {
+    fn encode<E: bincode::enc::Encoder>(
+        &self,
+        encoder: &mut E,
+    ) -> Result<(), bincode::error::EncodeError> {
+        bincode::Encode::encode(
+            &bincode::serde::encode_to_vec(&self, *encoder.config())?,
+            encoder,
+        )?;
+        Ok(())
+    }
+}
+
+impl<Context> bincode::Decode<Context> for SimpleModificationInner {
+    fn decode<D: bincode::de::Decoder<Context = Context>>(
+        decoder: &mut D,
+    ) -> Result<Self, bincode::error::DecodeError> {
+        let data: Vec<u8> = bincode::Decode::decode(decoder)?;
+        let (data, _) = bincode::serde::decode_from_slice(&data, *decoder.config())?;
+        Ok(data)
+    }
+}
+
 impl Chemical for SimpleModificationInner {
     /// Get the molecular formula for this modification.
     fn formula_inner(

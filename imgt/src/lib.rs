@@ -6,24 +6,23 @@
 //!
 //! <details><summary>Data present per species</summary>
 //!
-#![doc = include_str!("germlines/germlines.md")]
+#![doc = include_str!("germlines.md")]
 //!
 //! </details>
 
+mod combine;
+mod cv;
 mod fancy;
-#[rustfmt::skip]
-#[cfg(not(feature = "internal-no-data"))]
-mod germlines;
+mod imgt_gene;
+mod parse;
 mod regions;
 mod select;
 mod species;
+mod structs;
 
 pub use fancy::*;
-#[cfg(all(feature = "rayon", not(feature = "internal-no-data")))]
-use germlines::par_germlines;
-#[cfg(not(feature = "internal-no-data"))]
-use germlines::{all_germlines, germlines};
 
+pub use cv::IMGT;
 pub use regions::*;
 pub use select::*;
 pub use species::*;

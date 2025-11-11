@@ -1,6 +1,6 @@
-use std::{num::NonZeroU16, sync::LazyLock};
-
 use crate::system::{Ratio, da, fraction};
+use bincode::{Decode, Encode};
+use std::{num::NonZeroU16, sync::LazyLock};
 
 use serde::{Deserialize, Serialize};
 
@@ -8,7 +8,19 @@ use crate::system::f64::Mass;
 
 /// The elements (and electrons)
 #[derive(
-    Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Default, Serialize, Deserialize,
+    Copy,
+    Clone,
+    Eq,
+    PartialEq,
+    Ord,
+    PartialOrd,
+    Hash,
+    Debug,
+    Default,
+    Serialize,
+    Deserialize,
+    Decode,
+    Encode,
 )]
 pub enum Element {
     /// Not necessarily an element but handy to have: electron

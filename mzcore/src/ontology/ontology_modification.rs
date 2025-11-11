@@ -1,7 +1,10 @@
 use crate::{
     chemistry::{DiagnosticIon, MolecularFormula, NeutralLoss},
     ontology::Ontology,
-    sequence::{LinkerSpecificity, ModificationId, PlacementRule, SimpleModificationInner},
+    sequence::{
+        LinkerSpecificity, ModificationId, PlacementRule, SimpleModification,
+        SimpleModificationInner,
+    },
 };
 use itertools::Itertools;
 use mzcv::SynonymScope;
@@ -130,5 +133,11 @@ impl From<OntologyModification> for SimpleModificationInner {
                 length,
             },
         }
+    }
+}
+
+impl From<OntologyModification> for SimpleModification {
+    fn from(value: OntologyModification) -> Self {
+        std::sync::Arc::new(value.into())
     }
 }

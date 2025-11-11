@@ -1,5 +1,6 @@
 //! Code to handle the XL-MOD ontology
 use context_error::{BoxedError, CreateError, FullErrorContent, StaticErrorContent};
+use std::sync::Arc;
 use thin_vec::ThinVec;
 
 use mzcv::{
@@ -12,7 +13,9 @@ use crate::{
         Ontology,
         ontology_modification::{ModData, OntologyModification},
     },
-    sequence::{LinkerSpecificity, PlacementRule, Position, SimpleModificationInner},
+    sequence::{
+        LinkerSpecificity, PlacementRule, Position, SimpleModification, SimpleModificationInner,
+    },
 };
 
 /// XL-MOD modifications
@@ -21,6 +24,7 @@ pub struct XlMod {}
 
 impl CVSource for XlMod {
     type Data = SimpleModificationInner;
+    type Structure = Vec<SimpleModification>;
     fn cv_name() -> &'static str {
         "XLMOD"
     }
@@ -34,22 +38,17 @@ impl CVSource for XlMod {
         }]
     }
 
-    fn static_data() -> Option<(CVVersion, Vec<Self::Data>)> {
+    fn static_data() -> Option<(CVVersion, Self::Structure)> {
         #[cfg(not(feature = "internal-no-data"))]
         {
             use bincode::config::Configuration;
-            use mzcv::CVCache;
-            let cache: <SimpleModificationInner as mzcv::CVData>::Cache =
-                bincode::decode_from_slice::<
-                    <SimpleModificationInner as mzcv::CVData>::Cache,
-                    Configuration,
-                >(
-                    include_bytes!("../databases/xlmod.dat"),
-                    Configuration::default(),
-                )
-                .unwrap()
-                .0;
-            Some(cache.deconstruct())
+            let cache = bincode::decode_from_slice::<(CVVersion, Self::Structure), Configuration>(
+                include_bytes!("../databases/xlmod.dat"),
+                Configuration::default(),
+            )
+            .unwrap()
+            .0;
+            Some(cache)
         }
         #[cfg(feature = "internal-no-data")]
         None
@@ -57,8 +56,7 @@ impl CVSource for XlMod {
 
     fn parse(
         mut reader: impl Iterator<Item = HashBufReader<Box<dyn std::io::Read>, impl sha2::Digest>>,
-    ) -> Result<(CVVersion, impl Iterator<Item = Self::Data>), Vec<BoxedError<'static, CVError>>>
-    {
+    ) -> Result<(CVVersion, Self::Structure), Vec<BoxedError<'static, CVError>>> {
         let reader = reader.next().unwrap();
         OboOntology::from_raw(reader)
             .map_err(|e| {
@@ -73,7 +71,7 @@ impl CVSource for XlMod {
             })
             .map(|obo| {
                 (obo.version(), {
-                    let mut mods: Vec<SimpleModificationInner> = Vec::new();
+                    let mut mods: Vec<SimpleModification> = Vec::new();
 
                     for obj in obo.objects {
                         if obj.stanza_type != OboStanzaType::Term {
@@ -242,7 +240,7 @@ impl CVSource for XlMod {
                         } else if sites == Some(3) {
                             // Ignore
                         } else {
-                            mods.push(
+                            mods.push(Arc::new(
                                 OntologyModification {
                                     formula: formula.unwrap_or_default(),
                                     name,
@@ -260,11 +258,11 @@ impl CVSource for XlMod {
                                     },
                                 }
                                 .into(),
-                            );
+                            ));
                         }
                     }
 
-                    mods.into_iter()
+                    mods
                 })
             })
     }

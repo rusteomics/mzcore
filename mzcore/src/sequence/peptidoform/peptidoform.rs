@@ -7,6 +7,7 @@ use std::{
     slice::SliceIndex,
 };
 
+use bincode::{BorrowDecode, Decode, Encode};
 use itertools::Itertools;
 use ordered_float::OrderedFloat;
 use serde::{Deserialize, Serialize};
@@ -102,6 +103,41 @@ pub struct Peptidoform<Complexity> {
     charge_carriers: Option<MolecularCharge>,
     /// The marker indicating which level of complexity this peptide (potentially) uses
     marker: PhantomData<Complexity>,
+}
+
+impl<Complexity: Serialize> Encode for Peptidoform<Complexity> {
+    fn encode<E: bincode::enc::Encoder>(
+        &self,
+        encoder: &mut E,
+    ) -> Result<(), bincode::error::EncodeError> {
+        Encode::encode(
+            &bincode::serde::encode_to_vec(self, *encoder.config())?,
+            encoder,
+        )?;
+        Ok(())
+    }
+}
+
+impl<Complexity: for<'a> Deserialize<'a>, Context> Decode<Context> for Peptidoform<Complexity> {
+    fn decode<D: bincode::de::Decoder<Context = Context>>(
+        decoder: &mut D,
+    ) -> Result<Self, bincode::error::DecodeError> {
+        let data: Vec<u8> = Decode::decode(decoder)?;
+        let (data, _) = bincode::serde::decode_from_slice(&data, *decoder.config())?;
+        Ok(data)
+    }
+}
+
+impl<Complexity: for<'de> Deserialize<'de>, Context> BorrowDecode<'_, Context>
+    for Peptidoform<Complexity>
+{
+    fn borrow_decode<D: bincode::de::Decoder<Context = Context>>(
+        decoder: &mut D,
+    ) -> Result<Self, bincode::error::DecodeError> {
+        let data: Vec<u8> = Decode::decode(decoder)?;
+        let (data, _) = bincode::serde::decode_from_slice(&data, *decoder.config())?;
+        Ok(data)
+    }
 }
 
 /// An entry in the ambiguous lookup

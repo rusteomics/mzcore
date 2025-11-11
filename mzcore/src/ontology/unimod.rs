@@ -11,7 +11,7 @@ use crate::{
         Ontology,
         ontology_modification::{ModData, OntologyModification},
     },
-    sequence::{PlacementRule, SimpleModificationInner},
+    sequence::{PlacementRule, SimpleModification, SimpleModificationInner},
 };
 
 /// Unimod modifications
@@ -20,6 +20,7 @@ pub struct Unimod {}
 
 impl CVSource for Unimod {
     type Data = SimpleModificationInner;
+    type Structure = Vec<SimpleModification>;
     fn cv_name() -> &'static str {
         "Unimod"
     }
@@ -33,22 +34,17 @@ impl CVSource for Unimod {
         }]
     }
 
-    fn static_data() -> Option<(CVVersion, Vec<Self::Data>)> {
+    fn static_data() -> Option<(CVVersion, Self::Structure)> {
         #[cfg(not(feature = "internal-no-data"))]
         {
             use bincode::config::Configuration;
-            use mzcv::CVCache;
-            let cache: <SimpleModificationInner as mzcv::CVData>::Cache =
-                bincode::decode_from_slice::<
-                    <SimpleModificationInner as mzcv::CVData>::Cache,
-                    Configuration,
-                >(
-                    include_bytes!("../databases/unimod.dat"),
-                    Configuration::default(),
-                )
-                .unwrap()
-                .0;
-            Some(cache.deconstruct())
+            let cache = bincode::decode_from_slice::<(CVVersion, Self::Structure), Configuration>(
+                include_bytes!("../databases/unimod.dat"),
+                Configuration::default(),
+            )
+            .unwrap()
+            .0;
+            Some(cache)
         }
         #[cfg(feature = "internal-no-data")]
         None
@@ -56,8 +52,7 @@ impl CVSource for Unimod {
 
     fn parse(
         mut reader: impl Iterator<Item = HashBufReader<Box<dyn Read>, impl sha2::Digest>>,
-    ) -> Result<(CVVersion, impl Iterator<Item = Self::Data>), Vec<BoxedError<'static, CVError>>>
-    {
+    ) -> Result<(CVVersion, Self::Structure), Vec<BoxedError<'static, CVError>>> {
         let mut reader = reader.next().unwrap();
         let mut buf = String::new();
         reader.read_to_string(&mut buf).map_err(|e| {
@@ -77,7 +72,7 @@ impl CVSource for Unimod {
         .expect("Invalid xml in Unimod xml");
 
         let mut errors = Vec::new();
-        let mut modifications = Vec::new();
+        let mut modifications: Vec<SimpleModification> = Vec::new();
 
         for node in document.root().children() {
             if node.has_tag_name("unimod") {
@@ -108,7 +103,7 @@ impl CVSource for Unimod {
                 version: None,
                 hash: reader.hash().to_vec(),
             },
-            modifications.into_iter(),
+            modifications,
         ))
     }
 }

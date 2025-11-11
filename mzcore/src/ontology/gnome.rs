@@ -11,7 +11,9 @@ use mzcv::{CVError, CVFile, CVSource, CVVersion, HashBufReader, OboOntology, Obo
 use crate::{
     glycan::{GlycanStructure, MonoSaccharide},
     ontology::Ontology,
-    sequence::{GnoComposition, GnoSubsumption, ModificationId, SimpleModificationInner},
+    sequence::{
+        GnoComposition, GnoSubsumption, ModificationId, SimpleModification, SimpleModificationInner,
+    },
 };
 
 /// GNOme modifications
@@ -22,6 +24,7 @@ pub struct Gnome {}
 
 impl CVSource for Gnome {
     type Data = SimpleModificationInner;
+    type Structure = Vec<SimpleModification>;
     fn cv_name() -> &'static str {
         "GNOme"
     }
@@ -43,22 +46,17 @@ impl CVSource for Gnome {
         ]
     }
 
-    fn static_data() -> Option<(CVVersion, Vec<Self::Data>)> {
+    fn static_data() -> Option<(CVVersion, Self::Structure)> {
         #[cfg(not(feature = "internal-no-data"))]
         {
             use bincode::config::Configuration;
-            use mzcv::CVCache;
-            let cache: <SimpleModificationInner as mzcv::CVData>::Cache =
-                bincode::decode_from_slice::<
-                    <SimpleModificationInner as mzcv::CVData>::Cache,
-                    Configuration,
-                >(
-                    include_bytes!("../databases/gnome.dat"),
-                    Configuration::default(),
-                )
-                .unwrap()
-                .0;
-            Some(cache.deconstruct())
+            let cache = bincode::decode_from_slice::<(CVVersion, Self::Structure), Configuration>(
+                include_bytes!("../databases/gnome.dat"),
+                Configuration::default(),
+            )
+            .unwrap()
+            .0;
+            Some(cache)
         }
         #[cfg(feature = "internal-no-data")]
         None
@@ -66,8 +64,7 @@ impl CVSource for Gnome {
 
     fn parse(
         mut readers: impl Iterator<Item = HashBufReader<Box<dyn std::io::Read>, impl sha2::Digest>>,
-    ) -> Result<(CVVersion, impl Iterator<Item = Self::Data>), Vec<BoxedError<'static, CVError>>>
-    {
+    ) -> Result<(CVVersion, Self::Structure), Vec<BoxedError<'static, CVError>>> {
         let reader = readers.next().unwrap();
         let (version, mut mods) = OboOntology::from_raw(reader)
             .map_err(|e| {
@@ -122,7 +119,10 @@ impl CVSource for Gnome {
 
         Ok((
             version,
-            mods.into_values().filter_map(|m| m.try_into().ok()),
+            mods.into_values()
+                .filter_map(|m| m.try_into().ok())
+                .map(std::sync::Arc::new)
+                .collect(),
         ))
     }
 }

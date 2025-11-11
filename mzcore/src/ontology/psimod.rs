@@ -1,9 +1,11 @@
 //! Code to handle the PSI-MOD ontology
+use std::borrow::Cow;
+
 use context_error::{BoxedError, CreateError, FullErrorContent, StaticErrorContent};
 
 use mzcv::{
-    CVCacheSerde, CVData, CVError, CVFile, CVSource, CVVersion, HashBufReader, OboOntology,
-    OboStanzaType, SynonymScope,
+    CVData, CVError, CVFile, CVSource, CVVersion, HashBufReader, OboOntology, OboStanzaType,
+    SynonymScope,
 };
 
 use crate::{
@@ -12,7 +14,9 @@ use crate::{
         Ontology,
         ontology_modification::{ModData, OntologyModification},
     },
-    sequence::{PlacementRule, Position, SimpleModificationInner},
+    sequence::{
+        ModificationId, PlacementRule, Position, SimpleModification, SimpleModificationInner,
+    },
 };
 
 /// PSI-MOD modifications
@@ -22,10 +26,10 @@ pub struct PsiMod {}
 impl CVData for SimpleModificationInner {
     type Index = u32;
     fn index(&self) -> Option<u32> {
-        self.description().and_then(|d| d.id())
+        self.description().and_then(ModificationId::id)
     }
-    fn name(&self) -> Option<&str> {
-        self.description().map(|d| d.name.as_ref())
+    fn name(&self) -> Option<Cow<'_, str>> {
+        self.description().map(|d| Cow::Borrowed(d.name.as_ref()))
     }
     fn synonyms(&self) -> impl Iterator<Item = &str> {
         self.description().into_iter().flat_map(|d| {
@@ -35,13 +39,13 @@ impl CVData for SimpleModificationInner {
                 .map(|(_, s)| s.as_ref())
         })
     }
-    type Cache = CVCacheSerde<Self>;
 }
 
 impl CVSource for PsiMod {
     type Data = SimpleModificationInner;
+    type Structure = Vec<SimpleModification>;
     fn cv_name() -> &'static str {
-        "MOD"
+        "PSI-MOD"
     }
 
     fn files() -> &'static [CVFile] {
@@ -55,21 +59,17 @@ impl CVSource for PsiMod {
         }]
     }
 
-    fn static_data() -> Option<(CVVersion, Vec<Self::Data>)> {
+    fn static_data() -> Option<(CVVersion, Self::Structure)> {
         #[cfg(not(feature = "internal-no-data"))]
         {
             use bincode::config::Configuration;
-            use mzcv::CVCache;
-            let cache: <SimpleModificationInner as CVData>::Cache = bincode::decode_from_slice::<
-                <SimpleModificationInner as CVData>::Cache,
-                Configuration,
-            >(
+            let cache = bincode::decode_from_slice::<(CVVersion, Self::Structure), Configuration>(
                 include_bytes!("../databases/psimod.dat"),
                 Configuration::default(),
             )
             .unwrap()
             .0;
-            Some(cache.deconstruct())
+            Some(cache)
         }
         #[cfg(feature = "internal-no-data")]
         None
@@ -77,8 +77,7 @@ impl CVSource for PsiMod {
 
     fn parse(
         mut reader: impl Iterator<Item = HashBufReader<Box<dyn std::io::Read>, impl sha2::Digest>>,
-    ) -> Result<(CVVersion, impl Iterator<Item = Self::Data>), Vec<BoxedError<'static, CVError>>>
-    {
+    ) -> Result<(CVVersion, Self::Structure), Vec<BoxedError<'static, CVError>>> {
         let reader = reader.next().unwrap();
         OboOntology::from_raw(reader)
             .map_err(|e| {
@@ -93,7 +92,7 @@ impl CVSource for PsiMod {
             })
             .map(|obo| {
                 (obo.version(), {
-                    let mut mods: Vec<SimpleModificationInner> = Vec::new();
+                    let mut mods: Vec<SimpleModification> = Vec::new();
 
                     for obj in obo.objects {
                         if obj.stanza_type != OboStanzaType::Term
@@ -202,7 +201,7 @@ impl CVSource for PsiMod {
                         mods.push(modification.into());
                     }
 
-                    mods.into_iter()
+                    mods
                 })
             })
     }

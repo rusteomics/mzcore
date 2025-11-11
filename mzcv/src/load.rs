@@ -12,7 +12,7 @@ use std::{
 use context_error::{BoxedError, Context, CreateError};
 
 use crate::{
-    CVCache, CVData, CVError, CVIndex, CVSource, CVVersion, hash_buf_reader::HashBufReader,
+    CVData, CVError, CVIndex, CVSource, CVStructure, CVVersion, hash_buf_reader::HashBufReader,
 };
 
 impl<CV: CVSource> CVIndex<CV> {
@@ -30,7 +30,7 @@ impl<CV: CVSource> CVIndex<CV> {
             )
         })?;
         let mut reader = BufReader::new(file);
-        let cache: <CV::Data as CVData>::Cache =
+        let cache: (CVVersion, CV::Structure) =
             bincode::decode_from_std_read(&mut reader, bincode::config::standard()).map_err(
                 |e| {
                     BoxedError::new(
@@ -42,8 +42,7 @@ impl<CV: CVSource> CVIndex<CV> {
                 },
             )?;
         let mut result = Self::empty();
-        let (version, data) = cache.deconstruct();
-        result.update_skip_rebuilding_cache(data.into_iter().map(Arc::new), version);
+        result.update_from_structure_skip_rebuilding_cache(cache.1, cache.0);
         Ok(result)
     }
 
@@ -76,10 +75,7 @@ impl<CV: CVSource> CVIndex<CV> {
         })?;
         let mut writer = BufWriter::new(file);
         bincode::encode_into_std_write(
-            <CV::Data as CVData>::Cache::construct(
-                self.version().clone(),
-                self.data().map(Arc::unwrap_or_clone).collect(),
-            ),
+            (self.version().clone(), self.data()),
             &mut writer,
             bincode::config::standard(),
         )
@@ -107,7 +103,11 @@ impl<CV: CVSource> CVIndex<CV> {
             )
         })?;
         let writer = BufWriter::new(file);
-        CV::write_uncompressed(writer, self.version(), self.data())
+        CV::write_uncompressed(
+            writer,
+            self.version(),
+            self.data().iter_indexed().map(|(_, m)| m),
+        )
     }
 
     /// Initialise the data the first successful source from the list is returned:
@@ -140,7 +140,7 @@ impl<CV: CVSource> CVIndex<CV> {
 
         // Load the static data
         if let Some((version, data)) = CV::static_data() {
-            result.update_skip_rebuilding_cache(data.into_iter().map(Arc::new), version);
+            result.update_from_structure_skip_rebuilding_cache(data, version);
         }
 
         // Fall back with empty CV
@@ -154,7 +154,7 @@ impl<CV: CVSource> CVIndex<CV> {
         let mut result = Self::empty();
         // Load the static data
         if let Some((version, data)) = CV::static_data() {
-            result.update_skip_rebuilding_cache(data.into_iter().map(Arc::new), version);
+            result.update_from_structure_skip_rebuilding_cache(data, version);
         }
         result
     }
@@ -169,6 +169,20 @@ impl<CV: CVSource> CVIndex<CV> {
         data: impl IntoIterator<Item = Arc<CV::Data>>,
     ) -> Result<(), BoxedError<'static, CVError>> {
         self.update_skip_rebuilding_cache(data, version);
+
+        self.save_to_cache()
+    }
+
+    /// Update the CV based on the given data, empties the CV before replacing all data with the new data.
+    /// This additionally tries to save the new data to the cache.
+    /// # Errors
+    /// If the cache could not be saved to disk.
+    pub fn update_from_structure(
+        &mut self,
+        version: CVVersion,
+        data: CV::Structure,
+    ) -> Result<(), BoxedError<'static, CVError>> {
+        self.update_from_structure_skip_rebuilding_cache(data, version);
 
         self.save_to_cache()
     }
@@ -296,7 +310,7 @@ impl<CV: CVSource> CVIndex<CV> {
         })?;
 
         // Update the data and cache
-        self.update(version, data.map(Arc::new))?;
+        self.update_from_structure(version, data)?;
 
         for (compressed, resolved_path, default_gz_path, overwrite_path) in paths {
             if let Some(path) = overwrite_path {

@@ -19,7 +19,7 @@ pub fn get_germline(
         None
     }
     #[cfg(not(feature = "internal-no-data"))]
-    germlines(species).and_then(|g| g.find(species, gene, allele))
+    germlines(species).and_then(|g| g.find(gene, allele))
 }
 
 /// The selection rules for iterating over a selection of germlines.
@@ -227,8 +227,8 @@ impl<'a> From<(Species, &'a Gene, usize, &'a AnnotatedSequence)> for Allele<'a> 
 }
 
 impl Germlines {
-    /// Find a specific germline.
-    pub fn find(&self, species: Species, gene: Gene, allele: Option<usize>) -> Option<Allele<'_>> {
+    /// Find a specific allele.
+    pub fn find_allele(&self, gene: Gene, allele: Option<usize>) -> Option<Allele<'_>> {
         let chain = match gene.chain {
             ChainType::Heavy => &self.h,
             ChainType::LightKappa => &self.k,
@@ -252,19 +252,73 @@ impl Germlines {
             .ok()
             .and_then(|g| {
                 let g = &genes[g];
-                allele.map_or_else(
-                    || g.alleles.first(),
-                    |a| g.alleles.iter().find(|(ga, _)| a == *ga),
-                )
+                allele
+                    .map_or_else(
+                        || g.alleles.first(),
+                        |a| g.alleles.iter().find(|(ga, _)| a == *ga),
+                    )
+                    .map(|res| (g, res))
             })
-            .map(move |(a, seq)| Allele {
-                species,
+            .map(move |(g, (a, seq))| Allele {
+                species: g.species,
                 gene: std::borrow::Cow::Owned(gene),
                 number: *a,
                 sequence: &seq.sequence,
                 regions: &seq.regions,
                 annotations: &seq.annotations,
             })
+    }
+
+    /// Find a specific germline.
+    pub fn find_germline(&self, gene: Gene) -> Option<std::sync::Arc<Germline>> {
+        let chain = match gene.chain {
+            ChainType::Heavy => &self.h,
+            ChainType::LightKappa => &self.k,
+            ChainType::LightLambda => &self.l,
+            ChainType::Iota => &self.i,
+        };
+        let genes = match gene.kind {
+            GeneType::V => &chain.variable,
+            GeneType::J => &chain.joining,
+            GeneType::C(None) => &chain.c,
+            GeneType::C(Some(Constant::A)) => &chain.a,
+            GeneType::C(Some(Constant::D)) => &chain.d,
+            GeneType::C(Some(Constant::E)) => &chain.e,
+            GeneType::C(Some(Constant::G)) => &chain.g,
+            GeneType::C(Some(Constant::M)) => &chain.m,
+            GeneType::C(Some(Constant::O)) => &chain.o,
+            GeneType::C(Some(Constant::T)) => &chain.t,
+        };
+        genes
+            .binary_search_by(|g| g.name.cmp(&gene))
+            .ok()
+            .map(|g| genes[g].clone())
+    }
+
+    /// Remove a specific germline.
+    pub fn remove_germline(&mut self, gene: Gene) {
+        let chain = match gene.chain {
+            ChainType::Heavy => &mut self.h,
+            ChainType::LightKappa => &mut self.k,
+            ChainType::LightLambda => &mut self.l,
+            ChainType::Iota => &mut self.i,
+        };
+        let genes = match gene.kind {
+            GeneType::V => &mut chain.variable,
+            GeneType::J => &mut chain.joining,
+            GeneType::C(None) => &mut chain.c,
+            GeneType::C(Some(Constant::A)) => &mut chain.a,
+            GeneType::C(Some(Constant::D)) => &mut chain.d,
+            GeneType::C(Some(Constant::E)) => &mut chain.e,
+            GeneType::C(Some(Constant::G)) => &mut chain.g,
+            GeneType::C(Some(Constant::M)) => &mut chain.m,
+            GeneType::C(Some(Constant::O)) => &mut chain.o,
+            GeneType::C(Some(Constant::T)) => &mut chain.t,
+        };
+        genes
+            .binary_search_by(|g| g.name.cmp(&gene))
+            .ok()
+            .map(|g| genes.remove(g));
     }
 }
 

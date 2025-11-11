@@ -312,21 +312,25 @@ simple_space!(mzcv::SynonymScope);
 #[ignore = "Only run when interested in the space taken up by GNOme"]
 #[test]
 fn gnome_space() {
+    use mzcv::CVStructure;
     let space = crate::ontology::STATIC_ONTOLOGIES
         .gnome()
         .data()
-        .fold(UsedSpace::default(), |acc, e| acc + e.space());
-    let (number_ids, space_description) = crate::ontology::STATIC_ONTOLOGIES.gnome().data().fold(
-        (0_usize, UsedSpace::default()),
-        |acc, e| {
+        .iter_indexed()
+        .fold(UsedSpace::default(), |acc, (_, e)| acc + e.space());
+    let (number_ids, space_description) = crate::ontology::STATIC_ONTOLOGIES
+        .gnome()
+        .data()
+        .iter_indexed()
+        .fold((0_usize, UsedSpace::default()), |acc, (_, e)| {
             e.description()
                 .map_or(acc, |d| (acc.0 + 1, d.space() + acc.1))
-        },
-    );
+        });
     let (number_structures, space_structures) = crate::ontology::STATIC_ONTOLOGIES
         .gnome()
         .data()
-        .fold((0_usize, UsedSpace::default()), |acc, e| {
+        .iter_indexed()
+        .fold((0_usize, UsedSpace::default()), |acc, (_, e)| {
             if let SimpleModificationInner::Gno {
                 composition: crate::sequence::GnoComposition::Topology(t),
                 ..

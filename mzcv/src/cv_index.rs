@@ -2,7 +2,7 @@
 
 use std::{collections::HashMap, sync::Arc};
 
-use crate::{CVData, CVSource, CVVersion, text::*};
+use crate::{CVData, CVSource, CVStructure, CVVersion, text::*};
 
 /// An index into a CV which contains the main ways of handling CVs.
 ///
@@ -22,7 +22,7 @@ use crate::{CVData, CVSource, CVVersion, text::*};
 #[derive(Debug)]
 pub struct CVIndex<CV: CVSource> {
     /// All data elements
-    data: Vec<Arc<CV::Data>>,
+    data: CV::Structure,
     /// Index number index
     index: HashMap<<CV::Data as CVData>::Index, Arc<CV::Data>>,
     /// Lowercased name index
@@ -38,12 +38,12 @@ pub struct CVIndex<CV: CVSource> {
 
 impl<CV: CVSource> CVIndex<CV> {
     /// See if this CV does not contain any elements
-    pub const fn is_empty(&self) -> bool {
+    pub fn is_empty(&self) -> bool {
         self.data.is_empty()
     }
 
     /// Get the number of data elements in this CV
-    pub const fn len(&self) -> usize {
+    pub fn len(&self) -> usize {
         self.data.len()
     }
 
@@ -140,8 +140,8 @@ impl<CV: CVSource> CVIndex<CV> {
 
     /// Get the underlying data in insertion order. Note that the iterator is spelled out fully to
     /// allow merging multiple CVs with the same data type but this should not be relied upon.
-    pub fn data(&self) -> std::iter::Cloned<std::slice::Iter<'_, Arc<<CV as CVSource>::Data>>> {
-        self.data.iter().cloned()
+    pub fn data(&self) -> &CV::Structure {
+        &self.data
     }
 
     /// Get the version
@@ -164,14 +164,36 @@ impl<CV: CVSource> CVIndex<CV> {
         self.version = version;
 
         for element in data {
-            self.add(element);
+            self.data.add(element.clone());
+            self.add_to_indices(element);
+        }
+    }
+
+    /// Update without overwriting the cache (used when the data is loaded from the cache anyways)
+    pub(crate) fn update_from_structure_skip_rebuilding_cache(
+        &mut self,
+        data: CV::Structure,
+        version: CVVersion,
+    ) {
+        self.data = data;
+        self.index.clear();
+        self.name.clear();
+        self.synonyms.clear();
+        #[cfg(feature = "search-index")]
+        self.trigram_index.clear();
+        self.version = version;
+
+        let elements = self.data.iter_data().collect::<Vec<_>>();
+
+        for element in elements {
+            self.add_to_indices(element);
         }
     }
 
     /// Create an empty CV
     pub fn empty() -> Self {
         Self {
-            data: Vec::new(),
+            data: Default::default(),
             index: HashMap::new(),
             name: HashMap::new(),
             synonyms: HashMap::new(),
@@ -181,16 +203,17 @@ impl<CV: CVSource> CVIndex<CV> {
         }
     }
 
-    /// Remove a modification. Returns true if this element was sucessfully deletd and false if this element could not be found.
+    /// Remove a modification. Returns true if this element was successfully deleted and false if this element could not be found.
     pub fn remove(&mut self, index: &<CV::Data as CVData>::Index) -> bool {
-        if let Some(pos) = self
-            .data
-            .iter()
-            .position(|m| m.index().is_some_and(|id| id == *index))
-        {
-            let m = self.data[pos].clone();
+        let pos = self.data.iter_indexed().find_map(|(i, m)| {
+            m.index()
+                .is_some_and(|id| id == *index)
+                .then_some(i.clone())
+        });
+        if let Some(pos) = pos {
+            let m = self.data.index(pos.clone()).unwrap().clone();
             if let Some(name) = m.name() {
-                self.name.remove(name);
+                self.name.remove(name.as_ref());
                 #[cfg(feature = "search-index")]
                 for tag in tags(&name) {
                     self.trigram_index
@@ -218,8 +241,7 @@ impl<CV: CVSource> CVIndex<CV> {
     /// Add a single element to the ontology. This updates all indices but does not save it to disk.
     // TODO: what to do on duplicate insertions?
     #[allow(clippy::needless_pass_by_value)] // This fits the use case of update_skip_rebuilding_cache
-    pub fn add(&mut self, element: Arc<CV::Data>) {
-        self.data.push(element.clone());
+    pub fn add_to_indices(&mut self, element: Arc<CV::Data>) {
         if let Some(index) = element.index() {
             self.index.insert(index, element.clone());
         }

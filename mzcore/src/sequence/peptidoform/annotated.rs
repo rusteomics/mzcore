@@ -36,12 +36,13 @@ pub trait AnnotatedPeptide: HasPeptidoformImpl {
     }
 }
 
+use bincode::{Decode, Encode};
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 
 /// A region on an antibody
 #[expect(missing_docs)]
-#[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
+#[derive(Clone, Debug, Decode, Deserialize, Encode, Eq, Hash, PartialEq, Serialize)]
 pub enum Region {
     Framework(usize),
     ComplementarityDetermining(usize),
@@ -57,7 +58,7 @@ pub enum Region {
 }
 
 /// A sequence annotation
-#[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
+#[derive(Clone, Debug, Decode, Deserialize, Encode, Eq, Hash, PartialEq, Serialize)]
 pub enum Annotation {
     /// A conserved residue
     Conserved,

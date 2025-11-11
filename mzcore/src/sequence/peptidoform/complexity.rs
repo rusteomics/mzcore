@@ -1,5 +1,6 @@
 //! Defines the different levels of complexity a peptide can be.
 //! Used for compile time checking for incorrect use of peptides.
+use bincode::{Decode, Encode};
 use serde::{Deserialize, Serialize};
 
 /// A trait to mark all levels of complexity
@@ -12,13 +13,37 @@ impl Complexity for UnAmbiguous {}
 
 /// A [`crate::sequence::Peptidoform`] that (potentially) is linked, either with cross-links or branches
 #[derive(
-    Debug, Default, Copy, Clone, PartialEq, PartialOrd, Ord, Eq, Hash, Serialize, Deserialize,
+    Debug,
+    Default,
+    Copy,
+    Clone,
+    PartialEq,
+    PartialOrd,
+    Ord,
+    Eq,
+    Hash,
+    Serialize,
+    Deserialize,
+    Encode,
+    Decode,
 )]
 pub struct Linked;
 
 /// A [`crate::sequence::Peptidoform`] that is not cross-linked or branched, but can use the whole breath of the complexity otherwise
 #[derive(
-    Debug, Default, Copy, Clone, PartialEq, PartialOrd, Ord, Eq, Hash, Serialize, Deserialize,
+    Debug,
+    Default,
+    Copy,
+    Clone,
+    PartialEq,
+    PartialOrd,
+    Ord,
+    Eq,
+    Hash,
+    Serialize,
+    Deserialize,
+    Encode,
+    Decode,
 )]
 pub struct Linear;
 
@@ -28,7 +53,19 @@ pub struct Linear;
 /// * Charge carriers, use of charged ions apart from protons
 /// * Cyclic structures: inter/intra cross-links or branches
 #[derive(
-    Debug, Default, Copy, Clone, PartialEq, PartialOrd, Ord, Eq, Hash, Serialize, Deserialize,
+    Debug,
+    Default,
+    Copy,
+    Clone,
+    PartialEq,
+    PartialOrd,
+    Ord,
+    Eq,
+    Hash,
+    Serialize,
+    Deserialize,
+    Encode,
+    Decode,
 )]
 pub struct SimpleLinear;
 
@@ -38,7 +75,19 @@ pub struct SimpleLinear;
 ///
 /// On top of the outlawed features in [`SimpleLinear`].
 #[derive(
-    Debug, Default, Copy, Clone, PartialEq, PartialOrd, Ord, Eq, Hash, Serialize, Deserialize,
+    Debug,
+    Default,
+    Copy,
+    Clone,
+    PartialEq,
+    PartialOrd,
+    Ord,
+    Eq,
+    Hash,
+    Serialize,
+    Deserialize,
+    Encode,
+    Decode,
 )]
 pub struct SemiAmbiguous;
 
@@ -47,7 +96,19 @@ pub struct SemiAmbiguous;
 ///
 /// On top of the outlawed features in [`SemiAmbiguous`].
 #[derive(
-    Debug, Default, Copy, Clone, PartialEq, PartialOrd, Ord, Eq, Hash, Serialize, Deserialize,
+    Debug,
+    Default,
+    Copy,
+    Clone,
+    PartialEq,
+    PartialOrd,
+    Ord,
+    Eq,
+    Hash,
+    Serialize,
+    Deserialize,
+    Encode,
+    Decode,
 )]
 pub struct UnAmbiguous;
 

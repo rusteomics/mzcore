@@ -18,7 +18,7 @@ impl Error for NotASpecies {}
 macro_rules! species {
     ($($identifier:ident, $common:expr, $imgt:expr, $scientific:expr)*) => {
         /// All species available in the IMGT dataset. Look at the main documentation to see which actually have data provided.
-        #[derive(Clone, Copy, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
+        #[derive(Clone, Copy, Debug, bincode::Decode, Deserialize, bincode::Encode, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
         #[non_exhaustive]
         pub enum Species {
             $(
@@ -123,18 +123,18 @@ macro_rules! species {
                     }
                 }
 
-                let options: Vec<String> = SPECIES_PARSE_LIST.iter()
-                    .map(|option| option.0.to_lowercase())
-                    .collect();
-                let options: Vec<&str> = options.iter()
-                    .map(|option| option.as_str())
-                    .collect();
+                // let options: Vec<String> = SPECIES_PARSE_LIST.iter()
+                //     .map(|option| option.0.to_lowercase())
+                //     .collect();
+                // let options: Vec<&str> = options.iter()
+                //     .map(|option| option.as_str())
+                //     .collect();
 
                 Err(BoxedError::new(BasicKind::Error,
                         "Unknown species name",
                         "The provided name could not be recognised as a species name.",
                         Context::show(s.as_str())
-                    ).suggestions(similar::get_close_matches(s.as_str(), &options, 3, 0.75)).to_owned()
+                    ).to_owned() // TODO: maybe figure out a way to use mzcv to generate fuzzy matches here
                 )
             }
         }
