@@ -278,6 +278,7 @@ pub const MSMS: MaxQuantFormat = MaxQuantFormat {
     score_diff: OptionalColumn::Required("score diff"),
     score: "score",
     simple_mass_error_ppm: OptionalColumn::Required("simple mass error [ppm]"),
+    #[cfg(feature = "mzannotate")]
     spectrum: OptionalColumn::NotAvailable,
     total_ion_current: OptionalColumn::NotAvailable,
     ty: "type",
@@ -341,6 +342,7 @@ pub const MSMS_SCANS: MaxQuantFormat = MaxQuantFormat {
     score_diff: OptionalColumn::NotAvailable,
     score: "score",
     simple_mass_error_ppm: OptionalColumn::NotAvailable,
+    #[cfg(feature = "mzannotate")]
     spectrum: OptionalColumn::NotAvailable,
     total_ion_current: OptionalColumn::Required("total ion current"),
     ty: "type",
@@ -404,6 +406,7 @@ pub const NOVO_MSMS_SCANS: MaxQuantFormat = MaxQuantFormat {
     score_diff: OptionalColumn::NotAvailable,
     score: "score",
     simple_mass_error_ppm: OptionalColumn::NotAvailable,
+    #[cfg(feature = "mzannotate")]
     spectrum: OptionalColumn::NotAvailable,
     total_ion_current: OptionalColumn::Required("total ion current"),
     ty: "type",
@@ -469,6 +472,7 @@ pub const SILAC: MaxQuantFormat = MaxQuantFormat {
     score_diff: OptionalColumn::NotAvailable,
     score: "score",
     simple_mass_error_ppm: OptionalColumn::NotAvailable,
+    #[cfg(feature = "mzannotate")]
     spectrum: OptionalColumn::NotAvailable,
     total_ion_current: OptionalColumn::NotAvailable,
     ty: "type",

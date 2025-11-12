@@ -7,9 +7,7 @@ publish = true
 rust-version.workspace = true
 version = "0.1.0"
 description = "Handle all kinds of identified peptidoform files."
-categories = [
-    "science::bioinformatics::proteomics",
-]
+categories = ["science::bioinformatics::proteomics"]
 keywords = ["spectra", "mass-spectrometry", "bio"]
 repository = "https://github.com/rusteomics/mzcore"
 readme = "README.md"

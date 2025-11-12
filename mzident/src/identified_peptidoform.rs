@@ -605,7 +605,32 @@ macro_rules! impl_metadata {
         }
     };
 }
+#[cfg(not(feature = "mzannotate"))]
+impl_metadata!(
+    formats: {BasicCSV,DeepNovoFamily,Fasta,MaxQuant,MetaMorpheus,InstaNovo,MZTab,NovoB,Novor,Opair,Peaks,PepNet,PiHelixNovo,PiPrimeNovo,PLGS,PLink,PowerNovo,Proteoscape,PUniFind,Sage,MSFragger,SpectrumSequenceList};
+    functions: {
+        fn compound_peptidoform_ion(&self) -> Option<Cow<'_, CompoundPeptidoformIon>>;
+        fn format(&self) -> KnownFileFormat;
+        fn id(&self) -> String;
+        fn original_confidence(&self) -> Option<f64>;
+        fn original_local_confidence(&self) -> Option<&[f64]>;
+        fn charge(&self) -> Option<Charge>;
+        fn mode(&self) -> Option<Cow<'_, str>>;
+        fn retention_time(&self) -> Option<Time>;
+        fn scans(&self) -> SpectrumIds;
+        fn experimental_mz(&self) -> Option<MassOverCharge>;
+        fn experimental_mass(&self) -> Option<Mass>;
+        fn ppm_error(&self) -> Option<Ratio>;
+        fn mass_error(&self) -> Option<Mass>;
+        fn protein_names(&self) -> Option<Cow<'_, [FastaIdentifier<String>]>>;
+        fn protein_id(&self) -> Option<usize>;
+        fn protein_location(&self) -> Option<Range<u16>>;
+        fn flanking_sequences(&self) -> (&FlankingSequence, &FlankingSequence);
+        fn database(&self) -> Option<(&str, Option<&str>)>;
+    }
+);
 
+#[cfg(feature = "mzannotate")]
 impl_metadata!(
     formats: {BasicCSV,DeepNovoFamily,Fasta,MaxQuant,MetaMorpheus,InstaNovo,MZTab,NovoB,Novor,Opair,Peaks,PepNet,PiHelixNovo,PiPrimeNovo,PLGS,PLink,PowerNovo,Proteoscape,PUniFind,Sage,MSFragger,SpectrumSequenceList,AnnotatedSpectrum};
     functions: {
@@ -616,7 +641,6 @@ impl_metadata!(
         fn original_local_confidence(&self) -> Option<&[f64]>;
         fn charge(&self) -> Option<Charge>;
         fn mode(&self) -> Option<Cow<'_, str>>;
-        #[cfg(feature = "mzannotate")]
         fn fragmentation_model(&self) -> Option<mzannotate::annotation::model::BuiltInFragmentationModel>;
         fn retention_time(&self) -> Option<Time>;
         fn scans(&self) -> SpectrumIds;
@@ -629,9 +653,7 @@ impl_metadata!(
         fn protein_location(&self) -> Option<Range<u16>>;
         fn flanking_sequences(&self) -> (&FlankingSequence, &FlankingSequence);
         fn database(&self) -> Option<(&str, Option<&str>)>;
-        #[cfg(feature = "mzannotate")]
         fn annotated_spectrum(&self) -> Option<Cow<'_, AnnotatedSpectrum>>;
-        #[cfg(feature = "mzannotate")]
         fn has_annotated_spectrum(&self) -> bool;
     }
 );

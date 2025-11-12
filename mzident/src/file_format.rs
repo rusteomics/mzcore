@@ -13,6 +13,7 @@ use crate::*;
 #[derive(Clone, Copy, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 #[allow(clippy::upper_case_acronyms, missing_docs)]
 pub enum KnownFileFormat {
+    #[cfg(feature = "mzannotate")]
     AnnotatedSpectrum,
     BasicCSV(BasicCSVVersion),
     DeepNovoFamily(DeepNovoFamilyVersion),
@@ -42,6 +43,7 @@ impl KnownFileFormat {
     /// Get the name of the format
     pub const fn name(self) -> &'static str {
         match self {
+            #[cfg(feature = "mzannotate")]
             Self::AnnotatedSpectrum => "mzSpecLib",
             Self::BasicCSV(_) => "CSV",
             Self::DeepNovoFamily(_) => "DeepNovo Family",
@@ -71,7 +73,9 @@ impl KnownFileFormat {
     /// Get the format version
     pub fn version(self) -> Option<String> {
         match self {
-            Self::AnnotatedSpectrum | Self::Fasta => None,
+            #[cfg(feature = "mzannotate")]
+            Self::AnnotatedSpectrum => None,
+            Self::Fasta => None,
             Self::BasicCSV(version) => Some(version.to_string()),
             Self::DeepNovoFamily(version) => Some(version.to_string()),
             Self::InstaNovo(version) => Some(version.to_string()),
@@ -111,6 +115,7 @@ impl Display for KnownFileFormat {
 impl From<KnownFileFormat> for FileFormat {
     fn from(value: KnownFileFormat) -> Self {
         match value {
+            #[cfg(feature = "mzannotate")]
             KnownFileFormat::AnnotatedSpectrum => Self::AnnotatedSpectrum,
             KnownFileFormat::BasicCSV(version) => Self::BasicCSV(Some(version)),
             KnownFileFormat::DeepNovoFamily(version) => Self::DeepNovoFamily(Some(version)),
@@ -144,6 +149,7 @@ impl From<KnownFileFormat> for FileFormat {
 #[derive(Clone, Copy, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
 #[allow(clippy::upper_case_acronyms, missing_docs)]
 pub enum FileFormat {
+    #[cfg(feature = "mzannotate")]
     AnnotatedSpectrum,
     BasicCSV(Option<BasicCSVVersion>),
     DeepNovoFamily(Option<DeepNovoFamilyVersion>),
