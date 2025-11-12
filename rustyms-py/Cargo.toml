@@ -4,7 +4,7 @@ authors.workspace = true
 edition.workspace = true
 license.workspace = true
 publish = false
-version.workspace = true
+version = "0.12.0"
 
 [lib]
 name = "rustyms_py"
@@ -13,7 +13,7 @@ crate-type = ["cdylib"]
 [dependencies]
 context_error = { workspace = true }
 pyo3 = { workspace = true }
-mzcore = { path = "../mzcore", features=["isotopes"] }
+mzcore = { path = "../mzcore", features = ["isotopes"] }
 mzalign = { path = "../mzalign" }
 mzannotate = { path = "../mzannotate" }
 
