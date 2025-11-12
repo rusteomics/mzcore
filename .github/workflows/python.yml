@@ -1,11 +1,10 @@
 name: Python CI
+permissions:
+  contents: read
 
 on:
   release:
     types: [publish]
-
-permissions:
-  contents: read
 
 jobs:
   linux:
