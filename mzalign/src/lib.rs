@@ -1,5 +1,7 @@
 #![doc = include_str!("../README.md")]
 
+use mzcv as _; // Only used in consecutive align but makes no sense to make it optional as it is a transitive dependency already
+
 #[macro_use]
 mod helper_functions;
 
