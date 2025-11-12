@@ -23,9 +23,9 @@ jobs:
     - name: Build all features
       run: |
         cargo build -p mzcv --no-default-features
-        cargo build -p mzcv --no-default-features serde
-        cargo build -p mzcv --no-default-features search-index
-        cargo build -p mzcv --no-default-features http
+        cargo build -p mzcv --no-default-features --features serde
+        cargo build -p mzcv --no-default-features --features search-index
+        cargo build -p mzcv --no-default-features --features http
         cargo build -p mzcore --no-default-features
         cargo build -p mzcore --no-default-features --features isotopes
         cargo build -p mzcore --no-default-features --features glycan-render
