@@ -6,7 +6,7 @@ members = [
     "imgt",
     "mzalign",
     "mzannotate",
-    "mzcore-update-ontologies",
+    "mzcore-update",
     "mzcore",
     "mzcv",
     "mzident",

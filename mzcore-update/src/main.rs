@@ -16,7 +16,7 @@ fn main() {
         .save_to_cache_at(std::path::Path::new("mzcore/src/databases/psimod.dat"))
         .unwrap();
     // RESID
-    let path = std::path::Path::new("mzcore-update-ontologies/data/RESID.xml");
+    let path = std::path::Path::new("mzcore-update/data/RESID.xml");
     if path.exists() {
         let mut index = CVIndex::<Resid>::empty();
         index.update_from_path([Some(path)], false).unwrap();
@@ -31,7 +31,7 @@ fn main() {
             .unwrap();
     } else {
         println!(
-            "RESID is ignored, to update download the file to `mzcore-update-ontologies/data/RESID.xml` (because FTP is not supported)"
+            "RESID is ignored, to update download the file to `mzcore-update/data/RESID.xml` (because FTP is not supported)"
         );
     }
     // XLMOD

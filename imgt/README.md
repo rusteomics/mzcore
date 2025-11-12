@@ -17,7 +17,7 @@ let selection = Selection::default()
     .species([Species::HomoSapiens])
     .chain([ChainType::Heavy])
     .gene([GeneType::V]);
-let first = selection.germlines().next().unwrap();
+let first = selection.germlines(&STATIC_IMGT).next().unwrap();
 assert_eq!(first.name(), "IGHV1-2*01");
 ```
 

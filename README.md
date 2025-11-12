@@ -43,7 +43,7 @@ For raw data centered HUPO-PSI standards support (eg mzML, USI) see [mzdata](htt
 
 ## mzcore/mzalign/mzannotate/mzcv/mzident/imgt
 
-These are the main librares. This contains all source code, databases (Unimod etc) and example data.
+These are the main libraries. This contains all source code, databases (Unimod etc) and example data.
 
 ## examples
 
@@ -59,11 +59,15 @@ This Rust library provides python bindings (using pyO3) for rustyms.
 
 ## rustyms-generate-databases
 
-Using the `rustyms-generate-databases` the definitions for the databases can be updated. See the readme on the download locations for all databases. Then run `cargo run -p rustyms-generate-databases` (from the root folder of this repository).
+Using the `rustyms-generate-databases` the definitions for the elemental data can be updated. See the readme on the download locations for all databases. Then run `cargo run -p rustyms-generate-databases` (from the root folder of this repository).
 
-## rustyms-generate-imgt
+## mzcore-update
 
-Using the `rustyms-generate-imgt` the definitions for the germlines can be updated. Put the imgt.dat.Z file in the `rustyms-generate-imgt/data` directory and unpack it (this can be downloaded from https://www.imgt.org/download/LIGM-DB/imgt.dat.Z). Then run `cargo run -p rustyms-generate-imgt` (from the root folder of this repository).
+Using the `mzcore-update` the modification databases can be updated. All databases expect RESID will be downloaded and updated. For RESID download the file `ftp://ftp.proteininformationresource.org/pir_databases/other_databases/resid/RESIDUES.XML` and place this at `mzcore-update/data/RESID.xml`, a version is already provided there are as RESID is not developed any more you likely do not need to download the file. Then run `cargo run --releases -p mzcore-update` (from the root folder of this repository).
+
+## imgt-update
+
+Using the `imgt-update` the definitions for the germlines can be updated. Put the imgt.dat.Z file in the `imgt-update/data` directory and unpack it (this can be downloaded from https://www.imgt.org/download/LIGM-DB/imgt.dat.Z). Then run `cargo run --release -p imgt-update` (from the root folder of this repository).
 
 # Contributing
 

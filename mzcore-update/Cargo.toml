@@ -1,12 +1,12 @@
 [package]
-name = "mzcore-update-ontologies"
+name = "mzcore-update"
 authors.workspace = true
 edition.workspace = true
 license.workspace = true
 publish = false
 rust-version.workspace = true
 version = "0.1.0"
-description = "Update the ontologiesusedinmzcore."
+description = "Update the ontologies used in mzcore."
 repository = "https://github.com/rusteomics/mzcore"
 readme = "README.md"
 include = ["src/**/*", "images/**/*", "README.md", "benches/**/*"]
