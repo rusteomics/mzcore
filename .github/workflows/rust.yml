@@ -20,19 +20,27 @@ jobs:
       run: cargo check
     - name: Build all features
       run: |
-        cargo build -p rustyms --no-default-features
-        cargo build -p rustyms --no-default-features --features align
-        cargo build -p rustyms --no-default-features --features identification
-        cargo build -p rustyms --no-default-features --features imgt
-        cargo build -p rustyms --no-default-features --features isotopes
-        cargo build -p rustyms --no-default-features --features rand
-        cargo build -p rustyms --no-default-features --features rayon
-        cargo build -p rustyms --no-default-features --features mzdata
-        cargo build -p rustyms --no-default-features --features glycan-render
-        cargo build -p rustyms --no-default-features --features glycan-render-bitmap
-        cargo build -p rustyms --no-default-features --features imgt,rayon
-        cargo build -p rustyms --no-default-features --features imgt,rayon,align
-        cargo build -p rustyms --no-default-features --features imgt,align
+        cargo build -p mzcv --no-default-features
+        cargo build -p mzcv --no-default-features serde
+        cargo build -p mzcv --no-default-features search-index
+        cargo build -p mzcv --no-default-features http
+        cargo build -p mzcore --no-default-features
+        cargo build -p mzcore --no-default-features --features isotopes
+        cargo build -p mzcore --no-default-features --features glycan-render
+        cargo build -p mzcore --no-default-features --features glycan-render-bitmap
+        cargo build -p mzcore --no-default-features --features search-index
+        cargo build -p mzcore --no-default-features --features http
+        cargo build -p mzcore --no-default-features --features coloured-errors
+        cargo build -p mzcore --no-default-features --features isotopes,glycan-render
+        cargo build -p mzcore --no-default-features --features isotopes,glycan-render,search-index
+        cargo build -p mzannotate
+        cargo build -p mzident --no-default-features
+        cargo build -p mzident --no-default-features --features mzannotate
+        cargo build -p imgt
+        cargo build -p mzalign
+        cargo build -p mzalign --features rayon
+        cargo build -p mzalign --features imgt
+        cargo build -p mzalign --features rayon,imgt
 
   fmt:
     runs-on: ubuntu-latest
@@ -61,5 +69,11 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     - name: Run tests
-      run: cargo test -p rustyms --no-fail-fast
+      run: |
+        cargo test -p mzcv --no-fail-fast
+        cargo test -p mzcore --no-fail-fast
+        cargo test -p mzannotate --no-fail-fast
+        cargo test -p mzident --no-fail-fast
+        cargo test -p imgt --no-fail-fast
+        cargo test -p mzalign --no-fail-fast
 
