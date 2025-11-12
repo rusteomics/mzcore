@@ -3,6 +3,7 @@ use imgt::*;
 use mzcore::sequence::{
     AnnotatedPeptide, AtMax, HasPeptidoform, Linear, Peptidoform, Region, SimpleLinear, UnAmbiguous,
 };
+use mzcv::CVIndex;
 use std::collections::HashSet;
 
 use itertools::Itertools;
@@ -14,7 +15,7 @@ pub struct ConsecutiveAlignment<'lifetime, A> {
     pub alignments: Vec<
         Vec<(
             Allele<'lifetime>,
-            Alignment<&'static Peptidoform<UnAmbiguous>, Peptidoform<A>>,
+            Alignment<&'lifetime Peptidoform<UnAmbiguous>, Peptidoform<A>>,
         )>,
     >,
 }
@@ -25,7 +26,7 @@ impl<'lifetime, A> ConsecutiveAlignment<'lifetime, A> {
         &self,
     ) -> Vec<&(
         Allele<'lifetime>,
-        Alignment<&'static Peptidoform<UnAmbiguous>, Peptidoform<A>>,
+        Alignment<&'lifetime Peptidoform<UnAmbiguous>, Peptidoform<A>>,
     )> {
         self.alignments.iter().filter_map(|a| a.first()).collect()
     }
@@ -90,22 +91,27 @@ impl<A: AtMax<Linear>> ConsecutiveAlignment<'_, A> {
 /// # Panics
 /// If there are not two or more genes listed. If the return number is 0.
 #[expect(clippy::needless_pass_by_value)]
-pub fn consecutive_align<const STEPS: u16, A: HasPeptidoform<SimpleLinear> + Eq + Clone>(
+pub fn consecutive_align<'imgt, const STEPS: u16, A: HasPeptidoform<SimpleLinear> + Eq + Clone>(
     sequence: A,
     genes: &[(GeneType, AlignType)],
-    species: Option<HashSet<Species, impl std::hash::BuildHasher + Clone + Send + Sync + Default>>,
-    chains: Option<HashSet<ChainType, impl std::hash::BuildHasher + Clone + Send + Sync + Default>>,
+    species: Option<
+        HashSet<Species, impl std::hash::BuildHasher + Clone + Send + Sync + Default + 'imgt>,
+    >,
+    chains: Option<
+        HashSet<ChainType, impl std::hash::BuildHasher + Clone + Send + Sync + Default + 'imgt>,
+    >,
     allele: AlleleSelection,
     scoring: AlignScoring<'_>,
     return_number: usize,
-) -> ConsecutiveAlignment<'static, SimpleLinear> {
+    imgt: &'imgt CVIndex<IMGT>,
+) -> ConsecutiveAlignment<'imgt, SimpleLinear> {
     assert!(genes.len() >= 2);
     assert!(return_number != 0);
 
     let mut output: Vec<
         Vec<(
-            Allele<'static>,
-            Alignment<&'static Peptidoform<UnAmbiguous>, Peptidoform<SimpleLinear>>,
+            Allele<'imgt>,
+            Alignment<&'imgt Peptidoform<UnAmbiguous>, Peptidoform<SimpleLinear>>,
         )>,
     > = Vec::with_capacity(genes.len());
 
@@ -141,11 +147,11 @@ pub fn consecutive_align<const STEPS: u16, A: HasPeptidoform<SimpleLinear> + Eq 
                 allele,
                 genes: Some([gene.0].into()),
             }
-            .germlines()
+            .germlines(imgt)
             .map(|seq| {
                 let alignment = align::<
                     STEPS,
-                    &'static Peptidoform<UnAmbiguous>,
+                    &'imgt Peptidoform<UnAmbiguous>,
                     Peptidoform<SimpleLinear>,
                 >(
                     seq.sequence, left_sequence.clone(), scoring, gene.1
@@ -167,17 +173,23 @@ pub fn consecutive_align<const STEPS: u16, A: HasPeptidoform<SimpleLinear> + Eq 
 #[cfg(feature = "rayon")]
 #[expect(clippy::needless_pass_by_value)]
 pub fn par_consecutive_align<
+    'imgt,
     const STEPS: u16,
     A: HasPeptidoform<SimpleLinear> + Send + Sync + Eq + Clone,
 >(
     sequence: A,
     genes: &[(GeneType, AlignType)],
-    species: Option<HashSet<Species, impl std::hash::BuildHasher + Clone + Send + Sync + Default>>,
-    chains: Option<HashSet<ChainType, impl std::hash::BuildHasher + Clone + Send + Sync + Default>>,
+    species: Option<
+        HashSet<Species, impl std::hash::BuildHasher + Clone + Send + Sync + Default + 'imgt>,
+    >,
+    chains: Option<
+        HashSet<ChainType, impl std::hash::BuildHasher + Clone + Send + Sync + Default + 'imgt>,
+    >,
     allele: AlleleSelection,
     scoring: AlignScoring<'_>,
     return_number: usize,
-) -> ConsecutiveAlignment<'static, SimpleLinear> {
+    imgt: &'imgt CVIndex<IMGT>,
+) -> ConsecutiveAlignment<'imgt, SimpleLinear> {
     use rayon::iter::ParallelIterator;
 
     assert!(genes.len() >= 2);
@@ -185,8 +197,8 @@ pub fn par_consecutive_align<
 
     let mut output: Vec<
         Vec<(
-            Allele<'static>,
-            Alignment<&'static Peptidoform<UnAmbiguous>, Peptidoform<SimpleLinear>>,
+            Allele<'imgt>,
+            Alignment<&'imgt Peptidoform<UnAmbiguous>, Peptidoform<SimpleLinear>>,
         )>,
     > = Vec::with_capacity(genes.len());
 
@@ -222,11 +234,11 @@ pub fn par_consecutive_align<
                 allele,
                 genes: Some([gene.0].into()),
             }
-            .par_germlines()
+            .par_germlines(imgt)
             .map(|seq| {
                 let alignment = align::<
                     STEPS,
-                    &'static Peptidoform<UnAmbiguous>,
+                    &'imgt Peptidoform<UnAmbiguous>,
                     Peptidoform<SimpleLinear>,
                 >(
                     seq.sequence, left_sequence.clone(), scoring, gene.1

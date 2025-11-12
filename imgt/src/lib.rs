@@ -22,7 +22,7 @@ mod structs;
 
 pub use fancy::*;
 
-pub use cv::IMGT;
+pub use cv::{IMGT, STATIC_IMGT};
 pub use regions::*;
 pub use select::*;
 pub use species::*;

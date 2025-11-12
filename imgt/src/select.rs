@@ -1,3 +1,4 @@
+use mzcv::CVIndex;
 #[cfg(feature = "rayon")]
 use rayon::prelude::*;
 use std::collections::HashSet;
@@ -7,20 +8,6 @@ use mzcore::sequence::{
 };
 
 pub(super) use super::*;
-
-/// Get a specific germline
-pub fn get_germline(
-    species: Species,
-    gene: Gene,
-    allele: Option<usize>,
-) -> Option<Allele<'static>> {
-    #[cfg(feature = "internal-no-data")]
-    {
-        None
-    }
-    #[cfg(not(feature = "internal-no-data"))]
-    germlines(species).and_then(|g| g.find(gene, allele))
-}
 
 /// The selection rules for iterating over a selection of germlines.
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -71,20 +58,21 @@ impl<S1: std::hash::BuildHasher, S2: std::hash::BuildHasher> Selection<S1, S2> {
 }
 
 impl<
-    S1: std::hash::BuildHasher + Clone + Send + Sync,
-    S2: std::hash::BuildHasher + Clone + Send + Sync,
+    'a,
+    S1: std::hash::BuildHasher + Clone + Send + Sync + 'a,
+    S2: std::hash::BuildHasher + Clone + Send + Sync + 'a,
 > Selection<S1, S2>
 {
     /// Get the selected alleles
-    pub fn germlines(self) -> impl Iterator<Item = Allele<'static>> {
-        #[cfg(feature = "internal-no-data")]
-        {
-            std::iter::empty()
-        }
-        #[cfg(not(feature = "internal-no-data"))]
-        all_germlines()
-            .filter(move |g| self.species.as_ref().is_none_or(|s| s.contains(&g.species)))
-            .flat_map(|g| g.into_iter().map(|c| (g.species, c.0, c.1)))
+    pub fn germlines(self, cv: &'a CVIndex<IMGT>) -> impl Iterator<Item = Allele<'a>> {
+        cv.data()
+            .iter()
+            .filter(move |(s, _)| {
+                self.species
+                    .as_ref()
+                    .is_none_or(|species| species.contains(s))
+            })
+            .flat_map(|(s, g)| g.into_iter().map(|c| (*s, c.0, c.1)))
             .filter(move |(_, kind, _)| self.chains.as_ref().is_none_or(|k| k.contains(kind)))
             .flat_map(|(species, _, c)| c.into_iter().map(move |g| (species, g.0, g.1)))
             .filter(move |(_, gene, _)| self.genes.as_ref().is_none_or(|s| contains_gene(s, *gene)))
@@ -100,15 +88,15 @@ impl<
 
     /// Get the selected alleles in parallel fashion, only available if you enable the feature "rayon" (on by default)
     #[cfg(feature = "rayon")]
-    pub fn par_germlines(self) -> impl ParallelIterator<Item = Allele<'static>> {
-        #[cfg(feature = "internal-no-data")]
-        {
-            rayon::iter::empty()
-        }
-        #[cfg(not(feature = "internal-no-data"))]
-        par_germlines()
-            .filter(move |g| self.species.as_ref().is_none_or(|s| s.contains(&g.species)))
-            .flat_map(|g| g.into_par_iter().map(|c| (g.species, c.0, c.1)))
+    pub fn par_germlines(self, cv: &'a CVIndex<IMGT>) -> impl ParallelIterator<Item = Allele<'a>> {
+        cv.data()
+            .par_iter()
+            .filter(move |(s, _)| {
+                self.species
+                    .as_ref()
+                    .is_none_or(|species| species.contains(s))
+            })
+            .flat_map(|(s, g)| g.into_par_iter().map(|c| (*s, c.0, c.1)))
             .filter(move |(_, kind, _)| self.chains.as_ref().is_none_or(|k| k.contains(kind)))
             .flat_map(|(species, _, c)| c.into_par_iter().map(move |g| (species, g.0, g.1)))
             .filter(move |(_, gene, _)| self.genes.as_ref().is_none_or(|s| contains_gene(s, *gene)))
@@ -126,14 +114,7 @@ impl<
 }
 
 fn contains_gene(s: &HashSet<GeneType>, gene: GeneType) -> bool {
-    #[cfg(feature = "internal-no-data")]
-    {
-        false
-    }
-    #[cfg(not(feature = "internal-no-data"))]
-    {
-        s.contains(&gene) || matches!(gene, GeneType::C(_)) && s.contains(&GeneType::C(None))
-    }
+    s.contains(&gene) || matches!(gene, GeneType::C(_)) && s.contains(&GeneType::C(None))
 }
 
 impl<S1: std::hash::BuildHasher, S2: std::hash::BuildHasher> Default for Selection<S1, S2> {
@@ -327,7 +308,7 @@ impl Germlines {
 mod tests {
     use std::collections::HashSet;
 
-    use crate::{ChainType, GeneType, Selection, Species, select::contains_gene};
+    use crate::{ChainType, GeneType, STATIC_IMGT, Selection, Species, select::contains_gene};
 
     #[test]
     fn try_first_human() {
@@ -335,7 +316,7 @@ mod tests {
             .species([Species::HomoSapiens])
             .chain([ChainType::Heavy])
             .gene([GeneType::V]);
-        let first = selection.germlines().next().unwrap();
+        let first = selection.germlines(&STATIC_IMGT).next().unwrap();
         assert_eq!(first.name(), "IGHV1-2*01");
     }
 
@@ -345,7 +326,7 @@ mod tests {
             .species([Species::HomoSapiens])
             .chain([ChainType::Heavy])
             .gene([GeneType::C(Some(crate::Constant::G))]);
-        let first = selection.germlines().next().unwrap();
+        let first = selection.germlines(&STATIC_IMGT).next().unwrap();
         assert_eq!(first.name(), "IGHGP*01");
     }
 

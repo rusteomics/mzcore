@@ -1,11 +1,18 @@
 //! Code to handle the PSI-MOD ontology
-use std::{borrow::Cow, collections::HashMap, sync::Arc};
+use std::{
+    borrow::Cow,
+    collections::HashMap,
+    sync::{Arc, LazyLock},
+};
 
 use context_error::BoxedError;
 
-use mzcv::{CVData, CVError, CVFile, CVSource, CVStructure, CVVersion, HashBufReader};
+use mzcv::{CVData, CVError, CVFile, CVIndex, CVSource, CVStructure, CVVersion, HashBufReader};
 
 use crate::{Gene, Germline, Germlines, Species, parse::parse_dat};
+
+/// A single shared static access to the static data in the ontologies for cases where no runtime resolution is needed (like tests).
+pub static STATIC_IMGT: LazyLock<CVIndex<IMGT>> = LazyLock::new(CVIndex::init_static);
 
 /// IMGT antibody germlines
 #[allow(missing_copy_implementations, missing_debug_implementations)]
@@ -45,12 +52,12 @@ impl CVSource for IMGT {
         {
             use bincode::config::Configuration;
             let cache = bincode::decode_from_slice::<(CVVersion, Self::Structure), Configuration>(
-                include_bytes!("../IMGT.dat"),
+                include_bytes!("IMGT.dat"),
                 Configuration::default(),
             )
             .unwrap()
             .0;
-            Some(cache.deconstruct())
+            Some(cache)
         }
         #[cfg(feature = "internal-no-data")]
         None

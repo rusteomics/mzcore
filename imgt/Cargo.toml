@@ -7,9 +7,7 @@ publish = true
 rust-version.workspace = true
 version = "0.1.0"
 description = "Access the IMGT database from Rust"
-categories = [
-    "science::bioinformatics::sequence-analysis",
-]
+categories = ["science::bioinformatics::sequence-analysis"]
 keywords = ["antibodies", "bio"]
 repository = "https://github.com/rusteomics/mzcore"
 readme = "README.md"
