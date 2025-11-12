@@ -1,5 +1,6 @@
 use std::{collections::HashMap, fs::File, io::BufReader, path::Path};
 
+use bincode::{Decode, Encode};
 use chrono::FixedOffset;
 use context_error::{BoxedError, Context, CreateError, ErrorKind};
 use flate2::bufread::GzDecoder;
@@ -50,7 +51,7 @@ type Comment = Option<Box<str>>;
 
 /// A synonym in an Obo stanza
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Decode, Default, Encode)]
 pub struct OboSynonym {
     /// The synonym itself
     pub synonym: Box<str>,
@@ -68,7 +69,7 @@ pub struct OboSynonym {
 
 /// The type or scope for a synonym
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[derive(Clone, Copy, Debug, Default, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[derive(Clone, Copy, Debug, Decode, Default, Encode, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub enum SynonymScope {
     /// An exact relation
     Exact,
@@ -95,7 +96,7 @@ impl std::str::FromStr for SynonymScope {
 }
 
 /// The type for an Obo stanza
-#[derive(Clone, Copy, Debug, Default, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[derive(Clone, Copy, Debug, Decode, Default, Encode, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub enum OboStanzaType {
     /// A Term stanza
     #[default]
@@ -112,7 +113,7 @@ pub enum OboValue {
     /// A string, when the unit is not set or `xsd:string`
     String(String),
     /// A URI, when the unit is not set or `xsd:anyURI`
-    URI(String),
+    Uri(String),
     /// A 64 bit floating point, when the unit is `xsd:double`, `xsd:decimal` or `xsd:float`
     Float(f64),
     /// An integer, when the unit is `xsd:integer`, `xsd:int`, `xsd:nonNegativeInteger`, or `xsd:positiveInteger`
@@ -126,7 +127,7 @@ pub enum OboValue {
 impl std::fmt::Display for OboValue {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::String(s) | Self::URI(s) => write!(f, "{s}"),
+            Self::String(s) | Self::Uri(s) => write!(f, "{s}"),
             Self::Float(s) => write!(f, "{s}"),
             Self::Integer(s) => write!(f, "{s}"),
             Self::Boolean(s) => write!(f, "{s}"),
@@ -143,7 +144,7 @@ impl OboValue {
     ) -> Result<Self, BoxedError<'static, OboError>> {
         match unit {
             "xsd:string" => Ok(Self::String(value.to_string())),
-            "xsd:anyURI" => Ok(Self::URI(value.to_string())),
+            "xsd:anyURI" => Ok(Self::Uri(value.to_string())),
             "xsd:double" | "xsd:float" | "xsd:decimal" => {
                 if !value.starts_with('-') && value.contains('-') {
                     // Some ontologies use a range

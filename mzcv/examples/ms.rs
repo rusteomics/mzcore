@@ -1,12 +1,12 @@
 //! An example to show how to work with the MS ontology
-use std::io::Write;
+use std::{borrow::Cow, io::Write, sync::Arc};
 
 use bincode::{Decode, Encode};
 use context_error::{BoxedError, CreateError, FullErrorContent, StaticErrorContent};
 
 use mzcv::{
-    CVCacheBincode, CVData, CVError, CVFile, CVIndex, CVSource, CVVersion, HashBufReader,
-    OboOntology, OboStanzaType,
+    CVData, CVError, CVFile, CVIndex, CVSource, CVVersion, HashBufReader, OboOntology,
+    OboStanzaType, SynonymScope,
 };
 
 fn main() {
@@ -30,7 +30,7 @@ fn main() {
     );
 
     let item = ms.get_by_index(&1_000_016).unwrap();
-    assert_eq!(item.name, "scan start time");
+    assert_eq!(item.name, "scan start time".into());
 
     println!("Search for terms in the MS ontology (prefix with '==' to search for exact names)");
 
@@ -41,7 +41,12 @@ fn main() {
         std::io::stdin().read_line(&mut term).unwrap();
         let term = term.trim();
         let answers = term.strip_prefix("==").map_or_else(
-            || ms.search(term, 10, 6),
+            || {
+                ms.search(term, 10, 6)
+                    .into_iter()
+                    .map(|(a, _, _)| a)
+                    .collect()
+            },
             |term| ms.get_by_name(term).map(|v| vec![v]).unwrap_or_default(),
         );
         if answers.is_empty() {
@@ -65,10 +70,10 @@ struct MS {}
 #[derive(Clone, Debug, Decode, Default, Encode)]
 struct MSData {
     index: Option<usize>,
-    name: String,
-    definition: String,
-    synonyms: Vec<String>,
-    cross_ids: Vec<(Option<String>, String)>,
+    name: Box<str>,
+    definition: Box<str>,
+    synonyms: Vec<(SynonymScope, Box<str>)>,
+    cross_ids: Vec<(Option<Box<str>>, Box<str>)>,
 }
 
 impl CVData for MSData {
@@ -76,17 +81,19 @@ impl CVData for MSData {
     fn index(&self) -> Option<usize> {
         self.index
     }
-    fn name(&self) -> Option<&str> {
-        Some(&self.name)
+    fn name(&self) -> Option<Cow<'_, str>> {
+        Some(Cow::Borrowed(&self.name))
     }
     fn synonyms(&self) -> impl Iterator<Item = &str> {
-        self.synonyms.iter().map(AsRef::as_ref)
+        self.synonyms
+            .iter()
+            .filter_map(|(s, n)| (*s == SynonymScope::Exact).then_some(n.as_ref()))
     }
-    type Cache = CVCacheBincode<Self>;
 }
 
 impl CVSource for MS {
     type Data = MSData;
+    type Structure = Vec<Arc<MSData>>;
     fn cv_name() -> &'static str {
         "MS"
     }
@@ -98,13 +105,12 @@ impl CVSource for MS {
             compression: mzcv::CVCompression::None,
         }]
     }
-    fn static_data() -> Option<(CVVersion, Vec<Self::Data>)> {
+    fn static_data() -> Option<(CVVersion, Self::Structure)> {
         None
     }
     fn parse(
         mut reader: impl Iterator<Item = HashBufReader<Box<dyn std::io::Read>, impl sha2::Digest>>,
-    ) -> Result<(CVVersion, impl Iterator<Item = Self::Data>), Vec<BoxedError<'static, CVError>>>
-    {
+    ) -> Result<(CVVersion, Self::Structure), Vec<BoxedError<'static, CVError>>> {
         let reader = reader.next().unwrap();
         OboOntology::from_raw(reader)
             .map_err(|e| {
@@ -126,16 +132,21 @@ impl CVSource for MS {
                         .map(|obj| {
                             let mut data = MSData {
                                 index: obj.id.1.parse().ok(),
-                                name: obj.lines["name"][0].0.to_string(),
-                                synonyms: obj.synonyms.iter().map(|s| s.synonym.clone()).collect(),
+                                name: obj.lines["name"][0].0.clone(),
+                                synonyms: obj
+                                    .synonyms
+                                    .iter()
+                                    .map(|s| (s.scope, s.synonym.clone()))
+                                    .collect(),
                                 ..Default::default()
                             };
                             if let Some((def, ids, _, _)) = obj.definition {
                                 data.definition = def;
                                 data.cross_ids = ids;
                             }
-                            data
-                        }),
+                            Arc::new(data)
+                        })
+                        .collect(),
                 )
             })
     }
