@@ -29,7 +29,6 @@ debug = true
 opt-level = 3
 lto = true
 codegen-units = 1
-# Bench profile inherits from release so only change the release settings
 
 [workspace.dependencies]
 afl = "0.17"
@@ -37,7 +36,7 @@ base64 = "0.22"
 bincode = { version = "2.0", features = ["serde"] }
 chrono = "0.4"
 clap = { version = "4.5", features = ["derive", "cargo"] }
-context_error = { version = "0.1", features = ["serde"] }
+context_error = { version = "0.2", features = ["serde"] }
 directories = "6.0"
 flate2 = "1.0"
 indexmap = "2.11"
@@ -69,7 +68,7 @@ uom = { version = "0.37", default-features = false, features = [
 zeno = { version = "0.3.2" }
 
 [patch.crates-io]
-context_error = { git = "https://github.com/douweschulte/context_error" }
+# context_error = { git = "https://github.com/douweschulte/context_error" }
 
 [workspace.lints.rust]
 ambiguous_negative_literals = "warn"
