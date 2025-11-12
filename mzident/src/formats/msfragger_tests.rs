@@ -193,6 +193,7 @@ fn fragpipe_v21_manual() {
                     Box::default(),
                     ThinVec::default(),
                     ThinVec::default(),
+                    false,
                 ),
             },
         )]),

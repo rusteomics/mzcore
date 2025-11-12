@@ -131,6 +131,7 @@ fn peaks_11_custom_modification() {
                         Box::default(),
                         ThinVec::default(),
                         ThinVec::default(),
+                        false,
                     )
                 },
             )]),

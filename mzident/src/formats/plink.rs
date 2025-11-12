@@ -217,8 +217,8 @@ format_family!(
                     .monoisotopic_mass()
                     - if parsed.peptide_type == PLinkPeptideType::Hydrolysed { molecular_formula!(H 2 O 1).monoisotopic_mass() } else { Mass::ZERO };
 
-            let custom_linkers: Vec<_> = ontologies.custom().data().filter(|m|
-                    matches!(**m, SimpleModificationInner::Linker{..})).map(|m| (m.formula().monoisotopic_mass(), m.clone())
+            let custom_linkers: Vec<_> = ontologies.custom().data().iter().filter(|m|
+                    matches!(***m, SimpleModificationInner::Linker{..})).map(|m| (m.formula().monoisotopic_mass(), m.clone())
                 ).collect();
 
             let fitting = &KNOWN_CROSS_LINKERS.get_or_init(|| {
