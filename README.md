@@ -1,7 +1,4 @@
-🦀 Rust: [![Crates.io](https://img.shields.io/crates/v/rustyms.svg)](https://crates.io/crates/rustyms) [![rustyms documentation](https://docs.rs/rustyms/badge.svg)](https://docs.rs/rustyms)
-🐍 Python: [![PyPI version](https://badge.fury.io/py/rustyms.svg)](https://badge.fury.io/py/rustyms) [![Python Docs](https://readthedocs.org/projects/rustyms/badge/?version=latest)](https://rustyms.readthedocs.io/)
-
-# Match those fragments!
+# Oxidise your MS data analysis
 
 A set of libraries to handle peptide centric mass spectrometry calculations. Built to handle very complex peptidoforms in a sensible way. Centered around the following HUPO-PSI standards:
 - [ProForma](https://www.psidev.info/proforma) A standard notation for proteo/peptidoforms allowing for highly complex definitions
@@ -10,6 +7,16 @@ A set of libraries to handle peptide centric mass spectrometry calculations. Bui
 - [mzTab](https://www.psidev.info/mztab-specifications) A standard notation for matched peptidoforms from database and _de novo_ searches
 
 For raw data centered HUPO-PSI standards support (eg mzML, USI) see [mzdata](https://crates.io/crates/mzdata).
+
+| Crate        | Crates.io                                                                                           | Docs                                                                                                              |
+| ------------ | --------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| 🦀 mzcore     | [![Crates.io](https://img.shields.io/crates/v/mzcore.svg)](https://crates.io/crates/mzcore)         | [![mzcore documentation](https://docs.rs/mzcore/badge.svg)](https://docs.rs/mzcore)                               |
+| 🦀 mzannotate | [![Crates.io](https://img.shields.io/crates/v/mzannotate.svg)](https://crates.io/crates/mzannotate) | [![mzannotate documentation](https://docs.rs/mzannotate/badge.svg)](https://docs.rs/mzannotate)                   |
+| 🦀 mzalign    | [![Crates.io](https://img.shields.io/crates/v/mzalign.svg)](https://crates.io/crates/mzalign)       | [![mzalign documentation](https://docs.rs/mzalign/badge.svg)](https://docs.rs/mzalign)                            |
+| 🦀 imgt       | [![Crates.io](https://img.shields.io/crates/v/imgt.svg)](https://crates.io/crates/imgt)             | [![imgt documentation](https://docs.rs/imgt/badge.svg)](https://docs.rs/imgt)                                     |
+| 🦀 mzident    | [![Crates.io](https://img.shields.io/crates/v/mzident.svg)](https://crates.io/crates/mzident)       | [![mzident documentation](https://docs.rs/mzident/badge.svg)](https://docs.rs/mzident)                            |
+| 🦀 mzcv       | [![Crates.io](https://img.shields.io/crates/v/mzcv.svg)](https://crates.io/crates/mzcv)             | [![mzcv documentation](https://docs.rs/mzcv/badge.svg)](https://docs.rs/mzcv)                                     |
+| 🐍 rustyms-py | [![PyPI version](https://badge.fury.io/py/rustyms.svg)](https://badge.fury.io/py/rustyms)           | [![Python Docs](https://readthedocs.org/projects/rustyms/badge/?version=latest)](https://rustyms.readthedocs.io/) |
 
 ## Features
 
