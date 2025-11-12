@@ -72,10 +72,10 @@ jobs:
     - uses: actions/checkout@v4
     - name: Run tests
       run: |
-        cargo test -p mzcv --no-fail-fast
-        cargo test -p mzcore --no-fail-fast
+        cargo test -p mzcv --no-fail-fast --features serde,search-index,http
+        cargo test -p mzcore --no-fail-fast --features isotopes,glycan-render,search-index
         cargo test -p mzannotate --no-fail-fast
         cargo test -p mzident --no-fail-fast
         cargo test -p imgt --no-fail-fast
-        cargo test -p mzalign --no-fail-fast
+        cargo test -p mzalign --no-fail-fast --features imgt,rayon
 

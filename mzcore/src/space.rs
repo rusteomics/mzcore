@@ -72,14 +72,14 @@ impl UsedSpace {
         }
     }
 
-    pub(crate) fn set_total<Total>(self) -> Self {
+    pub(crate) const fn set_total<Total>(self) -> Self {
         Self {
             padding: size_of::<Total>() - self.stack,
             ..self
         }
     }
 
-    pub(crate) fn add_child(self, child: UsedSpace) -> Self {
+    pub(crate) const fn add_child(self, child: Self) -> Self {
         Self {
             stack: self.stack,
             padding: self.padding,
@@ -193,6 +193,7 @@ impl<T: Space> Space for Box<T> {
 impl Space for SimpleModificationInner {
     fn space(&self) -> UsedSpace {
         match self {
+            Self::Info(info) => info.space(),
             Self::Mass(t, m, d) => t.space() + m.space() + d.space(),
             Self::Formula(f) => f.space(),
             Self::Glycan(g) => g.space(),

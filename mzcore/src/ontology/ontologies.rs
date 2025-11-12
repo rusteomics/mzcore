@@ -34,7 +34,7 @@ pub static STATIC_ONTOLOGIES: LazyLock<Ontologies> = LazyLock::new(Ontologies::i
 /// assert_eq!(modification, modification2);
 /// // or search all (or a subset) for fuzzy matches
 /// let search = ontologies.search(&[], "Oxidated");
-/// assert!(search.contains(&modification));
+/// assert!(search.contains(&(modification, None)));
 /// ```
 pub struct Ontologies {
     custom: CVIndex<Custom>,

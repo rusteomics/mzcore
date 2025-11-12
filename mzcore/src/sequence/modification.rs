@@ -12,6 +12,7 @@ use itertools::Itertools;
 use mzcv::SynonymScope;
 use ordered_float::OrderedFloat;
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use thin_vec::ThinVec;
 
 use crate::{
@@ -20,7 +21,7 @@ use crate::{
     helper_functions::merge_hashmap,
     molecular_formula,
     ontology::{CustomDatabase, Ontology},
-    parse_json::{ParseJson, use_serde},
+    parse_json::ParseJson,
     quantities::Multi,
     sequence::{
         AminoAcid, CrossLinkName, CrossLinkSide, Linked, LinkerSpecificity, MUPSettings,
@@ -135,14 +136,112 @@ impl Space for ModificationId {
             + self.id.space()
             + self.description.space()
             + self.synonyms.space()
-            + self.cross_ids.space())
+            + self.cross_ids.space()
+            + self.obsolete.space())
         .set_total::<Self>()
     }
 }
 
 impl ParseJson for ModificationId {
-    fn from_json_value(value: serde_json::Value) -> Result<Self, BoxedError<'static, BasicKind>> {
-        use_serde(value) // TODO: extend
+    fn from_json_value(value: Value) -> Result<Self, BoxedError<'static, BasicKind>> {
+        if let Value::Object(mut map) = value {
+            let context = |map: &serde_json::Map<String, Value>| {
+                Context::show(map.iter().map(|(k, v)| format!("\"{k}\": {v}")).join(","))
+            };
+            Ok(Self {
+                ontology: Ontology::from_json_value(map.remove("ontology").ok_or_else(|| {
+                    BoxedError::new(
+                        BasicKind::Error,
+                        "Invalid ModificationID",
+                        "The required property 'ontology' is missing",
+                        context(&map),
+                    )
+                })?)?,
+                name: Box::from_json_value(map.remove("name").ok_or_else(|| {
+                    BoxedError::new(
+                        BasicKind::Error,
+                        "Invalid ModificationID",
+                        "The required property 'name' is missing",
+                        context(&map),
+                    )
+                })?)?,
+                id: u32::from_json_value(map.remove("id").ok_or_else(|| {
+                    BoxedError::new(
+                        BasicKind::Error,
+                        "Invalid ModificationID",
+                        "The required property 'id' is missing",
+                        context(&map),
+                    )
+                })?)?,
+                description: Box::from_json_value(map.remove("description").ok_or_else(|| {
+                    BoxedError::new(
+                        BasicKind::Error,
+                        "Invalid ModificationID",
+                        "The required property 'description' is missing",
+                        context(&map),
+                    )
+                })?)?,
+                synonyms: {
+                    let element = map.remove("synonyms").ok_or_else(|| {
+                        BoxedError::new(
+                            BasicKind::Error,
+                            "Invalid ModificationID",
+                            "The required property 'synonyms' is missing",
+                            context(&map),
+                        )
+                    })?;
+                    if let Value::Array(arr) = element {
+                        let mut output = ThinVec::with_capacity(arr.len());
+                        for el in arr {
+                            match el {
+                                Value::String(str) => {
+                                    output.push((SynonymScope::Exact, str.into_boxed_str()));
+                                }
+                                Value::Array(mut tup) if tup.len() == 2 => {
+                                    let b = Box::from_json_value(tup.pop().unwrap())?;
+                                    let a = SynonymScope::from_json_value(tup.pop().unwrap())?;
+                                    output.push((a, b));
+                                }
+                                el => {
+                                    return Err(BoxedError::new(
+                                        BasicKind::Error,
+                                        "Invalid ModificationID",
+                                        "A synonym could not be parsed, it has to be either a string or a tuple with two elements",
+                                        Context::show(el.to_string()),
+                                    ));
+                                }
+                            }
+                        }
+                        output
+                    } else {
+                        return Err(BoxedError::new(
+                            BasicKind::Error,
+                            "Invalid ModificationID",
+                            "Synonyms should be an array",
+                            Context::show(element.to_string()),
+                        ));
+                    }
+                },
+                cross_ids: ThinVec::from_json_value(map.remove("cross_ids").ok_or_else(|| {
+                    BoxedError::new(
+                        BasicKind::Error,
+                        "Invalid ModificationID",
+                        "The required property 'cross_ids' is missing",
+                        context(&map),
+                    )
+                })?)?,
+                obsolete: map
+                    .remove("obsolete")
+                    .map_or(Ok(false), |v| bool::from_json_value(v))?,
+            })
+        } else {
+            Err(BoxedError::new(
+                BasicKind::Error,
+                "Invalid ModificationID",
+                "The JSON value has to be a map",
+                Context::show(value.to_string()),
+            ))
+        }
     }
 }
 
@@ -169,12 +268,6 @@ impl Space for GnoComposition {
     }
 }
 
-impl ParseJson for GnoComposition {
-    fn from_json_value(value: serde_json::Value) -> Result<Self, BoxedError<'static, BasicKind>> {
-        use_serde(value)
-    }
-}
-
 /// All possible subsumption levels in the GNOme database indicating different levels of description for a glycan species
 #[derive(
     Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Default, Hash, Serialize, Deserialize,
@@ -191,12 +284,6 @@ pub enum GnoSubsumption {
     Topology,
     /// Indicates the topology, without reducing end ring and anomeric information
     Saccharide,
-}
-
-impl ParseJson for GnoSubsumption {
-    fn from_json_value(value: serde_json::Value) -> Result<Self, BoxedError<'static, BasicKind>> {
-        use_serde(value)
-    }
 }
 
 impl Display for GnoSubsumption {

@@ -85,7 +85,7 @@ parse_test!(
 );
 parse_test!("ELVIS[Phospho|+79.966331]K", positive_example_39);
 parse_test!("ELVIS[Phospho|Obs:+79.978]K", positive_example_40);
-parse_test!("ELV[INFO:xxxxx]IS", positive_example_41);
+parse_test!(casing_specific "ELV[INFO:xxxxx]IS", positive_example_41);
 parse_test!(
     "ELVIS[Phospho|INFO:newly discovered|INFO:really awesome]K",
     positive_example_42
@@ -299,8 +299,8 @@ parse_test!(
     "(?N)NGTWEM[Oxidation]ESNENFEGYM[Oxidation]K",
     positive_example_126
 );
-parse_test!("ELV[INFO:AnyString]IS", positive_example_127);
-parse_test!("ELV[info:AnyString]IS", positive_example_128);
+parse_test!(casing_specific "ELV[INFO:AnyString]IS", positive_example_127);
+parse_test!(casing_specific "ELV[info:AnyString]IS", positive_example_128);
 parse_test!(
     "ELVIS[Phospho|INFO:newly discovered]K",
     positive_example_129
@@ -358,7 +358,7 @@ parse_test!("{Glycan:Hex}EM[U:Oxidation]EV", positive_test_164);
 parse_test!("MPGNW[Oxidation][Carboxymethyl]PESQE", positive_test_165);
 parse_test!("PEPTIDEG-[Methyl][Amidated]", positive_test_166);
 parse_test!("[Acetyl][Carbamyl]-QPEPTIDE", positive_test_167);
-parse_test!("ELV[INFO:AnyString]IS", positive_test_168);
+parse_test!(casing_specific "ELV[INFO:AnyString]IS", positive_test_168);
 parse_test!("BZJX", positive_test_169);
 parse_test!("PEM[U:+15.995]AT", positive_test_170);
 parse_test!("PEX[+147.035]AT", positive_test_171);

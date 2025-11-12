@@ -62,7 +62,7 @@ impl MonoSaccharide {
                 Self::new(crate::glycan::BaseSugar::Custom(formula.into()), &[])
             } else {
                 let mut found = None;
-                for (names, sugar) in GLYCAN_PARSE_LIST.iter() {
+                'find_glycan: for (names, sugar) in GLYCAN_PARSE_LIST.iter() {
                     for name in names {
                         if str_starts_with::<true>(&line[index..end], name) {
                             found = Some(sugar.clone());
@@ -103,7 +103,7 @@ impl MonoSaccharide {
                                 }
                             }
                             index += name.len();
-                            break;
+                            break 'find_glycan;
                         }
                     }
                 }
@@ -114,7 +114,7 @@ impl MonoSaccharide {
                     base_context.clone().add_highlight((0, index..end)),
                 )))
             };
-            let num = if let Some((offset, positive, num)) =
+            let num = if let Some((offset, _, num)) =
                 next_number::<true, false, isize>(line, index..end)
             {
                 index += offset;
@@ -123,7 +123,7 @@ impl MonoSaccharide {
                     "Invalid ProForma glycan",
                     format!("The monosaccharide occurance number {}", explain_number_error(&e)),
                     base_context.clone().add_highlight((0, index-offset..index)),
-                ))) * if positive { 1 } else { -1 }
+                )))
             } else {
                 combine_error(
                     &mut errors,

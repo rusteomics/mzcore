@@ -1,10 +1,16 @@
 use std::{any::type_name, ops::RangeInclusive, sync::Arc};
 
 use itertools::Itertools;
+use mzcv::SynonymScope;
 use serde::de::DeserializeOwned;
 use serde_json::Value;
 
 use context_error::*;
+
+use crate::{
+    ontology::Ontology,
+    sequence::{GnoComposition, GnoSubsumption},
+};
 
 /// Custom JSON parser, needed to allow backwards compatibility to older version of JSON formats.
 pub trait ParseJson: Sized {
@@ -44,59 +50,37 @@ pub fn use_serde<T: DeserializeOwned>(value: Value) -> Result<T, BoxedError<'sta
     })
 }
 
-impl ParseJson for bool {
-    fn from_json_value(value: Value) -> Result<Self, BoxedError<'static, BasicKind>> {
-        use_serde(value)
-    }
+macro_rules! use_serde {
+    ($ty:ty) => {
+        impl ParseJson for $ty {
+            fn from_json_value(value: Value) -> Result<Self, BoxedError<'static, BasicKind>> {
+                use_serde(value)
+            }
+        }
+    };
 }
 
-impl ParseJson for String {
-    fn from_json_value(value: Value) -> Result<Self, BoxedError<'static, BasicKind>> {
-        use_serde(value)
-    }
-}
-
-impl ParseJson for Box<str> {
-    fn from_json_value(value: Value) -> Result<Self, BoxedError<'static, BasicKind>> {
-        use_serde(value)
-    }
-}
-
-impl ParseJson for isize {
-    fn from_json_value(value: Value) -> Result<Self, BoxedError<'static, BasicKind>> {
-        use_serde(value)
-    }
-}
-
-impl ParseJson for usize {
-    fn from_json_value(value: Value) -> Result<Self, BoxedError<'static, BasicKind>> {
-        use_serde(value)
-    }
-}
-
-impl ParseJson for u16 {
-    fn from_json_value(value: Value) -> Result<Self, BoxedError<'static, BasicKind>> {
-        use_serde(value)
-    }
-}
-
-impl ParseJson for u8 {
-    fn from_json_value(value: Value) -> Result<Self, BoxedError<'static, BasicKind>> {
-        use_serde(value)
-    }
-}
-
-impl ParseJson for i8 {
-    fn from_json_value(value: Value) -> Result<Self, BoxedError<'static, BasicKind>> {
-        use_serde(value)
-    }
-}
-
-impl ParseJson for f64 {
-    fn from_json_value(value: Value) -> Result<Self, BoxedError<'static, BasicKind>> {
-        use_serde(value)
-    }
-}
+use_serde!(bool);
+use_serde!(String);
+use_serde!(Box<str>);
+use_serde!(usize);
+use_serde!(u128);
+use_serde!(u64);
+use_serde!(u32);
+use_serde!(u16);
+use_serde!(u8);
+use_serde!(isize);
+use_serde!(i128);
+use_serde!(i64);
+use_serde!(i32);
+use_serde!(i16);
+use_serde!(i8);
+use_serde!(f64);
+use_serde!(f32);
+use_serde!(Ontology);
+use_serde!(SynonymScope);
+use_serde!(GnoComposition);
+use_serde!(GnoSubsumption);
 
 impl<T: DeserializeOwned> ParseJson for RangeInclusive<T> {
     fn from_json_value(value: Value) -> Result<Self, BoxedError<'static, BasicKind>> {

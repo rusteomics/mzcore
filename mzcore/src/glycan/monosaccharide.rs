@@ -322,6 +322,7 @@ mod tests {
 
     #[test]
     fn out_of_spec() {
+        use context_error::FullErrorContent;
         let (res, w) = MonoSaccharide::pro_forma_composition::<false>("Man2ManP").unwrap();
         assert_eq!(
             res,
@@ -329,7 +330,9 @@ mod tests {
                 .unwrap()
                 .0
         );
-        assert_eq!(w.len(), 2);
+        println!("{w:?}");
+        assert_eq!(w.len(), 1);
+        assert_eq!(w[0].get_contexts().len(), 2);
         let (res, w) = MonoSaccharide::pro_forma_composition::<false>("Man2Man-1P").unwrap();
         assert_eq!(
             res,

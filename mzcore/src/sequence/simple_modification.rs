@@ -54,6 +54,8 @@ impl Display for MassTag {
 /// A modification on an amino acid
 #[derive(Clone, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 pub enum SimpleModificationInner {
+    /// A comment
+    Info(String),
     /// A modification defined with a monoisotopic mass shift, the mass tag (if defined), the mass itself, and the number of digits it was defined with
     Mass(MassTag, OrderedMass, Option<u8>),
     /// A modification defined with a molecular formula
@@ -152,10 +154,8 @@ impl SimpleModificationInner {
     /// Get the description, only defined for modifications from ontologies.
     pub const fn description(&self) -> Option<&ModificationId> {
         match self {
-            Self::Mass(_, _, _) | Self::Formula(_) | Self::Glycan(_) | Self::GlycanStructure(_) => {
-                None
-            }
             Self::Database { id, .. } | Self::Linker { id, .. } | Self::Gno { id, .. } => Some(id),
+            _ => None,
         }
     }
 
@@ -168,6 +168,7 @@ impl SimpleModificationInner {
         attachment: Option<AminoAcid>,
     ) -> Multi<MolecularFormula> {
         match self {
+            Self::Info(_) => Multi::default(),
             Self::Mass(_, m, _)
             | Self::Gno {
                 composition: GnoComposition::Weight(m),
@@ -358,6 +359,9 @@ impl SimpleModificationInner {
     /// When the given writer errors.
     pub fn display(&self, f: &mut impl Write, specification_compliant: bool) -> std::fmt::Result {
         match self {
+            Self::Info(info) => {
+                write!(f, "Info:{info}")?;
+            }
             Self::Mass(tag, m, Some(digits)) => {
                 write!(f, "{tag}{:+.*}", *digits as usize, m.value)?;
             }

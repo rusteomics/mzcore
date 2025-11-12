@@ -2,6 +2,7 @@
 
 use mzcv::OboOntology;
 
+#[ignore = "Only run when interested in extending the support of the Obo parser (example files are not included)"]
 #[test]
 fn test_obo_files() {
     for file in std::fs::read_dir("data").unwrap() {

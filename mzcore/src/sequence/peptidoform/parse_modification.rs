@@ -80,7 +80,11 @@ impl SimpleModificationInner {
                     combine_errors(&mut errors, w, ());
                     match result {
                         SingleReturnModification::None => (),
-                        SingleReturnModification::Modification(m) => modification = Some(m),
+                        SingleReturnModification::Modification(m) => {
+                            if modification.as_ref().is_none_or(|mo| m > *mo) {
+                                modification = Some(m);
+                            }
+                        }
                         SingleReturnModification::Positions(p) => settings.position = Some(p),
                         SingleReturnModification::Limit(l) => settings.limit = Some(l),
                         SingleReturnModification::ColocalisePlacedModifications(s) => {
@@ -389,7 +393,7 @@ fn parse_single_modification<'error>(
                     offset + tail.1..offset + tail.1 + tail.2,
                 )
                 .map(|g| Some(Arc::new(SimpleModificationInner::GlycanStructure(g)))).map_err(|e| vec![e]),
-                ("info", _) => Ok(None),
+                ("info", tail) => Ok(Some(Arc::new(SimpleModificationInner::Info(tail.to_string())))),
                 ("obs", tail) => numerical_mod(MassTag::Observed,tail).map(|(_, m)| Some(m)).map_err(|_| {
                     vec![basic_error.long_description(
                         "This modification cannot be read as a numerical modification",
