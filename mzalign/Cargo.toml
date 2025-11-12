@@ -14,7 +14,7 @@ categories = [
 keywords = ["mass-spectrometry", "bio", "sequence-alignment"]
 repository = "https://github.com/rusteomics/mzcore"
 readme = "README.md"
-include = ["src/**/*", "images/**/*", "README.md", "benches/**/*"]
+include = ["src/**/*", "test/**/*", "README.md", "benches/**/*"]
 
 [dependencies]
 mzcore = { path = "../mzcore", version = "0.1.0" }

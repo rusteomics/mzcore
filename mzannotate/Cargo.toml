@@ -14,7 +14,7 @@ categories = [
 keywords = ["spectra", "mass-spectrometry", "bio", "fragmentation", "proforma"]
 repository = "https://github.com/rusteomics/mzcore"
 readme = "README.md"
-include = ["src/**/*", "images/**/*", "README.md", "benches/**/*"]
+include = ["src/**/*", "tests/**/*", "README.md", "benches/**/*"]
 
 [dependencies]
 mzcore = { path = "../mzcore", version = "0.1.0" }
