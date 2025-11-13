@@ -44,12 +44,36 @@ impl SimpleModificationInner {
             ontologies,
         )
     }
+
     /// Try to parse the modification. Any ambiguous modification will be numbered
     /// according to the lookup (which may be added to if necessary). The result
     /// is the modification, with, if applicable, its determined ambiguous group.
     /// # Errors
     /// If it is not a valid modification return a `BoxedError` explaining the error.
     pub fn pro_forma_inner<'a>(
+        base_context: &Context<'a>,
+        line: &'a str,
+        range: Range<usize>,
+        ambiguous_lookup: &mut AmbiguousLookup,
+        cross_link_lookup: &mut CrossLinkLookup,
+        ontologies: &Ontologies,
+    ) -> ParserResult<'a, (ReturnModification, MUPSettings), BasicKind> {
+        Self::pro_forma_main::<false>(
+            base_context,
+            line,
+            range,
+            ambiguous_lookup,
+            cross_link_lookup,
+            ontologies,
+        )
+    }
+
+    /// Try to parse the modification. Any ambiguous modification will be numbered
+    /// according to the lookup (which may be added to if necessary). The result
+    /// is the modification, with, if applicable, its determined ambiguous group.
+    /// # Errors
+    /// If it is not a valid modification return a `BoxedError` explaining the error.
+    pub(crate) fn pro_forma_main<'a, const STRICT: bool>(
         base_context: &Context<'a>,
         line: &'a str,
         range: Range<usize>,
@@ -67,7 +91,7 @@ impl SimpleModificationInner {
         let mut settings = MUPSettings::default();
         let mut offset = range.start;
         for part in line[range].split('|') {
-            match parse_single_modification(
+            match parse_single_modification::<STRICT>(
                 base_context,
                 line,
                 part,
@@ -159,7 +183,7 @@ impl Default for MUPSettings {
 
 /// # Errors
 /// It returns an error when the given line cannot be read as a single modification.
-fn parse_single_modification<'error>(
+fn parse_single_modification<'error, const STRICT: bool>(
     base_context: &Context<'error>,
     line: &'error str,
     full_modification: &'error str,
@@ -295,6 +319,14 @@ fn parse_single_modification<'error>(
                     .clone()
                     .add_highlight((0, offset + tail.1, tail.2)),
             );
+            let sign_warning = BoxedError::new(
+                BasicKind::Warning,
+                "Improper modification",
+                "A numerical modification should always be specified with a sign (+/-) to help it be recognised as a mass modification and not a modification index.",
+                base_context
+                    .clone()
+                    .add_highlight((0, offset + tail.1, tail.2)),
+            );
             match (head.0.as_str(), tail.0) {
                 ("unimod", tail) => {
                     let id = tail.parse::<u32>().map_err(|_| {
@@ -362,22 +394,22 @@ fn parse_single_modification<'error>(
                             )]
                     })
                 }
-                ("u", name) => Ok(Some(handle!(errors, numerical_mod(MassTag::Ontology(Ontology::Unimod), name).map(|(_, m)| (m, Vec::new())).or_else(|_| 
+                ("u", name) => Ok(Some(handle!(errors, numerical_mod(MassTag::Ontology(Ontology::Unimod), name).map(|(sign, m)| (m, if STRICT && !sign {vec![sign_warning.clone()]} else {Vec::new()})).or_else(|_| 
                     single_name_resolution(ontologies, Ontology::Unimod, name, base_context, offset+tail.1..offset+tail.1+tail.2)
                 )))),
-                ("m", name) => Ok(Some(handle!(errors, numerical_mod(MassTag::Ontology(Ontology::Psimod), name).map(|(_, m)| (m, Vec::new())).or_else(|_| 
+                ("m", name) => Ok(Some(handle!(errors, numerical_mod(MassTag::Ontology(Ontology::Psimod), name).map(|(sign, m)| (m, if STRICT && !sign {vec![sign_warning.clone()]} else {Vec::new()})).or_else(|_| 
                     single_name_resolution(ontologies, Ontology::Psimod, name, base_context, offset+tail.1..offset+tail.1+tail.2)
                 )))),
-                ("r", name) => Ok(Some(handle!(errors, numerical_mod(MassTag::Ontology(Ontology::Resid), name).map(|(_, m)| (m, Vec::new())).or_else(|_| 
+                ("r", name) => Ok(Some(handle!(errors, numerical_mod(MassTag::Ontology(Ontology::Resid), name).map(|(sign, m)| (m, if STRICT && !sign {vec![sign_warning.clone()]} else {Vec::new()})).or_else(|_| 
                     single_name_resolution(ontologies, Ontology::Resid, name, base_context, offset+tail.1..offset+tail.1+tail.2)
                 )))),
-                ("x", name) => Ok(Some(handle!(errors, numerical_mod(MassTag::Ontology(Ontology::Xlmod), name).map(|(_, m)| (m, Vec::new())).or_else(|_| 
+                ("x", name) => Ok(Some(handle!(errors, numerical_mod(MassTag::Ontology(Ontology::Xlmod), name).map(|(sign, m)| (m, if STRICT && !sign {vec![sign_warning.clone()]} else {Vec::new()})).or_else(|_| 
                     single_name_resolution(ontologies, Ontology::Xlmod, name, base_context, offset+tail.1..offset+tail.1+tail.2)
                 )))),
-                ("c", name) => Ok(Some(handle!(errors, numerical_mod(MassTag::Ontology(Ontology::Custom), name).map(|(_, m)| (m, Vec::new())).or_else(|_| 
+                ("c", name) => Ok(Some(handle!(errors, numerical_mod(MassTag::Ontology(Ontology::Custom), name).map(|(sign, m)| (m, if STRICT && !sign {vec![sign_warning.clone()]} else {Vec::new()})).or_else(|_| 
                     single_name_resolution(ontologies, Ontology::Custom, name, base_context, offset+tail.1..offset+tail.1+tail.2)
                 )))),
-                ("gno" | "g", name) => Ok(Some(handle!(errors, numerical_mod(MassTag::Ontology(Ontology::Gnome), name).map(|(_, m)| (m, Vec::new())).or_else(|_| 
+                ("gno" | "g", name) => Ok(Some(handle!(errors, numerical_mod(MassTag::Ontology(Ontology::Gnome), name).map(|(sign, m)| (m, if STRICT && !sign {vec![sign_warning.clone()]} else {Vec::new()})).or_else(|_| 
                     single_name_resolution(ontologies, Ontology::Gnome, name, base_context, offset+tail.1..offset+tail.1+tail.2)
                 )))),
                 ("formula", _) => Ok(Some(Arc::new(SimpleModificationInner::Formula(
@@ -386,7 +418,7 @@ fn parse_single_modification<'error>(
                     })?,
                 )))),
                 ("glycan", _) => Ok(Some(Arc::new(SimpleModificationInner::Glycan(
-                    handle!(errors, MonoSaccharide::pro_forma_composition_inner::<false>(base_context, line, offset + tail.1..offset + tail.1 + tail.2))
+                    handle!(errors, MonoSaccharide::pro_forma_composition_inner::<STRICT>(base_context, line, offset + tail.1..offset + tail.1 + tail.2))
                 )))),
                 ("glycanstructure", _) => GlycanStructure::parse(
                     line,
@@ -394,7 +426,10 @@ fn parse_single_modification<'error>(
                 )
                 .map(|g| Some(Arc::new(SimpleModificationInner::GlycanStructure(g)))).map_err(|e| vec![e]),
                 ("info", tail) => Ok(Some(Arc::new(SimpleModificationInner::Info(tail.to_string())))),
-                ("obs", tail) => numerical_mod(MassTag::Observed,tail).map(|(_, m)| Some(m)).map_err(|_| {
+                ("obs", tail) => numerical_mod(MassTag::Observed,tail).map(|(sign, m)| {if STRICT && !sign {
+                    combine_error(&mut errors, sign_warning.clone(), ());
+                }
+                Some(m)}).map_err(|_| {
                     vec![basic_error.long_description(
                         "This modification cannot be read as a numerical modification",
                     )]
@@ -451,7 +486,14 @@ fn parse_single_modification<'error>(
             Ok(Some(handle!(
                 errors,
                 numerical_mod(MassTag::None, full.0)
-                    .map(|(_, m)| (m, Vec::new()))
+                .map(|(sign, m)| (m, if STRICT && !sign {vec![BoxedError::new(
+                    BasicKind::Warning,
+                    "Improper modification",
+                    "A numerical modification should always be specified with a sign (+/-) to help it be recognised as a mass modification and not a modification index.",
+                    base_context
+                        .clone()
+                        .add_highlight((0, offset + full.1, full.2)),
+                )]} else {Vec::new()}))
                     .or_else(|_| name_resolution(
                         ontologies,
                         &[Ontology::Unimod, Ontology::Psimod],

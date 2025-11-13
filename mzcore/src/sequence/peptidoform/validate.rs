@@ -57,7 +57,7 @@ pub(super) fn cross_links<'a>(
                             &mut errors,
                             BoxedError::new(
                                 BasicKind::Warning,
-                                "Modification incorrectly placed",
+                                "Modification not placed to database rules",
                                 format!(
                                     "Modification {linker} is not allowed on {}{}",
                                     match position {
@@ -94,7 +94,7 @@ pub(super) fn cross_links<'a>(
                             &mut errors,
                             BoxedError::new(
                                 BasicKind::Warning,
-                                "Invalid cross-link",
+                                "Cross-link not placed to database rules",
                                 format!(
                                     "The cross-link named '{}' cannot be placed according to its location specificities",
                                     definition.0
