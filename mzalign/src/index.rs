@@ -17,8 +17,8 @@ use mzcore::{
 /// other sequences. This improves performance because it can cache some intermediate results.
 #[derive(Debug)]
 pub struct AlignIndex<const STEPS: u16, Source> {
-    sequences: Vec<(Source, DiagonalArray<Multi<Mass>, STEPS>)>,
-    mode: MassMode,
+    pub(super) sequences: Vec<(Source, DiagonalArray<Multi<Mass>, STEPS>)>,
+    pub(super) mode: MassMode,
 }
 
 impl<const STEPS: u16, Source: HasPeptidoform<SimpleLinear> + Clone> AlignIndex<STEPS, Source> {

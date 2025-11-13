@@ -1,3 +1,5 @@
+use std::fmt::{Debug, Write};
+
 /// A diagonal array of limited depth that is implemented as a single continuous slice of memory.
 #[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub(super) struct DiagonalArray<T, const DEPTH: u16> {
@@ -47,6 +49,24 @@ impl<T, const DEPTH: u16> DiagonalArray<T, DEPTH> {
         debug_assert!(self.validate_indices(index));
         let index = Self::length(index[0]) + index[1];
         unsafe { self.data.get_unchecked(index) }
+    }
+}
+
+impl<T: std::fmt::Display, const DEPTH: u16> DiagonalArray<T, DEPTH> {
+    pub(crate) fn to_csv(&self) -> String {
+        let mut output = String::new();
+        let depth = (DEPTH as usize).min(self.len);
+        for r in 0..depth {
+            for column in 0..self.len {
+                if r <= column {
+                    write!(&mut output, "\t{:.3}", self[[column, r]]).unwrap();
+                } else {
+                    write!(&mut output, "\t.").unwrap();
+                }
+            }
+            writeln!(&mut output).unwrap();
+        }
+        output
     }
 }
 
