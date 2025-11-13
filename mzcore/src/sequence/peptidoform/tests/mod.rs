@@ -35,12 +35,14 @@ macro_rules! parse_test {
             assert_eq!(res, res_upper);
             assert_eq!(res, res_lower);
             let back = res.as_ref().unwrap().to_string();
-            let res_back = $crate::sequence::CompoundPeptidoformIon::pro_forma(
-                &back,
-                &$crate::ontology::STATIC_ONTOLOGIES,
-            )
-            .map(|(a, _)| a);
-            assert_eq!(res, res_back, "{} != {back}", $case);
+            let (res_back, back_warnings) =
+                $crate::sequence::CompoundPeptidoformIon::pro_forma_strict(
+                    &back,
+                    &$crate::ontology::STATIC_ONTOLOGIES,
+                )
+                .unwrap();
+            assert_eq!(res.unwrap(), res_back, "{} != {back}", $case);
+            assert!(back_warnings.len() == 0, "{back_warnings:?}");
         }
     };
     (just_parse $case:literal, $name:ident) => {

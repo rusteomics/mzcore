@@ -19,7 +19,7 @@ use crate::{
 #[test]
 fn parse_global_modifications() {
     let parse = |str: &str| {
-        global_modifications(&Context::none(), str, 0..str.len(), &STATIC_ONTOLOGIES)
+        global_modifications::<false>(&Context::none(), str, 0..str.len(), &STATIC_ONTOLOGIES)
             .map(|((a, b), c)| (a, b, c.into_iter().map(BoxedError::to_owned).collect()))
             .map_err(move |_| ())
     };
@@ -600,4 +600,28 @@ fn modification_ordering() {
         Peptidoform::pro_forma("AAM[+16|Oxidation|Formula:O]AA", &STATIC_ONTOLOGIES),
         Peptidoform::pro_forma("AAM[Oxidation]AA", &STATIC_ONTOLOGIES)
     );
+}
+
+#[test]
+fn strict_warnings() {
+    let warnings = |def: &str| {
+        CompoundPeptidoformIon::pro_forma_strict(def, &STATIC_ONTOLOGIES)
+            .unwrap()
+            .1
+            .into_iter()
+            .map(|e| e.to_owned())
+            .collect::<Vec<_>>()
+    };
+    assert_eq!(warnings("A[5.0]").len(), 1);
+    assert_eq!(warnings("<[5.0]@A>A").len(), 1);
+    assert_eq!(warnings("{5.0}A").len(), 1);
+    assert_eq!(warnings("[5.0]?A").len(), 1);
+    let w = warnings("<[5.0]@A>[5.0]?{5.0}A[5.0]");
+    assert_eq!(w.len(), 1);
+    assert_eq!(w[0].get_contexts().len(), 4);
+    assert_eq!(warnings("A[U:5.0]").len(), 1);
+    assert_eq!(warnings("A[Obs:5.0]").len(), 1);
+    assert_eq!(warnings("A[Glycan:Man1]").len(), 1);
+    assert_eq!(warnings("A[Glycan:hex1]").len(), 1);
+    assert_eq!(warnings("AaA").len(), 1);
 }

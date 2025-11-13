@@ -163,16 +163,60 @@ impl CompoundPeptidoformIon {
         range: Range<usize>,
         ontologies: &Ontologies,
     ) -> ParserResult<'a, Self, BasicKind> {
+        Self::pro_forma_main::<false>(base_context, line, range, ontologies)
+    }
+
+    /// Parse a compound peptidoform in the [ProForma specification](https://github.com/HUPO-PSI/ProForma).
+    /// Generate warnings for any and all things that are not exactly to specification (not that
+    /// not all warnings are in yet at the time of writing.)
+    ///
+    /// # Errors
+    /// It fails when the string is not a valid ProForma string.
+    pub fn pro_forma_strict<'a>(
+        value: &'a str,
+        ontologies: &Ontologies,
+    ) -> ParserResult<'a, Self, BasicKind> {
+        Self::pro_forma_inner_strict(
+            &Context::none().lines(0, value),
+            value,
+            0..value.len(),
+            ontologies,
+        )
+    }
+
+    /// This parses a substring of the given string as a [ProForma](https://psidev.info/proforma) definition. Additionally, this allows
+    /// passing a base context to allow to set the line index and source and other properties. Note
+    /// that the base context is assumed to contain the full line at line index 0.
+    /// Generate warnings for any and all things that are not exactly to specification (not that
+    /// not all warnings are in yet at the time of writing.)
+    ///
+    /// # Errors
+    /// It fails when the string is not a valid ProForma string.
+    pub fn pro_forma_inner_strict<'a>(
+        base_context: &Context<'a>,
+        line: &'a str,
+        range: Range<usize>,
+        ontologies: &Ontologies,
+    ) -> ParserResult<'a, Self, BasicKind> {
+        Self::pro_forma_main::<true>(base_context, line, range, ontologies)
+    }
+
+    fn pro_forma_main<'a, const STRICT: bool>(
+        base_context: &Context<'a>,
+        line: &'a str,
+        range: Range<usize>,
+        ontologies: &Ontologies,
+    ) -> ParserResult<'a, Self, BasicKind> {
         let mut peptidoforms = Vec::new();
         let mut errors = Vec::new();
         // Global modifications
         let (mut start, global_modifications) = handle!(
             errors,
-            global_modifications(base_context, line, range.clone(), ontologies)
+            global_modifications::<STRICT>(base_context, line, range.clone(), ontologies)
         );
         let (peptidoform, tail) = handle!(
             errors,
-            Self::parse_peptidoform(
+            Self::parse_peptidoform::<STRICT>(
                 base_context,
                 line,
                 start..range.end,
@@ -187,7 +231,7 @@ impl CompoundPeptidoformIon {
         while start < line.len() && start < range.end {
             let (peptidoform, tail) = handle!(
                 errors,
-                Self::parse_peptidoform(
+                Self::parse_peptidoform::<STRICT>(
                     base_context,
                     line,
                     start..range.end,
@@ -218,7 +262,7 @@ impl CompoundPeptidoformIon {
 
     /// # Errors
     /// It returns an error if the line is not a supported ProForma line.
-    fn parse_peptidoform<'a>(
+    fn parse_peptidoform<'a, const STRICT: bool>(
         base_context: &Context<'a>,
         line: &'a str,
         range: Range<usize>,
@@ -237,7 +281,7 @@ impl CompoundPeptidoformIon {
         while index < line.len() && ending == End::CrossLink && index < range.end {
             let mut result = handle!(
                 errors,
-                Self::parse_linear_peptide(
+                Self::parse_linear_peptide::<STRICT>(
                     base_context,
                     line,
                     index..range.end,
@@ -312,7 +356,7 @@ impl CompoundPeptidoformIon {
     /// # Errors
     /// It returns an error if the line is not a supported ProForma line.
     #[expect(clippy::missing_panics_doc)] // Can not panic
-    fn parse_linear_peptide<'a>(
+    fn parse_linear_peptide<'a, const STRICT: bool>(
         base_context: &Context<'a>,
         line: &'a str,
         range: Range<usize>,
@@ -348,7 +392,7 @@ impl CompoundPeptidoformIon {
         // Unknown position mods
         let (index, unknown_position_modifications) = handle!(
             errors,
-            global_unknown_position_mods(
+            global_unknown_position_mods::<STRICT>(
                 base_context,
                 index,
                 line,
@@ -360,7 +404,7 @@ impl CompoundPeptidoformIon {
         // Labile modification(s)
         let (mut index, labile) = handle!(
             errors,
-            labile_modifications(base_context, line, index, ontologies)
+            labile_modifications::<STRICT>(base_context, line, index, ontologies)
         );
         peptide = peptide.labile(labile);
 
@@ -379,7 +423,7 @@ impl CompoundPeptidoformIon {
             }));
             n_term_mods.push(handle!(
                 errors,
-                SimpleModificationInner::pro_forma_inner(
+                SimpleModificationInner::pro_forma_main::<STRICT>(
                     base_context,
                     line,
                     temp_index + 1..end_index,
@@ -518,7 +562,7 @@ impl CompoundPeptidoformIon {
                                     base_context.clone().add_highlight((0, index, 1)),
                                 )
                         }));
-                        let modification = handle!(errors, SimpleModificationInner::pro_forma_inner(
+                        let modification = handle!(errors, SimpleModificationInner::pro_forma_main::<STRICT>(
                             base_context,
                             line, index + 1..end_index,
                             &mut ambiguous_lookup, cross_link_lookup, ontologies,
@@ -567,7 +611,7 @@ impl CompoundPeptidoformIon {
                     }));
                     let (modification, _) = handle!(
                         errors,
-                        SimpleModificationInner::pro_forma_inner(
+                        SimpleModificationInner::pro_forma_main::<STRICT>(
                             base_context,
                             line,
                             index + 1..end_index,
@@ -608,7 +652,7 @@ impl CompoundPeptidoformIon {
                             }));
                             let (modification, _) = handle!(
                                 errors,
-                                SimpleModificationInner::pro_forma_inner(
+                                SimpleModificationInner::pro_forma_main::<STRICT>(
                                     base_context,
                                     line,
                                     index + 1..end_index,
@@ -718,6 +762,18 @@ impl CompoundPeptidoformIon {
                         .into(),
                         ambiguous_aa,
                     ));
+                    if STRICT && ch.is_ascii_lowercase() {
+                        combine_error(
+                            &mut errors,
+                            BoxedError::new(
+                                BasicKind::Warning,
+                                "Lowercase amino acid",
+                                "Use uppercase for amino acids",
+                                base_context.clone().add_highlight((0, index, 1)),
+                            ),
+                            (),
+                        );
+                    }
                     index += 1;
                 }
                 (true, _) => {
@@ -868,7 +924,7 @@ impl CompoundPeptidoformIon {
 /// Parse global modifications
 /// # Errors
 /// If the global modifications are not defined to the specification
-pub(super) fn global_modifications<'a>(
+pub(super) fn global_modifications<'a, const STRICT: bool>(
     base_context: &Context<'a>,
     line: &'a str,
     range: Range<usize>,
@@ -932,7 +988,7 @@ pub(super) fn global_modifications<'a>(
             }
             let modification = handle!(
                 errors,
-                SimpleModificationInner::pro_forma_inner(
+                SimpleModificationInner::pro_forma_main::<STRICT>(
                     base_context,
                     line,
                     start_index + 2..at_index - 2,
@@ -1114,7 +1170,7 @@ pub(super) fn parse_placement_rules<'a>(
 /// The returned happy path contains the mods and the index from where to continue parsing.
 /// # Errors
 /// Give all errors when the text cannot be read as mods of unknown position.
-pub(super) fn global_unknown_position_mods<'a>(
+pub(super) fn global_unknown_position_mods<'a, const STRICT: bool>(
     base_context: &Context<'a>,
     start: usize,
     line: &'a str,
@@ -1137,7 +1193,7 @@ pub(super) fn global_unknown_position_mods<'a>(
                 base_context.clone().add_highlight((0, index, 1)),
             )]
         })? + 1;
-        let id = match SimpleModificationInner::pro_forma_inner(
+        let id = match SimpleModificationInner::pro_forma_main::<STRICT>(
             base_context,
             line,
             start_index + 1..index - 1,
@@ -1235,7 +1291,7 @@ pub(super) fn global_unknown_position_mods<'a>(
 /// Parse labile modifications `{mod}{mod2}`. These are assumed to fall off from the peptide in the MS.
 /// # Errors
 /// If the mods are not followed by a closing brace. Or if the mods are ambiguous.
-fn labile_modifications<'a>(
+fn labile_modifications<'a, const STRICT: bool>(
     base_context: &Context<'a>,
     line: &'a str,
     mut index: usize,
@@ -1259,7 +1315,7 @@ fn labile_modifications<'a>(
             return Err(errors);
         };
 
-        match SimpleModificationInner::pro_forma_inner(
+        match SimpleModificationInner::pro_forma_main::<STRICT>(
             base_context,
             line,
             index + 1..end_index,
