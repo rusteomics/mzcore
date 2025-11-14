@@ -3,15 +3,15 @@
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    AlignIndex, AlignScoring, AlignType, MatchType, Score,
+    AlignIndex, AlignScoring, AlignType, MatchType, Piece, Score,
     diagonal_array::DiagonalArray,
-    mass_alignment::{align_cached, calculate_masses},
+    mass_alignment::{Matrix, align_cached, calculate_masses, score, score_pair},
 };
 use mzcore::{
     prelude::*,
     quantities::Multi,
     sequence::{HasPeptidoform, SimpleLinear},
-    system::Mass,
+    system::{Mass, dalton},
 };
 
 #[derive(Clone, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
@@ -103,9 +103,75 @@ impl<'a, Sequence: HasPeptidoform<SimpleLinear>, const STEPS: u16>
             start: 0,
         }
     }
+
+    fn update(mut self, path: &[Piece], is_a: bool, start: usize) -> Self {
+        let mut path_index = 0;
+        let mut seq_index = 0;
+        let mut internal_index = 0;
+        for piece in path {
+            let ref_step = piece.step_a.max(piece.step_b);
+            let seq_step = if is_a { piece.step_a } else { piece.step_b };
+            self.path[path_index].ref_step = self.path[path_index].ref_step.max(ref_step);
+            let goal = seq_index + seq_step;
+            while seq_index + internal_index < goal {
+                if seq_index + self.path[path_index].seq_step - internal_index > goal {
+                    internal_index =
+                        goal - (seq_index + self.path[path_index].seq_step - internal_index);
+                    break;
+                }
+                seq_index += self.path[path_index].seq_step - internal_index;
+                internal_index = 0;
+                path_index += usize::from(path_index != self.path.len() - 1); // just saturate for now
+            }
+        }
+        self
+    }
+
+    // Outer 'ref' index
+    fn get_aa_at(&self, index: usize) -> (&SequenceElement<SimpleLinear>, &Multi<Mass>) {
+        let mut path_index = 0;
+        let mut ref_index = 0;
+        let mut seq_index = 0;
+        while ref_index < index {
+            seq_index += self.path[path_index].seq_step as usize;
+            ref_index += self.path[path_index].ref_step as usize;
+            path_index += usize::from(path_index != self.path.len() - 1); // just saturate for now
+        }
+        let i = (seq_index - 1).min(self.sequence.cast_peptidoform().len() - 1);
+        (
+            &self.sequence.cast_peptidoform().sequence()[i],
+            &self.masses[[i, 0]],
+        )
+    }
+
+    // Outer 'ref' index, seq len
+    fn get_block_at(
+        &self,
+        index: usize,
+        len: usize,
+    ) -> Option<(&[SequenceElement<SimpleLinear>], &Multi<Mass>)> {
+        let mut path_index = 0;
+        let mut ref_index = 0;
+        let mut seq_index = 0;
+        while ref_index < index {
+            seq_index += self.path[path_index].seq_step as usize;
+            ref_index += self.path[path_index].ref_step as usize;
+            path_index += usize::from(path_index != self.path.len() - 1); // just saturate for now
+        }
+        if seq_index >= len {
+            Some((
+                &self.sequence.cast_peptidoform().sequence()[seq_index - len..seq_index],
+                &self.masses[[seq_index - len, len - 1]],
+            ))
+        } else {
+            None
+        }
+    }
 }
 
-#[derive(Clone, Debug, Default, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
+#[derive(
+    Clone, Copy, Debug, Default, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize,
+)]
 struct MultiPiece {
     match_type: MatchType,
     /// Ref seq is required to always be at least `seq_step`
@@ -188,12 +254,13 @@ impl<const STEPS: u16, Sequence: HasPeptidoform<SimpleLinear> + Clone> AlignInde
         matrix[[self.sequences.len(), self.sequences.len()]] = 0.0;
         // Remember that the last node is not made (the outgroup node) so do not try to merge that one
 
-        println!("{}", matrix.to_csv());
         // Create tree
         // It might work out to now rely on the fact that the outgroup is always the furthest distance from all other nodes that we can just immediately start merging the nodes to produce the multi alignment
 
         // Progressively merge
-        while nodes.len() > 2 {
+        while nodes.len() > 1 {
+            println!("{}", matrix.to_csv());
+
             let (distance, [far_index, close_index]) = matrix.min::<true>();
             if maximal_distance.is_some_and(|m| distance > m)
                 || far_index == nodes.len()
@@ -205,12 +272,13 @@ impl<const STEPS: u16, Sequence: HasPeptidoform<SimpleLinear> + Clone> AlignInde
             // Merge nodes (this is where the actual alignment happens)
             let close_node = std::mem::take(&mut nodes[close_index]);
             let far_node = nodes.remove(far_index);
-            nodes[close_index] = merge(close_node, far_node, scoring, align_type);
+            nodes[close_index] =
+                multi_align_cached::<STEPS, Sequence>(close_node, far_node, scoring, align_type);
 
             // Update matric to merge these columns
             matrix = matrix.merge_columns(close_index, far_index, distance);
             println!(
-                "Merged {close_index} with {far_index} left nodes {} left matrix {}",
+                "Merged {close_index} with {far_index} (left: nodes {}, matrix {})",
                 nodes.len(),
                 matrix.len(),
             );
@@ -224,28 +292,261 @@ impl<const STEPS: u16, Sequence: HasPeptidoform<SimpleLinear> + Clone> AlignInde
 }
 
 /// Do the actual alignment
-fn merge<'a, Sequence, const STEPS: u16>(
+fn merge<'a, Sequence: HasPeptidoform<SimpleLinear>, const STEPS: u16>(
     mut a: Vec<MultiAlignmentLineTemp<'a, Sequence, STEPS>>,
     mut b: Vec<MultiAlignmentLineTemp<'a, Sequence, STEPS>>,
     scoring: AlignScoring<'_>,
     align_type: AlignType,
 ) -> Vec<MultiAlignmentLineTemp<'a, Sequence, STEPS>> {
-    a.append(&mut b); // TODO
-    a
+    Vec::new()
+    // if a.len() == 1 && b.len() == 1 {
+    //     let a = a.pop().unwrap();
+    //     let b = b.pop().unwrap();
+    //     let al = align_cached(
+    //         a.sequence, a.masses, b.sequence, b.masses, scoring, align_type,
+    //     );
+    //     let mut path_a = Vec::with_capacity(al.path.len());
+    //     let mut path_b = Vec::with_capacity(al.path.len());
+    //     for p in al.path {
+    //         path_a.push(MultiPiece {
+    //             match_type: p.match_type,
+    //             ref_step: p.step_a.max(p.step_b),
+    //             seq_step: p.step_a,
+    //         });
+    //         path_b.push(MultiPiece {
+    //             match_type: p.match_type,
+    //             ref_step: p.step_a.max(p.step_b),
+    //             seq_step: p.step_b,
+    //         });
+    //     }
+    //     vec![
+    //         MultiAlignmentLineTemp {
+    //             original_index: a.original_index,
+    //             sequence: al.seq_a,
+    //             masses: a.masses,
+    //             path: path_a,
+    //             start: al.start_a,
+    //         },
+    //         MultiAlignmentLineTemp {
+    //             original_index: b.original_index,
+    //             sequence: al.seq_b,
+    //             masses: b.masses,
+    //             path: path_b,
+    //             start: al.start_b,
+    //         },
+    //     ]
+    // } else {
+    //     a.append(&mut b); // TODO
+    //     a
+    // }
 }
 
-enum MultiAlignTree<'a, Sequence, const STEPS: u16> {
-    Branch {
-        length: f64,
-        left: Box<MultiAlignTree<'a, Sequence, STEPS>>,
-        right: Box<MultiAlignTree<'a, Sequence, STEPS>>,
-    },
-    Leaf {
-        length: f64,
-        sequences: Vec<MultiAlignmentLineTemp<'a, Sequence, STEPS>>,
-    },
-    // To easily get nodes out of the list for processing
-    Empty,
+/// Do mass based alignment, but with precomputed masses, see [align] for the normal entry point variant.
+/// # Panics
+/// It panics when the length of `seq_a` or `seq_b` is bigger than [`isize::MAX`].
+#[expect(clippy::too_many_lines)]
+#[allow(clippy::similar_names)]
+pub(super) fn multi_align_cached<'a, const STEPS: u16, Sequence: HasPeptidoform<SimpleLinear>>(
+    mut a: Vec<MultiAlignmentLineTemp<'a, Sequence, STEPS>>,
+    mut b: Vec<MultiAlignmentLineTemp<'a, Sequence, STEPS>>,
+    scoring: AlignScoring<'_>,
+    align_type: AlignType,
+) -> Vec<MultiAlignmentLineTemp<'a, Sequence, STEPS>> {
+    println!("Max steps: {STEPS}");
+    let len_a = a
+        .iter()
+        .fold(0, |acc, i| acc.max(i.sequence.cast_peptidoform().len()));
+    let len_b = b
+        .iter()
+        .fold(0, |acc, i| acc.max(i.sequence.cast_peptidoform().len()));
+    let mut matrix = Matrix::new(len_a, len_b);
+    let mut global_highest = (0, 0, 0);
+
+    if align_type.left.global_a() {
+        matrix.global_start(true, scoring);
+    }
+    if align_type.left.global_b() {
+        matrix.global_start(false, scoring);
+    }
+
+    // These two arrays serve for optimizational purposes.
+    // In `score` routine equality of masses is checked
+    // between masses_a[index_a - len_a .. index_a] and masses_b[index_b - len_b .. index_b]
+    // ranges which is expensive.
+    // However, in most of the cases masses are very different there and the check fails.
+    // We precompute two following arrays:
+    // - ranges_a[index_a - len_a .. index_a] = (min_mass, max_mass)
+    // min_mass is the minimal mass that matches at least one mass in masses_a[index_a - len_a .. index_a].
+    // max_mass is the same for maximal mass.
+    // - ranges_b[index_b - len_b .. index_b] = (min_mass, max_mass)
+    // min_mass in the minimal mass across masses_b[index_b - len_b .. index_b].
+    // max_mass is the same for maximal mass.
+    // Then, before calling `score` we can perform a quick check whether
+    // the ranges overlap for given slices. If they do not overlap, we skip calling `score`
+    // as it is guaranteed that there are no two masses that are within tolerance.
+    let ranges_a = a
+        .iter()
+        .map(|a| {
+            let mut ranges: DiagonalArray<(Mass, Mass), STEPS> =
+                DiagonalArray::new(a.sequence.cast_peptidoform().len());
+            for i in 0..a.sequence.cast_peptidoform().len() {
+                for j in 0..=i.min(STEPS as usize) {
+                    let (min, max) = unsafe { a.masses.get_unchecked([i, j]) }.iter().fold(
+                        (
+                            Mass::new::<dalton>(f64::INFINITY),
+                            Mass::new::<dalton>(f64::NEG_INFINITY),
+                        ),
+                        |(min, max), &m| {
+                            let range = scoring.tolerance.bounds(m);
+                            (min.min(range.0), max.max(range.1))
+                        },
+                    );
+                    ranges[[i, j]] = (min, max);
+                }
+            }
+            ranges
+        })
+        .collect::<Vec<_>>();
+
+    let ranges_b = b
+        .iter()
+        .map(|b| {
+            let mut ranges: DiagonalArray<(Mass, Mass), STEPS> =
+                DiagonalArray::new(b.sequence.cast_peptidoform().len());
+            for i in 0..b.sequence.cast_peptidoform().len() {
+                for j in 0..=i.min(STEPS as usize) {
+                    let (min, max) = unsafe { b.masses.get_unchecked([i, j]) }.iter().fold(
+                        (
+                            Mass::new::<dalton>(f64::INFINITY),
+                            Mass::new::<dalton>(f64::NEG_INFINITY),
+                        ),
+                        |(min, max), &m| (min.min(m), max.max(m)),
+                    );
+                    ranges[[i, j]] = (min, max);
+                }
+            }
+            ranges
+        })
+        .collect::<Vec<_>>();
+
+    for index_a in 1..=len_a {
+        for index_b in 1..=len_b {
+            // Returns the score for a gap transition.
+            // gap_a controls whether the gap is in a or b.
+            let score_gap = |gap_a: bool| {
+                let prev = if gap_a {
+                    unsafe { matrix.get_unchecked([index_a - 1, index_b]) }
+                } else {
+                    unsafe { matrix.get_unchecked([index_a, index_b - 1]) }
+                };
+
+                let is_first_step = prev.step_a == 0 && prev.step_b == 0;
+                let is_previous_gap = prev.step_a == 0 && !gap_a || prev.step_b == 0 && gap_a;
+                let is_gap_start = is_first_step || !is_previous_gap;
+                // First check the score to be used for affine gaps
+                let score = scoring.gap_extend as isize
+                    + scoring.gap_start as isize * isize::from(is_gap_start);
+
+                let len_a = u16::from(gap_a);
+                let len_b = u16::from(!gap_a);
+                Piece {
+                    score: prev.score + score,
+                    local_score: score,
+                    match_type: MatchType::Gap,
+                    step_a: len_a,
+                    step_b: len_b,
+                }
+            };
+
+            // First try all gap possibilities.
+            let gap_score_a = score_gap(true);
+            let gap_score_b = score_gap(false);
+
+            let mut highest = if gap_score_a.score >= gap_score_b.score {
+                gap_score_a
+            } else {
+                gap_score_b
+            };
+
+            // Now try matching single aminoacids.
+            let prev = unsafe { matrix.get_unchecked([index_a - 1, index_b - 1]) };
+
+            for ia in 0..a.len() {
+                for ib in 0..b.len() {
+                    let pair_score = score_pair(
+                        a[ia].get_aa_at(index_a),
+                        b[ib].get_aa_at(index_b),
+                        scoring,
+                        prev.score,
+                    );
+                    if pair_score.score > highest.score {
+                        highest = pair_score;
+                    }
+                }
+            }
+
+            for ia in 0..a.len() {
+                for ib in 0..b.len() {
+                    // Now try matching longer sequences.
+                    for len_a in 1..=index_a.min(STEPS as usize) {
+                        let range_a =
+                            unsafe { ranges_a[ia].get_unchecked([index_a - 1, len_a - 1]) }; // TODO: this needs to be fixed for ref vs seq indices
+
+                        let min_len_b = if len_a == 1 { 2 } else { 1 };
+
+                        for len_b in min_len_b..=index_b.min(STEPS as usize) {
+                            let range_b =
+                                unsafe { ranges_b[ib].get_unchecked([index_b - 1, len_b - 1]) };
+                            // Note that ranges are already expanded by tolerance, so
+                            // exact comparision is fine here.
+                            if range_a.0 > range_b.1 || range_b.0 > range_a.1 {
+                                continue;
+                            }
+                            // len_a and b are always <= STEPS
+                            let match_score = {
+                                let prev = unsafe {
+                                    matrix.get_unchecked([index_a - len_a, index_b - len_b])
+                                };
+                                let base_score = prev.score;
+                                a[ia]
+                                    .get_block_at(index_a, len_a)
+                                    .and_then(|a| {
+                                        b[ib].get_block_at(index_b, len_b).map(|b| (a, b))
+                                    })
+                                    .and_then(|(a, b)| score(a, b, scoring, base_score))
+                            };
+                            if let Some(p) = match_score
+                                && p.score > highest.score
+                            {
+                                highest = p;
+                            }
+                        }
+                    }
+                }
+            }
+            if highest.score >= global_highest.0 {
+                global_highest = (highest.score, index_a, index_b);
+            }
+            if align_type.left.global() || highest.score > 0 {
+                unsafe {
+                    *matrix.get_unchecked_mut([index_a, index_b]) = highest;
+                }
+            }
+        }
+    }
+    let (start_a, start_b, path) = matrix.trace_path(align_type, global_highest);
+
+    let mut sequences = Vec::with_capacity(a.len() + b.len());
+
+    for seq in a {
+        sequences.push(seq.update(&path, true, start_a));
+    }
+
+    for seq in b {
+        sequences.push(seq.update(&path, false, start_b));
+    }
+
+    sequences
 }
 
 #[cfg(test)]
@@ -254,33 +555,26 @@ mod tests {
     use itertools::Itertools;
     use mzcore::ontology::STATIC_ONTOLOGIES;
 
-    //     #[test]
-    //     fn simple() {
-    //         // N = GG, N[Deamidated] = D, WGG = HY, HD = DH
-    //         let seq = |def: &str| {
-    //             Peptidoform::pro_forma(def, &STATIC_ONTOLOGIES)
-    //                 .unwrap()
-    //                 .0
-    //                 .into_simple_linear()
-    //                 .unwrap()
-    //         };
-    //         let sequences = vec![seq("AGGWHD"), seq("ANWHN[Deamidated]"), seq("AHYDH")];
-    //         let alignment = multi_align::<4, Peptidoform<SimpleLinear>>(
-    //             sequences,
-    //             AlignScoring::default(),
-    //             AlignType::GLOBAL,
-    //         );
-    //         let mut buf = String::new();
-    //         alignment.debug_display(&mut buf);
-    //         buf = buf.split('\n').skip(1).join("\n");
-    //         assert_eq!(
-    //             buf,
-    //             "AGGWHD
-    // AN·WHN
-    // AHY·DH
-    // "
-    //         );
-    //     }
+    #[test]
+    fn simple() {
+        // N = GG, N[Deamidated] = D, WGG = HY, HD = DH
+        let seq = |def: &str| {
+            Peptidoform::pro_forma(def, &STATIC_ONTOLOGIES)
+                .unwrap()
+                .0
+                .into_simple_linear()
+                .unwrap()
+        };
+        let sequences = vec![seq("AGGWHD"), seq("ANWHN[Deamidated]"), seq("AHYDH")];
+        let index =
+            AlignIndex::<4, Peptidoform<SimpleLinear>>::new(sequences, MassMode::Monoisotopic);
+        let alignment = index.multi_align(None, AlignScoring::default(), AlignType::GLOBAL);
+        let mut buf = String::new();
+        alignment[0].debug_display(&mut buf);
+        println!("{buf}");
+        buf = buf.split('\n').skip(1).join("\n");
+        assert_eq!(buf, "AGGWHD\nAN·WHN\nAHY·DH");
+    }
 
     #[test]
     fn many() {
@@ -308,6 +602,7 @@ mod tests {
         let alignment = index.multi_align(None, AlignScoring::default(), AlignType::GLOBAL);
         let mut buf = String::new();
         alignment[0].debug_display(&mut buf);
+        println!("{buf}");
         buf = buf.split('\n').skip(1).join("\n");
         assert_eq!(
             buf,

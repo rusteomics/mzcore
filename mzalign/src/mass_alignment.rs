@@ -351,7 +351,7 @@ pub(super) fn score_pair<A: AtMax<SimpleLinear>, B: AtMax<SimpleLinear>>(
 
 /// Score two sets of aminoacids (it will only be called when at least one of a and b has len > 1)
 /// Returns none if no sensible explanation can be made
-fn score<A: AtMax<SimpleLinear>, B: AtMax<SimpleLinear>>(
+pub(super) fn score<A: AtMax<SimpleLinear>, B: AtMax<SimpleLinear>>(
     a: (&[SequenceElement<A>], &Multi<Mass>),
     b: (&[SequenceElement<B>], &Multi<Mass>),
     scoring: AlignScoring<'_>,
@@ -416,7 +416,7 @@ pub(super) fn calculate_masses<const STEPS: u16>(
     array
 }
 
-struct Matrix {
+pub(super) struct Matrix {
     value: Vec<Vec<Piece>>,
     a: usize,
     b: usize,
