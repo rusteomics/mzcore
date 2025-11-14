@@ -8,6 +8,11 @@ pub(super) struct DiagonalArray<T, const DEPTH: u16> {
 }
 
 impl<T, const DEPTH: u16> DiagonalArray<T, DEPTH> {
+    /// Get the length of the array (how many rows/columns)
+    pub(crate) const fn len(&self) -> usize {
+        self.len
+    }
+
     /// Calculate the index of a given point (along the first axis; n) into the array
     const fn length(n: usize) -> usize {
         Self::length_with_depth(n, DEPTH)
@@ -21,6 +26,20 @@ impl<T, const DEPTH: u16> DiagonalArray<T, DEPTH> {
             n
         };
         (mi + 1) * mi / 2 + n.saturating_sub(depth as usize) * depth as usize
+    }
+
+    /// Calculate the index of a given point (along the first axis; n) into the array, with a given depth
+    fn iter(&self) -> impl Iterator<Item = (&T, [usize; 2])> + '_ {
+        let mut index = [0, 0];
+        self.data.iter().take(Self::length(self.len)).map(move |v| {
+            let i = index;
+            if index[0] == index[1] {
+                index = [index[0] + 1, 0];
+            } else {
+                index = [index[0], index[1] + 1];
+            }
+            (v, i)
+        })
     }
 
     /// # Panics
@@ -49,6 +68,59 @@ impl<T, const DEPTH: u16> DiagonalArray<T, DEPTH> {
         debug_assert!(self.validate_indices(index));
         let index = Self::length(index[0]) + index[1];
         unsafe { self.data.get_unchecked(index) }
+    }
+}
+
+impl<const DEPTH: u16> DiagonalArray<f64, DEPTH> {
+    /// Get the minimal value, ignoring the diagonal
+    /// # Panics
+    /// If the diagonal array is empty
+    pub(crate) fn min<const IGNORE_DIAGONAL: bool>(&self) -> (f64, [usize; 2]) {
+        self.iter()
+            .filter(|(_, [o, i])| o != i || !IGNORE_DIAGONAL)
+            .min_by(|(a, _), (b, _)| a.total_cmp(b))
+            .map(|(v, i)| (*v, i))
+            .expect("Empty diagonal arrays are not valid")
+    }
+
+    // Specifically for neighbour joining.
+    // This merges the indicated row+column indices and repacks the data to remove the far row+column this does not trim the underlying boxed slice.
+    pub(crate) fn merge_columns(
+        mut self,
+        close_index: usize,
+        far_index: usize,
+        distance: f64,
+    ) -> Self {
+        debug_assert!(self.len > 1);
+        debug_assert!(close_index < far_index);
+        for row in 0..close_index {
+            self[[close_index, row]] =
+                (self[[close_index, row]] + self[[far_index, row]] - distance) / 2.0;
+        }
+        for column in close_index + 1..self.len {
+            self[[column, close_index]] = (self[[column, close_index]]
+                + self[[column.max(far_index), column.min(far_index)]]
+                - distance)
+                / 2.0;
+        }
+        // Remove unneeded cells
+        let mut index = [0, 0];
+        let mut linear_index = 0;
+
+        for i in 0..Self::length(self.len) {
+            if index[0] != far_index && index[1] != far_index {
+                self.data[linear_index] = self.data[i];
+                linear_index += 1;
+            }
+            if index[0] == index[1] {
+                index = [index[0] + 1, 0];
+            } else {
+                index = [index[0], index[1] + 1];
+            }
+        }
+
+        self.len -= 1;
+        self
     }
 }
 

@@ -290,6 +290,12 @@ impl<A, B> Alignment<A, B> {
         &self.seq_b
     }
 
+    /// The distance metric to use in MMSA
+    pub(crate) fn distance(&self) -> f64 {
+        let stats = self.stats();
+        f64::midpoint(1.0 - stats.mass_similarity(), 1.0 - stats.identity())
+    }
+
     /// The normalised score, normalised for the alignment length and for the used alphabet.
     /// The normalisation is calculated as follows `absolute_score / max_score`.
     pub const fn normalised_score(&self) -> f64 {
