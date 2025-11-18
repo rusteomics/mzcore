@@ -14,7 +14,8 @@ pub trait HasPeptidoformImpl {
 /// [`Complexity`](crate::sequence::Complexity) level. Do not implement this trait directly
 /// implement [`HasPeptidoformImpl`] instead.
 #[diagnostic::on_unimplemented(
-    message = "Implement HasPeptidoformImpl instead of HasPeptidoform<Complexity>"
+    message = "This structure does not have a `Peptidoform<{Complexity}>`",
+    note = "If this is a structure you control implement `HasPeptidoformImpl` instead of `HasPeptidoform<{Complexity}>`"
 )]
 pub trait HasPeptidoform<Complexity> {
     /// Get a reference to a peptidoform.

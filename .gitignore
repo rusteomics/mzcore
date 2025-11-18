@@ -11,6 +11,7 @@ errors.dat
 *.obo
 *.owl
 *.out
+*.7z
 glycosmos_glycans_list.csv
 .venv/
 docs/**/_build/

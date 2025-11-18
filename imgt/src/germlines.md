@@ -224,7 +224,7 @@ _Number of genes / number of alleles_
 |------|---|---|---|
 |IGHV|81/320|9/18|12/94|
 |IGKV|64/116|5/8|1/4|
-|IGLV|51/113|7/10|7/15|
+|IGLV|52/114|8/11|8/18|
 |IGIV|0/0|0/0|0/0|
 
 _Number of genes / number of alleles_
