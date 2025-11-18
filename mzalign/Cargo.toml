@@ -5,7 +5,7 @@ edition.workspace = true
 license.workspace = true
 publish = true
 rust-version.workspace = true
-version = "0.1.0"
+version = "0.1.1"
 description = "Align peptidoforms while with mass-based alignment."
 categories = [
     "science::bioinformatics::proteomics",
@@ -17,7 +17,7 @@ readme = "README.md"
 include = ["src/**/*", "tests/**/*", "README.md", "benches/**/*"]
 
 [dependencies]
-mzcore = { path = "../mzcore", version = "0.1.0" }
+mzcore = { path = "../mzcore", version = "0.1.1" }
 mzcv = { path = "../mzcv", version = "0.1.0" }
 imgt = { path = "../imgt", version = "0.1.0", default-features = false, optional = true }
 

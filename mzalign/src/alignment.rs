@@ -382,6 +382,13 @@ impl<A, B> Alignment<A, B> {
             length,
         }
     }
+
+    /// Get a short representation of the alignment in CIGAR like format.
+    /// It has three additional classes `{a}(:{b})?(r|i)` and `{a}m` denoting any special step with the given a and b step size, if b is not given it is the same as a.
+    /// `r` is rotation, `i` is isobaric, and `m` is identity but mass mismatch (modification).
+    pub fn short(&self) -> String {
+        Piece::cigar(self.path(), self.start_a, self.start_b)
+    }
 }
 
 impl<A: HasPeptidoform<Linear>, B: HasPeptidoform<Linear>> Alignment<A, B> {
@@ -424,7 +431,7 @@ impl<A: HasPeptidoform<Linear>, B: HasPeptidoform<Linear>> Alignment<A, B> {
             .cartesian_product(self.mass_b().iter())
             .map(|(a, b)| a.monoisotopic_mass() - b.monoisotopic_mass())
             .min_by(|a, b| a.abs().value.total_cmp(&b.abs().value))
-            .expect("An empty Multi<MolecularFormula>  was detected")
+            .expect("An empty Multi<MolecularFormula> was detected")
     }
 
     /// Get the error in ppm for this match, if it is a (partial) local match it will only take the matched amino acids into account.
@@ -437,13 +444,6 @@ impl<A: HasPeptidoform<Linear>, B: HasPeptidoform<Linear>> Alignment<A, B> {
             .map(|(a, b)| a.monoisotopic_mass().ppm(b.monoisotopic_mass()))
             .min_by(|a, b| a.value.total_cmp(&b.value))
             .expect("An empty Multi<MolecularFormula> was detected")
-    }
-
-    /// Get a short representation of the alignment in CIGAR like format.
-    /// It has three additional classes `{a}(:{b})?(r|i)` and `{a}m` denoting any special step with the given a and b step size, if b is not given it is the same as a.
-    /// `r` is rotation, `i` is isobaric, and `m` is identity but mass mismatch (modification).
-    pub fn short(&self) -> String {
-        Piece::cigar(self.path(), self.start_a, self.start_b)
     }
 }
 

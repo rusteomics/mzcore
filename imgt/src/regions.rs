@@ -3,6 +3,8 @@ use mzcore::sequence::{Annotation, Peptidoform, Region, UnAmbiguous};
 use serde::{Deserialize, Serialize};
 use std::{fmt::Display, str::FromStr, sync::Arc};
 
+use crate::Allele;
+
 use super::species::Species;
 
 /// A selection of germlines from a single species.
@@ -301,6 +303,23 @@ impl Germline {
     /// Iterate over the sequences
     pub fn iter(&self) -> <&Self as IntoIterator>::IntoIter {
         self.into_iter()
+    }
+
+    /// Select a specific allele
+    pub fn select_allele(&self, allele: Option<usize>) -> Option<Allele<'_>> {
+        allele
+            .map_or_else(
+                || self.alleles.first(),
+                |allele| self.alleles.iter().find(|(i, _)| *i == allele),
+            )
+            .map(|(i, sequence)| Allele {
+                species: self.species,
+                gene: std::borrow::Cow::Borrowed(&self.name),
+                number: *i,
+                sequence: &sequence.sequence,
+                regions: &sequence.regions,
+                annotations: &sequence.annotations,
+            })
     }
 }
 

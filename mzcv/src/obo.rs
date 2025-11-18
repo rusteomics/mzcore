@@ -95,6 +95,17 @@ impl std::str::FromStr for SynonymScope {
     }
 }
 
+impl std::fmt::Display for SynonymScope {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Exact => write!(f, "Exact"),
+            Self::Broad => write!(f, "Broad"),
+            Self::Narrow => write!(f, "Narrow"),
+            Self::Related => write!(f, "Related"),
+        }
+    }
+}
+
 /// The type for an Obo stanza
 #[derive(Clone, Copy, Debug, Decode, Default, Encode, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub enum OboStanzaType {

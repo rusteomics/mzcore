@@ -15,7 +15,7 @@ use mzcore::{
 };
 
 #[derive(Clone, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
-struct MultiAlignment<Sequence> {
+pub struct MultiAlignment<Sequence> {
     lines: Vec<MultiAlignmentLine<Sequence>>,
     score: Score,
     maximal_step: u16,
@@ -58,6 +58,13 @@ impl<Sequence: HasPeptidoform<SimpleLinear>> MultiAlignment<Sequence> {
             align_type,
             maximal_step: STEPS,
         }
+    }
+}
+
+impl<Sequence: HasPeptidoform<SimpleLinear>> std::fmt::Display for MultiAlignment<Sequence> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.debug_display(f);
+        Ok(())
     }
 }
 
@@ -104,19 +111,32 @@ impl<'a, Sequence: HasPeptidoform<SimpleLinear>, const STEPS: u16>
     }
 
     fn update(mut self, path: &[Piece], is_a: bool, start: usize) -> Self {
-        println!(
-            "S: {}, P: {}, a: {is_a}",
-            self.sequence.cast_peptidoform(),
-            Piece::cigar(path, 0, 0),
-        );
+        // println!(
+        //     "S: {}, P: {}, a: {is_a}",
+        //     self.sequence.cast_peptidoform(),
+        //     Piece::cigar(path, 0, 0),
+        // );
         let mut path_index = 0;
         let mut seq_index = 0;
         let mut internal_index = 0;
         for piece in path {
             let ref_step = if is_a { piece.step_b } else { piece.step_a };
             let seq_step = if is_a { piece.step_a } else { piece.step_b };
-            let dif = ref_step.saturating_sub(seq_step) + 1;
-            self.path[path_index].ref_step = self.path[path_index].ref_step.max(dif);
+            if seq_step == 0 {
+                self.path.insert(
+                    path_index,
+                    MultiPiece {
+                        match_type: MatchType::Gap,
+                        ref_step,
+                        seq_step,
+                    },
+                );
+                path_index += 1;
+            } else {
+                self.path[path_index].ref_step = self.path[path_index]
+                    .ref_step
+                    .max(ref_step.saturating_sub(seq_step) + 1);
+            }
             let goal = seq_index + seq_step;
             while seq_index + internal_index < goal {
                 if seq_index + self.path[path_index].seq_step - internal_index > goal {
@@ -181,21 +201,25 @@ impl<'a, Sequence: HasPeptidoform<SimpleLinear>, const STEPS: u16>
 
     fn debug_display(&self, mut w: impl std::fmt::Write) {
         let sequence = self.sequence.cast_peptidoform().sequence();
-        let mut index = self.start;
+        let mut seq_index = self.start;
         for piece in &self.path {
-            let subseq = &sequence[index..index + piece.seq_step as usize];
-            // Obviously misses mods now
-            let display = subseq
-                .iter()
-                .map(|s| s.aminoacid.one_letter_code().unwrap_or('X'))
-                .collect::<String>();
-            write!(
-                w,
-                "{display}{}",
-                "·".repeat((piece.ref_step - piece.seq_step) as usize)
-            )
-            .unwrap();
-            index += piece.seq_step as usize;
+            if piece.seq_step == 0 {
+                write!(w, "{:-1$}", "", piece.ref_step as usize).unwrap();
+            } else {
+                let subseq = &sequence[seq_index..seq_index + piece.seq_step as usize];
+                // Obviously misses mods now
+                let display = subseq
+                    .iter()
+                    .map(|s| s.aminoacid.one_letter_code().unwrap_or('X'))
+                    .collect::<String>();
+                write!(
+                    w,
+                    "{display}{}",
+                    "·".repeat((piece.ref_step - piece.seq_step) as usize)
+                )
+                .unwrap();
+                seq_index += piece.seq_step as usize;
+            }
         }
         writeln!(w).unwrap();
     }
@@ -235,7 +259,7 @@ impl<Sequence: HasPeptidoform<SimpleLinear>> MultiAlignmentLine<Sequence> {
 }
 
 impl<const STEPS: u16, Sequence: HasPeptidoform<SimpleLinear> + Clone> AlignIndex<STEPS, Sequence> {
-    fn multi_align(
+    pub fn multi_align(
         &self,
         maximal_distance: Option<f64>, // Maximal distance to join clusters, or join all if set to None
         scoring: AlignScoring<'_>,
@@ -291,7 +315,7 @@ impl<const STEPS: u16, Sequence: HasPeptidoform<SimpleLinear> + Clone> AlignInde
 
         // Progressively merge
         while nodes.len() > 1 {
-            println!("{}", matrix.to_csv());
+            // println!("{}", matrix.to_csv());
 
             let (distance, [far_index, close_index]) = matrix.min::<true>();
             if maximal_distance.is_some_and(|m| distance > m)
@@ -310,16 +334,16 @@ impl<const STEPS: u16, Sequence: HasPeptidoform<SimpleLinear> + Clone> AlignInde
             for line in &nodes[close_index] {
                 let mut buf = String::new();
                 line.debug_display(&mut buf);
-                print!("{buf}");
+                // print!("{buf}");
             }
 
             // Update matrix to merge these columns
             matrix = matrix.merge_columns(close_index, far_index, distance);
-            println!(
-                "Merged {close_index} with {far_index} (left: nodes {}, matrix {})",
-                nodes.len(),
-                matrix.len(),
-            );
+            // println!(
+            //     "Merged {close_index} with {far_index} (left: nodes {}, matrix {})",
+            //     nodes.len(),
+            //     matrix.len(),
+            // );
         }
 
         nodes
@@ -340,7 +364,7 @@ pub(super) fn multi_align_cached<'a, const STEPS: u16, Sequence: HasPeptidoform<
     scoring: AlignScoring<'_>,
     align_type: AlignType,
 ) -> Vec<MultiAlignmentLineTemp<'a, Sequence, STEPS>> {
-    println!("Max steps: {STEPS}");
+    // println!("Max steps: {STEPS}");
     let len_a = a
         .iter()
         .fold(0, |acc, i| acc.max(i.sequence.cast_peptidoform().len()));
@@ -567,7 +591,6 @@ mod tests {
         assert_eq!(buf, expected, "Expected:\n{expected}");
     }
 
-    // #[ignore]
     #[test]
     fn many() {
         // N = GG, N[Deamidated] = D, WGG = HY, HD = DH
@@ -596,13 +619,35 @@ mod tests {
         alignment[0].debug_display(&mut buf);
         println!("{buf}");
         buf = buf.split('\n').skip(1).join("\n");
-        assert_eq!(
-            buf,
-            "AGGWHD
-AN·WHN
-AHY·DH
-"
-        );
+        let expected = "WRGGDGFYAMDYWGQG\nRWGGDGFYAMDYWGQG\nRWGGDGFYAMDYWGQG\nRWGGDGFYAMDYWGQG\nWRN·DGFYAMDYWGQG\nRWGGDGFYAMDYWGQG\nRWGGDGFYAMDYWGQG\nRWN·DGFYW·DYWGQG\nRWGGNGFY·WDYWGQG\n";
+        assert_eq!(buf, expected, "Expected:\n{expected}");
+    }
+
+    #[test]
+    fn gaps() {
+        // N = GG, N[Deamidated] = D, WGG = HY, HD = DH
+        let seq = |def: &str| {
+            Peptidoform::pro_forma(def, &STATIC_ONTOLOGIES)
+                .unwrap()
+                .0
+                .into_simple_linear()
+                .unwrap()
+        };
+        let sequences = vec![
+            seq("WRGGDGFYAMDYWGQG"),
+            seq("RWGDGFYAMYDWGQG"),
+            seq("RWNDGYAMDYWGQG"),
+            seq("RWGGDGFMDYWGQG"),
+        ];
+        let index =
+            AlignIndex::<4, Peptidoform<SimpleLinear>>::new(sequences, MassMode::Monoisotopic);
+        let alignment = index.multi_align(None, AlignScoring::default(), AlignType::GLOBAL);
+        let mut buf = String::new();
+        alignment[0].debug_display(&mut buf);
+        println!("{buf}");
+        buf = buf.split('\n').skip(1).join("\n");
+        let expected = "WRGGDGFYAMDYWGQG\nRWG-DGFYAMYDWGQG\nRWN·DG-YAMDYWGQG\nRWGGDGF--MDYWGQG\n";
+        assert_eq!(buf, expected, "Expected:\n{expected}");
     }
 
     #[test]
