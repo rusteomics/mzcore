@@ -290,12 +290,6 @@ impl<A, B> Alignment<A, B> {
         &self.seq_b
     }
 
-    /// The distance metric to use in MMSA
-    pub(crate) fn distance(&self) -> f64 {
-        let stats = self.stats();
-        f64::midpoint(1.0 - stats.mass_similarity(), 1.0 - stats.identity())
-    }
-
     /// The normalised score, normalised for the alignment length and for the used alphabet.
     /// The normalisation is calculated as follows `absolute_score / max_score`.
     pub const fn normalised_score(&self) -> f64 {
@@ -392,6 +386,21 @@ impl<A, B> Alignment<A, B> {
 }
 
 impl<A: HasPeptidoform<Linear>, B: HasPeptidoform<Linear>> Alignment<A, B> {
+    /// The distance metric to use in MMSA
+    pub(crate) fn distance(&self) -> f64 {
+        let stats = self.stats();
+        let length = self
+            .seq_a()
+            .cast_peptidoform()
+            .sequence()
+            .len()
+            .min(self.seq_b().cast_peptidoform().sequence().len());
+        f64::midpoint(
+            1.0 - stats.mass_similar as f64 / length as f64,
+            1.0 - stats.identical as f64 / length as f64,
+        )
+    }
+
     /// The mass(es) for the matched portion of the first sequence TODO: this assumes no terminal mods
     pub fn mass_a(&self) -> Multi<MolecularFormula> {
         let seq_a = self.seq_a().cast_peptidoform();

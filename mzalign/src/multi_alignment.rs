@@ -4,8 +4,9 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     AlignIndex, AlignScoring, AlignType, MatchType, Piece, Score,
+    align_matrix::Matrix,
     diagonal_array::DiagonalArray,
-    mass_alignment::{Matrix, align_cached, calculate_masses, score, score_pair},
+    mass_alignment::{align_cached, calculate_masses, score, score_pair},
 };
 use mzcore::{
     prelude::*,
@@ -110,15 +111,31 @@ impl<'a, Sequence: HasPeptidoform<SimpleLinear>, const STEPS: u16>
         }
     }
 
-    fn update(mut self, path: &[Piece], is_a: bool, start: usize) -> Self {
-        // println!(
-        //     "S: {}, P: {}, a: {is_a}",
-        //     self.sequence.cast_peptidoform(),
-        //     Piece::cigar(path, 0, 0),
-        // );
+    /// Update this line with the given merged alignment, this does not add end gaps
+    fn update(mut self, path: &[Piece], is_a: bool, start_self: usize, start_other: usize) -> Self {
+        println!(
+            "S: {}, P: {}, a: {is_a} ss: {start_self}, so: {start_other}",
+            self.sequence.cast_peptidoform(),
+            Piece::cigar(path, 0, 0),
+        );
         let mut path_index = 0;
         let mut seq_index = 0;
         let mut internal_index = 0;
+        if start_other > 0 {
+            if self.path[0].match_type == MatchType::Gap {
+                self.path[0].ref_step = self.path[0].ref_step.max(start_other as u16);
+            } else {
+                self.path.insert(
+                    path_index,
+                    MultiPiece {
+                        match_type: MatchType::Gap,
+                        ref_step: start_other as u16,
+                        seq_step: 0,
+                    },
+                );
+                path_index += 1;
+            }
+        }
         for piece in path {
             let ref_step = if is_a { piece.step_b } else { piece.step_a };
             let seq_step = if is_a { piece.step_a } else { piece.step_b };
@@ -136,20 +153,52 @@ impl<'a, Sequence: HasPeptidoform<SimpleLinear>, const STEPS: u16>
                 self.path[path_index].ref_step = self.path[path_index]
                     .ref_step
                     .max(ref_step.saturating_sub(seq_step) + 1);
-            }
-            let goal = seq_index + seq_step;
-            while seq_index + internal_index < goal {
-                if seq_index + self.path[path_index].seq_step - internal_index > goal {
-                    internal_index =
-                        goal - (seq_index + self.path[path_index].seq_step - internal_index);
-                    break;
+                let goal = seq_index + seq_step;
+                while seq_index + internal_index < goal {
+                    if seq_index + self.path[path_index].seq_step - internal_index > goal {
+                        internal_index =
+                            goal - (seq_index + self.path[path_index].seq_step - internal_index);
+                        break;
+                    }
+                    seq_index += self.path[path_index].seq_step - internal_index;
+                    internal_index = 0;
+                    path_index += usize::from(path_index != self.path.len() - 1); // just saturate for now
+                    if path_index == self.path.len() - 1 {
+                        break;
+                    }
                 }
-                seq_index += self.path[path_index].seq_step - internal_index;
-                internal_index = 0;
-                path_index += usize::from(path_index != self.path.len() - 1); // just saturate for now
             }
         }
         self
+    }
+
+    fn ref_length(&self) -> usize {
+        let mut ref_index = 0;
+        for piece in &self.path {
+            ref_index += piece.ref_step as usize;
+        }
+        ref_index
+    }
+
+    /// Pad to length
+    fn pad(&mut self, goal_length: usize) {
+        let mut ref_index = 0;
+        for piece in &self.path {
+            ref_index += piece.ref_step as usize;
+        }
+        if ref_index < goal_length {
+            let last = self.path.len() - 1;
+            let dif = goal_length - ref_index;
+            if self.path[last].match_type == MatchType::Gap {
+                self.path[last].ref_step = self.path[last].ref_step.max(dif as u16);
+            } else {
+                self.path.push(MultiPiece {
+                    match_type: MatchType::Gap,
+                    ref_step: dif as u16,
+                    seq_step: 0,
+                });
+            }
+        }
     }
 
     // Outer 'ref' index
@@ -175,7 +224,8 @@ impl<'a, Sequence: HasPeptidoform<SimpleLinear>, const STEPS: u16>
             ref_index += self.path[path_index].ref_step as usize;
             path_index += usize::from(path_index != self.path.len() - 1); // just saturate for now
         }
-        let i = (seq_index - 1).min(self.sequence.cast_peptidoform().len() - 1);
+        let i = (seq_index.saturating_sub(1))
+            .min(self.sequence.cast_peptidoform().len().saturating_sub(1));
         (
             &self.sequence.cast_peptidoform().sequence()[i],
             &self.masses[[i, 0]],
@@ -238,21 +288,25 @@ struct MultiPiece {
 impl<Sequence: HasPeptidoform<SimpleLinear>> MultiAlignmentLine<Sequence> {
     fn debug_display(&self, mut w: impl std::fmt::Write) {
         let sequence = self.sequence.cast_peptidoform().sequence();
-        let mut index = self.start;
+        let mut seq_index = self.start;
         for piece in &self.path {
-            let subseq = &sequence[index..index + piece.seq_step as usize];
-            // Obviously misses mods now
-            let display = subseq
-                .iter()
-                .map(|s| s.aminoacid.one_letter_code().unwrap_or('X'))
-                .collect::<String>();
-            write!(
-                w,
-                "{display}{}",
-                "·".repeat((piece.ref_step - piece.seq_step) as usize)
-            )
-            .unwrap();
-            index += piece.seq_step as usize;
+            if piece.seq_step == 0 {
+                write!(w, "{}", "-".repeat(piece.ref_step as usize)).unwrap();
+            } else {
+                let subseq = &sequence[seq_index..seq_index + piece.seq_step as usize];
+                // Obviously misses mods now
+                let display = subseq
+                    .iter()
+                    .map(|s| s.aminoacid.one_letter_code().unwrap_or('X'))
+                    .collect::<String>();
+                write!(
+                    w,
+                    "{display}{}",
+                    "·".repeat((piece.ref_step - piece.seq_step) as usize)
+                )
+                .unwrap();
+                seq_index += piece.seq_step as usize;
+            }
         }
         writeln!(w).unwrap();
     }
@@ -503,14 +557,17 @@ pub(super) fn multi_align_cached<'a, const STEPS: u16, Sequence: HasPeptidoform<
                     let seq_index_b = b[ib].get_seq_index(index_b);
                     // Now try matching longer sequences.
                     for len_a in 1..=index_a.min(STEPS as usize) {
-                        let range_a =
-                            unsafe { ranges_a[ia].get_unchecked([seq_index_a - 1, len_a - 1]) }; // TODO: this needs to be fixed for ref vs seq indices
+                        let range_a = unsafe {
+                            ranges_a[ia].get_unchecked([seq_index_a.saturating_sub(1), len_a - 1])
+                        }; // TODO: this needs to be fixed for ref vs seq indices
 
                         let min_len_b = if len_a == 1 { 2 } else { 1 };
 
                         for len_b in min_len_b..=index_b.min(STEPS as usize) {
-                            let range_b =
-                                unsafe { ranges_b[ib].get_unchecked([seq_index_b - 1, len_b - 1]) };
+                            let range_b = unsafe {
+                                ranges_b[ib]
+                                    .get_unchecked([seq_index_b.saturating_sub(1), len_b - 1])
+                            };
                             // Note that ranges are already expanded by tolerance, so
                             // exact comparison is fine here.
                             if range_a.0 > range_b.1 || range_b.0 > range_a.1 {
@@ -553,11 +610,17 @@ pub(super) fn multi_align_cached<'a, const STEPS: u16, Sequence: HasPeptidoform<
     let mut sequences = Vec::with_capacity(a.len() + b.len());
 
     for seq in a {
-        sequences.push(seq.update(&path, true, start_a));
+        sequences.push(seq.update(&path, true, start_a, start_b));
     }
 
     for seq in b {
-        sequences.push(seq.update(&path, false, start_b));
+        sequences.push(seq.update(&path, false, start_b, start_a));
+    }
+
+    // Fix end gaps
+    let goal_length = sequences.iter().fold(0, |acc, s| acc.max(s.ref_length()));
+    for s in &mut sequences {
+        s.pad(goal_length);
     }
 
     sequences
@@ -619,7 +682,7 @@ mod tests {
         alignment[0].debug_display(&mut buf);
         println!("{buf}");
         buf = buf.split('\n').skip(1).join("\n");
-        let expected = "WRGGDGFYAMDYWGQG\nRWGGDGFYAMDYWGQG\nRWGGDGFYAMDYWGQG\nRWGGDGFYAMDYWGQG\nWRN·DGFYAMDYWGQG\nRWGGDGFYAMDYWGQG\nRWGGDGFYAMDYWGQG\nRWN·DGFYW·DYWGQG\nRWGGNGFY·WDYWGQG\n";
+        let expected = "WRGGDGFYAMDYWGQG\nWRN·DGFYAMDYWGQG\nRWGGDGFYAMDYWGQG\nRWGGDGFYAMDYWGQG\nRWGGDGFYAMDYWGQG\nRWGGDGFYAMDYWGQG\nRWGGDGFYAMDYWGQG\nRWN·DGFY·WDYWGQG\nRWGGNGFY·WDYWGQG\n";
         assert_eq!(buf, expected, "Expected:\n{expected}");
     }
 
@@ -636,7 +699,7 @@ mod tests {
         let sequences = vec![
             seq("WRGGDGFYAMDYWGQG"),
             seq("RWGDGFYAMYDWGQG"),
-            seq("RWNDGYAMDYWGQG"),
+            seq("RWNDGYAMEDYWGQG"),
             seq("RWGGDGFMDYWGQG"),
         ];
         let index =
@@ -646,7 +709,35 @@ mod tests {
         alignment[0].debug_display(&mut buf);
         println!("{buf}");
         buf = buf.split('\n').skip(1).join("\n");
-        let expected = "WRGGDGFYAMDYWGQG\nRWG-DGFYAMYDWGQG\nRWN·DG-YAMDYWGQG\nRWGGDGF--MDYWGQG\n";
+        let expected =
+            "WRGGDGFYAM-DYWGQG\nRWN·DG-YAM-DYWGQG\nRWGGDGF--M-DYWGQG\nRWG-DGFYAMEYDWGQG\n";
+        assert_eq!(buf, expected, "Expected:\n{expected}");
+    }
+
+    #[test]
+    fn either_global() {
+        // N = GG, N[Deamidated] = D, WGG = HY, HD = DH
+        let seq = |def: &str| {
+            Peptidoform::pro_forma(def, &STATIC_ONTOLOGIES)
+                .unwrap()
+                .0
+                .into_simple_linear()
+                .unwrap()
+        };
+        let sequences = vec![
+            seq("WRGGDGFYAMDYWGQG"),
+            seq("RWGDGFYAMYD"),
+            seq("RWNDGYAMDYWGQG"),
+            seq("GDGFMDYWGQG"),
+        ];
+        let index =
+            AlignIndex::<4, Peptidoform<SimpleLinear>>::new(sequences, MassMode::Monoisotopic);
+        let alignment = index.multi_align(None, AlignScoring::default(), AlignType::EITHER_GLOBAL);
+        let mut buf = String::new();
+        alignment[0].debug_display(&mut buf);
+        println!("{buf}");
+        buf = buf.split('\n').skip(1).join("\n");
+        let expected = "WRGGDGFYAMDYWGQG\n---GDGF--MDYWGQG\nRWN·DG-YAMDYWGQG\nRWG-DGFYAMYD----\n";
         assert_eq!(buf, expected, "Expected:\n{expected}");
     }
 
@@ -693,6 +784,7 @@ mod tests {
                 Piece::new(0, 0, MatchType::FullIdentity, 1, 1), // D
             ],
             true,
+            0,
             0,
         );
         line.path[3].ref_step = 2; // The W is bigger

@@ -10,6 +10,7 @@ pub mod prelude {
     pub use crate::{AlignIndex, AlignScoring, AlignType, Alignment, PairMode, align};
 }
 
+mod align_matrix;
 mod align_type;
 mod alignment;
 #[cfg(test)]
