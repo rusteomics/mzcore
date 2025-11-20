@@ -189,7 +189,7 @@ pub(super) fn align_cached<
                 for len_b in min_len_b..=index_b.min(STEPS as usize) {
                     let range_b = unsafe { ranges_b.get_unchecked([index_b - 1, len_b - 1]) };
                     // Note that ranges are already expanded by tolerance, so
-                    // exact comparision is fine here.
+                    // exact comparison is fine here.
                     if range_a.0 > range_b.1 || range_b.0 > range_a.1 {
                         continue;
                     }

@@ -391,7 +391,9 @@ impl MolecularFormula {
         &self,
         substitutions: &[(Element, Option<NonZeroU16>)],
     ) -> Option<Self> {
-        if substitutions.iter().all(|e| e.0.is_valid(e.1)) {
+        if substitutions.is_empty() {
+            Some(self.clone())
+        } else if substitutions.iter().all(|e| e.0.is_valid(e.1)) {
             let mut new_elements = self.elements.clone();
             for item in &mut new_elements {
                 for (substitute_element, substitute_species) in substitutions {
