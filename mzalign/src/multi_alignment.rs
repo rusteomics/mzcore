@@ -11,7 +11,7 @@ use crate::{
 use mzcore::{
     prelude::*,
     quantities::Multi,
-    sequence::{HasPeptidoform, SimpleLinear},
+    sequence::{HasPeptidoform, Linear},
     system::{Mass, dalton},
 };
 
@@ -23,7 +23,7 @@ pub struct MultiAlignment<Sequence> {
     align_type: AlignType,
 }
 
-impl<Sequence: HasPeptidoform<SimpleLinear>> MultiAlignment<Sequence> {
+impl<Sequence: HasPeptidoform<Linear>> MultiAlignment<Sequence> {
     fn debug_display(&self, mut w: impl std::fmt::Write) {
         writeln!(
             w,
@@ -62,7 +62,7 @@ impl<Sequence: HasPeptidoform<SimpleLinear>> MultiAlignment<Sequence> {
     }
 }
 
-impl<Sequence: HasPeptidoform<SimpleLinear>> std::fmt::Display for MultiAlignment<Sequence> {
+impl<Sequence: HasPeptidoform<Linear>> std::fmt::Display for MultiAlignment<Sequence> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         self.debug_display(f);
         Ok(())
@@ -86,7 +86,7 @@ struct MultiAlignmentLineTemp<'a, Sequence, const STEPS: u16> {
     start: usize,
 }
 
-impl<'a, Sequence: HasPeptidoform<SimpleLinear>, const STEPS: u16>
+impl<'a, Sequence: HasPeptidoform<Linear>, const STEPS: u16>
     MultiAlignmentLineTemp<'a, Sequence, STEPS>
 {
     fn single(
@@ -215,7 +215,7 @@ impl<'a, Sequence: HasPeptidoform<SimpleLinear>, const STEPS: u16>
     }
 
     // Outer 'ref' index
-    fn get_aa_at(&self, index: usize) -> (&SequenceElement<SimpleLinear>, &Multi<Mass>) {
+    fn get_aa_at(&self, index: usize) -> (&SequenceElement<Linear>, &Multi<Mass>) {
         let mut path_index = 0;
         let mut ref_index = 0;
         let mut seq_index = 0;
@@ -237,7 +237,7 @@ impl<'a, Sequence: HasPeptidoform<SimpleLinear>, const STEPS: u16>
         &self,
         index: usize,
         len: usize,
-    ) -> Option<(&[SequenceElement<SimpleLinear>], &Multi<Mass>)> {
+    ) -> Option<(&[SequenceElement<Linear>], &Multi<Mass>)> {
         let seq_index = self.get_seq_index(index);
         if seq_index >= len {
             Some((
@@ -285,7 +285,7 @@ struct MultiPiece {
     seq_step: u16,
 }
 
-impl<Sequence: HasPeptidoform<SimpleLinear>> MultiAlignmentLine<Sequence> {
+impl<Sequence: HasPeptidoform<Linear>> MultiAlignmentLine<Sequence> {
     fn debug_display(&self, mut w: impl std::fmt::Write) {
         let sequence = self.sequence.cast_peptidoform().sequence();
         let mut seq_index = self.start;
@@ -312,7 +312,7 @@ impl<Sequence: HasPeptidoform<SimpleLinear>> MultiAlignmentLine<Sequence> {
     }
 }
 
-impl<const STEPS: u16, Sequence: HasPeptidoform<SimpleLinear> + Clone> AlignIndex<STEPS, Sequence> {
+impl<const STEPS: u16, Sequence: HasPeptidoform<Linear> + Clone> AlignIndex<STEPS, Sequence> {
     pub fn multi_align(
         &self,
         maximal_distance: Option<f64>, // Maximal distance to join clusters, or join all if set to None
@@ -321,7 +321,7 @@ impl<const STEPS: u16, Sequence: HasPeptidoform<SimpleLinear> + Clone> AlignInde
     ) -> Vec<MultiAlignment<Sequence>> {
         assert!(self.sequences.len() > 1);
         // Create an outgroup of 'random' sequence with the length of the average of all used sequences
-        let outgroup: Peptidoform<SimpleLinear> = CheckedAminoAcid::CANONICAL_AMINO_ACIDS
+        let outgroup: Peptidoform<Linear> = CheckedAminoAcid::CANONICAL_AMINO_ACIDS
             .iter()
             .cycle()
             .take({
@@ -412,7 +412,7 @@ impl<const STEPS: u16, Sequence: HasPeptidoform<SimpleLinear> + Clone> AlignInde
 /// It panics when the length of `seq_a` or `seq_b` is bigger than [`isize::MAX`].
 #[expect(clippy::too_many_lines)]
 #[allow(clippy::similar_names)]
-pub(super) fn multi_align_cached<'a, const STEPS: u16, Sequence: HasPeptidoform<SimpleLinear>>(
+pub(super) fn multi_align_cached<'a, const STEPS: u16, Sequence: HasPeptidoform<Linear>>(
     mut a: Vec<MultiAlignmentLineTemp<'a, Sequence, STEPS>>,
     mut b: Vec<MultiAlignmentLineTemp<'a, Sequence, STEPS>>,
     scoring: AlignScoring<'_>,
@@ -639,12 +639,11 @@ mod tests {
             Peptidoform::pro_forma(def, &STATIC_ONTOLOGIES)
                 .unwrap()
                 .0
-                .into_simple_linear()
+                .into_linear()
                 .unwrap()
         };
         let sequences = vec![seq("AGGWHD"), seq("ANWHN[Deamidated]"), seq("AHYDH")];
-        let index =
-            AlignIndex::<4, Peptidoform<SimpleLinear>>::new(sequences, MassMode::Monoisotopic);
+        let index = AlignIndex::<4, Peptidoform<Linear>>::new(sequences, MassMode::Monoisotopic);
         let alignment = index.multi_align(None, AlignScoring::default(), AlignType::GLOBAL);
         let mut buf = String::new();
         alignment[0].debug_display(&mut buf);
@@ -661,7 +660,7 @@ mod tests {
             Peptidoform::pro_forma(def, &STATIC_ONTOLOGIES)
                 .unwrap()
                 .0
-                .into_simple_linear()
+                .into_linear()
                 .unwrap()
         };
         let sequences = vec![
@@ -675,8 +674,7 @@ mod tests {
             seq("RWNDGFYW[U:Oxidation]DYWGQG"),
             seq("RWGGN[U:Deamidated]GFYW[U:Oxidation]DYWGQG"),
         ];
-        let index =
-            AlignIndex::<4, Peptidoform<SimpleLinear>>::new(sequences, MassMode::Monoisotopic);
+        let index = AlignIndex::<4, Peptidoform<Linear>>::new(sequences, MassMode::Monoisotopic);
         let alignment = index.multi_align(None, AlignScoring::default(), AlignType::GLOBAL);
         let mut buf = String::new();
         alignment[0].debug_display(&mut buf);
@@ -693,7 +691,7 @@ mod tests {
             Peptidoform::pro_forma(def, &STATIC_ONTOLOGIES)
                 .unwrap()
                 .0
-                .into_simple_linear()
+                .into_linear()
                 .unwrap()
         };
         let sequences = vec![
@@ -702,8 +700,7 @@ mod tests {
             seq("RWNDGYAMEDYWGQG"),
             seq("RWGGDGFMDYWGQG"),
         ];
-        let index =
-            AlignIndex::<4, Peptidoform<SimpleLinear>>::new(sequences, MassMode::Monoisotopic);
+        let index = AlignIndex::<4, Peptidoform<Linear>>::new(sequences, MassMode::Monoisotopic);
         let alignment = index.multi_align(None, AlignScoring::default(), AlignType::GLOBAL);
         let mut buf = String::new();
         alignment[0].debug_display(&mut buf);
@@ -721,7 +718,7 @@ mod tests {
             Peptidoform::pro_forma(def, &STATIC_ONTOLOGIES)
                 .unwrap()
                 .0
-                .into_simple_linear()
+                .into_linear()
                 .unwrap()
         };
         let sequences = vec![
@@ -730,8 +727,7 @@ mod tests {
             seq("RWNDGYAMDYWGQG"),
             seq("GDGFMDYWGQG"),
         ];
-        let index =
-            AlignIndex::<4, Peptidoform<SimpleLinear>>::new(sequences, MassMode::Monoisotopic);
+        let index = AlignIndex::<4, Peptidoform<Linear>>::new(sequences, MassMode::Monoisotopic);
         let alignment = index.multi_align(None, AlignScoring::default(), AlignType::EITHER_GLOBAL);
         let mut buf = String::new();
         alignment[0].debug_display(&mut buf);
@@ -746,7 +742,7 @@ mod tests {
         let sequence = Peptidoform::pro_forma("AGGWHD", &STATIC_ONTOLOGIES)
             .unwrap()
             .0
-            .into_simple_linear()
+            .into_linear()
             .unwrap();
         let masses = calculate_masses::<4>(&sequence, MassMode::Monoisotopic);
         let mut line = MultiAlignmentLineTemp::single(0, &sequence, &masses);

@@ -149,6 +149,18 @@ fn no_detected_rotation_2() {
     );
 }
 
+#[test]
+fn terminal_mods() {
+    test_alignment(
+        // Technically the pyroGlus should be placed on the side chain, but this is a nice test
+        "[gln->pyro-glu]-QADFS-[Methyl]",
+        "[glu->pyro-glu]-EADFT",
+        AlignScoring::default(),
+        AlignType::GLOBAL,
+        "1i3=1i",
+    );
+}
+
 /// Test if the given alignment is as expected and can be recreated
 /// # Errors
 /// When the alignment is not identical to path and when the alignment cannot be recreated from the path.

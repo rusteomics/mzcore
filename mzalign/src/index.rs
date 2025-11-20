@@ -9,7 +9,7 @@ use crate::{
 use mzcore::{
     chemistry::MassMode,
     quantities::Multi,
-    sequence::{HasPeptidoform, SimpleLinear},
+    sequence::{HasPeptidoform, Linear},
     system::Mass,
 };
 
@@ -21,7 +21,7 @@ pub struct AlignIndex<const STEPS: u16, Source> {
     pub(super) mode: MassMode,
 }
 
-impl<const STEPS: u16, Source: HasPeptidoform<SimpleLinear> + Clone> AlignIndex<STEPS, Source> {
+impl<const STEPS: u16, Source: HasPeptidoform<Linear> + Clone> AlignIndex<STEPS, Source> {
     /// Create a new index for alignments
     pub fn new(sequences: impl IntoIterator<Item = Source>, mode: MassMode) -> Self {
         let sequences = sequences
@@ -36,7 +36,7 @@ impl<const STEPS: u16, Source: HasPeptidoform<SimpleLinear> + Clone> AlignIndex<
     }
 
     /// Align a single peptidoform to the index
-    pub fn align_one<'a, Other: HasPeptidoform<SimpleLinear> + Clone + 'a>(
+    pub fn align_one<'a, Other: HasPeptidoform<Linear> + Clone + 'a>(
         &'a self,
         other: Other,
         scoring: AlignScoring<'a>,
@@ -59,7 +59,7 @@ impl<const STEPS: u16, Source: HasPeptidoform<SimpleLinear> + Clone> AlignIndex<
     }
 
     /// Align a single peptidoform to the index but only for the source sequences that match the given filter.
-    pub fn align_one_filtered<'a, Other: HasPeptidoform<SimpleLinear> + Clone + 'a>(
+    pub fn align_one_filtered<'a, Other: HasPeptidoform<Linear> + Clone + 'a>(
         &'a self,
         other: Other,
         filter: impl Fn(&Source) -> bool + 'a,
@@ -83,7 +83,7 @@ impl<const STEPS: u16, Source: HasPeptidoform<SimpleLinear> + Clone> AlignIndex<
     }
 
     /// Align multiple peptides to this index
-    pub fn align<'a, Other: HasPeptidoform<SimpleLinear> + Clone + 'a>(
+    pub fn align<'a, Other: HasPeptidoform<Linear> + Clone + 'a>(
         &'a self,
         others: impl IntoIterator<Item = Other>,
         scoring: AlignScoring<'a>,
@@ -95,12 +95,12 @@ impl<const STEPS: u16, Source: HasPeptidoform<SimpleLinear> + Clone> AlignIndex<
     }
 }
 
-impl<const STEPS: u16, Source: HasPeptidoform<SimpleLinear> + Clone + Sync + Send>
+impl<const STEPS: u16, Source: HasPeptidoform<Linear> + Clone + Sync + Send>
     AlignIndex<STEPS, Source>
 {
     #[cfg(feature = "rayon")]
     /// Align a single peptidoform to the index in parallel
-    pub fn par_align_one<'a, Other: HasPeptidoform<SimpleLinear> + Clone + 'a + Send + Sync>(
+    pub fn par_align_one<'a, Other: HasPeptidoform<Linear> + Clone + 'a + Send + Sync>(
         &'a self,
         other: Other,
         scoring: AlignScoring<'a>,
@@ -124,10 +124,7 @@ impl<const STEPS: u16, Source: HasPeptidoform<SimpleLinear> + Clone + Sync + Sen
 
     #[cfg(feature = "rayon")]
     /// Align a single peptidoform to the index in parallel but only for the source sequences that match the given filter.
-    pub fn par_align_one_filtered<
-        'a,
-        Other: HasPeptidoform<SimpleLinear> + Clone + 'a + Send + Sync,
-    >(
+    pub fn par_align_one_filtered<'a, Other: HasPeptidoform<Linear> + Clone + 'a + Send + Sync>(
         &'a self,
         other: Other,
         filter: impl Fn(&Source) -> bool + Sync + Send + 'a,
@@ -151,12 +148,10 @@ impl<const STEPS: u16, Source: HasPeptidoform<SimpleLinear> + Clone + Sync + Sen
     }
 }
 
-impl<const STEPS: u16, Source: HasPeptidoform<SimpleLinear> + Clone + Sync>
-    AlignIndex<STEPS, Source>
-{
+impl<const STEPS: u16, Source: HasPeptidoform<Linear> + Clone + Sync> AlignIndex<STEPS, Source> {
     #[cfg(feature = "rayon")]
     /// Align multiple peptides to this index in parallel
-    pub fn par_align<'a, Other: HasPeptidoform<SimpleLinear> + Clone + 'a + Sync + Send>(
+    pub fn par_align<'a, Other: HasPeptidoform<Linear> + Clone + 'a + Sync + Send>(
         &'a self,
         others: impl IntoParallelIterator<Item = Other>,
         scoring: AlignScoring<'a>,

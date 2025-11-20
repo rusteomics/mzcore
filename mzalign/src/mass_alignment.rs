@@ -1,5 +1,3 @@
-use std::fmt::Debug;
-
 use crate::{
     Alignment, align_matrix::Matrix, align_type::*, alignment::Score,
     diagonal_array::DiagonalArray, piece::*, scoring::*,
@@ -8,13 +6,10 @@ use mzcore::{
     chemistry::{MassMode, MolecularFormula},
     prelude::MultiChemical,
     quantities::{Multi, WithinTolerance},
-    sequence::{
-        AtMax, HasPeptidoform, Linear, Peptidoform, SequenceElement, SequencePosition, SimpleLinear,
-    },
+    sequence::{AtMax, HasPeptidoform, Linear, Peptidoform, SequenceElement, SequencePosition},
     system::{Mass, dalton},
 };
 
-// TODO: no way of handling terminal modifications yet
 // TODO: potentially allow any gap to match to a list of aminoacids also if the mass difference is exactly a common modification
 // eg X[mass(W[oxidation]A)] should match WA
 
@@ -22,9 +17,18 @@ use mzcore::{
 /// The substitution matrix is in the exact same order as the definition of [`AminoAcid`](mzcore::sequence::AminoAcid).
 /// The [`AlignScoring`] sets the rules and exact scores while scoring.
 /// The [`AlignType`] controls the alignment behaviour, global/local or anything in between.
+///
+/// # Note
+/// * Terminal modifications are added to the mass of the terminal amino acid.
+/// * This ignores ambiguous aminoacids `(?AA)` because these kinds of errors are why the mass
+///   alignment was built in the first place.
+/// * Ambiguous modifications are handled by allowing those positions to have the mass with and
+///   without the modification. It does not guarantee that the modification is placed exactly once.
+/// * Labile modifications and charge carriers are ignored.
+///
 /// # Panics
 /// It panics when the length of `seq_a` or `seq_b` is bigger than [`isize::MAX`].
-pub fn align<const STEPS: u16, A: HasPeptidoform<SimpleLinear>, B: HasPeptidoform<SimpleLinear>>(
+pub fn align<const STEPS: u16, A: HasPeptidoform<Linear>, B: HasPeptidoform<Linear>>(
     seq_a: A,
     seq_b: B,
     scoring: AlignScoring<'_>,
@@ -46,8 +50,8 @@ pub fn align<const STEPS: u16, A: HasPeptidoform<SimpleLinear>, B: HasPeptidofor
 #[allow(clippy::similar_names)]
 pub(super) fn align_cached<
     const STEPS: u16,
-    A: HasPeptidoform<SimpleLinear>,
-    B: HasPeptidoform<SimpleLinear>,
+    A: HasPeptidoform<Linear>,
+    B: HasPeptidoform<Linear>,
 >(
     seq_a: A,
     masses_a: &DiagonalArray<Multi<Mass>, STEPS>,
@@ -292,7 +296,7 @@ pub(super) fn determine_final_score<A, B>(
 }
 
 /// Score a pair of sequence elements (AA + mods)
-pub(super) fn score_pair<A: AtMax<SimpleLinear>, B: AtMax<SimpleLinear>>(
+pub(super) fn score_pair<A: AtMax<Linear>, B: AtMax<Linear>>(
     a: (&SequenceElement<A>, &Multi<Mass>),
     b: (&SequenceElement<B>, &Multi<Mass>),
     scoring: AlignScoring<'_>,
@@ -348,7 +352,7 @@ pub(super) fn score_pair<A: AtMax<SimpleLinear>, B: AtMax<SimpleLinear>>(
 
 /// Score two sets of aminoacids (it will only be called when at least one of a and b has len > 1)
 /// Returns none if no sensible explanation can be made
-pub(super) fn score<A: AtMax<SimpleLinear>, B: AtMax<SimpleLinear>>(
+pub(super) fn score<A: AtMax<Linear>, B: AtMax<Linear>>(
     a: (&[SequenceElement<A>], &Multi<Mass>),
     b: (&[SequenceElement<B>], &Multi<Mass>),
     scoring: AlignScoring<'_>,
@@ -393,20 +397,43 @@ pub(super) fn score<A: AtMax<SimpleLinear>, B: AtMax<SimpleLinear>>(
     }
 }
 
-/// Get the masses of all sequence elements
+/// Get the masses of all sequence elements. This also adds the N and C terminal modifications.
+/// # Panics
+/// If the global isotope modifications are invalid
 pub(super) fn calculate_masses<const STEPS: u16>(
     sequence: &Peptidoform<impl AtMax<Linear>>,
     mass_mode: MassMode,
 ) -> DiagonalArray<Multi<Mass>, STEPS> {
     let mut array = DiagonalArray::new(sequence.len());
+    let n = sequence
+        .get_n_term()
+        .iter()
+        .map(mzcore::sequence::Modification::formula)
+        .sum::<MolecularFormula>();
+    let c = sequence
+        .get_c_term()
+        .iter()
+        .map(mzcore::sequence::Modification::formula)
+        .sum::<MolecularFormula>();
     for i in 0..sequence.len() {
         for j in 0..=i.min(STEPS as usize) {
-            array[[i, j]] = sequence.sequence()[i - j..=i]
+            let mut seq = sequence.sequence()[i - j..=i]
                 .iter()
                 .map(|p| p.formulas_inner(SequencePosition::Index(i), 0, 0))
-                .sum::<Multi<MolecularFormula>>()
+                .sum::<Multi<MolecularFormula>>();
+            if i - j == 0 {
+                seq += n.clone();
+            }
+            if i == sequence.len() - 1 {
+                seq += c.clone();
+            }
+            array[[i, j]] = seq
                 .iter()
-                .map(|f| f.mass(mass_mode))
+                .map(|f| {
+                    f.with_global_isotope_modifications(mzcore::sequence::HiddenInternalMethods::get_global(sequence))
+                        .expect("Invalid global isotope modifications while calculating masses for alignment")
+                        .mass(mass_mode)
+                })
                 .collect();
         }
     }
