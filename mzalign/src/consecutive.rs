@@ -1,7 +1,7 @@
 use crate::*;
 use imgt::*;
 use mzcore::sequence::{
-    AnnotatedPeptide, AtMax, HasPeptidoform, Linear, Peptidoform, Region, SimpleLinear, UnAmbiguous,
+    AnnotatedPeptide, AtMax, HasPeptidoform, Linear, Peptidoform, Region, UnAmbiguous,
 };
 use mzcv::CVIndex;
 use std::collections::HashSet;
@@ -91,7 +91,7 @@ impl<A: AtMax<Linear>> ConsecutiveAlignment<'_, A> {
 /// # Panics
 /// If there are not two or more genes listed. If the return number is 0.
 #[expect(clippy::needless_pass_by_value)]
-pub fn consecutive_align<'imgt, const STEPS: u16, A: HasPeptidoform<SimpleLinear> + Eq + Clone>(
+pub fn consecutive_align<'imgt, const STEPS: u16, A: HasPeptidoform<Linear> + Eq + Clone>(
     sequence: A,
     genes: &[(GeneType, AlignType)],
     species: Option<
@@ -104,14 +104,14 @@ pub fn consecutive_align<'imgt, const STEPS: u16, A: HasPeptidoform<SimpleLinear
     scoring: AlignScoring<'_>,
     return_number: usize,
     imgt: &'imgt CVIndex<IMGT>,
-) -> ConsecutiveAlignment<'imgt, SimpleLinear> {
+) -> ConsecutiveAlignment<'imgt, Linear> {
     assert!(genes.len() >= 2);
     assert!(return_number != 0);
 
     let mut output: Vec<
         Vec<(
             Allele<'imgt>,
-            Alignment<&'imgt Peptidoform<UnAmbiguous>, Peptidoform<SimpleLinear>>,
+            Alignment<&'imgt Peptidoform<UnAmbiguous>, Peptidoform<Linear>>,
         )>,
     > = Vec::with_capacity(genes.len());
 
@@ -152,7 +152,7 @@ pub fn consecutive_align<'imgt, const STEPS: u16, A: HasPeptidoform<SimpleLinear
                 let alignment = align::<
                     STEPS,
                     &'imgt Peptidoform<UnAmbiguous>,
-                    Peptidoform<SimpleLinear>,
+                    Peptidoform<Linear>,
                 >(
                     seq.sequence, left_sequence.clone(), scoring, gene.1
                 );
@@ -175,7 +175,7 @@ pub fn consecutive_align<'imgt, const STEPS: u16, A: HasPeptidoform<SimpleLinear
 pub fn par_consecutive_align<
     'imgt,
     const STEPS: u16,
-    A: HasPeptidoform<SimpleLinear> + Send + Sync + Eq + Clone,
+    A: HasPeptidoform<Linear> + Send + Sync + Eq + Clone,
 >(
     sequence: A,
     genes: &[(GeneType, AlignType)],
@@ -189,7 +189,7 @@ pub fn par_consecutive_align<
     scoring: AlignScoring<'_>,
     return_number: usize,
     imgt: &'imgt CVIndex<IMGT>,
-) -> ConsecutiveAlignment<'imgt, SimpleLinear> {
+) -> ConsecutiveAlignment<'imgt, Linear> {
     use rayon::iter::ParallelIterator;
 
     assert!(genes.len() >= 2);
@@ -198,7 +198,7 @@ pub fn par_consecutive_align<
     let mut output: Vec<
         Vec<(
             Allele<'imgt>,
-            Alignment<&'imgt Peptidoform<UnAmbiguous>, Peptidoform<SimpleLinear>>,
+            Alignment<&'imgt Peptidoform<UnAmbiguous>, Peptidoform<Linear>>,
         )>,
     > = Vec::with_capacity(genes.len());
 
@@ -239,7 +239,7 @@ pub fn par_consecutive_align<
                 let alignment = align::<
                     STEPS,
                     &'imgt Peptidoform<UnAmbiguous>,
-                    Peptidoform<SimpleLinear>,
+                    Peptidoform<Linear>,
                 >(
                     seq.sequence, left_sequence.clone(), scoring, gene.1
                 );
