@@ -324,13 +324,10 @@ pub(super) fn score_pair<A: AtMax<SimpleLinear>, B: AtMax<SimpleLinear>>(
                     + scoring.mass_mismatch as isize;
                 Piece::new(score + local, local, MatchType::IdentityMassMismatch, 1, 1)
             } else {
-                Piece::new(
-                    score + scoring.mismatch as isize,
-                    scoring.mismatch as isize,
-                    MatchType::Mismatch,
-                    1,
-                    1,
-                )
+                let local = scoring.matrix[a.0.aminoacid.aminoacid() as usize]
+                    [b.0.aminoacid.aminoacid() as usize] as isize
+                    + scoring.mismatch as isize;
+                Piece::new(score + local, local, MatchType::Mismatch, 1, 1)
             }
         }
         (false, true) => Piece::new(
@@ -340,13 +337,12 @@ pub(super) fn score_pair<A: AtMax<SimpleLinear>, B: AtMax<SimpleLinear>>(
             1,
             1,
         ),
-        (false, false) => Piece::new(
-            score + scoring.mismatch as isize,
-            scoring.mismatch as isize,
-            MatchType::Mismatch,
-            1,
-            1,
-        ),
+        (false, false) => {
+            let local = scoring.matrix[a.0.aminoacid.aminoacid() as usize]
+                [b.0.aminoacid.aminoacid() as usize] as isize
+                + scoring.mismatch as isize;
+            Piece::new(score + local, local, MatchType::Mismatch, 1, 1)
+        }
     }
 }
 

@@ -62,9 +62,10 @@ impl std::fmt::Display for PairMode {
 ///   rotations from being added.
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct AlignScoring<'a> {
-    /// The score for a mismatch, this is used as the full score of that step.
+    /// The score for a mismatch. The local score for the step is calculated as follows:
+    /// `matrix_score + mismatch`.
     ///
-    /// Default: -1.
+    /// Default: 0.
     pub mismatch: i8,
     /// The additional score for a step if the amino acids are identical but the mass of the sequence
     /// elements are not the same. This is the case if the pair mode is [`PairMode::DatabaseToPeptidoform`]
@@ -119,7 +120,7 @@ pub struct AlignScoring<'a> {
 impl Default for AlignScoring<'static> {
     fn default() -> Self {
         Self {
-            mismatch: -1,
+            mismatch: 0,
             mass_mismatch: 0,
             mass_base: 1,
             rotated: 3,

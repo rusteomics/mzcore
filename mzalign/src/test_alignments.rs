@@ -21,7 +21,7 @@ fn global_a_1() {
         "JHSLAFKJHFLKSFJ",
         AlignScoring::default(),
         AlignType::GLOBAL_A,
-        "1=2X1=1X2I2r2=1X1=1X2D",
+        "2r3X1=3i2i3X1I",
     );
 }
 
@@ -54,7 +54,7 @@ fn either_global_2() {
         "DLQLVESGGGLVQPGGSLRLSC[carboxymethyl]AASGF",
         AlignScoring::default(),
         AlignType::EITHER_GLOBAL,
-        "3X8=1X3=1X5=2i4=",
+        "3X8=1X3=1X5=2X4=",
     );
 }
 
