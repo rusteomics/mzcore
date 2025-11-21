@@ -212,6 +212,19 @@ impl Chain {
                 + self.t.iter().map(|g| g.alleles.len()).sum::<usize>(),
         )
     }
+
+    /// Get all constant chains germline regardless of the exact type of constant chain
+    pub fn constant(&self) -> impl Iterator<Item = &Arc<Germline>> {
+        self.c
+            .iter()
+            .chain(self.a.iter())
+            .chain(self.d.iter())
+            .chain(self.e.iter())
+            .chain(self.g.iter())
+            .chain(self.m.iter())
+            .chain(self.o.iter())
+            .chain(self.t.iter())
+    }
 }
 
 impl<'a> IntoIterator for &'a Chain {
