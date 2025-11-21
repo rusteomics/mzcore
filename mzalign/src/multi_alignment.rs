@@ -738,6 +738,31 @@ mod tests {
     }
 
     #[test]
+    fn either_global_2() {
+        let seq = |def: &str| {
+            Peptidoform::pro_forma(def, &STATIC_ONTOLOGIES)
+                .unwrap()
+                .0
+                .into_linear()
+                .unwrap()
+        };
+        let sequences = vec![
+            seq("CSRWRGGDGF"),
+            seq("WRNDGFYAM"),
+            seq("YWDYWGQG"),
+            seq("RWGGNGFYWDYWGQG"),
+        ];
+        let index = AlignIndex::<4, Peptidoform<Linear>>::new(sequences, MassMode::Monoisotopic);
+        let alignment = index.multi_align(None, AlignScoring::default(), AlignType::EITHER_GLOBAL);
+        let mut buf = String::new();
+        alignment[0].debug_display(&mut buf);
+        println!("{buf}");
+        buf = buf.split('\n').skip(1).join("\n");
+        let expected = "CSRWRGGDGF---------\n---WRN·DGFYAM------\n---RWGGDGFYAMDYWG--\n----------YW·DYWGQG\n---RWGGNGFYW·DYWGQG\n";
+        assert_eq!(buf, expected, "Expected:\n{expected}");
+    }
+
+    #[test]
     fn properties() {
         let sequence = Peptidoform::pro_forma("AGGWHD", &STATIC_ONTOLOGIES)
             .unwrap()
