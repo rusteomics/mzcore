@@ -58,6 +58,29 @@ impl<const STEPS: u16, Source: HasPeptidoform<Linear> + Clone> AlignIndex<STEPS,
             })
     }
 
+    /// Align a single peptidoform to the index
+    pub fn align_one_specific<'a, Other: HasPeptidoform<Linear> + Clone + 'a>(
+        &'a self,
+        other: Other,
+        scoring: AlignScoring<'a>,
+        align_type: impl Fn(&Source) -> AlignType,
+    ) -> impl ExactSizeIterator<Item = Alignment<Source, Other>> {
+        let other_masses = calculate_masses::<STEPS>(other.cast_peptidoform(), self.mode);
+
+        self.sequences
+            .iter()
+            .map(move |(template, template_masses)| {
+                align_cached::<STEPS, Source, Other>(
+                    template.clone(),
+                    template_masses,
+                    other.clone(),
+                    &other_masses,
+                    scoring,
+                    align_type(template),
+                )
+            })
+    }
+
     /// Align a single peptidoform to the index but only for the source sequences that match the given filter.
     pub fn align_one_filtered<'a, Other: HasPeptidoform<Linear> + Clone + 'a>(
         &'a self,
