@@ -48,10 +48,9 @@ pub struct OboStanza {
     pub part_of: Vec<OboIdentifier>,
 }
 
-
 /// A (usually) unique identifier for an entry in an ontology
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[derive(Debug, Clone, Default, PartialEq, Eq, PartialOrd, Ord, Hash, Encode, Decode)]
+#[derive(Clone, Debug, Decode, Default, Encode, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct OboIdentifier(pub Option<Box<str>>, pub Box<str>);
 
 impl OboIdentifier {
@@ -84,7 +83,10 @@ impl PartialEq<(Option<Box<str>>, Box<str>)> for OboIdentifier {
 
 impl From<Curie> for OboIdentifier {
     fn from(value: Curie) -> Self {
-        Self::new(Some(value.cv.to_string().into_boxed_str()), value.accession.to_string().into_boxed_str())
+        Self::new(
+            Some(value.cv.to_string().into_boxed_str()),
+            value.accession.to_string().into_boxed_str(),
+        )
     }
 }
 
@@ -110,10 +112,7 @@ impl FromStr for OboIdentifier {
     type Err = ();
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        if let Some((cv, id)) = s
-            .split_once(':')
-            .or_else(|| s.split_once('_'))
-        {
+        if let Some((cv, id)) = s.split_once(':').or_else(|| s.split_once('_')) {
             Ok(Self::new(Some(unescape(cv)), unescape(id)))
         } else {
             Ok(Self::new(None, unescape(s)))
@@ -138,7 +137,6 @@ impl From<OboIdentifier> for RawOboID {
 type Modifier = (Box<str>, Box<str>);
 
 type Comment = Option<Box<str>>;
-
 
 /// A synonym in an Obo stanza
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
@@ -447,7 +445,7 @@ impl OboOntology {
                                         comment,
                                     ));
                             }
-                        },
+                        }
                         "id" => {
                             obj.id = value_line.parse().unwrap();
                             // if let Some((cv, id)) = value_line
@@ -458,7 +456,7 @@ impl OboOntology {
                             // } else {
                             //     obj.id = (None, unescape(id));
                             // }
-                        },
+                        }
                         "def" => {
                             let parts = tokenise(value_line).map_err(|close| {
                                 BoxedError::new(
@@ -500,8 +498,9 @@ impl OboOntology {
                             }
                             let def = unescape(parts[0].1);
                             let cross_references = parse_dbxref(parts[1].1);
-                            obj.definition = Some((def, cross_references, trailing_modifiers, comment));
-                        },
+                            obj.definition =
+                                Some((def, cross_references, trailing_modifiers, comment));
+                        }
                         "synonym" => {
                             let parts = tokenise(value_line).map_err(|close| {
                                 BoxedError::new(
@@ -564,12 +563,12 @@ impl OboOntology {
                                 trailing_modifiers,
                                 comment,
                             });
-                        },
+                        }
                         "is_obselete" => {
                             if value_line.eq_ignore_ascii_case("true") {
                                 obj.obsolete = true;
                             }
-                        },
+                        }
                         "is_a" => {
                             obj.is_a.push(value_line.parse().unwrap());
                         }
@@ -863,8 +862,6 @@ fn tokenise(text: &str) -> Result<Vec<(Option<char>, &str)>, char> {
 fn parse_dbxref(text: &str) -> Vec<RawOboID> {
     text.split(',')
         .filter(|s| !s.is_empty())
-        .map(|id| {
-            OboIdentifier::from_str(id).unwrap().into()
-        })
+        .map(|id| OboIdentifier::from_str(id).unwrap().into())
         .collect()
 }

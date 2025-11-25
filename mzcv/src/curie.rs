@@ -884,7 +884,6 @@ impl ControlledVocabulary {
     }
 }
 
-
 impl std::str::FromStr for ControlledVocabulary {
     type Err = ();
 

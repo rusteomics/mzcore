@@ -122,7 +122,9 @@ pub trait CVData: Clone {
     fn index(&self) -> Option<Self::Index>;
 
     /// The CURIE for this entry. This behavior is strictly *opt-in*.
-    fn curie(&self) -> Option<Curie> { None }
+    fn curie(&self) -> Option<Curie> {
+        None
+    }
 
     /// The name of the item, this will be stored in a case insensitive manner in the
     /// [`crate::CVIndex`] but should be reported in the correct casing here.

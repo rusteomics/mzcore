@@ -77,7 +77,7 @@ struct MultiAlignmentLine<Sequence> {
     start: usize,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 struct MultiAlignmentLineTemp<'a, Sequence, const STEPS: u16> {
     original_index: usize,
     sequence: Sequence,

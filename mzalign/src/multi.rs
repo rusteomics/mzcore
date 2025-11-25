@@ -12,7 +12,7 @@ use mzcore::{
 use std::fmt::Write;
 
 /// An alignment of multiple peptides
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct MultipleSequenceAlignment<Complexity> {
     /// The sequences
     pub sequences: Vec<MSAPlacement<Complexity>>,
@@ -21,7 +21,7 @@ pub struct MultipleSequenceAlignment<Complexity> {
 }
 
 /// The placement of a single peptide in a multiple sequence alignment
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct MSAPlacement<Complexity> {
     /// The sequence
     pub sequence: Peptidoform<Complexity>,
@@ -42,7 +42,7 @@ impl<Complexity> MSAPlacement<Complexity> {
 }
 
 /// A single position in a multiple sequence alignment
-#[derive(Debug, Clone, Hash, PartialEq, Eq)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub enum MSAPosition {
     /// A gap one sequence position spanning one sequence position
     Gap,

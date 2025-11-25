@@ -1,12 +1,12 @@
 //! An example to show how to work with the MS ontology
 use std::{borrow::Cow, io::Write, sync::Arc};
 
-use bincode::{Encode, Decode};
+use bincode::{Decode, Encode};
 use context_error::{BoxedError, CreateError, FullErrorContent, StaticErrorContent};
 
 use mzcv::{
-    CVData, CVError, CVFile, CVIndex, CVSource, CVVersion, ControlledVocabulary,
-    HashBufReader, OboOntology, OboStanzaType, SynonymScope,
+    CVData, CVError, CVFile, CVIndex, CVSource, CVVersion, ControlledVocabulary, HashBufReader,
+    OboOntology, OboStanzaType, SynonymScope,
 };
 
 fn main() {
@@ -57,16 +57,13 @@ fn main() {
             for a in answers {
                 println!(
                     " >{} '{}': {}",
-                    a.curie()
-                        .map_or_else(|| "-".to_string(), |i| i.to_string()),
+                    a.curie().map_or_else(|| "-".to_string(), |i| i.to_string()),
                     a.name,
                     a.definition
                 );
                 for i in a.parents() {
                     let parent = ms.get_by_index(&i).unwrap();
-                    println!(
-                        "\t{}|{}", parent.curie().unwrap(), parent.name().unwrap()
-                    )
+                    println!("\t{}|{}", parent.curie().unwrap(), parent.name().unwrap())
                 }
             }
         }
