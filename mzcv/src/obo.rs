@@ -55,7 +55,7 @@ pub struct OboIdentifier(pub Option<Box<str>>, pub Box<str>);
 
 impl OboIdentifier {
     /// Create a new [`OboIdent`]
-    pub fn new(namespace: Option<Box<str>>, identifier: Box<str>) -> Self {
+    pub const fn new(namespace: Option<Box<str>>, identifier: Box<str>) -> Self {
         Self(namespace, identifier)
     }
 
@@ -108,15 +108,21 @@ impl Display for OboIdentifier {
     }
 }
 
+impl From<&str> for OboIdentifier {
+    fn from(value: &str) -> Self {
+        if let Some((cv, id)) = value.split_once(':').or_else(|| value.split_once('_')) {
+            Self::new(Some(unescape(cv)), unescape(id))
+        } else {
+            Self::new(None, unescape(value))
+        }
+    }
+}
+
 impl FromStr for OboIdentifier {
     type Err = ();
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        if let Some((cv, id)) = s.split_once(':').or_else(|| s.split_once('_')) {
-            Ok(Self::new(Some(unescape(cv)), unescape(id)))
-        } else {
-            Ok(Self::new(None, unescape(s)))
-        }
+        Ok(s.into())
     }
 }
 
@@ -447,15 +453,7 @@ impl OboOntology {
                             }
                         }
                         "id" => {
-                            obj.id = value_line.parse().unwrap();
-                            // if let Some((cv, id)) = value_line
-                            //     .split_once(':')
-                            //     .or_else(|| value_line.split_once('_'))
-                            // {
-                            //     obj.id = (Some(unescape(cv)), unescape(id));
-                            // } else {
-                            //     obj.id = (None, unescape(id));
-                            // }
+                            obj.id = value_line.into();
                         }
                         "def" => {
                             let parts = tokenise(value_line).map_err(|close| {
@@ -570,7 +568,7 @@ impl OboOntology {
                             }
                         }
                         "is_a" => {
-                            obj.is_a.push(value_line.parse().unwrap());
+                            obj.is_a.push(value_line.into());
                         }
                         // TODO: Formalize broader `relationship` parsing as this currently is rolled up into `lines`
                         _ => {
