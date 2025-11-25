@@ -58,6 +58,7 @@ impl<T: HasPeptidoformImpl> HasPeptidoformImpl for Box<T> {
 }
 
 impl<T: HasPeptidoformImpl, Complexity: AtLeast<T::Complexity>> HasPeptidoform<Complexity> for T {
+    #[inline]
     fn cast_peptidoform(&self) -> &Peptidoform<Complexity> {
         self.peptidoform().as_ref()
     }

@@ -1,5 +1,3 @@
-#![allow(dead_code)]
-
 use serde::{Deserialize, Serialize};
 
 use crate::{
@@ -214,36 +212,35 @@ impl<'a, Sequence: HasPeptidoform<Linear>, const STEPS: u16>
         seq_index.min(self.sequence.cast_peptidoform().len())
     }
 
-    // Outer 'ref' index
-    fn get_aa_at(&self, index: usize) -> (&SequenceElement<Linear>, &Multi<Mass>) {
-        let mut path_index = 0;
-        let mut ref_index = 0;
-        let mut seq_index = 0;
-        while ref_index < index {
-            seq_index += self.path[path_index].seq_step as usize;
-            ref_index += self.path[path_index].ref_step as usize;
-            path_index += usize::from(path_index != self.path.len() - 1); // just saturate for now
+    // Seq index
+    fn get_aa_at(&self, seq_index: usize) -> (&SequenceElement<Linear>, &Multi<Mass>) {
+        let c = self.sequence.cast_peptidoform();
+        let i = (seq_index).min(c.len()).saturating_sub(1);
+        unsafe {
+            (
+                &c.sequence().get_unchecked(i),
+                &self.masses.get_unchecked([i, 0]),
+            )
         }
-        let i = (seq_index.saturating_sub(1))
-            .min(self.sequence.cast_peptidoform().len().saturating_sub(1));
-        (
-            &self.sequence.cast_peptidoform().sequence()[i],
-            &self.masses[[i, 0]],
-        )
     }
 
-    // Outer 'ref' index, seq len
+    // Seq index, seq len
     fn get_block_at(
         &self,
-        index: usize,
+        seq_index: usize,
         len: usize,
     ) -> Option<(&[SequenceElement<Linear>], &Multi<Mass>)> {
-        let seq_index = self.get_seq_index(index);
         if seq_index >= len {
-            Some((
-                &self.sequence.cast_peptidoform().sequence()[seq_index - len..seq_index],
-                &self.masses[[seq_index - 1, len - 1]],
-            ))
+            Some(unsafe {
+                (
+                    &self
+                        .sequence
+                        .cast_peptidoform()
+                        .sequence()
+                        .get_unchecked(seq_index - len..seq_index),
+                    &self.masses.get_unchecked([seq_index - 1, len - 1]),
+                )
+            })
         } else {
             None
         }
@@ -502,7 +499,15 @@ pub(super) fn multi_align_cached<'a, const STEPS: u16, Sequence: HasPeptidoform<
         .collect::<Vec<_>>();
 
     for index_a in 1..=len_a {
+        let seq_a_indices = a
+            .iter()
+            .map(|s| s.get_seq_index(index_a))
+            .collect::<Vec<_>>();
         for index_b in 1..=len_b {
+            let seq_b_indices = b
+                .iter()
+                .map(|s| s.get_seq_index(index_b))
+                .collect::<Vec<_>>();
             // Returns the score for a gap transition.
             // gap_a controls whether the gap is in a or b.
             let score_gap = |gap_a: bool| {
@@ -543,11 +548,11 @@ pub(super) fn multi_align_cached<'a, const STEPS: u16, Sequence: HasPeptidoform<
             // Now try matching single aminoacids.
             let prev = unsafe { matrix.get_unchecked([index_a - 1, index_b - 1]) };
 
-            for ia in &a {
-                for ib in &b {
+            for ia in 0..a.len() {
+                for ib in 0..b.len() {
                     let pair_score = score_pair(
-                        ia.get_aa_at(index_a),
-                        ib.get_aa_at(index_b),
+                        a[ia].get_aa_at(seq_a_indices[ia]),
+                        b[ib].get_aa_at(seq_b_indices[ib]),
                         scoring,
                         prev.score,
                     );
@@ -557,45 +562,48 @@ pub(super) fn multi_align_cached<'a, const STEPS: u16, Sequence: HasPeptidoform<
                 }
             }
 
-            for ia in 0..a.len() {
-                let seq_index_a = a[ia].get_seq_index(index_a);
-                for ib in 0..b.len() {
-                    let seq_index_b = b[ib].get_seq_index(index_b);
-                    // Now try matching longer sequences.
-                    for len_a in 1..=index_a.min(STEPS as usize) {
-                        let range_a = unsafe {
-                            ranges_a[ia].get_unchecked([seq_index_a.saturating_sub(1), len_a - 1])
-                        }; // TODO: this needs to be fixed for ref vs seq indices
-
-                        let min_len_b = if len_a == 1 { 2 } else { 1 };
-
-                        for len_b in min_len_b..=index_b.min(STEPS as usize) {
-                            let range_b = unsafe {
-                                ranges_b[ib]
-                                    .get_unchecked([seq_index_b.saturating_sub(1), len_b - 1])
+            if highest.match_type != MatchType::FullIdentity {
+                for ia in 0..a.len() {
+                    let seq_index_a = seq_a_indices[ia];
+                    for ib in 0..b.len() {
+                        let seq_index_b = seq_b_indices[ib];
+                        // Now try matching longer sequences.
+                        for len_a in 1..=index_a.min(STEPS as usize) {
+                            let range_a = unsafe {
+                                ranges_a[ia]
+                                    .get_unchecked([seq_index_a.saturating_sub(1), len_a - 1])
                             };
-                            // Note that ranges are already expanded by tolerance, so
-                            // exact comparison is fine here.
-                            if range_a.0 > range_b.1 || range_b.0 > range_a.1 {
-                                continue;
-                            }
-                            // len_a and b are always <= STEPS
-                            let match_score = {
-                                let prev = unsafe {
-                                    matrix.get_unchecked([index_a - len_a, index_b - len_b])
+
+                            let min_len_b = if len_a == 1 { 2 } else { 1 };
+
+                            for len_b in min_len_b..=index_b.min(STEPS as usize) {
+                                let range_b = unsafe {
+                                    ranges_b[ib]
+                                        .get_unchecked([seq_index_b.saturating_sub(1), len_b - 1])
                                 };
-                                let base_score = prev.score;
-                                a[ia]
-                                    .get_block_at(index_a, len_a)
-                                    .and_then(|a| {
-                                        b[ib].get_block_at(index_b, len_b).map(|b| (a, b))
-                                    })
-                                    .and_then(|(a, b)| score(a, b, scoring, base_score))
-                            };
-                            if let Some(p) = match_score
-                                && p.score > highest.score
-                            {
-                                highest = p;
+                                // Note that ranges are already expanded by tolerance, so
+                                // exact comparison is fine here.
+                                if range_a.0 > range_b.1 || range_b.0 > range_a.1 {
+                                    continue;
+                                }
+                                // len_a and b are always <= STEPS
+                                let match_score = {
+                                    let prev = unsafe {
+                                        matrix.get_unchecked([index_a - len_a, index_b - len_b])
+                                    };
+                                    let base_score = prev.score;
+                                    a[ia]
+                                        .get_block_at(seq_index_a, len_a)
+                                        .and_then(|a| {
+                                            b[ib].get_block_at(seq_index_b, len_b).map(|b| (a, b))
+                                        })
+                                        .and_then(|(a, b)| score(a, b, scoring, base_score))
+                                };
+                                if let Some(p) = match_score
+                                    && p.score > highest.score
+                                {
+                                    highest = p;
+                                }
                             }
                         }
                     }
@@ -894,6 +902,3 @@ mod tests {
         assert_eq!(buf2, "RWN·DG-YAMEDYWGQG\n");
     }
 }
-
-//  2=2:1i2=1D3=1I6=
-//  2=2:1i2=1I3=1D6=

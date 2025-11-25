@@ -181,49 +181,51 @@ pub(super) fn align_cached<
             }
 
             // Now try matching longer sequences.
-            for len_a in 1..=index_a.min(STEPS as usize) {
-                let range_a = unsafe { ranges_a.get_unchecked([index_a - 1, len_a - 1]) };
+            if highest.match_type != MatchType::FullIdentity {
+                for len_a in 1..=index_a.min(STEPS as usize) {
+                    let range_a = unsafe { ranges_a.get_unchecked([index_a - 1, len_a - 1]) };
 
-                let min_len_b = if len_a == 1 { 2 } else { 1 };
+                    let min_len_b = if len_a == 1 { 2 } else { 1 };
 
-                for len_b in min_len_b..=index_b.min(STEPS as usize) {
-                    let range_b = unsafe { ranges_b.get_unchecked([index_b - 1, len_b - 1]) };
-                    // Note that ranges are already expanded by tolerance, so
-                    // exact comparison is fine here.
-                    if range_a.0 > range_b.1 || range_b.0 > range_a.1 {
-                        continue;
-                    }
-                    // len_a and b are always <= STEPS
-                    let match_score = {
-                        let prev =
-                            unsafe { matrix.get_unchecked([index_a - len_a, index_b - len_b]) };
-                        let base_score = prev.score;
+                    for len_b in min_len_b..=index_b.min(STEPS as usize) {
+                        let range_b = unsafe { ranges_b.get_unchecked([index_b - 1, len_b - 1]) };
+                        // Note that ranges are already expanded by tolerance, so
+                        // exact comparison is fine here.
+                        if range_a.0 > range_b.1 || range_b.0 > range_a.1 {
+                            continue;
+                        }
+                        // len_a and b are always <= STEPS
+                        let match_score = {
+                            let prev =
+                                unsafe { matrix.get_unchecked([index_a - len_a, index_b - len_b]) };
+                            let base_score = prev.score;
 
-                        score(
-                            unsafe {
-                                (
-                                    peptidoform_a
-                                        .sequence()
-                                        .get_unchecked((index_a - len_a)..index_a),
-                                    masses_a.get_unchecked([index_a - 1, len_a - 1]),
-                                )
-                            },
-                            unsafe {
-                                (
-                                    peptidoform_b
-                                        .sequence()
-                                        .get_unchecked((index_b - len_b)..index_b),
-                                    masses_b.get_unchecked([index_b - 1, len_b - 1]),
-                                )
-                            },
-                            scoring,
-                            base_score,
-                        )
-                    };
-                    if let Some(p) = match_score
-                        && p.score > highest.score
-                    {
-                        highest = p;
+                            score(
+                                unsafe {
+                                    (
+                                        peptidoform_a
+                                            .sequence()
+                                            .get_unchecked((index_a - len_a)..index_a),
+                                        masses_a.get_unchecked([index_a - 1, len_a - 1]),
+                                    )
+                                },
+                                unsafe {
+                                    (
+                                        peptidoform_b
+                                            .sequence()
+                                            .get_unchecked((index_b - len_b)..index_b),
+                                        masses_b.get_unchecked([index_b - 1, len_b - 1]),
+                                    )
+                                },
+                                scoring,
+                                base_score,
+                            )
+                        };
+                        if let Some(p) = match_score
+                            && p.score > highest.score
+                        {
+                            highest = p;
+                        }
                     }
                 }
             }

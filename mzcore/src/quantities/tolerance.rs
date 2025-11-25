@@ -209,6 +209,7 @@ pub trait WithinTolerance<A, B> {
 }
 
 impl WithinTolerance<MassOverCharge, MassOverCharge> for Tolerance<MassOverCharge> {
+    #[inline]
     fn within(&self, a: &MassOverCharge, b: &MassOverCharge) -> bool {
         match self {
             Self::Absolute(tol) => (a.value - b.value).abs() <= tol.value,
@@ -218,6 +219,7 @@ impl WithinTolerance<MassOverCharge, MassOverCharge> for Tolerance<MassOverCharg
 }
 
 impl WithinTolerance<Mass, Mass> for Tolerance<Mass> {
+    #[inline]
     fn within(&self, a: &Mass, b: &Mass) -> bool {
         match self {
             Self::Absolute(tol) => (a.value - b.value).abs() <= tol.value,
@@ -227,6 +229,7 @@ impl WithinTolerance<Mass, Mass> for Tolerance<Mass> {
 }
 
 impl WithinTolerance<Multi<Mass>, Multi<Mass>> for Tolerance<Mass> {
+    #[inline]
     fn within(&self, a: &Multi<Mass>, b: &Multi<Mass>) -> bool {
         a.iter()
             .cartesian_product(b.iter())
@@ -235,18 +238,21 @@ impl WithinTolerance<Multi<Mass>, Multi<Mass>> for Tolerance<Mass> {
 }
 
 impl WithinTolerance<Multi<Mass>, Mass> for Tolerance<Mass> {
+    #[inline]
     fn within(&self, a: &Multi<Mass>, b: &Mass) -> bool {
         a.iter().any(|a| self.within(a, b))
     }
 }
 
 impl WithinTolerance<Mass, Multi<Mass>> for Tolerance<Mass> {
+    #[inline]
     fn within(&self, a: &Mass, b: &Multi<Mass>) -> bool {
         b.iter().any(|b| self.within(a, b))
     }
 }
 
 impl WithinTolerance<Mass, Mass> for Tolerance<OrderedMass> {
+    #[inline]
     fn within(&self, a: &Mass, b: &Mass) -> bool {
         match self {
             Self::Absolute(tol) => (a.value - b.value).abs() <= tol.value,
@@ -256,6 +262,7 @@ impl WithinTolerance<Mass, Mass> for Tolerance<OrderedMass> {
 }
 
 impl WithinTolerance<Multi<Mass>, Multi<Mass>> for Tolerance<OrderedMass> {
+    #[inline]
     fn within(&self, a: &Multi<Mass>, b: &Multi<Mass>) -> bool {
         a.iter()
             .cartesian_product(b.iter())
@@ -264,12 +271,14 @@ impl WithinTolerance<Multi<Mass>, Multi<Mass>> for Tolerance<OrderedMass> {
 }
 
 impl WithinTolerance<Multi<Mass>, Mass> for Tolerance<OrderedMass> {
+    #[inline]
     fn within(&self, a: &Multi<Mass>, b: &Mass) -> bool {
         a.iter().any(|a| self.within(a, b))
     }
 }
 
 impl WithinTolerance<Mass, Multi<Mass>> for Tolerance<OrderedMass> {
+    #[inline]
     fn within(&self, a: &Mass, b: &Multi<Mass>) -> bool {
         b.iter().any(|b| self.within(a, b))
     }

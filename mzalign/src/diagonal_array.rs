@@ -15,17 +15,13 @@ impl<T, const DEPTH: u16> DiagonalArray<T, DEPTH> {
 
     /// Calculate the index of a given point (along the first axis; n) into the array
     const fn length(n: usize) -> usize {
-        Self::length_with_depth(n, DEPTH)
+        Self::length_with_depth(n, DEPTH as usize)
     }
 
     /// Calculate the index of a given point (along the first axis; n) into the array, with a given depth
-    const fn length_with_depth(n: usize, depth: u16) -> usize {
-        let mi = if n >= depth as usize {
-            depth as usize
-        } else {
-            n
-        };
-        (mi + 1) * mi / 2 + n.saturating_sub(depth as usize) * depth as usize
+    const fn length_with_depth(n: usize, depth: usize) -> usize {
+        let mi = if n >= depth { depth } else { n }; // Ord::min is not const
+        (mi + 1) * mi / 2 + n.saturating_sub(depth) * depth
     }
 
     /// Calculate the index of a given point (along the first axis; n) into the array, with a given depth
@@ -147,7 +143,11 @@ impl<T: Default + Clone, const DEPTH: u16> DiagonalArray<T, DEPTH> {
     pub(super) fn new(len: usize) -> Self {
         Self {
             len,
-            data: vec![T::default(); Self::length_with_depth(len, DEPTH.saturating_add(1))].into(),
+            data: vec![
+                T::default();
+                Self::length_with_depth(len, DEPTH.saturating_add(1) as usize)
+            ]
+            .into(),
         }
     }
 }

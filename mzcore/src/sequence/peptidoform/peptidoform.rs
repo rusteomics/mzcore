@@ -336,6 +336,7 @@ impl<Complexity> Peptidoform<Complexity> {
 impl<Complexity, OtherComplexity: AtLeast<Complexity>> AsRef<Peptidoform<OtherComplexity>>
     for Peptidoform<Complexity>
 {
+    #[inline]
     fn as_ref(&self) -> &Peptidoform<OtherComplexity> {
         self.mark_ref()
     }
@@ -391,6 +392,7 @@ impl<Complexity> Peptidoform<Complexity> {
     /// Mark this peptide with the following complexity, be warned that the complexity level is not checked.
     /// # Panics
     /// If the internal unsafe pointer casting fails to create a valid pointer.
+    #[inline]
     const fn mark_ref<OtherComplexity>(&self) -> &Peptidoform<OtherComplexity> {
         unsafe {
             std::ptr::from_ref(self)
