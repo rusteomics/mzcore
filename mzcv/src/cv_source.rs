@@ -5,7 +5,7 @@ use context_error::BoxedError;
 use directories::{BaseDirs, ProjectDirs};
 use sha2::Digest;
 
-use crate::{CVError, hash_buf_reader::HashBufReader};
+use crate::{CVError, Curie, hash_buf_reader::HashBufReader};
 
 /// Implement this trait to create a new CV. The best way of using this is with a ZST (zero sized type).
 /// ```rust ignore
@@ -120,11 +120,22 @@ pub trait CVData: Clone {
     type Index: std::fmt::Debug + Clone + std::hash::Hash + Eq;
     /// The numerical index or id of the item.
     fn index(&self) -> Option<Self::Index>;
+
+    /// The CURIE for this entry. This behavior is strictly *opt-in*.
+    fn curie(&self) -> Option<Curie> { None }
+
     /// The name of the item, this will be stored in a case insensitive manner in the
     /// [`crate::CVIndex`] but should be reported in the correct casing here.
     fn name(&self) -> Option<std::borrow::Cow<'_, str>>;
+
     /// Any synonyms that can be uniquely attributed to this data element. So EXACT synonyms from Obo files.
     fn synonyms(&self) -> impl Iterator<Item = &str>;
+
+    /// Enumerate all the immediate parents of this term, e.g. those with an `is_a` relationship with it. This behavior is strictly *opt-in*.
+    fn parents(&self) -> impl Iterator<Item = &Self::Index> {
+        let value: Option<&Self::Index> = None;
+        value.into_iter()
+    }
 }
 
 /// The used compression of the source CV.

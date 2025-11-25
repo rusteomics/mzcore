@@ -1,11 +1,11 @@
-use std::{collections::HashMap, fs::File, io::BufReader, path::Path};
+use std::{collections::HashMap, fmt::Display, fs::File, io::BufReader, path::Path, str::FromStr};
 
 use bincode::{Decode, Encode};
 use chrono::FixedOffset;
 use context_error::{BoxedError, Context, CreateError, ErrorKind};
 use flate2::bufread::GzDecoder;
 
-use crate::{CVVersion, hash_buf_reader::HashBufReader};
+use crate::{CURIEParsingError, CVVersion, Curie, hash_buf_reader::HashBufReader};
 
 /// An Obo ontology. This can be read from a file with [`Self::from_file`] or from a raw reader
 /// with [`Self::from_raw`].
@@ -30,9 +30,9 @@ pub struct OboStanza {
     /// The stanza type
     pub stanza_type: OboStanzaType,
     /// The id, split into the CV and local identifiers, the local id is stored as string as some ontologies use non numeric values
-    pub id: OboID,
+    pub id: OboIdentifier,
     /// The `def` field.  (value, cross-ids, trailing modifiers, comment)
-    pub definition: Option<(Box<str>, Vec<OboID>, Vec<Modifier>, Comment)>,
+    pub definition: Option<(Box<str>, Vec<RawOboID>, Vec<Modifier>, Comment)>,
     /// The synonyms for this stanza
     pub synonyms: Vec<OboSynonym>,
     /// The tags that are defined for this stanza (value, trialing modifiers, comment)
@@ -41,13 +41,104 @@ pub struct OboStanza {
     pub property_values: HashMap<Box<str>, Vec<(OboValue, Vec<Modifier>, Comment)>>,
     /// If the 'is_obsolete' property is set
     pub obsolete: bool,
+    /// The ids of all parent terms in the ontology's term graph, as defined by the `is_a` special relationship
+    pub is_a: Vec<OboIdentifier>,
+    /// The ids of all terms in the ontology's term graph which this entity is a component of, as defined by the
+    /// `part_of` special relationship
+    pub part_of: Vec<OboIdentifier>,
 }
 
-type OboID = (Option<Box<str>>, Box<str>);
+
+/// A (usually) unique identifier for an entry in an ontology
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Debug, Clone, Default, PartialEq, Eq, PartialOrd, Ord, Hash, Encode, Decode)]
+pub struct OboIdentifier(pub Option<Box<str>>, pub Box<str>);
+
+impl OboIdentifier {
+    /// Create a new [`OboIdent`]
+    pub fn new(namespace: Option<Box<str>>, identifier: Box<str>) -> Self {
+        Self(namespace, identifier)
+    }
+
+    /// Whether the identifier is has a namespace or not
+    pub const fn has_namespace(&self) -> bool {
+        self.0.is_some()
+    }
+
+    /// The namespace identifier for this instance. If not present, the identifier is generally
+    /// localized.
+    pub fn namespace(&self) -> Option<&str> {
+        self.0.as_deref()
+    }
+    /// The identifying marker
+    pub fn identifier(&self) -> &str {
+        &self.1
+    }
+}
+
+impl PartialEq<(Option<Box<str>>, Box<str>)> for OboIdentifier {
+    fn eq(&self, other: &(Option<Box<str>>, Box<str>)) -> bool {
+        self.0 == other.0 && self.1 == other.1
+    }
+}
+
+impl From<Curie> for OboIdentifier {
+    fn from(value: Curie) -> Self {
+        Self::new(Some(value.cv.to_string().into_boxed_str()), value.accession.to_string().into_boxed_str())
+    }
+}
+
+impl TryFrom<OboIdentifier> for Curie {
+    type Error = CURIEParsingError;
+
+    fn try_from(value: OboIdentifier) -> Result<Self, Self::Error> {
+        value.to_string().parse()
+    }
+}
+
+impl Display for OboIdentifier {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        if let Some(ns) = self.0.as_ref() {
+            write!(f, "{ns}:{}", self.1)
+        } else {
+            write!(f, "{}", self.1)
+        }
+    }
+}
+
+impl FromStr for OboIdentifier {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        if let Some((cv, id)) = s
+            .split_once(':')
+            .or_else(|| s.split_once('_'))
+        {
+            Ok(Self::new(Some(unescape(cv)), unescape(id)))
+        } else {
+            Ok(Self::new(None, unescape(s)))
+        }
+    }
+}
+
+type RawOboID = (Option<Box<str>>, Box<str>);
+
+impl From<RawOboID> for OboIdentifier {
+    fn from(value: RawOboID) -> Self {
+        Self::new(value.0, value.1)
+    }
+}
+
+impl From<OboIdentifier> for RawOboID {
+    fn from(value: OboIdentifier) -> Self {
+        (value.0, value.1)
+    }
+}
 
 type Modifier = (Box<str>, Box<str>);
 
 type Comment = Option<Box<str>>;
+
 
 /// A synonym in an Obo stanza
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
@@ -60,7 +151,7 @@ pub struct OboSynonym {
     /// Optional synonym type name
     pub type_name: Option<Box<str>>,
     /// The dbxref list
-    pub cross_references: Vec<OboID>,
+    pub cross_references: Vec<RawOboID>,
     /// The trailing modifiers
     pub trailing_modifiers: Vec<Modifier>,
     /// The comment
@@ -82,7 +173,7 @@ pub enum SynonymScope {
     Related,
 }
 
-impl std::str::FromStr for SynonymScope {
+impl FromStr for SynonymScope {
     type Err = ();
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
@@ -95,7 +186,7 @@ impl std::str::FromStr for SynonymScope {
     }
 }
 
-impl std::fmt::Display for SynonymScope {
+impl Display for SynonymScope {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Exact => write!(f, "Exact"),
@@ -135,7 +226,7 @@ pub enum OboValue {
     DateTime(chrono::DateTime<FixedOffset>),
 }
 
-impl std::fmt::Display for OboValue {
+impl Display for OboValue {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::String(s) | Self::Uri(s) => write!(f, "{s}"),
@@ -313,170 +404,182 @@ impl OboOntology {
                 let value_line = value_line.trim();
 
                 if let Some(obj) = &mut recent_obj {
-                    if id == "property_value" {
-                        let first_space = value_line
-                            .char_indices()
-                            .find_map(|(i, c)| (c == ' ').then_some(i))
-                            .unwrap();
-                        let last_space = value_line
-                            .char_indices()
-                            .rfind(|(_, c)| *c == ' ')
-                            .map(|(i, _)| i)
-                            .unwrap();
-                        if first_space == last_space {
-                            let name = value_line[..first_space].trim();
-                            let value = value_line[first_space..].trim().trim_matches('"');
-                            obj.property_values
-                                .entry(name.into())
-                                .or_insert(Vec::new())
-                                .push((
-                                    OboValue::String(value.to_string()),
-                                    trailing_modifiers,
-                                    comment,
+                    match id {
+                        "property_value" => {
+                            let first_space = value_line
+                                .char_indices()
+                                .find_map(|(i, c)| (c == ' ').then_some(i))
+                                .unwrap();
+                            let last_space = value_line
+                                .char_indices()
+                                .rfind(|(_, c)| *c == ' ')
+                                .map(|(i, _)| i)
+                                .unwrap();
+                            if first_space == last_space {
+                                let name = value_line[..first_space].trim();
+                                let value = value_line[first_space..].trim().trim_matches('"');
+                                obj.property_values
+                                    .entry(name.into())
+                                    .or_insert(Vec::new())
+                                    .push((
+                                        OboValue::String(value.to_string()),
+                                        trailing_modifiers,
+                                        comment,
+                                    ));
+                            } else {
+                                let name = value_line[..first_space].trim().trim_end_matches(':');
+                                let value =
+                                    value_line[first_space..last_space].trim().trim_matches('"');
+                                let unit = value_line[last_space..].trim();
+                                obj.property_values
+                                    .entry(name.into())
+                                    .or_insert(Vec::new())
+                                    .push((
+                                        OboValue::parse(
+                                            unit,
+                                            value,
+                                            base_context
+                                                .clone()
+                                                .line_index(line_index as u32)
+                                                .lines(0, line.clone()),
+                                        )?,
+                                        trailing_modifiers,
+                                        comment,
+                                    ));
+                            }
+                        },
+                        "id" => {
+                            obj.id = value_line.parse().unwrap();
+                            // if let Some((cv, id)) = value_line
+                            //     .split_once(':')
+                            //     .or_else(|| value_line.split_once('_'))
+                            // {
+                            //     obj.id = (Some(unescape(cv)), unescape(id));
+                            // } else {
+                            //     obj.id = (None, unescape(id));
+                            // }
+                        },
+                        "def" => {
+                            let parts = tokenise(value_line).map_err(|close| {
+                                BoxedError::new(
+                                    OboError::InvalidLine,
+                                    "Invalid def line",
+                                    format!(
+                                        "The line did not contain the closing delimiter: `{close}`",
+                                    ),
+                                    base_context
+                                        .clone()
+                                        .lines(0, line.clone())
+                                        .line_index(line_index as u32),
+                                )
+                            })?;
+                            if parts.len() != 2 {
+                                return Err(BoxedError::new(
+                                    OboError::InvalidLine,
+                                    "Invalid sef line",
+                                    format!(
+                                        "The number of elements ({}) is not correct, two elements expected `\"def\" [DBXREF]`",
+                                        parts.len()
+                                    ),
+                                    base_context
+                                        .clone()
+                                        .lines(0, line.clone())
+                                        .line_index(line_index as u32),
                                 ));
-                        } else {
-                            let name = value_line[..first_space].trim().trim_end_matches(':');
-                            let value =
-                                value_line[first_space..last_space].trim().trim_matches('"');
-                            let unit = value_line[last_space..].trim();
-                            obj.property_values
-                                .entry(name.into())
-                                .or_insert(Vec::new())
-                                .push((
-                                    OboValue::parse(
-                                        unit,
-                                        value,
-                                        base_context
-                                            .clone()
-                                            .line_index(line_index as u32)
-                                            .lines(0, line.clone()),
-                                    )?,
-                                    trailing_modifiers,
-                                    comment,
+                            }
+                            if parts[1].0 != Some(']') {
+                                return Err(BoxedError::new(
+                                    OboError::InvalidLine,
+                                    "Invalid def line",
+                                    "The DBXREF should be enclosed in square brackets `[]`",
+                                    base_context
+                                        .clone()
+                                        .lines(0, line.clone())
+                                        .line_index(line_index as u32),
                                 ));
+                            }
+                            let def = unescape(parts[0].1);
+                            let cross_references = parse_dbxref(parts[1].1);
+                            obj.definition = Some((def, cross_references, trailing_modifiers, comment));
+                        },
+                        "synonym" => {
+                            let parts = tokenise(value_line).map_err(|close| {
+                                BoxedError::new(
+                                    OboError::InvalidLine,
+                                    "Invalid synonym line",
+                                    format!(
+                                        "The line did not contain the closing delimiter: `{close}`",
+                                    ),
+                                    base_context
+                                        .clone()
+                                        .lines(0, line.clone())
+                                        .line_index(line_index as u32),
+                                )
+                            })?;
+                            if parts.is_empty() || parts.len() > 4 {
+                                return Err(BoxedError::new(
+                                    OboError::InvalidSynonym,
+                                    "Invalid synonym line",
+                                    format!(
+                                        "The number of elements ({}) is not correct, one to four elements expected `\"def\" TYPE? NAME? DBXREF?`",
+                                        parts.len()
+                                    ),
+                                    base_context
+                                        .clone()
+                                        .lines(0, line.clone())
+                                        .line_index(line_index as u32),
+                                ));
+                            }
+                            if parts.len() == 4 && parts[3].0 != Some(']') {
+                                return Err(BoxedError::new(
+                                    OboError::InvalidSynonym,
+                                    "Invalid synonym line",
+                                    "The DBXREF should be enclosed in square brackets `[]`",
+                                    base_context
+                                        .clone()
+                                        .lines(0, line.clone())
+                                        .line_index(line_index as u32),
+                                ));
+                            }
+                            let synonym = unescape(parts[0].1);
+                            let scope = parts.get(1).map(|(_, ty)| ty.parse::<SynonymScope>().map_err(|()| BoxedError::new(
+                                    OboError::InvalidSynonym,
+                                    "Invalid synonym line",
+                                    "The type is not correct, expected one of: EXACT, BROAD, NARROW, RELATED",
+                                    base_context
+                                        .clone()
+                                        .lines(0, line.clone())
+                                        .line_index(line_index as u32),
+                                ))).transpose()?.unwrap_or_default();
+                            let type_name = parts.get(2).map(|(_, n)| unescape(n));
+                            let cross_references = parts
+                                .get(3)
+                                .map(|(_, n)| parse_dbxref(n))
+                                .unwrap_or_default();
+                            obj.synonyms.push(OboSynonym {
+                                synonym,
+                                scope,
+                                type_name,
+                                cross_references,
+                                trailing_modifiers,
+                                comment,
+                            });
+                        },
+                        "is_obselete" => {
+                            if value_line.eq_ignore_ascii_case("true") {
+                                obj.obsolete = true;
+                            }
+                        },
+                        "is_a" => {
+                            obj.is_a.push(value_line.parse().unwrap());
                         }
-                    } else if id == "id" {
-                        if let Some((cv, id)) = value_line
-                            .split_once(':')
-                            .or_else(|| value_line.split_once('_'))
-                        {
-                            obj.id = (Some(unescape(cv)), unescape(id));
-                        } else {
-                            obj.id = (None, unescape(id));
+                        // TODO: Formalize broader `relationship` parsing as this currently is rolled up into `lines`
+                        _ => {
+                            obj.lines
+                                .entry(id.trim().into())
+                                .or_insert(Vec::new())
+                                .push((unescape(value_line), trailing_modifiers, comment));
                         }
-                    } else if id == "synonym" {
-                        let parts = tokenise(value_line).map_err(|close| {
-                            BoxedError::new(
-                                OboError::InvalidLine,
-                                "Invalid synonym line",
-                                format!(
-                                    "The line did not contain the closing delimiter: `{close}`",
-                                ),
-                                base_context
-                                    .clone()
-                                    .lines(0, line.clone())
-                                    .line_index(line_index as u32),
-                            )
-                        })?;
-                        if parts.is_empty() || parts.len() > 4 {
-                            return Err(BoxedError::new(
-                                OboError::InvalidSynonym,
-                                "Invalid synonym line",
-                                format!(
-                                    "The number of elements ({}) is not correct, one to four elements expected `\"def\" TYPE? NAME? DBXREF?`",
-                                    parts.len()
-                                ),
-                                base_context
-                                    .clone()
-                                    .lines(0, line.clone())
-                                    .line_index(line_index as u32),
-                            ));
-                        }
-                        if parts.len() == 4 && parts[3].0 != Some(']') {
-                            return Err(BoxedError::new(
-                                OboError::InvalidSynonym,
-                                "Invalid synonym line",
-                                "The DBXREF should be enclosed in square brackets `[]`",
-                                base_context
-                                    .clone()
-                                    .lines(0, line.clone())
-                                    .line_index(line_index as u32),
-                            ));
-                        }
-                        let synonym = unescape(parts[0].1);
-                        let scope = parts.get(1).map(|(_, ty)| ty.parse::<SynonymScope>().map_err(|()| BoxedError::new(
-                                OboError::InvalidSynonym,
-                                "Invalid synonym line",
-                                "The type is not correct, expected one of: EXACT, BROAD, NARROW, RELATED",
-                                base_context
-                                    .clone()
-                                    .lines(0, line.clone())
-                                    .line_index(line_index as u32),
-                            ))).transpose()?.unwrap_or_default();
-                        let type_name = parts.get(2).map(|(_, n)| unescape(n));
-                        let cross_references = parts
-                            .get(3)
-                            .map(|(_, n)| parse_dbxref(n))
-                            .unwrap_or_default();
-                        obj.synonyms.push(OboSynonym {
-                            synonym,
-                            scope,
-                            type_name,
-                            cross_references,
-                            trailing_modifiers,
-                            comment,
-                        });
-                    } else if id == "def" {
-                        let parts = tokenise(value_line).map_err(|close| {
-                            BoxedError::new(
-                                OboError::InvalidLine,
-                                "Invalid def line",
-                                format!(
-                                    "The line did not contain the closing delimiter: `{close}`",
-                                ),
-                                base_context
-                                    .clone()
-                                    .lines(0, line.clone())
-                                    .line_index(line_index as u32),
-                            )
-                        })?;
-                        if parts.len() != 2 {
-                            return Err(BoxedError::new(
-                                OboError::InvalidLine,
-                                "Invalid sef line",
-                                format!(
-                                    "The number of elements ({}) is not correct, two elements expected `\"def\" [DBXREF]`",
-                                    parts.len()
-                                ),
-                                base_context
-                                    .clone()
-                                    .lines(0, line.clone())
-                                    .line_index(line_index as u32),
-                            ));
-                        }
-                        if parts[1].0 != Some(']') {
-                            return Err(BoxedError::new(
-                                OboError::InvalidLine,
-                                "Invalid def line",
-                                "The DBXREF should be enclosed in square brackets `[]`",
-                                base_context
-                                    .clone()
-                                    .lines(0, line.clone())
-                                    .line_index(line_index as u32),
-                            ));
-                        }
-                        let def = unescape(parts[0].1);
-                        let cross_references = parse_dbxref(parts[1].1);
-                        obj.definition = Some((def, cross_references, trailing_modifiers, comment));
-                    } else if id == "is_obsolete" {
-                        if value_line.eq_ignore_ascii_case("true") {
-                            obj.obsolete = true;
-                        }
-                    } else {
-                        obj.lines
-                            .entry(id.trim().into())
-                            .or_insert(Vec::new())
-                            .push((unescape(value_line), trailing_modifiers, comment));
                     }
                 } else if id.eq_ignore_ascii_case("data-version") {
                     obo.data_version = Some(unescape(value_line));
@@ -757,14 +860,11 @@ fn tokenise(text: &str) -> Result<Vec<(Option<char>, &str)>, char> {
     Ok(parts)
 }
 
-fn parse_dbxref(text: &str) -> Vec<(Option<Box<str>>, Box<str>)> {
+fn parse_dbxref(text: &str) -> Vec<RawOboID> {
     text.split(',')
         .filter(|s| !s.is_empty())
         .map(|id| {
-            id.split_once(':').map_or_else(
-                || (None, unescape(id)),
-                |(r, i)| (Some(unescape(r)), unescape(i)),
-            )
+            OboIdentifier::from_str(id).unwrap().into()
         })
         .collect()
 }
