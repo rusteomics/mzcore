@@ -1,18 +1,20 @@
 //! An example to show how to work with the MS ontology
 use std::{borrow::Cow, io::Write, sync::Arc};
 
-use bincode::{Decode, Encode};
+use bincode::{Encode, Decode};
 use context_error::{BoxedError, CreateError, FullErrorContent, StaticErrorContent};
 
 use mzcv::{
-    CVData, CVError, CVFile, CVIndex, CVSource, CVVersion, HashBufReader, OboOntology,
-    OboStanzaType, SynonymScope,
+    CVData, CVError, CVFile, CVIndex, CVSource, CVVersion, ControlledVocabulary,
+    HashBufReader, OboOntology, OboStanzaType, SynonymScope,
 };
 
 fn main() {
     let (mut ms, _) = CVIndex::<MS>::init();
-    // ms.update_from_url(None).unwrap();
-    ms.update_from_path(None, true).unwrap();
+    if let Err(e) = ms.update_from_path(None, true) {
+        eprintln!("Failed to load from cache {e}. Attempting to download from the internet");
+        ms.update_from_url(&[]).unwrap();
+    }
     println!("Stored at: {}", MS::default_stem().display());
     println!("Found {} MS items", ms.data().len());
 
@@ -54,12 +56,18 @@ fn main() {
         } else {
             for a in answers {
                 println!(
-                    " > MS:{} '{}': {}",
-                    a.index
-                        .map_or_else(|| "-".to_string(), |i| format!("{i:07}")),
+                    " >{} '{}': {}",
+                    a.curie()
+                        .map_or_else(|| "-".to_string(), |i| i.to_string()),
                     a.name,
                     a.definition
                 );
+                for i in a.parents() {
+                    let parent = ms.get_by_index(&i).unwrap();
+                    println!(
+                        "\t{}|{}", parent.curie().unwrap(), parent.name().unwrap()
+                    )
+                }
             }
         }
     }
@@ -74,12 +82,17 @@ struct MSData {
     definition: Box<str>,
     synonyms: Vec<(SynonymScope, Box<str>)>,
     cross_ids: Vec<(Option<Box<str>>, Box<str>)>,
+    is_a: Vec<usize>,
 }
 
 impl CVData for MSData {
     type Index = usize;
     fn index(&self) -> Option<usize> {
         self.index
+    }
+    fn curie(&self) -> Option<mzcv::Curie> {
+        self.index
+            .map(|v| ControlledVocabulary::MS.curie(mzcv::AccessionCode::Numeric(v as u32)))
     }
     fn name(&self) -> Option<Cow<'_, str>> {
         Some(Cow::Borrowed(&self.name))
@@ -88,6 +101,10 @@ impl CVData for MSData {
         self.synonyms
             .iter()
             .filter_map(|(s, n)| (*s == SynonymScope::Exact).then_some(n.as_ref()))
+    }
+
+    fn parents(&self) -> impl Iterator<Item = &Self::Index> {
+        self.is_a.iter()
     }
 }
 
@@ -143,6 +160,11 @@ impl CVSource for MS {
                             if let Some((def, ids, _, _)) = obj.definition {
                                 data.definition = def;
                                 data.cross_ids = ids;
+                            }
+                            for parent in obj.is_a.iter() {
+                                if let Ok(parent_id) = parent.1.parse() {
+                                    data.is_a.push(parent_id);
+                                }
                             }
                             Arc::new(data)
                         })

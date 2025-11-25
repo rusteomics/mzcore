@@ -99,7 +99,7 @@ impl<CV: CVSource> CVIndex<CV> {
                             tags(&lowercase)
                                 .filter_map(|tag| self.trigram_index.get(&tag))
                                 .flatten()
-                                .filter(|term| set.insert(lowercase.clone()))
+                                .filter(|_term| set.insert(lowercase.clone()))
                         }
                         #[cfg(not(feature = "search-index"))]
                         {
