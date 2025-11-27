@@ -438,7 +438,7 @@ impl<'ontologies> PeptideModificationSearch<'ontologies> {
                     .iter()
                     .copied()
                     .max_by(|a, b| (*a).total_cmp(b))
-                    .unwrap(); // Guaranteed to always have a value
+                    .unwrap_or_default(); // Guaranteed to always have a value
                 let filtered: Vec<_> = distances
                     .iter()
                     .copied()

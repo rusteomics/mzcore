@@ -1,3 +1,5 @@
+use std::collections::BTreeMap;
+
 use serde::{Deserialize, Serialize};
 
 use crate::{
@@ -8,9 +10,9 @@ use crate::{
 };
 use mzcore::{
     prelude::*,
-    quantities::Multi,
+    quantities::{Multi, Tolerance},
     sequence::{HasPeptidoform, Linear},
-    system::{Mass, dalton},
+    system::{Mass, OrderedMass, dalton},
 };
 
 #[derive(Clone, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
@@ -58,7 +60,35 @@ impl<Sequence: HasPeptidoform<Linear>> MultiAlignment<Sequence> {
             maximal_step: STEPS,
         }
     }
+
+    /// Get the sequence variance for this MMSA
+    pub fn variance(&self) -> SequenceVariance {
+        let mut variance = Vec::new();
+
+        for ref_index in 0..self
+            .lines
+            .iter()
+            .map(|l| l.ref_length())
+            .max()
+            .unwrap_or_default()
+        {
+            // Break when the last item is reached
+            let mut element = BTreeMap::new();
+            for line in &self.lines {
+                if let Some(item) = line.get_item(ref_index) {
+                    let values: &mut (usize, f64) = element.entry(item).or_default();
+                    values.0 += 1;
+                }
+            }
+            variance.push(element);
+        }
+
+        variance
+    }
 }
+
+/// For each location the possible sequences and their length, their depth of coverage (how often seen) and their average local confidence.
+pub type SequenceVariance = Vec<BTreeMap<(SequenceElement<Linear>, u16), (usize, f64)>>;
 
 impl<Sequence: HasPeptidoform<Linear>> std::fmt::Display for MultiAlignment<Sequence> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -73,6 +103,67 @@ struct MultiAlignmentLine<Sequence> {
     sequence: Sequence,
     path: Vec<MultiPiece>,
     start: usize,
+}
+
+impl<Sequence: HasPeptidoform<Linear>> MultiAlignmentLine<Sequence> {
+    // Outer 'ref' index
+    fn get_item(&self, index: usize) -> Option<(SequenceElement<Linear>, u16)> {
+        let mut path_index = 0;
+        let mut ref_index = 0;
+        let mut seq_index = 0;
+        loop {
+            seq_index += self.path[path_index].seq_step as usize;
+            ref_index += self.path[path_index].ref_step as usize;
+            if ref_index >= index + self.path[path_index].ref_step as usize {
+                break;
+            }
+            path_index += usize::from(path_index != self.path.len() - 1); // just saturate for now
+        }
+        let seq_index = seq_index
+            .min(self.sequence.cast_peptidoform().len())
+            .saturating_sub(1);
+        (ref_index == index + self.path[path_index].ref_step as usize
+            && self.path[path_index].match_type != MatchType::Gap)
+            .then(|| {
+                (
+                    self.sequence.cast_peptidoform().sequence()[seq_index].clone(),
+                    self.path[path_index].ref_step,
+                )
+            })
+    }
+
+    fn debug_display(&self, mut w: impl std::fmt::Write) {
+        let sequence = self.sequence.cast_peptidoform().sequence();
+        let mut seq_index = self.start;
+        for piece in &self.path {
+            if piece.seq_step == 0 {
+                write!(w, "{}", "-".repeat(piece.ref_step as usize)).unwrap();
+            } else {
+                let subseq = &sequence[seq_index..seq_index + piece.seq_step as usize];
+                // Obviously misses mods now
+                let display = subseq
+                    .iter()
+                    .map(|s| s.aminoacid.one_letter_code().unwrap_or('X'))
+                    .collect::<String>();
+                write!(
+                    w,
+                    "{display}{}",
+                    "·".repeat((piece.ref_step - piece.seq_step) as usize)
+                )
+                .unwrap();
+                seq_index += piece.seq_step as usize;
+            }
+        }
+        writeln!(w).unwrap();
+    }
+
+    fn ref_length(&self) -> usize {
+        let mut ref_index = 0;
+        for piece in &self.path {
+            ref_index += piece.ref_step as usize;
+        }
+        ref_index
+    }
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -282,33 +373,6 @@ struct MultiPiece {
     seq_step: u16,
 }
 
-impl<Sequence: HasPeptidoform<Linear>> MultiAlignmentLine<Sequence> {
-    fn debug_display(&self, mut w: impl std::fmt::Write) {
-        let sequence = self.sequence.cast_peptidoform().sequence();
-        let mut seq_index = self.start;
-        for piece in &self.path {
-            if piece.seq_step == 0 {
-                write!(w, "{}", "-".repeat(piece.ref_step as usize)).unwrap();
-            } else {
-                let subseq = &sequence[seq_index..seq_index + piece.seq_step as usize];
-                // Obviously misses mods now
-                let display = subseq
-                    .iter()
-                    .map(|s| s.aminoacid.one_letter_code().unwrap_or('X'))
-                    .collect::<String>();
-                write!(
-                    w,
-                    "{display}{}",
-                    "·".repeat((piece.ref_step - piece.seq_step) as usize)
-                )
-                .unwrap();
-                seq_index += piece.seq_step as usize;
-            }
-        }
-        writeln!(w).unwrap();
-    }
-}
-
 impl<const STEPS: u16, Sequence: HasPeptidoform<Linear> + Clone> AlignIndex<STEPS, Sequence> {
     pub fn multi_align(
         &self,
@@ -318,22 +382,10 @@ impl<const STEPS: u16, Sequence: HasPeptidoform<Linear> + Clone> AlignIndex<STEP
     ) -> Vec<MultiAlignment<Sequence>> {
         assert!(self.sequences.len() > 1);
         // Create an outgroup of 'random' sequence with the length of the average of all used sequences
-        let outgroup: Peptidoform<Linear> = CheckedAminoAcid::CANONICAL_AMINO_ACIDS
-            .iter()
-            .cycle()
-            .take({
-                let (n, l) = self.sequences.iter().fold((0, 0), |(n, l), s| {
-                    (n + 1, l + s.0.cast_peptidoform().len())
-                });
-                l / n
-            })
-            .map(|a| SequenceElement::new(*a, None))
-            .collect();
-        let outgroup_masses = calculate_masses::<STEPS>(&outgroup, self.mode);
 
         // Make distance matrix
-        let mut matrix = DiagonalArray::<f64, { u16::MAX }>::new(self.sequences.len() + 1);
-        let mut nodes = Vec::with_capacity(self.sequences.len() + 1);
+        let mut matrix = DiagonalArray::<f64, { u16::MAX }>::new(self.sequences.len());
+        let mut nodes = Vec::with_capacity(self.sequences.len());
         for (i, s) in self.sequences.iter().enumerate() {
             matrix[[i, i]] = 0.0;
             for (o, so) in self.sequences.iter().enumerate().take(i) {
@@ -347,18 +399,8 @@ impl<const STEPS: u16, Sequence: HasPeptidoform<Linear> + Clone> AlignIndex<STEP
                 )
                 .distance();
             }
-            matrix[[self.sequences.len(), i]] = align_cached(
-                s.0.cast_peptidoform(),
-                &s.1,
-                &outgroup,
-                &outgroup_masses,
-                scoring,
-                align_type,
-            )
-            .distance();
             nodes.push(vec![MultiAlignmentLineTemp::single(i, s.0.clone(), &s.1)]);
         }
-        matrix[[self.sequences.len(), self.sequences.len()]] = 0.0;
         // Remember that the last node is not made (the outgroup node) so do not try to merge that one
 
         // Create tree
@@ -369,10 +411,7 @@ impl<const STEPS: u16, Sequence: HasPeptidoform<Linear> + Clone> AlignIndex<STEP
             // println!("{}", matrix.to_csv());
 
             let (distance, [far_index, close_index]) = matrix.min::<true>();
-            if maximal_distance.is_some_and(|m| distance > m)
-                || far_index == nodes.len()
-                || close_index == nodes.len()
-            {
+            if maximal_distance.is_some_and(|m| distance > m) {
                 // Stop if this distance is more than the threshold, or if the outgroup would be merged
                 break;
             }
@@ -408,6 +447,29 @@ impl<const STEPS: u16, Sequence: HasPeptidoform<Linear> + Clone> AlignIndex<STEP
             .map(|seqs| MultiAlignment::new(seqs, align_type))
             .collect()
     }
+}
+
+fn mass_range_expanded(masses: &Multi<Mass>, tolerance: Tolerance<OrderedMass>) -> (Mass, Mass) {
+    masses.iter().fold(
+        (
+            Mass::new::<dalton>(f64::INFINITY),
+            Mass::new::<dalton>(f64::NEG_INFINITY),
+        ),
+        |(min, max), &m| {
+            let range = tolerance.bounds(m);
+            (min.min(range.0), max.max(range.1))
+        },
+    )
+}
+
+fn mass_range(masses: &Multi<Mass>) -> (Mass, Mass) {
+    masses.iter().fold(
+        (
+            Mass::new::<dalton>(f64::INFINITY),
+            Mass::new::<dalton>(f64::NEG_INFINITY),
+        ),
+        |(min, max), &m| (min.min(m), max.max(m)),
+    )
 }
 
 /// Do mass based alignment, but with precomputed masses, see [align] for the normal entry point variant.
@@ -460,15 +522,9 @@ pub(super) fn multi_align_cached<'a, const STEPS: u16, Sequence: HasPeptidoform<
                 DiagonalArray::new(a.sequence.cast_peptidoform().len());
             for i in 0..a.sequence.cast_peptidoform().len() {
                 for j in 0..=i.min(STEPS as usize) {
-                    let (min, max) = unsafe { a.masses.get_unchecked([i, j]) }.iter().fold(
-                        (
-                            Mass::new::<dalton>(f64::INFINITY),
-                            Mass::new::<dalton>(f64::NEG_INFINITY),
-                        ),
-                        |(min, max), &m| {
-                            let range = scoring.tolerance.bounds(m);
-                            (min.min(range.0), max.max(range.1))
-                        },
+                    let (min, max) = mass_range_expanded(
+                        unsafe { a.masses.get_unchecked([i, j]) },
+                        scoring.tolerance,
                     );
                     ranges[[i, j]] = (min, max);
                 }
@@ -484,13 +540,7 @@ pub(super) fn multi_align_cached<'a, const STEPS: u16, Sequence: HasPeptidoform<
                 DiagonalArray::new(b.sequence.cast_peptidoform().len());
             for i in 0..b.sequence.cast_peptidoform().len() {
                 for j in 0..=i.min(STEPS as usize) {
-                    let (min, max) = unsafe { b.masses.get_unchecked([i, j]) }.iter().fold(
-                        (
-                            Mass::new::<dalton>(f64::INFINITY),
-                            Mass::new::<dalton>(f64::NEG_INFINITY),
-                        ),
-                        |(min, max), &m| (min.min(m), max.max(m)),
-                    );
+                    let (min, max) = mass_range(unsafe { b.masses.get_unchecked([i, j]) });
                     ranges[[i, j]] = (min, max);
                 }
             }
