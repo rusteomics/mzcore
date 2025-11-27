@@ -7,15 +7,14 @@ use crate::{
     align_matrix::Matrix,
     diagonal_array::DiagonalArray,
     mass_alignment::{
-        align_cached, calculate_masses, mass_range, mass_range_expanded, score, score_pair,
-        score_pair_mass_mismatch,
+        align_cached, mass_range, mass_range_expanded, score, score_pair, score_pair_mass_mismatch,
     },
 };
 use mzcore::{
     prelude::*,
-    quantities::{Multi, Tolerance},
+    quantities::Multi,
     sequence::{HasPeptidoform, Linear},
-    system::{Mass, OrderedMass, dalton},
+    system::Mass,
 };
 
 #[derive(Clone, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
@@ -23,7 +22,7 @@ pub struct MultiAlignment<Sequence> {
     lines: Vec<MultiAlignmentLine<Sequence>>,
     score: Score,
     maximal_step: u16,
-    align_type: AlignType,
+    align_type: MultiAlignType,
 }
 
 impl<Sequence: HasPeptidoform<Linear>> MultiAlignment<Sequence> {
@@ -41,7 +40,7 @@ impl<Sequence: HasPeptidoform<Linear>> MultiAlignment<Sequence> {
 
     fn new<const STEPS: u16>(
         sequences: Vec<MultiAlignmentLineTemp<'_, Sequence, STEPS>>,
-        align_type: AlignType,
+        align_type: MultiAlignType,
     ) -> Self {
         Self {
             lines: sequences
@@ -376,18 +375,45 @@ struct MultiPiece {
     seq_step: u16,
 }
 
-impl<const STEPS: u16, Sequence: HasPeptidoform<Linear> + Clone> AlignIndex<STEPS, Sequence> {
-    pub fn multi_align(
-        &self,
-        maximal_distance: Option<f64>, // Maximal distance to join clusters, or join all if set to None
-        scoring: AlignScoring<'_>,
-        align_type: AlignType, // TODO: figure out what to do for align_type
-    ) -> Vec<MultiAlignment<Sequence>> {
-        assert!(self.sequences.len() > 1);
+#[derive(Clone, Copy, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
+pub struct MultiAlignType {
+    pub left: MultiAlignSide,
+    pub right: MultiAlignSide,
+}
 
-        // Make distance matrix (TODO: make this separate and allow multi threaded option)
+#[derive(Clone, Copy, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
+pub enum MultiAlignSide {
+    Global,
+    EitherGlobal,
+}
+
+impl From<MultiAlignType> for AlignType {
+    fn from(value: MultiAlignType) -> Self {
+        AlignType {
+            left: match value.left {
+                MultiAlignSide::Global => crate::Side::Specified { a: true, b: true },
+                MultiAlignSide::EitherGlobal => crate::Side::EitherGlobal,
+            },
+            right: match value.right {
+                MultiAlignSide::Global => crate::Side::Specified { a: true, b: true },
+                MultiAlignSide::EitherGlobal => crate::Side::EitherGlobal,
+            },
+        }
+    }
+}
+
+impl<const STEPS: u16, Sequence: HasPeptidoform<Linear> + Clone> AlignIndex<STEPS, Sequence> {
+    /// Get matrix with the distances between all sequences in this index. It uses [`Alignment::distance`] as metric.
+    /// # Panics
+    /// If more than [`u16::MAX`] sequences are given.
+    pub fn distance_matrix(
+        &self,
+        scoring: AlignScoring<'_>,
+        align_type: MultiAlignType,
+    ) -> DiagonalArray<f64, { u16::MAX }> {
+        debug_assert!(self.sequences.len() <= u16::MAX.into());
+        let align_type = align_type.into();
         let mut matrix = DiagonalArray::<f64, { u16::MAX }>::new(self.sequences.len());
-        let mut nodes = Vec::with_capacity(self.sequences.len());
         for (i, s) in self.sequences.iter().enumerate() {
             matrix[[i, i]] = 0.0;
             for (o, so) in self.sequences.iter().enumerate().take(i) {
@@ -401,12 +427,37 @@ impl<const STEPS: u16, Sequence: HasPeptidoform<Linear> + Clone> AlignIndex<STEP
                 )
                 .distance();
             }
+        }
+        matrix
+    }
+
+    pub fn multi_align(
+        &self,
+        maximal_distance: Option<f64>, // Maximal distance to join clusters, or join all if set to None
+        scoring: AlignScoring<'_>,
+        align_type: MultiAlignType,
+    ) -> Vec<MultiAlignment<Sequence>> {
+        let distance_matrix = self.distance_matrix(scoring, align_type);
+        self.multi_align_inner(maximal_distance, distance_matrix, scoring, align_type)
+    }
+
+    fn multi_align_inner(
+        &self,
+        maximal_distance: Option<f64>, // Maximal distance to join clusters, or join all if set to None
+        mut distance_matrix: DiagonalArray<f64, { u16::MAX }>,
+        scoring: AlignScoring<'_>,
+        align_type: MultiAlignType,
+    ) -> Vec<MultiAlignment<Sequence>> {
+        assert!(self.sequences.len() > 1);
+
+        let mut nodes = Vec::with_capacity(self.sequences.len());
+        for (i, s) in self.sequences.iter().enumerate() {
             nodes.push(vec![MultiAlignmentLineTemp::single(i, s.0.clone(), &s.1)]);
         }
 
         // Progressively merge (this creates a phylogenetic tree that is not stored in any way)
         while nodes.len() > 1 {
-            let (distance, [far_index, close_index]) = matrix.min::<true>();
+            let (distance, [far_index, close_index]) = distance_matrix.min::<true>();
             if maximal_distance.is_some_and(|m| distance > m) {
                 // Stop if this distance is more than the threshold, or if the outgroup would be merged
                 break;
@@ -418,7 +469,7 @@ impl<const STEPS: u16, Sequence: HasPeptidoform<Linear> + Clone> AlignIndex<STEP
                 multi_align_cached::<STEPS, Sequence>(close_node, far_node, scoring, align_type);
 
             // Update matrix to merge these columns
-            matrix = matrix.merge_columns(close_index, far_index, distance);
+            distance_matrix = distance_matrix.merge_columns(close_index, far_index, distance);
         }
 
         // Create final data structures from the temporary ones
@@ -429,14 +480,82 @@ impl<const STEPS: u16, Sequence: HasPeptidoform<Linear> + Clone> AlignIndex<STEP
     }
 }
 
+impl<const STEPS: u16, Sequence: HasPeptidoform<Linear> + Clone + Send + Sync>
+    AlignIndex<STEPS, Sequence>
+{
+    /// Get matrix with the distances between all sequences in this index. It uses [`Alignment::distance`] as metric.
+    /// # Panics
+    /// If more than [`u16::MAX`] sequences are given.
+    #[cfg(feature = "rayon")]
+    pub fn par_distance_matrix(
+        &self,
+        scoring: AlignScoring<'_>,
+        align_type: MultiAlignType,
+    ) -> DiagonalArray<f64, { u16::MAX }> {
+        use rayon::prelude::*;
+        debug_assert!(self.sequences.len() <= u16::MAX.into());
+        let align_type = align_type.into();
+        let mut matrix = DiagonalArray::<f64, { u16::MAX }>::new(self.sequences.len());
+        for results in self
+            .sequences
+            .par_iter()
+            .enumerate()
+            .flat_map(move |(i, s)| {
+                self.sequences
+                    .par_iter()
+                    .enumerate()
+                    .take(i)
+                    .map(move |(o, so)| (i, s, o, so))
+            })
+            .map(|(i, s, o, so)| {
+                (
+                    i,
+                    o,
+                    align_cached(
+                        s.0.cast_peptidoform(),
+                        &s.1,
+                        so.0.cast_peptidoform(),
+                        &so.1,
+                        scoring,
+                        align_type,
+                    )
+                    .distance(),
+                )
+            })
+            .collect_vec_list()
+        {
+            for (i, o, d) in results {
+                matrix[[i, o]] = d;
+            }
+        }
+        for i in 0..self.sequences.len() {
+            matrix[[i, i]] = 0.0;
+        }
+
+        matrix
+    }
+
+    /// This parallelizes the distance matrix calculation, the multiple sequence merging is still done sequentially
+    #[cfg(feature = "rayon")]
+    pub fn par_multi_align(
+        &self,
+        maximal_distance: Option<f64>, // Maximal distance to join clusters, or join all if set to None
+        scoring: AlignScoring<'_>,
+        align_type: MultiAlignType,
+    ) -> Vec<MultiAlignment<Sequence>> {
+        let distance_matrix = self.par_distance_matrix(scoring, align_type);
+        self.multi_align_inner(maximal_distance, distance_matrix, scoring, align_type)
+    }
+}
+
 /// Do mass based alignment of two MMSA clusters, but with precomputed masses
 #[expect(clippy::too_many_lines)]
 #[allow(clippy::similar_names)]
 pub(super) fn multi_align_cached<'a, const STEPS: u16, Sequence: HasPeptidoform<Linear>>(
-    mut a: Vec<MultiAlignmentLineTemp<'a, Sequence, STEPS>>,
-    mut b: Vec<MultiAlignmentLineTemp<'a, Sequence, STEPS>>,
+    a: Vec<MultiAlignmentLineTemp<'a, Sequence, STEPS>>,
+    b: Vec<MultiAlignmentLineTemp<'a, Sequence, STEPS>>,
     scoring: AlignScoring<'_>,
-    align_type: AlignType,
+    align_type: MultiAlignType,
 ) -> Vec<MultiAlignmentLineTemp<'a, Sequence, STEPS>> {
     let len_a = a
         .iter()
@@ -447,10 +566,8 @@ pub(super) fn multi_align_cached<'a, const STEPS: u16, Sequence: HasPeptidoform<
     let mut matrix = Matrix::new(len_a, len_b);
     let mut global_highest = (0, 0, 0);
 
-    if align_type.left.global_a() {
+    if align_type.left == MultiAlignSide::Global {
         matrix.global_start(true, scoring);
-    }
-    if align_type.left.global_b() {
         matrix.global_start(false, scoring);
     }
 
@@ -703,16 +820,14 @@ pub(super) fn multi_align_cached<'a, const STEPS: u16, Sequence: HasPeptidoform<
             if highest.score >= global_highest.0 {
                 global_highest = (highest.score, index_a, index_b);
             }
-            if align_type.left.global() || highest.score > 0 {
-                unsafe {
-                    *matrix.get_unchecked_mut([index_a, index_b]) = highest;
-                }
+            unsafe {
+                *matrix.get_unchecked_mut([index_a, index_b]) = highest;
             }
         }
     }
 
     // Finish up by tracing the path and updating all enclosed sequences to this path
-    let (start_a, start_b, path) = matrix.trace_path(align_type, global_highest);
+    let (start_a, start_b, path) = matrix.trace_path(align_type.into(), global_highest);
 
     let mut sequences = Vec::with_capacity(a.len() + b.len());
 
@@ -752,7 +867,7 @@ mod tests {
         };
         let sequences = vec![seq("AGGWHD"), seq("ANWHN[Deamidated]"), seq("AHYDH")];
         let index = AlignIndex::<4, Peptidoform<Linear>>::new(sequences, MassMode::Monoisotopic);
-        let alignment = index.multi_align(None, AlignScoring::default(), AlignType::GLOBAL);
+        let alignment = index.multi_align(None, AlignScoring::default(), MultiAlignType::Global);
         let mut buf = String::new();
         alignment[0].debug_display(&mut buf);
         println!("{buf}");
@@ -783,7 +898,7 @@ mod tests {
             seq("RWGGN[U:Deamidated]GFYW[U:Oxidation]DYWGQG"),
         ];
         let index = AlignIndex::<4, Peptidoform<Linear>>::new(sequences, MassMode::Monoisotopic);
-        let alignment = index.multi_align(None, AlignScoring::default(), AlignType::GLOBAL);
+        let alignment = index.multi_align(None, AlignScoring::default(), MultiAlignType::Global);
         let mut buf = String::new();
         alignment[0].debug_display(&mut buf);
         println!("{buf}");
@@ -809,7 +924,7 @@ mod tests {
             seq("RWGGDGFMDYWGQG"),
         ];
         let index = AlignIndex::<4, Peptidoform<Linear>>::new(sequences, MassMode::Monoisotopic);
-        let alignment = index.multi_align(None, AlignScoring::default(), AlignType::GLOBAL);
+        let alignment = index.multi_align(None, AlignScoring::default(), MultiAlignType::Global);
         let mut buf = String::new();
         alignment[0].debug_display(&mut buf);
         println!("{buf}");
@@ -836,7 +951,8 @@ mod tests {
             seq("GDGFMDYWGQG"),
         ];
         let index = AlignIndex::<4, Peptidoform<Linear>>::new(sequences, MassMode::Monoisotopic);
-        let alignment = index.multi_align(None, AlignScoring::default(), AlignType::EITHER_GLOBAL);
+        let alignment =
+            index.multi_align(None, AlignScoring::default(), MultiAlignType::EitherGlobal);
         let mut buf = String::new();
         alignment[0].debug_display(&mut buf);
         println!("{buf}");
@@ -868,7 +984,7 @@ mod tests {
             ),
             ..Default::default()
         };
-        let alignment = index.multi_align(None, scoring, AlignType::EITHER_GLOBAL);
+        let alignment = index.multi_align(None, scoring, MultiAlignType::EitherGlobal);
         let mut buf = String::new();
         alignment[0].debug_display(&mut buf);
         println!("{buf}");
