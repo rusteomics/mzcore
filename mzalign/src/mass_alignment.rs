@@ -352,6 +352,42 @@ pub(super) fn score_pair<A: AtMax<Linear>, B: AtMax<Linear>>(
     }
 }
 
+/// Score a pair of sequence elements (AA + mods) when it is already known that the masses do not match
+pub(super) fn score_pair_mass_mismatch<A: AtMax<Linear>, B: AtMax<Linear>>(
+    a: &SequenceElement<A>,
+    b: &SequenceElement<B>,
+    scoring: AlignScoring<'_>,
+    score: isize,
+) -> Piece {
+    if a.aminoacid.aminoacid() == b.aminoacid.aminoacid() {
+        // The assumption is that if the peptide has modifications and the mass do not match
+        // this element in the database this is caused by artefacts of some kind. While if
+        // there is a modification on the database this is encoded in the genome (or similar)
+        // and has to be present in order for the peptide to match properly.
+        //
+        // If both have modifications this is assumed to be caused by artefacts on the
+        // peptides side.
+        if (scoring.pair == PairMode::DatabaseToPeptidoform && !b.modifications.is_empty())
+            || (scoring.pair == PairMode::PeptidoformToDatabase && !a.modifications.is_empty())
+        {
+            let local = scoring.matrix[a.aminoacid.aminoacid() as usize]
+                [b.aminoacid.aminoacid() as usize] as isize
+                + scoring.mass_mismatch as isize;
+            Piece::new(score + local, local, MatchType::IdentityMassMismatch, 1, 1)
+        } else {
+            let local = scoring.matrix[a.aminoacid.aminoacid() as usize]
+                [b.aminoacid.aminoacid() as usize] as isize
+                + scoring.mismatch as isize;
+            Piece::new(score + local, local, MatchType::Mismatch, 1, 1)
+        }
+    } else {
+        let local = scoring.matrix[a.aminoacid.aminoacid() as usize]
+            [b.aminoacid.aminoacid() as usize] as isize
+            + scoring.mismatch as isize;
+        Piece::new(score + local, local, MatchType::Mismatch, 1, 1)
+    }
+}
+
 /// Score two sets of aminoacids (it will only be called when at least one of a and b has len > 1)
 /// Returns none if no sensible explanation can be made
 pub(super) fn score<A: AtMax<Linear>, B: AtMax<Linear>>(

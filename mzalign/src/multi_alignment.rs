@@ -6,7 +6,7 @@ use crate::{
     AlignIndex, AlignScoring, AlignType, MatchType, Piece, Score,
     align_matrix::Matrix,
     diagonal_array::DiagonalArray,
-    mass_alignment::{align_cached, calculate_masses, score, score_pair},
+    mass_alignment::{align_cached, calculate_masses, score, score_pair, score_pair_mass_mismatch},
 };
 use mzcore::{
     prelude::*,
@@ -548,16 +548,60 @@ pub(super) fn multi_align_cached<'a, const STEPS: u16, Sequence: HasPeptidoform<
         })
         .collect::<Vec<_>>();
 
+    // First index_b then the sequence at that index
+    let seq_b_indices: Vec<Vec<usize>> = (1..=len_b)
+        .map(|index_b| {
+            b.iter()
+                .map(|s| s.get_seq_index(index_b))
+                .collect::<Vec<_>>()
+        })
+        .collect();
+
+    let sorted_masses_b: Vec<Vec<((Mass, Mass), usize)>> = seq_b_indices
+        .iter()
+        .map(|seq_b_indices| {
+            let mut sorted_masses_b: Vec<((Mass, Mass), usize)> = seq_b_indices
+                .iter()
+                .enumerate()
+                .map(|(ib, is)| {
+                    (
+                        mass_range(unsafe {
+                            b[ib].masses.get_unchecked([is.saturating_sub(1), 0])
+                        }),
+                        ib,
+                    )
+                })
+                .collect();
+            sorted_masses_b.sort_by(|a, b| a.0.0.value.total_cmp(&b.0.0.value));
+            sorted_masses_b
+        })
+        .collect();
+
+    // dbg!(&sorted_masses_b);
+
     for index_a in 1..=len_a {
         let seq_a_indices = a
             .iter()
             .map(|s| s.get_seq_index(index_a))
             .collect::<Vec<_>>();
+        // Min Max Index
+        let mut sorted_masses_a: Vec<((Mass, Mass), usize)> = seq_a_indices
+            .iter()
+            .enumerate()
+            .map(|(ia, is)| {
+                (
+                    mass_range_expanded(
+                        unsafe { a[ia].masses.get_unchecked([is.saturating_sub(1), 0]) },
+                        scoring.tolerance,
+                    ),
+                    ia,
+                )
+            })
+            .collect();
+        sorted_masses_a.sort_by(|a, b| a.0.0.value.total_cmp(&b.0.0.value));
+        // dbg!(&sorted_masses_a);
+
         for index_b in 1..=len_b {
-            let seq_b_indices = b
-                .iter()
-                .map(|s| s.get_seq_index(index_b))
-                .collect::<Vec<_>>();
             // Returns the score for a gap transition.
             // gap_a controls whether the gap is in a or b.
             let score_gap = |gap_a: bool| {
@@ -598,25 +642,70 @@ pub(super) fn multi_align_cached<'a, const STEPS: u16, Sequence: HasPeptidoform<
             // Now try matching single aminoacids.
             let prev = unsafe { matrix.get_unchecked([index_a - 1, index_b - 1]) };
 
-            for ia in 0..a.len() {
-                for ib in 0..b.len() {
+            let mut sorted_masses_b_index = 0;
+            let sorted_masses_b_local = &sorted_masses_b[index_b - 1];
+            let total_masses_b = sorted_masses_b_local.len();
+            // Go over all masses at this position in A
+            'perfect_loop: for ((low_mass_a, high_mass_a), ia) in &sorted_masses_a {
+                // Skip all masses in B that are too low
+                while sorted_masses_b_local[sorted_masses_b_index].0.1 < *low_mass_a {
+                    sorted_masses_b_index += 1;
+                    if sorted_masses_b_index == total_masses_b {
+                        break 'perfect_loop; // No more masses in B so all masses left in A can be disregarded
+                    }
+                }
+                // Take all masses in B that are within the range
+                let mut offset = 0;
+                while sorted_masses_b_index + offset < total_masses_b
+                    && sorted_masses_b_local[sorted_masses_b_index + offset].0.0 <= *high_mass_a
+                {
+                    let ib = sorted_masses_b_local[sorted_masses_b_index + offset].1;
                     let pair_score = score_pair(
-                        a[ia].get_aa_at(seq_a_indices[ia]),
-                        b[ib].get_aa_at(seq_b_indices[ib]),
+                        a[*ia].get_aa_at(seq_a_indices[*ia]),
+                        b[ib].get_aa_at(seq_b_indices[index_b - 1][ib]),
                         scoring,
                         prev.score,
                     );
                     if pair_score.score > highest.score {
                         highest = pair_score;
                     }
+
+                    offset += 1;
                 }
             }
 
             if highest.match_type != MatchType::FullIdentity {
+                // Check if an identity but mass mismatch is a possible alignment
+                for ia in 0..a.len() {
+                    for ib in 0..b.len() {
+                        let pair_score =
+                            score_pair_mass_mismatch(
+                                unsafe {
+                                    &a[ia]
+                                        .sequence
+                                        .cast_peptidoform()
+                                        .sequence()
+                                        .get_unchecked(seq_a_indices[ia].saturating_sub(1))
+                                },
+                                unsafe {
+                                    &b[ib].sequence.cast_peptidoform().sequence().get_unchecked(
+                                        seq_b_indices[index_b - 1][ib].saturating_sub(1),
+                                    )
+                                },
+                                scoring,
+                                prev.score,
+                            );
+                        if pair_score.score > highest.score {
+                            highest = pair_score;
+                        }
+                    }
+                }
+
+                // Check all mass based steps
                 for ia in 0..a.len() {
                     let seq_index_a = seq_a_indices[ia];
                     for ib in 0..b.len() {
-                        let seq_index_b = seq_b_indices[ib];
+                        let seq_index_b = seq_b_indices[index_b - 1][ib];
                         // Now try matching longer sequences.
                         for len_a in 1..=index_a.min(STEPS as usize) {
                             let range_a = unsafe {

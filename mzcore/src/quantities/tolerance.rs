@@ -213,7 +213,9 @@ impl WithinTolerance<MassOverCharge, MassOverCharge> for Tolerance<MassOverCharg
     fn within(&self, a: &MassOverCharge, b: &MassOverCharge) -> bool {
         match self {
             Self::Absolute(tol) => (a.value - b.value).abs() <= tol.value,
-            Self::Relative(tolerance) => a.ppm(*b) <= tolerance.into_inner(),
+            Self::Relative(tolerance) => {
+                (a.value - b.value).abs() <= tolerance.value * a.value.abs()
+            } // This is the same as `a.ppm(*b) <= tolerance.into_inner()` but then without the floating point division
         }
     }
 }
@@ -223,7 +225,9 @@ impl WithinTolerance<Mass, Mass> for Tolerance<Mass> {
     fn within(&self, a: &Mass, b: &Mass) -> bool {
         match self {
             Self::Absolute(tol) => (a.value - b.value).abs() <= tol.value,
-            Self::Relative(tolerance) => a.ppm(*b) <= tolerance.into_inner(),
+            Self::Relative(tolerance) => {
+                (a.value - b.value).abs() <= tolerance.value * a.value.abs()
+            } // This is the same as `a.ppm(*b) <= tolerance.into_inner()` but then without the floating point division
         }
     }
 }
@@ -256,7 +260,9 @@ impl WithinTolerance<Mass, Mass> for Tolerance<OrderedMass> {
     fn within(&self, a: &Mass, b: &Mass) -> bool {
         match self {
             Self::Absolute(tol) => (a.value - b.value).abs() <= tol.value,
-            Self::Relative(tolerance) => a.ppm(*b) <= tolerance.into_inner(),
+            Self::Relative(tolerance) => {
+                (a.value - b.value).abs() <= tolerance.value * a.value.abs() // This is the same as `a.ppm(*b) <= tolerance.into_inner()` but then without the floating point division
+            }
         }
     }
 }
