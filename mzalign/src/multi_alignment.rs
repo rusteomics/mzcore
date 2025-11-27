@@ -6,7 +6,10 @@ use crate::{
     AlignIndex, AlignScoring, AlignType, MatchType, Piece, Score,
     align_matrix::Matrix,
     diagonal_array::DiagonalArray,
-    mass_alignment::{align_cached, calculate_masses, score, score_pair, score_pair_mass_mismatch},
+    mass_alignment::{
+        align_cached, calculate_masses, mass_range, mass_range_expanded, score, score_pair,
+        score_pair_mass_mismatch,
+    },
 };
 use mzcore::{
     prelude::*,
@@ -201,9 +204,9 @@ impl<'a, Sequence: HasPeptidoform<Linear>, const STEPS: u16>
     }
 
     /// Update this line with the given merged alignment, this does not add end gaps
-    fn update(mut self, path: &[Piece], is_a: bool, start_self: u16, start_other: u16) -> Self {
+    fn update(mut self, path: &[Piece], is_a: bool, offset: u16) -> Self {
         // println!(
-        //     "S: {}, P: {}, a: {is_a} ss: {start_self}, so: {start_other}",
+        //     "S: {}, P: {}, a: {is_a} offset: {offset}",
         //     self.sequence.cast_peptidoform(),
         //     Piece::cigar(path, 0, 0),
         // );
@@ -211,16 +214,16 @@ impl<'a, Sequence: HasPeptidoform<Linear>, const STEPS: u16>
         let mut ref_index = 0;
         let mut goal = 0;
         let mut internal_index = 0;
-        if start_other > 0 {
+        if offset > 0 {
             if self.path[0].match_type == MatchType::Gap {
-                self.path[0].ref_step += start_other;
-                internal_index = start_other;
+                self.path[0].ref_step += offset;
+                internal_index = offset;
             } else {
                 self.path.insert(
                     path_index,
                     MultiPiece {
                         match_type: MatchType::Gap,
-                        ref_step: start_other,
+                        ref_step: offset,
                         seq_step: 0,
                     },
                 );
@@ -381,9 +384,8 @@ impl<const STEPS: u16, Sequence: HasPeptidoform<Linear> + Clone> AlignIndex<STEP
         align_type: AlignType, // TODO: figure out what to do for align_type
     ) -> Vec<MultiAlignment<Sequence>> {
         assert!(self.sequences.len() > 1);
-        // Create an outgroup of 'random' sequence with the length of the average of all used sequences
 
-        // Make distance matrix
+        // Make distance matrix (TODO: make this separate and allow multi threaded option)
         let mut matrix = DiagonalArray::<f64, { u16::MAX }>::new(self.sequences.len());
         let mut nodes = Vec::with_capacity(self.sequences.len());
         for (i, s) in self.sequences.iter().enumerate() {
@@ -401,15 +403,9 @@ impl<const STEPS: u16, Sequence: HasPeptidoform<Linear> + Clone> AlignIndex<STEP
             }
             nodes.push(vec![MultiAlignmentLineTemp::single(i, s.0.clone(), &s.1)]);
         }
-        // Remember that the last node is not made (the outgroup node) so do not try to merge that one
 
-        // Create tree
-        // It might work out to now rely on the fact that the outgroup is always the furthest distance from all other nodes that we can just immediately start merging the nodes to produce the multi alignment
-
-        // Progressively merge
+        // Progressively merge (this creates a phylogenetic tree that is not stored in any way)
         while nodes.len() > 1 {
-            // println!("{}", matrix.to_csv());
-
             let (distance, [far_index, close_index]) = matrix.min::<true>();
             if maximal_distance.is_some_and(|m| distance > m) {
                 // Stop if this distance is more than the threshold, or if the outgroup would be merged
@@ -421,27 +417,11 @@ impl<const STEPS: u16, Sequence: HasPeptidoform<Linear> + Clone> AlignIndex<STEP
             nodes[close_index] =
                 multi_align_cached::<STEPS, Sequence>(close_node, far_node, scoring, align_type);
 
-            // for l in &nodes[close_index] {
-            //     let mut buf = String::new();
-            //     l.debug_display(&mut buf);
-            //     print!("{buf}");
-            // }
-
-            for line in &nodes[close_index] {
-                let mut buf = String::new();
-                line.debug_display(&mut buf);
-                // print!("{buf}");
-            }
-
             // Update matrix to merge these columns
             matrix = matrix.merge_columns(close_index, far_index, distance);
-            // println!(
-            //     "Merged {close_index} with {far_index} (left: nodes {}, matrix {})",
-            //     nodes.len(),
-            //     matrix.len(),
-            // );
         }
 
+        // Create final data structures from the temporary ones
         nodes
             .into_iter()
             .map(|seqs| MultiAlignment::new(seqs, align_type))
@@ -449,32 +429,7 @@ impl<const STEPS: u16, Sequence: HasPeptidoform<Linear> + Clone> AlignIndex<STEP
     }
 }
 
-fn mass_range_expanded(masses: &Multi<Mass>, tolerance: Tolerance<OrderedMass>) -> (Mass, Mass) {
-    masses.iter().fold(
-        (
-            Mass::new::<dalton>(f64::INFINITY),
-            Mass::new::<dalton>(f64::NEG_INFINITY),
-        ),
-        |(min, max), &m| {
-            let range = tolerance.bounds(m);
-            (min.min(range.0), max.max(range.1))
-        },
-    )
-}
-
-fn mass_range(masses: &Multi<Mass>) -> (Mass, Mass) {
-    masses.iter().fold(
-        (
-            Mass::new::<dalton>(f64::INFINITY),
-            Mass::new::<dalton>(f64::NEG_INFINITY),
-        ),
-        |(min, max), &m| (min.min(m), max.max(m)),
-    )
-}
-
-/// Do mass based alignment, but with precomputed masses, see [align] for the normal entry point variant.
-/// # Panics
-/// It panics when the length of `seq_a` or `seq_b` is bigger than [`isize::MAX`].
+/// Do mass based alignment of two MMSA clusters, but with precomputed masses
 #[expect(clippy::too_many_lines)]
 #[allow(clippy::similar_names)]
 pub(super) fn multi_align_cached<'a, const STEPS: u16, Sequence: HasPeptidoform<Linear>>(
@@ -483,7 +438,6 @@ pub(super) fn multi_align_cached<'a, const STEPS: u16, Sequence: HasPeptidoform<
     scoring: AlignScoring<'_>,
     align_type: AlignType,
 ) -> Vec<MultiAlignmentLineTemp<'a, Sequence, STEPS>> {
-    // println!("Max steps: {STEPS}");
     let len_a = a
         .iter()
         .fold(0, |acc, i| acc.max(i.sequence.cast_peptidoform().len()));
@@ -577,14 +531,12 @@ pub(super) fn multi_align_cached<'a, const STEPS: u16, Sequence: HasPeptidoform<
         })
         .collect();
 
-    // dbg!(&sorted_masses_b);
-
     for index_a in 1..=len_a {
+        // Precalculate sequence indices and sorted masses
         let seq_a_indices = a
             .iter()
             .map(|s| s.get_seq_index(index_a))
             .collect::<Vec<_>>();
-        // Min Max Index
         let mut sorted_masses_a: Vec<((Mass, Mass), usize)> = seq_a_indices
             .iter()
             .enumerate()
@@ -599,7 +551,6 @@ pub(super) fn multi_align_cached<'a, const STEPS: u16, Sequence: HasPeptidoform<
             })
             .collect();
         sorted_masses_a.sort_by(|a, b| a.0.0.value.total_cmp(&b.0.0.value));
-        // dbg!(&sorted_masses_a);
 
         for index_b in 1..=len_b {
             // Returns the score for a gap transition.
@@ -645,7 +596,8 @@ pub(super) fn multi_align_cached<'a, const STEPS: u16, Sequence: HasPeptidoform<
             let mut sorted_masses_b_index = 0;
             let sorted_masses_b_local = &sorted_masses_b[index_b - 1];
             let total_masses_b = sorted_masses_b_local.len();
-            // Go over all masses at this position in A
+
+            // Go over all masses at this position in A, this allows finding perfect matches quickly
             'perfect_loop: for ((low_mass_a, high_mass_a), ia) in &sorted_masses_a {
                 // Skip all masses in B that are too low
                 while sorted_masses_b_local[sorted_masses_b_index].0.1 < *low_mass_a {
@@ -758,16 +710,18 @@ pub(super) fn multi_align_cached<'a, const STEPS: u16, Sequence: HasPeptidoform<
             }
         }
     }
+
+    // Finish up by tracing the path and updating all enclosed sequences to this path
     let (start_a, start_b, path) = matrix.trace_path(align_type, global_highest);
 
     let mut sequences = Vec::with_capacity(a.len() + b.len());
 
     for seq in a {
-        sequences.push(seq.update(&path, true, start_a as u16, start_b as u16));
+        sequences.push(seq.update(&path, true, start_b as u16));
     }
 
     for seq in b {
-        sequences.push(seq.update(&path, false, start_b as u16, start_a as u16));
+        sequences.push(seq.update(&path, false, start_a as u16));
     }
 
     // Fix end gaps
@@ -967,7 +921,6 @@ mod tests {
             ],
             true,
             0,
-            0,
         );
         line.path[3].ref_step = 2; // The W is bigger
         assert_eq!(updated, line);
@@ -975,14 +928,14 @@ mod tests {
         assert_eq!(line.get_seq_index(5), 4);
         assert_eq!(line.get_seq_index(6), 5);
         assert_eq!(
-            line.get_aa_at(6),
+            line.get_aa_at(5),
             (
                 &SequenceElement::new(AminoAcid::Histidine.into(), None).into(),
                 &Multi::from(CheckedAminoAcid::Histidine.formula().monoisotopic_mass())
             )
         );
         assert_eq!(
-            line.get_block_at(6, 2),
+            line.get_block_at(5, 2),
             Some((
                 [
                     SequenceElement::new(AminoAcid::Tryptophan.into(), None).into(),
@@ -1031,8 +984,8 @@ mod tests {
         let masses2 = calculate_masses::<4>(&sequence2, MassMode::Monoisotopic);
         let line = MultiAlignmentLineTemp::single(0, &sequence, &masses);
         let line2 = MultiAlignmentLineTemp::single(0, &sequence2, &masses2);
-        let updated = line.update(path, true, 0, 0);
-        let updated2 = line2.update(path, false, 0, 0);
+        let updated = line.update(path, true, 0);
+        let updated2 = line2.update(path, false, 0);
         let mut buf1 = String::new();
         updated.debug_display(&mut buf1);
         let mut buf2 = String::new();

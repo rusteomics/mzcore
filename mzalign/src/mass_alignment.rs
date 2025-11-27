@@ -5,9 +5,9 @@ use crate::{
 use mzcore::{
     chemistry::{MassMode, MolecularFormula},
     prelude::MultiChemical,
-    quantities::{Multi, WithinTolerance},
+    quantities::{Multi, Tolerance, WithinTolerance},
     sequence::{AtMax, HasPeptidoform, Linear, Peptidoform, SequenceElement, SequencePosition},
-    system::{Mass, dalton},
+    system::{Mass, OrderedMass, dalton},
 };
 
 // TODO: potentially allow any gap to match to a list of aminoacids also if the mass difference is exactly a common modification
@@ -95,15 +95,9 @@ pub(super) fn align_cached<
             DiagonalArray::new(peptidoform_a.len());
         for i in 0..peptidoform_a.len() {
             for j in 0..=i.min(STEPS as usize) {
-                let (min, max) = unsafe { masses_a.get_unchecked([i, j]) }.iter().fold(
-                    (
-                        Mass::new::<dalton>(f64::INFINITY),
-                        Mass::new::<dalton>(f64::NEG_INFINITY),
-                    ),
-                    |(min, max), &m| {
-                        let range = scoring.tolerance.bounds(m);
-                        (min.min(range.0), max.max(range.1))
-                    },
+                let (min, max) = mass_range_expanded(
+                    unsafe { masses_a.get_unchecked([i, j]) },
+                    scoring.tolerance,
                 );
                 ranges[[i, j]] = (min, max);
             }
@@ -116,13 +110,7 @@ pub(super) fn align_cached<
             DiagonalArray::new(peptidoform_b.len());
         for i in 0..peptidoform_b.len() {
             for j in 0..=i.min(STEPS as usize) {
-                let (min, max) = unsafe { masses_b.get_unchecked([i, j]) }.iter().fold(
-                    (
-                        Mass::new::<dalton>(f64::INFINITY),
-                        Mass::new::<dalton>(f64::NEG_INFINITY),
-                    ),
-                    |(min, max), &m| (min.min(m), max.max(m)),
-                );
+                let (min, max) = mass_range(unsafe { masses_b.get_unchecked([i, j]) });
                 ranges[[i, j]] = (min, max);
             }
         }
@@ -433,6 +421,34 @@ pub(super) fn score<A: AtMax<Linear>, B: AtMax<Linear>>(
     } else {
         None
     }
+}
+
+/// Get the mass range (min and max) for a `Multi<Mass>` expanded to the tolerance
+pub(super) fn mass_range_expanded(
+    masses: &Multi<Mass>,
+    tolerance: Tolerance<OrderedMass>,
+) -> (Mass, Mass) {
+    masses.iter().fold(
+        (
+            Mass::new::<dalton>(f64::INFINITY),
+            Mass::new::<dalton>(f64::NEG_INFINITY),
+        ),
+        |(min, max), &m| {
+            let range = tolerance.bounds(m);
+            (min.min(range.0), max.max(range.1))
+        },
+    )
+}
+
+/// Get the mass range (min and max) for the given `Multi<Mass>`
+pub(super) fn mass_range(masses: &Multi<Mass>) -> (Mass, Mass) {
+    masses.iter().fold(
+        (
+            Mass::new::<dalton>(f64::INFINITY),
+            Mass::new::<dalton>(f64::NEG_INFINITY),
+        ),
+        |(min, max), &m| (min.min(m), max.max(m)),
+    )
 }
 
 /// Get the masses of all sequence elements. This also adds the N and C terminal modifications.
