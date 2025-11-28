@@ -381,6 +381,17 @@ pub struct MultiAlignType {
     pub right: MultiAlignSide,
 }
 
+impl MultiAlignType {
+    const EITHER_GLOBAL: Self = Self {
+        left: MultiAlignSide::EitherGlobal,
+        right: MultiAlignSide::EitherGlobal,
+    };
+    const GLOBAL: Self = Self {
+        left: MultiAlignSide::Global,
+        right: MultiAlignSide::Global,
+    };
+}
+
 #[derive(Clone, Copy, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 pub enum MultiAlignSide {
     Global,
@@ -746,16 +757,17 @@ pub(super) fn multi_align_cached<'a, const STEPS: u16, Sequence: HasPeptidoform<
             if highest.match_type != MatchType::FullIdentity {
                 // Check if an identity but mass mismatch is a possible alignment
                 for ia in 0..a.len() {
+                    let aa_a = unsafe {
+                        &a[ia]
+                            .sequence
+                            .cast_peptidoform()
+                            .sequence()
+                            .get_unchecked(seq_a_indices[ia].saturating_sub(1))
+                    };
                     for ib in 0..b.len() {
                         let pair_score =
                             score_pair_mass_mismatch(
-                                unsafe {
-                                    &a[ia]
-                                        .sequence
-                                        .cast_peptidoform()
-                                        .sequence()
-                                        .get_unchecked(seq_a_indices[ia].saturating_sub(1))
-                                },
+                                aa_a,
                                 unsafe {
                                     &b[ib].sequence.cast_peptidoform().sequence().get_unchecked(
                                         seq_b_indices[index_b - 1][ib].saturating_sub(1),
@@ -775,7 +787,6 @@ pub(super) fn multi_align_cached<'a, const STEPS: u16, Sequence: HasPeptidoform<
                     let seq_index_a = seq_a_indices[ia];
                     for ib in 0..b.len() {
                         let seq_index_b = seq_b_indices[index_b - 1][ib];
-                        // Now try matching longer sequences.
                         for len_a in 1..=index_a.min(STEPS as usize) {
                             let range_a = unsafe {
                                 ranges_a[ia]
@@ -802,10 +813,14 @@ pub(super) fn multi_align_cached<'a, const STEPS: u16, Sequence: HasPeptidoform<
                                     let base_score = prev.score;
                                     a[ia]
                                         .get_block_at(seq_index_a, len_a)
-                                        .and_then(|a| {
-                                            b[ib].get_block_at(seq_index_b, len_b).map(|b| (a, b))
+                                        .and_then(|block_a| {
+                                            b[ib]
+                                                .get_block_at(seq_index_b, len_b)
+                                                .map(|block_b| (block_a, block_b))
                                         })
-                                        .and_then(|(a, b)| score(a, b, scoring, base_score))
+                                        .and_then(|(block_a, block_b)| {
+                                            score(block_a, block_b, scoring, base_score)
+                                        })
                                 };
                                 if let Some(p) = match_score
                                     && p.score > highest.score
@@ -852,6 +867,7 @@ pub(super) fn multi_align_cached<'a, const STEPS: u16, Sequence: HasPeptidoform<
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::mass_alignment::calculate_masses;
     use itertools::Itertools;
     use mzcore::ontology::STATIC_ONTOLOGIES;
 
@@ -867,7 +883,7 @@ mod tests {
         };
         let sequences = vec![seq("AGGWHD"), seq("ANWHN[Deamidated]"), seq("AHYDH")];
         let index = AlignIndex::<4, Peptidoform<Linear>>::new(sequences, MassMode::Monoisotopic);
-        let alignment = index.multi_align(None, AlignScoring::default(), MultiAlignType::Global);
+        let alignment = index.multi_align(None, AlignScoring::default(), MultiAlignType::GLOBAL);
         let mut buf = String::new();
         alignment[0].debug_display(&mut buf);
         println!("{buf}");
@@ -898,7 +914,7 @@ mod tests {
             seq("RWGGN[U:Deamidated]GFYW[U:Oxidation]DYWGQG"),
         ];
         let index = AlignIndex::<4, Peptidoform<Linear>>::new(sequences, MassMode::Monoisotopic);
-        let alignment = index.multi_align(None, AlignScoring::default(), MultiAlignType::Global);
+        let alignment = index.multi_align(None, AlignScoring::default(), MultiAlignType::GLOBAL);
         let mut buf = String::new();
         alignment[0].debug_display(&mut buf);
         println!("{buf}");
@@ -924,7 +940,7 @@ mod tests {
             seq("RWGGDGFMDYWGQG"),
         ];
         let index = AlignIndex::<4, Peptidoform<Linear>>::new(sequences, MassMode::Monoisotopic);
-        let alignment = index.multi_align(None, AlignScoring::default(), MultiAlignType::Global);
+        let alignment = index.multi_align(None, AlignScoring::default(), MultiAlignType::GLOBAL);
         let mut buf = String::new();
         alignment[0].debug_display(&mut buf);
         println!("{buf}");
@@ -952,7 +968,7 @@ mod tests {
         ];
         let index = AlignIndex::<4, Peptidoform<Linear>>::new(sequences, MassMode::Monoisotopic);
         let alignment =
-            index.multi_align(None, AlignScoring::default(), MultiAlignType::EitherGlobal);
+            index.multi_align(None, AlignScoring::default(), MultiAlignType::EITHER_GLOBAL);
         let mut buf = String::new();
         alignment[0].debug_display(&mut buf);
         println!("{buf}");
@@ -984,7 +1000,7 @@ mod tests {
             ),
             ..Default::default()
         };
-        let alignment = index.multi_align(None, scoring, MultiAlignType::EitherGlobal);
+        let alignment = index.multi_align(None, scoring, MultiAlignType::EITHER_GLOBAL);
         let mut buf = String::new();
         alignment[0].debug_display(&mut buf);
         println!("{buf}");
