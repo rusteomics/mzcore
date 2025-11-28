@@ -67,17 +67,17 @@ impl<Sequence: HasPeptidoform<Linear>> MultiAlignment<Sequence> {
     pub fn variance(&self) -> SequenceVariance {
         let mut variance = Vec::new();
 
-        for ref_index in 0..self
+        for aligned_index in 0..self
             .lines
             .iter()
-            .map(|l| l.ref_length())
+            .map(|l| l.aligned_length())
             .max()
             .unwrap_or_default()
         {
             // Break when the last item is reached
             let mut element = BTreeMap::new();
             for line in &self.lines {
-                if let Some(item) = line.get_item(ref_index) {
+                if let Some(item) = line.get_item(aligned_index) {
                     let values: &mut (usize, f64) = element.entry(item).or_default();
                     values.0 += 1;
                 }
@@ -108,28 +108,28 @@ struct MultiAlignmentLine<Sequence> {
 }
 
 impl<Sequence: HasPeptidoform<Linear>> MultiAlignmentLine<Sequence> {
-    // Outer 'ref' index
+    // Get the sequence element at the aligned index. Only returns something if the start of a step is selected.
     fn get_item(&self, index: usize) -> Option<(SequenceElement<Linear>, u16)> {
         let mut path_index = 0;
-        let mut ref_index = 0;
-        let mut seq_index = 0;
+        let mut aligned_index = 0;
+        let mut sequence_index = 0;
         loop {
-            seq_index += self.path[path_index].seq_step as usize;
-            ref_index += self.path[path_index].ref_step as usize;
-            if ref_index >= index + self.path[path_index].ref_step as usize {
+            sequence_index += self.path[path_index].sequence_length as usize;
+            aligned_index += self.path[path_index].aligned_length as usize;
+            if aligned_index >= index + self.path[path_index].aligned_length as usize {
                 break;
             }
             path_index += usize::from(path_index != self.path.len() - 1); // just saturate for now
         }
-        let seq_index = seq_index
+        let seq_index = sequence_index
             .min(self.sequence.cast_peptidoform().len())
             .saturating_sub(1);
-        (ref_index == index + self.path[path_index].ref_step as usize
+        (aligned_index == index + self.path[path_index].aligned_length as usize
             && self.path[path_index].match_type != MatchType::Gap)
             .then(|| {
                 (
                     self.sequence.cast_peptidoform().sequence()[seq_index].clone(),
-                    self.path[path_index].ref_step,
+                    self.path[path_index].aligned_length,
                 )
             })
     }
@@ -138,10 +138,10 @@ impl<Sequence: HasPeptidoform<Linear>> MultiAlignmentLine<Sequence> {
         let sequence = self.sequence.cast_peptidoform().sequence();
         let mut seq_index = self.start;
         for piece in &self.path {
-            if piece.seq_step == 0 {
-                write!(w, "{}", "-".repeat(piece.ref_step as usize)).unwrap();
+            if piece.sequence_length == 0 {
+                write!(w, "{}", "-".repeat(piece.aligned_length as usize)).unwrap();
             } else {
-                let subseq = &sequence[seq_index..seq_index + piece.seq_step as usize];
+                let subseq = &sequence[seq_index..seq_index + piece.sequence_length as usize];
                 // Obviously misses mods now
                 let display = subseq
                     .iter()
@@ -150,21 +150,21 @@ impl<Sequence: HasPeptidoform<Linear>> MultiAlignmentLine<Sequence> {
                 write!(
                     w,
                     "{display}{}",
-                    "·".repeat((piece.ref_step - piece.seq_step) as usize)
+                    "·".repeat((piece.aligned_length - piece.sequence_length) as usize)
                 )
                 .unwrap();
-                seq_index += piece.seq_step as usize;
+                seq_index += piece.sequence_length as usize;
             }
         }
         writeln!(w).unwrap();
     }
 
-    fn ref_length(&self) -> usize {
-        let mut ref_index = 0;
+    fn aligned_length(&self) -> usize {
+        let mut aligned_index = 0;
         for piece in &self.path {
-            ref_index += piece.ref_step as usize;
+            aligned_index += piece.aligned_length as usize;
         }
-        ref_index
+        aligned_index
     }
 }
 
@@ -193,8 +193,8 @@ impl<'a, Sequence: HasPeptidoform<Linear>, const STEPS: u16>
             path: vec![
                 MultiPiece {
                     match_type: MatchType::FullIdentity,
-                    ref_step: 1,
-                    seq_step: 1,
+                    aligned_length: 1,
+                    sequence_length: 1,
                 };
                 len
             ],
@@ -210,48 +210,44 @@ impl<'a, Sequence: HasPeptidoform<Linear>, const STEPS: u16>
         //     Piece::cigar(path, 0, 0),
         // );
         let mut path_index = 0;
-        let mut ref_index = 0;
+        let mut aligned_index = 0;
         let mut goal = 0;
         let mut internal_index = 0;
         if offset > 0 {
             if self.path[0].match_type == MatchType::Gap {
-                self.path[0].ref_step += offset;
+                self.path[0].aligned_length += offset;
                 internal_index = offset;
             } else {
                 self.path.insert(
                     path_index,
                     MultiPiece {
                         match_type: MatchType::Gap,
-                        ref_step: offset,
-                        seq_step: 0,
+                        aligned_length: offset,
+                        sequence_length: 0,
                     },
                 );
                 path_index += 1;
             }
         }
         for piece in path {
-            let ref_step = if is_a { piece.step_b } else { piece.step_a };
-            let seq_step = if is_a { piece.step_a } else { piece.step_b };
-            // println!(
-            //     "r{ref_step} s{seq_step} ri{ref_index} pi{path_index} ii{internal_index} {:?}",
-            //     piece.match_type
-            // );
-            if seq_step == 0 {
+            let aligned_step = if is_a { piece.step_b } else { piece.step_a };
+            let sequence_step = if is_a { piece.step_a } else { piece.step_b };
+            if sequence_step == 0 {
                 self.path.insert(
                     path_index,
                     MultiPiece {
                         match_type: MatchType::Gap,
-                        ref_step,
-                        seq_step,
+                        aligned_length: aligned_step,
+                        sequence_length: sequence_step,
                     },
                 );
-                ref_index += ref_step;
+                aligned_index += aligned_step;
                 path_index += 1;
             } else {
-                self.path[path_index].ref_step += ref_step.saturating_sub(seq_step);
-                goal += ref_step.max(seq_step);
-                while ref_index + internal_index < goal {
-                    ref_index += self.path[path_index].ref_step - internal_index;
+                self.path[path_index].aligned_length += aligned_step.saturating_sub(sequence_step);
+                goal += aligned_step.max(sequence_step);
+                while aligned_index + internal_index < goal {
+                    aligned_index += self.path[path_index].aligned_length - internal_index;
                     internal_index = 0;
                     path_index += usize::from(path_index != self.path.len() - 1); // just saturate for now
                     if path_index == self.path.len() - 1 {
@@ -263,52 +259,52 @@ impl<'a, Sequence: HasPeptidoform<Linear>, const STEPS: u16>
         self
     }
 
-    fn ref_length(&self) -> usize {
-        let mut ref_index = 0;
+    fn aligned_length(&self) -> usize {
+        let mut aligned_index = 0;
         for piece in &self.path {
-            ref_index += piece.ref_step as usize;
+            aligned_index += piece.aligned_length as usize;
         }
-        ref_index
+        aligned_index
     }
 
     /// Pad to length
     fn pad(&mut self, goal_length: usize) {
-        let mut ref_index = 0;
+        let mut aligned_index = 0;
         for piece in &self.path {
-            ref_index += piece.ref_step as usize;
+            aligned_index += piece.aligned_length as usize;
         }
-        if ref_index < goal_length {
+        if aligned_index < goal_length {
             let last = self.path.len() - 1;
-            let dif = goal_length - ref_index;
+            let dif = goal_length - aligned_index;
             if self.path[last].match_type == MatchType::Gap {
-                self.path[last].ref_step += dif as u16;
+                self.path[last].aligned_length += dif as u16;
             } else {
                 self.path.push(MultiPiece {
                     match_type: MatchType::Gap,
-                    ref_step: dif as u16,
-                    seq_step: 0,
+                    aligned_length: dif as u16,
+                    sequence_length: 0,
                 });
             }
         }
     }
 
-    // Outer 'ref' index
-    fn get_seq_index(&self, index: usize) -> usize {
+    // Get the sequence index for an aligned index
+    fn get_sequence_index(&self, index: usize) -> usize {
         let mut path_index = 0;
-        let mut ref_index = 0;
-        let mut seq_index = 0;
-        while ref_index < index {
-            seq_index += self.path[path_index].seq_step as usize;
-            ref_index += self.path[path_index].ref_step as usize;
+        let mut aligned_index = 0;
+        let mut sequence_index = 0;
+        while aligned_index < index {
+            sequence_index += self.path[path_index].sequence_length as usize;
+            aligned_index += self.path[path_index].aligned_length as usize;
             path_index += usize::from(path_index != self.path.len() - 1); // just saturate for now
         }
-        seq_index.min(self.sequence.cast_peptidoform().len())
+        sequence_index.min(self.sequence.cast_peptidoform().len())
     }
 
-    // Seq index
-    fn get_aa_at(&self, seq_index: usize) -> (&SequenceElement<Linear>, &Multi<Mass>) {
+    // Sequence index
+    fn get_aa_at(&self, sequence_index: usize) -> (&SequenceElement<Linear>, &Multi<Mass>) {
         let c = self.sequence.cast_peptidoform();
-        let i = (seq_index).min(c.len()).saturating_sub(1);
+        let i = (sequence_index).min(c.len()).saturating_sub(1);
         unsafe {
             (
                 &c.sequence().get_unchecked(i),
@@ -317,21 +313,21 @@ impl<'a, Sequence: HasPeptidoform<Linear>, const STEPS: u16>
         }
     }
 
-    // Seq index, seq len
+    // Sequence index, sequence len
     fn get_block_at(
         &self,
-        seq_index: usize,
+        sequence_index: usize,
         len: usize,
     ) -> Option<(&[SequenceElement<Linear>], &Multi<Mass>)> {
-        if seq_index >= len {
+        if sequence_index >= len {
             Some(unsafe {
                 (
                     &self
                         .sequence
                         .cast_peptidoform()
                         .sequence()
-                        .get_unchecked(seq_index - len..seq_index),
-                    &self.masses.get_unchecked([seq_index - 1, len - 1]),
+                        .get_unchecked(sequence_index - len..sequence_index),
+                    &self.masses.get_unchecked([sequence_index - 1, len - 1]),
                 )
             })
         } else {
@@ -343,10 +339,10 @@ impl<'a, Sequence: HasPeptidoform<Linear>, const STEPS: u16>
         let sequence = self.sequence.cast_peptidoform().sequence();
         let mut seq_index = self.start;
         for piece in &self.path {
-            if piece.seq_step == 0 {
-                write!(w, "{}", "-".repeat(piece.ref_step as usize)).unwrap();
+            if piece.sequence_length == 0 {
+                write!(w, "{}", "-".repeat(piece.aligned_length as usize)).unwrap();
             } else {
-                let subseq = &sequence[seq_index..seq_index + piece.seq_step as usize];
+                let subseq = &sequence[seq_index..seq_index + piece.sequence_length as usize];
                 // Obviously misses mods now
                 let display = subseq
                     .iter()
@@ -355,10 +351,10 @@ impl<'a, Sequence: HasPeptidoform<Linear>, const STEPS: u16>
                 write!(
                     w,
                     "{display}{}",
-                    "·".repeat((piece.ref_step - piece.seq_step) as usize)
+                    "·".repeat((piece.aligned_length - piece.sequence_length) as usize)
                 )
                 .unwrap();
-                seq_index += piece.seq_step as usize;
+                seq_index += piece.sequence_length as usize;
             }
         }
         writeln!(w).unwrap();
@@ -370,9 +366,9 @@ impl<'a, Sequence: HasPeptidoform<Linear>, const STEPS: u16>
 )]
 struct MultiPiece {
     match_type: MatchType,
-    /// Ref seq is required to always be at least `seq_step`
-    ref_step: u16,
-    seq_step: u16,
+    /// aligned_length is required to always be at least sequence_length
+    aligned_length: u16,
+    sequence_length: u16,
 }
 
 #[derive(Clone, Copy, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
@@ -597,7 +593,7 @@ pub(super) fn multi_align_cached<'a, const STEPS: u16, Sequence: HasPeptidoform<
     // Then, before calling `score` we can perform a quick check whether
     // the ranges overlap for given slices. If they do not overlap, we skip calling `score`
     // as it is guaranteed that there are no two masses that are within tolerance.
-    let ranges_a = a
+    let mass_ranges_a = a
         .iter()
         .map(|a| {
             let mut ranges: DiagonalArray<(Mass, Mass), STEPS> =
@@ -615,7 +611,7 @@ pub(super) fn multi_align_cached<'a, const STEPS: u16, Sequence: HasPeptidoform<
         })
         .collect::<Vec<_>>();
 
-    let ranges_b = b
+    let mass_ranges_b = b
         .iter()
         .map(|b| {
             let mut ranges: DiagonalArray<(Mass, Mass), STEPS> =
@@ -631,15 +627,15 @@ pub(super) fn multi_align_cached<'a, const STEPS: u16, Sequence: HasPeptidoform<
         .collect::<Vec<_>>();
 
     // First index_b then the sequence at that index
-    let seq_b_indices: Vec<Vec<usize>> = (1..=len_b)
+    let sequence_indices_b: Vec<Vec<usize>> = (1..=len_b)
         .map(|index_b| {
             b.iter()
-                .map(|s| s.get_seq_index(index_b))
+                .map(|s| s.get_sequence_index(index_b))
                 .collect::<Vec<_>>()
         })
         .collect();
 
-    let sorted_masses_b: Vec<Vec<((Mass, Mass), usize)>> = seq_b_indices
+    let sorted_pair_masses_b: Vec<Vec<((Mass, Mass), usize)>> = sequence_indices_b
         .iter()
         .map(|seq_b_indices| {
             let mut sorted_masses_b: Vec<((Mass, Mass), usize)> = seq_b_indices
@@ -661,11 +657,11 @@ pub(super) fn multi_align_cached<'a, const STEPS: u16, Sequence: HasPeptidoform<
 
     for index_a in 1..=len_a {
         // Precalculate sequence indices and sorted masses
-        let seq_a_indices = a
+        let sequence_indices_a = a
             .iter()
-            .map(|s| s.get_seq_index(index_a))
+            .map(|s| s.get_sequence_index(index_a))
             .collect::<Vec<_>>();
-        let mut sorted_masses_a: Vec<((Mass, Mass), usize)> = seq_a_indices
+        let mut sorted_pair_masses_a: Vec<((Mass, Mass), usize)> = sequence_indices_a
             .iter()
             .enumerate()
             .map(|(ia, is)| {
@@ -678,7 +674,7 @@ pub(super) fn multi_align_cached<'a, const STEPS: u16, Sequence: HasPeptidoform<
                 )
             })
             .collect();
-        sorted_masses_a.sort_by(|a, b| a.0.0.value.total_cmp(&b.0.0.value));
+        sorted_pair_masses_a.sort_by(|a, b| a.0.0.value.total_cmp(&b.0.0.value));
 
         for index_b in 1..=len_b {
             // Returns the score for a gap transition.
@@ -722,11 +718,11 @@ pub(super) fn multi_align_cached<'a, const STEPS: u16, Sequence: HasPeptidoform<
             let prev = unsafe { matrix.get_unchecked([index_a - 1, index_b - 1]) };
 
             let mut sorted_masses_b_index = 0;
-            let sorted_masses_b_local = &sorted_masses_b[index_b - 1];
+            let sorted_masses_b_local = &sorted_pair_masses_b[index_b - 1];
             let total_masses_b = sorted_masses_b_local.len();
 
             // Go over all masses at this position in A, this allows finding perfect matches quickly
-            'perfect_loop: for ((low_mass_a, high_mass_a), ia) in &sorted_masses_a {
+            'perfect_loop: for ((low_mass_a, high_mass_a), ia) in &sorted_pair_masses_a {
                 // Skip all masses in B that are too low
                 while sorted_masses_b_local[sorted_masses_b_index].0.1 < *low_mass_a {
                     sorted_masses_b_index += 1;
@@ -741,8 +737,8 @@ pub(super) fn multi_align_cached<'a, const STEPS: u16, Sequence: HasPeptidoform<
                 {
                     let ib = sorted_masses_b_local[sorted_masses_b_index + offset].1;
                     let pair_score = score_pair(
-                        a[*ia].get_aa_at(seq_a_indices[*ia]),
-                        b[ib].get_aa_at(seq_b_indices[index_b - 1][ib]),
+                        a[*ia].get_aa_at(sequence_indices_a[*ia]),
+                        b[ib].get_aa_at(sequence_indices_b[index_b - 1][ib]),
                         scoring,
                         prev.score,
                     );
@@ -756,26 +752,29 @@ pub(super) fn multi_align_cached<'a, const STEPS: u16, Sequence: HasPeptidoform<
 
             if highest.match_type != MatchType::FullIdentity {
                 // Check if an identity but mass mismatch is a possible alignment
-                for ia in 0..a.len() {
+                for line_a in 0..a.len() {
                     let aa_a = unsafe {
-                        &a[ia]
+                        &a[line_a]
                             .sequence
                             .cast_peptidoform()
                             .sequence()
-                            .get_unchecked(seq_a_indices[ia].saturating_sub(1))
+                            .get_unchecked(sequence_indices_a[line_a].saturating_sub(1))
                     };
-                    for ib in 0..b.len() {
-                        let pair_score =
-                            score_pair_mass_mismatch(
-                                aa_a,
-                                unsafe {
-                                    &b[ib].sequence.cast_peptidoform().sequence().get_unchecked(
-                                        seq_b_indices[index_b - 1][ib].saturating_sub(1),
+                    for line_b in 0..b.len() {
+                        let pair_score = score_pair_mass_mismatch(
+                            aa_a,
+                            unsafe {
+                                &b[line_b]
+                                    .sequence
+                                    .cast_peptidoform()
+                                    .sequence()
+                                    .get_unchecked(
+                                        sequence_indices_b[index_b - 1][line_b].saturating_sub(1),
                                     )
-                                },
-                                scoring,
-                                prev.score,
-                            );
+                            },
+                            scoring,
+                            prev.score,
+                        );
                         if pair_score.score > highest.score {
                             highest = pair_score;
                         }
@@ -783,22 +782,24 @@ pub(super) fn multi_align_cached<'a, const STEPS: u16, Sequence: HasPeptidoform<
                 }
 
                 // Check all mass based steps
-                for ia in 0..a.len() {
-                    let seq_index_a = seq_a_indices[ia];
-                    for ib in 0..b.len() {
-                        let seq_index_b = seq_b_indices[index_b - 1][ib];
+                for line_a in 0..a.len() {
+                    let sequence_index_a = sequence_indices_a[line_a];
+                    for line_b in 0..b.len() {
+                        let sequence_index_b = sequence_indices_b[index_b - 1][line_b];
                         for len_a in 1..=index_a.min(STEPS as usize) {
                             let range_a = unsafe {
-                                ranges_a[ia]
-                                    .get_unchecked([seq_index_a.saturating_sub(1), len_a - 1])
+                                mass_ranges_a[line_a]
+                                    .get_unchecked([sequence_index_a.saturating_sub(1), len_a - 1])
                             };
 
                             let min_len_b = if len_a == 1 { 2 } else { 1 };
 
                             for len_b in min_len_b..=index_b.min(STEPS as usize) {
                                 let range_b = unsafe {
-                                    ranges_b[ib]
-                                        .get_unchecked([seq_index_b.saturating_sub(1), len_b - 1])
+                                    mass_ranges_b[line_b].get_unchecked([
+                                        sequence_index_b.saturating_sub(1),
+                                        len_b - 1,
+                                    ])
                                 };
                                 // Note that ranges are already expanded by tolerance, so
                                 // exact comparison is fine here.
@@ -811,11 +812,11 @@ pub(super) fn multi_align_cached<'a, const STEPS: u16, Sequence: HasPeptidoform<
                                         matrix.get_unchecked([index_a - len_a, index_b - len_b])
                                     };
                                     let base_score = prev.score;
-                                    a[ia]
-                                        .get_block_at(seq_index_a, len_a)
+                                    a[line_a]
+                                        .get_block_at(sequence_index_a, len_a) // Think about if this len should be sequence or aligned index
                                         .and_then(|block_a| {
-                                            b[ib]
-                                                .get_block_at(seq_index_b, len_b)
+                                            b[line_b]
+                                                .get_block_at(sequence_index_b, len_b)
                                                 .map(|block_b| (block_a, block_b))
                                         })
                                         .and_then(|(block_a, block_b)| {
@@ -846,16 +847,18 @@ pub(super) fn multi_align_cached<'a, const STEPS: u16, Sequence: HasPeptidoform<
 
     let mut sequences = Vec::with_capacity(a.len() + b.len());
 
-    for seq in a {
-        sequences.push(seq.update(&path, true, start_b as u16));
+    for line in a {
+        sequences.push(line.update(&path, true, start_b as u16));
     }
 
-    for seq in b {
-        sequences.push(seq.update(&path, false, start_a as u16));
+    for line in b {
+        sequences.push(line.update(&path, false, start_a as u16));
     }
 
     // Fix end gaps
-    let goal_length = sequences.iter().fold(0, |acc, s| acc.max(s.ref_length()));
+    let goal_length = sequences
+        .iter()
+        .fold(0, |acc, s| acc.max(s.aligned_length()));
     for s in &mut sequences {
         s.pad(goal_length);
     }
@@ -871,16 +874,17 @@ mod tests {
     use itertools::Itertools;
     use mzcore::ontology::STATIC_ONTOLOGIES;
 
+    fn seq(def: &str) -> Peptidoform<Linear> {
+        Peptidoform::pro_forma(def, &STATIC_ONTOLOGIES)
+            .unwrap()
+            .0
+            .into_linear()
+            .unwrap()
+    }
+
     #[test]
     fn simple() {
         // N = GG, N[Deamidated] = D, WGG = HY, HD = DH
-        let seq = |def: &str| {
-            Peptidoform::pro_forma(def, &STATIC_ONTOLOGIES)
-                .unwrap()
-                .0
-                .into_linear()
-                .unwrap()
-        };
         let sequences = vec![seq("AGGWHD"), seq("ANWHN[Deamidated]"), seq("AHYDH")];
         let index = AlignIndex::<4, Peptidoform<Linear>>::new(sequences, MassMode::Monoisotopic);
         let alignment = index.multi_align(None, AlignScoring::default(), MultiAlignType::GLOBAL);
@@ -895,13 +899,6 @@ mod tests {
     #[test]
     fn many() {
         // N = GG, N[Deamidated] = D, WGG = HY, HD = DH
-        let seq = |def: &str| {
-            Peptidoform::pro_forma(def, &STATIC_ONTOLOGIES)
-                .unwrap()
-                .0
-                .into_linear()
-                .unwrap()
-        };
         let sequences = vec![
             seq("WRGGDGFYAM[U:Oxidation]DYWGQG"),
             seq("RWGGDGFYAM[U:Oxidation]DYWGQG"),
@@ -926,13 +923,6 @@ mod tests {
     #[test]
     fn gaps() {
         // N = GG, N[Deamidated] = D, WGG = HY, HD = DH
-        let seq = |def: &str| {
-            Peptidoform::pro_forma(def, &STATIC_ONTOLOGIES)
-                .unwrap()
-                .0
-                .into_linear()
-                .unwrap()
-        };
         let sequences = vec![
             seq("WRGGDGFYAMDYWGQG"),
             seq("RWGDGFYAMYDWGQG"),
@@ -953,13 +943,6 @@ mod tests {
     #[test]
     fn either_global() {
         // N = GG, N[Deamidated] = D, WGG = HY, HD = DH
-        let seq = |def: &str| {
-            Peptidoform::pro_forma(def, &STATIC_ONTOLOGIES)
-                .unwrap()
-                .0
-                .into_linear()
-                .unwrap()
-        };
         let sequences = vec![
             seq("WRGGDGFYAMDYWGQG"),
             seq("RWGDGFYAMYD"),
@@ -979,13 +962,6 @@ mod tests {
 
     #[test]
     fn either_global_2() {
-        let seq = |def: &str| {
-            Peptidoform::pro_forma(def, &STATIC_ONTOLOGIES)
-                .unwrap()
-                .0
-                .into_linear()
-                .unwrap()
-        };
         let sequences = vec![
             seq("CSRWRGGDGF"),
             seq("WRNDGFYAM"),
@@ -1011,15 +987,11 @@ mod tests {
 
     #[test]
     fn properties() {
-        let sequence = Peptidoform::pro_forma("AGGWHD", &STATIC_ONTOLOGIES)
-            .unwrap()
-            .0
-            .into_linear()
-            .unwrap();
+        let sequence = seq("AGGWHD");
         let masses = calculate_masses::<4>(&sequence, MassMode::Monoisotopic);
         let mut line = MultiAlignmentLineTemp::single(0, &sequence, &masses);
-        assert_eq!(line.get_seq_index(4), 4);
-        assert_eq!(line.get_seq_index(5), 5);
+        assert_eq!(line.get_sequence_index(4), 4);
+        assert_eq!(line.get_sequence_index(5), 5);
         assert_eq!(
             line.get_aa_at(5),
             (
@@ -1054,11 +1026,11 @@ mod tests {
             true,
             0,
         );
-        line.path[3].ref_step = 2; // The W is bigger
+        line.path[3].aligned_length = 2; // The W is bigger
         assert_eq!(updated, line);
-        assert_eq!(line.get_seq_index(4), 4);
-        assert_eq!(line.get_seq_index(5), 4);
-        assert_eq!(line.get_seq_index(6), 5);
+        assert_eq!(line.get_sequence_index(4), 4);
+        assert_eq!(line.get_sequence_index(5), 4);
+        assert_eq!(line.get_sequence_index(6), 5);
         assert_eq!(
             line.get_aa_at(5),
             (
@@ -1085,16 +1057,8 @@ mod tests {
 
     #[test]
     fn properties_gaps() {
-        let sequence = Peptidoform::pro_forma("WRGGDGFYAMDYWGQG", &STATIC_ONTOLOGIES)
-            .unwrap()
-            .0
-            .into_linear()
-            .unwrap();
-        let sequence2 = Peptidoform::pro_forma("RWNDGYAMEDYWGQG", &STATIC_ONTOLOGIES)
-            .unwrap()
-            .0
-            .into_linear()
-            .unwrap();
+        let sequence = seq("WRGGDGFYAMDYWGQG");
+        let sequence2 = seq("RWNDGYAMEDYWGQG");
         let path = &[
             Piece::new(0, 0, MatchType::Rotation, 2, 2),     // WR
             Piece::new(0, 0, MatchType::Isobaric, 2, 1),     // GG N

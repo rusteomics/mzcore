@@ -395,10 +395,7 @@ impl<A: HasPeptidoform<Linear>, B: HasPeptidoform<Linear>> Alignment<A, B> {
             .sequence()
             .len()
             .min(self.seq_b().cast_peptidoform().sequence().len());
-        f64::midpoint(
-            1.0 - stats.mass_similar as f64 / length as f64,
-            1.0 - stats.identical as f64 / length as f64,
-        )
+        1.0 - f64::midpoint(stats.mass_similar as f64, stats.identical as f64) / length as f64
     }
 
     /// The mass(es) for the matched portion of the first sequence TODO: this assumes no terminal mods
