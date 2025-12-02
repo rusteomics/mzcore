@@ -6,7 +6,9 @@ use context_error::{
 };
 use thin_vec::ThinVec;
 
-use mzcv::{CVError, CVFile, CVSource, CVVersion, HashBufReader, OboOntology, OboStanzaType};
+use mzcv::{
+    CVError, CVFile, CVSource, CVVersion, HashBufReader, OboIdentifier, OboOntology, OboStanzaType,
+};
 
 use crate::{
     glycan::{GlycanStructure, MonoSaccharide},
@@ -84,7 +86,12 @@ impl CVSource for Gnome {
         // Fill all known info points
         for modification in mods.values_mut() {
             if modification.weight.is_none() {
-                modification.weight = find_mass(&read_mods, modification.is_a.clone().into());
+                for option in &modification.is_a {
+                    if let Some(weight) = find_mass(&read_mods, option.1.clone()) {
+                        modification.weight = Some(weight);
+                        break;
+                    }
+                }
             }
             if let Some(structure) = structures.get(&modification.id.name) {
                 modification.topology = structure.structure.clone();
@@ -102,7 +109,7 @@ impl CVSource for Gnome {
                 }
                 modification.motif = structure.motif.clone();
                 modification.taxonomy = structure.taxonomy.clone().into();
-                modification.glycomeatlas = structure.glycomeatlas.clone().into();
+                modification.glycomeatlas = structure.glycomeatlas.clone();
             } else if let Some(id) = &modification.topology_id {
                 modification.topology = structures
                     .get(id.as_ref())
@@ -131,7 +138,7 @@ fn find_mass(mods: &HashMap<Box<str>, GNOmeModification>, mut name: Box<str>) ->
     let mut mass = None;
     while mass.is_none() {
         mass = mods.get(&name)?.weight;
-        name.clone_from(&mods[&name].is_a);
+        name.clone_from(&mods[&name].is_a[0].1);
     }
     mass
 }
@@ -190,7 +197,7 @@ fn parse_gnome(obo: OboOntology) -> HashMap<Box<str>, GNOmeModification> {
     let mut errors = Vec::new();
 
     for obj in obo.objects {
-        if obj.stanza_type != OboStanzaType::Term || !obj.lines.contains_key("is_a") {
+        if obj.stanza_type != OboStanzaType::Term || obj.is_a.is_empty() {
             continue;
         }
 
@@ -251,10 +258,7 @@ fn parse_gnome(obo: OboOntology) -> HashMap<Box<str>, GNOmeModification> {
                 .lines
                 .get(HAS_STRUCTURE_CHARACTERISATION_SCORE)
                 .map_or(u16::MAX, |s| s[0].0.parse().unwrap()),
-            is_a: obj.lines["is_a"][0].0.trim()[4..]
-                .trim()
-                .to_ascii_lowercase()
-                .into_boxed_str(),
+            is_a: obj.is_a,
             composition_id: obj
                 .property_values
                 .get(HAS_COMPOSITION)
@@ -420,7 +424,7 @@ struct GNOmeModification {
     /// subsumption level, indication to what extent this species is described
     subsumption_level: GnoSubsumption,
     /// id to prev in chain
-    is_a: Box<str>,
+    is_a: Vec<OboIdentifier>,
     /// id of composition
     composition_id: Option<Box<str>>,
     /// id of topology

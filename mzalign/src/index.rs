@@ -22,6 +22,16 @@ pub struct AlignIndex<const STEPS: u16, Source> {
 }
 
 impl<const STEPS: u16, Source: HasPeptidoform<Linear> + Clone> AlignIndex<STEPS, Source> {
+    /// Check if this index is empty (contains no sequences)
+    pub fn is_empty(&self) -> bool {
+        self.sequences.is_empty()
+    }
+
+    /// Get the number of sequences in the index
+    pub fn len(&self) -> usize {
+        self.sequences.len()
+    }
+
     /// Create a new index for alignments
     pub fn new(sequences: impl IntoIterator<Item = Source>, mode: MassMode) -> Self {
         let sequences = sequences

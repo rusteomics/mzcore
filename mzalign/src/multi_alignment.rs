@@ -378,11 +378,11 @@ pub struct MultiAlignType {
 }
 
 impl MultiAlignType {
-    const EITHER_GLOBAL: Self = Self {
+    pub const EITHER_GLOBAL: Self = Self {
         left: MultiAlignSide::EitherGlobal,
         right: MultiAlignSide::EitherGlobal,
     };
-    const GLOBAL: Self = Self {
+    pub const GLOBAL: Self = Self {
         left: MultiAlignSide::Global,
         right: MultiAlignSide::Global,
     };
@@ -786,7 +786,7 @@ pub(super) fn multi_align_cached<'a, const STEPS: u16, Sequence: HasPeptidoform<
                     let sequence_index_a = sequence_indices_a[line_a];
                     for line_b in 0..b.len() {
                         let sequence_index_b = sequence_indices_b[index_b - 1][line_b];
-                        for len_a in 1..=index_a.min(STEPS as usize) {
+                        for len_a in 1..=sequence_index_a.min(STEPS as usize) {
                             let range_a = unsafe {
                                 mass_ranges_a[line_a]
                                     .get_unchecked([sequence_index_a.saturating_sub(1), len_a - 1])
@@ -794,7 +794,7 @@ pub(super) fn multi_align_cached<'a, const STEPS: u16, Sequence: HasPeptidoform<
 
                             let min_len_b = if len_a == 1 { 2 } else { 1 };
 
-                            for len_b in min_len_b..=index_b.min(STEPS as usize) {
+                            for len_b in min_len_b..=sequence_index_b.min(STEPS as usize) {
                                 let range_b = unsafe {
                                     mass_ranges_b[line_b].get_unchecked([
                                         sequence_index_b.saturating_sub(1),
@@ -982,6 +982,29 @@ mod tests {
         println!("{buf}");
         buf = buf.split('\n').skip(1).join("\n");
         let expected = "CSRWRGGDGF---------\n---WRN·DGFYAM------\n---RWGGDGFYAMDYWG--\n----------YW·DYWGQG\n---RWGGNGFYW·DYWGQG\n";
+        assert_eq!(buf, expected, "Expected:\n{expected}");
+    }
+
+    #[test]
+    fn crash() {
+        let sequences = vec![
+            seq("HYTTPPTFGQGT"),
+            seq("WGG"),
+            seq("VTC[U:Carboxymethyl]QGLSSPKSL"),
+        ];
+        let index = AlignIndex::<4, Peptidoform<Linear>>::new(sequences, MassMode::Monoisotopic);
+        let scoring = AlignScoring::<'_> {
+            tolerance: mzcore::quantities::Tolerance::Relative(
+                mzcore::system::Ratio::new::<mzcore::system::ratio::ppm>(20.0).into(),
+            ),
+            ..Default::default()
+        };
+        let alignment = index.multi_align(None, scoring, MultiAlignType::EITHER_GLOBAL);
+        let mut buf = String::new();
+        alignment[0].debug_display(&mut buf);
+        println!("{buf}");
+        buf = buf.split('\n').skip(1).join("\n");
+        let expected = "----HYTTPPTFGQGT\n-----------WG-G-\nVTCQGLSSPKSL----\n";
         assert_eq!(buf, expected, "Expected:\n{expected}");
     }
 
