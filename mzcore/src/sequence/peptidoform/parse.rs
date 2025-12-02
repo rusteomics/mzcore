@@ -11,8 +11,8 @@ use crate::{
     ontology::Ontologies,
     sequence::{
         AmbiguousLookup, AmbiguousLookupEntry, AminoAcid, CheckedAminoAcid, CompoundPeptidoformIon,
-        CrossLinkLookup, Linked, Modification, Peptidoform, PeptidoformIon, PlacementRule,
-        Position, SequenceElement, SequencePosition, SimpleModification, SimpleModificationInner,
+        CrossLinkLookup, Linked, MUPSettings, Peptidoform, PeptidoformIon, PlacementRule, Position,
+        SequenceElement, SequencePosition, SimpleModification, SimpleModificationInner,
     },
 };
 
@@ -394,7 +394,7 @@ impl CompoundPeptidoformIon {
             errors,
             global_unknown_position_mods::<STRICT>(
                 base_context,
-                index,
+                index..range.end,
                 line,
                 ontologies,
                 &mut ambiguous_lookup
@@ -409,55 +409,30 @@ impl CompoundPeptidoformIon {
         peptide = peptide.labile(labile);
 
         // N term modifications
-        let mut n_term_mods = Vec::new();
-        let mut n_end_seen = false;
-        let mut temp_index = index;
-        while chars.get(temp_index) == Some(&b'[') {
-            let end_index = handle!(single errors, end_of_enclosure(line, temp_index + 1, b'[', b']').ok_or_else(|| {
-                    BoxedError::new(
-                        BasicKind::Error,
-                        "Invalid N term modification",
-                        "No valid closing delimiter",
-                        base_context.clone().add_highlight((0, temp_index, 1))
-                    )
-            }));
-            n_term_mods.push(handle!(
-                errors,
-                SimpleModificationInner::pro_forma_main::<STRICT>(
-                    base_context,
-                    line,
-                    temp_index + 1..end_index,
-                    &mut ambiguous_lookup,
-                    cross_link_lookup,
-                    ontologies,
-                )
-            ));
+        let (end_index, n_term_mods) = handle!(
+            errors,
+            multiple_mods::<STRICT>(
+                base_context,
+                line,
+                index..range.end,
+                ontologies,
+                &mut ambiguous_lookup,
+                cross_link_lookup,
+            )
+        );
+        index = end_index;
 
-            temp_index = end_index + 1;
-
-            if chars.get(temp_index) == Some(&b'-') {
-                index = temp_index + 1;
-                n_end_seen = true;
-                break;
-            }
-        }
-
-        if n_end_seen {
-            for (m, _mup) in n_term_mods {
-                match m {
-                    ReturnModification::Defined(simple) => peptide.add_simple_n_term(simple),
-                    ReturnModification::CrossLinkReferenced(id) => {
-                        cross_link_found_positions.push((id, SequencePosition::NTerm));
-                    }
-                    ReturnModification::Ambiguous(id, localisation_score, preferred) => {
-                        ambiguous_found_positions.push((
-                            SequencePosition::NTerm,
-                            preferred,
-                            id,
-                            localisation_score,
-                        ));
-                    }
-                }
+        if chars.get(index) == Some(&b'-') {
+            index += 1;
+            for (modification, settings, _r) in n_term_mods {
+                place_modification(
+                    modification,
+                    settings,
+                    SequencePosition::NTerm,
+                    &mut peptide,
+                    &mut ambiguous_found_positions,
+                    &mut cross_link_found_positions,
+                );
             }
         }
 
@@ -552,34 +527,30 @@ impl CompoundPeptidoformIon {
                     }
                     braces_start = None;
                     index += 1;
-                    while chars.get(index) == Some(&b'[') {
-                        let end_index = handle!(single errors,
-                        end_of_enclosure(line, index + 1, b'[', b']').ok_or_else(|| {
-                                BoxedError::new(
-                                    BasicKind::Error,
-                                    "Invalid ranged ambiguous modification",
-                                    "No valid closing delimiter",
-                                    base_context.clone().add_highlight((0, index, 1)),
-                                )
-                        }));
-                        let modification = handle!(errors, SimpleModificationInner::pro_forma_main::<STRICT>(
+                    let (end_index, mods) = handle!(
+                        errors,
+                        multiple_mods::<STRICT>(
                             base_context,
-                            line, index + 1..end_index,
-                            &mut ambiguous_lookup, cross_link_lookup, ontologies,
-                        ).and_then(|((m, _mup_settings), mut w)| {
-                            let warnings = w.clone();
-                            m.defined().map(|m| (m, warnings)).ok_or_else(|| {
-                            w.push(BoxedError::new(BasicKind::Error,
-                            "Invalid ranged ambiguous modification",
-                            "A ranged ambiguous modification has to be fully defined, so no ambiguous modification is allowed",
-                            base_context.clone().add_highlight((0, index, 1))));
-                            w})}));
-                        index = end_index + 1;
-                        ranged_unknown_position_modifications.push((
+                            line,
+                            index..range.end,
+                            ontologies,
+                            &mut ambiguous_lookup,
+                            cross_link_lookup
+                        )
+                    );
+                    index = end_index;
+                    for (m, _settings, r) in mods {
+                        match m.defined() {
+                            Some(m) => ranged_unknown_position_modifications.push((
                             start,
                             peptide.len().saturating_sub(1),
-                            modification,
-                        ));
+                            m,
+                        )),
+                        None => errors.push(BoxedError::new(BasicKind::Error,
+                            "Invalid ranged ambiguous modification",
+                            "A ranged ambiguous modification has to be fully defined, so no ambiguous modification is allowed",
+                            base_context.clone().add_highlight((0, r)))),
+                        }
                     }
                 }
                 (false, b'/') => {
@@ -609,7 +580,7 @@ impl CompoundPeptidoformIon {
                             base_context.clone().add_highlight((0, index, 1)),
                         )
                     }));
-                    let (modification, _) = handle!(
+                    let (modification, settings) = handle!(
                         errors,
                         SimpleModificationInner::pro_forma_main::<STRICT>(
                             base_context,
@@ -623,67 +594,37 @@ impl CompoundPeptidoformIon {
                     let start_index = index + 1;
                     index = end_index + 1;
                     if is_c_term {
-                        match modification {
-                            ReturnModification::Defined(simple) => {
-                                peptide.add_simple_c_term(simple);
-                            }
-                            ReturnModification::CrossLinkReferenced(id) => {
-                                cross_link_found_positions.push((id, SequencePosition::CTerm));
-                            }
-                            ReturnModification::Ambiguous(id, localisation_score, preferred) => {
-                                ambiguous_found_positions.push((
-                                    SequencePosition::CTerm,
-                                    preferred,
-                                    id,
-                                    localisation_score,
-                                ));
-                            }
-                        }
+                        place_modification(
+                            modification,
+                            settings,
+                            SequencePosition::CTerm,
+                            &mut peptide,
+                            &mut ambiguous_found_positions,
+                            &mut cross_link_found_positions,
+                        );
 
-                        while chars.get(index) == Some(&b'[') {
-                            let end_index = handle!(single errors, end_of_enclosure(line, index + 1, b'[', b']')
-                            .ok_or_else(|| {
-                                BoxedError::new(
-                                    BasicKind::Error,
-                                    "Invalid C term modification",
-                                    "No valid closing delimiter",
-                                                                   base_context.clone().add_highlight((0, index, 1)),
-                                )
-                            }));
-                            let (modification, _) = handle!(
-                                errors,
-                                SimpleModificationInner::pro_forma_main::<STRICT>(
-                                    base_context,
-                                    line,
-                                    index + 1..end_index,
-                                    &mut ambiguous_lookup,
-                                    cross_link_lookup,
-                                    ontologies,
-                                )
+                        let (end_index, mods) = handle!(
+                            errors,
+                            multiple_mods::<STRICT>(
+                                base_context,
+                                line,
+                                index..range.end,
+                                ontologies,
+                                &mut ambiguous_lookup,
+                                cross_link_lookup
+                            )
+                        );
+                        index = end_index;
+
+                        for (modification, settings, _r) in mods {
+                            place_modification(
+                                modification,
+                                settings,
+                                SequencePosition::CTerm,
+                                &mut peptide,
+                                &mut ambiguous_found_positions,
+                                &mut cross_link_found_positions,
                             );
-
-                            match modification {
-                                ReturnModification::Defined(simple) => {
-                                    peptide.add_simple_c_term(simple);
-                                }
-                                ReturnModification::CrossLinkReferenced(id) => {
-                                    cross_link_found_positions.push((id, SequencePosition::CTerm));
-                                }
-                                ReturnModification::Ambiguous(
-                                    id,
-                                    localisation_score,
-                                    preferred,
-                                ) => {
-                                    ambiguous_found_positions.push((
-                                        SequencePosition::CTerm,
-                                        preferred,
-                                        id,
-                                        localisation_score,
-                                    ));
-                                }
-                            }
-
-                            index = end_index + 1;
                         }
 
                         if index + 1 < chars.len()
@@ -706,26 +647,17 @@ impl CompoundPeptidoformIon {
                         break;
                     }
 
-                    if let Some((sequence_index, aa)) =
+                    if let Some((sequence_index, _aa)) =
                         peptide.sequence_mut().iter_mut().enumerate().next_back()
                     {
-                        match modification {
-                            ReturnModification::Defined(m) => {
-                                aa.modifications.push(Modification::Simple(m));
-                            }
-                            ReturnModification::Ambiguous(id, localisation_score, preferred) => {
-                                ambiguous_found_positions.push((
-                                    SequencePosition::Index(sequence_index),
-                                    preferred,
-                                    id,
-                                    localisation_score,
-                                ));
-                            }
-                            ReturnModification::CrossLinkReferenced(id) => {
-                                cross_link_found_positions
-                                    .push((id, SequencePosition::Index(sequence_index)));
-                            }
-                        }
+                        place_modification(
+                            modification,
+                            settings,
+                            SequencePosition::Index(sequence_index),
+                            &mut peptide,
+                            &mut ambiguous_found_positions,
+                            &mut cross_link_found_positions,
+                        );
                     } else {
                         handle!(
                         fail errors,
@@ -917,6 +849,69 @@ impl CompoundPeptidoformIon {
                 },
                 errors,
             ))
+        }
+    }
+}
+
+/// Parse multiple modifications at the given position
+/// # Errors
+/// When no end of a mod enclosure could be found.
+fn multiple_mods<'a, const STRICT: bool>(
+    base_context: &Context<'a>,
+    line: &'a str,
+    range: Range<usize>,
+    ontologies: &Ontologies,
+    ambiguous_lookup: &mut AmbiguousLookup,
+    cross_link_lookup: &mut CrossLinkLookup,
+) -> ParserResult<'a, (usize, Vec<(ReturnModification, MUPSettings, Range<usize>)>), BasicKind> {
+    let mut errors = Vec::new();
+    let mut mods = Vec::new();
+    let mut temp_index = range.start;
+    while line.as_bytes().get(temp_index) == Some(&b'[') {
+        let end_index = handle!(single errors, end_of_enclosure(line, temp_index + 1, b'[', b']').ok_or_else(|| {
+                BoxedError::new(
+                    BasicKind::Error,
+                    "Invalid modification",
+                    "No valid closing delimiter",
+                    base_context.clone().add_highlight((0, temp_index, 1))
+                )
+        }));
+        let (m, mup) = handle!(
+            errors,
+            SimpleModificationInner::pro_forma_main::<STRICT>(
+                base_context,
+                line,
+                temp_index + 1..end_index,
+                ambiguous_lookup,
+                cross_link_lookup,
+                ontologies,
+            )
+        );
+        mods.push((m, mup, temp_index..end_index + 1));
+
+        temp_index = end_index + 1;
+    }
+    Ok(((temp_index, mods), errors))
+}
+
+/// Place modification on the right location and handle all bookkeeping
+fn place_modification(
+    modification: ReturnModification,
+    _settings: MUPSettings,
+    position: SequencePosition,
+    peptidoform: &mut Peptidoform<Linear>,
+    ambiguous_found_positions: &mut Vec<(SequencePosition, bool, usize, Option<OrderedFloat<f64>>)>,
+    cross_link_found_positions: &mut Vec<(usize, SequencePosition)>,
+) {
+    match modification {
+        ReturnModification::Defined(simple) => {
+            peptidoform.add_simple_modification(position, simple);
+        }
+        ReturnModification::CrossLinkReferenced(id) => {
+            cross_link_found_positions.push((id, position));
+        }
+        ReturnModification::Ambiguous(id, localisation_score, preferred) => {
+            ambiguous_found_positions.push((position, preferred, id, localisation_score));
         }
     }
 }
@@ -1172,12 +1167,12 @@ pub(super) fn parse_placement_rules<'a>(
 /// Give all errors when the text cannot be read as mods of unknown position.
 pub(super) fn global_unknown_position_mods<'a, const STRICT: bool>(
     base_context: &Context<'a>,
-    start: usize,
+    range: Range<usize>,
     line: &'a str,
     ontologies: &Ontologies,
     ambiguous_lookup: &mut AmbiguousLookup,
 ) -> ParserResult<'a, (usize, Vec<usize>), BasicKind> {
-    let mut index = start;
+    let mut index = range.start;
     let mut modifications = Vec::new();
     let mut errs = Vec::new();
     let mut cross_link_lookup = Vec::new();
@@ -1284,7 +1279,7 @@ pub(super) fn global_unknown_position_mods<'a, const STRICT: bool>(
         }
     } else {
         ambiguous_lookup.clear(); // Any ambiguous N terminal modification was incorrectly already added to the lookup
-        Ok(((start, Vec::new()), errs))
+        Ok(((range.start, Vec::new()), errs))
     }
 }
 
