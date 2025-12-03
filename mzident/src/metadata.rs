@@ -109,3 +109,255 @@ pub trait MetaData {
         self.annotated_spectrum().is_some()
     }
 }
+
+impl<T: MetaData> MetaData for &T {
+    fn compound_peptidoform_ion(&self) -> Option<Cow<'_, CompoundPeptidoformIon>> {
+        (**self).compound_peptidoform_ion()
+    }
+
+    fn format(&self) -> KnownFileFormat {
+        (**self).format()
+    }
+
+    fn id(&self) -> String {
+        (**self).id()
+    }
+
+    fn confidence(&self) -> Option<f64> {
+        (**self).confidence()
+    }
+
+    fn local_confidence(&self) -> Option<Cow<'_, [f64]>> {
+        (**self).local_confidence()
+    }
+
+    fn original_confidence(&self) -> Option<f64> {
+        (**self).original_confidence()
+    }
+
+    fn original_local_confidence(&self) -> Option<&[f64]> {
+        (**self).original_local_confidence()
+    }
+
+    fn charge(&self) -> Option<Charge> {
+        (**self).charge()
+    }
+
+    fn mode(&self) -> Option<Cow<'_, str>> {
+        (**self).mode()
+    }
+
+    fn retention_time(&self) -> Option<Time> {
+        (**self).retention_time()
+    }
+
+    fn scans(&self) -> SpectrumIds {
+        (**self).scans()
+    }
+
+    fn experimental_mz(&self) -> Option<MassOverCharge> {
+        (**self).experimental_mz()
+    }
+
+    fn experimental_mass(&self) -> Option<Mass> {
+        (**self).experimental_mass()
+    }
+
+    fn protein_names(&self) -> Option<Cow<'_, [FastaIdentifier<String>]>> {
+        (**self).protein_names()
+    }
+
+    fn protein_id(&self) -> Option<usize> {
+        (**self).protein_id()
+    }
+
+    fn protein_location(&self) -> Option<Range<u16>> {
+        (**self).protein_location()
+    }
+
+    fn flanking_sequences(&self) -> (&FlankingSequence, &FlankingSequence) {
+        (**self).flanking_sequences()
+    }
+
+    fn database(&self) -> Option<(&str, Option<&str>)> {
+        (**self).database()
+    }
+
+    #[cfg(feature = "mzannotate")]
+    fn annotated_spectrum(&self) -> Option<Cow<'_, mzannotate::spectrum::AnnotatedSpectrum>> {
+        (**self).annotated_spectrum()
+    }
+
+    #[cfg(feature = "mzannotate")]
+    fn has_annotated_spectrum(&self) -> bool {
+        (**self).has_annotated_spectrum()
+    }
+}
+
+impl<T: MetaData> MetaData for std::rc::Rc<T> {
+    fn compound_peptidoform_ion(&self) -> Option<Cow<'_, CompoundPeptidoformIon>> {
+        (**self).compound_peptidoform_ion()
+    }
+
+    fn format(&self) -> KnownFileFormat {
+        (**self).format()
+    }
+
+    fn id(&self) -> String {
+        (**self).id()
+    }
+
+    fn confidence(&self) -> Option<f64> {
+        (**self).confidence()
+    }
+
+    fn local_confidence(&self) -> Option<Cow<'_, [f64]>> {
+        (**self).local_confidence()
+    }
+
+    fn original_confidence(&self) -> Option<f64> {
+        (**self).original_confidence()
+    }
+
+    fn original_local_confidence(&self) -> Option<&[f64]> {
+        (**self).original_local_confidence()
+    }
+
+    fn charge(&self) -> Option<Charge> {
+        (**self).charge()
+    }
+
+    fn mode(&self) -> Option<Cow<'_, str>> {
+        (**self).mode()
+    }
+
+    fn retention_time(&self) -> Option<Time> {
+        (**self).retention_time()
+    }
+
+    fn scans(&self) -> SpectrumIds {
+        (**self).scans()
+    }
+
+    fn experimental_mz(&self) -> Option<MassOverCharge> {
+        (**self).experimental_mz()
+    }
+
+    fn experimental_mass(&self) -> Option<Mass> {
+        (**self).experimental_mass()
+    }
+
+    fn protein_names(&self) -> Option<Cow<'_, [FastaIdentifier<String>]>> {
+        (**self).protein_names()
+    }
+
+    fn protein_id(&self) -> Option<usize> {
+        (**self).protein_id()
+    }
+
+    fn protein_location(&self) -> Option<Range<u16>> {
+        (**self).protein_location()
+    }
+
+    fn flanking_sequences(&self) -> (&FlankingSequence, &FlankingSequence) {
+        (**self).flanking_sequences()
+    }
+
+    fn database(&self) -> Option<(&str, Option<&str>)> {
+        (**self).database()
+    }
+
+    #[cfg(feature = "mzannotate")]
+    fn annotated_spectrum(&self) -> Option<Cow<'_, mzannotate::spectrum::AnnotatedSpectrum>> {
+        (**self).annotated_spectrum()
+    }
+
+    #[cfg(feature = "mzannotate")]
+    fn has_annotated_spectrum(&self) -> bool {
+        (**self).has_annotated_spectrum()
+    }
+}
+
+impl<T: MetaData> MetaData for std::sync::Arc<T> {
+    fn compound_peptidoform_ion(&self) -> Option<Cow<'_, CompoundPeptidoformIon>> {
+        (**self).compound_peptidoform_ion()
+    }
+
+    fn format(&self) -> KnownFileFormat {
+        (**self).format()
+    }
+
+    fn id(&self) -> String {
+        (**self).id()
+    }
+
+    fn confidence(&self) -> Option<f64> {
+        (**self).confidence()
+    }
+
+    fn local_confidence(&self) -> Option<Cow<'_, [f64]>> {
+        (**self).local_confidence()
+    }
+
+    fn original_confidence(&self) -> Option<f64> {
+        (**self).original_confidence()
+    }
+
+    fn original_local_confidence(&self) -> Option<&[f64]> {
+        (**self).original_local_confidence()
+    }
+
+    fn charge(&self) -> Option<Charge> {
+        (**self).charge()
+    }
+
+    fn mode(&self) -> Option<Cow<'_, str>> {
+        (**self).mode()
+    }
+
+    fn retention_time(&self) -> Option<Time> {
+        (**self).retention_time()
+    }
+
+    fn scans(&self) -> SpectrumIds {
+        (**self).scans()
+    }
+
+    fn experimental_mz(&self) -> Option<MassOverCharge> {
+        (**self).experimental_mz()
+    }
+
+    fn experimental_mass(&self) -> Option<Mass> {
+        (**self).experimental_mass()
+    }
+
+    fn protein_names(&self) -> Option<Cow<'_, [FastaIdentifier<String>]>> {
+        (**self).protein_names()
+    }
+
+    fn protein_id(&self) -> Option<usize> {
+        (**self).protein_id()
+    }
+
+    fn protein_location(&self) -> Option<Range<u16>> {
+        (**self).protein_location()
+    }
+
+    fn flanking_sequences(&self) -> (&FlankingSequence, &FlankingSequence) {
+        (**self).flanking_sequences()
+    }
+
+    fn database(&self) -> Option<(&str, Option<&str>)> {
+        (**self).database()
+    }
+
+    #[cfg(feature = "mzannotate")]
+    fn annotated_spectrum(&self) -> Option<Cow<'_, mzannotate::spectrum::AnnotatedSpectrum>> {
+        (**self).annotated_spectrum()
+    }
+
+    #[cfg(feature = "mzannotate")]
+    fn has_annotated_spectrum(&self) -> bool {
+        (**self).has_annotated_spectrum()
+    }
+}

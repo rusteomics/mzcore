@@ -49,7 +49,6 @@ impl<Sequence: HasPeptidoform<Linear>> MultiAlignment<Sequence> {
                     original_index: temp.original_index,
                     sequence: temp.sequence,
                     path: temp.path,
-                    start: temp.start,
                 })
                 .collect(),
             score: Score {
@@ -87,6 +86,26 @@ impl<Sequence: HasPeptidoform<Linear>> MultiAlignment<Sequence> {
 
         variance
     }
+
+    /// Get the lines
+    pub fn iter(&self) -> std::slice::Iter<'_, MultiAlignmentLine<Sequence>> {
+        self.lines.iter()
+    }
+
+    /// Get the score (TODO: calculate)
+    pub fn score(&self) -> Score {
+        self.score
+    }
+
+    /// Get the maximal step
+    pub fn maximal_step(&self) -> u16 {
+        self.maximal_step
+    }
+
+    /// Get the align type
+    pub fn align_type(&self) -> MultiAlignType {
+        self.align_type
+    }
 }
 
 /// For each location the possible sequences and their length, their depth of coverage (how often seen) and their average local confidence.
@@ -100,11 +119,52 @@ impl<Sequence: HasPeptidoform<Linear>> std::fmt::Display for MultiAlignment<Sequ
 }
 
 #[derive(Clone, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
-struct MultiAlignmentLine<Sequence> {
+pub struct MultiAlignmentLine<Sequence> {
     original_index: usize,
     sequence: Sequence,
     path: Vec<MultiPiece>,
-    start: usize,
+}
+
+impl<Sequence> MultiAlignmentLine<Sequence> {
+    /// Get the index into the original list of the MMSA
+    pub fn original_index(&self) -> usize {
+        self.original_index
+    }
+
+    /// Get the sequence
+    pub fn sequence(&self) -> &Sequence {
+        &self.sequence
+    }
+
+    /// Get the path
+    pub fn path(&self) -> &[MultiPiece] {
+        &self.path
+    }
+
+    /// Get the aligned length (pad start, length, pad end)
+    pub fn placement(&self) -> (u16, usize, u16) {
+        let mut total_length = 0;
+        for piece in &self.path {
+            total_length += piece.aligned_length as usize;
+        }
+
+        let start_pad = if self.path.len() > 1 && self.path[0].match_type == MatchType::Gap {
+            self.path[0].aligned_length
+        } else {
+            0
+        };
+        let end_pad =
+            if self.path.len() > 1 && self.path[self.path.len() - 1].match_type == MatchType::Gap {
+                self.path[self.path.len() - 1].aligned_length
+            } else {
+                0
+            };
+        (
+            start_pad,
+            total_length - start_pad as usize - end_pad as usize,
+            end_pad,
+        )
+    }
 }
 
 impl<Sequence: HasPeptidoform<Linear>> MultiAlignmentLine<Sequence> {
@@ -136,7 +196,7 @@ impl<Sequence: HasPeptidoform<Linear>> MultiAlignmentLine<Sequence> {
 
     fn debug_display(&self, mut w: impl std::fmt::Write) {
         let sequence = self.sequence.cast_peptidoform().sequence();
-        let mut seq_index = self.start;
+        let mut seq_index = 0;
         for piece in &self.path {
             if piece.sequence_length == 0 {
                 write!(w, "{}", "-".repeat(piece.aligned_length as usize)).unwrap();
@@ -174,7 +234,6 @@ struct MultiAlignmentLineTemp<'a, Sequence, const STEPS: u16> {
     sequence: Sequence,
     masses: &'a DiagonalArray<Multi<Mass>, STEPS>,
     path: Vec<MultiPiece>,
-    start: usize,
 }
 
 impl<'a, Sequence: HasPeptidoform<Linear>, const STEPS: u16>
@@ -198,7 +257,6 @@ impl<'a, Sequence: HasPeptidoform<Linear>, const STEPS: u16>
                 };
                 len
             ],
-            start: 0,
         }
     }
 
@@ -337,7 +395,7 @@ impl<'a, Sequence: HasPeptidoform<Linear>, const STEPS: u16>
 
     fn debug_display(&self, mut w: impl std::fmt::Write) {
         let sequence = self.sequence.cast_peptidoform().sequence();
-        let mut seq_index = self.start;
+        let mut seq_index = 0;
         for piece in &self.path {
             if piece.sequence_length == 0 {
                 write!(w, "{}", "-".repeat(piece.aligned_length as usize)).unwrap();
@@ -365,10 +423,10 @@ impl<'a, Sequence: HasPeptidoform<Linear>, const STEPS: u16>
     Clone, Copy, Debug, Default, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize,
 )]
 struct MultiPiece {
-    match_type: MatchType,
+    pub match_type: MatchType,
     /// aligned_length is required to always be at least sequence_length
-    aligned_length: u16,
-    sequence_length: u16,
+    pub aligned_length: u16,
+    pub sequence_length: u16,
 }
 
 #[derive(Clone, Copy, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
