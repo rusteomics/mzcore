@@ -18,7 +18,7 @@ include = ["src/**/*", "tests/**/*", "README.md", "benches/**/*"]
 
 [dependencies]
 mzcore = { path = "../mzcore", version = "0.1.1" }
-mzcv = { path = "../mzcv", version = "0.1.0" }
+mzcv = { path = "../mzcv", version = "0.2.0" }
 imgt = { path = "../imgt", version = "0.1.0", default-features = false, optional = true }
 
 itertools = { workspace = true }

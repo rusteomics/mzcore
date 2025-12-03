@@ -17,7 +17,7 @@ readme = "README.md"
 include = ["src/**/*", "images/**/*", "README.md", "benches/**/*"]
 
 [dependencies]
-mzcv = { path = "../mzcv", version = "0.1.0", features = ["serde"] }
+mzcv = { path = "../mzcv", version = "0.2.0", features = ["serde"] }
 bincode = { workspace = true, features = ["serde"] }
 context_error = { workspace = true }
 flate2 = { workspace = true }
