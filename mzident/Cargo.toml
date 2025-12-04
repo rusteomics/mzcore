@@ -15,6 +15,7 @@ include = ["src/**/*", "images/**/*", "README.md", "benches/**/*"]
 
 [dependencies]
 mzcore = { path = "../mzcore", version = "0.1.0" }
+mzcv = { path = "../mzcv", features=["serde"] }
 mzannotate = { path = "../mzannotate", version = "0.1.0", optional = true }
 
 context_error = { workspace = true }

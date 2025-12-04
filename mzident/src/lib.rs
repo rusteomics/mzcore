@@ -9,6 +9,7 @@ mod formats;
 mod general;
 mod identified_peptidoform;
 mod metadata;
+pub mod mztab_writer;
 mod peaks_family_id;
 mod peptidoform_availability;
 mod source;

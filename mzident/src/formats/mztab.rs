@@ -12,6 +12,7 @@ use std::{
 use context_error::*;
 use flate2::bufread::GzDecoder;
 use itertools::Itertools;
+use mzcv::{AccessionCodeParseError, CURIEParsingError, Term, curie};
 use ordered_float::OrderedFloat;
 use serde::{Deserialize, Serialize};
 
@@ -128,8 +129,8 @@ impl MZTabData {
                         match line[fields[1].clone()].to_ascii_lowercase().as_str() {
                             m if (m.starts_with("variable_mod[") || m.starts_with("fixed_mod[")) && m.ends_with(']') => {
                                 match CVTerm::from_str(&line[fields[2].clone()]).and_then(|term|
-                                        (term.id.trim() != "MS:1002453" && term.id.trim()  != "MS:1002454").then(||
-                                            SimpleModificationInner::pro_forma(term.id.trim(), &mut Vec::new(), &mut Vec::new(), ontologies).map(|(m, _)| m).map_err(|errs|
+                                        (term.term.accession != curie!(MS:1002453) && term.term.accession  != curie!(MS:1002454)).then(||
+                                            SimpleModificationInner::pro_forma(&term.term.accession.to_string(), &mut Vec::new(), &mut Vec::new(), ontologies).map(|(m, _)| m).map_err(|errs|
                                                 BoxedError::new(
                                                     BasicKind::Error,
                                                     "Invalid modification in mzTab", 
@@ -809,18 +810,18 @@ pub struct Protein {
     pub database_version: String,
     /// The search engines that identified this protein along with their scores
     pub search_engine: Vec<(CVTerm, Option<f64>)>,
-    /// The reliability of this protein
-    pub reliability: Option<Reliability>,
     /// A list of all proteins that cannot be separated based on peptide evidence from this main protein.
     pub ambiguity_members: Vec<String>,
     /// The reported modifications on this protein.
     pub modifications: String,
-    /// A URI pointing to the protein's source entry in the unit it was identified in (e.g., the PRIDE database or a local database / file identifier).
-    pub uri: Option<String>,
-    /// The GO terms for this protein.
-    pub go_terms: Vec<usize>,
     /// The coverage of this protein based on the peptidoforms in this file.
     pub coverage: Option<f64>,
+    /// The GO terms for this protein.
+    pub go_terms: Vec<usize>,
+    /// The reliability of this protein
+    pub reliability: Option<Reliability>,
+    /// A URI pointing to the protein's source entry in the unit it was identified in (e.g., the PRIDE database or a local database / file identifier).
+    pub uri: Option<String>,
 }
 
 impl Protein {
@@ -1302,16 +1303,22 @@ impl From<MZTabData> for IdentifiedPeptidoform<SimpleLinear, MaybePeptidoform> {
 }
 
 /// A CV term
-#[derive(Clone, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct CVTerm {
-    /// The ontology
-    pub ontology: String,
-    /// The id within the ontology
-    pub id: String,
-    /// The human name for the term
-    pub term: String,
-    /// Additional comments on the term, eg additional specification
+    /// The term
+    pub term: Term,
+    /// Additional comments on the term, eg additional specification or version
     pub comment: String,
+}
+
+impl std::fmt::Display for CVTerm {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "[{}, {}, {}, {}]",
+            self.term.accession.cv, self.term.accession, self.term.name, self.comment
+        )
+    }
 }
 
 impl CVTerm {
@@ -1383,10 +1390,43 @@ impl FromStr for CVTerm {
         if value.starts_with('[') && value.ends_with(']') {
             let value = &value[1..value.len() - 1];
             let mut split = value.splitn(4, ',');
+            let _ontology = split.next().unwrap_or_default().trim().to_string();
+            let accession = split
+                .next()
+                .unwrap_or_default()
+                .trim()
+                .to_string()
+                .parse::<mzcv::Curie>()
+                .map_err(|e| {
+                    BoxedError::new(
+                        BasicKind::Error,
+                        "Invalid CV accession",
+                        match e {
+                            CURIEParsingError::UnknownControlledVocabulary => {
+                                "Unknown CV"
+                            }
+                            CURIEParsingError::MissingNamespaceSeparator => {
+                                "The namespace separator ':' is missing"
+                            }
+                            CURIEParsingError::AccessionParsingError(AccessionCodeParseError::Empty) => {
+                                "Could not parse accession because it is empty"
+                            }
+                            CURIEParsingError::AccessionParsingError(AccessionCodeParseError::TooLong(_)) => {
+                                "Could not parse accession because it is textual and too long, it can only be 7 characters"
+                            }
+                            CURIEParsingError::AccessionParsingError(AccessionCodeParseError::InvalidCharacters(_)) => {
+                                "Could not parse accession because it contained invalid characters, only alphanumeric characters are allowed"
+                            }
+                        },
+                        Context::none().lines(0, value).to_owned(),
+                    )
+                })?;
+            let name = split.next().unwrap_or_default().trim().to_string();
             Ok(Self {
-                ontology: split.next().unwrap_or_default().trim().to_string(),
-                id: split.next().unwrap_or_default().trim().to_string(),
-                term: split.next().unwrap_or_default().trim().to_string(),
+                term: Term {
+                    accession,
+                    name: name.into(),
+                },
                 comment: split.next().unwrap_or_default().trim().to_string(),
             })
         } else {

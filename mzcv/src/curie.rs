@@ -1379,6 +1379,7 @@ impl std::str::FromStr for AccessionCode {
 
 /// A term, a CURIE plus its name
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Term {
     /// The CURIE (eg MS:0000000)
     pub accession: Curie,
