@@ -1,10 +1,10 @@
-use crate::{MetaData, Protein, SpectrumIds};
+use crate::{MetaData, Protein, SpectrumId, SpectrumIds};
 use itertools::Itertools;
 use mzcore::{
     chemistry::Chemical,
     ontology::Ontology,
     prelude::{MolecularFormula, SequencePosition},
-    sequence::{IsAminoAcid, Modification, SimpleModification, SimpleModificationInner},
+    sequence::{FlankingSequence, IsAminoAcid, Modification, SimpleModificationInner},
 };
 use mzcv::Term;
 use std::{io::Write, marker::PhantomData, path::PathBuf, sync::Arc};
@@ -17,6 +17,7 @@ pub struct MzTabWriter<Writer, State> {
     state: PhantomData<State>,
 }
 
+/// The metadata for an MS run for a mzTab file.
 #[derive(Debug, Clone)]
 pub struct MSRun {
     /// The file format and id format terms
@@ -42,8 +43,9 @@ pub struct ProteinsWritten;
 #[allow(missing_debug_implementations, missing_copy_implementations)] // Marker ZST
 pub struct PSMsWritten;
 
-// #[sealed]
-pub trait CanWriteProteins {
+/// A trait to help indicate when proteins can be written
+pub(crate) trait CanWriteProteins {
+    /// A bool to indicate if the section header (PRH) is already written
     const SECTION_HEADER_PRESENT: bool;
 }
 impl CanWriteProteins for HeaderWritten {
@@ -53,8 +55,9 @@ impl CanWriteProteins for ProteinsWritten {
     const SECTION_HEADER_PRESENT: bool = true;
 }
 
-// #[sealed]
-pub trait CanWritePSMs {
+/// A trait to help indicate when PSMs can be written
+pub(crate) trait CanWritePSMs {
+    /// A bool to indicate if the section header (PSH) is already written
     const SECTION_HEADER_PRESENT: bool;
 }
 impl CanWritePSMs for HeaderWritten {
@@ -68,13 +71,64 @@ impl CanWritePSMs for PSMsWritten {
 }
 
 impl<W: Write> MzTabWriter<W, Initial> {
-    // TODO: detect headers from PSMs
+    /// Convenience function to easily write all information to an mzTab file.
+    /// # Errors
+    /// If writing to the underlying writer failed.
+    pub fn write<PSM: MetaData>(
+        writer: W,
+        header: &[(String, String)],
+        proteins: &[(String, Arc<Protein>)],
+        psms: &[PSM],
+    ) -> Result<(), std::io::Error> {
+        let ms_runs = psms
+            .iter()
+            .flat_map(|p| match p.scans() {
+                SpectrumIds::FileKnown(scans) => scans,
+                _ => Vec::new(),
+            })
+            .map(|(p, _)| p)
+            .unique()
+            .map(|p| MSRun {
+                location: p,
+                format: None,
+                hash: None,
+                fragmentation_method: None,
+            })
+            .collect::<Vec<_>>();
+        let writer = Self::new(writer, ms_runs);
+        let writer = writer.write_header(header)?;
+        match if !proteins.is_empty() {
+            let writer = writer.write_proteins(proteins)?;
+            writer.write_psms(psms)
+        } else {
+            writer.write_psms(psms)
+        } {
+            Ok(_) => Ok(()),
+            Err(MzTabWriteError::IO(err)) => Err(err),
+            Err(MzTabWriteError::Fmt(err)) => Err(std::io::Error::other(err)),
+            Err(MzTabWriteError::MissingMSRun(err)) => {
+                unreachable!("A MSRun was not defined in the MzTabWriter::write for path {err:?}")
+            }
+        }
+    }
+
+    /// Create a new mzTab file writer that will output to the given writer and with the given MS runs.
+    pub const fn new(writer: W, ms_runs: Vec<MSRun>) -> Self {
+        Self {
+            writer,
+            ms_runs,
+            state: PhantomData,
+        }
+    }
+
+    /// Write the header. Adds the standard mzTab version, mode, and type headers and writes all
+    /// keys for the [`MSRun`]s. All other keys can be added as a tuple of (key, value).
+    /// # Errors
+    /// If the underlying writer fails.
     pub fn write_header(
         mut self,
         header: &[(String, String)],
-        ms_runs: Vec<MSRun>,
     ) -> Result<MzTabWriter<W, HeaderWritten>, std::io::Error> {
-        self.ms_runs = ms_runs;
         writeln!(self.writer, "MTD\tmzTab-version\t1.0.0")?;
         writeln!(self.writer, "MTD\tmzTab-mode\tSummary")?;
         writeln!(self.writer, "MTD\tmzTab-type\tIdentification")?;
@@ -82,6 +136,7 @@ impl<W: Write> MzTabWriter<W, Initial> {
             writeln!(self.writer, "MTD\t{key}\t{value}")?;
         }
         for (i, run) in self.ms_runs.iter().enumerate() {
+            let i = i + 1; // 1 based
             if let Some((format, id_format)) = &run.format {
                 writeln!(
                     self.writer,
@@ -125,6 +180,9 @@ impl<W: Write> MzTabWriter<W, Initial> {
 }
 
 impl<W: Write, State: CanWriteProteins> MzTabWriter<W, State> {
+    /// Write the proteins. This can only be done if the header is already written or if some proteins where written just before.
+    /// # Errors
+    /// If the underlying writer fails.
     pub fn write_proteins(
         mut self,
         proteins: &[(String, Arc<Protein>)],
@@ -174,8 +232,8 @@ impl<W: Write, State: CanWriteProteins> MzTabWriter<W, State> {
     }
 }
 
-fn make_mztab_mod(m: SimpleModification) -> String {
-    match &*m {
+fn make_mztab_mod(m: &SimpleModificationInner) -> String {
+    match m {
         SimpleModificationInner::Database { formula, id, .. } => id.id().map_or_else(
             || mztab_chemmod(formula),
             |index| match id.ontology {
@@ -196,37 +254,53 @@ fn mztab_chemmod(f: &MolecularFormula) -> String {
     }
 }
 
+/// An error returned when writing a mzTab file
 #[derive(Debug)]
-pub enum MzTabPSMWriteError {
+pub enum MzTabWriteError {
+    /// An IO error, meaning that writing to the underlying writer failed
     IO(std::io::Error),
-    FMT(std::fmt::Error),
-    /// No MSRun is written in the header for this file, or if none there are no files and a [`SpectrumIds::FileNotKnown`] is given
+    /// A formatting error, meaning that writing to a string did not work
+    Fmt(std::fmt::Error),
+    /// No [`MSRun`] is written in the header for this file, or if None there are no files and a [`SpectrumIds::FileNotKnown`] is given
     MissingMSRun(Option<PathBuf>),
 }
 
-impl From<std::io::Error> for MzTabPSMWriteError {
+impl From<std::io::Error> for MzTabWriteError {
     fn from(value: std::io::Error) -> Self {
         Self::IO(value)
     }
 }
-impl From<std::fmt::Error> for MzTabPSMWriteError {
+
+impl From<std::fmt::Error> for MzTabWriteError {
     fn from(value: std::fmt::Error) -> Self {
-        Self::FMT(value)
+        Self::Fmt(value)
     }
 }
 
 impl<W: Write, State: CanWritePSMs> MzTabWriter<W, State> {
-    /// Write the given list of PSMs to this mzTab file. It will take as much information as possible via the [`MetaData`] trait. Any cross-linked peptides (inter and intra) are ignored as these cannot be written in mzTab. Any chimeric peptidoforms are written on separate lines.
+    /// Write the given list of PSMs to this mzTab file. It will take as much information as
+    /// possible via the [`MetaData`] trait. Any cross-linked peptides (inter and intra) are
+    /// ignored as these cannot be written in mzTab. Any chimeric peptidoforms are written on
+    /// separate lines. Any [`SpectrumId::RetentionTime`] ids are ignored as these cannot be stored
+    /// in mzTab.
+    ///
+    /// This can only be done if the header is already written. It can be done with and without
+    /// any proteins written, and if some PSMs are already written.
+    ///
+    /// # Errors
+    /// * If writing to the underlying writer failed.
+    /// * If writing to a string for formatting failed (not expected as formatting is seen as infallible see [`std::fmt::Error`]).
+    /// * If a spectrum is referenced that is not defined as a [`MSRun`].
     pub fn write_psms<PSM: MetaData>(
         mut self,
-        psms: impl Iterator<Item = PSM>,
-    ) -> Result<MzTabWriter<W, PSMsWritten>, MzTabPSMWriteError> {
+        psms: impl IntoIterator<Item = PSM>,
+    ) -> Result<MzTabWriter<W, PSMsWritten>, MzTabWriteError> {
         if !State::SECTION_HEADER_PRESENT {
             // TODO: think about how to handle dynamic numbers of search engine scores
             // TODO: think about how to handle local confidences
             writeln!(
                 self.writer,
-                "PSH\tsequence\tPSM_ID\taccession\tunique\tdatabase\tdatabase_version\tsearch_engine\tsearch_engine_score[1]\tmodifications\tspectra_ref\tretention_time\tcharge\texp_mass_to_charge\tcalc_mass_to_charge\tpre\tpost\tstart\tend\reliability\turi"
+                "PSH\tsequence\tPSM_ID\taccession\tunique\tdatabase\tdatabase_version\tsearch_engine\tsearch_engine_score[1]\tmodifications\tspectra_ref\tretention_time\tcharge\texp_mass_to_charge\tcalc_mass_to_charge\tpre\tpost\tstart\tend\treliability\turi"
             )?;
         }
         for psm in psms {
@@ -259,18 +333,18 @@ impl<W: Write, State: CanWritePSMs> MzTabWriter<W, State> {
                                     ..
                                 } => {
                                     if ambiguous[*id].0.is_none() {
-                                        ambiguous[*id].0 =
-                                            Some(make_mztab_mod(modification.clone()));
+                                        ambiguous[*id].0 = Some(make_mztab_mod(modification));
                                     }
                                     ambiguous[*id].1.push((i, localisation_score));
                                 }
                                 Modification::Simple(m) => {
                                     use std::fmt::Write;
-                                    if !first_mod {
-                                        mods.push(',');
+                                    if first_mod {
                                         first_mod = false;
+                                    } else {
+                                        mods.push(',');
                                     }
-                                    write!(mods, "{i}-{}", make_mztab_mod(m.clone()))?;
+                                    write!(mods, "{i}-{}", make_mztab_mod(m))?;
                                 }
                             }
                         }
@@ -279,15 +353,17 @@ impl<W: Write, State: CanWritePSMs> MzTabWriter<W, State> {
                     for (m, locations) in ambiguous {
                         if let Some(m) = m {
                             use std::fmt::Write;
-                            if !first_mod {
-                                mods.push(',');
+                            if first_mod {
                                 first_mod = false;
+                            } else {
+                                mods.push(',');
                             }
                             let mut first_loc = true;
                             for (i, score) in locations {
-                                if !first_loc {
-                                    mods.push('|');
+                                if first_loc {
                                     first_loc = false;
+                                } else {
+                                    mods.push('|');
                                 }
                                 if let Some(score) = score {
                                     write!(
@@ -302,16 +378,16 @@ impl<W: Write, State: CanWritePSMs> MzTabWriter<W, State> {
                         }
                     }
 
-                    // TODO: unique and search_engine are missing
+                    // TODO: unique, search_engine, reliability, and uri are missing
                     writeln!(
                         self.writer,
-                        "PSM\t{}\t{}\t{}\tnull\t{}\t{}\tnull\t{}\t{mods}\t{}\t{}\t{}\t{}\tcalc_mass_to_charge\tpre\tpost\tstart\tend\reliability\turi",
+                        "PSM\t{}\t{}\t{}\tnull\t{}\t{}\tnull\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\tnull\tnull",
                         peptidoform
                             .sequence()
                             .iter()
                             .filter_map(|s| s.aminoacid.one_letter_code())
                             .collect::<String>(),
-                        psm.id(), // TODO: this could be duplicated when multiple chimeric peptides are given
+                        psm.id(), // TODO: this could be duplicated when multiple chimeric peptides are given // TODO: make sure this is always a number
                         psm.protein_names()
                             .as_ref()
                             .and_then(|n| n.first())
@@ -322,10 +398,78 @@ impl<W: Write, State: CanWritePSMs> MzTabWriter<W, State> {
                         psm.database()
                             .and_then(|d| d.1)
                             .map_or_else(|| "null", |d| d),
+                        if mods.is_empty() { "null" } else { &mods },
                         match psm.scans() {
-                            SpectrumIds::None => "null",
-                            SpectrumIds::FileNotKnown(ids) => "null", // TODO: fix
-                            SpectrumIds::FileKnown(ids) => "null",
+                            SpectrumIds::None => "null".to_string(),
+                            SpectrumIds::FileNotKnown(ids) =>
+                                if self.ms_runs.is_empty() {
+                                    return Err(MzTabWriteError::MissingMSRun(None));
+                                } else {
+                                    let ids = ids
+                                        .iter()
+                                        .filter_map(|id| match id {
+                                            SpectrumId::Index(i) => {
+                                                Some(format!("ms_run[1]:index={i}"))
+                                            }
+                                            SpectrumId::Number(n) => {
+                                                Some(format!("ms_run[1]:scan={n}"))
+                                            }
+                                            SpectrumId::Native(n) => Some(format!("ms_run[1]:{n}")),
+                                            SpectrumId::RetentionTime(_) => None,
+                                        })
+                                        .join("|");
+                                    if ids.is_empty() {
+                                        "null".to_string()
+                                    } else {
+                                        ids
+                                    }
+                                }, // TODO: fix
+                            SpectrumIds::FileKnown(ids) => {
+                                let mut column = String::new();
+                                for (file, ids) in ids {
+                                    let Some(index) = self
+                                        .ms_runs
+                                        .iter()
+                                        .position(|run| run.location == file)
+                                        .or_else(|| {
+                                            file.file_name().and_then(|f| {
+                                                self.ms_runs.iter().position(|run| {
+                                                    run.location
+                                                        .file_name()
+                                                        .is_some_and(|rf| f == rf)
+                                                })
+                                            })
+                                        })
+                                    else {
+                                        return Err(MzTabWriteError::MissingMSRun(Some(file)));
+                                    };
+                                    let index = index + 1; // 1 based
+                                    let ids = ids
+                                        .iter()
+                                        .filter_map(|id| match id {
+                                            SpectrumId::Index(i) => {
+                                                Some(format!("ms_run[{index}]:index={i}"))
+                                            }
+                                            SpectrumId::Number(n) => {
+                                                Some(format!("ms_run[{index}]:scan={n}"))
+                                            }
+                                            SpectrumId::Native(n) => {
+                                                Some(format!("ms_run[{index}]:{n}"))
+                                            }
+                                            SpectrumId::RetentionTime(_) => None,
+                                        })
+                                        .join("|");
+                                    column = format!(
+                                        "{column}{}{ids}",
+                                        if column.is_empty() { "" } else { "|" }
+                                    );
+                                }
+                                if column.is_empty() {
+                                    "null".to_string()
+                                } else {
+                                    column
+                                }
+                            }
                         },
                         psm.retention_time().map_or_else(
                             || "null".to_string(),
@@ -335,7 +479,40 @@ impl<W: Write, State: CanWritePSMs> MzTabWriter<W, State> {
                             .map_or_else(|| "null".to_string(), |d| d.value.to_string()),
                         psm.experimental_mz()
                             .map_or_else(|| "null".to_string(), |d| d.value.to_string()),
-                        // TODO: add rest peptidoform.formulas()
+                        psm.charge()
+                            .and_then(|c| peptidoform
+                                .formulas()
+                                .single()
+                                .map(|f| f.monoisotopic_mass() / c.to_float()))
+                            .map_or_else(|| "null".to_string(), |d| d.value.to_string()),
+                        match psm.flanking_sequences().0 {
+                            FlankingSequence::Unknown => "null".to_string(),
+                            FlankingSequence::Terminal => "-".to_string(),
+                            FlankingSequence::AminoAcid(aa) => aa
+                                .one_letter_code()
+                                .map_or_else(|| "null".to_string(), |s| s.to_string()),
+                            FlankingSequence::Sequence(seq) => seq
+                                .sequence()
+                                .last()
+                                .and_then(|s| s.aminoacid.one_letter_code())
+                                .map_or_else(|| "null".to_string(), |s| s.to_string()),
+                        },
+                        match psm.flanking_sequences().1 {
+                            FlankingSequence::Unknown => "null".to_string(),
+                            FlankingSequence::Terminal => "-".to_string(),
+                            FlankingSequence::AminoAcid(aa) => aa
+                                .one_letter_code()
+                                .map_or_else(|| "null".to_string(), |s| s.to_string()),
+                            FlankingSequence::Sequence(seq) => seq
+                                .sequence()
+                                .first()
+                                .and_then(|s| s.aminoacid.one_letter_code())
+                                .map_or_else(|| "null".to_string(), |s| s.to_string()),
+                        },
+                        psm.protein_location()
+                            .map_or_else(|| "null".to_string(), |r| r.start.to_string()),
+                        psm.protein_location()
+                            .map_or_else(|| "null".to_string(), |r| r.end.to_string()),
                     )?;
                 }
             }
@@ -346,5 +523,56 @@ impl<W: Write, State: CanWritePSMs> MzTabWriter<W, State> {
             ms_runs: self.ms_runs,
             state: PhantomData,
         })
+    }
+}
+
+#[cfg(test)]
+#[allow(clippy::missing_panics_doc)]
+mod tests {
+    use std::io::BufWriter;
+
+    use crate::{mztab_writer::MzTabWriter, open_identified_peptidoforms_file};
+
+    #[test]
+    fn convert() {
+        if !std::fs::exists("src/test_files_out").unwrap() {
+            std::fs::create_dir("src/test_files_out").unwrap();
+        }
+        for file in std::fs::read_dir("src/test_files").unwrap() {
+            if let Ok(entry) = file
+                && entry.file_type().is_ok_and(|t| t.is_file())
+            {
+                // Parse the file
+                let psms = open_identified_peptidoforms_file(
+                    entry.path(),
+                    &mzcore::ontology::STATIC_ONTOLOGIES,
+                    false,
+                )
+                .unwrap()
+                .collect::<Result<Vec<_>, _>>()
+                .unwrap();
+
+                // Write a converted mzTab file
+                let new_path = std::path::Path::new("src/test_files_out")
+                    .join(entry.path().with_extension("mzTab").file_name().unwrap());
+
+                MzTabWriter::write(
+                    BufWriter::new(std::fs::File::create(&new_path).unwrap()),
+                    &[],
+                    &[],
+                    &psms,
+                )
+                .unwrap();
+                println!("Wrote: {}", new_path.display());
+
+                // Check that the new file does not produce any errors
+                for psm in
+                    crate::MZTabData::parse_file(&new_path, &mzcore::ontology::STATIC_ONTOLOGIES)
+                        .unwrap()
+                {
+                    psm.unwrap();
+                }
+            }
+        }
     }
 }

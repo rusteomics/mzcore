@@ -502,17 +502,19 @@ impl MZTabData {
             reliability: line
                 .optional_column("reliability")
                 .map(|(v, range)| match v {
-                    "1" => Ok(Reliability::High),
-                    "2" => Ok(Reliability::Medium),
-                    "3" => Ok(Reliability::Poor),
+                    "1" => Ok(Some(Reliability::High)),
+                    "2" => Ok(Some(Reliability::Medium)),
+                    "3" => Ok(Some(Reliability::Poor)),
+                    s if s.eq_ignore_ascii_case("null") => Ok(None),
                     _ => Err(BoxedError::new(
                         BasicKind::Error,
                         "Invalid PSM reliability",
-                        format!("A reliability should be 1, 2, or 3, '{v}' is invalid"),
+                        format!("A reliability should be 1, 2, 3, or null, '{v}' is invalid"),
                         Context::line_range(Some(line.line_index as u32), line.line, range),
                     )),
                 })
-                .transpose()?,
+                .transpose()?
+                .flatten(),
             rt: line
                 .optional_column("retention_time")
                 .and_then(|(v, r)| {
@@ -867,18 +869,20 @@ impl Protein {
             reliability: line
                 .optional_column("reliability")
                 .map(|(v, range)| match v {
-                    "1" => Ok(Reliability::High),
-                    "2" => Ok(Reliability::Medium),
-                    "3" => Ok(Reliability::Poor),
+                    "1" => Ok(Some(Reliability::High)),
+                    "2" => Ok(Some(Reliability::Medium)),
+                    "3" => Ok(Some(Reliability::Poor)),
+                    s if s.eq_ignore_ascii_case("null") => Ok(None),
                     _ => Err(BoxedError::new(
                         BasicKind::Error,
                         "Invalid PRT reliability",
-                        format!("A reliability should be 1, 2, or 3, '{v}' is invalid"),
+                        format!("A reliability should be 1, 2, 3, or null, '{v}' is invalid"),
                         Context::line_range(Some(line.line_index as u32), line.line, range)
                             .to_owned(),
                     )),
                 })
-                .transpose()?,
+                .transpose()?
+                .flatten(),
             ambiguity_members: line
                 .required_column("ambiguity_members")
                 .map(|(v, _)| v.split(',').map(|s| s.trim().to_string()).collect())

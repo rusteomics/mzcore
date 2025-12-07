@@ -28,3 +28,4 @@ mzalign/tests/pairwise_examples_new.csv
 !mzcore/src/databases/*
 !imgt/src/IMGT.dat
 data/test*
+mzident/src/test_files_out

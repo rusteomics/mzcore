@@ -13,6 +13,14 @@ use crate::{
 #[derive(Clone, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 pub struct Multi<M>(Vec<M>);
 
+impl<M> Multi<M> {
+    /// Get the single value if there is only one value, None otherwise
+    #[must_use]
+    pub fn single(mut self) -> Option<M> {
+        if self.len() == 1 { self.0.pop() } else { None }
+    }
+}
+
 impl<M: Eq + std::hash::Hash + Clone> Multi<M> {
     /// Get all unique values
     #[must_use]
