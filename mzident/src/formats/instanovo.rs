@@ -178,6 +178,10 @@ impl MetaData for InstaNovoData {
         KnownFileFormat::InstaNovo(self.version)
     }
 
+    fn numerical_id(&self) -> Option<usize> {
+        Some(self.scan_number)
+    }
+
     fn id(&self) -> String {
         self.scan_number.to_string()
     }

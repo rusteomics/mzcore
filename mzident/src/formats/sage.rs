@@ -157,6 +157,10 @@ impl MetaData for SageData {
         KnownFileFormat::Sage(self.version)
     }
 
+    fn numerical_id(&self) -> Option<usize> {
+        Some(self.id)
+    }
+
     fn id(&self) -> String {
         self.id.to_string()
     }

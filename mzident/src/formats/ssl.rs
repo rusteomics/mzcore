@@ -116,6 +116,10 @@ impl MetaData for SpectrumSequenceListData {
         KnownFileFormat::SpectrumSequenceList(self.version)
     }
 
+    fn numerical_id(&self) -> Option<usize> {
+        Some(self.scan)
+    }
+
     fn id(&self) -> String {
         self.scan.to_string()
     }

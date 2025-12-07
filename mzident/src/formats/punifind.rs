@@ -140,6 +140,10 @@ impl MetaData for PUniFindData {
         KnownFileFormat::PUniFind(self.version)
     }
 
+    fn numerical_id(&self) -> Option<usize> {
+        None
+    }
+
     fn id(&self) -> String {
         self.title.clone()
     }

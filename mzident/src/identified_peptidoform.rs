@@ -611,6 +611,7 @@ impl_metadata!(
     functions: {
         fn compound_peptidoform_ion(&self) -> Option<Cow<'_, CompoundPeptidoformIon>>;
         fn format(&self) -> KnownFileFormat;
+        fn numerical_id(&self) -> Option<usize>;
         fn id(&self) -> String;
         fn original_confidence(&self) -> Option<f64>;
         fn original_local_confidence(&self) -> Option<&[f64]>;
@@ -636,6 +637,7 @@ impl_metadata!(
     functions: {
         fn compound_peptidoform_ion(&self) -> Option<Cow<'_, CompoundPeptidoformIon>>;
         fn format(&self) -> KnownFileFormat;
+        fn numerical_id(&self) -> Option<usize>;
         fn id(&self) -> String;
         fn original_confidence(&self) -> Option<f64>;
         fn original_local_confidence(&self) -> Option<&[f64]>;

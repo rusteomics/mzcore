@@ -506,6 +506,13 @@ impl MetaData for MSFraggerData {
         KnownFileFormat::MSFragger(self.version)
     }
 
+    fn numerical_id(&self) -> Option<usize> {
+        match self.scan {
+            SpectrumId::Index(i) | SpectrumId::Number(i) => Some(i),
+            _ => None,
+        }
+    }
+
     fn id(&self) -> String {
         self.scan.to_string()
     }

@@ -871,6 +871,10 @@ impl MetaData for FastaData {
         KnownFileFormat::Fasta
     }
 
+    fn numerical_id(&self) -> Option<usize> {
+        None
+    }
+
     fn id(&self) -> String {
         (*self.identifier().accession()).to_string()
     }

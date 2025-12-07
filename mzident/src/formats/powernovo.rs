@@ -114,6 +114,10 @@ impl MetaData for PowerNovoData {
         KnownFileFormat::PowerNovo(self.version)
     }
 
+    fn numerical_id(&self) -> Option<usize> {
+        self.scan
+    }
+
     fn id(&self) -> String {
         self.scan
             .as_ref()

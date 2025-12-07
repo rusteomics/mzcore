@@ -671,6 +671,10 @@ impl MetaData for PeaksData {
         KnownFileFormat::Peaks(self.version)
     }
 
+    fn numerical_id(&self) -> Option<usize> {
+        self.id
+    }
+
     fn id(&self) -> String {
         self.id.map_or_else(
             || {

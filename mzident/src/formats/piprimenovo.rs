@@ -88,6 +88,10 @@ impl MetaData for PiPrimeNovoData {
         KnownFileFormat::PiPrimeNovo(self.version)
     }
 
+    fn numerical_id(&self) -> Option<usize> {
+        None
+    }
+
     fn id(&self) -> String {
         "-".to_string()
     }

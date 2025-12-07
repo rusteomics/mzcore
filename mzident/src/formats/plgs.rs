@@ -302,6 +302,10 @@ impl MetaData for PLGSData {
         KnownFileFormat::PLGS(self.version)
     }
 
+    fn numerical_id(&self) -> Option<usize> {
+        Some(self.peptide_component_id as usize)
+    }
+
     fn id(&self) -> String {
         self.peptide_component_id.to_string()
     }

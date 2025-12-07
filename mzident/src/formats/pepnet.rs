@@ -90,6 +90,10 @@ impl MetaData for PepNetData {
         KnownFileFormat::PepNet(self.version)
     }
 
+    fn numerical_id(&self) -> Option<usize> {
+        None
+    }
+
     fn id(&self) -> String {
         "-".to_string()
     }

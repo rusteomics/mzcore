@@ -42,6 +42,10 @@ impl MetaData for AnnotatedSpectrum {
         KnownFileFormat::AnnotatedSpectrum
     }
 
+    fn numerical_id(&self) -> Option<usize> {
+        Some(self.description.index)
+    }
+
     fn id(&self) -> String {
         self.description.index.to_string()
     }

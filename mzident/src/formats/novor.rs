@@ -217,6 +217,10 @@ impl MetaData for NovorData {
         KnownFileFormat::Novor(self.version)
     }
 
+    fn numerical_id(&self) -> Option<usize> {
+        Some(self.id.unwrap_or(self.scan_number))
+    }
+
     fn id(&self) -> String {
         self.id.unwrap_or(self.scan_number).to_string()
     }

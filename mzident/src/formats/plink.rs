@@ -511,6 +511,10 @@ impl MetaData for PLinkData {
         KnownFileFormat::PLink(self.version)
     }
 
+    fn numerical_id(&self) -> Option<usize> {
+        Some(self.order)
+    }
+
     fn id(&self) -> String {
         self.order.to_string()
     }

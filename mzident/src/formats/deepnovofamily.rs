@@ -172,6 +172,10 @@ impl MetaData for DeepNovoFamilyData {
         KnownFileFormat::DeepNovoFamily(self.version)
     }
 
+    fn numerical_id(&self) -> Option<usize> {
+        self.scan.first().and_then(|s| s.scans.first().cloned())
+    }
+
     fn id(&self) -> String {
         self.scan.iter().join(";")
     }

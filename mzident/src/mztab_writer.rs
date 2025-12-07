@@ -97,10 +97,10 @@ impl<W: Write> MzTabWriter<W, Initial> {
             .collect::<Vec<_>>();
         let writer = Self::new(writer, ms_runs);
         let writer = writer.write_header(header)?;
-        match if !proteins.is_empty() {
-            let writer = writer.write_proteins(proteins)?;
+        match if proteins.is_empty() {
             writer.write_psms(psms)
         } else {
+            let writer = writer.write_proteins(proteins)?;
             writer.write_psms(psms)
         } {
             Ok(_) => Ok(()),
@@ -387,7 +387,8 @@ impl<W: Write, State: CanWritePSMs> MzTabWriter<W, State> {
                             .iter()
                             .filter_map(|s| s.aminoacid.one_letter_code())
                             .collect::<String>(),
-                        psm.id(), // TODO: this could be duplicated when multiple chimeric peptides are given // TODO: make sure this is always a number
+                        psm.numerical_id()
+                            .map_or_else(|| "null".to_string(), |id| id.to_string()), // TODO: this could be duplicated when multiple chimeric peptides are given // TODO: make sure this is always a number
                         psm.protein_names()
                             .as_ref()
                             .and_then(|n| n.first())

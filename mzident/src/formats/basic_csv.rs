@@ -87,6 +87,10 @@ impl MetaData for BasicCSVData {
         KnownFileFormat::BasicCSV(self.version)
     }
 
+    fn numerical_id(&self) -> Option<usize> {
+        Some(self.scan_index)
+    }
+
     fn id(&self) -> String {
         self.scan_index.to_string()
     }

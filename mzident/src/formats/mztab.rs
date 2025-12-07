@@ -1524,6 +1524,10 @@ impl MetaData for MZTabData {
         KnownFileFormat::MZTab
     }
 
+    fn numerical_id(&self) -> Option<usize> {
+        Some(self.id)
+    }
+
     fn id(&self) -> String {
         self.id.to_string()
     }

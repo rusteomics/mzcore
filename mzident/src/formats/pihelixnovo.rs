@@ -87,6 +87,10 @@ impl MetaData for PiHelixNovoData {
         KnownFileFormat::PiHelixNovo(self.version)
     }
 
+    fn numerical_id(&self) -> Option<usize> {
+        None
+    }
+
     fn id(&self) -> String {
         "-".to_string() // TODO: best would be to use the scan index in some way shape or form
     }

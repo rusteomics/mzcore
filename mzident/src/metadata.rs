@@ -14,6 +14,9 @@ pub trait MetaData {
     /// Get the format and version for this peptidoform
     fn format(&self) -> KnownFileFormat;
 
+    /// Get the numerical PSM identifier
+    fn numerical_id(&self) -> Option<usize>;
+
     /// Get the PSM identifier
     fn id(&self) -> String;
 
@@ -119,6 +122,10 @@ impl<T: MetaData> MetaData for &T {
         (**self).format()
     }
 
+    fn numerical_id(&self) -> Option<usize> {
+        (**self).numerical_id()
+    }
+
     fn id(&self) -> String {
         (**self).id()
     }
@@ -203,6 +210,10 @@ impl<T: MetaData> MetaData for std::rc::Rc<T> {
         (**self).format()
     }
 
+    fn numerical_id(&self) -> Option<usize> {
+        (**self).numerical_id()
+    }
+
     fn id(&self) -> String {
         (**self).id()
     }
@@ -285,6 +296,10 @@ impl<T: MetaData> MetaData for std::sync::Arc<T> {
 
     fn format(&self) -> KnownFileFormat {
         (**self).format()
+    }
+
+    fn numerical_id(&self) -> Option<usize> {
+        (**self).numerical_id()
     }
 
     fn id(&self) -> String {
