@@ -1,10 +1,11 @@
 use std::{borrow::Cow, ops::Range};
 
-use crate::{FastaIdentifier, KnownFileFormat, SpectrumIds};
+use crate::{FastaIdentifier, KnownFileFormat, Reliability, SpectrumIds};
 use mzcore::{
     sequence::{CompoundPeptidoformIon, FlankingSequence},
     system::{Mass, MassOverCharge, Ratio, Time, isize::Charge},
 };
+use mzcv::Term;
 
 /// Generalised access to meta data of identified peptidoforms
 pub trait MetaData {
@@ -20,14 +21,17 @@ pub trait MetaData {
     /// Get the PSM identifier
     fn id(&self) -> String;
 
+    /// Get the search engine that identified this PSM
+    fn search_engine(&self) -> Option<Term>;
+
     /// Get the confidence, a score between -1 and 1 describing the confidence in the entire PSM
     fn confidence(&self) -> Option<f64>;
 
     /// Get the local confidence, a score between -1 and 1 for each amino acid in the peptide
     fn local_confidence(&self) -> Option<Cow<'_, [f64]>>;
 
-    /// Get the original confidence
-    fn original_confidence(&self) -> Option<f64>;
+    /// Get the original confidence and the term identifying the type of original confidence
+    fn original_confidence(&self) -> Option<(f64, Term)>;
 
     /// Get the original local confidence, a score for each amino acid in the peptide
     fn original_local_confidence(&self) -> Option<&[f64]>;
@@ -98,6 +102,15 @@ pub trait MetaData {
     /// The database that was used for matching optionally with the version of the database
     fn database(&self) -> Option<(&str, Option<&str>)>;
 
+    /// Get if this PSM is marked as a unique match for its database match, note that this might not be true anymore if multiple streams of data are merged
+    fn unique(&self) -> Option<bool>;
+
+    /// Get the reliability of this PSM
+    fn reliability(&self) -> Option<Reliability>;
+
+    /// Get the URI for this PSM
+    fn uri(&self) -> Option<String>;
+
     /// Get the annotated spectrum if this is encoded in the format
     // TODO: built parsers for OPair, PLGS, MetaMorpheus
     #[cfg(feature = "mzannotate")]
@@ -130,6 +143,10 @@ impl<T: MetaData> MetaData for &T {
         (**self).id()
     }
 
+    fn search_engine(&self) -> Option<Term> {
+        (**self).search_engine()
+    }
+
     fn confidence(&self) -> Option<f64> {
         (**self).confidence()
     }
@@ -138,7 +155,7 @@ impl<T: MetaData> MetaData for &T {
         (**self).local_confidence()
     }
 
-    fn original_confidence(&self) -> Option<f64> {
+    fn original_confidence(&self) -> Option<(f64, Term)> {
         (**self).original_confidence()
     }
 
@@ -188,6 +205,18 @@ impl<T: MetaData> MetaData for &T {
 
     fn database(&self) -> Option<(&str, Option<&str>)> {
         (**self).database()
+    }
+
+    fn unique(&self) -> Option<bool> {
+        (**self).unique()
+    }
+
+    fn reliability(&self) -> Option<Reliability> {
+        (**self).reliability()
+    }
+
+    fn uri(&self) -> Option<String> {
+        (**self).uri()
     }
 
     #[cfg(feature = "mzannotate")]
@@ -218,6 +247,10 @@ impl<T: MetaData> MetaData for std::rc::Rc<T> {
         (**self).id()
     }
 
+    fn search_engine(&self) -> Option<Term> {
+        (**self).search_engine()
+    }
+
     fn confidence(&self) -> Option<f64> {
         (**self).confidence()
     }
@@ -226,7 +259,7 @@ impl<T: MetaData> MetaData for std::rc::Rc<T> {
         (**self).local_confidence()
     }
 
-    fn original_confidence(&self) -> Option<f64> {
+    fn original_confidence(&self) -> Option<(f64, Term)> {
         (**self).original_confidence()
     }
 
@@ -276,6 +309,18 @@ impl<T: MetaData> MetaData for std::rc::Rc<T> {
 
     fn database(&self) -> Option<(&str, Option<&str>)> {
         (**self).database()
+    }
+
+    fn unique(&self) -> Option<bool> {
+        (**self).unique()
+    }
+
+    fn reliability(&self) -> Option<Reliability> {
+        (**self).reliability()
+    }
+
+    fn uri(&self) -> Option<String> {
+        (**self).uri()
     }
 
     #[cfg(feature = "mzannotate")]
@@ -306,6 +351,10 @@ impl<T: MetaData> MetaData for std::sync::Arc<T> {
         (**self).id()
     }
 
+    fn search_engine(&self) -> Option<Term> {
+        (**self).search_engine()
+    }
+
     fn confidence(&self) -> Option<f64> {
         (**self).confidence()
     }
@@ -314,7 +363,7 @@ impl<T: MetaData> MetaData for std::sync::Arc<T> {
         (**self).local_confidence()
     }
 
-    fn original_confidence(&self) -> Option<f64> {
+    fn original_confidence(&self) -> Option<(f64, Term)> {
         (**self).original_confidence()
     }
 
@@ -364,6 +413,18 @@ impl<T: MetaData> MetaData for std::sync::Arc<T> {
 
     fn database(&self) -> Option<(&str, Option<&str>)> {
         (**self).database()
+    }
+
+    fn unique(&self) -> Option<bool> {
+        (**self).unique()
+    }
+
+    fn reliability(&self) -> Option<Reliability> {
+        (**self).reliability()
+    }
+
+    fn uri(&self) -> Option<String> {
+        (**self).uri()
     }
 
     #[cfg(feature = "mzannotate")]

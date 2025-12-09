@@ -1390,16 +1390,13 @@ MTD	mzTab-type	Identification
 MTD	title	null
 MTD	description	null
 MTD	software[1]	[MS, MS:1001583, MaxQuant,1.6.17.0]
-COM	[, CHEMMOD:57.0214637236, Carbamidomethyl (C),]
-MTD	fixed_mod[1]	[, , CHEMMOD:57.0214637236,]
+MTD	fixed_mod[1]	[CHEMMOD, CHEMMOD:57.0214637236, Carbamidomethyl (C), ]
 MTD	fixed_mod[1]-site	C
 MTD	fixed_mod[1]-position	Anywhere
-COM	[, CHEMMOD:15.9949146221, Oxidation (M),]
-MTD	variable_mod[1]	[, , CHEMMOD:15.9949146221,]
+MTD	variable_mod[1]	[CHEMMOD, CHEMMOD:15.9949146221, Oxidation (M), ]
 MTD	variable_mod[1]-site	M
 MTD	variable_mod[1]-position	Anywhere
-COM	[, CHEMMOD:42.0105646863, Acetyl (Protein N-term),]
-MTD	variable_mod[2]	[, , CHEMMOD:42.0105646863,]
+MTD	variable_mod[2]	[CHEMMOD, CHEMMOD:42.0105646863, Acetyl (Protein N-term), ]
 MTD	variable_mod[2]-site	N-term
 MTD	variable_mod[2]-position	Protein N-term
 MTD	protein_search_engine_score[1]	[MS, MS:1003097, MaxQuant protein group-level score, ]

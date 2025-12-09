@@ -691,6 +691,10 @@ impl MetaData for PeaksData {
         )
     }
 
+    fn search_engine(&self) -> Option<mzcv::Term> {
+        Some(mzcv::term!(MS:1001946|PEAKS Studio))
+    }
+
     fn confidence(&self) -> Option<f64> {
         self.de_novo_score
             .or(self.alc)
@@ -707,8 +711,13 @@ impl MetaData for PeaksData {
             .map(|lc| lc.iter().map(|v| *v / 100.0).collect())
     }
 
-    fn original_confidence(&self) -> Option<f64> {
-        self.de_novo_score.or(self.alc).or(self.logp)
+    fn original_confidence(&self) -> Option<(f64, mzcv::Term)> {
+        self.de_novo_score
+            .or(self.alc)
+            .map(|v| (v, mzcv::term!(MS:1001153|search engine specific score)))
+            .or(self
+                .logp
+                .map(|v| (v, mzcv::term!(MS:1001143|PEAKS:peptideScore))))
     }
 
     fn original_local_confidence(&self) -> Option<&[f64]> {
@@ -783,6 +792,18 @@ impl MetaData for PeaksData {
     }
 
     fn database(&self) -> Option<(&str, Option<&str>)> {
+        None
+    }
+
+    fn unique(&self) -> Option<bool> {
+        self.unique
+    }
+
+    fn reliability(&self) -> Option<crate::Reliability> {
+        None
+    }
+
+    fn uri(&self) -> Option<String> {
         None
     }
 }

@@ -613,7 +613,8 @@ impl_metadata!(
         fn format(&self) -> KnownFileFormat;
         fn numerical_id(&self) -> Option<usize>;
         fn id(&self) -> String;
-        fn original_confidence(&self) -> Option<f64>;
+        fn search_engine(&self) -> Option<mzcv::Term>;
+        fn original_confidence(&self) -> Option<(f64, mzcv::Term)>;
         fn original_local_confidence(&self) -> Option<&[f64]>;
         fn charge(&self) -> Option<Charge>;
         fn mode(&self) -> Option<Cow<'_, str>>;
@@ -628,6 +629,9 @@ impl_metadata!(
         fn protein_location(&self) -> Option<Range<u16>>;
         fn flanking_sequences(&self) -> (&FlankingSequence, &FlankingSequence);
         fn database(&self) -> Option<(&str, Option<&str>)>;
+        fn unique(&self) -> Option<bool>;
+        fn reliability(&self) -> Option<Reliability>;
+        fn uri(&self) -> Option<String>;
     }
 );
 
@@ -639,7 +643,8 @@ impl_metadata!(
         fn format(&self) -> KnownFileFormat;
         fn numerical_id(&self) -> Option<usize>;
         fn id(&self) -> String;
-        fn original_confidence(&self) -> Option<f64>;
+        fn search_engine(&self) -> Option<mzcv::Term>;
+        fn original_confidence(&self) -> Option<(f64, mzcv::Term)>;
         fn original_local_confidence(&self) -> Option<&[f64]>;
         fn charge(&self) -> Option<Charge>;
         fn mode(&self) -> Option<Cow<'_, str>>;
@@ -655,6 +660,9 @@ impl_metadata!(
         fn protein_location(&self) -> Option<Range<u16>>;
         fn flanking_sequences(&self) -> (&FlankingSequence, &FlankingSequence);
         fn database(&self) -> Option<(&str, Option<&str>)>;
+        fn unique(&self) -> Option<bool>;
+        fn reliability(&self) -> Option<Reliability>;
+        fn uri(&self) -> Option<String>;
         fn annotated_spectrum(&self) -> Option<Cow<'_, AnnotatedSpectrum>>;
         fn has_annotated_spectrum(&self) -> bool;
     }

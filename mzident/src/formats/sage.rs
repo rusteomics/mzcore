@@ -165,6 +165,10 @@ impl MetaData for SageData {
         self.id.to_string()
     }
 
+    fn search_engine(&self) -> Option<mzcv::Term> {
+        None
+    }
+
     fn confidence(&self) -> Option<f64> {
         Some(self.sage_discriminant_score.clamp(-1.0, 1.0))
     }
@@ -173,8 +177,11 @@ impl MetaData for SageData {
         None
     }
 
-    fn original_confidence(&self) -> Option<f64> {
-        Some(self.sage_discriminant_score)
+    fn original_confidence(&self) -> Option<(f64, mzcv::Term)> {
+        Some((
+            self.sage_discriminant_score,
+            mzcv::term!(MS:1001153|search engine specific score),
+        ))
     }
 
     fn original_local_confidence(&self) -> Option<&[f64]> {
@@ -224,6 +231,18 @@ impl MetaData for SageData {
     }
 
     fn database(&self) -> Option<(&str, Option<&str>)> {
+        None
+    }
+
+    fn unique(&self) -> Option<bool> {
+        None
+    }
+
+    fn reliability(&self) -> Option<crate::Reliability> {
+        None
+    }
+
+    fn uri(&self) -> Option<String> {
         None
     }
 }

@@ -181,6 +181,10 @@ impl MetaData for NovoBData {
         self.scan.to_string()
     }
 
+    fn search_engine(&self) -> Option<mzcv::Term> {
+        None
+    }
+
     fn confidence(&self) -> Option<f64> {
         Some(self.score_forward.max(self.score_reverse))
     }
@@ -189,8 +193,11 @@ impl MetaData for NovoBData {
         None
     }
 
-    fn original_confidence(&self) -> Option<f64> {
-        Some(self.score_forward.max(self.score_reverse))
+    fn original_confidence(&self) -> Option<(f64, mzcv::Term)> {
+        Some((
+            self.score_forward.max(self.score_reverse),
+            mzcv::term!(MS:1001153|search engine specific score),
+        ))
     }
 
     fn original_local_confidence(&self) -> Option<&[f64]> {
@@ -248,6 +255,18 @@ impl MetaData for NovoBData {
     }
 
     fn database(&self) -> Option<(&str, Option<&str>)> {
+        None
+    }
+
+    fn unique(&self) -> Option<bool> {
+        None
+    }
+
+    fn reliability(&self) -> Option<crate::Reliability> {
+        None
+    }
+
+    fn uri(&self) -> Option<String> {
         None
     }
 }

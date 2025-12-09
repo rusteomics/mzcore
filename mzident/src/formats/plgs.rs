@@ -6,7 +6,7 @@ use thin_vec::ThinVec;
 use crate::{
     BoxedIdentifiedPeptideIter, FastaIdentifier, IdentifiedPeptidoform, IdentifiedPeptidoformData,
     IdentifiedPeptidoformSource, IdentifiedPeptidoformVersion, KnownFileFormat, MetaData,
-    PeptidoformPresent, SpectrumId, SpectrumIds,
+    PeptidoformPresent, Reliability, SpectrumId, SpectrumIds,
     common_parser::{Location, OptionalColumn, OptionalLocation},
     helper_functions::explain_number_error,
 };
@@ -28,10 +28,6 @@ static NUMBER_ERROR: (&str, &str) = (
 static IDENTIFIER_ERROR: (&str, &str) = (
     "Invalid PLGS line",
     "This column is not a valid identifier but is required to be in this PLGS format",
-);
-static CURATION_ERROR: (&str, &str) = (
-    "Invalid PLGS line",
-    "This column is not a curation but it is required to be Green, Yellow, or Red",
 );
 
 format_family!(
@@ -55,7 +51,12 @@ format_family!(
         protein_matched_product_intensity_sum: f32, |location: Location, _| location.parse(NUMBER_ERROR);
         protein_fmol_on_column: Option<f32>, |location: Location, _| location.or_empty().parse(NUMBER_ERROR);
         protein_ngram_on_column: Option<f32>, |location: Location, _| location.or_empty().parse(NUMBER_ERROR);
-        protein_auto_curate: PLGSCuration, |location: Location, _| location.parse(CURATION_ERROR);
+        protein_auto_curate: Reliability, |location: Location, _| location.parse_with(|l| match l.as_str().to_ascii_lowercase().as_str() {
+            "green" => Ok(Reliability::High),
+            "yellow" => Ok(Reliability::Medium),
+            "red" => Ok(Reliability::Poor),
+            _ => Err(BoxedError::new(BasicKind::Error, "Invalid PLGS line", "The protein auto curation is required to be Green, Yellow, or Red", l.context().to_owned()))
+        });
         peptide_rank: u32, |location: Location, _| location.parse(NUMBER_ERROR);
         peptide_pass: Box<str>, |location: Location, _| Ok(location.get_boxed_str());
         peptide_match_type: Box<str>, |location: Location, _| Ok(location.get_boxed_str());
@@ -89,7 +90,12 @@ format_family!(
         peptide_csa: f32, |location: Location, _| location.parse(NUMBER_ERROR);
         peptide_model_drift: f32, |location: Location, _| location.parse(NUMBER_ERROR);
         peptide_relative_intensity: f32, |location: Location, _| location.parse(NUMBER_ERROR);
-        peptide_auto_curate: PLGSCuration, |location: Location, _| location.parse(CURATION_ERROR);
+        peptide_auto_curate: Reliability, |location: Location, _| location.parse_with(|l| match l.as_str().to_ascii_lowercase().as_str() {
+            "green" => Ok(Reliability::High),
+            "yellow" => Ok(Reliability::Medium),
+            "red" => Ok(Reliability::Poor),
+            _ => Err(BoxedError::new(BasicKind::Error, "Invalid PLGS line", "The peptide auto curation is required to be Green, Yellow, or Red", l.context().to_owned()))
+        });
         precursor_le_id: u32, |location: Location, _| location.parse(NUMBER_ERROR);
         precursor_mass: Mass, |location: Location, _| location.parse(NUMBER_ERROR).map(Mass::new::<mzcore::system::dalton>);
         precursor_rt: Time, |location: Location, _| location.parse(NUMBER_ERROR).map(Time::new::<mzcore::system::time::min>);
@@ -144,44 +150,6 @@ format_family!(
         Ok(parsed)
     }
 );
-
-/// PLGS curation categories
-#[derive(Clone, Copy, Debug, Default, Deserialize, Eq, Ord, PartialEq, PartialOrd, Serialize)]
-pub enum PLGSCuration {
-    /// Good
-    #[default]
-    Green,
-    /// Mediocre
-    Yellow,
-    /// Bad
-    Red,
-}
-
-impl std::str::FromStr for PLGSCuration {
-    type Err = ();
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s.to_ascii_lowercase().as_str() {
-            "green" => Ok(Self::Green),
-            "yellow" => Ok(Self::Yellow),
-            "red" => Ok(Self::Red),
-            _ => Err(()),
-        }
-    }
-}
-
-impl std::fmt::Display for PLGSCuration {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "{}",
-            match self {
-                Self::Green => "Green",
-                Self::Yellow => "Yellow",
-                Self::Red => "Red",
-            }
-        )
-    }
-}
 
 /// An older version of a PLGS export
 pub const VERSION_3_0: PLGSFormat = PLGSFormat {
@@ -306,6 +274,10 @@ impl MetaData for PLGSData {
         Some(self.peptide_component_id as usize)
     }
 
+    fn search_engine(&self) -> Option<mzcv::Term> {
+        None
+    }
+
     fn id(&self) -> String {
         self.peptide_component_id.to_string()
     }
@@ -318,8 +290,11 @@ impl MetaData for PLGSData {
         None
     }
 
-    fn original_confidence(&self) -> Option<f64> {
-        Some(self.peptide_score)
+    fn original_confidence(&self) -> Option<(f64, mzcv::Term)> {
+        Some((
+            self.peptide_score,
+            mzcv::term!(MS:1001153|search engine specific score),
+        ))
     }
 
     fn original_local_confidence(&self) -> Option<&[f64]> {
@@ -372,6 +347,18 @@ impl MetaData for PLGSData {
     }
 
     fn database(&self) -> Option<(&str, Option<&str>)> {
+        None
+    }
+
+    fn unique(&self) -> Option<bool> {
+        None
+    }
+
+    fn reliability(&self) -> Option<Reliability> {
+        Some(self.peptide_auto_curate)
+    }
+
+    fn uri(&self) -> Option<String> {
         None
     }
 }

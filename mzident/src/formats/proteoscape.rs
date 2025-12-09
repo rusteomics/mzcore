@@ -144,6 +144,10 @@ impl MetaData for ProteoscapeData {
         self.scan_number.to_string()
     }
 
+    fn search_engine(&self) -> Option<mzcv::Term> {
+        None
+    }
+
     fn confidence(&self) -> Option<f64> {
         Some((self.confidence_score / 100.0).clamp(-1.0, 1.0))
     }
@@ -152,8 +156,11 @@ impl MetaData for ProteoscapeData {
         None
     }
 
-    fn original_confidence(&self) -> Option<f64> {
-        Some(self.confidence_score)
+    fn original_confidence(&self) -> Option<(f64, mzcv::Term)> {
+        Some((
+            self.confidence_score,
+            mzcv::term!(MS:1001153|search engine specific score),
+        ))
     }
 
     fn original_local_confidence(&self) -> Option<&[f64]> {
@@ -201,6 +208,18 @@ impl MetaData for ProteoscapeData {
     }
 
     fn database(&self) -> Option<(&str, Option<&str>)> {
+        None
+    }
+
+    fn unique(&self) -> Option<bool> {
+        None
+    }
+
+    fn reliability(&self) -> Option<crate::Reliability> {
+        None
+    }
+
+    fn uri(&self) -> Option<String> {
         None
     }
 }

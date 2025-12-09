@@ -879,6 +879,10 @@ impl MetaData for FastaData {
         (*self.identifier().accession()).to_string()
     }
 
+    fn search_engine(&self) -> Option<mzcv::Term> {
+        None
+    }
+
     fn confidence(&self) -> Option<f64> {
         None
     }
@@ -887,7 +891,7 @@ impl MetaData for FastaData {
         None
     }
 
-    fn original_confidence(&self) -> Option<f64> {
+    fn original_confidence(&self) -> Option<(f64, mzcv::Term)> {
         None
     }
 
@@ -936,6 +940,18 @@ impl MetaData for FastaData {
     }
 
     fn database(&self) -> Option<(&str, Option<&str>)> {
+        None
+    }
+
+    fn unique(&self) -> Option<bool> {
+        None
+    }
+
+    fn reliability(&self) -> Option<crate::Reliability> {
+        None
+    }
+
+    fn uri(&self) -> Option<String> {
         None
     }
 }

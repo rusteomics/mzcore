@@ -50,6 +50,10 @@ impl MetaData for AnnotatedSpectrum {
         self.description.index.to_string()
     }
 
+    fn search_engine(&self) -> Option<mzcv::Term> {
+        None
+    }
+
     fn confidence(&self) -> Option<f64> {
         self.interpretations
             .iter()
@@ -62,12 +66,13 @@ impl MetaData for AnnotatedSpectrum {
         None
     }
 
-    fn original_confidence(&self) -> Option<f64> {
+    fn original_confidence(&self) -> Option<(f64, mzcv::Term)> {
         self.interpretations
             .iter()
             .filter_map(|i| i.probability)
             .exactly_one()
             .ok()
+            .map(|v| (v, mzcv::term!(MS:1001153|search engine specific score)))
     }
 
     fn original_local_confidence(&self) -> Option<&[f64]> {
@@ -209,6 +214,18 @@ impl MetaData for AnnotatedSpectrum {
                         .flatten(),
                 )
             })
+    }
+
+    fn unique(&self) -> Option<bool> {
+        None
+    }
+
+    fn reliability(&self) -> Option<crate::Reliability> {
+        None
+    }
+
+    fn uri(&self) -> Option<String> {
+        None
     }
 
     fn annotated_spectrum(&self) -> Option<Cow<'_, AnnotatedSpectrum>> {

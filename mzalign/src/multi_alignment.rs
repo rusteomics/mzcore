@@ -127,12 +127,12 @@ pub struct MultiAlignmentLine<Sequence> {
 
 impl<Sequence> MultiAlignmentLine<Sequence> {
     /// Get the index into the original list of the MMSA
-    pub fn original_index(&self) -> usize {
+    pub const fn original_index(&self) -> usize {
         self.original_index
     }
 
     /// Get the sequence
-    pub fn sequence(&self) -> &Sequence {
+    pub const fn sequence(&self) -> &Sequence {
         &self.sequence
     }
 
@@ -422,7 +422,7 @@ impl<'a, Sequence: HasPeptidoform<Linear>, const STEPS: u16>
 #[derive(
     Clone, Copy, Debug, Default, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize,
 )]
-struct MultiPiece {
+pub struct MultiPiece {
     pub match_type: MatchType,
     /// aligned_length is required to always be at least sequence_length
     pub aligned_length: u16,
@@ -454,7 +454,7 @@ pub enum MultiAlignSide {
 
 impl From<MultiAlignType> for AlignType {
     fn from(value: MultiAlignType) -> Self {
-        AlignType {
+        Self {
             left: match value.left {
                 MultiAlignSide::Global => crate::Side::Specified { a: true, b: true },
                 MultiAlignSide::EitherGlobal => crate::Side::EitherGlobal,

@@ -124,6 +124,10 @@ impl MetaData for PowerNovoData {
             .map_or_else(|| "-".to_string(), ToString::to_string)
     }
 
+    fn search_engine(&self) -> Option<mzcv::Term> {
+        None
+    }
+
     fn confidence(&self) -> Option<f64> {
         Some(self.score)
     }
@@ -132,8 +136,11 @@ impl MetaData for PowerNovoData {
         Some(Cow::Borrowed(self.local_confidence.as_slice()))
     }
 
-    fn original_confidence(&self) -> Option<f64> {
-        Some(self.score)
+    fn original_confidence(&self) -> Option<(f64, mzcv::Term)> {
+        Some((
+            self.score,
+            mzcv::term!(MS:1001153|search engine specific score),
+        ))
     }
 
     fn original_local_confidence(&self) -> Option<&[f64]> {
@@ -186,6 +193,18 @@ impl MetaData for PowerNovoData {
     }
 
     fn database(&self) -> Option<(&str, Option<&str>)> {
+        None
+    }
+
+    fn unique(&self) -> Option<bool> {
+        None
+    }
+
+    fn reliability(&self) -> Option<crate::Reliability> {
+        None
+    }
+
+    fn uri(&self) -> Option<String> {
         None
     }
 }

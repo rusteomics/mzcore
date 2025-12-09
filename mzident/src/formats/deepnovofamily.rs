@@ -180,6 +180,10 @@ impl MetaData for DeepNovoFamilyData {
         self.scan.iter().join(";")
     }
 
+    fn search_engine(&self) -> Option<mzcv::Term> {
+        None
+    }
+
     fn confidence(&self) -> Option<f64> {
         self.score.map(|score| 2.0 / (1.0 + (-score).exp()))
     }
@@ -190,8 +194,9 @@ impl MetaData for DeepNovoFamilyData {
             .map(|lc| lc.iter().map(|v| 2.0 / (1.0 + (-v).exp())).collect())
     }
 
-    fn original_confidence(&self) -> Option<f64> {
+    fn original_confidence(&self) -> Option<(f64, mzcv::Term)> {
         self.score
+            .map(|v| (v, mzcv::term!(MS:1001153|search engine specific score)))
     }
 
     fn original_local_confidence(&self) -> Option<&[f64]> {
@@ -246,6 +251,18 @@ impl MetaData for DeepNovoFamilyData {
     }
 
     fn database(&self) -> Option<(&str, Option<&str>)> {
+        None
+    }
+
+    fn unique(&self) -> Option<bool> {
+        None
+    }
+
+    fn reliability(&self) -> Option<crate::Reliability> {
+        None
+    }
+
+    fn uri(&self) -> Option<String> {
         None
     }
 }

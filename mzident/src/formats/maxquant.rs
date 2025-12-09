@@ -497,6 +497,10 @@ impl MetaData for MaxQuantData {
             .map_or_else(|| self.scan_number.iter().join(";"), |id| id.to_string())
     }
 
+    fn search_engine(&self) -> Option<mzcv::Term> {
+        Some(mzcv::term!(MS:1001583|MaxQuant))
+    }
+
     fn confidence(&self) -> Option<f64> {
         (!self.score.is_nan()).then(|| 2.0 * (1.0 / (1.0 + 1.01_f64.powf(-self.score)) - 0.5))
     }
@@ -505,8 +509,9 @@ impl MetaData for MaxQuantData {
         None
     }
 
-    fn original_confidence(&self) -> Option<f64> {
-        (self.score.is_normal() || self.score.is_subnormal()).then_some(self.score)
+    fn original_confidence(&self) -> Option<(f64, mzcv::Term)> {
+        (self.score.is_normal() || self.score.is_subnormal())
+            .then_some((self.score, mzcv::term!(MS:1001171|Mascot:score)))
     }
 
     fn original_local_confidence(&self) -> Option<&[f64]> {
@@ -574,6 +579,18 @@ impl MetaData for MaxQuantData {
     }
 
     fn database(&self) -> Option<(&str, Option<&str>)> {
+        None
+    }
+
+    fn unique(&self) -> Option<bool> {
+        None
+    }
+
+    fn reliability(&self) -> Option<crate::Reliability> {
+        None
+    }
+
+    fn uri(&self) -> Option<String> {
         None
     }
 

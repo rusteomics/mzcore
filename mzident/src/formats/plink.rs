@@ -519,6 +519,10 @@ impl MetaData for PLinkData {
         self.order.to_string()
     }
 
+    fn search_engine(&self) -> Option<mzcv::Term> {
+        Some(mzcv::term!(MS:1003432|pLink2))
+    }
+
     fn confidence(&self) -> Option<f64> {
         Some(1.0 - self.score)
     }
@@ -527,8 +531,11 @@ impl MetaData for PLinkData {
         None
     }
 
-    fn original_confidence(&self) -> Option<f64> {
-        Some(self.score)
+    fn original_confidence(&self) -> Option<(f64, mzcv::Term)> {
+        Some((
+            self.score,
+            mzcv::term!(MS:1001153|search engine specific score),
+        ))
     }
 
     fn original_local_confidence(&self) -> Option<&[f64]> {
@@ -621,6 +628,18 @@ impl MetaData for PLinkData {
     }
 
     fn database(&self) -> Option<(&str, Option<&str>)> {
+        None
+    }
+
+    fn unique(&self) -> Option<bool> {
+        None
+    }
+
+    fn reliability(&self) -> Option<crate::Reliability> {
+        None
+    }
+
+    fn uri(&self) -> Option<String> {
         None
     }
 }

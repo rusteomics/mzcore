@@ -577,6 +577,8 @@ pub enum ControlledVocabulary {
     ZFS,
     ///  Zebrafish Phenotype Ontology
     ZP,
+    /// UNIMOD modification ontology
+    UNIMOD,
     /// An unknown ontology
     Unknown,
 }
@@ -863,6 +865,7 @@ impl ControlledVocabulary {
             Self::ZFA => "ZFA",
             Self::ZFS => "ZFS",
             Self::ZP => "ZP",
+            Self::UNIMOD => "UNIMOD",
             Self::Unknown => "?",
         }
     }
@@ -1162,6 +1165,7 @@ impl From<&str> for ControlledVocabulary {
             "ZFA" => Self::ZFA,
             "ZFS" => Self::ZFS,
             "ZP" => Self::ZP,
+            "UNIMOD" => Self::UNIMOD,
             _ => Self::Unknown,
         }
     }
@@ -1392,7 +1396,7 @@ pub struct Term {
 #[macro_export]
 macro_rules! term {
     ($ns:ident:$accession:literal|$($name:tt)+) =>  {
-        $crate::mzspeclib::Term {
+        $crate::Term {
             accession: $crate::curie!($ns:$accession),
             name: std::borrow::Cow::Borrowed(stringify!($($name)+))
         }

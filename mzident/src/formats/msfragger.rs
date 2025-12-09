@@ -517,6 +517,10 @@ impl MetaData for MSFraggerData {
         self.scan.to_string()
     }
 
+    fn search_engine(&self) -> Option<mzcv::Term> {
+        Some(mzcv::term!(MS:1003014|MSFragger))
+    }
+
     fn confidence(&self) -> Option<f64> {
         Some(self.hyper_score / 100.0)
     }
@@ -525,8 +529,11 @@ impl MetaData for MSFraggerData {
         None
     }
 
-    fn original_confidence(&self) -> Option<f64> {
-        Some(self.hyper_score)
+    fn original_confidence(&self) -> Option<(f64, mzcv::Term)> {
+        Some((
+            self.hyper_score,
+            mzcv::term!(MS:1001331|X!Tandem:hyperscore),
+        ))
     }
 
     fn original_local_confidence(&self) -> Option<&[f64]> {
@@ -581,6 +588,18 @@ impl MetaData for MSFraggerData {
     }
 
     fn database(&self) -> Option<(&str, Option<&str>)> {
+        None
+    }
+
+    fn unique(&self) -> Option<bool> {
+        self.is_unique
+    }
+
+    fn reliability(&self) -> Option<crate::Reliability> {
+        None
+    }
+
+    fn uri(&self) -> Option<String> {
         None
     }
 }

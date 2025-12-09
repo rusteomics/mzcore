@@ -186,6 +186,13 @@ impl MetaData for InstaNovoData {
         self.scan_number.to_string()
     }
 
+    fn search_engine(&self) -> Option<mzcv::Term> {
+        Some(match self.version {
+            InstaNovoVersion::V1_0_0 => mzcv::term!(MS:1003612|InstaNovo),
+            InstaNovoVersion::PlusV1_1_4 => mzcv::term!(MS:1003613|InstaNovo+),
+        })
+    }
+
     fn confidence(&self) -> Option<f64> {
         Some(2.0 / (1.0 + 1.01_f64.powf(-self.score)))
     }
@@ -196,8 +203,11 @@ impl MetaData for InstaNovoData {
             .map(|lc| lc.iter().map(|v| 2.0 / (1.0 + 1.25_f64.powf(-v))).collect())
     }
 
-    fn original_confidence(&self) -> Option<f64> {
-        Some(self.score)
+    fn original_confidence(&self) -> Option<(f64, mzcv::Term)> {
+        Some((
+            self.score,
+            mzcv::term!(MS:1001153|search engine specific score),
+        ))
     }
 
     fn original_local_confidence(&self) -> Option<&[f64]> {
@@ -248,6 +258,18 @@ impl MetaData for InstaNovoData {
     }
 
     fn database(&self) -> Option<(&str, Option<&str>)> {
+        None
+    }
+
+    fn unique(&self) -> Option<bool> {
+        None
+    }
+
+    fn reliability(&self) -> Option<crate::Reliability> {
+        None
+    }
+
+    fn uri(&self) -> Option<String> {
         None
     }
 }

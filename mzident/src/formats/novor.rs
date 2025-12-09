@@ -225,6 +225,10 @@ impl MetaData for NovorData {
         self.id.unwrap_or(self.scan_number).to_string()
     }
 
+    fn search_engine(&self) -> Option<mzcv::Term> {
+        Some(mzcv::term!(MS:1002984|Novor))
+    }
+
     fn confidence(&self) -> Option<f64> {
         Some((self.score / 100.0).clamp(-1.0, 1.0))
     }
@@ -235,8 +239,11 @@ impl MetaData for NovorData {
             .map(|lc| lc.iter().map(|v| *v / 100.0).collect())
     }
 
-    fn original_confidence(&self) -> Option<f64> {
-        Some(self.score)
+    fn original_confidence(&self) -> Option<(f64, mzcv::Term)> {
+        Some((
+            self.score,
+            mzcv::term!(MS:1001153|search engine specific score),
+        ))
     }
 
     fn original_local_confidence(&self) -> Option<&[f64]> {
@@ -284,6 +291,18 @@ impl MetaData for NovorData {
     }
 
     fn database(&self) -> Option<(&str, Option<&str>)> {
+        None
+    }
+
+    fn unique(&self) -> Option<bool> {
+        None
+    }
+
+    fn reliability(&self) -> Option<crate::Reliability> {
+        None
+    }
+
+    fn uri(&self) -> Option<String> {
         None
     }
 }
