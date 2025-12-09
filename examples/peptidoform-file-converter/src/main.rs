@@ -7,7 +7,7 @@ use std::{
 };
 
 use clap::Parser;
-use context_error::{BasicKind, BoxedError, Context, CreateError};
+use context_error::{BasicKind, BoxedError, Context, CreateError, combine_error};
 use mzcore::ontology::Ontologies;
 use mzident::{
     FastaIdentifier, MetaData, SpectrumId, SpectrumIds, open_identified_peptidoforms_file,
@@ -19,59 +19,105 @@ use mzident::{
 struct Cli {
     /// The input file
     #[arg(short, long)]
-    in_path: String,
-    /// The output path to output the resulting csv file
+    in_path: PathBuf,
+    /// The output path to output the resulting csv or mztab file
     #[arg(short, long)]
-    out_path: String,
+    out_path: PathBuf,
     /// If needed to provide the raw file that was used in the creation of this file
     #[arg(long)]
-    raw_file: Option<String>,
+    raw_file: Option<PathBuf>,
 }
 
 fn main() {
     let args = Cli::parse();
-    let mut out_file =
-        BufWriter::new(File::create(args.out_path).expect("Could not create out CSV file"));
-    writeln!(&mut out_file, "sequence,scan_index,raw_file,z,score,class").unwrap();
+    let out_file =
+        BufWriter::new(File::create(&args.out_path).expect("Could not create output file"));
+    let extension = args
+        .out_path
+        .extension()
+        .map(|e| e.to_string_lossy().to_ascii_lowercase());
     let mut errors = Vec::new();
+    let psms = open_identified_peptidoforms_file(&args.in_path, &Ontologies::init().0, false)
+        .expect("Invalid input file")
+        .filter_map(|f| match f {
+            Ok(v) => Some(v),
+            Err(error) => {
+                combine_error(&mut errors, error, ());
+                None
+            }
+        })
+        .collect::<Vec<_>>();
+
+    if errors.is_empty() {
+        println!("No errors, enjoy the new file!");
+    } else {
+        for e in &errors {
+            println!("{e}");
+        }
+        println!(
+            "Errors were found while parsing the peptidoform file. Output is still generated but all above lines are ignored."
+        );
+    }
+
+    match extension.as_deref() {
+        Some("csv") => save_csv(out_file, &psms, &args.in_path, args.raw_file.as_deref()),
+        Some("mztab") => {
+            mzident::mztab_writer::MzTabWriter::write(
+                out_file,
+                &[],
+                &[],
+                &psms,
+                mzident::mztab_writer::MSRun {
+                    location: args.raw_file.unwrap_or_default(),
+                    ..Default::default()
+                },
+            )
+            .unwrap();
+        }
+        Some(_) | None => println!("The output file has to be .csv or .mztab"),
+    }
+}
+
+fn save_csv<PSM: MetaData>(
+    mut out_file: BufWriter<File>,
+    psms: &[PSM],
+    in_path: &std::path::Path,
+    raw_file: Option<&std::path::Path>,
+) {
+    writeln!(&mut out_file, "sequence,scan_index,raw_file,z,score,class").unwrap();
     let mut warnings = Vec::new();
-    for (peptidoform_index, peptidoform) in
-        open_identified_peptidoforms_file(&args.in_path, &Ontologies::init().0, false)
-            .expect("Invalid input file")
-            .enumerate()
-    {
-        if let Err(error) = peptidoform.and_then(|p| {
-            let indices = match p.scans() {
+    for (peptidoform_index, psm) in psms.iter().enumerate() {
+        let indices = match psm.scans() {
                 SpectrumIds::None => Ok(Vec::new()),
                 SpectrumIds::FileNotKnown(ids) => ids
                     .iter()
                     .map(|id| match id {
                         SpectrumId::Index(id) => {
-                            Ok((*id, args.raw_file.as_ref().map(PathBuf::from).ok_or_else(|| BoxedError::new(BasicKind::Error,
+                            Ok((*id, raw_file.map(PathBuf::from).ok_or_else(|| BoxedError::new(BasicKind::Error,
                             "Missing raw file",
                             "This format does not store the raw file so this should be given via the command line arguments",
                             Context::default()
-                                .source(args.in_path.clone())
+                                .source(in_path.to_string_lossy())
                                 .line_index(peptidoform_index as u32),
                         ))?))
                         }
                         SpectrumId::Number(id) => {
-                            Ok((id - 1, args.raw_file.as_ref().map(PathBuf::from).ok_or_else(|| BoxedError::new(BasicKind::Error,
+                            Ok((id - 1, raw_file.map(PathBuf::from).ok_or_else(|| BoxedError::new(BasicKind::Error,
                             "Missing raw file",
                             "This format does not store the raw file so this should be given via the command line arguments",
                             Context::default()
-                                .source(args.in_path.clone())
+                                .source(in_path.to_string_lossy())
                                 .line_index(peptidoform_index as u32),
                         ))?))
                         }
                         _ => {
-                            warnings.push(BoxedError::new(BasicKind::Warning,
+                            combine_error(&mut warnings, BoxedError::new(BasicKind::Warning,
                             "Invalid spectrum id",
                             "Only spectrum indexes and spectrum numbers can be used, an empty scan number is used instead",
                             Context::default()
-                                .source(args.in_path.clone())
+                                .source(in_path.to_string_lossy())
                                 .line_index(peptidoform_index as u32),
-                        ));
+                        ), ());
                         Ok((0, PathBuf::new()))
                     }
                     })
@@ -86,48 +132,49 @@ fn main() {
                                 "Invalid spectrum id",
                                 "Only spectrum indexes and spectrum numbers can be used",
                                 Context::default()
-                                    .source(args.in_path.clone())
+                                    .source(in_path.to_string_lossy())
                                     .line_index(peptidoform_index as u32),
                             )),
                         })
                     })
                     .collect(),
-            }?;
-            let sequence = p
-                .compound_peptidoform_ion().ok_or_else(|| BoxedError::new(BasicKind::Error,
+            }.unwrap();
+        let sequence = psm
+            .compound_peptidoform_ion()
+            .ok_or_else(|| {
+                BoxedError::new(
+                    BasicKind::Error,
                     "Missing sequence",
                     "This peptidoform misses a sequence",
                     Context::default()
-                        .source(args.in_path.clone())
+                        .source(in_path.to_string_lossy())
                         .line_index(peptidoform_index as u32),
-                ))?;
-            let charge = p.charge().map(|v| v.value).unwrap_or_default();
-            let score = p.original_confidence().unwrap_or_default();
-            let class = p.protein_names().map_or("Unknown",|ids| if ids.iter().any(FastaIdentifier::decoy) {"Decoy"} else {"Target"});
-            for (index, raw_file) in indices {
-                writeln!(&mut out_file, "\"{sequence}\",{index},\"{}\",{charge},{score},{class}",raw_file.display()).unwrap();
+                )
+            })
+            .unwrap();
+        let charge = psm.charge().map(|v| v.value).unwrap_or_default();
+        let score = psm
+            .original_confidence()
+            .map(|(v, _)| v)
+            .unwrap_or_default();
+        let class = psm.protein_names().map_or("Unknown", |ids| {
+            if ids.iter().any(FastaIdentifier::decoy) {
+                "Decoy"
+            } else {
+                "Target"
             }
-            Ok((p
-                .compound_peptidoform_ion()
-                .map(std::borrow::Cow::into_owned),))
-        }) {
-            context_error::combine_error(&mut errors, error, ());
+        });
+        for (index, raw_file) in indices {
+            writeln!(
+                &mut out_file,
+                "\"{sequence}\",{index},\"{}\",{charge},{score},{class}",
+                raw_file.display()
+            )
+            .unwrap();
         }
     }
-    if errors.is_empty() {
-        for e in &warnings {
-            println!("{e}");
-        }
-        println!("No errors, enjoy the new file!");
-    } else {
-        for e in &errors {
-            println!("{e}");
-        }
-        for e in &warnings {
-            println!("{e}");
-        }
-        println!(
-            "Errors were found while parsing the peptidoform file. Output is still generated but all above lines are ignored."
-        );
+
+    for e in &warnings {
+        println!("{e}");
     }
 }

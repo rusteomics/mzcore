@@ -19,7 +19,7 @@ pub struct MzTabWriter<Writer, State> {
 }
 
 /// The metadata for an MS run for a mzTab file.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct MSRun {
     /// The file format and id format terms
     pub format: Option<(Term, Term)>,
@@ -78,6 +78,7 @@ impl CanWritePSMs for PSMsWritten {
 
 impl<W: Write> MzTabWriter<W, Initial> {
     /// Convenience function to easily write all information to an mzTab file.
+    /// An [`MSRun`] has to be given for all PSMs that are [`SpectrumIds::FileNotKnown`] to still point to the correct location.
     /// # Errors
     /// If writing to the underlying writer failed.
     pub fn write<PSM: MetaData>(
@@ -85,12 +86,18 @@ impl<W: Write> MzTabWriter<W, Initial> {
         header: &[(String, String)],
         proteins: &[(String, Arc<Protein>)],
         psms: &[PSM],
+        unknown_file_run: MSRun,
     ) -> Result<(), std::io::Error> {
-        let ms_runs = psms
+        let mut unknown = false;
+        let mut ms_runs = psms
             .iter()
             .flat_map(|p| match p.scans() {
                 SpectrumIds::FileKnown(scans) => scans,
-                _ => Vec::new(),
+                SpectrumIds::FileNotKnown(_) => {
+                    unknown = true;
+                    Vec::new()
+                }
+                SpectrumIds::None => Vec::new(),
             })
             .map(|(p, _)| p)
             .unique()
@@ -101,16 +108,9 @@ impl<W: Write> MzTabWriter<W, Initial> {
                 fragmentation_method: None,
             })
             .collect::<Vec<_>>();
-        let ms_runs = if ms_runs.is_empty() {
-            vec![MSRun {
-                format: None,
-                location: PathBuf::default(),
-                hash: None,
-                fragmentation_method: None,
-            }]
-        } else {
-            ms_runs
-        };
+        if unknown {
+            ms_runs.insert(0, unknown_file_run);
+        }
         let search_engines = psms
             .iter()
             .filter_map(|p| p.original_confidence().map(|(_, t)| t))
@@ -638,7 +638,10 @@ impl<W: Write, State: CanWritePSMs> MzTabWriter<W, State> {
 mod tests {
     use std::io::BufWriter;
 
-    use crate::{mztab_writer::MzTabWriter, open_identified_peptidoforms_file};
+    use crate::{
+        mztab_writer::{MSRun, MzTabWriter},
+        open_identified_peptidoforms_file,
+    };
 
     #[test]
     fn convert() {
@@ -668,6 +671,7 @@ mod tests {
                     &[],
                     &[],
                     &psms,
+                    MSRun::default(),
                 )
                 .unwrap();
                 println!("Wrote: {}", new_path.display());

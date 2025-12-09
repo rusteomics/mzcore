@@ -1182,6 +1182,9 @@ fn parse_modification<'a>(
     }
 }
 
+/// Parse a single mzTab modification.
+/// # Errors
+/// if it does not follow the UNIMOD/MOD/CHEMMOD rules.
 fn parse_single_modification<'a>(
     line: &'a str,
     range: Range<usize>,
