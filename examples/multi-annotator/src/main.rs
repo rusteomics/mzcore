@@ -1,6 +1,7 @@
 //! Annotate many peptides at once
 #![allow(non_snake_case)] // charge_independent_Y needs the capital as it means the glycan fragmentation
 
+use core::f32;
 use std::{
     collections::BTreeMap,
     fs::File,
@@ -196,6 +197,7 @@ fn main() {
     let peaks_fdr_column = Arc::new("peaks_fdr".to_string());
     let intensity_fdr_column = Arc::new("intensity_fdr".to_string());
     let tic = Arc::new("total_ion_current".to_string());
+    let base_peak = Arc::new("base_peak_intensity".to_string());
 
     let out_data: Vec<_> =  files.par_iter().flat_map(|(file_name, lines)| {
         let mut file = mzdata::io::MZReaderType::open_path(file_name).unwrap_or_else(|err| {eprintln!("Could not open raw file: {}\nError: {err}", file_name.to_string_lossy()); std::process::exit(2)});
@@ -292,6 +294,10 @@ fn main() {
                                     intensity.total.to_string()
                                 }
                             },
+                        );
+                        row.insert(
+                            base_peak.clone(),
+                            annotated.peaks.iter().map(|p| p.intensity).max_by(f32::total_cmp).unwrap_or(0.0).to_string(),
                         );
                         for (ion, score) in &scores.ions {
                             row.insert(Arc::new(format!("intensity_{ion}")), match score {
