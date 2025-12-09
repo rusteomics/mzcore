@@ -723,14 +723,25 @@ impl MZTabData {
                 })).collect::<Result<Vec<_>, BoxedError<'_, BasicKind>>>()?
                 .into_iter()
                 .sorted_by(|(a, _), (b,_)| a.cmp(b))
-                .chunk_by(|(path, _)| path.clone());
+                .into_group_map_by(|(path, _)| path.clone());
 
-                    SpectrumIds::FileKnown(
-                        grouped
-                            .into_iter()
-                            .map(|(path, ids)| (path, ids.into_iter().map(|(_, i)| i).collect()))
-                            .collect(),
-                    )
+                    if grouped.is_empty() {
+                        SpectrumIds::None
+                    } else if grouped.len() == 1
+                        && let Some((path, ids)) = grouped.iter().next()
+                        && *path == std::path::PathBuf::default()
+                    {
+                        SpectrumIds::FileNotKnown(ids.iter().map(|(_, i)| i.clone()).collect())
+                    } else {
+                        SpectrumIds::FileKnown(
+                            grouped
+                                .into_iter()
+                                .map(|(path, ids)| {
+                                    (path, ids.into_iter().map(|(_, i)| i).collect())
+                                })
+                                .collect(),
+                        )
+                    }
                 }
             },
             flanking_sequence: {
