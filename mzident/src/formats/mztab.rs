@@ -983,7 +983,10 @@ impl Protein {
                 .required_column("modifications")
                 .map(|(v, _)| v.to_string())
                 .map_err(BoxedError::to_owned)?,
-            uri: line.optional_column("uri").map(|(v, _)| v.to_string()),
+            uri: line
+                .optional_column("uri")
+                .filter(|(v, _)| !v.eq_ignore_ascii_case("null"))
+                .map(|(v, _)| v.to_string()),
             go_terms: Vec::new(),
             coverage: line
                 .optional_column("protein_coverage")

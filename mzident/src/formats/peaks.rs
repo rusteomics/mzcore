@@ -101,12 +101,11 @@ format_family!(
         de_novo_score: f64, |location: Location, _| location
                 .parse::<f64>(NUMBER_ERROR);
         predicted_rt: Time, |location: Location, _| location.or_empty().parse::<f64>(NUMBER_ERROR).map(|o| o.map(Time::new::<mzcore::system::time::min>));
-        accession: String, |location: Location, _|  Ok(Some(location.get_string()));
         tag: String, |location: Location, _| Ok(location.get_string());
         mode: String, |location: Location, _| Ok(location.get_string());
         logp: f64, |location: Location, _| location.parse::<f64>(NUMBER_ERROR);
         area_tryp_ead: f64, |location: Location, _| location.or_empty().parse::<f64>(NUMBER_ERROR);
-        ascore: String, |location: Location, _| Ok(location.get_string());
+        ascore: String, |location: Location, _| Ok(location.or_empty().get_string());
         found_by: String, |location: Location, _| Ok(location.get_string());
         feature_tryp_cid: usize, |location: Location, _| location.parse(NUMBER_ERROR).map(Some);
         feature_tryp_ead: usize, |location: Location, _| location.parse(NUMBER_ERROR).map(Some);
@@ -158,7 +157,6 @@ pub const V13_DIA: PeaksFormat = PeaksFormat {
     feature: OptionalColumn::NotAvailable,
     de_novo_score: OptionalColumn::NotAvailable,
     predicted_rt: OptionalColumn::NotAvailable,
-    accession: OptionalColumn::Required("accession"),
     ascore: OptionalColumn::NotAvailable,
     found_by: OptionalColumn::Required("found by"),
     logp: OptionalColumn::Required("-10lgp"),
@@ -170,7 +168,7 @@ pub const V13_DIA: PeaksFormat = PeaksFormat {
     unique: OptionalColumn::NotAvailable,
     protein_group: OptionalColumn::NotAvailable,
     protein_id: OptionalColumn::NotAvailable,
-    protein_accession: OptionalColumn::NotAvailable,
+    protein_accession: OptionalColumn::Required("accession"),
     start: OptionalColumn::NotAvailable,
     end: OptionalColumn::NotAvailable,
     quality: OptionalColumn::NotAvailable,
@@ -200,7 +198,6 @@ pub const X: PeaksFormat = PeaksFormat {
     feature: OptionalColumn::NotAvailable,
     de_novo_score: OptionalColumn::NotAvailable,
     predicted_rt: OptionalColumn::NotAvailable,
-    accession: OptionalColumn::NotAvailable,
     ascore: OptionalColumn::NotAvailable,
     found_by: OptionalColumn::NotAvailable,
     logp: OptionalColumn::NotAvailable,
@@ -241,7 +238,6 @@ pub const X_PATCHED: PeaksFormat = PeaksFormat {
     feature: OptionalColumn::Required("feature"),
     de_novo_score: OptionalColumn::NotAvailable,
     predicted_rt: OptionalColumn::NotAvailable,
-    accession: OptionalColumn::NotAvailable,
     ascore: OptionalColumn::NotAvailable,
     found_by: OptionalColumn::NotAvailable,
     logp: OptionalColumn::NotAvailable,
@@ -282,7 +278,6 @@ pub const XPLUS: PeaksFormat = PeaksFormat {
     feature: OptionalColumn::Required("feature"),
     de_novo_score: OptionalColumn::Required("denovo score"),
     predicted_rt: OptionalColumn::Required("predict rt"),
-    accession: OptionalColumn::NotAvailable,
     ascore: OptionalColumn::NotAvailable,
     found_by: OptionalColumn::NotAvailable,
     logp: OptionalColumn::NotAvailable,
@@ -323,7 +318,6 @@ pub const V11: PeaksFormat = PeaksFormat {
     feature: OptionalColumn::Required("feature id"),
     de_novo_score: OptionalColumn::NotAvailable,
     predicted_rt: OptionalColumn::NotAvailable,
-    accession: OptionalColumn::NotAvailable,
     ascore: OptionalColumn::NotAvailable,
     found_by: OptionalColumn::NotAvailable,
     logp: OptionalColumn::NotAvailable,
@@ -367,7 +361,6 @@ pub const V11_FEATURES: PeaksFormat = PeaksFormat {
     feature: OptionalColumn::Required("feature id"),
     de_novo_score: OptionalColumn::NotAvailable,
     predicted_rt: OptionalColumn::NotAvailable,
-    accession: OptionalColumn::NotAvailable,
     ascore: OptionalColumn::NotAvailable,
     found_by: OptionalColumn::NotAvailable,
     logp: OptionalColumn::NotAvailable,
@@ -405,7 +398,6 @@ pub const V12: PeaksFormat = PeaksFormat {
     feature: OptionalColumn::Required("feature id"),
     de_novo_score: OptionalColumn::Required("deep novo score (%)"),
     predicted_rt: OptionalColumn::NotAvailable,
-    accession: OptionalColumn::NotAvailable,
     ascore: OptionalColumn::NotAvailable,
     found_by: OptionalColumn::NotAvailable,
     logp: OptionalColumn::NotAvailable,
@@ -446,7 +438,6 @@ pub const AB: PeaksFormat = PeaksFormat {
     feature: OptionalColumn::NotAvailable,
     de_novo_score: OptionalColumn::NotAvailable,
     predicted_rt: OptionalColumn::NotAvailable,
-    accession: OptionalColumn::Required("accession"),
     ascore: OptionalColumn::NotAvailable,
     found_by: OptionalColumn::NotAvailable,
     logp: OptionalColumn::NotAvailable,
@@ -458,7 +449,7 @@ pub const AB: PeaksFormat = PeaksFormat {
     unique: OptionalColumn::NotAvailable,
     protein_group: OptionalColumn::NotAvailable,
     protein_id: OptionalColumn::NotAvailable,
-    protein_accession: OptionalColumn::NotAvailable,
+    protein_accession: OptionalColumn::Required("accession"),
     start: OptionalColumn::NotAvailable,
     end: OptionalColumn::NotAvailable,
     quality: OptionalColumn::NotAvailable,
@@ -487,7 +478,6 @@ pub const DB_PEPTIDE: PeaksFormat = PeaksFormat {
     feature: OptionalColumn::Required("#feature"),
     de_novo_score: OptionalColumn::NotAvailable,
     predicted_rt: OptionalColumn::NotAvailable,
-    accession: OptionalColumn::Required("accession"),
     ascore: OptionalColumn::Required("ascore"),
     found_by: OptionalColumn::Required("found by"),
     logp: OptionalColumn::Required("-10lgp"),
@@ -499,7 +489,7 @@ pub const DB_PEPTIDE: PeaksFormat = PeaksFormat {
     unique: OptionalColumn::NotAvailable,
     protein_group: OptionalColumn::NotAvailable,
     protein_id: OptionalColumn::NotAvailable,
-    protein_accession: OptionalColumn::NotAvailable,
+    protein_accession: OptionalColumn::Required("accession"),
     start: OptionalColumn::NotAvailable,
     end: OptionalColumn::NotAvailable,
     quality: OptionalColumn::NotAvailable,
@@ -528,7 +518,6 @@ pub const DB_PSM: PeaksFormat = PeaksFormat {
     feature: OptionalColumn::NotAvailable,
     de_novo_score: OptionalColumn::NotAvailable,
     predicted_rt: OptionalColumn::NotAvailable,
-    accession: OptionalColumn::Required("accession"),
     ascore: OptionalColumn::Required("ascore"),
     found_by: OptionalColumn::Required("found by"),
     logp: OptionalColumn::Required("-10lgp"),
@@ -540,7 +529,7 @@ pub const DB_PSM: PeaksFormat = PeaksFormat {
     unique: OptionalColumn::NotAvailable,
     protein_group: OptionalColumn::NotAvailable,
     protein_id: OptionalColumn::NotAvailable,
-    protein_accession: OptionalColumn::NotAvailable,
+    protein_accession: OptionalColumn::Required("accession"),
     start: OptionalColumn::NotAvailable,
     end: OptionalColumn::NotAvailable,
     quality: OptionalColumn::NotAvailable,
@@ -570,7 +559,6 @@ pub const DB_PROTEIN_PEPTIDE: PeaksFormat = PeaksFormat {
     feature: OptionalColumn::NotAvailable,
     de_novo_score: OptionalColumn::NotAvailable,
     predicted_rt: OptionalColumn::NotAvailable,
-    accession: OptionalColumn::NotAvailable,
     ascore: OptionalColumn::Required("ascore"),
     found_by: OptionalColumn::Required("found by"),
     logp: OptionalColumn::Required("-10lgp"),

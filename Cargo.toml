@@ -40,7 +40,16 @@ directories = "6.0"
 flate2 = "1.0"
 indexmap = "2.11"
 itertools = "0.14"
-mzdata = { version = "0.62", default-features = false, features = ["nalgebra"] }
+mzdata = { git = "https://github.com/douweschulte/mzdata", branch="xy-support", default-features = false, features = [
+    "mzsignal",
+    "proxi-async",
+    "thermo",
+    "miniz_oxide",
+    "mgf",
+    "xy",
+    "mzml",
+    "bruker_tdf",
+] }
 ndarray = "0.17"
 ordered-float = { version = "5.0", features = ["serde"] }
 paste = "1.0"

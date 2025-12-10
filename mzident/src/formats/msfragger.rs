@@ -126,8 +126,8 @@ format_family!(
         });
         mz: MassOverCharge, |location: Location, _| location.parse::<f64>(NUMBER_ERROR).map(MassOverCharge::new::<mzcore::system::thomson>);
         gene: String, |location: Location, _| Ok(location.get_string());
-        mapped_genes: ThinVec<String>, |location: Location, _| Ok(location.get_string().split(',').map(|s| s.trim().to_string()).collect::<ThinVec<_>>());
-        mapped_proteins: ThinVec<String>, |location: Location, _| Ok(location.get_string().split(',').map(|s| s.trim().to_string()).collect::<ThinVec<_>>());
+        mapped_genes: ThinVec<String>, |location: Location, _| Ok(location.or_empty().map(|l| l.get_string().split(',').map(|s| s.trim().to_string()).collect::<ThinVec<_>>()));
+        mapped_proteins: ThinVec<String>, |location: Location, _| Ok(location.or_empty().map(|l| l.get_string().split(',').map(|s| s.trim().to_string()).collect::<ThinVec<_>>()));
         num_matched_ions: usize, |location: Location, _| location.parse::<usize>(NUMBER_ERROR);
         num_tol_term: usize, |location: Location, _| location.parse::<usize>(NUMBER_ERROR);
         open_search_localisation: String, |location: Location, _| Ok(location.or_empty().get_string());

@@ -212,7 +212,7 @@ impl MetaData for ProteoscapeData {
     }
 
     fn unique(&self) -> Option<bool> {
-        None
+        Some(self.is_unique)
     }
 
     fn reliability(&self) -> Option<crate::Reliability> {
