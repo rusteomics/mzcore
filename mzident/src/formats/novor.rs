@@ -25,11 +25,11 @@ static NUMBER_ERROR: (&str, &str) = (
 
 format_family!(
     Novor,
-    SemiAmbiguous, PeptidoformPresent, [&OLD_DENOVO, &OLD_PSM, &NEW_DENOVO, &NEW_PSM], b',', None;
+    SemiAmbiguous, PeptidoformPresent, [&OLD_DENOVO, &PSM202308, &NEW_DENOVO, &NEW_PSM, &PSM202305], b',', None;
     required {
         scan_number: usize, |location: Location, _| location.parse(NUMBER_ERROR);
         mz: MassOverCharge, |location: Location, _| location.parse::<f64>(NUMBER_ERROR).map(MassOverCharge::new::<mzcore::system::thomson>);
-        z: Charge, |location: Location, _| location.parse::<isize>(NUMBER_ERROR).map(Charge::new::<mzcore::system::e>);
+        z: Charge, |location: Location, _| location.trim_end_matches(".0").parse::<isize>(NUMBER_ERROR).map(Charge::new::<mzcore::system::e>);
         mass: Mass, |location: Location, _| location.parse::<f64>(NUMBER_ERROR).map(Mass::new::<mzcore::system::dalton>);
         score: f64, |location: Location, _| location.parse::<f64>(NUMBER_ERROR);
         peptide: Peptidoform<SemiAmbiguous>, |location: Location, ontologies: &Ontologies| Peptidoform::sloppy_pro_forma(
@@ -40,9 +40,22 @@ format_family!(
         ).map_err(BoxedError::to_owned);
     }
     optional {
-        id: usize, |location: Location, _| location.parse::<usize>(NUMBER_ERROR);
+        /// The identifier with potential sub identifier
+        id: (usize, Option<usize>), |location: Location, _| location.parse_with(|l| {
+            if l.as_str().starts_with('P') {
+                if let Some((id, subid)) = l.clone().skip(1).split_once('-') {
+                    Ok((id.parse(("Invalid Novor line", "The first part of the ID is not a number"))?,
+                    Some(subid.parse(("Invalid Novor line", "The first part of the ID is not a number"))?))
+                )
+                } else {
+                    Err(BoxedError::new(BasicKind::Error, "Invalid Novor line", "A Novor ID should be 'Pxxx-xxx' where x are numbers but the '-' is missing", l.context().to_owned()))
+                }
+            } else {
+                l.parse(NUMBER_ERROR).map(|v| (v, None))
+            }
+        });
         spectra_id: usize, |location: Location, _| location.parse::<usize>(NUMBER_ERROR);
-        fraction: usize, |location: Location, _| location.skip(1).parse::<usize>(NUMBER_ERROR); // Skip the F of the F{num} definition
+        fraction: usize, |location: Location, _| location.trim_start_matches("F").parse::<usize>(NUMBER_ERROR); // Skip the F of the F{num} definition
         rt: Time, |location: Location, _| location.parse::<f64>(NUMBER_ERROR).map(Time::new::<mzcore::system::time::min>);
         peptide_no_ptm: String, |location: Location, _| Ok(Some(location.get_string()));
         protein: usize, |location: Location, _| location.parse::<usize>(NUMBER_ERROR);
@@ -65,7 +78,9 @@ pub enum NovorVersion {
     #[default]
     OldDenovo,
     /// An older version for the psms file
-    OldPSM,
+    PSM202308,
+    /// An even older version for the psm file
+    PSM202305,
     /// Seen since v3.36.893 (not necessarily the time it was rolled out)
     NewDenovo,
     /// Seen since v3.36.893 (not necessarily the time it was rolled out)
@@ -81,7 +96,8 @@ impl IdentifiedPeptidoformVersion<NovorFormat> for NovorVersion {
     fn format(self) -> NovorFormat {
         match self {
             Self::OldDenovo => OLD_DENOVO,
-            Self::OldPSM => OLD_PSM,
+            Self::PSM202305 => PSM202305,
+            Self::PSM202308 => PSM202308,
             Self::NewDenovo => NEW_DENOVO,
             Self::NewPSM => NEW_PSM,
         }
@@ -89,7 +105,8 @@ impl IdentifiedPeptidoformVersion<NovorFormat> for NovorVersion {
     fn name(self) -> &'static str {
         match self {
             Self::OldDenovo => "Older Denovo",
-            Self::OldPSM => "Older PSM",
+            Self::PSM202308 => "PSM202308",
+            Self::PSM202305 => "PSM202305",
             Self::NewDenovo => "New Denovo",
             Self::NewPSM => "New PSM",
         }
@@ -130,7 +147,30 @@ pub const OLD_DENOVO: NovorFormat = NovorFormat {
     local_confidence: OptionalColumn::NotAvailable,
 };
 
-/// The older supported format for psms.csv files from Novor
+/// The older supported format (202305) for psms.csv files from Novor
+/// ID,Fraction,Scan #,m/z,z,Score,Mass,Error (ppm),"# Proteins",Sequence
+pub const PSM202305: NovorFormat = NovorFormat {
+    version: NovorVersion::PSM202305,
+    scan_number: "scan #",
+    mz: "m/z",
+    z: "z",
+    mass: "mass",
+    score: "score",
+    peptide: "sequence",
+    id: OptionalColumn::Required("id"),
+    spectra_id: OptionalColumn::NotAvailable,
+    fraction: OptionalColumn::Required("fraction"),
+    rt: OptionalColumn::NotAvailable,
+    peptide_no_ptm: OptionalColumn::NotAvailable,
+    protein: OptionalColumn::Required("# proteins"),
+    protein_start: OptionalColumn::NotAvailable,
+    protein_origin: OptionalColumn::NotAvailable,
+    protein_all: OptionalColumn::NotAvailable,
+    database_sequence: OptionalColumn::NotAvailable,
+    local_confidence: OptionalColumn::NotAvailable,
+};
+
+/// The older supported format (202308) for psms.csv files from Novor
 ///# -
 /// 1       ID
 /// 2       Fraction
@@ -143,8 +183,8 @@ pub const OLD_DENOVO: NovorFormat = NovorFormat {
 /// 9       # Proteins
 /// 10      Sequence
 /// <https://github.com/snijderlab/stitch/issues/156#issuecomment-1097862072>
-pub const OLD_PSM: NovorFormat = NovorFormat {
-    version: NovorVersion::OldPSM,
+pub const PSM202308: NovorFormat = NovorFormat {
+    version: NovorVersion::PSM202308,
     scan_number: "scan",
     mz: "m/z",
     z: "z",
@@ -218,11 +258,14 @@ impl MetaData for NovorData {
     }
 
     fn numerical_id(&self) -> Option<usize> {
-        Some(self.id.unwrap_or(self.scan_number))
+        Some(self.id.map_or(self.scan_number, |(id, _)| id))
     }
 
     fn id(&self) -> String {
-        self.id.unwrap_or(self.scan_number).to_string()
+        self.id.map_or_else(
+            || self.scan_number.to_string(),
+            |(id, subid)| subid.map_or_else(|| id.to_string(), |s| format!("P{id}-{s}")),
+        )
     }
 
     fn search_engine(&self) -> Option<mzcv::Term> {
