@@ -308,6 +308,9 @@ impl Modification {
                     _ => None
                 }
             })
+            .or_else(|| 
+                name.strip_prefix("N-term|").or(name.strip_prefix("C-term|")).and_then(|name| Self::find_name(name, position, ontologies))
+            )
             .or_else( || {
                 name.trim().split_ascii_whitespace().next().and_then(|head| Self::find_name::<SemiAmbiguous>(head, position, ontologies))
             })
