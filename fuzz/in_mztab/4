@@ -1,0 +1,58 @@
+COM	This	line	serves	as	a	size	and	separator	hint	for	spreadsheet	applications.	-	-	-	-	-	-	-	-	-	-	-	-	-	-	-	-	-	-	-	-	-	-	-	-	-	-	-	-	-	-	-	-	-	-	-
+COM	Report of a minimal Summary Quantification report" iTRAQ experiment, quantification on 4 study variables (t=0, t=1, t=2, t=3) reported, identifications reported.
+MTD	mzTab-version	1.0.0
+MTD	mzTab-mode	Summary
+MTD	mzTab-type	Quantification
+MTD	description	mzTab example file for reporting a summary report of quantification data quantified on the protein level
+MTD	protein_search_engine_score[1]	[MS, MS:1001171, Mascot:score,]
+MTD	psm_search_engine_score[1]	[MS, MS:1001171, Mascot:score,]
+MTD	ms_run[1]-location	file://C:/path/to/my/file1.mzML
+MTD	ms_run[2]-location	file://C:/path/to/my/file2.mzML
+MTD	ms_run[3]-location	file://C:/path/to/my/file3.mzML
+MTD	protein-quantification_unit	[PRIDE, PRIDE:0000393, Relative quantification unit,]
+MTD	fixed_mod[1]	[UNIMOD, UNIMOD:4, Carbamidomethyl, ]
+MTD	fixed_mod[2]	[UNIMOD, UNIMOD:214, iTRAQ4plex, ]
+MTD	variable_mod[1]	[UNIMOD, UNIMOD:35, Oxidation, ]
+MTD	study_variable[1]-description	sample incubation at t=0
+MTD	study_variable[2]-description	sample incubation at t=1
+MTD	study_variable[3]-description	sample incubation at t=2
+MTD	study_variable[4]-description	sample incubation at t=3
+
+PRH	accession	description	taxid	species	database	database_version	search_engine	best_search_engine_score[1]	ambiguity_members	modifications	protein_abundance_study_variable[1]	protein_abundance_stdev_study_variable[1]	protein_abundance_std_error_study_variable[1]	protein_abundance_study_variable[2]	protein_abundance_stdev_study_variable[2]	protein_abundance_std_error_study_variable[2]	protein_abundance_study_variable[3]	protein_abundance_stdev_study_variable[3]	protein_abundance_std_error_study_variable[3]	protein_abundance_study_variable[4]	protein_abundance_stdev_study_variable[4]	protein_abundance_std_error_study_variable[4]
+COM	Accession	Description	Taxonomie ID	Species	Database	Version	Search Engine	best Mascot score	Ambiguity Members	Modifications	Abundance (t=0)	Standard Deviation (t=0)	Standard Error (t=0)	Abundance (t=1)	Standard Deviation (t=1)	Standard Error (t=1)	Abundance (t=2)	Standard Deviation (t=2)	Standard Error (t=2)	Abundance (t=3)	Standard Deviation (t=3)	Standard Error (t=3)
+PRT	P63017	Heat shock cognate 71 kDa protein	10090	Mus musculus	UniProtKB	2013_08	[MS,MS:1001207,Mascot,]	46	null	0	14.361	3.6605	2.1134	53.695	11.73	6.7722	276.59	45.934	26.52	29.767	3.1318	1.8082
+PRT	P14602	Heat shock protein beta-1	10090	Mus musculus	UniProtKB	2013_08	[MS,MS:1001207,Mascot,]	100	Q340U4,Q5K0U2,P8L901,P16627	0	261.98	162.3	93.702	777.09	217.99	125.85	2865.4	514.48	297.04	0.8993	0.0893	0.0516
+PRT	Q8K0U4	Heat shock 70 kDa protein 12A	10090	Mus musculus	UniProtKB	2013_08	[MS,MS:1001207,Mascot,]	120	null	0	7707.3	1310.5	756.62	23.923	5.0532	2.9175	270.59	33.407	19.287	28.595	2.9196	1.6856
+PRT	Q61699	Heat shock protein 105 kDa	10090	Mus musculus	UniProtKB	2013_08	[MS,MS:1001207,Mascot,]	30	null	0	381591	92914	53644	1424	320.51	185.04	63.366	6.6935	3.8645	1737.5	70.203	40.532
+PRT	P07901	Heat shock protein HSP 90-alpha	10090	Mus musculus	UniProtKB	2013_08	[MS,MS:1001207,Mascot,]	45	null	0-UNIMOD:35, 12-UNIMOD:35, 98-UNIMOD:35,727-UNIMOD:35	10051	2453.1	1416.3	130.13	7.2703	4.1975	278.63	36.593	21.127	126.18	11.102	6.4098
+
+PSH	sequence	PSM_ID	accession	unique	database	database_version	search_engine	search_engine_score[1]	modifications	spectra_ref	retention_time	charge	exp_mass_to_charge	calc_mass_to_charge	pre	post	start	end
+COM	Sequence	PSM identifier	accession	Unqiue	Database	Database Version	Search Engine	Mascot score	Modifications	Spectra Reference	Retention Time	Charge	Experimental m/z	Calculated m/z	Pre	Post	Start	end
+PSM	QTQTFTTYSDNQPGVL	1	P63017	1	UniProtKB	2013_08	[MS,MS:1001207,Mascot,]	46	0-UNIMOD:214	ms_run[1]:scan=1296	1336.62	3	600.62	600.62	K	I	424	439
+PSM	AVVNGYSASDTVGAGFAQAK	2	Q8K0U4	1	UniProtKB	2013_08	[MS,MS:1001207,Mascot,]	120	0-UNIMOD:214,20-UNIMOD:214	ms_run[1]:scan=1300	1327.08	2	956.98	956.974	K	E	261	281
+PSM	ALLRLHQECEKLK	3	Q61699	1	UniProtKB	2013_08	[MS,MS:1001207,Mascot,]	30	0-UNIMOD:214,9-UNIMOD:4,11-UNIMOD:214,13-UNIMOD:214	ms_run[1]:scan=845	885.62	3	527.635	527.636	R	K	262	274
+PSM	MNQSNASPTLDGLFR	4	P14602	1	UniProtKB	2013_08	[MS,MS:1001207,Mascot,]	14	0-UNIMOD:214	ms_run[1]:scan=1155	1195.62	3	550.945	550.935	-	R	1	15
+PSM	LWPFQVINEAGKPK	5	P14602	1	UniProtKB	2013_08	[MS,MS:1001207,Mascot,]	45	0-UNIMOD:214,12-UNIMOD:214,14-UNIMOD:214	ms_run[1]:scan=1064	1104.62	3	542.972	542.972	K	V	91	104
+PSM	MIKLGLGIDEDDPTVDDTSAAVTEEMPPLEGDDDTSR	6	P07901	1	UniProtKB	2013_08	[MS,MS:1001207,Mascot,]	45	0-UNIMOD:214,3-UNIMOD:214	ms_run[1]:scan=2849	2876.08	2	1974.37	1974.4	R	M	692	728
+PSM	LGLGIDEDDPTVDDTSAAVTEEMPPLEGDDDTSR	7	P07901	1	UniProtKB	2013_08	[MS,MS:1001207,Mascot,]	120	0-UNIMOD:214,23-UNIMOD:35	ms_run[1]:scan=2584	2611.08	2	1788.29	1788.29	K	M	695	728
+PSM	TLTIVDTGIGMTK	8	P07901	1	UniProtKB	2013_08	[MS,MS:1001207,Mascot,]	76	0-UNIMOD:214,11-UNIMOD:35,13-UNIMOD:214	ms_run[1]:scan=1092	1132.62	3	450.551	450.583	R	A	88	100
+PSM	MPEETQTQDQPMEEEEVETFAFQAEIAQLMSLIINTFYSNK	9	P07901	1	UniProtKB	2013_08	[MS,MS:1001207,Mascot,]	87	0-UNIMOD:214,41-UNIMOD:214	ms_run[1]:scan=3157	3184.08	2	2405.58	2405.61	-	E	1	41
+PSM	QTQTFTTYSDNQPGVL	10	P63017	1	UniProtKB	2013_08	[MS,MS:1001207,Mascot,]	26	0-UNIMOD:214	ms_run[2]:scan=1530	1336.62	3	600.618	600.62	K	I	424	439
+PSM	AVVNGYSASDTVGAGFAQAK	11	Q8K0U4	1	UniProtKB	2013_08	[MS,MS:1001207,Mascot,]	120	0-UNIMOD:214,20-UNIMOD:214	ms_run[2]:scan=1534	1327.08	2	956.98	956.974	K	E	261	281
+PSM	ALLRLHQECEKLK	12	Q61699	1	UniProtKB	2013_08	[MS,MS:1001207,Mascot,]	12	0-UNIMOD:214,9-UNIMOD:4,11-UNIMOD:214,13-UNIMOD:214	ms_run[2]:scan=1079	885.62	3	527.625	527.636	R	K	262	274
+PSM	DWYPAHSR	13	P14602	0	UniProtKB	2013_08	[MS,MS:1001207,Mascot,]	100	0-UNIMOD:214	ms_run[2]:scan=778	571.08	2	516.21	516.238	R	L	21	28
+PSM	DWYPAHSR	13	Q340U4	0	UniProtKB	2013_08	[MS,MS:1001207,Mascot,]	100	0-UNIMOD:214	ms_run[2]:scan=778	571.08	2	516.21	516.238	K	E	143	150
+PSM	DWYPAHSR	13	P16627	0	UniProtKB	2013_08	[MS,MS:1001207,Mascot,]	100	0-UNIMOD:214	ms_run[2]:scan=778	571.08	2	516.21	516.238	R	M	240	247
+PSM	MNQSNASPTLDGLFR	14	P14602	1	UniProtKB	2013_08	[MS,MS:1001207,Mascot,]	-4	0-UNIMOD:214	ms_run[2]:scan=1389	1195.62	3	550.935	550.935	-	R	1	15
+PSM	LWPFQVINEAGKPK	15	P14602	1	UniProtKB	2013_08	[MS,MS:1001207,Mascot,]	8	0-UNIMOD:214,12-UNIMOD:214,14-UNIMOD:214	ms_run[2]:scan=1298	1104.62	3	542.994	542.972	K	V	91	104
+PSM	MIKLGLGIDEDDPTVDDTSAAVTEEMPPLEGDDDTSR	16	P07901	1	UniProtKB	2013_08	[MS,MS:1001207,Mascot,]	-4	0-UNIMOD:214,3-UNIMOD:214	ms_run[2]:scan=3083	2876.08	2	1974.39	1974.4	R	M	692	728
+PSM	TLTIVDTGIGMTK	17	P07901	1	UniProtKB	2013_08	[MS,MS:1001207,Mascot,]	-7	0-UNIMOD:214,13-UNIMOD:214	ms_run[2]:scan=1326	1132.62	3	450.584	450.583	R	A	88	100
+PSM	MPEETQTQDQPMEEEEVETFAFQAEIAQLMSLIINTFYSNK	18	P07901	1	UniProtKB	2013_08	[MS,MS:1001207,Mascot,]	28	0-UNIMOD:214,41-UNIMOD:214	ms_run[2]:scan=3391	3184.08	2	2405.62	2405.61	-	E	1	41
+PSM	QTQTFTTYSDNQPGVL	19	P63017	1	UniProtKB	2013_08	[MS,MS:1001207,Mascot,]	-2	0-UNIMOD:214	ms_run[3]:scan=1062	1336.62	3	600.615	600.62	K	I	424	439
+PSM	AVVNGYSASDTVGAGFAQAK	20	Q8K0U4	1	UniProtKB	2013_08	[MS,MS:1001207,Mascot,]	28	0-UNIMOD:214,20-UNIMOD:214	ms_run[3]:scan=1066	1327.08	2	956.979	956.974	K	E	261	281
+PSM	ALLRLHQECEKLK	21	Q61699	1	UniProtKB	2013_08	[MS,MS:1001207,Mascot,]	8	0-UNIMOD:214,9-UNIMOD:4,11-UNIMOD:214,13-UNIMOD:214	ms_run[3]:scan=611	885.62	3	527.631	527.636	R	K	262	274
+PSM	MNQSNASPTLDGLFR	22	P14602	1	UniProtKB	2013_08	[MS,MS:1001207,Mascot,]	3	0-UNIMOD:214	ms_run[3]:scan=921	1195.62	3	550.924	550.935	-	R	1	15
+PSM	MIKLGLGIDEDDPTVDDTSAAVTEEMPPLEGDDDTSR	23	P07901	1	UniProtKB	2013_08	[MS,MS:1001207,Mascot,]	25	0-UNIMOD:214,3-UNIMOD:214	ms_run[3]:scan=2615	2876.08	2	1974.42	1974.4	R	M	692	728
+PSM	LGLGIDEDDPTVDDTSAAVTEEMPPLEGDDDTSR	24	P07901	1	UniProtKB	2013_08	[MS,MS:1001207,Mascot,]	-10	0-UNIMOD:214	ms_run[3]:scan=2350	2611.08	2	1788.29	1788.29	K	M	695	728
+PSM	TLTIVDTGIGMTK	25	P07901	1	UniProtKB	2013_08	[MS,MS:1001207,Mascot,]	26	0-UNIMOD:214,13-UNIMOD:214	ms_run[3]:scan=858	1132.62	3	450.599	450.583	R	A	88	100
+PSM	MPEETQTQDQPMEEEEVETFAFQAEIAQLMSLIINTFYSNK	26	P07901	1	UniProtKB	2013_08	[MS,MS:1001207,Mascot,]	-7	0-UNIMOD:214,41-UNIMOD:214	ms_run[3]:scan=2923	3184.08	2	2405.62	2405.61	-	E	1	41

@@ -57,6 +57,8 @@ mod metamorpheus_tests;
 #[cfg(test)]
 mod msfragger_tests;
 #[cfg(test)]
+mod mztab_crashes;
+#[cfg(test)]
 mod mztab_test;
 #[cfg(test)]
 mod novob_tests;

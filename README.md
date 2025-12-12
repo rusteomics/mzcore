@@ -21,15 +21,13 @@ For raw data centered HUPO-PSI standards support (eg mzML, USI) see [mzdata](htt
 ## Features
 
 - mzcore
-  - Read [ProForma](https://github.com/HUPO-PSI/ProForma) sequences (complete 2.0 specification supported: 'level 2-ProForma + top-down compliant + cross-linking compliant + glycans compliant + mass spectrum compliant')
+  - Read [ProForma](https://github.com/HUPO-PSI/ProForma) sequences (complete 2.0 and nearly complete 2.1)
   - Extensive use of [uom](https://docs.rs/uom/latest/uom/) for compile time unit checking
   - Exhaustively fuzz tested for reliability (using [cargo-afl](https://crates.io/crates/cargo-afl))
   - Extensive support for glycans, including generating bitmap and vector images
 - mzannotate
   - Generate theoretical fragments with control over the fragmentation model from any ProForma peptidoform
-    - Generate theoretical fragments for chimeric spectra
-    - Generate theoretical fragments for cross-links (also disulfides)
-    - Generate theoretical fragments for modifications of unknown position
+    - Complex features supported: chimeric spectra, cross-links (also disulfides), modifications of unknown position
     - Generate peptide backbone (a, b, c, x, y, and z) and satellite ion fragments (d, v, and w)
     - Generate glycan fragments (B, Y, and internal fragments)
   - Integrated with [mzdata](https://crates.io/crates/mzdata)
@@ -39,12 +37,38 @@ For raw data centered HUPO-PSI standards support (eg mzML, USI) see [mzdata](htt
   - [Align peptides based on mass](https://pubs.acs.org/doi/10.1021/acs.jproteome.4c00188)
   - Consecutive alignment of one sequence on a stretch of multiple sequences
   - Indexed alignment for fast alignments for big datasets
+  - Multiple sequence alignment based on the same mass-based alignment 
 - imgt
   - Fast access to the IMGT database of antibody germlines
 - mzident
   - Reading of multiple identified peptide file formats (amongst others: [mzTab](https://www.psidev.info/mztab-specifications), Fasta, MaxQuant, MSFragger, Novor, OPair, Peaks, and Sage)
+  - Writing of mzTab files
+- mzcv
+  - Handle ontologies both statically included and runtime updating
 - rustyms-py
   - Python bindings are provided to several core components of the libraries. Go to the [Python documentation](https://rustyms.readthedocs.io/) for more information.
+
+## Supported formats 
+
+The final goal would be to support all open standards (or at least the ones that are (widely) used) for both reading and writing. Below is the list of formats that are currently supported.
+
+| Format | Version |  crate | Reading | Writing | Comment |
+| --- | --- | ---| --- | --- | --- |
+| [ProForma](https://github.com/HUPO-PSI/ProForma) | 2.0 & 2.1 | mzcore | ✅ | ✅ | Nearly full 2.1 support (full support is planned) |
+| [mzPAF](https://www.psidev.info/mzpaf) | 1.0 |mzannotate | ✅ | ✅ | |
+| [mzSpecLib](https://www.psidev.info/mzspeclib) | 1.0 | mzannotate | ✅ | ✅ | Not all metadata is used |
+| FASTA | - | mzident | ✅ | ❌ | |
+| [mzTab](https://www.psidev.info/mztab-specifications) | 1.0 | mzident | ✅ | ✅ | Not all metadata is accessible, peptides and small molecules are ignored |
+| [Spectrum Sequence List (SSL)](https://skyline.ms/home/software/BiblioSpec/wiki-page.view?name=BiblioSpec%20input%20and%20output%20file%20formats) | - | mzident | ✅ | ❌ | Small molecules are ignored |
+
+For raw data related formats (MGF/mzML/USI) see [mzdata](https://crates.io/crates/mzdata).
+
+These formats are envisioned to have support for. Open an issue if you have a need for these or if you have some thoughts on the implementation. PRs to add support for these are also very welcome. Regardless of inclusion in this list any (open) standard can be suggested for inclusion.
+
+| Format | Version |  crate | Comment |
+| --- | --- | ---| --- | 
+| [mzIdentML](https://www.psidev.info/peff) | 1.3 | mzident | Including support for cross-linked identifications and mzSpecLib like annotated spectra |
+| [PEFF](https://www.psidev.info/mzidentml) | 1.0 | mzident |  |
 
 # Folder organisation
 

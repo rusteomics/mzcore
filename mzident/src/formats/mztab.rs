@@ -204,8 +204,14 @@ impl MZTabData {
                                             .to_owned(),
                                         )
                                     }) {
-                                    Ok(i) => i - 1,
-                                    Err(err) => return Some(Err(err)),
+                                        Ok(0) => return Some(Err(BoxedError::new(BasicKind::Error, "Invalid mzTab mz_run identifier", "A ms_run identifier uses 1 based indexing and so cannot be 0.", Context::line_range(
+                                                Some(line_index as u32),
+                                                &line,
+                                                fields[1].clone(),
+                                            )
+                                            .to_owned()))),
+                                        Ok(i) => i - 1,
+                                        Err(err) => return Some(Err(err)),
                                 };
 
                                 while raw_files.len() <= index {
@@ -235,8 +241,14 @@ impl MZTabData {
                                             .to_owned(),
                                         )
                                     }) {
-                                    Ok(i) => i - 1,
-                                    Err(err) => return Some(Err(err)),
+                                        Ok(0) => return Some(Err(BoxedError::new(BasicKind::Error, "Invalid mzTab mz_run identifier", "A ms_run identifier uses 1 based indexing and so cannot be 0.", Context::line_range(
+                                                Some(line_index as u32),
+                                                &line,
+                                                fields[1].clone(),
+                                            )
+                                            .to_owned()))),
+                                        Ok(i) => i - 1,
+                                        Err(err) => return Some(Err(err)),
                                 };
 
                                 while raw_files.len() <= index {
@@ -270,8 +282,14 @@ impl MZTabData {
                                             .to_owned(),
                                         )
                                     }) {
-                                    Ok(i) => i - 1,
-                                    Err(err) => return Some(Err(err)),
+                                        Ok(0) => return Some(Err(BoxedError::new(BasicKind::Error, "Invalid mzTab mz_run identifier", "A ms_run identifier uses 1 based indexing and so cannot be 0.", Context::line_range(
+                                                Some(line_index as u32),
+                                                &line,
+                                                fields[1].clone(),
+                                            )
+                                            .to_owned()))),
+                                        Ok(i) => i - 1,
+                                        Err(err) => return Some(Err(err)),
                                 };
 
                                 while raw_files.len() <= index {
@@ -435,7 +453,7 @@ impl MZTabData {
                 } else {
                     let mut peptide: Peptidoform<SimpleLinear> = Peptidoform::pro_forma_or_sloppy(
                         line.line,
-                        range,
+                        range.clone(),
                         ontologies,
                         &SloppyParsingParameters {
                             allow_unwrapped_modifications: true,
@@ -447,7 +465,12 @@ impl MZTabData {
                         match modification {
                             MZTabReturnModification::Defined(location, modification) => {
                                 peptide.add_simple_modification(
-                                    SequencePosition::from_index(location, peptide.len()),
+                                    SequencePosition::from_index(location, peptide.len()).ok_or_else(||
+                                        BoxedError::new(
+                                            BasicKind::Error,
+                                            "Invalid modification position",
+                                            format!("Index {location} falls outside the peptide of length {}", peptide.len()),
+                                            Context::default().line_index(line.line_index as u32).lines(0, line.line).add_highlight((0, range.clone()))))?,
                                     modification,
                                 );
                             }
@@ -462,9 +485,14 @@ impl MZTabData {
                                 let locations = pos
                                     .into_iter()
                                     .map(|(index, score)| {
-                                        (SequencePosition::from_index(index, peptide.len()), score)
+                                        Ok((SequencePosition::from_index(index, peptide.len()).ok_or_else(||
+                                        BoxedError::new(
+                                            BasicKind::Error,
+                                            "Invalid modification position",
+                                            format!("Index {index} falls outside the peptide of length {}", peptide.len()),
+                                            Context::default().line_index(line.line_index as u32).lines(0, line.line).add_highlight((0, range.clone()))))?, score))
                                     })
-                                    .collect_vec();
+                                    .collect::<Result<Vec<_>, BoxedError<'a, BasicKind>>>()?;
                                 let _possible = peptide.add_ambiguous_modification(
                                     modification,
                                     None,
@@ -682,7 +710,18 @@ impl MZTabData {
                                     range.clone(),
                                 ),
                             )
-                        })? - 1;
+                        })
+                        .and_then(|v| if v == 0 {
+                            Err(BoxedError::new(BasicKind::Error,
+                                "Invalid mzTab ms_run",
+                                "A ms_run identifier uses 1 based indexing and so cannot be 0.",
+                                Context::line_range(
+                                    Some(line.line_index as u32),
+                                    line.line,
+                                    range.clone(),
+                                ),
+                            ))
+                        } else {Ok(v-1)})?;
                     let path = raw_files.get(index).ok_or_else(|| BoxedError::new(BasicKind::Error,"Missing raw file definition", "All raw files should be defined in the MTD section before being used in the PSM Section", Context::line_range(
                         Some(line.line_index as u32),
                         line.line,
@@ -871,17 +910,37 @@ impl MZTabData {
         };
 
         result.local_confidence = result.local_confidence.as_ref().map(|lc| {
-            // Casanovo stores the confidence for N and C terminal modifications.
-            // As Casanovo has a double N terminal modification (+43.006-17.027) which could also
-            // exist as two separate modifications the number of N terminal modifications is not a
-            // reliable measure to determine how many local confidence scores to ignore.
-            let c = result
-                .peptidoform
-                .as_ref()
-                .map_or(0, |p| p.get_c_term().len());
-            let n = lc.len() - c - result.peptidoform.as_ref().map_or(0, Peptidoform::len);
-            lc[n..lc.len() - c].to_vec()
-        });
+            let pep_len = result.peptidoform.as_ref().map_or(0, Peptidoform::len);
+            if lc.len() > pep_len {
+                // Casanovo stores the confidence for N and C terminal modifications.
+                // As Casanovo has a double N terminal modification (+43.006-17.027) which could also
+                // exist as two separate modifications the number of N terminal modifications is not a
+                // reliable measure to determine how many local confidence scores to ignore.
+                let c = result
+                    .peptidoform
+                    .as_ref()
+                    .map_or(0, |p| p.get_c_term().len());
+                let n = lc.len() - c - pep_len;
+                let range = n..lc.len() - c;
+                if range.len() == pep_len {
+                    Ok(lc[n..lc.len() - c].to_vec())
+                } else {
+                    Err(BoxedError::new(
+                        BasicKind::Error,
+                        "Invalid local confidence", 
+                        format!("The number of elements in the local confidence ({}) does not match the number of amino acids ({pep_len}).", lc.len()), 
+                        Context::default().line_index(line.line_index as u32).lines(0, line.line)))
+                }
+            } else if lc.len() == pep_len {
+                Ok(lc.to_vec())
+            } else {
+                Err(BoxedError::new(
+                    BasicKind::Error,
+                    "Invalid local confidence", 
+                    format!("The number of elements in the local confidence ({}) does not match the number of amino acids ({pep_len}).", lc.len()), 
+                    Context::default().line_index(line.line_index as u32).lines(0, line.line)))
+            }
+        }).transpose()?;
 
         Ok(result)
     }

@@ -1,0 +1,67 @@
+MTD	mzTab-version	1.0 rc5
+MTD	mzTab-mode	Complete
+MTD	mzTab-type	Identification
+MTD	mzTab-ID	1643
+MTD	title	COFRADIC N-terminal proteome of unstimulated human blood platelets, identified and unidentified spectra
+MTD	description	date of export: Mon Jun 16 11:52:25 BST 2014
+MTD	instrument[1]-name	[PRIDE, PRIDE:0000131, Instrument model, Micromass Q-TOF I]
+MTD	instrument[1]-source	[PSI, PSI:1000008, Ionization Type, ESI]
+MTD	instrument[1]-analyzer[1]	[PSI, PSI:1000010, Analyzer Type, Quadrupole-TOF]
+MTD	instrument[1]-detector	[PSI, PSI:1000026, Detector Type, MultiChannelPlate]
+MTD	software[1]	[MS, MS:1001456, analysis software, MassLynx v3.5]
+MTD	protein_search_engine_score[1]	[MS, MS:1001171, Mascot:score, ]
+MTD	psm_search_engine_score[1]	[MS, MS:1001153, search engine specific score, ]
+MTD	publication[1]	pubmed:16038019
+MTD	publication[2]	pubmed:12665801
+MTD	publication[3]	pubmed:16518876
+MTD	contact[1]-name	Kristian Flikka
+MTD	contact[1]-affiliation	Computational Biology Unit, Bergen Center for Computational Science, University of Bergen
+MTD	contact[1]-email	flikka@ii.uib.no
+MTD	contact[2]-name	Lennart Martens
+MTD	contact[2]-affiliation	Department of Medical Protein Research (GE07, VIB09), Faculty of Medicine and Health Sciences, Ghent University and Flanders Interuniversitary Institute for Biotechnology (VIB)
+MTD	contact[2]-email	lennart.martens@UGent.be
+MTD	uri[1]	http://www.ebi.ac.uk/pride/archive/assays/1643
+MTD	fixed_mod[1]	[MS, MS:1002453, No fixed modifications searched, ]
+MTD	variable_mod[1]	[MS, MS:1002454, No variable modifications searched, ]
+MTD	ms_run[1]-format	[MS, MS:1000564, PSI mzData file, ]
+MTD	ms_run[1]-location	ftp://ftp.pride.ebi.ac.uk/pride/data/archive/2005/12/PRD000001/PRIDE_Exp_Complete_Ac_1643.xml.gz
+MTD	ms_run[1]-id_format	[MS, MS:1000777, spectrum identifier nativeID format, ]
+MTD	sample[1]-species[1]	[NEWT, 9606, Homo sapiens (Human), ]
+MTD	sample[1]-cell_type[1]	[CL, CL:0000233, platelet, ]
+MTD	sample[1]-description	Unstimulated human blood platelets
+MTD	sample[1]-custom[1]	[MeSH, D001792, blood_platelets, ]
+MTD	assay[1]-sample_ref	sample[1]
+MTD	assay[1]-ms_run_ref	ms_run[1]
+
+COM	Only variable modifications can be reported when the original source is a PRIDE XML file
+
+PRH	accession	description	taxid	species	database	database_version	search_engine	best_search_engine_score[1]	search_engine_score[1]_ms_run[1]	num_psms_ms_run[1]	num_peptides_distinct_ms_run[1]	num_peptides_unique_ms_run[1]	ambiguity_members	modifications	protein_coverage
+PRT	IPI00025512	null	9606	Homo sapiens (Human)	IPI human	2.31	[MS, MS:1001207, Mascot, ]	60.67	60.67	3	1	null	null	null	0.0
+PRT	IPI00298497	null	9606	Homo sapiens (Human)	IPI human	2.31	[MS, MS:1001207, Mascot, ]	69.37	69.37	49	10	null	null	null	0.0
+
+PSH	sequence	PSM_ID	accession	unique	database	database_version	search_engine	search_engine_score[1]	modifications	retention_time	charge	exp_mass_to_charge	calc_mass_to_charge	spectra_ref	pre	post	start	end
+PSM	LFDQAFGLPR	17699	IPI00025512	null	IPI human	2.31	null	null	null	null	null	null	null	ms_run[1]:spectrum=17699	null	null	28	37
+PSM	LFDQAFGLPR	17815	IPI00025512	null	IPI human	2.31	null	null	null	null	null	null	null	ms_run[1]:spectrum=17815	null	null	28	37
+PSM	LFDQAFGLPR	17587	IPI00025512	null	IPI human	2.31	null	null	null	null	null	null	null	ms_run[1]:spectrum=17587	null	null	28	37
+PSM	VNDNEEGFFSAR	5927	IPI00298497	null	IPI human	2.31	null	null	null	null	null	null	null	ms_run[1]:spectrum=5927	null	null	33	44
+PSM	LRPAPPPISGGGYR	14345	IPI00298497	null	IPI human	2.31	null	null	null	null	null	null	null	ms_run[1]:spectrum=14345	null	null	59	72
+PSM	QGVNDNEEGFFSAR	14083	IPI00298497	null	IPI human	2.31	null	null	null	null	null	null	null	ms_run[1]:spectrum=14083	null	null	31	44
+PSM	KIQKLESDVSAQMEYCR	2689	IPI00298497	null	IPI human	2.31	null	null	null	null	null	null	null	ms_run[1]:spectrum=2689	null	null	208	224
+PSM	QGVNDNEEGFFSAR	14423	IPI00298497	null	IPI human	2.31	null	null	null	null	null	null	null	ms_run[1]:spectrum=14423	null	null	31	44
+PSM	QGVNDNEEGFFSAR	7451	IPI00298497	null	IPI human	2.31	null	null	null	null	null	null	null	ms_run[1]:spectrum=7451	null	null	31	44
+PSM	QGVNDNEEGFFSAR	14219	IPI00298497	null	IPI human	2.31	null	null	null	null	null	null	null	ms_run[1]:spectrum=14219	null	null	31	44
+PSM	QGVNDNEEGFFSAR	7615	IPI00298497	null	IPI human	2.31	null	null	null	null	null	null	null	ms_run[1]:spectrum=7615	null	null	31	44
+PSM	QGVNDNEEGFFSAR	14461	IPI00298497	null	IPI human	2.31	null	null	null	null	null	null	null	ms_run[1]:spectrum=14461	null	null	31	44
+PSM	AAATQKKVER	12129	IPI00298497	null	IPI human	2.31	null	null	null	null	null	null	null	ms_run[1]:spectrum=12129	null	null	78	87
+PSM	LRPAPPPISGGGYR	7069	IPI00298497	null	IPI human	2.31	null	null	null	null	null	null	null	ms_run[1]:spectrum=7069	null	null	59	72
+PSM	LRPAPPPISGGGYR	14193	IPI00298497	null	IPI human	2.31	null	null	null	null	null	null	null	ms_run[1]:spectrum=14193	null	null	59	72
+PSM	QGVNDNEEGFFSAR	6145	IPI00298497	null	IPI human	2.31	null	null	null	null	null	null	null	ms_run[1]:spectrum=6145	null	null	31	44
+PSM	QGVNDNEEGFFSAR	6045	IPI00298497	null	IPI human	2.31	null	null	null	null	null	null	null	ms_run[1]:spectrum=6045	null	null	31	44
+PSM	LRPAPPPISGGGYR	7223	IPI00298497	null	IPI human	2.31	null	null	null	null	null	null	null	ms_run[1]:spectrum=7223	null	null	59	72
+PSM	QGVNDNEEGFFSAR	7677	IPI00298497	null	IPI human	2.31	null	null	null	null	null	null	null	ms_run[1]:spectrum=7677	null	null	31	44
+PSM	LRPAPPPISGGGYR	14495	IPI00298497	null	IPI human	2.31	null	null	null	null	null	null	null	ms_run[1]:spectrum=14495	null	null	59	72
+PSM	GHRPLDKKR	12699	IPI00298497	null	IPI human	2.31	null	null	null	null	null	null	null	ms_run[1]:spectrum=12699	null	null	45	53
+PSM	QGVNDNEEGFFSAR	14269	IPI00298497	null	IPI human	2.31	null	null	null	null	null	null	null	ms_run[1]:spectrum=14269	null	null	31	44
+PSM	QGVNDNEEGFFSAR	15077	IPI00298497	null	IPI human	2.31	null	null	null	null	null	null	null	ms_run[1]:spectrum=15077	null	null	31	44
+PSM	QGVNDNEEGFFSAR	14371	IPI00298497	null	IPI human	2.31	null	null	null	null	null	null	null	ms_run[1]:spectrum=14371	null	null	31	44
+PSM	EAPSLRPAPPPISGGGYR	14059	IPI00298497	null	IPI human	2.31	null	null	null	null	null	null	null	ms_run[1]:spectrum=14059	null	null	55	72
