@@ -27,7 +27,7 @@ pub struct MzTabWriter<Writer, State> {
 }
 
 /// The metadata for an MS run for a mzTab file.
-#[derive(Debug, Clone, Default)]
+#[derive(Clone, Debug, Default)]
 pub struct MSRun {
     /// The file format and id format terms
     pub format: Option<(Term, Term)>,

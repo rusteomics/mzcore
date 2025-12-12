@@ -19,7 +19,7 @@ use std::num::NonZeroU8;
 
 /// Controlled vocabularies all ontobee listed controlled vocabulaires are present as well as PRIDE and RESID
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 #[repr(u16)]
 #[allow(
     clippy::upper_case_acronyms,
@@ -1187,7 +1187,7 @@ impl std::fmt::Display for ControlledVocabulary {
 
 /// A CURIE is a namespace + accession identifier
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct Curie {
     /// The controlled vocabulary
     pub cv: ControlledVocabulary,
@@ -1251,7 +1251,7 @@ impl std::str::FromStr for Curie {
 /// An accession code, Can either be a numeric code (u32 to 4 milion, so 9 fully utilised digits).
 /// Or it can be an ASCII alphanumeric code (case-sensitive) of 1 to 8 characters.
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub enum AccessionCode {
     /// A strictly numeric code
     Numeric(u32),
@@ -1383,7 +1383,7 @@ impl std::str::FromStr for AccessionCode {
 
 /// A term, a CURIE plus its name
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct Term {
     /// The CURIE (eg MS:0000000)
     pub accession: Curie,

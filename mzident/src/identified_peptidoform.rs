@@ -15,7 +15,7 @@ use mzcore::{
 };
 
 /// A peptide that is identified by a _de novo_ or database matching program
-#[cfg_attr(not(feature = "mzannotate"), derive(Serialize, Deserialize))]
+#[cfg_attr(not(feature = "mzannotate"), derive(Deserialize, Serialize))]
 #[derive(Clone, Debug)]
 pub struct IdentifiedPeptidoform<Complexity, PeptidoformAvailability> {
     /// The score -1.0..=1.0 if a score was available in the original format
@@ -31,7 +31,7 @@ pub struct IdentifiedPeptidoform<Complexity, PeptidoformAvailability> {
 }
 
 /// The definition of all special metadata for all types of identified peptides that can be read
-#[cfg_attr(not(feature = "mzannotate"), derive(Serialize, Deserialize))]
+#[cfg_attr(not(feature = "mzannotate"), derive(Deserialize, Serialize))]
 #[derive(Clone, Debug)]
 #[expect(clippy::upper_case_acronyms)]
 pub enum IdentifiedPeptidoformData {

@@ -49,7 +49,7 @@ pub struct OboStanza {
 }
 
 /// A (usually) unique identifier for an entry in an ontology
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 #[derive(Clone, Debug, Decode, Default, Encode, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct OboIdentifier(pub Option<Box<str>>, pub Box<str>);
 
@@ -145,7 +145,7 @@ type Modifier = (Box<str>, Box<str>);
 type Comment = Option<Box<str>>;
 
 /// A synonym in an Obo stanza
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 #[derive(Clone, Debug, Decode, Default, Encode)]
 pub struct OboSynonym {
     /// The synonym itself
@@ -163,7 +163,7 @@ pub struct OboSynonym {
 }
 
 /// The type or scope for a synonym
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 #[derive(Clone, Copy, Debug, Decode, Default, Encode, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub enum SynonymScope {
     /// An exact relation

@@ -1044,7 +1044,7 @@ impl MzTabProtein {
                 .optional_column("uri")
                 .filter(|(v, _)| !v.eq_ignore_ascii_case("null"))
                 .map(|(v, _)| v.to_string()),
-            go_terms: Vec::new(),
+            go_terms: Vec::new(), // TODO: actually parse
             coverage: line
                 .optional_column("protein_coverage")
                 .map(|(v, location)| {
