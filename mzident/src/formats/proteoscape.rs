@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     BoxedIdentifiedPeptideIter, FastaIdentifier, IdentifiedPeptidoform, IdentifiedPeptidoformData,
-    IdentifiedPeptidoformSource, IdentifiedPeptidoformVersion, KnownFileFormat, MetaData,
+    IdentifiedPeptidoformSource, IdentifiedPeptidoformVersion, KnownFileFormat, PSMMetaData,
     PeptidoformPresent, SpectrumId, SpectrumIds, common_parser::Location,
 };
 use mzcore::{
@@ -127,7 +127,7 @@ pub const V2025B: ProteoscapeFormat = ProteoscapeFormat {
     is_unique: "is unique",
 };
 
-impl MetaData for ProteoscapeData {
+impl PSMMetaData for ProteoscapeData {
     fn compound_peptidoform_ion(&self) -> Option<Cow<'_, CompoundPeptidoformIon>> {
         Some(Cow::Owned(self.peptide.1.clone().into()))
     }

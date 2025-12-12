@@ -10,7 +10,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     BoxedIdentifiedPeptideIter, FastaIdentifier, IdentifiedPeptidoform, IdentifiedPeptidoformData,
-    IdentifiedPeptidoformSource, IdentifiedPeptidoformVersion, KnownFileFormat, MetaData,
+    IdentifiedPeptidoformSource, IdentifiedPeptidoformVersion, KnownFileFormat, PSMMetaData,
     PeptidoformPresent, SpectrumId, SpectrumIds,
     common_parser::{Location, OptionalLocation},
 };
@@ -312,7 +312,7 @@ impl std::fmt::Display for OpairMatchKind {
     }
 }
 
-impl MetaData for OpairData {
+impl PSMMetaData for OpairData {
     fn compound_peptidoform_ion(&self) -> Option<Cow<'_, CompoundPeptidoformIon>> {
         Some(Cow::Owned(self.peptide.clone().into()))
     }

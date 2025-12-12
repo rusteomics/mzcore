@@ -12,13 +12,13 @@ use std::{
 use context_error::*;
 use flate2::bufread::GzDecoder;
 use itertools::Itertools;
-use mzcv::{AccessionCodeParseError, CURIEParsingError, Term};
+use mzcv::{AccessionCodeParseError, CURIEParsingError, ControlledVocabulary, Term};
 use ordered_float::OrderedFloat;
 use serde::{Deserialize, Serialize};
 
 use crate::{
     FastaIdentifier, IdentifiedPeptidoform, IdentifiedPeptidoformData, KnownFileFormat,
-    MaybePeptidoform, MetaData, SpectrumId, SpectrumIds,
+    MaybePeptidoform, PSMMetaData, ProteinMetaData, SpectrumId, SpectrumIds,
     helper_functions::{
         check_extension, explain_number_error, float_digits, next_number, split_with_brackets,
     },
@@ -33,10 +33,11 @@ use mzcore::{
     },
     system::{Mass, MassOverCharge, Time, isize::Charge, usize},
 };
+use mzcv::Curie;
 
 /// Peptidoform data from a mzTab file
 #[derive(Clone, Debug, Default, Deserialize, PartialEq, Serialize)]
-pub struct MZTabData {
+pub struct MzTabPSM {
     /// The sequence corresponding to the PSM
     pub peptidoform: Option<Peptidoform<SimpleLinear>>,
     /// A unique identifier for a PSM within the file. If a PSM can be matched to
@@ -45,7 +46,7 @@ pub struct MZTabData {
     pub id: usize,
     /// The protein's accession the corresponding peptide sequence (coming from the
     /// PSM) is associated with.
-    pub protein: Option<(String, Option<Arc<Protein>>)>,
+    pub protein: Option<(String, Option<Arc<MzTabProtein>>)>,
     /// Indicates whether the peptide sequence (coming from the PSM) is unique for
     /// this protein in respect to the searched database.
     pub unique: Option<bool>,
@@ -76,7 +77,7 @@ pub struct MZTabData {
     pub additional: HashMap<String, String>,
 }
 
-impl MZTabData {
+impl MzTabPSM {
     /// Parse a mzTab file.
     /// # Errors
     /// If the file is not in the correct format
@@ -120,11 +121,11 @@ impl MZTabData {
         let mut raw_files: Vec<(Option<String>, Option<CVTerm>, Option<CVTerm>)> = Vec::new(); //path, file format, identifier type
         let mut peptide_header: Option<Vec<String>> = None;
         let mut protein_header: Option<Vec<String>> = None;
-        let mut proteins: HashMap<String, Arc<Protein>> = HashMap::new();
+        let mut proteins: HashMap<String, Arc<MzTabProtein>> = HashMap::new();
 
         parse_mztab_reader(reader).filter_map(move |item| {
             item.transpose().and_then(|item| match item {
-                Ok(MZTabLine::MTD(line_index, line, fields)) => {
+                Ok(MzTabLine::MTD(line_index, line, fields)) => {
                     if fields.len() == 3 {
                         match line[fields[1].clone()].to_ascii_lowercase().as_str() {
                             m if (m.starts_with("variable_mod[")
@@ -314,7 +315,7 @@ impl MZTabData {
                         )))
                     }
                 }
-                Ok(MZTabLine::PRH(line_index, line, fields)) => {
+                Ok(MzTabLine::PRH(line_index, line, fields)) => {
                     let header = fields
                         .into_iter()
                         .map(|field| line[field].to_ascii_lowercase())
@@ -343,9 +344,9 @@ impl MZTabData {
                     protein_header = Some(header);
                     None
                 }
-                Ok(MZTabLine::PRT(line_index, line, fields)) => {
+                Ok(MzTabLine::PRT(line_index, line, fields)) => {
                     match PSMLine::new(line_index, protein_header.as_deref(), &line, &fields)
-                        .and_then(|line| Protein::from_line(line))
+                        .and_then(|line| MzTabProtein::from_line(line))
                     {
                         Ok(protein) => {
                             for name in &protein.ambiguity_members {
@@ -358,7 +359,7 @@ impl MZTabData {
                     }
                 }
 
-                Ok(MZTabLine::PSH(line_index, line, fields)) => {
+                Ok(MzTabLine::PSH(line_index, line, fields)) => {
                     let header = fields
                         .into_iter()
                         .map(|field| line[field].to_ascii_lowercase())
@@ -395,7 +396,7 @@ impl MZTabData {
                     peptide_header = Some(header);
                     None
                 }
-                Ok(MZTabLine::PSM(line_index, line, fields)) => Some(
+                Ok(MzTabLine::PSM(line_index, line, fields)) => Some(
                     PSMLine::new(line_index, peptide_header.as_deref(), &line, &fields)
                         .and_then(|line| {
                             Self::from_line(
@@ -424,12 +425,12 @@ impl MZTabData {
         search_engine_score_types: &[CVTerm],
         raw_files: &[(Option<String>, Option<CVTerm>, Option<CVTerm>)],
         ontologies: &mzcore::ontology::Ontologies,
-        proteins: &HashMap<String, Arc<Protein>>,
+        proteins: &HashMap<String, Arc<MzTabProtein>>,
     ) -> Result<Self, BoxedError<'a, BasicKind>> {
         let (mod_column, mod_range) = line
             .required_column("modifications")
             .map_err(BoxedError::to_owned)?;
-        let modifications: Vec<MZTabReturnModification> =
+        let modifications: Vec<MzTabReturnModification> =
             if mod_column.eq_ignore_ascii_case("null") || mod_column == "0" {
                 Vec::new()
             } else {
@@ -463,7 +464,7 @@ impl MZTabData {
                     .into();
                     for modification in modifications {
                         match modification {
-                            MZTabReturnModification::Defined(location, modification) => {
+                            MzTabReturnModification::Defined(location, modification) => {
                                 peptide.add_simple_modification(
                                     SequencePosition::from_index(location, peptide.len()).ok_or_else(||
                                         BoxedError::new(
@@ -474,14 +475,14 @@ impl MZTabData {
                                     modification,
                                 );
                             }
-                            MZTabReturnModification::GlobalAmbiguous(modification) => {
+                            MzTabReturnModification::GlobalAmbiguous(modification) => {
                                 let _possible = peptide.add_unknown_position_modification(
                                     modification,
                                     0..peptide.len(),
                                     &MUPSettings::default(),
                                 );
                             }
-                            MZTabReturnModification::Ambiguous(pos, modification) => {
+                            MzTabReturnModification::Ambiguous(pos, modification) => {
                                 let locations = pos
                                     .into_iter()
                                     .map(|(index, score)| {
@@ -502,7 +503,7 @@ impl MZTabData {
                                     true,
                                 );
                             }
-                            MZTabReturnModification::NeutralLoss(_, _) => {
+                            MzTabReturnModification::NeutralLoss(_, _) => {
                                 // TODO: handle neutral losses
                             }
                         }
@@ -948,13 +949,13 @@ impl MZTabData {
 
 /// A protein definition from mzTab
 #[derive(Clone, Debug, Default, Deserialize, PartialEq, Serialize)]
-pub struct Protein {
+pub struct MzTabProtein {
     /// The accession number, like 'Q340U4'
     pub accession: String,
     /// The protein’s name and or description line.
     pub description: String,
     /// The NCBI/NEWT taxonomy id for the species the protein was identified in.
-    pub taxid: usize,
+    pub taxid: u32,
     /// The human readable species the protein was identified in - this SHOULD be the NCBI entry’s name.
     pub species: String,
     /// The protein database used for the search (could theoretically come from a different species).
@@ -962,22 +963,22 @@ pub struct Protein {
     /// The version of the database used, if there is no version the data.
     pub database_version: String,
     /// The search engines that identified this protein along with their scores
-    pub search_engine: Vec<(CVTerm, Option<f64>)>,
+    pub search_engine: Vec<(CVTerm, Option<(f64, CVTerm)>)>,
     /// A list of all proteins that cannot be separated based on peptide evidence from this main protein.
     pub ambiguity_members: Vec<String>,
     /// The reported modifications on this protein.
-    pub modifications: String,
+    pub modifications: Vec<(Vec<(SequencePosition, Option<f64>)>, SimpleModification)>,
     /// The coverage of this protein based on the peptidoforms in this file.
     pub coverage: Option<f64>,
     /// The GO terms for this protein.
-    pub go_terms: Vec<usize>,
+    pub go_terms: Vec<Curie>,
     /// The reliability of this protein
     pub reliability: Option<Reliability>,
     /// A URI pointing to the protein's source entry in the unit it was identified in (e.g., the PRIDE database or a local database / file identifier).
     pub uri: Option<String>,
 }
 
-impl Protein {
+impl MzTabProtein {
     /// Parse a single PRT line
     /// # Errors
     /// When not in the correct format
@@ -994,7 +995,7 @@ impl Protein {
             taxid: line
                 .required_column("taxid")
                 .and_then(|(v, location)| {
-                    v.parse::<usize>().map_err(|e| {
+                    v.parse::<u32>().map_err(|e| {
                         BoxedError::new(
                             BasicKind::Error,
                             "Invalid PRT Line",
@@ -1016,7 +1017,7 @@ impl Protein {
                 .required_column("database_version")
                 .map(|(v, _)| v.to_string())
                 .map_err(BoxedError::to_owned)?,
-            search_engine: Vec::new(),
+            search_engine: Vec::new(), // TODO: actually parse
             reliability: line
                 .optional_column("reliability")
                 .map(|(v, range)| match v {
@@ -1038,10 +1039,7 @@ impl Protein {
                 .required_column("ambiguity_members")
                 .map(|(v, _)| v.split(',').map(|s| s.trim().to_string()).collect())
                 .map_err(BoxedError::to_owned)?,
-            modifications: line
-                .required_column("modifications")
-                .map(|(v, _)| v.to_string())
-                .map_err(BoxedError::to_owned)?,
+            modifications: Vec::new(), // TODO: actually parse
             uri: line
                 .optional_column("uri")
                 .filter(|(v, _)| !v.eq_ignore_ascii_case("null"))
@@ -1066,7 +1064,7 @@ impl Protein {
 }
 
 #[allow(dead_code)] // Neutral losses not yet handled
-enum MZTabReturnModification {
+enum MzTabReturnModification {
     GlobalAmbiguous(SimpleModification),
     Ambiguous(Vec<(usize, Option<OrderedFloat<f64>>)>, SimpleModification),
     Defined(usize, SimpleModification),
@@ -1089,7 +1087,7 @@ fn parse_modification<'a>(
     range: Range<usize>,
     ontologies: &mzcore::ontology::Ontologies,
     line_index: u32,
-) -> Result<MZTabReturnModification, BoxedError<'a, BasicKind>> {
+) -> Result<MzTabReturnModification, BoxedError<'a, BasicKind>> {
     if let Some((pos, modification)) = line[range.clone()].split_once('-') {
         let position: Option<Vec<(usize, Option<OrderedFloat<f64>>)>> = if pos
             .eq_ignore_ascii_case("null")
@@ -1182,10 +1180,10 @@ fn parse_modification<'a>(
                 })?;
 
             position.map_or_else(
-                || Ok(MZTabReturnModification::NeutralLoss(None, loss)),
+                || Ok(MzTabReturnModification::NeutralLoss(None, loss)),
                 |pos| {
                     if pos.len() == 1 {
-                        Ok(MZTabReturnModification::NeutralLoss(Some(pos[0].0), loss))
+                        Ok(MzTabReturnModification::NeutralLoss(Some(pos[0].0), loss))
                     } else {
                         Err(BoxedError::new(
                             BasicKind::Error,
@@ -1209,12 +1207,12 @@ fn parse_modification<'a>(
             )?;
 
             Ok(match position {
-                None => MZTabReturnModification::GlobalAmbiguous(modification),
+                None => MzTabReturnModification::GlobalAmbiguous(modification),
                 Some(pos) => {
                     if pos.len() == 1 {
-                        MZTabReturnModification::Defined(pos[0].0, modification)
+                        MzTabReturnModification::Defined(pos[0].0, modification)
                     } else {
-                        MZTabReturnModification::Ambiguous(pos, modification)
+                        MzTabReturnModification::Ambiguous(pos, modification)
                     }
                 }
             })
@@ -1233,7 +1231,7 @@ fn parse_modification<'a>(
                     Context::line_range(Some(line_index), line, value_range),
                 )
             })
-            .map(|loss| MZTabReturnModification::NeutralLoss(None, loss))
+            .map(|loss| MzTabReturnModification::NeutralLoss(None, loss))
     } else {
         Err(BoxedError::new(
             BasicKind::Error,
@@ -1445,8 +1443,8 @@ impl std::fmt::Display for PSMLine<'_> {
     }
 }
 
-impl From<MZTabData> for IdentifiedPeptidoform<SimpleLinear, MaybePeptidoform> {
-    fn from(value: MZTabData) -> Self {
+impl From<MzTabPSM> for IdentifiedPeptidoform<SimpleLinear, MaybePeptidoform> {
+    fn from(value: MzTabPSM) -> Self {
         Self {
             score: (!value.search_engine.is_empty())
                 .then(|| {
@@ -1460,7 +1458,7 @@ impl From<MZTabData> for IdentifiedPeptidoform<SimpleLinear, MaybePeptidoform> {
                 })
                 .filter(|v| !v.is_nan()),
             local_confidence: value.local_confidence.clone(),
-            data: IdentifiedPeptidoformData::MZTab(value),
+            data: IdentifiedPeptidoformData::MzTab(value),
             complexity_marker: PhantomData,
             peptidoform_availability_marker: PhantomData,
         }
@@ -1561,7 +1559,7 @@ impl FromStr for CVTerm {
                 .unwrap_or_default()
                 .trim()
                 .to_string()
-                .parse::<mzcv::Curie>()
+                .parse::<Curie>()
                 .map_err(|e| {
                     BoxedError::new(
                         BasicKind::Error,
@@ -1627,7 +1625,7 @@ impl std::fmt::Display for Reliability {
 
 /// A basic structure for a mzTab file line
 #[expect(clippy::upper_case_acronyms)]
-enum MZTabLine {
+enum MzTabLine {
     /// Metadata line
     MTD(usize, String, Vec<Range<usize>>),
     /// Protein header line
@@ -1645,7 +1643,7 @@ enum MZTabLine {
 /// If the file is not a valid mzTab file
 fn parse_mztab_reader<T: BufRead>(
     reader: T,
-) -> impl Iterator<Item = Result<Option<MZTabLine>, BoxedError<'static, BasicKind>>> {
+) -> impl Iterator<Item = Result<Option<MzTabLine>, BoxedError<'static, BasicKind>>> {
     reader.lines().enumerate().map(move |(line_index, line)| {
         line.map_err(|err| {
             BoxedError::new(
@@ -1662,11 +1660,11 @@ fn parse_mztab_reader<T: BufRead>(
                 mzcore::csv::csv_separate(&line, b'\t')
                     .map_err(BoxedError::to_owned)
                     .map(|fields| match &line[fields[0].clone()] {
-                        "MTD" => Some(MZTabLine::MTD(line_index, line, fields)),
-                        "PRH" => Some(MZTabLine::PRH(line_index, line, fields)),
-                        "PRT" => Some(MZTabLine::PRT(line_index, line, fields)),
-                        "PSH" => Some(MZTabLine::PSH(line_index, line, fields)),
-                        "PSM" => Some(MZTabLine::PSM(line_index, line, fields)),
+                        "MTD" => Some(MzTabLine::MTD(line_index, line, fields)),
+                        "PRH" => Some(MzTabLine::PRH(line_index, line, fields)),
+                        "PRT" => Some(MzTabLine::PRT(line_index, line, fields)),
+                        "PSH" => Some(MzTabLine::PSH(line_index, line, fields)),
+                        "PSM" => Some(MzTabLine::PSM(line_index, line, fields)),
                         _ => None,
                     })
             }
@@ -1674,7 +1672,7 @@ fn parse_mztab_reader<T: BufRead>(
     })
 }
 
-impl MetaData for MZTabData {
+impl PSMMetaData for MzTabPSM {
     fn compound_peptidoform_ion(&self) -> Option<Cow<'_, CompoundPeptidoformIon>> {
         self.peptidoform
             .as_ref()
@@ -1682,7 +1680,7 @@ impl MetaData for MZTabData {
     }
 
     fn format(&self) -> KnownFileFormat {
-        KnownFileFormat::MZTab
+        KnownFileFormat::MzTab
     }
 
     fn numerical_id(&self) -> Option<usize> {
@@ -1790,5 +1788,66 @@ impl MetaData for MZTabData {
 
     fn uri(&self) -> Option<String> {
         self.uri.clone()
+    }
+}
+
+impl ProteinMetaData for MzTabProtein {
+    fn sequence(&self) -> Option<Cow<'_, Peptidoform<mzcore::sequence::Linear>>> {
+        None
+    }
+
+    fn numerical_id(&self) -> Option<usize> {
+        None
+    }
+
+    fn id(&self) -> FastaIdentifier<String> {
+        FastaIdentifier::Undefined(false, self.accession.clone())
+    }
+
+    fn description(&self) -> Option<&str> {
+        Some(&self.description)
+    }
+
+    fn species(&self) -> Option<Curie> {
+        Some(Curie {
+            cv: ControlledVocabulary::NCBITaxon,
+            accession: mzcv::AccessionCode::Numeric(self.taxid),
+        })
+    }
+
+    fn species_name(&self) -> Option<&str> {
+        Some(&self.species)
+    }
+
+    fn search_engine(&self) -> &[(CVTerm, Option<(f64, CVTerm)>)] {
+        &self.search_engine
+    }
+
+    fn ambiguity_members(&self) -> &[String] {
+        &self.ambiguity_members
+    }
+
+    fn database(&self) -> Option<(&str, Option<&str>)> {
+        Some((&self.database, Some(&self.database_version)))
+    }
+
+    fn modifications(&self) -> &[(Vec<(SequencePosition, Option<f64>)>, SimpleModification)] {
+        &self.modifications
+    }
+
+    fn coverage(&self) -> Option<f64> {
+        self.coverage
+    }
+
+    fn gene_ontology(&self) -> &[Curie] {
+        &self.go_terms
+    }
+
+    fn reliability(&self) -> Option<Reliability> {
+        self.reliability
+    }
+
+    fn uri(&self) -> Option<&str> {
+        self.uri.as_deref()
     }
 }

@@ -110,6 +110,7 @@ unexpected_cfgs = { level = "allow", check-cfg = [
     "cfg(si)",
 ] }
 unnameable-test-items = "deny"
+unnameble-types = "warn"
 unreachable-pub = "deny"
 unsafe-op-in-unsafe-fn = "deny"
 unstable-syntax-pre-expansion = "deny"

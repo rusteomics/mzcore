@@ -2,7 +2,7 @@ use std::fmt::Display;
 
 use context_error::{BasicKind, BoxedError};
 
-use crate::{IdentifiedPeptidoform, MaybePeptidoform, MetaData};
+use crate::{IdentifiedPeptidoform, MaybePeptidoform, PSMMetaData};
 use mzcore::sequence::{AtLeast, Linked};
 
 /// A version for an identified peptide version
@@ -16,7 +16,7 @@ pub trait IdentifiedPeptidoformVersion<Format>: Copy + Display {
 /// The required methods for any source of identified peptides
 pub trait IdentifiedPeptidoformSource
 where
-    Self: Sized + MetaData,
+    Self: Sized + PSMMetaData,
 {
     /// The source data where the peptides are parsed form
     type Source;

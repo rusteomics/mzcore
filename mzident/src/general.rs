@@ -149,7 +149,7 @@ pub fn open_identified_peptidoforms_file<'a>(
                 .add_underlying_errors(vec![me, he])
             })
         }
-        Some("mztab") => MZTabData::parse_file(path, ontologies).map(|peptides| {
+        Some("mztab") => MzTabPSM::parse_file(path, ontologies).map(|peptides| {
             let a: Box<dyn Iterator<Item = Result<IdentifiedPeptidoform<Linked, MaybePeptidoform>, BoxedError<'static, BasicKind>>> + 'a>
                 = Box::new(peptides.into_iter().map(|p| p.map(|p| {
                         IdentifiedPeptidoform::<SimpleLinear, MaybePeptidoform>::from(p).cast()

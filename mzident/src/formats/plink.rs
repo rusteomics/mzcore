@@ -13,7 +13,7 @@ use uom::ConstZero;
 
 use crate::{
     BoxedIdentifiedPeptideIter, FastaIdentifier, IdentifiedPeptidoform, IdentifiedPeptidoformData,
-    IdentifiedPeptidoformSource, IdentifiedPeptidoformVersion, KnownFileFormat, MetaData,
+    IdentifiedPeptidoformSource, IdentifiedPeptidoformVersion, KnownFileFormat, PSMMetaData,
     PeptidoformPresent, SpectrumId, SpectrumIds,
     common_parser::{Location, OptionalColumn, OptionalLocation},
     helper_functions::explain_number_error,
@@ -502,7 +502,7 @@ impl IdentifiedPeptidoformVersion<PLinkFormat> for PLinkVersion {
     }
 }
 
-impl MetaData for PLinkData {
+impl PSMMetaData for PLinkData {
     fn compound_peptidoform_ion(&self) -> Option<Cow<'_, CompoundPeptidoformIon>> {
         Some(Cow::Owned(self.peptidoform.clone().into()))
     }

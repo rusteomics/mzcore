@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     BoxedIdentifiedPeptideIter, FastaIdentifier, IdentifiedPeptidoform, IdentifiedPeptidoformData,
-    IdentifiedPeptidoformSource, IdentifiedPeptidoformVersion, KnownFileFormat, MetaData,
+    IdentifiedPeptidoformSource, IdentifiedPeptidoformVersion, KnownFileFormat, PSMMetaData,
     PeptidoformPresent, SpectrumIds, common_parser::Location,
 };
 use mzcore::{
@@ -81,7 +81,7 @@ impl IdentifiedPeptidoformVersion<PepNetFormat> for PepNetVersion {
     }
 }
 
-impl MetaData for PepNetData {
+impl PSMMetaData for PepNetData {
     fn compound_peptidoform_ion(&self) -> Option<Cow<'_, CompoundPeptidoformIon>> {
         Some(Cow::Owned(self.peptide.clone().into()))
     }

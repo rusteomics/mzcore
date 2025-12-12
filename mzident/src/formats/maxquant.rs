@@ -11,7 +11,7 @@ use thin_vec::ThinVec;
 use crate::{
     BoxedIdentifiedPeptideIter, FastaIdentifier, IdentifiedPeptidoform, IdentifiedPeptidoformData,
     IdentifiedPeptidoformSource, IdentifiedPeptidoformVersion, KnownFileFormat, MaybePeptidoform,
-    MetaData, SpectrumId, SpectrumIds,
+    PSMMetaData, SpectrumId, SpectrumIds,
     common_parser::{Location, OptionalColumn, OptionalLocation},
     helper_functions::end_of_enclosure,
 };
@@ -479,7 +479,7 @@ pub const SILAC: MaxQuantFormat = MaxQuantFormat {
     z: "charge",
 };
 
-impl MetaData for MaxQuantData {
+impl PSMMetaData for MaxQuantData {
     fn compound_peptidoform_ion(&self) -> Option<Cow<'_, CompoundPeptidoformIon>> {
         self.peptide.as_ref().map(|p| Cow::Owned(p.clone().into()))
     }

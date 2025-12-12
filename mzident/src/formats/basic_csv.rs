@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     BoxedIdentifiedPeptideIter, FastaIdentifier, IdentifiedPeptidoform, IdentifiedPeptidoformData,
-    IdentifiedPeptidoformSource, IdentifiedPeptidoformVersion, KnownFileFormat, MetaData,
+    IdentifiedPeptidoformSource, IdentifiedPeptidoformVersion, KnownFileFormat, PSMMetaData,
     PeptidoformPresent, SpectrumId, SpectrumIds,
     common_parser::{Location, OptionalColumn},
 };
@@ -78,7 +78,7 @@ pub const BASIC: BasicCSVFormat = BasicCSVFormat {
     mode: OptionalColumn::Optional("mode"),
 };
 
-impl MetaData for BasicCSVData {
+impl PSMMetaData for BasicCSVData {
     fn compound_peptidoform_ion(&self) -> Option<Cow<'_, CompoundPeptidoformIon>> {
         Some(Cow::Borrowed(&self.sequence))
     }

@@ -8,7 +8,7 @@ use mzcore::{
 use mzcv::Term;
 
 /// Generalised access to meta data of identified peptidoforms
-pub trait MetaData {
+pub trait PSMMetaData {
     /// Get the compound peptidoform ion, if present
     fn compound_peptidoform_ion(&self) -> Option<Cow<'_, CompoundPeptidoformIon>>;
 
@@ -24,10 +24,10 @@ pub trait MetaData {
     /// Get the search engine that identified this PSM
     fn search_engine(&self) -> Option<Term>;
 
-    /// Get the confidence, a score between -1 and 1 describing the confidence in the entire PSM
+    /// Get the normalised confidence, a score between -1 and 1 describing the confidence in the entire PSM
     fn confidence(&self) -> Option<f64>;
 
-    /// Get the local confidence, a score between -1 and 1 for each amino acid in the peptide
+    /// Get the normalised local confidence, a score between -1 and 1 for each amino acid in the peptide
     fn local_confidence(&self) -> Option<Cow<'_, [f64]>>;
 
     /// Get the original confidence and the term identifying the type of original confidence
@@ -86,11 +86,11 @@ pub trait MetaData {
         })
     }
 
-    /// Get the protein names if this was database matched data
-    fn protein_names(&self) -> Option<Cow<'_, [FastaIdentifier<String>]>>;
-
     /// Get the protein id if this was database matched data
     fn protein_id(&self) -> Option<usize>;
+
+    /// Get the protein names if this was database matched data
+    fn protein_names(&self) -> Option<Cow<'_, [FastaIdentifier<String>]>>;
 
     /// Get the protein location if this was database matched data
     fn protein_location(&self) -> Option<Range<u16>>;
@@ -126,7 +126,7 @@ pub trait MetaData {
     }
 }
 
-impl<T: MetaData> MetaData for &T {
+impl<T: PSMMetaData> PSMMetaData for &T {
     fn compound_peptidoform_ion(&self) -> Option<Cow<'_, CompoundPeptidoformIon>> {
         (**self).compound_peptidoform_ion()
     }
@@ -230,7 +230,7 @@ impl<T: MetaData> MetaData for &T {
     }
 }
 
-impl<T: MetaData> MetaData for std::rc::Rc<T> {
+impl<T: PSMMetaData> PSMMetaData for std::rc::Rc<T> {
     fn compound_peptidoform_ion(&self) -> Option<Cow<'_, CompoundPeptidoformIon>> {
         (**self).compound_peptidoform_ion()
     }
@@ -334,7 +334,7 @@ impl<T: MetaData> MetaData for std::rc::Rc<T> {
     }
 }
 
-impl<T: MetaData> MetaData for std::sync::Arc<T> {
+impl<T: PSMMetaData> PSMMetaData for std::sync::Arc<T> {
     fn compound_peptidoform_ion(&self) -> Option<Cow<'_, CompoundPeptidoformIon>> {
         (**self).compound_peptidoform_ion()
     }

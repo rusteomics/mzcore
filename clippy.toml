@@ -12,7 +12,7 @@ doc-valid-idents = [
     "MaxNovo",
     "MaxQuant",
     "MSFragger",
-    "MZTab",
+    "MzTab",
     "NovoB",
     "OPair",
     "PeakApex",

@@ -21,7 +21,7 @@ pub enum KnownFileFormat {
     InstaNovo(InstaNovoVersion),
     MaxQuant(MaxQuantVersion),
     MetaMorpheus(MetaMorpheusVersion),
-    MZTab,
+    MzTab,
     NovoB(NovoBVersion),
     Novor(NovorVersion),
     Opair(OpairVersion),
@@ -56,7 +56,7 @@ impl KnownFileFormat {
             Self::Opair(_) => "OPair",
             Self::Peaks(_) => "PEAKS",
             Self::PepNet(_) => "PepNet",
-            Self::MZTab => "mzTab",
+            Self::MzTab => "mzTab",
             Self::PiHelixNovo(_) => "π-HelixNovo",
             Self::PiPrimeNovo(_) => "π-PrimeNovo",
             Self::PLGS(_) => "ProteinLynx Global Server",
@@ -81,7 +81,7 @@ impl KnownFileFormat {
             Self::InstaNovo(version) => Some(version.to_string()),
             Self::MaxQuant(version) => Some(version.to_string()),
             Self::MetaMorpheus(version) => Some(version.to_string()),
-            Self::MZTab => Some("1.0".to_string()),
+            Self::MzTab => Some("1.0".to_string()),
             Self::NovoB(version) => Some(version.to_string()),
             Self::Novor(version) => Some(version.to_string()),
             Self::Opair(version) => Some(version.to_string()),
@@ -123,7 +123,7 @@ impl From<KnownFileFormat> for FileFormat {
             KnownFileFormat::InstaNovo(version) => Self::InstaNovo(Some(version)),
             KnownFileFormat::MaxQuant(version) => Self::MaxQuant(Some(version)),
             KnownFileFormat::MetaMorpheus(version) => Self::MetaMorpheus(Some(version)),
-            KnownFileFormat::MZTab => Self::MZTab,
+            KnownFileFormat::MzTab => Self::MzTab,
             KnownFileFormat::NovoB(version) => Self::NovoB(Some(version)),
             KnownFileFormat::Novor(version) => Self::Novor(Some(version)),
             KnownFileFormat::Opair(version) => Self::Opair(Some(version)),
@@ -157,7 +157,7 @@ pub enum FileFormat {
     InstaNovo(Option<InstaNovoVersion>),
     MaxQuant(Option<MaxQuantVersion>),
     MetaMorpheus(Option<MetaMorpheusVersion>),
-    MZTab,
+    MzTab,
     NovoB(Option<NovoBVersion>),
     Novor(Option<NovorVersion>),
     Opair(Option<OpairVersion>),
@@ -219,7 +219,7 @@ impl FileFormat {
                 MetaMorpheusData::parse_file(path, ontologies, false, version)
                     .map(IdentifiedPeptidoformIter::into_box)
             }
-            Self::MZTab => MZTabData::parse_file(path, ontologies).map(|sequences| {
+            Self::MzTab => MzTabPSM::parse_file(path, ontologies).map(|sequences| {
                 let b: Box<
                     dyn Iterator<
                         Item = Result<

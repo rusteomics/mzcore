@@ -7,7 +7,7 @@ use std::{
 
 use crate::{
     FastaIdentifier, GeneralIdentifiedPeptidoforms, IdentifiedPeptidoform,
-    IdentifiedPeptidoformData, KnownFileFormat, MaybePeptidoform, MetaData, SpectrumId,
+    IdentifiedPeptidoformData, KnownFileFormat, MaybePeptidoform, PSMMetaData, SpectrumId,
     SpectrumIds,
 };
 use mzannotate::prelude::AnnotatedSpectrum;
@@ -22,7 +22,7 @@ use context_error::{BasicKind, BoxedError, FullErrorContent};
 
 use itertools::Itertools;
 
-impl MetaData for AnnotatedSpectrum {
+impl PSMMetaData for AnnotatedSpectrum {
     fn compound_peptidoform_ion(&self) -> Option<Cow<'_, CompoundPeptidoformIon>> {
         let cpi: CompoundPeptidoformIon = self
             .analytes

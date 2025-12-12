@@ -50,7 +50,7 @@ pub enum IdentifiedPeptidoformData {
     /// MSFragger metadata
     MSFragger(MSFraggerData),
     /// mzTab metadata
-    MZTab(MZTabData),
+    MzTab(MzTabPSM),
     /// NovoB metadata
     NovoB(NovoBData),
     /// Novor metadata
@@ -120,7 +120,7 @@ impl<PeptidoformAvailability> IdentifiedPeptidoform<Linear, PeptidoformAvailabil
             | IdentifiedPeptidoformData::DeepNovoFamily(DeepNovoFamilyData { peptide, .. }) => {
                 peptide.as_ref().map(AsRef::as_ref)
             }
-            IdentifiedPeptidoformData::MZTab(MZTabData { peptidoform, .. })
+            IdentifiedPeptidoformData::MzTab(MzTabPSM { peptidoform, .. })
             | IdentifiedPeptidoformData::MaxQuant(MaxQuantData {
                 peptide: peptidoform,
                 ..
@@ -203,7 +203,7 @@ impl<PeptidoformAvailability> IdentifiedPeptidoform<SimpleLinear, PeptidoformAva
             | IdentifiedPeptidoformData::DeepNovoFamily(DeepNovoFamilyData { peptide, .. }) => {
                 peptide.as_ref().map(AsRef::as_ref)
             }
-            IdentifiedPeptidoformData::MZTab(MZTabData { peptidoform, .. })
+            IdentifiedPeptidoformData::MzTab(MzTabPSM { peptidoform, .. })
             | IdentifiedPeptidoformData::MaxQuant(MaxQuantData {
                 peptide: peptidoform,
                 ..
@@ -284,7 +284,7 @@ impl<PeptidoformAvailability> IdentifiedPeptidoform<SemiAmbiguous, PeptidoformAv
             | IdentifiedPeptidoformData::DeepNovoFamily(DeepNovoFamilyData { peptide, .. }) => {
                 peptide.as_ref()
             }
-            IdentifiedPeptidoformData::MZTab(MZTabData { peptidoform, .. })
+            IdentifiedPeptidoformData::MzTab(MzTabPSM { peptidoform, .. })
             | IdentifiedPeptidoformData::MaxQuant(MaxQuantData {
                 peptide: peptidoform,
                 ..
@@ -369,7 +369,7 @@ impl<PeptidoformAvailability> IdentifiedPeptidoform<UnAmbiguous, PeptidoformAvai
             | IdentifiedPeptidoformData::DeepNovoFamily(DeepNovoFamilyData { peptide, .. }) => {
                 peptide.as_ref().and_then(|p| p.as_unambiguous())
             }
-            IdentifiedPeptidoformData::MZTab(MZTabData { peptidoform, .. })
+            IdentifiedPeptidoformData::MzTab(MzTabPSM { peptidoform, .. })
             | IdentifiedPeptidoformData::MaxQuant(MaxQuantData {
                 peptide: peptidoform,
                 ..
@@ -580,7 +580,7 @@ impl<Complexity, PeptidoformAvailability>
 /// and a list of functions to implement.
 macro_rules! impl_metadata {
     (formats: $format:tt; functions: {$($(#[cfg($cfg:expr)])?fn $function:ident(&self) -> $t:ty);+;}) => {
-        impl<Complexity, PeptidoformAvailability> MetaData for IdentifiedPeptidoform<Complexity, PeptidoformAvailability> {
+        impl<Complexity, PeptidoformAvailability> PSMMetaData for IdentifiedPeptidoform<Complexity, PeptidoformAvailability> {
             /// Reuse the cached normalised confidence
             fn confidence(&self) -> Option<f64> {
                 self.score
@@ -607,7 +607,7 @@ macro_rules! impl_metadata {
 }
 #[cfg(not(feature = "mzannotate"))]
 impl_metadata!(
-    formats: {BasicCSV,DeepNovoFamily,Fasta,MaxQuant,MetaMorpheus,InstaNovo,MZTab,NovoB,Novor,Opair,Peaks,PepNet,PiHelixNovo,PiPrimeNovo,PLGS,PLink,PowerNovo,Proteoscape,PUniFind,Sage,MSFragger,SpectrumSequenceList};
+    formats: {BasicCSV,DeepNovoFamily,Fasta,MaxQuant,MetaMorpheus,InstaNovo,MzTab,NovoB,Novor,Opair,Peaks,PepNet,PiHelixNovo,PiPrimeNovo,PLGS,PLink,PowerNovo,Proteoscape,PUniFind,Sage,MSFragger,SpectrumSequenceList};
     functions: {
         fn compound_peptidoform_ion(&self) -> Option<Cow<'_, CompoundPeptidoformIon>>;
         fn format(&self) -> KnownFileFormat;
@@ -637,7 +637,7 @@ impl_metadata!(
 
 #[cfg(feature = "mzannotate")]
 impl_metadata!(
-    formats: {BasicCSV,DeepNovoFamily,Fasta,MaxQuant,MetaMorpheus,InstaNovo,MZTab,NovoB,Novor,Opair,Peaks,PepNet,PiHelixNovo,PiPrimeNovo,PLGS,PLink,PowerNovo,Proteoscape,PUniFind,Sage,MSFragger,SpectrumSequenceList,AnnotatedSpectrum};
+    formats: {BasicCSV,DeepNovoFamily,Fasta,MaxQuant,MetaMorpheus,InstaNovo,MzTab,NovoB,Novor,Opair,Peaks,PepNet,PiHelixNovo,PiPrimeNovo,PLGS,PLink,PowerNovo,Proteoscape,PUniFind,Sage,MSFragger,SpectrumSequenceList,AnnotatedSpectrum};
     functions: {
         fn compound_peptidoform_ion(&self) -> Option<Cow<'_, CompoundPeptidoformIon>>;
         fn format(&self) -> KnownFileFormat;

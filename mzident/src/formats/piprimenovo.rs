@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use crate::{
     BoxedIdentifiedPeptideIter, FastaIdentifier, IdentifiedPeptidoform, IdentifiedPeptidoformData,
     IdentifiedPeptidoformSource, IdentifiedPeptidoformVersion, KnownFileFormat, MaybePeptidoform,
-    MetaData, SpectrumId, SpectrumIds, common_parser::Location,
+    PSMMetaData, SpectrumId, SpectrumIds, common_parser::Location,
 };
 use mzcore::{
     csv::{CsvLine, parse_csv},
@@ -79,7 +79,7 @@ impl IdentifiedPeptidoformVersion<PiPrimeNovoFormat> for PiPrimeNovoVersion {
     }
 }
 
-impl MetaData for PiPrimeNovoData {
+impl PSMMetaData for PiPrimeNovoData {
     fn compound_peptidoform_ion(&self) -> Option<Cow<'_, CompoundPeptidoformIon>> {
         self.peptide.as_ref().map(|p| Cow::Owned(p.clone().into()))
     }

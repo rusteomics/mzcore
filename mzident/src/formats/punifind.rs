@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use crate::{
     BoxedIdentifiedPeptideIter, FastaIdentifier, IdentifiedPeptidoform, IdentifiedPeptidoformData,
     IdentifiedPeptidoformSource, IdentifiedPeptidoformVersion, KnownFileFormat, MaybePeptidoform,
-    MetaData, SpectrumId, SpectrumIds,
+    PSMMetaData, SpectrumId, SpectrumIds,
     common_parser::{Location, OptionalLocation},
 };
 use mzcore::{
@@ -131,7 +131,7 @@ impl IdentifiedPeptidoformVersion<PUniFindFormat> for PUniFindVersion {
     }
 }
 
-impl MetaData for PUniFindData {
+impl PSMMetaData for PUniFindData {
     fn compound_peptidoform_ion(&self) -> Option<Cow<'_, CompoundPeptidoformIon>> {
         Some(Cow::Owned(self.peptidoform.clone().into()))
     }

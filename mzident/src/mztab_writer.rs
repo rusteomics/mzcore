@@ -1,4 +1,11 @@
-use crate::{MetaData, Protein, SpectrumId, SpectrumIds};
+//! Write mzTab files.
+//!
+//! The easiest method to use is [`MzTabWriter::write`] which just needs the lists of proteins and
+//! PSMs and writes the file in one go. Additionally, it is possible to write the file piecemeal
+//! which allows more complex patterns with less memory overhead but needs some more setup on the
+//! library users side.
+
+use crate::{PSMMetaData, ProteinMetaData, SpectrumId, SpectrumIds};
 use itertools::Itertools;
 use mzcore::{
     chemistry::Chemical,
@@ -7,13 +14,14 @@ use mzcore::{
     sequence::{FlankingSequence, IsAminoAcid, Modification, SimpleModificationInner},
 };
 use mzcv::Term;
-use std::{io::Write, marker::PhantomData, path::PathBuf, sync::Arc};
+use std::{io::Write, marker::PhantomData, path::PathBuf};
 
 /// Write identified peptidoform ions as an mzTab file. It will always output 'Identification' type files in 'Summary' mode but does a best effort to correctly store all info.
 #[derive(Debug)]
 pub struct MzTabWriter<Writer, State> {
     writer: Writer,
     ms_runs: Vec<MSRun>,
+    protein_search_engines: Vec<Term>,
     psm_search_engines: Vec<Term>,
     state: PhantomData<State>,
 }
@@ -81,10 +89,10 @@ impl<W: Write> MzTabWriter<W, Initial> {
     /// An [`MSRun`] has to be given for all PSMs that are [`SpectrumIds::FileNotKnown`] to still point to the correct location.
     /// # Errors
     /// If writing to the underlying writer failed.
-    pub fn write<PSM: MetaData>(
+    pub fn write<PSM: PSMMetaData, Protein: ProteinMetaData>(
         writer: W,
         header: &[(String, String)],
-        proteins: &[(String, Arc<Protein>)],
+        proteins: &[Protein],
         psms: &[PSM],
         unknown_file_run: MSRun,
     ) -> Result<(), std::io::Error> {
@@ -111,12 +119,18 @@ impl<W: Write> MzTabWriter<W, Initial> {
         if unknown {
             ms_runs.insert(0, unknown_file_run);
         }
-        let search_engines = psms
+        let protein_search_engines = proteins
+            .iter()
+            .flat_map(|p| p.search_engine())
+            .filter_map(|p| p.1.as_ref().map(|(_, t)| t.term.clone()))
+            .unique()
+            .collect::<Vec<_>>();
+        let psm_search_engines = psms
             .iter()
             .filter_map(|p| p.original_confidence().map(|(_, t)| t))
             .unique()
             .collect::<Vec<_>>();
-        let writer = Self::new(writer, ms_runs, search_engines);
+        let writer = Self::new(writer, ms_runs, protein_search_engines, psm_search_engines);
         let writer = writer.write_header(header)?;
         match if proteins.is_empty() {
             writer.write_psms(psms)
@@ -139,11 +153,17 @@ impl<W: Write> MzTabWriter<W, Initial> {
     }
 
     /// Create a new mzTab file writer that will output to the given writer and with the given MS runs.
-    pub const fn new(writer: W, ms_runs: Vec<MSRun>, search_engines: Vec<Term>) -> Self {
+    pub const fn new(
+        writer: W,
+        ms_runs: Vec<MSRun>,
+        protein_search_engines: Vec<Term>,
+        psm_search_engines: Vec<Term>,
+    ) -> Self {
         Self {
             writer,
             ms_runs,
-            psm_search_engines: search_engines,
+            protein_search_engines,
+            psm_search_engines,
             state: PhantomData,
         }
     }
@@ -209,6 +229,7 @@ impl<W: Write> MzTabWriter<W, Initial> {
         Ok(MzTabWriter {
             writer: self.writer,
             ms_runs: self.ms_runs,
+            protein_search_engines: self.protein_search_engines,
             psm_search_engines: self.psm_search_engines,
             state: PhantomData,
         })
@@ -219,9 +240,9 @@ impl<W: Write, State: CanWriteProteins> MzTabWriter<W, State> {
     /// Write the proteins. This can only be done if the header is already written or if some proteins where written just before.
     /// # Errors
     /// If the underlying writer fails.
-    pub fn write_proteins(
+    pub fn write_proteins<Protein: ProteinMetaData>(
         mut self,
-        proteins: &[(String, Arc<Protein>)],
+        proteins: &[Protein],
     ) -> Result<MzTabWriter<W, ProteinsWritten>, std::io::Error> {
         if !State::SECTION_HEADER_PRESENT {
             writeln!(
@@ -229,40 +250,70 @@ impl<W: Write, State: CanWriteProteins> MzTabWriter<W, State> {
                 "PRH\taccession\tdescription\ttaxid\tspecies\tdatabase\tdatabase_version\tsearch_engine\tambiguity_members\tmodifications\tprotein_coverage\tgo_terms\treliability\turi"
             )?;
         }
-        for (accession, protein) in proteins {
+        for protein in proteins {
             // TODO: think about how to handle dynamic numbers of search engine scores
+            // TODO: think about how to handle mod locations
             writeln!(
                 self.writer,
-                "PRT\t{accession}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}",
-                protein.description,
-                protein.taxid,
-                protein.species,
-                protein.database,
-                protein.database_version,
-                protein.search_engine.iter().map(|(term, _)| term).join("|"),
-                protein.ambiguity_members.join(","),
-                protein.modifications,
+                "PRT\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}",
+                protein.id().accession(),
+                protein.description().map_or("null", |t| t),
                 protein
-                    .coverage
-                    .map_or_else(|| "null".to_string(), |c| c.to_string()),
+                    .species()
+                    .map_or_else(|| "null".to_string(), |t| t.accession.to_string()),
+                protein.species_name().map_or("null", |t| t),
+                protein.database().map_or("null", |t| t.0),
+                protein.database().and_then(|d| d.1).map_or("null", |t| t),
                 protein
-                    .go_terms
+                    .search_engine()
                     .iter()
-                    .map(|id| format!("GO:{id}"))
+                    .map(|(term, _)| term)
                     .join("|"),
+                protein.ambiguity_members().join(","),
                 protein
-                    .reliability
+                    .modifications()
+                    .iter()
+                    .map(|(locations, m)| if locations.is_empty() {
+                        make_mztab_mod(m)
+                    } else {
+                        format!(
+                            "{}-{}",
+                            locations
+                                .iter()
+                                .map(|(l, score)| {
+                                    let i = match l {
+                                        SequencePosition::NTerm => 0,
+                                        SequencePosition::Index(i) => 1 + i,
+                                        SequencePosition::CTerm => usize::MAX,
+                                    };
+                                    if let Some(score) = score {
+                                        format!(
+                                            "{i}[MS, MS:1001876, modification probability, {score}]"
+                                        )
+                                    } else {
+                                        i.to_string()
+                                    }
+                                })
+                                .join("|"),
+                            make_mztab_mod(m)
+                        )
+                    })
+                    .join(","),
+                protein
+                    .coverage()
                     .map_or_else(|| "null".to_string(), |c| c.to_string()),
+                protein.gene_ontology().iter().join("|"),
                 protein
-                    .uri
-                    .as_ref()
-                    .map_or_else(|| "null".to_string(), ToString::to_string),
+                    .reliability()
+                    .map_or_else(|| "null".to_string(), |c| c.to_string()),
+                protein.uri().map_or("null", |t| t),
             )?;
         }
         writeln!(self.writer)?;
         Ok(MzTabWriter {
             writer: self.writer,
             ms_runs: self.ms_runs,
+            protein_search_engines: self.protein_search_engines,
             psm_search_engines: self.psm_search_engines,
             state: PhantomData,
         })
@@ -330,7 +381,7 @@ impl<W: Write, State: CanWritePSMs> MzTabWriter<W, State> {
     /// * If writing to the underlying writer failed.
     /// * If writing to a string for formatting failed (not expected as formatting is seen as infallible see [`std::fmt::Error`]).
     /// * If a spectrum is referenced that is not defined as a [`MSRun`].
-    pub fn write_psms<PSM: MetaData>(
+    pub fn write_psms<PSM: PSMMetaData>(
         mut self,
         psms: &[PSM],
     ) -> Result<MzTabWriter<W, PSMsWritten>, MzTabWriteError> {
@@ -346,7 +397,7 @@ impl<W: Write, State: CanWritePSMs> MzTabWriter<W, State> {
         }
         let mut highest_id = psms
             .iter()
-            .filter_map(MetaData::numerical_id)
+            .filter_map(PSMMetaData::numerical_id)
             .max()
             .unwrap_or_default();
         for psm in psms {
@@ -627,6 +678,7 @@ impl<W: Write, State: CanWritePSMs> MzTabWriter<W, State> {
         Ok(MzTabWriter {
             writer: self.writer,
             ms_runs: self.ms_runs,
+            protein_search_engines: self.protein_search_engines,
             psm_search_engines: self.psm_search_engines,
             state: PhantomData,
         })
@@ -639,6 +691,7 @@ mod tests {
     use std::io::BufWriter;
 
     use crate::{
+        MzTabProtein,
         mztab_writer::{MSRun, MzTabWriter},
         open_identified_peptidoforms_file,
     };
@@ -666,7 +719,7 @@ mod tests {
                 let new_path = std::path::Path::new("src/test_files_out")
                     .join(entry.path().with_extension("mzTab").file_name().unwrap());
 
-                MzTabWriter::write(
+                MzTabWriter::write::<_, MzTabProtein>(
                     BufWriter::new(std::fs::File::create(&new_path).unwrap()),
                     &[],
                     &[],
@@ -678,7 +731,7 @@ mod tests {
 
                 // Check that the new file does not produce any errors
                 for psm in
-                    crate::MZTabData::parse_file(&new_path, &mzcore::ontology::STATIC_ONTOLOGIES)
+                    crate::MzTabPSM::parse_file(&new_path, &mzcore::ontology::STATIC_ONTOLOGIES)
                         .unwrap()
                 {
                     psm.unwrap();

@@ -10,7 +10,7 @@ use clap::Parser;
 use context_error::{BasicKind, BoxedError, Context, CreateError, combine_error};
 use mzcore::ontology::Ontologies;
 use mzident::{
-    FastaIdentifier, MetaData, SpectrumId, SpectrumIds, open_identified_peptidoforms_file,
+    FastaIdentifier, PSMMetaData, SpectrumId, SpectrumIds, open_identified_peptidoforms_file,
 };
 
 /// The command line interface arguments
@@ -62,7 +62,7 @@ fn main() {
     match extension.as_deref() {
         Some("csv") => save_csv(out_file, &psms, &args.in_path, args.raw_file.as_deref()),
         Some("mztab") => {
-            mzident::mztab_writer::MzTabWriter::write(
+            mzident::mztab_writer::MzTabWriter::write::<_, mzident::MzTabProtein>(
                 out_file,
                 &[],
                 &[],
@@ -78,7 +78,7 @@ fn main() {
     }
 }
 
-fn save_csv<PSM: MetaData>(
+fn save_csv<PSM: PSMMetaData>(
     mut out_file: BufWriter<File>,
     psms: &[PSM],
     in_path: &std::path::Path,

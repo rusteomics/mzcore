@@ -10,7 +10,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     BoxedIdentifiedPeptideIter, FastaIdentifier, IdentifiedPeptidoform, IdentifiedPeptidoformData,
-    IdentifiedPeptidoformSource, IdentifiedPeptidoformVersion, KnownFileFormat, MetaData,
+    IdentifiedPeptidoformSource, IdentifiedPeptidoformVersion, KnownFileFormat, PSMMetaData,
     PeptidoformPresent, SpectrumId, SpectrumIds, common_parser::Location,
 };
 use mzcore::{
@@ -148,7 +148,7 @@ impl IdentifiedPeptidoformVersion<SageFormat> for SageVersion {
     }
 }
 
-impl MetaData for SageData {
+impl PSMMetaData for SageData {
     fn compound_peptidoform_ion(&self) -> Option<Cow<'_, CompoundPeptidoformIon>> {
         Some(Cow::Owned(self.peptide.clone().into()))
     }

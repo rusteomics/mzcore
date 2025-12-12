@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 use crate::{
     BoxedIdentifiedPeptideIter, FastaIdentifier, IdentifiedPeptidoform, IdentifiedPeptidoformData,
     IdentifiedPeptidoformSource, IdentifiedPeptidoformVersion, KnownFileFormat, MaybePeptidoform,
-    MetaData, PeaksFamilyId, SpectrumId, SpectrumIds,
+    PSMMetaData, PeaksFamilyId, SpectrumId, SpectrumIds,
     common_parser::{Location, OptionalColumn, OptionalLocation},
 };
 use mzcore::{
@@ -163,7 +163,7 @@ impl IdentifiedPeptidoformVersion<DeepNovoFamilyFormat> for DeepNovoFamilyVersio
     }
 }
 
-impl MetaData for DeepNovoFamilyData {
+impl PSMMetaData for DeepNovoFamilyData {
     fn compound_peptidoform_ion(&self) -> Option<Cow<'_, CompoundPeptidoformIon>> {
         self.peptide.as_ref().map(|p| Cow::Owned(p.clone().into()))
     }

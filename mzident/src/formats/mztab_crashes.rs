@@ -3,7 +3,7 @@ macro_rules! test {
         #[test]
         fn $name() {
             let mut peptides = 0;
-            for read in crate::MZTabData::parse_reader(
+            for read in crate::MzTabPSM::parse_reader(
                 $case.as_bytes(),
                 &mzcore::ontology::STATIC_ONTOLOGIES,
             ) {
@@ -76,4 +76,3 @@ PSH	sequence	PSM_ID	accession	unique	database	database_version	search_engine	sea
 PSM	QQVLDR	1661	223462890	null	NCBInr_2010_10	nr_101020.fasta	[MS, MS:1001207, Mascot, ]	37.76	8-MOD:01499	null	1	902.482117	902.518133	ms_run[1]:spectrum=1661	R	Y	20	25",
     invalid_mod_location
 );
-

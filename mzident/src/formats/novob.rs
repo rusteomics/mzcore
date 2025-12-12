@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use crate::{
     BoxedIdentifiedPeptideIter, FastaIdentifier, IdentifiedPeptidoform, IdentifiedPeptidoformData,
     IdentifiedPeptidoformSource, IdentifiedPeptidoformVersion, KnownFileFormat, MaybePeptidoform,
-    MetaData, SpectrumId, SpectrumIds, common_parser::Location,
+    PSMMetaData, SpectrumId, SpectrumIds, common_parser::Location,
 };
 use mzcore::{
     csv::{CsvLine, parse_csv},
@@ -159,7 +159,7 @@ impl IdentifiedPeptidoformVersion<NovoBFormat> for NovoBVersion {
     }
 }
 
-impl MetaData for NovoBData {
+impl PSMMetaData for NovoBData {
     fn compound_peptidoform_ion(&self) -> Option<Cow<'_, CompoundPeptidoformIon>> {
         if self.score_forward >= self.score_reverse {
             self.peptide_forward.as_ref()

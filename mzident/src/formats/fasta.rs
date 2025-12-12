@@ -13,7 +13,7 @@ use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    IdentifiedPeptidoform, IdentifiedPeptidoformData, KnownFileFormat, MetaData,
+    IdentifiedPeptidoform, IdentifiedPeptidoformData, KnownFileFormat, PSMMetaData,
     PeptidoformPresent, SpectrumIds, helper_functions::explain_number_error,
 };
 use mzcore::{
@@ -862,7 +862,7 @@ fn parse_header() {
     assert_eq!(header.annotations()[0], (Annotation::Conserved, 12));
 }
 
-impl MetaData for FastaData {
+impl PSMMetaData for FastaData {
     fn compound_peptidoform_ion(&self) -> Option<Cow<'_, CompoundPeptidoformIon>> {
         Some(Cow::Owned(self.peptide().clone().into()))
     }
