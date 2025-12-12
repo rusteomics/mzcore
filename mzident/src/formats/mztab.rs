@@ -154,7 +154,7 @@ impl MzTabPSM {
                                             &line,
                                             m_range,
                                             ontologies,
-                                            line_index as u32,
+                                            line_index,
                                         ) {
                                             Ok(m) => {
                                                 if !modifications.contains(&m) {
@@ -170,7 +170,7 @@ impl MzTabPSM {
                                         "Invalid mzTab modification",
                                         "A modification has to be enclosed by square brackets",
                                         Context::line_range(
-                                            Some(line_index as u32),
+                                            Some(line_index),
                                             &line,
                                             fields[2].clone(),
                                         )
@@ -198,7 +198,7 @@ impl MzTabPSM {
                                                 explain_number_error(&err)
                                             ),
                                             Context::line_range(
-                                                Some(line_index as u32),
+                                                Some(line_index),
                                                 &line,
                                                 fields[1].clone(),
                                             )
@@ -206,7 +206,7 @@ impl MzTabPSM {
                                         )
                                     }) {
                                         Ok(0) => return Some(Err(BoxedError::new(BasicKind::Error, "Invalid mzTab mz_run identifier", "A ms_run identifier uses 1 based indexing and so cannot be 0.", Context::line_range(
-                                                Some(line_index as u32),
+                                                Some(line_index),
                                                 &line,
                                                 fields[1].clone(),
                                             )
@@ -235,7 +235,7 @@ impl MzTabPSM {
                                                 explain_number_error(&err)
                                             ),
                                             Context::line_range(
-                                                Some(line_index as u32),
+                                                Some(line_index),
                                                 &line,
                                                 fields[1].clone(),
                                             )
@@ -243,7 +243,7 @@ impl MzTabPSM {
                                         )
                                     }) {
                                         Ok(0) => return Some(Err(BoxedError::new(BasicKind::Error, "Invalid mzTab mz_run identifier", "A ms_run identifier uses 1 based indexing and so cannot be 0.", Context::line_range(
-                                                Some(line_index as u32),
+                                                Some(line_index),
                                                 &line,
                                                 fields[1].clone(),
                                             )
@@ -276,7 +276,7 @@ impl MzTabPSM {
                                                 explain_number_error(&err)
                                             ),
                                             Context::line_range(
-                                                Some(line_index as u32),
+                                                Some(line_index),
                                                 &line,
                                                 fields[1].clone(),
                                             )
@@ -284,7 +284,7 @@ impl MzTabPSM {
                                         )
                                     }) {
                                         Ok(0) => return Some(Err(BoxedError::new(BasicKind::Error, "Invalid mzTab mz_run identifier", "A ms_run identifier uses 1 based indexing and so cannot be 0.", Context::line_range(
-                                                Some(line_index as u32),
+                                                Some(line_index),
                                                 &line,
                                                 fields[1].clone(),
                                             )
@@ -311,7 +311,7 @@ impl MzTabPSM {
                             BasicKind::Error,
                             "Invalid MTD line",
                             "MTD lines should contain three columns (the tag, key, and value)",
-                            Context::full_line(line_index as u32, line),
+                            Context::full_line(line_index, line),
                         )))
                     }
                 }
@@ -337,7 +337,7 @@ impl MzTabPSM {
                                 BasicKind::Error,
                                 "Invalid protein table",
                                 format!("The required column '{required}' is not present"),
-                                Context::full_line(line_index as u32, line),
+                                Context::full_line(line_index, line),
                             )));
                         }
                     }
@@ -389,7 +389,7 @@ impl MzTabPSM {
                                 BasicKind::Error,
                                 "Invalid peptide table",
                                 format!("The required column '{required}' is not present"),
-                                Context::full_line(line_index as u32, line),
+                                Context::full_line(line_index, line),
                             )));
                         }
                     }
@@ -436,9 +436,7 @@ impl MzTabPSM {
             } else {
                 split_with_brackets(line.line, mod_range, b',', b'[', b']')
                     .into_iter()
-                    .map(|field| {
-                        parse_modification(line.line, field, ontologies, line.line_index as u32)
-                    })
+                    .map(|field| parse_modification(line.line, field, ontologies, line.line_index))
                     .collect::<Result<Vec<_>, BoxedError<'_, BasicKind>>>()?
             };
 
@@ -471,7 +469,7 @@ impl MzTabPSM {
                                             BasicKind::Error,
                                             "Invalid modification position",
                                             format!("Index {location} falls outside the peptide of length {}", peptide.len()),
-                                            Context::default().line_index(line.line_index as u32).lines(0, line.line).add_highlight((0, range.clone()))))?,
+                                            Context::default().line_index(line.line_index).lines(0, line.line).add_highlight((0, range.clone()))))?,
                                     modification,
                                 );
                             }
@@ -491,7 +489,7 @@ impl MzTabPSM {
                                             BasicKind::Error,
                                             "Invalid modification position",
                                             format!("Index {index} falls outside the peptide of length {}", peptide.len()),
-                                            Context::default().line_index(line.line_index as u32).lines(0, line.line).add_highlight((0, range.clone()))))?, score))
+                                            Context::default().line_index(line.line_index).lines(0, line.line).add_highlight((0, range.clone()))))?, score))
                                     })
                                     .collect::<Result<Vec<_>, BoxedError<'a, BasicKind>>>()?;
                                 let _possible = peptide.add_ambiguous_modification(
@@ -526,7 +524,7 @@ impl MzTabPSM {
                         "Invalid mzTab PSM_ID",
                         format!("The PSM_ID {}", explain_number_error(&err)),
                         Context::line_range(
-                            Some(line.line_index as u32),
+                            Some(line.line_index),
                             line.line,
                             line.optional_column("psm_id").unwrap().1,
                         ),
@@ -572,7 +570,7 @@ impl MzTabPSM {
                                         "The search engine score can not be parsed as f64: {err}"
                                     ),
                                                 Context::line_range(
-                                                    Some(line.line_index as u32),
+                                                    Some(line.line_index),
                                                     line.line,
                                                     line.optional_column(&format!(
                                                         "search_engine_score[{}]",
@@ -590,13 +588,13 @@ impl MzTabPSM {
                                     CVTerm::from_str(s)
                                         .map_err(|e| {
                                             e.replace_context(Context::line_range(
-                                                Some(line.line_index as u32),
+                                                Some(line.line_index),
                                                 line.line,
                                                 range.clone(),
                                             ))
                                         })
                                         .and_then(|engine| Ok((engine, score, search_engine_score_types.get(i).ok_or_else(|| BoxedError::new(BasicKind::Error,"Missing search engine score type", "All search engines require a defined search type", Context::line_range(
-                                            Some(line.line_index as u32),
+                                            Some(line.line_index),
                                             line.line,
                                             range.clone(),
                                         )))?.clone())))
@@ -616,7 +614,7 @@ impl MzTabPSM {
                         BasicKind::Error,
                         "Invalid PSM reliability",
                         format!("A reliability should be 1, 2, 3, or null, '{v}' is invalid"),
-                        Context::line_range(Some(line.line_index as u32), line.line, range),
+                        Context::line_range(Some(line.line_index), line.line, range),
                     )),
                 })
                 .transpose()?
@@ -631,7 +629,7 @@ impl MzTabPSM {
                                     BasicKind::Error,
                                     "Invalid mzTab retention time",
                                     format!("The retention time can not be parsed as f64: {err}"),
-                                    Context::line_range(Some(line.line_index as u32), line.line, r),
+                                    Context::line_range(Some(line.line_index), line.line, r),
                                 )
                             })
                             .map(|v| Time::new::<mzcore::system::s>(v))
@@ -654,7 +652,7 @@ impl MzTabPSM {
                                 BasicKind::Error,
                                 "Invalid mzTab charge",
                                 format!("The charge {}", explain_number_error(&err)),
-                                Context::line_range(Some(line.line_index as u32), line.line, range),
+                                Context::line_range(Some(line.line_index), line.line, range),
                             )
                         })
                         .map(|v| Charge::new::<mzcore::system::e>(v))?
@@ -670,7 +668,7 @@ impl MzTabPSM {
                                     BasicKind::Error,
                                     "Invalid mzTab experimental mz",
                                     format!("The experimental mz can not be parsed as f64: {err}"),
-                                    Context::line_range(Some(line.line_index as u32), line.line, r),
+                                    Context::line_range(Some(line.line_index), line.line, r),
                                 )
                             })
                             .map(|v| MassOverCharge::new::<mzcore::system::thomson>(v))
@@ -693,7 +691,7 @@ impl MzTabPSM {
                     BoxedError::new(BasicKind::Error,
                         "Invalid mzTab spectra_ref",
                         "The spectra_ref should be 'ms_run[x]:id'",
-                        Context::line_range(Some(line.line_index as u32), line.line, range.clone()),
+                        Context::line_range(Some(line.line_index), line.line, range.clone()),
                     )
                 })
                 .and_then(|(run, scan_id)| {
@@ -706,7 +704,7 @@ impl MzTabPSM {
                                 "Invalid mzTab ms_run",
                                 format!("The ms_run identifier {}", explain_number_error(&err)),
                                 Context::line_range(
-                                    Some(line.line_index as u32),
+                                    Some(line.line_index),
                                     line.line,
                                     range.clone(),
                                 ),
@@ -717,18 +715,18 @@ impl MzTabPSM {
                                 "Invalid mzTab ms_run",
                                 "A ms_run identifier uses 1 based indexing and so cannot be 0.",
                                 Context::line_range(
-                                    Some(line.line_index as u32),
+                                    Some(line.line_index),
                                     line.line,
                                     range.clone(),
                                 ),
                             ))
                         } else {Ok(v-1)})?;
                     let path = raw_files.get(index).ok_or_else(|| BoxedError::new(BasicKind::Error,"Missing raw file definition", "All raw files should be defined in the MTD section before being used in the PSM Section", Context::line_range(
-                        Some(line.line_index as u32),
+                        Some(line.line_index),
                         line.line,
                         range.clone(),
                     )))?.0.as_ref().ok_or_else(|| BoxedError::new(BasicKind::Error,"Missing raw file path definition", "The path is not defined for this raw file", Context::line_range(
-                        Some(line.line_index as u32),
+                        Some(line.line_index),
                         line.line,
                         range.clone(),
                     )))?;
@@ -739,7 +737,7 @@ impl MzTabPSM {
                                 "Invalid mzTab spectra_ref scan number",
                                 format!("The spectra_ref scan number {}", explain_number_error(&err)),
                                 Context::line_range(
-                                    Some(line.line_index as u32),
+                                    Some(line.line_index),
                                     line.line,
                                     range.clone(),
                                 ),
@@ -750,7 +748,7 @@ impl MzTabPSM {
                                 "Invalid mzTab spectra_ref index",
                                 format!("The spectra_ref index {}", explain_number_error(&err)),
                                 Context::line_range(
-                                    Some(line.line_index as u32),
+                                    Some(line.line_index),
                                     line.line,
                                     range.clone(),
                                 ),
@@ -797,7 +795,7 @@ impl MzTabPSM {
                                 BasicKind::Error,
                                 "Invalid preceding amino acid",
                                 "This is not a valid amino acid code",
-                                Context::line_range(Some(line.line_index as u32), line.line, pre.1),
+                                Context::line_range(Some(line.line_index), line.line, pre.1),
                             )
                         })?)
                     }
@@ -818,11 +816,7 @@ impl MzTabPSM {
                                 BasicKind::Error,
                                 "Invalid following amino acid",
                                 "This is not a valid amino acid code",
-                                Context::line_range(
-                                    Some(line.line_index as u32),
-                                    line.line,
-                                    post.1,
-                                ),
+                                Context::line_range(Some(line.line_index), line.line, post.1),
                             )
                         })?)
                     }
@@ -844,7 +838,7 @@ impl MzTabPSM {
                                 BasicKind::Error,
                                 "Invalid mzTab start",
                                 format!("The start {}", explain_number_error(&err)),
-                                Context::line_range(Some(line.line_index as u32), line.line, r),
+                                Context::line_range(Some(line.line_index), line.line, r),
                             )
                         })
                     })
@@ -860,11 +854,7 @@ impl MzTabPSM {
                                         BasicKind::Error,
                                         "Invalid mzTab end",
                                         format!("The end {}", explain_number_error(&err)),
-                                        Context::line_range(
-                                            Some(line.line_index as u32),
-                                            line.line,
-                                            r,
-                                        ),
+                                        Context::line_range(Some(line.line_index), line.line, r),
                                     )
                                 })
                             })
@@ -884,7 +874,7 @@ impl MzTabPSM {
                                     "Invalid mzTab local confidence",
                                     format!("The local confidence can not be parsed: {err}"),
                                     Context::line_range(
-                                        Some(line.line_index as u32),
+                                        Some(line.line_index),
                                         line.line,
                                         r.clone(),
                                     ),
@@ -930,7 +920,7 @@ impl MzTabPSM {
                         BasicKind::Error,
                         "Invalid local confidence", 
                         format!("The number of elements in the local confidence ({}) does not match the number of amino acids ({pep_len}).", lc.len()), 
-                        Context::default().line_index(line.line_index as u32).lines(0, line.line)))
+                        Context::default().line_index(line.line_index).lines(0, line.line)))
                 }
             } else if lc.len() == pep_len {
                 Ok(lc.to_vec())
@@ -939,7 +929,7 @@ impl MzTabPSM {
                     BasicKind::Error,
                     "Invalid local confidence", 
                     format!("The number of elements in the local confidence ({}) does not match the number of amino acids ({pep_len}).", lc.len()), 
-                    Context::default().line_index(line.line_index as u32).lines(0, line.line)))
+                    Context::default().line_index(line.line_index).lines(0, line.line)))
             }
         }).transpose()?;
 
@@ -1000,7 +990,7 @@ impl MzTabProtein {
                             BasicKind::Error,
                             "Invalid PRT Line",
                             format!("The taxid number {}", explain_number_error(&e)),
-                            Context::line_range(Some(line.line_index as u32), line.line, location),
+                            Context::line_range(Some(line.line_index), line.line, location),
                         )
                     })
                 })
@@ -1029,8 +1019,7 @@ impl MzTabProtein {
                         BasicKind::Error,
                         "Invalid PRT reliability",
                         format!("A reliability should be 1, 2, 3, or null, '{v}' is invalid"),
-                        Context::line_range(Some(line.line_index as u32), line.line, range)
-                            .to_owned(),
+                        Context::line_range(Some(line.line_index), line.line, range).to_owned(),
                     )),
                 })
                 .transpose()?
@@ -1044,7 +1033,31 @@ impl MzTabProtein {
                 .optional_column("uri")
                 .filter(|(v, _)| !v.eq_ignore_ascii_case("null"))
                 .map(|(v, _)| v.to_string()),
-            go_terms: Vec::new(), // TODO: actually parse
+            go_terms: line
+                .optional_column("go_terms")
+                .map(|(v, l)| {
+                    let mut offset = 0;
+                    v.split('|')
+                        .map(|s| {
+                            let r = s.parse::<Curie>().map_err(|e| {
+                                BoxedError::new(
+                                    BasicKind::Error,
+                                    "Invalid CV accession",
+                                    e.description(),
+                                    Context::none()
+                                        .line_index(line.line_index)
+                                        .lines(0, line.line)
+                                        .add_highlight((0, l.start + offset, s.len()))
+                                        .to_owned(),
+                                )
+                            });
+                            offset += s.len() + 1;
+                            r
+                        })
+                        .collect::<Result<Vec<_>, _>>()
+                })
+                .transpose()?
+                .unwrap_or_default(),
             coverage: line
                 .optional_column("protein_coverage")
                 .map(|(v, location)| {
@@ -1053,7 +1066,7 @@ impl MzTabProtein {
                             BasicKind::Error,
                             "Invalid PRT Line",
                             format!("The protein coverage {e}"),
-                            Context::line_range(Some(line.line_index as u32), line.line, location)
+                            Context::line_range(Some(line.line_index), line.line, location)
                                 .to_owned(),
                         )
                     })
@@ -1360,7 +1373,7 @@ fn parse_single_modification<'a>(
 
 #[derive(Clone, Copy, Debug)]
 struct PSMLine<'a> {
-    line_index: usize,
+    line_index: u32,
     header: &'a [String],
     pub line: &'a str,
     fields: &'a [Range<usize>],
@@ -1371,7 +1384,7 @@ impl<'a> PSMLine<'a> {
     /// # Errors
     /// When there is no header or the line has a different number of columns
     fn new(
-        line_index: usize,
+        line_index: u32,
         header: Option<&'a [String]>,
         line: &'a str,
         fields: &'a [Range<usize>],
@@ -1381,7 +1394,7 @@ impl<'a> PSMLine<'a> {
                 BasicKind::Error,
                 "Missing PSH line",
                 "The PSH peptide header line should precede any PSM line",
-                Context::full_line(line_index as u32, line),
+                Context::full_line(line_index, line),
             )
         })?;
         if header.len() == fields.len() {
@@ -1400,7 +1413,7 @@ impl<'a> PSMLine<'a> {
                     header.len(),
                     fields.len(),
                 ),
-                Context::full_line(line_index as u32, line),
+                Context::full_line(line_index, line),
             ))
         }
     }
@@ -1424,7 +1437,7 @@ impl<'a> PSMLine<'a> {
                 BasicKind::Error,
                 "Missing column",
                 format!("The column '{column}' is required but not present"),
-                Context::full_line(self.line_index as u32, self.line),
+                Context::full_line(self.line_index, self.line),
             )
         })
     }
@@ -1436,7 +1449,7 @@ impl std::fmt::Display for PSMLine<'_> {
             f,
             "{}",
             Context::default()
-                .line_index(self.line_index as u32)
+                .line_index(self.line_index)
                 .lines(0, self.line)
                 .add_highlights(self.fields.iter().map(|r| (0, r.clone())))
         )
@@ -1564,23 +1577,7 @@ impl FromStr for CVTerm {
                     BoxedError::new(
                         BasicKind::Error,
                         "Invalid CV accession",
-                        match e {
-                            CURIEParsingError::UnknownControlledVocabulary => {
-                                "Unknown CV"
-                            }
-                            CURIEParsingError::MissingNamespaceSeparator => {
-                                "The namespace separator ':' is missing"
-                            }
-                            CURIEParsingError::AccessionParsingError(AccessionCodeParseError::Empty) => {
-                                "Could not parse accession because it is empty"
-                            }
-                            CURIEParsingError::AccessionParsingError(AccessionCodeParseError::TooLong(_)) => {
-                                "Could not parse accession because it is textual and too long, it can only be 7 characters"
-                            }
-                            CURIEParsingError::AccessionParsingError(AccessionCodeParseError::InvalidCharacters(_)) => {
-                                "Could not parse accession because it contained invalid characters, only alphanumeric characters are allowed"
-                            }
-                        },
+                        e.description(),
                         Context::none().lines(0, value).to_owned(),
                     )
                 })?;
@@ -1627,15 +1624,15 @@ impl std::fmt::Display for Reliability {
 #[expect(clippy::upper_case_acronyms)]
 enum MzTabLine {
     /// Metadata line
-    MTD(usize, String, Vec<Range<usize>>),
+    MTD(u32, String, Vec<Range<usize>>),
     /// Protein header line
-    PRH(usize, String, Vec<Range<usize>>),
+    PRH(u32, String, Vec<Range<usize>>),
     /// Protein line
-    PRT(usize, String, Vec<Range<usize>>),
+    PRT(u32, String, Vec<Range<usize>>),
     /// Peptide header line
-    PSH(usize, String, Vec<Range<usize>>),
+    PSH(u32, String, Vec<Range<usize>>),
     /// Peptide line, stored as hash map with the columns names from PSH
-    PSM(usize, String, Vec<Range<usize>>),
+    PSM(u32, String, Vec<Range<usize>>),
 }
 
 /// Parse a mzTab file
@@ -1645,12 +1642,13 @@ fn parse_mztab_reader<T: BufRead>(
     reader: T,
 ) -> impl Iterator<Item = Result<Option<MzTabLine>, BoxedError<'static, BasicKind>>> {
     reader.lines().enumerate().map(move |(line_index, line)| {
+        let line_index = line_index as u32;
         line.map_err(|err| {
             BoxedError::new(
                 BasicKind::Error,
                 "Could not read line",
                 err.to_string(),
-                Context::default().line_index(line_index as u32),
+                Context::default().line_index(line_index),
             )
         })
         .and_then(move |line| {

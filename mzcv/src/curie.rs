@@ -1248,6 +1248,31 @@ impl std::str::FromStr for Curie {
     }
 }
 
+impl CURIEParsingError {
+    /// Get a desciption of this error as a fully formed sentence
+    pub fn description(&self) -> &'static str {
+        match self {
+            Self::UnknownControlledVocabulary => "Unknown CV",
+            Self::MissingNamespaceSeparator => "The namespace separator ':' is missing",
+            Self::AccessionParsingError(AccessionCodeParseError::Empty) => {
+                "Could not parse accession because it is empty"
+            }
+            Self::AccessionParsingError(AccessionCodeParseError::TooLong(_)) => {
+                "Could not parse accession because it is textual and too long, it can only be 7 characters"
+            }
+            Self::AccessionParsingError(AccessionCodeParseError::InvalidCharacters(_)) => {
+                "Could not parse accession because it contained invalid characters, only alphanumeric characters are allowed"
+            }
+        }
+    }
+}
+
+impl std::fmt::Display for CURIEParsingError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.description())
+    }
+}
+
 /// An accession code, Can either be a numeric code (u32 to 4 milion, so 9 fully utilised digits).
 /// Or it can be an ASCII alphanumeric code (case-sensitive) of 1 to 8 characters.
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
