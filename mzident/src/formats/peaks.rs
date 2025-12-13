@@ -761,6 +761,7 @@ impl PSMMetaData for PeaksData {
             .map_or_else(|| self.z.map(|z| self.mz * z.to_float()), Some)
     }
 
+    type Protein<'a> = crate::NoProtein;
     fn protein_names(&self) -> Option<Cow<'_, [FastaIdentifier<String>]>> {
         self.protein_accession
             .as_ref()

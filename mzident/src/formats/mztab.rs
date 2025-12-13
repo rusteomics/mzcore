@@ -1747,6 +1747,14 @@ impl PSMMetaData for MzTabPSM {
         self.mz.map(|mz| mz * self.z.to_float())
     }
 
+    type Protein<'a> = Arc<MzTabProtein>;
+    fn proteins(&self) -> &[Self::Protein<'_>] {
+        self.protein
+            .as_ref()
+            .and_then(|p| p.1.as_ref().map(std::slice::from_ref))
+            .unwrap_or_default()
+    }
+
     fn protein_names(&self) -> Option<Cow<'_, [FastaIdentifier<String>]>> {
         self.protein.as_ref().map(|(accession, protein)| {
             Cow::Owned(vec![FastaIdentifier::Undefined(

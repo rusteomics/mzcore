@@ -581,6 +581,7 @@ impl PSMMetaData for PLinkData {
         Some(self.mass)
     }
 
+    type Protein<'a> = crate::NoProtein;
     fn protein_names(&self) -> Option<Cow<'_, [FastaIdentifier<String>]>> {
         Some(
             self.proteins

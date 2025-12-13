@@ -214,6 +214,11 @@ impl PSMMetaData for SageData {
         Some(self.mass)
     }
 
+    type Protein<'a> = FastaIdentifier<String>;
+    fn proteins(&self) -> &[Self::Protein<'_>] {
+        &self.proteins
+    }
+
     fn protein_names(&self) -> Option<Cow<'_, [FastaIdentifier<String>]>> {
         Some(Cow::Borrowed(&self.proteins))
     }

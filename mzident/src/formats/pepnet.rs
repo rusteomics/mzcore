@@ -149,6 +149,7 @@ impl PSMMetaData for PepNetData {
         Some(self.ppm_diff)
     }
 
+    type Protein<'a> = crate::NoProtein;
     fn protein_names(&self) -> Option<Cow<'_, [FastaIdentifier<String>]>> {
         None
     }

@@ -147,6 +147,7 @@ impl PSMMetaData for PiPrimeNovoData {
         None
     }
 
+    type Protein<'a> = crate::NoProtein;
     fn protein_names(&self) -> Option<Cow<'_, [FastaIdentifier<String>]>> {
         None
     }

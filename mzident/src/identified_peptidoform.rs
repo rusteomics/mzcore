@@ -593,6 +593,10 @@ macro_rules! impl_metadata {
                     .map(|lc| Cow::Borrowed(lc.as_slice()))
             }
 
+            type Protein<'a> = Box<dyn ProteinMetaData + 'a>
+            where
+                Self: 'a; // TODO: implement at some point
+
             $(impl_metadata!(inner: formats: $format; function: $function -> $t);)+
         }
     };
@@ -600,7 +604,7 @@ macro_rules! impl_metadata {
         $(#[cfg($cfg)])?
         fn $function(&self) -> $t {
             match &self.data {
-                $(IdentifiedPeptidoformData::$format(d) => d.$function()),*
+                $(IdentifiedPeptidoformData::$format(d) => PSMMetaData::$function(d)),*
             }
         }
     };

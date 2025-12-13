@@ -317,6 +317,7 @@ impl PSMMetaData for NovorData {
         Some(self.mass)
     }
 
+    type Protein<'a> = crate::NoProtein;
     fn protein_names(&self) -> Option<Cow<'_, [FastaIdentifier<String>]>> {
         None
     }

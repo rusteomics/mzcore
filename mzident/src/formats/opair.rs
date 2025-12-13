@@ -376,6 +376,7 @@ impl PSMMetaData for OpairData {
         Some(self.mass)
     }
 
+    type Protein<'a> = crate::NoProtein;
     fn protein_names(&self) -> Option<Cow<'_, [FastaIdentifier<String>]>> {
         Some(Cow::Borrowed(std::slice::from_ref(&self.protein_name)))
     }

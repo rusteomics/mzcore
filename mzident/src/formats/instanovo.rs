@@ -241,6 +241,7 @@ impl PSMMetaData for InstaNovoData {
         Some(self.mz * self.z.to_float())
     }
 
+    type Protein<'a> = crate::NoProtein;
     fn protein_names(&self) -> Option<Cow<'_, [FastaIdentifier<String>]>> {
         None
     }

@@ -14,7 +14,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     IdentifiedPeptidoform, IdentifiedPeptidoformData, KnownFileFormat, PSMMetaData,
-    PeptidoformPresent, SpectrumIds, helper_functions::explain_number_error,
+    PeptidoformPresent, ProteinMetaData, SpectrumIds, helper_functions::explain_number_error,
 };
 use mzcore::{
     sequence::{
@@ -923,6 +923,11 @@ impl PSMMetaData for FastaData {
         None
     }
 
+    type Protein<'a> = Self;
+    fn proteins(&self) -> &[Self::Protein<'_>] {
+        std::slice::from_ref(self)
+    }
+
     fn protein_names(&self) -> Option<Cow<'_, [FastaIdentifier<String>]>> {
         Some(Cow::Owned(vec![self.identifier.as_string(self.header())]))
     }
@@ -953,6 +958,69 @@ impl PSMMetaData for FastaData {
 
     fn uri(&self) -> Option<String> {
         None
+    }
+}
+
+impl ProteinMetaData for FastaData {
+    fn sequence(&self) -> Option<Cow<'_, Peptidoform<mzcore::sequence::Linear>>> {
+        Some(Cow::Borrowed(self.peptide.as_ref()))
+    }
+
+    fn numerical_id(&self) -> Option<usize> {
+        None
+    }
+
+    fn id(&self) -> FastaIdentifier<String> {
+        self.identifier.as_string(&self.full_header)
+    }
+
+    fn description(&self) -> Option<&str> {
+        Some(&self.full_header[self.description.clone()])
+    }
+
+    fn species(&self) -> Option<mzcv::Curie> {
+        todo!()
+    }
+
+    fn species_name(&self) -> Option<&str> {
+        todo!()
+    }
+
+    fn search_engine(&self) -> &[(super::CVTerm, Option<(f64, super::CVTerm)>)] {
+        todo!()
+    }
+
+    fn ambiguity_members(&self) -> &[String] {
+        todo!()
+    }
+
+    fn database(&self) -> Option<(&str, Option<&str>)> {
+        todo!()
+    }
+
+    fn modifications(
+        &self,
+    ) -> &[(
+        Vec<(mzcore::prelude::SequencePosition, Option<f64>)>,
+        mzcore::sequence::SimpleModification,
+    )] {
+        todo!()
+    }
+
+    fn coverage(&self) -> Option<f64> {
+        todo!()
+    }
+
+    fn gene_ontology(&self) -> &[mzcv::Curie] {
+        todo!()
+    }
+
+    fn reliability(&self) -> Option<super::Reliability> {
+        todo!()
+    }
+
+    fn uri(&self) -> Option<&str> {
+        todo!()
     }
 }
 

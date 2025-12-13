@@ -119,3 +119,181 @@ macro_rules! impl_ref {
 impl_ref!(&T);
 impl_ref!(std::rc::Rc<T>);
 impl_ref!(std::sync::Arc<T>);
+
+impl ProteinMetaData for Box<dyn ProteinMetaData + '_> {
+    fn sequence(&self) -> Option<Cow<'_, Peptidoform<Linear>>> {
+        (**self).sequence()
+    }
+
+    fn numerical_id(&self) -> Option<usize> {
+        (**self).numerical_id()
+    }
+
+    fn id(&self) -> FastaIdentifier<String> {
+        (**self).id()
+    }
+
+    fn description(&self) -> Option<&str> {
+        (**self).description()
+    }
+
+    fn species(&self) -> Option<Curie> {
+        (**self).species()
+    }
+
+    fn species_name(&self) -> Option<&str> {
+        (**self).species_name()
+    }
+
+    fn search_engine(&self) -> &[(CVTerm, Option<(f64, CVTerm)>)] {
+        (**self).search_engine()
+    }
+
+    fn ambiguity_members(&self) -> &[String] {
+        (**self).ambiguity_members()
+    }
+
+    fn database(&self) -> Option<(&str, Option<&str>)> {
+        (**self).database()
+    }
+
+    fn modifications(&self) -> &[(Vec<(SequencePosition, Option<f64>)>, SimpleModification)] {
+        (**self).modifications()
+    }
+
+    fn coverage(&self) -> Option<f64> {
+        (**self).coverage()
+    }
+
+    fn gene_ontology(&self) -> &[Curie] {
+        (**self).gene_ontology()
+    }
+
+    fn reliability(&self) -> Option<Reliability> {
+        (**self).reliability()
+    }
+
+    fn uri(&self) -> Option<&str> {
+        (**self).uri()
+    }
+}
+
+/// A basic type to use a placeholder when a PSM format does not contain any protein level information.
+#[derive(Clone, Copy, Debug)]
+pub struct NoProtein {}
+
+impl ProteinMetaData for NoProtein {
+    fn sequence(&self) -> Option<Cow<'_, Peptidoform<Linear>>> {
+        None
+    }
+
+    fn numerical_id(&self) -> Option<usize> {
+        None
+    }
+
+    fn id(&self) -> FastaIdentifier<String> {
+        FastaIdentifier::Undefined(false, String::new())
+    }
+
+    fn description(&self) -> Option<&str> {
+        None
+    }
+
+    fn species(&self) -> Option<Curie> {
+        None
+    }
+
+    fn species_name(&self) -> Option<&str> {
+        None
+    }
+
+    fn search_engine(&self) -> &[(CVTerm, Option<(f64, CVTerm)>)] {
+        &[]
+    }
+
+    fn ambiguity_members(&self) -> &[String] {
+        &[]
+    }
+
+    fn database(&self) -> Option<(&str, Option<&str>)> {
+        None
+    }
+
+    fn modifications(&self) -> &[(Vec<(SequencePosition, Option<f64>)>, SimpleModification)] {
+        &[]
+    }
+
+    fn coverage(&self) -> Option<f64> {
+        None
+    }
+
+    fn gene_ontology(&self) -> &[Curie] {
+        &[]
+    }
+
+    fn reliability(&self) -> Option<Reliability> {
+        None
+    }
+
+    fn uri(&self) -> Option<&str> {
+        None
+    }
+}
+
+impl ProteinMetaData for FastaIdentifier<String> {
+    fn sequence(&self) -> Option<Cow<'_, Peptidoform<Linear>>> {
+        None
+    }
+
+    fn numerical_id(&self) -> Option<usize> {
+        None
+    }
+
+    fn id(&self) -> FastaIdentifier<String> {
+        self.clone()
+    }
+
+    fn description(&self) -> Option<&str> {
+        None
+    }
+
+    fn species(&self) -> Option<Curie> {
+        None
+    }
+
+    fn species_name(&self) -> Option<&str> {
+        None
+    }
+
+    fn search_engine(&self) -> &[(CVTerm, Option<(f64, CVTerm)>)] {
+        &[]
+    }
+
+    fn ambiguity_members(&self) -> &[String] {
+        &[]
+    }
+
+    fn database(&self) -> Option<(&str, Option<&str>)> {
+        None
+    }
+
+    fn modifications(&self) -> &[(Vec<(SequencePosition, Option<f64>)>, SimpleModification)] {
+        &[]
+    }
+
+    fn coverage(&self) -> Option<f64> {
+        None
+    }
+
+    fn gene_ontology(&self) -> &[Curie] {
+        &[]
+    }
+
+    fn reliability(&self) -> Option<Reliability> {
+        None
+    }
+
+    fn uri(&self) -> Option<&str> {
+        None
+    }
+}

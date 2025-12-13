@@ -155,6 +155,7 @@ impl PSMMetaData for AnnotatedSpectrum {
             })
     }
 
+    type Protein<'a> = crate::NoProtein;
     fn protein_names(&self) -> Option<Cow<'_, [FastaIdentifier<String>]>> {
         Some(Cow::Owned(
             self.analytes

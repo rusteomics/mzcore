@@ -1,6 +1,6 @@
 use std::{borrow::Cow, ops::Range};
 
-use crate::{FastaIdentifier, KnownFileFormat, Reliability, SpectrumIds};
+use crate::{FastaIdentifier, KnownFileFormat, ProteinMetaData, Reliability, SpectrumIds};
 use mzcore::{
     sequence::{CompoundPeptidoformIon, FlankingSequence},
     system::{Mass, MassOverCharge, Ratio, Time, isize::Charge},
@@ -86,6 +86,24 @@ pub trait PSMMetaData {
         })
     }
 
+    /// The linked protein type
+    type Protein<'a>: ProteinMetaData
+    where
+        Self: 'a;
+
+    /// Get the linked protein
+    fn proteins(&self) -> &[Self::Protein<'_>] {
+        &[]
+    }
+
+    /// Get the linked protein conveniently boxed in
+    fn proteins_box(&self) -> Vec<Box<dyn ProteinMetaData + '_>> {
+        self.proteins()
+            .iter()
+            .map(|d| Box::new(d) as Box<dyn ProteinMetaData>)
+            .collect()
+    }
+
     /// Get the protein id if this was database matched data
     fn protein_id(&self) -> Option<usize>;
 
@@ -126,314 +144,124 @@ pub trait PSMMetaData {
     }
 }
 
-impl<T: PSMMetaData> PSMMetaData for &T {
-    fn compound_peptidoform_ion(&self) -> Option<Cow<'_, CompoundPeptidoformIon>> {
-        (**self).compound_peptidoform_ion()
-    }
+macro_rules! impl_ref {
+    ($t:ty) => {
+        impl<T: PSMMetaData> PSMMetaData for $t {
+            fn compound_peptidoform_ion(&self) -> Option<Cow<'_, CompoundPeptidoformIon>> {
+                (**self).compound_peptidoform_ion()
+            }
 
-    fn format(&self) -> KnownFileFormat {
-        (**self).format()
-    }
+            fn format(&self) -> KnownFileFormat {
+                (**self).format()
+            }
 
-    fn numerical_id(&self) -> Option<usize> {
-        (**self).numerical_id()
-    }
+            fn numerical_id(&self) -> Option<usize> {
+                (**self).numerical_id()
+            }
 
-    fn id(&self) -> String {
-        (**self).id()
-    }
+            fn id(&self) -> String {
+                (**self).id()
+            }
 
-    fn search_engine(&self) -> Option<Term> {
-        (**self).search_engine()
-    }
+            fn search_engine(&self) -> Option<Term> {
+                (**self).search_engine()
+            }
 
-    fn confidence(&self) -> Option<f64> {
-        (**self).confidence()
-    }
+            fn confidence(&self) -> Option<f64> {
+                (**self).confidence()
+            }
 
-    fn local_confidence(&self) -> Option<Cow<'_, [f64]>> {
-        (**self).local_confidence()
-    }
+            fn local_confidence(&self) -> Option<Cow<'_, [f64]>> {
+                (**self).local_confidence()
+            }
 
-    fn original_confidence(&self) -> Option<(f64, Term)> {
-        (**self).original_confidence()
-    }
+            fn original_confidence(&self) -> Option<(f64, Term)> {
+                (**self).original_confidence()
+            }
 
-    fn original_local_confidence(&self) -> Option<&[f64]> {
-        (**self).original_local_confidence()
-    }
+            fn original_local_confidence(&self) -> Option<&[f64]> {
+                (**self).original_local_confidence()
+            }
 
-    fn charge(&self) -> Option<Charge> {
-        (**self).charge()
-    }
+            fn charge(&self) -> Option<Charge> {
+                (**self).charge()
+            }
 
-    fn mode(&self) -> Option<Cow<'_, str>> {
-        (**self).mode()
-    }
+            fn mode(&self) -> Option<Cow<'_, str>> {
+                (**self).mode()
+            }
 
-    fn retention_time(&self) -> Option<Time> {
-        (**self).retention_time()
-    }
+            fn retention_time(&self) -> Option<Time> {
+                (**self).retention_time()
+            }
 
-    fn scans(&self) -> SpectrumIds {
-        (**self).scans()
-    }
+            fn scans(&self) -> SpectrumIds {
+                (**self).scans()
+            }
 
-    fn experimental_mz(&self) -> Option<MassOverCharge> {
-        (**self).experimental_mz()
-    }
+            fn experimental_mz(&self) -> Option<MassOverCharge> {
+                (**self).experimental_mz()
+            }
 
-    fn experimental_mass(&self) -> Option<Mass> {
-        (**self).experimental_mass()
-    }
+            fn experimental_mass(&self) -> Option<Mass> {
+                (**self).experimental_mass()
+            }
 
-    fn protein_names(&self) -> Option<Cow<'_, [FastaIdentifier<String>]>> {
-        (**self).protein_names()
-    }
+            type Protein<'a>
+                = T::Protein<'a>
+            where
+                Self: 'a;
+            fn proteins(&self) -> &[Self::Protein<'_>] {
+                (**self).proteins()
+            }
 
-    fn protein_id(&self) -> Option<usize> {
-        (**self).protein_id()
-    }
+            fn protein_names(&self) -> Option<Cow<'_, [FastaIdentifier<String>]>> {
+                (**self).protein_names()
+            }
 
-    fn protein_location(&self) -> Option<Range<u16>> {
-        (**self).protein_location()
-    }
+            fn protein_id(&self) -> Option<usize> {
+                (**self).protein_id()
+            }
 
-    fn flanking_sequences(&self) -> (&FlankingSequence, &FlankingSequence) {
-        (**self).flanking_sequences()
-    }
+            fn protein_location(&self) -> Option<Range<u16>> {
+                (**self).protein_location()
+            }
 
-    fn database(&self) -> Option<(&str, Option<&str>)> {
-        (**self).database()
-    }
+            fn flanking_sequences(&self) -> (&FlankingSequence, &FlankingSequence) {
+                (**self).flanking_sequences()
+            }
 
-    fn unique(&self) -> Option<bool> {
-        (**self).unique()
-    }
+            fn database(&self) -> Option<(&str, Option<&str>)> {
+                (**self).database()
+            }
 
-    fn reliability(&self) -> Option<Reliability> {
-        (**self).reliability()
-    }
+            fn unique(&self) -> Option<bool> {
+                (**self).unique()
+            }
 
-    fn uri(&self) -> Option<String> {
-        (**self).uri()
-    }
+            fn reliability(&self) -> Option<Reliability> {
+                (**self).reliability()
+            }
 
-    #[cfg(feature = "mzannotate")]
-    fn annotated_spectrum(&self) -> Option<Cow<'_, mzannotate::spectrum::AnnotatedSpectrum>> {
-        (**self).annotated_spectrum()
-    }
+            fn uri(&self) -> Option<String> {
+                (**self).uri()
+            }
 
-    #[cfg(feature = "mzannotate")]
-    fn has_annotated_spectrum(&self) -> bool {
-        (**self).has_annotated_spectrum()
-    }
+            #[cfg(feature = "mzannotate")]
+            fn annotated_spectrum(
+                &self,
+            ) -> Option<Cow<'_, mzannotate::spectrum::AnnotatedSpectrum>> {
+                (**self).annotated_spectrum()
+            }
+
+            #[cfg(feature = "mzannotate")]
+            fn has_annotated_spectrum(&self) -> bool {
+                (**self).has_annotated_spectrum()
+            }
+        }
+    };
 }
 
-impl<T: PSMMetaData> PSMMetaData for std::rc::Rc<T> {
-    fn compound_peptidoform_ion(&self) -> Option<Cow<'_, CompoundPeptidoformIon>> {
-        (**self).compound_peptidoform_ion()
-    }
-
-    fn format(&self) -> KnownFileFormat {
-        (**self).format()
-    }
-
-    fn numerical_id(&self) -> Option<usize> {
-        (**self).numerical_id()
-    }
-
-    fn id(&self) -> String {
-        (**self).id()
-    }
-
-    fn search_engine(&self) -> Option<Term> {
-        (**self).search_engine()
-    }
-
-    fn confidence(&self) -> Option<f64> {
-        (**self).confidence()
-    }
-
-    fn local_confidence(&self) -> Option<Cow<'_, [f64]>> {
-        (**self).local_confidence()
-    }
-
-    fn original_confidence(&self) -> Option<(f64, Term)> {
-        (**self).original_confidence()
-    }
-
-    fn original_local_confidence(&self) -> Option<&[f64]> {
-        (**self).original_local_confidence()
-    }
-
-    fn charge(&self) -> Option<Charge> {
-        (**self).charge()
-    }
-
-    fn mode(&self) -> Option<Cow<'_, str>> {
-        (**self).mode()
-    }
-
-    fn retention_time(&self) -> Option<Time> {
-        (**self).retention_time()
-    }
-
-    fn scans(&self) -> SpectrumIds {
-        (**self).scans()
-    }
-
-    fn experimental_mz(&self) -> Option<MassOverCharge> {
-        (**self).experimental_mz()
-    }
-
-    fn experimental_mass(&self) -> Option<Mass> {
-        (**self).experimental_mass()
-    }
-
-    fn protein_names(&self) -> Option<Cow<'_, [FastaIdentifier<String>]>> {
-        (**self).protein_names()
-    }
-
-    fn protein_id(&self) -> Option<usize> {
-        (**self).protein_id()
-    }
-
-    fn protein_location(&self) -> Option<Range<u16>> {
-        (**self).protein_location()
-    }
-
-    fn flanking_sequences(&self) -> (&FlankingSequence, &FlankingSequence) {
-        (**self).flanking_sequences()
-    }
-
-    fn database(&self) -> Option<(&str, Option<&str>)> {
-        (**self).database()
-    }
-
-    fn unique(&self) -> Option<bool> {
-        (**self).unique()
-    }
-
-    fn reliability(&self) -> Option<Reliability> {
-        (**self).reliability()
-    }
-
-    fn uri(&self) -> Option<String> {
-        (**self).uri()
-    }
-
-    #[cfg(feature = "mzannotate")]
-    fn annotated_spectrum(&self) -> Option<Cow<'_, mzannotate::spectrum::AnnotatedSpectrum>> {
-        (**self).annotated_spectrum()
-    }
-
-    #[cfg(feature = "mzannotate")]
-    fn has_annotated_spectrum(&self) -> bool {
-        (**self).has_annotated_spectrum()
-    }
-}
-
-impl<T: PSMMetaData> PSMMetaData for std::sync::Arc<T> {
-    fn compound_peptidoform_ion(&self) -> Option<Cow<'_, CompoundPeptidoformIon>> {
-        (**self).compound_peptidoform_ion()
-    }
-
-    fn format(&self) -> KnownFileFormat {
-        (**self).format()
-    }
-
-    fn numerical_id(&self) -> Option<usize> {
-        (**self).numerical_id()
-    }
-
-    fn id(&self) -> String {
-        (**self).id()
-    }
-
-    fn search_engine(&self) -> Option<Term> {
-        (**self).search_engine()
-    }
-
-    fn confidence(&self) -> Option<f64> {
-        (**self).confidence()
-    }
-
-    fn local_confidence(&self) -> Option<Cow<'_, [f64]>> {
-        (**self).local_confidence()
-    }
-
-    fn original_confidence(&self) -> Option<(f64, Term)> {
-        (**self).original_confidence()
-    }
-
-    fn original_local_confidence(&self) -> Option<&[f64]> {
-        (**self).original_local_confidence()
-    }
-
-    fn charge(&self) -> Option<Charge> {
-        (**self).charge()
-    }
-
-    fn mode(&self) -> Option<Cow<'_, str>> {
-        (**self).mode()
-    }
-
-    fn retention_time(&self) -> Option<Time> {
-        (**self).retention_time()
-    }
-
-    fn scans(&self) -> SpectrumIds {
-        (**self).scans()
-    }
-
-    fn experimental_mz(&self) -> Option<MassOverCharge> {
-        (**self).experimental_mz()
-    }
-
-    fn experimental_mass(&self) -> Option<Mass> {
-        (**self).experimental_mass()
-    }
-
-    fn protein_names(&self) -> Option<Cow<'_, [FastaIdentifier<String>]>> {
-        (**self).protein_names()
-    }
-
-    fn protein_id(&self) -> Option<usize> {
-        (**self).protein_id()
-    }
-
-    fn protein_location(&self) -> Option<Range<u16>> {
-        (**self).protein_location()
-    }
-
-    fn flanking_sequences(&self) -> (&FlankingSequence, &FlankingSequence) {
-        (**self).flanking_sequences()
-    }
-
-    fn database(&self) -> Option<(&str, Option<&str>)> {
-        (**self).database()
-    }
-
-    fn unique(&self) -> Option<bool> {
-        (**self).unique()
-    }
-
-    fn reliability(&self) -> Option<Reliability> {
-        (**self).reliability()
-    }
-
-    fn uri(&self) -> Option<String> {
-        (**self).uri()
-    }
-
-    #[cfg(feature = "mzannotate")]
-    fn annotated_spectrum(&self) -> Option<Cow<'_, mzannotate::spectrum::AnnotatedSpectrum>> {
-        (**self).annotated_spectrum()
-    }
-
-    #[cfg(feature = "mzannotate")]
-    fn has_annotated_spectrum(&self) -> bool {
-        (**self).has_annotated_spectrum()
-    }
-}
+impl_ref!(&T);
+impl_ref!(std::rc::Rc<T>);
+impl_ref!(std::sync::Arc<T>);

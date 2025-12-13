@@ -191,6 +191,11 @@ impl PSMMetaData for ProteoscapeData {
         Some(self.mz * self.z.to_float())
     }
 
+    type Protein<'a> = FastaIdentifier<String>;
+    fn proteins(&self) -> &[Self::Protein<'_>] {
+        std::slice::from_ref(&self.protein)
+    }
+
     fn protein_names(&self) -> Option<Cow<'_, [FastaIdentifier<String>]>> {
         Some(Cow::Borrowed(std::slice::from_ref(&self.protein)))
     }

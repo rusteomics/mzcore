@@ -238,6 +238,7 @@ impl PSMMetaData for NovoBData {
         })
     }
 
+    type Protein<'a> = crate::NoProtein;
     fn protein_names(&self) -> Option<Cow<'_, [FastaIdentifier<String>]>> {
         None
     }
