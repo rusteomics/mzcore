@@ -5,7 +5,7 @@ use context_error::{BasicKind, BoxedError};
 use crate::{MaybePeptidoform, PSM, PSMMetaData};
 use mzcore::sequence::{AtLeast, Linked};
 
-/// A version for an identified peptide file format
+/// A version for an PSM file format
 pub trait PSMFileFormatVersion<Format>: Copy + Display {
     /// The format for this version
     fn format(self) -> Format;
@@ -13,7 +13,7 @@ pub trait PSMFileFormatVersion<Format>: Copy + Display {
     fn name(self) -> &'static str;
 }
 
-/// The required methods for any source of identified peptides
+/// The required methods for any source of PSMs
 pub trait PSMSource
 where
     Self: Sized + PSMMetaData,
@@ -33,7 +33,7 @@ where
     /// The version type
     type Version: Display + PSMFileFormatVersion<Self::Format>;
 
-    /// Parse a single identified peptide from its source and return the detected format
+    /// Parse a single PSM from its source and return the detected format
     /// # Errors
     /// When the source is not a valid peptide
     fn parse(
@@ -42,7 +42,7 @@ where
         keep_all_columns: bool,
     ) -> Result<(Self, &'static Self::Format), BoxedError<'static, BasicKind>>;
 
-    /// Parse a single identified peptide with the given format
+    /// Parse a single PSM with the given format
     /// # Errors
     /// When the source is not a valid peptide
     fn parse_specific(
@@ -70,7 +70,7 @@ where
         }
     }
 
-    /// Parse a file with identified peptides.
+    /// Parse a file with PSMs.
     /// # Errors
     /// Returns Err when the file could not be opened
     fn parse_file(
@@ -80,7 +80,7 @@ where
         version: Option<Self::Version>,
     ) -> Result<BoxedIdentifiedPeptideIter<'_, Self>, BoxedError<'static, BasicKind>>;
 
-    /// Parse a reader with identified peptides.
+    /// Parse a reader with PSMs.
     /// # Errors
     /// When the file is empty or no headers are present.
     fn parse_reader<'a>(
@@ -103,7 +103,7 @@ where
     }
 }
 
-/// A general generic identified peptidoform iterator from any source format
+/// A general generic PSM iterator from any source format
 pub type GeneralPSMs<'lifetime> = Box<
     dyn Iterator<Item = Result<PSM<Linked, MaybePeptidoform>, BoxedError<'static, BasicKind>>>
         + 'lifetime,
@@ -119,7 +119,7 @@ pub type BoxedIdentifiedPeptideIter<'lifetime, T> = PSMIter<
     >,
 >;
 
-/// An iterator returning parsed identified peptides
+/// An iterator returning parsed PSMs
 #[derive(Debug)]
 pub struct PSMIter<
     'lifetime,
@@ -206,7 +206,7 @@ where
     Source::Format: 'static,
     MaybePeptidoform: From<Source::PeptidoformAvailability>,
 {
-    /// Make this into a generic boxed iterator for merging with other identified peptidoform formats
+    /// Make this into a generic boxed iterator for merging with other PSM file formats
     pub fn into_box<Complexity: AtLeast<Source::Complexity>>(
         self,
     ) -> Box<

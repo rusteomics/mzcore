@@ -1,6 +1,6 @@
-# Handle identified peptidoform files
+# Handle PSM files
 
-Handling many different formats of identified peptidoform files. Supports these formats:
+Handling many different formats of PSM files. Supports these formats:
 
 - mzTab
 - Fasta

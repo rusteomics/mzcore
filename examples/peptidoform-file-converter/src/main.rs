@@ -1,4 +1,4 @@
-//! Convert an identified peptidoform file
+//! Convert a PSM file
 
 use std::{
     fs::File,
@@ -9,9 +9,7 @@ use std::{
 use clap::Parser;
 use context_error::{BasicKind, BoxedError, Context, CreateError, combine_error};
 use mzcore::ontology::Ontologies;
-use mzident::{
-    FastaIdentifier, PSMMetaData, SpectrumId, SpectrumIds, open_identified_peptidoforms_file,
-};
+use mzident::{FastaIdentifier, PSMMetaData, SpectrumId, SpectrumIds, open_psm_file};
 
 /// The command line interface arguments
 #[allow(clippy::struct_excessive_bools)]
@@ -37,7 +35,7 @@ fn main() {
         .extension()
         .map(|e| e.to_string_lossy().to_ascii_lowercase());
     let mut errors = Vec::new();
-    let psms = open_identified_peptidoforms_file(&args.in_path, &Ontologies::init().0, false)
+    let psms = open_psm_file(&args.in_path, &Ontologies::init().0, false)
         .expect("Invalid input file")
         .filter_map(|f| match f {
             Ok(v) => Some(v),

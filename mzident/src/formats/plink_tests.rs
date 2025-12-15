@@ -15,7 +15,7 @@ fn plink_v2_3() {
         Ok(n) => assert_eq!(n, 23),
         Err(e) => {
             println!("{e}");
-            panic!("Failed identified peptides test");
+            panic!("Failed PSMs test");
         }
     }
 }
@@ -32,7 +32,7 @@ fn plink_v3_0() {
         Ok(n) => assert_eq!(n, 32),
         Err(e) => {
             println!("{e}");
-            panic!("Failed identified peptides test");
+            panic!("Failed PSMs test");
         }
     }
 }

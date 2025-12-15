@@ -6,9 +6,8 @@ use std::{
 };
 
 use crate::{
-    FastaIdentifier, GeneralPSMs, PSM,
-    PSMData, KnownFileFormat, MaybePeptidoform, PSMMetaData, SpectrumId,
-    SpectrumIds,
+    FastaIdentifier, GeneralPSMs, KnownFileFormat, MaybePeptidoform, PSM, PSMData, PSMMetaData,
+    SpectrumId, SpectrumIds,
 };
 use mzannotate::prelude::AnnotatedSpectrum;
 use mzcore::{
@@ -250,7 +249,7 @@ impl From<AnnotatedSpectrum> for PSM<Linked, MaybePeptidoform> {
     }
 }
 
-/// Parse an mzSpecLib file into a general identified peptidoforms iterator.
+/// Parse an mzSpecLib file into a general PSM iterator.
 /// # Errors
 /// If the file is not a valid mzSpecLib file.
 pub(crate) fn parse_mzspeclib<'a>(
@@ -261,10 +260,7 @@ pub(crate) fn parse_mzspeclib<'a>(
         .map(move |parser| {
             let b: Box<
                 dyn Iterator<
-                    Item = Result<
-                        PSM<Linked, MaybePeptidoform>,
-                        BoxedError<'static, BasicKind>,
-                    >,
+                    Item = Result<PSM<Linked, MaybePeptidoform>, BoxedError<'static, BasicKind>>,
                 >,
             > = Box::new(parser.map(move |s| {
                 s.map(Into::into)

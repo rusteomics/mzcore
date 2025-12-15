@@ -14,7 +14,7 @@ fn maxquant_msms() {
         Ok(n) => assert_eq!(n, 19),
         Err(e) => {
             println!("{e}");
-            panic!("Failed identified peptides test");
+            panic!("Failed PSMs test");
         }
     }
 }
@@ -31,7 +31,7 @@ fn maxquant_msms_scans() {
         Ok(n) => assert_eq!(n, 19),
         Err(e) => {
             println!("{e}");
-            panic!("Failed identified peptides test");
+            panic!("Failed PSMs test");
         }
     }
 }
@@ -48,7 +48,7 @@ fn maxquant_novo_msms_scans() {
         Ok(n) => assert_eq!(n, 19),
         Err(e) => {
             println!("{e}");
-            panic!("Failed identified peptides test");
+            panic!("Failed PSMs test");
         }
     }
 }
@@ -65,7 +65,7 @@ fn maxquant_novo_msms_scans_new() {
         Ok(n) => assert_eq!(n, 19),
         Err(e) => {
             println!("{e}");
-            panic!("Failed identified peptides test");
+            panic!("Failed PSMs test");
         }
     }
 }
@@ -82,7 +82,7 @@ fn maxquant_silac() {
         Ok(n) => assert_eq!(n, 19),
         Err(e) => {
             println!("{e}");
-            panic!("Failed identified peptides test");
+            panic!("Failed PSMs test");
         }
     }
 }
@@ -100,7 +100,7 @@ fn maxquant_all_peptides() {
         Ok(n) => assert_eq!(n, 19),
         Err(e) => {
             println!("{e}");
-            panic!("Failed identified peptides test");
+            panic!("Failed PSMs test");
         }
     }
 }

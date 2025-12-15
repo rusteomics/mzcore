@@ -15,7 +15,7 @@ fn punifind() {
         Ok(n) => assert_eq!(n, 25),
         Err(e) => {
             println!("{e}");
-            panic!("Failed identified peptides test");
+            panic!("Failed PSMs test");
         }
     }
 }

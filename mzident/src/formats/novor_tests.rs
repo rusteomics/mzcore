@@ -14,7 +14,7 @@ fn novor_old_denovo() {
         Ok(n) => assert_eq!(n, 20),
         Err(e) => {
             println!("{e}");
-            panic!("Failed identified peptides test");
+            panic!("Failed PSMs test");
         }
     }
 }
@@ -31,7 +31,7 @@ fn novor_denovo_202306() {
         Ok(n) => assert_eq!(n, 25),
         Err(e) => {
             println!("{e}");
-            panic!("Failed identified peptides test");
+            panic!("Failed PSMs test");
         }
     }
 }
@@ -48,7 +48,7 @@ fn novor_psm_202305() {
         Ok(n) => assert_eq!(n, 25),
         Err(e) => {
             println!("{e}");
-            panic!("Failed identified peptides test");
+            panic!("Failed PSMs test");
         }
     }
 }
@@ -65,7 +65,7 @@ fn novor_psm_202308() {
         Ok(n) => assert_eq!(n, 24),
         Err(e) => {
             println!("{e}");
-            panic!("Failed identified peptides test");
+            panic!("Failed PSMs test");
         }
     }
 }
@@ -82,7 +82,7 @@ fn novor_new_denovo() {
         Ok(n) => assert_eq!(n, 20),
         Err(e) => {
             println!("{e}");
-            panic!("Failed identified peptides test");
+            panic!("Failed PSMs test");
         }
     }
 }
@@ -100,7 +100,7 @@ fn novor_denovo_v3_40() {
         Ok(n) => assert_eq!(n, 25),
         Err(e) => {
             println!("{e}");
-            panic!("Failed identified peptides test");
+            panic!("Failed PSMs test");
         }
     }
 }
@@ -118,7 +118,7 @@ fn novor_peps_v3_40() {
         Ok(n) => assert_eq!(n, 25),
         Err(e) => {
             println!("{e}");
-            panic!("Failed identified peptides test");
+            panic!("Failed PSMs test");
         }
     }
 }
@@ -135,7 +135,7 @@ fn novor_new_psm() {
         Ok(n) => assert_eq!(n, 19),
         Err(e) => {
             println!("{e}");
-            panic!("Failed identified peptides test");
+            panic!("Failed PSMs test");
         }
     }
 }
@@ -152,7 +152,7 @@ fn novor_psm_v3_40() {
         Ok(n) => assert_eq!(n, 26),
         Err(e) => {
             println!("{e}");
-            panic!("Failed identified peptides test");
+            panic!("Failed PSMs test");
         }
     }
 }
@@ -169,7 +169,7 @@ fn novor_psm_v4_66() {
         Ok(n) => assert_eq!(n, 25),
         Err(e) => {
             println!("{e}");
-            panic!("Failed identified peptides test");
+            panic!("Failed PSMs test");
         }
     }
 }

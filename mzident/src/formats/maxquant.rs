@@ -42,12 +42,12 @@ format_family!(
     /// ```rust
     /// # use mzcore::{prelude::*, sequence::Linked};
     /// # use mzident::*;
-    /// # let mut identified_pepform: PSM<Linked, PeptidoformPresent> = BasicCSVPSM::default().into();
-    /// if let PSMData::MaxQuant(ref mut mq) = identified_pepform.data
+    /// # let mut psm: PSM<Linked, PeptidoformPresent> = BasicCSVPSM::default().into();
+    /// if let PSMData::MaxQuant(ref mut mq) = psm.data
     ///     && mq.format().version() == Some(MaxQuantVersion::NovoMSMSScans.to_string())
     /// {
     ///     mq.peptide = mq.dn_sequence.clone();
-    ///     identified_pepform.score = mq.dn_combined_score.map(|v| f64::from(v) / 100.0);
+    ///     psm.score = mq.dn_combined_score.map(|v| f64::from(v) / 100.0);
     ///     mq.score = mq.dn_combined_score.map_or(0.0, f64::from);
     /// }
     /// ```

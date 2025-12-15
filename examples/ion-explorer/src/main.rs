@@ -33,7 +33,7 @@ use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 
 #[derive(Parser)]
 struct Cli {
-    /// The input identified peptides file
+    /// The input PSM file
     #[arg(short, long)]
     in_path: String,
     /// The output path to output the resulting csv file
@@ -81,8 +81,8 @@ fn main() {
         .y(PrimaryIonSeries::default())
         .precursor(Vec::new(), Vec::new(), (0, None), ChargeRange::PRECURSOR);
 
-    let peptides = open_identified_peptidoforms_file(&args.in_path, &Ontologies::init().0, false)
-        .expect("Could not open identified peptides file")
+    let peptides = open_psm_file(&args.in_path, &Ontologies::init().0, false)
+        .expect("Could not open PSM file")
         .filter_map(Result::ok)
         .into_group_map_by(|l| match l.scans() {
             SpectrumIds::FileKnown(spectra) => spectra.first().map(|s| s.0.clone()),

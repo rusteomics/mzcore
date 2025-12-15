@@ -17,7 +17,7 @@ use crate::*;
 ///
 /// # Errors
 /// It errors if the filetype could not be determined or if opening the file errors.
-pub fn open_identified_peptidoforms_file<'a>(
+pub fn open_psm_file<'a>(
     path: impl AsRef<Path>,
     ontologies: &'a Ontologies,
     keep_all_columns: bool,
@@ -189,7 +189,7 @@ mod tests {
             Ok(n) => assert_eq!(n, 19),
             Err(e) => {
                 println!("{e}");
-                panic!("Failed identified peptides test");
+                panic!("Failed PSM test");
             }
         }
     }
@@ -206,7 +206,7 @@ mod tests {
             Ok(n) => assert_eq!(n, 19),
             Err(e) => {
                 println!("{e}");
-                panic!("Failed identified peptides test");
+                panic!("Failed PSM test");
             }
         }
     }

@@ -3,7 +3,7 @@ use std::io::{BufRead, BufReader};
 
 use context_error::{BasicKind, BoxedError};
 
-use crate::{PSM, MaybePeptidoform, MzTabPSM, test_identified_peptidoform};
+use crate::{MaybePeptidoform, MzTabPSM, PSM, test_psm};
 use mzcore::sequence::SimpleLinear;
 
 #[test]
@@ -122,7 +122,7 @@ fn open_file(reader: impl BufRead) -> Result<usize, BoxedError<'static, BasicKin
             read.map_err(BoxedError::to_owned)?.into();
         peptides += 1;
 
-        test_identified_peptidoform(&peptide, true, false).unwrap();
+        test_psm(&peptide, true, false).unwrap();
     }
     Ok(peptides)
 }

@@ -15,7 +15,7 @@ fn deepnovo() {
         Ok(n) => assert_eq!(n, 19),
         Err(e) => {
             println!("{e}");
-            panic!("Failed identified peptides test");
+            panic!("Failed PSMs test");
         }
     }
 }
@@ -32,7 +32,7 @@ fn pointnovo() {
         Ok(n) => assert_eq!(n, 20),
         Err(e) => {
             println!("{e}");
-            panic!("Failed identified peptides test");
+            panic!("Failed PSMs test");
         }
     }
 }
@@ -49,7 +49,7 @@ fn biatnovo() {
         Ok(n) => assert_eq!(n, 20),
         Err(e) => {
             println!("{e}");
-            panic!("Failed identified peptides test");
+            panic!("Failed PSMs test");
         }
     }
 }
@@ -66,7 +66,7 @@ fn pgpointnovo() {
         Ok(n) => assert_eq!(n, 20),
         Err(e) => {
             println!("{e}");
-            panic!("Failed identified peptides test");
+            panic!("Failed PSMs test");
         }
     }
 }

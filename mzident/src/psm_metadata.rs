@@ -7,7 +7,7 @@ use mzcore::{
 };
 use mzcv::Term;
 
-/// Generalised access to meta data of identified peptidoforms
+/// Generalised access to meta data of PSMs
 pub trait PSMMetaData {
     /// Get the compound peptidoform ion, if present
     fn compound_peptidoform_ion(&self) -> Option<Cow<'_, CompoundPeptidoformIon>>;
@@ -55,7 +55,7 @@ pub trait PSMMetaData {
     /// The retention time, if known
     fn retention_time(&self) -> Option<Time>;
 
-    /// The scans per rawfile that are at the basis for this identified peptide
+    /// The scans per rawfile that are at the basis for this PSM
     fn scans(&self) -> SpectrumIds;
 
     /// Get the mz as experimentally determined

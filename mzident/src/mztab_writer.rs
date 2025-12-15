@@ -16,7 +16,7 @@ use mzcore::{
 use mzcv::Term;
 use std::{io::Write, marker::PhantomData, path::PathBuf};
 
-/// Write identified peptidoform ions as an mzTab file. It will always output 'Identification' type files in 'Summary' mode but does a best effort to correctly store all info.
+/// Write PSMs as an mzTab file. It will always output 'Identification' type files in 'Summary' mode but does a best effort to correctly store all info.
 #[derive(Debug)]
 pub struct MzTabWriter<Writer, State> {
     writer: Writer,
@@ -693,7 +693,7 @@ mod tests {
     use crate::{
         MzTabProtein,
         mztab_writer::{MSRun, MzTabWriter},
-        open_identified_peptidoforms_file,
+        open_psm_file,
     };
 
     #[test]
@@ -706,14 +706,10 @@ mod tests {
                 && entry.file_type().is_ok_and(|t| t.is_file())
             {
                 // Parse the file
-                let psms = open_identified_peptidoforms_file(
-                    entry.path(),
-                    &mzcore::ontology::STATIC_ONTOLOGIES,
-                    false,
-                )
-                .unwrap()
-                .collect::<Result<Vec<_>, _>>()
-                .unwrap();
+                let psms = open_psm_file(entry.path(), &mzcore::ontology::STATIC_ONTOLOGIES, false)
+                    .unwrap()
+                    .collect::<Result<Vec<_>, _>>()
+                    .unwrap();
 
                 // Write a converted mzTab file
                 let new_path = std::path::Path::new("src/test_files_out")

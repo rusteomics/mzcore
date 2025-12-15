@@ -15,7 +15,7 @@ fn meta_morpheus_psm() {
         Ok(n) => assert_eq!(n, 27),
         Err(e) => {
             println!("{e}");
-            panic!("Failed identified peptides test");
+            panic!("Failed PSMs test");
         }
     }
 }

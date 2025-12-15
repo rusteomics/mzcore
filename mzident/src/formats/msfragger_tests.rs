@@ -20,7 +20,7 @@ fn msfragger_v4_2() {
         Ok(n) => assert_eq!(n, 17),
         Err(e) => {
             println!("{e}");
-            panic!("Failed identified peptides test");
+            panic!("Failed PSMs test");
         }
     }
 }
@@ -37,7 +37,7 @@ fn msfragger_v4_2_decoy() {
         Ok(n) => assert_eq!(n, 20),
         Err(e) => {
             println!("{e}");
-            panic!("Failed identified peptides test");
+            panic!("Failed PSMs test");
         }
     }
 }
@@ -54,7 +54,7 @@ fn msfragger_v4_2_missing_columns() {
         Ok(n) => assert_eq!(n, 19),
         Err(e) => {
             println!("{e}");
-            panic!("Failed identified peptides test");
+            panic!("Failed PSMs test");
         }
     }
 }
@@ -71,7 +71,7 @@ fn msfragger_v4_3_missing_columns() {
         Ok(n) => assert_eq!(n, 29),
         Err(e) => {
             println!("{e}");
-            panic!("Failed identified peptides test");
+            panic!("Failed PSMs test");
         }
     }
 }
@@ -88,7 +88,7 @@ fn fragpipe_v21_a() {
         Ok(n) => assert_eq!(n, 19),
         Err(e) => {
             println!("{e}");
-            panic!("Failed identified peptides test");
+            panic!("Failed PSMs test");
         }
     }
 }
@@ -105,7 +105,7 @@ fn fragpipe_v21_b() {
         Ok(n) => assert_eq!(n, 19),
         Err(e) => {
             println!("{e}");
-            panic!("Failed identified peptides test");
+            panic!("Failed PSMs test");
         }
     }
 }
@@ -122,7 +122,7 @@ fn fragpipe_v21_c() {
         Ok(n) => assert_eq!(n, 19),
         Err(e) => {
             println!("{e}");
-            panic!("Failed identified peptides test");
+            panic!("Failed PSMs test");
         }
     }
 }
@@ -139,7 +139,7 @@ fn fragpipe_philosopher_a() {
         Ok(n) => assert_eq!(n, 19),
         Err(e) => {
             println!("{e}");
-            panic!("Failed identified peptides test");
+            panic!("Failed PSMs test");
         }
     }
 }
@@ -156,7 +156,7 @@ fn fragpipe_philosopher_b() {
         Ok(n) => assert_eq!(n, 19),
         Err(e) => {
             println!("{e}");
-            panic!("Failed identified peptides test");
+            panic!("Failed PSMs test");
         }
     }
 }
@@ -173,7 +173,7 @@ fn fragpipe_philosopher_c() {
         Ok(n) => assert_eq!(n, 19),
         Err(e) => {
             println!("{e}");
-            panic!("Failed identified peptides test");
+            panic!("Failed PSMs test");
         }
     }
 }
@@ -204,7 +204,7 @@ fn fragpipe_v21_manual() {
         Ok(n) => assert_eq!(n, 19),
         Err(e) => {
             println!("{e}");
-            panic!("Failed identified peptides test");
+            panic!("Failed PSMs test");
         }
     }
 }
@@ -221,7 +221,7 @@ fn fragpipe_v22() {
         Ok(n) => assert_eq!(n, 19),
         Err(e) => {
             println!("{e}");
-            panic!("Failed identified peptides test");
+            panic!("Failed PSMs test");
         }
     }
 }

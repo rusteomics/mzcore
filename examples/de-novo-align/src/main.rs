@@ -11,7 +11,7 @@ use rayon::prelude::*;
 
 #[derive(Debug, Parser)]
 struct Cli {
-    /// The input identified peptidoforms file
+    /// The input PSM file
     #[arg(short, long)]
     peptides: String,
     /// The fasta database of known proteins
@@ -32,9 +32,7 @@ fn process_alignment_group<I>(
     bool,
 )>
 where
-    I: Iterator<
-        Item = Alignment<Arc<FastaData>, PSM<SemiAmbiguous, PeptidoformPresent>>,
-    >,
+    I: Iterator<Item = Alignment<Arc<FastaData>, PSM<SemiAmbiguous, PeptidoformPresent>>>,
 {
     let alignments = alignments.collect_vec();
     let max = alignments
@@ -81,7 +79,7 @@ fn run_alignments(
 fn main() {
     let args = Cli::parse();
     let out_file = BufWriter::new(File::create(args.out_path).expect("Could not create out file"));
-    let peptides = open_identified_peptidoforms_file(args.peptides, &Ontologies::init().0, false)
+    let peptides = open_psm_file(args.peptides, &Ontologies::init().0, false)
         .unwrap()
         .filter_map(Result::ok)
         .filter_map(PSM::into_semi_ambiguous)

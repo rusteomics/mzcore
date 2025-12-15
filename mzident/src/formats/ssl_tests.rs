@@ -15,7 +15,7 @@ fn cascadia_v0_0_5() {
         Ok(n) => assert_eq!(n, 20),
         Err(e) => {
             println!("{e}");
-            panic!("Failed identified peptides test");
+            panic!("Failed PSMs test");
         }
     }
 }
@@ -32,7 +32,7 @@ fn small_molecule_example() {
         Ok(n) => assert_eq!(n, 6),
         Err(e) => {
             println!("{e}");
-            panic!("Failed identified peptides test");
+            panic!("Failed PSMs test");
         }
     }
 }
@@ -49,7 +49,7 @@ fn peptide_example() {
         Ok(n) => assert_eq!(n, 12),
         Err(e) => {
             println!("{e}");
-            panic!("Failed identified peptides test");
+            panic!("Failed PSMs test");
         }
     }
 }

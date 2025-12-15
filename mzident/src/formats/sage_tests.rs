@@ -15,7 +15,7 @@ fn sage() {
         Ok(n) => assert_eq!(n, 19),
         Err(e) => {
             println!("{e}");
-            panic!("Failed identified peptides test");
+            panic!("Failed PSMs test");
         }
     }
 }
@@ -32,7 +32,7 @@ fn sage_decoy() {
         Ok(n) => assert_eq!(n, 23),
         Err(e) => {
             println!("{e}");
-            panic!("Failed identified peptides test");
+            panic!("Failed PSMs test");
         }
     }
 }

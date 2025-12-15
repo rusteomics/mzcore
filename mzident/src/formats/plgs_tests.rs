@@ -15,7 +15,7 @@ fn plgs_fragment() {
         Ok(n) => assert_eq!(n, 22),
         Err(e) => {
             println!("{e}");
-            panic!("Failed identified peptides test");
+            panic!("Failed PSMs test");
         }
     }
 }
@@ -32,7 +32,7 @@ fn plgs_peptide() {
         Ok(n) => assert_eq!(n, 21),
         Err(e) => {
             println!("{e}");
-            panic!("Failed identified peptides test");
+            panic!("Failed PSMs test");
         }
     }
 }

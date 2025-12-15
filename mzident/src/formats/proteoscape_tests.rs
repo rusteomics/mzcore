@@ -15,7 +15,7 @@ fn proteoscape_db_v2025b() {
         Ok(n) => assert_eq!(n, 22),
         Err(e) => {
             println!("{e}");
-            panic!("Failed identified peptides test");
+            panic!("Failed PSMs test");
         }
     }
 }

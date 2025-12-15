@@ -9,7 +9,7 @@ const MAB_SEQUENCE: &str = "GPGGGGSLPEVREKHEFLNRLKQLPLLESQIATIEQSAPSQSDQEQLFSNVQ
 /// Test on many peptidoforms if alignment to itself always results in a perfect match
 #[test]
 fn identity() {
-    let peptidoforms: Vec<_> = open_identified_peptidoforms_file(
+    let peptidoforms: Vec<_> = open_psm_file(
         "tests/example_peptidoforms.csv",
         &mzcore::ontology::STATIC_ONTOLOGIES,
         false,
@@ -38,7 +38,7 @@ fn identity() {
 /// Test for a set of peptidoforms from a database matcher if the match to the database is indeed perfect
 #[test]
 fn alignment_to_database() {
-    let peptidoforms: Vec<_> = open_identified_peptidoforms_file(
+    let peptidoforms: Vec<_> = open_psm_file(
         "tests/example_peptidoforms.csv",
         &mzcore::ontology::STATIC_ONTOLOGIES,
         false,

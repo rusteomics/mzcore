@@ -14,7 +14,7 @@ use mzcore::{
     system::{Mass, MassOverCharge, Ratio, Time, isize::Charge},
 };
 
-/// A peptide that is identified by a _de novo_ or database matching program
+/// A peptidoform that is identified by a _de novo_ or database matching program as matching to a spectrum
 #[cfg_attr(not(feature = "mzannotate"), derive(Deserialize, Serialize))]
 #[derive(Clone, Debug)]
 pub struct PSM<Complexity, PeptidoformAvailability> {
@@ -30,7 +30,7 @@ pub struct PSM<Complexity, PeptidoformAvailability> {
     pub(super) peptidoform_availability_marker: PhantomData<PeptidoformAvailability>,
 }
 
-/// The definition of all special metadata for all types of identified peptides that can be read
+/// The definition of all special metadata for all types of PSM that can be read
 #[cfg_attr(not(feature = "mzannotate"), derive(Deserialize, Serialize))]
 #[derive(Clone, Debug)]
 #[expect(clippy::upper_case_acronyms)]
@@ -412,22 +412,22 @@ impl<Complexity, PeptidoformAvailability> PSM<Complexity, PeptidoformAvailabilit
             .then(|| self.mark())
     }
 
-    /// Check if this identified peptidoform is linear and contains a peptide
+    /// Check if this PSM is linear and contains a peptide
     pub fn into_linear(self) -> Option<PSM<Linear, PeptidoformPresent>> {
         self.check(Peptidoform::is_linear)
     }
 
-    /// Check if this identified peptidoform is simple linear and contains a peptide
+    /// Check if this PSM is simple linear and contains a peptide
     pub fn into_simple_linear(self) -> Option<PSM<SimpleLinear, PeptidoformPresent>> {
         self.check(Peptidoform::is_simple_linear)
     }
 
-    /// Check if this identified peptidoform is semi ambiguous and contains a peptide
+    /// Check if this PSM is semi ambiguous and contains a peptide
     pub fn into_semi_ambiguous(self) -> Option<PSM<SemiAmbiguous, PeptidoformPresent>> {
         self.check(Peptidoform::is_semi_ambiguous)
     }
 
-    /// Check if this identified peptidoform is unambiguous and contains a peptide
+    /// Check if this PSM is unambiguous and contains a peptide
     pub fn into_unambiguous(self) -> Option<PSM<UnAmbiguous, PeptidoformPresent>> {
         self.check(Peptidoform::is_unambiguous)
     }
@@ -537,7 +537,7 @@ impl<Complexity, PeptidoformAvailability> PSM<Complexity, PeptidoformAvailabilit
         }
     }
 
-    /// Cast this identified peptidoform to a higher complexity level. This does not change the
+    /// Cast this PSM to a higher complexity level. This does not change the
     /// content of the peptidoform. It only allows to pass this as higher complexity if needed.
     pub fn cast<
         NewComplexity: AtLeast<Complexity>,

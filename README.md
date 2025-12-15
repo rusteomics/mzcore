@@ -41,7 +41,7 @@ For raw data centered HUPO-PSI standards support (eg mzML, USI) see [mzdata](htt
 - imgt
   - Fast access to the IMGT database of antibody germlines
 - mzident
-  - Reading of multiple identified peptide file formats (amongst others: [mzTab](https://www.psidev.info/mztab-specifications), Fasta, MaxQuant, MSFragger, Novor, OPair, Peaks, and Sage)
+  - Reading of multiple PSM file formats (amongst others: [mzTab](https://www.psidev.info/mztab-specifications), Fasta, MaxQuant, MSFragger, Novor, OPair, Peaks, and Sage)
   - Writing of mzTab files
 - mzcv
   - Handle ontologies both statically included and runtime updating

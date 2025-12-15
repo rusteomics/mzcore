@@ -14,7 +14,7 @@ fn instanovo_v1_0_0() {
         Ok(n) => assert_eq!(n, 21),
         Err(e) => {
             println!("{e}");
-            panic!("Failed identified peptides test");
+            panic!("Failed PSMs test");
         }
     }
 }
@@ -32,7 +32,7 @@ fn instanovo_v1_1_4() {
         Ok(n) => assert_eq!(n, 20),
         Err(e) => {
             println!("{e}");
-            panic!("Failed identified peptides test");
+            panic!("Failed PSMs test");
         }
     }
 }
@@ -49,7 +49,7 @@ fn instanovoplus_v1_1_4() {
         Ok(n) => assert_eq!(n, 24),
         Err(e) => {
             println!("{e}");
-            panic!("Failed identified peptides test");
+            panic!("Failed PSMs test");
         }
     }
 }

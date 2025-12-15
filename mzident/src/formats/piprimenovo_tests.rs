@@ -15,7 +15,7 @@ fn piprimenovo() {
         Ok(n) => assert_eq!(n, 13),
         Err(e) => {
             println!("{e}");
-            panic!("Failed identified peptides test");
+            panic!("Failed PSMs test");
         }
     }
 }

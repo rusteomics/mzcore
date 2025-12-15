@@ -179,7 +179,7 @@ pub enum FileFormat {
 
 impl FileFormat {
     /// Open a file with this file format. If the file format is [`Self::Undefined`] it uses
-    /// [`open_identified_peptidoforms_file`] to automatically try all possible options based on the
+    /// [`open_psm_file`] to automatically try all possible options based on the
     /// extension. If the file format is specific format but without a defined version, for example
     /// `Self::Peaks(None)`, all known versions are tried and the first successful one is assumed.
     /// # Errors
@@ -284,7 +284,7 @@ impl FileFormat {
                 SpectrumSequenceListPSM::parse_file(path, ontologies, false, version)
                     .map(PSMIter::into_box)
             }
-            Self::Undefined => open_identified_peptidoforms_file(path, ontologies, false),
+            Self::Undefined => open_psm_file(path, ontologies, false),
         }
     }
 }

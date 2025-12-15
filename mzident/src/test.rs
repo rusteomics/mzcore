@@ -3,10 +3,10 @@ use itertools::Itertools;
 use crate::*;
 use mzcore::sequence::Peptidoform;
 
-/// Test a dataset for common errors in identified peptide parsing
+/// Test a dataset for common errors in PSM parsing
 /// # Errors
 /// * If the peptide was not identified as the correct version of the format (see parameters).
-/// * See errors at [`test_identified_peptide`]
+/// * See errors at [`test_psm`]
 #[expect(clippy::missing_panics_doc)]
 pub(super) fn test_format<T: PSMSource + Into<PSM<T::Complexity, T::PeptidoformAvailability>>>(
     reader: impl std::io::Read,
@@ -25,7 +25,7 @@ where
             peptide.map_err(|e| e.to_string())?.into();
         number += 1;
 
-        test_identified_peptidoform(&peptide, allow_mass_mods, expect_lc)?;
+        test_psm(&peptide, allow_mass_mods, expect_lc)?;
 
         if format.as_ref().is_some_and(|f| {
             peptide
@@ -47,7 +47,7 @@ where
     Ok(number)
 }
 
-/// Test a peptide for common errors in identified peptide parsing
+/// Test a peptide for common errors in PSM parsing
 /// # Errors
 /// * If the local confidence has to be there and is not there (see parameter).
 /// * If the local confidence is not the same length as the peptide.
@@ -55,7 +55,7 @@ where
 /// * If any of the local scores is outside of range -1.0..=1.0.
 /// * If the peptide contains mass modifications (see parameters).
 #[expect(clippy::missing_panics_doc)]
-pub(super) fn test_identified_peptidoform<Complexity, PeptidoformAvailability>(
+pub(super) fn test_psm<Complexity, PeptidoformAvailability>(
     peptidoform: &PSM<Complexity, PeptidoformAvailability>,
     allow_mass_mods: bool,
     expect_lc: bool,
@@ -163,7 +163,7 @@ pub(super) fn test_identified_peptidoform<Complexity, PeptidoformAvailability>(
 #[ignore = "only run when interested in the sizes of the data"]
 #[test]
 fn test_size() {
-    let file = open_identified_peptidoforms_file(
+    let file = open_psm_file(
         "src/test_files/plgs_v3.0_peptide.csv",
         &mzcore::ontology::STATIC_ONTOLOGIES,
         false,
