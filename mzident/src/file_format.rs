@@ -188,89 +188,101 @@ impl FileFormat {
         self,
         path: &Path,
         ontologies: &'a Ontologies,
-    ) -> Result<GeneralIdentifiedPeptidoforms<'a>, BoxedError<'static, BasicKind>> {
+    ) -> Result<GeneralPSMs<'a>, BoxedError<'static, BasicKind>> {
         match self {
             #[cfg(feature = "mzannotate")]
             Self::AnnotatedSpectrum => annotated_spectrum::parse_mzspeclib(path, ontologies),
-            Self::BasicCSV(version) => BasicCSVData::parse_file(path, ontologies, false, version)
-                .map(IdentifiedPeptidoformIter::into_box),
+            Self::BasicCSV(version) => {
+                BasicCSVPSM::parse_file(path, ontologies, false, version).map(PSMIter::into_box)
+            }
             Self::DeepNovoFamily(version) => {
-                DeepNovoFamilyData::parse_file(path, ontologies, false, version)
-                    .map(IdentifiedPeptidoformIter::into_box)
+                DeepNovoFamilyPSM::parse_file(path, ontologies, false, version)
+                    .map(PSMIter::into_box)
             }
             Self::Fasta => FastaData::parse_file(path).map(|sequences| {
                 let b: Box<
                     dyn Iterator<
                         Item = Result<
-                            IdentifiedPeptidoform<Linked, MaybePeptidoform>,
+                            PSM<Linked, MaybePeptidoform>,
                             BoxedError<'static, BasicKind>,
                         >,
                     >,
-                > = Box::new(sequences.into_iter().map(|p| {
-                    Ok(IdentifiedPeptidoform::<SemiAmbiguous, PeptidoformPresent>::from(p).cast())
-                }));
+                > = Box::new(
+                    sequences
+                        .into_iter()
+                        .map(|p| Ok(PSM::<SemiAmbiguous, PeptidoformPresent>::from(p).cast())),
+                );
                 b
             }),
-            Self::InstaNovo(version) => InstaNovoData::parse_file(path, ontologies, false, version)
-                .map(IdentifiedPeptidoformIter::into_box),
-            Self::MaxQuant(version) => MaxQuantData::parse_file(path, ontologies, false, version)
-                .map(IdentifiedPeptidoformIter::into_box),
+            Self::InstaNovo(version) => {
+                InstaNovoPSM::parse_file(path, ontologies, false, version).map(PSMIter::into_box)
+            }
+            Self::MaxQuant(version) => {
+                MaxQuantPSM::parse_file(path, ontologies, false, version).map(PSMIter::into_box)
+            }
             Self::MetaMorpheus(version) => {
-                MetaMorpheusData::parse_file(path, ontologies, false, version)
-                    .map(IdentifiedPeptidoformIter::into_box)
+                MetaMorpheusPSM::parse_file(path, ontologies, false, version).map(PSMIter::into_box)
             }
             Self::MzTab => MzTabPSM::parse_file(path, ontologies).map(|sequences| {
                 let b: Box<
                     dyn Iterator<
                         Item = Result<
-                            IdentifiedPeptidoform<Linked, MaybePeptidoform>,
+                            PSM<Linked, MaybePeptidoform>,
                             BoxedError<'static, BasicKind>,
                         >,
                     >,
-                > = Box::new(sequences.into_iter().map(|p| {
-                    p.map(|p| {
-                        IdentifiedPeptidoform::<SimpleLinear, MaybePeptidoform>::from(p).cast()
-                    })
-                }));
+                > = Box::new(
+                    sequences
+                        .into_iter()
+                        .map(|p| p.map(|p| PSM::<SimpleLinear, MaybePeptidoform>::from(p).cast())),
+                );
                 b
             }),
             Self::PiHelixNovo(version) => {
-                PiHelixNovoData::parse_file(path, ontologies, false, version)
-                    .map(IdentifiedPeptidoformIter::into_box)
+                PiHelixNovoPSM::parse_file(path, ontologies, false, version).map(PSMIter::into_box)
             }
             Self::PiPrimeNovo(version) => {
-                PiPrimeNovoData::parse_file(path, ontologies, false, version)
-                    .map(IdentifiedPeptidoformIter::into_box)
+                PiPrimeNovoPSM::parse_file(path, ontologies, false, version).map(PSMIter::into_box)
             }
-            Self::NovoB(version) => NovoBData::parse_file(path, ontologies, false, version)
-                .map(IdentifiedPeptidoformIter::into_box),
-            Self::Novor(version) => NovorData::parse_file(path, ontologies, false, version)
-                .map(IdentifiedPeptidoformIter::into_box),
-            Self::Opair(version) => OpairData::parse_file(path, ontologies, false, version)
-                .map(IdentifiedPeptidoformIter::into_box),
-            Self::PLGS(version) => PLGSData::parse_file(path, ontologies, false, version)
-                .map(IdentifiedPeptidoformIter::into_box),
-            Self::PLink(version) => PLinkData::parse_file(path, ontologies, false, version)
-                .map(IdentifiedPeptidoformIter::into_box),
-            Self::Peaks(version) => PeaksData::parse_file(path, ontologies, false, version)
-                .map(IdentifiedPeptidoformIter::into_box),
-            Self::PepNet(version) => PepNetData::parse_file(path, ontologies, false, version)
-                .map(IdentifiedPeptidoformIter::into_box),
-            Self::MSFragger(version) => MSFraggerData::parse_file(path, ontologies, false, version)
-                .map(IdentifiedPeptidoformIter::into_box),
-            Self::PowerNovo(version) => PowerNovoData::parse_file(path, ontologies, false, version)
-                .map(IdentifiedPeptidoformIter::into_box),
+            Self::NovoB(version) => {
+                NovoBPSM::parse_file(path, ontologies, false, version).map(PSMIter::into_box)
+            }
+            Self::Novor(version) => {
+                NovorPSM::parse_file(path, ontologies, false, version).map(PSMIter::into_box)
+            }
+            Self::Opair(version) => {
+                OpairPSM::parse_file(path, ontologies, false, version).map(PSMIter::into_box)
+            }
+            Self::PLGS(version) => {
+                PLGSPSM::parse_file(path, ontologies, false, version).map(PSMIter::into_box)
+            }
+            Self::PLink(version) => {
+                PLinkPSM::parse_file(path, ontologies, false, version).map(PSMIter::into_box)
+            }
+            Self::Peaks(version) => {
+                PeaksPSM::parse_file(path, ontologies, false, version).map(PSMIter::into_box)
+            }
+            Self::PepNet(version) => {
+                PepNetPSM::parse_file(path, ontologies, false, version).map(PSMIter::into_box)
+            }
+            Self::MSFragger(version) => {
+                MSFraggerPSM::parse_file(path, ontologies, false, version).map(PSMIter::into_box)
+            }
+            Self::PowerNovo(version) => {
+                PowerNovoPSM::parse_file(path, ontologies, false, version).map(PSMIter::into_box)
+            }
             Self::Proteoscape(version) => {
-                ProteoscapeData::parse_file(path, ontologies, false, version)
-                    .map(IdentifiedPeptidoformIter::into_box)
+                ProteoscapePSM::parse_file(path, ontologies, false, version).map(PSMIter::into_box)
             }
-            Self::PUniFind(version) => PUniFindData::parse_file(path, ontologies, false, version)
-                .map(IdentifiedPeptidoformIter::into_box),
-            Self::Sage(version) => SageData::parse_file(path, ontologies, false, version)
-                .map(IdentifiedPeptidoformIter::into_box),
+            Self::PUniFind(version) => {
+                PUniFindPSM::parse_file(path, ontologies, false, version).map(PSMIter::into_box)
+            }
+            Self::Sage(version) => {
+                SagePSM::parse_file(path, ontologies, false, version).map(PSMIter::into_box)
+            }
             Self::SpectrumSequenceList(version) => {
-                SpectrumSequenceListData::parse_file(path, ontologies, false, version)
-                    .map(IdentifiedPeptidoformIter::into_box)
+                SpectrumSequenceListPSM::parse_file(path, ontologies, false, version)
+                    .map(PSMIter::into_box)
             }
             Self::Undefined => open_identified_peptidoforms_file(path, ontologies, false),
         }

@@ -3,9 +3,9 @@ use std::{borrow::Cow, marker::PhantomData, ops::Range, str::FromStr};
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    BoxedIdentifiedPeptideIter, FastaIdentifier, IdentifiedPeptidoform, IdentifiedPeptidoformData,
-    IdentifiedPeptidoformSource, IdentifiedPeptidoformVersion, KnownFileFormat, MaybePeptidoform,
-    PSMMetaData, SpectrumId, SpectrumIds,
+    BoxedIdentifiedPeptideIter, FastaIdentifier, PSMData,
+    PSMSource, PSMFileFormatVersion, KnownFileFormat, MaybePeptidoform,
+    PSM, PSMMetaData, SpectrumId, SpectrumIds,
     common_parser::{Location, OptionalLocation},
 };
 use mzcore::{
@@ -118,7 +118,7 @@ impl std::fmt::Display for PUniFindVersion {
     }
 }
 
-impl IdentifiedPeptidoformVersion<PUniFindFormat> for PUniFindVersion {
+impl PSMFileFormatVersion<PUniFindFormat> for PUniFindVersion {
     fn format(self) -> PUniFindFormat {
         match self {
             Self::V0_1 => PUNIFIND_V0_1,
@@ -131,7 +131,7 @@ impl IdentifiedPeptidoformVersion<PUniFindFormat> for PUniFindVersion {
     }
 }
 
-impl PSMMetaData for PUniFindData {
+impl PSMMetaData for PUniFindPSM {
     fn compound_peptidoform_ion(&self) -> Option<Cow<'_, CompoundPeptidoformIon>> {
         Some(Cow::Owned(self.peptidoform.clone().into()))
     }

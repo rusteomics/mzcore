@@ -3,8 +3,8 @@ use std::{borrow::Cow, marker::PhantomData, ops::Range};
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    BoxedIdentifiedPeptideIter, FastaIdentifier, IdentifiedPeptidoform, IdentifiedPeptidoformData,
-    IdentifiedPeptidoformSource, IdentifiedPeptidoformVersion, KnownFileFormat, PSMMetaData,
+    BoxedIdentifiedPeptideIter, FastaIdentifier, PSMData,
+    PSMSource, PSMFileFormatVersion, KnownFileFormat, PSM, PSMMetaData,
     PeptidoformPresent, SpectrumId, SpectrumIds, common_parser::Location,
 };
 use mzcore::{
@@ -65,7 +65,7 @@ impl std::fmt::Display for PiHelixNovoVersion {
     }
 }
 
-impl IdentifiedPeptidoformVersion<PiHelixNovoFormat> for PiHelixNovoVersion {
+impl PSMFileFormatVersion<PiHelixNovoFormat> for PiHelixNovoVersion {
     fn format(self) -> PiHelixNovoFormat {
         match self {
             Self::V1_1 => PIHELIXNOVO_V1_1,
@@ -78,7 +78,7 @@ impl IdentifiedPeptidoformVersion<PiHelixNovoFormat> for PiHelixNovoVersion {
     }
 }
 
-impl PSMMetaData for PiHelixNovoData {
+impl PSMMetaData for PiHelixNovoPSM {
     fn compound_peptidoform_ion(&self) -> Option<Cow<'_, CompoundPeptidoformIon>> {
         Some(Cow::Owned(self.peptide.clone().into()))
     }

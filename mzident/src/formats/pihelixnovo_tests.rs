@@ -1,11 +1,11 @@
 #![allow(clippy::missing_panics_doc)]
 use std::io::BufReader;
 
-use crate::{PiHelixNovoData, PiHelixNovoVersion, test_format};
+use crate::{PiHelixNovoPSM, PiHelixNovoVersion, test_format};
 
 #[test]
 fn pihelixnovo() {
-    match test_format::<PiHelixNovoData>(
+    match test_format::<PiHelixNovoPSM>(
         BufReader::new(PIHELIXNOVO_V1_1.as_bytes()),
         &mzcore::ontology::STATIC_ONTOLOGIES,
         true,

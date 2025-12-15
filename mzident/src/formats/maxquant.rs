@@ -9,9 +9,8 @@ use serde::{Deserialize, Serialize};
 use thin_vec::ThinVec;
 
 use crate::{
-    BoxedIdentifiedPeptideIter, FastaIdentifier, IdentifiedPeptidoform, IdentifiedPeptidoformData,
-    IdentifiedPeptidoformSource, IdentifiedPeptidoformVersion, KnownFileFormat, MaybePeptidoform,
-    PSMMetaData, SpectrumId, SpectrumIds,
+    BoxedIdentifiedPeptideIter, FastaIdentifier, KnownFileFormat, MaybePeptidoform, PSM, PSMData,
+    PSMFileFormatVersion, PSMMetaData, PSMSource, SpectrumId, SpectrumIds,
     common_parser::{Location, OptionalColumn, OptionalLocation},
     helper_functions::end_of_enclosure,
 };
@@ -43,8 +42,8 @@ format_family!(
     /// ```rust
     /// # use mzcore::{prelude::*, sequence::Linked};
     /// # use mzident::*;
-    /// # let mut identified_pepform: IdentifiedPeptidoform<Linked, PeptidoformPresent> = BasicCSVData::default().into();
-    /// if let IdentifiedPeptidoformData::MaxQuant(ref mut mq) = identified_pepform.data
+    /// # let mut identified_pepform: PSM<Linked, PeptidoformPresent> = BasicCSVPSM::default().into();
+    /// if let PSMData::MaxQuant(ref mut mq) = identified_pepform.data
     ///     && mq.format().version() == Some(MaxQuantVersion::NovoMSMSScans.to_string())
     /// {
     ///     mq.peptide = mq.dn_sequence.clone();
@@ -202,7 +201,7 @@ impl std::fmt::Display for MaxQuantVersion {
     }
 }
 
-impl IdentifiedPeptidoformVersion<MaxQuantFormat> for MaxQuantVersion {
+impl PSMFileFormatVersion<MaxQuantFormat> for MaxQuantVersion {
     fn format(self) -> MaxQuantFormat {
         match self {
             Self::MSMS => MSMS,
@@ -479,7 +478,7 @@ pub const SILAC: MaxQuantFormat = MaxQuantFormat {
     z: "charge",
 };
 
-impl PSMMetaData for MaxQuantData {
+impl PSMMetaData for MaxQuantPSM {
     fn compound_peptidoform_ion(&self) -> Option<Cow<'_, CompoundPeptidoformIon>> {
         self.peptide.as_ref().map(|p| Cow::Owned(p.clone().into()))
     }

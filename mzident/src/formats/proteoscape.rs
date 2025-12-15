@@ -3,8 +3,8 @@ use std::{borrow::Cow, marker::PhantomData, ops::Range};
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    BoxedIdentifiedPeptideIter, FastaIdentifier, IdentifiedPeptidoform, IdentifiedPeptidoformData,
-    IdentifiedPeptidoformSource, IdentifiedPeptidoformVersion, KnownFileFormat, PSMMetaData,
+    BoxedIdentifiedPeptideIter, FastaIdentifier, PSMData,
+    PSMSource, PSMFileFormatVersion, KnownFileFormat, PSM, PSMMetaData,
     PeptidoformPresent, SpectrumId, SpectrumIds, common_parser::Location,
 };
 use mzcore::{
@@ -95,7 +95,7 @@ impl std::fmt::Display for ProteoscapeVersion {
     }
 }
 
-impl IdentifiedPeptidoformVersion<ProteoscapeFormat> for ProteoscapeVersion {
+impl PSMFileFormatVersion<ProteoscapeFormat> for ProteoscapeVersion {
     fn format(self) -> ProteoscapeFormat {
         match self {
             Self::V2025b => V2025B,
@@ -127,7 +127,7 @@ pub const V2025B: ProteoscapeFormat = ProteoscapeFormat {
     is_unique: "is unique",
 };
 
-impl PSMMetaData for ProteoscapeData {
+impl PSMMetaData for ProteoscapePSM {
     fn compound_peptidoform_ion(&self) -> Option<Cow<'_, CompoundPeptidoformIon>> {
         Some(Cow::Owned(self.peptide.1.clone().into()))
     }

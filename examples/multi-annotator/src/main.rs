@@ -38,7 +38,7 @@ use mzdata::{
     mzsignal::PeakPicker,
     spectrum::{SignalContinuity, SpectrumLike},
 };
-use mzident::{BasicCSVData, IdentifiedPeptidoformSource};
+use mzident::{BasicCSVPSM, PSMSource};
 use rayon::prelude::*;
 
 /// The command line interface arguments
@@ -170,7 +170,7 @@ fn main() {
         custom_models.as_deref(),
     );
     let ontologies = Ontologies::init().0;
-    let mut peptidoforms = BasicCSVData::parse_file(args.in_path, &ontologies, true, None)
+    let mut peptidoforms = BasicCSVPSM::parse_file(args.in_path, &ontologies, true, None)
         .expect("Invalid input file")
         .combine_errors(());
     let files = peptidoforms.into_group_map_by(|l| l.raw_file.clone());

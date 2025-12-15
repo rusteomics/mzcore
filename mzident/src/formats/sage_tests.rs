@@ -1,11 +1,11 @@
 #![allow(clippy::missing_panics_doc)]
 use std::io::BufReader;
 
-use crate::{SageData, SageVersion, test_format};
+use crate::{SagePSM, SageVersion, test_format};
 
 #[test]
 fn sage() {
-    match test_format::<SageData>(
+    match test_format::<SagePSM>(
         BufReader::new(DATA.as_bytes()),
         &mzcore::ontology::STATIC_ONTOLOGIES,
         true,
@@ -22,7 +22,7 @@ fn sage() {
 
 #[test]
 fn sage_decoy() {
-    match test_format::<SageData>(
+    match test_format::<SagePSM>(
         BufReader::new(DATA_DECOY.as_bytes()),
         &mzcore::ontology::STATIC_ONTOLOGIES,
         true,

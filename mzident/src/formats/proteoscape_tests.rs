@@ -1,11 +1,11 @@
 #![allow(clippy::missing_panics_doc)]
 use std::io::BufReader;
 
-use crate::{ProteoscapeData, ProteoscapeVersion, test_format};
+use crate::{ProteoscapePSM, ProteoscapeVersion, test_format};
 
 #[test]
 fn proteoscape_db_v2025b() {
-    match test_format::<ProteoscapeData>(
+    match test_format::<ProteoscapePSM>(
         BufReader::new(DATABASE_V2025B.as_bytes()),
         &mzcore::ontology::STATIC_ONTOLOGIES,
         true,

@@ -1,11 +1,11 @@
 #![allow(clippy::missing_panics_doc)]
 use std::io::BufReader;
 
-use crate::{OpairData, OpairVersion, test_format};
+use crate::{OpairPSM, OpairVersion, test_format};
 
 #[test]
 fn opair() {
-    match test_format::<OpairData>(
+    match test_format::<OpairPSM>(
         BufReader::new(DATA.as_bytes()),
         &mzcore::ontology::STATIC_ONTOLOGIES,
         false,

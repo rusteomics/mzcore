@@ -1,11 +1,11 @@
 #![allow(clippy::missing_panics_doc)]
 use std::io::BufReader;
 
-use crate::{PiPrimeNovoData, PiPrimeNovoVersion, test_format};
+use crate::{PiPrimeNovoPSM, PiPrimeNovoVersion, test_format};
 
 #[test]
 fn piprimenovo() {
-    match test_format::<PiPrimeNovoData>(
+    match test_format::<PiPrimeNovoPSM>(
         BufReader::new(PIPRIMENOVO_V0_1.as_bytes()),
         &mzcore::ontology::STATIC_ONTOLOGIES,
         true,

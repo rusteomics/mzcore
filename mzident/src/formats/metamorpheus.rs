@@ -9,8 +9,8 @@ use context_error::*;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    BoxedIdentifiedPeptideIter, FastaIdentifier, IdentifiedPeptidoform, IdentifiedPeptidoformData,
-    IdentifiedPeptidoformSource, IdentifiedPeptidoformVersion, KnownFileFormat, PSMMetaData,
+    BoxedIdentifiedPeptideIter, FastaIdentifier, PSMData,
+    PSMSource, PSMFileFormatVersion, KnownFileFormat, PSM, PSMMetaData,
     PeptidoformPresent, SpectrumId, SpectrumIds, common_parser::Location,
 };
 use mzcore::{
@@ -189,7 +189,7 @@ impl std::fmt::Display for MetaMorpheusVersion {
     }
 }
 
-impl IdentifiedPeptidoformVersion<MetaMorpheusFormat> for MetaMorpheusVersion {
+impl PSMFileFormatVersion<MetaMorpheusFormat> for MetaMorpheusVersion {
     fn format(self) -> MetaMorpheusFormat {
         match self {
             Self::MetaMorpheus => META_MORPHEUS,
@@ -263,7 +263,7 @@ impl std::fmt::Display for MetaMorpheusMatchKind {
     }
 }
 
-impl PSMMetaData for MetaMorpheusData {
+impl PSMMetaData for MetaMorpheusPSM {
     fn compound_peptidoform_ion(&self) -> Option<Cow<'_, CompoundPeptidoformIon>> {
         Some(Cow::Owned(self.peptide.clone()))
     }

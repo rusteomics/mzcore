@@ -1,11 +1,11 @@
 #![allow(clippy::missing_panics_doc)]
 use std::io::BufReader;
 
-use crate::{PUniFindData, PUniFindVersion, test_format};
+use crate::{PUniFindPSM, PUniFindVersion, test_format};
 
 #[test]
 fn punifind() {
-    match test_format::<PUniFindData>(
+    match test_format::<PUniFindPSM>(
         BufReader::new(DATA.as_bytes()),
         &mzcore::ontology::STATIC_ONTOLOGIES,
         false,

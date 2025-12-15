@@ -12,9 +12,8 @@ use serde::{Deserialize, Serialize};
 use uom::ConstZero;
 
 use crate::{
-    BoxedIdentifiedPeptideIter, FastaIdentifier, IdentifiedPeptidoform, IdentifiedPeptidoformData,
-    IdentifiedPeptidoformSource, IdentifiedPeptidoformVersion, KnownFileFormat, PSMMetaData,
-    PeptidoformPresent, SpectrumId, SpectrumIds,
+    BoxedIdentifiedPeptideIter, FastaIdentifier, KnownFileFormat, PSM, PSMData,
+    PSMFileFormatVersion, PSMMetaData, PSMSource, PeptidoformPresent, SpectrumId, SpectrumIds,
     common_parser::{Location, OptionalColumn, OptionalLocation},
     helper_functions::explain_number_error,
 };
@@ -489,7 +488,7 @@ impl std::fmt::Display for PLinkVersion {
     }
 }
 
-impl IdentifiedPeptidoformVersion<PLinkFormat> for PLinkVersion {
+impl PSMFileFormatVersion<PLinkFormat> for PLinkVersion {
     fn format(self) -> PLinkFormat {
         match self {
             Self::V2_3 => V2_3,
@@ -502,7 +501,7 @@ impl IdentifiedPeptidoformVersion<PLinkFormat> for PLinkVersion {
     }
 }
 
-impl PSMMetaData for PLinkData {
+impl PSMMetaData for PLinkPSM {
     fn compound_peptidoform_ion(&self) -> Option<Cow<'_, CompoundPeptidoformIon>> {
         Some(Cow::Owned(self.peptidoform.clone().into()))
     }
@@ -581,7 +580,18 @@ impl PSMMetaData for PLinkData {
         Some(self.mass)
     }
 
-    type Protein<'a> = crate::NoProtein;
+    type Protein<'a> = FastaIdentifier<String>;
+    fn proteins(&self) -> &[Self::Protein<'_>] {
+        // self.proteins
+        //     .iter()
+        //     .flat_map(|p| p.2.as_ref().map_or_else(|| vec![&p.0], |p2| vec![&p.0, p2]))
+        //     .unique()
+        //     .cloned()
+        //     .collect_vec()
+        //     .as_slice() // TODO: fix lifetime issues
+        &[]
+    }
+
     fn protein_names(&self) -> Option<Cow<'_, [FastaIdentifier<String>]>> {
         Some(
             self.proteins

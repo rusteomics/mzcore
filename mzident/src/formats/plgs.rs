@@ -4,8 +4,8 @@ use serde::{Deserialize, Serialize};
 use thin_vec::ThinVec;
 
 use crate::{
-    BoxedIdentifiedPeptideIter, FastaIdentifier, IdentifiedPeptidoform, IdentifiedPeptidoformData,
-    IdentifiedPeptidoformSource, IdentifiedPeptidoformVersion, KnownFileFormat, PSMMetaData,
+    BoxedIdentifiedPeptideIter, FastaIdentifier, PSMData,
+    PSMSource, PSMFileFormatVersion, KnownFileFormat, PSM, PSMMetaData,
     PeptidoformPresent, Reliability, SpectrumId, SpectrumIds,
     common_parser::{Location, OptionalColumn, OptionalLocation},
     helper_functions::explain_number_error,
@@ -248,7 +248,7 @@ impl std::fmt::Display for PLGSVersion {
     }
 }
 
-impl IdentifiedPeptidoformVersion<PLGSFormat> for PLGSVersion {
+impl PSMFileFormatVersion<PLGSFormat> for PLGSVersion {
     fn format(self) -> PLGSFormat {
         match self {
             Self::V3_0 => VERSION_3_0,
@@ -261,7 +261,7 @@ impl IdentifiedPeptidoformVersion<PLGSFormat> for PLGSVersion {
     }
 }
 
-impl PSMMetaData for PLGSData {
+impl PSMMetaData for PLGSPSM {
     fn compound_peptidoform_ion(&self) -> Option<Cow<'_, CompoundPeptidoformIon>> {
         Some(Cow::Owned(self.peptide.clone().into()))
     }

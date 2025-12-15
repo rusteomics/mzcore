@@ -4,9 +4,9 @@ use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    BoxedIdentifiedPeptideIter, FastaIdentifier, IdentifiedPeptidoform, IdentifiedPeptidoformData,
-    IdentifiedPeptidoformSource, IdentifiedPeptidoformVersion, KnownFileFormat, MaybePeptidoform,
-    PSMMetaData, PeaksFamilyId, SpectrumId, SpectrumIds,
+    BoxedIdentifiedPeptideIter, FastaIdentifier, PSMData,
+    PSMSource, PSMFileFormatVersion, KnownFileFormat, MaybePeptidoform,
+    PSM, PSMMetaData, PeaksFamilyId, SpectrumId, SpectrumIds,
     common_parser::{Location, OptionalColumn, OptionalLocation},
 };
 use mzcore::{
@@ -148,7 +148,7 @@ impl std::fmt::Display for DeepNovoFamilyVersion {
     }
 }
 
-impl IdentifiedPeptidoformVersion<DeepNovoFamilyFormat> for DeepNovoFamilyVersion {
+impl PSMFileFormatVersion<DeepNovoFamilyFormat> for DeepNovoFamilyVersion {
     fn format(self) -> DeepNovoFamilyFormat {
         match self {
             Self::DeepNovoV0_0_1 => DEEPNOVO_V0_0_1,
@@ -163,7 +163,7 @@ impl IdentifiedPeptidoformVersion<DeepNovoFamilyFormat> for DeepNovoFamilyVersio
     }
 }
 
-impl PSMMetaData for DeepNovoFamilyData {
+impl PSMMetaData for DeepNovoFamilyPSM {
     fn compound_peptidoform_ion(&self) -> Option<Cow<'_, CompoundPeptidoformIon>> {
         self.peptide.as_ref().map(|p| Cow::Owned(p.clone().into()))
     }

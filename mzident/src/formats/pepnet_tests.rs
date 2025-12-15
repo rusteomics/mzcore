@@ -1,11 +1,11 @@
 #![allow(clippy::missing_panics_doc)]
 use std::io::BufReader;
 
-use crate::{PepNetData, PepNetVersion, test_format};
+use crate::{PepNetPSM, PepNetVersion, test_format};
 
 #[test]
 fn pepnet() {
-    match test_format::<PepNetData>(
+    match test_format::<PepNetPSM>(
         BufReader::new(PEPNET_V1_0.as_bytes()),
         &mzcore::ontology::STATIC_ONTOLOGIES,
         false,

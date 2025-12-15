@@ -1,11 +1,11 @@
 #![allow(clippy::missing_panics_doc)]
 use std::io::BufReader;
 
-use crate::{PowerNovoData, PowerNovoVersion, test_format};
+use crate::{PowerNovoPSM, PowerNovoVersion, test_format};
 
 #[test]
 fn powernovo() {
-    match test_format::<PowerNovoData>(
+    match test_format::<PowerNovoPSM>(
         BufReader::new(POWERNOVO_V1_0_17.as_bytes()),
         &mzcore::ontology::STATIC_ONTOLOGIES,
         false,

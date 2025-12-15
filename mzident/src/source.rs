@@ -2,11 +2,11 @@ use std::fmt::Display;
 
 use context_error::{BasicKind, BoxedError};
 
-use crate::{IdentifiedPeptidoform, MaybePeptidoform, PSMMetaData};
+use crate::{MaybePeptidoform, PSM, PSMMetaData};
 use mzcore::sequence::{AtLeast, Linked};
 
-/// A version for an identified peptide version
-pub trait IdentifiedPeptidoformVersion<Format>: Copy + Display {
+/// A version for an identified peptide file format
+pub trait PSMFileFormatVersion<Format>: Copy + Display {
     /// The format for this version
     fn format(self) -> Format;
     /// The name for this version
@@ -14,7 +14,7 @@ pub trait IdentifiedPeptidoformVersion<Format>: Copy + Display {
 }
 
 /// The required methods for any source of identified peptides
-pub trait IdentifiedPeptidoformSource
+pub trait PSMSource
 where
     Self: Sized + PSMMetaData,
 {
@@ -31,7 +31,7 @@ where
     type PeptidoformAvailability;
 
     /// The version type
-    type Version: Display + IdentifiedPeptidoformVersion<Self::Format>;
+    type Version: Display + PSMFileFormatVersion<Self::Format>;
 
     /// Parse a single identified peptide from its source and return the detected format
     /// # Errors
@@ -60,8 +60,8 @@ where
         ontologies: &mzcore::ontology::Ontologies,
         keep_all_columns: bool,
         format: Option<Self::Format>,
-    ) -> IdentifiedPeptidoformIter<'_, Self, I> {
-        IdentifiedPeptidoformIter {
+    ) -> PSMIter<'_, Self, I> {
+        PSMIter {
             iter: Box::new(iter),
             format,
             ontologies,
@@ -104,34 +104,26 @@ where
 }
 
 /// A general generic identified peptidoform iterator from any source format
-pub type GeneralIdentifiedPeptidoforms<'lifetime> = Box<
-    dyn Iterator<
-            Item = Result<
-                IdentifiedPeptidoform<Linked, MaybePeptidoform>,
-                BoxedError<'static, BasicKind>,
-            >,
-        > + 'lifetime,
+pub type GeneralPSMs<'lifetime> = Box<
+    dyn Iterator<Item = Result<PSM<Linked, MaybePeptidoform>, BoxedError<'static, BasicKind>>>
+        + 'lifetime,
 >;
 
 /// Convenience type to not have to type out long iterator types
-pub type BoxedIdentifiedPeptideIter<'lifetime, T> = IdentifiedPeptidoformIter<
+pub type BoxedIdentifiedPeptideIter<'lifetime, T> = PSMIter<
     'lifetime,
     T,
     Box<
-        dyn Iterator<
-                Item = Result<
-                    <T as IdentifiedPeptidoformSource>::Source,
-                    BoxedError<'static, BasicKind>,
-                >,
-            > + 'lifetime,
+        dyn Iterator<Item = Result<<T as PSMSource>::Source, BoxedError<'static, BasicKind>>>
+            + 'lifetime,
     >,
 >;
 
 /// An iterator returning parsed identified peptides
 #[derive(Debug)]
-pub struct IdentifiedPeptidoformIter<
+pub struct PSMIter<
     'lifetime,
-    Source: IdentifiedPeptidoformSource,
+    Source: PSMSource,
     Iter: Iterator<Item = Result<Source::Source, BoxedError<'static, BasicKind>>>,
 > {
     iter: Box<Iter>,
@@ -141,10 +133,8 @@ pub struct IdentifiedPeptidoformIter<
     peek: Option<Result<Source, BoxedError<'static, BasicKind>>>,
 }
 
-impl<
-    R: IdentifiedPeptidoformSource + Clone,
-    I: Iterator<Item = Result<R::Source, BoxedError<'static, BasicKind>>>,
-> IdentifiedPeptidoformIter<'_, R, I>
+impl<R: PSMSource + Clone, I: Iterator<Item = Result<R::Source, BoxedError<'static, BasicKind>>>>
+    PSMIter<'_, R, I>
 where
     R::Format: 'static,
 {
@@ -177,10 +167,8 @@ where
     }
 }
 
-impl<
-    R: IdentifiedPeptidoformSource,
-    I: Iterator<Item = Result<R::Source, BoxedError<'static, BasicKind>>>,
-> Iterator for IdentifiedPeptidoformIter<'_, R, I>
+impl<R: PSMSource, I: Iterator<Item = Result<R::Source, BoxedError<'static, BasicKind>>>> Iterator
+    for PSMIter<'_, R, I>
 where
     R::Format: 'static,
 {
@@ -211,11 +199,9 @@ where
     }
 }
 
-impl<'lifetime, Source, Iter> IdentifiedPeptidoformIter<'lifetime, Source, Iter>
+impl<'lifetime, Source, Iter> PSMIter<'lifetime, Source, Iter>
 where
-    Source: IdentifiedPeptidoformSource
-        + Into<IdentifiedPeptidoform<Source::Complexity, Source::PeptidoformAvailability>>
-        + 'lifetime,
+    Source: PSMSource + Into<PSM<Source::Complexity, Source::PeptidoformAvailability>> + 'lifetime,
     Iter: Iterator<Item = Result<Source::Source, BoxedError<'static, BasicKind>>> + 'lifetime,
     Source::Format: 'static,
     MaybePeptidoform: From<Source::PeptidoformAvailability>,
@@ -225,10 +211,7 @@ where
         self,
     ) -> Box<
         dyn Iterator<
-                Item = Result<
-                    IdentifiedPeptidoform<Complexity, MaybePeptidoform>,
-                    BoxedError<'static, BasicKind>,
-                >,
+                Item = Result<PSM<Complexity, MaybePeptidoform>, BoxedError<'static, BasicKind>>,
             > + 'lifetime,
     > {
         Box::new(self.map(

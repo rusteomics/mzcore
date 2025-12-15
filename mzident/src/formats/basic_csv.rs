@@ -8,8 +8,8 @@ use std::{
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    BoxedIdentifiedPeptideIter, FastaIdentifier, IdentifiedPeptidoform, IdentifiedPeptidoformData,
-    IdentifiedPeptidoformSource, IdentifiedPeptidoformVersion, KnownFileFormat, PSMMetaData,
+    BoxedIdentifiedPeptideIter, FastaIdentifier, PSMData,
+    PSMSource, PSMFileFormatVersion, KnownFileFormat, PSM, PSMMetaData,
     PeptidoformPresent, SpectrumId, SpectrumIds,
     common_parser::{Location, OptionalColumn},
 };
@@ -49,7 +49,7 @@ pub enum BasicCSVVersion {
     Basic,
 }
 
-impl IdentifiedPeptidoformVersion<BasicCSVFormat> for BasicCSVVersion {
+impl PSMFileFormatVersion<BasicCSVFormat> for BasicCSVVersion {
     fn format(self) -> BasicCSVFormat {
         match self {
             Self::Basic => BASIC,
@@ -78,7 +78,7 @@ pub const BASIC: BasicCSVFormat = BasicCSVFormat {
     mode: OptionalColumn::Optional("mode"),
 };
 
-impl PSMMetaData for BasicCSVData {
+impl PSMMetaData for BasicCSVPSM {
     fn compound_peptidoform_ion(&self) -> Option<Cow<'_, CompoundPeptidoformIon>> {
         Some(Cow::Borrowed(&self.sequence))
     }

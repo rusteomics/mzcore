@@ -1,7 +1,7 @@
 #![allow(clippy::missing_panics_doc)]
 use std::io::BufReader;
 
-use crate::{IdentifiedPeptidoformSource, PeaksData, PeaksVersion, test_format};
+use crate::{PSMSource, PeaksPSM, PeaksVersion, test_format};
 use mzcore::{
     molecular_formula,
     sequence::{ModificationId, SimpleModificationInner},
@@ -11,7 +11,7 @@ use thin_vec::ThinVec;
 #[test]
 fn peaks_x() {
     assert_eq!(
-        test_format::<PeaksData>(
+        test_format::<PeaksPSM>(
             BufReader::new(DATA_X.as_bytes()),
             &mzcore::ontology::STATIC_ONTOLOGIES,
             false,
@@ -26,7 +26,7 @@ fn peaks_x() {
 #[test]
 fn peaks_x_patched() {
     assert_eq!(
-        test_format::<PeaksData>(
+        test_format::<PeaksPSM>(
             BufReader::new(DATA_X_PATCHED.as_bytes()),
             &mzcore::ontology::STATIC_ONTOLOGIES,
             false,
@@ -41,7 +41,7 @@ fn peaks_x_patched() {
 #[test]
 fn peaks_x_patched_sep() {
     assert_eq!(
-        test_format::<PeaksData>(
+        test_format::<PeaksPSM>(
             BufReader::new(DATA_X_PATCHED_SEP.as_bytes()),
             &mzcore::ontology::STATIC_ONTOLOGIES,
             false,
@@ -56,7 +56,7 @@ fn peaks_x_patched_sep() {
 #[test]
 fn peaks_x_plus() {
     assert_eq!(
-        test_format::<PeaksData>(
+        test_format::<PeaksPSM>(
             BufReader::new(DATA_XPLUS.as_bytes()),
             &mzcore::ontology::STATIC_ONTOLOGIES,
             false,
@@ -71,7 +71,7 @@ fn peaks_x_plus() {
 #[test]
 fn peaks_11() {
     assert_eq!(
-        test_format::<PeaksData>(
+        test_format::<PeaksPSM>(
             BufReader::new(DATA_11.as_bytes()),
             &mzcore::ontology::STATIC_ONTOLOGIES,
             false,
@@ -85,7 +85,7 @@ fn peaks_11() {
 
 #[test]
 fn peaks_11_features() {
-    match test_format::<PeaksData>(
+    match test_format::<PeaksPSM>(
         BufReader::new(DATA_11_FEATURES.as_bytes()),
         &mzcore::ontology::STATIC_ONTOLOGIES,
         true,
@@ -103,7 +103,7 @@ fn peaks_11_features() {
 #[test]
 fn peaks_11_all_candidates() {
     assert_eq!(
-        test_format::<PeaksData>(
+        test_format::<PeaksPSM>(
             BufReader::new(DATA_11_ALL_CANDIDATES.as_bytes()),
             &mzcore::ontology::STATIC_ONTOLOGIES,
             false,
@@ -118,7 +118,7 @@ fn peaks_11_all_candidates() {
 #[test]
 fn peaks_11_custom_modification() {
     assert_eq!(
-        test_format::<PeaksData>(
+        test_format::<PeaksPSM>(
             BufReader::new(DATA_11_CUSTOM_MODIFICATION.as_bytes()),
             &mzcore::ontology::Ontologies::init_static().with_custom([std::sync::Arc::new(
                 SimpleModificationInner::Database {
@@ -147,7 +147,7 @@ fn peaks_11_custom_modification() {
 #[test]
 fn peaks_12() {
     assert_eq!(
-        test_format::<PeaksData>(
+        test_format::<PeaksPSM>(
             BufReader::new(DATA_12.as_bytes()),
             &mzcore::ontology::STATIC_ONTOLOGIES,
             false,
@@ -162,7 +162,7 @@ fn peaks_12() {
 #[test]
 fn peaks_ab() {
     assert_eq!(
-        test_format::<PeaksData>(
+        test_format::<PeaksPSM>(
             BufReader::new(DATA_AB.as_bytes()),
             &mzcore::ontology::STATIC_ONTOLOGIES,
             false,
@@ -177,7 +177,7 @@ fn peaks_ab() {
 #[test]
 fn peaks_x_plus_sep() {
     assert_eq!(
-        test_format::<PeaksData>(
+        test_format::<PeaksPSM>(
             BufReader::new(DATA_X_PLUS_SEP.as_bytes()),
             &mzcore::ontology::STATIC_ONTOLOGIES,
             false,
@@ -192,7 +192,7 @@ fn peaks_x_plus_sep() {
 #[test]
 fn peaks_db_peptide() {
     assert_eq!(
-        test_format::<PeaksData>(
+        test_format::<PeaksPSM>(
             BufReader::new(DATA_DB_PEPTIDE.as_bytes()),
             &mzcore::ontology::STATIC_ONTOLOGIES,
             false,
@@ -207,7 +207,7 @@ fn peaks_db_peptide() {
 #[test]
 fn peaks_db_psm() {
     assert_eq!(
-        test_format::<PeaksData>(
+        test_format::<PeaksPSM>(
             BufReader::new(DATA_DB_PSM.as_bytes()),
             &mzcore::ontology::STATIC_ONTOLOGIES,
             false,
@@ -222,7 +222,7 @@ fn peaks_db_psm() {
 #[test]
 fn peaks_db_protein_peptide() {
     assert_eq!(
-        test_format::<PeaksData>(
+        test_format::<PeaksPSM>(
             BufReader::new(DATA_DB_PROTEIN_PEPTIDE.as_bytes()),
             &mzcore::ontology::STATIC_ONTOLOGIES,
             false,
@@ -236,7 +236,7 @@ fn peaks_db_protein_peptide() {
 
 #[test]
 fn peaks_v13_dia_de_novo() {
-    match test_format::<PeaksData>(
+    match test_format::<PeaksPSM>(
         BufReader::new(DATA_13_DIA_DE_NOVO.as_bytes()),
         &mzcore::ontology::STATIC_ONTOLOGIES,
         false,
@@ -253,7 +253,7 @@ fn peaks_v13_dia_de_novo() {
 
 #[test]
 fn full_peaks_file() {
-    for pep in PeaksData::parse_file(
+    for pep in PeaksPSM::parse_file(
         "../data/200305_HER_test_04_DENOVO_excerpt.csv",
         &mzcore::ontology::STATIC_ONTOLOGIES,
         false,
@@ -277,7 +277,7 @@ fn fuzz_crashes() {
         let name = path.file_name().unwrap().to_str().unwrap();
         if metadata.is_file() && name.starts_with("crash") {
             match std::panic::catch_unwind(|| {
-                test_format::<PeaksData>(
+                test_format::<PeaksPSM>(
                     BufReader::new(std::fs::File::open(&path).unwrap()),
                     &mzcore::ontology::STATIC_ONTOLOGIES,
                     false,
@@ -310,7 +310,7 @@ fn fuzz_hangs() {
         let name = path.file_name().unwrap().to_str().unwrap();
         if metadata.is_file() && name.starts_with("hang") {
             match std::panic::catch_unwind(|| {
-                test_format::<PeaksData>(
+                test_format::<PeaksPSM>(
                     BufReader::new(std::fs::File::open(&path).unwrap()),
                     &mzcore::ontology::STATIC_ONTOLOGIES,
                     false,

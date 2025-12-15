@@ -3,7 +3,7 @@ use std::io::{BufRead, BufReader};
 
 use context_error::{BasicKind, BoxedError};
 
-use crate::{IdentifiedPeptidoform, MaybePeptidoform, MzTabPSM, test_identified_peptidoform};
+use crate::{PSM, MaybePeptidoform, MzTabPSM, test_identified_peptidoform};
 use mzcore::sequence::SimpleLinear;
 
 #[test]
@@ -118,7 +118,7 @@ fn maxquant_dia_paper() {
 fn open_file(reader: impl BufRead) -> Result<usize, BoxedError<'static, BasicKind>> {
     let mut peptides = 0;
     for read in MzTabPSM::parse_reader(reader, &mzcore::ontology::STATIC_ONTOLOGIES) {
-        let peptide: IdentifiedPeptidoform<SimpleLinear, MaybePeptidoform> =
+        let peptide: PSM<SimpleLinear, MaybePeptidoform> =
             read.map_err(BoxedError::to_owned)?.into();
         peptides += 1;
 

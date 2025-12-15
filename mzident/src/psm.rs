@@ -17,13 +17,13 @@ use mzcore::{
 /// A peptide that is identified by a _de novo_ or database matching program
 #[cfg_attr(not(feature = "mzannotate"), derive(Deserialize, Serialize))]
 #[derive(Clone, Debug)]
-pub struct IdentifiedPeptidoform<Complexity, PeptidoformAvailability> {
+pub struct PSM<Complexity, PeptidoformAvailability> {
     /// The score -1.0..=1.0 if a score was available in the original format
     pub score: Option<f64>,
     /// The local confidence, if available, in range -1.0..=1.0
     pub local_confidence: Option<Vec<f64>>,
     /// The full metadata of this peptide
-    pub data: IdentifiedPeptidoformData,
+    pub data: PSMData,
     /// The marker for the complexity, Linked means full [`CompoundPeptidoformIon`] anything below means [`Peptidoform`], see [Complexity](crate::sequence::Complexity)
     pub(super) complexity_marker: PhantomData<Complexity>,
     /// The marker for availability of the peptidoform, see [`PeptidoformAvailability`]
@@ -34,99 +34,96 @@ pub struct IdentifiedPeptidoform<Complexity, PeptidoformAvailability> {
 #[cfg_attr(not(feature = "mzannotate"), derive(Deserialize, Serialize))]
 #[derive(Clone, Debug)]
 #[expect(clippy::upper_case_acronyms)]
-pub enum IdentifiedPeptidoformData {
+pub enum PSMData {
     /// A basic CSV format
-    BasicCSV(BasicCSVData),
+    BasicCSV(BasicCSVPSM),
     /// DeepNovo/PointNovo/PGPointNovo metadata
-    DeepNovoFamily(DeepNovoFamilyData),
+    DeepNovoFamily(DeepNovoFamilyPSM),
     /// Fasta metadata
     Fasta(FastaData),
     /// InstaNovo metadata
-    InstaNovo(InstaNovoData),
+    InstaNovo(InstaNovoPSM),
     /// MaxQuant metadata
-    MaxQuant(MaxQuantData),
+    MaxQuant(MaxQuantPSM),
     /// MaxQuant metadata
-    MetaMorpheus(MetaMorpheusData),
+    MetaMorpheus(MetaMorpheusPSM),
     /// MSFragger metadata
-    MSFragger(MSFraggerData),
+    MSFragger(MSFraggerPSM),
     /// mzTab metadata
     MzTab(MzTabPSM),
     /// NovoB metadata
-    NovoB(NovoBData),
+    NovoB(NovoBPSM),
     /// Novor metadata
-    Novor(NovorData),
+    Novor(NovorPSM),
     /// OPair metadata
-    Opair(OpairData),
+    Opair(OpairPSM),
     /// Peaks metadata
-    Peaks(PeaksData),
+    Peaks(PeaksPSM),
     /// PepNet metadata
-    PepNet(PepNetData),
+    PepNet(PepNetPSM),
     /// pi-HelixNovo metadata
-    PiHelixNovo(PiHelixNovoData),
+    PiHelixNovo(PiHelixNovoPSM),
     /// pi-PrimeNovo metadata
-    PiPrimeNovo(PiPrimeNovoData),
+    PiPrimeNovo(PiPrimeNovoPSM),
     /// PLGS metadata
-    PLGS(PLGSData),
+    PLGS(PLGSPSM),
     /// pLink metadata
-    PLink(PLinkData),
+    PLink(PLinkPSM),
     /// PowerNovo metadata
-    PowerNovo(PowerNovoData),
+    PowerNovo(PowerNovoPSM),
     /// Proteoscape metadata
-    Proteoscape(ProteoscapeData),
+    Proteoscape(ProteoscapePSM),
     /// pUniFind metadata
-    PUniFind(PUniFindData),
+    PUniFind(PUniFindPSM),
     /// Sage metadata
-    Sage(SageData),
+    Sage(SagePSM),
     /// SpectrumSequenceList metadata
-    SpectrumSequenceList(SpectrumSequenceListData),
+    SpectrumSequenceList(SpectrumSequenceListPSM),
     /// An mzSpecLib spectrum (only available if the feature `mzannotate` is turned on)
     #[cfg(feature = "mzannotate")]
     AnnotatedSpectrum(AnnotatedSpectrum),
 }
 
-impl<PeptidoformAvailability> IdentifiedPeptidoform<Linear, PeptidoformAvailability> {
+impl<PeptidoformAvailability> PSM<Linear, PeptidoformAvailability> {
     /// If this peptidoform contains a peptidoform that is valid as a linear peptidoform get a reference to the peptidoform.
     fn inner_peptidoform(&self) -> Option<&Peptidoform<Linear>> {
         match &self.data {
-            IdentifiedPeptidoformData::Novor(NovorData { peptide, .. })
-            | IdentifiedPeptidoformData::InstaNovo(InstaNovoData { peptide, .. })
-            | IdentifiedPeptidoformData::Opair(OpairData { peptide, .. })
-            | IdentifiedPeptidoformData::PiHelixNovo(PiHelixNovoData { peptide, .. })
-            | IdentifiedPeptidoformData::PepNet(PepNetData { peptide, .. })
-            | IdentifiedPeptidoformData::PowerNovo(PowerNovoData { peptide, .. })
-            | IdentifiedPeptidoformData::PUniFind(PUniFindData {
+            PSMData::Novor(NovorPSM { peptide, .. })
+            | PSMData::InstaNovo(InstaNovoPSM { peptide, .. })
+            | PSMData::Opair(OpairPSM { peptide, .. })
+            | PSMData::PiHelixNovo(PiHelixNovoPSM { peptide, .. })
+            | PSMData::PepNet(PepNetPSM { peptide, .. })
+            | PSMData::PowerNovo(PowerNovoPSM { peptide, .. })
+            | PSMData::PUniFind(PUniFindPSM {
                 peptidoform: peptide,
                 ..
             })
-            | IdentifiedPeptidoformData::Proteoscape(ProteoscapeData {
+            | PSMData::Proteoscape(ProteoscapePSM {
                 peptide: (_, peptide, _),
                 ..
             })
-            | IdentifiedPeptidoformData::Sage(SageData { peptide, .. }) => Some(peptide.as_ref()),
-            IdentifiedPeptidoformData::MSFragger(MSFraggerData { peptide, .. })
-            | IdentifiedPeptidoformData::PLGS(PLGSData { peptide, .. }) => Some(peptide.as_ref()),
-            IdentifiedPeptidoformData::Peaks(PeaksData { peptide, .. }) => {
+            | PSMData::Sage(SagePSM { peptide, .. }) => Some(peptide.as_ref()),
+            PSMData::MSFragger(MSFraggerPSM { peptide, .. })
+            | PSMData::PLGS(PLGSPSM { peptide, .. }) => Some(peptide.as_ref()),
+            PSMData::Peaks(PeaksPSM { peptide, .. }) => {
                 if peptide.1.len() == 1 {
                     Some(peptide.1[0].as_ref())
                 } else {
                     None
                 }
             }
-            IdentifiedPeptidoformData::SpectrumSequenceList(SpectrumSequenceListData {
-                peptide,
-                ..
-            })
-            | IdentifiedPeptidoformData::PiPrimeNovo(PiPrimeNovoData { peptide, .. })
-            | IdentifiedPeptidoformData::DeepNovoFamily(DeepNovoFamilyData { peptide, .. }) => {
+            PSMData::SpectrumSequenceList(SpectrumSequenceListPSM { peptide, .. })
+            | PSMData::PiPrimeNovo(PiPrimeNovoPSM { peptide, .. })
+            | PSMData::DeepNovoFamily(DeepNovoFamilyPSM { peptide, .. }) => {
                 peptide.as_ref().map(AsRef::as_ref)
             }
-            IdentifiedPeptidoformData::MzTab(MzTabPSM { peptidoform, .. })
-            | IdentifiedPeptidoformData::MaxQuant(MaxQuantData {
+            PSMData::MzTab(MzTabPSM { peptidoform, .. })
+            | PSMData::MaxQuant(MaxQuantPSM {
                 peptide: peptidoform,
                 ..
             }) => peptidoform.as_ref().map(AsRef::as_ref),
-            IdentifiedPeptidoformData::Fasta(f) => Some(f.peptide().as_ref()),
-            IdentifiedPeptidoformData::NovoB(NovoBData {
+            PSMData::Fasta(f) => Some(f.peptide().as_ref()),
+            PSMData::NovoB(NovoBPSM {
                 score_forward,
                 score_reverse,
                 peptide_forward,
@@ -138,17 +135,17 @@ impl<PeptidoformAvailability> IdentifiedPeptidoform<Linear, PeptidoformAvailabil
                 peptide_reverse.as_ref()
             }
             .map(AsRef::as_ref),
-            IdentifiedPeptidoformData::MetaMorpheus(MetaMorpheusData { peptide, .. })
-            | IdentifiedPeptidoformData::BasicCSV(BasicCSVData {
+            PSMData::MetaMorpheus(MetaMorpheusPSM { peptide, .. })
+            | PSMData::BasicCSV(BasicCSVPSM {
                 sequence: peptide, ..
             }) => peptide
                 .singular_peptidoform_ref()
                 .and_then(|p| p.as_linear()),
-            IdentifiedPeptidoformData::PLink(PLinkData { peptidoform, .. }) => {
+            PSMData::PLink(PLinkPSM { peptidoform, .. }) => {
                 peptidoform.singular_ref().and_then(|p| p.as_linear())
             }
             #[cfg(feature = "mzannotate")]
-            IdentifiedPeptidoformData::AnnotatedSpectrum(spectrum) => {
+            PSMData::AnnotatedSpectrum(spectrum) => {
                 use itertools::Itertools;
                 use mzannotate::mzspeclib::AnalyteTarget;
 
@@ -167,49 +164,46 @@ impl<PeptidoformAvailability> IdentifiedPeptidoform<Linear, PeptidoformAvailabil
     }
 }
 
-impl<PeptidoformAvailability> IdentifiedPeptidoform<SimpleLinear, PeptidoformAvailability> {
+impl<PeptidoformAvailability> PSM<SimpleLinear, PeptidoformAvailability> {
     /// If this peptidoform contains a peptidoform that is valid as a simple linear peptidoform get a reference to the peptidoform.
     fn inner_peptidoform(&self) -> Option<&Peptidoform<SimpleLinear>> {
         match &self.data {
-            IdentifiedPeptidoformData::Novor(NovorData { peptide, .. })
-            | IdentifiedPeptidoformData::InstaNovo(InstaNovoData { peptide, .. })
-            | IdentifiedPeptidoformData::PiHelixNovo(PiHelixNovoData { peptide, .. })
-            | IdentifiedPeptidoformData::Opair(OpairData { peptide, .. })
-            | IdentifiedPeptidoformData::PepNet(PepNetData { peptide, .. })
-            | IdentifiedPeptidoformData::PowerNovo(PowerNovoData { peptide, .. })
-            | IdentifiedPeptidoformData::PUniFind(PUniFindData {
+            PSMData::Novor(NovorPSM { peptide, .. })
+            | PSMData::InstaNovo(InstaNovoPSM { peptide, .. })
+            | PSMData::PiHelixNovo(PiHelixNovoPSM { peptide, .. })
+            | PSMData::Opair(OpairPSM { peptide, .. })
+            | PSMData::PepNet(PepNetPSM { peptide, .. })
+            | PSMData::PowerNovo(PowerNovoPSM { peptide, .. })
+            | PSMData::PUniFind(PUniFindPSM {
                 peptidoform: peptide,
                 ..
             })
-            | IdentifiedPeptidoformData::Proteoscape(ProteoscapeData {
+            | PSMData::Proteoscape(ProteoscapePSM {
                 peptide: (_, peptide, _),
                 ..
             })
-            | IdentifiedPeptidoformData::Sage(SageData { peptide, .. }) => Some(peptide.as_ref()),
-            IdentifiedPeptidoformData::MSFragger(MSFraggerData { peptide, .. })
-            | IdentifiedPeptidoformData::PLGS(PLGSData { peptide, .. }) => Some(peptide),
-            IdentifiedPeptidoformData::Peaks(PeaksData { peptide, .. }) => {
+            | PSMData::Sage(SagePSM { peptide, .. }) => Some(peptide.as_ref()),
+            PSMData::MSFragger(MSFraggerPSM { peptide, .. })
+            | PSMData::PLGS(PLGSPSM { peptide, .. }) => Some(peptide),
+            PSMData::Peaks(PeaksPSM { peptide, .. }) => {
                 if peptide.1.len() == 1 {
                     Some(peptide.1[0].as_ref())
                 } else {
                     None
                 }
             }
-            IdentifiedPeptidoformData::SpectrumSequenceList(SpectrumSequenceListData {
-                peptide,
-                ..
-            })
-            | IdentifiedPeptidoformData::PiPrimeNovo(PiPrimeNovoData { peptide, .. })
-            | IdentifiedPeptidoformData::DeepNovoFamily(DeepNovoFamilyData { peptide, .. }) => {
+            PSMData::SpectrumSequenceList(SpectrumSequenceListPSM { peptide, .. })
+            | PSMData::PiPrimeNovo(PiPrimeNovoPSM { peptide, .. })
+            | PSMData::DeepNovoFamily(DeepNovoFamilyPSM { peptide, .. }) => {
                 peptide.as_ref().map(AsRef::as_ref)
             }
-            IdentifiedPeptidoformData::MzTab(MzTabPSM { peptidoform, .. })
-            | IdentifiedPeptidoformData::MaxQuant(MaxQuantData {
+            PSMData::MzTab(MzTabPSM { peptidoform, .. })
+            | PSMData::MaxQuant(MaxQuantPSM {
                 peptide: peptidoform,
                 ..
             }) => peptidoform.as_ref(),
-            IdentifiedPeptidoformData::Fasta(f) => Some(f.peptide().as_ref()),
-            IdentifiedPeptidoformData::NovoB(NovoBData {
+            PSMData::Fasta(f) => Some(f.peptide().as_ref()),
+            PSMData::NovoB(NovoBPSM {
                 score_forward,
                 score_reverse,
                 peptide_forward,
@@ -221,17 +215,17 @@ impl<PeptidoformAvailability> IdentifiedPeptidoform<SimpleLinear, PeptidoformAva
                 peptide_reverse.as_ref()
             }
             .map(AsRef::as_ref),
-            IdentifiedPeptidoformData::MetaMorpheus(MetaMorpheusData { peptide, .. })
-            | IdentifiedPeptidoformData::BasicCSV(BasicCSVData {
+            PSMData::MetaMorpheus(MetaMorpheusPSM { peptide, .. })
+            | PSMData::BasicCSV(BasicCSVPSM {
                 sequence: peptide, ..
             }) => peptide
                 .singular_peptidoform_ref()
                 .and_then(|p| p.as_simple_linear()),
-            IdentifiedPeptidoformData::PLink(PLinkData { peptidoform, .. }) => peptidoform
+            PSMData::PLink(PLinkPSM { peptidoform, .. }) => peptidoform
                 .singular_ref()
                 .and_then(|p| p.as_simple_linear()),
             #[cfg(feature = "mzannotate")]
-            IdentifiedPeptidoformData::AnnotatedSpectrum(spectrum) => {
+            PSMData::AnnotatedSpectrum(spectrum) => {
                 use itertools::Itertools;
                 use mzannotate::mzspeclib::AnalyteTarget;
 
@@ -250,47 +244,42 @@ impl<PeptidoformAvailability> IdentifiedPeptidoform<SimpleLinear, PeptidoformAva
     }
 }
 
-impl<PeptidoformAvailability> IdentifiedPeptidoform<SemiAmbiguous, PeptidoformAvailability> {
+impl<PeptidoformAvailability> PSM<SemiAmbiguous, PeptidoformAvailability> {
     /// If this peptidoform contains a peptidoform that is valid as a semi ambiguous peptidoform get a reference to the peptidoform.
     fn inner_peptidoform(&self) -> Option<&Peptidoform<SemiAmbiguous>> {
         match &self.data {
-            IdentifiedPeptidoformData::Novor(NovorData { peptide, .. })
-            | IdentifiedPeptidoformData::InstaNovo(InstaNovoData { peptide, .. })
-            | IdentifiedPeptidoformData::Opair(OpairData { peptide, .. })
-            | IdentifiedPeptidoformData::PiHelixNovo(PiHelixNovoData { peptide, .. })
-            | IdentifiedPeptidoformData::PepNet(PepNetData { peptide, .. })
-            | IdentifiedPeptidoformData::PowerNovo(PowerNovoData { peptide, .. })
-            | IdentifiedPeptidoformData::PUniFind(PUniFindData {
+            PSMData::Novor(NovorPSM { peptide, .. })
+            | PSMData::InstaNovo(InstaNovoPSM { peptide, .. })
+            | PSMData::Opair(OpairPSM { peptide, .. })
+            | PSMData::PiHelixNovo(PiHelixNovoPSM { peptide, .. })
+            | PSMData::PepNet(PepNetPSM { peptide, .. })
+            | PSMData::PowerNovo(PowerNovoPSM { peptide, .. })
+            | PSMData::PUniFind(PUniFindPSM {
                 peptidoform: peptide,
                 ..
             })
-            | IdentifiedPeptidoformData::Proteoscape(ProteoscapeData {
+            | PSMData::Proteoscape(ProteoscapePSM {
                 peptide: (_, peptide, _),
                 ..
             })
-            | IdentifiedPeptidoformData::Sage(SageData { peptide, .. }) => Some(peptide),
-            IdentifiedPeptidoformData::Peaks(PeaksData { peptide, .. }) => {
+            | PSMData::Sage(SagePSM { peptide, .. }) => Some(peptide),
+            PSMData::Peaks(PeaksPSM { peptide, .. }) => {
                 if peptide.1.len() == 1 {
                     Some(&peptide.1[0])
                 } else {
                     None
                 }
             }
-            IdentifiedPeptidoformData::SpectrumSequenceList(SpectrumSequenceListData {
-                peptide,
-                ..
-            })
-            | IdentifiedPeptidoformData::PiPrimeNovo(PiPrimeNovoData { peptide, .. })
-            | IdentifiedPeptidoformData::DeepNovoFamily(DeepNovoFamilyData { peptide, .. }) => {
-                peptide.as_ref()
-            }
-            IdentifiedPeptidoformData::MzTab(MzTabPSM { peptidoform, .. })
-            | IdentifiedPeptidoformData::MaxQuant(MaxQuantData {
+            PSMData::SpectrumSequenceList(SpectrumSequenceListPSM { peptide, .. })
+            | PSMData::PiPrimeNovo(PiPrimeNovoPSM { peptide, .. })
+            | PSMData::DeepNovoFamily(DeepNovoFamilyPSM { peptide, .. }) => peptide.as_ref(),
+            PSMData::MzTab(MzTabPSM { peptidoform, .. })
+            | PSMData::MaxQuant(MaxQuantPSM {
                 peptide: peptidoform,
                 ..
             }) => peptidoform.as_ref().and_then(|p| p.as_semi_ambiguous()),
-            IdentifiedPeptidoformData::Fasta(f) => Some(f.peptide()),
-            IdentifiedPeptidoformData::NovoB(NovoBData {
+            PSMData::Fasta(f) => Some(f.peptide()),
+            PSMData::NovoB(NovoBPSM {
                 score_forward,
                 score_reverse,
                 peptide_forward,
@@ -303,21 +292,19 @@ impl<PeptidoformAvailability> IdentifiedPeptidoform<SemiAmbiguous, PeptidoformAv
                     peptide_reverse.as_ref()
                 }
             }
-            IdentifiedPeptidoformData::MSFragger(MSFraggerData { peptide, .. })
-            | IdentifiedPeptidoformData::PLGS(PLGSData { peptide, .. }) => {
-                peptide.as_semi_ambiguous()
-            }
-            IdentifiedPeptidoformData::MetaMorpheus(MetaMorpheusData { peptide, .. })
-            | IdentifiedPeptidoformData::BasicCSV(BasicCSVData {
+            PSMData::MSFragger(MSFraggerPSM { peptide, .. })
+            | PSMData::PLGS(PLGSPSM { peptide, .. }) => peptide.as_semi_ambiguous(),
+            PSMData::MetaMorpheus(MetaMorpheusPSM { peptide, .. })
+            | PSMData::BasicCSV(BasicCSVPSM {
                 sequence: peptide, ..
             }) => peptide
                 .singular_peptidoform_ref()
                 .and_then(|p| p.as_semi_ambiguous()),
-            IdentifiedPeptidoformData::PLink(PLinkData { peptidoform, .. }) => peptidoform
+            PSMData::PLink(PLinkPSM { peptidoform, .. }) => peptidoform
                 .singular_ref()
                 .and_then(|p| p.as_semi_ambiguous()),
             #[cfg(feature = "mzannotate")]
-            IdentifiedPeptidoformData::AnnotatedSpectrum(spectrum) => {
+            PSMData::AnnotatedSpectrum(spectrum) => {
                 use itertools::Itertools;
 
                 let ion = spectrum
@@ -335,47 +322,44 @@ impl<PeptidoformAvailability> IdentifiedPeptidoform<SemiAmbiguous, PeptidoformAv
     }
 }
 
-impl<PeptidoformAvailability> IdentifiedPeptidoform<UnAmbiguous, PeptidoformAvailability> {
+impl<PeptidoformAvailability> PSM<UnAmbiguous, PeptidoformAvailability> {
     /// If this peptidoform contains a peptidoform that is valid as an unambiguous peptidoform get a reference to the peptidoform.
     fn inner_peptidoform(&self) -> Option<&Peptidoform<UnAmbiguous>> {
         match &self.data {
-            IdentifiedPeptidoformData::Novor(NovorData { peptide, .. })
-            | IdentifiedPeptidoformData::InstaNovo(InstaNovoData { peptide, .. })
-            | IdentifiedPeptidoformData::Opair(OpairData { peptide, .. })
-            | IdentifiedPeptidoformData::PiHelixNovo(PiHelixNovoData { peptide, .. })
-            | IdentifiedPeptidoformData::PepNet(PepNetData { peptide, .. })
-            | IdentifiedPeptidoformData::PowerNovo(PowerNovoData { peptide, .. })
-            | IdentifiedPeptidoformData::PUniFind(PUniFindData {
+            PSMData::Novor(NovorPSM { peptide, .. })
+            | PSMData::InstaNovo(InstaNovoPSM { peptide, .. })
+            | PSMData::Opair(OpairPSM { peptide, .. })
+            | PSMData::PiHelixNovo(PiHelixNovoPSM { peptide, .. })
+            | PSMData::PepNet(PepNetPSM { peptide, .. })
+            | PSMData::PowerNovo(PowerNovoPSM { peptide, .. })
+            | PSMData::PUniFind(PUniFindPSM {
                 peptidoform: peptide,
                 ..
             })
-            | IdentifiedPeptidoformData::Proteoscape(ProteoscapeData {
+            | PSMData::Proteoscape(ProteoscapePSM {
                 peptide: (_, peptide, _),
                 ..
             })
-            | IdentifiedPeptidoformData::Sage(SageData { peptide, .. }) => peptide.as_unambiguous(),
-            IdentifiedPeptidoformData::Peaks(PeaksData { peptide, .. }) => {
+            | PSMData::Sage(SagePSM { peptide, .. }) => peptide.as_unambiguous(),
+            PSMData::Peaks(PeaksPSM { peptide, .. }) => {
                 if peptide.1.len() == 1 {
                     peptide.1[0].as_unambiguous()
                 } else {
                     None
                 }
             }
-            IdentifiedPeptidoformData::SpectrumSequenceList(SpectrumSequenceListData {
-                peptide,
-                ..
-            })
-            | IdentifiedPeptidoformData::PiPrimeNovo(PiPrimeNovoData { peptide, .. })
-            | IdentifiedPeptidoformData::DeepNovoFamily(DeepNovoFamilyData { peptide, .. }) => {
+            PSMData::SpectrumSequenceList(SpectrumSequenceListPSM { peptide, .. })
+            | PSMData::PiPrimeNovo(PiPrimeNovoPSM { peptide, .. })
+            | PSMData::DeepNovoFamily(DeepNovoFamilyPSM { peptide, .. }) => {
                 peptide.as_ref().and_then(|p| p.as_unambiguous())
             }
-            IdentifiedPeptidoformData::MzTab(MzTabPSM { peptidoform, .. })
-            | IdentifiedPeptidoformData::MaxQuant(MaxQuantData {
+            PSMData::MzTab(MzTabPSM { peptidoform, .. })
+            | PSMData::MaxQuant(MaxQuantPSM {
                 peptide: peptidoform,
                 ..
             }) => peptidoform.as_ref().and_then(|p| p.as_unambiguous()),
-            IdentifiedPeptidoformData::Fasta(f) => f.peptide().as_unambiguous(),
-            IdentifiedPeptidoformData::NovoB(NovoBData {
+            PSMData::Fasta(f) => f.peptide().as_unambiguous(),
+            PSMData::NovoB(NovoBPSM {
                 score_forward,
                 score_reverse,
                 peptide_forward,
@@ -388,19 +372,19 @@ impl<PeptidoformAvailability> IdentifiedPeptidoform<UnAmbiguous, PeptidoformAvai
                     peptide_reverse.as_ref().and_then(|p| p.as_unambiguous())
                 }
             }
-            IdentifiedPeptidoformData::MSFragger(MSFraggerData { peptide, .. })
-            | IdentifiedPeptidoformData::PLGS(PLGSData { peptide, .. }) => peptide.as_unambiguous(),
-            IdentifiedPeptidoformData::MetaMorpheus(MetaMorpheusData { peptide, .. })
-            | IdentifiedPeptidoformData::BasicCSV(BasicCSVData {
+            PSMData::MSFragger(MSFraggerPSM { peptide, .. })
+            | PSMData::PLGS(PLGSPSM { peptide, .. }) => peptide.as_unambiguous(),
+            PSMData::MetaMorpheus(MetaMorpheusPSM { peptide, .. })
+            | PSMData::BasicCSV(BasicCSVPSM {
                 sequence: peptide, ..
             }) => peptide
                 .singular_peptidoform_ref()
                 .and_then(|p| p.as_unambiguous()),
-            IdentifiedPeptidoformData::PLink(PLinkData { peptidoform, .. }) => {
+            PSMData::PLink(PLinkPSM { peptidoform, .. }) => {
                 peptidoform.singular_ref().and_then(|p| p.as_unambiguous())
             }
             #[cfg(feature = "mzannotate")]
-            IdentifiedPeptidoformData::AnnotatedSpectrum(spectrum) => {
+            PSMData::AnnotatedSpectrum(spectrum) => {
                 use itertools::Itertools;
 
                 let ion = spectrum
@@ -418,46 +402,38 @@ impl<PeptidoformAvailability> IdentifiedPeptidoform<UnAmbiguous, PeptidoformAvai
     }
 }
 
-impl<Complexity, PeptidoformAvailability>
-    IdentifiedPeptidoform<Complexity, PeptidoformAvailability>
-{
+impl<Complexity, PeptidoformAvailability> PSM<Complexity, PeptidoformAvailability> {
     fn check<T>(
         self,
         f: impl Fn(&Peptidoform<Linked>) -> bool,
-    ) -> Option<IdentifiedPeptidoform<T, PeptidoformPresent>> {
+    ) -> Option<PSM<T, PeptidoformPresent>> {
         self.compound_peptidoform_ion()
             .is_some_and(|p| p.singular_peptidoform_ref().is_some_and(f))
             .then(|| self.mark())
     }
 
     /// Check if this identified peptidoform is linear and contains a peptide
-    pub fn into_linear(self) -> Option<IdentifiedPeptidoform<Linear, PeptidoformPresent>> {
+    pub fn into_linear(self) -> Option<PSM<Linear, PeptidoformPresent>> {
         self.check(Peptidoform::is_linear)
     }
 
     /// Check if this identified peptidoform is simple linear and contains a peptide
-    pub fn into_simple_linear(
-        self,
-    ) -> Option<IdentifiedPeptidoform<SimpleLinear, PeptidoformPresent>> {
+    pub fn into_simple_linear(self) -> Option<PSM<SimpleLinear, PeptidoformPresent>> {
         self.check(Peptidoform::is_simple_linear)
     }
 
     /// Check if this identified peptidoform is semi ambiguous and contains a peptide
-    pub fn into_semi_ambiguous(
-        self,
-    ) -> Option<IdentifiedPeptidoform<SemiAmbiguous, PeptidoformPresent>> {
+    pub fn into_semi_ambiguous(self) -> Option<PSM<SemiAmbiguous, PeptidoformPresent>> {
         self.check(Peptidoform::is_semi_ambiguous)
     }
 
     /// Check if this identified peptidoform is unambiguous and contains a peptide
-    pub fn into_unambiguous(
-        self,
-    ) -> Option<IdentifiedPeptidoform<UnAmbiguous, PeptidoformPresent>> {
+    pub fn into_unambiguous(self) -> Option<PSM<UnAmbiguous, PeptidoformPresent>> {
         self.check(Peptidoform::is_unambiguous)
     }
 }
 
-impl HasPeptidoformImpl for IdentifiedPeptidoform<Linear, PeptidoformPresent> {
+impl HasPeptidoformImpl for PSM<Linear, PeptidoformPresent> {
     type Complexity = Linear;
     fn peptidoform(&self) -> &Peptidoform<Linear> {
         self.inner_peptidoform()
@@ -465,7 +441,7 @@ impl HasPeptidoformImpl for IdentifiedPeptidoform<Linear, PeptidoformPresent> {
     }
 }
 
-impl HasPeptidoformImpl for &IdentifiedPeptidoform<Linear, PeptidoformPresent> {
+impl HasPeptidoformImpl for &PSM<Linear, PeptidoformPresent> {
     type Complexity = Linear;
     fn peptidoform(&self) -> &Peptidoform<Linear> {
         self.inner_peptidoform()
@@ -473,7 +449,7 @@ impl HasPeptidoformImpl for &IdentifiedPeptidoform<Linear, PeptidoformPresent> {
     }
 }
 
-impl HasPeptidoformImpl for IdentifiedPeptidoform<SimpleLinear, PeptidoformPresent> {
+impl HasPeptidoformImpl for PSM<SimpleLinear, PeptidoformPresent> {
     type Complexity = SimpleLinear;
     fn peptidoform(&self) -> &Peptidoform<SimpleLinear> {
         self.inner_peptidoform()
@@ -481,7 +457,7 @@ impl HasPeptidoformImpl for IdentifiedPeptidoform<SimpleLinear, PeptidoformPrese
     }
 }
 
-impl HasPeptidoformImpl for &IdentifiedPeptidoform<SimpleLinear, PeptidoformPresent> {
+impl HasPeptidoformImpl for &PSM<SimpleLinear, PeptidoformPresent> {
     type Complexity = SimpleLinear;
     fn peptidoform(&self) -> &Peptidoform<SimpleLinear> {
         self.inner_peptidoform()
@@ -489,7 +465,7 @@ impl HasPeptidoformImpl for &IdentifiedPeptidoform<SimpleLinear, PeptidoformPres
     }
 }
 
-impl HasPeptidoformImpl for IdentifiedPeptidoform<SemiAmbiguous, PeptidoformPresent> {
+impl HasPeptidoformImpl for PSM<SemiAmbiguous, PeptidoformPresent> {
     type Complexity = SemiAmbiguous;
     fn peptidoform(&self) -> &Peptidoform<SemiAmbiguous> {
         self.inner_peptidoform()
@@ -497,7 +473,7 @@ impl HasPeptidoformImpl for IdentifiedPeptidoform<SemiAmbiguous, PeptidoformPres
     }
 }
 
-impl HasPeptidoformImpl for &IdentifiedPeptidoform<SemiAmbiguous, PeptidoformPresent> {
+impl HasPeptidoformImpl for &PSM<SemiAmbiguous, PeptidoformPresent> {
     type Complexity = SemiAmbiguous;
     fn peptidoform(&self) -> &Peptidoform<SemiAmbiguous> {
         self.inner_peptidoform()
@@ -505,7 +481,7 @@ impl HasPeptidoformImpl for &IdentifiedPeptidoform<SemiAmbiguous, PeptidoformPre
     }
 }
 
-impl HasPeptidoformImpl for IdentifiedPeptidoform<UnAmbiguous, PeptidoformPresent> {
+impl HasPeptidoformImpl for PSM<UnAmbiguous, PeptidoformPresent> {
     type Complexity = UnAmbiguous;
     fn peptidoform(&self) -> &Peptidoform<UnAmbiguous> {
         self.inner_peptidoform()
@@ -513,7 +489,7 @@ impl HasPeptidoformImpl for IdentifiedPeptidoform<UnAmbiguous, PeptidoformPresen
     }
 }
 
-impl HasPeptidoformImpl for &IdentifiedPeptidoform<UnAmbiguous, PeptidoformPresent> {
+impl HasPeptidoformImpl for &PSM<UnAmbiguous, PeptidoformPresent> {
     type Complexity = UnAmbiguous;
     fn peptidoform(&self) -> &Peptidoform<UnAmbiguous> {
         self.inner_peptidoform()
@@ -521,40 +497,38 @@ impl HasPeptidoformImpl for &IdentifiedPeptidoform<UnAmbiguous, PeptidoformPrese
     }
 }
 
-impl IdentifiedPeptidoform<Linear, MaybePeptidoform> {
+impl PSM<Linear, MaybePeptidoform> {
     /// If this peptidoform contains a peptidoform that is valid as a linear peptidoform get a reference to the peptidoform.
     pub fn peptidoform(&self) -> Option<&Peptidoform<Linear>> {
         self.inner_peptidoform()
     }
 }
 
-impl IdentifiedPeptidoform<SimpleLinear, MaybePeptidoform> {
+impl PSM<SimpleLinear, MaybePeptidoform> {
     /// If this peptidoform contains a peptidoform that is valid as a simple linear peptidoform get a reference to the peptidoform.
     pub fn peptidoform(&self) -> Option<&Peptidoform<SimpleLinear>> {
         self.inner_peptidoform()
     }
 }
 
-impl IdentifiedPeptidoform<SemiAmbiguous, MaybePeptidoform> {
+impl PSM<SemiAmbiguous, MaybePeptidoform> {
     /// If this peptidoform contains a peptidoform that is valid as a semi ambiguous peptidoform get a reference to the peptidoform.
     pub fn peptidoform(&self) -> Option<&Peptidoform<SemiAmbiguous>> {
         self.inner_peptidoform()
     }
 }
 
-impl IdentifiedPeptidoform<UnAmbiguous, MaybePeptidoform> {
+impl PSM<UnAmbiguous, MaybePeptidoform> {
     /// If this peptidoform contains a peptidoform that is valid as an unambiguous peptidoform get a reference to the peptidoform.
     pub fn peptidoform(&self) -> Option<&Peptidoform<UnAmbiguous>> {
         self.inner_peptidoform()
     }
 }
 
-impl<Complexity, PeptidoformAvailability>
-    IdentifiedPeptidoform<Complexity, PeptidoformAvailability>
-{
+impl<Complexity, PeptidoformAvailability> PSM<Complexity, PeptidoformAvailability> {
     /// Mark this with the following complexity, be warned that the complexity level is not checked.
-    fn mark<C, A>(self) -> IdentifiedPeptidoform<C, A> {
-        IdentifiedPeptidoform {
+    fn mark<C, A>(self) -> PSM<C, A> {
+        PSM {
             score: self.score,
             local_confidence: self.local_confidence,
             data: self.data,
@@ -570,17 +544,17 @@ impl<Complexity, PeptidoformAvailability>
         NewAvailability: From<PeptidoformAvailability>,
     >(
         self,
-    ) -> IdentifiedPeptidoform<NewComplexity, NewAvailability> {
+    ) -> PSM<NewComplexity, NewAvailability> {
         self.mark()
     }
 }
 
-/// Implement the [`MetaData`] trait for [`IdentifiedPeptidoform`] without having to type everything
+/// Implement the [`PSMMetaData`] trait for [`PSM`] without having to type everything
 /// out. Needs some macro fudging to allow for the proper syntax of just specifying a list of formats
 /// and a list of functions to implement.
 macro_rules! impl_metadata {
     (formats: $format:tt; functions: {$($(#[cfg($cfg:expr)])?fn $function:ident(&self) -> $t:ty);+;}) => {
-        impl<Complexity, PeptidoformAvailability> PSMMetaData for IdentifiedPeptidoform<Complexity, PeptidoformAvailability> {
+        impl<Complexity, PeptidoformAvailability> PSMMetaData for PSM<Complexity, PeptidoformAvailability> {
             /// Reuse the cached normalised confidence
             fn confidence(&self) -> Option<f64> {
                 self.score
@@ -604,7 +578,7 @@ macro_rules! impl_metadata {
         $(#[cfg($cfg)])?
         fn $function(&self) -> $t {
             match &self.data {
-                $(IdentifiedPeptidoformData::$format(d) => PSMMetaData::$function(d)),*
+                $(PSMData::$format(d) => PSMMetaData::$function(d)),*
             }
         }
     };

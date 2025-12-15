@@ -6,8 +6,8 @@ use std::{
 };
 
 use crate::{
-    FastaIdentifier, GeneralIdentifiedPeptidoforms, IdentifiedPeptidoform,
-    IdentifiedPeptidoformData, KnownFileFormat, MaybePeptidoform, PSMMetaData, SpectrumId,
+    FastaIdentifier, GeneralPSMs, PSM,
+    PSMData, KnownFileFormat, MaybePeptidoform, PSMMetaData, SpectrumId,
     SpectrumIds,
 };
 use mzannotate::prelude::AnnotatedSpectrum;
@@ -238,12 +238,12 @@ impl PSMMetaData for AnnotatedSpectrum {
     }
 }
 
-impl From<AnnotatedSpectrum> for IdentifiedPeptidoform<Linked, MaybePeptidoform> {
+impl From<AnnotatedSpectrum> for PSM<Linked, MaybePeptidoform> {
     fn from(value: AnnotatedSpectrum) -> Self {
         Self {
             score: value.confidence(),
             local_confidence: value.local_confidence().map(|v| v.to_vec()),
-            data: IdentifiedPeptidoformData::AnnotatedSpectrum(value),
+            data: PSMData::AnnotatedSpectrum(value),
             complexity_marker: PhantomData,
             peptidoform_availability_marker: PhantomData,
         }
@@ -256,13 +256,13 @@ impl From<AnnotatedSpectrum> for IdentifiedPeptidoform<Linked, MaybePeptidoform>
 pub(crate) fn parse_mzspeclib<'a>(
     path: &Path,
     ontologies: &'a Ontologies,
-) -> Result<GeneralIdentifiedPeptidoforms<'a>, BoxedError<'static, BasicKind>> {
+) -> Result<GeneralPSMs<'a>, BoxedError<'static, BasicKind>> {
     mzannotate::mzspeclib::MzSpecLibTextParser::open_file(path, ontologies)
         .map(move |parser| {
             let b: Box<
                 dyn Iterator<
                     Item = Result<
-                        IdentifiedPeptidoform<Linked, MaybePeptidoform>,
+                        PSM<Linked, MaybePeptidoform>,
                         BoxedError<'static, BasicKind>,
                     >,
                 >,

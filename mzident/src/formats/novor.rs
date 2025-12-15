@@ -3,8 +3,8 @@ use std::{borrow::Cow, marker::PhantomData, ops::Range};
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    BoxedIdentifiedPeptideIter, FastaIdentifier, IdentifiedPeptidoform, IdentifiedPeptidoformData,
-    IdentifiedPeptidoformSource, IdentifiedPeptidoformVersion, KnownFileFormat, PSMMetaData,
+    BoxedIdentifiedPeptideIter, FastaIdentifier, PSMData,
+    PSMSource, PSMFileFormatVersion, KnownFileFormat, PSM, PSMMetaData,
     PeptidoformPresent, SpectrumId, SpectrumIds,
     common_parser::{Location, OptionalColumn},
 };
@@ -92,7 +92,7 @@ impl std::fmt::Display for NovorVersion {
     }
 }
 
-impl IdentifiedPeptidoformVersion<NovorFormat> for NovorVersion {
+impl PSMFileFormatVersion<NovorFormat> for NovorVersion {
     fn format(self) -> NovorFormat {
         match self {
             Self::OldDenovo => OLD_DENOVO,
@@ -248,7 +248,7 @@ pub const NEW_PSM: NovorFormat = NovorFormat {
     local_confidence: OptionalColumn::Required("aac"),
 };
 
-impl PSMMetaData for NovorData {
+impl PSMMetaData for NovorPSM {
     fn compound_peptidoform_ion(&self) -> Option<Cow<'_, CompoundPeptidoformIon>> {
         Some(Cow::Owned(self.peptide.clone().into()))
     }

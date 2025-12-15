@@ -1,11 +1,11 @@
 #![allow(clippy::missing_panics_doc)]
 use std::io::BufReader;
 
-use crate::{DeepNovoFamilyData, DeepNovoFamilyVersion, test_format};
+use crate::{DeepNovoFamilyPSM, DeepNovoFamilyVersion, test_format};
 
 #[test]
 fn deepnovo() {
-    match test_format::<DeepNovoFamilyData>(
+    match test_format::<DeepNovoFamilyPSM>(
         BufReader::new(DEEPNOVO_V0_0_1.as_bytes()),
         &mzcore::ontology::STATIC_ONTOLOGIES,
         false,
@@ -22,7 +22,7 @@ fn deepnovo() {
 
 #[test]
 fn pointnovo() {
-    match test_format::<DeepNovoFamilyData>(
+    match test_format::<DeepNovoFamilyPSM>(
         BufReader::new(POINTNOVO_V0_0_1.as_bytes()),
         &mzcore::ontology::STATIC_ONTOLOGIES,
         false,
@@ -39,7 +39,7 @@ fn pointnovo() {
 
 #[test]
 fn biatnovo() {
-    match test_format::<DeepNovoFamilyData>(
+    match test_format::<DeepNovoFamilyPSM>(
         BufReader::new(BIATNOVO_V0_1.as_bytes()),
         &mzcore::ontology::STATIC_ONTOLOGIES,
         false,
@@ -56,7 +56,7 @@ fn biatnovo() {
 
 #[test]
 fn pgpointnovo() {
-    match test_format::<DeepNovoFamilyData>(
+    match test_format::<DeepNovoFamilyPSM>(
         BufReader::new(PGPOINTNOVO_V1_0_6.as_bytes()),
         &mzcore::ontology::STATIC_ONTOLOGIES,
         false,

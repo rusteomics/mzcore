@@ -1,10 +1,10 @@
 #![allow(clippy::missing_panics_doc)]
-use crate::{NovorData, NovorVersion, test_format};
+use crate::{NovorPSM, NovorVersion, test_format};
 use std::io::BufReader;
 
 #[test]
 fn novor_old_denovo() {
-    match test_format::<NovorData>(
+    match test_format::<NovorPSM>(
         BufReader::new(DATA_OLD_DENOVO.as_bytes()),
         &mzcore::ontology::STATIC_ONTOLOGIES,
         false,
@@ -21,7 +21,7 @@ fn novor_old_denovo() {
 
 #[test]
 fn novor_denovo_202306() {
-    match test_format::<NovorData>(
+    match test_format::<NovorPSM>(
         BufReader::new(DATA_DENOVO_202306.as_bytes()),
         &mzcore::ontology::STATIC_ONTOLOGIES,
         false,
@@ -38,7 +38,7 @@ fn novor_denovo_202306() {
 
 #[test]
 fn novor_psm_202305() {
-    match test_format::<NovorData>(
+    match test_format::<NovorPSM>(
         BufReader::new(DATA_PSM_202305.as_bytes()),
         &mzcore::ontology::STATIC_ONTOLOGIES,
         false,
@@ -55,7 +55,7 @@ fn novor_psm_202305() {
 
 #[test]
 fn novor_psm_202308() {
-    match test_format::<NovorData>(
+    match test_format::<NovorPSM>(
         BufReader::new(DATA_PSM_202308.as_bytes()),
         &mzcore::ontology::STATIC_ONTOLOGIES,
         false,
@@ -72,7 +72,7 @@ fn novor_psm_202308() {
 
 #[test]
 fn novor_new_denovo() {
-    match test_format::<NovorData>(
+    match test_format::<NovorPSM>(
         BufReader::new(DATA_NEW_DENOVO.as_bytes()),
         &mzcore::ontology::STATIC_ONTOLOGIES,
         false,
@@ -90,7 +90,7 @@ fn novor_new_denovo() {
 #[ignore = "this format has a weird header"]
 #[test]
 fn novor_denovo_v3_40() {
-    match test_format::<NovorData>(
+    match test_format::<NovorPSM>(
         BufReader::new(DATA_V3_40_DENOVO.as_bytes()),
         &mzcore::ontology::STATIC_ONTOLOGIES,
         false,
@@ -108,7 +108,7 @@ fn novor_denovo_v3_40() {
 #[ignore = "this format is not supported yet"]
 #[test]
 fn novor_peps_v3_40() {
-    match test_format::<NovorData>(
+    match test_format::<NovorPSM>(
         BufReader::new(DATA_V3_40_PEPS.as_bytes()),
         &mzcore::ontology::STATIC_ONTOLOGIES,
         false,
@@ -125,7 +125,7 @@ fn novor_peps_v3_40() {
 
 #[test]
 fn novor_new_psm() {
-    match test_format::<NovorData>(
+    match test_format::<NovorPSM>(
         BufReader::new(DATA_NEW_PSM.as_bytes()),
         &mzcore::ontology::STATIC_ONTOLOGIES,
         false,
@@ -142,7 +142,7 @@ fn novor_new_psm() {
 
 #[test]
 fn novor_psm_v3_40() {
-    match test_format::<NovorData>(
+    match test_format::<NovorPSM>(
         BufReader::new(DATA_V3_40_PSM.as_bytes()),
         &mzcore::ontology::STATIC_ONTOLOGIES,
         false,
@@ -159,7 +159,7 @@ fn novor_psm_v3_40() {
 
 #[test]
 fn novor_psm_v4_66() {
-    match test_format::<NovorData>(
+    match test_format::<NovorPSM>(
         BufReader::new(DATA_PSM_V4_66.as_bytes()),
         &mzcore::ontology::STATIC_ONTOLOGIES,
         false,

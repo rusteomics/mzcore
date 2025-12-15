@@ -1,10 +1,10 @@
 #![allow(clippy::missing_panics_doc)]
-use crate::{InstaNovoData, InstaNovoVersion, test_format};
+use crate::{InstaNovoPSM, InstaNovoVersion, test_format};
 use std::io::BufReader;
 
 #[test]
 fn instanovo_v1_0_0() {
-    match test_format::<InstaNovoData>(
+    match test_format::<InstaNovoPSM>(
         BufReader::new(INSTANOVO_V1_0_0.as_bytes()),
         &mzcore::ontology::STATIC_ONTOLOGIES,
         false,
@@ -22,7 +22,7 @@ fn instanovo_v1_0_0() {
 // v1.0.0 and v1.1.4 have the same columns but the PTM definitions are different, that is why there should be a separate test
 #[test]
 fn instanovo_v1_1_4() {
-    match test_format::<InstaNovoData>(
+    match test_format::<InstaNovoPSM>(
         BufReader::new(INSTANOVO_V1_1_4.as_bytes()),
         &mzcore::ontology::STATIC_ONTOLOGIES,
         false,
@@ -39,7 +39,7 @@ fn instanovo_v1_1_4() {
 
 #[test]
 fn instanovoplus_v1_1_4() {
-    match test_format::<InstaNovoData>(
+    match test_format::<InstaNovoPSM>(
         BufReader::new(INSTANOVOPLUS_V1_1_4.as_bytes()),
         &mzcore::ontology::STATIC_ONTOLOGIES,
         false,

@@ -28,12 +28,12 @@ struct Cli {
 fn process_alignment_group<I>(
     alignments: I,
 ) -> Vec<(
-    Alignment<Arc<FastaData>, IdentifiedPeptidoform<SemiAmbiguous, PeptidoformPresent>>,
+    Alignment<Arc<FastaData>, PSM<SemiAmbiguous, PeptidoformPresent>>,
     bool,
 )>
 where
     I: Iterator<
-        Item = Alignment<Arc<FastaData>, IdentifiedPeptidoform<SemiAmbiguous, PeptidoformPresent>>,
+        Item = Alignment<Arc<FastaData>, PSM<SemiAmbiguous, PeptidoformPresent>>,
     >,
 {
     let alignments = alignments.collect_vec();
@@ -57,11 +57,11 @@ where
 
 fn run_alignments(
     index: &AlignIndex<4, Arc<FastaData>>,
-    peptides: Vec<IdentifiedPeptidoform<SemiAmbiguous, PeptidoformPresent>>,
+    peptides: Vec<PSM<SemiAmbiguous, PeptidoformPresent>>,
     scoring: AlignScoring,
     sequential: bool,
 ) -> Vec<(
-    Alignment<Arc<FastaData>, IdentifiedPeptidoform<SemiAmbiguous, PeptidoformPresent>>,
+    Alignment<Arc<FastaData>, PSM<SemiAmbiguous, PeptidoformPresent>>,
     bool,
 )> {
     if sequential {
@@ -84,7 +84,7 @@ fn main() {
     let peptides = open_identified_peptidoforms_file(args.peptides, &Ontologies::init().0, false)
         .unwrap()
         .filter_map(Result::ok)
-        .filter_map(IdentifiedPeptidoform::into_semi_ambiguous)
+        .filter_map(PSM::into_semi_ambiguous)
         .collect_vec();
     let database = FastaData::parse_file(args.database).expect("Could not open database");
     let index = AlignIndex::<4, Arc<FastaData>>::new(

@@ -9,8 +9,8 @@ use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    BoxedIdentifiedPeptideIter, FastaIdentifier, IdentifiedPeptidoform, IdentifiedPeptidoformData,
-    IdentifiedPeptidoformSource, IdentifiedPeptidoformVersion, KnownFileFormat, PSMMetaData,
+    BoxedIdentifiedPeptideIter, FastaIdentifier, PSMData,
+    PSMSource, PSMFileFormatVersion, KnownFileFormat, PSM, PSMMetaData,
     PeaksFamilyId, PeptidoformPresent, SpectrumId, SpectrumIds,
     common_parser::{Location, OptionalColumn, OptionalLocation},
 };
@@ -617,7 +617,7 @@ impl std::fmt::Display for PeaksVersion {
     }
 }
 
-impl IdentifiedPeptidoformVersion<PeaksFormat> for PeaksVersion {
+impl PSMFileFormatVersion<PeaksFormat> for PeaksVersion {
     fn format(self) -> PeaksFormat {
         match self {
             Self::X => X,
@@ -650,7 +650,7 @@ impl IdentifiedPeptidoformVersion<PeaksFormat> for PeaksVersion {
     }
 }
 
-impl PSMMetaData for PeaksData {
+impl PSMMetaData for PeaksPSM {
     fn compound_peptidoform_ion(&self) -> Option<Cow<'_, CompoundPeptidoformIon>> {
         Some(Cow::Owned(self.peptide.1.clone().into()))
     }

@@ -16,14 +16,14 @@ fn identity() {
     )
     .unwrap()
     .filter_map(Result::ok)
-    .filter_map(IdentifiedPeptidoform::into_simple_linear)
+    .filter_map(PSM::into_simple_linear)
     .collect();
 
     for peptidoform in &peptidoforms {
         let alignment = align::<
             4,
-            &IdentifiedPeptidoform<SimpleLinear, PeptidoformPresent>,
-            &IdentifiedPeptidoform<SimpleLinear, PeptidoformPresent>,
+            &PSM<SimpleLinear, PeptidoformPresent>,
+            &PSM<SimpleLinear, PeptidoformPresent>,
         >(
             peptidoform,
             peptidoform,
@@ -45,7 +45,7 @@ fn alignment_to_database() {
     )
     .unwrap()
     .filter_map(Result::ok)
-    .filter_map(IdentifiedPeptidoform::into_simple_linear)
+    .filter_map(PSM::into_simple_linear)
     .collect();
     let database = Peptidoform::pro_forma(MAB_SEQUENCE, &mzcore::ontology::STATIC_ONTOLOGIES)
         .unwrap()

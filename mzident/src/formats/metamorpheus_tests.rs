@@ -1,11 +1,11 @@
 #![allow(clippy::missing_panics_doc)]
 use std::io::BufReader;
 
-use crate::{MetaMorpheusData, MetaMorpheusVersion, test_format};
+use crate::{MetaMorpheusPSM, MetaMorpheusVersion, test_format};
 
 #[test]
 fn meta_morpheus_psm() {
-    match test_format::<MetaMorpheusData>(
+    match test_format::<MetaMorpheusPSM>(
         BufReader::new(PSM.as_bytes()),
         &mzcore::ontology::STATIC_ONTOLOGIES,
         false,

@@ -2,7 +2,7 @@
 use std::io::BufReader;
 
 use afl::*;
-use mzident::{IdentifiedPeptidoformSource, PeaksData};
+use mzident::{PSMSource, PeaksPSM};
 
 fn main() {
     fuzz!(|data: &[u8]| {
@@ -11,7 +11,7 @@ fn main() {
                 mzcore::csv::parse_csv_raw(BufReader::new(s.as_bytes()), b',', None, None)
         {
             let _unused: Vec<_> =
-                PeaksData::parse_many(csv, &mzcore::ontology::STATIC_ONTOLOGIES, false, None)
+                PeaksPSM::parse_many(csv, &mzcore::ontology::STATIC_ONTOLOGIES, false, None)
                     .collect();
         }
     });

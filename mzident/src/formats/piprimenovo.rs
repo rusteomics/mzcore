@@ -3,9 +3,9 @@ use std::{borrow::Cow, marker::PhantomData, ops::Range};
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    BoxedIdentifiedPeptideIter, FastaIdentifier, IdentifiedPeptidoform, IdentifiedPeptidoformData,
-    IdentifiedPeptidoformSource, IdentifiedPeptidoformVersion, KnownFileFormat, MaybePeptidoform,
-    PSMMetaData, SpectrumId, SpectrumIds, common_parser::Location,
+    BoxedIdentifiedPeptideIter, FastaIdentifier, PSMData,
+    PSMSource, PSMFileFormatVersion, KnownFileFormat, MaybePeptidoform,
+    PSM, PSMMetaData, SpectrumId, SpectrumIds, common_parser::Location,
 };
 use mzcore::{
     csv::{CsvLine, parse_csv},
@@ -66,7 +66,7 @@ impl std::fmt::Display for PiPrimeNovoVersion {
     }
 }
 
-impl IdentifiedPeptidoformVersion<PiPrimeNovoFormat> for PiPrimeNovoVersion {
+impl PSMFileFormatVersion<PiPrimeNovoFormat> for PiPrimeNovoVersion {
     fn format(self) -> PiPrimeNovoFormat {
         match self {
             Self::V0_1 => PIPRIMENOVO_V0_1,
@@ -79,7 +79,7 @@ impl IdentifiedPeptidoformVersion<PiPrimeNovoFormat> for PiPrimeNovoVersion {
     }
 }
 
-impl PSMMetaData for PiPrimeNovoData {
+impl PSMMetaData for PiPrimeNovoPSM {
     fn compound_peptidoform_ion(&self) -> Option<Cow<'_, CompoundPeptidoformIon>> {
         self.peptide.as_ref().map(|p| Cow::Owned(p.clone().into()))
     }

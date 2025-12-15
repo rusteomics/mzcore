@@ -12,13 +12,13 @@ use std::{
 use context_error::*;
 use flate2::bufread::GzDecoder;
 use itertools::Itertools;
-use mzcv::{AccessionCodeParseError, CURIEParsingError, ControlledVocabulary, Term};
+use mzcv::{ControlledVocabulary, Term};
 use ordered_float::OrderedFloat;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    FastaIdentifier, IdentifiedPeptidoform, IdentifiedPeptidoformData, KnownFileFormat,
-    MaybePeptidoform, PSMMetaData, ProteinMetaData, SpectrumId, SpectrumIds,
+    FastaIdentifier, KnownFileFormat, MaybePeptidoform, PSM, PSMData, PSMMetaData, ProteinMetaData,
+    SpectrumId, SpectrumIds,
     helper_functions::{
         check_extension, explain_number_error, float_digits, next_number, split_with_brackets,
     },
@@ -1456,7 +1456,7 @@ impl std::fmt::Display for PSMLine<'_> {
     }
 }
 
-impl From<MzTabPSM> for IdentifiedPeptidoform<SimpleLinear, MaybePeptidoform> {
+impl From<MzTabPSM> for PSM<SimpleLinear, MaybePeptidoform> {
     fn from(value: MzTabPSM) -> Self {
         Self {
             score: (!value.search_engine.is_empty())
@@ -1471,7 +1471,7 @@ impl From<MzTabPSM> for IdentifiedPeptidoform<SimpleLinear, MaybePeptidoform> {
                 })
                 .filter(|v| !v.is_nan()),
             local_confidence: value.local_confidence.clone(),
-            data: IdentifiedPeptidoformData::MzTab(value),
+            data: PSMData::MzTab(value),
             complexity_marker: PhantomData,
             peptidoform_availability_marker: PhantomData,
         }

@@ -9,8 +9,8 @@ use std::{
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    BoxedIdentifiedPeptideIter, FastaIdentifier, IdentifiedPeptidoform, IdentifiedPeptidoformData,
-    IdentifiedPeptidoformSource, IdentifiedPeptidoformVersion, KnownFileFormat, PSMMetaData,
+    BoxedIdentifiedPeptideIter, FastaIdentifier, PSMData,
+    PSMSource, PSMFileFormatVersion, KnownFileFormat, PSM, PSMMetaData,
     PeptidoformPresent, SpectrumId, SpectrumIds,
     common_parser::{Location, OptionalColumn},
 };
@@ -92,7 +92,7 @@ impl std::fmt::Display for PowerNovoVersion {
     }
 }
 
-impl IdentifiedPeptidoformVersion<PowerNovoFormat> for PowerNovoVersion {
+impl PSMFileFormatVersion<PowerNovoFormat> for PowerNovoVersion {
     fn format(self) -> PowerNovoFormat {
         match self {
             Self::V1_0_17 => POWERNOVO_V1_0_17,
@@ -105,7 +105,7 @@ impl IdentifiedPeptidoformVersion<PowerNovoFormat> for PowerNovoVersion {
     }
 }
 
-impl PSMMetaData for PowerNovoData {
+impl PSMMetaData for PowerNovoPSM {
     fn compound_peptidoform_ion(&self) -> Option<Cow<'_, CompoundPeptidoformIon>> {
         Some(Cow::Owned(self.peptide.clone().into()))
     }

@@ -20,10 +20,10 @@ use mzcore::csv::CsvLine;
 /// Please check the other file formats for how the precisely use the syntax.
 ///
 /// # Notes
-/// * Do not forget to implement `MetaData` for the `<$format>Data` type, this will set up the logic
-///   for an automatic `From<format> for IdentifiedPeptidoformData` implementation.
+/// * Do not forget to implement `PSMMetaData` for the `<$format>PSM` type, this will set up the logic
+///   for an automatic `From<format> for PSMData` implementation.
 /// * Do not forget to create a `<$format>Version` enum which contains all supported version of the
-///   format, which additionally should implement `IdentifiedPeptidoformVersion`.
+///   format, which additionally should implement `PSMFileFormatVersion`.
 /// * For each version a public constant should be generated that contains an instantiation of the
 ///   `<$format>Format` type, these are also the ones that need to be listed in the versions list.
 ///
@@ -53,7 +53,7 @@ macro_rules! format_family {
         #[non_exhaustive]
         #[derive(Clone, Debug, Default, Deserialize, PartialEq, Serialize)]
         #[allow(missing_docs)]
-        pub struct [<$format Data>] {
+        pub struct [<$format PSM>] {
             $($(#[doc = $rdoc])? pub $rname: $rtyp,)*
             $($(#[doc = $odoc])? $(#[cfg(feature = $ocfg)])?  pub $oname: Option<$otyp>,)*
             /// The version used to read in the data
@@ -62,7 +62,7 @@ macro_rules! format_family {
             columns: Option<Vec<(std::sync::Arc<String>, String)>>,
         }
 
-        impl IdentifiedPeptidoformSource for [<$format Data>] {
+        impl PSMSource for [<$format PSM>] {
             type Source = CsvLine;
             type Format = [<$format Format>];
             type Complexity = $complexity;
@@ -143,19 +143,19 @@ macro_rules! format_family {
             $($post_process)?
         }
 
-        impl [<$format Data>] {
+        impl [<$format PSM>] {
             /// Get all original columns from the CSV file, only available if the file was opened with the option `keep_all_columns` turned on.
             pub fn full_csv_line(&self) -> Option<&[(std::sync::Arc<String>, String)]> {
                 self.columns.as_deref()
             }
         }
 
-        impl From<[<$format Data>]> for IdentifiedPeptidoform<$complexity, $peptidoform_availability> {
-            fn from(value: [<$format Data>]) -> Self {
+        impl From<[<$format PSM>]> for PSM<$complexity, $peptidoform_availability> {
+            fn from(value: [<$format PSM>]) -> Self {
                 Self {
                     score: value.confidence(),
                     local_confidence: value.local_confidence().map(|v| v.to_vec()),
-                    data: IdentifiedPeptidoformData::$format(value),
+                    data: PSMData::$format(value),
                     complexity_marker: PhantomData,
                     peptidoform_availability_marker: PhantomData,
                 }

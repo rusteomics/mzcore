@@ -13,7 +13,7 @@ use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    IdentifiedPeptidoform, IdentifiedPeptidoformData, KnownFileFormat, PSMMetaData,
+    PSM, PSMData, KnownFileFormat, PSMMetaData,
     PeptidoformPresent, ProteinMetaData, SpectrumIds, helper_functions::explain_number_error,
 };
 use mzcore::{
@@ -816,12 +816,12 @@ fn trim_whitespace(line: &str, range: Range<usize>) -> Range<usize> {
     range.start + start..range.end - end
 }
 
-impl From<FastaData> for IdentifiedPeptidoform<SemiAmbiguous, PeptidoformPresent> {
+impl From<FastaData> for PSM<SemiAmbiguous, PeptidoformPresent> {
     fn from(value: FastaData) -> Self {
         Self {
             score: None,
             local_confidence: None,
-            data: IdentifiedPeptidoformData::Fasta(value),
+            data: PSMData::Fasta(value),
             complexity_marker: PhantomData,
             peptidoform_availability_marker: PhantomData,
         }

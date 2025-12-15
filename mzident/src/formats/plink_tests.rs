@@ -1,11 +1,11 @@
 #![allow(clippy::missing_panics_doc)]
 use std::io::BufReader;
 
-use crate::{PLinkData, PLinkVersion, test_format};
+use crate::{PLinkPSM, PLinkVersion, test_format};
 
 #[test]
 fn plink_v2_3() {
-    match test_format::<PLinkData>(
+    match test_format::<PLinkPSM>(
         BufReader::new(DATA_V2_3.as_bytes()),
         &mzcore::ontology::STATIC_ONTOLOGIES,
         false,
@@ -22,7 +22,7 @@ fn plink_v2_3() {
 
 #[test]
 fn plink_v3_0() {
-    match test_format::<PLinkData>(
+    match test_format::<PLinkPSM>(
         BufReader::new(DATA_V3_0.as_bytes()),
         &mzcore::ontology::STATIC_ONTOLOGIES,
         false,

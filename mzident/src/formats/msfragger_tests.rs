@@ -1,7 +1,7 @@
 #![allow(clippy::missing_panics_doc)]
 use std::io::BufReader;
 
-use crate::{MSFraggerData, MSFraggerVersion, test_format};
+use crate::{MSFraggerPSM, MSFraggerVersion, test_format};
 use mzcore::{
     prelude::MolecularFormula,
     sequence::{ModificationId, SimpleModificationInner},
@@ -10,7 +10,7 @@ use thin_vec::ThinVec;
 
 #[test]
 fn msfragger_v4_2() {
-    match test_format::<MSFraggerData>(
+    match test_format::<MSFraggerPSM>(
         BufReader::new(DATA_MSFRAGGER_V4_2.as_bytes()),
         &mzcore::ontology::STATIC_ONTOLOGIES,
         true,
@@ -27,7 +27,7 @@ fn msfragger_v4_2() {
 
 #[test]
 fn msfragger_v4_2_decoy() {
-    match test_format::<MSFraggerData>(
+    match test_format::<MSFraggerPSM>(
         BufReader::new(DATA_MSFRAGGER_V4_2_DECOY.as_bytes()),
         &mzcore::ontology::STATIC_ONTOLOGIES,
         true,
@@ -44,7 +44,7 @@ fn msfragger_v4_2_decoy() {
 
 #[test]
 fn msfragger_v4_2_missing_columns() {
-    match test_format::<MSFraggerData>(
+    match test_format::<MSFraggerPSM>(
         BufReader::new(DATA_MSFRAGGER_V4_2_MISSING_COLUMNS.as_bytes()),
         &mzcore::ontology::STATIC_ONTOLOGIES,
         true,
@@ -61,7 +61,7 @@ fn msfragger_v4_2_missing_columns() {
 
 #[test]
 fn msfragger_v4_3_missing_columns() {
-    match test_format::<MSFraggerData>(
+    match test_format::<MSFraggerPSM>(
         BufReader::new(DATA_MSFRAGGER_V4_3_MISSING_COLUMNS.as_bytes()),
         &mzcore::ontology::STATIC_ONTOLOGIES,
         true,
@@ -78,7 +78,7 @@ fn msfragger_v4_3_missing_columns() {
 
 #[test]
 fn fragpipe_v21_a() {
-    match test_format::<MSFraggerData>(
+    match test_format::<MSFraggerPSM>(
         BufReader::new(DATA_FRAGIPE_V21_A.as_bytes()),
         &mzcore::ontology::STATIC_ONTOLOGIES,
         true,
@@ -95,7 +95,7 @@ fn fragpipe_v21_a() {
 
 #[test]
 fn fragpipe_v21_b() {
-    match test_format::<MSFraggerData>(
+    match test_format::<MSFraggerPSM>(
         BufReader::new(DATA_FRAGPIPE_V21_B.as_bytes()),
         &mzcore::ontology::STATIC_ONTOLOGIES,
         true,
@@ -112,7 +112,7 @@ fn fragpipe_v21_b() {
 
 #[test]
 fn fragpipe_v21_c() {
-    match test_format::<MSFraggerData>(
+    match test_format::<MSFraggerPSM>(
         BufReader::new(DATA_FRAGPIPE_V21_C.as_bytes()),
         &mzcore::ontology::STATIC_ONTOLOGIES,
         true,
@@ -129,7 +129,7 @@ fn fragpipe_v21_c() {
 
 #[test]
 fn fragpipe_philosopher_a() {
-    match test_format::<MSFraggerData>(
+    match test_format::<MSFraggerPSM>(
         BufReader::new(DATA_PHILOSOPHER_A.as_bytes()),
         &mzcore::ontology::STATIC_ONTOLOGIES,
         true,
@@ -146,7 +146,7 @@ fn fragpipe_philosopher_a() {
 
 #[test]
 fn fragpipe_philosopher_b() {
-    match test_format::<MSFraggerData>(
+    match test_format::<MSFraggerPSM>(
         BufReader::new(DATA_PHILOSOPHER_B.as_bytes()),
         &mzcore::ontology::STATIC_ONTOLOGIES,
         true,
@@ -163,7 +163,7 @@ fn fragpipe_philosopher_b() {
 
 #[test]
 fn fragpipe_philosopher_c() {
-    match test_format::<MSFraggerData>(
+    match test_format::<MSFraggerPSM>(
         BufReader::new(DATA_PHILOSOPHER_C.as_bytes()),
         &mzcore::ontology::STATIC_ONTOLOGIES,
         true,
@@ -180,7 +180,7 @@ fn fragpipe_philosopher_c() {
 
 #[test]
 fn fragpipe_v21_manual() {
-    match test_format::<MSFraggerData>(
+    match test_format::<MSFraggerPSM>(
         BufReader::new(DATA_FRAGPIPE_V21_MANUAL.as_bytes()),
         &mzcore::ontology::Ontologies::init_static().with_custom([std::sync::Arc::new(
             SimpleModificationInner::Database {
@@ -211,7 +211,7 @@ fn fragpipe_v21_manual() {
 
 #[test]
 fn fragpipe_v22() {
-    match test_format::<MSFraggerData>(
+    match test_format::<MSFraggerPSM>(
         BufReader::new(DATA_FRAGPIPE_V22.as_bytes()),
         &mzcore::ontology::STATIC_ONTOLOGIES,
         false,
