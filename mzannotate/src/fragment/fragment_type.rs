@@ -443,6 +443,34 @@ impl Display for FragmentType {
     }
 }
 
+impl mzcore::space::Space for FragmentType {
+    fn space(&self) -> mzcore::space::UsedSpace {
+        match self {
+            Self::a(p, v)
+            | Self::b(p, v)
+            | Self::c(p, v)
+            | Self::x(p, v)
+            | Self::y(p, v)
+            | Self::z(p, v) => p.space() + v.space(),
+            Self::d(p, a, o, v, l) | Self::w(p, a, o, v, l) => {
+                p.space() + a.space() + o.space() + v.space() + l.space()
+            }
+            Self::v(p, a, o, v) => p.space() + a.space() + o.space() + v.space(),
+            Self::Y(p) => p.space(),
+            Self::B { b, y, end } => b.space() + y.space() + end.space(),
+            Self::BComposition(c, a) => c.space() + a.space(),
+            Self::YComposition(c, a) => c.space() + a.space(),
+            Self::Immonium(p, s) => p.space() + s.space(),
+            Self::PrecursorSideChainLoss(p, a) => p.space() + a.space(),
+            Self::Diagnostic(p) => p.space(),
+            Self::Internal(p, a, b) => p.space() + a.space() + b.space(),
+            Self::Unknown(s) => s.space(),
+            Self::Precursor => mzcore::space::UsedSpace::default(),
+        }
+        .set_total::<Self>()
+    }
+}
+
 /// The possible kinds of N terminal backbone fragments.
 #[derive(Clone, Copy, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 #[expect(non_camel_case_types)]
@@ -469,6 +497,12 @@ impl Display for BackboneNFragment {
     }
 }
 
+impl mzcore::space::Space for BackboneNFragment {
+    fn space(&self) -> mzcore::space::UsedSpace {
+        mzcore::space::UsedSpace::stack(size_of::<Self>())
+    }
+}
+
 /// The possible kinds of C terminal backbone fragments.
 #[derive(Clone, Copy, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 #[expect(non_camel_case_types)]
@@ -492,6 +526,12 @@ impl Display for BackboneCFragment {
                 Self::z => "z",
             }
         )
+    }
+}
+
+impl mzcore::space::Space for BackboneCFragment {
+    fn space(&self) -> mzcore::space::UsedSpace {
+        mzcore::space::UsedSpace::stack(size_of::<Self>())
     }
 }
 

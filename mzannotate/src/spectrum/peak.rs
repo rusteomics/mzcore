@@ -247,3 +247,14 @@ impl<A> mzdata::prelude::BuildArrayMapFrom for AnnotatedPeak<A> {
         arrays
     }
 }
+
+impl<T: mzcore::space::Space> mzcore::space::Space for AnnotatedPeak<T> {
+    fn space(&self) -> mzcore::space::UsedSpace {
+        (self.mz.space()
+            + self.intensity.space()
+            + self.index.space()
+            + self.annotations.space()
+            + self.aggregations.space())
+        .set_total::<Self>()
+    }
+}

@@ -65,6 +65,41 @@ pub enum Modification {
     },
 }
 
+impl Space for Modification {
+    fn space(&self) -> UsedSpace {
+        match self {
+            Self::Simple(d) => d.space(),
+            Self::CrossLink {
+                peptide,
+                sequence_index,
+                linker,
+                name,
+                side,
+            } => {
+                peptide.space()
+                    + sequence_index.space()
+                    + linker.space()
+                    + name.space()
+                    + side.space()
+            }
+            Self::Ambiguous {
+                group,
+                id,
+                modification,
+                localisation_score,
+                preferred,
+            } => {
+                group.space()
+                    + id.space()
+                    + modification.space()
+                    + localisation_score.space()
+                    + preferred.space()
+            }
+        }
+        .set_total::<Self>()
+    }
+}
+
 /// A modification id/name
 #[derive(Clone, Debug, Default, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 pub struct ModificationId {

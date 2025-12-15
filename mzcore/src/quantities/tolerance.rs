@@ -18,6 +18,16 @@ pub enum Tolerance<T> {
     Absolute(T),
 }
 
+impl<T: crate::space::Space> crate::space::Space for Tolerance<T> {
+    fn space(&self) -> crate::space::UsedSpace {
+        match self {
+            Self::Relative(d) => d.space(),
+            Self::Absolute(d) => d.space(),
+        }
+        .set_total::<Self>()
+    }
+}
+
 impl<T> Tolerance<T> {
     /// Create a new ppm value
     pub fn new_ppm(value: f64) -> Self {

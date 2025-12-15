@@ -449,3 +449,10 @@ impl<Complexity: AtMax<Linear>> MultiChemical for SequenceElement<Complexity> {
         .0
     }
 }
+
+impl<C> crate::space::Space for SequenceElement<C> {
+    fn space(&self) -> crate::space::UsedSpace {
+        (self.aminoacid.space() + self.modifications.space() + self.ambiguous.space())
+            .set_total::<Self>()
+    }
+}

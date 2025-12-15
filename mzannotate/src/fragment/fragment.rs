@@ -256,6 +256,21 @@ impl Display for Fragment {
     }
 }
 
+impl mzcore::space::Space for Fragment {
+    fn space(&self) -> mzcore::space::UsedSpace {
+        (self.formula.space()
+            + self.charge.space()
+            + self.ion.space()
+            + self.peptidoform_ion_index.space()
+            + self.peptidoform_index.space()
+            + self.neutral_loss.space()
+            + self.deviation.space()
+            + self.confidence.space()
+            + self.auxiliary.space())
+        .set_total::<Self>()
+    }
+}
+
 #[cfg(test)]
 #[expect(clippy::missing_panics_doc)]
 mod tests {

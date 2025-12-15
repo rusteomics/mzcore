@@ -153,6 +153,16 @@ struct AmbiguousEntry {
     group: Option<usize>,
 }
 
+impl crate::space::Space for AmbiguousEntry {
+    fn space(&self) -> crate::space::UsedSpace {
+        (self.positions.space()
+            + self.limit.space()
+            + self.colocalise_modifications_of_unknown_position.space()
+            + self.group.space())
+        .set_total::<Self>()
+    }
+}
+
 impl<Complexity> Default for Peptidoform<Complexity> {
     fn default() -> Self {
         Self {
@@ -1786,5 +1796,18 @@ impl<Complexity> HiddenInternalMethods for Peptidoform<Complexity> {
             allow_ms_cleavable,
             glycan_model,
         )
+    }
+}
+
+impl<C> crate::space::Space for Peptidoform<C> {
+    fn space(&self) -> crate::space::UsedSpace {
+        (self.global.space()
+            + self.labile.space()
+            + self.n_term.space()
+            + self.c_term.space()
+            + self.sequence.space()
+            + self.modifications_of_unknown_position.space()
+            + self.charge_carriers.space())
+        .set_total::<Self>()
     }
 }

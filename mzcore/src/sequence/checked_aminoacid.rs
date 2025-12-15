@@ -504,3 +504,9 @@ impl TryFrom<u8> for CheckedAminoAcid<SemiAmbiguous> {
         Self::try_from(&value)
     }
 }
+
+impl<C> crate::space::Space for CheckedAminoAcid<C> {
+    fn space(&self) -> crate::space::UsedSpace {
+        self.aminoacid.space()
+    }
+}

@@ -1,4 +1,4 @@
-use crate::sequence::HasPeptidoformImpl;
+use crate::{sequence::HasPeptidoformImpl, space::UsedSpace};
 
 /// An annotated peptide
 pub trait AnnotatedPeptide: HasPeptidoformImpl {
@@ -57,6 +57,22 @@ pub enum Region {
     None,
 }
 
+impl crate::space::Space for Region {
+    fn space(&self) -> UsedSpace {
+        match self {
+            Self::Framework(d) => d.space(),
+            Self::ComplementarityDetermining(d) => d.space(),
+            Self::Hinge(d) => d.space(),
+            Self::ConstantHeavy(d) => d.space(),
+            Self::ConstantLight | Self::None | Self::SecratoryTail => UsedSpace::default(),
+            Self::MembraneTail(d) => d.space(),
+            Self::Other(d) => d.space(),
+            Self::Joined(d) => d.space(),
+        }
+        .set_total::<Self>()
+    }
+}
+
 /// A sequence annotation
 #[derive(Clone, Debug, Decode, Deserialize, Encode, Eq, Hash, PartialEq, Serialize)]
 pub enum Annotation {
@@ -66,6 +82,16 @@ pub enum Annotation {
     NGlycan,
     /// Any other annotation
     Other(String),
+}
+
+impl crate::space::Space for Annotation {
+    fn space(&self) -> UsedSpace {
+        match self {
+            Self::Conserved | Self::NGlycan => UsedSpace::default(),
+            Self::Other(d) => d.space(),
+        }
+        .set_total::<Self>()
+    }
 }
 
 impl std::fmt::Display for Region {

@@ -77,6 +77,28 @@ pub struct MzTabPSM {
     pub additional: HashMap<String, String>,
 }
 
+impl mzcore::space::Space for MzTabPSM {
+    fn space(&self) -> mzcore::space::UsedSpace {
+        (self.peptidoform.space()
+            + self.id.space()
+            + self.protein.space()
+            + self.unique.space()
+            + self.database.space()
+            + self.search_engine.space()
+            + self.reliability.space()
+            + self.rt.space()
+            + self.z.space()
+            + self.mz.space()
+            + self.uri.space()
+            + self.spectra_ref.space()
+            + self.flanking_sequence.space()
+            + self.protein_location.space()
+            + self.local_confidence.space()
+            + self.additional.space())
+        .set_total::<Self>()
+    }
+}
+
 impl MzTabPSM {
     /// Parse a mzTab file.
     /// # Errors
@@ -968,6 +990,25 @@ pub struct MzTabProtein {
     pub uri: Option<String>,
 }
 
+impl mzcore::space::Space for MzTabProtein {
+    fn space(&self) -> mzcore::space::UsedSpace {
+        (self.accession.space()
+            + self.description.space()
+            + self.taxid.space()
+            + self.species.space()
+            + self.database.space()
+            + self.database_version.space()
+            + self.search_engine.space()
+            + self.ambiguity_members.space()
+            + self.modifications.space()
+            + self.coverage.space()
+            + self.go_terms.space()
+            + self.reliability.space()
+            + self.uri.space())
+        .set_total::<Self>()
+    }
+}
+
 impl MzTabProtein {
     /// Parse a single PRT line
     /// # Errors
@@ -1497,6 +1538,12 @@ impl std::fmt::Display for CVTerm {
     }
 }
 
+impl mzcore::space::Space for CVTerm {
+    fn space(&self) -> mzcore::space::UsedSpace {
+        (self.term.space() + self.comment.space()).set_total::<Self>()
+    }
+}
+
 impl CVTerm {
     /// Get a line parse the range as a cv term, check the id, and give back the comment/value (if any).
     /// All done without any allocations.
@@ -1617,6 +1664,12 @@ impl std::fmt::Display for Reliability {
             Self::Medium => write!(f, "Medium"),
             Self::Poor => write!(f, "Poor"),
         }
+    }
+}
+
+impl mzcore::space::Space for Reliability {
+    fn space(&self) -> mzcore::space::UsedSpace {
+        mzcore::space::UsedSpace::stack(size_of::<Self>())
     }
 }
 

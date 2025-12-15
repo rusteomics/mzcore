@@ -166,3 +166,9 @@ impl<Complexity> FromIterator<Peptidoform<Complexity>> for CompoundPeptidoformIo
         )
     }
 }
+
+impl crate::space::Space for CompoundPeptidoformIon {
+    fn space(&self) -> crate::space::UsedSpace {
+        self.0.space()
+    }
+}

@@ -69,6 +69,17 @@ impl ParseJson for CrossLinkSide {
     }
 }
 
+impl Space for CrossLinkSide {
+    fn space(&self) -> UsedSpace {
+        match self {
+            Self::Symmetric(d) => d.space(),
+            Self::Left(d) => d.space(),
+            Self::Right(d) => d.space(),
+        }
+        .set_total::<Self>()
+    }
+}
+
 /// The name of a cross-link
 #[derive(Clone, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 pub enum CrossLinkName {

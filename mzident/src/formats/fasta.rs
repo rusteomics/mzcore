@@ -13,8 +13,8 @@ use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    PSM, PSMData, KnownFileFormat, PSMMetaData,
-    PeptidoformPresent, ProteinMetaData, SpectrumIds, helper_functions::explain_number_error,
+    KnownFileFormat, PSM, PSMData, PSMMetaData, PeptidoformPresent, ProteinMetaData, SpectrumIds,
+    helper_functions::explain_number_error,
 };
 use mzcore::{
     sequence::{
@@ -534,6 +534,35 @@ impl FromStr for FastaIdentifier<Range<usize>> {
     }
 }
 
+impl<T: mzcore::space::Space> mzcore::space::Space for FastaIdentifier<T> {
+    fn space(&self) -> mzcore::space::UsedSpace {
+        match self {
+            Self::GenInfoBackboneSeqID(decoy, a) => decoy.space() + a.space(),
+            Self::GenInfoBackboneMolType(decoy, a) => decoy.space() + a.space(),
+            Self::GenInfoImportID(decoy, a) => decoy.space() + a.space(),
+            Self::GenInfoIntegratedDatabase(decoy, a) => decoy.space() + a.space(),
+            Self::GenBank(decoy, a, b) => decoy.space() + a.space() + b.space(),
+            Self::EMBL(decoy, a, b) => decoy.space() + a.space() + b.space(),
+            Self::PIR(decoy, a, b) => decoy.space() + a.space() + b.space(),
+            Self::SwissProt(decoy, a, b) => decoy.space() + a.space() + b.space(),
+            Self::Patent(decoy, a, b, c) => decoy.space() + a.space() + b.space() + c.space(),
+            Self::PrePatent(decoy, a, b, c) => decoy.space() + a.space() + b.space() + c.space(),
+            Self::RefSeq(decoy, a, b) => decoy.space() + a.space() + b.space(),
+            Self::GeneralDatabase(decoy, b, a) => decoy.space() + a.space() + b.space(),
+            Self::DDBJ(decoy, a, b) => decoy.space() + a.space() + b.space(),
+            Self::PRF(decoy, a, b) => decoy.space() + a.space() + b.space(),
+            Self::ThirdPartyGenBank(decoy, a, b) => decoy.space() + a.space() + b.space(),
+            Self::ThirdPartyEMBL(decoy, a, b) => decoy.space() + a.space() + b.space(),
+            Self::ThirdPartyDDJ(decoy, a, b) => decoy.space() + a.space() + b.space(),
+            Self::TrEMBL(decoy, a, b) => decoy.space() + a.space() + b.space(),
+            Self::Undefined(decoy, a) => decoy.space() + a.space(),
+            Self::Local(decoy, a) => decoy.space() + a.space(),
+            Self::PDB(decoy, a, b) => decoy.space() + a.space() + b.space(),
+        }
+        .set_total::<Self>()
+    }
+}
+
 impl FastaData {
     /// The identifier
     pub fn identifier(&self) -> FastaIdentifier<&str> {
@@ -1021,6 +1050,20 @@ impl ProteinMetaData for FastaData {
 
     fn uri(&self) -> Option<&str> {
         todo!()
+    }
+}
+
+impl mzcore::space::Space for FastaData {
+    fn space(&self) -> mzcore::space::UsedSpace {
+        (self.identifier.space()
+            + self.description.space()
+            + self.tags.space()
+            + self.line_index.space()
+            + self.full_header.space()
+            + self.peptide.space()
+            + self.regions.space()
+            + self.annotations.space())
+        .set_total::<Self>()
     }
 }
 

@@ -287,3 +287,9 @@ impl<Complexity> From<Peptidoform<Complexity>> for PeptidoformIon {
         Self(vec![value.mark()])
     }
 }
+
+impl crate::space::Space for PeptidoformIon {
+    fn space(&self) -> crate::space::UsedSpace {
+        self.0.space()
+    }
+}

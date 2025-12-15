@@ -229,6 +229,12 @@ impl std::fmt::Display for MolecularCharge {
     }
 }
 
+impl crate::space::Space for MolecularCharge {
+    fn space(&self) -> crate::space::UsedSpace {
+        self.charge_carriers.space()
+    }
+}
+
 #[cfg(test)]
 #[expect(clippy::missing_panics_doc)]
 mod tests {

@@ -2,7 +2,10 @@ use std::{ops::RangeInclusive, path::PathBuf};
 
 use serde::{Deserialize, Serialize};
 
-use mzcore::system::OrderedTime;
+use mzcore::{
+    space::{Space, UsedSpace},
+    system::OrderedTime,
+};
 
 /// Multiple spectrum identifiers
 #[derive(Clone, Debug, Default, Deserialize, Eq, Hash, PartialEq, Serialize)]
@@ -64,5 +67,28 @@ impl SpectrumId {
             Self::Native(n) => Some(n),
             Self::Index(_) | Self::RetentionTime(_) | Self::Number(_) => None,
         }
+    }
+}
+
+impl Space for SpectrumId {
+    fn space(&self) -> UsedSpace {
+        match self {
+            Self::Native(s) => s.space(),
+            Self::Index(i) => i.space(),
+            Self::Number(n) => n.space(),
+            Self::RetentionTime(t) => t.space(),
+        }
+        .set_total::<Self>()
+    }
+}
+
+impl Space for SpectrumIds {
+    fn space(&self) -> UsedSpace {
+        match self {
+            Self::None => UsedSpace::default(),
+            Self::FileNotKnown(d) => d.space(),
+            Self::FileKnown(d) => d.space(),
+        }
+        .set_total::<Self>()
     }
 }

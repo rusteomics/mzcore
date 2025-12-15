@@ -51,3 +51,9 @@ impl std::str::FromStr for PeaksFamilyId {
         }
     }
 }
+
+impl mzcore::space::Space for PeaksFamilyId {
+    fn space(&self) -> mzcore::space::UsedSpace {
+        (self.file.space() + self.scans.space()).set_total::<Self>()
+    }
+}

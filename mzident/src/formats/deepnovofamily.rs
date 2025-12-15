@@ -4,9 +4,8 @@ use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    BoxedIdentifiedPeptideIter, FastaIdentifier, PSMData,
-    PSMSource, PSMFileFormatVersion, KnownFileFormat, MaybePeptidoform,
-    PSM, PSMMetaData, PeaksFamilyId, SpectrumId, SpectrumIds,
+    BoxedIdentifiedPeptideIter, FastaIdentifier, KnownFileFormat, MaybePeptidoform, PSM, PSMData,
+    PSMFileFormatVersion, PSMMetaData, PSMSource, PeaksFamilyId, SpectrumId, SpectrumIds,
     common_parser::{Location, OptionalColumn, OptionalLocation},
 };
 use mzcore::{

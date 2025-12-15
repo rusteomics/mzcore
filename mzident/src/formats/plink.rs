@@ -446,6 +446,12 @@ impl std::fmt::Display for PLinkPeptideType {
     }
 }
 
+impl mzcore::space::Space for PLinkPeptideType {
+    fn space(&self) -> mzcore::space::UsedSpace {
+        mzcore::space::UsedSpace::stack(size_of::<Self>())
+    }
+}
+
 /// The only built in version of pLink export
 pub const V2_3: PLinkFormat = PLinkFormat {
     version: PLinkVersion::V2_3,

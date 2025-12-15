@@ -8,10 +8,7 @@ use mzcore::sequence::Peptidoform;
 /// * If the peptide was not identified as the correct version of the format (see parameters).
 /// * See errors at [`test_identified_peptide`]
 #[expect(clippy::missing_panics_doc)]
-pub(super) fn test_format<
-    T: PSMSource
-        + Into<PSM<T::Complexity, T::PeptidoformAvailability>>,
->(
+pub(super) fn test_format<T: PSMSource + Into<PSM<T::Complexity, T::PeptidoformAvailability>>>(
     reader: impl std::io::Read,
     ontologies: &mzcore::ontology::Ontologies,
     allow_mass_mods: bool,
@@ -161,4 +158,21 @@ pub(super) fn test_identified_peptidoform<Complexity, PeptidoformAvailability>(
         ));
     }
     Ok(())
+}
+
+#[ignore = "only run when interested in the sizes of the data"]
+#[test]
+fn test_size() {
+    let file = open_identified_peptidoforms_file(
+        "src/test_files/plgs_v3.0_peptide.csv",
+        &mzcore::ontology::STATIC_ONTOLOGIES,
+        false,
+    )
+    .unwrap()
+    .collect::<Result<Vec<_>, _>>()
+    .unwrap();
+    let total = mzcore::space::Space::space(&file);
+    let first = mzcore::space::Space::space(&file[0]);
+    println!("= PLGS Total:\n{total}\n\n= PLGS First:\n{first}");
+    todo!();
 }

@@ -9,9 +9,9 @@ use context_error::*;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    BoxedIdentifiedPeptideIter, FastaIdentifier, PSMData,
-    PSMSource, PSMFileFormatVersion, KnownFileFormat, PSM, PSMMetaData,
-    PeptidoformPresent, SpectrumId, SpectrumIds,
+    BoxedIdentifiedPeptideIter, FastaIdentifier, KnownFileFormat, MetaMorpheusMatchKind, PSM,
+    PSMData, PSMFileFormatVersion, PSMMetaData, PSMSource, PeptidoformPresent, SpectrumId,
+    SpectrumIds,
     common_parser::{Location, OptionalLocation},
 };
 use mzcore::{
@@ -148,11 +148,11 @@ format_family!(
         matched_ion_mass_error: String, |location: Location, _| Ok(location.get_string());
         matched_ion_ppm: String, |location: Location, _| Ok(location.get_string());
         matched_ion_counts: String,|location: Location, _| Ok(location.get_string());
-        kind: OpairMatchKind, |location: Location, _| location.parse_with(|loc| {
+        kind: MetaMorpheusMatchKind, |location: Location, _| location.parse_with(|loc| {
             match &loc.line.line()[loc.location.clone()] {
-                "T" => Ok(OpairMatchKind::Target),
-                "C" => Ok(OpairMatchKind::Contamination),
-                "D" => Ok(OpairMatchKind::Decoy),
+                "T" => Ok(MetaMorpheusMatchKind::Target),
+                "C" => Ok(MetaMorpheusMatchKind::Contamination),
+                "D" => Ok(MetaMorpheusMatchKind::Decoy),
                 _ => Err(BoxedError::new(BasicKind::Error,
                     "Invalid Opair line",
                     "The kind column does not contain a valid value (T/C/D)",
@@ -286,31 +286,6 @@ pub const O_PAIR: OpairFormat = OpairFormat {
     all_potential_glycan_localisations: "all potential glycan localizations",
     all_site_specific_localisation_probabilities: "allsitespecificlocalizationprobability",
 };
-
-#[derive(
-    Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Default, Serialize, Deserialize,
-)]
-#[expect(missing_docs)]
-pub enum OpairMatchKind {
-    #[default]
-    Decoy,
-    Contamination,
-    Target,
-}
-
-impl std::fmt::Display for OpairMatchKind {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Error> {
-        write!(
-            f,
-            "{}",
-            match self {
-                Self::Decoy => "Decoy",
-                Self::Contamination => "Contamination",
-                Self::Target => "Target",
-            }
-        )
-    }
-}
 
 impl PSMMetaData for OpairPSM {
     fn compound_peptidoform_ion(&self) -> Option<Cow<'_, CompoundPeptidoformIon>> {

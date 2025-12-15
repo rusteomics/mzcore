@@ -5,9 +5,8 @@ use serde::{Deserialize, Serialize};
 use thin_vec::ThinVec;
 
 use crate::{
-    BoxedIdentifiedPeptideIter, FastaIdentifier, PSMData,
-    PSMSource, PSMFileFormatVersion, KnownFileFormat, PSM, PSMMetaData,
-    PeptidoformPresent, SpectrumId, SpectrumIds,
+    BoxedIdentifiedPeptideIter, FastaIdentifier, KnownFileFormat, PSM, PSMData,
+    PSMFileFormatVersion, PSMMetaData, PSMSource, PeptidoformPresent, SpectrumId, SpectrumIds,
     common_parser::{Location, OptionalColumn, OptionalLocation},
     helper_functions::explain_number_error,
 };
@@ -244,6 +243,16 @@ pub enum MSFraggerOpenModification {
     Glycan(ThinVec<(MonoSaccharide, isize)>),
     /// Any other modification
     Other(String),
+}
+
+impl mzcore::space::Space for MSFraggerOpenModification {
+    fn space(&self) -> mzcore::space::UsedSpace {
+        match self {
+            Self::Glycan(m) => m.space(),
+            Self::Other(s) => s.space(),
+        }
+        .set_total::<Self>()
+    }
 }
 
 /// All possible MSFragger versions

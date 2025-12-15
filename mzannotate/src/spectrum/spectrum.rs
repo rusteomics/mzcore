@@ -1,5 +1,6 @@
 use mzcore::system::MassOverCharge;
 use mzdata::{
+    Spectrum,
     mzpeaks::{
         MZPeakSetType,
         peak_set::{PeakSetIter, PeakSetVec},
@@ -295,5 +296,12 @@ impl crate::mzspeclib::MzSpecLibEncode for AnnotatedSpectrum {
     /// The peaks
     fn peaks(&self) -> PeakSetIter<'_, Self::Peak> {
         self.peaks.iter()
+    }
+}
+
+impl mzcore::space::Space for AnnotatedSpectrum {
+    fn space(&self) -> mzcore::space::UsedSpace {
+        mzcore::space::UsedSpace::default() // TODO: this does not take any data into account because the Space trait cannot be applied to mzdata because of orphan rules
+            .set_total::<Self>()
     }
 }

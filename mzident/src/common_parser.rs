@@ -161,6 +161,15 @@ macro_rules! format_family {
                 }
             }
         }
+
+        impl mzcore::space::Space for [<$format PSM>] {
+            fn space(&self) -> mzcore::space::UsedSpace {
+                ( mzcore::space::UsedSpace::default()
+                $(+ self.$rname.space())*
+                $(+ self.$oname.space())*)
+                .set_total::<Self>()
+            }
+        }
     }};
 }
 

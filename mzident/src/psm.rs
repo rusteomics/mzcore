@@ -645,3 +645,41 @@ impl_metadata!(
         fn has_annotated_spectrum(&self) -> bool;
     }
 );
+
+impl<C, P> mzcore::space::Space for PSM<C, P> {
+    fn space(&self) -> mzcore::space::UsedSpace {
+        self.score.space() + self.local_confidence.space() + self.data.space()
+    }
+}
+
+impl mzcore::space::Space for PSMData {
+    fn space(&self) -> mzcore::space::UsedSpace {
+        match self {
+            Self::BasicCSV(data) => data.space(),
+            Self::DeepNovoFamily(data) => data.space(),
+            Self::Fasta(data) => data.space(),
+            Self::InstaNovo(data) => data.space(),
+            Self::MaxQuant(data) => data.space(),
+            Self::MetaMorpheus(data) => data.space(),
+            Self::MSFragger(data) => data.space(),
+            Self::MzTab(data) => data.space(),
+            Self::NovoB(data) => data.space(),
+            Self::Novor(data) => data.space(),
+            Self::Opair(data) => data.space(),
+            Self::Peaks(data) => data.space(),
+            Self::PepNet(data) => data.space(),
+            Self::PiHelixNovo(data) => data.space(),
+            Self::PiPrimeNovo(data) => data.space(),
+            Self::PLGS(data) => data.space(),
+            Self::PLink(data) => data.space(),
+            Self::PowerNovo(data) => data.space(),
+            Self::Proteoscape(data) => data.space(),
+            Self::PUniFind(data) => data.space(),
+            Self::Sage(data) => data.space(),
+            Self::SpectrumSequenceList(data) => data.space(),
+            #[cfg(feature = "mzannotate")]
+            Self::AnnotatedSpectrum(data) => data.space(),
+        }
+        .set_total::<Self>()
+    }
+}

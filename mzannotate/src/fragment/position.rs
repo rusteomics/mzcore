@@ -22,3 +22,16 @@ pub enum DiagnosticPosition {
     /// Reporter ion
     Reporter,
 }
+
+impl mzcore::space::Space for DiagnosticPosition {
+    fn space(&self) -> mzcore::space::UsedSpace {
+        match self {
+            Self::Glycan(p, s) => p.space() + s.space(),
+            Self::GlycanCompositional(s, a) => s.space() + a.space(),
+            Self::Peptide(p, a) => p.space() + a.space(),
+            Self::Labile(m) => m.space(),
+            Self::Reporter => mzcore::space::UsedSpace::default(),
+        }
+        .set_total::<Self>()
+    }
+}

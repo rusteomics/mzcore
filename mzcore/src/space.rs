@@ -1,5 +1,6 @@
 #![allow(dead_code)]
 use crate::{
+    chemistry::SatelliteLabel,
     glycan::{
         Configuration, GlycanSubstituent, HeptoseIsomer, HexoseIsomer, NonoseIsomer, PentoseIsomer,
         TetroseIsomer,
@@ -7,7 +8,7 @@ use crate::{
     ontology::Ontology,
     prelude::{AminoAcid, Element},
     sequence::{GnoSubsumption, MassTag, Position, SimpleModificationInner},
-    system::OrderedMass,
+    system::OrderedTime,
 };
 use std::{
     num::NonZero,
@@ -15,12 +16,16 @@ use std::{
 };
 use thin_vec::ThinVec;
 
-pub(crate) trait Space {
+/// Query the used amount of space at runtime
+#[doc(hidden)]
+pub trait Space {
     fn space(&self) -> UsedSpace;
 }
 
+/// The used amount of space broken down
+#[doc(hidden)]
 #[derive(Clone, Copy, Debug, Default)]
-pub(crate) struct UsedSpace {
+pub struct UsedSpace {
     pub(crate) stack: usize,
     pub(crate) padding: usize,
     pub(crate) heap_used: usize,
@@ -65,14 +70,14 @@ fn display_bytes(bytes: usize) -> String {
 }
 
 impl UsedSpace {
-    pub(crate) fn stack(stack: usize) -> Self {
+    pub fn stack(stack: usize) -> Self {
         Self {
             stack,
             ..Default::default()
         }
     }
 
-    pub(crate) const fn set_total<Total>(self) -> Self {
+    pub const fn set_total<Total>(self) -> Self {
         Self {
             padding: size_of::<Total>() - self.stack,
             ..self
@@ -153,6 +158,51 @@ impl Space for String {
             heap_used: self.len(),
             heap_padding: 0,
             heap_unused: (self.capacity() - self.len()),
+        }
+    }
+}
+
+impl Space for std::path::PathBuf {
+    fn space(&self) -> UsedSpace {
+        UsedSpace {
+            stack: size_of::<Self>(),
+            padding: 0,
+            heap_used: self.as_os_str().len(),
+            heap_padding: 0,
+            heap_unused: (self.capacity() - self.as_os_str().len()),
+        }
+    }
+}
+
+impl<T: Space> Space for std::collections::BTreeSet<T> {
+    fn space(&self) -> UsedSpace {
+        let mut total = UsedSpace::default();
+        for e in self {
+            total += e.space();
+        }
+        UsedSpace {
+            stack: size_of::<Self>(),
+            padding: 0,
+            heap_used: total.stack + total.heap_used,
+            heap_padding: total.padding + total.heap_padding,
+            heap_unused: total.heap_unused,
+        }
+    }
+}
+
+impl<A: Space, B: Space> Space for std::collections::HashMap<A, B> {
+    fn space(&self) -> UsedSpace {
+        let mut total = UsedSpace::default();
+        for e in self {
+            total += e.0.space() + e.1.space();
+        }
+        UsedSpace {
+            stack: 24,
+            padding: 0,
+            heap_used: total.stack + total.heap_used,
+            heap_padding: total.padding + total.heap_padding,
+            heap_unused: total.heap_unused
+                + (self.capacity() - self.len()) * (size_of::<A>() + size_of::<B>()),
         }
     }
 }
@@ -255,6 +305,62 @@ impl<A: Space, B: Space, C: Space, D: Space> Space for (A, B, C, D) {
     }
 }
 
+impl<T: Space> Space for std::ops::Range<T> {
+    fn space(&self) -> UsedSpace {
+        (self.start.space() + self.end.space()).set_total::<Self>()
+    }
+}
+
+impl<T: Space> Space for std::ops::RangeInclusive<T> {
+    fn space(&self) -> UsedSpace {
+        (self.start().space() + self.end().space()).set_total::<Self>()
+    }
+}
+
+impl<T: Space + Clone> Space for std::borrow::Cow<'_, T> {
+    fn space(&self) -> UsedSpace {
+        match self {
+            Self::Borrowed(b) => b.space(),
+            Self::Owned(b) => b.space(),
+        }
+        .set_total::<Self>()
+    }
+}
+
+impl Space for std::borrow::Cow<'_, str> {
+    fn space(&self) -> UsedSpace {
+        UsedSpace {
+            stack: size_of::<Self>(),
+            padding: 0,
+            heap_used: self.len(),
+            heap_padding: 0,
+            heap_unused: 0,
+        }
+    }
+}
+
+impl Space for mzcv::Term {
+    fn space(&self) -> UsedSpace {
+        (self.name.space() + self.accession.space()).set_total::<Self>()
+    }
+}
+
+impl Space for mzcv::Curie {
+    fn space(&self) -> UsedSpace {
+        (self.cv.space() + self.accession.space()).set_total::<Self>()
+    }
+}
+
+impl Space for mzcv::AccessionCode {
+    fn space(&self) -> UsedSpace {
+        match self {
+            Self::Alphanumeric(_, _) => UsedSpace::stack(8),
+            Self::Numeric(n) => n.space(),
+        }
+        .set_total::<Self>()
+    }
+}
+
 macro_rules! simple_space {
     ($ty:ty) => {
         impl Space for $ty {
@@ -306,9 +412,19 @@ simple_space!(NonoseIsomer);
 simple_space!(Position);
 simple_space!(Ontology);
 simple_space!(GnoSubsumption);
-simple_space!(OrderedMass);
 simple_space!(MassTag);
+simple_space!(SatelliteLabel);
 simple_space!(mzcv::SynonymScope);
+simple_space!(mzcv::ControlledVocabulary);
+simple_space!(crate::system::isize::Charge);
+simple_space!(crate::system::f64::Mass);
+simple_space!(crate::system::f64::MassOverCharge);
+simple_space!(crate::system::f64::Ratio);
+simple_space!(crate::system::f64::Time);
+simple_space!(crate::system::OrderedMass);
+simple_space!(crate::system::OrderedMassOverCharge);
+simple_space!(crate::system::OrderedRatio);
+simple_space!(crate::system::OrderedTime);
 
 #[ignore = "Only run when interested in the space taken up by GNOme"]
 #[test]

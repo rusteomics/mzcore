@@ -9,9 +9,9 @@ use context_error::*;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    BoxedIdentifiedPeptideIter, FastaIdentifier, PSMData,
-    PSMSource, PSMFileFormatVersion, KnownFileFormat, PSM, PSMMetaData,
-    PeptidoformPresent, SpectrumId, SpectrumIds, common_parser::Location,
+    BoxedIdentifiedPeptideIter, FastaIdentifier, KnownFileFormat, PSM, PSMData,
+    PSMFileFormatVersion, PSMMetaData, PSMSource, PeptidoformPresent, SpectrumId, SpectrumIds,
+    common_parser::Location,
 };
 use mzcore::{
     csv::{CsvLine, parse_csv},
@@ -247,6 +247,12 @@ pub enum MetaMorpheusMatchKind {
     Decoy,
     Contamination,
     Target,
+}
+
+impl mzcore::space::Space for MetaMorpheusMatchKind {
+    fn space(&self) -> mzcore::space::UsedSpace {
+        mzcore::space::UsedSpace::stack(size_of::<Self>())
+    }
 }
 
 impl std::fmt::Display for MetaMorpheusMatchKind {

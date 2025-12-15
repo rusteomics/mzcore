@@ -168,6 +168,13 @@ impl PeptidePosition {
     }
 }
 
+impl Space for PeptidePosition {
+    fn space(&self) -> UsedSpace {
+        (self.sequence_index.space() + self.sequence_length.space() + self.series_number.space())
+            .set_total::<Self>()
+    }
+}
+
 /// A flanking sequence
 // Impossible to get the Sequence option smaller (size of a pointer plus alignment of a pointer so the discriminator is 8 bytes as well)
 #[allow(variant_size_differences)]
@@ -187,4 +194,15 @@ pub enum FlankingSequence {
 impl FlankingSequence {
     /// A static reference to an unknown flanking sequence
     pub const UNKNOWN: &Self = &Self::Unknown;
+}
+
+impl Space for FlankingSequence {
+    fn space(&self) -> UsedSpace {
+        match self {
+            Self::Unknown | Self::Terminal => UsedSpace::default(),
+            Self::AminoAcid(a) => a.space(),
+            Self::Sequence(s) => s.space(),
+        }
+        .set_total::<Self>()
+    }
 }
