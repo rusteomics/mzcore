@@ -92,7 +92,7 @@ impl<W: Write> MzTabWriter<W, Initial> {
     pub fn write<PSM: PSMMetaData, Protein: ProteinMetaData>(
         writer: W,
         header: &[(String, String)],
-        proteins: &[Protein],
+        proteins: &[Protein], // TODO: get from the PSMs
         psms: &[PSM],
         unknown_file_run: MSRun,
     ) -> Result<(), std::io::Error> {
