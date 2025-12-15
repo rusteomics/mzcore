@@ -118,6 +118,22 @@ impl Add for UsedSpace {
     }
 }
 
+impl<T: Space> Space for &[T] {
+    fn space(&self) -> UsedSpace {
+        let mut total = UsedSpace::default();
+        for e in *self {
+            total += e.space();
+        }
+        UsedSpace {
+            stack: size_of::<&[T]>(),
+            padding: 0,
+            heap_used: total.stack + total.heap_used,
+            heap_padding: total.padding + total.heap_padding,
+            heap_unused: 0,
+        }
+    }
+}
+
 impl<T: Space> Space for Vec<T> {
     fn space(&self) -> UsedSpace {
         let mut total = UsedSpace::default();

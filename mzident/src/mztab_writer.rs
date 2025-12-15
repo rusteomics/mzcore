@@ -497,10 +497,9 @@ impl<W: Write, State: CanWritePSMs> MzTabWriter<W, State> {
                             highest_id.to_string()
                         },
                         accession = psm
-                            .protein_names()
-                            .as_ref()
-                            .and_then(|n| n.first())
-                            .map_or_else(|| "null".to_string(), |c| c.accession().clone()),
+                            .proteins()
+                            .first()
+                            .map_or("null", |p| p.id().accession()),
                         unique = psm
                             .unique()
                             .map_or_else(|| "null".to_string(), |d| d.to_string()),

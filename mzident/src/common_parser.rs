@@ -33,7 +33,13 @@ macro_rules! format_family {
      $complexity:ident, $peptidoform_availability:ident, $versions:expr, $separator:expr, $header:expr;
      required { $($(#[doc = $rdoc:expr])? $rname:ident: $rtyp:ty, $rf:expr;)* }
      optional { $($(#[doc = $odoc:expr])? $(#[cfg(feature = $ocfg:literal)])? $oname:ident: $otyp:ty, $of:expr;)*}
-     $($post_process:item)?) => {paste::paste!{
+     $($post_process:item)?
+     $(protein {
+            $accession_name:ident => $accessionf:expr;
+            required { $($(#[doc = $prdoc:expr])? $prname:ident: $prtyp:ty, $prf:expr;)* }
+            optional { $($(#[doc = $podoc:expr])? $(#[cfg(feature = $pocfg:literal)])? $poname:ident: $potyp:ty, $pof:expr;)*}
+    })?
+    ) => {paste::paste!{
         #[allow(unused_imports)] // Needed sometimes, but not all invocations of the macro
         use context_error::*;
 
@@ -45,6 +51,11 @@ macro_rules! format_family {
         pub struct [<$format Format>] {
             $($rname: &'static str,)*
             $($(#[cfg(feature = $ocfg)])?  $oname: crate::common_parser::OptionalColumn,)*
+            $(
+                $accession_name: &'static str,
+                $($prname: &'static str,)*
+                $($(#[cfg(feature = $pocfg)])?  $poname: crate::common_parser::OptionalColumn,)*
+            )?
             version: [<$format Version>]
         }
 
@@ -60,7 +71,37 @@ macro_rules! format_family {
             pub version: [<$format Version>],
             /// The stored columns if kept
             columns: Option<Vec<(std::sync::Arc<String>, String)>>,
+            $(
+            pub $accession_name: std::sync::Arc<<[<$format PSM>] as PSMMetaData>::Protein>
+            )?
         }
+
+        $(
+            #[doc = "The data for proteins in " $format " files."]
+            #[non_exhaustive]
+            #[derive(Clone, Debug, Default, Deserialize, PartialEq, Serialize)]
+            #[allow(missing_docs)]
+            pub struct [<$format Protein>] {
+                pub $accession_name: String,
+                $($(#[doc = $prdoc])? pub $prname: $prtyp,)*
+                $($(#[doc = $podoc])? $(#[cfg(feature = $pocfg)])?  pub $poname: Option<$potyp>,)*
+            }
+
+            impl mzcore::space::Space for [<$format Protein>] {
+                fn space(&self) -> mzcore::space::UsedSpace {
+                    ( mzcore::space::UsedSpace::default()
+                    $(+ self.$prname.space())*
+                    $(+ self.$poname.space())*)
+                    .set_total::<Self>()
+                }
+            }
+
+            impl From<[<$format Protein>]> for crate::ProteinData {
+            fn from(value: [<$format Protein>]) -> Self {
+                Self::$format(value)
+            }
+        }
+        )?
 
         impl PSMSource for [<$format PSM>] {
             type Source = CsvLine;
@@ -69,10 +110,10 @@ macro_rules! format_family {
             type PeptidoformAvailability = $peptidoform_availability;
             type Version = [<$format Version>];
 
-            fn parse(source: &Self::Source, ontologies: &mzcore::ontology::Ontologies, keep_all_columns: bool) -> Result<(Self, &'static Self::Format), BoxedError<'static, BasicKind>> {
+            fn parse(source: &Self::Source, ontologies: &mzcore::ontology::Ontologies, keep_all_columns: bool, proteins: &mut std::collections::HashMap<String, std::sync::Arc<<[<$format PSM>] as PSMMetaData>::Protein>>) -> Result<(Self, &'static Self::Format), BoxedError<'static, BasicKind>> {
                 let mut errors = Vec::new();
                 for format in $versions {
-                    match Self::parse_specific(source, format, ontologies, keep_all_columns) {
+                    match Self::parse_specific(source, format, ontologies, keep_all_columns, proteins) {
                         Ok(peptide) => return Ok((peptide, format)),
                         Err(err) => errors.push(err.version(format.version.to_string())),
                     }
@@ -120,8 +161,8 @@ macro_rules! format_family {
                 })
             }
 
-            #[allow(clippy::redundant_closure_call)] // Macro magic
-            fn parse_specific(source: &Self::Source, format: &[<$format Format>], ontologies: &mzcore::ontology::Ontologies, keep_all_columns: bool) -> Result<Self, BoxedError<'static, BasicKind>> {
+            #[allow(clippy::redundant_closure_call, unused_variables)] // Macro magic
+            fn parse_specific(source: &Self::Source, format: &[<$format Format>], ontologies: &mzcore::ontology::Ontologies, keep_all_columns: bool, proteins: &mut std::collections::HashMap<String, std::sync::Arc<<[<$format PSM>] as PSMMetaData>::Protein>>) -> Result<Self, BoxedError<'static, BasicKind>> {
                 #[allow(unused_imports)]
                 use crate::helper_functions::InvertResult;
 
@@ -132,11 +173,30 @@ macro_rules! format_family {
                     Result::Ok(value)
                 }
 
+                $(
+                    let key = $accessionf(source.column(format.$accession_name).map_err(BoxedError::to_owned)?, ontologies)?;
+
+                    let protein = if let Some(p) = proteins.get(&key) {
+                        p.clone()
+                    } else {
+                        // Get around parser limitations by creating a type synonym.
+                        type TempProtein = <[<$format PSM>] as PSMMetaData>::Protein;
+                        let parsed = std::sync::Arc::new(TempProtein {
+                            $accession_name: key.clone(),
+                            $($prname: $prf(source.column(format.$prname).map_err(BoxedError::to_owned)?, ontologies)?,)*
+                            $($(#[cfg(feature = $pocfg)])?  $poname: format.$poname.open_column(source).and_then(|l: Option<Location>| l.map(|value: Location| $pof(value, ontologies)).invert()).map_err(BoxedError::to_owned)?,)*
+                        });
+                        proteins.insert(key, parsed.clone());
+                        parsed
+                    };
+                )?
+
                 let parsed = Self {
                     $($rname: $rf(source.column(format.$rname).map_err(BoxedError::to_owned)?, ontologies)?,)*
                     $($(#[cfg(feature = $ocfg)])?  $oname: format.$oname.open_column(source).and_then(|l: Option<Location>| l.map(|value: Location| $of(value, ontologies)).invert()).map_err(BoxedError::to_owned)?,)*
                     version: format.version.clone(),
                     columns: keep_all_columns.then(|| source.values().map(|(h, v)| (h, v.to_string())).collect()),
+                    $($accession_name: protein,)?
                 };
                 Self::post_process(source, parsed, ontologies)
             }

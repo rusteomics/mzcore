@@ -1,4 +1,4 @@
-use std::fmt::Display;
+use std::{collections::HashMap, fmt::Display};
 
 use context_error::{BasicKind, BoxedError};
 
@@ -40,6 +40,7 @@ where
         source: &Self::Source,
         ontologies: &mzcore::ontology::Ontologies,
         keep_all_columns: bool,
+        proteins: &mut HashMap<String, std::sync::Arc<Self::Protein>>,
     ) -> Result<(Self, &'static Self::Format), BoxedError<'static, BasicKind>>;
 
     /// Parse a single PSM with the given format
@@ -50,6 +51,7 @@ where
         format: &Self::Format,
         ontologies: &mzcore::ontology::Ontologies,
         keep_all_columns: bool,
+        proteins: &mut HashMap<String, std::sync::Arc<Self::Protein>>,
     ) -> Result<Self, BoxedError<'static, BasicKind>>;
 
     /// Parse a source of multiple peptides using the given format or automatically determining the format to use by the first item
@@ -67,6 +69,7 @@ where
             ontologies,
             keep_all_columns,
             peek: None,
+            proteins: HashMap::new(),
         }
     }
 
@@ -75,7 +78,7 @@ where
     /// Returns Err when the file could not be opened
     fn parse_file(
         path: impl AsRef<std::path::Path>,
-        ontologies: &mzcore::ontology::Ontologies,
+        ontologies: &'_ mzcore::ontology::Ontologies,
         keep_all_columns: bool,
         version: Option<Self::Version>,
     ) -> Result<BoxedIdentifiedPeptideIter<'_, Self>, BoxedError<'static, BasicKind>>;
@@ -123,7 +126,7 @@ pub type BoxedIdentifiedPeptideIter<'lifetime, T> = PSMIter<
 #[derive(Debug)]
 pub struct PSMIter<
     'lifetime,
-    Source: PSMSource,
+    Source: PSMSource + 'lifetime,
     Iter: Iterator<Item = Result<Source::Source, BoxedError<'static, BasicKind>>>,
 > {
     iter: Box<Iter>,
@@ -131,6 +134,7 @@ pub struct PSMIter<
     ontologies: &'lifetime mzcore::ontology::Ontologies,
     keep_all_columns: bool,
     peek: Option<Result<Source, BoxedError<'static, BasicKind>>>,
+    proteins: HashMap<String, std::sync::Arc<Source::Protein>>,
 }
 
 impl<R: PSMSource + Clone, I: Iterator<Item = Result<R::Source, BoxedError<'static, BasicKind>>>>
@@ -146,13 +150,24 @@ where
 
         let peek = if let Some(format) = &self.format {
             self.iter.next().map(|source| {
-                R::parse_specific(&source?, format, self.ontologies, self.keep_all_columns)
-                    .map_err(BoxedError::to_owned)
+                R::parse_specific(
+                    &source?,
+                    format,
+                    self.ontologies,
+                    self.keep_all_columns,
+                    &mut self.proteins,
+                )
+                .map_err(BoxedError::to_owned)
             })
         } else {
             match self.iter.next().map(|source| {
-                R::parse(&source?, self.ontologies, self.keep_all_columns)
-                    .map_err(BoxedError::to_owned)
+                R::parse(
+                    &source?,
+                    self.ontologies,
+                    self.keep_all_columns,
+                    &mut self.proteins,
+                )
+                .map_err(BoxedError::to_owned)
             }) {
                 None => None,
                 Some(Ok((pep, format))) => {
@@ -180,13 +195,24 @@ where
 
         if let Some(format) = &self.format {
             self.iter.next().map(|source| {
-                R::parse_specific(&source?, format, self.ontologies, self.keep_all_columns)
-                    .map_err(BoxedError::to_owned)
+                R::parse_specific(
+                    &source?,
+                    format,
+                    self.ontologies,
+                    self.keep_all_columns,
+                    &mut self.proteins,
+                )
+                .map_err(BoxedError::to_owned)
             })
         } else {
             match self.iter.next().map(|source| {
-                R::parse(&source?, self.ontologies, self.keep_all_columns)
-                    .map_err(BoxedError::to_owned)
+                R::parse(
+                    &source?,
+                    self.ontologies,
+                    self.keep_all_columns,
+                    &mut self.proteins,
+                )
+                .map_err(BoxedError::to_owned)
             }) {
                 None => None,
                 Some(Ok((pep, format))) => {

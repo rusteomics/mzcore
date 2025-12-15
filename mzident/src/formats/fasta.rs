@@ -26,7 +26,7 @@ use mzcore::{
 
 /// A single parsed line of a fasta file
 #[allow(missing_docs)]
-#[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
+#[derive(Clone, Debug, Default, Deserialize, Eq, Hash, PartialEq, Serialize)]
 pub struct FastaData {
     identifier: FastaIdentifier<Range<usize>>,
     description: Range<usize>,
@@ -100,6 +100,9 @@ pub enum FastaIdentifier<T> {
     ThirdPartyDDJ(bool, T, T),
     TrEMBL(bool, T, T),
 }
+
+pub(crate) const EMPTY_FASTA_IDENTIFIER: FastaIdentifier<&str> =
+    FastaIdentifier::Undefined(false, "");
 
 impl<T: Default> Default for FastaIdentifier<T> {
     fn default() -> Self {
@@ -276,6 +279,43 @@ impl FastaIdentifier<Range<usize>> {
                 header[b.clone()].to_string(),
                 header[c.clone()].to_string(),
             ),
+        }
+    }
+}
+
+impl FastaIdentifier<String> {
+    /// Create a string slice fasta identfier from an owned version
+    pub fn as_str(&self) -> FastaIdentifier<&str> {
+        match self {
+            Self::GenInfoBackboneSeqID(decoy, a) => {
+                FastaIdentifier::GenInfoBackboneSeqID(*decoy, &a)
+            }
+            Self::GenInfoBackboneMolType(decoy, a) => {
+                FastaIdentifier::GenInfoBackboneMolType(*decoy, &a)
+            }
+            Self::GenInfoImportID(decoy, a) => FastaIdentifier::GenInfoImportID(*decoy, &a),
+            Self::GenInfoIntegratedDatabase(decoy, a) => {
+                FastaIdentifier::GenInfoIntegratedDatabase(*decoy, &a)
+            }
+            Self::Undefined(decoy, a) => FastaIdentifier::Undefined(*decoy, &a),
+            Self::Local(decoy, a) => FastaIdentifier::Local(*decoy, &a),
+            Self::GenBank(decoy, a, b) => FastaIdentifier::GenBank(*decoy, &a, &b),
+            Self::EMBL(decoy, a, b) => FastaIdentifier::EMBL(*decoy, &a, &b),
+            Self::PIR(decoy, a, b) => FastaIdentifier::PIR(*decoy, &a, &b),
+            Self::SwissProt(decoy, a, b) => FastaIdentifier::SwissProt(*decoy, &a, &b),
+            Self::RefSeq(decoy, a, b) => FastaIdentifier::RefSeq(*decoy, &a, &b),
+            Self::GeneralDatabase(decoy, a, b) => FastaIdentifier::GeneralDatabase(*decoy, &a, &b),
+            Self::DDBJ(decoy, a, b) => FastaIdentifier::DDBJ(*decoy, &a, &b),
+            Self::PRF(decoy, a, b) => FastaIdentifier::PRF(*decoy, &a, &b),
+            Self::ThirdPartyGenBank(decoy, a, b) => {
+                FastaIdentifier::ThirdPartyGenBank(*decoy, &a, &b)
+            }
+            Self::ThirdPartyEMBL(decoy, a, b) => FastaIdentifier::ThirdPartyEMBL(*decoy, &a, &b),
+            Self::ThirdPartyDDJ(decoy, a, b) => FastaIdentifier::ThirdPartyDDJ(*decoy, &a, &b),
+            Self::TrEMBL(decoy, a, b) => FastaIdentifier::TrEMBL(*decoy, &a, &b),
+            Self::PDB(decoy, a, b) => FastaIdentifier::PDB(*decoy, &a, &b),
+            Self::Patent(decoy, a, b, c) => FastaIdentifier::Patent(*decoy, &a, &b, &c),
+            Self::PrePatent(decoy, a, b, c) => FastaIdentifier::PrePatent(*decoy, &a, &b, &c),
         }
     }
 }
@@ -857,6 +897,18 @@ impl From<FastaData> for PSM<SemiAmbiguous, PeptidoformPresent> {
     }
 }
 
+impl From<FastaIdentifier<String>> for crate::ProteinData {
+    fn from(value: FastaIdentifier<String>) -> Self {
+        Self::FastaId(value)
+    }
+}
+
+impl From<FastaData> for crate::ProteinData {
+    fn from(value: FastaData) -> Self {
+        Self::Fasta(value)
+    }
+}
+
 #[test]
 #[expect(clippy::missing_panics_doc)]
 fn empty_lines() {
@@ -952,17 +1004,9 @@ impl PSMMetaData for FastaData {
         None
     }
 
-    type Protein<'a> = Self;
-    fn proteins(&self) -> &[Self::Protein<'_>] {
-        std::slice::from_ref(self)
-    }
-
-    fn protein_names(&self) -> Option<Cow<'_, [FastaIdentifier<String>]>> {
-        Some(Cow::Owned(vec![self.identifier.as_string(self.header())]))
-    }
-
-    fn protein_id(&self) -> Option<usize> {
-        None
+    type Protein = Self;
+    fn proteins(&self) -> Cow<'_, [Self::Protein]> {
+        Cow::Borrowed(std::slice::from_ref(self))
     }
 
     fn protein_location(&self) -> Option<Range<u16>> {
@@ -999,8 +1043,8 @@ impl ProteinMetaData for FastaData {
         None
     }
 
-    fn id(&self) -> FastaIdentifier<String> {
-        self.identifier.as_string(&self.full_header)
+    fn id(&self) -> FastaIdentifier<&str> {
+        self.identifier.as_str(&self.full_header)
     }
 
     fn description(&self) -> Option<&str> {

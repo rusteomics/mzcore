@@ -4,9 +4,9 @@ use serde::{Deserialize, Serialize};
 use thin_vec::ThinVec;
 
 use crate::{
-    BoxedIdentifiedPeptideIter, FastaIdentifier, PSMData,
-    PSMSource, PSMFileFormatVersion, KnownFileFormat, PSM, PSMMetaData,
-    PeptidoformPresent, Reliability, SpectrumId, SpectrumIds,
+    BoxedIdentifiedPeptideIter, CVTerm, FastaIdentifier, KnownFileFormat, PSM, PSMData,
+    PSMFileFormatVersion, PSMMetaData, PSMSource, PeptidoformPresent, ProteinMetaData, Reliability,
+    SpectrumId, SpectrumIds,
     common_parser::{Location, OptionalColumn, OptionalLocation},
     helper_functions::explain_number_error,
 };
@@ -34,29 +34,6 @@ format_family!(
     PLGS,
     SimpleLinear, PeptidoformPresent, [&VERSION_3_0], b',', None;
     required {
-        protein_id: usize, |location: Location, _| location.parse(NUMBER_ERROR);
-        protein_entry: Box<str>, |location: Location, _| Ok(location.get_boxed_str());
-        protein_accession: Box<str>, |location: Location, _| Ok(location.get_boxed_str());
-        protein_description: FastaIdentifier<String>, |location: Location, _| location.parse(IDENTIFIER_ERROR);
-        protein_db_type: Box<str>, |location: Location, _| Ok(location.get_boxed_str());
-        protein_score: f32, |location: Location, _| location.parse(NUMBER_ERROR);
-        protein_fpr: f32, |location: Location, _| location.parse(NUMBER_ERROR);
-        protein_average_weight: Mass, |location: Location, _| location.parse(NUMBER_ERROR).map(Mass::new::<mzcore::system::dalton>);
-        protein_matched_products: u32, |location: Location, _| location.parse(NUMBER_ERROR);
-        protein_matched_peptides: u32, |location: Location, _| location.parse(NUMBER_ERROR);
-        protein_digest_peptides: u32, |location: Location, _| location.parse(NUMBER_ERROR);
-        protein_sequence_coverage: f32, |location: Location, _| location.parse(NUMBER_ERROR);
-        protein_matched_peptide_intensity_sum: f32, |location: Location, _| location.parse(NUMBER_ERROR);
-        protein_matched_peptide_intensity_top3: f32, |location: Location, _| location.parse(NUMBER_ERROR);
-        protein_matched_product_intensity_sum: f32, |location: Location, _| location.parse(NUMBER_ERROR);
-        protein_fmol_on_column: Option<f32>, |location: Location, _| location.or_empty().parse(NUMBER_ERROR);
-        protein_ngram_on_column: Option<f32>, |location: Location, _| location.or_empty().parse(NUMBER_ERROR);
-        protein_auto_curate: Reliability, |location: Location, _| location.parse_with(|l| match l.as_str().to_ascii_lowercase().as_str() {
-            "green" => Ok(Reliability::High),
-            "yellow" => Ok(Reliability::Medium),
-            "red" => Ok(Reliability::Poor),
-            _ => Err(BoxedError::new(BasicKind::Error, "Invalid PLGS line", "The protein auto curation is required to be Green, Yellow, or Red", l.context().to_owned()))
-        });
         peptide_rank: u32, |location: Location, _| location.parse(NUMBER_ERROR);
         peptide_pass: Box<str>, |location: Location, _| Ok(location.get_boxed_str());
         peptide_match_type: Box<str>, |location: Location, _| Ok(location.get_boxed_str());
@@ -148,6 +125,36 @@ format_family!(
             }
         }
         Ok(parsed)
+    }
+
+    protein {
+        protein_accession => (|location: Location, _| Ok(location.get_string()));
+
+        required {
+            protein_id: usize, |location: Location, _| location.parse(NUMBER_ERROR);
+            protein_entry: Box<str>, |location: Location, _| Ok(location.get_boxed_str());
+            protein_description: FastaIdentifier<String>, |location: Location, _| location.parse(IDENTIFIER_ERROR);
+            protein_db_type: Box<str>, |location: Location, _| Ok(location.get_boxed_str());
+            protein_score: f32, |location: Location, _| location.parse(NUMBER_ERROR);
+            protein_fpr: f32, |location: Location, _| location.parse(NUMBER_ERROR);
+            protein_average_weight: Mass, |location: Location, _| location.parse(NUMBER_ERROR).map(Mass::new::<mzcore::system::dalton>);
+            protein_matched_products: u32, |location: Location, _| location.parse(NUMBER_ERROR);
+            protein_matched_peptides: u32, |location: Location, _| location.parse(NUMBER_ERROR);
+            protein_digest_peptides: u32, |location: Location, _| location.parse(NUMBER_ERROR);
+            protein_sequence_coverage: f32, |location: Location, _| location.parse(NUMBER_ERROR);
+            protein_matched_peptide_intensity_sum: f32, |location: Location, _| location.parse(NUMBER_ERROR);
+            protein_matched_peptide_intensity_top3: f32, |location: Location, _| location.parse(NUMBER_ERROR);
+            protein_matched_product_intensity_sum: f32, |location: Location, _| location.parse(NUMBER_ERROR);
+            protein_fmol_on_column: Option<f32>, |location: Location, _| location.or_empty().parse(NUMBER_ERROR);
+            protein_ngram_on_column: Option<f32>, |location: Location, _| location.or_empty().parse(NUMBER_ERROR);
+            protein_auto_curate: Reliability, |location: Location, _| location.parse_with(|l| match l.as_str().to_ascii_lowercase().as_str() {
+                "green" => Ok(Reliability::High),
+                "yellow" => Ok(Reliability::Medium),
+                "red" => Ok(Reliability::Poor),
+                _ => Err(BoxedError::new(BasicKind::Error, "Invalid PLGS line", "The protein auto curation is required to be Green, Yellow, or Red", l.context().to_owned()))
+            });
+        }
+        optional {}
     }
 );
 
@@ -328,15 +335,9 @@ impl PSMMetaData for PLGSPSM {
         Some(self.precursor_mass)
     }
 
-    type Protein<'a> = crate::NoProtein;
-    fn protein_names(&self) -> Option<Cow<'_, [FastaIdentifier<String>]>> {
-        Some(Cow::Borrowed(std::slice::from_ref(
-            &self.protein_description,
-        )))
-    }
-
-    fn protein_id(&self) -> Option<usize> {
-        Some(self.protein_id)
+    type Protein = PLGSProtein;
+    fn proteins(&self) -> Cow<'_, [Self::Protein]> {
+        Cow::Borrowed(std::slice::from_ref(&self.protein_accession))
     }
 
     fn protein_location(&self) -> Option<Range<u16>> {
@@ -360,6 +361,64 @@ impl PSMMetaData for PLGSPSM {
     }
 
     fn uri(&self) -> Option<String> {
+        None
+    }
+}
+
+impl ProteinMetaData for PLGSProtein {
+    fn sequence(&self) -> Option<Cow<'_, Peptidoform<mzcore::sequence::Linear>>> {
+        None
+    }
+
+    fn numerical_id(&self) -> Option<usize> {
+        Some(self.protein_id)
+    }
+
+    fn id(&self) -> FastaIdentifier<&str> {
+        self.protein_description.as_str()
+    }
+
+    fn description(&self) -> Option<&str> {
+        None
+    }
+
+    fn species(&self) -> Option<mzcv::Curie> {
+        None
+    }
+
+    fn species_name(&self) -> Option<&str> {
+        None
+    }
+
+    fn search_engine(&self) -> &[(CVTerm, Option<(f64, CVTerm)>)] {
+        &[] // TODO: PLGS does not have a search engine entry
+    }
+
+    fn ambiguity_members(&self) -> &[String] {
+        &[]
+    }
+
+    fn database(&self) -> Option<(&str, Option<&str>)> {
+        None
+    }
+
+    fn modifications(&self) -> &[(Vec<(SequencePosition, Option<f64>)>, SimpleModification)] {
+        &[]
+    }
+
+    fn coverage(&self) -> Option<f64> {
+        Some(self.protein_sequence_coverage as f64)
+    }
+
+    fn gene_ontology(&self) -> &[mzcv::Curie] {
+        &[]
+    }
+
+    fn reliability(&self) -> Option<Reliability> {
+        Some(self.protein_auto_curate)
+    }
+
+    fn uri(&self) -> Option<&str> {
         None
     }
 }

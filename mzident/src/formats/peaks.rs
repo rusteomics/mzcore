@@ -9,9 +9,9 @@ use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    BoxedIdentifiedPeptideIter, FastaIdentifier, PSMData,
-    PSMSource, PSMFileFormatVersion, KnownFileFormat, PSM, PSMMetaData,
-    PeaksFamilyId, PeptidoformPresent, SpectrumId, SpectrumIds,
+    BoxedIdentifiedPeptideIter, FastaIdentifier, KnownFileFormat, PSM, PSMData,
+    PSMFileFormatVersion, PSMMetaData, PSMSource, PeaksFamilyId, PeptidoformPresent, SpectrumId,
+    SpectrumIds,
     common_parser::{Location, OptionalColumn, OptionalLocation},
 };
 use mzcore::{
@@ -761,16 +761,7 @@ impl PSMMetaData for PeaksPSM {
             .map_or_else(|| self.z.map(|z| self.mz * z.to_float()), Some)
     }
 
-    type Protein<'a> = crate::NoProtein;
-    fn protein_names(&self) -> Option<Cow<'_, [FastaIdentifier<String>]>> {
-        self.protein_accession
-            .as_ref()
-            .map(|v| Cow::Borrowed(std::slice::from_ref(v)))
-    }
-
-    fn protein_id(&self) -> Option<usize> {
-        self.protein_id
-    }
+    type Protein = crate::NoProtein; // TODO: the protein is optional, which does not cuurently fit with the macro
 
     fn protein_location(&self) -> Option<Range<u16>> {
         self.start.and_then(|s| self.end.map(|e| s..e))

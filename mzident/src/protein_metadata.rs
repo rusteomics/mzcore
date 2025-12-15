@@ -1,6 +1,6 @@
 use std::borrow::Cow;
 
-use crate::{CVTerm, FastaIdentifier, Reliability};
+use crate::{CVTerm, EMPTY_FASTA_IDENTIFIER, FastaIdentifier, Reliability};
 use mzcore::{
     prelude::SequencePosition,
     sequence::{Linear, Peptidoform, SimpleModification},
@@ -16,7 +16,7 @@ pub trait ProteinMetaData {
     fn numerical_id(&self) -> Option<usize>;
 
     /// Get the identifier
-    fn id(&self) -> FastaIdentifier<String>;
+    fn id(&self) -> FastaIdentifier<&str>;
 
     /// Get the description
     fn description(&self) -> Option<&str>;
@@ -63,7 +63,7 @@ macro_rules! impl_ref {
                 (**self).numerical_id()
             }
 
-            fn id(&self) -> FastaIdentifier<String> {
+            fn id(&self) -> FastaIdentifier<&str> {
                 (**self).id()
             }
 
@@ -129,7 +129,7 @@ impl ProteinMetaData for Box<dyn ProteinMetaData + '_> {
         (**self).numerical_id()
     }
 
-    fn id(&self) -> FastaIdentifier<String> {
+    fn id(&self) -> FastaIdentifier<&str> {
         (**self).id()
     }
 
@@ -179,8 +179,14 @@ impl ProteinMetaData for Box<dyn ProteinMetaData + '_> {
 }
 
 /// A basic type to use a placeholder when a PSM format does not contain any protein level information.
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Default, serde::Deserialize, serde::Serialize)]
 pub struct NoProtein {}
+
+impl mzcore::space::Space for NoProtein {
+    fn space(&self) -> mzcore::space::UsedSpace {
+        mzcore::space::UsedSpace::default()
+    }
+}
 
 impl ProteinMetaData for NoProtein {
     fn sequence(&self) -> Option<Cow<'_, Peptidoform<Linear>>> {
@@ -191,8 +197,8 @@ impl ProteinMetaData for NoProtein {
         None
     }
 
-    fn id(&self) -> FastaIdentifier<String> {
-        FastaIdentifier::Undefined(false, String::new())
+    fn id(&self) -> FastaIdentifier<&str> {
+        EMPTY_FASTA_IDENTIFIER
     }
 
     fn description(&self) -> Option<&str> {
@@ -249,8 +255,8 @@ impl ProteinMetaData for FastaIdentifier<String> {
         None
     }
 
-    fn id(&self) -> FastaIdentifier<String> {
-        self.clone()
+    fn id(&self) -> FastaIdentifier<&str> {
+        self.as_str()
     }
 
     fn description(&self) -> Option<&str> {

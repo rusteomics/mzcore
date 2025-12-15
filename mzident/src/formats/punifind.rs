@@ -3,9 +3,8 @@ use std::{borrow::Cow, marker::PhantomData, ops::Range, str::FromStr};
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    BoxedIdentifiedPeptideIter, FastaIdentifier, PSMData,
-    PSMSource, PSMFileFormatVersion, KnownFileFormat, MaybePeptidoform,
-    PSM, PSMMetaData, SpectrumId, SpectrumIds,
+    BoxedIdentifiedPeptideIter, KnownFileFormat, MaybePeptidoform, PSM, PSMData,
+    PSMFileFormatVersion, PSMMetaData, PSMSource, SpectrumId, SpectrumIds,
     common_parser::{Location, OptionalLocation},
 };
 use mzcore::{
@@ -204,14 +203,7 @@ impl PSMMetaData for PUniFindPSM {
         Some(self.mass_error)
     }
 
-    type Protein<'a> = crate::NoProtein;
-    fn protein_names(&self) -> Option<Cow<'_, [FastaIdentifier<String>]>> {
-        None
-    }
-
-    fn protein_id(&self) -> Option<usize> {
-        None
-    }
+    type Protein = crate::NoProtein;
 
     fn protein_location(&self) -> Option<Range<u16>> {
         None

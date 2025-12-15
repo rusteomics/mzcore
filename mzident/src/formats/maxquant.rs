@@ -37,7 +37,7 @@ static BOOL_ERROR: (&str, &str) = (
 format_family!(
     /// This can contain data from the database match and the _de novo_ match at the same time when
     /// run with MaxNovo. In that case the _de novo_ data will not be shown via the methods of the
-    /// [`MetaData`] trait. If access is needed solely to the _de novo_ data and not to the database
+    /// [`PSMMetaData`] trait. If access is needed solely to the _de novo_ data and not to the database
     /// data the easiest way is detecting this case and overwriting the data in place.
     /// ```rust
     /// # use mzcore::{prelude::*, sequence::Linked};
@@ -55,14 +55,14 @@ format_family!(
     SimpleLinear, MaybePeptidoform, [&MSMS, &NOVO_MSMS_SCANS, &MSMS_SCANS, &SILAC], b'\t', None;
     required {
         scan_number: ThinVec<usize>, |location: Location, _| location.or_empty().array(';').map(|s| s.parse(NUMBER_ERROR)).collect::<Result<ThinVec<usize>, BoxedError<'_, BasicKind>>>();
-        proteins: Vec<FastaIdentifier<String>>, |location: Location, _| location.array(';').map(|v|
+        proteins: ThinVec<FastaIdentifier<String>>, |location: Location, _| location.array(';').map(|v|
             FastaIdentifier::<String>::from_str(v.as_str())
             .map_err(|e| BoxedError::new(
                 BasicKind::Error,
                 "Could not parse MaxQuant line",
                 format!("The protein identifier could not be parsed: {e}"),
                 v.context().to_owned()
-            ))).collect::<Result<Vec<FastaIdentifier<String>>, _>>();
+            ))).collect::<Result<ThinVec<FastaIdentifier<String>>, _>>();
         /// The database matched peptide, annotated as [`SimpleLinear`] to allow replacing it with the _de novo_ peptide, no features of the [`SimpleLinear`] complexity are used for the database peptides
         peptide: Option<Peptidoform<SimpleLinear>>, |location: Location, ontologies: &Ontologies| location.or_empty().parse_with(|location| Peptidoform::sloppy_pro_forma(
             location.full_line(),
@@ -81,8 +81,6 @@ format_family!(
                 .map(|s| Peptidoform::sloppy_pro_forma(s.line.line(), s.location, ontologies, &SloppyParsingParameters::default()).map_err(BoxedError::to_owned))
                 .collect::<Result<ThinVec<Peptidoform<SemiAmbiguous>>, BoxedError<'static, BasicKind>>>();
         base_peak_intensity: f32, |location: Location, _| location.parse::<f32>(NUMBER_ERROR);
-        carbamidomethyl_c_probabilities: Box<str>, |location: Location, _| Ok(location.get_boxed_str());
-        carbamidomethyl_c_score_differences: Box<str>, |location: Location, _| Ok(location.get_boxed_str());
         collision_energy: f32, |location: Location, _| location.parse::<f32>(NUMBER_ERROR);
         delta_score: f32, |location: Location, _| location.parse::<f32>(NUMBER_ERROR);
         dn_c_mass: Mass, |location: Location, _| location.parse::<f64>(NUMBER_ERROR).map(Mass::new::<mzcore::system::dalton>);
@@ -108,11 +106,7 @@ format_family!(
         missed_cleavages: usize, |location: Location, _| location.parse::<usize>(NUMBER_ERROR);
         modified_peptide_id: usize, |location: Location, _| location.parse::<usize>(NUMBER_ERROR);
         mz: MassOverCharge, |location: Location, _| location.parse::<f64>(NUMBER_ERROR).map(MassOverCharge::new::<mzcore::system::thomson>);
-        nem_probabilities: Box<str>, |location: Location, _| Ok(location.get_boxed_str());
-        nem_score_differences: Box<str>, |location: Location, _| Ok(location.get_boxed_str());
         number_of_matches: usize, |location: Location, _| location.parse::<usize>(NUMBER_ERROR);
-        oxidation_m_probabilities: Box<str>, |location: Location, _| Ok(location.get_boxed_str());
-        oxidation_m_score_differences: Box<str>, |location: Location, _| Ok(location.get_boxed_str());
         peak_coverage: f32, |location: Location, _| location.parse::<f32>(NUMBER_ERROR);
         peptide_id: usize, |location: Location, _| location.parse::<usize>(NUMBER_ERROR);
         precursor: usize, |location: Location, _| location.ignore("-1").parse::<usize>(NUMBER_ERROR);
@@ -131,7 +125,7 @@ format_family!(
         simple_mass_error_ppm: f32, |location: Location, _| location.parse::<f32>(NUMBER_ERROR);
         total_ion_current: f32, |location: Location, _| location.parse::<f32>(NUMBER_ERROR);
         #[cfg(feature = "mzannotate")]
-        spectrum: Vec<AnnotatedPeak<mzannotate::fragment::Fragment>>, |_, _| None;
+        spectrum: ThinVec<AnnotatedPeak<mzannotate::fragment::Fragment>>, |_, _| None;
     }
 
     fn post_process(source: &CsvLine, mut parsed: Self, _ontologies: &Ontologies) -> Result<Self, BoxedError<'static, BasicKind>> {
@@ -147,7 +141,7 @@ format_family!(
         #[cfg(feature = "mzannotate")]
         {
             if let Some(peptidoform) = &parsed.peptide && let Ok((annotation, match_range)) = source.index_column("matches") && let Ok((intensities, intensity_range)) = source.index_column("intensities") && let Ok((mzs, mz_range)) = source.index_column("masses") && !annotation.is_empty() && !intensities.is_empty() && !mzs.is_empty(){
-                let mut peaks = Vec::with_capacity(annotation.chars().filter(|c| *c == ';').count());
+                let mut peaks = ThinVec::with_capacity(annotation.chars().filter(|c| *c == ';').count());
                 let mut match_offset = 0;
                 let mut intensity_offset = 0;
                 let mut mz_offset = 0;
@@ -225,8 +219,6 @@ pub const MSMS: MaxQuantFormat = MaxQuantFormat {
     version: MaxQuantVersion::MSMS,
     all_modified_sequences: OptionalColumn::Required("all modified sequences"),
     base_peak_intensity: OptionalColumn::NotAvailable,
-    carbamidomethyl_c_probabilities: OptionalColumn::NotAvailable,
-    carbamidomethyl_c_score_differences: OptionalColumn::NotAvailable,
     collision_energy: OptionalColumn::NotAvailable,
     delta_score: OptionalColumn::Required("delta score"),
     dn_c_mass: OptionalColumn::NotAvailable,
@@ -251,11 +243,7 @@ pub const MSMS: MaxQuantFormat = MaxQuantFormat {
     missed_cleavages: OptionalColumn::Optional("missed cleavages"),
     modified_peptide_id: OptionalColumn::Required("mod. peptide id"),
     mz: OptionalColumn::Required("m/z"),
-    nem_probabilities: OptionalColumn::NotAvailable,
-    nem_score_differences: OptionalColumn::NotAvailable,
     number_of_matches: OptionalColumn::Required("number of matches"),
-    oxidation_m_probabilities: OptionalColumn::NotAvailable,
-    oxidation_m_score_differences: OptionalColumn::NotAvailable,
     peak_coverage: OptionalColumn::Required("peak coverage"),
     pep: "pep",
     peptide_id: OptionalColumn::Required("peptide id"),
@@ -289,8 +277,6 @@ pub const MSMS_SCANS: MaxQuantFormat = MaxQuantFormat {
     version: MaxQuantVersion::MSMSScans,
     all_modified_sequences: OptionalColumn::NotAvailable,
     base_peak_intensity: OptionalColumn::Required("base peak intensity"),
-    carbamidomethyl_c_probabilities: OptionalColumn::NotAvailable,
-    carbamidomethyl_c_score_differences: OptionalColumn::NotAvailable,
     collision_energy: OptionalColumn::Required("collision energy"),
     delta_score: OptionalColumn::NotAvailable,
     dn_c_mass: OptionalColumn::NotAvailable,
@@ -315,11 +301,7 @@ pub const MSMS_SCANS: MaxQuantFormat = MaxQuantFormat {
     missed_cleavages: OptionalColumn::NotAvailable,
     modified_peptide_id: OptionalColumn::NotAvailable,
     mz: OptionalColumn::Required("m/z"),
-    nem_probabilities: OptionalColumn::NotAvailable,
-    nem_score_differences: OptionalColumn::NotAvailable,
     number_of_matches: OptionalColumn::NotAvailable,
-    oxidation_m_probabilities: OptionalColumn::NotAvailable,
-    oxidation_m_score_differences: OptionalColumn::NotAvailable,
     peak_coverage: OptionalColumn::NotAvailable,
     pep: "pep",
     peptide_id: OptionalColumn::NotAvailable,
@@ -353,8 +335,6 @@ pub const NOVO_MSMS_SCANS: MaxQuantFormat = MaxQuantFormat {
     version: MaxQuantVersion::NovoMSMSScans,
     all_modified_sequences: OptionalColumn::NotAvailable,
     base_peak_intensity: OptionalColumn::Required("base peak intensity"),
-    carbamidomethyl_c_probabilities: OptionalColumn::NotAvailable,
-    carbamidomethyl_c_score_differences: OptionalColumn::NotAvailable,
     collision_energy: OptionalColumn::Required("collision energy"),
     delta_score: OptionalColumn::NotAvailable,
     dn_c_mass: OptionalColumn::Required("dn cterm mass"),
@@ -379,11 +359,7 @@ pub const NOVO_MSMS_SCANS: MaxQuantFormat = MaxQuantFormat {
     missed_cleavages: OptionalColumn::NotAvailable,
     modified_peptide_id: OptionalColumn::NotAvailable,
     mz: OptionalColumn::Required("m/z"),
-    nem_probabilities: OptionalColumn::NotAvailable,
-    nem_score_differences: OptionalColumn::NotAvailable,
     number_of_matches: OptionalColumn::NotAvailable,
-    oxidation_m_probabilities: OptionalColumn::NotAvailable,
-    oxidation_m_score_differences: OptionalColumn::NotAvailable,
     peak_coverage: OptionalColumn::NotAvailable,
     pep: "pep",
     peptide_id: OptionalColumn::NotAvailable,
@@ -417,10 +393,6 @@ pub const SILAC: MaxQuantFormat = MaxQuantFormat {
     version: MaxQuantVersion::Silac,
     all_modified_sequences: OptionalColumn::NotAvailable,
     base_peak_intensity: OptionalColumn::NotAvailable,
-    carbamidomethyl_c_probabilities: OptionalColumn::Required("carbamidomethyl (c) probabilities"),
-    carbamidomethyl_c_score_differences: OptionalColumn::Required(
-        "carbamidomethyl (c) score diffs",
-    ),
     collision_energy: OptionalColumn::NotAvailable,
     delta_score: OptionalColumn::Required("delta score"),
     dn_c_mass: OptionalColumn::NotAvailable,
@@ -445,11 +417,7 @@ pub const SILAC: MaxQuantFormat = MaxQuantFormat {
     missed_cleavages: OptionalColumn::NotAvailable,
     modified_peptide_id: OptionalColumn::Required("mod. peptide id"),
     mz: OptionalColumn::Required("m/z"),
-    nem_probabilities: OptionalColumn::Required("nem probabilities"),
-    nem_score_differences: OptionalColumn::Required("nem score diffs"),
     number_of_matches: OptionalColumn::NotAvailable,
-    oxidation_m_probabilities: OptionalColumn::Required("oxidation (m) probabilities"),
-    oxidation_m_score_differences: OptionalColumn::Required("oxidation (m) score diffs"),
     peak_coverage: OptionalColumn::NotAvailable,
     pep: "pep",
     peptide_id: OptionalColumn::Required("peptide id"),
@@ -561,13 +529,10 @@ impl PSMMetaData for MaxQuantPSM {
         self.mass
     }
 
-    type Protein<'a> = crate::NoProtein;
-    fn protein_names(&self) -> Option<Cow<'_, [FastaIdentifier<String>]>> {
-        Some(Cow::Borrowed(&self.proteins))
-    }
+    type Protein = FastaIdentifier<String>;
 
-    fn protein_id(&self) -> Option<usize> {
-        None
+    fn proteins(&self) -> Cow<'_, [Self::Protein]> {
+        Cow::Borrowed(&self.proteins)
     }
 
     fn protein_location(&self) -> Option<Range<u16>> {
@@ -618,7 +583,7 @@ impl PSMMetaData for MaxQuantPSM {
                     })
                     .unwrap_or_default(),
                 Vec::new(),
-                s.clone().into(),
+                Vec::from(s.clone()).into(),
             ))
         })
     }

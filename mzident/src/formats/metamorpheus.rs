@@ -9,16 +9,16 @@ use context_error::*;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    BoxedIdentifiedPeptideIter, FastaIdentifier, KnownFileFormat, PSM, PSMData,
-    PSMFileFormatVersion, PSMMetaData, PSMSource, PeptidoformPresent, SpectrumId, SpectrumIds,
-    common_parser::Location,
+    BoxedIdentifiedPeptideIter, CVTerm, FastaIdentifier, KnownFileFormat, PSM, PSMData,
+    PSMFileFormatVersion, PSMMetaData, PSMSource, PeptidoformPresent, ProteinMetaData, Reliability,
+    SpectrumId, SpectrumIds, common_parser::Location,
 };
 use mzcore::{
     csv::{CsvLine, parse_csv},
     ontology::Ontologies,
     sequence::{
         AminoAcid, CompoundPeptidoformIon, FlankingSequence, Peptidoform, SemiAmbiguous,
-        SloppyParsingParameters,
+        SequencePosition, SimpleModification, SloppyParsingParameters,
     },
     system::{Mass, MassOverCharge, Time, isize::Charge},
 };
@@ -32,9 +32,6 @@ format_family!(
     SemiAmbiguous, PeptidoformPresent, [&META_MORPHEUS], b'\t', None;
     required {
         raw_file: PathBuf, |location: Location, _| Ok(Path::new(&location.get_string()).to_owned());
-        /// If this is a contaminant, same number of entries as the vector of organisms.
-        contaminant: Vec<bool>, |location: Location, _| Ok(location.array('|').map(|l| l.as_str() == "Y").collect());
-        decoy: bool, |location: Location, _| Ok(location.as_str() == "Y");
         scan_number: usize, |location: Location, _| location.parse(NUMBER_ERROR);
         missed_cleavages: usize, |location: Location, _| location.parse(NUMBER_ERROR);
         rt: Time, |location: Location, _| location.parse::<f64>(NUMBER_ERROR).map(Time::new::<mzcore::system::time::min>);
@@ -43,9 +40,7 @@ format_family!(
         mz: MassOverCharge, |location: Location, _| location.parse::<f64>(NUMBER_ERROR).map(MassOverCharge::new::<mzcore::system::thomson>);
         z: Charge, |location: Location, _| location.trim_end_matches(".00000").parse::<isize>(NUMBER_ERROR).map(Charge::new::<mzcore::system::e>);
         mass: Mass, |location: Location, _| location.parse::<f64>(NUMBER_ERROR).map(Mass::new::<mzcore::system::dalton>);
-        protein_accession: Vec<String>, |location: Location, _| Ok(location.array('|').map(Location::get_string).collect());
-        organism: Vec<String>, |location: Location, _| Ok(location.array('|').map(Location::get_string).collect());
-        protein_name: FastaIdentifier<String>, |location: Location, _| location.parse(NUMBER_ERROR);
+
         protein_location: Vec<Range<u16>>, |location: Location, _| location.array('|').map(|l| l.parse_with(
             |loc| {
                 if loc.location.len() < 3 {
@@ -143,28 +138,47 @@ format_family!(
         matched_ion_mass_error: String, |location: Location, _| Ok(location.get_string());
         matched_ion_ppm: String, |location: Location, _| Ok(location.get_string());
         matched_ion_counts: String,|location: Location, _| Ok(location.get_string());
-        kind: Vec<MetaMorpheusMatchKind>, |location: Location, _| location.array('|').map(|loc| {
-            match &loc.line.line()[loc.location.clone()] {
-                "T" => Ok(MetaMorpheusMatchKind::Target),
-                "C" => Ok(MetaMorpheusMatchKind::Contamination),
-                "D" => Ok(MetaMorpheusMatchKind::Decoy),
-                _ => Err(BoxedError::new(BasicKind::Error,
-                    "Invalid MetaMorpheus line",
-                    "The kind column does not contain a valid value (T/C/D)",
-                    Context::line(
-                        Some(loc.line.line_index() as u32),
-                        loc.line.line(),
-                        loc.location.start,
-                        loc.location.len(),
-                    ).to_owned(),
-                )),
-            }
-        }).collect::<Result<Vec<_>,_>>();
         q_value: f64, |location: Location, _| location.parse(NUMBER_ERROR);
         pep: f64, |location: Location, _| location.parse(NUMBER_ERROR);
         pep_q_value: f64, |location: Location, _| location.parse(NUMBER_ERROR);
     }
     optional { }
+
+
+    fn post_process(_source: &CsvLine, parsed: Self, _ontologies: &Ontologies) -> Result<Self, BoxedError<'static, BasicKind>> {
+        Ok(parsed)
+    }
+
+    protein {
+        accession => (|location: Location, _| Ok(location.get_string()));
+
+        required {
+            protein_accession: Vec<String>, |location: Location, _| Ok(location.array('|').map(Location::get_string).collect());
+            organism: Vec<String>, |location: Location, _| Ok(location.array('|').map(Location::get_string).collect());
+            protein_name: FastaIdentifier<String>, |location: Location, _| location.parse(NUMBER_ERROR);
+            /// If this is a contaminant, same number of entries as the vector of organisms.
+            contaminant: Vec<bool>, |location: Location, _| Ok(location.array('|').map(|l| l.as_str() == "Y").collect());
+            decoy: bool, |location: Location, _| Ok(location.as_str() == "Y");
+            kind: Vec<MetaMorpheusMatchKind>, |location: Location, _| location.array('|').map(|loc| {
+                match &loc.line.line()[loc.location.clone()] {
+                    "T" => Ok(MetaMorpheusMatchKind::Target),
+                    "C" => Ok(MetaMorpheusMatchKind::Contamination),
+                    "D" => Ok(MetaMorpheusMatchKind::Decoy),
+                    _ => Err(BoxedError::new(BasicKind::Error,
+                        "Invalid MetaMorpheus line",
+                        "The kind column does not contain a valid value (T/C/D)",
+                        Context::line(
+                            Some(loc.line.line_index() as u32),
+                            loc.line.line(),
+                            loc.location.start,
+                            loc.location.len(),
+                        ).to_owned(),
+                    )),
+                }
+            }).collect::<Result<Vec<_>,_>>();
+        }
+        optional {}
+    }
 );
 
 /// All possible peaks versions
@@ -230,6 +244,7 @@ pub const META_MORPHEUS: MetaMorpheusFormat = MetaMorpheusFormat {
     protein_accession: "accession",
     protein_location: "Start and End Residues In Full Sequence",
     protein_name: "name",
+    accession: "name",
     q_value: "qvalue",
     raw_file: "file name",
     rt: "scan retention time",
@@ -333,13 +348,10 @@ impl PSMMetaData for MetaMorpheusPSM {
         Some(self.mass)
     }
 
-    type Protein<'a> = crate::NoProtein;
-    fn protein_names(&self) -> Option<Cow<'_, [FastaIdentifier<String>]>> {
-        Some(Cow::Borrowed(std::slice::from_ref(&self.protein_name)))
-    }
+    type Protein = MetaMorpheusProtein;
 
-    fn protein_id(&self) -> Option<usize> {
-        None
+    fn proteins(&self) -> Cow<'_, [Self::Protein]> {
+        Cow::Borrowed(std::slice::from_ref(&self.accession))
     }
 
     fn protein_location(&self) -> Option<Range<u16>> {
@@ -365,11 +377,69 @@ impl PSMMetaData for MetaMorpheusPSM {
         None
     }
 
-    fn reliability(&self) -> Option<crate::Reliability> {
+    fn reliability(&self) -> Option<Reliability> {
         None
     }
 
     fn uri(&self) -> Option<String> {
+        None
+    }
+}
+
+impl ProteinMetaData for MetaMorpheusProtein {
+    fn sequence(&self) -> Option<Cow<'_, Peptidoform<mzcore::sequence::Linear>>> {
+        None
+    }
+
+    fn numerical_id(&self) -> Option<usize> {
+        None
+    }
+
+    fn id(&self) -> FastaIdentifier<&str> {
+        self.protein_name.as_str()
+    }
+
+    fn description(&self) -> Option<&str> {
+        None
+    }
+
+    fn species(&self) -> Option<mzcv::Curie> {
+        None
+    }
+
+    fn species_name(&self) -> Option<&str> {
+        self.organism.first().map(|s| s.as_str())
+    }
+
+    fn search_engine(&self) -> &[(CVTerm, Option<(f64, CVTerm)>)] {
+        &[] // TODO: PLGS does not have a search engine entry
+    }
+
+    fn ambiguity_members(&self) -> &[String] {
+        &[]
+    }
+
+    fn database(&self) -> Option<(&str, Option<&str>)> {
+        None
+    }
+
+    fn modifications(&self) -> &[(Vec<(SequencePosition, Option<f64>)>, SimpleModification)] {
+        &[]
+    }
+
+    fn coverage(&self) -> Option<f64> {
+        None
+    }
+
+    fn gene_ontology(&self) -> &[mzcv::Curie] {
+        &[]
+    }
+
+    fn reliability(&self) -> Option<Reliability> {
+        None
+    }
+
+    fn uri(&self) -> Option<&str> {
         None
     }
 }

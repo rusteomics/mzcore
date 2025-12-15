@@ -8,8 +8,8 @@ use std::{
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    BoxedIdentifiedPeptideIter, FastaIdentifier, KnownFileFormat, PSM, PSMData,
-    PSMFileFormatVersion, PSMMetaData, PSMSource, PeptidoformPresent, SpectrumId, SpectrumIds,
+    BoxedIdentifiedPeptideIter, KnownFileFormat, PSM, PSMData, PSMFileFormatVersion, PSMMetaData,
+    PSMSource, PeptidoformPresent, SpectrumId, SpectrumIds,
     common_parser::{Location, OptionalColumn},
 };
 use mzcore::{
@@ -141,14 +141,7 @@ impl PSMMetaData for BasicCSVPSM {
         None
     }
 
-    type Protein<'a> = crate::NoProtein;
-    fn protein_names(&self) -> Option<Cow<'_, [FastaIdentifier<String>]>> {
-        None
-    }
-
-    fn protein_id(&self) -> Option<usize> {
-        None
-    }
+    type Protein = crate::NoProtein;
 
     fn protein_location(&self) -> Option<Range<u16>> {
         None

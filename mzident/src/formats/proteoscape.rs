@@ -3,9 +3,9 @@ use std::{borrow::Cow, marker::PhantomData, ops::Range};
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    BoxedIdentifiedPeptideIter, FastaIdentifier, PSMData,
-    PSMSource, PSMFileFormatVersion, KnownFileFormat, PSM, PSMMetaData,
-    PeptidoformPresent, SpectrumId, SpectrumIds, common_parser::Location,
+    BoxedIdentifiedPeptideIter, FastaIdentifier, KnownFileFormat, PSM, PSMData,
+    PSMFileFormatVersion, PSMMetaData, PSMSource, PeptidoformPresent, SpectrumId, SpectrumIds,
+    common_parser::Location,
 };
 use mzcore::{
     csv::{CsvLine, parse_csv},
@@ -191,17 +191,9 @@ impl PSMMetaData for ProteoscapePSM {
         Some(self.mz * self.z.to_float())
     }
 
-    type Protein<'a> = FastaIdentifier<String>;
-    fn proteins(&self) -> &[Self::Protein<'_>] {
-        std::slice::from_ref(&self.protein)
-    }
-
-    fn protein_names(&self) -> Option<Cow<'_, [FastaIdentifier<String>]>> {
-        Some(Cow::Borrowed(std::slice::from_ref(&self.protein)))
-    }
-
-    fn protein_id(&self) -> Option<usize> {
-        None
+    type Protein = FastaIdentifier<String>;
+    fn proteins(&self) -> Cow<'_, [Self::Protein]> {
+        Cow::Borrowed(std::slice::from_ref(&self.protein))
     }
 
     fn protein_location(&self) -> Option<Range<u16>> {

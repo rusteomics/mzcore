@@ -567,9 +567,11 @@ macro_rules! impl_metadata {
                     .map(|lc| Cow::Borrowed(lc.as_slice()))
             }
 
-            type Protein<'a> = Box<dyn ProteinMetaData + 'a>
-            where
-                Self: 'a; // TODO: implement at some point
+            type Protein = ProteinData;
+
+            fn proteins(&self) -> Cow<'_, [Self::Protein]> {
+                Cow::Owned(impl_metadata!(match: self, formats: $format; function: proteins;))
+            }
 
             $(impl_metadata!(inner: formats: $format; function: $function -> $t);)+
         }
@@ -582,6 +584,11 @@ macro_rules! impl_metadata {
             }
         }
     };
+    (match: $self:ident, formats: {$($format:ident),*}; function: $function:ident;) => {
+         match &$self.data {
+            $(PSMData::$format(d) => PSMMetaData::$function(d).iter().map(|p| p.clone().into()).collect::<Vec<_>>()),*
+        }
+    }
 }
 #[cfg(not(feature = "mzannotate"))]
 impl_metadata!(
@@ -602,8 +609,6 @@ impl_metadata!(
         fn experimental_mass(&self) -> Option<Mass>;
         fn ppm_error(&self) -> Option<Ratio>;
         fn mass_error(&self) -> Option<Mass>;
-        fn protein_names(&self) -> Option<Cow<'_, [FastaIdentifier<String>]>>;
-        fn protein_id(&self) -> Option<usize>;
         fn protein_location(&self) -> Option<Range<u16>>;
         fn flanking_sequences(&self) -> (&FlankingSequence, &FlankingSequence);
         fn database(&self) -> Option<(&str, Option<&str>)>;
@@ -633,8 +638,6 @@ impl_metadata!(
         fn experimental_mass(&self) -> Option<Mass>;
         fn ppm_error(&self) -> Option<Ratio>;
         fn mass_error(&self) -> Option<Mass>;
-        fn protein_names(&self) -> Option<Cow<'_, [FastaIdentifier<String>]>>;
-        fn protein_id(&self) -> Option<usize>;
         fn protein_location(&self) -> Option<Range<u16>>;
         fn flanking_sequences(&self) -> (&FlankingSequence, &FlankingSequence);
         fn database(&self) -> Option<(&str, Option<&str>)>;
@@ -679,6 +682,91 @@ impl mzcore::space::Space for PSMData {
             Self::SpectrumSequenceList(data) => data.space(),
             #[cfg(feature = "mzannotate")]
             Self::AnnotatedSpectrum(data) => data.space(),
+        }
+        .set_total::<Self>()
+    }
+}
+
+/// The definition of all special metadata for all types of Proteins that can be read
+#[derive(Clone, Debug, serde::Deserialize, serde::Serialize)]
+pub enum ProteinData {
+    /// No protein
+    NoProtein(NoProtein),
+    /// A single fasta identifier
+    FastaId(FastaIdentifier<String>),
+    /// A Fasta entry
+    Fasta(FastaData),
+    /// An mzTab protein
+    MzTab(MzTabProtein),
+    /// A protein from PLGS files
+    PLGS(PLGSProtein),
+    /// A protein from MSFragger files
+    MSFragger(MSFraggerProtein),
+    /// A protein from Opair files
+    Opair(OpairProtein),
+    /// A protein from MetaMorpheus files
+    MetaMorpheus(MetaMorpheusProtein),
+}
+
+impl Default for ProteinData {
+    fn default() -> Self {
+        Self::NoProtein(NoProtein::default())
+    }
+}
+
+impl From<NoProtein> for ProteinData {
+    fn from(value: NoProtein) -> Self {
+        Self::NoProtein(value)
+    }
+}
+
+macro_rules! impl_protein_metadata {
+    (formats: $format:tt; functions: {$($(#[cfg($cfg:expr)])?fn $function:ident(&self) -> $t:ty);+;}) => {
+        impl ProteinMetaData for ProteinData {
+            $(impl_protein_metadata!(inner: formats: $format; function: $function -> $t);)+
+        }
+    };
+    (inner: formats: {$($format:ident),*}; function: $(#[cfg($cfg:expr)])?$function:ident -> $t:ty) => {
+        $(#[cfg($cfg)])?
+        fn $function(&self) -> $t {
+            match &self {
+                $(ProteinData::$format(d) => ProteinMetaData::$function(d)),*
+            }
+        }
+    };
+}
+
+impl_protein_metadata!(
+    formats: {NoProtein, FastaId, Fasta, MzTab, PLGS, MSFragger, Opair, MetaMorpheus};
+    functions: {
+        fn sequence(&self) -> Option<Cow<'_, Peptidoform<Linear>>>;
+        fn numerical_id(&self) -> Option<usize>;
+        fn id(&self) -> FastaIdentifier<&str>;
+        fn description(&self) -> Option<&str>;
+        fn species(&self) -> Option<mzcv::Curie>;
+        fn species_name(&self) -> Option<&str>;
+        fn search_engine(&self) -> &[(CVTerm, Option<(f64, CVTerm)>)];
+        fn ambiguity_members(&self) -> &[String];
+        fn database(&self) -> Option<(&str, Option<&str>)>;
+        fn modifications(&self) -> &[(Vec<(mzcore::sequence::SequencePosition, Option<f64>)>, mzcore::sequence::SimpleModification)];
+        fn coverage(&self) -> Option<f64>;
+        fn gene_ontology(&self) -> &[mzcv::Curie];
+        fn reliability(&self) -> Option<Reliability>;
+        fn uri(&self) -> Option<&str>;
+    }
+);
+
+impl mzcore::space::Space for ProteinData {
+    fn space(&self) -> mzcore::space::UsedSpace {
+        match self {
+            Self::NoProtein(data) => data.space(),
+            Self::FastaId(data) => data.space(),
+            Self::Fasta(data) => data.space(),
+            Self::MzTab(data) => data.space(),
+            Self::PLGS(data) => data.space(),
+            Self::MSFragger(data) => data.space(),
+            Self::Opair(data) => data.space(),
+            Self::MetaMorpheus(data) => data.space(),
         }
         .set_total::<Self>()
     }

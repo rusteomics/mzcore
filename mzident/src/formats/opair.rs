@@ -9,9 +9,9 @@ use context_error::*;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    BoxedIdentifiedPeptideIter, FastaIdentifier, KnownFileFormat, MetaMorpheusMatchKind, PSM,
-    PSMData, PSMFileFormatVersion, PSMMetaData, PSMSource, PeptidoformPresent, SpectrumId,
-    SpectrumIds,
+    BoxedIdentifiedPeptideIter, CVTerm, FastaIdentifier, KnownFileFormat, MetaMorpheusMatchKind,
+    PSM, PSMData, PSMFileFormatVersion, PSMMetaData, PSMSource, PeptidoformPresent,
+    ProteinMetaData, Reliability, SpectrumId, SpectrumIds,
     common_parser::{Location, OptionalLocation},
 };
 use mzcore::{
@@ -19,7 +19,7 @@ use mzcore::{
     ontology::Ontologies,
     sequence::{
         AminoAcid, CompoundPeptidoformIon, FlankingSequence, Peptidoform, SemiAmbiguous,
-        SloppyParsingParameters,
+        SequencePosition, SimpleModification, SloppyParsingParameters,
     },
     system::{Mass, MassOverCharge, Time, isize::Charge},
 };
@@ -39,9 +39,6 @@ format_family!(
         mz: MassOverCharge, |location: Location, _| location.parse::<f64>(NUMBER_ERROR).map(MassOverCharge::new::<mzcore::system::thomson>);
         z: Charge, |location: Location, _| location.parse::<isize>(NUMBER_ERROR).map(Charge::new::<mzcore::system::e>);
         mass: Mass, |location: Location, _| location.parse::<f64>(NUMBER_ERROR).map(Mass::new::<mzcore::system::dalton>);
-        accession: String, |location: Location, _| Ok(location.get_string());
-        organism: String, |location: Location, _| Ok(location.get_string());
-        protein_name: FastaIdentifier<String>, |location: Location, _| location.parse(NUMBER_ERROR);
         protein_location: Option<Range<u16>>, |location: Location, _| location.or_empty().parse_with(
             |loc| {
                 if loc.location.len() < 3 {
@@ -88,7 +85,6 @@ format_family!(
                 )
             },
         );
-        base_sequence: String, |location: Location, _| Ok(location.get_string());
         flanking_residues: (FlankingSequence, FlankingSequence), |location: Location, _| location.parse_with(
             |loc| {
                 let n = loc.line.line().as_bytes()[loc.location.start];
@@ -148,23 +144,6 @@ format_family!(
         matched_ion_mass_error: String, |location: Location, _| Ok(location.get_string());
         matched_ion_ppm: String, |location: Location, _| Ok(location.get_string());
         matched_ion_counts: String,|location: Location, _| Ok(location.get_string());
-        kind: MetaMorpheusMatchKind, |location: Location, _| location.parse_with(|loc| {
-            match &loc.line.line()[loc.location.clone()] {
-                "T" => Ok(MetaMorpheusMatchKind::Target),
-                "C" => Ok(MetaMorpheusMatchKind::Contamination),
-                "D" => Ok(MetaMorpheusMatchKind::Decoy),
-                _ => Err(BoxedError::new(BasicKind::Error,
-                    "Invalid Opair line",
-                    "The kind column does not contain a valid value (T/C/D)",
-                    Context::line(
-                        Some(loc.line.line_index() as u32),
-                        loc.line.line(),
-                        loc.location.start,
-                        loc.location.len(),
-                    ).to_owned(),
-                )),
-            }
-        });
         q_value: f64, |location: Location, _| location.parse(NUMBER_ERROR);
         pep: f64, |location: Location, _| location.parse(NUMBER_ERROR);
         pep_q_value: f64, |location: Location, _| location.parse(NUMBER_ERROR);
@@ -202,6 +181,37 @@ format_family!(
         all_site_specific_localisation_probabilities: String, |location: Location, _| Ok(location.get_string());
     }
     optional { }
+
+    fn post_process(_source: &CsvLine, parsed: Self, _ontologies: &Ontologies) -> Result<Self, BoxedError<'static, BasicKind>> {
+        Ok(parsed)
+    }
+
+    protein {
+        accession => (|location: Location, _| Ok(location.get_string()));
+
+        required {
+            organism: String, |location: Location, _| Ok(location.get_string());
+            protein_name: FastaIdentifier<String>, |location: Location, _| location.parse(NUMBER_ERROR);
+            kind: MetaMorpheusMatchKind, |location: Location, _| location.parse_with(|loc| {
+            match &loc.line.line()[loc.location.clone()] {
+                "T" => Ok(MetaMorpheusMatchKind::Target),
+                "C" => Ok(MetaMorpheusMatchKind::Contamination),
+                "D" => Ok(MetaMorpheusMatchKind::Decoy),
+                _ => Err(BoxedError::new(BasicKind::Error,
+                    "Invalid Opair line",
+                    "The kind column does not contain a valid value (T/C/D)",
+                    Context::line(
+                        Some(loc.line.line_index() as u32),
+                        loc.line.line(),
+                        loc.location.start,
+                        loc.location.len(),
+                    ).to_owned(),
+                )),
+            }
+        });
+        }
+        optional {}
+    }
 );
 
 /// All possible peaks versions
@@ -253,7 +263,6 @@ pub const O_PAIR: OpairFormat = OpairFormat {
     organism: "organism",
     protein_name: "protein name",
     protein_location: "start and end residues in protein",
-    base_sequence: "base sequence",
     flanking_residues: "flankingresidues",
     peptide: "full sequence",
     mod_number: "number of mods",
@@ -351,13 +360,10 @@ impl PSMMetaData for OpairPSM {
         Some(self.mass)
     }
 
-    type Protein<'a> = crate::NoProtein;
-    fn protein_names(&self) -> Option<Cow<'_, [FastaIdentifier<String>]>> {
-        Some(Cow::Borrowed(std::slice::from_ref(&self.protein_name)))
-    }
+    type Protein = OpairProtein;
 
-    fn protein_id(&self) -> Option<usize> {
-        None
+    fn proteins(&self) -> Cow<'_, [Self::Protein]> {
+        Cow::Borrowed(std::slice::from_ref(&self.accession))
     }
 
     fn protein_location(&self) -> Option<Range<u16>> {
@@ -376,11 +382,69 @@ impl PSMMetaData for OpairPSM {
         None
     }
 
-    fn reliability(&self) -> Option<crate::Reliability> {
+    fn reliability(&self) -> Option<Reliability> {
         None
     }
 
     fn uri(&self) -> Option<String> {
+        None
+    }
+}
+
+impl ProteinMetaData for OpairProtein {
+    fn sequence(&self) -> Option<Cow<'_, Peptidoform<mzcore::sequence::Linear>>> {
+        None
+    }
+
+    fn numerical_id(&self) -> Option<usize> {
+        None
+    }
+
+    fn id(&self) -> FastaIdentifier<&str> {
+        self.protein_name.as_str()
+    }
+
+    fn description(&self) -> Option<&str> {
+        None
+    }
+
+    fn species(&self) -> Option<mzcv::Curie> {
+        None
+    }
+
+    fn species_name(&self) -> Option<&str> {
+        Some(&self.organism)
+    }
+
+    fn search_engine(&self) -> &[(CVTerm, Option<(f64, CVTerm)>)] {
+        &[] // TODO: PLGS does not have a search engine entry
+    }
+
+    fn ambiguity_members(&self) -> &[String] {
+        &[]
+    }
+
+    fn database(&self) -> Option<(&str, Option<&str>)> {
+        None
+    }
+
+    fn modifications(&self) -> &[(Vec<(SequencePosition, Option<f64>)>, SimpleModification)] {
+        &[]
+    }
+
+    fn coverage(&self) -> Option<f64> {
+        None
+    }
+
+    fn gene_ontology(&self) -> &[mzcv::Curie] {
+        &[]
+    }
+
+    fn reliability(&self) -> Option<Reliability> {
+        None
+    }
+
+    fn uri(&self) -> Option<&str> {
         None
     }
 }

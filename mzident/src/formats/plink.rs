@@ -586,32 +586,16 @@ impl PSMMetaData for PLinkPSM {
         Some(self.mass)
     }
 
-    type Protein<'a> = FastaIdentifier<String>;
-    fn proteins(&self) -> &[Self::Protein<'_>] {
-        // self.proteins
-        //     .iter()
-        //     .flat_map(|p| p.2.as_ref().map_or_else(|| vec![&p.0], |p2| vec![&p.0, p2]))
-        //     .unique()
-        //     .cloned()
-        //     .collect_vec()
-        //     .as_slice() // TODO: fix lifetime issues
-        &[]
-    }
-
-    fn protein_names(&self) -> Option<Cow<'_, [FastaIdentifier<String>]>> {
-        Some(
+    type Protein = FastaIdentifier<String>;
+    fn proteins(&self) -> Cow<'_, [Self::Protein]> {
+        Cow::Owned(
             self.proteins
                 .iter()
                 .flat_map(|p| p.2.as_ref().map_or_else(|| vec![&p.0], |p2| vec![&p.0, p2]))
                 .unique()
                 .cloned()
-                .collect_vec()
-                .into(),
+                .collect_vec(),
         )
-    }
-
-    fn protein_id(&self) -> Option<usize> {
-        None
     }
 
     fn protein_location(&self) -> Option<Range<u16>> {

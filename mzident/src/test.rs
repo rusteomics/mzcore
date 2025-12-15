@@ -8,9 +8,12 @@ use mzcore::sequence::Peptidoform;
 /// * If the peptide was not identified as the correct version of the format (see parameters).
 /// * See errors at [`test_psm`]
 #[expect(clippy::missing_panics_doc)]
-pub(super) fn test_format<T: PSMSource + Into<PSM<T::Complexity, T::PeptidoformAvailability>>>(
-    reader: impl std::io::Read,
-    ontologies: &mzcore::ontology::Ontologies,
+pub(super) fn test_format<
+    'a,
+    T: PSMSource + Into<PSM<T::Complexity, T::PeptidoformAvailability>> + 'a,
+>(
+    reader: impl std::io::Read + 'a,
+    ontologies: &'a mzcore::ontology::Ontologies,
     allow_mass_mods: bool,
     expect_lc: bool,
     format: Option<T::Version>,
@@ -34,7 +37,7 @@ where
                 .is_some_and(|version| f.to_string() != version)
         }) {
             return Err(format!(
-                "Peptide {} was detected as the wrong version ({} instead of {})",
+                "PSM {} was detected as the wrong version ({} instead of {})",
                 peptide.id(),
                 peptide
                     .format()
@@ -173,6 +176,11 @@ fn test_size() {
     .unwrap();
     let total = mzcore::space::Space::space(&file);
     let first = mzcore::space::Space::space(&file[0]);
-    println!("= PLGS Total:\n{total}\n\n= PLGS First:\n{first}");
+    let protein = mzcore::space::Space::space(&file[0].proteins().as_ref()[0]);
+    dbg!(&file[0].proteins()[0]);
+    println!(
+        "= PLGS Total:\n{total}PSMs: {}\n\n= PLGS First:\n{first}\n= Protein First:\n{protein}",
+        file.len()
+    );
     todo!();
 }

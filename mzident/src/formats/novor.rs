@@ -3,9 +3,8 @@ use std::{borrow::Cow, marker::PhantomData, ops::Range};
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    BoxedIdentifiedPeptideIter, FastaIdentifier, PSMData,
-    PSMSource, PSMFileFormatVersion, KnownFileFormat, PSM, PSMMetaData,
-    PeptidoformPresent, SpectrumId, SpectrumIds,
+    BoxedIdentifiedPeptideIter, KnownFileFormat, PSM, PSMData, PSMFileFormatVersion, PSMMetaData,
+    PSMSource, PeptidoformPresent, SpectrumId, SpectrumIds,
     common_parser::{Location, OptionalColumn},
 };
 use mzcore::{
@@ -317,14 +316,7 @@ impl PSMMetaData for NovorPSM {
         Some(self.mass)
     }
 
-    type Protein<'a> = crate::NoProtein;
-    fn protein_names(&self) -> Option<Cow<'_, [FastaIdentifier<String>]>> {
-        None
-    }
-
-    fn protein_id(&self) -> Option<usize> {
-        self.protein
-    }
+    type Protein = crate::NoProtein; // TODO: the protein is optional, which does not cuurently fit with the macro
 
     fn protein_location(&self) -> Option<Range<u16>> {
         self.protein_start.map(|s| s..s + self.peptide.len() as u16)

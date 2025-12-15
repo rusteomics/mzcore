@@ -5,8 +5,9 @@ use serde::{Deserialize, Serialize};
 use thin_vec::ThinVec;
 
 use crate::{
-    BoxedIdentifiedPeptideIter, FastaIdentifier, KnownFileFormat, PSM, PSMData,
-    PSMFileFormatVersion, PSMMetaData, PSMSource, PeptidoformPresent, SpectrumId, SpectrumIds,
+    BoxedIdentifiedPeptideIter, CVTerm, FastaIdentifier, KnownFileFormat, PSM, PSMData,
+    PSMFileFormatVersion, PSMMetaData, PSMSource, PeptidoformPresent, ProteinMetaData, Reliability,
+    SpectrumId, SpectrumIds,
     common_parser::{Location, OptionalColumn, OptionalLocation},
     helper_functions::explain_number_error,
 };
@@ -52,10 +53,6 @@ format_family!(
                 ontologies,
                 &SloppyParsingParameters {ignore_prefix_lowercase_n: true, ..Default::default()},
         ).map(Into::into).map_err(BoxedError::to_owned)});
-        /// The full header of the fasta entry, split into the id and the rest of the line (without the separating space)
-        protein: (FastaIdentifier<String>, String), |location: Location, _| location.clone().split_once(' ').map_or_else(
-            || location.parse(IDENTIFIER_ERROR).map(|id| (id, String::new())),
-            |(id, tail)| id.parse(IDENTIFIER_ERROR).map(|id| (id, tail.get_string())));
         rt: Time, |location: Location, _| location.parse::<f64>(NUMBER_ERROR).map(Time::new::<mzcore::system::time::min>);
         scan: SpectrumId, |location: Location, _| Ok(location.clone().parse::<usize>(NUMBER_ERROR).map_or_else(|_| SpectrumId::Native(location.get_string()), SpectrumId::Number));
         modifications: ThinVec<(SequencePosition, SimpleModification)>, |location: Location, ontologies: &Ontologies| location.or_empty().array(',').map(|m| if let Some((head, tail)) = m.clone().split_once('(') {
@@ -124,9 +121,6 @@ format_family!(
             ))
         });
         mz: MassOverCharge, |location: Location, _| location.parse::<f64>(NUMBER_ERROR).map(MassOverCharge::new::<mzcore::system::thomson>);
-        gene: String, |location: Location, _| Ok(location.get_string());
-        mapped_genes: ThinVec<String>, |location: Location, _| Ok(location.or_empty().map(|l| l.get_string().split(',').map(|s| s.trim().to_string()).collect::<ThinVec<_>>()));
-        mapped_proteins: ThinVec<String>, |location: Location, _| Ok(location.or_empty().map(|l| l.get_string().split(',').map(|s| s.trim().to_string()).collect::<ThinVec<_>>()));
         num_matched_ions: usize, |location: Location, _| location.parse::<usize>(NUMBER_ERROR);
         num_tol_term: usize, |location: Location, _| location.parse::<usize>(NUMBER_ERROR);
         open_search_localisation: String, |location: Location, _| Ok(location.or_empty().get_string());
@@ -147,10 +141,8 @@ format_family!(
             }
         };
         peptide_prophet_probability: f32, |location: Location, _| location.parse::<f32>(NUMBER_ERROR);
-        protein_description: String, |location: Location, _| Ok(location.get_string());
-        protein_end: u16, |location: Location, _| location.parse::<u16>(NUMBER_ERROR);
-        protein_id: String, |location: Location, _| Ok(location.get_string());
         protein_start: u16, |location: Location, _| location.parse::<u16>(NUMBER_ERROR);
+        protein_end: u16, |location: Location, _| location.parse::<u16>(NUMBER_ERROR);
         purity: f32, |location: Location, _| location.parse::<f32>(NUMBER_ERROR);
         rank: usize, |location: Location, _| location.parse::<usize>(NUMBER_ERROR);
         score_without_delta_mass: f32, |location: Location, _| location.or_empty().parse::<f32>(NUMBER_ERROR);
@@ -229,6 +221,24 @@ format_family!(
             }
         }
         Ok(parsed)
+    }
+
+    protein {
+        protein_key => (|location: Location, _| Ok(location.get_string()));
+
+        required {
+            /// The full header of the fasta entry, split into the id and the rest of the line (without the separating space)
+            protein: (FastaIdentifier<String>, String), |location: Location, _| location.clone().split_once(' ').map_or_else(
+            || location.parse(IDENTIFIER_ERROR).map(|id| (id, String::new())),
+            |(id, tail)| id.parse(IDENTIFIER_ERROR).map(|id| (id, tail.get_string())));
+        }
+        optional {
+            protein_id: String, |location: Location, _| Ok(location.get_string());
+            protein_description: String, |location: Location, _| Ok(location.get_string());
+            gene: String, |location: Location, _| Ok(location.get_string());
+            mapped_genes: ThinVec<String>, |location: Location, _| Ok(location.or_empty().map(|l| l.get_string().split(',').map(|s| s.trim().to_string()).collect::<ThinVec<_>>()));
+            mapped_proteins: ThinVec<String>, |location: Location, _| Ok(location.or_empty().map(|l| l.get_string().split(',').map(|s| s.trim().to_string()).collect::<ThinVec<_>>()));
+        }
     }
 );
 
@@ -336,6 +346,7 @@ pub const VERSION_V4_2: MSFraggerFormat = MSFraggerFormat {
     protein_id: OptionalColumn::NotAvailable,
     protein_start: OptionalColumn::NotAvailable,
     protein: "proteins",
+    protein_key: "proteins",
     purity: OptionalColumn::NotAvailable,
     rank: OptionalColumn::Required("hit_rank"),
     rt: "retention_time",
@@ -390,6 +401,7 @@ pub const PHILOSOPHER: MSFraggerFormat = MSFraggerFormat {
     protein_id: OptionalColumn::Required("protein id"),
     protein_start: OptionalColumn::NotAvailable,
     protein: "protein",
+    protein_key: "protein",
     purity: OptionalColumn::Optional("purity"),
     rank: OptionalColumn::NotAvailable,
     rt: "retention",
@@ -442,6 +454,7 @@ pub const FRAGPIPE_V20_OR_21: MSFraggerFormat = MSFraggerFormat {
     protein_id: OptionalColumn::Required("protein id"),
     protein_start: OptionalColumn::Required("protein start"),
     protein: "protein",
+    protein_key: "protein",
     purity: OptionalColumn::Required("purity"),
     rank: OptionalColumn::NotAvailable,
     rt: "retention",
@@ -494,6 +507,7 @@ pub const FRAGPIPE_V22: MSFraggerFormat = MSFraggerFormat {
     protein_id: OptionalColumn::Required("protein id"),
     protein_start: OptionalColumn::Required("protein start"),
     protein: "protein",
+    protein_key: "protein",
     purity: OptionalColumn::Required("purity"),
     rank: OptionalColumn::NotAvailable,
     rt: "retention",
@@ -576,13 +590,9 @@ impl PSMMetaData for MSFraggerPSM {
         Some(self.mass)
     }
 
-    type Protein<'a> = crate::NoProtein;
-    fn protein_names(&self) -> Option<Cow<'_, [FastaIdentifier<String>]>> {
-        Some(Cow::Borrowed(std::slice::from_ref(&self.protein.0)))
-    }
-
-    fn protein_id(&self) -> Option<usize> {
-        None
+    type Protein = MSFraggerProtein;
+    fn proteins(&self) -> Cow<'_, [Self::Protein]> {
+        Cow::Borrowed(std::slice::from_ref(&self.protein_key))
     }
 
     fn protein_location(&self) -> Option<Range<u16>> {
@@ -605,11 +615,72 @@ impl PSMMetaData for MSFraggerPSM {
         self.is_unique
     }
 
-    fn reliability(&self) -> Option<crate::Reliability> {
+    fn reliability(&self) -> Option<Reliability> {
         None
     }
 
     fn uri(&self) -> Option<String> {
+        None
+    }
+}
+
+impl ProteinMetaData for MSFraggerProtein {
+    fn sequence(&self) -> Option<Cow<'_, Peptidoform<mzcore::sequence::Linear>>> {
+        None
+    }
+
+    fn numerical_id(&self) -> Option<usize> {
+        None
+    }
+
+    fn id(&self) -> FastaIdentifier<&str> {
+        self.protein.0.as_str()
+    }
+
+    fn description(&self) -> Option<&str> {
+        Some(self.protein.1.as_ref())
+    }
+
+    fn species(&self) -> Option<mzcv::Curie> {
+        None
+    }
+
+    fn species_name(&self) -> Option<&str> {
+        None
+    }
+
+    fn search_engine(&self) -> &[(CVTerm, Option<(f64, CVTerm)>)] {
+        &[]
+    }
+
+    fn ambiguity_members(&self) -> &[String] {
+        self.mapped_genes
+            .as_ref()
+            .map(|g| g.as_slice())
+            .unwrap_or_default()
+    }
+
+    fn database(&self) -> Option<(&str, Option<&str>)> {
+        None
+    }
+
+    fn modifications(&self) -> &[(Vec<(SequencePosition, Option<f64>)>, SimpleModification)] {
+        &[]
+    }
+
+    fn coverage(&self) -> Option<f64> {
+        None
+    }
+
+    fn gene_ontology(&self) -> &[mzcv::Curie] {
+        &[]
+    }
+
+    fn reliability(&self) -> Option<Reliability> {
+        None
+    }
+
+    fn uri(&self) -> Option<&str> {
         None
     }
 }

@@ -6,8 +6,8 @@ use std::{
 };
 
 use crate::{
-    FastaIdentifier, GeneralPSMs, KnownFileFormat, MaybePeptidoform, PSM, PSMData, PSMMetaData,
-    SpectrumId, SpectrumIds,
+    GeneralPSMs, KnownFileFormat, MaybePeptidoform, PSM, PSMData, PSMMetaData, SpectrumId,
+    SpectrumIds,
 };
 use mzannotate::prelude::AnnotatedSpectrum;
 use mzcore::{
@@ -154,24 +154,7 @@ impl PSMMetaData for AnnotatedSpectrum {
             })
     }
 
-    type Protein<'a> = crate::NoProtein;
-    fn protein_names(&self) -> Option<Cow<'_, [FastaIdentifier<String>]>> {
-        Some(Cow::Owned(
-            self.analytes
-                .iter()
-                .flat_map(|a| &a.proteins)
-                .filter_map(|p| p.accession.clone())
-                .map(|a| {
-                    a.parse()
-                        .unwrap_or_else(|_| FastaIdentifier::Undefined(false, a.to_string()))
-                })
-                .collect(),
-        ))
-    }
-
-    fn protein_id(&self) -> Option<usize> {
-        None
-    }
+    type Protein = crate::NoProtein;
 
     fn protein_location(&self) -> Option<Range<u16>> {
         None

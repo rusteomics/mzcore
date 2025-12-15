@@ -1,6 +1,6 @@
 use std::{borrow::Cow, ops::Range};
 
-use crate::{FastaIdentifier, KnownFileFormat, ProteinMetaData, Reliability, SpectrumIds};
+use crate::{KnownFileFormat, ProteinMetaData, Reliability, SpectrumIds};
 use mzcore::{
     sequence::{CompoundPeptidoformIon, FlankingSequence},
     system::{Mass, MassOverCharge, Ratio, Time, isize::Charge},
@@ -87,28 +87,12 @@ pub trait PSMMetaData {
     }
 
     /// The linked protein type
-    type Protein<'a>: ProteinMetaData
-    where
-        Self: 'a;
+    type Protein: ProteinMetaData + Default + Clone;
 
     /// Get the linked protein
-    fn proteins(&self) -> &[Self::Protein<'_>] {
-        &[]
+    fn proteins(&self) -> Cow<'_, [Self::Protein]> {
+        Cow::Borrowed(&[])
     }
-
-    /// Get the linked protein conveniently boxed in
-    fn proteins_box(&self) -> Vec<Box<dyn ProteinMetaData + '_>> {
-        self.proteins()
-            .iter()
-            .map(|d| Box::new(d) as Box<dyn ProteinMetaData>)
-            .collect()
-    }
-
-    /// Get the protein id if this was database matched data
-    fn protein_id(&self) -> Option<usize>;
-
-    /// Get the protein names if this was database matched data
-    fn protein_names(&self) -> Option<Cow<'_, [FastaIdentifier<String>]>>;
 
     /// Get the protein location if this was database matched data
     fn protein_location(&self) -> Option<Range<u16>>;
@@ -207,20 +191,9 @@ macro_rules! impl_ref {
                 (**self).experimental_mass()
             }
 
-            type Protein<'a>
-                = T::Protein<'a>
-            where
-                Self: 'a;
-            fn proteins(&self) -> &[Self::Protein<'_>] {
+            type Protein = T::Protein;
+            fn proteins(&self) -> Cow<'_, [Self::Protein]> {
                 (**self).proteins()
-            }
-
-            fn protein_names(&self) -> Option<Cow<'_, [FastaIdentifier<String>]>> {
-                (**self).protein_names()
-            }
-
-            fn protein_id(&self) -> Option<usize> {
-                (**self).protein_id()
             }
 
             fn protein_location(&self) -> Option<Range<u16>> {

@@ -36,7 +36,5 @@ mod helper_functions;
 
 /// A subset of the types and traits that are envisioned to be used the most, importing this is a good starting point for working with the crate
 pub mod prelude {
-    pub use crate::{
-        PSM, PSMMetaData, ProteinMetaData, open_psm_file,
-    };
+    pub use crate::{PSM, PSMMetaData, ProteinMetaData, open_psm_file};
 }

@@ -990,6 +990,12 @@ pub struct MzTabProtein {
     pub uri: Option<String>,
 }
 
+impl From<MzTabProtein> for crate::ProteinData {
+    fn from(value: MzTabProtein) -> Self {
+        Self::MzTab(value)
+    }
+}
+
 impl mzcore::space::Space for MzTabProtein {
     fn space(&self) -> mzcore::space::UsedSpace {
         (self.accession.space()
@@ -1800,27 +1806,14 @@ impl PSMMetaData for MzTabPSM {
         self.mz.map(|mz| mz * self.z.to_float())
     }
 
-    type Protein<'a> = Arc<MzTabProtein>;
-    fn proteins(&self) -> &[Self::Protein<'_>] {
-        self.protein
-            .as_ref()
-            .and_then(|p| p.1.as_ref().map(std::slice::from_ref))
-            .unwrap_or_default()
-    }
-
-    fn protein_names(&self) -> Option<Cow<'_, [FastaIdentifier<String>]>> {
-        self.protein.as_ref().map(|(accession, protein)| {
-            Cow::Owned(vec![FastaIdentifier::Undefined(
-                false,
-                protein
-                    .as_ref()
-                    .map_or_else(|| accession.clone(), |protein| protein.accession.clone()),
-            )])
-        })
-    }
-
-    fn protein_id(&self) -> Option<usize> {
-        None
+    type Protein = MzTabProtein;
+    fn proteins(&self) -> Cow<'_, [Self::Protein]> {
+        Cow::Borrowed(
+            self.protein
+                .as_ref()
+                .and_then(|p| p.1.as_ref().map(|a| std::slice::from_ref(&**a)))
+                .unwrap_or_default(),
+        )
     }
 
     fn protein_location(&self) -> Option<Range<u16>> {
@@ -1859,8 +1852,8 @@ impl ProteinMetaData for MzTabProtein {
         None
     }
 
-    fn id(&self) -> FastaIdentifier<String> {
-        FastaIdentifier::Undefined(false, self.accession.clone())
+    fn id(&self) -> FastaIdentifier<&str> {
+        FastaIdentifier::Undefined(false, self.accession.as_str())
     }
 
     fn description(&self) -> Option<&str> {
