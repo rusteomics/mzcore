@@ -40,7 +40,7 @@ directories = "6.0"
 flate2 = "1.0"
 indexmap = "2.11"
 itertools = "0.14"
-mzdata = { version = "0.62", default-features = false, features = ["nalgebra"] }
+mzdata = { version = "0.63", default-features = false, features = ["nalgebra"] }
 ndarray = "0.17"
 ordered-float = { version = "5.0", features = ["serde"] }
 paste = "1.0"
