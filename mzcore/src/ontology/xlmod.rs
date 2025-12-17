@@ -33,7 +33,9 @@ impl CVSource for XlMod {
         &[CVFile {
             name: "XLMOD",
             extension: "obo",
-            url: Some("https://raw.githubusercontent.com/HUPO-PSI/mzIdentML/master/cv/XLMOD.obo"),
+            url: Some(
+                "https://raw.githubusercontent.com/HUPO-PSI/xlmod-CV/refs/heads/main/XLMOD.obo",
+            ),
             compression: mzcv::CVCompression::None,
         }]
     }
