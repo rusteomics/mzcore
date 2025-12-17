@@ -279,6 +279,13 @@ fn parse_gnome(obo: OboOntology) -> HashMap<Box<str>, GNOmeModification> {
                 .and_then(|lines| {
                     match MonoSaccharide::pro_forma_composition::<false>(&lines[0].0.to_string()) {
                         Ok((v, _)) => Some(v),
+                        Err(e)
+                            if e.len() == 1
+                                && e[0].get_kind()
+                                    == crate::glycan::GlycanCompositionError::Empty =>
+                        {
+                            None
+                        }
                         Err(e) => {
                             combine_errors(
                                 &mut errors,

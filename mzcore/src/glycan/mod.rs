@@ -12,6 +12,7 @@ mod positioned_structure;
 mod render;
 
 pub use attachment::*;
+pub use composition::GlycanCompositionError;
 pub use glycan::*;
 pub use glycan_structure::*;
 pub(crate) use lists::*;

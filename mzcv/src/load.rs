@@ -540,6 +540,143 @@ impl<CV: CVSource> CVIndex<CV> {
 
         self.update_from_path(paths.iter().map(|p| Some(Path::new(p))), true)
     }
+
+    /// Download the CV from the internet. If no overwrite URL was given it uses the default URL
+    /// ([`CVSource::cv_url`]) if both are unset it errors. It downloads and compresses this file
+    /// to the default location but with `.download` before the default extension. This then calls
+    /// [`Self::update_from_path`] on the downloaded file.
+    ///
+    /// This is an async interface.
+    ///
+    /// # Errors
+    ///
+    /// * No URL was set with both the overwrite URL and [`CVSource::cv_url`].
+    /// * The file to download to could not be made.
+    /// * The file could not be downloaded or the status code of the download was not success.
+    /// * The downloaded file could not be written to disk.
+    ///
+    /// Additionally, all errors from [`Self::update_from_path`].
+    #[cfg(feature = "http")]
+    pub async fn update_from_url_async(
+        &mut self,
+        overwrite_urls: &[Option<&str>],
+    ) -> Result<(), BoxedError<'static, CVError>> {
+        let paths = CV::files()
+            .iter()
+            .zip(overwrite_urls.iter().chain(std::iter::repeat(&None)))
+            .map(async |(cv_file, overwrite_url)| {
+                let url = overwrite_url.or_else(|| cv_file.url).ok_or_else(|| {
+                    BoxedError::small(
+                        CVError::CVUrlNotSet,
+                        "Could not download CV",
+                        "No URL was given or set as the default URL of this CV",
+                    )
+                })?;
+
+                let download_path =
+                    CV::default_stem().with_extension(format!("download.{}.gz", cv_file.extension));
+                let file = std::fs::File::create(&download_path).map_err(|e| {
+                    BoxedError::new(
+                        CVError::FileCouldNotBeMade,
+                        "CV file could not be made",
+                        e.to_string(),
+                        Context::none()
+                            .source(download_path.to_string_lossy())
+                            .to_owned(),
+                    )
+                })?;
+                let mut writer = BufWriter::new(file);
+
+                let url = reqwest::Url::try_from(url).map_err(|e| {
+                    BoxedError::new(
+                        CVError::CVUrlCouldNotBeRead,
+                        "Invalid CV URL",
+                        e.to_string(),
+                        Context::none().source(url).to_owned(),
+                    )
+                })?;
+
+                if !url.scheme().starts_with("http") {
+                    return Err(BoxedError::new(
+                        CVError::CVUrlCouldNotBeRead,
+                        "Invalid CV URL",
+                        "Only HTTP(s) files can be downloaded",
+                        Context::none().source(url.to_string()).to_owned(),
+                    ));
+                }
+
+                let response = reqwest::get(url.clone())
+                    .await
+                    .map_err(|e| {
+                        BoxedError::new(
+                            CVError::CVUrlCouldNotBeRead,
+                            "Could not download CV",
+                            e.to_string(),
+                            Context::none().source(url.to_string()).to_owned(),
+                        )
+                    })?
+                    .error_for_status()
+                    .map_err(|e| {
+                        BoxedError::new(
+                            CVError::CVUrlCouldNotBeRead,
+                            "Could not download CV",
+                            e.to_string(),
+                            Context::none().source(url.to_string()).to_owned(),
+                        )
+                    })?
+                    .bytes()
+                    .await
+                    .map_err(|e| {
+                        BoxedError::new(
+                            CVError::CVUrlCouldNotBeRead,
+                            "Could not download CV",
+                            e.to_string(),
+                            Context::none().source(url.to_string()).to_owned(),
+                        )
+                    })?;
+                // Decompress (if needed) then compress again to gz
+                match cv_file.compression {
+                    crate::CVCompression::None => {
+                        let mut encoder = flate2::bufread::GzEncoder::new(
+                            BufReader::new(response.as_ref()),
+                            flate2::Compression::fast(),
+                        );
+                        std::io::copy(&mut encoder, &mut writer)
+
+                        // response
+                        // .copy_to(&mut writer)
+                        // // .map(|_| ())
+                        // .map_err(|e| e.to_string())
+
+                        // Ok(0)
+                    }
+                    crate::CVCompression::Lzw => {
+                        todo!()
+                    }
+                }
+                .map_err(|e| {
+                    BoxedError::new(
+                        CVError::FileCouldNotBeMade,
+                        "Could not download the CV file",
+                        e.to_string(),
+                        Context::none()
+                            .source(url.to_string())
+                            .lines(0, download_path.to_string_lossy())
+                            .to_owned(),
+                    )
+                })?;
+                Ok(download_path)
+            })
+            .collect::<Vec<_>>();
+
+        let mut final_paths = Vec::with_capacity(paths.len());
+
+        for i in paths {
+            final_paths.push(i.await?);
+        }
+
+        self.update_from_path(final_paths.iter().map(|p| Some(Path::new(p))), true)
+    }
 }
 
 /// Store these errors in a file, the path will be updated with a new extension (.err).

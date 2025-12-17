@@ -417,9 +417,11 @@ fn parse_single_modification<'error, const STRICT: bool>(
                        vec![e]
                     })?,
                 )))),
-                ("glycan", _) => Ok(Some(Arc::new(SimpleModificationInner::Glycan(
-                    handle!(errors, MonoSaccharide::pro_forma_composition_inner::<STRICT>(base_context, line, offset + tail.1..offset + tail.1 + tail.2))
-                )))),
+                ("glycan", _) =>
+                    Ok(Some(Arc::new(SimpleModificationInner::Glycan(
+                    handle!(errors, MonoSaccharide::pro_forma_composition_inner::<STRICT>(base_context, line, offset + tail.1..offset + tail.1 + tail.2).map(|(v, w)| (v, w.into_iter().map(|e| e.convert::<BasicKind, BoxedError<'error, BasicKind>>(|k| k.into())).collect::<Vec<_>>())).map_err(|e| e.into_iter().map(|e| e.convert::<BasicKind, BoxedError<'error, BasicKind>>(|k| k.into())).collect::<Vec<_>>()))
+                ))))
+            ,
                 ("glycanstructure", _) => GlycanStructure::parse(
                     line,
                     offset + tail.1..offset + tail.1 + tail.2,

@@ -10,6 +10,63 @@ use crate::{
     prelude::Chemical,
 };
 
+/// All possible errors when parsing a ProForma glycan composition
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+pub enum GlycanCompositionError {
+    /// A missing closing brackets for a formula '}'
+    NoClosingBracket,
+    /// A name was used that is not defined
+    UnrecognisedName,
+    /// An invalid occurrence number was specified
+    InvalidNumber,
+    /// An invalid formula was given for a custom monosaccharide
+    InvalidFormula,
+    /// Some monosaccharide occurrence was outside of bounds for [`isize`]
+    OutOfRangeOccurance,
+    /// An empty composition was given, this also includes cases where monosaccharides cancel each other out like `Hex2Hex-2`
+    #[default]
+    Empty,
+    /// A synonym was given (will only be checked in strict mode)
+    ImproperName,
+    /// A name was given with improper capitalisation (will only be checked in strict mode)
+    ImproperCapitalisation,
+    /// The occurrence was missing for a glycan, this is always generated because it might mean that the composition was parsed as something not intended by the user
+    ImproperMissingOccurance,
+}
+
+impl ErrorKind for GlycanCompositionError {
+    type Settings = ();
+    fn descriptor(&self) -> &'static str {
+        match self {
+            Self::ImproperCapitalisation | Self::ImproperMissingOccurance | Self::ImproperName => {
+                "warning"
+            }
+            _ => "error",
+        }
+    }
+    fn ignored(&self, _settings: Self::Settings) -> bool {
+        false
+    }
+    fn is_error(&self, _settings: Self::Settings) -> bool {
+        match self {
+            Self::ImproperCapitalisation | Self::ImproperMissingOccurance | Self::ImproperName => {
+                false
+            }
+            _ => true,
+        }
+    }
+}
+
+impl From<GlycanCompositionError> for BasicKind {
+    fn from(value: GlycanCompositionError) -> Self {
+        if value.is_error(()) {
+            BasicKind::Error
+        } else {
+            BasicKind::Warning
+        }
+    }
+}
+
 impl MonoSaccharide {
     /// Parse the given text as a ProForma glycan composition.
     /// ```rust
@@ -22,7 +79,7 @@ impl MonoSaccharide {
     /// Warns when the amount is missing.
     pub fn pro_forma_composition<const STRICT: bool>(
         value: &str,
-    ) -> ParserResult<'_, Vec<(Self, isize)>, BasicKind> {
+    ) -> ParserResult<'_, Vec<(Self, isize)>, GlycanCompositionError> {
         Self::pro_forma_composition_inner::<STRICT>(
             &Context::none().lines(0, value),
             value,
@@ -38,7 +95,7 @@ impl MonoSaccharide {
         base_context: &Context<'a>,
         line: &'a str,
         range: Range<usize>,
-    ) -> ParserResult<'a, Vec<(Self, isize)>, BasicKind> {
+    ) -> ParserResult<'a, Vec<(Self, isize)>, GlycanCompositionError> {
         let mut index = range.start;
         let mut errors = Vec::new();
         let end = line.len().min(range.end);
@@ -50,14 +107,14 @@ impl MonoSaccharide {
                 continue;
             } else if line[index..end].starts_with('{') {
                 let end_formula = handle!(single errors,  line[index + 1..end].find('}').ok_or_else(||BoxedError::new(
-                    BasicKind::Error,
+                    GlycanCompositionError::NoClosingBracket,
                     "Invalid ProForma glycan",
                     "The custom formula is not closed. No closing bracket '}' could be found.",
                     base_context.clone().add_highlight((0, index..end)),
                 )));
                 println!("{}", &line[index + 1..index + 1 + end_formula]);
                 let formula = handle!(single errors,
-                    MolecularFormula::pro_forma_inner::<true, false>(base_context, line, index + 1..index + 1+end_formula));
+                    MolecularFormula::pro_forma_inner::<true, false>(base_context, line, index + 1..index + 1+end_formula).map_err(|e| e.convert(|_| GlycanCompositionError::InvalidFormula)));
                 index += end_formula + 2;
                 Self::new(crate::glycan::BaseSugar::Custom(formula.into()), &[])
             } else {
@@ -72,7 +129,7 @@ impl MonoSaccharide {
                                     combine_error(
                                         &mut errors,
                                         BoxedError::new(
-                                            BasicKind::Warning,
+                                            GlycanCompositionError::ImproperName,
                                             "Improper ProForma glycan",
                                             format!(
                                                 "While `{name}` can be unambiguously parsed the proper name in ProForma is `{pro_forma_name}`."
@@ -89,7 +146,7 @@ impl MonoSaccharide {
                                     combine_error(
                                         &mut errors,
                                         BoxedError::new(
-                                            BasicKind::Warning,
+                                            GlycanCompositionError::ImproperCapitalisation,
                                             "Improper ProForma glycan",
                                             "This glycan was not written with the proper capitalisation.",
                                             base_context.clone().add_highlight((
@@ -108,7 +165,7 @@ impl MonoSaccharide {
                     }
                 }
                 handle!(single errors, found.ok_or_else(|| BoxedError::new(
-                    BasicKind::Error,
+                    GlycanCompositionError::UnrecognisedName,
                     "Invalid ProForma glycan",
                     "No valid glycan name could be recognised.",
                     base_context.clone().add_highlight((0, index..end)),
@@ -119,7 +176,7 @@ impl MonoSaccharide {
             {
                 index += offset;
                 handle!(single errors, num.map_err(|e| BoxedError::new(
-                    BasicKind::Error,
+                                   GlycanCompositionError::InvalidNumber,
                     "Invalid ProForma glycan",
                     format!("The monosaccharide occurance number {}", explain_number_error(&e)),
                     base_context.clone().add_highlight((0, index-offset..index)),
@@ -128,7 +185,7 @@ impl MonoSaccharide {
                 combine_error(
                     &mut errors,
                     BoxedError::new(
-                        BasicKind::Warning,
+                        GlycanCompositionError::ImproperMissingOccurance,
                         "Improper ProForma glycan",
                         "No amount for this glycan was specified, it is assumed to occur once.",
                         base_context.clone().add_highlight((0, start_glycan..index)),
@@ -143,7 +200,7 @@ impl MonoSaccharide {
 
         let composition = handle!(single errors, Self::simplify_composition(output).ok_or_else(|| {
             BoxedError::new(
-                BasicKind::Error,
+                GlycanCompositionError::OutOfRangeOccurance,
                 "Invalid ProForma glycan composition",
                 format!(
                     "The occurrence of a monosaccharide species is outside of the range {} to {}",
@@ -165,7 +222,7 @@ impl MonoSaccharide {
                 combine_error(
                     &mut errors,
                     BoxedError::new(
-                        BasicKind::Error,
+                        GlycanCompositionError::Empty,
                         "Invalid ProForma glycan composition",
                         "The glycan composition is empty",
                         base_context.clone().add_highlight((0, range)),
@@ -180,7 +237,7 @@ impl MonoSaccharide {
             combine_error(
                 &mut errors,
                 BoxedError::new(
-                    BasicKind::Error,
+                    GlycanCompositionError::OutOfRangeOccurance,
                     "Invalid ProForma glycan composition",
                     "The occurance of an element overflowed during calculation of the full molecular formula",
                     base_context.clone().add_highlight((0, range.clone())),
