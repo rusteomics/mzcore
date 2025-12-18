@@ -148,6 +148,27 @@ pub mod f64 {
     }
 }
 
+/// The whole system with f64 as storage type
+#[allow(unused_imports)]
+pub mod f32 {
+    mod mks {
+        pub(super) use super::super::*;
+    }
+
+    Q!(self::mks, f32);
+
+    pub use super::charge::e;
+    pub use super::mass::dalton;
+    pub use super::mass_over_charge::thomson;
+    pub use super::ratio::fraction;
+    pub use super::time::s;
+
+    /// Annotate the given number as being in Da
+    pub fn da(v: f32) -> Mass {
+        Mass::new::<dalton>(v)
+    }
+}
+
 /// All quantities with usize as underlying type
 #[allow(unused_imports)]
 pub mod usize {
@@ -313,6 +334,18 @@ impl From<Mass> for OrderedMass {
     }
 }
 
+impl From<f32::Mass> for OrderedMass {
+    fn from(value: f32::Mass) -> Self {
+        Self(value.into())
+    }
+}
+
+impl From<f32::Mass> for Mass {
+    fn from(value: f32::Mass) -> Self {
+        Mass::new::<dalton>(value.value.into())
+    }
+}
+
 impl Deref for OrderedMass {
     type Target = Mass;
     fn deref(&self) -> &Self::Target {
@@ -444,6 +477,18 @@ impl Default for OrderedTime {
 impl From<Time> for OrderedTime {
     fn from(value: Time) -> Self {
         Self(value)
+    }
+}
+
+impl From<f32::Time> for OrderedTime {
+    fn from(value: f32::Time) -> Self {
+        Self(value.into())
+    }
+}
+
+impl From<f32::Time> for Time {
+    fn from(value: f32::Time) -> Self {
+        Time::new::<s>(value.value.into())
     }
 }
 

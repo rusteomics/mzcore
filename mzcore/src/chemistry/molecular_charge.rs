@@ -6,6 +6,7 @@ use crate::{
     system::isize::Charge,
 };
 use serde::{Deserialize, Serialize};
+use thin_vec::ThinVec;
 
 /// A [`MolecularCharge`] that caches the options for each charge, to not calculate this every time
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -65,14 +66,14 @@ pub struct MolecularCharge {
     /// The ions that together define the charge of the peptide.
     /// The first number is the amount of times this adduct ion occurs, the molecular formula is the full formula for the adduct ion.
     /// The charge for each ion is saved as the number of electrons missing or gained in the molecular formula.
-    pub charge_carriers: Vec<(isize, MolecularFormula)>,
+    pub charge_carriers: ThinVec<(isize, MolecularFormula)>,
 }
 
 impl MolecularCharge {
     /// Create a default charge state with only protons
     pub fn proton(charge: Charge) -> Self {
         Self {
-            charge_carriers: vec![(charge.value, molecular_formula!(H 1 :z+1))],
+            charge_carriers: vec![(charge.value, molecular_formula!(H 1 :z+1))].into(),
         }
     }
 
@@ -86,7 +87,7 @@ impl MolecularCharge {
     /// Create a charge state with the given ions
     pub fn new(charge_carriers: &[(isize, MolecularFormula)]) -> Self {
         Self {
-            charge_carriers: charge_carriers.to_vec(),
+            charge_carriers: charge_carriers.into(),
         }
     }
 
@@ -142,7 +143,10 @@ impl MolecularCharge {
                 charge_carriers.extend(
                     std::iter::repeat_n(self.charge_carriers.clone(), quotient as usize).flatten(),
                 );
-                Self { charge_carriers }.simplified()
+                Self {
+                    charge_carriers: charge_carriers.into(),
+                }
+                .simplified()
             })
             .collect()
     }

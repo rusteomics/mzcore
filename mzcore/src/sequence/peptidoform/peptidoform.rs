@@ -103,7 +103,7 @@ pub struct Peptidoform<Complexity> {
     /// C terminal modifications
     c_term: ThinVec<Modification>,
     /// The sequence of this peptide (includes local modifications)
-    sequence: Vec<SequenceElement<Complexity>>,
+    sequence: ThinVec<SequenceElement<Complexity>>,
     /// For each ambiguous modification list all possible positions it can be placed on.
     /// Indexed by the ambiguous modification id.
     modifications_of_unknown_position: ThinVec<AmbiguousEntry>,
@@ -178,7 +178,7 @@ impl<Complexity> Default for Peptidoform<Complexity> {
             labile: ThinVec::new(),
             n_term: ThinVec::new(),
             c_term: ThinVec::new(),
-            sequence: Vec::new(),
+            sequence: ThinVec::new(),
             modifications_of_unknown_position: ThinVec::new(),
             charge_carriers: None,
             marker: PhantomData,
@@ -349,6 +349,22 @@ impl<Complexity> Peptidoform<Complexity> {
             None
         }
     }
+
+    /// Shrink all Vectors to just fit
+    pub fn shrink_to_fit(&mut self) {
+        self.global.shrink_to_fit();
+        self.labile.shrink_to_fit();
+        self.n_term.shrink_to_fit();
+        self.c_term.shrink_to_fit();
+        self.sequence.shrink_to_fit();
+        for s in &mut self.sequence {
+            s.modifications.shrink_to_fit();
+        }
+        self.modifications_of_unknown_position.shrink_to_fit();
+        if let Some(c) = &mut self.charge_carriers {
+            c.charge_carriers.shrink_to_fit();
+        }
+    }
 }
 
 impl<Complexity, OtherComplexity: AtLeast<Complexity>> AsRef<Peptidoform<OtherComplexity>>
@@ -444,7 +460,7 @@ impl<Complexity> Peptidoform<Complexity> {
 
     /// Get the sequence mutably for the peptide
     #[must_use]
-    pub const fn sequence_mut(&mut self) -> &mut Vec<SequenceElement<Complexity>> {
+    pub const fn sequence_mut(&mut self) -> &mut ThinVec<SequenceElement<Complexity>> {
         &mut self.sequence
     }
 
@@ -473,12 +489,12 @@ impl<Complexity> Peptidoform<Complexity> {
     }
 
     /// Get the number of amino acids making up this peptide
-    pub const fn len(&self) -> usize {
+    pub fn len(&self) -> usize {
         self.sequence.len()
     }
 
     /// Check if the sequence of this peptide is empty (does not contain any amino acids)
-    pub const fn is_empty(&self) -> bool {
+    pub fn is_empty(&self) -> bool {
         self.sequence.is_empty()
     }
 
@@ -1317,7 +1333,7 @@ impl<Complexity: AtMax<Linear>> Peptidoform<Complexity> {
                 ThinVec::new()
             },
             sequence: self.sequence[(index.start_bound().cloned(), index.end_bound().cloned())]
-                .to_vec(),
+                .into(),
             ..self.clone()
         }
     }

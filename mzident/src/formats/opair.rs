@@ -134,26 +134,26 @@ format_family!(
             ontologies,
             &SloppyParsingParameters::default()
         ).map_err(BoxedError::to_owned);
-        mod_number: usize, |location: Location, _| location.parse(NUMBER_ERROR);
+        mod_number: u8, |location: Location, _| location.parse(NUMBER_ERROR);
         theoretical_mass: Mass, |location: Location, _| location.parse::<f64>(NUMBER_ERROR).map(Mass::new::<mzcore::system::dalton>);
         score: f64, |location: Location, _| location.parse::<f64>(NUMBER_ERROR);
-        rank: usize, |location: Location, _| location.parse(NUMBER_ERROR);
-        matched_ion_series: String, |location: Location, _| Ok(location.get_string());
-        matched_ion_mz_ratios: String, |location: Location, _| Ok(location.get_string());
-        matched_ion_intensities: String, |location: Location, _| Ok(location.get_string());
-        matched_ion_mass_error: String, |location: Location, _| Ok(location.get_string());
-        matched_ion_ppm: String, |location: Location, _| Ok(location.get_string());
-        matched_ion_counts: String,|location: Location, _| Ok(location.get_string());
+        rank: u32, |location: Location, _| location.parse(NUMBER_ERROR);
+        matched_ion_series: Box<str>, |location: Location, _| Ok(location.get_boxed_str());
+        matched_ion_mz_ratios: Box<str>, |location: Location, _| Ok(location.get_boxed_str());
+        matched_ion_intensities: Box<str>, |location: Location, _| Ok(location.get_boxed_str());
+        matched_ion_mass_error: Box<str>, |location: Location, _| Ok(location.get_boxed_str());
+        matched_ion_ppm: Box<str>, |location: Location, _| Ok(location.get_boxed_str());
+        matched_ion_counts: Box<str>,|location: Location, _| Ok(location.get_boxed_str());
         q_value: f64, |location: Location, _| location.parse(NUMBER_ERROR);
         pep: f64, |location: Location, _| location.parse(NUMBER_ERROR);
         pep_q_value: f64, |location: Location, _| location.parse(NUMBER_ERROR);
         localisation_score: f64, |location: Location, _| location.parse(NUMBER_ERROR);
         yion_score: f64, |location: Location, _| location.parse(NUMBER_ERROR);
         diagnostic_ion_score: f64, |location: Location, _| location.parse(NUMBER_ERROR);
-        plausible_glycan_number: usize, |location: Location, _| location.parse(NUMBER_ERROR);
-        total_glycosylation_sites: usize, |location: Location, _| location.parse(NUMBER_ERROR);
-        glycan_mass:Mass, |location: Location, _| location.parse::<f64>(NUMBER_ERROR).map(Mass::new::<mzcore::system::dalton>);
-        plausible_glycan_composition: String, |location: Location, _| Ok(location.get_string());
+        plausible_glycan_number: u8, |location: Location, _| location.parse(NUMBER_ERROR);
+        total_glycosylation_sites: u8, |location: Location, _| location.parse(NUMBER_ERROR);
+        glycan_mass: Mass, |location: Location, _| location.parse::<f64>(NUMBER_ERROR).map(Mass::new::<mzcore::system::dalton>);
+        plausible_glycan_composition: Box<str>, |location: Location, _| Ok(location.get_boxed_str());
         n_glycan_motif: bool, |location: Location, _| location.parse_with(|loc| {
             match &loc.line.line()[loc.location.clone()] {
                 "TRUE" => Ok(true),
@@ -171,14 +171,14 @@ format_family!(
             }
         });
         r138_144: f64, |location: Location, _| location.parse(NUMBER_ERROR);
-        plausible_glycan_structure: String, |location: Location, _| Ok(location.get_string());
-        glycan_localisation_level: String, |location: Location, _| Ok(location
+        plausible_glycan_structure: Box<str>, |location: Location, _| Ok(location.get_boxed_str());
+        glycan_localisation_level: Box<str>, |location: Location, _| Ok(location
             .trim_start_matches("Level")
-            .get_string());
-        glycan_peptide_site_specificity: String, |location: Location, _| Ok(location.get_string());
-        glycan_protein_site_specificity:String, |location: Location, _| Ok(location.get_string());
-        all_potential_glycan_localisations: String, |location: Location, _| Ok(location.get_string());
-        all_site_specific_localisation_probabilities: String, |location: Location, _| Ok(location.get_string());
+            .get_boxed_str());
+        glycan_peptide_site_specificity: Box<str>, |location: Location, _| Ok(location.get_boxed_str());
+        glycan_protein_site_specificity:Box<str>, |location: Location, _| Ok(location.get_boxed_str());
+        all_potential_glycan_localisations: Box<str>, |location: Location, _| Ok(location.get_boxed_str());
+        all_site_specific_localisation_probabilities: Box<str>, |location: Location, _| Ok(location.get_boxed_str());
     }
     optional { }
 
@@ -191,7 +191,7 @@ format_family!(
 
         required {
             organism: String, |location: Location, _| Ok(location.get_string());
-            protein_name: FastaIdentifier<String>, |location: Location, _| location.parse(NUMBER_ERROR);
+            protein_name: FastaIdentifier<Box<str>>, |location: Location, _| location.parse(NUMBER_ERROR);
             kind: MetaMorpheusMatchKind, |location: Location, _| location.parse_with(|loc| {
             match &loc.line.line()[loc.location.clone()] {
                 "T" => Ok(MetaMorpheusMatchKind::Target),

@@ -303,3 +303,119 @@ impl ProteinMetaData for FastaIdentifier<String> {
         None
     }
 }
+
+impl ProteinMetaData for FastaIdentifier<Box<str>> {
+    fn sequence(&self) -> Option<Cow<'_, Peptidoform<Linear>>> {
+        None
+    }
+
+    fn numerical_id(&self) -> Option<usize> {
+        None
+    }
+
+    fn id(&self) -> FastaIdentifier<&str> {
+        self.as_str()
+    }
+
+    fn description(&self) -> Option<&str> {
+        None
+    }
+
+    fn species(&self) -> Option<Curie> {
+        None
+    }
+
+    fn species_name(&self) -> Option<&str> {
+        None
+    }
+
+    fn search_engine(&self) -> &[(CVTerm, Option<(f64, CVTerm)>)] {
+        &[]
+    }
+
+    fn ambiguity_members(&self) -> &[String] {
+        &[]
+    }
+
+    fn database(&self) -> Option<(&str, Option<&str>)> {
+        None
+    }
+
+    fn modifications(&self) -> &[(Vec<(SequencePosition, Option<f64>)>, SimpleModification)] {
+        &[]
+    }
+
+    fn coverage(&self) -> Option<f64> {
+        None
+    }
+
+    fn gene_ontology(&self) -> &[Curie] {
+        &[]
+    }
+
+    fn reliability(&self) -> Option<Reliability> {
+        None
+    }
+
+    fn uri(&self) -> Option<&str> {
+        None
+    }
+}
+
+impl ProteinMetaData for FastaIdentifier<&str> {
+    fn sequence(&self) -> Option<Cow<'_, Peptidoform<Linear>>> {
+        None
+    }
+
+    fn numerical_id(&self) -> Option<usize> {
+        None
+    }
+
+    fn id(&self) -> FastaIdentifier<&str> {
+        self.clone()
+    }
+
+    fn description(&self) -> Option<&str> {
+        None
+    }
+
+    fn species(&self) -> Option<Curie> {
+        None
+    }
+
+    fn species_name(&self) -> Option<&str> {
+        None
+    }
+
+    fn search_engine(&self) -> &[(CVTerm, Option<(f64, CVTerm)>)] {
+        &[]
+    }
+
+    fn ambiguity_members(&self) -> &[String] {
+        &[]
+    }
+
+    fn database(&self) -> Option<(&str, Option<&str>)> {
+        None
+    }
+
+    fn modifications(&self) -> &[(Vec<(SequencePosition, Option<f64>)>, SimpleModification)] {
+        &[]
+    }
+
+    fn coverage(&self) -> Option<f64> {
+        None
+    }
+
+    fn gene_ontology(&self) -> &[Curie] {
+        &[]
+    }
+
+    fn reliability(&self) -> Option<Reliability> {
+        None
+    }
+
+    fn uri(&self) -> Option<&str> {
+        None
+    }
+}

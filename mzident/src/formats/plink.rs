@@ -45,7 +45,7 @@ format_family!(
     Linked, PeptidoformPresent, [&V2_3], b',', None;
     required {
         order: usize, |location: Location, _| location.parse::<usize>(NUMBER_ERROR);
-        title: String, |location: Location, _| Ok(location.get_string());
+        title: Box<str>, |location: Location, _| Ok(location.get_boxed_str());
         z: Charge, |location: Location, _| location.parse::<isize>(NUMBER_ERROR).map(Charge::new::<mzcore::system::e>);
         /// MH+ mass
         mass: Mass, |location: Location, _| location.parse::<f64>(NUMBER_ERROR).map(Mass::new::<mzcore::system::dalton>);
@@ -93,29 +93,6 @@ format_family!(
                 _ => unreachable!()
             }
         };
-        /// All modifications with their attachment, and their index (into the full peptidoform, so anything bigger than the first peptide matches in the second)
-        ptm: Vec<(SimpleModification, u16)>, |location: Location, ontologies: &Ontologies|
-            location.ignore("null").array(';').map(|v| {
-                let v = v.trim();
-                let position_start = v.as_str().rfind('(').ok_or_else(||
-                    BoxedError::new(BasicKind::Error,
-                        "Invalid pLink modification",
-                        "A pLink modification should follow the format 'Modification[AA](pos)' but the opening bracket '(' was not found",
-                        v.context().to_owned()))?;
-                let location_start = v.as_str().rfind('[').ok_or_else(||
-                    BoxedError::new(BasicKind::Error,
-                        "Invalid pLink modification",
-                        "A pLink modification should follow the format 'Modification[AA](pos)' but the opening square bracket '[' was not found",
-                        v.context().to_owned()))?;
-                let position = v.full_line()[v.location.start+position_start+1..v.location.end-1].parse::<u16>().map_err(|err|
-                    BoxedError::new(BasicKind::Error,
-                        "Invalid pLink modification",
-                        format!("A pLink modification should follow the format 'Modification[AA](pos)' but the position number {}", explain_number_error(&err)),
-                        v.context().to_owned()))?;
-
-                Ok((Modification::sloppy_modification(v.full_line(), v.location.start..v.location.start+location_start, None, ontologies).map_err(BoxedError::to_owned)?, position))
-            }
-        ).collect::<Result<Vec<_>,_>>();
         refined_score: f64, |location: Location, _| location.parse::<f64>(NUMBER_ERROR);
         svm_score: f64, |location: Location, _| location.parse::<f64>(NUMBER_ERROR);
         score: f64, |location: Location, _| location.parse::<f64>(NUMBER_ERROR);
@@ -124,7 +101,7 @@ format_family!(
         is_decoy: bool, |location: Location, _| Ok(location.as_str() == "1");
         q_value: f64, |location: Location, _| location.parse::<f64>(NUMBER_ERROR);
         /// The proteins, per protein the first protein, location, second protein, and location
-        proteins: Vec<(FastaIdentifier<String>, Option<u16>, Option<FastaIdentifier<String>>, Option<u16>)>, |location: Location, _|  {
+        proteins: Vec<(FastaIdentifier<Box<str>>, Option<u16>, Option<FastaIdentifier<Box<str>>>, Option<u16>)>, |location: Location, _|  {
             location.array('/').filter(|l| !l.as_str().trim().is_empty()).map(|l| {
                 let separated = plink_separate(&l, "Invalid pLink protein", "protein").map_err(BoxedError::to_owned)?;
 
@@ -142,7 +119,7 @@ format_family!(
                         l.context().add_highlight((0, p)).to_owned()))).transpose()?,
                     separated.3.map(|(a, _)| a)))
             })
-            .collect::<Result<Vec<_>, _>>()
+            .collect::<Result<Vec<_>, _>>().map(|mut v| {v.shrink_to_fit(); v})
         };
         /// If true this indicates that this cross-link binds two different proteins
         is_different_protein: bool, |location: Location, _| Ok(location.as_str() == "1");
@@ -153,7 +130,11 @@ format_family!(
     }
     optional {
         scan_number: usize, |location: Location, _| location.parse::<usize>(NUMBER_ERROR);
-        raw_file: PathBuf, |location: Location, _| Ok(Some(location.get_string().into()));
+        raw_file: PathBuf, |location: Location, _| {
+            let mut p = PathBuf::from(location.get_string());
+            p.shrink_to_fit();
+            Ok(Some(p))
+        };
     }
 
     #[expect(clippy::similar_names)]
@@ -161,8 +142,28 @@ format_family!(
         // Add all modifications
         let pep1 = parsed.peptidoform.peptidoforms()[0].len();
         let pep2 = parsed.peptidoform.peptidoforms().get(1).map_or(0, Peptidoform::len);
-        for (m, index) in &parsed.ptm {
-            let index = *index as usize;
+
+        // All modifications with their attachment, and their index (into the full peptidoform, so anything bigger than the first peptide matches in the second)
+        for v in source.column("modifications")?.ignore("null").array(';') {
+            let v = v.trim();
+            let position_start = v.as_str().rfind('(').ok_or_else(||
+                BoxedError::new(BasicKind::Error,
+                    "Invalid pLink modification",
+                    "A pLink modification should follow the format 'Modification[AA](pos)' but the opening bracket '(' was not found",
+                    v.context().to_owned()))?;
+            let location_start = v.as_str().rfind('[').ok_or_else(||
+                BoxedError::new(BasicKind::Error,
+                    "Invalid pLink modification",
+                    "A pLink modification should follow the format 'Modification[AA](pos)' but the opening square bracket '[' was not found",
+                    v.context().to_owned()))?;
+            let index = v.full_line()[v.location.start+position_start+1..v.location.end-1].parse::<usize>().map_err(|err|
+                BoxedError::new(BasicKind::Error,
+                    "Invalid pLink modification",
+                    format!("A pLink modification should follow the format 'Modification[AA](pos)' but the position number {}", explain_number_error(&err)),
+                    v.context().to_owned()))?;
+
+            let m = Modification::sloppy_modification(v.full_line(), v.location.start..v.location.start+location_start, None, ontologies).map_err(BoxedError::to_owned)?;
+
             let pos = if index == 0 {
                 (0, SequencePosition::NTerm)
             } else if (1..=pep1).contains(&index) {
@@ -287,6 +288,7 @@ format_family!(
             parsed.raw_file = Some(m.get(1).unwrap().as_str().into());
             parsed.scan_number = Some(m.get(2).unwrap().as_str().parse::<usize>().unwrap());
         }
+        parsed.peptidoform.shrink_to_fit();
         Ok(parsed)
     }
 );
@@ -462,7 +464,6 @@ pub const V2_3: PLinkFormat = PLinkFormat {
     peptide_type: "peptide_type",
     peptidoform: "peptide",
     theoretical_mass: "peptide_mh",
-    ptm: "modifications",
     refined_score: "refined_score",
     svm_score: "svm_score",
     score: "score",
@@ -561,7 +562,7 @@ impl PSMMetaData for PLinkPSM {
 
     fn scans(&self) -> SpectrumIds {
         self.scan_number.map_or_else(
-            || SpectrumIds::FileNotKnown(vec![SpectrumId::Native(self.title.clone())]),
+            || SpectrumIds::FileNotKnown(vec![SpectrumId::Native(self.title.to_string())]),
             |scan_number| {
                 self.raw_file.clone().map_or_else(
                     || SpectrumIds::FileNotKnown(vec![SpectrumId::Number(scan_number)]),
@@ -586,7 +587,7 @@ impl PSMMetaData for PLinkPSM {
         Some(self.mass)
     }
 
-    type Protein = FastaIdentifier<String>;
+    type Protein = FastaIdentifier<Box<str>>;
     fn proteins(&self) -> Cow<'_, [Self::Protein]> {
         Cow::Owned(
             self.proteins

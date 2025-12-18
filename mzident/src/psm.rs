@@ -693,7 +693,7 @@ pub enum ProteinData {
     /// No protein
     NoProtein(NoProtein),
     /// A single fasta identifier
-    FastaId(FastaIdentifier<String>),
+    FastaId(FastaIdentifier<Box<str>>),
     /// A Fasta entry
     Fasta(FastaData),
     /// An mzTab protein

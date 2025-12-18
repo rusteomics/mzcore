@@ -60,7 +60,7 @@ format_family!(
         mz: MassOverCharge, |location: Location, _| location.parse::<f64>(NUMBER_ERROR).map(MassOverCharge::new::<mzcore::system::thomson>);
         rt: Time, |location: Location, _| location.parse::<f64>(NUMBER_ERROR).map(Time::new::<mzcore::system::time::s>);
         corrected_o_over_k0: f64, |location: Location, _| location.parse::<f64>(NUMBER_ERROR);
-        protein: FastaIdentifier<String>, |location: Location, _|  location.parse(NUMBER_ERROR);
+        protein: FastaIdentifier<Box<str>>, |location: Location, _|  location.parse(NUMBER_ERROR);
         z: Charge, |location: Location, _| location.parse::<isize>(NUMBER_ERROR).map(Charge::new::<mzcore::system::e>);
         delta_cn_score: f64, |location: Location, _| location.parse::<f64>(NUMBER_ERROR);
         confidence_score: f64, |location: Location, _| location.parse::<f64>(NUMBER_ERROR);
@@ -191,7 +191,7 @@ impl PSMMetaData for ProteoscapePSM {
         Some(self.mz * self.z.to_float())
     }
 
-    type Protein = FastaIdentifier<String>;
+    type Protein = FastaIdentifier<Box<str>>;
     fn proteins(&self) -> Cow<'_, [Self::Protein]> {
         Cow::Borrowed(std::slice::from_ref(&self.protein))
     }

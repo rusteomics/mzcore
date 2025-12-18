@@ -22,7 +22,7 @@ use mzcore::{
         Peptidoform, SemiAmbiguous, SequenceElement, SimpleLinear, SimpleModificationInner,
         SloppyParsingParameters,
     },
-    system::{Mass, MassOverCharge, Time, isize::Charge},
+    system::{MassOverCharge, Time, dalton, f32::Mass, isize::Charge},
 };
 
 static NUMBER_ERROR: (&str, &str) = (
@@ -55,14 +55,14 @@ format_family!(
     SimpleLinear, MaybePeptidoform, [&MSMS, &NOVO_MSMS_SCANS, &MSMS_SCANS, &SILAC], b'\t', None;
     required {
         scan_number: ThinVec<usize>, |location: Location, _| location.or_empty().array(';').map(|s| s.parse(NUMBER_ERROR)).collect::<Result<ThinVec<usize>, BoxedError<'_, BasicKind>>>();
-        proteins: ThinVec<FastaIdentifier<String>>, |location: Location, _| location.array(';').map(|v|
-            FastaIdentifier::<String>::from_str(v.as_str())
+        proteins: ThinVec<FastaIdentifier<Box<str>>>, |location: Location, _| location.array(';').map(|v|
+            FastaIdentifier::<Box<str>>::from_str(v.as_str())
             .map_err(|e| BoxedError::new(
                 BasicKind::Error,
                 "Could not parse MaxQuant line",
                 format!("The protein identifier could not be parsed: {e}"),
                 v.context().to_owned()
-            ))).collect::<Result<ThinVec<FastaIdentifier<String>>, _>>();
+            ))).collect::<Result<ThinVec<FastaIdentifier<Box<str>>>, _>>();
         /// The database matched peptide, annotated as [`SimpleLinear`] to allow replacing it with the _de novo_ peptide, no features of the [`SimpleLinear`] complexity are used for the database peptides
         peptide: Option<Peptidoform<SimpleLinear>>, |location: Location, ontologies: &Ontologies| location.or_empty().parse_with(|location| Peptidoform::sloppy_pro_forma(
             location.full_line(),
@@ -74,7 +74,7 @@ format_family!(
         z: Charge, |location: Location, _| location.parse::<isize>(NUMBER_ERROR).map(Charge::new::<mzcore::system::e>);
         ty: Box<str>, |location: Location, _| Ok(location.get_boxed_str());
         pep: f32, |location: Location, _| location.parse(NUMBER_ERROR);
-        score: f64, |location: Location, _| location.parse(NUMBER_ERROR);
+        score: f32, |location: Location, _| location.parse(NUMBER_ERROR);
     }
     optional {
         all_modified_sequences: ThinVec<Peptidoform<SemiAmbiguous>>, |location: Location, ontologies: &Ontologies| location.array(';')
@@ -83,13 +83,13 @@ format_family!(
         base_peak_intensity: f32, |location: Location, _| location.parse::<f32>(NUMBER_ERROR);
         collision_energy: f32, |location: Location, _| location.parse::<f32>(NUMBER_ERROR);
         delta_score: f32, |location: Location, _| location.parse::<f32>(NUMBER_ERROR);
-        dn_c_mass: Mass, |location: Location, _| location.parse::<f64>(NUMBER_ERROR).map(Mass::new::<mzcore::system::dalton>);
+        dn_c_mass: Mass, |location: Location, _| location.parse::<f32>(NUMBER_ERROR).map(Mass::new::<dalton>);
         /// The combined score is a combination of the complete score and the gap score. Both of these scores are ranked, and then the sum of the two ranks is taken and normalized to lie between 0 and 100.
         dn_combined_score: f32, |location: Location, _| location.parse::<f32>(NUMBER_ERROR);
         dn_complete: bool, |location: Location, _| Ok(location.as_str() == "+");
-        dn_n_mass: Mass, |location: Location, _| location.parse::<f64>(NUMBER_ERROR).map(Mass::new::<mzcore::system::dalton>);
+        dn_n_mass: Mass, |location: Location, _| location.parse::<f32>(NUMBER_ERROR).map(Mass::new::<dalton>);
         dn_sequence: Peptidoform<SimpleLinear>, |location: Location, ontologies: &Ontologies| location.or_empty().map(|l| parse_de_novo_sequence(l, ontologies));
-        evidence_id: usize, |location: Location, _| location.parse::<usize>(NUMBER_ERROR);
+        evidence_id: u32, |location: Location, _| location.parse::<u32>(NUMBER_ERROR);
         experiment: Box<str>, |location: Location, _| Ok(location.get_boxed_str());
         mode: Box<str>, |location: Location, _| Ok(location.get_boxed_str());
         genes: Box<str>, |location: Location, _| Ok(location.get_boxed_str());
@@ -102,14 +102,14 @@ format_family!(
         labeling_state: bool, |location: Location, _| location.or_empty().ignore("-1").parse::<u8>(BOOL_ERROR).map(|n| n.map(|n| n != 0));
         localisation_probability: f32, |location: Location, _| location.parse::<f32>(NUMBER_ERROR);
         mass_analyser: Box<str>, |location: Location, _| Ok(location.get_boxed_str());
-        mass: Mass, |location: Location, _| location.parse::<f64>(NUMBER_ERROR).map(Mass::new::<mzcore::system::dalton>);
-        missed_cleavages: usize, |location: Location, _| location.parse::<usize>(NUMBER_ERROR);
-        modified_peptide_id: usize, |location: Location, _| location.parse::<usize>(NUMBER_ERROR);
+        mass: Mass, |location: Location, _| location.parse::<f32>(NUMBER_ERROR).map(Mass::new::<dalton>);
+        missed_cleavages: u8, |location: Location, _| location.parse::<u8>(NUMBER_ERROR);
+        modified_peptide_id: u32, |location: Location, _| location.parse::<u32>(NUMBER_ERROR);
         mz: MassOverCharge, |location: Location, _| location.parse::<f64>(NUMBER_ERROR).map(MassOverCharge::new::<mzcore::system::thomson>);
-        number_of_matches: usize, |location: Location, _| location.parse::<usize>(NUMBER_ERROR);
+        number_of_matches: u16, |location: Location, _| location.parse::<u16>(NUMBER_ERROR);
         peak_coverage: f32, |location: Location, _| location.parse::<f32>(NUMBER_ERROR);
-        peptide_id: usize, |location: Location, _| location.parse::<usize>(NUMBER_ERROR);
-        precursor: usize, |location: Location, _| location.ignore("-1").parse::<usize>(NUMBER_ERROR);
+        peptide_id: u32, |location: Location, _| location.parse::<u32>(NUMBER_ERROR);
+        precursor: u32, |location: Location, _| location.ignore("-1").parse::<u32>(NUMBER_ERROR);
         precursor_intensity: f32, |location: Location, _| location.parse::<f32>(NUMBER_ERROR);
         precursor_apex_function: f32, |location: Location, _| location.parse::<f32>(NUMBER_ERROR);
         precursor_apex_offset: f32, |location: Location, _| location.parse::<f32>(NUMBER_ERROR);
@@ -119,8 +119,8 @@ format_family!(
         ration_h_l: f32, |location: Location, _| location.or_empty().parse::<f32>(NUMBER_ERROR);
         raw_file: PathBuf, |location: Location, _| Ok(PathBuf::from(location.get_string()));
         rt: Time, |location: Location, _| location.parse::<f64>(NUMBER_ERROR).map(Time::new::<mzcore::system::time::min>);
-        scan_event_number: usize, |location: Location, _| location.parse::<usize>(NUMBER_ERROR);
-        scan_index: usize, |location: Location, _| location.parse::<usize>(NUMBER_ERROR);
+        scan_event_number: u32, |location: Location, _| location.parse::<u32>(NUMBER_ERROR);
+        scan_index: u32, |location: Location, _| location.parse::<u32>(NUMBER_ERROR);
         score_diff: f32, |location: Location, _| location.parse::<f32>(NUMBER_ERROR);
         simple_mass_error_ppm: f32, |location: Location, _| location.parse::<f32>(NUMBER_ERROR);
         total_ion_current: f32, |location: Location, _| location.parse::<f32>(NUMBER_ERROR);
@@ -469,7 +469,8 @@ impl PSMMetaData for MaxQuantPSM {
     }
 
     fn confidence(&self) -> Option<f64> {
-        (!self.score.is_nan()).then(|| 2.0 * (1.0 / (1.0 + 1.01_f64.powf(-self.score)) - 0.5))
+        (!self.score.is_nan())
+            .then(|| 2.0 * (1.0 / (1.0 + 1.01_f64.powf(-f64::from(self.score))) - 0.5))
     }
 
     fn local_confidence(&self) -> Option<Cow<'_, [f64]>> {
@@ -478,7 +479,7 @@ impl PSMMetaData for MaxQuantPSM {
 
     fn original_confidence(&self) -> Option<(f64, mzcv::Term)> {
         (self.score.is_normal() || self.score.is_subnormal())
-            .then_some((self.score, mzcv::term!(MS:1001171|Mascot:score)))
+            .then_some((f64::from(self.score), mzcv::term!(MS:1001171|Mascot:score)))
     }
 
     fn original_local_confidence(&self) -> Option<&[f64]> {
@@ -525,11 +526,12 @@ impl PSMMetaData for MaxQuantPSM {
         self.mz
     }
 
-    fn experimental_mass(&self) -> Option<Mass> {
+    fn experimental_mass(&self) -> Option<mzcore::system::f64::Mass> {
         self.mass
+            .map(|v| mzcore::system::f64::Mass::new::<dalton>(v.value.into()))
     }
 
-    type Protein = FastaIdentifier<String>;
+    type Protein = FastaIdentifier<Box<str>>;
 
     fn proteins(&self) -> Cow<'_, [Self::Protein]> {
         Cow::Borrowed(&self.proteins)

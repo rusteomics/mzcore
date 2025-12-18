@@ -172,7 +172,7 @@ impl PSMMetaData for DeepNovoFamilyPSM {
     }
 
     fn numerical_id(&self) -> Option<usize> {
-        self.scan.first().and_then(|s| s.scans.first().cloned())
+        self.scan.first().and_then(|s| s.scans.first().copied())
     }
 
     fn id(&self) -> String {

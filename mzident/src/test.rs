@@ -165,8 +165,8 @@ pub(super) fn test_psm<Complexity, PeptidoformAvailability>(
 
 #[ignore = "only run when interested in the sizes of the data"]
 #[test]
-fn test_size() {
-    let file = open_psm_file(
+fn test_size_plgs() {
+    let mut file = open_psm_file(
         "src/test_files/plgs_v3.0_peptide.csv",
         &mzcore::ontology::STATIC_ONTOLOGIES,
         false,
@@ -174,12 +174,36 @@ fn test_size() {
     .unwrap()
     .collect::<Result<Vec<_>, _>>()
     .unwrap();
+    file.shrink_to_fit();
     let total = mzcore::space::Space::space(&file);
     let first = mzcore::space::Space::space(&file[0]);
     let protein = mzcore::space::Space::space(&file[0].proteins().as_ref()[0]);
     dbg!(&file[0].proteins()[0]);
     println!(
         "= PLGS Total:\n{total}PSMs: {}\n\n= PLGS First:\n{first}\n= Protein First:\n{protein}",
+        file.len()
+    );
+    todo!();
+}
+
+#[ignore = "only run when interested in the sizes of the data"]
+#[test]
+fn test_size_plink() {
+    let mut file = open_psm_file(
+        "src/test_files/plink_v2.3_small.csv",
+        &mzcore::ontology::STATIC_ONTOLOGIES,
+        false,
+    )
+    .unwrap()
+    .collect::<Result<Vec<_>, _>>()
+    .unwrap();
+    file.shrink_to_fit();
+    let total = mzcore::space::Space::space(&file);
+    let first = mzcore::space::Space::space(&file[0]);
+    let protein = mzcore::space::Space::space(&file[0].proteins().as_ref()[0]);
+    dbg!(&file[0].proteins()[0]);
+    println!(
+        "= pLink Total:\n{total}PSMs: {}\n\n= pLink First:\n{first}\n= Protein First:\n{protein}",
         file.len()
     );
     todo!();

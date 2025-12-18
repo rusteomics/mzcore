@@ -155,7 +155,7 @@ format_family!(
         required {
             protein_accession: Vec<String>, |location: Location, _| Ok(location.array('|').map(Location::get_string).collect());
             organism: Vec<String>, |location: Location, _| Ok(location.array('|').map(Location::get_string).collect());
-            protein_name: FastaIdentifier<String>, |location: Location, _| location.parse(NUMBER_ERROR);
+            protein_name: FastaIdentifier<Box<str>>, |location: Location, _| location.parse(NUMBER_ERROR);
             /// If this is a contaminant, same number of entries as the vector of organisms.
             contaminant: Vec<bool>, |location: Location, _| Ok(location.array('|').map(|l| l.as_str() == "Y").collect());
             decoy: bool, |location: Location, _| Ok(location.as_str() == "Y");
@@ -408,7 +408,7 @@ impl ProteinMetaData for MetaMorpheusProtein {
     }
 
     fn species_name(&self) -> Option<&str> {
-        self.organism.first().map(|s| s.as_str())
+        self.organism.first().map(String::as_str)
     }
 
     fn search_engine(&self) -> &[(CVTerm, Option<(f64, CVTerm)>)] {

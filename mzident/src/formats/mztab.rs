@@ -945,7 +945,7 @@ impl MzTabPSM {
                         Context::default().line_index(line.line_index).lines(0, line.line)))
                 }
             } else if lc.len() == pep_len {
-                Ok(lc.to_vec())
+                Ok(lc.clone())
             } else {
                 Err(BoxedError::new(
                     BasicKind::Error,

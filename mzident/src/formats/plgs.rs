@@ -18,7 +18,7 @@ use mzcore::{
         AminoAcid, CompoundPeptidoformIon, FlankingSequence, MUPSettings, Modification,
         Peptidoform, PlacementRule, Position, SequencePosition, SimpleLinear, SimpleModification,
     },
-    system::{Mass, MassOverCharge, OrderedTime, Time, isize::Charge},
+    system::{Mass, MassOverCharge, OrderedTime, f32::Time, isize::Charge},
 };
 
 static NUMBER_ERROR: (&str, &str) = (
@@ -48,7 +48,7 @@ format_family!(
                 };
                 Ok((modification, aa, index))
             }).collect::<Result<ThinVec<_>,_>>();
-        peptide: Peptidoform<SimpleLinear>, |location: Location, ontologies: &Ontologies| Peptidoform::pro_forma_inner(&location.context(), location.full_line(), location.location.clone(), ontologies).map(|(p, _)| p.into_simple_linear().unwrap()).map_err(|errs| BoxedError::new(BasicKind::Error, "Invalid ProForma definition", "The string could not be parsed as a ProForma definition", location.context()).add_underlying_errors(errs)).map_err(BoxedError::to_owned);
+        peptide: Peptidoform<SimpleLinear>, |location: Location, ontologies: &Ontologies| Peptidoform::pro_forma_inner(&location.context(), location.full_line(), location.location.clone(), ontologies).map(|(mut p, _)| {p.shrink_to_fit(); p.into_simple_linear().unwrap()}).map_err(|errs| BoxedError::new(BasicKind::Error, "Invalid ProForma definition", "The string could not be parsed as a ProForma definition", location.context()).add_underlying_errors(errs)).map_err(BoxedError::to_owned);
         peptide_start: u16, |location: Location, _| location.parse(NUMBER_ERROR);
         peptide_pi: f32, |location: Location, _| location.parse(NUMBER_ERROR);
         peptide_component_id: u32, |location: Location, _| location.parse(NUMBER_ERROR);
@@ -59,11 +59,11 @@ format_family!(
         peptide_raw_score: f32, |location: Location, _| location.parse(NUMBER_ERROR);
         peptide_score: f64, |location: Location, _| location.parse(NUMBER_ERROR);
         peptide_x_p_bond_identified: Option<bool>, |location: Location, _| Ok(location.or_empty().map(|l| l.as_str() == "Identified"));
-        peptide_matched_product_intensity: usize, |location: Location, _| location.parse(NUMBER_ERROR);
+        peptide_matched_product_intensity: u32, |location: Location, _| location.parse(NUMBER_ERROR);
         peptide_matched_product_theoretical: f32, |location: Location, _| location.parse(NUMBER_ERROR);
         peptide_matched_product_string: Box<str>, |location: Location, _| Ok(location.get_boxed_str());
         peptide_model_rt: Time, |location: Location, _| location.parse(NUMBER_ERROR).map(Time::new::<mzcore::system::time::min>);
-        peptide_volume: usize, |location: Location, _| location.parse(NUMBER_ERROR);
+        peptide_volume: u32, |location: Location, _| location.parse(NUMBER_ERROR);
         peptide_csa: f32, |location: Location, _| location.parse(NUMBER_ERROR);
         peptide_model_drift: f32, |location: Location, _| location.parse(NUMBER_ERROR);
         peptide_relative_intensity: f32, |location: Location, _| location.parse(NUMBER_ERROR);
@@ -133,7 +133,7 @@ format_family!(
         required {
             protein_id: usize, |location: Location, _| location.parse(NUMBER_ERROR);
             protein_entry: Box<str>, |location: Location, _| Ok(location.get_boxed_str());
-            protein_description: FastaIdentifier<String>, |location: Location, _| location.parse(IDENTIFIER_ERROR);
+            protein_description: FastaIdentifier<Box<str>>, |location: Location, _| location.parse(IDENTIFIER_ERROR);
             protein_db_type: Box<str>, |location: Location, _| Ok(location.get_boxed_str());
             protein_score: f32, |location: Location, _| location.parse(NUMBER_ERROR);
             protein_fpr: f32, |location: Location, _| location.parse(NUMBER_ERROR);
@@ -316,8 +316,8 @@ impl PSMMetaData for PLGSPSM {
         None
     }
 
-    fn retention_time(&self) -> Option<Time> {
-        Some(self.precursor_rt)
+    fn retention_time(&self) -> Option<mzcore::system::f64::Time> {
+        Some(self.precursor_rt.into())
     }
 
     fn scans(&self) -> SpectrumIds {
@@ -407,7 +407,7 @@ impl ProteinMetaData for PLGSProtein {
     }
 
     fn coverage(&self) -> Option<f64> {
-        Some(self.protein_sequence_coverage as f64)
+        Some(f64::from(self.protein_sequence_coverage))
     }
 
     fn gene_ontology(&self) -> &[mzcv::Curie] {

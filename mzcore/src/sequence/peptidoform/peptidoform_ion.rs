@@ -32,12 +32,21 @@ impl PeptidoformIon {
 
     /// Create a new [`PeptidoformIon`] from many [`Peptidoform`]s. This returns None if the
     /// global isotope modifications or the charge carriers of all peptides are not identical.
-    pub fn from_vec(iter: Vec<Peptidoform<Linked>>) -> Option<Self> {
+    pub fn from_vec(mut iter: Vec<Peptidoform<Linked>>) -> Option<Self> {
+        iter.shrink_to_fit();
         let result = Self(iter);
         let global_and_charge_equal = result.peptidoforms().iter().tuple_windows().all(|(a, b)| {
             a.get_global() == b.get_global() && a.get_charge_carriers() == b.get_charge_carriers()
         });
         global_and_charge_equal.then_some(result)
+    }
+
+    /// Shrink to fit on all peptidoforms
+    pub fn shrink_to_fit(&mut self) {
+        self.0.shrink_to_fit();
+        for p in &mut self.0 {
+            p.shrink_to_fit();
+        }
     }
 
     /// Gives all possible formulas for this peptidoform (including breakage of cross-links that can break).

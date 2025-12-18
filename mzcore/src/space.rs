@@ -8,7 +8,6 @@ use crate::{
     ontology::Ontology,
     prelude::{AminoAcid, Element},
     sequence::{GnoSubsumption, MassTag, Position, SimpleModificationInner},
-    system::OrderedTime,
 };
 use std::{
     num::NonZero,
@@ -79,7 +78,7 @@ impl UsedSpace {
 
     pub const fn set_total<Total>(self) -> Self {
         Self {
-            padding: size_of::<Total>() - self.stack,
+            padding: size_of::<Total>().saturating_sub(self.stack),
             ..self
         }
     }
@@ -206,7 +205,7 @@ impl<T: Space> Space for std::collections::BTreeSet<T> {
     }
 }
 
-impl<A: Space, B: Space> Space for std::collections::HashMap<A, B> {
+impl<A: Space, B: Space, S: std::hash::BuildHasher> Space for std::collections::HashMap<A, B, S> {
     fn space(&self) -> UsedSpace {
         let mut total = UsedSpace::default();
         for e in self {
@@ -437,6 +436,10 @@ simple_space!(crate::system::f64::Mass);
 simple_space!(crate::system::f64::MassOverCharge);
 simple_space!(crate::system::f64::Ratio);
 simple_space!(crate::system::f64::Time);
+simple_space!(crate::system::f32::Mass);
+simple_space!(crate::system::f32::MassOverCharge);
+simple_space!(crate::system::f32::Ratio);
+simple_space!(crate::system::f32::Time);
 simple_space!(crate::system::OrderedMass);
 simple_space!(crate::system::OrderedMassOverCharge);
 simple_space!(crate::system::OrderedRatio);

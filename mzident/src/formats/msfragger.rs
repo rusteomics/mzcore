@@ -42,9 +42,9 @@ format_family!(
     SimpleLinear, PeptidoformPresent, [&VERSION_V4_2, &FRAGPIPE_V20_OR_21, &FRAGPIPE_V22, &PHILOSOPHER], b'\t', None;
     required {
         expectation_score: f32, |location: Location, _| location.parse::<f32>(NUMBER_ERROR);
-        hyper_score: f64, |location: Location, _| location.parse::<f64>(NUMBER_ERROR);
+        hyper_score: f32, |location: Location, _| location.parse::<f32>(NUMBER_ERROR);
         mass: Mass, |location: Location, _| location.parse::<f64>(NUMBER_ERROR).map(Mass::new::<mzcore::system::dalton>);
-        missed_cleavages: usize, |location: Location, _| location.parse(NUMBER_ERROR);
+        missed_cleavages: u8, |location: Location, _| location.parse(NUMBER_ERROR);
         next_score: f32, |location: Location, _| location.parse(NUMBER_ERROR);
         peptide: Peptidoform<SimpleLinear>, |location: Location, ontologies: &Ontologies| location.parse_with(|location| {
             Peptidoform::sloppy_pro_forma(
@@ -85,10 +85,10 @@ format_family!(
         best_score_with_delta_mass: f32, |location: Location, _| location.or_empty().parse::<f32>(NUMBER_ERROR);
         calibrated_experimental_mass: Mass, |location: Location, _| location.parse::<f64>(NUMBER_ERROR).map(Mass::new::<mzcore::system::dalton>);
         calibrated_experimental_mz: MassOverCharge, |location: Location, _| location.parse::<f64>(NUMBER_ERROR).map(MassOverCharge::new::<mzcore::system::thomson>);
-        condition: String, |location: Location, _| Ok(Some(location.get_string()));
+        condition: Box<str>, |location: Location, _| Ok(Some(location.get_boxed_str()));
         delta_score: f32, |location: Location, _| location.or_empty().parse::<f32>(NUMBER_ERROR);
-        entry_name: String, |location: Location, _| Ok(location.get_string());
-        enzymatic_termini: usize, |location: Location, _| location.parse::<usize>(NUMBER_ERROR);
+        entry_name: Box<str>, |location: Location, _| Ok(location.get_boxed_str());
+        enzymatic_termini: u8, |location: Location, _| location.parse::<u8>(NUMBER_ERROR);
         extended_peptide: (FlankingSequence, Option<Peptidoform<SemiAmbiguous>>, FlankingSequence), |location: Location, ontologies: &Ontologies| {
             let mut peptides = location.clone().array('.').map(|l| l.or_empty().parse_with(|location| Peptidoform::sloppy_pro_forma(
                 location.full_line(),
@@ -107,7 +107,7 @@ format_family!(
         };
         glycan_q_value: f32, |location: Location, _| location.or_empty().parse::<f32>(NUMBER_ERROR);
         glycan_score: f32, |location: Location, _| location.or_empty().parse::<f32>(NUMBER_ERROR);
-        group: String, |location: Location, _| Ok(Some(location.get_string()));
+        group: Box<str>, |location: Location, _| Ok(Some(location.get_boxed_str()));
         intensity: f32, |location: Location, _| location.parse::<f32>(NUMBER_ERROR);
         ion_mobility: f32, |location: Location, _| location.or_empty().parse::<f32>(NUMBER_ERROR);
         ions_best_position: usize, |location: Location, _| location.or_empty().parse::<usize>(NUMBER_ERROR);
@@ -121,13 +121,13 @@ format_family!(
             ))
         });
         mz: MassOverCharge, |location: Location, _| location.parse::<f64>(NUMBER_ERROR).map(MassOverCharge::new::<mzcore::system::thomson>);
-        num_matched_ions: usize, |location: Location, _| location.parse::<usize>(NUMBER_ERROR);
+        num_matched_ions: u16, |location: Location, _| location.parse::<u16>(NUMBER_ERROR);
         num_tol_term: usize, |location: Location, _| location.parse::<usize>(NUMBER_ERROR);
-        open_search_localisation: String, |location: Location, _| Ok(location.or_empty().get_string());
+        open_search_localisation: Box<str>, |location: Location, _| Ok(location.get_boxed_str());
         /// Either glycan 'HexNAc(4)Hex(5)Fuc(1)NeuAc(2) % 2350.8304' or mod 'Mod1: First isotopic peak (Theoretical: 1.0024)' 'Mod1: Deamidation (PeakApex: 0.9836, Theoretical: 0.9840)'
         open_search_modification: MSFraggerOpenModification, |location: Location, _|
             location.or_empty().parse_with(|location| location.as_str().find('%').map_or_else(
-                || Ok(MSFraggerOpenModification::Other(location.as_str().to_owned())),
+                || Ok(MSFraggerOpenModification::Other(location.as_str().into())),
                 |end| MonoSaccharide::byonic_composition(&location.as_str()[..end]).map(|g| MSFraggerOpenModification::Glycan(g.into())).map_err(BoxedError::to_owned)));
         open_search_position_scores: ThinVec<f64>, |location: Location, _| {
             let data = location.array(')').filter_map(|l| (l.len() > 2).then(|| l.skip(2).parse::<f64>((
@@ -228,7 +228,7 @@ format_family!(
 
         required {
             /// The full header of the fasta entry, split into the id and the rest of the line (without the separating space)
-            protein: (FastaIdentifier<String>, String), |location: Location, _| location.clone().split_once(' ').map_or_else(
+            protein: (FastaIdentifier<Box<str>>, String), |location: Location, _| location.clone().split_once(' ').map_or_else(
             || location.parse(IDENTIFIER_ERROR).map(|id| (id, String::new())),
             |(id, tail)| id.parse(IDENTIFIER_ERROR).map(|id| (id, tail.get_string())));
         }
@@ -252,7 +252,7 @@ pub enum MSFraggerOpenModification {
     /// A glycan composition
     Glycan(ThinVec<(MonoSaccharide, isize)>),
     /// Any other modification
-    Other(String),
+    Other(Box<str>),
 }
 
 impl mzcore::space::Space for MSFraggerOpenModification {
@@ -545,7 +545,7 @@ impl PSMMetaData for MSFraggerPSM {
     }
 
     fn confidence(&self) -> Option<f64> {
-        Some(self.hyper_score / 100.0)
+        Some(f64::from(self.hyper_score) / 100.0)
     }
 
     fn local_confidence(&self) -> Option<Cow<'_, [f64]>> {
@@ -554,7 +554,7 @@ impl PSMMetaData for MSFraggerPSM {
 
     fn original_confidence(&self) -> Option<(f64, mzcv::Term)> {
         Some((
-            self.hyper_score,
+            self.hyper_score.into(),
             mzcv::term!(MS:1001331|X!Tandem:hyperscore),
         ))
     }
@@ -656,7 +656,7 @@ impl ProteinMetaData for MSFraggerProtein {
     fn ambiguity_members(&self) -> &[String] {
         self.mapped_genes
             .as_ref()
-            .map(|g| g.as_slice())
+            .map(ThinVec::as_slice)
             .unwrap_or_default()
     }
 

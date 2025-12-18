@@ -7,6 +7,7 @@ use std::{
 
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
+use thin_vec::ThinVec;
 
 use crate::{
     BoxedIdentifiedPeptideIter, FastaIdentifier, KnownFileFormat, PSM, PSMData,
@@ -38,7 +39,7 @@ format_family!(
     Peaks,
     SemiAmbiguous, PeptidoformPresent, [&V13_DIA, &V12, &V11, &V11_FEATURES, &XPLUS, &AB, &X_PATCHED, &X, &DB_PEPTIDE, &DB_PSM, &DB_PROTEIN_PEPTIDE], b',', None;
     required {
-        peptide: (FlankingSequence, Vec<Peptidoform<SemiAmbiguous>>, FlankingSequence), |location: Location, ontologies: &Ontologies| {
+        peptide: (FlankingSequence, ThinVec<Peptidoform<SemiAmbiguous>>, FlankingSequence), |location: Location, ontologies: &Ontologies| {
             let n_flanking: Option<AminoAcid>  =
                 (location.as_str().chars().nth(1) == Some('.'))
                 .then(|| location.as_str().chars().next().unwrap().try_into().map_err(|()|
@@ -62,7 +63,7 @@ format_family!(
                     ontologies,
                     &SloppyParsingParameters::default()
                 ).map_err(BoxedError::to_owned)).unique()
-                .collect::<Result<Vec<_>,_>>()
+                .collect::<Result<ThinVec<_>,_>>()
                 .map(|sequences| (FlankingSequence::Unknown, sequences, FlankingSequence::Unknown))
             } else {
                 Peptidoform::sloppy_pro_forma(
@@ -72,7 +73,7 @@ format_family!(
                     &SloppyParsingParameters::default()
                 ).map_err(BoxedError::to_owned).map(|p| (
                     n_flanking.map_or(FlankingSequence::Terminal, FlankingSequence::AminoAcid),
-                    vec![p],
+                    ThinVec::from(vec![p]),
                     c_flanking.map_or(FlankingSequence::Terminal, FlankingSequence::AminoAcid)
                 ))
             }};
@@ -82,31 +83,31 @@ format_family!(
     }
     optional {
         mass: Mass, |location: Location, _| location.parse::<f64>(NUMBER_ERROR).map(Mass::new::<mzcore::system::dalton>);
-        ptm: Vec<SimpleModification>, |location: Location, ontologies: &Ontologies|
+        ptm: ThinVec<SimpleModification>, |location: Location, ontologies: &Ontologies|
             location.or_empty().array(';').map(|v| {
                 let v = v.trim();
                 Modification::sloppy_modification(v.full_line(), v.location.clone(), None, ontologies).map_err(BoxedError::to_owned)
-            }).unique().collect::<Result<Vec<_>,_>>();
-        scan_number: Vec<PeaksFamilyId>, |location: Location, _| location.or_empty()
-                        .map_or(Ok(Vec::new()), |l| l.array(';').map(|v| v.parse(ID_ERROR)).collect::<Result<Vec<_>,_>>());
+            }).unique().collect::<Result<ThinVec<_>,_>>();
+        scan_number: ThinVec<PeaksFamilyId>, |location: Location, _| location.or_empty()
+                        .map_or_else(|| Ok(ThinVec::new()), |l| l.array(';').map(|v| v.parse(ID_ERROR)).collect::<Result<ThinVec<_>,_>>());
         z: Charge, |location: Location, _| location.parse::<isize>(NUMBER_ERROR).map(Charge::new::<mzcore::system::e>);
         alc: f64, |location: Location, _| location.parse::<f64>(NUMBER_ERROR);
-        local_confidence: Vec<f64>, |location: Location, _| location
+        local_confidence: ThinVec<f64>, |location: Location, _| location
             .array(' ')
             .map(|l| l.parse::<f64>(NUMBER_ERROR))
-            .collect::<Result<Vec<_>, _>>();
+            .collect::<Result<ThinVec<_>, _>>();
         fraction: usize, |location: Location, _| location.parse(NUMBER_ERROR).map(Some);
         raw_file: PathBuf, |location: Location, _| Ok(Some(Path::new(&location.get_string()).to_owned()));
         feature: PeaksFamilyId, |location: Location, _| location.or_empty().parse(ID_ERROR);
         de_novo_score: f64, |location: Location, _| location
                 .parse::<f64>(NUMBER_ERROR);
         predicted_rt: Time, |location: Location, _| location.or_empty().parse::<f64>(NUMBER_ERROR).map(|o| o.map(Time::new::<mzcore::system::time::min>));
-        tag: String, |location: Location, _| Ok(location.get_string());
-        mode: String, |location: Location, _| Ok(location.get_string());
+        tag: Box<str>, |location: Location, _| Ok(location.get_boxed_str());
+        mode: Box<str>, |location: Location, _| Ok(location.get_boxed_str());
         logp: f64, |location: Location, _| location.parse::<f64>(NUMBER_ERROR);
         area_tryp_ead: f64, |location: Location, _| location.or_empty().parse::<f64>(NUMBER_ERROR);
-        ascore: String, |location: Location, _| Ok(location.or_empty().get_string());
-        found_by: String, |location: Location, _| Ok(location.get_string());
+        ascore: Box<str>, |location: Location, _| Ok(location.get_boxed_str());
+        found_by: Box<str>, |location: Location, _| Ok(location.get_boxed_str());
         feature_tryp_cid: usize, |location: Location, _| location.parse(NUMBER_ERROR).map(Some);
         feature_tryp_ead: usize, |location: Location, _| location.parse(NUMBER_ERROR).map(Some);
         id: usize, |location: Location, _| location.parse(NUMBER_ERROR).map(Some);
@@ -114,21 +115,21 @@ format_family!(
         unique: bool, |location: Location, _| Ok(location.get_string() == "Y");
         protein_group: usize, |location: Location, _| location.parse(NUMBER_ERROR).map(Some);
         protein_id: usize, |location: Location, _| location.parse(NUMBER_ERROR).map(Some);
-        protein_accession: FastaIdentifier<String>, |location: Location, _|  location.parse(NUMBER_ERROR).map(Some);
+        protein_accession: FastaIdentifier<Box<str>>, |location: Location, _|  location.parse(NUMBER_ERROR).map(Some);
         start: u16, |location: Location, _| location.parse(NUMBER_ERROR).map(Some);
         end: u16, |location: Location, _| location.parse(NUMBER_ERROR).map(Some);
         quality: f64, |location: Location, _| location.parse::<f64>(NUMBER_ERROR);
         rt_begin: Time, |location: Location, _| location.or_empty().parse::<f64>(NUMBER_ERROR).map(|o| o.map(Time::new::<mzcore::system::time::s>));
         rt_end: Time, |location: Location, _| location.or_empty().parse::<f64>(NUMBER_ERROR).map(|o| o.map(Time::new::<mzcore::system::time::s>));
         precursor_id: isize, |location: Location, _| location.parse::<isize>(NUMBER_ERROR);
-        k0_range: std::ops::RangeInclusive<f64>, |location: Location, _| location.split_once('-').map(|(start, end)| Ok(start.parse(NUMBER_ERROR)?..=end.parse(NUMBER_ERROR)?));
+        k0_range: std::ops::RangeInclusive<f32>, |location: Location, _| location.split_once('-').map(|(start, end)| Ok(start.parse(NUMBER_ERROR)?..=end.parse(NUMBER_ERROR)?));
     }
 
     fn post_process(_source: &CsvLine, mut parsed: Self, _ontologies: &Ontologies) -> Result<Self, BoxedError<'static, BasicKind>> {
         // Add the meaningful modifications to replace mass modifications
         if let Some(ptm) = parsed.ptm.clone() {
             for pep in &mut parsed.peptide.1 {
-                *pep = PeptideModificationSearch::in_modifications(ptm.clone())
+                *pep = PeptideModificationSearch::in_modifications(ptm.to_vec())
                     .tolerance(mzcore::quantities::Tolerance::Absolute(mzcore::system::da(0.05)))
                     .search(pep.clone());
             }
@@ -703,9 +704,10 @@ impl PSMMetaData for PeaksPSM {
         self.de_novo_score
             .or(self.alc)
             .map(|v| (v, mzcv::term!(MS:1001153|search engine specific score)))
-            .or(self
-                .logp
-                .map(|v| (v, mzcv::term!(MS:1001143|PEAKS:peptideScore))))
+            .or_else(|| {
+                self.logp
+                    .map(|v| (v, mzcv::term!(MS:1001143|PEAKS:peptideScore)))
+            })
     }
 
     fn original_local_confidence(&self) -> Option<&[f64]> {

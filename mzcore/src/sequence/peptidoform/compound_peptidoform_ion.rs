@@ -2,6 +2,7 @@ use std::fmt::{Display, Write};
 
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
+use thin_vec::ThinVec;
 
 use crate::{
     chemistry::MolecularFormula,
@@ -147,6 +148,12 @@ impl From<PeptidoformIon> for CompoundPeptidoformIon {
 
 impl<Complexity> From<Vec<Peptidoform<Complexity>>> for CompoundPeptidoformIon {
     fn from(value: Vec<Peptidoform<Complexity>>) -> Self {
+        Self(value.into_iter().map(Into::into).collect())
+    }
+}
+
+impl<Complexity> From<ThinVec<Peptidoform<Complexity>>> for CompoundPeptidoformIon {
+    fn from(value: ThinVec<Peptidoform<Complexity>>) -> Self {
         Self(value.into_iter().map(Into::into).collect())
     }
 }
