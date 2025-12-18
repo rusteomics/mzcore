@@ -17,7 +17,7 @@ use crate::{CVData, CVSource, CVStructure, CVVersion, text::*};
 /// * From a URL [`Self::update_from_url`].
 ///
 /// Each of these stores the full data file at the default location
-/// ([`CVSource::default_stem`].[`CVSource::cv_extension`].gz). And updates the binary cache that
+/// ([`CVSource::default_stem`].[`CVFile::extension`](crate::CVFile::extension).gz). And updates the binary cache that
 /// is used as the fastest way of loading the data in [`Self::init`].
 #[derive(Debug)]
 pub struct CVIndex<CV: CVSource> {

@@ -45,7 +45,7 @@ impl<CV: CVSource> CVIndex<CV> {
     }
 
     /// Store this index in the standard cache. If the CV has
-    /// [`CV::AUTOMATICALLY_WRITE_UNCOMPRESSED`] set to true this also writes the standard file.
+    /// [`CVSource::AUTOMATICALLY_WRITE_UNCOMPRESSED`] set to true this also writes the standard file.
     /// # Errors
     /// If the file could not be written to.
     pub fn save_to_cache(&self) -> Result<(), BoxedError<'static, CVError>> {
@@ -373,7 +373,7 @@ impl<CV: CVSource> CVIndex<CV> {
     }
 
     /// Download the CV from the internet. If no overwrite URL was given it uses the default URL
-    /// ([`CVSource::cv_url`]) if both are unset it errors. It downloads and compresses this file
+    /// ([`CVFile::url`](crate::CVFile::url)) if both are unset it errors. It downloads and compresses this file
     /// to the default location but with `.download` before the default extension. This then calls
     /// [`Self::update_from_path`] on the downloaded file.
     ///
@@ -381,7 +381,7 @@ impl<CV: CVSource> CVIndex<CV> {
     ///
     /// # Errors
     ///
-    /// * No URL was set with both the overwrite URL and [`CVSource::cv_url`].
+    /// * No URL was set with both the overwrite URL and ([`CVSource::files`])[`CVFile::url`](crate::CVFile::url).
     /// * The file to download to could not be made.
     /// * The file could not be downloaded or the status code of the download was not success.
     /// * The downloaded file could not be written to disk.

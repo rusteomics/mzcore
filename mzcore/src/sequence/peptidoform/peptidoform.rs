@@ -32,18 +32,26 @@ use crate::{
 /// [typestate](https://willcrichton.net/rust-api-type-patterns/typestate.html) API.
 ///
 /// The following features are controlled by the complexity parameter:
-/// * Cross-links, inter/intra cross-links or branches, only allowed with complexity [`Linked`]
-/// * Labile modifications, allowed with complexity [`Linear`] and upwards
-/// * Global isotope modifications, allowed with complexity [`Linear`] and upwards
-/// * Charge carriers, allowed with complexity [`Linear`] and upwards
-/// * Ambiguous modifications, allowed with complexity [`SimpleLinear`] and upwards
-/// * Ambiguous amino acid sequence `(?AA)`, allowed with complexity [`SimpleLinear`] and upwards
-/// * Ambiguous amino acids (B/Z), allowed with complexity [`SemiAmbiguous`] and upwards
+/// * Cross-links, inter/intra cross-links or branches, only allowed with complexity [`Linked`].
+/// * Labile modifications, allowed with complexity [`Linear`] and upwards.
+/// * Global isotope modifications, allowed with complexity [`Linear`] and upwards.
+/// * Charge carriers, allowed with complexity [`Linear`] and upwards.
+/// * Ambiguous modifications, allowed with complexity [`SimpleLinear`] and upwards.
+/// * Ambiguous amino acid sequence `(?AA)`, allowed with complexity [`SimpleLinear`] and upwards.
+/// * Ambiguous amino acids (B/Z), allowed with complexity [`SemiAmbiguous`] and upwards.
 ///
 /// The following features are always allowed:
 /// * N and C terminal modifications (although cross-linkers are only allowed with [`Linked`])
 /// * The use of non-standard amino acids that have one chemical formula (J/X/U/O)
 /// * [Modification](SimpleModification)s on amino acids
+///
+/// When parsing a peptidoform (with [`Self::pro_forma`] or [`Self::pro_forma_inner`] if the ProForma
+/// definition is part of a bigger structure) a [`Peptidoform<Linked>`] is always returned. If
+/// this is contains too much complexity for the application the complexity can be checked by using
+/// [`Self::is_linear`] (and related methods) to convert the peptidoform into an owned version. Or
+/// [`Self::as_linear`] (and related methods) to get a reference to a lower complexity level. If a
+/// peptidoform is at a lower complexity level than needed [`Into::into`] and [`AsRef::as_ref`] can
+/// be used to get back to a higher complexity level.
 ///
 /// ## Cross-links
 /// Cross-links either bind together two separate peptides or form a loop within a single peptide.

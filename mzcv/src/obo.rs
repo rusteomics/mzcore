@@ -54,7 +54,7 @@ pub struct OboStanza {
 pub struct OboIdentifier(pub Option<Box<str>>, pub Box<str>);
 
 impl OboIdentifier {
-    /// Create a new [`OboIdent`]
+    /// Create a new identifier
     pub const fn new(namespace: Option<Box<str>>, identifier: Box<str>) -> Self {
         Self(namespace, identifier)
     }
