@@ -293,7 +293,7 @@ impl<'a> IntoParallelIterator for &'a Chain {
 }
 
 /// Intermediate representation for germline
-#[derive(Clone, Debug, Decode, Deserialize, Encode, Serialize)]
+#[derive(Clone, Debug, Decode, Deserialize, Encode, Eq, PartialEq, Serialize)]
 pub struct Germline {
     /// The species for this germline
     pub species: Species,
@@ -347,7 +347,7 @@ impl<'a> IntoParallelIterator for &'a Germline {
 }
 
 /// Intermediate representation for annotated sequence
-#[derive(Clone, Debug, Decode, Deserialize, Encode, Serialize)]
+#[derive(Clone, Debug, Decode, Deserialize, Encode, Eq, PartialEq, Serialize)]
 pub struct AnnotatedSequence {
     /// The sequence
     pub sequence: Peptidoform<UnAmbiguous>,

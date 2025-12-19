@@ -688,7 +688,7 @@ impl mzcore::space::Space for PSMData {
 }
 
 /// The definition of all special metadata for all types of Proteins that can be read
-#[derive(Clone, Debug, serde::Deserialize, serde::Serialize)]
+#[derive(Clone, Debug, serde::Deserialize, PartialEq, serde::Serialize)]
 pub enum ProteinData {
     /// No protein
     NoProtein(NoProtein),

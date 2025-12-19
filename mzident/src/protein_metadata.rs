@@ -179,7 +179,9 @@ impl ProteinMetaData for Box<dyn ProteinMetaData + '_> {
 }
 
 /// A basic type to use a placeholder when a PSM format does not contain any protein level information.
-#[derive(Clone, Copy, Debug, Default, serde::Deserialize, serde::Serialize)]
+#[derive(
+    Clone, Copy, Debug, Default, serde::Deserialize, serde::Serialize, PartialEq, Eq, Hash,
+)]
 pub struct NoProtein {}
 
 impl mzcore::space::Space for NoProtein {

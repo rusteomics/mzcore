@@ -89,10 +89,9 @@ impl<W: Write> MzTabWriter<W, Initial> {
     /// An [`MSRun`] has to be given for all PSMs that are [`SpectrumIds::FileNotKnown`] to still point to the correct location.
     /// # Errors
     /// If writing to the underlying writer failed.
-    pub fn write<PSM: PSMMetaData, Protein: ProteinMetaData>(
+    pub fn write<PSM: PSMMetaData>(
         writer: W,
         header: &[(String, String)],
-        proteins: &[Protein], // TODO: get from the PSMs
         psms: &[PSM],
         unknown_file_run: MSRun,
     ) -> Result<(), std::io::Error> {
@@ -116,12 +115,17 @@ impl<W: Write> MzTabWriter<W, Initial> {
                 fragmentation_method: None,
             })
             .collect::<Vec<_>>();
+        let proteins = psms
+            .iter()
+            .flat_map(|p| p.proteins().into_owned())
+            .unique_by(|p| p.id().accession().to_string())
+            .collect::<Vec<PSM::Protein>>();
         if unknown {
             ms_runs.insert(0, unknown_file_run);
         }
         let protein_search_engines = proteins
             .iter()
-            .flat_map(|p| p.search_engine())
+            .flat_map(ProteinMetaData::search_engine)
             .filter_map(|p| p.1.as_ref().map(|(_, t)| t.term.clone()))
             .unique()
             .collect::<Vec<_>>();
@@ -135,7 +139,7 @@ impl<W: Write> MzTabWriter<W, Initial> {
         match if proteins.is_empty() {
             writer.write_psms(psms)
         } else {
-            let writer = writer.write_proteins(proteins)?;
+            let writer = writer.write_proteins(&proteins)?;
             writer.write_psms(psms)
         } {
             Ok(_) => Ok(()),
@@ -286,13 +290,9 @@ impl<W: Write, State: CanWriteProteins> MzTabWriter<W, State> {
                                         SequencePosition::Index(i) => 1 + i,
                                         SequencePosition::CTerm => usize::MAX,
                                     };
-                                    if let Some(score) = score {
-                                        format!(
+                                    score.as_ref().map_or_else(|| i.to_string(), |score| format!(
                                             "{i}[MS, MS:1001876, modification probability, {score}]"
-                                        )
-                                    } else {
-                                        i.to_string()
-                                    }
+                                        ))
                                 })
                                 .join("|"),
                             make_mztab_mod(m)
@@ -503,11 +503,8 @@ impl<W: Write, State: CanWritePSMs> MzTabWriter<W, State> {
                         unique = psm
                             .unique()
                             .map_or_else(|| "null".to_string(), |d| d.to_string()),
-                        database = psm.database().map_or_else(|| "null", |d| d.0),
-                        database_version = psm
-                            .database()
-                            .and_then(|d| d.1)
-                            .map_or_else(|| "null", |d| d),
+                        database = psm.database().map_or("null", |d| d.0),
+                        database_version = psm.database().and_then(|d| d.1).unwrap_or("null"),
                         search_engine = psm.search_engine().map_or_else(
                             || "null".to_string(),
                             |d| format!(
@@ -668,7 +665,7 @@ impl<W: Write, State: CanWritePSMs> MzTabWriter<W, State> {
                             Some(crate::Reliability::Poor) => "3",
                             None => "null",
                         },
-                        uri = psm.uri().map_or_else(|| "null".to_string(), |r| r),
+                        uri = psm.uri().unwrap_or_else(|| "null".to_string()),
                     )?;
                 }
                 first_peptidoform = false;
@@ -690,7 +687,6 @@ mod tests {
     use std::io::BufWriter;
 
     use crate::{
-        MzTabProtein,
         mztab_writer::{MSRun, MzTabWriter},
         open_psm_file,
     };
@@ -714,9 +710,8 @@ mod tests {
                 let new_path = std::path::Path::new("src/test_files_out")
                     .join(entry.path().with_extension("mzTab").file_name().unwrap());
 
-                MzTabWriter::write::<_, MzTabProtein>(
+                MzTabWriter::write(
                     BufWriter::new(std::fs::File::create(&new_path).unwrap()),
-                    &[],
                     &[],
                     &psms,
                     MSRun::default(),

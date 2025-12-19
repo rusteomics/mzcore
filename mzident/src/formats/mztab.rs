@@ -1526,7 +1526,7 @@ impl From<MzTabPSM> for PSM<SimpleLinear, MaybePeptidoform> {
 }
 
 /// A CV term
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
 pub struct CVTerm {
     /// The term
     pub term: Term,
@@ -1655,7 +1655,7 @@ impl FromStr for CVTerm {
 
 /// The reliability of a PSM
 #[expect(missing_docs)]
-#[derive(Clone, Copy, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
+#[derive(Clone, Copy, Debug, Default, Deserialize, Eq, Hash, PartialEq, Serialize)]
 pub enum Reliability {
     High,
     Medium,
