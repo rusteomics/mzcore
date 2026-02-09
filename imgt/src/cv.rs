@@ -42,8 +42,8 @@ impl CVSource for IMGT {
         &[CVFile {
             name: "IMGT",
             extension: "dat",
-            url: None, // TODO: Uses .Z compression and so cannot automatically be processed
-            compression: mzcv::CVCompression::None,
+            url: Some("https://imgt.org/download/LIGM-DB/imgt.dat.Z"),
+            compression: mzcv::CVCompression::Lzw,
         }]
     }
 

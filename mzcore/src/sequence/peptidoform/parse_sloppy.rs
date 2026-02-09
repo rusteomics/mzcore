@@ -39,23 +39,47 @@ impl Peptidoform<SemiAmbiguous> {
     /// # Errors
     /// If both parsers fail. It returns an error that combines the feedback from both parsers.
     pub fn pro_forma_or_sloppy<'a>(
+        base_context: &Context<'a>,
         line: &'a str,
         range: std::ops::Range<usize>,
         ontologies: &Ontologies,
         parameters: &SloppyParsingParameters,
     ) -> Result<Self, BoxedError<'a, BasicKind>> {
-        Peptidoform::pro_forma(&line[range.clone()], ontologies).map(|(a, _)| a).map_err(|errs| BoxedError::new(BasicKind::Error, "Invalid ProForma definition", "The string could not be parsed as a ProForma definition", Context::line_range(None, line, range.clone())).add_underlying_errors(errs)).and_then(|p| p.into_semi_ambiguous().ok_or_else(||
+        Peptidoform::pro_forma_inner(base_context, line, range.clone(), ontologies).map(|(a, _)| a).map_err(|errs| BoxedError::new(BasicKind::Error, "Invalid ProForma definition", "The string could not be parsed as a ProForma definition", Context::line_range(None, line, range.clone())).add_underlying_errors(errs)).and_then(|p| p.into_semi_ambiguous().ok_or_else(||
             BoxedError::new(BasicKind::Error,
                 "Peptidoform too complex",
                 "A peptidoform as used here should not contain any complex parts of the ProForma specification, only amino acids and simple placed modifications are allowed",
-                Context::line_range(None, line, range.clone()),
+                base_context.clone().add_highlight((0, range.clone())),
             ))).or_else(|pro_forma_error|
-                Self::sloppy_pro_forma(line, range.clone(), ontologies, parameters)
+                Self::sloppy_pro_forma_inner(base_context, line, range.clone(), ontologies, parameters)
                 .map_err(|sloppy_error|
                     BoxedError::new(BasicKind::Error,
                         "Invalid peptidoform",
                         "The sequence could not be parsed as a ProForma nor as a more loosly defined peptidoform, see the underlying errors for details",
-                        Context::line_range(None, line, range.clone())).add_underlying_errors(vec![pro_forma_error, sloppy_error])))
+                        base_context.clone().add_highlight((0, range.clone())),).add_underlying_errors(vec![pro_forma_error, sloppy_error])))
+    }
+
+    /// Read sloppy ProForma like sequences. Defined by the use of square or round braces to indicate
+    /// modifications and missing any particular method of defining the N or C terminal modifications.
+    /// Additionally, any underscores will be ignored both on the ends and inside the sequence.
+    ///
+    /// All modifications follow the same definitions as the strict ProForma syntax, if it cannot be
+    /// parsed as a strict ProForma modification it falls back to [`Modification::sloppy_modification`].
+    ///
+    /// # Errors
+    /// If it does not fit the above description.
+    pub fn sloppy_pro_forma<'a>(
+        value: &'a str,
+        ontologies: &Ontologies,
+        parameters: &SloppyParsingParameters,
+    ) -> Result<Self, BoxedError<'a, BasicKind>> {
+        Self::sloppy_pro_forma_inner(
+            &Context::none().lines(0, value),
+            value,
+            0..value.len(),
+            ontologies,
+            parameters,
+        )
     }
 
     /// Read sloppy ProForma like sequences. Defined by the use of square or round braces to indicate
@@ -68,23 +92,24 @@ impl Peptidoform<SemiAmbiguous> {
     /// # Errors
     /// If it does not fit the above description.
     #[expect(clippy::missing_panics_doc)] // Cannot panic
-    pub fn sloppy_pro_forma<'a>(
+    pub fn sloppy_pro_forma_inner<'a>(
+        base_context: &Context<'a>,
         line: &'a str,
-        location: std::ops::Range<usize>,
+        range: std::ops::Range<usize>,
         ontologies: &Ontologies,
         parameters: &SloppyParsingParameters,
     ) -> Result<Self, BoxedError<'a, BasicKind>> {
-        if line[location.clone()].trim().is_empty() {
+        if line[range.clone()].trim().is_empty() {
             return Err(BoxedError::new(
                 BasicKind::Error,
                 "Peptide sequence is empty",
                 "A peptide sequence cannot be empty",
-                Context::line(None, line, location.start, 1),
+                base_context.clone().add_highlight((0, range.start, 1)),
             ));
         }
 
         let mut peptide = Self::default();
-        let chars: &[u8] = line[location.clone()].as_bytes();
+        let chars: &[u8] = line[range.clone()].as_bytes();
         peptide
             .sequence_mut()
             .reserve(chars.iter().map(u8::is_ascii_uppercase).count()); // Reserve approximately the right length for the vector, this will overestimate in some cases but not by a lot
@@ -100,19 +125,20 @@ impl Peptidoform<SemiAmbiguous> {
                     } else {
                         (b'(', b')')
                     };
-                    let end_index =
-                        end_of_enclosure(&line[location.clone()], index + 1, open, close)
-                            .ok_or_else(|| {
-                                BoxedError::new(
-                                    BasicKind::Error,
-                                    "Invalid modification",
-                                    "No valid closing delimiter",
-                                    Context::line(None, line, location.start + index, 1),
-                                )
-                            })?;
+                    let end_index = end_of_enclosure(&line[range.clone()], index + 1, open, close)
+                        .ok_or_else(|| {
+                            BoxedError::new(
+                                BasicKind::Error,
+                                "Invalid modification",
+                                "No valid closing delimiter",
+                                base_context
+                                    .clone()
+                                    .add_highlight((0, range.start + index, 1)),
+                            )
+                        })?;
                     let modification = Modification::sloppy_modification(
                         line,
-                        location.start + index + 1..location.start + end_index,
+                        range.start + index + 1..range.start + end_index,
                         peptide.sequence().last(),
                         ontologies,
                     )
@@ -155,7 +181,7 @@ impl Peptidoform<SemiAmbiguous> {
                     }
                 }
                 _ if parameters.mod_indications.0.is_some_and(|pattern| {
-                    line[location.start + index..location.end].starts_with(pattern)
+                    line[range.start + index..range.end].starts_with(pattern)
                 }) =>
                 {
                     index += parameters
@@ -176,7 +202,11 @@ impl Peptidoform<SemiAmbiguous> {
                                     BasicKind::Error,
                                     "Invalid mod indication",
                                     "There is no given mod for this amino acid.",
-                                    Context::line(None, line, location.start + index - 4, 4),
+                                    base_context.clone().add_highlight((
+                                        0,
+                                        range.start + index - 4,
+                                        4,
+                                    )),
                                 )
                             })?,
                         None => {
@@ -184,7 +214,9 @@ impl Peptidoform<SemiAmbiguous> {
                                 BasicKind::Error,
                                 "Invalid mod indication",
                                 "A mod indication should always follow an amino acid.",
-                                Context::line(None, line, location.start + index - 3, 3),
+                                base_context
+                                    .clone()
+                                    .add_highlight((0, range.start + index - 3, 3)),
                             ));
                         }
                     }
@@ -198,13 +230,13 @@ impl Peptidoform<SemiAmbiguous> {
                         .take_while(|c| c.is_ascii_digit() || **c == b'.')
                         .count();
                     let modification = SimpleModificationInner::Mass(MassTag::None, Mass::new::<crate::system::dalton>(
-                        line[location.start + index..location.start + index + length]
+                        line[range.start + index..range.start + index + length]
                         .parse::<f64>()
                         .map_err(|err|
                             BoxedError::new(BasicKind::Error,
                                 "Invalid mass shift modification",
                                 format!("Mass shift modification must be a valid number but this number is invalid: {err}"),
-                                Context::line(None, line, location.start + index, length))
+                                base_context.clone().add_highlight((0, range.start + index, length)))
                             )?).into(), None).into();
                     match peptide.sequence_mut().last_mut() {
                         Some(aa) => aa.modifications.push(Modification::Simple(modification)),
@@ -228,7 +260,9 @@ impl Peptidoform<SemiAmbiguous> {
                                     BasicKind::Error,
                                     "Invalid amino acid",
                                     "This character is not a valid amino acid",
-                                    Context::line(None, line, location.start + index, 1),
+                                    base_context
+                                        .clone()
+                                        .add_highlight((0, range.start + index, 1)),
                                 )
                             })?,
                             None,
@@ -243,21 +277,18 @@ impl Peptidoform<SemiAmbiguous> {
                 BasicKind::Error,
                 "Peptide sequence is empty",
                 "A peptide sequence cannot be empty",
-                Context::line(None, line, location.start, location.len()),
+                base_context.clone().add_highlight((0, range.clone())),
             ));
         }
-        let warnings = peptide.enforce_modification_rules_with_context(&Context::line(
-            None,
-            line,
-            location.start,
-            location.len(),
-        ));
+        let warnings = peptide.enforce_modification_rules_with_context(
+            &base_context.clone().add_highlight((0, range.clone())),
+        );
         if !warnings.is_empty() {
             return Err(BoxedError::new(
                 BasicKind::Error,
                 "Invalid modifications",
                 "Modifications are only allowed on the places as defined in the database",
-                Context::line(None, line, location.start, location.len()),
+                base_context.clone().add_highlight((0, range.clone())),
             )
             .add_underlying_errors(warnings));
         }

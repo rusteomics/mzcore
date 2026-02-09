@@ -4,7 +4,7 @@ use rayon::prelude::*;
 use std::collections::HashSet;
 
 use mzcore::sequence::{
-    AnnotatedPeptide, Annotation, HasPeptidoformImpl, Peptidoform, Region, UnAmbiguous,
+    AnnotatedPeptidoform, Annotation, HasPeptidoformImpl, Peptidoform, Region, UnAmbiguous,
 };
 
 pub(super) use super::*;
@@ -185,7 +185,7 @@ impl HasPeptidoformImpl for Allele<'_> {
     }
 }
 
-impl AnnotatedPeptide for Allele<'_> {
+impl AnnotatedPeptidoform for Allele<'_> {
     fn annotations(&self) -> &[(Annotation, usize)] {
         self.annotations
     }

@@ -93,7 +93,8 @@ format_family!(
         score_forward: f64, |location: Location, _| location.parse::<f64>(NUMBER_ERROR);
         ppm_diff_forward: Ratio, |location: Location, _| location.parse::<f64>(NUMBER_ERROR).map(Ratio::new::<mzcore::system::ratio::ppm>);
         peptide_forward: Option<Peptidoform<SemiAmbiguous>>, |location: Location, ontologies: &Ontologies|
-            location.trim_start_matches("['").trim_end_matches("']").or_empty().map(|location| Peptidoform::sloppy_pro_forma(
+            location.trim_start_matches("['").trim_end_matches("']").or_empty().map(|location| Peptidoform::sloppy_pro_forma_inner(
+                &location.base_context(),
                 location.full_line(),
                 location.location.clone(),
                 ontologies,
@@ -103,7 +104,8 @@ format_family!(
         score_reverse: f64, |location: Location, _| location.parse::<f64>(NUMBER_ERROR);
         ppm_diff_reverse: Ratio, |location: Location, _| location.parse::<f64>(NUMBER_ERROR).map(Ratio::new::<mzcore::system::ratio::ppm>);
         peptide_reverse: Option<Peptidoform<SemiAmbiguous>>, | location: Location, ontologies: &Ontologies|
-            location.trim_start_matches("['").trim_end_matches("']").or_empty().map(|location| Peptidoform::sloppy_pro_forma(
+            location.trim_start_matches("['").trim_end_matches("']").or_empty().map(|location| Peptidoform::sloppy_pro_forma_inner(
+                &location.base_context(),
                 location.full_line(),
                 location.location.clone(),
                 ontologies,

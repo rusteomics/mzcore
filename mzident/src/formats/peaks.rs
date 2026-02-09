@@ -57,7 +57,8 @@ format_family!(
                         Context::line(Some(location.line.line_index() as u32), location.full_line(), location.location.end-1, location.location.end).to_owned()))).transpose()?;
 
             if c_flanking.is_none() && n_flanking.is_none() {
-                location.array(';').map(|l| Peptidoform::sloppy_pro_forma(
+                location.array(';').map(|l| Peptidoform::sloppy_pro_forma_inner(
+                    &l.base_context(),
                     l.full_line(),
                     l.location.clone(),
                     ontologies,
@@ -66,7 +67,8 @@ format_family!(
                 .collect::<Result<ThinVec<_>,_>>()
                 .map(|sequences| (FlankingSequence::Unknown, sequences, FlankingSequence::Unknown))
             } else {
-                Peptidoform::sloppy_pro_forma(
+                Peptidoform::sloppy_pro_forma_inner(
+                    &location.base_context(),
                     location.full_line(),
                     n_flanking.map_or(location.location.start, |_| location.location.start+2)..c_flanking.map_or(location.location.end, |_| location.location.end-2),
                     ontologies,

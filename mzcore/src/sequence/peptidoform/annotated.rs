@@ -1,11 +1,17 @@
-use crate::{sequence::HasPeptidoformImpl, space::UsedSpace};
+use std::ops::Bound;
 
-/// An annotated peptide
-pub trait AnnotatedPeptide: HasPeptidoformImpl {
+use crate::{
+    prelude::Peptidoform,
+    sequence::{AtMax, HasPeptidoformImpl, Linear},
+    space::UsedSpace,
+};
+
+/// An annotated peptidoform
+pub trait AnnotatedPeptidoform: HasPeptidoformImpl {
     /// Get the regions, as a list of the regions in order with the length of each region, these are
-    /// required to be as long as the full peptide.
+    /// required to be as long as the full peptidoform.
     fn regions(&self) -> &[(Region, usize)];
-    /// Get the annotations, specified as the annotation and the into the peptide where it is
+    /// Get the annotations, specified as the annotation and the into the peptidoform where it is
     /// located.
     fn annotations(&self) -> &[(Annotation, usize)];
 
@@ -33,6 +39,72 @@ pub trait AnnotatedPeptide: HasPeptidoformImpl {
             .iter()
             .filter(move |a| a.1 == index)
             .map(|a| &a.0)
+    }
+
+    /// Get a sub peptidoform from this annotated peptidoform. It returns None if the range is outside of bounds of the sequence.
+    fn sub_peptidoform(
+        &self,
+        range: impl std::ops::RangeBounds<usize> + Clone,
+    ) -> Option<(
+        Peptidoform<Self::Complexity>,
+        Vec<(Region, usize)>,
+        Vec<(Annotation, usize)>,
+    )>
+    where
+        Self::Complexity: AtMax<Linear>,
+    {
+        self.peptidoform()
+            .sub_peptidoform(range.clone())
+            .map(|peptidoform| {
+                let start = match range.start_bound() {
+                    Bound::Excluded(e) => e + 1,
+                    Bound::Included(i) => *i,
+                    Bound::Unbounded => 0,
+                };
+                let end = match range.end_bound() {
+                    Bound::Excluded(e) => e - 1,
+                    Bound::Included(i) => *i,
+                    Bound::Unbounded => 0,
+                };
+                let mut index = 0;
+                let mut regions = Vec::new();
+
+                for (r, len) in self.regions() {
+                    if index + len < start {
+                        // Do nothing
+                    } else if index < start && index + len > start {
+                        if index + len > end {
+                            regions.push((r.clone(), end - start));
+                            break;
+                        } else {
+                            regions.push((r.clone(), index + len - start));
+                        }
+                    } else if index + len <= end {
+                        regions.push((r.clone(), *len));
+                    } else {
+                        regions.push((r.clone(), len - (index + len - start)));
+                        break;
+                    }
+                    index += len;
+                }
+
+                let res: (
+                    Peptidoform<<Self as HasPeptidoformImpl>::Complexity>,
+                    Vec<(Region, usize)>,
+                    Vec<(Annotation, usize)>,
+                ) = (
+                    peptidoform,
+                    regions,
+                    self.annotations()
+                        .iter()
+                        .filter(|(_, i)| range.contains(i))
+                        .cloned()
+                        .collect(),
+                );
+
+                debug_assert_eq!(res.0.len(), res.1.iter().map(|(_, l)| l).sum::<usize>());
+                res
+            })
     }
 }
 

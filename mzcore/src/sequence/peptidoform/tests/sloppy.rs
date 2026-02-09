@@ -67,7 +67,6 @@ fn sloppy_msfragger() {
     assert_eq!(
         Peptidoform::<SemiAmbiguous>::sloppy_pro_forma(
             "n[211]GC[779]RQSSEEK",
-            0..20,
             &crate::ontology::STATIC_ONTOLOGIES,
             &SloppyParsingParameters {
                 ignore_prefix_lowercase_n: true,

@@ -7,7 +7,7 @@ authors.workspace = true
 publish = false
 
 [dependencies]
-mzcv = { path = "../mzcv" }
+mzcv = { path = "../mzcv", features=["http"] }
 imgt = { path = "../imgt", features = [
     "internal-no-data",
 ] }

@@ -1,7 +1,7 @@
 use crate::*;
 use imgt::*;
 use mzcore::sequence::{
-    AnnotatedPeptide, AtMax, HasPeptidoform, Linear, Peptidoform, Region, UnAmbiguous,
+    AnnotatedPeptidoform, AtMax, HasPeptidoform, Linear, Peptidoform, Region, UnAmbiguous,
 };
 use mzcv::CVIndex;
 use std::collections::HashSet;
@@ -77,7 +77,8 @@ impl<A: AtMax<Linear>> ConsecutiveAlignment<'_, A> {
                         .1
                         .seq_b()
                         .cast_peptidoform()
-                        .sub_peptide(first.0..=last.1),
+                        .sub_peptidoform(first.0..=last.1)
+                        .unwrap(),
                     region.clone(),
                 )
             })
@@ -129,7 +130,7 @@ pub fn consecutive_align<'imgt, const STEPS: u16, A: HasPeptidoform<Linear> + Eq
                 |last| {
                     prev += last.1.start_b() + last.1.len_b();
                     (
-                        sequence.cast_peptidoform().sub_peptide(prev..),
+                        sequence.cast_peptidoform().sub_peptidoform(prev..).unwrap(),
                         Some(std::iter::once(last.0.species).collect()),
                         Some(std::iter::once(last.0.gene.chain).collect()),
                     )
@@ -216,7 +217,7 @@ pub fn par_consecutive_align<
                 |last| {
                     prev += last.1.start_b() + last.1.len_b();
                     (
-                        sequence.cast_peptidoform().sub_peptide(prev..),
+                        sequence.cast_peptidoform().sub_peptidoform(prev..).unwrap(),
                         Some(std::iter::once(last.0.species).collect()),
                         Some(std::iter::once(last.0.gene.chain).collect()),
                     )

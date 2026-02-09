@@ -6,7 +6,6 @@ fn main() {
         if let Ok(s) = std::str::from_utf8(data) {
             let _unused = mzcore::sequence::Peptidoform::sloppy_pro_forma(
                 s,
-                0..s.len(),
                 &mzcore::ontology::STATIC_ONTOLOGIES,
                 &mzcore::sequence::SloppyParsingParameters::default(),
             );

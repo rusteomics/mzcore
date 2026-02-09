@@ -287,11 +287,7 @@ fn parse_gnome(obo: OboOntology) -> HashMap<Box<str>, GNOmeModification> {
                             None
                         }
                         Err(e) => {
-                            combine_errors(
-                                &mut errors,
-                                e.into_iter().map(BoxedError::to_owned),
-                                (),
-                            );
+                            combine_errors(&mut errors, e.into_iter().map(BoxedError::to_owned));
                             None
                         }
                     }

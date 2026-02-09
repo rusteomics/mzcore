@@ -78,7 +78,6 @@ impl Peptidoform<Linked> {
                     "A linear peptidoform was expected but a cross linked peptidoform ion was found.",
                     base_context.clone().add_highlight((0, range)),
                 ),
-                (),
             );
             Err(warnings)
         }
@@ -127,7 +126,6 @@ impl PeptidoformIon {
                     "A peptide ion was expected but chimeric peptidoforms were found.",
                     base_context.clone().add_highlight((0, range)),
                 ),
-                (),
             );
             Err(warnings)
         }
@@ -252,7 +250,6 @@ impl CompoundPeptidoformIon {
                     "The peptide definition is empty",
                     base_context.clone().add_highlight((0, range)),
                 ),
-                (),
             );
             Err(errors)
         } else {
@@ -301,7 +298,6 @@ impl CompoundPeptidoformIon {
                         "There is an invalid global isotope modification",
                         base_context.clone().add_highlight((0, range.clone())),
                     ),
-                    (),
                 );
             } else if result.peptide.is_empty() {
                 combine_error(
@@ -312,7 +308,6 @@ impl CompoundPeptidoformIon {
                         "The peptidoform definition is empty",
                         base_context.clone().add_highlight((0, range)),
                     ),
-                    (),
                 );
                 return Err(errors);
             }
@@ -336,7 +331,6 @@ impl CompoundPeptidoformIon {
                     "The peptidoform definition is empty",
                     base_context.clone().add_highlight((0, range)),
                 ),
-                (),
             );
             Err(errors)
         } else {
@@ -450,7 +444,6 @@ impl CompoundPeptidoformIon {
                                 "Ambiguous amino acid sets cannot be nested within ranged ambiguous modifications",
                                 base_context.clone().add_highlight((0, index, 1)),
                             ),
-                            (),
                         );
                         return Err(errors);
                     }
@@ -463,7 +456,6 @@ impl CompoundPeptidoformIon {
                                 "Ambiguous amino acid sets cannot be nested within ambiguous amino acid sets",
                                 base_context.clone().add_highlight((0, index, 1)),
                             ),
-                            (),
                         );
                         return Err(errors);
                     }
@@ -488,7 +480,6 @@ impl CompoundPeptidoformIon {
                                 "Ranged ambiguous modifications cannot be nested within ranged ambiguous modifications",
                                 base_context.clone().add_highlight((0, index, 1)),
                             ),
-                            (),
                         );
                         return Err(errors);
                     }
@@ -501,7 +492,6 @@ impl CompoundPeptidoformIon {
                                 "Ranged ambiguous modifications cannot be nested within ambiguous amino acid sets",
                                 base_context.clone().add_highlight((0, index, 1)),
                             ),
-                            (),
                         );
                         return Err(errors);
                     }
@@ -521,7 +511,6 @@ impl CompoundPeptidoformIon {
                                     .clone()
                                     .add_highlight((0, index - 1..index + 2)),
                             ),
-                            (),
                         );
                         return Err(errors);
                     }
@@ -703,7 +692,6 @@ impl CompoundPeptidoformIon {
                                 "Use uppercase for amino acids",
                                 base_context.clone().add_highlight((0, index, 1)),
                             ),
-                            (),
                         );
                     }
                     index += 1;
@@ -801,7 +789,6 @@ impl CompoundPeptidoformIon {
                             ),
                             base_context.clone().add_highlight((0, range.clone())),
                         ),
-                        (),
                     );
                 }
             } else {
@@ -816,7 +803,6 @@ impl CompoundPeptidoformIon {
                         ),
                         base_context.clone().add_highlight((0, range.clone())),
                     ),
-                    (),
                 );
             }
         }
@@ -824,17 +810,16 @@ impl CompoundPeptidoformIon {
         if let Err(errs) = peptide
             .apply_unknown_position_modification(&unknown_position_modifications, &ambiguous_lookup)
         {
-            combine_errors(&mut errors, errs, ());
+            combine_errors(&mut errors, errs);
         }
         if let Err(errs) = peptide
             .apply_ranged_unknown_position_modification(&ranged_unknown_position_modifications)
         {
-            combine_errors(&mut errors, errs, ());
+            combine_errors(&mut errors, errs);
         }
         combine_errors(
             &mut errors,
             peptide.enforce_modification_rules_with_context(base_context),
-            (),
         );
 
         if errors.iter().any(|e| e.get_kind().is_error(())) {
@@ -939,7 +924,6 @@ pub(super) fn global_modifications<'a, const STRICT: bool>(
                     "A global modification should be closed with a closing angle bracket '>'",
                     base_context.clone().add_highlight((0, index, 1)),
                 ),
-                (),
             );
             return Err(errors);
         };
@@ -960,7 +944,6 @@ pub(super) fn global_modifications<'a, const STRICT: bool>(
                             at_index - start_index - 1,
                         )),
                     ),
-                    (),
                 );
                 continue;
             }
@@ -977,7 +960,6 @@ pub(super) fn global_modifications<'a, const STRICT: bool>(
                             at_index - start_index - 2,
                         )),
                     ),
-                    (),
                 );
                 continue;
             }
@@ -1012,7 +994,7 @@ pub(super) fn global_modifications<'a, const STRICT: bool>(
             let rules = match parse_placement_rules(base_context, line, at_index..end_index) {
                 Ok(rules) => rules,
                 Err(err) => {
-                    combine_error(&mut errors, err, ());
+                    combine_error(&mut errors, err);
                     continue;
                 }
             };
@@ -1044,7 +1026,6 @@ pub(super) fn global_modifications<'a, const STRICT: bool>(
                             end_index - (start_index + 1 + num.len()),
                         )),
                     ),
-                    (),
                 );
                 continue;
             };
@@ -1063,7 +1044,6 @@ pub(super) fn global_modifications<'a, const STRICT: bool>(
                                 end_index - start_index,
                             )),
                         ),
-                        (),
                     );
                     continue;
                 }
@@ -1086,7 +1066,6 @@ pub(super) fn global_modifications<'a, const STRICT: bool>(
                             end_index - start_index,
                         )),
                     ),
-                    (),
                 );
             }
         }
@@ -1197,19 +1176,19 @@ pub(super) fn global_unknown_position_mods<'a, const STRICT: bool>(
             ontologies,
         ) {
             Ok(((ReturnModification::Defined(m), settings), warnings)) => {
-                combine_errors(&mut errs, warnings, ());
+                combine_errors(&mut errs, warnings);
                 let id = ambiguous_lookup.len();
                 ambiguous_lookup.push(AmbiguousLookupEntry::new(format!("u{id}"), Some(m)));
                 ambiguous_lookup[id].copy_settings(&settings);
                 id
             }
             Ok(((ReturnModification::Ambiguous(id, _, _), settings), warnings)) => {
-                combine_errors(&mut errs, warnings, ());
+                combine_errors(&mut errs, warnings);
                 ambiguous_lookup[id].copy_settings(&settings);
                 id
             }
             Ok(((ReturnModification::CrossLinkReferenced(_), _), warnings)) => {
-                combine_errors(&mut errs, warnings, ());
+                combine_errors(&mut errs, warnings);
                 errs.push(BoxedError::new(
                     BasicKind::Error,
                     "Invalid unknown position modification",
@@ -1221,7 +1200,7 @@ pub(super) fn global_unknown_position_mods<'a, const STRICT: bool>(
                 continue;
             }
             Err(e) => {
-                combine_errors(&mut errs, e, ());
+                combine_errors(&mut errs, e);
                 continue;
             }
         };
@@ -1305,7 +1284,6 @@ fn labile_modifications<'a, const STRICT: bool>(
                     "No valid closing delimiter, a labile modification should be closed by '}'",
                     base_context.clone().add_highlight((0, index, 1)),
                 ),
-                (),
             );
             return Err(errors);
         };
@@ -1319,11 +1297,11 @@ fn labile_modifications<'a, const STRICT: bool>(
             ontologies,
         ) {
             Ok(((ReturnModification::Defined(m), _), warnings)) => {
-                combine_errors(&mut errors, warnings, ());
+                combine_errors(&mut errors, warnings);
                 labile.push(m);
             }
             Ok((_, warnings)) => {
-                combine_errors(&mut errors, warnings, ());
+                combine_errors(&mut errors, warnings);
                 combine_error(
                     &mut errors,
                     BoxedError::new(
@@ -1334,10 +1312,9 @@ fn labile_modifications<'a, const STRICT: bool>(
                             .clone()
                             .add_highlight((0, index + 1, end_index - 1 - index)),
                     ),
-                    (),
                 );
             }
-            Err(e) => combine_errors(&mut errors, e, ()),
+            Err(e) => combine_errors(&mut errors, e),
         }
         index = end_index + 1;
     }
@@ -1431,7 +1408,6 @@ pub(super) fn parse_charge_state_2_0<'a>(
                                 1,
                             )),
                         ),
-                        (),
                     );
                     return Err(errors);
                 }
@@ -1447,7 +1423,6 @@ pub(super) fn parse_charge_state_2_0<'a>(
                         "The adduct ion should have a formula defined",
                         base_context.clone().add_highlight((0, offset, set.len())),
                     ),
-                    (),
                 );
                 return Err(errors);
             }
@@ -1525,7 +1500,6 @@ pub(super) fn parse_charge_state_2_0<'a>(
                     "The peptide charge state number has to be equal to the sum of all separate adduct ions",
                     base_context.clone().add_highlight((0, index, offset)),
                 ),
-                (),
             );
             Err(errors)
         }

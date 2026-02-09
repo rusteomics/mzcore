@@ -64,7 +64,8 @@ format_family!(
                 v.context().to_owned()
             ))).collect::<Result<ThinVec<FastaIdentifier<Box<str>>>, _>>();
         /// The database matched peptide, annotated as [`SimpleLinear`] to allow replacing it with the _de novo_ peptide, no features of the [`SimpleLinear`] complexity are used for the database peptides
-        peptide: Option<Peptidoform<SimpleLinear>>, |location: Location, ontologies: &Ontologies| location.or_empty().parse_with(|location| Peptidoform::sloppy_pro_forma(
+        peptide: Option<Peptidoform<SimpleLinear>>, |location: Location, ontologies: &Ontologies| location.or_empty().parse_with(|location| Peptidoform::sloppy_pro_forma_inner(
+            &location.base_context(),
             location.full_line(),
             location.location.clone(),
             ontologies,
@@ -78,7 +79,7 @@ format_family!(
     }
     optional {
         all_modified_sequences: ThinVec<Peptidoform<SemiAmbiguous>>, |location: Location, ontologies: &Ontologies| location.array(';')
-                .map(|s| Peptidoform::sloppy_pro_forma(s.line.line(), s.location, ontologies, &SloppyParsingParameters::default()).map_err(BoxedError::to_owned))
+                .map(|s| Peptidoform::sloppy_pro_forma_inner(&s.base_context(), s.line.line(), s.location.clone(), ontologies, &SloppyParsingParameters::default()).map_err(BoxedError::to_owned))
                 .collect::<Result<ThinVec<Peptidoform<SemiAmbiguous>>, BoxedError<'static, BasicKind>>>();
         base_peak_intensity: f32, |location: Location, _| location.parse::<f32>(NUMBER_ERROR);
         collision_energy: f32, |location: Location, _| location.parse::<f32>(NUMBER_ERROR);

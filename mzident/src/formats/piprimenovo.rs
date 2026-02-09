@@ -26,7 +26,8 @@ format_family!(
     SemiAmbiguous, MaybePeptidoform, [&PIPRIMENOVO_V0_1], b'\t', None;
     required {
         title: String, |location: Location, _| Ok(location.get_string());
-        peptide: Option<Peptidoform<SemiAmbiguous>>, |location: Location, ontologies: &Ontologies| location.or_empty().map(|location| Peptidoform::sloppy_pro_forma(
+        peptide: Option<Peptidoform<SemiAmbiguous>>, |location: Location, ontologies: &Ontologies| location.or_empty().map(|location| Peptidoform::sloppy_pro_forma_inner(
+            &location.base_context(),
             location.full_line(),
             location.location.clone(),
             ontologies,

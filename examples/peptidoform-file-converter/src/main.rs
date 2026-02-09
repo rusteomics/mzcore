@@ -9,7 +9,7 @@ use std::{
 use clap::Parser;
 use context_error::{BasicKind, BoxedError, Context, CreateError, combine_error};
 use mzcore::ontology::Ontologies;
-use mzident::{FastaIdentifier, PSMMetaData, SpectrumId, SpectrumIds, open_psm_file};
+use mzident::{PSMMetaData, ProteinMetaData, SpectrumId, SpectrumIds, open_psm_file};
 
 /// The command line interface arguments
 #[allow(clippy::struct_excessive_bools)]
@@ -40,7 +40,7 @@ fn main() {
         .filter_map(|f| match f {
             Ok(v) => Some(v),
             Err(error) => {
-                combine_error(&mut errors, error, ());
+                combine_error(&mut errors, error);
                 None
             }
         })
@@ -60,9 +60,8 @@ fn main() {
     match extension.as_deref() {
         Some("csv") => save_csv(out_file, &psms, &args.in_path, args.raw_file.as_deref()),
         Some("mztab") => {
-            mzident::mztab_writer::MzTabWriter::write::<_, mzident::MzTabProtein>(
+            mzident::mztab_writer::MzTabWriter::write(
                 out_file,
-                &[],
                 &[],
                 &psms,
                 mzident::mztab_writer::MSRun {
@@ -115,7 +114,7 @@ fn save_csv<PSM: PSMMetaData>(
                             Context::default()
                                 .source(in_path.to_string_lossy())
                                 .line_index(peptidoform_index as u32),
-                        ), ());
+                        ));
                         Ok((0, PathBuf::new()))
                     }
                     })
@@ -155,8 +154,8 @@ fn save_csv<PSM: PSMMetaData>(
             .original_confidence()
             .map(|(v, _)| v)
             .unwrap_or_default();
-        let class = psm.protein_names().map_or("Unknown", |ids| {
-            if ids.iter().any(FastaIdentifier::decoy) {
+        let class = psm.proteins().iter().fold("Unkown", |acc, p| {
+            if p.id().decoy() && acc != "Target" {
                 "Decoy"
             } else {
                 "Target"

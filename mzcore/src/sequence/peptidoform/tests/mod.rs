@@ -135,7 +135,6 @@ macro_rules! parse_sloppy_test {
         fn $name() {
             let res = $crate::sequence::Peptidoform::sloppy_pro_forma(
                 $case,
-                0..$case.len(),
                 &$crate::ontology::STATIC_ONTOLOGIES,
                 &SloppyParsingParameters::default(),
             );

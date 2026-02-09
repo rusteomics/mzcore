@@ -18,7 +18,7 @@ use crate::{
 };
 use mzcore::{
     sequence::{
-        AminoAcid, AnnotatedPeptide, Annotation, CompoundPeptidoformIon, FlankingSequence,
+        AminoAcid, AnnotatedPeptidoform, Annotation, CompoundPeptidoformIon, FlankingSequence,
         HasPeptidoformImpl, Peptidoform, Region, SemiAmbiguous, SequenceElement,
     },
     system::{Mass, MassOverCharge, Time, isize::Charge},
@@ -64,7 +64,7 @@ impl HasPeptidoformImpl for &FastaData {
     }
 }
 
-impl AnnotatedPeptide for FastaData {
+impl AnnotatedPeptidoform for FastaData {
     fn regions(&self) -> &[(Region, usize)] {
         &self.regions
     }

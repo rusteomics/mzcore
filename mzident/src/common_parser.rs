@@ -411,20 +411,25 @@ impl<'a> Location<'a> {
         f(self)
     }
 
-    pub(super) fn context(&'a self) -> Context<'a> {
+    pub(super) fn base_context(&'a self) -> Context<'a> {
         let base = Context::none()
             .line_index(self.line.line_index as u32)
             .lines(0, self.full_line());
-        let base = if let Some(comment) = self.column {
-            base.add_highlight((0, self.location.clone(), comment))
-        } else {
-            base.add_highlight((0, self.location.clone()))
-        };
         if let Some(source) = &self.line.file {
             base.source(source.as_ref().as_ref())
         } else {
             base
         }
+    }
+
+    pub(super) fn context(&'a self) -> Context<'a> {
+        let base = self.base_context();
+        let base = if let Some(comment) = self.column {
+            base.add_highlight((0, self.location.clone(), comment))
+        } else {
+            base.add_highlight((0, self.location.clone()))
+        };
+        base
     }
 
     pub(super) fn trim(&self) -> Self {

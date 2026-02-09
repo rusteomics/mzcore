@@ -146,8 +146,7 @@ pub enum CVCompression {
     /// No compression
     #[default]
     None,
-    /// For LZW (.Z) compressed files like IMGT TODO: does not work yet
-    #[deprecated = "Is not implemented yet"]
+    /// For LZW (.Z) compressed files like IMGT
     Lzw,
 }
 

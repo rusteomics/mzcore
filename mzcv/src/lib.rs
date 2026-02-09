@@ -6,6 +6,7 @@ mod cv_index;
 mod cv_source;
 mod hash_buf_reader;
 mod load;
+mod lzw;
 mod obo;
 mod text;
 

@@ -33,20 +33,23 @@ format_family!(
                 let before = before.trim_start_matches("-");
                 let after = after.trim_end_matches("-");
                 Ok((
-                    (!before.is_empty()).then(|| Peptidoform::sloppy_pro_forma(
+                    (!before.is_empty()).then(|| Peptidoform::sloppy_pro_forma_inner(
+                        &location.base_context(),
                         before.full_line(),
                         before.location.clone(),
                         ontologies,
                         &SloppyParsingParameters::default(),
                     ).map_err(BoxedError::to_owned)).transpose()?
                     .map_or(FlankingSequence::Terminal, |s| FlankingSequence::Sequence(Box::new(s))),
-                    Peptidoform::sloppy_pro_forma(
+                    Peptidoform::sloppy_pro_forma_inner(
+                        &location.base_context(),
                         peptide.full_line(),
                         peptide.location.clone(),
                         ontologies,
                         &SloppyParsingParameters::default(),
                     ).map_err(BoxedError::to_owned)?,
-                    (!after.is_empty()).then(|| Peptidoform::sloppy_pro_forma(
+                    (!after.is_empty()).then(|| Peptidoform::sloppy_pro_forma_inner(
+                        &location.base_context(),
                         after.full_line(),
                         after.location.clone(),
                         ontologies,

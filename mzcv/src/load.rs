@@ -462,65 +462,38 @@ impl<CV: CVSource> CVIndex<CV> {
                             flate2::Compression::fast(),
                         );
                         std::io::copy(&mut encoder, &mut writer)
-
-                        // response
-                        // .copy_to(&mut writer)
-                        // // .map(|_| ())
-                        // .map_err(|e| e.to_string())
-
-                        // Ok(0)
                     }
                     crate::CVCompression::Lzw => {
-                        todo!()
-                        // TODO: figure out LZW decompression
-                        // LZW decompression did not work out
-                        // let mut decoder = lzw::Decoder::new(lzw::MsbReader::new(), 8);
-                        // let mut reader = BufReader::new(response);
+                        use crate::lzw::ZArchive;
 
-                        // loop {
-                        //     let len = {
-                        //         let buf = reader.fill_buf().unwrap();
-                        //         if buf.is_empty() {
-                        //             break;
-                        //         }
-                        //         let (len, bytes) = decoder.decode_bytes(buf).unwrap();
-                        //         writer.write_all(bytes).unwrap();
-                        //         len
-                        //     };
-                        //     reader.consume(len);
-                        // }
+                        let content = ZArchive::new(response).and_then(|mut a| a.read()).map_err(
+                            |e| {
+                                use crate::lzw::{self, ArchiveError};
 
-                        // Ok(())
+                                BoxedError::new(
+                                    CVError::FileCouldNotBeParsed,
+                                    "Could not decompress Lzw compression",
+                                    match e {
+                                        ArchiveError::DecompressionFailed { entry, reason } => {
+                                            format!("{entry} {reason}")
+                                        }
+                                        ArchiveError::InvalidHeader => format!(
+                                            "Invalid header, the first bytes have to be {:x}{:x}",
+                                            lzw::ID[0],
+                                            lzw::ID[1]
+                                        ),
+                                        ArchiveError::IO(io) => io.to_string(),
+                                    },
+                                    Context::none().source(url.to_string()).to_owned(),
+                                )
+                            },
+                        )?;
 
-                        // unlzw::unlzw(response, writer).unwrap();
-                        // Ok(0)\
-                        // let bytes: Vec<u32> = response
-                        //     .bytes()
-                        //     .unwrap()
-                        //     .as_chunks::<4>()
-                        //     .0
-                        //     .iter()
-                        //     .map(|bytes| u32::from_ne_bytes(*bytes))
-                        //     .collect();
-                        // let decompressed = lzw_compress::lzw::decompress(&bytes);
-                        // writer.write_all(&decompressed).unwrap();
-                        // let bytes: Vec<u32> = response
-                        //     .bytes()
-                        //     .unwrap()
-                        //     .as_chunks::<4>()
-                        //     .0
-                        //     .iter()
-                        //     .map(|bytes| u32::from_ne_bytes(*bytes))
-                        //     .collect();
-                        // let decompressed = lzw_compress::lzw::decompress(&bytes);
-                        // std::io::copy(
-                        //     &mut unlzw::LZWDecoder::new(BufReader::new(response)),
-                        //     &mut writer,
-                        // )
-                        // .map_err(|e| e.to_string())
-                        // let mut archive = unarc_rs::z::ZArchieve::new(response).unwrap();
-                        // writer.write_all(&archive.read().unwrap()).unwrap();
-                        // Ok(0)
+                        let mut encoder = flate2::bufread::GzEncoder::new(
+                            BufReader::new(content.as_slice()),
+                            flate2::Compression::fast(),
+                        );
+                        std::io::copy(&mut encoder, &mut writer)
                     }
                 }
                 .map_err(|e| {

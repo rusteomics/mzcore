@@ -473,6 +473,9 @@ impl MzTabPSM {
                     None
                 } else {
                     let mut peptide: Peptidoform<SimpleLinear> = Peptidoform::pro_forma_or_sloppy(
+                        &Context::default()
+                            .line_index(line.line_index)
+                            .lines(0, line.line),
                         line.line,
                         range.clone(),
                         ontologies,
@@ -821,7 +824,10 @@ impl MzTabPSM {
                             )
                         })?)
                     }
-                    _ => FlankingSequence::Sequence(Box::new(Peptidoform::sloppy_pro_forma(
+                    _ => FlankingSequence::Sequence(Box::new(Peptidoform::sloppy_pro_forma_inner(
+                        &Context::default()
+                            .line_index(line.line_index)
+                            .lines(0, line.line),
                         line.line,
                         pre.1,
                         ontologies,
@@ -842,7 +848,10 @@ impl MzTabPSM {
                             )
                         })?)
                     }
-                    _ => FlankingSequence::Sequence(Box::new(Peptidoform::sloppy_pro_forma(
+                    _ => FlankingSequence::Sequence(Box::new(Peptidoform::sloppy_pro_forma_inner(
+                        &Context::default()
+                            .line_index(line.line_index)
+                            .lines(0, line.line),
                         line.line,
                         post.1,
                         ontologies,

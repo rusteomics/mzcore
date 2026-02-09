@@ -123,7 +123,8 @@ format_family!(
                             },
                         )?))
                     }).collect::<Result<Vec<_>,_>>();
-        peptide: CompoundPeptidoformIon, |location: Location, ontologies: &Ontologies| location.array('|').map(|location| Peptidoform::sloppy_pro_forma(
+        peptide: CompoundPeptidoformIon, |location: Location, ontologies: &Ontologies| location.array('|').map(|location| Peptidoform::sloppy_pro_forma_inner(
+            &location.base_context(),
             location.full_line(),
             location.location.clone(),
             ontologies,

@@ -26,7 +26,8 @@ format_family!(
     SemiAmbiguous, PeptidoformPresent, [&PIHELIXNOVO_V1_1], b'\t', Some(vec!["title".to_string(),"peptide".to_string(),"score".to_string()]);
     required {
         title: String, |location: Location, _| Ok(location.get_string());
-        peptide: Peptidoform<SemiAmbiguous>, |location: Location, ontologies: &Ontologies| Peptidoform::sloppy_pro_forma(
+        peptide: Peptidoform<SemiAmbiguous>, |location: Location, ontologies: &Ontologies| Peptidoform::sloppy_pro_forma_inner(
+            &location.base_context(),
             location.full_line(),
             location.location.clone(),
             ontologies,

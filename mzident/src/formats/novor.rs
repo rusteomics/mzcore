@@ -31,7 +31,8 @@ format_family!(
         z: Charge, |location: Location, _| location.trim_end_matches(".0").parse::<isize>(NUMBER_ERROR).map(Charge::new::<mzcore::system::e>);
         mass: Mass, |location: Location, _| location.parse::<f64>(NUMBER_ERROR).map(Mass::new::<mzcore::system::dalton>);
         score: f64, |location: Location, _| location.parse::<f64>(NUMBER_ERROR);
-        peptide: Peptidoform<SemiAmbiguous>, |location: Location, ontologies: &Ontologies| Peptidoform::sloppy_pro_forma(
+        peptide: Peptidoform<SemiAmbiguous>, |location: Location, ontologies: &Ontologies| Peptidoform::sloppy_pro_forma_inner(
+            &location.base_context(),
             location.full_line(),
             location.location.clone(),
             ontologies,

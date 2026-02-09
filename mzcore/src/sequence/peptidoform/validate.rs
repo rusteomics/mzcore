@@ -41,7 +41,6 @@ pub(super) fn cross_links<'a>(
                             ),
                             Context::full_line(0, line),
                         ),
-                        (),
                     );
                 }
                 1 => {
@@ -79,7 +78,6 @@ pub(super) fn cross_links<'a>(
                                 ),
                                 Context::full_line(0, line),
                             ),
-                            (),
                         );
                     }
                 }
@@ -101,7 +99,6 @@ pub(super) fn cross_links<'a>(
                                 ),
                                 Context::full_line(0, line),
                             ),
-                            (),
                         );
                     }
                 }
@@ -117,7 +114,6 @@ pub(super) fn cross_links<'a>(
                             ),
                             Context::full_line(0, line),
                         ),
-                        (),
                     );
                 }
             }
@@ -138,7 +134,6 @@ pub(super) fn cross_links<'a>(
                     ),
                     Context::full_line(0, line),
                 ),
-                (),
             );
         }
     }
@@ -178,7 +173,6 @@ pub(super) fn cross_links<'a>(
                 "Not all peptides in this peptidoform are connected with cross-links or branches, if separate peptides were intended use the chimeric notation `+` instead of the peptidoform notation `//`.",
                 Context::full_line(0, line),
             ),
-            (),
         );
     }
 
@@ -257,7 +251,6 @@ impl Peptidoform<Linear> {
                                     .map_or_else(|| "(no group)".to_string(), |n| n.to_string())
                             )),
                         ),
-                        (),
                     );
                 }
             } else {
@@ -275,7 +268,6 @@ impl Peptidoform<Linear> {
                                 .map_or_else(|| "(no group)".to_string(), |n| n.to_string())
                         )),
                     ),
-                    (),
                 );
             }
         }
@@ -310,7 +302,6 @@ impl Peptidoform<Linear> {
                         "There is no position where this modification can be placed based on the placement rules in the database.",
                         Context::show(modification.to_string()),
                     ),
-                    (),
                 );
             }
         }
@@ -330,7 +321,6 @@ impl<T> Peptidoform<T> {
             combine_errors(
                 &mut warnings,
                 seq.enforce_modification_rules(position.sequence_index, &Context::none()),
-                (),
             );
         }
         warnings
@@ -346,7 +336,6 @@ impl<T> Peptidoform<T> {
             combine_errors(
                 &mut warnings,
                 seq.enforce_modification_rules(position.sequence_index, context),
-                (),
             );
         }
         warnings

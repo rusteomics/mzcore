@@ -172,7 +172,7 @@ fn main() {
     let ontologies = Ontologies::init().0;
     let mut peptidoforms = BasicCSVPSM::parse_file(args.in_path, &ontologies, true, None)
         .expect("Invalid input file")
-        .combine_errors(());
+        .combine_errors();
     let files = peptidoforms.into_group_map_by(|l| l.raw_file.clone());
     if !peptidoforms.errors().is_empty() {
         for e in peptidoforms.errors() {

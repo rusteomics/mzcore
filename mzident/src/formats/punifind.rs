@@ -44,7 +44,8 @@ format_family!(
         rt: Time, |location: Location, _| location.parse::<f64>(NUMBER_ERROR).map(Time::new::<mzcore::system::time::s>);
         mass_error: Mass, |location: Location, _| location.parse::<f64>(NUMBER_ERROR).map(Mass::new::<mzcore::system::mass::dalton>);
         peptidoform: Peptidoform<SemiAmbiguous>, |location: Location, ontologies: &Ontologies|
-            location.trim_start_matches("['").trim_end_matches("']").parse_with(|location| Peptidoform::sloppy_pro_forma(
+            location.trim_start_matches("['").trim_end_matches("']").parse_with(|location| Peptidoform::sloppy_pro_forma_inner(
+                &location.base_context(),
                 location.full_line(),
                 location.location.clone(),
                 ontologies,

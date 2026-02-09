@@ -25,7 +25,8 @@ format_family!(
     PepNet,
     SemiAmbiguous, PeptidoformPresent, [&PEPNET_V1_0], b'\t', None;
     required {
-        peptide: Peptidoform<SemiAmbiguous>, |location: Location, ontologies: &Ontologies| Peptidoform::sloppy_pro_forma(
+        peptide: Peptidoform<SemiAmbiguous>, |location: Location, ontologies: &Ontologies| Peptidoform::sloppy_pro_forma_inner(
+            &location.base_context(),
             location.full_line(),
             location.location.clone(),
             ontologies,

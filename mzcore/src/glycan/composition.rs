@@ -140,7 +140,6 @@ impl MonoSaccharide {
                                                 name.len(),
                                             )),
                                         ),
-                                        (),
                                     );
                                 } else if !line[index..end].starts_with(&**name) {
                                     combine_error(
@@ -155,7 +154,6 @@ impl MonoSaccharide {
                                                 name.len(),
                                             )),
                                         ),
-                                        (),
                                     );
                                 }
                             }
@@ -190,7 +188,6 @@ impl MonoSaccharide {
                         "No amount for this glycan was specified, it is assumed to occur once.",
                         base_context.clone().add_highlight((0, start_glycan..index)),
                     ),
-                    (),
                 );
                 1
             };
@@ -227,7 +224,6 @@ impl MonoSaccharide {
                         "The glycan composition is empty",
                         base_context.clone().add_highlight((0, range)),
                     ),
-                    (),
                 );
                 Err(errors)
             } else {
@@ -242,7 +238,6 @@ impl MonoSaccharide {
                     "The occurance of an element overflowed during calculation of the full molecular formula",
                     base_context.clone().add_highlight((0, range.clone())),
                 ),
-                (),
             );
             Err(errors)
         }

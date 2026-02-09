@@ -37,7 +37,8 @@ format_family!(
             .map_or(Ok(Vec::new()), |l| l.array(';').map(|v| v.parse(ID_ERROR)).collect::<Result<Vec<_>,_>>());
 
         peptide: Option<Peptidoform<SemiAmbiguous>>, |location: Location, ontologies: &Ontologies|
-                location.or_empty().map(|location| Peptidoform::sloppy_pro_forma(
+                location.or_empty().map(|location| Peptidoform::sloppy_pro_forma_inner(
+                    &location.base_context(),
                     location.full_line(),
                     location.location.clone(),
                     ontologies,

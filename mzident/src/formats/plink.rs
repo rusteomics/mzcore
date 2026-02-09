@@ -55,8 +55,8 @@ format_family!(
         peptidoform: PeptidoformIon, |location: Location, ontologies: &Ontologies| {
             match plink_separate(&location, "Invalid pLink peptide", "peptide").map_err(BoxedError::to_owned)? {
                 (pep1, Some(pos1), Some(pep2), Some(pos2)) => {
-                    let pep1 = Peptidoform::sloppy_pro_forma(location.full_line(), pep1, ontologies, &SloppyParsingParameters::default()).map_err(BoxedError::to_owned)?;
-                    let pep2 = Peptidoform::sloppy_pro_forma(location.full_line(), pep2, ontologies, &SloppyParsingParameters::default()).map_err(BoxedError::to_owned)?;
+                    let pep1 = Peptidoform::sloppy_pro_forma_inner(&location.base_context(), location.full_line(), pep1, ontologies, &SloppyParsingParameters::default()).map_err(BoxedError::to_owned)?;
+                    let pep2 = Peptidoform::sloppy_pro_forma_inner(&location.base_context(), location.full_line(), pep2, ontologies, &SloppyParsingParameters::default()).map_err(BoxedError::to_owned)?;
 
                     let mut peptidoform = PeptidoformIon::from_vec(vec![pep1.into(), pep2.into()]).unwrap();
                     peptidoform.add_cross_link(
@@ -68,7 +68,7 @@ format_family!(
                     Ok(peptidoform)
                 }
                 (pep1, Some(pos1), None, Some(pos2)) => {
-                    let pep = Peptidoform::sloppy_pro_forma(location.full_line(), pep1, ontologies, &SloppyParsingParameters::default()).map_err(BoxedError::to_owned)?;
+                    let pep = Peptidoform::sloppy_pro_forma_inner(&location.base_context(), location.full_line(), pep1, ontologies, &SloppyParsingParameters::default()).map_err(BoxedError::to_owned)?;
 
                     let mut peptidoform = PeptidoformIon::from_vec(vec![pep.into()]).unwrap();
                     peptidoform.add_cross_link(
@@ -80,13 +80,13 @@ format_family!(
                     Ok(peptidoform)
                 }
                 (pep1, Some(pos1), None, None) => {
-                    let mut pep = Peptidoform::sloppy_pro_forma(location.full_line(), pep1, ontologies, &SloppyParsingParameters::default()).map_err(BoxedError::to_owned)?;
+                    let mut pep = Peptidoform::sloppy_pro_forma_inner(&location.base_context(), location.full_line(), pep1, ontologies, &SloppyParsingParameters::default()).map_err(BoxedError::to_owned)?;
                     pep[SequencePosition::Index(pos1.0.saturating_sub(1) as usize)].modifications.push( SimpleModificationInner::Mass(mzcore::sequence::MassTag::None, Mass::default().into(), None).into());
 
                     Ok(PeptidoformIon::from_vec(vec![pep.into()]).unwrap())
                 }
                 (pep1, None, None, None) => {
-                    let pep = Peptidoform::sloppy_pro_forma(location.full_line(), pep1, ontologies, &SloppyParsingParameters::default()).map_err(BoxedError::to_owned)?;
+                    let pep = Peptidoform::sloppy_pro_forma_inner(&location.base_context(), location.full_line(), pep1, ontologies, &SloppyParsingParameters::default()).map_err(BoxedError::to_owned)?;
 
                     Ok(PeptidoformIon::from_vec(vec![pep.into()]).unwrap())
                 }

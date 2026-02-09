@@ -1320,22 +1320,23 @@ impl Peptidoform<Linear> {
 impl<Complexity: AtMax<Linear>> Peptidoform<Complexity> {
     /// Get a region of this peptide as a new peptide (with all terminal/global/ambiguous modifications).
     #[must_use]
-    pub fn sub_peptide(&self, index: impl RangeBounds<usize>) -> Self {
-        Self {
-            n_term: if index.contains(&0) {
-                self.n_term.clone()
-            } else {
-                ThinVec::new()
-            },
-            c_term: if index.contains(&(self.len() - 1)) {
-                self.c_term.clone()
-            } else {
-                ThinVec::new()
-            },
-            sequence: self.sequence[(index.start_bound().cloned(), index.end_bound().cloned())]
-                .into(),
-            ..self.clone()
-        }
+    pub fn sub_peptidoform(&self, index: impl RangeBounds<usize>) -> Option<Self> {
+        self.sequence
+            .get((index.start_bound().cloned(), index.end_bound().cloned()))
+            .map(|seq| Self {
+                n_term: if index.contains(&0) {
+                    self.n_term.clone()
+                } else {
+                    ThinVec::new()
+                },
+                c_term: if index.contains(&(self.len() - 1)) {
+                    self.c_term.clone()
+                } else {
+                    ThinVec::new()
+                },
+                sequence: seq.into(),
+                ..self.clone()
+            })
     }
 
     /// Digest this sequence with the given protease and the given maximal number of missed cleavages.
@@ -1354,7 +1355,7 @@ impl<Complexity: AtMax<Linear>> Peptidoform<Complexity> {
         for (index, start) in sites.iter().enumerate() {
             for end in sites.iter().skip(index + 1).take(max_missed_cleavages + 1) {
                 if size_range.contains(&(end - start)) {
-                    result.push(self.sub_peptide((*start)..*end));
+                    result.push(self.sub_peptidoform((*start)..*end).unwrap());
                 }
             }
         }
@@ -1691,6 +1692,15 @@ where
 {
     fn from_iter<Iter: IntoIterator<Item = Item>>(iter: Iter) -> Self {
         Self::from(iter)
+    }
+}
+
+impl<Complexity> From<SequenceElement<Complexity>> for Peptidoform<Complexity> {
+    fn from(item: SequenceElement<Complexity>) -> Self {
+        Self {
+            sequence: vec![item].into(),
+            ..Self::default()
+        }
     }
 }
 

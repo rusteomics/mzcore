@@ -101,7 +101,7 @@ impl SimpleModificationInner {
                 ontologies,
             ) {
                 Ok((result, w)) => {
-                    combine_errors(&mut errors, w, ());
+                    combine_errors(&mut errors, w);
                     match result {
                         SingleReturnModification::None => (),
                         SingleReturnModification::Modification(m) => {
@@ -119,7 +119,7 @@ impl SimpleModificationInner {
                         }
                     }
                 }
-                Err(e) => combine_errors(&mut errors, e, ()),
+                Err(e) => combine_errors(&mut errors, e),
             }
             offset += part.len() + 1;
         }
@@ -429,7 +429,7 @@ fn parse_single_modification<'error, const STRICT: bool>(
                 .map(|g| Some(Arc::new(SimpleModificationInner::GlycanStructure(g)))).map_err(|e| vec![e]),
                 ("info", tail) => Ok(Some(Arc::new(SimpleModificationInner::Info(tail.to_string())))),
                 ("obs", tail) => numerical_mod(MassTag::Observed,tail).map(|(sign, m)| {if STRICT && !sign {
-                    combine_error(&mut errors, sign_warning.clone(), ());
+                    combine_error(&mut errors, sign_warning.clone());
                 }
                 Some(m)}).map_err(|_| {
                     vec![basic_error.long_description(
@@ -524,7 +524,6 @@ fn parse_single_modification<'error, const STRICT: bool>(
                         description.description.to_string(),
                     )),
                 ),
-                (),
             );
         }
 
@@ -611,7 +610,7 @@ fn parse_single_modification<'error, const STRICT: bool>(
                         .add_highlight((0, offset + full.1 + 1, full.2)),
                 )
                 .map(|(m, w)| {
-                    combine_errors(&mut errors, w, ());
+                    combine_errors(&mut errors, w);
                     (m, errors)
                 })
             }

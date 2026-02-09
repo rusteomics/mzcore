@@ -9,10 +9,8 @@ Handling many different formats of PSM files. Supports these formats:
 
 And output from the following programs:
 
-- DeepNovo
-- PointNovo
 - BiatNovo
-- PGPointNovo
+- DeepNovo
 - InstaNovo
 - MaxQuant
 - MetaMorpheus
@@ -22,14 +20,16 @@ And output from the following programs:
 - OPair
 - Peaks
 - PepNet
-- π-HelixNovo
-- π-PrimeNovo
-- pLink
+- PGPointNovo
 - PLGS
+- pLink
+- PointNovo
 - PowerNovo
 - Proteoscape
 - pUniFind
 - Sage
+- π-HelixNovo
+- π-PrimeNovo
 
 ## Compilation features
 

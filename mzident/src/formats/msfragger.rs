@@ -47,7 +47,8 @@ format_family!(
         missed_cleavages: u8, |location: Location, _| location.parse(NUMBER_ERROR);
         next_score: f32, |location: Location, _| location.parse(NUMBER_ERROR);
         peptide: Peptidoform<SimpleLinear>, |location: Location, ontologies: &Ontologies| location.parse_with(|location| {
-            Peptidoform::sloppy_pro_forma(
+            Peptidoform::sloppy_pro_forma_inner(
+                &location.base_context(),
                 location.full_line(),
                 location.location.clone(),
                 ontologies,
@@ -90,7 +91,8 @@ format_family!(
         entry_name: Box<str>, |location: Location, _| Ok(location.get_boxed_str());
         enzymatic_termini: u8, |location: Location, _| location.parse::<u8>(NUMBER_ERROR);
         extended_peptide: (FlankingSequence, Option<Peptidoform<SemiAmbiguous>>, FlankingSequence), |location: Location, ontologies: &Ontologies| {
-            let mut peptides = location.clone().array('.').map(|l| l.or_empty().parse_with(|location| Peptidoform::sloppy_pro_forma(
+            let mut peptides = location.clone().array('.').map(|l| l.or_empty().parse_with(|location| Peptidoform::sloppy_pro_forma_inner(
+                &location.base_context(),
                 location.full_line(),
                 location.location.clone(),
                 ontologies,

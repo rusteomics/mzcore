@@ -33,7 +33,8 @@ format_family!(
     SemiAmbiguous, PeptidoformPresent, [&POWERNOVO_V1_0_17], b',', None;
     required {
         title: String, |location: Location, _| Ok(location.get_string());
-        peptide: Peptidoform<SemiAmbiguous>, |location: Location, ontologies: &Ontologies| Peptidoform::sloppy_pro_forma(
+        peptide: Peptidoform<SemiAmbiguous>, |location: Location, ontologies: &Ontologies| Peptidoform::sloppy_pro_forma_inner(
+            &location.base_context(),
             location.full_line(),
             location.location.clone(),
             ontologies,
