@@ -441,23 +441,7 @@ impl HasPeptidoformImpl for PSM<Linear, PeptidoformPresent> {
     }
 }
 
-impl HasPeptidoformImpl for &PSM<Linear, PeptidoformPresent> {
-    type Complexity = Linear;
-    fn peptidoform(&self) -> &Peptidoform<Linear> {
-        self.inner_peptidoform()
-            .expect("Identified peptidoform incorrectly marked as containing a peptidoform")
-    }
-}
-
 impl HasPeptidoformImpl for PSM<SimpleLinear, PeptidoformPresent> {
-    type Complexity = SimpleLinear;
-    fn peptidoform(&self) -> &Peptidoform<SimpleLinear> {
-        self.inner_peptidoform()
-            .expect("Identified peptidoform incorrectly marked as containing a peptidoform")
-    }
-}
-
-impl HasPeptidoformImpl for &PSM<SimpleLinear, PeptidoformPresent> {
     type Complexity = SimpleLinear;
     fn peptidoform(&self) -> &Peptidoform<SimpleLinear> {
         self.inner_peptidoform()
@@ -473,23 +457,7 @@ impl HasPeptidoformImpl for PSM<SemiAmbiguous, PeptidoformPresent> {
     }
 }
 
-impl HasPeptidoformImpl for &PSM<SemiAmbiguous, PeptidoformPresent> {
-    type Complexity = SemiAmbiguous;
-    fn peptidoform(&self) -> &Peptidoform<SemiAmbiguous> {
-        self.inner_peptidoform()
-            .expect("Identified peptidoform incorrectly marked as containing a peptidoform")
-    }
-}
-
 impl HasPeptidoformImpl for PSM<UnAmbiguous, PeptidoformPresent> {
-    type Complexity = UnAmbiguous;
-    fn peptidoform(&self) -> &Peptidoform<UnAmbiguous> {
-        self.inner_peptidoform()
-            .expect("Identified peptidoform incorrectly marked as containing a peptidoform")
-    }
-}
-
-impl HasPeptidoformImpl for &PSM<UnAmbiguous, PeptidoformPresent> {
     type Complexity = UnAmbiguous;
     fn peptidoform(&self) -> &Peptidoform<UnAmbiguous> {
         self.inner_peptidoform()

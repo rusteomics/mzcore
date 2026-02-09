@@ -57,13 +57,6 @@ impl HasPeptidoformImpl for FastaData {
     }
 }
 
-impl HasPeptidoformImpl for &FastaData {
-    type Complexity = SemiAmbiguous;
-    fn peptidoform(&self) -> &Peptidoform<Self::Complexity> {
-        self.peptide()
-    }
-}
-
 impl AnnotatedPeptidoform for FastaData {
     fn regions(&self) -> &[(Region, usize)] {
         &self.regions

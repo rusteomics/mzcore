@@ -57,12 +57,12 @@ pub trait AnnotatedPeptidoform: HasPeptidoformImpl {
             .sub_peptidoform(range.clone())
             .map(|peptidoform| {
                 let start = match range.start_bound() {
-                    Bound::Excluded(e) => e + 1,
+                    Bound::Excluded(e) => e.saturating_add(1),
                     Bound::Included(i) => *i,
                     Bound::Unbounded => 0,
                 };
                 let end = match range.end_bound() {
-                    Bound::Excluded(e) => e - 1,
+                    Bound::Excluded(e) => e.saturating_sub(1),
                     Bound::Included(i) => *i,
                     Bound::Unbounded => 0,
                 };
@@ -105,6 +105,42 @@ pub trait AnnotatedPeptidoform: HasPeptidoformImpl {
                 debug_assert_eq!(res.0.len(), res.1.iter().map(|(_, l)| l).sum::<usize>());
                 res
             })
+    }
+}
+
+impl<T: AnnotatedPeptidoform + HasPeptidoformImpl> AnnotatedPeptidoform for &T {
+    fn regions(&self) -> &[(Region, usize)] {
+        (*self).regions()
+    }
+    fn annotations(&self) -> &[(Annotation, usize)] {
+        (*self).annotations()
+    }
+}
+
+impl<T: AnnotatedPeptidoform + HasPeptidoformImpl> AnnotatedPeptidoform for std::sync::Arc<T> {
+    fn regions(&self) -> &[(Region, usize)] {
+        self.as_ref().regions()
+    }
+    fn annotations(&self) -> &[(Annotation, usize)] {
+        self.as_ref().annotations()
+    }
+}
+
+impl<T: AnnotatedPeptidoform + HasPeptidoformImpl> AnnotatedPeptidoform for std::rc::Rc<T> {
+    fn regions(&self) -> &[(Region, usize)] {
+        self.as_ref().regions()
+    }
+    fn annotations(&self) -> &[(Annotation, usize)] {
+        self.as_ref().annotations()
+    }
+}
+
+impl<T: AnnotatedPeptidoform + HasPeptidoformImpl> AnnotatedPeptidoform for Box<T> {
+    fn regions(&self) -> &[(Region, usize)] {
+        self.as_ref().regions()
+    }
+    fn annotations(&self) -> &[(Annotation, usize)] {
+        self.as_ref().annotations()
     }
 }
 

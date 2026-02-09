@@ -29,10 +29,10 @@ impl<Complexity> HasPeptidoformImpl for Peptidoform<Complexity> {
     }
 }
 
-impl<Complexity> HasPeptidoformImpl for &Peptidoform<Complexity> {
-    type Complexity = Complexity;
-    fn peptidoform(&self) -> &Peptidoform<Complexity> {
-        self
+impl<T: HasPeptidoformImpl> HasPeptidoformImpl for &T {
+    type Complexity = T::Complexity;
+    fn peptidoform(&self) -> &Peptidoform<T::Complexity> {
+        (*self).peptidoform()
     }
 }
 
