@@ -62,37 +62,35 @@ pub trait AnnotatedPeptidoform: HasPeptidoformImpl {
                     Bound::Unbounded => 0,
                 };
                 let end = match range.end_bound() {
-                    Bound::Excluded(e) => e.saturating_sub(1),
-                    Bound::Included(i) => *i,
-                    Bound::Unbounded => 0,
+                    Bound::Excluded(e) => *e,
+                    Bound::Included(i) => i.saturating_add(1),
+                    Bound::Unbounded => peptidoform.len(),
                 };
                 let mut index = 0;
                 let mut regions = Vec::new();
 
                 for (r, len) in self.regions() {
-                    if index + len < start {
-                        // Do nothing
-                    } else if index < start && index + len > start {
-                        if index + len > end {
-                            regions.push((r.clone(), end - start));
+                    if index + len <= start {
+                        // Before selection, so ignore
+                    } else if index <= start && index + len > start {
+                        // If the selections starts inside this region
+                        if index + len >= end {
+                            regions.push((r.clone(), end.saturating_sub(start)));
                             break;
                         } else {
-                            regions.push((r.clone(), index + len - start));
+                            regions.push((r.clone(), len - (start - index)));
                         }
-                    } else if index + len <= end {
+                    } else if index + len < end {
                         regions.push((r.clone(), *len));
                     } else {
-                        regions.push((r.clone(), len - (index + len - start)));
+                        // If this extends beyond the selection
+                        regions.push((r.clone(), end - index));
                         break;
                     }
                     index += len;
                 }
 
-                let res: (
-                    Peptidoform<<Self as HasPeptidoformImpl>::Complexity>,
-                    Vec<(Region, usize)>,
-                    Vec<(Annotation, usize)>,
-                ) = (
+                (
                     peptidoform,
                     regions,
                     self.annotations()
@@ -100,10 +98,7 @@ pub trait AnnotatedPeptidoform: HasPeptidoformImpl {
                         .filter(|(_, i)| range.contains(i))
                         .cloned()
                         .collect(),
-                );
-
-                debug_assert_eq!(res.0.len(), res.1.iter().map(|(_, l)| l).sum::<usize>());
-                res
+                )
             })
     }
 }
@@ -268,5 +263,84 @@ impl std::fmt::Display for Annotation {
             Self::NGlycan => write!(f, "NGlycan"),
             Self::Other(o) => write!(f, "{o}"),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::{
+        ontology::STATIC_ONTOLOGIES,
+        prelude::{HasPeptidoformImpl, Peptidoform},
+        sequence::{AnnotatedPeptidoform, Annotation, Linear, Region},
+    };
+
+    struct AP {
+        peptidoform: Peptidoform<Linear>,
+        regions: Vec<(Region, usize)>,
+        annotations: Vec<(Annotation, usize)>,
+    }
+    impl AnnotatedPeptidoform for AP {
+        fn regions(&self) -> &[(Region, usize)] {
+            &self.regions
+        }
+        fn annotations(&self) -> &[(Annotation, usize)] {
+            &self.annotations
+        }
+    }
+
+    impl HasPeptidoformImpl for AP {
+        type Complexity = Linear;
+        fn peptidoform(&self) -> &Peptidoform<Self::Complexity> {
+            &self.peptidoform
+        }
+    }
+
+    #[test]
+    fn annotated_sub_peptidoform() {
+        let seq = AP {
+            peptidoform: Peptidoform::pro_forma("PEPTIDE", &STATIC_ONTOLOGIES)
+                .unwrap()
+                .0
+                .into_linear()
+                .unwrap(),
+            regions: vec![
+                (Region::Framework(1), 4),
+                (Region::ComplementarityDetermining(1), 1),
+                (Region::Framework(2), 2),
+            ],
+            annotations: vec![
+                (Annotation::Conserved, 4),
+                (Annotation::NGlycan, 4),
+                (Annotation::Conserved, 6),
+            ],
+        };
+
+        let sub = seq.sub_peptidoform(..4).unwrap();
+        dbg!(&sub);
+        assert_eq!(sub.0.len(), 4);
+        assert_eq!(sub.1.len(), 1);
+        assert_eq!(sub.1.iter().map(|(_, l)| l).sum::<usize>(), 4);
+        assert_eq!(sub.2.len(), 0);
+
+        let sub = seq.sub_peptidoform(3..6).unwrap();
+        dbg!(&sub);
+        assert_eq!(sub.0.len(), 3);
+        assert_eq!(sub.1.len(), 3);
+        assert_eq!(sub.1.iter().map(|(_, l)| l).sum::<usize>(), 3);
+        assert_eq!(sub.2.len(), 2);
+
+        let sub = seq.sub_peptidoform(5..7).unwrap();
+        dbg!(&sub);
+        assert_eq!(sub.0.len(), 2);
+        assert_eq!(sub.1.len(), 1);
+        assert_eq!(sub.1.iter().map(|(_, l)| l).sum::<usize>(), 2);
+        assert_eq!(sub.2.len(), 1);
+
+        let sub = seq.sub_peptidoform(1..3).unwrap();
+        dbg!(&sub);
+        assert_eq!(sub.0.len(), 2);
+        assert_eq!(sub.1.len(), 1);
+        assert_eq!(sub.1.iter().map(|(_, l)| l).sum::<usize>(), 2);
+        assert_eq!(sub.2.len(), 0);
     }
 }
