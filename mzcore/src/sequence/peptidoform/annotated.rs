@@ -95,8 +95,7 @@ pub trait AnnotatedPeptidoform: HasPeptidoformImpl {
                     regions,
                     self.annotations()
                         .iter()
-                        .filter(|(_, i)| range.contains(i))
-                        .cloned()
+                        .filter_map(|(a, i)| range.contains(i).then(|| (a.clone(), i - start)))
                         .collect(),
                 )
             })
@@ -342,5 +341,12 @@ mod tests {
         assert_eq!(sub.1.len(), 1);
         assert_eq!(sub.1.iter().map(|(_, l)| l).sum::<usize>(), 2);
         assert_eq!(sub.2.len(), 0);
+
+        let sub = seq.sub_peptidoform(4..5).unwrap();
+        dbg!(&sub);
+        assert_eq!(sub.0.len(), 1);
+        assert_eq!(sub.1.len(), 1);
+        assert_eq!(sub.1.iter().map(|(_, l)| l).sum::<usize>(), 1);
+        assert_eq!(sub.2.len(), 2);
     }
 }
