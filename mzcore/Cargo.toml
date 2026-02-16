@@ -37,8 +37,9 @@ zeno = { workspace = true, optional = true }
 
 [dev-dependencies]
 base64 = { workspace = true }
-png = { workspace = true }
 directories = { workspace = true }
+paste = { workspace = true }
+png = { workspace = true }
 
 [features]
 default = []
