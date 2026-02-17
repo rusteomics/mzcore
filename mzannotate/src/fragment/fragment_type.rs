@@ -452,14 +452,13 @@ impl mzcore::space::Space for FragmentType {
             | Self::x(p, v)
             | Self::y(p, v)
             | Self::z(p, v) => p.space() + v.space(),
-            Self::d(p, a, o, v, l) | Self::w(p, a, o, v, l) => {
-                p.space() + a.space() + o.space() + v.space() + l.space()
+            Self::d(pp, aa, o, v, l) | Self::w(pp, aa, o, v, l) => {
+                pp.space() + aa.space() + o.space() + v.space() + l.space()
             }
             Self::v(p, a, o, v) => p.space() + a.space() + o.space() + v.space(),
             Self::Y(p) => p.space(),
             Self::B { b, y, end } => b.space() + y.space() + end.space(),
-            Self::BComposition(c, a) => c.space() + a.space(),
-            Self::YComposition(c, a) => c.space() + a.space(),
+            Self::BComposition(c, a) | Self::YComposition(c, a) => c.space() + a.space(),
             Self::Immonium(p, s) => p.space() + s.space(),
             Self::PrecursorSideChainLoss(p, a) => p.space() + a.space(),
             Self::Diagnostic(p) => p.space(),

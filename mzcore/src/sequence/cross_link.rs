@@ -72,9 +72,7 @@ impl ParseJson for CrossLinkSide {
 impl Space for CrossLinkSide {
     fn space(&self) -> UsedSpace {
         match self {
-            Self::Symmetric(d) => d.space(),
-            Self::Left(d) => d.space(),
-            Self::Right(d) => d.space(),
+            Self::Symmetric(d) | Self::Left(d) | Self::Right(d) => d.space(),
         }
         .set_total::<Self>()
     }

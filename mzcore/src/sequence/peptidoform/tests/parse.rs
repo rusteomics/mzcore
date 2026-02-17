@@ -609,7 +609,7 @@ fn strict_warnings() {
             .unwrap()
             .1
             .into_iter()
-            .map(|e| e.to_owned())
+            .map(BoxedError::to_owned)
             .collect::<Vec<_>>()
     };
     assert_eq!(warnings("A[5.0]").len(), 1);

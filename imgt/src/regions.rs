@@ -177,7 +177,7 @@ impl Chain {
                     Err(allele_index) => Arc::get_mut(&mut db[index])
                         .map(|g| {
                             g.alleles
-                                .insert(allele_index, germline.alleles.pop().unwrap())
+                                .insert(allele_index, germline.alleles.pop().unwrap());
                         })
                         .expect("Multiple copies of Arc while building IMGT structure"),
                 }

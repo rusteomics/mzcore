@@ -438,7 +438,7 @@ struct GNOmeModification {
     composition: Option<Vec<(MonoSaccharide, isize)>>,
     /// structure if defined
     topology: Option<GlycanStructure>,
-    /// The score for the structure (0 if fully defined, u16::MAX if not defined)
+    /// The score for the structure (0 if fully defined, `u16::MAX` if not defined)
     structure_score: u16,
     /// The underlying glycan motifs
     motif: Option<(Box<str>, Box<str>)>,

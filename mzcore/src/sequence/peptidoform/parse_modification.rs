@@ -419,7 +419,7 @@ fn parse_single_modification<'error, const STRICT: bool>(
                 )))),
                 ("glycan", _) =>
                     Ok(Some(Arc::new(SimpleModificationInner::Glycan(
-                    handle!(errors, MonoSaccharide::pro_forma_composition_inner::<STRICT>(base_context, line, offset + tail.1..offset + tail.1 + tail.2).map(|(v, w)| (v, w.into_iter().map(|e| e.convert::<BasicKind, BoxedError<'error, BasicKind>>(|k| k.into())).collect::<Vec<_>>())).map_err(|e| e.into_iter().map(|e| e.convert::<BasicKind, BoxedError<'error, BasicKind>>(|k| k.into())).collect::<Vec<_>>()))
+                    handle!(errors, MonoSaccharide::pro_forma_composition_inner::<STRICT>(base_context, line, offset + tail.1..offset + tail.1 + tail.2).map(|(v, w)| (v, w.into_iter().map(|e| e.convert::<BasicKind, BoxedError<'error, BasicKind>>(Into::into)).collect::<Vec<_>>())).map_err(|e| e.into_iter().map(|e| e.convert::<BasicKind, BoxedError<'error, BasicKind>>(Into::into)).collect::<Vec<_>>()))
                 ))))
             ,
                 ("glycanstructure", _) => GlycanStructure::parse(
@@ -532,14 +532,11 @@ fn parse_single_modification<'error, const STRICT: bool>(
                 let index = cross_link_lookup
                     .iter()
                     .position(|c| c.0 == CrossLinkName::Branch)
-                    .map_or_else(
-                        || {
-                            let index = cross_link_lookup.len();
-                            cross_link_lookup.push((CrossLinkName::Branch, None));
-                            index
-                        },
-                        |index| index,
-                    );
+                    .unwrap_or_else(|| {
+                        let index = cross_link_lookup.len();
+                        cross_link_lookup.push((CrossLinkName::Branch, None));
+                        index
+                    });
                 if let Some(linker) = modification {
                     if cross_link_lookup[index]
                         .1
@@ -568,14 +565,11 @@ fn parse_single_modification<'error, const STRICT: bool>(
                 let index = cross_link_lookup
                     .iter()
                     .position(|c| c.0 == name)
-                    .map_or_else(
-                        || {
-                            let index = cross_link_lookup.len();
-                            cross_link_lookup.push((name, None));
-                            index
-                        },
-                        |index| index,
-                    );
+                    .unwrap_or_else(|| {
+                        let index = cross_link_lookup.len();
+                        cross_link_lookup.push((name, None));
+                        index
+                    });
                 if let Some(linker) = modification {
                     if cross_link_lookup[index]
                         .1

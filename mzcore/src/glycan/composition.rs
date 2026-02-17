@@ -48,21 +48,19 @@ impl ErrorKind for GlycanCompositionError {
         false
     }
     fn is_error(&self, _settings: Self::Settings) -> bool {
-        match self {
-            Self::ImproperCapitalisation | Self::ImproperMissingOccurance | Self::ImproperName => {
-                false
-            }
-            _ => true,
-        }
+        !matches!(
+            self,
+            Self::ImproperCapitalisation | Self::ImproperMissingOccurance | Self::ImproperName
+        )
     }
 }
 
 impl From<GlycanCompositionError> for BasicKind {
     fn from(value: GlycanCompositionError) -> Self {
         if value.is_error(()) {
-            BasicKind::Error
+            Self::Error
         } else {
-            BasicKind::Warning
+            Self::Warning
         }
     }
 }

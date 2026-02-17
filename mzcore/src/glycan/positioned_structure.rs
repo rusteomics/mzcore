@@ -22,7 +22,7 @@ pub struct PositionedGlycanStructure {
     /// The sugar at this level
     pub sugar: MonoSaccharide,
     /// All branches
-    pub branches: Vec<PositionedGlycanStructure>,
+    pub branches: Vec<Self>,
     /// The inner depth, the number of steps needed to get to the root / attached amino acid
     pub inner_depth: u16,
     /// The outer depth, the number of steps needed to get to the closest leaf node

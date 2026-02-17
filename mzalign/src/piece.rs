@@ -47,6 +47,7 @@ impl Piece {
             Massmismatch,
             Special(MatchType, u16, u16),
         }
+
         impl std::fmt::Display for StepType {
             fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
                 write!(
@@ -66,6 +67,7 @@ impl Piece {
                 )
             }
         }
+
         let (_, _, output, last) = path.iter().fold(
             (start_a, start_b, String::new(), None),
             |(a, b, output, last), step| {

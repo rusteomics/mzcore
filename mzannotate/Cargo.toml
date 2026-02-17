@@ -18,7 +18,6 @@ include = ["src/**/*", "tests/**/*", "README.md", "benches/**/*"]
 
 [dependencies]
 mzcore = { path = "../mzcore", version = "0.1.0" }
-mzcv = { path = "../mzcv" }
 
 context_error = { workspace = true }
 indexmap = { workspace = true }

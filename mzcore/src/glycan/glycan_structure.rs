@@ -27,7 +27,7 @@ use crate::{
 #[derive(Clone, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 pub struct GlycanStructure {
     pub(super) sugar: MonoSaccharide,
-    pub(super) branches: ThinVec<GlycanStructure>,
+    pub(super) branches: ThinVec<Self>,
 }
 
 impl Space for GlycanStructure {

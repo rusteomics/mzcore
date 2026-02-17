@@ -1250,7 +1250,7 @@ impl std::str::FromStr for Curie {
 
 impl CURIEParsingError {
     /// Get a desciption of this error as a fully formed sentence
-    pub fn description(&self) -> &'static str {
+    pub const fn description(&self) -> &'static str {
         match self {
             Self::UnknownControlledVocabulary => "Unknown CV",
             Self::MissingNamespaceSeparator => "The namespace separator ':' is missing",

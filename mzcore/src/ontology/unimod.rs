@@ -101,7 +101,7 @@ impl CVSource for Unimod {
             CVVersion {
                 last_updated: None,
                 version: None,
-                hash: reader.hash().to_vec(),
+                hash: reader.hash(),
             },
             modifications,
         ))

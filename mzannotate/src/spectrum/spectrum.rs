@@ -1,6 +1,5 @@
 use mzcore::system::MassOverCharge;
 use mzdata::{
-    Spectrum,
     mzpeaks::{
         MZPeakSetType,
         peak_set::{PeakSetIter, PeakSetVec},

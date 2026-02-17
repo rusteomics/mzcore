@@ -11,6 +11,7 @@ doc-valid-idents = [
     "InstaNovoPlus",
     "MaxNovo",
     "MaxQuant",
+    "MetaMorpheus",
     "MSFragger",
     "MzTab",
     "NovoB",
@@ -18,16 +19,17 @@ doc-valid-idents = [
     "PeakApex",
     "PepNet",
     "PGPointNovo",
-    "pi-PrimeNovo",
     "pi-HelixNovo",
+    "pi-PrimeNovo",
+    "PLGS",
     "PointNovo",
     "PointNovoFamily",
     "PowerNovo",
     "ProForma",
     "PSM_ID",
     "SpectrumSequenceList",
-    "π-PrimeNovo",
     "π-HelixNovo",
+    "π-PrimeNovo",
 ]
 avoid-breaking-exported-api = false
 check-private-items = true

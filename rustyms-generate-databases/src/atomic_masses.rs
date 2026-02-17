@@ -7,6 +7,9 @@ use mzcore::{
     system::da,
 };
 
+/// Build the atomic masses table from the given CSV
+/// # Panics
+/// If anything in the parsing fails.
 pub(crate) fn build_atomic_masses(out_dir: &Path) {
     let mut atomic_weights = vec![None; 118];
     let mut isotopic_abundances = vec![Vec::new(); 118];
@@ -166,6 +169,10 @@ pub(crate) fn build_atomic_masses(out_dir: &Path) {
     .unwrap();
 }
 
+/// Get the number out of a CIAAW number with uncertainty defined.
+/// It is one of these three forms: `A.AAAA`, `B.BBB(B)`, or `[C.CCCCC,C.CCCCC]`.
+/// # Errors
+/// If a numeric part is not numeric, or if the structure is not valid.
 fn get_ciaaw_number(text: &str) -> Result<f64, String> {
     let parse = |t: &str| {
         t.parse::<f64>()
@@ -175,7 +182,7 @@ fn get_ciaaw_number(text: &str) -> Result<f64, String> {
         let (low, high) = text[1..text.len() - 1]
             .split_once(',')
             .ok_or_else(|| format!("Not a valid range: {text}"))?;
-        Ok((parse(low)? + parse(high)?) / 2.0)
+        Ok(f64::midpoint(parse(low)?, parse(high)?))
     } else if text.ends_with(')') {
         Ok(parse(
             text.split_once('(')

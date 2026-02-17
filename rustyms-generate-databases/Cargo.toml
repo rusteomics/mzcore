@@ -10,11 +10,6 @@ publish = false
 mzcore = { path = "../mzcore", features = ["internal-no-data"] }
 
 bincode = { workspace = true }
-flate2 = { workspace = true }
-itertools = { workspace = true }
-ordered-float = { workspace = true }
-roxmltree = { workspace = true }
-thin-vec = { workspace = true }
 
 [features]
 rayon = []

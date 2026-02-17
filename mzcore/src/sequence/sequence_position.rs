@@ -88,7 +88,7 @@ impl SequencePosition {
     /// * `peptide_length + 1` is C term
     ///
     /// Rteurns None when the index is outside of the peptiude range.
-    pub fn from_index(index: usize, peptide_length: usize) -> Option<Self> {
+    pub const fn from_index(index: usize, peptide_length: usize) -> Option<Self> {
         match index {
             0 => Some(Self::NTerm),
             c if c == peptide_length + 1 => Some(Self::CTerm),

@@ -424,12 +424,11 @@ impl<'a> Location<'a> {
 
     pub(super) fn context(&'a self) -> Context<'a> {
         let base = self.base_context();
-        let base = if let Some(comment) = self.column {
+        if let Some(comment) = self.column {
             base.add_highlight((0, self.location.clone(), comment))
         } else {
             base.add_highlight((0, self.location.clone()))
-        };
-        base
+        }
     }
 
     pub(super) fn trim(&self) -> Self {

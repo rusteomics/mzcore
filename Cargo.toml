@@ -144,3 +144,7 @@ cognitive_complexity = "allow"
 module_inception = "allow"
 unwrap_in_result = "warn"
 panic_in_result_fn = "warn"
+
+#too_many_arguments = "allow"
+#type_complexity = "allow"
+#missing_panics_doc = "allow"

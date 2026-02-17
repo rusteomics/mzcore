@@ -27,7 +27,7 @@ macro_rules! negative_tests {
         Id,Example,Source,Key,Notes
         $($id:literal,$case:literal,$source:ident,$key:tt,$note:literal)*
     ) => {
-            $(crate::negative_tests!($id,$case,$source,$key,$note);)*
+            $($crate::negative_tests!($id,$case,$source,$key,$note);)*
         };
     ($id:literal,$case:literal,$source:ident,"ignore",$note:literal) => {
         paste::paste!{
@@ -39,7 +39,6 @@ macro_rules! negative_tests {
     }};
     ($id:literal,$case:literal,$source:ident,$key:literal,$note:literal) => {
         paste::paste!{
-            #[doc=$note]
             #[test]
             fn [<$source _ $id>]() {
                 let res = $crate::sequence::CompoundPeptidoformIon::pro_forma(
@@ -60,7 +59,7 @@ macro_rules! positive_tests {
         Id,Example,Source,Key,Notes
         $($id:literal,$case:literal,$source:ident,$key:tt,$note:literal)*
     ) => {
-            $(crate::positive_tests!($id,$case,$source,$key,$note);)*
+            $($crate::positive_tests!($id,$case,$source,$key,$note);)*
         };
     ($id:literal,$case:literal,$source:ident,"ignore",$note:literal) => {
         paste::paste!{
@@ -107,8 +106,6 @@ macro_rules! positive_tests {
     }};
     ($id:literal,$case:literal,$source:ident,$key:literal,$note:literal) => {
         paste::paste!{
-            #[doc=$note]
-            #[doc=$key]
             #[test]
             fn [<$source _ $id>]() {
                 use itertools::Itertools;

@@ -39,7 +39,7 @@ pub struct OboStanza {
     pub lines: HashMap<Box<str>, Vec<(Box<str>, Vec<Modifier>, Comment)>>,
     /// All property value tags parsed as the defined value type (value, trialing modifiers, comment)
     pub property_values: HashMap<Box<str>, Vec<(OboValue, Vec<Modifier>, Comment)>>,
-    /// If the 'is_obsolete' property is set
+    /// If the `is_obsolete` property is set
     pub obsolete: bool,
     /// The ids of all parent terms in the ontology's term graph, as defined by the `is_a` special relationship
     pub is_a: Vec<OboIdentifier>,

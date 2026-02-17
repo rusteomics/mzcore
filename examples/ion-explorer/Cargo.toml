@@ -8,7 +8,6 @@ publish = false
 
 [dependencies]
 clap = { workspace = true }
-directories = { workspace = true }
 itertools = { workspace = true }
 mzdata = { workspace = true, features = ["mgf", "mzml", "thermo"] }
 mzcore = { path = "../../mzcore", default-features = false, features = [

@@ -617,8 +617,8 @@ fn parse_de_novo_sequence(
 ) -> Result<Peptidoform<SimpleLinear>, BoxedError<'static, BasicKind>> {
     #[derive(Debug, Eq, PartialEq)]
     enum Element {
-        Either(Vec<Vec<Element>>),
-        UnknownOrder(Vec<Element>),
+        Either(Vec<Vec<Self>>),
+        UnknownOrder(Vec<Self>),
         Sequence(SequenceElement<SemiAmbiguous>),
     }
 

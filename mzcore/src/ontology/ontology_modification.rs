@@ -140,6 +140,6 @@ impl From<OntologyModification> for SimpleModificationInner {
 
 impl From<OntologyModification> for SimpleModification {
     fn from(value: OntologyModification) -> Self {
-        std::sync::Arc::new(value.into())
+        Self::new(value.into())
     }
 }

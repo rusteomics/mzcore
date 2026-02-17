@@ -24,7 +24,7 @@ impl<T, E> InvertResult<T, E> for Option<Option<Result<T, E>>> {
 }
 impl<T, E> InvertResult<T, E> for Option<Result<Option<T>, E>> {
     fn invert(self) -> Result<Option<T>, E> {
-        self.map_or_else(|| Ok(None), |o| o)
+        self.unwrap_or_else(|| Ok(None))
     }
 }
 

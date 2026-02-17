@@ -8,11 +8,6 @@ pub(super) struct DiagonalArray<T, const DEPTH: u16> {
 }
 
 impl<T, const DEPTH: u16> DiagonalArray<T, DEPTH> {
-    /// Get the length of the array (how many rows/columns)
-    pub(crate) const fn len(&self) -> usize {
-        self.len
-    }
-
     /// Calculate the index of a given point (along the first axis; n) into the array
     const fn length(n: usize) -> usize {
         Self::length_with_depth(n, DEPTH as usize)
@@ -121,6 +116,7 @@ impl<const DEPTH: u16> DiagonalArray<f64, DEPTH> {
 }
 
 impl<T: std::fmt::Display, const DEPTH: u16> DiagonalArray<T, DEPTH> {
+    #[allow(dead_code)] // Used for debugging purposes
     pub(crate) fn to_csv(&self) -> String {
         let mut output = String::new();
         let depth = (DEPTH as usize).min(self.len);

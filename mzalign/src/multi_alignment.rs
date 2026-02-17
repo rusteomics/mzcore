@@ -69,7 +69,7 @@ impl<Sequence: HasPeptidoform<Linear>> MultiAlignment<Sequence> {
         for aligned_index in 0..self
             .lines
             .iter()
-            .map(|l| l.aligned_length())
+            .map(MultiAlignmentLine::aligned_length)
             .max()
             .unwrap_or_default()
         {
@@ -93,17 +93,17 @@ impl<Sequence: HasPeptidoform<Linear>> MultiAlignment<Sequence> {
     }
 
     /// Get the score (TODO: calculate)
-    pub fn score(&self) -> Score {
+    pub const fn score(&self) -> Score {
         self.score
     }
 
     /// Get the maximal step
-    pub fn maximal_step(&self) -> u16 {
+    pub const fn maximal_step(&self) -> u16 {
         self.maximal_step
     }
 
     /// Get the align type
-    pub fn align_type(&self) -> MultiAlignType {
+    pub const fn align_type(&self) -> MultiAlignType {
         self.align_type
     }
 }
@@ -365,8 +365,8 @@ impl<'a, Sequence: HasPeptidoform<Linear>, const STEPS: u16>
         let i = (sequence_index).min(c.len()).saturating_sub(1);
         unsafe {
             (
-                &c.sequence().get_unchecked(i),
-                &self.masses.get_unchecked([i, 0]),
+                c.sequence().get_unchecked(i),
+                self.masses.get_unchecked([i, 0]),
             )
         }
     }
@@ -380,12 +380,11 @@ impl<'a, Sequence: HasPeptidoform<Linear>, const STEPS: u16>
         if sequence_index >= len {
             Some(unsafe {
                 (
-                    &self
-                        .sequence
+                    self.sequence
                         .cast_peptidoform()
                         .sequence()
                         .get_unchecked(sequence_index - len..sequence_index),
-                    &self.masses.get_unchecked([sequence_index - 1, len - 1]),
+                    self.masses.get_unchecked([sequence_index - 1, len - 1]),
                 )
             })
         } else {
@@ -393,6 +392,7 @@ impl<'a, Sequence: HasPeptidoform<Linear>, const STEPS: u16>
         }
     }
 
+    #[allow(dead_code)] // Used for debugging purposes
     fn debug_display(&self, mut w: impl std::fmt::Write) {
         let sequence = self.sequence.cast_peptidoform().sequence();
         let mut seq_index = 0;
@@ -424,7 +424,7 @@ impl<'a, Sequence: HasPeptidoform<Linear>, const STEPS: u16>
 )]
 pub struct MultiPiece {
     pub match_type: MatchType,
-    /// aligned_length is required to always be at least sequence_length
+    /// `aligned_length` is required to always be at least `sequence_length`
     pub aligned_length: u16,
     pub sequence_length: u16,
 }
@@ -822,7 +822,7 @@ pub(super) fn multi_align_cached<'a, const STEPS: u16, Sequence: HasPeptidoform<
                         let pair_score = score_pair_mass_mismatch(
                             aa_a,
                             unsafe {
-                                &b[line_b]
+                                b[line_b]
                                     .sequence
                                     .cast_peptidoform()
                                     .sequence()

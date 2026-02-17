@@ -371,7 +371,7 @@ impl<'ontologies> PeptideModificationSearch<'ontologies> {
         }
     }
 
-    #[expect(clippy::missing_panics_doc, clippy::too_many_arguments)]
+    #[expect(clippy::too_many_arguments)]
     fn find_replacement_uncached(
         mass_mode: MassMode,
         tolerance: Tolerance<Mass>,

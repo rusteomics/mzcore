@@ -9,7 +9,6 @@ publish = false
 [dependencies]
 clap = { workspace = true }
 context_error = { workspace = true }
-directories = { workspace = true }
 mzcore = { path = "../../mzcore", default-features = false, features = [
     "coloured-errors",
 ] }

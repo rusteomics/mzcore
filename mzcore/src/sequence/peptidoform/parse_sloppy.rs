@@ -277,7 +277,7 @@ impl Peptidoform<SemiAmbiguous> {
                 BasicKind::Error,
                 "Peptide sequence is empty",
                 "A peptide sequence cannot be empty",
-                base_context.clone().add_highlight((0, range.clone())),
+                base_context.clone().add_highlight((0, range)),
             ));
         }
         let warnings = peptide.enforce_modification_rules_with_context(
@@ -288,7 +288,7 @@ impl Peptidoform<SemiAmbiguous> {
                 BasicKind::Error,
                 "Invalid modifications",
                 "Modifications are only allowed on the places as defined in the database",
-                base_context.clone().add_highlight((0, range.clone())),
+                base_context.clone().add_highlight((0, range)),
             )
             .add_underlying_errors(warnings));
         }
@@ -340,7 +340,7 @@ impl Modification {
                 }
             })
             .or_else(||
-                name.strip_prefix("N-term|").or(name.strip_prefix("C-term|")).and_then(|name| Self::find_name(name, position, ontologies))
+                name.strip_prefix("N-term|").or_else(|| name.strip_prefix("C-term|")).and_then(|name| Self::find_name(name, position, ontologies))
             )
             .or_else( || {
                 name.trim().split_ascii_whitespace().next().and_then(|head| Self::find_name::<SemiAmbiguous>(head, position, ontologies))

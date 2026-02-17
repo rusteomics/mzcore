@@ -77,9 +77,8 @@ pub trait AnnotatedPeptidoform: HasPeptidoformImpl {
                         if index + len >= end {
                             regions.push((r.clone(), end.saturating_sub(start)));
                             break;
-                        } else {
-                            regions.push((r.clone(), len - (start - index)));
                         }
+                        regions.push((r.clone(), len - (start - index)));
                     } else if index + len < end {
                         regions.push((r.clone(), *len));
                     } else {
@@ -95,7 +94,8 @@ pub trait AnnotatedPeptidoform: HasPeptidoformImpl {
                     regions,
                     self.annotations()
                         .iter()
-                        .filter_map(|(a, i)| range.contains(i).then(|| (a.clone(), i - start)))
+                        .filter(|&(_, i)| range.contains(i))
+                        .map(|(a, i)| (a.clone(), i - start))
                         .collect(),
                 )
             })
@@ -155,19 +155,18 @@ pub enum Region {
     MembraneTail(Option<usize>),
     Other(String),
     /// When multiple regions are joined, or when the exact boundary is not known
-    Joined(Vec<Region>),
+    Joined(Vec<Self>),
     None,
 }
 
 impl crate::space::Space for Region {
     fn space(&self) -> UsedSpace {
         match self {
-            Self::Framework(d) => d.space(),
-            Self::ComplementarityDetermining(d) => d.space(),
-            Self::Hinge(d) => d.space(),
-            Self::ConstantHeavy(d) => d.space(),
+            Self::Framework(d) | Self::ComplementarityDetermining(d) | Self::ConstantHeavy(d) => {
+                d.space()
+            }
             Self::ConstantLight | Self::None | Self::SecratoryTail => UsedSpace::default(),
-            Self::MembraneTail(d) => d.space(),
+            Self::Hinge(d) | Self::MembraneTail(d) => d.space(),
             Self::Other(d) => d.space(),
             Self::Joined(d) => d.space(),
         }

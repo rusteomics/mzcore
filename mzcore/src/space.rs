@@ -76,6 +76,7 @@ impl UsedSpace {
         }
     }
 
+    #[must_use]
     pub const fn set_total<Total>(self) -> Self {
         Self {
             padding: size_of::<Total>().saturating_sub(self.stack),
