@@ -32,6 +32,8 @@ pub enum GlycanCompositionError {
     ImproperCapitalisation,
     /// The occurrence was missing for a glycan, this is always generated because it might mean that the composition was parsed as something not intended by the user
     ImproperMissingOccurance,
+    /// The sign was missing for a mass custom monosaccharide, eg `{203}` instead of `{+203}`
+    ImproperMissingSign,
 }
 
 impl ErrorKind for GlycanCompositionError {
@@ -110,11 +112,32 @@ impl MonoSaccharide {
                     "The custom formula is not closed. No closing bracket '}' could be found.",
                     base_context.clone().add_highlight((0, index..end)),
                 )));
-                println!("{}", &line[index + 1..index + 1 + end_formula]);
-                let formula = handle!(single errors,
-                    MolecularFormula::pro_forma_inner::<true, false>(base_context, line, index + 1..index + 1+end_formula).map_err(|e| e.convert(|_| GlycanCompositionError::InvalidFormula)));
+
+                let ms = if let Ok(num) = line[index + 1..index + 1 + end_formula].parse::<f64>() {
+                    if line[index + 1..].starts_with('+') && line[index + 1..].starts_with('-') {
+                        errors.push(BoxedError::new(
+                            GlycanCompositionError::ImproperMissingSign,
+                            "Improper modification",
+                            "A numerical modification should always be specified with a sign (+/-) to help it be recognised as a mass modification and not a modification index.",
+                            base_context
+                                .clone()
+                                .add_highlight((0, index+1, 1)),
+                        ));
+                    }
+
+                    Self::new(
+                        crate::glycan::BaseSugar::Custom(Box::new(
+                            MolecularFormula::with_additional_mass(num),
+                        )),
+                        &[],
+                    )
+                } else {
+                    let formula = handle!(single errors,
+                        MolecularFormula::pro_forma_inner::<true, false>(base_context, line, index + 1..index + 1+end_formula).map_err(|e| e.convert(|_| GlycanCompositionError::InvalidFormula)));
+                    Self::new(crate::glycan::BaseSugar::Custom(formula.into()), &[])
+                };
                 index += end_formula + 2;
-                Self::new(crate::glycan::BaseSugar::Custom(formula.into()), &[])
+                ms
             } else {
                 let mut found = None;
                 'find_glycan: for (names, sugar) in GLYCAN_PARSE_LIST.iter() {

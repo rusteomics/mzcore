@@ -104,6 +104,43 @@ macro_rules! positive_tests {
                 assert!(res.is_ok(), "{}", res.err().unwrap().into_iter().join("\n"));
             }
     }};
+    ($id:literal,$case:literal,$source:ident,"ignore_warnings",$note:literal) => {
+        paste::paste!{
+            #[test]
+            fn [<$source _ $id>]() {
+                use itertools::Itertools;
+                let res = $crate::sequence::CompoundPeptidoformIon::pro_forma(
+                    $case,
+                    &$crate::ontology::STATIC_ONTOLOGIES,
+                )
+                .map(|(a, _)| a);
+                let upper = $case.to_ascii_uppercase();
+                let lower = $case.to_ascii_lowercase();
+                let res_upper = $crate::sequence::CompoundPeptidoformIon::pro_forma(
+                    &upper,
+                    &$crate::ontology::STATIC_ONTOLOGIES,
+                )
+                .map(|(a, _)| a);
+                let res_lower = $crate::sequence::CompoundPeptidoformIon::pro_forma(
+                    &lower,
+                    &$crate::ontology::STATIC_ONTOLOGIES,
+                )
+                .map(|(a, _)| a);
+                println!("{}", $case);
+                assert!(res.is_ok(), "{}", res.err().unwrap().into_iter().join("\n"));
+                assert_eq!(res, res_upper);
+                assert_eq!(res, res_lower);
+                let back = res.as_ref().unwrap().to_string();
+                let (res_back, _) =
+                    $crate::sequence::CompoundPeptidoformIon::pro_forma_strict(
+                        &back,
+                        &$crate::ontology::STATIC_ONTOLOGIES,
+                    )
+                    .unwrap();
+                assert_eq!(res.unwrap(), res_back, "{} != {back}", $case);
+            }
+        }
+    };
     ($id:literal,$case:literal,$source:ident,$key:literal,$note:literal) => {
         paste::paste!{
             #[test]
