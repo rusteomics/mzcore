@@ -21,6 +21,7 @@ use crate::{
         AminoAcid, GnoComposition, GnoSubsumption, LinkerSpecificity, ModificationId,
         PlacementRule, Position, RulePossible, SequenceElement, SequencePosition,
     },
+    space::{Space, UsedSpace},
     system::{Mass, OrderedMass, dalton},
 };
 
@@ -99,8 +100,30 @@ pub enum SimpleModificationInner {
         /// The id/name
         id: ModificationId,
         /// The length, if known
-        length: Option<(OrderedFloat<f64>, Option<OrderedFloat<f64>>)>,
+        length: LinkerLength,
     },
+}
+
+/// The length of a linker
+#[derive(Clone, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
+pub enum LinkerLength {
+    /// The length is unknown
+    Unknown,
+    /// A set of possible lengths
+    Discreet(Vec<OrderedFloat<f64>>),
+    /// An inclusive range
+    InclusiveRange(OrderedFloat<f64>, OrderedFloat<f64>),
+}
+
+impl Space for LinkerLength {
+    fn space(&self) -> UsedSpace {
+        match self {
+            Self::Unknown => UsedSpace::default(),
+            Self::Discreet(d) => d.space(),
+            Self::InclusiveRange(s, e) => s.space() + e.space(),
+        }
+        .set_total::<Self>()
+    }
 }
 
 impl bincode::Encode for SimpleModificationInner {
@@ -642,20 +665,16 @@ impl ParseJson for SimpleModificationInner {
                                     )
                                 },
                             )?)?,
-                            length: {
-                                let value = map.remove("length").ok_or_else(|| {
+                            length: LinkerLength::from_json_value(
+                                map.remove("length").ok_or_else(|| {
                                     BoxedError::new(
                                         BasicKind::Error,
                                         "Invalid SimpleModification",
                                         "The required property 'length' is missing",
                                         context(&map),
                                     )
-                                })?;
-                                Option::<f64>::from_json_value(value.clone())
-                                    .map(|v| v.map(|v| (v.into(), None)))
-                                    .or(Option::<(f64, Option<f64>)>::from_json_value(value)
-                                        .map(|v| v.map(|(s, e)| (s.into(), e.map(|e| e.into())))))?
-                            },
+                                })?,
+                            )?,
                         })
                     } else {
                         Err(BoxedError::new(
@@ -681,6 +700,27 @@ impl ParseJson for SimpleModificationInner {
                 "The JSON value has to be a map",
                 Context::show(value.to_string()),
             ))
+        }
+    }
+}
+
+impl ParseJson for LinkerLength {
+    fn from_json_value(value: Value) -> Result<Self, BoxedError<'static, BasicKind>> {
+        match value {
+            Value::Null => Ok(LinkerLength::Unknown),
+            Value::Number(ref n) => Ok(LinkerLength::Discreet(vec![
+                n.as_f64()
+                    .ok_or_else(|| {
+                        BoxedError::new(
+                            BasicKind::Error,
+                            "Invalid LinkerLength",
+                            "The length has to be a valid f64",
+                            Context::show(value.to_string()),
+                        )
+                    })?
+                    .into(),
+            ])),
+            _ => crate::parse_json::use_serde(value),
         }
     }
 }

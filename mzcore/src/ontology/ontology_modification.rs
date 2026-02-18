@@ -1,16 +1,13 @@
-use std::ops::RangeInclusive;
-
 use crate::{
     chemistry::{DiagnosticIon, MolecularFormula, NeutralLoss},
     ontology::Ontology,
     sequence::{
-        LinkerSpecificity, ModificationId, PlacementRule, SimpleModification,
+        LinkerLength, LinkerSpecificity, ModificationId, PlacementRule, SimpleModification,
         SimpleModificationInner,
     },
 };
 use itertools::Itertools;
 use mzcv::SynonymScope;
-use ordered_float::OrderedFloat;
 use thin_vec::ThinVec;
 
 #[derive(Debug, Default)]
@@ -32,7 +29,7 @@ pub(crate) enum ModData {
         specificities: Vec<(Vec<PlacementRule>, Vec<NeutralLoss>, Vec<DiagnosticIon>)>,
     },
     Linker {
-        length: Option<RangeInclusive<OrderedFloat<f64>>>,
+        length: LinkerLength,
         specificities: Vec<LinkerSpecificity>,
     },
 }
@@ -134,12 +131,7 @@ impl From<OntologyModification> for SimpleModificationInner {
                 specificities,
                 formula: value.formula,
                 id,
-                length: length.map(|range| {
-                    (
-                        *range.start(),
-                        (range.start() != range.end()).then_some(*range.end()),
-                    )
-                }),
+                length,
             },
         }
     }

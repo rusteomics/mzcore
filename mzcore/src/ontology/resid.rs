@@ -253,7 +253,7 @@ impl CVSource for Resid {
                             });
                         } else {
                             data = Some(ModData::Linker {
-                                length: None,
+                                length: crate::sequence::LinkerLength::Unknown,
                                 specificities: Vec::new(),
                             });
                         }

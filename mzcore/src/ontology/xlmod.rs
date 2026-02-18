@@ -1,6 +1,7 @@
 //! Code to handle the XL-MOD ontology
 use context_error::{BoxedError, CreateError, FullErrorContent, StaticErrorContent};
-use std::sync::Arc;
+use itertools::Itertools;
+use std::{collections::HashMap, sync::Arc};
 use thin_vec::ThinVec;
 
 use mzcv::{
@@ -8,13 +9,14 @@ use mzcv::{
 };
 
 use crate::{
-    chemistry::{DiagnosticIon, MolecularFormula},
+    chemistry::{DiagnosticIon, MolecularFormula, NeutralLoss},
     ontology::{
         Ontology,
         ontology_modification::{ModData, OntologyModification},
     },
     sequence::{
-        LinkerSpecificity, PlacementRule, Position, SimpleModification, SimpleModificationInner,
+        LinkerLength, LinkerSpecificity, PlacementRule, Position, SimpleModification,
+        SimpleModificationInner,
     },
 };
 
@@ -74,6 +76,7 @@ impl CVSource for XlMod {
             .map(|obo| {
                 (obo.version(), {
                     let mut mods: Vec<SimpleModification> = Vec::new();
+                    let mut ignored: HashMap<Option<u8>, Vec<u32>> = HashMap::new();
 
                     for obj in obo.objects {
                         if obj.stanza_type != OboStanzaType::Term {
@@ -86,13 +89,15 @@ impl CVSource for XlMod {
                             .expect("Incorrect XLMOD id, should be numerical");
                         let name = obj.lines["name"][0].0.clone();
 
+                        let mut dna_linker = false;
                         let mut sites = None;
-                        let mut length = None;
+                        let mut length = LinkerLength::Unknown;
                         let mut mass = None;
                         let mut formula = None;
                         let mut origins = (Vec::new(), Vec::new());
                         let mut diagnostic_ions = Vec::new();
                         let mut neutral_losses = Vec::new();
+                        let mut stubs = Vec::new();
                         let description = obj
                             .definition
                             .as_ref()
@@ -107,9 +112,12 @@ impl CVSource for XlMod {
                             .map(|s| (s.scope, s.synonym.clone()))
                             .collect();
 
-                        for (id, value) in &obj.property_values {
-                            match id.as_ref() {
+                        for (property, value) in &obj.property_values {
+                            match property.as_ref() {
                                 "reactionSites" => {
+                                    if value.len() > 1 {
+                                        println!("XLMOD, more than 1 reactionSites definition for {id}")
+                                    }
                                     sites = if let OboValue::Integer(n) = value[0].0 {
                                         Some(u8::try_from(n).unwrap())
                                     } else {
@@ -118,42 +126,39 @@ impl CVSource for XlMod {
                                     }
                                 }
                                 "spacerLength" => {
-                                    length = match &value[0].0 {
-                                        OboValue::Float(n) => Some(
-                                            ordered_float::OrderedFloat(*n)
-                                                ..=ordered_float::OrderedFloat(*n),
-                                        ),
-                                        OboValue::FloatRange(n) => Some(
-                                            ordered_float::OrderedFloat(*n.start())
-                                                ..=ordered_float::OrderedFloat(*n.end()),
-                                        ),
-                                        _ => unreachable!(),
+                                    for (def, _, _) in value {
+                                        match (&mut length, def) {
+                                            (LinkerLength::Discreet(options), OboValue::Float(n)) => options.push((*n).into()),
+                                            (l, OboValue::Float(n)) => *l = LinkerLength::Discreet(vec![(*n).into()]),
+                                            (l, OboValue::FloatRange(n)) => *l = LinkerLength::InclusiveRange((*n.start()).into(),(*n.end()).into(),),
+                                            _ => unreachable!(),
+                                        }
                                     }
                                 }
                                 "minSpacerLength" => {
-                                    length = match &value[0].0 {
-                                        OboValue::Float(n) => Some(
-                                            ordered_float::OrderedFloat(*n)
-                                                ..=length
-                                                    .map_or(ordered_float::OrderedFloat(*n), |v| {
-                                                        *v.end()
-                                                    }),
-                                        ),
+                                    if value.len() > 1 {
+                                        println!("XLMOD, more than 1 minSpacerLength definition for {id}")
+                                    }
+                                    match (&mut length, &value[0].0) {
+                                        (LinkerLength::InclusiveRange(start, _), OboValue::Float(n)) => *start = (*n).into(),
+                                        (l, OboValue::Float(n)) => *l = LinkerLength::InclusiveRange((*n).into(),(*n).into(),),
                                         _ => unreachable!(),
                                     }
                                 }
                                 "maxSpacerLength" => {
-                                    length = match &value[0].0 {
-                                        OboValue::Float(n) => Some(
-                                            length.map_or(ordered_float::OrderedFloat(*n), |v| {
-                                                *v.start()
-                                            })
-                                                ..=ordered_float::OrderedFloat(*n),
-                                        ),
+                                    if value.len() > 1 {
+                                        println!("XLMOD, more than 1 maxSpacerLength definition for {id}")
+                                    }
+                                    match (&mut length, &value[0].0) {
+                                        (LinkerLength::InclusiveRange(_, end), OboValue::Float(n)) => *end = (*n).into(),
+                                        (l, OboValue::Float(n)) => *l = LinkerLength::InclusiveRange((*n).into(),(*n).into(),),
                                         _ => unreachable!(),
                                     }
                                 }
                                 "monoIsotopicMass" => {
+                                    if value.len() > 1 {
+                                        println!("XLMOD, more than 1 monoIsotopicMass definition for {id}")
+                                    }
                                     mass = if let OboValue::Float(n) = value[0].0 {
                                         Some(ordered_float::OrderedFloat(n))
                                     } else {
@@ -162,20 +167,28 @@ impl CVSource for XlMod {
                                     }
                                 }
                                 "deadEndFormula" => {
+                                    if value.len() > 1 {
+                                        println!("XLMOD, more than 1 deadEndFormula definition for {id}")
+                                    }
                                     sites = Some(1);
                                     formula = Some(
                                         MolecularFormula::xlmod(&value[0].0.to_string()).unwrap(),
                                     );
                                 }
                                 "neutralLossFormula" => {
-                                    neutral_losses.push(
-                                        MolecularFormula::xlmod(&value[0].0.to_string())
-                                            .unwrap()
-                                            .into(),
-                                    );
+                                    for (def, _, _) in value {
+                                        neutral_losses.push(
+                                            MolecularFormula::xlmod(&def.to_string())
+                                                .unwrap()
+                                                .into(),
+                                        );
+                                    }
                                 }
                                 "bridgeFormula" => {
-                                    sites = Some(2);
+                                    if value.len() > 1 {
+                                        println!("XLMOD, more than 1 bridgeFormula definition for {id}")
+                                    }
+                                    sites = sites.or(Some(2));
                                     formula = Some(
                                         MolecularFormula::xlmod(&value[0].0.to_string()).unwrap(),
                                     );
@@ -183,32 +196,37 @@ impl CVSource for XlMod {
                                 "specificities" => {
                                     // specificities: "(C,U)" xsd:string
                                     // specificities: "(K,N,Q,R,Protein N-term)&(E,D,Protein C-term)" xsd:string
+                                    if value.len() > 1 {
+                                        println!("XLMOD, more than 1 specificities definition for {id}")
+                                    }
                                     if let Some((l, r)) = value[0].0.to_string().split_once('&') {
-                                        origins = (
+                                        sites = sites.or(Some(2));
+                                        origins.0.extend(
                                             l.trim_matches(['(', ')'])
                                                 .split(',')
-                                                .map(|s| s.trim().to_string())
-                                                .collect(),
+                                                .map(|s| s.trim().to_string()),
+                                        );
+                                        origins.1.extend(
                                             r.trim_matches(['(', ')'])
                                                 .split(',')
-                                                .map(|s| s.trim().to_string())
-                                                .collect(),
+                                                .map(|s| s.trim().to_string()),
                                         );
                                     } else {
-                                        origins = (
+                                        origins.0.extend(
                                             value[0]
                                                 .0
                                                 .to_string()
                                                 .trim_matches(['(', ')'])
                                                 .split(',')
-                                                .map(|s| s.trim().to_string())
-                                                .collect(),
-                                            Vec::new(),
+                                                .map(|s| s.trim().to_string()),
                                         );
                                     }
                                 }
                                 "secondarySpecificities" => {
                                     // secondarySpecificities: "(S,T,Y)" xsd:string
+                                    if value.len() > 1 {
+                                        println!("XLMOD, more than 1 secondarySpecificities definition for {id}")
+                                    }
                                     origins.0.extend(
                                         value[0]
                                             .0
@@ -218,34 +236,75 @@ impl CVSource for XlMod {
                                             .map(|s| s.trim().to_string()),
                                     );
                                 }
+                                "baseSpecificities" | "secondarybaseSpecificities" => {
+                                    dna_linker = true;
+                                }
                                 "reporterMass" | "CID_Fragment" => {
                                     // reporterMass: "555.2481" xsd:double
                                     // CID_Fragment: "828.5" xsd:double
-                                    diagnostic_ions.push(DiagnosticIon(
-                                        MolecularFormula::with_additional_mass(
-                                            if let OboValue::Float(n) = value[0].0 {
-                                                n
-                                            } else {
-                                                dbg!(obj);
-                                                unreachable!()
-                                            },
-                                        ),
-                                    ));
+                                    for (def, _, _) in value {
+                                        diagnostic_ions.push(DiagnosticIon(
+                                            MolecularFormula::with_additional_mass(
+                                                if let OboValue::Float(n) = def {
+                                                    *n
+                                                } else {
+                                                    dbg!(obj);
+                                                    unreachable!()
+                                                },
+                                            ),
+                                        ));
+                                    }
                                 }
-                                _ => {} // TODO: handle: stubDefinition, hydrophilicPEGchain?, maxAbsorption?, waveLengthRange?
+                                "stubDefinition" | "stubFormula" => {
+                                    // CID = H4 C3 O2 S1, -H2 -O1 : H2 C3 O1
+                                    // ETD = -H1 :
+                                    // TODO: Extend the stub logic to handle the techniques and neutral losses
+                                    for (def, _, _) in value {
+                                        if let OboValue::String(definition) = &def {
+                                            let (techniques, definition) =
+                                                definition.split_once('=').unwrap();
+                                            let (first, second) =
+                                                definition.split_once(':').unwrap();
+                                            let mut split_first = first.split(',');
+                                            let mut split_second = second.split(',');
+                                            let formula_first = split_first
+                                                .next()
+                                                .map_or(MolecularFormula::default(), |v| {
+                                                    MolecularFormula::xlmod(v).unwrap()
+                                                });
+                                            let losses_first: Vec<NeutralLoss> = split_first
+                                                .map(|v| MolecularFormula::xlmod(v).unwrap().into())
+                                                .collect();
+                                            let formula_second = split_second
+                                                .next()
+                                                .map_or(MolecularFormula::default(), |v| {
+                                                    MolecularFormula::xlmod(v).unwrap()
+                                                });
+                                            let losses_second: Vec<NeutralLoss> = split_second
+                                                .map(|v| MolecularFormula::xlmod(v).unwrap().into())
+                                                .collect();
+                                            stubs.push((formula_first, formula_second));
+                                        } else {
+                                            dbg!(obj);
+                                            unreachable!()
+                                        }
+                                    }
+                                }
+                                _ => {} // TODO: handle: hydrophilicPEGchain?, maxAbsorption?, waveLengthRange?
                             }
                         }
-                        let origins = (
+                        let mut origins = (
                             read_placement_rules(&origins.0),
                             read_placement_rules(&origins.1),
                         );
-                        if let Some(mass) = mass {
-                            // Ignore the mass if a formula is set
-                            if formula.is_none() {
-                                formula = Some(MolecularFormula::with_additional_mass(mass.0));
-                            }
+                        if origins.0.is_empty() {
+                            origins.0 = vec![PlacementRule::Anywhere];
                         }
-                        if sites == Some(2) || !origins.1.is_empty() {
+                        // Ignore the mass if a formula is set
+                        formula =
+                            formula.or(mass.map(|v| MolecularFormula::with_additional_mass(v.0)));
+
+                        if sites == Some(2) {
                             mods.push(
                                 OntologyModification {
                                     formula: formula.unwrap_or_default(),
@@ -261,7 +320,7 @@ impl CVSource for XlMod {
                                         specificities: vec![if origins.1.is_empty() {
                                             LinkerSpecificity::Symmetric {
                                                 rules: origins.0,
-                                                stubs: Vec::new(),
+                                                stubs,
                                                 neutral_losses,
                                                 diagnostic: diagnostic_ions,
                                             }
@@ -277,9 +336,7 @@ impl CVSource for XlMod {
                                 }
                                 .into(),
                             );
-                        } else if sites == Some(3) {
-                            // Ignore
-                        } else {
+                        } else if sites == Some(1) {
                             mods.push(Arc::new(
                                 OntologyModification {
                                     formula: formula.unwrap_or_default(),
@@ -293,14 +350,24 @@ impl CVSource for XlMod {
                                     data: ModData::Mod {
                                         specificities: vec![(
                                             origins.0,
-                                            Vec::new(),
+                                            neutral_losses,
                                             diagnostic_ions,
                                         )],
                                     },
                                 }
                                 .into(),
                             ));
+                        } else if !dna_linker {
+                            ignored.entry(sites).or_default().push(id);
                         }
+                    }
+
+                    for (sites, ids) in ignored.into_iter().sorted() {
+                        println!(
+                            "XLMOD: Ignored sites {}: {}",
+                            sites.map_or("[not set]".to_string(), |v| v.to_string()),
+                            ids.into_iter().sorted().join(","),
+                        );
                     }
 
                     mods
@@ -310,27 +377,23 @@ impl CVSource for XlMod {
 }
 
 fn read_placement_rules(bricks: &[String]) -> Vec<PlacementRule> {
-    if bricks.is_empty() {
-        vec![PlacementRule::Anywhere]
-    } else {
-        bricks
-            .iter()
-            .filter_map(|brick| {
-                if brick.len() == 1 {
-                    Some(PlacementRule::AminoAcid(
-                        vec![brick.try_into().unwrap()].into(),
-                        Position::Anywhere,
-                    ))
-                } else if *brick == "Protein N-term" {
-                    Some(PlacementRule::Terminal(Position::ProteinNTerm))
-                } else if *brick == "Protein C-term" {
-                    Some(PlacementRule::Terminal(Position::ProteinCTerm))
-                } else if ["Thy"].contains(&brick.as_str()) {
-                    None
-                } else {
-                    panic!("Invalid placement rule: '{brick}'")
-                }
-            })
-            .collect()
-    }
+    bricks
+        .iter()
+        .filter_map(|brick| {
+            if brick.len() == 1 {
+                Some(PlacementRule::AminoAcid(
+                    vec![brick.try_into().unwrap()].into(),
+                    Position::Anywhere,
+                ))
+            } else if *brick == "Protein N-term" {
+                Some(PlacementRule::Terminal(Position::ProteinNTerm))
+            } else if *brick == "Protein C-term" {
+                Some(PlacementRule::Terminal(Position::ProteinCTerm))
+            } else if ["Thy"].contains(&brick.as_str()) {
+                None
+            } else {
+                panic!("Invalid placement rule: '{brick}'")
+            }
+        })
+        .collect()
 }
