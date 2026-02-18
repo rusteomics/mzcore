@@ -105,9 +105,10 @@ pub enum SimpleModificationInner {
 }
 
 /// The length of a linker
-#[derive(Clone, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
+#[derive(Clone, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize, Default)]
 pub enum LinkerLength {
     /// The length is unknown
+    #[default]
     Unknown,
     /// A set of possible lengths
     Discreet(Vec<OrderedFloat<f64>>),

@@ -51,8 +51,8 @@ impl OntologyModification {
             } => {
                 let mut new = Vec::new();
                 for rule in rules.iter() {
-                    let rule = (
-                        rule.0.clone(),
+                    let rule: (Vec<PlacementRule>, Vec<NeutralLoss>, Vec<DiagnosticIon>) = (
+                        rule.0.iter().unique().sorted().cloned().collect(),
                         rule.1.iter().unique().sorted().cloned().collect(),
                         rule.2.iter().unique().sorted().cloned().collect(),
                     ); // Remove duplicate neutral losses and diagnostic ions, and sort for a better guarantee of equality
@@ -100,7 +100,48 @@ impl OntologyModification {
                 rules.extend(new);
             }
             ModData::Linker { specificities, .. } => {
-                *specificities = specificities.iter().unique().sorted().cloned().collect();
+                *specificities = specificities
+                    .iter()
+                    .map(|rule| match rule {
+                        LinkerSpecificity::Asymmetric {
+                            rules,
+                            stubs,
+                            neutral_losses,
+                            diagnostic,
+                        } => LinkerSpecificity::Asymmetric {
+                            rules: (
+                                rules.0.iter().unique().sorted().cloned().collect(),
+                                rules.1.iter().unique().sorted().cloned().collect(),
+                            ),
+                            stubs: stubs.iter().unique().sorted().cloned().collect(),
+                            neutral_losses: neutral_losses
+                                .iter()
+                                .unique()
+                                .sorted()
+                                .cloned()
+                                .collect(),
+                            diagnostic: diagnostic.iter().unique().sorted().cloned().collect(),
+                        },
+                        LinkerSpecificity::Symmetric {
+                            rules,
+                            stubs,
+                            neutral_losses,
+                            diagnostic,
+                        } => LinkerSpecificity::Symmetric {
+                            rules: rules.iter().unique().sorted().cloned().collect(),
+                            stubs: stubs.iter().unique().sorted().cloned().collect(),
+                            neutral_losses: neutral_losses
+                                .iter()
+                                .unique()
+                                .sorted()
+                                .cloned()
+                                .collect(),
+                            diagnostic: diagnostic.iter().unique().sorted().cloned().collect(),
+                        },
+                    })
+                    .unique()
+                    .sorted()
+                    .collect();
             }
         }
     }

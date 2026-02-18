@@ -69,6 +69,7 @@ impl OboIdentifier {
     pub fn namespace(&self) -> Option<&str> {
         self.0.as_deref()
     }
+
     /// The identifying marker
     pub fn identifier(&self) -> &str {
         &self.1
