@@ -99,7 +99,7 @@ pub enum SimpleModificationInner {
         /// The id/name
         id: ModificationId,
         /// The length, if known
-        length: Option<OrderedFloat<f64>>,
+        length: Option<(OrderedFloat<f64>, Option<OrderedFloat<f64>>)>,
     },
 }
 
@@ -642,17 +642,20 @@ impl ParseJson for SimpleModificationInner {
                                     )
                                 },
                             )?)?,
-                            length: Option::<f64>::from_json_value(
-                                map.remove("length").ok_or_else(|| {
+                            length: {
+                                let value = map.remove("length").ok_or_else(|| {
                                     BoxedError::new(
                                         BasicKind::Error,
                                         "Invalid SimpleModification",
                                         "The required property 'length' is missing",
                                         context(&map),
                                     )
-                                })?,
-                            )?
-                            .map(Into::into),
+                                })?;
+                                Option::<f64>::from_json_value(value.clone())
+                                    .map(|v| v.map(|v| (v.into(), None)))
+                                    .or(Option::<(f64, Option<f64>)>::from_json_value(value)
+                                        .map(|v| v.map(|(s, e)| (s.into(), e.map(|e| e.into())))))?
+                            },
                         })
                     } else {
                         Err(BoxedError::new(

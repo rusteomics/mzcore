@@ -92,6 +92,7 @@ impl CVSource for XlMod {
                         let mut formula = None;
                         let mut origins = (Vec::new(), Vec::new());
                         let mut diagnostic_ions = Vec::new();
+                        let mut neutral_losses = Vec::new();
                         let description = obj
                             .definition
                             .as_ref()
@@ -117,10 +118,39 @@ impl CVSource for XlMod {
                                     }
                                 }
                                 "spacerLength" => {
-                                    length = if let OboValue::Float(n) = value[0].0 {
-                                        Some(ordered_float::OrderedFloat(n))
-                                    } else {
-                                        None // can contain ranges
+                                    length = match &value[0].0 {
+                                        OboValue::Float(n) => Some(
+                                            ordered_float::OrderedFloat(*n)
+                                                ..=ordered_float::OrderedFloat(*n),
+                                        ),
+                                        OboValue::FloatRange(n) => Some(
+                                            ordered_float::OrderedFloat(*n.start())
+                                                ..=ordered_float::OrderedFloat(*n.end()),
+                                        ),
+                                        _ => unreachable!(),
+                                    }
+                                }
+                                "minSpacerLength" => {
+                                    length = match &value[0].0 {
+                                        OboValue::Float(n) => Some(
+                                            ordered_float::OrderedFloat(*n)
+                                                ..=length
+                                                    .map_or(ordered_float::OrderedFloat(*n), |v| {
+                                                        *v.end()
+                                                    }),
+                                        ),
+                                        _ => unreachable!(),
+                                    }
+                                }
+                                "maxSpacerLength" => {
+                                    length = match &value[0].0 {
+                                        OboValue::Float(n) => Some(
+                                            length.map_or(ordered_float::OrderedFloat(*n), |v| {
+                                                *v.start()
+                                            })
+                                                ..=ordered_float::OrderedFloat(*n),
+                                        ),
+                                        _ => unreachable!(),
                                     }
                                 }
                                 "monoIsotopicMass" => {
@@ -135,6 +165,13 @@ impl CVSource for XlMod {
                                     sites = Some(1);
                                     formula = Some(
                                         MolecularFormula::xlmod(&value[0].0.to_string()).unwrap(),
+                                    );
+                                }
+                                "neutralLossFormula" => {
+                                    neutral_losses.push(
+                                        MolecularFormula::xlmod(&value[0].0.to_string())
+                                            .unwrap()
+                                            .into(),
                                     );
                                 }
                                 "bridgeFormula" => {
@@ -195,7 +232,7 @@ impl CVSource for XlMod {
                                         ),
                                     ));
                                 }
-                                _ => {}
+                                _ => {} // TODO: handle: stubDefinition, hydrophilicPEGchain?, maxAbsorption?, waveLengthRange?
                             }
                         }
                         let origins = (
@@ -225,14 +262,14 @@ impl CVSource for XlMod {
                                             LinkerSpecificity::Symmetric {
                                                 rules: origins.0,
                                                 stubs: Vec::new(),
-                                                neutral_losses: Vec::new(),
+                                                neutral_losses,
                                                 diagnostic: diagnostic_ions,
                                             }
                                         } else {
                                             LinkerSpecificity::Asymmetric {
                                                 rules: (origins.0, origins.1),
                                                 stubs: Vec::new(),
-                                                neutral_losses: Vec::new(),
+                                                neutral_losses,
                                                 diagnostic: diagnostic_ions,
                                             }
                                         }],

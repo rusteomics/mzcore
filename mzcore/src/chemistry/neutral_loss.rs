@@ -143,6 +143,60 @@ impl ParseJson for DiagnosticIon {
     }
 }
 
+impl From<MolecularFormula> for NeutralLoss {
+    fn from(value: MolecularFormula) -> Self {
+        let (pos, neg, gcd) = value.elements.iter().fold(
+            (
+                0,
+                0,
+                value
+                    .elements
+                    .first()
+                    .map_or(1, |(_, _, a)| a.unsigned_abs()),
+            ),
+            |(p, n, g), (_, _, a)| {
+                if *a >= 0 {
+                    (p + 1, n, gcd(g, a.unsigned_abs()))
+                } else {
+                    (p, n + 1, gcd(g, a.unsigned_abs()))
+                }
+            },
+        );
+        let number = gcd.try_into().unwrap_or(1);
+        let num = number as i32;
+        let sign = pos >= neg;
+        let formula = MolecularFormula {
+            elements: value
+                .elements
+                .into_iter()
+                .map(|(e, i, a)| (e, i, i32::from(sign) * a / num))
+                .collect(),
+            additional_mass: value.additional_mass / num as f64,
+            labels: value.labels,
+        };
+        if pos >= neg {
+            Self::Gain(number, formula)
+        } else {
+            Self::Loss(number, formula)
+        }
+    }
+}
+
+fn gcd(mut n: u32, mut m: u32) -> u32 {
+    if n == 0 || m == 0 {
+        return 0;
+    }
+    while m != 0 {
+        if m < n {
+            let t = m;
+            m = n;
+            n = t;
+        }
+        m = m % n;
+    }
+    n
+}
+
 impl NeutralLoss {
     /// Check if this neutral loss if empty (has an empty molecular formula)
     pub fn is_empty(&self) -> bool {

@@ -1,3 +1,5 @@
+use std::ops::RangeInclusive;
+
 use crate::{
     chemistry::{DiagnosticIon, MolecularFormula, NeutralLoss},
     ontology::Ontology,
@@ -30,7 +32,7 @@ pub(crate) enum ModData {
         specificities: Vec<(Vec<PlacementRule>, Vec<NeutralLoss>, Vec<DiagnosticIon>)>,
     },
     Linker {
-        length: Option<OrderedFloat<f64>>,
+        length: Option<RangeInclusive<OrderedFloat<f64>>>,
         specificities: Vec<LinkerSpecificity>,
     },
 }
@@ -132,7 +134,12 @@ impl From<OntologyModification> for SimpleModificationInner {
                 specificities,
                 formula: value.formula,
                 id,
-                length,
+                length: length.map(|range| {
+                    (
+                        *range.start(),
+                        (range.start() != range.end()).then_some(*range.end()),
+                    )
+                }),
             },
         }
     }
