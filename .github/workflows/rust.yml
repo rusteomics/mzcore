@@ -17,7 +17,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
     - name: Check
       run: cargo check
     - name: Build all features
@@ -49,7 +49,7 @@ jobs:
 
     needs: build
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
     - name: Run fmt
       run: cargo fmt --check
 
@@ -58,7 +58,7 @@ jobs:
 
     needs: build
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
     - name: Run clippy
       run: cargo clippy
 
@@ -69,7 +69,7 @@ jobs:
 
     needs: build
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
     - name: Run tests
       run: |
         cargo test -p mzcv --no-fail-fast --features serde,search-index,http
