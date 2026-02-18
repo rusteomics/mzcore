@@ -130,7 +130,6 @@ impl CVSource for XlMod {
                                         match (&mut length, def) {
                                             (LinkerLength::Discreet(options), OboValue::Float(n)) => options.push((*n).into()),
                                             (l, OboValue::Float(n)) => *l = LinkerLength::Discreet(vec![(*n).into()]),
-                                            (l, OboValue::FloatRange(n)) => *l = LinkerLength::InclusiveRange((*n.start()).into(),(*n.end()).into(),),
                                             _ => unreachable!(),
                                         }
                                     }

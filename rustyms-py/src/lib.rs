@@ -1387,7 +1387,7 @@ impl Peptidoform {
         format!("Peptidoform({})", self.0)
     }
 
-    const fn __len__(&self) -> usize {
+    fn __len__(&self) -> usize {
         self.0.len()
     }
 

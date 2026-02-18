@@ -655,7 +655,7 @@ fn custom_database() -> Ontologies {
                 ThinVec::default(),
                 false,
             ),
-            length: None,
+            length: mzcore::sequence::LinkerLength::Unknown,
         }),
         Arc::new(SimpleModificationInner::Linker {
             specificities: vec![LinkerSpecificity::Symmetric {
@@ -677,7 +677,7 @@ fn custom_database() -> Ontologies {
                 ThinVec::default(),
                 false,
             ),
-            length: None,
+            length: mzcore::sequence::LinkerLength::Unknown,
         }),
     ])
 }

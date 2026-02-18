@@ -1,7 +1,4 @@
-use std::{
-    collections::HashMap, fmt::Display, fs::File, io::BufReader, ops::RangeInclusive, path::Path,
-    str::FromStr,
-};
+use std::{collections::HashMap, fmt::Display, fs::File, io::BufReader, path::Path, str::FromStr};
 
 use bincode::{Decode, Encode};
 use chrono::FixedOffset;
@@ -225,8 +222,6 @@ pub enum OboValue {
     Uri(String),
     /// A 64 bit floating point, when the unit is `xsd:double`, `xsd:decimal` or `xsd:float`
     Float(f64),
-    /// Floating point range, an unofficial use of the floating point sometimes seen, when the unit is `xsd:double`, `xsd:decimal` or `xsd:float`
-    FloatRange(RangeInclusive<f64>),
     /// An integer, when the unit is `xsd:integer`, `xsd:int`, `xsd:nonNegativeInteger`, or `xsd:positiveInteger`
     Integer(isize),
     /// A boolean, when the unit is `xsd:boolean`
@@ -240,7 +235,6 @@ impl Display for OboValue {
         match self {
             Self::String(s) | Self::Uri(s) => write!(f, "{s}"),
             Self::Float(s) => write!(f, "{s}"),
-            Self::FloatRange(s) => write!(f, "{}-{}", s.start(), s.end()),
             Self::Integer(s) => write!(f, "{s}"),
             Self::Boolean(s) => write!(f, "{s}"),
             Self::DateTime(s) => write!(f, "{}", s.to_rfc3339()),
@@ -258,37 +252,14 @@ impl OboValue {
             "xsd:string" => Ok(Self::String(value.to_string())),
             "xsd:anyURI" => Ok(Self::Uri(value.to_string())),
             "xsd:double" | "xsd:float" | "xsd:decimal" => {
-                if !value.starts_with('-')
-                    && let Some((start, end)) = value.split_once('-')
-                {
-                    // Some ontologies use a range
-                    Ok(Self::FloatRange(
-                        start.parse::<f64>().map_err(|e| {
-                            BoxedError::new(
-                                OboError::InvalidFloat,
-                                "Could not parse float",
-                                e.to_string(),
-                                base_context.clone(),
-                            )
-                        })?..=end.parse::<f64>().map_err(|e| {
-                            BoxedError::new(
-                                OboError::InvalidFloat,
-                                "Could not parse float",
-                                e.to_string(),
-                                base_context,
-                            )
-                        })?,
-                    ))
-                } else {
-                    Ok(Self::Float(value.parse::<f64>().map_err(|e| {
-                        BoxedError::new(
-                            OboError::InvalidFloat,
-                            "Could not parse float",
-                            e.to_string(),
-                            base_context,
-                        )
-                    })?))
-                }
+                Ok(Self::Float(value.parse::<f64>().map_err(|e| {
+                    BoxedError::new(
+                        OboError::InvalidFloat,
+                        "Could not parse float",
+                        e.to_string(),
+                        base_context,
+                    )
+                })?))
             }
             "xsd:boolean" => Ok(Self::Boolean(value == "true" || value == "1")),
             "xsd:dateTime" => Ok(Self::DateTime(
