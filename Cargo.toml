@@ -68,7 +68,7 @@ uom = { version = "0.37", default-features = false, features = [
 zeno = { version = "0.3.2" }
 
 [patch.crates-io]
-context_error = { path = "../context_error" }
+#context_error = { path = "../context_error" }
 
 [workspace.lints.rust]
 ambiguous_negative_literals = "warn"
