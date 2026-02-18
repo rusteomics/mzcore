@@ -528,17 +528,38 @@ impl CompoundPeptidoformIon {
                         )
                     );
                     index = end_index;
-                    for (m, _settings, r) in mods {
-                        match m.defined() {
-                            Some(m) => ranged_unknown_position_modifications.push((
-                            start,
-                            peptide.len().saturating_sub(1),
-                            m,
-                        )),
-                        None => errors.push(BoxedError::new(BasicKind::Error,
-                            "Invalid ranged ambiguous modification",
-                            "A ranged ambiguous modification has to be fully defined, so no ambiguous modification is allowed",
-                            base_context.clone().add_highlight((0, r)))),
+                    for (m, settings, r) in mods {
+                        if let Some((id, score)) = match m {
+                            ReturnModification::Defined(m) => {
+                                let id = ambiguous_lookup.len();
+                                let mut entry =
+                                    AmbiguousLookupEntry::new(format!("u{id}"), Some(m));
+                                entry.copy_settings(&settings);
+                                ambiguous_lookup.push(entry);
+                                Some((id, None))
+                            }
+                            ReturnModification::Ambiguous(id, score, _preferred) => {
+                                Some((id, score))
+                            }
+                            ReturnModification::CrossLinkReferenced(_) => {
+                                combine_error(
+                                    &mut errors,
+                                    BoxedError::new(
+                                        BasicKind::Error,
+                                        "Invalid ranged modification of unknown position",
+                                        "A modification on a sequence range cannot be a cross-linker",
+                                        base_context.clone().add_highlight((0, r)),
+                                    ),
+                                );
+                                None
+                            }
+                        } {
+                            ranged_unknown_position_modifications.push((
+                                start,
+                                peptide.len().saturating_sub(1),
+                                id,
+                                score,
+                            ));
                         }
                     }
                 }
@@ -759,6 +780,14 @@ impl CompoundPeptidoformIon {
             );
         }
 
+        if let Err(errs) = peptide.apply_ranged_unknown_position_modification(
+            &ranged_unknown_position_modifications,
+            &ambiguous_lookup,
+            &mut ambiguous_found_positions,
+        ) {
+            combine_errors(&mut errors, errs);
+        }
+
         // Fill in ambiguous positions, ambiguous contains (index, preferred, id, localisation_score)
         for (id, ambiguous) in ambiguous_found_positions
             .into_iter()
@@ -809,11 +838,6 @@ impl CompoundPeptidoformIon {
 
         if let Err(errs) = peptide
             .apply_unknown_position_modification(&unknown_position_modifications, &ambiguous_lookup)
-        {
-            combine_errors(&mut errors, errs);
-        }
-        if let Err(errs) = peptide
-            .apply_ranged_unknown_position_modification(&ranged_unknown_position_modifications)
         {
             combine_errors(&mut errors, errs);
         }

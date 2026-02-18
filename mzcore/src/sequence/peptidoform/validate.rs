@@ -2,6 +2,7 @@ use std::collections::BTreeMap;
 
 use context_error::*;
 use itertools::Itertools;
+use ordered_float::OrderedFloat;
 
 use crate::{
     ParserResult,
@@ -285,25 +286,67 @@ impl Peptidoform<Linear> {
     /// It panics when information for an ambiguous modification is missing (name/mod).
     pub(super) fn apply_ranged_unknown_position_modification(
         &mut self,
-        ranged_unknown_position_modifications: &[(usize, usize, SimpleModification)],
+        ranged_unknown_position_modifications: &[(
+            usize,
+            usize,
+            usize,
+            Option<OrderedFloat<f64>>,
+        )],
+        ambiguous_lookup: &AmbiguousLookup,
+        ambiguous_found_positions: &mut Vec<(
+            SequencePosition,
+            bool,
+            usize,
+            Option<OrderedFloat<f64>>,
+        )>,
     ) -> Result<(), Vec<BoxedError<'static, BasicKind>>> {
         let mut errors = Vec::new();
-        for (start, end, modification) in ranged_unknown_position_modifications {
-            if !self.add_unknown_position_modification(
-                modification.clone(),
-                start..=end,
-                &super::MUPSettings::default(),
-            ) {
-                combine_error(
-                    &mut errors,
-                    BoxedError::new(
+        for (start, end, id, score) in ranged_unknown_position_modifications {
+            let Some(entry) = ambiguous_lookup.get(*id) else {
+                errors.push(BoxedError::new(
                         BasicKind::Error,
-                        "Modification of unknown position on a range cannot be placed",
-                        "There is no position where this modification can be placed based on the placement rules in the database.",
-                        Context::show(modification.to_string()),
-                    ),
-                );
-            }
+                        "Modification of unknown position is not defined",
+                        "This ranged modification of unknown position referenced a nonexistent modification, please report this error",
+                        Context::show(format!("ID: {id}, range: {start}..={end}")),
+                    ));
+                continue;
+            };
+            let Some(modification) = entry.modification.clone() else {
+                errors.push(BoxedError::new(
+                    BasicKind::Error,
+                    "Modification of unknown position is not defined",
+                    "The ambiguous modification aplied on this range was never defined",
+                    Context::show(format!("ID: {id}, range: {start}..={end}")),
+                ));
+                continue;
+            };
+
+            let possible_positions = self
+                .iter(start..=end)
+                .filter(|(position, seq)| {
+                    modification
+                        .is_possible(seq, position.sequence_index)
+                        .any_possible()
+                        && (entry.as_settings().position.is_none()
+                            || entry.as_settings().position.as_ref().is_some_and(|rules| {
+                                rules
+                                    .iter()
+                                    .any(|rule| rule.is_possible(seq, position.sequence_index))
+                            }))
+                        && (entry.as_settings().colocalise_placed_modifications
+                            || self[position.sequence_index]
+                                .modifications
+                                .iter()
+                                .all(Modification::is_ambiguous))
+                })
+                .map(|(position, _)| position.sequence_index)
+                .collect_vec();
+
+            ambiguous_found_positions.extend(
+                possible_positions
+                    .into_iter()
+                    .map(|pos| (pos, false, *id, *score)),
+            );
         }
         if errors.is_empty() {
             Ok(())
