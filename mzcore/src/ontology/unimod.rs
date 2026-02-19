@@ -52,7 +52,14 @@ impl CVSource for Unimod {
 
     fn parse(
         mut reader: impl Iterator<Item = HashBufReader<Box<dyn Read>, impl sha2::Digest>>,
-    ) -> Result<(CVVersion, Self::Structure), Vec<BoxedError<'static, CVError>>> {
+    ) -> Result<
+        (
+            CVVersion,
+            Self::Structure,
+            Vec<BoxedError<'static, CVError>>,
+        ),
+        Vec<BoxedError<'static, CVError>>,
+    > {
         let mut reader = reader.next().unwrap();
         let mut buf = String::new();
         reader.read_to_string(&mut buf).map_err(|e| {
@@ -104,6 +111,7 @@ impl CVSource for Unimod {
                 hash: reader.hash(),
             },
             modifications,
+            Vec::new(),
         ))
     }
 }

@@ -28,17 +28,27 @@ pub enum CVError {
     CVUrlNotSet,
     /// The CV could not be read from the given URL, the URL could be wrong, or not up, or fail to download the file
     CVUrlCouldNotBeRead,
+    /// Not enough readers were given for this CV
+    MissingReader,
+    /// An error encountered while parsing a single item of the CV
+    ItemError,
+    /// An warning encountered while parsing a single item of the CV
+    ItemWarning,
 }
 
 impl ErrorKind for CVError {
     type Settings = ();
     fn descriptor(&self) -> &'static str {
-        "error"
+        if *self == Self::ItemWarning {
+            "warning"
+        } else {
+            "error"
+        }
     }
     fn ignored(&self, _settings: Self::Settings) -> bool {
         false
     }
     fn is_error(&self, _settings: Self::Settings) -> bool {
-        true
+        *self != Self::ItemWarning
     }
 }

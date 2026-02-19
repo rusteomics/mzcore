@@ -74,6 +74,16 @@ impl<T, E> ResultExtensions<T, E> for Result<Result<T, E>, E> {
     }
 }
 
+pub(crate) trait UnwrapInfallible<T> {
+    fn unwrap_infallible(self) -> T;
+}
+
+impl<T> UnwrapInfallible<T> for Result<T, std::convert::Infallible> {
+    fn unwrap_infallible(self) -> T {
+        self.unwrap()
+    }
+}
+
 pub(crate) trait RangeExtension
 where
     Self: Sized,

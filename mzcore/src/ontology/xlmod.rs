@@ -61,7 +61,14 @@ impl CVSource for XlMod {
 
     fn parse(
         mut reader: impl Iterator<Item = HashBufReader<Box<dyn std::io::Read>, impl sha2::Digest>>,
-    ) -> Result<(CVVersion, Self::Structure), Vec<BoxedError<'static, CVError>>> {
+    ) -> Result<
+        (
+            CVVersion,
+            Self::Structure,
+            Vec<BoxedError<'static, CVError>>,
+        ),
+        Vec<BoxedError<'static, CVError>>,
+    > {
         let reader = reader.next().unwrap();
         OboOntology::from_raw(reader)
             .map_err(|e| {
@@ -75,128 +82,141 @@ impl CVSource for XlMod {
                 ]
             })
             .map(|obo| {
-                (obo.version(), {
-                    let mut mods: Vec<SimpleModification> = Vec::new();
-                    let mut ignored: HashMap<Option<u8>, Vec<OboIdentifier>> = HashMap::new();
+                (
+                    obo.version(),
+                    {
+                        let mut mods: Vec<SimpleModification> = Vec::new();
+                        let mut ignored: HashMap<Option<u8>, Vec<OboIdentifier>> = HashMap::new();
 
-                    for obj in &obo.objects {
-                        if obj.stanza_type != OboStanzaType::Term {
-                            continue;
-                        }
-                        let id: u32 = obj
-                            .id
-                            .1
-                            .parse()
-                            .expect("Incorrect XLMOD id, should be numerical");
-                        let name = obj.lines["name"][0].0.clone();
+                        for obj in &obo.objects {
+                            if obj.stanza_type != OboStanzaType::Term {
+                                continue;
+                            }
+                            let id: u32 = obj
+                                .id
+                                .1
+                                .parse()
+                                .expect("Incorrect XLMOD id, should be numerical");
+                            let name = obj.lines["name"][0].0.clone();
 
-                        let description = obj
-                            .definition
-                            .as_ref()
-                            .map_or_else(Box::default, |d| d.0.clone());
-                        let cross_ids = obj
-                            .definition
-                            .as_ref()
-                            .map_or_else(ThinVec::new, |d| d.1.clone().into());
-                        let synonyms = obj
-                            .synonyms
-                            .iter()
-                            .map(|s| (s.scope, s.synonym.clone()))
-                            .collect();
+                            let description = obj
+                                .definition
+                                .as_ref()
+                                .map_or_else(Box::default, |d| d.0.clone());
+                            let cross_ids = obj
+                                .definition
+                                .as_ref()
+                                .map_or_else(ThinVec::new, |d| d.1.clone().into());
+                            let synonyms = obj
+                                .synonyms
+                                .iter()
+                                .map(|s| (s.scope, s.synonym.clone()))
+                                .collect();
 
-                        // Get all properties from any ancestors in the tree then get all properties from this definition
-                        let mut properties = Properties::default();
-                        let mut stack = Vec::new();
-                        stack.extend(obj.is_a.clone());
+                            // Get all properties from any ancestors in the tree then get all properties from this definition
+                            let mut properties = Properties::default();
+                            let mut stack = Vec::new();
+                            stack.extend(obj.is_a.clone());
 
-                        while let Some(id) = stack.pop() {
-                            if let Some(obj) = obo.objects.iter().find(|o| o.id == id) {
-                                parse_property_values(&obj.property_values, &mut properties, id);
-                                stack.extend(obj.is_a.clone());
+                            while let Some(id) = stack.pop() {
+                                if let Some(obj) = obo.objects.iter().find(|o| o.id == id) {
+                                    parse_property_values(
+                                        &obj.property_values,
+                                        &mut properties,
+                                        id,
+                                    );
+                                    stack.extend(obj.is_a.clone());
+                                }
+                            }
+
+                            parse_property_values(
+                                &obj.property_values,
+                                &mut properties,
+                                obj.id.clone(),
+                            );
+
+                            if properties.origins.0.is_empty() {
+                                properties.origins.0 = vec![PlacementRule::Anywhere];
+                            }
+
+                            if properties.sites == Some(2) {
+                                mods.push(
+                                    OntologyModification {
+                                        formula: properties.formula.unwrap_or_default(),
+                                        name,
+                                        description,
+                                        cross_ids,
+                                        synonyms,
+                                        id,
+                                        ontology: Ontology::Xlmod,
+                                        obsolete: obj.obsolete,
+                                        data: ModData::Linker {
+                                            length: properties.length,
+                                            specificities: vec![
+                                                if properties.origins.1.is_empty() {
+                                                    LinkerSpecificity::Symmetric {
+                                                        rules: properties.origins.0,
+                                                        stubs: properties.stubs,
+                                                        neutral_losses: properties.neutral_losses,
+                                                        diagnostic: properties.diagnostic_ions,
+                                                    }
+                                                } else {
+                                                    LinkerSpecificity::Asymmetric {
+                                                        rules: (
+                                                            properties.origins.0,
+                                                            properties.origins.1,
+                                                        ),
+                                                        stubs: properties.stubs,
+                                                        neutral_losses: properties.neutral_losses,
+                                                        diagnostic: properties.diagnostic_ions,
+                                                    }
+                                                },
+                                            ],
+                                        },
+                                    }
+                                    .into(),
+                                );
+                            } else if properties.sites == Some(1) {
+                                mods.push(Arc::new(
+                                    OntologyModification {
+                                        formula: properties.formula.unwrap_or_default(),
+                                        name,
+                                        description,
+                                        cross_ids,
+                                        synonyms,
+                                        ontology: Ontology::Xlmod,
+                                        obsolete: obj.obsolete,
+                                        id,
+                                        data: ModData::Mod {
+                                            specificities: vec![(
+                                                properties.origins.0,
+                                                properties.neutral_losses,
+                                                properties.diagnostic_ions,
+                                            )],
+                                        },
+                                    }
+                                    .into(),
+                                ));
+                            } else if !properties.dna_linker && !obj.property_values.is_empty() {
+                                ignored
+                                    .entry(properties.sites)
+                                    .or_default()
+                                    .push(obj.id.clone());
                             }
                         }
 
-                        parse_property_values(
-                            &obj.property_values,
-                            &mut properties,
-                            obj.id.clone(),
-                        );
-
-                        if properties.origins.0.is_empty() {
-                            properties.origins.0 = vec![PlacementRule::Anywhere];
-                        }
-
-                        if properties.sites == Some(2) {
-                            mods.push(
-                                OntologyModification {
-                                    formula: properties.formula.unwrap_or_default(),
-                                    name,
-                                    description,
-                                    cross_ids,
-                                    synonyms,
-                                    id,
-                                    ontology: Ontology::Xlmod,
-                                    obsolete: obj.obsolete,
-                                    data: ModData::Linker {
-                                        length: properties.length,
-                                        specificities: vec![if properties.origins.1.is_empty() {
-                                            LinkerSpecificity::Symmetric {
-                                                rules: properties.origins.0,
-                                                stubs: properties.stubs,
-                                                neutral_losses: properties.neutral_losses,
-                                                diagnostic: properties.diagnostic_ions,
-                                            }
-                                        } else {
-                                            LinkerSpecificity::Asymmetric {
-                                                rules: (properties.origins.0, properties.origins.1),
-                                                stubs: properties.stubs,
-                                                neutral_losses: properties.neutral_losses,
-                                                diagnostic: properties.diagnostic_ions,
-                                            }
-                                        }],
-                                    },
-                                }
-                                .into(),
+                        for (sites, ids) in ignored.into_iter().sorted() {
+                            println!(
+                                "XLMOD: Ignored sites {}: {}",
+                                sites.map_or("[not set]".to_string(), |v| v.to_string()),
+                                ids.into_iter().sorted().join(","),
                             );
-                        } else if properties.sites == Some(1) {
-                            mods.push(Arc::new(
-                                OntologyModification {
-                                    formula: properties.formula.unwrap_or_default(),
-                                    name,
-                                    description,
-                                    cross_ids,
-                                    synonyms,
-                                    ontology: Ontology::Xlmod,
-                                    obsolete: obj.obsolete,
-                                    id,
-                                    data: ModData::Mod {
-                                        specificities: vec![(
-                                            properties.origins.0,
-                                            properties.neutral_losses,
-                                            properties.diagnostic_ions,
-                                        )],
-                                    },
-                                }
-                                .into(),
-                            ));
-                        } else if !properties.dna_linker && !obj.property_values.is_empty() {
-                            ignored
-                                .entry(properties.sites)
-                                .or_default()
-                                .push(obj.id.clone());
                         }
-                    }
 
-                    for (sites, ids) in ignored.into_iter().sorted() {
-                        println!(
-                            "XLMOD: Ignored sites {}: {}",
-                            sites.map_or("[not set]".to_string(), |v| v.to_string()),
-                            ids.into_iter().sorted().join(","),
-                        );
-                    }
-
-                    mods
-                })
+                        mods
+                    },
+                    Vec::new(),
+                )
             })
     }
 }
@@ -226,7 +246,7 @@ fn parse_property_values(
         match property.as_ref() {
             "reactionSites" => {
                 if value.len() > 1 {
-                    println!("XLMOD, more than 1 reactionSites defined for {id}")
+                    println!("XLMOD, more than 1 reactionSites defined for {id}");
                 }
                 properties.sites = if let OboValue::Integer(n) = value[0].0 {
                     Some(u8::try_from(n).unwrap())
@@ -239,7 +259,7 @@ fn parse_property_values(
                 for (def, _, _) in value {
                     match (&mut properties.length, def) {
                         (LinkerLength::Discreet(options), OboValue::Float(n)) => {
-                            options.push((*n).into())
+                            options.push((*n).into());
                         }
                         (l, OboValue::Float(n)) => *l = LinkerLength::Discreet(vec![(*n).into()]),
                         _ => unreachable!(),
@@ -248,35 +268,35 @@ fn parse_property_values(
             }
             "minSpacerLength" => {
                 if value.len() > 1 {
-                    println!("XLMOD, more than 1 minSpacerLength defined for {id}")
+                    println!("XLMOD, more than 1 minSpacerLength defined for {id}");
                 }
                 match (&mut properties.length, &value[0].0) {
                     (LinkerLength::InclusiveRange(start, _), OboValue::Float(n)) => {
-                        *start = (*n).into()
+                        *start = (*n).into();
                     }
                     (l, OboValue::Float(n)) => {
-                        *l = LinkerLength::InclusiveRange((*n).into(), (*n).into())
+                        *l = LinkerLength::InclusiveRange((*n).into(), (*n).into());
                     }
                     _ => unreachable!(),
                 }
             }
             "maxSpacerLength" => {
                 if value.len() > 1 {
-                    println!("XLMOD, more than 1 maxSpacerLength defined for {id}")
+                    println!("XLMOD, more than 1 maxSpacerLength defined for {id}");
                 }
                 match (&mut properties.length, &value[0].0) {
                     (LinkerLength::InclusiveRange(_, end), OboValue::Float(n)) => {
-                        *end = (*n).into()
+                        *end = (*n).into();
                     }
                     (l, OboValue::Float(n)) => {
-                        *l = LinkerLength::InclusiveRange((*n).into(), (*n).into())
+                        *l = LinkerLength::InclusiveRange((*n).into(), (*n).into());
                     }
                     _ => unreachable!(),
                 }
             }
             "monoIsotopicMass" => {
                 if value.len() > 1 {
-                    println!("XLMOD, more than 1 monoIsotopicMass defined for {id}")
+                    println!("XLMOD, more than 1 monoIsotopicMass defined for {id}");
                 }
                 mass = if let OboValue::Float(n) = value[0].0 {
                     Some(ordered_float::OrderedFloat(n))
@@ -287,7 +307,7 @@ fn parse_property_values(
             }
             "deadEndFormula" => {
                 if value.len() > 1 {
-                    println!("XLMOD, more than 1 deadEndFormula defined for {id}")
+                    println!("XLMOD, more than 1 deadEndFormula defined for {id}");
                 }
                 properties.sites = Some(1);
                 properties.formula =
@@ -302,7 +322,7 @@ fn parse_property_values(
             }
             "bridgeFormula" => {
                 if value.len() > 1 {
-                    println!("XLMOD, more than 1 bridgeFormula defined for {id}")
+                    println!("XLMOD, more than 1 bridgeFormula defined for {id}");
                 }
                 properties.sites = properties.sites.or(Some(2));
                 properties.formula =
@@ -312,7 +332,7 @@ fn parse_property_values(
                 // specificities: "(C,U)" xsd:string
                 // specificities: "(K,N,Q,R,Protein N-term)&(E,D,Protein C-term)" xsd:string
                 if value.len() > 1 {
-                    println!("XLMOD, more than 1 specificities defined for {id}")
+                    println!("XLMOD, more than 1 specificities defined for {id}");
                 }
                 if let Some((l, r)) = value[0].0.to_string().split_once('&') {
                     properties.sites = properties.sites.or(Some(2));
@@ -341,7 +361,7 @@ fn parse_property_values(
                 // TODO: keep track that these are 'secondary' somewhere, similarly to the Unimod hidden state
                 // secondarySpecificities: "(S,T,Y)" xsd:string
                 if value.len() > 1 {
-                    println!("XLMOD, more than 1 secondarySpecificities defined for {id}")
+                    println!("XLMOD, more than 1 secondarySpecificities defined for {id}");
                 }
                 properties.origins.0.extend(
                     value[0]

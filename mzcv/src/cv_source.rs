@@ -47,12 +47,20 @@ pub trait CVSource {
         }
         folder.join(Self::cv_name())
     }
-    /// Parse the textual representation of this CV
+    /// Parse the textual representation of this CV. Return the version, the data, and possibly a
+    /// list of warnings or non critical errors encountered while parsing.
     /// # Errors
     /// If the parsing failed.
     fn parse(
         reader: impl Iterator<Item = HashBufReader<Box<dyn std::io::Read>, impl Digest>>,
-    ) -> Result<(CVVersion, Self::Structure), Vec<BoxedError<'static, CVError>>>;
+    ) -> Result<
+        (
+            CVVersion,
+            Self::Structure,
+            Vec<BoxedError<'static, CVError>>,
+        ),
+        Vec<BoxedError<'static, CVError>>,
+    >;
 
     /// Write out the data to the standard file, only need to implement this if
     /// `AUTOMATICALLY_WRITE_UNCOMPRESSED` is set to true. This is used to write out data when the

@@ -13,7 +13,10 @@ fn main() {
     {
         // PSI-MOD
         let mut index = CVIndex::<PsiMod>::empty();
-        index.update_from_url(&[]).unwrap();
+        let errs = index.update_from_url(&[]).unwrap();
+        for err in errs {
+            println!("{err}");
+        }
         println!(
             "PSI-MOD version: {}, last updated: {}, modifications: {}",
             index.version().version.as_deref().unwrap_or("-"),
@@ -29,7 +32,10 @@ fn main() {
         let path = std::path::Path::new("mzcore-update/data/RESID.xml");
         if path.exists() {
             let mut index = CVIndex::<Resid>::empty();
-            index.update_from_path([Some(path)], false).unwrap();
+            let errs = index.update_from_path([Some(path)], false).unwrap();
+            for err in errs {
+                println!("{err}");
+            }
             println!(
                 "RESID version: {}, last updated: {}, modifications: {}",
                 index.version().version.as_deref().unwrap_or("-"),
@@ -51,7 +57,10 @@ fn main() {
     {
         // XLMOD
         let mut index = CVIndex::<XlMod>::empty();
-        index.update_from_url(&[]).unwrap();
+        let errs = index.update_from_url(&[]).unwrap();
+        for err in errs {
+            println!("{err}");
+        }
         println!(
             "XLMOD version: {}, last updated: {}, modifications: {}",
             index.version().version.as_deref().unwrap_or("-"),
@@ -65,7 +74,10 @@ fn main() {
     if args.is_empty() || args.contains(&"unimod".to_string()) {
         // Unimod
         let mut index = CVIndex::<Unimod>::empty();
-        index.update_from_url(&[]).unwrap();
+        let errs = index.update_from_url(&[]).unwrap();
+        for err in errs {
+            println!("{err}");
+        }
         println!(
             "Unimod version: {}, last updated: {}, modifications: {}",
             index.version().version.as_deref().unwrap_or("-"),
@@ -79,7 +91,10 @@ fn main() {
     if args.is_empty() || args.contains(&"gno".to_string()) || args.contains(&"gnome".to_string()) {
         // GNOme
         let mut index = CVIndex::<Gnome>::empty();
-        index.update_from_url(&[]).unwrap();
+        let errs = index.update_from_url(&[]).unwrap();
+        for err in errs {
+            println!("{err}");
+        }
         println!(
             "GNOme version: {}, last updated: {}, modifications: {}",
             index.version().version.as_deref().unwrap_or("-"),

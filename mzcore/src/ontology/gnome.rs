@@ -66,7 +66,14 @@ impl CVSource for Gnome {
 
     fn parse(
         mut readers: impl Iterator<Item = HashBufReader<Box<dyn std::io::Read>, impl sha2::Digest>>,
-    ) -> Result<(CVVersion, Self::Structure), Vec<BoxedError<'static, CVError>>> {
+    ) -> Result<
+        (
+            CVVersion,
+            Self::Structure,
+            Vec<BoxedError<'static, CVError>>,
+        ),
+        Vec<BoxedError<'static, CVError>>,
+    > {
         let reader = readers.next().unwrap();
         let (version, mut mods) = OboOntology::from_raw(reader)
             .map_err(|e| {
@@ -130,6 +137,7 @@ impl CVSource for Gnome {
                 .filter_map(|m| m.try_into().ok())
                 .map(std::sync::Arc::new)
                 .collect(),
+            Vec::new(),
         ))
     }
 }

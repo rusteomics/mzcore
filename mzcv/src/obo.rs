@@ -122,7 +122,7 @@ impl From<&str> for OboIdentifier {
 }
 
 impl FromStr for OboIdentifier {
-    type Err = ();
+    type Err = std::convert::Infallible;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         Ok(s.into())
@@ -569,17 +569,7 @@ impl OboOntology {
                             obj.is_a.push(value_line.into());
                         }
                         "xref" => {
-                            let value = OboIdentifier::from_str(value_line).map_err(|()| {
-                                BoxedError::new(
-                                    OboError::InvalidXref,
-                                    "Invalid xref line",
-                                    "The line should contain a valid OboIdentifier",
-                                    base_context
-                                        .clone()
-                                        .lines(0, line.clone())
-                                        .line_index(line_index as u32),
-                                )
-                            })?;
+                            let value = OboIdentifier::from_str(value_line).unwrap();
                             obj.xref.push((value, trailing_modifiers, comment));
                         }
                         // TODO: Formalize broader `relationship` parsing as this currently is rolled up into `lines`

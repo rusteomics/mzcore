@@ -9,7 +9,7 @@ use std::{
     sync::Arc,
 };
 
-use context_error::{BoxedError, Context, CreateError};
+use context_error::{BoxedError, Context, CreateError, combine_errors};
 
 use crate::{CVError, CVIndex, CVSource, CVStructure, CVVersion, hash_buf_reader::HashBufReader};
 
@@ -130,7 +130,8 @@ impl<CV: CVSource> CVIndex<CV> {
         // have been built with an older version of the software with a different Data definition.
         // Inside update from path the cache is overwritten with the new info.
         match result.update_from_path([], true) {
-            Ok(()) => {
+            Ok(errs) => {
+                combine_errors(&mut errors, errs);
                 return (result, errors);
             }
             Err(error) => errors.push(error),
@@ -210,6 +211,9 @@ impl<CV: CVSource> CVIndex<CV> {
     /// the default path and be gzipped. This is done to keep the most current version at the
     /// default location.
     ///
+    /// If it is succesful it returns a list of warnings and non critical errors that where
+    /// encountered during parsing.
+    ///
     /// # Errors
     /// If the given file (or the default one if not overwritten):
     /// * Does not exist.
@@ -220,7 +224,7 @@ impl<CV: CVSource> CVIndex<CV> {
         &mut self,
         overwrite_path: impl IntoIterator<Item = Option<&'a Path>>,
         remove_original: bool,
-    ) -> Result<(), BoxedError<'static, CVError>> {
+    ) -> Result<Vec<BoxedError<'static, CVError>>, BoxedError<'static, CVError>> {
         type Paths<'b> = (
             bool,
             std::path::PathBuf,
@@ -297,7 +301,7 @@ impl<CV: CVSource> CVIndex<CV> {
 
         let (readers, paths): (Vec<_>, Vec<_>) = readers.into_iter().unzip();
 
-        let (version, data) = CV::parse(readers.into_iter()).map_err(|errors| {
+        let (version, data, errors) = CV::parse(readers.into_iter()).map_err(|errors| {
             store_errors(&stem, &errors);
             BoxedError::small(
                 CVError::FileCouldNotBeParsed,
@@ -369,7 +373,7 @@ impl<CV: CVSource> CVIndex<CV> {
                 }
             }
         }
-        Ok(())
+        Ok(errors)
     }
 
     /// Download the CV from the internet. If no overwrite URL was given it uses the default URL
@@ -378,6 +382,9 @@ impl<CV: CVSource> CVIndex<CV> {
     /// [`Self::update_from_path`] on the downloaded file.
     ///
     /// This is a blocking interface.
+    ///
+    /// If it is succesful it returns a list of warnings and non critical errors that where
+    /// encountered during parsing.
     ///
     /// # Errors
     ///
@@ -391,7 +398,7 @@ impl<CV: CVSource> CVIndex<CV> {
     pub fn update_from_url(
         &mut self,
         overwrite_urls: &[Option<&str>],
-    ) -> Result<(), BoxedError<'static, CVError>> {
+    ) -> Result<Vec<BoxedError<'static, CVError>>, BoxedError<'static, CVError>> {
         let paths = CV::files()
             .iter()
             .zip(overwrite_urls.iter().chain(std::iter::repeat(&None)))
@@ -521,6 +528,9 @@ impl<CV: CVSource> CVIndex<CV> {
     ///
     /// This is an async interface.
     ///
+    /// If it is succesful it returns a list of warnings and non critical errors that where
+    /// encountered during parsing.
+    ///
     /// # Errors
     ///
     /// * No URL was set with both the overwrite URL and [`CVSource::cv_url`].
@@ -533,7 +543,7 @@ impl<CV: CVSource> CVIndex<CV> {
     pub async fn update_from_url_async(
         &mut self,
         overwrite_urls: &[Option<&str>],
-    ) -> Result<(), BoxedError<'static, CVError>> {
+    ) -> Result<Vec<BoxedError<'static, CVError>>, BoxedError<'static, CVError>> {
         let paths = CV::files()
             .iter()
             .zip(overwrite_urls.iter().chain(std::iter::repeat(&None)))
