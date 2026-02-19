@@ -108,20 +108,46 @@ impl OntologyModification {
                             stubs,
                             neutral_losses,
                             diagnostic,
-                        } => LinkerSpecificity::Asymmetric {
-                            rules: (
-                                rules.0.iter().unique().sorted().cloned().collect(),
-                                rules.1.iter().unique().sorted().cloned().collect(),
-                            ),
-                            stubs: stubs.iter().unique().sorted().cloned().collect(),
-                            neutral_losses: neutral_losses
-                                .iter()
-                                .unique()
-                                .sorted()
-                                .cloned()
-                                .collect(),
-                            diagnostic: diagnostic.iter().unique().sorted().cloned().collect(),
-                        },
+                        } => {
+                            let left = rules.0.iter().unique().sorted().cloned().collect();
+                            let right = rules.1.iter().unique().sorted().cloned().collect();
+
+                            if left == right {
+                                LinkerSpecificity::Symmetric {
+                                    rules: left,
+                                    stubs: stubs.iter().unique().sorted().cloned().collect(),
+                                    neutral_losses: neutral_losses
+                                        .iter()
+                                        .unique()
+                                        .sorted()
+                                        .cloned()
+                                        .collect(),
+                                    diagnostic: diagnostic
+                                        .iter()
+                                        .unique()
+                                        .sorted()
+                                        .cloned()
+                                        .collect(),
+                                }
+                            } else {
+                                LinkerSpecificity::Asymmetric {
+                                    rules: (left, right),
+                                    stubs: stubs.iter().unique().sorted().cloned().collect(),
+                                    neutral_losses: neutral_losses
+                                        .iter()
+                                        .unique()
+                                        .sorted()
+                                        .cloned()
+                                        .collect(),
+                                    diagnostic: diagnostic
+                                        .iter()
+                                        .unique()
+                                        .sorted()
+                                        .cloned()
+                                        .collect(),
+                                }
+                            }
+                        }
                         LinkerSpecificity::Symmetric {
                             rules,
                             stubs,

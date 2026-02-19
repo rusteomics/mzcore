@@ -39,6 +39,8 @@ pub struct OboStanza {
     pub lines: HashMap<Box<str>, Vec<(Box<str>, Vec<Modifier>, Comment)>>,
     /// All property value tags parsed as the defined value type (value, trialing modifiers, comment)
     pub property_values: HashMap<Box<str>, Vec<(OboValue, Vec<Modifier>, Comment)>>,
+    /// All xref lines (value, trialing modifiers, comment)
+    pub xref: Vec<(OboIdentifier, Vec<Modifier>, Comment)>,
     /// If the `is_obsolete` property is set
     pub obsolete: bool,
     /// The ids of all parent terms in the ontology's term graph, as defined by the `is_a` special relationship
@@ -566,6 +568,20 @@ impl OboOntology {
                         "is_a" => {
                             obj.is_a.push(value_line.into());
                         }
+                        "xref" => {
+                            let value = OboIdentifier::from_str(value_line).map_err(|()| {
+                                BoxedError::new(
+                                    OboError::InvalidXref,
+                                    "Invalid xref line",
+                                    "The line should contain a valid OboIdentifier",
+                                    base_context
+                                        .clone()
+                                        .lines(0, line.clone())
+                                        .line_index(line_index as u32),
+                                )
+                            })?;
+                            obj.xref.push((value, trailing_modifiers, comment));
+                        }
                         // TODO: Formalize broader `relationship` parsing as this currently is rolled up into `lines`
                         _ => {
                             obj.lines
@@ -696,6 +712,8 @@ pub enum OboError {
     InvalidLine,
     /// If a synonym line is invalid
     InvalidSynonym,
+    /// If an xref is invalid
+    InvalidXref,
     /// If a date was formatted incorrectly
     InvalidDate,
     /// If a float was formatted incorrectly
