@@ -44,7 +44,7 @@ impl IMGTGene {
                     .location
                     .find_aa_location(&regions)
                     .map(|index| (conserved_map[key.as_str()].clone(), index))
-                    .ok_or_else(|| format!("Cannot find location of '{key}' '{region}'"))
+                    .ok_or_else(|| format!("Cannot find location of '{key}'"))
             })
             .collect::<Result<Vec<_>, _>>()?;
         conserved.extend(

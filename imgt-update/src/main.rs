@@ -8,8 +8,23 @@ use std::{
 };
 
 fn main() {
+    let args: Vec<String> = std::env::args()
+        .skip(1)
+        .map(|v| v.to_ascii_lowercase())
+        .collect();
     let mut index = CVIndex::<IMGT>::empty();
-    index.update_from_url(&[]).unwrap();
+
+    let errs = if let Some(path) = args.first() {
+        index
+            .update_from_path([Some(std::path::Path::new(path))], false)
+            .unwrap()
+    } else {
+        index.update_from_url(&[]).unwrap()
+    };
+
+    for err in errs {
+        println!("{err}");
+    }
 
     println!(
         "IMGT version: {}, last updated: {}, germlines: {}",

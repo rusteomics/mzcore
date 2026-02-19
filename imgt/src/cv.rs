@@ -5,7 +5,7 @@ use std::{
     sync::{Arc, LazyLock},
 };
 
-use context_error::BoxedError;
+use context_error::{BoxedError, Context, CreateError, combine_error};
 
 use mzcv::{CVData, CVError, CVFile, CVIndex, CVSource, CVStructure, CVVersion, HashBufReader};
 
@@ -65,18 +65,41 @@ impl CVSource for IMGT {
 
     fn parse(
         mut reader: impl Iterator<Item = HashBufReader<Box<dyn std::io::Read>, impl sha2::Digest>>,
-    ) -> Result<(CVVersion, Self::Structure), Vec<BoxedError<'static, CVError>>> {
+    ) -> Result<
+        (
+            CVVersion,
+            Self::Structure,
+            Vec<BoxedError<'static, CVError>>,
+        ),
+        Vec<BoxedError<'static, CVError>>,
+    > {
         let mut reader = reader.next().unwrap();
         let data = parse_dat(&mut reader);
 
-        let (grouped, _errors) = crate::combine::combine(data);
+        let (grouped, errors) = crate::combine::combine(data);
 
         let version = CVVersion {
             hash: reader.hash(),
             ..Default::default()
         };
 
-        Ok((version, grouped))
+        let mut cv_errors = Vec::new();
+        for (species, gene, note) in errors {
+            combine_error(
+                &mut cv_errors,
+                BoxedError::new(
+                    CVError::ItemError,
+                    "Error while parsing gene",
+                    note,
+                    Context::show(format!(
+                        "{species} {} {} {}",
+                        gene.allele, gene.acc, gene.location,
+                    )),
+                ),
+            );
+        }
+
+        Ok((version, grouped, cv_errors))
     }
 }
 

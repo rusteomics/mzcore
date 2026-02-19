@@ -12,6 +12,7 @@ imgt = { path = "../imgt", features = [
     "internal-no-data",
 ] }
 itertools = {workspace = true}
+context_error = { workspace = true, features = ["colored"] }
 
 [lints]
 workspace = true
