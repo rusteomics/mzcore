@@ -111,11 +111,11 @@ impl SimpleModificationInner {
                         }
                         SingleReturnModification::Positions(p) => settings.position = Some(p),
                         SingleReturnModification::Limit(l) => settings.limit = Some(l),
-                        SingleReturnModification::ColocalisePlacedModifications(s) => {
-                            settings.colocalise_placed_modifications = s;
+                        SingleReturnModification::CoMKP(s) => {
+                            settings.comkp = s;
                         }
-                        SingleReturnModification::ColocaliseModificationsOfUnknownPosition(s) => {
-                            settings.colocalise_modifications_of_unknown_position = s;
+                        SingleReturnModification::CoMUP(s) => {
+                            settings.comup = s;
                         }
                     }
                 }
@@ -153,8 +153,8 @@ enum SingleReturnModification {
     Modification(ReturnModification),
     Positions(Vec<PlacementRule>),
     Limit(usize),
-    ColocalisePlacedModifications(bool),
-    ColocaliseModificationsOfUnknownPosition(bool),
+    CoMKP(bool),
+    CoMUP(bool),
 }
 
 /// Settings for a modification of unknown position
@@ -165,9 +165,9 @@ pub struct MUPSettings {
     /// The maximal number for a grouped mup (^x)
     pub limit: Option<usize>,
     /// Allow this mup to colocalise with placed modifications
-    pub colocalise_placed_modifications: bool,
+    pub comkp: bool,
     /// Allow this mup to colocalise with other mups
-    pub colocalise_modifications_of_unknown_position: bool,
+    pub comup: bool,
 }
 
 impl Default for MUPSettings {
@@ -175,8 +175,8 @@ impl Default for MUPSettings {
         Self {
             position: None,
             limit: None,
-            colocalise_placed_modifications: true,
-            colocalise_modifications_of_unknown_position: true,
+            comkp: true,
+            comup: true,
         }
     }
 }
@@ -452,23 +452,23 @@ fn parse_single_modification<'error, const STRICT: bool>(
                         Err(e) => Err(vec![e]),
                     }
                 }
-                ("colocaliseplacedmodifications", tail) => {
+                ("colocalisemodificationsofknownposition" | "comkp", tail) => {
                     match tail.parse::<bool>().map_err(|error| {
                         basic_error.long_description(format!(
                             "Invalid setting for colocalise placed modifications for modification of unknown position, the boolean is {error}",
                         ))
                     }) {
-                        Ok(s) => return Ok((SingleReturnModification::ColocalisePlacedModifications(s), errors)),
+                        Ok(s) => return Ok((SingleReturnModification::CoMKP(s), errors)),
                         Err(e) => Err(vec![e]),
                     }
                 }
-                ("colocalisemodificationsofunknownposition", tail) => {
+                ("colocalisemodificationsofunknownposition" | "comup", tail) => {
                     match tail.parse::<bool>().map_err(|error| {
                         basic_error.long_description(format!(
                             "Invalid setting for colocalise modifications of unknown position for modification of unknown position, the boolean is {error}",
                         ))
                     }) {
-                        Ok(s) => return Ok((SingleReturnModification::ColocaliseModificationsOfUnknownPosition(s), errors)),
+                        Ok(s) => return Ok((SingleReturnModification::CoMUP(s), errors)),
                         Err(e) => Err(vec![e]),
                     }
                 }
@@ -483,6 +483,18 @@ fn parse_single_modification<'error, const STRICT: bool>(
             }
         } else if full.0.is_empty() {
             Ok(None)
+        } else if full
+            .0
+            .eq_ignore_ascii_case("colocalisemodificationsofknownposition")
+            || full.0.eq_ignore_ascii_case("comkp")
+        {
+            return Ok((SingleReturnModification::CoMKP(true), errors));
+        } else if full
+            .0
+            .eq_ignore_ascii_case("colocalisemodificationsofunknownposition")
+            || full.0.eq_ignore_ascii_case("comup")
+        {
+            return Ok((SingleReturnModification::CoMUP(true), errors));
         } else {
             Ok(Some(handle!(
                 errors,

@@ -749,9 +749,9 @@ pub struct AmbiguousLookupEntry {
     /// The maximal number of this modification on one place
     limit: Option<usize>,
     /// Determines if this modification can colocalise with placed modifications eg if the modification of unknown position is allowed at the second M '[Oxidation]?MM[Dioxidation]M'
-    colocalise_placed_modifications: bool,
+    comkp: bool,
     /// Determines if this modification can colocalise with other modifications of unknown position
-    colocalise_modifications_of_unknown_position: bool,
+    comup: bool,
 }
 
 impl AmbiguousLookupEntry {
@@ -763,8 +763,8 @@ impl AmbiguousLookupEntry {
             modification,
             limit: None,
             position: None,
-            colocalise_placed_modifications: true,
-            colocalise_modifications_of_unknown_position: true,
+            comkp: true,
+            comup: true,
         }
     }
 
@@ -772,9 +772,8 @@ impl AmbiguousLookupEntry {
     pub fn copy_settings(&mut self, settings: &MUPSettings) {
         self.position.clone_from(&settings.position);
         self.limit = settings.limit;
-        self.colocalise_placed_modifications = settings.colocalise_placed_modifications;
-        self.colocalise_modifications_of_unknown_position =
-            settings.colocalise_modifications_of_unknown_position;
+        self.comkp = settings.comkp;
+        self.comup = settings.comup;
     }
 
     /// Get the settings for this modification of unknown position
@@ -782,9 +781,8 @@ impl AmbiguousLookupEntry {
         MUPSettings {
             position: self.position.clone(),
             limit: self.limit,
-            colocalise_placed_modifications: self.colocalise_placed_modifications,
-            colocalise_modifications_of_unknown_position: self
-                .colocalise_modifications_of_unknown_position,
+            comkp: self.comkp,
+            comup: self.comup,
         }
     }
 }

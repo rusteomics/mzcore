@@ -6,9 +6,8 @@
 #![allow(clippy::float_cmp)]
 use std::ops::{Deref, DerefMut};
 
-use num_traits::Zero;
 use serde::{Deserialize, Serialize};
-use uom::*;
+use uom::num_traits::Zero;
 
 use crate::helper_functions;
 

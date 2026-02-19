@@ -333,7 +333,7 @@ impl Peptidoform<Linear> {
                                     .iter()
                                     .any(|rule| rule.is_possible(seq, position.sequence_index))
                             }))
-                        && (entry.as_settings().colocalise_placed_modifications
+                        && (entry.as_settings().comkp
                             || self[position.sequence_index]
                                 .modifications
                                 .iter()

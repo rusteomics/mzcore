@@ -1518,7 +1518,7 @@ impl<Complexity: AtLeast<SimpleLinear>> Peptidoform<Complexity> {
                                 .iter()
                                 .any(|rule| rule.is_possible(seq, position.sequence_index))
                         }))
-                    && (settings.colocalise_placed_modifications
+                    && (settings.comkp
                         || self[position.sequence_index]
                             .modifications
                             .iter()
@@ -1533,7 +1533,7 @@ impl<Complexity: AtLeast<SimpleLinear>> Peptidoform<Complexity> {
             &possible_positions,
             None,
             settings.limit,
-            settings.colocalise_modifications_of_unknown_position,
+            settings.comup,
         )
     }
 
