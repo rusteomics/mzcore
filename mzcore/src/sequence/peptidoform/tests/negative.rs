@@ -175,4 +175,6 @@ Id,Example,Source,Key,Notes
 171,"EM[Oxidation]EVT[#g1]S[Phospho#g1]ES[Phospho#g1]PEK",spec2_1,"","A single preferred location MUST be chosen"
 172,"P(RT(ESFRMS)[+19.0523]IS)[+19.0523]K",spec2_1,"","Overlapping ranges"
 173,"EN(?(GGE)[+100.00])KL",spec2_1,"","Overlapping ranges"
+174,"E(N(?GGE)[+100.00]K)L",spec2_1,"","Overlapping ranges"
+175,"EN((?GGE))[+100.00]KL",spec2_1,"","Overlapping ranges"
 );
