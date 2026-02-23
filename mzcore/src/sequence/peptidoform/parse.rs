@@ -7,7 +7,7 @@ use ordered_float::OrderedFloat;
 use crate::{
     ParserResult,
     chemistry::{Element, MolecularCharge, MolecularFormula},
-    helper_functions::*,
+    helper_functions::{self, *},
     ontology::Ontologies,
     sequence::{
         AmbiguousLookup, AmbiguousLookupEntry, AminoAcid, CheckedAminoAcid, CompoundPeptidoformIon,
@@ -206,11 +206,44 @@ impl CompoundPeptidoformIon {
         ontologies: &Ontologies,
     ) -> ParserResult<'a, Self, BasicKind> {
         let mut peptidoforms = Vec::new();
+        let mut name = String::new();
         let mut errors = Vec::new();
+
+        // Name
+        let mut index = range.start;
+        if line[index..range.end].starts_with("(>>>") {
+            index += 4;
+            let end = end_of_enclosure(line, index, b'(', b')');
+            if let Some(end) = end
+                && end < range.end
+            {
+                if line[index..].starts_with('>') {
+                    combine_error(
+                        &mut errors,
+                        BoxedError::new(
+                            BasicKind::Error,
+                            "Invalid compound peptidoform ion name",
+                            "A compound peptidoform ion name cannot start with a angled bracket '>'",
+                            base_context.clone().add_highlight((0, index..index + 1)),
+                        ),
+                    );
+                }
+                line[index..end].clone_into(&mut name);
+                index = end + 1;
+            } else {
+                return Err(vec![BoxedError::new(
+                    BasicKind::Error,
+                    "Invalid compound peptidoform ion name",
+                    "A compound peptidoform ion name has to be closed with a bracket, and any brackets in the name have to be paired",
+                    base_context.clone().add_highlight((0, index - 4..index)),
+                )]);
+            }
+        }
+
         // Global modifications
         let (mut start, global_modifications) = handle!(
             errors,
-            global_modifications::<STRICT>(base_context, line, range.clone(), ontologies)
+            global_modifications::<STRICT>(base_context, line, index..range.end, ontologies)
         );
         let (peptidoform, tail) = handle!(
             errors,
@@ -253,7 +286,11 @@ impl CompoundPeptidoformIon {
             );
             Err(errors)
         } else {
-            Ok((Self(peptidoforms), errors))
+            Ok((
+                Self::new(name, peptidoforms)
+                    .expect("Global modifications not equal, please report this internal error"),
+                errors,
+            ))
         }
     }
 
@@ -273,6 +310,37 @@ impl CompoundPeptidoformIon {
         // Grouped on cross link id and stores peptide id, sequence index
         let mut cross_links_found = BTreeMap::new();
         let mut errors = Vec::new();
+        let mut name = String::new();
+
+        // Name
+        if line[index..range.end].starts_with("(>>") {
+            index += 3;
+            let end = end_of_enclosure(line, index, b'(', b')');
+            if let Some(end) = end
+                && end < range.end
+            {
+                if line[index..].starts_with('>') {
+                    combine_error(
+                        &mut errors,
+                        BoxedError::new(
+                            BasicKind::Error,
+                            "Invalid peptidoform ion name",
+                            "A peptidoform ion name cannot start with a angled bracket '>'",
+                            base_context.clone().add_highlight((0, index..index + 1)),
+                        ),
+                    );
+                }
+                line[index..end].clone_into(&mut name);
+                index = end + 1;
+            } else {
+                return Err(vec![BoxedError::new(
+                    BasicKind::Error,
+                    "Invalid peptidoform ion name",
+                    "A peptidoform ion name has to be closed with a bracket, and any brackets in the name have to be paired",
+                    base_context.clone().add_highlight((0, index - 3..index)),
+                )]);
+            }
+        }
 
         // Parse any following cross-linked species
         while index < line.len() && ending == End::CrossLink && index < range.end {
@@ -334,9 +402,33 @@ impl CompoundPeptidoformIon {
             );
             Err(errors)
         } else {
+            // Ensure that only one charge is set
+            let last = peptides.last().unwrap();
+            let c = last.get_charge_carriers().cloned();
+            let len = peptides.len() - 1;
+            for p in &mut peptides[..len] {
+                if p.get_charge_carriers().is_some() {
+                    combine_error(
+                        &mut errors,
+                        BoxedError::new(
+                            BasicKind::Error,
+                            "Multiple charges on one peptidoform ion",
+                            "Only one charge can be defined on a peptidoform ion",
+                            base_context.clone(),
+                        ),
+                    );
+                }
+                p.set_charge_carriers(c.clone());
+            }
             let peptidoform = handle!(
                 errors,
-                super::validate::cross_links(peptides, cross_links_found, &cross_link_lookup, line)
+                super::validate::cross_links(
+                    name,
+                    peptides,
+                    cross_links_found,
+                    &cross_link_lookup,
+                    line
+                )
             );
 
             if errors.iter().any(|e| e.get_kind().is_error(())) {
@@ -358,7 +450,7 @@ impl CompoundPeptidoformIon {
         cross_link_lookup: &mut CrossLinkLookup,
     ) -> ParserResult<'a, LinearPeptideResult, BasicKind> {
         let mut errors = Vec::new();
-        let index: usize = range.start;
+        let mut index: usize = range.start;
         if line.trim().is_empty() {
             return Err(vec![BoxedError::new(
                 BasicKind::Error,
@@ -382,6 +474,36 @@ impl CompoundPeptidoformIon {
         )> = Vec::new();
         let mut ranged_unknown_position_modifications = Vec::new();
         let mut ending = End::Empty;
+
+        // Name
+        if line[index..range.end].starts_with("(>") {
+            index += 2;
+            let end = end_of_enclosure(line, index, b'(', b')');
+            if let Some(end) = end
+                && end < range.end
+            {
+                if line[index..].starts_with('>') {
+                    combine_error(
+                        &mut errors,
+                        BoxedError::new(
+                            BasicKind::Error,
+                            "Invalid peptidoform name",
+                            "A peptidoform name cannot start with a angled bracket '>'",
+                            base_context.clone().add_highlight((0, index..index + 1)),
+                        ),
+                    );
+                }
+                line[index..end].clone_into(peptide.name_mut());
+                index = end + 1;
+            } else {
+                return Err(vec![BoxedError::new(
+                    BasicKind::Error,
+                    "Invalid peptidoform name",
+                    "A peptidoform name has to be closed with a bracket, and any brackets in the name have to be paired",
+                    base_context.clone().add_highlight((0, index - 2..index)),
+                )]);
+            }
+        }
 
         // Unknown position mods
         let (index, unknown_position_modifications) = handle!(

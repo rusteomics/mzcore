@@ -41,11 +41,12 @@ macro_rules! negative_tests {
         paste::paste!{
             #[test]
             fn [<$source _ $id>]() {
+                println!("{}", $case);
                 let res = $crate::sequence::CompoundPeptidoformIon::pro_forma(
                     $case,
                     &$crate::ontology::STATIC_ONTOLOGIES,
                 );
-                println!("{}\n{:?}", $case, res);
+                println!("{:?}", res);
                 assert!(res.is_err() || res.is_ok_and(|(_, errs)| !errs.is_empty()));
             }
         }

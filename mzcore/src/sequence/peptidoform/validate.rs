@@ -19,13 +19,15 @@ use super::{GlobalModification, Linear};
 /// If there is a cross link with more than 2 locations. Or if there never is a definition for this cross link.
 /// Or if there are peptides that cannot be reached from the first peptide.
 pub(super) fn cross_links<'a>(
-    peptides: Vec<Peptidoform<Linear>>,
+    name: String,
+    peptidoforms: Vec<Peptidoform<Linear>>,
     cross_links_found: BTreeMap<usize, Vec<(usize, SequencePosition)>>,
     cross_link_lookup: &[(CrossLinkName, Option<SimpleModification>)],
     line: &'a str,
 ) -> ParserResult<'a, PeptidoformIon, BasicKind> {
     let mut errors = Vec::new();
-    let mut peptidoform = PeptidoformIon(peptides.into_iter().map(Into::into).collect());
+    let mut peptidoform = PeptidoformIon::new(name, peptidoforms)
+        .expect("Not all global modifications and charges are identical, please report this error");
     for (id, locations) in cross_links_found {
         let definition = &cross_link_lookup[id];
         if let Some(linker) = &definition.1 {
@@ -47,10 +49,11 @@ pub(super) fn cross_links<'a>(
                 1 => {
                     let (index, position) = locations[0];
                     if linker
-                        .is_possible(&peptidoform.0[index][position], position)
+                        .is_possible(&peptidoform.peptidoforms[index][position], position)
                         .any_possible()
                     {
-                        peptidoform.0[index].add_simple_modification(position, linker.clone());
+                        peptidoform.peptidoforms[index]
+                            .add_simple_modification(position, linker.clone());
                     } else {
                         let rules = linker.placement_rules();
                         combine_error(
@@ -65,7 +68,7 @@ pub(super) fn cross_links<'a>(
                                         SequencePosition::CTerm => "the C-terminus".to_string(),
                                         SequencePosition::Index(seq_index) => format!(
                                             "the side chain of {} at index {seq_index}",
-                                            peptidoform.0[index][position].aminoacid
+                                            peptidoform.peptidoforms[index][position].aminoacid
                                         ),
                                     },
                                     if rules.is_empty() {
@@ -141,24 +144,24 @@ pub(super) fn cross_links<'a>(
 
     // Check if all peptides can be reached from the first one
     let mut found_peptides = Vec::new();
-    let mut stack = vec![0];
+    let mut stack = vec![0_usize];
 
     while let Some(index) = stack.pop() {
         found_peptides.push(index);
-        for m in peptidoform.0[index]
+        for m in peptidoform.peptidoforms[index]
             .get_n_term()
             .iter()
-            .chain(peptidoform.0[index].get_c_term())
+            .chain(peptidoform.peptidoforms[index].get_c_term())
             .chain(
-                peptidoform.0[index]
+                peptidoform.peptidoforms[index]
                     .sequence()
                     .iter()
                     .flat_map(|seq| &seq.modifications),
             )
         {
             if let Modification::CrossLink { peptide, .. } = m
-                && !found_peptides.contains(peptide)
-                && !stack.contains(peptide)
+                && !found_peptides.contains(&peptide)
+                && !stack.contains(&peptide)
             {
                 stack.push(*peptide);
             }

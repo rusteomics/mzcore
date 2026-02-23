@@ -92,6 +92,8 @@ use crate::{
 ///
 #[derive(Debug, Deserialize, Ord, PartialOrd, Serialize)]
 pub struct Peptidoform<Complexity> {
+    /// The name of this peptidoform
+    name: String,
     /// Global isotope modifications, saved as the element and the species that
     /// all occurrence of that element will consist of. For example (N, 15) will
     /// make all occurring nitrogen atoms be isotope 15.
@@ -174,6 +176,7 @@ impl crate::space::Space for AmbiguousEntry {
 impl<Complexity> Default for Peptidoform<Complexity> {
     fn default() -> Self {
         Self {
+            name: String::new(),
             global: ThinVec::new(),
             labile: ThinVec::new(),
             n_term: ThinVec::new(),
@@ -189,6 +192,7 @@ impl<Complexity> Default for Peptidoform<Complexity> {
 impl<Complexity> Clone for Peptidoform<Complexity> {
     fn clone(&self) -> Self {
         Self {
+            name: String::new(),
             global: self.global.clone(),
             labile: self.labile.clone(),
             n_term: self.n_term.clone(),
@@ -205,7 +209,8 @@ impl<OwnComplexity, OtherComplexity> PartialEq<Peptidoform<OtherComplexity>>
     for Peptidoform<OwnComplexity>
 {
     fn eq(&self, other: &Peptidoform<OtherComplexity>) -> bool {
-        self.global == other.global
+        self.name == other.name
+            && self.global == other.global
             && self.labile == other.labile
             && self.n_term == other.n_term
             && self.c_term == other.c_term
@@ -217,6 +222,7 @@ impl<OwnComplexity, OtherComplexity> PartialEq<Peptidoform<OtherComplexity>>
 
 impl<Complexity> std::hash::Hash for Peptidoform<Complexity> {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.name.hash(state);
         self.global.hash(state);
         self.labile.hash(state);
         self.n_term.hash(state);
@@ -352,6 +358,7 @@ impl<Complexity> Peptidoform<Complexity> {
 
     /// Shrink all Vectors to just fit
     pub fn shrink_to_fit(&mut self) {
+        self.name.shrink_to_fit();
         self.global.shrink_to_fit();
         self.labile.shrink_to_fit();
         self.n_term.shrink_to_fit();
@@ -364,6 +371,16 @@ impl<Complexity> Peptidoform<Complexity> {
         if let Some(c) = &mut self.charge_carriers {
             c.charge_carriers.shrink_to_fit();
         }
+    }
+
+    /// Get the name
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+
+    /// Get the name
+    pub fn name_mut(&mut self) -> &mut String {
+        &mut self.name
     }
 }
 
@@ -408,6 +425,7 @@ impl<Complexity> Peptidoform<Complexity> {
     /// Mark this peptide with the following complexity, be warned that the complexity level is not checked.
     pub(super) fn mark<OtherComplexity>(self) -> Peptidoform<OtherComplexity> {
         Peptidoform {
+            name: self.name,
             global: self.global,
             labile: self.labile,
             n_term: self.n_term,
@@ -1103,6 +1121,9 @@ impl<Complexity> Peptidoform<Complexity> {
                 )?;
             }
         }
+        if !self.name.is_empty() {
+            write!(f, "(>{})", self.name)?;
+        }
         // Write any modification of unknown position that has no preferred location at the start of the peptide
         let mut any_ambiguous = false;
         let mut placed_ambiguous = Vec::new();
@@ -1641,6 +1662,7 @@ impl<OwnComplexity: AtMax<SemiAmbiguous>> Peptidoform<OwnComplexity> {
     {
         if self.c_term.is_empty() && other.n_term.is_empty() {
             Some(Peptidoform::<OwnComplexity::HighestLevel> {
+                name: self.name,
                 global: self.global,
                 labile: self.labile.into_iter().chain(other.labile).collect(),
                 n_term: self.n_term,
@@ -1674,6 +1696,7 @@ where
 {
     fn from(value: Collection) -> Self {
         Self {
+            name: String::new(),
             global: ThinVec::new(),
             labile: ThinVec::new(),
             n_term: ThinVec::new(),

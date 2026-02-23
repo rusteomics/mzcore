@@ -72,8 +72,14 @@ pub struct MolecularCharge {
 impl MolecularCharge {
     /// Create a default charge state with only protons
     pub fn proton(charge: Charge) -> Self {
-        Self {
-            charge_carriers: vec![(charge.value, molecular_formula!(H 1 :z+1))].into(),
+        if charge.value == 0 {
+            Self {
+                charge_carriers: ThinVec::new(),
+            }
+        } else {
+            Self {
+                charge_carriers: vec![(charge.value, molecular_formula!(H 1 :z+1))].into(),
+            }
         }
     }
 
