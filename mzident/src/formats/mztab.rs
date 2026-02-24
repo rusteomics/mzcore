@@ -1,5 +1,6 @@
 use std::{
     borrow::Cow,
+    cmp::Ordering,
     collections::HashMap,
     fs::File,
     io::{BufRead, BufReader},
@@ -933,34 +934,38 @@ impl MzTabPSM {
 
         result.local_confidence = result.local_confidence.as_ref().map(|lc| {
             let pep_len = result.peptidoform.as_ref().map_or(0, Peptidoform::len);
-            if lc.len() > pep_len {
-                // Casanovo stores the confidence for N and C terminal modifications.
-                // As Casanovo has a double N terminal modification (+43.006-17.027) which could also
-                // exist as two separate modifications the number of N terminal modifications is not a
-                // reliable measure to determine how many local confidence scores to ignore.
-                let c = result
-                    .peptidoform
-                    .as_ref()
-                    .map_or(0, |p| p.get_c_term().len());
-                let n = lc.len() - c - pep_len;
-                let range = n..lc.len() - c;
-                if range.len() == pep_len {
-                    Ok(lc[n..lc.len() - c].to_vec())
-                } else {
-                    Err(BoxedError::new(
-                        BasicKind::Error,
-                        "Invalid local confidence", 
-                        format!("The number of elements in the local confidence ({}) does not match the number of amino acids ({pep_len}).", lc.len()), 
-                        Context::default().line_index(line.line_index).lines(0, line.line)))
+            match lc.len().cmp(&pep_len) {
+                Ordering::Greater => {
+                    // Casanovo stores the confidence for N and C terminal modifications.
+                    // As Casanovo has a double N terminal modification (+43.006-17.027) which could also
+                    // exist as two separate modifications the number of N terminal modifications is not a
+                    // reliable measure to determine how many local confidence scores to ignore.
+                    let c = result
+                        .peptidoform
+                        .as_ref()
+                        .map_or(0, |p| p.get_c_term().len());
+                    let n = lc.len() - c - pep_len;
+                    let range = n..lc.len() - c;
+                    if range.len() == pep_len {
+                        Ok(lc[n..lc.len() - c].to_vec())
+                    } else {
+                        Err(BoxedError::new(
+                            BasicKind::Error,
+                            "Invalid local confidence", 
+                            format!("The number of elements in the local confidence ({}) does not match the number of amino acids ({pep_len}).", lc.len()), 
+                            Context::default().line_index(line.line_index).lines(0, line.line)))
+                    }
                 }
-            } else if lc.len() == pep_len {
-                Ok(lc.clone())
-            } else {
-                Err(BoxedError::new(
+                Ordering::Equal => {
+                    Ok(lc.clone())
+                }
+                Ordering::Less => {
+                    Err(BoxedError::new(
                     BasicKind::Error,
                     "Invalid local confidence", 
                     format!("The number of elements in the local confidence ({}) does not match the number of amino acids ({pep_len}).", lc.len()), 
                     Context::default().line_index(line.line_index).lines(0, line.line)))
+                }
             }
         }).transpose()?;
 
@@ -976,7 +981,7 @@ pub struct MzTabProtein {
     /// The protein’s name and or description line.
     pub description: String,
     /// The NCBI/NEWT taxonomy id for the species the protein was identified in.
-    pub taxid: u32,
+    pub taxid: Option<u32>,
     /// The human readable species the protein was identified in - this SHOULD be the NCBI entry’s name.
     pub species: String,
     /// The protein database used for the search (could theoretically come from a different species).
@@ -1041,14 +1046,18 @@ impl MzTabProtein {
             taxid: line
                 .required_column("taxid")
                 .and_then(|(v, location)| {
-                    v.parse::<u32>().map_err(|e| {
-                        BoxedError::new(
-                            BasicKind::Error,
-                            "Invalid PRT Line",
-                            format!("The taxid number {}", explain_number_error(&e)),
-                            Context::line_range(Some(line.line_index), line.line, location),
-                        )
-                    })
+                    if v.eq_ignore_ascii_case("null") {
+                        Ok(None)
+                    } else {
+                        v.parse::<u32>().map(Some).map_err(|e| {
+                            BoxedError::new(
+                                BasicKind::Error,
+                                "Invalid PRT Line",
+                                format!("The taxid number {}", explain_number_error(&e)),
+                                Context::line_range(Some(line.line_index), line.line, location),
+                            )
+                        })
+                    }
                 })
                 .map_err(BoxedError::to_owned)?,
             species: line
@@ -1087,10 +1096,11 @@ impl MzTabProtein {
             modifications: Vec::new(), // TODO: actually parse
             uri: line
                 .optional_column("uri")
-                .filter(|(v, _)| !v.eq_ignore_ascii_case("null"))
+                .filter(|(v, _)| !v.eq_ignore_ascii_case("null") && !v.is_empty())
                 .map(|(v, _)| v.to_string()),
             go_terms: line
                 .optional_column("go_terms")
+                .filter(|(v, _)| !v.eq_ignore_ascii_case("null") && !v.is_empty())
                 .map(|(v, l)| {
                     let mut offset = 0;
                     v.split('|')
@@ -1116,6 +1126,7 @@ impl MzTabProtein {
                 .unwrap_or_default(),
             coverage: line
                 .optional_column("protein_coverage")
+                .filter(|(v, _)| !v.eq_ignore_ascii_case("null") && !v.is_empty())
                 .map(|(v, location)| {
                     v.parse::<f64>().map_err(|e| {
                         BoxedError::new(
@@ -1870,9 +1881,9 @@ impl ProteinMetaData for MzTabProtein {
     }
 
     fn species(&self) -> Option<Curie> {
-        Some(Curie {
+        self.taxid.map(|taxid| Curie {
             cv: ControlledVocabulary::NCBITaxon,
-            accession: mzcv::AccessionCode::Numeric(self.taxid),
+            accession: mzcv::AccessionCode::Numeric(taxid),
         })
     }
 

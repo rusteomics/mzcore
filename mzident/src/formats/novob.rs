@@ -96,7 +96,7 @@ format_family!(
             location.trim_start_matches("['").trim_end_matches("']").or_empty().map(|location| Peptidoform::sloppy_pro_forma_inner(
                 &location.base_context(),
                 location.full_line(),
-                location.location.clone(),
+                location.range.clone(),
                 ontologies,
                 parameters(ontologies)
             ).map_err(BoxedError::to_owned)).transpose();
@@ -107,7 +107,7 @@ format_family!(
             location.trim_start_matches("['").trim_end_matches("']").or_empty().map(|location| Peptidoform::sloppy_pro_forma_inner(
                 &location.base_context(),
                 location.full_line(),
-                location.location.clone(),
+                location.range.clone(),
                 ontologies,
                 parameters(ontologies),
             ).map_err(BoxedError::to_owned)).transpose();

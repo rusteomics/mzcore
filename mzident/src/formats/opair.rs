@@ -41,20 +41,20 @@ format_family!(
         mass: Mass, |location: Location, _| location.parse::<f64>(NUMBER_ERROR).map(Mass::new::<mzcore::system::dalton>);
         protein_location: Option<Range<u16>>, |location: Location, _| location.or_empty().parse_with(
             |loc| {
-                if loc.location.len() < 3 {
+                if loc.range.len() < 3 {
                     return Err(BoxedError::new(BasicKind::Error,
                         "Invalid Opair line",
                         "The location is not defined, it should be defined like this [<start> to <end>]",
                         Context::line(
                             Some(loc.line.line_index() as u32),
                             loc.line.line(),
-                            loc.location.start,
-                            loc.location.len(),
+                            loc.range.start,
+                            loc.range.len(),
                         ).to_owned(),
                     ))
                 }
                 let bytes =
-                    &loc.line.line().as_bytes()[loc.location.start + 1..loc.location.end-1];
+                    &loc.line.line().as_bytes()[loc.range.start + 1..loc.range.end-1];
                 let start = bytes.iter().take_while(|c| c.is_ascii_digit()).count();
                 let end = bytes
                     .iter()
@@ -62,23 +62,23 @@ format_family!(
                     .take_while(|c| c.is_ascii_digit())
                     .count();
                 Ok(
-                    loc.line.line()[loc.location.start + 1..loc.location.start + 1 + start]
+                    loc.line.line()[loc.range.start + 1..loc.range.start + 1 + start]
                         .parse()
                         .map_err(|_| {
                             BoxedError::new(BasicKind::Error,NUMBER_ERROR.0, NUMBER_ERROR.1, Context::line(
                                 Some(loc.line.line_index() as u32),
                                 loc.line.line(),
-                                loc.location.start + 1,
+                                loc.range.start + 1,
                                 start,
                             )).to_owned()
                         })?..
-                    loc.line.line()[loc.location.end - 1 - end..loc.location.end - 1]
+                    loc.line.line()[loc.range.end - 1 - end..loc.range.end - 1]
                         .parse()
                         .map_err(|_| {
                             BoxedError::new(BasicKind::Error,NUMBER_ERROR.0, NUMBER_ERROR.1, Context::line(
                                 Some(loc.line.line_index() as u32),
                                 loc.line.line(),
-                                loc.location.end - 1 - end,
+                                loc.range.end - 1 - end,
                                 end,
                             ).to_owned())
                         })?
@@ -87,8 +87,8 @@ format_family!(
         );
         flanking_residues: (FlankingSequence, FlankingSequence), |location: Location, _| location.parse_with(
             |loc| {
-                let n = loc.line.line().as_bytes()[loc.location.start];
-                let c = loc.line.line().as_bytes()[loc.location.end - 1];
+                let n = loc.line.line().as_bytes()[loc.range.start];
+                let c = loc.line.line().as_bytes()[loc.range.end - 1];
                 Ok((
                     if n == b'-' {
                         FlankingSequence::Terminal
@@ -101,7 +101,7 @@ format_family!(
                                     Context::line(
                                         Some(loc.line.line_index() as u32),
                                         loc.line.line(),
-                                        loc.location.start,
+                                        loc.range.start,
                                         1,
                                     ).to_owned(),
                                 )
@@ -119,7 +119,7 @@ format_family!(
                                     Context::line(
                                         Some(loc.line.line_index() as u32),
                                         loc.line.line(),
-                                        loc.location.end - 1,
+                                        loc.range.end - 1,
                                         1,
                                     ).to_owned(),
                                 )
@@ -131,7 +131,7 @@ format_family!(
         peptide: Peptidoform<SemiAmbiguous>, |location: Location, ontologies: &Ontologies| Peptidoform::sloppy_pro_forma_inner(
             &location.base_context(),
             location.full_line(),
-            location.location.clone(),
+            location.range.clone(),
             ontologies,
             &SloppyParsingParameters::default()
         ).map_err(BoxedError::to_owned);
@@ -156,7 +156,7 @@ format_family!(
         glycan_mass: Mass, |location: Location, _| location.parse::<f64>(NUMBER_ERROR).map(Mass::new::<mzcore::system::dalton>);
         plausible_glycan_composition: Box<str>, |location: Location, _| Ok(location.get_boxed_str());
         n_glycan_motif: bool, |location: Location, _| location.parse_with(|loc| {
-            match &loc.line.line()[loc.location.clone()] {
+            match &loc.line.line()[loc.range.clone()] {
                 "TRUE" => Ok(true),
                 "FALSE" => Ok(false),
                 _ => Err(BoxedError::new(BasicKind::Error,
@@ -165,8 +165,8 @@ format_family!(
                     Context::line(
                         Some(loc.line.line_index() as u32),
                         loc.line.line(),
-                        loc.location.start,
-                        loc.location.len(),
+                        loc.range.start,
+                        loc.range.len(),
                     ).to_owned(),
                 )),
             }
@@ -194,7 +194,7 @@ format_family!(
             organism: String, |location: Location, _| Ok(location.get_string());
             protein_name: FastaIdentifier<Box<str>>, |location: Location, _| location.parse(NUMBER_ERROR);
             kind: MetaMorpheusMatchKind, |location: Location, _| location.parse_with(|loc| {
-            match &loc.line.line()[loc.location.clone()] {
+            match &loc.line.line()[loc.range.clone()] {
                 "T" => Ok(MetaMorpheusMatchKind::Target),
                 "C" => Ok(MetaMorpheusMatchKind::Contamination),
                 "D" => Ok(MetaMorpheusMatchKind::Decoy),
@@ -204,8 +204,8 @@ format_family!(
                     Context::line(
                         Some(loc.line.line_index() as u32),
                         loc.line.line(),
-                        loc.location.start,
-                        loc.location.len(),
+                        loc.range.start,
+                        loc.range.len(),
                     ).to_owned(),
                 )),
             }

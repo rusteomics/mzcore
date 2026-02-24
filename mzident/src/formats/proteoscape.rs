@@ -36,7 +36,7 @@ format_family!(
                     (!before.is_empty()).then(|| Peptidoform::sloppy_pro_forma_inner(
                         &location.base_context(),
                         before.full_line(),
-                        before.location.clone(),
+                        before.range.clone(),
                         ontologies,
                         &SloppyParsingParameters::default(),
                     ).map_err(BoxedError::to_owned)).transpose()?
@@ -44,14 +44,14 @@ format_family!(
                     Peptidoform::sloppy_pro_forma_inner(
                         &location.base_context(),
                         peptide.full_line(),
-                        peptide.location.clone(),
+                        peptide.range.clone(),
                         ontologies,
                         &SloppyParsingParameters::default(),
                     ).map_err(BoxedError::to_owned)?,
                     (!after.is_empty()).then(|| Peptidoform::sloppy_pro_forma_inner(
                         &location.base_context(),
                         after.full_line(),
-                        after.location.clone(),
+                        after.range.clone(),
                         ontologies,
                         &SloppyParsingParameters::default(),
                     ).map_err(BoxedError::to_owned)).transpose()?

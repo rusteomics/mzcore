@@ -40,7 +40,7 @@ format_family!(
         peptide_modifications: ThinVec<(SimpleModification, AminoAcid, Option<usize>)>, |location: Location, ontologies: &Ontologies|
             location.ignore("None").array(';').map(|l| {
                 let plus = l.as_str().find('+').ok_or_else(|| BoxedError::new(BasicKind::Error,"Invalid PLGS modification", "A PLGS modification should be in the format 'modification+AA(pos)' and the plus '+' is missing.", l.context().to_owned()))?;
-                let modification = Modification::sloppy_modification(l.full_line(), l.location.start..l.location.start+plus, None, ontologies).map_err(BoxedError::to_owned)?;
+                let modification = Modification::sloppy_modification(l.full_line(), l.range.start..l.range.start+plus, None, ontologies).map_err(BoxedError::to_owned)?;
                 let aa = l.as_str()[plus+1..plus+2].parse::<AminoAcid>().map_err(|()| BoxedError::new(BasicKind::Error,"Invalid PLGS modification", "A PLGS modification should be in the format 'modification+AA(pos)' and the amino acid is not valid", l.context().to_owned()))?;
                 let num = &l.as_str()[plus+3..l.len()-1];
                 let index = if num == "*" {None} else {
@@ -48,7 +48,7 @@ format_family!(
                 };
                 Ok((modification, aa, index))
             }).collect::<Result<ThinVec<_>,_>>();
-        peptide: Peptidoform<SimpleLinear>, |location: Location, ontologies: &Ontologies| Peptidoform::pro_forma_inner(&location.context(), location.full_line(), location.location.clone(), ontologies).map(|(mut p, _)| {p.shrink_to_fit(); p.into_simple_linear().unwrap()}).map_err(|errs| BoxedError::new(BasicKind::Error, "Invalid ProForma definition", "The string could not be parsed as a ProForma definition", location.context()).add_underlying_errors(errs)).map_err(BoxedError::to_owned);
+        peptide: Peptidoform<SimpleLinear>, |location: Location, ontologies: &Ontologies| Peptidoform::pro_forma_inner(&location.context(), location.full_line(), location.range.clone(), ontologies).map(|(mut p, _)| {p.shrink_to_fit(); p.into_simple_linear().unwrap()}).map_err(|errs| BoxedError::new(BasicKind::Error, "Invalid ProForma definition", "The string could not be parsed as a ProForma definition", location.context()).add_underlying_errors(errs)).map_err(BoxedError::to_owned);
         peptide_start: u16, |location: Location, _| location.parse(NUMBER_ERROR);
         peptide_pi: f32, |location: Location, _| location.parse(NUMBER_ERROR);
         peptide_component_id: u32, |location: Location, _| location.parse(NUMBER_ERROR);
@@ -91,7 +91,7 @@ format_family!(
         fragment_mass: Mass, |location: Location, _| location.or_empty().parse(NUMBER_ERROR).map(|r| r.map(Mass::new::<mzcore::system::dalton>));
         fragment_type: Box<str>, |location: Location, _| Ok(location.get_boxed_str());
         fragment_index: u32, |location: Location, _| location.or_empty().parse::<u32>(NUMBER_ERROR);
-        fragment_neutral_loss: NeutralLoss, |location: Location, _| location.or_empty().ignore("None").map(|l| MolecularFormula::pro_forma_inner::<false, false>(&l.context(), l.full_line(), l.location.clone()).map(|f| NeutralLoss::Loss(1, f)).map_err(BoxedError::to_owned)).transpose();
+        fragment_neutral_loss: NeutralLoss, |location: Location, _| location.or_empty().ignore("None").map(|l| MolecularFormula::pro_forma_inner::<false, false>(&l.context(), l.full_line(), l.range.clone()).map(|f| NeutralLoss::Loss(1, f)).map_err(BoxedError::to_owned)).transpose();
         fragment_description: Box<str>, |location: Location, _| Ok(location.get_boxed_str());
         fragment_sequence: Box<str>, |location: Location, _| Ok(location.get_boxed_str());
         fragment_site: Box<str>, |location: Location, _| Ok(location.get_boxed_str());

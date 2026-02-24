@@ -40,7 +40,7 @@ format_family!(
                 location.or_empty().map(|location| Peptidoform::sloppy_pro_forma_inner(
                     &location.base_context(),
                     location.full_line(),
-                    location.location.clone(),
+                    location.range.clone(),
                     ontologies,
                     PARAMETERS.get_or_init(|| SloppyParsingParameters {
                         mod_indications: (

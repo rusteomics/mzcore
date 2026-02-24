@@ -47,7 +47,7 @@ format_family!(
             location.trim_start_matches("['").trim_end_matches("']").parse_with(|location| Peptidoform::sloppy_pro_forma_inner(
                 &location.base_context(),
                 location.full_line(),
-                location.location.clone(),
+                location.range.clone(),
                 ontologies,
                 &SloppyParsingParameters::default(),
             ).map_err(BoxedError::to_owned));
@@ -56,7 +56,7 @@ format_family!(
             |location| location.clone().or_empty().map(|l| l.split_once(',').and_then(|(loc, modification)| modification.split_once('[').map(|(a, b)| (loc, a, b))).map(|(loc, modification, rule)|
             Ok((
                 loc.parse::<usize>(NUMBER_ERROR).map_err(BoxedError::to_owned)?,
-                Modification::sloppy_modification(modification.line.line(), modification.location, None, ontologies).map_err(BoxedError::to_owned)?,
+                Modification::sloppy_modification(modification.line.line(), modification.range, None, ontologies).map_err(BoxedError::to_owned)?,
                 rule.trim_end_matches("]").parse_with(|rule|
                     if let Result::Ok(position) = Position::from_str(rule.as_str()) && position != Position::Anywhere {
                         Ok(PlacementRule::Terminal(position))

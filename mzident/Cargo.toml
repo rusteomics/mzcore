@@ -23,7 +23,6 @@ flate2 = { workspace = true }
 itertools = { workspace = true }
 ordered-float = { workspace = true }
 paste = { workspace = true }
-regex = { workspace = true }
 serde = { workspace = true }
 thin-vec = { workspace = true }
 uom = { workspace = true }

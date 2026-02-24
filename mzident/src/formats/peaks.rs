@@ -46,7 +46,7 @@ format_family!(
                     BoxedError::new(BasicKind::Error,
                         "Invalid amino acid",
                         "This flanking residue is not a valid amino acid",
-                        Context::line(Some(location.line.line_index() as u32), location.full_line(), location.location.start, 1).to_owned()))).transpose()?;
+                        Context::line(Some(location.line.line_index() as u32), location.full_line(), location.range.start, 1).to_owned()))).transpose()?;
 
             let c_flanking: Option<AminoAcid> =
             (location.as_str().chars().nth_back(1) == Some('.'))
@@ -54,13 +54,13 @@ format_family!(
                     BoxedError::new(BasicKind::Error,
                         "Invalid amino acid",
                         "This flanking residue is not a valid amino acid",
-                        Context::line(Some(location.line.line_index() as u32), location.full_line(), location.location.end-1, location.location.end).to_owned()))).transpose()?;
+                        Context::line(Some(location.line.line_index() as u32), location.full_line(), location.range.end-1, location.range.end).to_owned()))).transpose()?;
 
             if c_flanking.is_none() && n_flanking.is_none() {
                 location.array(';').map(|l| Peptidoform::sloppy_pro_forma_inner(
                     &l.base_context(),
                     l.full_line(),
-                    l.location.clone(),
+                    l.range.clone(),
                     ontologies,
                     &SloppyParsingParameters::default()
                 ).map_err(BoxedError::to_owned)).unique()
@@ -70,7 +70,7 @@ format_family!(
                 Peptidoform::sloppy_pro_forma_inner(
                     &location.base_context(),
                     location.full_line(),
-                    n_flanking.map_or(location.location.start, |_| location.location.start+2)..c_flanking.map_or(location.location.end, |_| location.location.end-2),
+                    n_flanking.map_or(location.range.start, |_| location.range.start+2)..c_flanking.map_or(location.range.end, |_| location.range.end-2),
                     ontologies,
                     &SloppyParsingParameters::default()
                 ).map_err(BoxedError::to_owned).map(|p| (
@@ -88,7 +88,7 @@ format_family!(
         ptm: ThinVec<SimpleModification>, |location: Location, ontologies: &Ontologies|
             location.or_empty().array(';').map(|v| {
                 let v = v.trim();
-                Modification::sloppy_modification(v.full_line(), v.location.clone(), None, ontologies).map_err(BoxedError::to_owned)
+                Modification::sloppy_modification(v.full_line(), v.range.clone(), None, ontologies).map_err(BoxedError::to_owned)
             }).unique().collect::<Result<ThinVec<_>,_>>();
         scan_number: ThinVec<PeaksFamilyId>, |location: Location, _| location.or_empty()
                         .map_or_else(|| Ok(ThinVec::new()), |l| l.array(';').map(|v| v.parse(ID_ERROR)).collect::<Result<ThinVec<_>,_>>());

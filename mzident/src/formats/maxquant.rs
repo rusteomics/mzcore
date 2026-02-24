@@ -48,7 +48,7 @@ format_family!(
     /// {
     ///     mq.peptide = mq.dn_sequence.clone();
     ///     psm.score = mq.dn_combined_score.map(|v| f64::from(v) / 100.0);
-    ///     mq.score = mq.dn_combined_score.map_or(0.0, f64::from);
+    ///     mq.score = mq.dn_combined_score.map_or(0.0, f32::from);
     /// }
     /// ```
     MaxQuant,
@@ -67,7 +67,7 @@ format_family!(
         peptide: Option<Peptidoform<SimpleLinear>>, |location: Location, ontologies: &Ontologies| location.or_empty().parse_with(|location| Peptidoform::sloppy_pro_forma_inner(
             &location.base_context(),
             location.full_line(),
-            location.location.clone(),
+            location.range.clone(),
             ontologies,
             &SloppyParsingParameters::default()
         ).map_err(BoxedError::to_owned))
@@ -79,7 +79,7 @@ format_family!(
     }
     optional {
         all_modified_sequences: ThinVec<Peptidoform<SemiAmbiguous>>, |location: Location, ontologies: &Ontologies| location.array(';')
-                .map(|s| Peptidoform::sloppy_pro_forma_inner(&s.base_context(), s.line.line(), s.location.clone(), ontologies, &SloppyParsingParameters::default()).map_err(BoxedError::to_owned))
+                .map(|s| Peptidoform::sloppy_pro_forma_inner(&s.base_context(), s.line.line(), s.range.clone(), ontologies, &SloppyParsingParameters::default()).map_err(BoxedError::to_owned))
                 .collect::<Result<ThinVec<Peptidoform<SemiAmbiguous>>, BoxedError<'static, BasicKind>>>();
         base_peak_intensity: f32, |location: Location, _| location.parse::<f32>(NUMBER_ERROR);
         collision_energy: f32, |location: Location, _| location.parse::<f32>(NUMBER_ERROR);
@@ -633,14 +633,11 @@ fn parse_de_novo_sequence(
         ) -> Result<(Self, Location<'a>), BoxedError<'static, BasicKind>> {
             match location.as_str().as_bytes()[0] {
                 b'{' => {
-                    if let Some(end) = end_of_enclosure(
-                        location.full_line(),
-                        location.location.start + 1,
-                        b'{',
-                        b'}',
-                    ) {
+                    if let Some(end) =
+                        end_of_enclosure(location.full_line(), location.range.start + 1, b'{', b'}')
+                    {
                         let mut inner_location = Location {
-                            location: location.location.start + 1..end,
+                            range: location.range.start + 1..end,
                             ..location.clone()
                         };
                         let mut outer = Vec::new();
@@ -650,7 +647,7 @@ fn parse_de_novo_sequence(
                             inner.push(next.0);
                             inner_location = next.1;
                             if inner_location.as_str().as_bytes().first() == Some(&b'|') {
-                                inner_location.location.start += 1;
+                                inner_location.range.start += 1;
                                 outer.push(inner);
                                 inner = Vec::new();
                             }
@@ -667,7 +664,7 @@ fn parse_de_novo_sequence(
                             Ok((
                                 Self::Either(outer),
                                 Location {
-                                    location: end + 1..location.location.end,
+                                    range: end + 1..location.range.end,
                                     ..location.clone()
                                 },
                             ))
@@ -682,14 +679,11 @@ fn parse_de_novo_sequence(
                     }
                 }
                 b'[' => {
-                    if let Some(end) = end_of_enclosure(
-                        location.full_line(),
-                        location.location.start + 1,
-                        b'[',
-                        b']',
-                    ) {
+                    if let Some(end) =
+                        end_of_enclosure(location.full_line(), location.range.start + 1, b'[', b']')
+                    {
                         let mut inner_location = Location {
-                            location: location.location.start + 1..end,
+                            range: location.range.start + 1..end,
                             ..location.clone()
                         };
                         let mut inner = Vec::new();
@@ -709,7 +703,7 @@ fn parse_de_novo_sequence(
                             Ok((
                                 Self::UnknownOrder(inner),
                                 Location {
-                                    location: end + 1..location.location.end,
+                                    range: end + 1..location.range.end,
                                     ..location.clone()
                                 },
                             ))
@@ -734,7 +728,7 @@ fn parse_de_novo_sequence(
                                     Context::line(
                                         Some(location.line.line_index() as u32),
                                         location.full_line(),
-                                        location.location.start,
+                                        location.range.start,
                                         1,
                                     )
                                     .to_owned(),
@@ -743,19 +737,19 @@ fn parse_de_novo_sequence(
                             .into(),
                         None,
                     );
-                    let mut offset = location.location.start + 1;
+                    let mut offset = location.range.start + 1;
 
                     if location.as_str().as_bytes().get(1) == Some(&b'(') {
                         if let Some(end) = end_of_enclosure(
                             location.full_line(),
-                            location.location.start + 2,
+                            location.range.start + 2,
                             b'(',
                             b')',
                         ) {
                             offset = end + 1;
                             let modification = Modification::sloppy_modification(
                                 location.full_line(),
-                                location.location.start + 2..end,
+                                location.range.start + 2..end,
                                 Some(&aa),
                                 ontologies,
                             )
@@ -769,7 +763,7 @@ fn parse_de_novo_sequence(
                                 Context::line(
                                     Some(location.line.line_index() as u32),
                                     location.full_line(),
-                                    location.location.start + 1,
+                                    location.range.start + 1,
                                     1,
                                 )
                                 .to_owned(),
@@ -780,7 +774,7 @@ fn parse_de_novo_sequence(
                     Ok((
                         Self::Sequence(aa),
                         Location {
-                            location: offset..location.location.end,
+                            range: offset..location.range.end,
                             ..location.clone()
                         },
                     ))
@@ -899,7 +893,7 @@ mod tests {
                         fields: Vec::new(),
                         file: None,
                     },
-                    location: 0..test.len(),
+                    range: 0..test.len(),
                     column: None,
                 },
                 &mzcore::ontology::STATIC_ONTOLOGIES,

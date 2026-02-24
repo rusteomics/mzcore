@@ -346,7 +346,9 @@ fn parse_rule(
 ) -> Result<PlacementRule, BoxedError<'static, CVError>> {
     if rule.len() == 1 {
         if rule == "X" {
-            Ok(term.map_or_else(|| PlacementRule::Anywhere, PlacementRule::Terminal))
+            Ok(term
+                .filter(|t| *t != Position::Anywhere)
+                .map_or_else(|| PlacementRule::Anywhere, PlacementRule::Terminal))
         } else if let Ok(aa) = rule.try_into() {
             Ok(PlacementRule::AminoAcid(
                 vec![aa].into(),

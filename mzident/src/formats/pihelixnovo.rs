@@ -29,7 +29,7 @@ format_family!(
         peptide: Peptidoform<SemiAmbiguous>, |location: Location, ontologies: &Ontologies| Peptidoform::sloppy_pro_forma_inner(
             &location.base_context(),
             location.full_line(),
-            location.location.clone(),
+            location.range.clone(),
             ontologies,
             &SloppyParsingParameters {
                 allow_unwrapped_modifications: true,

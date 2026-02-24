@@ -124,12 +124,18 @@ pub(super) fn test_psm<Complexity, PeptidoformAvailability>(
             peptidoform.compound_peptidoform_ion().unwrap(),
         ));
     }
-    if peptidoform.compound_peptidoform_ion().is_some_and(|p| {
-        p.peptidoforms()
-            .any(|p| !p.enforce_modification_rules().is_empty())
-    }) {
+
+    let misplaced = peptidoform
+        .compound_peptidoform_ion()
+        .iter()
+        .flat_map(|p| {
+            p.peptidoforms()
+                .flat_map(Peptidoform::enforce_modification_rules)
+        })
+        .collect::<Vec<_>>();
+    if !misplaced.is_empty() {
         return Err(format!(
-            "Peptide {} contains misplaced modifications, sequence {}",
+            "Peptide {} contains misplaced modifications, sequence {}\n{misplaced:?}",
             peptidoform.id(),
             peptidoform.compound_peptidoform_ion().unwrap(),
         ));
@@ -165,6 +171,7 @@ pub(super) fn test_psm<Complexity, PeptidoformAvailability>(
 
 #[ignore = "only run when interested in the sizes of the data"]
 #[test]
+#[allow(clippy::missing_panics_doc)]
 fn test_size_plgs() {
     let mut file = open_psm_file(
         "src/test_files/plgs_v3.0_peptide.csv",
@@ -188,6 +195,7 @@ fn test_size_plgs() {
 
 #[ignore = "only run when interested in the sizes of the data"]
 #[test]
+#[allow(clippy::missing_panics_doc)]
 fn test_size_plink() {
     let mut file = open_psm_file(
         "src/test_files/plink_v2.3_small.csv",

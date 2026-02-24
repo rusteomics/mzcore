@@ -3,7 +3,6 @@ use std::{
     marker::PhantomData,
     ops::Range,
     path::{Path, PathBuf},
-    sync::LazyLock,
 };
 
 use serde::{Deserialize, Serialize};
@@ -36,7 +35,7 @@ format_family!(
         peptide: Peptidoform<SemiAmbiguous>, |location: Location, ontologies: &Ontologies| Peptidoform::sloppy_pro_forma_inner(
             &location.base_context(),
             location.full_line(),
-            location.location.clone(),
+            location.range.clone(),
             ontologies,
             &SloppyParsingParameters::default(),
         ).map_err(BoxedError::to_owned);
@@ -51,19 +50,14 @@ format_family!(
     }
 
     fn post_process(_source: &CsvLine, mut parsed: Self, _ontologies: &Ontologies) -> Result<Self, BoxedError<'static, BasicKind>> {
-        if let Some(m) = IDENTIFER_REGEX
-            .captures(&parsed.title)
+        if let Some((file, id)) = parsed.title.split_once(":index=")
         {
-            parsed.raw_file = Some(PathBuf::from(m.get(1).unwrap().as_str()));
-            parsed.scan = Some(m.get(2).unwrap().as_str().parse::<usize>().unwrap());
+            parsed.raw_file = Some(PathBuf::from(file));
+            parsed.scan = Some(id.parse::<usize>().map_err(|err| BoxedError::new(BasicKind::Error, "Invalid PowerNovo ID", format!("The scan number {}", crate::helper_functions::explain_number_error(&err)), Context::none().lines(0, &parsed.title).add_highlight((0, file.len() + 7, id.len())).to_owned()))?);
         }
         Ok(parsed)
     }
 );
-
-/// The Regex to match against PowerNovo scan fields
-static IDENTIFER_REGEX: LazyLock<regex::Regex> =
-    LazyLock::new(|| regex::Regex::new(r"^(.*):index=(\d+)$").unwrap());
 
 /// The only known version of PowerNovo
 pub const POWERNOVO_V1_0_17: PowerNovoFormat = PowerNovoFormat {

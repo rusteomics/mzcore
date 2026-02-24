@@ -15,7 +15,7 @@ use mzcore::csv::CsvLine;
 /// the name, type, and the lambda function to parse the text are given. Note that optional column
 /// types are automatically wrapped in an `Option` so no additional `Option` should be specified.
 ///
-/// Lastly, a post processing function can be specified.
+/// Lastly, a postprocessing function can be specified.
 ///
 /// Please check the other file formats for how the precisely use the syntax.
 ///
@@ -248,7 +248,7 @@ macro_rules! format_family {
     serde::Deserialize,
 )]
 pub(super) enum OptionalColumn {
-    /// This column is not avalable in this version
+    /// This column is not available in this version
     #[default]
     NotAvailable,
     /// This column is optional in this version
@@ -288,7 +288,7 @@ impl HasLocation for CsvLine {
         self.index_column(name)
             .map(|(_v, c)| Location {
                 line: self,
-                location: c.clone(),
+                range: c.clone(),
                 column: Some(name),
             })
             .map_err(BoxedError::to_owned)
@@ -299,17 +299,17 @@ impl HasLocation for CsvLine {
 #[derive(Clone)]
 pub(super) struct Location<'a> {
     pub(super) line: &'a CsvLine,
-    pub(super) location: Range<usize>,
+    pub(super) range: Range<usize>,
     pub(super) column: Option<&'a str>,
 }
 
 impl Location<'_> {
     pub(super) fn len(&self) -> usize {
-        self.location.len()
+        self.range.len()
     }
 
     pub(super) fn is_empty(&self) -> bool {
-        self.location.is_empty()
+        self.range.is_empty()
     }
 
     pub(super) fn array(self, sep: char) -> std::vec::IntoIter<Self> {
@@ -318,7 +318,7 @@ impl Location<'_> {
         for part in self.as_str().split(sep) {
             output.push(Location {
                 line: self.line,
-                location: self.location.start + offset..self.location.start + offset + part.len(),
+                range: self.range.start + offset..self.range.start + offset + part.len(),
                 column: self.column,
             });
             offset += part.len() + 1;
@@ -343,26 +343,22 @@ impl Location<'_> {
     pub(super) fn skip(self, bytes: usize) -> Self {
         Self {
             line: self.line,
-            location: self
-                .location
-                .start
-                .saturating_add(bytes)
-                .min(self.location.end)..self.location.end,
+            range: self.range.start.saturating_add(bytes).min(self.range.end)..self.range.end,
             column: self.column,
         }
     }
 
     pub(super) fn trim_end_matches(mut self, pattern: &str) -> Self {
         let trimmed = self.as_str().trim_end_matches(pattern);
-        let dif = self.location.len() - trimmed.len();
-        self.location = self.location.start..self.location.end - dif;
+        let dif = self.range.len() - trimmed.len();
+        self.range = self.range.start..self.range.end - dif;
         self
     }
 
     pub(super) fn trim_start_matches(mut self, pattern: &str) -> Self {
         let trimmed = self.as_str().trim_start_matches(pattern);
-        let dif = self.location.len() - trimmed.len();
-        self.location = self.location.start + dif..self.location.end;
+        let dif = self.range.len() - trimmed.len();
+        self.range = self.range.start + dif..self.range.end;
         self
     }
 
@@ -375,7 +371,7 @@ impl Location<'_> {
     }
 
     pub(super) fn as_str(&self) -> &str {
-        &self.line.line()[self.location.clone()]
+        &self.line.line()[self.range.clone()]
     }
 
     pub(super) fn full_line(&self) -> &str {
@@ -396,7 +392,7 @@ impl<'a> Location<'a> {
                 base_error.0,
                 base_error.1,
                 self.line
-                    .range_context(self.location, self.column.map(Cow::Borrowed))
+                    .range_context(self.range, self.column.map(Cow::Borrowed))
                     .to_owned(),
             )
         })
@@ -425,9 +421,9 @@ impl<'a> Location<'a> {
     pub(super) fn context(&'a self) -> Context<'a> {
         let base = self.base_context();
         if let Some(comment) = self.column {
-            base.add_highlight((0, self.location.clone(), comment))
+            base.add_highlight((0, self.range.clone(), comment))
         } else {
-            base.add_highlight((0, self.location.clone()))
+            base.add_highlight((0, self.range.clone()))
         }
     }
 
@@ -439,30 +435,26 @@ impl<'a> Location<'a> {
 
         Self {
             line: self.line,
-            location: if self.location.start + trimmed_end > self.location.end - trimmed_end {
-                self.location.start..self.location.start
+            range: if self.range.start + trimmed_end > self.range.end - trimmed_end {
+                self.range.start..self.range.start
             } else {
-                self.location.start + trimmed_start..self.location.end - trimmed_end
+                self.range.start + trimmed_start..self.range.end - trimmed_end
             },
             column: self.column,
         }
     }
-
-    // fn apply(self, f: impl FnOnce(Self) -> Self) -> Self {
-    //     f(self)
-    // }
 
     pub(super) fn split_once(self, p: char) -> Option<(Self, Self)> {
         self.as_str().split_once(p).map(|(start, end)| {
             (
                 Self {
                     line: self.line,
-                    location: self.location.start..self.location.start + start.len(),
+                    range: self.range.start..self.range.start + start.len(),
                     column: self.column,
                 },
                 Self {
                     line: self.line,
-                    location: self.location.end - end.len()..self.location.end,
+                    range: self.range.end - end.len()..self.range.end,
                     column: self.column,
                 },
             )
@@ -474,21 +466,21 @@ impl<'a> Location<'a> {
     pub(super) fn split_twice(self, p: char) -> Option<(Self, Self, Self)> {
         let (start, after) = self.as_str().split_once(p)?;
         let (middle, end) = after.rsplit_once(p)?;
-        let start_middle = self.location.start + start.len() + p.len_utf8();
+        let start_middle = self.range.start + start.len() + p.len_utf8();
         Some((
             Self {
                 line: self.line,
-                location: self.location.start..self.location.start + start.len(),
+                range: self.range.start..self.range.start + start.len(),
                 column: self.column,
             },
             Self {
                 line: self.line,
-                location: start_middle..start_middle + middle.len(),
+                range: start_middle..start_middle + middle.len(),
                 column: self.column,
             },
             Self {
                 line: self.line,
-                location: self.location.end - end.len()..self.location.end,
+                range: self.range.end - end.len()..self.range.end,
                 column: self.column,
             },
         ))

@@ -1,4 +1,4 @@
-use std::{borrow::Cow, marker::PhantomData, ops::Range, path::PathBuf, sync::LazyLock};
+use std::{borrow::Cow, marker::PhantomData, ops::Range, path::PathBuf};
 
 use ordered_float::OrderedFloat;
 use serde::{Deserialize, Serialize};
@@ -50,7 +50,7 @@ format_family!(
             Peptidoform::sloppy_pro_forma_inner(
                 &location.base_context(),
                 location.full_line(),
-                location.location.clone(),
+                location.range.clone(),
                 ontologies,
                 &SloppyParsingParameters {ignore_prefix_lowercase_n: true, ..Default::default()},
         ).map(Into::into).map_err(BoxedError::to_owned)});
@@ -71,7 +71,7 @@ format_family!(
                         head.context(),
                     )).map_err(BoxedError::to_owned)?
                 },
-                Modification::sloppy_modification(tail.full_line(), tail.location.clone(), None, ontologies).map_err(BoxedError::to_owned)?
+                Modification::sloppy_modification(tail.full_line(), tail.range.clone(), None, ontologies).map_err(BoxedError::to_owned)?
             ))
         } else {
             Err(BoxedError::new(BasicKind::Error,
@@ -94,7 +94,7 @@ format_family!(
             let mut peptides = location.clone().array('.').map(|l| l.or_empty().parse_with(|location| Peptidoform::sloppy_pro_forma_inner(
                 &location.base_context(),
                 location.full_line(),
-                location.location.clone(),
+                location.range.clone(),
                 ontologies,
                 &SloppyParsingParameters {ignore_prefix_lowercase_n: true, ..Default::default()},
             ).map_err(BoxedError::to_owned))).collect::<Result<Vec<_>,_>>()?;
@@ -159,12 +159,11 @@ format_family!(
     fn post_process(_source: &CsvLine, mut parsed: Self, _ontologies: &Ontologies) -> Result<Self, BoxedError<'static, BasicKind>> {
         // Parse the scan identifier to retrieve the file and number separately
         if let SpectrumId::Native(native) = &parsed.scan
-            && let Some(m) = IDENTIFER_REGEX
-                .captures(native)
+            && let split = native.rsplitn(4, '.').collect::<Vec<&str>>()
+            && split.len() == 4
             {
-                parsed.raw_file = Some(m.get(1).unwrap().as_str().into());
-                parsed.scan =
-                    SpectrumId::Number(m.get(2).unwrap().as_str().parse::<usize>().unwrap());
+                parsed.raw_file = Some(split[0].into());
+                parsed.scan = split[1].parse::<usize>().map(SpectrumId::Number).map_err(|err| BoxedError::new(BasicKind::Error, "Invalid MSFragger ID", format!("The scan number {}", explain_number_error(&err)), Context::none().lines(0, native).add_highlight((0, split[0].len() + 1, split[1].len())).to_owned()))?;
             }
         // Normal modifications
         for (location, modification) in &parsed.modifications {
@@ -243,10 +242,6 @@ format_family!(
         }
     }
 );
-
-/// The Regex to match against MSFragger scan fields
-static IDENTIFER_REGEX: LazyLock<regex::Regex> =
-    LazyLock::new(|| regex::Regex::new(r"([^/]+)\.(\d+)\.\d+.\d+").unwrap());
 
 /// A MSFragger open search modification
 #[derive(Clone, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]

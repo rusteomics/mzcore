@@ -3,7 +3,7 @@ use std::{
     marker::PhantomData,
     ops::Range,
     path::PathBuf,
-    sync::{Arc, LazyLock, OnceLock},
+    sync::{Arc, OnceLock},
 };
 
 use context_error::*;
@@ -156,13 +156,13 @@ format_family!(
                     "Invalid pLink modification",
                     "A pLink modification should follow the format 'Modification[AA](pos)' but the opening square bracket '[' was not found",
                     v.context().to_owned()))?;
-            let index = v.full_line()[v.location.start+position_start+1..v.location.end-1].parse::<usize>().map_err(|err|
+            let index = v.full_line()[v.range.start+position_start+1..v.range.end-1].parse::<usize>().map_err(|err|
                 BoxedError::new(BasicKind::Error,
                     "Invalid pLink modification",
                     format!("A pLink modification should follow the format 'Modification[AA](pos)' but the position number {}", explain_number_error(&err)),
                     v.context().to_owned()))?;
 
-            let m = Modification::sloppy_modification(v.full_line(), v.location.start..v.location.start+location_start, None, ontologies).map_err(BoxedError::to_owned)?;
+            let m = Modification::sloppy_modification(v.full_line(), v.range.start..v.range.start+location_start, None, ontologies).map_err(BoxedError::to_owned)?;
 
             let pos = if index == 0 {
                 (0, SequencePosition::NTerm)
@@ -282,20 +282,17 @@ format_family!(
             }
         }
 
-        if let Some(m) = IDENTIFER_REGEX
-            .captures(&parsed.title)
+        let split = parsed.title.rsplitn(6, '.').collect::<Vec<&str>>();
+        if split.len() == 6
         {
-            parsed.raw_file = Some(m.get(1).unwrap().as_str().into());
-            parsed.scan_number = Some(m.get(2).unwrap().as_str().parse::<usize>().unwrap());
+            parsed.raw_file = Some(split[0].into());
+            parsed.scan_number = Some(split[1].parse::<usize>().map_err(|err| BoxedError::new(BasicKind::Error, "Invalid pLink title", format!("The scan number {}", explain_number_error(&err)), Context::none().lines(0, &*parsed.title).add_highlight((0, split[0].len() + 1, split[1].len())).to_owned()))?);
+
         }
         parsed.peptidoform.shrink_to_fit();
         Ok(parsed)
     }
 );
-
-/// The Regex to match against pLink title fields
-static IDENTIFER_REGEX: LazyLock<regex::Regex> =
-    LazyLock::new(|| regex::Regex::new(r"([^/]+)\.(\d+)\.\d+.\d+.\d+.\w+").unwrap());
 
 /// The static known cross-linkers
 static KNOWN_CROSS_LINKERS: OnceLock<Vec<(Mass, SimpleModification)>> = OnceLock::new();
@@ -321,22 +318,21 @@ fn plink_separate<'a>(
             BoxedError::new(BasicKind::Error,
                 title,
                 format!("A pLink {field} should follow the format 'PEP1(pos1)-PEP2(pos2)' but the opening bracket '(' was not found for PEP1"),
-                Context::line(Some(location.line.line_index() as u32), location.full_line(), location.location.start, peptide1.len()).to_owned()))?;
+                Context::line(Some(location.line.line_index() as u32), location.full_line(), location.range.start, peptide1.len()).to_owned()))?;
         let second_end = peptide2.rfind('(').ok_or_else(||
             BoxedError::new(BasicKind::Error,
                 title,
                 format!("A pLink {field} should follow the format 'PEP1(pos1)-PEP2(pos2)' but the opening bracket '(' was not found for PEP2"),
-                Context::line(Some(location.line.line_index() as u32), location.full_line(), location.location.start+peptide1.len()+2, peptide2.len())))?;
+                Context::line(Some(location.line.line_index() as u32), location.full_line(), location.range.start+peptide1.len()+2, peptide2.len())))?;
 
-        let pos1 =
-            location.location.start + first_end + 1..location.location.start + peptide1.len();
+        let pos1 = location.range.start + first_end + 1..location.range.start + peptide1.len();
         let first_index = location.full_line()[pos1.clone()].parse::<u16>().map_err(|err|
             BoxedError::new(BasicKind::Error,
                 title,
                 format!("A pLink {field} should follow the format 'PEP1(pos1)-PEP2(pos2)' but the position for PEP1 {}", explain_number_error(&err)),
                 Context::line_range(Some(location.line.line_index() as u32), location.full_line(), pos1.clone()).to_owned()))?;
-        let pos2 = location.location.start + peptide1.len() + 2 + second_end + 1
-            ..location.location.start + peptide1.len() + 2 + peptide2.len() - 1;
+        let pos2 = location.range.start + peptide1.len() + 2 + second_end + 1
+            ..location.range.start + peptide1.len() + 2 + peptide2.len() - 1;
         let second_index = location.full_line()[pos2.clone()].parse::<u16>().map_err(|err|
             BoxedError::new(BasicKind::Error,
                 title,
@@ -344,11 +340,11 @@ fn plink_separate<'a>(
                 Context::line_range(Some(location.line.line_index() as u32), location.full_line(), pos2.clone()).to_owned()))?;
 
         Ok((
-            location.location.start..location.location.start + first_end,
+            location.range.start..location.range.start + first_end,
             Some((first_index, pos1)),
             Some(
-                location.location.start + peptide1.len() + 2
-                    ..location.location.start + peptide1.len() + 2 + second_end,
+                location.range.start + peptide1.len() + 2
+                    ..location.range.start + peptide1.len() + 2 + second_end,
             ),
             Some((second_index, pos2)),
         ))
@@ -359,10 +355,10 @@ fn plink_separate<'a>(
 
         match split.len() {
             3 => {
-                let start = location.location.start;
+                let start = location.range.start;
                 let start_pos1 = start + split[0].len() + 1;
                 let start_pos2 = start_pos1 + split[1].len() + 1;
-                let end = location.location.end;
+                let end = location.range.end;
 
                 let pos1 = start_pos1..start_pos2 - 2;
                 let first_index = location.full_line()[pos1.clone()].parse::<u16>().map_err(|err|
@@ -385,9 +381,9 @@ fn plink_separate<'a>(
                 ))
             }
             2 => {
-                let start = location.location.start;
+                let start = location.range.start;
                 let start_pos1 = start + split[0].len() + 1;
-                let end = location.location.end;
+                let end = location.range.end;
 
                 let pos1 = start_pos1..end - 1;
                 let first_index = location.full_line()[pos1.clone()].parse::<u16>().map_err(|err|
@@ -398,7 +394,7 @@ fn plink_separate<'a>(
 
                 Ok((start..start_pos1 - 1, Some((first_index, pos1)), None, None))
             }
-            1 => Ok((location.location.clone(), None, None, None)),
+            1 => Ok((location.range.clone(), None, None, None)),
             _ => unreachable!(),
         }
     }

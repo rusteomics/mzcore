@@ -1,7 +1,7 @@
 #![allow(clippy::missing_panics_doc)]
 use std::io::{BufRead, BufReader};
 
-use context_error::{BasicKind, BoxedError};
+use context_error::{BasicKind, BoxedError, Context, CreateError};
 
 use crate::{MaybePeptidoform, MzTabPSM, PSM, test_psm};
 use mzcore::sequence::SimpleLinear;
@@ -118,11 +118,18 @@ fn maxquant_dia_paper() {
 fn open_file(reader: impl BufRead) -> Result<usize, BoxedError<'static, BasicKind>> {
     let mut peptides = 0;
     for read in MzTabPSM::parse_reader(reader, &mzcore::ontology::STATIC_ONTOLOGIES) {
-        let peptide: PSM<SimpleLinear, MaybePeptidoform> =
-            read.map_err(BoxedError::to_owned)?.into();
+        let read = read.map_err(BoxedError::to_owned)?;
+        let peptidoform: PSM<SimpleLinear, MaybePeptidoform> = read.clone().into();
         peptides += 1;
 
-        test_psm(&peptide, true, false).unwrap();
+        test_psm(&peptidoform, true, false).map_err(|err| {
+            BoxedError::new(
+                BasicKind::Error,
+                "Failed test",
+                err,
+                Context::none().lines(0, read.id.to_string()),
+            )
+        })?;
     }
     Ok(peptides)
 }

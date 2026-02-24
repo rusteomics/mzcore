@@ -303,9 +303,12 @@ impl<W: Write, State: CanWriteProteins> MzTabWriter<W, State> {
                     .coverage()
                     .map_or_else(|| "null".to_string(), |c| c.to_string()),
                 protein.gene_ontology().iter().join("|"),
-                protein
-                    .reliability()
-                    .map_or_else(|| "null".to_string(), |c| c.to_string()),
+                match protein.reliability() {
+                    Some(crate::Reliability::High) => "1",
+                    Some(crate::Reliability::Medium) => "2",
+                    Some(crate::Reliability::Poor) => "3",
+                    None => "null",
+                },
                 protein.uri().map_or("null", |t| t),
             )?;
         }
@@ -336,7 +339,7 @@ fn make_mztab_mod(m: &SimpleModificationInner) -> String {
 
 fn mztab_chemmod(f: &MolecularFormula) -> String {
     if f.additional_mass() == 0.0 {
-        format!("CHEMMOD:{}", f.hill_notation_core())
+        format!("CHEMMOD:+{}", f.hill_notation_core())
     } else {
         format!("CHEMMOD:{:+}", f.monoisotopic_mass().value)
     }

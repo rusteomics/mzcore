@@ -43,20 +43,20 @@ format_family!(
 
         protein_location: Vec<Range<u16>>, |location: Location, _| location.array('|').map(|l| l.parse_with(
             |loc| {
-                if loc.location.len() < 3 {
+                if loc.range.len() < 3 {
                     return Err(BoxedError::new(BasicKind::Error,
                         "Invalid MetaMorpheus line",
                         "The location is not defined, it should be defined like this [<start> to <end>]",
                         Context::line(
                             Some(loc.line.line_index() as u32),
                             loc.line.line(),
-                            loc.location.start,
-                            loc.location.len(),
+                            loc.range.start,
+                            loc.range.len(),
                         ).to_owned(),
                     ))
                 }
                 let bytes =
-                    &loc.line.line().as_bytes()[loc.location.start + 1..loc.location.end-1];
+                    &loc.line.line().as_bytes()[loc.range.start + 1..loc.range.end-1];
                 let start = bytes.iter().take_while(|c| c.is_ascii_digit()).count();
                 let end = bytes
                     .iter()
@@ -64,23 +64,23 @@ format_family!(
                     .take_while(|c| c.is_ascii_digit())
                     .count();
                 Ok(
-                    loc.line.line()[loc.location.start + 1..loc.location.start + 1 + start]
+                    loc.line.line()[loc.range.start + 1..loc.range.start + 1 + start]
                         .parse::<u16>()
                         .map_err(|_| {
                             BoxedError::new(BasicKind::Error,NUMBER_ERROR.0, NUMBER_ERROR.1, Context::line(
                                 Some(loc.line.line_index() as u32),
                                 loc.line.line(),
-                                loc.location.start + 1,
+                                loc.range.start + 1,
                                 start,
                             )).to_owned()
                         })?..
-                    loc.line.line()[loc.location.end - 1 - end..loc.location.end - 1]
+                    loc.line.line()[loc.range.end - 1 - end..loc.range.end - 1]
                         .parse::<u16>()
                         .map_err(|_| {
                             BoxedError::new(BasicKind::Error,NUMBER_ERROR.0, NUMBER_ERROR.1, Context::line(
                                 Some(loc.line.line_index() as u32),
                                 loc.line.line(),
-                                loc.location.end - 1 - end,
+                                loc.range.end - 1 - end,
                                 end,
                             ).to_owned())
                         })?
@@ -98,7 +98,7 @@ format_family!(
                                     Context::line(
                                         Some(l.line.line_index() as u32),
                                         l.line.line(),
-                                        l.location.start,
+                                        l.range.start,
                                         1,
                                     ).to_owned(),
                                 )
@@ -116,7 +116,7 @@ format_family!(
                                     Context::line(
                                         Some(l.line.line_index() as u32),
                                         l.line.line(),
-                                        l.location.start,
+                                        l.range.start,
                                         1,
                                     ).to_owned(),
                                 )
@@ -126,7 +126,7 @@ format_family!(
         peptide: CompoundPeptidoformIon, |location: Location, ontologies: &Ontologies| location.array('|').map(|location| Peptidoform::sloppy_pro_forma_inner(
             &location.base_context(),
             location.full_line(),
-            location.location.clone(),
+            location.range.clone(),
             ontologies,
             &SloppyParsingParameters::default()
         ).map_err(BoxedError::to_owned)).collect::<Result<CompoundPeptidoformIon,_>>();
@@ -161,7 +161,7 @@ format_family!(
             contaminant: Vec<bool>, |location: Location, _| Ok(location.array('|').map(|l| l.as_str() == "Y").collect());
             decoy: bool, |location: Location, _| Ok(location.as_str() == "Y");
             kind: Vec<MetaMorpheusMatchKind>, |location: Location, _| location.array('|').map(|loc| {
-                match &loc.line.line()[loc.location.clone()] {
+                match &loc.line.line()[loc.range.clone()] {
                     "T" => Ok(MetaMorpheusMatchKind::Target),
                     "C" => Ok(MetaMorpheusMatchKind::Contamination),
                     "D" => Ok(MetaMorpheusMatchKind::Decoy),
@@ -171,8 +171,8 @@ format_family!(
                         Context::line(
                             Some(loc.line.line_index() as u32),
                             loc.line.line(),
-                            loc.location.start,
-                            loc.location.len(),
+                            loc.range.start,
+                            loc.range.len(),
                         ).to_owned(),
                     )),
                 }

@@ -29,7 +29,7 @@ format_family!(
         peptide: Option<Peptidoform<SemiAmbiguous>>, |location: Location, ontologies: &Ontologies| location.or_empty().map(|location| Peptidoform::sloppy_pro_forma_inner(
             &location.base_context(),
             location.full_line(),
-            location.location.clone(),
+            location.range.clone(),
             ontologies,
             &SloppyParsingParameters::default()
         ).map_err(BoxedError::to_owned)).transpose();
