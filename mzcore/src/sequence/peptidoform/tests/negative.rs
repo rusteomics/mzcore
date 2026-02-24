@@ -23,6 +23,7 @@ Id,Example,Source,Key,Notes
 21,"AA[+1#xl1]/2//AA[#XL1]",example,"","Charged initial peptide in a cross-linked peptidoform ion"
 22,"[dehydro]^3?Q[gln->pyro-glu]S",example,"interpretation","Depending on implementation: no database given locations for dehydro to match in the peptide"
 23,"(Q[gln->pyro-glu]S)[Dehydro]",example,"interpretation","Depending on implementation: no database given locations for dehydro to match in the peptide"
+174,"A[+1#XL1]A/1//A[#XL1]A/2",example,"","Cannot supply different charges to peptidoforms in the same peptidoform ion"
 24,"ESNCe/", fuzz,"","Fuzzer generated crash"
 25,"/", fuzz,"","Fuzzer generated crash"
 26,"[XLMOd:02001#XL1]", fuzz,"","Fuzzer generated crash"
