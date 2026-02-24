@@ -685,6 +685,18 @@ impl Modification {
         }
     }
 
+    /// Get the underlying simple mod, even if this is a cross-link or ambiguous
+    pub fn get_simple(&self) -> SimpleModification {
+        match self {
+            Self::Simple(modification)
+            | Self::CrossLink {
+                linker: modification,
+                ..
+            }
+            | Self::Ambiguous { modification, .. } => modification.clone(),
+        }
+    }
+
     /// Get a url for more information on this modification. Only defined for modifications from ontologies.
     pub fn ontology_url(&self) -> Option<String> {
         match self {

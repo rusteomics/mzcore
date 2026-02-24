@@ -128,6 +128,16 @@ impl PeptidoformIon {
             .and_then(|p| p.get_charge_carriers())
     }
 
+    /// Get the name
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+
+    /// Get the name
+    pub const fn name_mut(&mut self) -> &mut String {
+        &mut self.name
+    }
+
     /// Add a cross-link to this peptidoform and check if it is placed according to its placement rules.
     /// The positions are first the peptide index and second the sequence index.
     pub fn add_cross_link(

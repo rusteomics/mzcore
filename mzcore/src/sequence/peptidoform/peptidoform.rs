@@ -379,7 +379,7 @@ impl<Complexity> Peptidoform<Complexity> {
     }
 
     /// Get the name
-    pub fn name_mut(&mut self) -> &mut String {
+    pub const fn name_mut(&mut self) -> &mut String {
         &mut self.name
     }
 }

@@ -6,14 +6,16 @@ use ordered_float::OrderedFloat;
 
 use crate::{
     ParserResult,
-    chemistry::{Element, MolecularCharge, MolecularFormula},
-    helper_functions::{self, *},
+    chemistry::{Chemical, Element, MolecularCharge, MolecularFormula},
+    helper_functions::*,
     ontology::Ontologies,
+    quantities::{Tolerance, WithinTolerance},
     sequence::{
         AmbiguousLookup, AmbiguousLookupEntry, AminoAcid, CheckedAminoAcid, CompoundPeptidoformIon,
-        CrossLinkLookup, Linked, MUPSettings, Peptidoform, PeptidoformIon, PlacementRule, Position,
-        SequenceElement, SequencePosition, SimpleModification, SimpleModificationInner,
+        CrossLinkLookup, Linked, MUPSettings, MassTag, Peptidoform, PeptidoformIon, PlacementRule,
+        Position, SequenceElement, SequencePosition, SimpleModification, SimpleModificationInner,
     },
+    system::OrderedMass,
 };
 
 use super::{GlobalModification, Linear, ReturnModification, SemiAmbiguous};
@@ -274,6 +276,79 @@ impl CompoundPeptidoformIon {
             start = tail;
         }
 
+        if STRICT {
+            for p in peptidoforms.iter().flat_map(|pi| &pi.peptidoforms) {
+                let mut ambiguous: Option<(std::num::NonZero<u32>, Vec<AminoAcid>)> = None;
+                for s in p.sequence() {
+                    // Check if (iso)leucine ambiguity is written in the correct way
+                    if let Some(id) = s.ambiguous {
+                        ambiguous = match ambiguous {
+                            Some((i, mut seq)) if i == id => {
+                                seq.push(s.aminoacid.aminoacid());
+                                Some((i, seq))
+                            }
+                            prev => {
+                                if let Some((_, seq)) = prev
+                                    && (seq == vec![AminoAcid::Isoleucine]
+                                        || seq == vec![AminoAcid::Leucine])
+                                {
+                                    combine_error(
+                                        &mut errors,
+                                        BoxedError::new(
+                                            BasicKind::Warning,
+                                            "Improper ambiguous leucine",
+                                            "The amino acid 'J' should be used to represent leucine/isoleucine ambiguity",
+                                            base_context.clone(),
+                                        ),
+                                    );
+                                }
+                                Some((id, vec![s.aminoacid.aminoacid()]))
+                            }
+                        }
+                    }
+                    // Check if X is defined with a mod
+                    if s.aminoacid.aminoacid() == AminoAcid::Unknown && s.modifications.is_empty() {
+                        combine_error(
+                            &mut errors,
+                            BoxedError::new(
+                                BasicKind::Warning,
+                                "Improper unknown aminoacid",
+                                "The amino acid 'X' should always be followed by a modification to indicate the composition of this gap",
+                                base_context.clone(),
+                            ),
+                        );
+                    }
+                    for m in &s.modifications {
+                        if let &SimpleModificationInner::Mass(tag, mass, precision) =
+                            m.get_simple().as_ref()
+                        {
+                            let tolerance: Tolerance<OrderedMass> = Tolerance::Absolute(
+                                crate::system::Mass::new::<crate::system::dalton>(
+                                    10.0_f64.powf(-f64::from(precision.unwrap_or(6))) / 2.0,
+                                )
+                                .into(),
+                            );
+                            if let MassTag::Ontology(ontology) = tag
+                                && ontologies.data(&[ontology]).all(|m| {
+                                    !tolerance.within(&mass, &m.formula().monoisotopic_mass())
+                                })
+                            {
+                                combine_error(
+                                    &mut errors,
+                                    BoxedError::new(
+                                        BasicKind::Warning,
+                                        "Improper prefixed mass modification",
+                                        "A prefixed mass modification must use a modification that is defined in the referenced ontology",
+                                        base_context.clone(),
+                                    ),
+                                );
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
         if peptidoforms.is_empty() {
             combine_error(
                 &mut errors,
@@ -390,20 +465,8 @@ impl CompoundPeptidoformIon {
             }
         }
 
-        if peptides.is_empty() {
-            combine_error(
-                &mut errors,
-                BoxedError::new(
-                    BasicKind::Error,
-                    "No peptide found",
-                    "The peptidoform definition is empty",
-                    base_context.clone().add_highlight((0, range)),
-                ),
-            );
-            Err(errors)
-        } else {
+        if let Some(last) = peptides.last() {
             // Ensure that only one charge is set
-            let last = peptides.last().unwrap();
             let c = last.get_charge_carriers().cloned();
             let len = peptides.len() - 1;
             for p in &mut peptides[..len] {
@@ -436,6 +499,17 @@ impl CompoundPeptidoformIon {
             } else {
                 Ok(((peptidoform, index), errors))
             }
+        } else {
+            combine_error(
+                &mut errors,
+                BoxedError::new(
+                    BasicKind::Error,
+                    "No peptide found",
+                    "The peptidoform definition is empty",
+                    base_context.clone().add_highlight((0, range)),
+                ),
+            );
+            Err(errors)
         }
     }
 

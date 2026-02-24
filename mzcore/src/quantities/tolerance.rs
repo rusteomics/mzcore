@@ -277,6 +277,27 @@ impl WithinTolerance<Mass, Mass> for Tolerance<OrderedMass> {
     }
 }
 
+impl WithinTolerance<OrderedMass, Mass> for Tolerance<OrderedMass> {
+    #[inline]
+    fn within(&self, a: &OrderedMass, b: &Mass) -> bool {
+        self.within(&a.into_inner(), b)
+    }
+}
+
+impl WithinTolerance<Mass, OrderedMass> for Tolerance<OrderedMass> {
+    #[inline]
+    fn within(&self, a: &Mass, b: &OrderedMass) -> bool {
+        self.within(a, &b.into_inner())
+    }
+}
+
+impl WithinTolerance<OrderedMass, OrderedMass> for Tolerance<OrderedMass> {
+    #[inline]
+    fn within(&self, a: &OrderedMass, b: &OrderedMass) -> bool {
+        self.within(&a.into_inner(), &b.into_inner())
+    }
+}
+
 impl WithinTolerance<Multi<Mass>, Multi<Mass>> for Tolerance<OrderedMass> {
     #[inline]
     fn within(&self, a: &Multi<Mass>, b: &Multi<Mass>) -> bool {
