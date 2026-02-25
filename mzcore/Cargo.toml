@@ -25,7 +25,6 @@ itertools = { workspace = true }
 ndarray = { workspace = true, optional = true }
 ordered-float = { workspace = true }
 probability = { workspace = true, optional = true }
-regex = { workspace = true }
 roxmltree = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }

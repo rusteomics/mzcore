@@ -1,7 +1,6 @@
 use std::sync::{Arc, LazyLock};
 
 use context_error::*;
-use regex::Regex;
 use serde::{Deserialize, Serialize};
 
 use crate::{
@@ -306,15 +305,6 @@ impl Peptidoform<SemiAmbiguous> {
     }
 }
 
-static SLOPPY_MOD_OPAIR_REGEX: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new(r"(?:[^:]+:)?(.*) (?:(?:on)|(?:from)) ([A-Z])").unwrap());
-static SLOPPY_MOD_ON_REGEX: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new(r"(.*)\s*\([- @a-zA-Z]+\)").unwrap());
-static SLOPPY_MOD_MAXQUANT_REGEX: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new(r"(.*)_[A-Z]+").unwrap());
-static SLOPPY_MOD_NUMERIC_END_REGEX: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new(r"(.*)\d+").unwrap());
-
 impl Modification {
     /// Parse a modification defined by sloppy names
     /// # Errors
@@ -336,6 +326,14 @@ impl Modification {
                     Some(("unimod", tail)) => ontologies.unimod().get_by_index(&tail.parse::<u32>().ok()?),
                     Some(("m", tail)) =>ontologies.psimod().get_by_name(tail),
                     Some(("c", tail)) => ontologies.custom().get_by_name(tail),
+                    Some((_, tail)) => Self::find_name(tail, position, ontologies).or_else(|| 
+                        tail.rsplit_once(' ').and_then(|(n, _)| {
+                            let n = n.trim_end_matches("on").trim_end_matches("from").trim();
+                            Self::find_name(n, position, ontologies).or_else(||  
+                                MonoSaccharide::pro_forma_composition::<false>(n).ok()
+                                .map(|(g, _)| Arc::new(SimpleModificationInner::Glycan(g))))
+                        })
+                    ),
                     _ => None
                 }
             })
@@ -345,43 +343,19 @@ impl Modification {
             .or_else( || {
                 name.trim().split_ascii_whitespace().next().and_then(|head| Self::find_name::<SemiAmbiguous>(head, position, ontologies))
             })
-            .or_else(|| {SLOPPY_MOD_OPAIR_REGEX
-                .captures(name)
-                .and_then(|capture| {
-                    let pos = capture[2].chars().next().and_then(|a| AminoAcid::try_from(a).ok().map(|a| SequenceElement::new(CheckedAminoAcid::new(a), None)));
-                    Self::find_name::<SemiAmbiguous>(&capture[1], position.or(pos.as_ref()), ontologies)
-                        .ok_or_else(|| {
-                            MonoSaccharide::pro_forma_composition::<false>(&capture[1])
-                            .map(|(g, _)| Arc::new(SimpleModificationInner::Glycan(g)))
-                        })
-                        .flat_err()
-                        .ok()
-                })
-                .or_else(|| {
-                    // Common sloppy naming: `modification (AAs)` also accepts `modification (Protein N-term)`
-                    SLOPPY_MOD_ON_REGEX
-                        .captures(name)
-                        .and_then(|capture| {
-                            Self::find_name(&capture[1], position, ontologies)
-                        })
-                })
-                .or_else(|| {
-                    // Common sloppy naming: `modification_AA`
-                    SLOPPY_MOD_MAXQUANT_REGEX
-                        .captures(name)
-                        .and_then(|capture| {
-                            Self::find_name(&capture[1], position, ontologies)
-                        })
-                })
-                .or_else(|| {
-                    // Common sloppy naming: `modification1`
-                    SLOPPY_MOD_NUMERIC_END_REGEX
-                        .captures(name)
-                        .and_then(|capture| {
-                            Self::find_name(&capture[1], position, ontologies)
-                        })
-                })
-            }).ok_or_else(|| {
+            .or_else(|| {
+                // Common sloppy naming: `modification (AAs)` also accepts `modification (Protein N-term)`
+                name.split_once('(').and_then(|(n, _)| Self::find_name(n.trim(), position, ontologies))
+            })
+            .or_else(|| {
+                // Common sloppy naming: `modification_AA`
+                name.split_once('_').and_then(|(n, _)| Self::find_name(n.trim(), position, ontologies))
+            })
+            .or_else(|| {
+                // Common sloppy naming: `modification1`
+                Self::find_name(name.trim_end_matches(|c: char| c.is_ascii_digit()), position, ontologies)
+            })
+            .ok_or_else(|| {
                 BoxedError::new(BasicKind::Error,
                     "Could not interpret modification",
                     "Modifications have to be defined as a number, Unimod, or PSI-MOD name, if this is a custom modification make sure to add it to the database",
