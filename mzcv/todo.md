@@ -1,8 +1,8 @@
 TODO:
 - [ ] Discuss if updating the data can be skipped if the detected version/date/hash are the same
-- [ ] Discuss cache location and handling concurrent accesses from different CV versions
-- [ ] Build async interfaces?
-- [ ] Handle LZW compression from IMGT
+- [x] Discuss cache location and handling concurrent accesses from different CV versions
+- [x] Build async interfaces?
+- [-] Handle LZW compression from IMGT
 - [-] CURIE like interface (as in mzdata)
 - [x] Handle items from different CV names spaces in the same CV (eg NCIT and MS in the MS ontology)
 - [x] Handle indices that are not numeric (eg NCIT or GNOme ids)

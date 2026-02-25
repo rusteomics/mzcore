@@ -18,9 +18,9 @@ include = ["src/**/*", "images/**/*", "README.md", "benches/**/*"]
 
 [dependencies]
 mzcv = { path = "../mzcv", version = "0.2.0", features = ["serde"] }
-bincode = { workspace = true, features = ["serde"] }
+bincode = { workspace = true }
 context_error = { workspace = true }
-flate2 = { workspace = true }
+flate2 = { workspace = true, optional = true }
 itertools = { workspace = true }
 ndarray = { workspace = true, optional = true }
 ordered-float = { workspace = true }
@@ -41,7 +41,7 @@ paste = { workspace = true }
 png = { workspace = true }
 
 [features]
-default = []
+default = ["flate2"]
 isotopes = ["dep:probability", "dep:ndarray"]
 glycan-render = []
 glycan-render-bitmap = ["dep:zeno", "dep:swash", "glycan-render"]

@@ -12,7 +12,6 @@ use std::{
 };
 
 use context_error::*;
-use flate2::bufread::GzDecoder;
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 
@@ -219,12 +218,24 @@ pub fn parse_csv(
         )
     })?;
     if check_extension(path, "gz") {
-        Ok(Box::new(parse_csv_raw(
-            GzDecoder::new(BufReader::new(file)),
-            separator,
-            provided_header,
-            Some(path.to_string_lossy().to_string().into_boxed_str()),
-        )?))
+        #[cfg(feature = "flate2")]
+        {
+            Ok(Box::new(parse_csv_raw(
+                flate2::read::GzDecoder::new(BufReader::new(file)),
+                separator,
+                provided_header,
+                Some(path.to_string_lossy().to_string().into_boxed_str()),
+            )?))
+        }
+        #[cfg(not(feature = "flate2"))]
+        {
+            Err(BoxedError::new(
+                BasicKind::Error,
+                "Cannot uncrompress file",
+                "Cannot uncompress a gzipped CVS file because this was not enabled during compilation.",
+                Context::default().source(path.to_string_lossy()).to_owned(),
+            ))
+        }
     } else {
         Ok(Box::new(parse_csv_raw(
             file,
