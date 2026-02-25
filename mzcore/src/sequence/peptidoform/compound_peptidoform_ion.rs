@@ -206,7 +206,7 @@ impl<Complexity> FromIterator<Peptidoform<Complexity>> for CompoundPeptidoformIo
     fn from_iter<T: IntoIterator<Item = Peptidoform<Complexity>>>(iter: T) -> Self {
         Self {
             name: String::new(),
-            peptidoforms: iter.into_iter().map(|p| p.into()).collect(),
+            peptidoforms: iter.into_iter().map(Into::into).collect(),
         }
     }
 }

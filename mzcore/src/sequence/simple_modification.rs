@@ -105,7 +105,7 @@ pub enum SimpleModificationInner {
 }
 
 /// The length of a linker
-#[derive(Clone, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize, Default)]
+#[derive(Clone, Debug, Default, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 pub enum LinkerLength {
     /// The length is unknown
     #[default]
@@ -708,8 +708,8 @@ impl ParseJson for SimpleModificationInner {
 impl ParseJson for LinkerLength {
     fn from_json_value(value: Value) -> Result<Self, BoxedError<'static, BasicKind>> {
         match value {
-            Value::Null => Ok(LinkerLength::Unknown),
-            Value::Number(ref n) => Ok(LinkerLength::Discreet(vec![
+            Value::Null => Ok(Self::Unknown),
+            Value::Number(ref n) => Ok(Self::Discreet(vec![
                 n.as_f64()
                     .ok_or_else(|| {
                         BoxedError::new(

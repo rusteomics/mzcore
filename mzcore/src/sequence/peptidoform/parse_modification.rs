@@ -1,8 +1,4 @@
-use std::{
-    num::NonZeroU16,
-    ops::Range,
-    sync::{Arc, LazyLock},
-};
+use std::{num::NonZeroU16, ops::Range, sync::Arc};
 
 use context_error::*;
 use itertools::Itertools;
@@ -142,22 +138,23 @@ impl SimpleModificationInner {
     }
 }
 
+type SliceWithRange<'a> = (&'a str, Range<usize>);
+
 fn tokenise_mod(
     text: &str,
     range: Range<usize>,
 ) -> (
-    (&str, Range<usize>),
-    Option<(&str, Range<usize>)>,
-    Option<(&str, Range<usize>)>,
-    Option<(&str, Range<usize>)>,
+    SliceWithRange<'_>,
+    Option<SliceWithRange<'_>>,
+    Option<SliceWithRange<'_>>,
+    Option<SliceWithRange<'_>>,
 ) {
     // ^(([^:#]*)(?::([^#]+))?)(?:#([0-9A-Za-z]+)(?:\((\d+\.\d+)\))?)?$
     // text(:text)?(#label(score)?)?
 
     let (m, label) = text[range.clone()]
         .split_once('#')
-        .map(|(m, l)| (m, Some(l)))
-        .unwrap_or((&text[range.clone()], None));
+        .map_or_else(|| (&text[range.clone()], None), |(m, l)| (m, Some(l)));
     let (tag, name) =
         m.split_once(':')
             .map_or(((m, range.start..range.start + m.len()), None), |(t, n)| {
@@ -322,7 +319,7 @@ fn parse_single_modification<'error, const STRICT: bool>(
 
     let mut errors = Vec::new();
     let (head, tail, label, score) = tokenise_mod(line, range.clone());
-    let full = (&line[range.clone()], range.clone());
+    let full = (&line[range.clone()], range);
 
     let modification = if let Some(tail) = tail {
         let basic_error = BoxedError::new(
@@ -580,7 +577,7 @@ fn parse_single_modification<'error, const STRICT: bool>(
                         BasicKind::Error,
                         "Invalid branch definition",
                         "A branch definition has to be identical at both sites, or only defined at one site.",
-                        base_context.clone().add_highlight((0, full.1.clone())),
+                        base_context.clone().add_highlight((0, full.1)),
                     )]);
                 }
                 cross_link_lookup[index].1 = Some(linker);
@@ -611,7 +608,7 @@ fn parse_single_modification<'error, const STRICT: bool>(
                         BasicKind::Error,
                         "Invalid cross-link definition",
                         "A cross-link definition has to be identical at both sites, or only defined at one site.",
-                        base_context.clone().add_highlight((0, full.1.clone())),
+                        base_context.clone().add_highlight((0, full.1)),
                     )]);
                 }
                 cross_link_lookup[index].1 = Some(linker);
@@ -624,7 +621,7 @@ fn parse_single_modification<'error, const STRICT: bool>(
             ))
         } else {
             let score = match score.map(|s| {
-                s.0.parse::<f64>().map_err(|err| {
+                s.0.parse::<f64>().map_err(|_| {
                     BoxedError::new(
                         BasicKind::Error,
                         "Invalid modification localisation score",
@@ -646,7 +643,7 @@ fn parse_single_modification<'error, const STRICT: bool>(
                 group,
                 score,
                 ambiguous_lookup,
-                base_context.clone().add_highlight((0, full.1.clone())),
+                base_context.clone().add_highlight((0, full.1)),
             )
             .map(|(m, w)| {
                 combine_errors(&mut errors, w);
@@ -668,7 +665,7 @@ fn parse_single_modification<'error, const STRICT: bool>(
 /// If the content of the ambiguous modification was already defined
 fn handle_ambiguous_modification<'a>(
     modification: Option<SimpleModification>,
-    group: (&str, Range<usize>),
+    group: SliceWithRange<'a>,
     localisation_score: Option<OrderedFloat<f64>>,
     ambiguous_lookup: &mut AmbiguousLookup,
     context: Context<'a>,

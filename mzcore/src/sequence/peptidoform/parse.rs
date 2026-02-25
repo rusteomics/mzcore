@@ -338,7 +338,7 @@ impl CompoundPeptidoformIon {
                                     BoxedError::new(
                                         BasicKind::Warning,
                                         "Improper prefixed mass modification",
-                                        "A prefixed mass modification must use a modification that is defined in the referenced ontology",
+                                        "A prefixed mass modification must match a modification that is defined in the referenced ontology",
                                         base_context.clone(),
                                     ),
                                 );

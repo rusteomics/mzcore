@@ -294,6 +294,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(clippy::missing_panics_doc)]
     fn annotated_sub_peptidoform() {
         let seq = AP {
             peptidoform: Peptidoform::pro_forma("PEPTIDE", &STATIC_ONTOLOGIES)

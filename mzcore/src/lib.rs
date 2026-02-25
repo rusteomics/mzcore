@@ -29,7 +29,8 @@ pub mod prelude {
         Chemical, Element, MassMode, MolecularCharge, MolecularFormula, MultiChemical,
     };
     pub use crate::isobaric_sets::{
-        BuildingBlocks, TerminalBuildingBlocks, building_blocks, find_isobaric_sets,
+        BuildingBlocks, IsobaricSetIterator, TerminalBuildingBlocks, building_blocks,
+        find_isobaric_sets,
     };
     pub use crate::molecular_formula;
     pub use crate::sequence::{

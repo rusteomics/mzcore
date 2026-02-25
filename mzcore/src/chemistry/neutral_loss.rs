@@ -1,6 +1,7 @@
 use std::{
     borrow::Cow,
     fmt::Display,
+    mem::swap,
     ops::{Add, AddAssign},
     str::FromStr,
 };
@@ -163,7 +164,7 @@ impl From<MolecularFormula> for NeutralLoss {
             },
         );
         let number = gcd.try_into().unwrap_or(1);
-        let num = number as i32;
+        let num = i32::from(number);
         let sign = pos >= neg;
         let formula = MolecularFormula {
             elements: value
@@ -171,7 +172,7 @@ impl From<MolecularFormula> for NeutralLoss {
                 .into_iter()
                 .map(|(e, i, a)| (e, i, i32::from(sign) * a / num))
                 .collect(),
-            additional_mass: value.additional_mass / num as f64,
+            additional_mass: value.additional_mass / f64::from(num),
             labels: value.labels,
         };
         if pos >= neg {
@@ -182,15 +183,13 @@ impl From<MolecularFormula> for NeutralLoss {
     }
 }
 
-fn gcd(mut n: u32, mut m: u32) -> u32 {
+const fn gcd(mut n: u32, mut m: u32) -> u32 {
     if n == 0 || m == 0 {
         return 0;
     }
     while m != 0 {
         if m < n {
-            let t = m;
-            m = n;
-            n = t;
+            swap(&mut m, &mut n);
         }
         m = m % n;
     }

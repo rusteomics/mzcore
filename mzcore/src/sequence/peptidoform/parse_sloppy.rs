@@ -1,16 +1,16 @@
-use std::sync::{Arc, LazyLock};
+use std::sync::Arc;
 
 use context_error::*;
 use serde::{Deserialize, Serialize};
 
 use crate::{
     glycan::MonoSaccharide,
-    helper_functions::{ResultExtensions, end_of_enclosure},
+    helper_functions::end_of_enclosure,
     ontology::{Ontologies, Ontology},
     sequence::{
-        AminoAcid, CheckedAminoAcid, MassTag, Modification, PeptideModificationSearch, Peptidoform,
-        SemiAmbiguous, SequenceElement, SequencePosition, SimpleModification,
-        SimpleModificationInner, peptidoform::parse_modification,
+        AminoAcid, MassTag, Modification, PeptideModificationSearch, Peptidoform, SemiAmbiguous,
+        SequenceElement, SequencePosition, SimpleModification, SimpleModificationInner,
+        peptidoform::parse_modification,
     },
     system::Mass,
 };
@@ -326,10 +326,10 @@ impl Modification {
                     Some(("unimod", tail)) => ontologies.unimod().get_by_index(&tail.parse::<u32>().ok()?),
                     Some(("m", tail)) =>ontologies.psimod().get_by_name(tail),
                     Some(("c", tail)) => ontologies.custom().get_by_name(tail),
-                    Some((_, tail)) => Self::find_name(tail, position, ontologies).or_else(|| 
+                    Some((_, tail)) => Self::find_name(tail, position, ontologies).or_else(||
                         tail.rsplit_once(' ').and_then(|(n, _)| {
                             let n = n.trim_end_matches("on").trim_end_matches("from").trim();
-                            Self::find_name(n, position, ontologies).or_else(||  
+                            Self::find_name(n, position, ontologies).or_else(||
                                 MonoSaccharide::pro_forma_composition::<false>(n).ok()
                                 .map(|(g, _)| Arc::new(SimpleModificationInner::Glycan(g))))
                         })

@@ -160,8 +160,8 @@ pub(super) fn cross_links<'a>(
             )
         {
             if let Modification::CrossLink { peptide, .. } = m
-                && !found_peptides.contains(&peptide)
-                && !stack.contains(&peptide)
+                && !found_peptides.contains(peptide)
+                && !stack.contains(peptide)
             {
                 stack.push(*peptide);
             }
@@ -288,7 +288,7 @@ impl Peptidoform<Linear> {
     /// # Panics
     /// It panics when information for an ambiguous modification is missing (name/mod).
     pub(super) fn apply_ranged_unknown_position_modification(
-        &mut self,
+        &self,
         ranged_unknown_position_modifications: &[(
             usize,
             usize,
