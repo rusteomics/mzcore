@@ -7,7 +7,6 @@ use std::{
 use context_error::*;
 use itertools::Itertools;
 use ordered_float::OrderedFloat;
-use regex::Regex;
 use serde::{Deserialize, Serialize};
 
 use crate::{
@@ -94,8 +93,7 @@ impl SimpleModificationInner {
             match parse_single_modification::<STRICT>(
                 base_context,
                 line,
-                part,
-                offset,
+                offset..offset + part.len(),
                 ambiguous_lookup,
                 cross_link_lookup,
                 ontologies,
@@ -144,9 +142,53 @@ impl SimpleModificationInner {
     }
 }
 
-static MOD_REGEX: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r"^(([^:#]*)(?::([^#]+))?)(?:#([0-9A-Za-z]+)(?:\((\d+\.\d+)\))?)?$").unwrap()
-});
+fn tokenise_mod(
+    text: &str,
+    range: Range<usize>,
+) -> (
+    (&str, Range<usize>),
+    Option<(&str, Range<usize>)>,
+    Option<(&str, Range<usize>)>,
+    Option<(&str, Range<usize>)>,
+) {
+    // ^(([^:#]*)(?::([^#]+))?)(?:#([0-9A-Za-z]+)(?:\((\d+\.\d+)\))?)?$
+    // text(:text)?(#label(score)?)?
+
+    let (m, label) = text[range.clone()]
+        .split_once('#')
+        .map(|(m, l)| (m, Some(l)))
+        .unwrap_or((&text[range.clone()], None));
+    let (tag, name) =
+        m.split_once(':')
+            .map_or(((m, range.start..range.start + m.len()), None), |(t, n)| {
+                (
+                    (t, range.start..t.len()),
+                    Some((n, range.start + t.len() + 1..range.start + m.len())),
+                )
+            });
+    let (label, score) = label.map_or((None, None), |label| {
+        label
+            .strip_suffix(')')
+            .and_then(|label| label.split_once('('))
+            .map_or(
+                (Some((label, range.start + m.len() + 1..range.end)), None),
+                |(label, score)| {
+                    (
+                        Some((
+                            label,
+                            range.start + m.len() + 1..range.start + m.len() + 1 + label.len(),
+                        )),
+                        Some((
+                            score,
+                            range.start + m.len() + 2 + label.len()..range.end - 1,
+                        )),
+                    )
+                },
+            )
+    });
+
+    (tag, name, label, score)
+}
 
 enum SingleReturnModification {
     None,
@@ -186,8 +228,7 @@ impl Default for MUPSettings {
 fn parse_single_modification<'error, const STRICT: bool>(
     base_context: &Context<'error>,
     line: &'error str,
-    full_modification: &'error str,
-    offset: usize,
+    range: Range<usize>,
     ambiguous_lookup: &mut AmbiguousLookup,
     cross_link_lookup: &mut CrossLinkLookup,
     ontologies: &Ontologies,
@@ -280,54 +321,24 @@ fn parse_single_modification<'error, const STRICT: bool>(
     }
 
     let mut errors = Vec::new();
-    // Parse the whole intricate structure of the single modification (see here in action: https://regex101.com/r/pW5gsj/1)
-    if let Some(groups) = MOD_REGEX.captures(full_modification) {
-        // Capture the full mod name (head:tail), head, tail, ambiguous group, and localisation score
-        let (full, head, tail, label_group, localisation_score) = (
-            groups
-                .get(1)
-                .map(|m| (m.as_str(), m.start(), m.len()))
-                .unwrap_or_default(),
-            groups
-                .get(2)
-                .map(|m| (m.as_str().to_ascii_lowercase(), m.start(), m.len())),
-            groups.get(3).map(|m| (m.as_str(), m.start(), m.len())),
-            groups.get(4).map(|m| (m.as_str(), m.start(), m.len())),
-            groups
-                .get(5)
-                .map(|m| {
-                    m.as_str()
-                        .parse::<f64>()
-                        .map(OrderedFloat::from)
-                        .map_err(|_| {
-                            vec![BoxedError::new(BasicKind::Error,
-                        "Invalid modification localisation score",
-                        "The ambiguous modification localisation score needs to be a valid number",
-                        base_context.clone().add_highlight((0, offset + m.start(), m.len())),
-                    )]
-                        })
-                })
-                .transpose()?,
-        );
+    let (head, tail, label, score) = tokenise_mod(line, range.clone());
+    let full = (&line[range.clone()], range.clone());
 
-        let modification = if let (Some(head), Some(tail)) = (head.as_ref(), tail) {
-            let basic_error = BoxedError::new(
-                BasicKind::Error,
-                "Invalid modification",
-                "..",
-                base_context
-                    .clone()
-                    .add_highlight((0, offset + tail.1, tail.2)),
-            );
-            let sign_warning = BoxedError::new(
-                BasicKind::Warning,
-                "Improper modification",
-                "A numerical modification should always be specified with a sign (+/-) to help it be recognised as a mass modification and not a modification index.",
-                base_context
-                    .clone()
-                    .add_highlight((0, offset + tail.1, tail.2)),
-            );
-            match (head.0.as_str(), tail.0) {
+    let modification = if let Some(tail) = tail {
+        let basic_error = BoxedError::new(
+            BasicKind::Error,
+            "Invalid modification",
+            "..",
+            base_context.clone().add_highlight((0, tail.1.clone())),
+        );
+        let sign_warning = BoxedError::new(
+            BasicKind::Warning,
+            "Improper modification",
+            "A numerical modification should always be specified with a sign (+/-) to help it be recognised as a mass modification and not a modification index.",
+            base_context.clone().add_highlight((0, tail.1.clone())),
+        );
+        let lowercase = head.0.to_ascii_lowercase();
+        match (lowercase.as_str(), tail.0) {
                 ("unimod", tail) => {
                     let id = tail.parse::<u32>().map_err(|_| {
                         vec![basic_error.clone()
@@ -395,35 +406,35 @@ fn parse_single_modification<'error, const STRICT: bool>(
                     })
                 }
                 ("u", name) => Ok(Some(handle!(errors, numerical_mod(MassTag::Ontology(Ontology::Unimod), name).map(|(sign, m)| (m, if STRICT && !sign {vec![sign_warning.clone()]} else {Vec::new()})).or_else(|_| 
-                    single_name_resolution(ontologies, Ontology::Unimod, name, base_context, offset+tail.1..offset+tail.1+tail.2)
+                    single_name_resolution(ontologies, Ontology::Unimod, name, base_context, tail.1.clone())
                 )))),
                 ("m", name) => Ok(Some(handle!(errors, numerical_mod(MassTag::Ontology(Ontology::Psimod), name).map(|(sign, m)| (m, if STRICT && !sign {vec![sign_warning.clone()]} else {Vec::new()})).or_else(|_| 
-                    single_name_resolution(ontologies, Ontology::Psimod, name, base_context, offset+tail.1..offset+tail.1+tail.2)
+                    single_name_resolution(ontologies, Ontology::Psimod, name, base_context, tail.1.clone())
                 )))),
                 ("r", name) => Ok(Some(handle!(errors, numerical_mod(MassTag::Ontology(Ontology::Resid), name).map(|(sign, m)| (m, if STRICT && !sign {vec![sign_warning.clone()]} else {Vec::new()})).or_else(|_| 
-                    single_name_resolution(ontologies, Ontology::Resid, name, base_context, offset+tail.1..offset+tail.1+tail.2)
+                    single_name_resolution(ontologies, Ontology::Resid, name, base_context, tail.1.clone())
                 )))),
                 ("x", name) => Ok(Some(handle!(errors, numerical_mod(MassTag::Ontology(Ontology::Xlmod), name).map(|(sign, m)| (m, if STRICT && !sign {vec![sign_warning.clone()]} else {Vec::new()})).or_else(|_| 
-                    single_name_resolution(ontologies, Ontology::Xlmod, name, base_context, offset+tail.1..offset+tail.1+tail.2)
+                    single_name_resolution(ontologies, Ontology::Xlmod, name, base_context, tail.1.clone())
                 )))),
                 ("c", name) => Ok(Some(handle!(errors, numerical_mod(MassTag::Ontology(Ontology::Custom), name).map(|(sign, m)| (m, if STRICT && !sign {vec![sign_warning.clone()]} else {Vec::new()})).or_else(|_| 
-                    single_name_resolution(ontologies, Ontology::Custom, name, base_context, offset+tail.1..offset+tail.1+tail.2)
+                    single_name_resolution(ontologies, Ontology::Custom, name, base_context, tail.1.clone())
                 )))),
                 ("gno" | "g", name) => Ok(Some(handle!(errors, numerical_mod(MassTag::Ontology(Ontology::Gnome), name).map(|(sign, m)| (m, if STRICT && !sign {vec![sign_warning.clone()]} else {Vec::new()})).or_else(|_| 
-                    single_name_resolution(ontologies, Ontology::Gnome, name, base_context, offset+tail.1..offset+tail.1+tail.2)
+                    single_name_resolution(ontologies, Ontology::Gnome, name, base_context, tail.1.clone())
                 )))),
                 ("formula", _) => Ok(Some(Arc::new(SimpleModificationInner::Formula(
-                    MolecularFormula::pro_forma_inner::<true, false>(base_context, line, offset + tail.1..offset + tail.1 + tail.2).map_err(|e| {
+                    MolecularFormula::pro_forma_inner::<true, false>(base_context, line, tail.1.clone()).map_err(|e| {
                        vec![e]
                     })?,
                 )))),
                 ("glycan", _) =>
                     Ok(Some(Arc::new(SimpleModificationInner::Glycan(
-                    handle!(errors, MonoSaccharide::pro_forma_composition_inner::<STRICT>(base_context, line, offset + tail.1..offset + tail.1 + tail.2).map(|(v, w)| (v, w.into_iter().map(|e| e.convert::<BasicKind, BoxedError<'error, BasicKind>>(Into::into)).collect::<Vec<_>>())).map_err(|e| e.into_iter().map(|e| e.convert::<BasicKind, BoxedError<'error, BasicKind>>(Into::into)).collect::<Vec<_>>()))
+                    handle!(errors, MonoSaccharide::pro_forma_composition_inner::<STRICT>(base_context, line, tail.1.clone()).map(|(v, w)| (v, w.into_iter().map(|e| e.convert::<BasicKind, BoxedError<'error, BasicKind>>(Into::into)).collect::<Vec<_>>())).map_err(|e| e.into_iter().map(|e| e.convert::<BasicKind, BoxedError<'error, BasicKind>>(Into::into)).collect::<Vec<_>>()))
                 )))),
                 ("glycanstructure", _) => GlycanStructure::parse(
                     line,
-                    offset + tail.1..offset + tail.1 + tail.2,
+                    tail.1.clone(),
                 )
                 .map(|g| Some(Arc::new(SimpleModificationInner::GlycanStructure(g)))).map_err(|e| vec![e]),
                 ("info", tail) => Ok(Some(Arc::new(SimpleModificationInner::Info(tail.to_string())))),
@@ -436,7 +447,7 @@ fn parse_single_modification<'error, const STRICT: bool>(
                     )]
                 }),
                 ("position", _) => {
-                    match super::parse::parse_placement_rules(base_context, line, offset + tail.1..offset + tail.1 + tail.2) {
+                    match super::parse::parse_placement_rules(base_context, line, tail.1.clone()) {
                         Ok(rules) => return Ok((SingleReturnModification::Positions(rules), errors)),
                         Err(e) => Err(vec![e]),
                     }
@@ -476,166 +487,179 @@ fn parse_single_modification<'error, const STRICT: bool>(
                         ontologies,
                         &[Ontology::Unimod, Ontology::Psimod],
                         &[],
-                        full.0,
+                        &line[head.1.start..tail.1.end],
                         base_context,
-                        offset + full.1..offset + full.1 + full.2
+                        head.1.start..tail.1.end
                     ))))
             }
-        } else if full.0.is_empty() {
-            Ok(None)
-        } else if full
-            .0
-            .eq_ignore_ascii_case("colocalisemodificationsofknownposition")
-            || full.0.eq_ignore_ascii_case("comkp")
-        {
-            return Ok((SingleReturnModification::CoMKP(true), errors));
-        } else if full
-            .0
-            .eq_ignore_ascii_case("colocalisemodificationsofunknownposition")
-            || full.0.eq_ignore_ascii_case("comup")
-        {
-            return Ok((SingleReturnModification::CoMUP(true), errors));
-        } else {
-            Ok(Some(handle!(
+    } else if head.0.is_empty() {
+        Ok(None)
+    } else if full
+        .0
+        .eq_ignore_ascii_case("colocalisemodificationsofknownposition")
+        || full.0.eq_ignore_ascii_case("comkp")
+    {
+        return Ok((SingleReturnModification::CoMKP(true), errors));
+    } else if full
+        .0
+        .eq_ignore_ascii_case("colocalisemodificationsofunknownposition")
+        || full.0.eq_ignore_ascii_case("comup")
+    {
+        return Ok((SingleReturnModification::CoMUP(true), errors));
+    } else {
+        Ok(Some(handle!(
                 errors,
-                numerical_mod(MassTag::None, full.0)
+                numerical_mod(MassTag::None, head.0)
                 .map(|(sign, m)| (m, if STRICT && !sign {vec![BoxedError::new(
                     BasicKind::Warning,
                     "Improper modification",
                     "A numerical modification should always be specified with a sign (+/-) to help it be recognised as a mass modification and not a modification index.",
                     base_context
                         .clone()
-                        .add_highlight((0, offset + full.1, full.2)),
+                        .add_highlight((0, head.1.clone())),
                 )]} else {Vec::new()}))
                     .or_else(|_| name_resolution(
                         ontologies,
                         &[Ontology::Unimod, Ontology::Psimod],
                         &[],
-                        full.0,
+                        head.0,
                         base_context,
-                        offset + full.1..offset + full.1 + full.2
+                        head.1.clone()
                     ))
             )))
-        };
-        let modification = modification?;
+    };
+    let modification = modification?;
 
-        if let Some(modification) = &modification
-            && let Some(description) = modification.description()
-            && description.obsolete
-        {
+    if let Some(modification) = &modification
+        && let Some(description) = modification.description()
+        && description.obsolete
+    {
+        combine_error(
+            &mut errors,
+            BoxedError::new(
+                BasicKind::Warning,
+                "Obsolete modification",
+                "The used modification is marked obsolete",
+                base_context.clone().add_highlight((
+                    0,
+                    full.1.start..full.1.end,
+                    description.description.to_string(),
+                )),
+            ),
+        );
+    }
+
+    if let Some(group) = label {
+        if group.0.chars().any(|c| !c.is_ascii_alphanumeric()) {
             combine_error(
                 &mut errors,
                 BoxedError::new(
-                    BasicKind::Warning,
-                    "Obsolete modification",
-                    "The used modification is marked obsolete",
-                    base_context.clone().add_highlight((
-                        0,
-                        offset + full.1..offset + full.1 + full.2,
-                        description.description.to_string(),
-                    )),
+                    BasicKind::Error,
+                    "Invalid character in label",
+                    "A label can only contain alphanumeric characters",
+                    base_context.clone().add_highlight((0, group.1.clone())),
                 ),
             );
         }
-
-        if let Some(group) = label_group {
-            if group.0.eq_ignore_ascii_case("branch") {
-                let index = cross_link_lookup
-                    .iter()
-                    .position(|c| c.0 == CrossLinkName::Branch)
-                    .unwrap_or_else(|| {
-                        let index = cross_link_lookup.len();
-                        cross_link_lookup.push((CrossLinkName::Branch, None));
-                        index
-                    });
-                if let Some(linker) = modification {
-                    if cross_link_lookup[index]
-                        .1
-                        .as_ref()
-                        .is_some_and(|l| *l != linker)
-                    {
-                        return Err(vec![BoxedError::new(
-                            BasicKind::Error,
-                            "Invalid branch definition",
-                            "A branch definition has to be identical at both sites, or only defined at one site.",
-                            base_context
-                                .clone()
-                                .add_highlight((0, offset + full.1, full.2)),
-                        )]);
-                    }
-                    cross_link_lookup[index].1 = Some(linker);
+        if group.0.eq_ignore_ascii_case("branch") {
+            let index = cross_link_lookup
+                .iter()
+                .position(|c| c.0 == CrossLinkName::Branch)
+                .unwrap_or_else(|| {
+                    let index = cross_link_lookup.len();
+                    cross_link_lookup.push((CrossLinkName::Branch, None));
+                    index
+                });
+            if let Some(linker) = modification {
+                if cross_link_lookup[index]
+                    .1
+                    .as_ref()
+                    .is_some_and(|l| *l != linker)
+                {
+                    return Err(vec![BoxedError::new(
+                        BasicKind::Error,
+                        "Invalid branch definition",
+                        "A branch definition has to be identical at both sites, or only defined at one site.",
+                        base_context.clone().add_highlight((0, full.1.clone())),
+                    )]);
                 }
-                Ok((
-                    SingleReturnModification::Modification(
-                        ReturnModification::CrossLinkReferenced(index),
-                    ),
-                    errors,
-                ))
-            } else if let Some(name) = group.0.to_ascii_lowercase().strip_prefix("xl") {
-                let name = CrossLinkName::Name(name.to_string().into_boxed_str());
-                let index = cross_link_lookup
-                    .iter()
-                    .position(|c| c.0 == name)
-                    .unwrap_or_else(|| {
-                        let index = cross_link_lookup.len();
-                        cross_link_lookup.push((name, None));
-                        index
-                    });
-                if let Some(linker) = modification {
-                    if cross_link_lookup[index]
-                        .1
-                        .as_ref()
-                        .is_some_and(|l| *l != linker)
-                    {
-                        return Err(vec![BoxedError::new(
-                            BasicKind::Error,
-                            "Invalid cross-link definition",
-                            "A cross-link definition has to be identical at both sites, or only defined at one site.",
-                            base_context
-                                .clone()
-                                .add_highlight((0, offset + full.1, full.2)),
-                        )]);
-                    }
-                    cross_link_lookup[index].1 = Some(linker);
-                }
-                Ok((
-                    SingleReturnModification::Modification(
-                        ReturnModification::CrossLinkReferenced(index),
-                    ),
-                    errors,
-                ))
-            } else {
-                handle_ambiguous_modification(
-                    modification,
-                    group,
-                    localisation_score,
-                    ambiguous_lookup,
-                    base_context
-                        .clone()
-                        .add_highlight((0, offset + full.1 + 1, full.2)),
-                )
-                .map(|(m, w)| {
-                    combine_errors(&mut errors, w);
-                    (m, errors)
-                })
+                cross_link_lookup[index].1 = Some(linker);
             }
-        } else {
             Ok((
-                modification.map_or(SingleReturnModification::None, |m| {
-                    SingleReturnModification::Modification(ReturnModification::Defined(m))
-                }),
+                SingleReturnModification::Modification(ReturnModification::CrossLinkReferenced(
+                    index,
+                )),
                 errors,
             ))
+        } else if let Some(name) = group.0.to_ascii_lowercase().strip_prefix("xl") {
+            let name = CrossLinkName::Name(name.to_string().into_boxed_str());
+            let index = cross_link_lookup
+                .iter()
+                .position(|c| c.0 == name)
+                .unwrap_or_else(|| {
+                    let index = cross_link_lookup.len();
+                    cross_link_lookup.push((name, None));
+                    index
+                });
+            if let Some(linker) = modification {
+                if cross_link_lookup[index]
+                    .1
+                    .as_ref()
+                    .is_some_and(|l| *l != linker)
+                {
+                    return Err(vec![BoxedError::new(
+                        BasicKind::Error,
+                        "Invalid cross-link definition",
+                        "A cross-link definition has to be identical at both sites, or only defined at one site.",
+                        base_context.clone().add_highlight((0, full.1.clone())),
+                    )]);
+                }
+                cross_link_lookup[index].1 = Some(linker);
+            }
+            Ok((
+                SingleReturnModification::Modification(ReturnModification::CrossLinkReferenced(
+                    index,
+                )),
+                errors,
+            ))
+        } else {
+            let score = match score.map(|s| {
+                s.0.parse::<f64>().map_err(|err| {
+                    BoxedError::new(
+                        BasicKind::Error,
+                        "Invalid modification localisation score",
+                        "The ambiguous modification localisation score needs to be a valid number",
+                        base_context.clone().add_highlight((0, s.1.clone())),
+                    )
+                })
+            }) {
+                Some(Ok(score)) => Some(OrderedFloat(score)),
+                Some(Err(err)) => {
+                    combine_error(&mut errors, err);
+                    None
+                }
+                None => None,
+            };
+
+            handle_ambiguous_modification(
+                modification,
+                group,
+                score,
+                ambiguous_lookup,
+                base_context.clone().add_highlight((0, full.1.clone())),
+            )
+            .map(|(m, w)| {
+                combine_errors(&mut errors, w);
+                (m, errors)
+            })
         }
     } else {
-        Err(vec![BoxedError::new(
-            BasicKind::Error,
-            "Invalid modification",
-            "It does not match the ProForma definition for modifications",
-            base_context
-                .clone()
-                .add_highlight((0, offset, full_modification.len())),
-        )])
+        Ok((
+            modification.map_or(SingleReturnModification::None, |m| {
+                SingleReturnModification::Modification(ReturnModification::Defined(m))
+            }),
+            errors,
+        ))
     }
 }
 
@@ -644,7 +668,7 @@ fn parse_single_modification<'error, const STRICT: bool>(
 /// If the content of the ambiguous modification was already defined
 fn handle_ambiguous_modification<'a>(
     modification: Option<SimpleModification>,
-    group: (&str, usize, usize),
+    group: (&str, Range<usize>),
     localisation_score: Option<OrderedFloat<f64>>,
     ambiguous_lookup: &mut AmbiguousLookup,
     context: Context<'a>,
