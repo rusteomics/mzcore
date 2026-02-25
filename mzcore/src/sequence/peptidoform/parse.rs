@@ -1550,6 +1550,8 @@ fn labile_modifications<'a, const STRICT: bool>(
 }
 
 /// Parse a charge state, defaulting to v2.1 but allowing fallback to v2.0 if needed.
+/// # Errors
+/// If this definition is neither a v2.1 or v2.0 valid charge
 fn parse_charge_state<'a>(
     base_context: &Context<'a>,
     line: &'a str,
@@ -1567,7 +1569,7 @@ fn parse_charge_state<'a>(
                     "Deprecated charge",
                     "A charge using the deprecated syntax of the ProForma 2.0 charge extension was detected",
                     base_context.clone().add_highlight((0, range.start, 1)),
-                ).suggestions([v.to_string()]));
+                ).suggestions([format!("/{v}")]));
                 ((offset, v), errors)
             })
     } else {
