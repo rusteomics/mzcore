@@ -145,73 +145,73 @@ fn charge_state_positive() {
             .map_err(|_| ())
     };
     assert_eq!(
-        parse("/1"),
+        parse("1"),
         Ok(MolecularCharge::proton(
             crate::system::isize::Charge::new::<crate::system::e>(1)
         ))
     );
     assert_eq!(
-        parse("/5"),
+        parse("5"),
         Ok(MolecularCharge::proton(
             crate::system::isize::Charge::new::<crate::system::e>(5)
         ))
     );
     assert_eq!(
-        parse("/-5"),
+        parse("-5"),
         Ok(MolecularCharge::proton(
             crate::system::isize::Charge::new::<crate::system::e>(-5)
         ))
     );
     assert_eq!(
-        parse("/1[+H+]"),
+        parse("1[+H+]"),
         Ok(MolecularCharge::proton(
             crate::system::isize::Charge::new::<crate::system::e>(1)
         ))
     );
     assert_eq!(
-        parse("/2[+H+,+H+]"),
+        parse("2[+H+,+H+]"),
         Ok(MolecularCharge::proton(
             crate::system::isize::Charge::new::<crate::system::e>(2)
         ))
     );
     assert_eq!(
-        parse("/1[+Na+]"),
+        parse("1[+Na+]"),
         Ok(MolecularCharge::new(&[(1, molecular_formula!(Na 1 :z+1))]))
     );
     assert_eq!(
-        parse("/3[2Na+1,1H1+1]"),
+        parse("3[2Na+1,1H1+1]"),
         Ok(MolecularCharge::new(&[
             (2, molecular_formula!(Na 1 :z+1)),
             (1, molecular_formula!(H 1 :z+1))
         ]))
     );
     assert_eq!(
-        parse("/1[-OH-]"),
+        parse("1[-OH-]"),
         Ok(MolecularCharge::new(&[(
             -1,
             molecular_formula!(O 1 H 1 :z-1)
         ),]))
     );
     assert_eq!(
-        parse("/1[+N1H3+]"),
+        parse("1[+N1H3+]"),
         Ok(MolecularCharge::new(&[(
             1,
             molecular_formula!(N 1 H 3 :z+1)
         ),]))
     );
     assert_eq!(
-        parse("/1[+[15N1]+]"),
+        parse("1[+[15N1]+]"),
         Ok(MolecularCharge::new(&[(
             1,
             molecular_formula!([15 N 1] :z+1)
         ),]))
     );
     assert_eq!(
-        parse("/3[+Fe+3]"),
+        parse("3[+Fe+3]"),
         Ok(MolecularCharge::new(&[(1, molecular_formula!(Fe 1 :z+3)),]))
     );
     assert_eq!(
-        parse("/3[+ Fe +3]"),
+        parse("3[+ Fe +3]"),
         Ok(MolecularCharge::new(&[(1, molecular_formula!(Fe 1 :z+3)),]))
     );
 }
@@ -223,18 +223,18 @@ fn charge_state_negative() {
             .map(|(a, _)| a)
             .map_err(|_| ())
     };
-    assert!(parse("/3[+Fe+]").is_err());
-    assert!(parse("/3[+Fe]").is_err());
-    assert!(parse("/3[+Fe 1]").is_err());
-    assert!(parse("/3[+[54Fe1+3]").is_err());
-    assert!(parse("/3[+54Fe1]+3]").is_err());
-    assert!(parse("/1[1H1-1]").is_err());
-    assert!(parse("/1[1H1+1").is_err());
-    assert!(parse("/1[1+1]").is_err());
-    assert!(parse("/1[H+1]").is_err());
-    assert!(parse("/1[1H]").is_err());
-    assert!(parse("/1[1H1]").is_err());
-    assert!(parse("/ 1 [ 1 H 1]").is_err());
+    assert!(parse("3[+Fe+]").is_err());
+    assert!(parse("3[+Fe]").is_err());
+    assert!(parse("3[+Fe 1]").is_err());
+    assert!(parse("3[+[54Fe1+3]").is_err());
+    assert!(parse("3[+54Fe1]+3]").is_err());
+    assert!(parse("1[1H1-1]").is_err());
+    assert!(parse("1[1H1+1").is_err());
+    assert!(parse("1[1+1]").is_err());
+    assert!(parse("1[H+1]").is_err());
+    assert!(parse("1[1H]").is_err());
+    assert!(parse("1[1H1]").is_err());
+    assert!(parse(" 1 [ 1 H 1]").is_err());
 }
 
 #[test]

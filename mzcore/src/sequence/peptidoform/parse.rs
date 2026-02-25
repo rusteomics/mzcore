@@ -765,8 +765,10 @@ impl CompoundPeptidoformIon {
                         index += 2; // Potentially this can be followed by another peptide
                         ending = End::CrossLink;
                     } else {
-                        let (buf, charge_carriers) =
-                            handle!(errors, parse_charge_state_2_0(base_context, line, index));
+                        let (buf, charge_carriers) = handle!(
+                            errors,
+                            parse_charge_state(base_context, line, index + 1..range.end)
+                        );
                         index = buf;
                         peptide = peptide.charge_carriers(Some(charge_carriers));
                         if index < chars.len() && chars[index] == b'+' {
@@ -837,8 +839,10 @@ impl CompoundPeptidoformIon {
                             && chars[index] == b'/'
                             && chars[index + 1] != b'/'
                         {
-                            let (buf, charge_carriers) =
-                                handle!(errors, parse_charge_state_2_0(base_context, line, index));
+                            let (buf, charge_carriers) = handle!(
+                                errors,
+                                parse_charge_state(base_context, line, index + 1..range.end)
+                            );
                             index = buf;
                             peptide = peptide.charge_carriers(Some(charge_carriers));
                         }
@@ -1257,7 +1261,7 @@ pub(super) fn global_modifications<'a, const STRICT: bool>(
                         BoxedError::new(
                             BasicKind::Error,
                             "Invalid global modification",
-                            format!("The isotope number is {}", explain_number_error(&err)),
+                            format!("The isotope number {}", explain_number_error(&err)),
                             base_context.clone().add_highlight((
                                 0,
                                 start_index + 1,
@@ -1545,6 +1549,156 @@ fn labile_modifications<'a, const STRICT: bool>(
     }
 }
 
+/// Parse a charge state, defaulting to v2.1 but allowing fallback to v2.0 if needed.
+fn parse_charge_state<'a>(
+    base_context: &Context<'a>,
+    line: &'a str,
+    range: Range<usize>,
+) -> ParserResult<'a, (usize, MolecularCharge), BasicKind> {
+    let v2_1 = parse_charge_state_2_1(base_context, line, range.clone());
+    let looks_like_2_0 = v2_1
+        .as_ref()
+        .is_ok_and(|((o, _), _)| line[*o..].starts_with('['));
+
+    if looks_like_2_0 || v2_1.is_err() {
+        parse_charge_state_2_0(base_context, line, range.start).map_err(|v2_0_errors| if looks_like_2_0 {v2_0_errors} else {v2_1.err().unwrap_or_default()}).map(|((offset, v), mut errors)| {
+                combine_error(&mut errors, BoxedError::new(
+                    BasicKind::Warning,
+                    "Deprecated charge",
+                    "A charge using the deprecated syntax of the ProForma 2.0 charge extension was detected",
+                    base_context.clone().add_highlight((0, range.start, 1)),
+                ).suggestions([v.to_string()]));
+                ((offset, v), errors)
+            })
+    } else {
+        v2_1
+    }
+}
+
+/// Parse a charge state `/2` or more complex ones like `/[Na:z+1]`.
+/// Will only accept text where the '/' is already consumed.
+/// # Errors
+/// If the charge state is not following the specification.
+/// # Panics
+/// Panics if the text is not UTF-8.
+pub(super) fn parse_charge_state_2_1<'a>(
+    base_context: &Context<'a>,
+    line: &'a str,
+    range: Range<usize>,
+) -> ParserResult<'a, (usize, MolecularCharge), BasicKind> {
+    let mut errors = Vec::new();
+
+    if line[range.clone()].starts_with('[') {
+        let Some(end) = end_of_enclosure(line, range.start + 1, b'[', b']') else {
+            return Err(vec![BoxedError::new(
+                BasicKind::Error,
+                "Invalid charge state",
+                "No valid closing delimiter",
+                base_context.clone().add_highlight((0, range.start, 1)),
+            )]);
+        };
+        let mut carriers = Vec::with_capacity(line[range.start + 1..end - 1].split(',').count());
+        let mut offset = 0;
+        for full in line[range.start + 1..end].split(',') {
+            let (formula, occurence) = full
+                .split_once('^')
+                .map_or((full, None), |(f, o)| (f, Some(o)));
+            let occurence = occurence.map_or(1, |occurence| match occurence.parse::<isize>() {
+                Ok(v) => {
+                    if v == 0 {
+                        combine_error(
+                            &mut errors,
+                            BoxedError::new(
+                                BasicKind::Warning,
+                                "Improper charge occurence",
+                                "The charge occurence does not make sense when zero",
+                                base_context.clone().add_highlight((
+                                    0,
+                                    range.start + formula.len() + 2
+                                        ..range.start + formula.len() + 2 + occurence.len(),
+                                )),
+                            ),
+                        );
+                    }
+                    v
+                }
+                Err(err) => {
+                    combine_error(
+                        &mut errors,
+                        BoxedError::new(
+                            BasicKind::Error,
+                            "Invalid charge occurence",
+                            format!("The charge occurence {}", explain_number_error(&err)),
+                            base_context.clone().add_highlight((
+                                0,
+                                range.start + formula.len() + 2
+                                    ..range.start + formula.len() + 2 + occurence.len(),
+                            )),
+                        ),
+                    );
+                    1
+                }
+            });
+            let f = match MolecularFormula::pro_forma_inner::<true, false>(
+                base_context,
+                line,
+                range.start + 1 + offset..range.start + 1 + offset + formula.len(),
+            ) {
+                Ok(f) => {
+                    if f.charge().value == 0 {
+                        combine_error(
+                            &mut errors,
+                            BoxedError::new(
+                                BasicKind::Error,
+                                "Invalid charge carrier",
+                                "A charge carrier should have a defined charge, use ':z±x' to define the charge",
+                                base_context.clone().add_highlight((
+                                    0,
+                                    range.start + 1..range.start + formula.len() + 1,
+                                )),
+                            ),
+                        );
+                    }
+                    f
+                }
+                Err(err) => {
+                    combine_error(&mut errors, err);
+                    MolecularFormula::default()
+                }
+            };
+
+            carriers.push((occurence, f));
+            offset += full.len() + 1;
+        }
+
+        if errors.iter().any(|e| e.get_kind().is_error(())) {
+            Err(errors)
+        } else {
+            Ok(((end + 1, carriers.into()), errors))
+        }
+    } else {
+        let (charge_len, total_charge) = handle!(single errors, next_num(line.as_bytes(), range.start, false)
+        .ok_or_else(|| {
+            BoxedError::new(
+                BasicKind::Error,
+                "Invalid peptide charge state",
+                "There should be a number dictating the total charge of the peptide",
+                base_context.clone().add_highlight((0, range.start, 1))
+            )
+        }));
+
+        Ok((
+            (
+                range.start + charge_len,
+                MolecularCharge::proton(crate::system::isize::Charge::new::<crate::system::e>(
+                    total_charge,
+                )),
+            ),
+            errors,
+        ))
+    }
+}
+
 /// Parse a charge state `/2` or more complex ones like `/2[+2Na+]`.
 /// Assumes the text starts with `/`.
 /// # Errors
@@ -1558,30 +1712,30 @@ pub(super) fn parse_charge_state_2_0<'a>(
 ) -> ParserResult<'a, (usize, MolecularCharge), BasicKind> {
     let mut errors = Vec::new();
     let chars = line.as_bytes();
-    let (charge_len, total_charge) = handle!(single errors, next_num(chars, index + 1, false)
+    let (charge_len, total_charge) = handle!(single errors, next_num(chars, index, false)
     .ok_or_else(|| {
         BoxedError::new(
             BasicKind::Error,
             "Invalid peptide charge state",
             "There should be a number dictating the total charge of the peptide",
-            base_context.clone().add_highlight((0, index + 1, 1))
+            base_context.clone().add_highlight((0, index, 1))
         )
     }));
-    if chars.get(index + 1 + charge_len) == Some(&b'[') {
-        let end_index = handle!(single errors, end_of_enclosure(line, index + 2 + charge_len, b'[', b']')
+    if chars.get(index + charge_len) == Some(&b'[') {
+        let end_index = handle!(single errors, end_of_enclosure(line, index + 1 + charge_len, b'[', b']')
         .ok_or_else(|| {
             BoxedError::new(
                 BasicKind::Error,
                 "Invalid adduct ion",
                 "No valid closing delimiter",
-                base_context.clone().add_highlight((0, index + 2 + charge_len, 1))
+                base_context.clone().add_highlight((0, index + 1 + charge_len, 1))
             )
         }));
-        let mut offset = index + 2 + charge_len;
+        let mut offset = index + 1 + charge_len;
         let mut charge_carriers: Vec<(isize, MolecularFormula)> = Vec::new();
         let mut found_charge: isize = 0;
 
-        for set in chars[index + 2 + charge_len..end_index].split(|c| *c == b',') {
+        for set in chars[index + 1 + charge_len..end_index].split(|c| *c == b',') {
             // num
             let (count_len, count) = handle!(single errors, next_num(chars, offset, true)
             .ok_or_else(|| {
@@ -1727,7 +1881,7 @@ pub(super) fn parse_charge_state_2_0<'a>(
         // If no adduct ions are provided assume it is just protons
         Ok((
             (
-                index + charge_len + 1,
+                index + charge_len,
                 MolecularCharge::proton(crate::system::isize::Charge::new::<crate::system::e>(
                     total_charge,
                 )),

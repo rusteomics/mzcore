@@ -204,44 +204,44 @@ impl Chemical for MolecularCharge {
 }
 
 impl std::fmt::Display for MolecularCharge {
-    /// Is not guaranteed to fully conform to the ProForma standard. Because the data structure accepts more than the standard.
-    /// So adducts with other than +1/-1 charge states, or adducts with complex formula (not a single element) will not adhere to the standard.
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "{}",
-            self.charge_carriers
-                .iter()
-                .map(|c| c.1.charge().value * c.0)
-                .sum::<isize>()
-        )?;
-        if !self.charge_carriers.iter().all(|c| {
-            c.1 == MolecularFormula::new(
-                &[(Element::H, None, 1), (Element::Electron, None, -1)],
-                &[],
-            )
-            .unwrap()
-        }) {
+        if self.is_proton() {
+            write!(f, "{}", self.charge().value)
+        } else if self.charge_carriers.iter().any(|(o, _)| *o != 0) {
             write!(f, "[")?;
             let mut first = true;
             for (amount, formula) in &self.charge_carriers {
+                if *amount == 0 {
+                    continue;
+                }
                 if first {
                     first = false;
                 } else {
                     write!(f, ",")?;
                 }
-                let charge = formula.charge().value;
-                write!(f, "{amount}{formula}{charge:+}")?;
+                write!(f, "{formula}")?;
+                if *amount != 1 {
+                    write!(f, "^{amount}")?;
+                }
             }
-            write!(f, "]")?;
+            write!(f, "]")
+        } else {
+            Ok(())
         }
-        Ok(())
     }
 }
 
 impl crate::space::Space for MolecularCharge {
     fn space(&self) -> crate::space::UsedSpace {
         self.charge_carriers.space()
+    }
+}
+
+impl From<Vec<(isize, MolecularFormula)>> for MolecularCharge {
+    fn from(value: Vec<(isize, MolecularFormula)>) -> Self {
+        Self {
+            charge_carriers: value.into(),
+        }
     }
 }
 
