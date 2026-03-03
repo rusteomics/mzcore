@@ -1568,7 +1568,7 @@ fn parse_charge_state<'a>(
                     BasicKind::Warning,
                     "Deprecated charge",
                     "A charge using the deprecated syntax of the ProForma 2.0 charge extension was detected",
-                    base_context.clone().add_highlight((0, range.start, 1)),
+                    base_context.clone().add_highlight((0, range.start, offset)),
                 ).suggestions([format!("/{v}")]));
                 ((offset, v), errors)
             })

@@ -1187,9 +1187,11 @@ impl FastaData {
 }
 
 fn trim_whitespace(line: &str, range: Range<usize>) -> Range<usize> {
-    let start = range.len() - line[range.clone()].trim_start().len();
-    let end = range.len() - line[range.clone()].trim_end().len();
-    range.start + start..range.end - end
+    let start = range.start + range.len() - line[range.clone()].trim_start().len();
+    let end = range
+        .end
+        .saturating_sub(range.len() - line[range].trim_end().len());
+    start.min(end)..end
 }
 
 impl From<FastaData> for PSM<SemiAmbiguous, PeptidoformPresent> {

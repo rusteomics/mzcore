@@ -1,14 +1,3 @@
-## Anarhichas minor / Spotted wolffish
-
-| Kind | V | J | C |
-|------|---|---|---|
-|IGHV|0/0|0/0|0/0|
-|IGKV|0/0|0/0|0/0|
-|IGLV|0/0|0/0|0/0|
-|IGIV|0/0|2/0|2/0|
-
-_Number of genes / number of alleles_
-
 ## Bos taurus / Domestic bovine
 
 | Kind | V | J | C |
@@ -24,7 +13,7 @@ _Number of genes / number of alleles_
 
 | Kind | V | J | C |
 |------|---|---|---|
-|IGHV|26/26|7/7|11/10|
+|IGHV|26/26|7/7|10/10|
 |IGKV|10/10|5/5|1/1|
 |IGLV|0/0|0/0|0/0|
 |IGIV|0/0|0/0|0/0|
@@ -35,7 +24,7 @@ _Number of genes / number of alleles_
 
 | Kind | V | J | C |
 |------|---|---|---|
-|IGHV|37/37|6/6|8/7|
+|IGHV|37/37|6/6|5/7|
 |IGKV|20/52|5/5|1/2|
 |IGLV|86/86|9/9|9/9|
 |IGIV|0/0|0/0|0/0|
@@ -53,17 +42,6 @@ _Number of genes / number of alleles_
 
 _Number of genes / number of alleles_
 
-## Carcharhinus plumbeus / Sandbar shark
-
-| Kind | V | J | C |
-|------|---|---|---|
-|IGHV|0/0|1/0|0/0|
-|IGKV|0/0|0/0|0/0|
-|IGLV|0/0|0/0|0/0|
-|IGIV|0/0|0/0|0/0|
-
-_Number of genes / number of alleles_
-
 ## Cercocebus atys / Sooty mangabey
 
 | Kind | V | J | C |
@@ -75,47 +53,14 @@ _Number of genes / number of alleles_
 
 _Number of genes / number of alleles_
 
-## Chaenocephalus aceratus / Blackfin icefish
-
-| Kind | V | J | C |
-|------|---|---|---|
-|IGHV|0/0|0/0|1/0|
-|IGKV|0/0|0/0|0/0|
-|IGLV|0/0|0/0|0/0|
-|IGIV|0/0|0/0|0/0|
-
-_Number of genes / number of alleles_
-
-## Cyprinus carpio / Common carp
-
-| Kind | V | J | C |
-|------|---|---|---|
-|IGHV|0/0|0/0|1/0|
-|IGKV|0/0|0/0|0/0|
-|IGLV|0/0|0/0|0/0|
-|IGIV|0/0|0/0|22/0|
-
-_Number of genes / number of alleles_
-
 ## Danio rerio / Zebrafish
 
 | Kind | V | J | C |
 |------|---|---|---|
-|IGHV|40/40|8/7|1/1|
+|IGHV|40/40|7/7|1/1|
 |IGKV|0/0|0/0|0/0|
 |IGLV|0/0|0/0|0/0|
-|IGIV|5/5|7/4|8/3|
-
-_Number of genes / number of alleles_
-
-## Dicentrarchus labrax / European seabass
-
-| Kind | V | J | C |
-|------|---|---|---|
-|IGHV|0/0|0/0|0/0|
-|IGKV|0/0|0/0|0/0|
-|IGLV|0/0|0/0|0/0|
-|IGIV|0/0|0/0|22/0|
+|IGIV|5/5|4/4|3/3|
 
 _Number of genes / number of alleles_
 
@@ -123,7 +68,7 @@ _Number of genes / number of alleles_
 
 | Kind | V | J | C |
 |------|---|---|---|
-|IGHV|28/34|12/9|11/30|
+|IGHV|28/34|9/9|11/30|
 |IGKV|19/23|4/5|1/2|
 |IGLV|0/0|0/0|0/0|
 |IGIV|0/0|0/0|0/0|
@@ -145,10 +90,10 @@ _Number of genes / number of alleles_
 
 | Kind | V | J | C |
 |------|---|---|---|
-|IGHV|0/0|0/0|1/0|
+|IGHV|0/0|0/0|0/0|
 |IGKV|0/0|0/0|0/0|
 |IGLV|0/0|0/0|0/0|
-|IGIV|3/3|1/0|2/0|
+|IGIV|3/3|0/0|0/0|
 
 _Number of genes / number of alleles_
 
@@ -156,31 +101,9 @@ _Number of genes / number of alleles_
 
 | Kind | V | J | C |
 |------|---|---|---|
-|IGHV|2/2|1/1|1/0|
+|IGHV|2/2|1/1|0/0|
 |IGKV|0/0|0/0|0/0|
 |IGLV|2/3|1/1|1/1|
-|IGIV|0/0|0/0|0/0|
-
-_Number of genes / number of alleles_
-
-## Gasterosteus aculeatus / Three-spined stickleback
-
-| Kind | V | J | C |
-|------|---|---|---|
-|IGHV|0/0|0/0|0/0|
-|IGKV|0/0|0/0|0/0|
-|IGLV|0/0|0/0|0/0|
-|IGIV|0/0|0/0|1/0|
-
-_Number of genes / number of alleles_
-
-## Ginglymostoma cirratum / Nurse shark
-
-| Kind | V | J | C |
-|------|---|---|---|
-|IGHV|0/0|8/0|1/0|
-|IGKV|0/0|0/0|0/0|
-|IGLV|0/0|0/0|0/0|
 |IGIV|0/0|0/0|0/0|
 
 _Number of genes / number of alleles_
@@ -211,7 +134,7 @@ _Number of genes / number of alleles_
 
 | Kind | V | J | C |
 |------|---|---|---|
-|IGHV|1/1|4/1|1/1|
+|IGHV|1/1|1/1|1/1|
 |IGKV|0/0|0/0|0/0|
 |IGLV|0/0|0/0|0/0|
 |IGIV|0/0|0/0|0/0|
@@ -222,20 +145,9 @@ _Number of genes / number of alleles_
 
 | Kind | V | J | C |
 |------|---|---|---|
-|IGHV|81/321|9/18|12/95|
+|IGHV|80/321|9/18|12/95|
 |IGKV|64/116|5/8|1/4|
-|IGLV|53/118|8/11|8/21|
-|IGIV|0/0|0/0|0/0|
-
-_Number of genes / number of alleles_
-
-## Hydrolagus colliei / Spotted ratfish
-
-| Kind | V | J | C |
-|------|---|---|---|
-|IGHV|0/0|1/0|0/0|
-|IGKV|0/0|0/0|0/0|
-|IGLV|0/0|0/0|0/0|
+|IGLV|52/118|8/11|8/21|
 |IGIV|0/0|0/0|0/0|
 
 _Number of genes / number of alleles_
@@ -255,10 +167,10 @@ _Number of genes / number of alleles_
 
 | Kind | V | J | C |
 |------|---|---|---|
-|IGHV|32/32|20/19|3/4|
+|IGHV|32/32|19/19|3/4|
 |IGKV|0/0|0/0|0/0|
 |IGLV|0/0|0/0|0/0|
-|IGIV|4/4|5/0|16/0|
+|IGIV|4/4|0/0|0/0|
 
 _Number of genes / number of alleles_
 
@@ -277,7 +189,7 @@ _Number of genes / number of alleles_
 
 | Kind | V | J | C |
 |------|---|---|---|
-|IGHV|1/1|3/2|0/0|
+|IGHV|1/1|2/2|0/0|
 |IGKV|0/0|0/0|0/0|
 |IGLV|0/0|0/0|0/0|
 |IGIV|0/0|0/0|0/0|
@@ -372,17 +284,6 @@ _Number of genes / number of alleles_
 
 _Number of genes / number of alleles_
 
-## Monodelphis domestica / Gray short-tailed opossum
-
-| Kind | V | J | C |
-|------|---|---|---|
-|IGHV|0/0|0/0|1/0|
-|IGKV|0/0|0/0|0/0|
-|IGLV|0/0|0/0|0/0|
-|IGIV|0/0|0/0|0/0|
-
-_Number of genes / number of alleles_
-
 ## Mus cookii / Cook's mouse
 
 | Kind | V | J | C |
@@ -410,7 +311,7 @@ _Number of genes / number of alleles_
 | Kind | V | J | C |
 |------|---|---|---|
 |IGHV|356/500|4/8|9/36|
-|IGKV|120/141|5/10|1/1|
+|IGKV|119/141|5/10|1/1|
 |IGLV|3/5|6/6|4/5|
 |IGIV|0/0|0/0|0/0|
 
@@ -431,8 +332,8 @@ _Number of genes / number of alleles_
 
 | Kind | V | J | C |
 |------|---|---|---|
-|IGHV|2/1|4/1|2/1|
-|IGKV|2/7|3/0|0/0|
+|IGHV|1/1|1/1|1/1|
+|IGKV|2/7|0/0|0/0|
 |IGLV|0/0|2/2|2/2|
 |IGIV|0/0|0/0|0/0|
 
@@ -486,8 +387,8 @@ _Number of genes / number of alleles_
 
 | Kind | V | J | C |
 |------|---|---|---|
-|IGHV|0/0|4/3|0/0|
-|IGKV|1/1|4/0|1/0|
+|IGHV|0/0|3/3|0/0|
+|IGKV|1/1|0/0|0/0|
 |IGLV|0/0|0/0|0/0|
 |IGIV|0/0|0/0|0/0|
 
@@ -510,7 +411,7 @@ _Number of genes / number of alleles_
 |------|---|---|---|
 |IGHV|43/43|7/7|5/5|
 |IGKV|42/42|5/5|1/1|
-|IGLV|46/46|8/8|7/5|
+|IGLV|46/46|8/8|5/5|
 |IGIV|0/0|0/0|0/0|
 
 _Number of genes / number of alleles_
@@ -526,25 +427,14 @@ _Number of genes / number of alleles_
 
 _Number of genes / number of alleles_
 
-## Notothenia coriiceps / Black rockcod
-
-| Kind | V | J | C |
-|------|---|---|---|
-|IGHV|0/0|0/0|1/0|
-|IGKV|0/0|0/0|0/0|
-|IGLV|0/0|0/0|0/0|
-|IGIV|0/0|0/0|0/0|
-
-_Number of genes / number of alleles_
-
 ## Oncorhynchus mykiss / Rainbow trout
 
 | Kind | V | J | C |
 |------|---|---|---|
-|IGHV|58/61|22/25|3/6|
+|IGHV|58/61|21/25|3/6|
 |IGKV|0/0|0/0|0/0|
 |IGLV|0/0|0/0|0/0|
-|IGIV|8/8|7/0|8/0|
+|IGIV|8/8|0/0|0/0|
 
 _Number of genes / number of alleles_
 
@@ -552,7 +442,7 @@ _Number of genes / number of alleles_
 
 | Kind | V | J | C |
 |------|---|---|---|
-|IGHV|36/36|11/11|8/7|
+|IGHV|36/36|11/11|7/7|
 |IGKV|0/0|0/0|0/0|
 |IGLV|0/0|0/0|0/0|
 |IGIV|0/0|0/0|0/0|
@@ -629,7 +519,7 @@ _Number of genes / number of alleles_
 
 | Kind | V | J | C |
 |------|---|---|---|
-|IGHV|70/135|7/13|11/31|
+|IGHV|71/136|7/13|11/31|
 |IGKV|37/59|4/4|1/1|
 |IGLV|33/56|7/9|5/11|
 |IGIV|0/0|0/0|0/0|
@@ -647,46 +537,13 @@ _Number of genes / number of alleles_
 
 _Number of genes / number of alleles_
 
-## Protopterus aethiopicus / Marbled lungfish
-
-| Kind | V | J | C |
-|------|---|---|---|
-|IGHV|0/0|0/0|1/0|
-|IGKV|0/0|0/0|0/0|
-|IGLV|0/0|0/0|0/0|
-|IGIV|0/0|0/0|0/0|
-
-_Number of genes / number of alleles_
-
-## Raja eglanteria / Clearnose skate
-
-| Kind | V | J | C |
-|------|---|---|---|
-|IGHV|0/0|2/0|0/0|
-|IGKV|0/0|0/0|0/0|
-|IGLV|0/0|0/0|0/0|
-|IGIV|0/0|0/0|0/0|
-
-_Number of genes / number of alleles_
-
 ## Rattus norvegicus / Norway rat
 
 | Kind | V | J | C |
 |------|---|---|---|
-|IGHV|152/152|4/4|11/11|
+|IGHV|152/152|4/4|8/11|
 |IGKV|39/39|7/7|1/2|
 |IGLV|13/17|6/7|4/7|
-|IGIV|0/0|0/0|0/0|
-
-_Number of genes / number of alleles_
-
-## Rattus rattus / Black rat
-
-| Kind | V | J | C |
-|------|---|---|---|
-|IGHV|0/0|0/0|1/0|
-|IGKV|0/0|0/0|0/0|
-|IGLV|0/0|0/0|0/0|
 |IGIV|0/0|0/0|0/0|
 
 _Number of genes / number of alleles_
@@ -698,40 +555,7 @@ _Number of genes / number of alleles_
 |IGHV|81/91|19/21|6/9|
 |IGKV|0/0|0/0|0/0|
 |IGLV|0/0|0/0|0/0|
-|IGIV|3/3|13/0|19/2|
-
-_Number of genes / number of alleles_
-
-## Salmo trutta / River trout
-
-| Kind | V | J | C |
-|------|---|---|---|
-|IGHV|0/0|0/0|2/0|
-|IGKV|0/0|0/0|0/0|
-|IGLV|0/0|0/0|0/0|
-|IGIV|0/0|0/0|0/0|
-
-_Number of genes / number of alleles_
-
-## Seriola quinqueradiata / Japanese amberjack
-
-| Kind | V | J | C |
-|------|---|---|---|
-|IGHV|0/0|0/0|0/0|
-|IGKV|0/0|0/0|0/0|
-|IGLV|0/0|0/0|0/0|
-|IGIV|0/0|0/0|22/0|
-
-_Number of genes / number of alleles_
-
-## Siniperca chuatsi / Mandarin fish
-
-| Kind | V | J | C |
-|------|---|---|---|
-|IGHV|0/0|0/0|0/0|
-|IGKV|0/0|0/0|0/0|
-|IGLV|0/0|0/0|0/0|
-|IGIV|0/0|5/0|5/0|
+|IGIV|3/3|0/0|2/2|
 
 _Number of genes / number of alleles_
 
@@ -739,20 +563,9 @@ _Number of genes / number of alleles_
 
 | Kind | V | J | C |
 |------|---|---|---|
-|IGHV|5/5|5/6|12/20|
+|IGHV|5/5|5/6|11/20|
 |IGKV|13/23|5/9|1/2|
 |IGLV|12/17|3/4|2/2|
-|IGIV|0/0|0/0|0/0|
-
-_Number of genes / number of alleles_
-
-## Trematomus bernacchii / Emerald rockcod
-
-| Kind | V | J | C |
-|------|---|---|---|
-|IGHV|0/0|0/0|1/0|
-|IGKV|0/0|0/0|0/0|
-|IGLV|0/0|0/0|0/0|
 |IGIV|0/0|0/0|0/0|
 
 _Number of genes / number of alleles_

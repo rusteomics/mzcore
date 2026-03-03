@@ -54,10 +54,14 @@ pub(crate) fn combine(
 
     // Save temp seqs in final data structure
     for (species, entry) in deduped_temp {
+        let germline = entry.finalise();
+        if germline.alleles.is_empty() {
+            continue; // Ignore any germline that has no sequence information
+        }
         grouped
             .entry(species)
             .or_insert_with(|| Germlines::new(species))
-            .insert(entry.finalise());
+            .insert(germline);
     }
     (grouped, errors)
 }

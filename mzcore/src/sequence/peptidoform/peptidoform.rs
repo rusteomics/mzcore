@@ -80,16 +80,6 @@ use crate::{
 /// <15N>PEPTIDE
 /// ```
 ///
-/// ## Charge carriers
-/// The ions that carry the charge of the peptide can be defined. In ProForma 2.0 the syntax is
-/// slightly underspecified but rustyms allows higher charged carriers, e.g. Zn 2+, and complete
-/// chemical formulas. If this peptide is part of a [`Peptidoform`] (and so tagged [`Linked`])
-/// setting the charge carriers is not allowed on the peptides but
-/// [`Peptidoform::charge_carriers`] can be used.
-/// ```text
-/// PEPTIDE/3[1Zn+2,1H+1]
-/// ```
-///
 #[derive(Debug, Deserialize, Ord, PartialOrd, Serialize)]
 pub struct Peptidoform<Complexity> {
     /// The name of this peptidoform
@@ -1859,6 +1849,7 @@ impl<Complexity> HiddenInternalMethods for Peptidoform<Complexity> {
 impl<C> crate::space::Space for Peptidoform<C> {
     fn space(&self) -> crate::space::UsedSpace {
         (self.global.space()
+            + self.name.space()
             + self.labile.space()
             + self.n_term.space()
             + self.c_term.space()
