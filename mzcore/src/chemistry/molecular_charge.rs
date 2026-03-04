@@ -1,7 +1,7 @@
 use std::{cmp::Ordering, collections::HashMap, hash::Hash};
 
 use crate::{
-    chemistry::{ChargeRange, Chemical, Element, MolecularFormula},
+    chemistry::{ChargeRange, Chemical, MolecularFormula},
     sequence::SequencePosition,
     system::isize::Charge,
 };
