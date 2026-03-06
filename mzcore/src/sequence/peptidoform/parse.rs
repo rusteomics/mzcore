@@ -1227,8 +1227,10 @@ pub(super) fn global_modifications<'a, const STRICT: bool>(
                     .into_iter()
                     .map(|r| GlobalModification::Fixed(r, modification.clone())),
             );
-        } else if &line[start_index + 1..end_index].to_ascii_lowercase() == "d" {
+        } else if line[start_index + 1..end_index].eq_ignore_ascii_case("D") {
             global_modifications.push(GlobalModification::Isotope(Element::H, NonZeroU16::new(2)));
+        } else if line[start_index + 1..end_index].eq_ignore_ascii_case("T") {
+            global_modifications.push(GlobalModification::Isotope(Element::H, NonZeroU16::new(3)));
         } else {
             let num = &line[start_index + 1..end_index]
                 .chars()
