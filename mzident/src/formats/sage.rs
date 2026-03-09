@@ -16,7 +16,7 @@ use crate::{
 use mzcore::{
     csv::{CsvLine, parse_csv},
     ontology::Ontologies,
-    sequence::{CompoundPeptidoformIon, FlankingSequence, Peptidoform, SemiAmbiguous},
+    sequence::{FlankingSequence, Peptidoform, PeptidoformIonSet, SemiAmbiguous},
     system::{Mass, MassOverCharge, Ratio, Time, isize::Charge},
 };
 
@@ -149,7 +149,7 @@ impl PSMFileFormatVersion<SageFormat> for SageVersion {
 }
 
 impl PSMMetaData for SagePSM {
-    fn compound_peptidoform_ion(&self) -> Option<Cow<'_, CompoundPeptidoformIon>> {
+    fn peptidoform_ion_set(&self) -> Option<Cow<'_, PeptidoformIonSet>> {
         Some(Cow::Owned(self.peptide.clone().into()))
     }
 

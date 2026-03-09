@@ -13,16 +13,16 @@ use crate::{
 
 /// A single full ProForma entry. This entry can contain multiple sets of cross-linked peptides.
 /// A single set of cross-linked peptides is a [`PeptidoformIon`]. A ProForma entry with two chimeric
-/// peptides will be saved as one [`CompoundPeptidoformIon`] with two [`PeptidoformIon`]s that each
+/// peptides will be saved as one [`PeptidoformIonSet`] with two [`PeptidoformIon`]s that each
 /// contain one of the [`Peptidoform`]s.
 #[derive(Clone, Debug, Default, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
-pub struct CompoundPeptidoformIon {
+pub struct PeptidoformIonSet {
     name: String,
     pub(super) peptidoforms: Vec<PeptidoformIon>,
 }
 
-impl CompoundPeptidoformIon {
-    /// Create a new [`CompoundPeptidoformIon`] from many [`Peptidoform`]s. This returns None if the
+impl PeptidoformIonSet {
+    /// Create a new [`PeptidoformIonSet`] from many [`Peptidoform`]s. This returns None if the
     /// global isotope modifications of all peptidoforms are not identical.
     pub fn new(name: String, iter: impl IntoIterator<Item = PeptidoformIon>) -> Option<Self> {
         let result = Self {
@@ -38,7 +38,7 @@ impl CompoundPeptidoformIon {
         global_equal.then_some(result)
     }
 
-    /// Get all possible formulas for this compound peptidoform
+    /// Get all possible formulas for this peptidoform ion set
     pub fn formulas(&self) -> Multi<MolecularFormula> {
         self.peptidoforms
             .iter()
@@ -53,7 +53,7 @@ impl CompoundPeptidoformIon {
             .collect()
     }
 
-    /// Get all possible neutral formulas for this compound peptidoform
+    /// Get all possible neutral formulas for this peptidoform ion set
     pub fn neutral_formulas(&self) -> Multi<MolecularFormula> {
         self.peptidoforms
             .iter()
@@ -62,7 +62,7 @@ impl CompoundPeptidoformIon {
             .collect()
     }
 
-    /// Assume there is exactly one peptidoform in this compound peptidoform.
+    /// Assume there is exactly one peptidoform in this peptidoform ion set.
     #[doc(alias = "assume_linear")]
     pub fn singular(mut self) -> Option<PeptidoformIon> {
         (self.peptidoforms.len() == 1)
@@ -70,40 +70,40 @@ impl CompoundPeptidoformIon {
             .flatten()
     }
 
-    /// Assume there is exactly one peptidoform in this compound peptidoform.
+    /// Assume there is exactly one peptidoform in this peptidoform ion set.
     pub fn singular_ref(&self) -> Option<&PeptidoformIon> {
         (self.peptidoforms.len() == 1).then(|| &self.peptidoforms[0])
     }
 
-    /// Assume there is exactly one peptide in this compound peptidoform.
+    /// Assume there is exactly one peptide in this peptidoform ion set.
     pub fn singular_peptidoform(self) -> Option<Peptidoform<Linked>> {
         self.singular().and_then(PeptidoformIon::singular)
     }
 
-    /// Assume there is exactly one peptide in this compound peptidoform.
+    /// Assume there is exactly one peptide in this peptidoform ion set.
     pub fn singular_peptidoform_ref(&self) -> Option<&Peptidoform<Linked>> {
         self.singular_ref().and_then(PeptidoformIon::singular_ref)
     }
 
-    /// Get all peptidoform ions making up this compound peptidoform.
+    /// Get all peptidoform ions making up this peptidoform ion set.
     pub fn peptidoform_ions(&self) -> &[PeptidoformIon] {
         &self.peptidoforms
     }
 
-    /// Get all peptidoform ions making up this compound peptidoform.
+    /// Get all peptidoform ions making up this peptidoform ion set.
     pub fn into_peptidoform_ions(self) -> Vec<PeptidoformIon> {
         self.peptidoforms
     }
 
-    /// Get all peptidoforms making up this compound peptidoform.
+    /// Get all peptidoforms making up this peptidoform ion set.
     pub fn peptidoforms(&self) -> impl Iterator<Item = &Peptidoform<Linked>> {
         self.peptidoforms
             .iter()
             .flat_map(PeptidoformIon::peptidoforms)
     }
 
-    /// Display this compound peptidoform.
-    /// `specification_compliant` Displays this compound peptidoform either normalised to the
+    /// Display this peptidoform ion set.
+    /// `specification_compliant` Displays this peptidoform ion set either normalised to the
     /// internal representation (with false) or as fully spec compliant ProForma (no glycan
     /// structure or custom modifications) (with true).
     /// # Errors
@@ -151,13 +151,13 @@ impl CompoundPeptidoformIon {
     }
 }
 
-impl Display for CompoundPeptidoformIon {
+impl Display for PeptidoformIonSet {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         self.display(f, true)
     }
 }
 
-impl<Complexity> From<Peptidoform<Complexity>> for CompoundPeptidoformIon {
+impl<Complexity> From<Peptidoform<Complexity>> for PeptidoformIonSet {
     fn from(value: Peptidoform<Complexity>) -> Self {
         Self {
             name: String::new(),
@@ -166,7 +166,7 @@ impl<Complexity> From<Peptidoform<Complexity>> for CompoundPeptidoformIon {
     }
 }
 
-impl From<PeptidoformIon> for CompoundPeptidoformIon {
+impl From<PeptidoformIon> for PeptidoformIonSet {
     fn from(value: PeptidoformIon) -> Self {
         Self {
             name: String::new(),
@@ -175,7 +175,7 @@ impl From<PeptidoformIon> for CompoundPeptidoformIon {
     }
 }
 
-impl<Complexity> From<Vec<Peptidoform<Complexity>>> for CompoundPeptidoformIon {
+impl<Complexity> From<Vec<Peptidoform<Complexity>>> for PeptidoformIonSet {
     fn from(value: Vec<Peptidoform<Complexity>>) -> Self {
         Self {
             name: String::new(),
@@ -184,7 +184,7 @@ impl<Complexity> From<Vec<Peptidoform<Complexity>>> for CompoundPeptidoformIon {
     }
 }
 
-impl<Complexity> From<ThinVec<Peptidoform<Complexity>>> for CompoundPeptidoformIon {
+impl<Complexity> From<ThinVec<Peptidoform<Complexity>>> for PeptidoformIonSet {
     fn from(value: ThinVec<Peptidoform<Complexity>>) -> Self {
         Self {
             name: String::new(),
@@ -193,7 +193,7 @@ impl<Complexity> From<ThinVec<Peptidoform<Complexity>>> for CompoundPeptidoformI
     }
 }
 
-impl FromIterator<PeptidoformIon> for CompoundPeptidoformIon {
+impl FromIterator<PeptidoformIon> for PeptidoformIonSet {
     fn from_iter<T: IntoIterator<Item = PeptidoformIon>>(iter: T) -> Self {
         Self {
             name: String::new(),
@@ -202,7 +202,7 @@ impl FromIterator<PeptidoformIon> for CompoundPeptidoformIon {
     }
 }
 
-impl<Complexity> FromIterator<Peptidoform<Complexity>> for CompoundPeptidoformIon {
+impl<Complexity> FromIterator<Peptidoform<Complexity>> for PeptidoformIonSet {
     fn from_iter<T: IntoIterator<Item = Peptidoform<Complexity>>>(iter: T) -> Self {
         Self {
             name: String::new(),
@@ -211,7 +211,7 @@ impl<Complexity> FromIterator<Peptidoform<Complexity>> for CompoundPeptidoformIo
     }
 }
 
-impl crate::space::Space for CompoundPeptidoformIon {
+impl crate::space::Space for PeptidoformIonSet {
     fn space(&self) -> crate::space::UsedSpace {
         self.name.space() + self.peptidoforms.space()
     }

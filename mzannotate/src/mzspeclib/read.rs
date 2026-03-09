@@ -107,8 +107,8 @@ pub struct MzSpecLibTextParser<'ontologies, Reader: Read> {
     offsets: LibraryIndex,
     /// A flag to indicate is the last spectrum failed, if so it will scan to the start of the next spectrum next time a spectrum is requested.
     last_error: bool,
-    /// The last compound peptidoform ion, used when parsing the mzPAF peaks in a spectrum.
-    last_compound_peptidoform: Vec<(u32, AnalyteTarget)>,
+    /// The last peptidoform ion set, used when parsing the mzPAF peaks in a spectrum.
+    last_peptidoform_ion_set: Vec<(u32, AnalyteTarget)>,
     ontologies: &'ontologies Ontologies,
 }
 
@@ -160,7 +160,7 @@ impl<'ontologies, R: BufRead> MzSpecLibTextParser<'ontologies, R> {
                 scan_number: HashMap::new(),
             },
             last_error: false,
-            last_compound_peptidoform: Vec::new(),
+            last_peptidoform_ion_set: Vec::new(),
             ontologies,
         };
         this.read_header()?;
@@ -926,7 +926,7 @@ impl<'ontologies, R: BufRead> MzSpecLibTextParser<'ontologies, R> {
                         buf,
                         field_offset..field_offset + v.len(),
                         self.ontologies,
-                        &self.last_compound_peptidoform,
+                        &self.last_peptidoform_ion_set,
                     )
                     .map_err(|e| {
                         e.to_owned()
@@ -1063,7 +1063,7 @@ impl<'ontologies, R: BufRead> MzSpecLibTextParser<'ontologies, R> {
             .activation
             ._extract_methods_from_params();
 
-        self.last_compound_peptidoform = spec
+        self.last_peptidoform_ion_set = spec
             .analytes
             .iter()
             .map(|a| (a.id, a.target.clone()))
@@ -1109,7 +1109,7 @@ impl<'ontologies, R: BufRead> MzSpecLibTextParser<'ontologies, R> {
     pub fn read_next(
         &mut self,
     ) -> Result<AnnotatedSpectrum, BoxedError<'static, MzSpecLibErrorKind>> {
-        self.last_compound_peptidoform = Vec::new();
+        self.last_peptidoform_ion_set = Vec::new();
         if self.last_error {
             // If the last element went awry scan the buffer until the start of the next spectrum
             // is found, otherwise it generates an error for each skipped line.

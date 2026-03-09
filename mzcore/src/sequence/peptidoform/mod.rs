@@ -2,7 +2,7 @@
 
 mod annotated;
 mod complexity;
-mod compound_peptidoform_ion;
+mod peptidoform_ion_set;
 mod find_modifications;
 mod has_peptidoform;
 mod parse;
@@ -16,7 +16,7 @@ mod validate;
 
 pub use annotated::*;
 pub use complexity::*;
-pub use compound_peptidoform_ion::*;
+pub use peptidoform_ion_set::*;
 pub use find_modifications::*;
 pub use has_peptidoform::*;
 pub use parse_modification::*;

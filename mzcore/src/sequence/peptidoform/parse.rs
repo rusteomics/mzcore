@@ -11,9 +11,10 @@ use crate::{
     ontology::Ontologies,
     quantities::{Tolerance, WithinTolerance},
     sequence::{
-        AmbiguousLookup, AmbiguousLookupEntry, AminoAcid, CheckedAminoAcid, CompoundPeptidoformIon,
-        CrossLinkLookup, Linked, MUPSettings, MassTag, Peptidoform, PeptidoformIon, PlacementRule,
-        Position, SequenceElement, SequencePosition, SimpleModification, SimpleModificationInner,
+        AmbiguousLookup, AmbiguousLookupEntry, AminoAcid, CheckedAminoAcid, CrossLinkLookup,
+        Linked, MUPSettings, MassTag, Peptidoform, PeptidoformIon, PeptidoformIonSet,
+        PlacementRule, Position, SequenceElement, SequencePosition, SimpleModification,
+        SimpleModificationInner,
     },
     system::OrderedMass,
 };
@@ -35,10 +36,10 @@ struct LinearPeptideResult {
 }
 
 impl Peptidoform<Linked> {
-    /// Convenience wrapper to parse a linear peptide in ProForma notation, to handle all possible ProForma sequences look at [`CompoundPeptidoformIon::pro_forma`].
+    /// Convenience wrapper to parse a linear peptide in ProForma notation, to handle all possible ProForma sequences look at [`PeptidoformIonSet::pro_forma`].
     /// # Errors
-    /// It gives an error when the peptide is not correctly formatted. (Also see the `CompoundPeptidoformIon` main function for this.)
-    /// It additionally gives an error if the peptide specified was chimeric (see [`CompoundPeptidoformIon::singular`] and [`PeptidoformIon::singular`]).
+    /// It gives an error when the peptide is not correctly formatted. (Also see the `PeptidoformIonSet` main function for this.)
+    /// It additionally gives an error if the peptide specified was chimeric (see [`PeptidoformIonSet::singular`] and [`PeptidoformIon::singular`]).
     pub fn pro_forma<'a>(
         value: &'a str,
         ontologies: &Ontologies,
@@ -116,7 +117,7 @@ impl PeptidoformIon {
         ontologies: &Ontologies,
     ) -> ParserResult<'a, Self, BasicKind> {
         let (pep, mut warnings) =
-            CompoundPeptidoformIon::pro_forma_inner(base_context, line, range.clone(), ontologies)?;
+            PeptidoformIonSet::pro_forma_inner(base_context, line, range.clone(), ontologies)?;
         if let Some(pep) = pep.singular() {
             Ok((pep, warnings))
         } else {
@@ -124,8 +125,8 @@ impl PeptidoformIon {
                 &mut warnings,
                 BoxedError::new(
                     BasicKind::Error,
-                    "Compound peptidoform ion found",
-                    "A peptide ion was expected but chimeric peptidoforms were found.",
+                    "Peptidoform ion set found",
+                    "A peptidoform ion was expected but chimeric peptidoforms were found.",
                     base_context.clone().add_highlight((0, range)),
                 ),
             );
@@ -134,8 +135,8 @@ impl PeptidoformIon {
     }
 }
 
-impl CompoundPeptidoformIon {
-    /// Parse a compound peptidoform in the [ProForma specification](https://github.com/HUPO-PSI/ProForma).
+impl PeptidoformIonSet {
+    /// Parse a peptidoform ion set in the [ProForma specification](https://github.com/HUPO-PSI/ProForma).
     ///
     /// # Errors
     /// It fails when the string is not a valid ProForma string.
@@ -166,7 +167,7 @@ impl CompoundPeptidoformIon {
         Self::pro_forma_main::<false>(base_context, line, range, ontologies)
     }
 
-    /// Parse a compound peptidoform in the [ProForma specification](https://github.com/HUPO-PSI/ProForma).
+    /// Parse a peptidoform ion set in the [ProForma specification](https://github.com/HUPO-PSI/ProForma).
     /// Generate warnings for any and all things that are not exactly to specification (not that
     /// not all warnings are in yet at the time of writing.)
     ///
@@ -224,8 +225,8 @@ impl CompoundPeptidoformIon {
                         &mut errors,
                         BoxedError::new(
                             BasicKind::Error,
-                            "Invalid compound peptidoform ion name",
-                            "A compound peptidoform ion name cannot start with a angled bracket '>'",
+                            "Invalid peptidoform ion set name",
+                            "A peptidoform ion set name cannot start with a angled bracket '>'",
                             base_context.clone().add_highlight((0, index..index + 1)),
                         ),
                     );
@@ -235,8 +236,8 @@ impl CompoundPeptidoformIon {
             } else {
                 return Err(vec![BoxedError::new(
                     BasicKind::Error,
-                    "Invalid compound peptidoform ion name",
-                    "A compound peptidoform ion name has to be closed with a bracket, and any brackets in the name have to be paired",
+                    "Invalid peptidoform ion set name",
+                    "A peptidoform ions set name has to be closed with a bracket, and any brackets in the name have to be paired",
                     base_context.clone().add_highlight((0, index - 4..index)),
                 )]);
             }

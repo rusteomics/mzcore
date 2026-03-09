@@ -1,6 +1,6 @@
 use std::{rc::Rc, sync::Arc};
 
-use crate::sequence::{AtLeast, CompoundPeptidoformIon, Peptidoform, PeptidoformIon};
+use crate::sequence::{AtLeast, Peptidoform, PeptidoformIon, PeptidoformIonSet};
 
 /// A structure that has a reference to a peptidoform.
 pub trait HasPeptidoformImpl {
@@ -88,26 +88,26 @@ impl<T: HasPeptidoformIon> HasPeptidoformIon for Arc<T> {
     }
 }
 
-/// A structure that has a reference to a compound peptidoform ion.
-pub trait HasCompoundPeptidoformIon {
-    /// Get a reference to a compound peptidoform ion.
-    fn compound_peptidoform_ion(&self) -> &CompoundPeptidoformIon;
+/// A structure that has a reference to a peptidoform ion set.
+pub trait HasPeptidoformIonSet {
+    /// Get a reference to a peptidoform ion set.
+    fn peptidoform_ion_set(&self) -> &PeptidoformIonSet;
 }
 
-impl HasCompoundPeptidoformIon for CompoundPeptidoformIon {
-    fn compound_peptidoform_ion(&self) -> &Self {
+impl HasPeptidoformIonSet for PeptidoformIonSet {
+    fn peptidoform_ion_set(&self) -> &Self {
         self
     }
 }
 
-impl HasCompoundPeptidoformIon for &CompoundPeptidoformIon {
-    fn compound_peptidoform_ion(&self) -> &CompoundPeptidoformIon {
+impl HasPeptidoformIonSet for &PeptidoformIonSet {
+    fn peptidoform_ion_set(&self) -> &PeptidoformIonSet {
         self
     }
 }
 
-impl<T: HasCompoundPeptidoformIon> HasCompoundPeptidoformIon for Arc<T> {
-    fn compound_peptidoform_ion(&self) -> &CompoundPeptidoformIon {
-        self.as_ref().compound_peptidoform_ion()
+impl<T: HasPeptidoformIonSet> HasPeptidoformIonSet for Arc<T> {
+    fn peptidoform_ion_set(&self) -> &PeptidoformIonSet {
+        self.as_ref().peptidoform_ion_set()
     }
 }

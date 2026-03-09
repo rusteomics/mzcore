@@ -15,7 +15,7 @@ use crate::{
 use mzcore::{
     csv::{CsvLine, parse_csv},
     ontology::Ontologies,
-    sequence::{CompoundPeptidoformIon, FlankingSequence, Peptidoform, SemiAmbiguous},
+    sequence::{FlankingSequence, Peptidoform, PeptidoformIonSet, SemiAmbiguous},
     system::{Mass, MassOverCharge, Time, isize::Charge},
 };
 
@@ -107,7 +107,7 @@ impl PSMFileFormatVersion<SpectrumSequenceListFormat> for SpectrumSequenceListVe
 }
 
 impl PSMMetaData for SpectrumSequenceListPSM {
-    fn compound_peptidoform_ion(&self) -> Option<Cow<'_, CompoundPeptidoformIon>> {
+    fn peptidoform_ion_set(&self) -> Option<Cow<'_, PeptidoformIonSet>> {
         self.peptide.as_ref().map(|p| Cow::Owned(p.clone().into()))
     }
 

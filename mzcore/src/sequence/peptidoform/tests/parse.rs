@@ -8,9 +8,8 @@ use crate::{
     molecular_formula,
     ontology::{Ontologies, Ontology, STATIC_ONTOLOGIES},
     sequence::{
-        AminoAcid, CompoundPeptidoformIon, CrossLinkName, GlobalModification, MassTag,
-        ModificationId, Peptidoform, PeptidoformIon, PlacementRule, Position,
-        SimpleModificationInner,
+        AminoAcid, CrossLinkName, GlobalModification, MassTag, ModificationId, Peptidoform,
+        PeptidoformIon, PeptidoformIonSet, PlacementRule, Position, SimpleModificationInner,
         peptidoform::parse::{global_modifications, parse_charge_state_2_0},
     },
     system::da,
@@ -244,7 +243,7 @@ fn parse_glycan() {
     assert_eq!(glycan.len(), 1);
     assert_eq!(spaces.len(), 1);
     assert_eq!(glycan, spaces);
-    let incorrect = CompoundPeptidoformIon::pro_forma("A[Glycan:Hec]", &STATIC_ONTOLOGIES);
+    let incorrect = PeptidoformIonSet::pro_forma("A[Glycan:Hec]", &STATIC_ONTOLOGIES);
     assert!(incorrect.is_err());
 }
 
@@ -294,16 +293,14 @@ fn parse_ambiguous_modification() {
     assert_eq!(without.len(), 2);
     assert_eq!(with[0].modifications.len(), 1);
     assert_eq!(with[1].modifications.len(), 1);
-    assert!(CompoundPeptidoformIon::pro_forma("A[#g0]A[#g0]", &STATIC_ONTOLOGIES).is_err());
+    assert!(PeptidoformIonSet::pro_forma("A[#g0]A[#g0]", &STATIC_ONTOLOGIES).is_err());
     assert!(
-        !CompoundPeptidoformIon::pro_forma("A[Phospho#g0]A[Phospho#g0]", &STATIC_ONTOLOGIES)
+        !PeptidoformIonSet::pro_forma("A[Phospho#g0]A[Phospho#g0]", &STATIC_ONTOLOGIES)
             .unwrap()
             .1
             .is_empty()
     );
-    assert!(
-        CompoundPeptidoformIon::pro_forma("A[Phospho#g0]A[#g0(0.o1)]", &STATIC_ONTOLOGIES).is_err()
-    );
+    assert!(PeptidoformIonSet::pro_forma("A[Phospho#g0]A[#g0(0.o1)]", &STATIC_ONTOLOGIES).is_err());
     assert_eq!(
         Peptidoform::pro_forma("A[+12#g0]A[#g0]", &STATIC_ONTOLOGIES)
             .unwrap()
@@ -414,9 +411,9 @@ fn parse_global() {
 
 #[test]
 fn parse_chimeric() {
-    let (dimeric, _) = CompoundPeptidoformIon::pro_forma("A+AA", &STATIC_ONTOLOGIES).unwrap();
+    let (dimeric, _) = PeptidoformIonSet::pro_forma("A+AA", &STATIC_ONTOLOGIES).unwrap();
     let (trimeric, _) =
-        dbg!(CompoundPeptidoformIon::pro_forma("A+AA-[+2]+AAA", &STATIC_ONTOLOGIES).unwrap());
+        dbg!(PeptidoformIonSet::pro_forma("A+AA-[+2]+AAA", &STATIC_ONTOLOGIES).unwrap());
     assert_eq!(dimeric.peptidoform_ions().len(), 2);
     assert_eq!(dimeric.peptidoform_ions()[0].peptidoforms()[0].len(), 1);
     assert_eq!(dimeric.peptidoform_ions()[1].peptidoforms()[0].len(), 2);
@@ -435,7 +432,7 @@ fn parse_chimeric() {
 #[test]
 fn parse_unimod() {
     let peptide =
-        CompoundPeptidoformIon::pro_forma("[U:Gln->pyro-Glu]-QE[Cation:Na]AA", &STATIC_ONTOLOGIES);
+        PeptidoformIonSet::pro_forma("[U:Gln->pyro-Glu]-QE[Cation:Na]AA", &STATIC_ONTOLOGIES);
     assert!(peptide.is_ok());
     let unimod = |name: &str| {
         SimpleModificationInner::pro_forma(
@@ -474,7 +471,7 @@ fn parse_custom() {
                 false,
             ),
         })]);
-    let peptide = dbg!(CompoundPeptidoformIon::pro_forma("A[C:WEEE]", &ontologies));
+    let peptide = dbg!(PeptidoformIonSet::pro_forma("A[C:WEEE]", &ontologies));
     assert!(peptide.is_ok());
     assert_eq!(
         peptide.as_ref().unwrap().0.to_string(),
@@ -520,8 +517,7 @@ fn parse_xl_inter() {
 
 #[test]
 fn parse_adduct_ions_01() {
-    let (peptide, _) =
-        CompoundPeptidoformIon::pro_forma("A/2[2Na+]+A", &STATIC_ONTOLOGIES).unwrap();
+    let (peptide, _) = PeptidoformIonSet::pro_forma("A/2[2Na+]+A", &STATIC_ONTOLOGIES).unwrap();
     assert_eq!(peptide.peptidoform_ions().len(), 2);
     assert_eq!(
         peptide.peptidoform_ions()[0].peptidoforms()[0]
@@ -605,7 +601,7 @@ fn modification_ordering() {
 #[test]
 fn strict_warnings() {
     let warnings = |def: &str| {
-        CompoundPeptidoformIon::pro_forma_strict(def, &STATIC_ONTOLOGIES)
+        PeptidoformIonSet::pro_forma_strict(def, &STATIC_ONTOLOGIES)
             .unwrap()
             .1
             .into_iter()

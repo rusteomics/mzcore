@@ -17,7 +17,7 @@ Python bindings are provided to several core components of the rustyms library, 
 - {py:class}`~rustyms.Fragment` Theoretical fragment ion
 - {py:class}`~rustyms.SequenceElement` One position in a peptide sequence with amino acid and
   modifications
-- {py:class}`~rustyms.CompoundPeptidoformIon` Peptide sequence, modifications, and charge, using
+- {py:class}`~rustyms.PeptidoformIonSet` Peptide sequence, modifications, and charge, using
   [ProForma 2.0](https://proforma.readthedocs.io) (see {ref}`ProForma support` for more
   information)
 - {py:class}`~rustyms.RawPeak` A single peak in a mass spectrum
@@ -43,7 +43,7 @@ raw_spectrum = rustyms.RawSpectrum(
 )
 
 # Create a new peptide from a ProForma 2.0 string
-peptide = rustyms.CompoundPeptidoformIon("ACDE/2")
+peptide = rustyms.PeptidoformIonSet("ACDE/2")
 
 # Annotate the spectrum with the peptide
 annotated_spectrum = raw_spectrum.annotate(peptide, "cid_hcd")

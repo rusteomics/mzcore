@@ -24,7 +24,7 @@ use mzcore::{
     ontology::Ontologies,
     quantities::{Tolerance, WithinTolerance},
     sequence::{
-        CompoundPeptidoformIon, CrossLinkName, FlankingSequence, Linked, Modification, Peptidoform,
+        PeptidoformIonSet, CrossLinkName, FlankingSequence, Linked, Modification, Peptidoform,
         PeptidoformIon, SequencePosition, SimpleModification, SimpleModificationInner,
         SloppyParsingParameters,
     },
@@ -505,7 +505,7 @@ impl PSMFileFormatVersion<PLinkFormat> for PLinkVersion {
 }
 
 impl PSMMetaData for PLinkPSM {
-    fn compound_peptidoform_ion(&self) -> Option<Cow<'_, CompoundPeptidoformIon>> {
+    fn peptidoform_ion_set(&self) -> Option<Cow<'_, PeptidoformIonSet>> {
         Some(Cow::Owned(self.peptidoform.clone().into()))
     }
 

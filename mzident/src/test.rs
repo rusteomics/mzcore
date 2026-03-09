@@ -64,7 +64,7 @@ pub(super) fn test_psm<Complexity, PeptidoformAvailability>(
     expect_lc: bool,
 ) -> Result<(), String> {
     let found_length = peptidoform
-        .compound_peptidoform_ion()
+        .peptidoform_ion_set()
         .and_then(|p| p.singular_peptidoform_ref().map(Peptidoform::len));
     if found_length != peptidoform.local_confidence().map(|lc| lc.len()) {
         if expect_lc && peptidoform.local_confidence.is_none() {
@@ -103,7 +103,7 @@ pub(super) fn test_psm<Complexity, PeptidoformAvailability>(
         ));
     }
     if !allow_mass_mods
-        && peptidoform.compound_peptidoform_ion().is_some_and(|p| {
+        && peptidoform.peptidoform_ion_set().is_some_and(|p| {
             p.peptidoforms().any(|p| {
                 p.sequence().iter().any(|s| {
                     s.modifications.iter().any(|m| {
@@ -121,12 +121,12 @@ pub(super) fn test_psm<Complexity, PeptidoformAvailability>(
         return Err(format!(
             "Peptidoform {} contains mass modifications, sequence {}",
             peptidoform.id(),
-            peptidoform.compound_peptidoform_ion().unwrap(),
+            peptidoform.peptidoform_ion_set().unwrap(),
         ));
     }
 
     let misplaced = peptidoform
-        .compound_peptidoform_ion()
+        .peptidoform_ion_set()
         .iter()
         .flat_map(|p| {
             p.peptidoforms()
@@ -137,7 +137,7 @@ pub(super) fn test_psm<Complexity, PeptidoformAvailability>(
         return Err(format!(
             "Peptide {} contains misplaced modifications, sequence {}\n{misplaced:?}",
             peptidoform.id(),
-            peptidoform.compound_peptidoform_ion().unwrap(),
+            peptidoform.peptidoform_ion_set().unwrap(),
         ));
     }
     #[cfg(feature = "mzannotate")]

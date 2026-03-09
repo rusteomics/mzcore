@@ -694,7 +694,7 @@ fn intra_link() {
         (732.327290402381, "b5+"),
     ];
     let (peptide, _) =
-        CompoundPeptidoformIon::pro_forma("K[C:DSSO#XL1]GK[#XL1]FLK", &custom_database()).unwrap();
+        PeptidoformIonSet::pro_forma("K[C:DSSO#XL1]GK[#XL1]FLK", &custom_database()).unwrap();
     let model = FragmentationModel::none()
         .clone()
         .b(PrimaryIonSeries::default())
@@ -721,7 +721,7 @@ fn intra_link() {
 #[test]
 fn ensure_no_double_xl_labels_breaking() {
     let (peptide, _) =
-        CompoundPeptidoformIon::pro_forma("EVQLVESGGGLVQPGGSLRLSC[C:Disulfide#XL1]AASGFNIKDTYIHWVRQAPGKGLEWVARIYPTNGYTRYADSVKGRFTISADTSKNTAYLQMNSLRAEDTAVYYC[#XL1]SRWGGDGFYAMDYWGQGTLVTVSSASTKGPSVFPLAPSSKSTSGGTAALGC[C:Disulfide#XL2]LVKDYFPEPVTVSWNSGALTSGVHTFPAVLQSSGLYSLSSVVTVPSSSLGTQTYIC[#XL2]NVNHKPSNTKVDKKVEPKSC[C:Disulfide#XL3]DKT//DIQMTQSPSSLSASVGDRVTITC[C:Disulfide#XL4]RASQDVNTAVAWYQQKPGKAPKLLIYSASFLYSGVPSRFSGSRSGTDFTLTISSLQPEDFATYYC[#XL4]QQHYTTPPTFGQGTKVEIKRTVAAPSVFIFPPSDEQLKSGTASVVC[C:Disulfide#XL5]LLNNFYPREAKVQWKVDNALQSGNSQESVTEQDSKDSTYSLSSTLTLSKADYEKHKVYAC[#XL5]EVTHQGLSSPVTKSFNRGEC[#XL3]", &custom_database())
+        PeptidoformIonSet::pro_forma("EVQLVESGGGLVQPGGSLRLSC[C:Disulfide#XL1]AASGFNIKDTYIHWVRQAPGKGLEWVARIYPTNGYTRYADSVKGRFTISADTSKNTAYLQMNSLRAEDTAVYYC[#XL1]SRWGGDGFYAMDYWGQGTLVTVSSASTKGPSVFPLAPSSKSTSGGTAALGC[C:Disulfide#XL2]LVKDYFPEPVTVSWNSGALTSGVHTFPAVLQSSGLYSLSSVVTVPSSSLGTQTYIC[#XL2]NVNHKPSNTKVDKKVEPKSC[C:Disulfide#XL3]DKT//DIQMTQSPSSLSASVGDRVTITC[C:Disulfide#XL4]RASQDVNTAVAWYQQKPGKAPKLLIYSASFLYSGVPSRFSGSRSGTDFTLTISSLQPEDFATYYC[#XL4]QQHYTTPPTFGQGTKVEIKRTVAAPSVFIFPPSDEQLKSGTASVVC[C:Disulfide#XL5]LLNNFYPREAKVQWKVDNALQSGNSQESVTEQDSKDSTYSLSSTLTLSKADYEKHKVYAC[#XL5]EVTHQGLSSPVTKSFNRGEC[#XL3]", &custom_database())
             .unwrap();
     let model = FragmentationModel::none()
         .clone()
@@ -753,7 +753,7 @@ fn ensure_no_double_xl_labels_breaking() {
 #[test]
 fn ensure_no_double_xl_labels_non_breaking() {
     let (peptide, _) =
-        CompoundPeptidoformIon::pro_forma("EVQLVESGGGLVQPGGSLRLSC[C:Disulfide#XL1]AASGFNIKDTYIHWVRQAPGKGLEWVARIYPTNGYTRYADSVKGRFTISADTSKNTAYLQMNSLRAEDTAVYYC[#XL1]SRWGGDGFYAMDYWGQGTLVTVSSASTKGPSVFPLAPSSKSTSGGTAALGC[C:Disulfide#XL2]LVKDYFPEPVTVSWNSGALTSGVHTFPAVLQSSGLYSLSSVVTVPSSSLGTQTYIC[#XL2]NVNHKPSNTKVDKKVEPKSC[C:Disulfide#XL3]DKT//DIQMTQSPSSLSASVGDRVTITC[C:Disulfide#XL4]RASQDVNTAVAWYQQKPGKAPKLLIYSASFLYSGVPSRFSGSRSGTDFTLTISSLQPEDFATYYC[#XL4]QQHYTTPPTFGQGTKVEIKRTVAAPSVFIFPPSDEQLKSGTASVVC[C:Disulfide#XL5]LLNNFYPREAKVQWKVDNALQSGNSQESVTEQDSKDSTYSLSSTLTLSKADYEKHKVYAC[#XL5]EVTHQGLSSPVTKSFNRGEC[#XL3]", &custom_database())
+        PeptidoformIonSet::pro_forma("EVQLVESGGGLVQPGGSLRLSC[C:Disulfide#XL1]AASGFNIKDTYIHWVRQAPGKGLEWVARIYPTNGYTRYADSVKGRFTISADTSKNTAYLQMNSLRAEDTAVYYC[#XL1]SRWGGDGFYAMDYWGQGTLVTVSSASTKGPSVFPLAPSSKSTSGGTAALGC[C:Disulfide#XL2]LVKDYFPEPVTVSWNSGALTSGVHTFPAVLQSSGLYSLSSVVTVPSSSLGTQTYIC[#XL2]NVNHKPSNTKVDKKVEPKSC[C:Disulfide#XL3]DKT//DIQMTQSPSSLSASVGDRVTITC[C:Disulfide#XL4]RASQDVNTAVAWYQQKPGKAPKLLIYSASFLYSGVPSRFSGSRSGTDFTLTISSLQPEDFATYYC[#XL4]QQHYTTPPTFGQGTKVEIKRTVAAPSVFIFPPSDEQLKSGTASVVC[C:Disulfide#XL5]LLNNFYPREAKVQWKVDNALQSGNSQESVTEQDSKDSTYSLSSTLTLSKADYEKHKVYAC[#XL5]EVTHQGLSSPVTKSFNRGEC[#XL3]", &custom_database())
             .unwrap();
     let model = FragmentationModel::none()
         .clone()
@@ -784,7 +784,7 @@ fn ensure_no_double_xl_labels_non_breaking() {
 
 #[test]
 fn ensure_no_double_xl_labels_small_breaking() {
-    let (peptide, _) = CompoundPeptidoformIon::pro_forma(
+    let (peptide, _) = PeptidoformIonSet::pro_forma(
         "EC[C:Disulfide#XL1]AC[#XL1]SC[C:Disulfide#XL3]D//DC[#XL3]",
         &custom_database(),
     )
@@ -806,7 +806,7 @@ fn ensure_no_double_xl_labels_small_breaking() {
 
 #[test]
 fn ensure_no_double_xl_labels_small_non_breaking() {
-    let (peptide, _) = CompoundPeptidoformIon::pro_forma(
+    let (peptide, _) = PeptidoformIonSet::pro_forma(
         "EC[C:Disulfide#XL1]AC[#XL1]SC[C:Disulfide#XL3]D//DC[#XL3]",
         &custom_database(),
     )
@@ -828,7 +828,7 @@ fn ensure_no_double_xl_labels_small_non_breaking() {
 
 fn test(
     theoretical_fragments: &[(f64, &str)],
-    peptide: impl Into<CompoundPeptidoformIon>,
+    peptide: impl Into<PeptidoformIonSet>,
     model: &FragmentationModel,
     charge: isize,
     allow_left_over_generated: bool,

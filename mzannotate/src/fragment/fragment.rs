@@ -26,7 +26,7 @@ pub struct Fragment {
     pub charge: Charge,
     /// The annotation for this fragment
     pub ion: FragmentType,
-    /// The peptidoform this fragment comes from, saved as the index into the list of peptidoform in the overarching [`mzcore::sequence::CompoundPeptidoformIon`] struct
+    /// The peptidoform this fragment comes from, saved as the index into the list of peptidoform in the overarching [`mzcore::sequence::PeptidoformIonSet`] struct
     pub peptidoform_ion_index: Option<usize>,
     /// The peptide this fragment comes from, saved as the index into the list of peptides in the overarching [`mzcore::sequence::PeptidoformIon`] struct
     pub peptidoform_index: Option<usize>,

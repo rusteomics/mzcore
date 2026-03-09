@@ -18,7 +18,7 @@ use mzcore::{
     ontology::Ontologies,
     quantities::{Tolerance, WithinTolerance},
     sequence::{
-        CompoundPeptidoformIon, FlankingSequence, Modification, Peptidoform, SemiAmbiguous,
+        FlankingSequence, Modification, Peptidoform, PeptidoformIonSet, SemiAmbiguous,
         SequencePosition, SimpleLinear, SimpleModification, SimpleModificationInner,
         SloppyParsingParameters,
     },
@@ -518,7 +518,7 @@ pub const FRAGPIPE_V22: MSFraggerFormat = MSFraggerFormat {
 };
 
 impl PSMMetaData for MSFraggerPSM {
-    fn compound_peptidoform_ion(&self) -> Option<Cow<'_, CompoundPeptidoformIon>> {
+    fn peptidoform_ion_set(&self) -> Option<Cow<'_, PeptidoformIonSet>> {
         Some(Cow::Owned(self.peptide.clone().into()))
     }
 

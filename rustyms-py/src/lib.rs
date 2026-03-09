@@ -772,7 +772,7 @@ impl Fragment {
         self.0.peptidoform_index
     }
 
-    /// The peptidoform ion this fragment comes from, saved as the index into the list of peptidoform ions in the overarching crate::CompoundPeptidoformIon struct.
+    /// The peptidoform ion this fragment comes from, saved as the index into the list of peptidoform ions in the overarching crate::PeptidoformIonSet struct.
     ///
     /// Returns
     /// -------
@@ -1074,7 +1074,7 @@ impl SequencePosition {
         matches!(self.0, mzcore::sequence::SequencePosition::CTerm)
     }
 }
-/// A compound peptidoform ion with all data as provided by ProForma 2.0.
+/// A peptidoform ion set with all data as provided by ProForma 2.0.
 ///
 /// Parameters
 /// ----------
@@ -1083,14 +1083,14 @@ impl SequencePosition {
 ///
 #[pyclass]
 #[derive(Clone, Debug)]
-pub struct CompoundPeptidoformIon(mzcore::sequence::CompoundPeptidoformIon);
+pub struct PeptidoformIonSet(mzcore::sequence::PeptidoformIonSet);
 
 #[pymethods]
-impl CompoundPeptidoformIon {
-    /// Create a new compound peptidoform ion from a ProForma string.
+impl PeptidoformIonSet {
+    /// Create a new peptidoform ion set from a ProForma string.
     #[new]
     fn new(proforma: &str) -> Result<Self, BoxedError> {
-        mzcore::sequence::CompoundPeptidoformIon::pro_forma(
+        mzcore::sequence::PeptidoformIonSet::pro_forma(
             proforma,
             &mzcore::ontology::STATIC_ONTOLOGIES,
         )
@@ -1108,19 +1108,19 @@ impl CompoundPeptidoformIon {
         })
     }
 
-    /// Create a new compound peptidoform ion from a peptidoform ion.
+    /// Create a new peptidoform ion set from a peptidoform ion.
     #[staticmethod]
     fn from_peptidoform_ion(peptidoform: PeptidoformIon) -> Self {
         Self(peptidoform.0.into())
     }
 
-    /// Create a new compound peptidoform ion from a peptidoform.
+    /// Create a new peptidoform ion set from a peptidoform.
     #[staticmethod]
     fn from_peptidoform(peptidoform: Peptidoform) -> Self {
         Self(peptidoform.0.into())
     }
 
-    /// Get all peptidoform ions making up this compound peptidoform.
+    /// Get all peptidoform ions making up this peptidoform ion set.
     ///
     /// Returns
     /// -------
@@ -1135,7 +1135,7 @@ impl CompoundPeptidoformIon {
             .collect()
     }
 
-    /// Generate the theoretical fragments for this compound peptidoform ion, with the given maximal charge of the fragments,
+    /// Generate the theoretical fragments for this peptidoform ion set, with the given maximal charge of the fragments,
     /// and the given model. With the global isotope modifications applied.
     ///
     /// Parameters
@@ -1170,7 +1170,7 @@ impl CompoundPeptidoformIon {
     }
 
     fn __repr__(&self) -> String {
-        format!("CompoundPeptidoformIon({})", self.0)
+        format!("PeptidoformIonSet({})", self.0)
     }
 
     fn __len__(&self) -> usize {
@@ -1721,7 +1721,7 @@ fn mzcore_py03(_py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<AnnotatedPeak>()?;
     m.add_class::<AnnotatedSpectrum>()?;
     m.add_class::<BoxedError>()?;
-    m.add_class::<CompoundPeptidoformIon>()?;
+    m.add_class::<PeptidoformIonSet>()?;
     m.add_class::<Element>()?;
     m.add_class::<Fragment>()?;
     m.add_class::<FragmentationModel>()?;

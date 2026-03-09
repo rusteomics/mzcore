@@ -19,7 +19,7 @@ use mzcore::{
     csv::{CsvLine, parse_csv},
     ontology::Ontologies,
     sequence::{
-        AminoAcid, CompoundPeptidoformIon, FlankingSequence, Modification,
+        AminoAcid, PeptidoformIonSet, FlankingSequence, Modification,
         PeptideModificationSearch, Peptidoform, SemiAmbiguous, SimpleModification,
         SloppyParsingParameters,
     },
@@ -654,7 +654,7 @@ impl PSMFileFormatVersion<PeaksFormat> for PeaksVersion {
 }
 
 impl PSMMetaData for PeaksPSM {
-    fn compound_peptidoform_ion(&self) -> Option<Cow<'_, CompoundPeptidoformIon>> {
+    fn peptidoform_ion_set(&self) -> Option<Cow<'_, PeptidoformIonSet>> {
         Some(Cow::Owned(self.peptide.1.clone().into()))
     }
 

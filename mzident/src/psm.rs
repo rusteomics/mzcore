@@ -8,8 +8,8 @@ use serde::{Deserialize, Serialize};
 use crate::*;
 use mzcore::{
     sequence::{
-        AtLeast, CompoundPeptidoformIon, FlankingSequence, HasPeptidoformImpl, Linear, Linked,
-        Peptidoform, SemiAmbiguous, SimpleLinear, UnAmbiguous,
+        AtLeast, FlankingSequence, HasPeptidoformImpl, Linear, Linked, Peptidoform,
+        PeptidoformIonSet, SemiAmbiguous, SimpleLinear, UnAmbiguous,
     },
     system::{Mass, MassOverCharge, Ratio, Time, isize::Charge},
 };
@@ -24,7 +24,7 @@ pub struct PSM<Complexity, PeptidoformAvailability> {
     pub local_confidence: Option<Vec<f64>>,
     /// The full metadata of this peptide
     pub data: PSMData,
-    /// The marker for the complexity, Linked means full [`CompoundPeptidoformIon`] anything below means [`Peptidoform`], see [Complexity](crate::sequence::Complexity)
+    /// The marker for the complexity, Linked means full [`PeptidoformIonSet`] anything below means [`Peptidoform`], see [Complexity](crate::sequence::Complexity)
     pub(super) complexity_marker: PhantomData<Complexity>,
     /// The marker for availability of the peptidoform, see [`PeptidoformAvailability`]
     pub(super) peptidoform_availability_marker: PhantomData<PeptidoformAvailability>,
@@ -407,7 +407,7 @@ impl<Complexity, PeptidoformAvailability> PSM<Complexity, PeptidoformAvailabilit
         self,
         f: impl Fn(&Peptidoform<Linked>) -> bool,
     ) -> Option<PSM<T, PeptidoformPresent>> {
-        self.compound_peptidoform_ion()
+        self.peptidoform_ion_set()
             .is_some_and(|p| p.singular_peptidoform_ref().is_some_and(f))
             .then(|| self.mark())
     }
@@ -562,7 +562,7 @@ macro_rules! impl_metadata {
 impl_metadata!(
     formats: {BasicCSV,DeepNovoFamily,Fasta,MaxQuant,MetaMorpheus,InstaNovo,MzTab,NovoB,Novor,Opair,Peaks,PepNet,PiHelixNovo,PiPrimeNovo,PLGS,PLink,PowerNovo,Proteoscape,PUniFind,Sage,MSFragger,SpectrumSequenceList};
     functions: {
-        fn compound_peptidoform_ion(&self) -> Option<Cow<'_, CompoundPeptidoformIon>>;
+        fn peptidoform_ion_set(&self) -> Option<Cow<'_, PeptidoformIonSet>>;
         fn format(&self) -> KnownFileFormat;
         fn numerical_id(&self) -> Option<usize>;
         fn id(&self) -> String;
@@ -590,7 +590,7 @@ impl_metadata!(
 impl_metadata!(
     formats: {BasicCSV,DeepNovoFamily,Fasta,MaxQuant,MetaMorpheus,InstaNovo,MzTab,NovoB,Novor,Opair,Peaks,PepNet,PiHelixNovo,PiPrimeNovo,PLGS,PLink,PowerNovo,Proteoscape,PUniFind,Sage,MSFragger,SpectrumSequenceList,AnnotatedSpectrum};
     functions: {
-        fn compound_peptidoform_ion(&self) -> Option<Cow<'_, CompoundPeptidoformIon>>;
+        fn peptidoform_ion_set(&self) -> Option<Cow<'_, PeptidoformIonSet>>;
         fn format(&self) -> KnownFileFormat;
         fn numerical_id(&self) -> Option<usize>;
         fn id(&self) -> String;

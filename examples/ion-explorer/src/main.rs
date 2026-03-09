@@ -20,7 +20,7 @@ use mzannotate::{
 use mzcore::{
     chemistry::{ChargeRange, MassMode},
     ontology::Ontologies,
-    sequence::{AminoAcid, CompoundPeptidoformIon, SimpleModification},
+    sequence::{AminoAcid, PeptidoformIonSet, SimpleModification},
 };
 use mzdata::{
     io::{MZFileReader, SpectrumSource},
@@ -107,7 +107,7 @@ fn main() {
             if peptide.charge().is_none() {
                 continue;
             }
-            if let Some(cpi) = peptide.compound_peptidoform_ion() {
+            if let Some(cpi) = peptide.peptidoform_ion_set() {
                 let id = match peptide.scans() {
                     SpectrumIds::FileKnown(spectra) => {
                         spectra.first().and_then(|s| s.1.first().cloned())
@@ -142,7 +142,7 @@ fn extract_and_merge(
     stack: &mut Stack,
     spectrum: &MultiLayerSpectrum,
     fragments: &[Fragment],
-    peptidoform: &CompoundPeptidoformIon,
+    peptidoform: &PeptidoformIonSet,
     args: &Cli,
     mode: Option<BuiltInFragmentationModel>,
 ) {

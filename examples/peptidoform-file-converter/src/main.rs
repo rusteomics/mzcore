@@ -137,7 +137,7 @@ fn save_csv<PSM: PSMMetaData>(
                     .collect(),
             }.unwrap();
         let sequence = psm
-            .compound_peptidoform_ion()
+            .peptidoform_ion_set()
             .ok_or_else(|| {
                 BoxedError::new(
                     BasicKind::Error,

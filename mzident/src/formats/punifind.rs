@@ -12,8 +12,8 @@ use mzcore::{
     ontology::Ontologies,
     prelude::{AminoAcid, SequencePosition},
     sequence::{
-        CompoundPeptidoformIon, FlankingSequence, Modification, Peptidoform, PlacementRule,
-        Position, SemiAmbiguous, SimpleModification, SloppyParsingParameters,
+        FlankingSequence, Modification, Peptidoform, PeptidoformIonSet, PlacementRule, Position,
+        SemiAmbiguous, SimpleModification, SloppyParsingParameters,
     },
     system::{Mass, MassOverCharge, Ratio, Time, isize::Charge},
 };
@@ -132,7 +132,7 @@ impl PSMFileFormatVersion<PUniFindFormat> for PUniFindVersion {
 }
 
 impl PSMMetaData for PUniFindPSM {
-    fn compound_peptidoform_ion(&self) -> Option<Cow<'_, CompoundPeptidoformIon>> {
+    fn peptidoform_ion_set(&self) -> Option<Cow<'_, PeptidoformIonSet>> {
         Some(Cow::Owned(self.peptidoform.clone().into()))
     }
 

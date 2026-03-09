@@ -18,8 +18,8 @@ use mzcore::{
     csv::{CsvLine, parse_csv},
     ontology::Ontologies,
     sequence::{
-        AminoAcid, CheckedAminoAcid, CompoundPeptidoformIon, FlankingSequence, Modification,
-        Peptidoform, SemiAmbiguous, SequenceElement, SimpleLinear, SimpleModificationInner,
+        AminoAcid, CheckedAminoAcid, FlankingSequence, Modification, Peptidoform,
+        PeptidoformIonSet, SemiAmbiguous, SequenceElement, SimpleLinear, SimpleModificationInner,
         SloppyParsingParameters,
     },
     system::{MassOverCharge, Time, dalton, f32::Mass, isize::Charge},
@@ -448,7 +448,7 @@ pub const SILAC: MaxQuantFormat = MaxQuantFormat {
 };
 
 impl PSMMetaData for MaxQuantPSM {
-    fn compound_peptidoform_ion(&self) -> Option<Cow<'_, CompoundPeptidoformIon>> {
+    fn peptidoform_ion_set(&self) -> Option<Cow<'_, PeptidoformIonSet>> {
         self.peptide.as_ref().map(|p| Cow::Owned(p.clone().into()))
     }
 

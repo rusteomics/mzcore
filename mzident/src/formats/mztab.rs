@@ -28,7 +28,7 @@ use mzcore::{
     chemistry::MolecularFormula,
     quantities::Tolerance,
     sequence::{
-        AminoAcid, CompoundPeptidoformIon, FlankingSequence, MUPSettings,
+        AminoAcid, PeptidoformIonSet, FlankingSequence, MUPSettings,
         PeptideModificationSearch, Peptidoform, SequencePosition, SimpleLinear, SimpleModification,
         SimpleModificationInner, SloppyParsingParameters,
     },
@@ -1750,7 +1750,7 @@ fn parse_mztab_reader<T: BufRead>(
 }
 
 impl PSMMetaData for MzTabPSM {
-    fn compound_peptidoform_ion(&self) -> Option<Cow<'_, CompoundPeptidoformIon>> {
+    fn peptidoform_ion_set(&self) -> Option<Cow<'_, PeptidoformIonSet>> {
         self.peptidoform
             .as_ref()
             .map(|p| Cow::Owned(p.clone().into()))

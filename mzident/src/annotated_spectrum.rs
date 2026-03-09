@@ -22,8 +22,8 @@ use context_error::{BasicKind, BoxedError, FullErrorContent};
 use itertools::Itertools;
 
 impl PSMMetaData for AnnotatedSpectrum {
-    fn compound_peptidoform_ion(&self) -> Option<Cow<'_, CompoundPeptidoformIon>> {
-        let cpi: CompoundPeptidoformIon = self
+    fn peptidoform_ion_set(&self) -> Option<Cow<'_, PeptidoformIonSet>> {
+        let cpi: PeptidoformIonSet = self
             .analytes
             .iter()
             .filter_map(|a| match &a.target {

@@ -406,7 +406,7 @@ impl<W: Write, State: CanWritePSMs> MzTabWriter<W, State> {
         for psm in psms {
             let mut first_peptidoform = true;
             for peptidoform_ion in psm
-                .compound_peptidoform_ion()
+                .peptidoform_ion_set()
                 .iter()
                 .flat_map(|p| p.peptidoform_ions())
             {

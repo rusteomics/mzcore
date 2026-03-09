@@ -10,7 +10,7 @@ use mzcore::{
     csv::{CsvLine, parse_csv},
     ontology::Ontologies,
     sequence::{
-        CompoundPeptidoformIon, FlankingSequence, Peptidoform, SemiAmbiguous,
+        PeptidoformIonSet, FlankingSequence, Peptidoform, SemiAmbiguous,
         SloppyParsingParameters,
     },
     system::{Mass, MassOverCharge, Ratio, Time, isize::Charge},
@@ -82,7 +82,7 @@ impl PSMFileFormatVersion<PepNetFormat> for PepNetVersion {
 }
 
 impl PSMMetaData for PepNetPSM {
-    fn compound_peptidoform_ion(&self) -> Option<Cow<'_, CompoundPeptidoformIon>> {
+    fn peptidoform_ion_set(&self) -> Option<Cow<'_, PeptidoformIonSet>> {
         Some(Cow::Owned(self.peptide.clone().into()))
     }
 

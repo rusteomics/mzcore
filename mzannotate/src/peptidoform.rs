@@ -3,9 +3,7 @@ use std::collections::{HashMap, HashSet};
 use itertools::Itertools;
 use mzcore::{
     chemistry::{CachedCharge, DiagnosticIon},
-    prelude::{
-        CompoundPeptidoformIon, MolecularCharge, Peptidoform, PeptidoformIon, SequencePosition,
-    },
+    prelude::{MolecularCharge, Peptidoform, PeptidoformIon, PeptidoformIonSet, SequencePosition},
     quantities::Multi,
     sequence::{
         AtMax, GnoComposition, HiddenInternalMethods, Linear, Linked, LinkerSpecificity,
@@ -35,8 +33,8 @@ pub trait PeptidoformFragmentation {
     ) -> Vec<Fragment>;
 }
 
-impl PeptidoformFragmentation for CompoundPeptidoformIon {
-    /// Generate the theoretical fragments for this compound peptidoform.
+impl PeptidoformFragmentation for PeptidoformIonSet {
+    /// Generate the theoretical fragments for this peptidoform ion set.
     fn generate_theoretical_fragments(
         &self,
         max_charge: Charge,

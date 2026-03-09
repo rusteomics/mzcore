@@ -18,7 +18,7 @@ use mzcore::{
     csv::{CsvLine, parse_csv},
     ontology::Ontologies,
     sequence::{
-        AminoAcid, CompoundPeptidoformIon, FlankingSequence, Peptidoform, SemiAmbiguous,
+        AminoAcid, PeptidoformIonSet, FlankingSequence, Peptidoform, SemiAmbiguous,
         SequencePosition, SimpleModification, SloppyParsingParameters,
     },
     system::{Mass, MassOverCharge, Time, isize::Charge},
@@ -298,7 +298,7 @@ pub const O_PAIR: OpairFormat = OpairFormat {
 };
 
 impl PSMMetaData for OpairPSM {
-    fn compound_peptidoform_ion(&self) -> Option<Cow<'_, CompoundPeptidoformIon>> {
+    fn peptidoform_ion_set(&self) -> Option<Cow<'_, PeptidoformIonSet>> {
         Some(Cow::Owned(self.peptide.clone().into()))
     }
 

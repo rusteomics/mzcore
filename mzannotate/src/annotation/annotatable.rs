@@ -1,4 +1,4 @@
-use mzcore::prelude::{CompoundPeptidoformIon, MassMode};
+use mzcore::prelude::{MassMode, PeptidoformIonSet};
 use mzdata::mzpeaks::PeakCollection;
 
 use crate::prelude::{AnnotatedSpectrum, Fragment, MatchingParameters};
@@ -12,14 +12,14 @@ use crate::prelude::{AnnotatedSpectrum, Fragment, MatchingParameters};
 pub trait AnnotatableSpectrum: Sized {
     /// Create an empty annotated spectrum. This spectrum is assumed to contain all peaks but
     /// without any annotations.
-    fn empty_annotated(self, peptide: CompoundPeptidoformIon) -> AnnotatedSpectrum;
+    fn empty_annotated(self, peptide: PeptidoformIonSet) -> AnnotatedSpectrum;
 
     /// Annotate this spectrum with the given peptidoform and given fragments see
     /// [`crate::prelude::PeptidoformFragmentation::generate_theoretical_fragments`]
     /// to generate the fragments.
     fn annotate(
         self,
-        peptide: CompoundPeptidoformIon,
+        peptide: PeptidoformIonSet,
         theoretical_fragments: &[Fragment],
         parameters: &MatchingParameters,
         mode: MassMode,
@@ -59,7 +59,7 @@ pub trait AnnotatableSpectrum: Sized {
 }
 
 impl<T: Into<AnnotatedSpectrum>> AnnotatableSpectrum for T {
-    fn empty_annotated(self, peptide: CompoundPeptidoformIon) -> AnnotatedSpectrum {
+    fn empty_annotated(self, peptide: PeptidoformIonSet) -> AnnotatedSpectrum {
         let mut spectrum: AnnotatedSpectrum = self.into();
         for (index, peptidoform_ion) in peptide.into_peptidoform_ions().into_iter().enumerate() {
             spectrum.analytes.push(crate::mzspeclib::Analyte::new(

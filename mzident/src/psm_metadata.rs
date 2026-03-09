@@ -2,15 +2,15 @@ use std::{borrow::Cow, ops::Range};
 
 use crate::{KnownFileFormat, ProteinMetaData, Reliability, SpectrumIds};
 use mzcore::{
-    sequence::{CompoundPeptidoformIon, FlankingSequence},
+    sequence::{FlankingSequence, PeptidoformIonSet},
     system::{Mass, MassOverCharge, Ratio, Time, isize::Charge},
 };
 use mzcv::Term;
 
 /// Generalised access to meta data of PSMs
 pub trait PSMMetaData {
-    /// Get the compound peptidoform ion, if present
-    fn compound_peptidoform_ion(&self) -> Option<Cow<'_, CompoundPeptidoformIon>>;
+    /// Get the peptidoform ion set, if present
+    fn peptidoform_ion_set(&self) -> Option<Cow<'_, PeptidoformIonSet>>;
 
     /// Get the format and version for this peptidoform
     fn format(&self) -> KnownFileFormat;
@@ -67,7 +67,7 @@ pub trait PSMMetaData {
     /// Get the absolute ppm error between the experimental and theoretical precursor mass, if there are multiple masses possible returns the smallest ppm
     fn ppm_error(&self) -> Option<Ratio> {
         let exp_mass = self.experimental_mass()?;
-        self.compound_peptidoform_ion().and_then(|f| {
+        self.peptidoform_ion_set().and_then(|f| {
             f.formulas()
                 .iter()
                 .map(|theo_mass| theo_mass.monoisotopic_mass().ppm(exp_mass))
@@ -78,7 +78,7 @@ pub trait PSMMetaData {
     /// Get the absolute mass error between the experimental and theoretical precursor mass, if there are multiple masses possible returns the smallest difference
     fn mass_error(&self) -> Option<Mass> {
         let exp_mass = self.experimental_mass()?;
-        self.compound_peptidoform_ion().and_then(|f| {
+        self.peptidoform_ion_set().and_then(|f| {
             f.formulas()
                 .iter()
                 .map(|theo_mass| (exp_mass - theo_mass.monoisotopic_mass()).abs())
@@ -131,8 +131,8 @@ pub trait PSMMetaData {
 macro_rules! impl_ref {
     ($t:ty) => {
         impl<T: PSMMetaData> PSMMetaData for $t {
-            fn compound_peptidoform_ion(&self) -> Option<Cow<'_, CompoundPeptidoformIon>> {
-                (**self).compound_peptidoform_ion()
+            fn peptidoform_ion_set(&self) -> Option<Cow<'_, PeptidoformIonSet>> {
+                (**self).peptidoform_ion_set()
             }
 
             fn format(&self) -> KnownFileFormat {

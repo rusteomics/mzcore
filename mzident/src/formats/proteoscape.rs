@@ -11,8 +11,7 @@ use mzcore::{
     csv::{CsvLine, parse_csv},
     ontology::Ontologies,
     sequence::{
-        CompoundPeptidoformIon, FlankingSequence, Peptidoform, SemiAmbiguous,
-        SloppyParsingParameters,
+        FlankingSequence, Peptidoform, PeptidoformIonSet, SemiAmbiguous, SloppyParsingParameters,
     },
     system::{Mass, MassOverCharge, Time, isize::Charge},
 };
@@ -131,7 +130,7 @@ pub const V2025B: ProteoscapeFormat = ProteoscapeFormat {
 };
 
 impl PSMMetaData for ProteoscapePSM {
-    fn compound_peptidoform_ion(&self) -> Option<Cow<'_, CompoundPeptidoformIon>> {
+    fn peptidoform_ion_set(&self) -> Option<Cow<'_, PeptidoformIonSet>> {
         Some(Cow::Owned(self.peptide.1.clone().into()))
     }
 

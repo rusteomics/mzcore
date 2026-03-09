@@ -15,7 +15,7 @@ use crate::{
 use mzcore::{
     csv::{CsvLine, parse_csv},
     ontology::Ontologies,
-    sequence::{CompoundPeptidoformIon, FlankingSequence, Linked},
+    sequence::{FlankingSequence, Linked, PeptidoformIonSet},
     system::{Mass, MassOverCharge, Time, isize::Charge},
 };
 
@@ -29,7 +29,7 @@ format_family!(
     Linked, PeptidoformPresent, [&BASIC], b',', None;
     required {
         scan_index: usize, |location: Location, _| location.parse::<usize>(NUMBER_ERROR);
-        sequence: CompoundPeptidoformIon, |location: Location, ontologies: &Ontologies| CompoundPeptidoformIon::pro_forma_inner(&location.context(), location.full_line(), location.range.clone(), ontologies).map_err(|errs| BoxedError::new(BasicKind::Error, "Invalid ProForma definition", "The string could not be parsed as a ProForma definition", location.context()).add_underlying_errors(errs)).map_err(BoxedError::to_owned).map(|(p, _)| p);
+        sequence: PeptidoformIonSet, |location: Location, ontologies: &Ontologies| PeptidoformIonSet::pro_forma_inner(&location.context(), location.full_line(), location.range.clone(), ontologies).map_err(|errs| BoxedError::new(BasicKind::Error, "Invalid ProForma definition", "The string could not be parsed as a ProForma definition", location.context()).add_underlying_errors(errs)).map_err(BoxedError::to_owned).map(|(p, _)| p);
         raw_file: PathBuf, |location: Location, _| Ok(Path::new(&location.get_string()).to_owned());
         z: Charge, |location: Location, _| location.parse::<isize>(NUMBER_ERROR).map(Charge::new::<mzcore::system::e>);
     }
@@ -78,7 +78,7 @@ pub const BASIC: BasicCSVFormat = BasicCSVFormat {
 };
 
 impl PSMMetaData for BasicCSVPSM {
-    fn compound_peptidoform_ion(&self) -> Option<Cow<'_, CompoundPeptidoformIon>> {
+    fn peptidoform_ion_set(&self) -> Option<Cow<'_, PeptidoformIonSet>> {
         Some(Cow::Borrowed(&self.sequence))
     }
 

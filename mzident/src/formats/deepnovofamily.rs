@@ -12,7 +12,7 @@ use mzcore::{
     csv::{CsvLine, parse_csv},
     ontology::Ontologies,
     sequence::{
-        AminoAcid, CompoundPeptidoformIon, FlankingSequence, Peptidoform, SemiAmbiguous,
+        AminoAcid, PeptidoformIonSet, FlankingSequence, Peptidoform, SemiAmbiguous,
         SloppyParsingParameters,
     },
     system::{Mass, MassOverCharge, Time, isize::Charge},
@@ -164,7 +164,7 @@ impl PSMFileFormatVersion<DeepNovoFamilyFormat> for DeepNovoFamilyVersion {
 }
 
 impl PSMMetaData for DeepNovoFamilyPSM {
-    fn compound_peptidoform_ion(&self) -> Option<Cow<'_, CompoundPeptidoformIon>> {
+    fn peptidoform_ion_set(&self) -> Option<Cow<'_, PeptidoformIonSet>> {
         self.peptide.as_ref().map(|p| Cow::Owned(p.clone().into()))
     }
 

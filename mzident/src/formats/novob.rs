@@ -10,7 +10,7 @@ use mzcore::{
     csv::{CsvLine, parse_csv},
     ontology::Ontologies,
     sequence::{
-        AminoAcid, CompoundPeptidoformIon, FlankingSequence, Peptidoform, SemiAmbiguous,
+        AminoAcid, PeptidoformIonSet, FlankingSequence, Peptidoform, SemiAmbiguous,
         SequenceElement, SloppyParsingParameters,
     },
     system::{Mass, MassOverCharge, Ratio, Time, isize::Charge},
@@ -161,7 +161,7 @@ impl PSMFileFormatVersion<NovoBFormat> for NovoBVersion {
 }
 
 impl PSMMetaData for NovoBPSM {
-    fn compound_peptidoform_ion(&self) -> Option<Cow<'_, CompoundPeptidoformIon>> {
+    fn peptidoform_ion_set(&self) -> Option<Cow<'_, PeptidoformIonSet>> {
         if self.score_forward >= self.score_reverse {
             self.peptide_forward.as_ref()
         } else {

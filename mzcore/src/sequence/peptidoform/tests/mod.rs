@@ -42,7 +42,7 @@ macro_rules! negative_tests {
             #[test]
             fn [<$source _ $id>]() {
                 println!("{}", $case);
-                let res = $crate::sequence::CompoundPeptidoformIon::pro_forma(
+                let res = $crate::sequence::PeptidoformIonSet::pro_forma(
                     $case,
                     &$crate::ontology::STATIC_ONTOLOGIES,
                 );
@@ -75,7 +75,7 @@ macro_rules! positive_tests {
             #[test]
             fn [<$source _ $id>]() {
                 use itertools::Itertools;
-                let res = $crate::sequence::CompoundPeptidoformIon::pro_forma(
+                let res = $crate::sequence::PeptidoformIonSet::pro_forma(
                     $case,
                     &$crate::ontology::STATIC_ONTOLOGIES,
                 )
@@ -83,7 +83,7 @@ macro_rules! positive_tests {
                 println!("{}", $case);
                 assert!(res.is_ok(), "{}", res.err().unwrap().into_iter().join("\n"));
                 let back = res.as_ref().unwrap().to_string();
-                let res_back = $crate::sequence::CompoundPeptidoformIon::pro_forma(
+                let res_back = $crate::sequence::PeptidoformIonSet::pro_forma(
                     &back,
                     &$crate::ontology::STATIC_ONTOLOGIES,
                 )
@@ -96,7 +96,7 @@ macro_rules! positive_tests {
             #[test]
             fn [<$source _ $id>]() {
                 use itertools::Itertools;
-                let res = $crate::sequence::CompoundPeptidoformIon::pro_forma(
+                let res = $crate::sequence::PeptidoformIonSet::pro_forma(
                     $case,
                     &$crate::ontology::STATIC_ONTOLOGIES,
                 )
@@ -110,19 +110,19 @@ macro_rules! positive_tests {
             #[test]
             fn [<$source _ $id>]() {
                 use itertools::Itertools;
-                let res = $crate::sequence::CompoundPeptidoformIon::pro_forma(
+                let res = $crate::sequence::PeptidoformIonSet::pro_forma(
                     $case,
                     &$crate::ontology::STATIC_ONTOLOGIES,
                 )
                 .map(|(a, _)| a);
                 let upper = $case.to_ascii_uppercase();
                 let lower = $case.to_ascii_lowercase();
-                let res_upper = $crate::sequence::CompoundPeptidoformIon::pro_forma(
+                let res_upper = $crate::sequence::PeptidoformIonSet::pro_forma(
                     &upper,
                     &$crate::ontology::STATIC_ONTOLOGIES,
                 )
                 .map(|(a, _)| a);
-                let res_lower = $crate::sequence::CompoundPeptidoformIon::pro_forma(
+                let res_lower = $crate::sequence::PeptidoformIonSet::pro_forma(
                     &lower,
                     &$crate::ontology::STATIC_ONTOLOGIES,
                 )
@@ -133,7 +133,7 @@ macro_rules! positive_tests {
                 assert_eq!(res, res_lower);
                 let back = res.as_ref().unwrap().to_string();
                 let (res_back, _) =
-                    $crate::sequence::CompoundPeptidoformIon::pro_forma_strict(
+                    $crate::sequence::PeptidoformIonSet::pro_forma_strict(
                         &back,
                         &$crate::ontology::STATIC_ONTOLOGIES,
                     )
@@ -147,19 +147,19 @@ macro_rules! positive_tests {
             #[test]
             fn [<$source _ $id>]() {
                 use itertools::Itertools;
-                let res = $crate::sequence::CompoundPeptidoformIon::pro_forma(
+                let res = $crate::sequence::PeptidoformIonSet::pro_forma(
                     $case,
                     &$crate::ontology::STATIC_ONTOLOGIES,
                 )
                 .map(|(a, _)| a);
                 let upper = $case.to_ascii_uppercase();
                 let lower = $case.to_ascii_lowercase();
-                let res_upper = $crate::sequence::CompoundPeptidoformIon::pro_forma(
+                let res_upper = $crate::sequence::PeptidoformIonSet::pro_forma(
                     &upper,
                     &$crate::ontology::STATIC_ONTOLOGIES,
                 )
                 .map(|(a, _)| a);
-                let res_lower = $crate::sequence::CompoundPeptidoformIon::pro_forma(
+                let res_lower = $crate::sequence::PeptidoformIonSet::pro_forma(
                     &lower,
                     &$crate::ontology::STATIC_ONTOLOGIES,
                 )
@@ -170,7 +170,7 @@ macro_rules! positive_tests {
                 assert_eq!(res, res_lower);
                 let back = res.as_ref().unwrap().to_string();
                 let (res_back, back_warnings) =
-                    $crate::sequence::CompoundPeptidoformIon::pro_forma_strict(
+                    $crate::sequence::PeptidoformIonSet::pro_forma_strict(
                         &back,
                         &$crate::ontology::STATIC_ONTOLOGIES,
                     )

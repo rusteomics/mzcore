@@ -15,7 +15,7 @@ use mzcore::{
     csv::{CsvLine, parse_csv},
     ontology::Ontologies,
     sequence::{
-        AminoAcid, CompoundPeptidoformIon, FlankingSequence, MUPSettings, Modification,
+        AminoAcid, PeptidoformIonSet, FlankingSequence, MUPSettings, Modification,
         Peptidoform, PlacementRule, Position, SequencePosition, SimpleLinear, SimpleModification,
     },
     system::{Mass, MassOverCharge, OrderedTime, f32::Time, isize::Charge},
@@ -269,7 +269,7 @@ impl PSMFileFormatVersion<PLGSFormat> for PLGSVersion {
 }
 
 impl PSMMetaData for PLGSPSM {
-    fn compound_peptidoform_ion(&self) -> Option<Cow<'_, CompoundPeptidoformIon>> {
+    fn peptidoform_ion_set(&self) -> Option<Cow<'_, PeptidoformIonSet>> {
         Some(Cow::Owned(self.peptide.clone().into()))
     }
 

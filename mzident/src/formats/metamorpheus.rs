@@ -17,7 +17,7 @@ use mzcore::{
     csv::{CsvLine, parse_csv},
     ontology::Ontologies,
     sequence::{
-        AminoAcid, CompoundPeptidoformIon, FlankingSequence, Peptidoform, SemiAmbiguous,
+        AminoAcid, FlankingSequence, Peptidoform, PeptidoformIonSet, SemiAmbiguous,
         SequencePosition, SimpleModification, SloppyParsingParameters,
     },
     system::{Mass, MassOverCharge, Time, isize::Charge},
@@ -123,13 +123,13 @@ format_family!(
                             },
                         )?))
                     }).collect::<Result<Vec<_>,_>>();
-        peptide: CompoundPeptidoformIon, |location: Location, ontologies: &Ontologies| location.array('|').map(|location| Peptidoform::sloppy_pro_forma_inner(
+        peptide: PeptidoformIonSet, |location: Location, ontologies: &Ontologies| location.array('|').map(|location| Peptidoform::sloppy_pro_forma_inner(
             &location.base_context(),
             location.full_line(),
             location.range.clone(),
             ontologies,
             &SloppyParsingParameters::default()
-        ).map_err(BoxedError::to_owned)).collect::<Result<CompoundPeptidoformIon,_>>();
+        ).map_err(BoxedError::to_owned)).collect::<Result<PeptidoformIonSet,_>>();
         score: f64, |location: Location, _| location.parse::<f64>(NUMBER_ERROR);
         delta_score: f64, |location: Location, _| location.parse::<f64>(NUMBER_ERROR);
         notch: f64, |location: Location, _| location.parse::<f64>(NUMBER_ERROR);
@@ -286,7 +286,7 @@ impl std::fmt::Display for MetaMorpheusMatchKind {
 }
 
 impl PSMMetaData for MetaMorpheusPSM {
-    fn compound_peptidoform_ion(&self) -> Option<Cow<'_, CompoundPeptidoformIon>> {
+    fn peptidoform_ion_set(&self) -> Option<Cow<'_, PeptidoformIonSet>> {
         Some(Cow::Owned(self.peptide.clone()))
     }
 

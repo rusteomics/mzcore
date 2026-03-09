@@ -18,8 +18,8 @@ use crate::{
 };
 use mzcore::{
     sequence::{
-        AminoAcid, AnnotatedPeptidoform, Annotation, CompoundPeptidoformIon, FlankingSequence,
-        HasPeptidoformImpl, Peptidoform, Region, SemiAmbiguous, SequenceElement,
+        AminoAcid, AnnotatedPeptidoform, Annotation, FlankingSequence, HasPeptidoformImpl,
+        Peptidoform, PeptidoformIonSet, Region, SemiAmbiguous, SequenceElement,
     },
     system::{Mass, MassOverCharge, Time, isize::Charge},
 };
@@ -1259,7 +1259,7 @@ fn parse_header() {
 }
 
 impl PSMMetaData for FastaData {
-    fn compound_peptidoform_ion(&self) -> Option<Cow<'_, CompoundPeptidoformIon>> {
+    fn peptidoform_ion_set(&self) -> Option<Cow<'_, PeptidoformIonSet>> {
         Some(Cow::Owned(self.peptide().clone().into()))
     }
 
