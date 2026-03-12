@@ -120,7 +120,7 @@ impl DataItem {
 
         match split
             .as_ref()
-            .map_or((trimmed, None), |(key, tail)| (key.as_str(), Some(tail)))
+            .map_or((trimmed, None), |(key, tail)| (key.trim(), Some(tail)))
         {
             ("/translation", Some(tail)) => {
                 current.reported_seq += tail.trim_matches('\"');
@@ -151,10 +151,10 @@ impl DataItem {
             ("/functional", _) => {
                 current.functional = true;
             }
-            ("/note" | "/imgt_note", Some(s)) if s.to_ascii_lowercase().contains("functional") => {
-                current.functional = true;
+            ("/note" | "/imgt_note", Some(s)) => {
+                current.functional = s.to_ascii_lowercase().contains("functional");
             }
-            ("/pseudo", _) => {
+            ("/pseudo" | "/orf", _) => {
                 current.functional = false;
             }
             ("/partial", _) => current.partial = true,
