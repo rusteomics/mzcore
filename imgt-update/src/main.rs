@@ -1,4 +1,5 @@
 //! Update the ontologies used in mzcore
+use context_error as _; // Used to set the colored feature
 use imgt::IMGT;
 use itertools::Itertools;
 use mzcv::CVIndex;

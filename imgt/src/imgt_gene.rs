@@ -17,7 +17,7 @@ pub(crate) struct IMGTGene {
 }
 
 impl IMGTGene {
-    pub(crate) fn finish(self) -> Result<SingleSeq, String> {
+    pub(crate) fn finish(self) -> Result<Option<SingleSeq>, String> {
         let (regions, additional_annotations) = self.get_regions()?;
 
         let sequence: Vec<AminoAcid> = regions.iter().flat_map(|reg| reg.1.0.clone()).collect();
@@ -26,50 +26,55 @@ impl IMGTGene {
             .iter()
             .map(|reg| (reg.0.clone(), reg.1.0.len()))
             .collect();
-        let conserved_map = HashMap::from([
-            ("1st-CYS", Annotation::Conserved),
-            ("2nd-CYS", Annotation::Conserved),
-            ("CONSERVED-TRP", Annotation::Conserved),
-            ("J-PHE", Annotation::Conserved),
-            ("J-TRP", Annotation::Conserved),
-        ]);
-        let mut conserved = self
+        let mut conserved: Vec<(Annotation, usize)> = self
             .regions
             .iter()
             .filter(|(key, _)| {
                 ["1st-CYS", "2nd-CYS", "CONSERVED-TRP", "J-PHE", "J-TRP"].contains(&key.as_str())
             })
-            .map(|(key, region)| {
+            .filter_map(|(_, region)| {
                 region
                     .location
                     .find_aa_location(&regions)
-                    .map(|index| (conserved_map[key.as_str()].clone(), index))
-                    .ok_or_else(|| format!("Cannot find location of '{key}'"))
+                    .map(|index| (Annotation::Conserved, index)) // Ignore any for which the location could not be found
             })
-            .collect::<Result<Vec<_>, _>>()?;
+            .collect();
         conserved.extend(
             find_possible_n_glycan_locations(&sequence)
                 .iter()
                 .map(|i| (Annotation::NGlycan, *i)),
         );
         conserved.extend(additional_annotations);
-        let (name, allele) = Gene::from_imgt_name_with_allele(self.allele.as_str())?;
-        Ok(SingleSeq {
-            name,
-            allele,
-            acc: self.acc,
-            sequence: AnnotatedSequence::new(
-                sequence
-                    .iter()
-                    .copied()
-                    .map(CheckedAminoAcid::new)
-                    .map(|p| p.into_unambiguous().unwrap())
-                    .collect(),
-                region_lengths,
-                conserved,
-            ),
-            dna,
-        })
+
+        // Filter out any partial, pseudo or open reading frame stuff that might have slipped past
+        Ok(
+            if self.allele.as_str().contains("/OR") || self.allele.as_str().ends_with("putative") {
+                None
+            } else {
+                let (name, allele) = Gene::from_imgt_name_with_allele(self.allele.as_str())?;
+
+                if name.family.iter().any(|f| f.1.eq_ignore_ascii_case("P")) {
+                    None
+                } else {
+                    Some(SingleSeq {
+                        name,
+                        allele,
+                        acc: self.acc,
+                        sequence: AnnotatedSequence::new(
+                            sequence
+                                .iter()
+                                .copied()
+                                .map(CheckedAminoAcid::new)
+                                .map(|p| p.into_unambiguous().unwrap())
+                                .collect(),
+                            region_lengths,
+                            conserved,
+                        ),
+                        dna,
+                    })
+                }
+            },
+        )
     }
 
     fn get_regions(&self) -> Result<(Vec<SequenceRegion>, Vec<(Annotation, usize)>), String> {

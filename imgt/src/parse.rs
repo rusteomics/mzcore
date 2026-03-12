@@ -118,36 +118,47 @@ impl DataItem {
             .split_once('=')
             .map(|(key, tail)| (key.to_ascii_lowercase(), tail));
 
-        match split.as_ref().map(|(key, tail)| (key.as_str(), tail)) {
-            Some(("/translation", tail)) => {
+        match split
+            .as_ref()
+            .map_or((trimmed, None), |(key, tail)| (key.as_str(), Some(tail)))
+        {
+            ("/translation", Some(tail)) => {
                 current.reported_seq += tail.trim_matches('\"');
                 *is_sequence = !tail.ends_with('\"');
             }
-            Some(("/imgt_allele", tail)) => {
+            ("/imgt_gene" | "/allele", Some(tail)) => {
+                let here = tail.trim_matches('\"').to_string();
+                if current.allele.is_empty() || !current.allele.contains('*') && here.contains('*')
+                {
+                    current.allele = here;
+                }
+            }
+            ("/imgt_allele", Some(tail)) => {
                 current.allele = tail.trim_matches('\"').to_string();
             }
-            Some(("/codon_start", tail)) => {
+            ("/codon_start", Some(tail)) => {
                 current.shift = tail
+                    .trim_matches('\"')
                     .parse::<usize>()
                     .map_err(|_| format!("Not a valid codon_start: '{tail}'"))?
                     - 1;
             }
-            Some(("/splice-expectedcodon", tail)) => {
+            ("/splice-expectedcodon", Some(tail)) => {
                 if let Some(i) = tail.find(']') {
                     current.splice_aa = AminoAcid::try_from(tail.as_bytes()[i - 1]).ok();
                 }
             }
-            Some(("/functional", _)) => {
+            ("/functional", _) => {
                 current.functional = true;
             }
-            Some(("/note" | "/imgt_note", s)) if s.to_ascii_lowercase().contains("functional") => {
+            ("/note" | "/imgt_note", Some(s)) if s.to_ascii_lowercase().contains("functional") => {
                 current.functional = true;
             }
-            Some(("/pseudo", _)) => {
+            ("/pseudo", _) => {
                 current.functional = false;
             }
-            Some(("/partial", _)) => current.partial = true,
-            None if *is_sequence => {
+            ("/partial", _) => current.partial = true,
+            (_, None) if *is_sequence => {
                 current.reported_seq += trimmed.trim_end_matches('\"');
                 *is_sequence = !trimmed.ends_with('\"');
             }

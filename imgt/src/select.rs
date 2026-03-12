@@ -225,8 +225,13 @@ impl Germlines {
             GeneType::C(Some(Constant::E)) => &chain.e,
             GeneType::C(Some(Constant::G)) => &chain.g,
             GeneType::C(Some(Constant::M)) => &chain.m,
+            GeneType::C(Some(Constant::N)) => &chain.n,
             GeneType::C(Some(Constant::O)) => &chain.o,
+            GeneType::C(Some(Constant::R)) => &chain.r,
             GeneType::C(Some(Constant::T)) => &chain.t,
+            GeneType::C(Some(Constant::W)) => &chain.w,
+            GeneType::C(Some(Constant::Y)) => &chain.y,
+            GeneType::C(Some(Constant::Z)) => &chain.z,
         };
         genes
             .binary_search_by(|g| g.name.cmp(&gene))
@@ -267,8 +272,13 @@ impl Germlines {
             GeneType::C(Some(Constant::E)) => &chain.e,
             GeneType::C(Some(Constant::G)) => &chain.g,
             GeneType::C(Some(Constant::M)) => &chain.m,
+            GeneType::C(Some(Constant::N)) => &chain.n,
             GeneType::C(Some(Constant::O)) => &chain.o,
+            GeneType::C(Some(Constant::R)) => &chain.r,
             GeneType::C(Some(Constant::T)) => &chain.t,
+            GeneType::C(Some(Constant::W)) => &chain.w,
+            GeneType::C(Some(Constant::Y)) => &chain.y,
+            GeneType::C(Some(Constant::Z)) => &chain.z,
         };
         genes
             .binary_search_by(|g| g.name.cmp(&gene))
@@ -293,8 +303,13 @@ impl Germlines {
             GeneType::C(Some(Constant::E)) => &mut chain.e,
             GeneType::C(Some(Constant::G)) => &mut chain.g,
             GeneType::C(Some(Constant::M)) => &mut chain.m,
+            GeneType::C(Some(Constant::N)) => &mut chain.n,
             GeneType::C(Some(Constant::O)) => &mut chain.o,
+            GeneType::C(Some(Constant::R)) => &mut chain.r,
             GeneType::C(Some(Constant::T)) => &mut chain.t,
+            GeneType::C(Some(Constant::W)) => &mut chain.w,
+            GeneType::C(Some(Constant::Y)) => &mut chain.y,
+            GeneType::C(Some(Constant::Z)) => &mut chain.z,
         };
         genes
             .binary_search_by(|g| g.name.cmp(&gene))

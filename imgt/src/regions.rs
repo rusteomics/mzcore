@@ -112,10 +112,20 @@ pub struct Chain {
     pub g: Vec<Arc<Germline>>,
     /// All M constant germlines
     pub m: Vec<Arc<Germline>>,
+    /// All N constant germlines
+    pub n: Vec<Arc<Germline>>,
     /// All O constant germlines
     pub o: Vec<Arc<Germline>>,
+    /// All R constant germlines
+    pub r: Vec<Arc<Germline>>,
     /// All T constant germlines
     pub t: Vec<Arc<Germline>>,
+    /// All W constant germlines
+    pub w: Vec<Arc<Germline>>,
+    /// All Y constant germlines
+    pub y: Vec<Arc<Germline>>,
+    /// All Z constant germlines
+    pub z: Vec<Arc<Germline>>,
 }
 
 impl Chain {
@@ -131,8 +141,13 @@ impl Chain {
             GeneType::C(Some(Constant::E)) => &mut self.e,
             GeneType::C(Some(Constant::G)) => &mut self.g,
             GeneType::C(Some(Constant::M)) => &mut self.m,
+            GeneType::C(Some(Constant::N)) => &mut self.n,
             GeneType::C(Some(Constant::O)) => &mut self.o,
+            GeneType::C(Some(Constant::R)) => &mut self.r,
             GeneType::C(Some(Constant::T)) => &mut self.t,
+            GeneType::C(Some(Constant::W)) => &mut self.w,
+            GeneType::C(Some(Constant::Y)) => &mut self.y,
+            GeneType::C(Some(Constant::Z)) => &mut self.z,
         };
 
         match db.binary_search_by_key(&germline.name, |g| g.name.clone()) {
@@ -194,22 +209,8 @@ impl Chain {
             self.variable.iter().map(|g| g.alleles.len()).sum::<usize>(),
             self.joining.len(),
             self.joining.iter().map(|g| g.alleles.len()).sum::<usize>(),
-            self.c.len()
-                + self.a.len()
-                + self.d.len()
-                + self.e.len()
-                + self.g.len()
-                + self.m.len()
-                + self.o.len()
-                + self.t.len(),
-            self.c.iter().map(|g| g.alleles.len()).sum::<usize>()
-                + self.a.iter().map(|g| g.alleles.len()).sum::<usize>()
-                + self.d.iter().map(|g| g.alleles.len()).sum::<usize>()
-                + self.e.iter().map(|g| g.alleles.len()).sum::<usize>()
-                + self.g.iter().map(|g| g.alleles.len()).sum::<usize>()
-                + self.m.iter().map(|g| g.alleles.len()).sum::<usize>()
-                + self.o.iter().map(|g| g.alleles.len()).sum::<usize>()
-                + self.t.iter().map(|g| g.alleles.len()).sum::<usize>(),
+            self.constant().count(),
+            self.constant().map(|g| g.alleles.len()).sum::<usize>(),
         )
     }
 
@@ -222,13 +223,18 @@ impl Chain {
             .chain(self.e.iter())
             .chain(self.g.iter())
             .chain(self.m.iter())
+            .chain(self.n.iter())
             .chain(self.o.iter())
+            .chain(self.r.iter())
             .chain(self.t.iter())
+            .chain(self.w.iter())
+            .chain(self.y.iter())
+            .chain(self.z.iter())
     }
 }
 
 impl<'a> IntoIterator for &'a Chain {
-    type IntoIter = std::array::IntoIter<(GeneType, &'a [Arc<Germline>]), 10>;
+    type IntoIter = std::array::IntoIter<(GeneType, &'a [Arc<Germline>]), 15>;
     type Item = (GeneType, &'a [Arc<Germline>]);
 
     fn into_iter(self) -> Self::IntoIter {
@@ -241,8 +247,13 @@ impl<'a> IntoIterator for &'a Chain {
             (GeneType::C(Some(Constant::E)), self.e.as_slice()),
             (GeneType::C(Some(Constant::G)), self.g.as_slice()),
             (GeneType::C(Some(Constant::M)), self.m.as_slice()),
+            (GeneType::C(Some(Constant::N)), self.n.as_slice()),
             (GeneType::C(Some(Constant::O)), self.o.as_slice()),
+            (GeneType::C(Some(Constant::R)), self.r.as_slice()),
             (GeneType::C(Some(Constant::T)), self.t.as_slice()),
+            (GeneType::C(Some(Constant::W)), self.w.as_slice()),
+            (GeneType::C(Some(Constant::Y)), self.y.as_slice()),
+            (GeneType::C(Some(Constant::Z)), self.z.as_slice()),
         ]
         .into_iter()
     }
@@ -263,8 +274,13 @@ impl Chain {
             (GeneType::C(Some(Constant::E)), self.e.as_slice()),
             (GeneType::C(Some(Constant::G)), self.g.as_slice()),
             (GeneType::C(Some(Constant::M)), self.m.as_slice()),
+            (GeneType::C(Some(Constant::N)), self.n.as_slice()),
             (GeneType::C(Some(Constant::O)), self.o.as_slice()),
+            (GeneType::C(Some(Constant::R)), self.r.as_slice()),
             (GeneType::C(Some(Constant::T)), self.t.as_slice()),
+            (GeneType::C(Some(Constant::W)), self.w.as_slice()),
+            (GeneType::C(Some(Constant::Y)), self.y.as_slice()),
+            (GeneType::C(Some(Constant::Z)), self.z.as_slice()),
         ]
         .into_iter()
     }
@@ -272,7 +288,7 @@ impl Chain {
 
 #[cfg(feature = "rayon")]
 impl<'a> IntoParallelIterator for &'a Chain {
-    type Iter = rayon::array::IntoIter<(GeneType, &'a [Arc<Germline>]), 10>;
+    type Iter = rayon::array::IntoIter<(GeneType, &'a [Arc<Germline>]), 15>;
     type Item = (GeneType, &'a [Arc<Germline>]);
 
     fn into_par_iter(self) -> Self::Iter {
@@ -285,8 +301,13 @@ impl<'a> IntoParallelIterator for &'a Chain {
             (GeneType::C(Some(Constant::E)), self.e.as_slice()),
             (GeneType::C(Some(Constant::G)), self.g.as_slice()),
             (GeneType::C(Some(Constant::M)), self.m.as_slice()),
+            (GeneType::C(Some(Constant::N)), self.m.as_slice()),
             (GeneType::C(Some(Constant::O)), self.o.as_slice()),
+            (GeneType::C(Some(Constant::R)), self.r.as_slice()),
             (GeneType::C(Some(Constant::T)), self.t.as_slice()),
+            (GeneType::C(Some(Constant::W)), self.w.as_slice()),
+            (GeneType::C(Some(Constant::Y)), self.y.as_slice()),
+            (GeneType::C(Some(Constant::Z)), self.z.as_slice()),
         ]
         .into_par_iter()
     }
@@ -431,24 +452,38 @@ impl Display for Gene {
 }
 
 impl Gene {
-    /// Get an IMGT name with allele, eg IGHV3-23*03
+    /// Get an IMGT name with allele, eg IGHV3-23*03 or IGHV1/OR15-1*01
     /// # Errors
     /// If not recognised as a name, returns a description of the error.
-    #[expect(clippy::missing_panics_doc)] // Cannot panic
     pub fn from_imgt_name_with_allele(s: &str) -> Result<(Self, usize), String> {
-        let s = s.split(" or ").next().unwrap(); // Just ignore double names
-        let (gene, tail) = Self::from_imgt_name_internal(s)?;
-        if tail.is_empty() {
-            return Ok((gene, 1));
+        let mut recent_error = "Empty name".to_string();
+        // Try all names to find the first one that is valid
+        for s in s.split(" or ") {
+            let s = s.trim_end_matches(" F");
+            let (gene, tail) = match Self::from_imgt_name_internal(s) {
+                Ok(v) => v,
+                Err(err) => {
+                    recent_error = err;
+                    continue;
+                }
+            };
+            if tail.is_empty() {
+                return Ok((gene, 1));
+            }
+            match tail.strip_prefix('*').map_or_else(
+                || Err(format!("Invalid allele spec: `{tail}`")),
+                |tail| {
+                    tail.parse()
+                        .map_err(|_| format!("Invalid allele spec: `{}`", &tail))
+                },
+            ) {
+                Ok(allele) => return Ok((gene, allele)),
+                Err(err) => {
+                    recent_error = err;
+                }
+            }
         }
-        let allele = tail.strip_prefix('*').map_or_else(
-            || Err(format!("Invalid allele spec: `{tail}`")),
-            |tail| {
-                tail.parse()
-                    .map_err(|_| format!("Invalid allele spec: `{}`", &tail))
-            },
-        )?;
-        Ok((gene, allele))
+        Err(recent_error)
     }
 
     /// Get an IMGT name, eg IGHV3-23
@@ -462,7 +497,7 @@ impl Gene {
     /// If not recognised as a name, returns a description of the error.
     fn from_imgt_name_internal(s: &str) -> Result<(Self, &str), String> {
         #[expect(clippy::missing_panics_doc)] // Cannot panic
-        fn parse_name(s: &str) -> (Option<(Option<usize>, String)>, &str) {
+        fn parse_family_name(s: &str) -> (Option<(Option<usize>, String)>, &str) {
             let num = s
                 .chars()
                 .take_while(char::is_ascii_digit)
@@ -519,10 +554,9 @@ impl Gene {
             } else {
                 None
             };
-            let tail = &s[start..];
-            let mut tail = tail.trim_start_matches('-');
+            let mut tail = s[start..].trim_start_matches('-');
             let mut family = Vec::new();
-            while let (Some(branch), t) = parse_name(tail) {
+            while let (Some(branch), t) = parse_family_name(tail) {
                 family.push(branch);
                 tail = t.trim_start_matches('-');
             }
@@ -622,10 +656,13 @@ pub enum Constant {
     E,
     G,
     M,
+    N,
     O,
-    // DD,
-    // MD,
+    R,
     T,
+    W,
+    Y,
+    Z,
 }
 
 impl FromStr for GeneType {
@@ -640,10 +677,13 @@ impl FromStr for GeneType {
             "ε" | "E" => Ok(Self::C(Some(Constant::E))),
             "ɣ" | "G" => Ok(Self::C(Some(Constant::G))),
             "μ" | "M" => Ok(Self::C(Some(Constant::M))),
+            "ν" | "N" => Ok(Self::C(Some(Constant::N))),
             "ο" | "O" => Ok(Self::C(Some(Constant::O))),
+            "ρ" | "R" => Ok(Self::C(Some(Constant::R))),
             "τ" | "T" => Ok(Self::C(Some(Constant::T))),
-            // "DD" => Ok(Self::C(Some(Constant::DD))),
-            // "MD" => Ok(Self::C(Some(Constant::MD))),
+            "ω" | "W" => Ok(Self::C(Some(Constant::W))),
+            "υ" | "Y" => Ok(Self::C(Some(Constant::Y))),
+            "ζ" | "Z" => Ok(Self::C(Some(Constant::Z))),
             _ => Err(()),
         }
     }
@@ -663,10 +703,13 @@ impl Display for GeneType {
                 Self::C(Some(Constant::E)) => "E",
                 Self::C(Some(Constant::G)) => "G",
                 Self::C(Some(Constant::M)) => "M",
+                Self::C(Some(Constant::N)) => "N",
                 Self::C(Some(Constant::O)) => "O",
-                // Self::C(Some(Constant::DD)) => "DD",
-                // Self::C(Some(Constant::MD)) => "MD",
+                Self::C(Some(Constant::R)) => "R",
                 Self::C(Some(Constant::T)) => "T",
+                Self::C(Some(Constant::W)) => "W",
+                Self::C(Some(Constant::Y)) => "Y",
+                Self::C(Some(Constant::Z)) => "Z",
             }
         )
     }
@@ -686,5 +729,11 @@ fn imgt_names() {
             .map(|(g, a)| (g.to_string(), a))
             .unwrap(),
         ("IGKV6-d".to_string(), 1)
+    );
+    assert_eq!(
+        Gene::from_imgt_name_with_allele("IGHV3/OR15-7*03")
+            .map(|(g, a)| (g.to_string(), a))
+            .unwrap(),
+        ("IGHV3/OR15-7".to_string(), 3)
     );
 }

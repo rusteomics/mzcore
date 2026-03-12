@@ -73,8 +73,13 @@ impl FancyDisplay for GeneType {
             Self::C(Some(Constant::E)) => "ε",
             Self::C(Some(Constant::G)) => "ɣ",
             Self::C(Some(Constant::M)) => "μ",
+            Self::C(Some(Constant::N)) => "ν",
             Self::C(Some(Constant::O)) => "ο",
+            Self::C(Some(Constant::R)) => "ρ",
             Self::C(Some(Constant::T)) => "τ",
+            Self::C(Some(Constant::W)) => "ω",
+            Self::C(Some(Constant::Y)) => "υ",
+            Self::C(Some(Constant::Z)) => "ζ",
         }
         .to_string()
     }

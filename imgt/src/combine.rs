@@ -24,7 +24,8 @@ pub(crate) fn combine(
         let species = element.species;
         for gene in element.genes {
             match gene.clone().finish() {
-                Ok(gene) => temp.push((species, gene)),
+                Ok(Some(gene)) => temp.push((species, gene)),
+                Ok(None) => (), // Ignored
                 Err(err) => {
                     errors.push((species, gene, err));
                 }
