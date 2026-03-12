@@ -117,7 +117,10 @@ impl Location {
     fn get_aa_loc(&self, inner: &Self) -> Option<RangeInclusive<usize>> {
         if self.contains(inner) {
             match (self, inner) {
-                (Self::Complement(s), Self::Complement(o)) | (Self::Normal(s), Self::Normal(o)) => {
+                (Self::Complement(s), Self::Complement(o)) => {
+                    Some((s.end() - o.end()) / 3..=(s.end() - o.start()) / 3)
+                }
+                (Self::Normal(s), Self::Normal(o)) => {
                     Some((o.start() - s.start()) / 3..=(o.end() - s.start()) / 3)
                 }
                 (Self::Normal(s), Self::SingleNormal(o))

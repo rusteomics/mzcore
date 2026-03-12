@@ -81,7 +81,7 @@ impl<
                 germline
                     .into_iter()
                     .take(self.allele.take_num())
-                    .map(move |(a, seq)| (species, &germline.name, *a, seq))
+                    .map(move |(a, seq, acc)| (species, &germline.name, *a, seq, acc))
             })
             .map(Into::into)
     }
@@ -107,7 +107,7 @@ impl<
                 germline
                     .into_par_iter()
                     .take(self.allele.take_num())
-                    .map(move |(a, seq)| (species, &germline.name, *a, seq))
+                    .map(move |(a, seq, acc)| (species, &germline.name, *a, seq, acc))
             })
             .map(Into::into)
     }
@@ -164,6 +164,8 @@ pub struct Allele<'a> {
     pub regions: &'a [(Region, usize)],
     /// Any additional annotations, every annotation has beside the kind it is also its location, as index in the sequence
     pub annotations: &'a [(Annotation, usize)],
+    /// The original IMGT accession
+    pub acc: &'a str,
 }
 
 impl Allele<'_> {
@@ -194,8 +196,8 @@ impl AnnotatedPeptidoform for Allele<'_> {
     }
 }
 
-impl<'a> From<(Species, &'a Gene, usize, &'a AnnotatedSequence)> for Allele<'a> {
-    fn from(value: (Species, &'a Gene, usize, &'a AnnotatedSequence)) -> Self {
+impl<'a> From<(Species, &'a Gene, usize, &'a AnnotatedSequence, &'a String)> for Allele<'a> {
+    fn from(value: (Species, &'a Gene, usize, &'a AnnotatedSequence, &'a String)) -> Self {
         Self {
             species: value.0,
             gene: std::borrow::Cow::Borrowed(value.1),
@@ -203,6 +205,7 @@ impl<'a> From<(Species, &'a Gene, usize, &'a AnnotatedSequence)> for Allele<'a> 
             sequence: &value.3.sequence,
             regions: &value.3.regions,
             annotations: &value.3.annotations,
+            acc: value.4,
         }
     }
 }
@@ -241,17 +244,18 @@ impl Germlines {
                 allele
                     .map_or_else(
                         || g.alleles.first(),
-                        |a| g.alleles.iter().find(|(ga, _)| a == *ga),
+                        |a| g.alleles.iter().find(|(ga, _, _)| a == *ga),
                     )
                     .map(|res| (g, res))
             })
-            .map(move |(g, (a, seq))| Allele {
+            .map(move |(g, (a, seq, acc))| Allele {
                 species: g.species,
                 gene: std::borrow::Cow::Owned(gene),
                 number: *a,
                 sequence: &seq.sequence,
                 regions: &seq.regions,
                 annotations: &seq.annotations,
+                acc,
             })
     }
 

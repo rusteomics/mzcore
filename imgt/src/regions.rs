@@ -320,13 +320,13 @@ pub struct Germline {
     pub species: Species,
     /// The name for the germline
     pub name: Gene,
-    /// All alleles
-    pub alleles: Vec<(usize, AnnotatedSequence)>,
+    /// All alleles (allele number, sequence, IMGT accession)
+    pub alleles: Vec<(usize, AnnotatedSequence, String)>,
 }
 
 impl<'a> IntoIterator for &'a Germline {
-    type IntoIter = std::slice::Iter<'a, (usize, AnnotatedSequence)>;
-    type Item = &'a (usize, AnnotatedSequence);
+    type IntoIter = std::slice::Iter<'a, (usize, AnnotatedSequence, String)>;
+    type Item = &'a (usize, AnnotatedSequence, String);
 
     fn into_iter(self) -> Self::IntoIter {
         self.alleles.iter()
@@ -344,23 +344,24 @@ impl Germline {
         allele
             .map_or_else(
                 || self.alleles.first(),
-                |allele| self.alleles.iter().find(|(i, _)| *i == allele),
+                |allele| self.alleles.iter().find(|(i, _, _)| *i == allele),
             )
-            .map(|(i, sequence)| Allele {
+            .map(|(i, sequence, acc)| Allele {
                 species: self.species,
                 gene: std::borrow::Cow::Borrowed(&self.name),
                 number: *i,
                 sequence: &sequence.sequence,
                 regions: &sequence.regions,
                 annotations: &sequence.annotations,
+                acc,
             })
     }
 }
 
 #[cfg(feature = "rayon")]
 impl<'a> IntoParallelIterator for &'a Germline {
-    type Iter = rayon::slice::Iter<'a, (usize, AnnotatedSequence)>;
-    type Item = &'a (usize, AnnotatedSequence);
+    type Iter = rayon::slice::Iter<'a, (usize, AnnotatedSequence, String)>;
+    type Item = &'a (usize, AnnotatedSequence, String);
 
     fn into_par_iter(self) -> Self::Iter {
         self.alleles.par_iter()

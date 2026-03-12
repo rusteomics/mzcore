@@ -43,12 +43,13 @@ pub(crate) fn combine(
             }
         }
         // If not found
+        let acc = seq.acc.clone();
         deduped_temp.push((
             species,
             TemporaryGermline {
                 species,
                 name: seq.name.clone(),
-                alleles: vec![(seq.allele, vec![TemporarySequence::from_single(seq)])],
+                alleles: vec![(seq.allele, vec![TemporarySequence::from_single(seq)], acc)],
             },
         ));
     }
@@ -70,7 +71,7 @@ pub(crate) fn combine(
 struct TemporaryGermline {
     species: Species,
     name: Gene,
-    alleles: Vec<(usize, Vec<TemporarySequence>)>,
+    alleles: Vec<(usize, Vec<TemporarySequence>, String)>,
 }
 
 impl TemporaryGermline {
@@ -87,8 +88,12 @@ impl TemporaryGermline {
             al.1.sort();
         } else {
             // If not found
-            self.alleles
-                .push((single.allele, vec![TemporarySequence::from_single(single)]));
+            let acc = single.acc.clone();
+            self.alleles.push((
+                single.allele,
+                vec![TemporarySequence::from_single(single)],
+                acc,
+            ));
             self.alleles.sort_unstable_by_key(|a| a.0); // Maybe do the fancy insert at the right place trick
         }
     }
@@ -100,12 +105,13 @@ impl TemporaryGermline {
             alleles: self
                 .alleles
                 .into_iter()
-                .filter_map(|(a, seqs)| {
+                .filter_map(|(a, seqs, acc)| {
                     Some((
                         a,
                         seqs.iter()
                             .find(|s| !s.sequence.is_empty())
                             .map(TemporarySequence::annotated_sequence)?,
+                        acc,
                     ))
                 })
                 .collect(),
