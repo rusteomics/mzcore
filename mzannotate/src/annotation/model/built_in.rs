@@ -439,10 +439,13 @@ impl std::ops::Add for BuiltInFragmentationModel {
     fn add(self, rhs: Self) -> Self::Output {
         match (self, rhs) {
             (a, Self::None) | (Self::None, a) => a,
-            (Self::ETD | Self::ETD_TD, Self::CID) | (Self::CID, Self::ETD | Self::ETD_TD) => {
-                Self::ETciD
+            (Self::ETD | Self::ETD_TD | Self::ETciD, Self::CID)
+            | (Self::CID, Self::ETD | Self::ETD_TD | Self::ETciD) => Self::ETciD,
+            (Self::EAD | Self::EAciD, Self::CID) | (Self::CID, Self::EAD | Self::EAciD) => {
+                Self::EAciD
             }
-            (Self::EAD, Self::CID) | (Self::CID, Self::EAD) => Self::EAciD,
+            (Self::UVPD, Self::CID) | (Self::CID, Self::UVPD) => Self::UVPD,
+            (a, b) if a == b => a,
             (_, _) => Self::All,
         }
     }

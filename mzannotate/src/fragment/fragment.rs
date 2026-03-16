@@ -93,35 +93,44 @@ impl Fragment {
         charge_carriers: &mut CachedCharge,
         charge_range: ChargeRange,
     ) -> Vec<Self> {
-        termini
-            .iter()
-            .cartesian_product(theoretical_mass.iter())
-            .cartesian_product(charge_carriers.range(charge_range))
-            .cartesian_product(std::iter::once(None).chain(neutral_losses.iter().map(Some)))
-            .map(|(((term, mass), charge), losses)| Self {
-                formula: Some(
-                    term + mass
-                        + charge.formula_inner(SequencePosition::default(), peptidoform_index)
-                        + losses
-                            .iter()
-                            .flat_map(|l| l.iter())
-                            .sum::<MolecularFormula>(),
-                ),
-                charge: Charge::new::<system::e>(charge.charge().value),
-                ion: annotation.clone(),
-                peptidoform_ion_index: Some(peptidoform_ion_index),
-                peptidoform_index: Some(peptidoform_index),
-                neutral_loss: losses.cloned().unwrap_or_default().into(),
-                deviation: None,
-                confidence: None,
-                auxiliary: false,
-            })
-            .filter(|f| {
-                f.formula
-                    .as_ref()
-                    .is_some_and(|f| !f.contains_negative_amount())
-            })
-            .collect()
+        let charges = charge_carriers.range(charge_range);
+        let losses = std::iter::once(None)
+            .chain(neutral_losses.iter().map(Some))
+            .collect::<Vec<_>>();
+        let mut result = Vec::with_capacity(
+            termini.len() * theoretical_mass.len() * charges.len() * losses.len(),
+        );
+        for term in termini.iter() {
+            for mass in theoretical_mass.iter() {
+                let f = term + mass;
+                for charge in &charges {
+                    let f =
+                        &f + charge.formula_inner(SequencePosition::default(), peptidoform_index);
+                    if f.contains_negative_amount() {
+                        continue;
+                    }
+                    let z = Charge::new::<system::e>(charge.charge().value);
+                    for loss in &losses {
+                        let f = &f + loss.iter().flat_map(|l| l.iter()).sum::<MolecularFormula>();
+                        if f.contains_negative_amount() {
+                            continue;
+                        }
+                        result.push(Self {
+                            formula: Some(f),
+                            charge: z,
+                            ion: annotation.clone(),
+                            peptidoform_ion_index: Some(peptidoform_ion_index),
+                            peptidoform_index: Some(peptidoform_index),
+                            neutral_loss: loss.cloned().unwrap_or_default().into(),
+                            deviation: None,
+                            confidence: None,
+                            auxiliary: false,
+                        });
+                    }
+                }
+            }
+        }
+        result
     }
 
     /// Generate a list of possible fragments from the list of possible preceding termini and neutral losses.
@@ -140,41 +149,53 @@ impl Fragment {
         charge_carriers: &mut CachedCharge,
         settings: &PossiblePrimaryIons,
     ) -> Vec<Self> {
-        termini
-            .iter()
-            .cartesian_product(theoretical_mass.iter())
-            .cartesian_product(charge_carriers.range(settings.1))
-            .cartesian_product(
-                std::iter::once(None)
-                    .chain(settings.0.iter().map(Some))
-                    .chain(neutral_losses.iter().map(Some)),
-            )
-            .cartesian_product(settings.2.iter())
-            .map(|((((term, mass), charge), losses), variant)| Self {
-                formula: Some(
-                    term + mass
-                        + charge.formula_inner(SequencePosition::default(), peptidoform_index)
-                        + losses
-                            .iter()
-                            .flat_map(|l| l.iter())
-                            .sum::<MolecularFormula>()
-                        + molecular_formula!(H 1) * variant,
-                ),
-                charge: Charge::new::<system::e>(charge.charge().value),
-                ion: annotation.with_variant(*variant),
-                peptidoform_ion_index: Some(peptidoform_ion_index),
-                peptidoform_index: Some(peptidoform_index),
-                neutral_loss: losses.cloned().unwrap_or_default().into(),
-                deviation: None,
-                confidence: None,
-                auxiliary: false,
-            })
-            .filter(|f| {
-                f.formula
-                    .as_ref()
-                    .is_some_and(|f| !f.contains_negative_amount())
-            })
-            .collect()
+        let charges = charge_carriers.range(settings.1);
+        let losses = std::iter::once(None)
+            .chain(settings.0.iter().map(Some))
+            .chain(neutral_losses.iter().map(Some))
+            .collect::<Vec<_>>();
+        let mut result = Vec::with_capacity(
+            termini.len()
+                * theoretical_mass.len()
+                * charges.len()
+                * losses.len()
+                * settings.2.len(),
+        );
+
+        for term in termini.iter() {
+            for mass in theoretical_mass.iter() {
+                let f = term + mass;
+                for charge in &charges {
+                    let f =
+                        &f + charge.formula_inner(SequencePosition::default(), peptidoform_index);
+                    if f.contains_negative_amount() {
+                        continue;
+                    }
+                    let z = Charge::new::<system::e>(charge.charge().value);
+                    for loss in &losses {
+                        let f = &f + loss.iter().flat_map(|l| l.iter()).sum::<MolecularFormula>();
+                        for variant in settings.2 {
+                            let f = &f + molecular_formula!(H 1) * variant;
+                            if f.contains_negative_amount() {
+                                continue;
+                            }
+                            result.push(Self {
+                                formula: Some(f),
+                                charge: z,
+                                ion: annotation.with_variant(*variant),
+                                peptidoform_ion_index: Some(peptidoform_ion_index),
+                                peptidoform_index: Some(peptidoform_index),
+                                neutral_loss: loss.cloned().unwrap_or_default().into(),
+                                deviation: None,
+                                confidence: None,
+                                auxiliary: false,
+                            });
+                        }
+                    }
+                }
+            }
+        }
+        result
     }
 
     /// Create a copy of this fragment with the given charge

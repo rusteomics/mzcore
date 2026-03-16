@@ -1,3 +1,5 @@
+use std::num::NonZeroU32;
+
 use mzcore::prelude::{MassMode, PeptidoformIonSet};
 use mzdata::mzpeaks::PeakCollection;
 
@@ -63,7 +65,7 @@ impl<T: Into<AnnotatedSpectrum>> AnnotatableSpectrum for T {
         let mut spectrum: AnnotatedSpectrum = self.into();
         for (index, peptidoform_ion) in peptide.into_peptidoform_ions().into_iter().enumerate() {
             spectrum.analytes.push(crate::mzspeclib::Analyte::new(
-                index as u32,
+                NonZeroU32::new(index as u32 + 1).unwrap(),
                 crate::mzspeclib::AnalyteTarget::PeptidoformIon(peptidoform_ion),
             ));
         }

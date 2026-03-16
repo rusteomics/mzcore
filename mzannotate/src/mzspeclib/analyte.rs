@@ -1,3 +1,5 @@
+use std::num::NonZeroU32;
+
 use itertools::Itertools;
 use mzcore::{
     prelude::{
@@ -8,15 +10,15 @@ use mzcore::{
 use mzdata::{Param, params::Value};
 
 use crate::{
-    mzspeclib::{Attribute, AttributeValue, Attributes, Id, ProteinDescription},
+    mzspeclib::{Attribute, AttributeValue, Attributes, ProteinDescription},
     term,
 };
 
 /// An analyte that resulted in the spectrum.
-#[derive(Clone, Debug, Default, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Analyte {
     /// The numeric id of this analyte
-    pub id: Id,
+    pub id: NonZeroU32,
     /// The target itself
     pub target: AnalyteTarget,
     /// The matched protein(s)
@@ -25,9 +27,20 @@ pub struct Analyte {
     pub params: Vec<Param>,
 }
 
+impl Default for Analyte {
+    fn default() -> Self {
+        Self {
+            id: NonZeroU32::new(1).unwrap(),
+            target: AnalyteTarget::default(),
+            proteins: Vec::new(),
+            params: Vec::new(),
+        }
+    }
+}
+
 impl Analyte {
     /// Create a new analyte
-    pub const fn new(id: Id, target: AnalyteTarget) -> Self {
+    pub const fn new(id: NonZeroU32, target: AnalyteTarget) -> Self {
         Self {
             id,
             target,

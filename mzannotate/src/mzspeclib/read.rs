@@ -3,6 +3,7 @@ use std::{
     fmt::Display,
     fs::File,
     io::{self, BufReader, prelude::*},
+    num::NonZeroU32,
     path::{Path, PathBuf},
 };
 
@@ -108,7 +109,7 @@ pub struct MzSpecLibTextParser<'ontologies, Reader: Read> {
     /// A flag to indicate is the last spectrum failed, if so it will scan to the start of the next spectrum next time a spectrum is requested.
     last_error: bool,
     /// The last peptidoform ion set, used when parsing the mzPAF peaks in a spectrum.
-    last_peptidoform_ion_set: Vec<(u32, AnalyteTarget)>,
+    last_peptidoform_ion_set: Vec<(NonZeroU32, AnalyteTarget)>,
     ontologies: &'ontologies Ontologies,
 }
 
@@ -570,6 +571,14 @@ impl<'ontologies, R: BufRead> MzSpecLibTextParser<'ontologies, R> {
             ));
         }
         let id = self.parse_open_declaration(&buf, "<Analyte=", ParserState::Analyte)?;
+        let id = NonZeroU32::new(id).ok_or_else(|| {
+            BoxedError::new(
+                MzSpecLibErrorKind::Declaration,
+                "Invalid Analyte ID",
+                "An analyte ID cannot be 0",
+                self.current_context().to_owned(),
+            )
+        })?;
         let mut groups: HashMap<u32, Vec<(Attribute, Context)>> = HashMap::new();
 
         let mut analyte = Analyte::new(id, AnalyteTarget::default());

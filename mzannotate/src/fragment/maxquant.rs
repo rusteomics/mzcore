@@ -1,4 +1,4 @@
-use std::ops::Range;
+use std::{num::NonZeroU32, ops::Range};
 
 use context_error::{BasicKind, BoxedError, Context, CreateError};
 use mzcore::{chemistry::SatelliteLabel, prelude::*, sequence::SimpleLinear};
@@ -44,7 +44,7 @@ impl Fragment {
         parse_intermediate_representation(base_context, line, range).and_then(|annotations| {
             annotations.into_fragment(
                 &[(
-                    1,
+                    NonZeroU32::new(1).unwrap(),
                     AnalyteTarget::PeptidoformIon(interpretation.clone().into()),
                 )],
                 base_context,

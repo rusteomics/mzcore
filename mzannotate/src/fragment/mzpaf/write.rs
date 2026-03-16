@@ -201,16 +201,11 @@ impl ToMzPAF for Fragment {
             | FragmentType::BComposition(_, _)
             | FragmentType::Y(_)
             | FragmentType::YComposition(_, _) => {
-                if let Some(formula) = &self.formula
-                    && formula.charge().value != 0
-                {
+                if let Some(formula) = &self.formula {
                     // TODO: better way of storing?
                     write!(w, "f{{{}}}", formula.hill_notation_core())?;
                     if formula.additional_mass() != 0.0 {
                         write!(w, "{:+}", formula.additional_mass())?;
-                    }
-                    if formula.charge().value != 1 {
-                        write!(w, "^{:}", formula.charge().value)?;
                     }
                 } else {
                     write!(w, "?",)?;
@@ -241,7 +236,7 @@ impl ToMzPAF for Fragment {
         for loss in &self.neutral_loss {
             match loss {
                 NeutralLoss::SideChainLoss(_, aa) => {
-                    write!(w, "-r[sidechain_{aa}]")?;
+                    write!(w, "-[sidechain_{aa}]")?;
                 }
                 NeutralLoss::Gain(1, mol) => {
                     write!(w, "+{mol}")?;

@@ -1,3 +1,5 @@
+use std::num::NonZeroU32;
+
 use mzcore::system::MassOverCharge;
 use mzdata::{
     mzpeaks::{
@@ -7,7 +9,7 @@ use mzdata::{
     },
     params::{ParamDescribed, ParamLike, Unit, Value, ValueRef},
     prelude::{IonProperties, SpectrumLike},
-    spectrum::{SignalContinuity, SpectrumDescription},
+    spectrum::{MultiLayerSpectrum, SignalContinuity, SpectrumDescription},
 };
 
 use crate::{
@@ -227,6 +229,21 @@ impl<Spectrum: SpectrumLike> From<Spectrum> for AnnotatedSpectrum {
     }
 }
 
+impl From<AnnotatedSpectrum> for MultiLayerSpectrum {
+    fn from(value: AnnotatedSpectrum) -> Self {
+        let sort = value.peaks.peaks.is_sorted();
+        MultiLayerSpectrum {
+            description: value.description,
+            arrays: None,
+            peaks: Some(PeakSetVec::from_iter(
+                value.peaks.into_iter().map(|p| p.into()),
+                sort,
+            )),
+            deconvoluted_peaks: None,
+        }
+    }
+}
+
 impl crate::mzspeclib::MzSpecLibEncode for AnnotatedSpectrum {
     /// The peak type
     type Peak = AnnotatedPeak<Fragment>;
@@ -270,7 +287,7 @@ impl crate::mzspeclib::MzSpecLibEncode for AnnotatedSpectrum {
     }
 
     /// The attributes for the analytes
-    fn analytes(&self) -> impl Iterator<Item = (Id, Attributes)> {
+    fn analytes(&self) -> impl Iterator<Item = (NonZeroU32, Attributes)> {
         self.analytes.iter().map(|a| (a.id, a.attributes()))
     }
 

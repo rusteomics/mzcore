@@ -419,7 +419,7 @@ fn main() {
                             match &f.ion {
                                 FragmentType::Y(pos) => {
                                     if let Some((_, seq)) = pos.first().and_then(|p| p.attachment) {
-                                        let element = &annotated.analytes.iter().find(|a| a.id as usize == f.peptidoform_ion_index.unwrap_or_default()).and_then(|a| match &a.target {
+                                        let element = &annotated.analytes.iter().find(|a| (a.id.get() - 1) as usize == f.peptidoform_ion_index.unwrap_or_default()).and_then(|a| match &a.target {
                                     AnalyteTarget::PeptidoformIon(pep) => Some(pep),
                                     _ => None,
                                 }).unwrap().peptidoforms()[f.peptidoform_index.unwrap_or_default()][seq];
@@ -450,7 +450,7 @@ fn main() {
                                 }
                                 FragmentType::B{b, y,end: _} => {
                                     if let Some((_, seq)) = b.attachment.as_ref() {
-                                        let element = &annotated.analytes.iter().find(|a| a.id as usize == f.peptidoform_ion_index.unwrap_or_default()).and_then(|a| match &a.target {
+                                        let element = &annotated.analytes.iter().find(|a| (a.id.get() - 1) as usize == f.peptidoform_ion_index.unwrap_or_default()).and_then(|a| match &a.target {
                                     AnalyteTarget::PeptidoformIon(pep) => Some(pep),
                                     _ => None,
                                 }).unwrap().peptidoforms()[f.peptidoform_index.unwrap_or_default()][*seq];

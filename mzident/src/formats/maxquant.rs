@@ -576,7 +576,7 @@ impl PSMMetaData for MaxQuantPSM {
                     .as_ref()
                     .map(|pep| {
                         vec![Analyte {
-                            id: 0,
+                            id: NonZeroU32::new(1).unwrap(),
                             target: mzannotate::mzspeclib::AnalyteTarget::PeptidoformIon(
                                 pep.clone().into(),
                             ),

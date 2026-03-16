@@ -1,5 +1,9 @@
 //! mzPAF parser
-use std::{num::NonZeroU16, ops::Range, sync::LazyLock};
+use std::{
+    num::{NonZeroU16, NonZeroU32},
+    ops::Range,
+    sync::LazyLock,
+};
 
 use context_error::*;
 use serde::{Deserialize, Serialize};
@@ -37,7 +41,7 @@ impl Fragment {
     pub fn mz_paf<'a>(
         line: &'a str,
         ontologies: &Ontologies,
-        interpretation: &[(u32, AnalyteTarget)],
+        interpretation: &[(NonZeroU32, AnalyteTarget)],
     ) -> Result<Vec<Self>, BoxedError<'a, BasicKind>> {
         Self::mz_paf_inner(
             &Context::none().lines(0, line),
@@ -59,7 +63,7 @@ impl Fragment {
         line: &'a str,
         range: Range<usize>,
         ontologies: &Ontologies,
-        interpretation: &[(u32, AnalyteTarget)],
+        interpretation: &[(NonZeroU32, AnalyteTarget)],
     ) -> Result<Vec<Self>, BoxedError<'a, BasicKind>> {
         parse_intermediate_representation(base_context, line, range, ontologies).and_then(
             |annotations| {
@@ -167,7 +171,7 @@ impl PeakAnnotation {
     /// peptidoform.
     pub(crate) fn into_fragment<'a>(
         self,
-        interpretation: &[(u32, AnalyteTarget)],
+        interpretation: &[(NonZeroU32, AnalyteTarget)],
         context: &Context<'a>,
     ) -> Result<Fragment, BoxedError<'a, BasicKind>> {
         // Get the peptidoform (assume no cross-linkers)
@@ -177,7 +181,7 @@ impl PeakAnnotation {
             Some(
                 &interpretation
                     .iter()
-                    .find(|(n, _)| *n == self.analyte_number)
+                    .find(|(n, _)| n.get() == self.analyte_number)
                     .ok_or_else(|| {
                         BoxedError::new(
                             BasicKind::Error,
@@ -1521,7 +1525,7 @@ fn neutral_loss() {
 fn parse_correctly() {
     let ontologies = Ontologies::empty();
     let pep = [(
-        1_u32,
+        NonZeroU32::new(1).unwrap(),
         AnalyteTarget::PeptidoformIon(
             mzcore::sequence::PeptidoformIon::pro_forma("AAAAAAAAAA", &ontologies)
                 .unwrap()

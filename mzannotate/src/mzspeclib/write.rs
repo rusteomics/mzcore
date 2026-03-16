@@ -1,6 +1,7 @@
 use std::{
     io::{self, prelude::*},
     marker::PhantomData,
+    num::NonZeroU32,
 };
 
 use mzdata::{mzpeaks::peak_set::PeakSetIter, params::Value, prelude::*};
@@ -255,7 +256,7 @@ pub trait MzSpecLibEncode {
     /// The attributes for this spectrum
     fn spectrum(&self) -> Attributes;
     /// The attributes for the analytes
-    fn analytes(&self) -> impl Iterator<Item = (Id, Attributes)>;
+    fn analytes(&self) -> impl Iterator<Item = (NonZeroU32, Attributes)>;
     /// The interpretation members iterator
     type InterpretationMemberIter: IntoIterator<Item = (Id, Attributes)>;
     /// The attributes for the interpretations

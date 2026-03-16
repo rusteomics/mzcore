@@ -9,7 +9,7 @@ macro_rules! mzpaf_test {
             use itertools::Itertools;
             let basic_analytes = [
                 (
-                    1,
+                    std::num::NonZeroU32::new(1).unwrap(),
                     $crate::mzspeclib::AnalyteTarget::PeptidoformIon(
                         mzcore::sequence::PeptidoformIon::pro_forma(
                             "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
@@ -20,7 +20,7 @@ macro_rules! mzpaf_test {
                     ),
                 ),
                 (
-                    2,
+                    std::num::NonZeroU32::new(2).unwrap(),
                     $crate::mzspeclib::AnalyteTarget::PeptidoformIon(
                         mzcore::sequence::PeptidoformIon::pro_forma(
                             "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
@@ -196,3 +196,7 @@ mzpaf_test!(ne r"1@f{H666666660H666666660H666666660H666666660}", fuzz_18);
 mzpaf_test!(ne r"0@IG,0@IP,0@I　[N8𴴴C8nl+[<5NO]H+H2PO3^29<5NO]H+H2PO3^290@_{M0@_{M]b　[", fuzz_19);
 
 mzpaf_test!("IC[Carbamidomethyl]/-0.0008", hand_test_01);
+mzpaf_test!(
+    "1@p-[sidechain_Y]-[sidechain_M]^3,1@c26+2H-H2O1^3",
+    hand_test_02
+);
