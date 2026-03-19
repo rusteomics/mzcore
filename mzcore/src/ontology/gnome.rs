@@ -2,7 +2,7 @@
 use std::collections::HashMap;
 
 use context_error::{
-    BoxedError, CreateError, FullErrorContent, StaticErrorContent, combine_errors,
+    BoxedError, Context, CreateError, FullErrorContent, combine_error, combine_errors,
 };
 use thin_vec::ThinVec;
 
@@ -12,6 +12,7 @@ use mzcv::{
 
 use crate::{
     glycan::{GlycanStructure, MonoSaccharide},
+    helper_functions::explain_number_error,
     ontology::Ontology,
     sequence::{
         GnoComposition, GnoSubsumption, ModificationId, SimpleModification, SimpleModificationInner,
@@ -75,17 +76,8 @@ impl CVSource for Gnome {
         Vec<BoxedError<'static, CVError>>,
     > {
         let reader = readers.next().unwrap();
-        let (version, mut mods) = OboOntology::from_raw(reader)
-            .map_err(|e| {
-                vec![
-                    BoxedError::small(
-                        CVError::FileCouldNotBeParsed,
-                        e.get_short_description(),
-                        e.get_long_description(),
-                    )
-                    .add_contexts(e.get_contexts().iter().cloned()),
-                ]
-            })
+        let (version, (mut mods, errors)) = OboOntology::from_raw(reader)
+            .map_err(|e| vec![e.convert(|_| CVError::FileCouldNotBeParsed)])
             .map(|obo| (obo.version(), parse_gnome(obo)))?;
         let read_mods = mods.clone();
         let structures = parse_gnome_structures(readers.next().unwrap());
@@ -137,7 +129,7 @@ impl CVSource for Gnome {
                 .filter_map(|m| m.try_into().ok())
                 .map(std::sync::Arc::new)
                 .collect(),
-            Vec::new(),
+            errors,
         ))
     }
 }
@@ -200,7 +192,12 @@ fn gno_subsumption_from_str(s: &str) -> Result<GnoSubsumption, ()> {
 /// Parse the GNOme ontology .obo file
 /// # Errors
 /// If the file is not valid.
-fn parse_gnome(obo: OboOntology) -> HashMap<Box<str>, GNOmeModification> {
+fn parse_gnome(
+    obo: OboOntology,
+) -> (
+    HashMap<Box<str>, GNOmeModification>,
+    Vec<BoxedError<'static, CVError>>,
+) {
     let mut mods = HashMap::new();
     let mut errors = Vec::new();
 
@@ -257,15 +254,43 @@ fn parse_gnome(obo: OboOntology) -> HashMap<Box<str>, GNOmeModification> {
                     .collect(),
                 obj.obsolete,
             ),
-            subsumption_level: obj
-                .lines
-                .get(HAS_SUBSUMPTION_CATEGORY)
-                .map(|s| gno_subsumption_from_str(&s[0].0).unwrap())
-                .unwrap_or_default(),
-            structure_score: obj
-                .lines
-                .get(HAS_STRUCTURE_CHARACTERISATION_SCORE)
-                .map_or(u16::MAX, |s| s[0].0.parse().unwrap()),
+            subsumption_level: obj.lines.get(HAS_SUBSUMPTION_CATEGORY).map_or_else(
+                GnoSubsumption::default,
+                |s| {
+                    gno_subsumption_from_str(&s[0].0).unwrap_or_else(|()| {
+                        combine_error(
+                            &mut errors,
+                            BoxedError::new(
+                                CVError::ItemError,
+                                "Invalid subsumption level",
+                                "",
+                                Context::default().lines(0, s[0].0.to_string()),
+                            ),
+                        );
+                        GnoSubsumption::default()
+                    })
+                },
+            ),
+            structure_score: obj.lines.get(HAS_STRUCTURE_CHARACTERISATION_SCORE).map_or(
+                u16::MAX,
+                |s| {
+                    s[0].0.parse().unwrap_or_else(|err| {
+                        combine_error(
+                            &mut errors,
+                            BoxedError::new(
+                                CVError::ItemError,
+                                "Invalid structure characterisation score",
+                                format!(
+                                    "The number characterisation score {}",
+                                    explain_number_error(&err)
+                                ),
+                                Context::default().lines(0, s[0].0.to_string()),
+                            ),
+                        );
+                        u16::MAX
+                    })
+                },
+            ),
             is_a: obj.is_a,
             composition_id: obj
                 .property_values
@@ -295,7 +320,11 @@ fn parse_gnome(obo: OboOntology) -> HashMap<Box<str>, GNOmeModification> {
                             None
                         }
                         Err(e) => {
-                            combine_errors(&mut errors, e.into_iter().map(BoxedError::to_owned));
+                            combine_errors(
+                                &mut errors,
+                                e.into_iter()
+                                    .map(|e| e.to_owned().convert(|_| CVError::ItemError)),
+                            );
                             None
                         }
                     }
@@ -309,11 +338,7 @@ fn parse_gnome(obo: OboOntology) -> HashMap<Box<str>, GNOmeModification> {
         mods.insert(modification.id.name.clone(), modification);
     }
 
-    for error in errors {
-        println!("{error}");
-    }
-
-    mods
+    (mods, errors)
 }
 
 #[derive(Debug)]
@@ -323,7 +348,7 @@ struct GlycosmosList {
     chebi: Option<usize>,
     pubchem: Option<usize>,
     taxonomy: Vec<(Box<str>, usize)>,
-    glycomeatlas: ThinVec<(Box<str>, ThinVec<(Box<str>, Box<str>)>)>,
+    glycomeatlas: GlycomeAtlas,
 }
 
 /// Parse the glycosmos glycan structures .csv file
@@ -429,6 +454,8 @@ fn parse_gnome_structures(
     glycans
 }
 
+type GlycomeAtlas = ThinVec<(Box<str>, ThinVec<(Box<str>, Box<str>)>)>;
+
 #[derive(Clone, Debug)]
 struct GNOmeModification {
     id: ModificationId,
@@ -453,7 +480,7 @@ struct GNOmeModification {
     /// Taxonomy of where the glycan exists
     taxonomy: ThinVec<(Box<str>, usize)>,
     /// Locations of where the glycan exists
-    glycomeatlas: ThinVec<(Box<str>, ThinVec<(Box<str>, Box<str>)>)>,
+    glycomeatlas: GlycomeAtlas,
 }
 
 impl TryFrom<GNOmeModification> for SimpleModificationInner {

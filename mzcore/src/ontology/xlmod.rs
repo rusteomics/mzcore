@@ -1,5 +1,8 @@
 //! Code to handle the XL-MOD ontology
-use context_error::{BoxedError, CreateError, FullErrorContent, StaticErrorContent};
+use context_error::{
+    BoxedError, Context, CreateError, FullErrorContent, StaticErrorContent, combine_error,
+    combine_errors,
+};
 use itertools::Itertools;
 use std::{collections::HashMap, sync::Arc};
 use thin_vec::ThinVec;
@@ -16,7 +19,7 @@ use crate::{
         ontology_modification::{ModData, OntologyModification},
     },
     sequence::{
-        LinkerLength, LinkerSpecificity, PlacementRule, Position, SimpleModification,
+        AminoAcid, LinkerLength, LinkerSpecificity, PlacementRule, Position, SimpleModification,
         SimpleModificationInner,
     },
 };
@@ -70,6 +73,7 @@ impl CVSource for XlMod {
         Vec<BoxedError<'static, CVError>>,
     > {
         let reader = reader.next().unwrap();
+        let mut errors = Vec::new();
         OboOntology::from_raw(reader)
             .map_err(|e| {
                 vec![
@@ -120,19 +124,25 @@ impl CVSource for XlMod {
 
                             while let Some(id) = stack.pop() {
                                 if let Some(obj) = obo.objects.iter().find(|o| o.id == id) {
-                                    parse_property_values(
-                                        &obj.property_values,
-                                        &mut properties,
-                                        id,
+                                    combine_errors(
+                                        &mut errors,
+                                        parse_property_values(
+                                            &obj.property_values,
+                                            &mut properties,
+                                            id,
+                                        ),
                                     );
                                     stack.extend(obj.is_a.clone());
                                 }
                             }
 
-                            parse_property_values(
-                                &obj.property_values,
-                                &mut properties,
-                                obj.id.clone(),
+                            combine_errors(
+                                &mut errors,
+                                parse_property_values(
+                                    &obj.property_values,
+                                    &mut properties,
+                                    obj.id.clone(),
+                                ),
                             );
 
                             if properties.origins.0.is_empty() {
@@ -208,14 +218,14 @@ impl CVSource for XlMod {
                         for (sites, ids) in ignored.into_iter().sorted() {
                             println!(
                                 "XLMOD: Ignored sites {}: {}",
-                                sites.map_or("[not set]".to_string(), |v| v.to_string()),
+                                sites.map_or_else(|| "[not set]".to_string(), |v| v.to_string()),
                                 ids.into_iter().sorted().join(","),
                             );
                         }
 
                         mods
                     },
-                    Vec::new(),
+                    errors,
                 )
             })
     }
@@ -240,8 +250,9 @@ fn parse_property_values(
     >,
     properties: &mut Properties,
     id: OboIdentifier,
-) -> () {
+) -> Vec<BoxedError<'static, CVError>> {
     let mut mass = None;
+    let mut errors = Vec::new();
     for (property, value) in property_values {
         match property.as_ref() {
             "reactionSites" => {
@@ -249,7 +260,23 @@ fn parse_property_values(
                     println!("XLMOD, more than 1 reactionSites defined for {id}");
                 }
                 properties.sites = if let OboValue::Integer(n) = value[0].0 {
-                    Some(u8::try_from(n).unwrap())
+                    u8::try_from(n).map_or_else(
+                        |_| {
+                            combine_error(
+                                &mut errors,
+                                BoxedError::new(
+                                    CVError::ItemError,
+                                    "Out of range number of sites",
+                                    "The number of sites can only be in range 0—255",
+                                    Context::default()
+                                        .lines(0, value[0].0.to_string())
+                                        .to_owned(),
+                                ),
+                            );
+                            None
+                        },
+                        Some,
+                    )
                 } else {
                     println!("Invalid type at {id}");
                     unreachable!()
@@ -310,8 +337,11 @@ fn parse_property_values(
                     println!("XLMOD, more than 1 deadEndFormula defined for {id}");
                 }
                 properties.sites = Some(1);
-                properties.formula =
-                    Some(MolecularFormula::xlmod(&value[0].0.to_string()).unwrap());
+                properties.formula = MolecularFormula::xlmod(&value[0].0.to_string())
+                    .map_err(|e| {
+                        combine_error(&mut errors, e.to_owned().convert(|_| CVError::ItemError));
+                    })
+                    .ok();
             }
             "neutralLossFormula" => {
                 for (def, _, _) in value {
@@ -336,16 +366,22 @@ fn parse_property_values(
                 }
                 if let Some((l, r)) = value[0].0.to_string().split_once('&') {
                     properties.sites = properties.sites.or(Some(2));
-                    properties.origins.0.extend(
-                        l.trim_matches(['(', ')'])
-                            .split(',')
-                            .filter_map(|s| read_placement_rule(s.trim())),
-                    );
-                    properties.origins.1.extend(
-                        r.trim_matches(['(', ')'])
-                            .split(',')
-                            .filter_map(|s| read_placement_rule(s.trim())),
-                    );
+                    properties
+                        .origins
+                        .0
+                        .extend(l.trim_matches(['(', ')']).split(',').filter_map(|s| {
+                            read_placement_rule(s.trim())
+                                .map_err(|err| combine_error(&mut errors, err))
+                                .ok()
+                        }));
+                    properties
+                        .origins
+                        .1
+                        .extend(r.trim_matches(['(', ')']).split(',').filter_map(|s| {
+                            read_placement_rule(s.trim())
+                                .map_err(|err| combine_error(&mut errors, err))
+                                .ok()
+                        }));
                 } else {
                     properties.origins.0.extend(
                         value[0]
@@ -353,7 +389,11 @@ fn parse_property_values(
                             .to_string()
                             .trim_matches(['(', ')'])
                             .split(',')
-                            .filter_map(|s| read_placement_rule(s.trim())),
+                            .filter_map(|s| {
+                                read_placement_rule(s.trim())
+                                    .map_err(|err| combine_error(&mut errors, err))
+                                    .ok()
+                            }),
                     );
                 }
             }
@@ -369,7 +409,11 @@ fn parse_property_values(
                         .to_string()
                         .trim_matches(['(', ')'])
                         .split(',')
-                        .filter_map(|s| read_placement_rule(s.trim())),
+                        .filter_map(|s| {
+                            read_placement_rule(s.trim())
+                                .map_err(|err| combine_error(&mut errors, err))
+                                .ok()
+                        }),
                 );
             }
             "baseSpecificities" | "secondarybaseSpecificities" => {
@@ -436,22 +480,32 @@ fn parse_property_values(
     properties.formula = properties
         .formula
         .clone()
-        .or(mass.map(|v| MolecularFormula::with_additional_mass(v.0)));
+        .or_else(|| mass.map(|v| MolecularFormula::with_additional_mass(v.0)));
+
+    errors
 }
 
-fn read_placement_rule(brick: &str) -> Option<PlacementRule> {
-    if brick.len() == 1 {
-        Some(PlacementRule::AminoAcid(
-            vec![brick.try_into().unwrap()].into(),
+/// Read a placement rule
+/// # Errors
+/// If not a valid placement rule
+fn read_placement_rule(brick: &str) -> Result<PlacementRule, BoxedError<'static, CVError>> {
+    if brick.len() == 1
+        && let Ok(aa) = AminoAcid::try_from(brick)
+    {
+        Ok(PlacementRule::AminoAcid(
+            vec![aa].into(),
             Position::Anywhere,
         ))
-    } else if brick == "Protein N-term" {
-        Some(PlacementRule::Terminal(Position::ProteinNTerm))
-    } else if brick == "Protein C-term" {
-        Some(PlacementRule::Terminal(Position::ProteinCTerm))
-    } else if ["Thy"].contains(&brick) {
-        None
+    } else if brick.eq_ignore_ascii_case("Protein N-term") {
+        Ok(PlacementRule::Terminal(Position::ProteinNTerm))
+    } else if brick.eq_ignore_ascii_case("Protein C-term") {
+        Ok(PlacementRule::Terminal(Position::ProteinCTerm))
     } else {
-        panic!("Invalid placement rule: '{brick}'")
+        Err(BoxedError::new(
+            CVError::ItemError,
+            "Invalid placement rule",
+            "Placement rule has to be an amino acid, protein N-term, or protein C-term.",
+            Context::default().lines(0, brick).to_owned(),
+        ))
     }
 }

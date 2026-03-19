@@ -28,8 +28,8 @@ use mzcore::{
     chemistry::MolecularFormula,
     quantities::Tolerance,
     sequence::{
-        AminoAcid, PeptidoformIonSet, FlankingSequence, MUPSettings,
-        PeptideModificationSearch, Peptidoform, SequencePosition, SimpleLinear, SimpleModification,
+        AminoAcid, FlankingSequence, MUPSettings, PeptideModificationSearch, Peptidoform,
+        PeptidoformIonSet, SequencePosition, SimpleLinear, SimpleModification,
         SimpleModificationInner, SloppyParsingParameters,
     },
     system::{Mass, MassOverCharge, Time, isize::Charge, usize},

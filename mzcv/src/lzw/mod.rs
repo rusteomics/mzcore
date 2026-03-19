@@ -1,6 +1,6 @@
 //! Decompression for .Z files.
 //! Code was reused from unarc-rs by mkrueger (Mike Krüger) March 2026 licensed under MIT OR Apache-2.
-//! https://github.com/mkrueger/unarc-rs
+//! <https://github.com/mkrueger/unarc-rs>
 //! It was not added as dependency because only the .Z is needed and the unarc-rs has a lot of supported formats with a lot of dependencies.
 
 use std::io::Read;

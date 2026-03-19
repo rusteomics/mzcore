@@ -1,16 +1,19 @@
 //! Code to handle the Unimod ontology
 use std::io::Read;
 
-use context_error::{BoxedError, CreateError};
+use context_error::{BoxedError, Context, CreateError, FullErrorContent};
 use mzcv::{CVError, CVFile, CVSource, CVVersion, HashBufReader, SynonymScope};
 use roxmltree::*;
+use thin_vec::ThinVec;
 
 use crate::{
     chemistry::{DiagnosticIon, MolecularFormula, NeutralLoss},
+    helper_functions::explain_number_error,
     ontology::{
         Ontology,
         ontology_modification::{ModData, OntologyModification},
     },
+    prelude::AminoAcid,
     sequence::{PlacementRule, SimpleModification, SimpleModificationInner},
 };
 
@@ -76,7 +79,13 @@ impl CVSource for Unimod {
                 ..Default::default()
             },
         )
-        .expect("Invalid xml in Unimod xml");
+        .map_err(|err| {
+            vec![BoxedError::small(
+                CVError::FileCouldNotBeParsed,
+                "Invalid xml in Unimod xml",
+                err.to_string(),
+            )]
+        })?;
 
         let mut errors = Vec::new();
         let mut modifications: Vec<SimpleModification> = Vec::new();
@@ -97,13 +106,6 @@ impl CVSource for Unimod {
                 }
             }
         }
-        if !errors.is_empty() {
-            for err in &errors {
-                println!("{err}");
-            }
-            panic!("{} Errors found while parsing Unimod", errors.len());
-        }
-
         Ok((
             CVVersion {
                 last_updated: None,
@@ -111,37 +113,57 @@ impl CVSource for Unimod {
                 hash: reader.hash(),
             },
             modifications,
-            Vec::new(),
+            errors,
         ))
     }
 }
 
-fn parse_mod(node: &Node) -> Result<OntologyModification, String> {
+/// Parse a XML node as a Unimod modification
+/// # Errors
+/// If it contains invalid data or is missing required data
+fn parse_mod(node: &Node) -> Result<OntologyModification, BoxedError<'static, CVError>> {
     let mut formula = MolecularFormula::default();
-    let full_name: Box<str> = node
-        .attribute("full_name")
-        .map(Into::into)
-        .ok_or("No defined description for modification")?;
     let mut diagnostics = Vec::new();
     let mut rules = Vec::new();
     let mut cross_ids = Vec::new();
     let mut synonyms = Vec::new();
-    let mut description = full_name.clone();
-    synonyms.push((SynonymScope::Exact, full_name));
+    let mut description = node.attribute("full_name").map_or_else(
+        || "".into(),
+        |full_name| {
+            synonyms.push((SynonymScope::Exact, full_name.into()));
+            full_name.into()
+        },
+    );
     for child in node.children() {
         if child.has_tag_name("specificity") {
-            let site = child.attribute("site").unwrap(); // Check if there is a way to recognise linkers
+            let site = child.attribute("site").ok_or_else(|| {
+                BoxedError::new(
+                    CVError::ItemError,
+                    "No defined site for modification",
+                    "A Unimod modification must have a site set with 'site'",
+                    Context::default().lines(0, format!("Byte range: {:?}", node.range())),
+                )
+            })?; // Check if there is a way to recognise linkers
             let position = child
                 .attribute("position")
                 .map_or(Ok(crate::sequence::Position::Anywhere), |p| {
-                    p.parse().map_err(|()| format!("Invalid position '{p}'"))
+                    p.parse().map_err(|()| BoxedError::new(CVError::ItemError, "Invalid position", "Position should be one of Anywhere, Any N-term, Protein N-term, Any C-term, or Protein C-term", Context::default().lines(0, p).to_owned()))
                 })?;
             let rule = match (site, position) {
                 ("C-term" | "N-term", pos) => PlacementRule::Terminal(pos),
                 (aa, pos) => PlacementRule::AminoAcid(
                     aa.chars()
-                        .map(|c| c.try_into().unwrap_or_else(|()| panic!("Not an AA: {c}")))
-                        .collect(),
+                        .map(|c| {
+                            AminoAcid::try_from(c).map_err(|()| {
+                                BoxedError::new(
+                                    CVError::ItemError,
+                                    "Invalid amino acid",
+                                    "Use any valid amino acid single character code",
+                                    Context::default().lines(0, c.to_string()).to_owned(),
+                                )
+                            })
+                        })
+                        .collect::<Result<ThinVec<AminoAcid>, BoxedError<'static, CVError>>>()?,
                     pos,
                 ),
             };
@@ -151,82 +173,122 @@ fn parse_mod(node: &Node) -> Result<OntologyModification, String> {
                     n.has_tag_name("NeutralLoss") && n.attribute("composition") != Some("0")
                 })
                 .map(|loss| {
-                    NeutralLoss::Loss(
+                    Ok(NeutralLoss::Loss(
                         1,
-                        MolecularFormula::unimod(loss.attribute("composition").unwrap())
-                            .map_err(|e| e.to_string())
-                            .expect("Invalid composition in neutral loss"),
-                    )
+                        MolecularFormula::unimod(loss.attribute("composition").ok_or_else(
+                            || {
+                                BoxedError::new(
+                                    CVError::ItemError,
+                                    "No defined composition for loss",
+                                    "A Unimod loss must have a composition set with 'composition'",
+                                    Context::default()
+                                        .lines(0, format!("Byte range: {:?}", loss.range())),
+                                )
+                            },
+                        )?)
+                        .map_err(|e| {
+                            e.to_owned()
+                                .convert::<CVError, BoxedError<'static, CVError>>(|_| {
+                                    CVError::ItemError
+                                })
+                        })?,
+                    ))
                 })
-                .collect();
+                .collect::<Result<Vec<NeutralLoss>, BoxedError<'static, CVError>>>()?;
             rules.push((rule, losses));
         }
         if child.has_tag_name("delta")
             && let Some(composition) = child.attribute("composition")
         {
-            formula = MolecularFormula::unimod(composition).map_err(|e| e.to_string())?;
+            formula = MolecularFormula::unimod(composition).map_err(|e| {
+                e.to_owned()
+                    .convert::<CVError, BoxedError<'static, CVError>>(|_| CVError::ItemError)
+            })?;
         }
         if child.has_tag_name("Ignore")
             && let Some(composition) = child.attribute("composition")
         {
             diagnostics.push(DiagnosticIon(
-                MolecularFormula::unimod(composition).map_err(|e| e.to_string())?,
+                MolecularFormula::unimod(composition).map_err(|e| {
+                    e.to_owned()
+                        .convert::<CVError, BoxedError<'static, CVError>>(|_| CVError::ItemError)
+                })?,
             ));
         }
-        if child.has_tag_name("misc_notes") {
-            description = child
-                .text()
-                .ok_or("Missing text for notes in modification")?
-                .into();
+        if child.has_tag_name("misc_notes")
+            && let Some(text) = child.text()
+            && !text.is_empty()
+        {
+            description = text.into();
         }
-        if child.has_tag_name("alt_name") {
-            synonyms.push((
-                SynonymScope::Exact,
-                child.text().ok_or("Missing text for synonym")?.into(),
-            ));
+        if child.has_tag_name("alt_name")
+            && let Some(text) = child.text()
+            && !text.is_empty()
+        {
+            synonyms.push((SynonymScope::Exact, text.into()));
         }
         if child.has_tag_name("xref") {
-            let source: Box<str> = child
+            let source: Option<Box<str>> = child
                 .children()
                 .find(|c| c.has_tag_name("source"))
                 .and_then(|c| c.text())
-                .unwrap()
-                .into();
-            let text: Box<str> = child
+                .filter(|t| !t.is_empty())
+                .map(Into::into);
+            let text: Option<Box<str>> = child
                 .children()
                 .find(|c| c.has_tag_name("text"))
                 .and_then(|c| c.text())
-                .unwrap()
-                .into();
-            let url: Box<str> = child
+                .filter(|t| !t.is_empty())
+                .map(Into::into);
+            let url: Option<Box<str>> = child
                 .children()
                 .find(|c| c.has_tag_name("url"))
                 .and_then(|c| c.text())
-                .map(Into::into)
-                .unwrap_or_default();
-            if url.is_empty() {
-                cross_ids.push((Some(source), text));
-            } else {
+                .filter(|t| !t.is_empty())
+                .map(Into::into);
+            if let Some(url) = url {
                 cross_ids.push((
-                    if *source == *"Misc. URL" {
-                        Some(text)
+                    if source.as_deref() == Some("Misc. URL") {
+                        text
                     } else {
-                        Some(source)
+                        source
                     },
                     url,
                 ));
+            } else if let Some(text) = text {
+                cross_ids.push((source, text));
             }
         }
     }
     Ok(OntologyModification {
-        name: node
-            .attribute("title")
-            .map(Into::into)
-            .ok_or("No defined name for modification")?,
+        name: node.attribute("title").map(Into::into).ok_or_else(|| {
+            BoxedError::new(
+                CVError::ItemError,
+                "No defined name for modification",
+                "A Unimod modification must have a name set with 'title'",
+                Context::default().lines(0, format!("Byte range: {:?}", node.range())),
+            )
+        })?,
         id: node
             .attribute("record_id")
-            .ok_or("No defined id for modification")
-            .and_then(|v| v.parse::<u32>().map_err(|_| "Invalid id for modification"))?,
+            .ok_or_else(|| {
+                BoxedError::new(
+                    CVError::ItemError,
+                    "No defined ID for modification",
+                    "A Unimod modification must have an ID set with 'record_id'",
+                    Context::default().lines(0, format!("Byte range: {:?}", node.range())),
+                )
+            })
+            .and_then(|v| {
+                v.parse::<u32>().map_err(|err| {
+                    BoxedError::new(
+                        CVError::ItemError,
+                        "Modification ID not numeric",
+                        format!("The modification ID {}", explain_number_error(&err)),
+                        Context::default().lines(0, format!("Byte range: {:?}", node.range())),
+                    )
+                })
+            })?,
         ontology: Ontology::Unimod,
         description,
         synonyms: synonyms.into(),

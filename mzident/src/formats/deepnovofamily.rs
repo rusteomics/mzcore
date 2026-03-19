@@ -12,7 +12,7 @@ use mzcore::{
     csv::{CsvLine, parse_csv},
     ontology::Ontologies,
     sequence::{
-        AminoAcid, PeptidoformIonSet, FlankingSequence, Peptidoform, SemiAmbiguous,
+        AminoAcid, FlankingSequence, Peptidoform, PeptidoformIonSet, SemiAmbiguous,
         SloppyParsingParameters,
     },
     system::{Mass, MassOverCharge, Time, isize::Charge},

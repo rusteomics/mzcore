@@ -24,8 +24,8 @@ use mzcore::{
     ontology::Ontologies,
     quantities::{Tolerance, WithinTolerance},
     sequence::{
-        PeptidoformIonSet, CrossLinkName, FlankingSequence, Linked, Modification, Peptidoform,
-        PeptidoformIon, SequencePosition, SimpleModification, SimpleModificationInner,
+        CrossLinkName, FlankingSequence, Linked, Modification, Peptidoform, PeptidoformIon,
+        PeptidoformIonSet, SequencePosition, SimpleModification, SimpleModificationInner,
         SloppyParsingParameters,
     },
     system::{Mass, MassOverCharge, Time, isize::Charge},

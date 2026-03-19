@@ -34,9 +34,9 @@ pub mod prelude {
     };
     pub use crate::molecular_formula;
     pub use crate::sequence::{
-        AminoAcid, CheckedAminoAcid, PeptidoformIonSet, HasPeptidoformIonSet,
-        HasPeptidoformImpl, HasPeptidoformIon, IsAminoAcid, Peptidoform, PeptidoformIon, Protease,
-        SequenceElement, SequencePosition,
+        AminoAcid, CheckedAminoAcid, HasPeptidoformImpl, HasPeptidoformIon, HasPeptidoformIonSet,
+        IsAminoAcid, Peptidoform, PeptidoformIon, PeptidoformIonSet, Protease, SequenceElement,
+        SequencePosition,
     };
 }
 

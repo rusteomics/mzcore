@@ -20,7 +20,7 @@ const INIT_BITS: usize = 9;
 
 /// Max code for a given bit width
 #[inline]
-fn maxcode(n: usize) -> usize {
+const fn maxcode(n: usize) -> usize {
     (1 << n) - 1
 }
 
@@ -36,15 +36,17 @@ impl Lzw {
     /// # Arguments
     /// * `max_bits` - Maximum bits per code (9-16), from .Z file header
     /// * `block_mode` - If true, handle CLEAR codes (code 256) for table reset
-    pub(crate) fn new(max_bits: u8, block_mode: bool) -> Self {
-        Lzw {
+    pub(crate) const fn new(max_bits: u8, block_mode: bool) -> Self {
+        Self {
             max_bits,
             block_mode,
         }
     }
 
     /// Decompress LZW-compressed data
-    pub(crate) fn decomp(&mut self, input: &[u8]) -> Result<Vec<u8>, ArchiveError> {
+    /// # Errors
+    /// If the file is not correctly compressed with LZW.
+    pub(crate) fn decomp(&self, input: &[u8]) -> Result<Vec<u8>, ArchiveError> {
         let max_bits = self.max_bits as usize;
         let block_mode = self.block_mode;
         let maxmaxcode: usize = 1 << max_bits;

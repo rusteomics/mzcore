@@ -17,8 +17,7 @@ use mzcore::{
     csv::{CsvLine, parse_csv},
     ontology::Ontologies,
     sequence::{
-        PeptidoformIonSet, FlankingSequence, Peptidoform, SemiAmbiguous,
-        SloppyParsingParameters,
+        FlankingSequence, Peptidoform, PeptidoformIonSet, SemiAmbiguous, SloppyParsingParameters,
     },
     system::{Mass, MassOverCharge, Time, isize::Charge},
 };
