@@ -118,6 +118,13 @@ impl Add for UsedSpace {
     }
 }
 
+impl Add<()> for UsedSpace {
+    type Output = Self;
+    fn add(self, rhs: ()) -> Self {
+        self
+    }
+}
+
 impl<T: Space> Space for &[T] {
     fn space(&self) -> UsedSpace {
         let mut total = UsedSpace::default();

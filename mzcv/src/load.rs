@@ -625,16 +625,38 @@ impl<CV: CVSource> CVIndex<CV> {
                             flate2::Compression::fast(),
                         );
                         std::io::copy(&mut encoder, &mut writer)
-
-                        // response
-                        // .copy_to(&mut writer)
-                        // // .map(|_| ())
-                        // .map_err(|e| e.to_string())
-
-                        // Ok(0)
                     }
                     crate::CVCompression::Lzw => {
-                        todo!()
+                        use crate::lzw::ZArchive;
+
+                        let content = ZArchive::new(response.as_ref())
+                            .and_then(|mut a| a.read())
+                            .map_err(|e| {
+                                use crate::lzw::{self, ArchiveError};
+
+                                BoxedError::new(
+                                    CVError::FileCouldNotBeParsed,
+                                    "Could not decompress Lzw compression",
+                                    match e {
+                                        ArchiveError::DecompressionFailed { entry, reason } => {
+                                            format!("{entry} {reason}")
+                                        }
+                                        ArchiveError::InvalidHeader => format!(
+                                            "Invalid header, the first bytes have to be {:x}{:x}",
+                                            lzw::ID[0],
+                                            lzw::ID[1]
+                                        ),
+                                        ArchiveError::IO(io) => io.to_string(),
+                                    },
+                                    Context::none().source(url.to_string()).to_owned(),
+                                )
+                            })?;
+
+                        let mut encoder = flate2::bufread::GzEncoder::new(
+                            BufReader::new(content.as_slice()),
+                            flate2::Compression::fast(),
+                        );
+                        std::io::copy(&mut encoder, &mut writer)
                     }
                 }
                 .map_err(|e| {

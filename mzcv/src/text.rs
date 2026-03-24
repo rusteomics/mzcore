@@ -16,7 +16,8 @@ const fn simplify_char(c: char) -> u8 {
     if c.is_ascii() { c as u32 as u8 } else { 0 }
 }
 
-pub(crate) fn levenshtein_distance(word1: &str, word2: &str) -> usize {
+/// Get the Levenshtein distance between two words
+pub fn levenshtein_distance(word1: &str, word2: &str) -> usize {
     let word2_len = word2.chars().count();
     let mut row1 = (0..).take(word2_len + 1).collect::<Vec<_>>();
     let mut row2 = vec![0; word2_len + 1];

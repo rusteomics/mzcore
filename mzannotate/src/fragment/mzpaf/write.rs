@@ -202,7 +202,6 @@ impl ToMzPAF for Fragment {
             | FragmentType::Y(_)
             | FragmentType::YComposition(_, _) => {
                 if let Some(formula) = &self.formula {
-                    // TODO: better way of storing?
                     write!(w, "f{{{}}}", formula.hill_notation_core())?;
                     if formula.additional_mass() != 0.0 {
                         write!(w, "{:+}", formula.additional_mass())?;
