@@ -8,7 +8,7 @@ mod hash_buf_reader;
 mod load;
 mod lzw;
 mod obo;
-mod text;
+pub mod text;
 
 pub use curie::*;
 pub use cv_error::*;

@@ -118,23 +118,28 @@ macro_rules! species {
             fn from_str(s: &str) -> Result<Self, Self::Err> {
                 let s = s.trim().to_lowercase();
                 for (name, species) in SPECIES_PARSE_LIST {
-                    if name.to_lowercase() == s {
+                    if name.eq_ignore_ascii_case(&s) {
                         return Ok(*species);
                     }
                 }
 
-                // let options: Vec<String> = SPECIES_PARSE_LIST.iter()
-                //     .map(|option| option.0.to_lowercase())
-                //     .collect();
-                // let options: Vec<&str> = options.iter()
-                //     .map(|option| option.as_str())
-                //     .collect();
+                let mut options: Vec<(usize, Self)> = Vec::with_capacity(5);
+                for (name, species) in SPECIES_PARSE_LIST {
+                    let d = mzcv::text::levenshtein_distance(&name.to_lowercase(), &s);
+                    let index = options.binary_search_by(|a| a.0.cmp(&d)).unwrap_or_else(|i| i);
+                    if index < 5 {
+                        if options.len() == 5 {
+                            options.remove(4);
+                        }
+                        options.insert(index, (d, *species));
+                    }
+                }
 
                 Err(BoxedError::new(BasicKind::Error,
                         "Unknown species name",
                         "The provided name could not be recognised as a species name.",
-                        Context::show(s.as_str())
-                    ).to_owned() // TODO: maybe figure out a way to use mzcv to generate fuzzy matches here
+                        Context::show(s.as_str()).to_owned()
+                    ).suggestions(options.into_iter().map(|(_, s)| s.to_string()))
                 )
             }
         }

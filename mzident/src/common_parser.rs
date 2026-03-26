@@ -91,7 +91,7 @@ macro_rules! format_family {
                 fn space(&self) -> mzcore::space::UsedSpace {
                     ( mzcore::space::UsedSpace::default()
                     $(+ self.$prname.space())*
-                    $(+ self.$poname.space())*)
+                    $(+ {$(#[cfg(feature = $pocfg)])? self.$poname.space()})*)
                     .set_total::<Self>()
                 }
             }
@@ -226,7 +226,7 @@ macro_rules! format_family {
             fn space(&self) -> mzcore::space::UsedSpace {
                 ( mzcore::space::UsedSpace::default()
                 $(+ self.$rname.space())*
-                $(+ self.$oname.space())*)
+                $(+ {$(#[cfg(feature = $ocfg)])? self.$oname.space()})*)
                 .set_total::<Self>()
             }
         }

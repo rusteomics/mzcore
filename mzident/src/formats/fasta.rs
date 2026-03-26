@@ -1367,23 +1367,23 @@ impl ProteinMetaData for FastaData {
     }
 
     fn species(&self) -> Option<mzcv::Curie> {
-        todo!()
+        None // TODO: Maybe look at the header to see if this can be filled
     }
 
     fn species_name(&self) -> Option<&str> {
-        todo!()
+        None
     }
 
     fn search_engine(&self) -> &[(super::CVTerm, Option<(f64, super::CVTerm)>)] {
-        todo!()
+        &[]
     }
 
     fn ambiguity_members(&self) -> &[String] {
-        todo!()
+        &[]
     }
 
     fn database(&self) -> Option<(&str, Option<&str>)> {
-        todo!()
+        None
     }
 
     fn modifications(
@@ -1392,23 +1392,23 @@ impl ProteinMetaData for FastaData {
         Vec<(mzcore::prelude::SequencePosition, Option<f64>)>,
         mzcore::sequence::SimpleModification,
     )] {
-        todo!()
+        &[]
     }
 
     fn coverage(&self) -> Option<f64> {
-        todo!()
+        None
     }
 
     fn gene_ontology(&self) -> &[mzcv::Curie] {
-        todo!()
+        &[]
     }
 
     fn reliability(&self) -> Option<super::Reliability> {
-        todo!()
+        None
     }
 
     fn uri(&self) -> Option<&str> {
-        todo!()
+        None
     }
 }
 
