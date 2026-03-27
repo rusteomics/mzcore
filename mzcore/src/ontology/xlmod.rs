@@ -90,7 +90,6 @@ impl CVSource for XlMod {
                     obo.version(),
                     {
                         let mut mods: Vec<SimpleModification> = Vec::new();
-                        let mut ignored: HashMap<Option<u8>, Vec<OboIdentifier>> = HashMap::new();
 
                         for obj in &obo.objects {
                             if obj.stanza_type != OboStanzaType::Term {
@@ -208,19 +207,20 @@ impl CVSource for XlMod {
                                     .into(),
                                 ));
                             } else if !properties.dna_linker && !obj.property_values.is_empty() {
-                                ignored
-                                    .entry(properties.sites)
-                                    .or_default()
-                                    .push(obj.id.clone());
+                                if let Some(sites) = properties.sites {
+                                    combine_error(&mut errors, BoxedError::new(
+                                        CVError::ItemWarning,
+                                        "Higher order cross-linker", 
+                                        format!("This cross-linker links {sites} sites, but only cross-linkers with two sites are supported for now, this modification will be ignored"), 
+                                        Context::default().lines(0, format!("XLMOD:{id:05}"))));
+                                } else {
+                                    combine_error(&mut errors, BoxedError::new(
+                                        CVError::ItemWarning,
+                                        "Undefined modification", 
+                                        "This modification has no definition of the number of sites it links, this modification will be ignored", 
+                                        Context::default().lines(0, format!("XLMOD:{id:05}"))));
+                                }
                             }
-                        }
-
-                        for (sites, ids) in ignored.into_iter().sorted() {
-                            println!(
-                                "XLMOD: Ignored sites {}: {}",
-                                sites.map_or_else(|| "[not set]".to_string(), |v| v.to_string()),
-                                ids.into_iter().sorted().join(","),
-                            );
                         }
 
                         mods
@@ -257,7 +257,15 @@ fn parse_property_values(
         match property.as_ref() {
             "reactionSites" => {
                 if value.len() > 1 {
-                    println!("XLMOD, more than 1 reactionSites defined for {id}");
+                    combine_error(
+                        &mut errors,
+                        BoxedError::new(
+                            CVError::ItemWarning,
+                            "Multiple reaction sites",
+                            "More than 1 'reactionSites` definitions for this entry",
+                            Context::none().lines(0, id.to_string()),
+                        ),
+                    );
                 }
                 properties.sites = if let OboValue::Integer(n) = value[0].0 {
                     u8::try_from(n).map_or_else(
@@ -278,63 +286,180 @@ fn parse_property_values(
                         Some,
                     )
                 } else {
-                    println!("Invalid type at {id}");
-                    unreachable!()
+                    combine_error(
+                        &mut errors,
+                        BoxedError::new(
+                            CVError::ItemError,
+                            "Invalid type",
+                            "Invalid item type",
+                            Context::none().lines(
+                                0,
+                                format!(
+                                    "{id}: reactionSites: type: {}, expected: integer",
+                                    value[0].0.datatype()
+                                ),
+                            ),
+                        ),
+                    );
+                    None
                 }
             }
             "spacerLength" => {
                 for (def, _, _) in value {
-                    match (&mut properties.length, def) {
-                        (LinkerLength::Discreet(options), OboValue::Float(n)) => {
-                            options.push((*n).into());
+                    let length = if let OboValue::Float(n) = def {
+                        *n
+                    } else {
+                        combine_error(
+                            &mut errors,
+                            BoxedError::new(
+                                CVError::ItemError,
+                                "Invalid type",
+                                "Invalid item type",
+                                Context::none().lines(
+                                    0,
+                                    format!(
+                                        "{id}: spacerLength: type: {}, expected: float",
+                                        def.datatype()
+                                    ),
+                                ),
+                            ),
+                        );
+                        0.0
+                    };
+                    match &mut properties.length {
+                        LinkerLength::Discreet(options) => {
+                            options.push(length.into());
                         }
-                        (l, OboValue::Float(n)) => *l = LinkerLength::Discreet(vec![(*n).into()]),
-                        _ => unreachable!(),
+                        l => *l = LinkerLength::Discreet(vec![length.into()]),
                     }
                 }
             }
             "minSpacerLength" => {
                 if value.len() > 1 {
-                    println!("XLMOD, more than 1 minSpacerLength defined for {id}");
+                    combine_error(
+                        &mut errors,
+                        BoxedError::new(
+                            CVError::ItemWarning,
+                            "Multiple minSpacerLength",
+                            "More than 1 'minSpacerLength` definitions for this entry",
+                            Context::none().lines(0, id.to_string()),
+                        ),
+                    );
                 }
-                match (&mut properties.length, &value[0].0) {
-                    (LinkerLength::InclusiveRange(start, _), OboValue::Float(n)) => {
-                        *start = (*n).into();
+                let length = if let OboValue::Float(n) = value[0].0 {
+                    n
+                } else {
+                    combine_error(
+                        &mut errors,
+                        BoxedError::new(
+                            CVError::ItemError,
+                            "Invalid type",
+                            "Invalid item type",
+                            Context::none().lines(
+                                0,
+                                format!(
+                                    "{id}: minSpacerLength: type: {}, expected: float",
+                                    value[0].0.datatype()
+                                ),
+                            ),
+                        ),
+                    );
+                    0.0
+                };
+                match &mut properties.length {
+                    LinkerLength::InclusiveRange(start, _) => {
+                        *start = length.into();
                     }
-                    (l, OboValue::Float(n)) => {
-                        *l = LinkerLength::InclusiveRange((*n).into(), (*n).into());
+                    l => {
+                        *l = LinkerLength::InclusiveRange(length.into(), length.into());
                     }
-                    _ => unreachable!(),
                 }
             }
             "maxSpacerLength" => {
                 if value.len() > 1 {
-                    println!("XLMOD, more than 1 maxSpacerLength defined for {id}");
+                    combine_error(
+                        &mut errors,
+                        BoxedError::new(
+                            CVError::ItemWarning,
+                            "Multiple maxSpacerLength",
+                            "More than 1 'maxSpacerLength` definitions for this entry",
+                            Context::none().lines(0, id.to_string()),
+                        ),
+                    );
                 }
-                match (&mut properties.length, &value[0].0) {
-                    (LinkerLength::InclusiveRange(_, end), OboValue::Float(n)) => {
-                        *end = (*n).into();
+                let length = if let OboValue::Float(n) = value[0].0 {
+                    n
+                } else {
+                    combine_error(
+                        &mut errors,
+                        BoxedError::new(
+                            CVError::ItemError,
+                            "Invalid type",
+                            "Invalid item type",
+                            Context::none().lines(
+                                0,
+                                format!(
+                                    "{id}: maxSpacerLength: type: {}, expected: float",
+                                    value[0].0.datatype()
+                                ),
+                            ),
+                        ),
+                    );
+                    0.0
+                };
+                match &mut properties.length {
+                    LinkerLength::InclusiveRange(_, end) => {
+                        *end = length.into();
                     }
-                    (l, OboValue::Float(n)) => {
-                        *l = LinkerLength::InclusiveRange((*n).into(), (*n).into());
+                    l => {
+                        *l = LinkerLength::InclusiveRange(length.into(), length.into());
                     }
-                    _ => unreachable!(),
                 }
             }
             "monoIsotopicMass" => {
                 if value.len() > 1 {
-                    println!("XLMOD, more than 1 monoIsotopicMass defined for {id}");
+                    combine_error(
+                        &mut errors,
+                        BoxedError::new(
+                            CVError::ItemWarning,
+                            "Multiple monoIsotopicMass",
+                            "More than 1 'monoIsotopicMass` definitions for this entry",
+                            Context::none().lines(0, id.to_string()),
+                        ),
+                    );
                 }
                 mass = if let OboValue::Float(n) = value[0].0 {
                     Some(ordered_float::OrderedFloat(n))
                 } else {
-                    println!("Invalid type at {id}");
-                    unreachable!()
+                    combine_error(
+                        &mut errors,
+                        BoxedError::new(
+                            CVError::ItemError,
+                            "Invalid type",
+                            "Invalid item type",
+                            Context::none().lines(
+                                0,
+                                format!(
+                                    "{id}: monoIsotopicMass: type: {}, expected: float",
+                                    value[0].0.datatype()
+                                ),
+                            ),
+                        ),
+                    );
+                    None
                 }
             }
             "deadEndFormula" => {
                 if value.len() > 1 {
-                    println!("XLMOD, more than 1 deadEndFormula defined for {id}");
+                    combine_error(
+                        &mut errors,
+                        BoxedError::new(
+                            CVError::ItemWarning,
+                            "Multiple deadEndFormula",
+                            "More than 1 'deadEndFormula` definitions for this entry",
+                            Context::none().lines(0, id.to_string()),
+                        ),
+                    );
                 }
                 properties.sites = Some(1);
                 properties.formula = MolecularFormula::xlmod(&value[0].0.to_string())
@@ -352,7 +477,15 @@ fn parse_property_values(
             }
             "bridgeFormula" => {
                 if value.len() > 1 {
-                    println!("XLMOD, more than 1 bridgeFormula defined for {id}");
+                    combine_error(
+                        &mut errors,
+                        BoxedError::new(
+                            CVError::ItemWarning,
+                            "Multiple bridgeFormula",
+                            "More than 1 'bridgeFormula` definitions for this entry",
+                            Context::none().lines(0, id.to_string()),
+                        ),
+                    );
                 }
                 properties.sites = properties.sites.or(Some(2));
                 properties.formula =
@@ -362,7 +495,15 @@ fn parse_property_values(
                 // specificities: "(C,U)" xsd:string
                 // specificities: "(K,N,Q,R,Protein N-term)&(E,D,Protein C-term)" xsd:string
                 if value.len() > 1 {
-                    println!("XLMOD, more than 1 specificities defined for {id}");
+                    combine_error(
+                        &mut errors,
+                        BoxedError::new(
+                            CVError::ItemWarning,
+                            "Multiple specificities",
+                            "More than 1 'specificities` definitions for this entry",
+                            Context::none().lines(0, id.to_string()),
+                        ),
+                    );
                 }
                 if let Some((l, r)) = value[0].0.to_string().split_once('&') {
                     properties.sites = properties.sites.or(Some(2));
@@ -401,7 +542,15 @@ fn parse_property_values(
                 // TODO: keep track that these are 'secondary' somewhere, similarly to the Unimod hidden state
                 // secondarySpecificities: "(S,T,Y)" xsd:string
                 if value.len() > 1 {
-                    println!("XLMOD, more than 1 secondarySpecificities defined for {id}");
+                    combine_error(
+                        &mut errors,
+                        BoxedError::new(
+                            CVError::ItemWarning,
+                            "Multiple secondarySpecificities",
+                            "More than 1 'secondarySpecificities` definitions for this entry",
+                            Context::none().lines(0, id.to_string()),
+                        ),
+                    );
                 }
                 properties.origins.0.extend(
                     value[0]
@@ -427,8 +576,22 @@ fn parse_property_values(
                         MolecularFormula::with_additional_mass(if let OboValue::Float(n) = def {
                             *n
                         } else {
-                            println!("Invalid type at {id}");
-                            unreachable!()
+                            combine_error(
+                                &mut errors,
+                                BoxedError::new(
+                                    CVError::ItemError,
+                                    "Invalid type",
+                                    "Invalid item type",
+                                    Context::none().lines(
+                                        0,
+                                        format!(
+                                            "{id}: {property}: type: {}, expected: float",
+                                            value[0].0.datatype()
+                                        ),
+                                    ),
+                                ),
+                            );
+                            0.0
                         }),
                     ));
                 }
@@ -467,8 +630,21 @@ fn parse_property_values(
                             .collect();
                         properties.stubs.push((formula_first, formula_second));
                     } else {
-                        println!("Invalid type at {id}");
-                        unreachable!()
+                        combine_error(
+                            &mut errors,
+                            BoxedError::new(
+                                CVError::ItemError,
+                                "Invalid type",
+                                "Invalid item type",
+                                Context::none().lines(
+                                    0,
+                                    format!(
+                                        "{id}: {property}: type: {}, expected: string",
+                                        value[0].0.datatype()
+                                    ),
+                                ),
+                            ),
+                        );
                     }
                 }
             }

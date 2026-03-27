@@ -293,6 +293,18 @@ impl OboValue {
             )),
         }
     }
+
+    /// Get a description of the datatype of this value
+    pub fn datatype(&self) -> &'static str {
+        match self {
+            Self::Boolean(_) => "boolean",
+            Self::String(_) => "string",
+            Self::Uri(_) => "uri",
+            Self::Float(_) => "float",
+            Self::Integer(_) => "integer",
+            Self::DateTime(_) => "datetime",
+        }
+    }
 }
 
 impl OboOntology {
