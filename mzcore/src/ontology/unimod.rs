@@ -141,7 +141,7 @@ fn parse_mod(node: &Node) -> Result<OntologyModification, BoxedError<'static, CV
                     CVError::ItemError,
                     "No defined site for modification",
                     "A Unimod modification must have a site set with 'site'",
-                    Context::default().lines(0, format!("Byte range: {:?}", node.range())),
+                    Context::default().byte_range(node.range()),
                 )
             })?; // Check if there is a way to recognise linkers
             let position = child
@@ -181,8 +181,7 @@ fn parse_mod(node: &Node) -> Result<OntologyModification, BoxedError<'static, CV
                                     CVError::ItemError,
                                     "No defined composition for loss",
                                     "A Unimod loss must have a composition set with 'composition'",
-                                    Context::default()
-                                        .lines(0, format!("Byte range: {:?}", loss.range())),
+                                    Context::default().byte_range(loss.range()),
                                 )
                             },
                         )?)
@@ -266,7 +265,7 @@ fn parse_mod(node: &Node) -> Result<OntologyModification, BoxedError<'static, CV
                 CVError::ItemError,
                 "No defined name for modification",
                 "A Unimod modification must have a name set with 'title'",
-                Context::default().lines(0, format!("Byte range: {:?}", node.range())),
+                Context::default().byte_range(node.range()),
             )
         })?,
         id: node
@@ -276,7 +275,7 @@ fn parse_mod(node: &Node) -> Result<OntologyModification, BoxedError<'static, CV
                     CVError::ItemError,
                     "No defined ID for modification",
                     "A Unimod modification must have an ID set with 'record_id'",
-                    Context::default().lines(0, format!("Byte range: {:?}", node.range())),
+                    Context::default().byte_range(node.range()),
                 )
             })
             .and_then(|v| {
@@ -285,7 +284,7 @@ fn parse_mod(node: &Node) -> Result<OntologyModification, BoxedError<'static, CV
                         CVError::ItemError,
                         "Modification ID not numeric",
                         format!("The modification ID {}", explain_number_error(&err)),
-                        Context::default().lines(0, format!("Byte range: {:?}", node.range())),
+                        Context::default().byte_range(node.range()),
                     )
                 })
             })?,

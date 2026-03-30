@@ -1,14 +1,14 @@
 //! Code to handle the RESID ontology
 use std::io::Read;
 
-use context_error::{BoxedError, CreateError};
+use context_error::{BoxedError, Context, CreateError, FullErrorContent, combine_error};
 
 use mzcv::{CVError, CVFile, CVSource, CVVersion, HashBufReader};
 
 use roxmltree::*;
 
 use crate::{
-    chemistry::{MolecularFormula, MultiChemical},
+    chemistry::MolecularFormula,
     ontology::{
         Ontology,
         ontology_modification::{ModData, OntologyModification},
@@ -83,21 +83,45 @@ impl CVSource for Resid {
                 ..Default::default()
             },
         )
-        .expect("Invalid xml in RESID xml");
+        .map_err(|err| {
+            vec![BoxedError::new(
+                CVError::FileCouldNotBeParsed,
+                "Invalid XML",
+                "The given RESID file does not contain valid XML",
+                Context::default().lines(0, err.to_string()),
+            )]
+        })?;
+        let mut errors = Vec::new();
         let mut modifications: Vec<SimpleModification> = Vec::new();
-        let database = document
-            .root()
-            .first_child()
-            .expect("No Database node in RESID XML");
+        let database = document.root().first_child().ok_or_else(|| {
+            vec![BoxedError::new(
+                CVError::FileCouldNotBeParsed,
+                "No root node in RESID XML",
+                "A Database node should be present as the root in a RESID XML file",
+                Context::default(),
+            )]
+        })?;
 
         'entry: for entry in database.children() {
             if entry.has_tag_name("Entry") {
                 let mut modification = OntologyModification::default();
-                let mut corrections = Vec::new();
                 let mut rules = Vec::new();
 
                 modification.ontology = Ontology::Resid;
-                modification.id = entry.attribute("id").unwrap()[2..].parse().unwrap();
+                let Some(id) = entry.attribute("id").and_then(|id| id[2..].parse().ok()) else {
+                    combine_error(
+                        &mut errors,
+                        BoxedError::new(
+                            CVError::ItemError,
+                            "Invalid ID",
+                            "A RESID ID should be present and of shape 'AA0000'",
+                            Context::default().byte_range(entry.range()),
+                        ),
+                    );
+                    continue;
+                };
+                modification.id = id;
+                let mut formula_found = false;
                 for data_block in entry.children() {
                     match data_block.tag_name().name() {
                         "Names" => {
@@ -111,7 +135,7 @@ impl CVSource for Resid {
                                         modification.synonyms.push((
                                             mzcv::SynonymScope::Exact,
                                             name_node.text().unwrap_or_default().into(),
-                                        ))
+                                        ));
                                     }
                                     "Xref" => {
                                         if let Some((a, b)) =
@@ -119,42 +143,76 @@ impl CVSource for Resid {
                                         {
                                             modification.cross_ids.push((Some(a.into()), b.into()));
                                         } else {
-                                            panic!("Invalid Xref content")
+                                            combine_error(
+                                                &mut errors,
+                                                BoxedError::new(
+                                                    CVError::ItemError,
+                                                    "Invalid xref",
+                                                    "A RESID xref should be of shape TYPE:VALUE",
+                                                    Context::default()
+                                                        .byte_range(name_node.range())
+                                                        .lines(
+                                                            0,
+                                                            format!(
+                                                                "RESID:AA{:04}",
+                                                                modification.id
+                                                            ),
+                                                        ),
+                                                ),
+                                            );
                                         }
                                     }
                                     tag if tag.trim().is_empty() => (),
-                                    tag => panic!("RESID: Invalid Name tag: {tag} {name_node:?}"),
-                                }
-                            }
-                        }
-                        "FormulaBlock" => {
-                            for formula_node in data_block.children() {
-                                if formula_node.has_tag_name("Formula") {
-                                    modification.formula = MolecularFormula::resid(
-                                        formula_node.text().unwrap_or_default(),
-                                    )
-                                    .unwrap()
-                                    .to_vec()
-                                    .pop()
-                                    .unwrap(); // TODO: handle Multi cases, only used for B and Z (potentially just use those?)
+                                    _ => combine_error(
+                                        &mut errors,
+                                        BoxedError::new(
+                                            CVError::ItemError,
+                                            "Invalid name",
+                                            "A RESID name should be Name, AlternateName, SystemicName, or Xref",
+                                            Context::default().byte_range(name_node.range()).lines(
+                                                0,
+                                                format!("RESID:AA{:04}", modification.id),
+                                            ),
+                                        ),
+                                    ),
                                 }
                             }
                         }
                         "CorrectionBlock" => {
+                            if formula_found {
+                                combine_error(
+                                    &mut errors,
+                                    BoxedError::new(
+                                        CVError::ItemWarning,
+                                        "Multiple formulas",
+                                        "Modifications with formulas (CorrectionBlock) that differ based on the used amino acid are ignored for now",
+                                        Context::default()
+                                            .byte_range(data_block.range())
+                                            .lines(0, format!("RESID:AA{:04}", modification.id)),
+                                    ),
+                                );
+                                continue 'entry;
+                            }
                             for formula_node in data_block.children() {
                                 if formula_node.has_tag_name("Formula") {
-                                    corrections.push((
-                                        formula_node.attribute("uids"),
-                                        formula_node.attribute("link"),
-                                        formula_node.attribute("label"),
-                                        MolecularFormula::resid_single(
-                                            formula_node.text().unwrap_or_default(),
-                                        )
-                                        .unwrap(),
-                                    ));
+                                    match MolecularFormula::resid_single(
+                                        formula_node.text().unwrap_or_default(),
+                                    ) {
+                                        Ok(f) => {
+                                            formula_found = true;
+                                            modification.formula = f;
+                                        }
+                                        Err(err) => combine_error(
+                                            &mut errors,
+                                            err.convert::<CVError, BoxedError<'_, CVError>>(|_| {
+                                                CVError::ItemError
+                                            })
+                                            .to_owned(),
+                                        ),
+                                    }
                                 }
                             }
-                        } // Fixes on specific aas? or mods
+                        }
                         "ReferenceBlock" => {
                             for ref_node in data_block.children() {
                                 if ref_node.has_tag_name("Xref") {
@@ -163,7 +221,20 @@ impl CVSource for Resid {
                                     {
                                         modification.cross_ids.push((Some(a.into()), b.into()));
                                     } else {
-                                        panic!("Invalid Xref content")
+                                        combine_error(
+                                            &mut errors,
+                                            BoxedError::new(
+                                                CVError::ItemError,
+                                                "Invalid xref",
+                                                "A RESID xref should be of shape TYPE:VALUE",
+                                                Context::default()
+                                                    .byte_range(ref_node.range())
+                                                    .lines(
+                                                        0,
+                                                        format!("RESID:AA{:04}", modification.id),
+                                                    ),
+                                            ),
+                                        );
                                     }
                                 }
                             }
@@ -185,21 +256,72 @@ impl CVSource for Resid {
                                         let txt = rule_node.text().unwrap_or_default();
                                         if let Some((a, b)) = txt.split_once(", ") {
                                             if b.contains(',') {
-                                                println!(
-                                                    "RESID: Ignore SequenceSpec '{txt}' for {}",
-                                                    modification.id
+                                                combine_error(
+                                                    &mut errors,
+                                                    BoxedError::new(
+                                                        CVError::ItemWarning,
+                                                        "Higher order cross-linker",
+                                                        "Only cross-linkers with two sites are supported for now",
+                                                        Context::default()
+                                                            .byte_range(rule_node.range())
+                                                            .lines(
+                                                                0,
+                                                                format!(
+                                                                    "RESID:AA{:04} {txt}",
+                                                                    modification.id
+                                                                ),
+                                                            ),
+                                                    ),
                                                 );
                                                 continue 'entry; // Ignore any cross-link > 2
                                             }
-                                            rule.0 = AminoAcid::try_from(a.trim())
-                                                .unwrap_or_else(|()| panic!("Invalid AA: {a}"));
-                                            rule.1 = Some(
-                                                AminoAcid::try_from(b.trim())
-                                                    .unwrap_or_else(|()| panic!("Invalid AA: {b}")),
-                                            );
+                                            if let Ok(a) = AminoAcid::try_from(a.trim()) {
+                                                rule.0 = a;
+                                            } else {
+                                                combine_error(
+                                                    &mut errors,
+                                                    BoxedError::new(
+                                                        CVError::ItemWarning,
+                                                        "Invalid amino acid",
+                                                        "Placement rules can only contain amino acids",
+                                                        Context::default()
+                                                            .byte_range(rule_node.range())
+                                                            .lines(0, a.to_string()),
+                                                    ),
+                                                );
+                                                continue 'entry;
+                                            }
+                                            if let Ok(b) = AminoAcid::try_from(b.trim()) {
+                                                rule.1 = Some(b);
+                                            } else {
+                                                combine_error(
+                                                    &mut errors,
+                                                    BoxedError::new(
+                                                        CVError::ItemWarning,
+                                                        "Invalid amino acid",
+                                                        "Placement rules can only contain amino acids",
+                                                        Context::default()
+                                                            .byte_range(rule_node.range())
+                                                            .lines(0, b.to_string()),
+                                                    ),
+                                                );
+                                                continue 'entry;
+                                            }
+                                        } else if let Ok(a) = AminoAcid::try_from(txt.trim()) {
+                                            rule.0 = a;
                                         } else {
-                                            rule.0 = AminoAcid::try_from(txt.trim())
-                                                .unwrap_or_else(|()| panic!("Invalid AA: {txt}"));
+                                            combine_error(
+                                                &mut errors,
+                                                BoxedError::new(
+                                                    CVError::ItemWarning,
+                                                    "Invalid amino acid",
+                                                    "Placement rules can only contain amino acids",
+                                                    Context::default()
+                                                        .byte_range(rule_node.range())
+                                                        .lines(0, txt.to_string()),
+                                                ),
+                                            );
+                                            continue 'entry;
                                         }
                                     }
                                     "Condition" => match rule_node.text().unwrap_or_default() {
@@ -209,7 +331,20 @@ impl CVSource for Resid {
                                         text if text.starts_with("cross-link")
                                             || text.starts_with("incidental")
                                             || text.starts_with("secondary") => {} // Ignore
-                                        pos => panic!("Invalid condition position: {pos}"),
+                                        _ => combine_error(
+                                            &mut errors,
+                                            BoxedError::new(
+                                                CVError::ItemError,
+                                                "Invalid condition position",
+                                                "A RESID condition position should be amino-terminal, carboxy-terminal, carboxamidine, cross-link, incidental, or secondary",
+                                                Context::default()
+                                                    .byte_range(rule_node.range())
+                                                    .lines(
+                                                        0,
+                                                        format!("RESID:AA{:04}", modification.id),
+                                                    ),
+                                            ),
+                                        ),
                                     },
                                     "Xref" => {
                                         if let Some((a, b)) =
@@ -217,7 +352,23 @@ impl CVSource for Resid {
                                         {
                                             modification.cross_ids.push((Some(a.into()), b.into()));
                                         } else {
-                                            panic!("Invalid Xref content")
+                                            combine_error(
+                                                &mut errors,
+                                                BoxedError::new(
+                                                    CVError::ItemError,
+                                                    "Invalid xref",
+                                                    "A RESID xref should be of shape TYPE:VALUE",
+                                                    Context::default()
+                                                        .byte_range(rule_node.range())
+                                                        .lines(
+                                                            0,
+                                                            format!(
+                                                                "RESID:AA{:04}",
+                                                                modification.id
+                                                            ),
+                                                        ),
+                                                ),
+                                            );
                                         }
                                     }
                                     _ => (),
@@ -225,34 +376,25 @@ impl CVSource for Resid {
                             }
                             rules.push(rule);
                         } // Placement rules
+                        "Features" => {
+                            for feature in data_block.children() {
+                                if feature.tag_name().name() == "Feature"
+                                    && feature.attribute("type") == Some("UniProt")
+                                    && let Some(text) = feature.text()
+                                    && let Some(m) = text.strip_prefix("MOD_RES ")
+                                {
+                                    modification
+                                        .cross_ids
+                                        .push((Some("UniProt".into()), m.trim().into()));
+                                }
+                            }
+                        }
                         _ => (),
                     }
                 }
 
-                let mut shared_formula = None;
                 let mut data = None;
                 for rule in rules {
-                    if rule.0 == AminoAcid::AmbiguousAsparagine
-                        || rule.0 == AminoAcid::AmbiguousGlutamine
-                    {
-                        println!("RESID: B or Z used as target {}", modification.id);
-                        continue 'entry;
-                    }
-                    let diff_formula = modification.formula.clone()
-                        - rule.0.single_formula().expect("B or Z used as target")
-                        - rule
-                            .1
-                            .map(|a| a.single_formula().expect("B or Z used as target"))
-                            .unwrap_or_default();
-                    if shared_formula.is_some_and(|s| s != diff_formula) {
-                        println!(
-                            "RESID: Detected multiple diff formulas for {}",
-                            modification.id
-                        );
-                        continue 'entry;
-                    }
-                    shared_formula = Some(diff_formula);
-
                     if data.is_none() {
                         if rule.1.is_none() {
                             data = Some(ModData::Mod {
@@ -306,9 +448,16 @@ impl CVSource for Resid {
                             Vec::new(),
                         ));
                     } else {
-                        println!(
-                            "RESID: Modification is both cross-linker and normal modification {}",
-                            modification.id
+                        combine_error(
+                            &mut errors,
+                            BoxedError::new(
+                                CVError::ItemError,
+                                "Both cross-linker and normal modification",
+                                "This modification contains information for a normal modification and for a cross-linker",
+                                Context::default()
+                                    .byte_range(entry.range())
+                                    .lines(0, format!("RESID:AA{:04}", modification.id)),
+                            ),
                         );
                         continue 'entry;
                     }
@@ -341,10 +490,10 @@ impl CVSource for Resid {
                     (year, month, day, 0, 0)
                 }),
                 version: database.attribute("release").map(ToString::to_string),
-                hash: reader.hash().to_vec(),
+                hash: reader.hash(),
             },
             modifications,
-            Vec::new(),
+            errors,
         ))
     }
 }
