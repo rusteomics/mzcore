@@ -268,26 +268,27 @@ fn parse_mod(node: &Node) -> Result<OntologyModification, BoxedError<'static, CV
                 Context::default().byte_range(node.range()),
             )
         })?,
-        id: node
-            .attribute("record_id")
-            .ok_or_else(|| {
-                BoxedError::new(
-                    CVError::ItemError,
-                    "No defined ID for modification",
-                    "A Unimod modification must have an ID set with 'record_id'",
-                    Context::default().byte_range(node.range()),
-                )
-            })
-            .and_then(|v| {
-                v.parse::<u32>().map_err(|err| {
+        id: mzcv::AccessionCode::Numeric(
+            node.attribute("record_id")
+                .ok_or_else(|| {
                     BoxedError::new(
                         CVError::ItemError,
-                        "Modification ID not numeric",
-                        format!("The modification ID {}", explain_number_error(&err)),
+                        "No defined ID for modification",
+                        "A Unimod modification must have an ID set with 'record_id'",
                         Context::default().byte_range(node.range()),
                     )
                 })
-            })?,
+                .and_then(|v| {
+                    v.parse::<u32>().map_err(|err| {
+                        BoxedError::new(
+                            CVError::ItemError,
+                            "Modification ID not numeric",
+                            format!("The modification ID {}", explain_number_error(&err)),
+                            Context::default().byte_range(node.range()),
+                        )
+                    })
+                })?,
+        ),
         ontology: Ontology::Unimod,
         description,
         synonyms: synonyms.into(),

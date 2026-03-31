@@ -129,7 +129,7 @@ pub trait CVData: Clone {
     /// The numerical index or id of the item.
     fn index(&self) -> Option<Self::Index>;
 
-    /// The CURIE for this entry. This behavior is strictly *opt-in*.
+    /// The CURIE for this entry. This behaviour is strictly *opt-in*.
     fn curie(&self) -> Option<Curie> {
         None
     }
@@ -141,7 +141,7 @@ pub trait CVData: Clone {
     /// Any synonyms that can be uniquely attributed to this data element. So EXACT synonyms from Obo files.
     fn synonyms(&self) -> impl Iterator<Item = &str>;
 
-    /// Enumerate all the immediate parents of this term, e.g. those with an `is_a` relationship with it. This behavior is strictly *opt-in*.
+    /// Enumerate all the immediate parents of this term, e.g. those with an `is_a` relationship with it. This behaviour is strictly *opt-in*.
     fn parents(&self) -> impl Iterator<Item = &Self::Index> {
         let value: Option<&Self::Index> = None;
         value.into_iter()

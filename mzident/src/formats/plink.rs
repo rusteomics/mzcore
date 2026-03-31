@@ -223,17 +223,17 @@ format_family!(
 
             let fitting = &KNOWN_CROSS_LINKERS.get_or_init(|| {
     [
-        ontologies.psimod().get_by_index(&34).unwrap(), // Disulfide: M:L-cystine (cross-link)
-        ontologies.unimod().get_by_index(&1905).unwrap(), // BS2G: U:Xlink:BS2G[96]
-        ontologies.xlmod().get_by_index(&2008).unwrap(), // BS2G heavy: X:BS2G-d4
-        ontologies.unimod().get_by_index(&1898).unwrap(), // DSS: U:Xlink:DSS[138]
-        ontologies.xlmod().get_by_index(&2227).unwrap(), // Leiker_clv: X:PL
-        ontologies.unimod().get_by_index(&1896).unwrap(), // DSSO: U:Xlink:DSSO[158]
-        ontologies.unimod().get_by_index(&1899).unwrap(), // DSBU: U:Xlink:BuUrBu[196]
-        ontologies.xlmod().get_by_index(&2115).unwrap(), // BAMG: X:BAMG
-        ontologies.xlmod().get_by_index(&2002).unwrap(), // DSS heavy: X:DSS-d4
-        ontologies.unimod().get_by_index(&2058).unwrap(), // PhoX: U:Xlink:DSPP[210]
-        ontologies.xlmod().get_by_index(&2010).unwrap(), // DMTMM: X:1-ethyl-3-(3-Dimethylaminopropyl)carbodiimide hydrochloride
+        ontologies.psimod().get_by_index(&mzcv::AccessionCode::Numeric(34)).unwrap(), // Disulfide: M:L-cystine (cross-link)
+        ontologies.unimod().get_by_index(&mzcv::AccessionCode::Numeric(1905)).unwrap(), // BS2G: U:Xlink:BS2G[96]
+        ontologies.xlmod().get_by_index(&mzcv::AccessionCode::Numeric(2008)).unwrap(), // BS2G heavy: X:BS2G-d4
+        ontologies.unimod().get_by_index(&mzcv::AccessionCode::Numeric(1898)).unwrap(), // DSS: U:Xlink:DSS[138]
+        ontologies.xlmod().get_by_index(&mzcv::AccessionCode::Numeric(2227)).unwrap(), // Leiker_clv: X:PL
+        ontologies.unimod().get_by_index(&mzcv::AccessionCode::Numeric(1896)).unwrap(), // DSSO: U:Xlink:DSSO[158]
+        ontologies.unimod().get_by_index(&mzcv::AccessionCode::Numeric(1899)).unwrap(), // DSBU: U:Xlink:BuUrBu[196]
+        ontologies.xlmod().get_by_index(&mzcv::AccessionCode::Numeric(2115)).unwrap(), // BAMG: X:BAMG
+        ontologies.xlmod().get_by_index(&mzcv::AccessionCode::Numeric(2002)).unwrap(), // DSS heavy: X:DSS-d4
+        ontologies.unimod().get_by_index(&mzcv::AccessionCode::Numeric(2058)).unwrap(), // PhoX: U:Xlink:DSPP[210]
+        ontologies.xlmod().get_by_index(&mzcv::AccessionCode::Numeric(2010)).unwrap(), // DMTMM: X:1-ethyl-3-(3-Dimethylaminopropyl)carbodiimide hydrochloride
     ]
     .into_iter()
     .map(|m| (m.formula().monoisotopic_mass(), m))

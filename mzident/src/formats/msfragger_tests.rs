@@ -189,7 +189,7 @@ fn fragpipe_v21_manual() {
                 id: ModificationId::new(
                     mzcore::ontology::Ontology::Custom,
                     "DB14".into(),
-                    Some(0),
+                    mzcv::AccessionCode::Numeric(0),
                     Box::default(),
                     ThinVec::default(),
                     ThinVec::default(),

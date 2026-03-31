@@ -2,6 +2,7 @@ use std::{num::NonZeroU16, ops::Range, sync::Arc};
 
 use context_error::*;
 use itertools::Itertools;
+use mzcv::AccessionCode;
 use ordered_float::OrderedFloat;
 use serde::{Deserialize, Serialize};
 
@@ -341,7 +342,7 @@ fn parse_single_modification<'error, const STRICT: bool>(
                         vec![basic_error.clone()
                             .long_description("Unimod accession number should be a number")]
                     })?;
-                    ontologies.unimod().get_by_index(&id)
+                    ontologies.unimod().get_by_index(&AccessionCode::Numeric(id))
                         .map(Some)
                         .ok_or_else(|| {
                             vec![basic_error.clone().long_description(
@@ -354,7 +355,7 @@ fn parse_single_modification<'error, const STRICT: bool>(
                         vec![basic_error.clone()
                             .long_description("PSI-MOD accession number should be a number")]
                     })?;
-                    ontologies.psimod().get_by_index(&id)
+                    ontologies.psimod().get_by_index(&AccessionCode::Numeric(id))
                         .map(Some)
                         .ok_or_else(|| {
                             vec![basic_error.clone().long_description(
@@ -363,7 +364,7 @@ fn parse_single_modification<'error, const STRICT: bool>(
                         })
                 }
                 ("resid", tail) => {
-                    let id = tail[2..].parse::<u32>().map_err(|_| {
+                    let id = tail.parse::<AccessionCode>().map_err(|_| {
                         vec![basic_error.clone().long_description(
                             "RESID accession number should be a number prefixed with 'AA'",
                         )]
@@ -381,7 +382,7 @@ fn parse_single_modification<'error, const STRICT: bool>(
                         vec![basic_error.clone()
                             .long_description("XLMOD accession number should be a number")]
                     })?;
-                    ontologies.xlmod().get_by_index(&id)
+                    ontologies.xlmod().get_by_index(&AccessionCode::Numeric(id))
                         .map(Some)
                         .ok_or_else(|| {
                             vec![basic_error.clone().long_description(
@@ -394,7 +395,7 @@ fn parse_single_modification<'error, const STRICT: bool>(
                         vec![basic_error.clone()
                             .long_description("Custom accession number should be a number")]
                     })?;
-                    ontologies.custom().get_by_index(&id)
+                    ontologies.custom().get_by_index(&AccessionCode::Numeric(id))
                     .map(Some)
                     .ok_or_else(|| {
                         vec![basic_error.clone().long_description(

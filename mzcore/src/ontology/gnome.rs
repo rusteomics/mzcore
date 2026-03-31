@@ -7,7 +7,8 @@ use context_error::{
 use thin_vec::ThinVec;
 
 use mzcv::{
-    CVError, CVFile, CVSource, CVVersion, HashBufReader, OboIdentifier, OboOntology, OboStanzaType,
+    AccessionCodeParseError, CVError, CVFile, CVSource, CVVersion, HashBufReader, OboIdentifier,
+    OboOntology, OboStanzaType,
 };
 
 use crate::{
@@ -206,11 +207,35 @@ fn parse_gnome(
             continue;
         }
 
+        let code = match obj.id.1.parse() {
+            Ok(v) => v,
+            Err(e) => {
+                combine_error(
+                    &mut errors,
+                    BoxedError::new(
+                        CVError::ItemError,
+                        "Invalid GNOme code",
+                        match e {
+                            AccessionCodeParseError::Empty => "Code is empty",
+                            AccessionCodeParseError::TooLong(_) => {
+                                "Code is too long, can only be 8 characters"
+                            }
+                            AccessionCodeParseError::InvalidCharacters(_) => {
+                                "Code contains invalid characters"
+                            }
+                        },
+                        Context::none().lines(0, obj.id.1.to_string()),
+                    ),
+                );
+                continue;
+            }
+        };
+
         let modification = GNOmeModification {
             id: ModificationId::new(
                 Ontology::Gnome,
                 obj.id.1,
-                None,
+                code,
                 Box::default(), // Description is never useful (either contains the mass or contains the ID never anything unique)
                 obj.synonyms
                     .iter()

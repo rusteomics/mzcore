@@ -127,7 +127,7 @@ fn peaks_11_custom_modification() {
                     id: ModificationId::new(
                         mzcore::ontology::Ontology::Custom,
                         "Oxidation".into(),
-                        Some(0),
+                        mzcv::AccessionCode::Numeric(0),
                         Box::default(),
                         ThinVec::default(),
                         ThinVec::default(),

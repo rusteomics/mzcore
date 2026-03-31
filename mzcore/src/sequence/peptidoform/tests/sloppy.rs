@@ -48,7 +48,7 @@ fn sloppy_names_custom() {
             id: ModificationId::new(
                 Ontology::Custom,
                 "Test".into(),
-                Some(0),
+                mzcv::AccessionCode::Numeric(0),
                 Box::default(),
                 ThinVec::default(),
                 ThinVec::default(),

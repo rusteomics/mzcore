@@ -3,6 +3,7 @@
 use std::str::FromStr;
 
 use context_error::*;
+use mzcv::AccessionCode;
 use serde::{Deserialize, Serialize};
 use thin_vec::ThinVec;
 
@@ -93,7 +94,7 @@ impl PlacementRule {
                     if let Modification::Simple(sim) = m {
                         if let SimpleModificationInner::Database { id, .. } = &**sim
                             && id.ontology == Ontology::Psimod
-                            && let Some(i) = id.id()
+                            && let AccessionCode::Numeric(i) = id.id()
                         {
                             i == *mod_index
                         } else {
@@ -239,8 +240,13 @@ mod tests {
             "Multi level mod cannot be placed if the dependent mod is not present"
         );
         let mut seq = SequenceElement::new(CheckedAminoAcid::Alanine, None);
-        seq.modifications
-            .push(ontologies.psimod().get_by_index(&30).unwrap().into());
+        seq.modifications.push(
+            ontologies
+                .psimod()
+                .get_by_index(&AccessionCode::Numeric(30))
+                .unwrap()
+                .into(),
+        );
         assert!(
             PlacementRule::PsiModification(30, Position::Anywhere)
                 .is_possible(&seq, SequencePosition::Index(0)),
@@ -276,10 +282,14 @@ mod tests {
             "end"
         );
         assert_eq!(
-            ontologies.unimod().get_by_index(&7).unwrap().is_possible(
-                &SequenceElement::new(CheckedAminoAcid::Q, None),
-                SequencePosition::CTerm
-            ),
+            ontologies
+                .unimod()
+                .get_by_index(&AccessionCode::Numeric(7))
+                .unwrap()
+                .is_possible(
+                    &SequenceElement::new(CheckedAminoAcid::Q, None),
+                    SequencePosition::CTerm
+                ),
             RulePossible::Symmetric(std::collections::BTreeSet::from([0])),
             "unimod deamidated at end"
         );

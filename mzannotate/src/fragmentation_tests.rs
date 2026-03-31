@@ -649,7 +649,7 @@ fn custom_database() -> Ontologies {
             id: ModificationId::new(
                 Ontology::Custom,
                 "DSSO".into(),
-                Some(0),
+                mzcv::AccessionCode::Numeric(0),
                 Box::default(),
                 ThinVec::default(),
                 ThinVec::default(),
@@ -671,7 +671,7 @@ fn custom_database() -> Ontologies {
             id: ModificationId::new(
                 Ontology::Custom,
                 "Disulfide".into(),
-                Some(1),
+                mzcv::AccessionCode::Numeric(1),
                 Box::default(),
                 ThinVec::default(),
                 ThinVec::default(),

@@ -48,19 +48,19 @@ format_family!(
                             vec![
                                 (
                                     AminoAcid::Asparagine,
-                                    ontologies.unimod().get_by_index(&7).unwrap(),
+                                    ontologies.unimod().get_by_index(&mzcv::AccessionCode::Numeric(7)).unwrap(),
                                 ),
                                 (
                                     AminoAcid::Glutamine,
-                                    ontologies.unimod().get_by_index(&7).unwrap(),
+                                    ontologies.unimod().get_by_index(&mzcv::AccessionCode::Numeric(7)).unwrap(),
                                 ),
                                 (
                                     AminoAcid::Cysteine,
-                                    ontologies.unimod().get_by_index(&6).unwrap(),
+                                    ontologies.unimod().get_by_index(&mzcv::AccessionCode::Numeric(6)).unwrap(),
                                 ),
                                 (
                                     AminoAcid::Methionine,
-                                    ontologies.unimod().get_by_index(&3).unwrap(),
+                                    ontologies.unimod().get_by_index(&mzcv::AccessionCode::Numeric(3)).unwrap(),
                                 ),
                             ],
                         ),

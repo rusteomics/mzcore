@@ -325,14 +325,11 @@ impl<W: Write, State: CanWriteProteins> MzTabWriter<W, State> {
 
 fn make_mztab_mod(m: &SimpleModificationInner) -> String {
     match m {
-        SimpleModificationInner::Database { formula, id, .. } => id.id().map_or_else(
-            || mztab_chemmod(formula),
-            |index| match id.ontology {
-                Ontology::Unimod => format!("UNIMOD:{index}"),
-                Ontology::Psimod => format!("MOD:{index}"),
-                _ => mztab_chemmod(formula),
-            },
-        ),
+        SimpleModificationInner::Database { formula, id, .. } => match id.ontology {
+            Ontology::Unimod => format!("UNIMOD:{}", id.id()),
+            Ontology::Psimod => format!("MOD:{}", id.id()),
+            _ => mztab_chemmod(formula),
+        },
         _ => mztab_chemmod(&m.formula()),
     }
 }

@@ -108,7 +108,7 @@ impl CVSource for Resid {
                 let mut rules = Vec::new();
 
                 modification.ontology = Ontology::Resid;
-                let Some(id) = entry.attribute("id").and_then(|id| id[2..].parse().ok()) else {
+                let Some(id) = entry.attribute("id").and_then(|id| id.parse().ok()) else {
                     combine_error(
                         &mut errors,
                         BoxedError::new(

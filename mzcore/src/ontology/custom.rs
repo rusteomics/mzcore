@@ -89,8 +89,7 @@ impl CVSource for Custom {
         let value = data
             .map(|m| {
                 (
-                    m.description()
-                        .and_then(crate::sequence::ModificationId::id),
+                    m.description().map(crate::sequence::ModificationId::id),
                     m.description()
                         .map_or_else(|| "UNNAMED".to_string(), |i| i.name.to_string()),
                     m,

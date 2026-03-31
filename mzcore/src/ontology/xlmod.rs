@@ -3,7 +3,6 @@ use context_error::{
     BoxedError, Context, CreateError, FullErrorContent, StaticErrorContent, combine_error,
     combine_errors,
 };
-use itertools::Itertools;
 use std::{collections::HashMap, sync::Arc};
 use thin_vec::ThinVec;
 
@@ -156,7 +155,7 @@ impl CVSource for XlMod {
                                         description,
                                         cross_ids,
                                         synonyms,
-                                        id,
+                                        id: mzcv::AccessionCode::Numeric(id),
                                         ontology: Ontology::Xlmod,
                                         obsolete: obj.obsolete,
                                         data: ModData::Linker {
@@ -195,7 +194,7 @@ impl CVSource for XlMod {
                                         synonyms,
                                         ontology: Ontology::Xlmod,
                                         obsolete: obj.obsolete,
-                                        id,
+                                        id: mzcv::AccessionCode::Numeric(id),
                                         data: ModData::Mod {
                                             specificities: vec![(
                                                 properties.origins.0,

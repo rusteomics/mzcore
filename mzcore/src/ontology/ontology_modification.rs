@@ -7,7 +7,7 @@ use crate::{
     },
 };
 use itertools::Itertools;
-use mzcv::SynonymScope;
+use mzcv::{AccessionCode, SynonymScope};
 use thin_vec::ThinVec;
 
 #[derive(Debug, Default)]
@@ -15,7 +15,7 @@ pub(crate) struct OntologyModification {
     pub formula: MolecularFormula,
     pub name: Box<str>,
     pub ontology: Ontology,
-    pub id: u32,
+    pub id: AccessionCode,
     pub description: Box<str>,
     pub synonyms: ThinVec<(SynonymScope, Box<str>)>,
     pub cross_ids: ThinVec<(Option<Box<str>>, Box<str>)>,
@@ -179,7 +179,7 @@ impl From<OntologyModification> for SimpleModificationInner {
         let id = ModificationId::new(
             value.ontology,
             value.name,
-            Some(value.id),
+            value.id,
             value.description,
             value.synonyms,
             value.cross_ids,

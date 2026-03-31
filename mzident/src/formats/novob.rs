@@ -33,38 +33,66 @@ fn parameters(ontologies: &Ontologies) -> &SloppyParsingParameters {
         custom_alphabet: vec![
             (
                 b's',
-                SequenceElement::new(AminoAcid::Serine.into(), None)
-                    .with_simple_modification(ontologies.unimod().get_by_index(&21).unwrap()),
+                SequenceElement::new(AminoAcid::Serine.into(), None).with_simple_modification(
+                    ontologies
+                        .unimod()
+                        .get_by_index(&mzcv::AccessionCode::Numeric(21))
+                        .unwrap(),
+                ),
             ),
             (
                 b't',
-                SequenceElement::new(AminoAcid::Tyrosine.into(), None)
-                    .with_simple_modification(ontologies.unimod().get_by_index(&21).unwrap()),
+                SequenceElement::new(AminoAcid::Tyrosine.into(), None).with_simple_modification(
+                    ontologies
+                        .unimod()
+                        .get_by_index(&mzcv::AccessionCode::Numeric(21))
+                        .unwrap(),
+                ),
             ),
             (
                 b'y',
-                SequenceElement::new(AminoAcid::Threonine.into(), None)
-                    .with_simple_modification(ontologies.unimod().get_by_index(&21).unwrap()),
+                SequenceElement::new(AminoAcid::Threonine.into(), None).with_simple_modification(
+                    ontologies
+                        .unimod()
+                        .get_by_index(&mzcv::AccessionCode::Numeric(21))
+                        .unwrap(),
+                ),
             ),
             (
                 b'n',
-                SequenceElement::new(AminoAcid::Asparagine.into(), None)
-                    .with_simple_modification(ontologies.unimod().get_by_index(&7).unwrap()),
+                SequenceElement::new(AminoAcid::Asparagine.into(), None).with_simple_modification(
+                    ontologies
+                        .unimod()
+                        .get_by_index(&mzcv::AccessionCode::Numeric(7))
+                        .unwrap(),
+                ),
             ),
             (
                 b'q',
-                SequenceElement::new(AminoAcid::Glutamine.into(), None)
-                    .with_simple_modification(ontologies.unimod().get_by_index(&7).unwrap()),
+                SequenceElement::new(AminoAcid::Glutamine.into(), None).with_simple_modification(
+                    ontologies
+                        .unimod()
+                        .get_by_index(&mzcv::AccessionCode::Numeric(7))
+                        .unwrap(),
+                ),
             ),
             (
                 b'C',
-                SequenceElement::new(AminoAcid::Cysteine.into(), None)
-                    .with_simple_modification(ontologies.unimod().get_by_index(&6).unwrap()),
+                SequenceElement::new(AminoAcid::Cysteine.into(), None).with_simple_modification(
+                    ontologies
+                        .unimod()
+                        .get_by_index(&mzcv::AccessionCode::Numeric(6))
+                        .unwrap(),
+                ),
             ),
             (
                 b'm',
-                SequenceElement::new(AminoAcid::Methionine.into(), None)
-                    .with_simple_modification(ontologies.unimod().get_by_index(&35).unwrap()),
+                SequenceElement::new(AminoAcid::Methionine.into(), None).with_simple_modification(
+                    ontologies
+                        .unimod()
+                        .get_by_index(&mzcv::AccessionCode::Numeric(35))
+                        .unwrap(),
+                ),
             ),
         ],
         ..Default::default()

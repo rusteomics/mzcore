@@ -3,7 +3,7 @@
 use std::sync::LazyLock;
 
 use context_error::*;
-use mzcv::{CVIndex, CVStructure, CVVersion};
+use mzcv::{CVIndex, CVStructure, CVVersion, ControlledVocabulary};
 use serde::{Deserialize, Serialize};
 
 use crate::{
@@ -404,6 +404,18 @@ impl Ontology {
             Self::Xlmod => "XLMOD",
             Self::Resid => "RESID",
             Self::Custom => "CUSTOM",
+        }
+    }
+
+    /// Get the accession number name for the ontology
+    pub const fn cv(self) -> ControlledVocabulary {
+        match self {
+            Self::Unimod => ControlledVocabulary::UNIMOD,
+            Self::Psimod => ControlledVocabulary::MOD,
+            Self::Gnome => ControlledVocabulary::GNO,
+            Self::Xlmod => ControlledVocabulary::XLMOD,
+            Self::Resid => ControlledVocabulary::RESID,
+            Self::Custom => ControlledVocabulary::Unknown,
         }
     }
 }

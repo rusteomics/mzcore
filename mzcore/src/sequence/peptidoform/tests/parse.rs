@@ -464,7 +464,7 @@ fn parse_custom() {
             id: ModificationId::new(
                 Ontology::Custom,
                 "WEEE".into(),
-                Some(0),
+                mzcv::AccessionCode::Numeric(0),
                 Box::default(),
                 ThinVec::default(),
                 ThinVec::default(),

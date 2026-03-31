@@ -9,7 +9,7 @@ use std::{
 
 use context_error::*;
 use itertools::Itertools;
-use mzcv::SynonymScope;
+use mzcv::{AccessionCode, SynonymScope};
 use ordered_float::OrderedFloat;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -108,7 +108,7 @@ pub struct ModificationId {
     /// The name
     pub name: Box<str>,
     /// The ID, `u32::MAX` is defined as not having an ID
-    id: u32,
+    id: AccessionCode,
     /// The description or definition
     pub description: Box<str>,
     /// Any synonyms
@@ -121,25 +121,19 @@ pub struct ModificationId {
 
 impl ModificationId {
     /// Create a new Modification ID
-    /// # Panics
-    /// If the id is equal to `u32::MAX` (only in debug mode, in release mode this is silently ignored and the id is set to None)
     pub fn new(
         ontology: Ontology,
         name: Box<str>,
-        id: Option<u32>,
+        id: AccessionCode,
         description: Box<str>,
         synonyms: ThinVec<(SynonymScope, Box<str>)>,
         cross_ids: ThinVec<(Option<Box<str>>, Box<str>)>,
         obsolete: bool,
     ) -> Self {
-        debug_assert!(
-            id.is_none_or(|i| i != u32::MAX),
-            "Modification ID cannot be u32::MAX"
-        );
         Self {
             ontology,
             name,
-            id: id.unwrap_or(u32::MAX),
+            id,
             description,
             synonyms,
             cross_ids,
@@ -148,19 +142,13 @@ impl ModificationId {
     }
 
     /// Get the ID of this modification
-    pub fn id(&self) -> Option<u32> {
-        (self.id != u32::MAX).then_some(self.id)
+    pub fn id(&self) -> AccessionCode {
+        self.id
     }
 
     /// Set the ID of this modification
-    /// # Panics
-    /// If the id is equal to `u32::MAX` (only in debug mode, in release mode this is silently ignored and the id is set to None)
-    pub fn set_id(&mut self, id: Option<u32>) {
-        debug_assert!(
-            id.is_none_or(|i| i != u32::MAX),
-            "Modification ID cannot be u32::MAX"
-        );
-        self.id = id.unwrap_or(u32::MAX);
+    pub fn set_id(&mut self, id: AccessionCode) {
+        self.id = id;
     }
 }
 
@@ -200,14 +188,16 @@ impl ParseJson for ModificationId {
                         context(&map),
                     )
                 })?)?,
-                id: u32::from_json_value(map.remove("id").ok_or_else(|| {
-                    BoxedError::new(
-                        BasicKind::Error,
-                        "Invalid ModificationID",
-                        "The required property 'id' is missing",
-                        context(&map),
-                    )
-                })?)?,
+                id: AccessionCode::Numeric(u32::from_json_value(map.remove("id").ok_or_else(
+                    || {
+                        BoxedError::new(
+                            BasicKind::Error,
+                            "Invalid ModificationID",
+                            "The required property 'id' is missing",
+                            context(&map),
+                        )
+                    },
+                )?)?), // TODO: allow retrieving non numerical codes
                 description: Box::from_json_value(map.remove("description").ok_or_else(|| {
                     BoxedError::new(
                         BasicKind::Error,
@@ -368,10 +358,10 @@ impl Display for ModificationId {
                 self.name.to_ascii_uppercase()
             )
         } else if self.ontology == Ontology::Xlmod
-            && let Some(id) = self.id()
-            && (id == 1711 || id == 9070)
+            && (self.id() == AccessionCode::Numeric(1711)
+                || self.id() == AccessionCode::Numeric(9070))
         {
-            write!(f, "{}:{id}", self.ontology.name())
+            write!(f, "{}:{}", self.ontology.name(), self.id())
         } else {
             write!(f, "{}:{}", self.ontology.char(), self.name)
         }

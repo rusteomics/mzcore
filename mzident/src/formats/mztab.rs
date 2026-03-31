@@ -1336,14 +1336,16 @@ fn parse_single_modification<'a>(
         let modification = if tag.eq_ignore_ascii_case("unimod") {
             ontologies
                 .unimod()
-                .get_by_index(&value.parse::<u32>().map_err(|err| {
-                    BoxedError::new(
-                        BasicKind::Error,
-                        "Invalid unimod code",
-                        format!("The unimod modification {}", explain_number_error(&err)),
-                        value_context.clone(),
-                    )
-                })?)
+                .get_by_index(&mzcv::AccessionCode::Numeric(
+                    value.parse::<u32>().map_err(|err| {
+                        BoxedError::new(
+                            BasicKind::Error,
+                            "Invalid unimod code",
+                            format!("The unimod modification {}", explain_number_error(&err)),
+                            value_context.clone(),
+                        )
+                    })?,
+                ))
                 .ok_or_else(|| {
                     BoxedError::new(
                         BasicKind::Error,
@@ -1355,14 +1357,16 @@ fn parse_single_modification<'a>(
         } else if tag.eq_ignore_ascii_case("mod") {
             ontologies
                 .psimod()
-                .get_by_index(&value.parse::<u32>().map_err(|err| {
-                    BoxedError::new(
-                        BasicKind::Error,
-                        "Invalid PSI-MOD code",
-                        format!("The PSI-MOD modification {}", explain_number_error(&err)),
-                        value_context.clone(),
-                    )
-                })?)
+                .get_by_index(&mzcv::AccessionCode::Numeric(
+                    value.parse::<u32>().map_err(|err| {
+                        BoxedError::new(
+                            BasicKind::Error,
+                            "Invalid PSI-MOD code",
+                            format!("The PSI-MOD modification {}", explain_number_error(&err)),
+                            value_context.clone(),
+                        )
+                    })?,
+                ))
                 .ok_or_else(|| {
                     BoxedError::new(
                         BasicKind::Error,
@@ -1374,14 +1378,16 @@ fn parse_single_modification<'a>(
         } else if tag.eq_ignore_ascii_case("custom") {
             ontologies
                 .custom()
-                .get_by_index(&value.parse::<u32>().map_err(|err| {
-                    BoxedError::new(
-                        BasicKind::Error,
-                        "Invalid custom code",
-                        format!("The custom modification {}", explain_number_error(&err)),
-                        value_context.clone(),
-                    )
-                })?)
+                .get_by_index(&mzcv::AccessionCode::Numeric(
+                    value.parse::<u32>().map_err(|err| {
+                        BoxedError::new(
+                            BasicKind::Error,
+                            "Invalid custom code",
+                            format!("The custom modification {}", explain_number_error(&err)),
+                            value_context.clone(),
+                        )
+                    })?,
+                ))
                 .ok_or_else(|| {
                     BoxedError::new(
                         BasicKind::Error,

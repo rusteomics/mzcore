@@ -44,9 +44,9 @@ format_family!(
             ontologies,
             BUILT_IN_MODIFICATIONS.get_or_init(|| SloppyParsingParameters {
                 replace_mass_modifications: Some(vec![
-                ontologies.unimod().get_by_index(&35).unwrap(),
-                ontologies.unimod().get_by_index(&21).unwrap(),
-                ontologies.unimod().get_by_index(&4).unwrap(),
+                ontologies.unimod().get_by_index(&mzcv::AccessionCode::Numeric(35)).unwrap(),
+                ontologies.unimod().get_by_index(&mzcv::AccessionCode::Numeric(21)).unwrap(),
+                ontologies.unimod().get_by_index(&mzcv::AccessionCode::Numeric(4)).unwrap(),
                 ]),
                 ..Default::default()
             })).map_err(BoxedError::to_owned);

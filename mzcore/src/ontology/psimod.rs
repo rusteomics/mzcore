@@ -7,8 +7,8 @@ use context_error::{
 use itertools::Itertools;
 
 use mzcv::{
-    CVData, CVError, CVFile, CVSource, CVVersion, HashBufReader, OboIdentifier, OboOntology,
-    OboStanzaType, SynonymScope,
+    AccessionCode, CVData, CVError, CVFile, CVSource, CVVersion, HashBufReader, OboIdentifier,
+    OboOntology, OboStanzaType, SynonymScope,
 };
 
 use crate::{
@@ -29,9 +29,15 @@ use crate::{
 pub struct PsiMod {}
 
 impl CVData for SimpleModificationInner {
-    type Index = u32;
-    fn index(&self) -> Option<u32> {
-        self.description().and_then(ModificationId::id)
+    type Index = AccessionCode;
+    fn index(&self) -> Option<AccessionCode> {
+        self.description().map(ModificationId::id)
+    }
+    fn curie(&self) -> Option<mzcv::Curie> {
+        self.description().map(|d| mzcv::Curie {
+            cv: d.ontology.cv(),
+            accession: d.id(),
+        })
     }
     fn name(&self) -> Option<Cow<'_, str>> {
         self.description().map(|d| Cow::Borrowed(d.name.as_ref()))
