@@ -1,4 +1,5 @@
 //! Update the ontologies used in mzcore
+use context_error as _;
 use mzcore::ontology::*;
 use mzcv::CVIndex;
 
