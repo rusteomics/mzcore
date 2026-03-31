@@ -121,11 +121,12 @@ impl CVVersion {
 }
 
 /// A data element from a CV. Note that technically an implementation could be made that does not
-/// have any index, name, or keywords for a data element. Such an element would be kept and stored
+/// have any index, name, or synonyms for a data element. Such an element would be kept and stored
 /// but would not be accessible via anything else then [`crate::CVIndex::data`].
 pub trait CVData: Clone {
     /// The type used for the index
     type Index: std::fmt::Debug + Clone + std::hash::Hash + Eq;
+
     /// The numerical index or id of the item.
     fn index(&self) -> Option<Self::Index>;
 
@@ -143,8 +144,12 @@ pub trait CVData: Clone {
 
     /// Enumerate all the immediate parents of this term, e.g. those with an `is_a` relationship with it. This behaviour is strictly *opt-in*.
     fn parents(&self) -> impl Iterator<Item = &Self::Index> {
-        let value: Option<&Self::Index> = None;
-        value.into_iter()
+        std::iter::empty()
+    }
+
+    /// Enumerate all the immediate children of this term, e.g. those with an `is_a` relationship with this node. This behaviour is strictly *opt-in*.
+    fn children(&self) -> impl Iterator<Item = &Self::Index> {
+        std::iter::empty()
     }
 }
 

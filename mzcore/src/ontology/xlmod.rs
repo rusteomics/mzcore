@@ -8,7 +8,7 @@ use thin_vec::ThinVec;
 
 use mzcv::{
     CVError, CVFile, CVSource, CVVersion, HashBufReader, OboIdentifier, OboOntology, OboStanzaType,
-    OboValue,
+    OboValue, RelationType,
 };
 
 use crate::{
@@ -118,10 +118,10 @@ impl CVSource for XlMod {
                             // Get all properties from any ancestors in the tree then get all properties from this definition
                             let mut properties = Properties::default();
                             let mut stack = Vec::new();
-                            stack.extend(obj.is_a.clone());
+                            stack.extend(obj.relationship.clone());
 
-                            while let Some(id) = stack.pop() {
-                                if let Some(obj) = obo.objects.iter().find(|o| o.id == id) {
+                            while let Some((ty, id, _, _)) = stack.pop() {
+                                if ty == RelationType::IsA && let Some(obj) = obo.objects.iter().find(|o| o.id == id) {
                                     combine_errors(
                                         &mut errors,
                                         parse_property_values(
@@ -130,7 +130,7 @@ impl CVSource for XlMod {
                                             id,
                                         ),
                                     );
-                                    stack.extend(obj.is_a.clone());
+                                    stack.extend(obj.relationship.clone());
                                 }
                             }
 

@@ -8,7 +8,7 @@ use thin_vec::ThinVec;
 
 use mzcv::{
     AccessionCodeParseError, CVError, CVFile, CVSource, CVVersion, HashBufReader, OboIdentifier,
-    OboOntology, OboStanzaType,
+    OboOntology, OboStanzaType, RelationType,
 };
 
 use crate::{
@@ -203,7 +203,7 @@ fn parse_gnome(
     let mut errors = Vec::new();
 
     for obj in obo.objects {
-        if obj.stanza_type != OboStanzaType::Term || obj.is_a.is_empty() {
+        if obj.stanza_type != OboStanzaType::Term || obj.relationship.is_empty() {
             continue;
         }
 
@@ -316,7 +316,12 @@ fn parse_gnome(
                     })
                 },
             ),
-            is_a: obj.is_a,
+            is_a: obj
+                .relationship
+                .iter()
+                .filter(|rel| rel.0 == RelationType::IsA)
+                .map(|rel| rel.1.clone())
+                .collect(),
             composition_id: obj
                 .property_values
                 .get(HAS_COMPOSITION)

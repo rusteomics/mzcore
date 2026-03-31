@@ -43,11 +43,18 @@ pub struct OboStanza {
     pub xref: Vec<(OboIdentifier, Vec<Modifier>, Comment)>,
     /// If the `is_obsolete` property is set
     pub obsolete: bool,
-    /// The ids of all parent terms in the ontology's term graph, as defined by the `is_a` special relationship
-    pub is_a: Vec<OboIdentifier>,
-    /// The ids of all terms in the ontology's term graph which this entity is a component of, as defined by the
-    /// `part_of` special relationship
-    pub part_of: Vec<OboIdentifier>,
+    /// The relationships for this stanza, defined by the type first and other stanza second.
+    pub relationship: Vec<(RelationType, OboIdentifier, Vec<Modifier>, Comment)>,
+}
+
+/// An Obo relation type.
+#[derive(Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum RelationType {
+    /// A relationship set with an `is_a` line
+    #[default]
+    IsA,
+    /// A relationship set with a `relationship` line
+    Other(Box<str>),
 }
 
 /// A (usually) unique identifier for an entry in an ontology
@@ -295,7 +302,7 @@ impl OboValue {
     }
 
     /// Get a description of the datatype of this value
-    pub fn datatype(&self) -> &'static str {
+    pub const fn datatype(&self) -> &'static str {
         match self {
             Self::Boolean(_) => "boolean",
             Self::String(_) => "string",
@@ -354,18 +361,6 @@ impl OboOntology {
         let mut recent_obj = None;
 
         for (line_index, line) in reader.lines().enumerate() {
-            // let line = match reader.next_line() {
-            //     Ok(Some(line)) => line,
-            //     Ok(None) => break,
-            //     Err(e) => {
-            //         return Err(BoxedError::new(
-            //             OboError::CouldNotReadLine,
-            //             "Could not read line",
-            //             e.to_string(),
-            //             base_context.clone().line_index(line_index as u32),
-            //         ));
-            //     }
-            // };
             let line = line
                 .map_err(|e| {
                     BoxedError::new(
@@ -578,13 +573,34 @@ impl OboOntology {
                             }
                         }
                         "is_a" => {
-                            obj.is_a.push(value_line.into());
+                            obj.relationship.push((
+                                RelationType::IsA,
+                                value_line.into(),
+                                trailing_modifiers,
+                                comment,
+                            ));
                         }
                         "xref" => {
-                            let value = OboIdentifier::from_str(value_line).unwrap();
-                            obj.xref.push((value, trailing_modifiers, comment));
+                            obj.xref
+                                .push((value_line.into(), trailing_modifiers, comment));
                         }
-                        // TODO: Formalize broader `relationship` parsing as this currently is rolled up into `lines`
+                        "relationship" => {
+                            let (relationship, id) = value_line.split_once(' ').ok_or_else(|| BoxedError::new(
+                                OboError::InvalidRelationship,
+                                "Missing identifier", 
+                                "A relationship should be indicated with a relationship type followed by the other stanza in the relationship separated by a space", 
+                                base_context
+                                    .clone()
+                                    .lines(0, line.clone())
+                                    .line_index(line_index as u32)))?;
+
+                            obj.relationship.push((
+                                RelationType::Other(relationship.into()),
+                                id.into(),
+                                trailing_modifiers,
+                                comment,
+                            ));
+                        }
                         _ => {
                             obj.lines
                                 .entry(id.trim().into())
@@ -716,6 +732,8 @@ pub enum OboError {
     InvalidSynonym,
     /// If an xref is invalid
     InvalidXref,
+    /// If a relationship is invalid
+    InvalidRelationship,
     /// If a date was formatted incorrectly
     InvalidDate,
     /// If a float was formatted incorrectly
