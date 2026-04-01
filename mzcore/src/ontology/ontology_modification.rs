@@ -6,8 +6,11 @@ use crate::{
         SimpleModificationInner,
     },
 };
+use context_error::{BoxedError, Context, CreateError, combine_error};
 use itertools::Itertools;
-use mzcv::{AccessionCode, SynonymScope};
+use mzcv::{
+    AccessionCode, AccessionCodeParseError, CVError, OboIdentifier, RelationType, SynonymScope,
+};
 use thin_vec::ThinVec;
 
 #[derive(Debug, Default)]
@@ -21,6 +24,7 @@ pub(crate) struct OntologyModification {
     pub cross_ids: ThinVec<(Option<Box<str>>, Box<str>)>,
     pub data: ModData,
     pub obsolete: bool,
+    pub parents: ThinVec<AccessionCode>,
 }
 
 #[derive(Debug)]
@@ -171,41 +175,103 @@ impl OntologyModification {
             }
         }
     }
-}
 
-impl From<OntologyModification> for SimpleModificationInner {
-    fn from(mut value: OntologyModification) -> Self {
-        value.simplify_rules();
-        let id = ModificationId::new(
-            value.ontology,
-            value.name,
-            value.id,
-            value.description,
-            value.synonyms,
-            value.cross_ids,
-            value.obsolete,
-        );
-        match value.data {
-            ModData::Mod { specificities } => Self::Database {
-                id,
-                formula: value.formula,
-                specificities,
-            },
-            ModData::Linker {
-                specificities,
-                length,
-            } => Self::Linker {
-                specificities,
-                formula: value.formula,
-                id,
-                length,
-            },
+    pub(crate) fn add_relationships(
+        &mut self,
+        relationships: &[(
+            RelationType,
+            OboIdentifier,
+            Vec<(Box<str>, Box<str>)>,
+            Option<Box<str>>,
+        )],
+    ) -> Vec<BoxedError<'static, CVError>> {
+        let mut errors = Vec::new();
+
+        for rel in relationships {
+            if rel.0 == RelationType::IsA {
+                match rel.1.1.parse() {
+                    Ok(v) => self.parents.push(v),
+                    Err(err) => combine_error(
+                        &mut errors,
+                        BoxedError::new(
+                            CVError::ItemError,
+                            "Invalid ID",
+                            match err {
+                                AccessionCodeParseError::Empty => {
+                                    "A relationship ID cannot be empty"
+                                }
+                                AccessionCodeParseError::InvalidCharacters(_) => {
+                                    "A relationship ID can only contain alphanumeric characters"
+                                }
+                                AccessionCodeParseError::TooLong(_) => {
+                                    "A relationship ID can at max be 8 characters"
+                                }
+                            },
+                            Context::show(rel.1.1.to_string()),
+                        ),
+                    ),
+                }
+            }
         }
-    }
-}
 
-impl From<OntologyModification> for SimpleModification {
-    fn from(value: OntologyModification) -> Self {
-        Self::new(value.into())
+        errors
+    }
+
+    pub(crate) fn finish(mods: Vec<Self>) -> Vec<SimpleModification> {
+        let mut links = std::collections::HashMap::new();
+
+        for m in &mods {
+            for rel in &m.parents {
+                for other in &mods {
+                    if other.id == *rel {
+                        links
+                            .entry(m.id)
+                            .or_insert_with(|| (ThinVec::new(), ThinVec::new()))
+                            .0
+                            .push(other.id);
+                        links
+                            .entry(other.id)
+                            .or_insert_with(|| (ThinVec::new(), ThinVec::new()))
+                            .1
+                            .push(m.id);
+                    }
+                }
+            }
+        }
+
+        mods.into_iter()
+            .map(|mut m| {
+                m.simplify_rules();
+                let mut id = ModificationId::new(
+                    m.ontology,
+                    m.name,
+                    m.id,
+                    m.description,
+                    m.synonyms,
+                    m.cross_ids,
+                    m.obsolete,
+                );
+                if let Some((parents, children)) = links.remove(&m.id) {
+                    id.parents = parents;
+                    id.children = children;
+                }
+                std::sync::Arc::new(match m.data {
+                    ModData::Mod { specificities } => SimpleModificationInner::Database {
+                        id,
+                        formula: m.formula,
+                        specificities,
+                    },
+                    ModData::Linker {
+                        specificities,
+                        length,
+                    } => SimpleModificationInner::Linker {
+                        specificities,
+                        formula: m.formula,
+                        id,
+                        length,
+                    },
+                })
+            })
+            .collect()
     }
 }

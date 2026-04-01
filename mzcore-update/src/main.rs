@@ -4,9 +4,18 @@ use mzcore::ontology::*;
 use mzcv::CVIndex;
 
 fn main() {
+    let mut local = false;
     let args: Vec<String> = std::env::args()
         .skip(1)
         .map(|v| v.to_ascii_lowercase())
+        .filter(|v| {
+            if v == "local" {
+                local = true;
+                false
+            } else {
+                true
+            }
+        })
         .collect();
     if args.is_empty()
         || args.contains(&"psimod".to_string())
@@ -14,7 +23,11 @@ fn main() {
     {
         // PSI-MOD
         let mut index = CVIndex::<PsiMod>::empty();
-        let errs = index.update_from_url(&[]).unwrap();
+        let errs = if local {
+            index.update_from_path(None, false).unwrap()
+        } else {
+            index.update_from_url(&[]).unwrap()
+        };
         for err in errs {
             println!("{err}");
         }
@@ -58,7 +71,11 @@ fn main() {
     {
         // XLMOD
         let mut index = CVIndex::<XlMod>::empty();
-        let errs = index.update_from_url(&[]).unwrap();
+        let errs = if local {
+            index.update_from_path(None, false).unwrap()
+        } else {
+            index.update_from_url(&[]).unwrap()
+        };
         for err in errs {
             println!("{err}");
         }
@@ -75,7 +92,11 @@ fn main() {
     if args.is_empty() || args.contains(&"unimod".to_string()) {
         // Unimod
         let mut index = CVIndex::<Unimod>::empty();
-        let errs = index.update_from_url(&[]).unwrap();
+        let errs = if local {
+            index.update_from_path(None, false).unwrap()
+        } else {
+            index.update_from_url(&[]).unwrap()
+        };
         for err in errs {
             println!("{err}");
         }
@@ -92,7 +113,11 @@ fn main() {
     if args.is_empty() || args.contains(&"gno".to_string()) || args.contains(&"gnome".to_string()) {
         // GNOme
         let mut index = CVIndex::<Gnome>::empty();
-        let errs = index.update_from_url(&[]).unwrap();
+        let errs = if local {
+            index.update_from_path(None, false).unwrap()
+        } else {
+            index.update_from_url(&[]).unwrap()
+        };
         for err in errs {
             println!("{err}");
         }

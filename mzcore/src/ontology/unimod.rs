@@ -88,7 +88,7 @@ impl CVSource for Unimod {
         })?;
 
         let mut errors = Vec::new();
-        let mut modifications: Vec<SimpleModification> = Vec::new();
+        let mut modifications: Vec<OntologyModification> = Vec::new();
 
         for node in document.root().children() {
             if node.has_tag_name("unimod") {
@@ -97,7 +97,7 @@ impl CVSource for Unimod {
                         for node in node.children() {
                             if node.has_tag_name("mod") {
                                 match parse_mod(&node) {
-                                    Ok(o) => modifications.push(o.into()),
+                                    Ok(o) => modifications.push(o),
                                     Err(e) => errors.push(e),
                                 }
                             }
@@ -112,7 +112,7 @@ impl CVSource for Unimod {
                 version: None,
                 hash: reader.hash(),
             },
-            modifications,
+            OntologyModification::finish(modifications),
             errors,
         ))
     }
@@ -301,5 +301,6 @@ fn parse_mod(node: &Node) -> Result<OntologyModification, BoxedError<'static, CV
                 .collect(),
         },
         obsolete: false,
+        parents: ThinVec::default(),
     })
 }

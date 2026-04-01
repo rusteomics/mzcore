@@ -124,14 +124,7 @@ impl CVSource for Gnome {
             }
         }
 
-        Ok((
-            version,
-            mods.into_values()
-                .filter_map(|m| m.try_into().ok())
-                .map(std::sync::Arc::new)
-                .collect(),
-            errors,
-        ))
+        Ok((version, GNOmeModification::finish(mods), errors))
     }
 }
 
@@ -513,26 +506,52 @@ struct GNOmeModification {
     glycomeatlas: GlycomeAtlas,
 }
 
-impl TryFrom<GNOmeModification> for SimpleModificationInner {
-    type Error = ();
-    fn try_from(value: GNOmeModification) -> Result<Self, ()> {
-        Ok(Self::Gno {
-            composition: if let Some(structure) = value.topology {
-                GnoComposition::Topology(structure)
-            } else if let Some(composition) = value.composition {
-                GnoComposition::Composition(composition)
-            } else if let Some(mass) = value.weight {
-                GnoComposition::Weight(crate::system::f64::da(mass).into())
-            } else {
-                return Err(());
-            },
-            id: value.id,
-            structure_score: value.structure_score,
-            subsumption_level: value.subsumption_level,
-            motif: value.motif,
-            taxonomy: value.taxonomy,
-            glycomeatlas: value.glycomeatlas,
-        })
+impl GNOmeModification {
+    pub(crate) fn finish(mods: HashMap<Box<str>, Self>) -> Vec<SimpleModification> {
+        let mut links = HashMap::new();
+
+        for m in mods.values() {
+            for rel in &m.is_a {
+                if let Some(other) = mods.get(&rel.1) {
+                    links
+                        .entry(m.id.id())
+                        .or_insert_with(|| (ThinVec::new(), ThinVec::new()))
+                        .0
+                        .push(other.id.id());
+                    links
+                        .entry(other.id.id())
+                        .or_insert_with(|| (ThinVec::new(), ThinVec::new()))
+                        .1
+                        .push(m.id.id());
+                }
+            }
+        }
+
+        mods.into_values()
+            .filter_map(|mut value| {
+                if let Some((parents, children)) = links.remove(&value.id.id()) {
+                    value.id.parents = parents;
+                    value.id.children = children;
+                }
+                Some(std::sync::Arc::new(SimpleModificationInner::Gno {
+                    composition: if let Some(structure) = value.topology {
+                        GnoComposition::Topology(structure)
+                    } else if let Some(composition) = value.composition {
+                        GnoComposition::Composition(composition)
+                    } else if let Some(mass) = value.weight {
+                        GnoComposition::Weight(crate::system::f64::da(mass).into())
+                    } else {
+                        return None;
+                    },
+                    id: value.id,
+                    structure_score: value.structure_score,
+                    subsumption_level: value.subsumption_level,
+                    motif: value.motif,
+                    taxonomy: value.taxonomy,
+                    glycomeatlas: value.glycomeatlas,
+                }))
+            })
+            .collect()
     }
 }
 

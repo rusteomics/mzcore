@@ -117,6 +117,10 @@ pub struct ModificationId {
     pub cross_ids: ThinVec<(Option<Box<str>>, Box<str>)>,
     /// Indicate if this modification is marked as obsolete
     pub obsolete: bool,
+    /// Parent terms following 'is_a' relationships
+    pub parents: ThinVec<AccessionCode>,
+    /// Child terms following 'is_a' relationships
+    pub children: ThinVec<AccessionCode>,
 }
 
 impl ModificationId {
@@ -138,16 +142,18 @@ impl ModificationId {
             synonyms,
             cross_ids,
             obsolete,
+            parents: ThinVec::default(),
+            children: ThinVec::default(),
         }
     }
 
     /// Get the ID of this modification
-    pub fn id(&self) -> AccessionCode {
+    pub const fn id(&self) -> AccessionCode {
         self.id
     }
 
     /// Set the ID of this modification
-    pub fn set_id(&mut self, id: AccessionCode) {
+    pub const fn set_id(&mut self, id: AccessionCode) {
         self.id = id;
     }
 }
@@ -258,6 +264,8 @@ impl ParseJson for ModificationId {
                 obsolete: map
                     .remove("obsolete")
                     .map_or(Ok(false), |v| bool::from_json_value(v))?,
+                parents: ThinVec::default(),  // TODO: add
+                children: ThinVec::default(), // TODO: add
             })
         } else {
             Err(BoxedError::new(

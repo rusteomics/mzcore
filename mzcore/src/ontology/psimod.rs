@@ -114,7 +114,7 @@ impl CVSource for PsiMod {
                 .add_contexts(e.get_contexts().iter().cloned()),
             ]
         })?;
-        let mut mods: Vec<SimpleModification> = Vec::new();
+        let mut mods: Vec<OntologyModification> = Vec::new();
         let mut errors = Vec::new();
 
         'stanza: for obj in &obo.objects {
@@ -144,6 +144,7 @@ impl CVSource for PsiMod {
                 obsolete: obj.obsolete,
                 ..OntologyModification::default()
             };
+            modification.add_relationships(&obj.relationship);
             if let Some((description, cross_ids, _, _)) = &obj.definition {
                 modification.description = description.clone();
                 modification.cross_ids = cross_ids.clone().into();
@@ -336,10 +337,10 @@ impl CVSource for PsiMod {
                     ),
                 );
             }
-            mods.push(modification.into());
+            mods.push(modification);
         }
 
-        Ok((obo.version(), mods, errors))
+        Ok((obo.version(), OntologyModification::finish(mods), errors))
     }
 }
 

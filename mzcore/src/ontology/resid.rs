@@ -92,7 +92,7 @@ impl CVSource for Resid {
             )]
         })?;
         let mut errors = Vec::new();
-        let mut modifications: Vec<SimpleModification> = Vec::new();
+        let mut modifications: Vec<OntologyModification> = Vec::new();
         let database = document.root().first_child().ok_or_else(|| {
             vec![BoxedError::new(
                 CVError::FileCouldNotBeParsed,
@@ -464,7 +464,7 @@ impl CVSource for Resid {
                 }
 
                 modification.data = data.unwrap_or_default();
-                modifications.push(modification.into());
+                modifications.push(modification);
             }
         }
 
@@ -492,7 +492,7 @@ impl CVSource for Resid {
                 version: database.attribute("release").map(ToString::to_string),
                 hash: reader.hash(),
             },
-            modifications,
+            OntologyModification::finish(modifications),
             errors,
         ))
     }

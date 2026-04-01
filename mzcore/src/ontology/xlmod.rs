@@ -3,7 +3,7 @@ use context_error::{
     BoxedError, Context, CreateError, FullErrorContent, StaticErrorContent, combine_error,
     combine_errors,
 };
-use std::{collections::HashMap, sync::Arc};
+use std::collections::HashMap;
 use thin_vec::ThinVec;
 
 use mzcv::{
@@ -88,7 +88,7 @@ impl CVSource for XlMod {
                 (
                     obo.version(),
                     {
-                        let mut mods: Vec<SimpleModification> = Vec::new();
+                        let mut mods: Vec<OntologyModification> = Vec::new();
 
                         for obj in &obo.objects {
                             if obj.stanza_type != OboStanzaType::Term {
@@ -148,7 +148,7 @@ impl CVSource for XlMod {
                             }
 
                             if properties.sites == Some(2) {
-                                mods.push(
+                                let mut m = 
                                     OntologyModification {
                                         formula: properties.formula.unwrap_or_default(),
                                         name,
@@ -181,11 +181,12 @@ impl CVSource for XlMod {
                                                 },
                                             ],
                                         },
-                                    }
-                                    .into(),
-                                );
+                                        parents: ThinVec::default(),
+                                    };
+                                m.add_relationships(&obj.relationship);
+                                mods.push(m);
                             } else if properties.sites == Some(1) {
-                                mods.push(Arc::new(
+                                let mut m = 
                                     OntologyModification {
                                         formula: properties.formula.unwrap_or_default(),
                                         name,
@@ -202,9 +203,10 @@ impl CVSource for XlMod {
                                                 properties.diagnostic_ions,
                                             )],
                                         },
-                                    }
-                                    .into(),
-                                ));
+                                        parents: ThinVec::default(),
+                                    };
+                                m.add_relationships(&obj.relationship);
+                                mods.push(m);
                             } else if !properties.dna_linker && !obj.property_values.is_empty() {
                                 if let Some(sites) = properties.sites {
                                     combine_error(&mut errors, BoxedError::new(
@@ -222,7 +224,7 @@ impl CVSource for XlMod {
                             }
                         }
 
-                        mods
+                       OntologyModification::finish(mods)
                     },
                     errors,
                 )
