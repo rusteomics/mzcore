@@ -50,6 +50,16 @@ impl CVData for SimpleModificationInner {
                 .map(|(_, s)| s.as_ref())
         })
     }
+    fn parents(&self) -> impl Iterator<Item = &Self::Index> {
+        self.description()
+            .into_iter()
+            .flat_map(|id| id.parents.iter())
+    }
+    fn children(&self) -> impl Iterator<Item = &Self::Index> {
+        self.description()
+            .into_iter()
+            .flat_map(|id| id.children.iter())
+    }
 }
 
 impl CVSource for PsiMod {
