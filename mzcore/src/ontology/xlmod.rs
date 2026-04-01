@@ -7,8 +7,8 @@ use std::collections::HashMap;
 use thin_vec::ThinVec;
 
 use mzcv::{
-    CVError, CVFile, CVSource, CVVersion, HashBufReader, OboIdentifier, OboOntology, OboStanzaType,
-    OboValue, RelationType,
+    CVError, CVFile, CVSource, CVVersion, Comment, HashBufReader, Modifier, OboIdentifier,
+    OboOntology, OboStanzaType, OboValue, RelationType,
 };
 
 use crate::{
@@ -148,7 +148,7 @@ impl CVSource for XlMod {
                             }
 
                             if properties.sites == Some(2) {
-                                let mut m = 
+                                let mut m =
                                     OntologyModification {
                                         formula: properties.formula.unwrap_or_default(),
                                         name,
@@ -186,7 +186,7 @@ impl CVSource for XlMod {
                                 m.add_relationships(&obj.relationship);
                                 mods.push(m);
                             } else if properties.sites == Some(1) {
-                                let mut m = 
+                                let mut m =
                                     OntologyModification {
                                         formula: properties.formula.unwrap_or_default(),
                                         name,
@@ -245,10 +245,7 @@ struct Properties {
 }
 
 fn parse_property_values(
-    property_values: &HashMap<
-        Box<str>,
-        Vec<(OboValue, Vec<(Box<str>, Box<str>)>, Option<Box<str>>)>,
-    >,
+    property_values: &HashMap<Box<str>, Vec<(OboValue, Vec<Modifier>, Comment)>>,
     properties: &mut Properties,
     id: OboIdentifier,
 ) -> Vec<BoxedError<'static, CVError>> {
@@ -471,9 +468,16 @@ fn parse_property_values(
             }
             "neutralLossFormula" => {
                 for (def, _, _) in value {
-                    properties
-                        .neutral_losses
-                        .push(MolecularFormula::xlmod(&def.to_string()).unwrap().into());
+                    match MolecularFormula::xlmod(&def.to_string()) {
+                        Ok(v) => properties.neutral_losses.push(v.into()),
+                        Err(err) => combine_error(
+                            &mut errors,
+                            err.to_owned()
+                                .convert::<CVError, BoxedError<'static, CVError>>(|_| {
+                                    CVError::ItemError
+                                }),
+                        ),
+                    }
                 }
             }
             "bridgeFormula" => {
@@ -489,8 +493,11 @@ fn parse_property_values(
                     );
                 }
                 properties.sites = properties.sites.or(Some(2));
-                properties.formula =
-                    Some(MolecularFormula::xlmod(&value[0].0.to_string()).unwrap());
+                properties.formula = MolecularFormula::xlmod(&value[0].0.to_string())
+                    .map_err(|e| {
+                        combine_error(&mut errors, e.to_owned().convert(|_| CVError::ItemError));
+                    })
+                    .ok();
             }
             "specificities" => {
                 // specificities: "(C,U)" xsd:string
@@ -599,9 +606,16 @@ fn parse_property_values(
             }
             "reporterFormula" => {
                 for (def, _, _) in value {
-                    properties.diagnostic_ions.push(DiagnosticIon(
-                        MolecularFormula::xlmod(&def.to_string()).unwrap(),
-                    ));
+                    match MolecularFormula::xlmod(&def.to_string()) {
+                        Ok(v) => properties.diagnostic_ions.push(v.into()),
+                        Err(err) => combine_error(
+                            &mut errors,
+                            err.to_owned()
+                                .convert::<CVError, BoxedError<'static, CVError>>(|_| {
+                                    CVError::ItemError
+                                }),
+                        ),
+                    }
                 }
             }
             "stubDefinition" | "stubFormula" => {
@@ -610,23 +624,24 @@ fn parse_property_values(
                 // TODO: Extend the stub logic to handle the techniques and neutral losses
                 for (def, _, _) in value {
                     if let OboValue::String(definition) = &def {
-                        let (techniques, definition) = definition.split_once('=').unwrap();
+                        let (_techniques, definition) = definition.split_once('=').unwrap();
                         let (first, second) = definition.split_once(':').unwrap();
                         let mut split_first = first.split(',');
                         let mut split_second = second.split(',');
-                        let formula_first =
-                            split_first.next().map_or(MolecularFormula::default(), |v| {
+                        let formula_first = split_first
+                            .next()
+                            .map_or_else(MolecularFormula::default, |v| {
                                 MolecularFormula::xlmod(v).unwrap()
                             });
-                        let losses_first: Vec<NeutralLoss> = split_first
+                        let _losses_first: Vec<NeutralLoss> = split_first
                             .map(|v| MolecularFormula::xlmod(v).unwrap().into())
                             .collect();
                         let formula_second = split_second
                             .next()
-                            .map_or(MolecularFormula::default(), |v| {
+                            .map_or_else(MolecularFormula::default, |v| {
                                 MolecularFormula::xlmod(v).unwrap()
                             });
-                        let losses_second: Vec<NeutralLoss> = split_second
+                        let _losses_second: Vec<NeutralLoss> = split_second
                             .map(|v| MolecularFormula::xlmod(v).unwrap().into())
                             .collect();
                         properties.stubs.push((formula_first, formula_second));

@@ -1275,7 +1275,7 @@ impl std::fmt::Display for CURIEParsingError {
 
 /// An accession code, Can either be a numeric code (u32 to 4 milion, so 9 fully utilised digits).
 /// Or it can be an ASCII alphanumeric code (case-sensitive) of 1 to 8 characters.
-#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq, PartialOrd, Ord)]
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub enum AccessionCode {
     /// A strictly numeric code

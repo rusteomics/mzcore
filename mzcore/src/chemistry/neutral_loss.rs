@@ -144,6 +144,12 @@ impl ParseJson for DiagnosticIon {
     }
 }
 
+impl From<MolecularFormula> for DiagnosticIon {
+    fn from(value: MolecularFormula) -> Self {
+        Self(value)
+    }
+}
+
 impl From<MolecularFormula> for NeutralLoss {
     fn from(value: MolecularFormula) -> Self {
         let (pos, neg, gcd) = value.elements.iter().fold(

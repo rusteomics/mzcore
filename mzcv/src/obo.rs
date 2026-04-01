@@ -48,7 +48,7 @@ pub struct OboStanza {
 }
 
 /// An Obo relation type.
-#[derive(Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Clone, Debug, Default, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub enum RelationType {
     /// A relationship set with an `is_a` line
     #[default]
@@ -150,9 +150,11 @@ impl From<OboIdentifier> for RawOboID {
     }
 }
 
-type Modifier = (Box<str>, Box<str>);
+/// A modifier from an Obo line
+pub type Modifier = (Box<str>, Box<str>);
 
-type Comment = Option<Box<str>>;
+/// A possible comment from an Obo line
+pub type Comment = Option<Box<str>>;
 
 /// A synonym in an Obo stanza
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
@@ -730,7 +732,7 @@ pub enum OboError {
     InvalidLine,
     /// If a synonym line is invalid
     InvalidSynonym,
-    /// If an xref is invalid
+    /// If a xref is invalid
     InvalidXref,
     /// If a relationship is invalid
     InvalidRelationship,
@@ -759,12 +761,14 @@ impl ErrorKind for OboError {
     }
 }
 
-// Tokenise a value line, the `<value>` part is left untouched the trailing modifiers and comment are unescaped.
-// `<value> {<trailing modifiers>} ! <comment>`
+/// Tokenise a value line, the `<value>` part is left untouched the trailing modifiers and comment are not escaped.
+/// `<value> {<trailing modifiers>} ! <comment>`
+/// # Errors
+/// If a bracket was not closed, or if a modifier was malformed.
 fn tokenise_obo_value_line<'a>(
     text: &'a str,
     context: Context<'static>,
-) -> Result<(&'a str, Vec<(Box<str>, Box<str>)>, Option<Box<str>>), BoxedError<'static, OboError>> {
+) -> Result<(&'a str, Vec<Modifier>, Comment), BoxedError<'static, OboError>> {
     let mut trailing_start = None;
     let mut comment_start = None;
     let mut enclosed: Option<(char, usize)> = None;
@@ -845,6 +849,8 @@ fn tokenise_obo_value_line<'a>(
 }
 
 /// Split into parts with the enclosing characters
+/// # Errors
+/// If an enclosing sequence was not closed. Returns the bracket that was not closed.
 fn tokenise(text: &str) -> Result<Vec<(Option<char>, &str)>, char> {
     let mut parts = Vec::new();
     let mut enclosed = None;
@@ -894,6 +900,6 @@ fn tokenise(text: &str) -> Result<Vec<(Option<char>, &str)>, char> {
 fn parse_dbxref(text: &str) -> Vec<RawOboID> {
     text.split(',')
         .filter(|s| !s.is_empty())
-        .map(|id| OboIdentifier::from_str(id).unwrap().into())
+        .map(|id| OboIdentifier::from(id).into())
         .collect()
 }

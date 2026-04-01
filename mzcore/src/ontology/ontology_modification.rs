@@ -9,7 +9,8 @@ use crate::{
 use context_error::{BoxedError, Context, CreateError, combine_error};
 use itertools::Itertools;
 use mzcv::{
-    AccessionCode, AccessionCodeParseError, CVError, OboIdentifier, RelationType, SynonymScope,
+    AccessionCode, AccessionCodeParseError, CVError, Comment, Modifier, OboIdentifier,
+    RelationType, SynonymScope,
 };
 use thin_vec::ThinVec;
 
@@ -178,12 +179,7 @@ impl OntologyModification {
 
     pub(crate) fn add_relationships(
         &mut self,
-        relationships: &[(
-            RelationType,
-            OboIdentifier,
-            Vec<(Box<str>, Box<str>)>,
-            Option<Box<str>>,
-        )],
+        relationships: &[(RelationType, OboIdentifier, Vec<Modifier>, Comment)],
     ) -> Vec<BoxedError<'static, CVError>> {
         let mut errors = Vec::new();
 
