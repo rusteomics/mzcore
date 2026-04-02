@@ -3,7 +3,7 @@
 use std::sync::LazyLock;
 
 use context_error::*;
-use mzcv::{CVIndex, CVStructure, CVVersion, ControlledVocabulary};
+use mzcv::{AccessionCode, CVIndex, CVStructure, CVVersion, ControlledVocabulary};
 use serde::{Deserialize, Serialize};
 
 use crate::{
@@ -30,7 +30,7 @@ pub static STATIC_ONTOLOGIES: LazyLock<Ontologies> = LazyLock::new(Ontologies::i
 /// let modification = ontologies.get_by_name(&[], "Oxidation").unwrap();
 /// assert_eq!(modification.formula(), molecular_formula!(O 1));
 /// // or by index from a particular ontology
-/// let modification2 = ontologies.unimod().get_by_index(&35).unwrap();
+/// let modification2 = ontologies.unimod().get_by_index(&mzcv::AccessionCode::Numeric(35)).unwrap();
 /// assert_eq!(modification, modification2);
 /// // or search all (or a subset) for fuzzy matches
 /// let search = ontologies.search(&[], "Oxidated");
@@ -329,6 +329,48 @@ impl Ontologies {
                     if let Some(m) = self.custom.get_by_name(term) {
                         return Some(m);
                     }
+                }
+            }
+        }
+
+        None
+    }
+
+    /// Find the given index in this ontology.
+    pub fn get_by_index(
+        &self,
+        ontology: Ontology,
+        id: &AccessionCode,
+    ) -> Option<SimpleModification> {
+        match ontology {
+            Ontology::Unimod => {
+                if let Some(m) = self.unimod.get_by_index(id) {
+                    return Some(m);
+                }
+            }
+            Ontology::Psimod => {
+                if let Some(m) = self.psimod.get_by_index(id) {
+                    return Some(m);
+                }
+            }
+            Ontology::Xlmod => {
+                if let Some(m) = self.xlmod.get_by_index(id) {
+                    return Some(m);
+                }
+            }
+            Ontology::Gnome => {
+                if let Some(m) = self.gnome.get_by_index(id) {
+                    return Some(m);
+                }
+            }
+            Ontology::Resid => {
+                if let Some(m) = self.resid.get_by_index(id) {
+                    return Some(m);
+                }
+            }
+            Ontology::Custom => {
+                if let Some(m) = self.custom.get_by_index(id) {
+                    return Some(m);
                 }
             }
         }

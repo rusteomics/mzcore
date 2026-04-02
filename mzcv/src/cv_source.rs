@@ -20,11 +20,11 @@ use crate::{CVError, Curie, hash_buf_reader::HashBufReader};
 /// }
 /// ```
 pub trait CVSource {
-    /// Set this constant to true to enable automatic writing of the CV when the cahe is updated
+    /// Set this constant to true to enable automatic writing of the CV when the cache is updated
     const AUTOMATICALLY_WRITE_UNCOMPRESSED: bool = false;
     /// The data item that is stored in the CV
     type Data: CVData + 'static;
-    /// The type of the main datastructure to keep all data items (used to build any kind of hierarchy necessary)
+    /// The type of the main data structure to keep all data items (used to build any kind of hierarchy necessary)
     type Structure: CVStructure<Self::Data> + Encode + Decode<()>;
     /// The name of the CV, used to create the paths to store intermediate files and caches so has to be valid in that context
     fn cv_name() -> &'static str;
@@ -48,7 +48,7 @@ pub trait CVSource {
         folder.join(Self::cv_name())
     }
     /// Parse the textual representation of this CV. Return the version, the data, and possibly a
-    /// list of warnings or non critical errors encountered while parsing.
+    /// list of warnings or noncritical errors encountered while parsing.
     /// # Errors
     /// If the parsing failed.
     fn parse(
@@ -183,7 +183,7 @@ pub trait CVStructure<Data>: Default {
         Self: 'a;
     /// Iterate over all data items
     fn iter_data(&self) -> Self::IterData<'_>;
-    /// Add a sinlge data item to the structure
+    /// Add a single data item to the structure
     fn add(&mut self, data: std::sync::Arc<Data>);
     /// The indexing type
     type Index: Clone;

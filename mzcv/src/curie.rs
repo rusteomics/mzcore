@@ -1286,6 +1286,12 @@ pub enum AccessionCode {
     //Big(ThinStr),
 }
 
+impl From<u32> for AccessionCode {
+    fn from(value: u32) -> Self {
+        Self::Numeric(value)
+    }
+}
+
 impl Default for AccessionCode {
     fn default() -> Self {
         Self::Numeric(0)

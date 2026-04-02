@@ -632,18 +632,6 @@ impl PeptidoformIonSet {
         while index < chars.len() && index < range.end {
             match (c_term, chars[index]) {
                 (false, b'(') if chars.get(index + 1) == Some(&b'?') => {
-                    if braces_start.is_some() {
-                        combine_error(
-                            &mut errors,
-                            BoxedError::new(
-                                BasicKind::Error,
-                                "Invalid ambiguous amino acid set",
-                                "Ambiguous amino acid sets cannot be nested within ranged ambiguous modifications",
-                                base_context.clone().add_highlight((0, index, 1)),
-                            ),
-                        );
-                        return Err(errors);
-                    }
                     if ambiguous_aa.is_some() {
                         combine_error(
                             &mut errors,
@@ -655,31 +643,28 @@ impl PeptidoformIonSet {
                             ),
                         );
                         return Err(errors);
-                    }
-                    ambiguous_aa = Some(ambiguous_aa_counter);
-                    ambiguous_aa_counter = handle!(single errors, ambiguous_aa_counter.checked_add(1).ok_or_else(|| {BoxedError::new(BasicKind::Error,
-                        "Invalid ambiguous amino acid set",
-                        format!("There are too many ambiguous amino acid sets, there can only be {} in one linear peptide", std::num::NonZeroU32::MAX),
-                        base_context.clone().add_highlight((0, index, 1)))}));
-                    index += 2;
-                }
-                (false, b')') if ambiguous_aa.is_some() => {
-                    ambiguous_aa = None;
-                    index += 1;
-                }
-                (false, b'(') => {
-                    if braces_start.is_some() {
+                    } else if braces_start.is_some() {
                         combine_error(
                             &mut errors,
                             BoxedError::new(
                                 BasicKind::Error,
-                                "Invalid ranged ambiguous modification",
-                                "Ranged ambiguous modifications cannot be nested within ranged ambiguous modifications",
+                                "Invalid ambiguous amino acid set",
+                                "Ambiguous amino acid sets cannot be nested within ranged ambiguous modifications",
                                 base_context.clone().add_highlight((0, index, 1)),
                             ),
                         );
                         return Err(errors);
                     }
+
+                    ambiguous_aa = Some(ambiguous_aa_counter);
+                    braces_start = Some(peptide.len());
+                    ambiguous_aa_counter = handle!(single errors, ambiguous_aa_counter.checked_add(1).ok_or_else(|| {BoxedError::new(BasicKind::Error,
+                        "Invalid ambiguous amino acid set",
+                        format!("There are too many ambiguous amino acid sets, there can only be {} in one linear peptidoform", std::num::NonZeroU32::MAX),
+                        base_context.clone().add_highlight((0, index, 1)))}));
+                    index += 2;
+                }
+                (false, b'(') => {
                     if ambiguous_aa.is_some() {
                         combine_error(
                             &mut errors,
@@ -691,11 +676,27 @@ impl PeptidoformIonSet {
                             ),
                         );
                         return Err(errors);
+                    } else if braces_start.is_some() {
+                        combine_error(
+                            &mut errors,
+                            BoxedError::new(
+                                BasicKind::Error,
+                                "Invalid ranged ambiguous modification",
+                                "Ranged ambiguous modifications cannot be nested within ranged ambiguous modifications",
+                                base_context.clone().add_highlight((0, index, 1)),
+                            ),
+                        );
+                        return Err(errors);
                     }
+
                     braces_start = Some(peptide.len());
                     index += 1;
                 }
                 (false, b')') if braces_start.is_some() => {
+                    if ambiguous_aa.is_some() {
+                        ambiguous_aa = None;
+                    }
+
                     let start = braces_start.unwrap();
                     if start == peptide.len() {
                         combine_error(
@@ -981,6 +982,7 @@ impl PeptidoformIonSet {
             );
         }
 
+        dbg!(&ranged_unknown_position_modifications);
         if let Err(errs) = peptide.apply_ranged_unknown_position_modification(
             &ranged_unknown_position_modifications,
             &ambiguous_lookup,
