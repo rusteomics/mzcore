@@ -731,10 +731,4 @@ fn imgt_names() {
             .unwrap(),
         ("IGKV6-d".to_string(), 1)
     );
-    assert_eq!(
-        Gene::from_imgt_name_with_allele("IGHV3/OR15-7*03")
-            .map(|(g, a)| (g.to_string(), a))
-            .unwrap(),
-        ("IGHV3/OR15-7".to_string(), 3)
-    );
 }

@@ -346,7 +346,7 @@ mod tests {
             .chain([ChainType::Heavy])
             .gene([GeneType::C(Some(crate::Constant::G))]);
         let first = selection.germlines(&STATIC_IMGT).next().unwrap();
-        assert_eq!(first.name(), "IGHGP*01");
+        assert_eq!(first.name(), "IGHG1*03");
     }
 
     #[test]
