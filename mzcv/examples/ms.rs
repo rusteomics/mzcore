@@ -6,7 +6,7 @@ use context_error::{BoxedError, CreateError, FullErrorContent, StaticErrorConten
 
 use mzcv::{
     CVData, CVError, CVFile, CVIndex, CVSource, CVVersion, ControlledVocabulary, HashBufReader,
-    OboOntology, OboStanzaType, SynonymScope,
+    OboOntology, OboStanzaType, RelationType, SynonymScope,
 };
 
 fn main() {
@@ -124,7 +124,14 @@ impl CVSource for MS {
     }
     fn parse(
         mut reader: impl Iterator<Item = HashBufReader<Box<dyn std::io::Read>, impl sha2::Digest>>,
-    ) -> Result<(CVVersion, Self::Structure), Vec<BoxedError<'static, CVError>>> {
+    ) -> Result<
+        (
+            CVVersion,
+            Self::Structure,
+            Vec<BoxedError<'static, CVError>>,
+        ),
+        Vec<BoxedError<'static, CVError>>,
+    > {
         let reader = reader.next().unwrap();
         OboOntology::from_raw(reader)
             .map_err(|e| {
@@ -158,14 +165,17 @@ impl CVSource for MS {
                                 data.definition = def;
                                 data.cross_ids = ids;
                             }
-                            for parent in obj.is_a.iter() {
-                                if let Ok(parent_id) = parent.1.parse() {
+                            for parent in obj.relationship.iter() {
+                                if parent.0 == RelationType::IsA
+                                    && let Ok(parent_id) = parent.1.1.parse()
+                                {
                                     data.is_a.push(parent_id);
                                 }
                             }
                             Arc::new(data)
                         })
                         .collect(),
+                    Vec::new(),
                 )
             })
     }

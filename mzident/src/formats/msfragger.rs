@@ -58,6 +58,7 @@ format_family!(
         scan: SpectrumId, |location: Location, _| Ok(location.clone().parse::<usize>(NUMBER_ERROR).map_or_else(|_| SpectrumId::Native(location.get_string()), SpectrumId::Number));
         modifications: ThinVec<(SequencePosition, SimpleModification)>, |location: Location, ontologies: &Ontologies| location.or_empty().array(',').map(|m| if let Some((head, tail)) = m.clone().split_once('(') {
             let head_trim = head.as_str().trim();
+            let tail = tail.trim_end_matches(")");
             Ok((
                 if head_trim.eq_ignore_ascii_case("N-term") {
                     SequencePosition::NTerm

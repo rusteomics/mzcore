@@ -105,7 +105,7 @@ fn novor_denovo_v3_40() {
     }
 }
 
-#[ignore = "this format is not supported yet"]
+#[ignore = "this format has a weird header"]
 #[test]
 fn novor_peps_v3_40() {
     match test_format::<NovorPSM>(

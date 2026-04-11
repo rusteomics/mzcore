@@ -120,7 +120,7 @@ impl Add for UsedSpace {
 
 impl Add<()> for UsedSpace {
     type Output = Self;
-    fn add(self, rhs: ()) -> Self {
+    fn add(self, _rhs: ()) -> Self {
         self
     }
 }

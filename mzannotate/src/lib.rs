@@ -1,5 +1,7 @@
 #![doc = include_str!("../README.md")]
 
+use mzcv as _;
+
 #[cfg(test)]
 mod fragmentation_tests;
 
