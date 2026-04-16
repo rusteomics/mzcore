@@ -1,6 +1,10 @@
 use std::num::NonZeroU32;
 
-use mzcore::prelude::{MassMode, PeptidoformIonSet};
+use mzcore::{
+    molecular_formula,
+    prelude::{MassMode, PeptidoformIonSet},
+    system::{MassOverCharge, thomson},
+};
 use mzdata::mzpeaks::PeakCollection;
 
 use crate::prelude::{AnnotatedSpectrum, Fragment, MatchingParameters};
@@ -32,7 +36,14 @@ pub trait AnnotatableSpectrum: Sized {
                 mzdata::prelude::Tolerance::PPM(ratio.get::<mzcore::system::ratio::ppm>())
             }
         };
+        let isotope_tolerance = match parameters.isotope_tolerance {
+            mzcore::quantities::Tolerance::Absolute(mz) => mzdata::prelude::Tolerance::Da(mz.value),
+            mzcore::quantities::Tolerance::Relative(ratio) => {
+                mzdata::prelude::Tolerance::PPM(ratio.get::<mzcore::system::ratio::ppm>())
+            }
+        };
         let mut annotated = Self::empty_annotated(self, peptide);
+        let isotope_shift = molecular_formula!([13 C 1] [12 C -1]).mass(MassMode::Monoisotopic);
 
         for fragment in theoretical_fragments {
             // Determine fragment mz and see if it is within the model range.
@@ -42,15 +53,48 @@ pub trait AnnotatableSpectrum: Sized {
                 }
 
                 // Get the index of the element closest to this value
-                if let Some(index) = annotated
-                    .peaks
-                    .search(mz.get::<mzcore::system::thomson>(), tolerance)
-                {
-                    // Keep the theoretical fragments sorted to have the highest theoretical likelihood on top
-                    match annotated.peaks[index].annotations.binary_search(fragment) {
-                        Ok(ai) | Err(ai) => annotated.peaks[index]
-                            .annotations
-                            .insert(ai, fragment.clone()),
+                if let Some(index) = annotated.peaks.search(mz.get::<thomson>(), tolerance) {
+                    // #[cfg(feature = "mzdata/isotopes")]
+                    if parameters.match_isotopes
+                        && let Some(formula) = &fragment.formula
+                    {
+                        let offset = annotated.peaks[index].mz - mz;
+                        let envelope = formula.isotopic_distribution(0.01);
+                        let base = if mode == MassMode::Monoisotopic {
+                            mz
+                        } else {
+                            formula.mass(MassMode::Monoisotopic) / fragment.charge.to_float()
+                        } + offset;
+                        let mut matches = Vec::with_capacity(envelope.len());
+                        for (index, intensity) in envelope.into_iter().enumerate() {
+                            let isotope_mz = base
+                                + MassOverCharge::new::<thomson>(
+                                    (index as f64 * isotope_shift).value,
+                                );
+                            matches.push((
+                                intensity,
+                                annotated
+                                    .peaks
+                                    .search(isotope_mz.get::<thomson>(), isotope_tolerance),
+                            ));
+                        }
+                        let similarity = todo!();
+                        if similarity >= parameters.isotope_filter {
+                            for (index, (_, peak)) in matches.into_iter().enumerate() {
+                                if let Some(peak) = peak {
+                                    let frag = fragment.clone();
+                                    // Store the isotope info somewhere and add to the annotated peaks
+                                    annotated.peaks[peak].annotations.insert(index, element);
+                                }
+                            }
+                        }
+                    } else {
+                        // Keep the theoretical fragments sorted to have the highest theoretical likelihood on top
+                        match annotated.peaks[index].annotations.binary_search(fragment) {
+                            Ok(ai) | Err(ai) => annotated.peaks[index]
+                                .annotations
+                                .insert(ai, fragment.clone()),
+                        }
                     }
                 }
             }

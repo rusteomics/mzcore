@@ -391,6 +391,7 @@ impl PeakAnnotation {
                 FragmentType::Diagnostic(DiagnosticPosition::Reporter),
             ),
         };
+        // TODO: Handle isotopes: likely the formula should be adapted to be exact for this isotope, and the isotope(s) should be recorded somewhere, maybe just keep the list as is
         Ok(Fragment {
             formula,
             charge: self.charge.charge(),
