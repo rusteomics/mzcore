@@ -380,6 +380,11 @@ impl MolecularFormula {
         &self.elements
     }
 
+    /// Get the elements making this formula
+    pub fn elements_mut(&mut self) -> &mut [(Element, Option<NonZeroU16>, i32)] {
+        &mut self.elements
+    }
+
     /// Get the additional mass of this formula
     pub const fn additional_mass(&self) -> OrderedFloat<f64> {
         self.additional_mass

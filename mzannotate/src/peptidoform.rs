@@ -295,6 +295,7 @@ pub(crate) fn generate_theoretical_fragments_inner<Complexity>(
                     formula: Some(dia.0),
                     charge: Charge::default(),
                     ion: FragmentType::Diagnostic(pos),
+                    isotope: ThinVec::new(),
                     peptidoform_ion_index: Some(peptidoform_ion_index),
                     peptidoform_index: Some(peptidoform_index),
                     neutral_loss: ThinVec::new(),

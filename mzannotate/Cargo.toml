@@ -32,6 +32,7 @@ uom = { workspace = true }
 
 [features]
 coloured-errors = ["context_error/colored"]
+isotopes = ["mzcore/isotopes"]
 
 [lints]
 workspace = true

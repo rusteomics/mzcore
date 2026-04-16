@@ -1,6 +1,9 @@
 //! Handle fragment related issues, access provided if you want to dive deeply into fragments in your own code.
 
-use std::fmt::{Debug, Display};
+use std::{
+    fmt::{Debug, Display},
+    num::NonZeroU16,
+};
 
 use itertools::Itertools;
 use ordered_float::OrderedFloat;
@@ -26,6 +29,8 @@ pub struct Fragment {
     pub charge: Charge,
     /// The annotation for this fragment
     pub ion: FragmentType,
+    /// The isotope of this fragment (this needs to be added to the formula separately)
+    pub isotope: ThinVec<(i32, Isotope)>,
     /// The peptidoform this fragment comes from, saved as the index into the list of peptidoform in the overarching [`mzcore::sequence::PeptidoformIonSet`] struct
     pub peptidoform_ion_index: Option<usize>,
     /// The peptide this fragment comes from, saved as the index into the list of peptides in the overarching [`mzcore::sequence::PeptidoformIon`] struct
@@ -68,6 +73,7 @@ impl Fragment {
             formula: Some(theoretical_mass),
             charge,
             ion,
+            isotope: ThinVec::new(),
             peptidoform_ion_index: Some(peptidoform_ion_index),
             peptidoform_index: Some(peptidoform_index),
             neutral_loss: ThinVec::new(),
@@ -119,6 +125,7 @@ impl Fragment {
                             formula: Some(f),
                             charge: z,
                             ion: annotation.clone(),
+                            isotope: ThinVec::new(),
                             peptidoform_ion_index: Some(peptidoform_ion_index),
                             peptidoform_index: Some(peptidoform_index),
                             neutral_loss: loss.cloned().unwrap_or_default().into(),
@@ -183,6 +190,7 @@ impl Fragment {
                                 formula: Some(f),
                                 charge: z,
                                 ion: annotation.with_variant(*variant),
+                                isotope: ThinVec::new(),
                                 peptidoform_ion_index: Some(peptidoform_ion_index),
                                 peptidoform_index: Some(peptidoform_index),
                                 neutral_loss: loss.cloned().unwrap_or_default().into(),
@@ -261,6 +269,35 @@ impl Fragment {
         );
         output
     }
+
+    /// Update this fragment with this isotope. This also updates the formula. Note that this can
+    /// leave the formula with negative amounts of certain elements. If `C2H5O1` gets `+i15N` the
+    /// result is `C2H5O1N-1[15N1]`. If this is not acceptable this will have to be checked after
+    /// the fact.
+    #[must_use]
+    pub fn with_isotope(mut self, isotopes: Vec<(i32, Isotope)>) -> Self {
+        let offset = molecular_formula!([13 C 1] [12 C -1])
+            .monoisotopic_mass()
+            .value;
+        if let Some(formula) = &mut self.formula {
+            for (amount, isotope) in &isotopes {
+                match isotope {
+                    Isotope::Average | Isotope::General => {
+                        formula.add_mass((offset * (*amount as f64)).into())
+                    }
+                    Isotope::Specific(el, i) => {
+                        *formula += MolecularFormula::new(
+                            &[(*el, Some(*i), *amount), (*el, None, -amount)],
+                            &[],
+                        )
+                        .unwrap();
+                    }
+                }
+            }
+        }
+        self.isotope = isotopes.into();
+        self
+    }
 }
 
 impl Display for Fragment {
@@ -290,6 +327,14 @@ impl mzcore::space::Space for Fragment {
             + self.auxiliary.space())
         .set_total::<Self>()
     }
+}
+
+/// An isotope type
+#[derive(Clone, Debug, Hash, Deserialize, PartialEq, Eq, PartialOrd, Ord, Serialize)]
+pub enum Isotope {
+    General,
+    Average,
+    Specific(Element, NonZeroU16),
 }
 
 #[cfg(test)]

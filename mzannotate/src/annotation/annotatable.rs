@@ -1,13 +1,17 @@
 use std::num::NonZeroU32;
 
 use mzcore::{
-    molecular_formula,
     prelude::{MassMode, PeptidoformIonSet},
-    system::{MassOverCharge, thomson},
+    system::thomson,
 };
 use mzdata::mzpeaks::PeakCollection;
 
 use crate::prelude::{AnnotatedSpectrum, Fragment, MatchingParameters};
+
+#[cfg(feature = "isotopes")]
+use crate::fragment::Isotope;
+#[cfg(feature = "isotopes")]
+use crate::mzcore::{molecular_formula, system::MassOverCharge};
 
 /// A spectrum that can be annotated. The best way to use this is with mzdata
 /// [`SpectrumLike`](mzdata::prelude::SpectrumLike). For up to date information see that crate, but
@@ -36,14 +40,16 @@ pub trait AnnotatableSpectrum: Sized {
                 mzdata::prelude::Tolerance::PPM(ratio.get::<mzcore::system::ratio::ppm>())
             }
         };
+        #[cfg(feature = "isotopes")]
         let isotope_tolerance = match parameters.isotope_tolerance {
             mzcore::quantities::Tolerance::Absolute(mz) => mzdata::prelude::Tolerance::Da(mz.value),
             mzcore::quantities::Tolerance::Relative(ratio) => {
                 mzdata::prelude::Tolerance::PPM(ratio.get::<mzcore::system::ratio::ppm>())
             }
         };
-        let mut annotated = Self::empty_annotated(self, peptide);
+        #[cfg(feature = "isotopes")]
         let isotope_shift = molecular_formula!([13 C 1] [12 C -1]).mass(MassMode::Monoisotopic);
+        let mut annotated = Self::empty_annotated(self, peptide);
 
         for fragment in theoretical_fragments {
             // Determine fragment mz and see if it is within the model range.
@@ -54,7 +60,7 @@ pub trait AnnotatableSpectrum: Sized {
 
                 // Get the index of the element closest to this value
                 if let Some(index) = annotated.peaks.search(mz.get::<thomson>(), tolerance) {
-                    // #[cfg(feature = "mzdata/isotopes")]
+                    #[cfg(feature = "isotopes")]
                     if parameters.match_isotopes
                         && let Some(formula) = &fragment.formula
                     {
@@ -65,30 +71,48 @@ pub trait AnnotatableSpectrum: Sized {
                         } else {
                             formula.mass(MassMode::Monoisotopic) / fragment.charge.to_float()
                         } + offset;
+                        let mut matched_envelope = Vec::with_capacity(envelope.len());
                         let mut matches = Vec::with_capacity(envelope.len());
                         for (index, intensity) in envelope.into_iter().enumerate() {
-                            let isotope_mz = base
-                                + MassOverCharge::new::<thomson>(
-                                    (index as f64 * isotope_shift).value,
-                                );
-                            matches.push((
+                            let isotope_mz =
+                                base + (index as f64 * isotope_shift) / fragment.charge.to_float();
+                            let peak = annotated
+                                .peaks
+                                .search(isotope_mz.get::<thomson>(), isotope_tolerance);
+                            matched_envelope.push((
+                                isotope_mz.value,
+                                peak.map_or(0.0, |i| annotated.peaks[i].mz.value),
                                 intensity,
-                                annotated
-                                    .peaks
-                                    .search(isotope_mz.get::<thomson>(), isotope_tolerance),
+                                peak.map_or(0.0, |i| f64::from(annotated.peaks[i].intensity)),
                             ));
+                            matches.push(peak);
                         }
-                        let similarity = todo!();
+                        let similarity = cosine_similarity(&matched_envelope);
                         if similarity >= parameters.isotope_filter {
-                            for (index, (_, peak)) in matches.into_iter().enumerate() {
+                            for (index, peak) in matches.into_iter().enumerate() {
                                 if let Some(peak) = peak {
-                                    let frag = fragment.clone();
-                                    // Store the isotope info somewhere and add to the annotated peaks
-                                    annotated.peaks[peak].annotations.insert(index, element);
+                                    let frag = fragment
+                                        .clone()
+                                        .with_isotope(vec![(index as i32, Isotope::General)]);
+                                    let frag_index = annotated.peaks[peak]
+                                        .annotations
+                                        .binary_search(&frag)
+                                        .unwrap_or_else(|i| i);
+                                    annotated.peaks[peak].annotations.insert(frag_index, frag);
                                 }
                             }
                         }
                     } else {
+                        // Keep the theoretical fragments sorted to have the highest theoretical likelihood on top
+                        match annotated.peaks[index].annotations.binary_search(fragment) {
+                            Ok(ai) | Err(ai) => annotated.peaks[index]
+                                .annotations
+                                .insert(ai, fragment.clone()),
+                        }
+                    }
+
+                    #[cfg(not(feature = "isotopes"))]
+                    {
                         // Keep the theoretical fragments sorted to have the highest theoretical likelihood on top
                         match annotated.peaks[index].annotations.binary_search(fragment) {
                             Ok(ai) | Err(ai) => annotated.peaks[index]
@@ -116,4 +140,25 @@ impl<T: Into<AnnotatedSpectrum>> AnnotatableSpectrum for T {
 
         spectrum
     }
+}
+
+// Weighted cosine spectral similarity = https://mzmine.github.io/mzmine_documentation/module_docs/id_spectral_library_search/spectral-similarity-measures.html
+/// (mz1, mz2, i1, i2)
+#[cfg(feature = "isotopes")]
+fn cosine_similarity(peaks: &[(f64, f64, f64, f64)]) -> f64 {
+    let sumx = peaks
+        .iter()
+        .map(|(m1, m2, i1, i2)| m1 * m2 * i1 * i2)
+        .sum::<f64>();
+    let sumx2 = peaks
+        .iter()
+        .map(|(m1, _, i1, _)| (m1 * i1).powi(2))
+        .sum::<f64>()
+        .sqrt()
+        * peaks
+            .iter()
+            .map(|(_, m2, _, i2)| (m2 * i2).powi(2))
+            .sum::<f64>()
+            .sqrt();
+    sumx / sumx2
 }

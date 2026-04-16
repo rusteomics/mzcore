@@ -10,7 +10,7 @@ use serde::{Deserialize, Serialize};
 
 use mzcore::{
     chemistry::{
-        Chemical, ELEMENT_PARSE_LIST, Element, MolecularCharge, MolecularFormula, MultiChemical,
+        Chemical, ELEMENT_PARSE_LIST, MolecularCharge, MolecularFormula, MultiChemical,
         NeutralLoss, SatelliteLabel,
     },
     molecular_formula,
@@ -22,6 +22,7 @@ use mzcore::{
     },
     system::{Mass, MassOverCharge, OrderedMassOverCharge, e, isize::Charge, thomson},
 };
+use thin_vec::ThinVec;
 
 use crate::{
     fragment::*,
@@ -391,18 +392,19 @@ impl PeakAnnotation {
                 FragmentType::Diagnostic(DiagnosticPosition::Reporter),
             ),
         };
-        // TODO: Handle isotopes: likely the formula should be adapted to be exact for this isotope, and the isotope(s) should be recorded somewhere, maybe just keep the list as is
         Ok(Fragment {
             formula,
             charge: self.charge.charge(),
             ion,
+            isotope: ThinVec::new(),
             peptidoform_ion_index: self.analyte_number.checked_sub(1).map(|a| a as usize), // TODO: figure out how to handle this properly
             peptidoform_index: Some(0),
             neutral_loss: self.neutral_losses.into(),
             deviation: self.deviation,
             confidence: self.confidence.map(Into::into),
             auxiliary: self.auxiliary,
-        })
+        }
+        .with_isotope(self.isotopes))
     }
 }
 
@@ -423,13 +425,6 @@ pub(crate) enum IonType {
     Precursor,
     Reporter(MolecularFormula),
     Formula(MolecularFormula),
-}
-
-#[derive(Clone, Debug, Deserialize, PartialEq, PartialOrd, Serialize)]
-pub(in crate::fragment) enum Isotope {
-    General,
-    Average,
-    Specific(Element, NonZeroU16),
 }
 
 /// Parse a mzPAF analyte number. '1@...'
