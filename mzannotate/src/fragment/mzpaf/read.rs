@@ -404,7 +404,7 @@ impl PeakAnnotation {
             confidence: self.confidence.map(Into::into),
             auxiliary: self.auxiliary,
         }
-        .with_isotope(self.isotopes))
+        .with_isotope(&self.isotopes))
     }
 }
 

@@ -18,8 +18,10 @@ pub struct MatchingParameters {
     pub match_isotopes: bool,
     /// The matching tolerance for isotope peaks
     pub isotope_tolerance: Tolerance<MassOverCharge>,
-    /// The minimum cosine similarity for an isotope envelop to be considered a true match
+    /// The minimum cosine similarity for an isotope envelope to be considered a true match
     pub isotope_filter: f64,
+    /// The minimum probability cutoff for generating isotope distributions, see [`mzcore::chemistry::MolecularFormula::isotopic_distribution`]
+    pub isotope_minimum_probability: f64,
 }
 
 impl MatchingParameters {
@@ -45,8 +47,9 @@ impl Default for MatchingParameters {
             mz_range: MassOverCharge::new::<thomson>(0.0)
                 ..=MassOverCharge::new::<thomson>(f64::MAX),
             match_isotopes: false,
-            isotope_tolerance: Tolerance::new_ppm(1.0),
+            isotope_tolerance: Tolerance::new_ppm(20.0),
             isotope_filter: 0.5,
+            isotope_minimum_probability: 0.01,
         }
     }
 }

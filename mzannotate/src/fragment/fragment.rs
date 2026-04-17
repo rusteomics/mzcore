@@ -3,6 +3,7 @@
 use std::{
     fmt::{Debug, Display},
     num::NonZeroU16,
+    sync::LazyLock,
 };
 
 use itertools::Itertools;
@@ -274,29 +275,29 @@ impl Fragment {
     /// leave the formula with negative amounts of certain elements. If `C2H5O1` gets `+i15N` the
     /// result is `C2H5O1N-1[15N1]`. If this is not acceptable this will have to be checked after
     /// the fact.
+    ///
+    /// # Panics
+    /// If any of the given isotopes are not valid, see [`MolecularFormula::new`].
     #[must_use]
-    pub fn with_isotope(mut self, isotopes: Vec<(i32, Isotope)>) -> Self {
-        let offset = molecular_formula!([13 C 1] [12 C -1])
-            .monoisotopic_mass()
-            .value;
+    pub fn with_isotope(mut self, isotopes: &[(i32, Isotope)]) -> Self {
+        self.isotope = isotopes.iter().copied().filter(|(a, _)| *a != 0).collect();
         if let Some(formula) = &mut self.formula {
-            for (amount, isotope) in &isotopes {
-                match isotope {
-                    Isotope::Average | Isotope::General => {
-                        formula.add_mass((offset * (*amount as f64)).into())
-                    }
-                    Isotope::Specific(el, i) => {
-                        *formula += MolecularFormula::new(
-                            &[(*el, Some(*i), *amount), (*el, None, -amount)],
-                            &[],
-                        )
-                        .unwrap();
-                    }
-                }
+            for (amount, isotope) in &self.isotope {
+                isotope.add_to_formula(*amount, formula).unwrap();
             }
         }
-        self.isotope = isotopes.into();
         self
+    }
+
+    /// Get the base formula with all isotopes removed. It returns None if no formula is available
+    /// or if the calculations overflow when doing the subtraction of the isotopes.
+    pub fn base_formula(&self) -> Option<MolecularFormula> {
+        self.formula.clone().and_then(|mut formula| {
+            for (amount, isotope) in &self.isotope {
+                isotope.sub_from_formula(*amount, &mut formula)?;
+            }
+            Some(formula)
+        })
     }
 }
 
@@ -330,11 +331,63 @@ impl mzcore::space::Space for Fragment {
 }
 
 /// An isotope type
-#[derive(Clone, Debug, Hash, Deserialize, PartialEq, Eq, PartialOrd, Ord, Serialize)]
+#[derive(Clone, Copy, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 pub enum Isotope {
+    /// A general isotope, assumed to be the mass difference between C13 and C12
     General,
+    /// An average isotope, the average mass of all isotopologues that make up this isotope
     Average,
+    /// A specific isotope
     Specific(Element, NonZeroU16),
+}
+
+/// Remember the C13 offset
+static ISOTOPE_OFFSET: LazyLock<f64> = LazyLock::new(|| {
+    molecular_formula!([13 C 1] [12 C -1])
+        .monoisotopic_mass()
+        .value
+});
+
+impl Isotope {
+    /// Add a certain amount of this isotope to a formula. It returns None if this isotope is invalid
+    /// or if adding this isotope overflows the molecular formula.
+    fn add_to_formula(self, amount: i32, formula: &mut MolecularFormula) -> Option<()> {
+        match self {
+            Self::Average | Self::General => {
+                formula.add_mass((*ISOTOPE_OFFSET * f64::from(amount)).into());
+                Some(())
+            }
+            Self::Specific(el, i) => formula.ref_mut_checked_add(&MolecularFormula::new(
+                &[(el, Some(i), amount), (el, None, -amount)],
+                &[],
+            )?),
+        }
+    }
+
+    /// Subtract a certain amount of this isotope to a formula. It returns None if this isotope is invalid
+    /// or if subtracting this isotope overflows the molecular formula.
+    fn sub_from_formula(self, amount: i32, formula: &mut MolecularFormula) -> Option<()> {
+        match self {
+            Self::Average | Self::General => {
+                formula.add_mass((*ISOTOPE_OFFSET * -1.0 * f64::from(amount)).into());
+                Some(())
+            }
+            Self::Specific(el, i) => formula.ref_mut_checked_sub(&MolecularFormula::new(
+                &[(el, Some(i), amount), (el, None, -amount)],
+                &[],
+            )?),
+        }
+    }
+}
+
+impl Display for Isotope {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::General => write!(f, "i"),
+            Self::Average => write!(f, "iA"),
+            Self::Specific(el, i) => write!(f, "i{i}{el}"),
+        }
+    }
 }
 
 #[cfg(test)]

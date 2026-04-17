@@ -11,7 +11,7 @@ use crate::prelude::{AnnotatedSpectrum, Fragment, MatchingParameters};
 #[cfg(feature = "isotopes")]
 use crate::fragment::Isotope;
 #[cfg(feature = "isotopes")]
-use crate::mzcore::{molecular_formula, system::MassOverCharge};
+use mzcore::{molecular_formula, system::MassOverCharge};
 
 /// A spectrum that can be annotated. The best way to use this is with mzdata
 /// [`SpectrumLike`](mzdata::prelude::SpectrumLike). For up to date information see that crate, but
@@ -64,13 +64,13 @@ pub trait AnnotatableSpectrum: Sized {
                     if parameters.match_isotopes
                         && let Some(formula) = &fragment.formula
                     {
-                        let offset = annotated.peaks[index].mz - mz;
-                        let envelope = formula.isotopic_distribution(0.01);
+                        let envelope =
+                            formula.isotopic_distribution(parameters.isotope_minimum_probability);
                         let base = if mode == MassMode::Monoisotopic {
                             mz
                         } else {
                             formula.mass(MassMode::Monoisotopic) / fragment.charge.to_float()
-                        } + offset;
+                        };
                         let mut matched_envelope = Vec::with_capacity(envelope.len());
                         let mut matches = Vec::with_capacity(envelope.len());
                         for (index, intensity) in envelope.into_iter().enumerate() {
@@ -93,7 +93,7 @@ pub trait AnnotatableSpectrum: Sized {
                                 if let Some(peak) = peak {
                                     let frag = fragment
                                         .clone()
-                                        .with_isotope(vec![(index as i32, Isotope::General)]);
+                                        .with_isotope(&[(index as i32, Isotope::General)]);
                                     let frag_index = annotated.peaks[peak]
                                         .annotations
                                         .binary_search(&frag)

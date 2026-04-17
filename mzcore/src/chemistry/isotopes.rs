@@ -15,6 +15,8 @@ impl MolecularFormula {
     /// This approximation slightly overestimates the tail end of the distribution. Especially
     /// for species with multiple higher mass isotopes as it does not take the number of already
     /// chosen atoms for lower weighed isotopes into account.
+    ///
+    /// The threshold determines the minimal probability of an isotope peak to be included.
     #[expect(clippy::missing_panics_doc)]
     pub fn isotopic_distribution(&self, threshold: f64) -> Array1<f64> {
         let mut result = arr1(&[1.0]);

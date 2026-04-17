@@ -190,7 +190,7 @@ impl ToMzPAF for Fragment {
             FragmentType::Unknown(num) => {
                 if let Some(num) = num {
                     write!(w, "?{num}",)?;
-                } else if let Some(formula) = &self.formula {
+                } else if let Some(formula) = self.base_formula() {
                     write!(w, "f{{{formula}}}",)?;
                 } else {
                     write!(w, "?",)?;
@@ -201,7 +201,7 @@ impl ToMzPAF for Fragment {
             | FragmentType::BComposition(_, _)
             | FragmentType::Y(_)
             | FragmentType::YComposition(_, _) => {
-                if let Some(formula) = &self.formula {
+                if let Some(formula) = self.base_formula() {
                     write!(w, "f{{{}}}", formula.hill_notation_core())?;
                     if formula.additional_mass() != 0.0 {
                         write!(w, "{:+}", formula.additional_mass())?;
@@ -246,7 +246,10 @@ impl ToMzPAF for Fragment {
                 l => write!(w, "{l}")?,
             }
         }
-        // Isotopes: TODO: not handled
+        // Isotopes
+        for (amount, isotope) in &self.isotope {
+            write!(w, "{amount:+}{isotope}")?;
+        }
         // Charge state
         if self.charge.value != 1 {
             write!(w, "^{}", self.charge.value)?;
