@@ -58,6 +58,11 @@ impl ChargeRange {
         start: ChargePoint::Absolute(1),
         end: ChargePoint::Relative(0),
     };
+    /// Range from 1 to the precursor - 1
+    pub const ONE_TO_PRECURSOR_MINUS_ONE: Self = Self {
+        start: ChargePoint::Absolute(1),
+        end: ChargePoint::Relative(-1),
+    };
 }
 
 /// A reference point for charge range definition.

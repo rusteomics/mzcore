@@ -80,7 +80,7 @@ pub enum FragmentType {
     Diagnostic(DiagnosticPosition),
     /// An internal fragment, potentially with the named bonds that resulted in this fragment
     Internal(
-        Option<(BackboneNFragment, BackboneCFragment)>,
+        Option<(BackboneCFragment, BackboneNFragment)>,
         PeptidePosition,
         PeptidePosition,
     ),
@@ -389,7 +389,7 @@ impl FragmentType {
                 None,
                 Cow::Owned(format!(
                     "m{}",
-                    fragmentation.map_or(String::new(), |(n, c)| format!("{n}:{c}")),
+                    fragmentation.map_or(String::new(), |(nt, ct)| format!("{nt}:{ct}")),
                 )),
             ),
             Self::Unknown(series) => (

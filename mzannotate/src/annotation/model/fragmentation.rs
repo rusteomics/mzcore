@@ -1,6 +1,6 @@
 //! Handle model instantiation.
 
-use std::sync::LazyLock;
+use std::{ops::RangeInclusive, sync::LazyLock};
 
 use itertools::Itertools;
 use mzcore::{
@@ -45,6 +45,14 @@ pub struct FragmentationModel {
         (u8, Option<Vec<AminoAcid>>),
         ChargeRange,
     ),
+    /// internal ions, standard neutral losses, amino acid specific neutral losses, and charge range
+    pub internal: Option<(
+        RangeInclusive<usize>,
+        Vec<NeutralLoss>,
+        Vec<(Vec<AminoAcid>, Vec<NeutralLoss>)>,
+        (u8, Option<Vec<AminoAcid>>),
+        ChargeRange,
+    )>,
     /// immonium ions
     pub immonium: Option<ImmoniumSettings>,
     /// If the neutral losses specific for modifications should be generated

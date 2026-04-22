@@ -216,15 +216,15 @@ impl ToMzPAF for Fragment {
                 a.sequence_index + 1,
                 b.sequence_index + 1,
                 match name {
-                    (BackboneNFragment::a, BackboneCFragment::x)
-                    | (BackboneNFragment::b, BackboneCFragment::y)
-                    | (BackboneNFragment::c, BackboneCFragment::z) => "",
-                    (BackboneNFragment::a, BackboneCFragment::y) => "-CO",
-                    (BackboneNFragment::a, BackboneCFragment::z) => "-CHNO",
-                    (BackboneNFragment::b, BackboneCFragment::x) => "+CO",
-                    (BackboneNFragment::b, BackboneCFragment::z) => "-NH",
-                    (BackboneNFragment::c, BackboneCFragment::x) => "+CHNO",
-                    (BackboneNFragment::c, BackboneCFragment::y) => "+NH",
+                    (BackboneCFragment::x, BackboneNFragment::a)
+                    | (BackboneCFragment::y, BackboneNFragment::b)
+                    | (BackboneCFragment::z, BackboneNFragment::c) => "",
+                    (BackboneCFragment::y, BackboneNFragment::a) => "-CO",
+                    (BackboneCFragment::z, BackboneNFragment::a) => "-CHNO",
+                    (BackboneCFragment::x, BackboneNFragment::b) => "+CO",
+                    (BackboneCFragment::z, BackboneNFragment::b) => "-NH",
+                    (BackboneCFragment::x, BackboneNFragment::c) => "+CHNO",
+                    (BackboneCFragment::y, BackboneNFragment::c) => "+NH",
                 }
             )?,
             FragmentType::Internal(None, a, b) => {

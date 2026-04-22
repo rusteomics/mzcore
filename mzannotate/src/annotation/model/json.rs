@@ -100,6 +100,7 @@ impl ParseJson for FragmentationModel {
                         context(&map),
                     )
                 })?)?,
+                internal: None, //TODO: Parse at some point
                 immonium: Option::from_json_value(map.remove("immonium").ok_or_else(|| {
                     BoxedError::new(BasicKind::Error,
                         "Invalid FragmentationModel",

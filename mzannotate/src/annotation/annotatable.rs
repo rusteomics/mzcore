@@ -41,13 +41,6 @@ pub trait AnnotatableSpectrum: Sized {
             }
         };
         #[cfg(feature = "isotopes")]
-        let isotope_tolerance = match parameters.isotope_tolerance {
-            mzcore::quantities::Tolerance::Absolute(mz) => mzdata::prelude::Tolerance::Da(mz.value),
-            mzcore::quantities::Tolerance::Relative(ratio) => {
-                mzdata::prelude::Tolerance::PPM(ratio.get::<mzcore::system::ratio::ppm>())
-            }
-        };
-        #[cfg(feature = "isotopes")]
         let isotope_shift = molecular_formula!([13 C 1] [12 C -1]).mass(MassMode::Monoisotopic);
         let mut annotated = Self::empty_annotated(self, peptide);
 
@@ -78,12 +71,14 @@ pub trait AnnotatableSpectrum: Sized {
                                 base + (index as f64 * isotope_shift) / fragment.charge.to_float();
                             let peak = annotated
                                 .peaks
-                                .search(isotope_mz.get::<thomson>(), isotope_tolerance);
+                                .search(isotope_mz.get::<thomson>(), tolerance);
                             matched_envelope.push((
                                 isotope_mz.value,
                                 peak.map_or(0.0, |i| annotated.peaks[i].mz.value),
-                                intensity,
-                                peak.map_or(0.0, |i| f64::from(annotated.peaks[i].intensity)),
+                                intensity.sqrt(),
+                                peak.map_or(0.0, |i| {
+                                    f64::from(annotated.peaks[i].intensity.sqrt())
+                                }),
                             ));
                             matches.push(peak);
                         }

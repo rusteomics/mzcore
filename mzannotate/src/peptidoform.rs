@@ -1,7 +1,4 @@
-use std::{
-    collections::{HashMap, HashSet},
-    option,
-};
+use std::collections::{HashMap, HashSet};
 
 use itertools::Itertools;
 use mzcore::{
@@ -200,6 +197,13 @@ pub(crate) fn generate_theoretical_fragments_inner<Complexity>(
     }
 
     // Internal fragments
+    if let Some((
+        internal_range,
+        neutral_losses,
+        specific_losses,
+        side_chain_losses,
+        charge_range,
+    )) = &model.internal
     {
         let options = (0..peptidoform.len())
             .map(|i| {
@@ -217,7 +221,6 @@ pub(crate) fn generate_theoretical_fragments_inner<Complexity>(
                 )
             })
             .collect::<Vec<_>>();
-        let internal_range = 2..=20;
 
         for n in 1..peptidoform
             .len()
@@ -226,74 +229,113 @@ pub(crate) fn generate_theoretical_fragments_inner<Complexity>(
             for c in n..(peptidoform.len() - 1).min(n + internal_range.end()) {
                 let o_n = options[n];
                 let o_c = options[c];
+                // Allow neutral losses from modifications for the precursor
+                let mut internal_neutral_losses = if model.modification_specific_neutral_losses {
+                    peptidoform
+                        .potential_neutral_losses(
+                            ..,
+                            all_peptides,
+                            peptidoform_index,
+                            &mut Vec::new(),
+                        )
+                        .into_iter()
+                        .map(|(n, _, _)| vec![n])
+                        .collect()
+                } else {
+                    Vec::new()
+                };
+                // Add amino acid specific neutral losses
+                internal_neutral_losses.extend(
+                    specific_losses
+                        .iter()
+                        .filter_map(|(rule, losses)| {
+                            rule.iter()
+                                .any(|aa| {
+                                    peptidoform
+                                        .sequence()
+                                        .iter()
+                                        .any(|seq| seq.aminoacid.aminoacid() == *aa)
+                                })
+                                .then_some(losses)
+                        })
+                        .flatten()
+                        .map(|l| vec![l.clone()]),
+                );
+                // Add amino acid side chain losses
+                internal_neutral_losses.extend(get_all_sidechain_losses(
+                    peptidoform.sequence(),
+                    side_chain_losses,
+                ));
+                // Add all normal neutral losses
+                internal_neutral_losses.extend(neutral_losses.iter().map(|l| vec![l.clone()]));
                 for (frag_n, n_possible) in [
-                    (BackboneNFragment::a, o_n.0),
-                    (BackboneNFragment::b, o_n.1),
-                    (BackboneNFragment::c, o_n.2),
+                    (BackboneCFragment::x, o_n.3),
+                    (BackboneCFragment::y, o_n.4),
+                    (BackboneCFragment::z, o_n.5),
                 ] {
                     if !n_possible {
                         continue;
                     }
                     for (frag_c, c_possible) in [
-                        (BackboneCFragment::x, o_c.3),
-                        (BackboneCFragment::y, o_c.4),
-                        (BackboneCFragment::z, o_c.5),
+                        (BackboneNFragment::a, o_c.0),
+                        (BackboneNFragment::b, o_c.1),
+                        (BackboneNFragment::c, o_c.2),
                     ] {
                         if c_possible {
-                            let base = peptidoform
-                                .all_masses(
-                                    n..=c,
-                                    n..=c,
-                                    &(Multi::default(), HashMap::new()),
-                                    all_peptides,
-                                    &[],
-                                    &mut Vec::new(),
-                                    false,
-                                    peptidoform_index,
-                                    peptidoform_ion_index,
-                                    &model.glycan,
-                                )
-                                .0
-                                + match (frag_n, frag_c) {
-                                    (BackboneNFragment::a, BackboneCFragment::y) => {
-                                        molecular_formula!(C -1 O -1)
-                                    }
-                                    (BackboneNFragment::a, BackboneCFragment::z) => {
-                                        molecular_formula!(C -1 O -1 N -1 H - 1)
-                                    }
-                                    (BackboneNFragment::b, BackboneCFragment::x) => {
-                                        molecular_formula!(C 1 O 1)
-                                    }
-                                    (BackboneNFragment::b, BackboneCFragment::z) => {
-                                        molecular_formula!(N -1 H -1)
-                                    }
-                                    (BackboneNFragment::c, BackboneCFragment::x) => {
-                                        molecular_formula!(C 1 O 1 N 1 H 1)
-                                    }
-                                    (BackboneNFragment::c, BackboneCFragment::y) => {
-                                        molecular_formula!(N 1 H 1)
-                                    }
-                                    _ => MolecularFormula::default(),
-                                };
-                            for m in base.to_vec() {
-                                output.push(Fragment::new(
-                                    m,
-                                    Charge::new::<mzcore::system::e>(1),
-                                    peptidoform_ion_index,
-                                    peptidoform_index,
-                                    FragmentType::Internal(
-                                        Some((frag_n, frag_c)),
-                                        PeptidePosition::n(
-                                            SequencePosition::Index(n),
-                                            peptidoform.len(),
-                                        ),
-                                        PeptidePosition::c(
-                                            SequencePosition::Index(c),
-                                            peptidoform.len(),
-                                        ),
+                            output.extend(Fragment::generate_all(
+                                &(peptidoform
+                                    .all_masses(
+                                        n..=c,
+                                        n..=c,
+                                        &(Multi::default(), HashMap::new()),
+                                        all_peptides,
+                                        &[],
+                                        &mut Vec::new(),
+                                        false,
+                                        peptidoform_index,
+                                        peptidoform_ion_index,
+                                        &model.glycan,
+                                    )
+                                    .0
+                                    + match (frag_n, frag_c) {
+                                        (BackboneCFragment::y, BackboneNFragment::a) => {
+                                            molecular_formula!(C -1 O -1)
+                                        }
+                                        (BackboneCFragment::z, BackboneNFragment::a) => {
+                                            molecular_formula!(C -1 O -1 N -1 H - 1)
+                                        }
+                                        (BackboneCFragment::x, BackboneNFragment::b) => {
+                                            molecular_formula!(C 1 O 1)
+                                        }
+                                        (BackboneCFragment::z, BackboneNFragment::b) => {
+                                            molecular_formula!(N -1 H -1)
+                                        }
+                                        (BackboneCFragment::x, BackboneNFragment::c) => {
+                                            molecular_formula!(C 1 O 1 N 1 H 1)
+                                        }
+                                        (BackboneCFragment::y, BackboneNFragment::c) => {
+                                            molecular_formula!(N 1 H 1)
+                                        }
+                                        _ => MolecularFormula::default(),
+                                    }),
+                                peptidoform_ion_index,
+                                peptidoform_index,
+                                &FragmentType::Internal(
+                                    Some((frag_n, frag_c)),
+                                    PeptidePosition::n(
+                                        SequencePosition::Index(n),
+                                        peptidoform.len(),
                                     ),
-                                ));
-                            }
+                                    PeptidePosition::c(
+                                        SequencePosition::Index(c),
+                                        peptidoform.len(),
+                                    ),
+                                ),
+                                &Multi::default(),
+                                &internal_neutral_losses,
+                                &mut charge_carriers,
+                                *charge_range,
+                            ));
                         }
                     }
                 }
