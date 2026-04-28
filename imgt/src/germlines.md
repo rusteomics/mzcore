@@ -42,6 +42,17 @@ _Number of genes / number of alleles_
 
 _Number of genes / number of alleles_
 
+## Ctenopharyngodon idella / Grass carp
+
+| Kind | V | J | C |
+|------|---|---|---|
+|IGHV|0/0|28/28|8/8|
+|IGKV|0/0|0/0|0/0|
+|IGLV|0/0|0/0|0/0|
+|IGIV|0/0|0/0|0/0|
+
+_Number of genes / number of alleles_
+
 ## Danio rerio / Zebrafish
 
 | Kind | V | J | C |
@@ -68,7 +79,7 @@ _Number of genes / number of alleles_
 
 | Kind | V | J | C |
 |------|---|---|---|
-|IGHV|0/0|0/0|0/0|
+|IGHV|36/36|4/4|5/5|
 |IGKV|12/12|5/5|1/1|
 |IGLV|32/32|10/10|5/5|
 |IGIV|0/0|0/0|0/0|
@@ -136,7 +147,7 @@ _Number of genes / number of alleles_
 |------|---|---|---|
 |IGHV|61/181|6/14|10/51|
 |IGKV|44/69|5/6|1/4|
-|IGLV|38/82|8/10|6/14|
+|IGLV|38/83|9/12|7/16|
 |IGIV|0/0|0/0|0/0|
 
 _Number of genes / number of alleles_

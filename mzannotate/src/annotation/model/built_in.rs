@@ -91,21 +91,28 @@ static MODEL_UVPD: LazyLock<FragmentationModel> = LazyLock::new(|| Fragmentation
 });
 
 static MODEL_ETCID: LazyLock<FragmentationModel> = LazyLock::new(|| FragmentationModel {
-    a: PrimaryIonSeries::default().location(Location::TakeN { skip: 0, take: 1 }),
+    a: PrimaryIonSeries::default()
+        .location(Location::TakeN { skip: 0, take: 1 })
+        .charge_range(ChargeRange::ONE_TO_PRECURSOR_MINUS_ONE),
     b: PrimaryIonSeries::default()
-        .neutral_losses(vec![NeutralLoss::Loss(1, molecular_formula!(H 2 O 1))]),
+        .neutral_losses(vec![NeutralLoss::Loss(1, molecular_formula!(H 2 O 1))])
+        .charge_range(ChargeRange::ONE_TO_PRECURSOR_MINUS_ONE),
     c: PrimaryIonSeries::default()
         .neutral_losses(vec![NeutralLoss::Loss(1, molecular_formula!(H 2 O 1))])
+        .charge_range(ChargeRange::ONE_TO_PRECURSOR_MINUS_ONE)
         .variants(vec![0, 1]),
-    d: SatelliteIonSeries::base(),
+    d: SatelliteIonSeries::base().charge_range(ChargeRange::ONE_TO_PRECURSOR_MINUS_ONE),
     v: SatelliteIonSeries::default(),
     w: SatelliteIonSeries::base()
-        .neutral_losses(vec![NeutralLoss::Loss(1, molecular_formula!(H 2 O 1))]),
+        .neutral_losses(vec![NeutralLoss::Loss(1, molecular_formula!(H 2 O 1))])
+        .charge_range(ChargeRange::ONE_TO_PRECURSOR_MINUS_ONE),
     x: PrimaryIonSeries::none(),
     y: PrimaryIonSeries::default()
-        .neutral_losses(vec![NeutralLoss::Loss(1, molecular_formula!(H 2 O 1))]),
+        .neutral_losses(vec![NeutralLoss::Loss(1, molecular_formula!(H 2 O 1))])
+        .charge_range(ChargeRange::ONE_TO_PRECURSOR_MINUS_ONE),
     z: PrimaryIonSeries::default()
         .neutral_losses(vec![NeutralLoss::Loss(1, molecular_formula!(H 2 O 1))])
+        .charge_range(ChargeRange::ONE_TO_PRECURSOR_MINUS_ONE)
         .variants(vec![0, 1]),
     precursor: (
         vec![NeutralLoss::Loss(1, molecular_formula!(H 2 O 1))],
@@ -118,7 +125,7 @@ static MODEL_ETCID: LazyLock<FragmentationModel> = LazyLock::new(|| Fragmentatio
         Vec::new(),
         Vec::new(),
         (0, None),
-        ChargeRange::ONE_TO_PRECURSOR_MINUS_ONE,
+        ChargeRange::ONE_TO_PRECURSOR_MINUS_TWO,
     )),
     immonium: None,
     modification_specific_neutral_losses: true,
@@ -305,7 +312,13 @@ static MODEL_ETD: LazyLock<FragmentationModel> = LazyLock::new(|| FragmentationM
             end: ChargePoint::Relative(0),
         },
     ),
-    internal: None,
+    internal: Some((
+        2..=200,
+        Vec::new(),
+        Vec::new(),
+        (0, None),
+        ChargeRange::ONE_TO_PRECURSOR,
+    )),
     immonium: None,
     modification_specific_neutral_losses: true,
     modification_specific_diagnostic_ions: Some(ChargeRange::ONE),
