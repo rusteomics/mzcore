@@ -494,7 +494,8 @@ impl ParseJson for SimpleModificationInner {
                 "Gno" => {
                     if let Value::Object(mut map) = value {
                         let context = |map: &serde_json::Map<String, Value>| {
-                            Context::show(
+                            Context::default().lines(
+                                0,
                                 map.iter().map(|(k, v)| format!("\"{k}\": {v}")).join(","),
                             )
                         };
@@ -576,14 +577,15 @@ impl ParseJson for SimpleModificationInner {
                             BasicKind::Error,
                             "Invalid Gno SimpleModification",
                             "The value has to be a map",
-                            Context::show(key),
+                            Context::default().lines(0, key),
                         ))
                     }
                 }
                 "Database" => {
                     if let Value::Object(mut map) = value {
                         let context = |map: &serde_json::Map<String, Value>| {
-                            Context::show(
+                            Context::default().lines(
+                                0,
                                 map.iter().map(|(k, v)| format!("\"{k}\": {v}")).join(","),
                             )
                         };
@@ -624,14 +626,15 @@ impl ParseJson for SimpleModificationInner {
                             BasicKind::Error,
                             "Invalid Database SimpleModification",
                             "The value has to be a map",
-                            Context::show(key),
+                            Context::default().lines(0, key),
                         ))
                     }
                 }
                 "Linker" => {
                     if let Value::Object(mut map) = value {
                         let context = |map: &serde_json::Map<String, Value>| {
-                            Context::show(
+                            Context::default().lines(
+                                0,
                                 map.iter().map(|(k, v)| format!("\"{k}\": {v}")).join(","),
                             )
                         };
@@ -682,7 +685,7 @@ impl ParseJson for SimpleModificationInner {
                             BasicKind::Error,
                             "Invalid Database SimpleModification",
                             "The value has to be a map",
-                            Context::show(key),
+                            Context::default().lines(0, key),
                         ))
                     }
                 }
@@ -691,7 +694,7 @@ impl ParseJson for SimpleModificationInner {
                     BasicKind::Error,
                     "Invalid SimpleModification",
                     "The tag has to be Mass/Formula/Glycan/GlycanStructure/Gno/Database/Linker",
-                    Context::show(key),
+                    Context::default().lines(0, key),
                 )),
             }
         } else {
@@ -699,7 +702,7 @@ impl ParseJson for SimpleModificationInner {
                 BasicKind::Error,
                 "Invalid SimpleModification",
                 "The JSON value has to be a map",
-                Context::show(value.to_string()),
+                Context::default().lines(0, value.to_string()),
             ))
         }
     }
@@ -716,7 +719,7 @@ impl ParseJson for LinkerLength {
                             BasicKind::Error,
                             "Invalid LinkerLength",
                             "The length has to be a valid f64",
-                            Context::show(value.to_string()),
+                            Context::default().lines(0, value.to_string()),
                         )
                     })?
                     .into(),

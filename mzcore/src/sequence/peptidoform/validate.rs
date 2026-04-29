@@ -42,7 +42,7 @@ pub(super) fn cross_links<'a>(
                                 "The cross-link named '{}' has no listed locations, this is an internal error please report this",
                                 definition.0
                             ),
-                            Context::full_line(0, line),
+                            Context::default().line_index(0).lines(0, line),
                         ),
                     );
                 }
@@ -80,7 +80,7 @@ pub(super) fn cross_links<'a>(
                                         )
                                     }
                                 ),
-                                Context::full_line(0, line),
+                                Context::default().line_index(0).lines(0, line),
                             ),
                         );
                     }
@@ -101,7 +101,7 @@ pub(super) fn cross_links<'a>(
                                     "The cross-link named '{}' cannot be placed according to its location specificities",
                                     definition.0
                                 ),
-                                Context::full_line(0, line),
+                                Context::default().line_index(0).lines(0, line),
                             ),
                         );
                     }
@@ -116,7 +116,7 @@ pub(super) fn cross_links<'a>(
                                 "The cross-link named '{}' has more than 2 attachment locations, only cross-links spanning two locations are allowed",
                                 definition.0
                             ),
-                            Context::full_line(0, line),
+                            Context::default().line_index(0).lines(0, line),
                         ),
                     );
                 }
@@ -136,7 +136,7 @@ pub(super) fn cross_links<'a>(
                         "The cross-link named '{0}' is never defined, for example for {name}{description} define it like: '[{c}:{name}{0}]'",
                         definition.0
                     ),
-                    Context::full_line(0, line),
+                    Context::default().line_index(0).lines(0, line),
                 ),
             );
         }
@@ -175,7 +175,7 @@ pub(super) fn cross_links<'a>(
                 BasicKind::Error,
                 "Unconnected peptidoform",
                 "Not all peptides in this peptidoform are connected with cross-links or branches, if separate peptides were intended use the chimeric notation `+` instead of the peptidoform notation `//`.",
-                Context::full_line(0, line),
+                Context::default().line_index(0).lines(0, line),
             ),
         );
     }
@@ -247,13 +247,17 @@ impl Peptidoform<Linear> {
                             BasicKind::Error,
                             "Modification of unknown position cannot be placed",
                             "There is no position where this modification can be placed based on the placement rules in the database.",
-                            Context::show(format!(
-                                "Name: {}, Group: {}",
-                                entry.name,
-                                entry
-                                    .group
-                                    .map_or_else(|| "(no group)".to_string(), |n| n.to_string())
-                            )),
+                            Context::default().lines(
+                                0,
+                                format!(
+                                    "Name: {}, Group: {}",
+                                    entry.name,
+                                    entry.group.map_or_else(
+                                        || "(no group)".to_string(),
+                                        |n| n.to_string()
+                                    )
+                                ),
+                            ),
                         ),
                     );
                 }
@@ -264,13 +268,16 @@ impl Peptidoform<Linear> {
                         BasicKind::Error,
                         "Modification of unknown position was not defined",
                         "Please report this error",
-                        Context::show(format!(
-                            "Name: {}, Group: {}",
-                            entry.name,
-                            entry
-                                .group
-                                .map_or_else(|| "(no group)".to_string(), |n| n.to_string())
-                        )),
+                        Context::default().lines(
+                            0,
+                            format!(
+                                "Name: {}, Group: {}",
+                                entry.name,
+                                entry
+                                    .group
+                                    .map_or_else(|| "(no group)".to_string(), |n| n.to_string())
+                            ),
+                        ),
                     ),
                 );
             }
@@ -310,7 +317,7 @@ impl Peptidoform<Linear> {
                         BasicKind::Error,
                         "Modification of unknown position is not defined",
                         "This ranged modification of unknown position referenced a nonexistent modification, please report this error",
-                        Context::show(format!("ID: {id}, range: {start}..={end}")),
+                        Context::default().lines(0, format!("ID: {id}, range: {start}..={end}")),
                     ));
                 continue;
             };
@@ -319,7 +326,7 @@ impl Peptidoform<Linear> {
                     BasicKind::Error,
                     "Modification of unknown position is not defined",
                     "The ambiguous modification aplied on this range was never defined",
-                    Context::show(format!("ID: {id}, range: {start}..={end}")),
+                    Context::default().lines(0, format!("ID: {id}, range: {start}..={end}")),
                 ));
                 continue;
             };
@@ -366,7 +373,7 @@ impl<T> Peptidoform<T> {
         for (position, seq) in self.iter(..) {
             combine_errors(
                 &mut warnings,
-                seq.enforce_modification_rules(position.sequence_index, &Context::none()),
+                seq.enforce_modification_rules(position.sequence_index, &Context::default()),
             );
         }
         warnings

@@ -17,7 +17,7 @@ impl MolecularFormula {
     ///
     /// ```
     pub fn resid(value: &str) -> Result<Multi<Self>, BoxedError<'_, BasicKind>> {
-        Self::resid_inner(&Context::none().lines(0, value), value, 0..value.len())
+        Self::resid_inner(&Context::default().lines(0, value), value, 0..value.len())
     }
 
     /// This parses a substring of the given string as a PSI-MOD molecular formula definition.
@@ -55,7 +55,7 @@ impl MolecularFormula {
     ///
     /// ```
     pub fn resid_single(value: &str) -> Result<Self, BoxedError<'_, BasicKind>> {
-        Self::resid_single_inner(&Context::none().lines(0, value), value, 0..value.len())
+        Self::resid_single_inner(&Context::default().lines(0, value), value, 0..value.len())
     }
 
     /// This parses a substring of the given string as a PSI-MOD molecular formula definition.

@@ -1110,7 +1110,7 @@ impl MzTabProtein {
                                     BasicKind::Error,
                                     "Invalid CV accession",
                                     e.description(),
-                                    Context::none()
+                                    Context::default()
                                         .line_index(line.line_index)
                                         .lines(0, line.line)
                                         .add_highlight((0, l.start + offset, s.len()))
@@ -1417,7 +1417,7 @@ fn parse_single_modification<'a>(
                     }
                 };
                 MolecularFormula::pro_forma_inner::<false, false>(
-                    &Context::none().lines(0, line),
+                    &Context::default().lines(0, line),
                     line,
                     range.start + tag.len() + 2..range.end,
                 )
@@ -1657,7 +1657,7 @@ impl FromStr for CVTerm {
                         BasicKind::Error,
                         "Invalid CV accession",
                         e.description(),
-                        Context::none().lines(0, value).to_owned(),
+                        Context::default().lines(0, value).to_owned(),
                     )
                 })?;
             let name = split.next().unwrap_or_default().trim().to_string();
@@ -1673,7 +1673,7 @@ impl FromStr for CVTerm {
                 BasicKind::Error,
                 "Invalid CV term",
                 "A CV term should be enclosed by '[]'",
-                Context::show(value).to_owned(),
+                Context::default().lines(0, value).to_owned(),
             ))
         }
     }

@@ -286,7 +286,7 @@ format_family!(
         if split.len() == 6
         {
             parsed.raw_file = Some(split[0].into());
-            parsed.scan_number = Some(split[1].parse::<usize>().map_err(|err| BoxedError::new(BasicKind::Error, "Invalid pLink title", format!("The scan number {}", explain_number_error(&err)), Context::none().lines(0, &*parsed.title).add_highlight((0, split[0].len() + 1, split[1].len())).to_owned()))?);
+            parsed.scan_number = Some(split[1].parse::<usize>().map_err(|err| BoxedError::new(BasicKind::Error, "Invalid pLink title", format!("The scan number {}", explain_number_error(&err)), Context::default().lines(0, &*parsed.title).add_highlight((0, split[0].len() + 1, split[1].len())).to_owned()))?);
 
         }
         parsed.peptidoform.shrink_to_fit();

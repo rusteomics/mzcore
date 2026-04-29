@@ -56,7 +56,7 @@ impl MolecularFormula {
         value: &str,
     ) -> Result<Self, BoxedError<'_, BasicKind>> {
         Self::pro_forma_inner::<ALLOW_CHARGE, ALLOW_EMPTY>(
-            &Context::none().lines(0, value),
+            &Context::default().lines(0, value),
             value,
             0..value.len(),
         )

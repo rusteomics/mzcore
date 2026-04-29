@@ -18,7 +18,7 @@ use crate::{
 #[test]
 fn parse_global_modifications() {
     let parse = |str: &str| {
-        global_modifications::<false>(&Context::none(), str, 0..str.len(), &STATIC_ONTOLOGIES)
+        global_modifications::<false>(&Context::default(), str, 0..str.len(), &STATIC_ONTOLOGIES)
             .map(|((a, b), c)| (a, b, c.into_iter().map(BoxedError::to_owned).collect()))
             .map_err(move |_| ())
     };
@@ -132,7 +132,7 @@ fn parse_global_modifications() {
 #[test]
 fn charge_state_positive() {
     let parse = |str: &str| {
-        parse_charge_state_2_0(&Context::none(), str, 0)
+        parse_charge_state_2_0(&Context::default(), str, 0)
             .map(|((len, res), _)| {
                 assert_eq!(
                     len,
@@ -218,7 +218,7 @@ fn charge_state_positive() {
 #[test]
 fn charge_state_negative() {
     let parse = |str: &str| {
-        parse_charge_state_2_0(&Context::none(), str, 0)
+        parse_charge_state_2_0(&Context::default(), str, 0)
             .map(|(a, _)| a)
             .map_err(|_| ())
     };

@@ -45,7 +45,7 @@ impl Peptidoform<SemiAmbiguous> {
         ontologies: &Ontologies,
         parameters: &SloppyParsingParameters,
     ) -> Result<Self, BoxedError<'a, BasicKind>> {
-        Peptidoform::pro_forma_inner(base_context, line, range.clone(), ontologies).map(|(a, _)| a).map_err(|errs| BoxedError::new(BasicKind::Error, "Invalid ProForma definition", "The string could not be parsed as a ProForma definition", Context::line_range(None, line, range.clone())).add_underlying_errors(errs)).and_then(|p| p.into_semi_ambiguous().ok_or_else(||
+        Peptidoform::pro_forma_inner(base_context, line, range.clone(), ontologies).map(|(a, _)| a).map_err(|errs| BoxedError::new(BasicKind::Error, "Invalid ProForma definition", "The string could not be parsed as a ProForma definition", Context::default().lines(0, line).add_highlight((0, range.clone()))).add_underlying_errors(errs)).and_then(|p| p.into_semi_ambiguous().ok_or_else(||
             BoxedError::new(BasicKind::Error,
                 "Peptidoform too complex",
                 "A peptidoform as used here should not contain any complex parts of the ProForma specification, only amino acids and simple placed modifications are allowed",
@@ -74,7 +74,7 @@ impl Peptidoform<SemiAmbiguous> {
         parameters: &SloppyParsingParameters,
     ) -> Result<Self, BoxedError<'a, BasicKind>> {
         Self::sloppy_pro_forma_inner(
-            &Context::none().lines(0, value),
+            &Context::default().lines(0, value),
             value,
             0..value.len(),
             ontologies,
@@ -317,7 +317,10 @@ impl Modification {
         position: Option<&SequenceElement<SemiAmbiguous>>,
         ontologies: &Ontologies,
     ) -> Result<SimpleModification, BoxedError<'a, BasicKind>> {
-        let full_context = Context::line(None, line, location.start, location.len());
+        let full_context =
+            Context::default()
+                .lines(0, line)
+                .add_highlight((0, location.start, location.len()));
         let name = &line[location];
 
         Self::find_name(name, position, ontologies)

@@ -175,7 +175,10 @@ impl ParseJson for ModificationId {
     fn from_json_value(value: Value) -> Result<Self, BoxedError<'static, BasicKind>> {
         if let Value::Object(mut map) = value {
             let context = |map: &serde_json::Map<String, Value>| {
-                Context::show(map.iter().map(|(k, v)| format!("\"{k}\": {v}")).join(","))
+                Context::default().lines(
+                    0,
+                    map.iter().map(|(k, v)| format!("\"{k}\": {v}")).join(","),
+                )
             };
             Ok(Self {
                 ontology: Ontology::from_json_value(map.remove("ontology").ok_or_else(|| {
@@ -238,7 +241,7 @@ impl ParseJson for ModificationId {
                                         BasicKind::Error,
                                         "Invalid ModificationID",
                                         "A synonym could not be parsed, it has to be either a string or a tuple with two elements",
-                                        Context::show(el.to_string()),
+                                        Context::default().lines(0, el.to_string()),
                                     ));
                                 }
                             }
@@ -249,7 +252,7 @@ impl ParseJson for ModificationId {
                             BasicKind::Error,
                             "Invalid ModificationID",
                             "Synonyms should be an array",
-                            Context::show(element.to_string()),
+                            Context::default().lines(0, element.to_string()),
                         ));
                     }
                 },
@@ -272,7 +275,7 @@ impl ParseJson for ModificationId {
                 BasicKind::Error,
                 "Invalid ModificationID",
                 "The JSON value has to be a map",
-                Context::show(value.to_string()),
+                Context::default().lines(0, value.to_string()),
             ))
         }
     }

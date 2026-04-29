@@ -120,7 +120,7 @@ format_family!(
                 return Err(BoxedError::new(BasicKind::Error,
                         "Modification of unknown position cannot be placed",
                         "There is no position where this ambiguous modification can be placed based on the placement rules in the database.",
-                        Context::show(m.to_string()),
+                        Context::default().lines(0, m.to_string()),
                     ));
             }
         }

@@ -138,7 +138,7 @@ macro_rules! species {
                 Err(BoxedError::new(BasicKind::Error,
                         "Unknown species name",
                         "The provided name could not be recognised as a species name.",
-                        Context::show(s.as_str()).to_owned()
+                        Context::default().lines(0, s.as_str()).to_owned()
                     ).suggestions(options.into_iter().map(|(_, s)| s.to_string()))
                 )
             }

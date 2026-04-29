@@ -261,7 +261,7 @@ fn parse_property_values(
                             CVError::ItemWarning,
                             "Multiple reaction sites",
                             "More than 1 'reactionSites` definitions for this entry",
-                            Context::none().lines(0, id.to_string()),
+                            Context::default().lines(0, id.to_string()),
                         ),
                     );
                 }
@@ -290,7 +290,7 @@ fn parse_property_values(
                             CVError::ItemError,
                             "Invalid type",
                             "Invalid item type",
-                            Context::none().lines(
+                            Context::default().lines(
                                 0,
                                 format!(
                                     "{id}: reactionSites: type: {}, expected: integer",
@@ -313,7 +313,7 @@ fn parse_property_values(
                                 CVError::ItemError,
                                 "Invalid type",
                                 "Invalid item type",
-                                Context::none().lines(
+                                Context::default().lines(
                                     0,
                                     format!(
                                         "{id}: spacerLength: type: {}, expected: float",
@@ -340,7 +340,7 @@ fn parse_property_values(
                             CVError::ItemWarning,
                             "Multiple minSpacerLength",
                             "More than 1 'minSpacerLength` definitions for this entry",
-                            Context::none().lines(0, id.to_string()),
+                            Context::default().lines(0, id.to_string()),
                         ),
                     );
                 }
@@ -353,7 +353,7 @@ fn parse_property_values(
                             CVError::ItemError,
                             "Invalid type",
                             "Invalid item type",
-                            Context::none().lines(
+                            Context::default().lines(
                                 0,
                                 format!(
                                     "{id}: minSpacerLength: type: {}, expected: float",
@@ -381,7 +381,7 @@ fn parse_property_values(
                             CVError::ItemWarning,
                             "Multiple maxSpacerLength",
                             "More than 1 'maxSpacerLength` definitions for this entry",
-                            Context::none().lines(0, id.to_string()),
+                            Context::default().lines(0, id.to_string()),
                         ),
                     );
                 }
@@ -394,7 +394,7 @@ fn parse_property_values(
                             CVError::ItemError,
                             "Invalid type",
                             "Invalid item type",
-                            Context::none().lines(
+                            Context::default().lines(
                                 0,
                                 format!(
                                     "{id}: maxSpacerLength: type: {}, expected: float",
@@ -422,7 +422,7 @@ fn parse_property_values(
                             CVError::ItemWarning,
                             "Multiple monoIsotopicMass",
                             "More than 1 'monoIsotopicMass` definitions for this entry",
-                            Context::none().lines(0, id.to_string()),
+                            Context::default().lines(0, id.to_string()),
                         ),
                     );
                 }
@@ -435,7 +435,7 @@ fn parse_property_values(
                             CVError::ItemError,
                             "Invalid type",
                             "Invalid item type",
-                            Context::none().lines(
+                            Context::default().lines(
                                 0,
                                 format!(
                                     "{id}: monoIsotopicMass: type: {}, expected: float",
@@ -455,7 +455,7 @@ fn parse_property_values(
                             CVError::ItemWarning,
                             "Multiple deadEndFormula",
                             "More than 1 'deadEndFormula` definitions for this entry",
-                            Context::none().lines(0, id.to_string()),
+                            Context::default().lines(0, id.to_string()),
                         ),
                     );
                 }
@@ -488,7 +488,7 @@ fn parse_property_values(
                             CVError::ItemWarning,
                             "Multiple bridgeFormula",
                             "More than 1 'bridgeFormula` definitions for this entry",
-                            Context::none().lines(0, id.to_string()),
+                            Context::default().lines(0, id.to_string()),
                         ),
                     );
                 }
@@ -509,7 +509,7 @@ fn parse_property_values(
                             CVError::ItemWarning,
                             "Multiple specificities",
                             "More than 1 'specificities` definitions for this entry",
-                            Context::none().lines(0, id.to_string()),
+                            Context::default().lines(0, id.to_string()),
                         ),
                     );
                 }
@@ -556,7 +556,7 @@ fn parse_property_values(
                             CVError::ItemWarning,
                             "Multiple secondarySpecificities",
                             "More than 1 'secondarySpecificities` definitions for this entry",
-                            Context::none().lines(0, id.to_string()),
+                            Context::default().lines(0, id.to_string()),
                         ),
                     );
                 }
@@ -590,7 +590,7 @@ fn parse_property_values(
                                     CVError::ItemError,
                                     "Invalid type",
                                     "Invalid item type",
-                                    Context::none().lines(
+                                    Context::default().lines(
                                         0,
                                         format!(
                                             "{id}: {property}: type: {}, expected: float",
@@ -652,7 +652,7 @@ fn parse_property_values(
                                 CVError::ItemError,
                                 "Invalid type",
                                 "Invalid item type",
-                                Context::none().lines(
+                                Context::default().lines(
                                     0,
                                     format!(
                                         "{id}: {property}: type: {}, expected: string",

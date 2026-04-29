@@ -81,7 +81,7 @@ impl MonoSaccharide {
         value: &str,
     ) -> ParserResult<'_, Vec<(Self, isize)>, GlycanCompositionError> {
         Self::pro_forma_composition_inner::<STRICT>(
-            &Context::none().lines(0, value),
+            &Context::default().lines(0, value),
             value,
             0..value.len(),
         )
@@ -324,7 +324,11 @@ impl MonoSaccharide {
                                 BasicKind::Error,
                                 "Invalid MSFragger glycan composition",
                                 "The sugar name could not be recognised",
-                                Context::line(None, text, index, name.len()),
+                                Context::default().lines(0, text).add_highlight((
+                                    0,
+                                    index,
+                                    name.len(),
+                                )),
                             )
                         })?,
                         number.map_err(|err| {
@@ -332,12 +336,11 @@ impl MonoSaccharide {
                                 BasicKind::Error,
                                 "Invalid MSFragger glycan composition",
                                 format!("Sugar count number is {}", explain_number_error(&err)),
-                                Context::line(
-                                    None,
-                                    text,
+                                Context::default().lines(0, text).add_highlight((
+                                    0,
                                     index + next_open_bracket + 1,
                                     next_close_bracket - 1,
-                                ),
+                                )),
                             )
                         })?,
                     ));
@@ -347,7 +350,11 @@ impl MonoSaccharide {
                         BasicKind::Error,
                         "Invalid MSFragger glycan composition",
                         "No closing bracket found ')'",
-                        Context::line(None, text, index + next_open_bracket, 1),
+                        Context::default().lines(0, text).add_highlight((
+                            0,
+                            index + next_open_bracket,
+                            1,
+                        )),
                     ));
                 }
             } else if text[index..].chars().all(|c| c.is_ascii_whitespace()) {
@@ -357,7 +364,9 @@ impl MonoSaccharide {
                     BasicKind::Error,
                     "Invalid MSFragger glycan composition",
                     "No opening bracket found but there is text left, the format expected is 'Sugar(Number)'",
-                    Context::line(None, text, index, 1),
+                    Context::default()
+                        .lines(0, text)
+                        .add_highlight((0, index, 1)),
                 ));
             }
         }
@@ -371,7 +380,7 @@ impl MonoSaccharide {
                     isize::MIN,
                     isize::MAX
                 ),
-                Context::show(text),
+                Context::default().lines(0, text),
             )
         })
     }

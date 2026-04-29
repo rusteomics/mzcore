@@ -18,7 +18,7 @@ impl MolecularFormula {
     ///
     /// ```
     pub fn psi_mod(value: &str) -> Result<Self, BoxedError<'_, BasicKind>> {
-        Self::psi_mod_inner(&Context::none().lines(0, value), value, 0..value.len())
+        Self::psi_mod_inner(&Context::default().lines(0, value), value, 0..value.len())
     }
 
     /// This parses a substring of the given string as a PSI-MOD molecular formula definition.

@@ -22,7 +22,7 @@ impl Fragment {
         interpretation: &Peptidoform<SimpleLinear>,
     ) -> Result<Self, BoxedError<'a, BasicKind>> {
         Self::maxquant_inner(
-            &Context::none().lines(0, line),
+            &Context::default().lines(0, line),
             line,
             0..line.len(),
             interpretation,

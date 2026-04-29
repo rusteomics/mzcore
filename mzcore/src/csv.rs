@@ -61,7 +61,7 @@ impl CsvLine {
 
     /// Get the context applicable to the specified column
     pub fn column_context(&self, column: usize) -> Context<'_> {
-        let base = Context::none()
+        let base = Context::default()
             .line_index(self.line_index as u32)
             .lines(0, &self.line)
             .add_highlight((
@@ -82,7 +82,7 @@ impl CsvLine {
         range: Range<usize>,
         comment: Option<Cow<'a, str>>,
     ) -> Context<'a> {
-        let base = Context::none()
+        let base = Context::default()
             .line_index(self.line_index as u32)
             .lines(0, &self.line);
         let base = if let Some(comment) = comment {
@@ -99,7 +99,7 @@ impl CsvLine {
 
     /// Get the context for the whole line
     pub fn full_context(&self) -> Context<'_> {
-        let base = Context::none()
+        let base = Context::default()
             .line_index(self.line_index as u32)
             .lines(0, &self.line);
         if let Some(source) = &self.file {
@@ -274,7 +274,10 @@ pub fn parse_csv_raw<T: std::io::Read>(
                     BasicKind::Error,
                     "Unicode value separators not supported",
                     "This is a character that takes more than 1 byte to represent in Unicode, this is not supported in parsing CSV files.",
-                    Context::line_with_comment(Some(0), format!("sep={sep}"), 4, sep.len(), None),
+                    Context::default()
+                        .line_index(0)
+                        .lines(0, format!("sep={sep}"))
+                        .add_highlight((0, 4, sep.len())),
                 ));
             }
         }
@@ -319,7 +322,7 @@ pub fn parse_csv_raw<T: std::io::Read>(
                 BasicKind::Error,
                 "Could parse csv file",
                 "The file is empty",
-                Context::none(),
+                Context::default(),
             )
         })?;
         let header_line = column_headers.map_err(|err| {
@@ -327,7 +330,7 @@ pub fn parse_csv_raw<T: std::io::Read>(
                 BasicKind::Error,
                 "Could not read header line",
                 err.to_string(),
-                Context::none(),
+                Context::default(),
             )
         })?;
         let header_line = header_line.trim_start_matches("\u{feff}");
@@ -377,7 +380,7 @@ impl<T: std::io::Read> Iterator for CsvLineIter<T> {
                     Err(BoxedError::new(BasicKind::Error,
                         "Incorrect number of columns",
                         format!("It does not have the correct number of columns. {} columns were expected but {} were found.", self.header.len(), row.len()),
-                        Context::full_line(line_index as u32, line),
+                        Context::default().line_index(line_index as u32).lines(0, line).add_highlight((0, ..)),
                     ))
                 }
             })
@@ -396,7 +399,7 @@ pub fn csv_separate(
             BasicKind::Error,
             "Empty line",
             "The line is empty",
-            Context::none(),
+            Context::default(),
         ));
     }
     let mut enclosed = None;

@@ -292,12 +292,10 @@ impl MonoSaccharide {
                             BasicKind::Error,
                             "Invalid iupac monosaccharide name",
                             "This internally linked glycan could not be parsed, expected Anhydro as modification",
-                            Context::line(
-                                Some(line_index),
-                                original_line,
-                                start_index,
-                                index - start_index + 5,
-                            ),
+                            Context::default()
+                                .line_index(line_index)
+                                .lines(0, original_line)
+                                .add_highlight((0, start_index, index - start_index + 5)),
                         ));
                     }
                     index += 7;
@@ -376,7 +374,10 @@ impl MonoSaccharide {
                     BasicKind::Error,
                     "Invalid iupac monosaccharide name",
                     "This name could not be recognised as a standard iupac glycan name",
-                    Context::line(Some(line_index), original_line, index, 3),
+                    Context::default()
+                        .line_index(line_index)
+                        .lines(0, original_line)
+                        .add_highlight((0, index, 3)),
                 )
             })?;
         // Furanose
@@ -434,7 +435,10 @@ impl MonoSaccharide {
                         BasicKind::Error,
                         "Invalid iupac monosaccharide name",
                         "No detected double linked glycan substituent was found, while the pattern for location is for a double linked substituent",
-                        Context::line(Some(line_index), original_line, index, 2),
+                        Context::default()
+                            .line_index(line_index)
+                            .lines(0, original_line)
+                            .add_highlight((0, index, 2)),
                     ));
                 }
             } else {

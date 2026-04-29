@@ -165,7 +165,8 @@ impl ParseJson for LinkerSpecificity {
                                         BasicKind::Error,
                                         "Invalid LinkerSpecificity",
                                         "The required property 'rules' is missing",
-                                        Context::show(
+                                        Context::default().lines(
+                                            0,
                                             map.iter()
                                                 .map(|(k, v)| format!("\"{k}\": {v}"))
                                                 .join(","),
@@ -179,7 +180,8 @@ impl ParseJson for LinkerSpecificity {
                                         BasicKind::Error,
                                         "Invalid LinkerSpecificity",
                                         "The required property 'stubs' is missing",
-                                        Context::show(
+                                        Context::default().lines(
+                                            0,
                                             map.iter()
                                                 .map(|(k, v)| format!("\"{k}\": {v}"))
                                                 .join(","),
@@ -193,7 +195,8 @@ impl ParseJson for LinkerSpecificity {
                                         BasicKind::Error,
                                         "Invalid LinkerSpecificity",
                                         "The required property 'neutral_losses' is missing",
-                                        Context::show(
+                                        Context::default().lines(
+                                            0,
                                             map.iter()
                                                 .map(|(k, v)| format!("\"{k}\": {v}"))
                                                 .join(","),
@@ -207,7 +210,8 @@ impl ParseJson for LinkerSpecificity {
                                         BasicKind::Error,
                                         "Invalid LinkerSpecificity",
                                         "The required property 'diagnostic' is missing",
-                                        Context::show(
+                                        Context::default().lines(
+                                            0,
                                             map.iter()
                                                 .map(|(k, v)| format!("\"{k}\": {v}"))
                                                 .join(","),
@@ -237,7 +241,7 @@ impl ParseJson for LinkerSpecificity {
                                 BasicKind::Error,
                                 "Invalid NeutralLoss",
                                 "The Symmetric is a sequence but does not have 3 children",
-                                Context::show(arr.iter().join(",")),
+                                Context::default().lines(0, arr.iter().join(",")),
                             ))
                         }
                     } else {
@@ -245,7 +249,7 @@ impl ParseJson for LinkerSpecificity {
                             BasicKind::Error,
                             "Invalid LinkerSpecificity",
                             "The Symmetric value has to be a map or a sequence",
-                            Context::show(value.to_string()),
+                            Context::default().lines(0, value.to_string()),
                         ))
                     }
                 }
@@ -258,7 +262,8 @@ impl ParseJson for LinkerSpecificity {
                                         BasicKind::Error,
                                         "Invalid LinkerSpecificity",
                                         "The required property 'rules' is missing",
-                                        Context::show(
+                                        Context::default().lines(
+                                            0,
                                             map.iter()
                                                 .map(|(k, v)| format!("\"{k}\": {v}"))
                                                 .join(","),
@@ -272,7 +277,8 @@ impl ParseJson for LinkerSpecificity {
                                         BasicKind::Error,
                                         "Invalid LinkerSpecificity",
                                         "The required property 'stubs' is missing",
-                                        Context::show(
+                                        Context::default().lines(
+                                            0,
                                             map.iter()
                                                 .map(|(k, v)| format!("\"{k}\": {v}"))
                                                 .join(","),
@@ -286,7 +292,8 @@ impl ParseJson for LinkerSpecificity {
                                         BasicKind::Error,
                                         "Invalid LinkerSpecificity",
                                         "The required property 'neutral_losses' is missing",
-                                        Context::show(
+                                        Context::default().lines(
+                                            0,
                                             map.iter()
                                                 .map(|(k, v)| format!("\"{k}\": {v}"))
                                                 .join(","),
@@ -300,7 +307,8 @@ impl ParseJson for LinkerSpecificity {
                                         BasicKind::Error,
                                         "Invalid LinkerSpecificity",
                                         "The required property 'diagnostic' is missing",
-                                        Context::show(
+                                        Context::default().lines(
+                                            0,
                                             map.iter()
                                                 .map(|(k, v)| format!("\"{k}\": {v}"))
                                                 .join(","),
@@ -333,7 +341,7 @@ impl ParseJson for LinkerSpecificity {
                                 BasicKind::Error,
                                 "Invalid NeutralLoss",
                                 "The Asymmetric is a sequence but does not have 3 children",
-                                Context::show(arr.iter().join(",")),
+                                Context::default().lines(0, arr.iter().join(",")),
                             ))
                         }
                     } else {
@@ -341,7 +349,7 @@ impl ParseJson for LinkerSpecificity {
                             BasicKind::Error,
                             "Invalid LinkerSpecificity",
                             "The Asymmetric value has to be a map or a sequence",
-                            Context::show(value.to_string()),
+                            Context::default().lines(0, value.to_string()),
                         ))
                     }
                 }
@@ -349,7 +357,7 @@ impl ParseJson for LinkerSpecificity {
                     BasicKind::Error,
                     "Invalid LinkerSpecificity",
                     "The tag has to be Symmetric/Asymmetric",
-                    Context::show(key),
+                    Context::default().lines(0, key),
                 )),
             }
         } else {
@@ -357,7 +365,7 @@ impl ParseJson for LinkerSpecificity {
                 BasicKind::Error,
                 "Invalid LinkerSpecificity",
                 "The JSON value has to be a map",
-                Context::show(value.to_string()),
+                Context::default().lines(0, value.to_string()),
             ))
         }
     }

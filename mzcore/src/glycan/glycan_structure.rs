@@ -70,7 +70,10 @@ impl GlycanStructure {
                         BasicKind::Error,
                         "Invalid iupac short glycan",
                         "No closing brace for branch",
-                        Context::line(Some(line_index), line, offset, range.end - offset),
+                        Context::default()
+                            .line_index(line_index)
+                            .lines(0, line)
+                            .add_highlight((0, offset, range.end - offset)),
                     )
                 })?;
                 last_branch.branches.push(Self::from_short_iupac(
@@ -101,7 +104,10 @@ impl GlycanStructure {
                         BasicKind::Error,
                         "Invalid iupac short glycan",
                         "No glycan found",
-                        Context::line(Some(line_index), line.to_string(), range.start, range.len()),
+                        Context::default()
+                            .line_index(line_index)
+                            .lines(0, line.to_string())
+                            .add_highlight((0, range.start, range.len())),
                     ))
                 },
                 Ok,
@@ -336,7 +342,9 @@ impl GlycanStructure {
                         BasicKind::Error,
                         "Invalid glycan branch",
                         "No valid closing delimiter",
-                        Context::line(None, line, index, 1),
+                        Context::default()
+                            .lines(0, line)
+                            .add_highlight((0, index, 1)),
                     )
                 })?;
                 // Parse the first branch
@@ -352,7 +360,9 @@ impl GlycanStructure {
                             BasicKind::Error,
                             "Invalid glycan structure",
                             "Branches should be separated by commas ','",
-                            Context::line(None, line, index, 1),
+                            Context::default()
+                                .lines(0, line)
+                                .add_highlight((0, index, 1)),
                         ));
                     }
                     index += 1;
@@ -381,7 +391,7 @@ impl GlycanStructure {
                 BasicKind::Error,
                 "Could not parse glycan structure",
                 "Could not parse the following part",
-                Context::line(None, line, range.start, range.len()),
+                Context::default().lines(0, line).add_highlight((0, range)),
             ))
         }
     }

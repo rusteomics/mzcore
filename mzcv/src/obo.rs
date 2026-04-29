@@ -321,7 +321,7 @@ impl OboOntology {
     /// # Errors
     /// If the text contained is not valid according to the Obo format.
     pub fn from_file(path: impl AsRef<Path>) -> Result<Self, BoxedError<'static, OboError>> {
-        let base_context = Context::none()
+        let base_context = Context::default()
             .source(path.as_ref().to_string_lossy())
             .to_owned();
         let file = File::open(path.as_ref()).map_err(|e| {
@@ -352,7 +352,7 @@ impl OboOntology {
     pub fn from_raw(
         reader: HashBufReader<impl std::io::Read, impl sha2::Digest>,
     ) -> Result<Self, BoxedError<'static, OboError>> {
-        Self::from_raw_internal(reader, &Context::none())
+        Self::from_raw_internal(reader, &Context::default())
     }
 
     fn from_raw_internal(

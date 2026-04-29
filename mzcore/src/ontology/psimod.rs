@@ -142,7 +142,7 @@ impl CVSource for PsiMod {
                         CVError::ItemError,
                         "Invalid ID",
                         "A PSI-MOD ID should be numerical",
-                        Context::show(obj.id.1.to_string()),
+                        Context::default().lines(0, obj.id.1.to_string()),
                     ),
                 );
                 continue;
@@ -180,7 +180,7 @@ impl CVSource for PsiMod {
                                     CVError::ItemError,
                                     "Invalid formula",
                                     "The formula was invalid",
-                                    Context::show(obj.id.to_string()),
+                                    Context::default().lines(0, obj.id.to_string()),
                                 )
                                 .add_underlying_error(
                                     err.to_owned()
@@ -223,7 +223,7 @@ impl CVSource for PsiMod {
                                         "This modification was defined to be a cross-linker with the following number of sites: {}",
                                         cross_link_numbers.iter().join(", ")
                                     ),
-                                    Context::show(obj.id.to_string()),
+                                    Context::default().lines(0, obj.id.to_string()),
                                 ),
                             );
                             continue 'stanza;
@@ -240,7 +240,7 @@ impl CVSource for PsiMod {
                                             "This modification was defined be a cross-linker with {amount} sites, but has {} orgins",
                                             commas + 1
                                         ),
-                                        Context::show(obj.id.to_string()),
+                                        Context::default().lines(0, obj.id.to_string()),
                                     ),
                                 );
                                 continue 'stanza;
@@ -255,7 +255,7 @@ impl CVSource for PsiMod {
                                         "This modification has {} orgins, but is not defined to be a cross-linker in the comment",
                                         commas + 1
                                     ),
-                                    Context::show(obj.id.to_string()),
+                                    Context::default().lines(0, obj.id.to_string()),
                                 ),
                             );
                             continue 'stanza;
@@ -284,7 +284,7 @@ impl CVSource for PsiMod {
                                     CVError::ItemError,
                                     "Invalid TermSpec",
                                     "The termSpec should be 'N-term', 'C-term', or 'none'",
-                                    Context::show(format!("{}: '{v}'", obj.id)),
+                                    Context::default().lines(0, format!("{}: '{v}'", obj.id)),
                                 ),
                             );
                             continue 'stanza;
@@ -343,7 +343,7 @@ impl CVSource for PsiMod {
                             "This cross-linker links {} sites, but only cross-linkers with two sites are supported for now, this modification will be ignored",
                             origins.len()
                         ),
-                        Context::show(obj.id.to_string()),
+                        Context::default().lines(0, obj.id.to_string()),
                     ),
                 );
             }
@@ -376,7 +376,7 @@ fn parse_rule(
                 CVError::ItemError,
                 "Invalid amino acid",
                 "A single letter origin is assumed to be an amino acid but this is not",
-                Context::show(rule.to_string()),
+                Context::default().lines(0, rule.to_string()),
             ))
         }
     } else {
@@ -387,7 +387,7 @@ fn parse_rule(
                 CVError::ItemError,
                 "Invalid ID",
                 "A modification as an origin should come from within PSI-MOD",
-                Context::show(rule.to_string()),
+                Context::default().lines(0, rule.to_string()),
             ))
         } else if let Ok(id) = id.1.parse() {
             Ok(PlacementRule::PsiModification(
@@ -399,7 +399,7 @@ fn parse_rule(
                 CVError::ItemError,
                 "Invalid ID",
                 "The ID should be numeric",
-                Context::show(rule.to_string()),
+                Context::default().lines(0, rule.to_string()),
             ))
         }
     }

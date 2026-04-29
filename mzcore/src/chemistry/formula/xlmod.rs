@@ -27,7 +27,7 @@ impl MolecularFormula {
     /// );  
     /// ```
     pub fn xlmod(value: &str) -> Result<Self, BoxedError<'_, BasicKind>> {
-        Self::xlmod_inner(&Context::none().lines(0, value), value, 0..value.len())
+        Self::xlmod_inner(&Context::default().lines(0, value), value, 0..value.len())
     }
 
     /// This parses a substring of the given string as an XL-MOD molecular formula definition.

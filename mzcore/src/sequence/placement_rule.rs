@@ -155,7 +155,10 @@ impl FromStr for PlacementRule {
                             BasicKind::Error,
                             "Invalid amino acid",
                             "Invalid amino acid in specified amino acids in placement rule",
-                            Context::line(None, s, i, 1).to_owned(),
+                            Context::default()
+                                .lines(0, s)
+                                .add_highlight((0, i, 1))
+                                .to_owned(),
                         )
                     })
                 })
@@ -165,7 +168,7 @@ impl FromStr for PlacementRule {
                     Err(BoxedError::new(BasicKind::Error,
                         "Invalid position",
                         "Use any of the following for the position: Anywhere, AnyNTerm, ProteinNTerm, AnyCTerm, ProteinCTerm",
-                        Context::line(None, s, head.len() + 1, tail.len()).to_owned(),
+                        Context::default().lines(0, s).add_highlight((0, head.len() + 1, tail.len())).to_owned(),
                     ))
                 },
                 |position| Ok(Self::AminoAcid(aa.into(), position)),
@@ -180,7 +183,7 @@ impl FromStr for PlacementRule {
                 BasicKind::Error,
                 "Invalid position",
                 "Use any of the following for the position: Anywhere, AnyNTerm, ProteinNTerm, AnyCTerm, ProteinCTerm",
-                Context::full_line(0, s).to_owned(),
+                Context::default().line_index(0).lines(0, s).to_owned(),
             ))
         }
     }

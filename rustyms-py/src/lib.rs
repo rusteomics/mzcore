@@ -1101,7 +1101,7 @@ impl PeptidoformIonSet {
                     context_error::BasicKind::Error,
                     "Could not parse ProForma",
                     "This text could not be read as a ProForma definition",
-                    context_error::Context::none().lines(0, proforma).to_owned(),
+                    context_error::Context::default().lines(0, proforma).to_owned(),
                 )
                 .add_underlying_errors(e.into_iter().map(context_error::BoxedError::to_owned)),
             )
@@ -1277,7 +1277,7 @@ impl PeptidoformIon {
                         context_error::BasicKind::Error,
                         "Could not parse ProForma",
                         "This text could not be read as a ProForma definition",
-                        context_error::Context::none().lines(0, proforma).to_owned(),
+                        context_error::Context::default().lines(0, proforma).to_owned(),
                     )
                     .add_underlying_errors(e.into_iter().map(context_error::BoxedError::to_owned)),
                 )
@@ -1372,7 +1372,7 @@ impl Peptidoform {
                         context_error::BasicKind::Error,
                         "Could not parse ProForma",
                         "This text could not be read as a ProForma definition",
-                        context_error::Context::none().lines(0, proforma).to_owned(),
+                        context_error::Context::default().lines(0, proforma).to_owned(),
                     )
                     .add_underlying_errors(e.into_iter().map(context_error::BoxedError::to_owned)),
                 )

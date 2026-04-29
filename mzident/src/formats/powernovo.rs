@@ -52,7 +52,7 @@ format_family!(
         if let Some((file, id)) = parsed.title.split_once(":index=")
         {
             parsed.raw_file = Some(PathBuf::from(file));
-            parsed.scan = Some(id.parse::<usize>().map_err(|err| BoxedError::new(BasicKind::Error, "Invalid PowerNovo ID", format!("The scan number {}", crate::helper_functions::explain_number_error(&err)), Context::none().lines(0, &parsed.title).add_highlight((0, file.len() + 7, id.len())).to_owned()))?);
+            parsed.scan = Some(id.parse::<usize>().map_err(|err| BoxedError::new(BasicKind::Error, "Invalid PowerNovo ID", format!("The scan number {}", crate::helper_functions::explain_number_error(&err)), Context::default().lines(0, &parsed.title).add_highlight((0, file.len() + 7, id.len())).to_owned()))?);
         }
         Ok(parsed)
     }

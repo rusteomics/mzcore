@@ -127,7 +127,7 @@ impl<'ontologies> MzSpecLibTextParser<'ontologies, BufReader<File>> {
                     MzSpecLibErrorKind::IO,
                     "Could not open mzSpecLib file",
                     e.to_string(),
-                    Context::none().source(path.to_string_lossy()).to_owned(),
+                    Context::default().source(path.to_string_lossy()).to_owned(),
                 )
             })?),
             Some(path.to_path_buf()),
@@ -176,9 +176,9 @@ impl<'ontologies, R: BufRead> MzSpecLibTextParser<'ontologies, R> {
     /// Get the current context, meaning the line index and file name (if known), the line itself will have to be added by the caller.
     fn current_context(&self) -> Context<'_> {
         self.path.as_ref().map_or_else(
-            || Context::none().line_index(self.line_index),
+            || Context::default().line_index(self.line_index),
             |p| {
-                Context::none()
+                Context::default()
                     .line_index(self.line_index)
                     .source(p.to_string_lossy())
             },

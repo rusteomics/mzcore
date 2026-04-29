@@ -91,7 +91,7 @@ impl CVSource for IMGT {
                     CVError::ItemError,
                     "Error while parsing gene",
                     note,
-                    Context::show(format!(
+                    Context::default().lines(0, format!(
                         "{species} {} {} {}",
                         gene.allele, gene.acc, gene.location,
                     )),

@@ -217,7 +217,7 @@ fn parse_gnome(
                                 "Code contains invalid characters"
                             }
                         },
-                        Context::none().lines(0, obj.id.1.to_string()),
+                        Context::default().lines(0, obj.id.1.to_string()),
                     ),
                 );
                 continue;

@@ -29,6 +29,9 @@ const BLOCK_MODE: u8 = 0x80;
 const BIT_MASK: u8 = 0x1f;
 
 impl<T: Read> ZArchive<T> {
+    /// Create a new archive.
+    /// # Errors
+    /// If the file does not start with the correct ID bits.
     pub(crate) fn new(mut reader: T) -> Result<Self, ArchiveError> {
         let mut header = [0; 3];
         reader.read_exact(&mut header)?;
@@ -44,6 +47,9 @@ impl<T: Read> ZArchive<T> {
         })
     }
 
+    /// Read an archive.
+    /// # Errors
+    /// If the file contains invalid Lzw encoded data.
     pub(crate) fn read(&mut self) -> Result<Vec<u8>, ArchiveError> {
         let mut compressed_buffer = Vec::new();
         self.reader.read_to_end(&mut compressed_buffer)?;

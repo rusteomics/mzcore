@@ -203,7 +203,7 @@ impl OntologyModification {
                                     "A relationship ID can at max be 8 characters"
                                 }
                             },
-                            Context::show(rel.1.1.to_string()),
+                            Context::default().lines(0, rel.1.1.to_string()),
                         ),
                     ),
                 }

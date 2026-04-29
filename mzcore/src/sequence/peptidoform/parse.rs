@@ -45,7 +45,7 @@ impl Peptidoform<Linked> {
         ontologies: &Ontologies,
     ) -> ParserResult<'a, Self, BasicKind> {
         Self::pro_forma_inner(
-            &Context::none().lines(0, value),
+            &Context::default().lines(0, value),
             value,
             0..value.len(),
             ontologies,
@@ -97,7 +97,7 @@ impl PeptidoformIon {
         ontologies: &Ontologies,
     ) -> ParserResult<'a, Self, BasicKind> {
         Self::pro_forma_inner(
-            &Context::none().lines(0, value),
+            &Context::default().lines(0, value),
             value,
             0..value.len(),
             ontologies,
@@ -145,7 +145,7 @@ impl PeptidoformIonSet {
         ontologies: &Ontologies,
     ) -> ParserResult<'a, Self, BasicKind> {
         Self::pro_forma_inner(
-            &Context::none().lines(0, value),
+            &Context::default().lines(0, value),
             value,
             0..value.len(),
             ontologies,
@@ -178,7 +178,7 @@ impl PeptidoformIonSet {
         ontologies: &Ontologies,
     ) -> ParserResult<'a, Self, BasicKind> {
         Self::pro_forma_inner_strict(
-            &Context::none().lines(0, value),
+            &Context::default().lines(0, value),
             value,
             0..value.len(),
             ontologies,

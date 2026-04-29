@@ -408,7 +408,7 @@ impl<'a> Location<'a> {
     }
 
     pub(super) fn base_context(&'a self) -> Context<'a> {
-        let base = Context::none()
+        let base = Context::default()
             .line_index(self.line.line_index as u32)
             .lines(0, self.full_line());
         if let Some(source) = &self.line.file {

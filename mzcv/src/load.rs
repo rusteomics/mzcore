@@ -24,7 +24,7 @@ impl<CV: CVSource> CVIndex<CV> {
                 CVError::CacheCouldNotBeOpenend,
                 "CV cache file could not be openend",
                 e.to_string(),
-                Context::none().source(path.to_string_lossy()).to_owned(),
+                Context::default().source(path.to_string_lossy()).to_owned(),
             )
         })?;
         let mut reader = BufReader::new(file);
@@ -35,7 +35,7 @@ impl<CV: CVSource> CVIndex<CV> {
                         CVError::CacheCouldNotBeParsed,
                         "CV cache file could not be parsed",
                         e.to_string(),
-                        Context::none().source(path.to_string_lossy()).to_owned(),
+                        Context::default().source(path.to_string_lossy()).to_owned(),
                     )
                 },
             )?;
@@ -68,7 +68,7 @@ impl<CV: CVSource> CVIndex<CV> {
                 CVError::CacheCouldNotBeOpenend,
                 "CV cache file could not be openend",
                 e.to_string(),
-                Context::none().source(path.to_string_lossy()).to_owned(),
+                Context::default().source(path.to_string_lossy()).to_owned(),
             )
         })?;
         let mut writer = BufWriter::new(file);
@@ -82,7 +82,7 @@ impl<CV: CVSource> CVIndex<CV> {
                 CVError::CacheCouldNotBeMade,
                 "CV cache file could not be made",
                 e.to_string(),
-                Context::none().source(path.to_string_lossy()).to_owned(),
+                Context::default().source(path.to_string_lossy()).to_owned(),
             )
         })?;
         Ok(())
@@ -97,7 +97,7 @@ impl<CV: CVSource> CVIndex<CV> {
                 CVError::FileCouldNotBeOpenend,
                 "CV file could not be openend",
                 e.to_string(),
-                Context::none().source(path.to_string_lossy()).to_owned(),
+                Context::default().source(path.to_string_lossy()).to_owned(),
             )
         })?;
         let writer = BufWriter::new(file);
@@ -247,7 +247,7 @@ impl<CV: CVSource> CVIndex<CV> {
                             CVError::FileDoesNotExist,
                             "Given path does not exist",
                             "The given overwrite path does not exist",
-                            Context::none().source(path.to_string_lossy()).to_owned(),
+                            Context::default().source(path.to_string_lossy()).to_owned(),
                         ));
                     }
                     path
@@ -259,7 +259,7 @@ impl<CV: CVSource> CVIndex<CV> {
                             CVError::FileDoesNotExist,
                             "Default path does not exist",
                             "The default path does not exist",
-                            Context::none()
+                            Context::default()
                                 .source(default_gz_path.to_string_lossy())
                                 .to_owned(),
                         ));
@@ -277,7 +277,7 @@ impl<CV: CVSource> CVIndex<CV> {
                         CVError::FileCouldNotBeOpenend,
                         "CV file could not be openend",
                         e.to_string(),
-                        Context::none().source(&resolved_path_string).to_owned(),
+                        Context::default().source(&resolved_path_string).to_owned(),
                     )
                 })?;
 
@@ -324,7 +324,7 @@ impl<CV: CVSource> CVIndex<CV> {
                             CVError::FileCouldNotBeMoved,
                             "CV file could not be moved",
                             e.to_string(),
-                            Context::none().source(resolved_path_string).to_owned(),
+                            Context::default().source(resolved_path_string).to_owned(),
                         )
                     })?;
                 } else {
@@ -334,7 +334,7 @@ impl<CV: CVSource> CVIndex<CV> {
                             CVError::FileCouldNotBeOpenend,
                             "CV file could not be openend",
                             e.to_string(),
-                            Context::none().source(&resolved_path_string).to_owned(),
+                            Context::default().source(&resolved_path_string).to_owned(),
                         )
                     })?;
                     let default_gz_file = std::fs::File::create(&default_gz_path).map_err(|e| {
@@ -342,7 +342,7 @@ impl<CV: CVSource> CVIndex<CV> {
                             CVError::FileCouldNotBeMade,
                             "CV file could not be made",
                             e.to_string(),
-                            Context::none()
+                            Context::default()
                                 .source(default_gz_path.to_string_lossy())
                                 .to_owned()
                                 .to_owned(),
@@ -357,7 +357,7 @@ impl<CV: CVSource> CVIndex<CV> {
                             CVError::FileCouldNotBeMoved,
                             "CV file could not be moved",
                             e.to_string(),
-                            Context::none().source(&resolved_path_string).to_owned(),
+                            Context::default().source(&resolved_path_string).to_owned(),
                         )
                     })?;
                     if remove_original {
@@ -366,7 +366,7 @@ impl<CV: CVSource> CVIndex<CV> {
                                 CVError::FileCouldNotBeMoved,
                                 "Overwrite CV file could not be deleted",
                                 e.to_string(),
-                                Context::none().source(&resolved_path_string).to_owned(),
+                                Context::default().source(&resolved_path_string).to_owned(),
                             )
                         })?;
                     }
@@ -418,7 +418,7 @@ impl<CV: CVSource> CVIndex<CV> {
                         CVError::FileCouldNotBeMade,
                         "CV file could not be made",
                         e.to_string(),
-                        Context::none()
+                        Context::default()
                             .source(download_path.to_string_lossy())
                             .to_owned(),
                     )
@@ -430,7 +430,7 @@ impl<CV: CVSource> CVIndex<CV> {
                         CVError::CVUrlCouldNotBeRead,
                         "Invalid CV URL",
                         e.to_string(),
-                        Context::none().source(url).to_owned(),
+                        Context::default().source(url).to_owned(),
                     )
                 })?;
 
@@ -439,7 +439,7 @@ impl<CV: CVSource> CVIndex<CV> {
                         CVError::CVUrlCouldNotBeRead,
                         "Invalid CV URL",
                         "Only HTTP(s) files can be downloaded",
-                        Context::none().source(url.to_string()).to_owned(),
+                        Context::default().source(url.to_string()).to_owned(),
                     ));
                 }
 
@@ -449,7 +449,7 @@ impl<CV: CVSource> CVIndex<CV> {
                             CVError::CVUrlCouldNotBeRead,
                             "Could not download CV",
                             e.to_string(),
-                            Context::none().source(url.to_string()).to_owned(),
+                            Context::default().source(url.to_string()).to_owned(),
                         )
                     })?
                     .error_for_status()
@@ -458,7 +458,7 @@ impl<CV: CVSource> CVIndex<CV> {
                             CVError::CVUrlCouldNotBeRead,
                             "Could not download CV",
                             e.to_string(),
-                            Context::none().source(url.to_string()).to_owned(),
+                            Context::default().source(url.to_string()).to_owned(),
                         )
                     })?;
                 // Decompress (if needed) then compress again to gz
@@ -491,7 +491,7 @@ impl<CV: CVSource> CVIndex<CV> {
                                         ),
                                         ArchiveError::IO(io) => io.to_string(),
                                     },
-                                    Context::none().source(url.to_string()).to_owned(),
+                                    Context::default().source(url.to_string()).to_owned(),
                                 )
                             },
                         )?;
@@ -508,7 +508,7 @@ impl<CV: CVSource> CVIndex<CV> {
                         CVError::FileCouldNotBeMade,
                         "Could not download the CV file",
                         e.to_string(),
-                        Context::none()
+                        Context::default()
                             .source(url.to_string())
                             .lines(0, download_path.to_string_lossy())
                             .to_owned(),
@@ -563,7 +563,7 @@ impl<CV: CVSource> CVIndex<CV> {
                         CVError::FileCouldNotBeMade,
                         "CV file could not be made",
                         e.to_string(),
-                        Context::none()
+                        Context::default()
                             .source(download_path.to_string_lossy())
                             .to_owned(),
                     )
@@ -575,7 +575,7 @@ impl<CV: CVSource> CVIndex<CV> {
                         CVError::CVUrlCouldNotBeRead,
                         "Invalid CV URL",
                         e.to_string(),
-                        Context::none().source(url).to_owned(),
+                        Context::default().source(url).to_owned(),
                     )
                 })?;
 
@@ -584,7 +584,7 @@ impl<CV: CVSource> CVIndex<CV> {
                         CVError::CVUrlCouldNotBeRead,
                         "Invalid CV URL",
                         "Only HTTP(s) files can be downloaded",
-                        Context::none().source(url.to_string()).to_owned(),
+                        Context::default().source(url.to_string()).to_owned(),
                     ));
                 }
 
@@ -595,7 +595,7 @@ impl<CV: CVSource> CVIndex<CV> {
                             CVError::CVUrlCouldNotBeRead,
                             "Could not download CV",
                             e.to_string(),
-                            Context::none().source(url.to_string()).to_owned(),
+                            Context::default().source(url.to_string()).to_owned(),
                         )
                     })?
                     .error_for_status()
@@ -604,7 +604,7 @@ impl<CV: CVSource> CVIndex<CV> {
                             CVError::CVUrlCouldNotBeRead,
                             "Could not download CV",
                             e.to_string(),
-                            Context::none().source(url.to_string()).to_owned(),
+                            Context::default().source(url.to_string()).to_owned(),
                         )
                     })?
                     .bytes()
@@ -614,7 +614,7 @@ impl<CV: CVSource> CVIndex<CV> {
                             CVError::CVUrlCouldNotBeRead,
                             "Could not download CV",
                             e.to_string(),
-                            Context::none().source(url.to_string()).to_owned(),
+                            Context::default().source(url.to_string()).to_owned(),
                         )
                     })?;
                 // Decompress (if needed) then compress again to gz
@@ -648,7 +648,7 @@ impl<CV: CVSource> CVIndex<CV> {
                                         ),
                                         ArchiveError::IO(io) => io.to_string(),
                                     },
-                                    Context::none().source(url.to_string()).to_owned(),
+                                    Context::default().source(url.to_string()).to_owned(),
                                 )
                             })?;
 
@@ -664,7 +664,7 @@ impl<CV: CVSource> CVIndex<CV> {
                         CVError::FileCouldNotBeMade,
                         "Could not download the CV file",
                         e.to_string(),
-                        Context::none()
+                        Context::default()
                             .source(url.to_string())
                             .lines(0, download_path.to_string_lossy())
                             .to_owned(),

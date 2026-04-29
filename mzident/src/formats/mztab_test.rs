@@ -127,7 +127,7 @@ fn open_file(reader: impl BufRead) -> Result<usize, BoxedError<'static, BasicKin
                 BasicKind::Error,
                 "Failed test",
                 err,
-                Context::none().lines(0, read.id.to_string()),
+                Context::default().lines(0, read.id.to_string()),
             )
         })?;
     }

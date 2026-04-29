@@ -45,7 +45,7 @@ impl Fragment {
         interpretation: &[(NonZeroU32, AnalyteTarget)],
     ) -> Result<Vec<Self>, BoxedError<'a, BasicKind>> {
         Self::mz_paf_inner(
-            &Context::none().lines(0, line),
+            &Context::default().lines(0, line),
             line,
             0..line.len(),
             ontologies,
@@ -101,7 +101,9 @@ fn parse_intermediate_representation<'a>(
                 BasicKind::Error,
                 "Invalid mzPAF annotation delimiter",
                 "Different mzPAF annotations should be separated with commas ','.",
-                Context::line(None, line, range.start_index(), 1),
+                Context::default()
+                    .lines(0, line)
+                    .add_highlight((0, range.start_index(), 1)),
             ));
         }
         let (r, a) = parse_annotation(base_context, line, range, ontologies)?;
@@ -538,7 +540,9 @@ fn parse_ion<'a>(
                                 BasicKind::Error,
                                 "Invalid ProForma definition",
                                 "The string could not be parsed as a ProForma definition",
-                                Context::line_range(None, line, range.clone()),
+                                Context::default()
+                                    .lines(0, line)
+                                    .add_highlight((0, range.clone())),
                             )
                             .add_underlying_errors(errs)
                         });
@@ -1310,7 +1314,7 @@ fn parse_deviation<'a>(
             BoxedError::new(
                 BasicKind::Error,
                 "Invalid mzPAF deviation",
-                format!("The deviation number {err}",),
+                format!("The deviation number {err}"),
                 base_context
                     .clone()
                     .add_highlight((0, range.start + 1..range.start + 1 + number.0)),
@@ -1359,7 +1363,7 @@ fn parse_confidence<'a>(
             BoxedError::new(
                 BasicKind::Error,
                 "Invalid mzPAF confidence",
-                format!("The confidence number {err}",),
+                format!("The confidence number {err}"),
                 base_context
                     .clone()
                     .add_highlight((0, range.start + 1..range.start + 1 + number.0)),
@@ -1490,28 +1494,28 @@ static MZPAF_NAMED_MOLECULES: LazyLock<Vec<(&str, MolecularFormula)>> = LazyLock
 #[allow(clippy::missing_panics_doc)]
 fn neutral_loss() {
     assert_eq!(
-        parse_neutral_loss(&Context::none(), "-H2O", 0..4),
+        parse_neutral_loss(&Context::default(), "-H2O", 0..4),
         Ok((
             4..4,
             vec![NeutralLoss::Loss(1, molecular_formula!(H 2 O 1))]
         ))
     );
     assert_eq!(
-        parse_neutral_loss(&Context::none(), "+H2O", 0..4),
+        parse_neutral_loss(&Context::default(), "+H2O", 0..4),
         Ok((
             4..4,
             vec![NeutralLoss::Gain(1, molecular_formula!(H 2 O 1))]
         ))
     );
     assert_eq!(
-        parse_neutral_loss(&Context::none(), "+NH3", 0..4),
+        parse_neutral_loss(&Context::default(), "+NH3", 0..4),
         Ok((
             4..4,
             vec![NeutralLoss::Gain(1, molecular_formula!(N 1 H 3))]
         ))
     );
     assert_eq!(
-        parse_neutral_loss(&Context::none(), "/-0.0008", 0..8),
+        parse_neutral_loss(&Context::default(), "/-0.0008", 0..8),
         Ok((0..8, vec![]))
     );
 }
@@ -1529,7 +1533,7 @@ fn parse_correctly() {
         ),
     )];
     let a = "y8^2/-0.0017";
-    let (_, parse_a) = parse_annotation(&Context::none(), a, 0..a.len(), &ontologies).unwrap();
+    let (_, parse_a) = parse_annotation(&Context::default(), a, 0..a.len(), &ontologies).unwrap();
     assert!(!parse_a.auxiliary);
     assert_eq!(parse_a.analyte_number, 1);
     assert_eq!(
@@ -1546,14 +1550,14 @@ fn parse_correctly() {
         )),
     );
     assert_eq!(parse_a.confidence, None);
-    let frag_a = parse_a.into_fragment(&pep, &Context::none()).unwrap();
+    let frag_a = parse_a.into_fragment(&pep, &Context::default()).unwrap();
     assert_eq!(
         frag_a.ion.position(),
         Some(&PeptidePosition::c(SequencePosition::Index(2), 10))
     );
 
     let b = "y8+i^2/0.0002";
-    let (_, parse_b) = parse_annotation(&Context::none(), b, 0..b.len(), &ontologies).unwrap();
+    let (_, parse_b) = parse_annotation(&Context::default(), b, 0..b.len(), &ontologies).unwrap();
     assert!(!parse_b.auxiliary);
     assert_eq!(parse_b.analyte_number, 1);
     assert_eq!(

@@ -28,7 +28,7 @@ pub trait ParseJson: Sized {
                 BasicKind::Error,
                 format!("Invalid JSON (for {})", type_name::<Self>()),
                 err.to_string(),
-                Context::show(value.to_string()),
+                Context::default().lines(0, value.to_string()),
             )
         })?;
         Self::from_json_value(value)
@@ -45,7 +45,7 @@ pub fn use_serde<T: DeserializeOwned>(value: Value) -> Result<T, BoxedError<'sta
             BasicKind::Error,
             format!("Could not parse JSON into {}", type_name::<T>()),
             err.to_string(),
-            Context::show(value.to_string()),
+            Context::default().lines(0, value.to_string()),
         )
     })
 }
@@ -118,7 +118,7 @@ impl<T: ParseJson> ParseJson for thin_vec::ThinVec<T> {
                     "The JSON has to be a sequence to parse a list of {}",
                     type_name::<T>()
                 ),
-                Context::show(value.to_string()),
+                Context::default().lines(0, value.to_string()),
             ))
         }
     }
@@ -138,7 +138,7 @@ impl<T: ParseJson> ParseJson for Vec<T> {
                     "The JSON has to be a sequence to parse a list of {}",
                     type_name::<T>()
                 ),
-                Context::show(value.to_string()),
+                Context::default().lines(0, value.to_string()),
             ))
         }
     }
@@ -156,7 +156,7 @@ impl<A: ParseJson, B: ParseJson> ParseJson for (A, B) {
                     BasicKind::Error,
                     "Invalid JSON",
                     "The JSON is a sequence but does not have 2 children",
-                    Context::show(arr.iter().join(",")),
+                    Context::default().lines(0, arr.iter().join(",")),
                 ))
             }
         } else {
@@ -168,7 +168,7 @@ impl<A: ParseJson, B: ParseJson> ParseJson for (A, B) {
                     type_name::<A>(),
                     type_name::<B>(),
                 ),
-                Context::show(value.to_string()),
+                Context::default().lines(0, value.to_string()),
             ))
         }
     }
@@ -187,7 +187,7 @@ impl<A: ParseJson, B: ParseJson, C: ParseJson> ParseJson for (A, B, C) {
                     BasicKind::Error,
                     "Invalid JSON",
                     "The JSON is a sequence but does not have 3 children",
-                    Context::show(arr.iter().join(",")),
+                    Context::default().lines(0, arr.iter().join(",")),
                 ))
             }
         } else {
@@ -200,7 +200,7 @@ impl<A: ParseJson, B: ParseJson, C: ParseJson> ParseJson for (A, B, C) {
                     type_name::<B>(),
                     type_name::<C>(),
                 ),
-                Context::show(value.to_string()),
+                Context::default().lines(0, value.to_string()),
             ))
         }
     }
@@ -220,7 +220,7 @@ impl<A: ParseJson, B: ParseJson, C: ParseJson, D: ParseJson> ParseJson for (A, B
                     BasicKind::Error,
                     "Invalid JSON",
                     "The JSON is a sequence but does not have 4 children",
-                    Context::show(arr.iter().join(",")),
+                    Context::default().lines(0, arr.iter().join(",")),
                 ))
             }
         } else {
@@ -234,7 +234,7 @@ impl<A: ParseJson, B: ParseJson, C: ParseJson, D: ParseJson> ParseJson for (A, B
                     type_name::<C>(),
                     type_name::<D>(),
                 ),
-                Context::show(value.to_string()),
+                Context::default().lines(0, value.to_string()),
             ))
         }
     }

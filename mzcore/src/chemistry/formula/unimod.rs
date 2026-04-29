@@ -37,7 +37,7 @@ fn parse_unimod_composition_brick(
                 Err(BoxedError::new(BasicKind::Error,
                     "Invalid Unimod chemical formula",
                     "Unknown Unimod composition brick, use an element or one of the unimod shorthands. Eg: 'H(13) C(12) N O(3)'.",
-                     Context::line_range(None, text, range)))
+                     Context::default().lines(0, text).add_highlight((0, range))))
             }, |el| Ok(Brick::Element(el)))
         }
     }
@@ -56,7 +56,7 @@ impl MolecularFormula {
     ///
     /// ```
     pub fn unimod(value: &str) -> Result<Self, BoxedError<'_, BasicKind>> {
-        Self::unimod_inner(&Context::none().lines(0, value), value, 0..value.len())
+        Self::unimod_inner(&Context::default().lines(0, value), value, 0..value.len())
     }
 
     /// This parses a substring of the given string as a Unimod molecular formula definition.

@@ -32,7 +32,7 @@ impl SimpleModificationInner {
         ontologies: &Ontologies,
     ) -> ParserResult<'a, (ReturnModification, MUPSettings), BasicKind> {
         Self::pro_forma_inner(
-            &Context::none().lines(0, line),
+            &Context::default().lines(0, line),
             line,
             0..line.len(),
             ambiguous_lookup,
