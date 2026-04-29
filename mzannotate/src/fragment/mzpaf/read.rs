@@ -1375,7 +1375,6 @@ fn parse_confidence<'a>(
     }
 }
 
-// TODO: update list
 static MZPAF_NAMED_MOLECULES: LazyLock<Vec<(&str, MolecularFormula)>> = LazyLock::new(|| {
     vec![
         ("Hex", molecular_formula!(C 6 H 10 O 5)),
@@ -1399,14 +1398,14 @@ static MZPAF_NAMED_MOLECULES: LazyLock<Vec<(&str, MolecularFormula)>> = LazyLock
         ("TMT133N", molecular_formula!(C 2 [13 C 6] [15 N 1] H 15)),
         ("TMT133C", molecular_formula!(C 1 [13 C 7] N 1 H 15)),
         ("TMT134N", molecular_formula!(C 1 [13 C 7] [15 N 1] H 15)),
-        ("TMT134C", molecular_formula!(C 0 [13 C 8] N 1 H 15)),
-        ("TMT135N", molecular_formula!(C 0 [13 C 8] [15 N 1] H 15)),
+        ("TMT134C", molecular_formula!([13 C 8] N 1 H 15)),
+        ("TMT135N", molecular_formula!([13 C 8] [15 N 1] H 15)),
         ("TMTzero", molecular_formula!(C 12 H 20 N 2 O 2)),
         ("TMTpro_zero", molecular_formula!(C 15 H 25 N 3 O 3)),
-        ("TMT2plex", molecular_formula!(C 11 [ 13 C 1] H 20 N 2 O 2)),
+        ("TMT2plex", molecular_formula!(C 11 [13 C 1] H 20 N 2 O 2)),
         (
             "TMT6plex",
-            molecular_formula!(C 8 [13 C 5] H 20 N 1 [ 15 N 1] O 2),
+            molecular_formula!(C 8 [13 C 4] H 20 N 1 [15 N 1] O 2),
         ),
         (
             "TMTpro",
@@ -1416,18 +1415,18 @@ static MZPAF_NAMED_MOLECULES: LazyLock<Vec<(&str, MolecularFormula)>> = LazyLock
         ("iTRAQ114", molecular_formula!(C 5 [13 C 1] N 2 H 12)),
         (
             "iTRAQ115",
-            molecular_formula!(C 5 [13 C 1] N 1 [15 N 1] H 12),
+            molecular_formula!(C 5 [13 C 1] N 1[15 N 1] H 12),
         ),
         (
             "iTRAQ116",
-            molecular_formula!(C 4 [13 C 2] N 1 [15 N 1] H 12),
+            molecular_formula!(C 4 [13 C 2] N 1[15 N 1] H 12),
         ),
         (
             "iTRAQ117",
-            molecular_formula!(C 3 [13 C 3] N 1 [15 N 1] H 12),
+            molecular_formula!(C 3 [13 C 3] N 1[15 N 1] H 12),
         ),
         ("iTRAQ118", molecular_formula!(C 3 [13 C 3] [15 N 2] H 12)),
-        ("iTRAQ119", molecular_formula!(C 4 [13 C 2] [15 N 2] H 12)),
+        ("iTRAQ119", molecular_formula!(C 2 [13 C 4] [15 N 2] H 12)),
         ("iTRAQ121", molecular_formula!([13 C 6] [15 N 2] H 12)),
         (
             "iTRAQ4plex",
@@ -1439,38 +1438,35 @@ static MZPAF_NAMED_MOLECULES: LazyLock<Vec<(&str, MolecularFormula)>> = LazyLock
         ),
         ("TMT126-ETD", molecular_formula!(C 7 N 1 H 15)),
         ("TMT127N-ETD", molecular_formula!(C 7 [15 N 1] H 15)),
-        ("TMT127C-ETD", molecular_formula!(C 6 [13 C 1] N 1 H 15)),
-        (
-            "TMT128N-ETD",
-            molecular_formula!(C 6 [13 C 1] [15 N 1] H 15),
-        ),
+        ("TMT127C-ETD", molecular_formula!(C 7 N 1 H 15)),
+        ("TMT128N-ETD", molecular_formula!(C 7 [15 N 1] H 15)),
         ("TMT128C-ETD", molecular_formula!(C 5 [13 C 2] N 1 H 15)),
         (
             "TMT129N-ETD",
             molecular_formula!(C 5 [13 C 2] [15 N 1] H 15),
         ),
-        ("TMT129C-ETD", molecular_formula!(C 4 [13 C 3] N 1 H 15)),
+        ("TMT129C-ETD", molecular_formula!(C 5 [13 C 2] N 1 H 15)),
         (
             "TMT130N-ETD",
-            molecular_formula!(C 4 [13 C 3] [15 N 1] H 15),
+            molecular_formula!(C 5 [13 C 2] [15 N 1] H 15),
         ),
         ("TMT130C-ETD", molecular_formula!(C 3 [13 C 4] N 1 H 15)),
         (
             "TMT131N-ETD",
             molecular_formula!(C 3 [13 C 4] [15 N 1] H 15),
         ),
-        ("TMT131C-ETD", molecular_formula!(C 2 [13 C 5] N 1 H 15)),
-        ("sidechain_A", molecular_formula!(C 1 H 3 )),
+        ("TMT131C-ETD", molecular_formula!(C 3 [13 C 4] N 1 H 15)),
+        ("sidechain_A", molecular_formula!(C 1 H 3)),
         ("sidechain_C", molecular_formula!(C 1 H 3 S 1)),
         ("sidechain_D", molecular_formula!(C 2 H 2 O 2)),
         ("sidechain_E", molecular_formula!(C 3 H 4 O 2)),
-        ("sidechain_F", molecular_formula!(C 7 H 7 )),
+        ("sidechain_F", molecular_formula!(C 7 H 7)),
         ("sidechain_G", molecular_formula!(H 1)),
         ("sidechain_H", molecular_formula!(C 4 H 5 N 2)),
-        ("sidechain_I", molecular_formula!(C 4 H 9 )),
-        ("sidechain_J", molecular_formula!(C 4 H 9 )),
+        ("sidechain_I", molecular_formula!(C 4 H 9)),
+        ("sidechain_J", molecular_formula!(C 4 H 9)),
         ("sidechain_K", molecular_formula!(C 4 H 10 N 1)),
-        ("sidechain_L", molecular_formula!(C 4 H 9 )),
+        ("sidechain_L", molecular_formula!(C 4 H 9)),
         ("sidechain_M", molecular_formula!(C 3 H 7 S 1)),
         ("sidechain_N", molecular_formula!(C 2 H 4 N 1 O 1)),
         ("sidechain_O", molecular_formula!(C 9 H 17 N 2 O 1)),
@@ -1479,7 +1475,7 @@ static MZPAF_NAMED_MOLECULES: LazyLock<Vec<(&str, MolecularFormula)>> = LazyLock
         ("sidechain_S", molecular_formula!(C 1 H 3 O 1)),
         ("sidechain_T", molecular_formula!(C 2 H 5 O 1)),
         ("sidechain_U", molecular_formula!(C 1 H 3 Se 1)),
-        ("sidechain_V", molecular_formula!(C 3 H 7 )),
+        ("sidechain_V", molecular_formula!(C 3 H 7)),
         ("sidechain_W", molecular_formula!(C 9 H 8 N 1)),
         ("sidechain_Y", molecular_formula!(C 7 H 7 O 1)),
         ("Cytosine", molecular_formula!(C 4 H 5 N 3 O 1)),
