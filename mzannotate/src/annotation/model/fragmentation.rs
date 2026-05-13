@@ -1,12 +1,12 @@
 //! Handle model instantiation.
 
-use std::{ops::RangeInclusive, sync::LazyLock};
+use std::ops::RangeInclusive;
 
 use itertools::Itertools;
 use mzcore::{
-    chemistry::{ChargeRange, NeutralLoss},
+    chemistry::{ChargeRange, Chemical, NeutralLoss},
     prelude::{AminoAcid, MultiChemical, Peptidoform, SequenceElement, SequencePosition},
-    sequence::{BACKBONE, PeptidePosition},
+    sequence::{BACKBONE, CheckedAminoAcid, PeptidePosition},
 };
 use serde::{Deserialize, Serialize};
 
@@ -486,6 +486,10 @@ pub(crate) fn get_all_sidechain_losses<Complexity>(
     } else {
         let options: Vec<NeutralLoss> = slice
             .iter()
+            .filter(|seq| {
+                seq.aminoacid.aminoacid() != AminoAcid::Proline
+                    && seq.aminoacid.aminoacid() != AminoAcid::Unknown
+            })
             .filter_map(|seq| {
                 settings
                     .1
@@ -495,11 +499,35 @@ pub(crate) fn get_all_sidechain_losses<Complexity>(
             })
             .unique()
             .flat_map(|aa| {
-                aa.formulas()
-                    .iter()
-                    .map(|f| NeutralLoss::SideChainLoss(f - LazyLock::force(&BACKBONE), aa))
-                    .filter(|l| !l.is_empty())
-                    .collect::<Vec<_>>()
+                if aa == AminoAcid::AmbiguousAsparagine {
+                    vec![
+                        NeutralLoss::SideChainLoss(
+                            CheckedAminoAcid::Asparagine.formula() - &*BACKBONE,
+                            AminoAcid::Asparagine,
+                        ),
+                        NeutralLoss::SideChainLoss(
+                            CheckedAminoAcid::AsparticAcid.formula() - &*BACKBONE,
+                            AminoAcid::AsparticAcid,
+                        ),
+                    ]
+                } else if aa == AminoAcid::AmbiguousGlutamine {
+                    vec![
+                        NeutralLoss::SideChainLoss(
+                            CheckedAminoAcid::Glutamine.formula() - &*BACKBONE,
+                            AminoAcid::Glutamine,
+                        ),
+                        NeutralLoss::SideChainLoss(
+                            CheckedAminoAcid::GlutamicAcid.formula() - &*BACKBONE,
+                            AminoAcid::GlutamicAcid,
+                        ),
+                    ]
+                } else {
+                    aa.formulas()
+                        .iter()
+                        .map(|f| NeutralLoss::SideChainLoss(f - &*BACKBONE, aa))
+                        .filter(|l| !l.is_empty())
+                        .collect::<Vec<_>>()
+                }
             })
             .collect();
         (1..=settings.0)
