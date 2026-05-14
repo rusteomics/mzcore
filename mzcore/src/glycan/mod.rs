@@ -10,6 +10,7 @@ mod position;
 mod positioned_structure;
 #[cfg(feature = "glycan-render")]
 mod render;
+mod wurcs;
 
 pub use attachment::*;
 pub use composition::GlycanCompositionError;
