@@ -8,42 +8,42 @@ use crate::{
     prelude::Element,
 };
 
-fn tokenise<'a>(
+pub fn tokenise_wurcs<'a>(
     value: &'a str,
     base_context: &Context<'a>,
     range: impl RangeBounds<usize>,
 ) -> Result<Wurcs, BoxedError<'a, BasicKind>> {
-    let (mut index, end) = range.bounds(value.len());
-    if value[index..end].starts_with("WURCS=2.0/") {
+    let (mut index, end) = range.bounds(value.len() - 1);
+    if value[index..=end].starts_with("WURCS=2.0/") {
         index += 10;
-        if !value[index..end].is_ascii() {
+        if !value[index..=end].is_ascii() {
             return Err(BoxedError::new(
                 BasicKind::Error,
                 "Invalid WURCS 2.0",
                 "Defintition contains non-ascii characters",
-                base_context.clone().add_highlight((0, index..end)),
+                base_context.clone().add_highlight((0, index..=end)),
             ));
         }
 
-        let Some((counts_str, _)) = value[index..end].split_once('/') else {
+        let Some((counts_str, _)) = value[index..=end].split_once('/') else {
             return Err(BoxedError::new(
                 BasicKind::Error,
                 "Invalid WURCS 2.0",
                 "A WURCS 2.0 string should start with the counts followed by a slash",
-                base_context.clone().add_highlight((0, index..end)),
+                base_context.clone().add_highlight((0, index..=end)),
             ));
         };
         let counts = tokenise_counts(counts_str, base_context, index, end)?;
         let mut unique_residues = Vec::with_capacity(counts.0 as usize);
 
         index += counts_str.len() + 1;
-        while value[index..end].starts_with('[') {
+        while value[index..=end].starts_with('[') {
             let (len, unique_res) = tokenise_unique_res(value, base_context, index, end)?;
             index += len;
             unique_residues.push(unique_res);
         }
 
-        if !value[index..end].starts_with('/') {
+        if !value[index..=end].starts_with('/') {
             return Err(BoxedError::new(
                 BasicKind::Error,
                 "Invalid WURCS 2.0",
@@ -53,12 +53,12 @@ fn tokenise<'a>(
         }
         index += 1;
 
-        let Some((residues_str, _)) = value[index..end].split_once('/') else {
+        let Some((residues_str, _)) = value[index..=end].split_once('/') else {
             return Err(BoxedError::new(
                 BasicKind::Error,
                 "Invalid WURCS 2.0",
                 "The separator '/' after the residue counts is missing",
-                base_context.clone().add_highlight((0, index..end)),
+                base_context.clone().add_highlight((0, index..=end)),
             ));
         };
 
@@ -83,74 +83,60 @@ fn tokenise<'a>(
 
         let mut linkage = Vec::with_capacity(counts.2 as usize);
         let mut offset = 0;
-        while index + offset < end {
+        while index + offset <= end {
             let mut glips = Vec::new();
             // Parse GLIP
             loop {
-                let mut res_index = 0;
-                let mut len = 0;
-                for c in value[index + offset..end].as_bytes() {
-                    if c.is_ascii_lowercase() {
-                        len += 1;
-                        res_index = res_index * 52 + (c - b'a');
-                    } else if c.is_ascii_uppercase() {
-                        len += 1;
-                        res_index = res_index * 52 + (c - b'A' + 26);
-                    } else {
-                        break;
-                    }
-                }
-                if len == 0 {
-                    return Err(BoxedError::new(
-                        BasicKind::Error,
-                        "Invalid WURCS 2.0",
-                        "Missing residue index for GLIP",
-                        base_context.clone().add_highlight((0, index + offset, 1)),
-                    ));
-                }
-                offset += len;
-                let (len, position) =
-                    maybe_number(value, index + offset..end, base_context, "GLIP Position")?;
-                offset += len;
-                let extra = if let Some(direction) = value
-                    .as_bytes()
-                    .get(index + offset)
-                    .and_then(|v| (*v).try_into().ok())
-                {
-                    offset += 1;
-                    let (len, num) = next_number::<false, false, u8>(value, index + offset..end)
-                        .ok_or_else(|| {
-                            BoxedError::new(
-                                BasicKind::Error,
-                                "Invalid WURCS 2.0",
-                                format!("The star index is missing"),
-                                base_context.clone().add_highlight((0, index + offset, 1)),
-                            )
-                        })
-                        .map(|(len, _, num)| {
-                            num.map_err(|err| {
-                                BoxedError::new(
-                                    BasicKind::Error,
-                                    "Invalid WURCS 2.0",
-                                    format!("The star index {}", explain_number_error(&err)),
-                                    base_context.clone().add_highlight((0, index + offset, len)),
-                                )
-                            })
-                            .map(|n| (len, n))
-                        })
-                        .flatten()?;
-                    offset += len;
-                    Some((direction, num))
+                let mut alternate = Vec::new();
+                // Check if %
+                let backbone_prob = if value.as_bytes().get(index + offset) == Some(&b'%') {
+                    let (len, probability) =
+                        parse_probability(value, index + offset + 1..=end, base_context)?;
+                    offset += len + 1;
+                    Some(probability)
                 } else {
                     None
                 };
-                glips.push(GLIP {
-                    res_index,
-                    position,
-                    direction: extra.clone().map_or(Direction::Obvious, |(d, _)| d),
-                    star_index: extra.map_or(0, |(_, i)| i),
-                });
-                if value.as_bytes().get(index + offset) == Some(&b'-') {
+                // Parse glip
+                let (len, glip) = parse_glip(value, index + offset..=end, base_context)?;
+                alternate.push(glip);
+                offset += len;
+                // Check if % (if not already parsed?)
+                let opposite_prob = if value.as_bytes().get(index + offset) == Some(&b'%') {
+                    let (len, probability) =
+                        parse_probability(value, index + offset + 1..=end, base_context)?;
+                    offset += len + 1;
+                    Some(probability)
+                } else {
+                    None
+                };
+                // Check if alternate
+                while index + offset <= end && value.as_bytes().get(index + offset) == Some(&b'|') {
+                    offset += 1;
+                    let (len, glip) = parse_glip(value, index + offset..=end, base_context)?;
+                    offset += len;
+                    alternate.push(glip);
+                }
+                if alternate.len() == 1 {
+                    glips.push(match (backbone_prob, opposite_prob) {
+                        (Some(_), Some(_)) => {
+                            return Err(BoxedError::new(
+                                BasicKind::Error,
+                                "Invalid WURCS 2.0",
+                                "A probability range can only be provided for the backbone or opposite side, not both at the same time",
+                                base_context
+                                    .clone()
+                                    .add_highlight((0, index..=index + offset)),
+                            ));
+                        }
+                        (Some(prob), None) => GLIPOption::Statistic(true, prob, alternate[0]),
+                        (None, Some(prob)) => GLIPOption::Statistic(false, prob, alternate[0]),
+                        (None, None) => GLIPOption::Known(alternate[0]),
+                    });
+                } else {
+                    glips.push(GLIPOption::Alternative(alternate));
+                }
+                if index + offset <= end && value.as_bytes().get(index + offset) == Some(&b'-') {
                     offset += 1;
                     continue;
                 } else {
@@ -158,13 +144,15 @@ fn tokenise<'a>(
                 }
             }
             // Parse mod
-            let (len, modification) = tokenise_map(value, index + offset..end, base_context)?;
+            let (len, modification) = tokenise_map(value, index + offset..=end, base_context)?;
             offset += len;
             linkage.push(Linkage {
                 lips: glips,
                 modification,
             });
-            if let Some(ch) = value.as_bytes().get(index + offset) {
+            if index + offset <= end
+                && let Some(ch) = value.as_bytes().get(index + offset)
+            {
                 if *ch == b'_' {
                     offset += 1;
                 } else {
@@ -190,9 +178,94 @@ fn tokenise<'a>(
             BasicKind::Error,
             "Invalid WURCS 2.0",
             "A WURCS 2.0 string should start with 'WURCS=2.0/'",
-            base_context.clone().add_highlight((0, index..end)),
+            base_context.clone().add_highlight((0, index..=end)),
         ))
     }
+}
+
+fn parse_glip<'a>(
+    value: &'a str,
+    range: std::ops::RangeInclusive<usize>,
+    base_context: &Context<'a>,
+) -> Result<(usize, GLIP), BoxedError<'a, BasicKind>> {
+    let mut offset = 0;
+    let mut res_index = 0;
+    let mut len = 0;
+    for c in value[range.start() + offset..=*range.end()].as_bytes() {
+        if c.is_ascii_lowercase() {
+            len += 1;
+            res_index = res_index * 52 + (c - b'a');
+        } else if c.is_ascii_uppercase() {
+            len += 1;
+            res_index = res_index * 52 + (c - b'A' + 26);
+        } else {
+            break;
+        }
+    }
+    if len == 0 {
+        return Err(BoxedError::new(
+            BasicKind::Error,
+            "Invalid WURCS 2.0",
+            "Missing residue index for GLIP",
+            base_context
+                .clone()
+                .add_highlight((0, range.start() + offset, 1)),
+        ));
+    }
+    offset += len;
+    let (len, position) = maybe_number(
+        value,
+        range.start() + offset..=*range.end(),
+        base_context,
+        "GLIP Position",
+    )?;
+    offset += len;
+    let extra = if let Some(direction) = value
+        .as_bytes()
+        .get(range.start() + offset)
+        .and_then(|v| (*v).try_into().ok())
+    {
+        offset += 1;
+        let (len, num) =
+            next_number::<false, false, u8>(value, range.start() + offset..=*range.end())
+                .ok_or_else(|| {
+                    BoxedError::new(
+                        BasicKind::Error,
+                        "Invalid WURCS 2.0",
+                        format!("The star index is missing"),
+                        base_context
+                            .clone()
+                            .add_highlight((0, range.start() + offset, 1)),
+                    )
+                })
+                .map(|(len, _, num)| {
+                    num.map_err(|err| {
+                        BoxedError::new(
+                            BasicKind::Error,
+                            "Invalid WURCS 2.0",
+                            format!("The star index {}", explain_number_error(&err)),
+                            base_context
+                                .clone()
+                                .add_highlight((0, range.start() + offset, len)),
+                        )
+                    })
+                    .map(|n| (len, n))
+                })
+                .flatten()?;
+        offset += len;
+        Some((direction, num))
+    } else {
+        None
+    };
+    Ok((
+        offset,
+        GLIP {
+            res_index,
+            position,
+            direction: extra.clone().map_or(Direction::Obvious, |(d, _)| d),
+            star_index: extra.map_or(0, |(_, i)| i),
+        },
+    ))
 }
 
 fn tokenise_counts<'a>(
@@ -211,7 +284,7 @@ fn tokenise_counts<'a>(
                 BasicKind::Error,
                 "Invalid WURCS 2.0",
                 "A WURCS 2.0 unique count should have three numbers",
-                base_context.clone().add_highlight((0, index..end)),
+                base_context.clone().add_highlight((0, index..=end)),
             )
         })
         .map(|v| {
@@ -235,7 +308,7 @@ fn tokenise_counts<'a>(
                 BasicKind::Error,
                 "Invalid WURCS 2.0",
                 "A WURCS 2.0 unique count should have three numbers",
-                base_context.clone().add_highlight((0, index..end)),
+                base_context.clone().add_highlight((0, index..=end)),
             )
         })
         .map(|v| {
@@ -259,7 +332,7 @@ fn tokenise_counts<'a>(
                 BasicKind::Error,
                 "Invalid WURCS 2.0",
                 "A WURCS 2.0 unique count should have three numbers",
-                base_context.clone().add_highlight((0, index..end)),
+                base_context.clone().add_highlight((0, index..=end)),
             )
         })
         .map(|v| {
@@ -294,7 +367,9 @@ fn tokenise_counts<'a>(
             BasicKind::Error,
             "Invalid WURCS 2.0",
             "There are too many counts provided",
-            base_context.clone().add_highlight((0, index + offset..end)),
+            base_context
+                .clone()
+                .add_highlight((0, index + offset..=end)),
         ))
     }
 }
@@ -307,7 +382,7 @@ fn tokenise_unique_res<'a>(
     end: usize,
 ) -> Result<(usize, Residue), BoxedError<'a, BasicKind>> {
     // Parse the skeleton
-    let skeleton_length = value[index + 1..end]
+    let skeleton_length = value[index + 1..=end]
         .as_bytes()
         .iter()
         .take_while(|c| **c != b'-' && **c != b'_' && **c != b']')
@@ -332,6 +407,7 @@ fn tokenise_unique_res<'a>(
         )
     })?;
 
+    // What does 'x' mean? Maybe just unknown? Also handle '<x>' as unknown length.
     let backbone = value.as_bytes()[index + 2..index + skeleton_length]
         .into_iter()
         .enumerate()
@@ -366,7 +442,7 @@ fn tokenise_unique_res<'a>(
         // If ? then unknown
         let (len, num) = maybe_number(
             value,
-            index + offset..end,
+            index + offset..=end,
             base_context,
             "anomeric location",
         )?;
@@ -393,11 +469,11 @@ fn tokenise_unique_res<'a>(
         // Parse LIP
         loop {
             let (len, position) =
-                maybe_number(value, index + offset..end, base_context, "LIP Position")?;
+                maybe_number(value, index + offset..=end, base_context, "LIP Position")?;
             offset += len;
             let extra = if let Ok(direction) = value.as_bytes()[index + offset].try_into() {
                 offset += 1;
-                let (len, num) = next_number::<false, false, u8>(value, index + offset..end)
+                let (len, num) = next_number::<false, false, u8>(value, index + offset..=end)
                     .ok_or_else(|| {
                         BoxedError::new(
                             BasicKind::Error,
@@ -436,7 +512,7 @@ fn tokenise_unique_res<'a>(
             }
         }
         // Parse mod
-        let (len, modification) = tokenise_map(value, index + offset..end, base_context)?;
+        let (len, modification) = tokenise_map(value, index + offset..=end, base_context)?;
         offset += len;
         mods.push(Mod { lips, modification });
     }
@@ -465,7 +541,7 @@ fn tokenise_unique_res<'a>(
 
 fn maybe_number<'a>(
     value: &'a str,
-    range: std::ops::Range<usize>,
+    range: std::ops::RangeInclusive<usize>,
     base_context: &Context<'a>,
     number: &'static str,
 ) -> Result<(usize, Option<u8>), BoxedError<'a, BasicKind>> {
@@ -480,7 +556,7 @@ fn maybe_number<'a>(
                     format!("The {number} is missing"),
                     base_context
                         .clone()
-                        .add_highlight((0, range.clone().start, 1)),
+                        .add_highlight((0, *range.clone().start(), 1)),
                 )
             })
             .map(|(len, _, num)| {
@@ -491,7 +567,7 @@ fn maybe_number<'a>(
                         format!("The {number} {}", explain_number_error(&err)),
                         base_context
                             .clone()
-                            .add_highlight((0, range.clone().start, len)),
+                            .add_highlight((0, *range.clone().start(), len)),
                     )
                 })
                 .map(|n| (len, Some(n)))
@@ -502,27 +578,27 @@ fn maybe_number<'a>(
 
 fn tokenise_map<'a>(
     value: &str,
-    range: std::ops::Range<usize>,
+    range: std::ops::RangeInclusive<usize>,
     base_context: &Context<'a>,
 ) -> Result<(usize, Vec<MAPSymbol>), BoxedError<'a, BasicKind>> {
     let mut tokens = Vec::new();
     let mut offset = 0;
     'outer: loop {
-        if range.start + offset >= range.end {
+        if range.start() + offset >= *range.end() {
             return Ok((offset, tokens));
         }
         for (name, el) in ELEMENT_PARSE_LIST {
-            if value[range.start + offset..range.end].starts_with(name) {
+            if value[range.start() + offset..=*range.end()].starts_with(name) {
                 offset += name.len();
                 tokens.push(MAPSymbol::Element(*el));
                 continue 'outer;
             }
         }
-        match value.as_bytes()[range.start + offset] {
+        match value.as_bytes()[range.start() + offset] {
             b'*' => {
                 offset += 1;
                 if let Some((len, index)) =
-                    next_number::<false, false, u8>(value, range.start + offset..range.end)
+                    next_number::<false, false, u8>(value, range.start() + offset..=*range.end())
                         .map(|(len, _, num)| {
                             num.map_err(|err| {
                                 BoxedError::new(
@@ -531,7 +607,7 @@ fn tokenise_map<'a>(
                                     format!("The star index {}", explain_number_error(&err)),
                                     base_context.clone().add_highlight((
                                         0,
-                                        range.start + offset,
+                                        range.start() + offset,
                                         len,
                                     )),
                                 )
@@ -549,7 +625,7 @@ fn tokenise_map<'a>(
             b'/' => {
                 offset += 1;
                 let (len, num) =
-                    next_number::<false, false, u8>(value, range.start + offset..range.end)
+                    next_number::<false, false, u8>(value, range.start() + offset..*range.end())
                         .ok_or_else(|| {
                             BoxedError::new(
                                 BasicKind::Error,
@@ -557,7 +633,7 @@ fn tokenise_map<'a>(
                                 format!("The branch index is missing"),
                                 base_context
                                     .clone()
-                                    .add_highlight((0, range.start + offset, 1)),
+                                    .add_highlight((0, range.start() + offset, 1)),
                             )
                         })
                         .map(|(len, _, num)| {
@@ -568,7 +644,7 @@ fn tokenise_map<'a>(
                                     format!("The branch index {}", explain_number_error(&err)),
                                     base_context.clone().add_highlight((
                                         0,
-                                        range.start + offset,
+                                        range.start() + offset,
                                         len,
                                     )),
                                 )
@@ -582,7 +658,7 @@ fn tokenise_map<'a>(
             b'$' => {
                 offset += 1;
                 let (len, num) =
-                    next_number::<false, false, u8>(value, range.start + offset..range.end)
+                    next_number::<false, false, u8>(value, range.start() + offset..*range.end())
                         .ok_or_else(|| {
                             BoxedError::new(
                                 BasicKind::Error,
@@ -590,7 +666,7 @@ fn tokenise_map<'a>(
                                 format!("The cyclic index is missing"),
                                 base_context
                                     .clone()
-                                    .add_highlight((0, range.start + offset, 1)),
+                                    .add_highlight((0, range.start() + offset, 1)),
                             )
                         })
                         .map(|(len, _, num)| {
@@ -601,7 +677,7 @@ fn tokenise_map<'a>(
                                     format!("The cyclic index {}", explain_number_error(&err)),
                                     base_context.clone().add_highlight((
                                         0,
-                                        range.start + offset,
+                                        range.start() + offset,
                                         len,
                                     )),
                                 )
@@ -615,7 +691,7 @@ fn tokenise_map<'a>(
             b'^' => {
                 offset += 1;
                 tokens.push(MAPSymbol::Chirality(
-                    match value.as_bytes()[range.start + offset] {
+                    match value.as_bytes()[range.start() + offset] {
                         b'R' => Chirality::R,
                         b'S' => Chirality::S,
                         b'X' => Chirality::Unknown,
@@ -628,7 +704,7 @@ fn tokenise_map<'a>(
                                 "The chirality or gemoetrical isomerism indicator is invalid",
                                 base_context
                                     .clone()
-                                    .add_highlight((0, range.start + offset, 1)),
+                                    .add_highlight((0, range.start() + offset, 1)),
                             ));
                         }
                     },
@@ -655,8 +731,76 @@ fn tokenise_map<'a>(
     }
 }
 
+fn parse_probability<'a>(
+    value: &str,
+    range: std::ops::RangeInclusive<usize>,
+    base_context: &Context<'a>,
+) -> Result<(usize, Probability), BoxedError<'a, BasicKind>> {
+    let parse_num = |offset: usize| {
+        match value.as_bytes().get(*range.start() + offset) {
+            Some(b'?') => Ok((1, None)),
+            Some(b'.') => {
+                let mut o = 1;
+                let mut len = 0;
+                let mut num = 0.0;
+
+                while let Some(ch) = value.as_bytes().get(range.start() + offset + o)
+                    && ch.is_ascii_digit()
+                {
+                    len += 1;
+                    o += 1;
+                    let v = *ch - b'0';
+                    num += (v as f32).powi(-len);
+                }
+
+                if len == 0 {
+                    return Err(BoxedError::new(
+                        BasicKind::Error,
+                        "Invalid WURCS 2.0",
+                        "A probability range cannot contain an empty number",
+                        base_context
+                            .clone()
+                            .add_highlight((0, *range.start() + offset, 1)),
+                    ));
+                }
+
+                Ok((o, Some(num)))
+            } //parse
+            _ => Err(BoxedError::new(
+                BasicKind::Error,
+                "Invalid WURCS 2.0",
+                "A probability range number should start with a '.' or a '?'",
+                base_context
+                    .clone()
+                    .add_highlight((0, *range.start() + offset, 1)),
+            )),
+        }
+    };
+
+    let (offset, first) = parse_num(0)?;
+    let (offset, v) = if value.as_bytes().get(range.start() + offset) == Some(&b'-') {
+        let (len, second) = parse_num(offset + 1)?;
+        (offset + len + 1, Probability::Range(first, second))
+    } else {
+        (offset, Probability::Single(first))
+    };
+
+    if value.as_bytes().get(range.start() + offset) == Some(&b'%') {
+        Ok((offset + 1, v))
+    } else {
+        Err(BoxedError::new(
+            BasicKind::Error,
+            "Invalid WURCS 2.0",
+            "A probability range should end with '%'",
+            base_context
+                .clone()
+                .add_highlight((0, *range.start() + offset, 1)),
+        ))
+    }
+}
+
 #[derive(Debug)]
-struct Wurcs {
+pub struct Wurcs {
     residues: Vec<Residue>,
     sequence: Vec<u8>,
     linkage: Vec<Linkage>,
@@ -679,12 +823,18 @@ enum Carbon {
     HydroxyLeft,
     /// '2'
     HydroxyRight,
+    /// '3' (Taken from glypy)
+    HydroxySame,
+    /// '4' (Taken from glypy)
+    HydroxyOpposite,
     /// 'd' deoxy
     Methylene,
     /// 'a' anomeric
     Hemiketal,
     /// 'U'
     KetoneOrHemiketal,
+    /// 'x' (I assume)
+    Unknown,
 }
 
 impl TryFrom<u8> for Carbon {
@@ -694,9 +844,12 @@ impl TryFrom<u8> for Carbon {
             b'O' => Ok(Self::Ketone),
             b'1' => Ok(Self::HydroxyLeft),
             b'2' => Ok(Self::HydroxyRight),
+            b'3' => Ok(Self::HydroxySame),
+            b'4' => Ok(Self::HydroxyOpposite),
             b'd' => Ok(Self::Methylene),
             b'a' => Ok(Self::Hemiketal),
             b'U' => Ok(Self::KetoneOrHemiketal),
+            b'x' => Ok(Self::Unknown),
             _ => Err(()),
         }
     }
@@ -853,42 +1006,62 @@ enum Chirality {
 #[derive(Debug)]
 // TODO: misses ambiguous linkage
 struct Linkage {
-    lips: Vec<GLIP>,
+    lips: Vec<GLIPOption>,
     modification: Vec<MAPSymbol>,
+}
+
+#[derive(Debug, Clone)]
+enum GLIPOption {
+    Known(GLIP),
+    Statistic(bool, Probability, GLIP),
+    Alternative(Vec<GLIP>),
 }
 
 #[derive(Debug, Copy, Clone)]
 struct GLIP {
     /// Encoded using base 52
     res_index: u8,
+    /// Position or unknown
     position: Option<u8>,
     direction: Direction,
     star_index: u8,
+}
+
+#[derive(Debug, Copy, Clone)]
+enum Probability {
+    Single(Option<f32>),
+    Range(Option<f32>, Option<f32>),
 }
 
 #[cfg(test)]
 mod tests {
     use context_error::{BasicKind, BoxedError, Context};
 
-    use crate::glycan::wurcs::{Wurcs, tokenise};
+    use crate::glycan::wurcs::{Wurcs, tokenise_wurcs};
 
     fn test_tokenise(value: &str) -> Result<Wurcs, BoxedError<'_, BasicKind>> {
-        tokenise(value, &Context::default().lines(0, value), ..)
+        tokenise_wurcs(value, &Context::default().lines(0, value), ..)
     }
 
-    #[test]
-    fn tokenise1() {
-        let t = test_tokenise("WURCS=2.0/1,1,0/[a2122h-1b_1-5_2*NCC/3=O]/1/");
-        println!("{t:?}");
-        assert!(t.is_ok());
-        let t = test_tokenise("WURCS=2.0/1,1,0/[Aad22112h-2a_2-6_5*NCC/3=O]/1/");
-        println!("{t:?}");
-        assert!(t.is_ok());
-        let t = test_tokenise(
-            "WURCS=2.0/3,5,4/[a2122h-1b_1-5_2*NCC/3=O][a1122h-1b_1-5][a1122h-1a_1-5]/1-1-2-3-3/a4-b1_b4-c1_c3-d1_c6-e1",
-        );
-        println!("{t:?}");
-        assert!(t.is_ok());
-        todo!()
+    macro_rules! test {
+        ($case:literal, $name:ident) => {
+            #[test]
+            fn $name() {
+                let t = test_tokenise($case);
+                println!("{}\n=>{t:?}", $case);
+                assert!(t.is_ok());
+            }
+        };
     }
+
+    test!(
+        "WURCS=2.0/2,2,1/[a2112h-1a_1-5_2*NCC/3=O][a2112h-1b_1-5]/1-2/a3-b1",
+        case1
+    );
+    test!("WURCS=2.0/1,1,0/[a2122h-1b_1-5_2*NCC/3=O]/1/", case2);
+    test!("WURCS=2.0/1,1,0/[Aad22112h-2a_2-6_5*NCC/3=O]/1/", case3);
+    test!(
+        "WURCS=2.0/3,5,4/[a2122h-1b_1-5_2*NCC/3=O][a1122h-1b_1-5][a1122h-1a_1-5]/1-1-2-3-3/a4-b1_b4-c1_c3-d1_c6-e1",
+        case4
+    );
 }

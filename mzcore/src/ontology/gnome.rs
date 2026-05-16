@@ -12,7 +12,7 @@ use mzcv::{
 };
 
 use crate::{
-    glycan::{GlycanStructure, MonoSaccharide},
+    glycan::{GlycanStructure, MonoSaccharide, tokenise_wurcs},
     helper_functions::explain_number_error,
     ontology::Ontology,
     sequence::{
@@ -384,6 +384,23 @@ fn parse_gnome_structures(
     let mut errors = 0;
     for line in crate::csv::parse_csv_raw(file, b',', None, None).unwrap() {
         let line = line.unwrap();
+
+        let _wurcs = line
+            .index_column("wurcs")
+            .ok()
+            .filter(|p| !p.0.is_empty())
+            .and_then(|(_, range)| {
+                match tokenise_wurcs(line.line(), &line.full_context(), range.clone()) {
+                    Ok(glycan) => Some(glycan),
+                    Err(error) => {
+                        if errors < 5 {
+                            println!("{error}");
+                        }
+                        errors += 1;
+                        None
+                    }
+                }
+            });
 
         glycans.insert(
             line.index_column("accession number").unwrap().0.into(),
