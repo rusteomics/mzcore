@@ -79,6 +79,18 @@ pub fn tokenise_wurcs<'a>(
             residue_counts.push(num);
         }
 
+        if residue_counts.len() != unique_residues.len() {
+            return Err(BoxedError::new(
+                BasicKind::Error,
+                "Invalid WURCS 2.0",
+                "The number of unique residues and residue counts is not the same",
+                base_context.clone().add_highlight((
+                    0,
+                    index - counts_str.len() - 1..=index + residues_str.len() + 1,
+                )),
+            ));
+        }
+
         index += residues_str.len() + 1;
 
         let mut linkage = Vec::with_capacity(counts.2 as usize);
@@ -169,8 +181,10 @@ pub fn tokenise_wurcs<'a>(
         // TODO: think about if it is needed to verify the counts
 
         Ok(Wurcs {
-            residues: unique_residues,
-            sequence: residue_counts,
+            residues: residue_counts
+                .into_iter()
+                .zip(unique_residues.into_iter())
+                .collect(),
             linkage,
         })
     } else {
@@ -801,15 +815,14 @@ fn parse_probability<'a>(
 
 #[derive(Debug)]
 pub struct Wurcs {
-    residues: Vec<Residue>,
-    sequence: Vec<u8>,
+    residues: Vec<(u8, Residue)>,
     linkage: Vec<Linkage>,
 }
 
 #[derive(Debug)]
 struct Residue {
     start: TerminalCarbon,
-    skeleton: Vec<Carbon>,
+    skeleton: Vec<Carbon>, // TODO: handle the '<x>' case of unknown length all the same carbon
     end: TerminalCarbon,
     anomeric: Option<(Option<u8>, AnomericSymbol)>,
     mods: Vec<Mod>,
