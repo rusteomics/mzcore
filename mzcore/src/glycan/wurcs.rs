@@ -453,33 +453,44 @@ fn tokenise_unique_res<'a>(
     end: usize,
 ) -> Result<(usize, Residue), BoxedError<'a, BasicKind>> {
     // Parse the skeleton
-    let skeleton_length = value[index + 1..=end]
-        .as_bytes()
-        .iter()
-        .take_while(|c| **c != b'-' && **c != b'_' && **c != b']')
-        .count();
-    if skeleton_length < 2 {
-        return Err(BoxedError::new(
-            BasicKind::Error,
-            "Invalid WURCS 2.0",
-            "Skeleton code has to be at least two characters",
-            base_context
-                .clone()
-                .add_highlight((0, index + 1, skeleton_length)),
-        ));
+    let mut offset = 1;
+    let mut repeating = false;
+
+    // See if it starts with '<'
+    let start: Option<TerminalCarbon> = if value.as_bytes()[index + offset] == b'<' {
+        None
+    } else {
+        offset += 1;
+        Some(
+            value.as_bytes()[index + offset - 1]
+                .try_into()
+                .map_err(|()| {
+                    BoxedError::new(
+                        BasicKind::Error,
+                        "Invalid WURCS 2.0",
+                        "Invalid terminal carbon symbol at the start of the skeleton code",
+                        base_context
+                            .clone()
+                            .add_highlight((0, index + offset - 1, 1)),
+                    )
+                })?,
+        )
+    };
+
+    if value.as_bytes()[index + offset] == b'<' {
+        offset += 1;
+        repeating = true;
     }
 
-    let start: TerminalCarbon = value.as_bytes()[index + 1].try_into().map_err(|()| {
-        BoxedError::new(
-            BasicKind::Error,
-            "Invalid WURCS 2.0",
-            "Invalid terminal carbon symbol at the start of the skeleton code",
-            base_context.clone().add_highlight((0, index + 1, 1)),
-        )
-    })?;
+    let skeleton_length = value[index + offset..=end]
+        .as_bytes()
+        .iter()
+        .take_while(|c| **c != b'-' && **c != b'_' && **c != b']' && **c != b'>')
+        .count();
 
-    // What does 'x' mean? Maybe just unknown? Also handle '<x>' as unknown length.
-    let backbone = value.as_bytes()[index + 2..index + skeleton_length]
+    // Also handle '<x>' as unknown length.
+    let backbone = value.as_bytes()
+        [index + offset..index + offset + skeleton_length - usize::from(!repeating)]
         .into_iter()
         .enumerate()
         .map(|(i, s)| {
@@ -493,21 +504,41 @@ fn tokenise_unique_res<'a>(
             })
         })
         .collect::<Result<Vec<Carbon>, _>>()?;
-    let skeleton_end: TerminalCarbon = value.as_bytes()[index + skeleton_length]
-        .try_into()
-        .map_err(|()| {
-            BoxedError::new(
-                BasicKind::Error,
-                "Invalid WURCS 2.0",
-                "Invalid terminal carbon symbol at the end of the skeleton code",
-                base_context
-                    .clone()
-                    .add_highlight((0, index + skeleton_length, 1)),
-            )
-        })?;
+    offset += skeleton_length - usize::from(!repeating);
+
+    if repeating && value.as_bytes()[index + offset] == b'>' {
+        offset += 1;
+    } else if repeating {
+        return Err(BoxedError::new(
+            BasicKind::Error,
+            "Invalid WURCS 2.0",
+            "The repeating backbone was not closed with '>'",
+            base_context
+                .clone()
+                .add_highlight((0, index + offset, skeleton_length)),
+        ));
+    }
+
+    let skeleton_end: Option<TerminalCarbon> =
+        TerminalCarbon::try_from(value.as_bytes()[index + offset]).map_or_else(
+            |()| {
+                if repeating {
+                    offset -= 1;
+                    Ok(None)
+                } else {
+                    Err(BoxedError::new(
+                        BasicKind::Error,
+                        "Invalid WURCS 2.0",
+                        "Invalid terminal carbon symbol at the end of the skeleton code",
+                        base_context.clone().add_highlight((0, index + offset, 1)),
+                    ))
+                }
+            },
+            |v| Ok(Some(v)),
+        )?;
+    offset += 1;
 
     // Parse the anomeric info
-    let mut offset = skeleton_length + 1;
     let anomeric = if value.as_bytes()[index + offset] == b'-' {
         offset += 1;
         // If ? then unknown
@@ -614,16 +645,54 @@ fn tokenise_unique_res<'a>(
 
     // End at the closing ']'
     if value.as_bytes()[index + offset] == b']' {
-        Ok((
-            offset + 1,
-            Residue {
-                start,
-                skeleton: backbone,
-                end: skeleton_end,
-                anomeric,
-                mods,
-            },
-        ))
+        if repeating {
+            Ok((
+                offset + 1,
+                Residue {
+                    backbone: BackBone::Repeating(start, backbone, skeleton_end),
+                    anomeric,
+                    mods,
+                },
+            ))
+        } else {
+            let Some(start) = start else {
+                return Err(BoxedError::new(
+                    BasicKind::Error,
+                    "Invalid WURCS 2.0",
+                    "A defined skeleton has to have a start terminal carbon",
+                    base_context.clone().add_highlight((0, index..=index + 1)),
+                ));
+            };
+            let Some(skeleton_end) = skeleton_end else {
+                return Err(BoxedError::new(
+                    BasicKind::Error,
+                    "Invalid WURCS 2.0",
+                    "A defined skeleton has to have an end terminal carbon",
+                    base_context.clone().add_highlight((
+                        0,
+                        index + skeleton_length + 1..=index + skeleton_length + 2,
+                    )),
+                ));
+            };
+            if backbone.is_empty() {
+                return Err(BoxedError::new(
+                    BasicKind::Error,
+                    "Invalid WURCS 2.0",
+                    "Skeleton has to have at least three carbons",
+                    base_context
+                        .clone()
+                        .add_highlight((0, index + 1, skeleton_length - 1)),
+                ));
+            }
+            Ok((
+                offset + 1,
+                Residue {
+                    backbone: BackBone::Defined(start, backbone, skeleton_end),
+                    anomeric,
+                    mods,
+                },
+            ))
+        }
     } else {
         Err(BoxedError::new(
             BasicKind::Error,
@@ -741,7 +810,7 @@ fn tokenise_map<'a>(
     let mut tokens = Vec::new();
     let mut offset = 0;
     'outer: loop {
-        if range.start() + offset >= *range.end() {
+        if range.start() + offset > *range.end() {
             return Ok((offset, tokens));
         }
         for (name, el) in ELEMENT_PARSE_LIST {
@@ -962,8 +1031,11 @@ fn parse_repeat<'a>(
     base_context: &Context<'a>,
 ) -> Result<(usize, Repeat), BoxedError<'a, BasicKind>> {
     let (offset, first) = maybe_number(value, range.clone(), base_context, "repeat start", 'n')?;
+    // The spec specifies that only ':' can be used a range indicator, but the glycosmos glycan converter only allows '-' so allow both
     Ok(
-        if value.as_bytes().get(range.start() + offset) == Some(&b':') {
+        if value.as_bytes().get(range.start() + offset) == Some(&b':')
+            || value.as_bytes().get(range.start() + offset) == Some(&b'-')
+        {
             let (len, second) = maybe_number(
                 value,
                 range.start() + offset + 1..=*range.end(),
@@ -987,11 +1059,15 @@ pub struct Wurcs {
 
 #[derive(Debug)]
 struct Residue {
-    start: TerminalCarbon,
-    skeleton: Vec<Carbon>, // TODO: handle the '<x>' case of unknown length all the same carbon
-    end: TerminalCarbon,
+    backbone: BackBone,
     anomeric: Option<(Option<u8>, AnomericSymbol)>,
     mods: Vec<Mod>,
+}
+
+#[derive(Debug)]
+enum BackBone {
+    Defined(TerminalCarbon, Vec<Carbon>, TerminalCarbon),
+    Repeating(Option<TerminalCarbon>, Vec<Carbon>, Option<TerminalCarbon>),
 }
 
 /// The carbon descriptors extended with the options in: https://pubs.acs.org/doi/suppl/10.1021/acs.jcim.6b00650/suppl_file/ci6b00650_si_001.pdf section 2.8.
@@ -1400,5 +1476,17 @@ mod tests {
     test!(
         "WURCS=2.0/3,3,2/[a2112h-1a_1-5_2*NCC/3=O][a2112h-1x_1-5][Aad21122h-2x_2-6_5*NCC/3=O]/1-2-3/a3-b1_c2-a?|b?}",
         case_G46252BF
+    );
+    test!(
+        "WURCS=2.0/4,5,4/[h2122h][u2122h_2*NCC/3=O][u2112h][hxh]/1-2-3-3-4/a?|b?|c?|d?|e?}-{a?|b?|c?|d?|e?_a?|b?|c?|d?|e?}-{a?|b?|c?|d?|e?_a?|b?|c?|d?|e?}-{a?|b?|c?|d?|e?_a?|b?|c?|d?|e?}-{a?|b?|c?|d?|e?*1NCCOP^XO*2/6O/6=O",
+        case_G43506UY
+    );
+    test!(
+        "WURCS=2.0/2,4,4/[h2122h][a2122h-1a_1-5]/1-2-2-2/a4-b1_b4-c1_c4-d1_c1-c4~1-6",
+        case_G67878MX
+    );
+    test!(
+        "WURCS=2.0/2,2,1/[a1221A-1a_1-5_2*NCC/3=O_3*NCC/3=O][<Q>-?a]/1-2/a4-b1",
+        case_G44387PI
     );
 }
