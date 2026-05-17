@@ -21,4 +21,4 @@ pub use position::*;
 pub use positioned_structure::*;
 #[cfg(feature = "glycan-render")]
 pub use render::{GlycanDirection, GlycanRoot, RenderedGlycan};
-pub use wurcs::tokenise_wurcs;
+pub use wurcs::*;
