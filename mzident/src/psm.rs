@@ -709,7 +709,7 @@ impl_protein_metadata!(
     functions: {
         fn sequence(&self) -> Option<Cow<'_, Peptidoform<Linear>>>;
         fn numerical_id(&self) -> Option<usize>;
-        fn id(&self) -> FastaIdentifier<&str>;
+        fn id(&self) -> FastaIdentifier<Cow<'_, str>>;
         fn description(&self) -> Option<&str>;
         fn species(&self) -> Option<mzcv::Curie>;
         fn species_name(&self) -> Option<&str>;

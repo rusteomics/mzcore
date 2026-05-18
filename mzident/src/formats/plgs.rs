@@ -374,8 +374,8 @@ impl ProteinMetaData for PLGSProtein {
         Some(self.protein_id)
     }
 
-    fn id(&self) -> FastaIdentifier<&str> {
-        self.protein_description.as_str()
+    fn id(&self) -> FastaIdentifier<Cow<'_, str>> {
+        self.protein_description.as_cow_str()
     }
 
     fn description(&self) -> Option<&str> {

@@ -396,8 +396,8 @@ impl ProteinMetaData for MetaMorpheusProtein {
         None
     }
 
-    fn id(&self) -> FastaIdentifier<&str> {
-        self.protein_name.as_str()
+    fn id(&self) -> FastaIdentifier<Cow<'_, str>> {
+        self.protein_name.as_cow_str()
     }
 
     fn description(&self) -> Option<&str> {

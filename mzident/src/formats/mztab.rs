@@ -1878,8 +1878,8 @@ impl ProteinMetaData for MzTabProtein {
         None
     }
 
-    fn id(&self) -> FastaIdentifier<&str> {
-        FastaIdentifier::Undefined(false, self.accession.as_str())
+    fn id(&self) -> FastaIdentifier<Cow<'_, str>> {
+        FastaIdentifier::Undefined(false, Cow::Borrowed(&self.accession))
     }
 
     fn description(&self) -> Option<&str> {

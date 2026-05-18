@@ -631,8 +631,8 @@ impl ProteinMetaData for MSFraggerProtein {
         None
     }
 
-    fn id(&self) -> FastaIdentifier<&str> {
-        self.protein.0.as_str()
+    fn id(&self) -> FastaIdentifier<Cow<'_, str>> {
+        self.protein.0.as_cow_str()
     }
 
     fn description(&self) -> Option<&str> {

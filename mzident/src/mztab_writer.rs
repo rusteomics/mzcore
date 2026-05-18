@@ -14,7 +14,7 @@ use mzcore::{
     sequence::{FlankingSequence, IsAminoAcid, Modification, SimpleModificationInner},
 };
 use mzcv::Term;
-use std::{io::Write, marker::PhantomData, path::PathBuf};
+use std::{fmt::Display, io::Write, marker::PhantomData, path::PathBuf};
 
 /// Write PSMs as an mzTab file. It will always output 'Identification' type files in 'Summary' mode but does a best effort to correctly store all info.
 #[derive(Debug)]
@@ -136,24 +136,18 @@ impl<W: Write> MzTabWriter<W, Initial> {
             .collect::<Vec<_>>();
         let writer = Self::new(writer, ms_runs, protein_search_engines, psm_search_engines);
         let writer = writer.write_header(header)?;
-        match if proteins.is_empty() {
-            writer.write_psms(psms)
+        let highest_used_id = psms
+            .iter()
+            .filter_map(|p| p.numerical_id())
+            .max()
+            .unwrap_or_default();
+        if proteins.is_empty() {
+            writer.write_psms(psms, highest_used_id)?;
         } else {
             let writer = writer.write_proteins(&proteins)?;
-            writer.write_psms(psms)
-        } {
-            Ok(_) => Ok(()),
-            Err(MzTabWriteError::IO(err)) => Err(err),
-            Err(MzTabWriteError::Fmt(err)) => Err(std::io::Error::other(err)),
-            Err(MzTabWriteError::MissingMSRun(err)) => {
-                unreachable!("A MSRun was not defined in the MzTabWriter::write for path {err:?}")
-            }
-            Err(MzTabWriteError::MissingSearchEngine(term)) => {
-                unreachable!(
-                    "A search engine term was not defined in the MzTabWriter::write for term {term:?}"
-                )
-            }
+            writer.write_psms(psms, highest_used_id)?;
         }
+        Ok(())
     }
 
     /// Create a new mzTab file writer that will output to the given writer and with the given MS runs.
@@ -246,8 +240,9 @@ impl<W: Write, State: CanWriteProteins> MzTabWriter<W, State> {
     /// If the underlying writer fails.
     pub fn write_proteins<Protein: ProteinMetaData>(
         mut self,
-        proteins: &[Protein],
+        proteins: impl IntoIterator<Item = Protein>,
     ) -> Result<MzTabWriter<W, ProteinsWritten>, std::io::Error> {
+        // TODO: allow custom additional columns (sequence for example, or regions/annotations)
         if !State::SECTION_HEADER_PRESENT {
             writeln!(
                 self.writer,
@@ -367,6 +362,35 @@ impl From<std::fmt::Error> for MzTabWriteError {
     }
 }
 
+impl From<MzTabWriteError> for std::io::Error {
+    fn from(value: MzTabWriteError) -> Self {
+        match value {
+            MzTabWriteError::IO(err) => err,
+            a => std::io::Error::other(a),
+        }
+    }
+}
+
+impl Display for MzTabWriteError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::IO(err) => write!(f, "{err}"),
+            Self::Fmt(err) => write!(f, "{err}"),
+            Self::MissingMSRun(None) => {
+                write!(f, "Missing MS run for raw file without a defined path")
+            }
+            Self::MissingMSRun(Some(run)) => write!(f, "Missing MS run: {}", run.display()),
+            Self::MissingSearchEngine(engine) => write!(
+                f,
+                "Missing search engine: {}|{}",
+                engine.accession, engine.name
+            ),
+        }
+    }
+}
+
+impl std::error::Error for MzTabWriteError {}
+
 impl<W: Write, State: CanWritePSMs> MzTabWriter<W, State> {
     /// Write the given list of PSMs to this mzTab file. It will take as much information as
     /// possible via the [`MetaData`] trait. Any cross-linked peptides (inter and intra) are
@@ -383,7 +407,8 @@ impl<W: Write, State: CanWritePSMs> MzTabWriter<W, State> {
     /// * If a spectrum is referenced that is not defined as a [`MSRun`].
     pub fn write_psms<PSM: PSMMetaData>(
         mut self,
-        psms: &[PSM],
+        psms: impl IntoIterator<Item = PSM>,
+        mut highest_used_id: usize,
     ) -> Result<MzTabWriter<W, PSMsWritten>, MzTabWriteError> {
         if !State::SECTION_HEADER_PRESENT {
             // TODO: think about how to handle local confidences
@@ -395,11 +420,6 @@ impl<W: Write, State: CanWritePSMs> MzTabWriter<W, State> {
                     .join("\t"),
             )?;
         }
-        let mut highest_id = psms
-            .iter()
-            .filter_map(PSMMetaData::numerical_id)
-            .max()
-            .unwrap_or_default();
         for psm in psms {
             let mut first_peptidoform = true;
             for peptidoform_ion in psm
@@ -487,19 +507,19 @@ impl<W: Write, State: CanWritePSMs> MzTabWriter<W, State> {
                         psm_id = if first_peptidoform {
                             psm.numerical_id().map_or_else(
                                 || {
-                                    highest_id += 1;
-                                    highest_id.to_string()
+                                    highest_used_id += 1;
+                                    highest_used_id.to_string()
                                 },
                                 |id| id.to_string(),
                             )
                         } else {
-                            highest_id += 1;
-                            highest_id.to_string()
+                            highest_used_id += 1;
+                            highest_used_id.to_string()
                         },
                         accession = psm
                             .proteins()
                             .first()
-                            .map_or("null", |p| p.id().accession()),
+                            .map_or("null".to_string(), |p| p.id().accession().to_string()), // TODO: contains an I assume unnecessary .to_string
                         unique = psm
                             .unique()
                             .map_or_else(|| "null".to_string(), |d| d.to_string()),

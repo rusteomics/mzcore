@@ -94,8 +94,8 @@ pub enum FastaIdentifier<T> {
     TrEMBL(bool, T, T),
 }
 
-pub(crate) const EMPTY_FASTA_IDENTIFIER: FastaIdentifier<&str> =
-    FastaIdentifier::Undefined(false, "");
+pub(crate) const EMPTY_FASTA_IDENTIFIER: FastaIdentifier<Cow<'_, str>> =
+    FastaIdentifier::Undefined(false, Cow::Borrowed(""));
 
 impl<T: Default> Default for FastaIdentifier<T> {
     fn default() -> Self {
@@ -260,6 +260,109 @@ impl FastaIdentifier<Range<usize>> {
         }
     }
 
+    fn get_cow_str<'a>(&'a self, header: &'a str) -> FastaIdentifier<Cow<'a, str>> {
+        match self {
+            Self::GenInfoBackboneSeqID(decoy, a) => {
+                FastaIdentifier::GenInfoBackboneSeqID(*decoy, Cow::Borrowed(&header[a.clone()]))
+            }
+            Self::GenInfoBackboneMolType(decoy, a) => {
+                FastaIdentifier::GenInfoBackboneMolType(*decoy, Cow::Borrowed(&header[a.clone()]))
+            }
+            Self::GenInfoImportID(decoy, a) => {
+                FastaIdentifier::GenInfoImportID(*decoy, Cow::Borrowed(&header[a.clone()]))
+            }
+            Self::GenInfoIntegratedDatabase(decoy, a) => {
+                FastaIdentifier::GenInfoIntegratedDatabase(
+                    *decoy,
+                    Cow::Borrowed(&header[a.clone()]),
+                )
+            }
+            Self::Undefined(decoy, a) => {
+                FastaIdentifier::Undefined(*decoy, Cow::Borrowed(&header[a.clone()]))
+            }
+            Self::Local(decoy, a) => {
+                FastaIdentifier::Local(*decoy, Cow::Borrowed(&header[a.clone()]))
+            }
+            Self::GenBank(decoy, a, b) => FastaIdentifier::GenBank(
+                *decoy,
+                Cow::Borrowed(&header[a.clone()]),
+                Cow::Borrowed(&header[b.clone()]),
+            ),
+            Self::EMBL(decoy, a, b) => FastaIdentifier::EMBL(
+                *decoy,
+                Cow::Borrowed(&header[a.clone()]),
+                Cow::Borrowed(&header[b.clone()]),
+            ),
+            Self::PIR(decoy, a, b) => FastaIdentifier::PIR(
+                *decoy,
+                Cow::Borrowed(&header[a.clone()]),
+                Cow::Borrowed(&header[b.clone()]),
+            ),
+            Self::SwissProt(decoy, a, b) => FastaIdentifier::SwissProt(
+                *decoy,
+                Cow::Borrowed(&header[a.clone()]),
+                Cow::Borrowed(&header[b.clone()]),
+            ),
+            Self::RefSeq(decoy, a, b) => FastaIdentifier::RefSeq(
+                *decoy,
+                Cow::Borrowed(&header[a.clone()]),
+                Cow::Borrowed(&header[b.clone()]),
+            ),
+            Self::GeneralDatabase(decoy, a, b) => FastaIdentifier::GeneralDatabase(
+                *decoy,
+                Cow::Borrowed(&header[a.clone()]),
+                Cow::Borrowed(&header[b.clone()]),
+            ),
+            Self::DDBJ(decoy, a, b) => FastaIdentifier::DDBJ(
+                *decoy,
+                Cow::Borrowed(&header[a.clone()]),
+                Cow::Borrowed(&header[b.clone()]),
+            ),
+            Self::PRF(decoy, a, b) => FastaIdentifier::PRF(
+                *decoy,
+                Cow::Borrowed(&header[a.clone()]),
+                Cow::Borrowed(&header[b.clone()]),
+            ),
+            Self::ThirdPartyGenBank(decoy, a, b) => FastaIdentifier::ThirdPartyGenBank(
+                *decoy,
+                Cow::Borrowed(&header[a.clone()]),
+                Cow::Borrowed(&header[b.clone()]),
+            ),
+            Self::ThirdPartyEMBL(decoy, a, b) => FastaIdentifier::ThirdPartyEMBL(
+                *decoy,
+                Cow::Borrowed(&header[a.clone()]),
+                Cow::Borrowed(&header[b.clone()]),
+            ),
+            Self::ThirdPartyDDJ(decoy, a, b) => FastaIdentifier::ThirdPartyDDJ(
+                *decoy,
+                Cow::Borrowed(&header[a.clone()]),
+                Cow::Borrowed(&header[b.clone()]),
+            ),
+            Self::TrEMBL(decoy, a, b) => FastaIdentifier::TrEMBL(
+                *decoy,
+                Cow::Borrowed(&header[a.clone()]),
+                Cow::Borrowed(&header[b.clone()]),
+            ),
+            Self::PDB(decoy, a, b) => FastaIdentifier::PDB(
+                *decoy,
+                Cow::Borrowed(&header[a.clone()]),
+                Cow::Borrowed(&header[b.clone()]),
+            ),
+            Self::Patent(decoy, a, b, c) => FastaIdentifier::Patent(
+                *decoy,
+                Cow::Borrowed(&header[a.clone()]),
+                Cow::Borrowed(&header[b.clone()]),
+                Cow::Borrowed(&header[c.clone()]),
+            ),
+            Self::PrePatent(decoy, a, b, c) => FastaIdentifier::PrePatent(
+                *decoy,
+                Cow::Borrowed(&header[a.clone()]),
+                Cow::Borrowed(&header[b.clone()]),
+                Cow::Borrowed(&header[c.clone()]),
+            ),
+        }
+    }
+
     fn as_string(&self, header: &str) -> FastaIdentifier<String> {
         match self {
             Self::GenInfoBackboneSeqID(decoy, a) => {
@@ -358,234 +461,6 @@ impl FastaIdentifier<Range<usize>> {
                 header[b.clone()].to_string(),
                 header[c.clone()].to_string(),
             ),
-        }
-    }
-}
-
-impl FastaIdentifier<String> {
-    /// Create a string slice fasta identifier from an owned version
-    pub fn as_str(&self) -> FastaIdentifier<&str> {
-        match self {
-            Self::GenInfoBackboneSeqID(decoy, a) => {
-                FastaIdentifier::GenInfoBackboneSeqID(*decoy, a)
-            }
-            Self::GenInfoBackboneMolType(decoy, a) => {
-                FastaIdentifier::GenInfoBackboneMolType(*decoy, a)
-            }
-            Self::GenInfoImportID(decoy, a) => FastaIdentifier::GenInfoImportID(*decoy, a),
-            Self::GenInfoIntegratedDatabase(decoy, a) => {
-                FastaIdentifier::GenInfoIntegratedDatabase(*decoy, a)
-            }
-            Self::Undefined(decoy, a) => FastaIdentifier::Undefined(*decoy, a),
-            Self::Local(decoy, a) => FastaIdentifier::Local(*decoy, a),
-            Self::GenBank(decoy, a, b) => FastaIdentifier::GenBank(*decoy, a, b),
-            Self::EMBL(decoy, a, b) => FastaIdentifier::EMBL(*decoy, a, b),
-            Self::PIR(decoy, a, b) => FastaIdentifier::PIR(*decoy, a, b),
-            Self::SwissProt(decoy, a, b) => FastaIdentifier::SwissProt(*decoy, a, b),
-            Self::RefSeq(decoy, a, b) => FastaIdentifier::RefSeq(*decoy, a, b),
-            Self::GeneralDatabase(decoy, a, b) => FastaIdentifier::GeneralDatabase(*decoy, a, b),
-            Self::DDBJ(decoy, a, b) => FastaIdentifier::DDBJ(*decoy, a, b),
-            Self::PRF(decoy, a, b) => FastaIdentifier::PRF(*decoy, a, b),
-            Self::ThirdPartyGenBank(decoy, a, b) => {
-                FastaIdentifier::ThirdPartyGenBank(*decoy, a, b)
-            }
-            Self::ThirdPartyEMBL(decoy, a, b) => FastaIdentifier::ThirdPartyEMBL(*decoy, a, b),
-            Self::ThirdPartyDDJ(decoy, a, b) => FastaIdentifier::ThirdPartyDDJ(*decoy, a, b),
-            Self::TrEMBL(decoy, a, b) => FastaIdentifier::TrEMBL(*decoy, a, b),
-            Self::PDB(decoy, a, b) => FastaIdentifier::PDB(*decoy, a, b),
-            Self::Patent(decoy, a, b, c) => FastaIdentifier::Patent(*decoy, a, b, c),
-            Self::PrePatent(decoy, a, b, c) => FastaIdentifier::PrePatent(*decoy, a, b, c),
-        }
-    }
-
-    /// Create a string slice fasta identifier from an owned version
-    pub fn as_boxed_str(&self) -> FastaIdentifier<Box<str>> {
-        match self {
-            Self::GenInfoBackboneSeqID(decoy, a) => {
-                FastaIdentifier::GenInfoBackboneSeqID(*decoy, a.clone().into_boxed_str())
-            }
-            Self::GenInfoBackboneMolType(decoy, a) => {
-                FastaIdentifier::GenInfoBackboneMolType(*decoy, a.clone().into_boxed_str())
-            }
-            Self::GenInfoImportID(decoy, a) => {
-                FastaIdentifier::GenInfoImportID(*decoy, a.clone().into_boxed_str())
-            }
-            Self::GenInfoIntegratedDatabase(decoy, a) => {
-                FastaIdentifier::GenInfoIntegratedDatabase(*decoy, a.clone().into_boxed_str())
-            }
-            Self::Undefined(decoy, a) => {
-                FastaIdentifier::Undefined(*decoy, a.clone().into_boxed_str())
-            }
-            Self::Local(decoy, a) => FastaIdentifier::Local(*decoy, a.clone().into_boxed_str()),
-            Self::GenBank(decoy, a, b) => FastaIdentifier::GenBank(
-                *decoy,
-                a.clone().into_boxed_str(),
-                b.clone().into_boxed_str(),
-            ),
-            Self::EMBL(decoy, a, b) => FastaIdentifier::EMBL(
-                *decoy,
-                a.clone().into_boxed_str(),
-                b.clone().into_boxed_str(),
-            ),
-            Self::PIR(decoy, a, b) => FastaIdentifier::PIR(
-                *decoy,
-                a.clone().into_boxed_str(),
-                b.clone().into_boxed_str(),
-            ),
-            Self::SwissProt(decoy, a, b) => FastaIdentifier::SwissProt(
-                *decoy,
-                a.clone().into_boxed_str(),
-                b.clone().into_boxed_str(),
-            ),
-            Self::RefSeq(decoy, a, b) => FastaIdentifier::RefSeq(
-                *decoy,
-                a.clone().into_boxed_str(),
-                b.clone().into_boxed_str(),
-            ),
-            Self::GeneralDatabase(decoy, a, b) => FastaIdentifier::GeneralDatabase(
-                *decoy,
-                a.clone().into_boxed_str(),
-                b.clone().into_boxed_str(),
-            ),
-            Self::DDBJ(decoy, a, b) => FastaIdentifier::DDBJ(
-                *decoy,
-                a.clone().into_boxed_str(),
-                b.clone().into_boxed_str(),
-            ),
-            Self::PRF(decoy, a, b) => FastaIdentifier::PRF(
-                *decoy,
-                a.clone().into_boxed_str(),
-                b.clone().into_boxed_str(),
-            ),
-            Self::ThirdPartyGenBank(decoy, a, b) => FastaIdentifier::ThirdPartyGenBank(
-                *decoy,
-                a.clone().into_boxed_str(),
-                b.clone().into_boxed_str(),
-            ),
-            Self::ThirdPartyEMBL(decoy, a, b) => FastaIdentifier::ThirdPartyEMBL(
-                *decoy,
-                a.clone().into_boxed_str(),
-                b.clone().into_boxed_str(),
-            ),
-            Self::ThirdPartyDDJ(decoy, a, b) => FastaIdentifier::ThirdPartyDDJ(
-                *decoy,
-                a.clone().into_boxed_str(),
-                b.clone().into_boxed_str(),
-            ),
-            Self::TrEMBL(decoy, a, b) => FastaIdentifier::TrEMBL(
-                *decoy,
-                a.clone().into_boxed_str(),
-                b.clone().into_boxed_str(),
-            ),
-            Self::PDB(decoy, a, b) => FastaIdentifier::PDB(
-                *decoy,
-                a.clone().into_boxed_str(),
-                b.clone().into_boxed_str(),
-            ),
-            Self::Patent(decoy, a, b, c) => FastaIdentifier::Patent(
-                *decoy,
-                a.clone().into_boxed_str(),
-                b.clone().into_boxed_str(),
-                c.clone().into_boxed_str(),
-            ),
-            Self::PrePatent(decoy, a, b, c) => FastaIdentifier::PrePatent(
-                *decoy,
-                a.clone().into_boxed_str(),
-                b.clone().into_boxed_str(),
-                c.clone().into_boxed_str(),
-            ),
-        }
-    }
-}
-
-impl FastaIdentifier<Box<str>> {
-    /// Create a string slice fasta identifier from an owned version
-    pub fn as_str(&self) -> FastaIdentifier<&str> {
-        match self {
-            Self::GenInfoBackboneSeqID(decoy, a) => {
-                FastaIdentifier::GenInfoBackboneSeqID(*decoy, a)
-            }
-            Self::GenInfoBackboneMolType(decoy, a) => {
-                FastaIdentifier::GenInfoBackboneMolType(*decoy, a)
-            }
-            Self::GenInfoImportID(decoy, a) => FastaIdentifier::GenInfoImportID(*decoy, a),
-            Self::GenInfoIntegratedDatabase(decoy, a) => {
-                FastaIdentifier::GenInfoIntegratedDatabase(*decoy, a)
-            }
-            Self::Undefined(decoy, a) => FastaIdentifier::Undefined(*decoy, a),
-            Self::Local(decoy, a) => FastaIdentifier::Local(*decoy, a),
-            Self::GenBank(decoy, a, b) => FastaIdentifier::GenBank(*decoy, a, b),
-            Self::EMBL(decoy, a, b) => FastaIdentifier::EMBL(*decoy, a, b),
-            Self::PIR(decoy, a, b) => FastaIdentifier::PIR(*decoy, a, b),
-            Self::SwissProt(decoy, a, b) => FastaIdentifier::SwissProt(*decoy, a, b),
-            Self::RefSeq(decoy, a, b) => FastaIdentifier::RefSeq(*decoy, a, b),
-            Self::GeneralDatabase(decoy, a, b) => FastaIdentifier::GeneralDatabase(*decoy, a, b),
-            Self::DDBJ(decoy, a, b) => FastaIdentifier::DDBJ(*decoy, a, b),
-            Self::PRF(decoy, a, b) => FastaIdentifier::PRF(*decoy, a, b),
-            Self::ThirdPartyGenBank(decoy, a, b) => {
-                FastaIdentifier::ThirdPartyGenBank(*decoy, a, b)
-            }
-            Self::ThirdPartyEMBL(decoy, a, b) => FastaIdentifier::ThirdPartyEMBL(*decoy, a, b),
-            Self::ThirdPartyDDJ(decoy, a, b) => FastaIdentifier::ThirdPartyDDJ(*decoy, a, b),
-            Self::TrEMBL(decoy, a, b) => FastaIdentifier::TrEMBL(*decoy, a, b),
-            Self::PDB(decoy, a, b) => FastaIdentifier::PDB(*decoy, a, b),
-            Self::Patent(decoy, a, b, c) => FastaIdentifier::Patent(*decoy, a, b, c),
-            Self::PrePatent(decoy, a, b, c) => FastaIdentifier::PrePatent(*decoy, a, b, c),
-        }
-    }
-
-    /// Create a string slice fasta identifier from an owned version
-    pub fn as_string(&self) -> FastaIdentifier<String> {
-        match self {
-            Self::GenInfoBackboneSeqID(decoy, a) => {
-                FastaIdentifier::GenInfoBackboneSeqID(*decoy, a.to_string())
-            }
-            Self::GenInfoBackboneMolType(decoy, a) => {
-                FastaIdentifier::GenInfoBackboneMolType(*decoy, a.to_string())
-            }
-            Self::GenInfoImportID(decoy, a) => {
-                FastaIdentifier::GenInfoImportID(*decoy, a.to_string())
-            }
-            Self::GenInfoIntegratedDatabase(decoy, a) => {
-                FastaIdentifier::GenInfoIntegratedDatabase(*decoy, a.to_string())
-            }
-            Self::Undefined(decoy, a) => FastaIdentifier::Undefined(*decoy, a.to_string()),
-            Self::Local(decoy, a) => FastaIdentifier::Local(*decoy, a.to_string()),
-            Self::GenBank(decoy, a, b) => {
-                FastaIdentifier::GenBank(*decoy, a.to_string(), b.to_string())
-            }
-            Self::EMBL(decoy, a, b) => FastaIdentifier::EMBL(*decoy, a.to_string(), b.to_string()),
-            Self::PIR(decoy, a, b) => FastaIdentifier::PIR(*decoy, a.to_string(), b.to_string()),
-            Self::SwissProt(decoy, a, b) => {
-                FastaIdentifier::SwissProt(*decoy, a.to_string(), b.to_string())
-            }
-            Self::RefSeq(decoy, a, b) => {
-                FastaIdentifier::RefSeq(*decoy, a.to_string(), b.to_string())
-            }
-            Self::GeneralDatabase(decoy, a, b) => {
-                FastaIdentifier::GeneralDatabase(*decoy, a.to_string(), b.to_string())
-            }
-            Self::DDBJ(decoy, a, b) => FastaIdentifier::DDBJ(*decoy, a.to_string(), b.to_string()),
-            Self::PRF(decoy, a, b) => FastaIdentifier::PRF(*decoy, a.to_string(), b.to_string()),
-            Self::ThirdPartyGenBank(decoy, a, b) => {
-                FastaIdentifier::ThirdPartyGenBank(*decoy, a.to_string(), b.to_string())
-            }
-            Self::ThirdPartyEMBL(decoy, a, b) => {
-                FastaIdentifier::ThirdPartyEMBL(*decoy, a.to_string(), b.to_string())
-            }
-            Self::ThirdPartyDDJ(decoy, a, b) => {
-                FastaIdentifier::ThirdPartyDDJ(*decoy, a.to_string(), b.to_string())
-            }
-            Self::TrEMBL(decoy, a, b) => {
-                FastaIdentifier::TrEMBL(*decoy, a.to_string(), b.to_string())
-            }
-            Self::PDB(decoy, a, b) => FastaIdentifier::PDB(*decoy, a.to_string(), b.to_string()),
-            Self::Patent(decoy, a, b, c) => {
-                FastaIdentifier::Patent(*decoy, a.to_string(), b.to_string(), c.to_string())
-            }
-            Self::PrePatent(decoy, a, b, c) => {
-                FastaIdentifier::PrePatent(*decoy, a.to_string(), b.to_string(), c.to_string())
-            }
         }
     }
 }
@@ -760,6 +635,324 @@ impl<T> FastaIdentifier<T> {
     }
 }
 
+impl<'a, T> FastaIdentifier<T>
+where
+    T: Into<&'a str>,
+{
+    /// Create a string slice fasta identifier from an owned version
+    pub fn into_str(self) -> FastaIdentifier<&'a str> {
+        match self {
+            Self::GenInfoBackboneSeqID(decoy, a) => {
+                FastaIdentifier::GenInfoBackboneSeqID(decoy, a.into())
+            }
+            Self::GenInfoBackboneMolType(decoy, a) => {
+                FastaIdentifier::GenInfoBackboneMolType(decoy, a.into())
+            }
+            Self::GenInfoImportID(decoy, a) => FastaIdentifier::GenInfoImportID(decoy, a.into()),
+            Self::GenInfoIntegratedDatabase(decoy, a) => {
+                FastaIdentifier::GenInfoIntegratedDatabase(decoy, a.into())
+            }
+            Self::Undefined(decoy, a) => FastaIdentifier::Undefined(decoy, a.into()),
+            Self::Local(decoy, a) => FastaIdentifier::Local(decoy, a.into()),
+            Self::GenBank(decoy, a, b) => FastaIdentifier::GenBank(decoy, a.into(), b.into()),
+            Self::EMBL(decoy, a, b) => FastaIdentifier::EMBL(decoy, a.into(), b.into()),
+            Self::PIR(decoy, a, b) => FastaIdentifier::PIR(decoy, a.into(), b.into()),
+            Self::SwissProt(decoy, a, b) => FastaIdentifier::SwissProt(decoy, a.into(), b.into()),
+            Self::RefSeq(decoy, a, b) => FastaIdentifier::RefSeq(decoy, a.into(), b.into()),
+            Self::GeneralDatabase(decoy, a, b) => {
+                FastaIdentifier::GeneralDatabase(decoy, a.into(), b.into())
+            }
+            Self::DDBJ(decoy, a, b) => FastaIdentifier::DDBJ(decoy, a.into(), b.into()),
+            Self::PRF(decoy, a, b) => FastaIdentifier::PRF(decoy, a.into(), b.into()),
+            Self::ThirdPartyGenBank(decoy, a, b) => {
+                FastaIdentifier::ThirdPartyGenBank(decoy, a.into(), b.into())
+            }
+            Self::ThirdPartyEMBL(decoy, a, b) => {
+                FastaIdentifier::ThirdPartyEMBL(decoy, a.into(), b.into())
+            }
+            Self::ThirdPartyDDJ(decoy, a, b) => {
+                FastaIdentifier::ThirdPartyDDJ(decoy, a.into(), b.into())
+            }
+            Self::TrEMBL(decoy, a, b) => FastaIdentifier::TrEMBL(decoy, a.into(), b.into()),
+            Self::PDB(decoy, a, b) => FastaIdentifier::PDB(decoy, a.into(), b.into()),
+            Self::Patent(decoy, a, b, c) => {
+                FastaIdentifier::Patent(decoy, a.into(), b.into(), c.into())
+            }
+            Self::PrePatent(decoy, a, b, c) => {
+                FastaIdentifier::PrePatent(decoy, a.into(), b.into(), c.into())
+            }
+        }
+    }
+}
+
+impl<T: Into<Box<str>>> FastaIdentifier<T> {
+    /// Create a string slice fasta identifier from an owned version
+    pub fn into_boxed_str(self) -> FastaIdentifier<Box<str>> {
+        match self {
+            Self::GenInfoBackboneSeqID(decoy, a) => {
+                FastaIdentifier::GenInfoBackboneSeqID(decoy, a.into())
+            }
+            Self::GenInfoBackboneMolType(decoy, a) => {
+                FastaIdentifier::GenInfoBackboneMolType(decoy, a.into())
+            }
+            Self::GenInfoImportID(decoy, a) => FastaIdentifier::GenInfoImportID(decoy, a.into()),
+            Self::GenInfoIntegratedDatabase(decoy, a) => {
+                FastaIdentifier::GenInfoIntegratedDatabase(decoy, a.into())
+            }
+            Self::Undefined(decoy, a) => FastaIdentifier::Undefined(decoy, a.into()),
+            Self::Local(decoy, a) => FastaIdentifier::Local(decoy, a.into()),
+            Self::GenBank(decoy, a, b) => FastaIdentifier::GenBank(decoy, a.into(), b.into()),
+            Self::EMBL(decoy, a, b) => FastaIdentifier::EMBL(decoy, a.into(), b.into()),
+            Self::PIR(decoy, a, b) => FastaIdentifier::PIR(decoy, a.into(), b.into()),
+            Self::SwissProt(decoy, a, b) => FastaIdentifier::SwissProt(decoy, a.into(), b.into()),
+            Self::RefSeq(decoy, a, b) => FastaIdentifier::RefSeq(decoy, a.into(), b.into()),
+            Self::GeneralDatabase(decoy, a, b) => {
+                FastaIdentifier::GeneralDatabase(decoy, a.into(), b.into())
+            }
+            Self::DDBJ(decoy, a, b) => FastaIdentifier::DDBJ(decoy, a.into(), b.into()),
+            Self::PRF(decoy, a, b) => FastaIdentifier::PRF(decoy, a.into(), b.into()),
+            Self::ThirdPartyGenBank(decoy, a, b) => {
+                FastaIdentifier::ThirdPartyGenBank(decoy, a.into(), b.into())
+            }
+            Self::ThirdPartyEMBL(decoy, a, b) => {
+                FastaIdentifier::ThirdPartyEMBL(decoy, a.into(), b.into())
+            }
+            Self::ThirdPartyDDJ(decoy, a, b) => {
+                FastaIdentifier::ThirdPartyDDJ(decoy, a.into(), b.into())
+            }
+            Self::TrEMBL(decoy, a, b) => FastaIdentifier::TrEMBL(decoy, a.into(), b.into()),
+            Self::PDB(decoy, a, b) => FastaIdentifier::PDB(decoy, a.into(), b.into()),
+            Self::Patent(decoy, a, b, c) => {
+                FastaIdentifier::Patent(decoy, a.into(), b.into(), c.into())
+            }
+            Self::PrePatent(decoy, a, b, c) => {
+                FastaIdentifier::PrePatent(decoy, a.into(), b.into(), c.into())
+            }
+        }
+    }
+}
+
+impl<'a, T> FastaIdentifier<T>
+where
+    T: Into<Cow<'a, str>>,
+{
+    /// Create a string slice fasta identifier from an owned version
+    pub fn into_cow_str(self) -> FastaIdentifier<Cow<'a, str>> {
+        match self {
+            Self::GenInfoBackboneSeqID(decoy, a) => {
+                FastaIdentifier::GenInfoBackboneSeqID(decoy, a.into())
+            }
+            Self::GenInfoBackboneMolType(decoy, a) => {
+                FastaIdentifier::GenInfoBackboneMolType(decoy, a.into())
+            }
+            Self::GenInfoImportID(decoy, a) => FastaIdentifier::GenInfoImportID(decoy, a.into()),
+            Self::GenInfoIntegratedDatabase(decoy, a) => {
+                FastaIdentifier::GenInfoIntegratedDatabase(decoy, a.into())
+            }
+            Self::Undefined(decoy, a) => FastaIdentifier::Undefined(decoy, a.into()),
+            Self::Local(decoy, a) => FastaIdentifier::Local(decoy, a.into()),
+            Self::GenBank(decoy, a, b) => FastaIdentifier::GenBank(decoy, a.into(), b.into()),
+            Self::EMBL(decoy, a, b) => FastaIdentifier::EMBL(decoy, a.into(), b.into()),
+            Self::PIR(decoy, a, b) => FastaIdentifier::PIR(decoy, a.into(), b.into()),
+            Self::SwissProt(decoy, a, b) => FastaIdentifier::SwissProt(decoy, a.into(), b.into()),
+            Self::RefSeq(decoy, a, b) => FastaIdentifier::RefSeq(decoy, a.into(), b.into()),
+            Self::GeneralDatabase(decoy, a, b) => {
+                FastaIdentifier::GeneralDatabase(decoy, a.into(), b.into())
+            }
+            Self::DDBJ(decoy, a, b) => FastaIdentifier::DDBJ(decoy, a.into(), b.into()),
+            Self::PRF(decoy, a, b) => FastaIdentifier::PRF(decoy, a.into(), b.into()),
+            Self::ThirdPartyGenBank(decoy, a, b) => {
+                FastaIdentifier::ThirdPartyGenBank(decoy, a.into(), b.into())
+            }
+            Self::ThirdPartyEMBL(decoy, a, b) => {
+                FastaIdentifier::ThirdPartyEMBL(decoy, a.into(), b.into())
+            }
+            Self::ThirdPartyDDJ(decoy, a, b) => {
+                FastaIdentifier::ThirdPartyDDJ(decoy, a.into(), b.into())
+            }
+            Self::TrEMBL(decoy, a, b) => FastaIdentifier::TrEMBL(decoy, a.into(), b.into()),
+            Self::PDB(decoy, a, b) => FastaIdentifier::PDB(decoy, a.into(), b.into()),
+            Self::Patent(decoy, a, b, c) => {
+                FastaIdentifier::Patent(decoy, a.into(), b.into(), c.into())
+            }
+            Self::PrePatent(decoy, a, b, c) => {
+                FastaIdentifier::PrePatent(decoy, a.into(), b.into(), c.into())
+            }
+        }
+    }
+}
+
+impl<'a, T> FastaIdentifier<T>
+where
+    T: AsRef<str> + 'a,
+{
+    pub fn as_ref_str(&'a self) -> FastaIdentifier<&'a str> {
+        match self {
+            Self::GenInfoBackboneSeqID(decoy, a) => {
+                FastaIdentifier::GenInfoBackboneSeqID(*decoy, a.as_ref())
+            }
+            Self::GenInfoBackboneMolType(decoy, a) => {
+                FastaIdentifier::GenInfoBackboneMolType(*decoy, a.as_ref())
+            }
+            Self::GenInfoImportID(decoy, a) => FastaIdentifier::GenInfoImportID(*decoy, a.as_ref()),
+            Self::GenInfoIntegratedDatabase(decoy, a) => {
+                FastaIdentifier::GenInfoIntegratedDatabase(*decoy, a.as_ref())
+            }
+            Self::Undefined(decoy, a) => FastaIdentifier::Undefined(*decoy, a.as_ref()),
+            Self::Local(decoy, a) => FastaIdentifier::Local(*decoy, a.as_ref()),
+            Self::GenBank(decoy, a, b) => FastaIdentifier::GenBank(*decoy, a.as_ref(), b.as_ref()),
+            Self::EMBL(decoy, a, b) => FastaIdentifier::EMBL(*decoy, a.as_ref(), b.as_ref()),
+            Self::PIR(decoy, a, b) => FastaIdentifier::PIR(*decoy, a.as_ref(), b.as_ref()),
+            Self::SwissProt(decoy, a, b) => {
+                FastaIdentifier::SwissProt(*decoy, a.as_ref(), b.as_ref())
+            }
+            Self::RefSeq(decoy, a, b) => FastaIdentifier::RefSeq(*decoy, a.as_ref(), b.as_ref()),
+            Self::GeneralDatabase(decoy, a, b) => {
+                FastaIdentifier::GeneralDatabase(*decoy, a.as_ref(), b.as_ref())
+            }
+            Self::DDBJ(decoy, a, b) => FastaIdentifier::DDBJ(*decoy, a.as_ref(), b.as_ref()),
+            Self::PRF(decoy, a, b) => FastaIdentifier::PRF(*decoy, a.as_ref(), b.as_ref()),
+            Self::ThirdPartyGenBank(decoy, a, b) => {
+                FastaIdentifier::ThirdPartyGenBank(*decoy, a.as_ref(), b.as_ref())
+            }
+            Self::ThirdPartyEMBL(decoy, a, b) => {
+                FastaIdentifier::ThirdPartyEMBL(*decoy, a.as_ref(), b.as_ref())
+            }
+            Self::ThirdPartyDDJ(decoy, a, b) => {
+                FastaIdentifier::ThirdPartyDDJ(*decoy, a.as_ref(), b.as_ref())
+            }
+            Self::TrEMBL(decoy, a, b) => FastaIdentifier::TrEMBL(*decoy, a.as_ref(), b.as_ref()),
+            Self::PDB(decoy, a, b) => FastaIdentifier::PDB(*decoy, a.as_ref(), b.as_ref()),
+            Self::Patent(decoy, a, b, c) => {
+                FastaIdentifier::Patent(*decoy, a.as_ref(), b.as_ref(), c.as_ref())
+            }
+            Self::PrePatent(decoy, a, b, c) => {
+                FastaIdentifier::PrePatent(*decoy, a.as_ref(), b.as_ref(), c.as_ref())
+            }
+        }
+    }
+
+    pub fn as_cow_str(&'a self) -> FastaIdentifier<Cow<'a, str>> {
+        match self {
+            Self::GenInfoBackboneSeqID(decoy, a) => {
+                FastaIdentifier::GenInfoBackboneSeqID(*decoy, a.as_ref().into())
+            }
+            Self::GenInfoBackboneMolType(decoy, a) => {
+                FastaIdentifier::GenInfoBackboneMolType(*decoy, a.as_ref().into())
+            }
+            Self::GenInfoImportID(decoy, a) => {
+                FastaIdentifier::GenInfoImportID(*decoy, a.as_ref().into())
+            }
+            Self::GenInfoIntegratedDatabase(decoy, a) => {
+                FastaIdentifier::GenInfoIntegratedDatabase(*decoy, a.as_ref().into())
+            }
+            Self::Undefined(decoy, a) => FastaIdentifier::Undefined(*decoy, a.as_ref().into()),
+            Self::Local(decoy, a) => FastaIdentifier::Local(*decoy, a.as_ref().into()),
+            Self::GenBank(decoy, a, b) => {
+                FastaIdentifier::GenBank(*decoy, a.as_ref().into(), b.as_ref().into())
+            }
+            Self::EMBL(decoy, a, b) => {
+                FastaIdentifier::EMBL(*decoy, a.as_ref().into(), b.as_ref().into())
+            }
+            Self::PIR(decoy, a, b) => {
+                FastaIdentifier::PIR(*decoy, a.as_ref().into(), b.as_ref().into())
+            }
+            Self::SwissProt(decoy, a, b) => {
+                FastaIdentifier::SwissProt(*decoy, a.as_ref().into(), b.as_ref().into())
+            }
+            Self::RefSeq(decoy, a, b) => {
+                FastaIdentifier::RefSeq(*decoy, a.as_ref().into(), b.as_ref().into())
+            }
+            Self::GeneralDatabase(decoy, a, b) => {
+                FastaIdentifier::GeneralDatabase(*decoy, a.as_ref().into(), b.as_ref().into())
+            }
+            Self::DDBJ(decoy, a, b) => {
+                FastaIdentifier::DDBJ(*decoy, a.as_ref().into(), b.as_ref().into())
+            }
+            Self::PRF(decoy, a, b) => {
+                FastaIdentifier::PRF(*decoy, a.as_ref().into(), b.as_ref().into())
+            }
+            Self::ThirdPartyGenBank(decoy, a, b) => {
+                FastaIdentifier::ThirdPartyGenBank(*decoy, a.as_ref().into(), b.as_ref().into())
+            }
+            Self::ThirdPartyEMBL(decoy, a, b) => {
+                FastaIdentifier::ThirdPartyEMBL(*decoy, a.as_ref().into(), b.as_ref().into())
+            }
+            Self::ThirdPartyDDJ(decoy, a, b) => {
+                FastaIdentifier::ThirdPartyDDJ(*decoy, a.as_ref().into(), b.as_ref().into())
+            }
+            Self::TrEMBL(decoy, a, b) => {
+                FastaIdentifier::TrEMBL(*decoy, a.as_ref().into(), b.as_ref().into())
+            }
+            Self::PDB(decoy, a, b) => {
+                FastaIdentifier::PDB(*decoy, a.as_ref().into(), b.as_ref().into())
+            }
+            Self::Patent(decoy, a, b, c) => FastaIdentifier::Patent(
+                *decoy,
+                a.as_ref().into(),
+                b.as_ref().into(),
+                c.as_ref().into(),
+            ),
+            Self::PrePatent(decoy, a, b, c) => FastaIdentifier::PrePatent(
+                *decoy,
+                a.as_ref().into(),
+                b.as_ref().into(),
+                c.as_ref().into(),
+            ),
+        }
+    }
+}
+
+impl<T> FastaIdentifier<T>
+where
+    T: Into<String>,
+{
+    /// Create a string slice fasta identifier from an owned version
+    pub fn into_string(self) -> FastaIdentifier<String> {
+        match self {
+            Self::GenInfoBackboneSeqID(decoy, a) => {
+                FastaIdentifier::GenInfoBackboneSeqID(decoy, a.into())
+            }
+            Self::GenInfoBackboneMolType(decoy, a) => {
+                FastaIdentifier::GenInfoBackboneMolType(decoy, a.into())
+            }
+            Self::GenInfoImportID(decoy, a) => FastaIdentifier::GenInfoImportID(decoy, a.into()),
+            Self::GenInfoIntegratedDatabase(decoy, a) => {
+                FastaIdentifier::GenInfoIntegratedDatabase(decoy, a.into())
+            }
+            Self::Undefined(decoy, a) => FastaIdentifier::Undefined(decoy, a.into()),
+            Self::Local(decoy, a) => FastaIdentifier::Local(decoy, a.into()),
+            Self::GenBank(decoy, a, b) => FastaIdentifier::GenBank(decoy, a.into(), b.into()),
+            Self::EMBL(decoy, a, b) => FastaIdentifier::EMBL(decoy, a.into(), b.into()),
+            Self::PIR(decoy, a, b) => FastaIdentifier::PIR(decoy, a.into(), b.into()),
+            Self::SwissProt(decoy, a, b) => FastaIdentifier::SwissProt(decoy, a.into(), b.into()),
+            Self::RefSeq(decoy, a, b) => FastaIdentifier::RefSeq(decoy, a.into(), b.into()),
+            Self::GeneralDatabase(decoy, a, b) => {
+                FastaIdentifier::GeneralDatabase(decoy, a.into(), b.into())
+            }
+            Self::DDBJ(decoy, a, b) => FastaIdentifier::DDBJ(decoy, a.into(), b.into()),
+            Self::PRF(decoy, a, b) => FastaIdentifier::PRF(decoy, a.into(), b.into()),
+            Self::ThirdPartyGenBank(decoy, a, b) => {
+                FastaIdentifier::ThirdPartyGenBank(decoy, a.into(), b.into())
+            }
+            Self::ThirdPartyEMBL(decoy, a, b) => {
+                FastaIdentifier::ThirdPartyEMBL(decoy, a.into(), b.into())
+            }
+            Self::ThirdPartyDDJ(decoy, a, b) => {
+                FastaIdentifier::ThirdPartyDDJ(decoy, a.into(), b.into())
+            }
+            Self::TrEMBL(decoy, a, b) => FastaIdentifier::TrEMBL(decoy, a.into(), b.into()),
+            Self::PDB(decoy, a, b) => FastaIdentifier::PDB(decoy, a.into(), b.into()),
+            Self::Patent(decoy, a, b, c) => {
+                FastaIdentifier::Patent(decoy, a.into(), b.into(), c.into())
+            }
+            Self::PrePatent(decoy, a, b, c) => {
+                FastaIdentifier::PrePatent(decoy, a.into(), b.into(), c.into())
+            }
+        }
+    }
+}
+
 impl FromStr for FastaIdentifier<String> {
     type Err = ParseIntError;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
@@ -914,6 +1107,11 @@ impl FastaData {
     /// The identifier
     pub fn identifier(&self) -> FastaIdentifier<&str> {
         self.identifier.as_str(&self.full_header[1..])
+    }
+
+    /// The identifier
+    pub fn identifier_cow(&self) -> FastaIdentifier<Cow<'_, str>> {
+        self.identifier.get_cow_str(&self.full_header[1..])
     }
 
     /// The description
@@ -1208,7 +1406,7 @@ impl From<FastaData> for PSM<SemiAmbiguous, PeptidoformPresent> {
 
 impl From<FastaIdentifier<String>> for crate::ProteinData {
     fn from(value: FastaIdentifier<String>) -> Self {
-        Self::FastaId(value.as_boxed_str())
+        Self::FastaId(value.into_boxed_str())
     }
 }
 
@@ -1358,8 +1556,8 @@ impl ProteinMetaData for FastaData {
         None
     }
 
-    fn id(&self) -> FastaIdentifier<&str> {
-        self.identifier.as_str(&self.full_header)
+    fn id(&self) -> FastaIdentifier<Cow<'_, str>> {
+        self.identifier.as_str(&self.full_header).into_cow_str()
     }
 
     fn description(&self) -> Option<&str> {

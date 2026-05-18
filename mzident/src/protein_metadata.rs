@@ -16,7 +16,7 @@ pub trait ProteinMetaData {
     fn numerical_id(&self) -> Option<usize>;
 
     /// Get the identifier
-    fn id(&self) -> FastaIdentifier<&str>;
+    fn id(&self) -> FastaIdentifier<Cow<'_, str>>;
 
     /// Get the description
     fn description(&self) -> Option<&str>;
@@ -63,7 +63,7 @@ macro_rules! impl_ref {
                 (**self).numerical_id()
             }
 
-            fn id(&self) -> FastaIdentifier<&str> {
+            fn id(&self) -> FastaIdentifier<Cow<'_, str>> {
                 (**self).id()
             }
 
@@ -129,7 +129,7 @@ impl ProteinMetaData for Box<dyn ProteinMetaData + '_> {
         (**self).numerical_id()
     }
 
-    fn id(&self) -> FastaIdentifier<&str> {
+    fn id(&self) -> FastaIdentifier<Cow<'_, str>> {
         (**self).id()
     }
 
@@ -199,7 +199,7 @@ impl ProteinMetaData for NoProtein {
         None
     }
 
-    fn id(&self) -> FastaIdentifier<&str> {
+    fn id(&self) -> FastaIdentifier<Cow<'_, str>> {
         EMPTY_FASTA_IDENTIFIER
     }
 
@@ -257,8 +257,8 @@ impl ProteinMetaData for FastaIdentifier<String> {
         None
     }
 
-    fn id(&self) -> FastaIdentifier<&str> {
-        self.as_str()
+    fn id(&self) -> FastaIdentifier<Cow<'_, str>> {
+        self.as_cow_str()
     }
 
     fn description(&self) -> Option<&str> {
@@ -315,8 +315,8 @@ impl ProteinMetaData for FastaIdentifier<Box<str>> {
         None
     }
 
-    fn id(&self) -> FastaIdentifier<&str> {
-        self.as_str()
+    fn id(&self) -> FastaIdentifier<Cow<'_, str>> {
+        self.as_cow_str()
     }
 
     fn description(&self) -> Option<&str> {
@@ -373,8 +373,8 @@ impl ProteinMetaData for FastaIdentifier<&str> {
         None
     }
 
-    fn id(&self) -> FastaIdentifier<&str> {
-        self.clone()
+    fn id(&self) -> FastaIdentifier<Cow<'_, str>> {
+        self.as_cow_str()
     }
 
     fn description(&self) -> Option<&str> {
