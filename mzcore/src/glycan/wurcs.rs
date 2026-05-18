@@ -297,32 +297,23 @@ fn parse_glip<'a>(
         .and_then(|v| (*v).try_into().ok())
     {
         offset += 1;
-        let (len, num) =
-            next_number::<false, false, u8>(value, range.start() + offset..=*range.end())
-                .ok_or_else(|| {
-                    BoxedError::new(
-                        BasicKind::Error,
-                        "Invalid WURCS 2.0",
-                        format!("The star index is missing"),
-                        base_context
-                            .clone()
-                            .add_highlight((0, range.start() + offset, 1)),
-                    )
-                })
-                .map(|(len, _, num)| {
-                    num.map_err(|err| {
-                        BoxedError::new(
-                            BasicKind::Error,
-                            "Invalid WURCS 2.0",
-                            format!("The star index {}", explain_number_error(&err)),
-                            base_context
-                                .clone()
-                                .add_highlight((0, range.start() + offset, len)),
-                        )
-                    })
-                    .map(|n| (len, n))
-                })
-                .flatten()?;
+        let (len, num) = next_number::<false, false, u8>(
+            value,
+            range.start() + offset..=*range.end(),
+        )
+        .map_or(Ok((0, 0)), |(len, _, num)| {
+            num.map_err(|err| {
+                BoxedError::new(
+                    BasicKind::Error,
+                    "Invalid WURCS 2.0",
+                    format!("The star index {}", explain_number_error(&err)),
+                    base_context
+                        .clone()
+                        .add_highlight((0, range.start() + offset, len)),
+                )
+            })
+            .map(|n| (len, n))
+        })?;
         offset += len;
         Some((direction, num))
     } else {
@@ -723,32 +714,23 @@ fn parse_lip<'a>(
         .and_then(|v| (*v).try_into().ok())
     {
         offset += 1;
-        let (len, num) =
-            next_number::<false, false, u8>(value, range.start() + offset..=*range.end())
-                .ok_or_else(|| {
-                    BoxedError::new(
-                        BasicKind::Error,
-                        "Invalid WURCS 2.0",
-                        format!("The star index is missing"),
-                        base_context
-                            .clone()
-                            .add_highlight((0, range.start() + offset, 1)),
-                    )
-                })
-                .map(|(len, _, num)| {
-                    num.map_err(|err| {
-                        BoxedError::new(
-                            BasicKind::Error,
-                            "Invalid WURCS 2.0",
-                            format!("The star index {}", explain_number_error(&err)),
-                            base_context
-                                .clone()
-                                .add_highlight((0, range.start() + offset, len)),
-                        )
-                    })
-                    .map(|n| (len, n))
-                })
-                .flatten()?;
+        let (len, num) = next_number::<false, false, u8>(
+            value,
+            range.start() + offset..=*range.end(),
+        )
+        .map_or(Ok((0, 0)), |(len, _, num)| {
+            num.map_err(|err| {
+                BoxedError::new(
+                    BasicKind::Error,
+                    "Invalid WURCS 2.0",
+                    format!("The star index {}", explain_number_error(&err)),
+                    base_context
+                        .clone()
+                        .add_highlight((0, range.start() + offset, len)),
+                )
+            })
+            .map(|n| (len, n))
+        })?;
         offset += len;
         Some((direction, num))
     } else {
@@ -851,7 +833,7 @@ fn tokenise_map<'a>(
             b'/' => {
                 offset += 1;
                 let (len, num) =
-                    next_number::<false, false, u8>(value, range.start() + offset..*range.end())
+                    next_number::<false, false, u8>(value, range.start() + offset..=*range.end())
                         .ok_or_else(|| {
                             BoxedError::new(
                                 BasicKind::Error,
@@ -884,7 +866,7 @@ fn tokenise_map<'a>(
             b'$' => {
                 offset += 1;
                 let (len, num) =
-                    next_number::<false, false, u8>(value, range.start() + offset..*range.end())
+                    next_number::<false, false, u8>(value, range.start() + offset..=*range.end())
                         .ok_or_else(|| {
                             BoxedError::new(
                                 BasicKind::Error,
