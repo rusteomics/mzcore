@@ -11,22 +11,19 @@ use std::{
 use clap::Parser;
 use itertools::Itertools;
 use mzannotate::{
-    annotation::model::{
-        BuiltInFragmentationModel, PrimaryIonSeries, SatelliteIonSeries, SatelliteLocation,
-    },
     fragment::{FragmentKind, FragmentType},
     prelude::*,
 };
 use mzcore::{
-    chemistry::{ChargeRange, MassMode},
+    chemistry::MassMode,
     ontology::Ontologies,
-    sequence::{AminoAcid, PeptidoformIonSet, SimpleModification},
+    sequence::{Modification, PeptidoformIonSet},
 };
 use mzdata::{
     io::{MZFileReader, SpectrumSource},
-    mzpeaks::{CentroidPeak, PeakCollection},
+    mzpeaks::PeakCollection,
     prelude::SpectrumLike,
-    spectrum::{MultiLayerSpectrum, RefPeakDataLevel},
+    spectrum::RefPeakDataLevel,
 };
 use mzident::{SpectrumId, SpectrumIds, prelude::*};
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
@@ -35,10 +32,10 @@ use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 struct Cli {
     /// The input PSM file
     #[arg(short, long)]
-    in_path: String,
+    in_path: PathBuf,
     /// The output path to output the resulting csv file
     #[arg(short, long)]
-    out_path: String,
+    out_path: PathBuf,
     /// The raw file to use for any file without a raw file
     #[arg(long)]
     raw_file: Option<PathBuf>,
@@ -63,153 +60,149 @@ struct Cli {
 fn main() {
     let args = Cli::parse();
 
-    let model = FragmentationModel::none()
-        .clone()
-        .b(PrimaryIonSeries::default())
-        .d(SatelliteIonSeries::default().location(SatelliteLocation {
-            rules: Vec::new(),
-            base: Some(6),
-        }))
-        .v(SatelliteIonSeries::default().location(SatelliteLocation {
-            rules: Vec::new(),
-            base: Some(6),
-        }))
-        .w(SatelliteIonSeries::default().location(SatelliteLocation {
-            rules: Vec::new(),
-            base: Some(6),
-        }))
-        .y(PrimaryIonSeries::default())
-        .precursor(Vec::new(), Vec::new(), (0, None), ChargeRange::PRECURSOR);
+    let model = FragmentationModel::cid();
+    let mut parameters = MatchingParameters::default();
+    parameters.match_isotopes = true;
+    let parameters = parameters;
 
-    let peptides = open_psm_file(&args.in_path, &Ontologies::init().0, false)
+    let peptides: std::collections::HashMap<PathBuf, Vec<PSM<mzcore::sequence::Linked, mzident::MaybePeptidoform>>> = open_psm_file(&args.in_path, &Ontologies::init().0, false)
         .expect("Could not open PSM file")
         .filter_map(Result::ok)
         .into_group_map_by(|l| match l.scans() {
-            SpectrumIds::FileKnown(spectra) => spectra.first().map(|s| s.0.clone()),
-            _ => None,
+            SpectrumIds::FileKnown(spectra) => spectra.first().map(|s| if s.0.is_absolute() {
+                    s.0.clone()
+                } else {
+                    args.raw_file_directory.as_ref().expect("The raw file directory parameter has to be defined if there are peptides with a non absolute path").join(&s.0).with_extension("mzML")
+                }).expect("A file known spectra ref should have at least one file"),
+            SpectrumIds::FileNotKnown(_) | SpectrumIds::None => args.raw_file.clone().expect("The raw file parameter has to be defined if there are peptides without a defined raw file"),
         });
 
-    let stack: Stack = peptides.par_iter().map(|(file, peptides)| {
-        let mut stack = Stack::default();
-        let path = match file {
-            Some(file) => {
-                if file.is_absolute() {
-                    file.clone()
-                } else {
-                    args.raw_file_directory.as_ref().expect("The raw file directory parameter has to be defined if there are peptides with a non absolute path").join(file)
-                }
-            }
-            None => args.raw_file.clone().expect("The raw file parameter has to be defined if there are peptides without a defined raw file"),
-        };
-        let mut file = mzdata::io::MZReaderType::open_path(path).unwrap();
+    let stack: Stack = peptides
+        .par_iter()
+        .map(|(path, peptides)| {
+            let mut stack = Stack::default();
+            let mut file = mzdata::io::MZReaderType::open_path(path)
+                .unwrap_or_else(|err| panic!("Could not open '{}' {err}", path.display()));
 
-        for peptide in peptides {
-            if peptide.charge().is_none() {
-                continue;
-            }
-            if let Some(cpi) = peptide.peptidoform_ion_set() {
-                let id = match peptide.scans() {
-                    SpectrumIds::FileKnown(spectra) => {
-                        spectra.first().and_then(|s| s.1.first().cloned())
+            println!("{}", peptides.len());
+            for peptide in peptides {
+                if peptide.charge().is_none() {
+                    continue;
+                }
+                if let Some(cpi) = peptide
+                    .peptidoform_ion_set()
+                    .map(std::borrow::Cow::into_owned)
+                {
+                    let id = match peptide.scans() {
+                        SpectrumIds::FileKnown(spectra) => {
+                            spectra.first().and_then(|s| s.1.first().cloned())
+                        }
+                        SpectrumIds::FileNotKnown(ids) => ids.first().cloned(),
+                        SpectrumIds::None => None,
+                    };
+                    if let Some(spectrum) = match id {
+                        Some(SpectrumId::Index(i)) => file.get_spectrum_by_index(i),
+                        Some(SpectrumId::Number(i)) => file.get_spectrum_by_index(i - 1),
+                        Some(SpectrumId::Native(n)) => file.get_spectrum_by_id(&n),
+                        _ => continue,
+                    } {
+                        let fragments =
+                            cpi.generate_theoretical_fragments(peptide.charge().unwrap(), model);
+                        let mut annotated = spectrum.annotate(
+                            cpi.clone(),
+                            &fragments,
+                            &parameters,
+                            MassMode::Monoisotopic,
+                        );
+                        annotated.peaks.peaks.retain(|p| p.annotations.is_empty());
+                        extract_and_merge(&mut stack, &annotated, &fragments, &cpi, &args);
                     }
-                    SpectrumIds::FileNotKnown(ids) => ids.first().cloned(),
-                    SpectrumIds::None => None,
-                };
-                if let Some(spectrum) = match id {
-                    Some(SpectrumId::Index(i)) => file.get_spectrum_by_index(i),
-                    Some(SpectrumId::Native(n)) => file.get_spectrum_by_id(&n),
-                    _ => continue,
-                } {
-                    let fragments =
-                        cpi.generate_theoretical_fragments(peptide.charge().unwrap(), &model);
-                    extract_and_merge(
-                        &mut stack,
-                        &spectrum,
-                        &fragments,
-                        &cpi,
-                        &args,
-                        peptide.fragmentation_model(),
-                    );
                 }
             }
-        }
-        stack
-    }).collect();
+            stack
+        })
+        .collect();
     stack.store(Path::new(&args.out_path));
 }
 
 fn extract_and_merge(
     stack: &mut Stack,
-    spectrum: &MultiLayerSpectrum,
+    spectrum: &AnnotatedSpectrum,
     fragments: &[Fragment],
     peptidoform: &PeptidoformIonSet,
     args: &Cli,
-    mode: Option<BuiltInFragmentationModel>,
 ) {
     let RefPeakDataLevel::Centroid(spectrum) = spectrum.peaks() else {
         return;
     };
-    for fragment in fragments {
-        if let Some(mz) = fragment.mz(MassMode::Monoisotopic) {
-            let seq = fragment.ion.position().map(|pos| {
-                let seq = &peptidoform.peptidoform_ions()
-                    [fragment.peptidoform_ion_index.unwrap_or_default()]
-                .peptidoforms()[fragment.peptidoform_index.unwrap_or_default()][pos.sequence_index];
-                (
-                    seq.aminoacid.aminoacid(),
-                    seq.modifications
-                        .iter()
-                        .filter_map(|m| m.clone().into_simple())
-                        .collect(),
-                )
-            });
 
-            let key = match fragment.ion {
-                FragmentType::d(_, _, d, _, _)
-                | FragmentType::v(_, _, d, _)
-                | FragmentType::w(_, _, d, _, _) => (fragment.ion.kind(), Some(d), seq, mode),
-                _ => (fragment.ion.kind(), None, seq, mode),
-            };
+    let mods_present = peptidoform
+        .peptidoform_ions()
+        .iter()
+        .flat_map(mzcore::sequence::PeptidoformIon::peptidoforms)
+        .flat_map(mzcore::sequence::Peptidoform::sequence)
+        .flat_map(|s| s.modifications.iter())
+        .unique()
+        .cloned()
+        .map(Some)
+        .chain([None])
+        .collect::<Vec<_>>();
+    for fragment in fragments {
+        // Filter to only get the fragments of interest
+        if matches!(
+            fragment.ion,
+            FragmentType::b(_, 0) | FragmentType::y(_, 0) | FragmentType::Precursor
+        ) && fragment.neutral_loss.is_empty()
+            && fragment.isotope.is_empty()
+            && let Some(mz) = fragment.mz(MassMode::Monoisotopic)
+        {
             let low = mz.value - args.before_fragment / fragment.charge.value as f64;
             let high = mz.value + args.after_fragment / fragment.charge.value as f64;
             let sub_spectrum = spectrum.between(low, high, mzdata::prelude::Tolerance::Da(0.0));
 
-            merge_stack(
-                stack.fragments.entry(key).or_default(),
-                sub_spectrum,
-                fragment.charge.value,
-                mz.value,
-                args.resolution,
-                low..=high,
-            );
+            for m in &mods_present {
+                let key = (fragment.ion.kind(), m.clone());
+                merge_stack(
+                    stack.fragments.entry(key).or_default(),
+                    sub_spectrum,
+                    fragment.charge.value,
+                    mz.value,
+                    args.resolution,
+                    low..=high,
+                );
+            }
         }
     }
     // Get start
     let sub_spectrum = spectrum.between(0.0, args.max_start, mzdata::prelude::Tolerance::Da(0.0));
-    merge_stack(
-        &mut stack.start,
-        sub_spectrum,
-        1,
-        0.0,
-        args.resolution,
-        0.0..=args.max_start,
-    );
+
+    for m in &mods_present {
+        let key = (FragmentKind::diagnostic, m.clone());
+        merge_stack(
+            stack.fragments.entry(key).or_default(),
+            sub_spectrum,
+            1,
+            0.0,
+            args.resolution,
+            0.0..=args.max_start,
+        );
+    }
 }
 
 fn merge_stack(
     points: &mut Vec<Point>,
-    slice: &[CentroidPeak],
+    slice: &[AnnotatedPeak<Fragment>],
     charge: isize,
     center: f64,
     resolution: f64,
     range: RangeInclusive<f64>,
 ) {
     for found_peak in slice {
-        if !range.contains(&found_peak.mz) {
+        if !range.contains(&found_peak.mz.value) {
             continue;
         }
         let normalised_mass =
-            ((found_peak.mz - center) / resolution).round() * resolution * charge as f64;
+            ((found_peak.mz.value - center) / resolution).round() * resolution * charge as f64;
         match points.binary_search_by(|p| p.mass.total_cmp(&normalised_mass)) {
             Ok(index) => {
                 points[index].count += 1;
@@ -229,12 +222,7 @@ fn merge_stack(
     }
 }
 
-type ItemKey = (
-    FragmentKind,
-    Option<u8>,
-    Option<(AminoAcid, Vec<SimpleModification>)>,
-    Option<BuiltInFragmentationModel>,
-);
+type ItemKey = (FragmentKind, Option<Modification>);
 
 #[derive(Debug, Default)]
 struct Stack {
@@ -247,30 +235,8 @@ impl Stack {
         write_stack(&base_path.join("start.csv"), &self.start);
         for (key, stack) in &self.fragments {
             let path = match key {
-                (i, None, el, mode) => base_path.join(format!(
-                    "fragment_{i}_{}_{}.csv",
-                    el.as_ref().map_or_else(
-                        || "-".to_string(),
-                        |(aa, mods)| format!(
-                            "{aa}{}",
-                            mods.iter().map(|m| format!("[{m}]")).join("")
-                        )
-                    ),
-                    mode.as_ref()
-                        .map_or_else(|| "-".to_string(), ToString::to_string)
-                )),
-                (i, Some(d), el, mode) => base_path.join(format!(
-                    "fragment_{d}{i}_{}_{}.csv",
-                    el.as_ref().map_or_else(
-                        || "-".to_string(),
-                        |(aa, mods)| format!(
-                            "{aa}{}",
-                            mods.iter().map(|m| format!("[{m}]")).join("")
-                        )
-                    ),
-                    mode.as_ref()
-                        .map_or_else(|| "-".to_string(), ToString::to_string)
-                )),
+                (i, Some(m)) => base_path.join(format!("fragment_{i}_{m}.csv")),
+                (i, None) => base_path.join(format!("fragment_{i}.csv")),
             };
             write_stack(&path, stack);
         }

@@ -163,8 +163,8 @@ format_family!(
             && let split = native.rsplitn(4, '.').collect::<Vec<&str>>()
             && split.len() == 4
             {
-                parsed.raw_file = Some(split[0].into());
-                parsed.scan = split[1].parse::<usize>().map(SpectrumId::Number).map_err(|err| BoxedError::new(BasicKind::Error, "Invalid MSFragger ID", format!("The scan number {}", explain_number_error(&err)), Context::default().lines(0, native).add_highlight((0, split[0].len() + 1, split[1].len())).to_owned()))?;
+                parsed.raw_file = Some(split[3].into());
+                parsed.scan = split[2].parse::<usize>().map(SpectrumId::Number).map_err(|err| BoxedError::new(BasicKind::Error, "Invalid MSFragger ID", format!("The scan number {}", explain_number_error(&err)), Context::default().lines(0, native).add_highlight((0, split[0].len() + 1, split[1].len())).to_owned()))?;
             }
         // Normal modifications
         for (location, modification) in &parsed.modifications {
