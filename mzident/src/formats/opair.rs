@@ -425,7 +425,7 @@ impl ProteinMetaData for OpairProtein {
         &[]
     }
 
-    fn database(&self) -> Option<(&str, Option<&str>)> {
+    fn database(&self) -> Option<(Cow<'_, str>, Option<Cow<'_, str>>)> {
         None
     }
 

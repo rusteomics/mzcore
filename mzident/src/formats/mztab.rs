@@ -1905,8 +1905,11 @@ impl ProteinMetaData for MzTabProtein {
         &self.ambiguity_members
     }
 
-    fn database(&self) -> Option<(&str, Option<&str>)> {
-        Some((&self.database, Some(&self.database_version)))
+    fn database(&self) -> Option<(Cow<'_, str>, Option<Cow<'_, str>>)> {
+        Some((
+            Cow::Borrowed(&self.database),
+            Some(Cow::Borrowed(&self.database_version)),
+        ))
     }
 
     fn modifications(&self) -> &[(Vec<(SequencePosition, Option<f64>)>, SimpleModification)] {

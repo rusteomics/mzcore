@@ -658,7 +658,7 @@ impl ProteinMetaData for MSFraggerProtein {
             .unwrap_or_default()
     }
 
-    fn database(&self) -> Option<(&str, Option<&str>)> {
+    fn database(&self) -> Option<(Cow<'_, str>, Option<Cow<'_, str>>)> {
         None
     }
 

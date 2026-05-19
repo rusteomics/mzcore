@@ -715,7 +715,7 @@ impl_protein_metadata!(
         fn species_name(&self) -> Option<&str>;
         fn search_engine(&self) -> &[(CVTerm, Option<(f64, CVTerm)>)];
         fn ambiguity_members(&self) -> &[String];
-        fn database(&self) -> Option<(&str, Option<&str>)>;
+        fn database(&self) -> Option<(Cow<'_, str>, Option<Cow<'_, str>>)>;
         fn modifications(&self) -> &[(Vec<(mzcore::sequence::SequencePosition, Option<f64>)>, mzcore::sequence::SimpleModification)];
         fn coverage(&self) -> Option<f64>;
         fn gene_ontology(&self) -> &[mzcv::Curie];

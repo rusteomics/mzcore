@@ -14,12 +14,14 @@ use mzcore::{
     sequence::{FlankingSequence, IsAminoAcid, Modification, SimpleModificationInner},
 };
 use mzcv::Term;
-use std::{fmt::Display, io::Write, marker::PhantomData, path::PathBuf};
+use std::{borrow::Cow, fmt::Display, io::Write, marker::PhantomData, path::PathBuf};
 
 /// Write PSMs as an mzTab file. It will always output 'Identification' type files in 'Summary' mode but does a best effort to correctly store all info.
 #[derive(Debug)]
 pub struct MzTabWriter<Writer, State> {
     writer: Writer,
+    prh: Option<String>,
+    psh: Option<String>,
     ms_runs: Vec<MSRun>,
     protein_search_engines: Vec<Term>,
     psm_search_engines: Vec<Term>,
@@ -142,10 +144,10 @@ impl<W: Write> MzTabWriter<W, Initial> {
             .max()
             .unwrap_or_default();
         if proteins.is_empty() {
-            writer.write_psms(psms, highest_used_id)?;
+            writer.write_psms(psms, highest_used_id, &[])?;
         } else {
-            let writer = writer.write_proteins(&proteins)?;
-            writer.write_psms(psms, highest_used_id)?;
+            let writer = writer.write_proteins(&proteins, &[])?;
+            writer.write_psms(psms, highest_used_id, &[])?;
         }
         Ok(())
     }
@@ -159,6 +161,8 @@ impl<W: Write> MzTabWriter<W, Initial> {
     ) -> Self {
         Self {
             writer,
+            prh: None,
+            psh: None,
             ms_runs,
             protein_search_engines,
             psm_search_engines,
@@ -226,6 +230,8 @@ impl<W: Write> MzTabWriter<W, Initial> {
         writeln!(self.writer)?;
         Ok(MzTabWriter {
             writer: self.writer,
+            prh: self.prh,
+            psh: self.psh,
             ms_runs: self.ms_runs,
             protein_search_engines: self.protein_search_engines,
             psm_search_engines: self.psm_search_engines,
@@ -234,25 +240,108 @@ impl<W: Write> MzTabWriter<W, Initial> {
     }
 }
 
+/// Define the name for an optional column in an mzTab file
+#[derive(Debug, Clone, Eq, PartialEq, Hash)]
+pub enum MzTabOptionalColumnName {
+    /// A term from a CV
+    Term(Term),
+    /// A free text name
+    Name(Cow<'static, str>),
+}
+
+impl Display for MzTabOptionalColumnName {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        /// Print a name while replacing any invalid character.
+        /// # Errors
+        /// If writing to the writer fails.
+        fn print_safe(name: &str, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            for c in name.chars() {
+                if c.is_ascii_alphanumeric() || ['_', '-', '[', ']', ':'].contains(&c) {
+                    write!(f, "{c}")?;
+                } else {
+                    f.write_str("_")?;
+                }
+            }
+
+            Ok(())
+        }
+        match self {
+            Self::Term(term) => {
+                write!(f, "{}_{}_", term.accession.cv, term.accession.accession)?;
+                print_safe(&term.name, f)
+            }
+            Self::Name(name) => print_safe(name, f),
+        }
+    }
+}
+
+/// An object identifier for an mzTab optional column
+#[derive(Debug, Copy, Clone, Eq, PartialEq, PartialOrd, Ord, Hash)]
+pub enum MzTabObjectIdentifier {
+    /// An assay, with the assay id
+    Assay(usize),
+    /// A study variable, with the id
+    StudyVariable(usize),
+    /// An MS run, with the id
+    MSRun(usize),
+    /// A global optional column
+    Global,
+}
+
+impl Display for MzTabObjectIdentifier {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Assay(i) => write!(f, "assay[{i}]"),
+            Self::StudyVariable(i) => write!(f, "study_variable[{i}]"),
+            Self::MSRun(i) => write!(f, "msrun[{i}]"),
+            Self::Global => write!(f, "global"),
+        }
+    }
+}
+
 impl<W: Write, State: CanWriteProteins> MzTabWriter<W, State> {
-    /// Write the proteins. This can only be done if the header is already written or if some proteins where written just before.
+    /// Write the proteins. This can only be done if the header is already written or if some
+    /// proteins where written just before. If proteins where already written before and the custom
+    /// columns differed this will result in an error.
+    ///
+    /// To write custom columns for the proteins these need to be defined with the name and
+    /// identifier to create the correct column name and with a type erased closure. The closure
+    /// gets direct access to the underlying writer to prevent unnecessary allocations. This means
+    /// that the closure is expected to write a valid value. The value has to be the value for only
+    /// this column excluding separators. If the value contains separators inside, it should be
+    /// escaped or encased by the closure itself.
+    ///
     /// # Errors
-    /// If the underlying writer fails.
+    /// If the underlying writer fails. Or if proteins where previously already written with
+    /// different custom columns.
     pub fn write_proteins<Protein: ProteinMetaData>(
         mut self,
         proteins: impl IntoIterator<Item = Protein>,
+        custom_columns: &[(
+            MzTabOptionalColumnName,
+            MzTabObjectIdentifier,
+            Box<dyn Fn(&Protein, &mut W) -> Result<(), std::io::Error>>,
+        )],
     ) -> Result<MzTabWriter<W, ProteinsWritten>, std::io::Error> {
         // TODO: allow custom additional columns (sequence for example, or regions/annotations)
-        if !State::SECTION_HEADER_PRESENT {
-            writeln!(
-                self.writer,
-                "PRH\taccession\tdescription\ttaxid\tspecies\tdatabase\tdatabase_version\tsearch_engine\tambiguity_members\tmodifications\tprotein_coverage\tgo_terms\treliability\turi"
-            )?;
+        let prh = format!(
+            "PRH\taccession\tdescription\ttaxid\tspecies\tdatabase\tdatabase_version\tsearch_engine\tambiguity_members\tmodifications\tprotein_coverage\tgo_terms\treliability\turi{}",
+            custom_columns
+                .iter()
+                .map(|(term, id, _)| format!("\topt_{id}_{term}"))
+                .join(""),
+        );
+        if self.prh.is_none() {
+            writeln!(self.writer, "{prh}")?;
+        } else if self.prh.as_ref().is_some_and(|written| *written != prh) {
+            return Err(std::io::Error::other(
+                "A different header is already written",
+            ));
         }
         for protein in proteins {
             // TODO: think about how to handle dynamic numbers of search engine scores
             // TODO: think about how to handle mod locations
-            writeln!(
+            write!(
                 self.writer,
                 "PRT\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}",
                 protein.id().accession(),
@@ -261,8 +350,11 @@ impl<W: Write, State: CanWriteProteins> MzTabWriter<W, State> {
                     .species()
                     .map_or_else(|| "null".to_string(), |t| t.accession.to_string()),
                 protein.species_name().map_or("null", |t| t),
-                protein.database().map_or("null", |t| t.0),
-                protein.database().and_then(|d| d.1).map_or("null", |t| t),
+                protein.database().map_or(Cow::Borrowed("null"), |t| t.0),
+                protein
+                    .database()
+                    .and_then(|d| d.1)
+                    .map_or(Cow::Borrowed("null"), |t| t),
                 protein
                     .search_engine()
                     .iter()
@@ -306,10 +398,17 @@ impl<W: Write, State: CanWriteProteins> MzTabWriter<W, State> {
                 },
                 protein.uri().map_or("null", |t| t),
             )?;
+            for (_, _, col) in custom_columns {
+                write!(self.writer, "\t")?;
+                col(&protein, &mut self.writer)?;
+            }
+            writeln!(self.writer)?;
         }
         writeln!(self.writer)?;
         Ok(MzTabWriter {
             writer: self.writer,
+            prh: Some(prh),
+            psh: self.psh,
             ms_runs: self.ms_runs,
             protein_search_engines: self.protein_search_engines,
             psm_search_engines: self.psm_search_engines,
@@ -348,6 +447,8 @@ pub enum MzTabWriteError {
     MissingMSRun(Option<PathBuf>),
     /// This PSM search engine term is not written in the header for this file
     MissingSearchEngine(Term),
+    /// PSMs were already written before but the custom columns definition is different
+    MultipleDifferentPSMHeaders,
 }
 
 impl From<std::io::Error> for MzTabWriteError {
@@ -366,7 +467,7 @@ impl From<MzTabWriteError> for std::io::Error {
     fn from(value: MzTabWriteError) -> Self {
         match value {
             MzTabWriteError::IO(err) => err,
-            a => std::io::Error::other(a),
+            a => Self::other(a),
         }
     }
 }
@@ -385,6 +486,9 @@ impl Display for MzTabWriteError {
                 "Missing search engine: {}|{}",
                 engine.accession, engine.name
             ),
+            Self::MultipleDifferentPSMHeaders => {
+                write!(f, "A different PSM header is already written")
+            }
         }
     }
 }
@@ -409,16 +513,26 @@ impl<W: Write, State: CanWritePSMs> MzTabWriter<W, State> {
         mut self,
         psms: impl IntoIterator<Item = PSM>,
         mut highest_used_id: usize,
+        custom_columns: &[(
+            MzTabOptionalColumnName,
+            MzTabObjectIdentifier,
+            Box<dyn Fn(&PSM, &mut W) -> Result<(), std::io::Error>>,
+        )],
     ) -> Result<MzTabWriter<W, PSMsWritten>, MzTabWriteError> {
-        if !State::SECTION_HEADER_PRESENT {
-            // TODO: think about how to handle local confidences
-            writeln!(
-                self.writer,
-                "PSH\tsequence\tPSM_ID\taccession\tunique\tdatabase\tdatabase_version\tsearch_engine\t{}\tmodifications\tspectra_ref\tretention_time\tcharge\texp_mass_to_charge\tcalc_mass_to_charge\tpre\tpost\tstart\tend\treliability\turi",
-                (1..=self.psm_search_engines.len())
-                    .map(|i| format!("search_engine_score[{i}]"))
-                    .join("\t"),
-            )?;
+        let psh = format!(
+            "PSH\tsequence\tPSM_ID\taccession\tunique\tdatabase\tdatabase_version\tsearch_engine\t{}\tmodifications\tspectra_ref\tretention_time\tcharge\texp_mass_to_charge\tcalc_mass_to_charge\tpre\tpost\tstart\tend\treliability\turi{}",
+            (1..=self.psm_search_engines.len())
+                .map(|i| format!("search_engine_score[{i}]"))
+                .join("\t"),
+            custom_columns
+                .iter()
+                .map(|(term, id, _)| format!("\topt_{id}_{term}"))
+                .join(""),
+        );
+        if self.psh.is_none() {
+            writeln!(self.writer, "{psh}")?;
+        } else if self.psh.as_ref().is_some_and(|written| *written != psh) {
+            return Err(MzTabWriteError::MultipleDifferentPSMHeaders);
         }
         for psm in psms {
             let mut first_peptidoform = true;
@@ -496,7 +610,7 @@ impl<W: Write, State: CanWritePSMs> MzTabWriter<W, State> {
                         }
                     }
 
-                    writeln!(
+                    write!(
                         self.writer,
                         "PSM\t{sequence}\t{psm_id}\t{accession}\t{unique}\t{database}\t{database_version}\t{search_engine}\t{search_engine_score}\t{modifications}\t{spectra_ref}\t{retention_time}\t{charge}\t{exp_mass_to_charge}\t{calc_mass_to_charge}\t{pre}\t{post}\t{start}\t{end}\t{reliability}\t{uri}",
                         sequence = peptidoform
@@ -519,7 +633,7 @@ impl<W: Write, State: CanWritePSMs> MzTabWriter<W, State> {
                         accession = psm
                             .proteins()
                             .first()
-                            .map_or("null".to_string(), |p| p.id().accession().to_string()), // TODO: contains an I assume unnecessary .to_string
+                            .map_or(Cow::Borrowed("null"), |p| p.id().accession().clone()), // TODO: contains an I assume unnecessary .clone
                         unique = psm
                             .unique()
                             .map_or_else(|| "null".to_string(), |d| d.to_string()),
@@ -687,12 +801,19 @@ impl<W: Write, State: CanWritePSMs> MzTabWriter<W, State> {
                         },
                         uri = psm.uri().unwrap_or_else(|| "null".to_string()),
                     )?;
+                    for (_, _, col) in custom_columns {
+                        write!(self.writer, "\t")?;
+                        col(&psm, &mut self.writer)?;
+                    }
+                    writeln!(self.writer)?;
                 }
                 first_peptidoform = false;
             }
         }
         Ok(MzTabWriter {
             writer: self.writer,
+            prh: self.prh,
+            psh: Some(psh),
             ms_runs: self.ms_runs,
             protein_search_engines: self.protein_search_engines,
             psm_search_engines: self.psm_search_engines,

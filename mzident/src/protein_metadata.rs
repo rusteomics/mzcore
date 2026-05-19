@@ -34,7 +34,7 @@ pub trait ProteinMetaData {
     fn ambiguity_members(&self) -> &[String];
 
     /// The database that was used for matching optionally with the version of the database
-    fn database(&self) -> Option<(&str, Option<&str>)>;
+    fn database(&self) -> Option<(Cow<'_, str>, Option<Cow<'_, str>>)>;
 
     /// All known modifications that can occur at PSM level on this sequence, with potentially a probability
     fn modifications(&self) -> &[(Vec<(SequencePosition, Option<f64>)>, SimpleModification)];
@@ -87,7 +87,7 @@ macro_rules! impl_ref {
                 (**self).ambiguity_members()
             }
 
-            fn database(&self) -> Option<(&str, Option<&str>)> {
+            fn database(&self) -> Option<(Cow<'_, str>, Option<Cow<'_, str>>)> {
                 (**self).database()
             }
 
@@ -153,7 +153,7 @@ impl ProteinMetaData for Box<dyn ProteinMetaData + '_> {
         (**self).ambiguity_members()
     }
 
-    fn database(&self) -> Option<(&str, Option<&str>)> {
+    fn database(&self) -> Option<(Cow<'_, str>, Option<Cow<'_, str>>)> {
         (**self).database()
     }
 
@@ -223,7 +223,7 @@ impl ProteinMetaData for NoProtein {
         &[]
     }
 
-    fn database(&self) -> Option<(&str, Option<&str>)> {
+    fn database(&self) -> Option<(Cow<'_, str>, Option<Cow<'_, str>>)> {
         None
     }
 
@@ -281,7 +281,7 @@ impl ProteinMetaData for FastaIdentifier<String> {
         &[]
     }
 
-    fn database(&self) -> Option<(&str, Option<&str>)> {
+    fn database(&self) -> Option<(Cow<'_, str>, Option<Cow<'_, str>>)> {
         None
     }
 
@@ -339,7 +339,7 @@ impl ProteinMetaData for FastaIdentifier<Box<str>> {
         &[]
     }
 
-    fn database(&self) -> Option<(&str, Option<&str>)> {
+    fn database(&self) -> Option<(Cow<'_, str>, Option<Cow<'_, str>>)> {
         None
     }
 
@@ -397,7 +397,7 @@ impl ProteinMetaData for FastaIdentifier<&str> {
         &[]
     }
 
-    fn database(&self) -> Option<(&str, Option<&str>)> {
+    fn database(&self) -> Option<(Cow<'_, str>, Option<Cow<'_, str>>)> {
         None
     }
 
