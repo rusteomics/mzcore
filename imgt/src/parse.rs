@@ -7,19 +7,26 @@ use std::collections::HashMap;
 use std::io::BufRead;
 
 /// Parse the IMGT file
-pub(crate) fn parse_dat<T: BufRead>(reader: T) -> impl Iterator<Item = Result<DataItem, String>> {
+pub(crate) fn parse_dat<T: BufRead>(
+    reader: T,
+) -> impl Iterator<Item = Result<(DataItem, Vec<String>), String>> {
     reader
         .lines()
         .batching(|f| {
             let mut data = PreDataItem::default();
+            let mut errors = Vec::new();
             for line in f.filter_map(Result::ok) {
-                if parse_dat_line(&mut data, &line) {
-                    return Some(data);
+                let (end, error) = parse_dat_line(&mut data, &line);
+                if !error.is_empty() {
+                    errors.push(error);
+                }
+                if end {
+                    return Some((data, errors));
                 }
             }
             None
         })
-        .filter(|pre| {
+        .filter(|(pre, _)| {
             pre.kw.contains(&"immunoglobulin (IG)".to_string())
                 && (pre.kw.contains(&"functional".to_string())
                     || pre.kw.contains(&"germline".to_string())
@@ -30,12 +37,13 @@ pub(crate) fn parse_dat<T: BufRead>(reader: T) -> impl Iterator<Item = Result<Da
 }
 
 /// Parse a data item line and return if it is finished or not.
-fn parse_dat_line(data: &mut PreDataItem, line: &str) -> bool {
+fn parse_dat_line(data: &mut PreDataItem, line: &str) -> (bool, String) {
+    let mut error = String::new();
     if line.len() < 2 {
-        return false;
+        return (false, error);
     }
     match &line[..2] {
-        "//" => return true,
+        "//" => return (true, error),
         "ID" => data.id = line.to_string(),
         "KW" => data.kw.extend(
             line[5..]
@@ -44,12 +52,16 @@ fn parse_dat_line(data: &mut PreDataItem, line: &str) -> bool {
                 .filter(|s| !s.is_empty()),
         ),
         "FH" if line.starts_with("FH   Key") => {
-            data.ft_key_width = line.find("Location").expect("Incorrect FH line") - 5;
+            if let Some(pos) = line.find("Location") {
+                data.ft_key_width = pos - 5;
+            } else {
+                error = "Incorrect FH line".to_string();
+            }
         }
         "FT" => data.ft.push(line[5..].to_string()),
         "OS" if data.os.is_none() => {
             data.os = Species::from_imgt(line[5..].trim()).unwrap_or_else(|NotASpecies| {
-                println!("Not a species name: `{line}`");
+                error = format!("Not a species name: `{line}`");
                 None
             });
         }
@@ -57,13 +69,29 @@ fn parse_dat_line(data: &mut PreDataItem, line: &str) -> bool {
             line.chars()
                 .filter(|c| *c == 'c' || *c == 'a' || *c == 't' || *c == 'g' || *c == 'n'),
         ),
+        "DT" if line.contains("Last updated") => {
+            if let Ok(year) = line[12..=15].parse()
+                && let Ok(day) = line[5..=6].parse()
+                && let Some(month) = [
+                    "JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV",
+                    "DEC",
+                ]
+                .iter()
+                .position(|i| **i == line[8..=10])
+            {
+                data.dt = Some((year, month as u8 + 1, day, line[23..=30].to_string()));
+            } else {
+                error = "Invalid DT line".to_string();
+            }
+        }
         _ => (),
     }
-    false
+    (false, error)
 }
 
 impl DataItem {
-    fn new(data: PreDataItem) -> Result<Self, String> {
+    fn new(data: (PreDataItem, Vec<String>)) -> Result<(Self, Vec<String>), String> {
+        let (data, errors) = data;
         // println!("{}", data.id);
         let mut result = Self {
             id: data.id[5..].split(';').next().unwrap().to_string(),
@@ -71,6 +99,7 @@ impl DataItem {
             sequence: data.sq,
             genes: Vec::new(),
             regions: Vec::new(),
+            release: data.dt,
         };
         let mut current: Option<Region> = None;
         let mut is_sequence = false;
@@ -105,7 +134,7 @@ impl DataItem {
             result.add_region(region);
         }
 
-        Ok(result)
+        Ok((result, errors))
     }
 
     fn parse_ft_line(
@@ -322,6 +351,7 @@ struct PreDataItem {
     ft: Vec<String>,
     os: Option<Species>,
     sq: String,
+    dt: Option<(u16, u8, u8, String)>,
 }
 
 pub(crate) fn complement(s: String) -> String {

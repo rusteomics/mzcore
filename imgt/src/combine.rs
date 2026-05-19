@@ -5,29 +5,39 @@ use crate::{AnnotatedSequence, Gene, Germline, Germlines, Species};
 use itertools::Itertools;
 use mzcore::sequence::{Annotation, Peptidoform, Region, UnAmbiguous};
 
-use crate::imgt_gene::IMGTGene;
 use crate::structs::DataItem;
 
 use crate::structs::SingleSeq;
 
 pub(crate) fn combine(
-    data: impl Iterator<Item = Result<DataItem, String>>,
+    data: impl Iterator<Item = Result<(DataItem, Vec<String>), String>>,
 ) -> (
     HashMap<Species, Germlines>,
-    Vec<(Species, IMGTGene, String)>,
+    Vec<(Species, String, String)>,
+    Option<(u16, u8, u8, String)>,
 ) {
     let mut grouped = HashMap::new();
     let mut errors = Vec::new();
+    let mut last_release = None;
     let mut temp: Vec<(Species, SingleSeq)> = Vec::new();
 
-    for element in data.flatten() {
+    for (element, errs) in data.flatten() {
         let species = element.species;
+        errors.extend(
+            errs.into_iter()
+                .map(|err| (species, element.id.clone(), err)),
+        );
+        last_release = max_release(last_release, element.release);
         for gene in element.genes {
             match gene.clone().finish() {
                 Ok(Some(gene)) => temp.push((species, gene)),
                 Ok(None) => (), // Ignored
                 Err(err) => {
-                    errors.push((species, gene, err));
+                    errors.push((
+                        species,
+                        format!("{} {} {}", gene.allele, gene.acc, gene.location),
+                        err,
+                    ));
                 }
             }
         }
@@ -65,7 +75,25 @@ pub(crate) fn combine(
             .or_insert_with(|| Germlines::new(species))
             .insert(germline);
     }
-    (grouped, errors)
+    (grouped, errors, last_release)
+}
+
+fn max_release(
+    a: Option<(u16, u8, u8, String)>,
+    b: Option<(u16, u8, u8, String)>,
+) -> Option<(u16, u8, u8, String)> {
+    match (a, b) {
+        (Some(a), None) => Some(a),
+        (None, Some(b)) => Some(b),
+        (None, None) => None,
+        (Some(a), Some(b)) => {
+            if a.0 > b.0 || a.0 == b.0 && a.1 > b.1 || a.0 == b.0 && a.1 == b.1 && a.2 >= b.2 {
+                Some(a)
+            } else {
+                Some(b)
+            }
+        }
+    }
 }
 
 struct TemporaryGermline {

@@ -13,6 +13,7 @@ pub(crate) struct DataItem {
     pub regions: Vec<Region>,
     pub species: Species,
     pub sequence: String,
+    pub release: Option<(u16, u8, u8, String)>,
 }
 
 impl Display for DataItem {

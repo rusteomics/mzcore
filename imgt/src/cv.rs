@@ -76,25 +76,23 @@ impl CVSource for IMGT {
         let mut reader = reader.next().unwrap();
         let data = parse_dat(&mut reader);
 
-        let (grouped, errors) = crate::combine::combine(data);
+        let (grouped, errors, release) = crate::combine::combine(data);
 
         let version = CVVersion {
             hash: reader.hash(),
-            ..Default::default()
+            version: release.clone().map(|(_, _, _, r)| r),
+            last_updated: release.as_ref().map(|(y, m, d, _)| (*y, *m, *d, 0, 0)),
         };
 
         let mut cv_errors = Vec::new();
-        for (species, gene, note) in errors {
+        for (species, id, note) in errors {
             combine_error(
                 &mut cv_errors,
                 BoxedError::new(
                     CVError::ItemError,
                     "Error while parsing gene",
                     note,
-                    Context::default().lines(0, format!(
-                        "{species} {} {} {}",
-                        gene.allele, gene.acc, gene.location,
-                    )),
+                    Context::default().lines(0, format!("{species} {id}")),
                 ),
             );
         }
@@ -141,7 +139,7 @@ impl CVStructure<Germline> for HashMap<Species, Germlines> {
     }
     type IterData<'a> = Box<dyn Iterator<Item = Arc<Germline>> + 'a>;
     fn iter_data(&self) -> Self::IterData<'_> {
-        Box::new(self.iter().flat_map(|(_, germlines)| {
+        Box::new(self.values().flat_map(|germlines| {
             germlines.iter().flat_map(|(_, germlines)| {
                 germlines
                     .iter()
