@@ -7,12 +7,10 @@ use mzcore::{
     },
     system::isize::Charge,
 };
+use mzcv::term;
 use mzdata::{Param, params::Value};
 
-use crate::{
-    mzspeclib::{Attribute, AttributeValue, Attributes, ProteinDescription},
-    term,
-};
+use crate::mzspeclib::{Attribute, AttributeValue, Attributes, ProteinDescription};
 
 /// An analyte that resulted in the spectrum.
 #[derive(Clone, Debug, Eq, PartialEq)]

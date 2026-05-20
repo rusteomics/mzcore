@@ -1,6 +1,7 @@
 use std::num::NonZeroU32;
 
 use mzcore::system::MassOverCharge;
+use mzcv::term;
 use mzdata::{
     mzpeaks::{
         MZPeakSetType,
@@ -16,10 +17,9 @@ use crate::{
     fragment::Fragment,
     mzspeclib::{
         Analyte, Attribute, Attributes, Id, Interpretation,
-        get_attributes_from_spectrum_description, merge_attributes,
+        get_attributes_from_spectrum_description, merge_attributes, to_mzcv_term,
     },
     spectrum::AnnotatedPeak,
-    term,
 };
 
 /// An annotated spectrum.
@@ -136,7 +136,7 @@ impl<Spectrum: SpectrumLike> From<Spectrum> for AnnotatedSpectrum {
         let handle_param = |param: &mzdata::Param, this: &mut Self| {
             if matches!(param.value(), ValueRef::Empty) {
                 // Ignore empty params
-            } else if let Ok(term) = param.clone().try_into() {
+            } else if let Some(term) = to_mzcv_term(param) {
                 if let Some(unit) = Attribute::unit(param.unit) {
                     this.attributes
                         .push(vec![Attribute::new(term, param.value.clone()), unit]);
@@ -232,11 +232,11 @@ impl<Spectrum: SpectrumLike> From<Spectrum> for AnnotatedSpectrum {
 impl From<AnnotatedSpectrum> for MultiLayerSpectrum {
     fn from(value: AnnotatedSpectrum) -> Self {
         let sort = value.peaks.peaks.is_sorted();
-        MultiLayerSpectrum {
+        Self {
             description: value.description,
             arrays: None,
             peaks: Some(PeakSetVec::from_iter(
-                value.peaks.into_iter().map(|p| p.into()),
+                value.peaks.into_iter().map(Into::into),
                 sort,
             )),
             deconvoluted_peaks: None,

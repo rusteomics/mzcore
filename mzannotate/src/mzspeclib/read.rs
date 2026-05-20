@@ -15,8 +15,8 @@ use mzcore::{
     prelude::*,
     system::{MassOverCharge, isize::Charge},
 };
+use mzcv::{AccessionCode, curie, term};
 use mzdata::{
-    curie,
     mzpeaks::prelude::PeakCollectionMut,
     params::{ParamValue, Unit, Value},
     spectrum::{Precursor, ScanEvent, ScanWindow, SelectedIon},
@@ -28,10 +28,9 @@ use crate::{
     mzspeclib::{
         Analyte, AnalyteTarget, Attribute, AttributeParseError, AttributeSet, AttributeValue,
         EntryType, Id, Interpretation, LibraryHeader, ProteinDescription, merge_attributes,
-        populate_spectrum_description_from_attributes,
+        populate_spectrum_description_from_attributes, to_mzdata_cv,
     },
     spectrum::{AnnotatedPeak, AnnotatedSpectrum},
-    term,
 };
 
 #[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
@@ -689,10 +688,13 @@ impl<'ontologies, R: BufRead> MzSpecLibTextParser<'ontologies, R> {
             {
                 analyte.params.push(match &name.value {
                     AttributeValue::Term(term) => mzdata::params::Param {
-                        accession: Some(term.accession.accession),
+                        accession: match term.accession.accession {
+                            AccessionCode::Numeric(num) => Some(num),
+                            AccessionCode::Alphanumeric(_, _) => None,
+                        },
                         name: term.name.to_string(),
                         value: value.value.scalar().into_owned(),
-                        controlled_vocabulary: Some(term.accession.controlled_vocabulary),
+                        controlled_vocabulary: Some(to_mzdata_cv(term.accession.cv)),
                         unit: Unit::Unknown,
                     },
                     e => mzdata::params::Param {

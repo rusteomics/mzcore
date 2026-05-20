@@ -3,15 +3,10 @@ use mzcore::{
     prelude::{AminoAcid, IsAminoAcid},
     sequence::FlankingSequence,
 };
-use mzdata::{
-    curie,
-    params::{ParamValue, Value},
-};
+use mzcv::{curie, term};
+use mzdata::params::{ParamValue, Value};
 
-use crate::{
-    mzspeclib::{Attribute, AttributeValue, MzSpecLibErrorKind},
-    term,
-};
+use crate::mzspeclib::{Attribute, AttributeValue, MzSpecLibErrorKind};
 
 /// All protein level metadata
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
@@ -324,5 +319,5 @@ pub enum CleaveAgent {
     /// Named
     Name(Box<str>),
     /// With a CV term
-    Term(crate::mzspeclib::Term),
+    Term(mzcv::Term),
 }

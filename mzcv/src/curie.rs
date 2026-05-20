@@ -1,4 +1,4 @@
-use std::num::NonZeroU8;
+use std::{borrow::Cow, num::NonZeroU8, str::FromStr};
 
 // Example IDs:
 // NCIT:C25330
@@ -18,7 +18,7 @@ use std::num::NonZeroU8;
 // GNO:00000015
 
 /// Controlled vocabularies all ontobee listed controlled vocabulaires are present as well as PRIDE and RESID
-#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq, PartialOrd, Ord)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 #[repr(u16)]
 #[allow(
@@ -1171,7 +1171,7 @@ impl From<&str> for ControlledVocabulary {
     }
 }
 
-impl std::str::FromStr for ControlledVocabulary {
+impl FromStr for ControlledVocabulary {
     type Err = ();
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
@@ -1232,7 +1232,7 @@ pub enum CURIEParsingError {
     MissingNamespaceSeparator,
 }
 
-impl std::str::FromStr for Curie {
+impl FromStr for Curie {
     type Err = CURIEParsingError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
@@ -1390,7 +1390,7 @@ pub enum AccessionCodeParseError {
     Empty,
 }
 
-impl std::str::FromStr for AccessionCode {
+impl FromStr for AccessionCode {
     type Err = AccessionCodeParseError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
@@ -1425,7 +1425,71 @@ pub struct Term {
     /// The CURIE (eg MS:0000000)
     pub accession: Curie,
     /// The name
-    pub name: std::borrow::Cow<'static, str>, // Static Cow to allow to have term in match arms
+    pub name: Cow<'static, str>, // Static Cow to allow to have term in match arms
+}
+
+/// An error when parsing a term.
+#[derive(Debug)]
+pub enum TermParserError {
+    /// The CURIE is invalid
+    CURIEError(CURIEParsingError),
+    /// The pipe symbol is missing
+    MissingPipe,
+    /// An unknown CV was used
+    UnknownControlledVocabulary,
+}
+
+impl FromStr for Term {
+    type Err = TermParserError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        if let Some((curie, name)) = s.split_once('|') {
+            let curie: Curie = curie.parse().map_err(TermParserError::CURIEError)?;
+            if curie.cv == ControlledVocabulary::Unknown {
+                Err(TermParserError::UnknownControlledVocabulary)
+            } else {
+                Ok(Self::new(curie, name.to_string()))
+            }
+        } else {
+            Err(TermParserError::MissingPipe)
+        }
+    }
+}
+
+impl Term {
+    /// Create a new term, the term is not validated
+    pub const fn new(accession: Curie, name: String) -> Self {
+        Self {
+            accession,
+            name: Cow::Owned(name),
+        }
+    }
+}
+
+impl std::fmt::Display for Term {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        // Displaying a CURIE with an unknown CV crashes
+        if self.accession.cv == ControlledVocabulary::Unknown {
+            write!(f, "??:{}|{}", self.accession.accession, self.name)
+        } else {
+            write!(f, "{}|{}", self.accession, self.name)
+        }
+    }
+}
+
+impl PartialOrd for Term {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for Term {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.accession
+            .cv
+            .cmp(&other.accession.cv)
+            .then(self.accession.accession.cmp(&other.accession.accession))
+    }
 }
 
 /// Create a new term `term!(MS:1002357|PSM-level probability)`. The accession/name combination

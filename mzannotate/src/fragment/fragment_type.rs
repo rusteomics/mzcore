@@ -289,7 +289,7 @@ impl FragmentType {
                     .join(""),
             ),
             Self::Internal(_, pos1, pos2) => {
-                Some(format!("{}:{}", pos1.sequence_index, pos2.sequence_index,))
+                Some(format!("{}:{}", pos1.sequence_index, pos2.sequence_index))
             }
             Self::Precursor
             | Self::Unknown(_)

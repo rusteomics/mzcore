@@ -1,11 +1,9 @@
 use std::collections::HashMap;
 
+use mzcv::term;
 use mzdata::params::Value;
 
-use crate::{
-    mzspeclib::{Attribute, AttributeValue, Attributes, Id, merge_attributes},
-    term,
-};
+use crate::mzspeclib::{Attribute, AttributeValue, Attributes, Id, merge_attributes};
 
 /// An interpretation, this gives details on how well the analytes match to the spectrum.
 #[derive(Clone, Debug, PartialEq)]

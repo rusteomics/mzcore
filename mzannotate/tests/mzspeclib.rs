@@ -43,7 +43,7 @@ fn read_all_files() {
                                 .attributes
                                 .iter()
                                 .flatten()
-                                .filter(|a| a.name != mzannotate::term!(MS:1003254|peak attribute))
+                                .filter(|a| a.name != mzcv::term!(MS:1003254|peak attribute))
                                 .map(|a| a.name.clone()),
                         );
                         interpretation_unused_attributes.extend(
@@ -53,8 +53,8 @@ fn read_all_files() {
                                 .flat_map(|a| a.attributes.iter())
                                 .flatten()
                                 .filter(|a| {
-                                    a.name != mzannotate::term!(MS:1002252|Comet:xcorr)
-                                        && a.name != mzannotate::term!(MS:1002354|PSM-level q-value)
+                                    a.name != mzcv::term!(MS:1002252|Comet:xcorr)
+                                        && a.name != mzcv::term!(MS:1002354|PSM-level q-value)
                                 })
                                 .map(|a| a.name.clone()),
                         );

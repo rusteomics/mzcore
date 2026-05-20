@@ -1,127 +1,11 @@
 //! All code to make [`Attribute`]s and [`Term`]s
 use std::{borrow::Cow, fmt::Display, str::FromStr};
 
+use mzcv::{AccessionCode, Term, TermParserError, term};
 use mzdata::{
     Param,
-    params::{
-        CURIE, CURIEParsingError, ControlledVocabulary, ParamValue, ParamValueParseError, Unit,
-        Value,
-    },
+    params::{ParamValue, ParamValueParseError, Unit, Value},
 };
-
-/// An error when parsing a term.
-#[derive(Debug)]
-pub enum TermParserError {
-    /// The CURIE is invalid
-    CURIEError(CURIEParsingError),
-    /// The pipe symbol is missing
-    MissingPipe,
-    /// An unknown CV was used
-    UnknownControlledVocabulary,
-}
-
-/// A term, a CURIE plus its name
-#[derive(Clone, Debug, Eq, Hash, PartialEq)]
-pub struct Term {
-    /// The CURIE (e.g. MS:0000000)
-    pub accession: CURIE,
-    /// The name
-    pub name: Cow<'static, str>, // Static Cow to allow to have term in match arms
-}
-
-impl PartialOrd for Term {
-    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        Some(self.cmp(other))
-    }
-}
-
-impl Ord for Term {
-    // TODO: only does sorting on accession, might be better to also sort on CV
-    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        self.accession.accession.cmp(&other.accession.accession)
-    }
-}
-
-/// Create a new term `term!(MS:1002357|PSM-level probability)`.
-/// The accession + name combination is not validated.
-#[macro_export]
-macro_rules! term {
-    ($ns:ident:$accession:literal|$($name:tt)+) =>  {
-        $crate::mzspeclib::Term {
-            accession: mzdata::curie!($ns:$accession),
-            name: std::borrow::Cow::Borrowed(stringify!($($name)+))
-        }
-    };
-}
-
-impl FromStr for Term {
-    type Err = TermParserError;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        if let Some((curie, name)) = s.split_once('|') {
-            let curie: CURIE = curie.parse().map_err(TermParserError::CURIEError)?;
-            if curie.controlled_vocabulary == ControlledVocabulary::Unknown {
-                Err(TermParserError::UnknownControlledVocabulary)
-            } else {
-                Ok(Self::new(curie, name.to_string()))
-            }
-        } else {
-            Err(TermParserError::MissingPipe)
-        }
-    }
-}
-
-impl TryFrom<Param> for Term {
-    type Error = ();
-    fn try_from(value: Param) -> Result<Self, ()> {
-        Ok(Self {
-            accession: value.curie().ok_or(())?,
-            name: value.name.into(),
-        })
-    }
-}
-
-impl TryFrom<&Param> for Term {
-    type Error = ();
-    fn try_from(value: &Param) -> Result<Self, ()> {
-        Ok(Self {
-            accession: value.curie().ok_or(())?,
-            name: value.name.clone().into(),
-        })
-    }
-}
-
-impl Term {
-    /// Create a new term, the term is not validated
-    pub const fn new(accession: CURIE, name: String) -> Self {
-        Self {
-            accession,
-            name: Cow::Owned(name),
-        }
-    }
-
-    /// Create a [`Param`] from this term for use in mzdata.
-    pub fn into_param(self, value: Value, unit: Unit) -> Param {
-        Param {
-            name: self.name.to_string(),
-            value,
-            accession: Some(self.accession.accession),
-            controlled_vocabulary: Some(self.accession.controlled_vocabulary),
-            unit,
-        }
-    }
-}
-
-impl Display for Term {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        // Displaying a CURIE with an unknown CV crashes
-        if self.accession.controlled_vocabulary == ControlledVocabulary::Unknown {
-            write!(f, "??:{}|{}", self.accession.accession, self.name)
-        } else {
-            write!(f, "{}|{}", self.accession, self.name)
-        }
-    }
-}
 
 /// A value for an attribute
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -250,13 +134,13 @@ impl Display for AttributeParseError {
             "{}",
             match self {
                 Self::TermParserError(TermParserError::CURIEError(
-                    CURIEParsingError::AccessionParsingError(_),
+                    mzcv::CURIEParsingError::AccessionParsingError(_),
                 )) => "Accession not numeric",
                 Self::TermParserError(TermParserError::CURIEError(
-                    CURIEParsingError::MissingNamespaceSeparator,
+                    mzcv::CURIEParsingError::MissingNamespaceSeparator,
                 )) => "There is no namespace",
                 Self::TermParserError(TermParserError::CURIEError(
-                    CURIEParsingError::UnknownControlledVocabulary(_),
+                    mzcv::CURIEParsingError::UnknownControlledVocabulary,
                 )) => "The controlled vocabulary is unknown",
                 Self::TermParserError(TermParserError::MissingPipe) =>
                     "The term pipe symbol is missing, a term should be written like 'MS:1000896|normalized retention time'",
@@ -302,7 +186,7 @@ impl Attribute {
         let accession = unit.to_curie()?;
         Some(Self::new(
             term!(UO:0000000|unit),
-            Term::new(accession, name.to_string()),
+            Term::new(to_mzcv_curie(accession), name.to_string()),
         ))
     }
 
@@ -350,10 +234,83 @@ impl From<Attribute> for Param {
         Self {
             name: value.name.name.to_string(),
             value: value.value.into(),
-            accession: Some(value.name.accession.accession),
-            controlled_vocabulary: Some(value.name.accession.controlled_vocabulary),
+            accession: match value.name.accession.accession {
+                AccessionCode::Numeric(num) => Some(num),
+                AccessionCode::Alphanumeric(_, _) => None,
+            },
+            controlled_vocabulary: Some(to_mzdata_cv(value.name.accession.cv)),
             unit: Unit::Unknown,
         }
+    }
+}
+
+pub(crate) fn to_mzcv_term(param: &Param) -> Option<Term> {
+    param
+        .curie()
+        .map(|c| Term::new(to_mzcv_curie(c), param.name.clone()))
+}
+
+pub(crate) const fn to_mzcv_curie(curie: mzdata::params::CURIE) -> mzcv::Curie {
+    mzcv::Curie {
+        cv: to_mzcv_cv(curie.controlled_vocabulary),
+        accession: AccessionCode::Numeric(curie.accession),
+    }
+}
+
+pub(crate) const fn to_mzdata_curie(curie: mzcv::Curie) -> Option<mzdata::params::CURIE> {
+    match curie.accession {
+        AccessionCode::Numeric(num) => Some(mzdata::params::CURIE {
+            controlled_vocabulary: to_mzdata_cv(curie.cv),
+            accession: num,
+        }),
+        AccessionCode::Alphanumeric(_, _) => None,
+    }
+}
+
+pub(crate) const fn to_mzdata_cv(
+    cv: mzcv::ControlledVocabulary,
+) -> mzdata::params::ControlledVocabulary {
+    match cv {
+        mzcv::ControlledVocabulary::MS => mzdata::params::ControlledVocabulary::MS,
+        mzcv::ControlledVocabulary::UO => mzdata::params::ControlledVocabulary::UO,
+        mzcv::ControlledVocabulary::EFO => mzdata::params::ControlledVocabulary::EFO,
+        mzcv::ControlledVocabulary::OBI => mzdata::params::ControlledVocabulary::OBI,
+        mzcv::ControlledVocabulary::HANCESTRO => mzdata::params::ControlledVocabulary::HANCESTRO,
+        mzcv::ControlledVocabulary::BFO => mzdata::params::ControlledVocabulary::BFO,
+        mzcv::ControlledVocabulary::NCIT => mzdata::params::ControlledVocabulary::NCIT,
+        mzcv::ControlledVocabulary::BTO => mzdata::params::ControlledVocabulary::BTO,
+        mzcv::ControlledVocabulary::PRIDE => mzdata::params::ControlledVocabulary::PRIDE,
+        _ => mzdata::params::ControlledVocabulary::Unknown,
+    }
+}
+
+pub(crate) const fn to_mzcv_cv(
+    cv: mzdata::params::ControlledVocabulary,
+) -> mzcv::ControlledVocabulary {
+    match cv {
+        mzdata::params::ControlledVocabulary::MS => mzcv::ControlledVocabulary::MS,
+        mzdata::params::ControlledVocabulary::UO => mzcv::ControlledVocabulary::UO,
+        mzdata::params::ControlledVocabulary::EFO => mzcv::ControlledVocabulary::EFO,
+        mzdata::params::ControlledVocabulary::OBI => mzcv::ControlledVocabulary::OBI,
+        mzdata::params::ControlledVocabulary::HANCESTRO => mzcv::ControlledVocabulary::HANCESTRO,
+        mzdata::params::ControlledVocabulary::BFO => mzcv::ControlledVocabulary::BFO,
+        mzdata::params::ControlledVocabulary::NCIT => mzcv::ControlledVocabulary::NCIT,
+        mzdata::params::ControlledVocabulary::BTO => mzcv::ControlledVocabulary::BTO,
+        mzdata::params::ControlledVocabulary::PRIDE => mzcv::ControlledVocabulary::PRIDE,
+        _ => mzcv::ControlledVocabulary::Unknown,
+    }
+}
+
+pub(crate) fn to_param(term: &Term, value: Value, unit: Unit) -> Param {
+    Param {
+        name: term.name.to_string(),
+        value,
+        accession: match term.accession.accession {
+            AccessionCode::Numeric(num) => Some(num),
+            AccessionCode::Alphanumeric(_, _) => None,
+        },
+        controlled_vocabulary: Some(to_mzdata_cv(term.accession.cv)),
+        unit,
     }
 }
 

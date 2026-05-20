@@ -1,15 +1,15 @@
 //! Handle converting [`Attribute`]s to and from [`SpectrumDescription`]
 use std::borrow::Cow;
 
-use crate::{
-    mzspeclib::{Attribute, AttributeValue, Attributes, MzSpecLibErrorKind, Term},
-    term,
+use crate::mzspeclib::{
+    Attribute, AttributeValue, Attributes, MzSpecLibErrorKind, to_mzcv_curie, to_mzcv_cv,
+    to_mzcv_term, to_mzdata_curie, to_mzdata_cv, to_param,
 };
 
 use context_error::{BoxedError, Context, CreateError};
+use mzcv::{AccessionCode, Curie, Term, curie, term};
 use mzdata::{
-    curie,
-    params::{CURIE, ParamDescribed, ParamValue, Unit, Value},
+    params::{ParamDescribed, ParamValue, Unit, Value},
     spectrum::{IsolationWindowState, ScanPolarity, SpectrumDescription, SpectrumSummary},
 };
 
@@ -51,9 +51,9 @@ pub fn get_attributes_from_spectrum_description(
             attributes[0].push(Attribute::new(
                 term!(MS:1000044|dissociation method),
                 AttributeValue::Term(Term {
-                    accession: CURIE {
-                        controlled_vocabulary: dissociation.controlled_vocabulary(),
-                        accession: dissociation.accession(),
+                    accession: Curie {
+                        cv: to_mzcv_cv(dissociation.controlled_vocabulary()),
+                        accession: AccessionCode::Numeric(dissociation.accession()),
                     },
                     name: Cow::Borrowed(dissociation.name()),
                 }),
@@ -210,7 +210,7 @@ pub fn get_attributes_from_spectrum_description(
                 .flat_map(|p| p.params.iter().flat_map(|p| p.iter())),
         )
     {
-        if let Ok(term) = param.try_into() {
+        if let Some(term) = to_mzcv_term(param) {
             if let Some(curie) = param.unit.to_curie() {
                 attributes.push(vec![
                     Attribute {
@@ -220,7 +220,7 @@ pub fn get_attributes_from_spectrum_description(
                     Attribute {
                         name: term!(UO:0000000|unit),
                         value: AttributeValue::Term(Term {
-                            accession: curie,
+                            accession: to_mzcv_curie(curie),
                             name: Cow::Borrowed(param.unit.for_param().1),
                         }),
                     },
@@ -244,7 +244,7 @@ pub fn get_attributes_from_spectrum_description(
                 Attribute {
                     name: term!(UO:0000000|unit),
                     value: AttributeValue::Term(Term {
-                        accession: curie,
+                        accession: to_mzcv_curie(curie),
                         name: Cow::Borrowed(param.unit.for_param().1),
                     }),
                 },
@@ -286,7 +286,7 @@ pub(crate) fn populate_spectrum_description_from_attributes<'a>(
                 .iter()
                 .find(|a| a.0.name.accession == curie!(UO:0000000))
             {
-                Some(Unit::from_curie(&term.accession))
+                to_mzdata_curie(term.accession).map(|c| Unit::from_curie(&c))
             } else {
                 None
             };
@@ -342,10 +342,11 @@ pub(crate) fn populate_spectrum_description_from_attributes<'a>(
                 if description.acquisition.scans[0].start_time == 0.0 {
                     description.acquisition.scans[0].start_time = rt;
                 } else {
-                    description.acquisition.scans[0].add_param(
-                        term!(MS:1000896|normalized retention time)
-                            .into_param(Value::Float(rt), Unit::Second),
-                    );
+                    description.acquisition.scans[0].add_param(to_param(
+                        &term!(MS:1000896|normalized retention time),
+                        Value::Float(rt),
+                        Unit::Second,
+                    ));
                 }
             } else if let Some((attr, context)) = group.iter().find(|a| {
                 a.0.name.accession == curie!(MS:1000045) || a.0.name.accession == curie!(MS:1000509)
@@ -367,12 +368,7 @@ pub(crate) fn populate_spectrum_description_from_attributes<'a>(
                     .iter()
                     .find(|a| a.0.name.accession != curie!(UO:0000000))
                 {
-                    description.add_param(
-                        other
-                            .name
-                            .clone()
-                            .into_param(other.value.clone().into(), unit),
-                    );
+                    description.add_param(to_param(&other.name, other.value.clone().into(), unit));
                 } else {
                     // Two units as a single group is not a sensible thing to have so just ignore
                 }
@@ -386,10 +382,13 @@ pub(crate) fn populate_spectrum_description_from_attributes<'a>(
             {
                 description.add_param(match &name.value {
                     AttributeValue::Term(term) => mzdata::params::Param {
-                        accession: Some(term.accession.accession),
+                        accession: match value.name.accession.accession {
+                            AccessionCode::Numeric(num) => Some(num),
+                            AccessionCode::Alphanumeric(_, _) => None,
+                        },
                         name: term.name.to_string(),
                         value: value.value.scalar().into_owned(),
-                        controlled_vocabulary: Some(term.accession.controlled_vocabulary),
+                        controlled_vocabulary: Some(to_mzdata_cv(term.accession.cv)),
                         unit: Unit::Unknown,
                     },
                     e => mzdata::params::Param {
@@ -557,22 +556,21 @@ pub(crate) fn populate_spectrum_description_from_attributes<'a>(
                             })?);
                     }
                     curie!(MS:1002476) => {
-                        description.acquisition.scans[0].add_param(term!(MS:1002476|ion mobility drift time).into_param(attr.value.scalar().into_owned(), Unit::Unknown));
+                        description.acquisition.scans[0].add_param(to_param(&term!(MS:1002476|ion mobility drift time),attr.value.scalar().into_owned(), Unit::Unknown));
                     }
                     curie!(MS:1002815) => {
-                        description.acquisition.scans[0].add_param(term!(MS:1002815|inverse reduced ion mobility drift time).into_param(attr.value.scalar().into_owned(), Unit::Unknown));
+                        description.acquisition.scans[0].add_param(to_param(&term!(MS:1002815|inverse reduced ion mobility drift time),attr.value.scalar().into_owned(), Unit::Unknown));
                     }
                     curie!(MS:1001581) => {
-                        description.acquisition.scans[0].add_param(term!(MS:1001581|FAIMS compensation voltage).into_param(attr.value.scalar().into_owned(), Unit::Unknown));
+                        description.acquisition.scans[0].add_param(to_param(&term!(MS:1001581|FAIMS compensation voltage),attr.value.scalar().into_owned(), Unit::Unknown));
                     }
                     curie!(MS:1003371) => {
-                        description.acquisition.scans[0].add_param(term!(MS:1003371|SELEXION compensation voltage).into_param(attr.value.scalar().into_owned(), Unit::Unknown));
+                        description.acquisition.scans[0].add_param(to_param(&term!(MS:1003371|SELEXION compensation voltage),attr.value.scalar().into_owned(), Unit::Unknown));
                     }
                     curie!(MS:1003063) => {
                         description.add_param(
-                            attr.name
-                                .clone()
-                                .into_param(attr.value.clone().into(), Unit::Unknown),
+                            to_param(&attr.name
+                                .clone(),attr.value.clone().into(), Unit::Unknown),
                         );
                     }
                     curie!(MS:1003061) => description.id = attr.value.to_string(),
@@ -596,17 +594,17 @@ pub(crate) fn populate_spectrum_description_from_attributes<'a>(
                             })?;
                     }
                     curie!(MS:1000512) => description.acquisition.scans[0].add_param(
-                        term!(MS:1000512|filter string)
-                            .into_param(attr.value.clone().into(), Unit::Unknown),
+                        to_param(&term!(MS:1000512|filter string)
+                            ,attr.value.clone().into(), Unit::Unknown),
                     ),
                     curie!(MS:1000008) => {
                         if let AttributeValue::Term(term) = attr.value.clone() {
                             description
-                                .add_param(term.into_param(Value::Empty, Unit::Unknown));
+                                .add_param(to_param(&term,Value::Empty, Unit::Unknown));
                         } else {
                             description.add_param(
-                                term!(MS:1000008|ionization type)
-                                    .into_param(attr.value.clone().into(), Unit::Unknown),
+                                to_param(&term!(MS:1000008|ionization type)
+                                    ,attr.value.clone().into(), Unit::Unknown),
                             );
                         }
                     }
@@ -634,11 +632,11 @@ pub(crate) fn populate_spectrum_description_from_attributes<'a>(
                         if let AttributeValue::Term(term) = attr.value.clone() {
                             description.precursor[0]
                                 .activation
-                                .add_param(term.into_param(Value::Empty, Unit::Dimensionless));
+                                .add_param(to_param(&term,Value::Empty, Unit::Dimensionless));
                         } else {
                             description.precursor[0].activation.add_param(
-                                term!(MS:1000044|dissociation method)
-                                    .into_param(attr.value.clone().into(), Unit::Dimensionless),
+                                to_param(&term!(MS:1000044|dissociation method)
+                                    ,attr.value.clone().into(), Unit::Dimensionless),
                             );
                         }
                     }
@@ -663,10 +661,10 @@ pub(crate) fn populate_spectrum_description_from_attributes<'a>(
                         })?;
                     }
                     curie!(MS:1003086) => {
-                        description.precursor[0].ions[0].add_param(attr.name.clone().into_param(attr.value.clone().into(), Unit::Unknown));
+                        description.precursor[0].ions[0].add_param(to_param(&attr.name, attr.value.clone().into(), Unit::Unknown));
                     }
                     curie!(MS:1000028) => { // detector resolution
-                        description.acquisition.scans[0].add_param(attr.name.clone().into_param(attr.value.clone().into(), Unit::Unknown));
+                        description.acquisition.scans[0].add_param(to_param(&attr.name, attr.value.clone().into(), Unit::Unknown));
                     }
                     | curie!(MS:1000285) // TIC
                     | curie!(MS:1000505) // Base peak intensity

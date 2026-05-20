@@ -103,7 +103,7 @@ impl ToMzPAF for Fragment {
                         }
                     )?;
                 } else {
-                    write!(w, "?",)?;
+                    write!(w, "?")?;
                 }
             }
             FragmentType::v(pos, aa, distance, variant) => {
@@ -171,7 +171,7 @@ impl ToMzPAF for Fragment {
                         }
                     )?;
                 } else {
-                    write!(w, "?",)?;
+                    write!(w, "?")?;
                 }
             }
             FragmentType::Precursor => write!(w, "p")?,
@@ -189,11 +189,11 @@ impl ToMzPAF for Fragment {
             )?,
             FragmentType::Unknown(num) => {
                 if let Some(num) = num {
-                    write!(w, "?{num}",)?;
+                    write!(w, "?{num}")?;
                 } else if let Some(formula) = self.base_formula() {
-                    write!(w, "f{{{formula}}}",)?;
+                    write!(w, "f{{{formula}}}")?;
                 } else {
-                    write!(w, "?",)?;
+                    write!(w, "?")?;
                 }
             }
             FragmentType::Diagnostic(_)
@@ -207,7 +207,7 @@ impl ToMzPAF for Fragment {
                         write!(w, "{:+}", formula.additional_mass())?;
                     }
                 } else {
-                    write!(w, "?",)?;
+                    write!(w, "?")?;
                 }
             }
             FragmentType::Internal(Some(name), a, b) => write!(

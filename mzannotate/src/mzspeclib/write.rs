@@ -4,12 +4,12 @@ use std::{
     num::NonZeroU32,
 };
 
+use mzcv::term;
 use mzdata::{mzpeaks::peak_set::PeakSetIter, params::Value, prelude::*};
 
 use crate::{
     mzspeclib::{Attribute, AttributeValue, Attributes, EntryType, Id, LibraryHeader},
     prelude::ToMzPAF,
-    term,
 };
 
 use itertools::Itertools;
@@ -183,7 +183,7 @@ impl<Writer: Write> MzSpecLibTextWriter<Writer, HeaderWritten> {
                 }
             }
             for (key, attributes) in members {
-                writeln!(&mut self.writer, "<InterpretationMember={key}>",)?;
+                writeln!(&mut self.writer, "<InterpretationMember={key}>")?;
                 for (id, group) in attributes.iter().enumerate() {
                     for attr in group {
                         if let Some(id) = id.checked_sub(1) {
