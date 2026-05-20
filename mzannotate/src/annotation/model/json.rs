@@ -22,7 +22,10 @@ impl ParseJson for FragmentationModel {
     fn from_json_value(value: Value) -> Result<Self, BoxedError<'static, BasicKind>> {
         if let Value::Object(mut map) = value {
             let context = |map: &serde_json::Map<String, Value>| {
-                Context::default().lines(0, map.iter().map(|(k, v)| format!("\"{k}\": {v}")).join(","))
+                Context::default().lines(
+                    0,
+                    map.iter().map(|(k, v)| format!("\"{k}\": {v}")).join(","),
+                )
             };
             Ok(Self {
                 a: PrimaryIonSeries::from_json_value(map.remove("a").ok_or_else(|| {
@@ -152,7 +155,10 @@ impl ParseJson for PrimaryIonSeries {
     fn from_json_value(value: Value) -> Result<Self, BoxedError<'static, BasicKind>> {
         if let Value::Object(mut map) = value {
             let context = |map: &serde_json::Map<String, Value>| {
-                Context::default().lines(0, map.iter().map(|(k, v)| format!("\"{k}\": {v}")).join(","))
+                Context::default().lines(
+                    0,
+                    map.iter().map(|(k, v)| format!("\"{k}\": {v}")).join(","),
+                )
             };
             Ok(Self {
                 location: Location::from_json_value(map.remove("location").ok_or_else(|| {
@@ -241,7 +247,10 @@ impl ParseJson for SatelliteIonSeries {
     fn from_json_value(value: Value) -> Result<Self, BoxedError<'static, BasicKind>> {
         if let Value::Object(mut map) = value {
             let context = |map: &serde_json::Map<String, Value>| {
-                Context::default().lines(0, map.iter().map(|(k, v)| format!("\"{k}\": {v}")).join(","))
+                Context::default().lines(
+                    0,
+                    map.iter().map(|(k, v)| format!("\"{k}\": {v}")).join(","),
+                )
             };
             Ok(Self {
                 location: SatelliteLocation::from_json_value(map.remove("location").ok_or_else(
@@ -320,7 +329,10 @@ impl ParseJson for GlycanModel {
     fn from_json_value(value: Value) -> Result<Self, BoxedError<'static, BasicKind>> {
         if let Value::Object(mut map) = value {
             let context = |map: &serde_json::Map<String, Value>| {
-                Context::default().lines(0, map.iter().map(|(k, v)| format!("\"{k}\": {v}")).join(","))
+                Context::default().lines(
+                    0,
+                    map.iter().map(|(k, v)| format!("\"{k}\": {v}")).join(","),
+                )
             };
             Ok(Self {
                 allow_structural: bool::from_json_value(

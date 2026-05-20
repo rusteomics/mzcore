@@ -1053,7 +1053,7 @@ enum BackBone {
 }
 
 /// The carbon descriptors extended with the options in: https://pubs.acs.org/doi/suppl/10.1021/acs.jcim.6b00650/suppl_file/ci6b00650_si_001.pdf section 2.8.
-#[derive(Debug, Copy, Clone)]
+#[derive(Clone, Copy, Debug)]
 enum Carbon {
     /// 'd' deoxy `H-C-H`
     Methylene,
@@ -1144,7 +1144,7 @@ impl TryFrom<u8> for Carbon {
     }
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Clone, Copy, Debug)]
 #[allow(non_camel_case_types)]
 enum TerminalCarbon {
     /// 'm'
@@ -1251,7 +1251,7 @@ impl TryFrom<u8> for TerminalCarbon {
     }
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Clone, Copy, Debug)]
 enum AnomericSymbol {
     /// 'a'
     Alpha,
@@ -1288,21 +1288,21 @@ struct Mod {
     modification: Vec<MAPSymbol>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Clone, Debug)]
 enum LIPOption {
     Known(LIP),
     Statistic(bool, Probability, LIP),
     Alternative(Vec<LIP>),
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Clone, Copy, Debug)]
 struct LIP {
     position: Option<u8>,
     direction: Direction,
     star_index: u8,
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Clone, Copy, Debug)]
 enum Direction {
     /// 'u'
     Upside,
@@ -1348,7 +1348,7 @@ impl TryFrom<u8> for Direction {
     }
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Clone, Copy, Debug)]
 enum MAPSymbol {
     Element(Element),
     /// '*' or '*n'
@@ -1366,7 +1366,7 @@ enum MAPSymbol {
     AromaticEnd,
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Clone, Copy, Debug)]
 enum Chirality {
     R,
     S,
@@ -1388,7 +1388,7 @@ struct LIN {
     modification: Vec<MAPSymbol>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Clone, Debug)]
 enum GLIPOption {
     Known(GLIP),
     Statistic(bool, Probability, GLIP),
@@ -1396,7 +1396,7 @@ enum GLIPOption {
     RESAlternative(bool, Vec<GLIP>),
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Clone, Copy, Debug)]
 struct GLIP {
     /// Encoded using base 52
     res_index: u8,
@@ -1406,13 +1406,13 @@ struct GLIP {
     star_index: u8,
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Clone, Copy, Debug)]
 enum Probability {
     Single(Option<f32>),
     Range(Option<f32>, Option<f32>),
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Clone, Copy, Debug)]
 enum Repeat {
     Single(Option<u8>),
     /// Max, min

@@ -241,7 +241,7 @@ impl<W: Write> MzTabWriter<W, Initial> {
 }
 
 /// Define the name for an optional column in an mzTab file
-#[derive(Debug, Clone, Eq, PartialEq, Hash)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub enum MzTabOptionalColumnName {
     /// A term from a CV
     Term(Term),
@@ -276,7 +276,7 @@ impl Display for MzTabOptionalColumnName {
 }
 
 /// An object identifier for an mzTab optional column
-#[derive(Debug, Copy, Clone, Eq, PartialEq, PartialOrd, Ord, Hash)]
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub enum MzTabObjectIdentifier {
     /// An assay, with the assay id
     Assay(usize),

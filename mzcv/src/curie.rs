@@ -18,7 +18,7 @@ use std::{borrow::Cow, num::NonZeroU8, str::FromStr};
 // GNO:00000015
 
 /// Controlled vocabularies all ontobee listed controlled vocabulaires are present as well as PRIDE and RESID
-#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq, PartialOrd, Ord)]
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 #[repr(u16)]
 #[allow(
