@@ -200,6 +200,7 @@ impl<W: Write> MzTabWriter<W, Initial> {
             writeln!(self.writer, "MTD\tdescription\t{}", metadata.description)?;
         }
         for (i, terms) in metadata.sample_processing.iter().enumerate() {
+            let i = i + 1;
             writeln!(
                 self.writer,
                 "MTD\tsample_processing[{i}]\t{}",
@@ -207,6 +208,7 @@ impl<W: Write> MzTabWriter<W, Initial> {
             )?;
         }
         for (i, instrument) in metadata.instruments.iter().enumerate() {
+            let i = i + 1;
             writeln!(
                 self.writer,
                 "MTD\tinstrument[{i}]-name\t{}",
@@ -218,6 +220,7 @@ impl<W: Write> MzTabWriter<W, Initial> {
                 instrument.source
             )?;
             for (j, analyser) in instrument.analyser.iter().enumerate() {
+                let j = j + 1;
                 writeln!(
                     self.writer,
                     "MTD\tinstrument[{i}]-analyzer[{j}]\t{analyser}",
@@ -230,8 +233,10 @@ impl<W: Write> MzTabWriter<W, Initial> {
             )?;
         }
         for (i, software) in metadata.software.iter().enumerate() {
+            let i = i + 1;
             writeln!(self.writer, "MTD\tsoftware[{i}]\t{}", software.name)?;
             for (j, setting) in software.setting.iter().enumerate() {
+                let j = j + 1;
                 writeln!(self.writer, "MTD\tsoftware[{i}]-setting[{j}]\t{setting}")?;
             }
         }
@@ -243,9 +248,11 @@ impl<W: Write> MzTabWriter<W, Initial> {
             )?;
         }
         for (i, publication) in metadata.publication.iter().enumerate() {
+            let i = i + 1;
             writeln!(self.writer, "MTD\tpublication[{i}]\t{publication}")?;
         }
         for (i, contact) in metadata.contact.iter().enumerate() {
+            let i = i + 1;
             if !contact.name.is_empty() {
                 writeln!(self.writer, "MTD\tcontact[{i}]-name\t{}", contact.name)?;
             }
@@ -318,34 +325,42 @@ impl<W: Write> MzTabWriter<W, Initial> {
             )?;
         }
         for (i, sample) in metadata.sample.iter().enumerate() {
+            let i = i + 1;
             writeln!(
                 self.writer,
                 "MTD\tsample[{i}]-description\t{}",
                 sample.description
             )?;
             for (j, species) in sample.species.iter().enumerate() {
+                let j = j + 1;
                 writeln!(self.writer, "MTD\tsample[{i}]-species[{j}]\t{species}")?;
             }
             for (j, tissue) in sample.tissue.iter().enumerate() {
+                let j = j + 1;
                 writeln!(self.writer, "MTD\tsample[{i}]-tissue[{j}]\t{tissue}")?;
             }
             for (j, cell_type) in sample.cell_type.iter().enumerate() {
+                let j = j + 1;
                 writeln!(self.writer, "MTD\tsample[{i}]-cell_type[{j}]\t{cell_type}")?;
             }
             for (j, disease) in sample.disease.iter().enumerate() {
+                let j = j + 1;
                 writeln!(self.writer, "MTD\tsample[{i}]-disease[{j}]\t{disease}")?;
             }
             for (j, custom) in sample.custom.iter().enumerate() {
+                let j = j + 1;
                 writeln!(self.writer, "MTD\tsample[{i}]-custom[{j}]\t{custom}")?;
             }
         }
         for (i, assay) in metadata.assay.iter().enumerate() {
+            let i = i + 1;
             writeln!(
                 self.writer,
                 "MTD\tassay[{i}]-quantification_reagent\t{}",
                 assay.quantification_reagent
             )?;
             for (j, m) in assay.quantification_mod.iter().enumerate() {
+                let j = j + 1;
                 write_mod(
                     &mut self.writer,
                     &format!("MTD\tassay[{i}]-quantification_mod[{j}]"),
@@ -360,6 +375,7 @@ impl<W: Write> MzTabWriter<W, Initial> {
             }
         }
         for (i, study_variable) in metadata.study_variable.iter().enumerate() {
+            let i = i + 1;
             writeln!(
                 self.writer,
                 "MTD\tstudy_variable[{i}]-description\t{}",
@@ -389,6 +405,7 @@ impl<W: Write> MzTabWriter<W, Initial> {
             }
         }
         for (i, cv) in metadata.cv.iter().enumerate() {
+            let i = i + 1;
             if !cv.label.is_empty() {
                 writeln!(self.writer, "MTD\tcv[{i}]-label\t{}", cv.label)?;
             }
@@ -413,6 +430,7 @@ impl<W: Write> MzTabWriter<W, Initial> {
             writeln!(self.writer, "MTD\tcolunit-psm\topt_{id}_{name}={value}")?;
         }
         for (i, custom) in metadata.custom.iter().enumerate() {
+            let i = i + 1;
             writeln!(self.writer, "MTD\tcustom[{i}]\t{custom}")?;
         }
         writeln!(self.writer)?;
@@ -479,9 +497,9 @@ pub struct MzTabMetadata {
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct MzTabParam {
     /// The term
-    term: Term,
+    pub term: Term,
     /// The value
-    value: String,
+    pub value: String,
 }
 
 impl From<Term> for MzTabParam {
@@ -516,8 +534,8 @@ pub struct MzTabCV {
     pub url: String,
 }
 
-impl<T: CVSource> From<CVIndex<T>> for MzTabCV {
-    fn from(value: CVIndex<T>) -> Self {
+impl<T: CVSource> From<&CVIndex<T>> for MzTabCV {
+    fn from(value: &CVIndex<T>) -> Self {
         Self {
             label: T::cv_label().to_string(),
             full_name: T::cv_name().to_string(),
