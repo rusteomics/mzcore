@@ -28,7 +28,6 @@ impl CVSource for Custom {
 
     type Data = SimpleModificationInner;
     type Structure = Vec<SimpleModification>;
-
     fn cv_name() -> &'static str {
         "CUSTOM"
     }

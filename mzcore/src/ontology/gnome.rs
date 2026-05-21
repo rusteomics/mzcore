@@ -29,6 +29,11 @@ pub struct Gnome {}
 impl CVSource for Gnome {
     type Data = SimpleModificationInner;
     type Structure = Vec<SimpleModification>;
+
+    fn cv_label() -> &'static str {
+        "GNO"
+    }
+
     fn cv_name() -> &'static str {
         "GNOme"
     }

@@ -65,6 +65,10 @@ impl CVData for SimpleModificationInner {
 impl CVSource for PsiMod {
     type Data = SimpleModificationInner;
     type Structure = Vec<SimpleModification>;
+    fn cv_label() -> &'static str {
+        "MOD"
+    }
+
     fn cv_name() -> &'static str {
         "PSI-MOD"
     }

@@ -26,9 +26,13 @@ pub trait CVSource {
     type Data: CVData + 'static;
     /// The type of the main data structure to keep all data items (used to build any kind of hierarchy necessary)
     type Structure: CVStructure<Self::Data> + Encode + Decode<()>;
+    /// The label of the CV, the identifier that is used at the start of CURIEs. Defaults to the name.
+    fn cv_label() -> &'static str {
+        Self::cv_name()
+    }
     /// The name of the CV, used to create the paths to store intermediate files and caches so has to be valid in that context
     fn cv_name() -> &'static str;
-    /// The source files for the
+    /// The source files for the CV
     fn files() -> &'static [CVFile];
     /// The static data of this CV
     fn static_data() -> Option<(CVVersion, Self::Structure)>;

@@ -34,6 +34,7 @@ impl CVData for Germline {
 impl CVSource for IMGT {
     type Data = Germline;
     type Structure = HashMap<Species, Germlines>;
+
     fn cv_name() -> &'static str {
         "IMGT"
     }
