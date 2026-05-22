@@ -111,7 +111,7 @@ pub enum LinkerLength {
     #[default]
     Unknown,
     /// A set of possible lengths
-    Discreet(Vec<OrderedFloat<f64>>),
+    Discrete(Vec<OrderedFloat<f64>>),
     /// An inclusive range
     InclusiveRange(OrderedFloat<f64>, OrderedFloat<f64>),
 }
@@ -120,7 +120,7 @@ impl Space for LinkerLength {
     fn space(&self) -> UsedSpace {
         match self {
             Self::Unknown => UsedSpace::default(),
-            Self::Discreet(d) => d.space(),
+            Self::Discrete(d) => d.space(),
             Self::InclusiveRange(s, e) => s.space() + e.space(),
         }
         .set_total::<Self>()
@@ -712,7 +712,7 @@ impl ParseJson for LinkerLength {
     fn from_json_value(value: Value) -> Result<Self, BoxedError<'static, BasicKind>> {
         match value {
             Value::Null => Ok(Self::Unknown),
-            Value::Number(ref n) => Ok(Self::Discreet(vec![
+            Value::Number(ref n) => Ok(Self::Discrete(vec![
                 n.as_f64()
                     .ok_or_else(|| {
                         BoxedError::new(

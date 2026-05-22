@@ -104,6 +104,7 @@ impl KnownFileFormat {
     /// Get the best term from the MS ontology to describe this file format
     pub const fn term(self) -> Option<Term> {
         match self {
+            #[cfg(feature = "mzannotate")]
             Self::AnnotatedSpectrum => None,
             Self::Fasta => Some(term!(MS:1001348|FASTA format)),
             Self::BasicCSV(_) => None,

@@ -121,7 +121,7 @@ impl CVSource for XlMod {
                             stack.extend(obj.relationship.clone());
 
                             while let Some((ty, id, _, _)) = stack.pop() {
-                                if ty == RelationType::IsA && let Some(obj) = obo.objects.iter().find(|o| o.id == id) {
+                                if (ty == RelationType::IsA || ty == RelationType::Other("has_reactive_group".into())) && let Some(obj) = obo.objects.iter().find(|o| o.id == id) {
                                     combine_errors(
                                         &mut errors,
                                         parse_property_values(
@@ -325,10 +325,10 @@ fn parse_property_values(
                         0.0
                     };
                     match &mut properties.length {
-                        LinkerLength::Discreet(options) => {
+                        LinkerLength::Discrete(options) => {
                             options.push(length.into());
                         }
-                        l => *l = LinkerLength::Discreet(vec![length.into()]),
+                        l => *l = LinkerLength::Discrete(vec![length.into()]),
                     }
                 }
             }
