@@ -683,10 +683,10 @@ impl Display for MzTabObjectIdentifier {
 }
 
 /// An optional column that contains the information needed to create the column name and the write the values.
-pub type MzTabOptionalColumn<P, W> = (
+pub type MzTabOptionalColumn<'a, P, W> = (
     MzTabOptionalColumnName,
     MzTabObjectIdentifier,
-    Box<dyn Fn(&P, &mut W) -> Result<(), std::io::Error>>,
+    Box<dyn Fn(&P, &mut W) -> Result<(), std::io::Error> + 'a>,
 );
 
 impl<W: Write, State: CanWriteProteins> MzTabWriter<W, State> {

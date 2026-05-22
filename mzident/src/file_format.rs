@@ -5,6 +5,7 @@ use mzcore::{
     ontology::Ontologies,
     sequence::{Linked, SemiAmbiguous, SimpleLinear},
 };
+use mzcv::{Term, term};
 use serde::{Deserialize, Serialize};
 
 use crate::*;
@@ -97,6 +98,40 @@ impl KnownFileFormat {
             Self::Sage(version) => Some(version.to_string()),
             Self::MSFragger(version) => Some(version.to_string()),
             Self::SpectrumSequenceList(version) => Some(version.to_string()),
+        }
+    }
+
+    /// Get the best term from the MS ontology to describe this file format
+    pub const fn term(self) -> Option<Term> {
+        match self {
+            Self::AnnotatedSpectrum => None,
+            Self::Fasta => Some(term!(MS:1001348|FASTA format)),
+            Self::BasicCSV(_) => None,
+            Self::DeepNovoFamily(_) => None,
+            Self::InstaNovo(InstaNovoVersion::V1_0_0) => Some(term!(MS:1003612|InstaNovo)),
+            Self::InstaNovo(InstaNovoVersion::PlusV1_1_4) => Some(term!(MS:1003613|InstaNovo+)),
+            Self::MaxQuant(_) => Some(term!(MS:1001583|MaxQuant)),
+            Self::MetaMorpheus(_) => Some(term!(MS:1002826|MetaMorpheus)),
+            Self::MzTab => Some(term!(MS:1002601|mzTab)),
+            Self::NovoB(_) => None,
+            Self::Novor(_) => Some(term!(MS:1002984|Novor)),
+            Self::Opair(_) => None,
+            Self::Peaks(_) => Some(term!(MS:1001946|PEAKS Studio)),
+            Self::PepNet(_) => None,
+            Self::PiHelixNovo(_) => None,
+            Self::PiPrimeNovo(_) => None,
+            Self::PLGS(_) => None,
+            Self::PLink(_) => Some(term!(MS:1003432|pLink2)),
+            Self::PowerNovo(_) => None,
+            Self::Proteoscape(_) => None,
+            Self::PUniFind(_) => None,
+            Self::Sage(_) => None,
+            Self::MSFragger(MSFraggerVersion::V4_2) => Some(term!(MS:1003014|MSFragger)),
+            Self::MSFragger(MSFraggerVersion::Philosopher) => Some(term!(MS:1003018|Philosopher)),
+            Self::MSFragger(MSFraggerVersion::FragPipeV20Or21 | MSFraggerVersion::FragPipeV22) => {
+                Some(term!(MS:1003429|FragPipe))
+            }
+            Self::SpectrumSequenceList(_) => None,
         }
     }
 }
