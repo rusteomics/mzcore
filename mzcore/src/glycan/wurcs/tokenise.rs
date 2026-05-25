@@ -5,8 +5,8 @@ use context_error::{BasicKind, BoxedError, Context, CreateError};
 
 use crate::{
     chemistry::ELEMENT_PARSE_LIST,
+    glycan::wurcs::structs::*,
     helper_functions::{RangeExtension, explain_number_error, next_number},
-    prelude::Element,
 };
 
 pub fn tokenise_wurcs<'a>(
@@ -1032,185 +1032,6 @@ fn parse_repeat<'a>(
     )
 }
 
-#[derive(Debug)]
-pub struct Wurcs {
-    residues: Vec<Residue>,
-    sequence: Vec<u8>,
-    linkage: Vec<Linkage>,
-}
-
-#[derive(Debug)]
-struct Residue {
-    backbone: BackBone,
-    anomeric: Option<(Option<u8>, AnomericSymbol)>,
-    mods: Vec<Mod>,
-}
-
-#[derive(Debug)]
-enum BackBone {
-    Defined(TerminalCarbon, Vec<Carbon>, TerminalCarbon),
-    Repeating(Option<TerminalCarbon>, Vec<Carbon>, Option<TerminalCarbon>),
-}
-
-/// The carbon descriptors extended with the options in: https://pubs.acs.org/doi/suppl/10.1021/acs.jcim.6b00650/suppl_file/ci6b00650_si_001.pdf section 2.8.
-#[derive(Clone, Copy, Debug)]
-enum Carbon {
-    /// 'd' deoxy `H-C-H`
-    Methylene,
-    /// 'C' `X-C-X`
-    Dual,
-    /// '1' `X-C-H`
-    HydroxyLeft,
-    /// '2' `H-C-X`
-    HydroxyRight,
-    /// '3' `C(X)(H)`
-    HydroxyOpposite,
-    /// '4' `C(H)(X)`
-    HydroxySame,
-    /// 'x' one of 1 or 2
-    HydroxyUnknown,
-    /// '5' `X-C-Y`
-    DualLeft,
-    /// '6' `Y-C-X`
-    DualRight,
-    /// '7' `C(X)(Y)`
-    DualOpposite,
-    /// '8' `C(Y)(X)`
-    DualSame,
-    /// 'X' one of 5 or 6
-    DualUnknown,
-    /// 'O' `C=O`
-    Ketone,
-    /// `e`
-    DoubleHydroxyEntgegen,
-    /// `z`
-    DoubleHydroxyZusammen,
-    /// `n`
-    DoubleHydroxyNoIsomer,
-    /// `f`
-    DoubleHydroxyUnknown,
-    /// `E`
-    DoubleEntgegen,
-    /// `Z`
-    DoubleZusammen,
-    /// `N`
-    DoubleNoIsomer,
-    /// `F`
-    DoubleUnknown,
-    /// `K`
-    DoubleBonded,
-    /// `T`
-    TripleBonded,
-    /// 'a' anomeric
-    Hemiketal,
-    /// 'U'
-    KetoneOrHemiketal,
-    /// 'Q' can be any of the other carbon descriptors
-    Unknown,
-}
-
-impl TryFrom<u8> for Carbon {
-    type Error = ();
-    fn try_from(value: u8) -> Result<Self, Self::Error> {
-        match value {
-            b'd' => Ok(Self::Methylene),
-            b'C' => Ok(Self::Dual),
-            b'1' => Ok(Self::HydroxyLeft),
-            b'2' => Ok(Self::HydroxyRight),
-            b'3' => Ok(Self::HydroxyOpposite),
-            b'4' => Ok(Self::HydroxySame),
-            b'x' => Ok(Self::HydroxyUnknown),
-            b'5' => Ok(Self::DualLeft),
-            b'6' => Ok(Self::DualRight),
-            b'7' => Ok(Self::DualOpposite),
-            b'8' => Ok(Self::DualSame),
-            b'X' => Ok(Self::DualUnknown),
-            b'O' => Ok(Self::Ketone),
-            b'e' => Ok(Self::DoubleHydroxyEntgegen),
-            b'z' => Ok(Self::DoubleHydroxyZusammen),
-            b'n' => Ok(Self::DoubleHydroxyNoIsomer),
-            b'f' => Ok(Self::DoubleHydroxyUnknown),
-            b'E' => Ok(Self::DoubleEntgegen),
-            b'Z' => Ok(Self::DoubleZusammen),
-            b'N' => Ok(Self::DoubleNoIsomer),
-            b'F' => Ok(Self::DoubleUnknown),
-            b'K' => Ok(Self::DoubleBonded),
-            b'T' => Ok(Self::TripleBonded),
-            b'a' => Ok(Self::Hemiketal),
-            b'U' => Ok(Self::KetoneOrHemiketal),
-            b'Q' => Ok(Self::Unknown),
-            _ => Err(()),
-        }
-    }
-}
-
-#[derive(Clone, Copy, Debug)]
-#[allow(non_camel_case_types)]
-enum TerminalCarbon {
-    /// 'm'
-    CHHH,
-    /// 'M'
-    CXXX,
-    /// 'h'
-    CHHX,
-    /// 'c'
-    CXXH,
-    /// 'C'
-    CXXY,
-    /// '1'
-    CXYH,
-    /// '2'
-    CYXH,
-    /// '3'
-    CXYH_opposite,
-    /// '4'
-    CYXH_same,
-    /// 'x'
-    CXYH_unknown,
-    /// '5'
-    CXYZ,
-    /// '6'
-    CYXZ,
-    /// '7'
-    CXYZ_opposite,
-    /// '8'
-    CYXZ_same,
-    /// 'X'
-    CXYZ_unknown,
-    /// 'o' -C=XH
-    CXH,
-    /// 'A' -C=XY
-    CXY,
-    /// 'n' =CHH
-    CHH,
-    /// 'N' =CXX
-    CXX,
-    /// 'e'
-    Double_CXH_entgegen,
-    /// 'z'
-    Double_CXH_zusammen,
-    /// 'f'
-    Double_CXH_unknown,
-    /// 'E'
-    Double_CXY_entgegen,
-    /// 'Z'
-    Double_CXY_zusammen,
-    /// 'F'
-    Double_CXY_unknown,
-    /// 'T' ≡C-X or -C≡X
-    Triple_CX,
-    /// 'K'
-    Double_CX,
-    /// 't'
-    Triple_CH,
-    /// 'a'
-    Hemiacetal,
-    /// 'u'
-    AldehydeOrHemiacetal,
-    /// 'Q'
-    Unknown,
-}
-
 impl TryFrom<u8> for TerminalCarbon {
     type Error = ();
     fn try_from(value: u8) -> Result<Self, Self::Error> {
@@ -1251,20 +1072,39 @@ impl TryFrom<u8> for TerminalCarbon {
     }
 }
 
-#[derive(Clone, Copy, Debug)]
-enum AnomericSymbol {
-    /// 'a'
-    Alpha,
-    /// 'b'
-    Beta,
-    /// 'u'
-    Up,
-    /// 'd'
-    Down,
-    /// 'x'
-    Unknown,
-    /// 'o'
-    None,
+impl TryFrom<u8> for Carbon {
+    type Error = ();
+    fn try_from(value: u8) -> Result<Self, Self::Error> {
+        match value {
+            b'd' => Ok(Self::Methylene),
+            b'C' => Ok(Self::Dual),
+            b'1' => Ok(Self::HydroxyLeft),
+            b'2' => Ok(Self::HydroxyRight),
+            b'3' => Ok(Self::HydroxyOpposite),
+            b'4' => Ok(Self::HydroxySame),
+            b'x' => Ok(Self::HydroxyUnknown),
+            b'5' => Ok(Self::DualLeft),
+            b'6' => Ok(Self::DualRight),
+            b'7' => Ok(Self::DualOpposite),
+            b'8' => Ok(Self::DualSame),
+            b'X' => Ok(Self::DualUnknown),
+            b'O' => Ok(Self::Ketone),
+            b'e' => Ok(Self::DoubleHydroxyEntgegen),
+            b'z' => Ok(Self::DoubleHydroxyZusammen),
+            b'n' => Ok(Self::DoubleHydroxyNoIsomer),
+            b'f' => Ok(Self::DoubleHydroxyUnknown),
+            b'E' => Ok(Self::DoubleEntgegen),
+            b'Z' => Ok(Self::DoubleZusammen),
+            b'N' => Ok(Self::DoubleNoIsomer),
+            b'F' => Ok(Self::DoubleUnknown),
+            b'K' => Ok(Self::DoubleBonded),
+            b'T' => Ok(Self::TripleBonded),
+            b'a' => Ok(Self::Hemiketal),
+            b'U' => Ok(Self::KetoneOrHemiketal),
+            b'Q' => Ok(Self::Unknown),
+            _ => Err(()),
+        }
+    }
 }
 
 impl TryFrom<u8> for AnomericSymbol {
@@ -1280,52 +1120,6 @@ impl TryFrom<u8> for AnomericSymbol {
             _ => Err(()),
         }
     }
-}
-
-#[derive(Debug)]
-struct Mod {
-    lips: Vec<LIPOption>,
-    modification: Vec<MAPSymbol>,
-}
-
-#[derive(Clone, Debug)]
-enum LIPOption {
-    Known(LIP),
-    Statistic(bool, Probability, LIP),
-    Alternative(Vec<LIP>),
-}
-
-#[derive(Clone, Copy, Debug)]
-struct LIP {
-    position: Option<u8>,
-    direction: Direction,
-    star_index: u8,
-}
-
-#[derive(Clone, Copy, Debug)]
-enum Direction {
-    /// 'u'
-    Upside,
-    /// 'd'
-    Downside,
-    /// 't'
-    Tres,
-    /// 'a'
-    Same,
-    /// 'b'
-    Opposite,
-    /// 'c'
-    Third,
-    /// 'x'
-    Unknown,
-    /// 'e'
-    Entgegen,
-    /// 'z'
-    Zusammen,
-    /// 'f'
-    UnknownGeometricalIsomerism,
-    /// 'n'
-    Obvious,
 }
 
 impl TryFrom<u8> for Direction {
@@ -1348,82 +1142,11 @@ impl TryFrom<u8> for Direction {
     }
 }
 
-#[derive(Clone, Copy, Debug)]
-enum MAPSymbol {
-    Element(Element),
-    /// '*' or '*n'
-    Star(Option<u8>),
-    /// '/n'
-    Branch(u8),
-    /// '$n'
-    Cyclic(u8),
-    /// '='
-    DoubleBond,
-    /// '#'
-    TripleBond,
-    Chirality(Chirality),
-    AromaticStart,
-    AromaticEnd,
-}
-
-#[derive(Clone, Copy, Debug)]
-enum Chirality {
-    R,
-    S,
-    E,
-    Z,
-    Unknown,
-}
-
-#[derive(Debug)]
-enum Linkage {
-    Known(LIN),
-    Repeated(Repeat, LIN),
-}
-
-#[derive(Debug)]
-// TODO: misses ambiguous linkage
-struct LIN {
-    lips: Vec<GLIPOption>,
-    modification: Vec<MAPSymbol>,
-}
-
-#[derive(Clone, Debug)]
-enum GLIPOption {
-    Known(GLIP),
-    Statistic(bool, Probability, GLIP),
-    Alternative(Vec<GLIP>),
-    RESAlternative(bool, Vec<GLIP>),
-}
-
-#[derive(Clone, Copy, Debug)]
-struct GLIP {
-    /// Encoded using base 52
-    res_index: u8,
-    /// Position or unknown
-    position: Option<u8>,
-    direction: Direction,
-    star_index: u8,
-}
-
-#[derive(Clone, Copy, Debug)]
-enum Probability {
-    Single(Option<f32>),
-    Range(Option<f32>, Option<f32>),
-}
-
-#[derive(Clone, Copy, Debug)]
-enum Repeat {
-    Single(Option<u8>),
-    /// Max, min
-    Range(Option<u8>, Option<u8>),
-}
-
 #[cfg(test)]
 mod tests {
     use context_error::{BasicKind, BoxedError, Context};
 
-    use crate::glycan::wurcs::{Wurcs, tokenise_wurcs};
+    use crate::glycan::wurcs::{structs::Wurcs, tokenise_wurcs};
 
     fn test_tokenise(value: &str) -> Result<Wurcs, BoxedError<'_, BasicKind>> {
         tokenise_wurcs(value, &Context::default().lines(0, value), ..)
