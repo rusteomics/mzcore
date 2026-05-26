@@ -5,7 +5,7 @@
 //! which allows more complex patterns with less memory overhead but needs some more setup on the
 //! library users side.
 
-use crate::{PSMMetaData, ProteinMetaData, SpectrumId, SpectrumIds};
+use crate::{CVTerm, PSMMetaData, ProteinMetaData, SpectrumId, SpectrumIds};
 use itertools::Itertools;
 #[cfg(feature = "mzdata")]
 use mzannotate::mzdata;
@@ -19,7 +19,10 @@ use mzcore::{
     },
 };
 use mzcv::{CVIndex, CVSource, Term};
-use std::{borrow::Cow, fmt::Display, io::Write, marker::PhantomData, path::PathBuf};
+use serde::{Deserialize, Serialize};
+use std::{
+    borrow::Cow, fmt::Display, io::Write, marker::PhantomData, num::NonZeroUsize, path::PathBuf,
+};
 
 /// Write PSMs as an mzTab file. It will always output 'Identification' type files in 'Summary' mode but does a best effort to correctly store all info.
 #[derive(Debug)]
@@ -27,25 +30,25 @@ pub struct MzTabWriter<Writer, State> {
     writer: Writer,
     prh: Option<String>,
     psh: Option<String>,
-    ms_runs: Vec<MSRun>,
-    protein_search_engines: Vec<Term>,
-    psm_search_engines: Vec<Term>,
+    metadata: MzTabMetadata,
     state: PhantomData<State>,
 }
 
 /// The metadata for an MS run for a mzTab file.
-#[derive(Clone, Debug, Default)]
-pub struct MSRun {
+#[derive(Clone, Debug, Default, Eq, Hash, PartialEq, Serialize, Deserialize)]
+pub struct MzTabMSRun {
     /// The file format terms
-    pub format: Option<MzTabParam>,
+    pub format: Option<CVTerm>,
     /// The id format term
-    pub id_format: Option<MzTabParam>,
+    pub id_format: Option<CVTerm>,
     /// The file location
     pub location: PathBuf,
-    /// The file hash (term, value)
-    pub hash: Option<(MzTabParam, String)>,
+    /// The file hash value
+    pub hash: Option<String>,
+    /// The file hash method
+    pub hash_method: Option<CVTerm>,
     /// The term for the fragmentation method
-    pub fragmentation_method: Option<MzTabParam>,
+    pub fragmentation_method: Option<CVTerm>,
 }
 
 /// The mzTab file has been started but nothing has been written yet.
@@ -100,12 +103,12 @@ impl<W: Write> MzTabWriter<W, Initial> {
     /// If writing to the underlying writer failed.
     pub fn write<PSM: PSMMetaData>(
         writer: W,
-        header: &MzTabMetadata,
+        mut header: MzTabMetadata,
         psms: &[PSM],
-        unknown_file_run: MSRun,
+        unknown_file_run: MzTabMSRun,
     ) -> Result<(), std::io::Error> {
         let mut unknown = false;
-        let mut ms_runs = psms
+        for run in psms
             .iter()
             .flat_map(|p| match p.scans() {
                 SpectrumIds::FileKnown(scans) => scans,
@@ -117,35 +120,40 @@ impl<W: Write> MzTabWriter<W, Initial> {
             })
             .map(|(p, _)| p)
             .unique()
-            .map(|p| MSRun {
-                location: p,
-                format: None,
-                id_format: None,
-                hash: None,
-                fragmentation_method: None,
-            })
-            .collect::<Vec<_>>();
+        {
+            if !header.ms_runs.iter().any(|r| r.location == run) {
+                header.ms_runs.push(MzTabMSRun {
+                    location: run,
+                    format: None,
+                    id_format: None,
+                    hash: None,
+                    hash_method: None,
+                    fragmentation_method: None,
+                });
+            }
+        }
         let proteins = psms
             .iter()
             .flat_map(|p| p.proteins().into_owned())
             .unique_by(|p| p.id().accession().to_string())
             .collect::<Vec<PSM::Protein>>();
         if unknown {
-            ms_runs.insert(0, unknown_file_run);
+            header.ms_runs.push(unknown_file_run);
         }
-        let protein_search_engines = proteins
-            .iter()
-            .flat_map(ProteinMetaData::search_engine)
-            .filter_map(|p| p.1.as_ref().map(|(_, t)| t.term.clone()))
-            .unique()
-            .collect::<Vec<_>>();
-        let psm_search_engines = psms
-            .iter()
-            .filter_map(|p| p.original_confidence().map(|(_, t)| t))
-            .unique()
-            .collect::<Vec<_>>();
-        let writer = Self::new(writer, ms_runs, protein_search_engines, psm_search_engines);
-        let writer = writer.write_header(header)?;
+        header.protein_search_engines.extend(
+            proteins
+                .iter()
+                .flat_map(ProteinMetaData::search_engine)
+                .filter_map(|p| p.1.as_ref().map(|(_, t)| t.term.clone().into()))
+                .unique(),
+        );
+        header.psm_search_engines.extend(
+            psms.iter()
+                .filter_map(|p| p.original_confidence().map(|(_, t)| t.into()))
+                .unique(),
+        );
+        let writer = Self::new(writer, header);
+        let writer = writer.write_header()?;
         let highest_used_id = psms
             .iter()
             .filter_map(PSMMetaData::numerical_id)
@@ -161,19 +169,12 @@ impl<W: Write> MzTabWriter<W, Initial> {
     }
 
     /// Create a new mzTab file writer that will output to the given writer and with the given MS runs.
-    pub const fn new(
-        writer: W,
-        ms_runs: Vec<MSRun>,
-        protein_search_engines: Vec<Term>,
-        psm_search_engines: Vec<Term>,
-    ) -> Self {
+    pub const fn new(writer: W, header: MzTabMetadata) -> Self {
         Self {
             writer,
             prh: None,
             psh: None,
-            ms_runs,
-            protein_search_engines,
-            psm_search_engines,
+            metadata: header,
             state: PhantomData,
         }
     }
@@ -182,24 +183,25 @@ impl<W: Write> MzTabWriter<W, Initial> {
     /// keys for the [`MSRun`]s. All other keys can be added as a tuple of (key, value).
     /// # Errors
     /// If the underlying writer fails.
-    pub fn write_header(
-        mut self,
-        metadata: &MzTabMetadata,
-    ) -> Result<MzTabWriter<W, HeaderWritten>, std::io::Error> {
+    pub fn write_header(mut self) -> Result<MzTabWriter<W, HeaderWritten>, std::io::Error> {
         writeln!(self.writer, "MTD\tmzTab-version\t1.0.0")?;
         writeln!(self.writer, "MTD\tmzTab-mode\tSummary")?;
         writeln!(self.writer, "MTD\tmzTab-type\tIdentification")?;
 
-        if !metadata.id.is_empty() {
-            writeln!(self.writer, "MTD\tmzTab-ID\t{}", metadata.id)?;
+        if !self.metadata.id.is_empty() {
+            writeln!(self.writer, "MTD\tmzTab-ID\t{}", self.metadata.id)?;
         }
-        if !metadata.title.is_empty() {
-            writeln!(self.writer, "MTD\ttitle\t{}", metadata.title)?;
+        if !self.metadata.title.is_empty() {
+            writeln!(self.writer, "MTD\ttitle\t{}", self.metadata.title)?;
         }
-        if !metadata.description.is_empty() {
-            writeln!(self.writer, "MTD\tdescription\t{}", metadata.description)?;
+        if !self.metadata.description.is_empty() {
+            writeln!(
+                self.writer,
+                "MTD\tdescription\t{}",
+                self.metadata.description
+            )?;
         }
-        for (i, terms) in metadata.sample_processing.iter().enumerate() {
+        for (i, terms) in self.metadata.sample_processing.iter().enumerate() {
             let i = i + 1;
             writeln!(
                 self.writer,
@@ -207,7 +209,7 @@ impl<W: Write> MzTabWriter<W, Initial> {
                 terms.iter().join("|"),
             )?;
         }
-        for (i, instrument) in metadata.instruments.iter().enumerate() {
+        for (i, instrument) in self.metadata.instruments.iter().enumerate() {
             let i = i + 1;
             writeln!(
                 self.writer,
@@ -232,7 +234,7 @@ impl<W: Write> MzTabWriter<W, Initial> {
                 instrument.detector
             )?;
         }
-        for (i, software) in metadata.software.iter().enumerate() {
+        for (i, software) in self.metadata.software.iter().enumerate() {
             let i = i + 1;
             writeln!(self.writer, "MTD\tsoftware[{i}]\t{}", software.name)?;
             for (j, setting) in software.setting.iter().enumerate() {
@@ -240,18 +242,18 @@ impl<W: Write> MzTabWriter<W, Initial> {
                 writeln!(self.writer, "MTD\tsoftware[{i}]-setting[{j}]\t{setting}")?;
             }
         }
-        if !metadata.false_discovery_rate.is_empty() {
+        if !self.metadata.false_discovery_rate.is_empty() {
             writeln!(
                 self.writer,
                 "MTD\tfalse_discovery_rate\t{}",
-                metadata.false_discovery_rate.iter().join("|"),
+                self.metadata.false_discovery_rate.iter().join("|"),
             )?;
         }
-        for (i, publication) in metadata.publication.iter().enumerate() {
+        for (i, publication) in self.metadata.publication.iter().enumerate() {
             let i = i + 1;
             writeln!(self.writer, "MTD\tpublication[{i}]\t{publication}")?;
         }
-        for (i, contact) in metadata.contact.iter().enumerate() {
+        for (i, contact) in self.metadata.contact.iter().enumerate() {
             let i = i + 1;
             if !contact.name.is_empty() {
                 writeln!(self.writer, "MTD\tcontact[{i}]-name\t{}", contact.name)?;
@@ -267,22 +269,22 @@ impl<W: Write> MzTabWriter<W, Initial> {
                 writeln!(self.writer, "MTD\tcontact[{i}]-email\t{}", contact.email)?;
             }
         }
-        for (i, uri) in metadata.uri.iter().enumerate() {
+        for (i, uri) in self.metadata.uri.iter().enumerate() {
             writeln!(self.writer, "MTD\turi[{i}]\t{uri}")?;
         }
-        for (i, m) in metadata.fixed_mods.iter().enumerate() {
+        for (i, m) in self.metadata.fixed_mods.iter().enumerate() {
             write_mod(&mut self.writer, &format!("MTD\tfixed_mod[{i}]"), m)?;
         }
-        for (i, m) in metadata.variable_mods.iter().enumerate() {
+        for (i, m) in self.metadata.variable_mods.iter().enumerate() {
             write_mod(&mut self.writer, &format!("MTD\tvariable_mod[{i}]"), m)?;
         }
-        if let Some(term) = &metadata.quantification_method {
+        if let Some(term) = &self.metadata.quantification_method {
             writeln!(self.writer, "MTD\tquantification_method\t{term}")?;
         }
-        if let Some(term) = &metadata.protein_quantification_unit {
+        if let Some(term) = &self.metadata.protein_quantification_unit {
             writeln!(self.writer, "MTD\tprotein_quantification_unit\t{term}")?;
         }
-        for (i, run) in self.ms_runs.iter().enumerate() {
+        for (i, run) in self.metadata.ms_runs.iter().enumerate() {
             let i = i + 1; // 1 based
             if let Some(format) = &run.format {
                 writeln!(self.writer, "MTD\tms_run[{i}]-format\t{format}")?;
@@ -300,31 +302,31 @@ impl<W: Write> MzTabWriter<W, Initial> {
                 },
                 run.location.display()
             )?;
-            if let Some((term, value)) = &run.hash {
+            if let Some(term) = &run.hash_method {
                 writeln!(self.writer, "MTD\tms_run[{i}]-hash_method\t{term}")?;
+            }
+            if let Some(value) = &run.hash {
                 writeln!(self.writer, "MTD\tms_run[{i}]-hash\t{value}")?;
             }
             if let Some(term) = &run.fragmentation_method {
                 writeln!(self.writer, "MTD\tms_run[{i}]-fragmentation_method\t{term}")?;
             }
         }
-        for (i, search_engine) in self.protein_search_engines.iter().enumerate() {
+        for (i, search_engine) in self.metadata.protein_search_engines.iter().enumerate() {
             let i = i + 1;
             writeln!(
                 self.writer,
-                "MTD\tprotein_search_engine_score[{i}]\t[{0}, {}:{}, {}, ]",
-                search_engine.accession.cv, search_engine.accession.accession, search_engine.name
+                "MTD\tprotein_search_engine_score[{i}]\t{search_engine}",
             )?;
         }
-        for (i, search_engine) in self.psm_search_engines.iter().enumerate() {
+        for (i, search_engine) in self.metadata.psm_search_engines.iter().enumerate() {
             let i = i + 1;
             writeln!(
                 self.writer,
-                "MTD\tpsm_search_engine_score[{i}]\t[{0}, {}:{}, {}, ]",
-                search_engine.accession.cv, search_engine.accession.accession, search_engine.name
+                "MTD\tpsm_search_engine_score[{i}]\t{search_engine}",
             )?;
         }
-        for (i, sample) in metadata.sample.iter().enumerate() {
+        for (i, sample) in self.metadata.sample.iter().enumerate() {
             let i = i + 1;
             writeln!(
                 self.writer,
@@ -352,7 +354,7 @@ impl<W: Write> MzTabWriter<W, Initial> {
                 writeln!(self.writer, "MTD\tsample[{i}]-custom[{j}]\t{custom}")?;
             }
         }
-        for (i, assay) in metadata.assay.iter().enumerate() {
+        for (i, assay) in self.metadata.assay.iter().enumerate() {
             let i = i + 1;
             writeln!(
                 self.writer,
@@ -374,7 +376,7 @@ impl<W: Write> MzTabWriter<W, Initial> {
                 writeln!(self.writer, "MTD\tassay[{i}]-sample_ref\tms_run[{r}]")?;
             }
         }
-        for (i, study_variable) in metadata.study_variable.iter().enumerate() {
+        for (i, study_variable) in self.metadata.study_variable.iter().enumerate() {
             let i = i + 1;
             writeln!(
                 self.writer,
@@ -404,7 +406,7 @@ impl<W: Write> MzTabWriter<W, Initial> {
                 )?;
             }
         }
-        for (i, cv) in metadata.cv.iter().enumerate() {
+        for (i, cv) in self.metadata.cv.iter().enumerate() {
             let i = i + 1;
             if !cv.label.is_empty() {
                 writeln!(self.writer, "MTD\tcv[{i}]-label\t{}", cv.label)?;
@@ -419,17 +421,17 @@ impl<W: Write> MzTabWriter<W, Initial> {
                 writeln!(self.writer, "MTD\tcv[{i}]-version\t{}", cv.version)?;
             }
         }
-        for (name, id, value) in &metadata.colunit_protein {
+        for (name, id, value) in &self.metadata.colunit_protein {
             writeln!(self.writer, "MTD\tcolunit-protein\topt_{id}_{name}={value}")?;
         }
         writeln!(
             self.writer,
             "MTD\tcolunit-psm\tretention_time=[UO,UO:0000010,second,]"
         )?;
-        for (name, id, value) in &metadata.colunit_psm {
+        for (name, id, value) in &self.metadata.colunit_psm {
             writeln!(self.writer, "MTD\tcolunit-psm\topt_{id}_{name}={value}")?;
         }
-        for (i, custom) in metadata.custom.iter().enumerate() {
+        for (i, custom) in self.metadata.custom.iter().enumerate() {
             let i = i + 1;
             writeln!(self.writer, "MTD\tcustom[{i}]\t{custom}")?;
         }
@@ -438,16 +440,14 @@ impl<W: Write> MzTabWriter<W, Initial> {
             writer: self.writer,
             prh: self.prh,
             psh: self.psh,
-            ms_runs: self.ms_runs,
-            protein_search_engines: self.protein_search_engines,
-            psm_search_engines: self.psm_search_engines,
+            metadata: self.metadata,
             state: PhantomData,
         })
     }
 }
 
 /// Define the name for an optional column in an mzTab file
-#[derive(Clone, Debug, Default, Eq, Hash, PartialEq)]
+#[derive(Clone, Debug, Default, Eq, Hash, PartialEq, Serialize, Deserialize)]
 pub struct MzTabMetadata {
     /// An ID for the file
     pub id: String,
@@ -460,17 +460,17 @@ pub struct MzTabMetadata {
     /// The variable modifications that where searched for
     pub variable_mods: Vec<SimpleModification>,
     /// Defines quantification method used in the file
-    pub quantification_method: Option<MzTabParam>,
+    pub quantification_method: Option<CVTerm>,
     /// Defines the unit in the protein quantification field
-    pub protein_quantification_unit: Option<MzTabParam>,
+    pub protein_quantification_unit: Option<CVTerm>,
     /// The software used to analyse the data
     pub software: Vec<MzTabSoftware>,
     /// The sample processing steps these should be defined in chronological order
-    pub sample_processing: Vec<Vec<MzTabParam>>,
+    pub sample_processing: Vec<Vec<CVTerm>>,
     /// The instruments used in this file
     pub instruments: Vec<MzTabInstrument>,
     /// The false discovery rates used together with a term identifying the exact method.
-    pub false_discovery_rate: Vec<MzTabParam>,
+    pub false_discovery_rate: Vec<CVTerm>,
     /// Publications associated with this file. PubMed ids must be prefixed with 'pubmed:', DOIs with 'doi:' and identifiers can be separated with '|'.
     pub publication: Vec<String>,
     /// Any contacts for the file
@@ -478,7 +478,7 @@ pub struct MzTabMetadata {
     /// URIs to point to the file source data, eg from PRIDE or PeptideAtlas
     pub uri: Vec<String>,
     /// Any additional custom parameters
-    pub custom: Vec<MzTabParam>,
+    pub custom: Vec<CVTerm>,
     /// Define the biological samples
     pub sample: Vec<MzTabSample>,
     /// Define the study variables
@@ -488,41 +488,19 @@ pub struct MzTabMetadata {
     /// Define which CVs are used in the file
     pub cv: Vec<MzTabCV>,
     /// Define the unit for a custom protein column
-    pub colunit_protein: Vec<(MzTabOptionalColumnName, MzTabObjectIdentifier, MzTabParam)>,
+    pub colunit_protein: Vec<(MzTabOptionalColumnName, MzTabObjectIdentifier, CVTerm)>,
     /// Define the unit for a custom PSM column
-    pub colunit_psm: Vec<(MzTabOptionalColumnName, MzTabObjectIdentifier, MzTabParam)>,
-}
-
-/// Define a parameter for an mzTab file
-#[derive(Clone, Debug, Eq, Hash, PartialEq)]
-pub struct MzTabParam {
-    /// The term
-    pub term: Term,
-    /// The value
-    pub value: String,
-}
-
-impl From<Term> for MzTabParam {
-    fn from(term: Term) -> Self {
-        Self {
-            term,
-            value: String::new(),
-        }
-    }
-}
-
-impl Display for MzTabParam {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "[{},{},{},{}]",
-            self.term.accession.cv, self.term.accession, self.term.name, self.value
-        )
-    }
+    pub colunit_psm: Vec<(MzTabOptionalColumnName, MzTabObjectIdentifier, CVTerm)>,
+    /// The MS runs
+    pub ms_runs: Vec<MzTabMSRun>,
+    /// The protein search engines
+    pub protein_search_engines: Vec<CVTerm>,
+    /// The PSM search engines
+    pub psm_search_engines: Vec<CVTerm>,
 }
 
 /// Define an instrument for an mzTab file
-#[derive(Clone, Debug, Default, Eq, Hash, PartialEq)]
+#[derive(Clone, Debug, Default, Eq, Hash, PartialEq, Serialize, Deserialize)]
 pub struct MzTabCV {
     /// What is the label (start of a CURIE) for this CV
     pub label: String,
@@ -550,7 +528,7 @@ impl<T: CVSource> From<&CVIndex<T>> for MzTabCV {
 }
 
 /// Define an instrument for an mzTab file
-#[derive(Clone, Debug, Default, Eq, Hash, PartialEq)]
+#[derive(Clone, Debug, Default, Eq, Hash, PartialEq, Serialize, Deserialize)]
 pub struct MzTabContact {
     /// The name, has to be provided in first name + initials + last name eg: Joseph J. Thomson
     pub name: String,
@@ -561,70 +539,81 @@ pub struct MzTabContact {
 }
 
 /// Define an instrument for an mzTab file
-#[derive(Clone, Debug, Eq, Hash, PartialEq)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq, Serialize, Deserialize)]
 pub struct MzTabSoftware {
     /// The software and its version
-    pub name: MzTabParam,
+    pub name: CVTerm,
     /// Any settings for this software
     pub setting: Vec<String>,
 }
 
 /// Define an instrument for an mzTab file
-#[derive(Clone, Debug, Eq, Hash, PartialEq)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq, Serialize, Deserialize)]
 pub struct MzTabInstrument {
     /// The instrument itself eg: `MS:1000449|LTQ Orbitrap`
-    pub name: MzTabParam,
+    pub name: CVTerm,
     /// The source eg: `MS:1000073|ESI`
-    pub source: MzTabParam,
+    pub source: CVTerm,
     /// The analyser(s) eg: `MS:1000291|linear ion trap`
-    pub analyser: Vec<MzTabParam>,
+    pub analyser: Vec<CVTerm>,
     /// The detector type eg `MS:1000253|electron multiplier`
-    pub detector: MzTabParam,
+    pub detector: CVTerm,
 }
 
 /// Define a sample for an mzTab file
-#[derive(Clone, Debug, Default, Eq, Hash, PartialEq)]
+#[derive(Clone, Debug, Default, Eq, Hash, PartialEq, Serialize, Deserialize)]
 pub struct MzTabSample {
     /// The species of the sample
-    pub species: Vec<MzTabParam>,
+    pub species: Vec<CVTerm>,
     /// The tissues of the sample
-    pub tissue: Vec<MzTabParam>,
+    pub tissue: Vec<CVTerm>,
     /// The cell types of the sample
-    pub cell_type: Vec<MzTabParam>,
+    pub cell_type: Vec<CVTerm>,
     /// The diseases of the sample
-    pub disease: Vec<MzTabParam>,
+    pub disease: Vec<CVTerm>,
     /// Human readable description
     pub description: String,
     /// Any additional properties
-    pub custom: Vec<MzTabParam>,
+    pub custom: Vec<CVTerm>,
 }
 
 /// Define a study variable for an mzTab file
-#[derive(Clone, Debug, Default, Eq, Hash, PartialEq)]
+#[derive(Clone, Debug, Default, Eq, Hash, PartialEq, Serialize, Deserialize)]
 pub struct MzTabStudyVariable {
     /// Which samples make up this study variable
-    pub sample_refs: Vec<usize>,
+    pub sample_refs: Vec<NonZeroUsize>,
     /// Which assays make up this study variable
-    pub assay_refs: Vec<usize>,
+    pub assay_refs: Vec<NonZeroUsize>,
     /// Human textual description of the variable
     pub description: String,
 }
 
 /// Define an assay for an mzTab file
-#[derive(Clone, Debug, Eq, Hash, PartialEq)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq, Serialize, Deserialize)]
 pub struct MzTabAssay {
     /// Which modifications where used for quantification
     pub quantification_mod: Vec<SimpleModification>,
     /// Which sample is associated with this assay
-    pub sample_ref: Option<usize>,
+    pub sample_ref: Option<NonZeroUsize>,
     /// Which MS run is associated with this assay
-    pub ms_run_ref: Option<usize>,
+    pub ms_run_ref: Option<NonZeroUsize>,
     /// What quantification reagent was used, if not labelled `MS:1002038|unlabeled sample` should be used
-    pub quantification_reagent: MzTabParam,
+    pub quantification_reagent: CVTerm,
+}
+
+impl Default for MzTabAssay {
+    fn default() -> Self {
+        Self {
+            quantification_reagent: mzcv::term!(MS:1002038|unlabeled sample).into(),
+            quantification_mod: Vec::new(),
+            sample_ref: None,
+            ms_run_ref: None,
+        }
+    }
 }
 
 /// Define the name for an optional column in an mzTab file
-#[derive(Clone, Debug, Eq, Hash, PartialEq)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq, Serialize, Deserialize)]
 pub enum MzTabOptionalColumnName {
     /// A term from a CV
     Term(Term),
@@ -659,14 +648,14 @@ impl Display for MzTabOptionalColumnName {
 }
 
 /// An object identifier for an mzTab optional column
-#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize, Deserialize)]
 pub enum MzTabObjectIdentifier {
     /// An assay, with the assay id
-    Assay(usize),
+    Assay(NonZeroUsize),
     /// A study variable, with the id
-    StudyVariable(usize),
+    StudyVariable(NonZeroUsize),
     /// An MS run, with the id
-    MSRun(usize),
+    MSRun(NonZeroUsize),
     /// A global optional column
     Global,
 }
@@ -795,9 +784,7 @@ impl<W: Write, State: CanWriteProteins> MzTabWriter<W, State> {
             writer: self.writer,
             prh: Some(prh),
             psh: self.psh,
-            ms_runs: self.ms_runs,
-            protein_search_engines: self.protein_search_engines,
-            psm_search_engines: self.psm_search_engines,
+            metadata: self.metadata,
             state: PhantomData,
         })
     }
@@ -959,7 +946,7 @@ impl<W: Write, State: CanWritePSMs> MzTabWriter<W, State> {
     ) -> Result<MzTabWriter<W, PSMsWritten>, MzTabWriteError> {
         let psh = format!(
             "PSH\tsequence\tPSM_ID\taccession\tunique\tdatabase\tdatabase_version\tsearch_engine\t{}\tmodifications\tspectra_ref\tretention_time\tcharge\texp_mass_to_charge\tcalc_mass_to_charge\tpre\tpost\tstart\tend\treliability\turi{}",
-            (1..=self.psm_search_engines.len())
+            (1..=self.metadata.psm_search_engines.len())
                 .map(|i| format!("search_engine_score[{i}]"))
                 .join("\t"),
             custom_columns
@@ -1086,8 +1073,11 @@ impl<W: Write, State: CanWritePSMs> MzTabWriter<W, State> {
                         ),
                         search_engine_score = {
                             if let Some((v, term)) = psm.original_confidence() {
-                                let Some(pos) =
-                                    self.psm_search_engines.iter().position(|s| *s == term)
+                                let Some(pos) = self
+                                    .metadata
+                                    .psm_search_engines
+                                    .iter()
+                                    .position(|s| s.term == term)
                                 else {
                                     return Err(MzTabWriteError::MissingSearchEngine(term));
                                 };
@@ -1096,17 +1086,17 @@ impl<W: Write, State: CanWritePSMs> MzTabWriter<W, State> {
                                     "{}{}{v}{}{}",
                                     (1..pos).map(|_| "null").join("\t"),
                                     if pos > 1 { "\t" } else { "" },
-                                    if pos < self.psm_search_engines.len() - 1 {
+                                    if pos < self.metadata.psm_search_engines.len() - 1 {
                                         "\t"
                                     } else {
                                         ""
                                     },
-                                    (pos + 1..self.psm_search_engines.len())
+                                    (pos + 1..self.metadata.psm_search_engines.len())
                                         .map(|_| "null")
                                         .join("\t")
                                 )
                             } else {
-                                (0..self.psm_search_engines.len())
+                                (0..self.metadata.psm_search_engines.len())
                                     .map(|_| "null")
                                     .join("\t")
                             }
@@ -1115,7 +1105,7 @@ impl<W: Write, State: CanWritePSMs> MzTabWriter<W, State> {
                         spectra_ref = match psm.scans() {
                             SpectrumIds::None => "null".to_string(),
                             SpectrumIds::FileNotKnown(ids) =>
-                                if self.ms_runs.is_empty() {
+                                if self.metadata.ms_runs.is_empty() {
                                     return Err(MzTabWriteError::MissingMSRun(None));
                                 } else {
                                     let ids = ids
@@ -1141,12 +1131,13 @@ impl<W: Write, State: CanWritePSMs> MzTabWriter<W, State> {
                                 let mut column = String::new();
                                 for (file, ids) in ids {
                                     let Some(index) = self
+                                        .metadata
                                         .ms_runs
                                         .iter()
                                         .position(|run| run.location == file)
                                         .or_else(|| {
                                             file.file_name().and_then(|f| {
-                                                self.ms_runs.iter().position(|run| {
+                                                self.metadata.ms_runs.iter().position(|run| {
                                                     run.location
                                                         .file_name()
                                                         .is_some_and(|rf| f == rf)
@@ -1252,9 +1243,7 @@ impl<W: Write, State: CanWritePSMs> MzTabWriter<W, State> {
             writer: self.writer,
             prh: self.prh,
             psh: Some(psh),
-            ms_runs: self.ms_runs,
-            protein_search_engines: self.protein_search_engines,
-            psm_search_engines: self.psm_search_engines,
+            metadata: self.metadata,
             state: PhantomData,
         })
     }
@@ -1266,7 +1255,7 @@ mod tests {
     use std::io::BufWriter;
 
     use crate::{
-        mztab_writer::{MSRun, MzTabMetadata, MzTabWriter},
+        mztab_writer::{MzTabMSRun, MzTabMetadata, MzTabWriter},
         open_psm_file,
     };
 
@@ -1291,9 +1280,9 @@ mod tests {
 
                 MzTabWriter::write(
                     BufWriter::new(std::fs::File::create(&new_path).unwrap()),
-                    &MzTabMetadata::default(),
+                    MzTabMetadata::default(),
                     &psms,
-                    MSRun::default(),
+                    MzTabMSRun::default(),
                 )
                 .unwrap();
                 println!("Wrote: {}", new_path.display());

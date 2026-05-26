@@ -5,6 +5,7 @@ use std::{
     fs::File,
     io::{BufRead, BufReader},
     marker::PhantomData,
+    num::NonZeroUsize,
     ops::Range,
     str::FromStr,
     sync::Arc,
@@ -13,19 +14,21 @@ use std::{
 use context_error::*;
 use flate2::bufread::GzDecoder;
 use itertools::Itertools;
-use mzcv::{ControlledVocabulary, Term};
+use mzcv::{ControlledVocabulary, Term, term};
 use ordered_float::OrderedFloat;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    FastaIdentifier, KnownFileFormat, MaybePeptidoform, PSM, PSMData, PSMMetaData, ProteinMetaData,
-    SpectrumId, SpectrumIds,
+    CVTerm, FastaIdentifier, KnownFileFormat, MaybePeptidoform, PSM, PSMData, PSMMetaData,
+    ProteinMetaData, SpectrumId, SpectrumIds,
     helper_functions::{
         check_extension, explain_number_error, float_digits, next_number, split_with_brackets,
     },
+    mztab_writer::{MzTabAssay, MzTabMSRun, MzTabMetadata, MzTabSoftware},
 };
 use mzcore::{
     chemistry::MolecularFormula,
+    ontology::Ontologies,
     quantities::Tolerance,
     sequence::{
         AminoAcid, FlankingSequence, MUPSettings, PeptideModificationSearch, Peptidoform,
@@ -76,6 +79,8 @@ pub struct MzTabPSM {
     pub local_confidence: Option<Vec<f64>>,
     /// Any additional metadata
     pub additional: HashMap<String, String>,
+    /// The metadata of the file
+    pub metadata: Arc<MzTabMetadata>,
 }
 
 impl mzcore::space::Space for MzTabPSM {
@@ -106,7 +111,7 @@ impl MzTabPSM {
     /// If the file is not in the correct format
     pub fn parse_file(
         path: impl AsRef<std::path::Path>,
-        ontologies: &mzcore::ontology::Ontologies,
+        ontologies: &Ontologies,
     ) -> Result<
         Box<dyn Iterator<Item = Result<Self, BoxedError<'static, BasicKind>>> + '_>,
         BoxedError<'static, BasicKind>,
@@ -138,175 +143,37 @@ impl MzTabPSM {
     /// Parse a mzTab file directly from a buffered reader
     pub fn parse_reader<'a, T: BufRead + 'a>(
         reader: T,
-        ontologies: &'a mzcore::ontology::Ontologies,
+        ontologies: &'a Ontologies,
         base: Context<'a>,
     ) -> impl Iterator<Item = Result<Self, BoxedError<'static, BasicKind>>> + 'a {
-        let mut search_engine_score_type: Vec<CVTerm> = Vec::new();
-        let mut modifications: Vec<SimpleModification> = Vec::new();
-        let mut raw_files: Vec<(Option<String>, Option<CVTerm>, Option<CVTerm>)> = Vec::new(); //path, file format, identifier type
         let mut peptide_header: Option<Vec<String>> = None;
         let mut protein_header: Option<Vec<String>> = None;
         let mut proteins: HashMap<String, Arc<MzTabProtein>> = HashMap::new();
+        let mut metadata = Arc::new(MzTabMetadata::default());
 
         parse_mztab_reader(reader).filter_map(move |item| {
             item.transpose().and_then(|item| match item {
                 Ok(MzTabLine::MTD(line_index, line, fields)) => {
-                    let ctx: Context<'static> = base.clone().lines(0, line.clone()).line_index(line_index).to_owned();
-                    if fields.len() == 3 {
-                        match line[fields[1].clone()].to_ascii_lowercase().as_str() {
-                            m if (m.starts_with("variable_mod[")
-                                || m.starts_with("fixed_mod["))
-                                && m.ends_with(']') =>
-                            {
-                                if line[fields[2].clone()].starts_with('[')
-                                    && line[fields[2].clone()].ends_with(']')
-                                {
-                                    let text_range = fields[2].start + 1..fields[2].end - 1;
-                                    let mut split = line[text_range.clone()].split(',');
-                                    let first = split.next();
-                                    let offset = split.next();
-                                    let m_range = text_range.start
-                                        + first.map_or(0, |f| f.len() + 1)
-                                        + offset.map_or(0, |s| {
-                                            s.bytes().take_while(u8::is_ascii_whitespace).count()
-                                        })
-                                        ..text_range.start
-                                            + first.map_or(0, |f| f.len() + 1)
-                                            + offset.map_or(0, str::len);
-                                    if &line[m_range.clone()] != "MS:1002453"
-                                        && &line[m_range.clone()] != "MS:1002454"
-                                    {
-                                        match parse_single_modification(
-                                            &line,
-                                            m_range,
-                                            ontologies,
-                                            &ctx,
-                                        ) {
-                                            Ok(m) => {
-                                                if !modifications.contains(&m) {
-                                                    modifications.push(m);
-                                                }
-                                            }
-                                            Err(e) => return Some(Err(e.to_owned())),
-                                        }
-                                    }
-                                } else {
-                                    return Some(Err(BoxedError::new(
-                                        BasicKind::Error,
-                                        "Invalid mzTab modification",
-                                        "A modification has to be enclosed by square brackets",
-                                        ctx.clone().add_highlight((0, fields[2].clone())),
-                                    )));
-                                }
-                            }
-                            m if m.starts_with("psm_search_engine_score[") && m.ends_with(']') => {
-                                match CVTerm::from_str(&line[fields[2].clone()]) {
-                                    Ok(term) => search_engine_score_type.push(term),
-                                    Err(err) => return Some(Err(err)),
-                                }
-                            }
-                            m if m.starts_with("ms_run[") && m.ends_with("]-location") => {
-                                let index = match m
-                                    .trim_start_matches("ms_run[")
-                                    .trim_end_matches("]-location")
-                                    .parse::<usize>()
-                                    .map_err(|err| {
-                                        BoxedError::new(
-                                            BasicKind::Error,
-                                            "Invalid mzTab ms_run identifier",
-                                            format!(
-                                                "The ms_run identifier {}",
-                                                explain_number_error(&err)
-                                            ),
-                                            ctx.clone().add_highlight((0, fields[1].clone())),
-                                        )
-                                    }) {
-                                        Ok(0) => return Some(Err(BoxedError::new(BasicKind::Error, "Invalid mzTab mz_run identifier", "A ms_run identifier uses 1 based indexing and so cannot be 0.", 
-                                        ctx.clone().add_highlight((0, fields[1].clone())),))),
-                                        Ok(i) => i - 1,
-                                        Err(err) => return Some(Err(err)),
-                                };
-
-                                while raw_files.len() <= index {
-                                    raw_files.push((None, None, None));
-                                }
-
-                                raw_files[index].0 = Some(line[fields[2].clone()].to_string());
-                            }
-                            m if m.starts_with("ms_run[") && m.ends_with("]-format") => {
-                                let index = match m
-                                    .trim_start_matches("ms_run[")
-                                    .trim_end_matches("]-format")
-                                    .parse::<usize>()
-                                    .map_err(|err| {
-                                        BoxedError::new(
-                                            BasicKind::Error,
-                                            "Invalid mzTab ms_run identifier",
-                                            format!(
-                                                "The ms_run identifier {}",
-                                                explain_number_error(&err)
-                                            ),
-                                            ctx.clone().add_highlight((0, fields[1].clone())),
-                                        )
-                                    }) {
-                                        Ok(0) => return Some(Err(BoxedError::new(BasicKind::Error, "Invalid mzTab mz_run identifier", "A ms_run identifier uses 1 based indexing and so cannot be 0.", 
-                                        ctx.clone().add_highlight((0, fields[1].clone()))))),
-                                        Ok(i) => i - 1,
-                                        Err(err) => return Some(Err(err)),
-                                };
-
-                                while raw_files.len() <= index {
-                                    raw_files.push((None, None, None));
-                                }
-
-                                raw_files[index].1 =
-                                    Some(match CVTerm::from_str(&line[fields[2].clone()]) {
-                                        Ok(i) => i,
-                                        Err(err) => return Some(Err(err)),
-                                    });
-                            }
-                            m if m.starts_with("ms_run[") && m.ends_with("]-id_format") => {
-                                let index = match m
-                                    .trim_start_matches("ms_run[")
-                                    .trim_end_matches("]-id_format")
-                                    .parse::<usize>()
-                                    .map_err(|err| {
-                                        BoxedError::new(
-                                            BasicKind::Error,
-                                            "Invalid mzTab ms_run identifier",
-                                            format!(
-                                                "The ms_run identifier {}",
-                                                explain_number_error(&err)
-                                            ),
-                                            ctx.clone().add_highlight((0, fields[1].clone())),
-                                        )
-                                    }) {
-                                        Ok(0) => return Some(Err(BoxedError::new(BasicKind::Error, "Invalid mzTab mz_run identifier", "A ms_run identifier uses 1 based indexing and so cannot be 0.", 
-                                        ctx.clone().add_highlight((0, fields[1].clone()))))),
-                                        Ok(i) => i - 1,
-                                        Err(err) => return Some(Err(err)),
-                                };
-
-                                while raw_files.len() <= index {
-                                    raw_files.push((None, None, None));
-                                }
-
-                                raw_files[index].2 =
-                                    Some(match CVTerm::from_str(&line[fields[2].clone()]) {
-                                        Ok(i) => i,
-                                        Err(err) => return Some(Err(err)),
-                                    });
-                            }
-                            _ => (),
-                        }
-                        None
-                    } else {
-                        Some(Err(BoxedError::new(
+                    let Some(metadata) = Arc::get_mut(&mut metadata) else {
+                        return Some(Err(BoxedError::new(
                             BasicKind::Error,
                             "Invalid MTD line",
-                            "MTD lines should contain three columns (the tag, key, and value)",
-                            ctx,
-                        )))
+                            "Metadata lines need to be defined before all other line types",
+                            base.clone()
+                                .lines(0, line)
+                                .line_index(line_index)
+                                .to_owned(),
+                        )));
+                    };
+                    match parse_metadata(
+                        metadata,
+                        &line,
+                        &fields,
+                        &base.clone().lines(0, line.clone()).line_index(line_index),
+                        ontologies,
+                    ) {
+                        Ok(()) => None,
+                        Err(err) => Some(Err(err.to_owned())),
                     }
                 }
                 Ok(MzTabLine::PRH(line_index, line, fields)) => {
@@ -331,7 +198,10 @@ impl MzTabPSM {
                                 BasicKind::Error,
                                 "Invalid protein table",
                                 format!("The required column '{required}' is not present"),
-                                base.clone().lines(0, line).line_index(line_index).to_owned(),
+                                base.clone()
+                                    .lines(0, line)
+                                    .line_index(line_index)
+                                    .to_owned(),
                             )));
                         }
                     }
@@ -339,8 +209,16 @@ impl MzTabPSM {
                     None
                 }
                 Ok(MzTabLine::PRT(line_index, line, fields)) => {
-                    match PSMLine::new(base.clone().lines(0, line.clone()).line_index(line_index).to_owned(), protein_header.as_deref(), &line, &fields)
-                        .and_then(|line| MzTabProtein::from_line(&line))
+                    match PSMLine::new(
+                        base.clone()
+                            .lines(0, line.clone())
+                            .line_index(line_index)
+                            .to_owned(),
+                        protein_header.as_deref(),
+                        &line,
+                        &fields,
+                    )
+                    .and_then(|line| MzTabProtein::from_line(&line))
                     {
                         Ok(protein) => {
                             for name in &protein.ambiguity_members {
@@ -383,7 +261,10 @@ impl MzTabPSM {
                                 BasicKind::Error,
                                 "Invalid peptide table",
                                 format!("The required column '{required}' is not present"),
-                                base.clone().lines(0, line).line_index(line_index).to_owned(),
+                                base.clone()
+                                    .lines(0, line)
+                                    .line_index(line_index)
+                                    .to_owned(),
                             )));
                         }
                     }
@@ -391,15 +272,20 @@ impl MzTabPSM {
                     None
                 }
                 Ok(MzTabLine::PSM(line_index, line, fields)) => Some(
-                    PSMLine::new(base.clone().lines(0, line.clone()).line_index(line_index).to_owned(), peptide_header.as_deref(), &line, &fields)
-                        .and_then(|line| Self::from_line(
-                                &line,
-                                &modifications,
-                                &search_engine_score_type,
-                                &raw_files,
-                                ontologies,
-                                &proteins,
-                            ).map_err(BoxedError::to_owned))),
+                    PSMLine::new(
+                        base.clone()
+                            .lines(0, line.clone())
+                            .line_index(line_index)
+                            .to_owned(),
+                        peptide_header.as_deref(),
+                        &line,
+                        &fields,
+                    )
+                    .and_then(|line| {
+                        Self::from_line(&line, ontologies, &proteins, metadata.clone())
+                            .map_err(BoxedError::to_owned)
+                    }),
+                ),
                 Err(e) => Some(Err(e)),
             })
         })
@@ -410,11 +296,9 @@ impl MzTabPSM {
     /// When not in the correct format
     fn from_line<'a>(
         line: &PSMLine<'a>,
-        global_modifications: &[SimpleModification],
-        search_engine_score_types: &[CVTerm],
-        raw_files: &[(Option<String>, Option<CVTerm>, Option<CVTerm>)],
-        ontologies: &mzcore::ontology::Ontologies,
+        ontologies: &Ontologies,
         proteins: &HashMap<String, Arc<MzTabProtein>>,
+        metadata: Arc<MzTabMetadata>,
     ) -> Result<Self, BoxedError<'a, BasicKind>> {
         let (mod_column, mod_range) = line
             .required_column("modifications")
@@ -430,6 +314,7 @@ impl MzTabPSM {
             };
 
         let mut result = Self {
+            metadata: metadata.clone(),
             peptidoform: {
                 let range = line
                     .required_column("sequence")
@@ -497,9 +382,16 @@ impl MzTabPSM {
                         }
                     }
                     Some(
-                        PeptideModificationSearch::in_modifications(global_modifications.to_vec())
-                            .tolerance(Tolerance::new_ppm(20.0))
-                            .search(peptide),
+                        PeptideModificationSearch::in_modifications(
+                            metadata
+                                .fixed_mods
+                                .iter()
+                                .chain(metadata.variable_mods.iter())
+                                .cloned()
+                                .collect(),
+                        )
+                        .tolerance(Tolerance::new_ppm(20.0))
+                        .search(peptide),
                     )
                 }
             },
@@ -566,7 +458,7 @@ impl MzTabPSM {
                                         .map_err(|e| {
                                             e.replace_context(line.context.clone().add_highlight((0, range.clone())))
                                         })
-                                        .and_then(|engine| Ok((engine, score, search_engine_score_types.get(i).ok_or_else(|| BoxedError::new(BasicKind::Error,"Missing search engine score type", "All search engines require a defined search type", 
+                                        .and_then(|engine| Ok((engine, score, metadata.psm_search_engines.get(i).ok_or_else(|| BoxedError::new(BasicKind::Error,"Missing search engine score type", "All search engines require a defined search type", 
                                         line.context.clone().add_highlight((0, range.clone()))))?.clone())))
                                 })
                         })
@@ -683,8 +575,8 @@ impl MzTabPSM {
                                 line.context.clone().add_highlight((0, range.clone()))
                             ))
                         } else {Ok(v-1)})?;
-                    let path = raw_files.get(index).ok_or_else(|| BoxedError::new(BasicKind::Error,"Missing raw file definition", "All raw files should be defined in the MTD section before being used in the PSM Section", 
-                    line.context.clone().add_highlight((0, range.clone()))))?.0.as_ref().ok_or_else(|| BoxedError::new(BasicKind::Error,"Missing raw file path definition", "The path is not defined for this raw file", line.context.clone().add_highlight((0, range.clone()))))?;
+                    let path = metadata.ms_runs.get(index).ok_or_else(|| BoxedError::new(BasicKind::Error,"Missing raw file definition", "All raw files should be defined in the MTD section before being used in the PSM Section", 
+                    line.context.clone().add_highlight((0, range.clone()))))?.location.clone();
 
                     let id = match scan_id.split_once('=') {
                         Some(("scan", num)) if num.chars().all(|c| c.is_ascii_digit()) => SpectrumId::Number(num.parse().map_err(|err| {
@@ -704,7 +596,7 @@ impl MzTabPSM {
                         _ =>  SpectrumId::Native(scan_id.to_owned()),
                     };
 
-                    Ok((std::path::PathBuf::from(path), id))
+                    Ok((path, id))
                 })).collect::<Result<Vec<_>, BoxedError<'_, BasicKind>>>()?
                 .into_iter()
                 .sorted_by(|(a, _), (b,_)| a.cmp(b))
@@ -883,6 +775,291 @@ impl MzTabPSM {
         }).transpose()?;
 
         Ok(result)
+    }
+}
+
+fn parse_metadata<'a>(
+    metadata: &mut MzTabMetadata,
+    line: &'a str,
+    fields: &'a [Range<usize>],
+    context: &Context<'a>,
+    ontologies: &Ontologies,
+) -> Result<(), BoxedError<'a, BasicKind>> {
+    if fields.len() == 3 {
+        match line[fields[1].clone()].to_ascii_lowercase().as_str() {
+            m if (m.starts_with("variable_mod[") || m.starts_with("fixed_mod["))
+                && m.ends_with(']') =>
+            {
+                if line[fields[2].clone()].starts_with('[')
+                    && line[fields[2].clone()].ends_with(']')
+                {
+                    let text_range = fields[2].start + 1..fields[2].end - 1;
+                    let mut split = line[text_range.clone()].split(',');
+                    let first = split.next();
+                    let offset = split.next();
+                    let m_range = text_range.start
+                        + first.map_or(0, |f| f.len() + 1)
+                        + offset
+                            .map_or(0, |s| s.bytes().take_while(u8::is_ascii_whitespace).count())
+                        ..text_range.start
+                            + first.map_or(0, |f| f.len() + 1)
+                            + offset.map_or(0, str::len);
+                    if &line[m_range.clone()] != "MS:1002453"
+                        && &line[m_range.clone()] != "MS:1002454"
+                    {
+                        match parse_single_modification(line, m_range, ontologies, context) {
+                            Ok(modification) => {
+                                if m.starts_with("variable") {
+                                    metadata.variable_mods.push(modification);
+                                } else {
+                                    metadata.fixed_mods.push(modification);
+                                }
+                            }
+                            Err(e) => return Err(e.to_owned()),
+                        }
+                    }
+                } else {
+                    return Err(BoxedError::new(
+                        BasicKind::Error,
+                        "Invalid mzTab modification",
+                        "A modification has to be enclosed by square brackets",
+                        context.clone().add_highlight((0, fields[2].clone())),
+                    ));
+                }
+            }
+            m if m.starts_with("psm_search_engine_score[") && m.ends_with(']') => {
+                match CVTerm::from_str(&line[fields[2].clone()]) {
+                    Ok(term) => metadata.psm_search_engines.push(term),
+                    Err(err) => return Err(err),
+                }
+            }
+            m if m.starts_with("protein_search_engine_score[") && m.ends_with(']') => {
+                match CVTerm::from_str(&line[fields[2].clone()]) {
+                    Ok(term) => metadata.protein_search_engines.push(term),
+                    Err(err) => return Err(err),
+                }
+            }
+            "description" => metadata.description = line[fields[2].clone()].to_string(),
+            "title" => metadata.title = line[fields[2].clone()].to_string(),
+            "protein-quantification-unit" => {
+                metadata.protein_quantification_unit =
+                    match CVTerm::from_str(&line[fields[2].clone()]) {
+                        Ok(term) => Some(term),
+                        Err(err) => return Err(err),
+                    }
+            }
+            "quantification_method" => {
+                metadata.quantification_method = match CVTerm::from_str(&line[fields[2].clone()]) {
+                    Ok(term) => Some(term),
+                    Err(err) => return Err(err),
+                }
+            }
+            m if m.starts_with("software[") => {
+                let Some((index, tag)) = m.trim_start_matches("software[").split_once(']') else {
+                    return Err(BoxedError::new(
+                        BasicKind::Error,
+                        "Invalid mzTab software parameter",
+                        "An software parameter needs to be 'software[n]' or 'software[n]-setting[n]'.",
+                        context.clone().add_highlight((0, fields[1].clone())),
+                    ));
+                };
+                let index = match index.parse::<NonZeroUsize>().map_err(|err| {
+                    BoxedError::new(
+                        BasicKind::Error,
+                        "Invalid mzTab software identifier",
+                        format!("The software identifier {}", explain_number_error(&err)),
+                        context.clone().add_highlight((0, fields[1].clone())),
+                    )
+                }) {
+                    Ok(i) => i.get() - 1,
+                    Err(err) => return Err(err),
+                };
+
+                while metadata.software.len() <= index {
+                    metadata.software.push(MzTabSoftware {
+                        name: CVTerm {
+                            term: term!(MS:1000531|software),
+                            value: String::new(),
+                        },
+                        setting: Vec::new(),
+                    });
+                }
+
+                if tag.is_empty() {
+                    metadata.software[index].name = CVTerm::from_str(&line[fields[2].clone()])?;
+                } else if tag.starts_with("-setting[") {
+                    metadata.software[index]
+                        .setting
+                        .push(line[fields[2].clone()].to_string());
+                } else {
+                    return Err(BoxedError::new(
+                        BasicKind::Error,
+                        "Invalid mzTab software parameter",
+                        "An software parameter needs to be 'software[n]' or 'software[n]-setting[n]'.",
+                        context.clone().add_highlight((0, fields[1].clone())),
+                    ));
+                }
+            }
+            m if m.starts_with("ms_run[") => {
+                let Some((index, tag)) = m.trim_start_matches("ms_run[").split_once("]-") else {
+                    return Err(BoxedError::new(
+                        BasicKind::Error,
+                        "Invalid mzTab ms_run parameter",
+                        "An ms_run parameter needs to be 'ms_run[0]-<name>' where the 0 is the index and the name can be any of the known parameters.",
+                        context.clone().add_highlight((0, fields[1].clone())),
+                    ));
+                };
+                let index = match index.parse::<NonZeroUsize>().map_err(|err| {
+                    BoxedError::new(
+                        BasicKind::Error,
+                        "Invalid mzTab ms_run identifier",
+                        format!("The ms_run identifier {}", explain_number_error(&err)),
+                        context.clone().add_highlight((0, fields[1].clone())),
+                    )
+                }) {
+                    Ok(i) => i.get() - 1,
+                    Err(err) => return Err(err),
+                };
+
+                while metadata.ms_runs.len() <= index {
+                    metadata.ms_runs.push(MzTabMSRun::default());
+                }
+
+                let elem = &mut metadata.ms_runs[index];
+
+                match tag {
+                    "location" => elem.location = line[fields[2].clone()].into(),
+                    "format" => match CVTerm::from_str(&line[fields[2].clone()]) {
+                        Ok(i) => elem.format = Some(i),
+                        Err(err) => return Err(err),
+                    },
+                    "id_format" => match CVTerm::from_str(&line[fields[2].clone()]) {
+                        Ok(i) => elem.id_format = Some(i),
+                        Err(err) => return Err(err),
+                    },
+                    "fragmentation_method" => match CVTerm::from_str(&line[fields[2].clone()]) {
+                        Ok(i) => elem.fragmentation_method = Some(i),
+                        Err(err) => return Err(err),
+                    },
+                    "hash_method" => match CVTerm::from_str(&line[fields[2].clone()]) {
+                        Ok(i) => elem.hash_method = Some(i),
+                        Err(err) => return Err(err),
+                    },
+                    "hash" => elem.hash = Some(line[fields[2].clone()].to_string()),
+                    _ => {
+                        return Err(BoxedError::new(
+                            BasicKind::Error,
+                            "Invalid MTD line",
+                            "This parameter does not exist for an ms_run",
+                            context.clone().add_highlight((0, fields[0].clone())),
+                        ));
+                    }
+                }
+            }
+            m if m.starts_with("assay[") => {
+                let Some((index, tag)) = m.trim_start_matches("assay[").split_once("]-") else {
+                    return Err(BoxedError::new(
+                        BasicKind::Error,
+                        "Invalid mzTab assay parameter",
+                        "An assay parameter needs to be 'assay[0]-<name>' where the 0 is the index and the name can be any of the known parameters.",
+                        context.clone().add_highlight((0, fields[1].clone())),
+                    ));
+                };
+                let index = match index.parse::<NonZeroUsize>().map_err(|err| {
+                    BoxedError::new(
+                        BasicKind::Error,
+                        "Invalid mzTab assay identifier",
+                        format!("The assay identifier {}", explain_number_error(&err)),
+                        context.clone().add_highlight((0, fields[1].clone())),
+                    )
+                }) {
+                    Ok(i) => i.get() - 1,
+                    Err(err) => return Err(err),
+                };
+
+                while metadata.assay.len() <= index {
+                    metadata.assay.push(MzTabAssay::default());
+                }
+
+                let elem = &mut metadata.assay[index];
+
+                match tag {
+                    "ms_run_ref" => {
+                        elem.ms_run_ref = Some(parse_ref(
+                            "ms_run",
+                            line[fields[2].clone()].trim(),
+                            &context.clone().add_highlight((0, fields[2].clone())),
+                        )?);
+                    }
+                    "quantification_reagent" => match CVTerm::from_str(&line[fields[2].clone()]) {
+                        Ok(i) => elem.quantification_reagent = i,
+                        Err(err) => return Err(err),
+                    },
+                    "sample_refs" => {
+                        elem.sample_ref = Some(parse_ref(
+                            "sample",
+                            line[fields[2].clone()].trim(),
+                            &context.clone().add_highlight((0, fields[2].clone())),
+                        )?);
+                    }
+                    _ => {
+                        if let Some(m) = tag.strip_prefix("quantification_mod[") {
+                            if m.ends_with(']') {
+                                elem.quantification_mod.push(parse_single_modification(
+                                    line,
+                                    fields[2].clone(),
+                                    ontologies,
+                                    context,
+                                )?);
+                            }
+                        } else {
+                            return Err(BoxedError::new(
+                                BasicKind::Error,
+                                "Invalid MTD line",
+                                "This parameter does not exist for an ms_run",
+                                context.clone().add_highlight((0, fields[0].clone())),
+                            ));
+                        }
+                    }
+                }
+            }
+            _ => (),
+        }
+        Ok(())
+    } else {
+        Err(BoxedError::new(
+            BasicKind::Error,
+            "Invalid MTD line",
+            "MTD lines should contain three columns (the tag, key, and value)",
+            context.clone(),
+        ))
+    }
+}
+
+fn parse_ref<'a>(
+    ty: &'static str,
+    value: &str,
+    context: &Context<'a>,
+) -> Result<NonZeroUsize, BoxedError<'a, BasicKind>> {
+    if let Some(boxed) = value.strip_prefix(ty)
+        && let Some(tail) = boxed.strip_prefix('[')
+        && let Some(num) = tail.strip_suffix(']')
+    {
+        num.parse().map_err(|err| {
+            BoxedError::new(
+                BasicKind::Error,
+                format!("Invalid {ty} reference"),
+                format!("A {ty} reference {}", explain_number_error(&err)),
+                context.clone(),
+            )
+        })
+    } else {
+        Err(BoxedError::new(
+            BasicKind::Error,
+            format!("Invalid {ty} reference"),
+            format!("A {ty} reference should look like '{ty}[n]'"),
+            context.clone(),
+        ))
     }
 }
 
@@ -1076,7 +1253,7 @@ enum MzTabReturnModification {
 fn parse_modification<'a>(
     line: &'a str,
     range: Range<usize>,
-    ontologies: &mzcore::ontology::Ontologies,
+    ontologies: &Ontologies,
     context: &Context<'a>,
 ) -> Result<MzTabReturnModification, BoxedError<'a, BasicKind>> {
     if let Some((pos, modification)) = line[range.clone()].split_once('-') {
@@ -1227,7 +1404,7 @@ fn parse_modification<'a>(
 fn parse_single_modification<'a>(
     line: &'a str,
     range: Range<usize>,
-    ontologies: &mzcore::ontology::Ontologies,
+    ontologies: &Ontologies,
     context: &Context<'a>,
 ) -> Result<SimpleModification, BoxedError<'a, BasicKind>> {
     if let Some((tag, value)) = line[range.clone()].split_once(':') {
@@ -1451,31 +1628,6 @@ impl From<MzTabPSM> for PSM<SimpleLinear, MaybePeptidoform> {
     }
 }
 
-/// A CV term
-#[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
-pub struct CVTerm {
-    /// The term
-    pub term: Term,
-    /// Additional comments on the term, eg additional specification or version
-    pub comment: String,
-}
-
-impl std::fmt::Display for CVTerm {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "[{}, {}, {}, {}]",
-            self.term.accession.cv, self.term.accession, self.term.name, self.comment
-        )
-    }
-}
-
-impl mzcore::space::Space for CVTerm {
-    fn space(&self) -> mzcore::space::UsedSpace {
-        (self.term.space() + self.comment.space()).set_total::<Self>()
-    }
-}
-
 impl CVTerm {
     /// Get a line parse the range as a cv term, check the id, and give back the comment/value (if any).
     /// All done without any allocations.
@@ -1567,7 +1719,7 @@ impl FromStr for CVTerm {
                     accession,
                     name: name.into(),
                 },
-                comment: split.next().unwrap_or_default().trim().to_string(),
+                value: split.next().unwrap_or_default().trim().to_string(),
             })
         } else {
             Err(BoxedError::new(

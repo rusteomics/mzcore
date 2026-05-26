@@ -13,8 +13,8 @@ use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    KnownFileFormat, PSM, PSMData, PSMMetaData, PeptidoformPresent, ProteinMetaData, SpectrumIds,
-    helper_functions::explain_number_error,
+    CVTerm, KnownFileFormat, PSM, PSMData, PSMMetaData, PeptidoformPresent, ProteinMetaData,
+    SpectrumIds, helper_functions::explain_number_error,
 };
 use mzcore::{
     sequence::{
@@ -1572,7 +1572,7 @@ impl ProteinMetaData for FastaData {
         None
     }
 
-    fn search_engine(&self) -> &[(super::CVTerm, Option<(f64, super::CVTerm)>)] {
+    fn search_engine(&self) -> &[(CVTerm, Option<(f64, CVTerm)>)] {
         &[]
     }
 

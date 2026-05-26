@@ -9,7 +9,10 @@ use std::{
 use clap::Parser;
 use context_error::{BasicKind, BoxedError, Context, CreateError, combine_error};
 use mzcore::ontology::Ontologies;
-use mzident::{PSMMetaData, ProteinMetaData, SpectrumId, SpectrumIds, open_psm_file};
+use mzident::{
+    PSMMetaData, ProteinMetaData, SpectrumId, SpectrumIds, mztab_writer::MzTabMetadata,
+    open_psm_file,
+};
 
 /// The command line interface arguments
 #[allow(clippy::struct_excessive_bools)]
@@ -62,9 +65,9 @@ fn main() {
         Some("mztab") => {
             mzident::mztab_writer::MzTabWriter::write(
                 out_file,
-                &[],
+                MzTabMetadata::default(),
                 &psms,
-                mzident::mztab_writer::MSRun {
+                mzident::mztab_writer::MzTabMSRun {
                     location: args.raw_file.unwrap_or_default(),
                     ..Default::default()
                 },

@@ -5,6 +5,8 @@ use mzcore::{
     ontology::Ontologies,
     sequence::{Linked, SemiAmbiguous, SimpleLinear},
 };
+use mzcv::Term;
+use serde::{Deserialize, Serialize};
 
 use crate::*;
 
@@ -163,6 +165,40 @@ pub fn open_psm_file<'a>(
             "Use CSV, SSL, TSV, TXT, PSMTSV, deepnovo_denovo, or Fasta, or any of these as a gzipped file (eg csv.gz).",
             Context::default().source(path.to_string_lossy()).to_owned(),
         )),
+    }
+}
+
+/// Define a parameter for an mzTab file
+#[derive(Clone, Debug, Eq, Hash, PartialEq, PartialOrd, Ord, Deserialize, Serialize)]
+pub struct CVTerm {
+    /// The term
+    pub term: Term,
+    /// The value
+    pub value: String,
+}
+
+impl From<Term> for CVTerm {
+    fn from(term: Term) -> Self {
+        Self {
+            term,
+            value: String::new(),
+        }
+    }
+}
+
+impl std::fmt::Display for CVTerm {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "[{},{},{},{}]",
+            self.term.accession.cv, self.term.accession, self.term.name, self.value
+        )
+    }
+}
+
+impl mzcore::space::Space for CVTerm {
+    fn space(&self) -> mzcore::space::UsedSpace {
+        (self.term.space() + self.value.space()).set_total::<Self>()
     }
 }
 
