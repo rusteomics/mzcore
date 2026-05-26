@@ -995,7 +995,7 @@ fn parse_metadata<'a>(
                         Ok(i) => elem.quantification_reagent = i,
                         Err(err) => return Err(err),
                     },
-                    "sample_refs" => {
+                    "sample_ref" => {
                         elem.sample_ref = Some(parse_ref(
                             "sample",
                             line[fields[2].clone()].trim(),
