@@ -111,25 +111,26 @@ impl MzTabPSM {
         Box<dyn Iterator<Item = Result<Self, BoxedError<'static, BasicKind>>> + '_>,
         BoxedError<'static, BasicKind>,
     > {
-        let file = File::open(path.as_ref()).map_err(|e| {
+        let path = path.as_ref();
+        let file = File::open(path).map_err(|e| {
             BoxedError::new(
                 BasicKind::Error,
                 "Could not open file",
                 e.to_string(),
-                Context::default()
-                    .source(path.as_ref().to_string_lossy())
-                    .to_owned(),
+                Context::default().source(path.to_string_lossy()).to_owned(),
             )
         })?;
         if check_extension(path, "gz") {
             Ok(Box::new(Self::parse_reader(
                 BufReader::new(GzDecoder::new(BufReader::new(file))),
                 ontologies,
+                Context::default().source(path.to_string_lossy()).to_owned(),
             )))
         } else {
             Ok(Box::new(Self::parse_reader(
                 BufReader::new(file),
                 ontologies,
+                Context::default().source(path.to_string_lossy()).to_owned(),
             )))
         }
     }
@@ -138,6 +139,7 @@ impl MzTabPSM {
     pub fn parse_reader<'a, T: BufRead + 'a>(
         reader: T,
         ontologies: &'a mzcore::ontology::Ontologies,
+        base: Context<'a>,
     ) -> impl Iterator<Item = Result<Self, BoxedError<'static, BasicKind>>> + 'a {
         let mut search_engine_score_type: Vec<CVTerm> = Vec::new();
         let mut modifications: Vec<SimpleModification> = Vec::new();
@@ -149,6 +151,7 @@ impl MzTabPSM {
         parse_mztab_reader(reader).filter_map(move |item| {
             item.transpose().and_then(|item| match item {
                 Ok(MzTabLine::MTD(line_index, line, fields)) => {
+                    let ctx: Context<'static> = base.clone().lines(0, line.clone()).line_index(line_index).to_owned();
                     if fields.len() == 3 {
                         match line[fields[1].clone()].to_ascii_lowercase().as_str() {
                             m if (m.starts_with("variable_mod[")
@@ -177,7 +180,7 @@ impl MzTabPSM {
                                             &line,
                                             m_range,
                                             ontologies,
-                                            line_index,
+                                            &ctx,
                                         ) {
                                             Ok(m) => {
                                                 if !modifications.contains(&m) {
@@ -192,12 +195,7 @@ impl MzTabPSM {
                                         BasicKind::Error,
                                         "Invalid mzTab modification",
                                         "A modification has to be enclosed by square brackets",
-                                        Context::line_range(
-                                            Some(line_index),
-                                            &line,
-                                            fields[2].clone(),
-                                        )
-                                        .to_owned(),
+                                        ctx.clone().add_highlight((0, fields[2].clone())),
                                     )));
                                 }
                             }
@@ -220,20 +218,11 @@ impl MzTabPSM {
                                                 "The ms_run identifier {}",
                                                 explain_number_error(&err)
                                             ),
-                                            Context::line_range(
-                                                Some(line_index),
-                                                &line,
-                                                fields[1].clone(),
-                                            )
-                                            .to_owned(),
+                                            ctx.clone().add_highlight((0, fields[1].clone())),
                                         )
                                     }) {
-                                        Ok(0) => return Some(Err(BoxedError::new(BasicKind::Error, "Invalid mzTab mz_run identifier", "A ms_run identifier uses 1 based indexing and so cannot be 0.", Context::line_range(
-                                                Some(line_index),
-                                                &line,
-                                                fields[1].clone(),
-                                            )
-                                            .to_owned()))),
+                                        Ok(0) => return Some(Err(BoxedError::new(BasicKind::Error, "Invalid mzTab mz_run identifier", "A ms_run identifier uses 1 based indexing and so cannot be 0.", 
+                                        ctx.clone().add_highlight((0, fields[1].clone())),))),
                                         Ok(i) => i - 1,
                                         Err(err) => return Some(Err(err)),
                                 };
@@ -257,20 +246,11 @@ impl MzTabPSM {
                                                 "The ms_run identifier {}",
                                                 explain_number_error(&err)
                                             ),
-                                            Context::line_range(
-                                                Some(line_index),
-                                                &line,
-                                                fields[1].clone(),
-                                            )
-                                            .to_owned(),
+                                            ctx.clone().add_highlight((0, fields[1].clone())),
                                         )
                                     }) {
-                                        Ok(0) => return Some(Err(BoxedError::new(BasicKind::Error, "Invalid mzTab mz_run identifier", "A ms_run identifier uses 1 based indexing and so cannot be 0.", Context::line_range(
-                                                Some(line_index),
-                                                &line,
-                                                fields[1].clone(),
-                                            )
-                                            .to_owned()))),
+                                        Ok(0) => return Some(Err(BoxedError::new(BasicKind::Error, "Invalid mzTab mz_run identifier", "A ms_run identifier uses 1 based indexing and so cannot be 0.", 
+                                        ctx.clone().add_highlight((0, fields[1].clone()))))),
                                         Ok(i) => i - 1,
                                         Err(err) => return Some(Err(err)),
                                 };
@@ -298,20 +278,11 @@ impl MzTabPSM {
                                                 "The ms_run identifier {}",
                                                 explain_number_error(&err)
                                             ),
-                                            Context::line_range(
-                                                Some(line_index),
-                                                &line,
-                                                fields[1].clone(),
-                                            )
-                                            .to_owned(),
+                                            ctx.clone().add_highlight((0, fields[1].clone())),
                                         )
                                     }) {
-                                        Ok(0) => return Some(Err(BoxedError::new(BasicKind::Error, "Invalid mzTab mz_run identifier", "A ms_run identifier uses 1 based indexing and so cannot be 0.", Context::line_range(
-                                                Some(line_index),
-                                                &line,
-                                                fields[1].clone(),
-                                            )
-                                            .to_owned()))),
+                                        Ok(0) => return Some(Err(BoxedError::new(BasicKind::Error, "Invalid mzTab mz_run identifier", "A ms_run identifier uses 1 based indexing and so cannot be 0.", 
+                                        ctx.clone().add_highlight((0, fields[1].clone()))))),
                                         Ok(i) => i - 1,
                                         Err(err) => return Some(Err(err)),
                                 };
@@ -334,7 +305,7 @@ impl MzTabPSM {
                             BasicKind::Error,
                             "Invalid MTD line",
                             "MTD lines should contain three columns (the tag, key, and value)",
-                            Context::full_line(line_index, line),
+                            ctx,
                         )))
                     }
                 }
@@ -360,7 +331,7 @@ impl MzTabPSM {
                                 BasicKind::Error,
                                 "Invalid protein table",
                                 format!("The required column '{required}' is not present"),
-                                Context::full_line(line_index, line),
+                                base.clone().lines(0, line).line_index(line_index).to_owned(),
                             )));
                         }
                     }
@@ -368,8 +339,8 @@ impl MzTabPSM {
                     None
                 }
                 Ok(MzTabLine::PRT(line_index, line, fields)) => {
-                    match PSMLine::new(line_index, protein_header.as_deref(), &line, &fields)
-                        .and_then(|line| MzTabProtein::from_line(line))
+                    match PSMLine::new(base.clone().lines(0, line.clone()).line_index(line_index).to_owned(), protein_header.as_deref(), &line, &fields)
+                        .and_then(|line| MzTabProtein::from_line(&line))
                     {
                         Ok(protein) => {
                             for name in &protein.ambiguity_members {
@@ -412,7 +383,7 @@ impl MzTabPSM {
                                 BasicKind::Error,
                                 "Invalid peptide table",
                                 format!("The required column '{required}' is not present"),
-                                Context::full_line(line_index, line),
+                                base.clone().lines(0, line).line_index(line_index).to_owned(),
                             )));
                         }
                     }
@@ -420,19 +391,15 @@ impl MzTabPSM {
                     None
                 }
                 Ok(MzTabLine::PSM(line_index, line, fields)) => Some(
-                    PSMLine::new(line_index, peptide_header.as_deref(), &line, &fields)
-                        .and_then(|line| {
-                            Self::from_line(
-                                line,
+                    PSMLine::new(base.clone().lines(0, line.clone()).line_index(line_index).to_owned(), peptide_header.as_deref(), &line, &fields)
+                        .and_then(|line| Self::from_line(
+                                &line,
                                 &modifications,
                                 &search_engine_score_type,
                                 &raw_files,
                                 ontologies,
                                 &proteins,
-                            )
-                        })
-                        .map_err(BoxedError::to_owned),
-                ),
+                            ).map_err(BoxedError::to_owned))),
                 Err(e) => Some(Err(e)),
             })
         })
@@ -441,9 +408,8 @@ impl MzTabPSM {
     /// Parse a single PSM line
     /// # Errors
     /// When not in the correct format
-    #[expect(clippy::missing_panics_doc)]
     fn from_line<'a>(
-        line: PSMLine<'a>,
+        line: &PSMLine<'a>,
         global_modifications: &[SimpleModification],
         search_engine_score_types: &[CVTerm],
         raw_files: &[(Option<String>, Option<CVTerm>, Option<CVTerm>)],
@@ -459,7 +425,7 @@ impl MzTabPSM {
             } else {
                 split_with_brackets(line.line, mod_range, b',', b'[', b']')
                     .into_iter()
-                    .map(|field| parse_modification(line.line, field, ontologies, line.line_index))
+                    .map(|field| parse_modification(line.line, field, ontologies, &line.context))
                     .collect::<Result<Vec<_>, BoxedError<'_, BasicKind>>>()?
             };
 
@@ -474,9 +440,7 @@ impl MzTabPSM {
                     None
                 } else {
                     let mut peptide: Peptidoform<SimpleLinear> = Peptidoform::pro_forma_or_sloppy(
-                        &Context::default()
-                            .line_index(line.line_index)
-                            .lines(0, line.line),
+                        &line.context,
                         line.line,
                         range.clone(),
                         ontologies,
@@ -495,7 +459,7 @@ impl MzTabPSM {
                                             BasicKind::Error,
                                             "Invalid modification position",
                                             format!("Index {location} falls outside the peptide of length {}", peptide.len()),
-                                            Context::default().line_index(line.line_index).lines(0, line.line).add_highlight((0, range.clone()))))?,
+                                            line.context.clone().add_highlight((0, range.clone()))))?,
                                     modification,
                                 );
                             }
@@ -515,7 +479,7 @@ impl MzTabPSM {
                                             BasicKind::Error,
                                             "Invalid modification position",
                                             format!("Index {index} falls outside the peptide of length {}", peptide.len()),
-                                            Context::default().line_index(line.line_index).lines(0, line.line).add_highlight((0, range.clone()))))?, score))
+                                            line.context.clone().add_highlight((0, range.clone()))))?, score))
                                     })
                                     .collect::<Result<Vec<_>, BoxedError<'a, BasicKind>>>()?;
                                 let _possible = peptide.add_ambiguous_modification(
@@ -539,23 +503,19 @@ impl MzTabPSM {
                     )
                 }
             },
-            id: line
-                .required_column("psm_id")
-                .map_err(BoxedError::to_owned)?
-                .0
-                .parse()
-                .map_err(|err| {
+            id: {
+                let col = line
+                    .required_column("psm_id")
+                    .map_err(BoxedError::to_owned)?;
+                col.0.parse().map_err(|err| {
                     BoxedError::new(
                         BasicKind::Error,
                         "Invalid mzTab PSM_ID",
                         format!("The PSM_ID {}", explain_number_error(&err)),
-                        Context::line_range(
-                            Some(line.line_index),
-                            line.line,
-                            line.optional_column("psm_id").unwrap().1,
-                        ),
+                        line.context.clone().add_highlight((0, col.1)),
                     )
-                })?,
+                })?
+            },
             protein: line.optional_column("accession").and_then(|(v, _)| {
                 (!v.eq_ignore_ascii_case("null"))
                     .then(|| (v.to_string(), proteins.get(v).map(Clone::clone)))
@@ -587,7 +547,7 @@ impl MzTabPSM {
                         .enumerate()
                         .map(|(i, s)| {
                             line.optional_column(&format!("search_engine_score[{}]", i + 1))
-                                .and_then(|(v, _)| {
+                                .and_then(|(v, inner_range)| {
                                     (!v.eq_ignore_ascii_case("null")).then(|| {
                                         v.parse::<f64>().map_err(|err| {
                                             BoxedError::new(BasicKind::Error,
@@ -595,16 +555,7 @@ impl MzTabPSM {
                                                 format!(
                                         "The search engine score can not be parsed as f64: {err}"
                                     ),
-                                                Context::line_range(
-                                                    Some(line.line_index),
-                                                    line.line,
-                                                    line.optional_column(&format!(
-                                                        "search_engine_score[{}]",
-                                                        i + 1
-                                                    ))
-                                                    .unwrap()
-                                                    .1,
-                                                ),
+                                    line.context.clone().add_highlight((0, inner_range))
                                             )
                                         })
                                     })
@@ -613,17 +564,10 @@ impl MzTabPSM {
                                 .and_then(|score| {
                                     CVTerm::from_str(s)
                                         .map_err(|e| {
-                                            e.replace_context(Context::line_range(
-                                                Some(line.line_index),
-                                                line.line,
-                                                range.clone(),
-                                            ))
+                                            e.replace_context(line.context.clone().add_highlight((0, range.clone())))
                                         })
-                                        .and_then(|engine| Ok((engine, score, search_engine_score_types.get(i).ok_or_else(|| BoxedError::new(BasicKind::Error,"Missing search engine score type", "All search engines require a defined search type", Context::line_range(
-                                            Some(line.line_index),
-                                            line.line,
-                                            range.clone(),
-                                        )))?.clone())))
+                                        .and_then(|engine| Ok((engine, score, search_engine_score_types.get(i).ok_or_else(|| BoxedError::new(BasicKind::Error,"Missing search engine score type", "All search engines require a defined search type", 
+                                        line.context.clone().add_highlight((0, range.clone()))))?.clone())))
                                 })
                         })
                         .collect::<Result<Vec<_>, BoxedError<'_, BasicKind>>>()?
@@ -640,7 +584,7 @@ impl MzTabPSM {
                         BasicKind::Error,
                         "Invalid PSM reliability",
                         format!("A reliability should be 1, 2, 3, or null, '{v}' is invalid"),
-                        Context::line_range(Some(line.line_index), line.line, range),
+                        line.context.clone().add_highlight((0, range)),
                     )),
                 })
                 .transpose()?
@@ -655,7 +599,7 @@ impl MzTabPSM {
                                     BasicKind::Error,
                                     "Invalid mzTab retention time",
                                     format!("The retention time can not be parsed as f64: {err}"),
-                                    Context::line_range(Some(line.line_index), line.line, r),
+                                    line.context.clone().add_highlight((0, r)),
                                 )
                             })
                             .map(|v| Time::new::<mzcore::system::s>(v))
@@ -678,7 +622,7 @@ impl MzTabPSM {
                                 BasicKind::Error,
                                 "Invalid mzTab charge",
                                 format!("The charge {}", explain_number_error(&err)),
-                                Context::line_range(Some(line.line_index), line.line, range),
+                                line.context.clone().add_highlight((0, range)),
                             )
                         })
                         .map(|v| Charge::new::<mzcore::system::e>(v))?
@@ -694,7 +638,7 @@ impl MzTabPSM {
                                     BasicKind::Error,
                                     "Invalid mzTab experimental mz",
                                     format!("The experimental mz can not be parsed as f64: {err}"),
-                                    Context::line_range(Some(line.line_index), line.line, r),
+                                    line.context.clone().add_highlight((0, r)),
                                 )
                             })
                             .map(|v| MassOverCharge::new::<mzcore::system::thomson>(v))
@@ -717,7 +661,7 @@ impl MzTabPSM {
                     BoxedError::new(BasicKind::Error,
                         "Invalid mzTab spectra_ref",
                         "The spectra_ref should be 'ms_run[x]:id'",
-                        Context::line_range(Some(line.line_index), line.line, range.clone()),
+                        line.context.clone().add_highlight((0, range.clone()))
                     )
                 })
                 .and_then(|(run, scan_id)| {
@@ -729,55 +673,32 @@ impl MzTabPSM {
                             BoxedError::new(BasicKind::Error,
                                 "Invalid mzTab ms_run",
                                 format!("The ms_run identifier {}", explain_number_error(&err)),
-                                Context::line_range(
-                                    Some(line.line_index),
-                                    line.line,
-                                    range.clone(),
-                                ),
+                                line.context.clone().add_highlight((0, range.clone()))
                             )
                         })
                         .and_then(|v| if v == 0 {
                             Err(BoxedError::new(BasicKind::Error,
                                 "Invalid mzTab ms_run",
                                 "A ms_run identifier uses 1 based indexing and so cannot be 0.",
-                                Context::line_range(
-                                    Some(line.line_index),
-                                    line.line,
-                                    range.clone(),
-                                ),
+                                line.context.clone().add_highlight((0, range.clone()))
                             ))
                         } else {Ok(v-1)})?;
-                    let path = raw_files.get(index).ok_or_else(|| BoxedError::new(BasicKind::Error,"Missing raw file definition", "All raw files should be defined in the MTD section before being used in the PSM Section", Context::line_range(
-                        Some(line.line_index),
-                        line.line,
-                        range.clone(),
-                    )))?.0.as_ref().ok_or_else(|| BoxedError::new(BasicKind::Error,"Missing raw file path definition", "The path is not defined for this raw file", Context::line_range(
-                        Some(line.line_index),
-                        line.line,
-                        range.clone(),
-                    )))?;
+                    let path = raw_files.get(index).ok_or_else(|| BoxedError::new(BasicKind::Error,"Missing raw file definition", "All raw files should be defined in the MTD section before being used in the PSM Section", 
+                    line.context.clone().add_highlight((0, range.clone()))))?.0.as_ref().ok_or_else(|| BoxedError::new(BasicKind::Error,"Missing raw file path definition", "The path is not defined for this raw file", line.context.clone().add_highlight((0, range.clone()))))?;
 
                     let id = match scan_id.split_once('=') {
                         Some(("scan", num)) if num.chars().all(|c| c.is_ascii_digit()) => SpectrumId::Number(num.parse().map_err(|err| {
                             BoxedError::new(BasicKind::Error,
                                 "Invalid mzTab spectra_ref scan number",
                                 format!("The spectra_ref scan number {}", explain_number_error(&err)),
-                                Context::line_range(
-                                    Some(line.line_index),
-                                    line.line,
-                                    range.clone(),
-                                ),
+                                line.context.clone().add_highlight((0, range.clone()))
                             )
                         })?),
                         Some(("index", index)) if index.chars().all(|c| c.is_ascii_digit()) => SpectrumId::Index(index.parse().map_err(|err| {
                             BoxedError::new(BasicKind::Error,
                                 "Invalid mzTab spectra_ref index",
                                 format!("The spectra_ref index {}", explain_number_error(&err)),
-                                Context::line_range(
-                                    Some(line.line_index),
-                                    line.line,
-                                    range.clone(),
-                                ),
+                                line.context.clone().add_highlight((0, range.clone()))
                             )
                         })?),
                         _ =>  SpectrumId::Native(scan_id.to_owned()),
@@ -821,14 +742,12 @@ impl MzTabPSM {
                                 BasicKind::Error,
                                 "Invalid preceding amino acid",
                                 "This is not a valid amino acid code",
-                                Context::line_range(Some(line.line_index), line.line, pre.1),
+                                line.context.clone().add_highlight((0, pre.1)),
                             )
                         })?)
                     }
                     _ => FlankingSequence::Sequence(Box::new(Peptidoform::sloppy_pro_forma_inner(
-                        &Context::default()
-                            .line_index(line.line_index)
-                            .lines(0, line.line),
+                        &line.context,
                         line.line,
                         pre.1,
                         ontologies,
@@ -845,14 +764,12 @@ impl MzTabPSM {
                                 BasicKind::Error,
                                 "Invalid following amino acid",
                                 "This is not a valid amino acid code",
-                                Context::line_range(Some(line.line_index), line.line, post.1),
+                                line.context.clone().add_highlight((0, post.1)),
                             )
                         })?)
                     }
                     _ => FlankingSequence::Sequence(Box::new(Peptidoform::sloppy_pro_forma_inner(
-                        &Context::default()
-                            .line_index(line.line_index)
-                            .lines(0, line.line),
+                        &line.context,
                         line.line,
                         post.1,
                         ontologies,
@@ -870,7 +787,7 @@ impl MzTabPSM {
                                 BasicKind::Error,
                                 "Invalid mzTab start",
                                 format!("The start {}", explain_number_error(&err)),
-                                Context::line_range(Some(line.line_index), line.line, r),
+                                line.context.clone().add_highlight((0, r)),
                             )
                         })
                     })
@@ -886,7 +803,7 @@ impl MzTabPSM {
                                         BasicKind::Error,
                                         "Invalid mzTab end",
                                         format!("The end {}", explain_number_error(&err)),
-                                        Context::line_range(Some(line.line_index), line.line, r),
+                                        line.context.clone().add_highlight((0, r)),
                                     )
                                 })
                             })
@@ -905,11 +822,7 @@ impl MzTabPSM {
                                     BasicKind::Error,
                                     "Invalid mzTab local confidence",
                                     format!("The local confidence can not be parsed: {err}"),
-                                    Context::line_range(
-                                        Some(line.line_index),
-                                        line.line,
-                                        r.clone(),
-                                    ),
+                                    line.context.clone().add_highlight((0, r.clone())),
                                 )
                             })
                         })
@@ -953,7 +866,7 @@ impl MzTabPSM {
                             BasicKind::Error,
                             "Invalid local confidence", 
                             format!("The number of elements in the local confidence ({}) does not match the number of amino acids ({pep_len}).", lc.len()), 
-                            Context::default().line_index(line.line_index).lines(0, line.line)))
+                            line.context.clone()))
                     }
                 }
                 Ordering::Equal => {
@@ -964,7 +877,7 @@ impl MzTabPSM {
                     BasicKind::Error,
                     "Invalid local confidence", 
                     format!("The number of elements in the local confidence ({}) does not match the number of amino acids ({pep_len}).", lc.len()), 
-                    Context::default().line_index(line.line_index).lines(0, line.line)))
+                    line.context.clone()))
                 }
             }
         }).transpose()?;
@@ -1033,7 +946,7 @@ impl MzTabProtein {
     /// Parse a single PRT line
     /// # Errors
     /// When not in the correct format
-    fn from_line(line: PSMLine<'_>) -> Result<Arc<Self>, BoxedError<'static, BasicKind>> {
+    fn from_line(line: &PSMLine<'_>) -> Result<Arc<Self>, BoxedError<'static, BasicKind>> {
         Ok(Arc::new(Self {
             accession: line
                 .required_column("accession")
@@ -1054,7 +967,7 @@ impl MzTabProtein {
                                 BasicKind::Error,
                                 "Invalid PRT Line",
                                 format!("The taxid number {}", explain_number_error(&e)),
-                                Context::line_range(Some(line.line_index), line.line, location),
+                                line.context.clone().add_highlight((0, location)),
                             )
                         })
                     }
@@ -1084,7 +997,7 @@ impl MzTabProtein {
                         BasicKind::Error,
                         "Invalid PRT reliability",
                         format!("A reliability should be 1, 2, 3, or null, '{v}' is invalid"),
-                        Context::line_range(Some(line.line_index), line.line, range).to_owned(),
+                        line.context.clone().add_highlight((0, range)).to_owned(),
                     )),
                 })
                 .transpose()?
@@ -1110,9 +1023,8 @@ impl MzTabProtein {
                                     BasicKind::Error,
                                     "Invalid CV accession",
                                     e.description(),
-                                    Context::default()
-                                        .line_index(line.line_index)
-                                        .lines(0, line.line)
+                                    line.context
+                                        .clone()
                                         .add_highlight((0, l.start + offset, s.len()))
                                         .to_owned(),
                                 )
@@ -1133,8 +1045,7 @@ impl MzTabProtein {
                             BasicKind::Error,
                             "Invalid PRT Line",
                             format!("The protein coverage {e}"),
-                            Context::line_range(Some(line.line_index), line.line, location)
-                                .to_owned(),
+                            line.context.clone().add_highlight((0, location)).to_owned(),
                         )
                     })
                 })
@@ -1166,7 +1077,7 @@ fn parse_modification<'a>(
     line: &'a str,
     range: Range<usize>,
     ontologies: &mzcore::ontology::Ontologies,
-    line_index: u32,
+    context: &Context<'a>,
 ) -> Result<MzTabReturnModification, BoxedError<'a, BasicKind>> {
     if let Some((pos, modification)) = line[range.clone()].split_once('-') {
         let position: Option<Vec<(usize, Option<OrderedFloat<f64>>)>> = if pos
@@ -1185,11 +1096,7 @@ fn parse_modification<'a>(
                                 BoxedError::new(BasicKind::Error,
                                     "Invalid modification position",
                                     format!("The position {}", explain_number_error(&err)),
-                                    Context::line_range(
-                                        Some(line_index),
-                                        line,
-                                        index..index + offset,
-                                    ),
+                                    context.clone().add_highlight((0, index..index + offset))
                                 )
                             })?;
 
@@ -1198,15 +1105,11 @@ fn parse_modification<'a>(
                                 && single[offset..].starts_with('[')
                                 && single.ends_with(']')
                             {
-                                let value_range = CVTerm::parse_and_identify(line, index + offset..index+single.len(), "MS:1001876", "modification probability")?;
+                                let value_range = CVTerm::parse_and_identify(line, index + offset..index+single.len(), "MS:1001876", "modification probability", context)?;
                                 Some(line[value_range.clone()].parse::<f64>().map(OrderedFloat).map_err(|err| BoxedError::new(BasicKind::Error,
                                                 "Invalid modification position",
                                                 format!("The modification probability is not a valid number: {err}"),
-                                                Context::line_range(
-                                        Some(line_index),
-                                        line,
-                                        value_range
-                                    )
+                                                context.clone().add_highlight((0, value_range))
                                 )))
                             } else if parameter.is_empty() {
                                 None
@@ -1214,11 +1117,7 @@ fn parse_modification<'a>(
                                 Some(Err(BoxedError::new(BasicKind::Error,
                                     "Invalid modification position",
                                     "A modification position parameter should be enclosed in square brackets '[]'",
-                                    Context::line_range(
-                                        Some(line_index),
-                                        line,
-                                        index + offset..index + single.len(),
-                                    ),
+                                    context.clone().add_highlight((0, index + offset..index + single.len())),
                                 )))
                             }.transpose()?;
                             index += single.len() + 1;
@@ -1228,11 +1127,7 @@ fn parse_modification<'a>(
                             Err(BoxedError::new(BasicKind::Error,
                                 "Invalid modification position",
                                 "A modification position should start with a number",
-                                Context::line_range(
-                                    Some(line_index),
-                                    line,
-                                    index..index + single.len(),
-                                ),
+                                context.clone().add_highlight((0, index..index + single.len()))
                             ))
                         }
                     })
@@ -1246,6 +1141,7 @@ fn parse_modification<'a>(
                 range.start + pos.len() + 1..range.end,
                 "MS:1001524",
                 "fragment neutral loss",
+                context,
             )?;
             let loss = line[value_range.clone()]
                 .parse::<f64>()
@@ -1255,7 +1151,7 @@ fn parse_modification<'a>(
                         BasicKind::Error,
                         "Invalid neutral loss",
                         format!("The fragment neutral loss is not a valid number: {err}"),
-                        Context::line_range(Some(line_index), line, value_range),
+                        context.clone().add_highlight((0, value_range)),
                     )
                 })?;
 
@@ -1269,11 +1165,9 @@ fn parse_modification<'a>(
                             BasicKind::Error,
                             "Invalid neutral loss",
                             "A neutral loss cannot be placed on multiple positions",
-                            Context::line_range(
-                                Some(line_index),
-                                line,
-                                range.start..range.start + pos.len(),
-                            ),
+                            context
+                                .clone()
+                                .add_highlight((0, range.start..range.start + pos.len())),
                         ))
                     }
                 },
@@ -1283,7 +1177,7 @@ fn parse_modification<'a>(
                 line,
                 range.start + pos.len() + 1..range.end,
                 ontologies,
-                line_index,
+                context,
             )?;
 
             Ok(match position {
@@ -1298,8 +1192,13 @@ fn parse_modification<'a>(
             })
         }
     } else if line[range.clone()].starts_with('[') && line[range.clone()].ends_with(']') {
-        let value_range =
-            CVTerm::parse_and_identify(line, range, "MS:1001524", "fragment neutral loss")?;
+        let value_range = CVTerm::parse_and_identify(
+            line,
+            range,
+            "MS:1001524",
+            "fragment neutral loss",
+            context,
+        )?;
         line[value_range.clone()]
             .parse::<f64>()
             .map(|v| Mass::new::<mzcore::system::dalton>(v))
@@ -1308,7 +1207,7 @@ fn parse_modification<'a>(
                     BasicKind::Error,
                     "Invalid neutral loss",
                     format!("The fragment neutral loss is not a valid number: {err}"),
-                    Context::line_range(Some(line_index), line, value_range),
+                    context.clone().add_highlight((0, value_range)),
                 )
             })
             .map(|loss| MzTabReturnModification::NeutralLoss(None, loss))
@@ -1317,7 +1216,7 @@ fn parse_modification<'a>(
             BasicKind::Error,
             "Invalid modification",
             "A modification should be the position followed by a hyphen ('-') followed by the modification",
-            Context::line_range(Some(line_index), line, range),
+            context.clone().add_highlight((0, range)),
         ))
     }
 }
@@ -1329,10 +1228,10 @@ fn parse_single_modification<'a>(
     line: &'a str,
     range: Range<usize>,
     ontologies: &mzcore::ontology::Ontologies,
-    line_index: u32,
+    context: &Context<'a>,
 ) -> Result<SimpleModification, BoxedError<'a, BasicKind>> {
     if let Some((tag, value)) = line[range.clone()].split_once(':') {
-        let value_context = Context::line_range(Some(line_index), line, range.clone());
+        let value_context = context.clone().add_highlight((0, range.clone()));
         let modification = if tag.eq_ignore_ascii_case("unimod") {
             ontologies
                 .unimod()
@@ -1412,7 +1311,9 @@ fn parse_single_modification<'a>(
                             BasicKind::Error,
                             "Invalid mzTab modification",
                             "A chemmod formula modification should be prepended by a sign",
-                            Context::line(Some(line_index), line, range.start + tag.len() + 1, 1),
+                            context
+                                .clone()
+                                .add_highlight((0, range.start + tag.len() + 1, 1)),
                         ));
                     }
                 };
@@ -1429,7 +1330,7 @@ fn parse_single_modification<'a>(
                 BasicKind::Error,
                 "Invalid mzTab modification",
                 "The modification should be prepended by a tag describing the kind of modification, the possible tags are: 'unimod', 'mod', and 'chemmod'",
-                Context::line_range(Some(line_index), line, range),
+                context.clone().add_highlight((0, range)),
             ));
         };
 
@@ -1439,14 +1340,14 @@ fn parse_single_modification<'a>(
             BasicKind::Error,
             "Invalid mzTab modification",
             "An mzTab modification should be in format 'tag:value' but the colon (':') is missing",
-            Context::line_range(Some(line_index), line, range),
+            context.clone().add_highlight((0, range)),
         ))
     }
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Debug)]
 struct PSMLine<'a> {
-    line_index: u32,
+    context: Context<'a>,
     header: &'a [String],
     pub line: &'a str,
     fields: &'a [Range<usize>],
@@ -1457,22 +1358,22 @@ impl<'a> PSMLine<'a> {
     /// # Errors
     /// When there is no header or the line has a different number of columns
     fn new(
-        line_index: u32,
+        context: Context<'static>,
         header: Option<&'a [String]>,
         line: &'a str,
         fields: &'a [Range<usize>],
-    ) -> Result<Self, BoxedError<'a, BasicKind>> {
+    ) -> Result<Self, BoxedError<'static, BasicKind>> {
         let header = header.ok_or_else(|| {
             BoxedError::new(
                 BasicKind::Error,
                 "Missing PSH line",
                 "The PSH peptide header line should precede any PSM line",
-                Context::full_line(line_index, line),
+                context.clone().to_owned(),
             )
         })?;
         if header.len() == fields.len() {
             Ok(Self {
-                line_index,
+                context,
                 header,
                 line,
                 fields,
@@ -1486,7 +1387,7 @@ impl<'a> PSMLine<'a> {
                     header.len(),
                     fields.len(),
                 ),
-                Context::full_line(line_index, line),
+                context.to_owned(),
             ))
         }
     }
@@ -1510,7 +1411,7 @@ impl<'a> PSMLine<'a> {
                 BasicKind::Error,
                 "Missing column",
                 format!("The column '{column}' is required but not present"),
-                Context::full_line(self.line_index, self.line),
+                self.context.clone(),
             )
         })
     }
@@ -1521,9 +1422,8 @@ impl std::fmt::Display for PSMLine<'_> {
         write!(
             f,
             "{}",
-            Context::default()
-                .line_index(self.line_index)
-                .lines(0, self.line)
+            self.context
+                .clone()
                 .add_highlights(self.fields.iter().map(|r| (0, r.clone())))
         )
     }
@@ -1586,6 +1486,7 @@ impl CVTerm {
         range: Range<usize>,
         required_id: &str,
         required_term: &str,
+        context: &Context<'a>,
     ) -> Result<Range<usize>, BoxedError<'a, BasicKind>> {
         let value = &line[range.clone()];
         if value.starts_with('[') && value.ends_with(']') {
@@ -1624,7 +1525,7 @@ impl CVTerm {
                         "A CV term with id {required_id} \"{required_term}\" was expected but id {} was found",
                         &line[id]
                     ),
-                    Context::line_range(None, line, range),
+                    context.clone().add_highlight((0, range)),
                 ))
             }
         } else {
@@ -1632,7 +1533,7 @@ impl CVTerm {
                 BasicKind::Error,
                 "Invalid CV term",
                 "A CV term should be enclosed by '[]'",
-                Context::line_range(None, line, range),
+                context.clone().add_highlight((0, range)),
             ))
         }
     }

@@ -447,7 +447,7 @@ impl<W: Write> MzTabWriter<W, Initial> {
 }
 
 /// Define the name for an optional column in an mzTab file
-#[derive(Clone, Debug, PartialEq, Eq, Hash, Default)]
+#[derive(Clone, Debug, Default, Eq, Hash, PartialEq)]
 pub struct MzTabMetadata {
     /// An ID for the file
     pub id: String,
@@ -522,7 +522,7 @@ impl Display for MzTabParam {
 }
 
 /// Define an instrument for an mzTab file
-#[derive(Clone, Debug, Eq, Hash, PartialEq, Default)]
+#[derive(Clone, Debug, Default, Eq, Hash, PartialEq)]
 pub struct MzTabCV {
     /// What is the label (start of a CURIE) for this CV
     pub label: String,
@@ -550,7 +550,7 @@ impl<T: CVSource> From<&CVIndex<T>> for MzTabCV {
 }
 
 /// Define an instrument for an mzTab file
-#[derive(Clone, Debug, Eq, Hash, PartialEq, Default)]
+#[derive(Clone, Debug, Default, Eq, Hash, PartialEq)]
 pub struct MzTabContact {
     /// The name, has to be provided in first name + initials + last name eg: Joseph J. Thomson
     pub name: String,
@@ -583,7 +583,7 @@ pub struct MzTabInstrument {
 }
 
 /// Define a sample for an mzTab file
-#[derive(Clone, Debug, Eq, Hash, PartialEq, Default)]
+#[derive(Clone, Debug, Default, Eq, Hash, PartialEq)]
 pub struct MzTabSample {
     /// The species of the sample
     pub species: Vec<MzTabParam>,
@@ -600,7 +600,7 @@ pub struct MzTabSample {
 }
 
 /// Define a study variable for an mzTab file
-#[derive(Clone, Debug, Eq, Hash, PartialEq, Default)]
+#[derive(Clone, Debug, Default, Eq, Hash, PartialEq)]
 pub struct MzTabStudyVariable {
     /// Which samples make up this study variable
     pub sample_refs: Vec<usize>,

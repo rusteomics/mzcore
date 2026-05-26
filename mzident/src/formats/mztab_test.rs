@@ -117,7 +117,11 @@ fn maxquant_dia_paper() {
 /// If any part of the process errors.
 fn open_file(reader: impl BufRead) -> Result<usize, BoxedError<'static, BasicKind>> {
     let mut peptides = 0;
-    for read in MzTabPSM::parse_reader(reader, &mzcore::ontology::STATIC_ONTOLOGIES) {
+    for read in MzTabPSM::parse_reader(
+        reader,
+        &mzcore::ontology::STATIC_ONTOLOGIES,
+        Context::default(),
+    ) {
         let read = read.map_err(BoxedError::to_owned)?;
         let peptidoform: PSM<SimpleLinear, MaybePeptidoform> = read.clone().into();
         peptides += 1;

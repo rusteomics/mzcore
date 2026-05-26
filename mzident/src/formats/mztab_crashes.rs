@@ -6,6 +6,7 @@ macro_rules! test {
             for read in crate::MzTabPSM::parse_reader(
                 $case.as_bytes(),
                 &mzcore::ontology::STATIC_ONTOLOGIES,
+                context_error::Context::default(),
             ) {
                 if let Ok(_) = read {
                     peptides += 1;
