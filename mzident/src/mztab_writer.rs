@@ -51,6 +51,18 @@ pub struct MzTabMSRun {
     pub fragmentation_method: Option<CVTerm>,
 }
 
+impl mzcore::space::Space for MzTabMSRun {
+    fn space(&self) -> mzcore::space::UsedSpace {
+        (self.format.space()
+            + self.id_format.space()
+            + self.location.space()
+            + self.hash.space()
+            + self.hash_method.space()
+            + self.fragmentation_method.space())
+        .set_total::<Self>()
+    }
+}
+
 /// The mzTab file has been started but nothing has been written yet.
 #[allow(missing_debug_implementations, missing_copy_implementations)] // Marker ZST
 pub struct Initial;
@@ -237,7 +249,7 @@ impl<W: Write> MzTabWriter<W, Initial> {
         for (i, software) in self.metadata.software.iter().enumerate() {
             let i = i + 1;
             writeln!(self.writer, "MTD\tsoftware[{i}]\t{}", software.name)?;
-            for (j, setting) in software.setting.iter().enumerate() {
+            for (j, setting) in software.settings.iter().enumerate() {
                 let j = j + 1;
                 writeln!(self.writer, "MTD\tsoftware[{i}]-setting[{j}]\t{setting}")?;
             }
@@ -373,7 +385,7 @@ impl<W: Write> MzTabWriter<W, Initial> {
                 writeln!(self.writer, "MTD\tassay[{i}]-sample_ref\tsample[{r}]")?;
             }
             if let Some(r) = assay.ms_run_ref {
-                writeln!(self.writer, "MTD\tassay[{i}]-sample_ref\tms_run[{r}]")?;
+                writeln!(self.writer, "MTD\tassay[{i}]-ms_run_ref\tms_run[{r}]")?;
             }
         }
         for (i, study_variable) in self.metadata.study_variable.iter().enumerate() {
@@ -421,15 +433,15 @@ impl<W: Write> MzTabWriter<W, Initial> {
                 writeln!(self.writer, "MTD\tcv[{i}]-version\t{}", cv.version)?;
             }
         }
-        for (name, id, value) in &self.metadata.colunit_protein {
-            writeln!(self.writer, "MTD\tcolunit-protein\topt_{id}_{name}={value}")?;
+        for (col, param) in &self.metadata.colunit_protein {
+            writeln!(self.writer, "MTD\tcolunit-protein\t{col}={param}")?;
         }
         writeln!(
             self.writer,
             "MTD\tcolunit-psm\tretention_time=[UO,UO:0000010,second,]"
         )?;
-        for (name, id, value) in &self.metadata.colunit_psm {
-            writeln!(self.writer, "MTD\tcolunit-psm\topt_{id}_{name}={value}")?;
+        for (col, param) in &self.metadata.colunit_psm {
+            writeln!(self.writer, "MTD\tcolunit-psm\t{col}={param}")?;
         }
         for (i, custom) in self.metadata.custom.iter().enumerate() {
             let i = i + 1;
@@ -488,15 +500,45 @@ pub struct MzTabMetadata {
     /// Define which CVs are used in the file
     pub cv: Vec<MzTabCV>,
     /// Define the unit for a custom protein column
-    pub colunit_protein: Vec<(MzTabOptionalColumnName, MzTabObjectIdentifier, CVTerm)>,
+    pub colunit_protein: Vec<(MzTabColumn, CVTerm)>,
     /// Define the unit for a custom PSM column
-    pub colunit_psm: Vec<(MzTabOptionalColumnName, MzTabObjectIdentifier, CVTerm)>,
+    pub colunit_psm: Vec<(MzTabColumn, CVTerm)>,
     /// The MS runs
     pub ms_runs: Vec<MzTabMSRun>,
     /// The protein search engines
     pub protein_search_engines: Vec<CVTerm>,
     /// The PSM search engines
     pub psm_search_engines: Vec<CVTerm>,
+}
+
+impl mzcore::space::Space for MzTabMetadata {
+    fn space(&self) -> mzcore::space::UsedSpace {
+        (self.id.space()
+            + self.title.space()
+            + self.description.space()
+            + self.fixed_mods.space()
+            + self.variable_mods.space()
+            + self.quantification_method.space()
+            + self.protein_quantification_unit.space()
+            + self.software.space()
+            + self.sample_processing.space()
+            + self.instruments.space()
+            + self.false_discovery_rate.space()
+            + self.publication.space()
+            + self.contact.space()
+            + self.uri.space()
+            + self.custom.space()
+            + self.sample.space()
+            + self.study_variable.space()
+            + self.assay.space()
+            + self.cv.space()
+            + self.colunit_protein.space()
+            + self.colunit_psm.space()
+            + self.ms_runs.space()
+            + self.protein_search_engines.space()
+            + self.psm_search_engines.space())
+        .set_total::<Self>()
+    }
 }
 
 /// Define an instrument for an mzTab file
@@ -527,6 +569,13 @@ impl<T: CVSource> From<&CVIndex<T>> for MzTabCV {
     }
 }
 
+impl mzcore::space::Space for MzTabCV {
+    fn space(&self) -> mzcore::space::UsedSpace {
+        (self.label.space() + self.full_name.space() + self.version.space() + self.url.space())
+            .set_total::<Self>()
+    }
+}
+
 /// Define an instrument for an mzTab file
 #[derive(Clone, Debug, Default, Eq, Hash, PartialEq, Serialize, Deserialize)]
 pub struct MzTabContact {
@@ -538,13 +587,25 @@ pub struct MzTabContact {
     pub email: String,
 }
 
+impl mzcore::space::Space for MzTabContact {
+    fn space(&self) -> mzcore::space::UsedSpace {
+        (self.name.space() + self.affiliation.space() + self.email.space()).set_total::<Self>()
+    }
+}
+
 /// Define an instrument for an mzTab file
 #[derive(Clone, Debug, Eq, Hash, PartialEq, Serialize, Deserialize)]
 pub struct MzTabSoftware {
     /// The software and its version
     pub name: CVTerm,
     /// Any settings for this software
-    pub setting: Vec<String>,
+    pub settings: Vec<String>,
+}
+
+impl mzcore::space::Space for MzTabSoftware {
+    fn space(&self) -> mzcore::space::UsedSpace {
+        (self.name.space() + self.settings.space()).set_total::<Self>()
+    }
 }
 
 /// Define an instrument for an mzTab file
@@ -558,6 +619,13 @@ pub struct MzTabInstrument {
     pub analyser: Vec<CVTerm>,
     /// The detector type eg `MS:1000253|electron multiplier`
     pub detector: CVTerm,
+}
+
+impl mzcore::space::Space for MzTabInstrument {
+    fn space(&self) -> mzcore::space::UsedSpace {
+        (self.name.space() + self.source.space() + self.analyser.space() + self.detector.space())
+            .set_total::<Self>()
+    }
 }
 
 /// Define a sample for an mzTab file
@@ -577,6 +645,18 @@ pub struct MzTabSample {
     pub custom: Vec<CVTerm>,
 }
 
+impl mzcore::space::Space for MzTabSample {
+    fn space(&self) -> mzcore::space::UsedSpace {
+        (self.species.space()
+            + self.tissue.space()
+            + self.cell_type.space()
+            + self.disease.space()
+            + self.description.space()
+            + self.custom.space())
+        .set_total::<Self>()
+    }
+}
+
 /// Define a study variable for an mzTab file
 #[derive(Clone, Debug, Default, Eq, Hash, PartialEq, Serialize, Deserialize)]
 pub struct MzTabStudyVariable {
@@ -586,6 +666,13 @@ pub struct MzTabStudyVariable {
     pub assay_refs: Vec<NonZeroUsize>,
     /// Human textual description of the variable
     pub description: String,
+}
+
+impl mzcore::space::Space for MzTabStudyVariable {
+    fn space(&self) -> mzcore::space::UsedSpace {
+        (self.sample_refs.space() + self.assay_refs.space() + self.description.space())
+            .set_total::<Self>()
+    }
 }
 
 /// Define an assay for an mzTab file
@@ -612,6 +699,76 @@ impl Default for MzTabAssay {
     }
 }
 
+impl mzcore::space::Space for MzTabAssay {
+    fn space(&self) -> mzcore::space::UsedSpace {
+        (self.quantification_mod.space()
+            + self.sample_ref.space()
+            + self.ms_run_ref.space()
+            + self.quantification_reagent.space())
+        .set_total::<Self>()
+    }
+}
+
+/// Define the name a column in an mzTab file
+#[derive(Clone, Debug, Eq, Hash, PartialEq, Serialize, Deserialize)]
+pub enum MzTabColumn {
+    /// A defined column
+    Defined(Cow<'static, str>),
+    /// An optional column
+    Optional(MzTabObjectIdentifier, MzTabOptionalColumnName),
+}
+
+impl Display for MzTabColumn {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Defined(n) => write!(f, "{n}"),
+            Self::Optional(i, n) => write!(f, "opt_{i}_{n}"),
+        }
+    }
+}
+
+impl mzcore::space::Space for MzTabColumn {
+    fn space(&self) -> mzcore::space::UsedSpace {
+        match self {
+            Self::Defined(t) => t.space(),
+            Self::Optional(i, n) => i.space() + n.space(),
+        }
+        .set_total::<Self>()
+    }
+}
+
+impl std::str::FromStr for MzTabColumn {
+    type Err = ();
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        if let Some(tail) = s.strip_prefix("opt_") {
+            let Some((id, name)) = tail.split_once('_') else {
+                return Err(());
+            };
+            let id = match id.split_once('[').and_then(|(t, n)| {
+                n.strip_suffix(']')
+                    .and_then(|n| n.parse::<NonZeroUsize>().ok())
+                    .map(|n| (t, n))
+            }) {
+                Some(("assay", num)) => MzTabObjectIdentifier::Assay(num),
+                Some(("ms_run", num)) => MzTabObjectIdentifier::MSRun(num),
+                Some(("study_variable", num)) => MzTabObjectIdentifier::StudyVariable(num),
+                None if id == "global" => MzTabObjectIdentifier::Global,
+                _ => return Err(()),
+            };
+
+            Ok(Self::Optional(
+                id,
+                Term::from_str(name).map_or_else(
+                    |_| MzTabOptionalColumnName::Name(Cow::Owned(name.to_string())),
+                    |t| MzTabOptionalColumnName::Term(t),
+                ),
+            ))
+        } else {
+            Ok(Self::Defined(Cow::Owned(s.to_string())))
+        }
+    }
+}
+
 /// Define the name for an optional column in an mzTab file
 #[derive(Clone, Debug, Eq, Hash, PartialEq, Serialize, Deserialize)]
 pub enum MzTabOptionalColumnName {
@@ -619,6 +776,16 @@ pub enum MzTabOptionalColumnName {
     Term(Term),
     /// A free text name
     Name(Cow<'static, str>),
+}
+
+impl mzcore::space::Space for MzTabOptionalColumnName {
+    fn space(&self) -> mzcore::space::UsedSpace {
+        match self {
+            Self::Term(t) => t.space(),
+            Self::Name(n) => n.space(),
+        }
+        .set_total::<Self>()
+    }
 }
 
 impl Display for MzTabOptionalColumnName {
@@ -658,6 +825,18 @@ pub enum MzTabObjectIdentifier {
     MSRun(NonZeroUsize),
     /// A global optional column
     Global,
+}
+
+impl mzcore::space::Space for MzTabObjectIdentifier {
+    fn space(&self) -> mzcore::space::UsedSpace {
+        match self {
+            Self::Assay(t) => t.space(),
+            Self::StudyVariable(n) => n.space(),
+            Self::MSRun(n) => n.space(),
+            Self::Global => mzcore::space::UsedSpace::stack(8),
+        }
+        .set_total::<Self>()
+    }
 }
 
 impl Display for MzTabObjectIdentifier {

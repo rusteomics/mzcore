@@ -24,7 +24,10 @@ use crate::{
     helper_functions::{
         check_extension, explain_number_error, float_digits, next_number, split_with_brackets,
     },
-    mztab_writer::{MzTabAssay, MzTabMSRun, MzTabMetadata, MzTabSoftware},
+    mztab_writer::{
+        MzTabAssay, MzTabCV, MzTabContact, MzTabInstrument, MzTabMSRun, MzTabMetadata, MzTabSample,
+        MzTabSoftware, MzTabStudyVariable,
+    },
 };
 use mzcore::{
     chemistry::MolecularFormula,
@@ -100,7 +103,8 @@ impl mzcore::space::Space for MzTabPSM {
             + self.flanking_sequence.space()
             + self.protein_location.space()
             + self.local_confidence.space()
-            + self.additional.space())
+            + self.additional.space()
+            + self.metadata.space())
         .set_total::<Self>()
     }
 }
@@ -841,12 +845,33 @@ fn parse_metadata<'a>(
             }
             "description" => metadata.description = line[fields[2].clone()].to_string(),
             "title" => metadata.title = line[fields[2].clone()].to_string(),
+            "mzTab-ID" => metadata.id = line[fields[2].clone()].to_string(),
+            m if m.starts_with("publication[") && m.ends_with(']') => metadata
+                .publication
+                .push(line[fields[2].clone()].to_string()),
+            m if m.starts_with("uri[") && m.ends_with(']') => {
+                metadata.uri.push(line[fields[2].clone()].to_string())
+            }
             "protein-quantification-unit" => {
                 metadata.protein_quantification_unit =
                     match CVTerm::from_str(&line[fields[2].clone()]) {
                         Ok(term) => Some(term),
                         Err(err) => return Err(err),
                     }
+            }
+            "custom" => {
+                metadata
+                    .custom
+                    .push(CVTerm::from_str(&line[fields[2].clone()])?);
+            }
+            "false_discovery_rate" => {
+                metadata.false_discovery_rate = line[fields[2].clone()]
+                    .split('|')
+                    .map(CVTerm::from_str)
+                    .collect::<Result<Vec<_>, _>>()
+                    .map_err(|err| {
+                        err.replace_context(context.clone().add_highlight((0, fields[2].clone())))
+                    })?;
             }
             "quantification_method" => {
                 metadata.quantification_method = match CVTerm::from_str(&line[fields[2].clone()]) {
@@ -881,7 +906,7 @@ fn parse_metadata<'a>(
                             term: term!(MS:1000531|software),
                             value: String::new(),
                         },
-                        setting: Vec::new(),
+                        settings: Vec::new(),
                     });
                 }
 
@@ -889,7 +914,7 @@ fn parse_metadata<'a>(
                     metadata.software[index].name = CVTerm::from_str(&line[fields[2].clone()])?;
                 } else if tag.starts_with("-setting[") {
                     metadata.software[index]
-                        .setting
+                        .settings
                         .push(line[fields[2].clone()].to_string());
                 } else {
                     return Err(BoxedError::new(
@@ -1023,6 +1048,320 @@ fn parse_metadata<'a>(
                     }
                 }
             }
+            m if m.starts_with("instrument[") => {
+                let Some((index, tag)) = m.trim_start_matches("instrument[").split_once("]-")
+                else {
+                    return Err(BoxedError::new(
+                        BasicKind::Error,
+                        "Invalid mzTab instrument parameter",
+                        "An instrument parameter needs to be 'instrument[0]-<name>' where the 0 is the index and the name can be any of the known parameters.",
+                        context.clone().add_highlight((0, fields[1].clone())),
+                    ));
+                };
+                let index = match index.parse::<NonZeroUsize>().map_err(|err| {
+                    BoxedError::new(
+                        BasicKind::Error,
+                        "Invalid mzTab instrument identifier",
+                        format!("The instrument identifier {}", explain_number_error(&err)),
+                        context.clone().add_highlight((0, fields[1].clone())),
+                    )
+                }) {
+                    Ok(i) => i.get() - 1,
+                    Err(err) => return Err(err),
+                };
+
+                while metadata.instruments.len() <= index {
+                    metadata.instruments.push(MzTabInstrument {
+                        name: term!(MS:1000463|instrument).into(),
+                        source: term!(MS:1000458|source).into(),
+                        detector: term!(MS:1000453|detector).into(),
+                        analyser: Vec::new(),
+                    });
+                }
+
+                let elem = &mut metadata.instruments[index];
+
+                match tag {
+                    "name" => match CVTerm::from_str(&line[fields[2].clone()]) {
+                        Ok(i) => elem.name = i,
+                        Err(err) => return Err(err),
+                    },
+                    "source" => match CVTerm::from_str(&line[fields[2].clone()]) {
+                        Ok(i) => elem.source = i,
+                        Err(err) => return Err(err),
+                    },
+                    "detector" => match CVTerm::from_str(&line[fields[2].clone()]) {
+                        Ok(i) => elem.detector = i,
+                        Err(err) => return Err(err),
+                    },
+                    _ => {
+                        if let Some(m) = tag.strip_prefix("analyzer[") {
+                            if m.ends_with(']') {
+                                elem.analyser
+                                    .push(CVTerm::from_str(&line[fields[2].clone()])?);
+                            }
+                        } else {
+                            return Err(BoxedError::new(
+                                BasicKind::Error,
+                                "Invalid MTD line",
+                                "This parameter does not exist for an instrument",
+                                context.clone().add_highlight((0, fields[0].clone())),
+                            ));
+                        }
+                    }
+                }
+            }
+            m if m.starts_with("contact[") => {
+                let Some((index, tag)) = m.trim_start_matches("contact[").split_once("]-") else {
+                    return Err(BoxedError::new(
+                        BasicKind::Error,
+                        "Invalid mzTab contact parameter",
+                        "An contact parameter needs to be 'contact[0]-<name>' where the 0 is the index and the name can be any of the known parameters.",
+                        context.clone().add_highlight((0, fields[1].clone())),
+                    ));
+                };
+                let index = match index.parse::<NonZeroUsize>().map_err(|err| {
+                    BoxedError::new(
+                        BasicKind::Error,
+                        "Invalid mzTab contact identifier",
+                        format!("The contact identifier {}", explain_number_error(&err)),
+                        context.clone().add_highlight((0, fields[1].clone())),
+                    )
+                }) {
+                    Ok(i) => i.get() - 1,
+                    Err(err) => return Err(err),
+                };
+
+                while metadata.contact.len() <= index {
+                    metadata.contact.push(MzTabContact::default());
+                }
+
+                let elem = &mut metadata.contact[index];
+
+                match tag {
+                    "name" => elem.name = line[fields[2].clone()].to_string(),
+                    "affiliation" => elem.affiliation = line[fields[2].clone()].to_string(),
+                    "email" => elem.email = line[fields[2].clone()].to_string(),
+                    _ => {
+                        return Err(BoxedError::new(
+                            BasicKind::Error,
+                            "Invalid MTD line",
+                            "This parameter does not exist for a contact",
+                            context.clone().add_highlight((0, fields[0].clone())),
+                        ));
+                    }
+                }
+            }
+            m if m.starts_with("sample[") => {
+                let Some((index, tag)) = m.trim_start_matches("sample[").split_once("]-") else {
+                    return Err(BoxedError::new(
+                        BasicKind::Error,
+                        "Invalid mzTab sample parameter",
+                        "An sample parameter needs to be 'sample[0]-<name>' where the 0 is the index and the name can be any of the known parameters.",
+                        context.clone().add_highlight((0, fields[1].clone())),
+                    ));
+                };
+                let index = match index.parse::<NonZeroUsize>().map_err(|err| {
+                    BoxedError::new(
+                        BasicKind::Error,
+                        "Invalid mzTab sample identifier",
+                        format!("The sample identifier {}", explain_number_error(&err)),
+                        context.clone().add_highlight((0, fields[1].clone())),
+                    )
+                }) {
+                    Ok(i) => i.get() - 1,
+                    Err(err) => return Err(err),
+                };
+
+                while metadata.sample.len() <= index {
+                    metadata.sample.push(MzTabSample::default());
+                }
+
+                let elem = &mut metadata.sample[index];
+
+                match tag {
+                    "description" => elem.description = line[fields[2].clone()].to_string(),
+                    _ => match tag.split_once('[') {
+                        Some(("species", _)) => elem
+                            .species
+                            .push(CVTerm::from_str(&line[fields[2].clone()])?),
+                        Some(("tissue", _)) => elem
+                            .tissue
+                            .push(CVTerm::from_str(&line[fields[2].clone()])?),
+                        Some(("cell_type", _)) => elem
+                            .cell_type
+                            .push(CVTerm::from_str(&line[fields[2].clone()])?),
+                        Some(("disease", _)) => elem
+                            .disease
+                            .push(CVTerm::from_str(&line[fields[2].clone()])?),
+                        Some(("custom", _)) => elem
+                            .custom
+                            .push(CVTerm::from_str(&line[fields[2].clone()])?),
+                        _ => {
+                            return Err(BoxedError::new(
+                                BasicKind::Error,
+                                "Invalid MTD line",
+                                "This parameter does not exist for a sample",
+                                context.clone().add_highlight((0, fields[0].clone())),
+                            ));
+                        }
+                    },
+                }
+            }
+            m if m.starts_with("study_variable[") => {
+                let Some((index, tag)) = m.trim_start_matches("study_variable[").split_once("]-")
+                else {
+                    return Err(BoxedError::new(
+                        BasicKind::Error,
+                        "Invalid mzTab study_variable parameter",
+                        "An study_variable parameter needs to be 'study_variable[0]-<name>' where the 0 is the index and the name can be any of the known parameters.",
+                        context.clone().add_highlight((0, fields[1].clone())),
+                    ));
+                };
+                let index = match index.parse::<NonZeroUsize>().map_err(|err| {
+                    BoxedError::new(
+                        BasicKind::Error,
+                        "Invalid mzTab study_variable identifier",
+                        format!(
+                            "The study_variable identifier {}",
+                            explain_number_error(&err)
+                        ),
+                        context.clone().add_highlight((0, fields[1].clone())),
+                    )
+                }) {
+                    Ok(i) => i.get() - 1,
+                    Err(err) => return Err(err),
+                };
+
+                while metadata.study_variable.len() <= index {
+                    metadata.study_variable.push(MzTabStudyVariable::default());
+                }
+
+                let elem = &mut metadata.study_variable[index];
+
+                match tag {
+                    "description" => elem.description = line[fields[2].clone()].to_string(),
+                    "sample_refs" => {
+                        elem.sample_refs = parse_refs(
+                            "sample",
+                            line[fields[2].clone()].trim(),
+                            &context.clone().add_highlight((0, fields[2].clone())),
+                        )?
+                    }
+                    "assay_refs" => {
+                        elem.assay_refs = parse_refs(
+                            "assay",
+                            line[fields[2].clone()].trim(),
+                            &context.clone().add_highlight((0, fields[2].clone())),
+                        )?
+                    }
+                    _ => {
+                        return Err(BoxedError::new(
+                            BasicKind::Error,
+                            "Invalid MTD line",
+                            "This parameter does not exist for a study_variable",
+                            context.clone().add_highlight((0, fields[0].clone())),
+                        ));
+                    }
+                }
+            }
+            m if m.starts_with("cv[") => {
+                let Some((index, tag)) = m.trim_start_matches("cv[").split_once("]-") else {
+                    return Err(BoxedError::new(
+                        BasicKind::Error,
+                        "Invalid mzTab cv parameter",
+                        "An cv parameter needs to be 'cv[0]-<name>' where the 0 is the index and the name can be any of the known parameters.",
+                        context.clone().add_highlight((0, fields[1].clone())),
+                    ));
+                };
+                let index = match index.parse::<NonZeroUsize>().map_err(|err| {
+                    BoxedError::new(
+                        BasicKind::Error,
+                        "Invalid mzTab cv identifier",
+                        format!("The cv identifier {}", explain_number_error(&err)),
+                        context.clone().add_highlight((0, fields[1].clone())),
+                    )
+                }) {
+                    Ok(i) => i.get() - 1,
+                    Err(err) => return Err(err),
+                };
+
+                while metadata.cv.len() <= index {
+                    metadata.cv.push(MzTabCV::default());
+                }
+
+                let elem = &mut metadata.cv[index];
+
+                match tag {
+                    "label" => elem.label = line[fields[2].clone()].to_string(),
+                    "full_name" => elem.full_name = line[fields[2].clone()].to_string(),
+                    "version" => elem.version = line[fields[2].clone()].to_string(),
+                    "url" => elem.url = line[fields[2].clone()].to_string(),
+                    _ => {
+                        return Err(BoxedError::new(
+                            BasicKind::Error,
+                            "Invalid MTD line",
+                            "This parameter does not exist for a cv",
+                            context.clone().add_highlight((0, fields[0].clone())),
+                        ));
+                    }
+                }
+            }
+            m if m.starts_with("sample_processing[") && m.ends_with("]") => {
+                metadata.sample_processing.push(
+                    line[fields[2].clone()]
+                        .split('|')
+                        .map(CVTerm::from_str)
+                        .collect::<Result<Vec<_>, _>>()
+                        .map_err(|err| {
+                            err.replace_context(
+                                context.clone().add_highlight((0, fields[2].clone())),
+                            )
+                        })?,
+                );
+            }
+            "colunit-protein" => {
+                let Some((column, param)) = line[fields[2].clone()].split_once('=') else {
+                    return Err(BoxedError::new(
+                        BasicKind::Error,
+                        "Invalid colunit-protein line",
+                        "A colunit line must contain '{column}={param}' but the '=' is missing",
+                        context.clone().add_highlight((0, fields[0].clone())),
+                    ));
+                };
+                metadata.colunit_protein.push((
+                    column.parse().map_err(|()| {
+                        BoxedError::new(
+                            BasicKind::Error,
+                            "Invalid column name",
+                            "A column name has to be an exsting column or an optional column",
+                            context.clone().add_highlight((0, fields[0].clone())),
+                        )
+                    })?,
+                    param.parse()?,
+                ))
+            }
+            "colunit-psm" => {
+                let Some((column, param)) = line[fields[2].clone()].split_once('=') else {
+                    return Err(BoxedError::new(
+                        BasicKind::Error,
+                        "Invalid colunit-psm line",
+                        "A colunit line must contain '{column}={param}' but the '=' is missing",
+                        context.clone().add_highlight((0, fields[0].clone())),
+                    ));
+                };
+                metadata.colunit_psm.push((
+                    column.parse().map_err(|()| {
+                        BoxedError::new(
+                            BasicKind::Error,
+                            "Invalid column name",
+                            "A column name has to be an exsting column or an optional column",
+                            context.clone().add_highlight((0, fields[0].clone())),
+                        )
+                    })?,
+                    param.parse()?,
+                ))
+            }
             _ => (),
         }
         Ok(())
@@ -1034,6 +1373,17 @@ fn parse_metadata<'a>(
             context.clone(),
         ))
     }
+}
+
+fn parse_refs<'a>(
+    ty: &'static str,
+    value: &str,
+    context: &Context<'a>,
+) -> Result<Vec<NonZeroUsize>, BoxedError<'a, BasicKind>> {
+    value
+        .split(',')
+        .map(|s| parse_ref(ty, s, context))
+        .collect()
 }
 
 fn parse_ref<'a>(
