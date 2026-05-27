@@ -222,7 +222,7 @@ impl MzTabPSM {
                         &line,
                         &fields,
                     )
-                    .and_then(|line| MzTabProtein::from_line(&line))
+                    .and_then(|line| MzTabProtein::from_line(&line, metadata.clone()))
                     {
                         Ok(protein) => {
                             for name in &protein.ambiguity_members {
@@ -1442,6 +1442,10 @@ pub struct MzTabProtein {
     pub reliability: Option<Reliability>,
     /// A URI pointing to the protein's source entry in the unit it was identified in (e.g., the PRIDE database or a local database / file identifier).
     pub uri: Option<String>,
+    /// Any additional metadata
+    pub additional: HashMap<String, String>,
+    /// The metadata of the file
+    pub metadata: Arc<MzTabMetadata>,
 }
 
 impl From<MzTabProtein> for crate::ProteinData {
@@ -1464,7 +1468,9 @@ impl mzcore::space::Space for MzTabProtein {
             + self.coverage.space()
             + self.go_terms.space()
             + self.reliability.space()
-            + self.uri.space())
+            + self.uri.space()
+            + self.additional.space()
+            + self.metadata.space())
         .set_total::<Self>()
     }
 }
@@ -1473,7 +1479,10 @@ impl MzTabProtein {
     /// Parse a single PRT line
     /// # Errors
     /// When not in the correct format
-    fn from_line(line: &PSMLine<'_>) -> Result<Arc<Self>, BoxedError<'static, BasicKind>> {
+    fn from_line(
+        line: &PSMLine<'_>,
+        metadata: Arc<MzTabMetadata>,
+    ) -> Result<Arc<Self>, BoxedError<'static, BasicKind>> {
         Ok(Arc::new(Self {
             accession: line
                 .required_column("accession")
@@ -1577,6 +1586,19 @@ impl MzTabProtein {
                     })
                 })
                 .transpose()?,
+            additional: line
+                .header
+                .iter()
+                .enumerate()
+                .filter(|(_, column)| column.starts_with("opt"))
+                .map(|(index, column)| {
+                    (
+                        column.clone(),
+                        line.line[line.fields[index].clone()].to_string(),
+                    )
+                })
+                .collect(),
+            metadata,
         }))
     }
 }
