@@ -140,6 +140,21 @@ impl PlacementRule {
     pub fn any_possible_aa(rules: &[Self], aa: AminoAcid, position: Position) -> bool {
         rules.iter().any(|r| r.is_possible_aa(aa, position))
     }
+
+    /// Check if this rule is a subset of another rule
+    pub fn is_subset(&self, other: &Self) -> bool {
+        match (self, other) {
+            (_, Self::Anywhere) => true,
+            (Self::Terminal(ps), Self::Terminal(po)) => ps.is_subset(po),
+            (Self::AminoAcid(aas, ps), Self::AminoAcid(aao, po)) => {
+                ps.is_subset(po) && aas.iter().all(|a| aao.contains(a))
+            }
+            (Self::PsiModification(is, ps), Self::PsiModification(io, po)) => {
+                is == io && ps.is_subset(po)
+            }
+            _ => false,
+        }
+    }
 }
 
 impl FromStr for PlacementRule {
@@ -207,6 +222,18 @@ impl Position {
             Self::ProteinNTerm => position == Self::ProteinNTerm,
             Self::AnyCTerm => position == Self::AnyCTerm || position == Self::ProteinCTerm,
             Self::ProteinCTerm => position == Self::ProteinCTerm,
+        }
+    }
+
+    /// Check if this position is a subset of another position
+    pub fn is_subset(&self, other: &Self) -> bool {
+        match (self, other) {
+            (_, Self::Anywhere) => true,
+            (Self::ProteinCTerm, Self::ProteinCTerm | Self::AnyCTerm) => true,
+            (Self::AnyCTerm, Self::AnyCTerm) => true,
+            (Self::ProteinNTerm, Self::ProteinNTerm | Self::AnyNTerm) => true,
+            (Self::AnyNTerm, Self::AnyNTerm) => true,
+            _ => false,
         }
     }
 }

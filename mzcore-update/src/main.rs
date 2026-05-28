@@ -1,10 +1,16 @@
 //! Update the ontologies used in mzcore
-use context_error as _;
-use mzcore::ontology::*;
-use mzcv::CVIndex;
+
+use context_error::{self as _, BasicKind, BoxedError, CreateError};
+use mzcore::{
+    chemistry::Chemical,
+    ontology::*,
+    sequence::{AminoAcid, PlacementRule, Position, SimpleModificationInner},
+};
+use mzcv::{AccessionCode, CVIndex};
 
 fn main() {
     let mut local = false;
+    let mut link = false;
     let args: Vec<String> = std::env::args()
         .skip(1)
         .map(|v| v.to_ascii_lowercase())
@@ -12,12 +18,15 @@ fn main() {
             if v == "local" {
                 local = true;
                 false
+            } else if v == "link" {
+                link = true;
+                false
             } else {
                 true
             }
         })
         .collect();
-    if args.is_empty()
+    let psimod = if args.is_empty()
         || args.contains(&"psimod".to_string())
         || args.contains(&"psi-mod".to_string())
     {
@@ -40,7 +49,10 @@ fn main() {
         index
             .save_to_cache_at(std::path::Path::new("mzcore/src/databases/psimod.dat"))
             .unwrap();
-    }
+        Some(index)
+    } else {
+        None
+    };
     if args.is_empty() || args.contains(&"resid".to_string()) {
         // RESID
         let path = std::path::Path::new("mzcore-update/data/RESID.xml");
@@ -89,7 +101,7 @@ fn main() {
             .save_to_cache_at(std::path::Path::new("mzcore/src/databases/xlmod.dat"))
             .unwrap();
     }
-    if args.is_empty() || args.contains(&"unimod".to_string()) {
+    let unimod = if args.is_empty() || args.contains(&"unimod".to_string()) {
         // Unimod
         let mut index = CVIndex::<Unimod>::empty();
         let errs = if local {
@@ -109,7 +121,10 @@ fn main() {
         index
             .save_to_cache_at(std::path::Path::new("mzcore/src/databases/unimod.dat"))
             .unwrap();
-    }
+        Some(index)
+    } else {
+        None
+    };
     if args.is_empty() || args.contains(&"gno".to_string()) || args.contains(&"gnome".to_string()) {
         // GNOme
         let mut index = CVIndex::<Gnome>::empty();
@@ -130,5 +145,131 @@ fn main() {
         index
             .save_to_cache_at(std::path::Path::new("mzcore/src/databases/gnome.dat"))
             .unwrap();
+    }
+    if link
+        && let Some(psimod) = psimod
+        && let Some(unimod) = unimod
+    {
+        validate_linking(&unimod, &psimod);
+    }
+}
+
+fn validate_linking(unimod: &CVIndex<Unimod>, psimod: &CVIndex<PsiMod>) {
+    let mut errors = Vec::new();
+    for m in psimod.data() {
+        if let Some(id) = m.description() {
+            let mut unimod_link = false;
+            for (source, xref) in &id.cross_ids {
+                if let Some(x) = &source
+                    && x.eq_ignore_ascii_case("unimod")
+                {
+                    unimod_link = true;
+                    let (num, loc) = xref.split_once('#').unwrap_or((xref.as_ref(), ""));
+
+                    let Ok(num) = num.parse() else {
+                        context_error::combine_error(
+                            &mut errors,
+                            BoxedError::new(
+                                BasicKind::Error,
+                                "Invalid Unimod code",
+                                "Invalid Unimod code, invalid number",
+                                context_error::Context::default()
+                                    .lines(0, format!("MOD:{} {num}", id.id())),
+                            ),
+                        );
+
+                        continue;
+                    };
+
+                    let loc = if loc.is_empty() {
+                        PlacementRule::Anywhere
+                    } else if loc == "N-term" {
+                        PlacementRule::Terminal(Position::AnyNTerm)
+                    } else if loc == "C-term" {
+                        PlacementRule::Terminal(Position::AnyCTerm)
+                    } else {
+                        let Ok(loc) = loc.parse::<AminoAcid>() else {
+                            context_error::combine_error(
+                                &mut errors,
+                                BoxedError::new(
+                                    BasicKind::Error,
+                                    "Invalid Unimod code",
+                                    "Invalid Unimod code, invalid position",
+                                    context_error::Context::default()
+                                        .lines(0, format!("MOD:{} {loc}", id.id())),
+                                ),
+                            );
+                            continue;
+                        };
+                        PlacementRule::AminoAcid(vec![loc].into(), Position::Anywhere)
+                    };
+
+                    if let Some(unimod_m) = unimod.get_by_index(&AccessionCode::Numeric(num)) {
+                        if m.formula() != unimod_m.formula() {
+                            context_error::combine_error(
+                                &mut errors,
+                                BoxedError::new(
+                                    BasicKind::Error,
+                                    "Suspicious link",
+                                    "Unimod and PSI-MOD do not have the same formula",
+                                    context_error::Context::default().lines(
+                                        0,
+                                        format!(
+                                            "MOD:{}={} UNIMOD:{num}={}",
+                                            id.id(),
+                                            m.formula(),
+                                            unimod_m.formula()
+                                        ),
+                                    ),
+                                ),
+                            );
+                        }
+                        match &*unimod_m {
+                            SimpleModificationInner::Database { specificities, .. } => {
+                                if !specificities
+                                    .iter()
+                                    .any(|s| s.0.iter().any(|r| loc.is_subset(r)))
+                                {
+                                    context_error::combine_error(
+                                        &mut errors,
+                                        BoxedError::new(
+                                            BasicKind::Error,
+                                            "Suspicious link",
+                                            "Unimod does not allow this modification on this location",
+                                            context_error::Context::default()
+                                                .lines(0, format!("MOD:{} UNIMOD:{num}", id.id(),)),
+                                        ),
+                                    );
+                                }
+                            }
+                            _ => (),
+                        }
+                    } else {
+                        context_error::combine_error(
+                            &mut errors,
+                            BoxedError::new(
+                                BasicKind::Error,
+                                "Invalid Unimod code",
+                                "Unimod modification does not exist",
+                                context_error::Context::default()
+                                    .lines(0, format!("MOD:{} {num}", id.id())),
+                            ),
+                        );
+                    }
+                }
+            }
+
+            // TODO: check at some point but be sure to first inherit any unimod links from parents and maybe also propose a link?
+            // if !unimod_link {
+            //     errors
+            //         .entry("Not linked to Unimod")
+            //         .or_default()
+            //         .push((id.id(), String::new()))
+            // }
+        }
+    }
+
+    for error in errors {
+        println!("{error}");
     }
 }
