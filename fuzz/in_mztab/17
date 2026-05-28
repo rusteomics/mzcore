@@ -1,0 +1,88 @@
+MTD	mzTab-version	1.0.0
+MTD	mzTab-mode	Complete
+MTD	mzTab-type	Identification
+MTD	title	null
+MTD	description	null
+MTD	software[1]	[MS, MS:1001583, MaxQuant,1.6.3.4]
+COM	[, CHEMMOD:57.0214637236, Carbamidomethyl (C),]	
+MTD	fixed_mod[1]	[, , CHEMMOD:57.0214637236,]
+MTD	fixed_mod[1]-site	C
+MTD	fixed_mod[1]-position	Anywhere
+COM	[, CHEMMOD:15.9949146221, Oxidation (M),]	
+MTD	variable_mod[1]	[, , CHEMMOD:15.9949146221,]
+MTD	variable_mod[1]-site	M
+MTD	variable_mod[1]-position	Anywhere
+COM	[, CHEMMOD:42.0105646863, Acetyl (Protein N-term),]	
+MTD	variable_mod[2]	[, , CHEMMOD:42.0105646863,]
+MTD	variable_mod[2]-site	N-term
+MTD	variable_mod[2]-position	Protein N-term
+MTD	protein_search_engine_score[1]	[MS, MS:1002375, protein group-level combined FDRscore, ]
+MTD	peptide_search_engine_score[1]	[MS, MS:1001250, local FDR, ]
+MTD	psm_search_engine_score[1]	[MS, MS:1002338, Andromeda:score,  ]
+MTD	psm_search_engine_score[2]	[MS, MS:1002995, Andromeda:PEP,  ]
+MTD	ms_run[1]-format	[MS, MS:1002996, Andromeda:apl file format, ]
+MTD	ms_run[1]-location	file://d:/shared/dglaetzer/yeaststd_hml/combined/andromeda/allspectra.cid.itms.secpep.sil2_0.apl
+MTD	ms_run[1]-id_format	[MS, MS:1000776, scan number only nativeID format, ]
+MTD	ms_run[2]-format	[MS, MS:1002996, Andromeda:apl file format, ]
+MTD	ms_run[2]-location	file://d:/shared/dglaetzer/yeaststd_hml/combined/andromeda/allspectra.cid.itms.secpep.sil1_0.apl
+MTD	ms_run[2]-id_format	[MS, MS:1000776, scan number only nativeID format, ]
+MTD	ms_run[3]-format	[MS, MS:1002996, Andromeda:apl file format, ]
+MTD	ms_run[3]-location	file://d:/shared/dglaetzer/yeaststd_hml/combined/andromeda/allspectra.cid.itms.secpep.sil0_0.apl
+MTD	ms_run[3]-id_format	[MS, MS:1000776, scan number only nativeID format, ]
+MTD	ms_run[4]-format	[MS, MS:1002996, Andromeda:apl file format, ]
+MTD	ms_run[4]-location	file://d:/shared/dglaetzer/yeaststd_hml/combined/andromeda/allspectra.cid.itms.sil2_0.apl
+MTD	ms_run[4]-id_format	[MS, MS:1000776, scan number only nativeID format, ]
+MTD	ms_run[5]-format	[MS, MS:1002996, Andromeda:apl file format, ]
+MTD	ms_run[5]-location	file://d:/shared/dglaetzer/yeaststd_hml/combined/andromeda/allspectra.cid.itms.sil1_0.apl
+MTD	ms_run[5]-id_format	[MS, MS:1000776, scan number only nativeID format, ]
+MTD	ms_run[6]-format	[MS, MS:1002996, Andromeda:apl file format, ]
+MTD	ms_run[6]-location	file://d:/shared/dglaetzer/yeaststd_hml/combined/andromeda/allspectra.cid.itms.sil0_0.apl
+MTD	ms_run[6]-id_format	[MS, MS:1000776, scan number only nativeID format, ]
+MTD	ms_run[7]-format	[MS, MS:1002996, Andromeda:apl file format, ]
+MTD	ms_run[7]-location	file://d:/shared/dglaetzer/yeaststd_hml/combined/andromeda/allspectra.cid.itms.iso_0.apl
+MTD	ms_run[7]-id_format	[MS, MS:1000776, scan number only nativeID format, ]
+MTD	ms_run[8]-format	[MS, MS:1002996, Andromeda:apl file format, ]
+MTD	ms_run[8]-location	file://d:/shared/dglaetzer/yeaststd_hml/combined/andromeda/allspectra.cid.itms.iso_1.apl
+MTD	ms_run[8]-id_format	[MS, MS:1000776, scan number only nativeID format, ]
+
+PRH	accession	description	taxid	species	database	database_version	search_engine	best_search_engine_score[1]	search_engine_score[1]_ms_run[1]	search_engine_score[1]_ms_run[2]	search_engine_score[1]_ms_run[3]	search_engine_score[1]_ms_run[4]	search_engine_score[1]_ms_run[5]	search_engine_score[1]_ms_run[6]	search_engine_score[1]_ms_run[7]	search_engine_score[1]_ms_run[8]	num_psms_ms_run[1]	num_psms_ms_run[2]	num_psms_ms_run[3]	num_psms_ms_run[4]	num_psms_ms_run[5]	num_psms_ms_run[6]	num_psms_ms_run[7]	num_psms_ms_run[8]	num_peptides_distinct_ms_run[1]	num_peptides_distinct_ms_run[2]	num_peptides_distinct_ms_run[3]	num_peptides_distinct_ms_run[4]	num_peptides_distinct_ms_run[5]	num_peptides_distinct_ms_run[6]	num_peptides_distinct_ms_run[7]	num_peptides_distinct_ms_run[8]	num_peptides_unique_ms_run[1]	num_peptides_unique_ms_run[2]	num_peptides_unique_ms_run[3]	num_peptides_unique_ms_run[4]	num_peptides_unique_ms_run[5]	num_peptides_unique_ms_run[6]	num_peptides_unique_ms_run[7]	num_peptides_unique_ms_run[8]	ambiguity_members	modifications	protein_coverage	opt_global_cv_MS:1002217_decoy_peptide 
+PRT	CON__Q3KNV1	null	null	null	null	null	[MS, MS:1002337, Andromeda, 1.6.3.4]	6.09518848183282	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	CON__Q3KNV1, CON__P08729, CON__Q8BGZ7, CON__O95678, CON__Q922U2, CON__P13647, CON__Q5XQN5	null	0.019	0
+PRT	sp|P00925|ENO2_YEAST	sp|P00925|ENO2_YEAST Enolase 2 OS=Saccharomyces cerevisiae (strain ATCC 204508 / S288c) OX=559292 GN=ENO2 PE=1 SV=2	null	null	null	null	[MS, MS:1002337, Andromeda, 1.6.3.4]	7.54715843437411	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	sp|P00925|ENO2_YEAST	null	0.034	0
+PRT	sp|P24279|MCM3_YEAST	sp|P24279|MCM3_YEAST DNA replication licensing factor MCM3 OS=Saccharomyces cerevisiae (strain ATCC 204508 / S288c) OX=559292 GN=MCM3 PE=1 SV=1	null	null	null	null	[MS, MS:1002337, Andromeda, 1.6.3.4]	6.0701875011822	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	sp|P24279|MCM3_YEAST	null	0.01	0
+PRT	sp|P32336|NUD1_YEAST	sp|P32336|NUD1_YEAST Protein NUD1 OS=Saccharomyces cerevisiae (strain ATCC 204508 / S288c) OX=559292 GN=NUD1 PE=1 SV=2	null	null	null	null	[MS, MS:1002337, Andromeda, 1.6.3.4]	6.40749004247027	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	sp|P32336|NUD1_YEAST	null	0.011	0
+PRT	sp|P33334|PRP8_YEAST	sp|P33334|PRP8_YEAST Pre-mRNA-splicing factor 8 OS=Saccharomyces cerevisiae (strain ATCC 204508 / S288c) OX=559292 GN=PRP8 PE=1 SV=1	null	null	null	null	[MS, MS:1002337, Andromeda, 1.6.3.4]	7.39362727963272	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	sp|P33334|PRP8_YEAST	null	0.004	0
+PRT	sp|P36022|DYHC_YEAST	sp|P36022|DYHC_YEAST Dynein heavy chain, cytoplasmic OS=Saccharomyces cerevisiae (strain ATCC 204508 / S288c) OX=559292 GN=DYN1 PE=1 SV=1	null	null	null	null	[MS, MS:1002337, Andromeda, 1.6.3.4]	7.40363969787805	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	sp|P36022|DYHC_YEAST	1343-CHEMMOD:15.9949146221	0.004	0
+PRT	sp|P38995|ATU2_YEAST	sp|P38995|ATU2_YEAST Copper-transporting ATPase OS=Saccharomyces cerevisiae (strain ATCC 204508 / S288c) OX=559292 GN=CCC2 PE=1 SV=1	null	null	null	null	[MS, MS:1002337, Andromeda, 1.6.3.4]	6.3683804949076	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	sp|P38995|ATU2_YEAST	null	0.009	0
+PRT	sp|P40210|SIP5_YEAST	sp|P40210|SIP5_YEAST Protein SIP5 OS=Saccharomyces cerevisiae (strain ATCC 204508 / S288c) OX=559292 GN=SIP5 PE=1 SV=1	null	null	null	null	[MS, MS:1002337, Andromeda, 1.6.3.4]	6.04036788627217	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	sp|P40210|SIP5_YEAST	200-CHEMMOD:15.9949146221	0.016	0
+PRT	sp|P40986|CDC1_YEAST	sp|P40986|CDC1_YEAST Cell division control protein 1 OS=Saccharomyces cerevisiae (strain ATCC 204508 / S288c) OX=559292 GN=CDC1 PE=1 SV=2	null	null	null	null	[MS, MS:1002337, Andromeda, 1.6.3.4]	6.03766895357142	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	sp|P40986|CDC1_YEAST	null	0.053	0
+PRT	sp|P42945|UTP10_YEAST	sp|P42945|UTP10_YEAST U3 small nucleolar RNA-associated protein 10 OS=Saccharomyces cerevisiae (strain ATCC 204508 / S288c) OX=559292 GN=UTP10 PE=1 SV=1	null	null	null	null	[MS, MS:1002337, Andromeda, 1.6.3.4]	6.797145234147	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	sp|P42945|UTP10_YEAST	null	0.004	0
+PRT	sp|P47037|SMC3_YEAST	sp|P47037|SMC3_YEAST Structural maintenance of chromosomes protein 3 OS=Saccharomyces cerevisiae (strain ATCC 204508 / S288c) OX=559292 GN=SMC3 PE=1 SV=1	null	null	null	null	[MS, MS:1002337, Andromeda, 1.6.3.4]	6.31423692331222	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	sp|P47037|SMC3_YEAST	null	0.008	0
+PRT	sp|Q02724|ULP1_YEAST	sp|Q02724|ULP1_YEAST Ubiquitin-like-specific protease 1 OS=Saccharomyces cerevisiae (strain ATCC 204508 / S288c) OX=559292 GN=ULP1 PE=1 SV=1	null	null	null	null	[MS, MS:1002337, Andromeda, 1.6.3.4]	6.09463119687701	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	sp|Q02724|ULP1_YEAST	null	0.013	0
+PRT	sp|Q02785|PDR12_YEAST	sp|Q02785|PDR12_YEAST ATP-dependent permease PDR12 OS=Saccharomyces cerevisiae (strain ATCC 204508 / S288c) OX=559292 GN=PDR12 PE=1 SV=1	null	null	null	null	[MS, MS:1002337, Andromeda, 1.6.3.4]	7.90743984561252	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	sp|Q02785|PDR12_YEAST	null	0.007	0
+PRT	sp|Q03761|TAF12_YEAST	sp|Q03761|TAF12_YEAST Transcription initiation factor TFIID subunit 12 OS=Saccharomyces cerevisiae (strain ATCC 204508 / S288c) OX=559292 GN=TAF12 PE=1 SV=1	null	null	null	null	[MS, MS:1002337, Andromeda, 1.6.3.4]	6.10800985882354	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	sp|Q03761|TAF12_YEAST	null	0.02	0
+PRT	sp|Q04370|PEX12_YEAST	sp|Q04370|PEX12_YEAST Peroxisome assembly protein 12 OS=Saccharomyces cerevisiae (strain ATCC 204508 / S288c) OX=559292 GN=PEX12 PE=1 SV=1	null	null	null	null	[MS, MS:1002337, Andromeda, 1.6.3.4]	6.19266624819158	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	sp|Q04370|PEX12_YEAST	null	0.023	0
+PRT	sp|Q05946|UTP13_YEAST	sp|Q05946|UTP13_YEAST U3 small nucleolar RNA-associated protein 13 OS=Saccharomyces cerevisiae (strain ATCC 204508 / S288c) OX=559292 GN=UTP13 PE=1 SV=1	null	null	null	null	[MS, MS:1002337, Andromeda, 1.6.3.4]	6.23508778458672	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	null	sp|Q05946|UTP13_YEAST	null	0.031	0
+
+PSH	sequence	PSM_ID	accession	unique	database	database_version	search_engine	search_engine_score[1]	search_engine_score[2]	modifications	retention_time	charge	exp_mass_to_charge	calc_mass_to_charge	spectra_ref	pre	post	start	end	opt_global_cv_MS:1000776_scan_number_only_nativeID_format	opt_global_cv_MS:1002217_decoy_peptide 
+PSM	ANNQQRLLLK	1	sp|P47037|SMC3_YEAST	1	null	null	[MS, MS:1002338, Andromeda:score, 1.6.3.4]	60.7598831240168	0.00485023829972864	null	0.0361000001430511	2	599.36	599.35675	ms_run[7]:index=225	K	K	915	924	14	0
+PSM	DVMVLNLTLNEILLTK	2	sp|P36022|DYHC_YEAST	1	null	null	[MS, MS:1002338, Andromeda:score, 1.6.3.4]	80.3184709707354	0.000394784690011368	3-CHEMMOD:15.9949146221	1.4059933423996	2	923.03	923.02372	ms_run[6]:index=274	K	I	1341	1356	604	0
+PSM	FDIYAKYIGHSAAVTAVGLPNIVSK	3	sp|Q05946|UTP13_YEAST	1	null	null	[MS, MS:1002338, Andromeda:score, 1.6.3.4]	21.3489495307215	0.00581985568276234	null	0.282791674137115	4	663.37	663.36981	ms_run[7]:index=1228	K	G	424	448	122	0
+PSM	GELALKDAR	4	CON__Q3KNV1	0	null	null	[MS, MS:1002338, Andromeda:score, 1.6.3.4]	49.0967396897267	0.00803177471159716	null	0.727233350276947	2	491.8	491.79989	ms_run[7]:index=111	R	A	343	351	312	0
+PSM	GELALKDAR	4	CON__P08729	0	null	null	[MS, MS:1002338, Andromeda:score, 1.6.3.4]	49.0967396897267	0.00803177471159716	null	0.727233350276947	2	491.8	491.79989	ms_run[7]:index=111	R	A	343	351	312	0
+PSM	GELALKDAR	4	CON__Q8BGZ7	0	null	null	[MS, MS:1002338, Andromeda:score, 1.6.3.4]	49.0967396897267	0.00803177471159716	null	0.727233350276947	2	491.8	491.79989	ms_run[7]:index=111	R	A	343	351	312	0
+PSM	GELALKDAR	4	CON__O95678	0	null	null	[MS, MS:1002338, Andromeda:score, 1.6.3.4]	49.0967396897267	0.00803177471159716	null	0.727233350276947	2	491.8	491.79989	ms_run[7]:index=111	R	A	343	351	312	0
+PSM	GELALKDAR	4	CON__Q922U2	0	null	null	[MS, MS:1002338, Andromeda:score, 1.6.3.4]	49.0967396897267	0.00803177471159716	null	0.727233350276947	2	491.8	491.79989	ms_run[7]:index=111	R	A	343	351	312	0
+PSM	GELALKDAR	4	CON__P13647	0	null	null	[MS, MS:1002338, Andromeda:score, 1.6.3.4]	49.0967396897267	0.00803177471159716	null	0.727233350276947	2	491.8	491.79989	ms_run[7]:index=111	R	A	343	351	312	0
+PSM	GELALKDAR	4	CON__Q5XQN5	0	null	null	[MS, MS:1002338, Andromeda:score, 1.6.3.4]	49.0967396897267	0.00803177471159716	null	0.727233350276947	2	491.8	491.79989	ms_run[7]:index=111	R	A	343	351	312	0
+PSM	IELLNDWKVLK	5	sp|Q03761|TAF12_YEAST	1	null	null	[MS, MS:1002338, Andromeda:score, 1.6.3.4]	62.5820554487078	0.00779812407972323	null	0.442090004682541	2	693.92	693.91994	ms_run[7]:index=393	K	I	197	207	191	0
+PSM	IYWRYISIVWILWLGLISYYESVVVK	7	sp|P40986|CDC1_YEAST	1	null	null	[MS, MS:1002338, Andromeda:score, 1.6.3.4]	7.14683303313993	0.00916919156958862	null	2.38067674636841	4	818.72	818.71964	ms_run[7]:index=1315	R	R	42	67	1020	0
+PSM	KYLLTQRVFK	8	sp|P33334|PRP8_YEAST	1	null	null	[MS, MS:1002338, Andromeda:score, 1.6.3.4]	81.594384579272	0.000403991958356161	null	0.218611672520638	2	648.4	648.39535	ms_run[7]:index=319	K	P	956	965	94	0
+PSM	LANIIKVMK	9	sp|P38995|ATU2_YEAST	1	null	null	[MS, MS:1002338, Andromeda:score, 1.6.3.4]	41.6523463095002	0.011942269869939	null	1.30011832714081	2	519.35	519.35319	ms_run[7]:index=127	K	E	502	510	559	0
+PSM	LANIIKVMK	10	sp|P38995|ATU2_YEAST	1	null	null	[MS, MS:1002338, Andromeda:score, 1.6.3.4]	57.2809292673051	0.00428173224079227	null	1.32811832427979	2	519.35	519.35319	ms_run[7]:index=126	K	E	502	510	571	0
+PSM	LFSTLIK	11	sp|P42945|UTP10_YEAST	1	null	null	[MS, MS:1002338, Andromeda:score, 1.6.3.4]	29.8067704193348	0.00278752158033645	null	1.31674838066101	2	411.26	411.2602	ms_run[6]:index=1	K	T	1028	1034	565	0
+PSM	LGANAILGVSMAAAR	13	sp|P00925|ENO2_YEAST	1	null	null	[MS, MS:1002338, Andromeda:score, 1.6.3.4]	77.3868139475868	0.000283688391991405	null	1.15629172325134	2	710.9	710.90545	ms_run[7]:index=435	K	A	106	120	496	0
+PSM	LSLISGIIAR	14	sp|P24279|MCM3_YEAST	1	null	null	[MS, MS:1002338, Andromeda:score, 1.6.3.4]	51.1926940263401	0.00850770649369167	null	2.32504510879517	2	526.84	526.83873	ms_run[7]:index=138	R	L	903	912	996	0
+PSM	NTLQYHKK	15	sp|Q02724|ULP1_YEAST	1	null	null	[MS, MS:1002338, Andromeda:score, 1.6.3.4]	46.0156817137876	0.00804208766839289	null	3.36104011535645	2	524.3	524.29946	ms_run[7]:index=136	R	N	10	17	1433	0
+PSM	QLISILTSK	16	sp|P32336|NUD1_YEAST	1	null	null	[MS, MS:1002338, Andromeda:score, 1.6.3.4]	68.3825569393368	0.0039130009877596	null	1.24982500076294	2	503.83	503.82588	ms_run[7]:index=117	K	L	457	465	536	0
+PSM	RMHAKIFR	17	sp|P40210|SIP5_YEAST	1	null	null	[MS, MS:1002338, Andromeda:score, 1.6.3.4]	44.7211594717447	0.00911238611718182	2-CHEMMOD:15.9949146221	4.91039323806763	2	537.8	537.8031	ms_run[7]:index=152	R	A	199	206	2090	0
+PSM	TTLLNVLAQR	18	sp|Q02785|PDR12_YEAST	1	null	null	[MS, MS:1002338, Andromeda:score, 1.6.3.4]	88.369658767405	0.000123754259082636	null	0.434139996767044	2	567.85	567.85047	ms_run[7]:index=177	K	I	885	894	187	0
