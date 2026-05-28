@@ -169,19 +169,19 @@ pub fn open_psm_file<'a>(
 }
 
 /// Define a parameter for an mzTab file
-#[derive(Clone, Debug, Eq, Hash, PartialEq, PartialOrd, Ord, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 pub struct CVTerm {
     /// The term
     pub term: Term,
     /// The value
-    pub value: String,
+    pub value: Box<str>,
 }
 
 impl From<Term> for CVTerm {
     fn from(term: Term) -> Self {
         Self {
             term,
-            value: String::new(),
+            value: Box::default(),
         }
     }
 }

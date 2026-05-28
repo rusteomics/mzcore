@@ -17,6 +17,7 @@ use itertools::Itertools;
 use mzcv::{ControlledVocabulary, Term, term};
 use ordered_float::OrderedFloat;
 use serde::{Deserialize, Serialize};
+use thin_vec::ThinVec;
 
 use crate::{
     CVTerm, FastaIdentifier, KnownFileFormat, MaybePeptidoform, PSM, PSMData, PSMMetaData,
@@ -25,8 +26,8 @@ use crate::{
         check_extension, explain_number_error, float_digits, next_number, split_with_brackets,
     },
     mztab_writer::{
-        MzTabAssay, MzTabCV, MzTabContact, MzTabInstrument, MzTabMSRun, MzTabMetadata, MzTabSample,
-        MzTabSoftware, MzTabStudyVariable,
+        MzTabAssay, MzTabCV, MzTabContact, MzTabInstrument, MzTabKind, MzTabMSRun, MzTabMetadata,
+        MzTabMode, MzTabSample, MzTabSoftware, MzTabStudyVariable,
     },
 };
 use mzcore::{
@@ -843,14 +844,42 @@ fn parse_metadata<'a>(
                     Err(err) => return Err(err),
                 }
             }
-            "description" => metadata.description = line[fields[2].clone()].to_string(),
-            "title" => metadata.title = line[fields[2].clone()].to_string(),
-            "mzTab-ID" => metadata.id = line[fields[2].clone()].to_string(),
-            m if m.starts_with("publication[") && m.ends_with(']') => metadata
-                .publication
-                .push(line[fields[2].clone()].to_string()),
+            "description" => metadata.description = line[fields[2].clone()].into(),
+            "title" => metadata.title = line[fields[2].clone()].into(),
+            "mzTab-ID" => metadata.id = line[fields[2].clone()].into(),
+            "mzTab-mode" => {
+                metadata.mode = match &line[fields[2].clone()] {
+                    "Summary" => MzTabMode::Summary,
+                    "Complete" => MzTabMode::Complete,
+                    _ => {
+                        return Err(BoxedError::new(
+                            BasicKind::Error,
+                            "Invalid mzTab mode",
+                            "Only Summary and Complete modes are allowed",
+                            context.clone().add_highlight((0, fields[2].clone())),
+                        ));
+                    }
+                }
+            }
+            "mzTab-type" => {
+                metadata.kind = match &line[fields[2].clone()] {
+                    "Identification" => MzTabKind::Identification,
+                    "Quantification" => MzTabKind::Quantification,
+                    _ => {
+                        return Err(BoxedError::new(
+                            BasicKind::Error,
+                            "Invalid mzTab type",
+                            "Only Identification and Quantification types are allowed",
+                            context.clone().add_highlight((0, fields[2].clone())),
+                        ));
+                    }
+                }
+            }
+            m if m.starts_with("publication[") && m.ends_with(']') => {
+                metadata.publication.push(line[fields[2].clone()].into())
+            }
             m if m.starts_with("uri[") && m.ends_with(']') => {
-                metadata.uri.push(line[fields[2].clone()].to_string())
+                metadata.uri.push(line[fields[2].clone()].into())
             }
             "protein-quantification-unit" => {
                 metadata.protein_quantification_unit =
@@ -868,7 +897,7 @@ fn parse_metadata<'a>(
                 metadata.false_discovery_rate = line[fields[2].clone()]
                     .split('|')
                     .map(CVTerm::from_str)
-                    .collect::<Result<Vec<_>, _>>()
+                    .collect::<Result<ThinVec<_>, _>>()
                     .map_err(|err| {
                         err.replace_context(context.clone().add_highlight((0, fields[2].clone())))
                     })?;
@@ -904,9 +933,9 @@ fn parse_metadata<'a>(
                     metadata.software.push(MzTabSoftware {
                         name: CVTerm {
                             term: term!(MS:1000531|software),
-                            value: String::new(),
+                            value: Box::default(),
                         },
-                        settings: Vec::new(),
+                        settings: ThinVec::new(),
                     });
                 }
 
@@ -1139,9 +1168,9 @@ fn parse_metadata<'a>(
                 let elem = &mut metadata.contact[index];
 
                 match tag {
-                    "name" => elem.name = line[fields[2].clone()].to_string(),
-                    "affiliation" => elem.affiliation = line[fields[2].clone()].to_string(),
-                    "email" => elem.email = line[fields[2].clone()].to_string(),
+                    "name" => elem.name = line[fields[2].clone()].into(),
+                    "affiliation" => elem.affiliation = line[fields[2].clone()].into(),
+                    "email" => elem.email = line[fields[2].clone()].into(),
                     _ => {
                         return Err(BoxedError::new(
                             BasicKind::Error,
@@ -1180,7 +1209,7 @@ fn parse_metadata<'a>(
                 let elem = &mut metadata.sample[index];
 
                 match tag {
-                    "description" => elem.description = line[fields[2].clone()].to_string(),
+                    "description" => elem.description = line[fields[2].clone()].into(),
                     _ => match tag.split_once('[') {
                         Some(("species", _)) => elem
                             .species
@@ -1240,7 +1269,7 @@ fn parse_metadata<'a>(
                 let elem = &mut metadata.study_variable[index];
 
                 match tag {
-                    "description" => elem.description = line[fields[2].clone()].to_string(),
+                    "description" => elem.description = line[fields[2].clone()].into(),
                     "sample_refs" => {
                         elem.sample_refs = parse_refs(
                             "sample",
@@ -1293,10 +1322,10 @@ fn parse_metadata<'a>(
                 let elem = &mut metadata.cv[index];
 
                 match tag {
-                    "label" => elem.label = line[fields[2].clone()].to_string(),
-                    "full_name" => elem.full_name = line[fields[2].clone()].to_string(),
-                    "version" => elem.version = line[fields[2].clone()].to_string(),
-                    "url" => elem.url = line[fields[2].clone()].to_string(),
+                    "label" => elem.label = line[fields[2].clone()].into(),
+                    "full_name" => elem.full_name = line[fields[2].clone()].into(),
+                    "version" => elem.version = line[fields[2].clone()].into(),
+                    "url" => elem.url = line[fields[2].clone()].into(),
                     _ => {
                         return Err(BoxedError::new(
                             BasicKind::Error,
@@ -1379,7 +1408,7 @@ fn parse_refs<'a>(
     ty: &'static str,
     value: &str,
     context: &Context<'a>,
-) -> Result<Vec<NonZeroUsize>, BoxedError<'a, BasicKind>> {
+) -> Result<ThinVec<NonZeroUsize>, BoxedError<'a, BasicKind>> {
     value
         .split(',')
         .map(|s| parse_ref(ty, s, context))
@@ -2091,7 +2120,7 @@ impl FromStr for CVTerm {
                     accession,
                     name: name.into(),
                 },
-                value: split.next().unwrap_or_default().trim().to_string(),
+                value: split.next().unwrap_or_default().trim().into(),
             })
         } else {
             Err(BoxedError::new(

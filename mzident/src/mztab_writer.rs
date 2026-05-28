@@ -23,8 +23,9 @@ use serde::{Deserialize, Serialize};
 use std::{
     borrow::Cow, fmt::Display, io::Write, marker::PhantomData, num::NonZeroUsize, path::PathBuf,
 };
+use thin_vec::ThinVec;
 
-/// Write PSMs as an mzTab file. It will always output 'Identification' type files in 'Summary' mode but does a best effort to correctly store all info.
+/// Write PSMs as an mzTab file.
 #[derive(Debug)]
 pub struct MzTabWriter<Writer, State> {
     writer: Writer,
@@ -35,7 +36,7 @@ pub struct MzTabWriter<Writer, State> {
 }
 
 /// The metadata for an MS run for a mzTab file.
-#[derive(Clone, Debug, Default, Eq, Hash, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Default, Deserialize, Eq, Hash, PartialEq, Serialize)]
 pub struct MzTabMSRun {
     /// The file format terms
     pub format: Option<CVTerm>,
@@ -76,37 +77,24 @@ pub struct ProteinsWritten;
 #[allow(missing_debug_implementations, missing_copy_implementations)] // Marker ZST
 pub struct PSMsWritten;
 
+/// A private trait to make sure that no dependency can overwrite the state machine traits
 trait Sealed {}
 impl Sealed for HeaderWritten {}
 impl Sealed for ProteinsWritten {}
 impl Sealed for PSMsWritten {}
 
 /// A trait to help indicate when proteins can be written
-pub trait CanWriteProteins: Sealed {
-    /// A bool to indicate if the section header (PRH) is already written
-    const SECTION_HEADER_PRESENT: bool;
-}
-impl CanWriteProteins for HeaderWritten {
-    const SECTION_HEADER_PRESENT: bool = false;
-}
-impl CanWriteProteins for ProteinsWritten {
-    const SECTION_HEADER_PRESENT: bool = true;
-}
+#[allow(private_bounds)] // Sealed to make sure the guarentees stays intact
+pub trait CanWriteProteins: Sealed {}
+impl CanWriteProteins for HeaderWritten {}
+impl CanWriteProteins for ProteinsWritten {}
 
 /// A trait to help indicate when PSMs can be written
-pub trait CanWritePSMs: Sealed {
-    /// A bool to indicate if the section header (PSH) is already written
-    const SECTION_HEADER_PRESENT: bool;
-}
-impl CanWritePSMs for HeaderWritten {
-    const SECTION_HEADER_PRESENT: bool = false;
-}
-impl CanWritePSMs for ProteinsWritten {
-    const SECTION_HEADER_PRESENT: bool = false;
-}
-impl CanWritePSMs for PSMsWritten {
-    const SECTION_HEADER_PRESENT: bool = true;
-}
+#[allow(private_bounds)] // Sealed to make sure the guarentees stays intact
+pub trait CanWritePSMs: Sealed {}
+impl CanWritePSMs for HeaderWritten {}
+impl CanWritePSMs for ProteinsWritten {}
+impl CanWritePSMs for PSMsWritten {}
 
 impl<W: Write> MzTabWriter<W, Initial> {
     /// Convenience function to easily write all information to an mzTab file.
@@ -197,8 +185,22 @@ impl<W: Write> MzTabWriter<W, Initial> {
     /// If the underlying writer fails.
     pub fn write_header(mut self) -> Result<MzTabWriter<W, HeaderWritten>, std::io::Error> {
         writeln!(self.writer, "MTD\tmzTab-version\t1.0.0")?;
-        writeln!(self.writer, "MTD\tmzTab-mode\tSummary")?;
-        writeln!(self.writer, "MTD\tmzTab-type\tIdentification")?;
+        writeln!(
+            self.writer,
+            "MTD\tmzTab-mode\t{}",
+            match self.metadata.mode {
+                MzTabMode::Summary => "Summary",
+                MzTabMode::Complete => "Complete",
+            }
+        )?;
+        writeln!(
+            self.writer,
+            "MTD\tmzTab-type\t{}",
+            match self.metadata.kind {
+                MzTabKind::Identification => "Identification",
+                MzTabKind::Quantification => "Quantification",
+            }
+        )?;
 
         if !self.metadata.id.is_empty() {
             writeln!(self.writer, "MTD\tmzTab-ID\t{}", self.metadata.id)?;
@@ -458,62 +460,100 @@ impl<W: Write> MzTabWriter<W, Initial> {
     }
 }
 
+/// The mode for an mzTab file
+#[derive(Clone, Copy, Debug, Default, Deserialize, Eq, Hash, PartialEq, Serialize)]
+pub enum MzTabMode {
+    /// Summary mode
+    #[default]
+    Summary,
+    /// Complete mode
+    Complete,
+}
+
+impl mzcore::space::Space for MzTabMode {
+    fn space(&self) -> mzcore::space::UsedSpace {
+        mzcore::space::UsedSpace::stack(1).set_total::<Self>()
+    }
+}
+
+/// The kind/type for an mzTab file
+#[derive(Clone, Copy, Debug, Default, Deserialize, Eq, Hash, PartialEq, Serialize)]
+pub enum MzTabKind {
+    /// Identification type
+    #[default]
+    Identification,
+    /// Quantification type
+    Quantification,
+}
+
+impl mzcore::space::Space for MzTabKind {
+    fn space(&self) -> mzcore::space::UsedSpace {
+        mzcore::space::UsedSpace::stack(1).set_total::<Self>()
+    }
+}
+
 /// Define the name for an optional column in an mzTab file
-#[derive(Clone, Debug, Default, Eq, Hash, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Default, Deserialize, Eq, Hash, PartialEq, Serialize)]
 pub struct MzTabMetadata {
+    /// The mode of the file
+    pub mode: MzTabMode,
+    /// The kind (or type) of the file
+    pub kind: MzTabKind,
     /// An ID for the file
-    pub id: String,
+    pub id: Box<str>,
     /// A human readable title
-    pub title: String,
+    pub title: Box<str>,
     /// A human readable description
-    pub description: String,
+    pub description: Box<str>,
     /// The fixed modifications that where searched for
-    pub fixed_mods: Vec<SimpleModification>,
+    pub fixed_mods: ThinVec<SimpleModification>,
     /// The variable modifications that where searched for
-    pub variable_mods: Vec<SimpleModification>,
+    pub variable_mods: ThinVec<SimpleModification>,
     /// Defines quantification method used in the file
     pub quantification_method: Option<CVTerm>,
     /// Defines the unit in the protein quantification field
     pub protein_quantification_unit: Option<CVTerm>,
     /// The software used to analyse the data
-    pub software: Vec<MzTabSoftware>,
+    pub software: ThinVec<MzTabSoftware>,
     /// The sample processing steps these should be defined in chronological order
-    pub sample_processing: Vec<Vec<CVTerm>>,
+    pub sample_processing: ThinVec<Vec<CVTerm>>,
     /// The instruments used in this file
-    pub instruments: Vec<MzTabInstrument>,
+    pub instruments: ThinVec<MzTabInstrument>,
     /// The false discovery rates used together with a term identifying the exact method.
-    pub false_discovery_rate: Vec<CVTerm>,
+    pub false_discovery_rate: ThinVec<CVTerm>,
     /// Publications associated with this file. PubMed ids must be prefixed with 'pubmed:', DOIs with 'doi:' and identifiers can be separated with '|'.
-    pub publication: Vec<String>,
+    pub publication: ThinVec<Box<str>>,
     /// Any contacts for the file
-    pub contact: Vec<MzTabContact>,
+    pub contact: ThinVec<MzTabContact>,
     /// URIs to point to the file source data, eg from PRIDE or PeptideAtlas
-    pub uri: Vec<String>,
+    pub uri: ThinVec<Box<str>>,
     /// Any additional custom parameters
-    pub custom: Vec<CVTerm>,
+    pub custom: ThinVec<CVTerm>,
     /// Define the biological samples
-    pub sample: Vec<MzTabSample>,
+    pub sample: ThinVec<MzTabSample>,
     /// Define the study variables
-    pub study_variable: Vec<MzTabStudyVariable>,
+    pub study_variable: ThinVec<MzTabStudyVariable>,
     /// Define the assays
-    pub assay: Vec<MzTabAssay>,
+    pub assay: ThinVec<MzTabAssay>,
     /// Define which CVs are used in the file
-    pub cv: Vec<MzTabCV>,
+    pub cv: ThinVec<MzTabCV>,
     /// Define the unit for a custom protein column
-    pub colunit_protein: Vec<(MzTabColumn, CVTerm)>,
+    pub colunit_protein: ThinVec<(MzTabColumn, CVTerm)>,
     /// Define the unit for a custom PSM column
-    pub colunit_psm: Vec<(MzTabColumn, CVTerm)>,
+    pub colunit_psm: ThinVec<(MzTabColumn, CVTerm)>,
     /// The MS runs
-    pub ms_runs: Vec<MzTabMSRun>,
+    pub ms_runs: ThinVec<MzTabMSRun>,
     /// The protein search engines
-    pub protein_search_engines: Vec<CVTerm>,
+    pub protein_search_engines: ThinVec<CVTerm>,
     /// The PSM search engines
-    pub psm_search_engines: Vec<CVTerm>,
+    pub psm_search_engines: ThinVec<CVTerm>,
 }
 
 impl mzcore::space::Space for MzTabMetadata {
     fn space(&self) -> mzcore::space::UsedSpace {
-        (self.id.space()
+        (self.mode.space()
+            + self.kind.space()
+            + self.id.space()
             + self.title.space()
             + self.description.space()
             + self.fixed_mods.space()
@@ -542,29 +582,34 @@ impl mzcore::space::Space for MzTabMetadata {
 }
 
 /// Define an instrument for an mzTab file
-#[derive(Clone, Debug, Default, Eq, Hash, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Default, Deserialize, Eq, Hash, PartialEq, Serialize)]
 pub struct MzTabCV {
     /// What is the label (start of a CURIE) for this CV
-    pub label: String,
+    pub label: Box<str>,
     /// What is the full name of the CV
-    pub full_name: String,
+    pub full_name: Box<str>,
     /// What is the version of the CV
-    pub version: String,
+    pub version: Box<str>,
     /// Where can the CV be found
-    pub url: String,
+    pub url: Box<str>,
 }
 
 impl<T: CVSource> From<&CVIndex<T>> for MzTabCV {
     fn from(value: &CVIndex<T>) -> Self {
         Self {
-            label: T::cv_label().to_string(),
-            full_name: T::cv_name().to_string(),
-            version: value.version().version.clone().unwrap_or_default(),
+            label: T::cv_label().into(),
+            full_name: T::cv_name().into(),
+            version: value
+                .version()
+                .version
+                .as_ref()
+                .map(|v| v.clone().into_boxed_str())
+                .unwrap_or_default(),
             url: T::files()
                 .iter()
                 .find_map(|f| f.url)
                 .unwrap_or_default()
-                .to_string(),
+                .into(),
         }
     }
 }
@@ -577,14 +622,14 @@ impl mzcore::space::Space for MzTabCV {
 }
 
 /// Define an instrument for an mzTab file
-#[derive(Clone, Debug, Default, Eq, Hash, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Default, Deserialize, Eq, Hash, PartialEq, Serialize)]
 pub struct MzTabContact {
     /// The name, has to be provided in first name + initials + last name eg: Joseph J. Thomson
-    pub name: String,
+    pub name: Box<str>,
     /// The affiliation
-    pub affiliation: String,
+    pub affiliation: Box<str>,
     /// The email
-    pub email: String,
+    pub email: Box<str>,
 }
 
 impl mzcore::space::Space for MzTabContact {
@@ -594,12 +639,12 @@ impl mzcore::space::Space for MzTabContact {
 }
 
 /// Define an instrument for an mzTab file
-#[derive(Clone, Debug, Eq, Hash, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
 pub struct MzTabSoftware {
     /// The software and its version
     pub name: CVTerm,
     /// Any settings for this software
-    pub settings: Vec<String>,
+    pub settings: ThinVec<String>,
 }
 
 impl mzcore::space::Space for MzTabSoftware {
@@ -609,7 +654,7 @@ impl mzcore::space::Space for MzTabSoftware {
 }
 
 /// Define an instrument for an mzTab file
-#[derive(Clone, Debug, Eq, Hash, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
 pub struct MzTabInstrument {
     /// The instrument itself eg: `MS:1000449|LTQ Orbitrap`
     pub name: CVTerm,
@@ -629,20 +674,20 @@ impl mzcore::space::Space for MzTabInstrument {
 }
 
 /// Define a sample for an mzTab file
-#[derive(Clone, Debug, Default, Eq, Hash, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Default, Deserialize, Eq, Hash, PartialEq, Serialize)]
 pub struct MzTabSample {
     /// The species of the sample
-    pub species: Vec<CVTerm>,
+    pub species: ThinVec<CVTerm>,
     /// The tissues of the sample
-    pub tissue: Vec<CVTerm>,
+    pub tissue: ThinVec<CVTerm>,
     /// The cell types of the sample
-    pub cell_type: Vec<CVTerm>,
+    pub cell_type: ThinVec<CVTerm>,
     /// The diseases of the sample
-    pub disease: Vec<CVTerm>,
+    pub disease: ThinVec<CVTerm>,
     /// Human readable description
-    pub description: String,
+    pub description: Box<str>,
     /// Any additional properties
-    pub custom: Vec<CVTerm>,
+    pub custom: ThinVec<CVTerm>,
 }
 
 impl mzcore::space::Space for MzTabSample {
@@ -658,14 +703,14 @@ impl mzcore::space::Space for MzTabSample {
 }
 
 /// Define a study variable for an mzTab file
-#[derive(Clone, Debug, Default, Eq, Hash, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Default, Deserialize, Eq, Hash, PartialEq, Serialize)]
 pub struct MzTabStudyVariable {
     /// Which samples make up this study variable
-    pub sample_refs: Vec<NonZeroUsize>,
+    pub sample_refs: ThinVec<NonZeroUsize>,
     /// Which assays make up this study variable
-    pub assay_refs: Vec<NonZeroUsize>,
+    pub assay_refs: ThinVec<NonZeroUsize>,
     /// Human textual description of the variable
-    pub description: String,
+    pub description: Box<str>,
 }
 
 impl mzcore::space::Space for MzTabStudyVariable {
@@ -676,10 +721,10 @@ impl mzcore::space::Space for MzTabStudyVariable {
 }
 
 /// Define an assay for an mzTab file
-#[derive(Clone, Debug, Eq, Hash, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
 pub struct MzTabAssay {
     /// Which modifications where used for quantification
-    pub quantification_mod: Vec<SimpleModification>,
+    pub quantification_mod: ThinVec<SimpleModification>,
     /// Which sample is associated with this assay
     pub sample_ref: Option<NonZeroUsize>,
     /// Which MS run is associated with this assay
@@ -692,7 +737,7 @@ impl Default for MzTabAssay {
     fn default() -> Self {
         Self {
             quantification_reagent: mzcv::term!(MS:1002038|unlabeled sample).into(),
-            quantification_mod: Vec::new(),
+            quantification_mod: ThinVec::new(),
             sample_ref: None,
             ms_run_ref: None,
         }
@@ -710,7 +755,7 @@ impl mzcore::space::Space for MzTabAssay {
 }
 
 /// Define the name a column in an mzTab file
-#[derive(Clone, Debug, Eq, Hash, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
 pub enum MzTabColumn {
     /// A defined column
     Defined(Cow<'static, str>),
@@ -770,7 +815,7 @@ impl std::str::FromStr for MzTabColumn {
 }
 
 /// Define the name for an optional column in an mzTab file
-#[derive(Clone, Debug, Eq, Hash, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
 pub enum MzTabOptionalColumnName {
     /// A term from a CV
     Term(Term),
@@ -815,7 +860,7 @@ impl Display for MzTabOptionalColumnName {
 }
 
 /// An object identifier for an mzTab optional column
-#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 pub enum MzTabObjectIdentifier {
     /// An assay, with the assay id
     Assay(NonZeroUsize),
