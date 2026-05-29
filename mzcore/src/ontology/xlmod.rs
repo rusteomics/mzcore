@@ -108,7 +108,7 @@ impl CVSource for XlMod {
                             let cross_ids = obj
                                 .definition
                                 .as_ref()
-                                .map_or_else(ThinVec::new, |d| d.1.clone().into());
+                                .map_or_else(ThinVec::new, |d| d.1.iter().filter(|c| !(c.0.as_ref().is_some_and(|c| c.eq_ignore_ascii_case("psi")) && c.1.eq_ignore_ascii_case("XL"))).cloned().collect());
                             let synonyms = obj
                                 .synonyms
                                 .iter()
@@ -153,7 +153,11 @@ impl CVSource for XlMod {
                                         formula: properties.formula.unwrap_or_default(),
                                         name,
                                         description,
-                                        cross_ids,
+                                        cross_ids: cross_ids
+                                            .iter()
+                                            .map(|v| v.clone().try_into())
+                                            .collect::<Result<ThinVec<_>, _>>()
+                                            .expect("Invalid cross-id"),
                                         synonyms,
                                         id: mzcv::AccessionCode::Numeric(id),
                                         ontology: Ontology::Xlmod,
@@ -191,7 +195,11 @@ impl CVSource for XlMod {
                                         formula: properties.formula.unwrap_or_default(),
                                         name,
                                         description,
-                                        cross_ids,
+                                        cross_ids: cross_ids
+                                            .iter()
+                                            .map(|v| v.clone().try_into())
+                                            .collect::<Result<ThinVec<_>, _>>()
+                                            .expect("Invalid cross-id"),
                                         synonyms,
                                         ontology: Ontology::Xlmod,
                                         obsolete: obj.obsolete,

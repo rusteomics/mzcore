@@ -10,6 +10,7 @@ use mzcv::{
     AccessionCode, CVData, CVError, CVFile, CVSource, CVVersion, HashBufReader, OboIdentifier,
     OboOntology, OboStanzaType, SynonymScope,
 };
+use thin_vec::ThinVec;
 
 use crate::{
     chemistry::MolecularFormula,
@@ -161,7 +162,11 @@ impl CVSource for PsiMod {
             modification.add_relationships(&obj.relationship);
             if let Some((description, cross_ids, _, _)) = &obj.definition {
                 modification.description = description.clone();
-                modification.cross_ids = cross_ids.clone().into();
+                modification.cross_ids = cross_ids
+                    .iter()
+                    .map(|v| v.clone().try_into())
+                    .collect::<Result<ThinVec<_>, _>>()
+                    .expect("Invalid cross-id");
             }
             for synonym in &obj.synonyms {
                 modification

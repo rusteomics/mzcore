@@ -141,7 +141,11 @@ impl CVSource for Resid {
                                         if let Some((a, b)) =
                                             name_node.text().unwrap_or_default().split_once(':')
                                         {
-                                            modification.cross_ids.push((Some(a.into()), b.into()));
+                                            modification.cross_ids.push(
+                                                (Some(a.into()), b.into())
+                                                    .try_into()
+                                                    .expect("Invalid cross-id"),
+                                            );
                                         } else {
                                             combine_error(
                                                 &mut errors,
@@ -219,7 +223,11 @@ impl CVSource for Resid {
                                     if let Some((a, b)) =
                                         ref_node.text().unwrap_or_default().split_once(':')
                                     {
-                                        modification.cross_ids.push((Some(a.into()), b.into()));
+                                        modification.cross_ids.push(
+                                            (Some(a.into()), b.into())
+                                                .try_into()
+                                                .expect("Invalid cross-id"),
+                                        );
                                     } else {
                                         combine_error(
                                             &mut errors,
@@ -350,7 +358,11 @@ impl CVSource for Resid {
                                         if let Some((a, b)) =
                                             rule_node.text().unwrap_or_default().split_once(':')
                                         {
-                                            modification.cross_ids.push((Some(a.into()), b.into()));
+                                            modification.cross_ids.push(
+                                                (Some(a.into()), b.into())
+                                                    .try_into()
+                                                    .expect("Invalid cross-id"),
+                                            );
                                         } else {
                                             combine_error(
                                                 &mut errors,
@@ -383,9 +395,11 @@ impl CVSource for Resid {
                                     && let Some(text) = feature.text()
                                     && let Some(m) = text.strip_prefix("MOD_RES ")
                                 {
-                                    modification
-                                        .cross_ids
-                                        .push((Some("UniProt".into()), m.trim().into()));
+                                    modification.cross_ids.push(
+                                        (Some("UniProt".into()), m.trim().into())
+                                            .try_into()
+                                            .expect("Invalid cross-id"),
+                                    );
                                 }
                             }
                         }

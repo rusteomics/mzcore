@@ -2,8 +2,8 @@ use crate::{
     chemistry::{DiagnosticIon, MolecularFormula, NeutralLoss},
     ontology::Ontology,
     sequence::{
-        LinkerLength, LinkerSpecificity, ModificationId, PlacementRule, SimpleModification,
-        SimpleModificationInner,
+        CrossId, LinkerLength, LinkerSpecificity, ModificationId, PlacementRule,
+        SimpleModification, SimpleModificationInner,
     },
 };
 use context_error::{BoxedError, Context, CreateError, combine_error};
@@ -22,7 +22,7 @@ pub(crate) struct OntologyModification {
     pub id: AccessionCode,
     pub description: Box<str>,
     pub synonyms: ThinVec<(SynonymScope, Box<str>)>,
-    pub cross_ids: ThinVec<(Option<Box<str>>, Box<str>)>,
+    pub cross_ids: ThinVec<CrossId>,
     pub data: ModData,
     pub obsolete: bool,
     pub parents: ThinVec<AccessionCode>,
@@ -52,28 +52,28 @@ impl OntologyModification {
     pub(crate) fn simplify_rules(&mut self) {
         match &mut self.data {
             ModData::Mod {
-                specificities: rules,
+                specificities: old_rules,
             } => {
-                let mut new = Vec::new();
-                for rule in rules.iter() {
+                let mut simplified_rules = Vec::new();
+                for rule in old_rules.iter() {
                     let rule: (Vec<PlacementRule>, Vec<NeutralLoss>, Vec<DiagnosticIon>) = (
                         rule.0.iter().unique().sorted().cloned().collect(),
                         rule.1.iter().unique().sorted().cloned().collect(),
                         rule.2.iter().unique().sorted().cloned().collect(),
                     ); // Remove duplicate neutral losses and diagnostic ions, and sort for a better guarantee of equality
-                    if new.is_empty() {
-                        new.push(rule.clone());
+                    if simplified_rules.is_empty() {
+                        simplified_rules.push(rule.clone());
                     } else {
                         let mut found = false;
-                        for new_rule in &mut new {
+                        for simplified_rule in &mut simplified_rules {
                             // Check if there is a rule with the same neutral loss and diagnostic ions (these can be location specific)
-                            if new_rule.1 == rule.1 && new_rule.2 == rule.2 {
+                            if simplified_rule.1 == rule.1 && simplified_rule.2 == rule.2 {
                                 found = true;
                                 // Check if there are other rules in this set of neutral&diagnostic that also use AA placements
                                 // If there are, and they are on the same position, merge the AA set
                                 for position in &rule.0 {
                                     let mut pos_found = false;
-                                    for new_position in &mut new_rule.0 {
+                                    for new_position in &mut simplified_rule.0 {
                                         if let (
                                             PlacementRule::AminoAcid(new_aa, new_pos),
                                             PlacementRule::AminoAcid(aa, pos),
@@ -91,18 +91,18 @@ impl OntologyModification {
                                         }
                                     }
                                     if !pos_found {
-                                        new_rule.0.push(position.clone());
+                                        simplified_rule.0.push(position.clone());
                                     }
                                 }
                             }
                         }
                         if !found {
-                            new.push(rule.clone());
+                            simplified_rules.push(rule.clone());
                         }
                     }
                 }
-                rules.clear();
-                rules.extend(new);
+                old_rules.clear();
+                old_rules.extend(simplified_rules);
             }
             ModData::Linker { specificities, .. } => {
                 *specificities = specificities

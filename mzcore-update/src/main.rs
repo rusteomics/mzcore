@@ -4,9 +4,9 @@ use context_error::{self as _, BasicKind, BoxedError, CreateError};
 use mzcore::{
     chemistry::Chemical,
     ontology::*,
-    sequence::{AminoAcid, PlacementRule, Position, SimpleModificationInner},
+    sequence::{CrossId, PlacementRule, SimpleModificationInner},
 };
-use mzcv::{AccessionCode, CVIndex};
+use mzcv::CVIndex;
 
 fn main() {
     let mut local = false;
@@ -158,64 +158,22 @@ fn validate_linking(unimod: &CVIndex<Unimod>, psimod: &CVIndex<PsiMod>) {
     let mut errors = Vec::new();
     for m in psimod.data() {
         if let Some(id) = m.description() {
-            let mut unimod_link = false;
-            for (source, xref) in &id.cross_ids {
-                if let Some(x) = &source
-                    && x.eq_ignore_ascii_case("unimod")
-                {
-                    unimod_link = true;
-                    let (num, loc) = xref.split_once('#').unwrap_or((xref.as_ref(), ""));
-
-                    let Ok(num) = num.parse() else {
-                        context_error::combine_error(
-                            &mut errors,
-                            BoxedError::new(
-                                BasicKind::Error,
-                                "Invalid Unimod code",
-                                "Invalid Unimod code, invalid number",
-                                context_error::Context::default()
-                                    .lines(0, format!("MOD:{} {num}", id.id())),
-                            ),
-                        );
-
-                        continue;
-                    };
-
-                    let loc = if loc.is_empty() {
-                        PlacementRule::Anywhere
-                    } else if loc == "N-term" {
-                        PlacementRule::Terminal(Position::AnyNTerm)
-                    } else if loc == "C-term" {
-                        PlacementRule::Terminal(Position::AnyCTerm)
-                    } else {
-                        let Ok(loc) = loc.parse::<AminoAcid>() else {
-                            context_error::combine_error(
-                                &mut errors,
-                                BoxedError::new(
-                                    BasicKind::Error,
-                                    "Invalid Unimod code",
-                                    "Invalid Unimod code, invalid position",
-                                    context_error::Context::default()
-                                        .lines(0, format!("MOD:{} {loc}", id.id())),
-                                ),
-                            );
-                            continue;
-                        };
-                        PlacementRule::AminoAcid(vec![loc].into(), Position::Anywhere)
-                    };
-
-                    if let Some(unimod_m) = unimod.get_by_index(&AccessionCode::Numeric(num)) {
+            // let mut unimod_link = false;
+            for cross_id in &id.cross_ids {
+                if let CrossId::Mod(Ontology::Unimod, code, rule) = cross_id {
+                    // unimod_link = true;
+                    if let Some(unimod_m) = unimod.get_by_index(&code) {
                         if m.formula() != unimod_m.formula() {
                             context_error::combine_error(
                                 &mut errors,
                                 BoxedError::new(
-                                    BasicKind::Error,
+                                    BasicKind::Warning,
                                     "Suspicious link",
                                     "Unimod and PSI-MOD do not have the same formula",
                                     context_error::Context::default().lines(
                                         0,
                                         format!(
-                                            "MOD:{}={} UNIMOD:{num}={}",
+                                            "MOD:{}={} UNIMOD:{code}={}",
                                             id.id(),
                                             m.formula(),
                                             unimod_m.formula()
@@ -224,25 +182,32 @@ fn validate_linking(unimod: &CVIndex<Unimod>, psimod: &CVIndex<PsiMod>) {
                                 ),
                             );
                         }
-                        match &*unimod_m {
-                            SimpleModificationInner::Database { specificities, .. } => {
-                                if !specificities
-                                    .iter()
-                                    .any(|s| s.0.iter().any(|r| loc.is_subset(r)))
-                                {
-                                    context_error::combine_error(
-                                        &mut errors,
-                                        BoxedError::new(
-                                            BasicKind::Error,
-                                            "Suspicious link",
-                                            "Unimod does not allow this modification on this location",
-                                            context_error::Context::default()
-                                                .lines(0, format!("MOD:{} UNIMOD:{num}", id.id(),)),
-                                        ),
-                                    );
+                        if *rule != PlacementRule::Anywhere {
+                            match &*unimod_m {
+                                SimpleModificationInner::Database { specificities, .. } => {
+                                    if !specificities
+                                        .iter()
+                                        .any(|s| s.0.iter().any(|r| rule.is_subset(r)))
+                                    {
+                                        context_error::combine_error(
+                                            &mut errors,
+                                            BoxedError::new(
+                                                BasicKind::Warning,
+                                                "Suspicious link",
+                                                "Unimod does not allow this modification on this location",
+                                                context_error::Context::default().lines(
+                                                    0,
+                                                    format!(
+                                                        "MOD:{} UNIMOD:{code} {rule:?}",
+                                                        id.id()
+                                                    ),
+                                                ),
+                                            ),
+                                        );
+                                    }
                                 }
+                                _ => (),
                             }
-                            _ => (),
                         }
                     } else {
                         context_error::combine_error(
@@ -252,7 +217,7 @@ fn validate_linking(unimod: &CVIndex<Unimod>, psimod: &CVIndex<PsiMod>) {
                                 "Invalid Unimod code",
                                 "Unimod modification does not exist",
                                 context_error::Context::default()
-                                    .lines(0, format!("MOD:{} {num}", id.id())),
+                                    .lines(0, format!("MOD:{} {code}", id.id())),
                             ),
                         );
                     }

@@ -2,14 +2,15 @@
 
 use std::{
     collections::{BTreeSet, HashMap, HashSet},
-    fmt::{Display, Write},
+    fmt::{Display, Write, write},
     path::Path,
+    str::FromStr,
     sync::Arc,
 };
 
 use context_error::*;
 use itertools::Itertools;
-use mzcv::{AccessionCode, SynonymScope};
+use mzcv::{AccessionCode, Curie, SynonymScope};
 use ordered_float::OrderedFloat;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -18,15 +19,15 @@ use thin_vec::ThinVec;
 use crate::{
     chemistry::{AmbiguousLabel, Chemical, DiagnosticIon, MolecularFormula, NeutralLoss},
     glycan::{BackboneFragmentKind, GlycanAttachement, GlycanStructure, MonoSaccharide},
-    helper_functions::merge_hashmap,
+    helper_functions::{explain_number_error, merge_hashmap},
     molecular_formula,
     ontology::{CustomDatabase, Ontology},
     parse_json::ParseJson,
     quantities::Multi,
     sequence::{
         AminoAcid, CrossLinkName, CrossLinkSide, Linked, LinkerSpecificity, MUPSettings,
-        Peptidoform, PlacementRule, SequenceElement, SequencePosition, SimpleModification,
-        SimpleModificationInner,
+        Peptidoform, PlacementRule, Position, SequenceElement, SequencePosition,
+        SimpleModification, SimpleModificationInner,
     },
     space::{Space, UsedSpace},
     system::OrderedMass,
@@ -114,7 +115,7 @@ pub struct ModificationId {
     /// Any synonyms
     pub synonyms: ThinVec<(SynonymScope, Box<str>)>,
     /// Cross reference IDs
-    pub cross_ids: ThinVec<(Option<Box<str>>, Box<str>)>,
+    pub cross_ids: ThinVec<CrossId>,
     /// Indicate if this modification is marked as obsolete
     pub obsolete: bool,
     /// Parent terms following 'is_a' relationships
@@ -131,7 +132,7 @@ impl ModificationId {
         id: AccessionCode,
         description: Box<str>,
         synonyms: ThinVec<(SynonymScope, Box<str>)>,
-        cross_ids: ThinVec<(Option<Box<str>>, Box<str>)>,
+        cross_ids: ThinVec<CrossId>,
         obsolete: bool,
     ) -> Self {
         Self {
@@ -165,7 +166,7 @@ impl Space for ModificationId {
             + self.id.space()
             + self.description.space()
             + self.synonyms.space()
-            + self.cross_ids.space()
+            //+ self.cross_ids.space() TODO
             + self.obsolete.space())
         .set_total::<Self>()
     }
@@ -256,14 +257,15 @@ impl ParseJson for ModificationId {
                         ));
                     }
                 },
-                cross_ids: ThinVec::from_json_value(map.remove("cross_ids").ok_or_else(|| {
-                    BoxedError::new(
-                        BasicKind::Error,
-                        "Invalid ModificationID",
-                        "The required property 'cross_ids' is missing",
-                        context(&map),
-                    )
-                })?)?,
+                //cross_ids: ThinVec::from_json_value(map.remove("cross_ids").ok_or_else(|| {
+                //    BoxedError::new(
+                //        BasicKind::Error,
+                //         "Invalid ModificationID",
+                //        "The required property 'cross_ids' is missing",
+                //       context(&map),
+                //    )
+                //})?)?,
+                cross_ids: ThinVec::new(), // TODO
                 obsolete: map
                     .remove("obsolete")
                     .map_or(Ok(false), |v| bool::from_json_value(v))?,
@@ -277,6 +279,261 @@ impl ParseJson for ModificationId {
                 "The JSON value has to be a map",
                 Context::default().lines(0, value.to_string()),
             ))
+        }
+    }
+}
+
+/// A cross-identifier for a modification
+#[derive(Clone, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
+pub enum CrossId {
+    Article(Box<str>),
+    Beilstein(usize),
+    Book(Box<str>),
+    CAS(u32, u8, u8),
+    ChEBI(usize),
+    ChemicalBook(Box<str>),
+    ChemSpider(usize),
+    /// A gene ontology term
+    GO(AccessionCode),
+    /// A deltamass ID
+    Deltamass(usize),
+    /// A digital object identifier
+    DOI(Box<str>),
+    /// A findmod ID
+    Findmod(Box<str>),
+    /// An MDL ID
+    MDL(Box<str>),
+    /// A modification in another modification ontology
+    Mod(Ontology, AccessionCode, PlacementRule),
+    OMSSA(usize),
+    Other(Box<str>),
+    PDB(Box<str>),
+    PDBHet(Box<str>),
+    PMID(usize),
+    PubChem(usize),
+    Uniprot(Box<str>),
+    URL(Option<Box<str>>, Box<str>),
+}
+
+impl TryFrom<(Option<Box<str>>, Box<str>)> for CrossId {
+    type Error = String;
+    fn try_from(value: (Option<Box<str>>, Box<str>)) -> Result<Self, Self::Error> {
+        let parse_ref = |r: &str| {
+            if let Some((loc, rule)) = r.split_once('#') {
+                loc.parse()
+                    .map_err(|err| format!("Invalid accession code {err:?}"))
+                    .and_then(|v| {
+                        let r = if rule == "CYS2" || rule == "CYS1" {
+                            PlacementRule::AminoAcid(
+                                vec![AminoAcid::Cysteine].into(),
+                                Position::Anywhere,
+                            )
+                        } else if rule == "N-term" {
+                            PlacementRule::Terminal(Position::AnyNTerm)
+                        } else if rule == "C-term" {
+                            PlacementRule::Terminal(Position::AnyCTerm)
+                        } else {
+                            let loc = rule
+                                .chars()
+                                .map(|c| c.try_into())
+                                .collect::<Result<ThinVec<AminoAcid>, _>>()
+                                .map_err(|()| format!("Invalid amino acid in: {rule}"))?;
+                            PlacementRule::AminoAcid(loc, Position::Anywhere)
+                        };
+
+                        Ok((v, r))
+                    })
+            } else {
+                r.parse()
+                    .map_err(|err| format!("Invalid accession code {err:?}"))
+                    .map(|v| (v, PlacementRule::Anywhere))
+            }
+        };
+
+        let t = value.0.map(|t| t.to_ascii_lowercase());
+        Ok(match t.as_deref() {
+            Some("doi") => Self::DOI(value.1.trim_start_matches("https://doi.org/").into()),
+            Some("pdb") => Self::PDB(value.1.into()),
+            Some("findmod") => Self::Findmod(value.1.into()),
+            Some("pdbhet") => Self::PDBHet(value.1.into()),
+            Some("uniprot") => Self::Uniprot(value.1.into()),
+            Some("url" | "misc. url") => Self::URL(None, value.1.into()),
+            Some("https") => Self::URL(None, format!("https:{}", value.1).into_boxed_str()),
+            Some("http") => Self::URL(None, format!("http:{}", value.1).into_boxed_str()),
+            Some("cas" | "cas registry" | "cas registry number" | "cs") => {
+                let mut split = value.1.trim().split('-');
+                let a = split
+                    .next()
+                    .ok_or(format!(
+                        "Invalid CAS number, missing the first number '{}'",
+                        value.1
+                    ))?
+                    .parse()
+                    .map_err(|err| {
+                        format!(
+                            "Invalid CAS first number {} '{}'",
+                            explain_number_error(&err),
+                            value.1
+                        )
+                    })?;
+                let b = split
+                    .next()
+                    .ok_or(format!(
+                        "Invalid CAS number, missing the second number '{}'",
+                        value.1
+                    ))?
+                    .parse()
+                    .map_err(|err| {
+                        format!(
+                            "Invalid CAS second number {} '{}'",
+                            explain_number_error(&err),
+                            value.1
+                        )
+                    })?;
+                let c = split
+                    .next()
+                    .ok_or(format!(
+                        "Invalid CAS number, missing the third number '{}'",
+                        value.1
+                    ))?
+                    .parse()
+                    .map_err(|err| {
+                        format!(
+                            "Invalid CAS third number {} '{}'",
+                            explain_number_error(&err),
+                            value.1
+                        )
+                    })?;
+                if split.next().is_some() {
+                    return Err(format!(
+                        "Invalid CAS number, too many numbers '{}'",
+                        value.1
+                    ));
+                }
+
+                // TODO: check the last number, this is a single digit that is a checksum of the entire number
+                Self::CAS(a, b, c)
+            } // TODO: fix the one XLMOD that uses cs
+            Some("book") => Self::Book(value.1.into()),
+            Some("mdl") => Self::MDL(value.1.into()),
+            Some("chemicalbookno") => Self::ChemicalBook(value.1.into()),
+            Some("article" | "journal") => Self::Article(value.1.into()),
+            Some("chebi") => Self::ChEBI(value.1.parse().map_err(|err| {
+                format!(
+                    "Invalid ChEBI identifier {} '{}'",
+                    explain_number_error(&err),
+                    value.1
+                )
+            })?),
+            Some("deltamass") => Self::Deltamass(value.1.parse().map_err(|err| {
+                format!(
+                    "Invalid deltamass identifier {} '{}'",
+                    explain_number_error(&err),
+                    value.1
+                )
+            })?),
+            Some("omssa") => Self::OMSSA(value.1.parse().map_err(|err| {
+                format!(
+                    "Invalid omssa identifier {} '{}'",
+                    explain_number_error(&err),
+                    value.1
+                )
+            })?),
+            Some("beilstein") => Self::Beilstein(value.1.parse().map_err(|err| {
+                format!(
+                    "Invalid beilstein identifier {} '{}'",
+                    explain_number_error(&err),
+                    value.1
+                )
+            })?),
+            Some("chemspider" | "chemspiderid" | "chemspider id") => {
+                Self::ChemSpider(value.1.parse().map_err(|err| {
+                    format!(
+                        "Invalid chemspider identifier {} '{}'",
+                        explain_number_error(&err),
+                        value.1
+                    )
+                })?)
+            }
+            Some("pubchemid" | "pubchem cid" | "pubchem" | "pubchem_compound") => {
+                Self::PubChem(value.1.parse().map_err(|err| {
+                    format!(
+                        "Invalid PubChem identifier {} '{}'",
+                        explain_number_error(&err),
+                        value.1
+                    )
+                })?)
+            }
+            Some("pmid" | "pubmed" | "pubmed pmid") => {
+                Self::PMID(value.1.parse().map_err(|err| {
+                    format!(
+                        "Invalid PubMed identifier {} '{}'",
+                        explain_number_error(&err),
+                        value.1
+                    )
+                })?)
+            }
+            Some("go") => Self::GO(
+                value
+                    .1
+                    .parse()
+                    .map_err(|err| format!("Invalid accession {err:?} '{}'", value.1))?,
+            ),
+            Some("unimod") => {
+                let (id, rule) = parse_ref(&value.1)?;
+                Self::Mod(Ontology::Unimod, id, rule)
+            }
+            Some("resid") => {
+                let (id, rule) = parse_ref(&value.1)?;
+                Self::Mod(Ontology::Resid, id, rule)
+            }
+            Some("psi-mod") => {
+                let (id, rule) = parse_ref(&value.1)?;
+                Self::Mod(Ontology::Psimod, id, rule)
+            }
+            Some(t) => {
+                println!("Unknown cross-id tag: {t}:{}", value.1);
+                Self::Other(format!("{t}:{}", value.1).into_boxed_str())
+            }
+            None => Self::Other(value.1),
+        })
+    }
+}
+
+impl FromStr for CrossId {
+    type Err = String;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        s.split_once(':')
+            .map(|(t, v)| (Some(t.into()), v.into()))
+            .unwrap_or((None, s.into()))
+            .try_into()
+    }
+}
+
+impl Display for CrossId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Article(a) => write!(f, "article:{a}"),
+            Self::Beilstein(a) => write!(f, "beilstein:{a}"),
+            Self::Book(a) => write!(f, "book:{a}"),
+            Self::CAS(a, b, c) => write!(f, "CAS:{a}-{b}-{c}"),
+            Self::ChEBI(a) => write!(f, "ChEBI:{a}"),
+            Self::ChemicalBook(a) => write!(f, "ChemicalBook:{a}"),
+            Self::ChemSpider(a) => write!(f, "ChemSpider:{a}"),
+            Self::GO(a) => write!(f, "GO:{a}"),
+            Self::Deltamass(a) => write!(f, "Deltamass:{a}"),
+            Self::DOI(a) => write!(f, "doi:{a}"),
+            Self::Findmod(a) => write!(f, "Findmod:{a}"),
+            Self::MDL(a) => write!(f, "MDL:{a}"),
+            Self::Mod(a, b, _) => write!(f, "{a}:{b}"),
+            Self::OMSSA(a) => write!(f, "OMSSA:{a}"),
+            Self::Other(a) => write!(f, "{a}"),
+            Self::PDB(a) => write!(f, "PDB:{a}"),
+            Self::PDBHet(a) => write!(f, "PDBHet:{a}"),
+            Self::PMID(a) => write!(f, "PMID:{a}"),
+            Self::PubChem(a) => write!(f, "PubChem:{a}"),
+            Self::Uniprot(a) => write!(f, "uniprot:{a}"),
+            Self::URL(_, b) => write!(f, "url:{b}"),
         }
     }
 }

@@ -256,7 +256,10 @@ impl FromStr for Position {
 #[expect(clippy::missing_panics_doc)]
 mod tests {
 
-    use crate::sequence::{CheckedAminoAcid, RulePossible};
+    use crate::{
+        ontology::STATIC_ONTOLOGIES,
+        sequence::{CheckedAminoAcid, RulePossible},
+    };
 
     use super::*;
     #[test]
@@ -323,5 +326,14 @@ mod tests {
             RulePossible::Symmetric(std::collections::BTreeSet::from([0])),
             "unimod deamidated at end"
         );
+    }
+
+    #[test]
+    fn subset() {
+        let rule = PlacementRule::AminoAcid(vec![AminoAcid::Glutamine].into(), Position::AnyNTerm);
+        assert!(rule.is_subset(&rule));
+        dbg!(STATIC_ONTOLOGIES.unimod().get_by_index(&28.into()).unwrap());
+        dbg!(STATIC_ONTOLOGIES.psimod().get_by_index(&40.into()).unwrap());
+        todo!();
     }
 }

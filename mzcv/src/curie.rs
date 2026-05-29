@@ -1186,7 +1186,7 @@ impl std::fmt::Display for ControlledVocabulary {
 }
 
 /// A CURIE is a namespace + accession identifier
-#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct Curie {
     /// The controlled vocabulary

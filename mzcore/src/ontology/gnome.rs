@@ -16,7 +16,8 @@ use crate::{
     helper_functions::explain_number_error,
     ontology::Ontology,
     sequence::{
-        GnoComposition, GnoSubsumption, ModificationId, SimpleModification, SimpleModificationInner,
+        CrossId, GnoComposition, GnoSubsumption, ModificationId, SimpleModification,
+        SimpleModificationInner,
     },
 };
 
@@ -101,16 +102,10 @@ impl CVSource for Gnome {
             if let Some(structure) = structures.get(&modification.id.name) {
                 modification.topology = structure.structure.clone();
                 if let Some(chebi) = structure.chebi {
-                    modification
-                        .id
-                        .cross_ids
-                        .push((Some("ChEBI".into()), chebi.to_string().into_boxed_str()));
+                    modification.id.cross_ids.push(CrossId::ChEBI(chebi));
                 }
                 if let Some(pubchem) = structure.pubchem {
-                    modification.id.cross_ids.push((
-                        Some("PubChemCID".into()),
-                        pubchem.to_string().into_boxed_str(),
-                    ));
+                    modification.id.cross_ids.push(CrossId::PubChem(pubchem));
                 }
                 modification.motif = structure.motif.clone();
                 modification.taxonomy = structure.taxonomy.clone().into();
@@ -242,15 +237,19 @@ fn parse_gnome(
                 obj.property_values
                     .get(HAS_GLYTOUCAN_ID)
                     .map(|v| {
-                        (
-                            Some("GlyTouCan".into()),
-                            v[0].0.to_string().into_boxed_str(),
+                        CrossId::Mod(
+                            Ontology::Gnome,
+                            v[0].0
+                                .to_string()
+                                .parse()
+                                .expect(&format!("Invalid GlycToucanID {}", v[0].0)),
+                            crate::sequence::PlacementRule::Anywhere,
                         )
                     })
                     .into_iter()
                     .chain(obj.property_values.get(HAS_GLYTOUCAN_LINK).map(|v| {
-                        (
-                            Some("GlyTouCanURL".into()),
+                        CrossId::URL(
+                            Some("GlyToucanURL".into()),
                             v[0].0.to_string().into_boxed_str(),
                         )
                     }))
@@ -258,7 +257,7 @@ fn parse_gnome(
                         obj.property_values
                             .get(HAS_COMPOSITION_BROWSER_LINK)
                             .map(|v| {
-                                (
+                                CrossId::URL(
                                     Some("CompositionBrowser".into()),
                                     v[0].0.to_string().into_boxed_str(),
                                 )
@@ -268,7 +267,7 @@ fn parse_gnome(
                         obj.property_values
                             .get(HAS_STRUCTURE_BROWSER_LINK)
                             .map(|v| {
-                                (
+                                CrossId::URL(
                                     Some("StructureBrowser".into()),
                                     v[0].0.to_string().into_boxed_str(),
                                 )
@@ -390,22 +389,22 @@ fn parse_gnome_structures(
     for line in crate::csv::parse_csv_raw(file, b',', None, None).unwrap() {
         let line = line.unwrap();
 
-        let _wurcs = line
-            .index_column("wurcs")
-            .ok()
-            .filter(|p| !p.0.is_empty())
-            .and_then(|(_, range)| {
-                match tokenise_wurcs(line.line(), &line.full_context(), range.clone()) {
-                    Ok(glycan) => Some(glycan),
-                    Err(error) => {
-                        if errors < 5 {
-                            println!("{error}");
-                        }
-                        errors += 1;
-                        None
-                    }
-                }
-            });
+        // let _wurcs = line
+        //     .index_column("wurcs")
+        //     .ok()
+        //     .filter(|p| !p.0.is_empty())
+        //     .and_then(|(_, range)| {
+        //         match tokenise_wurcs(line.line(), &line.full_context(), range.clone()) {
+        //             Ok(glycan) => Some(glycan),
+        //             Err(error) => {
+        //                 if errors < 5 {
+        //                     println!("{error}");
+        //                 }
+        //                 errors += 1;
+        //                 None
+        //             }
+        //         }
+        //     });
 
         glycans.insert(
             line.index_column("accession number").unwrap().0.into(),

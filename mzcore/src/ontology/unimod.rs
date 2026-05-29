@@ -14,7 +14,7 @@ use crate::{
         ontology_modification::{ModData, OntologyModification},
     },
     prelude::AminoAcid,
-    sequence::{PlacementRule, SimpleModification, SimpleModificationInner},
+    sequence::{CrossId, PlacementRule, SimpleModification, SimpleModificationInner},
 };
 
 /// Unimod modifications
@@ -125,7 +125,7 @@ fn parse_mod(node: &Node) -> Result<OntologyModification, BoxedError<'static, CV
     let mut formula = MolecularFormula::default();
     let mut diagnostics = Vec::new();
     let mut rules = Vec::new();
-    let mut cross_ids = Vec::new();
+    let mut cross_ids = ThinVec::new();
     let mut synonyms = Vec::new();
     let mut description = node.attribute("full_name").map_or_else(
         || "".into(),
@@ -246,16 +246,41 @@ fn parse_mod(node: &Node) -> Result<OntologyModification, BoxedError<'static, CV
                 .filter(|t| !t.is_empty())
                 .map(Into::into);
             if let Some(url) = url {
-                cross_ids.push((
-                    if source.as_deref() == Some("Misc. URL") {
-                        text
-                    } else {
-                        source
-                    },
-                    url,
-                ));
+                if let Some(text) = text
+                    && source.as_ref().is_some_and(|s| {
+                        s.eq_ignore_ascii_case("pubmed")
+                            || s.eq_ignore_ascii_case("pmid")
+                            || s.eq_ignore_ascii_case("pubmed pmid")
+                    })
+                {
+                    match CrossId::try_from((
+                        source,
+                        text.trim_start_matches("PMID")
+                            .trim_start_matches(':')
+                            .trim()
+                            .into(),
+                    )) {
+                        Ok(v) => cross_ids.push(v),
+                        Err(err) => println!("{err}"),
+                    }
+                } else {
+                    cross_ids.push(CrossId::URL(
+                        source.filter(|s| !s.eq_ignore_ascii_case("misc. url")),
+                        url,
+                    ));
+                }
             } else if let Some(text) = text {
-                cross_ids.push((source, text));
+                if source
+                    .as_ref()
+                    .is_some_and(|s| s.eq_ignore_ascii_case("cas registry"))
+                    && let Some((_, num)) = text.rsplit_once('[')
+                    && let Some(num) = num.strip_suffix(']')
+                {
+                    cross_ids
+                        .push(CrossId::try_from((source, num.into())).expect("Invalid cross-id"));
+                } else {
+                    cross_ids.push(CrossId::try_from((source, text)).expect("Invalid cross-id"));
+                }
             }
         }
     }
@@ -292,7 +317,7 @@ fn parse_mod(node: &Node) -> Result<OntologyModification, BoxedError<'static, CV
         ontology: Ontology::Unimod,
         description,
         synonyms: synonyms.into(),
-        cross_ids: cross_ids.into(),
+        cross_ids,
         formula,
         data: ModData::Mod {
             specificities: rules
