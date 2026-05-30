@@ -253,16 +253,20 @@ fn parse_mod(node: &Node) -> Result<OntologyModification, BoxedError<'static, CV
                             || s.eq_ignore_ascii_case("pubmed pmid")
                     })
                 {
-                    match CrossId::try_from((
-                        source,
-                        text.trim_start_matches("PMID")
-                            .trim_start_matches(':')
-                            .trim()
-                            .into(),
-                    )) {
-                        Ok(v) => cross_ids.push(v),
-                        Err(err) => println!("{err}"),
-                    }
+                    cross_ids.push(
+                        CrossId::try_from((
+                            source,
+                            text.trim_start_matches("PMID")
+                                .trim_start_matches(':')
+                                .trim()
+                                .into(),
+                        ))
+                        .map_err(|err| {
+                            err.convert::<CVError, BoxedError<'static, CVError>>(|_| {
+                                CVError::ItemError
+                            })
+                        })?,
+                    )
                 } else {
                     cross_ids.push(CrossId::URL(
                         source.filter(|s| !s.eq_ignore_ascii_case("misc. url")),
@@ -276,10 +280,13 @@ fn parse_mod(node: &Node) -> Result<OntologyModification, BoxedError<'static, CV
                     && let Some((_, num)) = text.rsplit_once('[')
                     && let Some(num) = num.strip_suffix(']')
                 {
-                    cross_ids
-                        .push(CrossId::try_from((source, num.into())).expect("Invalid cross-id"));
+                    cross_ids.push(CrossId::try_from((source, num.into())).map_err(|err| {
+                        err.convert::<CVError, BoxedError<'static, CVError>>(|_| CVError::ItemError)
+                    })?);
                 } else {
-                    cross_ids.push(CrossId::try_from((source, text)).expect("Invalid cross-id"));
+                    cross_ids.push(CrossId::try_from((source, text)).map_err(|err| {
+                        err.convert::<CVError, BoxedError<'static, CVError>>(|_| CVError::ItemError)
+                    })?);
                 }
             }
         }

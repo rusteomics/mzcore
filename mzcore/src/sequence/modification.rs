@@ -2,7 +2,7 @@
 
 use std::{
     collections::{BTreeSet, HashMap, HashSet},
-    fmt::{Display, Write, write},
+    fmt::{Display, Write},
     path::Path,
     str::FromStr,
     sync::Arc,
@@ -10,7 +10,7 @@ use std::{
 
 use context_error::*;
 use itertools::Itertools;
-use mzcv::{AccessionCode, Curie, SynonymScope};
+use mzcv::{AccessionCode, SynonymScope};
 use ordered_float::OrderedFloat;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -316,12 +316,21 @@ pub enum CrossId {
 }
 
 impl TryFrom<(Option<Box<str>>, Box<str>)> for CrossId {
-    type Error = String;
+    type Error = BoxedError<'static, BasicKind>;
     fn try_from(value: (Option<Box<str>>, Box<str>)) -> Result<Self, Self::Error> {
         let parse_ref = |r: &str| {
             if let Some((loc, rule)) = r.split_once('#') {
-                loc.parse()
-                    .map_err(|err| format!("Invalid accession code {err:?}"))
+                let rule = rule.trim();
+                loc.trim()
+                    .parse()
+                    .map_err(|err| {
+                        BoxedError::new(
+                            BasicKind::Error,
+                            "Invalid modification location",
+                            format!("Contains invalid accession code {err:?}"),
+                            Context::default().lines(0, value.1.to_string()),
+                        )
+                    })
                     .and_then(|v| {
                         let r = if rule == "CYS2" || rule == "CYS1" {
                             PlacementRule::AminoAcid(
@@ -337,15 +346,30 @@ impl TryFrom<(Option<Box<str>>, Box<str>)> for CrossId {
                                 .chars()
                                 .map(|c| c.try_into())
                                 .collect::<Result<ThinVec<AminoAcid>, _>>()
-                                .map_err(|()| format!("Invalid amino acid in: {rule}"))?;
+                                .map_err(|()| {
+                                    BoxedError::new(
+                                        BasicKind::Error,
+                                        "Invalid modification location",
+                                        "Contains invalid amino acid",
+                                        Context::default().lines(0, value.1.to_string()),
+                                    )
+                                })?;
                             PlacementRule::AminoAcid(loc, Position::Anywhere)
                         };
 
                         Ok((v, r))
                     })
             } else {
-                r.parse()
-                    .map_err(|err| format!("Invalid accession code {err:?}"))
+                r.trim()
+                    .parse()
+                    .map_err(|err| {
+                        BoxedError::new(
+                            BasicKind::Error,
+                            "Invalid modification location",
+                            format!("Contains invalid accession code {err:?}"),
+                            Context::default().lines(0, value.1.to_string()),
+                        )
+                    })
                     .map(|v| (v, PlacementRule::Anywhere))
             }
         };
@@ -364,50 +388,61 @@ impl TryFrom<(Option<Box<str>>, Box<str>)> for CrossId {
                 let mut split = value.1.trim().split('-');
                 let a = split
                     .next()
-                    .ok_or(format!(
-                        "Invalid CAS number, missing the first number '{}'",
-                        value.1
+                    .ok_or(BoxedError::new(
+                        BasicKind::Error,
+                        "Invalid CAS number",
+                        "Missing first number",
+                        Context::default().lines(0, value.1.to_string()),
                     ))?
                     .parse()
                     .map_err(|err| {
-                        format!(
-                            "Invalid CAS first number {} '{}'",
-                            explain_number_error(&err),
-                            value.1
+                        BoxedError::new(
+                            BasicKind::Error,
+                            "Invalid CAS number",
+                            format!("The first number {}", explain_number_error(&err)),
+                            Context::default().lines(0, value.1.to_string()),
                         )
                     })?;
                 let b = split
                     .next()
-                    .ok_or(format!(
-                        "Invalid CAS number, missing the second number '{}'",
-                        value.1
+                    .ok_or(BoxedError::new(
+                        BasicKind::Error,
+                        "Invalid CAS number",
+                        "Missing second number",
+                        Context::default().lines(0, value.1.to_string()),
                     ))?
                     .parse()
                     .map_err(|err| {
-                        format!(
-                            "Invalid CAS second number {} '{}'",
-                            explain_number_error(&err),
-                            value.1
+                        BoxedError::new(
+                            BasicKind::Error,
+                            "Invalid CAS number",
+                            format!("The second number {}", explain_number_error(&err)),
+                            Context::default().lines(0, value.1.to_string()),
                         )
                     })?;
                 let c = split
                     .next()
-                    .ok_or(format!(
-                        "Invalid CAS number, missing the third number '{}'",
-                        value.1
+                    .ok_or(BoxedError::new(
+                        BasicKind::Error,
+                        "Invalid CAS number",
+                        "Missing third number",
+                        Context::default().lines(0, value.1.to_string()),
                     ))?
                     .parse()
                     .map_err(|err| {
-                        format!(
-                            "Invalid CAS third number {} '{}'",
-                            explain_number_error(&err),
-                            value.1
+                        BoxedError::new(
+                            BasicKind::Error,
+                            "Invalid CAS number",
+                            format!("The third number {}", explain_number_error(&err)),
+                            Context::default().lines(0, value.1.to_string()),
                         )
                     })?;
                 if split.next().is_some() {
-                    return Err(format!(
-                        "Invalid CAS number, too many numbers '{}'",
-                        value.1
+                    return Err(BoxedError::new(
+                        BasicKind::Error,
+                        "Invalid CAS number",
+                        "Too many numbers",
+                        Context::default().lines(0, value.1.to_string()),
                     ));
                 }
 
@@ -419,66 +454,75 @@ impl TryFrom<(Option<Box<str>>, Box<str>)> for CrossId {
             Some("chemicalbookno") => Self::ChemicalBook(value.1.into()),
             Some("article" | "journal") => Self::Article(value.1.into()),
             Some("chebi") => Self::ChEBI(value.1.parse().map_err(|err| {
-                format!(
-                    "Invalid ChEBI identifier {} '{}'",
-                    explain_number_error(&err),
-                    value.1
+                BoxedError::new(
+                    BasicKind::Error,
+                    "Invalid ChEBI identifier",
+                    format!("The number {}", explain_number_error(&err)),
+                    Context::default().lines(0, value.1.to_string()),
                 )
             })?),
             Some("deltamass") => Self::Deltamass(value.1.parse().map_err(|err| {
-                format!(
-                    "Invalid deltamass identifier {} '{}'",
-                    explain_number_error(&err),
-                    value.1
+                BoxedError::new(
+                    BasicKind::Error,
+                    "Invalid deltamass identifier",
+                    format!("The number {}", explain_number_error(&err)),
+                    Context::default().lines(0, value.1.to_string()),
                 )
             })?),
             Some("omssa") => Self::OMSSA(value.1.parse().map_err(|err| {
-                format!(
-                    "Invalid omssa identifier {} '{}'",
-                    explain_number_error(&err),
-                    value.1
+                BoxedError::new(
+                    BasicKind::Error,
+                    "Invalid OMSSA identifier",
+                    format!("The number {}", explain_number_error(&err)),
+                    Context::default().lines(0, value.1.to_string()),
                 )
             })?),
             Some("beilstein") => Self::Beilstein(value.1.parse().map_err(|err| {
-                format!(
-                    "Invalid beilstein identifier {} '{}'",
-                    explain_number_error(&err),
-                    value.1
+                BoxedError::new(
+                    BasicKind::Error,
+                    "Invalid Beilstein identifier",
+                    format!("The number {}", explain_number_error(&err)),
+                    Context::default().lines(0, value.1.to_string()),
                 )
             })?),
             Some("chemspider" | "chemspiderid" | "chemspider id") => {
                 Self::ChemSpider(value.1.parse().map_err(|err| {
-                    format!(
-                        "Invalid chemspider identifier {} '{}'",
-                        explain_number_error(&err),
-                        value.1
+                    BoxedError::new(
+                        BasicKind::Error,
+                        "Invalid ChemSpider identifier",
+                        format!("The number {}", explain_number_error(&err)),
+                        Context::default().lines(0, value.1.to_string()),
                     )
                 })?)
             }
             Some("pubchemid" | "pubchem cid" | "pubchem" | "pubchem_compound") => {
                 Self::PubChem(value.1.parse().map_err(|err| {
-                    format!(
-                        "Invalid PubChem identifier {} '{}'",
-                        explain_number_error(&err),
-                        value.1
+                    BoxedError::new(
+                        BasicKind::Error,
+                        "Invalid PubChem identifier",
+                        format!("The number {}", explain_number_error(&err)),
+                        Context::default().lines(0, value.1.to_string()),
                     )
                 })?)
             }
             Some("pmid" | "pubmed" | "pubmed pmid") => {
                 Self::PMID(value.1.parse().map_err(|err| {
-                    format!(
-                        "Invalid PubMed identifier {} '{}'",
-                        explain_number_error(&err),
-                        value.1
+                    BoxedError::new(
+                        BasicKind::Error,
+                        "Invalid PubMed identifier",
+                        format!("The number {}", explain_number_error(&err)),
+                        Context::default().lines(0, value.1.to_string()),
                     )
                 })?)
             }
-            Some("go") => Self::GO(
-                value
-                    .1
-                    .parse()
-                    .map_err(|err| format!("Invalid accession {err:?} '{}'", value.1))?,
-            ),
+            Some("go") => Self::GO(value.1.parse().map_err(|err| {
+                BoxedError::new(
+                    BasicKind::Error,
+                    "Invalid GO term",
+                    format!("Contains invalid accession code {err:?}"),
+                    Context::default().lines(0, value.1.to_string()),
+                )
+            })?),
             Some("unimod") => {
                 let (id, rule) = parse_ref(&value.1)?;
                 Self::Mod(Ontology::Unimod, id, rule)
@@ -501,7 +545,7 @@ impl TryFrom<(Option<Box<str>>, Box<str>)> for CrossId {
 }
 
 impl FromStr for CrossId {
-    type Err = String;
+    type Err = BoxedError<'static, BasicKind>;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         s.split_once(':')
             .map(|(t, v)| (Some(t.into()), v.into()))

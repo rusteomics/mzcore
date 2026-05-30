@@ -13,13 +13,14 @@ use mzcv::{
 
 use crate::{
     chemistry::{DiagnosticIon, MolecularFormula, NeutralLoss},
+    helper_functions::explain_number_error,
     ontology::{
         Ontology,
         ontology_modification::{ModData, OntologyModification},
     },
     sequence::{
-        AminoAcid, LinkerLength, LinkerSpecificity, PlacementRule, Position, SimpleModification,
-        SimpleModificationInner,
+        AminoAcid, CrossId, LinkerLength, LinkerSpecificity, PlacementRule, Position,
+        SimpleModification, SimpleModificationInner,
     },
 };
 
@@ -94,11 +95,16 @@ impl CVSource for XlMod {
                             if obj.stanza_type != OboStanzaType::Term {
                                 continue;
                             }
-                            let id: u32 = obj
+                            let id: u32 = match obj
                                 .id
                                 .1
-                                .parse()
-                                .expect("Incorrect XLMOD id, should be numerical");
+                                .parse() {
+                                    Ok(v) => v,
+                                    Err(err) => {
+                                        combine_error(&mut errors, BoxedError::new(CVError::ItemError, "Invalid XLMOD", format!("The ID is {}", explain_number_error(&err)), Context::default().lines(0, obj.id.1.to_string())));
+                                        continue;
+                                    }
+                                };
                             let name = obj.lines["name"][0].0.clone();
 
                             let description = obj
@@ -147,17 +153,21 @@ impl CVSource for XlMod {
                                 properties.origins.0 = vec![PlacementRule::Anywhere];
                             }
 
+                            let cross_ids = match cross_ids
+                                .iter()
+                                .map(|v| v.clone().try_into())
+                                .collect::<Result<ThinVec<CrossId>, _>>()
+                            {
+                                Ok(ids) => ids,
+                                Err(err) => {combine_error(&mut errors, err.convert(|_| CVError::ItemError)); continue},
+                            };
                             if properties.sites == Some(2) {
                                 let mut m =
                                     OntologyModification {
                                         formula: properties.formula.unwrap_or_default(),
                                         name,
                                         description,
-                                        cross_ids: cross_ids
-                                            .iter()
-                                            .map(|v| v.clone().try_into())
-                                            .collect::<Result<ThinVec<_>, _>>()
-                                            .expect("Invalid cross-id"),
+                                        cross_ids,
                                         synonyms,
                                         id: mzcv::AccessionCode::Numeric(id),
                                         ontology: Ontology::Xlmod,
@@ -195,11 +205,7 @@ impl CVSource for XlMod {
                                         formula: properties.formula.unwrap_or_default(),
                                         name,
                                         description,
-                                        cross_ids: cross_ids
-                                            .iter()
-                                            .map(|v| v.clone().try_into())
-                                            .collect::<Result<ThinVec<_>, _>>()
-                                            .expect("Invalid cross-id"),
+                                        cross_ids,
                                         synonyms,
                                         ontology: Ontology::Xlmod,
                                         obsolete: obj.obsolete,

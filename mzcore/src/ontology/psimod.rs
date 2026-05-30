@@ -162,11 +162,14 @@ impl CVSource for PsiMod {
             modification.add_relationships(&obj.relationship);
             if let Some((description, cross_ids, _, _)) = &obj.definition {
                 modification.description = description.clone();
-                modification.cross_ids = cross_ids
+                match cross_ids
                     .iter()
                     .map(|v| v.clone().try_into())
                     .collect::<Result<ThinVec<_>, _>>()
-                    .expect("Invalid cross-id");
+                {
+                    Ok(ids) => modification.cross_ids.extend_from_slice(&ids),
+                    Err(err) => combine_error(&mut errors, err.convert(|_| CVError::ItemError)),
+                }
             }
             for synonym in &obj.synonyms {
                 modification
