@@ -269,7 +269,7 @@ impl MolecularFormula {
 
     // The elements will be sorted on element/isotope and deduplicated
     #[must_use]
-    fn simplify(mut self) -> Self {
+    pub(super) fn simplify(mut self) -> Self {
         self.elements.retain(|el| el.2 != 0);
         self.elements.sort_by(|a, b| {
             if a.0 == b.0 {

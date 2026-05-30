@@ -157,10 +157,7 @@ impl CVSource for Resid {
                                                         .byte_range(name_node.range())
                                                         .lines(
                                                             0,
-                                                            format!(
-                                                                "RESID:AA{:04}",
-                                                                modification.id
-                                                            ),
+                                                            format!("RESID:{}", modification.id),
                                                         ),
                                                 ),
                                             );
@@ -173,10 +170,9 @@ impl CVSource for Resid {
                                             CVError::ItemError,
                                             "Invalid name",
                                             "A RESID name should be Name, AlternateName, SystemicName, or Xref",
-                                            Context::default().byte_range(name_node.range()).lines(
-                                                0,
-                                                format!("RESID:AA{:04}", modification.id),
-                                            ),
+                                            Context::default()
+                                                .byte_range(name_node.range())
+                                                .lines(0, format!("RESID:{}", modification.id)),
                                         ),
                                     ),
                                 }

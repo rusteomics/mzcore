@@ -1,7 +1,7 @@
 //! Code to handle the Unimod ontology
 use std::io::Read;
 
-use context_error::{BoxedError, Context, CreateError, FullErrorContent};
+use context_error::{BoxedError, Context, CreateError, FullErrorContent, combine_error};
 use mzcv::{CVError, CVFile, CVSource, CVVersion, HashBufReader, SynonymScope};
 use roxmltree::*;
 use thin_vec::ThinVec;
@@ -127,6 +127,7 @@ fn parse_mod(node: &Node) -> Result<OntologyModification, BoxedError<'static, CV
     let mut rules = Vec::new();
     let mut cross_ids = ThinVec::new();
     let mut synonyms = Vec::new();
+    let mut errors = Vec::new();
     let mut description = node.attribute("full_name").map_or_else(
         || "".into(),
         |full_name| {
@@ -253,20 +254,21 @@ fn parse_mod(node: &Node) -> Result<OntologyModification, BoxedError<'static, CV
                             || s.eq_ignore_ascii_case("pubmed pmid")
                     })
                 {
-                    cross_ids.push(
-                        CrossId::try_from((
-                            source,
-                            text.trim_start_matches("PMID")
-                                .trim_start_matches(':')
-                                .trim()
-                                .into(),
-                        ))
-                        .map_err(|err| {
+                    match CrossId::try_from((
+                        source,
+                        text.trim_start_matches("PMID")
+                            .trim_start_matches(':')
+                            .trim()
+                            .into(),
+                    )) {
+                        Ok(v) => cross_ids.push(v),
+                        Err(err) => combine_error(
+                            &mut errors,
                             err.convert::<CVError, BoxedError<'static, CVError>>(|_| {
                                 CVError::ItemError
-                            })
-                        })?,
-                    )
+                            }),
+                        ),
+                    }
                 } else {
                     cross_ids.push(CrossId::URL(
                         source.filter(|s| !s.eq_ignore_ascii_case("misc. url")),
@@ -274,19 +276,23 @@ fn parse_mod(node: &Node) -> Result<OntologyModification, BoxedError<'static, CV
                     ));
                 }
             } else if let Some(text) = text {
-                if source
+                match if source
                     .as_ref()
                     .is_some_and(|s| s.eq_ignore_ascii_case("cas registry"))
                     && let Some((_, num)) = text.rsplit_once('[')
                     && let Some(num) = num.strip_suffix(']')
                 {
-                    cross_ids.push(CrossId::try_from((source, num.into())).map_err(|err| {
-                        err.convert::<CVError, BoxedError<'static, CVError>>(|_| CVError::ItemError)
-                    })?);
+                    CrossId::try_from((source, num.into()))
                 } else {
-                    cross_ids.push(CrossId::try_from((source, text)).map_err(|err| {
-                        err.convert::<CVError, BoxedError<'static, CVError>>(|_| CVError::ItemError)
-                    })?);
+                    CrossId::try_from((source, text))
+                } {
+                    Ok(v) => cross_ids.push(v),
+                    Err(err) => combine_error(
+                        &mut errors,
+                        err.convert::<CVError, BoxedError<'static, CVError>>(|_| {
+                            CVError::ItemError
+                        }),
+                    ),
                 }
             }
         }

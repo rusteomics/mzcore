@@ -120,7 +120,7 @@ impl MolecularFormula {
                 ));
             }
         }
-        Ok(result)
+        Ok(result.simplify())
     }
 }
 
