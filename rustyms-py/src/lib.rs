@@ -1043,8 +1043,11 @@ impl SequencePosition {
 
     /// Create a position based on index (0-based indexing)
     #[staticmethod]
-    const fn index(index: usize) -> Self {
-        Self(mzcore::sequence::SequencePosition::Index(index))
+    const fn index(index: usize, sequence_length: usize) -> Self {
+        Self(mzcore::sequence::SequencePosition::Index(
+            index,
+            sequence_length,
+        ))
     }
 
     /// Create a C-terminal position
@@ -1063,7 +1066,7 @@ impl SequencePosition {
     #[getter]
     const fn get_index(&self) -> Option<usize> {
         match self.0 {
-            mzcore::sequence::SequencePosition::Index(i) => Some(i),
+            mzcore::sequence::SequencePosition::Index(i, _) => Some(i),
             _ => None,
         }
     }
