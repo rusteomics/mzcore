@@ -286,13 +286,22 @@ impl ParseJson for ModificationId {
 /// A cross-identifier for a modification
 #[derive(Clone, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 pub enum CrossId {
+    /// A reference to an article
     Article(Box<str>),
+    /// A reference to the Beilstein organic chemistry database
     Beilstein(usize),
+    /// A reference to a book
     Book(Box<str>),
+    /// A CAS registry number
     CAS(u32, u8, u8),
+    /// A reference to the chemical entities of biological interest database
     ChEBI(usize),
+    /// A reference to the chemicalbook database
     ChemicalBook(Box<str>),
+    /// A reference to the chemspider database
     ChemSpider(usize),
+    /// Reference a COMe entry, a database of metalloproteins (10.1186/1472-6807-4-3)
+    COMe(Box<str>),
     /// A gene ontology term
     GO(AccessionCode),
     /// A deltamass ID
@@ -301,17 +310,27 @@ pub enum CrossId {
     DOI(Box<str>),
     /// A findmod ID
     Findmod(Box<str>),
-    /// An MDL ID
+    /// An MDL chemical database ID
     MDL(Box<str>),
     /// A modification in another modification ontology
     Mod(Ontology, AccessionCode, PlacementRule),
+    /// A reference to the open mass spectrometry search algorithm
     OMSSA(usize),
+    /// Any other reference, note that this can still contain a key in '{key}:{value}' format
     Other(Box<str>),
+    /// A patent reference
+    Patent(Box<str>),
+    /// Reference a PDB entry
     PDB(Box<str>),
+    /// Reference a PDBHet entry
     PDBHet(Box<str>),
-    PMID(usize),
+    /// Reference a PubMed entry
+    PubMed(usize),
+    /// Reference a PubChem entry
     PubChem(usize),
+    /// Reference a uniprot PTMList entry by name
     Uniprot(Box<str>),
+    /// Reference a URL with possibly a name for the link
     URL(Option<Box<str>>, Box<str>),
 }
 
@@ -376,14 +395,20 @@ impl TryFrom<(Option<Box<str>>, Box<str>)> for CrossId {
 
         let t = value.0.map(|t| t.to_ascii_lowercase());
         Ok(match t.as_deref() {
+            Some("article" | "journal") => Self::Article(value.1.into()),
+            Some("book") => Self::Book(value.1.into()),
+            Some("chemicalbookno") => Self::ChemicalBook(value.1.into()),
+            Some("come") => Self::COMe(value.1.into()),
             Some("doi") => Self::DOI(value.1.trim_start_matches("https://doi.org/").into()),
-            Some("pdb") => Self::PDB(value.1.into()),
+            Some("epo" | "wipo" | "uspto") => Self::Patent(value.1.into()),
             Some("findmod") => Self::Findmod(value.1.into()),
+            Some("http") => Self::URL(None, format!("http:{}", value.1).into_boxed_str()),
+            Some("https") => Self::URL(None, format!("https:{}", value.1).into_boxed_str()),
+            Some("mdl") => Self::MDL(value.1.into()),
+            Some("pdb") => Self::PDB(value.1.into()),
             Some("pdbhet") => Self::PDBHet(value.1.into()),
             Some("uniprot") => Self::Uniprot(value.1.into()),
             Some("url" | "misc. url") => Self::URL(None, value.1.into()),
-            Some("https") => Self::URL(None, format!("https:{}", value.1).into_boxed_str()),
-            Some("http") => Self::URL(None, format!("http:{}", value.1).into_boxed_str()),
             Some("cas" | "cas registry" | "cas registry number" | "cs") => {
                 let mut split = value.1.trim().split('-');
                 let a = split
@@ -449,10 +474,6 @@ impl TryFrom<(Option<Box<str>>, Box<str>)> for CrossId {
                 // TODO: check the last number, this is a single digit that is a checksum of the entire number
                 Self::CAS(a, b, c)
             } // TODO: fix the one XLMOD that uses cs
-            Some("book") => Self::Book(value.1.into()),
-            Some("mdl") => Self::MDL(value.1.into()),
-            Some("chemicalbookno") => Self::ChemicalBook(value.1.into()),
-            Some("article" | "journal") => Self::Article(value.1.into()),
             Some("chebi") => Self::ChEBI(value.1.parse().map_err(|err| {
                 BoxedError::new(
                     BasicKind::Error,
@@ -506,7 +527,7 @@ impl TryFrom<(Option<Box<str>>, Box<str>)> for CrossId {
                 })?)
             }
             Some("pmid" | "pubmed" | "pubmed pmid") => {
-                Self::PMID(value.1.parse().map_err(|err| {
+                Self::PubMed(value.1.parse().map_err(|err| {
                     BoxedError::new(
                         BasicKind::Error,
                         "Invalid PubMed identifier",
@@ -557,27 +578,29 @@ impl FromStr for CrossId {
 impl Display for CrossId {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::Article(a) => write!(f, "article:{a}"),
-            Self::Beilstein(a) => write!(f, "beilstein:{a}"),
-            Self::Book(a) => write!(f, "book:{a}"),
+            Self::Article(a) => write!(f, "Article:{a}"),
+            Self::Beilstein(a) => write!(f, "Beilstein:{a}"),
+            Self::Book(a) => write!(f, "Book:{a}"),
             Self::CAS(a, b, c) => write!(f, "CAS:{a}-{b}-{c}"),
             Self::ChEBI(a) => write!(f, "ChEBI:{a}"),
             Self::ChemicalBook(a) => write!(f, "ChemicalBook:{a}"),
             Self::ChemSpider(a) => write!(f, "ChemSpider:{a}"),
+            Self::COMe(a) => write!(f, "COMe:{a}"),
+            Self::Deltamass(a) => write!(f, "DeltaMass:{a}"),
+            Self::DOI(a) => write!(f, "DOI:{a}"),
+            Self::Findmod(a) => write!(f, "FindMod:{a}"),
             Self::GO(a) => write!(f, "GO:{a}"),
-            Self::Deltamass(a) => write!(f, "Deltamass:{a}"),
-            Self::DOI(a) => write!(f, "doi:{a}"),
-            Self::Findmod(a) => write!(f, "Findmod:{a}"),
             Self::MDL(a) => write!(f, "MDL:{a}"),
             Self::Mod(a, b, _) => write!(f, "{a}:{b}"),
             Self::OMSSA(a) => write!(f, "OMSSA:{a}"),
             Self::Other(a) => write!(f, "{a}"),
+            Self::Patent(a) => write!(f, "Patent:{a}"),
             Self::PDB(a) => write!(f, "PDB:{a}"),
             Self::PDBHet(a) => write!(f, "PDBHet:{a}"),
-            Self::PMID(a) => write!(f, "PMID:{a}"),
             Self::PubChem(a) => write!(f, "PubChem:{a}"),
-            Self::Uniprot(a) => write!(f, "uniprot:{a}"),
-            Self::URL(_, b) => write!(f, "url:{b}"),
+            Self::PubMed(a) => write!(f, "PubMed:{a}"),
+            Self::Uniprot(a) => write!(f, "Uniprot:{a}"),
+            Self::URL(_, b) => write!(f, "URL:{b}"),
         }
     }
 }

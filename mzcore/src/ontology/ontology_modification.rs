@@ -54,19 +54,10 @@ impl OntologyModification {
             ModData::Mod {
                 specificities: old_rules,
             } => {
-                if self.ontology == Ontology::Xlmod && self.id == AccessionCode::Numeric(2033) {
-                    dbg!(&old_rules);
-                }
                 simplify_rules(old_rules);
             }
             ModData::Linker { specificities, .. } => {
-                if self.ontology == Ontology::Xlmod && self.id == AccessionCode::Numeric(2033) {
-                    dbg!(&specificities);
-                }
                 simplify_xl_rules(specificities);
-                if self.ontology == Ontology::Xlmod && self.id == AccessionCode::Numeric(2033) {
-                    dbg!(&specificities);
-                }
             }
         }
     }
