@@ -248,7 +248,10 @@ impl PeakAnnotation {
                     match series {
                         b'a' => FragmentType::a(
                             PeptidePosition {
-                                sequence_index: SequencePosition::Index(ordinal - 1),
+                                sequence_index: SequencePosition::Index(
+                                    ordinal - 1,
+                                    sequence_length,
+                                ),
                                 series_number: ordinal,
                                 sequence_length,
                             },
@@ -256,7 +259,10 @@ impl PeakAnnotation {
                         ),
                         b'b' => FragmentType::b(
                             PeptidePosition {
-                                sequence_index: SequencePosition::Index(ordinal - 1),
+                                sequence_index: SequencePosition::Index(
+                                    ordinal - 1,
+                                    sequence_length,
+                                ),
                                 series_number: ordinal,
                                 sequence_length,
                             },
@@ -264,7 +270,10 @@ impl PeakAnnotation {
                         ),
                         b'c' => FragmentType::c(
                             PeptidePosition {
-                                sequence_index: SequencePosition::Index(ordinal - 1),
+                                sequence_index: SequencePosition::Index(
+                                    ordinal - 1,
+                                    sequence_length,
+                                ),
                                 series_number: ordinal,
                                 sequence_length,
                             },
@@ -272,7 +281,10 @@ impl PeakAnnotation {
                         ),
                         b'd' => FragmentType::d(
                             PeptidePosition {
-                                sequence_index: SequencePosition::Index(ordinal - 1),
+                                sequence_index: SequencePosition::Index(
+                                    ordinal - 1,
+                                    sequence_length,
+                                ),
                                 series_number: ordinal,
                                 sequence_length,
                             },
@@ -285,6 +297,7 @@ impl PeakAnnotation {
                             PeptidePosition {
                                 sequence_index: SequencePosition::Index(
                                     sequence_length.saturating_sub(ordinal),
+                                    sequence_length,
                                 ),
                                 series_number: ordinal,
                                 sequence_length,
@@ -297,6 +310,7 @@ impl PeakAnnotation {
                             PeptidePosition {
                                 sequence_index: SequencePosition::Index(
                                     sequence_length.saturating_sub(ordinal),
+                                    sequence_length,
                                 ),
                                 series_number: ordinal,
                                 sequence_length,
@@ -310,6 +324,7 @@ impl PeakAnnotation {
                             PeptidePosition {
                                 sequence_index: SequencePosition::Index(
                                     sequence_length.saturating_sub(ordinal),
+                                    sequence_length,
                                 ),
                                 series_number: ordinal,
                                 sequence_length,
@@ -320,6 +335,7 @@ impl PeakAnnotation {
                             PeptidePosition {
                                 sequence_index: SequencePosition::Index(
                                     sequence_length.saturating_sub(ordinal),
+                                    sequence_length,
                                 ),
                                 series_number: ordinal,
                                 sequence_length,
@@ -330,6 +346,7 @@ impl PeakAnnotation {
                             PeptidePosition {
                                 sequence_index: SequencePosition::Index(
                                     sequence_length.saturating_sub(ordinal),
+                                    sequence_length,
                                 ),
                                 series_number: ordinal,
                                 sequence_length,
@@ -381,8 +398,14 @@ impl PeakAnnotation {
                     None,
                     FragmentType::Internal(
                         None,
-                        PeptidePosition::n(SequencePosition::Index(start - 1), sequence_length),
-                        PeptidePosition::n(SequencePosition::Index(end - 1), sequence_length),
+                        PeptidePosition::n(
+                            SequencePosition::Index(start - 1, sequence_length),
+                            sequence_length,
+                        ),
+                        PeptidePosition::n(
+                            SequencePosition::Index(end - 1, sequence_length),
+                            sequence_length,
+                        ),
                     ),
                 )
             }
@@ -1549,7 +1572,7 @@ fn parse_correctly() {
     let frag_a = parse_a.into_fragment(&pep, &Context::default()).unwrap();
     assert_eq!(
         frag_a.ion.position(),
-        Some(&PeptidePosition::c(SequencePosition::Index(2), 10))
+        Some(&PeptidePosition::c(SequencePosition::Index(2, 10), 10))
     );
 
     let b = "y8+i^2/0.0002";

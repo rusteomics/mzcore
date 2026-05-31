@@ -417,12 +417,12 @@ mod tests {
 
     #[test]
     fn flip_terminal() {
-        let n0 = PeptidePosition::n(SequencePosition::Index(0), 2);
-        let n1 = PeptidePosition::n(SequencePosition::Index(1), 2);
-        let n2 = PeptidePosition::n(SequencePosition::Index(2), 2);
-        let c0 = PeptidePosition::c(SequencePosition::Index(0), 2);
-        let c1 = PeptidePosition::c(SequencePosition::Index(1), 2);
-        let c2 = PeptidePosition::c(SequencePosition::Index(2), 2);
+        let n0 = PeptidePosition::n(SequencePosition::Index(0, 2), 2);
+        let n1 = PeptidePosition::n(SequencePosition::Index(1, 2), 2);
+        let n2 = PeptidePosition::n(SequencePosition::Index(2, 2), 2);
+        let c0 = PeptidePosition::c(SequencePosition::Index(0, 2), 2);
+        let c1 = PeptidePosition::c(SequencePosition::Index(1, 2), 2);
+        let c2 = PeptidePosition::c(SequencePosition::Index(2, 2), 2);
         assert_eq!(n0.flip_terminal(), c0);
         assert_eq!(n1.flip_terminal(), c1);
         assert_eq!(n2.flip_terminal(), c2);

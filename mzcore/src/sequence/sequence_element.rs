@@ -89,6 +89,20 @@ impl<T> SequenceElement<T> {
         }
     }
 
+    /// Create a new aminoacid without any modifications
+    pub fn new_with_modifications(
+        aminoacid: CheckedAminoAcid<T>,
+        modifications: ThinVec<Modification>,
+        ambiguous: Option<NonZeroU32>,
+    ) -> Self {
+        Self {
+            aminoacid,
+            modifications,
+            ambiguous,
+            marker: PhantomData,
+        }
+    }
+
     /// Add a modification to this sequence element
     #[must_use]
     pub fn with_simple_modification(mut self, modification: SimpleModification) -> Self {
@@ -126,7 +140,7 @@ impl<T> SequenceElement<T> {
             if let Modification::Ambiguous { id, .. } = m
                 && !placed_ambiguous.contains(id)
                 && preferred_ambiguous_location[*id]
-                    .is_none_or(|p| p == SequencePosition::Index(index))
+                    .is_none_or(|p| matches!(p, SequencePosition::Index(i, _) if index == i))
             {
                 display_ambiguous = true;
                 placed_ambiguous.push(*id);
@@ -339,7 +353,7 @@ impl<T> SequenceElement<T> {
                             match position {
                                 SequencePosition::NTerm => "the N-terminus".to_string(),
                                 SequencePosition::CTerm => "the C-terminus".to_string(),
-                                SequencePosition::Index(index) =>
+                                SequencePosition::Index(index, _) =>
                                     format!("the side chain of {} at index {index}", self.aminoacid),
                             },
                             if rules.is_empty() {
@@ -369,7 +383,7 @@ impl<T> SequenceElement<T> {
         let mut diagnostic_ions = Vec::new();
         let modifications = match position {
             SequencePosition::NTerm => n_term,
-            SequencePosition::Index(_) => &self.modifications,
+            SequencePosition::Index(_, _) => &self.modifications,
             SequencePosition::CTerm => c_term,
         };
         for modification in modifications {

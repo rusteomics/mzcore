@@ -150,7 +150,7 @@ impl CVSource for XlMod {
                             );
 
                             if properties.origins.0.is_empty() {
-                                properties.origins.0 = vec![PlacementRule::Anywhere];
+                                properties.origins.0 = vec![PlacementRule::Position(Position::Anywhere)];
                             }
 
                             let cross_ids = match cross_ids
@@ -703,9 +703,9 @@ fn read_placement_rule(brick: &str) -> Result<PlacementRule, BoxedError<'static,
             Position::Anywhere,
         ))
     } else if brick.eq_ignore_ascii_case("Protein N-term") {
-        Ok(PlacementRule::Terminal(Position::ProteinNTerm))
+        Ok(PlacementRule::Position(Position::ProteinNTerm))
     } else if brick.eq_ignore_ascii_case("Protein C-term") {
-        Ok(PlacementRule::Terminal(Position::ProteinCTerm))
+        Ok(PlacementRule::Position(Position::ProteinCTerm))
     } else {
         Err(BoxedError::new(
             CVError::ItemError,

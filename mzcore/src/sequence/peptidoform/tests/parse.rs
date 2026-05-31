@@ -319,28 +319,34 @@ fn parse_ambiguous_modification() {
 
 #[test]
 fn parse_terminal_ambiguous_modification() {
-    // N-term
+    // Sidechain N-term
     let (unplaced_n, _) =
         Peptidoform::pro_forma("[deamidated]?FAAQAA", &STATIC_ONTOLOGIES).unwrap();
-    assert!(unplaced_n.get_n_term()[0].is_ambiguous());
-    assert_eq!(unplaced_n.sequence()[3].modifications.len(), 1);
-    assert!(unplaced_n.sequence()[3].modifications[0].is_ambiguous());
+    println!("{unplaced_n}");
+    assert_eq!(unplaced_n[0].modifications.len(), 1);
+    assert!(unplaced_n[0].modifications[0].is_ambiguous());
+    assert_eq!(unplaced_n[3].modifications.len(), 1);
+    assert!(unplaced_n[3].modifications[0].is_ambiguous());
     let (placed_n, _) =
-        Peptidoform::pro_forma("[deamidated#u1]-FAAQ[#u1]AA", &STATIC_ONTOLOGIES).unwrap();
-    assert!(placed_n.get_n_term()[0].is_ambiguous());
-    assert_eq!(placed_n.sequence()[3].modifications.len(), 1);
-    assert!(placed_n.sequence()[3].modifications[0].is_ambiguous());
-    // C-term
+        Peptidoform::pro_forma("F[deamidated#u1]AAQ[#u1]AA", &STATIC_ONTOLOGIES).unwrap();
+    assert_eq!(unplaced_n[0].modifications.len(), 1);
+    assert!(unplaced_n[0].modifications[0].is_ambiguous());
+    assert_eq!(placed_n[3].modifications.len(), 1);
+    assert!(placed_n[3].modifications[0].is_ambiguous());
+    // Sidechain C-term
     let (unplaced_c, _) =
         Peptidoform::pro_forma("[oxidation]?AHAMTEG", &STATIC_ONTOLOGIES).unwrap();
-    assert!(unplaced_c.get_c_term()[0].is_ambiguous());
-    assert_eq!(unplaced_c.sequence()[3].modifications.len(), 1);
-    assert!(unplaced_c.sequence()[3].modifications[0].is_ambiguous());
+    println!("{unplaced_c}");
+    assert_eq!(unplaced_c[6].modifications.len(), 1);
+    assert!(unplaced_c[6].modifications[0].is_ambiguous());
+    assert_eq!(unplaced_c[3].modifications.len(), 1);
+    assert!(unplaced_c[3].modifications[0].is_ambiguous());
     let (placed_c, _) =
-        Peptidoform::pro_forma("AHAM[oxidation#u1]TEG-[#u1]", &STATIC_ONTOLOGIES).unwrap();
-    assert!(placed_c.get_c_term()[0].is_ambiguous());
-    assert_eq!(placed_c.sequence()[3].modifications.len(), 1);
-    assert!(placed_c.sequence()[3].modifications[0].is_ambiguous());
+        Peptidoform::pro_forma("AHAM[oxidation#u1]TEG[#u1]", &STATIC_ONTOLOGIES).unwrap();
+    assert_eq!(placed_c[6].modifications.len(), 1);
+    assert!(placed_c[6].modifications[0].is_ambiguous());
+    assert_eq!(placed_c[3].modifications.len(), 1);
+    assert!(placed_c[3].modifications[0].is_ambiguous());
 }
 
 #[test]

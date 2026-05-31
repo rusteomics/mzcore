@@ -358,8 +358,7 @@ fn main() {
                                         .map(|(i, _)| {
                                             if annotated.peaks.iter().any(|p| {
                                                 p.annotations.iter().any(|a: &Fragment| {
-                                                    matches!(a.ion, FragmentType::w(s, _, 0, _, _) | FragmentType::d(s, _, 0, _, _) if s.sequence_index
-                                                    == SequencePosition::Index(i))
+                                                    matches!(a.ion, FragmentType::w(s, _, 0, _, _) | FragmentType::d(s, _, 0, _, _) if matches!(s.sequence_index, SequencePosition::Index(si, _) if si == i))
                                                 })
                                             }) {
                                                 '1'

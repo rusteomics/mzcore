@@ -66,7 +66,7 @@ pub(super) fn cross_links<'a>(
                                     match position {
                                         SequencePosition::NTerm => "the N-terminus".to_string(),
                                         SequencePosition::CTerm => "the C-terminus".to_string(),
-                                        SequencePosition::Index(seq_index) => format!(
+                                        SequencePosition::Index(seq_index, _) => format!(
                                             "the side chain of {} at index {seq_index}",
                                             peptidoform.peptidoforms[index][position].aminoacid
                                         ),
@@ -226,7 +226,7 @@ impl Peptidoform<Linear> {
         let mut errors = Vec::new();
         for modification in unknown_position_modifications {
             // Check if this modification was already placed somewhere if so do not add it again
-            if self.sequence().iter().any(|s| {
+            if self.iter(..).any(|(_, s)| {
                 s.modifications.iter().any(|m| {
                     if let Modification::Ambiguous { id, .. } = m {
                         id == modification
@@ -333,22 +333,22 @@ impl Peptidoform<Linear> {
 
             let possible_positions = self
                 .iter(start..=end)
-                .filter(|(position, seq)| {
-                    modification
-                        .is_possible(seq, position.sequence_index)
-                        .any_possible()
-                        && (entry.as_settings().position.is_none()
-                            || entry.as_settings().position.as_ref().is_some_and(|rules| {
-                                rules
-                                    .iter()
-                                    .any(|rule| rule.is_possible(seq, position.sequence_index))
-                            }))
-                        && (entry.as_settings().comkp
-                            || self[position.sequence_index]
-                                .modifications
-                                .iter()
-                                .all(Modification::is_ambiguous))
-                })
+                .map(|i| dbg!(i))
+                .filter(|(position, seq)| 
+                    match entry.as_settings().position {
+                        None => modification
+                            .is_possible(seq, position.sequence_index)
+                            .any_possible(),
+                        Some(rules) => rules
+                            .iter()
+                            .any(|rule| rule.is_possible(seq, position.sequence_index)),
+                    }
+                    && (entry.as_settings().comkp
+                        || self[position.sequence_index]
+                            .modifications
+                            .iter()
+                            .all(Modification::is_ambiguous))
+                )
                 .map(|(position, _)| position.sequence_index)
                 .collect_vec();
 

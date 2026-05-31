@@ -471,9 +471,9 @@ pub(super) fn calculate_masses<const STEPS: u16>(
         .sum::<MolecularFormula>();
     for i in 0..sequence.len() {
         for j in 0..=i.min(STEPS as usize) {
-            let mut seq = sequence.sequence()[i - j..=i]
+            let mut seq = sequence[i - j..=i]
                 .iter()
-                .map(|p| p.formulas_inner(SequencePosition::Index(i), 0, 0))
+                .map(|p| p.formulas_inner(SequencePosition::Index(i, sequence.len()), 0, 0))
                 .sum::<Multi<MolecularFormula>>();
             if i - j == 0 {
                 seq += n.clone();

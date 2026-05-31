@@ -114,7 +114,7 @@ format_family!(
     fn post_process(_source: &CsvLine, mut parsed: Self, _ontologies: &Ontologies) -> Result<Self, BoxedError<'static, BasicKind>> {
         for (m, aa, index) in &parsed.peptide_modifications {
             if let Some(index) = index {
-                parsed.peptide.add_simple_modification(SequencePosition::Index(*index), m.clone());
+                parsed.peptide.add_simple_modification(SequencePosition::Index(*index, parsed.peptide.len()), m.clone());
             } else if !parsed.peptide.add_unknown_position_modification(m.clone(), .., &MUPSettings{position: Some(vec![PlacementRule::AminoAcid(vec![*aa].into(), Position::Anywhere)]), .. Default::default()})
             {
                 return Err(BoxedError::new(BasicKind::Error,

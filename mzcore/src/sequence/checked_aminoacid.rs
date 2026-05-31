@@ -376,7 +376,7 @@ impl<T> MultiChemical for CheckedAminoAcid<T> {
         peptidoform_ion_index: usize,
     ) -> Multi<MolecularFormula> {
         self.into_unambiguous().map_or_else(|| {
-            let SequencePosition::Index(sequence_index) = sequence_index else {
+            let SequencePosition::Index(sequence_index, _) = sequence_index else {
                 panic!("Not allowed to call amino acid formulas with a terminal sequence index")
             };
             match self.aminoacid {

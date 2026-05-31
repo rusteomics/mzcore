@@ -2,8 +2,8 @@ use crate::{
     chemistry::{DiagnosticIon, MolecularFormula, NeutralLoss},
     ontology::Ontology,
     sequence::{
-        CrossId, LinkerLength, LinkerSpecificity, ModificationId, PlacementRule,
-        SimpleModification, SimpleModificationInner,
+        AminoAcid, CrossId, LinkerLength, LinkerSpecificity, ModificationId, PlacementRule,
+        Position, SimpleModification, SimpleModificationInner,
     },
 };
 use context_error::{BoxedError, Context, CreateError, combine_error};
@@ -54,125 +54,19 @@ impl OntologyModification {
             ModData::Mod {
                 specificities: old_rules,
             } => {
-                let mut simplified_rules = Vec::new();
-                for rule in old_rules.iter() {
-                    let rule: (Vec<PlacementRule>, Vec<NeutralLoss>, Vec<DiagnosticIon>) = (
-                        rule.0.iter().unique().sorted().cloned().collect(),
-                        rule.1.iter().unique().sorted().cloned().collect(),
-                        rule.2.iter().unique().sorted().cloned().collect(),
-                    ); // Remove duplicate neutral losses and diagnostic ions, and sort for a better guarantee of equality
-                    if simplified_rules.is_empty() {
-                        simplified_rules.push(rule.clone());
-                    } else {
-                        let mut found = false;
-                        for simplified_rule in &mut simplified_rules {
-                            // Check if there is a rule with the same neutral loss and diagnostic ions (these can be location specific)
-                            if simplified_rule.1 == rule.1 && simplified_rule.2 == rule.2 {
-                                found = true;
-                                // Check if there are other rules in this set of neutral&diagnostic that also use AA placements
-                                // If there are, and they are on the same position, merge the AA set
-                                for position in &rule.0 {
-                                    let mut pos_found = false;
-                                    for new_position in &mut simplified_rule.0 {
-                                        if let (
-                                            PlacementRule::AminoAcid(new_aa, new_pos),
-                                            PlacementRule::AminoAcid(aa, pos),
-                                        ) = (new_position, position)
-                                            && *new_pos == *pos
-                                        {
-                                            for a in aa {
-                                                if !new_aa.contains(a) {
-                                                    new_aa.push(*a);
-                                                }
-                                            }
-                                            new_aa.sort_unstable();
-                                            pos_found = true;
-                                            break;
-                                        }
-                                    }
-                                    if !pos_found {
-                                        simplified_rule.0.push(position.clone());
-                                    }
-                                }
-                            }
-                        }
-                        if !found {
-                            simplified_rules.push(rule.clone());
-                        }
-                    }
+                if self.ontology == Ontology::Xlmod && self.id == AccessionCode::Numeric(2033) {
+                    dbg!(&old_rules);
                 }
-                old_rules.clear();
-                old_rules.extend(simplified_rules);
+                simplify_rules(old_rules);
             }
             ModData::Linker { specificities, .. } => {
-                *specificities = specificities
-                    .iter()
-                    .map(|rule| match rule {
-                        LinkerSpecificity::Asymmetric {
-                            rules,
-                            stubs,
-                            neutral_losses,
-                            diagnostic,
-                        } => {
-                            let left = rules.0.iter().unique().sorted().cloned().collect();
-                            let right = rules.1.iter().unique().sorted().cloned().collect();
-
-                            if left == right {
-                                LinkerSpecificity::Symmetric {
-                                    rules: left,
-                                    stubs: stubs.iter().unique().sorted().cloned().collect(),
-                                    neutral_losses: neutral_losses
-                                        .iter()
-                                        .unique()
-                                        .sorted()
-                                        .cloned()
-                                        .collect(),
-                                    diagnostic: diagnostic
-                                        .iter()
-                                        .unique()
-                                        .sorted()
-                                        .cloned()
-                                        .collect(),
-                                }
-                            } else {
-                                LinkerSpecificity::Asymmetric {
-                                    rules: (left, right),
-                                    stubs: stubs.iter().unique().sorted().cloned().collect(),
-                                    neutral_losses: neutral_losses
-                                        .iter()
-                                        .unique()
-                                        .sorted()
-                                        .cloned()
-                                        .collect(),
-                                    diagnostic: diagnostic
-                                        .iter()
-                                        .unique()
-                                        .sorted()
-                                        .cloned()
-                                        .collect(),
-                                }
-                            }
-                        }
-                        LinkerSpecificity::Symmetric {
-                            rules,
-                            stubs,
-                            neutral_losses,
-                            diagnostic,
-                        } => LinkerSpecificity::Symmetric {
-                            rules: rules.iter().unique().sorted().cloned().collect(),
-                            stubs: stubs.iter().unique().sorted().cloned().collect(),
-                            neutral_losses: neutral_losses
-                                .iter()
-                                .unique()
-                                .sorted()
-                                .cloned()
-                                .collect(),
-                            diagnostic: diagnostic.iter().unique().sorted().cloned().collect(),
-                        },
-                    })
-                    .unique()
-                    .sorted()
-                    .collect();
+                if self.ontology == Ontology::Xlmod && self.id == AccessionCode::Numeric(2033) {
+                    dbg!(&specificities);
+                }
+                simplify_xl_rules(specificities);
+                if self.ontology == Ontology::Xlmod && self.id == AccessionCode::Numeric(2033) {
+                    dbg!(&specificities);
+                }
             }
         }
     }
@@ -270,4 +164,157 @@ impl OntologyModification {
             })
             .collect()
     }
+}
+
+fn simplify_rules(old_rules: &mut Vec<(Vec<PlacementRule>, Vec<NeutralLoss>, Vec<DiagnosticIon>)>) {
+    let mut simplified_rules: Vec<(Vec<PlacementRule>, Vec<NeutralLoss>, Vec<DiagnosticIon>)> =
+        Vec::new();
+    for rule in old_rules.iter() {
+        let rule: (Vec<PlacementRule>, Vec<NeutralLoss>, Vec<DiagnosticIon>) = (
+            compress_rules(&rule.0),
+            rule.1.iter().unique().sorted().cloned().collect(),
+            rule.2.iter().unique().sorted().cloned().collect(),
+        ); // Remove duplicate neutral losses and diagnostic ions, and sort for a better guarantee of equality
+        // if simplified_rules.is_empty() {
+        //     simplified_rules.push(rule.clone());
+        // } else {
+        let mut found = false;
+        for simplified_rule in &mut simplified_rules {
+            // Check if there is a rule with the same neutral loss and diagnostic ions (these can be location specific)
+            if simplified_rule.1 == rule.1 && simplified_rule.2 == rule.2 {
+                found = true;
+                combine_rules(&mut simplified_rule.0, &rule.0);
+            }
+        }
+        if !found {
+            simplified_rules.push(rule);
+        }
+        // }
+    }
+    old_rules.clear();
+    old_rules.extend(simplified_rules);
+}
+
+fn simplify_xl_rules(old_rules: &mut Vec<LinkerSpecificity>) {
+    let mut new_rules = Vec::new();
+
+    for old_rule in old_rules.iter() {
+        let rule = match old_rule {
+            LinkerSpecificity::Asymmetric {
+                rules,
+                stubs,
+                neutral_losses,
+                diagnostic,
+            } => {
+                let left = compress_rules(&rules.0);
+                let right = compress_rules(&rules.1);
+
+                if left == right {
+                    LinkerSpecificity::Symmetric {
+                        rules: left,
+                        stubs: stubs.iter().unique().sorted().cloned().collect(),
+                        neutral_losses: neutral_losses.iter().unique().sorted().cloned().collect(),
+                        diagnostic: diagnostic.iter().unique().sorted().cloned().collect(),
+                    }
+                } else {
+                    LinkerSpecificity::Asymmetric {
+                        rules: (left, right),
+                        stubs: stubs.iter().unique().sorted().cloned().collect(),
+                        neutral_losses: neutral_losses.iter().unique().sorted().cloned().collect(),
+                        diagnostic: diagnostic.iter().unique().sorted().cloned().collect(),
+                    }
+                }
+            }
+            LinkerSpecificity::Symmetric {
+                rules,
+                stubs,
+                neutral_losses,
+                diagnostic,
+            } => LinkerSpecificity::Symmetric {
+                rules: compress_rules(rules),
+                stubs: stubs.iter().unique().sorted().cloned().collect(),
+                neutral_losses: neutral_losses.iter().unique().sorted().cloned().collect(),
+                diagnostic: diagnostic.iter().unique().sorted().cloned().collect(),
+            },
+        };
+
+        let mut found = false;
+        for new_rule in &mut new_rules {
+            match (&rule, new_rule) {
+                (
+                    LinkerSpecificity::Symmetric {
+                        rules,
+                        stubs,
+                        neutral_losses,
+                        diagnostic,
+                    },
+                    LinkerSpecificity::Symmetric {
+                        rules: new_rules,
+                        stubs: stubs2,
+                        neutral_losses: losses2,
+                        diagnostic: diagnostic2,
+                    },
+                ) if *stubs == *stubs2
+                    && *neutral_losses == *losses2
+                    && *diagnostic == *diagnostic2 =>
+                {
+                    found = true;
+                    combine_rules(new_rules, rules);
+                }
+                _ => (),
+            }
+        }
+        if !found {
+            new_rules.push(rule);
+        }
+    }
+
+    old_rules.clear();
+    old_rules.extend_from_slice(&new_rules);
+}
+
+fn combine_rules(rules: &mut Vec<PlacementRule>, additional_rules: &[PlacementRule]) {
+    for rule in additional_rules {
+        let mut pos_found = false;
+        for new_position in rules.iter_mut() {
+            if new_position.combine_rules(rule) {
+                pos_found = true;
+                break;
+            }
+        }
+        if !pos_found {
+            rules.push(rule.clone());
+        }
+    }
+    rules.sort_unstable();
+}
+
+fn compress_rules(rules: &[PlacementRule]) -> Vec<PlacementRule> {
+    let mut new: Vec<PlacementRule> = Vec::new();
+    for rule in rules.iter().unique() {
+        let mut pos_found = false;
+        for new_position in new.iter_mut() {
+            if new_position.combine_rules(rule) {
+                pos_found = true;
+                break;
+            }
+        }
+        if !pos_found {
+            new.push(rule.clone());
+        }
+    }
+    new.sort_unstable();
+    new
+}
+
+#[test]
+fn compress() {
+    let rules = compress_rules(&[
+        PlacementRule::AminoAcid(vec![AminoAcid::Serine].into(), Position::Anywhere),
+        PlacementRule::AminoAcid(vec![AminoAcid::Threonine].into(), Position::Anywhere),
+        PlacementRule::AminoAcid(vec![AminoAcid::Tyrosine].into(), Position::Anywhere),
+        PlacementRule::AminoAcid(vec![AminoAcid::Lysine].into(), Position::Anywhere),
+        PlacementRule::Position(Position::ProteinNTerm),
+    ]);
+    assert_eq!(rules.len(), 2);
 }

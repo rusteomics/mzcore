@@ -16,7 +16,7 @@ use crate::{
     helper_functions::explain_number_error,
     ontology::Ontology,
     sequence::{
-        CrossId, GnoComposition, GnoSubsumption, ModificationId, SimpleModification,
+        CrossId, GnoComposition, GnoSubsumption, ModificationId, Position, SimpleModification,
         SimpleModificationInner,
     },
 };
@@ -243,7 +243,7 @@ fn parse_gnome(
                                 .to_string()
                                 .parse()
                                 .expect(&format!("Invalid GlycToucanID {}", v[0].0)),
-                            crate::sequence::PlacementRule::Anywhere,
+                            crate::sequence::PlacementRule::Position(Position::Anywhere),
                         )
                     })
                     .into_iter()

@@ -10,8 +10,8 @@ use serde::{Deserialize, Serialize};
 pub enum SequencePosition {
     /// N-terminal
     NTerm,
-    /// An amino acid at the given index
-    Index(usize),
+    /// An amino acid at the given index with a given sequence length
+    Index(usize, usize),
     /// C-terminal
     CTerm,
 }
@@ -19,8 +19,8 @@ pub enum SequencePosition {
 impl Space for SequencePosition {
     fn space(&self) -> UsedSpace {
         match self {
-            Self::Index(_) => UsedSpace {
-                stack: 16,
+            Self::Index(_, _) => UsedSpace {
+                stack: 24,
                 ..Default::default()
             },
             _ => UsedSpace {
@@ -37,7 +37,7 @@ impl std::ops::Add<u8> for SequencePosition {
     type Output = Self;
     fn add(self, rhs: u8) -> Self::Output {
         match self {
-            Self::Index(i) => Self::Index(i.saturating_add(rhs as usize)),
+            Self::Index(i, l) => Self::Index(i.saturating_add(rhs as usize).min(l - 1), l),
             n => n,
         }
     }
@@ -48,7 +48,7 @@ impl std::ops::Sub<u8> for SequencePosition {
     type Output = Self;
     fn sub(self, rhs: u8) -> Self::Output {
         match self {
-            Self::Index(i) => Self::Index(i.saturating_sub(rhs as usize)),
+            Self::Index(i, l) => Self::Index(i.saturating_sub(rhs as usize), l),
             n => n,
         }
     }
@@ -56,7 +56,7 @@ impl std::ops::Sub<u8> for SequencePosition {
 
 impl Default for SequencePosition {
     fn default() -> Self {
-        Self::Index(0)
+        Self::Index(0, 0)
     }
 }
 
@@ -64,7 +64,7 @@ impl std::fmt::Display for SequencePosition {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::NTerm => write!(f, "N-terminal"),
-            Self::Index(index) => write!(f, "{index}"),
+            Self::Index(index, _) => write!(f, "{index}"),
             Self::CTerm => write!(f, "C-terminal"),
         }
     }
@@ -73,10 +73,10 @@ impl std::fmt::Display for SequencePosition {
 impl SequencePosition {
     /// Reverse this position, if the peptide would be reversed what would this location be in that reversed peptide.
     #[must_use]
-    pub const fn reverse(self, peptide_length: usize) -> Self {
+    pub const fn reverse(self) -> Self {
         match self {
             Self::NTerm => Self::CTerm,
-            Self::Index(i) => Self::Index(peptide_length - i),
+            Self::Index(i, l) => Self::Index(l - i, l),
             Self::CTerm => Self::NTerm,
         }
     }
@@ -94,7 +94,7 @@ impl SequencePosition {
             c if c == peptide_length + 1 => Some(Self::CTerm),
             i => {
                 if i <= peptide_length {
-                    Some(Self::Index(i - 1))
+                    Some(Self::Index(i - 1, peptide_length))
                 } else {
                     None
                 }
@@ -131,7 +131,7 @@ impl PeptidePosition {
             sequence_index,
             series_number: match sequence_index {
                 SequencePosition::NTerm => 0,
-                SequencePosition::Index(i) => i + 1,
+                SequencePosition::Index(i, _) => i + 1,
                 SequencePosition::CTerm => length,
             },
             sequence_length: length,
@@ -143,7 +143,7 @@ impl PeptidePosition {
             sequence_index,
             series_number: match sequence_index {
                 SequencePosition::NTerm => length,
-                SequencePosition::Index(i) => length.saturating_sub(i),
+                SequencePosition::Index(i, _) => length.saturating_sub(i),
                 SequencePosition::CTerm => 0,
             },
             sequence_length: length,

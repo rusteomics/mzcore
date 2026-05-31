@@ -151,7 +151,7 @@ impl Peptidoform<SemiAmbiguous> {
                         Some(aa) => {
                             if pep_len == 1
                                 && !modification
-                                    .is_possible(aa, SequencePosition::Index(0))
+                                    .is_possible(aa, SequencePosition::Index(0, 42))
                                     .any_possible()
                                 && modification
                                     .is_possible(aa, SequencePosition::NTerm)

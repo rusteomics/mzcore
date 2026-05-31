@@ -4,7 +4,7 @@ use context_error::{self as _, BasicKind, BoxedError, CreateError};
 use mzcore::{
     chemistry::Chemical,
     ontology::*,
-    sequence::{CrossId, PlacementRule, SimpleModificationInner},
+    sequence::{CrossId, PlacementRule, Position, SimpleModificationInner},
 };
 use mzcv::CVIndex;
 
@@ -264,7 +264,7 @@ fn validate_link(
             ),
         );
     }
-    if *rule != PlacementRule::Anywhere {
+    if *rule != PlacementRule::Position(Position::Anywhere) {
         match two {
             SimpleModificationInner::Database { specificities, .. } => {
                 if !specificities

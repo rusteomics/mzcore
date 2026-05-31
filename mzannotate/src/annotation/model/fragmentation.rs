@@ -390,7 +390,7 @@ impl Location {
     /// # Panics
     /// If the peptide position is a terminal position
     pub const fn possible(self, position: PeptidePosition) -> bool {
-        let SequencePosition::Index(sequence_index) = position.sequence_index else {
+        let SequencePosition::Index(sequence_index, _) = position.sequence_index else {
             panic!("Not allowed to call possible with a terminal PeptidePosition")
         };
         match self {
@@ -429,7 +429,7 @@ impl SatelliteLocation {
         peptidoform: &Peptidoform<Complexity>,
         c_terminal: bool,
     ) -> Vec<(AminoAcid, u8)> {
-        let SequencePosition::Index(sequence_index) = position.sequence_index else {
+        let SequencePosition::Index(sequence_index, _) = position.sequence_index else {
             panic!("Not allowed to call possible with a terminal PeptidePosition")
         };
         let mut output = Vec::new();

@@ -151,7 +151,7 @@ fn parse_mod(node: &Node) -> Result<OntologyModification, BoxedError<'static, CV
                     p.parse().map_err(|()| BoxedError::new(CVError::ItemError, "Invalid position", "Position should be one of Anywhere, Any N-term, Protein N-term, Any C-term, or Protein C-term", Context::default().lines(0, p).to_owned()))
                 })?;
             let rule = match (site, position) {
-                ("C-term" | "N-term", pos) => PlacementRule::Terminal(pos),
+                ("C-term" | "N-term", pos) => PlacementRule::Position(pos),
                 (aa, pos) => PlacementRule::AminoAcid(
                     aa.chars()
                         .map(|c| {

@@ -45,7 +45,7 @@ pub(crate) fn peptide_range_contains(
 ) -> bool {
     match position {
         SequencePosition::NTerm => range.start_index() == 0,
-        SequencePosition::Index(i) => range.contains(&i),
+        SequencePosition::Index(i, _) => range.contains(&i),
         SequencePosition::CTerm => range.end_index(peptide_length) == peptide_length,
     }
 }

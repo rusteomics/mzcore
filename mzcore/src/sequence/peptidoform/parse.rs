@@ -865,7 +865,7 @@ impl PeptidoformIonSet {
                         place_modification(
                             modification,
                             settings,
-                            SequencePosition::Index(sequence_index),
+                            SequencePosition::Index(sequence_index, peptide.len()),
                             &mut peptide,
                             &mut ambiguous_found_positions,
                             &mut cross_link_found_positions,
@@ -982,6 +982,13 @@ impl PeptidoformIonSet {
             );
         }
 
+        // Fix the sequence positions to have the right peptide length
+        for (pos, _, _, _) in &mut ambiguous_found_positions {
+            if let SequencePosition::Index(_, l) = pos {
+                *l = peptide.len()
+            }
+        }
+
         if let Err(errs) = peptide.apply_ranged_unknown_position_modification(
             &ranged_unknown_position_modifications,
             &ambiguous_lookup,
@@ -990,20 +997,38 @@ impl PeptidoformIonSet {
             combine_errors(&mut errors, errs);
         }
 
-        // Fill in ambiguous positions, ambiguous contains (index, preferred, id, localisation_score)
-        for (id, ambiguous) in ambiguous_found_positions
+        let grouped_positions = ambiguous_found_positions
             .into_iter()
-            .into_group_map_by(|aa| aa.2)
-        {
+            .into_group_map_by(|aa| aa.2);
+
+        // Fill in ambiguous positions, ambiguous contains (index, preferred, id, localisation_score)
+        for (id, entry) in ambiguous_lookup.iter().enumerate().filter(|(i, _)| {
+            !(!grouped_positions.contains_key(i) && unknown_position_modifications.contains(i))
+        }) {
+            let Some(ambiguous) = grouped_positions.get(&id) else {
+                combine_error(
+                    &mut errors,
+                    BoxedError::new(
+                        BasicKind::Error,
+                        "Modification of unknown position cannot be placed",
+                        format!(
+                            "There is no position where this ambiguous modification {} can be placed based on the placement rules in the database.",
+                            entry.name
+                        ),
+                        base_context.clone().add_highlight((0, range.clone())),
+                    ),
+                );
+                continue;
+            };
             let positions = ambiguous
                 .iter()
                 .map(|(index, _, _, score)| (*index, *score))
                 .collect_vec();
             let preferred = ambiguous.iter().find_map(|p| p.1.then_some(p.0));
-            if let Some(modification) = ambiguous_lookup[id].modification.clone() {
+            if let Some(modification) = entry.modification.clone() {
                 if !peptide.add_ambiguous_modification(
                     modification,
-                    Some(ambiguous_lookup[id].name.clone()),
+                    Some(entry.name.clone()),
                     &positions,
                     preferred,
                     None,
@@ -1016,7 +1041,7 @@ impl PeptidoformIonSet {
                             "Modification of unknown position cannot be placed",
                             format!(
                                 "There is no position where this ambiguous modification {} can be placed based on the placement rules in the database.",
-                                ambiguous_lookup[id].name
+                                entry.name
                             ),
                             base_context.clone().add_highlight((0, range.clone())),
                         ),
@@ -1330,7 +1355,7 @@ pub(super) fn parse_placement_rules<'a>(
                     Position::AnyNTerm,
                 ));
             } else {
-                result.push(PlacementRule::Terminal(Position::AnyNTerm));
+                result.push(PlacementRule::Position(Position::AnyNTerm));
             }
         } else if aa.to_ascii_lowercase().starts_with("c-term") {
             if let Some((_, aa)) = aa.split_once(':') {
@@ -1347,7 +1372,7 @@ pub(super) fn parse_placement_rules<'a>(
                     Position::AnyCTerm,
                 ));
             } else {
-                result.push(PlacementRule::Terminal(Position::AnyCTerm));
+                result.push(PlacementRule::Position(Position::AnyCTerm));
             }
         } else {
             result.push(PlacementRule::AminoAcid(

@@ -338,9 +338,9 @@ impl TryFrom<(Option<Box<str>>, Box<str>)> for CrossId {
                                 Position::Anywhere,
                             )
                         } else if rule == "N-term" {
-                            PlacementRule::Terminal(Position::AnyNTerm)
+                            PlacementRule::Position(Position::AnyNTerm)
                         } else if rule == "C-term" {
-                            PlacementRule::Terminal(Position::AnyCTerm)
+                            PlacementRule::Position(Position::AnyCTerm)
                         } else {
                             let loc = rule
                                 .chars()
@@ -370,7 +370,7 @@ impl TryFrom<(Option<Box<str>>, Box<str>)> for CrossId {
                             Context::default().lines(0, value.1.to_string()),
                         )
                     })
-                    .map(|v| (v, PlacementRule::Anywhere))
+                    .map(|v| (v, PlacementRule::Position(Position::Anywhere)))
             }
         };
 

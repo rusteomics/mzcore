@@ -437,8 +437,7 @@ impl SimpleModificationInner {
                     PlacementRule::AminoAcid(aa, pos) => {
                         format!("{}@{pos}", aa.iter().join(""))
                     }
-                    PlacementRule::Terminal(pos) => pos.to_string(),
-                    PlacementRule::Anywhere => "Anywhere".to_string(),
+                    PlacementRule::Position(pos) => pos.to_string(),
                     PlacementRule::PsiModification(index, pos) => {
                         format!("MOD:{index:07}@{pos}")
                     }
@@ -461,8 +460,7 @@ impl SimpleModificationInner {
                     PlacementRule::AminoAcid(aa, pos) => {
                         format!("{}@{pos}", aa.iter().join(""))
                     }
-                    PlacementRule::Terminal(pos) => pos.to_string(),
-                    PlacementRule::Anywhere => "Anywhere".to_string(),
+                    PlacementRule::Position(pos) => pos.to_string(),
                     PlacementRule::PsiModification(index, pos) => {
                         format!("MOD:{index:07}@{pos}")
                     }
@@ -747,7 +745,7 @@ mod tests {
         let modification = modification.defined().unwrap();
         assert_eq!(
             modification.formula_inner(
-                SequencePosition::Index(0),
+                SequencePosition::Index(0, 0),
                 0,
                 GlycanPeptideFragment::FULL,
                 None,
@@ -756,7 +754,7 @@ mod tests {
         );
         assert_eq!(
             modification.formula_inner(
-                SequencePosition::Index(0),
+                SequencePosition::Index(0, 0),
                 0,
                 GlycanPeptideFragment::CORE,
                 None,
@@ -765,7 +763,7 @@ mod tests {
         );
         assert_eq!(
             modification.formula_inner(
-                SequencePosition::Index(0),
+                SequencePosition::Index(0, 0),
                 0,
                 GlycanPeptideFragment::FREE,
                 None,

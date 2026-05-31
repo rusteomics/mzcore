@@ -56,7 +56,7 @@ pub fn building_blocks(
                     .copied()
                     .collect_vec()
             }
-            PlacementRule::Terminal(Position::AnyNTerm | Position::ProteinNTerm) => {
+            PlacementRule::Position(Position::AnyNTerm | Position::ProteinNTerm) => {
                 amino_acids.iter().copied().collect_vec()
             }
             _ => Vec::new(),
@@ -71,7 +71,7 @@ pub fn building_blocks(
                     .copied()
                     .collect_vec()
             }
-            PlacementRule::Terminal(Position::AnyCTerm | Position::ProteinCTerm) => {
+            PlacementRule::Position(Position::AnyCTerm | Position::ProteinCTerm) => {
                 amino_acids.iter().copied().collect_vec()
             }
             _ => Vec::new(),
@@ -225,7 +225,7 @@ pub fn building_blocks(
     // Create the building blocks
     (
         generate_terminal(&|rule| n_term_options(amino_acids, rule), fixed, variable),
-        generate(SequencePosition::Index(0)),
+        generate(SequencePosition::Index(0, 0)), // TODO: think about side chain terminus mods
         generate_terminal(&|rule| c_term_options(amino_acids, rule), fixed, variable),
     )
 }

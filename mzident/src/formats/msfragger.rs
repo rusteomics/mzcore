@@ -66,7 +66,7 @@ format_family!(
                     SequencePosition::CTerm
                 } else {
                     // Format: `14M` so take only the numeric part
-                    head.as_str()[..head.len()-1].trim().parse::<usize>().map(|i| SequencePosition::Index(i-1)).map_err(|err| BoxedError::new(BasicKind::Error,
+                    head.as_str()[..head.len()-1].trim().parse::<usize>().map(|i| SequencePosition::Index(i-1, 0)).map_err(|err| BoxedError::new(BasicKind::Error, // TODO: think about if these needs to be updated for the proper SequencePosition::Index length
                         "Invalid FragPipe modification location",
                         format!("The location number {}", explain_number_error(&err)),
                         head.context(),
@@ -199,7 +199,7 @@ format_family!(
                     }
                     _ => {
                         // If there are multiple locations add this as an ambiguous modification
-                        let positions = parsed.open_search_position_scores.as_ref().map_or_else(|| location.iter().map(|i| (SequencePosition::Index(*i), None)).collect::<Vec<(_, _)>>(), |scores| location.iter().map(|i| SequencePosition::Index(*i)).zip(scores.iter().map(|s| Some(OrderedFloat(*s)))).collect::<Vec<(_, _)>>());
+                        let positions = parsed.open_search_position_scores.as_ref().map_or_else(|| location.iter().map(|i| (SequencePosition::Index(*i, parsed.peptide.len()), None)).collect::<Vec<(_, _)>>(), |scores| location.iter().map(|i| SequencePosition::Index(*i, parsed.peptide.len())).zip(scores.iter().map(|s| Some(OrderedFloat(*s)))).collect::<Vec<(_, _)>>());
                         let _ = parsed.peptide.add_ambiguous_modification(modification.clone(), None, &positions, None, None, false);
                         placed = true;
                     }

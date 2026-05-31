@@ -1,4 +1,5 @@
 use std::{
+    borrow::Cow,
     collections::{HashMap, HashSet},
     fmt::{Display, Write},
     marker::PhantomData,
@@ -535,7 +536,7 @@ impl<Complexity> Peptidoform<Complexity> {
         match position {
             SequencePosition::NTerm => self.add_simple_n_term(modification),
             SequencePosition::CTerm => self.add_simple_c_term(modification),
-            SequencePosition::Index(index) => self.sequence[index]
+            SequencePosition::Index(index, _) => self.sequence[index]
                 .modifications
                 .push(Modification::Simple(modification)),
         }
@@ -647,53 +648,53 @@ impl<Complexity> Peptidoform<Complexity> {
         let own_losses = self
             .iter(range)
             .flat_map(|(pos, aa)| {
-                match pos.sequence_index {
-                    SequencePosition::NTerm => self.n_term.as_slice(),
-                    SequencePosition::Index(_) => aa.modifications.as_slice(),
-                    SequencePosition::CTerm => self.c_term.as_slice(),
-                }
-                .iter()
-                .filter_map(|modification| match modification {
-                    Modification::Simple(modification)
-                    | Modification::Ambiguous { modification, .. } => match &**modification {
-                        SimpleModificationInner::Database { specificities, .. } => Some(
-                            specificities
-                                .iter()
-                                .filter_map(move |(rules, rule_losses, _)| {
-                                    if PlacementRule::any_possible(rules, aa, pos.sequence_index) {
-                                        Some(rule_losses)
-                                    } else {
-                                        None
-                                    }
-                                })
-                                .flatten()
-                                .map(move |loss| {
-                                    (loss.clone(), peptidoform_index, pos.sequence_index)
-                                })
-                                .collect_vec(),
-                        ),
-                        _ => None, // TODO: potentially hydrolysed cross-linkers could also have neutral losses
-                    },
-                    Modification::CrossLink {
-                        linker,
-                        peptide,
-                        side,
-                        ..
-                    } => {
-                        if !ignore_peptides.contains(peptide) {
-                            found_peptides.push(*peptide);
+                aa.modifications
+                    .iter()
+                    .filter_map(|modification| match modification {
+                        Modification::Simple(modification)
+                        | Modification::Ambiguous { modification, .. } => match &**modification {
+                            SimpleModificationInner::Database { specificities, .. } => Some(
+                                specificities
+                                    .iter()
+                                    .filter_map(|(rules, rule_losses, _)| {
+                                        if PlacementRule::any_possible(
+                                            rules,
+                                            aa.as_ref(),
+                                            pos.sequence_index,
+                                        ) {
+                                            Some(rule_losses)
+                                        } else {
+                                            None
+                                        }
+                                    })
+                                    .flatten()
+                                    .map(move |loss| {
+                                        (loss.clone(), peptidoform_index, pos.sequence_index)
+                                    })
+                                    .collect_vec(),
+                            ),
+                            _ => None, // TODO: potentially hydrolysed cross-linkers could also have neutral losses
+                        },
+                        Modification::CrossLink {
+                            linker,
+                            peptide,
+                            side,
+                            ..
+                        } => {
+                            if !ignore_peptides.contains(peptide) {
+                                found_peptides.push(*peptide);
+                            }
+                            let (neutral, _, _) = side.allowed_rules(linker);
+                            Some(
+                                neutral
+                                    .into_iter()
+                                    .map(|n| (n, peptidoform_index, pos.sequence_index))
+                                    .collect_vec(),
+                            )
                         }
-                        let (neutral, _, _) = side.allowed_rules(linker);
-                        Some(
-                            neutral
-                                .into_iter()
-                                .map(|n| (n, peptidoform_index, pos.sequence_index))
-                                .collect_vec(),
-                        )
-                    }
-                })
-                .flatten()
-                .collect_vec()
+                    })
+                    .flatten()
+                    .collect_vec()
             })
             .collect_vec();
         own_losses
@@ -705,14 +706,19 @@ impl<Complexity> Peptidoform<Complexity> {
     }
 
     /// Iterate over a range in the peptide and keep track of the position, this duplicates the N and C terminal sequence elements to TODO: fix
-    pub fn iter(
-        &self,
+    pub fn iter<'a>(
+        &'a self,
         range: impl RangeBounds<usize>,
-    ) -> impl DoubleEndedIterator<Item = (PeptidePosition, &SequenceElement<Complexity>)> + '_ {
+    ) -> impl DoubleEndedIterator<Item = (PeptidePosition, Cow<'a, SequenceElement<Complexity>>)> + 'a
+    {
         let start = range.start_index();
         std::iter::once((
             PeptidePosition::n(SequencePosition::NTerm, self.len()),
-            &self[SequencePosition::NTerm],
+            Cow::Owned(SequenceElement::new_with_modifications(
+                self[SequencePosition::NTerm].aminoacid,
+                self.n_term.clone(),
+                None,
+            )),
         ))
         .take(usize::from(start == 0))
         .chain(
@@ -721,15 +727,22 @@ impl<Complexity> Peptidoform<Complexity> {
                 .enumerate()
                 .map(move |(index, seq)| {
                     (
-                        PeptidePosition::n(SequencePosition::Index(index + start), self.len()),
-                        seq,
+                        PeptidePosition::n(
+                            SequencePosition::Index(index + start, self.len()),
+                            self.len(),
+                        ),
+                        Cow::Borrowed(seq),
                     )
                 }),
         )
         .chain(
             std::iter::once((
                 PeptidePosition::n(SequencePosition::CTerm, self.len()),
-                &self[SequencePosition::CTerm],
+                Cow::Owned(SequenceElement::new_with_modifications(
+                    self[SequencePosition::CTerm].aminoacid,
+                    self.c_term.clone(),
+                    None,
+                )),
             ))
             .take(usize::from(range.end_index(self.len()) == self.len())),
         )
@@ -776,7 +789,7 @@ impl<Complexity> Peptidoform<Complexity> {
                         visited_peptides,
                         applied_cross_links,
                         allow_ms_cleavable,
-                        SequencePosition::Index(index),
+                        SequencePosition::Index(index, self.len()),
                         peptidoform_index,
                         peptidoform_ion_index,
                         glycan_model,
@@ -850,7 +863,7 @@ impl<Complexity> Peptidoform<Complexity> {
                     .filter_map(|(id, pos)| {
                         match pos {
                             SequencePosition::NTerm => self.n_term.as_slice(),
-                            SequencePosition::Index(i) => {
+                            SequencePosition::Index(i, _) => {
                                 self.sequence[*i].modifications.as_slice()
                             }
                             SequencePosition::CTerm => self.c_term.as_slice(),
@@ -996,7 +1009,7 @@ impl<Complexity> Peptidoform<Complexity> {
                     visited_peptides,
                     applied_cross_links,
                     allow_ms_cleavable,
-                    SequencePosition::Index(index),
+                    SequencePosition::Index(index, self.len()),
                     peptidoform_index,
                     peptidoform_ion_index,
                     &FullGlycan {},
@@ -1065,7 +1078,7 @@ impl<Complexity> Peptidoform<Complexity> {
                 &new_visited_peptides,
                 applied_cross_links,
                 allow_ms_cleavable,
-                SequencePosition::Index(index),
+                SequencePosition::Index(index, self.len()),
                 peptidoform_index,
                 peptidoform_ion_index,
                 glycan_model,
@@ -1132,7 +1145,7 @@ impl<Complexity> Peptidoform<Complexity> {
                                 false
                             }
                         }),
-                        SequencePosition::Index(i) => {
+                        SequencePosition::Index(i, _) => {
                             self.sequence[*i].modifications.iter().find(|m| {
                                 if let Modification::Ambiguous { id: mid, .. } = m {
                                     *mid == id
@@ -1171,7 +1184,7 @@ impl<Complexity> Peptidoform<Complexity> {
                             false
                         }
                     }),
-                    Some(SequencePosition::Index(i)) => {
+                    Some(SequencePosition::Index(i, _)) => {
                         self.sequence[*i].modifications.iter().find(|m| {
                             if let Modification::Ambiguous { id: mid, .. } = m {
                                 *mid == id
@@ -1277,11 +1290,7 @@ impl<Complexity> Peptidoform<Complexity> {
                 .clone()
                 .into_iter()
                 .map(|m| AmbiguousEntry {
-                    positions: m
-                        .positions
-                        .into_iter()
-                        .map(|loc| loc.reverse(self.len()))
-                        .collect(),
+                    positions: m.positions.into_iter().map(|loc| loc.reverse()).collect(),
                     ..m
                 })
                 .collect(),
@@ -1304,7 +1313,9 @@ impl Peptidoform<Linked> {
         match position {
             SequencePosition::NTerm => self.n_term.push(modification),
             SequencePosition::CTerm => self.c_term.push(modification),
-            SequencePosition::Index(index) => self.sequence[index].modifications.push(modification),
+            SequencePosition::Index(index, _) => {
+                self.sequence[index].modifications.push(modification)
+            }
         }
     }
 
@@ -1408,7 +1419,7 @@ impl<Complexity: AtMax<Linear>> Peptidoform<Complexity> {
                     &[],
                     &mut Vec::new(),
                     false,
-                    SequencePosition::Index(index),
+                    SequencePosition::Index(index, self.len()),
                     0,
                     0,
                     &FullGlycan {},
@@ -1571,7 +1582,7 @@ impl<Complexity: AtLeast<SimpleLinear>> Peptidoform<Complexity> {
                     SequencePosition::NTerm => {
                         self.n_term.push(modification.into());
                     }
-                    SequencePosition::Index(pos) => {
+                    SequencePosition::Index(pos, _) => {
                         self.sequence[pos].modifications.push(modification.into());
                         self.sequence[pos].modifications.sort_unstable();
                     }
@@ -1600,7 +1611,7 @@ impl<Complexity: AtLeast<SimpleLinear>> Peptidoform<Complexity> {
                                 placed = true;
                                 *spos
                             }
-                            SequencePosition::Index(pos) => {
+                            SequencePosition::Index(pos, _) => {
                                 self.sequence[*pos]
                                     .modifications
                                     .push(Modification::Ambiguous {
@@ -1741,7 +1752,7 @@ impl<Complexity> Index<SequencePosition> for Peptidoform<Complexity> {
     fn index(&self, index: SequencePosition) -> &Self::Output {
         match index {
             SequencePosition::NTerm => &self.sequence[0],
-            SequencePosition::Index(i) => &self.sequence[i],
+            SequencePosition::Index(i, _) => &self.sequence[i],
             SequencePosition::CTerm => self.sequence.last().unwrap(),
         }
     }
@@ -1751,7 +1762,7 @@ impl<Complexity> IndexMut<SequencePosition> for Peptidoform<Complexity> {
     fn index_mut(&mut self, index: SequencePosition) -> &mut Self::Output {
         match index {
             SequencePosition::NTerm => &mut self.sequence[0],
-            SequencePosition::Index(i) => &mut self.sequence[i],
+            SequencePosition::Index(i, _) => &mut self.sequence[i],
             SequencePosition::CTerm => self.sequence.last_mut().unwrap(),
         }
     }

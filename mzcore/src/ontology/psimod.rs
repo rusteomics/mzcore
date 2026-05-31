@@ -316,7 +316,7 @@ impl CVSource for PsiMod {
                         }
                     }
                 } else if let Some(term) = term {
-                    rules.push((vec![PlacementRule::Terminal(term)], Vec::new(), Vec::new()));
+                    rules.push((vec![PlacementRule::Position(term)], Vec::new(), Vec::new()));
                 }
                 modification.data = ModData::Mod {
                     specificities: rules,
@@ -375,9 +375,10 @@ fn parse_rule(
 ) -> Result<PlacementRule, BoxedError<'static, CVError>> {
     if rule.len() == 1 {
         if rule == "X" {
-            Ok(term
-                .filter(|t| *t != Position::Anywhere)
-                .map_or_else(|| PlacementRule::Anywhere, PlacementRule::Terminal))
+            Ok(term.map_or_else(
+                || PlacementRule::Position(Position::Anywhere),
+                PlacementRule::Position,
+            ))
         } else if let Ok(aa) = rule.try_into() {
             Ok(PlacementRule::AminoAcid(
                 vec![aa].into(),

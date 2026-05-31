@@ -240,7 +240,7 @@ impl MultiChemical for AminoAcid {
         peptidoform_index: usize,
         peptidoform_ion_index: usize,
     ) -> Multi<MolecularFormula> {
-        let SequencePosition::Index(sequence_index) = sequence_index else {
+        let SequencePosition::Index(sequence_index, _) = sequence_index else {
             panic!("Not allowed to call amino acid formulas with a terminal sequence index")
         };
         match self {
@@ -422,7 +422,7 @@ impl IsAminoAcid for AminoAcid {
         peptidoform_index: usize,
         peptidoform_ion_index: usize,
     ) -> Cow<'_, Multi<MolecularFormula>> {
-        let SequencePosition::Index(sequence_index) = sequence_index else {
+        let SequencePosition::Index(sequence_index, _) = sequence_index else {
             return Cow::Owned(Multi::default());
         };
         Cow::Owned(match self {
@@ -470,7 +470,7 @@ impl IsAminoAcid for AminoAcid {
         peptidoform_index: usize,
         peptidoform_ion_index: usize,
     ) -> Option<Cow<'_, [(SatelliteLabel, MolecularFormula)]>> {
-        let SequencePosition::Index(sequence_index) = sequence_index else {
+        let SequencePosition::Index(sequence_index, _) = sequence_index else {
             return None;
         };
 

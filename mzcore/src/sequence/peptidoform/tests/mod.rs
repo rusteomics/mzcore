@@ -47,6 +47,9 @@ macro_rules! negative_tests {
                     &$crate::ontology::STATIC_ONTOLOGIES,
                 );
                 println!("{:?}", res);
+                if let Ok((res, _)) = &res {
+                    println!("{res}");
+                }
                 assert!(res.is_err() || res.is_ok_and(|(_, errs)| !errs.is_empty()));
             }
         }

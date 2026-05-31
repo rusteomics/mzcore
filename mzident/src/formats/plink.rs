@@ -57,11 +57,13 @@ format_family!(
                 (pep1, Some(pos1), Some(pep2), Some(pos2)) => {
                     let pep1 = Peptidoform::sloppy_pro_forma_inner(&location.base_context(), location.full_line(), pep1, ontologies, &SloppyParsingParameters::default()).map_err(BoxedError::to_owned)?;
                     let pep2 = Peptidoform::sloppy_pro_forma_inner(&location.base_context(), location.full_line(), pep2, ontologies, &SloppyParsingParameters::default()).map_err(BoxedError::to_owned)?;
+                    let pep1l = pep1.len();
+                    let pep2l = pep2.len();
 
                     let mut peptidoform = PeptidoformIon::from_vec(vec![pep1.into(), pep2.into()]).unwrap();
                     peptidoform.add_cross_link(
-                        (0, SequencePosition::Index(pos1.0.saturating_sub(1) as usize)),
-                        (1, SequencePosition::Index(pos2.0.saturating_sub(1) as usize)),
+                        (0, SequencePosition::Index(pos1.0.saturating_sub(1) as usize, pep1l)),
+                        (1, SequencePosition::Index(pos2.0.saturating_sub(1) as usize, pep2l)),
                         Arc::new(SimpleModificationInner::Mass(mzcore::sequence::MassTag::None, Mass::default().into(), None)),
                         CrossLinkName::Name("1".to_string().into_boxed_str()),
                     );
@@ -69,11 +71,12 @@ format_family!(
                 }
                 (pep1, Some(pos1), None, Some(pos2)) => {
                     let pep = Peptidoform::sloppy_pro_forma_inner(&location.base_context(), location.full_line(), pep1, ontologies, &SloppyParsingParameters::default()).map_err(BoxedError::to_owned)?;
+                    let pep1l = pep.len();
 
                     let mut peptidoform = PeptidoformIon::from_vec(vec![pep.into()]).unwrap();
                     peptidoform.add_cross_link(
-                        (0, SequencePosition::Index(pos1.0.saturating_sub(1) as usize)),
-                        (0, SequencePosition::Index(pos2.0.saturating_sub(1) as usize)),
+                        (0, SequencePosition::Index(pos1.0.saturating_sub(1) as usize, pep1l)),
+                        (0, SequencePosition::Index(pos2.0.saturating_sub(1) as usize, pep1l)),
                         Arc::new(SimpleModificationInner::Mass(mzcore::sequence::MassTag::None, Mass::default().into(), None)),
                         CrossLinkName::Name("1".to_string().into_boxed_str()),
                     );
@@ -81,7 +84,8 @@ format_family!(
                 }
                 (pep1, Some(pos1), None, None) => {
                     let mut pep = Peptidoform::sloppy_pro_forma_inner(&location.base_context(), location.full_line(), pep1, ontologies, &SloppyParsingParameters::default()).map_err(BoxedError::to_owned)?;
-                    pep[SequencePosition::Index(pos1.0.saturating_sub(1) as usize)].modifications.push( SimpleModificationInner::Mass(mzcore::sequence::MassTag::None, Mass::default().into(), None).into());
+                    let l = pep.len();
+                    pep[SequencePosition::Index(pos1.0.saturating_sub(1) as usize, l)].modifications.push( SimpleModificationInner::Mass(mzcore::sequence::MassTag::None, Mass::default().into(), None).into());
 
                     Ok(PeptidoformIon::from_vec(vec![pep.into()]).unwrap())
                 }
@@ -167,7 +171,7 @@ format_family!(
             let pos = if index == 0 {
                 (0, SequencePosition::NTerm)
             } else if (1..=pep1).contains(&index) {
-                (0, SequencePosition::Index(index-1))
+                (0, SequencePosition::Index(index-1, pep1))
             } else if index == pep1+1 {
                 (0, SequencePosition::CTerm)
             } else if index == pep1+2 {
@@ -179,7 +183,7 @@ format_family!(
             } else if index == pep1+3 {
                 (1, SequencePosition::NTerm)
             } else if (pep1+4..=pep1+4+pep2).contains(&index) {
-                (1, SequencePosition::Index(index-(pep1+4)))
+                (1, SequencePosition::Index(index-(pep1+4), pep2))
             } else if index == pep1+4+pep2+1 {
                 (1, SequencePosition::CTerm)
             } else {

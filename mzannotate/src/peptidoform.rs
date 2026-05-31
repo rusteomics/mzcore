@@ -104,8 +104,10 @@ pub(crate) fn generate_theoretical_fragments_inner<Complexity>(
 
     let mut output = Vec::with_capacity(20 * peptidoform.sequence().len() + 75); // Empirically derived required size of the buffer (Derived from Hecklib)
     for sequence_index in 0..peptidoform.sequence().len() {
-        let position =
-            PeptidePosition::n(SequencePosition::Index(sequence_index), peptidoform.len());
+        let position = PeptidePosition::n(
+            SequencePosition::Index(sequence_index, peptidoform.len()),
+            peptidoform.len(),
+        );
         let mut cross_links = Vec::new();
         let visited_peptides = vec![peptidoform_index];
         let (n_term, n_term_specific, n_term_seen, n_term_losses) = peptidoform.all_masses(
@@ -163,7 +165,7 @@ pub(crate) fn generate_theoretical_fragments_inner<Complexity>(
                         &[peptidoform_index],
                         &mut cross_links,
                         model.allow_cross_link_cleavage,
-                        SequencePosition::Index(sequence_index),
+                        SequencePosition::Index(sequence_index, peptidoform.len()),
                         peptidoform_index,
                         peptidoform_ion_index,
                         &model.glycan,
@@ -183,7 +185,7 @@ pub(crate) fn generate_theoretical_fragments_inner<Complexity>(
             &(c_term, c_term_specific, c_term_losses),
             &(modifications_total, modifications_specific),
             &mut charge_carriers,
-            SequencePosition::Index(sequence_index),
+            SequencePosition::Index(sequence_index, peptidoform.len()),
             peptidoform.sequence().len(),
             &model.ions(position, peptidoform),
             peptidoform_ion_index,
@@ -208,7 +210,10 @@ pub(crate) fn generate_theoretical_fragments_inner<Complexity>(
         let options = (0..peptidoform.len())
             .map(|i| {
                 let o = model.ions(
-                    PeptidePosition::n(SequencePosition::Index(i), peptidoform.len()),
+                    PeptidePosition::n(
+                        SequencePosition::Index(i, peptidoform.len()),
+                        peptidoform.len(),
+                    ),
                     peptidoform,
                 );
                 (
@@ -323,11 +328,11 @@ pub(crate) fn generate_theoretical_fragments_inner<Complexity>(
                                 &FragmentType::Internal(
                                     Some((frag_n, frag_c)),
                                     PeptidePosition::n(
-                                        SequencePosition::Index(n),
+                                        SequencePosition::Index(n, peptidoform.len()),
                                         peptidoform.len(),
                                     ),
                                     PeptidePosition::c(
-                                        SequencePosition::Index(c),
+                                        SequencePosition::Index(c, peptidoform.len()),
                                         peptidoform.len(),
                                     ),
                                 ),
@@ -423,7 +428,7 @@ pub(crate) fn generate_theoretical_fragments_inner<Complexity>(
     for (sequence_index, position) in peptidoform.sequence().iter().enumerate() {
         let attachment = (
             position.aminoacid.aminoacid(),
-            SequencePosition::Index(sequence_index),
+            SequencePosition::Index(sequence_index, peptidoform.len()),
         );
         for modification in &position.modifications {
             output.extend(modification::generate_theoretical_fragments(

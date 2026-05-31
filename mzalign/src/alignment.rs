@@ -204,12 +204,26 @@ where
                     (0..a)
                         .map(|_| {
                             let mass_a = seq_a.cast_peptidoform().sequence()[index_a]
-                                .formulas_inner(SequencePosition::Index(index_a), 0, 0)
+                                .formulas_inner(
+                                    SequencePosition::Index(
+                                        index_a,
+                                        seq_a.cast_peptidoform().len(),
+                                    ),
+                                    0,
+                                    0,
+                                )
                                 .iter()
                                 .map(MolecularFormula::monoisotopic_mass)
                                 .collect();
                             let mass_b = seq_b.cast_peptidoform()[index_b]
-                                .formulas_inner(SequencePosition::Index(index_b), 0, 0)
+                                .formulas_inner(
+                                    SequencePosition::Index(
+                                        index_b,
+                                        seq_b.cast_peptidoform().len(),
+                                    ),
+                                    0,
+                                    0,
+                                )
                                 .iter()
                                 .map(MolecularFormula::monoisotopic_mass)
                                 .collect();
@@ -408,7 +422,11 @@ impl<A: HasPeptidoform<Linear>, B: HasPeptidoform<Linear>> Alignment<A, B> {
                 .iter()
                 .enumerate()
                 .fold(Multi::default(), |acc, (index, s)| {
-                    acc * s.formulas_inner(SequencePosition::Index(index), 0, 0)
+                    acc * s.formulas_inner(
+                        SequencePosition::Index(index, self.seq_a.cast_peptidoform().len()),
+                        0,
+                        0,
+                    )
                 })
         }
     }
@@ -423,7 +441,11 @@ impl<A: HasPeptidoform<Linear>, B: HasPeptidoform<Linear>> Alignment<A, B> {
                 .iter()
                 .enumerate()
                 .fold(Multi::default(), |acc, (index, s)| {
-                    acc * s.formulas_inner(SequencePosition::Index(index), 0, 0)
+                    acc * s.formulas_inner(
+                        SequencePosition::Index(index, self.seq_b.cast_peptidoform().len()),
+                        0,
+                        0,
+                    )
                 })
         }
     }

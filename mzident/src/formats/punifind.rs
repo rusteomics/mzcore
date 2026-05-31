@@ -59,7 +59,7 @@ format_family!(
                 Modification::sloppy_modification(modification.line.line(), modification.range, None, ontologies).map_err(BoxedError::to_owned)?,
                 rule.trim_end_matches("]").parse_with(|rule|
                     if let Result::Ok(position) = Position::from_str(rule.as_str()) && position != Position::Anywhere {
-                        Ok(PlacementRule::Terminal(position))
+                        Ok(PlacementRule::Position(position))
                     } else if let Result::Ok(aa) = AminoAcid::from_str(rule.as_str()) {
                         Ok(PlacementRule::AminoAcid(vec![aa].into(), Position::Anywhere))
                     } else {
@@ -75,13 +75,13 @@ format_family!(
     fn post_process(source: &CsvLine, mut parsed: Self, _ontologies: &Ontologies) -> Result<Self, BoxedError<'static, BasicKind>> {
         for (index, m, rule) in &parsed.modifications {
             match rule {
-                PlacementRule::Terminal(Position::AnyNTerm | Position::ProteinNTerm) => parsed.peptidoform.add_simple_n_term(m.clone()),
-                PlacementRule::Terminal(Position::AnyCTerm | Position::ProteinCTerm) => parsed.peptidoform.add_simple_c_term(m.clone()),
+                PlacementRule::Position(Position::AnyNTerm | Position::ProteinNTerm) => parsed.peptidoform.add_simple_n_term(m.clone()),
+                PlacementRule::Position(Position::AnyCTerm | Position::ProteinCTerm) => parsed.peptidoform.add_simple_c_term(m.clone()),
                 PlacementRule::AminoAcid(list, _) => {
                     if list.len() == 1 && parsed.peptidoform.sequence().get(index - 1).is_none_or(|v| v.aminoacid.aminoacid() != list[0]) {
                         return Err(BoxedError::new(BasicKind::Error, "Invalid pUniFind line", format!("The modification location does not correspond with the listed aminoacid, for modification '{m}'"), source.full_context().to_owned()))
                     }
-                    parsed.peptidoform.add_simple_modification(SequencePosition::Index(index-1), m.clone());
+                    parsed.peptidoform.add_simple_modification(SequencePosition::Index(index-1, parsed.peptidoform.len()), m.clone());
                 },
                 _ => unreachable!()
             }

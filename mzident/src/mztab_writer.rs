@@ -973,7 +973,7 @@ impl<W: Write, State: CanWriteProteins> MzTabWriter<W, State> {
                                 .map(|(l, score)| {
                                     let i = match l {
                                         SequencePosition::NTerm => 0,
-                                        SequencePosition::Index(i) => 1 + i,
+                                        SequencePosition::Index(i, _) => 1 + i,
                                         SequencePosition::CTerm => usize::MAX,
                                     };
                                     score.as_ref().map_or_else(|| i.to_string(), |score| format!(
@@ -1027,8 +1027,7 @@ fn write_mod(
             .flat_map(|r| match r {
                 PlacementRule::AminoAcid(aa, _) => aa.iter().map(ToString::to_string).collect(),
                 PlacementRule::PsiModification(i, _) => vec![format!("MOD:{i}")],
-                PlacementRule::Terminal(term) => vec![term.to_string()],
-                PlacementRule::Anywhere => vec!["Anywhere".to_string()],
+                PlacementRule::Position(term) => vec![term.to_string()],
             })
             .unique()
             .join(", ");
@@ -1041,8 +1040,7 @@ fn write_mod(
             .map(|r| match r {
                 PlacementRule::AminoAcid(_, pos)
                 | PlacementRule::PsiModification(_, pos)
-                | PlacementRule::Terminal(pos) => pos.to_string(),
-                PlacementRule::Anywhere => Position::Anywhere.to_string(),
+                | PlacementRule::Position(pos) => pos.to_string(),
             })
             .unique()
             .join(", ");
@@ -1201,10 +1199,10 @@ impl<W: Write, State: CanWritePSMs> MzTabWriter<W, State> {
                     for (p, s) in peptidoform.iter(..) {
                         let i = match p.sequence_index {
                             SequencePosition::NTerm => 0,
-                            SequencePosition::Index(i) => 1 + i,
+                            SequencePosition::Index(i, _) => 1 + i,
                             SequencePosition::CTerm => p.sequence_length + 1,
                         };
-                        for m in &s.modifications {
+                        for m in s.modifications.iter() {
                             match m {
                                 Modification::CrossLink { .. } => (), //skip
                                 Modification::Ambiguous {
@@ -1216,7 +1214,7 @@ impl<W: Write, State: CanWritePSMs> MzTabWriter<W, State> {
                                     if ambiguous[*id].0.is_none() {
                                         ambiguous[*id].0 = Some(make_mztab_mod(modification));
                                     }
-                                    ambiguous[*id].1.push((i, localisation_score));
+                                    ambiguous[*id].1.push((i, *localisation_score));
                                 }
                                 Modification::Simple(m) => {
                                     use std::fmt::Write;

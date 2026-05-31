@@ -19,14 +19,12 @@ use crate::{
 /// A rule determining the placement of a modification
 #[derive(Clone, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 pub enum PlacementRule {
-    /// Placed on an aminoacid on the given position
+    /// Placed on the side chain of an aminoacid on the given position
     AminoAcid(ThinVec<AminoAcid>, Position),
-    /// Placed on an another modification on the given position
+    /// Placed on another modification on the given position
     PsiModification(u32, Position),
-    /// Placed on a terminal position
-    Terminal(Position),
-    /// Just anywhere
-    Anywhere,
+    /// Placed on a specific position either the termini or any side chain
+    Position(Position),
 }
 
 impl Space for PlacementRule {
@@ -35,8 +33,7 @@ impl Space for PlacementRule {
             + match self {
                 Self::AminoAcid(a, p) => a.space() + p.space(),
                 Self::PsiModification(i, p) => i.space() + p.space(),
-                Self::Terminal(p) => p.space(),
-                Self::Anywhere => UsedSpace::default(),
+                Self::Position(p) => p.space(),
             })
         .set_total::<Self>()
     }
@@ -44,7 +41,7 @@ impl Space for PlacementRule {
 
 impl ParseJson for PlacementRule {
     fn from_json_value(value: serde_json::Value) -> Result<Self, BoxedError<'static, BasicKind>> {
-        use_serde(value)
+        use_serde(value) // TODO: fix to keep supporting the old formats: 'Terminal': 'Pos' and 'Anywhere'
     }
 }
 
@@ -87,7 +84,9 @@ impl PlacementRule {
     pub fn is_possible<T>(&self, seq: &SequenceElement<T>, position: SequencePosition) -> bool {
         match self {
             Self::AminoAcid(aa, r_pos) => {
-                aa.iter().any(|a| *a == seq.aminoacid.aminoacid()) && r_pos.is_possible(position)
+                aa.iter().any(|a| *a == seq.aminoacid.aminoacid())
+                    && r_pos.is_possible(position)
+                    && matches!(position, SequencePosition::Index(_, _))
             }
             Self::PsiModification(mod_index, r_pos) => {
                 seq.modifications.iter().any(|m| {
@@ -105,11 +104,13 @@ impl PlacementRule {
                     }
                 }) && r_pos.is_possible(position)
             }
-            Self::Terminal(r_pos) => {
-                r_pos.is_possible(position)
-                    && (position == SequencePosition::NTerm || position == SequencePosition::CTerm)
+            Self::Position(Position::AnyNTerm | Position::ProteinNTerm) => {
+                position == SequencePosition::NTerm
             }
-            Self::Anywhere => true,
+            Self::Position(Position::AnyCTerm | Position::ProteinCTerm) => {
+                position == SequencePosition::CTerm
+            }
+            Self::Position(Position::Anywhere) => matches!(position, SequencePosition::Index(_, _)),
         }
     }
 
@@ -120,10 +121,7 @@ impl PlacementRule {
                 allowed_aa.contains(&aa) && r_pos.is_possible_position(position)
             }
             Self::PsiModification(_, _) => false,
-            Self::Terminal(r_pos) => {
-                r_pos.is_possible_position(position) && (position != Position::Anywhere)
-            }
-            Self::Anywhere => true,
+            Self::Position(r_pos) => r_pos.is_possible_position(position),
         }
     }
 
@@ -144,14 +142,51 @@ impl PlacementRule {
     /// Check if this rule is a subset of another rule
     pub fn is_subset(&self, other: &Self) -> bool {
         match (self, other) {
-            (_, Self::Anywhere) => true,
-            (Self::Terminal(ps), Self::Terminal(po)) => ps.is_subset(po),
+            (Self::Position(ps), Self::Position(po)) => ps.is_subset(po),
             (Self::AminoAcid(aas, ps), Self::AminoAcid(aao, po)) => {
                 ps.is_subset(po) && aas.iter().all(|a| aao.contains(a))
             }
             (Self::PsiModification(is, ps), Self::PsiModification(io, po)) => {
                 is == io && ps.is_subset(po)
             }
+            _ => false,
+        }
+    }
+
+    /// Combine these two rules into the first. If they cannot be combined this returns false.
+    pub fn combine_rules(&mut self, other: &Self) -> bool {
+        match (self, other) {
+            (PlacementRule::AminoAcid(new_aa, new_pos), PlacementRule::AminoAcid(aa, pos)) => {
+                if pos == new_pos {
+                    for a in aa {
+                        if !new_aa.contains(a) {
+                            new_aa.push(*a);
+                        }
+                    }
+                    new_aa.sort_unstable();
+                    true
+                } else {
+                    false
+                }
+            }
+            (PlacementRule::Position(new_pos), PlacementRule::Position(pos)) => {
+                if new_pos == pos {
+                    true
+                } else if matches!(new_pos, Position::ProteinNTerm | Position::AnyNTerm)
+                    && matches!(pos, Position::ProteinNTerm | Position::AnyNTerm)
+                {
+                    *new_pos = Position::AnyNTerm;
+                    true
+                } else if matches!(new_pos, Position::ProteinCTerm | Position::AnyCTerm)
+                    && matches!(pos, Position::ProteinCTerm | Position::AnyCTerm)
+                {
+                    *new_pos = Position::AnyCTerm;
+                    true
+                } else {
+                    false
+                }
+            }
+            (a, b) if a == b => true,
             _ => false,
         }
     }
@@ -189,10 +224,7 @@ impl FromStr for PlacementRule {
                 |position| Ok(Self::AminoAcid(aa.into(), position)),
             )
         } else if let Ok(position) = s.parse() {
-            Ok(match position {
-                Position::Anywhere => Self::Anywhere,
-                pos => Self::Terminal(pos),
-            })
+            Ok(Self::Position(position))
         } else {
             Err(BoxedError::new(
                 BasicKind::Error,
@@ -209,8 +241,14 @@ impl Position {
     pub fn is_possible(self, position: SequencePosition) -> bool {
         match self {
             Self::Anywhere => true,
-            Self::AnyNTerm | Self::ProteinNTerm => position == SequencePosition::NTerm,
-            Self::AnyCTerm | Self::ProteinCTerm => position == SequencePosition::CTerm,
+            Self::AnyNTerm | Self::ProteinNTerm => {
+                position == SequencePosition::NTerm
+                    || matches!(position, SequencePosition::Index(0, _))
+            }
+            Self::AnyCTerm | Self::ProteinCTerm => {
+                position == SequencePosition::CTerm
+                    || matches!(position, SequencePosition::Index(i, l) if i == l.saturating_sub(1))
+            }
         }
     }
 
@@ -264,11 +302,11 @@ mod tests {
     use super::*;
     #[test]
     fn multi_level_rule() {
-        let ontologies = &crate::ontology::STATIC_ONTOLOGIES;
+        let ontologies = &STATIC_ONTOLOGIES;
         assert!(
             !PlacementRule::PsiModification(30, Position::Anywhere).is_possible(
                 &SequenceElement::new(CheckedAminoAcid::Alanine, None),
-                SequencePosition::Index(0)
+                SequencePosition::Index(0, 5),
             ),
             "Multi level mod cannot be placed if the dependent mod is not present"
         );
@@ -282,19 +320,19 @@ mod tests {
         );
         assert!(
             PlacementRule::PsiModification(30, Position::Anywhere)
-                .is_possible(&seq, SequencePosition::Index(0)),
+                .is_possible(&seq, SequencePosition::Index(0, 5),),
             "Multi level mod can be placed if the dependent mod is present"
         );
     }
 
     #[test]
     fn place_anywhere() {
-        let ontologies = &crate::ontology::STATIC_ONTOLOGIES;
         assert!(
-            PlacementRule::AminoAcid(vec![AminoAcid::Glutamine].into(), Position::Anywhere)
+            // TODO: needs to be able the tell apart side chain and terminus for N and C terminal AAs
+            PlacementRule::AminoAcid(vec![AminoAcid::Glutamine].into(), Position::ProteinNTerm)
                 .is_possible(
                     &SequenceElement::new(CheckedAminoAcid::Q, None),
-                    SequencePosition::NTerm
+                    SequencePosition::Index(0, 5),
                 ),
             "start"
         );
@@ -302,38 +340,29 @@ mod tests {
             PlacementRule::AminoAcid(vec![AminoAcid::Glutamine].into(), Position::Anywhere)
                 .is_possible(
                     &SequenceElement::new(CheckedAminoAcid::Q, None),
-                    SequencePosition::Index(2)
+                    SequencePosition::Index(2, 5),
                 ),
             "middle"
         );
         assert!(
-            PlacementRule::AminoAcid(vec![AminoAcid::Glutamine].into(), Position::Anywhere)
+            PlacementRule::AminoAcid(vec![AminoAcid::Glutamine].into(), Position::ProteinCTerm)
                 .is_possible(
                     &SequenceElement::new(CheckedAminoAcid::Q, None),
-                    SequencePosition::CTerm
+                    SequencePosition::Index(4, 5),
                 ),
             "end"
         );
         assert_eq!(
-            ontologies
+            STATIC_ONTOLOGIES
                 .unimod()
                 .get_by_index(&AccessionCode::Numeric(7))
                 .unwrap()
                 .is_possible(
                     &SequenceElement::new(CheckedAminoAcid::Q, None),
-                    SequencePosition::CTerm
+                    SequencePosition::Index(4, 5),
                 ),
             RulePossible::Symmetric(std::collections::BTreeSet::from([0])),
             "unimod deamidated at end"
         );
-    }
-
-    #[test]
-    fn subset() {
-        let rule = PlacementRule::AminoAcid(vec![AminoAcid::Glutamine].into(), Position::AnyNTerm);
-        assert!(rule.is_subset(&rule));
-        dbg!(STATIC_ONTOLOGIES.unimod().get_by_index(&28.into()).unwrap());
-        dbg!(STATIC_ONTOLOGIES.psimod().get_by_index(&40.into()).unwrap());
-        todo!();
     }
 }
