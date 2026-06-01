@@ -1513,6 +1513,7 @@ mod tests {
                 for psm in
                     crate::MzTabPSM::parse_file(&new_path, &mzcore::ontology::STATIC_ONTOLOGIES)
                         .unwrap()
+                        .2
                 {
                     psm.unwrap();
                 }

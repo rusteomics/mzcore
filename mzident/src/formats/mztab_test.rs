@@ -121,7 +121,9 @@ fn open_file(reader: impl BufRead) -> Result<usize, BoxedError<'static, BasicKin
         reader,
         &mzcore::ontology::STATIC_ONTOLOGIES,
         Context::default(),
-    ) {
+    )?
+    .2
+    {
         let read = read.map_err(BoxedError::to_owned)?;
         let peptidoform: PSM<SimpleLinear, MaybePeptidoform> = read.clone().into();
         peptides += 1;

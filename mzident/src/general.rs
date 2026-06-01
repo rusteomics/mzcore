@@ -147,7 +147,7 @@ pub fn open_psm_file<'a>(
                 .add_underlying_errors(vec![me, he])
             })
         }
-        Some("mztab") => MzTabPSM::parse_file(path, ontologies).map(|peptides| {
+        Some("mztab") => MzTabPSM::parse_file(path, ontologies).map(|(_, _, peptides)| {
             let a: Box<dyn Iterator<Item = Result<PSM<Linked, MaybePeptidoform>, BoxedError<'static, BasicKind>>> + 'a>
                 = Box::new(peptides.into_iter().map(|p| p.map(|p| {
                         PSM::<SimpleLinear, MaybePeptidoform>::from(p).cast()

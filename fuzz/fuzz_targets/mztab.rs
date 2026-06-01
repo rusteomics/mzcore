@@ -8,7 +8,9 @@ fn main() {
                 data,
                 &mzcore::ontology::STATIC_ONTOLOGIES,
                 context_error::Context::default(),
-            );
+            )
+            .unwrap()
+            .2;
             let _unused: Vec<_> = parser.collect();
         }
     });

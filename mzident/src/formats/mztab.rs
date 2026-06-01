@@ -111,14 +111,18 @@ impl mzcore::space::Space for MzTabPSM {
 }
 
 impl MzTabPSM {
-    /// Parse a mzTab file.
+    /// Parse a mzTab file which can be gzipped which is detected from the path. Returns the metadata, all proteins, and an iterator over the PSMs. The file is consumed until the first PSM line is detected and is consumed lazily after that.
     /// # Errors
     /// If the file is not in the correct format
     pub fn parse_file(
         path: impl AsRef<std::path::Path>,
         ontologies: &Ontologies,
     ) -> Result<
-        Box<dyn Iterator<Item = Result<Self, BoxedError<'static, BasicKind>>> + '_>,
+        (
+            Arc<MzTabMetadata>,
+            Arc<HashMap<String, Arc<MzTabProtein>>>,
+            Box<dyn Iterator<Item = Result<Self, BoxedError<'static, BasicKind>>> + '_>,
+        ),
         BoxedError<'static, BasicKind>,
     > {
         let path = path.as_ref();
@@ -131,169 +135,203 @@ impl MzTabPSM {
             )
         })?;
         if check_extension(path, "gz") {
-            Ok(Box::new(Self::parse_reader(
+            Self::parse_reader(
                 BufReader::new(GzDecoder::new(BufReader::new(file))),
                 ontologies,
                 Context::default().source(path.to_string_lossy()).to_owned(),
-            )))
+            )
+            .map(|(m, p, i)| {
+                let i: Box<dyn Iterator<Item = Result<Self, BoxedError<'static, BasicKind>>> + '_> =
+                    Box::new(i);
+                (m, p, i)
+            })
         } else {
-            Ok(Box::new(Self::parse_reader(
+            Self::parse_reader(
                 BufReader::new(file),
                 ontologies,
                 Context::default().source(path.to_string_lossy()).to_owned(),
-            )))
+            )
+            .map(|(m, p, i)| {
+                let i: Box<dyn Iterator<Item = Result<Self, BoxedError<'static, BasicKind>>> + '_> =
+                    Box::new(i);
+                (m, p, i)
+            })
         }
     }
 
-    /// Parse a mzTab file directly from a buffered reader
+    /// Parse a mzTab file directly from a buffered reader (needed for the `.lines()` function). Returns the metadata, all proteins, and an iterator over the PSMs. The file is consumed until the first PSM line is detected and is consumed lazily after that.
     pub fn parse_reader<'a, T: BufRead + 'a>(
         reader: T,
         ontologies: &'a Ontologies,
         base: Context<'a>,
-    ) -> impl Iterator<Item = Result<Self, BoxedError<'static, BasicKind>>> + 'a {
+    ) -> Result<
+        (
+            Arc<MzTabMetadata>,
+            Arc<HashMap<String, Arc<MzTabProtein>>>,
+            impl Iterator<Item = Result<Self, BoxedError<'static, BasicKind>>> + 'a,
+        ),
+        BoxedError<'static, BasicKind>,
+    > {
         let mut peptide_header: Option<Vec<String>> = None;
         let mut protein_header: Option<Vec<String>> = None;
         let mut proteins: HashMap<String, Arc<MzTabProtein>> = HashMap::new();
         let mut metadata = Arc::new(MzTabMetadata::default());
+        let mut line_iter = parse_mztab_reader(reader).peekable();
 
-        parse_mztab_reader(reader).filter_map(move |item| {
-            item.transpose().and_then(|item| match item {
-                Ok(MzTabLine::MTD(line_index, line, fields)) => {
-                    let Some(metadata) = Arc::get_mut(&mut metadata) else {
-                        return Some(Err(BoxedError::new(
-                            BasicKind::Error,
-                            "Invalid MTD line",
-                            "Metadata lines need to be defined before all other line types",
+        while let Some(Ok(item)) = line_iter.peek()
+            && item
+                .as_ref()
+                .is_none_or(|i| !matches!(i, MzTabLine::PSM(..)))
+        {
+            if let Some(Ok(Some(item))) = line_iter.next() {
+                match item {
+                    MzTabLine::MTD(line_index, line, fields) => {
+                        let Some(metadata) = Arc::get_mut(&mut metadata) else {
+                            return Err(BoxedError::new(
+                                BasicKind::Error,
+                                "Invalid MTD line",
+                                "Metadata lines need to be defined before all other line types",
+                                base.clone()
+                                    .lines(0, line)
+                                    .line_index(line_index)
+                                    .to_owned(),
+                            ));
+                        };
+                        match parse_metadata(
+                            metadata,
+                            &line,
+                            &fields,
+                            &base.clone().lines(0, line.clone()).line_index(line_index),
+                            ontologies,
+                        ) {
+                            Ok(()) => (),
+                            Err(err) => return Err(err.to_owned()),
+                        }
+                    }
+                    MzTabLine::PRH(line_index, line, fields) => {
+                        let header = fields
+                            .into_iter()
+                            .map(|field| line[field].to_ascii_lowercase())
+                            .collect_vec();
+                        // not checked: best_search_engine_score[n]
+                        for required in [
+                            "accession",
+                            "description",
+                            "taxid",
+                            "species",
+                            "database",
+                            "database_version",
+                            "search_engine",
+                            "ambiguity_members",
+                            "modifications",
+                        ] {
+                            if !header.contains(&required.to_string()) {
+                                return Err(BoxedError::new(
+                                    BasicKind::Error,
+                                    "Invalid protein table",
+                                    format!("The required column '{required}' is not present"),
+                                    base.clone()
+                                        .lines(0, line)
+                                        .line_index(line_index)
+                                        .to_owned(),
+                                ));
+                            }
+                        }
+                        protein_header = Some(header);
+                    }
+                    MzTabLine::PRT(line_index, line, fields) => {
+                        match PSMLine::new(
                             base.clone()
-                                .lines(0, line)
+                                .lines(0, line.clone())
                                 .line_index(line_index)
                                 .to_owned(),
-                        )));
-                    };
-                    match parse_metadata(
-                        metadata,
-                        &line,
-                        &fields,
-                        &base.clone().lines(0, line.clone()).line_index(line_index),
-                        ontologies,
-                    ) {
-                        Ok(()) => None,
-                        Err(err) => Some(Err(err.to_owned())),
-                    }
-                }
-                Ok(MzTabLine::PRH(line_index, line, fields)) => {
-                    let header = fields
-                        .into_iter()
-                        .map(|field| line[field].to_ascii_lowercase())
-                        .collect_vec();
-                    // not checked: best_search_engine_score[n]
-                    for required in [
-                        "accession",
-                        "description",
-                        "taxid",
-                        "species",
-                        "database",
-                        "database_version",
-                        "search_engine",
-                        "ambiguity_members",
-                        "modifications",
-                    ] {
-                        if !header.contains(&required.to_string()) {
-                            return Some(Err(BoxedError::new(
-                                BasicKind::Error,
-                                "Invalid protein table",
-                                format!("The required column '{required}' is not present"),
-                                base.clone()
-                                    .lines(0, line)
-                                    .line_index(line_index)
-                                    .to_owned(),
-                            )));
-                        }
-                    }
-                    protein_header = Some(header);
-                    None
-                }
-                Ok(MzTabLine::PRT(line_index, line, fields)) => {
-                    match PSMLine::new(
-                        base.clone()
-                            .lines(0, line.clone())
-                            .line_index(line_index)
-                            .to_owned(),
-                        protein_header.as_deref(),
-                        &line,
-                        &fields,
-                    )
-                    .and_then(|line| MzTabProtein::from_line(&line, metadata.clone()))
-                    {
-                        Ok(protein) => {
-                            for name in &protein.ambiguity_members {
-                                proteins.insert(name.clone(), protein.clone());
+                            protein_header.as_deref(),
+                            &line,
+                            &fields,
+                        )
+                        .and_then(|line| MzTabProtein::from_line(&line, metadata.clone()))
+                        {
+                            Ok(protein) => {
+                                for name in &protein.ambiguity_members {
+                                    proteins.insert(name.clone(), protein.clone());
+                                }
+                                proteins.insert(protein.accession.clone(), protein);
                             }
-                            proteins.insert(protein.accession.clone(), protein);
-                            None
+                            Err(err) => return Err(err.to_owned()),
                         }
-                        Err(err) => Some(Err(err.to_owned())),
                     }
-                }
 
-                Ok(MzTabLine::PSH(line_index, line, fields)) => {
-                    let header = fields
-                        .into_iter()
-                        .map(|field| line[field].to_ascii_lowercase())
-                        .collect_vec();
-                    // optional: opt_*, reliability, uri,
-                    // not checked: search_engine_score[n]
-                    for required in [
-                        "sequence",
-                        "psm_id",
-                        "accession",
-                        "unique",
-                        "database",
-                        "database_version",
-                        "search_engine",
-                        "modifications",
-                        "retention_time",
-                        "charge",
-                        "exp_mass_to_charge",
-                        "spectra_ref",
-                        "pre",
-                        "post",
-                        "start",
-                        "end",
-                    ] {
-                        if !header.contains(&required.to_string()) {
-                            return Some(Err(BoxedError::new(
-                                BasicKind::Error,
-                                "Invalid peptide table",
-                                format!("The required column '{required}' is not present"),
-                                base.clone()
-                                    .lines(0, line)
-                                    .line_index(line_index)
-                                    .to_owned(),
-                            )));
+                    MzTabLine::PSH(line_index, line, fields) => {
+                        let header = fields
+                            .into_iter()
+                            .map(|field| line[field].to_ascii_lowercase())
+                            .collect_vec();
+                        // optional: opt_*, reliability, uri,
+                        // not checked: search_engine_score[n]
+                        for required in [
+                            "sequence",
+                            "psm_id",
+                            "accession",
+                            "unique",
+                            "database",
+                            "database_version",
+                            "search_engine",
+                            "modifications",
+                            "retention_time",
+                            "charge",
+                            "exp_mass_to_charge",
+                            "spectra_ref",
+                            "pre",
+                            "post",
+                            "start",
+                            "end",
+                        ] {
+                            if !header.contains(&required.to_string()) {
+                                return Err(BoxedError::new(
+                                    BasicKind::Error,
+                                    "Invalid peptide table",
+                                    format!("The required column '{required}' is not present"),
+                                    base.clone()
+                                        .lines(0, line)
+                                        .line_index(line_index)
+                                        .to_owned(),
+                                ));
+                            }
                         }
+                        peptide_header = Some(header);
                     }
-                    peptide_header = Some(header);
-                    None
+                    MzTabLine::PSM(..) => unreachable!(),
                 }
-                Ok(MzTabLine::PSM(line_index, line, fields)) => Some(
-                    PSMLine::new(
-                        base.clone()
-                            .lines(0, line.clone())
-                            .line_index(line_index)
-                            .to_owned(),
-                        peptide_header.as_deref(),
-                        &line,
-                        &fields,
-                    )
-                    .and_then(|line| {
-                        Self::from_line(&line, ontologies, &proteins, metadata.clone())
-                            .map_err(BoxedError::to_owned)
-                    }),
-                ),
-                Err(e) => Some(Err(e)),
-            })
-        })
+            }
+        }
+        let proteins = Arc::new(proteins);
+
+        Ok((
+            metadata.clone(),
+            proteins.clone(),
+            line_iter.filter_map(move |item| {
+                item.transpose().and_then(|item| match item {
+                    Ok(MzTabLine::PSM(line_index, line, fields)) => Some(
+                        PSMLine::new(
+                            base.clone()
+                                .lines(0, line.clone())
+                                .line_index(line_index)
+                                .to_owned(),
+                            peptide_header.as_deref(),
+                            &line,
+                            &fields,
+                        )
+                        .and_then(|line| {
+                            Self::from_line(&line, ontologies, &proteins, metadata.clone())
+                                .map_err(BoxedError::to_owned)
+                        }),
+                    ),
+                    Ok(MzTabLine::MTD(line_index, ..) | MzTabLine::PRH(line_index, ..) | MzTabLine::PRT(line_index,.. ) | MzTabLine::PSH(line_index,.. )) =>
+                        Some(Err(BoxedError::new(BasicKind::Warning, "Invalid line type", "After the first PSM line no MTD, PRH, PRT, or PSH lines are allowed anymore", base.clone().line_index(line_index).to_owned()))),
+                    Err(e) => Some(Err(e)),
+                })
+            }),
+        ))
     }
 
     /// Parse a single PSM line
@@ -499,7 +537,7 @@ impl MzTabPSM {
                                     line.context.clone().add_highlight((0, r)),
                                 )
                             })
-                            .map(|v| Time::new::<mzcore::system::s>(v))
+                            .map(|v| Time::new::<mzcore::system::s>(v)) // TODO: use unit from metadata if present
                     })
                 })
                 .transpose()?,

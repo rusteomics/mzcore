@@ -334,7 +334,7 @@ impl Peptidoform<Linear> {
             let possible_positions = self
                 .iter(start..=end)
                 .map(|i| dbg!(i))
-                .filter(|(position, seq)| 
+                .filter(|(position, seq)|
                     match entry.as_settings().position {
                         None => modification
                             .is_possible(seq, position.sequence_index)

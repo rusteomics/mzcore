@@ -36,6 +36,7 @@ pub static STATIC_ONTOLOGIES: LazyLock<Ontologies> = LazyLock::new(Ontologies::i
 /// let search = ontologies.search(&[], "Oxidated");
 /// assert!(search.contains(&(modification, None)));
 /// ```
+#[derive(Clone)]
 pub struct Ontologies {
     custom: CVIndex<Custom>,
     gnome: CVIndex<Gnome>,

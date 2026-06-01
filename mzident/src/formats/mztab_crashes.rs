@@ -7,7 +7,10 @@ macro_rules! test {
                 $case.as_bytes(),
                 &mzcore::ontology::STATIC_ONTOLOGIES,
                 context_error::Context::default(),
-            ) {
+            )
+            .unwrap()
+            .2
+            {
                 if let Ok(_) = read {
                     peptides += 1;
                 }

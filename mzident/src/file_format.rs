@@ -259,7 +259,7 @@ impl FileFormat {
             Self::MetaMorpheus(version) => {
                 MetaMorpheusPSM::parse_file(path, ontologies, false, version).map(PSMIter::into_box)
             }
-            Self::MzTab => MzTabPSM::parse_file(path, ontologies).map(|sequences| {
+            Self::MzTab => MzTabPSM::parse_file(path, ontologies).map(|(_, _, sequences)| {
                 let b: Box<
                     dyn Iterator<
                         Item = Result<

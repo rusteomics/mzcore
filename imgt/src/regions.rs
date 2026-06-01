@@ -8,7 +8,7 @@ use crate::Allele;
 use super::species::Species;
 
 /// A selection of germlines from a single species.
-#[derive(Debug, Decode, Deserialize, Encode, Serialize)]
+#[derive(Clone, Debug, Decode, Deserialize, Encode, Serialize)]
 pub struct Germlines {
     /// The species of this selection of germlines
     pub species: Species,
@@ -94,7 +94,7 @@ impl<'a> IntoParallelIterator for &'a Germlines {
 }
 
 /// The intermediate representation for a chain
-#[derive(Debug, Decode, Default, Deserialize, Encode, Serialize)]
+#[derive(Clone, Debug, Decode, Default, Deserialize, Encode, Serialize)]
 pub struct Chain {
     /// All V/variable germlines
     pub variable: Vec<Arc<Germline>>,

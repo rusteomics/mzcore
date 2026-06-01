@@ -36,6 +36,23 @@ pub struct CVIndex<CV: CVSource> {
     version: CVVersion,
 }
 
+impl<CV: CVSource> Clone for CVIndex<CV>
+where
+    CV::Structure: Clone,
+{
+    fn clone(&self) -> Self {
+        Self {
+            data: self.data.clone(),
+            index: self.index.clone(),
+            name: self.name.clone(),
+            #[cfg(feature = "search-index")]
+            trigram_index: self.trigram_index.clone(),
+            synonyms: self.synonyms.clone(),
+            version: self.version.clone(),
+        }
+    }
+}
+
 impl<CV: CVSource> CVIndex<CV> {
     /// See if this CV does not contain any elements
     pub fn is_empty(&self) -> bool {
