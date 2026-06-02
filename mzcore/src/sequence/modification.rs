@@ -605,6 +605,43 @@ impl Display for CrossId {
     }
 }
 
+impl CrossId {
+    /// Get a URL to resolve this cross-id
+    pub fn url(&self) -> Option<String> {
+        match self {
+            Self::CAS(a, b, c) => Some(format!(
+                "https://commonchemistry.cas.org/detail?cas_rn={a}-{b}-{c}"
+            )),
+            Self::ChEBI(a) => Some(format!("https://www.ebi.ac.uk/chebi/CHEBI:{a}")),
+            Self::ChemicalBook(a) => Some(format!(
+                "https://www.chemicalbook.com/ProductChemicalProperties{a}_EN.htm"
+            )),
+            Self::ChemSpider(a) => Some(format!(
+                "https://www.chemspider.com/Chemical-Structure.{a}.html"
+            )),
+            Self::DOI(a) => Some(format!("https://doi.org/{a}")),
+            Self::Findmod(a) => Some(format!("https://web.expasy.org/findmod/{a}.html")),
+            Self::GO(a) => Some(format!("https://amigo.geneontology.org/amigo/term/GO:{a}")), // TODO: test if this works (has enough 0s)
+            Self::PDB(a) => Some(format!("https://www.rcsb.org/structure/{a}")),
+            Self::PDBHet(a) => Some(format!("https://www.rcsb.org/ligand/{a}")),
+            Self::PubChem(a) => Some(format!("https://pubchem.ncbi.nlm.nih.gov/compound/{a}")),
+            Self::PubMed(a) => Some(format!("https://pubmed.ncbi.nlm.nih.gov/{a}/")),
+            Self::URL(_, b) => Some(b.to_string()),
+            Self::Article(_)
+            | Self::Beilstein(_)
+            | Self::Book(_)
+            | Self::COMe(_)
+            | Self::Deltamass(_)
+            | Self::MDL(_)
+            | Self::Mod(_, _, _)
+            | Self::OMSSA(_)
+            | Self::Other(_)
+            | Self::Patent(_)
+            | Self::Uniprot(_) => None,
+        }
+    }
+}
+
 /// All possible compositions in the GNO ontology
 #[derive(Clone, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 pub enum GnoComposition {
@@ -667,7 +704,7 @@ impl ModificationId {
                 self.id
             )),
             Ontology::Psimod => Some(format!(
-                "https://ontobee.org/ontology/MOD?iri=http://purl.obolibrary.org/obo/MOD_{:05}",
+                "https://ontobee.org/ontology/MOD?iri=http://purl.obolibrary.org/obo/MOD_{}",
                 self.id
             )),
             Ontology::Gnome => Some(format!(
@@ -675,7 +712,7 @@ impl ModificationId {
                 self.name.to_ascii_uppercase()
             )),
             Ontology::Resid => Some(format!(
-                "https://proteininformationresource.org/cgi-bin/resid?id=AA{:04}",
+                "https://proteininformationresource.org/cgi-bin/resid?id={}",
                 self.id
             )),
             Ontology::Xlmod | Ontology::Custom => None,
