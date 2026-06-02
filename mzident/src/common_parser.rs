@@ -56,7 +56,8 @@ macro_rules! format_family {
                 $($prname: &'static str,)*
                 $($(#[cfg(feature = $pocfg)])?  $poname: crate::common_parser::OptionalColumn,)*
             )?
-            version: [<$format Version>]
+            /// The version of this format
+            pub version: [<$format Version>]
         }
 
         #[doc = "The data for individual entries in " $format " files."]
@@ -109,6 +110,7 @@ macro_rules! format_family {
             type Complexity = $complexity;
             type PeptidoformAvailability = $peptidoform_availability;
             type Version = [<$format Version>];
+            const VERSIONS: &[&Self::Format] = &$versions;
 
             fn parse(source: &Self::Source, ontologies: &mzcore::ontology::Ontologies, keep_all_columns: bool, proteins: &mut std::collections::HashMap<String, std::sync::Arc<<[<$format PSM>] as PSMMetaData>::Protein>>) -> Result<(Self, &'static Self::Format), BoxedError<'static, BasicKind>> {
                 let mut errors = Vec::new();

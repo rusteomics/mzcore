@@ -24,6 +24,10 @@ pub struct Unimod {}
 impl CVSource for Unimod {
     type Data = SimpleModificationInner;
     type Structure = Vec<SimpleModification>;
+    fn cv_label() -> &'static str {
+        "UNIMOD"
+    }
+
     fn cv_name() -> &'static str {
         "Unimod"
     }

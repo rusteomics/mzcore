@@ -3,7 +3,7 @@
 use std::sync::LazyLock;
 
 use context_error::*;
-use mzcv::{AccessionCode, CVIndex, CVStructure, CVVersion, ControlledVocabulary};
+use mzcv::{AccessionCode, CVIndex, CVSource, CVStructure, CVVersion, ControlledVocabulary};
 use serde::{Deserialize, Serialize};
 
 use crate::{
@@ -403,6 +403,18 @@ impl Ontologies {
             Ontology::Custom => self.custom().data().iter_data(),
         })
     }
+
+    /// Get the version of the this ontology
+    pub const fn version(&self, ontology: Ontology) -> &CVVersion {
+        match ontology {
+            Ontology::Unimod => self.unimod.version(),
+            Ontology::Psimod => self.psimod.version(),
+            Ontology::Xlmod => self.xlmod.version(),
+            Ontology::Gnome => self.gnome.version(),
+            Ontology::Resid => self.resid.version(),
+            Ontology::Custom => self.custom.version(),
+        }
+    }
 }
 
 /// All allowed ontologies for modification names
@@ -439,14 +451,14 @@ impl Ontology {
     }
 
     /// Get the accession number name for the ontology
-    pub const fn name(self) -> &'static str {
+    pub fn name(self) -> &'static str {
         match self {
-            Self::Unimod => "UNIMOD",
-            Self::Psimod => "MOD",
-            Self::Gnome => "GNO",
-            Self::Xlmod => "XLMOD",
-            Self::Resid => "RESID",
-            Self::Custom => "CUSTOM",
+            Self::Unimod => Unimod::cv_label(),
+            Self::Psimod => PsiMod::cv_label(),
+            Self::Gnome => Gnome::cv_label(),
+            Self::Xlmod => XlMod::cv_label(),
+            Self::Resid => Resid::cv_label(),
+            Self::Custom => Custom::cv_label(),
         }
     }
 
@@ -459,6 +471,18 @@ impl Ontology {
             Self::Xlmod => ControlledVocabulary::XLMOD,
             Self::Resid => ControlledVocabulary::RESID,
             Self::Custom => ControlledVocabulary::Unknown,
+        }
+    }
+
+    /// The name as reported by the `CVSource` type `cv_name` function
+    pub fn cv_name(self) -> &'static str {
+        match self {
+            Self::Unimod => Unimod::cv_name(),
+            Self::Psimod => PsiMod::cv_name(),
+            Self::Gnome => Gnome::cv_name(),
+            Self::Xlmod => XlMod::cv_name(),
+            Self::Resid => Resid::cv_name(),
+            Self::Custom => Custom::cv_name(),
         }
     }
 }

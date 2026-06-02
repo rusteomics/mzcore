@@ -21,6 +21,15 @@ pub struct AlignIndex<const STEPS: u16, Source> {
     pub(super) mode: MassMode,
 }
 
+impl<const S: u16, P> Default for AlignIndex<S, P> {
+    fn default() -> Self {
+        Self {
+            sequences: Vec::new(),
+            mode: MassMode::Monoisotopic,
+        }
+    }
+}
+
 impl<const STEPS: u16, Source: HasPeptidoform<Linear> + Clone> AlignIndex<STEPS, Source> {
     /// Check if this index is empty (contains no sequences)
     pub fn is_empty(&self) -> bool {

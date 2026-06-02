@@ -33,4 +33,4 @@ And output from the following programs:
 
 ## Compilation features
 
-* `mzannotate` - Adds mzannotate as a dependency and allow mzSpecLib spectra to be used as IdentifiedPeptiform and allow other formats to parse annotated spectra
+* `mzannotate` - Adds mzannotate as a dependency and allow mzSpecLib spectra to be used as PSM and allow other formats to parse annotated spectra

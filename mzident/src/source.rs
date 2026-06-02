@@ -22,7 +22,7 @@ where
     type Source;
 
     /// The format type
-    type Format: Clone;
+    type Format: Clone + 'static;
 
     /// The complexity marker type
     type Complexity;
@@ -32,6 +32,9 @@ where
 
     /// The version type
     type Version: Display + PSMFileFormatVersion<Self::Format>;
+
+    /// The list of possible versions
+    const VERSIONS: &[&Self::Format];
 
     /// Parse a single PSM from its source and return the detected format
     /// # Errors

@@ -5,7 +5,7 @@ use mzcore::{
     ontology::Ontologies,
     sequence::{Linked, SemiAmbiguous, SimpleLinear},
 };
-use mzcv::{Term, term};
+use mzcv::{Term, curie, term};
 use serde::{Deserialize, Serialize};
 
 use crate::*;
@@ -133,6 +133,57 @@ impl KnownFileFormat {
                 Some(term!(MS:1003429|FragPipe))
             }
             Self::SpectrumSequenceList(_) => None,
+        }
+    }
+}
+
+impl TryFrom<CVTerm> for KnownFileFormat {
+    type Error = ();
+    fn try_from(value: CVTerm) -> Result<Self, Self::Error> {
+        match value.term.accession {
+            curie!(MS:1001348|FASTA format) => Ok(Self::Fasta),
+            curie!(MS:1003612|InstaNovo) => Ok(Self::InstaNovo(InstaNovoVersion::V1_0_0)),
+            curie!(MS:1003613|InstaNovo+) => Ok(Self::InstaNovo(InstaNovoVersion::PlusV1_1_4)),
+            curie!(MS:1001583|MaxQuant) => {
+                for v in MaxQuantPSM::VERSIONS {
+                    if value.value.eq_ignore_ascii_case(v.version.name()) {
+                        return Ok(Self::MaxQuant(v.version));
+                    }
+                }
+                Err(())
+            }
+            curie!(MS:1002826|MetaMorpheus) => {
+                Ok(Self::MetaMorpheus(MetaMorpheusVersion::MetaMorpheus))
+            }
+            curie!(MS:1002601|mzTab) => Ok(Self::MzTab),
+            curie!(MS:1002984|Novor) => {
+                for v in NovorPSM::VERSIONS {
+                    if value.value.eq_ignore_ascii_case(v.version.name()) {
+                        return Ok(Self::Novor(v.version));
+                    }
+                }
+                Err(())
+            }
+            curie!(MS:1001946|PEAKS Studio) => {
+                for v in PeaksPSM::VERSIONS {
+                    if value.value.eq_ignore_ascii_case(v.version.name()) {
+                        return Ok(Self::Peaks(v.version));
+                    }
+                }
+                Err(())
+            }
+            curie!(MS:1003432|pLink2) => Ok(Self::PLink(PLinkVersion::V2_3)),
+            curie!(MS:1003014|MSFragger) => Ok(Self::MSFragger(MSFraggerVersion::V4_2)),
+            curie!(MS:1003018|Philosopher) => Ok(Self::MSFragger(MSFraggerVersion::Philosopher)),
+            curie!(MS:1003429|FragPipe) => {
+                for v in MSFraggerPSM::VERSIONS {
+                    if value.value.eq_ignore_ascii_case(v.version.name()) {
+                        return Ok(Self::MSFragger(v.version));
+                    }
+                }
+                Err(())
+            }
+            _ => Err(()),
         }
     }
 }

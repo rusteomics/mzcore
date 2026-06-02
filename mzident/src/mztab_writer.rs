@@ -14,7 +14,7 @@ use mzcore::{
     ontology::Ontology,
     prelude::{MolecularFormula, SequencePosition},
     sequence::{
-        FlankingSequence, IsAminoAcid, Modification, PlacementRule, Position, SimpleModification,
+        FlankingSequence, IsAminoAcid, Modification, PlacementRule, SimpleModification,
         SimpleModificationInner,
     },
 };
@@ -805,7 +805,7 @@ impl std::str::FromStr for MzTabColumn {
                 id,
                 Term::from_str(name).map_or_else(
                     |_| MzTabOptionalColumnName::Name(Cow::Owned(name.to_string())),
-                    |t| MzTabOptionalColumnName::Term(t),
+                    MzTabOptionalColumnName::Term,
                 ),
             ))
         } else {
@@ -876,8 +876,7 @@ impl mzcore::space::Space for MzTabObjectIdentifier {
     fn space(&self) -> mzcore::space::UsedSpace {
         match self {
             Self::Assay(t) => t.space(),
-            Self::StudyVariable(n) => n.space(),
-            Self::MSRun(n) => n.space(),
+            Self::StudyVariable(n) | Self::MSRun(n) => n.space(),
             Self::Global => mzcore::space::UsedSpace::stack(8),
         }
         .set_total::<Self>()
@@ -1202,7 +1201,7 @@ impl<W: Write, State: CanWritePSMs> MzTabWriter<W, State> {
                             SequencePosition::Index(i, _) => 1 + i,
                             SequencePosition::CTerm => p.sequence_length + 1,
                         };
-                        for m in s.modifications.iter() {
+                        for m in &s.modifications {
                             match m {
                                 Modification::CrossLink { .. } => (), //skip
                                 Modification::Ambiguous {
