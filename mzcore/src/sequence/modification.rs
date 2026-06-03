@@ -557,7 +557,7 @@ impl TryFrom<(Option<Box<str>>, Box<str>)> for CrossId {
                 Self::Mod(Ontology::Psimod, id, rule)
             }
             Some(t) => {
-                println!("Unknown cross-id tag: {t}:{}", value.1);
+                // println!("Unknown cross-id tag: {t}:{}", value.1);
                 Self::Other(format!("{t}:{}", value.1).into_boxed_str())
             }
             None => Self::Other(value.1),
@@ -591,7 +591,7 @@ impl Display for CrossId {
             Self::Findmod(a) => write!(f, "FindMod:{a}"),
             Self::GO(a) => write!(f, "GO:{a}"),
             Self::MDL(a) => write!(f, "MDL:{a}"),
-            Self::Mod(a, b, _) => write!(f, "{a}:{b}"),
+            Self::Mod(a, b, _) => write!(f, "{}:{b}", a.name()),
             Self::OMSSA(a) => write!(f, "OMSSA:{a}"),
             Self::Other(a) => write!(f, "{a}"),
             Self::Patent(a) => write!(f, "Patent:{a}"),

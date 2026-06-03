@@ -108,7 +108,7 @@ fn main() {
     } else {
         None
     };
-    let unimod = if args.is_empty() || args.contains(&"unimod".to_string()) {
+    let mut unimod = if args.is_empty() || args.contains(&"unimod".to_string()) {
         // Unimod
         let mut index = CVIndex::<Unimod>::empty();
         let errs = if local {
@@ -125,9 +125,6 @@ fn main() {
             index.version().last_updated().as_deref().unwrap_or("-"),
             index.data().len()
         );
-        index
-            .save_to_cache_at(std::path::Path::new("mzcore/src/databases/unimod.dat"))
-            .unwrap();
         Some(index)
     } else {
         None
@@ -155,29 +152,59 @@ fn main() {
     }
     if link
         && let Some(psimod) = psimod
-        && let Some(unimod) = unimod
+        && let Some(unimod) = &mut unimod
         && let Some(xlmod) = xlmod
         && let Some(resid) = resid
     {
-        validate_linking(&unimod, &psimod, &xlmod, &resid);
+        validate_linking(unimod, &psimod, &xlmod, &resid);
+    }
+    if let Some(index) = unimod {
+        index
+            .save_to_cache_at(std::path::Path::new("mzcore/src/databases/unimod.dat"))
+            .unwrap();
     }
 }
 
 fn validate_linking(
-    unimod: &CVIndex<Unimod>,
+    unimod: &mut CVIndex<Unimod>,
     psimod: &CVIndex<PsiMod>,
     xlmod: &CVIndex<XlMod>,
     resid: &CVIndex<Resid>,
 ) {
+    let mut new_unimod = unimod
+        .data()
+        .iter()
+        .map(|m| (**m).clone())
+        .collect::<Vec<_>>();
     let mut errors = Vec::new();
     for m in psimod.data() {
-        if let Some(id) = m.description() {
+        if let Some(psimod_id) = m.description() {
             // let mut unimod_link = false;
-            for cross_id in &id.cross_ids {
+            for cross_id in &psimod_id.cross_ids {
                 if let CrossId::Mod(Ontology::Unimod, code, rule) = cross_id {
                     // unimod_link = true;
-                    if let Some(unimod_m) = unimod.get_by_index(&code) {
-                        validate_link(m, &*&unimod_m, rule, &mut errors);
+                    if let Some(unimod_m) = new_unimod
+                        .iter_mut()
+                        .find(|m| m.description().is_some_and(|c| c.id() == *code))
+                    {
+                        if valid_link(m, unimod_m, rule, &mut errors) {
+                            println!("Valid link to {}", unimod_m);
+                            if let SimpleModificationInner::Database { id, .. }
+                            | SimpleModificationInner::Linker { id, .. }
+                            | SimpleModificationInner::Gno { id, .. } = unimod_m
+                                && !id.cross_ids.contains(&CrossId::Mod(
+                                    Ontology::Psimod,
+                                    id.id(),
+                                    PlacementRule::Position(Position::Anywhere),
+                                ))
+                            {
+                                id.cross_ids.push(CrossId::Mod(
+                                    Ontology::Psimod,
+                                    id.id(),
+                                    PlacementRule::Position(Position::Anywhere),
+                                ))
+                            }
+                        }
                     } else {
                         context_error::combine_error(
                             &mut errors,
@@ -186,13 +213,13 @@ fn validate_linking(
                                 "Invalid Unimod code",
                                 "Unimod modification does not exist",
                                 context_error::Context::default()
-                                    .lines(0, format!("MOD:{} {code}", id.id())),
+                                    .lines(0, format!("MOD:{} {code}", psimod_id.id())),
                             ),
                         );
                     }
                 } else if let CrossId::Mod(Ontology::Xlmod, code, rule) = cross_id {
                     if let Some(other) = xlmod.get_by_index(&code) {
-                        validate_link(m, &*&other, rule, &mut errors);
+                        valid_link(m, &*&other, rule, &mut errors);
                     } else {
                         context_error::combine_error(
                             &mut errors,
@@ -201,13 +228,13 @@ fn validate_linking(
                                 "Invalid XLMOD code",
                                 "XLMOD modification does not exist",
                                 context_error::Context::default()
-                                    .lines(0, format!("MOD:{} {code}", id.id())),
+                                    .lines(0, format!("MOD:{} {code}", psimod_id.id())),
                             ),
                         );
                     }
                 } else if let CrossId::Mod(Ontology::Resid, code, rule) = cross_id {
                     if let Some(other) = resid.get_by_index(&code) {
-                        validate_link(m, &*&other, rule, &mut errors);
+                        valid_link(m, &*&other, rule, &mut errors);
                     } else {
                         context_error::combine_error(
                             &mut errors,
@@ -216,7 +243,7 @@ fn validate_linking(
                                 "Invalid RESID code",
                                 "RESID modification does not exist",
                                 context_error::Context::default()
-                                    .lines(0, format!("MOD:{} {code}", id.id())),
+                                    .lines(0, format!("MOD:{} {code}", psimod_id.id())),
                             ),
                         );
                     }
@@ -233,17 +260,25 @@ fn validate_linking(
         }
     }
 
+    unimod
+        .update(
+            unimod.version().clone(),
+            new_unimod.into_iter().map(|m| std::sync::Arc::new(m)),
+        )
+        .unwrap();
+
     for error in errors {
         println!("{error}");
     }
 }
 
-fn validate_link(
+fn valid_link(
     one: &SimpleModificationInner,
     two: &SimpleModificationInner,
     rule: &PlacementRule,
     warnings: &mut Vec<BoxedError<'static, BasicKind>>,
-) {
+) -> bool {
+    let mut suspicious = false;
     let name_one = one.description().map_or(one.to_string(), |o| {
         format!("{}:{}", o.ontology.name(), o.id())
     });
@@ -281,9 +316,11 @@ fn validate_link(
                                 .lines(0, format!("{name_one} {name_two} {rule:?}")),
                         ),
                     );
+                    suspicious = true;
                 }
             }
             _ => (),
         }
     }
+    !suspicious
 }
