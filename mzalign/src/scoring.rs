@@ -135,7 +135,7 @@ impl Default for AlignScoring<'static> {
     }
 }
 
-/// Matrices from: <https://www.ncbi.nlm.nih.gov/IEB/ToolBox/CPP_DOC/lxr/source/src/util/tables/> and <https://www.ncbi.nlm.nih.gov/IEB/ToolBox/C_DOC/lxr/source/data/>.
+/// Matrices from: <https://www.ncbi.nlm.nih.gov/IEB/ToolBox/CPP_DOC/lxr/source/src/util/tables/> and <https://www.ncbi.nlm.nih.gov/IEB/ToolBox/C_DOC/lxr/source/data/>, the PAM30MS matrix is from <https://www.openms.org/doxygen/release/2.3.0/html/ConsensusIDAlgorithmPEPMatrix_8h_source.html>.
 /// The UO columns are added by me (see top left for the original matrix used by me) (B/J/Z is the rounded down average of the corresponding non ambiguous AAs) (All these are exactly the same for all matrices).
 pub(super) mod matrices {
     use mzcore::sequence::AminoAcid;
@@ -160,6 +160,9 @@ pub(super) mod matrices {
     /// PAM30 matrix
     pub const PAM30: &[[i8; AminoAcid::TOTAL_NUMBER]; AminoAcid::TOTAL_NUMBER] =
         include!("matrices/pam30.txt");
+    /// PAM30MS matrix
+    pub const PAM30MS: &[[i8; AminoAcid::TOTAL_NUMBER]; AminoAcid::TOTAL_NUMBER] =
+        include!("matrices/pam30ms.txt");
     /// PAM70 matrix
     pub const PAM70: &[[i8; AminoAcid::TOTAL_NUMBER]; AminoAcid::TOTAL_NUMBER] =
         include!("matrices/pam70.txt");
