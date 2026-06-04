@@ -17,7 +17,7 @@ use mzcore::{
     chemistry::MolecularFormula,
     prelude::MultiChemical,
     quantities::Multi,
-    sequence::{HasPeptidoform, Linear, SequencePosition, SimpleLinear},
+    sequence::{HasPeptidoform, Linear, SequencePosition},
     system::{Mass, Ratio},
 };
 
@@ -110,16 +110,16 @@ impl<A: Eq, B: Eq> Ord for Alignment<A, B> {
     }
 }
 
-impl<'lifetime, A, B> Alignment<&'lifetime A, &'lifetime B>
+impl<A, B> Alignment<A, B>
 where
-    A: HasPeptidoform<SimpleLinear>,
-    B: HasPeptidoform<SimpleLinear>,
+    A: HasPeptidoform<Linear>,
+    B: HasPeptidoform<Linear>,
 {
     /// Recreate an alignment from a path, the path is [`Self::short`].
     #[expect(clippy::missing_panics_doc, clippy::too_many_arguments)]
     pub fn create_from_path(
-        seq_a: &'lifetime A,
-        seq_b: &'lifetime B,
+        seq_a: A,
+        seq_b: B,
         start_a: usize,
         start_b: usize,
         path: &str,
@@ -274,17 +274,19 @@ where
             })
             .collect_vec();
 
+        let score = determine_final_score(
+            seq_a.cast_peptidoform(),
+            seq_b.cast_peptidoform(),
+            start_a,
+            start_b,
+            &path,
+            scoring,
+        );
+
         Some(Self {
             seq_a,
             seq_b,
-            score: determine_final_score(
-                seq_a.cast_peptidoform(),
-                seq_b.cast_peptidoform(),
-                start_a,
-                start_b,
-                &path,
-                scoring,
-            ),
+            score,
             path,
             start_a,
             start_b,
