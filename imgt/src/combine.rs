@@ -229,10 +229,10 @@ impl std::fmt::Display for TemporaryGermline {
                 }
 
                 if let Some(first_allele) = first_allele {
-                    writeln!(f, "{main_branch}├─ALLELE: {first_allele}",)?;
+                    writeln!(f, "{main_branch}├─ALLELE: {first_allele}")?;
                 }
                 if let Some(reference) = reference {
-                    writeln!(f, "{main_branch}├─OPTION: {reference}",)?;
+                    writeln!(f, "{main_branch}├─OPTION: {reference}")?;
                 }
                 writeln!(
                     f,

@@ -985,7 +985,7 @@ impl PeptidoformIonSet {
         // Fix the sequence positions to have the right peptide length
         for (pos, _, _, _) in &mut ambiguous_found_positions {
             if let SequencePosition::Index(_, l) = pos {
-                *l = peptide.len()
+                *l = peptide.len();
             }
         }
 
@@ -1003,7 +1003,7 @@ impl PeptidoformIonSet {
 
         // Fill in ambiguous positions, ambiguous contains (index, preferred, id, localisation_score)
         for (id, entry) in ambiguous_lookup.iter().enumerate().filter(|(i, _)| {
-            !(!grouped_positions.contains_key(i) && unknown_position_modifications.contains(i))
+            grouped_positions.contains_key(i) || !unknown_position_modifications.contains(i)
         }) {
             let Some(ambiguous) = grouped_positions.get(&id) else {
                 combine_error(

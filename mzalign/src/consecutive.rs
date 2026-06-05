@@ -8,26 +8,22 @@ use std::collections::HashSet;
 
 use itertools::Itertools;
 
+/// A single consecutive alignment, it contains the allele that was aligned and the alignment itself
+pub type ConsecutiveAlignmentPart<'lifetime, Complexity> = (
+    Allele<'lifetime>,
+    Alignment<&'lifetime Peptidoform<UnAmbiguous>, Peptidoform<Complexity>>,
+);
+
 /// A consecutive alignment, which align one sequence to multiple sequences.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ConsecutiveAlignment<'lifetime, A> {
     /// All underlying alignments, per gene there is a vector containing all options for that gene.
-    pub alignments: Vec<
-        Vec<(
-            Allele<'lifetime>,
-            Alignment<&'lifetime Peptidoform<UnAmbiguous>, Peptidoform<A>>,
-        )>,
-    >,
+    pub alignments: Vec<Vec<ConsecutiveAlignmentPart<'lifetime, A>>>,
 }
 
 impl<'lifetime, A> ConsecutiveAlignment<'lifetime, A> {
     /// Get the main alignment, the alignment taking the best alignment for each gene.
-    pub fn main_alignment(
-        &self,
-    ) -> Vec<&(
-        Allele<'lifetime>,
-        Alignment<&'lifetime Peptidoform<UnAmbiguous>, Peptidoform<A>>,
-    )> {
+    pub fn main_alignment(&self) -> Vec<&ConsecutiveAlignmentPart<'lifetime, A>> {
         self.alignments.iter().filter_map(|a| a.first()).collect()
     }
 }
@@ -109,12 +105,8 @@ pub fn consecutive_align<'imgt, const STEPS: u16, A: HasPeptidoform<Linear> + Eq
     assert!(genes.len() >= 2);
     assert!(return_number != 0);
 
-    let mut output: Vec<
-        Vec<(
-            Allele<'imgt>,
-            Alignment<&'imgt Peptidoform<UnAmbiguous>, Peptidoform<Linear>>,
-        )>,
-    > = Vec::with_capacity(genes.len());
+    let mut output: Vec<Vec<ConsecutiveAlignmentPart<'imgt, Linear>>> =
+        Vec::with_capacity(genes.len());
 
     let mut prev = 0;
     for gene in genes {
@@ -196,12 +188,8 @@ pub fn par_consecutive_align<
     assert!(genes.len() >= 2);
     assert!(return_number != 0);
 
-    let mut output: Vec<
-        Vec<(
-            Allele<'imgt>,
-            Alignment<&'imgt Peptidoform<UnAmbiguous>, Peptidoform<Linear>>,
-        )>,
-    > = Vec::with_capacity(genes.len());
+    let mut output: Vec<Vec<ConsecutiveAlignmentPart<'imgt, Linear>>> =
+        Vec::with_capacity(genes.len());
 
     let mut prev = 0;
     for gene in genes {

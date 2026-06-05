@@ -2,8 +2,8 @@ use crate::{
     chemistry::{DiagnosticIon, MolecularFormula, NeutralLoss},
     ontology::Ontology,
     sequence::{
-        AminoAcid, CrossId, LinkerLength, LinkerSpecificity, ModificationId, PlacementRule,
-        Position, SimpleModification, SimpleModificationInner,
+        CrossId, LinkerLength, LinkerSpecificity, ModificationId, PlacementRule,
+        SimpleModification, SimpleModificationInner,
     },
 };
 use context_error::{BoxedError, Context, CreateError, combine_error};
@@ -284,7 +284,7 @@ fn compress_rules(rules: &[PlacementRule]) -> Vec<PlacementRule> {
     let mut new: Vec<PlacementRule> = Vec::new();
     for rule in rules.iter().unique() {
         let mut pos_found = false;
-        for new_position in new.iter_mut() {
+        for new_position in &mut new {
             if new_position.combine_rules(rule) {
                 pos_found = true;
                 break;
@@ -301,11 +301,23 @@ fn compress_rules(rules: &[PlacementRule]) -> Vec<PlacementRule> {
 #[test]
 fn compress() {
     let rules = compress_rules(&[
-        PlacementRule::AminoAcid(vec![AminoAcid::Serine].into(), Position::Anywhere),
-        PlacementRule::AminoAcid(vec![AminoAcid::Threonine].into(), Position::Anywhere),
-        PlacementRule::AminoAcid(vec![AminoAcid::Tyrosine].into(), Position::Anywhere),
-        PlacementRule::AminoAcid(vec![AminoAcid::Lysine].into(), Position::Anywhere),
-        PlacementRule::Position(Position::ProteinNTerm),
+        PlacementRule::AminoAcid(
+            vec![crate::sequence::AminoAcid::Serine].into(),
+            crate::sequence::Position::Anywhere,
+        ),
+        PlacementRule::AminoAcid(
+            vec![crate::sequence::AminoAcid::Threonine].into(),
+            crate::sequence::Position::Anywhere,
+        ),
+        PlacementRule::AminoAcid(
+            vec![crate::sequence::AminoAcid::Tyrosine].into(),
+            crate::sequence::Position::Anywhere,
+        ),
+        PlacementRule::AminoAcid(
+            vec![crate::sequence::AminoAcid::Lysine].into(),
+            crate::sequence::Position::Anywhere,
+        ),
+        PlacementRule::Position(crate::sequence::Position::ProteinNTerm),
     ]);
     assert_eq!(rules.len(), 2);
 }

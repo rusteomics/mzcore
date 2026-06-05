@@ -188,7 +188,7 @@ fn validate_linking(
                         .find(|m| m.description().is_some_and(|c| c.id() == *code))
                     {
                         if valid_link(m, unimod_m, rule, &mut errors) {
-                            println!("Valid link to {}", unimod_m);
+                            println!("Valid link to {unimod_m}");
                             if let SimpleModificationInner::Database { id, .. }
                             | SimpleModificationInner::Linker { id, .. }
                             | SimpleModificationInner::Gno { id, .. } = unimod_m
@@ -202,7 +202,7 @@ fn validate_linking(
                                     Ontology::Psimod,
                                     id.id(),
                                     PlacementRule::Position(Position::Anywhere),
-                                ))
+                                ));
                             }
                         }
                     } else {
@@ -218,8 +218,8 @@ fn validate_linking(
                         );
                     }
                 } else if let CrossId::Mod(Ontology::Xlmod, code, rule) = cross_id {
-                    if let Some(other) = xlmod.get_by_index(&code) {
-                        valid_link(m, &*&other, rule, &mut errors);
+                    if let Some(other) = xlmod.get_by_index(code) {
+                        valid_link(m, &other, rule, &mut errors);
                     } else {
                         context_error::combine_error(
                             &mut errors,
@@ -233,8 +233,8 @@ fn validate_linking(
                         );
                     }
                 } else if let CrossId::Mod(Ontology::Resid, code, rule) = cross_id {
-                    if let Some(other) = resid.get_by_index(&code) {
-                        valid_link(m, &*&other, rule, &mut errors);
+                    if let Some(other) = resid.get_by_index(code) {
+                        valid_link(m, &other, rule, &mut errors);
                     } else {
                         context_error::combine_error(
                             &mut errors,
@@ -263,7 +263,7 @@ fn validate_linking(
     unimod
         .update(
             unimod.version().clone(),
-            new_unimod.into_iter().map(|m| std::sync::Arc::new(m)),
+            new_unimod.into_iter().map(std::sync::Arc::new),
         )
         .unwrap();
 
@@ -279,12 +279,14 @@ fn valid_link(
     warnings: &mut Vec<BoxedError<'static, BasicKind>>,
 ) -> bool {
     let mut suspicious = false;
-    let name_one = one.description().map_or(one.to_string(), |o| {
-        format!("{}:{}", o.ontology.name(), o.id())
-    });
-    let name_two = two.description().map_or(two.to_string(), |o| {
-        format!("{}:{}", o.ontology.name(), o.id())
-    });
+    let name_one = one.description().map_or_else(
+        || one.to_string(),
+        |o| format!("{}:{}", o.ontology.name(), o.id()),
+    );
+    let name_two = two.description().map_or_else(
+        || two.to_string(),
+        |o| format!("{}:{}", o.ontology.name(), o.id()),
+    );
     if one.formula() != two.formula() {
         context_error::combine_error(
             warnings,
@@ -299,28 +301,23 @@ fn valid_link(
             ),
         );
     }
-    if *rule != PlacementRule::Position(Position::Anywhere) {
-        match two {
-            SimpleModificationInner::Database { specificities, .. } => {
-                if !specificities
-                    .iter()
-                    .any(|s| s.0.iter().any(|r| rule.is_subset(r)))
-                {
-                    context_error::combine_error(
-                        warnings,
-                        BoxedError::new(
-                            BasicKind::Warning,
-                            "Suspicious link",
-                            "Unimod does not allow this modification on this location",
-                            context_error::Context::default()
-                                .lines(0, format!("{name_one} {name_two} {rule:?}")),
-                        ),
-                    );
-                    suspicious = true;
-                }
-            }
-            _ => (),
-        }
+    if *rule != PlacementRule::Position(Position::Anywhere)
+        && let SimpleModificationInner::Database { specificities, .. } = two
+        && !specificities
+            .iter()
+            .any(|s| s.0.iter().any(|r| rule.is_subset(r)))
+    {
+        context_error::combine_error(
+            warnings,
+            BoxedError::new(
+                BasicKind::Warning,
+                "Suspicious link",
+                "Unimod does not allow this modification on this location",
+                context_error::Context::default()
+                    .lines(0, format!("{name_one} {name_two} {rule:?}")),
+            ),
+        );
+        suspicious = true;
     }
     !suspicious
 }

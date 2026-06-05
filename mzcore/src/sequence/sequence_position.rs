@@ -35,6 +35,7 @@ impl Space for SequencePosition {
 /// Add to the index, the onus of making sure the index is still valid for the peptide is on the caller.
 impl std::ops::Add<u8> for SequencePosition {
     type Output = Self;
+    #[allow(clippy::suspicious_arithmetic_impl)] // It is correct
     fn add(self, rhs: u8) -> Self::Output {
         match self {
             Self::Index(i, l) => Self::Index(i.saturating_add(rhs as usize).min(l - 1), l),

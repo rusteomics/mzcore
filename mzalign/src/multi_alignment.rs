@@ -17,6 +17,7 @@ use mzcore::{
     system::Mass,
 };
 
+/// A mass-based multiple sequence alignment (MMSA).
 #[derive(Clone, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 pub struct MultiAlignment<Sequence> {
     lines: Vec<MultiAlignmentLine<Sequence>>,
@@ -108,6 +109,14 @@ impl<Sequence: HasPeptidoform<Linear>> MultiAlignment<Sequence> {
     }
 }
 
+impl<'a, Sequence: HasPeptidoform<Linear>> IntoIterator for &'a MultiAlignment<Sequence> {
+    type Item = &'a MultiAlignmentLine<Sequence>;
+    type IntoIter = std::slice::Iter<'a, MultiAlignmentLine<Sequence>>;
+    fn into_iter(self) -> Self::IntoIter {
+        self.iter()
+    }
+}
+
 /// For each location the possible sequences and their length, their depth of coverage (how often seen) and their average local confidence.
 pub type SequenceVariance = Vec<BTreeMap<(SequenceElement<Linear>, u16), (usize, f64)>>;
 
@@ -118,6 +127,7 @@ impl<Sequence: HasPeptidoform<Linear>> std::fmt::Display for MultiAlignment<Sequ
     }
 }
 
+/// The alignment of a single peptidoform in an MMSA.
 #[derive(Clone, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 pub struct MultiAlignmentLine<Sequence> {
     original_index: usize,
@@ -419,36 +429,49 @@ impl<'a, Sequence: HasPeptidoform<Linear>, const STEPS: u16>
     }
 }
 
+/// How a single piece of sequence if aligned in an MMSA, analogous to [Piece] from a pairwise alignment.
 #[derive(
     Clone, Copy, Debug, Default, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize,
 )]
 pub struct MultiPiece {
+    /// How this piece was matched, for now can only be [`MatchType::FullIdentity`] or [`MatchType::Gap`]
     pub match_type: MatchType,
-    /// `aligned_length` is required to always be at least `sequence_length`
+    /// How long this piece of sequence is stretched to, this is required to always be at least `sequence_length`
     pub aligned_length: u16,
+    /// The number of sequence elements in this step
     pub sequence_length: u16,
 }
 
+/// How to align sequences in an MMSA
 #[derive(Clone, Copy, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 pub struct MultiAlignType {
+    /// What are the requirements for the left side
     pub left: MultiAlignSide,
+    /// What are the requirements for the right side
     pub right: MultiAlignSide,
 }
 
 impl MultiAlignType {
+    /// Both side either global
     pub const EITHER_GLOBAL: Self = Self {
         left: MultiAlignSide::EitherGlobal,
         right: MultiAlignSide::EitherGlobal,
     };
+    /// Both side global
     pub const GLOBAL: Self = Self {
         left: MultiAlignSide::Global,
         right: MultiAlignSide::Global,
     };
 }
 
+/// In an MMSA the sides can either be global, meaning that all peptidoforms have to end at the
+/// same time or either global meaning that ragged edges are allowed, but diverging ends are not
+/// allowed.
 #[derive(Clone, Copy, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 pub enum MultiAlignSide {
+    /// A global alignment, 'straight' edge
     Global,
+    /// An either global alignment, 'ragged' edge
     EitherGlobal,
 }
 
@@ -468,7 +491,7 @@ impl From<MultiAlignType> for AlignType {
 }
 
 impl<const STEPS: u16, Sequence: HasPeptidoform<Linear> + Clone> AlignIndex<STEPS, Sequence> {
-    /// Get matrix with the distances between all sequences in this index. It uses [`Alignment::distance`] as metric.
+    /// Get matrix with the distances between all sequences in this index. It uses [`mzalign::Alignment::distance`] as metric.
     /// # Panics
     /// If more than [`u16::MAX`] sequences are given.
     pub fn distance_matrix(
@@ -496,9 +519,13 @@ impl<const STEPS: u16, Sequence: HasPeptidoform<Linear> + Clone> AlignIndex<STEP
         matrix
     }
 
+    /// Create a MMSA out of the sequences in this index. The maximal distance indicates the
+    /// maximal distance between two clusters that can still be joined. If set to None this will
+    /// merge all clusters. This can be used to return a set of motifs in otherwise unrelated
+    /// sequences.
     pub fn multi_align(
         &self,
-        maximal_distance: Option<f64>, // Maximal distance to join clusters, or join all if set to None
+        maximal_distance: Option<f64>,
         scoring: AlignScoring<'_>,
         align_type: MultiAlignType,
     ) -> Vec<MultiAlignment<Sequence>> {
@@ -513,7 +540,18 @@ impl<const STEPS: u16, Sequence: HasPeptidoform<Linear> + Clone> AlignIndex<STEP
         scoring: AlignScoring<'_>,
         align_type: MultiAlignType,
     ) -> Vec<MultiAlignment<Sequence>> {
-        assert!(self.sequences.len() > 1);
+        if self.sequences.is_empty() {
+            return Vec::new();
+        } else if self.sequences.len() == 1 {
+            return vec![MultiAlignment::new(
+                vec![MultiAlignmentLineTemp::single(
+                    0,
+                    self.sequences[0].0.clone(),
+                    &self.sequences[0].1,
+                )],
+                align_type,
+            )];
+        }
 
         let mut nodes = Vec::with_capacity(self.sequences.len());
         for (i, s) in self.sequences.iter().enumerate() {
@@ -616,7 +654,7 @@ impl<const STEPS: u16, Sequence: HasPeptidoform<Linear> + Clone + Send + Sync>
 /// Do mass based alignment of two MMSA clusters, but with precomputed masses
 #[expect(clippy::too_many_lines)]
 #[allow(clippy::similar_names)]
-pub(super) fn multi_align_cached<'a, const STEPS: u16, Sequence: HasPeptidoform<Linear>>(
+fn multi_align_cached<'a, const STEPS: u16, Sequence: HasPeptidoform<Linear>>(
     a: Vec<MultiAlignmentLineTemp<'a, Sequence, STEPS>>,
     b: Vec<MultiAlignmentLineTemp<'a, Sequence, STEPS>>,
     scoring: AlignScoring<'_>,

@@ -310,9 +310,8 @@ impl MzTabPSM {
             metadata.clone(),
             proteins.clone(),
             line_iter.filter_map(move |item| {
-                item.transpose().and_then(|item| match item {
-                    Ok(MzTabLine::PSM(line_index, line, fields)) => Some(
-                        PSMLine::new(
+                item.transpose().map(|item| match item {
+                    Ok(MzTabLine::PSM(line_index, line, fields)) => PSMLine::new(
                             base.clone()
                                 .lines(0, line.clone())
                                 .line_index(line_index)
@@ -325,10 +324,9 @@ impl MzTabPSM {
                             Self::from_line(&line, ontologies, &proteins, metadata.clone())
                                 .map_err(BoxedError::to_owned)
                         }),
-                    ),
                     Ok(MzTabLine::MTD(line_index, ..) | MzTabLine::PRH(line_index, ..) | MzTabLine::PRT(line_index,.. ) | MzTabLine::PSH(line_index,.. )) =>
-                        Some(Err(BoxedError::new(BasicKind::Warning, "Invalid line type", "After the first PSM line no MTD, PRH, PRT, or PSH lines are allowed anymore", base.clone().line_index(line_index).to_owned()))),
-                    Err(e) => Some(Err(e)),
+                        Err(BoxedError::new(BasicKind::Warning, "Invalid line type", "After the first PSM line no MTD, PRH, PRT, or PSH lines are allowed anymore", base.clone().line_index(line_index).to_owned())),
+                    Err(e) => Err(e),
                 })
             }),
         ))
@@ -884,8 +882,8 @@ fn parse_metadata<'a>(
             }
             "description" => metadata.description = line[fields[2].clone()].into(),
             "title" => metadata.title = line[fields[2].clone()].into(),
-            "mzTab-ID" => metadata.id = line[fields[2].clone()].into(),
-            "mzTab-mode" => {
+            "mztab-id" => metadata.id = line[fields[2].clone()].into(),
+            "mztab-mode" => {
                 metadata.mode = match &line[fields[2].clone()] {
                     "Summary" => MzTabMode::Summary,
                     "Complete" => MzTabMode::Complete,
@@ -899,7 +897,7 @@ fn parse_metadata<'a>(
                     }
                 }
             }
-            "mzTab-type" => {
+            "mztab-type" => {
                 metadata.kind = match &line[fields[2].clone()] {
                     "Identification" => MzTabKind::Identification,
                     "Quantification" => MzTabKind::Quantification,
@@ -914,10 +912,10 @@ fn parse_metadata<'a>(
                 }
             }
             m if m.starts_with("publication[") && m.ends_with(']') => {
-                metadata.publication.push(line[fields[2].clone()].into())
+                metadata.publication.push(line[fields[2].clone()].into());
             }
             m if m.starts_with("uri[") && m.ends_with(']') => {
-                metadata.uri.push(line[fields[2].clone()].into())
+                metadata.uri.push(line[fields[2].clone()].into());
             }
             "protein-quantification-unit" => {
                 metadata.protein_quantification_unit =
@@ -1313,14 +1311,14 @@ fn parse_metadata<'a>(
                             "sample",
                             line[fields[2].clone()].trim(),
                             &context.clone().add_highlight((0, fields[2].clone())),
-                        )?
+                        )?;
                     }
                     "assay_refs" => {
                         elem.assay_refs = parse_refs(
                             "assay",
                             line[fields[2].clone()].trim(),
                             &context.clone().add_highlight((0, fields[2].clone())),
-                        )?
+                        )?;
                     }
                     _ => {
                         return Err(BoxedError::new(
@@ -1374,7 +1372,7 @@ fn parse_metadata<'a>(
                     }
                 }
             }
-            m if m.starts_with("sample_processing[") && m.ends_with("]") => {
+            m if m.starts_with("sample_processing[") && m.ends_with(']') => {
                 metadata.sample_processing.push(
                     line[fields[2].clone()]
                         .split('|')
@@ -1406,7 +1404,7 @@ fn parse_metadata<'a>(
                         )
                     })?,
                     param.parse()?,
-                ))
+                ));
             }
             "colunit-psm" => {
                 let Some((column, param)) = line[fields[2].clone()].split_once('=') else {
@@ -1427,7 +1425,7 @@ fn parse_metadata<'a>(
                         )
                     })?,
                     param.parse()?,
-                ))
+                ));
             }
             _ => (),
         }

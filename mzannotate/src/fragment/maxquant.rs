@@ -44,7 +44,7 @@ impl Fragment {
         parse_intermediate_representation(base_context, line, range).and_then(|annotations| {
             annotations.into_fragment(
                 &[(
-                    NonZeroU32::new(1).unwrap(),
+                    NonZeroU32::MIN,
                     AnalyteTarget::PeptidoformIon(interpretation.clone().into()),
                 )],
                 base_context,

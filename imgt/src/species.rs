@@ -35,35 +35,35 @@ macro_rules! species {
         }
 
         impl Species {
-            /// The common name for this species, eg `Human`
+            /// The common name for this species, e.g. `Human`
             pub const fn common_name(&self) -> &'static str {
                 match self {
                     $(Self::$identifier => $common,)*
                 }
             }
 
-            /// The name IMGT uses to identify this species, eg `Homo sapiens (human)`
+            /// The name IMGT uses to identify this species, e.g. `Homo sapiens (human)`
             pub const fn imgt_name(&self) -> &'static str {
                 match self {
                     $(Self::$identifier => $imgt,)*
                 }
             }
 
-            /// The common name for this species, eg `Homo sapiens`
+            /// The common name for this species, e.g. `Homo sapiens`
             pub const fn scientific_name(&self) -> &'static str {
                 match self {
                     $(Self::$identifier => $scientific,)*
                 }
             }
 
-            /// The enum name for this species, eg `HomoSapiens`
+            /// The enum name for this species, e.g. `HomoSapiens`
             pub const fn ident(&self) -> &'static str {
                 match self {
                     $(Self::$identifier => stringify!($identifier),)*
                 }
             }
 
-            /// The CURIE to identify this species within the NCBITaxonomy Ontology
+            /// The CURIE to identify this species within the `NCBITaxonomy` Ontology
             pub const fn curie(&self) -> mzcv::Curie {
                 match self {
                     $(Self::$identifier => curie!($cv:$curie),)*

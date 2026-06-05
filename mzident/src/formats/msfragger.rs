@@ -54,7 +54,7 @@ format_family!(
                 ontologies,
                 &SloppyParsingParameters {ignore_prefix_lowercase_n: true, ..Default::default()},
         ).map(Into::into).map_err(BoxedError::to_owned)});
-        rt: Time, |location: Location, _| location.parse::<f64>(NUMBER_ERROR).map(Time::new::<mzcore::system::time::min>);
+        rt: Time, |location: Location, _| location.parse::<f64>(NUMBER_ERROR).map(Time::new::<mzcore::system::time::s>);
         scan: SpectrumId, |location: Location, _| Ok(location.clone().parse::<usize>(NUMBER_ERROR).map_or_else(|_| SpectrumId::Native(location.get_string()), SpectrumId::Number));
         modifications: ThinVec<(SequencePosition, SimpleModification)>, |location: Location, ontologies: &Ontologies| location.or_empty().array(',').map(|m| if let Some((head, tail)) = m.clone().split_once('(') {
             let head_trim = head.as_str().trim();

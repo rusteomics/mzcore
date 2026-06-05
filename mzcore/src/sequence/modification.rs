@@ -363,7 +363,7 @@ impl TryFrom<(Option<Box<str>>, Box<str>)> for CrossId {
                         } else {
                             let loc = rule
                                 .chars()
-                                .map(|c| c.try_into())
+                                .map(TryInto::try_into)
                                 .collect::<Result<ThinVec<AminoAcid>, _>>()
                                 .map_err(|()| {
                                     BoxedError::new(
@@ -395,30 +395,32 @@ impl TryFrom<(Option<Box<str>>, Box<str>)> for CrossId {
 
         let t = value.0.map(|t| t.to_ascii_lowercase());
         Ok(match t.as_deref() {
-            Some("article" | "journal") => Self::Article(value.1.into()),
-            Some("book") => Self::Book(value.1.into()),
-            Some("chemicalbookno") => Self::ChemicalBook(value.1.into()),
-            Some("come") => Self::COMe(value.1.into()),
+            Some("article" | "journal") => Self::Article(value.1),
+            Some("book") => Self::Book(value.1),
+            Some("chemicalbookno") => Self::ChemicalBook(value.1),
+            Some("come") => Self::COMe(value.1),
             Some("doi") => Self::DOI(value.1.trim_start_matches("https://doi.org/").into()),
-            Some("epo" | "wipo" | "uspto") => Self::Patent(value.1.into()),
-            Some("findmod") => Self::Findmod(value.1.into()),
+            Some("epo" | "wipo" | "uspto") => Self::Patent(value.1),
+            Some("findmod") => Self::Findmod(value.1),
             Some("http") => Self::URL(None, format!("http:{}", value.1).into_boxed_str()),
             Some("https") => Self::URL(None, format!("https:{}", value.1).into_boxed_str()),
-            Some("mdl") => Self::MDL(value.1.into()),
-            Some("pdb") => Self::PDB(value.1.into()),
-            Some("pdbhet") => Self::PDBHet(value.1.into()),
-            Some("uniprot") => Self::Uniprot(value.1.into()),
-            Some("url" | "misc. url") => Self::URL(None, value.1.into()),
+            Some("mdl") => Self::MDL(value.1),
+            Some("pdb") => Self::PDB(value.1),
+            Some("pdbhet") => Self::PDBHet(value.1),
+            Some("uniprot") => Self::Uniprot(value.1),
+            Some("url" | "misc. url") => Self::URL(None, value.1),
             Some("cas" | "cas registry" | "cas registry number" | "cs") => {
                 let mut split = value.1.trim().split('-');
                 let a = split
                     .next()
-                    .ok_or(BoxedError::new(
-                        BasicKind::Error,
-                        "Invalid CAS number",
-                        "Missing first number",
-                        Context::default().lines(0, value.1.to_string()),
-                    ))?
+                    .ok_or_else(|| {
+                        BoxedError::new(
+                            BasicKind::Error,
+                            "Invalid CAS number",
+                            "Missing first number",
+                            Context::default().lines(0, value.1.to_string()),
+                        )
+                    })?
                     .parse()
                     .map_err(|err| {
                         BoxedError::new(
@@ -430,12 +432,14 @@ impl TryFrom<(Option<Box<str>>, Box<str>)> for CrossId {
                     })?;
                 let b = split
                     .next()
-                    .ok_or(BoxedError::new(
-                        BasicKind::Error,
-                        "Invalid CAS number",
-                        "Missing second number",
-                        Context::default().lines(0, value.1.to_string()),
-                    ))?
+                    .ok_or_else(|| {
+                        BoxedError::new(
+                            BasicKind::Error,
+                            "Invalid CAS number",
+                            "Missing second number",
+                            Context::default().lines(0, value.1.to_string()),
+                        )
+                    })?
                     .parse()
                     .map_err(|err| {
                         BoxedError::new(
@@ -447,12 +451,14 @@ impl TryFrom<(Option<Box<str>>, Box<str>)> for CrossId {
                     })?;
                 let c = split
                     .next()
-                    .ok_or(BoxedError::new(
-                        BasicKind::Error,
-                        "Invalid CAS number",
-                        "Missing third number",
-                        Context::default().lines(0, value.1.to_string()),
-                    ))?
+                    .ok_or_else(|| {
+                        BoxedError::new(
+                            BasicKind::Error,
+                            "Invalid CAS number",
+                            "Missing third number",
+                            Context::default().lines(0, value.1.to_string()),
+                        )
+                    })?
                     .parse()
                     .map_err(|err| {
                         BoxedError::new(
@@ -569,8 +575,7 @@ impl FromStr for CrossId {
     type Err = BoxedError<'static, BasicKind>;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         s.split_once(':')
-            .map(|(t, v)| (Some(t.into()), v.into()))
-            .unwrap_or((None, s.into()))
+            .map_or_else(|| (None, s.into()), |(t, v)| (Some(t.into()), v.into()))
             .try_into()
     }
 }

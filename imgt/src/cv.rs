@@ -15,7 +15,11 @@ use crate::{Gene, Germline, Germlines, Species, parse::parse_dat};
 pub static STATIC_IMGT: LazyLock<CVIndex<IMGT>> = LazyLock::new(CVIndex::init_static);
 
 /// IMGT antibody germlines
-#[allow(missing_copy_implementations, missing_debug_implementations)]
+#[allow(
+    missing_copy_implementations,
+    missing_debug_implementations,
+    clippy::upper_case_acronyms
+)]
 pub struct IMGT {}
 
 impl CVData for Germline {

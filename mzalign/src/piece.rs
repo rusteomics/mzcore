@@ -45,7 +45,9 @@ impl Piece {
             Match,
             Mismatch,
             Massmismatch,
-            Special(MatchType, u16, u16),
+            Rotation(u16),
+            IsobaricIdentical(u16),
+            Isobaric(u16, u16),
         }
 
         impl std::fmt::Display for StepType {
@@ -59,10 +61,9 @@ impl Piece {
                         Self::Match => String::from("="),
                         Self::Mismatch => String::from("X"),
                         Self::Massmismatch => String::from("m"),
-                        Self::Special(MatchType::Rotation, a, _) => format!("{a}r"),
-                        Self::Special(MatchType::Isobaric, a, b) if a == b => format!("{a}i"),
-                        Self::Special(MatchType::Isobaric, a, b) => format!("{a}:{b}i"),
-                        Self::Special(..) => panic!("A special match cannot be of this match type"),
+                        Self::Rotation(a) => format!("{a}r"),
+                        Self::IsobaricIdentical(a) => format!("{a}i"),
+                        Self::Isobaric(a, b) => format!("{a}:{b}i"),
                     }
                 )
             }
@@ -72,18 +73,28 @@ impl Piece {
             (start_a, start_b, String::new(), None),
             |(a, b, output, last), step| {
                 let current_type = match (step.match_type, step.step_a, step.step_b) {
-                    (MatchType::Isobaric, a, b) => StepType::Special(MatchType::Isobaric, a, b), // Catch any 1/1 isobaric sets before they are counted as Match/Mismatch
+                    (MatchType::Isobaric, a, b) => {
+                        if a == b {
+                            StepType::IsobaricIdentical(a)
+                        } else {
+                            StepType::Isobaric(a, b)
+                        }
+                    }
                     (_, 0, 1) => StepType::Insertion,
                     (_, 1, 0) => StepType::Deletion,
                     (MatchType::IdentityMassMismatch, 1, 1) => StepType::Massmismatch,
                     (MatchType::FullIdentity, 1, 1) => StepType::Match,
                     (MatchType::Mismatch, 1, 1) => StepType::Mismatch,
-                    (m, a, b) => StepType::Special(m, a, b),
+                    (MatchType::Rotation, a, _) => StepType::Rotation(a),
+                    _ => unreachable!("Invalid step types while creating CIGAR"),
                 };
                 let (str, last) = match last {
-                    Some((t @ StepType::Special(..), _)) => {
-                        (format!("{output}{t}"), Some((current_type, 1)))
-                    }
+                    Some((
+                        t @ (StepType::Rotation(..)
+                        | StepType::Isobaric(..)
+                        | StepType::IsobaricIdentical(..)),
+                        _,
+                    )) => (format!("{output}{t}"), Some((current_type, 1))),
                     Some((t, n)) if t == current_type => (output, Some((t, n + 1))),
                     Some((t, n)) => (format!("{output}{n}{t}"), Some((current_type, 1))),
                     None => (output, Some((current_type, 1))),
@@ -97,7 +108,12 @@ impl Piece {
             },
         );
         match last {
-            Some((t @ StepType::Special(..), _)) => format!("{output}{t}"),
+            Some((
+                t @ (StepType::Rotation(..)
+                | StepType::Isobaric(..)
+                | StepType::IsobaricIdentical(..)),
+                _,
+            )) => format!("{output}{t}"),
             Some((t, n)) => format!("{output}{n}{t}"),
             _ => output,
         }

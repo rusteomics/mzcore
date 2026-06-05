@@ -297,7 +297,7 @@ pub(crate) const fn to_mzcv_cv(
         mzdata::params::ControlledVocabulary::NCIT => mzcv::ControlledVocabulary::NCIT,
         mzdata::params::ControlledVocabulary::BTO => mzcv::ControlledVocabulary::BTO,
         mzdata::params::ControlledVocabulary::PRIDE => mzcv::ControlledVocabulary::PRIDE,
-        _ => mzcv::ControlledVocabulary::Unknown,
+        mzdata::params::ControlledVocabulary::Unknown => mzcv::ControlledVocabulary::Unknown,
     }
 }
 

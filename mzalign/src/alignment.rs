@@ -402,8 +402,8 @@ impl<A, B> Alignment<A, B> {
 }
 
 impl<A: HasPeptidoform<Linear>, B: HasPeptidoform<Linear>> Alignment<A, B> {
-    /// The distance metric to use in MMSA
-    pub(crate) fn distance(&self) -> f64 {
+    /// The distance between the two sequences, this metric is used in MMSA
+    pub fn distance(&self) -> f64 {
         let stats = self.stats();
         let length = self
             .seq_a()

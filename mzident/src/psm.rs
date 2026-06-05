@@ -17,6 +17,7 @@ use mzcore::{
 /// A peptidoform that is identified by a _de novo_ or database matching program as matching to a spectrum
 #[cfg_attr(not(feature = "mzannotate"), derive(Deserialize, Serialize))]
 #[derive(Clone, Debug)]
+#[allow(clippy::upper_case_acronyms)]
 pub struct PSM<Complexity, PeptidoformAvailability> {
     /// The score -1.0..=1.0 if a score was available in the original format
     pub score: Option<f64>,
@@ -667,6 +668,7 @@ pub enum ProteinData {
     /// An mzTab protein
     MzTab(MzTabProtein),
     /// A protein from PLGS files
+    #[allow(clippy::upper_case_acronyms)]
     PLGS(PLGSProtein),
     /// A protein from MSFragger files
     MSFragger(MSFraggerProtein),

@@ -12,7 +12,7 @@ use mzcv::{
 };
 
 use crate::{
-    glycan::{GlycanStructure, MonoSaccharide, tokenise_wurcs},
+    glycan::{GlycanStructure, MonoSaccharide},
     helper_functions::explain_number_error,
     ontology::Ontology,
     sequence::{

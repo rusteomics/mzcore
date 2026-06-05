@@ -90,7 +90,7 @@ impl<T> SequenceElement<T> {
     }
 
     /// Create a new aminoacid without any modifications
-    pub fn new_with_modifications(
+    pub const fn new_with_modifications(
         aminoacid: CheckedAminoAcid<T>,
         modifications: ThinVec<Modification>,
         ambiguous: Option<NonZeroU32>,

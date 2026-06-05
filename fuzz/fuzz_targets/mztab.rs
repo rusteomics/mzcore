@@ -3,7 +3,7 @@ use afl::*;
 
 fn main() {
     fuzz!(|data: &[u8]| {
-        if let Ok(_) = std::str::from_utf8(data) {
+        if std::str::from_utf8(data).is_ok() {
             let parser = mzident::MzTabPSM::parse_reader(
                 data,
                 &mzcore::ontology::STATIC_ONTOLOGIES,

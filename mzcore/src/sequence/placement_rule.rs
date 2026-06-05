@@ -142,12 +142,12 @@ impl PlacementRule {
     /// Check if this rule is a subset of another rule
     pub fn is_subset(&self, other: &Self) -> bool {
         match (self, other) {
-            (Self::Position(ps), Self::Position(po)) => ps.is_subset(po),
+            (Self::Position(ps), Self::Position(po)) => ps.is_subset(*po),
             (Self::AminoAcid(aas, ps), Self::AminoAcid(aao, po)) => {
-                ps.is_subset(po) && aas.iter().all(|a| aao.contains(a))
+                ps.is_subset(*po) && aas.iter().all(|a| aao.contains(a))
             }
             (Self::PsiModification(is, ps), Self::PsiModification(io, po)) => {
-                is == io && ps.is_subset(po)
+                is == io && ps.is_subset(*po)
             }
             _ => false,
         }
@@ -156,20 +156,16 @@ impl PlacementRule {
     /// Combine these two rules into the first. If they cannot be combined this returns false.
     pub fn combine_rules(&mut self, other: &Self) -> bool {
         match (self, other) {
-            (PlacementRule::AminoAcid(new_aa, new_pos), PlacementRule::AminoAcid(aa, pos)) => {
-                if pos == new_pos {
-                    for a in aa {
-                        if !new_aa.contains(a) {
-                            new_aa.push(*a);
-                        }
+            (Self::AminoAcid(new_aa, new_pos), Self::AminoAcid(aa, pos)) if pos == new_pos => {
+                for a in aa {
+                    if !new_aa.contains(a) {
+                        new_aa.push(*a);
                     }
-                    new_aa.sort_unstable();
-                    true
-                } else {
-                    false
                 }
+                new_aa.sort_unstable();
+                true
             }
-            (PlacementRule::Position(new_pos), PlacementRule::Position(pos)) => {
+            (Self::Position(new_pos), Self::Position(pos)) => {
                 if new_pos == pos {
                     true
                 } else if matches!(new_pos, Position::ProteinNTerm | Position::AnyNTerm)
@@ -264,15 +260,15 @@ impl Position {
     }
 
     /// Check if this position is a subset of another position
-    pub fn is_subset(&self, other: &Self) -> bool {
-        match (self, other) {
-            (_, Self::Anywhere) => true,
-            (Self::ProteinCTerm, Self::ProteinCTerm | Self::AnyCTerm) => true,
-            (Self::AnyCTerm, Self::AnyCTerm) => true,
-            (Self::ProteinNTerm, Self::ProteinNTerm | Self::AnyNTerm) => true,
-            (Self::AnyNTerm, Self::AnyNTerm) => true,
-            _ => false,
-        }
+    pub const fn is_subset(self, other: Self) -> bool {
+        matches!(
+            (self, other),
+            (_, Self::Anywhere)
+                | (Self::ProteinCTerm, Self::ProteinCTerm | Self::AnyCTerm)
+                | (Self::AnyCTerm, Self::AnyCTerm)
+                | (Self::ProteinNTerm, Self::ProteinNTerm | Self::AnyNTerm)
+                | (Self::AnyNTerm, Self::AnyNTerm)
+        )
     }
 }
 

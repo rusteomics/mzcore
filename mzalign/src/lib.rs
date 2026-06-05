@@ -33,9 +33,7 @@ pub use align_type::{AlignType, Side};
 pub use alignment::{Alignment, Score, Stats};
 pub use index::AlignIndex;
 pub use mass_alignment::align;
-pub use multi_alignment::{
-    MultiAlignSide, MultiAlignType, MultiAlignment, MultiAlignmentLine, SequenceVariance,
-};
+pub use multi_alignment::*;
 pub use piece::Piece;
 pub use scoring::{AlignScoring, MatchType, PairMode};
 

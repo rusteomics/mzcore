@@ -706,10 +706,10 @@ impl<Complexity> Peptidoform<Complexity> {
     }
 
     /// Iterate over a range in the peptide and keep track of the position, this duplicates the N and C terminal sequence elements to TODO: fix
-    pub fn iter<'a>(
-        &'a self,
+    pub fn iter(
+        &self,
         range: impl RangeBounds<usize>,
-    ) -> impl DoubleEndedIterator<Item = (PeptidePosition, Cow<'a, SequenceElement<Complexity>>)> + 'a
+    ) -> impl DoubleEndedIterator<Item = (PeptidePosition, Cow<'_, SequenceElement<Complexity>>)> + '_
     {
         let start = range.start_index();
         std::iter::once((
@@ -1290,7 +1290,11 @@ impl<Complexity> Peptidoform<Complexity> {
                 .clone()
                 .into_iter()
                 .map(|m| AmbiguousEntry {
-                    positions: m.positions.into_iter().map(|loc| loc.reverse()).collect(),
+                    positions: m
+                        .positions
+                        .into_iter()
+                        .map(SequencePosition::reverse)
+                        .collect(),
                     ..m
                 })
                 .collect(),
@@ -1314,7 +1318,7 @@ impl Peptidoform<Linked> {
             SequencePosition::NTerm => self.n_term.push(modification),
             SequencePosition::CTerm => self.c_term.push(modification),
             SequencePosition::Index(index, _) => {
-                self.sequence[index].modifications.push(modification)
+                self.sequence[index].modifications.push(modification);
             }
         }
     }

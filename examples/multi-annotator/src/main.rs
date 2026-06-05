@@ -273,7 +273,7 @@ fn main() {
                             .count();
                         row.insert(
                             column_y_independent.clone(),
-                            format!("{}", (unique_Y_found as f64 / unique_Y as f64),),
+                            format!("{}", (unique_Y_found as f64 / unique_Y as f64)),
                         );
                     }
                     if args.report_intensity {
@@ -504,10 +504,10 @@ fn main() {
                             Score::Position {
                                 theoretical_positions,
                                 ..
-                            } => format!("{}", theoretical_positions.fraction(),),
+                            } => format!("{}", theoretical_positions.fraction()),
                             Score::UniqueFormulas {
                                 unique_formulas, ..
-                            } => format!("{}", unique_formulas.fraction(),),
+                            } => format!("{}", unique_formulas.fraction()),
                         },
                     );
 
@@ -521,7 +521,7 @@ fn main() {
                                 unique_formulas, ..
                             } => unique_formulas,
                         };
-                        row.insert(Arc::new(format!("ion_{ion}")), format!("{}", recovered.fraction(),));
+                        row.insert(Arc::new(format!("ion_{ion}")), format!("{}", recovered.fraction()));
                     }
                     Some(row)
                 } else {

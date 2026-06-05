@@ -334,21 +334,24 @@ impl Peptidoform<Linear> {
             let possible_positions = self
                 .iter(start..=end)
                 .map(|i| dbg!(i))
-                .filter(|(position, seq)|
-                    match entry.as_settings().position {
-                        None => modification
-                            .is_possible(seq, position.sequence_index)
-                            .any_possible(),
-                        Some(rules) => rules
-                            .iter()
-                            .any(|rule| rule.is_possible(seq, position.sequence_index)),
-                    }
-                    && (entry.as_settings().comkp
+                .filter(|(position, seq)| {
+                    entry.as_settings().position.map_or_else(
+                        || {
+                            modification
+                                .is_possible(seq, position.sequence_index)
+                                .any_possible()
+                        },
+                        |rules| {
+                            rules
+                                .iter()
+                                .any(|rule| rule.is_possible(seq, position.sequence_index))
+                        },
+                    ) && (entry.as_settings().comkp
                         || self[position.sequence_index]
                             .modifications
                             .iter()
                             .all(Modification::is_ambiguous))
-                )
+                })
                 .map(|(position, _)| position.sequence_index)
                 .collect_vec();
 

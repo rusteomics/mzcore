@@ -158,7 +158,7 @@ mod tests {
                 .iter()
                 .find(|p| p.0.iter().any(|n| n == name))
                 .unwrap_or_else(|| panic!("Assumed {name} would be defined"));
-            assert_eq!(found.1.formula(), *formula, "Formula incorrect: {name}",);
+            assert_eq!(found.1.formula(), *formula, "Formula incorrect: {name}");
             assert_eq!(
                 found.1.to_string().as_str(),
                 *name,

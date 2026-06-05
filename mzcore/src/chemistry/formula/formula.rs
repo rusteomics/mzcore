@@ -77,9 +77,9 @@ impl MolecularFormula {
         self.hill_notation_generic(
             |element, buffer| {
                 if let Some(isotope) = element.1 {
-                    write!(buffer, "[{}{}{}]", isotope, element.0, element.2,).unwrap();
+                    write!(buffer, "[{}{}{}]", isotope, element.0, element.2).unwrap();
                 } else {
-                    write!(buffer, "{}{}", element.0, element.2,).unwrap();
+                    write!(buffer, "{}{}", element.0, element.2).unwrap();
                 }
             },
             false,
@@ -92,9 +92,9 @@ impl MolecularFormula {
         self.hill_notation_generic(
             |element, buffer| {
                 if let Some(isotope) = element.1 {
-                    write!(buffer, "[{}{}{}]", isotope, element.0, element.2,).unwrap();
+                    write!(buffer, "[{}{}{}]", isotope, element.0, element.2).unwrap();
                 } else {
-                    write!(buffer, "{}{}", element.0, element.2,).unwrap();
+                    write!(buffer, "{}{}", element.0, element.2).unwrap();
                 }
             },
             true,
@@ -111,7 +111,7 @@ impl MolecularFormula {
                 if let Some(isotope) = element.1 {
                     write!(buffer, "{}", to_superscript_num(isotope.get())).unwrap();
                 }
-                write!(buffer, "{}", element.0,).unwrap();
+                write!(buffer, "{}", element.0).unwrap();
                 if element.2 != 1 {
                     write!(buffer, "{}", to_subscript_num(element.2 as isize)).unwrap();
                 }
@@ -126,9 +126,9 @@ impl MolecularFormula {
         self.hill_notation_generic(
             |element, buffer| {
                 if let Some(isotope) = element.1 {
-                    write!(buffer, "<sup>{isotope}</sup>",).unwrap();
+                    write!(buffer, "<sup>{isotope}</sup>").unwrap();
                 }
-                write!(buffer, "{}", element.0,).unwrap();
+                write!(buffer, "{}", element.0).unwrap();
                 if element.2 != 1 {
                     write!(buffer, "<sub>{}</sub>", element.2).unwrap();
                 }

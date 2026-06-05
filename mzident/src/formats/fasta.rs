@@ -786,6 +786,7 @@ impl<'a, T> FastaIdentifier<T>
 where
     T: AsRef<str> + 'a,
 {
+    /// Get it as a str version
     pub fn as_ref_str(&'a self) -> FastaIdentifier<&'a str> {
         match self {
             Self::GenInfoBackboneSeqID(decoy, a) => {
@@ -832,6 +833,7 @@ where
         }
     }
 
+    /// Get it as a Cow<str> version
     pub fn as_cow_str(&'a self) -> FastaIdentifier<Cow<'a, str>> {
         match self {
             Self::GenInfoBackboneSeqID(decoy, a) => {
@@ -1170,7 +1172,7 @@ impl FastaData {
                     BasicKind::Error,
                     "Failed reading fasta file",
                     format!("Error occurred while reading line {}", line_index + 1),
-                    path.map_or_else(Context::none, |p| {
+                    path.map_or_else(Context::default, |p| {
                         Context::default().source(p.to_string_lossy()).to_owned()
                     }),
                 )
