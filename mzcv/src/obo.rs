@@ -569,7 +569,7 @@ impl OboOntology {
                                 comment,
                             });
                         }
-                        "is_obselete" => {
+                        "is_obsolete" => {
                             if value_line.eq_ignore_ascii_case("true") {
                                 obj.obsolete = true;
                             }

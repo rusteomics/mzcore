@@ -302,6 +302,8 @@ pub enum CrossId {
     ChemSpider(usize),
     /// Reference a COMe entry, a database of metalloproteins (10.1186/1472-6807-4-3)
     COMe(Box<str>),
+    /// Enzyme Commission number
+    EC(u16, u16, u16, u16, bool),
     /// A gene ontology term
     GO(AccessionCode),
     /// A deltamass ID
@@ -562,6 +564,44 @@ impl TryFrom<(Option<Box<str>>, Box<str>)> for CrossId {
                 let (id, rule) = parse_ref(&value.1)?;
                 Self::Mod(Ontology::Psimod, id, rule)
             }
+            Some("ec" | "brenda" | "expasy") => {
+                let split = value.1.split('.').collect::<Vec<_>>();
+
+                if split.len() != 4 {
+                    return Err(BoxedError::new(
+                        BasicKind::Error,
+                        "Invalid EC number",
+                        format!("An EC number consists of 4 parts separated by '.'"),
+                        Context::default().lines(0, value.1.to_string()),
+                    ));
+                } else {
+                    let mut nums = Vec::with_capacity(4);
+                    let mut preliminary = false;
+                    let mut offset = 0;
+
+                    for n in 0..4 {
+                        let num = if n == 3 && split[n].starts_with('n') {
+                            preliminary = true;
+                            split[n][1..].trim()
+                        } else {
+                            split[n].trim()
+                        };
+                        let a = num.parse::<u16>().map_err(|err| {
+                            BoxedError::new(
+                                BasicKind::Error,
+                                "Invalid EC number",
+                                format!("The EC number {}", explain_number_error(&err)),
+                                Context::default()
+                                    .lines(0, value.1.to_string())
+                                    .add_highlight((0, offset, split[n].len())),
+                            )
+                        })?;
+                        nums.push(a);
+                        offset += split[n].len() + 1;
+                    }
+                    Self::EC(nums[0], nums[1], nums[2], nums[3], preliminary)
+                }
+            }
             Some(t) => {
                 // println!("Unknown cross-id tag: {t}:{}", value.1);
                 Self::Other(format!("{t}:{}", value.1).into_boxed_str())
@@ -586,13 +626,14 @@ impl Display for CrossId {
             Self::Article(a) => write!(f, "Article:{a}"),
             Self::Beilstein(a) => write!(f, "Beilstein:{a}"),
             Self::Book(a) => write!(f, "Book:{a}"),
-            Self::CAS(a, b, c) => write!(f, "CAS:{a}-{b}-{c}"),
+            Self::CAS(a, b, c) => write!(f, "CAS:{a:02}-{b:02}-{c}"),
             Self::ChEBI(a) => write!(f, "ChEBI:{a}"),
             Self::ChemicalBook(a) => write!(f, "ChemicalBook:{a}"),
             Self::ChemSpider(a) => write!(f, "ChemSpider:{a}"),
             Self::COMe(a) => write!(f, "COMe:{a}"),
             Self::Deltamass(a) => write!(f, "DeltaMass:{a}"),
             Self::DOI(a) => write!(f, "DOI:{a}"),
+            Self::EC(a, b, c, d, p) => write!(f, "EC:{a}.{b}.{c}.{}{d}", if *p { "n" } else { "" }),
             Self::Findmod(a) => write!(f, "FindMod:{a}"),
             Self::GO(a) => write!(f, "GO:{a}"),
             Self::MDL(a) => write!(f, "MDL:{a}"),
@@ -603,7 +644,7 @@ impl Display for CrossId {
             Self::PDB(a) => write!(f, "PDB:{a}"),
             Self::PDBHet(a) => write!(f, "PDBHet:{a}"),
             Self::PubChem(a) => write!(f, "PubChem:{a}"),
-            Self::PubMed(a) => write!(f, "PubMed:{a}"),
+            Self::PubMed(a) => write!(f, "PMID:{a}"),
             Self::Uniprot(a) => write!(f, "Uniprot:{a}"),
             Self::URL(_, b) => write!(f, "URL:{b}"),
         }
@@ -625,6 +666,9 @@ impl CrossId {
                 "https://www.chemspider.com/Chemical-Structure.{a}.html"
             )),
             Self::DOI(a) => Some(format!("https://doi.org/{a}")),
+            Self::EC(a, b, c, d, _p) => Some(format!(
+                "https://iubmb.qmul.ac.uk/enzyme/EC{a}/{b}/{c}/{d}.html"
+            )), //TODO: not sure how the preliminary works here
             Self::Findmod(a) => Some(format!("https://web.expasy.org/findmod/{a}.html")),
             Self::GO(a) => Some(format!("https://amigo.geneontology.org/amigo/term/GO:{a}")), // TODO: test if this works (has enough 0s)
             Self::PDB(a) => Some(format!("https://www.rcsb.org/structure/{a}")),
