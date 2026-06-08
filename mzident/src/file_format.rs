@@ -116,13 +116,13 @@ impl KnownFileFormat {
             Self::MzTab => Some(term!(MS:1002601|mzTab)),
             Self::NovoB(_) => None,
             Self::Novor(_) => Some(term!(MS:1002984|Novor)),
-            Self::Opair(_) => None,
+            Self::Opair(OpairVersion::Opair) => Some(term!(MS:1003429|FragPipe)),
             Self::Peaks(_) => Some(term!(MS:1001946|PEAKS Studio)),
             Self::PepNet(_) => None,
             Self::PiHelixNovo(_) => None,
             Self::PiPrimeNovo(_) => None,
-            Self::PLGS(_) => None,
-            Self::PLink(_) => Some(term!(MS:1003432|pLink2)),
+            Self::PLGS(PLGSVersion::V3_0) => Some(term!(MS:1000601|ProteinLynx Global Server)),
+            Self::PLink(PLinkVersion::V2_3) => Some(term!(MS:1003432|pLink2)),
             Self::PowerNovo(_) => None,
             Self::Proteoscape(_) => None,
             Self::PUniFind(_) => None,
@@ -181,8 +181,14 @@ impl TryFrom<CVTerm> for KnownFileFormat {
                         return Ok(Self::MSFragger(v.version));
                     }
                 }
+                for v in OpairPSM::VERSIONS {
+                    if value.value.eq_ignore_ascii_case(v.version.name()) {
+                        return Ok(Self::Opair(v.version));
+                    }
+                }
                 Err(())
             }
+            curie!(MS:1000601|ProteinLynx Global Server) => Ok(Self::PLGS(PLGSVersion::V3_0)),
             _ => Err(()),
         }
     }
