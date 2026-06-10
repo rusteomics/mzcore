@@ -460,7 +460,11 @@ impl OboOntology {
                             }
                         }
                         "id" => {
-                            obj.id = value_line.into();
+                            if obj.stanza_type == OboStanzaType::Typedef {
+                                obj.id = OboIdentifier(None, value_line.into());
+                            } else {
+                                obj.id = value_line.into();
+                            }
                         }
                         "def" => {
                             let parts = tokenise(value_line).map_err(|close| {
@@ -555,9 +559,11 @@ impl OboOntology {
                                         .lines(0, line.clone())
                                         .line_index(line_index as u32),
                                 ))).transpose()?.unwrap_or_default();
-                            let type_name = parts.get(2).map(|(_, n)| unescape(n));
+                            let type_name = (parts.len() == 4)
+                                .then(|| parts.get(2).map(|(_, n)| unescape(n)))
+                                .flatten();
                             let cross_references = parts
-                                .get(3)
+                                .get(parts.len() - 1)
                                 .map(|(_, n)| parse_dbxref(n))
                                 .unwrap_or_default();
                             obj.synonyms.push(OboSynonym {
@@ -808,7 +814,7 @@ fn tokenise_obo_value_line<'a>(
     let value = &text[..trailing_start.or(comment_start).unwrap_or(text.len())];
     let mut trailing = Vec::new();
     if let Some(start) = trailing_start {
-        let slice = &text[start..comment_start.unwrap_or(text.len())];
+        let slice = &text[start + 1..comment_start.unwrap_or(text.len())];
         let mut name_start = 0;
         let mut value_start = None;
 
@@ -842,8 +848,14 @@ fn tokenise_obo_value_line<'a>(
 
             escaped = char == '\\';
         }
+        if let Some(value) = value_start {
+            trailing.push((
+                unescape(&slice[name_start..value]),
+                unescape(&slice[value + 1..slice.len() - 1]),
+            ));
+        }
     }
-    let comment = comment_start.map(|s| unescape(&text[s..]));
+    let comment = comment_start.map(|s| unescape(&text[s + 1..]));
 
     Ok((value.trim(), trailing, comment))
 }
