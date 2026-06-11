@@ -1,7 +1,7 @@
 use std::fmt::Write;
 
 use crate::{
-    chemistry::{AmbiguousLabel, MassMode, MolecularFormula},
+    chemistry::{AmbiguousLabel, Element, MassMode, MolecularFormula},
     glycan::GlycanPosition,
     parse_json::{ParseJson, use_serde},
     system::{Mass, OrderedMass, Ratio, da, fraction},
@@ -82,6 +82,7 @@ impl MolecularFormula {
                     write!(buffer, "{}{}", element.0, element.2).unwrap();
                 }
             },
+            "",
             false,
             false,
         )
@@ -97,6 +98,7 @@ impl MolecularFormula {
                     write!(buffer, "{}{}", element.0, element.2).unwrap();
                 }
             },
+            "",
             true,
             true,
         )
@@ -116,6 +118,7 @@ impl MolecularFormula {
                     write!(buffer, "{}", to_subscript_num(element.2 as isize)).unwrap();
                 }
             },
+            "",
             true,
             true,
         )
@@ -133,6 +136,7 @@ impl MolecularFormula {
                     write!(buffer, "<sub>{}</sub>", element.2).unwrap();
                 }
             },
+            "",
             true,
             true,
         )
@@ -142,7 +146,33 @@ impl MolecularFormula {
     pub fn contains_negative_amount(&self) -> bool {
         self.elements()
             .iter()
-            .any(|e| e.0 != crate::chemistry::Element::Electron && e.2 < 0)
+            .any(|e| e.0 != Element::Electron && e.2 < 0)
+    }
+
+    /// Print this formula in XLMOD notation according to the Hill notation ordering
+    pub fn hill_notation_xlmod(&self) -> Option<String> {
+        if self.charge().value != 0 || self.additional_mass != 0.0 {
+            None
+        } else {
+            Some(self.hill_notation_generic(
+                |(element, isotope, amount), buffer| {
+                    if *amount < 0 {
+                        write!(buffer, "-").unwrap();
+                    }
+                    if isotope.is_some_and(|i| i.get() == 2) && *element == Element::H {
+                        write!(buffer, "D{}", amount.abs()).unwrap();
+                    } else {
+                        if let Some(isotope) = isotope {
+                            write!(buffer, "{isotope}").unwrap();
+                        }
+                        write!(buffer, "{element}{}", amount.abs()).unwrap();
+                    }
+                },
+                " ",
+                false,
+                false,
+            ))
+        }
     }
 }
 

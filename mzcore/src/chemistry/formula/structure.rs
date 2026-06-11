@@ -449,6 +449,7 @@ impl MolecularFormula {
     pub(in super::super) fn hill_notation_generic(
         &self,
         f: impl Fn(&(Element, Option<NonZeroU16>, i32), &mut String),
+        separator: &str,
         show_mass: bool,
         show_charge: bool,
     ) -> String {
@@ -467,19 +468,27 @@ impl MolecularFormula {
                 .find(|e| e.0 == Element::H && e.1.is_none())
                 && hydrogen.2 != 0
             {
+                if !buffer.is_empty() {
+                    buffer.push_str(separator);
+                }
                 f(hydrogen, &mut buffer);
             }
             for element in self.elements.iter().filter(|e| {
                 !((e.0 == Element::H || e.0 == Element::C || e.0 == Element::Electron)
                     && e.1.is_none())
+                    && e.2 != 0
             }) {
-                if element.2 != 0 {
-                    f(element, &mut buffer);
+                if !buffer.is_empty() {
+                    buffer.push_str(separator);
                 }
+                f(element, &mut buffer);
             }
         } else {
             for element in &self.elements {
                 if element.2 != 0 && element.0 != Element::Electron {
+                    if !buffer.is_empty() {
+                        buffer.push_str(separator);
+                    }
                     f(element, &mut buffer);
                 }
             }
