@@ -673,7 +673,7 @@ impl OboOntology {
                         }
                         _ => {
                             obj.lines
-                                .entry(id.trim().into())
+                                .entry(id.trim().to_ascii_lowercase().into())
                                 .or_insert(Vec::new())
                                 .push((unescape(value_line), trailing_modifiers, comment));
                         }
