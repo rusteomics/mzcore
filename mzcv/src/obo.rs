@@ -232,10 +232,10 @@ pub enum OboValue {
     String(String),
     /// A URI, when the unit is not set or `xsd:anyURI`
     Uri(String),
-    /// A 64 bit floating point, when the unit is `xsd:double`, `xsd:decimal` or `xsd:float`
-    Float(f64),
-    /// An integer, when the unit is `xsd:integer`, `xsd:int`, `xsd:nonNegativeInteger`, or `xsd:positiveInteger`
-    Integer(isize),
+    /// A 64 bit floating point, when the unit is `xsd:double`, `xsd:decimal` or `xsd:float`, stores the given type as well
+    Float(f64, &'static str),
+    /// An integer, when the unit is `xsd:integer`, `xsd:int`, `xsd:nonNegativeInteger`, or `xsd:positiveInteger`, stores the given type as well
+    Integer(isize, &'static str),
     /// A boolean, when the unit is `xsd:boolean`
     Boolean(bool),
     /// A datetime in RFC 3339 format, when the unit is `xsd:dateTime`
@@ -246,8 +246,14 @@ impl Display for OboValue {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::String(s) | Self::Uri(s) => write!(f, "{s}"),
-            Self::Float(s) => write!(f, "{s}"),
-            Self::Integer(s) => write!(f, "{s}"),
+            Self::Float(s, _) => {
+                if s.fract() == 0.0 {
+                    write!(f, "{s:.1}")
+                } else {
+                    write!(f, "{s}")
+                }
+            }
+            Self::Integer(s, _) => write!(f, "{s}"),
             Self::Boolean(s) => write!(f, "{s}"),
             Self::DateTime(s) => write!(f, "{}", s.to_rfc3339()),
         }
@@ -263,16 +269,21 @@ impl OboValue {
         match unit {
             "xsd:string" => Ok(Self::String(value.to_string())),
             "xsd:anyURI" => Ok(Self::Uri(value.to_string())),
-            "xsd:double" | "xsd:float" | "xsd:decimal" => {
-                Ok(Self::Float(value.parse::<f64>().map_err(|e| {
+            "xsd:double" | "xsd:float" | "xsd:decimal" => Ok(Self::Float(
+                value.parse::<f64>().map_err(|e| {
                     BoxedError::new(
                         OboError::InvalidFloat,
                         "Could not parse float",
                         e.to_string(),
                         base_context,
                     )
-                })?))
-            }
+                })?,
+                match unit {
+                    "xsd:double" => "double",
+                    "xsd:decimal" => "decimal",
+                    "xsd:float" | _ => "float",
+                },
+            )),
             "xsd:boolean" => Ok(Self::Boolean(value == "true" || value == "1")),
             "xsd:dateTime" => Ok(Self::DateTime(
                 chrono::DateTime::parse_from_rfc3339(value).map_err(|e| {
@@ -285,14 +296,22 @@ impl OboValue {
                 })?,
             )),
             "xsd:integer" | "xsd:int" | "xsd:nonNegativeInteger" | "xsd:positiveInteger" => {
-                Ok(Self::Integer(value.parse::<isize>().map_err(|e| {
-                    BoxedError::new(
-                        OboError::InvalidInteger,
-                        "Could not parse integer",
-                        e.to_string(),
-                        base_context,
-                    )
-                })?))
+                Ok(Self::Integer(
+                    value.parse::<isize>().map_err(|e| {
+                        BoxedError::new(
+                            OboError::InvalidInteger,
+                            "Could not parse integer",
+                            e.to_string(),
+                            base_context,
+                        )
+                    })?,
+                    match unit {
+                        "xsd:int" => "int",
+                        "xsd:nonNegativeInteger" => "nonNegativeInteger",
+                        "xsd:positiveInteger" => "positiveInteger",
+                        "xsd:integer" | _ => "integer",
+                    },
+                ))
             }
             dt => Err(BoxedError::new(
                 OboError::InvalidDataType,
@@ -309,8 +328,7 @@ impl OboValue {
             Self::Boolean(_) => "boolean",
             Self::String(_) => "string",
             Self::Uri(_) => "uri",
-            Self::Float(_) => "float",
-            Self::Integer(_) => "integer",
+            Self::Float(_, t) | Self::Integer(_, t) => t,
             Self::DateTime(_) => "datetime",
         }
     }

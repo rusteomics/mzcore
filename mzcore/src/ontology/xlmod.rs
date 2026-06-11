@@ -279,7 +279,7 @@ fn parse_property_values(
                         ),
                     );
                 }
-                properties.sites = if let OboValue::Integer(n) = value[0].0 {
+                properties.sites = if let OboValue::Integer(n, _) = value[0].0 {
                     u8::try_from(n).map_or_else(
                         |_| {
                             combine_error(
@@ -318,7 +318,7 @@ fn parse_property_values(
             }
             "spacerLength" => {
                 for (def, _, _) in value {
-                    let length = if let OboValue::Float(n) = def {
+                    let length = if let OboValue::Float(n, _) = def {
                         *n
                     } else {
                         combine_error(
@@ -358,7 +358,7 @@ fn parse_property_values(
                         ),
                     );
                 }
-                let length = if let OboValue::Float(n) = value[0].0 {
+                let length = if let OboValue::Float(n, _) = value[0].0 {
                     n
                 } else {
                     combine_error(
@@ -399,7 +399,7 @@ fn parse_property_values(
                         ),
                     );
                 }
-                let length = if let OboValue::Float(n) = value[0].0 {
+                let length = if let OboValue::Float(n, _) = value[0].0 {
                     n
                 } else {
                     combine_error(
@@ -440,7 +440,7 @@ fn parse_property_values(
                         ),
                     );
                 }
-                mass = if let OboValue::Float(n) = value[0].0 {
+                mass = if let OboValue::Float(n, _) = value[0].0 {
                     Some(ordered_float::OrderedFloat(n))
                 } else {
                     combine_error(
@@ -595,26 +595,28 @@ fn parse_property_values(
                 // CID_Fragment: "828.5" xsd:double
                 for (def, _, _) in value {
                     properties.diagnostic_ions.push(DiagnosticIon(
-                        MolecularFormula::with_additional_mass(if let OboValue::Float(n) = def {
-                            *n
-                        } else {
-                            combine_error(
-                                &mut errors,
-                                BoxedError::new(
-                                    CVError::ItemError,
-                                    "Invalid type",
-                                    "Invalid item type",
-                                    Context::default().lines(
-                                        0,
-                                        format!(
-                                            "{id}: {property}: type: {}, expected: float",
-                                            value[0].0.datatype()
+                        MolecularFormula::with_additional_mass(
+                            if let OboValue::Float(n, _) = def {
+                                *n
+                            } else {
+                                combine_error(
+                                    &mut errors,
+                                    BoxedError::new(
+                                        CVError::ItemError,
+                                        "Invalid type",
+                                        "Invalid item type",
+                                        Context::default().lines(
+                                            0,
+                                            format!(
+                                                "{id}: {property}: type: {}, expected: float",
+                                                value[0].0.datatype()
+                                            ),
                                         ),
                                     ),
-                                ),
-                            );
-                            0.0
-                        }),
+                                );
+                                0.0
+                            },
+                        ),
                     ));
                 }
             }
