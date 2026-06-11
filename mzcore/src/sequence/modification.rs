@@ -328,8 +328,10 @@ pub enum CrossId {
     PDBHet(Box<str>),
     /// Reference a PubMed entry
     PubMed(usize),
-    /// Reference a PubChem entry
-    PubChem(usize),
+    /// Reference a PubChem Compound entry
+    PubChemCompound(usize),
+    /// Reference a PubChem Substance entry
+    PubChemSubstance(usize),
     /// Reference a uniprot PTMList entry by name
     Uniprot(Box<str>),
     /// Reference a URL with possibly a name for the link
@@ -525,7 +527,17 @@ impl TryFrom<(Option<Box<str>>, Box<str>)> for CrossId {
                 })?)
             }
             Some("pubchemid" | "pubchem cid" | "pubchem" | "pubchem_compound") => {
-                Self::PubChem(value.1.parse().map_err(|err| {
+                Self::PubChemCompound(value.1.parse().map_err(|err| {
+                    BoxedError::new(
+                        BasicKind::Error,
+                        "Invalid PubChem identifier",
+                        format!("The number {}", explain_number_error(&err)),
+                        Context::default().lines(0, value.1.to_string()),
+                    )
+                })?)
+            }
+            Some("pubchem_substance") => {
+                Self::PubChemSubstance(value.1.parse().map_err(|err| {
                     BoxedError::new(
                         BasicKind::Error,
                         "Invalid PubChem identifier",
@@ -602,6 +614,9 @@ impl TryFrom<(Option<Box<str>>, Box<str>)> for CrossId {
                     Self::EC(nums[0], nums[1], nums[2], nums[3], preliminary)
                 }
             }
+            Some(name) if value.1.starts_with("http://") | value.1.starts_with("https://") => {
+                Self::URL(Some(name.into()), value.1)
+            }
             Some(t) => {
                 // println!("Unknown cross-id tag: {t}:{}", value.1);
                 Self::Other(format!("{t}:{}", value.1).into_boxed_str())
@@ -627,7 +642,7 @@ impl Display for CrossId {
             Self::Beilstein(a) => write!(f, "Beilstein:{a}"),
             Self::Book(a) => write!(f, "Book:{a}"),
             Self::CAS(a, b, c) => write!(f, "CAS:{a:02}-{b:02}-{c}"),
-            Self::ChEBI(a) => write!(f, "ChEBI:{a}"),
+            Self::ChEBI(a) => write!(f, "CHEBI:{a}"),
             Self::ChemicalBook(a) => write!(f, "ChemicalBook:{a}"),
             Self::ChemSpider(a) => write!(f, "ChemSpider:{a}"),
             Self::COMe(a) => write!(f, "COMe:{a}"),
@@ -643,10 +658,11 @@ impl Display for CrossId {
             Self::Patent(a) => write!(f, "Patent:{a}"),
             Self::PDB(a) => write!(f, "PDB:{a}"),
             Self::PDBHet(a) => write!(f, "PDBHet:{a}"),
-            Self::PubChem(a) => write!(f, "PubChem:{a}"),
+            Self::PubChemCompound(a) => write!(f, "PubChem_Compound:{a}"),
+            Self::PubChemSubstance(a) => write!(f, "PubChem_Substance:{a}"),
             Self::PubMed(a) => write!(f, "PMID:{a}"),
             Self::Uniprot(a) => write!(f, "Uniprot:{a}"),
-            Self::URL(_, b) => write!(f, "URL:{b}"),
+            Self::URL(name, b) => write!(f, "{}:{b}", name.as_deref().unwrap_or("URL")),
         }
     }
 }
@@ -673,7 +689,12 @@ impl CrossId {
             Self::GO(a) => Some(format!("https://amigo.geneontology.org/amigo/term/GO:{a}")), // TODO: test if this works (has enough 0s)
             Self::PDB(a) => Some(format!("https://www.rcsb.org/structure/{a}")),
             Self::PDBHet(a) => Some(format!("https://www.rcsb.org/ligand/{a}")),
-            Self::PubChem(a) => Some(format!("https://pubchem.ncbi.nlm.nih.gov/compound/{a}")),
+            Self::PubChemCompound(a) => {
+                Some(format!("https://pubchem.ncbi.nlm.nih.gov/compound/{a}"))
+            }
+            Self::PubChemSubstance(a) => {
+                Some(format!("https://pubchem.ncbi.nlm.nih.gov/substance/{a}"))
+            }
             Self::PubMed(a) => Some(format!("https://pubmed.ncbi.nlm.nih.gov/{a}/")),
             Self::URL(_, b) => Some(b.to_string()),
             Self::Article(_)

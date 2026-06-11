@@ -105,7 +105,10 @@ impl CVSource for Gnome {
                     modification.id.cross_ids.push(CrossId::ChEBI(chebi));
                 }
                 if let Some(pubchem) = structure.pubchem {
-                    modification.id.cross_ids.push(CrossId::PubChem(pubchem));
+                    modification
+                        .id
+                        .cross_ids
+                        .push(CrossId::PubChemCompound(pubchem));
                 }
                 modification.motif = structure.motif.clone();
                 modification.taxonomy = structure.taxonomy.clone().into();
