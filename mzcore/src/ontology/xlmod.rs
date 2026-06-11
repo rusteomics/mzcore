@@ -318,7 +318,7 @@ fn parse_property_values(
             }
             "spacerLength" => {
                 for (def, _, _) in value {
-                    let length = if let OboValue::Float(n, _) = def {
+                    let length = if let OboValue::Float(n, _, _) = def {
                         *n
                     } else {
                         combine_error(
@@ -358,7 +358,7 @@ fn parse_property_values(
                         ),
                     );
                 }
-                let length = if let OboValue::Float(n, _) = value[0].0 {
+                let length = if let OboValue::Float(n, _, _) = value[0].0 {
                     n
                 } else {
                     combine_error(
@@ -399,7 +399,7 @@ fn parse_property_values(
                         ),
                     );
                 }
-                let length = if let OboValue::Float(n, _) = value[0].0 {
+                let length = if let OboValue::Float(n, _, _) = value[0].0 {
                     n
                 } else {
                     combine_error(
@@ -440,7 +440,7 @@ fn parse_property_values(
                         ),
                     );
                 }
-                mass = if let OboValue::Float(n, _) = value[0].0 {
+                mass = if let OboValue::Float(n, _, _) = value[0].0 {
                     Some(ordered_float::OrderedFloat(n))
                 } else {
                     combine_error(
@@ -596,7 +596,7 @@ fn parse_property_values(
                 for (def, _, _) in value {
                     properties.diagnostic_ions.push(DiagnosticIon(
                         MolecularFormula::with_additional_mass(
-                            if let OboValue::Float(n, _) = def {
+                            if let OboValue::Float(n, _, _) = def {
                                 *n
                             } else {
                                 combine_error(

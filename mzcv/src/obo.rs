@@ -232,8 +232,8 @@ pub enum OboValue {
     String(String),
     /// A URI, when the unit is not set or `xsd:anyURI`
     Uri(String),
-    /// A 64 bit floating point, when the unit is `xsd:double`, `xsd:decimal` or `xsd:float`, stores the given type as well
-    Float(f64, &'static str),
+    /// A 64 bit floating point, when the unit is `xsd:double`, `xsd:decimal` or `xsd:float`, stores the given type as well, and stores the number of digits it was defined with
+    Float(f64, &'static str, Option<u8>),
     /// An integer, when the unit is `xsd:integer`, `xsd:int`, `xsd:nonNegativeInteger`, or `xsd:positiveInteger`, stores the given type as well
     Integer(isize, &'static str),
     /// A boolean, when the unit is `xsd:boolean`
@@ -242,13 +242,56 @@ pub enum OboValue {
     DateTime(chrono::DateTime<FixedOffset>),
 }
 
+impl PartialEq for OboValue {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Self::String(a), Self::String(b)) | (Self::Uri(a), Self::Uri(b)) => a == b,
+            (Self::Float(a, _, _), Self::Float(b, _, _)) => a.total_cmp(b).is_eq(),
+            (Self::Integer(a, _), Self::Integer(b, _)) => a == b,
+            (Self::Boolean(a), Self::Boolean(b)) => a == b,
+            (Self::DateTime(a), Self::DateTime(b)) => a == b,
+            _ => false,
+        }
+    }
+}
+
+impl Eq for OboValue {}
+
+impl PartialOrd for OboValue {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for OboValue {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        match (self, other) {
+            (Self::String(a), Self::String(b)) | (Self::Uri(a), Self::Uri(b)) => a.cmp(b),
+            (Self::Float(a, _, _), Self::Float(b, _, _)) => a.total_cmp(b),
+            (Self::Integer(a, _), Self::Integer(b, _)) => a.cmp(b),
+            (Self::Boolean(a), Self::Boolean(b)) => a.cmp(b),
+            (Self::DateTime(a), Self::DateTime(b)) => a.cmp(b),
+            (Self::String(_), _) => std::cmp::Ordering::Greater,
+            (_, Self::String(_)) => std::cmp::Ordering::Less,
+            (Self::Uri(_), _) => std::cmp::Ordering::Greater,
+            (_, Self::Uri(_)) => std::cmp::Ordering::Less,
+            (Self::Float(..), _) => std::cmp::Ordering::Greater,
+            (_, Self::Float(..)) => std::cmp::Ordering::Less,
+            (Self::Integer(_, _), _) => std::cmp::Ordering::Greater,
+            (_, Self::Integer(_, _)) => std::cmp::Ordering::Less,
+            (Self::Boolean(_), _) => std::cmp::Ordering::Greater,
+            (_, Self::Boolean(_)) => std::cmp::Ordering::Less,
+        }
+    }
+}
+
 impl Display for OboValue {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::String(s) | Self::Uri(s) => write!(f, "{s}"),
-            Self::Float(s, _) => {
-                if s.fract() == 0.0 {
-                    write!(f, "{s:.1}")
+            Self::Float(s, _, digits) => {
+                if let Some(digits) = digits {
+                    write!(f, "{s:.*}", (*digits as usize).max(1))
                 } else {
                     write!(f, "{s}")
                 }
@@ -283,6 +326,7 @@ impl OboValue {
                     "xsd:decimal" => "decimal",
                     "xsd:float" | _ => "float",
                 },
+                float_digits(value),
             )),
             "xsd:boolean" => Ok(Self::Boolean(value == "true" || value == "1")),
             "xsd:dateTime" => Ok(Self::DateTime(
@@ -328,7 +372,7 @@ impl OboValue {
             Self::Boolean(_) => "boolean",
             Self::String(_) => "string",
             Self::Uri(_) => "uri",
-            Self::Float(_, t) | Self::Integer(_, t) => t,
+            Self::Float(_, t, _) | Self::Integer(_, t) => t,
             Self::DateTime(_) => "datetime",
         }
     }
@@ -581,7 +625,7 @@ impl OboOntology {
                                 .then(|| parts.get(2).map(|(_, n)| unescape(n)))
                                 .flatten();
                             let cross_references = parts
-                                .get(parts.len() - 1)
+                                .last()
                                 .map(|(_, n)| parse_dbxref(n))
                                 .unwrap_or_default();
                             obj.synonyms.push(OboSynonym {
@@ -932,4 +976,31 @@ fn parse_dbxref(text: &str) -> Vec<RawOboID> {
         .filter(|s| !s.is_empty())
         .map(|id| OboIdentifier::from(id).into())
         .collect()
+}
+
+/// Count the number of digits, but only if it did not use exponential notation
+fn float_digits(text: &str) -> Option<u8> {
+    if text.is_ascii()
+        && !text.eq_ignore_ascii_case("nan")
+        && !text.eq_ignore_ascii_case("+nan")
+        && !text.eq_ignore_ascii_case("-nan")
+        && !text.eq_ignore_ascii_case("inf")
+        && !text.eq_ignore_ascii_case("+inf")
+        && !text.eq_ignore_ascii_case("-inf")
+        && !text.eq_ignore_ascii_case("infinity")
+        && !text.eq_ignore_ascii_case("+infinity")
+        && !text.eq_ignore_ascii_case("-infinity")
+    {
+        let text = text
+            .as_bytes()
+            .iter()
+            .position(|b| *b == b'e' || *b == b'E')
+            .map_or(text, |pos| &text[..pos]);
+        text.as_bytes()
+            .iter()
+            .position(|b| *b == b'.')
+            .map_or(Some(0), |pos| u8::try_from(text[pos + 1..].len()).ok())
+    } else {
+        None
+    }
 }
