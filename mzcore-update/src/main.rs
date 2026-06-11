@@ -293,7 +293,11 @@ fn valid_link(
             BoxedError::new(
                 BasicKind::Warning,
                 "Suspicious link",
-                "Unimod and PSI-MOD do not have the same formula",
+                format!(
+                    "{} and {} do not have the same formula",
+                    one.description().map_or(Ontology::Custom, |d| d.ontology),
+                    two.description().map_or(Ontology::Custom, |d| d.ontology)
+                ),
                 context_error::Context::default().lines(
                     0,
                     format!("{name_one}={} {name_two}={}", one.formula(), two.formula()),
@@ -312,7 +316,10 @@ fn valid_link(
             BoxedError::new(
                 BasicKind::Warning,
                 "Suspicious link",
-                "Unimod does not allow this modification on this location",
+                format!(
+                    "{} does not allow this modification on this location",
+                    one.description().map_or(Ontology::Custom, |d| d.ontology),
+                ),
                 context_error::Context::default()
                     .lines(0, format!("{name_one} {name_two} {rule:?}")),
             ),

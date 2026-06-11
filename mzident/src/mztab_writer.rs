@@ -1166,10 +1166,11 @@ impl<W: Write, State: CanWritePSMs> MzTabWriter<W, State> {
         custom_columns: &[MzTabOptionalColumn<PSM, W>],
     ) -> Result<MzTabWriter<W, PSMsWritten>, MzTabWriteError> {
         let psh = format!(
-            "PSH\tsequence\tPSM_ID\taccession\tunique\tdatabase\tdatabase_version\tsearch_engine\t{}\tmodifications\tspectra_ref\tretention_time\tcharge\texp_mass_to_charge\tcalc_mass_to_charge\tpre\tpost\tstart\tend\treliability\turi{}",
+            "PSH\tsequence\tPSM_ID\taccession\tunique\tdatabase\tdatabase_version\tsearch_engine\t{}\tmodifications\tspectra_ref\tretention_time\tcharge\texp_mass_to_charge\tcalc_mass_to_charge\tpre\tpost\tstart\tend\treliability\turi\topt_global_{}{}",
             (1..=self.metadata.psm_search_engines.len())
                 .map(|i| format!("search_engine_score[{i}]"))
                 .join("\t"),
+            MzTabOptionalColumnName::Term(mzcv::term!(MS:1003984|amino acid confidence level)), // TODO: update if the final accepted name changes
             custom_columns
                 .iter()
                 .map(|(term, id, _)| format!("\topt_{id}_{term}"))
@@ -1258,7 +1259,7 @@ impl<W: Write, State: CanWritePSMs> MzTabWriter<W, State> {
 
                     write!(
                         self.writer,
-                        "PSM\t{sequence}\t{psm_id}\t{accession}\t{unique}\t{database}\t{database_version}\t{search_engine}\t{search_engine_score}\t{modifications}\t{spectra_ref}\t{retention_time}\t{charge}\t{exp_mass_to_charge}\t{calc_mass_to_charge}\t{pre}\t{post}\t{start}\t{end}\t{reliability}\t{uri}",
+                        "PSM\t{sequence}\t{psm_id}\t{accession}\t{unique}\t{database}\t{database_version}\t{search_engine}\t{search_engine_score}\t{modifications}\t{spectra_ref}\t{retention_time}\t{charge}\t{exp_mass_to_charge}\t{calc_mass_to_charge}\t{pre}\t{post}\t{start}\t{end}\t{reliability}\t{uri}\t{lc}",
                         sequence = peptidoform
                             .sequence()
                             .iter()
@@ -1450,6 +1451,10 @@ impl<W: Write, State: CanWritePSMs> MzTabWriter<W, State> {
                             None => "null",
                         },
                         uri = psm.uri().unwrap_or_else(|| "null".to_string()),
+                        lc = psm.local_confidence().map_or_else(
+                            || "null".to_string(),
+                            |lc| lc.iter().map(ToString::to_string).join(",")
+                        )
                     )?;
                     for (_, _, col) in custom_columns {
                         write!(self.writer, "\t")?;
