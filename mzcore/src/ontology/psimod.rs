@@ -14,7 +14,7 @@ use thin_vec::ThinVec;
 
 use crate::{
     chemistry::MolecularFormula,
-    helper_functions::UnwrapInfallible,
+    helper_functions::{UnwrapInfallible, explain_number_error},
     ontology::{
         Ontology,
         ontology_modification::{ModData, OntologyModification},
@@ -179,12 +179,11 @@ impl CVSource for PsiMod {
 
             let mut origins = Vec::new();
             let mut term = None;
+            let mut charge = None;
             for (id, _values, _comment) in &obj.xref {
                 match (id.0.as_deref(), &id.1) {
                     (Some("DiffFormula"), s) if s.as_ref() != "\"none\"" => {
-                        match MolecularFormula::psi_mod(
-                            s.trim_start_matches('\"').trim_end_matches('\"'),
-                        ) {
+                        match MolecularFormula::psi_mod(s.trim_matches('\"')) {
                             Ok(formula) => modification.formula = formula,
                             Err(err) => combine_error(
                                 &mut errors,
@@ -201,6 +200,53 @@ impl CVSource for PsiMod {
                                         }),
                                 ),
                             ),
+                        }
+                    }
+                    (Some("FormalCharge"), s) if s.as_ref() != "\"none\"" => {
+                        let v = s.trim_matches('\"');
+                        if v.len() >= 2 {
+                            let num = match v[..v.len() - 1].parse::<u8>() {
+                                Ok(v) => v,
+                                Err(err) => {
+                                    combine_error(
+                                        &mut errors,
+                                        BoxedError::new(
+                                            CVError::ItemError,
+                                            "Invalid formal charge",
+                                            format!("The charge is {}", explain_number_error(&err)),
+                                            Context::default().lines(0, obj.id.to_string()),
+                                        ),
+                                    );
+                                    continue;
+                                }
+                            };
+                            let num = match &v[v.len() - 1..] {
+                                "+" => num as isize,
+                                "-" => -(num as isize),
+                                _ => {
+                                    combine_error(
+                                        &mut errors,
+                                        BoxedError::new(
+                                            CVError::ItemError,
+                                            "Invalid formal charge",
+                                            "The sign needs to be at the end of the charge and can only be '+' or '-'",
+                                            Context::default().lines(0, obj.id.to_string()),
+                                        ),
+                                    );
+                                    continue;
+                                }
+                            };
+                            charge = Some(num);
+                        } else {
+                            combine_error(
+                                &mut errors,
+                                BoxedError::new(
+                                    CVError::ItemError,
+                                    "Invalid formal charge",
+                                    "A formal charge should contain the charge itself followed by the sign",
+                                    Context::default().lines(0, obj.id.to_string()),
+                                ),
+                            )
                         }
                     }
                     (Some("Origin"), value) => {
@@ -305,6 +351,15 @@ impl CVSource for PsiMod {
                     _ => (), // ignore
                 }
             }
+
+            if let Some(charge) = charge {
+                modification
+                    .formula
+                    .set_charge(crate::system::isize::Charge::new::<crate::system::e>(
+                        charge,
+                    ));
+            }
+
             if origins.len() <= 1 {
                 let mut rules = Vec::new();
                 if let Some(origin) = origins.first() {

@@ -174,6 +174,25 @@ impl MolecularFormula {
             ))
         }
     }
+
+    /// Print this formula in PSI-MOD notation according to the Hill notation ordering
+    pub fn hill_notation_psi_mod(&self) -> Option<String> {
+        if self.charge().value != 0 || self.additional_mass != 0.0 {
+            None
+        } else {
+            Some(self.hill_notation_generic(
+                |(element, isotope, amount), buffer| {
+                    if let Some(isotope) = isotope {
+                        write!(buffer, "({isotope})").unwrap();
+                    }
+                    write!(buffer, "{element} {amount}").unwrap();
+                },
+                " ",
+                false,
+                false,
+            ))
+        }
+    }
 }
 
 impl ParseJson for MolecularFormula {
