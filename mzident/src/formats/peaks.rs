@@ -760,11 +760,10 @@ impl PSMMetaData for PeaksPSM {
     }
 
     fn experimental_mass(&self) -> Option<Mass> {
-        self.mass
-            .map_or_else(|| self.z.map(|z| self.mz * z.to_float()), Some)
+        self.mass.or_else(|| self.z.map(|z| self.mz * z.to_float()))
     }
 
-    type Protein = crate::NoProtein; // TODO: the protein is optional, which does not cuurently fit with the macro
+    type Protein = crate::NoProtein; // TODO: the protein is optional, which does not currently fit with the macro
 
     fn protein_location(&self) -> Option<Range<u16>> {
         self.start.and_then(|s| self.end.map(|e| s..e))

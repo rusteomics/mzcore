@@ -191,6 +191,14 @@ macro_rules! impl_ref {
                 (**self).experimental_mass()
             }
 
+            fn mass_error(&self) -> Option<Mass> {
+                (**self).mass_error()
+            }
+
+            fn ppm_error(&self) -> Option<Ratio> {
+                (**self).ppm_error()
+            }
+
             type Protein = T::Protein;
             fn proteins(&self) -> Cow<'_, [Self::Protein]> {
                 (**self).proteins()
