@@ -75,7 +75,7 @@ impl MolecularFormula {
         range: impl RangeBounds<usize>,
     ) -> Result<Self, BoxedError<'a, BasicKind>> {
         let (mut index, end) = range.bounds(value.len().saturating_sub(1));
-        if index > end || end >= value.len() || &value[index..=end] == "(empty)" {
+        if index > end || &value[index..=end] == "(empty)" {
             return if ALLOW_EMPTY {
                 Ok(Self::default())
             } else {

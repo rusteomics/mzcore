@@ -9,24 +9,23 @@ use crate::{
 impl MolecularFormula {
     /// Parse a molecular formula from a RESID formula.
     /// # Errors
-    /// If the formula is not valid according to the PSI-MOD molecular formula format, with some help on what is going wrong.
+    /// If the formula is not valid according to the RESID molecular formula format, with some help on what is going wrong.
     /// ```rust
     /// use mzcore::prelude::*;
     /// assert_eq!(MolecularFormula::resid("C 2 H 3 N 1 O 1 +"), Ok(molecular_formula!(C 2 H 3 N 1 O 1 :z+1).into()));
     /// assert!(dbg!(MolecularFormula::resid("C 4 H 5 N 1 O 3, C 4 H 6 N 2 O 2")).is_ok());
-    ///
     /// ```
     pub fn resid(value: &str) -> Result<Multi<Self>, BoxedError<'_, BasicKind>> {
         Self::resid_inner(&Context::default().lines(0, value), value, 0..value.len())
     }
 
-    /// This parses a substring of the given string as a PSI-MOD molecular formula definition.
-    /// Additionally, this allows passing a base context to allow to set the line index and source
+    /// This parses a substring of the given string as a RESID molecular formula definition.
+    /// Additionally, this allows passing a base context to allow setting the line index and source
     /// and other properties. Note that the base context is assumed to contain the full line at
     /// line index 0.
     ///
     /// # Errors
-    /// It fails when the string is not a valid PSI-MOD molecular formula string.
+    /// It fails when the string is not a valid RESID molecular formula string.
     pub fn resid_inner<'a>(
         base_context: &Context<'a>,
         value: &'a str,
@@ -47,24 +46,23 @@ impl MolecularFormula {
 
     /// Parse a molecular formula from a RESID formula.
     /// # Errors
-    /// If the formula is not valid according to the PSI-MOD molecular formula format, with some help on what is going wrong.
+    /// If the formula is not valid according to the RESID molecular formula format, with some help on what is going wrong.
     /// ```rust
     /// use mzcore::prelude::*;
     /// assert!(MolecularFormula::resid_single("C 2 H 3 N 1 O 1 +").is_ok());
     /// assert!(MolecularFormula::resid_single("C 4 H 5 N 1 O 3, C 4 H 6 N 2 O 2").is_err());
-    ///
     /// ```
     pub fn resid_single(value: &str) -> Result<Self, BoxedError<'_, BasicKind>> {
         Self::resid_single_inner(&Context::default().lines(0, value), value, 0..value.len())
     }
 
-    /// This parses a substring of the given string as a PSI-MOD molecular formula definition.
-    /// Additionally, this allows passing a base context to allow to set the line index and source
+    /// This parses a substring of the given string as a RESID molecular formula definition.
+    /// Additionally, this allows passing a base context to allow setting the line index and source
     /// and other properties. Note that the base context is assumed to contain the full line at
     /// line index 0.
     ///
     /// # Errors
-    /// It fails when the string is not a valid PSI-MOD molecular formula string.
+    /// It fails when the string is not a valid RESID molecular formula string.
     pub fn resid_single_inner<'a>(
         base_context: &Context<'a>,
         value: &'a str,
@@ -128,6 +126,6 @@ fn trim(index: &mut usize, text: &str) {
     *index = *index
         + text[*index..]
             .chars()
-            .take_while(char::is_ascii_whitespace) // defined to be one byte each
+            .take_while(char::is_ascii_whitespace) // Defined to be one byte each
             .count();
 }

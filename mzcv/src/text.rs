@@ -18,6 +18,10 @@ const fn simplify_char(c: char) -> u8 {
 
 /// Get the Levenshtein distance between two words
 pub fn levenshtein_distance(word1: &str, word2: &str) -> usize {
+    if word1.is_empty() || word2.is_empty() {
+        return word1.len().max(word2.len());
+    }
+
     let word2_len = word2.chars().count();
     let mut row1 = (0..).take(word2_len + 1).collect::<Vec<_>>();
     let mut row2 = vec![0; word2_len + 1];
