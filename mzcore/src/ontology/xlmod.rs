@@ -126,8 +126,9 @@ impl CVSource for XlMod {
                             let mut stack = Vec::new();
                             stack.extend(obj.relationship.clone());
 
+                            let is_homo_functional = obj.relationship.iter().any(|r| r.0 == RelationType::IsA && r.1 == OboIdentifier(Some("XLMOD".into()), "00005".into()));
                             while let Some((ty, id, _, _)) = stack.pop() {
-                                if (ty == RelationType::IsA || ty == RelationType::Other("has_reactive_group".into())) && let Some(obj) = obo.objects.iter().find(|o| o.id == id) {
+                                if (ty == RelationType::IsA || is_homo_functional && ty == RelationType::Other("has_reactive_group".into())) && let Some(obj) = obo.objects.iter().find(|o| o.id == id) {
                                     combine_errors(
                                         &mut errors,
                                         parse_property_values(
