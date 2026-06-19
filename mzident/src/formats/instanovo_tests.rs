@@ -38,6 +38,23 @@ fn instanovo_v1_1_4() {
 }
 
 #[test]
+fn instanovo_v1_1_0() {
+    match test_format::<InstaNovoPSM>(
+        BufReader::new(INSTANOVO_V1_1_0.as_bytes()),
+        &mzcore::ontology::STATIC_ONTOLOGIES,
+        false,
+        true,
+        Some(InstaNovoVersion::V1_1_0),
+    ) {
+        Ok(n) => assert_eq!(n, 1),
+        Err(e) => {
+            println!("{e}");
+            panic!("Failed PSMs test");
+        }
+    }
+}
+
+#[test]
 fn instanovoplus_v1_1_4() {
     match test_format::<InstaNovoPSM>(
         BufReader::new(INSTANOVOPLUS_V1_1_4.as_bytes()),
@@ -47,6 +64,57 @@ fn instanovoplus_v1_1_4() {
         Some(InstaNovoVersion::PlusV1_1_4),
     ) {
         Ok(n) => assert_eq!(n, 24),
+        Err(e) => {
+            println!("{e}");
+            panic!("Failed PSMs test");
+        }
+    }
+}
+
+#[test]
+fn instanovo_v1_2_2() {
+    match test_format::<InstaNovoPSM>(
+        BufReader::new(INSTANOVO_V1_2_2.as_bytes()),
+        &mzcore::ontology::STATIC_ONTOLOGIES,
+        false,
+        true,
+        Some(InstaNovoVersion::V1_2_2),
+    ) {
+        Ok(n) => assert_eq!(n, 1),
+        Err(e) => {
+            println!("{e}");
+            panic!("Failed PSMs test");
+        }
+    }
+}
+
+#[test]
+fn instanovoplus_v1_2_2() {
+    match test_format::<InstaNovoPSM>(
+        BufReader::new(INSTANOVOPLUS_V1_2_2.as_bytes()),
+        &mzcore::ontology::STATIC_ONTOLOGIES,
+        false,
+        false,
+        Some(InstaNovoVersion::PlusV1_2_2),
+    ) {
+        Ok(n) => assert_eq!(n, 1),
+        Err(e) => {
+            println!("{e}");
+            panic!("Failed PSMs test");
+        }
+    }
+}
+
+#[test]
+fn instanovo_combined_v1_2_2() {
+    match test_format::<InstaNovoPSM>(
+        BufReader::new(INSTANOVO_COMBINED_V1_2_2.as_bytes()),
+        &mzcore::ontology::STATIC_ONTOLOGIES,
+        false,
+        false,
+        Some(InstaNovoVersion::CombinedV1_2_2),
+    ) {
+        Ok(n) => assert_eq!(n, 1),
         Err(e) => {
             println!("{e}");
             panic!("Failed PSMs test");
@@ -124,3 +192,23 @@ const INSTANOVOPLUS_V1_1_4: &str = r#"scan_number,precursor_mz,precursor_charge,
 186,403.233581542969,3,msconvert_20250515_EX1_UM1_plitt001_SA_EXT00_d5_G,msconvert_20250515_EX1_UM1_plitt001_SA_EXT00_d5_G:186,"['C[UNIMOD:4]', 'M[UNIMOD:35]', 'L', 'V', 'R']",C[UNIMOD:4]M[UNIMOD:35]LVR,-0.712028980255127,LGAEALLRPGR,"L, G, A, E, A, L, L, R, P, G, R",-352.6634826660156,"[-0.37654954195022583, -1.5804766416549683, -1.115369439125061, -0.18904243409633636, -0.29284417629241943, -0.8900014758110046, -1.3177595138549805, -1.512885570526123, -0.008747827261686325, -0.2933116555213928, -0.28636452555656433]",C[UNIMOD:4]M[UNIMOD:35]LVR,"['C[UNIMOD:4]', 'M[UNIMOD:35]', 'L', 'V', 'R']",-0.712028980255127,diffusion,False
 188,393.084381103516,3,msconvert_20250515_EX1_UM1_plitt001_SA_EXT00_d5_G,msconvert_20250515_EX1_UM1_plitt001_SA_EXT00_d5_G:188,"['L', 'C[UNIMOD:4]', 'R']",LC[UNIMOD:4]R,-1.0205368995666504,DRLIC[UNIMOD:4]RGEK,"D, R, L, I, C[UNIMOD:4], R, G, E, K",-364.02386474609375,"[-1.8955063819885254, -2.015449047088623, -1.8443589210510254, -2.2285003662109375, -1.100846529006958, -1.6334882974624634, -1.6147112846374512, -1.5314174890518188, -0.348799467086792]",LC[UNIMOD:4]R,"['L', 'C[UNIMOD:4]', 'R']",-1.0205368995666504,diffusion,False
 2453,698.256530761719,2,msconvert_20250515_EX1_UM1_plitt001_SA_EXT00_d5_G,msconvert_20250515_EX1_UM1_plitt001_SA_EXT00_d5_G:2453,"['M[UNIMOD:35]', 'A', 'K']",M[UNIMOD:35]AK,-0.7507774829864502,[UNIMOD:5]GEEEEDDDSLSK,"[UNIMOD:5], G, E, E, E, E, D, D, D, S, L, S, K",-28.99419403076172,"[-12.311272621154785, -2.684276580810547, -0.6591862440109253, -0.2280793935060501, -0.23282620310783386, -0.817415714263916, -0.9277580976486206, -1.9244579076766968, -1.6701242923736572, -0.6400895714759827, -1.5620484352111816, -1.648794174194336, -0.2003186196088791]",M[UNIMOD:35]AK,"['M[UNIMOD:35]', 'A', 'K']",-0.7507774829864502,diffusion,False"#;
+
+// Derived from the first row of:
+// https://zenodo.org/records/20756892/files/SF_200217_U2OS_TiO2_HCD_OT_rep1.full.mgf.instanovo-1.1.0.transformer.model-instanovo-v1.1.0.denovo.greedy.beams-1.columns-predictions.csv?download=1
+const INSTANOVO_V1_1_0: &str = r#"scan_number,precursor_mz,precursor_charge,experiment_name,spectrum_id,predictions,predictions_tokenised,log_probabilities,token_log_probabilities,delta_mass_ppm
+0,419.314971923828,2,SF_200217_U2OS_TiO2_HCD_OT_rep1,SF_200217_U2OS_TiO2_HCD_OT_rep1:0,EEEEEK,"E, E, E, E, E, K",-390.9980163574219,"[-0.6682913303375244, -0.6299808621406555, -1.2502485513687134, -1.481540322303772, -1.9249613285064697, -0.5132914781570435]",52816.51838525617"#;
+
+// Derived from the first row of:
+// https://zenodo.org/records/20756892/files/SF_200217_U2OS_TiO2_HCD_OT_rep1.full.mgf.instanovo-1.2.2.transformer.model-instanovo-v1.2.0.denovo.greedy.beams-1.normalized-columns.csv?download=1
+const INSTANOVO_V1_2_2: &str = r#"experiment_name,scan_number,spectrum_id,precursor_mz,precursor_charge,prediction_id,predictions,log_probs,token_log_probs,group,predictions_tokenised,delta_mass_ppm
+SF_200217_U2OS_TiO2_HCD_OT_rep1,0,SF_200217_U2OS_TiO2_HCD_OT_rep1:0,419.314971923828,2,0,DM[UNIMOD:35]NS[UNIMOD:21]PK,-1147.98681640625,"[-0.015801219269633293, -1.1395305395126343, -2.2013168334960938, -1.3749353885650635, -1.4705305099487305, -0.5675679445266724]",no_group,"D, M[UNIMOD:35], N, S[UNIMOD:21], P, K",58846.475981092575"#;
+
+// Derived from the first row of:
+// https://zenodo.org/records/20756892/files/SF_200217_U2OS_TiO2_HCD_OT_rep1.full.mgf.instanovo-1.2.2.instanovoplus.model-instanovoplus-v1.1.0.denovo.no-refinement.normalized-columns.csv?download=1
+const INSTANOVOPLUS_V1_2_2: &str = r#"experiment_name,scan_number,spectrum_id,precursor_mz,precursor_charge,prediction_id,predictions,log_probs,token_log_probs,group,predictions_tokenised,delta_mass_ppm
+SF_200217_U2OS_TiO2_HCD_OT_rep1,0,SF_200217_U2OS_TiO2_HCD_OT_rep1:0,419.314971923828,2,0,MC[UNIMOD:4]IPDQPM[UNIMOD:35]EVDNEDDAPLPPPEAR,-3.6934256553649902,,no_group,"M, C[UNIMOD:4], I, P, D, Q, P, M[UNIMOD:35], E, V, D, N, E, D, D, A, P, L, P, P, P, E, A, R",2282970.310323359"#;
+
+// Derived from the first row of:
+// https://zenodo.org/records/20756892/files/SF_200217_U2OS_TiO2_HCD_OT_rep1.full.mgf.instanovo-1.2.2.combined.model-instanovo-v1.2.0.instanovoplus-v1.1.0.denovo.refined.save-all-predictions.csv?download=1
+const INSTANOVO_COMBINED_V1_2_2: &str = r#"experiment_name,scan_number,spectrum_id,precursor_mz,precursor_charge,prediction_id,predictions,log_probs,token_log_probs,group,instanovo_predictions,instanovo_prediction_log_probability,instanovo_prediction_token_log_probabilities,instanovo_predictions_beam_0,instanovo_predictions_log_probability_beam_0,instanovo_predictions_token_log_probabilities_beam_0,instanovo_predictions_beam_1,instanovo_predictions_log_probability_beam_1,instanovo_predictions_token_log_probabilities_beam_1,instanovo_predictions_beam_2,instanovo_predictions_log_probability_beam_2,instanovo_predictions_token_log_probabilities_beam_2,instanovo_predictions_beam_3,instanovo_predictions_log_probability_beam_3,instanovo_predictions_token_log_probabilities_beam_3,instanovo_predictions_beam_4,instanovo_predictions_log_probability_beam_4,instanovo_predictions_token_log_probabilities_beam_4,instanovoplus_predictions,instanovoplus_prediction_log_probability,instanovoplus_prediction_token_log_probabilities,instanovoplus_unrefined_predictions,predictions_tokenised,delta_mass_ppm
+SF_200217_U2OS_TiO2_HCD_OT_rep1,0,SF_200217_U2OS_TiO2_HCD_OT_rep1:0,419.314971923828,2,0,LIRPLLK,-0.6334811449050903,,no_group,"['L', 'K', 'G', 'D', 'S[UNIMOD:21]', 'P', 'K']",-10.102036476135254,"[-1.716342806816101, -1.0499515533447266, -1.1343414783477783, -2.570066452026367, -1.3749353885650635, -1.4704134464263916, -0.5675679445266724]",LKGDS[UNIMOD:21]PK,-10.102036476135254,"[-1.716342806816101, -1.0499515533447266, -1.1343414783477783, -2.570066452026367, -1.3749353885650635, -1.4704134464263916, -0.5675679445266724]",VKGDS[UNIMOD:21]PK,-11.082494735717773,"[-2.8237648010253906, -1.0499515533447266, -1.1343414783477783, -2.570066452026367, -1.3749353885650635, -1.4704134464263916, -0.5675679445266724]",SKGDS[UNIMOD:21]PK,-11.430251121520996,"[-2.7461280822753906, -1.0499515533447266, -1.1343414783477783, -2.570066452026367, -1.3749353885650635, -1.4704134464263916, -0.5675679445266724]",AKGDS[UNIMOD:21]PK,-11.492465019226074,"[-3.1643409729003906, -1.0499515533447266, -1.1343414783477783, -2.570066452026367, -1.3749353885650635, -1.4704134464263916, -0.5675679445266724]",PKGDS[UNIMOD:21]PK,-11.968438148498535,"[-2.6694679260253906, -1.0499515533447266, -1.1343414783477783, -2.570066452026367, -1.3749353885650635, -1.4704134464263916, -0.5675679445266724]","['L', 'I', 'R', 'P', 'L', 'L', 'K']",-0.6334811449050903,,"['L', 'K', 'G', 'D', 'S[UNIMOD:21]', 'P', 'K']","L, I, R, P, L, L, K",17862.82765389216"#;
