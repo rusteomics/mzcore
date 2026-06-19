@@ -27,7 +27,7 @@ fn instanovo_v1_1_4() {
         &mzcore::ontology::STATIC_ONTOLOGIES,
         false,
         true,
-        Some(InstaNovoVersion::V1_0_0),
+        Some(InstaNovoVersion::V1_1_4),
     ) {
         Ok(n) => assert_eq!(n, 20),
         Err(e) => {
