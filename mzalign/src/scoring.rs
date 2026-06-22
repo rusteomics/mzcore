@@ -60,7 +60,7 @@ impl std::fmt::Display for PairMode {
 /// * A higher score for `rotated` is needed to ensure rotation preference over `isobaric`.
 /// * The `matrix` should be chosen to have higher scores than the rotated score to prevent spurious
 ///   rotations from being added.
-#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 pub struct AlignScoring<'a> {
     /// The score for a mismatch. The local score for the step is calculated as follows:
     /// `matrix_score + mismatch`.

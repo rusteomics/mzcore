@@ -150,6 +150,53 @@ impl FromStr for Tolerance<Mass> {
     }
 }
 
+impl Display for Tolerance<OrderedMass> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{}",
+            match self {
+                Self::Absolute(value) => format!(
+                    "{}",
+                    value.into_format_args(crate::system::mass::dalton, DisplayStyle::Abbreviation)
+                ),
+                Self::Relative(tolerance) => format!(
+                    "{}",
+                    tolerance
+                        .into_format_args(crate::system::ratio::ppm, DisplayStyle::Abbreviation)
+                ),
+            }
+        )
+    }
+}
+
+impl FromStr for Tolerance<OrderedMass> {
+    type Err = ();
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let num_str = String::from_utf8(
+            s.bytes()
+                .take_while(|c| {
+                    c.is_ascii_digit()
+                        || *c == b'.'
+                        || *c == b'-'
+                        || *c == b'+'
+                        || *c == b'e'
+                        || *c == b'E'
+                })
+                .collect::<Vec<_>>(),
+        )
+        .map_err(|_| ())?;
+        let num = num_str.parse::<f64>().map_err(|_| ())?;
+        match s[num_str.len()..].trim().to_ascii_lowercase().as_str() {
+            "ppm" => Ok(Self::Relative(
+                Ratio::new::<crate::system::ratio::ppm>(num).into(),
+            )),
+            "da" => Ok(Self::Absolute(da(num).into())),
+            _ => Err(()),
+        }
+    }
+}
+
 impl Display for Tolerance<MassOverCharge> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
