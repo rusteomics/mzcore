@@ -297,7 +297,10 @@ fn validate_instanovo_schema(
 }
 
 fn has_column(source: &CsvLine, column: &str) -> bool {
-    source.index_column(column).is_ok()
+    source
+        .fields
+        .iter()
+        .any(|f| f.0.eq_ignore_ascii_case(column))
 }
 
 fn instanovo_schema_error(
