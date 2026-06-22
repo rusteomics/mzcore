@@ -109,8 +109,17 @@ impl KnownFileFormat {
             Self::Fasta => Some(term!(MS:1001348|FASTA format)),
             Self::BasicCSV(_) => None,
             Self::DeepNovoFamily(_) => None,
-            Self::InstaNovo(InstaNovoVersion::V1_0_0) => Some(term!(MS:1003612|InstaNovo)),
-            Self::InstaNovo(InstaNovoVersion::PlusV1_1_4) => Some(term!(MS:1003613|InstaNovo+)),
+            Self::InstaNovo(
+                InstaNovoVersion::V1_0_0
+                | InstaNovoVersion::V1_1_0
+                | InstaNovoVersion::V1_1_4
+                | InstaNovoVersion::V1_2_2,
+            ) => Some(term!(MS:1003612|InstaNovo)),
+            Self::InstaNovo(
+                InstaNovoVersion::PlusV1_1_4
+                | InstaNovoVersion::PlusV1_2_2
+                | InstaNovoVersion::CombinedV1_2_2,
+            ) => Some(term!(MS:1003613|InstaNovo+)),
             Self::MaxQuant(_) => Some(term!(MS:1001583|MaxQuant)),
             Self::MetaMorpheus(_) => Some(term!(MS:1002826|MetaMorpheus)),
             Self::MzTab => Some(term!(MS:1002601|mzTab)),
@@ -142,8 +151,27 @@ impl TryFrom<CVTerm> for KnownFileFormat {
     fn try_from(value: CVTerm) -> Result<Self, Self::Error> {
         match value.term.accession {
             curie!(MS:1001348|FASTA format) => Ok(Self::Fasta),
-            curie!(MS:1003612|InstaNovo) => Ok(Self::InstaNovo(InstaNovoVersion::V1_0_0)),
-            curie!(MS:1003613|InstaNovo+) => Ok(Self::InstaNovo(InstaNovoVersion::PlusV1_1_4)),
+            curie!(MS:1003612|InstaNovo) => Ok(Self::InstaNovo(match value.value.as_ref() {
+                value if value.eq_ignore_ascii_case(InstaNovoVersion::V1_1_0.name()) => {
+                    InstaNovoVersion::V1_1_0
+                }
+                value if value.eq_ignore_ascii_case(InstaNovoVersion::V1_1_4.name()) => {
+                    InstaNovoVersion::V1_1_4
+                }
+                value if value.eq_ignore_ascii_case(InstaNovoVersion::V1_2_2.name()) => {
+                    InstaNovoVersion::V1_2_2
+                }
+                _ => InstaNovoVersion::V1_0_0,
+            })),
+            curie!(MS:1003613|InstaNovo+) => Ok(Self::InstaNovo(match value.value.as_ref() {
+                value if value.eq_ignore_ascii_case(InstaNovoVersion::PlusV1_2_2.name()) => {
+                    InstaNovoVersion::PlusV1_2_2
+                }
+                value if value.eq_ignore_ascii_case(InstaNovoVersion::CombinedV1_2_2.name()) => {
+                    InstaNovoVersion::CombinedV1_2_2
+                }
+                _ => InstaNovoVersion::PlusV1_1_4,
+            })),
             curie!(MS:1001583|MaxQuant) => {
                 for v in MaxQuantPSM::VERSIONS {
                     if value.value.eq_ignore_ascii_case(v.version.name()) {

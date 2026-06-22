@@ -31,7 +31,15 @@ static BUILT_IN_MODIFICATIONS: OnceLock<SloppyParsingParameters> = OnceLock::new
 
 format_family!(
     InstaNovo,
-    SemiAmbiguous, PeptidoformPresent, [&INSTANOVO_V1_0_0, &INSTANOVOPLUS_V1_1_4], b',', None;
+    SemiAmbiguous, PeptidoformPresent, [
+        &INSTANOVO_COMBINED_V1_2_2,
+        &INSTANOVO_V1_2_2,
+        &INSTANOVOPLUS_V1_2_2,
+        &INSTANOVO_V1_1_0,
+        &INSTANOVO_V1_1_4,
+        &INSTANOVOPLUS_V1_1_4,
+        &INSTANOVO_V1_0_0,
+    ], b',', None;
     required {
         scan_number: usize, |location: Location, _| location.parse(NUMBER_ERROR);
         mz: MassOverCharge, |location: Location, _| location.parse::<f64>(NUMBER_ERROR).map(MassOverCharge::new::<mzcore::system::thomson>);
@@ -54,21 +62,33 @@ format_family!(
         score: f64, |location: Location, _| location.parse::<f64>(NUMBER_ERROR);
     }
     optional {
-        local_confidence: Vec<f64>, |location: Location, _| location
-            .trim_start_matches("[").trim_end_matches("]")
-            .array(',')
-            .map(|l| l.parse::<f64>(NUMBER_ERROR))
-            .collect::<Result<Vec<_>, _>>();
+        local_confidence: Vec<f64>, |location: Location, _| {
+            let location = location.trim_start_matches("[").trim_end_matches("]");
+            location.or_empty().map_or(Ok(Vec::new()), |location| {
+                location
+                    .array(',')
+                    .map(|l| l.parse::<f64>(NUMBER_ERROR))
+                    .collect::<Result<Vec<_>, _>>()
+            })
+        };
         used_model: UsedModel, |location: Location, _| location.parse::<UsedModel>(("Invalid InstaNovo line", "The selected model has to be 'diffusion' or 'transformer'."));
      }
 
-     fn post_process(_source: &CsvLine, mut parsed: Self, _ontologies: &Ontologies) -> Result<Self, BoxedError<'static, BasicKind>> {
+     fn post_process(source: &CsvLine, mut parsed: Self, _ontologies: &Ontologies) -> Result<Self, BoxedError<'static, BasicKind>> {
+        validate_instanovo_schema(source, &parsed)?;
+
+        if parsed.local_confidence.as_ref().is_some_and(Vec::is_empty) {
+            parsed.local_confidence = None;
+        }
         // Only keep the parsed local_confidence is the `UsedModel == Transformer`
         if let Some(used_model) = parsed.used_model && used_model == UsedModel::Diffusion {
             parsed.local_confidence = None;
         }
         if let Some(local_confidence) = parsed.local_confidence.as_mut() && !parsed.peptide.get_n_term().is_empty() {
-            *local_confidence = local_confidence[parsed.peptide.get_n_term().len()..].to_vec();
+            let offset = parsed.peptide.get_n_term().len();
+            if local_confidence.len() >= offset {
+                *local_confidence = local_confidence[offset..].to_vec();
+            }
         }
         Ok(parsed)
     }
@@ -87,7 +107,33 @@ pub const INSTANOVO_V1_0_0: InstaNovoFormat = InstaNovoFormat {
     used_model: OptionalColumn::NotAvailable,
 };
 
-/// The only known version of InstaNovoPlus
+/// InstaNovo version 1.1.0
+pub const INSTANOVO_V1_1_0: InstaNovoFormat = InstaNovoFormat {
+    version: InstaNovoVersion::V1_1_0,
+    scan_number: "scan_number",
+    mz: "precursor_mz",
+    z: "precursor_charge",
+    raw_file: "experiment_name",
+    peptide: "predictions",
+    score: "log_probabilities",
+    local_confidence: OptionalColumn::Required("token_log_probabilities"),
+    used_model: OptionalColumn::NotAvailable,
+};
+
+/// InstaNovo version 1.1.4
+pub const INSTANOVO_V1_1_4: InstaNovoFormat = InstaNovoFormat {
+    version: InstaNovoVersion::V1_1_4,
+    scan_number: "scan_number",
+    mz: "precursor_mz",
+    z: "precursor_charge",
+    raw_file: "experiment_name",
+    peptide: "preds",
+    score: "log_probs",
+    local_confidence: OptionalColumn::Required("token_log_probs"),
+    used_model: OptionalColumn::NotAvailable,
+};
+
+/// The known InstaNovoPlus 1.1.4 output schema
 pub const INSTANOVOPLUS_V1_1_4: InstaNovoFormat = InstaNovoFormat {
     version: InstaNovoVersion::PlusV1_1_4,
     scan_number: "scan_number",
@@ -100,6 +146,45 @@ pub const INSTANOVOPLUS_V1_1_4: InstaNovoFormat = InstaNovoFormat {
     used_model: OptionalColumn::Required("selected_model"),
 };
 
+/// InstaNovo version 1.2.2 transformer output
+pub const INSTANOVO_V1_2_2: InstaNovoFormat = InstaNovoFormat {
+    version: InstaNovoVersion::V1_2_2,
+    scan_number: "scan_number",
+    mz: "precursor_mz",
+    z: "precursor_charge",
+    raw_file: "experiment_name",
+    peptide: "predictions",
+    score: "log_probs",
+    local_confidence: OptionalColumn::Required("token_log_probs"),
+    used_model: OptionalColumn::NotAvailable,
+};
+
+/// InstaNovoPlus version 1.2.2 standalone output
+pub const INSTANOVOPLUS_V1_2_2: InstaNovoFormat = InstaNovoFormat {
+    version: InstaNovoVersion::PlusV1_2_2,
+    scan_number: "scan_number",
+    mz: "precursor_mz",
+    z: "precursor_charge",
+    raw_file: "experiment_name",
+    peptide: "predictions",
+    score: "log_probs",
+    local_confidence: OptionalColumn::Required("token_log_probs"),
+    used_model: OptionalColumn::NotAvailable,
+};
+
+/// InstaNovo version 1.2.2 combined transformer and InstaNovoPlus refined output
+pub const INSTANOVO_COMBINED_V1_2_2: InstaNovoFormat = InstaNovoFormat {
+    version: InstaNovoVersion::CombinedV1_2_2,
+    scan_number: "scan_number",
+    mz: "precursor_mz",
+    z: "precursor_charge",
+    raw_file: "experiment_name",
+    peptide: "predictions",
+    score: "log_probs",
+    local_confidence: OptionalColumn::Required("token_log_probs"),
+    used_model: OptionalColumn::NotAvailable,
+};
+
 /// All possible InstaNovo versions
 #[derive(
     Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Default, Serialize, Deserialize,
@@ -108,8 +193,18 @@ pub enum InstaNovoVersion {
     #[default]
     /// InstaNovo version 1.0.0
     V1_0_0,
+    /// InstaNovo version 1.1.0
+    V1_1_0,
+    /// InstaNovo version 1.1.4
+    V1_1_4,
     /// InstaNovoPlus version 1.1.4 using refinement
     PlusV1_1_4,
+    /// InstaNovo version 1.2.2
+    V1_2_2,
+    /// InstaNovoPlus version 1.2.2 standalone predictions
+    PlusV1_2_2,
+    /// InstaNovo version 1.2.2 combined transformer and InstaNovoPlus refined predictions
+    CombinedV1_2_2,
 }
 
 impl std::fmt::Display for InstaNovoVersion {
@@ -122,15 +217,99 @@ impl PSMFileFormatVersion<InstaNovoFormat> for InstaNovoVersion {
     fn format(self) -> InstaNovoFormat {
         match self {
             Self::V1_0_0 => INSTANOVO_V1_0_0,
+            Self::V1_1_0 => INSTANOVO_V1_1_0,
+            Self::V1_1_4 => INSTANOVO_V1_1_4,
             Self::PlusV1_1_4 => INSTANOVOPLUS_V1_1_4,
+            Self::V1_2_2 => INSTANOVO_V1_2_2,
+            Self::PlusV1_2_2 => INSTANOVOPLUS_V1_2_2,
+            Self::CombinedV1_2_2 => INSTANOVO_COMBINED_V1_2_2,
         }
     }
     fn name(self) -> &'static str {
         match self {
             Self::V1_0_0 => "v1.0.0",
+            Self::V1_1_0 => "v1.1.0",
+            Self::V1_1_4 => "v1.1.4",
             Self::PlusV1_1_4 => "Plus v1.1.4",
+            Self::V1_2_2 => "v1.2.2",
+            Self::PlusV1_2_2 => "Plus v1.2.2",
+            Self::CombinedV1_2_2 => "Combined v1.2.2",
         }
     }
+}
+
+fn validate_instanovo_schema(
+    source: &CsvLine,
+    parsed: &InstaNovoPSM,
+) -> Result<(), BoxedError<'static, BasicKind>> {
+    match parsed.version {
+        InstaNovoVersion::V1_1_0 | InstaNovoVersion::V1_1_4 => {
+            if !has_column(source, "delta_mass_ppm") {
+                return Err(instanovo_schema_error(
+                    source,
+                    "This InstaNovo version requires the 'delta_mass_ppm' column",
+                ));
+            }
+        }
+        InstaNovoVersion::V1_2_2 => {
+            if has_column(source, "instanovoplus_predictions") {
+                return Err(instanovo_schema_error(
+                    source,
+                    "This is an InstaNovo combined output, not a transformer-only output",
+                ));
+            }
+            if parsed.local_confidence.as_ref().is_some_and(Vec::is_empty) {
+                return Err(instanovo_schema_error(
+                    source,
+                    "This InstaNovo transformer output requires token log probabilities",
+                ));
+            }
+        }
+        InstaNovoVersion::PlusV1_2_2 => {
+            if has_column(source, "instanovoplus_predictions") {
+                return Err(instanovo_schema_error(
+                    source,
+                    "This is an InstaNovo combined output, not a standalone InstaNovoPlus output",
+                ));
+            }
+            if parsed
+                .local_confidence
+                .as_ref()
+                .is_some_and(|local_confidence| !local_confidence.is_empty())
+            {
+                return Err(instanovo_schema_error(
+                    source,
+                    "This is an InstaNovo transformer output, not a standalone InstaNovoPlus output",
+                ));
+            }
+        }
+        InstaNovoVersion::CombinedV1_2_2 => {
+            if !has_column(source, "instanovoplus_predictions") {
+                return Err(instanovo_schema_error(
+                    source,
+                    "This InstaNovo version requires the 'instanovoplus_predictions' column",
+                ));
+            }
+        }
+        InstaNovoVersion::V1_0_0 | InstaNovoVersion::PlusV1_1_4 => {}
+    }
+    Ok(())
+}
+
+fn has_column(source: &CsvLine, column: &str) -> bool {
+    source.index_column(column).is_ok()
+}
+
+fn instanovo_schema_error(
+    source: &CsvLine,
+    message: &'static str,
+) -> BoxedError<'static, BasicKind> {
+    BoxedError::new(
+        BasicKind::Error,
+        "Invalid InstaNovo line",
+        message,
+        source.full_context().to_owned(),
+    )
 }
 
 /// The model that produced the final prediction for an InstaNovoPlus
@@ -193,8 +372,13 @@ impl PSMMetaData for InstaNovoPSM {
 
     fn search_engine(&self) -> Option<mzcv::Term> {
         Some(match self.version {
-            InstaNovoVersion::V1_0_0 => mzcv::term!(MS:1003612|InstaNovo),
-            InstaNovoVersion::PlusV1_1_4 => mzcv::term!(MS:1003613|InstaNovo+),
+            InstaNovoVersion::V1_0_0
+            | InstaNovoVersion::V1_1_0
+            | InstaNovoVersion::V1_1_4
+            | InstaNovoVersion::V1_2_2 => mzcv::term!(MS:1003612|InstaNovo),
+            InstaNovoVersion::PlusV1_1_4
+            | InstaNovoVersion::PlusV1_2_2
+            | InstaNovoVersion::CombinedV1_2_2 => mzcv::term!(MS:1003613|InstaNovo+),
         })
     }
 
