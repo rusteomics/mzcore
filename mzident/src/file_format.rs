@@ -108,7 +108,12 @@ impl KnownFileFormat {
             Self::AnnotatedSpectrum => None,
             Self::Fasta => Some(term!(MS:1001348|FASTA format)),
             Self::BasicCSV(_) => None,
-            Self::DeepNovoFamily(_) => None,
+            Self::DeepNovoFamily(DeepNovoFamilyVersion::DeepNovoV0_0_1) => {
+                Some(term!(MS:1003996|DeepNovo))
+            }
+            Self::DeepNovoFamily(DeepNovoFamilyVersion::PointNovoFamily) => {
+                Some(term!(MS:1003998|PointNovo))
+            } // OR: MS:1003999|PGPointNovo MS:1004000|BiATNovo
             Self::InstaNovo(
                 InstaNovoVersion::V1_0_0
                 | InstaNovoVersion::V1_1_0
@@ -123,25 +128,27 @@ impl KnownFileFormat {
             Self::MaxQuant(_) => Some(term!(MS:1001583|MaxQuant)),
             Self::MetaMorpheus(_) => Some(term!(MS:1002826|MetaMorpheus)),
             Self::MzTab => Some(term!(MS:1002601|mzTab)),
-            Self::NovoB(_) => None,
+            Self::NovoB(_) => Some(term!(MS:1004001|NovoB)),
             Self::Novor(_) => Some(term!(MS:1002984|Novor)),
             Self::Opair(OpairVersion::Opair) => Some(term!(MS:1003429|FragPipe)),
             Self::Peaks(_) => Some(term!(MS:1001946|PEAKS Studio)),
-            Self::PepNet(_) => None,
-            Self::PiHelixNovo(_) => None,
-            Self::PiPrimeNovo(_) => None,
+            Self::PepNet(_) => Some(term!(MS:1004002|PepNet)),
+            Self::PiHelixNovo(_) => Some(term!(MS:1004003|π-HelixNovo)),
+            Self::PiPrimeNovo(_) => Some(term!(MS:1004004|π-PrimeNovo)),
             Self::PLGS(PLGSVersion::V3_0) => Some(term!(MS:1000601|ProteinLynx Global Server)),
             Self::PLink(PLinkVersion::V2_3) => Some(term!(MS:1003432|pLink2)),
-            Self::PowerNovo(_) => None,
-            Self::Proteoscape(_) => None,
-            Self::PUniFind(_) => None,
-            Self::Sage(_) => None,
+            Self::PowerNovo(_) => Some(term!(MS:1004005|PowerNovo)),
+            Self::Proteoscape(_) => Some(term!(MS:1004009|ProteoScape)),
+            Self::PUniFind(_) => Some(term!(MS:1004006|pUniFind)),
+            Self::Sage(_) => Some(term!(MS:1004007|Sage)),
             Self::MSFragger(MSFraggerVersion::V4_2) => Some(term!(MS:1003014|MSFragger)),
             Self::MSFragger(MSFraggerVersion::Philosopher) => Some(term!(MS:1003018|Philosopher)),
             Self::MSFragger(MSFraggerVersion::FragPipeV20Or21 | MSFraggerVersion::FragPipeV22) => {
                 Some(term!(MS:1003429|FragPipe))
             }
-            Self::SpectrumSequenceList(_) => None,
+            Self::SpectrumSequenceList(_) => {
+                Some(term!(MS:1004008|BiblioSpec Spectrum Sequence List))
+            }
         }
     }
 }
@@ -151,6 +158,14 @@ impl TryFrom<CVTerm> for KnownFileFormat {
     fn try_from(value: CVTerm) -> Result<Self, Self::Error> {
         match value.term.accession {
             curie!(MS:1001348|FASTA format) => Ok(Self::Fasta),
+            curie!(MS:1003996|DeepNovo) => {
+                Ok(Self::DeepNovoFamily(DeepNovoFamilyVersion::DeepNovoV0_0_1))
+            }
+            curie!(MS:1003998|PointNovo)
+            | curie!(MS:1003999|PGPointNovo)
+            | curie!(MS:1004000|BiATNovo) => {
+                Ok(Self::DeepNovoFamily(DeepNovoFamilyVersion::PointNovoFamily))
+            }
             curie!(MS:1003612|InstaNovo) => {
                 for v in [
                     InstaNovoVersion::V1_0_0,
@@ -221,6 +236,17 @@ impl TryFrom<CVTerm> for KnownFileFormat {
                 Err(())
             }
             curie!(MS:1000601|ProteinLynx Global Server) => Ok(Self::PLGS(PLGSVersion::V3_0)),
+            curie!(MS:1004001|NovoB) => Ok(Self::NovoB(NovoBVersion::V0_0_1)),
+            curie!(MS:1004002|PepNet) => Ok(Self::PepNet(PepNetVersion::V1_0)),
+            curie!(MS:1004003|π-HelixNovo) => Ok(Self::PiHelixNovo(PiHelixNovoVersion::V1_1)),
+            curie!(MS:1004004|π-PrimeNovo) => Ok(Self::PiPrimeNovo(PiPrimeNovoVersion::V0_1)),
+            curie!(MS:1004005|PowerNovo) => Ok(Self::PowerNovo(PowerNovoVersion::V1_0_17)),
+            curie!(MS:1004009|ProteoScape) => Ok(Self::Proteoscape(ProteoscapeVersion::V2025b)),
+            curie!(MS:1004006|pUniFind) => Ok(Self::PUniFind(PUniFindVersion::V0_1)),
+            curie!(MS:1004007|Sage) => Ok(Self::Sage(SageVersion::V0_14)),
+            curie!(MS:1004008|BiblioSpec Spectrum Sequence List) => {
+                Ok(Self::SpectrumSequenceList(SpectrumSequenceListVersion::SSL))
+            }
             _ => Err(()),
         }
     }
