@@ -198,16 +198,71 @@ impl ParseJson for ModificationId {
                         context(&map),
                     )
                 })?)?,
-                id: AccessionCode::Numeric(u32::from_json_value(map.remove("id").ok_or_else(
-                    || {
-                        BoxedError::new(
+                id: match map.remove("id") {
+                    None => {
+                        return Err(BoxedError::new(
                             BasicKind::Error,
                             "Invalid ModificationID",
                             "The required property 'id' is missing",
                             context(&map),
+                        ));
+                    }
+                    Some(Value::Number(n))
+                        if let Some(n) = n.as_u64()
+                            && let Ok(n) = u32::try_from(n) =>
+                    {
+                        AccessionCode::Numeric(n)
+                    }
+                    Some(Value::String(n)) => AccessionCode::from_str(&n).map_err(|err| {
+                        BoxedError::new(
+                            BasicKind::Error,
+                            "Invalid alphanumeric ModificationID",
+                            err.to_string(),
+                            Context::default().lines(0, n),
                         )
-                    },
-                )?)?), // TODO: allow retrieving non numerical codes
+                    })?,
+                    Some(Value::Object(map)) => {
+                        if let Some(n) = map.get("Numeric") {
+                            if let Ok(n) = u32::from_json_value(n.clone()) {
+                                AccessionCode::Numeric(n)
+                            } else {
+                                return Err(BoxedError::new(
+                                    BasicKind::Error,
+                                    "Invalid numeric ModificationID",
+                                    format!(
+                                        "The id has to be a positive integer within 0 to {}",
+                                        u32::MAX
+                                    ),
+                                    Context::default().lines(0, n.to_string()),
+                                ));
+                            }
+                        } else if let Some(n) = map.get("Alphanumeric") {
+                            AccessionCode::from_str(&n.to_string()).map_err(|err| {
+                                BoxedError::new(
+                                    BasicKind::Error,
+                                    "Invalid alphanumeric ModificationID",
+                                    err.to_string(),
+                                    Context::default().lines(0, n.to_string()),
+                                )
+                            })?
+                        } else {
+                            return Err(BoxedError::new(
+                                BasicKind::Error,
+                                "Invalid ModificationID",
+                                "The 'id' can only be 'Numeric' or 'Alphanumeric'",
+                                context(&map),
+                            ));
+                        }
+                    }
+                    Some(value) => {
+                        return Err(BoxedError::new(
+                            BasicKind::Error,
+                            "Invalid ModificationID",
+                            "The 'id' is in an invalid format",
+                            Context::default().lines(0, value.to_string()),
+                        ));
+                    }
+                },
                 description: Box::from_json_value(map.remove("description").ok_or_else(|| {
                     BoxedError::new(
                         BasicKind::Error,

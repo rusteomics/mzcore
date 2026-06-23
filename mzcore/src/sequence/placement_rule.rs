@@ -41,7 +41,51 @@ impl Space for PlacementRule {
 
 impl ParseJson for PlacementRule {
     fn from_json_value(value: serde_json::Value) -> Result<Self, BoxedError<'static, BasicKind>> {
-        use_serde(value) // TODO: fix to keep supporting the old formats: 'Terminal': 'Pos' and 'Anywhere'
+        if let serde_json::Value::Object(map) = &value {
+            if let Some(serde_json::Value::String(v)) = map.get("Terminal") {
+                Ok(Self::Position(Position::from_str(v).map_err(|()| {
+                    BoxedError::new(
+                        BasicKind::Error,
+                        "Invalid Position",
+                        "It should be 'Anywhere', 'AnyNTerm', 'ProteinNTerm', 'AnyCTerm', or 'ProteinCTerm'",
+                        Context::default().lines(0, value.to_string()),
+                    )
+                })?))
+            } else if let Some(serde_json::Value::String(v)) = map.get("Position") {
+                Ok(Self::Position(Position::from_str(v).map_err(|()| {
+                    BoxedError::new(
+                        BasicKind::Error,
+                        "Invalid Position",
+                        "It should be 'Anywhere', 'AnyNTerm', 'ProteinNTerm', 'AnyCTerm', or 'ProteinCTerm'",
+                        Context::default().lines(0, value.to_string()),
+                    )
+                })?))
+            } else if let Some(v) = map.get("PsiModification") {
+                <(u32, Position)>::from_json_value(v.clone())
+                    .map(|v| Self::PsiModification(v.0, v.1))
+            } else if let Some(v) = map.get("AminoAcid") {
+                <(ThinVec<AminoAcid>, Position)>::from_json_value(v.clone())
+                    .map(|v| Self::AminoAcid(v.0, v.1))
+            } else {
+                Err(BoxedError::new(
+                    BasicKind::Error,
+                    "Invalid PlacementRule",
+                    "It should be a 'Position', 'AminoAcid', or 'PsiModification' object",
+                    Context::default().lines(0, value.to_string()),
+                ))
+            }
+        } else if let serde_json::Value::String(str) = &value
+            && str.eq_ignore_ascii_case("Anywhere")
+        {
+            Ok(Self::Position(Position::Anywhere))
+        } else {
+            Err(BoxedError::new(
+                BasicKind::Error,
+                "Invalid PlacementRule",
+                "It should be an object",
+                Context::default().lines(0, value.to_string()),
+            ))
+        }
     }
 }
 
@@ -61,6 +105,12 @@ pub enum Position {
     ProteinNTerm,
     /// At the C term of a protein
     ProteinCTerm,
+}
+
+impl ParseJson for Position {
+    fn from_json_value(value: serde_json::Value) -> Result<Self, BoxedError<'static, BasicKind>> {
+        use_serde(value)
+    }
 }
 
 impl std::fmt::Display for Position {
@@ -359,6 +409,49 @@ mod tests {
                 ),
             RulePossible::Symmetric(std::collections::BTreeSet::from([0])),
             "unimod deamidated at end"
+        );
+    }
+
+    #[test]
+    fn parse_json() {
+        assert_eq!(
+            PlacementRule::from_json_value(serde_json::Value::String("Anywhere".to_string())),
+            Ok(PlacementRule::Position(Position::Anywhere))
+        );
+        assert_eq!(
+            PlacementRule::from_json_value(serde_json::Value::Object(serde_json::Map::from_iter(
+                [(
+                    "Position".to_string(),
+                    serde_json::Value::String("Anywhere".to_string())
+                )]
+            ))),
+            Ok(PlacementRule::Position(Position::Anywhere))
+        );
+        assert_eq!(
+            PlacementRule::from_json_value(serde_json::Value::Object(serde_json::Map::from_iter(
+                [(
+                    "Terminal".to_string(),
+                    serde_json::Value::String("AnyNTerm".to_string())
+                )]
+            ))),
+            Ok(PlacementRule::Position(Position::AnyNTerm))
+        );
+        assert_eq!(
+            PlacementRule::from_json_value(serde_json::Value::Object(serde_json::Map::from_iter(
+                [(
+                    "AminoAcid".to_string(),
+                    serde_json::Value::Array(vec![
+                        serde_json::Value::Array(vec![serde_json::Value::String(
+                            "Cysteine".to_string()
+                        ),]),
+                        serde_json::Value::String("Anywhere".to_string())
+                    ])
+                )]
+            ))),
+            Ok(PlacementRule::AminoAcid(
+                vec![AminoAcid::Cysteine].into(),
+                Position::Anywhere
+            ))
         );
     }
 }

@@ -1390,6 +1390,22 @@ pub enum AccessionCodeParseError {
     Empty,
 }
 
+impl std::fmt::Display for AccessionCodeParseError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Empty => write!(f, "Accession code was empty"),
+            Self::TooLong(_) => write!(
+                f,
+                "Accession code was too long, it can oinly be 8 characters"
+            ),
+            Self::InvalidCharacters(_) => write!(
+                f,
+                "Accession code contained invalid characters, only alphanumeric ASCII characters are allowed"
+            ),
+        }
+    }
+}
+
 impl FromStr for AccessionCode {
     type Err = AccessionCodeParseError;
 

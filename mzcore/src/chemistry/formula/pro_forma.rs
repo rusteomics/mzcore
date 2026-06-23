@@ -74,8 +74,9 @@ impl MolecularFormula {
         value: &'a str,
         range: impl RangeBounds<usize>,
     ) -> Result<Self, BoxedError<'a, BasicKind>> {
-        let (mut index, end) = range.bounds(value.len().saturating_sub(1));
-        if index >= end || &value[index..=end] == "(empty)" {
+        let mut index = range.start_index();
+        let end = range.end_index_exclusive(value.len());
+        if (index..end).is_empty() || index >= end || &value[index..end] == "(empty)" {
             return if ALLOW_EMPTY {
                 Ok(Self::default())
             } else {
@@ -91,7 +92,7 @@ impl MolecularFormula {
         let mut element = None;
         let bytes = value.as_bytes();
         let mut result = Self::default();
-        'main_parse_loop: while index <= end {
+        'main_parse_loop: while index < end {
             match (bytes[index], element) {
                 (b'[', _) => {
                     // Skip the open square bracket and leading spaces
@@ -192,7 +193,7 @@ impl MolecularFormula {
                     }
                 }
                 (b'-' | b'0'..=b'9', Some(ele)) => {
-                    let length = value[index..=end]
+                    let length = value[index..end]
                         .char_indices()
                         .take_while(|(_, c)| c.is_ascii_digit() || *c == '-')
                         .last()
@@ -227,7 +228,7 @@ impl MolecularFormula {
                 (b':', _) if ALLOW_CHARGE => {
                     if Some(&b'z') == bytes.get(index + 1) {
                         index += 2;
-                        let num = value[index..=end].parse::<i32>().map_err(|err| {
+                        let num = value[index..end].parse::<i32>().map_err(|err| {
                             BoxedError::new(
                                 BasicKind::Error,
                                 "Invalid ProForma molecular formula",

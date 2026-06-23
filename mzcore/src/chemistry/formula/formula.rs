@@ -357,5 +357,9 @@ mod tests {
             MolecularFormula::pro_forma::<false, true>("H0")
         );
         assert!(MolecularFormula::pro_forma::<false, false>("").is_err());
+        assert_eq!(
+            MolecularFormula::pro_forma::<false, false>("O"),
+            Ok(molecular_formula!(O 1))
+        );
     }
 }
