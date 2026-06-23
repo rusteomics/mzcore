@@ -771,9 +771,13 @@ impl OboOntology {
 
 fn unescape(value: &str) -> Box<str> {
     let mut result = String::new();
+    let mut escaped = false;
     for c in value.trim().chars() {
-        if c != '\\' {
+        if escaped || c != '\\' {
             result.push(c);
+            escaped = false;
+        } else {
+            escaped = true;
         }
     }
     result.into_boxed_str()
