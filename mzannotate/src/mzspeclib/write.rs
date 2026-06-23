@@ -27,7 +27,7 @@ use itertools::Itertools;
 /// let mut writer = MzSpecLibTextWriter::new(std::io::BufWriter::new(file));
 /// // Set any parameters needed in the header
 /// writer.header_mut().attributes[0].push(mzannotate::mzspeclib::Attribute::new(
-///     term!(MS:1003188|library name),
+///     mzcv::term!(MS:1003188|library name),
 ///     mzdata::params::Value::String("Simple test library".to_string())));
 /// // Write the header, note that this gives you the writer back to prevent
 /// // writing the header twice or not writing the header at all.
