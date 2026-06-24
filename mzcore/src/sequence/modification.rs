@@ -22,7 +22,7 @@ use crate::{
     helper_functions::{explain_number_error, merge_hashmap},
     molecular_formula,
     ontology::{CustomDatabase, Ontology},
-    parse_json::ParseJson,
+    parse_json::{ParseJson, use_serde},
     quantities::Multi,
     sequence::{
         AminoAcid, CrossLinkName, CrossLinkSide, Linked, LinkerSpecificity, MUPSettings,
@@ -166,7 +166,7 @@ impl Space for ModificationId {
             + self.id.space()
             + self.description.space()
             + self.synonyms.space()
-            //+ self.cross_ids.space() TODO
+            + self.cross_ids.space()
             + self.obsolete.space())
         .set_total::<Self>()
     }
@@ -207,61 +207,7 @@ impl ParseJson for ModificationId {
                             context(&map),
                         ));
                     }
-                    Some(Value::Number(n))
-                        if let Some(n) = n.as_u64()
-                            && let Ok(n) = u32::try_from(n) =>
-                    {
-                        AccessionCode::Numeric(n)
-                    }
-                    Some(Value::String(n)) => AccessionCode::from_str(&n).map_err(|err| {
-                        BoxedError::new(
-                            BasicKind::Error,
-                            "Invalid alphanumeric ModificationID",
-                            err.to_string(),
-                            Context::default().lines(0, n),
-                        )
-                    })?,
-                    Some(Value::Object(map)) => {
-                        if let Some(n) = map.get("Numeric") {
-                            if let Ok(n) = u32::from_json_value(n.clone()) {
-                                AccessionCode::Numeric(n)
-                            } else {
-                                return Err(BoxedError::new(
-                                    BasicKind::Error,
-                                    "Invalid numeric ModificationID",
-                                    format!(
-                                        "The id has to be a positive integer within 0 to {}",
-                                        u32::MAX
-                                    ),
-                                    Context::default().lines(0, n.to_string()),
-                                ));
-                            }
-                        } else if let Some(n) = map.get("Alphanumeric") {
-                            AccessionCode::from_str(&n.to_string()).map_err(|err| {
-                                BoxedError::new(
-                                    BasicKind::Error,
-                                    "Invalid alphanumeric ModificationID",
-                                    err.to_string(),
-                                    Context::default().lines(0, n.to_string()),
-                                )
-                            })?
-                        } else {
-                            return Err(BoxedError::new(
-                                BasicKind::Error,
-                                "Invalid ModificationID",
-                                "The 'id' can only be 'Numeric' or 'Alphanumeric'",
-                                context(&map),
-                            ));
-                        }
-                    }
-                    Some(value) => {
-                        return Err(BoxedError::new(
-                            BasicKind::Error,
-                            "Invalid ModificationID",
-                            "The 'id' is in an invalid format",
-                            Context::default().lines(0, value.to_string()),
-                        ));
-                    }
+                    Some(v) => AccessionCode::from_json_value(v)?,
                 },
                 description: Box::from_json_value(map.remove("description").ok_or_else(|| {
                     BoxedError::new(
@@ -312,20 +258,27 @@ impl ParseJson for ModificationId {
                         ));
                     }
                 },
-                //cross_ids: ThinVec::from_json_value(map.remove("cross_ids").ok_or_else(|| {
-                //    BoxedError::new(
-                //        BasicKind::Error,
-                //         "Invalid ModificationID",
-                //        "The required property 'cross_ids' is missing",
-                //       context(&map),
-                //    )
-                //})?)?,
-                cross_ids: ThinVec::new(), // TODO
+                cross_ids: ThinVec::from_json_value(map.remove("cross_ids").ok_or_else(|| {
+                    BoxedError::new(
+                        BasicKind::Error,
+                        "Invalid ModificationID",
+                        "The required property 'cross_ids' is missing",
+                        context(&map),
+                    )
+                })?)?,
                 obsolete: map
                     .remove("obsolete")
                     .map_or(Ok(false), |v| bool::from_json_value(v))?,
-                parents: ThinVec::default(),  // TODO: add
-                children: ThinVec::default(), // TODO: add
+                parents: map
+                    .remove("parents")
+                    .map(|v| ThinVec::from_json_value(v))
+                    .transpose()?
+                    .unwrap_or_default(),
+                children: map
+                    .remove("children")
+                    .map(|v| ThinVec::from_json_value(v))
+                    .transpose()?
+                    .unwrap_or_default(),
             })
         } else {
             Err(BoxedError::new(
@@ -722,6 +675,39 @@ impl Display for CrossId {
     }
 }
 
+impl Space for CrossId {
+    fn space(&self) -> UsedSpace {
+        match self {
+            Self::Article(a) => a.space(),
+            Self::Beilstein(a) => a.space(),
+            Self::Book(a) => a.space(),
+            Self::CAS(a, b, c) => a.space() + b.space() + c.space(),
+            Self::ChEBI(a) => a.space(),
+            Self::ChemicalBook(a) => a.space(),
+            Self::ChemSpider(a) => a.space(),
+            Self::COMe(a) => a.space(),
+            Self::Deltamass(a) => a.space(),
+            Self::DOI(a) => a.space(),
+            Self::EC(a, b, c, d, p) => a.space() + b.space() + c.space() + d.space() + p.space(),
+            Self::Findmod(a) => a.space(),
+            Self::GO(a) => a.space(),
+            Self::MDL(a) => a.space(),
+            Self::Mod(a, b, c) => a.space() + b.space() + c.space(),
+            Self::OMSSA(a) => a.space(),
+            Self::Other(a) => a.space(),
+            Self::Patent(a) => a.space(),
+            Self::PDB(a) => a.space(),
+            Self::PDBHet(a) => a.space(),
+            Self::PubChemCompound(a) => a.space(),
+            Self::PubChemSubstance(a) => a.space(),
+            Self::PubMed(a) => a.space(),
+            Self::Uniprot(a) => a.space(),
+            Self::URL(a, b) => a.space() + b.space(),
+        }
+        .set_total::<Self>()
+    }
+}
+
 impl CrossId {
     /// Get a URL to resolve this cross-id
     pub fn url(&self) -> Option<String> {
@@ -763,6 +749,31 @@ impl CrossId {
             | Self::Other(_)
             | Self::Patent(_)
             | Self::Uniprot(_) => None,
+        }
+    }
+}
+
+impl ParseJson for CrossId {
+    fn from_json_value(value: Value) -> Result<Self, BoxedError<'static, BasicKind>> {
+        match value {
+            value @ Value::Object(_) => use_serde(value),
+            Value::Array(value) => {
+                if value.len() == 2 {
+                    CrossId::try_from((
+                        (value[0] != Value::Null).then(|| value[0].to_string().into()),
+                        value[1].to_string().into(),
+                    ))
+                } else {
+                    todo!()
+                }
+            }
+            Value::String(value) => CrossId::from_str(&value),
+            value => Err(BoxedError::new(
+                BasicKind::Error,
+                "Invalid CrossId",
+                "A CrossId has to be an object",
+                Context::default().lines(0, value.to_string()),
+            )),
         }
     }
 }
@@ -1390,6 +1401,8 @@ pub fn parse_custom_modifications_str(
 #[cfg(test)]
 #[expect(clippy::missing_panics_doc)]
 mod test {
+    use crate::ontology::STATIC_ONTOLOGIES;
+
     use super::*;
 
     #[test]
@@ -1404,5 +1417,27 @@ mod test {
         let data = include_str!("custom_modifications_20250207.json");
         let mods = parse_custom_modifications_str(data).unwrap();
         assert!(mods.len() > 1);
+    }
+
+    #[test]
+    fn parse_mod_json() {
+        let modification: SimpleModificationInner = dbg!(SimpleModificationInner::from_json_value(serde_json::from_str(
+            r#"{"Database":{"specificities":[[[{"AminoAcid":[["Arginine","Asparagine","AsparticAcid","Cysteine","Glutamine","GlutamicAcid","Histidine","Isoleucine","Leucine","Lysine","Phenylalanine","Proline","Serine","Threonine","Tryptophan","Tyrosine","Valine","Selenocysteine"],"Anywhere"]},{"AminoAcid":[["Glycine"],"AnyCTerm"]}],[],[]],[[{"AminoAcid":[["Methionine"],"Anywhere"]}],[{"Loss":[1,{"elements":[["H",null,4],["C",null,1],["O",null,1],["S",null,1]],"additional_mass":0.0,"labels":[]}]}],[]]],"formula":{"elements":[["O",null,1]],"additional_mass":0.0,"labels":[]},"id":{"ontology":"Unimod","name":"Oxidation","id":{"Numeric":35},"description":"Oxidation or Hydroxylation","synonyms":[["Exact","Oxidation or Hydroxylation"]],"cross_ids":[{"Mod":["Resid",{"Alphanumeric":[65,[65,48,48,50,55,32,32]]},{"Position":"Anywhere"}]},{"PubMed":11461766},{"Mod":["Resid",{"Alphanumeric":[65,[65,48,48,50,57,32,32]]},{"Position":"Anywhere"}]},{"Mod":["Resid",{"Alphanumeric":[65,[65,48,48,50,56,32,32]]},{"Position":"Anywhere"}]},{"Mod":["Resid",{"Alphanumeric":[65,[65,48,48,51,48,32,32]]},{"Position":"Anywhere"}]},{"PubMed":9004526},{"Mod":["Resid",{"Alphanumeric":[65,[65,48,50,48,53,32,32]]},{"Position":"Anywhere"}]},{"Article":"Lagerwerf FM, van de Weert M, Heerma W, Haverkamp J, Rapid Commun Mass Spectrom. 1996;10(15):1905-10"},{"Mod":["Resid",{"Alphanumeric":[65,[65,48,49,52,54,32,32]]},{"Position":"Anywhere"}]},{"Findmod":"DOPA"},{"Mod":["Resid",{"Alphanumeric":[65,[65,48,50,49,53,32,32]]},{"Position":"Anywhere"}]},{"Findmod":"CSEA"},{"Mod":["Resid",{"Alphanumeric":[65,[65,48,48,50,54,32,32]]},{"Position":"Anywhere"}]},{"PubMed":14661084},{"Article":"Berlett, Barbara S.; Stadtman, Earl R. Journal of Biological Chemistry (1997), 272(33), 20313-20316."},{"PubMed":15569593},{"PubMed":11120890},{"PubMed":11212008},{"Mod":["Resid",{"Alphanumeric":[65,[65,48,51,50,50,32,32]]},{"Position":"Anywhere"}]},{"Mod":["Resid",{"Alphanumeric":[65,[65,48,50,51,53,32,32]]},{"Position":"Anywhere"}]},{"Findmod":"HYDR"},{"PubMed":14661085},{"PubMed":12781462},{"PubMed":2057999},{"Mod":["Psimod",{"Numeric":35},{"Position":"Anywhere"}]}],"obsolete":false,"parents":[],"children":[]}}}"#,
+        ).unwrap()).unwrap());
+        assert_eq!(
+            modification,
+            *STATIC_ONTOLOGIES
+                .get_by_index(Ontology::Unimod, &AccessionCode::Numeric(35))
+                .unwrap()
+        );
+        let modification: SimpleModificationInner = dbg!(SimpleModificationInner::from_json_value(serde_json::from_str(
+            r#"{"Database":{"specificities":[[[{"AminoAcid":[["Phenylalanine"],"Anywhere"]}],[],[]]],"formula":{"elements":[["O",null,1]],"additional_mass":0.0,"labels":[]},"id":{"ontology":"Psimod","name":"monohydroxylated phenylalanine","id":{"Numeric":2116},"description":"A protein modification that effectively converts an L-phenylalanine residue to a monohydroxylated phenylalanine.","synonyms":[["Related","Oxidation"]],"cross_ids":[{"Mod":["Unimod",{"Numeric":35},{"AminoAcid":[["Phenylalanine"],"Anywhere"]}]}],"obsolete":false,"parents":[{"Numeric":425},{"Numeric":914}],"children":[{"Numeric":1385},{"Numeric":2102},{"Numeric":2104}]}}}"#,
+        ).unwrap()).unwrap());
+        assert_eq!(
+            modification,
+            *STATIC_ONTOLOGIES
+                .get_by_index(Ontology::Psimod, &AccessionCode::Numeric(2116))
+                .unwrap()
+        );
     }
 }

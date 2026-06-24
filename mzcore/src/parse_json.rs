@@ -1,7 +1,7 @@
-use std::{any::type_name, ops::RangeInclusive, sync::Arc};
+use std::{any::type_name, ops::RangeInclusive, str::FromStr, sync::Arc};
 
 use itertools::Itertools;
-use mzcv::SynonymScope;
+use mzcv::{AccessionCode, SynonymScope};
 use serde::de::DeserializeOwned;
 use serde_json::Value;
 
@@ -236,6 +236,71 @@ impl<A: ParseJson, B: ParseJson, C: ParseJson, D: ParseJson> ParseJson for (A, B
                 ),
                 Context::default().lines(0, value.to_string()),
             ))
+        }
+    }
+}
+
+impl ParseJson for AccessionCode {
+    fn from_json_value(value: Value) -> Result<Self, BoxedError<'static, BasicKind>> {
+        match value {
+            Value::Number(n)
+                if let Some(n) = n.as_u64()
+                    && let Ok(n) = u32::try_from(n) =>
+            {
+                Ok(AccessionCode::Numeric(n))
+            }
+            Value::String(n) => AccessionCode::from_str(&n).map_err(|err| {
+                BoxedError::new(
+                    BasicKind::Error,
+                    "Invalid alphanumeric ModificationID",
+                    err.to_string(),
+                    Context::default().lines(0, n),
+                )
+            }),
+            Value::Object(map) => {
+                if let Some(n) = map.get("Numeric") {
+                    if let Ok(n) = u32::from_json_value(n.clone()) {
+                        Ok(AccessionCode::Numeric(n))
+                    } else {
+                        return Err(BoxedError::new(
+                            BasicKind::Error,
+                            "Invalid numeric ModificationID",
+                            format!(
+                                "The id has to be a positive integer within 0 to {}",
+                                u32::MAX
+                            ),
+                            Context::default().lines(0, n.to_string()),
+                        ));
+                    }
+                } else if let Some(n) = map.get("Alphanumeric") {
+                    AccessionCode::from_str(&n.to_string()).map_err(|err| {
+                        BoxedError::new(
+                            BasicKind::Error,
+                            "Invalid alphanumeric ModificationID",
+                            err.to_string(),
+                            Context::default().lines(0, n.to_string()),
+                        )
+                    })
+                } else {
+                    return Err(BoxedError::new(
+                        BasicKind::Error,
+                        "Invalid ModificationID",
+                        "The 'id' can only be 'Numeric' or 'Alphanumeric'",
+                        Context::default().lines(
+                            0,
+                            map.iter().map(|(k, v)| format!("\"{k}\": {v}")).join(","),
+                        ),
+                    ));
+                }
+            }
+            value => {
+                return Err(BoxedError::new(
+                    BasicKind::Error,
+                    "Invalid ModificationID",
+                    "The 'id' is in an invalid format",
+                    Context::default().lines(0, value.to_string()),
+                ));
+            }
         }
     }
 }

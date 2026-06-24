@@ -15,7 +15,7 @@ use crate::{
     chemistry::{AmbiguousLabel, Chemical, DiagnosticIon, MolecularFormula, NeutralLoss},
     glycan::{GlycanPeptideFragment, GlycanStructure, MonoSaccharide},
     ontology::Ontology,
-    parse_json::ParseJson,
+    parse_json::{ParseJson, use_serde},
     quantities::Multi,
     sequence::{
         AminoAcid, GnoComposition, GnoSubsumption, LinkerSpecificity, ModificationId,
@@ -49,6 +49,12 @@ impl Display for MassTag {
             Self::Ontology(o) => write!(f, "{}:", o.char()),
             Self::Observed => write!(f, "Obs:"),
         }
+    }
+}
+
+impl ParseJson for MassTag {
+    fn from_json_value(value: Value) -> Result<Self, BoxedError<'static, BasicKind>> {
+        use_serde(value)
     }
 }
 
@@ -482,8 +488,21 @@ impl ParseJson for SimpleModificationInner {
         if let Value::Object(map) = value {
             let (key, value) = map.into_iter().next().unwrap();
             match key.as_str() {
-                "Mass" => f64::from_json_value(value)
-                    .map(|v| Self::Mass(MassTag::None, Mass::new::<dalton>(v).into(), None)), // TODO: add parser for new format
+                "Mass" => match value {
+                    Value::Number(n) if let Some(n) = n.as_f64() => Ok(Self::Mass(
+                        MassTag::None,
+                        Mass::new::<dalton>(n).into(),
+                        None,
+                    )),
+                    value @ Value::Array(_) => <(MassTag, f64, Option<u8>)>::from_json_value(value)
+                        .map(|(a, b, c)| Self::Mass(a, Mass::new::<dalton>(b).into(), c)),
+                    _ => Err(BoxedError::new(
+                        BasicKind::Error,
+                        "Invalid SimpleModification",
+                        "This is not a valid mass modification",
+                        Context::default().lines(0, value.to_string()),
+                    )),
+                },
                 "Formula" => MolecularFormula::from_json_value(value).map(Self::Formula),
                 "Glycan" => Vec::from_json_value(value).map(Self::Glycan),
                 "GlycanStructure" => {
@@ -722,7 +741,7 @@ impl ParseJson for LinkerLength {
                     })?
                     .into(),
             ])),
-            _ => crate::parse_json::use_serde(value),
+            _ => use_serde(value),
         }
     }
 }
@@ -770,5 +789,18 @@ mod tests {
             ),
             Multi::default()
         );
+    }
+
+    #[test]
+    fn parse_json() {
+        let mass = SimpleModificationInner::Mass(
+            MassTag::None,
+            Mass::new::<dalton>(123.5).into(),
+            Some(6),
+        );
+        let json = serde_json::to_string(&mass).unwrap();
+        let back =
+            SimpleModificationInner::from_json_value(serde_json::from_str(&json).unwrap()).unwrap();
+        assert_eq!(mass, back);
     }
 }

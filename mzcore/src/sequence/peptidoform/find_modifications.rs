@@ -475,12 +475,12 @@ fn test_replacement() {
     .unwrap();
     assert_eq!(search.search(peptide), expected);
     // let (peptide, _) = Peptidoform::pro_forma(
-    //     "[-17.02655]-QNKKSLM[+15.9949]E", // TODO: fix these when the proper locations for Unimod mods is implemented
+    //     "Q[-17.02655]NKKSLM[+15.9949]E",
     //     &crate::ontology::STATIC_ONTOLOGIES,
     // )
     // .unwrap();
     // let (expected, _) = Peptidoform::pro_forma(
-    //     "[Gln->pyro-glu]-QNKKSLM[Oxidation]E",
+    //     "Q[Gln->pyro-glu]NKKSLM[Oxidation]E",
     //     &crate::ontology::STATIC_ONTOLOGIES,
     // )
     // .unwrap();
