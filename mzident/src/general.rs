@@ -214,8 +214,10 @@ mod tests {
         match test_format::<SagePSM>(
             BufReader::new(File::open("src/test_files/sage_v0_14.tsv").unwrap()),
             &mzcore::ontology::STATIC_ONTOLOGIES,
-            true,
-            false,
+            TestSettings {
+                allow_mass_mods: true,
+                ..Default::default()
+            },
             Some(SageVersion::V0_14),
         ) {
             Ok(n) => assert_eq!(n, 19),
@@ -231,8 +233,10 @@ mod tests {
         match test_format::<MSFraggerPSM>(
             BufReader::new(File::open("src/test_files/msfragger_v21.tsv").unwrap()),
             &mzcore::ontology::STATIC_ONTOLOGIES,
-            true,
-            false,
+            TestSettings {
+                allow_mass_mods: true,
+                ..Default::default()
+            },
             Some(MSFraggerVersion::FragPipeV20Or21),
         ) {
             Ok(n) => assert_eq!(n, 19),

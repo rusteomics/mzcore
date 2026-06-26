@@ -9,7 +9,7 @@ use crate::{
     ontology::{Ontologies, Ontology},
     quantities::{Tolerance, WithinTolerance},
     sequence::{
-        AminoAcid, GnoComposition, Modification, Position, SimpleModification,
+        AminoAcid, GnoComposition, Modification, Position, SequencePosition, SimpleModification,
         SimpleModificationInner,
     },
     system::{Mass, Ratio, ratio::ppm},
@@ -108,7 +108,10 @@ pub struct PeptideModificationSearch<'ontologies> {
     /// The custom modifications, if defined
     ontologies: Option<&'ontologies Ontologies>,
     /// The cache to speed up processing from mod + AA to the replacement mod
-    cache: HashMap<(Position, Option<AminoAcid>, SimpleModification), Option<SimpleModification>>,
+    cache: HashMap<
+        (SequencePosition, Option<AminoAcid>, SimpleModification),
+        Option<SimpleModification>,
+    >,
 }
 
 impl Default for PeptideModificationSearch<'_> {
@@ -217,39 +220,59 @@ impl<'ontologies> PeptideModificationSearch<'ontologies> {
         ) -> Option<(SimpleModification, Position)> {
             if !settings.allow_terminal_redefinition || (!n_term && !c_term) {
                 settings
-                    .find_replacement(Position::Anywhere, aminoacid, in_place)
+                    .find_replacement(SequencePosition::Index(1, 3), aminoacid, in_place)
                     .map(|r| (r, Position::Anywhere))
             } else if n_term && c_term {
                 settings
-                    .find_replacement(Position::Anywhere, aminoacid, in_place)
+                    .find_replacement(SequencePosition::Index(1, 3), aminoacid, in_place)
                     .map(|r| (r, Position::Anywhere))
                     .or_else(|| {
                         settings
-                            .find_replacement(Position::AnyNTerm, aminoacid, in_place)
+                            .find_replacement(SequencePosition::Index(0, 3), aminoacid, in_place)
+                            .map(|r| (r, Position::Anywhere))
+                    })
+                    .or_else(|| {
+                        settings
+                            .find_replacement(SequencePosition::Index(2, 3), aminoacid, in_place)
+                            .map(|r| (r, Position::Anywhere))
+                    })
+                    .or_else(|| {
+                        settings
+                            .find_replacement(SequencePosition::NTerm, aminoacid, in_place)
                             .map(|r| (r, Position::AnyNTerm))
                     })
                     .or_else(|| {
                         settings
-                            .find_replacement(Position::AnyCTerm, aminoacid, in_place)
+                            .find_replacement(SequencePosition::CTerm, aminoacid, in_place)
                             .map(|r| (r, Position::AnyCTerm))
                     })
             } else if n_term {
                 settings
-                    .find_replacement(Position::Anywhere, aminoacid, in_place)
+                    .find_replacement(SequencePosition::Index(1, 3), aminoacid, in_place)
                     .map(|r| (r, Position::Anywhere))
                     .or_else(|| {
                         settings
-                            .find_replacement(Position::AnyNTerm, aminoacid, in_place)
+                            .find_replacement(SequencePosition::Index(0, 3), aminoacid, in_place)
+                            .map(|r| (r, Position::Anywhere))
+                    })
+                    .or_else(|| {
+                        settings
+                            .find_replacement(SequencePosition::NTerm, aminoacid, in_place)
                             .map(|r| (r, Position::AnyNTerm))
                     })
             } else {
                 // The case when c_term
                 settings
-                    .find_replacement(Position::Anywhere, aminoacid, in_place)
+                    .find_replacement(SequencePosition::Index(1, 3), aminoacid, in_place)
                     .map(|r| (r, Position::Anywhere))
                     .or_else(|| {
                         settings
-                            .find_replacement(Position::AnyCTerm, aminoacid, in_place)
+                            .find_replacement(SequencePosition::Index(2, 3), aminoacid, in_place)
+                            .map(|r| (r, Position::Anywhere))
+                    })
+                    .or_else(|| {
+                        settings
+                            .find_replacement(SequencePosition::CTerm, aminoacid, in_place)
                             .map(|r| (r, Position::AnyCTerm))
                     })
             }
@@ -257,7 +280,7 @@ impl<'ontologies> PeptideModificationSearch<'ontologies> {
 
         fn find_replacement_modification(
             settings: &mut PeptideModificationSearch,
-            position: Position,
+            position: SequencePosition,
             aminoacid: Option<AminoAcid>,
             in_place: &Modification,
         ) -> Option<Modification> {
@@ -276,7 +299,7 @@ impl<'ontologies> PeptideModificationSearch<'ontologies> {
             .map(|m| {
                 find_replacement_modification(
                     self,
-                    Position::AnyNTerm,
+                    SequencePosition::NTerm,
                     peptide.sequence().first().map(|p| p.aminoacid.aminoacid()),
                     m,
                 )
@@ -289,7 +312,7 @@ impl<'ontologies> PeptideModificationSearch<'ontologies> {
             .map(|m| {
                 find_replacement_modification(
                     self,
-                    Position::AnyCTerm,
+                    SequencePosition::CTerm,
                     peptide.sequence().last().map(|p| p.aminoacid.aminoacid()),
                     m,
                 )
@@ -302,7 +325,7 @@ impl<'ontologies> PeptideModificationSearch<'ontologies> {
         for (index, position) in peptide.sequence_mut().iter_mut().enumerate() {
             let is_n_term = index == 0;
             let is_c_term = index == len;
-            let mut remove = None;
+            let mut remove = Vec::new();
             for (i, m) in position.modifications.iter_mut().enumerate() {
                 match m {
                     Modification::Simple(modification) => {
@@ -315,25 +338,29 @@ impl<'ontologies> PeptideModificationSearch<'ontologies> {
                         ) {
                             if location == Position::AnyNTerm {
                                 n_term.push(Modification::Simple(replace));
-                                remove = Some(i);
+                                remove.push(i);
                             } else if location == Position::AnyCTerm {
                                 c_term.push(Modification::Simple(replace));
-                                remove = Some(i);
-                            } else if location == Position::Anywhere {
+                                remove.push(i);
+                            } else {
                                 *m = Modification::Simple(replace);
                             }
-                            // If it can only be a terminal mod but there already is a terminal mod keep it in the original state
                         }
                     }
                     Modification::Ambiguous { .. } | Modification::CrossLink { .. } => (), //TODO: potentially the cross-linker could be replaced as well as the ambiguous mod, but that takes some more logic
                 }
             }
-            if let Some(remove) = remove.take() {
-                position.modifications.remove(remove);
+            if !remove.is_empty() {
+                let mut index = 0;
+                position.modifications.retain(|_| {
+                    let rem = remove.contains(&index);
+                    index += 1;
+                    !rem
+                });
             }
         }
         for m in peptide.get_labile_mut_inner() {
-            if let Some(replace) = self.find_replacement(Position::Anywhere, None, m) {
+            if let Some(replace) = self.find_replacement(SequencePosition::Index(1, 3), None, m) {
                 *m = replace;
             }
         }
@@ -342,7 +369,7 @@ impl<'ontologies> PeptideModificationSearch<'ontologies> {
 
     fn find_replacement(
         &mut self,
-        position: Position,
+        position: SequencePosition,
         aminoacid: Option<AminoAcid>,
         in_place: &SimpleModification,
     ) -> Option<SimpleModification> {
@@ -380,7 +407,7 @@ impl<'ontologies> PeptideModificationSearch<'ontologies> {
         modifications: &[SimpleModification],
         selection: &[Ontology],
         ontologies: Option<&Ontologies>,
-        position: Position,
+        position: SequencePosition,
         aminoacid: Option<AminoAcid>,
         in_place: &SimpleModification,
     ) -> Option<SimpleModification> {
@@ -458,43 +485,46 @@ impl<'ontologies> PeptideModificationSearch<'ontologies> {
 #[test]
 #[expect(clippy::missing_panics_doc)]
 fn test_replacement() {
-    let mut search = PeptideModificationSearch::in_ontologies(
-        vec![Ontology::Unimod],
-        &crate::ontology::STATIC_ONTOLOGIES,
-    )
-    .replace_formulas(true);
+    use crate::ontology::STATIC_ONTOLOGIES;
+    use crate::sequence::LinkerSpecificity;
+
+    let mut search =
+        PeptideModificationSearch::in_ontologies(vec![Ontology::Unimod], &STATIC_ONTOLOGIES)
+            .replace_formulas(true)
+            .allow_terminal_redefinition(true);
+
+    let (peptide, _) =
+        Peptidoform::pro_forma("MSFNELT[79.9663]ESNKKSLM[+15.9949]E", &STATIC_ONTOLOGIES).unwrap();
+    let (expected, _) =
+        Peptidoform::pro_forma("MSFNELT[Phospho]ESNKKSLM[Oxidation]E", &STATIC_ONTOLOGIES).unwrap();
+    let res = search.search(peptide);
+    assert_eq!(res, expected, "{res} != {expected}");
+
     let (peptide, _) = Peptidoform::pro_forma(
-        "MSFNELT[79.9663]ESNKKSLM[+15.9949]E",
-        &crate::ontology::STATIC_ONTOLOGIES,
+        // TODO fix the search + add terminal test
+        "Q[-17.02655]NKKSLM[+15.9949]E",
+        &STATIC_ONTOLOGIES,
     )
     .unwrap();
-    let (expected, _) = Peptidoform::pro_forma(
-        "MSFNELT[Phospho]ESNKKSLM[Oxidation]E",
-        &crate::ontology::STATIC_ONTOLOGIES,
-    )
-    .unwrap();
-    assert_eq!(search.search(peptide), expected);
-    // let (peptide, _) = Peptidoform::pro_forma(
-    //     "Q[-17.02655]NKKSLM[+15.9949]E",
-    //     &crate::ontology::STATIC_ONTOLOGIES,
-    // )
-    // .unwrap();
-    // let (expected, _) = Peptidoform::pro_forma(
-    //     "Q[Gln->pyro-glu]NKKSLM[Oxidation]E",
-    //     &crate::ontology::STATIC_ONTOLOGIES,
-    // )
-    // .unwrap();
-    // let res = search.search(peptide);
-    // assert_eq!(res, expected, "{res} != {expected}");
-    let (peptide, _) = Peptidoform::pro_forma(
-        "M[Formula:O1]KSLM[+15.9949]E",
-        &crate::ontology::STATIC_ONTOLOGIES,
-    )
-    .unwrap();
-    let (expected, _) = Peptidoform::pro_forma(
-        "M[Oxidation]KSLM[Oxidation]E",
-        &crate::ontology::STATIC_ONTOLOGIES,
-    )
-    .unwrap();
-    assert_eq!(search.search(peptide), expected);
+    let (expected, _) =
+        Peptidoform::pro_forma("Q[Gln->pyro-glu]NKKSLM[Oxidation]E", &STATIC_ONTOLOGIES).unwrap();
+    let res = search.search(peptide);
+    assert_eq!(res, expected, "{res} != {expected}");
+
+    let (peptide, _) =
+        Peptidoform::pro_forma("M[Formula:O1]KSLM[+15.9949]E", &STATIC_ONTOLOGIES).unwrap();
+    let (expected, _) =
+        Peptidoform::pro_forma("M[Oxidation]KSLM[Oxidation]E", &STATIC_ONTOLOGIES).unwrap();
+    let res = search.search(peptide);
+    assert_eq!(res, expected, "{res} != {expected}");
+
+    // Terminal replacement
+    let (peptide_at_term, _) =
+        Peptidoform::pro_forma("[42.0105]-MKSLME", &STATIC_ONTOLOGIES).unwrap();
+    let (peptide, _) = Peptidoform::pro_forma("M[42.0105]KSLME", &STATIC_ONTOLOGIES).unwrap();
+    let (expected, _) = Peptidoform::pro_forma("[Acetyl]-MKSLME", &STATIC_ONTOLOGIES).unwrap();
+    let res = search.search(peptide_at_term);
+    assert_eq!(res, expected, "{res} != {expected}");
+    let res = search.search(peptide);
+    assert_eq!(res, expected, "{res} != {expected}");
 }

@@ -135,7 +135,7 @@ impl PlacementRule {
         match self {
             Self::AminoAcid(aa, r_pos) => {
                 aa.iter().any(|a| *a == seq.aminoacid.aminoacid())
-                    && r_pos.is_possible(position)
+                    && RulePosition::is_possible(*r_pos, position, false)
                     && matches!(position, SequencePosition::Index(_, _))
             }
             Self::PsiModification(mod_index, r_pos) => {
@@ -152,26 +152,20 @@ impl PlacementRule {
                     } else {
                         false
                     }
-                }) && r_pos.is_possible(position)
+                }) && RulePosition::is_possible(*r_pos, position, false)
             }
-            Self::Position(Position::AnyNTerm | Position::ProteinNTerm) => {
-                position == SequencePosition::NTerm
-            }
-            Self::Position(Position::AnyCTerm | Position::ProteinCTerm) => {
-                position == SequencePosition::CTerm
-            }
-            Self::Position(Position::Anywhere) => matches!(position, SequencePosition::Index(_, _)),
+            Self::Position(r_pos) => RulePosition::is_possible(*r_pos, position, true),
         }
     }
 
     /// Check if this rule fits with the given location
-    pub fn is_possible_aa(&self, aa: AminoAcid, position: Position) -> bool {
+    pub fn is_possible_aa<P: RulePosition>(&self, aa: AminoAcid, position: P) -> bool {
         match self {
             Self::AminoAcid(allowed_aa, r_pos) => {
-                allowed_aa.contains(&aa) && r_pos.is_possible_position(position)
+                allowed_aa.contains(&aa) && RulePosition::is_possible(*r_pos, position, false)
             }
             Self::PsiModification(_, _) => false,
-            Self::Position(r_pos) => r_pos.is_possible_position(position),
+            Self::Position(r_pos) => RulePosition::is_possible(*r_pos, position, true),
         }
     }
 
@@ -185,8 +179,12 @@ impl PlacementRule {
     }
 
     /// Check if any of the given rules are possible
-    pub fn any_possible_aa(rules: &[Self], aa: AminoAcid, position: Position) -> bool {
-        rules.iter().any(|r| r.is_possible_aa(aa, position))
+    pub fn any_possible_aa<P: RulePosition + Clone>(
+        rules: &[Self],
+        aa: AminoAcid,
+        position: P,
+    ) -> bool {
+        rules.iter().any(|r| r.is_possible_aa(aa, position.clone()))
     }
 
     /// Check if this rule is a subset of another rule
@@ -282,33 +280,42 @@ impl FromStr for PlacementRule {
     }
 }
 
-impl Position {
-    /// See if the given peptide position is a valid position given this [`Position`] as placement rule.
-    pub fn is_possible(self, position: SequencePosition) -> bool {
-        match self {
-            Self::Anywhere => true,
-            Self::AnyNTerm | Self::ProteinNTerm => {
+/// Trait to be able to use any of the two position definitions when testing rules
+pub trait RulePosition {
+    /// Check if this position is allowed with this position rule
+    fn is_possible(rule: Position, position: Self, sidechain_strict: bool) -> bool;
+}
+
+impl RulePosition for Position {
+    fn is_possible(rule: Position, position: Self, _sidechain_strict: bool) -> bool {
+        match rule {
+            Position::Anywhere => true,
+            Position::AnyNTerm => position == Self::AnyNTerm || position == Self::ProteinNTerm,
+            Position::ProteinNTerm => position == Self::ProteinNTerm,
+            Position::AnyCTerm => position == Self::AnyCTerm || position == Self::ProteinCTerm,
+            Position::ProteinCTerm => position == Self::ProteinCTerm,
+        }
+    }
+}
+
+impl RulePosition for SequencePosition {
+    fn is_possible(rule: Position, position: Self, sidechain_strict: bool) -> bool {
+        match rule {
+            Position::Anywhere => true,
+            Position::AnyNTerm | Position::ProteinNTerm => {
                 position == SequencePosition::NTerm
-                    || matches!(position, SequencePosition::Index(0, _))
+                    || !sidechain_strict && matches!(position, SequencePosition::Index(0, _))
             }
-            Self::AnyCTerm | Self::ProteinCTerm => {
+            Position::AnyCTerm | Position::ProteinCTerm => {
                 position == SequencePosition::CTerm
-                    || matches!(position, SequencePosition::Index(i, l) if i == l.saturating_sub(1))
+                    || !sidechain_strict
+                        && matches!(position, SequencePosition::Index(i, l) if i == l.saturating_sub(1))
             }
         }
     }
+}
 
-    /// See if the given position is a valid position given this [`Position`] as placement rule.
-    pub fn is_possible_position(self, position: Self) -> bool {
-        match self {
-            Self::Anywhere => true,
-            Self::AnyNTerm => position == Self::AnyNTerm || position == Self::ProteinNTerm,
-            Self::ProteinNTerm => position == Self::ProteinNTerm,
-            Self::AnyCTerm => position == Self::AnyCTerm || position == Self::ProteinCTerm,
-            Self::ProteinCTerm => position == Self::ProteinCTerm,
-        }
-    }
-
+impl Position {
     /// Check if this position is a subset of another position
     pub const fn is_subset(self, other: Self) -> bool {
         matches!(

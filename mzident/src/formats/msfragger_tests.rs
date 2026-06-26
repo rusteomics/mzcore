@@ -1,7 +1,7 @@
 #![allow(clippy::missing_panics_doc)]
 use std::io::BufReader;
 
-use crate::{MSFraggerPSM, MSFraggerVersion, test_format};
+use crate::{MSFraggerPSM, MSFraggerVersion, TestSettings, test_format};
 use mzcore::{
     prelude::MolecularFormula,
     sequence::{ModificationId, SimpleModificationInner},
@@ -13,8 +13,10 @@ fn msfragger_v4_2() {
     match test_format::<MSFraggerPSM>(
         BufReader::new(DATA_MSFRAGGER_V4_2.as_bytes()),
         &mzcore::ontology::STATIC_ONTOLOGIES,
-        true,
-        false,
+        TestSettings {
+            allow_mass_mods: true,
+            ..Default::default()
+        },
         Some(MSFraggerVersion::V4_2),
     ) {
         Ok(n) => assert_eq!(n, 17),
@@ -30,8 +32,10 @@ fn msfragger_v4_2_decoy() {
     match test_format::<MSFraggerPSM>(
         BufReader::new(DATA_MSFRAGGER_V4_2_DECOY.as_bytes()),
         &mzcore::ontology::STATIC_ONTOLOGIES,
-        true,
-        false,
+        TestSettings {
+            allow_mass_mods: true,
+            ..Default::default()
+        },
         Some(MSFraggerVersion::V4_2),
     ) {
         Ok(n) => assert_eq!(n, 20),
@@ -47,8 +51,10 @@ fn msfragger_v4_2_missing_columns() {
     match test_format::<MSFraggerPSM>(
         BufReader::new(DATA_MSFRAGGER_V4_2_MISSING_COLUMNS.as_bytes()),
         &mzcore::ontology::STATIC_ONTOLOGIES,
-        true,
-        false,
+        TestSettings {
+            allow_mass_mods: true,
+            ..Default::default()
+        },
         Some(MSFraggerVersion::V4_2),
     ) {
         Ok(n) => assert_eq!(n, 19),
@@ -64,8 +70,10 @@ fn msfragger_v4_3_missing_columns() {
     match test_format::<MSFraggerPSM>(
         BufReader::new(DATA_MSFRAGGER_V4_3_MISSING_COLUMNS.as_bytes()),
         &mzcore::ontology::STATIC_ONTOLOGIES,
-        true,
-        false,
+        TestSettings {
+            allow_mass_mods: true,
+            ..Default::default()
+        },
         Some(MSFraggerVersion::V4_2),
     ) {
         Ok(n) => assert_eq!(n, 29),
@@ -81,8 +89,10 @@ fn fragpipe_v21_a() {
     match test_format::<MSFraggerPSM>(
         BufReader::new(DATA_FRAGIPE_V21_A.as_bytes()),
         &mzcore::ontology::STATIC_ONTOLOGIES,
-        true,
-        false,
+        TestSettings {
+            allow_mass_mods: true,
+            ..Default::default()
+        },
         Some(MSFraggerVersion::FragPipeV20Or21),
     ) {
         Ok(n) => assert_eq!(n, 19),
@@ -98,8 +108,10 @@ fn fragpipe_v21_b() {
     match test_format::<MSFraggerPSM>(
         BufReader::new(DATA_FRAGPIPE_V21_B.as_bytes()),
         &mzcore::ontology::STATIC_ONTOLOGIES,
-        true,
-        false,
+        TestSettings {
+            allow_mass_mods: true,
+            ..Default::default()
+        },
         Some(MSFraggerVersion::FragPipeV20Or21),
     ) {
         Ok(n) => assert_eq!(n, 19),
@@ -115,8 +127,10 @@ fn fragpipe_v21_c() {
     match test_format::<MSFraggerPSM>(
         BufReader::new(DATA_FRAGPIPE_V21_C.as_bytes()),
         &mzcore::ontology::STATIC_ONTOLOGIES,
-        true,
-        false,
+        TestSettings {
+            allow_mass_mods: true,
+            ..Default::default()
+        },
         Some(MSFraggerVersion::FragPipeV20Or21),
     ) {
         Ok(n) => assert_eq!(n, 19),
@@ -132,8 +146,10 @@ fn fragpipe_philosopher_a() {
     match test_format::<MSFraggerPSM>(
         BufReader::new(DATA_PHILOSOPHER_A.as_bytes()),
         &mzcore::ontology::STATIC_ONTOLOGIES,
-        true,
-        false,
+        TestSettings {
+            allow_mass_mods: true,
+            ..Default::default()
+        },
         Some(MSFraggerVersion::Philosopher),
     ) {
         Ok(n) => assert_eq!(n, 19),
@@ -149,8 +165,10 @@ fn fragpipe_philosopher_b() {
     match test_format::<MSFraggerPSM>(
         BufReader::new(DATA_PHILOSOPHER_B.as_bytes()),
         &mzcore::ontology::STATIC_ONTOLOGIES,
-        true,
-        false,
+        TestSettings {
+            allow_mass_mods: true,
+            ..Default::default()
+        },
         Some(MSFraggerVersion::Philosopher),
     ) {
         Ok(n) => assert_eq!(n, 19),
@@ -166,8 +184,10 @@ fn fragpipe_philosopher_c() {
     match test_format::<MSFraggerPSM>(
         BufReader::new(DATA_PHILOSOPHER_C.as_bytes()),
         &mzcore::ontology::STATIC_ONTOLOGIES,
-        true,
-        false,
+        TestSettings {
+            allow_mass_mods: true,
+            ..Default::default()
+        },
         Some(MSFraggerVersion::Philosopher),
     ) {
         Ok(n) => assert_eq!(n, 19),
@@ -197,8 +217,10 @@ fn fragpipe_v21_manual() {
                 ),
             },
         )]),
-        true,
-        false,
+        TestSettings {
+            allow_mass_mods: true,
+            ..Default::default()
+        },
         Some(MSFraggerVersion::FragPipeV20Or21),
     ) {
         Ok(n) => assert_eq!(n, 19),
@@ -214,8 +236,7 @@ fn fragpipe_v22() {
     match test_format::<MSFraggerPSM>(
         BufReader::new(DATA_FRAGPIPE_V22.as_bytes()),
         &mzcore::ontology::STATIC_ONTOLOGIES,
-        false,
-        false,
+        TestSettings::default(),
         Some(MSFraggerVersion::FragPipeV22),
     ) {
         Ok(n) => assert_eq!(n, 19),

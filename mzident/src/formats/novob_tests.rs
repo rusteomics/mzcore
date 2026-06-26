@@ -1,5 +1,5 @@
 #![allow(clippy::missing_panics_doc)]
-use crate::{NovoBPSM, NovoBVersion, test_format};
+use crate::{NovoBPSM, NovoBVersion, TestSettings, test_format};
 use std::io::BufReader;
 
 #[test]
@@ -7,8 +7,7 @@ fn novob() {
     match test_format::<NovoBPSM>(
         BufReader::new(NOVOB_V0_0_1.as_bytes()),
         &mzcore::ontology::STATIC_ONTOLOGIES,
-        false,
-        false,
+        TestSettings::default(),
         Some(NovoBVersion::V0_0_1),
     ) {
         Ok(n) => assert_eq!(n, 20),
@@ -24,8 +23,7 @@ fn novob_1() {
     match test_format::<NovoBPSM>(
         BufReader::new(NOVOB_V0_0_1_2.as_bytes()),
         &mzcore::ontology::STATIC_ONTOLOGIES,
-        false,
-        false,
+        TestSettings::default(),
         Some(NovoBVersion::V0_0_1),
     ) {
         Ok(n) => assert_eq!(n, 19),

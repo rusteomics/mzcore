@@ -1,15 +1,17 @@
 #![allow(clippy::missing_panics_doc)]
 use std::io::BufReader;
 
-use crate::{PLGSPSM, PLGSVersion, test_format};
+use crate::{PLGSPSM, PLGSVersion, TestSettings, test_format};
 
 #[test]
 fn plgs_fragment() {
     match test_format::<PLGSPSM>(
         BufReader::new(DATA_FRAGMENT.as_bytes()),
         &mzcore::ontology::STATIC_ONTOLOGIES,
-        true,
-        false,
+        TestSettings {
+            allow_mass_mods: true,
+            ..Default::default()
+        },
         Some(PLGSVersion::V3_0),
     ) {
         Ok(n) => assert_eq!(n, 22),
@@ -25,8 +27,10 @@ fn plgs_peptide() {
     match test_format::<PLGSPSM>(
         BufReader::new(DATA_PEPTIDE.as_bytes()),
         &mzcore::ontology::STATIC_ONTOLOGIES,
-        true,
-        false,
+        TestSettings {
+            allow_mass_mods: true,
+            ..Default::default()
+        },
         Some(PLGSVersion::V3_0),
     ) {
         Ok(n) => assert_eq!(n, 21),

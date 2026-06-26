@@ -8,8 +8,7 @@ fn opair() {
     match test_format::<OpairPSM>(
         BufReader::new(DATA.as_bytes()),
         &mzcore::ontology::STATIC_ONTOLOGIES,
-        false,
-        false,
+        crate::TestSettings::default(),
         Some(OpairVersion::Opair),
     ) {
         Ok(n) => assert_eq!(n, 20),

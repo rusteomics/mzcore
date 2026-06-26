@@ -280,6 +280,26 @@ impl Peptidoform<SemiAmbiguous> {
                 base_context.clone().add_highlight((0, range)),
             ));
         }
+
+        // Move side chain N term mods from the N term to the side chain
+        let n = peptide
+            .get_n_term()
+            .to_vec()
+            .iter()
+            .filter(|m| {
+                if m.is_possible(&peptide[0], SequencePosition::NTerm)
+                    .any_possible()
+                {
+                    true
+                } else {
+                    peptide[0].modifications.push((*m).clone());
+                    false
+                }
+            })
+            .cloned()
+            .collect();
+        peptide.set_n_term(n);
+
         let warnings = peptide.enforce_modification_rules_with_context(
             &base_context.clone().add_highlight((0, range.clone())),
         );

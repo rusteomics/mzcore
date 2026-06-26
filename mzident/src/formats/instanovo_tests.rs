@@ -1,5 +1,5 @@
 #![allow(clippy::missing_panics_doc)]
-use crate::{InstaNovoPSM, InstaNovoVersion, test_format};
+use crate::{InstaNovoPSM, InstaNovoVersion, TestSettings, test_format};
 use std::io::BufReader;
 
 #[test]
@@ -7,8 +7,10 @@ fn instanovo_v1_0_0() {
     match test_format::<InstaNovoPSM>(
         BufReader::new(INSTANOVO_V1_0_0.as_bytes()),
         &mzcore::ontology::STATIC_ONTOLOGIES,
-        false,
-        true,
+        TestSettings {
+            expect_lc: true,
+            ..Default::default()
+        },
         Some(InstaNovoVersion::V1_0_0),
     ) {
         Ok(n) => assert_eq!(n, 21),
@@ -25,8 +27,10 @@ fn instanovo_v1_1_4() {
     match test_format::<InstaNovoPSM>(
         BufReader::new(INSTANOVO_V1_1_4.as_bytes()),
         &mzcore::ontology::STATIC_ONTOLOGIES,
-        false,
-        true,
+        TestSettings {
+            expect_lc: true,
+            ..Default::default()
+        },
         Some(InstaNovoVersion::V1_1_4),
     ) {
         Ok(n) => assert_eq!(n, 20),
@@ -42,8 +46,10 @@ fn instanovo_v1_1_0() {
     match test_format::<InstaNovoPSM>(
         BufReader::new(INSTANOVO_V1_1_0.as_bytes()),
         &mzcore::ontology::STATIC_ONTOLOGIES,
-        false,
-        true,
+        TestSettings {
+            expect_lc: true,
+            ..Default::default()
+        },
         Some(InstaNovoVersion::V1_1_0),
     ) {
         Ok(n) => assert_eq!(n, 1),
@@ -59,8 +65,7 @@ fn instanovoplus_v1_1_4() {
     match test_format::<InstaNovoPSM>(
         BufReader::new(INSTANOVOPLUS_V1_1_4.as_bytes()),
         &mzcore::ontology::STATIC_ONTOLOGIES,
-        false,
-        false,
+        TestSettings::default(),
         Some(InstaNovoVersion::PlusV1_1_4),
     ) {
         Ok(n) => assert_eq!(n, 24),
@@ -76,8 +81,10 @@ fn instanovo_v1_2_2() {
     match test_format::<InstaNovoPSM>(
         BufReader::new(INSTANOVO_V1_2_2.as_bytes()),
         &mzcore::ontology::STATIC_ONTOLOGIES,
-        false,
-        true,
+        TestSettings {
+            expect_lc: true,
+            ..Default::default()
+        },
         Some(InstaNovoVersion::V1_2_2),
     ) {
         Ok(n) => assert_eq!(n, 1),
@@ -93,8 +100,7 @@ fn instanovoplus_v1_2_2() {
     match test_format::<InstaNovoPSM>(
         BufReader::new(INSTANOVOPLUS_V1_2_2.as_bytes()),
         &mzcore::ontology::STATIC_ONTOLOGIES,
-        false,
-        false,
+        TestSettings::default(),
         Some(InstaNovoVersion::PlusV1_2_2),
     ) {
         Ok(n) => assert_eq!(n, 1),
@@ -110,8 +116,7 @@ fn instanovo_combined_v1_2_2() {
     match test_format::<InstaNovoPSM>(
         BufReader::new(INSTANOVO_COMBINED_V1_2_2.as_bytes()),
         &mzcore::ontology::STATIC_ONTOLOGIES,
-        false,
-        false,
+        TestSettings::default(),
         Some(InstaNovoVersion::CombinedV1_2_2),
     ) {
         Ok(n) => assert_eq!(n, 1),

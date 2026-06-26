@@ -2,20 +2,18 @@ macro_rules! test {
     ($case:literal, $name:ident) => {
         #[test]
         fn $name() {
-            let mut peptides = 0;
-            for read in crate::MzTabPSM::parse_reader(
+            if let Ok(res) = crate::MzTabPSM::parse_reader(
                 $case.as_bytes(),
                 &mzcore::ontology::STATIC_ONTOLOGIES,
                 context_error::Context::default(),
-            )
-            .unwrap()
-            .2
-            {
-                if let Ok(_) = read {
-                    peptides += 1;
+            ) {
+                for p in res.2 {
+                    if p.is_err() {
+                        return;
+                    }
                 }
+                panic!("No failures when this is an invalid file")
             }
-            println!("{peptides}");
         }
     };
 }

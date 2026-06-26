@@ -45,7 +45,8 @@ format_family!(
                     BoxedError::new(BasicKind::Error,
                         "Invalid amino acid",
                         "This flanking residue is not a valid amino acid",
-                        Context::line(Some(location.line.line_index() as u32), location.full_line(), location.range.start, 1).to_owned()))).transpose()?;
+                        Context::default().line_index(location.line.line_index() as u32).lines(0, location.full_line()).add_highlight((0, location.range.start, 1)).to_owned()
+                    ))).transpose()?;
 
             let c_flanking: Option<AminoAcid> =
             (location.as_str().chars().nth_back(1) == Some('.'))
@@ -53,7 +54,8 @@ format_family!(
                     BoxedError::new(BasicKind::Error,
                         "Invalid amino acid",
                         "This flanking residue is not a valid amino acid",
-                        Context::line(Some(location.line.line_index() as u32), location.full_line(), location.range.end-1, location.range.end).to_owned()))).transpose()?;
+                        Context::default().line_index(location.line.line_index() as u32).lines(0, location.full_line()).add_highlight((0, location.range.end-1, location.range.end)).to_owned()
+                    ))).transpose()?;
 
             if c_flanking.is_none() && n_flanking.is_none() {
                 location.array(';').map(|l| Peptidoform::sloppy_pro_forma_inner(

@@ -8,8 +8,10 @@ fn pihelixnovo() {
     match test_format::<PiHelixNovoPSM>(
         BufReader::new(PIHELIXNOVO_V1_1.as_bytes()),
         &mzcore::ontology::STATIC_ONTOLOGIES,
-        true,
-        false,
+        crate::TestSettings {
+            allow_mass_mods: true,
+            ..Default::default()
+        },
         Some(PiHelixNovoVersion::V1_1),
     ) {
         Ok(n) => assert_eq!(n, 20),

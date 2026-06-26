@@ -14,7 +14,7 @@ use std::{
 use context_error::*;
 use flate2::bufread::GzDecoder;
 use itertools::Itertools;
-use mzcv::{ControlledVocabulary, Term, term};
+use mzcv::{AccessionCode, ControlledVocabulary, Term, term};
 use ordered_float::OrderedFloat;
 use serde::{Deserialize, Serialize};
 use thin_vec::ThinVec;
@@ -996,7 +996,7 @@ fn parse_metadata<'a>(
                     return Err(BoxedError::new(
                         BasicKind::Error,
                         "Invalid mzTab ms_run parameter",
-                        "An ms_run parameter needs to be 'ms_run[0]-<name>' where the 0 is the index and the name can be any of the known parameters.",
+                        "An ms_run parameter needs to be 'ms_run[n]-<name>' where the n is the index (1+) and the name can be any of the known parameters.",
                         context.clone().add_highlight((0, fields[1].clone())),
                     ));
                 };
@@ -1096,12 +1096,8 @@ fn parse_metadata<'a>(
                     _ => {
                         if let Some(m) = tag.strip_prefix("quantification_mod[") {
                             if m.ends_with(']') {
-                                elem.quantification_mod.push(parse_single_modification(
-                                    line,
-                                    fields[2].clone(),
-                                    ontologies,
-                                    context,
-                                )?);
+                                elem.quantification_mod
+                                    .push(CVTerm::from_str(&line[fields[2].clone()])?);
                             }
                         } else {
                             return Err(BoxedError::new(
@@ -1457,7 +1453,7 @@ fn parse_ref<'a>(
     value: &str,
     context: &Context<'a>,
 ) -> Result<NonZeroUsize, BoxedError<'a, BasicKind>> {
-    if let Some(boxed) = value.strip_prefix(ty)
+    if let Some(boxed) = value.trim().strip_prefix(ty)
         && let Some(tail) = boxed.strip_prefix('[')
         && let Some(num) = tail.strip_suffix(']')
     {
@@ -1850,16 +1846,16 @@ fn parse_single_modification<'a>(
         let modification = if tag.eq_ignore_ascii_case("unimod") {
             ontologies
                 .unimod()
-                .get_by_index(&mzcv::AccessionCode::Numeric(
-                    value.parse::<u32>().map_err(|err| {
+                .get_by_index(&AccessionCode::Numeric(value.parse::<u32>().map_err(
+                    |err| {
                         BoxedError::new(
                             BasicKind::Error,
                             "Invalid unimod code",
                             format!("The unimod modification {}", explain_number_error(&err)),
                             value_context.clone(),
                         )
-                    })?,
-                ))
+                    },
+                )?))
                 .ok_or_else(|| {
                     BoxedError::new(
                         BasicKind::Error,
@@ -1871,16 +1867,16 @@ fn parse_single_modification<'a>(
         } else if tag.eq_ignore_ascii_case("mod") {
             ontologies
                 .psimod()
-                .get_by_index(&mzcv::AccessionCode::Numeric(
-                    value.parse::<u32>().map_err(|err| {
+                .get_by_index(&AccessionCode::Numeric(value.parse::<u32>().map_err(
+                    |err| {
                         BoxedError::new(
                             BasicKind::Error,
                             "Invalid PSI-MOD code",
                             format!("The PSI-MOD modification {}", explain_number_error(&err)),
                             value_context.clone(),
                         )
-                    })?,
-                ))
+                    },
+                )?))
                 .ok_or_else(|| {
                     BoxedError::new(
                         BasicKind::Error,
@@ -1892,16 +1888,16 @@ fn parse_single_modification<'a>(
         } else if tag.eq_ignore_ascii_case("custom") {
             ontologies
                 .custom()
-                .get_by_index(&mzcv::AccessionCode::Numeric(
-                    value.parse::<u32>().map_err(|err| {
+                .get_by_index(&AccessionCode::Numeric(value.parse::<u32>().map_err(
+                    |err| {
                         BoxedError::new(
                             BasicKind::Error,
                             "Invalid custom code",
                             format!("The custom modification {}", explain_number_error(&err)),
                             value_context.clone(),
                         )
-                    })?,
-                ))
+                    },
+                )?))
                 .ok_or_else(|| {
                     BoxedError::new(
                         BasicKind::Error,
@@ -2136,21 +2132,32 @@ impl FromStr for CVTerm {
         if value.starts_with('[') && value.ends_with(']') {
             let value = &value[1..value.len() - 1];
             let mut split = value.splitn(4, ',');
-            let _ontology = split.next().unwrap_or_default().trim().to_string();
-            let accession = split
-                .next()
-                .unwrap_or_default()
-                .trim()
-                .to_string()
-                .parse::<Curie>()
-                .map_err(|e| {
+            let cv: ControlledVocabulary = split.next().unwrap_or_default().trim().into();
+            let acs = split.next().unwrap_or_default().trim();
+            let accession = if acs.contains(':') {
+                acs.parse::<Curie>().map_err(|e| {
                     BoxedError::new(
                         BasicKind::Error,
                         "Invalid CV accession",
                         e.description(),
                         Context::default().lines(0, value).to_owned(),
                     )
-                })?;
+                })?
+            } else {
+                // Sometimes mzTab CV terms have an invalid accession (it misses the CV) but this can be inferred from the term still
+                Curie {
+                    cv,
+                    accession: acs.parse::<AccessionCode>().map_err(|e| {
+                        BoxedError::new(
+                            BasicKind::Error,
+                            "Invalid CV accession",
+                            e.to_string(),
+                            Context::default().lines(0, value).to_owned(),
+                        )
+                    })?,
+                }
+            };
+
             let name = split.next().unwrap_or_default().trim().to_string();
             Ok(Self {
                 term: Term {
@@ -2380,7 +2387,7 @@ impl ProteinMetaData for MzTabProtein {
     fn species(&self) -> Option<Curie> {
         self.taxid.map(|taxid| Curie {
             cv: ControlledVocabulary::NCBITaxon,
-            accession: mzcv::AccessionCode::Numeric(taxid),
+            accession: AccessionCode::Numeric(taxid),
         })
     }
 

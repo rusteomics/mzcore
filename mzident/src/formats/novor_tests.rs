@@ -1,5 +1,5 @@
 #![allow(clippy::missing_panics_doc)]
-use crate::{NovorPSM, NovorVersion, test_format};
+use crate::{NovorPSM, NovorVersion, TestSettings, test_format};
 use std::io::BufReader;
 
 #[test]
@@ -7,8 +7,7 @@ fn novor_old_denovo() {
     match test_format::<NovorPSM>(
         BufReader::new(DATA_OLD_DENOVO.as_bytes()),
         &mzcore::ontology::STATIC_ONTOLOGIES,
-        false,
-        false,
+        TestSettings::default(),
         Some(NovorVersion::OldDenovo),
     ) {
         Ok(n) => assert_eq!(n, 20),
@@ -24,8 +23,7 @@ fn novor_denovo_202306() {
     match test_format::<NovorPSM>(
         BufReader::new(DATA_DENOVO_202306.as_bytes()),
         &mzcore::ontology::STATIC_ONTOLOGIES,
-        false,
-        false,
+        TestSettings::default(),
         Some(NovorVersion::OldDenovo),
     ) {
         Ok(n) => assert_eq!(n, 25),
@@ -41,8 +39,7 @@ fn novor_psm_202305() {
     match test_format::<NovorPSM>(
         BufReader::new(DATA_PSM_202305.as_bytes()),
         &mzcore::ontology::STATIC_ONTOLOGIES,
-        false,
-        false,
+        TestSettings::default(),
         Some(NovorVersion::PSM202305),
     ) {
         Ok(n) => assert_eq!(n, 25),
@@ -58,8 +55,7 @@ fn novor_psm_202308() {
     match test_format::<NovorPSM>(
         BufReader::new(DATA_PSM_202308.as_bytes()),
         &mzcore::ontology::STATIC_ONTOLOGIES,
-        false,
-        false,
+        TestSettings::default(),
         Some(NovorVersion::PSM202308),
     ) {
         Ok(n) => assert_eq!(n, 24),
@@ -75,8 +71,7 @@ fn novor_new_denovo() {
     match test_format::<NovorPSM>(
         BufReader::new(DATA_NEW_DENOVO.as_bytes()),
         &mzcore::ontology::STATIC_ONTOLOGIES,
-        false,
-        false,
+        TestSettings::default(),
         Some(NovorVersion::NewDenovo),
     ) {
         Ok(n) => assert_eq!(n, 20),
@@ -93,8 +88,7 @@ fn novor_denovo_v3_40() {
     match test_format::<NovorPSM>(
         BufReader::new(DATA_V3_40_DENOVO.as_bytes()),
         &mzcore::ontology::STATIC_ONTOLOGIES,
-        false,
-        false,
+        TestSettings::default(),
         Some(NovorVersion::NewDenovo),
     ) {
         Ok(n) => assert_eq!(n, 25),
@@ -111,8 +105,7 @@ fn novor_peps_v3_40() {
     match test_format::<NovorPSM>(
         BufReader::new(DATA_V3_40_PEPS.as_bytes()),
         &mzcore::ontology::STATIC_ONTOLOGIES,
-        false,
-        false,
+        TestSettings::default(),
         Some(NovorVersion::NewDenovo),
     ) {
         Ok(n) => assert_eq!(n, 25),
@@ -128,8 +121,7 @@ fn novor_new_psm() {
     match test_format::<NovorPSM>(
         BufReader::new(DATA_NEW_PSM.as_bytes()),
         &mzcore::ontology::STATIC_ONTOLOGIES,
-        false,
-        false,
+        TestSettings::default(),
         Some(NovorVersion::NewPSM),
     ) {
         Ok(n) => assert_eq!(n, 19),
@@ -145,8 +137,7 @@ fn novor_psm_v3_40() {
     match test_format::<NovorPSM>(
         BufReader::new(DATA_V3_40_PSM.as_bytes()),
         &mzcore::ontology::STATIC_ONTOLOGIES,
-        false,
-        false,
+        TestSettings::default(),
         Some(NovorVersion::NewPSM),
     ) {
         Ok(n) => assert_eq!(n, 26),
@@ -162,8 +153,7 @@ fn novor_psm_v4_66() {
     match test_format::<NovorPSM>(
         BufReader::new(DATA_PSM_V4_66.as_bytes()),
         &mzcore::ontology::STATIC_ONTOLOGIES,
-        false,
-        false,
+        TestSettings::default(),
         Some(NovorVersion::PSM202305),
     ) {
         Ok(n) => assert_eq!(n, 25),

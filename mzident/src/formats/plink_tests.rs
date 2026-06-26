@@ -8,8 +8,7 @@ fn plink_v2_3() {
     match test_format::<PLinkPSM>(
         BufReader::new(DATA_V2_3.as_bytes()),
         &mzcore::ontology::STATIC_ONTOLOGIES,
-        false,
-        false,
+        crate::TestSettings::default(),
         Some(PLinkVersion::V2_3),
     ) {
         Ok(n) => assert_eq!(n, 23),
@@ -25,8 +24,7 @@ fn plink_v3_0() {
     match test_format::<PLinkPSM>(
         BufReader::new(DATA_V3_0.as_bytes()),
         &mzcore::ontology::STATIC_ONTOLOGIES,
-        false,
-        false,
+        crate::TestSettings::default(),
         Some(PLinkVersion::V2_3),
     ) {
         Ok(n) => assert_eq!(n, 32),

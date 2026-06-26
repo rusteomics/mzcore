@@ -1,15 +1,17 @@
 #![allow(clippy::missing_panics_doc)]
 use std::io::BufReader;
 
-use crate::{ProteoscapePSM, ProteoscapeVersion, test_format};
+use crate::{ProteoscapePSM, ProteoscapeVersion, TestSettings, test_format};
 
 #[test]
 fn proteoscape_db_v2025b() {
     match test_format::<ProteoscapePSM>(
         BufReader::new(DATABASE_V2025B.as_bytes()),
         &mzcore::ontology::STATIC_ONTOLOGIES,
-        true,
-        false,
+        TestSettings {
+            allow_mass_mods: true,
+            ..Default::default()
+        },
         Some(ProteoscapeVersion::V2025b),
     ) {
         Ok(n) => assert_eq!(n, 22),

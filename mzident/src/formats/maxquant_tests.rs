@@ -1,5 +1,5 @@
 #![allow(clippy::missing_panics_doc)]
-use crate::{MaxQuantPSM, MaxQuantVersion, test_format};
+use crate::{MaxQuantPSM, MaxQuantVersion, TestSettings, test_format};
 use std::io::BufReader;
 
 #[test]
@@ -7,8 +7,10 @@ fn maxquant_msms() {
     match test_format::<MaxQuantPSM>(
         BufReader::new(MAXQUANT_MSMS.as_bytes()),
         &mzcore::ontology::STATIC_ONTOLOGIES,
-        false,
-        false,
+        TestSettings {
+            allow_misplaced_modifications: true,
+            ..Default::default()
+        },
         Some(MaxQuantVersion::MSMS),
     ) {
         Ok(n) => assert_eq!(n, 19),
@@ -24,8 +26,7 @@ fn maxquant_msms_scans() {
     match test_format::<MaxQuantPSM>(
         BufReader::new(MAXQUANT_MSMS_SCANS.as_bytes()),
         &mzcore::ontology::STATIC_ONTOLOGIES,
-        false,
-        false,
+        TestSettings::default(),
         Some(MaxQuantVersion::MSMSScans),
     ) {
         Ok(n) => assert_eq!(n, 19),
@@ -41,8 +42,7 @@ fn maxquant_novo_msms_scans() {
     match test_format::<MaxQuantPSM>(
         BufReader::new(MAXQUANT_NOVO_MSMS_SCANS.as_bytes()),
         &mzcore::ontology::STATIC_ONTOLOGIES,
-        false,
-        false,
+        TestSettings::default(),
         Some(MaxQuantVersion::NovoMSMSScans),
     ) {
         Ok(n) => assert_eq!(n, 19),
@@ -58,8 +58,7 @@ fn maxquant_novo_msms_scans_new() {
     match test_format::<MaxQuantPSM>(
         BufReader::new(MAXQUANT_NOVO_MSMS_SCANS_NEW.as_bytes()),
         &mzcore::ontology::STATIC_ONTOLOGIES,
-        false,
-        false,
+        TestSettings::default(),
         Some(MaxQuantVersion::NovoMSMSScans),
     ) {
         Ok(n) => assert_eq!(n, 19),
@@ -75,8 +74,7 @@ fn maxquant_silac() {
     match test_format::<MaxQuantPSM>(
         BufReader::new(MAXQUANT_SILAC.as_bytes()),
         &mzcore::ontology::STATIC_ONTOLOGIES,
-        false,
-        false,
+        TestSettings::default(),
         Some(MaxQuantVersion::Silac),
     ) {
         Ok(n) => assert_eq!(n, 19),
@@ -93,8 +91,7 @@ fn maxquant_all_peptides() {
     match test_format::<MaxQuantPSM>(
         BufReader::new(MAXNOVO_ALL_PEPTIDES.as_bytes()),
         &mzcore::ontology::STATIC_ONTOLOGIES,
-        false,
-        false,
+        TestSettings::default(),
         Some(MaxQuantVersion::MSMS),
     ) {
         Ok(n) => assert_eq!(n, 19),

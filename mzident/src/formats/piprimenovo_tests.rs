@@ -8,8 +8,10 @@ fn piprimenovo() {
     match test_format::<PiPrimeNovoPSM>(
         BufReader::new(PIPRIMENOVO_V0_1.as_bytes()),
         &mzcore::ontology::STATIC_ONTOLOGIES,
-        true,
-        false,
+        crate::TestSettings {
+            allow_mass_mods: true,
+            ..Default::default()
+        },
         Some(PiPrimeNovoVersion::V0_1),
     ) {
         Ok(n) => assert_eq!(n, 13),

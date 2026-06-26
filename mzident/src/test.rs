@@ -14,8 +14,7 @@ pub(super) fn test_format<
 >(
     reader: impl std::io::Read + 'a,
     ontologies: &'a mzcore::ontology::Ontologies,
-    allow_mass_mods: bool,
-    expect_lc: bool,
+    settings: TestSettings,
     format: Option<T::Version>,
 ) -> Result<usize, String>
 where
@@ -28,7 +27,7 @@ where
             peptide.map_err(|e| e.to_string())?.into();
         number += 1;
 
-        test_psm(&peptide, allow_mass_mods, expect_lc)?;
+        test_psm(&peptide, settings)?;
 
         if format.as_ref().is_some_and(|f| {
             peptide
@@ -50,6 +49,13 @@ where
     Ok(number)
 }
 
+#[derive(Default, Clone, Copy)]
+pub(super) struct TestSettings {
+    pub allow_mass_mods: bool,
+    pub expect_lc: bool,
+    pub allow_misplaced_modifications: bool,
+}
+
 /// Test a peptide for common errors in PSM parsing
 /// # Errors
 /// * If the local confidence has to be there and is not there (see parameter).
@@ -60,14 +66,13 @@ where
 #[expect(clippy::missing_panics_doc)]
 pub(super) fn test_psm<Complexity, PeptidoformAvailability>(
     peptidoform: &PSM<Complexity, PeptidoformAvailability>,
-    allow_mass_mods: bool,
-    expect_lc: bool,
+    settings: TestSettings,
 ) -> Result<(), String> {
     let found_length = peptidoform
         .peptidoform_ion_set()
         .and_then(|p| p.singular_peptidoform_ref().map(Peptidoform::len));
     if found_length != peptidoform.local_confidence().map(|lc| lc.len()) {
-        if expect_lc && peptidoform.local_confidence.is_none() {
+        if settings.expect_lc && peptidoform.local_confidence.is_none() {
             return Err(format!(
                 "No local confidence was provided for peptidoform {}",
                 peptidoform.id()
@@ -102,7 +107,7 @@ pub(super) fn test_psm<Complexity, PeptidoformAvailability>(
             peptidoform.id()
         ));
     }
-    if !allow_mass_mods
+    if !settings.allow_mass_mods
         && peptidoform.peptidoform_ion_set().is_some_and(|p| {
             p.peptidoforms().any(|p| {
                 p.sequence().iter().any(|s| {
@@ -125,20 +130,22 @@ pub(super) fn test_psm<Complexity, PeptidoformAvailability>(
         ));
     }
 
-    let misplaced = peptidoform
-        .peptidoform_ion_set()
-        .iter()
-        .flat_map(|p| {
-            p.peptidoforms()
-                .flat_map(Peptidoform::enforce_modification_rules)
-        })
-        .collect::<Vec<_>>();
-    if !misplaced.is_empty() {
-        return Err(format!(
-            "Peptide {} contains misplaced modifications, sequence {}\n{misplaced:?}",
-            peptidoform.id(),
-            peptidoform.peptidoform_ion_set().unwrap(),
-        ));
+    if !settings.allow_misplaced_modifications {
+        let misplaced = peptidoform
+            .peptidoform_ion_set()
+            .iter()
+            .flat_map(|p| {
+                p.peptidoforms()
+                    .flat_map(Peptidoform::enforce_modification_rules)
+            })
+            .collect::<Vec<_>>();
+        if !misplaced.is_empty() {
+            return Err(format!(
+                "Peptide {} contains misplaced modifications, sequence {}\n{misplaced:?}",
+                peptidoform.id(),
+                peptidoform.peptidoform_ion_set().unwrap(),
+            ));
+        }
     }
     #[cfg(feature = "mzannotate")]
     if let Some(mode) = peptidoform.mode()

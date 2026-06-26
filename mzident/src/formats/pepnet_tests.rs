@@ -8,8 +8,10 @@ fn pepnet() {
     match test_format::<PepNetPSM>(
         BufReader::new(PEPNET_V1_0.as_bytes()),
         &mzcore::ontology::STATIC_ONTOLOGIES,
-        false,
-        true,
+        crate::TestSettings {
+            expect_lc: true,
+            ..Default::default()
+        },
         Some(PepNetVersion::V1_0),
     ) {
         Ok(n) => assert_eq!(n, 20),

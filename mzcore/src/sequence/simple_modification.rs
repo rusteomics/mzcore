@@ -19,7 +19,7 @@ use crate::{
     quantities::Multi,
     sequence::{
         AminoAcid, GnoComposition, GnoSubsumption, LinkerSpecificity, ModificationId,
-        PlacementRule, Position, RulePossible, SequenceElement, SequencePosition,
+        PlacementRule, RulePosition, RulePossible, SequenceElement, SequencePosition,
     },
     space::{Space, UsedSpace},
     system::{Mass, OrderedMass, dalton},
@@ -333,7 +333,11 @@ impl SimpleModificationInner {
     }
 
     /// Check to see if this modification can be placed on the specified element
-    pub fn is_possible_aa(&self, aa: AminoAcid, position: Position) -> RulePossible {
+    pub fn is_possible_aa<P: RulePosition + Clone>(
+        &self,
+        aa: AminoAcid,
+        position: P,
+    ) -> RulePossible {
         match self {
             Self::Database { specificities, .. } => {
                 // If any of the rules match the current situation then it can be placed
@@ -341,7 +345,7 @@ impl SimpleModificationInner {
                     .iter()
                     .enumerate()
                     .filter_map(|(index, (rules, _, _))| {
-                        PlacementRule::any_possible_aa(rules, aa, position).then_some(index)
+                        PlacementRule::any_possible_aa(rules, aa, position.clone()).then_some(index)
                     })
                     .collect();
                 if matching.is_empty() {
@@ -355,7 +359,7 @@ impl SimpleModificationInner {
                 .enumerate()
                 .map(|(index, spec)| match spec {
                     LinkerSpecificity::Symmetric { rules, .. } => {
-                        if PlacementRule::any_possible_aa(rules, aa, position) {
+                        if PlacementRule::any_possible_aa(rules, aa, position.clone()) {
                             RulePossible::Symmetric(BTreeSet::from([index]))
                         } else {
                             RulePossible::No
@@ -365,8 +369,9 @@ impl SimpleModificationInner {
                         rules: (rules_left, rules_right),
                         ..
                     } => {
-                        let left = PlacementRule::any_possible_aa(rules_left, aa, position);
-                        let right = PlacementRule::any_possible_aa(rules_right, aa, position);
+                        let left = PlacementRule::any_possible_aa(rules_left, aa, position.clone());
+                        let right =
+                            PlacementRule::any_possible_aa(rules_right, aa, position.clone());
                         if left && right {
                             RulePossible::Symmetric(BTreeSet::from([index]))
                         } else if left {

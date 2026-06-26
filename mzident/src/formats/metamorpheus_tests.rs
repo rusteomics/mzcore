@@ -8,8 +8,10 @@ fn meta_morpheus_psm() {
     match test_format::<MetaMorpheusPSM>(
         BufReader::new(PSM.as_bytes()),
         &mzcore::ontology::STATIC_ONTOLOGIES,
-        false,
-        false,
+        crate::TestSettings {
+            allow_misplaced_modifications: true,
+            ..Default::default()
+        },
         Some(MetaMorpheusVersion::MetaMorpheus),
     ) {
         Ok(n) => assert_eq!(n, 27),

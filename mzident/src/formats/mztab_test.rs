@@ -128,7 +128,15 @@ fn open_file(reader: impl BufRead) -> Result<usize, BoxedError<'static, BasicKin
         let peptidoform: PSM<SimpleLinear, MaybePeptidoform> = read.clone().into();
         peptides += 1;
 
-        test_psm(&peptidoform, true, false).map_err(|err| {
+        test_psm(
+            &peptidoform,
+            crate::TestSettings {
+                allow_mass_mods: true,
+                allow_misplaced_modifications: true,
+                ..Default::default()
+            },
+        )
+        .map_err(|err| {
             BoxedError::new(
                 BasicKind::Error,
                 "Failed test",

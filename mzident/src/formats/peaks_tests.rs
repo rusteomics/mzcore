@@ -1,7 +1,7 @@
 #![allow(clippy::missing_panics_doc)]
 use std::io::BufReader;
 
-use crate::{PSMSource, PeaksPSM, PeaksVersion, test_format};
+use crate::{PSMSource, PeaksPSM, PeaksVersion, TestSettings, test_format};
 use mzcore::{
     molecular_formula,
     sequence::{ModificationId, SimpleModificationInner},
@@ -14,8 +14,10 @@ fn peaks_x() {
         test_format::<PeaksPSM>(
             BufReader::new(DATA_X.as_bytes()),
             &mzcore::ontology::STATIC_ONTOLOGIES,
-            false,
-            true,
+            TestSettings {
+                expect_lc: true,
+                ..Default::default()
+            },
             Some(PeaksVersion::X),
         )
         .unwrap(),
@@ -29,8 +31,10 @@ fn peaks_x_patched() {
         test_format::<PeaksPSM>(
             BufReader::new(DATA_X_PATCHED.as_bytes()),
             &mzcore::ontology::STATIC_ONTOLOGIES,
-            false,
-            true,
+            TestSettings {
+                expect_lc: true,
+                ..Default::default()
+            },
             Some(PeaksVersion::XPatched),
         )
         .unwrap(),
@@ -44,8 +48,10 @@ fn peaks_x_patched_sep() {
         test_format::<PeaksPSM>(
             BufReader::new(DATA_X_PATCHED_SEP.as_bytes()),
             &mzcore::ontology::STATIC_ONTOLOGIES,
-            false,
-            true,
+            TestSettings {
+                expect_lc: true,
+                ..Default::default()
+            },
             Some(PeaksVersion::XPatched),
         )
         .unwrap(),
@@ -59,8 +65,10 @@ fn peaks_x_plus() {
         test_format::<PeaksPSM>(
             BufReader::new(DATA_XPLUS.as_bytes()),
             &mzcore::ontology::STATIC_ONTOLOGIES,
-            false,
-            true,
+            TestSettings {
+                expect_lc: true,
+                ..Default::default()
+            },
             Some(PeaksVersion::XPlus),
         )
         .unwrap(),
@@ -74,8 +82,10 @@ fn peaks_11() {
         test_format::<PeaksPSM>(
             BufReader::new(DATA_11.as_bytes()),
             &mzcore::ontology::STATIC_ONTOLOGIES,
-            false,
-            true,
+            TestSettings {
+                expect_lc: true,
+                ..Default::default()
+            },
             Some(PeaksVersion::V11),
         )
         .unwrap(),
@@ -88,8 +98,10 @@ fn peaks_11_features() {
     match test_format::<PeaksPSM>(
         BufReader::new(DATA_11_FEATURES.as_bytes()),
         &mzcore::ontology::STATIC_ONTOLOGIES,
-        true,
-        false,
+        TestSettings {
+            allow_mass_mods: true,
+            ..Default::default()
+        },
         Some(PeaksVersion::V11Features),
     ) {
         Ok(n) => assert_eq!(n, 19),
@@ -106,8 +118,10 @@ fn peaks_11_all_candidates() {
         test_format::<PeaksPSM>(
             BufReader::new(DATA_11_ALL_CANDIDATES.as_bytes()),
             &mzcore::ontology::STATIC_ONTOLOGIES,
-            false,
-            true,
+            TestSettings {
+                expect_lc: true,
+                ..Default::default()
+            },
             Some(PeaksVersion::V11),
         )
         .unwrap(),
@@ -135,8 +149,10 @@ fn peaks_11_custom_modification() {
                     )
                 },
             )]),
-            false,
-            true,
+            TestSettings {
+                expect_lc: true,
+                ..Default::default()
+            },
             Some(PeaksVersion::V11)
         )
         .unwrap(),
@@ -150,8 +166,10 @@ fn peaks_12() {
         test_format::<PeaksPSM>(
             BufReader::new(DATA_12.as_bytes()),
             &mzcore::ontology::STATIC_ONTOLOGIES,
-            false,
-            true,
+            TestSettings {
+                expect_lc: true,
+                ..Default::default()
+            },
             Some(PeaksVersion::V12)
         )
         .unwrap(),
@@ -165,8 +183,10 @@ fn peaks_ab() {
         test_format::<PeaksPSM>(
             BufReader::new(DATA_AB.as_bytes()),
             &mzcore::ontology::STATIC_ONTOLOGIES,
-            false,
-            true,
+            TestSettings {
+                expect_lc: true,
+                ..Default::default()
+            },
             Some(PeaksVersion::Ab)
         )
         .unwrap(),
@@ -180,8 +200,10 @@ fn peaks_x_plus_sep() {
         test_format::<PeaksPSM>(
             BufReader::new(DATA_X_PLUS_SEP.as_bytes()),
             &mzcore::ontology::STATIC_ONTOLOGIES,
-            false,
-            true,
+            TestSettings {
+                expect_lc: true,
+                ..Default::default()
+            },
             Some(PeaksVersion::XPlus)
         )
         .unwrap(),
@@ -195,8 +217,7 @@ fn peaks_db_peptide() {
         test_format::<PeaksPSM>(
             BufReader::new(DATA_DB_PEPTIDE.as_bytes()),
             &mzcore::ontology::STATIC_ONTOLOGIES,
-            false,
-            false,
+            TestSettings::default(),
             Some(PeaksVersion::DBPeptide)
         )
         .unwrap(),
@@ -210,8 +231,7 @@ fn peaks_db_psm() {
         test_format::<PeaksPSM>(
             BufReader::new(DATA_DB_PSM.as_bytes()),
             &mzcore::ontology::STATIC_ONTOLOGIES,
-            false,
-            false,
+            TestSettings::default(),
             Some(PeaksVersion::DBPSM)
         )
         .unwrap(),
@@ -225,8 +245,7 @@ fn peaks_db_protein_peptide() {
         test_format::<PeaksPSM>(
             BufReader::new(DATA_DB_PROTEIN_PEPTIDE.as_bytes()),
             &mzcore::ontology::STATIC_ONTOLOGIES,
-            false,
-            false,
+            TestSettings::default(),
             Some(PeaksVersion::DBProteinPeptide)
         )
         .unwrap(),
@@ -239,8 +258,7 @@ fn peaks_v13_dia_de_novo() {
     match test_format::<PeaksPSM>(
         BufReader::new(DATA_13_DIA_DE_NOVO.as_bytes()),
         &mzcore::ontology::STATIC_ONTOLOGIES,
-        false,
-        false,
+        TestSettings::default(),
         Some(PeaksVersion::V13Dia),
     ) {
         Ok(n) => assert_eq!(n, 19),
@@ -280,8 +298,10 @@ fn fuzz_crashes() {
                 test_format::<PeaksPSM>(
                     BufReader::new(std::fs::File::open(&path).unwrap()),
                     &mzcore::ontology::STATIC_ONTOLOGIES,
-                    false,
-                    true,
+                    TestSettings {
+                        expect_lc: true,
+                        ..Default::default()
+                    },
                     Some(PeaksVersion::V11),
                 )
             }) {
@@ -313,8 +333,10 @@ fn fuzz_hangs() {
                 test_format::<PeaksPSM>(
                     BufReader::new(std::fs::File::open(&path).unwrap()),
                     &mzcore::ontology::STATIC_ONTOLOGIES,
-                    false,
-                    true,
+                    TestSettings {
+                        expect_lc: true,
+                        ..Default::default()
+                    },
                     Some(PeaksVersion::V11),
                 )
             }) {

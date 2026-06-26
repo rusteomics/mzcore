@@ -8,8 +8,7 @@ fn punifind() {
     match test_format::<PUniFindPSM>(
         BufReader::new(DATA.as_bytes()),
         &mzcore::ontology::STATIC_ONTOLOGIES,
-        false,
-        false,
+        crate::TestSettings::default(),
         Some(PUniFindVersion::V0_1),
     ) {
         Ok(n) => assert_eq!(n, 25),

@@ -8,8 +8,10 @@ fn powernovo() {
     match test_format::<PowerNovoPSM>(
         BufReader::new(POWERNOVO_V1_0_17.as_bytes()),
         &mzcore::ontology::STATIC_ONTOLOGIES,
-        false,
-        true,
+        crate::TestSettings {
+            expect_lc: true,
+            ..Default::default()
+        },
         Some(PowerNovoVersion::V1_0_17),
     ) {
         Ok(n) => assert_eq!(n, 20),

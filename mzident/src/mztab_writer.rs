@@ -377,11 +377,7 @@ impl<W: Write> MzTabWriter<W, Initial> {
             )?;
             for (j, m) in assay.quantification_mod.iter().enumerate() {
                 let j = j + 1;
-                write_mod(
-                    &mut self.writer,
-                    &format!("MTD\tassay[{i}]-quantification_mod[{j}]"),
-                    m,
-                )?;
+                writeln!(self.writer, "MTD\tassay[{i}]-quantification_mod[{j}]\t{m}")?;
             }
             if let Some(r) = assay.sample_ref {
                 writeln!(self.writer, "MTD\tassay[{i}]-sample_ref\tsample[{r}]")?;
@@ -724,7 +720,7 @@ impl mzcore::space::Space for MzTabStudyVariable {
 #[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
 pub struct MzTabAssay {
     /// Which modifications where used for quantification
-    pub quantification_mod: ThinVec<SimpleModification>,
+    pub quantification_mod: ThinVec<CVTerm>,
     /// Which sample is associated with this assay
     pub sample_ref: Option<NonZeroUsize>,
     /// Which MS run is associated with this assay
