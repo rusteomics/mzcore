@@ -12,14 +12,19 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  build:
-
+  check:
     runs-on: ubuntu-latest
-
     steps:
     - uses: actions/checkout@v6
     - name: Check
       run: cargo check
+
+
+  full-build:
+    runs-on: ubuntu-latest
+    needs: check
+    steps:
+    - uses: actions/checkout@v6
     - name: Build all features
       run: |
         cargo build -p mzcv --no-default-features
@@ -46,17 +51,17 @@ jobs:
 
   fmt:
     runs-on: ubuntu-latest
-
-    needs: build
+    needs: check
     steps:
     - uses: actions/checkout@v6
     - name: Run fmt
-      run: cargo +nightly fmt --check
+      run: |
+        rustup component add --toolchain nightly-x86_64-unknown-linux-gnu rustfmt
+        cargo +nightly fmt --check
 
   clippy:
     runs-on: ubuntu-latest
-
-    needs: build
+    needs: check
     steps:
     - uses: actions/checkout@v6
     - name: Run clippy
@@ -66,8 +71,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       CARGO_ENCODED_RUSTFLAGS: --cfg=github_action
-
-    needs: build
+    needs: check
     steps:
     - uses: actions/checkout@v6
     - name: Run tests
@@ -81,8 +85,7 @@ jobs:
 
   minimal-dependencies:
     runs-on: ubuntu-latest
-    needs: build
-
+    needs: check
     steps:
     - uses: actions/checkout@v6
     - name: Run minimal version test
