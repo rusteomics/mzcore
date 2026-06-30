@@ -71,11 +71,9 @@ macro_rules! mzpaf_test {
     (ne $case:literal, $name:ident) => {
         #[test]
         fn $name() {
-            let res = $crate::fragment::Fragment::mz_paf(
-                $case,
-                &mzcore::ontology::STATIC_ONTOLOGIES,
-                &[],
-            );
+            let res =
+                $crate::fragment::Fragment::mz_paf($case, &mzcore::ontology::STATIC_ONTOLOGIES, &[
+                ]);
             println!("{}\n{:?}", $case, res);
             assert!(res.is_err());
         }

@@ -1,12 +1,13 @@
 #![allow(clippy::missing_panics_doc)]
 use std::io::BufReader;
 
-use crate::{MSFraggerPSM, MSFraggerVersion, TestSettings, test_format};
 use mzcore::{
     prelude::MolecularFormula,
     sequence::{ModificationId, SimpleModificationInner},
 };
 use thin_vec::ThinVec;
+
+use crate::{MSFraggerPSM, MSFraggerVersion, TestSettings, test_format};
 
 #[test]
 fn msfragger_v4_2() {

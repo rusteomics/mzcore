@@ -4,6 +4,7 @@ use context_error::*;
 use itertools::Itertools;
 use ordered_float::OrderedFloat;
 
+use super::{GlobalModification, Linear, ReturnModification, SemiAmbiguous};
 use crate::{
     ParserResult,
     chemistry::{Chemical, Element, MolecularCharge, MolecularFormula},
@@ -18,8 +19,6 @@ use crate::{
     },
     system::OrderedMass,
 };
-
-use super::{GlobalModification, Linear, ReturnModification, SemiAmbiguous};
 
 #[derive(Debug, Eq, PartialEq)]
 enum End {
@@ -36,10 +35,13 @@ struct LinearPeptideResult {
 }
 
 impl Peptidoform<Linked> {
-    /// Convenience wrapper to parse a linear peptide in ProForma notation, to handle all possible ProForma sequences look at [`PeptidoformIonSet::pro_forma`].
+    /// Convenience wrapper to parse a linear peptide in ProForma notation, to handle all possible
+    /// ProForma sequences look at [`PeptidoformIonSet::pro_forma`].
     /// # Errors
-    /// It gives an error when the peptide is not correctly formatted. (Also see the `PeptidoformIonSet` main function for this.)
-    /// It additionally gives an error if the peptide specified was chimeric (see [`PeptidoformIonSet::singular`] and [`PeptidoformIon::singular`]).
+    /// It gives an error when the peptide is not correctly formatted. (Also see the
+    /// `PeptidoformIonSet` main function for this.) It additionally gives an error if the
+    /// peptide specified was chimeric (see [`PeptidoformIonSet::singular`] and
+    /// [`PeptidoformIon::singular`]).
     pub fn pro_forma<'a>(
         value: &'a str,
         ontologies: &Ontologies,
@@ -57,7 +59,8 @@ impl Peptidoform<Linked> {
     /// that the base context is assumed to contain the full line at line index 0.
     ///
     /// # Errors
-    /// It fails when the string is not a valid ProForma string. Or when the string has multiple peptidoforms.
+    /// It fails when the string is not a valid ProForma string. Or when the string has multiple
+    /// peptidoforms.
     pub fn pro_forma_inner<'a>(
         base_context: &Context<'a>,
         line: &'a str,
@@ -91,7 +94,8 @@ impl PeptidoformIon {
     /// Parse a peptidoform in the [ProForma specification](https://github.com/HUPO-PSI/ProForma).
     ///
     /// # Errors
-    /// It fails when the string is not a valid ProForma string. Or when the string has multiple peptidoforms.
+    /// It fails when the string is not a valid ProForma string. Or when the string has multiple
+    /// peptidoforms.
     pub fn pro_forma<'a>(
         value: &'a str,
         ontologies: &Ontologies,
@@ -109,7 +113,8 @@ impl PeptidoformIon {
     /// that the base context is assumed to contain the full line at line index 0.
     ///
     /// # Errors
-    /// It fails when the string is not a valid ProForma string. Or when the string has multiple peptidoforms.
+    /// It fails when the string is not a valid ProForma string. Or when the string has multiple
+    /// peptidoforms.
     pub fn pro_forma_inner<'a>(
         base_context: &Context<'a>,
         line: &'a str,
@@ -430,10 +435,7 @@ impl PeptidoformIonSet {
                     &mut cross_link_lookup,
                 )
             );
-            if !result
-                .peptide
-                .apply_global_modifications(global_modifications)
-            {
+            if !result.peptide.apply_global_modifications(global_modifications) {
                 combine_error(
                     &mut errors,
                     BoxedError::new(
@@ -705,9 +707,7 @@ impl PeptidoformIonSet {
                                 BasicKind::Error,
                                 "Invalid ranged ambiguous modification",
                                 "The ranged ambiguous modification is placed on an empty range",
-                                base_context
-                                    .clone()
-                                    .add_highlight((0, index - 1..index + 2)),
+                                base_context.clone().add_highlight((0, index - 1..index + 2)),
                             ),
                         );
                         return Err(errors);
@@ -983,7 +983,7 @@ impl PeptidoformIonSet {
         }
 
         // Fix the sequence positions to have the right peptide length
-        for (pos, _, _, _) in &mut ambiguous_found_positions {
+        for (pos, ..) in &mut ambiguous_found_positions {
             if let SequencePosition::Index(_, l) = pos {
                 *l = peptide.len();
             }
@@ -997,11 +997,10 @@ impl PeptidoformIonSet {
             combine_errors(&mut errors, errs);
         }
 
-        let grouped_positions = ambiguous_found_positions
-            .into_iter()
-            .into_group_map_by(|aa| aa.2);
+        let grouped_positions = ambiguous_found_positions.into_iter().into_group_map_by(|aa| aa.2);
 
-        // Fill in ambiguous positions, ambiguous contains (index, preferred, id, localisation_score)
+        // Fill in ambiguous positions, ambiguous contains (index, preferred, id,
+        // localisation_score)
         for (id, entry) in ambiguous_lookup.iter().enumerate().filter(|(i, _)| {
             grouped_positions.contains_key(i) || !unknown_position_modifications.contains(i)
         }) {
@@ -1020,10 +1019,8 @@ impl PeptidoformIonSet {
                 );
                 continue;
             };
-            let positions = ambiguous
-                .iter()
-                .map(|(index, _, _, score)| (*index, *score))
-                .collect_vec();
+            let positions =
+                ambiguous.iter().map(|(index, _, _, score)| (*index, *score)).collect_vec();
             let preferred = ambiguous.iter().find_map(|p| p.1.then_some(p.0));
             if let Some(modification) = entry.modification.clone() {
                 if !peptide.add_ambiguous_modification(
@@ -1393,8 +1390,9 @@ pub(super) fn parse_placement_rules<'a>(
 }
 
 /// MUP: `[Mod][Mod]?AAA`
-/// If the text is recognised as an unknown mods list it is Some(...), if it has errors during parsing Some(Err(...))
-/// The returned happy path contains the mods and the index from where to continue parsing.
+/// If the text is recognised as an unknown mods list it is Some(...), if it has errors during
+/// parsing Some(Err(...)) The returned happy path contains the mods and the index from where to
+/// continue parsing.
 /// # Errors
 /// Give all errors when the text cannot be read as mods of unknown position.
 pub(super) fn global_unknown_position_mods<'a, const STRICT: bool>(
@@ -1435,7 +1433,7 @@ pub(super) fn global_unknown_position_mods<'a, const STRICT: bool>(
                 ambiguous_lookup[id].copy_settings(&settings);
                 id
             }
-            Ok(((ReturnModification::Ambiguous(id, _, _), settings), warnings)) => {
+            Ok(((ReturnModification::Ambiguous(id, ..), settings), warnings)) => {
                 combine_errors(&mut errs, warnings);
                 ambiguous_lookup[id].copy_settings(&settings);
                 id
@@ -1446,9 +1444,7 @@ pub(super) fn global_unknown_position_mods<'a, const STRICT: bool>(
                     BasicKind::Error,
                     "Invalid unknown position modification",
                     "A modification of unknown position cannot be a cross-link",
-                    base_context
-                        .clone()
-                        .add_highlight((0, (start_index + 1)..index)),
+                    base_context.clone().add_highlight((0, (start_index + 1)..index)),
                 ));
                 continue;
             }
@@ -1461,31 +1457,34 @@ pub(super) fn global_unknown_position_mods<'a, const STRICT: bool>(
             if let Some((len, num)) = next_num(line.as_bytes(), index + 1, false) {
                 index += len + 1;
                 if num < 0 {
-                    errs.push(
-                        BoxedError::new(
-                            BasicKind::Error,
-                            "Invalid unknown position modification",
-                            "A modification of unknown position with multiple copies cannot have more a negative number of copies",
-                            base_context.clone().add_highlight((0, index, 1))));
+                    errs.push(BoxedError::new(
+                        BasicKind::Error,
+                        "Invalid unknown position modification",
+                        "A modification of unknown position with multiple copies cannot have more a negative number of copies",
+                        base_context.clone().add_highlight((0, index, 1)),
+                    ));
                     0
                 } else if num > i16::MAX as isize {
-                    errs.push(
-                        BoxedError::new(
-                            BasicKind::Error,
-                            "Invalid unknown position modification",
-                            format!("A modification of unknown position with multiple copies cannot have more then {} copies", i16::MAX),
-                             base_context.clone().add_highlight((0, index, 1))));
+                    errs.push(BoxedError::new(
+                        BasicKind::Error,
+                        "Invalid unknown position modification",
+                        format!(
+                            "A modification of unknown position with multiple copies cannot have more then {} copies",
+                            i16::MAX
+                        ),
+                        base_context.clone().add_highlight((0, index, 1)),
+                    ));
                     0
                 } else {
                     num as usize
                 }
             } else {
-                errs.push(
-                    BoxedError::new(
-                        BasicKind::Error,
-                        "Invalid unknown position modification",
-                        "A modification of unknown position with multiple copies needs the copy number after the caret ('^') symbol",
-                         base_context.clone().add_highlight((0, index, 1))));
+                errs.push(BoxedError::new(
+                    BasicKind::Error,
+                    "Invalid unknown position modification",
+                    "A modification of unknown position with multiple copies needs the copy number after the caret ('^') symbol",
+                    base_context.clone().add_highlight((0, index, 1)),
+                ));
                 0
             }
         } else {
@@ -1515,7 +1514,8 @@ pub(super) fn global_unknown_position_mods<'a, const STRICT: bool>(
     }
 }
 
-/// Parse labile modifications `{mod}{mod2}`. These are assumed to fall off from the peptide in the MS.
+/// Parse labile modifications `{mod}{mod2}`. These are assumed to fall off from the peptide in the
+/// MS.
 /// # Errors
 /// If the mods are not followed by a closing brace. Or if the mods are ambiguous.
 fn labile_modifications<'a, const STRICT: bool>(
@@ -1561,9 +1561,7 @@ fn labile_modifications<'a, const STRICT: bool>(
                         BasicKind::Error,
                         "Invalid labile modification",
                         "A labile modification cannot be ambiguous or a cross-linker",
-                        base_context
-                            .clone()
-                            .add_highlight((0, index + 1, end_index - 1 - index)),
+                        base_context.clone().add_highlight((0, index + 1, end_index - 1 - index)),
                     ),
                 );
             }
@@ -1587,18 +1585,28 @@ fn parse_charge_state<'a>(
     range: Range<usize>,
 ) -> ParserResult<'a, (usize, MolecularCharge), BasicKind> {
     let v2_1 = parse_charge_state_2_1(base_context, line, range.clone());
-    let looks_like_2_0 = v2_1
-        .as_ref()
-        .is_ok_and(|((o, _), _)| line[*o..].starts_with('['));
+    let looks_like_2_0 = v2_1.as_ref().is_ok_and(|((o, _), _)| line[*o..].starts_with('['));
 
     if looks_like_2_0 || v2_1.is_err() {
-        parse_charge_state_2_0(base_context, line, range.start).map_err(|v2_0_errors| if looks_like_2_0 {v2_0_errors} else {v2_1.err().unwrap_or_default()}).map(|((offset, v), mut errors)| {
-                combine_error(&mut errors, BoxedError::new(
-                    BasicKind::Warning,
-                    "Deprecated charge",
-                    "A charge using the deprecated syntax of the ProForma 2.0 charge extension was detected",
-                    base_context.clone().add_highlight((0, range.start, offset)),
-                ).suggestions([format!("/{v}")]));
+        parse_charge_state_2_0(base_context, line, range.start)
+            .map_err(|v2_0_errors| {
+                if looks_like_2_0 {
+                    v2_0_errors
+                } else {
+                    v2_1.err().unwrap_or_default()
+                }
+            })
+            .map(|((offset, v), mut errors)| {
+                combine_error(
+                    &mut errors,
+                    BoxedError::new(
+                        BasicKind::Warning,
+                        "Deprecated charge",
+                        "A charge using the deprecated syntax of the ProForma 2.0 charge extension was detected",
+                        base_context.clone().add_highlight((0, range.start, offset)),
+                    )
+                    .suggestions([format!("/{v}")]),
+                );
                 ((offset, v), errors)
             })
     } else {
@@ -1631,9 +1639,8 @@ pub(super) fn parse_charge_state_2_1<'a>(
         let mut carriers = Vec::with_capacity(line[range.start + 1..end - 1].split(',').count());
         let mut offset = 0;
         for full in line[range.start + 1..end].split(',') {
-            let (formula, occurence) = full
-                .split_once('^')
-                .map_or((full, None), |(f, o)| (f, Some(o)));
+            let (formula, occurence) =
+                full.split_once('^').map_or((full, None), |(f, o)| (f, Some(o)));
             let occurence = occurence.map_or(1, |occurence| match occurence.parse::<isize>() {
                 Ok(v) => {
                     if v == 0 {
@@ -1794,29 +1801,27 @@ pub(super) fn parse_charge_state_2_0<'a>(
                     )
                 }))
             };
-            let (charge_len, charge) = match (set.len() - charge_len)
-                .checked_sub(1)
-                .and_then(|i| set.get(i))
-            {
-                Some(b'+') => (charge_len + 1, charge),
-                Some(b'-') => (charge_len + 1, -charge),
-                _ => {
-                    combine_error(
-                        &mut errors,
-                        BoxedError::new(
-                            BasicKind::Error,
-                            "Invalid adduct ion",
-                            "The adduct ion number should be preceded by a sign",
-                            base_context.clone().add_highlight((
-                                0,
-                                offset + set.len() - charge_len - 1,
-                                1,
-                            )),
-                        ),
-                    );
-                    return Err(errors);
-                }
-            };
+            let (charge_len, charge) =
+                match (set.len() - charge_len).checked_sub(1).and_then(|i| set.get(i)) {
+                    Some(b'+') => (charge_len + 1, charge),
+                    Some(b'-') => (charge_len + 1, -charge),
+                    _ => {
+                        combine_error(
+                            &mut errors,
+                            BoxedError::new(
+                                BasicKind::Error,
+                                "Invalid adduct ion",
+                                "The adduct ion number should be preceded by a sign",
+                                base_context.clone().add_highlight((
+                                    0,
+                                    offset + set.len() - charge_len - 1,
+                                    1,
+                                )),
+                            ),
+                        );
+                        return Err(errors);
+                    }
+                };
 
             // Check for empty formula
             if count_len + charge_len == set.len() {

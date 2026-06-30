@@ -11,7 +11,8 @@ use crate::{
     sequence::SimpleModification,
 };
 
-/// A single shared static access to the static data in the ontologies for cases where no runtime resolution is needed (like tests).
+/// A single shared static access to the static data in the ontologies for cases where no runtime
+/// resolution is needed (like tests).
 pub static STATIC_ONTOLOGIES: LazyLock<Ontologies> = LazyLock::new(Ontologies::init_static);
 
 /// Handle all ProForma needed ontologies.
@@ -60,7 +61,8 @@ impl std::fmt::Debug for Ontologies {
 }
 
 impl Ontologies {
-    /// Initialize all ontologies, also returns all warnings detected when initialising the ontologies
+    /// Initialize all ontologies, also returns all warnings detected when initialising the
+    /// ontologies
     pub fn init() -> (Self, Vec<BoxedError<'static, mzcv::CVError>>) {
         let mut errors = Vec::new();
         let (unimod, mut warnings) = CVIndex::init();
@@ -113,12 +115,11 @@ impl Ontologies {
         }
     }
 
-    /// Update the custom database with the given data, mostly there to quickly create some test data.
-    /// This does not store the new data on the disk
+    /// Update the custom database with the given data, mostly there to quickly create some test
+    /// data. This does not store the new data on the disk
     #[must_use]
     pub fn with_custom(mut self, data: impl IntoIterator<Item = SimpleModification>) -> Self {
-        self.custom
-            .update_do_not_save_to_disk(CVVersion::default(), data);
+        self.custom.update_do_not_save_to_disk(CVVersion::default(), data);
         self
     }
 
@@ -183,7 +184,8 @@ impl Ontologies {
     }
 
     /// Find the closest names in the given ontologies, or if empty in all ontologies. Also
-    /// returns the matched synonym if a synonym was matched (if it was matched on a name returns None)
+    /// returns the matched synonym if a synonym was matched (if it was matched on a name returns
+    /// None)
     pub fn search(
         &self,
         ontologies: &[Ontology],
@@ -220,14 +222,12 @@ impl Ontologies {
         // Make them nicely stabelly sorted
         options.sort_unstable_by(|a, b| a.2.cmp(&b.2).then(a.1.cmp(&b.1)).then(a.0.cmp(&b.0)));
 
-        options
-            .into_iter()
-            .map(|(m, n, _)| (m, n))
-            .take(10)
-            .collect()
+        options.into_iter().map(|(m, n, _)| (m, n)).take(10).collect()
     }
 
-    /// Load a data item by name or if that fails by synonym, names are matched in a case insensitive manner. Returns a boolean indicating if it matches a name `true` or a synonym `false`
+    /// Load a data item by name or if that fails by synonym, names are matched in a case
+    /// insensitive manner. Returns a boolean indicating if it matches a name `true` or a synonym
+    /// `false`
     pub fn get_by_name_or_synonym(
         &self,
         ontologies: &[Ontology],
@@ -489,17 +489,13 @@ impl Ontology {
 
 impl std::fmt::Display for Ontology {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "{}",
-            match self {
-                Self::Unimod => "Unimod",
-                Self::Psimod => "PSI-MOD",
-                Self::Gnome => "GNOme",
-                Self::Xlmod => "XLMOD",
-                Self::Resid => "Resid",
-                Self::Custom => "Custom",
-            },
-        )
+        write!(f, "{}", match self {
+            Self::Unimod => "Unimod",
+            Self::Psimod => "PSI-MOD",
+            Self::Gnome => "GNOme",
+            Self::Xlmod => "XLMOD",
+            Self::Resid => "Resid",
+            Self::Custom => "Custom",
+        },)
     }
 }

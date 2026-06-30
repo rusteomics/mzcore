@@ -1,11 +1,12 @@
 use std::{borrow::Cow, ops::Range};
 
-use crate::{KnownFileFormat, ProteinMetaData, Reliability, SpectrumIds};
 use mzcore::{
     sequence::{FlankingSequence, PeptidoformIonSet},
     system::{Mass, MassOverCharge, Ratio, Time, isize::Charge},
 };
 use mzcv::Term;
+
+use crate::{KnownFileFormat, ProteinMetaData, Reliability, SpectrumIds};
 
 /// Generalised access to meta data of PSMs
 pub trait PSMMetaData {
@@ -24,10 +25,12 @@ pub trait PSMMetaData {
     /// Get the search engine that identified this PSM
     fn search_engine(&self) -> Option<Term>;
 
-    /// Get the normalised confidence, a score between -1 and 1 describing the confidence in the entire PSM
+    /// Get the normalised confidence, a score between -1 and 1 describing the confidence in the
+    /// entire PSM
     fn confidence(&self) -> Option<f64>;
 
-    /// Get the normalised local confidence, a score between -1 and 1 for each amino acid in the peptide
+    /// Get the normalised local confidence, a score between -1 and 1 for each amino acid in the
+    /// peptide
     fn local_confidence(&self) -> Option<Cow<'_, [f64]>>;
 
     /// Get the original confidence and the term identifying the type of original confidence
@@ -64,7 +67,8 @@ pub trait PSMMetaData {
     /// Get the mass as experimentally determined
     fn experimental_mass(&self) -> Option<Mass>;
 
-    /// Get the absolute ppm error between the experimental and theoretical precursor mass, if there are multiple masses possible returns the smallest ppm
+    /// Get the absolute ppm error between the experimental and theoretical precursor mass, if there
+    /// are multiple masses possible returns the smallest ppm
     fn ppm_error(&self) -> Option<Ratio> {
         let exp_mass = self.experimental_mass()?;
         self.peptidoform_ion_set().and_then(|f| {
@@ -75,7 +79,8 @@ pub trait PSMMetaData {
         })
     }
 
-    /// Get the absolute mass error between the experimental and theoretical precursor mass, if there are multiple masses possible returns the smallest difference
+    /// Get the absolute mass error between the experimental and theoretical precursor mass, if
+    /// there are multiple masses possible returns the smallest difference
     fn mass_error(&self) -> Option<Mass> {
         let exp_mass = self.experimental_mass()?;
         self.peptidoform_ion_set().and_then(|f| {
@@ -104,7 +109,8 @@ pub trait PSMMetaData {
     /// The database that was used for matching optionally with the version of the database
     fn database(&self) -> Option<(&str, Option<&str>)>;
 
-    /// Get if this PSM is marked as a unique match for its database match, note that this might not be true anymore if multiple streams of data are merged
+    /// Get if this PSM is marked as a unique match for its database match, note that this might not
+    /// be true anymore if multiple streams of data are merged
     fn unique(&self) -> Option<bool>;
 
     /// Get the reliability of this PSM
@@ -121,7 +127,8 @@ pub trait PSMMetaData {
     }
 
     /// Check if this spectrum has an annotated spectrum available.
-    /// This can be overwritten to built a faster implementation if creating the spectrum needs to happen at runtime.
+    /// This can be overwritten to built a faster implementation if creating the spectrum needs to
+    /// happen at runtime.
     #[cfg(feature = "mzannotate")]
     fn has_annotated_spectrum(&self) -> bool {
         self.annotated_spectrum().is_some()
@@ -131,6 +138,8 @@ pub trait PSMMetaData {
 macro_rules! impl_ref {
     ($t:ty) => {
         impl<T: PSMMetaData> PSMMetaData for $t {
+            type Protein = T::Protein;
+
             fn peptidoform_ion_set(&self) -> Option<Cow<'_, PeptidoformIonSet>> {
                 (**self).peptidoform_ion_set()
             }
@@ -199,7 +208,6 @@ macro_rules! impl_ref {
                 (**self).ppm_error()
             }
 
-            type Protein = T::Protein;
             fn proteins(&self) -> Cow<'_, [Self::Protein]> {
                 (**self).proteins()
             }

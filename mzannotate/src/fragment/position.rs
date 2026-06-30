@@ -1,12 +1,11 @@
 use std::fmt::Debug;
 
-use serde::{Deserialize, Serialize};
-
 use mzcore::{
     glycan::{GlycanPosition, MonoSaccharide},
     prelude::*,
     sequence::{Modification, PeptidePosition},
 };
+use serde::{Deserialize, Serialize};
 
 /// Any position on a glycan or a peptide
 #[derive(Clone, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]

@@ -1,6 +1,5 @@
 //! Code to handle the Custom ontology
 use context_error::{BoxedError, Context, CreateError, FullErrorContent};
-
 use mzcv::{CVError, CVFile, CVSource, CVVersion, HashBufReader};
 
 use crate::{
@@ -18,16 +17,18 @@ pub type CustomDatabase = Vec<(Option<usize>, String, SimpleModification)>;
 /// from the internet. To parse these files the `custom_modifications.json` file is parsed with
 /// [`CustomDatabase::from_json_value`] which generates the modifications.
 ///
-/// To update the modifications use [`mzcv::CVIndex::update`] or [`mzcv::CVIndex::update_from_path`].
-/// Both automatically write the cache and the original JSON file.
+/// To update the modifications use [`mzcv::CVIndex::update`] or
+/// [`mzcv::CVIndex::update_from_path`]. Both automatically write the cache and the original JSON
+/// file.
 #[allow(missing_copy_implementations, missing_debug_implementations)]
 pub struct Custom {}
 
 impl CVSource for Custom {
-    const AUTOMATICALLY_WRITE_UNCOMPRESSED: bool = true;
-
     type Data = SimpleModificationInner;
     type Structure = Vec<SimpleModification>;
+
+    const AUTOMATICALLY_WRITE_UNCOMPRESSED: bool = true;
+
     fn cv_name() -> &'static str {
         "CUSTOM"
     }

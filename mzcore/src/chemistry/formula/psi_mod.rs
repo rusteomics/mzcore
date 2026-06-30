@@ -10,12 +10,20 @@ use crate::{
 impl MolecularFormula {
     /// Parse a molecular formula from a PSI-MOD formula.
     /// # Errors
-    /// If the formula is not valid according to the PSI-MOD molecular formula format, with some help on what is going wrong.
+    /// If the formula is not valid according to the PSI-MOD molecular formula format, with some
+    /// help on what is going wrong.
     /// ```rust
     /// use mzcore::prelude::*;
-    /// assert!(MolecularFormula::psi_mod("(12)C -5 (13)C 5 H 1 N 3 O -1 S 9").is_ok());
-    /// assert!(MolecularFormula::psi_mod("C 6 H 10 N 0 O 5").is_ok());
-    ///
+    /// assert!(
+    ///     MolecularFormula::psi_mod(
+    ///         "(12)C -5 (13)C 5 H 1 N 3 O -1 S 9"
+    ///     )
+    ///     .is_ok()
+    /// );
+    /// assert!(
+    ///     MolecularFormula::psi_mod("C 6 H 10 N 0 O 5")
+    ///         .is_ok()
+    /// );
     /// ```
     pub fn psi_mod(value: &str) -> Result<Self, BoxedError<'_, BasicKind>> {
         Self::psi_mod_inner(&Context::default().lines(0, value), value, 0..value.len())
@@ -42,11 +50,8 @@ impl MolecularFormula {
         while index < end {
             match (bytes[index], element) {
                 (b'(', _) if isotope.is_none() => {
-                    let len = bytes
-                        .iter()
-                        .skip(index)
-                        .position(|c| *c == b')')
-                        .ok_or_else(|| {
+                    let len =
+                        bytes.iter().skip(index).position(|c| *c == b')').ok_or_else(|| {
                             BoxedError::new(
                                 BasicKind::Error,
                                 "Invalid PSI-MOD molecular formula",
@@ -54,18 +59,16 @@ impl MolecularFormula {
                                 base_context.clone().add_highlight((0, index, 1)),
                             )
                         })?;
-                    isotope = Some(
-                        value[index + 1..index + len]
-                            .parse::<NonZeroU16>()
-                            .map_err(|err| {
-                                BoxedError::new(
-                                    BasicKind::Error,
-                                    "Invalid PSI-MOD molecular formula",
-                                    format!("The isotope number {}", explain_number_error(&err)),
-                                    base_context.clone().add_highlight((0, index + 1, len)),
-                                )
-                            })?,
-                    );
+                    isotope = Some(value[index + 1..index + len].parse::<NonZeroU16>().map_err(
+                        |err| {
+                            BoxedError::new(
+                                BasicKind::Error,
+                                "Invalid PSI-MOD molecular formula",
+                                format!("The isotope number {}", explain_number_error(&err)),
+                                base_context.clone().add_highlight((0, index + 1, len)),
+                            )
+                        },
+                    )?);
                     index += len + 1;
                 }
                 (b'-' | b'0'..=b'9', Some(ele)) => {

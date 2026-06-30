@@ -5,10 +5,8 @@ use std::{
     path::Path,
 };
 
-use crate::{
-    GeneralPSMs, KnownFileFormat, MaybePeptidoform, PSM, PSMData, PSMMetaData, SpectrumId,
-    SpectrumIds,
-};
+use context_error::{BasicKind, BoxedError, FullErrorContent};
+use itertools::Itertools;
 use mzannotate::prelude::AnnotatedSpectrum;
 use mzcore::{
     ontology::Ontologies,
@@ -17,11 +15,14 @@ use mzcore::{
     system::{Mass, MassOverCharge, Time, isize::Charge},
 };
 
-use context_error::{BasicKind, BoxedError, FullErrorContent};
-
-use itertools::Itertools;
+use crate::{
+    GeneralPSMs, KnownFileFormat, MaybePeptidoform, PSM, PSMData, PSMMetaData, SpectrumId,
+    SpectrumIds,
+};
 
 impl PSMMetaData for AnnotatedSpectrum {
+    type Protein = crate::NoProtein;
+
     fn peptidoform_ion_set(&self) -> Option<Cow<'_, PeptidoformIonSet>> {
         let cpi: PeptidoformIonSet = self
             .analytes
@@ -31,10 +32,7 @@ impl PSMMetaData for AnnotatedSpectrum {
                 _ => None,
             })
             .collect();
-        cpi.peptidoform_ions()
-            .is_empty()
-            .not()
-            .then_some(Cow::Owned(cpi))
+        cpi.peptidoform_ions().is_empty().not().then_some(Cow::Owned(cpi))
     }
 
     fn format(&self) -> KnownFileFormat {
@@ -101,10 +99,7 @@ impl PSMMetaData for AnnotatedSpectrum {
     fn fragmentation_model(
         &self,
     ) -> Option<mzannotate::annotation::model::BuiltInFragmentationModel> {
-        self.description
-            .precursor
-            .first()
-            .map(|p| p.activation.methods().into())
+        self.description.precursor.first().map(|p| p.activation.methods().into())
     }
 
     fn retention_time(&self) -> Option<Time> {
@@ -120,17 +115,15 @@ impl PSMMetaData for AnnotatedSpectrum {
             .params
             .iter()
             .find(|p| {
-                p.controlled_vocabulary
-                    .is_some_and(|cv| cv.prefix() == "MS")
+                p.controlled_vocabulary.is_some_and(|cv| cv.prefix() == "MS")
                     && p.accession == Some(1003203)
             })
             .map_or_else(
                 || SpectrumIds::FileNotKnown(vec![SpectrumId::Index(self.description.index)]),
                 |rawfile| {
-                    SpectrumIds::FileKnown(vec![(
-                        rawfile.value.to_string().into(),
-                        vec![SpectrumId::Index(self.description.index)],
-                    )])
+                    SpectrumIds::FileKnown(vec![(rawfile.value.to_string().into(), vec![
+                        SpectrumId::Index(self.description.index),
+                    ])])
                 },
             )
     }
@@ -153,8 +146,6 @@ impl PSMMetaData for AnnotatedSpectrum {
                     .map(|c| Mass::new::<mzcore::system::mass::dalton>(i.mz * f64::from(c)))
             })
     }
-
-    type Protein = crate::NoProtein;
 
     fn protein_location(&self) -> Option<Range<u16>> {
         None
@@ -245,10 +236,9 @@ pub(crate) fn parse_mzspeclib<'a>(
                 dyn Iterator<
                     Item = Result<PSM<Linked, MaybePeptidoform>, BoxedError<'static, BasicKind>>,
                 >,
-            > = Box::new(parser.map(move |s| {
-                s.map(Into::into)
-                    .map_err(|e| e.convert(|_| BasicKind::Error))
-            }));
+            > = Box::new(
+                parser.map(move |s| s.map(Into::into).map_err(|e| e.convert(|_| BasicKind::Error))),
+            );
             b
         })
         .map_err(|e| e.convert(|_| BasicKind::Error))

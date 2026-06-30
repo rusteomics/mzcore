@@ -1,10 +1,8 @@
-use std::fmt::Display;
-use std::ops::RangeInclusive;
-use std::str::FromStr;
+use std::{fmt::Display, ops::RangeInclusive, str::FromStr};
 
-use crate::imgt_gene::IMGTGene;
-use crate::{AnnotatedSequence, Gene, Species};
 use mzcore::sequence::{AminoAcid, IsAminoAcid};
+
+use crate::{AnnotatedSequence, Gene, Species, imgt_gene::IMGTGene};
 
 #[derive(Debug)]
 pub(crate) struct DataItem {
@@ -58,12 +56,7 @@ impl Display for Region {
             // self.found_seq.0,
             self.found_seq.as_ref().map_or_else(
                 |e| format!("<NO SEQ!>: {e}"),
-                |seq| seq
-                    .1
-                    .0
-                    .iter()
-                    .map(|a| a.pro_forma_definition())
-                    .collect::<String>()
+                |seq| seq.1.0.iter().map(|a| a.pro_forma_definition()).collect::<String>()
             ),
         )
     }
@@ -135,7 +128,8 @@ impl Location {
         }
     }
 
-    /// Break the location around the given amino acid index in the location. If the position is outside the range or this location is a single it returns None.
+    /// Break the location around the given amino acid index in the location. If the position is
+    /// outside the range or this location is a single it returns None.
     pub(crate) const fn splice(&self, position: usize) -> Option<(Self, Self)> {
         match self {
             Self::Normal(s) => {
@@ -178,6 +172,7 @@ impl Display for Location {
 
 impl FromStr for Location {
     type Err = String;
+
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let s = s.trim();
 
@@ -190,8 +185,7 @@ impl FromStr for Location {
                 s.split_once("..").map_or_else(
                     || {
                         Ok(Self::SingleNormal(
-                            s.parse()
-                                .map_err(|err| format!("Invalid single number: {err}"))?,
+                            s.parse().map_err(|err| format!("Invalid single number: {err}"))?,
                         ))
                     },
                     |(start, end)| {
@@ -247,10 +241,7 @@ impl std::fmt::Debug for AASequence {
         write!(
             f,
             "[{}]",
-            self.0
-                .iter()
-                .map(|a| a.pro_forma_definition())
-                .collect::<String>()
+            self.0.iter().map(|a| a.pro_forma_definition()).collect::<String>()
         )
     }
 }

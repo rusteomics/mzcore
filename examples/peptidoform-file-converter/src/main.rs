@@ -33,10 +33,7 @@ fn main() {
     let args = Cli::parse();
     let out_file =
         BufWriter::new(File::create(&args.out_path).expect("Could not create output file"));
-    let extension = args
-        .out_path
-        .extension()
-        .map(|e| e.to_string_lossy().to_ascii_lowercase());
+    let extension = args.out_path.extension().map(|e| e.to_string_lossy().to_ascii_lowercase());
     let mut errors = Vec::new();
     let psms = open_psm_file(&args.in_path, &Ontologies::init().0, false)
         .expect("Invalid input file")
@@ -88,57 +85,63 @@ fn save_csv<PSM: PSMMetaData>(
     let mut warnings = Vec::new();
     for (peptidoform_index, psm) in psms.iter().enumerate() {
         let indices = match psm.scans() {
-                SpectrumIds::None => Ok(Vec::new()),
-                SpectrumIds::FileNotKnown(ids) => ids
-                    .iter()
-                    .map(|id| match id {
-                        SpectrumId::Index(id) => {
-                            Ok((*id, raw_file.map(PathBuf::from).ok_or_else(|| BoxedError::new(BasicKind::Error,
-                            "Missing raw file",
-                            "This format does not store the raw file so this should be given via the command line arguments",
-                            Context::default()
-                                .source(in_path.to_string_lossy())
-                                .line_index(peptidoform_index as u32),
-                        ))?))
-                        }
-                        SpectrumId::Number(id) => {
-                            Ok((id - 1, raw_file.map(PathBuf::from).ok_or_else(|| BoxedError::new(BasicKind::Error,
-                            "Missing raw file",
-                            "This format does not store the raw file so this should be given via the command line arguments",
-                            Context::default()
-                                .source(in_path.to_string_lossy())
-                                .line_index(peptidoform_index as u32),
-                        ))?))
-                        }
-                        _ => {
-                            combine_error(&mut warnings, BoxedError::new(BasicKind::Warning,
-                            "Invalid spectrum id",
-                            "Only spectrum indexes and spectrum numbers can be used, an empty scan number is used instead",
-                            Context::default()
-                                .source(in_path.to_string_lossy())
-                                .line_index(peptidoform_index as u32),
-                        ));
+            SpectrumIds::None => Ok(Vec::new()),
+            SpectrumIds::FileNotKnown(ids) => ids
+                .iter()
+                .map(|id| match id {
+                    SpectrumId::Index(id) => Ok((
+                        *id,
+                        raw_file.map(PathBuf::from).ok_or_else(|| {
+                            BoxedError::new(
+                                BasicKind::Error,
+                                "Missing raw file",
+                                "This format does not store the raw file so this should be given via the command line arguments",
+                                Context::default().source(in_path.to_string_lossy()).line_index(peptidoform_index as u32),
+                            )
+                        })?,
+                    )),
+                    SpectrumId::Number(id) => Ok((
+                        id - 1,
+                        raw_file.map(PathBuf::from).ok_or_else(|| {
+                            BoxedError::new(
+                                BasicKind::Error,
+                                "Missing raw file",
+                                "This format does not store the raw file so this should be given via the command line arguments",
+                                Context::default().source(in_path.to_string_lossy()).line_index(peptidoform_index as u32),
+                            )
+                        })?,
+                    )),
+                    _ => {
+                        combine_error(
+                            &mut warnings,
+                            BoxedError::new(
+                                BasicKind::Warning,
+                                "Invalid spectrum id",
+                                "Only spectrum indexes and spectrum numbers can be used, an empty scan number is used instead",
+                                Context::default().source(in_path.to_string_lossy()).line_index(peptidoform_index as u32),
+                            ),
+                        );
                         Ok((0, PathBuf::new()))
                     }
+                })
+                .collect(),
+            SpectrumIds::FileKnown(files) => files
+                .iter()
+                .flat_map(|(file, ids)| {
+                    ids.iter().map(|id| match id {
+                        SpectrumId::Index(id) => Ok((*id, file.clone())),
+                        SpectrumId::Number(id) => Ok((id - 1, file.clone())),
+                        _ => Err(BoxedError::new(
+                            BasicKind::Error,
+                            "Invalid spectrum id",
+                            "Only spectrum indexes and spectrum numbers can be used",
+                            Context::default().source(in_path.to_string_lossy()).line_index(peptidoform_index as u32),
+                        )),
                     })
-                    .collect(),
-                SpectrumIds::FileKnown(files) => files
-                    .iter()
-                    .flat_map(|(file, ids)| {
-                        ids.iter().map(|id| match id {
-                            SpectrumId::Index(id) => Ok((*id, file.clone())),
-                            SpectrumId::Number(id) => Ok((id - 1, file.clone())),
-                            _ => Err(BoxedError::new(BasicKind::Error,
-                                "Invalid spectrum id",
-                                "Only spectrum indexes and spectrum numbers can be used",
-                                Context::default()
-                                    .source(in_path.to_string_lossy())
-                                    .line_index(peptidoform_index as u32),
-                            )),
-                        })
-                    })
-                    .collect(),
-            }.unwrap();
+                })
+                .collect(),
+        }
+        .unwrap();
         let sequence = psm
             .peptidoform_ion_set()
             .ok_or_else(|| {
@@ -153,10 +156,7 @@ fn save_csv<PSM: PSMMetaData>(
             })
             .unwrap();
         let charge = psm.charge().map(|v| v.value).unwrap_or_default();
-        let score = psm
-            .original_confidence()
-            .map(|(v, _)| v)
-            .unwrap_or_default();
+        let score = psm.original_confidence().map(|(v, _)| v).unwrap_or_default();
         let class = psm.proteins().iter().fold("Unkown", |acc, p| {
             if p.id().decoy() && acc != "Target" {
                 "Decoy"

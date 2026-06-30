@@ -1,9 +1,9 @@
 use std::{collections::HashMap, fmt::Display};
 
 use context_error::{BasicKind, BoxedError};
+use mzcore::sequence::{AtLeast, Linked};
 
 use crate::{MaybePeptidoform, PSM, PSMMetaData};
-use mzcore::sequence::{AtLeast, Linked};
 
 /// A version for an PSM file format
 pub trait PSMFileFormatVersion<Format>: Copy + Display {
@@ -57,7 +57,8 @@ where
         proteins: &mut HashMap<String, std::sync::Arc<Self::Protein>>,
     ) -> Result<Self, BoxedError<'static, BasicKind>>;
 
-    /// Parse a source of multiple peptides using the given format or automatically determining the format to use by the first item
+    /// Parse a source of multiple peptides using the given format or automatically determining the
+    /// format to use by the first item
     /// # Errors
     /// When the source is not a valid peptide
     fn parse_many<I: Iterator<Item = Result<Self::Source, BoxedError<'static, BasicKind>>>>(
@@ -191,6 +192,7 @@ where
     R::Format: 'static,
 {
     type Item = Result<R, BoxedError<'static, BasicKind>>;
+
     fn next(&mut self) -> Option<Self::Item> {
         if self.peek.is_some() {
             return self.peek.take();

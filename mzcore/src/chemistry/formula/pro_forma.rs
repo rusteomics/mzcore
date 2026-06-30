@@ -9,48 +9,104 @@ use crate::{
 
 impl MolecularFormula {
     /// # ProForma v2 molecular formula specification (copied)
-    /// As no widely accepted specification exists for expressing elemental formulas, we have adapted a standard with the following rules (taken from <https://github.com/rfellers/chemForma>):
+    /// As no widely accepted specification exists for expressing elemental formulas, we have
+    /// adapted a standard with the following rules (taken from <https://github.com/rfellers/chemForma>):
     /// ## Formula Rule 1
-    /// A formula will be composed of pairs of atoms and their corresponding cardinality (two Carbon atoms: C2). Pairs SHOULD be separated by spaces but are not required to be.
-    /// Atoms and cardinality SHOULD NOT be. Also, the Hill system for ordering (<https://en.wikipedia.org/wiki/Chemical_formula#Hill_system>) is preferred, but not required.
+    /// A formula will be composed of pairs of atoms and their corresponding cardinality (two Carbon
+    /// atoms: C2). Pairs SHOULD be separated by spaces but are not required to be. Atoms and
+    /// cardinality SHOULD NOT be. Also, the Hill system for ordering
+    /// (<https://en.wikipedia.org/wiki/Chemical_formula#Hill_system>) is preferred, but not
+    /// required.
     /// ```text
     /// Example: C12H20O2 or C12 H20 O2
     /// ```
     /// ## Formula Rule 2
-    /// Cardinalities must be positive or negative integer values. Zero is not supported. If a cardinality is not included with an atom, it is assumed to be +1.
+    /// Cardinalities must be positive or negative integer values. Zero is not supported. If a
+    /// cardinality is not included with an atom, it is assumed to be +1.
     /// ```text
     /// Example: HN-1O2
     /// ```
     /// ## Formula Rule 3
-    /// Isotopes will be handled by prefixing the atom with its isotopic number in square brackets. If no isotopes are specified, previous rules apply. If no isotope is specified, then it is
+    /// Isotopes will be handled by prefixing the atom with its isotopic number in square brackets.
+    /// If no isotopes are specified, previous rules apply. If no isotope is specified, then it is
     /// assumed the natural isotopic distribution for a given element applies.
     /// ```text
     /// Example: [13C2][12C-2]H2N
     /// Example: [13C2]C-2H2N
     /// ```
     /// ## Allow charge
-    /// Allows `:z{x}` to define the charge of a formula, eg `:z+1`, `:z-3`. As defined in ProForma 2.1.
+    /// Allows `:z{x}` to define the charge of a formula, eg `:z+1`, `:z-3`. As defined in ProForma
+    /// 2.1.
     /// ## Allow empty
-    /// Allows an empty string, `(empty)`, or a definition that leads to an empty formula (eg `H0` or `H4H-4`) to be used to denote an empty formula
+    /// Allows an empty string, `(empty)`, or a definition that leads to an empty formula (eg `H0`
+    /// or `H4H-4`) to be used to denote an empty formula
     /// # Errors
-    /// If the formula is not valid according to the above specification, with some help on what is going wrong.
+    /// If the formula is not valid according to the above specification, with some help on what is
+    /// going wrong.
     ///
     /// ```rust
     /// use mzcore::prelude::*;
     /// // Examples from the spec
-    /// assert!(MolecularFormula::pro_forma::<false, false>("C12H20O2").is_ok());
-    /// assert!(MolecularFormula::pro_forma::<false, false>("C12 H20 O2").is_ok());
-    /// assert!(MolecularFormula::pro_forma::<false, false>("HN-1O2").is_ok());
-    /// assert!(MolecularFormula::pro_forma::<false, false>("[13C2][12C-2]H2N").is_ok());
-    /// assert!(MolecularFormula::pro_forma::<false, false>("[13C2]C-2H2N").is_ok());
+    /// assert!(
+    ///     MolecularFormula::pro_forma::<false, false>(
+    ///         "C12H20O2"
+    ///     )
+    ///     .is_ok()
+    /// );
+    /// assert!(
+    ///     MolecularFormula::pro_forma::<false, false>(
+    ///         "C12 H20 O2"
+    ///     )
+    ///     .is_ok()
+    /// );
+    /// assert!(
+    ///     MolecularFormula::pro_forma::<false, false>(
+    ///         "HN-1O2"
+    ///     )
+    ///     .is_ok()
+    /// );
+    /// assert!(
+    ///     MolecularFormula::pro_forma::<false, false>(
+    ///         "[13C2][12C-2]H2N"
+    ///     )
+    ///     .is_ok()
+    /// );
+    /// assert!(
+    ///     MolecularFormula::pro_forma::<false, false>(
+    ///         "[13C2]C-2H2N"
+    ///     )
+    ///     .is_ok()
+    /// );
     /// // ProForma 2.1 style charges
-    /// assert!(MolecularFormula::pro_forma::<true, false>("N1H4:z+1").is_ok());
+    /// assert!(
+    ///     MolecularFormula::pro_forma::<true, false>(
+    ///         "N1H4:z+1"
+    ///     )
+    ///     .is_ok()
+    /// );
     /// // Empty formulas only accepted if `ALLOW_EMPTY` is true
-    /// assert!(MolecularFormula::pro_forma::<false, false>("H0").is_err());
-    /// assert!(MolecularFormula::pro_forma::<false, true>("H0").is_ok());
-    /// assert!(MolecularFormula::pro_forma::<false, true>("(empty)").is_ok());
-    /// assert!(MolecularFormula::pro_forma::<false, true>("").is_ok());
-    /// assert!(MolecularFormula::pro_forma::<false, true>("H4H-4").is_ok());
+    /// assert!(
+    ///     MolecularFormula::pro_forma::<false, false>("H0")
+    ///         .is_err()
+    /// );
+    /// assert!(
+    ///     MolecularFormula::pro_forma::<false, true>("H0")
+    ///         .is_ok()
+    /// );
+    /// assert!(
+    ///     MolecularFormula::pro_forma::<false, true>(
+    ///         "(empty)"
+    ///     )
+    ///     .is_ok()
+    /// );
+    /// assert!(
+    ///     MolecularFormula::pro_forma::<false, true>("")
+    ///         .is_ok()
+    /// );
+    /// assert!(
+    ///     MolecularFormula::pro_forma::<false, true>("H4H-4")
+    ///         .is_ok()
+    /// );
     /// ```
     pub fn pro_forma<const ALLOW_CHARGE: bool, const ALLOW_EMPTY: bool>(
         value: &str,
@@ -96,15 +152,9 @@ impl MolecularFormula {
             match (bytes[index], element) {
                 (b'[', _) => {
                     // Skip the open square bracket and leading spaces
-                    index += 1 + bytes[index + 1..]
-                        .iter()
-                        .take_while(|b| **b == b' ')
-                        .count();
-                    let len = bytes
-                        .iter()
-                        .skip(index)
-                        .position(|c| *c == b']')
-                        .ok_or_else(|| {
+                    index += 1 + bytes[index + 1..].iter().take_while(|b| **b == b' ').count();
+                    let len =
+                        bytes.iter().skip(index).position(|c| *c == b']').ok_or_else(|| {
                             BoxedError::new(
                                 BasicKind::Error,
                                 "Invalid ProForma molecular formula",
@@ -112,15 +162,9 @@ impl MolecularFormula {
                                 base_context.clone().add_highlight((0, index, 1)),
                             )
                         })?;
-                    let isotope = bytes
-                        .iter()
-                        .skip(index)
-                        .take_while(|c| c.is_ascii_digit())
-                        .count();
-                    let ws1 = bytes[index + isotope..]
-                        .iter()
-                        .take_while(|b| **b == b' ')
-                        .count();
+                    let isotope =
+                        bytes.iter().skip(index).take_while(|c| c.is_ascii_digit()).count();
+                    let ws1 = bytes[index + isotope..].iter().take_while(|b| **b == b' ').count();
                     let ele = bytes
                         .iter()
                         .skip(index + isotope + ws1)
@@ -158,9 +202,8 @@ impl MolecularFormula {
                                     )),
                                 )
                             })?;
-                        let isotope = value[index..index + isotope]
-                            .parse::<NonZeroU16>()
-                            .map_err(|err| {
+                        let isotope =
+                            value[index..index + isotope].parse::<NonZeroU16>().map_err(|err| {
                                 BoxedError::new(
                                     BasicKind::Error,
                                     "Invalid ProForma molecular formula",
@@ -186,9 +229,7 @@ impl MolecularFormula {
                             BasicKind::Error,
                             "Invalid ProForma molecular formula",
                             "Invalid element",
-                            base_context
-                                .clone()
-                                .add_highlight((0, index + isotope, ele)),
+                            base_context.clone().add_highlight((0, index + isotope, ele)),
                         ));
                     }
                 }
@@ -284,11 +325,7 @@ impl MolecularFormula {
                         base_context.clone().add_highlight((
                             0,
                             index,
-                            value[index..]
-                                .chars()
-                                .next()
-                                .map(char::len_utf8)
-                                .unwrap_or_default(),
+                            value[index..].chars().next().map(char::len_utf8).unwrap_or_default(),
                         )),
                     ));
                 }

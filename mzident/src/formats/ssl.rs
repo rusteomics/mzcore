@@ -5,18 +5,18 @@ use std::{
     path::{Path, PathBuf},
 };
 
+use mzcore::{
+    csv::{CsvLine, parse_csv},
+    ontology::Ontologies,
+    sequence::{FlankingSequence, Peptidoform, PeptidoformIonSet, SemiAmbiguous},
+    system::{Mass, MassOverCharge, Time, isize::Charge},
+};
 use serde::{Deserialize, Serialize};
 
 use crate::{
     BoxedIdentifiedPeptideIter, KnownFileFormat, MaybePeptidoform, PSM, PSMData,
     PSMFileFormatVersion, PSMMetaData, PSMSource, SpectrumId, SpectrumIds,
     common_parser::{Location, OptionalColumn, OptionalLocation},
-};
-use mzcore::{
-    csv::{CsvLine, parse_csv},
-    ontology::Ontologies,
-    sequence::{FlankingSequence, Peptidoform, PeptidoformIonSet, SemiAmbiguous},
-    system::{Mass, MassOverCharge, Time, isize::Charge},
 };
 
 static NUMBER_ERROR: (&str, &str) = (
@@ -99,6 +99,7 @@ impl PSMFileFormatVersion<SpectrumSequenceListFormat> for SpectrumSequenceListVe
             Self::SSL => SSL,
         }
     }
+
     fn name(self) -> &'static str {
         match self {
             Self::SSL => "",
@@ -107,6 +108,8 @@ impl PSMFileFormatVersion<SpectrumSequenceListFormat> for SpectrumSequenceListVe
 }
 
 impl PSMMetaData for SpectrumSequenceListPSM {
+    type Protein = crate::NoProtein;
+
     fn peptidoform_ion_set(&self) -> Option<Cow<'_, PeptidoformIonSet>> {
         self.peptide.as_ref().map(|p| Cow::Owned(p.clone().into()))
     }
@@ -157,10 +160,9 @@ impl PSMMetaData for SpectrumSequenceListPSM {
     }
 
     fn scans(&self) -> SpectrumIds {
-        SpectrumIds::FileKnown(vec![(
-            self.raw_file.clone(),
-            vec![SpectrumId::Index(self.scan)],
-        )])
+        SpectrumIds::FileKnown(vec![(self.raw_file.clone(), vec![SpectrumId::Index(
+            self.scan,
+        )])])
     }
 
     fn experimental_mz(&self) -> Option<MassOverCharge> {
@@ -170,8 +172,6 @@ impl PSMMetaData for SpectrumSequenceListPSM {
     fn experimental_mass(&self) -> Option<Mass> {
         None
     }
-
-    type Protein = crate::NoProtein;
 
     fn protein_location(&self) -> Option<Range<u16>> {
         None

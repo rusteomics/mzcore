@@ -9,7 +9,8 @@ fn main() {
                 &mzcore::ontology::STATIC_ONTOLOGIES,
             )
         {
-            // Enforce that all displayed peptides are actually valid ProForma according to the parser
+            // Enforce that all displayed peptides are actually valid ProForma according to the
+            // parser
             mzcore::sequence::PeptidoformIonSet::pro_forma(
                 &def.to_string(),
                 &mzcore::ontology::STATIC_ONTOLOGIES,

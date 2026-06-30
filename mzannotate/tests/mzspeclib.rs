@@ -1,16 +1,16 @@
 //! Test all present mzSpecLib files
 #![allow(clippy::missing_panics_doc)]
+use std::collections::{HashMap, HashSet};
+
 use context_error as _;
 use indexmap as _;
 use itertools as _;
+use mzannotate::mzspeclib::{MzSpecLibTextParser, MzSpecLibTextWriter};
 use ordered_float as _;
 use serde as _;
 use serde_json as _;
 use thin_vec as _;
 use uom as _;
-
-use mzannotate::mzspeclib::{MzSpecLibTextParser, MzSpecLibTextWriter};
-use std::collections::{HashMap, HashSet};
 
 #[test]
 fn read_all_files() {
@@ -88,7 +88,8 @@ fn read_all_files() {
 
             for (p, r) in parsed_spectra.iter().zip(reparsed_spectra.iter()) {
                 assert_eq!(p.peaks, r.peaks);
-                // The other information fields have too many issues with sort order and equivalence that equality is not a good test
+                // The other information fields have too many issues with sort order and equivalence
+                // that equality is not a good test
             }
         }
     }

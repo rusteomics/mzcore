@@ -1,13 +1,12 @@
-use std::collections::HashMap;
-use std::fmt::Write;
+use std::{collections::HashMap, fmt::Write};
 
-use crate::{AnnotatedSequence, Gene, Germline, Germlines, Species};
 use itertools::Itertools;
 use mzcore::sequence::{Annotation, Peptidoform, Region, UnAmbiguous};
 
-use crate::structs::DataItem;
-
-use crate::structs::SingleSeq;
+use crate::{
+    AnnotatedSequence, Gene, Germline, Germlines, Species,
+    structs::{DataItem, SingleSeq},
+};
 
 pub(crate) fn combine(
     data: impl Iterator<Item = Result<(DataItem, Vec<String>), String>>,
@@ -23,10 +22,7 @@ pub(crate) fn combine(
 
     for (element, errs) in data.flatten() {
         let species = element.species;
-        errors.extend(
-            errs.into_iter()
-                .map(|err| (species, element.id.clone(), err)),
-        );
+        errors.extend(errs.into_iter().map(|err| (species, element.id.clone(), err)));
         last_release = max_release(last_release, element.release);
         for gene in element.genes {
             match gene.clone().finish() {
@@ -54,14 +50,11 @@ pub(crate) fn combine(
         }
         // If not found
         let acc = seq.acc.clone();
-        deduped_temp.push((
+        deduped_temp.push((species, TemporaryGermline {
             species,
-            TemporaryGermline {
-                species,
-                name: seq.name.clone(),
-                alleles: vec![(seq.allele, vec![TemporarySequence::from_single(seq)], acc)],
-            },
-        ));
+            name: seq.name.clone(),
+            alleles: vec![(seq.allele, vec![TemporarySequence::from_single(seq)], acc)],
+        }));
     }
 
     // Save temp seqs in final data structure
@@ -105,10 +98,7 @@ struct TemporaryGermline {
 impl TemporaryGermline {
     fn add(&mut self, single: SingleSeq) {
         if let Some(al) = self.alleles.iter_mut().find(|al| al.0 == single.allele) {
-            if let Some(s) =
-                al.1.iter_mut()
-                    .find(|s| s.sequence == single.sequence.sequence)
-            {
+            if let Some(s) = al.1.iter_mut().find(|s| s.sequence == single.sequence.sequence) {
                 s.add_single(single);
             } else {
                 al.1.push(TemporarySequence::from_single(single));
@@ -311,10 +301,7 @@ impl TemporarySequence {
         let index = self.acc.len();
         self.acc.push(single.acc);
         self.dna.entry(single.dna).or_default().push(index);
-        self.regions
-            .entry(single.sequence.regions)
-            .or_default()
-            .push(index);
+        self.regions.entry(single.sequence.regions).or_default().push(index);
         self.annotations
             .entry(single.sequence.annotations)
             .or_default()

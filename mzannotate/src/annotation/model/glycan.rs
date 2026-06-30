@@ -24,7 +24,8 @@ pub struct GlycanModel {
     pub compositional_range: (Option<usize>, Option<usize>),
     /// The allowed neutral losses
     pub neutral_losses: Vec<NeutralLoss>,
-    /// Allowed neutral losses on diagnostic ions based on monosaccharides with a flag to indicate precise isomeric state matching
+    /// Allowed neutral losses on diagnostic ions based on monosaccharides with a flag to indicate
+    /// precise isomeric state matching
     pub specific_neutral_losses: Vec<(MonoSaccharide, bool, Vec<NeutralLoss>)>,
     /// Glycan fragmentation on peptide fragments when no rules apply
     pub default_peptide_fragment: GlycanPeptideFragment,
@@ -41,6 +42,18 @@ pub struct GlycanModel {
 }
 
 impl GlycanModel {
+    /// Default set for models that disallow glycan fragmentation
+    pub const DISALLOW: Self = Self {
+        allow_structural: false,
+        compositional_range: (None, Some(0)),
+        neutral_losses: Vec::new(),
+        specific_neutral_losses: Vec::new(),
+        default_peptide_fragment: GlycanPeptideFragment::FULL,
+        peptide_fragment_rules: Vec::new(),
+        oxonium_charge_range: ChargeRange::ONE,
+        other_charge_range: ChargeRange::ONE_TO_PRECURSOR,
+    };
+
     /// Sets the status of glycan fragments from structural modifications
     #[must_use]
     pub fn allow_structural(self, allow_structural: bool) -> Self {
@@ -50,7 +63,8 @@ impl GlycanModel {
         }
     }
 
-    /// Set the range of monosaccharides that can result in composition fragments, see [`Self::compositional_range`].
+    /// Set the range of monosaccharides that can result in composition fragments, see
+    /// [`Self::compositional_range`].
     #[must_use]
     pub fn compositional_range(self, compositional_range: (Option<usize>, Option<usize>)) -> Self {
         Self {
@@ -59,7 +73,8 @@ impl GlycanModel {
         }
     }
 
-    /// Set the range of monosaccharides that can result in composition fragments, see [`Self::compositional_range`].
+    /// Set the range of monosaccharides that can result in composition fragments, see
+    /// [`Self::compositional_range`].
     #[must_use]
     pub fn compositional_range_generic(self, compositional_range: impl RangeBounds<usize>) -> Self {
         Self {
@@ -145,8 +160,8 @@ impl GlycanModel {
         }
     }
 
-    /// Default set for models that use electron based dissociation with some additional collision induced dissociation.
-    /// This sets the peptide fragment rules correctly.
+    /// Default set for models that use electron based dissociation with some additional collision
+    /// induced dissociation. This sets the peptide fragment rules correctly.
     pub fn default_exd_allow() -> Self {
         Self::default_allow()
             .default_peptide_fragment(GlycanPeptideFragment::FULL)
@@ -173,18 +188,6 @@ impl GlycanModel {
                 ),
             ])
     }
-
-    /// Default set for models that disallow glycan fragmentation
-    pub const DISALLOW: Self = Self {
-        allow_structural: false,
-        compositional_range: (None, Some(0)),
-        neutral_losses: Vec::new(),
-        specific_neutral_losses: Vec::new(),
-        default_peptide_fragment: GlycanPeptideFragment::FULL,
-        peptide_fragment_rules: Vec::new(),
-        oxonium_charge_range: ChargeRange::ONE,
-        other_charge_range: ChargeRange::ONE_TO_PRECURSOR,
-    };
 }
 
 impl GlycanAttachement for GlycanModel {

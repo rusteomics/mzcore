@@ -1,12 +1,5 @@
 use std::{borrow::Cow, marker::PhantomData, ops::Range};
 
-use serde::{Deserialize, Serialize};
-
-use crate::{
-    BoxedIdentifiedPeptideIter, FastaIdentifier, KnownFileFormat, PSM, PSMData,
-    PSMFileFormatVersion, PSMMetaData, PSMSource, PeptidoformPresent, SpectrumId, SpectrumIds,
-    common_parser::Location,
-};
 use mzcore::{
     csv::{CsvLine, parse_csv},
     ontology::Ontologies,
@@ -14,6 +7,13 @@ use mzcore::{
         FlankingSequence, Peptidoform, PeptidoformIonSet, SemiAmbiguous, SloppyParsingParameters,
     },
     system::{Mass, MassOverCharge, Time, isize::Charge},
+};
+use serde::{Deserialize, Serialize};
+
+use crate::{
+    BoxedIdentifiedPeptideIter, FastaIdentifier, KnownFileFormat, PSM, PSMData,
+    PSMFileFormatVersion, PSMMetaData, PSMSource, PeptidoformPresent, SpectrumId, SpectrumIds,
+    common_parser::Location,
 };
 
 static NUMBER_ERROR: (&str, &str) = (
@@ -103,6 +103,7 @@ impl PSMFileFormatVersion<ProteoscapeFormat> for ProteoscapeVersion {
             Self::V2025b => V2025B,
         }
     }
+
     fn name(self) -> &'static str {
         match self {
             Self::V2025b => "2025b",
@@ -130,6 +131,8 @@ pub const V2025B: ProteoscapeFormat = ProteoscapeFormat {
 };
 
 impl PSMMetaData for ProteoscapePSM {
+    type Protein = FastaIdentifier<Box<str>>;
+
     fn peptidoform_ion_set(&self) -> Option<Cow<'_, PeptidoformIonSet>> {
         Some(Cow::Owned(self.peptide.1.clone().into()))
     }
@@ -193,7 +196,6 @@ impl PSMMetaData for ProteoscapePSM {
         Some(self.mz * self.z.to_float())
     }
 
-    type Protein = FastaIdentifier<Box<str>>;
     fn proteins(&self) -> Cow<'_, [Self::Protein]> {
         Cow::Borrowed(std::slice::from_ref(&self.protein))
     }

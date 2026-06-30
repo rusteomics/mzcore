@@ -4,6 +4,7 @@ use context_error::*;
 use itertools::Itertools;
 use ordered_float::OrderedFloat;
 
+use super::{GlobalModification, Linear};
 use crate::{
     ParserResult,
     sequence::{
@@ -12,12 +13,10 @@ use crate::{
     },
 };
 
-use super::{GlobalModification, Linear};
-
 /// Validate all cross links
 /// # Errors
-/// If there is a cross link with more than 2 locations. Or if there never is a definition for this cross link.
-/// Or if there are peptides that cannot be reached from the first peptide.
+/// If there is a cross link with more than 2 locations. Or if there never is a definition for this
+/// cross link. Or if there are peptides that cannot be reached from the first peptide.
 pub(super) fn cross_links<'a>(
     name: String,
     peptidoforms: Vec<Peptidoform<Linear>>,
@@ -188,7 +187,8 @@ pub(super) fn cross_links<'a>(
 }
 
 impl Peptidoform<Linear> {
-    /// Apply a global modification if this is a global isotope modification with invalid isotopes it returns false
+    /// Apply a global modification if this is a global isotope modification with invalid isotopes
+    /// it returns false
     #[must_use]
     pub(super) fn apply_global_modifications(
         &mut self,
@@ -314,11 +314,11 @@ impl Peptidoform<Linear> {
         for (start, end, id, score) in ranged_unknown_position_modifications {
             let Some(entry) = ambiguous_lookup.get(*id) else {
                 errors.push(BoxedError::new(
-                        BasicKind::Error,
-                        "Modification of unknown position is not defined",
-                        "This ranged modification of unknown position referenced a nonexistent modification, please report this error",
-                        Context::default().lines(0, format!("ID: {id}, range: {start}..={end}")),
-                    ));
+                    BasicKind::Error,
+                    "Modification of unknown position is not defined",
+                    "This ranged modification of unknown position referenced a nonexistent modification, please report this error",
+                    Context::default().lines(0, format!("ID: {id}, range: {start}..={end}")),
+                ));
                 continue;
             };
             let Some(modification) = entry.modification.clone() else {
@@ -336,15 +336,9 @@ impl Peptidoform<Linear> {
                 .map(|i| dbg!(i))
                 .filter(|(position, seq)| {
                     entry.as_settings().position.map_or_else(
-                        || {
-                            modification
-                                .is_possible(seq, position.sequence_index)
-                                .any_possible()
-                        },
+                        || modification.is_possible(seq, position.sequence_index).any_possible(),
                         |rules| {
-                            rules
-                                .iter()
-                                .any(|rule| rule.is_possible(seq, position.sequence_index))
+                            rules.iter().any(|rule| rule.is_possible(seq, position.sequence_index))
                         },
                     ) && (entry.as_settings().comkp
                         || self[position.sequence_index]
@@ -355,11 +349,8 @@ impl Peptidoform<Linear> {
                 .map(|(position, _)| position.sequence_index)
                 .collect_vec();
 
-            ambiguous_found_positions.extend(
-                possible_positions
-                    .into_iter()
-                    .map(|pos| (pos, false, *id, *score)),
-            );
+            ambiguous_found_positions
+                .extend(possible_positions.into_iter().map(|pos| (pos, false, *id, *score)));
         }
         if errors.is_empty() {
             Ok(())

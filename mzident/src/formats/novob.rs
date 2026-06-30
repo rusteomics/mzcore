@@ -1,11 +1,5 @@
 use std::{borrow::Cow, marker::PhantomData, ops::Range, sync::OnceLock};
 
-use serde::{Deserialize, Serialize};
-
-use crate::{
-    BoxedIdentifiedPeptideIter, KnownFileFormat, MaybePeptidoform, PSM, PSMData,
-    PSMFileFormatVersion, PSMMetaData, PSMSource, SpectrumId, SpectrumIds, common_parser::Location,
-};
 use mzcore::{
     csv::{CsvLine, parse_csv},
     ontology::Ontologies,
@@ -14,6 +8,12 @@ use mzcore::{
         SequenceElement, SloppyParsingParameters,
     },
     system::{Mass, MassOverCharge, Ratio, Time, isize::Charge},
+};
+use serde::{Deserialize, Serialize};
+
+use crate::{
+    BoxedIdentifiedPeptideIter, KnownFileFormat, MaybePeptidoform, PSM, PSMData,
+    PSMFileFormatVersion, PSMMetaData, PSMSource, SpectrumId, SpectrumIds, common_parser::Location,
 };
 
 static NUMBER_ERROR: (&str, &str) = (
@@ -61,28 +61,19 @@ fn parameters(ontologies: &Ontologies) -> &SloppyParsingParameters {
             (
                 b'n',
                 SequenceElement::new(AminoAcid::Asparagine.into(), None).with_simple_modification(
-                    ontologies
-                        .unimod()
-                        .get_by_index(&mzcv::AccessionCode::Numeric(7))
-                        .unwrap(),
+                    ontologies.unimod().get_by_index(&mzcv::AccessionCode::Numeric(7)).unwrap(),
                 ),
             ),
             (
                 b'q',
                 SequenceElement::new(AminoAcid::Glutamine.into(), None).with_simple_modification(
-                    ontologies
-                        .unimod()
-                        .get_by_index(&mzcv::AccessionCode::Numeric(7))
-                        .unwrap(),
+                    ontologies.unimod().get_by_index(&mzcv::AccessionCode::Numeric(7)).unwrap(),
                 ),
             ),
             (
                 b'C',
                 SequenceElement::new(AminoAcid::Cysteine.into(), None).with_simple_modification(
-                    ontologies
-                        .unimod()
-                        .get_by_index(&mzcv::AccessionCode::Numeric(6))
-                        .unwrap(),
+                    ontologies.unimod().get_by_index(&mzcv::AccessionCode::Numeric(6)).unwrap(),
                 ),
             ),
             (
@@ -181,6 +172,7 @@ impl PSMFileFormatVersion<NovoBFormat> for NovoBVersion {
             Self::V0_0_1 => NOVOB_V0_0_1,
         }
     }
+
     fn name(self) -> &'static str {
         match self {
             Self::V0_0_1 => "v0.0.1",
@@ -189,6 +181,8 @@ impl PSMFileFormatVersion<NovoBFormat> for NovoBVersion {
 }
 
 impl PSMMetaData for NovoBPSM {
+    type Protein = crate::NoProtein;
+
     fn peptidoform_ion_set(&self) -> Option<Cow<'_, PeptidoformIonSet>> {
         if self.score_forward >= self.score_reverse {
             self.peptide_forward.as_ref()
@@ -266,8 +260,6 @@ impl PSMMetaData for NovoBPSM {
             self.ppm_diff_reverse
         })
     }
-
-    type Protein = crate::NoProtein;
 
     fn protein_location(&self) -> Option<Range<u16>> {
         None

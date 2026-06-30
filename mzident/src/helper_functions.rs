@@ -18,8 +18,7 @@ impl<T, E> InvertResult<T, E> for Option<Result<T, E>> {
 }
 impl<T, E> InvertResult<T, E> for Option<Option<Result<T, E>>> {
     fn invert(self) -> Result<Option<T>, E> {
-        self.flatten()
-            .map_or_else(|| Ok(None), |o| o.map(|v| Some(v)))
+        self.flatten().map_or_else(|| Ok(None), |o| o.map(|v| Some(v)))
     }
 }
 impl<T, E> InvertResult<T, E> for Option<Result<Option<T>, E>> {
@@ -63,7 +62,8 @@ pub(crate) fn check_extension(filename: impl AsRef<Path>, extension: impl AsRef<
         .is_some_and(|ext| ext.eq_ignore_ascii_case(extension.as_ref()))
 }
 
-/// Find the enclosed text by the given symbols, assumes a single open is already read just before the start, guarantees to only pick full characters
+/// Find the enclosed text by the given symbols, assumes a single open is already read just before
+/// the start, guarantees to only pick full characters
 pub(crate) fn end_of_enclosure(text: &str, start: usize, open: u8, close: u8) -> Option<usize> {
     let mut state = 1;
     for (i, ch) in text.as_bytes()[start..].iter().enumerate() {
@@ -148,7 +148,8 @@ fn test_split_with_brackets() {
     );
 }
 
-/// Get the next number starting at the byte range given, returns length in bytes, boolean indicating if the number is positive, and the number.
+/// Get the next number starting at the byte range given, returns length in bytes, boolean
+/// indicating if the number is positive, and the number.
 /// # Errors
 /// Returns none if the number is too big to fit in a `Number`.
 pub(crate) fn next_number<const ALLOW_SIGN: bool, const FLOATING_POINT: bool, Number: FromStr>(

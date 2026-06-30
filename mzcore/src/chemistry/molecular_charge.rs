@@ -1,12 +1,13 @@
 use std::{cmp::Ordering, collections::HashMap, hash::Hash};
 
+use serde::{Deserialize, Serialize};
+use thin_vec::ThinVec;
+
 use crate::{
     chemistry::{ChargeRange, Chemical, MolecularFormula},
     sequence::SequencePosition,
     system::isize::Charge,
 };
-use serde::{Deserialize, Serialize};
-use thin_vec::ThinVec;
 
 /// A [`MolecularCharge`] that caches the options for each charge, to not calculate this every time
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -24,9 +25,7 @@ impl CachedCharge {
 
     /// Get all options resulting in this exact charge
     pub fn options(&mut self, charge: Charge) -> &[MolecularCharge] {
-        self.options
-            .entry(charge)
-            .or_insert_with(|| self.charge.options(charge))
+        self.options.entry(charge).or_insert_with(|| self.charge.options(charge))
     }
 
     /// Get all options
@@ -64,8 +63,9 @@ impl From<&MolecularCharge> for CachedCharge {
 #[derive(Clone, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 pub struct MolecularCharge {
     /// The ions that together define the charge of the peptide.
-    /// The first number is the amount of times this adduct ion occurs, the molecular formula is the full formula for the adduct ion.
-    /// The charge for each ion is saved as the number of electrons missing or gained in the molecular formula.
+    /// The first number is the amount of times this adduct ion occurs, the molecular formula is
+    /// the full formula for the adduct ion. The charge for each ion is saved as the number of
+    /// electrons missing or gained in the molecular formula.
     pub charge_carriers: ThinVec<(isize, MolecularFormula)>,
 }
 
@@ -124,9 +124,8 @@ impl MolecularCharge {
                     for o in &too_low_options {
                         let mut new = o.clone();
                         new.push((n, carrier.1.clone()));
-                        let full_charge = new
-                            .iter()
-                            .fold(Charge::default(), |acc, (amount, formula)| {
+                        let full_charge =
+                            new.iter().fold(Charge::default(), |acc, (amount, formula)| {
                                 acc + *amount * formula.charge()
                             });
 

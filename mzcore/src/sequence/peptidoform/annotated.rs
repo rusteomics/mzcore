@@ -35,13 +35,11 @@ pub trait AnnotatedPeptidoform: HasPeptidoformImpl {
 
     /// Get all annotations for this position
     fn get_annotations(&self, index: usize) -> impl Iterator<Item = &Annotation> + '_ {
-        self.annotations()
-            .iter()
-            .filter(move |a| a.1 == index)
-            .map(|a| &a.0)
+        self.annotations().iter().filter(move |a| a.1 == index).map(|a| &a.0)
     }
 
-    /// Get a sub peptidoform from this annotated peptidoform. It returns None if the range is outside of bounds of the sequence.
+    /// Get a sub peptidoform from this annotated peptidoform. It returns None if the range is
+    /// outside of bounds of the sequence.
     fn sub_peptidoform(
         &self,
         range: impl std::ops::RangeBounds<usize> + Clone,
@@ -53,52 +51,50 @@ pub trait AnnotatedPeptidoform: HasPeptidoformImpl {
     where
         Self::Complexity: AtMax<Linear>,
     {
-        self.peptidoform()
-            .sub_peptidoform(range.clone())
-            .map(|peptidoform| {
-                let start = match range.start_bound() {
-                    Bound::Excluded(e) => e.saturating_add(1),
-                    Bound::Included(i) => *i,
-                    Bound::Unbounded => 0,
-                };
-                let end = match range.end_bound() {
-                    Bound::Excluded(e) => *e,
-                    Bound::Included(i) => i.saturating_add(1),
-                    Bound::Unbounded => peptidoform.len(),
-                };
-                let mut index = 0;
-                let mut regions = Vec::new();
+        self.peptidoform().sub_peptidoform(range.clone()).map(|peptidoform| {
+            let start = match range.start_bound() {
+                Bound::Excluded(e) => e.saturating_add(1),
+                Bound::Included(i) => *i,
+                Bound::Unbounded => 0,
+            };
+            let end = match range.end_bound() {
+                Bound::Excluded(e) => *e,
+                Bound::Included(i) => i.saturating_add(1),
+                Bound::Unbounded => peptidoform.len(),
+            };
+            let mut index = 0;
+            let mut regions = Vec::new();
 
-                for (r, len) in self.regions() {
-                    if index + len <= start {
-                        // Before selection, so ignore
-                    } else if index <= start && index + len > start {
-                        // If the selections starts inside this region
-                        if index + len >= end {
-                            regions.push((r.clone(), end.saturating_sub(start)));
-                            break;
-                        }
-                        regions.push((r.clone(), len - (start - index)));
-                    } else if index + len < end {
-                        regions.push((r.clone(), *len));
-                    } else {
-                        // If this extends beyond the selection
-                        regions.push((r.clone(), end - index));
+            for (r, len) in self.regions() {
+                if index + len <= start {
+                    // Before selection, so ignore
+                } else if index <= start && index + len > start {
+                    // If the selections starts inside this region
+                    if index + len >= end {
+                        regions.push((r.clone(), end.saturating_sub(start)));
                         break;
                     }
-                    index += len;
+                    regions.push((r.clone(), len - (start - index)));
+                } else if index + len < end {
+                    regions.push((r.clone(), *len));
+                } else {
+                    // If this extends beyond the selection
+                    regions.push((r.clone(), end - index));
+                    break;
                 }
+                index += len;
+            }
 
-                (
-                    peptidoform,
-                    regions,
-                    self.annotations()
-                        .iter()
-                        .filter(|&(_, i)| range.contains(i))
-                        .map(|(a, i)| (a.clone(), i - start))
-                        .collect(),
-                )
-            })
+            (
+                peptidoform,
+                regions,
+                self.annotations()
+                    .iter()
+                    .filter(|&(_, i)| range.contains(i))
+                    .map(|(a, i)| (a.clone(), i - start))
+                    .collect(),
+            )
+        })
     }
 }
 
@@ -106,6 +102,7 @@ impl<T: AnnotatedPeptidoform + HasPeptidoformImpl> AnnotatedPeptidoform for &T {
     fn regions(&self) -> &[(Region, usize)] {
         (*self).regions()
     }
+
     fn annotations(&self) -> &[(Annotation, usize)] {
         (*self).annotations()
     }
@@ -115,6 +112,7 @@ impl<T: AnnotatedPeptidoform + HasPeptidoformImpl> AnnotatedPeptidoform for std:
     fn regions(&self) -> &[(Region, usize)] {
         self.as_ref().regions()
     }
+
     fn annotations(&self) -> &[(Annotation, usize)] {
         self.as_ref().annotations()
     }
@@ -124,6 +122,7 @@ impl<T: AnnotatedPeptidoform + HasPeptidoformImpl> AnnotatedPeptidoform for std:
     fn regions(&self) -> &[(Region, usize)] {
         self.as_ref().regions()
     }
+
     fn annotations(&self) -> &[(Annotation, usize)] {
         self.as_ref().annotations()
     }
@@ -133,6 +132,7 @@ impl<T: AnnotatedPeptidoform + HasPeptidoformImpl> AnnotatedPeptidoform for Box<
     fn regions(&self) -> &[(Region, usize)] {
         self.as_ref().regions()
     }
+
     fn annotations(&self) -> &[(Annotation, usize)] {
         self.as_ref().annotations()
     }
@@ -214,6 +214,7 @@ impl std::fmt::Display for Region {
 
 impl std::str::FromStr for Region {
     type Err = ();
+
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         Ok(match s {
             "" => Self::None,
@@ -245,6 +246,7 @@ impl std::str::FromStr for Region {
 
 impl std::str::FromStr for Annotation {
     type Err = ();
+
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         Ok(match s {
             "C" | "Conserved" => Self::Conserved,
@@ -281,6 +283,7 @@ mod tests {
         fn regions(&self) -> &[(Region, usize)] {
             &self.regions
         }
+
         fn annotations(&self) -> &[(Annotation, usize)] {
             &self.annotations
         }
@@ -288,6 +291,7 @@ mod tests {
 
     impl HasPeptidoformImpl for AP {
         type Complexity = Linear;
+
         fn peptidoform(&self) -> &Peptidoform<Self::Complexity> {
             &self.peptidoform
         }

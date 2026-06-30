@@ -1,11 +1,5 @@
 use std::{borrow::Cow, marker::PhantomData, ops::Range};
 
-use serde::{Deserialize, Serialize};
-
-use crate::{
-    BoxedIdentifiedPeptideIter, KnownFileFormat, PSM, PSMData, PSMFileFormatVersion, PSMMetaData,
-    PSMSource, PeptidoformPresent, SpectrumIds, common_parser::Location,
-};
 use mzcore::{
     csv::{CsvLine, parse_csv},
     ontology::Ontologies,
@@ -13,6 +7,12 @@ use mzcore::{
         FlankingSequence, Peptidoform, PeptidoformIonSet, SemiAmbiguous, SloppyParsingParameters,
     },
     system::{Mass, MassOverCharge, Ratio, Time, isize::Charge},
+};
+use serde::{Deserialize, Serialize};
+
+use crate::{
+    BoxedIdentifiedPeptideIter, KnownFileFormat, PSM, PSMData, PSMFileFormatVersion, PSMMetaData,
+    PSMSource, PeptidoformPresent, SpectrumIds, common_parser::Location,
 };
 
 static NUMBER_ERROR: (&str, &str) = (
@@ -73,6 +73,7 @@ impl PSMFileFormatVersion<PepNetFormat> for PepNetVersion {
             Self::V1_0 => PEPNET_V1_0,
         }
     }
+
     fn name(self) -> &'static str {
         match self {
             Self::V1_0 => "v1.0",
@@ -81,6 +82,8 @@ impl PSMFileFormatVersion<PepNetFormat> for PepNetVersion {
 }
 
 impl PSMMetaData for PepNetPSM {
+    type Protein = crate::NoProtein;
+
     fn peptidoform_ion_set(&self) -> Option<Cow<'_, PeptidoformIonSet>> {
         Some(Cow::Owned(self.peptide.clone().into()))
     }
@@ -147,8 +150,6 @@ impl PSMMetaData for PepNetPSM {
     fn ppm_error(&self) -> Option<Ratio> {
         Some(self.ppm_diff)
     }
-
-    type Protein = crate::NoProtein;
 
     fn protein_location(&self) -> Option<Range<u16>> {
         None

@@ -103,25 +103,19 @@ fn main() {
                     "Peptide".to_string(),
                     alignment.seq_b().peptidoform().to_string(),
                 ),
-                (
-                    "Spectra ref".to_string(),
-                    match alignment.seq_b().scans() {
-                        SpectrumIds::None => String::new(),
-                        SpectrumIds::FileNotKnown(scans) => scans.iter().join(";"),
-                        SpectrumIds::FileKnown(scans) => scans
-                            .iter()
-                            .map(|(file, scans)| {
-                                format!("{}:{}", file.to_string_lossy(), scans.iter().join(";"))
-                            })
-                            .join("|"),
-                    },
-                ),
+                ("Spectra ref".to_string(), match alignment.seq_b().scans() {
+                    SpectrumIds::None => String::new(),
+                    SpectrumIds::FileNotKnown(scans) => scans.iter().join(";"),
+                    SpectrumIds::FileKnown(scans) => scans
+                        .iter()
+                        .map(|(file, scans)| {
+                            format!("{}:{}", file.to_string_lossy(), scans.iter().join(";"))
+                        })
+                        .join("|"),
+                }),
                 (
                     "De novo score".to_string(),
-                    alignment
-                        .seq_b()
-                        .score
-                        .map_or(String::new(), |s| s.to_string()),
+                    alignment.seq_b().score.map_or(String::new(), |s| s.to_string()),
                 ),
                 (
                     "Protein".to_string(),
@@ -143,20 +137,18 @@ fn main() {
                     match alignment.seq_b().peptidoform().formulas().mass_bounds() {
                         MinMaxResult::NoElements => "-".to_string(),
                         MinMaxResult::OneElement(m) => m.monoisotopic_mass().value.to_string(),
-                        MinMaxResult::MinMax(min, max) => format!(
-                            "{} - {}",
-                            min.monoisotopic_mass().value,
-                            max.monoisotopic_mass().value
-                        ),
+                        MinMaxResult::MinMax(min, max) => {
+                            format!(
+                                "{} - {}",
+                                min.monoisotopic_mass().value,
+                                max.monoisotopic_mass().value
+                            )
+                        }
                     },
                 ),
                 (
                     "Z".to_string(),
-                    alignment
-                        .seq_b()
-                        .charge()
-                        .map_or(0, |c| c.value)
-                        .to_string(),
+                    alignment.seq_b().charge().map_or(0, |c| c.value).to_string(),
                 ),
                 (
                     "Peptide length".to_string(),

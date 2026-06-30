@@ -48,24 +48,30 @@ pub fn open_psm_file<'a>(
                 PLinkPSM::parse_file(path, ontologies, keep_all_columns, None)
                     .map(PSMIter::into_box)
                     .map_err(|le| (pe, ne, ie, le))
-            }).or_else(|(pe, ne, ie, le)| {
+            })
+            .or_else(|(pe, ne, ie, le)| {
                 PowerNovoPSM::parse_file(path, ontologies, keep_all_columns, None)
                     .map(PSMIter::into_box)
                     .map_err(|pne| (pe, ne, ie, le, pne))
-            }).or_else(|(pe, ne, ie, le, pne)| {
+            })
+            .or_else(|(pe, ne, ie, le, pne)| {
                 PLGSPSM::parse_file(path, ontologies, keep_all_columns, None)
                     .map(PSMIter::into_box)
                     .map_err(|ple| (pe, ne, ie, le, pne, ple))
-            }).or_else(|(pe, ne, ie, le, pne, ple)| {
+            })
+            .or_else(|(pe, ne, ie, le, pne, ple)| {
                 BasicCSVPSM::parse_file(path, ontologies, keep_all_columns, None)
                     .map(PSMIter::into_box)
                     .map_err(|be| (pe, ne, ie, le, pne, ple, be))
-            }).or_else(|(pe, ne, ie, le, pne, ple, be)| {
+            })
+            .or_else(|(pe, ne, ie, le, pne, ple, be)| {
                 PUniFindPSM::parse_file(path, ontologies, keep_all_columns, None)
                     .map(PSMIter::into_box)
                     .map_err(|pue| (pe, ne, ie, le, pne, ple, be, pue))
-            }).map_err(|(pe, ne, ie, le, pne, ple, be, pue)| {
-                BoxedError::new(BasicKind::Error,
+            })
+            .map_err(|(pe, ne, ie, le, pne, ple, be, pue)| {
+                BoxedError::new(
+                    BasicKind::Error,
                     "Unknown file format",
                     "Could not be recognised as either a Peaks, Novor, InstaNovo, pLink, PowerNovo, PLGS, pUniFind, or basic file",
                     Context::default().source(path.to_string_lossy()).to_owned(),
@@ -94,44 +100,50 @@ pub fn open_psm_file<'a>(
                     .map(PSMIter::into_box)
                     .map_err(|ne| (se, pe, mfe, pse, ne))
             })
-            .or_else(|(se, pe, mfe, pse,  ne)| {
+            .or_else(|(se, pe, mfe, pse, ne)| {
                 PiPrimeNovoPSM::parse_file(path, ontologies, keep_all_columns, None)
                     .map(PSMIter::into_box)
                     .map_err(|pne| (se, pe, mfe, pse, ne, pne))
             })
             .map_err(|(se, pe, mfe, pse, ne, pne)| {
-                BoxedError::new(BasicKind::Error,
+                BoxedError::new(
+                    BasicKind::Error,
                     "Unknown file format",
                     "Could not be recognised a Sage, PepNet, MSFragger, NovoB, π-PrimeNovo or Proteoscape file",
                     Context::default().source(path.to_string_lossy()).to_owned(),
                 )
                 .add_underlying_errors(vec![se, pe, mfe, pse, ne, pne])
             }),
-        Some("psmtsv") => {
-            MetaMorpheusPSM::parse_file(path, ontologies, keep_all_columns, None).map(PSMIter::into_box).or_else(|me| {
+        Some("psmtsv") => MetaMorpheusPSM::parse_file(path, ontologies, keep_all_columns, None)
+            .map(PSMIter::into_box)
+            .or_else(|me| {
                 OpairPSM::parse_file(path, ontologies, keep_all_columns, None)
                     .map(PSMIter::into_box)
                     .map_err(|oe| (me, oe))
-            }).map_err(|(me, oe)| {
-                BoxedError::new(BasicKind::Error,
+            })
+            .map_err(|(me, oe)| {
+                BoxedError::new(
+                    BasicKind::Error,
                     "Unknown file format",
                     "Could not be recognised a MetaMorpheus or OPair file",
                     Context::default().source(path.to_string_lossy()).to_owned(),
                 )
                 .add_underlying_errors(vec![me, oe])
-            })
-        }
+            }),
         Some("fasta" | "fas" | "fa" | "faa" | "mpfa") => FastaData::parse_file(path).map(|peptides| {
-            let a: Box<dyn Iterator<Item = Result<PSM<Linked, MaybePeptidoform>, BoxedError<'static, BasicKind>>> + 'a>
-                = Box::new(peptides.into_iter().map(|p| Ok(PSM::<SemiAmbiguous, PeptidoformPresent>::from(p).cast())));
+            let a: Box<dyn Iterator<Item = Result<PSM<Linked, MaybePeptidoform>, BoxedError<'static, BasicKind>>> + 'a> =
+                Box::new(peptides.into_iter().map(|p| Ok(PSM::<SemiAmbiguous, PeptidoformPresent>::from(p).cast())));
             a
         }),
         #[cfg(feature = "mzannotate")]
-        Some("txt") if path.file_stem().is_some_and(|p| p.to_string_lossy().to_ascii_lowercase().contains(".mzspeclib")) => {
+        Some("txt")
+            if path
+                .file_stem()
+                .is_some_and(|p| p.to_string_lossy().to_ascii_lowercase().contains(".mzspeclib")) =>
+        {
             annotated_spectrum::parse_mzspeclib(path, ontologies)
         }
-        Some("txt") => {
-            MaxQuantPSM::parse_file(path, ontologies, keep_all_columns, None)
+        Some("txt") => MaxQuantPSM::parse_file(path, ontologies, keep_all_columns, None)
             .map(PSMIter::into_box)
             .or_else(|me| {
                 PiHelixNovoPSM::parse_file(path, ontologies, keep_all_columns, None)
@@ -139,28 +151,23 @@ pub fn open_psm_file<'a>(
                     .map_err(|hne| (me, hne))
             })
             .map_err(|(me, he)| {
-                BoxedError::new(BasicKind::Error,
+                BoxedError::new(
+                    BasicKind::Error,
                     "Unknown file format",
                     "Could not be recognised as either a MaxQuant or π-HelixNovo file",
                     Context::default().source(path.to_string_lossy()).to_owned(),
                 )
                 .add_underlying_errors(vec![me, he])
-            })
-        }
+            }),
         Some("mztab") => MzTabPSM::parse_file(path, ontologies).map(|(_, _, peptides)| {
-            let a: Box<dyn Iterator<Item = Result<PSM<Linked, MaybePeptidoform>, BoxedError<'static, BasicKind>>> + 'a>
-                = Box::new(peptides.into_iter().map(|p| p.map(|p| {
-                        PSM::<SimpleLinear, MaybePeptidoform>::from(p).cast()
-                    })));
+            let a: Box<dyn Iterator<Item = Result<PSM<Linked, MaybePeptidoform>, BoxedError<'static, BasicKind>>> + 'a> =
+                Box::new(peptides.into_iter().map(|p| p.map(|p| PSM::<SimpleLinear, MaybePeptidoform>::from(p).cast())));
             a
         }),
-        Some("deepnovo_denovo") => {
-            DeepNovoFamilyPSM::parse_file(path, ontologies, keep_all_columns, None).map(PSMIter::into_box)
-        },
-        Some("ssl") => {
-            SpectrumSequenceListPSM::parse_file(path, ontologies, keep_all_columns, None).map(PSMIter::into_box)
-        }
-        _ => Err(BoxedError::new(BasicKind::Error,
+        Some("deepnovo_denovo") => DeepNovoFamilyPSM::parse_file(path, ontologies, keep_all_columns, None).map(PSMIter::into_box),
+        Some("ssl") => SpectrumSequenceListPSM::parse_file(path, ontologies, keep_all_columns, None).map(PSMIter::into_box),
+        _ => Err(BoxedError::new(
+            BasicKind::Error,
             "Unknown extension",
             "Use CSV, SSL, TSV, TXT, PSMTSV, deepnovo_denovo, or Fasta, or any of these as a gzipped file (eg csv.gz).",
             Context::default().source(path.to_string_lossy()).to_owned(),
@@ -205,9 +212,9 @@ impl mzcore::space::Space for CVTerm {
 #[expect(clippy::missing_panics_doc)]
 #[cfg(test)]
 mod tests {
+    use std::{fs::File, io::BufReader};
+
     use super::*;
-    use std::fs::File;
-    use std::io::BufReader;
 
     #[test]
     fn open_sage() {

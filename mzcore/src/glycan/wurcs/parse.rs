@@ -39,7 +39,7 @@ impl Residue {
                 8 => BaseSugar::Decose,
                 _ => return Err(WurcsParseError::BackboneTooLong),
             },
-            BackBone::Repeating(_, _, _) => return Err(WurcsParseError::RepeatingBackbone),
+            BackBone::Repeating(..) => return Err(WurcsParseError::RepeatingBackbone),
         };
 
         Ok(MonoSaccharide::new(base, &[]))
@@ -58,8 +58,8 @@ mod tests {
 
     #[test]
     fn composition() {
-        // G58645HA,"Gal(b1-3)GalNAc-ol","WURCS=2.0/2,2,1/[h2112h_2*NCC/3=O][a2112h-1b_1-5]/1-2/a3-b1"
-        // [h2112h_2*NCC/3=O]
+        // G58645HA,"Gal(b1-3)GalNAc-ol","WURCS=2.0/2,2,1/[h2112h_2*NCC/3=O][a2112h-1b_1-5]/1-2/
+        // a3-b1" [h2112h_2*NCC/3=O]
 
         let tokens =
             test_tokenise("WURCS=2.0/2,2,1/[h2112h_2*NCC/3=O][a2112h-1b_1-5]/1-2/a3-b1").unwrap();

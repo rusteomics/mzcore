@@ -6,8 +6,6 @@ use std::{
 };
 
 use context_error::*;
-use serde::{Deserialize, Serialize};
-
 use mzcore::{
     chemistry::{
         Chemical, ELEMENT_PARSE_LIST, MolecularCharge, MolecularFormula, MultiChemical,
@@ -22,6 +20,7 @@ use mzcore::{
     },
     system::{Mass, MassOverCharge, OrderedMassOverCharge, e, isize::Charge, thomson},
 };
+use serde::{Deserialize, Serialize};
 use thin_vec::ThinVec;
 
 use crate::{
@@ -53,9 +52,10 @@ impl Fragment {
         )
     }
 
-    /// This parses a substring of the given string as an mzPAF definition. Additionally, this allows
-    /// passing a base context to allow to set the line index and source and other properties. Note
-    /// that the base context is assumed to contain the full line at line index 0.
+    /// This parses a substring of the given string as an mzPAF definition. Additionally, this
+    /// allows passing a base context to allow to set the line index and source and other
+    /// properties. Note that the base context is assumed to contain the full line at line index
+    /// 0.
     ///
     /// # Errors
     /// When the annotation does not follow the format.
@@ -137,20 +137,17 @@ fn parse_annotation<'a>(
     let (left_range, charge) = parse_charge(base_context, line, left_range)?;
     let (left_range, deviation) = parse_deviation(base_context, line, left_range)?;
     let (left_range, confidence) = parse_confidence(base_context, line, left_range)?;
-    Ok((
-        left_range,
-        PeakAnnotation {
-            auxiliary,
-            analyte_number,
-            ion,
-            neutral_losses,
-            isotopes,
-            charge: adduct_type
-                .unwrap_or_else(|| MolecularCharge::proton(Charge::new::<e>(charge.value))),
-            deviation,
-            confidence,
-        },
-    ))
+    Ok((left_range, PeakAnnotation {
+        auxiliary,
+        analyte_number,
+        ion,
+        neutral_losses,
+        isotopes,
+        charge: adduct_type
+            .unwrap_or_else(|| MolecularCharge::proton(Charge::new::<e>(charge.value))),
+        deviation,
+        confidence,
+    }))
 }
 
 /// An mzPAF single peak annotation.
@@ -215,10 +212,8 @@ impl PeakAnnotation {
                         }
                     });
                     let sequence_length = peptidoform.len();
-                    let Some(n_aa) = peptidoform
-                        .sequence()
-                        .get(ordinal - 1)
-                        .map(|a| a.aminoacid.aminoacid())
+                    let Some(n_aa) =
+                        peptidoform.sequence().get(ordinal - 1).map(|a| a.aminoacid.aminoacid())
                     else {
                         return Err(BoxedError::new(
                             BasicKind::Error,
@@ -243,119 +238,104 @@ impl PeakAnnotation {
                 } else {
                     (0, AminoAcid::Unknown, AminoAcid::Unknown)
                 };
-                (
-                    None,
-                    match series {
-                        b'a' => FragmentType::a(
-                            PeptidePosition {
-                                sequence_index: SequencePosition::Index(
-                                    ordinal - 1,
-                                    sequence_length,
-                                ),
-                                series_number: ordinal,
+                (None, match series {
+                    b'a' => FragmentType::a(
+                        PeptidePosition {
+                            sequence_index: SequencePosition::Index(ordinal - 1, sequence_length),
+                            series_number: ordinal,
+                            sequence_length,
+                        },
+                        variant,
+                    ),
+                    b'b' => FragmentType::b(
+                        PeptidePosition {
+                            sequence_index: SequencePosition::Index(ordinal - 1, sequence_length),
+                            series_number: ordinal,
+                            sequence_length,
+                        },
+                        variant,
+                    ),
+                    b'c' => FragmentType::c(
+                        PeptidePosition {
+                            sequence_index: SequencePosition::Index(ordinal - 1, sequence_length),
+                            series_number: ordinal,
+                            sequence_length,
+                        },
+                        variant,
+                    ),
+                    b'd' => FragmentType::d(
+                        PeptidePosition {
+                            sequence_index: SequencePosition::Index(ordinal - 1, sequence_length),
+                            series_number: ordinal,
+                            sequence_length,
+                        },
+                        n_aa,
+                        0,
+                        variant,
+                        sub,
+                    ),
+                    b'v' => FragmentType::v(
+                        PeptidePosition {
+                            sequence_index: SequencePosition::Index(
+                                sequence_length.saturating_sub(ordinal),
                                 sequence_length,
-                            },
-                            variant,
-                        ),
-                        b'b' => FragmentType::b(
-                            PeptidePosition {
-                                sequence_index: SequencePosition::Index(
-                                    ordinal - 1,
-                                    sequence_length,
-                                ),
-                                series_number: ordinal,
+                            ),
+                            series_number: ordinal,
+                            sequence_length,
+                        },
+                        c_aa,
+                        0,
+                        variant,
+                    ),
+                    b'w' => FragmentType::w(
+                        PeptidePosition {
+                            sequence_index: SequencePosition::Index(
+                                sequence_length.saturating_sub(ordinal),
                                 sequence_length,
-                            },
-                            variant,
-                        ),
-                        b'c' => FragmentType::c(
-                            PeptidePosition {
-                                sequence_index: SequencePosition::Index(
-                                    ordinal - 1,
-                                    sequence_length,
-                                ),
-                                series_number: ordinal,
+                            ),
+                            series_number: ordinal,
+                            sequence_length,
+                        },
+                        c_aa,
+                        0,
+                        variant,
+                        sub,
+                    ),
+                    b'x' => FragmentType::x(
+                        PeptidePosition {
+                            sequence_index: SequencePosition::Index(
+                                sequence_length.saturating_sub(ordinal),
                                 sequence_length,
-                            },
-                            variant,
-                        ),
-                        b'd' => FragmentType::d(
-                            PeptidePosition {
-                                sequence_index: SequencePosition::Index(
-                                    ordinal - 1,
-                                    sequence_length,
-                                ),
-                                series_number: ordinal,
+                            ),
+                            series_number: ordinal,
+                            sequence_length,
+                        },
+                        variant,
+                    ),
+                    b'y' => FragmentType::y(
+                        PeptidePosition {
+                            sequence_index: SequencePosition::Index(
+                                sequence_length.saturating_sub(ordinal),
                                 sequence_length,
-                            },
-                            n_aa,
-                            0,
-                            variant,
-                            sub,
-                        ),
-                        b'v' => FragmentType::v(
-                            PeptidePosition {
-                                sequence_index: SequencePosition::Index(
-                                    sequence_length.saturating_sub(ordinal),
-                                    sequence_length,
-                                ),
-                                series_number: ordinal,
+                            ),
+                            series_number: ordinal,
+                            sequence_length,
+                        },
+                        variant,
+                    ),
+                    b'z' => FragmentType::z(
+                        PeptidePosition {
+                            sequence_index: SequencePosition::Index(
+                                sequence_length.saturating_sub(ordinal),
                                 sequence_length,
-                            },
-                            c_aa,
-                            0,
-                            variant,
-                        ),
-                        b'w' => FragmentType::w(
-                            PeptidePosition {
-                                sequence_index: SequencePosition::Index(
-                                    sequence_length.saturating_sub(ordinal),
-                                    sequence_length,
-                                ),
-                                series_number: ordinal,
-                                sequence_length,
-                            },
-                            c_aa,
-                            0,
-                            variant,
-                            sub,
-                        ),
-                        b'x' => FragmentType::x(
-                            PeptidePosition {
-                                sequence_index: SequencePosition::Index(
-                                    sequence_length.saturating_sub(ordinal),
-                                    sequence_length,
-                                ),
-                                series_number: ordinal,
-                                sequence_length,
-                            },
-                            variant,
-                        ),
-                        b'y' => FragmentType::y(
-                            PeptidePosition {
-                                sequence_index: SequencePosition::Index(
-                                    sequence_length.saturating_sub(ordinal),
-                                    sequence_length,
-                                ),
-                                series_number: ordinal,
-                                sequence_length,
-                            },
-                            variant,
-                        ),
-                        b'z' => FragmentType::z(
-                            PeptidePosition {
-                                sequence_index: SequencePosition::Index(
-                                    sequence_length.saturating_sub(ordinal),
-                                    sequence_length,
-                                ),
-                                series_number: ordinal,
-                                sequence_length,
-                            },
-                            variant,
-                        ),
-                        _ => unreachable!(),
-                    },
-                )
+                            ),
+                            series_number: ordinal,
+                            sequence_length,
+                        },
+                        variant,
+                    ),
+                    _ => unreachable!(),
+                })
             }
             IonType::Immonium(aa, m) => (
                 aa.formulas().first().map(|f| {
@@ -436,7 +416,8 @@ impl PeakAnnotation {
 #[derive(Clone, Debug, Deserialize, PartialEq, PartialOrd, Serialize)]
 pub(crate) enum IonType {
     Unknown(Option<usize>),
-    /// Main series, char identifier for the series, optional sattelite label, the series number, and possibly the interpretation
+    /// Main series, char identifier for the series, optional sattelite label, the series number,
+    /// and possibly the interpretation
     MainSeries(
         u8,
         SatelliteLabel,
@@ -468,9 +449,7 @@ fn parse_analyte_number<'a>(
                     BasicKind::Error,
                     "Invalid mzPAF analyte number",
                     "The analyte number should be followed by an at sign '@'",
-                    base_context
-                        .clone()
-                        .add_highlight((0, num.0 + range.start, 1)),
+                    base_context.clone().add_highlight((0, num.0 + range.start, 1)),
                 ));
             }
             Ok((
@@ -530,9 +509,7 @@ fn parse_ion<'a>(
                         BasicKind::Error,
                         "Invalid mzPAF main series ion ordinal",
                         "Only for the satellite ions 'd' and 'w' does a subtype exist, like 'wa12'",
-                        base_context
-                            .clone()
-                            .add_highlight((0, range.start_index(), 1)),
+                        base_context.clone().add_highlight((0, range.start_index(), 1)),
                     ));
                 }
                 (
@@ -563,18 +540,20 @@ fn parse_ion<'a>(
                                 BasicKind::Error,
                                 "Invalid ProForma definition",
                                 "The string could not be parsed as a ProForma definition",
-                                Context::default()
-                                    .lines(0, line)
-                                    .add_highlight((0, range.clone())),
+                                Context::default().lines(0, line).add_highlight((0, range.clone())),
                             )
                             .add_underlying_errors(errs)
                         });
                         interpretation.and_then(|(i, _)| {
                             i.into_semi_ambiguous()
-                                .ok_or_else(|| BoxedError::new(BasicKind::Error,
-                                    "Invalid mzPAF interpretation",
-                                    "An mzPAF interpretation should be limited to `base-ProForma compliant` without any labile modifications",
-                                    base_context.clone().add_highlight((0,range.start_index()..location))))
+                                .ok_or_else(|| {
+                                    BoxedError::new(
+                                        BasicKind::Error,
+                                        "Invalid mzPAF interpretation",
+                                        "An mzPAF interpretation should be limited to `base-ProForma compliant` without any labile modifications",
+                                        base_context.clone().add_highlight((0, range.start_index()..location)),
+                                    )
+                                })
                                 .map(|i| (location + 1, Some(i)))
                         })?
                         // TODO: proper error handling and add checks to the length of the sequence
@@ -583,9 +562,7 @@ fn parse_ion<'a>(
                             BasicKind::Error,
                             "Invalid mzPAF main series ion ordinal",
                             "The asserted interpretation should have a closed curly bracket, like '0@b2{LL}'",
-                            base_context
-                                .clone()
-                                .add_highlight((0, range.start_index(), 1)),
+                            base_context.clone().add_highlight((0, range.start_index(), 1)),
                         ));
                     }
                 } else {
@@ -598,7 +575,8 @@ fn parse_ion<'a>(
                         format!("The ordinal number {}", explain_number_error(&err)),
                         base_context.clone().add_highlight((
                             0,
-                            range.start_index() - ordinal.0, // Maybe also offset for interpretation?
+                            range.start_index() - ordinal.0, /* Maybe also offset for
+                                                              * interpretation? */
                             ordinal.0,
                         )),
                     )
@@ -610,7 +588,8 @@ fn parse_ion<'a>(
                         "The ion ordinal cannot be 0",
                         base_context.clone().add_highlight((
                             0,
-                            range.start_index() - ordinal.0, // Maybe also offset for interpretation?
+                            range.start_index() - ordinal.0, /* Maybe also offset for
+                                                              * interpretation? */
                             ordinal.0,
                         )),
                     ))
@@ -625,9 +604,7 @@ fn parse_ion<'a>(
                     BasicKind::Error,
                     "Invalid mzPAF main series ion ordinal",
                     "For a main series ion the ordinal should be provided, like 'a12'",
-                    base_context
-                        .clone()
-                        .add_highlight((0, range.start_index(), 1)),
+                    base_context.clone().add_highlight((0, range.start_index(), 1)),
                 ))
             }
         }
@@ -637,9 +614,7 @@ fn parse_ion<'a>(
                     BasicKind::Error,
                     "Invalid mzPAF immonium",
                     "The source amino acid for this immonium ion should be present like 'IA'",
-                    base_context
-                        .clone()
-                        .add_highlight((0, range.start_index(), 1)),
+                    base_context.clone().add_highlight((0, range.start_index(), 1)),
                 )
             })?;
             let index = range.start_index() + 1 + amino_acid.len_utf8();
@@ -679,7 +654,7 @@ fn parse_ion<'a>(
                                     .unimod()
                                     .search(modification, 5, 6)
                                     .iter()
-                                    .map(|(m, _, _)| m.to_string()),
+                                    .map(|(m, ..)| m.to_string()),
                             )
                         })?,
                 ))
@@ -694,9 +669,7 @@ fn parse_ion<'a>(
                             BasicKind::Error,
                             "Invalid mzPAF immonium ion",
                             "The provided amino acid is not a known amino acid",
-                            base_context
-                                .clone()
-                                .add_highlight((0, range.start_index() + 1, 1)),
+                            base_context.clone().add_highlight((0, range.start_index() + 1, 1)),
                         )
                     })?,
                     modification.map(|m| m.1),
@@ -710,9 +683,7 @@ fn parse_ion<'a>(
                         BasicKind::Error,
                         "Invalid mzPAF internal ion first ordinal",
                         "The first ordinal for an internal ion should be present",
-                        base_context
-                            .clone()
-                            .add_highlight((0, range.start_index(), 1)),
+                        base_context.clone().add_highlight((0, range.start_index(), 1)),
                     )
                 })?;
             if line[range.clone()].chars().nth(first_ordinal.0 + 1) != Some(':') {
@@ -810,9 +781,7 @@ fn parse_ion<'a>(
                             BasicKind::Error,
                             "Invalid mzPAF named compound",
                             "The curly braces are not closed",
-                            base_context
-                                .clone()
-                                .add_highlight((0, range.start_index() + 1, 1)),
+                            base_context.clone().add_highlight((0, range.start_index() + 1, 1)),
                         )
                     },
                 )?;
@@ -825,9 +794,7 @@ fn parse_ion<'a>(
                     BasicKind::Error,
                     "Invalid mzPAF named compound",
                     "A named compound must be named with curly braces '{}' after the '_'",
-                    base_context
-                        .clone()
-                        .add_highlight((0, range.start_index(), 1)),
+                    base_context.clone().add_highlight((0, range.start_index(), 1)),
                 ))
             }?;
             Ok((range.add_start(3 + len), IonType::Named(name.to_string())))
@@ -842,9 +809,7 @@ fn parse_ion<'a>(
                             BasicKind::Error,
                             "Invalid mzPAF reference compound",
                             "The square brackets are not closed",
-                            base_context
-                                .clone()
-                                .add_highlight((0, range.start_index() + 1, 1)),
+                            base_context.clone().add_highlight((0, range.start_index() + 1, 1)),
                         )
                     },
                 )?;
@@ -854,9 +819,7 @@ fn parse_ion<'a>(
                     BasicKind::Error,
                     "Invalid mzPAF reporter ion",
                     "A reporter ion must be named with square braces '[]' after the 'r'",
-                    base_context
-                        .clone()
-                        .add_highlight((0, range.start_index(), 1)),
+                    base_context.clone().add_highlight((0, range.start_index(), 1)),
                 ))
             }?;
             MZPAF_NAMED_MOLECULES
@@ -868,9 +831,7 @@ fn parse_ion<'a>(
                             BasicKind::Error,
                             "Unknown mzPAF named reporter ion",
                             "Unknown name",
-                            base_context
-                                .clone()
-                                .add_highlight((0, range.start_index() + 2..end)),
+                            base_context.clone().add_highlight((0, range.start_index() + 2..end)),
                         ))
                     },
                     |formula| Ok((end + 1..range.end, IonType::Reporter(formula))),
@@ -885,9 +846,7 @@ fn parse_ion<'a>(
                             BasicKind::Error,
                             "Invalid mzPAF formula fragment",
                             "The curly braces are not closed",
-                            base_context
-                                .clone()
-                                .add_highlight((0, range.start_index() + 1, 1)),
+                            base_context.clone().add_highlight((0, range.start_index() + 1, 1)),
                         )
                     },
                 )?;
@@ -897,9 +856,7 @@ fn parse_ion<'a>(
                     BasicKind::Error,
                     "Invalid mzPAF formula",
                     "A formula must have the formula defined with curly braces '{}' after the 'f'",
-                    base_context
-                        .clone()
-                        .add_highlight((0, range.start_index(), 1)),
+                    base_context.clone().add_highlight((0, range.start_index(), 1)),
                 ))
             }?;
             let formula = MolecularFormula::pro_forma_inner::<false, false>(
@@ -976,12 +933,7 @@ pub(in crate::fragment) fn parse_neutral_loss<'a>(
             return Ok((range.add_start(offset - num_offset), neutral_losses));
         }
 
-        if line
-            .as_bytes()
-            .get(range.start_index() + 1 + offset)
-            .copied()
-            == Some(b'[')
-        {
+        if line.as_bytes().get(range.start_index() + 1 + offset).copied() == Some(b'[') {
             let last = end_of_enclosure(line, range.start_index() + 2 + offset, b'[', b']')
                 .ok_or_else(|| {
                     BoxedError::new(
@@ -1064,7 +1016,8 @@ pub(in crate::fragment) fn parse_neutral_loss<'a>(
     Ok((range.add_start(offset), neutral_losses))
 }
 
-/// The parsed isotopes. First the left range, then all found isotopes as the multiplier and isotope type.
+/// The parsed isotopes. First the left range, then all found isotopes as the multiplier and isotope
+/// type.
 type Isotopes = (Range<usize>, Vec<(i32, Isotope)>);
 
 /// Parse isotopes definition from the string.
@@ -1104,9 +1057,7 @@ fn parse_isotopes<'a>(
                 BasicKind::Error,
                 "Invalid mzPAF isotope",
                 "An isotope should be indicated with a lowercase 'i', eg '+i', '+5i', '+2iA', '+i13C'",
-                base_context
-                    .clone()
-                    .add_highlight((0, range.start_index() + offset, 1)),
+                base_context.clone().add_highlight((0, range.start_index() + offset, 1)),
             ));
         }
         offset += 1;
@@ -1138,9 +1089,7 @@ fn parse_isotopes<'a>(
                     BasicKind::Error,
                     "Invalid mzPAF isotope element",
                     "No recognised element symbol was found",
-                    base_context
-                        .clone()
-                        .add_highlight((0, range.start_index() + offset, 1)),
+                    base_context.clone().add_highlight((0, range.start_index() + offset, 1)),
                 )
             })?;
             if !element.is_valid(Some(nucleon)) {
@@ -1185,9 +1134,7 @@ fn parse_adduct_type<'a>(
                     BasicKind::Error,
                     "Invalid mzPAF adduct type",
                     "No closing bracket found for opening bracket of adduct type",
-                    base_context
-                        .clone()
-                        .add_highlight((0, range.start_index(), 1)),
+                    base_context.clone().add_highlight((0, range.start_index(), 1)),
                 )
             })?; // Excluding the ']' closing bracket
         if line.as_bytes().get(range.start_index() + 1).copied() != Some(b'M') {
@@ -1195,9 +1142,7 @@ fn parse_adduct_type<'a>(
                 BasicKind::Error,
                 "Invalid mzPAF adduct type",
                 "The adduct type should start with 'M', as in '[M+nA]'",
-                base_context
-                    .clone()
-                    .add_highlight((0, range.start_index() + 1, 1)),
+                base_context.clone().add_highlight((0, range.start_index() + 1, 1)),
             ));
         }
         let mut carriers = Vec::new();
@@ -1253,9 +1198,7 @@ fn parse_adduct_type<'a>(
                 BasicKind::Error,
                 "Invalid mzPAF adduct type",
                 "The adduct type should be closed with ']'",
-                base_context
-                    .clone()
-                    .add_highlight((0, range.start_index() + offset, 1)),
+                base_context.clone().add_highlight((0, range.start_index() + offset, 1)),
             ));
         }
         Ok((
@@ -1269,7 +1212,8 @@ fn parse_adduct_type<'a>(
 
 /// Parse mzPAF charge, eg `^2` `^-1`
 /// # Errors
-/// If there is no number after the caret, or if the number is invalid (outside of range and the like).
+/// If there is no number after the caret, or if the number is invalid (outside of range and the
+/// like).
 fn parse_charge<'a>(
     base_context: &Context<'a>,
     line: &'a str,
@@ -1282,9 +1226,7 @@ fn parse_charge<'a>(
                     BasicKind::Error,
                     "Invalid mzPAF charge",
                     "The number after the charge symbol should be present, eg '^2'.",
-                    base_context
-                        .clone()
-                        .add_highlight((0, range.start_index(), 1)),
+                    base_context.clone().add_highlight((0, range.start_index(), 1)),
                 )
             })?;
         Ok((
@@ -1328,9 +1270,7 @@ fn parse_deviation<'a>(
                     BasicKind::Error,
                     "Invalid mzPAF deviation",
                     "A deviation should be a number",
-                    base_context
-                        .clone()
-                        .add_highlight((0, range.start..=range.start + 1)),
+                    base_context.clone().add_highlight((0, range.start..=range.start + 1)),
                 )
             })?;
         let deviation = number.2.map_err(|err| {
@@ -1377,9 +1317,7 @@ fn parse_confidence<'a>(
                     BasicKind::Error,
                     "Invalid mzPAF confidence",
                     "A confidence should be a number",
-                    base_context
-                        .clone()
-                        .add_highlight((0, range.start..=range.start + 1)),
+                    base_context.clone().add_highlight((0, range.start..=range.start + 1)),
                 )
             })?;
         let confidence = number.2.map_err(|err| {
@@ -1514,24 +1452,24 @@ static MZPAF_NAMED_MOLECULES: LazyLock<Vec<(&str, MolecularFormula)>> = LazyLock
 fn neutral_loss() {
     assert_eq!(
         parse_neutral_loss(&Context::default(), "-H2O", 0..4),
-        Ok((
-            4..4,
-            vec![NeutralLoss::Loss(1, molecular_formula!(H 2 O 1))]
-        ))
+        Ok((4..4, vec![NeutralLoss::Loss(
+            1,
+            molecular_formula!(H 2 O 1)
+        )]))
     );
     assert_eq!(
         parse_neutral_loss(&Context::default(), "+H2O", 0..4),
-        Ok((
-            4..4,
-            vec![NeutralLoss::Gain(1, molecular_formula!(H 2 O 1))]
-        ))
+        Ok((4..4, vec![NeutralLoss::Gain(
+            1,
+            molecular_formula!(H 2 O 1)
+        )]))
     );
     assert_eq!(
         parse_neutral_loss(&Context::default(), "+NH3", 0..4),
-        Ok((
-            4..4,
-            vec![NeutralLoss::Gain(1, molecular_formula!(N 1 H 3))]
-        ))
+        Ok((4..4, vec![NeutralLoss::Gain(
+            1,
+            molecular_formula!(N 1 H 3)
+        )]))
     );
     assert_eq!(
         parse_neutral_loss(&Context::default(), "/-0.0008", 0..8),

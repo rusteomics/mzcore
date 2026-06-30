@@ -24,6 +24,7 @@ pub struct Unimod {}
 impl CVSource for Unimod {
     type Data = SimpleModificationInner;
     type Structure = Vec<SimpleModification>;
+
     fn cv_label() -> &'static str {
         "UNIMOD"
     }
@@ -76,13 +77,10 @@ impl CVSource for Unimod {
                 e.to_string(),
             )]
         })?;
-        let document = Document::parse_with_options(
-            &buf,
-            ParsingOptions {
-                allow_dtd: true,
-                ..Default::default()
-            },
-        )
+        let document = Document::parse_with_options(&buf, ParsingOptions {
+            allow_dtd: true,
+            ..Default::default()
+        })
         .map_err(|err| {
             vec![BoxedError::small(
                 CVError::FileCouldNotBeParsed,
@@ -152,7 +150,14 @@ fn parse_mod(node: &Node) -> Result<OntologyModification, BoxedError<'static, CV
             let position = child
                 .attribute("position")
                 .map_or(Ok(crate::sequence::Position::Anywhere), |p| {
-                    p.parse().map_err(|()| BoxedError::new(CVError::ItemError, "Invalid position", "Position should be one of Anywhere, Any N-term, Protein N-term, Any C-term, or Protein C-term", Context::default().lines(0, p).to_owned()))
+                    p.parse().map_err(|()| {
+                    BoxedError::new(
+                        CVError::ItemError,
+                        "Invalid position",
+                        "Position should be one of Anywhere, Any N-term, Protein N-term, Any C-term, or Protein C-term",
+                        Context::default().lines(0, p).to_owned(),
+                    )
+                })
                 })?;
             let rule = match (site, position) {
                 ("C-term" | "N-term", pos) => PlacementRule::Position(pos),
@@ -191,10 +196,9 @@ fn parse_mod(node: &Node) -> Result<OntologyModification, BoxedError<'static, CV
                             },
                         )?)
                         .map_err(|e| {
-                            e.to_owned()
-                                .convert::<CVError, BoxedError<'static, CVError>>(|_| {
-                                    CVError::ItemError
-                                })
+                            e.to_owned().convert::<CVError, BoxedError<'static, CVError>>(|_| {
+                                CVError::ItemError
+                            })
                         })?,
                     ))
                 })
@@ -260,10 +264,7 @@ fn parse_mod(node: &Node) -> Result<OntologyModification, BoxedError<'static, CV
                 {
                     match CrossId::try_from((
                         source,
-                        text.trim_start_matches("PMID")
-                            .trim_start_matches(':')
-                            .trim()
-                            .into(),
+                        text.trim_start_matches("PMID").trim_start_matches(':').trim().into(),
                     )) {
                         Ok(v) => cross_ids.push(v),
                         Err(err) => combine_error(
@@ -280,9 +281,7 @@ fn parse_mod(node: &Node) -> Result<OntologyModification, BoxedError<'static, CV
                     ));
                 }
             } else if let Some(text) = text {
-                match if source
-                    .as_ref()
-                    .is_some_and(|s| s.eq_ignore_ascii_case("cas registry"))
+                match if source.as_ref().is_some_and(|s| s.eq_ignore_ascii_case("cas registry"))
                     && let Some((_, num)) = text.rsplit_once('[')
                     && let Some(num) = num.strip_suffix(']')
                 {

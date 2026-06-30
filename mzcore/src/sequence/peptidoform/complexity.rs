@@ -11,7 +11,8 @@ impl Complexity for SimpleLinear {}
 impl Complexity for SemiAmbiguous {}
 impl Complexity for UnAmbiguous {}
 
-/// A [`crate::sequence::Peptidoform`] that (potentially) is linked, either with cross-links or branches
+/// A [`crate::sequence::Peptidoform`] that (potentially) is linked, either with cross-links or
+/// branches
 #[derive(
     Debug,
     Default,
@@ -29,7 +30,8 @@ impl Complexity for UnAmbiguous {}
 )]
 pub struct Linked;
 
-/// A [`crate::sequence::Peptidoform`] that is not cross-linked or branched, but can use the whole breath of the complexity otherwise
+/// A [`crate::sequence::Peptidoform`] that is not cross-linked or branched, but can use the whole
+/// breath of the complexity otherwise
 #[derive(
     Debug,
     Default,

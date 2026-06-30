@@ -81,7 +81,8 @@ pub(crate) fn end_of_enclosure(text: &str, start: usize, open: u8, close: u8) ->
     None
 }
 
-/// Get the next number starting at the byte range given, returns length in bytes, boolean indicating if the number is positive, and the number.
+/// Get the next number starting at the byte range given, returns length in bytes, boolean
+/// indicating if the number is positive, and the number.
 /// # Errors
 /// Returns none if the number is too big to fit in a `Number`.
 pub(crate) fn next_number<const ALLOW_SIGN: bool, const FLOATING_POINT: bool, Number: FromStr>(

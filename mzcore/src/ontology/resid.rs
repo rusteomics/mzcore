@@ -2,9 +2,7 @@
 use std::io::Read;
 
 use context_error::{BoxedError, Context, CreateError, FullErrorContent, combine_error};
-
 use mzcv::{CVError, CVFile, CVSource, CVVersion, HashBufReader};
-
 use roxmltree::*;
 
 use crate::{
@@ -28,6 +26,7 @@ pub struct Resid {}
 impl CVSource for Resid {
     type Data = SimpleModificationInner;
     type Structure = Vec<SimpleModification>;
+
     fn cv_name() -> &'static str {
         "RESID"
     }
@@ -36,7 +35,7 @@ impl CVSource for Resid {
         &[CVFile {
             name: "RESID",
             extension: "xml",
-            url: None, //FTP is not supported but for when it is: ftp://ftp.proteininformationresource.org/pir_databases/other_databases/resid/RESIDUES.XML
+            url: None, /* FTP is not supported but for when it is: ftp://ftp.proteininformationresource.org/pir_databases/other_databases/resid/RESIDUES.XML */
             compression: mzcv::CVCompression::None,
         }]
     }
@@ -76,13 +75,10 @@ impl CVSource for Resid {
                 e.to_string(),
             )]
         })?;
-        let document = Document::parse_with_options(
-            &buf,
-            ParsingOptions {
-                allow_dtd: true,
-                ..Default::default()
-            },
-        )
+        let document = Document::parse_with_options(&buf, ParsingOptions {
+            allow_dtd: true,
+            ..Default::default()
+        })
         .map_err(|err| {
             vec![BoxedError::new(
                 CVError::FileCouldNotBeParsed,

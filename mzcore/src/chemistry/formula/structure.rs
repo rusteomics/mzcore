@@ -22,8 +22,9 @@ use crate::{
 #[allow(clippy::unsafe_derive_deserialize)]
 #[derive(Clone, Default, Deserialize, Hash, Ord, PartialOrd, Serialize)]
 pub struct MolecularFormula {
-    /// Save all constituent parts as the element in question, the isotope (or None for natural distribution), and the number of this part
-    /// The elements will be sorted on element/isotope and deduplicated, guaranteed to only contain valid isotopes.
+    /// Save all constituent parts as the element in question, the isotope (or None for natural
+    /// distribution), and the number of this part The elements will be sorted on
+    /// element/isotope and deduplicated, guaranteed to only contain valid isotopes.
     pub(in super::super) elements: ThinVec<(Element, Option<NonZeroU16>, i32)>,
     /// Any addition mass, defined to be monoisotopic
     pub(in super::super) additional_mass: OrderedFloat<f64>,
@@ -206,7 +207,8 @@ pub trait MultiChemical {
         (formulas.len() == 1).then_some(formulas.to_vec().pop().unwrap())
     }
 
-    /// Return a single formula if this `MultiChemical` has only one possible formula while keeping track of all ambiguous labels
+    /// Return a single formula if this `MultiChemical` has only one possible formula while keeping
+    /// track of all ambiguous labels
     fn single_formula_inner(
         &self,
         sequence_index: SequencePosition,
@@ -390,7 +392,8 @@ impl MolecularFormula {
         self.additional_mass
     }
 
-    /// Create a new molecular formula with the given global isotope modifications. If the given isotope is not valid for this element it returns `None`.
+    /// Create a new molecular formula with the given global isotope modifications. If the given
+    /// isotope is not valid for this element it returns `None`.
     #[must_use]
     pub fn with_global_isotope_modifications(
         &self,
@@ -418,8 +421,9 @@ impl MolecularFormula {
         }
     }
 
-    /// Get the number of electrons (the only charged species, any ionic species is saved as that element +/- the correct number of electrons).
-    /// The inverse of that number is given as the charge.
+    /// Get the number of electrons (the only charged species, any ionic species is saved as that
+    /// element +/- the correct number of electrons). The inverse of that number is given as the
+    /// charge.
     pub fn charge(&self) -> crate::system::isize::Charge {
         -self
             .elements
@@ -435,8 +439,7 @@ impl MolecularFormula {
         if let Some(el) = self.elements.iter_mut().find(|e| e.0 == Element::Electron) {
             el.2 = -charge.value as i32;
         } else {
-            self.elements
-                .push((Element::Electron, None, -charge.value as i32));
+            self.elements.push((Element::Electron, None, -charge.value as i32));
         }
     }
 
@@ -454,18 +457,12 @@ impl MolecularFormula {
         show_charge: bool,
     ) -> String {
         let mut buffer = String::new();
-        if let Some(carbon) = self
-            .elements
-            .iter()
-            .find(|e| e.0 == Element::C && e.1.is_none())
-        {
+        if let Some(carbon) = self.elements.iter().find(|e| e.0 == Element::C && e.1.is_none()) {
             if carbon.2 != 0 {
                 f(carbon, &mut buffer);
             }
-            if let Some(hydrogen) = self
-                .elements
-                .iter()
-                .find(|e| e.0 == Element::H && e.1.is_none())
+            if let Some(hydrogen) =
+                self.elements.iter().find(|e| e.0 == Element::H && e.1.is_none())
                 && hydrogen.2 != 0
             {
                 if !buffer.is_empty() {
@@ -505,6 +502,7 @@ impl MolecularFormula {
 
 impl Neg for &MolecularFormula {
     type Output = MolecularFormula;
+
     fn neg(self) -> Self::Output {
         let mut res = self.clone();
         for element in &mut res.elements {
@@ -516,6 +514,7 @@ impl Neg for &MolecularFormula {
 
 impl Neg for MolecularFormula {
     type Output = Self;
+
     fn neg(mut self) -> Self::Output {
         for element in &mut self.elements {
             element.2 = -element.2;
@@ -526,15 +525,15 @@ impl Neg for MolecularFormula {
 
 impl Add<&MolecularFormula> for &MolecularFormula {
     type Output = MolecularFormula;
+
     fn add(self, rhs: &MolecularFormula) -> Self::Output {
-        self.clone()
-            .checked_add(rhs)
-            .expect("Overflow in adding MolecularFormula")
+        self.clone().checked_add(rhs).expect("Overflow in adding MolecularFormula")
     }
 }
 
 impl Sub<&MolecularFormula> for &MolecularFormula {
     type Output = MolecularFormula;
+
     fn sub(self, rhs: &MolecularFormula) -> Self::Output {
         let mut result = (*self).clone();
         result.labels.extend_from_slice(&rhs.labels);
@@ -566,6 +565,7 @@ impl Sub<&MolecularFormula> for &MolecularFormula {
 
 impl Mul<&isize> for &MolecularFormula {
     type Output = MolecularFormula;
+
     fn mul(self, rhs: &isize) -> Self::Output {
         self.checked_mul_isize(*rhs)
             .expect("Overflow in multiplying MolecularFormula")
@@ -574,6 +574,7 @@ impl Mul<&isize> for &MolecularFormula {
 
 impl Mul<&i32> for &MolecularFormula {
     type Output = MolecularFormula;
+
     fn mul(self, rhs: &i32) -> Self::Output {
         self.checked_mul_i32(*rhs)
             .expect("Overflow in multiplying MolecularFormula")
@@ -582,6 +583,7 @@ impl Mul<&i32> for &MolecularFormula {
 
 impl Mul<&u16> for &MolecularFormula {
     type Output = MolecularFormula;
+
     fn mul(self, rhs: &u16) -> Self::Output {
         self.checked_mul_u16(*rhs)
             .expect("Overflow in multiplying MolecularFormula")
@@ -692,6 +694,7 @@ impl MolecularFormula {
 
 impl Mul<&i8> for &MolecularFormula {
     type Output = MolecularFormula;
+
     fn mul(self, rhs: &i8) -> Self::Output {
         MolecularFormula {
             additional_mass: self.additional_mass * f64::from(*rhs),
@@ -715,8 +718,7 @@ impl_binop_ref_cases!(impl Mul, mul for MolecularFormula, i8, MolecularFormula);
 
 impl AddAssign<&Self> for MolecularFormula {
     fn add_assign(&mut self, rhs: &Self) {
-        self.ref_mut_checked_add(rhs)
-            .expect("Overflow in adding MolecularFormula");
+        self.ref_mut_checked_add(rhs).expect("Overflow in adding MolecularFormula");
     }
 }
 
@@ -748,8 +750,8 @@ impl std::iter::Sum<Self> for MolecularFormula {
 }
 
 #[macro_export]
-/// Easily define molecular formulas using the following syntax: `<element> <num>` or `[<isotope> <element> <num>]`.
-/// The spaces are required by the Rust compiler.
+/// Easily define molecular formulas using the following syntax: `<element> <num>` or `[<isotope>
+/// <element> <num>]`. The spaces are required by the Rust compiler.
 /// ```
 /// use mzcore::prelude::*;
 /// molecular_formula!(C 12 [13 C 1] H 24);
@@ -757,8 +759,9 @@ impl std::iter::Sum<Self> for MolecularFormula {
 /// molecular_formula!(H 2 O);
 /// ```
 /// # Panics
-/// It panics if the defined molecular formula is not valid. A formula is not valid if non existing isotopes are used
-/// or if an element is used that does not have a defined molecular weight (does not have natural abundance).
+/// It panics if the defined molecular formula is not valid. A formula is not valid if non existing
+/// isotopes are used or if an element is used that does not have a defined molecular weight (does
+/// not have natural abundance).
 macro_rules! molecular_formula {
     ($($tail:tt)*) => {
         $crate::formula_internal!([$($tail)*] -> [])
@@ -817,14 +820,10 @@ pub enum SatelliteLabel {
 
 impl std::fmt::Display for SatelliteLabel {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "{}",
-            match self {
-                Self::None => "",
-                Self::A => "a",
-                Self::B => "b",
-            }
-        )
+        write!(f, "{}", match self {
+            Self::None => "",
+            Self::A => "a",
+            Self::B => "b",
+        })
     }
 }

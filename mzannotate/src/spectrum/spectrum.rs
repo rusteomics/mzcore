@@ -111,7 +111,8 @@ impl SpectrumLike<AnnotatedPeak<Fragment>, mzdata::mzpeaks::DeconvolutedPeak>
     }
 }
 
-// TODO: this now misses most of the params in the other storage facilities (analytes, attributes, etc)
+// TODO: this now misses most of the params in the other storage facilities (analytes, attributes,
+// etc)
 impl ParamDescribed for AnnotatedSpectrum {
     fn params(&self) -> &[mzdata::params::Param] {
         <SpectrumDescription as ParamDescribed>::params(&self.description)
@@ -138,8 +139,7 @@ impl<Spectrum: SpectrumLike> From<Spectrum> for AnnotatedSpectrum {
                 // Ignore empty params
             } else if let Some(term) = to_mzcv_term(param) {
                 if let Some(unit) = Attribute::unit(param.unit) {
-                    this.attributes
-                        .push(vec![Attribute::new(term, param.value.clone()), unit]);
+                    this.attributes.push(vec![Attribute::new(term, param.value.clone()), unit]);
                 } else {
                     this.attributes[0].push(Attribute::new(term, param.value.clone()));
                 }
@@ -245,6 +245,7 @@ impl From<AnnotatedSpectrum> for MultiLayerSpectrum {
 }
 
 impl crate::mzspeclib::MzSpecLibEncode for AnnotatedSpectrum {
+    type InterpretationMemberIter = Vec<(Id, Attributes)>;
     /// The peak type
     type Peak = AnnotatedPeak<Fragment>;
 
@@ -259,7 +260,8 @@ impl crate::mzspeclib::MzSpecLibEncode for AnnotatedSpectrum {
         let other = get_attributes_from_spectrum_description(
             &self.description,
             Some(&{
-                // The `SummaryOps` trait from mzdata is private, so this is the exact implementation copy pasted into here
+                // The `SummaryOps` trait from mzdata is private, so this is the exact
+                // implementation copy pasted into here
                 let state = self.peaks.iter().fold(
                     (
                         0.0,
@@ -291,8 +293,6 @@ impl crate::mzspeclib::MzSpecLibEncode for AnnotatedSpectrum {
         self.analytes.iter().map(|a| (a.id, a.attributes()))
     }
 
-    type InterpretationMemberIter = Vec<(Id, Attributes)>;
-
     /// The attributes for the interpretations
     fn interpretations(
         &self,
@@ -317,7 +317,8 @@ impl crate::mzspeclib::MzSpecLibEncode for AnnotatedSpectrum {
 
 impl mzcore::space::Space for AnnotatedSpectrum {
     fn space(&self) -> mzcore::space::UsedSpace {
-        mzcore::space::UsedSpace::default() // TODO: this does not take any data into account because the Space trait cannot be applied to mzdata because of orphan rules
+        mzcore::space::UsedSpace::default() // TODO: this does not take any data into account because the Space trait cannot be
+            // applied to mzdata because of orphan rules
             .set_total::<Self>()
     }
 }

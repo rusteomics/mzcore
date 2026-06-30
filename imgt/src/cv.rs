@@ -6,12 +6,12 @@ use std::{
 };
 
 use context_error::{BoxedError, Context, CreateError, combine_error};
-
 use mzcv::{CVData, CVError, CVFile, CVIndex, CVSource, CVStructure, CVVersion, HashBufReader};
 
 use crate::{Gene, Germline, Germlines, Species, parse::parse_dat};
 
-/// A single shared static access to the static data in the ontologies for cases where no runtime resolution is needed (like tests).
+/// A single shared static access to the static data in the ontologies for cases where no runtime
+/// resolution is needed (like tests).
 pub static STATIC_IMGT: LazyLock<CVIndex<IMGT>> = LazyLock::new(CVIndex::init_static);
 
 /// IMGT antibody germlines
@@ -24,12 +24,15 @@ pub struct IMGT {}
 
 impl CVData for Germline {
     type Index = (Species, Gene);
+
     fn index(&self) -> Option<Self::Index> {
         Some((self.species, self.name.clone()))
     }
+
     fn name(&self) -> Option<Cow<'_, str>> {
         Some(Cow::Owned(self.name.to_string()))
     }
+
     fn synonyms(&self) -> impl Iterator<Item = &str> {
         std::iter::empty()
     }
@@ -111,9 +114,14 @@ impl CVSource for IMGT {
     reason = "Gave some issues with default and lifetimes, likely easily fixed but just could not be bothered"
 )]
 impl CVStructure<Germline> for HashMap<Species, Germlines> {
+    type Index = (Species, Gene);
+    type IterData<'a> = Box<dyn Iterator<Item = Arc<Germline>> + 'a>;
+    type IterIndexed<'a> = Box<dyn Iterator<Item = (Self::Index, Arc<Germline>)> + 'a>;
+
     fn is_empty(&self) -> bool {
         self.is_empty()
     }
+
     fn len(&self) -> usize {
         self.values().fold(0, |acc, s| {
             acc + s.iter().fold(0, |acc, (_, g)| {
@@ -121,16 +129,17 @@ impl CVStructure<Germline> for HashMap<Species, Germlines> {
             })
         })
     }
+
     fn clear(&mut self) {
         self.clear();
     }
+
     fn add(&mut self, data: Arc<Germline>) {
         self.entry(data.species)
             .or_insert_with(|| Germlines::new(data.species))
             .insert(Arc::unwrap_or_clone(data));
     }
-    type Index = (Species, Gene);
-    type IterIndexed<'a> = Box<dyn Iterator<Item = (Self::Index, Arc<Germline>)> + 'a>;
+
     fn iter_indexed(&self) -> Self::IterIndexed<'_> {
         Box::new(self.iter().flat_map(|(species, germlines)| {
             germlines.iter().flat_map(move |(_, germlines)| {
@@ -142,7 +151,7 @@ impl CVStructure<Germline> for HashMap<Species, Germlines> {
             })
         }))
     }
-    type IterData<'a> = Box<dyn Iterator<Item = Arc<Germline>> + 'a>;
+
     fn iter_data(&self) -> Self::IterData<'_> {
         Box::new(self.values().flat_map(|germlines| {
             germlines.iter().flat_map(|(_, germlines)| {
@@ -152,10 +161,11 @@ impl CVStructure<Germline> for HashMap<Species, Germlines> {
             })
         }))
     }
+
     fn index(&self, index: Self::Index) -> Option<Arc<Germline>> {
-        self.get(&index.0)
-            .and_then(|germlines| germlines.find_germline(index.1))
+        self.get(&index.0).and_then(|germlines| germlines.find_germline(index.1))
     }
+
     fn remove(&mut self, index: Self::Index) {
         if let Some(germlines) = self.get_mut(&index.0) {
             germlines.remove_germline(index.1);

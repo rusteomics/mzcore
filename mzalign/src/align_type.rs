@@ -12,24 +12,30 @@ pub struct AlignType {
 }
 
 impl AlignType {
-    /// Global alignment, which tries to find the best alignment to link both sequences fully to each other, like the Needleman Wunsch algorithm
+    /// Alignment where on both side either of the sequences has to be aligned globally, see
+    /// [`Side::EitherGlobal`].
+    pub const EITHER_GLOBAL: Self = Self::new(None, None);
+    /// Hybrid alignment, extend sequence a with sequence b (▀▀██▄▄)
+    pub const EXTEND_A: Self = Self::new(Some((false, true)), Some((true, false)));
+    /// Hybrid alignment, extend sequence b with sequence a (▄▄██▀▀)
+    pub const EXTEND_B: Self = Self::new(Some((true, false)), Some((false, true)));
+    /// Global alignment, which tries to find the best alignment to link both sequences fully to
+    /// each other, like the Needleman Wunsch algorithm
     pub const GLOBAL: Self = Self::new(Some((true, true)), Some((true, true)));
-    /// Local alignment, which tries to find the best patch of both sequences to align to each other, this could lead to trailing ends on both sides of both sequences, like the Smith Waterman
-    pub const LOCAL: Self = Self::new(Some((false, false)), Some((false, false)));
-    /// Hybrid alignment, the first sequence will be fully aligned to the second sequence, this could lead to trailing ends on the second sequence but not on the first.
+    /// Hybrid alignment, the first sequence will be fully aligned to the second sequence, this
+    /// could lead to trailing ends on the second sequence but not on the first.
     pub const GLOBAL_A: Self = Self::new(Some((true, false)), Some((true, false)));
-    /// Hybrid alignment, the second sequence will be fully aligned to the first sequence, this could lead to trailing ends on the first sequence but not on the second.
+    /// Hybrid alignment, the second sequence will be fully aligned to the first sequence, this
+    /// could lead to trailing ends on the first sequence but not on the second.
     pub const GLOBAL_B: Self = Self::new(Some((false, true)), Some((false, true)));
     /// Hybrid alignment, globally align the left (start) side of the alignment
     pub const GLOBAL_LEFT: Self = Self::new(Some((true, true)), Some((false, false)));
     /// Hybrid alignment, globally align the right (end) side of the alignment
     pub const GLOBAL_RIGHT: Self = Self::new(Some((false, false)), Some((true, true)));
-    /// Hybrid alignment, extend sequence a with sequence b (▀▀██▄▄)
-    pub const EXTEND_A: Self = Self::new(Some((false, true)), Some((true, false)));
-    /// Hybrid alignment, extend sequence b with sequence a (▄▄██▀▀)
-    pub const EXTEND_B: Self = Self::new(Some((true, false)), Some((false, true)));
-    /// Alignment where on both side either of the sequences has to be aligned globally, see [`Side::EitherGlobal`].
-    pub const EITHER_GLOBAL: Self = Self::new(None, None);
+    /// Local alignment, which tries to find the best patch of both sequences to align to each
+    /// other, this could lead to trailing ends on both sides of both sequences, like the Smith
+    /// Waterman
+    pub const LOCAL: Self = Self::new(Some((false, false)), Some((false, false)));
 
     /// Create a new alignment type, specifying None on any side indicates [`Side::EitherGlobal`].
     pub(crate) const fn new(left: Option<(bool, bool)>, right: Option<(bool, bool)>) -> Self {
@@ -73,6 +79,7 @@ impl std::fmt::Display for AlignType {
 
 impl FromStr for AlignType {
     type Err = ();
+
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         if let Some(stripped) = s.strip_prefix('-') {
             Ok(Self {
@@ -107,8 +114,8 @@ pub enum Side {
         /// Rules for peptide B
         b: bool,
     },
-    /// Align either A or B globally, meaning that either one of the peptides has to end before the other,
-    /// the other peptide could then have unmatched sequence at the end.
+    /// Align either A or B globally, meaning that either one of the peptides has to end before the
+    /// other, the other peptide could then have unmatched sequence at the end.
     EitherGlobal,
 }
 
@@ -120,6 +127,7 @@ impl Side {
             Self::Specified { a, .. } => a,
         }
     }
+
     /// Check if B is global, if this is [`Self::EitherGlobal`] it returns false.
     pub const fn global_b(self) -> bool {
         match self {
@@ -127,6 +135,7 @@ impl Side {
             Self::Specified { b, .. } => b,
         }
     }
+
     /// Check if any of the peptides is global, or if this is [`Self::EitherGlobal`].
     pub const fn global(self) -> bool {
         match self {
@@ -134,6 +143,7 @@ impl Side {
             Self::Specified { a, b } => a || b,
         }
     }
+
     /// Get a text description of the alignment type for this side.
     pub const fn description(self) -> &'static str {
         match self {
@@ -146,6 +156,7 @@ impl Side {
             },
         }
     }
+
     /// Get a symbolic representation of the alignment type for this side.
     pub const fn symbol_left(self) -> &'static str {
         match self {
@@ -158,6 +169,7 @@ impl Side {
             },
         }
     }
+
     /// Get a symbolic representation of the alignment type for this side.
     pub const fn symbol_right(self) -> &'static str {
         match self {
@@ -174,6 +186,7 @@ impl Side {
 
 impl FromStr for Side {
     type Err = ();
+
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s.to_lowercase().as_str() {
             "-" => Ok(Self::EitherGlobal),

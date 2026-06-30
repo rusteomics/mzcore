@@ -12,7 +12,8 @@ use crate::{
     prelude::{Fragment, FragmentationModel},
 };
 
-/// Generate the theoretical fragments, if any monosaccharide is present a negative number of times no fragments are generated.
+/// Generate the theoretical fragments, if any monosaccharide is present a negative number of times
+/// no fragments are generated.
 pub(crate) fn theoretical_fragments(
     composition: &[(MonoSaccharide, isize)],
     model: &FragmentationModel,
@@ -36,9 +37,7 @@ pub(crate) fn theoretical_fragments(
     for fragment_composition in compositions {
         let formula: MolecularFormula = fragment_composition
             .iter()
-            .map(|s| {
-                s.0.formula_inner(SequencePosition::default(), peptidoform_index) * s.1 as i32
-            })
+            .map(|s| s.0.formula_inner(SequencePosition::default(), peptidoform_index) * s.1 as i32)
             .sum();
         fragments.extend(
             Fragment::new(

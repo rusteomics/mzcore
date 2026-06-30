@@ -12,13 +12,15 @@ use serde::{Deserialize, Serialize};
 pub struct MatchingParameters {
     /// The matching tolerance
     pub tolerance: Tolerance<MassOverCharge>,
-    /// The range in which fragments fall, can be used to limit the theoretical fragments to a known window
+    /// The range in which fragments fall, can be used to limit the theoretical fragments to a
+    /// known window
     pub mz_range: RangeInclusive<MassOverCharge>,
     /// Indicate of isotopes should be matched
     pub match_isotopes: bool,
     /// The minimum cosine similarity for an isotope envelope to be considered a true match
     pub isotope_filter: f64,
-    /// The minimum probability cutoff for generating isotope distributions, see [`mzcore::chemistry::MolecularFormula::isotopic_distribution`]
+    /// The minimum probability cutoff for generating isotope distributions, see
+    /// [`mzcore::chemistry::MolecularFormula::isotopic_distribution`]
     pub isotope_minimum_probability: f64,
 }
 
@@ -31,6 +33,7 @@ impl MatchingParameters {
             ..self
         }
     }
+
     /// Set the mz range
     #[must_use]
     pub fn mz_range(self, mz_range: RangeInclusive<MassOverCharge>) -> Self {

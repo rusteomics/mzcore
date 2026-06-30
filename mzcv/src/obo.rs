@@ -15,8 +15,8 @@ pub struct OboOntology {
     pub data_version: Option<Box<str>>,
     /// The last updated date. (format: year, month, day, hour, min)
     pub date: Option<(u16, u8, u8, u8, u8)>,
-    /// The hash of the file. This defaults to [`sha2::Sha256`] with [`Self::from_file`] but can be set
-    /// differently with [`Self::from_raw`].
+    /// The hash of the file. This defaults to [`sha2::Sha256`] with [`Self::from_file`] but can be
+    /// set differently with [`Self::from_raw`].
     pub hash: Vec<u8>,
     /// The other headers of the Obo file. (tag, value, trailing modifiers, comment)
     pub headers: Vec<(Box<str>, Box<str>, Vec<Modifier>, Comment)>,
@@ -29,7 +29,8 @@ pub struct OboOntology {
 pub struct OboStanza {
     /// The stanza type
     pub stanza_type: OboStanzaType,
-    /// The id, split into the CV and local identifiers, the local id is stored as string as some ontologies use non numeric values
+    /// The id, split into the CV and local identifiers, the local id is stored as string as some
+    /// ontologies use non numeric values
     pub id: OboIdentifier,
     /// The `def` field.  (value, cross-ids, trailing modifiers, comment)
     pub definition: Option<(Box<str>, Vec<RawOboID>, Vec<Modifier>, Comment)>,
@@ -37,7 +38,8 @@ pub struct OboStanza {
     pub synonyms: Vec<OboSynonym>,
     /// The tags that are defined for this stanza (value, trialing modifiers, comment)
     pub lines: HashMap<Box<str>, Vec<(Box<str>, Vec<Modifier>, Comment)>>,
-    /// All property value tags parsed as the defined value type (value, trialing modifiers, comment)
+    /// All property value tags parsed as the defined value type (value, trialing modifiers,
+    /// comment)
     pub property_values: HashMap<Box<str>, Vec<(OboValue, Vec<Modifier>, Comment)>>,
     /// All xref lines (value, trialing modifiers, comment)
     pub xref: Vec<(OboIdentifier, Vec<Modifier>, Comment)>,
@@ -191,6 +193,7 @@ pub enum SynonymScope {
 
 impl FromStr for SynonymScope {
     type Err = ();
+
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
             "EXACT" => Ok(Self::Exact),
@@ -232,9 +235,11 @@ pub enum OboValue {
     String(String),
     /// A URI, when the unit is not set or `xsd:anyURI`
     Uri(String),
-    /// A 64 bit floating point, when the unit is `xsd:double`, `xsd:decimal` or `xsd:float`, stores the given type as well, and stores the number of digits it was defined with
+    /// A 64 bit floating point, when the unit is `xsd:double`, `xsd:decimal` or `xsd:float`, stores
+    /// the given type as well, and stores the number of digits it was defined with
     Float(f64, &'static str, Option<u8>),
-    /// An integer, when the unit is `xsd:integer`, `xsd:int`, `xsd:nonNegativeInteger`, or `xsd:positiveInteger`, stores the given type as well
+    /// An integer, when the unit is `xsd:integer`, `xsd:int`, `xsd:nonNegativeInteger`, or
+    /// `xsd:positiveInteger`, stores the given type as well
     Integer(isize, &'static str),
     /// A boolean, when the unit is `xsd:boolean`
     Boolean(bool),
@@ -246,7 +251,7 @@ impl PartialEq for OboValue {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
             (Self::String(a), Self::String(b)) | (Self::Uri(a), Self::Uri(b)) => a == b,
-            (Self::Float(a, _, _), Self::Float(b, _, _)) => a.total_cmp(b).is_eq(),
+            (Self::Float(a, ..), Self::Float(b, ..)) => a.total_cmp(b).is_eq(),
             (Self::Integer(a, _), Self::Integer(b, _)) => a == b,
             (Self::Boolean(a), Self::Boolean(b)) => a == b,
             (Self::DateTime(a), Self::DateTime(b)) => a == b,
@@ -267,7 +272,7 @@ impl Ord for OboValue {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
         match (self, other) {
             (Self::String(a), Self::String(b)) | (Self::Uri(a), Self::Uri(b)) => a.cmp(b),
-            (Self::Float(a, _, _), Self::Float(b, _, _)) => a.total_cmp(b),
+            (Self::Float(a, ..), Self::Float(b, ..)) => a.total_cmp(b),
             (Self::Integer(a, _), Self::Integer(b, _)) => a.cmp(b),
             (Self::Boolean(a), Self::Boolean(b)) => a.cmp(b),
             (Self::DateTime(a), Self::DateTime(b)) => a.cmp(b),
@@ -277,8 +282,8 @@ impl Ord for OboValue {
             (_, Self::Uri(_)) => std::cmp::Ordering::Less,
             (Self::Float(..), _) => std::cmp::Ordering::Greater,
             (_, Self::Float(..)) => std::cmp::Ordering::Less,
-            (Self::Integer(_, _), _) => std::cmp::Ordering::Greater,
-            (_, Self::Integer(_, _)) => std::cmp::Ordering::Less,
+            (Self::Integer(..), _) => std::cmp::Ordering::Greater,
+            (_, Self::Integer(..)) => std::cmp::Ordering::Less,
             (Self::Boolean(_), _) => std::cmp::Ordering::Greater,
             (_, Self::Boolean(_)) => std::cmp::Ordering::Less,
         }
@@ -383,9 +388,7 @@ impl OboOntology {
     /// # Errors
     /// If the text contained is not valid according to the Obo format.
     pub fn from_file(path: impl AsRef<Path>) -> Result<Self, BoxedError<'static, OboError>> {
-        let base_context = Context::default()
-            .source(path.as_ref().to_string_lossy())
-            .to_owned();
+        let base_context = Context::default().source(path.as_ref().to_string_lossy()).to_owned();
         let file = File::open(path.as_ref()).map_err(|e| {
             BoxedError::new(
                 OboError::CouldNotOpenFile,
@@ -394,11 +397,7 @@ impl OboOntology {
                 base_context.clone(),
             )
         })?;
-        if path
-            .as_ref()
-            .extension()
-            .is_some_and(|ext| ext.eq_ignore_ascii_case("gz"))
-        {
+        if path.as_ref().extension().is_some_and(|ext| ext.eq_ignore_ascii_case("gz")) {
             Self::from_raw_internal(
                 HashBufReader::<_, sha2::Sha256>::new(GzDecoder::new(BufReader::new(file))),
                 &base_context,
@@ -443,35 +442,29 @@ impl OboOntology {
                 if let Some(obj) = recent_obj {
                     obo.objects.push(obj);
                 }
-                let stanza_type = match line[1..=line.len() - 2]
-                    .trim()
-                    .to_ascii_lowercase()
-                    .as_str()
-                {
-                    "term" => OboStanzaType::Term,
-                    "typedef" => OboStanzaType::Typedef,
-                    "instance" => OboStanzaType::Instance,
-                    _ => {
-                        return Err(BoxedError::new(
-                            OboError::InvalidStanzaType,
-                            "Invalid Obo stanza",
-                            "The stanza types has to be any of Term, Typedef, or Instance",
-                            base_context
-                                .clone()
-                                .lines(0, line.clone())
-                                .line_index(line_index as u32)
-                                .add_highlight((0, 1..=line.len() - 2)),
-                        ));
-                    }
-                };
+                let stanza_type =
+                    match line[1..=line.len() - 2].trim().to_ascii_lowercase().as_str() {
+                        "term" => OboStanzaType::Term,
+                        "typedef" => OboStanzaType::Typedef,
+                        "instance" => OboStanzaType::Instance,
+                        _ => {
+                            return Err(BoxedError::new(
+                                OboError::InvalidStanzaType,
+                                "Invalid Obo stanza",
+                                "The stanza types has to be any of Term, Typedef, or Instance",
+                                base_context
+                                    .clone()
+                                    .lines(0, line.clone())
+                                    .line_index(line_index as u32)
+                                    .add_highlight((0, 1..=line.len() - 2)),
+                            ));
+                        }
+                    };
                 recent_obj = Some(OboStanza::new(stanza_type));
             } else if let Some((id, value_line)) = line.split_once(':') {
                 let (value_line, trailing_modifiers, comment) = tokenise_obo_value_line(
                     value_line,
-                    base_context
-                        .clone()
-                        .line_index(line_index as u32)
-                        .lines(0, line.clone()),
+                    base_context.clone().line_index(line_index as u32).lines(0, line.clone()),
                 )?;
 
                 let value_line = value_line.trim();
@@ -491,23 +484,20 @@ impl OboOntology {
                             if first_space == last_space {
                                 let name = value_line[..first_space].trim();
                                 let value = value_line[first_space..].trim().trim_matches('"');
-                                obj.property_values
-                                    .entry(name.into())
-                                    .or_insert(Vec::new())
-                                    .push((
+                                obj.property_values.entry(name.into()).or_insert(Vec::new()).push(
+                                    (
                                         OboValue::String(value.to_string()),
                                         trailing_modifiers,
                                         comment,
-                                    ));
+                                    ),
+                                );
                             } else {
                                 let name = value_line[..first_space].trim().trim_end_matches(':');
                                 let value =
                                     value_line[first_space..last_space].trim().trim_matches('"');
                                 let unit = value_line[last_space..].trim();
-                                obj.property_values
-                                    .entry(name.into())
-                                    .or_insert(Vec::new())
-                                    .push((
+                                obj.property_values.entry(name.into()).or_insert(Vec::new()).push(
+                                    (
                                         OboValue::parse(
                                             unit,
                                             value,
@@ -518,7 +508,8 @@ impl OboOntology {
                                         )?,
                                         trailing_modifiers,
                                         comment,
-                                    ));
+                                    ),
+                                );
                             }
                         }
                         "id" => {
@@ -612,22 +603,26 @@ impl OboOntology {
                                 ));
                             }
                             let synonym = unescape(parts[0].1);
-                            let scope = parts.get(1).map(|(_, ty)| ty.parse::<SynonymScope>().map_err(|()| BoxedError::new(
-                                    OboError::InvalidSynonym,
-                                    "Invalid synonym line",
-                                    "The type is not correct, expected one of: EXACT, BROAD, NARROW, RELATED",
-                                    base_context
-                                        .clone()
-                                        .lines(0, line.clone())
-                                        .line_index(line_index as u32),
-                                ))).transpose()?.unwrap_or_default();
+                            let scope =
+                                parts
+                                    .get(1)
+                                    .map(|(_, ty)| {
+                                        ty.parse::<SynonymScope>().map_err(|()| {
+                                        BoxedError::new(
+                                            OboError::InvalidSynonym,
+                                            "Invalid synonym line",
+                                            "The type is not correct, expected one of: EXACT, BROAD, NARROW, RELATED",
+                                            base_context.clone().lines(0, line.clone()).line_index(line_index as u32),
+                                        )
+                                    })
+                                    })
+                                    .transpose()?
+                                    .unwrap_or_default();
                             let type_name = (parts.len() == 4)
                                 .then(|| parts.get(2).map(|(_, n)| unescape(n)))
                                 .flatten();
-                            let cross_references = parts
-                                .last()
-                                .map(|(_, n)| parse_dbxref(n))
-                                .unwrap_or_default();
+                            let cross_references =
+                                parts.last().map(|(_, n)| parse_dbxref(n)).unwrap_or_default();
                             obj.synonyms.push(OboSynonym {
                                 synonym,
                                 scope,
@@ -651,8 +646,7 @@ impl OboOntology {
                             ));
                         }
                         "xref" => {
-                            obj.xref
-                                .push((value_line.into(), trailing_modifiers, comment));
+                            obj.xref.push((value_line.into(), trailing_modifiers, comment));
                         }
                         "relationship" => {
                             let (relationship, id) = value_line.split_once(' ').ok_or_else(|| BoxedError::new(
@@ -685,10 +679,7 @@ impl OboOntology {
                         OboError::InvalidDate,
                         "Invalid date time",
                         "",
-                        base_context
-                            .clone()
-                            .lines(0, line.clone())
-                            .line_index(line_index as u32),
+                        base_context.clone().lines(0, line.clone()).line_index(line_index as u32),
                     );
                     if let Some((date, time)) = value_line.trim().split_once(' ')
                         && let Some((hour, minute)) = time.split_once(':')
@@ -745,10 +736,7 @@ impl OboOntology {
                     OboError::InvalidLine,
                     "Invalid Obo line",
                     "This line could not be recognised as a valid line in the Obo format",
-                    base_context
-                        .clone()
-                        .line_index(line_index as u32)
-                        .lines(0, line),
+                    base_context.clone().line_index(line_index as u32).lines(0, line),
                 ));
             }
         }
@@ -822,19 +810,22 @@ pub enum OboError {
 
 impl ErrorKind for OboError {
     type Settings = ();
+
     fn descriptor(&self) -> &'static str {
         "error"
     }
+
     fn ignored(&self, _settings: Self::Settings) -> bool {
         false
     }
+
     fn is_error(&self, _settings: Self::Settings) -> bool {
         true
     }
 }
 
-/// Tokenise a value line, the `<value>` part is left untouched the trailing modifiers and comment are not escaped.
-/// `<value> {<trailing modifiers>} ! <comment>`
+/// Tokenise a value line, the `<value>` part is left untouched the trailing modifiers and comment
+/// are not escaped. `<value> {<trailing modifiers>} ! <comment>`
 /// # Errors
 /// If a bracket was not closed, or if a modifier was malformed.
 fn tokenise_obo_value_line<'a>(

@@ -5,7 +5,8 @@ use mzcv as _; // Only used in consecutive align but makes no sense to make it o
 #[macro_use]
 mod helper_functions;
 
-/// A subset of the types and traits that are envisioned to be used the most, importing this is a good starting point for working with the crate
+/// A subset of the types and traits that are envisioned to be used the most, importing this is a
+/// good starting point for working with the crate
 pub mod prelude {
     pub use crate::{AlignIndex, AlignScoring, AlignType, Alignment, PairMode, align};
 }
@@ -26,11 +27,10 @@ mod test_alignments;
 
 #[cfg(feature = "imgt")]
 mod consecutive;
-#[cfg(feature = "imgt")]
-pub use consecutive::*;
-
 pub use align_type::{AlignType, Side};
 pub use alignment::{Alignment, Score, Stats};
+#[cfg(feature = "imgt")]
+pub use consecutive::*;
 pub use index::AlignIndex;
 pub use mass_alignment::align;
 pub use multi_alignment::*;
@@ -40,10 +40,13 @@ pub use scoring::{AlignScoring, MatchType, PairMode};
 /// Different scoring matrices that can be used.
 /// Matrices from: <https://www.ncbi.nlm.nih.gov/IEB/ToolBox/CPP_DOC/lxr/source/src/util/tables/> and <https://www.ncbi.nlm.nih.gov/IEB/ToolBox/C_DOC/lxr/source/data/>
 ///
-/// The UO columns are added, for these the B/J/Z score is the rounded down average of the corresponding non ambiguous AAs. All UO scores are exactly the same for all matrices (except identity).
+/// The UO columns are added, for these the B/J/Z score is the rounded down average of the
+/// corresponding non ambiguous AAs. All UO scores are exactly the same for all matrices (except
+/// identity).
 pub mod matrix {
-    use super::scoring;
     pub use scoring::matrices::*;
+
+    use super::scoring;
 }
 
 #[cfg(test)]

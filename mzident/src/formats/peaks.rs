@@ -6,15 +6,6 @@ use std::{
 };
 
 use itertools::Itertools;
-use serde::{Deserialize, Serialize};
-use thin_vec::ThinVec;
-
-use crate::{
-    BoxedIdentifiedPeptideIter, FastaIdentifier, KnownFileFormat, PSM, PSMData,
-    PSMFileFormatVersion, PSMMetaData, PSMSource, PeaksFamilyId, PeptidoformPresent, SpectrumId,
-    SpectrumIds,
-    common_parser::{Location, OptionalColumn, OptionalLocation},
-};
 use mzcore::{
     csv::{CsvLine, parse_csv},
     ontology::Ontologies,
@@ -23,6 +14,15 @@ use mzcore::{
         PeptidoformIonSet, SemiAmbiguous, SimpleModification, SloppyParsingParameters,
     },
     system::{Mass, MassOverCharge, Time, isize::Charge},
+};
+use serde::{Deserialize, Serialize};
+use thin_vec::ThinVec;
+
+use crate::{
+    BoxedIdentifiedPeptideIter, FastaIdentifier, KnownFileFormat, PSM, PSMData,
+    PSMFileFormatVersion, PSMMetaData, PSMSource, PeaksFamilyId, PeptidoformPresent, SpectrumId,
+    SpectrumIds,
+    common_parser::{Location, OptionalColumn, OptionalLocation},
 };
 
 static NUMBER_ERROR: (&str, &str) = (
@@ -141,7 +141,8 @@ format_family!(
     }
 );
 
-/// Version 13 Dia de novo missing: Delta RT, MS2 correlation, #precursors, gene, database, ion intensity, positional confidence
+/// Version 13 Dia de novo missing: Delta RT, MS2 correlation, #precursors, gene, database, ion
+/// intensity, positional confidence
 pub const V13_DIA: PeaksFormat = PeaksFormat {
     version: PeaksVersion::V13Dia,
     scan_number: OptionalColumn::Required("scan"),
@@ -637,6 +638,7 @@ impl PSMFileFormatVersion<PeaksFormat> for PeaksVersion {
             Self::V13Dia => V13_DIA,
         }
     }
+
     fn name(self) -> &'static str {
         match self {
             Self::X => "X",
@@ -655,6 +657,8 @@ impl PSMFileFormatVersion<PeaksFormat> for PeaksVersion {
 }
 
 impl PSMMetaData for PeaksPSM {
+    type Protein = crate::NoProtein;
+
     fn peptidoform_ion_set(&self) -> Option<Cow<'_, PeptidoformIonSet>> {
         Some(Cow::Owned(self.peptide.1.clone().into()))
     }
@@ -671,11 +675,7 @@ impl PSMMetaData for PeaksPSM {
         self.id.map_or_else(
             || {
                 self.scan_number.as_ref().map_or_else(
-                    || {
-                        self.feature
-                            .as_ref()
-                            .map_or_else(|| "-".to_string(), ToString::to_string)
-                    },
+                    || self.feature.as_ref().map_or_else(|| "-".to_string(), ToString::to_string),
                     |s| s.iter().join(";"),
                 )
             },
@@ -691,10 +691,7 @@ impl PSMMetaData for PeaksPSM {
         self.de_novo_score
             .or(self.alc)
             .map(|v| v / 100.0)
-            .or_else(|| {
-                self.logp
-                    .map(|v| 2.0 * (1.0 / (1.0 + 1.025_f64.powf(-v)) - 0.5))
-            })
+            .or_else(|| self.logp.map(|v| 2.0 * (1.0 / (1.0 + 1.025_f64.powf(-v)) - 0.5)))
     }
 
     fn local_confidence(&self) -> Option<Cow<'_, [f64]>> {
@@ -707,10 +704,7 @@ impl PSMMetaData for PeaksPSM {
         self.de_novo_score
             .or(self.alc)
             .map(|v| (v, mzcv::term!(MS:1001153|search engine specific score)))
-            .or_else(|| {
-                self.logp
-                    .map(|v| (v, mzcv::term!(MS:1001143|PEAKS:peptideScore)))
-            })
+            .or_else(|| self.logp.map(|v| (v, mzcv::term!(MS:1001143|PEAKS:peptideScore))))
     }
 
     fn original_local_confidence(&self) -> Option<&[f64]> {
@@ -730,31 +724,29 @@ impl PSMMetaData for PeaksPSM {
     }
 
     fn scans(&self) -> SpectrumIds {
-        self.scan_number
-            .as_ref()
-            .map_or(SpectrumIds::None, |scan_number| {
-                self.raw_file.clone().map_or_else(
-                    || {
-                        SpectrumIds::FileNotKnown(
-                            scan_number
-                                .iter()
-                                .flat_map(|s| s.scans.clone())
-                                .map(SpectrumId::Number)
-                                .collect(),
-                        )
-                    },
-                    |raw_file| {
-                        SpectrumIds::FileKnown(vec![(
-                            raw_file,
-                            scan_number
-                                .iter()
-                                .flat_map(|s| s.scans.clone())
-                                .map(SpectrumId::Number)
-                                .collect(),
-                        )])
-                    },
-                )
-            })
+        self.scan_number.as_ref().map_or(SpectrumIds::None, |scan_number| {
+            self.raw_file.clone().map_or_else(
+                || {
+                    SpectrumIds::FileNotKnown(
+                        scan_number
+                            .iter()
+                            .flat_map(|s| s.scans.clone())
+                            .map(SpectrumId::Number)
+                            .collect(),
+                    )
+                },
+                |raw_file| {
+                    SpectrumIds::FileKnown(vec![(
+                        raw_file,
+                        scan_number
+                            .iter()
+                            .flat_map(|s| s.scans.clone())
+                            .map(SpectrumId::Number)
+                            .collect(),
+                    )])
+                },
+            )
+        })
     }
 
     fn experimental_mz(&self) -> Option<MassOverCharge> {
@@ -765,7 +757,7 @@ impl PSMMetaData for PeaksPSM {
         self.mass.or_else(|| self.z.map(|z| self.mz * z.to_float()))
     }
 
-    type Protein = crate::NoProtein; // TODO: the protein is optional, which does not currently fit with the macro
+    // TODO: the protein is optional, which does not currently fit with the macro
 
     fn protein_location(&self) -> Option<Range<u16>> {
         self.start.and_then(|s| self.end.map(|e| s..e))

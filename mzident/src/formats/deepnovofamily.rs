@@ -1,13 +1,6 @@
 use std::{borrow::Cow, marker::PhantomData, ops::Range, sync::OnceLock};
 
 use itertools::Itertools;
-use serde::{Deserialize, Serialize};
-
-use crate::{
-    BoxedIdentifiedPeptideIter, KnownFileFormat, MaybePeptidoform, PSM, PSMData,
-    PSMFileFormatVersion, PSMMetaData, PSMSource, PeaksFamilyId, SpectrumId, SpectrumIds,
-    common_parser::{Location, OptionalColumn, OptionalLocation},
-};
 use mzcore::{
     csv::{CsvLine, parse_csv},
     ontology::Ontologies,
@@ -16,6 +9,13 @@ use mzcore::{
         SloppyParsingParameters,
     },
     system::{Mass, MassOverCharge, Time, isize::Charge},
+};
+use serde::{Deserialize, Serialize};
+
+use crate::{
+    BoxedIdentifiedPeptideIter, KnownFileFormat, MaybePeptidoform, PSM, PSMData,
+    PSMFileFormatVersion, PSMMetaData, PSMSource, PeaksFamilyId, SpectrumId, SpectrumIds,
+    common_parser::{Location, OptionalColumn, OptionalLocation},
 };
 
 static NUMBER_ERROR: (&str, &str) = (
@@ -90,7 +90,8 @@ format_family!(
     }
 );
 
-/// Interpolate the local confidence when the confidence between AAs is used instead of the confidence of a single AA
+/// Interpolate the local confidence when the confidence between AAs is used instead of the
+/// confidence of a single AA
 #[expect(clippy::needless_pass_by_value)] // The return value will replace the given value, so moving is fine
 fn interpolate_lc(local_confidence: Vec<f64>) -> Vec<f64> {
     let mut reinterpolated = Vec::with_capacity(local_confidence.len() + 1);
@@ -155,6 +156,7 @@ impl PSMFileFormatVersion<DeepNovoFamilyFormat> for DeepNovoFamilyVersion {
             Self::PointNovoFamily => POINTNOVOFAMILY,
         }
     }
+
     fn name(self) -> &'static str {
         match self {
             Self::DeepNovoV0_0_1 => "DeepNovo v0.0.1",
@@ -164,6 +166,8 @@ impl PSMFileFormatVersion<DeepNovoFamilyFormat> for DeepNovoFamilyVersion {
 }
 
 impl PSMMetaData for DeepNovoFamilyPSM {
+    type Protein = crate::NoProtein;
+
     fn peptidoform_ion_set(&self) -> Option<Cow<'_, PeptidoformIonSet>> {
         self.peptide.as_ref().map(|p| Cow::Owned(p.clone().into()))
     }
@@ -233,8 +237,6 @@ impl PSMMetaData for DeepNovoFamilyPSM {
         self.mz
             .and_then(|mz| self.z.map(|z| (mz, z)).map(|(mz, z)| mz * z.to_float()))
     }
-
-    type Protein = crate::NoProtein;
 
     fn protein_location(&self) -> Option<Range<u16>> {
         None

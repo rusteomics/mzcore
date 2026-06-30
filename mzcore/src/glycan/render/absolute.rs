@@ -13,19 +13,25 @@ use crate::{
 };
 
 impl GlycanStructure {
-    /// Render this glycan to the internal representation. This can then be rendered to SVG or a bitmap.
+    /// Render this glycan to the internal representation. This can then be rendered to SVG or a
+    /// bitmap.
     ///  * `basis`: the text or symbol to draw at the root of the tree.
-    ///  * `column_size`: the size (in pixels) of one block in the glycan, the full size with the padding and sugar size included.
+    ///  * `column_size`: the size (in pixels) of one block in the glycan, the full size with the
+    ///    padding and sugar size included.
     ///  * `sugar_size`: the size (in pixels) of a monosaccharide.
     ///  * `stroke_size`: the size (in pixels) of the strokes in the graphic.
     ///  * `direction`: the direction the draw the image in.
     ///  * `selection`: the selection of the glycan to draw, used to render fragments.
     ///  * `foreground`: the colour to be used for the foreground, in RGB order.
-    ///  * `background`: the colour to be used for the background, in RGB order, this is used to fill 'empty' sugars if the isomeric state is unknown.
-    ///  * `footnotes`: used to gather modification texts that are too big to place in line. The caller will have to find their own way of displaying this to the user.
+    ///  * `background`: the colour to be used for the background, in RGB order, this is used to
+    ///    fill 'empty' sugars if the isomeric state is unknown.
+    ///  * `footnotes`: used to gather modification texts that are too big to place in line. The
+    ///    caller will have to find their own way of displaying this to the user.
     ///
     /// # Errors
-    /// If the underlying buffer errors the error is returned. Otherwise `Ok(false)` is returned if the given `root_break` is not valid, and `Ok(true)` is returned if the rendering was fully successful.
+    /// If the underlying buffer errors the error is returned. Otherwise `Ok(false)` is returned if
+    /// the given `root_break` is not valid, and `Ok(true)` is returned if the rendering was fully
+    /// successful.
     pub fn render<'a>(
         &'a self,
         basis: GlycanRoot,
@@ -208,11 +214,14 @@ impl GlycanStructure {
 /// An absolute positioned glycan.
 #[derive(Clone, Debug)]
 pub(super) struct AbsolutePositionedGlycan {
-    /// The depth of this sugar along the main axis of the glycan, starting at 0 at the top (in the leaves)
+    /// The depth of this sugar along the main axis of the glycan, starting at 0 at the top (in the
+    /// leaves)
     pub(super) y: usize,
-    /// The sideways placement of this whole tree starting at 0 at the leftmost monosaccharide, 1.0 is the width of one monosaccharide
+    /// The sideways placement of this whole tree starting at 0 at the leftmost monosaccharide, 1.0
+    /// is the width of one monosaccharide
     pub(super) x: f32,
-    /// The sideways placement of this sugar within this tree, for the absolute sideways placement of this sugar add this to `x`
+    /// The sideways placement of this sugar within this tree, for the absolute sideways placement
+    /// of this sugar add this to `x`
     pub(super) mid_point: f32,
     /// The total width of the (sub)tree with all of its branches and sides
     pub(super) width: f32,
@@ -267,9 +276,11 @@ pub(super) struct SubTree<'a> {
     pub(super) left_offset: f32,
     /// The horizontal offset from the right
     pub(super) right_offset: f32,
-    /// If this fragment is topped by a breaking symbol, needed to calculate the correct height for the canvas
+    /// If this fragment is topped by a breaking symbol, needed to calculate the correct height for
+    /// the canvas
     pub(super) break_top: bool,
-    /// If this fragment is bottomed by a breaking symbol, needed to calculate the correct height for the canvas
+    /// If this fragment is bottomed by a breaking symbol, needed to calculate the correct height
+    /// for the canvas
     pub(super) break_bottom: bool,
     /// All breaking branches, standardised to the linked root
     pub(super) branch_breaks: Vec<(u16, Vec<(GlycanBranchIndex, GlycanBranchMassIndex)>)>,
@@ -296,7 +307,9 @@ impl AbsolutePositionedGlycan {
             && self.sides.is_empty()
     }
 
-    /// Get the subtree starting on the given position, return None if the starting position is not valid, it also indicates the depth of this subtree for the given branch breakages and if a break tops the structure
+    /// Get the subtree starting on the given position, return None if the starting position is not
+    /// valid, it also indicates the depth of this subtree for the given branch breakages and if a
+    /// break tops the structure
     pub(super) fn get_subtree<'a>(&'a self, selection: GlycanSelection<'a>) -> Option<SubTree<'a>> {
         /// Calculate the maximal depth, break top, left and right offset
         fn canvas_size(
@@ -316,10 +329,7 @@ impl AbsolutePositionedGlycan {
                 1 => tree.branches.first().map_or((0, false, lx, rx), |branch| {
                     canvas_size(
                         branch,
-                        &breakages
-                            .iter()
-                            .map(|b| (b.0 - 1, b.1.clone()))
-                            .collect_vec(),
+                        &breakages.iter().map(|b| (b.0 - 1, b.1.clone())).collect_vec(),
                     )
                 }),
                 _ => tree
@@ -423,13 +433,10 @@ impl AbsolutePositionedGlycan {
                         1 => tree = tree.branches.first().or_else(|| tree.sides.first())?,
                         _ => {
                             let index = branch_choices.pop()?;
-                            tree = tree
-                                .branches
-                                .iter()
-                                .find(|b| b.branch_index == index.0)
-                                .or_else(|| {
-                                    tree.sides.iter().find(|b| b.branch_index == index.0)
-                                })?;
+                            tree =
+                                tree.branches.iter().find(|b| b.branch_index == index.0).or_else(
+                                    || tree.sides.iter().find(|b| b.branch_index == index.0),
+                                )?;
                         }
                     }
                 }
@@ -440,7 +447,8 @@ impl AbsolutePositionedGlycan {
                     .chain(tree.sides.iter())
                     .map(|b| {
                         (1, vec![(b.branch_index, b.branch_index)])
-                        // TODO: the mass_index should be stored here, but currently that is unused so for now this does not introduce incorrect behaviour
+                        // TODO: the mass_index should be stored here, but currently that is unused
+                        // so for now this does not introduce incorrect behaviour
                     })
                     .collect_vec();
                 (tree, rules, true)

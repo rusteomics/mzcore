@@ -22,17 +22,20 @@ pub mod spectrum;
 /// Reexport mzdata to make it easier to get the exact same version.
 pub use mzdata;
 
-/// A subset of the types and traits that are envisioned to be used the most, importing this is a good starting point for working with the crate
+/// A subset of the types and traits that are envisioned to be used the most, importing this is a
+/// good starting point for working with the crate
 pub mod prelude {
-    pub use crate::annotation::{
-        AnnotatableSpectrum,
-        model::{FragmentationModel, MatchingParameters},
+    pub use crate::{
+        annotation::{
+            AnnotatableSpectrum,
+            model::{FragmentationModel, MatchingParameters},
+        },
+        fragment::{Fragment, ToMzPAF},
+        glycan::GlycanFragmention,
+        mzspeclib::{MzSpecLibTextParser, MzSpecLibTextWriter},
+        peptidoform::PeptidoformFragmentation,
+        spectrum::{AnnotatedPeak, AnnotatedSpectrum},
     };
-    pub use crate::fragment::{Fragment, ToMzPAF};
-    pub use crate::glycan::GlycanFragmention;
-    pub use crate::mzspeclib::{MzSpecLibTextParser, MzSpecLibTextWriter};
-    pub use crate::peptidoform::PeptidoformFragmentation;
-    pub use crate::spectrum::{AnnotatedPeak, AnnotatedSpectrum};
 }
 
 #[cfg(test)]

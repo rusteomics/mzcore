@@ -9,7 +9,8 @@ use crate::{
 impl MolecularFormula {
     /// Parse a molecular formula from a RESID formula.
     /// # Errors
-    /// If the formula is not valid according to the RESID molecular formula format, with some help on what is going wrong.
+    /// If the formula is not valid according to the RESID molecular formula format, with some help
+    /// on what is going wrong.
     /// ```rust
     /// use mzcore::prelude::*;
     /// assert_eq!(MolecularFormula::resid("C 2 H 3 N 1 O 1 +"), Ok(molecular_formula!(C 2 H 3 N 1 O 1 :z+1).into()));
@@ -46,11 +47,20 @@ impl MolecularFormula {
 
     /// Parse a molecular formula from a RESID formula.
     /// # Errors
-    /// If the formula is not valid according to the RESID molecular formula format, with some help on what is going wrong.
+    /// If the formula is not valid according to the RESID molecular formula format, with some help
+    /// on what is going wrong.
     /// ```rust
     /// use mzcore::prelude::*;
-    /// assert!(MolecularFormula::resid_single("C 2 H 3 N 1 O 1 +").is_ok());
-    /// assert!(MolecularFormula::resid_single("C 4 H 5 N 1 O 3, C 4 H 6 N 2 O 2").is_err());
+    /// assert!(
+    ///     MolecularFormula::resid_single("C 2 H 3 N 1 O 1 +")
+    ///         .is_ok()
+    /// );
+    /// assert!(
+    ///     MolecularFormula::resid_single(
+    ///         "C 4 H 5 N 1 O 3, C 4 H 6 N 2 O 2"
+    ///     )
+    ///     .is_err()
+    /// );
     /// ```
     pub fn resid_single(value: &str) -> Result<Self, BoxedError<'_, BasicKind>> {
         Self::resid_single_inner(&Context::default().lines(0, value), value, 0..value.len())
@@ -103,9 +113,7 @@ impl MolecularFormula {
                         BasicKind::Error,
                         "Invalid RESID molecular formula",
                         err.reason(),
-                        base_context
-                            .clone()
-                            .add_highlight((0, index, element.symbol().len())),
+                        base_context.clone().add_highlight((0, index, element.symbol().len())),
                     ));
                 }
                 trim(&mut index, value);

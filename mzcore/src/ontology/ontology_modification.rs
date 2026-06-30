@@ -1,3 +1,11 @@
+use context_error::{BoxedError, Context, CreateError, combine_error};
+use itertools::Itertools;
+use mzcv::{
+    AccessionCode, AccessionCodeParseError, CVError, Comment, Modifier, OboIdentifier,
+    RelationType, SynonymScope,
+};
+use thin_vec::ThinVec;
+
 use crate::{
     chemistry::{DiagnosticIon, MolecularFormula, NeutralLoss},
     ontology::Ontology,
@@ -6,13 +14,6 @@ use crate::{
         SimpleModification, SimpleModificationInner,
     },
 };
-use context_error::{BoxedError, Context, CreateError, combine_error};
-use itertools::Itertools;
-use mzcv::{
-    AccessionCode, AccessionCodeParseError, CVError, Comment, Modifier, OboIdentifier,
-    RelationType, SynonymScope,
-};
-use thin_vec::ThinVec;
 
 #[derive(Debug, Default)]
 pub(crate) struct OntologyModification {
@@ -171,7 +172,8 @@ fn simplify_rules(old_rules: &mut Vec<(Vec<PlacementRule>, Vec<NeutralLoss>, Vec
         // } else {
         let mut found = false;
         for simplified_rule in &mut simplified_rules {
-            // Check if there is a rule with the same neutral loss and diagnostic ions (these can be location specific)
+            // Check if there is a rule with the same neutral loss and diagnostic ions (these can be
+            // location specific)
             if simplified_rule.1 == rule.1 && simplified_rule.2 == rule.2 {
                 found = true;
                 combine_rules(&mut simplified_rule.0, &rule.0);

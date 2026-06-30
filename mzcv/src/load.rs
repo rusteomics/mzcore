@@ -45,7 +45,8 @@ impl<CV: CVSource> CVIndex<CV> {
     }
 
     /// Store this index in the standard cache. If the CV has
-    /// [`CVSource::AUTOMATICALLY_WRITE_UNCOMPRESSED`] set to true this also writes the standard file.
+    /// [`CVSource::AUTOMATICALLY_WRITE_UNCOMPRESSED`] set to true this also writes the standard
+    /// file.
     /// # Errors
     /// If the file could not be written to.
     pub fn save_to_cache(&self) -> Result<(), BoxedError<'static, CVError>> {
@@ -158,8 +159,8 @@ impl<CV: CVSource> CVIndex<CV> {
         result
     }
 
-    /// Update the CV based on the given data, empties the CV before replacing all data with the new data.
-    /// This additionally tries to save the new data to the cache.
+    /// Update the CV based on the given data, empties the CV before replacing all data with the new
+    /// data. This additionally tries to save the new data to the cache.
     /// # Errors
     /// If the cache could not be saved to disk.
     pub fn update(
@@ -172,8 +173,8 @@ impl<CV: CVSource> CVIndex<CV> {
         self.save_to_cache()
     }
 
-    /// Update the CV based on the given data, empties the CV before replacing all data with the new data.
-    /// This additionally tries to save the new data to the cache.
+    /// Update the CV based on the given data, empties the CV before replacing all data with the new
+    /// data. This additionally tries to save the new data to the cache.
     /// # Errors
     /// If the cache could not be saved to disk.
     pub fn update_from_structure(
@@ -186,9 +187,9 @@ impl<CV: CVSource> CVIndex<CV> {
         self.save_to_cache()
     }
 
-    /// Update the CV based on the given data, empties the CV before replacing all data with the new data.
-    /// This does not store the updated data to the disk, which might be useful for tests but otherwise
-    /// [`Self::update`] should be used.
+    /// Update the CV based on the given data, empties the CV before replacing all data with the new
+    /// data. This does not store the updated data to the disk, which might be useful for tests
+    /// but otherwise [`Self::update`] should be used.
     /// # Errors
     /// If the cache could not be saved to disk.
     pub fn update_do_not_save_to_disk(
@@ -259,17 +260,14 @@ impl<CV: CVSource> CVIndex<CV> {
                             CVError::FileDoesNotExist,
                             "Default path does not exist",
                             "The default path does not exist",
-                            Context::default()
-                                .source(default_gz_path.to_string_lossy())
-                                .to_owned(),
+                            Context::default().source(default_gz_path.to_string_lossy()).to_owned(),
                         ));
                     }
                     &default_path
                 };
 
-                let compressed = resolved_path
-                    .extension()
-                    .is_some_and(|ext| ext.eq_ignore_ascii_case("gz"));
+                let compressed =
+                    resolved_path.extension().is_some_and(|ext| ext.eq_ignore_ascii_case("gz"));
 
                 let resolved_path_string = resolved_path.to_string_lossy().to_string();
                 let file = std::fs::File::open(resolved_path).map_err(|e| {
@@ -317,7 +315,8 @@ impl<CV: CVSource> CVIndex<CV> {
         for (compressed, resolved_path, default_gz_path, overwrite_path) in paths {
             if let Some(path) = overwrite_path {
                 let resolved_path_string = resolved_path.to_string_lossy().to_string();
-                // If it all worked and this was an overwrite file store the overwrite file at the default location
+                // If it all worked and this was an overwrite file store the overwrite file at the
+                // default location
                 if compressed {
                     std::fs::rename(path, default_gz_path).map_err(|e| {
                         BoxedError::new(
@@ -328,7 +327,8 @@ impl<CV: CVSource> CVIndex<CV> {
                         )
                     })?;
                 } else {
-                    // If the overwrite file was not compressed compress while moving to the new location
+                    // If the overwrite file was not compressed compress while moving to the new
+                    // location
                     let source_file = std::fs::File::open(&resolved_path).map_err(|e| {
                         BoxedError::new(
                             CVError::FileCouldNotBeOpenend,
@@ -377,9 +377,9 @@ impl<CV: CVSource> CVIndex<CV> {
     }
 
     /// Download the CV from the internet. If no overwrite URL was given it uses the default URL
-    /// ([`CVFile::url`](crate::CVFile::url)) if both are unset it errors. It downloads and compresses this file
-    /// to the default location but with `.download` before the default extension. This then calls
-    /// [`Self::update_from_path`] on the downloaded file.
+    /// ([`CVFile::url`](crate::CVFile::url)) if both are unset it errors. It downloads and
+    /// compresses this file to the default location but with `.download` before the default
+    /// extension. This then calls [`Self::update_from_path`] on the downloaded file.
     ///
     /// This is a blocking interface.
     ///
@@ -388,7 +388,8 @@ impl<CV: CVSource> CVIndex<CV> {
     ///
     /// # Errors
     ///
-    /// * No URL was set with both the overwrite URL and ([`CVSource::files`])[`CVFile::url`](crate::CVFile::url).
+    /// * No URL was set with both the overwrite URL and
+    ///   ([`CVSource::files`])[`CVFile::url`](crate::CVFile::url).
     /// * The file to download to could not be made.
     /// * The file could not be downloaded or the status code of the download was not success.
     /// * The downloaded file could not be written to disk.
@@ -418,9 +419,7 @@ impl<CV: CVSource> CVIndex<CV> {
                         CVError::FileCouldNotBeMade,
                         "CV file could not be made",
                         e.to_string(),
-                        Context::default()
-                            .source(download_path.to_string_lossy())
-                            .to_owned(),
+                        Context::default().source(download_path.to_string_lossy()).to_owned(),
                     )
                 })?;
                 let mut writer = BufWriter::new(file);
@@ -473,8 +472,8 @@ impl<CV: CVSource> CVIndex<CV> {
                     crate::CVCompression::Lzw => {
                         use crate::lzw::ZArchive;
 
-                        let content = ZArchive::new(response).and_then(|mut a| a.read()).map_err(
-                            |e| {
+                        let content =
+                            ZArchive::new(response).and_then(|mut a| a.read()).map_err(|e| {
                                 use crate::lzw::{self, ArchiveError};
 
                                 BoxedError::new(
@@ -493,8 +492,7 @@ impl<CV: CVSource> CVIndex<CV> {
                                     },
                                     Context::default().source(url.to_string()).to_owned(),
                                 )
-                            },
-                        )?;
+                            })?;
 
                         let mut encoder = flate2::bufread::GzEncoder::new(
                             BufReader::new(content.as_slice()),
@@ -563,9 +561,7 @@ impl<CV: CVSource> CVIndex<CV> {
                         CVError::FileCouldNotBeMade,
                         "CV file could not be made",
                         e.to_string(),
-                        Context::default()
-                            .source(download_path.to_string_lossy())
-                            .to_owned(),
+                        Context::default().source(download_path.to_string_lossy()).to_owned(),
                     )
                 })?;
                 let mut writer = BufWriter::new(file);
@@ -632,25 +628,25 @@ impl<CV: CVSource> CVIndex<CV> {
                         let content = ZArchive::new(response.as_ref())
                             .and_then(|mut a| a.read())
                             .map_err(|e| {
-                                use crate::lzw::{self, ArchiveError};
+                            use crate::lzw::{self, ArchiveError};
 
-                                BoxedError::new(
-                                    CVError::FileCouldNotBeParsed,
-                                    "Could not decompress Lzw compression",
-                                    match e {
-                                        ArchiveError::DecompressionFailed { entry, reason } => {
-                                            format!("{entry} {reason}")
-                                        }
-                                        ArchiveError::InvalidHeader => format!(
-                                            "Invalid header, the first bytes have to be {:x}{:x}",
-                                            lzw::ID[0],
-                                            lzw::ID[1]
-                                        ),
-                                        ArchiveError::IO(io) => io.to_string(),
-                                    },
-                                    Context::default().source(url.to_string()).to_owned(),
-                                )
-                            })?;
+                            BoxedError::new(
+                                CVError::FileCouldNotBeParsed,
+                                "Could not decompress Lzw compression",
+                                match e {
+                                    ArchiveError::DecompressionFailed { entry, reason } => {
+                                        format!("{entry} {reason}")
+                                    }
+                                    ArchiveError::InvalidHeader => format!(
+                                        "Invalid header, the first bytes have to be {:x}{:x}",
+                                        lzw::ID[0],
+                                        lzw::ID[1]
+                                    ),
+                                    ArchiveError::IO(io) => io.to_string(),
+                                },
+                                Context::default().source(url.to_string()).to_owned(),
+                            )
+                        })?;
 
                         let mut encoder = flate2::bufread::GzEncoder::new(
                             BufReader::new(content.as_slice()),

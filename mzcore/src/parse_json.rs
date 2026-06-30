@@ -1,11 +1,10 @@
 use std::{any::type_name, ops::RangeInclusive, str::FromStr, sync::Arc};
 
+use context_error::*;
 use itertools::Itertools;
 use mzcv::{AccessionCode, SynonymScope};
 use serde::de::DeserializeOwned;
 use serde_json::Value;
-
-use context_error::*;
 
 use crate::{
     ontology::Ontology,
@@ -107,9 +106,7 @@ impl<T: ParseJson> ParseJson for Arc<T> {
 impl<T: ParseJson> ParseJson for thin_vec::ThinVec<T> {
     fn from_json_value(value: Value) -> Result<Self, BoxedError<'static, BasicKind>> {
         if let Value::Array(arr) = value {
-            arr.into_iter()
-                .map(|element| T::from_json_value(element))
-                .collect()
+            arr.into_iter().map(|element| T::from_json_value(element)).collect()
         } else {
             Err(BoxedError::new(
                 BasicKind::Error,
@@ -127,9 +124,7 @@ impl<T: ParseJson> ParseJson for thin_vec::ThinVec<T> {
 impl<T: ParseJson> ParseJson for Vec<T> {
     fn from_json_value(value: Value) -> Result<Self, BoxedError<'static, BasicKind>> {
         if let Value::Array(arr) = value {
-            arr.into_iter()
-                .map(|element| T::from_json_value(element))
-                .collect()
+            arr.into_iter().map(|element| T::from_json_value(element)).collect()
         } else {
             Err(BoxedError::new(
                 BasicKind::Error,

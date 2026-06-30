@@ -22,6 +22,32 @@ pub struct ChargeRange {
 }
 
 impl ChargeRange {
+    /// Solely single charged
+    pub const ONE: Self = Self {
+        start: ChargePoint::Absolute(1),
+        end: ChargePoint::Absolute(1),
+    };
+    /// Range from 1 to the precursor
+    pub const ONE_TO_PRECURSOR: Self = Self {
+        start: ChargePoint::Absolute(1),
+        end: ChargePoint::Relative(0),
+    };
+    /// Range from 1 to the precursor - 1
+    pub const ONE_TO_PRECURSOR_MINUS_ONE: Self = Self {
+        start: ChargePoint::Absolute(1),
+        end: ChargePoint::Relative(-1),
+    };
+    /// Range from 1 to the precursor - 2
+    pub const ONE_TO_PRECURSOR_MINUS_TWO: Self = Self {
+        start: ChargePoint::Absolute(1),
+        end: ChargePoint::Relative(-2),
+    };
+    /// Only the exact precursor charge
+    pub const PRECURSOR: Self = Self {
+        start: ChargePoint::Relative(0),
+        end: ChargePoint::Relative(0),
+    };
+
     /// Get the number of possible charges for the given precursor charge.
     pub fn len(&self, precursor: Charge) -> usize {
         (self.end.to_absolute(precursor).value - self.start.to_absolute(precursor).value.max(1))
@@ -42,32 +68,6 @@ impl ChargeRange {
         (self.start.to_absolute(precursor).value.max(1)..=self.end.to_absolute(precursor).value)
             .map(Charge::new::<e>)
     }
-
-    /// Solely single charged
-    pub const ONE: Self = Self {
-        start: ChargePoint::Absolute(1),
-        end: ChargePoint::Absolute(1),
-    };
-    /// Only the exact precursor charge
-    pub const PRECURSOR: Self = Self {
-        start: ChargePoint::Relative(0),
-        end: ChargePoint::Relative(0),
-    };
-    /// Range from 1 to the precursor
-    pub const ONE_TO_PRECURSOR: Self = Self {
-        start: ChargePoint::Absolute(1),
-        end: ChargePoint::Relative(0),
-    };
-    /// Range from 1 to the precursor - 1
-    pub const ONE_TO_PRECURSOR_MINUS_ONE: Self = Self {
-        start: ChargePoint::Absolute(1),
-        end: ChargePoint::Relative(-1),
-    };
-    /// Range from 1 to the precursor - 2
-    pub const ONE_TO_PRECURSOR_MINUS_TWO: Self = Self {
-        start: ChargePoint::Absolute(1),
-        end: ChargePoint::Relative(-2),
-    };
 }
 
 /// A reference point for charge range definition.

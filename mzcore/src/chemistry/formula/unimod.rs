@@ -28,32 +28,35 @@ fn parse_unimod_composition_brick(
         "sulf" => Ok(Brick::Formula(molecular_formula!(S 1 O 3))),
         "phos" => Ok(Brick::Formula(molecular_formula!(P 1 O 3))),
         "water" => Ok(Brick::Formula(molecular_formula!(H 2 O 1))),
-        _ => {
-            Element::try_from(text[range.clone()].to_lowercase().as_str()).map_or_else(|()| if let Ok((ms, _)) =
-                MonoSaccharide::from_short_iupac(text, range.start_index(), 0)
-            {
-                Ok(Brick::Formula(ms.formula_inner(SequencePosition::default(),0)))
-            } else {
-                Err(BoxedError::new(BasicKind::Error,
-                    "Invalid Unimod chemical formula",
-                    "Unknown Unimod composition brick, use an element or one of the unimod shorthands. Eg: 'H(13) C(12) N O(3)'.",
-                     Context::default().lines(0, text).add_highlight((0, range))))
-            }, |el| Ok(Brick::Element(el)))
-        }
+        _ => Element::try_from(text[range.clone()].to_lowercase().as_str()).map_or_else(
+            |()| {
+                if let Ok((ms, _)) = MonoSaccharide::from_short_iupac(text, range.start_index(), 0) {
+                    Ok(Brick::Formula(ms.formula_inner(SequencePosition::default(), 0)))
+                } else {
+                    Err(BoxedError::new(
+                        BasicKind::Error,
+                        "Invalid Unimod chemical formula",
+                        "Unknown Unimod composition brick, use an element or one of the unimod shorthands. Eg: 'H(13) C(12) N O(3)'.",
+                        Context::default().lines(0, text).add_highlight((0, range)),
+                    ))
+                }
+            },
+            |el| Ok(Brick::Element(el)),
+        ),
     }
 }
 
 impl MolecularFormula {
     /// Parse a molecular formula from a Unimod formula.
     /// # Errors
-    /// If the formula is not valid according to the Unimod molecular formula format, with some help on what is going wrong.
+    /// If the formula is not valid according to the Unimod molecular formula format, with some help
+    /// on what is going wrong.
     /// ```rust
     /// use mzcore::prelude::*;
     /// assert!(MolecularFormula::unimod("H(25) C(8) 13C(7) N 15N(2) O(3)").is_ok());
     /// assert!(MolecularFormula::unimod("H(6) C(4) N(2) dHex").is_ok());
     /// assert_eq!(MolecularFormula::unimod("C(1) 13C(1) H(6)"), Ok(molecular_formula!(C 1 [13 C 1] H 6)));
     /// assert_eq!(MolecularFormula::unimod("Water"), Ok(molecular_formula!(H 2 O 1)));
-    ///
     /// ```
     pub fn unimod(value: &str) -> Result<Self, BoxedError<'_, BasicKind>> {
         Self::unimod_inner(&Context::default().lines(0, value), value, 0..value.len())
@@ -85,9 +88,8 @@ impl MolecularFormula {
                         .skip(index + 1)
                         .take_while(|c| *c == '-' || *c == '+' || c.is_ascii_digit())
                         .count();
-                    let num = value[index + 1..index + 1 + length]
-                        .parse::<i32>()
-                        .map_err(|err| {
+                    let num =
+                        value[index + 1..index + 1 + length].parse::<i32>().map_err(|err| {
                             BoxedError::new(
                                 BasicKind::Error,
                                 "Invalid Unimod chemical formula",
@@ -152,11 +154,7 @@ impl MolecularFormula {
                     index += 1;
                 }
                 (n, _) if n.is_ascii_digit() => {
-                    let length = value
-                        .chars()
-                        .skip(index)
-                        .take_while(char::is_ascii_digit)
-                        .count();
+                    let length = value.chars().skip(index).take_while(char::is_ascii_digit).count();
                     isotope = Some(value[index..index + length].parse::<NonZeroU16>().map_err(
                         |err| {
                             BoxedError::new(

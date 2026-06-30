@@ -25,6 +25,7 @@ impl Display for PeaksFamilyId {
 
 impl std::str::FromStr for PeaksFamilyId {
     type Err = ();
+
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         if let Some((start, end)) = s.split_once(':') {
             if start.is_empty() || end.is_empty() {

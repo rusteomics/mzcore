@@ -10,7 +10,8 @@ use crate::{
 impl MolecularFormula {
     /// Parse a molecular formula from an XL-MOD formula.
     /// # Errors
-    /// If the formula is not valid according to the XL-MOD molecular formula format, with some help on what is going wrong.
+    /// If the formula is not valid according to the XL-MOD molecular formula format, with some help
+    /// on what is going wrong.
     /// ```rust
     /// use mzcore::prelude::*;
     /// assert_eq!(
@@ -123,20 +124,18 @@ impl MolecularFormula {
                 * if number_length == 0 {
                     1
                 } else {
-                    block[block.len() - number_length..]
-                        .parse::<i32>()
-                        .map_err(|err| {
-                            BoxedError::new(
-                                BasicKind::Error,
-                                "Invalid Xlmod molecular formula",
-                                format!("The element count {}", explain_number_error(&err)),
-                                base_context.clone().add_highlight((
-                                    0,
-                                    offset + usize::from(negative) + isotope_len + element_len,
-                                    number_length,
-                                )),
-                            )
-                        })?
+                    block[block.len() - number_length..].parse::<i32>().map_err(|err| {
+                        BoxedError::new(
+                            BasicKind::Error,
+                            "Invalid Xlmod molecular formula",
+                            format!("The element count {}", explain_number_error(&err)),
+                            base_context.clone().add_highlight((
+                                0,
+                                offset + usize::from(negative) + isotope_len + element_len,
+                                number_length,
+                            )),
+                        )
+                    })?
                 };
             if let Err(err) = Self::add(&mut formula, (element, isotope, number)) {
                 return Err(BoxedError::new(

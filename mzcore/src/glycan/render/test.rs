@@ -1,14 +1,15 @@
 #![allow(clippy::missing_panics_doc)]
+use std::{
+    fmt::Write,
+    io::BufWriter,
+    path::{Path, PathBuf},
+};
+
 use base64::Engine;
 use swash::{CacheKey, FontRef, scale::ScaleContext};
 
 use crate::glycan::{
     GlycanDirection, GlycanPosition, GlycanRoot, GlycanStructure, render::element::GlycanSelection,
-};
-use std::{
-    fmt::Write,
-    io::BufWriter,
-    path::{Path, PathBuf},
 };
 
 pub(super) struct Font {
@@ -60,13 +61,11 @@ fn test_rendering() {
             directories::UserDirs::font_dir(
                 &directories::UserDirs::new().expect("Could not find user directories"),
             )
-            .unwrap_or_else(|| Path::new("C:/WINDOWS/Fonts")), // Font directory not defined for windows
+            .unwrap_or_else(|| Path::new("C:/WINDOWS/Fonts")), /* Font directory not defined for
+                                                                * windows */
         )
         .expect("Could not open font directory")
-        .find(|p| {
-            p.as_ref()
-                .is_ok_and(|p| p.file_name().eq_ignore_ascii_case("times.ttf"))
-        })
+        .find(|p| p.as_ref().is_ok_and(|p| p.file_name().eq_ignore_ascii_case("times.ttf")))
         .expect("No font files")
         .expect("Could not open font file")
         .path(),
@@ -348,40 +347,31 @@ fn test_rendering() {
         ),
         (
             1,
-            GlycanSelection::Subtree(
-                None,
-                &[GlycanPosition {
-                    inner_depth: 1,
-                    series_number: 1,
-                    branch: Vec::new(),
-                    attachment: None,
-                }],
-            ),
+            GlycanSelection::Subtree(None, &[GlycanPosition {
+                inner_depth: 1,
+                series_number: 1,
+                branch: Vec::new(),
+                attachment: None,
+            }]),
         ),
         (
             1,
-            GlycanSelection::Subtree(
-                None,
-                &[GlycanPosition {
-                    inner_depth: 2,
-                    series_number: 2,
-                    branch: Vec::new(),
-                    attachment: None,
-                }],
-            ),
+            GlycanSelection::Subtree(None, &[GlycanPosition {
+                inner_depth: 2,
+                series_number: 2,
+                branch: Vec::new(),
+                attachment: None,
+            }]),
         ),
         (
             // Y5
             21,
-            GlycanSelection::Subtree(
-                None,
-                &[GlycanPosition {
-                    inner_depth: 0,
-                    series_number: 5,
-                    branch: Vec::new(),
-                    attachment: None,
-                }],
-            ),
+            GlycanSelection::Subtree(None, &[GlycanPosition {
+                inner_depth: 0,
+                series_number: 5,
+                branch: Vec::new(),
+                attachment: None,
+            }]),
         ),
         (
             // B3Y1gY2bY2a

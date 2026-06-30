@@ -29,9 +29,10 @@ impl Fragment {
         )
     }
 
-    /// This parses a substring of the given string as a maxquant ion annotation. Additionally, this allows
-    /// passing a base context to allow to set the line index and source and other properties. Note
-    /// that the base context is assumed to contain the full line at line index 0.
+    /// This parses a substring of the given string as a maxquant ion annotation. Additionally, this
+    /// allows passing a base context to allow to set the line index and source and other
+    /// properties. Note that the base context is assumed to contain the full line at line index
+    /// 0.
     ///
     /// # Errors
     /// When the annotation does not follow the format.
@@ -53,9 +54,9 @@ impl Fragment {
     }
 }
 
-/// This parses a substring of the given string as a MaxQuant fragment definition. Additionally, this allows
-/// passing a base context to allow to set the line index and source and other properties. Note
-/// that the base context is assumed to contain the full line at line index 0.
+/// This parses a substring of the given string as a MaxQuant fragment definition. Additionally,
+/// this allows passing a base context to allow to set the line index and source and other
+/// properties. Note that the base context is assumed to contain the full line at line index 0.
 ///
 /// # Errors
 /// When the annotation does not follow the format.
@@ -87,7 +88,7 @@ fn parse_intermediate_representation<'a>(
     }?;
 
     // modifier
-    let modifier = line[range.start+1..range.end].chars().next().ok_or_else(|| {
+    let modifier = line[range.start + 1..range.end].chars().next().ok_or_else(|| {
         BoxedError::new(
             BasicKind::Error,
             "Invalid MaxQuant fragment annotation",
@@ -152,32 +153,24 @@ fn parse_intermediate_representation<'a>(
                 BasicKind::Error,
                 "Invalid MaxQuant fragment annotation",
                 "The charge should be tailed by the sign, for example `(2+)`",
-                base_context
-                    .clone()
-                    .add_highlight((0, left.start + 1..left.end - 1)),
+                base_context.clone().add_highlight((0, left.start + 1..left.end - 1)),
             )),
             None => Err(BoxedError::new(
                 BasicKind::Error,
                 "Invalid MaxQuant fragment annotation",
                 "The charge is empty, it should look like `(2+)`",
-                base_context
-                    .clone()
-                    .add_highlight((0, left.start + 1..left.end - 1)),
+                base_context.clone().add_highlight((0, left.start + 1..left.end - 1)),
             )),
         }?;
 
-        let num = line[left.start + 1..left.end - 2]
-            .parse::<u8>()
-            .map_err(|err| {
-                BoxedError::new(
-                    BasicKind::Error,
-                    "Invalid MaxQuant fragment charge",
-                    explain_number_error(&err),
-                    base_context
-                        .clone()
-                        .add_highlight((0, left.start + 1..left.end - 2)),
-                )
-            })?;
+        let num = line[left.start + 1..left.end - 2].parse::<u8>().map_err(|err| {
+            BoxedError::new(
+                BasicKind::Error,
+                "Invalid MaxQuant fragment charge",
+                explain_number_error(&err),
+                base_context.clone().add_highlight((0, left.start + 1..left.end - 2)),
+            )
+        })?;
 
         if positive {
             MolecularCharge::proton(mzcore::system::isize::Charge::new::<mzcore::system::e>(
@@ -195,9 +188,7 @@ fn parse_intermediate_representation<'a>(
             BasicKind::Error,
             "Invalid MaxQuant fragment annotation",
             "Could not parse charge, it should look like `(2+)` but the brackets are not found",
-            base_context
-                .clone()
-                .add_highlight((0, left.start + 1..left.end - 1)),
+            base_context.clone().add_highlight((0, left.start + 1..left.end - 1)),
         ));
     };
 

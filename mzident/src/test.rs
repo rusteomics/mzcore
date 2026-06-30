@@ -1,7 +1,7 @@
 use itertools::Itertools;
+use mzcore::sequence::Peptidoform;
 
 use crate::*;
-use mzcore::sequence::Peptidoform;
 
 /// Test a dataset for common errors in PSM parsing
 /// # Errors
@@ -30,18 +30,12 @@ where
         test_psm(&peptide, settings)?;
 
         if format.as_ref().is_some_and(|f| {
-            peptide
-                .format()
-                .version()
-                .is_some_and(|version| f.to_string() != version)
+            peptide.format().version().is_some_and(|version| f.to_string() != version)
         }) {
             return Err(format!(
                 "PSM {} was detected as the wrong version ({} instead of {})",
                 peptide.id(),
-                peptide
-                    .format()
-                    .version()
-                    .unwrap_or_else(|| "-".to_string()),
+                peptide.format().version().unwrap_or_else(|| "-".to_string()),
                 format.unwrap(),
             ));
         }
@@ -86,10 +80,7 @@ pub(super) fn test_psm<Complexity, PeptidoformAvailability>(
             ));
         }
     }
-    if peptidoform
-        .score
-        .is_some_and(|s| !(-1.0..=1.0).contains(&s))
-    {
+    if peptidoform.score.is_some_and(|s| !(-1.0..=1.0).contains(&s)) {
         return Err(format!(
             "The score {} for peptidoform {} is outside of range",
             peptidoform.score.unwrap(),
@@ -134,10 +125,7 @@ pub(super) fn test_psm<Complexity, PeptidoformAvailability>(
         let misplaced = peptidoform
             .peptidoform_ion_set()
             .iter()
-            .flat_map(|p| {
-                p.peptidoforms()
-                    .flat_map(Peptidoform::enforce_modification_rules)
-            })
+            .flat_map(|p| p.peptidoforms().flat_map(Peptidoform::enforce_modification_rules))
             .collect::<Vec<_>>();
         if !misplaced.is_empty() {
             return Err(format!(

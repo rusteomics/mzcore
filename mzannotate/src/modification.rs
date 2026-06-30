@@ -51,17 +51,14 @@ pub(crate) fn simple_modification_fragments(
         | SimpleModificationInner::Gno {
             composition: GnoComposition::Topology(glycan),
             ..
-        } => glycan
-            .clone()
-            .determine_positions()
-            .generate_theoretical_fragments(
-                model,
-                peptidoform_ion_index,
-                peptidoform_index,
-                charge_carriers,
-                full_formula,
-                attachment,
-            ),
+        } => glycan.clone().determine_positions().generate_theoretical_fragments(
+            model,
+            peptidoform_ion_index,
+            peptidoform_index,
+            charge_carriers,
+            full_formula,
+            attachment,
+        ),
         SimpleModificationInner::Glycan(composition)
         | SimpleModificationInner::Gno {
             composition: GnoComposition::Composition(composition),

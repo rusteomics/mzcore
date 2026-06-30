@@ -6,13 +6,6 @@ use std::{
     sync::OnceLock,
 };
 
-use serde::{Deserialize, Serialize};
-
-use crate::{
-    BoxedIdentifiedPeptideIter, KnownFileFormat, PSM, PSMData, PSMFileFormatVersion, PSMMetaData,
-    PSMSource, PeptidoformPresent, SpectrumId, SpectrumIds,
-    common_parser::{Location, OptionalColumn},
-};
 use mzcore::{
     csv::{CsvLine, parse_csv},
     ontology::Ontologies,
@@ -20,6 +13,13 @@ use mzcore::{
         FlankingSequence, Peptidoform, PeptidoformIonSet, SemiAmbiguous, SloppyParsingParameters,
     },
     system::{Mass, MassOverCharge, Time, isize::Charge},
+};
+use serde::{Deserialize, Serialize};
+
+use crate::{
+    BoxedIdentifiedPeptideIter, KnownFileFormat, PSM, PSMData, PSMFileFormatVersion, PSMMetaData,
+    PSMSource, PeptidoformPresent, SpectrumId, SpectrumIds,
+    common_parser::{Location, OptionalColumn},
 };
 
 static NUMBER_ERROR: (&str, &str) = (
@@ -225,6 +225,7 @@ impl PSMFileFormatVersion<InstaNovoFormat> for InstaNovoVersion {
             Self::CombinedV1_2_2 => INSTANOVO_COMBINED_V1_2_2,
         }
     }
+
     fn name(self) -> &'static str {
         match self {
             Self::V1_0_0 => "v1.0.0",
@@ -297,10 +298,7 @@ fn validate_instanovo_schema(
 }
 
 fn has_column(source: &CsvLine, column: &str) -> bool {
-    source
-        .fields
-        .iter()
-        .any(|f| f.0.eq_ignore_ascii_case(column))
+    source.fields.iter().any(|f| f.0.eq_ignore_ascii_case(column))
 }
 
 fn instanovo_schema_error(
@@ -332,19 +330,16 @@ impl mzcore::space::Space for UsedModel {
 
 impl std::fmt::Display for UsedModel {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Error> {
-        write!(
-            f,
-            "{}",
-            match self {
-                Self::Diffusion => "diffusion",
-                Self::Transformer => "transformer",
-            }
-        )
+        write!(f, "{}", match self {
+            Self::Diffusion => "diffusion",
+            Self::Transformer => "transformer",
+        })
     }
 }
 
 impl std::str::FromStr for UsedModel {
     type Err = ();
+
     fn from_str(value: &str) -> Result<Self, Self::Err> {
         if value.eq_ignore_ascii_case("diffusion") {
             Ok(Self::Diffusion)
@@ -357,6 +352,8 @@ impl std::str::FromStr for UsedModel {
 }
 
 impl PSMMetaData for InstaNovoPSM {
+    type Protein = crate::NoProtein;
+
     fn peptidoform_ion_set(&self) -> Option<Cow<'_, PeptidoformIonSet>> {
         Some(Cow::Owned(self.peptide.clone().into()))
     }
@@ -381,7 +378,9 @@ impl PSMMetaData for InstaNovoPSM {
             | InstaNovoVersion::V1_2_2 => mzcv::term!(MS:1003612|InstaNovo),
             InstaNovoVersion::PlusV1_1_4
             | InstaNovoVersion::PlusV1_2_2
-            | InstaNovoVersion::CombinedV1_2_2 => mzcv::term!(MS:1003613|InstaNovo+),
+            | InstaNovoVersion::CombinedV1_2_2 => {
+                mzcv::term!(MS:1003613|InstaNovo+)
+            }
         })
     }
 
@@ -419,10 +418,9 @@ impl PSMMetaData for InstaNovoPSM {
     }
 
     fn scans(&self) -> SpectrumIds {
-        SpectrumIds::FileKnown(vec![(
-            self.raw_file.clone(),
-            vec![SpectrumId::Number(self.scan_number)],
-        )])
+        SpectrumIds::FileKnown(vec![(self.raw_file.clone(), vec![SpectrumId::Number(
+            self.scan_number,
+        )])])
     }
 
     fn experimental_mz(&self) -> Option<MassOverCharge> {
@@ -432,8 +430,6 @@ impl PSMMetaData for InstaNovoPSM {
     fn experimental_mass(&self) -> Option<Mass> {
         Some(self.mz * self.z.to_float())
     }
-
-    type Protein = crate::NoProtein;
 
     fn protein_location(&self) -> Option<Range<u16>> {
         None

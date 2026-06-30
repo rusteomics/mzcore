@@ -60,7 +60,8 @@ impl MonoSaccharide {
         output
     }
 
-    /// Get all unique combinations of monosaccharides within the given range of number of monosaccharides used
+    /// Get all unique combinations of monosaccharides within the given range of number of
+    /// monosaccharides used
     /// # Panics
     /// If any if the composition options has more than [`isize::MAX`] sugars.
     pub fn composition_options(
@@ -91,7 +92,7 @@ impl MonoSaccharide {
                         let size = new.iter().fold(0, |acc, (_, a)| acc + *a) as usize;
                         match range.1.map(|e| size.cmp(&e)) {
                             Some(std::cmp::Ordering::Greater) => (), // Ignore
-                            None | Some(std::cmp::Ordering::Equal) => result.push(new), // Cannot get bigger
+                            None | Some(std::cmp::Ordering::Equal) => result.push(new), /* Cannot get bigger */
                             Some(std::cmp::Ordering::Less) => {
                                 if range.0.is_none_or(|s| size >= s) {
                                     result.push(new.clone());
@@ -179,72 +180,61 @@ mod tests {
         };
         assert_eq!(
             parse("Gal2,3Ac24-1,6-1Py"),
-            MonoSaccharide::new(
-                BaseSugar::Hexose(Some(HexoseIsomer::Galactose)),
-                &[
-                    GlycanSubstituent::Acetyl,
-                    GlycanSubstituent::Acetyl,
-                    GlycanSubstituent::Pyruvyl,
-                ]
-            )
+            MonoSaccharide::new(BaseSugar::Hexose(Some(HexoseIsomer::Galactose)), &[
+                GlycanSubstituent::Acetyl,
+                GlycanSubstituent::Acetyl,
+                GlycanSubstituent::Pyruvyl,
+            ])
         );
         assert_eq!(
             parse("GlcNAc"),
-            MonoSaccharide::new(
-                BaseSugar::Hexose(Some(HexoseIsomer::Glucose)),
-                &[GlycanSubstituent::NAcetyl]
-            )
+            MonoSaccharide::new(BaseSugar::Hexose(Some(HexoseIsomer::Glucose)), &[
+                GlycanSubstituent::NAcetyl
+            ])
         );
         assert_eq!(
             parse("Gal6S"),
-            MonoSaccharide::new(
-                BaseSugar::Hexose(Some(HexoseIsomer::Galactose)),
-                &[GlycanSubstituent::Sulfate]
-            )
+            MonoSaccharide::new(BaseSugar::Hexose(Some(HexoseIsomer::Galactose)), &[
+                GlycanSubstituent::Sulfate
+            ])
         );
         assert_eq!(
             parse("GlcN2Gc"),
-            MonoSaccharide::new(
-                BaseSugar::Hexose(Some(HexoseIsomer::Glucose)),
-                &[GlycanSubstituent::Amino, GlycanSubstituent::Glycolyl,]
-            )
+            MonoSaccharide::new(BaseSugar::Hexose(Some(HexoseIsomer::Glucose)), &[
+                GlycanSubstituent::Amino,
+                GlycanSubstituent::Glycolyl,
+            ])
         );
         assert_eq!(
             parse("GalNAc3S"),
-            MonoSaccharide::new(
-                BaseSugar::Hexose(Some(HexoseIsomer::Galactose)),
-                &[GlycanSubstituent::NAcetyl, GlycanSubstituent::Sulfate]
-            )
+            MonoSaccharide::new(BaseSugar::Hexose(Some(HexoseIsomer::Galactose)), &[
+                GlycanSubstituent::NAcetyl,
+                GlycanSubstituent::Sulfate
+            ])
         );
         assert_eq!(
             parse("GlcN2,6S2"),
-            MonoSaccharide::new(
-                BaseSugar::Hexose(Some(HexoseIsomer::Glucose)),
-                &[
-                    GlycanSubstituent::Amino,
-                    GlycanSubstituent::Sulfate,
-                    GlycanSubstituent::Sulfate
-                ]
-            )
+            MonoSaccharide::new(BaseSugar::Hexose(Some(HexoseIsomer::Glucose)), &[
+                GlycanSubstituent::Amino,
+                GlycanSubstituent::Sulfate,
+                GlycanSubstituent::Sulfate
+            ])
         );
         assert_eq!(
             parse("Tagf1,6P2"),
-            MonoSaccharide::new(
-                BaseSugar::Hexose(Some(HexoseIsomer::Tagatose)),
-                &[GlycanSubstituent::Phosphate, GlycanSubstituent::Phosphate]
-            )
+            MonoSaccharide::new(BaseSugar::Hexose(Some(HexoseIsomer::Tagatose)), &[
+                GlycanSubstituent::Phosphate,
+                GlycanSubstituent::Phosphate
+            ])
             .furanose()
         );
         assert_eq!(
             parse("Gal2,3Ac24-1,6-1Py"),
-            MonoSaccharide::new(
-                BaseSugar::Hexose(Some(HexoseIsomer::Galactose)),
-                &[
-                    GlycanSubstituent::Acetyl,
-                    GlycanSubstituent::Acetyl,
-                    GlycanSubstituent::Pyruvyl,
-                ]
-            )
+            MonoSaccharide::new(BaseSugar::Hexose(Some(HexoseIsomer::Galactose)), &[
+                GlycanSubstituent::Acetyl,
+                GlycanSubstituent::Acetyl,
+                GlycanSubstituent::Pyruvyl,
+            ])
         );
         assert_eq!(
             parse("D-Araf"),
@@ -254,22 +244,18 @@ mod tests {
         );
         assert_eq!(
             parse("Xyl-onic"),
-            MonoSaccharide::new(
-                BaseSugar::Pentose(Some(PentoseIsomer::Xylose)),
-                &[GlycanSubstituent::Acid]
-            )
+            MonoSaccharide::new(BaseSugar::Pentose(Some(PentoseIsomer::Xylose)), &[
+                GlycanSubstituent::Acid
+            ])
         );
         assert_eq!(
             parse("Glc2,3,4,6Ac4"),
-            MonoSaccharide::new(
-                BaseSugar::Hexose(Some(HexoseIsomer::Glucose)),
-                &[
-                    GlycanSubstituent::Acetyl,
-                    GlycanSubstituent::Acetyl,
-                    GlycanSubstituent::Acetyl,
-                    GlycanSubstituent::Acetyl
-                ]
-            )
+            MonoSaccharide::new(BaseSugar::Hexose(Some(HexoseIsomer::Glucose)), &[
+                GlycanSubstituent::Acetyl,
+                GlycanSubstituent::Acetyl,
+                GlycanSubstituent::Acetyl,
+                GlycanSubstituent::Acetyl
+            ])
         );
     }
 
@@ -288,12 +274,7 @@ mod tests {
         let human_readable = |options: &[Vec<(MonoSaccharide, isize)>]| {
             options
                 .iter()
-                .map(|option| {
-                    option
-                        .iter()
-                        .map(|sug| format!("{}{}", sug.0, sug.1))
-                        .join("&")
-                })
+                .map(|option| option.iter().map(|sug| format!("{}{}", sug.0, sug.1)).join("&"))
                 .join(",")
         };
         assert_eq!(
@@ -326,9 +307,7 @@ mod tests {
         let (res, w) = MonoSaccharide::pro_forma_composition::<false>("Man2ManP").unwrap();
         assert_eq!(
             res,
-            MonoSaccharide::pro_forma_composition::<true>("Hex3Phosphate1")
-                .unwrap()
-                .0
+            MonoSaccharide::pro_forma_composition::<true>("Hex3Phosphate1").unwrap().0
         );
         println!("{w:?}");
         assert_eq!(w.len(), 1);
@@ -336,9 +315,7 @@ mod tests {
         let (res, w) = MonoSaccharide::pro_forma_composition::<false>("Man2Man-1P").unwrap();
         assert_eq!(
             res,
-            MonoSaccharide::pro_forma_composition::<true>("Hex1Phosphate1")
-                .unwrap()
-                .0
+            MonoSaccharide::pro_forma_composition::<true>("Hex1Phosphate1").unwrap().0
         );
         assert_eq!(w.len(), 1);
         // Maybe add warning that you are mixing single letter definitions with full names?

@@ -1,5 +1,6 @@
 //! All amino acid property classes according to IMGT.
-//! > IMGT standardized criteria for statistical analysis of immunoglobulin V-REGION amino acid properties
+//! > IMGT standardized criteria for statistical analysis of immunoglobulin V-REGION amino acid
+//! > properties
 //! >
 //! > Christelle Pommié, Séverine Levadoux, Robert Sabatier, Gérard Lefranc, Marie-Paule Lefranc
 //! >
@@ -11,7 +12,8 @@
 use serde::{Deserialize, Serialize};
 
 /// All amino acid property classes according to IMGT.
-/// > IMGT standardized criteria for statistical analysis of immunoglobulin V-REGION amino acid properties
+/// > IMGT standardized criteria for statistical analysis of immunoglobulin V-REGION amino acid
+/// > properties
 /// >
 /// > Christelle Pommié, Séverine Levadoux, Robert Sabatier, Gérard Lefranc, Marie-Paule Lefranc
 /// >
@@ -43,6 +45,7 @@ impl crate::sequence::AminoAcid {
             | Self::Unknown => PhysiochemicalClass::Unknown,
         }
     }
+
     pub const fn chemical_class(self) -> ChemicalClass {
         match self {
             Self::Alanine
@@ -65,6 +68,7 @@ impl crate::sequence::AminoAcid {
             | Self::Unknown => ChemicalClass::Unknown,
         }
     }
+
     pub const fn volume_class(self) -> VolumeClass {
         match self {
             Self::Alanine | Self::Glycine | Self::Serine => VolumeClass::VerySmall,
@@ -92,6 +96,7 @@ impl crate::sequence::AminoAcid {
             Self::Unknown => VolumeClass::Unknown,
         }
     }
+
     pub const fn hydropathy_class(self) -> HydropathyClass {
         match self {
             Self::Alanine
@@ -122,6 +127,7 @@ impl crate::sequence::AminoAcid {
             Self::Unknown => HydropathyClass::Unknown,
         }
     }
+
     pub const fn charge_class(self) -> ChargeClass {
         match self {
             Self::Arginine | Self::Histidine | Self::Lysine => ChargeClass::Positive,
@@ -149,6 +155,7 @@ impl crate::sequence::AminoAcid {
             }
         }
     }
+
     pub const fn polarity_class(self) -> PolarityClass {
         match self {
             Self::Arginine
@@ -179,6 +186,7 @@ impl crate::sequence::AminoAcid {
             Self::Unknown => PolarityClass::Unknown,
         }
     }
+
     pub const fn hydrogen_bond_class(self) -> HydrogenBondClass {
         match self {
             Self::Arginine | Self::Lysine | Self::Tryptophan => HydrogenBondClass::Donor,

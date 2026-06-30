@@ -17,7 +17,8 @@ use std::{borrow::Cow, num::NonZeroU8, str::FromStr};
 // GNO:G00001NT // Name and ID are identical
 // GNO:00000015
 
-/// Controlled vocabularies all ontobee listed controlled vocabulaires are present as well as PRIDE and RESID
+/// Controlled vocabularies all ontobee listed controlled vocabulaires are present as well as PRIDE
+/// and RESID
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 #[repr(u16)]
@@ -1238,9 +1239,7 @@ impl FromStr for Curie {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         if let Some((cv, accession)) = s.split_once(':').or_else(|| s.split_once('_')) {
             let cv = cv.into();
-            let accession = accession
-                .parse()
-                .map_err(CURIEParsingError::AccessionParsingError)?;
+            let accession = accession.parse().map_err(CURIEParsingError::AccessionParsingError)?;
             Ok(Self { cv, accession })
         } else {
             Err(CURIEParsingError::MissingNamespaceSeparator)
@@ -1282,8 +1281,8 @@ pub enum AccessionCode {
     Numeric(u32),
     /// An alphanumeric code, can be length 1 to 8 ASCII chars (no spaces allowed)
     Alphanumeric(NonZeroU8, [u8; 7]),
-    // Maybe use ThinStr for dynamic strings, very likely this cannot be done together with an 8 byte inline string but it might be better in most ways
-    //Big(ThinStr),
+    // Maybe use ThinStr for dynamic strings, very likely this cannot be done together with an 8
+    // byte inline string but it might be better in most ways Big(ThinStr),
 }
 
 impl From<u32> for AccessionCode {
@@ -1317,7 +1316,8 @@ impl std::fmt::Display for AccessionCode {
     }
 }
 
-/// Create an accession code, using this with a numeric code is match arm valid, using this with an alphanumeric code is const compatible.
+/// Create an accession code, using this with a numeric code is match arm valid, using this with an
+/// alphanumeric code is const compatible.
 /// ```rust ignore
 /// match curie!(MS:000111) {
 ///     curie!(MS:0000111) => (),
@@ -1337,38 +1337,46 @@ macro_rules! accession_code {
             assert!(BYTES[0] != 0);
             assert!(BYTES.is_ascii());
             match BYTES {
-                [a, b, c, d, e, f, g, h] => $crate::AccessionCode::Alphanumeric(
-                    std::num::NonZeroU8::new(*a).unwrap(),
-                    [*b, *c, *d, *e, *f, *g, *h],
-                ),
-                [a, b, c, d, e, f, g] => $crate::AccessionCode::Alphanumeric(
-                    std::num::NonZeroU8::new(*a).unwrap(),
-                    [*b, *c, *d, *e, *f, *g, 0x20],
-                ),
-                [a, b, c, d, e, f] => $crate::AccessionCode::Alphanumeric(
-                    std::num::NonZeroU8::new(*a).unwrap(),
-                    [*b, *c, *d, *e, *f, 0x20, 0x20],
-                ),
-                [a, b, c, d, e] => $crate::AccessionCode::Alphanumeric(
-                    std::num::NonZeroU8::new(*a).unwrap(),
-                    [*b, *c, *d, *e, 0x20, 0x20, 0x20],
-                ),
-                [a, b, c, d] => $crate::AccessionCode::Alphanumeric(
-                    std::num::NonZeroU8::new(*a).unwrap(),
-                    [*b, *c, *d, 0x20, 0x20, 0x20, 0x20],
-                ),
-                [a, b, c] => $crate::AccessionCode::Alphanumeric(
-                    std::num::NonZeroU8::new(*a).unwrap(),
-                    [*b, *c, 0x20, 0x20, 0x20, 0x20, 0x20],
-                ),
-                [a, b] => $crate::AccessionCode::Alphanumeric(
-                    std::num::NonZeroU8::new(*a).unwrap(),
-                    [*b, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20],
-                ),
-                [a] => $crate::AccessionCode::Alphanumeric(
-                    std::num::NonZeroU8::new(*a).unwrap(),
-                    [0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20],
-                ),
+                [a, b, c, d, e, f, g, h] => {
+                    $crate::AccessionCode::Alphanumeric(std::num::NonZeroU8::new(*a).unwrap(), [
+                        *b, *c, *d, *e, *f, *g, *h,
+                    ])
+                }
+                [a, b, c, d, e, f, g] => {
+                    $crate::AccessionCode::Alphanumeric(std::num::NonZeroU8::new(*a).unwrap(), [
+                        *b, *c, *d, *e, *f, *g, 0x20,
+                    ])
+                }
+                [a, b, c, d, e, f] => {
+                    $crate::AccessionCode::Alphanumeric(std::num::NonZeroU8::new(*a).unwrap(), [
+                        *b, *c, *d, *e, *f, 0x20, 0x20,
+                    ])
+                }
+                [a, b, c, d, e] => {
+                    $crate::AccessionCode::Alphanumeric(std::num::NonZeroU8::new(*a).unwrap(), [
+                        *b, *c, *d, *e, 0x20, 0x20, 0x20,
+                    ])
+                }
+                [a, b, c, d] => {
+                    $crate::AccessionCode::Alphanumeric(std::num::NonZeroU8::new(*a).unwrap(), [
+                        *b, *c, *d, 0x20, 0x20, 0x20, 0x20,
+                    ])
+                }
+                [a, b, c] => {
+                    $crate::AccessionCode::Alphanumeric(std::num::NonZeroU8::new(*a).unwrap(), [
+                        *b, *c, 0x20, 0x20, 0x20, 0x20, 0x20,
+                    ])
+                }
+                [a, b] => {
+                    $crate::AccessionCode::Alphanumeric(std::num::NonZeroU8::new(*a).unwrap(), [
+                        *b, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20,
+                    ])
+                }
+                [a] => {
+                    $crate::AccessionCode::Alphanumeric(std::num::NonZeroU8::new(*a).unwrap(), [
+                        0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20,
+                    ])
+                }
                 _ => panic!(concat!(
                     "Cannot convert ",
                     stringify!($acc),

@@ -1,11 +1,11 @@
+use std::{fmt::Display, str::FromStr, sync::Arc};
+
 use bincode::{Decode, Encode};
 use mzcore::sequence::{Annotation, Peptidoform, Region, UnAmbiguous};
 use serde::{Deserialize, Serialize};
-use std::{fmt::Display, str::FromStr, sync::Arc};
-
-use crate::Allele;
 
 use super::species::Species;
+use crate::Allele;
 
 /// A selection of germlines from a single species.
 #[derive(Clone, Debug, Decode, Deserialize, Encode, Serialize)]
@@ -79,8 +79,8 @@ impl Germlines {
 use rayon::prelude::*;
 #[cfg(feature = "rayon")]
 impl<'a> IntoParallelIterator for &'a Germlines {
-    type Iter = rayon::array::IntoIter<(ChainType, &'a Chain), 4>;
     type Item = (ChainType, &'a Chain);
+    type Iter = rayon::array::IntoIter<(ChainType, &'a Chain), 4>;
 
     fn into_par_iter(self) -> Self::Iter {
         [
@@ -130,7 +130,8 @@ pub struct Chain {
 
 impl Chain {
     /// # Panics
-    /// It panics when it inserts an allele it has already placed (has to be filtered and ranked before)
+    /// It panics when it inserts an allele it has already placed (has to be filtered and ranked
+    /// before)
     pub fn insert(&mut self, mut germline: Germline) {
         let db = match &germline.name.kind {
             GeneType::V => &mut self.variable,
@@ -151,12 +152,10 @@ impl Chain {
         };
 
         match db.binary_search_by_key(&germline.name, |g| g.name.clone()) {
-            // If there are multiple copies of the same region keep the one with the most annotations + regions
+            // If there are multiple copies of the same region keep the one with the most
+            // annotations + regions
             Ok(index) => {
-                match db[index]
-                    .alleles
-                    .binary_search_by_key(&germline.alleles[0].0, |a| a.0)
-                {
+                match db[index].alleles.binary_search_by_key(&germline.alleles[0].0, |a| a.0) {
                     Ok(_allele_index) => {
                         // if germline.alleles[0].1.sequence
                         //     == db[index].alleles[allele_index].1.sequence
@@ -191,8 +190,7 @@ impl Chain {
                     }
                     Err(allele_index) => Arc::get_mut(&mut db[index])
                         .map(|g| {
-                            g.alleles
-                                .insert(allele_index, germline.alleles.pop().unwrap());
+                            g.alleles.insert(allele_index, germline.alleles.pop().unwrap());
                         })
                         .expect("Multiple copies of Arc while building IMGT structure"),
                 }
@@ -288,8 +286,8 @@ impl Chain {
 
 #[cfg(feature = "rayon")]
 impl<'a> IntoParallelIterator for &'a Chain {
-    type Iter = rayon::array::IntoIter<(GeneType, &'a [Arc<Germline>]), 15>;
     type Item = (GeneType, &'a [Arc<Germline>]);
+    type Iter = rayon::array::IntoIter<(GeneType, &'a [Arc<Germline>]), 15>;
 
     fn into_par_iter(self) -> Self::Iter {
         [
@@ -344,7 +342,7 @@ impl Germline {
         allele
             .map_or_else(
                 || self.alleles.first(),
-                |allele| self.alleles.iter().find(|(i, _, _)| *i == allele),
+                |allele| self.alleles.iter().find(|(i, ..)| *i == allele),
             )
             .map(|(i, sequence, acc)| Allele {
                 species: self.species,
@@ -360,8 +358,8 @@ impl Germline {
 
 #[cfg(feature = "rayon")]
 impl<'a> IntoParallelIterator for &'a Germline {
-    type Iter = rayon::slice::Iter<'a, (usize, AnnotatedSequence, String)>;
     type Item = &'a (usize, AnnotatedSequence, String);
+    type Iter = rayon::slice::Iter<'a, (usize, AnnotatedSequence, String)>;
 
     fn into_par_iter(self) -> Self::Iter {
         self.alleles.par_iter()
@@ -375,7 +373,8 @@ pub struct AnnotatedSequence {
     pub sequence: Peptidoform<UnAmbiguous>,
     /// The different regions in the sequence, defined by their name and length
     pub regions: Vec<(Region, usize)>,
-    /// 0 based locations of single amino acid annotations, overlapping with the regions defined above
+    /// 0 based locations of single amino acid annotations, overlapping with the regions defined
+    /// above
     pub annotations: Vec<(Annotation, usize)>,
 }
 
@@ -473,10 +472,7 @@ impl Gene {
             }
             match tail.strip_prefix('*').map_or_else(
                 || Err(format!("Invalid allele spec: `{tail}`")),
-                |tail| {
-                    tail.parse()
-                        .map_err(|_| format!("Invalid allele spec: `{}`", &tail))
-                },
+                |tail| tail.parse().map_err(|_| format!("Invalid allele spec: `{}`", &tail)),
             ) {
                 Ok(allele) => return Ok((gene, allele)),
                 Err(err) => {
@@ -499,10 +495,7 @@ impl Gene {
     fn from_imgt_name_internal(s: &str) -> Result<(Self, &str), String> {
         #[expect(clippy::missing_panics_doc)] // Cannot panic
         fn parse_family_name(s: &str) -> (Option<(Option<usize>, String)>, &str) {
-            let num = s
-                .chars()
-                .take_while(char::is_ascii_digit)
-                .collect::<String>();
+            let num = s.chars().take_while(char::is_ascii_digit).collect::<String>();
             let tail = s
                 .chars()
                 .skip(num.len())
@@ -537,12 +530,8 @@ impl Gene {
         }
 
         if s.starts_with("IG") {
-            let chain = s[2..3]
-                .parse()
-                .map_err(|()| format!("Invalid chain: `{}`", &s[2..3]))?;
-            let gene = s[3..4]
-                .parse()
-                .map_err(|()| format!("Invalid gene: `{}`", &s[3..4]))?;
+            let chain = s[2..3].parse().map_err(|()| format!("Invalid chain: `{}`", &s[2..3]))?;
+            let gene = s[3..4].parse().map_err(|()| format!("Invalid gene: `{}`", &s[3..4]))?;
             let mut start = 4;
             let number = if s.len() > 4 && &s[4..5] == "(" {
                 let end = s[5..]
@@ -594,6 +583,7 @@ pub enum ChainType {
 
 impl TryFrom<usize> for ChainType {
     type Error = ();
+
     fn try_from(i: usize) -> Result<Self, Self::Error> {
         match i {
             0 => Ok(Self::Heavy),
@@ -607,6 +597,7 @@ impl TryFrom<usize> for ChainType {
 
 impl FromStr for ChainType {
     type Err = ();
+
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
             "H" => Ok(Self::Heavy),
@@ -620,16 +611,12 @@ impl FromStr for ChainType {
 
 impl Display for ChainType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "{}",
-            match self {
-                Self::Heavy => "H",
-                Self::LightKappa => "K",
-                Self::LightLambda => "L",
-                Self::Iota => "I",
-            }
-        )
+        write!(f, "{}", match self {
+            Self::Heavy => "H",
+            Self::LightKappa => "K",
+            Self::LightLambda => "L",
+            Self::Iota => "I",
+        })
     }
 }
 
@@ -668,6 +655,7 @@ pub enum Constant {
 
 impl FromStr for GeneType {
     type Err = ();
+
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
             "V" => Ok(Self::V),
@@ -692,27 +680,23 @@ impl FromStr for GeneType {
 
 impl Display for GeneType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "{}",
-            match self {
-                Self::V => "V",
-                Self::J => "J",
-                Self::C(None) => "C",
-                Self::C(Some(Constant::A)) => "A",
-                Self::C(Some(Constant::D)) => "D",
-                Self::C(Some(Constant::E)) => "E",
-                Self::C(Some(Constant::G)) => "G",
-                Self::C(Some(Constant::M)) => "M",
-                Self::C(Some(Constant::N)) => "N",
-                Self::C(Some(Constant::O)) => "O",
-                Self::C(Some(Constant::R)) => "R",
-                Self::C(Some(Constant::T)) => "T",
-                Self::C(Some(Constant::W)) => "W",
-                Self::C(Some(Constant::Y)) => "Y",
-                Self::C(Some(Constant::Z)) => "Z",
-            }
-        )
+        write!(f, "{}", match self {
+            Self::V => "V",
+            Self::J => "J",
+            Self::C(None) => "C",
+            Self::C(Some(Constant::A)) => "A",
+            Self::C(Some(Constant::D)) => "D",
+            Self::C(Some(Constant::E)) => "E",
+            Self::C(Some(Constant::G)) => "G",
+            Self::C(Some(Constant::M)) => "M",
+            Self::C(Some(Constant::N)) => "N",
+            Self::C(Some(Constant::O)) => "O",
+            Self::C(Some(Constant::R)) => "R",
+            Self::C(Some(Constant::T)) => "T",
+            Self::C(Some(Constant::W)) => "W",
+            Self::C(Some(Constant::Y)) => "Y",
+            Self::C(Some(Constant::Z)) => "Z",
+        })
     }
 }
 

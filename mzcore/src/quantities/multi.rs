@@ -42,6 +42,7 @@ where
 
 impl<M> Deref for Multi<M> {
     type Target = [M];
+
     fn deref(&self) -> &Self::Target {
         &self.0
     }
@@ -59,6 +60,7 @@ where
     &'a M: Neg<Output = M> + 'a,
 {
     type Output = Multi<M>;
+
     fn neg(self) -> Self::Output {
         self.0.iter().map(|f| -f).collect()
     }
@@ -69,6 +71,7 @@ where
     M: Neg<Output = M> + Clone,
 {
     type Output = Self;
+
     fn neg(self) -> Self::Output {
         self.0.iter().cloned().map(|f| -f).collect()
     }
@@ -79,6 +82,7 @@ where
     M: Add<&'a M, Output = M> + Clone,
 {
     type Output = Multi<M>;
+
     /// Adds this M to all Ms in the multi
     fn add(self, rhs: &M) -> Self::Output {
         Multi(self.0.iter().map(|m| rhs.clone() + m).collect())
@@ -90,6 +94,7 @@ where
     M: Add<&'a M, Output = M> + Clone,
 {
     type Output = Self;
+
     /// Adds this formula to all formulas in the multi formula
     fn add(self, rhs: &'a M) -> Self::Output {
         self.0.iter().cloned().map(|m| m + rhs).collect()
@@ -101,6 +106,7 @@ where
     M: Add<&'a M, Output = M> + Clone,
 {
     type Output = Multi<M>;
+
     /// Adds this formula to all formulas in the multi formula
     fn add(self, rhs: M) -> Self::Output {
         Multi(self.0.iter().map(|m| rhs.clone() + m).collect())
@@ -112,6 +118,7 @@ where
     M: Add<M, Output = M> + Clone,
 {
     type Output = Self;
+
     /// Adds this formula to all formulas in the multi formula
     fn add(self, rhs: M) -> Self::Output {
         self.0.iter().cloned().map(|m| m + rhs.clone()).collect()
@@ -154,6 +161,7 @@ where
     M: Clone,
 {
     type Output = Multi<M>;
+
     /// Subtracts this formula from all formulas in the multi formula
     fn sub(self, rhs: &M) -> Self::Output {
         Multi(self.0.iter().map(|m| m - rhs.clone()).collect())
@@ -165,6 +173,7 @@ where
     M: Sub<&'a M, Output = M> + Clone + 'a,
 {
     type Output = Self;
+
     /// Subtracts this formula from all formulas in the multi formula
     fn sub(self, rhs: &'a M) -> Self::Output {
         self.0.iter().cloned().map(|m| m - rhs).collect()
@@ -177,6 +186,7 @@ where
     M: Clone,
 {
     type Output = Multi<M>;
+
     /// Subtracts this formula from all formulas in the multi formula
     fn sub(self, rhs: M) -> Self::Output {
         self.0.iter().map(|m| m - rhs.clone()).collect()
@@ -188,6 +198,7 @@ where
     M: Sub<M, Output = M> + Clone,
 {
     type Output = Self;
+
     /// Subtracts this formula from all formulas in the multi formula
     fn sub(self, rhs: M) -> Self::Output {
         self.0.iter().cloned().map(|m| m - rhs.clone()).collect()
@@ -199,6 +210,7 @@ where
     M: Add<&'a M, Output = M> + Clone,
 {
     type Output = Multi<M>;
+
     /// Cartesian product between the two multi formulas
     fn mul(self, rhs: &Multi<M>) -> Self::Output {
         Multi(
@@ -216,6 +228,7 @@ where
     M: Add<M, Output = M> + Clone,
 {
     type Output = Self;
+
     /// Cartesian product between the two multi formulas
     fn mul(self, rhs: &Self) -> Self::Output {
         self.0
@@ -232,6 +245,7 @@ where
     M: Add<&'a M, Output = M> + Clone,
 {
     type Output = Multi<M>;
+
     /// Cartesian product between the two multi formulas
     fn mul(self, rhs: Multi<M>) -> Self::Output {
         self.0
@@ -247,6 +261,7 @@ where
     M: Add<M, Output = M> + Clone,
 {
     type Output = Self;
+
     /// Cartesian product between the two multi formulas
     fn mul(self, rhs: Self) -> Self::Output {
         self.0
@@ -328,7 +343,8 @@ where
     Self: Mul<&'a Self, Output = Self> + 'a,
     M: Default + Clone + Add<M, Output = M>,
 {
-    /// Get all potential combination from a series of multi elements. If the series is empty it returns the default element.
+    /// Get all potential combination from a series of multi elements. If the series is empty it
+    /// returns the default element.
     fn from(value: &'a [Self]) -> Self {
         value.iter().fold(Self::default(), |acc, a: &Self| {
             if a.len() == 1 {
@@ -354,12 +370,6 @@ impl<'a, M: Clone + 'a> FromIterator<&'a M> for Multi<M> {
 
 impl Multi<MolecularFormula> {
     pub(crate) fn with_label(self, label: &AmbiguousLabel) -> Self {
-        Self(
-            self.0
-                .iter()
-                .cloned()
-                .map(|o| o.with_label(label.clone()))
-                .collect(),
-        )
+        Self(self.0.iter().cloned().map(|o| o.with_label(label.clone())).collect())
     }
 }

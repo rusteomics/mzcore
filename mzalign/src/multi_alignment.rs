@@ -1,5 +1,11 @@
 use std::collections::BTreeMap;
 
+use mzcore::{
+    prelude::*,
+    quantities::Multi,
+    sequence::{HasPeptidoform, Linear},
+    system::Mass,
+};
 use serde::{Deserialize, Serialize};
 
 use crate::{
@@ -9,12 +15,6 @@ use crate::{
     mass_alignment::{
         align_cached, mass_range, mass_range_expanded, score, score_pair, score_pair_mass_mismatch,
     },
-};
-use mzcore::{
-    prelude::*,
-    quantities::Multi,
-    sequence::{HasPeptidoform, Linear},
-    system::Mass,
 };
 
 /// A mass-based multiple sequence alignment (MMSA).
@@ -110,14 +110,16 @@ impl<Sequence: HasPeptidoform<Linear>> MultiAlignment<Sequence> {
 }
 
 impl<'a, Sequence: HasPeptidoform<Linear>> IntoIterator for &'a MultiAlignment<Sequence> {
-    type Item = &'a MultiAlignmentLine<Sequence>;
     type IntoIter = std::slice::Iter<'a, MultiAlignmentLine<Sequence>>;
+    type Item = &'a MultiAlignmentLine<Sequence>;
+
     fn into_iter(self) -> Self::IntoIter {
         self.iter()
     }
 }
 
-/// For each location the possible sequences and their length, their depth of coverage (how often seen) and their average local confidence.
+/// For each location the possible sequences and their length, their depth of coverage (how often
+/// seen) and their average local confidence.
 pub type SequenceVariance = Vec<BTreeMap<(SequenceElement<Linear>, u16), (usize, f64)>>;
 
 impl<Sequence: HasPeptidoform<Linear>> std::fmt::Display for MultiAlignment<Sequence> {
@@ -178,7 +180,8 @@ impl<Sequence> MultiAlignmentLine<Sequence> {
 }
 
 impl<Sequence: HasPeptidoform<Linear>> MultiAlignmentLine<Sequence> {
-    // Get the sequence element at the aligned index. Only returns something if the start of a step is selected.
+    // Get the sequence element at the aligned index. Only returns something if the start of a step
+    // is selected.
     fn get_item(&self, index: usize) -> Option<(SequenceElement<Linear>, u16)> {
         let mut path_index = 0;
         let mut aligned_index = 0;
@@ -286,14 +289,11 @@ impl<'a, Sequence: HasPeptidoform<Linear>, const STEPS: u16>
                 self.path[0].aligned_length += offset;
                 internal_index = offset;
             } else {
-                self.path.insert(
-                    path_index,
-                    MultiPiece {
-                        match_type: MatchType::Gap,
-                        aligned_length: offset,
-                        sequence_length: 0,
-                    },
-                );
+                self.path.insert(path_index, MultiPiece {
+                    match_type: MatchType::Gap,
+                    aligned_length: offset,
+                    sequence_length: 0,
+                });
                 path_index += 1;
             }
         }
@@ -301,14 +301,11 @@ impl<'a, Sequence: HasPeptidoform<Linear>, const STEPS: u16>
             let aligned_step = if is_a { piece.step_b } else { piece.step_a };
             let sequence_step = if is_a { piece.step_a } else { piece.step_b };
             if sequence_step == 0 {
-                self.path.insert(
-                    path_index,
-                    MultiPiece {
-                        match_type: MatchType::Gap,
-                        aligned_length: aligned_step,
-                        sequence_length: sequence_step,
-                    },
-                );
+                self.path.insert(path_index, MultiPiece {
+                    match_type: MatchType::Gap,
+                    aligned_length: aligned_step,
+                    sequence_length: sequence_step,
+                });
                 aligned_index += aligned_step;
                 path_index += 1;
             } else {
@@ -429,14 +426,17 @@ impl<'a, Sequence: HasPeptidoform<Linear>, const STEPS: u16>
     }
 }
 
-/// How a single piece of sequence if aligned in an MMSA, analogous to [Piece] from a pairwise alignment.
+/// How a single piece of sequence if aligned in an MMSA, analogous to [Piece] from a pairwise
+/// alignment.
 #[derive(
     Clone, Copy, Debug, Default, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize,
 )]
 pub struct MultiPiece {
-    /// How this piece was matched, for now can only be [`MatchType::FullIdentity`] or [`MatchType::Gap`]
+    /// How this piece was matched, for now can only be [`MatchType::FullIdentity`] or
+    /// [`MatchType::Gap`]
     pub match_type: MatchType,
-    /// How long this piece of sequence is stretched to, this is required to always be at least `sequence_length`
+    /// How long this piece of sequence is stretched to, this is required to always be at least
+    /// `sequence_length`
     pub aligned_length: u16,
     /// The number of sequence elements in this step
     pub sequence_length: u16,
@@ -491,7 +491,8 @@ impl From<MultiAlignType> for AlignType {
 }
 
 impl<const STEPS: u16, Sequence: HasPeptidoform<Linear> + Clone> AlignIndex<STEPS, Sequence> {
-    /// Get matrix with the distances between all sequences in this index. It uses [`mzalign::Alignment::distance`] as metric.
+    /// Get matrix with the distances between all sequences in this index. It uses
+    /// [`mzalign::Alignment::distance`] as metric.
     /// # Panics
     /// If more than [`u16::MAX`] sequences are given.
     pub fn distance_matrix(
@@ -535,7 +536,8 @@ impl<const STEPS: u16, Sequence: HasPeptidoform<Linear> + Clone> AlignIndex<STEP
 
     fn multi_align_inner(
         &self,
-        maximal_distance: Option<f64>, // Maximal distance to join clusters, or join all if set to None
+        maximal_distance: Option<f64>, /* Maximal distance to join clusters, or join all if set
+                                        * to None */
         mut distance_matrix: DiagonalArray<f64, { u16::MAX }>,
         scoring: AlignScoring<'_>,
         align_type: MultiAlignType,
@@ -562,7 +564,8 @@ impl<const STEPS: u16, Sequence: HasPeptidoform<Linear> + Clone> AlignIndex<STEP
         while nodes.len() > 1 {
             let (distance, [far_index, close_index]) = distance_matrix.min::<true>();
             if maximal_distance.is_some_and(|m| distance > m) {
-                // Stop if this distance is more than the threshold, or if the outgroup would be merged
+                // Stop if this distance is more than the threshold, or if the outgroup would be
+                // merged
                 break;
             }
             // Merge nodes (this is where the actual alignment happens)
@@ -586,7 +589,8 @@ impl<const STEPS: u16, Sequence: HasPeptidoform<Linear> + Clone> AlignIndex<STEP
 impl<const STEPS: u16, Sequence: HasPeptidoform<Linear> + Clone + Send + Sync>
     AlignIndex<STEPS, Sequence>
 {
-    /// Get matrix with the distances between all sequences in this index. It uses [`Alignment::distance`] as metric.
+    /// Get matrix with the distances between all sequences in this index. It uses
+    /// [`Alignment::distance`] as metric.
     /// # Panics
     /// If more than [`u16::MAX`] sequences are given.
     #[cfg(feature = "rayon")]
@@ -638,11 +642,13 @@ impl<const STEPS: u16, Sequence: HasPeptidoform<Linear> + Clone + Send + Sync>
         matrix
     }
 
-    /// This parallelizes the distance matrix calculation, the multiple sequence merging is still done sequentially
+    /// This parallelizes the distance matrix calculation, the multiple sequence merging is still
+    /// done sequentially
     #[cfg(feature = "rayon")]
     pub fn par_multi_align(
         &self,
-        maximal_distance: Option<f64>, // Maximal distance to join clusters, or join all if set to None
+        maximal_distance: Option<f64>, /* Maximal distance to join clusters, or join all if set
+                                        * to None */
         scoring: AlignScoring<'_>,
         align_type: MultiAlignType,
     ) -> Vec<MultiAlignment<Sequence>> {
@@ -660,12 +666,8 @@ fn multi_align_cached<'a, const STEPS: u16, Sequence: HasPeptidoform<Linear>>(
     scoring: AlignScoring<'_>,
     align_type: MultiAlignType,
 ) -> Vec<MultiAlignmentLineTemp<'a, Sequence, STEPS>> {
-    let len_a = a
-        .iter()
-        .fold(0, |acc, i| acc.max(i.sequence.cast_peptidoform().len()));
-    let len_b = b
-        .iter()
-        .fold(0, |acc, i| acc.max(i.sequence.cast_peptidoform().len()));
+    let len_a = a.iter().fold(0, |acc, i| acc.max(i.sequence.cast_peptidoform().len()));
+    let len_b = b.iter().fold(0, |acc, i| acc.max(i.sequence.cast_peptidoform().len()));
     let mut matrix = Matrix::new(len_a, len_b);
     let mut global_highest = (0, 0, 0);
 
@@ -681,8 +683,8 @@ fn multi_align_cached<'a, const STEPS: u16, Sequence: HasPeptidoform<Linear>>(
     // However, in most of the cases masses are very different there and the check fails.
     // We precompute two following arrays:
     // - ranges_a[index_a - len_a .. index_a] = (min_mass, max_mass)
-    // min_mass is the minimal mass that matches at least one mass in masses_a[index_a - len_a .. index_a].
-    // max_mass is the same for maximal mass.
+    // min_mass is the minimal mass that matches at least one mass in masses_a[index_a - len_a ..
+    // index_a]. max_mass is the same for maximal mass.
     // - ranges_b[index_b - len_b .. index_b] = (min_mass, max_mass)
     // min_mass in the minimal mass across masses_b[index_b - len_b .. index_b].
     // max_mass is the same for maximal mass.
@@ -724,11 +726,7 @@ fn multi_align_cached<'a, const STEPS: u16, Sequence: HasPeptidoform<Linear>>(
 
     // First index_b then the sequence at that index
     let sequence_indices_b: Vec<Vec<usize>> = (1..=len_b)
-        .map(|index_b| {
-            b.iter()
-                .map(|s| s.get_sequence_index(index_b))
-                .collect::<Vec<_>>()
-        })
+        .map(|index_b| b.iter().map(|s| s.get_sequence_index(index_b)).collect::<Vec<_>>())
         .collect();
 
     let sorted_pair_masses_b: Vec<Vec<((Mass, Mass), usize)>> = sequence_indices_b
@@ -753,10 +751,8 @@ fn multi_align_cached<'a, const STEPS: u16, Sequence: HasPeptidoform<Linear>>(
 
     for index_a in 1..=len_a {
         // Precalculate sequence indices and sorted masses
-        let sequence_indices_a = a
-            .iter()
-            .map(|s| s.get_sequence_index(index_a))
-            .collect::<Vec<_>>();
+        let sequence_indices_a =
+            a.iter().map(|s| s.get_sequence_index(index_a)).collect::<Vec<_>>();
         let mut sorted_pair_masses_a: Vec<((Mass, Mass), usize)> = sequence_indices_a
             .iter()
             .enumerate()
@@ -860,13 +856,9 @@ fn multi_align_cached<'a, const STEPS: u16, Sequence: HasPeptidoform<Linear>>(
                         let pair_score = score_pair_mass_mismatch(
                             aa_a,
                             unsafe {
-                                b[line_b]
-                                    .sequence
-                                    .cast_peptidoform()
-                                    .sequence()
-                                    .get_unchecked(
-                                        sequence_indices_b[index_b - 1][line_b].saturating_sub(1),
-                                    )
+                                b[line_b].sequence.cast_peptidoform().sequence().get_unchecked(
+                                    sequence_indices_b[index_b - 1][line_b].saturating_sub(1),
+                                )
                             },
                             scoring,
                             prev.score,
@@ -909,7 +901,8 @@ fn multi_align_cached<'a, const STEPS: u16, Sequence: HasPeptidoform<Linear>>(
                                     };
                                     let base_score = prev.score;
                                     a[line_a]
-                                        .get_block_at(sequence_index_a, len_a) // Think about if this len should be sequence or aligned index
+                                        .get_block_at(sequence_index_a, len_a) // Think about if this len should be sequence or aligned
+                                        // index
                                         .and_then(|block_a| {
                                             b[line_b]
                                                 .get_block_at(sequence_index_b, len_b)
@@ -952,9 +945,7 @@ fn multi_align_cached<'a, const STEPS: u16, Sequence: HasPeptidoform<Linear>>(
     }
 
     // Fix end gaps
-    let goal_length = sequences
-        .iter()
-        .fold(0, |acc, s| acc.max(s.aligned_length()));
+    let goal_length = sequences.iter().fold(0, |acc, s| acc.max(s.aligned_length()));
     for s in &mut sequences {
         s.pad(goal_length);
     }
@@ -965,10 +956,11 @@ fn multi_align_cached<'a, const STEPS: u16, Sequence: HasPeptidoform<Linear>>(
 #[allow(clippy::missing_panics_doc)]
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use crate::mass_alignment::calculate_masses;
     use itertools::Itertools;
     use mzcore::ontology::STATIC_ONTOLOGIES;
+
+    use super::*;
+    use crate::mass_alignment::calculate_masses;
 
     fn seq(def: &str) -> Peptidoform<Linear> {
         Peptidoform::pro_forma(def, &STATIC_ONTOLOGIES)
@@ -1069,7 +1061,7 @@ mod tests {
         let index = AlignIndex::<4, Peptidoform<Linear>>::new(sequences, MassMode::Monoisotopic);
         let scoring = AlignScoring::<'_> {
             tolerance: mzcore::quantities::Tolerance::Relative(
-                mzcore::system::Ratio::new::<mzcore::system::ratio::ppm>(20.0).into(), // AM W[Oxidation] are 16ppm apart
+                mzcore::system::Ratio::new::<mzcore::system::ratio::ppm>(20.0).into(), /* AM W[Oxidation] are 16ppm apart */
             ),
             ..Default::default()
         };

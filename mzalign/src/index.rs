@@ -1,3 +1,9 @@
+use mzcore::{
+    chemistry::MassMode,
+    quantities::Multi,
+    sequence::{HasPeptidoform, Linear},
+    system::Mass,
+};
 #[cfg(feature = "rayon")]
 use rayon::prelude::*;
 
@@ -5,12 +11,6 @@ use crate::{
     AlignScoring, AlignType, Alignment,
     diagonal_array::DiagonalArray,
     mass_alignment::{align_cached, calculate_masses},
-};
-use mzcore::{
-    chemistry::MassMode,
-    quantities::Multi,
-    sequence::{HasPeptidoform, Linear},
-    system::Mass,
 };
 
 /// An alignment index to store a collection of sequences to do alignment against with one or more
@@ -63,18 +63,16 @@ impl<const STEPS: u16, Source: HasPeptidoform<Linear> + Clone> AlignIndex<STEPS,
     ) -> impl ExactSizeIterator<Item = Alignment<Source, Other>> {
         let other_masses = calculate_masses::<STEPS>(other.cast_peptidoform(), self.mode);
 
-        self.sequences
-            .iter()
-            .map(move |(template, template_masses)| {
-                align_cached::<STEPS, Source, Other>(
-                    template.clone(),
-                    template_masses,
-                    other.clone(),
-                    &other_masses,
-                    scoring,
-                    align_type,
-                )
-            })
+        self.sequences.iter().map(move |(template, template_masses)| {
+            align_cached::<STEPS, Source, Other>(
+                template.clone(),
+                template_masses,
+                other.clone(),
+                &other_masses,
+                scoring,
+                align_type,
+            )
+        })
     }
 
     /// Align a single peptidoform to the index
@@ -86,21 +84,20 @@ impl<const STEPS: u16, Source: HasPeptidoform<Linear> + Clone> AlignIndex<STEPS,
     ) -> impl ExactSizeIterator<Item = Alignment<Source, Other>> {
         let other_masses = calculate_masses::<STEPS>(other.cast_peptidoform(), self.mode);
 
-        self.sequences
-            .iter()
-            .map(move |(template, template_masses)| {
-                align_cached::<STEPS, Source, Other>(
-                    template.clone(),
-                    template_masses,
-                    other.clone(),
-                    &other_masses,
-                    scoring,
-                    align_type(template),
-                )
-            })
+        self.sequences.iter().map(move |(template, template_masses)| {
+            align_cached::<STEPS, Source, Other>(
+                template.clone(),
+                template_masses,
+                other.clone(),
+                &other_masses,
+                scoring,
+                align_type(template),
+            )
+        })
     }
 
-    /// Align a single peptidoform to the index but only for the source sequences that match the given filter.
+    /// Align a single peptidoform to the index but only for the source sequences that match the
+    /// given filter.
     pub fn align_one_filtered<'a, Other: HasPeptidoform<Linear> + Clone + 'a>(
         &'a self,
         other: Other,
@@ -131,9 +128,7 @@ impl<const STEPS: u16, Source: HasPeptidoform<Linear> + Clone> AlignIndex<STEPS,
         scoring: AlignScoring<'a>,
         align_type: AlignType,
     ) -> impl Iterator<Item = impl ExactSizeIterator<Item = Alignment<Source, Other>>> {
-        others
-            .into_iter()
-            .map(move |o| self.align_one(o, scoring, align_type))
+        others.into_iter().map(move |o| self.align_one(o, scoring, align_type))
     }
 }
 
@@ -150,22 +145,21 @@ impl<const STEPS: u16, Source: HasPeptidoform<Linear> + Clone + Sync + Send>
     ) -> impl ParallelIterator<Item = Alignment<Source, Other>> {
         let other_masses = calculate_masses::<STEPS>(other.cast_peptidoform(), self.mode);
 
-        self.sequences
-            .par_iter()
-            .map(move |(template, template_masses)| {
-                align_cached::<STEPS, Source, Other>(
-                    template.clone(),
-                    template_masses,
-                    other.clone(),
-                    &other_masses,
-                    scoring,
-                    align_type,
-                )
-            })
+        self.sequences.par_iter().map(move |(template, template_masses)| {
+            align_cached::<STEPS, Source, Other>(
+                template.clone(),
+                template_masses,
+                other.clone(),
+                &other_masses,
+                scoring,
+                align_type,
+            )
+        })
     }
 
     #[cfg(feature = "rayon")]
-    /// Align a single peptidoform to the index in parallel but only for the source sequences that match the given filter.
+    /// Align a single peptidoform to the index in parallel but only for the source sequences that
+    /// match the given filter.
     pub fn par_align_one_filtered<'a, Other: HasPeptidoform<Linear> + Clone + 'a + Send + Sync>(
         &'a self,
         other: Other,
@@ -199,8 +193,6 @@ impl<const STEPS: u16, Source: HasPeptidoform<Linear> + Clone + Sync> AlignIndex
         scoring: AlignScoring<'a>,
         align_type: AlignType,
     ) -> impl ParallelIterator<Item = impl ExactSizeIterator<Item = Alignment<Source, Other>>> {
-        others
-            .into_par_iter()
-            .map(move |o| self.align_one(o, scoring, align_type))
+        others.into_par_iter().map(move |o| self.align_one(o, scoring, align_type))
     }
 }

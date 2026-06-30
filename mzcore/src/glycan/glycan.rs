@@ -95,7 +95,8 @@ impl ParseJson for MonoSaccharide {
 }
 
 impl MonoSaccharide {
-    /// Get the name that should be used to represent this monosaccharide in ProForma glycan compositions
+    /// Get the name that should be used to represent this monosaccharide in ProForma glycan
+    /// compositions
     pub fn pro_forma_name(&self) -> Cow<'static, str> {
         match self.base_sugar {
             BaseSugar::Sugar
@@ -416,9 +417,7 @@ impl MonoSaccharide {
             if double {
                 if let Some(o) = line[index..].take_any(DOUBLE_LINKED_POSTFIX_SUBSTITUENTS, |e| {
                     sugar.substituents.extend(
-                        e.iter()
-                            .flat_map(|s| std::iter::repeat_n(s, double_amount))
-                            .copied(),
+                        e.iter().flat_map(|s| std::iter::repeat_n(s, double_amount)).copied(),
                     );
                     if single_amount > 0 {
                         sugar.substituents.extend(
@@ -511,7 +510,8 @@ impl ParseHelper for &str {
         found
     }
 
-    // Get a location, return the new index, the amount of the mod to place and if it is doubly linked or not
+    // Get a location, return the new index, the amount of the mod to place and if it is doubly
+    // linked or not
     fn parse_location(self) -> (usize, usize, bool) {
         let bytes = self.as_bytes();
         let mut index = 0;
@@ -538,11 +538,7 @@ impl ParseHelper for &str {
                     double = true;
                 } // X-X,X-X (Py)
                 b'/' => {
-                    let num = bytes[2..]
-                        .iter()
-                        .copied()
-                        .take_while(number_or_slash)
-                        .count();
+                    let num = bytes[2..].iter().copied().take_while(number_or_slash).count();
                     index += num + 2;
                     // X/X/X...{mod} multiple possible locations
                 }
@@ -557,11 +553,7 @@ impl ParseHelper for &str {
                         amount = num / 2 + 1;
                         // ?X,X{mod} (or 3/4/5/etc mods)
                     } else if bytes[2] == b'/' {
-                        let num = bytes[3..]
-                            .iter()
-                            .copied()
-                            .take_while(number_or_slash)
-                            .count();
+                        let num = bytes[3..].iter().copied().take_while(number_or_slash).count();
                         index += num + 3;
                         // ?X/X{mod} multiple possible locations
                     } else {
@@ -581,8 +573,7 @@ impl Chemical for MonoSaccharide {
         sequence_index: SequencePosition,
         peptidoform_index: usize,
     ) -> MolecularFormula {
-        self.base_sugar
-            .formula_inner(sequence_index, peptidoform_index)
+        self.base_sugar.formula_inner(sequence_index, peptidoform_index)
             + self
                 .substituents
                 .as_slice()
@@ -654,22 +645,18 @@ impl BaseSugar {
 
 impl Display for BaseSugar {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "{}",
-            match self {
-                Self::Custom(a) => format!("{{{a}}}"),
-                Self::Sugar => "Sug".to_string(),
-                Self::Triose => "Tri".to_string(),
-                Self::Tetrose(_) => "Tet".to_string(),
-                Self::Pentose(_) => "Pen".to_string(),
-                Self::Hexose(_) => "Hex".to_string(),
-                Self::Heptose(_) => "Hep".to_string(),
-                Self::Octose => "Oct".to_string(),
-                Self::Nonose(_) => "Non".to_string(),
-                Self::Decose => "Dec".to_string(),
-            }
-        )
+        write!(f, "{}", match self {
+            Self::Custom(a) => format!("{{{a}}}"),
+            Self::Sugar => "Sug".to_string(),
+            Self::Triose => "Tri".to_string(),
+            Self::Tetrose(_) => "Tet".to_string(),
+            Self::Pentose(_) => "Pen".to_string(),
+            Self::Hexose(_) => "Hex".to_string(),
+            Self::Heptose(_) => "Hep".to_string(),
+            Self::Octose => "Oct".to_string(),
+            Self::Nonose(_) => "Non".to_string(),
+            Self::Decose => "Dec".to_string(),
+        })
     }
 }
 
@@ -914,15 +901,22 @@ impl Chemical for GlycanSubstituent {
         let side = match self {
             Self::Acetimidoyl => molecular_formula!(H 5 C 2 N 1),
             Self::Acetyl => molecular_formula!(H 3 C 2 O 1),
-            Self::Acid => molecular_formula!(H -1 O 2), // Together with the replacement below this is H-2 O+1
+            Self::Acid => molecular_formula!(H -1 O 2), /* Together with the replacement below */
+            // this is H-2 O+1
             Self::Alanyl => molecular_formula!(H 6 C 3 N 1 O 1),
-            Self::Alcohol => molecular_formula!(H 3 O 1), // Together with the replacement below this is H+2
+            Self::Alcohol => molecular_formula!(H 3 O 1), /* Together with the replacement below */
+            // this is H+2
             Self::Amino => molecular_formula!(H 2 N 1),
-            Self::Aric => molecular_formula!(H 3 O 3), // Together with replacement below this is H2O2
-            Self::CargoxyEthylidene => molecular_formula!(H 3 C 3 O 3), // double substituent, calculated to work with the additional side chain deletion
-            Self::Deoxy => molecular_formula!(H 1), // Together with the replacement below this is O-1
-            Self::Didehydro => molecular_formula!(H -1 O 1), // Together with the replacement below this is H-2
-            Self::DiMethyl => molecular_formula!(H 5 C 2), // assumed to replace the both the OH and H on a single carbon
+            Self::Aric => molecular_formula!(H 3 O 3), /* Together with replacement below this */
+            // is H2O2
+            Self::CargoxyEthylidene => molecular_formula!(H 3 C 3 O 3), /* double substituent, calculated to work with the additional side chain deletion */
+            Self::Deoxy => molecular_formula!(H 1),                     /* Together with the */
+            // replacement below
+            // this is O-1
+            Self::Didehydro => molecular_formula!(H -1 O 1), /* Together with the replacement */
+            // below this is H-2
+            Self::DiMethyl => molecular_formula!(H 5 C 2), /* assumed to replace the both the OH */
+            // and H on a single carbon
             Self::Ethanolamine => molecular_formula!(H 6 C 2 N 1 O 1),
             Self::EtOH => molecular_formula!(H 5 C 2 O 2),
             Self::Element(el) => MolecularFormula::new(&[(*el, None, 1)], &[]).unwrap(),
@@ -931,20 +925,26 @@ impl Chemical for GlycanSubstituent {
             Self::Glycolyl => molecular_formula!(H 3 C 2 O 2),
             Self::Glycyl | Self::NAcetyl => molecular_formula!(H 4 C 2 N 1 O 1),
             Self::HydroxyButyryl => molecular_formula!(H 7 C 4 O 2),
-            Self::HydroxyMethyl | Self::Ulo => molecular_formula!(H 3 C 1 O 2), // Ulo: replaces H, together with replacement below this is H2C1O1
+            Self::HydroxyMethyl | Self::Ulo => molecular_formula!(H 3 C 1 O 2), /* Ulo: replaces */
+            // H, together
+            // with replacement
+            // below this is
+            // H2C1O1
             Self::Lactyl => molecular_formula!(H 5 C 3 O 2),
             Self::Methyl => molecular_formula!(H 3 C 1),
             Self::NDiMe => molecular_formula!(H 6 C 2 N 1),
             Self::NFo => molecular_formula!(H 2 C 1 N 1 O 1),
             Self::NGlycolyl => molecular_formula!(H 4 C 2 N 1 O 2),
-            Self::OCarboxyEthyl => molecular_formula!(H 6 C 3 O 3), // Replaces H, together with replacement below this is H5C3O2
+            Self::OCarboxyEthyl => molecular_formula!(H 6 C 3 O 3), /* Replaces H, together with */
+            // replacement below this is
+            // H5C3O2
             Self::PCholine => molecular_formula!(H 14 C 5 N 1 O 4 P 1),
             Self::Phosphate => molecular_formula!(H 2 O 4 P 1),
             Self::Pyruvyl => molecular_formula!(H 3 C 3 O 2),
             Self::Suc => molecular_formula!(H 6 C 4 N 1 O 3),
             Self::Sulfate => molecular_formula!(H 1 O 4 S 1),
             Self::Tauryl => molecular_formula!(H 6 C 2 N 1 O 3 S 1),
-            Self::Ulof => molecular_formula!(H 4 C 1 O 2), // Replaces H, together with replacement below this is H3C1O1
+            Self::Ulof => molecular_formula!(H 4 C 1 O 2), /* Replaces H, together with replacement below this is H3C1O1 */
             Self::Water => molecular_formula!(H - 1),
         };
         side - molecular_formula!(O 1 H 1) // substituent so replaces a standard oxygen side chain

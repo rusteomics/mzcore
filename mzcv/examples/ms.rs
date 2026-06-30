@@ -3,7 +3,6 @@ use std::{borrow::Cow, io::Write, sync::Arc};
 
 use bincode::{Decode, Encode};
 use context_error::{BoxedError, CreateError, FullErrorContent, StaticErrorContent};
-
 use mzcv::{
     CVData, CVError, CVFile, CVIndex, CVSource, CVVersion, ControlledVocabulary, HashBufReader,
     OboOntology, OboStanzaType, RelationType, SynonymScope,
@@ -43,12 +42,7 @@ fn main() {
         std::io::stdin().read_line(&mut term).unwrap();
         let term = term.trim();
         let answers = term.strip_prefix("==").map_or_else(
-            || {
-                ms.search(term, 10, 6)
-                    .into_iter()
-                    .map(|(a, _, _)| a)
-                    .collect()
-            },
+            || ms.search(term, 10, 6).into_iter().map(|(a, ..)| a).collect(),
             |term| ms.get_by_name(term).map(|v| vec![v]).unwrap_or_default(),
         );
         if answers.is_empty() {
@@ -84,16 +78,20 @@ struct MSData {
 
 impl CVData for MSData {
     type Index = usize;
+
     fn index(&self) -> Option<usize> {
         self.index
     }
+
     fn curie(&self) -> Option<mzcv::Curie> {
         self.index
             .map(|v| ControlledVocabulary::MS.curie(mzcv::AccessionCode::Numeric(v as u32)))
     }
+
     fn name(&self) -> Option<Cow<'_, str>> {
         Some(Cow::Borrowed(&self.name))
     }
+
     fn synonyms(&self) -> impl Iterator<Item = &str> {
         self.synonyms
             .iter()
@@ -108,9 +106,11 @@ impl CVData for MSData {
 impl CVSource for MS {
     type Data = MSData;
     type Structure = Vec<Arc<MSData>>;
+
     fn cv_name() -> &'static str {
         "MS"
     }
+
     fn files() -> &'static [CVFile] {
         &[CVFile {
             name: "MS",
@@ -119,9 +119,11 @@ impl CVSource for MS {
             compression: mzcv::CVCompression::None,
         }]
     }
+
     fn static_data() -> Option<(CVVersion, Self::Structure)> {
         None
     }
+
     fn parse(
         mut reader: impl Iterator<Item = HashBufReader<Box<dyn std::io::Read>, impl sha2::Digest>>,
     ) -> Result<
@@ -161,7 +163,7 @@ impl CVSource for MS {
                                     .collect(),
                                 ..Default::default()
                             };
-                            if let Some((def, ids, _, _)) = obj.definition {
+                            if let Some((def, ids, ..)) = obj.definition {
                                 data.definition = def;
                                 data.cross_ids = ids;
                             }

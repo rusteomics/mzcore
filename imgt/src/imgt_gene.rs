@@ -1,11 +1,12 @@
-use std::collections::HashMap;
-use std::fmt::Display;
+use std::{collections::HashMap, fmt::Display};
 
-use crate::{AnnotatedSequence, Gene};
 use itertools::Itertools;
 use mzcore::sequence::{AminoAcid, Annotation, CheckedAminoAcid, Region};
 
-use crate::structs::{Location, SequenceRegion, SingleSeq};
+use crate::{
+    AnnotatedSequence, Gene,
+    structs::{Location, SequenceRegion, SingleSeq},
+};
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub(crate) struct IMGTGene {
@@ -22,10 +23,7 @@ impl IMGTGene {
 
         let sequence: Vec<AminoAcid> = regions.iter().flat_map(|reg| reg.1.0.clone()).collect();
         let dna: String = regions.iter().map(|reg| reg.1.2.clone()).collect();
-        let region_lengths = regions
-            .iter()
-            .map(|reg| (reg.0.clone(), reg.1.0.len()))
-            .collect();
+        let region_lengths = regions.iter().map(|reg| (reg.0.clone(), reg.1.0.len())).collect();
         let mut conserved: Vec<(Annotation, usize)> = self
             .regions
             .iter()
@@ -175,16 +173,17 @@ impl IMGTGene {
                         seq.extend(self.get_region(&with_chs, &with_chs.to_string()).ok());
                         secretory_added = true;
                     } else {
-                        // If this region is stored separately but some later region is combined with CHS
+                        // If this region is stored separately but some later region is combined
+                        // with CHS
                         seq.extend(self.get_region(&region, &region.to_string()).ok());
                     }
                 }
                 if !secretory_added {
                     seq.extend(self.get_region(&Region::SecratoryTail, "CHS").ok());
                 }
-                // possibly_add(Region::M, "M")?; // TODO: Potentially find a way to also allow the membrane bound version to be stored
-                // possibly_add(Region::M1, "M1")?;
-                // possibly_add(Region::M2, "M2")?;
+                // possibly_add(Region::M, "M")?; // TODO: Potentially find a way to also allow the
+                // membrane bound version to be stored possibly_add(Region::M1,
+                // "M1")?; possibly_add(Region::M2, "M2")?;
 
                 // Otherwise assume light chain
                 if seq.is_empty() {
@@ -255,8 +254,7 @@ fn fix_j(
     cdr3_length: usize,
 ) -> (Vec<SequenceRegion>, Vec<(Annotation, usize)>) {
     let (cdr3_loc, fr4_loc) =
-        j.1.splice(cdr3_length)
-            .expect("CDR3 should fit in full FR4 of J gene");
+        j.1.splice(cdr3_length).expect("CDR3 should fit in full FR4 of J gene");
     let cdr3 = (
         j.0[..cdr3_length].to_vec(),
         cdr3_loc,

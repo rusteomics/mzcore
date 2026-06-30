@@ -3,17 +3,17 @@ use std::hash::Hash;
 
 use serde::{Deserialize, Serialize};
 
+use super::{glycan::MonoSaccharide, position::GlycanPosition};
 use crate::{
     chemistry::{Chemical, MolecularFormula},
     glycan::position::GlycanBreakPos,
     sequence::{AminoAcid, SequencePosition},
 };
 
-use super::{glycan::MonoSaccharide, position::GlycanPosition};
-
 /// The index in the branches as stored in the structure
 pub type GlycanBranchIndex = usize;
-/// The index in the branches when the branches are sorted on mass, this is used to properly render the names of the branches for human consumption
+/// The index in the branches when the branches are sorted on mass, this is used to properly render
+/// the names of the branches for human consumption
 pub type GlycanBranchMassIndex = usize;
 
 /// Rose tree representation of glycan structure
@@ -27,13 +27,14 @@ pub struct PositionedGlycanStructure {
     pub inner_depth: u16,
     /// The outer depth, the number of steps needed to get to the closest leaf node
     pub outer_depth: u16,
-    /// The branches taken to get to this location (from the root) as the index in the branches and the index in the branches when sorted by mass.
-    /// For a general glycan with a fucose on the first hexnac and a bisection after the core double
-    /// hexnac + hex, this variable will contain an empty list for the root hexnac. For the fucose
-    /// this variable will contain `[(0, 1)]` indicating it is the first branch in the structure but
-    /// the second branch if the branches are sorted by mass. For the monosaccharides in the left
-    /// bisection this variable will contain `[(1, 0), (0, 0)]`, indicating that it took the main
-    /// branch (and not the fucose) and that it took the left branch for the second bisection which
+    /// The branches taken to get to this location (from the root) as the index in the branches and
+    /// the index in the branches when sorted by mass. For a general glycan with a fucose on
+    /// the first hexnac and a bisection after the core double hexnac + hex, this variable will
+    /// contain an empty list for the root hexnac. For the fucose this variable will contain
+    /// `[(0, 1)]` indicating it is the first branch in the structure but the second branch if
+    /// the branches are sorted by mass. For the monosaccharides in the left bisection this
+    /// variable will contain `[(1, 0), (0, 0)]`, indicating that it took the main branch (and
+    /// not the fucose) and that it took the left branch for the second bisection which
     /// is heavier than the right branch.
     pub branch: Vec<(GlycanBranchIndex, GlycanBranchMassIndex)>,
 }
@@ -80,15 +81,17 @@ impl PositionedGlycanStructure {
             .collect()
     }
 
-    /// All possible bonds that can be broken and the molecular formula that would be held over if these bonds all broke and the broken off parts are lost.
+    /// All possible bonds that can be broken and the molecular formula that would be held over if
+    /// these bonds all broke and the broken off parts are lost.
     pub fn internal_break_points(
         &self,
         depth: u8,
         peptidoform_index: usize,
         attachment: Option<(AminoAcid, SequencePosition)>,
     ) -> Vec<(MolecularFormula, Vec<GlycanBreakPos>, u8)> {
-        // Find every internal fragment ending at this bond (in a B breakage) (all bonds found are Y breakages and endings)
-        // Walk through all branches and determine all possible breakages
+        // Find every internal fragment ending at this bond (in a B breakage) (all bonds found are Y
+        // breakages and endings) Walk through all branches and determine all possible
+        // breakages
         if self.branches.is_empty() {
             vec![
                 (

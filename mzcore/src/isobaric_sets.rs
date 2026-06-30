@@ -19,8 +19,9 @@ pub type BuildingBlocks = Vec<(SequenceElement<SemiAmbiguous>, Mass)>;
 /// A list of all combinations of terminal modifications and their accompanying amino acid
 pub type TerminalBuildingBlocks = Vec<(SequenceElement<SemiAmbiguous>, SimpleModification, Mass)>;
 /// Get the possible building blocks for sequences based on the given modifications.
-/// Useful for any automated sequence generation, like isobaric set generation or de novo sequencing.
-/// The result is for each location (N term, center, C term) the list of all possible building blocks with its mass, sorted on mass.
+/// Useful for any automated sequence generation, like isobaric set generation or de novo
+/// sequencing. The result is for each location (N term, center, C term) the list of all possible
+/// building blocks with its mass, sorted on mass.
 /// # Panics
 /// Panics if any of the modifications does not have a defined mass.
 pub fn building_blocks(
@@ -42,7 +43,7 @@ pub fn building_blocks(
             specificities.is_empty()
                 || specificities
                     .iter()
-                    .any(|(rules, _, _)| PlacementRule::any_possible(rules, seq, position))
+                    .any(|(rules, ..)| PlacementRule::any_possible(rules, seq, position))
         } else {
             true
         }
@@ -50,11 +51,7 @@ pub fn building_blocks(
     fn n_term_options(amino_acids: &[AminoAcid], rule: &PlacementRule) -> Vec<AminoAcid> {
         match rule {
             PlacementRule::AminoAcid(aa, Position::AnyNTerm | Position::ProteinNTerm) => {
-                amino_acids
-                    .iter()
-                    .filter(|a| aa.contains(a))
-                    .copied()
-                    .collect_vec()
+                amino_acids.iter().filter(|a| aa.contains(a)).copied().collect_vec()
             }
             PlacementRule::Position(Position::AnyNTerm | Position::ProteinNTerm) => {
                 amino_acids.iter().copied().collect_vec()
@@ -65,11 +62,7 @@ pub fn building_blocks(
     fn c_term_options(amino_acids: &[AminoAcid], rule: &PlacementRule) -> Vec<AminoAcid> {
         match rule {
             PlacementRule::AminoAcid(aa, Position::AnyCTerm | Position::ProteinCTerm) => {
-                amino_acids
-                    .iter()
-                    .filter(|a| aa.contains(a))
-                    .copied()
-                    .collect_vec()
+                amino_acids.iter().filter(|a| aa.contains(a)).copied().collect_vec()
             }
             PlacementRule::Position(Position::AnyCTerm | Position::ProteinCTerm) => {
                 amino_acids.iter().copied().collect_vec()
@@ -93,7 +86,7 @@ pub fn building_blocks(
                         {
                             specificities
                                 .iter()
-                                .flat_map(|(rules, _, _)| {
+                                .flat_map(|(rules, ..)| {
                                     rules.iter().flat_map(position).collect_vec()
                                 })
                                 .unique()
@@ -232,8 +225,8 @@ pub fn building_blocks(
 
 /// Find the isobaric sets for the given mass with the given modifications and ppm error.
 /// The modifications are placed on any location they are allowed based on the given placement
-/// rules, so using any modifications which provide those is advised. If the provided [`Peptidoform`]
-/// has multiple formulas, it uses the formula with the lowest monoisotopic mass.
+/// rules, so using any modifications which provide those is advised. If the provided
+/// [`Peptidoform`] has multiple formulas, it uses the formula with the lowest monoisotopic mass.
 /// # Panics
 /// Panics if any of the modifications does not have a defined mass. Or if the weight of the
 /// base selection is already in the tolerance of the given mass.
@@ -277,7 +270,8 @@ pub struct IsobaricSetIterator {
 }
 
 impl IsobaricSetIterator {
-    /// `n_term` & `c_term` are the possible combinations of terminal modifications with their valid placements and the full mass of this combo
+    /// `n_term` & `c_term` are the possible combinations of terminal modifications with their valid
+    /// placements and the full mass of this combo.
     /// # Panics
     /// If there is not at least one element in the `center` list.
     fn new(
@@ -306,13 +300,7 @@ impl IsobaricSetIterator {
     fn current_mass(&self) -> Mass {
         self.state.0.map(|i| self.n_term[i].2).unwrap_or_default()
             + self.state.1.map(|i| self.c_term[i].2).unwrap_or_default()
-            + self
-                .state
-                .2
-                .iter()
-                .copied()
-                .map(|i| self.center[i].1)
-                .sum::<Mass>()
+            + self.state.2.iter().copied().map(|i| self.center[i].1).sum::<Mass>()
     }
 
     fn mass_fits(&self) -> Ordering {
@@ -335,11 +323,7 @@ impl IsobaricSetIterator {
                 + usize::from(self.state.0.is_some())
                 + usize::from(self.state.1.is_some()),
         );
-        if self
-            .base
-            .as_ref()
-            .is_some_and(|b| !b.get_n_term().is_empty())
-        {
+        if self.base.as_ref().is_some_and(|b| !b.get_n_term().is_empty()) {
             sequence.push(self.base.as_ref().unwrap().sequence()[0].clone());
         } else if let Some(n) = self.state.0.map(|i| self.n_term[i].clone()) {
             sequence.push(n.0.into());
@@ -349,27 +333,9 @@ impl IsobaricSetIterator {
             let c = usize::from(base.get_c_term().is_empty());
             sequence.extend(base.sequence()[n..base.len() - n - c].iter().cloned());
         }
-        sequence.extend(
-            self.state
-                .2
-                .iter()
-                .copied()
-                .map(|i| self.center[i].0.clone().into()),
-        );
-        if self
-            .base
-            .as_ref()
-            .is_some_and(|b| !b.get_c_term().is_empty())
-        {
-            sequence.push(
-                self.base
-                    .as_ref()
-                    .unwrap()
-                    .sequence()
-                    .last()
-                    .unwrap()
-                    .clone(),
-            );
+        sequence.extend(self.state.2.iter().copied().map(|i| self.center[i].0.clone().into()));
+        if self.base.as_ref().is_some_and(|b| !b.get_c_term().is_empty()) {
+            sequence.push(self.base.as_ref().unwrap().sequence().last().unwrap().clone());
         } else if let Some(c) = self.state.1.map(|i| self.c_term[i].clone()) {
             sequence.push(c.0.into());
         }
@@ -403,6 +369,7 @@ impl IsobaricSetIterator {
 
 impl Iterator for IsobaricSetIterator {
     type Item = Peptidoform<SimpleLinear>;
+
     fn next(&mut self) -> Option<Self::Item> {
         loop {
             // N terminal loop
@@ -411,8 +378,9 @@ impl Iterator for IsobaricSetIterator {
 
                 // Main loop
                 while !self.state.2.is_empty() {
-                    // Do state + 1 at the highest level where this is still possible and check if that one fits the bounds
-                    // Until every level is full then pop and try with one fewer number of amino acids
+                    // Do state + 1 at the highest level where this is still possible and check if
+                    // that one fits the bounds Until every level is full then
+                    // pop and try with one fewer number of amino acids
                     while !self.state.2.iter().all(|s| *s == self.center.len() - 1) {
                         let mut level = self.state.2.len() - 1;
                         loop {
@@ -424,13 +392,16 @@ impl Iterator for IsobaricSetIterator {
                             } else {
                                 // Update this level
                                 self.state.2[level] += 1;
-                                // Reset the levels above, has to start at minimal at the index of this level to prevent 'rotations' of the set to show up
+                                // Reset the levels above, has to start at minimal at the index of
+                                // this level to prevent 'rotations' of the set to show up
                                 for l in level + 1..self.state.2.len() {
                                     self.state.2[l] = self.state.2[level];
                                 }
                                 match self.mass_fits() {
                                     Ordering::Greater => {
-                                        // If the mass is too great the level below will have the be changed, otherwise it could only be getting heavier with the next iteration(s)
+                                        // If the mass is too great the level below will have the be
+                                        // changed, otherwise it could only be getting heavier with
+                                        // the next iteration(s)
                                         if level == 0 {
                                             break;
                                         }
@@ -440,8 +411,11 @@ impl Iterator for IsobaricSetIterator {
                                         return Some(self.peptide());
                                     }
                                     Ordering::Less => {
-                                        // If there a way to reach at least the lower limit by having all the heaviest options selected try and reach them.
-                                        // Otherwise this will increase this level again next iteration.
+                                        // If there a way to reach at least the lower limit by
+                                        // having all the heaviest options selected try and reach
+                                        // them.
+                                        // Otherwise this will increase this level again next
+                                        // iteration.
                                         if self.state.2[0..level]
                                             .iter()
                                             .map(|i| self.center[*i].1)
@@ -478,12 +452,10 @@ impl Iterator for IsobaricSetIterator {
                     }
                     self.state.1 = Some(c + 1);
                 } else if self.c_term.is_empty()
-                    || self
-                        .base
-                        .as_ref()
-                        .is_some_and(|b| !b.get_c_term().is_empty())
+                    || self.base.as_ref().is_some_and(|b| !b.get_c_term().is_empty())
                 {
-                    // If the base piece has a defined C term mod do not try possible C term mods in the isobaric generation
+                    // If the base piece has a defined C term mod do not try possible C term mods in
+                    // the isobaric generation
                     break;
                 } else {
                     self.state.1 = Some(0);
@@ -497,12 +469,10 @@ impl Iterator for IsobaricSetIterator {
                 }
                 self.state.0 = Some(n + 1);
             } else if self.n_term.is_empty()
-                || self
-                    .base
-                    .as_ref()
-                    .is_some_and(|b| !b.get_n_term().is_empty())
+                || self.base.as_ref().is_some_and(|b| !b.get_n_term().is_empty())
             {
-                // If the base piece has a defined N term mod do not try possible N term mods in the isobaric generation
+                // If the base piece has a defined N term mod do not try possible N term mods in the
+                // isobaric generation
                 break;
             } else {
                 self.state.1 = Some(0);
@@ -517,9 +487,8 @@ impl Iterator for IsobaricSetIterator {
 #[expect(clippy::missing_panics_doc)]
 mod tests {
 
-    use crate::ontology::Ontologies;
-
     use super::*;
+    use crate::ontology::Ontologies;
     #[test]
     fn simple_isobaric_sets() {
         let ontologies = Ontologies::empty();
@@ -537,20 +506,17 @@ mod tests {
             None,
         )
         .collect();
-        assert_eq!(
-            &sets,
-            &[
-                Peptidoform::pro_forma("GA", &ontologies)
-                    .unwrap()
-                    .0
-                    .into_simple_linear()
-                    .unwrap(),
-                Peptidoform::pro_forma("Q", &ontologies)
-                    .unwrap()
-                    .0
-                    .into_simple_linear()
-                    .unwrap(),
-            ]
-        );
+        assert_eq!(&sets, &[
+            Peptidoform::pro_forma("GA", &ontologies)
+                .unwrap()
+                .0
+                .into_simple_linear()
+                .unwrap(),
+            Peptidoform::pro_forma("Q", &ontologies)
+                .unwrap()
+                .0
+                .into_simple_linear()
+                .unwrap(),
+        ]);
     }
 }

@@ -428,9 +428,7 @@ fn parse_chimeric() {
     assert_eq!(trimeric.peptidoform_ions()[1].peptidoforms()[0].len(), 2);
     assert_eq!(trimeric.peptidoform_ions()[2].peptidoforms()[0].len(), 3);
     assert_eq!(
-        trimeric.peptidoform_ions()[1].peptidoforms()[0]
-            .get_c_term()
-            .len(),
+        trimeric.peptidoform_ions()[1].peptidoforms()[0].get_c_term().len(),
         1
     );
 }

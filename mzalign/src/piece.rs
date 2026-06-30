@@ -1,7 +1,9 @@
-use super::scoring::MatchType;
 use serde::{Deserialize, Serialize};
 
-/// A piece in an alignment, determining what step was taken in the alignment and how this impacted the score
+use super::scoring::MatchType;
+
+/// A piece in an alignment, determining what step was taken in the alignment and how this impacted
+/// the score
 #[derive(
     Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Default, Serialize, Deserialize,
 )]
@@ -52,20 +54,16 @@ impl Piece {
 
         impl std::fmt::Display for StepType {
             fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-                write!(
-                    f,
-                    "{}",
-                    match self {
-                        Self::Insertion => String::from("I"),
-                        Self::Deletion => String::from("D"),
-                        Self::Match => String::from("="),
-                        Self::Mismatch => String::from("X"),
-                        Self::Massmismatch => String::from("m"),
-                        Self::Rotation(a) => format!("{a}r"),
-                        Self::IsobaricIdentical(a) => format!("{a}i"),
-                        Self::Isobaric(a, b) => format!("{a}:{b}i"),
-                    }
-                )
+                write!(f, "{}", match self {
+                    Self::Insertion => String::from("I"),
+                    Self::Deletion => String::from("D"),
+                    Self::Match => String::from("="),
+                    Self::Mismatch => String::from("X"),
+                    Self::Massmismatch => String::from("m"),
+                    Self::Rotation(a) => format!("{a}r"),
+                    Self::IsobaricIdentical(a) => format!("{a}i"),
+                    Self::Isobaric(a, b) => format!("{a}:{b}i"),
+                })
             }
         }
 
@@ -113,7 +111,9 @@ impl Piece {
                 | StepType::Isobaric(..)
                 | StepType::IsobaricIdentical(..)),
                 _,
-            )) => format!("{output}{t}"),
+            )) => {
+                format!("{output}{t}")
+            }
             Some((t, n)) => format!("{output}{n}{t}"),
             _ => output,
         }

@@ -2,9 +2,9 @@
 use std::io::{BufRead, BufReader};
 
 use context_error::{BasicKind, BoxedError, Context, CreateError};
+use mzcore::sequence::SimpleLinear;
 
 use crate::{MaybePeptidoform, MzTabPSM, PSM, test_psm};
-use mzcore::sequence::SimpleLinear;
 
 #[test]
 fn pride_exp_excerpt_ac_1643() {
@@ -128,14 +128,11 @@ fn open_file(reader: impl BufRead) -> Result<usize, BoxedError<'static, BasicKin
         let peptidoform: PSM<SimpleLinear, MaybePeptidoform> = read.clone().into();
         peptides += 1;
 
-        test_psm(
-            &peptidoform,
-            crate::TestSettings {
-                allow_mass_mods: true,
-                allow_misplaced_modifications: true,
-                ..Default::default()
-            },
-        )
+        test_psm(&peptidoform, crate::TestSettings {
+            allow_mass_mods: true,
+            allow_misplaced_modifications: true,
+            ..Default::default()
+        })
         .map_err(|err| {
             BoxedError::new(
                 BasicKind::Error,

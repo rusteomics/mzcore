@@ -4,12 +4,11 @@ use std::collections::HashMap;
 use context_error::{
     BoxedError, Context, CreateError, FullErrorContent, combine_error, combine_errors,
 };
-use thin_vec::ThinVec;
-
 use mzcv::{
     AccessionCodeParseError, CVError, CVFile, CVSource, CVVersion, HashBufReader, OboIdentifier,
     OboOntology, OboStanzaType, RelationType,
 };
+use thin_vec::ThinVec;
 
 use crate::{
     glycan::{GlycanStructure, MonoSaccharide},
@@ -105,25 +104,20 @@ impl CVSource for Gnome {
                     modification.id.cross_ids.push(CrossId::ChEBI(chebi));
                 }
                 if let Some(pubchem) = structure.pubchem {
-                    modification
-                        .id
-                        .cross_ids
-                        .push(CrossId::PubChemCompound(pubchem));
+                    modification.id.cross_ids.push(CrossId::PubChemCompound(pubchem));
                 }
                 modification.motif = structure.motif.clone();
                 modification.taxonomy = structure.taxonomy.clone().into();
                 modification.glycomeatlas = structure.glycomeatlas.clone();
             } else if let Some(id) = &modification.topology_id {
-                modification.topology = structures
-                    .get(id.as_ref())
-                    .and_then(|s| s.structure.clone());
+                modification.topology =
+                    structures.get(id.as_ref()).and_then(|s| s.structure.clone());
             }
             if modification.composition.is_none()
                 && let Some(composition_id) = &modification.composition_id
             {
-                modification.composition = read_mods
-                    .get(composition_id.as_ref())
-                    .and_then(|g| g.composition.clone());
+                modification.composition =
+                    read_mods.get(composition_id.as_ref()).and_then(|g| g.composition.clone());
             }
         }
 
@@ -153,13 +147,15 @@ mod gnome_terms {
     pub(super) const HAS_GLYTOUCAN_LINK: &str = "GNO:00000023";
     pub(super) const IS_SUBSUMED_BY: &str = "GNO:00000024";
     pub(super) const IS_RESTRICTION_MEMBER: &str = "GNO:00000025";
-    /// Is the basic composition the same, meaning the same monosaccharides (without isomeric information)
+    /// Is the basic composition the same, meaning the same monosaccharides (without isomeric
+    /// information)
     pub(super) const HAS_BASECOMPOSITION: &str = "GNO:00000033";
     /// Is the composition the same, meaning the same monosaccharides
     pub(super) const HAS_COMPOSITION: &str = "GNO:00000034";
     /// Is the basic structure the same (if anomeric and linkage information are thrown overboard)
     pub(super) const HAS_TOPOLOGY: &str = "GNO:00000035";
-    /// Is the linked structure the same (if anomeric and reducing end ring information are thrown overboard)
+    /// Is the linked structure the same (if anomeric and reducing end ring information are thrown
+    /// overboard)
     pub(super) const HAS_ARCHETYPE: &str = "GNO:00000036";
     pub(super) const HAS_STRUCTURE_BROWSER_LINK: &str = "GNO:00000041";
     pub(super) const HAS_COMPOSITION_BROWSER_LINK: &str = "GNO:00000042";
@@ -232,11 +228,9 @@ fn parse_gnome(
                 Ontology::Gnome,
                 obj.id.1,
                 code,
-                Box::default(), // Description is never useful (either contains the mass or contains the ID never anything unique)
-                obj.synonyms
-                    .iter()
-                    .map(|s| (s.scope, s.synonym.clone()))
-                    .collect(),
+                Box::default(), /* Description is never useful (either contains the mass or
+                                 * contains the ID never anything unique) */
+                obj.synonyms.iter().map(|s| (s.scope, s.synonym.clone())).collect(),
                 obj.property_values
                     .get(HAS_GLYTOUCAN_ID)
                     .map(|v| {
@@ -257,24 +251,20 @@ fn parse_gnome(
                         )
                     }))
                     .chain(
-                        obj.property_values
-                            .get(HAS_COMPOSITION_BROWSER_LINK)
-                            .map(|v| {
-                                CrossId::URL(
-                                    Some("CompositionBrowser".into()),
-                                    v[0].0.to_string().into_boxed_str(),
-                                )
-                            }),
+                        obj.property_values.get(HAS_COMPOSITION_BROWSER_LINK).map(|v| {
+                            CrossId::URL(
+                                Some("CompositionBrowser".into()),
+                                v[0].0.to_string().into_boxed_str(),
+                            )
+                        }),
                     )
                     .chain(
-                        obj.property_values
-                            .get(HAS_STRUCTURE_BROWSER_LINK)
-                            .map(|v| {
-                                CrossId::URL(
-                                    Some("StructureBrowser".into()),
-                                    v[0].0.to_string().into_boxed_str(),
-                                )
-                            }),
+                        obj.property_values.get(HAS_STRUCTURE_BROWSER_LINK).map(|v| {
+                            CrossId::URL(
+                                Some("StructureBrowser".into()),
+                                v[0].0.to_string().into_boxed_str(),
+                            )
+                        }),
                     )
                     .collect(),
                 obj.obsolete,
@@ -334,31 +324,26 @@ fn parse_gnome(
                 .lines
                 .get("name")
                 .map(|e| &e[0])
-                .filter(|(n, _, _)| n.len() > 30)
-                .and_then(|(name, _, _)| name[27..name.len() - 3].parse::<f64>().ok()),
-            composition: obj
-                .property_values
-                .get(SHORTUCKB_COMPOSITION)
-                .and_then(|lines| {
-                    match MonoSaccharide::pro_forma_composition::<false>(&lines[0].0.to_string()) {
-                        Ok((v, _)) => Some(v),
-                        Err(e)
-                            if e.len() == 1
-                                && e[0].get_kind()
-                                    == crate::glycan::GlycanCompositionError::Empty =>
-                        {
-                            None
-                        }
-                        Err(e) => {
-                            combine_errors(
-                                &mut errors,
-                                e.into_iter()
-                                    .map(|e| e.to_owned().convert(|_| CVError::ItemError)),
-                            );
-                            None
-                        }
+                .filter(|(n, ..)| n.len() > 30)
+                .and_then(|(name, ..)| name[27..name.len() - 3].parse::<f64>().ok()),
+            composition: obj.property_values.get(SHORTUCKB_COMPOSITION).and_then(|lines| {
+                match MonoSaccharide::pro_forma_composition::<false>(&lines[0].0.to_string()) {
+                    Ok((v, _)) => Some(v),
+                    Err(e)
+                        if e.len() == 1
+                            && e[0].get_kind() == crate::glycan::GlycanCompositionError::Empty =>
+                    {
+                        None
                     }
-                }),
+                    Err(e) => {
+                        combine_errors(
+                            &mut errors,
+                            e.into_iter().map(|e| e.to_owned().convert(|_| CVError::ItemError)),
+                        );
+                        None
+                    }
+                }
+            }),
             topology: None, // Will be looked up later
             motif: None,
             taxonomy: ThinVec::new(),

@@ -1,8 +1,7 @@
-use serde::{Deserialize, Serialize};
-
 use mzcore::{
     chemistry::MassMode, quantities::Tolerance, sequence::AminoAcid, system::OrderedMass,
 };
+use serde::{Deserialize, Serialize};
 
 /// The type of a single match step
 #[derive(
@@ -29,34 +28,35 @@ pub enum MatchType {
     Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Default, Serialize, Deserialize,
 )]
 pub enum PairMode {
-    /// Either database to database or peptidoform to peptidoform, meaning that modifications occurring in on have to occur in the other.
+    /// Either database to database or peptidoform to peptidoform, meaning that modifications
+    /// occurring in on have to occur in the other.
     #[default]
     Same,
-    /// The first sequence is a database the second a peptidoform, meaning that any modification in the first have to occur in the second, while any modification in the second does not have to occur in the first.
+    /// The first sequence is a database the second a peptidoform, meaning that any modification in
+    /// the first have to occur in the second, while any modification in the second does not have to
+    /// occur in the first.
     DatabaseToPeptidoform,
-    /// The first sequence is a peptidoform the second a database, meaning that any modification in the second have to occur in the first, while any modification in the first does not have to occur in the second.
+    /// The first sequence is a peptidoform the second a database, meaning that any modification in
+    /// the second have to occur in the first, while any modification in the first does not have to
+    /// occur in the second.
     PeptidoformToDatabase,
 }
 
 impl std::fmt::Display for PairMode {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "{}",
-            match self {
-                Self::Same => "Same",
-                Self::DatabaseToPeptidoform => "Database to Peptidoform",
-                Self::PeptidoformToDatabase => "Peptidoform to Database",
-            }
-        )
+        write!(f, "{}", match self {
+            Self::Same => "Same",
+            Self::DatabaseToPeptidoform => "Database to Peptidoform",
+            Self::PeptidoformToDatabase => "Peptidoform to Database",
+        })
     }
 }
 
 /// The scoring parameters for the mass alignment.
 ///
 /// Design parameters for the scoring systems are as follows:
-/// * A positive `mass_base` is needed to ensure breaking up of adjecent isobaric/rotated parts.
-///   For example `IGG` vs `LN` should be `1i2:1i` not `3:2i`.
+/// * A positive `mass_base` is needed to ensure breaking up of adjecent isobaric/rotated parts. For
+///   example `IGG` vs `LN` should be `1i2:1i` not `3:2i`.
 /// * A higher score for `rotated` is needed to ensure rotation preference over `isobaric`.
 /// * The `matrix` should be chosen to have higher scores than the rotated score to prevent spurious
 ///   rotations from being added.
@@ -67,11 +67,11 @@ pub struct AlignScoring<'a> {
     ///
     /// Default: 0.
     pub mismatch: i8,
-    /// The additional score for a step if the amino acids are identical but the mass of the sequence
-    /// elements are not the same. This is the case if the pair mode is [`PairMode::DatabaseToPeptidoform`]
-    /// or [`PairMode::PeptidoformToDatabase`] and the peptidoform has a modification at this location
-    /// that does not occur in the database. The local score for the step is calculated as follows:
-    /// `matrix_score + mass_mismatch`.
+    /// The additional score for a step if the amino acids are identical but the mass of the
+    /// sequence elements are not the same. This is the case if the pair mode is
+    /// [`PairMode::DatabaseToPeptidoform`] or [`PairMode::PeptidoformToDatabase`] and the
+    /// peptidoform has a modification at this location that does not occur in the database.
+    /// The local score for the step is calculated as follows: `matrix_score + mass_mismatch`.
     ///
     /// Default: 0.
     pub mass_mismatch: i8,
@@ -89,8 +89,8 @@ pub struct AlignScoring<'a> {
     ///
     /// Default: 2.
     pub isobaric: i8,
-    /// The gap start score for affine gaps, this is the score for starting any gap. The total score
-    /// for a full gap will be `gap_start + gap_extend * len`.
+    /// The gap start score for affine gaps, this is the score for starting any gap. The total
+    /// score for a full gap will be `gap_start + gap_extend * len`.
     ///
     /// Default: -4.
     pub gap_start: i8,
@@ -136,7 +136,9 @@ impl Default for AlignScoring<'static> {
 }
 
 /// Matrices from: <https://www.ncbi.nlm.nih.gov/IEB/ToolBox/CPP_DOC/lxr/source/src/util/tables/> and <https://www.ncbi.nlm.nih.gov/IEB/ToolBox/C_DOC/lxr/source/data/>, the PAM30MS matrix is from <https://www.openms.org/doxygen/release/2.3.0/html/ConsensusIDAlgorithmPEPMatrix_8h_source.html>.
-/// The UO columns are added by me (see top left for the original matrix used by me) (B/J/Z is the rounded down average of the corresponding non ambiguous AAs) (All these are exactly the same for all matrices).
+/// The UO columns are added by me (see top left for the original matrix used by me) (B/J/Z is the
+/// rounded down average of the corresponding non ambiguous AAs) (All these are exactly the same for
+/// all matrices).
 pub(super) mod matrices {
     use mzcore::sequence::AminoAcid;
     /// BLOSUM45 matrix

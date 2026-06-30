@@ -18,9 +18,6 @@ mod spectrum_id;
 #[cfg(test)]
 mod test;
 
-#[cfg(test)]
-use test::*;
-
 pub use file_format::*;
 pub use formats::*;
 pub use general::*;
@@ -31,10 +28,13 @@ pub use psm::*;
 pub use psm_metadata::*;
 pub use source::*;
 pub use spectrum_id::*;
+#[cfg(test)]
+use test::*;
 
 mod helper_functions;
 
-/// A subset of the types and traits that are envisioned to be used the most, importing this is a good starting point for working with the crate
+/// A subset of the types and traits that are envisioned to be used the most, importing this is a
+/// good starting point for working with the crate
 pub mod prelude {
     pub use crate::{PSM, PSMMetaData, ProteinMetaData, open_psm_file};
 }

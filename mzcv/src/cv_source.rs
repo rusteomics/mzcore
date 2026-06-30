@@ -7,7 +7,8 @@ use sha2::Digest;
 
 use crate::{CVError, Curie, hash_buf_reader::HashBufReader};
 
-/// Implement this trait to create a new CV. The best way of using this is with a ZST (zero sized type).
+/// Implement this trait to create a new CV. The best way of using this is with a ZST (zero sized
+/// type).
 /// ```rust ignore
 /// struct Unimod {}
 ///
@@ -24,13 +25,16 @@ pub trait CVSource {
     const AUTOMATICALLY_WRITE_UNCOMPRESSED: bool = false;
     /// The data item that is stored in the CV
     type Data: CVData + 'static;
-    /// The type of the main data structure to keep all data items (used to build any kind of hierarchy necessary)
+    /// The type of the main data structure to keep all data items (used to build any kind of
+    /// hierarchy necessary)
     type Structure: CVStructure<Self::Data> + Encode + Decode<()>;
-    /// The label of the CV, the identifier that is used at the start of CURIEs. Defaults to the name.
+    /// The label of the CV, the identifier that is used at the start of CURIEs. Defaults to the
+    /// name.
     fn cv_label() -> &'static str {
         Self::cv_name()
     }
-    /// The name of the CV, used to create the paths to store intermediate files and caches so has to be valid in that context
+    /// The name of the CV, used to create the paths to store intermediate files and caches so has
+    /// to be valid in that context
     fn cv_name() -> &'static str;
     /// The source files for the CV
     fn files() -> &'static [CVFile];
@@ -38,7 +42,8 @@ pub trait CVSource {
     fn static_data() -> Option<(CVVersion, Self::Structure)>;
     /// The default file stem (no extension).
     /// # Panics
-    /// If both [`ProjectDirs::from`] and [`BaseDirs::new`] failed to retrieve a suitable base folder.
+    /// If both [`ProjectDirs::from`] and [`BaseDirs::new`] failed to retrieve a suitable base
+    /// folder.
     fn default_stem() -> std::path::PathBuf {
         let proj_dirs = ProjectDirs::from("org", "rusteomics", "mzcore");
         let base = BaseDirs::new();
@@ -84,7 +89,8 @@ pub trait CVSource {
 /// The description of a file that is used to built a controlled vocabulary.
 #[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
 pub struct CVFile {
-    /// The name of the CV, used to create the paths to store intermediate files and caches so has to be valid in that context
+    /// The name of the CV, used to create the paths to store intermediate files and caches so has
+    /// to be valid in that context
     pub name: &'static str,
     /// The file extension of the CV
     pub extension: &'static str,
@@ -143,15 +149,18 @@ pub trait CVData: Clone {
     /// [`crate::CVIndex`] but should be reported in the correct casing here.
     fn name(&self) -> Option<std::borrow::Cow<'_, str>>;
 
-    /// Any synonyms that can be uniquely attributed to this data element. So EXACT synonyms from Obo files.
+    /// Any synonyms that can be uniquely attributed to this data element. So EXACT synonyms from
+    /// Obo files.
     fn synonyms(&self) -> impl Iterator<Item = &str>;
 
-    /// Enumerate all the immediate parents of this term, e.g. those with an `is_a` relationship with it. This behaviour is strictly *opt-in*.
+    /// Enumerate all the immediate parents of this term, e.g. those with an `is_a` relationship
+    /// with it. This behaviour is strictly *opt-in*.
     fn parents(&self) -> impl Iterator<Item = &Self::Index> {
         std::iter::empty()
     }
 
-    /// Enumerate all the immediate children of this term, e.g. those with an `is_a` relationship with this node. This behaviour is strictly *opt-in*.
+    /// Enumerate all the immediate children of this term, e.g. those with an `is_a` relationship
+    /// with this node. This behaviour is strictly *opt-in*.
     fn children(&self) -> impl Iterator<Item = &Self::Index> {
         std::iter::empty()
     }
@@ -167,7 +176,8 @@ pub enum CVCompression {
     Lzw,
 }
 
-/// A structure to contain [`CVData`] elements but leave the implementation up to the needs of the specific CV.
+/// A structure to contain [`CVData`] elements but leave the implementation up to the needs of the
+/// specific CV.
 pub trait CVStructure<Data>: Default {
     /// See if no data items are present
     fn is_empty(&self) -> bool;
@@ -198,36 +208,44 @@ pub trait CVStructure<Data>: Default {
 }
 
 impl<T> CVStructure<T> for Vec<std::sync::Arc<T>> {
-    fn is_empty(&self) -> bool {
-        self.is_empty()
-    }
-    fn len(&self) -> usize {
-        self.len()
-    }
-    fn clear(&mut self) {
-        self.clear();
-    }
-    type IterIndexed<'a>
-        = std::iter::Enumerate<std::iter::Cloned<std::slice::Iter<'a, std::sync::Arc<T>>>>
-    where
-        T: 'a;
-    fn iter_indexed(&self) -> Self::IterIndexed<'_> {
-        self.iter().cloned().enumerate()
-    }
+    type Index = usize;
     type IterData<'a>
         = std::iter::Cloned<std::slice::Iter<'a, std::sync::Arc<T>>>
     where
         T: 'a;
+    type IterIndexed<'a>
+        = std::iter::Enumerate<std::iter::Cloned<std::slice::Iter<'a, std::sync::Arc<T>>>>
+    where
+        T: 'a;
+
+    fn is_empty(&self) -> bool {
+        self.is_empty()
+    }
+
+    fn len(&self) -> usize {
+        self.len()
+    }
+
+    fn clear(&mut self) {
+        self.clear();
+    }
+
+    fn iter_indexed(&self) -> Self::IterIndexed<'_> {
+        self.iter().cloned().enumerate()
+    }
+
     fn iter_data(&self) -> Self::IterData<'_> {
         self.iter().cloned()
     }
+
     fn add(&mut self, data: std::sync::Arc<T>) {
         self.push(data);
     }
-    type Index = usize;
+
     fn index(&self, index: Self::Index) -> Option<std::sync::Arc<T>> {
         self.get(index).cloned()
     }
+
     fn remove(&mut self, index: Self::Index) {
         self.remove(index);
     }

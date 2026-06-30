@@ -1,29 +1,33 @@
-use mzcv::CVIndex;
-#[cfg(feature = "rayon")]
-use rayon::prelude::*;
 use std::collections::HashSet;
 
 use mzcore::sequence::{
     AnnotatedPeptidoform, Annotation, HasPeptidoformImpl, Peptidoform, Region, UnAmbiguous,
 };
+use mzcv::CVIndex;
+#[cfg(feature = "rayon")]
+use rayon::prelude::*;
 
 pub(super) use super::*;
 
 /// The selection rules for iterating over a selection of germlines.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Selection<S1: std::hash::BuildHasher, S2: std::hash::BuildHasher> {
-    /// The species you want, None allows all, otherwise only the species specified will be returned
+    /// The species you want, None allows all, otherwise only the species specified will be
+    /// returned
     pub species: Option<HashSet<Species, S1>>,
-    /// The chain of genes you want, None allows all, otherwise only the chains specified will be returned
+    /// The chain of genes you want, None allows all, otherwise only the chains specified will be
+    /// returned
     pub chains: Option<HashSet<ChainType, S2>>,
-    /// The kind of genes you want, None allows all, otherwise only the genes specified will be returned
+    /// The kind of genes you want, None allows all, otherwise only the genes specified will be
+    /// returned
     pub genes: Option<HashSet<GeneType>>,
     /// The way of handling alleles you want
     pub allele: AlleleSelection,
 }
 
 impl<S1: std::hash::BuildHasher, S2: std::hash::BuildHasher> Selection<S1, S2> {
-    /// Builder pattern method to add a species selection, will replace any previously set species selection
+    /// Builder pattern method to add a species selection, will replace any previously set species
+    /// selection
     #[must_use]
     pub fn species(self, species: impl Into<HashSet<Species, S1>>) -> Self {
         Self {
@@ -32,7 +36,8 @@ impl<S1: std::hash::BuildHasher, S2: std::hash::BuildHasher> Selection<S1, S2> {
         }
     }
 
-    /// Builder pattern method to add a chain selection, will replace any previously set chain selection
+    /// Builder pattern method to add a chain selection, will replace any previously set chain
+    /// selection
     #[must_use]
     pub fn chain(self, chains: impl Into<HashSet<ChainType, S2>>) -> Self {
         Self {
@@ -41,7 +46,8 @@ impl<S1: std::hash::BuildHasher, S2: std::hash::BuildHasher> Selection<S1, S2> {
         }
     }
 
-    /// Builder pattern method to add a gene selection, will replace any previously set gene selection
+    /// Builder pattern method to add a gene selection, will replace any previously set gene
+    /// selection
     #[must_use]
     pub fn gene(self, genes: impl Into<HashSet<GeneType>>) -> Self {
         Self {
@@ -50,7 +56,8 @@ impl<S1: std::hash::BuildHasher, S2: std::hash::BuildHasher> Selection<S1, S2> {
         }
     }
 
-    /// Builder pattern method to add an allele selection, will replace any previously set allele selection
+    /// Builder pattern method to add an allele selection, will replace any previously set allele
+    /// selection
     #[must_use]
     pub fn allele(self, allele: AlleleSelection) -> Self {
         Self { allele, ..self }
@@ -67,11 +74,7 @@ impl<
     pub fn germlines(self, cv: &'a CVIndex<IMGT>) -> impl Iterator<Item = Allele<'a>> {
         cv.data()
             .iter()
-            .filter(move |(s, _)| {
-                self.species
-                    .as_ref()
-                    .is_none_or(|species| species.contains(s))
-            })
+            .filter(move |(s, _)| self.species.as_ref().is_none_or(|species| species.contains(s)))
             .flat_map(|(s, g)| g.into_iter().map(|c| (*s, c.0, c.1)))
             .filter(move |(_, kind, _)| self.chains.as_ref().is_none_or(|k| k.contains(kind)))
             .flat_map(|(species, _, c)| c.into_iter().map(move |g| (species, g.0, g.1)))
@@ -86,16 +89,13 @@ impl<
             .map(Into::into)
     }
 
-    /// Get the selected alleles in parallel fashion, only available if you enable the feature "rayon" (on by default)
+    /// Get the selected alleles in parallel fashion, only available if you enable the feature
+    /// "rayon" (on by default)
     #[cfg(feature = "rayon")]
     pub fn par_germlines(self, cv: &'a CVIndex<IMGT>) -> impl ParallelIterator<Item = Allele<'a>> {
         cv.data()
             .par_iter()
-            .filter(move |(s, _)| {
-                self.species
-                    .as_ref()
-                    .is_none_or(|species| species.contains(s))
-            })
+            .filter(move |(s, _)| self.species.as_ref().is_none_or(|species| species.contains(s)))
             .flat_map(|(s, g)| g.into_par_iter().map(|c| (*s, c.0, c.1)))
             .filter(move |(_, kind, _)| self.chains.as_ref().is_none_or(|k| k.contains(kind)))
             .flat_map(|(species, _, c)| c.into_par_iter().map(move |g| (species, g.0, g.1)))
@@ -134,7 +134,8 @@ impl<S1: std::hash::BuildHasher, S2: std::hash::BuildHasher> Default for Selecti
 pub enum AlleleSelection {
     /// Return all alleles
     All,
-    /// Only return the first allele. It can have a number higher than 1 if the previous alleles are not functional.
+    /// Only return the first allele. It can have a number higher than 1 if the previous alleles are
+    /// not functional.
     First,
 }
 
@@ -158,11 +159,14 @@ pub struct Allele<'a> {
     pub gene: std::borrow::Cow<'a, Gene>,
     /// The allele number, in IMGT this follows the name, eg `*01` is the allele in `IGHV3-23*01`
     pub number: usize,
-    /// The actual sequence, the sequences present in the database are pure amino acids, no modifications are to be expected
+    /// The actual sequence, the sequences present in the database are pure amino acids, no
+    /// modifications are to be expected
     pub sequence: &'a Peptidoform<UnAmbiguous>,
-    /// The regions in the sequence, every region has an annotation and a length, all lengths together are the same length as the full sequence
+    /// The regions in the sequence, every region has an annotation and a length, all lengths
+    /// together are the same length as the full sequence
     pub regions: &'a [(Region, usize)],
-    /// Any additional annotations, every annotation has beside the kind it is also its location, as index in the sequence
+    /// Any additional annotations, every annotation has beside the kind it is also its location,
+    /// as index in the sequence
     pub annotations: &'a [(Annotation, usize)],
     /// The original IMGT accession
     pub acc: &'a str,
@@ -182,6 +186,7 @@ impl Allele<'_> {
 
 impl HasPeptidoformImpl for Allele<'_> {
     type Complexity = UnAmbiguous;
+
     fn peptidoform(&self) -> &Peptidoform<Self::Complexity> {
         self.sequence
     }
@@ -191,6 +196,7 @@ impl AnnotatedPeptidoform for Allele<'_> {
     fn annotations(&self) -> &[(Annotation, usize)] {
         self.annotations
     }
+
     fn regions(&self) -> &[(Region, usize)] {
         self.regions
     }
@@ -244,7 +250,7 @@ impl Germlines {
                 allele
                     .map_or_else(
                         || g.alleles.first(),
-                        |a| g.alleles.iter().find(|(ga, _, _)| a == *ga),
+                        |a| g.alleles.iter().find(|(ga, ..)| a == *ga),
                     )
                     .map(|res| (g, res))
             })
@@ -315,10 +321,7 @@ impl Germlines {
             GeneType::C(Some(Constant::Y)) => &mut chain.y,
             GeneType::C(Some(Constant::Z)) => &mut chain.z,
         };
-        genes
-            .binary_search_by(|g| g.name.cmp(&gene))
-            .ok()
-            .map(|g| genes.remove(g));
+        genes.binary_search_by(|g| g.name.cmp(&gene)).ok().map(|g| genes.remove(g));
     }
 }
 

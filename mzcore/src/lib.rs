@@ -12,9 +12,11 @@ pub mod csv;
 pub mod glycan;
 mod isobaric_sets;
 pub mod ontology;
-/// Contains logic to parse the custom modifications and custom models databases with backwards compatibility
+/// Contains logic to parse the custom modifications and custom models databases with backwards
+/// compatibility
 pub mod parse_json;
-/// Contains all things related to tolerances and structures to handle multiple mass/formula options.
+/// Contains all things related to tolerances and structures to handle multiple mass/formula
+/// options.
 pub mod quantities;
 /// Contains all things related to sequences, amongst others amino acids and peptidoforms.
 pub mod sequence;
@@ -23,26 +25,30 @@ pub mod sequence;
 pub mod space;
 pub mod system;
 
-/// A subset of the types and traits that are envisioned to be used the most, importing this is a good starting point for working with the crate
+/// A subset of the types and traits that are envisioned to be used the most, importing this is a
+/// good starting point for working with the crate
 pub mod prelude {
-    pub use crate::chemistry::{
-        Chemical, Element, MassMode, MolecularCharge, MolecularFormula, MultiChemical,
-    };
-    pub use crate::isobaric_sets::{
-        BuildingBlocks, IsobaricSetIterator, TerminalBuildingBlocks, building_blocks,
-        find_isobaric_sets,
-    };
-    pub use crate::molecular_formula;
-    pub use crate::sequence::{
-        AminoAcid, CheckedAminoAcid, HasPeptidoformImpl, HasPeptidoformIon, HasPeptidoformIonSet,
-        IsAminoAcid, Peptidoform, PeptidoformIon, PeptidoformIonSet, Protease, SequenceElement,
-        SequencePosition,
+    pub use crate::{
+        chemistry::{
+            Chemical, Element, MassMode, MolecularCharge, MolecularFormula, MultiChemical,
+        },
+        isobaric_sets::{
+            BuildingBlocks, IsobaricSetIterator, TerminalBuildingBlocks, building_blocks,
+            find_isobaric_sets,
+        },
+        molecular_formula,
+        sequence::{
+            AminoAcid, CheckedAminoAcid, HasPeptidoformImpl, HasPeptidoformIon,
+            HasPeptidoformIonSet, IsAminoAcid, Peptidoform, PeptidoformIon, PeptidoformIonSet,
+            Protease, SequenceElement, SequencePosition,
+        },
     };
 }
 
 #[macro_use]
 extern crate uom;
 
-/// The result of a parser, contains the result and a list of warnings if it succeeded and only a list of errors if it failed.
+/// The result of a parser, contains the result and a list of warnings if it succeeded and only a
+/// list of errors if it failed.
 pub type ParserResult<'a, T, Kind> =
     Result<(T, Vec<context_error::BoxedError<'a, Kind>>), Vec<context_error::BoxedError<'a, Kind>>>;

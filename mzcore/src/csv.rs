@@ -49,9 +49,7 @@ impl CsvLine {
 
     /// Get the column values
     pub fn values(&self) -> impl Iterator<Item = (Arc<String>, &str)> {
-        self.fields
-            .iter()
-            .map(|f| (f.0.clone(), &self.line[f.1.clone()]))
+        self.fields.iter().map(|f| (f.0.clone(), &self.line[f.1.clone()]))
     }
 
     /// Get the number of columns
@@ -82,9 +80,7 @@ impl CsvLine {
         range: Range<usize>,
         comment: Option<Cow<'a, str>>,
     ) -> Context<'a> {
-        let base = Context::default()
-            .line_index(self.line_index as u32)
-            .lines(0, &self.line);
+        let base = Context::default().line_index(self.line_index as u32).lines(0, &self.line);
         let base = if let Some(comment) = comment {
             base.add_highlight((0, range, comment))
         } else {
@@ -99,9 +95,7 @@ impl CsvLine {
 
     /// Get the context for the whole line
     pub fn full_context(&self) -> Context<'_> {
-        let base = Context::default()
-            .line_index(self.line_index as u32)
-            .lines(0, &self.line);
+        let base = Context::default().line_index(self.line_index as u32).lines(0, &self.line);
         if let Some(source) = &self.file {
             base.source(source.as_ref().as_ref())
         } else {
@@ -191,6 +185,7 @@ impl From<&CsvLine> for BTreeMap<String, String> {
 
 impl std::ops::Index<usize> for CsvLine {
     type Output = str;
+
     fn index(&self, index: usize) -> &str {
         &self.line[self.fields[index].1.clone()]
     }
@@ -361,13 +356,17 @@ pub struct CsvLineIter<T: std::io::Read> {
 
 impl<T: std::io::Read> Iterator for CsvLineIter<T> {
     type Item = Result<CsvLine, BoxedError<'static, BasicKind>>;
+
     fn next(&mut self) -> Option<Self::Item> {
         self.lines.next().map(|(line_index, line)| {
-            let line = line.map_err(|err|BoxedError::new(BasicKind::Error,
+            let line = line.map_err(|err| {
+                BoxedError::new(
+                    BasicKind::Error,
                     "Could not read line",
                     err.to_string(),
                     Context::default().line_index(line_index as u32),
-                ))?;
+                )
+            })?;
             csv_separate(&line, self.separator).map_err(BoxedError::to_owned).and_then(|row| {
                 if self.header.len() == row.len() {
                     Ok(CsvLine {
@@ -377,9 +376,14 @@ impl<T: std::io::Read> Iterator for CsvLineIter<T> {
                         file: self.file.clone(),
                     })
                 } else {
-                    Err(BoxedError::new(BasicKind::Error,
+                    Err(BoxedError::new(
+                        BasicKind::Error,
                         "Incorrect number of columns",
-                        format!("It does not have the correct number of columns. {} columns were expected but {} were found.", self.header.len(), row.len()),
+                        format!(
+                            "It does not have the correct number of columns. {} columns were expected but {} were found.",
+                            self.header.len(),
+                            row.len()
+                        ),
                         Context::default().line_index(line_index as u32).lines(0, line).add_highlight((0, ..)),
                     ))
                 }
@@ -453,7 +457,7 @@ pub fn csv_separate(
                 }
                 was_enclosed = false;
             }
-            (c, _, _) if c.is_ascii_whitespace() => (), // ignore
+            (c, ..) if c.is_ascii_whitespace() => (), // ignore
             (_, _, None) => {
                 start = Some(index);
                 last_non_whitespace = Some(index + 1);

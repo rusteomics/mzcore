@@ -1,13 +1,13 @@
 //! Module used to create the [`IsAminoAcid`] trait
 
+use std::borrow::Cow;
+
 use crate::{
     chemistry::{MassMode, MolecularFormula, MultiChemical, SatelliteLabel},
     quantities::Multi,
     sequence::SequencePosition,
     system::Mass,
 };
-
-use std::borrow::Cow;
 
 /// A general trait to define amino acids.
 pub trait IsAminoAcid: MultiChemical {
@@ -26,23 +26,14 @@ pub trait IsAminoAcid: MultiChemical {
     fn pro_forma_definition(&self) -> Cow<'_, str>;
     /// The monoisotopic mass of this amino acid. Should be redefined for better performance.
     fn monoisotopic_mass(&self) -> Cow<'_, Multi<Mass>> {
-        Cow::Owned(
-            self.formulas()
-                .iter()
-                .map(MolecularFormula::monoisotopic_mass)
-                .collect(),
-        )
+        Cow::Owned(self.formulas().iter().map(MolecularFormula::monoisotopic_mass).collect())
     }
     /// The average weight of this amino acid. Should be redefined for better performance.
     fn average_weight(&self) -> Cow<'_, Multi<Mass>> {
-        Cow::Owned(
-            self.formulas()
-                .iter()
-                .map(MolecularFormula::average_weight)
-                .collect(),
-        )
+        Cow::Owned(self.formulas().iter().map(MolecularFormula::average_weight).collect())
     }
-    /// The mass with a given mass mode for this amino acid. Should be redefined for better performance.
+    /// The mass with a given mass mode for this amino acid. Should be redefined for better
+    /// performance.
     fn mass(&self, mode: MassMode) -> Cow<'_, Multi<Mass>> {
         Cow::Owned(self.formulas().iter().map(|f| f.mass(mode)).collect())
     }

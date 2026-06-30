@@ -1,5 +1,7 @@
 use std::fmt::Write;
 
+use itertools::Itertools;
+
 use crate::{
     chemistry::{AmbiguousLabel, Element, MassMode, MolecularFormula},
     glycan::GlycanPosition,
@@ -7,10 +9,9 @@ use crate::{
     system::{Mass, OrderedMass, Ratio, da, fraction},
 };
 
-use itertools::Itertools;
-
 impl From<&MolecularFormula> for OrderedMass {
-    /// Create an ordered mass from the monoisotopic mass (needed for [`Multi<MolecularFormula>`](crate::quantities::Multi))
+    /// Create an ordered mass from the monoisotopic mass (needed for
+    /// [`Multi<MolecularFormula>`](crate::quantities::Multi))
     fn from(value: &MolecularFormula) -> Self {
         value.monoisotopic_mass().into()
     }
@@ -30,7 +31,8 @@ impl MolecularFormula {
         mass
     }
 
-    /// The average weight of the molecular formula of this element, if all element species (isotopes) exists
+    /// The average weight of the molecular formula of this element, if all element species
+    /// (isotopes) exists
     #[expect(clippy::missing_panics_doc)]
     pub fn average_weight(&self) -> Mass {
         let mut mass = da(*self.additional_mass); // Technically this is wrong, the additional mass is defined to be monoisotopic
@@ -105,8 +107,8 @@ impl MolecularFormula {
     }
 
     /// Create a [Hill notation](https://en.wikipedia.org/wiki/Chemical_formula#Hill_system) from this collections of
-    /// elements merged with the ProForma notation for specific isotopes. Using fancy unicode characters for subscript
-    /// and superscript numbers.
+    /// elements merged with the ProForma notation for specific isotopes. Using fancy unicode
+    /// characters for subscript and superscript numbers.
     pub fn hill_notation_fancy(&self) -> String {
         self.hill_notation_generic(
             |element, buffer| {
@@ -142,11 +144,10 @@ impl MolecularFormula {
         )
     }
 
-    /// Check if this formula contains a negative number of any element (ignores a negative number of electrons).
+    /// Check if this formula contains a negative number of any element (ignores a negative number
+    /// of electrons).
     pub fn contains_negative_amount(&self) -> bool {
-        self.elements()
-            .iter()
-            .any(|e| e.0 != Element::Electron && e.2 < 0)
+        self.elements().iter().any(|e| e.0 != Element::Electron && e.2 < 0)
     }
 
     /// Print this formula in XLMOD notation according to the Hill notation ordering

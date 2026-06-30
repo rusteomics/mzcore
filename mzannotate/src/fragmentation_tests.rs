@@ -1,9 +1,8 @@
 #![allow(clippy::missing_panics_doc)]
 
-use crate::{
-    annotation::model::{GlycanModel, PrimaryIonSeries},
-    prelude::*,
-};
+use std::sync::Arc;
+
+use itertools::Itertools;
 use mzcore::{
     chemistry::AmbiguousLabel,
     molecular_formula,
@@ -14,10 +13,12 @@ use mzcore::{
     },
     system::{self, MassOverCharge, Ratio, isize::Charge},
 };
-
-use itertools::Itertools;
-use std::sync::Arc;
 use thin_vec::ThinVec;
+
+use crate::{
+    annotation::model::{GlycanModel, PrimaryIonSeries},
+    prelude::*,
+};
 
 #[test]
 fn triple_a() {
@@ -186,9 +187,7 @@ fn higher_charges() {
         (147.058660, "a2+1"),
         (62.424038, "precursor"),
     ];
-    let model = FragmentationModel::none()
-        .clone()
-        .a(PrimaryIonSeries::default());
+    let model = FragmentationModel::none().clone().a(PrimaryIonSeries::default());
     test(
         theoretical_fragments,
         Peptidoform::pro_forma("ACD", &mzcore::ontology::STATIC_ONTOLOGIES)
@@ -854,11 +853,7 @@ fn test(
                     goal.1,
                     goal.0,
                     calculated_fragments[index],
-                    calculated_fragments[index]
-                        .formula
-                        .as_ref()
-                        .unwrap()
-                        .hill_notation(),
+                    calculated_fragments[index].formula.as_ref().unwrap().hill_notation(),
                     calculated_fragments[index]
                         .formula
                         .as_ref()

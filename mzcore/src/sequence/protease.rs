@@ -5,9 +5,10 @@ use serde::{Deserialize, Serialize};
 
 use crate::sequence::{AminoAcid, SequenceElement};
 
-/// A protease defined by it ability to cut at any site identified by the right amino acids at the n and c terminal.
-/// Each position is identified by an option, a none means that there is no specificity at this position. If there is
-/// a specificity at a certain position any amino acid that is contained in the set is allowed (see
+/// A protease defined by it ability to cut at any site identified by the right amino acids at the n
+/// and c terminal. Each position is identified by an option, a none means that there is no
+/// specificity at this position. If there is a specificity at a certain position any amino acid
+/// that is contained in the set is allowed (see
 /// [`crate::sequence::CheckedAminoAcid::canonical_identical`]).
 ///
 /// A standard set of proteases can be found here [`known_proteases`].
@@ -37,7 +38,11 @@ use crate::sequence::{AminoAcid, SequenceElement};
 /// # let ontologies = &mzcore::ontology::STATIC_ONTOLOGIES;
 /// // Define a protease and sequence to digest
 /// let trypsin = &known_proteases::TRYPSIN;
-/// let sequence = Peptidoform::pro_forma("SIADIRGRKM", ontologies).unwrap().0.into_linear().unwrap();
+/// let sequence = Peptidoform::pro_forma("SIADIRGRKM", ontologies)
+///     .unwrap()
+///     .0
+///     .into_linear()
+///     .unwrap();
 ///
 /// // Get all locations where trypsin would cut
 /// let cut_sites = trypsin.match_locations(sequence.sequence());
@@ -51,7 +56,11 @@ use crate::sequence::{AminoAcid, SequenceElement};
 /// # use mzcore::sequence::known_proteases;
 /// # let ontologies = &mzcore::ontology::STATIC_ONTOLOGIES;
 /// // Define a sequence to digest
-/// let sequence = Peptidoform::pro_forma("FAREDKPGLF", ontologies).unwrap().0.into_linear().unwrap();
+/// let sequence = Peptidoform::pro_forma("FAREDKPGLF", ontologies)
+///     .unwrap()
+///     .0
+///     .into_linear()
+///     .unwrap();
 ///
 /// // Compare different digestion patterns
 /// let gluc_digest = sequence.digest(&known_proteases::GLUC, 0, 4..40);
@@ -69,7 +78,11 @@ use crate::sequence::{AminoAcid, SequenceElement};
 /// let his_protease = Protease::c_terminal_of(vec![AminoAcid::Histidine]);
 ///
 /// // Test it on a sequence
-/// let sequence = Peptidoform::pro_forma("AAHFGHKLM", ontologies).unwrap().0.into_linear().unwrap();
+/// let sequence = Peptidoform::pro_forma("AAHFGHKLM", ontologies)
+///     .unwrap()
+///     .0
+///     .into_linear()
+///     .unwrap();
 /// let digest = sequence.digest(&his_protease, 0, 1..40);
 ///
 /// assert_eq!(digest.len(), 3);
@@ -85,7 +98,11 @@ use crate::sequence::{AminoAcid, SequenceElement};
 /// # let ontologies = &mzcore::ontology::STATIC_ONTOLOGIES;
 /// // Define a protease and sequence to digest
 /// let trypsin = &known_proteases::TRYPSIN_P;
-/// let sequence = Peptidoform::pro_forma("AARKFGKPLM", ontologies).unwrap().0.into_linear().unwrap();
+/// let sequence = Peptidoform::pro_forma("AARKFGKPLM", ontologies)
+///     .unwrap()
+///     .0
+///     .into_linear()
+///     .unwrap();
 ///
 /// // With 0 missed cleavages
 /// let digest_0 = sequence.digest(trypsin, 0, 1..40);
@@ -189,7 +206,8 @@ impl Protease {
         }
     }
 
-    /// Define a protease that cuts exactly between the specified options before the site and the specified options after the site.
+    /// Define a protease that cuts exactly between the specified options before the site and the
+    /// specified options after the site.
     /// ```rust
     /// # use mzcore::prelude::*;
     /// # let ontologies = &mzcore::ontology::STATIC_ONTOLOGIES;
@@ -243,7 +261,8 @@ impl Protease {
     }
 
     /// All locations in the given sequence where this protease could cut
-    /// Note if a cutsite is "after" the last element in the sequence, it will not rapport that, only the cutsites inside the sequence
+    /// Note if a cutsite is "after" the last element in the sequence, it will not rapport that,
+    /// only the cutsites inside the sequence
     pub fn match_locations<T>(&self, sequence: &[SequenceElement<T>]) -> Vec<usize> {
         let upper = sequence
             .len()
@@ -256,9 +275,8 @@ impl Protease {
 
     fn matches_at<T>(&self, slice: &[SequenceElement<T>]) -> bool {
         debug_assert!(slice.len() == self.before.len() + self.after.len());
-        'positions: for (actual, pattern) in slice
-            .iter()
-            .zip(self.before.iter().chain(self.after.iter()))
+        'positions: for (actual, pattern) in
+            slice.iter().zip(self.before.iter().chain(self.after.iter()))
         {
             if let Some(pattern) = pattern {
                 for option in pattern {
@@ -289,7 +307,8 @@ pub mod known_proteases {
         )
     });
 
-    /// `Chymotrypsin` cuts after Phenylalanine (F), Tryptophan (W), Tyrosine (Y), unless followed by Proline (P)
+    /// `Chymotrypsin` cuts after Phenylalanine (F), Tryptophan (W), Tyrosine (Y), unless followed
+    /// by Proline (P)
     pub static CHYMOTRYPSIN: LazyLock<Protease> = LazyLock::new(|| {
         Protease::between_options(
             vec![
@@ -331,9 +350,8 @@ pub mod known_proteases {
 #[cfg(test)]
 #[allow(clippy::missing_panics_doc)]
 mod tests {
-    use crate::sequence::{Linear, Peptidoform};
-
     use super::*;
+    use crate::sequence::{Linear, Peptidoform};
 
     pub(super) struct ProteaseTestCase {
         pub sequence: Peptidoform<Linear>,

@@ -127,8 +127,8 @@ impl Matrix {
     }
 
     /// # Safety
-    /// This function assumes the index to be valid. Not upholding this does an out of bounds unsafe [`Vec::get_unchecked`].
-    /// A debug assertion hold up this promise on debug builds.
+    /// This function assumes the index to be valid. Not upholding this does an out of bounds unsafe
+    /// [`Vec::get_unchecked`]. A debug assertion hold up this promise on debug builds.
     pub(super) unsafe fn get_unchecked(&self, index: [usize; 2]) -> &Piece {
         debug_assert!(self.value.len() > index[0]);
         debug_assert!(self.value[index[0]].len() > index[1]);
@@ -136,21 +136,18 @@ impl Matrix {
     }
 
     /// # Safety
-    /// This function assumes the index to be valid. Not upholding this does an out of bounds unsafe [`Vec::get_unchecked_mut`].
-    /// A debug assertion hold up this promise on debug builds.
+    /// This function assumes the index to be valid. Not upholding this does an out of bounds unsafe
+    /// [`Vec::get_unchecked_mut`]. A debug assertion hold up this promise on debug builds.
     pub(super) unsafe fn get_unchecked_mut(&mut self, index: [usize; 2]) -> &mut Piece {
         debug_assert!(self.value.len() > index[0]);
         debug_assert!(self.value[index[0]].len() > index[1]);
-        unsafe {
-            self.value
-                .get_unchecked_mut(index[0])
-                .get_unchecked_mut(index[1])
-        }
+        unsafe { self.value.get_unchecked_mut(index[0]).get_unchecked_mut(index[1]) }
     }
 }
 
 impl std::ops::Index<[usize; 2]> for Matrix {
     type Output = Piece;
+
     fn index(&self, index: [usize; 2]) -> &Self::Output {
         assert!(index[0] <= self.a + 1);
         assert!(index[1] <= self.b + 1);

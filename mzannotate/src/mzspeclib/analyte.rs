@@ -98,10 +98,7 @@ impl AnalyteTarget {
         match self {
             Self::Unknown(c) => *c = Some(charge),
             Self::PeptidoformIon(pep) => {
-                if pep
-                    .get_charge_carriers()
-                    .is_none_or(|c| c.charge() != charge)
-                {
+                if pep.get_charge_carriers().is_none_or(|c| c.charge() != charge) {
                     pep.set_charge_carriers(Some(MolecularCharge::proton(charge)));
                 }
             }
@@ -128,10 +125,7 @@ impl AnalyteTarget {
             Self::Unknown(_) => None,
             Self::MolecularFormula(f) => Some(f.clone()),
             Self::PeptidoformIon(pep) => (pep.formulas()
-                + pep
-                    .get_charge_carriers()
-                    .map(Chemical::formula)
-                    .unwrap_or_default())
+                + pep.get_charge_carriers().map(Chemical::formula).unwrap_or_default())
             .to_vec()
             .into_iter()
             .exactly_one()

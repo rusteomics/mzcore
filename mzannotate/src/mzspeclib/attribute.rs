@@ -33,7 +33,8 @@ impl AttributeValue {
         Self::Scalar(value.into())
     }
 
-    /// Check if these are equal, plus if one if a term and the other a string check if they contain the same info
+    /// Check if these are equal, plus if one if a term and the other a string check if they contain
+    /// the same info
     pub(crate) fn equivalent(&self, other: &Self) -> bool {
         match (self, other) {
             (Self::Term(t), Self::Scalar(Value::String(s)))
@@ -129,36 +130,32 @@ pub enum AttributeParseError {
 
 impl Display for AttributeParseError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "{}",
-            match self {
-                Self::TermParserError(TermParserError::CURIEError(
-                    mzcv::CURIEParsingError::AccessionParsingError(_),
-                )) => "Accession not numeric",
-                Self::TermParserError(TermParserError::CURIEError(
-                    mzcv::CURIEParsingError::MissingNamespaceSeparator,
-                )) => "There is no namespace",
-                Self::TermParserError(TermParserError::CURIEError(
-                    mzcv::CURIEParsingError::UnknownControlledVocabulary,
-                )) => "The controlled vocabulary is unknown",
-                Self::TermParserError(TermParserError::MissingPipe) =>
-                    "The term pipe symbol is missing, a term should be written like 'MS:1000896|normalized retention time'",
-                Self::TermParserError(TermParserError::UnknownControlledVocabulary) =>
-                    "An unknown controlled vocabulary was used",
-                Self::ValueParseError(ParamValueParseError::FailedToExtractBuffer) =>
-                    "Invalid value for the attribute, expected a buffer",
-                Self::ValueParseError(ParamValueParseError::FailedToExtractFloat(_)) =>
-                    "Invalid value for the attribute, expected a floating point",
-                Self::ValueParseError(ParamValueParseError::FailedToExtractInt(_)) =>
-                    "Invalid value for the attribute, expected an integer",
-                Self::ValueParseError(ParamValueParseError::FailedToExtractString) =>
-                    "Invalid value for the attribute, expected a string",
-                Self::GroupIDParseError(_) => "The group id is not a valid number",
-                Self::MissingValueSeparator => "The value separator '=' is missing",
-                Self::MissingClosingGroupBracket => "The group id closing bracket ']' is missing",
-            }
-        )
+        write!(f, "{}", match self {
+            Self::TermParserError(TermParserError::CURIEError(
+                mzcv::CURIEParsingError::AccessionParsingError(_),
+            )) => "Accession not numeric",
+            Self::TermParserError(TermParserError::CURIEError(
+                mzcv::CURIEParsingError::MissingNamespaceSeparator,
+            )) => "There is no namespace",
+            Self::TermParserError(TermParserError::CURIEError(
+                mzcv::CURIEParsingError::UnknownControlledVocabulary,
+            )) => "The controlled vocabulary is unknown",
+            Self::TermParserError(TermParserError::MissingPipe) =>
+                "The term pipe symbol is missing, a term should be written like 'MS:1000896|normalized retention time'",
+            Self::TermParserError(TermParserError::UnknownControlledVocabulary) =>
+                "An unknown controlled vocabulary was used",
+            Self::ValueParseError(ParamValueParseError::FailedToExtractBuffer) =>
+                "Invalid value for the attribute, expected a buffer",
+            Self::ValueParseError(ParamValueParseError::FailedToExtractFloat(_)) =>
+                "Invalid value for the attribute, expected a floating point",
+            Self::ValueParseError(ParamValueParseError::FailedToExtractInt(_)) =>
+                "Invalid value for the attribute, expected an integer",
+            Self::ValueParseError(ParamValueParseError::FailedToExtractString) =>
+                "Invalid value for the attribute, expected a string",
+            Self::GroupIDParseError(_) => "The group id is not a valid number",
+            Self::MissingValueSeparator => "The value separator '=' is missing",
+            Self::MissingClosingGroupBracket => "The group id closing bracket ']' is missing",
+        })
     }
 }
 
@@ -180,7 +177,8 @@ impl Attribute {
         }
     }
 
-    /// Create a new attribute describing the given unit. This returns `None` if the unit is [`Unit::Unknown`].
+    /// Create a new attribute describing the given unit. This returns `None` if the unit is
+    /// [`Unit::Unknown`].
     pub fn unit(unit: Unit) -> Option<Self> {
         let (_, name) = unit.for_param();
         let accession = unit.to_curie()?;
@@ -190,7 +188,8 @@ impl Attribute {
         ))
     }
 
-    /// Parse an attribute from a string. Returns the group id (or None), the attribute, and the byte range of the value.
+    /// Parse an attribute from a string. Returns the group id (or None), the attribute, and the
+    /// byte range of the value.
     /// # Errors
     /// If there is no valid attribute at this string.
     // TODO: this would be nice to have as an error with context.
@@ -236,7 +235,7 @@ impl From<Attribute> for Param {
             value: value.value.into(),
             accession: match value.name.accession.accession {
                 AccessionCode::Numeric(num) => Some(num),
-                AccessionCode::Alphanumeric(_, _) => None,
+                AccessionCode::Alphanumeric(..) => None,
             },
             controlled_vocabulary: Some(to_mzdata_cv(value.name.accession.cv)),
             unit: Unit::Unknown,
@@ -245,9 +244,7 @@ impl From<Attribute> for Param {
 }
 
 pub(crate) fn to_mzcv_term(param: &Param) -> Option<Term> {
-    param
-        .curie()
-        .map(|c| Term::new(to_mzcv_curie(c), param.name.clone()))
+    param.curie().map(|c| Term::new(to_mzcv_curie(c), param.name.clone()))
 }
 
 pub(crate) const fn to_mzcv_curie(curie: mzdata::params::CURIE) -> mzcv::Curie {
@@ -263,7 +260,7 @@ pub(crate) const fn to_mzdata_curie(curie: mzcv::Curie) -> Option<mzdata::params
             controlled_vocabulary: to_mzdata_cv(curie.cv),
             accession: num,
         }),
-        AccessionCode::Alphanumeric(_, _) => None,
+        AccessionCode::Alphanumeric(..) => None,
     }
 }
 
@@ -307,7 +304,7 @@ pub(crate) fn to_param(term: &Term, value: Value, unit: Unit) -> Param {
         value,
         accession: match term.accession.accession {
             AccessionCode::Numeric(num) => Some(num),
-            AccessionCode::Alphanumeric(_, _) => None,
+            AccessionCode::Alphanumeric(..) => None,
         },
         controlled_vocabulary: Some(to_mzdata_cv(term.accession.cv)),
         unit,
@@ -320,7 +317,8 @@ impl Display for Attribute {
     }
 }
 
-/// A collection of attributes. They are grouped by group ID, the first is no group ID, after that it is 0 based index.
+/// A collection of attributes. They are grouped by group ID, the first is no group ID, after that
+/// it is 0 based index.
 pub type Attributes = Vec<Vec<Attribute>>;
 
 pub(crate) fn merge_attributes(a: &mut Attributes, b: &Attributes) {

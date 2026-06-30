@@ -1,4 +1,5 @@
-//! Handle fragment related issues, access provided if you want to dive deeply into fragments in your own code.
+//! Handle fragment related issues, access provided if you want to dive deeply into fragments in
+//! your own code.
 
 use std::{
     fmt::{Debug, Display},
@@ -7,9 +8,6 @@ use std::{
 };
 
 use itertools::Itertools;
-use ordered_float::OrderedFloat;
-use serde::{Deserialize, Serialize};
-
 use mzcore::{
     chemistry::{AmbiguousLabel, CachedCharge, ChargeRange, NeutralLoss},
     molecular_formula,
@@ -17,6 +15,8 @@ use mzcore::{
     quantities::{Multi, Tolerance},
     system::{self, MassOverCharge, OrderedMassOverCharge, Ratio, isize::Charge},
 };
+use ordered_float::OrderedFloat;
+use serde::{Deserialize, Serialize};
 use thin_vec::ThinVec;
 
 use crate::{annotation::model::PossiblePrimaryIons, fragment::FragmentType};
@@ -32,9 +32,11 @@ pub struct Fragment {
     pub ion: FragmentType,
     /// The isotope of this fragment (this needs to be added to the formula separately)
     pub isotope: ThinVec<(i32, Isotope)>,
-    /// The peptidoform this fragment comes from, saved as the index into the list of peptidoform in the overarching [`mzcore::sequence::PeptidoformIonSet`] struct
+    /// The peptidoform this fragment comes from, saved as the index into the list of peptidoform
+    /// in the overarching [`mzcore::sequence::PeptidoformIonSet`] struct
     pub peptidoform_ion_index: Option<usize>,
-    /// The peptide this fragment comes from, saved as the index into the list of peptides in the overarching [`mzcore::sequence::PeptidoformIon`] struct
+    /// The peptide this fragment comes from, saved as the index into the list of peptides in the
+    /// overarching [`mzcore::sequence::PeptidoformIon`] struct
     pub peptidoform_index: Option<usize>,
     /// Any neutral losses applied
     pub neutral_loss: ThinVec<NeutralLoss>,
@@ -84,8 +86,9 @@ impl Fragment {
         }
     }
 
-    /// Generate a list of possible fragments from the list of possible preceding termini and neutral losses.
-    /// Ignores any neutral loss that would result in a negative number of any element.
+    /// Generate a list of possible fragments from the list of possible preceding termini and
+    /// neutral losses. Ignores any neutral loss that would result in a negative number of any
+    /// element.
     /// # Panics
     /// When the charge range results in a negative charge
     #[expect(clippy::too_many_arguments)]
@@ -141,8 +144,9 @@ impl Fragment {
         result
     }
 
-    /// Generate a list of possible fragments from the list of possible preceding termini and neutral losses.
-    /// Ignores any neutral loss that would result in a negative number of any element.
+    /// Generate a list of possible fragments from the list of possible preceding termini and
+    /// neutral losses. Ignores any neutral loss that would result in a negative number of any
+    /// element.
     /// # Panics
     /// When the charge range results in a negative charge
     #[must_use]
@@ -241,7 +245,9 @@ impl Fragment {
         charges.iter().map(move |c| self.with_charge(c))
     }
 
-    /// Create a copy of this fragment with the given neutral loss. This could result in a molecular formula with an element with a negative amount, use [`MolecularFormula::contains_negative_amount`] to check for this.
+    /// Create a copy of this fragment with the given neutral loss. This could result in a molecular
+    /// formula with an element with a negative amount, use
+    /// [`MolecularFormula::contains_negative_amount`] to check for this.
     #[must_use]
     pub fn with_neutral_loss(&self, neutral_loss: &NeutralLoss) -> Self {
         let mut new_neutral_loss = self.neutral_loss.clone();
@@ -253,7 +259,8 @@ impl Fragment {
         }
     }
 
-    /// Create copies of this fragment with the given neutral losses (and a copy of this fragment itself) ignores any neutral loss that would result in a negative element number.
+    /// Create copies of this fragment with the given neutral losses (and a copy of this fragment
+    /// itself) ignores any neutral loss that would result in a negative element number.
     #[must_use]
     pub fn with_neutral_losses(&self, neutral_losses: &[NeutralLoss]) -> Vec<Self> {
         let mut output = Vec::with_capacity(neutral_losses.len() + 1);
@@ -262,11 +269,7 @@ impl Fragment {
             neutral_losses
                 .iter()
                 .map(|loss| self.with_neutral_loss(loss))
-                .filter(|f| {
-                    f.formula
-                        .as_ref()
-                        .is_some_and(|f| !f.contains_negative_amount())
-                }),
+                .filter(|f| f.formula.as_ref().is_some_and(|f| !f.contains_negative_amount())),
         );
         output
     }
@@ -342,15 +345,12 @@ pub enum Isotope {
 }
 
 /// Remember the C13 offset
-static ISOTOPE_OFFSET: LazyLock<f64> = LazyLock::new(|| {
-    molecular_formula!([13 C 1] [12 C -1])
-        .monoisotopic_mass()
-        .value
-});
+static ISOTOPE_OFFSET: LazyLock<f64> =
+    LazyLock::new(|| molecular_formula!([13 C 1] [12 C -1]).monoisotopic_mass().value);
 
 impl Isotope {
-    /// Add a certain amount of this isotope to a formula. It returns None if this isotope is invalid
-    /// or if adding this isotope overflows the molecular formula.
+    /// Add a certain amount of this isotope to a formula. It returns None if this isotope is
+    /// invalid or if adding this isotope overflows the molecular formula.
     fn add_to_formula(self, amount: i32, formula: &mut MolecularFormula) -> Option<()> {
         match self {
             Self::Average | Self::General => {
@@ -364,8 +364,8 @@ impl Isotope {
         }
     }
 
-    /// Subtract a certain amount of this isotope to a formula. It returns None if this isotope is invalid
-    /// or if subtracting this isotope overflows the molecular formula.
+    /// Subtract a certain amount of this isotope to a formula. It returns None if this isotope is
+    /// invalid or if subtracting this isotope overflows the molecular formula.
     fn sub_from_formula(self, amount: i32, formula: &mut MolecularFormula) -> Option<()> {
         match self {
             Self::Average | Self::General => {

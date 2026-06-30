@@ -43,7 +43,10 @@ impl MonoSaccharide {
                 GlycanSubstituent::OCarboxyEthyl => o_carboxy_ethyl += 1,
                 GlycanSubstituent::NGlycolyl => nglycolyl += 1,
                 GlycanSubstituent::Didehydro => inner_modifications.push_str("en"),
-                GlycanSubstituent::Alcohol => inner_modifications.push('o'), // Missing symbols: an for anhydro, on for lactone, am for lactam
+                GlycanSubstituent::Alcohol => inner_modifications.push('o'), /* Missing symbols: */
+                // an for anhydro,
+                // on for lactone,
+                // am for lactam
                 _ => outer_modifications.push_str(m.notation()),
             }
         }
@@ -63,9 +66,7 @@ impl MonoSaccharide {
                 GlycanSubstituent::Acetyl.notation().repeat(acetyl),
                 GlycanSubstituent::Glycolyl.notation().repeat(glycolyl),
                 GlycanSubstituent::NGlycolyl.notation().repeat(nglycolyl),
-                GlycanSubstituent::OCarboxyEthyl
-                    .notation()
-                    .repeat(o_carboxy_ethyl),
+                GlycanSubstituent::OCarboxyEthyl.notation().repeat(o_carboxy_ethyl),
                 outer_modifications,
             ]
             .join("")

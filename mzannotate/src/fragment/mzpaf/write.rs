@@ -1,7 +1,6 @@
 use std::sync::LazyLock;
 
 use itertools::Itertools;
-
 use mzcore::{
     chemistry::{MultiChemical, NeutralLoss},
     quantities::Tolerance,
@@ -86,10 +85,7 @@ impl ToMzPAF for Fragment {
                         self.peptidoform_ion_index.unwrap_or_default(),
                     )
                     .and_then(|fragments| {
-                        fragments
-                            .iter()
-                            .find(|f| f.0 == *label)
-                            .map(|(_, loss)| loss.clone())
+                        fragments.iter().find(|f| f.0 == *label).map(|(_, loss)| loss.clone())
                     })
                 {
                     write!(
@@ -154,10 +150,7 @@ impl ToMzPAF for Fragment {
                         self.peptidoform_ion_index.unwrap_or_default(),
                     )
                     .and_then(|fragments| {
-                        fragments
-                            .iter()
-                            .find(|f| f.0 == *label)
-                            .map(|(_, loss)| loss.clone())
+                        fragments.iter().find(|f| f.0 == *label).map(|(_, loss)| loss.clone())
                     })
                 {
                     write!(
@@ -185,7 +178,8 @@ impl ToMzPAF for Fragment {
                 seq.modifications
                     .iter()
                     .filter_map(|m| m.unimod_name().map(|name| format!("[{name}]")))
-                    .join("") // TODO: how to handle ambiguous mods? Maybe store somewhere which where applied for this fragment
+                    .join("") /* TODO: how to handle ambiguous mods? Maybe store somewhere which
+                               * where applied for this fragment */
             )?,
             FragmentType::Unknown(num) => {
                 if let Some(num) = num {
@@ -198,9 +192,9 @@ impl ToMzPAF for Fragment {
             }
             FragmentType::Diagnostic(_)
             | FragmentType::B { .. }
-            | FragmentType::BComposition(_, _)
+            | FragmentType::BComposition(..)
             | FragmentType::Y(_)
-            | FragmentType::YComposition(_, _) => {
+            | FragmentType::YComposition(..) => {
                 if let Some(formula) = self.base_formula() {
                     write!(w, "f{{{}}}", formula.hill_notation_core())?;
                     if formula.additional_mass() != 0.0 {

@@ -18,7 +18,8 @@ type TerminalInfo = (
     Vec<Vec<NeutralLoss>>,
 );
 
-// TODO: generalise over used storage type, so using molecularformula, monoisotopic mass, or average mass, also make sure that AAs can return these numbers in a const fashion
+// TODO: generalise over used storage type, so using molecularformula, monoisotopic mass, or average
+// mass, also make sure that AAs can return these numbers in a const fashion
 #[expect(clippy::too_many_lines, clippy::too_many_arguments)]
 pub(crate) fn fragments(
     aminoacid: AminoAcid,
@@ -47,10 +48,7 @@ pub(crate) fn fragments(
                     sequence_index,
                     peptidoform_index,
                     peptidoform_ion_index,
-                ) * (modifications
-                    .1
-                    .get(&BackboneFragmentKind::a)
-                    .unwrap_or(&modifications.0)
+                ) * (modifications.1.get(&BackboneFragmentKind::a).unwrap_or(&modifications.0)
                     - molecular_formula!(H 1 C 1 O 1))),
                 peptidoform_ion_index,
                 peptidoform_index,
@@ -67,10 +65,7 @@ pub(crate) fn fragments(
                     sequence_index,
                     peptidoform_index,
                     peptidoform_ion_index,
-                ) * (modifications
-                    .1
-                    .get(&BackboneFragmentKind::b)
-                    .unwrap_or(&modifications.0)
+                ) * (modifications.1.get(&BackboneFragmentKind::b).unwrap_or(&modifications.0)
                     - molecular_formula!(H 1))),
                 peptidoform_ion_index,
                 peptidoform_index,
@@ -87,10 +82,7 @@ pub(crate) fn fragments(
                     sequence_index,
                     peptidoform_index,
                     peptidoform_ion_index,
-                ) * (modifications
-                    .1
-                    .get(&BackboneFragmentKind::c)
-                    .unwrap_or(&modifications.0)
+                ) * (modifications.1.get(&BackboneFragmentKind::c).unwrap_or(&modifications.0)
                     + molecular_formula!(H 2 N 1))),
                 peptidoform_ion_index,
                 peptidoform_index,
@@ -189,10 +181,7 @@ pub(crate) fn fragments(
                     sequence_index,
                     peptidoform_index,
                     peptidoform_ion_index,
-                ) * (modifications
-                    .1
-                    .get(&BackboneFragmentKind::x)
-                    .unwrap_or(&modifications.0)
+                ) * (modifications.1.get(&BackboneFragmentKind::x).unwrap_or(&modifications.0)
                     + molecular_formula!(C 1 O 1)
                     - molecular_formula!(H 1))),
                 peptidoform_ion_index,
@@ -210,10 +199,7 @@ pub(crate) fn fragments(
                     sequence_index,
                     peptidoform_index,
                     peptidoform_ion_index,
-                ) * (modifications
-                    .1
-                    .get(&BackboneFragmentKind::y)
-                    .unwrap_or(&modifications.0)
+                ) * (modifications.1.get(&BackboneFragmentKind::y).unwrap_or(&modifications.0)
                     + molecular_formula!(H 1))),
                 peptidoform_ion_index,
                 peptidoform_index,
@@ -230,10 +216,7 @@ pub(crate) fn fragments(
                     sequence_index,
                     peptidoform_index,
                     peptidoform_ion_index,
-                ) * (modifications
-                    .1
-                    .get(&BackboneFragmentKind::z)
-                    .unwrap_or(&modifications.0)
+                ) * (modifications.1.get(&BackboneFragmentKind::z).unwrap_or(&modifications.0)
                     - molecular_formula!(H 2 N 1))),
                 peptidoform_ion_index,
                 peptidoform_index,
@@ -256,7 +239,8 @@ pub(crate) fn fragments(
                 - molecular_formula!(C 1 O 1)),
             peptidoform_ion_index,
             peptidoform_index,
-            &FragmentType::Immonium(Some(n_pos), aminoacid.into()), // TODO: get the actual sequence element here
+            &FragmentType::Immonium(Some(n_pos), aminoacid.into()), /* TODO: get the actual
+                                                                     * sequence element here */
             &Multi::default(),
             &losses
                 .iter()

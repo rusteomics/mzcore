@@ -26,22 +26,14 @@ impl MolecularFormula {
                 continue;
             }
             let amount = usize::try_from(*amount).unwrap();
-            let isotopes = element
-                .isotopes()
-                .iter()
-                .filter(|i| i.2 != 0.0)
-                .collect_vec();
+            let isotopes = element.isotopes().iter().filter(|i| i.2 != 0.0).collect_vec();
             if isotopes.len() < 2 {
                 // Only a single species, so no distribution is needed
                 continue;
             }
             // Get the probability and base offset (weight) for all non base isotopes
             let base = isotopes[0];
-            let isotopes = isotopes
-                .into_iter()
-                .skip(1)
-                .map(|i| (i.0 - base.0, i.2))
-                .collect_vec();
+            let isotopes = isotopes.into_iter().skip(1).map(|i| (i.0 - base.0, i.2)).collect_vec();
 
             for isotope in isotopes {
                 // Generate distribution (take already chosen into account?)
@@ -58,10 +50,9 @@ impl MolecularFormula {
                 let mut distribution: Array1<f64> = (0..=amount - tail)
                     .map(|t| binomial.mass(t))
                     .flat_map(|a| {
-                        // Interweave the probability of this isotope with the mass difference to generate the correct distribution
-                        std::iter::once(a)
-                            .chain(std::iter::repeat(0.0))
-                            .take(isotope.0 as usize)
+                        // Interweave the probability of this isotope with the mass difference to
+                        // generate the correct distribution
+                        std::iter::once(a).chain(std::iter::repeat(0.0)).take(isotope.0 as usize)
                     })
                     .collect();
 
@@ -89,13 +80,10 @@ impl MolecularFormula {
                 // Combine distribution with previous distribution
                 let mut new = Array1::zeros(result.len());
                 for (i, a) in distribution.into_iter().enumerate() {
-                    new += &(concatenate(
-                        Axis(0),
-                        &[
-                            Array1::zeros(i).view(),
-                            result.slice(s![0..result.len() - i]),
-                        ],
-                    )
+                    new += &(concatenate(Axis(0), &[
+                        Array1::zeros(i).view(),
+                        result.slice(s![0..result.len() - i]),
+                    ])
                     .unwrap()
                         * a);
                 }
@@ -129,11 +117,7 @@ impl MolecularFormula {
                 continue;
             }
             let amount = usize::try_from(*amount).unwrap();
-            let isotopes = element
-                .isotopes()
-                .iter()
-                .filter(|i| i.2 != 0.0)
-                .collect_vec();
+            let isotopes = element.isotopes().iter().filter(|i| i.2 != 0.0).collect_vec();
             if isotopes.len() < 2 {
                 // Only a single species, so no distribution is needed
                 continue;
@@ -162,7 +146,8 @@ impl MolecularFormula {
                 let distribution: Array1<f64> = (0..=amount - tail)
                     .map(|t| binomial.mass(t))
                     .flat_map(|a| {
-                        // Interweave the probability of this isotope with the mass difference to generate the correct distribution
+                        // Interweave the probability of this isotope with the mass difference to
+                        // generate the correct distribution
                         std::iter::once(a)
                             .chain(std::iter::repeat(0.0))
                             .take(isotope_offset as usize)
@@ -191,7 +176,8 @@ impl MolecularFormula {
                     // The number of this element to add
                     let num = (shift / isotope_offset as usize).min(amount);
 
-                    // The mass of this TODO: result in too high masses if multiple isotopes (> 2) exist
+                    // The mass of this TODO: result in too high masses if multiple isotopes (> 2)
+                    // exist
                     let isotope_total_mass = isotope_mass * num as f64;
                     println!(
                         "E {element} {:.4} i {isotope_offset} p {isotope_probability} s {shift} n {num} p {shift_probability} im {:.4}",
@@ -224,9 +210,7 @@ impl MolecularFormula {
                 .append(
                     Axis(0),
                     Array1::from_elem(
-                        all_isotopes_distribution
-                            .len()
-                            .saturating_sub(full_distribution.len()),
+                        all_isotopes_distribution.len().saturating_sub(full_distribution.len()),
                         (Mass::default(), 0.0),
                     )
                     .view(),
@@ -261,10 +245,8 @@ impl MolecularFormula {
                     .collect();
             }
             full_distribution = temporary_stack;
-            full_distribution = full_distribution
-                .into_iter()
-                .filter(|v| v.1 >= threshold)
-                .collect();
+            full_distribution =
+                full_distribution.into_iter().filter(|v| v.1 >= threshold).collect();
             dbg!(&full_distribution);
         }
         full_distribution
@@ -350,15 +332,15 @@ mod test {
                 0.927_495,
             ),
             (
-                molecular_formula!([1 H 100] [16 O 24] [17 O 1]).monoisotopic_mass(), // TODO: is mixture
+                molecular_formula!([1 H 100] [16 O 24] [17 O 1]).monoisotopic_mass(), /* TODO: is mixture */
                 0.022_346,
             ),
             (
-                molecular_formula!([1 H 100] [16 O 24] [18 O 1]).monoisotopic_mass(), // TODO: is mixture
+                molecular_formula!([1 H 100] [16 O 24] [18 O 1]).monoisotopic_mass(), /* TODO: is mixture */
                 0.047_515,
             ),
             (
-                molecular_formula!([1 H 100] [16 O 23] [17 O 1] [18 O 1]).monoisotopic_mass(), // TODO: is mixture
+                molecular_formula!([1 H 100] [16 O 23] [17 O 1] [18 O 1]).monoisotopic_mass(), /* TODO: is mixture */
                 0.001_145,
             ),
         ];

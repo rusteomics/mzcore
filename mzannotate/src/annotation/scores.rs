@@ -26,10 +26,7 @@ impl AnnotatedSpectrum {
     ) -> (Scores, Vec<Vec<Scores>>) {
         let fragments = fragments
             .iter()
-            .filter(|f| {
-                f.mz(mass_mode)
-                    .is_some_and(|mz| parameters.mz_range.contains(&mz))
-            })
+            .filter(|f| f.mz(mass_mode).is_some_and(|mz| parameters.mz_range.contains(&mz)))
             .collect_vec();
         let total_intensity: f32 = self.peaks.iter().map(|p| p.intensity).sum();
         let individual_peptides = self
@@ -247,30 +244,24 @@ impl AnnotatedSpectrum {
                         peptidoform_index,
                         Some(ion),
                     );
-                    Some((
-                        ion,
-                        Score::Position {
-                            fragments: recovered_fragments,
-                            peaks,
-                            intensity: Recovered::new(intensity_annotated, total_intensity),
-                            theoretical_positions: Recovered::new(positions, peptide.len() as u32),
-                            expected_positions: Recovered::new(positions, expected_positions),
-                        },
-                    ))
+                    Some((ion, Score::Position {
+                        fragments: recovered_fragments,
+                        peaks,
+                        intensity: Recovered::new(intensity_annotated, total_intensity),
+                        theoretical_positions: Recovered::new(positions, peptide.len() as u32),
+                        expected_positions: Recovered::new(positions, expected_positions),
+                    }))
                 } else {
                     None
                 }
             } else if recovered_fragments.total > 0 {
                 let unique_formulas = self.score_unique_formulas(fragments, None, Some(ion));
-                Some((
-                    ion,
-                    Score::UniqueFormulas {
-                        fragments: recovered_fragments,
-                        peaks,
-                        intensity: Recovered::new(intensity_annotated, total_intensity),
-                        unique_formulas,
-                    },
-                ))
+                Some((ion, Score::UniqueFormulas {
+                    fragments: recovered_fragments,
+                    peaks,
+                    intensity: Recovered::new(intensity_annotated, total_intensity),
+                    unique_formulas,
+                }))
             } else {
                 None
             }
@@ -299,15 +290,12 @@ impl AnnotatedSpectrum {
                         peptide.as_ref().map(|p| p.0),
                         Some(ion),
                     );
-                    Some((
-                        ion,
-                        Score::UniqueFormulas {
-                            fragments: recovered_fragments,
-                            peaks,
-                            intensity: Recovered::new(intensity_annotated, total_intensity),
-                            unique_formulas,
-                        },
-                    ))
+                    Some((ion, Score::UniqueFormulas {
+                        fragments: recovered_fragments,
+                        peaks,
+                        intensity: Recovered::new(intensity_annotated, total_intensity),
+                        unique_formulas,
+                    }))
                 } else {
                     None
                 }
@@ -321,9 +309,11 @@ impl AnnotatedSpectrum {
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 #[non_exhaustive]
 pub struct Scores {
-    /// The scores, based on unique formulas for all peptides combined or based on positions for single peptides.
+    /// The scores, based on unique formulas for all peptides combined or based on positions for
+    /// single peptides.
     pub score: Score,
-    /// The scores per [`FragmentKind`], based on unique formulas for all peptides combined or any fragment kind that is not an ion series, or based on positions in the other case.
+    /// The scores per [`FragmentKind`], based on unique formulas for all peptides combined or any
+    /// fragment kind that is not an ion series, or based on positions in the other case.
     pub ions: Vec<(FragmentKind, Score)>,
 }
 
@@ -338,12 +328,15 @@ pub enum Score {
         peaks: Recovered<u32>,
         /// The fraction of the total intensity that could be annotated
         intensity: Recovered<f64>,
-        /// The fraction of the total positions (all positions on the peptide) that has at least one fragment found
+        /// The fraction of the total positions (all positions on the peptide) that has at least
+        /// one fragment found
         theoretical_positions: Recovered<u32>,
-        /// The fraction of the total positions (all positions with fragments) that has at least one fragment found
+        /// The fraction of the total positions (all positions with fragments) that has at least
+        /// one fragment found
         expected_positions: Recovered<u32>,
     },
-    /// A score for something that does not have position coverage, but instead is scored on the number of unique formulas
+    /// A score for something that does not have position coverage, but instead is scored on the
+    /// number of unique formulas
     UniqueFormulas {
         /// The fraction of the total fragments that could be annotated
         fragments: Recovered<u32>,

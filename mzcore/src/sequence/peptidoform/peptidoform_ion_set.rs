@@ -12,9 +12,9 @@ use crate::{
 };
 
 /// A single full ProForma entry. This entry can contain multiple sets of cross-linked peptides.
-/// A single set of cross-linked peptides is a [`PeptidoformIon`]. A ProForma entry with two chimeric
-/// peptides will be saved as one [`PeptidoformIonSet`] with two [`PeptidoformIon`]s that each
-/// contain one of the [`Peptidoform`]s.
+/// A single set of cross-linked peptides is a [`PeptidoformIon`]. A ProForma entry with two
+/// chimeric peptides will be saved as one [`PeptidoformIonSet`] with two [`PeptidoformIon`]s that
+/// each contain one of the [`Peptidoform`]s.
 #[derive(Clone, Debug, Default, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 pub struct PeptidoformIonSet {
     name: String,
@@ -45,9 +45,7 @@ impl PeptidoformIonSet {
             .enumerate()
             .flat_map(|(i, p)| {
                 (p.formulas_inner(i)
-                    + p.get_charge_carriers()
-                        .map(Chemical::formula)
-                        .unwrap_or_default())
+                    + p.get_charge_carriers().map(Chemical::formula).unwrap_or_default())
                 .to_vec()
             })
             .collect()
@@ -65,9 +63,7 @@ impl PeptidoformIonSet {
     /// Assume there is exactly one peptidoform in this peptidoform ion set.
     #[doc(alias = "assume_linear")]
     pub fn singular(mut self) -> Option<PeptidoformIon> {
-        (self.peptidoforms.len() == 1)
-            .then(|| self.peptidoforms.pop())
-            .flatten()
+        (self.peptidoforms.len() == 1).then(|| self.peptidoforms.pop()).flatten()
     }
 
     /// Assume there is exactly one peptidoform in this peptidoform ion set.
@@ -97,9 +93,7 @@ impl PeptidoformIonSet {
 
     /// Get all peptidoforms making up this peptidoform ion set.
     pub fn peptidoforms(&self) -> impl Iterator<Item = &Peptidoform<Linked>> {
-        self.peptidoforms
-            .iter()
-            .flat_map(PeptidoformIon::peptidoforms)
+        self.peptidoforms.iter().flat_map(PeptidoformIon::peptidoforms)
     }
 
     /// Display this peptidoform ion set.

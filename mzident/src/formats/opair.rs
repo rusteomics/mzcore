@@ -6,14 +6,6 @@ use std::{
 };
 
 use context_error::*;
-use serde::{Deserialize, Serialize};
-
-use crate::{
-    BoxedIdentifiedPeptideIter, CVTerm, FastaIdentifier, KnownFileFormat, MetaMorpheusMatchKind,
-    PSM, PSMData, PSMFileFormatVersion, PSMMetaData, PSMSource, PeptidoformPresent,
-    ProteinMetaData, Reliability, SpectrumId, SpectrumIds,
-    common_parser::{Location, OptionalLocation},
-};
 use mzcore::{
     csv::{CsvLine, parse_csv},
     ontology::Ontologies,
@@ -22,6 +14,14 @@ use mzcore::{
         SequencePosition, SimpleModification, SloppyParsingParameters,
     },
     system::{Mass, MassOverCharge, Time, isize::Charge},
+};
+use serde::{Deserialize, Serialize};
+
+use crate::{
+    BoxedIdentifiedPeptideIter, CVTerm, FastaIdentifier, KnownFileFormat, MetaMorpheusMatchKind,
+    PSM, PSMData, PSMFileFormatVersion, PSMMetaData, PSMSource, PeptidoformPresent,
+    ProteinMetaData, Reliability, SpectrumId, SpectrumIds,
+    common_parser::{Location, OptionalLocation},
 };
 
 static NUMBER_ERROR: (&str, &str) = (
@@ -227,13 +227,9 @@ pub enum OpairVersion {
 
 impl std::fmt::Display for OpairVersion {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Error> {
-        write!(
-            f,
-            "{}",
-            match self {
-                Self::Opair => "",
-            }
-        )
+        write!(f, "{}", match self {
+            Self::Opair => "",
+        })
     }
 }
 
@@ -243,6 +239,7 @@ impl PSMFileFormatVersion<OpairFormat> for OpairVersion {
             Self::Opair => O_PAIR,
         }
     }
+
     fn name(self) -> &'static str {
         match self {
             Self::Opair => "",
@@ -298,6 +295,8 @@ pub const O_PAIR: OpairFormat = OpairFormat {
 };
 
 impl PSMMetaData for OpairPSM {
+    type Protein = OpairProtein;
+
     fn peptidoform_ion_set(&self) -> Option<Cow<'_, PeptidoformIonSet>> {
         Some(Cow::Owned(self.peptide.clone().into()))
     }
@@ -347,10 +346,9 @@ impl PSMMetaData for OpairPSM {
     }
 
     fn scans(&self) -> SpectrumIds {
-        SpectrumIds::FileKnown(vec![(
-            self.raw_file.clone(),
-            vec![SpectrumId::Number(self.scan_number)],
-        )])
+        SpectrumIds::FileKnown(vec![(self.raw_file.clone(), vec![SpectrumId::Number(
+            self.scan_number,
+        )])])
     }
 
     fn experimental_mz(&self) -> Option<MassOverCharge> {
@@ -360,8 +358,6 @@ impl PSMMetaData for OpairPSM {
     fn experimental_mass(&self) -> Option<Mass> {
         Some(self.mass)
     }
-
-    type Protein = OpairProtein;
 
     fn proteins(&self) -> Cow<'_, [Self::Protein]> {
         Cow::Borrowed(std::slice::from_ref(&self.accession))

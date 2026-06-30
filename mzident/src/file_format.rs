@@ -155,6 +155,7 @@ impl KnownFileFormat {
 
 impl TryFrom<CVTerm> for KnownFileFormat {
     type Error = ();
+
     fn try_from(value: CVTerm) -> Result<Self, Self::Error> {
         match value.term.accession {
             curie!(MS:1001348|FASTA format) => Ok(Self::Fasta),

@@ -1,15 +1,5 @@
 use std::{borrow::Cow, marker::PhantomData, ops::Range};
 
-use serde::{Deserialize, Serialize};
-use thin_vec::ThinVec;
-
-use crate::{
-    BoxedIdentifiedPeptideIter, CVTerm, FastaIdentifier, KnownFileFormat, PSM, PSMData,
-    PSMFileFormatVersion, PSMMetaData, PSMSource, PeptidoformPresent, ProteinMetaData, Reliability,
-    SpectrumId, SpectrumIds,
-    common_parser::{Location, OptionalColumn, OptionalLocation},
-    helper_functions::explain_number_error,
-};
 use mzcore::{
     chemistry::{MolecularFormula, NeutralLoss},
     csv::{CsvLine, parse_csv},
@@ -19,6 +9,16 @@ use mzcore::{
         PlacementRule, Position, SequencePosition, SimpleLinear, SimpleModification,
     },
     system::{Mass, MassOverCharge, OrderedTime, f32::Time, isize::Charge},
+};
+use serde::{Deserialize, Serialize};
+use thin_vec::ThinVec;
+
+use crate::{
+    BoxedIdentifiedPeptideIter, CVTerm, FastaIdentifier, KnownFileFormat, PSM, PSMData,
+    PSMFileFormatVersion, PSMMetaData, PSMSource, PeptidoformPresent, ProteinMetaData, Reliability,
+    SpectrumId, SpectrumIds,
+    common_parser::{Location, OptionalColumn, OptionalLocation},
+    helper_functions::explain_number_error,
 };
 
 static NUMBER_ERROR: (&str, &str) = (
@@ -261,6 +261,7 @@ impl PSMFileFormatVersion<PLGSFormat> for PLGSVersion {
             Self::V3_0 => VERSION_3_0,
         }
     }
+
     fn name(self) -> &'static str {
         match self {
             Self::V3_0 => "v3.0",
@@ -269,6 +270,8 @@ impl PSMFileFormatVersion<PLGSFormat> for PLGSVersion {
 }
 
 impl PSMMetaData for PLGSPSM {
+    type Protein = PLGSProtein;
+
     fn peptidoform_ion_set(&self) -> Option<Cow<'_, PeptidoformIonSet>> {
         Some(Cow::Owned(self.peptide.clone().into()))
     }
@@ -335,7 +338,6 @@ impl PSMMetaData for PLGSPSM {
         Some(self.precursor_mass)
     }
 
-    type Protein = PLGSProtein;
     fn proteins(&self) -> Cow<'_, [Self::Protein]> {
         Cow::Borrowed(std::slice::from_ref(&self.protein_accession))
     }

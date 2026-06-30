@@ -1,7 +1,8 @@
 #![allow(clippy::missing_panics_doc)]
 
-use crate::{AlignScoring, AlignType, align};
 use mzcore::sequence::{Peptidoform, SimpleLinear};
+
+use crate::{AlignScoring, AlignType, align};
 
 #[test]
 fn overextended_rotation() {

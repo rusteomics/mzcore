@@ -1,12 +1,13 @@
 #![allow(clippy::missing_panics_doc)]
 use std::io::BufReader;
 
-use crate::{PSMSource, PeaksPSM, PeaksVersion, TestSettings, test_format};
 use mzcore::{
     molecular_formula,
     sequence::{ModificationId, SimpleModificationInner},
 };
 use thin_vec::ThinVec;
+
+use crate::{PSMSource, PeaksPSM, PeaksVersion, TestSettings, test_format};
 
 #[test]
 fn peaks_x() {

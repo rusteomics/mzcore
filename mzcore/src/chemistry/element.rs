@@ -1,10 +1,9 @@
-use crate::system::{Ratio, da, fraction};
-use bincode::{Decode, Encode};
 use std::{num::NonZeroU16, sync::LazyLock};
 
+use bincode::{Decode, Encode};
 use serde::{Deserialize, Serialize};
 
-use crate::system::f64::Mass;
+use crate::system::{Ratio, da, f64::Mass, fraction};
 
 /// The elements (and electrons)
 #[derive(
@@ -266,6 +265,7 @@ pub enum Element {
 
 impl TryFrom<&str> for Element {
     type Error = ();
+
     #[expect(clippy::too_many_lines)]
     fn try_from(value: &str) -> Result<Self, Self::Error> {
         match value.to_ascii_lowercase().as_str() {
@@ -394,6 +394,7 @@ impl TryFrom<&str> for Element {
 
 impl TryFrom<usize> for Element {
     type Error = ();
+
     #[expect(clippy::too_many_lines)]
     fn try_from(value: usize) -> Result<Self, Self::Error> {
         match value {
@@ -655,7 +656,8 @@ impl std::fmt::Display for Element {
     }
 }
 
-/// All elements sorted so that single characters come after two character element symbols (needed for greedy parsing)
+/// All elements sorted so that single characters come after two character element symbols (needed
+/// for greedy parsing)
 pub const ELEMENT_PARSE_LIST: &[(&str, Element)] = &[
     ("He", Element::He),
     ("Li", Element::Li),
@@ -777,8 +779,9 @@ pub const ELEMENT_PARSE_LIST: &[(&str, Element)] = &[
     ("P", Element::P),
 ];
 
-/// Most common elements selected for abundance in biological systems as well as unambiguous parsing.
-/// Sorted so that single characters come after two character element symbols (needed for greedy parsing).
+/// Most common elements selected for abundance in biological systems as well as unambiguous
+/// parsing. Sorted so that single characters come after two character element symbols (needed for
+/// greedy parsing).
 pub const COMMON_ELEMENT_PARSE_LIST: &[(&str, Element)] = &[
     ("He", Element::He),
     ("Li", Element::Li),
@@ -824,7 +827,7 @@ impl Element {
                         ELEMENTAL_DATA[self as usize - 1]
                             .2
                             .iter()
-                            .any(|(ii, _, _)| *ii == isotope.get())
+                            .any(|(ii, ..)| *ii == isotope.get())
                     },
                 )
             }
@@ -852,7 +855,7 @@ impl Element {
                 ELEMENTAL_DATA[self as usize - 1]
                     .2
                     .iter()
-                    .find(|(ii, _, _)| *ii == isotope.get())
+                    .find(|(ii, ..)| *ii == isotope.get())
                     .map(|(_, m, _)| *m)
             },
         )
@@ -870,7 +873,7 @@ impl Element {
                 ELEMENTAL_DATA[self as usize - 1]
                     .2
                     .iter()
-                    .find(|(ii, _, _)| *ii == isotope.get())
+                    .find(|(ii, ..)| *ii == isotope.get())
                     .map(|(_, m, _)| *m)
             },
         )
@@ -887,7 +890,7 @@ impl Element {
                 ELEMENTAL_DATA[self as usize - 1]
                     .2
                     .iter()
-                    .find(|(ii, _, _)| *ii == isotope.get())
+                    .find(|(ii, ..)| *ii == isotope.get())
                     .map(|(_, m, _)| *m)?
             } else {
                 // (mass, chance)

@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use itertools::Itertools;
 use mzcv::CVStructure;
 
+use super::Peptidoform;
 use crate::{
     chemistry::{Chemical, MassMode, MolecularFormula},
     glycan::MonoSaccharide,
@@ -15,12 +16,11 @@ use crate::{
     system::{Mass, Ratio, ratio::ppm},
 };
 
-use super::Peptidoform;
-
 /// Search for modifications that fit the mass tolerance and optional position requirements. If the
 /// `positions` is `None` it will not filter for possible positions. Otherwise only modifications
-/// that are possible (see [`SimpleModificationInner::is_possible_aa`]) on any of the listed combinations
-/// of amino acid and position. If the custom modifications are passed it will also search in them.
+/// that are possible (see [`SimpleModificationInner::is_possible_aa`]) on any of the listed
+/// combinations of amino acid and position. If the custom modifications are passed it will also
+/// search in them.
 ///
 /// It returns the list of possible modifications.
 pub fn modification_search_mass<'a>(
@@ -35,10 +35,9 @@ pub fn modification_search_mass<'a>(
         .filter(move |m| tolerance.within(&mass, &m.formula().mass(mass_mode)))
         .filter(move |m| {
             positions.is_none_or(|positions| {
-                positions.iter().any(|(aas, p)| {
-                    aas.iter()
-                        .any(|aa| m.is_possible_aa(*aa, *p).any_possible())
-                })
+                positions
+                    .iter()
+                    .any(|(aas, p)| aas.iter().any(|aa| m.is_possible_aa(*aa, *p).any_possible()))
             })
         })
 }
@@ -91,11 +90,13 @@ pub fn modification_search_glycan(
 /// The struct is intended to be reused if multiple peptides need the same replacement strategy.
 #[derive(Clone, Debug)]
 pub struct PeptideModificationSearch<'ontologies> {
-    /// If true forces the closest if there are multiple modifications within tolerance, if there are two as close it will still not provide any name
+    /// If true forces the closest if there are multiple modifications within tolerance, if there
+    /// are two as close it will still not provide any name
     force_closest: bool,
     /// If true also searches for named modifications for formula modifications
     replace_formulas: bool,
-    /// Allow modifications specified as side chain on terminal amino acids to be redefined as terminal modifications
+    /// Allow modifications specified as side chain on terminal amino acids to be redefined as
+    /// terminal modifications
     allow_terminal_redefinition: bool,
     /// The mass mode of the mass modifications (ProForma defines mono isotopic)
     mass_mode: MassMode,
@@ -159,7 +160,8 @@ impl<'ontologies> PeptideModificationSearch<'ontologies> {
         }
     }
 
-    /// Set the mass mode, all mass modifications will be interpreted as this mode, the default is [`MassMode::Monoisotopic`]
+    /// Set the mass mode, all mass modifications will be interpreted as this mode, the default is
+    /// [`MassMode::Monoisotopic`]
     #[must_use]
     pub fn mass_mode(self, mass_mode: MassMode) -> Self {
         Self {
@@ -288,7 +290,7 @@ impl<'ontologies> PeptideModificationSearch<'ontologies> {
                 Modification::Simple(simple) => settings
                     .find_replacement(position, aminoacid, simple)
                     .map(Modification::Simple),
-                Modification::CrossLink { .. } | Modification::Ambiguous { .. } => None, // TODO: potentially the cross-linker could be replaced?
+                Modification::CrossLink { .. } | Modification::Ambiguous { .. } => None, /* TODO: potentially the cross-linker could be replaced? */
             }
         }
 
@@ -347,7 +349,7 @@ impl<'ontologies> PeptideModificationSearch<'ontologies> {
                             }
                         }
                     }
-                    Modification::Ambiguous { .. } | Modification::CrossLink { .. } => (), //TODO: potentially the cross-linker could be replaced as well as the ambiguous mod, but that takes some more logic
+                    Modification::Ambiguous { .. } | Modification::CrossLink { .. } => (), /* TODO: potentially the cross-linker could be replaced as well as the ambiguous mod, but that takes some more logic */
                 }
             }
             if !remove.is_empty() {
@@ -454,11 +456,7 @@ impl<'ontologies> PeptideModificationSearch<'ontologies> {
                 let distances: Vec<_> = options
                     .iter()
                     .map(|m| {
-                        in_place
-                            .formula()
-                            .mass(mass_mode)
-                            .ppm(m.formula().mass(mass_mode))
-                            .value
+                        in_place.formula().mass(mass_mode).ppm(m.formula().mass(mass_mode)).value
                     })
                     .collect();
                 let max: f64 = distances
@@ -485,8 +483,7 @@ impl<'ontologies> PeptideModificationSearch<'ontologies> {
 #[test]
 #[expect(clippy::missing_panics_doc)]
 fn test_replacement() {
-    use crate::ontology::STATIC_ONTOLOGIES;
-    use crate::sequence::LinkerSpecificity;
+    use crate::{ontology::STATIC_ONTOLOGIES, sequence::LinkerSpecificity};
 
     let mut search =
         PeptideModificationSearch::in_ontologies(vec![Ontology::Unimod], &STATIC_ONTOLOGIES)

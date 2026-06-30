@@ -133,10 +133,7 @@ impl RenderedGlycan {
                     "<path d=\"M {} {} {}\" stroke=\"{}\" stroke-width=\"{stroke_size}px\" fill=\"none\"/>",
                     start.0,
                     start.1,
-                    points
-                        .iter()
-                        .map(|(a, b, c, d)| format!("Q {a} {b} {c} {d}"))
-                        .join(" "),
+                    points.iter().map(|(a, b, c, d)| format!("Q {a} {b} {c} {d}")).join(" "),
                     clr(Some(stroke))
                 )?,
             }

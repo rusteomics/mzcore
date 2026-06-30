@@ -54,12 +54,7 @@ impl std::hash::Hash for CrossLinkSide {
             Self::Right(r) => (2, r),
         };
         state.write_u8(i);
-        state.write(
-            &r.iter()
-                .sorted()
-                .flat_map(|r| r.to_ne_bytes())
-                .collect_vec(),
-        );
+        state.write(&r.iter().sorted().flat_map(|r| r.to_ne_bytes()).collect_vec());
     }
 }
 
@@ -119,9 +114,11 @@ pub enum LinkerSpecificity {
     },
     /// An asymmetric specificity where both ends have a different specificity.
     Asymmetric {
-        /// The placement rules for both ends, these can be asymmetric thus are provided for 'right' and 'left' separately.
+        /// The placement rules for both ends, these can be asymmetric thus are provided for
+        /// 'right' and 'left' separately.
         rules: (Vec<PlacementRule>, Vec<PlacementRule>),
-        /// All stubs that can be left after cleaving or breaking of the cross-link. The stubs are specific for right and left in the same orientation as the rules.
+        /// All stubs that can be left after cleaving or breaking of the cross-link. The stubs are
+        /// specific for right and left in the same orientation as the rules.
         stubs: Vec<(MolecularFormula, MolecularFormula)>,
         /// All possible neutral losses from the intact cross-linker.
         neutral_losses: Vec<NeutralLoss>,

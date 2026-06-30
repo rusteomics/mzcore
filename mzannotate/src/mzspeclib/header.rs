@@ -59,7 +59,8 @@ impl LibraryHeader {
     }
 }
 
-/// A set of attributes in the library header that contains global settings for all or a subset of spectra
+/// A set of attributes in the library header that contains global settings for all or a subset of
+/// spectra
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct AttributeSet {
     /// The id
@@ -99,15 +100,11 @@ pub enum EntryType {
 
 impl Display for EntryType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "{}",
-            match self {
-                Self::Spectrum => "Spectrum",
-                Self::Analyte => "Analyte",
-                Self::Interpretation => "Interpretation",
-                Self::Cluster => "Cluster",
-            }
-        )
+        write!(f, "{}", match self {
+            Self::Spectrum => "Spectrum",
+            Self::Analyte => "Analyte",
+            Self::Interpretation => "Interpretation",
+            Self::Cluster => "Cluster",
+        })
     }
 }

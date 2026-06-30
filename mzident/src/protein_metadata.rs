@@ -1,11 +1,12 @@
 use std::borrow::Cow;
 
-use crate::{CVTerm, EMPTY_FASTA_IDENTIFIER, FastaIdentifier, Reliability};
 use mzcore::{
     prelude::SequencePosition,
     sequence::{Linear, Peptidoform, SimpleModification},
 };
 use mzcv::Curie;
+
+use crate::{CVTerm, EMPTY_FASTA_IDENTIFIER, FastaIdentifier, Reliability};
 
 /// Generalised access to meta data of identified peptidoforms
 pub trait ProteinMetaData {
@@ -30,13 +31,15 @@ pub trait ProteinMetaData {
     /// Get the search engine that identified this PSM its score and the term to describe the score
     fn search_engine(&self) -> &[(CVTerm, Option<(f64, CVTerm)>)];
 
-    /// A list of all proteins (identifiers) that cannot be separated based on peptide evidence from this main protein
+    /// A list of all proteins (identifiers) that cannot be separated based on peptide evidence from
+    /// this main protein
     fn ambiguity_members(&self) -> &[String];
 
     /// The database that was used for matching optionally with the version of the database
     fn database(&self) -> Option<(Cow<'_, str>, Option<Cow<'_, str>>)>;
 
-    /// All known modifications that can occur at PSM level on this sequence, with potentially a probability
+    /// All known modifications that can occur at PSM level on this sequence, with potentially a
+    /// probability
     fn modifications(&self) -> &[(Vec<(SequencePosition, Option<f64>)>, SimpleModification)];
 
     /// The coverage of the protein based on the mapped PSMs
@@ -178,7 +181,8 @@ impl ProteinMetaData for Box<dyn ProteinMetaData + '_> {
     }
 }
 
-/// A basic type to use a placeholder when a PSM format does not contain any protein level information.
+/// A basic type to use a placeholder when a PSM format does not contain any protein level
+/// information.
 #[derive(
     Clone, Copy, Debug, Default, serde::Deserialize, serde::Serialize, PartialEq, Eq, Hash,
 )]

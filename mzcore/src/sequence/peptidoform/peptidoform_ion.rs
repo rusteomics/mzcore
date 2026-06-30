@@ -60,16 +60,16 @@ impl PeptidoformIon {
         }
     }
 
-    /// Gives all possible formulas for this peptidoform (including breakage of cross-links that can break).
-    /// Includes the full glycan, if there are any glycans.
+    /// Gives all possible formulas for this peptidoform (including breakage of cross-links that can
+    /// break). Includes the full glycan, if there are any glycans.
     /// Assumes all peptides in this peptidoform are connected.
     /// If there are no peptides in this peptidoform it returns [`Multi::default`].
     pub fn formulas(&self) -> Multi<MolecularFormula> {
         self.formulas_inner(0)
     }
 
-    /// Gives all possible formulas for this peptidoform (including breakage of cross-links that can break).
-    /// Includes the full glycan, if there are any glycans.
+    /// Gives all possible formulas for this peptidoform (including breakage of cross-links that can
+    /// break). Includes the full glycan, if there are any glycans.
     /// Assumes all peptides in this peptidoform are connected.
     /// If there are no peptides in this peptidoform it returns [`Multi::default`].
     pub(crate) fn formulas_inner(&self, peptidoform_ion_index: usize) -> Multi<MolecularFormula> {
@@ -92,9 +92,7 @@ impl PeptidoformIon {
 
     /// Assume there is exactly one peptide in this collection.
     pub fn singular(mut self) -> Option<Peptidoform<Linked>> {
-        (self.peptidoforms.len() == 1)
-            .then(|| self.peptidoforms.pop())
-            .flatten()
+        (self.peptidoforms.len() == 1).then(|| self.peptidoforms.pop()).flatten()
     }
 
     /// Assume there is exactly one peptide in this collection.
@@ -123,9 +121,7 @@ impl PeptidoformIon {
     /// Get the charge carriers
     pub fn get_charge_carriers(&self) -> Option<&MolecularCharge> {
         // Take the charge of the first peptidoform, as all are required to have the same charge
-        self.peptidoforms
-            .first()
-            .and_then(|p| p.get_charge_carriers())
+        self.peptidoforms.first().and_then(|p| p.get_charge_carriers())
     }
 
     /// Get the name
@@ -138,8 +134,8 @@ impl PeptidoformIon {
         &mut self.name
     }
 
-    /// Add a cross-link to this peptidoform and check if it is placed according to its placement rules.
-    /// The positions are first the peptide index and second the sequence index.
+    /// Add a cross-link to this peptidoform and check if it is placed according to its placement
+    /// rules. The positions are first the peptide index and second the sequence index.
     pub fn add_cross_link(
         &mut self,
         position_1: (usize, SequencePosition),
@@ -147,14 +143,8 @@ impl PeptidoformIon {
         linker: SimpleModification,
         name: CrossLinkName,
     ) -> bool {
-        let pos_1 = self
-            .peptidoforms
-            .get(position_1.0)
-            .map(|seq| &seq[position_1.1]);
-        let pos_2 = self
-            .peptidoforms
-            .get(position_2.0)
-            .map(|seq| &seq[position_2.1]);
+        let pos_1 = self.peptidoforms.get(position_1.0).map(|seq| &seq[position_1.1]);
+        let pos_2 = self.peptidoforms.get(position_2.0).map(|seq| &seq[position_2.1]);
         if let (Some(pos_1), Some(pos_2)) = (pos_1, pos_2) {
             let left = linker.is_possible(pos_1, position_1.1);
             let right = linker.is_possible(pos_2, position_1.1);
@@ -261,8 +251,9 @@ impl PeptidoformIon {
     }
 
     /// Display this peptidoform.
-    /// `specification_compliant` Displays this peptidoform either normalised to the internal representation or as fully spec compliant ProForma
-    /// (no glycan structure or custom modifications).
+    /// `specification_compliant` Displays this peptidoform either normalised to the internal
+    /// representation or as fully spec compliant ProForma (no glycan structure or custom
+    /// modifications).
     /// # Panics
     /// When some peptides do not have the same global isotope modifications.
     /// # Errors
@@ -285,10 +276,7 @@ impl PeptidoformIon {
                 "Not all global isotope modifications on all peptides on this peptidoform are identical"
             );
             let empty = Vec::new();
-            let global = self
-                .peptidoforms()
-                .first()
-                .map_or(empty.as_slice(), |p| p.get_global());
+            let global = self.peptidoforms().first().map_or(empty.as_slice(), |p| p.get_global());
             for (element, isotope) in global {
                 write!(
                     f,

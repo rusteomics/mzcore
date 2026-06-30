@@ -1,15 +1,15 @@
+use std::{
+    collections::BTreeSet,
+    fmt::{Display, Write},
+    sync::Arc,
+};
+
 use context_error::*;
 use itertools::Itertools;
 use ordered_float::OrderedFloat;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use thin_vec::ThinVec;
-
-use std::{
-    collections::BTreeSet,
-    fmt::{Display, Write},
-    sync::Arc,
-};
 
 use crate::{
     chemistry::{AmbiguousLabel, Chemical, DiagnosticIon, MolecularFormula, NeutralLoss},
@@ -25,7 +25,8 @@ use crate::{
     system::{Mass, OrderedMass, dalton},
 };
 
-/// A modification on an amino acid, wrapped in an [`std::sync::Arc`] to not have to clone modifications from databases.
+/// A modification on an amino acid, wrapped in an [`std::sync::Arc`] to not have to clone
+/// modifications from databases.
 pub type SimpleModification = Arc<SimpleModificationInner>;
 
 /// A tag for a mass modification
@@ -63,7 +64,8 @@ impl ParseJson for MassTag {
 pub enum SimpleModificationInner {
     /// A comment
     Info(String),
-    /// A modification defined with a monoisotopic mass shift, the mass tag (if defined), the mass itself, and the number of digits it was defined with
+    /// A modification defined with a monoisotopic mass shift, the mass tag (if defined), the mass
+    /// itself, and the number of digits it was defined with
     Mass(MassTag, OrderedMass, Option<u8>),
     /// A modification defined with a molecular formula
     Formula(MolecularFormula),
@@ -77,13 +79,16 @@ pub enum SimpleModificationInner {
         composition: GnoComposition,
         /// The id/name
         id: ModificationId,
-        /// The structure score, [`u16::MAX`] is used to indicate that no structure score is available
+        /// The structure score, [`u16::MAX`] is used to indicate that no structure score is
+        /// available
         structure_score: u16,
         /// The subsumption level
         subsumption_level: GnoSubsumption,
-        /// The underlying glycan motif, first is the human description, the second id the GNOme ID of the motif
+        /// The underlying glycan motif, first is the human description, the second id the GNOme ID
+        /// of the motif
         motif: Option<(Box<str>, Box<str>)>,
-        /// Taxonomy of the animals in which this glycan is found, defined as a list of species name with taxonomy ID
+        /// Taxonomy of the animals in which this glycan is found, defined as a list of species
+        /// name with taxonomy ID
         taxonomy: ThinVec<(Box<str>, usize)>,
         /// Locations of where the glycan exists
         glycomeatlas: ThinVec<(Box<str>, ThinVec<(Box<str>, Box<str>)>)>,
@@ -176,7 +181,8 @@ impl Chemical for SimpleModificationInner {
 }
 
 impl SimpleModificationInner {
-    /// Get a url for more information on this modification. Only defined for modifications from ontologies.
+    /// Get a url for more information on this modification. Only defined for modifications from
+    /// ontologies.
     pub fn ontology_url(&self) -> Option<String> {
         self.description().and_then(ModificationId::url)
     }
@@ -250,11 +256,7 @@ impl SimpleModificationInner {
                         peptidoform_index,
                         attachment.map(|a| (a, sequence_index)),
                     ) {
-                        options.push(
-                            option
-                                .1
-                                .with_label(AmbiguousLabel::GlycanFragment(option.0)),
-                        );
+                        options.push(option.1.with_label(AmbiguousLabel::GlycanFragment(option.0)));
                     }
                 }
                 if glycan_fragmentation.full() {
@@ -286,7 +288,7 @@ impl SimpleModificationInner {
                 let matching: BTreeSet<usize> = specificities
                     .iter()
                     .enumerate()
-                    .filter_map(|(index, (rules, _, _))| {
+                    .filter_map(|(index, (rules, ..))| {
                         PlacementRule::any_possible(rules, seq, position).then_some(index)
                     })
                     .collect();
@@ -344,7 +346,7 @@ impl SimpleModificationInner {
                 let matching: BTreeSet<usize> = specificities
                     .iter()
                     .enumerate()
-                    .filter_map(|(index, (rules, _, _))| {
+                    .filter_map(|(index, (rules, ..))| {
                         PlacementRule::any_possible_aa(rules, aa, position.clone()).then_some(index)
                     })
                     .collect();
@@ -388,8 +390,8 @@ impl SimpleModificationInner {
         }
     }
 
-    /// Display a modification either normalised to the internal representation or as fully valid ProForma
-    /// (no glycan structure or custom modifications).
+    /// Display a modification either normalised to the internal representation or as fully valid
+    /// ProForma (no glycan structure or custom modifications).
     /// # Errors
     /// When the given writer errors.
     pub fn display(&self, f: &mut impl Write, specification_compliant: bool) -> std::fmt::Result {
@@ -461,11 +463,7 @@ impl SimpleModificationInner {
                     LinkerSpecificity::Asymmetric {
                         rules: (rules_a, rules_b),
                         ..
-                    } => rules_a
-                        .iter()
-                        .cloned()
-                        .chain(rules_b.iter().cloned())
-                        .collect_vec(),
+                    } => rules_a.iter().cloned().chain(rules_b.iter().cloned()).collect_vec(),
                 })
                 .map(|rule| match rule {
                     PlacementRule::AminoAcid(aa, pos) => {

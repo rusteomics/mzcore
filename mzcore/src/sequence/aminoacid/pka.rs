@@ -1,12 +1,12 @@
-//! Module used to store and calculate pKa and isoelectric point values for a given [`AminoAcid`] or [Peptidoform] respectively
+//! Module used to store and calculate pKa and isoelectric point values for a given [`AminoAcid`] or
+//! [Peptidoform] respectively
 
 use serde::{Deserialize, Serialize};
 
+use super::is_amino_acid::IsAminoAcid;
 use crate::sequence::{
     AminoAcid, AtMax, Peptidoform, SemiAmbiguous, SimpleModificationInner, properties::ChargeClass,
 };
-
-use super::is_amino_acid::IsAminoAcid;
 
 /// A source for pKa values, which can be used to calculate the pKa for peptidoforms.
 pub trait PKaSource<AA: IsAminoAcid> {
@@ -21,18 +21,24 @@ pub trait PKaSource<AA: IsAminoAcid> {
 }
 
 impl<Complexity: AtMax<SemiAmbiguous>> Peptidoform<Complexity> {
-    /// Get the calculated isoelectric point (pI) for the peptidoform, or None if any sequence elements lack pKa values.
+    /// Get the calculated isoelectric point (pI) for the peptidoform, or None if any sequence
+    /// elements lack pKa values.
     ///
-    /// The isoelectric point is the pH at which the net charge of the peptidoform is zero. This is determined using a binary
-    /// search between pH 0 and 14. The charge at each pH is computed using the Henderson-Hasselbalch equation with pKa values
-    /// from the provided `PKaSource`, considering N-terminal, C-terminal, and sidechain ionizable groups.
+    /// The isoelectric point is the pH at which the net charge of the peptidoform is zero. This is
+    /// determined using a binary search between pH 0 and 14. The charge at each pH is computed
+    /// using the Henderson-Hasselbalch equation with pKa values from the provided `PKaSource`,
+    /// considering N-terminal, C-terminal, and sidechain ionizable groups.
     ///
     /// # Example
     /// ```rust
     /// # use mzcore::sequence::{Peptidoform, pka::{PKaSource, PKaLide1991}};
     /// # let ontologies = &mzcore::ontology::STATIC_ONTOLOGIES;
     /// // Create a SemiAmbiguous Peptidoform for glutamic acid (E) and Alanine (A)
-    /// let peptidoform = Peptidoform::pro_forma(&"EMEVEESPEK", ontologies).unwrap().0.into_semi_ambiguous().unwrap();
+    /// let peptidoform = Peptidoform::pro_forma(&"EMEVEESPEK", ontologies)
+    ///     .unwrap()
+    ///     .0
+    ///     .into_semi_ambiguous()
+    ///     .unwrap();
     /// let pi = peptidoform.isoelectic_point::<PKaLide1991>();
     /// // The calculated pI is approximately 3.57 based on Lide 1991 pKa values
     /// assert_eq!(pi.map(|v| (v * 100.0).round() / 100.0), Some(3.57));
@@ -43,7 +49,8 @@ impl<Complexity: AtMax<SemiAmbiguous>> Peptidoform<Complexity> {
     /// - **Modifications Ignored**: Modifications affecting pKa are not considered.
     /// - **Environmental Factors**: Assumes pKa values are independent of sequence and environment.
     ///
-    /// Get the calculated pKa value for the given peptidoform, or None if any of the sequence elements do not have a defined pKa.
+    /// Get the calculated pKa value for the given peptidoform, or None if any of the sequence
+    /// elements do not have a defined pKa.
     #[allow(non_snake_case)]
     pub fn isoelectic_point<Source: PKaSource<AminoAcid>>(&self) -> Option<f64> {
         const EPSILON: f64 = 0.0001;
@@ -172,7 +179,8 @@ impl AminoAcidPKa {
     }
 }
 
-/// pKa values from Lide, D. R. (1991). Handbook of Chemistry and Physics: A Ready Reference Book of Chemical and Physical Data.
+/// pKa values from Lide, D. R. (1991). Handbook of Chemistry and Physics: A Ready Reference Book of
+/// Chemical and Physical Data.
 #[derive(Clone, Copy, Debug)]
 pub struct PKaLide1991;
 
@@ -215,7 +223,8 @@ impl PKaSource<AminoAcid> for PKaLide1991 {
     }
 }
 
-/// pKa values from Lehninger, A. L., Nelson, D. L., & Cox, M. M. (2005). Lehninger Principles of Biochemistry. Macmillan.
+/// pKa values from Lehninger, A. L., Nelson, D. L., & Cox, M. M. (2005). Lehninger Principles of
+/// Biochemistry. Macmillan.
 #[derive(Clone, Copy, Debug)]
 pub struct PKaLehninger;
 

@@ -8,10 +8,9 @@ use mzcore::{
     quantities::Multi,
     system::isize::Charge,
 };
+use uom::num_traits::Zero;
 
 use crate::{annotation::model::GlycanModel, fragment::FragmentType, prelude::*};
-
-use uom::num_traits::Zero;
 
 /// Helper trait to be able to define fragmentation on glycan structures.
 pub trait GlycanFragmention {
@@ -145,7 +144,7 @@ fn leaf_fragments(
     let mut base_fragments = glycan
         .internal_break_points(0, peptidoform_index, attachment)
         .into_iter()
-        .filter(|(m, _, _)| *m != MolecularFormula::default())
+        .filter(|(m, ..)| *m != MolecularFormula::default())
         .map(|(formula, breakages, _)| {
             Fragment::new(
                 formula,
@@ -184,13 +183,14 @@ fn leaf_fragments(
 #[cfg(test)]
 #[allow(clippy::missing_panics_doc)]
 mod tests {
+    use std::collections::HashMap;
+
     use mzcore::{
         glycan::{BackboneFragmentKind, GlycanPeptideFragment},
         molecular_formula,
         prelude::*,
         quantities::Multi,
     };
-    use std::collections::HashMap;
 
     use crate::annotation::model::GlycanModel;
 
@@ -212,7 +212,7 @@ mod tests {
             GlycanPeptideFragment::FREE,
         ));
 
-        let (f, s, _, _) = peptidoform.all_masses(
+        let (f, s, ..) = peptidoform.all_masses(
             ..,
             ..,
             &(Multi::default(), HashMap::default()),

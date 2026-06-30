@@ -46,13 +46,13 @@ use crate::{
 /// * The use of non-standard amino acids that have one chemical formula (J/X/U/O)
 /// * [Modification](SimpleModification)s on amino acids
 ///
-/// When parsing a peptidoform (with [`Self::pro_forma`] or [`Self::pro_forma_inner`] if the ProForma
-/// definition is part of a bigger structure) a [`Peptidoform<Linked>`] is always returned. If
-/// this is contains too much complexity for the application the complexity can be checked by using
-/// [`Self::is_linear`] (and related methods) to convert the peptidoform into an owned version. Or
-/// [`Self::as_linear`] (and related methods) to get a reference to a lower complexity level. If a
-/// peptidoform is at a lower complexity level than needed [`Into::into`] and [`AsRef::as_ref`] can
-/// be used to get back to a higher complexity level.
+/// When parsing a peptidoform (with [`Self::pro_forma`] or [`Self::pro_forma_inner`] if the
+/// ProForma definition is part of a bigger structure) a [`Peptidoform<Linked>`] is always returned.
+/// If this is contains too much complexity for the application the complexity can be checked by
+/// using [`Self::is_linear`] (and related methods) to convert the peptidoform into an owned
+/// version. Or [`Self::as_linear`] (and related methods) to get a reference to a lower complexity
+/// level. If a peptidoform is at a lower complexity level than needed [`Into::into`] and
+/// [`AsRef::as_ref`] can be used to get back to a higher complexity level.
 ///
 /// ## Cross-links
 /// Cross-links either bind together two separate peptides or form a loop within a single peptide.
@@ -80,7 +80,6 @@ use crate::{
 /// ```text
 /// <15N>PEPTIDE
 /// ```
-///
 #[derive(Debug, Deserialize, Ord, PartialOrd, Serialize)]
 pub struct Peptidoform<Complexity> {
     /// The name of this peptidoform
@@ -230,7 +229,8 @@ impl<Complexity> Eq for Peptidoform<Complexity> {}
 impl<Complexity> Peptidoform<Complexity> {
     /// Check if this peptide does not use any of the features reserved for [`Linked`].
     ///
-    /// This checks if all modifications (in the sequence and the termini) are [`SimpleModification`]s.
+    /// This checks if all modifications (in the sequence and the termini) are
+    /// [`SimpleModification`]s.
     pub fn is_linear(&self) -> bool {
         self.sequence()
             .iter()
@@ -257,7 +257,8 @@ impl<Complexity> Peptidoform<Complexity> {
         }
     }
 
-    /// Check if this peptide does not use any of the features reserved for [`Linked`] or [`Linear`].
+    /// Check if this peptide does not use any of the features reserved for [`Linked`] or
+    /// [`Linear`].
     ///
     /// This checks if this peptide does not have labile or global modifications and for the absence
     /// of charge carriers.
@@ -265,10 +266,7 @@ impl<Complexity> Peptidoform<Complexity> {
         self.is_linear()
             && self.labile.is_empty()
             && self.global.is_empty()
-            && self
-                .charge_carriers
-                .as_ref()
-                .is_none_or(MolecularCharge::is_proton)
+            && self.charge_carriers.as_ref().is_none_or(MolecularCharge::is_proton)
     }
 
     /// Convert this peptide into [`SimpleLinear`].
@@ -292,7 +290,8 @@ impl<Complexity> Peptidoform<Complexity> {
     /// Check if this peptide does not use any of the features reserved for [`Linked`], [`Linear`],
     /// or [`SimpleLinear`].
     ///
-    /// This checks if this peptide does not have any ambiguous modifications or amino acids (`(?AA)` in ProForma).
+    /// This checks if this peptide does not have any ambiguous modifications or amino acids
+    /// (`(?AA)` in ProForma).
     pub fn is_semi_ambiguous(&self) -> bool {
         self.is_simple_linear()
             && self.modifications_of_unknown_position.is_empty()
@@ -322,11 +321,7 @@ impl<Complexity> Peptidoform<Complexity> {
     ///
     /// This checks if this peptide does not have B or Z amino acids.
     pub fn is_unambiguous(&self) -> bool {
-        self.is_semi_ambiguous()
-            && self
-                .sequence
-                .iter()
-                .all(|seq| seq.aminoacid.is_unambiguous())
+        self.is_semi_ambiguous() && self.sequence.iter().all(|seq| seq.aminoacid.is_unambiguous())
     }
 
     /// Convert this peptide into [`UnAmbiguous`].
@@ -413,7 +408,8 @@ impl<Complexity: HighestOf<Linear>> Peptidoform<Complexity> {
 }
 
 impl<Complexity> Peptidoform<Complexity> {
-    /// Mark this peptide with the following complexity, be warned that the complexity level is not checked.
+    /// Mark this peptide with the following complexity, be warned that the complexity level is not
+    /// checked.
     pub(super) fn mark<OtherComplexity>(self) -> Peptidoform<OtherComplexity> {
         Peptidoform {
             name: self.name,
@@ -421,18 +417,15 @@ impl<Complexity> Peptidoform<Complexity> {
             labile: self.labile,
             n_term: self.n_term,
             c_term: self.c_term,
-            sequence: self
-                .sequence
-                .into_iter()
-                .map(SequenceElement::mark)
-                .collect(),
+            sequence: self.sequence.into_iter().map(SequenceElement::mark).collect(),
             modifications_of_unknown_position: self.modifications_of_unknown_position,
             charge_carriers: self.charge_carriers,
             marker: PhantomData,
         }
     }
 
-    /// Mark this peptide with the following complexity, be warned that the complexity level is not checked.
+    /// Mark this peptide with the following complexity, be warned that the complexity level is not
+    /// checked.
     /// # Panics
     /// If the internal unsafe pointer casting fails to create a valid pointer.
     #[inline]
@@ -536,9 +529,9 @@ impl<Complexity> Peptidoform<Complexity> {
         match position {
             SequencePosition::NTerm => self.add_simple_n_term(modification),
             SequencePosition::CTerm => self.add_simple_c_term(modification),
-            SequencePosition::Index(index, _) => self.sequence[index]
-                .modifications
-                .push(Modification::Simple(modification)),
+            SequencePosition::Index(index, _) => {
+                self.sequence[index].modifications.push(Modification::Simple(modification))
+            }
         }
     }
 
@@ -547,7 +540,8 @@ impl<Complexity> Peptidoform<Complexity> {
         self.charge_carriers = charge_carriers;
     }
 
-    /// The mass of the N terminal placed modifications. The global isotope modifications are NOT applied.
+    /// The mass of the N terminal placed modifications. The global isotope modifications are NOT
+    /// applied.
     pub fn get_n_term_mass(
         &self,
         all_peptides: &[Peptidoform<Linked>],
@@ -562,28 +556,26 @@ impl<Complexity> Peptidoform<Complexity> {
         HashMap<BackboneFragmentKind, Multi<MolecularFormula>>,
     ) {
         let (base, mut specific) =
-            self.n_term
-                .iter()
-                .fold((Multi::default(), HashMap::new()), |acc, f| {
-                    if let Modification::Ambiguous { .. } = f {
-                        acc
-                    } else {
-                        let attachment = self.sequence.first().map(|s| s.aminoacid.aminoacid());
-                        let (formula, specific, _seen) = f.formula_inner(
-                            all_peptides,
-                            visited_peptides,
-                            applied_cross_links,
-                            allow_ms_cleavable,
-                            SequencePosition::NTerm,
-                            peptidoform_index,
-                            peptidoform_ion_index,
-                            glycan_model,
-                            attachment,
-                        );
-                        let merged = merge_hashmap(acc.1, &specific, &acc.0, &formula);
-                        (acc.0 * formula, merged)
-                    }
-                });
+            self.n_term.iter().fold((Multi::default(), HashMap::new()), |acc, f| {
+                if let Modification::Ambiguous { .. } = f {
+                    acc
+                } else {
+                    let attachment = self.sequence.first().map(|s| s.aminoacid.aminoacid());
+                    let (formula, specific, _seen) = f.formula_inner(
+                        all_peptides,
+                        visited_peptides,
+                        applied_cross_links,
+                        allow_ms_cleavable,
+                        SequencePosition::NTerm,
+                        peptidoform_index,
+                        peptidoform_ion_index,
+                        glycan_model,
+                        attachment,
+                    );
+                    let merged = merge_hashmap(acc.1, &specific, &acc.0, &formula);
+                    (acc.0 * formula, merged)
+                }
+            });
         let terminus = molecular_formula!(H 1);
         for v in specific.values_mut() {
             *v += terminus.clone();
@@ -606,28 +598,26 @@ impl<Complexity> Peptidoform<Complexity> {
         HashMap<BackboneFragmentKind, Multi<MolecularFormula>>,
     ) {
         let (base, mut specific) =
-            self.c_term
-                .iter()
-                .fold((Multi::default(), HashMap::new()), |acc, f| {
-                    if let Modification::Ambiguous { .. } = f {
-                        acc
-                    } else {
-                        let attachment = self.sequence.last().map(|s| s.aminoacid.aminoacid());
-                        let (formula, specific, _seen) = f.formula_inner(
-                            all_peptides,
-                            visited_peptides,
-                            applied_cross_links,
-                            allow_ms_cleavable,
-                            SequencePosition::NTerm,
-                            peptidoform_index,
-                            peptidoform_ion_index,
-                            glycan_model,
-                            attachment,
-                        );
-                        let merged = merge_hashmap(acc.1, &specific, &acc.0, &formula);
-                        (acc.0 * formula, merged)
-                    }
-                });
+            self.c_term.iter().fold((Multi::default(), HashMap::new()), |acc, f| {
+                if let Modification::Ambiguous { .. } = f {
+                    acc
+                } else {
+                    let attachment = self.sequence.last().map(|s| s.aminoacid.aminoacid());
+                    let (formula, specific, _seen) = f.formula_inner(
+                        all_peptides,
+                        visited_peptides,
+                        applied_cross_links,
+                        allow_ms_cleavable,
+                        SequencePosition::NTerm,
+                        peptidoform_index,
+                        peptidoform_ion_index,
+                        glycan_model,
+                        attachment,
+                    );
+                    let merged = merge_hashmap(acc.1, &specific, &acc.0, &formula);
+                    (acc.0 * formula, merged)
+                }
+            });
         let terminus = molecular_formula!(H 1 O 1);
         for v in specific.values_mut() {
             *v += terminus.clone();
@@ -635,7 +625,8 @@ impl<Complexity> Peptidoform<Complexity> {
         (base + terminus, specific)
     }
 
-    /// Find all neutral losses in the given stretch of peptide (loss, peptide index, sequence index)
+    /// Find all neutral losses in the given stretch of peptide (loss, peptide index, sequence
+    /// index)
     pub fn potential_neutral_losses(
         &self,
         range: impl RangeBounds<usize>,
@@ -652,29 +643,32 @@ impl<Complexity> Peptidoform<Complexity> {
                     .iter()
                     .filter_map(|modification| match modification {
                         Modification::Simple(modification)
-                        | Modification::Ambiguous { modification, .. } => match &**modification {
-                            SimpleModificationInner::Database { specificities, .. } => Some(
-                                specificities
-                                    .iter()
-                                    .filter_map(|(rules, rule_losses, _)| {
-                                        if PlacementRule::any_possible(
-                                            rules,
-                                            aa.as_ref(),
-                                            pos.sequence_index,
-                                        ) {
-                                            Some(rule_losses)
-                                        } else {
-                                            None
-                                        }
-                                    })
-                                    .flatten()
-                                    .map(move |loss| {
-                                        (loss.clone(), peptidoform_index, pos.sequence_index)
-                                    })
-                                    .collect_vec(),
-                            ),
-                            _ => None, // TODO: potentially hydrolysed cross-linkers could also have neutral losses
-                        },
+                        | Modification::Ambiguous { modification, .. } => {
+                            match &**modification {
+                                SimpleModificationInner::Database { specificities, .. } => Some(
+                                    specificities
+                                        .iter()
+                                        .filter_map(|(rules, rule_losses, _)| {
+                                            if PlacementRule::any_possible(
+                                                rules,
+                                                aa.as_ref(),
+                                                pos.sequence_index,
+                                            ) {
+                                                Some(rule_losses)
+                                            } else {
+                                                None
+                                            }
+                                        })
+                                        .flatten()
+                                        .map(move |loss| {
+                                            (loss.clone(), peptidoform_index, pos.sequence_index)
+                                        })
+                                        .collect_vec(),
+                                ),
+                                _ => None, /* TODO: potentially hydrolysed cross-linkers could
+                                            * also have neutral losses */
+                            }
+                        }
                         Modification::CrossLink {
                             linker,
                             peptide,
@@ -684,7 +678,7 @@ impl<Complexity> Peptidoform<Complexity> {
                             if !ignore_peptides.contains(peptide) {
                                 found_peptides.push(*peptide);
                             }
-                            let (neutral, _, _) = side.allowed_rules(linker);
+                            let (neutral, ..) = side.allowed_rules(linker);
                             Some(
                                 neutral
                                     .into_iter()
@@ -705,7 +699,8 @@ impl<Complexity> Peptidoform<Complexity> {
             .collect()
     }
 
-    /// Iterate over a range in the peptide and keep track of the position, this duplicates the N and C terminal sequence elements to TODO: fix
+    /// Iterate over a range in the peptide and keep track of the position, this duplicates the N
+    /// and C terminal sequence elements to TODO: fix
     pub fn iter(
         &self,
         range: impl RangeBounds<usize>,
@@ -809,12 +804,11 @@ impl<Complexity> Peptidoform<Complexity> {
             );
 
         // Calculate all masses (and labels) for all possible combinations of ambiguous masses
-        let previous_combinations = self
-            .modifications_of_unknown_position
-            .iter()
-            .enumerate()
-            .fold(vec![Vec::new()], |previous_combinations, (id, entry)| {
-                // Go over all possible locations for this ambiguous mod and add these to all previous options
+        let previous_combinations = self.modifications_of_unknown_position.iter().enumerate().fold(
+            vec![Vec::new()],
+            |previous_combinations, (id, entry)| {
+                // Go over all possible locations for this ambiguous mod and add these to all
+                // previous options
                 let in_range_positions = entry
                     .positions
                     .iter()
@@ -825,11 +819,13 @@ impl<Complexity> Peptidoform<Complexity> {
                     // If no location is possible for this modification keep all known combinations
                     previous_combinations
                 } else {
-                    // Returns a list of all combinations of ambiguous modifications that can go together
+                    // Returns a list of all combinations of ambiguous modifications that can go
+                    // together
                     let mut options = in_range_positions
                         .iter()
                         .flat_map(|pos| {
-                            // This position is a possible location, add this location for this mod to all previously known combinations
+                            // This position is a possible location, add this location for this mod
+                            // to all previously known combinations
                             previous_combinations
                                 .iter()
                                 .filter(|path| {
@@ -844,14 +840,16 @@ impl<Complexity> Peptidoform<Complexity> {
                                 .collect_vec()
                         })
                         .collect_vec();
-                    // If there is an option to place this mod outside of this range allow that as well
-                    // by copying all previous options without any alteration
+                    // If there is an option to place this mod outside of this range allow that as
+                    // well by copying all previous options without any
+                    // alteration
                     if in_range_positions.len() < entry.positions.len() {
                         options.extend_from_slice(&previous_combinations);
                     }
                     options
                 }
-            });
+            },
+        );
 
         // Determine the formula for all selected ambiguous modifications and create the labels
         let (all_ambiguous_options, all_ambiguous_specific) = previous_combinations
@@ -939,8 +937,9 @@ impl<Complexity> Peptidoform<Complexity> {
         (formulas * all_ambiguous_options, merged, seen)
     }
 
-    /// Generate all potential masses for the given stretch of amino acids alongside all peptides seen as part of a cross-link.
-    /// Applies ambiguous amino acids and modifications, and neutral losses (if allowed in the model).
+    /// Generate all potential masses for the given stretch of amino acids alongside all peptides
+    /// seen as part of a cross-link. Applies ambiguous amino acids and modifications, and
+    /// neutral losses (if allowed in the model).
     // TODO: take terminal ambiguous into account
     #[expect(clippy::too_many_arguments)]
     pub fn all_masses(
@@ -982,13 +981,13 @@ impl<Complexity> Peptidoform<Complexity> {
             seen,
             self.potential_neutral_losses(range, all_peptides, peptidoform_index, &mut Vec::new())
                 .into_iter()
-                .map(|(n, _, _)| vec![n])
+                .map(|(n, ..)| vec![n])
                 .collect(),
         )
     }
 
-    /// Gives all the formulas for the whole peptide with no C and N terminal modifications. With the global isotope modifications applied.
-    /// Ignores any potential glycan fragmentation.
+    /// Gives all the formulas for the whole peptide with no C and N terminal modifications. With
+    /// the global isotope modifications applied. Ignores any potential glycan fragmentation.
     #[expect(clippy::missing_panics_doc)] // Global isotope mods are guaranteed to be correct
     fn bare_formulas_inner(
         &self,
@@ -1026,7 +1025,8 @@ impl<Complexity> Peptidoform<Complexity> {
             .collect()
     }
 
-    /// Gives the formulas for the whole peptide. With the global isotope modifications applied. (Any B/Z will result in multiple possible formulas.)
+    /// Gives the formulas for the whole peptide. With the global isotope modifications applied.
+    /// (Any B/Z will result in multiple possible formulas.)
     /// # Panics
     /// When this peptide is already in the set of visited peptides.
     pub(crate) fn formulas_inner(
@@ -1089,24 +1089,40 @@ impl<Complexity> Peptidoform<Complexity> {
         }
 
         let formulas = formulas
-        .iter()
-        .map(|f| f.with_global_isotope_modifications(&self.global).expect("Global isotope modification invalid in determination of all formulas for a peptide"))
-        .collect();
+            .iter()
+            .map(|f| {
+                f.with_global_isotope_modifications(&self.global)
+                    .expect("Global isotope modification invalid in determination of all formulas for a peptide")
+            })
+            .collect();
         let formulas_specific = formulas_specific
-        .into_iter()
-        .map(|(k, f)| (k, f.iter().map(|f| f.with_global_isotope_modifications(&self.global).expect("Global isotope modification invalid in determination of all formulas for a peptide")).collect()))
-        .collect();
+            .into_iter()
+            .map(|(k, f)| {
+                (
+                    k,
+                    f.iter()
+                        .map(|f| {
+                            f.with_global_isotope_modifications(&self.global).expect(
+                                "Global isotope modification invalid in determination of all formulas for a peptide",
+                            )
+                        })
+                        .collect(),
+                )
+            })
+            .collect();
 
         (formulas, formulas_specific, seen)
     }
 
     /// Display this peptide.
     /// `specification_compliant` Displays this peptide either normalised to the internal
-    /// representation or as fully spec compliant ProForma (no glycan structure or custom modifications).
+    /// representation or as fully spec compliant ProForma (no glycan structure or custom
+    /// modifications).
     /// # Errors
     /// If the formatter supplied errors.
     /// # Panics
-    /// If there is an ambiguous modification without a definition, this indicates an error in rustyms.
+    /// If there is an ambiguous modification without a definition, this indicates an error in
+    /// rustyms.
     pub fn display(
         &self,
         f: &mut impl Write,
@@ -1127,7 +1143,8 @@ impl<Complexity> Peptidoform<Complexity> {
         if !self.name.is_empty() {
             write!(f, "(>{})", self.name)?;
         }
-        // Write any modification of unknown position that has no preferred location at the start of the peptide
+        // Write any modification of unknown position that has no preferred location at the start of
+        // the peptide
         let mut any_ambiguous = false;
         let mut placed_ambiguous = Vec::new();
         let mut preferred_ambiguous_position =
@@ -1290,17 +1307,14 @@ impl<Complexity> Peptidoform<Complexity> {
                 .clone()
                 .into_iter()
                 .map(|m| AmbiguousEntry {
-                    positions: m
-                        .positions
-                        .into_iter()
-                        .map(SequencePosition::reverse)
-                        .collect(),
+                    positions: m.positions.into_iter().map(SequencePosition::reverse).collect(),
                     ..m
                 })
                 .collect(),
             ..self.clone()
         }
     }
+
     /// Get all labile modifications
     pub(super) const fn get_labile_mut_inner(&mut self) -> &mut ThinVec<SimpleModification> {
         &mut self.labile
@@ -1344,7 +1358,8 @@ impl Peptidoform<Linear> {
 }
 
 impl<Complexity: AtMax<Linear>> Peptidoform<Complexity> {
-    /// Get a region of this peptide as a new peptide (with all terminal/global/ambiguous modifications).
+    /// Get a region of this peptide as a new peptide (with all terminal/global/ambiguous
+    /// modifications).
     #[must_use]
     pub fn sub_peptidoform(&self, index: impl RangeBounds<usize>) -> Option<Self> {
         self.sequence
@@ -1365,7 +1380,8 @@ impl<Complexity: AtMax<Linear>> Peptidoform<Complexity> {
             })
     }
 
-    /// Digest this sequence with the given protease and the given maximal number of missed cleavages.
+    /// Digest this sequence with the given protease and the given maximal number of missed
+    /// cleavages.
     pub fn digest(
         &self,
         protease: &Protease,
@@ -1390,22 +1406,17 @@ impl<Complexity: AtMax<Linear>> Peptidoform<Complexity> {
 
     /// Get the N terminal modifications as simple modifications
     pub fn get_simple_n_term(&self) -> Vec<SimpleModification> {
-        self.n_term
-            .iter()
-            .filter_map(|m| m.clone().into_simple())
-            .collect()
+        self.n_term.iter().filter_map(|m| m.clone().into_simple()).collect()
     }
 
     /// Get the C terminal modifications as simple modifications
     pub fn get_simple_c_term(&self) -> Vec<SimpleModification> {
-        self.c_term
-            .iter()
-            .filter_map(|m| m.clone().into_simple())
-            .collect()
+        self.c_term.iter().filter_map(|m| m.clone().into_simple()).collect()
     }
 
-    /// Gives the formulas for the whole peptide. With the global isotope modifications applied. (Any B/Z will result in multiple possible formulas.)
-    /// Ignores any potential glycan fragmentation, assumes the glycan is always fully present.
+    /// Gives the formulas for the whole peptide. With the global isotope modifications applied.
+    /// (Any B/Z will result in multiple possible formulas.) Ignores any potential glycan
+    /// fragmentation, assumes the glycan is always fully present.
     #[expect(clippy::missing_panics_doc)] // Can not panic (unless state is already corrupted)
     pub fn formulas(&self) -> Multi<MolecularFormula> {
         let mut formulas: Multi<MolecularFormula> = self
@@ -1433,11 +1444,15 @@ impl<Complexity: AtMax<Linear>> Peptidoform<Complexity> {
 
         formulas
             .iter()
-            .map(|f| f.with_global_isotope_modifications(&self.global).expect("Global isotope modification invalid in determination of all formulas for a peptide"))
+            .map(|f| {
+                f.with_global_isotope_modifications(&self.global)
+                    .expect("Global isotope modification invalid in determination of all formulas for a peptide")
+            })
             .collect()
     }
 
-    /// Gives all the formulas for the whole peptide with no C and N terminal modifications. With the global isotope modifications applied.
+    /// Gives all the formulas for the whole peptide with no C and N terminal modifications. With
+    /// the global isotope modifications applied.
     pub fn bare_formulas(&self) -> Multi<MolecularFormula> {
         self.bare_formulas_inner(&[], &[], &mut Vec::new(), false, 0, 0)
     }
@@ -1456,12 +1471,11 @@ impl Peptidoform<UnAmbiguous> {
         options.pop().unwrap()
     }
 
-    /// Gives the formula for the whole peptide with no C and N terminal modifications. With the global isotope modifications applied.
+    /// Gives the formula for the whole peptide with no C and N terminal modifications. With the
+    /// global isotope modifications applied.
     #[expect(clippy::missing_panics_doc)] // Can not panic (unless state is already corrupted)
     pub fn bare_formula(&self) -> MolecularFormula {
-        let mut options = self
-            .bare_formulas_inner(&[], &[], &mut Vec::new(), false, 0, 0)
-            .to_vec();
+        let mut options = self.bare_formulas_inner(&[], &[], &mut Vec::new(), false, 0, 0).to_vec();
         assert_eq!(options.len(), 1);
         options.pop().unwrap()
     }
@@ -1535,14 +1549,10 @@ impl<Complexity: AtLeast<SimpleLinear>> Peptidoform<Complexity> {
         let possible_positions = self
             .iter(range)
             .filter(|(position, seq)| {
-                modification
-                    .is_possible(seq, position.sequence_index)
-                    .any_possible()
+                modification.is_possible(seq, position.sequence_index).any_possible()
                     && (settings.position.is_none()
                         || settings.position.as_ref().is_some_and(|rules| {
-                            rules
-                                .iter()
-                                .any(|rule| rule.is_possible(seq, position.sequence_index))
+                            rules.iter().any(|rule| rule.is_possible(seq, position.sequence_index))
                         }))
                     && (settings.comkp
                         || self[position.sequence_index]
@@ -1616,15 +1626,13 @@ impl<Complexity: AtLeast<SimpleLinear>> Peptidoform<Complexity> {
                                 *spos
                             }
                             SequencePosition::Index(pos, _) => {
-                                self.sequence[*pos]
-                                    .modifications
-                                    .push(Modification::Ambiguous {
-                                        id,
-                                        group: group.clone(),
-                                        modification: modification.clone(),
-                                        localisation_score: *score,
-                                        preferred: preferred_position.is_some_and(|p| p == *spos),
-                                    });
+                                self.sequence[*pos].modifications.push(Modification::Ambiguous {
+                                    id,
+                                    group: group.clone(),
+                                    modification: modification.clone(),
+                                    localisation_score: *score,
+                                    preferred: preferred_position.is_some_and(|p| p == *spos),
+                                });
                                 self.sequence[*pos].modifications.sort_unstable();
                                 placed = true;
                                 *spos
@@ -1653,7 +1661,8 @@ impl<Complexity: AtLeast<SimpleLinear>> Peptidoform<Complexity> {
 }
 
 impl<OwnComplexity: AtMax<SemiAmbiguous>> Peptidoform<OwnComplexity> {
-    /// Concatenate another peptide after this peptide. This will fail if any of these conditions are true:
+    /// Concatenate another peptide after this peptide. This will fail if any of these conditions
+    /// are true:
     /// * This peptide has a C terminal modification
     /// * The other peptide has an N terminal modification
     // Because it is complexity SemiAmbiguous these peptides are guaranteed to not contain charge
@@ -1829,12 +1838,15 @@ impl<Complexity> HiddenInternalMethods for Peptidoform<Complexity> {
     fn get_global(&self) -> &[(Element, Option<NonZeroU16>)] {
         &self.global
     }
+
     fn get_labile(&self) -> &[SimpleModification] {
         &self.labile
     }
+
     fn get_charge_carriers(&self) -> Option<&MolecularCharge> {
         self.charge_carriers.as_ref()
     }
+
     fn formulas_inner(
         &self,
         peptidoform_index: usize,

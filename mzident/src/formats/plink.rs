@@ -8,15 +8,6 @@ use std::{
 
 use context_error::*;
 use itertools::Itertools;
-use serde::{Deserialize, Serialize};
-use uom::ConstZero;
-
-use crate::{
-    BoxedIdentifiedPeptideIter, FastaIdentifier, KnownFileFormat, PSM, PSMData,
-    PSMFileFormatVersion, PSMMetaData, PSMSource, PeptidoformPresent, SpectrumId, SpectrumIds,
-    common_parser::{Location, OptionalColumn, OptionalLocation},
-    helper_functions::explain_number_error,
-};
 use mzcore::{
     chemistry::Chemical,
     csv::{CsvLine, parse_csv},
@@ -29,6 +20,15 @@ use mzcore::{
         SloppyParsingParameters,
     },
     system::{Mass, MassOverCharge, Time, isize::Charge},
+};
+use serde::{Deserialize, Serialize};
+use uom::ConstZero;
+
+use crate::{
+    BoxedIdentifiedPeptideIter, FastaIdentifier, KnownFileFormat, PSM, PSMData,
+    PSMFileFormatVersion, PSMMetaData, PSMSource, PeptidoformPresent, SpectrumId, SpectrumIds,
+    common_parser::{Location, OptionalColumn, OptionalLocation},
+    helper_functions::explain_number_error,
 };
 
 static NUMBER_ERROR: (&str, &str) = (
@@ -318,30 +318,69 @@ fn plink_separate<'a>(
     BoxedError<'a, BasicKind>,
 > {
     if let Some((peptide1, peptide2)) = location.as_str().split_once(")-") {
-        let first_end = peptide1.rfind('(').ok_or_else(||
-            BoxedError::new(BasicKind::Error,
+        let first_end = peptide1.rfind('(').ok_or_else(|| {
+            BoxedError::new(
+                BasicKind::Error,
                 title,
                 format!("A pLink {field} should follow the format 'PEP1(pos1)-PEP2(pos2)' but the opening bracket '(' was not found for PEP1"),
-                Context::line(Some(location.line.line_index() as u32), location.full_line(), location.range.start, peptide1.len()).to_owned()))?;
-        let second_end = peptide2.rfind('(').ok_or_else(||
-            BoxedError::new(BasicKind::Error,
+                Context::line(
+                    Some(location.line.line_index() as u32),
+                    location.full_line(),
+                    location.range.start,
+                    peptide1.len(),
+                )
+                .to_owned(),
+            )
+        })?;
+        let second_end = peptide2.rfind('(').ok_or_else(|| {
+            BoxedError::new(
+                BasicKind::Error,
                 title,
                 format!("A pLink {field} should follow the format 'PEP1(pos1)-PEP2(pos2)' but the opening bracket '(' was not found for PEP2"),
-                Context::line(Some(location.line.line_index() as u32), location.full_line(), location.range.start+peptide1.len()+2, peptide2.len())))?;
+                Context::line(
+                    Some(location.line.line_index() as u32),
+                    location.full_line(),
+                    location.range.start + peptide1.len() + 2,
+                    peptide2.len(),
+                ),
+            )
+        })?;
 
         let pos1 = location.range.start + first_end + 1..location.range.start + peptide1.len();
-        let first_index = location.full_line()[pos1.clone()].parse::<u16>().map_err(|err|
-            BoxedError::new(BasicKind::Error,
+        let first_index = location.full_line()[pos1.clone()].parse::<u16>().map_err(|err| {
+            BoxedError::new(
+                BasicKind::Error,
                 title,
-                format!("A pLink {field} should follow the format 'PEP1(pos1)-PEP2(pos2)' but the position for PEP1 {}", explain_number_error(&err)),
-                Context::line_range(Some(location.line.line_index() as u32), location.full_line(), pos1.clone()).to_owned()))?;
+                format!(
+                    "A pLink {field} should follow the format 'PEP1(pos1)-PEP2(pos2)' but the position for PEP1 {}",
+                    explain_number_error(&err)
+                ),
+                Context::line_range(
+                    Some(location.line.line_index() as u32),
+                    location.full_line(),
+                    pos1.clone(),
+                )
+                .to_owned(),
+            )
+        })?;
         let pos2 = location.range.start + peptide1.len() + 2 + second_end + 1
             ..location.range.start + peptide1.len() + 2 + peptide2.len() - 1;
-        let second_index = location.full_line()[pos2.clone()].parse::<u16>().map_err(|err|
-            BoxedError::new(BasicKind::Error,
+        let second_index = location.full_line()[pos2.clone()].parse::<u16>().map_err(|err| {
+            BoxedError::new(
+                BasicKind::Error,
                 title,
-                format!("A pLink {field} should follow the format 'PEP1(pos1)-PEP2(pos2)' but the position for PEP1 {}", explain_number_error(&err)),
-                Context::line_range(Some(location.line.line_index() as u32), location.full_line(), pos2.clone()).to_owned()))?;
+                format!(
+                    "A pLink {field} should follow the format 'PEP1(pos1)-PEP2(pos2)' but the position for PEP1 {}",
+                    explain_number_error(&err)
+                ),
+                Context::line_range(
+                    Some(location.line.line_index() as u32),
+                    location.full_line(),
+                    pos2.clone(),
+                )
+                .to_owned(),
+            )
+        })?;
 
         Ok((
             location.range.start..location.range.start + first_end,
@@ -353,7 +392,8 @@ fn plink_separate<'a>(
             Some((second_index, pos2)),
         ))
     } else {
-        // rsplit to prevent picking a bracket in the text field, and then reverse for it to make sense to human brains
+        // rsplit to prevent picking a bracket in the text field, and then reverse for it to make
+        // sense to human brains
         let mut split = location.as_str().rsplitn(3, '(').collect_vec();
         split.reverse();
 
@@ -365,17 +405,41 @@ fn plink_separate<'a>(
                 let end = location.range.end;
 
                 let pos1 = start_pos1..start_pos2 - 2;
-                let first_index = location.full_line()[pos1.clone()].parse::<u16>().map_err(|err|
-                    BoxedError::new(BasicKind::Error,
+                let first_index = location.full_line()[pos1.clone()].parse::<u16>().map_err(|err| {
+                    BoxedError::new(
+                        BasicKind::Error,
                         title,
-                        format!("A pLink {field} should follow the format 'PEP(pos1)(pos2)' but the first position {}", explain_number_error(&err)),
-                        Context::line_range(Some(location.line.line_index() as u32), location.full_line(), pos1.clone()).to_owned()))?;
+                        format!(
+                            "A pLink {field} should follow the format 'PEP(pos1)(pos2)' but the first position {}",
+                            explain_number_error(&err)
+                        ),
+                        Context::line_range(
+                            Some(location.line.line_index() as u32),
+                            location.full_line(),
+                            pos1.clone(),
+                        )
+                        .to_owned(),
+                    )
+                })?;
                 let pos2 = start_pos2..end - 1;
-                let second_index = location.full_line()[start_pos2..end-1].parse::<u16>().map_err(|err|
-                    BoxedError::new(BasicKind::Error,
-                        title,
-                        format!("A pLink {field} should follow the format 'PEP(pos1)(pos2)' but the second position {}", explain_number_error(&err)),
-                        Context::line_range(Some(location.line.line_index() as u32), location.full_line(), start_pos2..end-1).to_owned()))?;
+                let second_index = location.full_line()[start_pos2..end - 1]
+                    .parse::<u16>()
+                    .map_err(|err| {
+                        BoxedError::new(
+                            BasicKind::Error,
+                            title,
+                            format!(
+                                "A pLink {field} should follow the format 'PEP(pos1)(pos2)' but the second position {}",
+                                explain_number_error(&err)
+                            ),
+                            Context::line_range(
+                                Some(location.line.line_index() as u32),
+                                location.full_line(),
+                                start_pos2..end - 1,
+                            )
+                            .to_owned(),
+                        )
+                    })?;
 
                 Ok((
                     start..start_pos1 - 1,
@@ -390,11 +454,22 @@ fn plink_separate<'a>(
                 let end = location.range.end;
 
                 let pos1 = start_pos1..end - 1;
-                let first_index = location.full_line()[pos1.clone()].parse::<u16>().map_err(|err|
-                    BoxedError::new(BasicKind::Error,
+                let first_index = location.full_line()[pos1.clone()].parse::<u16>().map_err(|err| {
+                    BoxedError::new(
+                        BasicKind::Error,
                         title,
-                        format!("A pLink {field} should follow the format 'PEP(pos1)(pos2)' but the first position {}", explain_number_error(&err)),
-                        Context::line_range(Some(location.line.line_index() as u32), location.full_line(), pos1.clone()).to_owned()))?;
+                        format!(
+                            "A pLink {field} should follow the format 'PEP(pos1)(pos2)' but the first position {}",
+                            explain_number_error(&err)
+                        ),
+                        Context::line_range(
+                            Some(location.line.line_index() as u32),
+                            location.full_line(),
+                            pos1.clone(),
+                        )
+                        .to_owned(),
+                    )
+                })?;
 
                 Ok((start..start_pos1 - 1, Some((first_index, pos1)), None, None))
             }
@@ -422,6 +497,7 @@ pub enum PLinkPeptideType {
 
 impl std::str::FromStr for PLinkPeptideType {
     type Err = ();
+
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
             "0" => Ok(Self::Common),
@@ -435,16 +511,12 @@ impl std::str::FromStr for PLinkPeptideType {
 
 impl std::fmt::Display for PLinkPeptideType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "{}",
-            match self {
-                Self::Common => "Common",
-                Self::Hydrolysed => "Hydrolysed",
-                Self::LoopLink => "Loop link",
-                Self::IntraLink => "Intra link",
-            }
-        )
+        write!(f, "{}", match self {
+            Self::Common => "Common",
+            Self::Hydrolysed => "Hydrolysed",
+            Self::LoopLink => "Loop link",
+            Self::IntraLink => "Intra link",
+        })
     }
 }
 
@@ -501,6 +573,7 @@ impl PSMFileFormatVersion<PLinkFormat> for PLinkVersion {
             Self::V2_3 => V2_3,
         }
     }
+
     fn name(self) -> &'static str {
         match self {
             Self::V2_3 => "v2.3",
@@ -509,6 +582,8 @@ impl PSMFileFormatVersion<PLinkFormat> for PLinkVersion {
 }
 
 impl PSMMetaData for PLinkPSM {
+    type Protein = FastaIdentifier<Box<str>>;
+
     fn peptidoform_ion_set(&self) -> Option<Cow<'_, PeptidoformIonSet>> {
         Some(Cow::Owned(self.peptidoform.clone().into()))
     }
@@ -567,10 +642,9 @@ impl PSMMetaData for PLinkPSM {
                 self.raw_file.clone().map_or_else(
                     || SpectrumIds::FileNotKnown(vec![SpectrumId::Number(scan_number)]),
                     |raw_file| {
-                        SpectrumIds::FileKnown(vec![(
-                            raw_file,
-                            vec![SpectrumId::Number(scan_number)],
-                        )])
+                        SpectrumIds::FileKnown(vec![(raw_file, vec![SpectrumId::Number(
+                            scan_number,
+                        )])])
                     },
                 )
             },
@@ -587,7 +661,6 @@ impl PSMMetaData for PLinkPSM {
         Some(self.mass)
     }
 
-    type Protein = FastaIdentifier<Box<str>>;
     fn proteins(&self) -> Cow<'_, [Self::Protein]> {
         Cow::Owned(
             self.proteins
@@ -601,7 +674,8 @@ impl PSMMetaData for PLinkPSM {
 
     fn protein_location(&self) -> Option<Range<u16>> {
         if let Ok((_, loc, None, _)) = self.proteins.iter().exactly_one() {
-            // find loc in peptide by searching for the first location in the first peptide with a linker and calculating the correct offset from there
+            // find loc in peptide by searching for the first location in the first peptide with a
+            // linker and calculating the correct offset from there
             loc.and_then(|loc| {
                 self.peptidoform.peptidoforms().first().and_then(|p| {
                     p.sequence()

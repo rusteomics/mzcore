@@ -1,9 +1,9 @@
+use serde::{Deserialize, Serialize};
+
 use crate::{
     parse_json::{ParseJson, use_serde},
     space::{Space, UsedSpace},
 };
-
-use serde::{Deserialize, Serialize};
 
 /// A position on a sequence
 #[derive(Clone, Copy, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
@@ -19,7 +19,7 @@ pub enum SequencePosition {
 impl Space for SequencePosition {
     fn space(&self) -> UsedSpace {
         match self {
-            Self::Index(_, _) => UsedSpace {
+            Self::Index(..) => UsedSpace {
                 stack: 24,
                 ..Default::default()
             },
@@ -32,9 +32,11 @@ impl Space for SequencePosition {
     }
 }
 
-/// Add to the index, the onus of making sure the index is still valid for the peptide is on the caller.
+/// Add to the index, the onus of making sure the index is still valid for the peptide is on the
+/// caller.
 impl std::ops::Add<u8> for SequencePosition {
     type Output = Self;
+
     #[allow(clippy::suspicious_arithmetic_impl)] // It is correct
     fn add(self, rhs: u8) -> Self::Output {
         match self {
@@ -44,9 +46,11 @@ impl std::ops::Add<u8> for SequencePosition {
     }
 }
 
-/// Subtract from the index, the onus of making sure the index is still valid for the peptide is on the caller.
+/// Subtract from the index, the onus of making sure the index is still valid for the peptide is on
+/// the caller.
 impl std::ops::Sub<u8> for SequencePosition {
     type Output = Self;
+
     fn sub(self, rhs: u8) -> Self::Output {
         match self {
             Self::Index(i, l) => Self::Index(i.saturating_sub(rhs as usize), l),
@@ -72,7 +76,8 @@ impl std::fmt::Display for SequencePosition {
 }
 
 impl SequencePosition {
-    /// Reverse this position, if the peptide would be reversed what would this location be in that reversed peptide.
+    /// Reverse this position, if the peptide would be reversed what would this location be in that
+    /// reversed peptide.
     #[must_use]
     pub const fn reverse(self) -> Self {
         match self {
@@ -138,6 +143,7 @@ impl PeptidePosition {
             sequence_length: length,
         }
     }
+
     /// Generate a position for C terminal ion series
     pub const fn c(sequence_index: SequencePosition, length: usize) -> Self {
         Self {
@@ -150,14 +156,17 @@ impl PeptidePosition {
             sequence_length: length,
         }
     }
+
     /// Check if this position is on the N terminus
     pub fn is_n_terminal(&self) -> bool {
         self.sequence_index == SequencePosition::NTerm
     }
+
     /// Check if this position is on the C terminus
     pub fn is_c_terminal(&self) -> bool {
         self.sequence_index == SequencePosition::CTerm
     }
+
     /// Flip to the other series (N->C and C->N)
     #[must_use]
     pub const fn flip_terminal(self) -> Self {
@@ -177,7 +186,8 @@ impl Space for PeptidePosition {
 }
 
 /// A flanking sequence
-// Impossible to get the Sequence option smaller (size of a pointer plus alignment of a pointer so the discriminator is 8 bytes as well)
+// Impossible to get the Sequence option smaller (size of a pointer plus alignment of a pointer so
+// the discriminator is 8 bytes as well)
 #[allow(variant_size_differences)]
 #[derive(Clone, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
 pub enum FlankingSequence {
@@ -186,7 +196,8 @@ pub enum FlankingSequence {
     Unknown,
     /// If this is the terminus
     Terminal,
-    /// If only a single amino acid is known (added to prevent overhead of needing to create a sequence)
+    /// If only a single amino acid is known (added to prevent overhead of needing to create a
+    /// sequence)
     AminoAcid(crate::sequence::AminoAcid),
     /// If a (small part of the) sequence is known, always written in N to C direction
     Sequence(Box<crate::sequence::Peptidoform<crate::sequence::SemiAmbiguous>>),

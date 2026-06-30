@@ -1,17 +1,16 @@
 use std::num::NonZeroU32;
 
+#[cfg(feature = "isotopes")]
+use mzcore::{molecular_formula, system::MassOverCharge};
 use mzcore::{
     prelude::{MassMode, PeptidoformIonSet},
     system::thomson,
 };
 use mzdata::mzpeaks::PeakCollection;
 
-use crate::prelude::{AnnotatedSpectrum, Fragment, MatchingParameters};
-
 #[cfg(feature = "isotopes")]
 use crate::fragment::Isotope;
-#[cfg(feature = "isotopes")]
-use mzcore::{molecular_formula, system::MassOverCharge};
+use crate::prelude::{AnnotatedSpectrum, Fragment, MatchingParameters};
 
 /// A spectrum that can be annotated. The best way to use this is with mzdata
 /// [`SpectrumLike`](mzdata::prelude::SpectrumLike). For up to date information see that crate, but
@@ -69,9 +68,8 @@ pub trait AnnotatableSpectrum: Sized {
                         for (index, intensity) in envelope.into_iter().enumerate() {
                             let isotope_mz =
                                 base + (index as f64 * isotope_shift) / fragment.charge.to_float();
-                            let peak = annotated
-                                .peaks
-                                .search(isotope_mz.get::<thomson>(), tolerance);
+                            let peak =
+                                annotated.peaks.search(isotope_mz.get::<thomson>(), tolerance);
                             matched_envelope.push((
                                 isotope_mz.value,
                                 peak.map_or(0.0, |i| annotated.peaks[i].mz.value),
@@ -98,21 +96,23 @@ pub trait AnnotatableSpectrum: Sized {
                             }
                         }
                     } else {
-                        // Keep the theoretical fragments sorted to have the highest theoretical likelihood on top
+                        // Keep the theoretical fragments sorted to have the highest theoretical
+                        // likelihood on top
                         match annotated.peaks[index].annotations.binary_search(fragment) {
-                            Ok(ai) | Err(ai) => annotated.peaks[index]
-                                .annotations
-                                .insert(ai, fragment.clone()),
+                            Ok(ai) | Err(ai) => {
+                                annotated.peaks[index].annotations.insert(ai, fragment.clone())
+                            }
                         }
                     }
 
                     #[cfg(not(feature = "isotopes"))]
                     {
-                        // Keep the theoretical fragments sorted to have the highest theoretical likelihood on top
+                        // Keep the theoretical fragments sorted to have the highest theoretical
+                        // likelihood on top
                         match annotated.peaks[index].annotations.binary_search(fragment) {
-                            Ok(ai) | Err(ai) => annotated.peaks[index]
-                                .annotations
-                                .insert(ai, fragment.clone()),
+                            Ok(ai) | Err(ai) => {
+                                annotated.peaks[index].annotations.insert(ai, fragment.clone())
+                            }
                         }
                     }
                 }
@@ -141,19 +141,8 @@ impl<T: Into<AnnotatedSpectrum>> AnnotatableSpectrum for T {
 /// (mz1, mz2, i1, i2)
 #[cfg(feature = "isotopes")]
 fn cosine_similarity(peaks: &[(f64, f64, f64, f64)]) -> f64 {
-    let sumx = peaks
-        .iter()
-        .map(|(m1, m2, i1, i2)| m1 * m2 * i1 * i2)
-        .sum::<f64>();
-    let sumx2 = peaks
-        .iter()
-        .map(|(m1, _, i1, _)| (m1 * i1).powi(2))
-        .sum::<f64>()
-        .sqrt()
-        * peaks
-            .iter()
-            .map(|(_, m2, _, i2)| (m2 * i2).powi(2))
-            .sum::<f64>()
-            .sqrt();
+    let sumx = peaks.iter().map(|(m1, m2, i1, i2)| m1 * m2 * i1 * i2).sum::<f64>();
+    let sumx2 = peaks.iter().map(|(m1, _, i1, _)| (m1 * i1).powi(2)).sum::<f64>().sqrt()
+        * peaks.iter().map(|(_, m2, _, i2)| (m2 * i2).powi(2)).sum::<f64>().sqrt();
     sumx / sumx2
 }

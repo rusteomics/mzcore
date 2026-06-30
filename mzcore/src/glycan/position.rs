@@ -33,7 +33,8 @@ impl Space for GlycanPosition {
 impl GlycanPosition {
     /// Get the branch names
     /// # Panics
-    /// Panics if the first branch number is outside the range of the greek alphabet (small and caps together).
+    /// Panics if the first branch number is outside the range of the greek alphabet (small and caps
+    /// together).
     pub fn branch_names(&self) -> String {
         self.branch
             .iter()
@@ -56,17 +57,19 @@ impl GlycanPosition {
             })
             .collect::<String>()
     }
+
     /// Generate the label for this glycan position, example: `1α'`
     /// # Panics
-    /// Panics if the first branch number is outside the range of the greek alphabet (small and caps together).
+    /// Panics if the first branch number is outside the range of the greek alphabet (small and caps
+    /// together).
     pub fn label(&self) -> String {
         format!("{}{}", self.series_number, self.branch_names())
     }
-    /// Generate the label for this glycan attachment eg N1 (1 based numbering) or an empty string if the attachment is unknown
+
+    /// Generate the label for this glycan attachment eg N1 (1 based numbering) or an empty string
+    /// if the attachment is unknown
     pub fn attachment(&self) -> String {
-        self.attachment
-            .map(|(aa, pos)| format!("{aa}{pos}"))
-            .unwrap_or_default()
+        self.attachment.map(|(aa, pos)| format!("{aa}{pos}")).unwrap_or_default()
     }
 }
 
@@ -105,12 +108,14 @@ impl std::fmt::Display for GlycanBreakPos {
     }
 }
 
-/// The selected (part) of a glycan to render, using [`Self::FULL`] is a shortcut to get the full glycan.
+/// The selected (part) of a glycan to render, using [`Self::FULL`] is a shortcut to get the full
+/// glycan.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum GlycanSelection<'a> {
-    /// A subtree of the glycan, with potentially a break of the root of the subtree and breaks in the branches.
-    /// If no breaks are specified the full glycan is shown. The root is the first monosaccharide to be included
-    /// in the rendering. The fragment will not include the indicated glycan positions for the branch breaks.
+    /// A subtree of the glycan, with potentially a break of the root of the subtree and breaks in
+    /// the branches. If no breaks are specified the full glycan is shown. The root is the first
+    /// monosaccharide to be included in the rendering. The fragment will not include the
+    /// indicated glycan positions for the branch breaks.
     Subtree(Option<&'a GlycanPosition>, &'a [GlycanPosition]),
     /// A single sugar, all it branches will be shown as broken.
     SingleSugar(&'a GlycanPosition),

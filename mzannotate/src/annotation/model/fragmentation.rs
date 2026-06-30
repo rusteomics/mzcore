@@ -38,14 +38,16 @@ pub struct FragmentationModel {
     pub y: PrimaryIonSeries,
     /// z series ions
     pub z: PrimaryIonSeries,
-    /// precursor ions, standard neutral losses, amino acid specific neutral losses, and charge range
+    /// precursor ions, standard neutral losses, amino acid specific neutral losses, and charge
+    /// range
     pub precursor: (
         Vec<NeutralLoss>,
         Vec<(Vec<AminoAcid>, Vec<NeutralLoss>)>,
         (u8, Option<Vec<AminoAcid>>),
         ChargeRange,
     ),
-    /// internal ions, standard neutral losses, amino acid specific neutral losses, and charge range
+    /// internal ions, standard neutral losses, amino acid specific neutral losses, and charge
+    /// range
     pub internal: Option<(
         RangeInclusive<usize>,
         Vec<NeutralLoss>,
@@ -57,7 +59,8 @@ pub struct FragmentationModel {
     pub immonium: Option<ImmoniumSettings>,
     /// If the neutral losses specific for modifications should be generated
     pub modification_specific_neutral_losses: bool,
-    /// If the diagnostic ions specific for modifications should be generated with the allowed charge range
+    /// If the diagnostic ions specific for modifications should be generated with the allowed
+    /// charge range
     pub modification_specific_diagnostic_ions: Option<ChargeRange>,
     /// Glycan fragmentation
     pub glycan: GlycanModel,
@@ -74,7 +77,8 @@ pub struct SatelliteIonSeries {
     pub neutral_losses: Vec<NeutralLoss>,
     /// The allowed amino acid specific neutral losses
     pub amino_acid_neutral_losses: Vec<(Vec<AminoAcid>, Vec<NeutralLoss>)>,
-    /// The maximal number of side chain lost and the amino acids from which the side chains can be lost (or all if no selection is given)
+    /// The maximal number of side chain lost and the amino acids from which the side chains can be
+    /// lost (or all if no selection is given)
     pub amino_acid_side_chain_losses: (u8, Option<Vec<AminoAcid>>),
     /// The allowed charges
     pub charge_range: ChargeRange,
@@ -100,6 +104,7 @@ impl SatelliteIonSeries {
     pub fn location(self, location: SatelliteLocation) -> Self {
         Self { location, ..self }
     }
+
     /// Replace the neutral losses
     #[must_use]
     pub fn neutral_losses(self, neutral_losses: Vec<NeutralLoss>) -> Self {
@@ -108,6 +113,7 @@ impl SatelliteIonSeries {
             ..self
         }
     }
+
     /// Replace the amino acid specific neutral losses
     #[must_use]
     pub fn amino_acid_neutral_losses(
@@ -119,6 +125,7 @@ impl SatelliteIonSeries {
             ..self
         }
     }
+
     /// Replace the amino acid side chain losses
     #[must_use]
     pub fn amino_acid_side_chain_losses(
@@ -130,6 +137,7 @@ impl SatelliteIonSeries {
             ..self
         }
     }
+
     /// Replace the charge range
     #[must_use]
     pub fn charge_range(self, charge_range: ChargeRange) -> Self {
@@ -138,6 +146,7 @@ impl SatelliteIonSeries {
             ..self
         }
     }
+
     /// Replace the allowed variants, e.g. a vs a+1 vs a+2
     #[must_use]
     pub fn variants(self, allowed_variants: Vec<i8>) -> Self {
@@ -170,7 +179,8 @@ pub struct PrimaryIonSeries {
     pub neutral_losses: Vec<NeutralLoss>,
     /// The allowed amino acid specific neutral losses
     pub amino_acid_neutral_losses: Vec<(Vec<AminoAcid>, Vec<NeutralLoss>)>,
-    /// The maximal number of side chain lost and the amino acids from which the side chains can be lost (or all if no selection is given)
+    /// The maximal number of side chain lost and the amino acids from which the side chains can be
+    /// lost (or all if no selection is given)
     pub amino_acid_side_chain_losses: (u8, Option<Vec<AminoAcid>>),
     /// The allowed charges
     pub charge_range: ChargeRange,
@@ -192,6 +202,7 @@ impl PrimaryIonSeries {
     pub fn location(self, location: Location) -> Self {
         Self { location, ..self }
     }
+
     /// Replace the neutral losses
     #[must_use]
     pub fn neutral_losses(self, neutral_losses: Vec<NeutralLoss>) -> Self {
@@ -200,6 +211,7 @@ impl PrimaryIonSeries {
             ..self
         }
     }
+
     /// Replace the amino acid specific neutral losses
     #[must_use]
     pub fn amino_acid_neutral_losses(
@@ -211,6 +223,7 @@ impl PrimaryIonSeries {
             ..self
         }
     }
+
     /// Replace the amino acid side chain losses
     #[must_use]
     pub fn amino_acid_side_chain_losses(
@@ -222,6 +235,7 @@ impl PrimaryIonSeries {
             ..self
         }
     }
+
     /// Replace the charge range
     #[must_use]
     pub fn charge_range(self, charge_range: ChargeRange) -> Self {
@@ -230,6 +244,7 @@ impl PrimaryIonSeries {
             ..self
         }
     }
+
     /// Replace the allowed variants, e.g. a vs a+1 vs a+2
     #[must_use]
     pub fn variants(self, allowed_variants: Vec<i8>) -> Self {
@@ -260,51 +275,61 @@ impl FragmentationModel {
     pub fn a(self, a: PrimaryIonSeries) -> Self {
         Self { a, ..self }
     }
+
     /// Set b
     #[must_use]
     pub fn b(self, b: PrimaryIonSeries) -> Self {
         Self { b, ..self }
     }
+
     /// Set c
     #[must_use]
     pub fn c(self, c: PrimaryIonSeries) -> Self {
         Self { c, ..self }
     }
+
     /// Set d
     #[must_use]
     pub fn d(self, d: SatelliteIonSeries) -> Self {
         Self { d, ..self }
     }
+
     /// Set v
     #[must_use]
     pub fn v(self, v: SatelliteIonSeries) -> Self {
         Self { v, ..self }
     }
+
     /// Set w
     #[must_use]
     pub fn w(self, w: SatelliteIonSeries) -> Self {
         Self { w, ..self }
     }
+
     /// Set x
     #[must_use]
     pub fn x(self, x: PrimaryIonSeries) -> Self {
         Self { x, ..self }
     }
+
     /// Set y
     #[must_use]
     pub fn y(self, y: PrimaryIonSeries) -> Self {
         Self { y, ..self }
     }
+
     /// Set z
     #[must_use]
     pub fn z(self, z: PrimaryIonSeries) -> Self {
         Self { z, ..self }
     }
+
     /// Set glycan
     #[must_use]
     pub fn glycan(self, glycan: GlycanModel) -> Self {
         Self { glycan, ..self }
     }
+
     /// Overwrite the precursor neutral losses
     #[must_use]
     pub fn precursor(
@@ -324,6 +349,7 @@ impl FragmentationModel {
             ..self
         }
     }
+
     /// Set immonium
     #[must_use]
     pub fn immonium(self, state: Option<ImmoniumSettings>) -> Self {
@@ -332,6 +358,7 @@ impl FragmentationModel {
             ..self
         }
     }
+
     /// Set modification specific neutral losses
     #[must_use]
     pub fn modification_specific_neutral_losses(self, state: bool) -> Self {
@@ -340,6 +367,7 @@ impl FragmentationModel {
             ..self
         }
     }
+
     /// Set modification specific diagnostic ions
     #[must_use]
     pub fn modification_specific_diagnostic_ions(self, state: Option<ChargeRange>) -> Self {
@@ -348,6 +376,7 @@ impl FragmentationModel {
             ..self
         }
     }
+
     /// Set the tolerance
     #[must_use]
     pub fn allow_cross_link_cleavage(self, state: bool) -> Self {
@@ -365,7 +394,8 @@ impl FragmentationModel {
 pub enum Location {
     /// Skip the given number from the N terminal side
     SkipN(usize),
-    /// Skip the given number of aminoacids from the N terminal and C terminal side respectively, only using the positions between these two
+    /// Skip the given number of aminoacids from the N terminal and C terminal side respectively,
+    /// only using the positions between these two
     SkipNC(usize, usize),
     /// Skip a certain number and then take a certain number of aminoacids
     TakeN {
@@ -460,10 +490,7 @@ impl SatelliteLocation {
                         break;
                     }
                 }
-                if allowed
-                    .or_else(|| self.base.map(|b| distance <= b))
-                    .is_some_and(|a| a)
-                {
+                if allowed.or_else(|| self.base.map(|b| distance <= b)).is_some_and(|a| a) {
                     output.push((seq.aminoacid.aminoacid(), distance));
                 }
             }

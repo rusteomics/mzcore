@@ -1,6 +1,7 @@
 #![allow(clippy::missing_panics_doc)]
-use crate::{MaxQuantPSM, MaxQuantVersion, TestSettings, test_format};
 use std::io::BufReader;
+
+use crate::{MaxQuantPSM, MaxQuantVersion, TestSettings, test_format};
 
 #[test]
 fn maxquant_msms() {

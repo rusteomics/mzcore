@@ -1,10 +1,13 @@
-use crate::imgt_gene::IMGTGene;
-use crate::structs::{AASequence, DataItem, Location, Region};
-use crate::{NotASpecies, Species};
+use std::{collections::HashMap, io::BufRead};
+
 use itertools::Itertools;
 use mzcore::sequence::AminoAcid;
-use std::collections::HashMap;
-use std::io::BufRead;
+
+use crate::{
+    NotASpecies, Species,
+    imgt_gene::IMGTGene,
+    structs::{AASequence, DataItem, Location, Region},
+};
 
 /// Parse the IMGT file
 pub(crate) fn parse_dat<T: BufRead>(
@@ -143,9 +146,7 @@ impl DataItem {
         is_sequence: &mut bool,
     ) -> Result<(), String> {
         let trimmed = line.trim();
-        let split = trimmed
-            .split_once('=')
-            .map(|(key, tail)| (key.to_ascii_lowercase(), tail));
+        let split = trimmed.split_once('=').map(|(key, tail)| (key.to_ascii_lowercase(), tail));
 
         match split
             .as_ref()
@@ -277,20 +278,16 @@ impl DataItem {
         .contains(&region.key.as_str())
         {
             if region.key == "CDR3-IMGT" {
-                if let Some(gene) = self
-                    .genes
-                    .iter_mut()
-                    .find(|g| g.location.overlaps(&region.location))
+                if let Some(gene) =
+                    self.genes.iter_mut().find(|g| g.location.overlaps(&region.location))
                 // CDR3 does not have to be fully inside a V-REGION
                 {
                     gene.regions.insert(region.key.clone(), region);
                 } else {
                     self.regions.push(region);
                 }
-            } else if let Some(gene) = self
-                .genes
-                .iter_mut()
-                .find(|g| g.location.contains(&region.location))
+            } else if let Some(gene) =
+                self.genes.iter_mut().find(|g| g.location.contains(&region.location))
             {
                 gene.regions.insert(region.key.clone(), region);
             } else {

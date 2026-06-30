@@ -41,10 +41,7 @@ pub(crate) fn build_atomic_masses(out_dir: &Path) {
                 format!("Not a valid isotope+element, could not recognise element: {nuclide}")
             })
             .unwrap();
-        let mass = mass
-            .parse::<f64>()
-            .map_err(|e| format!("{e}@{mass}"))
-            .unwrap();
+        let mass = mass.parse::<f64>().map_err(|e| format!("{e}@{mass}")).unwrap();
         atomic_masses[element as usize - 1].push((isotope, mass));
     }
 
@@ -113,21 +110,15 @@ pub(crate) fn build_atomic_masses(out_dir: &Path) {
     }
 
     // Monoisotopic, average weight, isotopes: (num, mass, abundance)
-    let combined_data = isotopic_abundances
-        .into_iter()
-        .zip(atomic_masses)
-        .zip(atomic_weights)
-        .map(|((isotopic_abundance, isotopic_mass), atomic_weight)| {
+    let combined_data = isotopic_abundances.into_iter().zip(atomic_masses).zip(atomic_weights).map(
+        |((isotopic_abundance, isotopic_mass), atomic_weight)| {
             let isotopes = isotopic_mass
                 .iter()
                 .map(|(i, m)| {
                     (
                         *i,
                         *m,
-                        isotopic_abundance
-                            .iter()
-                            .find(|(ai, _)| ai == i)
-                            .map_or(0.0, |(_, a)| *a),
+                        isotopic_abundance.iter().find(|(ai, _)| ai == i).map_or(0.0, |(_, a)| *a),
                     )
                 })
                 .collect::<Vec<_>>();
@@ -142,7 +133,8 @@ pub(crate) fn build_atomic_masses(out_dir: &Path) {
                 atomic_weight,
                 isotopes,
             )
-        });
+        },
+    );
 
     // Write out the data
     let dest_path = Path::new(&out_dir).join("elements.dat");
@@ -153,9 +145,7 @@ pub(crate) fn build_atomic_masses(out_dir: &Path) {
             (
                 m.map(da),
                 a.map(da),
-                i.into_iter()
-                    .map(|(n, m, i)| (n as u16, da(m), i))
-                    .collect(),
+                i.into_iter().map(|(n, m, i)| (n as u16, da(m), i)).collect(),
             )
         })
         .collect();
@@ -174,10 +164,7 @@ pub(crate) fn build_atomic_masses(out_dir: &Path) {
 /// # Errors
 /// If a numeric part is not numeric, or if the structure is not valid.
 fn get_ciaaw_number(text: &str) -> Result<f64, String> {
-    let parse = |t: &str| {
-        t.parse::<f64>()
-            .map_err(|_| format!("Not a valid number: {t}"))
-    };
+    let parse = |t: &str| t.parse::<f64>().map_err(|_| format!("Not a valid number: {t}"));
     if text.starts_with('[') {
         let (low, high) = text[1..text.len() - 1]
             .split_once(',')

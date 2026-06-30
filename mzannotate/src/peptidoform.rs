@@ -84,8 +84,8 @@ fn peptidoform_ion_inner(
     base
 }
 
-/// Generate the theoretical fragments for this peptide, with the given maximal charge of the fragments, and the given model.
-/// With the global isotope modifications applied.
+/// Generate the theoretical fragments for this peptide, with the given maximal charge of the
+/// fragments, and the given model. With the global isotope modifications applied.
 /// # Panics
 /// If the global isotope replacement is invalid.
 pub(crate) fn generate_theoretical_fragments_inner<Complexity>(
@@ -97,10 +97,8 @@ pub(crate) fn generate_theoretical_fragments_inner<Complexity>(
     all_peptides: &[Peptidoform<Linked>],
 ) -> Vec<Fragment> {
     let default_charge = MolecularCharge::proton(max_charge);
-    let mut charge_carriers: CachedCharge = peptidoform
-        .get_charge_carriers()
-        .unwrap_or(&default_charge)
-        .into();
+    let mut charge_carriers: CachedCharge =
+        peptidoform.get_charge_carriers().unwrap_or(&default_charge).into();
 
     let mut output = Vec::with_capacity(20 * peptidoform.sequence().len() + 75); // Empirically derived required size of the buffer (Derived from Hecklib)
     for sequence_index in 0..peptidoform.sequence().len() {
@@ -153,11 +151,8 @@ pub(crate) fn generate_theoretical_fragments_inner<Complexity>(
         if !n_term_seen.is_disjoint(&c_term_seen) {
             continue; // There is a link reachable from both sides so there is a loop
         }
-        let (modifications_total, modifications_specific, modifications_cross_links) = peptidoform
-            .sequence()[sequence_index]
-            .modifications
-            .iter()
-            .fold(
+        let (modifications_total, modifications_specific, modifications_cross_links) =
+            peptidoform.sequence()[sequence_index].modifications.iter().fold(
                 (Multi::default(), HashMap::new(), HashSet::new()),
                 |acc, m| {
                     let (f, specific, s) = m.formula_inner(
@@ -227,10 +222,7 @@ pub(crate) fn generate_theoretical_fragments_inner<Complexity>(
             })
             .collect::<Vec<_>>();
 
-        for n in 1..peptidoform
-            .len()
-            .saturating_sub(*internal_range.start() + 1)
-        {
+        for n in 1..peptidoform.len().saturating_sub(*internal_range.start() + 1) {
             for c in n..(peptidoform.len() - 1).min(n + internal_range.end()) {
                 let o_n = options[n];
                 let o_c = options[c];
@@ -244,7 +236,7 @@ pub(crate) fn generate_theoretical_fragments_inner<Complexity>(
                             &mut Vec::new(),
                         )
                         .into_iter()
-                        .map(|(n, _, _)| vec![n])
+                        .map(|(n, ..)| vec![n])
                         .collect()
                 } else {
                     Vec::new()
@@ -369,7 +361,7 @@ pub(crate) fn generate_theoretical_fragments_inner<Complexity>(
         peptidoform
             .potential_neutral_losses(.., all_peptides, peptidoform_index, &mut Vec::new())
             .into_iter()
-            .map(|(n, _, _)| vec![n])
+            .map(|(n, ..)| vec![n])
             .collect()
     } else {
         Vec::new()
@@ -383,10 +375,7 @@ pub(crate) fn generate_theoretical_fragments_inner<Complexity>(
             .filter_map(|(rule, losses)| {
                 rule.iter()
                     .any(|aa| {
-                        peptidoform
-                            .sequence()
-                            .iter()
-                            .any(|seq| seq.aminoacid.aminoacid() == *aa)
+                        peptidoform.sequence().iter().any(|seq| seq.aminoacid.aminoacid() == *aa)
                     })
                     .then_some(losses)
             })
@@ -484,17 +473,14 @@ pub(crate) fn generate_theoretical_fragments_inner<Complexity>(
                 ..
             } => {
                 output.extend(
-                    structure
-                        .clone()
-                        .determine_positions()
-                        .generate_theoretical_fragments(
-                            model,
-                            peptidoform_ion_index,
-                            peptidoform_index,
-                            &mut charge_carriers,
-                            &full_formula,
-                            None,
-                        ),
+                    structure.clone().determine_positions().generate_theoretical_fragments(
+                        model,
+                        peptidoform_ion_index,
+                        peptidoform_index,
+                        &mut charge_carriers,
+                        &full_formula,
+                        None,
+                    ),
                 );
             }
             _ => (),
@@ -560,8 +546,8 @@ fn diagnostic_ions<Complexity>(
 }
 
 impl<Complexity: AtMax<Linear>> PeptidoformFragmentation for Peptidoform<Complexity> {
-    /// Generate the theoretical fragments for this peptide, with the given maximal charge of the fragments, and the given model.
-    /// With the global isotope modifications applied.
+    /// Generate the theoretical fragments for this peptide, with the given maximal charge of the
+    /// fragments, and the given model. With the global isotope modifications applied.
     /// # Panics
     /// If the global isotope replacement is invalid.
     fn generate_theoretical_fragments(

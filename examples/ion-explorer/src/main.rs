@@ -45,7 +45,8 @@ struct Cli {
     /// The bin width of the mass bins
     #[arg(long, default_value = "0.25")]
     resolution: f64,
-    /// The high end of the range for looking at diagnostic/immonium ions, selects all peaks in 0..=`max_start`
+    /// The high end of the range for looking at diagnostic/immonium ions, selects all peaks in
+    /// 0..=`max_start`
     #[arg(long, default_value = "200.0")]
     max_start: f64,
     /// The number of Dalton to select before a fragment ion
@@ -65,17 +66,30 @@ fn main() {
     parameters.match_isotopes = true;
     let parameters = parameters;
 
-    let peptides: std::collections::HashMap<PathBuf, Vec<PSM<mzcore::sequence::Linked, mzident::MaybePeptidoform>>> = open_psm_file(&args.in_path, &Ontologies::init().0, false)
-        .expect("Could not open PSM file")
-        .filter_map(Result::ok)
-        .into_group_map_by(|l| match l.scans() {
-            SpectrumIds::FileKnown(spectra) => spectra.first().map(|s| if s.0.is_absolute() {
-                    s.0.clone()
-                } else {
-                    args.raw_file_directory.as_ref().expect("The raw file directory parameter has to be defined if there are peptides with a non absolute path").join(&s.0).with_extension("mzML")
-                }).expect("A file known spectra ref should have at least one file"),
-            SpectrumIds::FileNotKnown(_) | SpectrumIds::None => args.raw_file.clone().expect("The raw file parameter has to be defined if there are peptides without a defined raw file"),
-        });
+    let peptides: std::collections::HashMap<PathBuf, Vec<PSM<mzcore::sequence::Linked, mzident::MaybePeptidoform>>> =
+        open_psm_file(&args.in_path, &Ontologies::init().0, false)
+            .expect("Could not open PSM file")
+            .filter_map(Result::ok)
+            .into_group_map_by(|l| match l.scans() {
+                SpectrumIds::FileKnown(spectra) => spectra
+                    .first()
+                    .map(|s| {
+                        if s.0.is_absolute() {
+                            s.0.clone()
+                        } else {
+                            args.raw_file_directory
+                                .as_ref()
+                                .expect("The raw file directory parameter has to be defined if there are peptides with a non absolute path")
+                                .join(&s.0)
+                                .with_extension("mzML")
+                        }
+                    })
+                    .expect("A file known spectra ref should have at least one file"),
+                SpectrumIds::FileNotKnown(_) | SpectrumIds::None => args
+                    .raw_file
+                    .clone()
+                    .expect("The raw file parameter has to be defined if there are peptides without a defined raw file"),
+            });
 
     let stack: Stack = peptides
         .par_iter()
@@ -89,10 +103,7 @@ fn main() {
                 if peptide.charge().is_none() {
                     continue;
                 }
-                if let Some(cpi) = peptide
-                    .peptidoform_ion_set()
-                    .map(std::borrow::Cow::into_owned)
-                {
+                if let Some(cpi) = peptide.peptidoform_ion_set().map(std::borrow::Cow::into_owned) {
                     let id = match peptide.scans() {
                         SpectrumIds::FileKnown(spectra) => {
                             spectra.first().and_then(|s| s.1.first().cloned())
@@ -209,14 +220,11 @@ fn merge_stack(
                 points[index].total_intensity += f64::from(found_peak.intensity);
             }
             Err(index) => {
-                points.insert(
-                    index,
-                    Point {
-                        mass: normalised_mass,
-                        count: 1,
-                        total_intensity: f64::from(found_peak.intensity),
-                    },
-                );
+                points.insert(index, Point {
+                    mass: normalised_mass,
+                    count: 1,
+                    total_intensity: f64::from(found_peak.intensity),
+                });
             }
         }
     }

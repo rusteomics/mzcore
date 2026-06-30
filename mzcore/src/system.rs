@@ -1,5 +1,6 @@
 //! The measurement system used in this crate.
-//! A redefinition of the important SI units for them to be stored in a more sensible base unit for MS purposes.
+//! A redefinition of the important SI units for them to be stored in a more sensible base unit for
+//! MS purposes.
 
 #![allow(clippy::non_canonical_clone_impl)]
 #![allow(clippy::ignored_unit_patterns)]
@@ -9,9 +10,8 @@ use std::ops::{Deref, DerefMut};
 use serde::{Deserialize, Serialize};
 use uom::num_traits::Zero;
 
-use crate::helper_functions;
-
 pub use self::f64::*;
+use crate::helper_functions;
 
 /// The mass quantity in dalton
 #[macro_use]
@@ -135,11 +135,7 @@ pub mod f64 {
 
     Q!(self::mks, f64);
 
-    pub use super::charge::e;
-    pub use super::mass::dalton;
-    pub use super::mass_over_charge::thomson;
-    pub use super::ratio::fraction;
-    pub use super::time::s;
+    pub use super::{charge::e, mass::dalton, mass_over_charge::thomson, ratio::fraction, time::s};
 
     /// Annotate the given number as being in Da
     pub fn da(v: f64) -> Mass {
@@ -156,11 +152,7 @@ pub mod f32 {
 
     Q!(self::mks, f32);
 
-    pub use super::charge::e;
-    pub use super::mass::dalton;
-    pub use super::mass_over_charge::thomson;
-    pub use super::ratio::fraction;
-    pub use super::time::s;
+    pub use super::{charge::e, mass::dalton, mass_over_charge::thomson, ratio::fraction, time::s};
 
     /// Annotate the given number as being in Da
     pub fn da(v: f32) -> Mass {
@@ -177,11 +169,7 @@ pub mod usize {
 
     Q!(self::mks, usize);
 
-    pub use super::charge::e;
-    pub use super::mass::dalton;
-    pub use super::mass_over_charge::thomson;
-    pub use super::ratio::fraction;
-    pub use super::time::s;
+    pub use super::{charge::e, mass::dalton, mass_over_charge::thomson, ratio::fraction, time::s};
 }
 
 /// All quantities with isize as underlying type
@@ -193,11 +181,7 @@ pub mod isize {
 
     Q!(self::mks, isize);
 
-    pub use super::charge::e;
-    pub use super::mass::dalton;
-    pub use super::mass_over_charge::thomson;
-    pub use super::ratio::fraction;
-    pub use super::time::s;
+    pub use super::{charge::e, mass::dalton, mass_over_charge::thomson, ratio::fraction, time::s};
 }
 
 impl usize::Charge {
@@ -238,7 +222,8 @@ impl Mass {
     }
 }
 
-/// A wrapper around [`Ratio`] which implements Eq/Ord/Hash to help in auto deriving these on other structs.
+/// A wrapper around [`Ratio`] which implements Eq/Ord/Hash to help in auto deriving these on other
+/// structs.
 #[derive(Clone, Copy, Debug, Deserialize, Serialize)]
 pub struct OrderedRatio(Ratio);
 
@@ -268,6 +253,7 @@ impl From<Ratio> for OrderedRatio {
 
 impl Deref for OrderedRatio {
     type Target = Ratio;
+
     fn deref(&self) -> &Self::Target {
         &self.0
     }
@@ -305,7 +291,8 @@ impl std::hash::Hash for OrderedRatio {
     }
 }
 
-/// A wrapper around [`Mass`] which implements Eq/Ord/Hash to help in auto deriving these on other structs.
+/// A wrapper around [`Mass`] which implements Eq/Ord/Hash to help in auto deriving these on other
+/// structs.
 #[derive(Clone, Copy, Debug, Deserialize, Serialize)]
 pub struct OrderedMass(Mass);
 
@@ -347,6 +334,7 @@ impl From<f32::Mass> for Mass {
 
 impl Deref for OrderedMass {
     type Target = Mass;
+
     fn deref(&self) -> &Self::Target {
         &self.0
     }
@@ -384,7 +372,8 @@ impl std::hash::Hash for OrderedMass {
     }
 }
 
-/// A wrapper around [`Mass`] which implements Eq/Ord/Hash to help in auto deriving these on other structs.
+/// A wrapper around [`Mass`] which implements Eq/Ord/Hash to help in auto deriving these on other
+/// structs.
 #[derive(Clone, Copy, Debug, Deserialize, Serialize)]
 pub struct OrderedMassOverCharge(MassOverCharge);
 
@@ -414,6 +403,7 @@ impl From<MassOverCharge> for OrderedMassOverCharge {
 
 impl Deref for OrderedMassOverCharge {
     type Target = MassOverCharge;
+
     fn deref(&self) -> &Self::Target {
         &self.0
     }
@@ -451,7 +441,8 @@ impl std::hash::Hash for OrderedMassOverCharge {
     }
 }
 
-/// A wrapper around [`Time`] which implements Eq/Ord/Hash to help in auto deriving these on other structs.
+/// A wrapper around [`Time`] which implements Eq/Ord/Hash to help in auto deriving these on other
+/// structs.
 #[derive(Clone, Copy, Debug, Deserialize, Serialize)]
 pub struct OrderedTime(Time);
 
@@ -493,6 +484,7 @@ impl From<f32::Time> for Time {
 
 impl Deref for OrderedTime {
     type Target = Time;
+
     fn deref(&self) -> &Self::Target {
         &self.0
     }

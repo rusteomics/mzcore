@@ -5,7 +5,10 @@
 //! which allows more complex patterns with less memory overhead but needs some more setup on the
 //! library users side.
 
-use crate::{CVTerm, PSMMetaData, ProteinMetaData, SpectrumId, SpectrumIds};
+use std::{
+    borrow::Cow, fmt::Display, io::Write, marker::PhantomData, num::NonZeroUsize, path::PathBuf,
+};
+
 use itertools::Itertools;
 #[cfg(feature = "mzdata")]
 use mzannotate::mzdata;
@@ -20,10 +23,9 @@ use mzcore::{
 };
 use mzcv::{CVIndex, CVSource, Term};
 use serde::{Deserialize, Serialize};
-use std::{
-    borrow::Cow, fmt::Display, io::Write, marker::PhantomData, num::NonZeroUsize, path::PathBuf,
-};
 use thin_vec::ThinVec;
+
+use crate::{CVTerm, PSMMetaData, ProteinMetaData, SpectrumId, SpectrumIds};
 
 /// Write PSMs as an mzTab file.
 #[derive(Debug)]
@@ -98,7 +100,8 @@ impl CanWritePSMs for PSMsWritten {}
 
 impl<W: Write> MzTabWriter<W, Initial> {
     /// Convenience function to easily write all information to an mzTab file.
-    /// An [`MSRun`] has to be given for all PSMs that are [`SpectrumIds::FileNotKnown`] to still point to the correct location.
+    /// An [`MSRun`] has to be given for all PSMs that are [`SpectrumIds::FileNotKnown`] to still
+    /// point to the correct location.
     /// # Errors
     /// If writing to the underlying writer failed.
     pub fn write<PSM: PSMMetaData>(
@@ -154,11 +157,8 @@ impl<W: Write> MzTabWriter<W, Initial> {
         );
         let writer = Self::new(writer, header);
         let writer = writer.write_header()?;
-        let highest_used_id = psms
-            .iter()
-            .filter_map(PSMMetaData::numerical_id)
-            .max()
-            .unwrap_or_default();
+        let highest_used_id =
+            psms.iter().filter_map(PSMMetaData::numerical_id).max().unwrap_or_default();
         if proteins.is_empty() {
             writer.write_psms(psms, highest_used_id, &[])?;
         } else {
@@ -168,7 +168,8 @@ impl<W: Write> MzTabWriter<W, Initial> {
         Ok(())
     }
 
-    /// Create a new mzTab file writer that will output to the given writer and with the given MS runs.
+    /// Create a new mzTab file writer that will output to the given writer and with the given MS
+    /// runs.
     pub const fn new(writer: W, header: MzTabMetadata) -> Self {
         Self {
             writer,
@@ -397,22 +398,14 @@ impl<W: Write> MzTabWriter<W, Initial> {
                 writeln!(
                     self.writer,
                     "MTD\tstudy_variable[{i}]-assay_refs\t{}",
-                    study_variable
-                        .assay_refs
-                        .iter()
-                        .map(|a| format!("assay[{a}]"))
-                        .join(",")
+                    study_variable.assay_refs.iter().map(|a| format!("assay[{a}]")).join(",")
                 )?;
             }
             if !study_variable.sample_refs.is_empty() {
                 writeln!(
                     self.writer,
                     "MTD\tstudy_variable[{i}]-sample_refs\t{}",
-                    study_variable
-                        .sample_refs
-                        .iter()
-                        .map(|a| format!("sample[{a}]"))
-                        .join(",")
+                    study_variable.sample_refs.iter().map(|a| format!("sample[{a}]")).join(",")
                 )?;
             }
         }
@@ -517,7 +510,8 @@ pub struct MzTabMetadata {
     pub instruments: ThinVec<MzTabInstrument>,
     /// The false discovery rates used together with a term identifying the exact method.
     pub false_discovery_rate: ThinVec<CVTerm>,
-    /// Publications associated with this file. PubMed ids must be prefixed with 'pubmed:', DOIs with 'doi:' and identifiers can be separated with '|'.
+    /// Publications associated with this file. PubMed ids must be prefixed with 'pubmed:', DOIs
+    /// with 'doi:' and identifiers can be separated with '|'.
     pub publication: ThinVec<Box<str>>,
     /// Any contacts for the file
     pub contact: ThinVec<MzTabContact>,
@@ -601,11 +595,7 @@ impl<T: CVSource> From<&CVIndex<T>> for MzTabCV {
                 .as_ref()
                 .map(|v| v.clone().into_boxed_str())
                 .unwrap_or_default(),
-            url: T::files()
-                .iter()
-                .find_map(|f| f.url)
-                .unwrap_or_default()
-                .into(),
+            url: T::files().iter().find_map(|f| f.url).unwrap_or_default().into(),
         }
     }
 }
@@ -725,7 +715,8 @@ pub struct MzTabAssay {
     pub sample_ref: Option<NonZeroUsize>,
     /// Which MS run is associated with this assay
     pub ms_run_ref: Option<NonZeroUsize>,
-    /// What quantification reagent was used, if not labelled `MS:1002038|unlabeled sample` should be used
+    /// What quantification reagent was used, if not labelled `MS:1002038|unlabeled sample` should
+    /// be used
     pub quantification_reagent: CVTerm,
 }
 
@@ -780,6 +771,7 @@ impl mzcore::space::Space for MzTabColumn {
 
 impl std::str::FromStr for MzTabColumn {
     type Err = ();
+
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         if let Some(tail) = s.strip_prefix("opt_") {
             let Some((id, name)) = tail.split_once('_') else {
@@ -890,7 +882,8 @@ impl Display for MzTabObjectIdentifier {
     }
 }
 
-/// An optional column that contains the information needed to create the column name and the write the values.
+/// An optional column that contains the information needed to create the column name and the write
+/// the values.
 pub type MzTabOptionalColumn<'a, P, W> = (
     MzTabOptionalColumnName,
     MzTabObjectIdentifier,
@@ -949,11 +942,7 @@ impl<W: Write, State: CanWriteProteins> MzTabWriter<W, State> {
                     .database()
                     .and_then(|d| d.1)
                     .map_or(Cow::Borrowed("null"), |t| t),
-                protein
-                    .search_engine()
-                    .iter()
-                    .map(|(term, _)| term)
-                    .join("|"),
+                protein.search_engine().iter().map(|(term, _)| term).join("|"),
                 protein.ambiguity_members().join(","),
                 protein
                     .modifications()
@@ -971,18 +960,17 @@ impl<W: Write, State: CanWriteProteins> MzTabWriter<W, State> {
                                         SequencePosition::Index(i, _) => 1 + i,
                                         SequencePosition::CTerm => usize::MAX,
                                     };
-                                    score.as_ref().map_or_else(|| i.to_string(), |score| format!(
-                                            "{i}[MS, MS:1001876, modification probability, {score}]"
-                                        ))
+                                    score.as_ref().map_or_else(
+                                        || i.to_string(),
+                                        |score| format!("{i}[MS, MS:1001876, modification probability, {score}]"),
+                                    )
                                 })
                                 .join("|"),
                             make_mztab_mod(m)
                         )
                     })
                     .join(","),
-                protein
-                    .coverage()
-                    .map_or_else(|| "null".to_string(), |c| c.to_string()),
+                protein.coverage().map_or_else(|| "null".to_string(), |c| c.to_string()),
                 protein.gene_ontology().iter().join("|"),
                 match protein.reliability() {
                     Some(crate::Reliability::High) => "1",
@@ -1089,7 +1077,8 @@ pub enum MzTabWriteError {
     IO(std::io::Error),
     /// A formatting error, meaning that writing to a string did not work
     Fmt(std::fmt::Error),
-    /// No [`MSRun`] is written in the header for this file, or if None there are no files and a [`SpectrumIds::FileNotKnown`] is given
+    /// No [`MSRun`] is written in the header for this file, or if None there are no files and a
+    /// [`SpectrumIds::FileNotKnown`] is given
     MissingMSRun(Option<PathBuf>),
     /// This PSM search engine term is not written in the header for this file
     MissingSearchEngine(Term),
@@ -1127,11 +1116,13 @@ impl Display for MzTabWriteError {
                 write!(f, "Missing MS run for raw file without a defined path")
             }
             Self::MissingMSRun(Some(run)) => write!(f, "Missing MS run: {}", run.display()),
-            Self::MissingSearchEngine(engine) => write!(
-                f,
-                "Missing search engine: {}|{}",
-                engine.accession, engine.name
-            ),
+            Self::MissingSearchEngine(engine) => {
+                write!(
+                    f,
+                    "Missing search engine: {}|{}",
+                    engine.accession, engine.name
+                )
+            }
             Self::MultipleDifferentPSMHeaders => {
                 write!(f, "A different PSM header is already written")
             }
@@ -1153,7 +1144,8 @@ impl<W: Write, State: CanWritePSMs> MzTabWriter<W, State> {
     ///
     /// # Errors
     /// * If writing to the underlying writer failed.
-    /// * If writing to a string for formatting failed (not expected as formatting is seen as infallible see [`std::fmt::Error`]).
+    /// * If writing to a string for formatting failed (not expected as formatting is seen as
+    ///   infallible see [`std::fmt::Error`]).
     /// * If a spectrum is referenced that is not defined as a [`MSRun`].
     pub fn write_psms<PSM: PSMMetaData>(
         mut self,
@@ -1166,7 +1158,7 @@ impl<W: Write, State: CanWritePSMs> MzTabWriter<W, State> {
             (1..=self.metadata.psm_search_engines.len())
                 .map(|i| format!("search_engine_score[{i}]"))
                 .join("\t"),
-            MzTabOptionalColumnName::Term(mzcv::term!(MS:1003984|amino acid confidence level)), // TODO: update if the final accepted name changes
+            MzTabOptionalColumnName::Term(mzcv::term!(MS:1003984|amino acid confidence level)), /* TODO: update if the final accepted name changes */
             custom_columns
                 .iter()
                 .map(|(term, id, _)| format!("\topt_{id}_{term}"))
@@ -1179,10 +1171,8 @@ impl<W: Write, State: CanWritePSMs> MzTabWriter<W, State> {
         }
         for psm in psms {
             let mut first_peptidoform = true;
-            for peptidoform_ion in psm
-                .peptidoform_ion_set()
-                .iter()
-                .flat_map(|p| p.peptidoform_ions())
+            for peptidoform_ion in
+                psm.peptidoform_ion_set().iter().flat_map(|p| p.peptidoform_ions())
             {
                 if let Some(peptidoform) =
                     peptidoform_ion.singular_ref().and_then(|p| p.as_linear())
@@ -1276,10 +1266,8 @@ impl<W: Write, State: CanWritePSMs> MzTabWriter<W, State> {
                         accession = psm
                             .proteins()
                             .first()
-                            .map_or(Cow::Borrowed("null"), |p| p.id().accession().clone()), // TODO: contains an I assume unnecessary .clone
-                        unique = psm
-                            .unique()
-                            .map_or_else(|| "null".to_string(), |d| d.to_string()),
+                            .map_or(Cow::Borrowed("null"), |p| p.id().accession().clone()), /* TODO: contains an I assume unnecessary .clone */
+                        unique = psm.unique().map_or_else(|| "null".to_string(), |d| d.to_string()),
                         database = psm.database().map_or("null", |d| d.0),
                         database_version = psm.database().and_then(|d| d.1).unwrap_or("null"),
                         search_engine = psm.search_engine().map_or_else(

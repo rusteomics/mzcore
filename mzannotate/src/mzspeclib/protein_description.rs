@@ -161,9 +161,10 @@ impl ProteinDescription {
         attributes
     }
 
-    /// Parse an attribute that is part of a protein description. It saves a properly parsed attribute
-    /// in the protein description, and then returns `true`. If the attribute could not be recognised
-    /// as a protein description attribute it returns `false` and ignores the attribute.
+    /// Parse an attribute that is part of a protein description. It saves a properly parsed
+    /// attribute in the protein description, and then returns `true`. If the attribute could
+    /// not be recognised as a protein description attribute it returns `false` and ignores the
+    /// attribute.
     /// # Errors
     /// If the attributes contains the wrong type of data, or otherwise contains an invalid value.
     pub(crate) fn populate_from_attribute<'a>(
@@ -243,13 +244,14 @@ impl ProteinDescription {
                     ));
                 }
             }
-            curie!(MS:1003212) => self
-                .set_names
-                .push(attribute.value.scalar().to_string().into_boxed_str()),
+            curie!(MS:1003212) => {
+                self.set_names.push(attribute.value.scalar().to_string().into_boxed_str())
+            }
             curie!(MS:1000885) => {
                 let string = attribute.value.scalar().to_string();
                 if let Some((acc, description)) = string.split_once(' ') {
-                    // Make sure only the accession is stored here if the description is also provided
+                    // Make sure only the accession is stored here if the description is also
+                    // provided
                     self.accession = Some(acc.to_string().into_boxed_str());
                     self.description = Some(description.to_string().into_boxed_str());
                 } else {

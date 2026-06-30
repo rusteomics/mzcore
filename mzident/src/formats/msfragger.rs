@@ -1,16 +1,5 @@
 use std::{borrow::Cow, marker::PhantomData, ops::Range, path::PathBuf};
 
-use ordered_float::OrderedFloat;
-use serde::{Deserialize, Serialize};
-use thin_vec::ThinVec;
-
-use crate::{
-    BoxedIdentifiedPeptideIter, CVTerm, FastaIdentifier, KnownFileFormat, PSM, PSMData,
-    PSMFileFormatVersion, PSMMetaData, PSMSource, PeptidoformPresent, ProteinMetaData, Reliability,
-    SpectrumId, SpectrumIds,
-    common_parser::{Location, OptionalColumn, OptionalLocation},
-    helper_functions::explain_number_error,
-};
 use mzcore::{
     chemistry::Chemical,
     csv::{CsvLine, parse_csv},
@@ -24,6 +13,17 @@ use mzcore::{
     },
     system::{Mass, MassOverCharge, Time, isize::Charge},
 };
+use ordered_float::OrderedFloat;
+use serde::{Deserialize, Serialize};
+use thin_vec::ThinVec;
+
+use crate::{
+    BoxedIdentifiedPeptideIter, CVTerm, FastaIdentifier, KnownFileFormat, PSM, PSMData,
+    PSMFileFormatVersion, PSMMetaData, PSMSource, PeptidoformPresent, ProteinMetaData, Reliability,
+    SpectrumId, SpectrumIds,
+    common_parser::{Location, OptionalColumn, OptionalLocation},
+    helper_functions::explain_number_error,
+};
 
 static NUMBER_ERROR: (&str, &str) = (
     "Invalid MSFragger line",
@@ -34,9 +34,10 @@ static IDENTIFIER_ERROR: (&str, &str) = (
     "This column is not a fasta identifier but is required to be one in this MSFragger format",
 );
 
-// TODO: it might be nice to be able to put the open modification on the peptide in the right location
-// TODO: in the localisation the lowercase character(s) indicate the position of the opensearch (observed modifications).
-// It would be best to use this to place the mod properly (also with the position scoring if present and the mod is ambiguous).
+// TODO: it might be nice to be able to put the open modification on the peptide in the right
+// location TODO: in the localisation the lowercase character(s) indicate the position of the
+// opensearch (observed modifications). It would be best to use this to place the mod properly (also
+// with the position scoring if present and the mod is ambiguous).
 format_family!(
     MSFragger,
     SimpleLinear, PeptidoformPresent, [&VERSION_V4_2, &FRAGPIPE_V20_OR_21, &FRAGPIPE_V22, &PHILOSOPHER], b'\t', None;
@@ -294,6 +295,7 @@ impl PSMFileFormatVersion<MSFraggerFormat> for MSFraggerVersion {
             Self::Philosopher => PHILOSOPHER,
         }
     }
+
     fn name(self) -> &'static str {
         match self {
             Self::V4_2 => "v4.2",
@@ -519,6 +521,8 @@ pub const FRAGPIPE_V22: MSFraggerFormat = MSFraggerFormat {
 };
 
 impl PSMMetaData for MSFraggerPSM {
+    type Protein = MSFraggerProtein;
+
     fn peptidoform_ion_set(&self) -> Option<Cow<'_, PeptidoformIonSet>> {
         Some(Cow::Owned(self.peptide.clone().into()))
     }
@@ -588,14 +592,12 @@ impl PSMMetaData for MSFraggerPSM {
         Some(self.mass)
     }
 
-    type Protein = MSFraggerProtein;
     fn proteins(&self) -> Cow<'_, [Self::Protein]> {
         Cow::Borrowed(std::slice::from_ref(&self.protein_key))
     }
 
     fn protein_location(&self) -> Option<Range<u16>> {
-        self.protein_start
-            .and_then(|start| self.protein_end.map(|end| start..end))
+        self.protein_start.and_then(|start| self.protein_end.map(|end| start..end))
     }
 
     fn flanking_sequences(&self) -> (&FlankingSequence, &FlankingSequence) {
@@ -652,10 +654,7 @@ impl ProteinMetaData for MSFraggerProtein {
     }
 
     fn ambiguity_members(&self) -> &[String] {
-        self.mapped_genes
-            .as_ref()
-            .map(ThinVec::as_slice)
-            .unwrap_or_default()
+        self.mapped_genes.as_ref().map(ThinVec::as_slice).unwrap_or_default()
     }
 
     fn database(&self) -> Option<(Cow<'_, str>, Option<Cow<'_, str>>)> {

@@ -1,11 +1,5 @@
 use std::{borrow::Cow, marker::PhantomData, ops::Range};
 
-use serde::{Deserialize, Serialize};
-
-use crate::{
-    BoxedIdentifiedPeptideIter, KnownFileFormat, MaybePeptidoform, PSM, PSMData,
-    PSMFileFormatVersion, PSMMetaData, PSMSource, SpectrumId, SpectrumIds, common_parser::Location,
-};
 use mzcore::{
     csv::{CsvLine, parse_csv},
     ontology::Ontologies,
@@ -13,6 +7,12 @@ use mzcore::{
         FlankingSequence, Peptidoform, PeptidoformIonSet, SemiAmbiguous, SloppyParsingParameters,
     },
     system::{Mass, MassOverCharge, Ratio, Time, isize::Charge},
+};
+use serde::{Deserialize, Serialize};
+
+use crate::{
+    BoxedIdentifiedPeptideIter, KnownFileFormat, MaybePeptidoform, PSM, PSMData,
+    PSMFileFormatVersion, PSMMetaData, PSMSource, SpectrumId, SpectrumIds, common_parser::Location,
 };
 
 static NUMBER_ERROR: (&str, &str) = (
@@ -71,6 +71,7 @@ impl PSMFileFormatVersion<PiPrimeNovoFormat> for PiPrimeNovoVersion {
             Self::V0_1 => PIPRIMENOVO_V0_1,
         }
     }
+
     fn name(self) -> &'static str {
         match self {
             Self::V0_1 => "v0.1",
@@ -79,6 +80,8 @@ impl PSMFileFormatVersion<PiPrimeNovoFormat> for PiPrimeNovoVersion {
 }
 
 impl PSMMetaData for PiPrimeNovoPSM {
+    type Protein = crate::NoProtein;
+
     fn peptidoform_ion_set(&self) -> Option<Cow<'_, PeptidoformIonSet>> {
         self.peptide.as_ref().map(|p| Cow::Owned(p.clone().into()))
     }
@@ -145,8 +148,6 @@ impl PSMMetaData for PiPrimeNovoPSM {
     fn ppm_error(&self) -> Option<Ratio> {
         None
     }
-
-    type Protein = crate::NoProtein;
 
     fn protein_location(&self) -> Option<Range<u16>> {
         None

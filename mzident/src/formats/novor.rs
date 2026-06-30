@@ -1,12 +1,5 @@
 use std::{borrow::Cow, marker::PhantomData, ops::Range};
 
-use serde::{Deserialize, Serialize};
-
-use crate::{
-    BoxedIdentifiedPeptideIter, KnownFileFormat, PSM, PSMData, PSMFileFormatVersion, PSMMetaData,
-    PSMSource, PeptidoformPresent, SpectrumId, SpectrumIds,
-    common_parser::{Location, OptionalColumn},
-};
 use mzcore::{
     csv::{CsvLine, parse_csv},
     ontology::Ontologies,
@@ -14,6 +7,13 @@ use mzcore::{
         FlankingSequence, Peptidoform, PeptidoformIonSet, SemiAmbiguous, SloppyParsingParameters,
     },
     system::{Mass, MassOverCharge, Time, isize::Charge},
+};
+use serde::{Deserialize, Serialize};
+
+use crate::{
+    BoxedIdentifiedPeptideIter, KnownFileFormat, PSM, PSMData, PSMFileFormatVersion, PSMMetaData,
+    PSMSource, PeptidoformPresent, SpectrumId, SpectrumIds,
+    common_parser::{Location, OptionalColumn},
 };
 
 static NUMBER_ERROR: (&str, &str) = (
@@ -101,6 +101,7 @@ impl PSMFileFormatVersion<NovorFormat> for NovorVersion {
             Self::NewPSM => NEW_PSM,
         }
     }
+
     fn name(self) -> &'static str {
         match self {
             Self::OldDenovo => "Older Denovo",
@@ -203,7 +204,8 @@ pub const PSM202308: NovorFormat = NovorFormat {
     local_confidence: OptionalColumn::NotAvailable,
 };
 
-/// denovo: `# id, scanNum, RT, mz(data), z, pepMass(denovo), err(data-denovo), ppm(1e6*err/(mz*z)), score, peptide, aaScore,`
+/// denovo: `# id, scanNum, RT, mz(data), z, pepMass(denovo), err(data-denovo), ppm(1e6*err/(mz*z)),
+/// score, peptide, aaScore,`
 pub const NEW_DENOVO: NovorFormat = NovorFormat {
     version: NovorVersion::NewDenovo,
     scan_number: "scannum",
@@ -225,7 +227,8 @@ pub const NEW_DENOVO: NovorFormat = NovorFormat {
     local_confidence: OptionalColumn::Required("aascore"),
 };
 
-/// PSM: `#id, spectraId, scanNum, RT, mz, z, pepMass, err, ppm, score, protein, start, length, origin, peptide, noPTMPeptide, aac, allProteins`
+/// PSM: `#id, spectraId, scanNum, RT, mz, z, pepMass, err, ppm, score, protein, start, length,
+/// origin, peptide, noPTMPeptide, aac, allProteins`
 pub const NEW_PSM: NovorFormat = NovorFormat {
     version: NovorVersion::NewPSM,
     scan_number: "scannum",
@@ -248,6 +251,8 @@ pub const NEW_PSM: NovorFormat = NovorFormat {
 };
 
 impl PSMMetaData for NovorPSM {
+    type Protein = crate::NoProtein;
+
     fn peptidoform_ion_set(&self) -> Option<Cow<'_, PeptidoformIonSet>> {
         Some(Cow::Owned(self.peptide.clone().into()))
     }
@@ -316,7 +321,7 @@ impl PSMMetaData for NovorPSM {
         Some(self.mass)
     }
 
-    type Protein = crate::NoProtein; // TODO: the protein is optional, which does not cuurently fit with the macro
+    // TODO: the protein is optional, which does not cuurently fit with the macro
 
     fn protein_location(&self) -> Option<Range<u16>> {
         self.protein_start.map(|s| s..s + self.peptide.len() as u16)

@@ -9,7 +9,8 @@ use std::{
 
 use crate::sequence::SequencePosition;
 
-/// Handle a `ParserResult` by combining the errors into the `$errors` and returning from the enclosing scope if necessary.
+/// Handle a `ParserResult` by combining the errors into the `$errors` and returning from the
+/// enclosing scope if necessary.
 macro_rules! handle {
     ($errors:ident, $call:expr) => {
         match $call {
@@ -124,7 +125,8 @@ impl<Ra: RangeBounds<usize>> RangeExtension for Ra {
     }
 }
 
-/// Split a string into chunks of text separated by whitespace with the offset before each chunk returned for nice error generation.
+/// Split a string into chunks of text separated by whitespace with the offset before each chunk
+/// returned for nice error generation.
 pub(crate) fn split_ascii_whitespace(input: &str) -> Vec<(usize, &str)> {
     let mut index = input.chars().take_while(char::is_ascii_whitespace).count();
     let mut chunks = Vec::new();
@@ -148,13 +150,16 @@ pub(crate) fn split_ascii_whitespace(input: &str) -> Vec<(usize, &str)> {
 #[test]
 #[allow(clippy::missing_panics_doc)]
 fn test_split_ascii_whitespace() {
-    assert_eq!(
-        split_ascii_whitespace("C7 D10 H2 N4"),
-        vec![(0, "C7"), (3, "D10"), (7, "H2"), (10, "N4")]
-    );
+    assert_eq!(split_ascii_whitespace("C7 D10 H2 N4"), vec![
+        (0, "C7"),
+        (3, "D10"),
+        (7, "H2"),
+        (10, "N4")
+    ]);
 }
 
-/// Get the index of the next copy of the given char (looking at the byte value, does not guarantee full character)
+/// Get the index of the next copy of the given char (looking at the byte value, does not guarantee
+/// full character)
 pub(crate) fn next_char(chars: &[u8], start: usize, char: u8) -> Option<usize> {
     for (i, ch) in chars[start..].iter().enumerate() {
         if *ch == char {
@@ -164,7 +169,8 @@ pub(crate) fn next_char(chars: &[u8], start: usize, char: u8) -> Option<usize> {
     None
 }
 
-/// Find the enclosed text by the given symbols, assumes a single open is already read just before the start, guarantees to only pick full characters
+/// Find the enclosed text by the given symbols, assumes a single open is already read just before
+/// the start, guarantees to only pick full characters
 pub(crate) fn end_of_enclosure(text: &str, start: usize, open: u8, close: u8) -> Option<usize> {
     let mut state = 1;
     for (i, ch) in text.as_bytes()[start..].iter().enumerate() {
@@ -183,8 +189,9 @@ pub(crate) fn end_of_enclosure(text: &str, start: usize, open: u8, close: u8) ->
     None
 }
 
-/// Find the enclosed text by the given symbols, assumes a single open is already read just before the start.
-/// This also takes brackets '[]' into account and these take precedence over the enclosure searched for.
+/// Find the enclosed text by the given symbols, assumes a single open is already read just before
+/// the start. This also takes brackets '[]' into account and these take precedence over the
+/// enclosure searched for.
 pub(crate) fn end_of_enclosure_with_brackets(
     text: &str,
     start: usize,
@@ -239,10 +246,7 @@ pub(crate) fn next_num(
         start += 1;
         sign_set = true;
     }
-    let len = chars[start..]
-        .iter()
-        .take_while(|c| c.is_ascii_digit())
-        .count();
+    let len = chars[start..].iter().take_while(|c| c.is_ascii_digit()).count();
     if len == 0 {
         if allow_only_sign && sign_set {
             Some((1, sign))
@@ -250,15 +254,13 @@ pub(crate) fn next_num(
             None
         }
     } else {
-        let num: isize = std::str::from_utf8(&chars[start..start + len])
-            .unwrap()
-            .parse()
-            .ok()?;
+        let num: isize = std::str::from_utf8(&chars[start..start + len]).unwrap().parse().ok()?;
         Some((usize::from(sign_set) + len, sign * num))
     }
 }
 
-/// Get the next number starting at the byte range given, returns length in bytes, boolean indicating if the number is positive, and the number.
+/// Get the next number starting at the byte range given, returns length in bytes, boolean
+/// indicating if the number is positive, and the number.
 /// # Errors
 /// Returns none if the number is too big to fit in a `Number`.
 pub(crate) fn next_number<const ALLOW_SIGN: bool, const FLOATING_POINT: bool, Number: FromStr>(
@@ -306,7 +308,8 @@ pub(crate) fn next_number<const ALLOW_SIGN: bool, const FLOATING_POINT: bool, Nu
         })
 }
 
-/// Get a canonicalised u64 for f64 to be able to hash f64, based on the `ordered_float` crate (MIT license)
+/// Get a canonicalised u64 for f64 to be able to hash f64, based on the `ordered_float` crate (MIT
+/// license)
 pub(crate) fn f64_bits(value: f64) -> u64 {
     if value.is_nan() {
         0x7ff8_0000_0000_0000_u64 // CANONICAL_NAN_BITS
@@ -326,9 +329,7 @@ where
     K: Eq + Hash + Clone,
 {
     for (key, value) in from {
-        let v = into
-            .entry(key.clone())
-            .or_insert_with(|| default_into.clone());
+        let v = into.entry(key.clone()).or_insert_with(|| default_into.clone());
         *v *= value.clone();
     }
     for (key, value) in &mut into {
@@ -339,7 +340,8 @@ where
     into
 }
 
-/// Implement a binary operator for all ref cases after the implementation for the ref-ref case (assumes deref operator works)
+/// Implement a binary operator for all ref cases after the implementation for the ref-ref case
+/// (assumes deref operator works)
 macro_rules! impl_binop_ref_cases {
     (impl $imp:ident, $method:ident for $t:ty, $u:ty, $o:ty) => {
         impl $imp<$u> for &'_ $t {

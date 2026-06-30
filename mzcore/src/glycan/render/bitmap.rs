@@ -5,9 +5,8 @@ use swash::{
 };
 use zeno::{Fill, Format, Mask, PathBuilder, Point, Scratch, Stroke, Vector};
 
-use crate::glycan::{RenderedGlycan, render::element::Element};
-
 use super::element::{TextAnchor, TextBaseline};
+use crate::glycan::{RenderedGlycan, render::element::Element};
 
 impl RenderedGlycan {
     /// Render this glycan as an RGBA bitmap.

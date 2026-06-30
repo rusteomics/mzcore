@@ -1,10 +1,7 @@
 //! Python bindings to the mzcore library.
 #![allow(clippy::doc_markdown, clippy::trivially_copy_pass_by_ref)]
 
-use std::fmt::Debug;
-use std::num::NonZeroU16;
-
-use pyo3::{exceptions::PyValueError, prelude::*, types::PyType};
+use std::{fmt::Debug, num::NonZeroU16};
 
 use context_error::CreateError;
 use mzalign::AlignScoring;
@@ -14,8 +11,10 @@ use mzcore::{
     sequence::{IsAminoAcid, Linked, SimpleLinear},
     system::dalton,
 };
+use pyo3::{exceptions::PyValueError, prelude::*, types::PyType};
 
-/// Function to find all sequences that match a specific mass. The returned sequences are returned in a deterministic order.
+/// Function to find all sequences that match a specific mass. The returned sequences are returned
+/// in a deterministic order.
 ///
 /// Parameters
 /// ----------
@@ -26,16 +25,18 @@ use mzcore::{
 /// amino_acids : list[AminoAcid]
 ///     The list of amino acids to use look into TODO: to get a default list
 /// fixed : list[tuple[SimpleModification, list[AminoAcid]]]
-///     The list of fixed modifications, with a list of all allowed positions, if this list is empty the allowed places from the modification are used
+///     The list of fixed modifications, with a list of all allowed positions, if this list is empty
+/// the allowed places from the modification are used
 /// variable : list[tuple[SimpleModification, list[AminoAcid]]]
-///     The list of variable modifications, with a list of all allowed positions, if this list is empty the allowed places from the modification are used
+///     The list of variable modifications, with a list of all allowed positions,
+///     if this list is empty the allowed places from the modification are used
 /// base : Peptidoform | None
-///     If present, the base sequence that is always assumed to be present, if this has multiple molecular formulas the lowest mass one is used
+///      If present, the base sequence that is always assumed to be present, if this has
+/// multiple molecular formulas the lowest mass one is used
 ///
 /// Returns
 /// -------
 /// list[Peptidoform]
-///
 #[pyfunction]
 fn find_isobaric_sets(
     mass: f64,
@@ -104,7 +105,6 @@ enum MassMode {
 /// Parameters
 /// ----------
 /// symbol : str
-///
 #[pyclass]
 #[derive(Clone, Copy, Debug)]
 pub struct Element(mzcore::chemistry::Element);
@@ -131,13 +131,8 @@ impl Element {
     /// Returns
     /// -------
     /// list[tuple[int, float, float]]
-    ///
     fn isotopes(&self) -> Vec<(u16, f64, f64)> {
-        self.0
-            .isotopes()
-            .iter()
-            .map(|i| (i.0, i.1.value, i.2))
-            .collect()
+        self.0.isotopes().iter().map(|i| (i.0, i.1.value, i.2)).collect()
     }
 
     /// The mass of the specified isotope of this element (if that isotope exists).
@@ -150,12 +145,9 @@ impl Element {
     /// Returns
     /// -------
     /// float | None
-    ///
     #[pyo3(signature = (isotope=None))]
     fn mass(&self, isotope: Option<u16>) -> Option<f64> {
-        self.0
-            .mass(isotope.and_then(NonZeroU16::new))
-            .map(|mass| mass.value)
+        self.0.mass(isotope.and_then(NonZeroU16::new)).map(|mass| mass.value)
     }
 
     /// The average weight of the specified isotope of this element (if that isotope exists).
@@ -168,7 +160,6 @@ impl Element {
     /// Returns
     /// -------
     /// float
-    ///
     #[pyo3(signature = (isotope=None))]
     fn average_weight(&self, isotope: Option<u16>) -> Option<f64> {
         self.0
@@ -186,7 +177,6 @@ impl std::fmt::Display for Element {
 /// Molecular formula.
 ///
 /// A molecular formula: a selection of elements of specified isotopes together forming a structure.
-///
 #[pyclass]
 #[derive(Clone, Debug)]
 pub struct MolecularFormula(mzcore::chemistry::MolecularFormula);
@@ -208,7 +198,6 @@ impl MolecularFormula {
     /// ------
     /// ValueError
     ///    If an isotope is invalid.
-    ///
     #[new]
     fn new(elements: Vec<(Element, Option<u16>, i32)>) -> PyResult<Self> {
         let elements = elements
@@ -237,7 +226,6 @@ impl MolecularFormula {
     /// Returns
     /// -------
     /// MolecularFormula
-    ///
     #[classmethod]
     fn from_pro_forma(_cls: &Bound<'_, PyType>, proforma: &str) -> PyResult<Self> {
         mzcore::chemistry::MolecularFormula::pro_forma::<false, false>(proforma)
@@ -254,7 +242,6 @@ impl MolecularFormula {
     /// Returns
     /// -------
     /// MolecularFormula
-    ///
     #[classmethod]
     fn from_psi_mod(_cls: &Bound<'_, PyType>, psi_mod: &str) -> PyResult<Self> {
         mzcore::chemistry::MolecularFormula::psi_mod(psi_mod)
@@ -277,13 +264,9 @@ impl MolecularFormula {
     /// ------
     /// ValueError
     ///     If the element or isotope is invalid.
-    ///
     #[pyo3(signature = (element, isotope=None, n=1))]
     fn add(&mut self, element: &Element, isotope: Option<u16>, n: i32) -> PyResult<Option<()>> {
-        if let Err(e) = self
-            .0
-            .add((element.0, isotope.and_then(NonZeroU16::new), n))
-        {
+        if let Err(e) = self.0.add((element.0, isotope.and_then(NonZeroU16::new), n)) {
             Err(PyValueError::new_err(format!(
                 "Invalid element or isotope: {e}"
             )))
@@ -297,7 +280,6 @@ impl MolecularFormula {
     /// Returns
     /// -------
     /// list[tuple[Element, int | None, int]]
-    ///
     fn elements(&self) -> Vec<(Element, Option<u16>, i32)> {
         self.0
             .elements()
@@ -329,12 +311,13 @@ impl MolecularFormula {
             )
     }
 
-    /// Get the number of electrons (the only charged species, any ionic species is saved as that element +/- the correct number of electrons). The inverse of that number is given as the charge.
+    /// Get the number of electrons (the only charged species, any ionic species is saved as that
+    /// element +/- the correct number of electrons). The inverse of that number is given as the
+    /// charge.
     ///
     /// Returns
     /// -------
     /// int
-    ///
     fn charge(&self) -> isize {
         self.0.charge().value
     }
@@ -344,29 +327,28 @@ impl MolecularFormula {
     /// Returns
     /// -------
     /// float
-    ///
     fn monoisotopic_mass(&self) -> f64 {
         self.0.monoisotopic_mass().value
     }
 
-    /// The average weight of the molecular formula of this element, if all element species (isotopes) exists.
+    /// The average weight of the molecular formula of this element, if all element species
+    /// (isotopes) exists.
     ///
     /// Returns
     /// -------
     /// float
-    ///
     fn average_weight(&self) -> f64 {
         self.0.average_weight().value
     }
 
-    /// The most abundant mass. This is the isotopic species with the highest abundance when the whole isotope
-    /// distribution is generated. Because this uses an averagine model it is not very precise in its mass.
-    /// Because it has to generate the full isotope distribution this takes more time then other mass modes.
+    /// The most abundant mass. This is the isotopic species with the highest abundance when the
+    /// whole isotope distribution is generated. Because this uses an averagine model it is not
+    /// very precise in its mass. Because it has to generate the full isotope distribution this
+    /// takes more time then other mass modes.
     ///
     /// Returns
     /// -------
     /// float
-    ///
     fn most_abundant_mass(&self) -> f64 {
         self.0.most_abundant_mass().value
     }
@@ -386,7 +368,6 @@ impl MolecularFormula {
     /// ------
     /// ValueError
     ///   If the mode is not one of the valid modes.
-    ///
     #[pyo3(signature = (mode=&MassMode::Monoisotopic))]
     fn mass(&self, mode: &MassMode) -> PyResult<f64> {
         match mode {
@@ -396,7 +377,8 @@ impl MolecularFormula {
         }
     }
 
-    /// Create a Hill notation from this collections of elements merged with the ProForma notation for specific isotopes.
+    /// Create a Hill notation from this collections of elements merged with the ProForma notation
+    /// for specific isotopes.
     ///
     /// Returns
     /// -------
@@ -405,7 +387,8 @@ impl MolecularFormula {
         self.0.hill_notation()
     }
 
-    /// Create a Hill notation from this collections of elements merged with the ProForma notation for specific isotopes. Using fancy unicode characters for subscript and superscript numbers.
+    /// Create a Hill notation from this collections of elements merged with the ProForma notation
+    /// for specific isotopes. Using fancy unicode characters for subscript and superscript numbers.
     ///
     /// Returns
     /// -------
@@ -450,7 +433,6 @@ impl MolecularCharge {
     /// Returns
     /// -------
     /// MolecularCharge
-    ///
     #[new]
     fn new(charge_carriers: Vec<(i32, MolecularFormula)>) -> Self {
         Self(mzcore::chemistry::MolecularCharge {
@@ -483,7 +465,6 @@ impl MolecularCharge {
     /// Returns
     /// -------
     /// MolecularCharge
-    ///
     #[classmethod]
     fn proton(_cls: &Bound<'_, PyType>, charge: i32) -> Self {
         Self(mzcore::chemistry::MolecularCharge::proton(
@@ -513,7 +494,6 @@ impl MolecularCharge {
 /// ----------
 /// name : str
 ///    The name of the amino acid.
-///
 #[pyclass]
 #[derive(Clone, Copy, Debug)]
 pub struct AminoAcid(mzcore::sequence::AminoAcid);
@@ -543,13 +523,8 @@ impl AminoAcid {
     /// Returns
     /// -------
     /// List[MolecularFormula]
-    ///
     fn formulas(&self) -> Vec<MolecularFormula> {
-        self.0
-            .formulas()
-            .iter()
-            .map(|f| MolecularFormula(f.clone()))
-            .collect()
+        self.0.formulas().iter().map(|f| MolecularFormula(f.clone())).collect()
     }
 
     /// Molecular formula of the amino acid.
@@ -559,7 +534,6 @@ impl AminoAcid {
     /// Returns
     /// -------
     /// List[MolecularFormula]
-    ///
     fn formula(&self) -> MolecularFormula {
         MolecularFormula(self.0.formulas().first().unwrap().clone())
     }
@@ -571,13 +545,8 @@ impl AminoAcid {
     /// Returns
     /// -------
     /// List[float]
-    ///
     fn monoisotopic_masses(&self) -> Vec<f64> {
-        self.0
-            .formulas()
-            .iter()
-            .map(|f| f.monoisotopic_mass().value)
-            .collect()
+        self.0.formulas().iter().map(|f| f.monoisotopic_mass().value).collect()
     }
 
     /// Monoisotopic mass of the amino acid.
@@ -587,7 +556,6 @@ impl AminoAcid {
     /// Returns
     /// -------
     /// float
-    ///
     fn monoisotopic_mass(&self) -> f64 {
         self.0.formulas().first().unwrap().monoisotopic_mass().value
     }
@@ -604,8 +572,8 @@ impl std::fmt::Display for AminoAcid {
 /// Parameters
 /// ----------
 /// name : str
-///   The name of the modification. Any simple modification as allowed in ProForma (no ambiguous or cross-linked modifications).
-///
+///   The name of the modification. Any simple modification as allowed in ProForma (no ambiguous or
+/// cross-linked modifications).
 #[pyclass]
 #[derive(Clone, Debug)]
 pub struct SimpleModification(mzcore::sequence::SimpleModification);
@@ -638,7 +606,6 @@ impl SimpleModification {
     /// Returns
     /// -------
     /// MolecularFormula
-    ///
     fn formula(&self) -> MolecularFormula {
         MolecularFormula(self.0.formula())
     }
@@ -648,7 +615,6 @@ impl SimpleModification {
     /// Returns
     /// -------
     /// float
-    ///
     fn monoisotopic_mass(&self) -> f64 {
         self.0.formula().monoisotopic_mass().value
     }
@@ -660,7 +626,6 @@ impl SimpleModification {
 /// ----------
 /// name : str
 ///   The name of the modification.
-///
 #[pyclass]
 #[derive(Clone, Debug)]
 pub struct Modification(mzcore::sequence::Modification);
@@ -680,7 +645,6 @@ impl Modification {
     /// Returns
     /// -------
     /// MolecularFormula
-    ///
     fn formula(&self) -> MolecularFormula {
         MolecularFormula(self.0.formula())
     }
@@ -690,7 +654,6 @@ impl Modification {
     /// Returns
     /// -------
     /// float
-    ///
     fn monoisotopic_mass(&self) -> f64 {
         self.0.formula().monoisotopic_mass().value
     }
@@ -711,8 +674,7 @@ impl Fragment {
             self.ion().0, // TODO: this could crash
             self.peptidoform_ion_index()
                 .map_or_else(|| "-".to_string(), |p| p.to_string()),
-            self.peptidoform_index()
-                .map_or_else(|| "-".to_string(), |p| p.to_string()),
+            self.peptidoform_index().map_or_else(|| "-".to_string(), |p| p.to_string()),
             self.neutral_loss(),
         )
     }
@@ -722,7 +684,6 @@ impl Fragment {
     /// Returns
     /// -------
     /// MolecularFormula | None
-    ///
     #[getter]
     fn formula(&self) -> Option<MolecularFormula> {
         self.0.formula.clone().map(MolecularFormula)
@@ -733,7 +694,6 @@ impl Fragment {
     /// Returns
     /// -------
     /// str
-    ///
     #[getter]
     fn to_mz_paf(&self) -> String {
         self.0.to_mz_paf_string()
@@ -744,7 +704,6 @@ impl Fragment {
     /// Returns
     /// -------
     /// int
-    ///
     #[getter]
     const fn charge(&self) -> i16 {
         self.0.charge.value as i16
@@ -755,29 +714,28 @@ impl Fragment {
     /// Returns
     /// -------
     /// str
-    ///
     #[getter]
     fn ion(&self) -> FragmentType {
         FragmentType(self.0.ion.clone())
     }
 
-    /// The peptidoform this fragment comes from, saved as the index into the list of peptidoforms in the overarching crate::PeptidoformIon struct.
+    /// The peptidoform this fragment comes from, saved as the index into the list of peptidoforms
+    /// in the overarching crate::PeptidoformIon struct.
     ///
     /// Returns
     /// -------
     /// int | None
-    ///
     #[getter]
     const fn peptidoform_index(&self) -> Option<usize> {
         self.0.peptidoform_index
     }
 
-    /// The peptidoform ion this fragment comes from, saved as the index into the list of peptidoform ions in the overarching crate::PeptidoformIonSet struct.
+    /// The peptidoform ion this fragment comes from, saved as the index into the list of
+    /// peptidoform ions in the overarching crate::PeptidoformIonSet struct.
     ///
     /// Returns
     /// -------
     /// int | None
-    ///
     #[getter]
     const fn peptidoform_ion_index(&self) -> Option<usize> {
         self.0.peptidoform_ion_index
@@ -788,14 +746,9 @@ impl Fragment {
     /// Returns
     /// -------
     /// list[str]
-    ///
     #[getter]
     fn neutral_loss(&self) -> Vec<String> {
-        self.0
-            .neutral_loss
-            .iter()
-            .map(ToString::to_string)
-            .collect()
+        self.0.neutral_loss.iter().map(ToString::to_string).collect()
     }
 }
 
@@ -812,7 +765,6 @@ impl FragmentType {
     }
 
     /// The kind of fragment
-    ///
     #[getter]
     fn kind(&self) -> FragmentKind {
         self.0.kind().into()
@@ -824,7 +776,6 @@ impl FragmentType {
     /// -------
     /// list[str | None]
     ///     (optional superscript prefix, main label, optional position label)
-    ///
     #[getter]
     fn label(&self) -> (Option<String>, String, Option<String>) {
         let (a, b) = self.0.label();
@@ -858,7 +809,8 @@ pub enum FragmentKind {
     z,
     /// glycan Y fragment, generated by one or more branches broken
     Y,
-    /// B or glycan diagnostic ion or Internal glycan fragment, meaning both a B and Y breakages (and potentially multiple of both), resulting in a set of monosaccharides
+    /// B or glycan diagnostic ion or Internal glycan fragment, meaning both a B and Y breakages
+    /// (and potentially multiple of both), resulting in a set of monosaccharides
     B,
     /// Immonium ion
     immonium,
@@ -921,7 +873,6 @@ impl SequenceElement {
     /// Returns
     /// -------
     /// AminoAcid
-    ///
     #[getter]
     const fn aminoacid(&self) -> AminoAcid {
         AminoAcid(self.0.aminoacid.aminoacid())
@@ -932,14 +883,9 @@ impl SequenceElement {
     /// Returns
     /// -------
     /// list[Modification]
-    ///
     #[getter]
     fn modifications(&self) -> Vec<Modification> {
-        self.0
-            .modifications
-            .iter()
-            .map(|m| Modification(m.clone()))
-            .collect()
+        self.0.modifications.iter().map(|m| Modification(m.clone())).collect()
     }
 
     /// If this amino acid is part of an ambiguous sequence group `(QA)?` in ProForma
@@ -947,7 +893,6 @@ impl SequenceElement {
     /// Returns
     /// -------
     /// int | None
-    ///
     #[getter]
     const fn ambiguous(&self) -> Option<std::num::NonZeroU32> {
         self.0.ambiguous
@@ -993,7 +938,6 @@ fn match_model(model: &FragmentationModel) -> mzannotate::annotation::model::Fra
 /// ----------
 /// parameters : MatchingParameters
 ///     The parameters
-///
 #[pyclass]
 #[derive(Clone, Debug)]
 pub struct MatchingParameters(mzannotate::annotation::model::MatchingParameters);
@@ -1028,7 +972,6 @@ impl MatchingParameters {
 /// ----------
 /// position : SequencePosition
 ///     The position
-///
 #[pyclass]
 #[derive(Clone, Copy, Debug)]
 pub struct SequencePosition(mzcore::sequence::SequencePosition);
@@ -1083,7 +1026,6 @@ impl SequencePosition {
 /// ----------
 /// proforma : str
 ///     The ProForma string.
-///
 #[pyclass]
 #[derive(Clone, Debug)]
 pub struct PeptidoformIonSet(mzcore::sequence::PeptidoformIonSet);
@@ -1104,9 +1046,7 @@ impl PeptidoformIonSet {
                     context_error::BasicKind::Error,
                     "Could not parse ProForma",
                     "This text could not be read as a ProForma definition",
-                    context_error::Context::default()
-                        .lines(0, proforma)
-                        .to_owned(),
+                    context_error::Context::default().lines(0, proforma).to_owned(),
                 )
                 .add_underlying_errors(e.into_iter().map(context_error::BoxedError::to_owned)),
             )
@@ -1130,7 +1070,6 @@ impl PeptidoformIonSet {
     /// Returns
     /// -------
     /// List[PeptidoformIon]
-    ///
     #[getter]
     fn peptidoform_ions(&self) -> Vec<PeptidoformIon> {
         self.0
@@ -1140,8 +1079,9 @@ impl PeptidoformIonSet {
             .collect()
     }
 
-    /// Generate the theoretical fragments for this peptidoform ion set, with the given maximal charge of the fragments,
-    /// and the given model. With the global isotope modifications applied.
+    /// Generate the theoretical fragments for this peptidoform ion set, with the given maximal
+    /// charge of the fragments, and the given model. With the global isotope modifications
+    /// applied.
     ///
     /// Parameters
     /// ----------
@@ -1154,7 +1094,6 @@ impl PeptidoformIonSet {
     /// -------
     /// list[Fragment]
     ///   The theoretical fragments.
-    ///
     fn generate_theoretical_fragments(
         &self,
         max_charge: isize,
@@ -1189,7 +1128,6 @@ impl PeptidoformIonSet {
 /// ----------
 /// iupac : str
 ///     The iupac condensed definition.
-///
 #[pyclass]
 #[derive(Clone, Debug)]
 pub struct GlycanStructure(mzcore::glycan::GlycanStructure);
@@ -1209,8 +1147,8 @@ impl GlycanStructure {
         MolecularFormula(self.0.formula())
     }
 
-    /// Generate the theoretical fragments for this glycan structure, with the given maximal charge of the fragments,
-    /// and the given model.
+    /// Generate the theoretical fragments for this glycan structure, with the given maximal charge
+    /// of the fragments, and the given model.
     ///
     /// Parameters
     /// ----------
@@ -1223,7 +1161,6 @@ impl GlycanStructure {
     /// -------
     /// list[Fragment]
     ///   The theoretical fragments.
-    ///
     fn generate_theoretical_fragments(
         &self,
         max_charge: isize,
@@ -1264,7 +1201,6 @@ impl GlycanStructure {
 /// ----------
 /// proforma : str
 ///     The ProForma string.
-///
 #[pyclass]
 #[derive(Clone, Debug)]
 pub struct PeptidoformIon(mzcore::sequence::PeptidoformIon);
@@ -1282,9 +1218,7 @@ impl PeptidoformIon {
                         context_error::BasicKind::Error,
                         "Could not parse ProForma",
                         "This text could not be read as a ProForma definition",
-                        context_error::Context::default()
-                            .lines(0, proforma)
-                            .to_owned(),
+                        context_error::Context::default().lines(0, proforma).to_owned(),
                     )
                     .add_underlying_errors(e.into_iter().map(context_error::BoxedError::to_owned)),
                 )
@@ -1302,18 +1236,13 @@ impl PeptidoformIon {
     /// Returns
     /// -------
     /// List[Peptidoform]
-    ///
     #[getter]
     fn peptidoforms(&self) -> Vec<Peptidoform> {
-        self.0
-            .peptidoforms()
-            .iter()
-            .map(|p| Peptidoform(p.clone()))
-            .collect()
+        self.0.peptidoforms().iter().map(|p| Peptidoform(p.clone())).collect()
     }
 
-    /// Generate the theoretical fragments for this peptidoform ion, with the given maximal charge of the fragments,
-    /// and the given model. With the global isotope modifications applied.
+    /// Generate the theoretical fragments for this peptidoform ion, with the given maximal charge
+    /// of the fragments, and the given model. With the global isotope modifications applied.
     ///
     /// Parameters
     /// ----------
@@ -1326,7 +1255,6 @@ impl PeptidoformIon {
     /// -------
     /// list[Fragment]
     ///   The theoretical fragments.
-    ///
     fn generate_theoretical_fragments(
         &self,
         max_charge: isize,
@@ -1361,7 +1289,6 @@ impl PeptidoformIon {
 /// ----------
 /// proforma : str
 ///     The ProForma string.
-///
 #[pyclass]
 #[derive(Clone, Debug)]
 pub struct Peptidoform(mzcore::sequence::Peptidoform<Linked>);
@@ -1379,9 +1306,7 @@ impl Peptidoform {
                         context_error::BasicKind::Error,
                         "Could not parse ProForma",
                         "This text could not be read as a ProForma definition",
-                        context_error::Context::default()
-                            .lines(0, proforma)
-                            .to_owned(),
+                        context_error::Context::default().lines(0, proforma).to_owned(),
                     )
                     .add_underlying_errors(e.into_iter().map(context_error::BoxedError::to_owned)),
                 )
@@ -1405,14 +1330,9 @@ impl Peptidoform {
     /// Returns
     /// -------
     /// list[Modification]
-    ///
     #[getter]
     fn labile(&self) -> Vec<SimpleModification> {
-        self.0
-            .get_labile()
-            .iter()
-            .map(|x| SimpleModification(x.clone()))
-            .collect()
+        self.0.get_labile().iter().map(|x| SimpleModification(x.clone())).collect()
     }
 
     /// N-terminal modification.
@@ -1420,14 +1340,9 @@ impl Peptidoform {
     /// Returns
     /// -------
     /// list[Modification]
-    ///
     #[getter]
     fn n_term(&self) -> Vec<Modification> {
-        self.0
-            .get_n_term()
-            .iter()
-            .map(|m| Modification(m.clone()))
-            .collect()
+        self.0.get_n_term().iter().map(|m| Modification(m.clone())).collect()
     }
 
     /// C-terminal modification.
@@ -1435,14 +1350,9 @@ impl Peptidoform {
     /// Returns
     /// -------
     /// list[Modification]
-    ///
     #[getter]
     fn c_term(&self) -> Vec<Modification> {
-        self.0
-            .get_c_term()
-            .iter()
-            .map(|m| Modification(m.clone()))
-            .collect()
+        self.0.get_c_term().iter().map(|m| Modification(m.clone())).collect()
     }
 
     /// Sequence of the peptidoform including modifications.
@@ -1450,22 +1360,17 @@ impl Peptidoform {
     /// Returns
     /// -------
     /// list[SequenceElement]
-    ///
     #[getter]
     fn sequence(&self) -> Vec<SequenceElement> {
-        self.0
-            .sequence()
-            .iter()
-            .map(|x| SequenceElement(x.clone()))
-            .collect()
+        self.0.sequence().iter().map(|x| SequenceElement(x.clone())).collect()
     }
 
-    /// For each ambiguous modification list all possible positions it can be placed on. Indexed by the ambiguous modification id.
+    /// For each ambiguous modification list all possible positions it can be placed on. Indexed by
+    /// the ambiguous modification id.
     ///
     /// Returns
     /// -------
     /// list[list[int]]
-    ///
     #[getter]
     fn ambiguous_modifications(&self) -> Vec<Vec<SequencePosition>> {
         self.0
@@ -1480,7 +1385,6 @@ impl Peptidoform {
     /// Returns
     /// -------
     /// str
-    ///
     #[getter]
     fn stripped_sequence(&self) -> String {
         self.0
@@ -1495,7 +1399,6 @@ impl Peptidoform {
     /// Returns
     /// -------
     /// int | None
-    ///
     #[getter]
     fn charge(&self) -> Option<isize> {
         self.0.get_charge_carriers().map(|c| c.charge().value)
@@ -1506,12 +1409,9 @@ impl Peptidoform {
     /// Returns
     /// -------
     /// MolecularCharge | None
-    ///
     #[getter]
     fn charge_carriers(&self) -> Option<MolecularCharge> {
-        self.0
-            .get_charge_carriers()
-            .map(|c| MolecularCharge(c.clone()))
+        self.0.get_charge_carriers().map(|c| MolecularCharge(c.clone()))
     }
 
     /// Get a copy of the peptidoform with its sequence reversed.
@@ -1519,27 +1419,25 @@ impl Peptidoform {
     /// Returns
     /// -------
     /// Peptidoform
-    ///
     fn reverse(&self) -> Self {
         Self(self.0.reverse())
     }
 
-    /// Gives the formulas for the whole peptidoform. With the global isotope modifications applied. (Any B/Z will result in multiple possible formulas.)
+    /// Gives the formulas for the whole peptidoform. With the global isotope modifications applied.
+    /// (Any B/Z will result in multiple possible formulas.)
     ///
     /// Returns
     /// -------
     /// List[MolecularFormula] | None
-    ///
     fn formula(&self) -> Option<Vec<MolecularFormula>> {
-        self.0.clone().into_linear().map(|p| {
-            p.formulas()
-                .iter()
-                .map(|f| MolecularFormula(f.clone()))
-                .collect()
-        })
+        self.0
+            .clone()
+            .into_linear()
+            .map(|p| p.formulas().iter().map(|f| MolecularFormula(f.clone())).collect())
     }
 
-    /// Generate the theoretical fragments for this peptidoform, with the given maximal charge of the fragments, and the given model. With the global isotope modifications applied.
+    /// Generate the theoretical fragments for this peptidoform, with the given maximal charge of
+    /// the fragments, and the given model. With the global isotope modifications applied.
     ///
     /// Parameters
     /// ----------
@@ -1552,7 +1450,6 @@ impl Peptidoform {
     /// -------
     /// list[Fragment] | None
     ///   The theoretical fragments.
-    ///
     fn generate_theoretical_fragments(
         &self,
         max_charge: isize,
@@ -1580,7 +1477,6 @@ impl Peptidoform {
     /// -------
     /// Alignment | None
     ///   The resulting alignment or None if at least one of the peptiforms was not simple linear.
-    ///
     fn align_4(&self, other: &Self) -> Option<Alignment> {
         self.0
             .clone()
@@ -1642,7 +1538,6 @@ impl AnnotatedPeak {
     /// Returns
     /// -------
     /// float
-    ///
     #[getter]
     const fn experimental_mz(&self) -> f64 {
         self.0.mz.value
@@ -1653,7 +1548,6 @@ impl AnnotatedPeak {
     /// Returns
     /// -------
     /// float
-    ///
     #[getter]
     const fn intensity(&self) -> f32 {
         self.0.intensity
@@ -1664,14 +1558,9 @@ impl AnnotatedPeak {
     /// Returns
     /// -------
     /// list[Fragment]
-    ///
     #[getter]
     fn annotation(&self) -> Vec<Fragment> {
-        self.0
-            .annotations
-            .iter()
-            .map(|x| Fragment(x.clone()))
-            .collect()
+        self.0.annotations.iter().map(|x| Fragment(x.clone())).collect()
     }
 }
 
@@ -1714,7 +1603,6 @@ impl AnnotatedSpectrum {
     /// Returns
     /// -------
     /// list[AnnotatedPeak]
-    ///
     #[getter]
     fn spectrum(&self) -> Vec<AnnotatedPeak> {
         self.0.peaks.iter().cloned().map(AnnotatedPeak).collect()

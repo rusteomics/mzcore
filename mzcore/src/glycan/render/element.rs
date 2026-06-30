@@ -19,7 +19,8 @@ pub struct RenderedGlycan {
     pub(super) elements: Vec<Element>,
     /// The background colour
     pub(super) background: [u8; 3],
-    /// Midpoint in pixels from the right for a top down glycan or in pixels from the top for a left to right glycan
+    /// Midpoint in pixels from the right for a top down glycan or in pixels from the top for a
+    /// left to right glycan
     pub midpoint: f32,
 }
 
@@ -88,7 +89,6 @@ pub(super) enum TextBaseline {
 }
 
 /// The symbol or text to use at the base of a glycan.
-///
 #[doc = include_str!("../../../images/glycan_root.svg")]
 ///
 /// _Glycan [G01670UQ](http://glytoucan.org/Structures/Glycans/G01670UQ) using the different root types: None, Line, Symbol, Text("pep"), Text("N"), Text("Arg")_
@@ -126,10 +126,11 @@ pub(super) enum TextBaseline {
 ///     rendered.to_svg(&mut output).unwrap();
 /// }
 /// ```
-/// This examples shows how to generate SVGs for all the different root types as seen in the above picture.
-/// Note that this writes all SVGs after each other to the variable `output`. Also note that this writes
-/// all modifications that did not fit inside the image in the variable `footnotes` and this will need to
-/// be dealt with by the caller, as indicated in [`GlycanStructure::render`](crate::glycan::GlycanStructure::render).
+/// This examples shows how to generate SVGs for all the different root types as seen in the above
+/// picture. Note that this writes all SVGs after each other to the variable `output`. Also note
+/// that this writes all modifications that did not fit inside the image in the variable `footnotes`
+/// and this will need to be dealt with by the caller, as indicated in
+/// [`GlycanStructure::render`](crate::glycan::GlycanStructure::render).
 #[derive(Clone, Debug, Default, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub enum GlycanRoot {
     /// No symbol, this will also not draw a line from the root sugar
@@ -146,7 +147,8 @@ pub enum GlycanRoot {
 }
 
 impl AbsolutePositionedGlycan {
-    /// Render this glycan to the internal rendering representation, returns None if the root break contains an invalid position.
+    /// Render this glycan to the internal rendering representation, returns None if the root break
+    /// contains an invalid position.
     #[expect(clippy::many_single_char_names, clippy::too_many_arguments)] // Doing geometry
     pub(super) fn render<'a>(
         &'a self,
@@ -225,9 +227,7 @@ impl AbsolutePositionedGlycan {
                         stroke_size,
                     });
                     let offset = 0.25f32.mul_add(column_size, stroke_size);
-                    let r = 0.25f32
-                        .mul_add(column_size, -stroke_size)
-                        .min(sugar_size * 0.25);
+                    let r = 0.25f32.mul_add(column_size, -stroke_size).min(sugar_size * 0.25);
                     let adjusted_x = offset.mul_add(-angle.cos(), base_x);
                     let adjusted_y = offset.mul_add(-angle.sin(), base_y);
                     buffer.push(Element::Circle {
@@ -503,9 +503,7 @@ impl AbsolutePositionedGlycan {
                     let c = (36.0 / 360.0 * 2.0 * PI).cos() * sugar_size / 2.0;
                     let d = (36.0 / 360.0 * 2.0 * PI).sin() * sugar_size / 2.0;
                     let e = 2.0 * a / (54.0 / 360.0 * 2.0 * PI).sin() / (1.0 + 1.0 / PHI);
-                    let f = (18.0 / 360.0 * 2.0 * PI)
-                        .cos()
-                        .mul_add(e, -(sugar_size / 2.0));
+                    let f = (18.0 / 360.0 * 2.0 * PI).cos().mul_add(e, -(sugar_size / 2.0));
                     let g = (18.0 / 360.0 * 2.0 * PI).sin() * e;
                     let h = (sugar_size / 2.0 - b) * (18.0 / 360.0 * 2.0 * PI).tan();
                     let j = (18.0 / 360.0 * 2.0 * PI).tan() * g;
@@ -714,12 +712,7 @@ impl AbsolutePositionedGlycan {
                 });
             }
             // Render all connected sugars
-            for (index, branch) in element
-                .branches
-                .iter()
-                .chain(element.sides.iter())
-                .enumerate()
-            {
+            for (index, branch) in element.branches.iter().chain(element.sides.iter()).enumerate() {
                 if !((total_branches == 1 && breaks.iter().any(|b| b.0 == 1))
                     || breaks
                         .iter()
@@ -927,9 +920,7 @@ impl AbsolutePositionedGlycan {
                 stroke_size,
             });
             let offset = 0.25f32.mul_add(column_size, stroke_size);
-            let r = 0.25f32
-                .mul_add(column_size, -stroke_size)
-                .min(sugar_size * 0.25);
+            let r = 0.25f32.mul_add(column_size, -stroke_size).min(sugar_size * 0.25);
             let adjusted_x = offset.mul_add(-angle.cos(), base_x);
             let adjusted_y = offset.mul_add(-angle.sin(), base_y);
             buffer.push(Element::Circle {
@@ -1087,13 +1078,10 @@ fn text_location(
     }
 
     if let OuterModifications::Text(text) = outer_modifications {
-        let index = footnotes
-            .iter()
-            .position(|p| *p == *text)
-            .unwrap_or_else(|| {
-                footnotes.push(text.clone());
-                footnotes.len() - 1
-            });
+        let index = footnotes.iter().position(|p| *p == *text).unwrap_or_else(|| {
+            footnotes.push(text.clone());
+            footnotes.len() - 1
+        });
 
         text_location(
             &OuterModifications::Footnote(index),

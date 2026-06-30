@@ -1,6 +1,7 @@
 #![allow(clippy::missing_panics_doc)]
-use crate::{InstaNovoPSM, InstaNovoVersion, TestSettings, test_format};
 use std::io::BufReader;
+
+use crate::{InstaNovoPSM, InstaNovoVersion, TestSettings, test_format};
 
 #[test]
 fn instanovo_v1_0_0() {
@@ -21,7 +22,8 @@ fn instanovo_v1_0_0() {
     }
 }
 
-// v1.0.0 and v1.1.4 have the same columns but the PTM definitions are different, that is why there should be a separate test
+// v1.0.0 and v1.1.4 have the same columns but the PTM definitions are different, that is why there
+// should be a separate test
 #[test]
 fn instanovo_v1_1_4() {
     match test_format::<InstaNovoPSM>(

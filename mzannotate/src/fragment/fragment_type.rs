@@ -5,16 +5,16 @@ use std::{
 };
 
 use itertools::Itertools;
-use serde::{Deserialize, Serialize};
-use thin_vec::ThinVec;
-
-use crate::fragment::DiagnosticPosition;
 use mzcore::{
     chemistry::SatelliteLabel,
     glycan::{BackboneFragmentKind, GlycanPosition, GlycanSelection, MonoSaccharide},
     prelude::*,
     sequence::{PeptidePosition, SemiAmbiguous},
 };
+use serde::{Deserialize, Serialize};
+use thin_vec::ThinVec;
+
+use crate::fragment::DiagnosticPosition;
 
 /// A variant, meaning ±H so z· is variant +1 is z+H
 pub type Variant = i8;
@@ -62,12 +62,14 @@ pub enum FragmentType {
         /// All branches that are not broken
         end: ThinVec<GlycanPosition>,
     },
-    /// A B or internal glycan fragment for a glycan where only the composition is known, also saves the attachment (AA + sequence index)
+    /// A B or internal glycan fragment for a glycan where only the composition is known, also saves
+    /// the attachment (AA + sequence index)
     BComposition(
         Vec<(MonoSaccharide, isize)>,
         Option<(AminoAcid, SequencePosition)>,
     ),
-    /// A B or internal glycan fragment for a glycan where only the composition is known, also saves the attachment (AA + sequence index)
+    /// A B or internal glycan fragment for a glycan where only the composition is known, also saves
+    /// the attachment (AA + sequence index)
     YComposition(
         Vec<(MonoSaccharide, isize)>,
         Option<(AminoAcid, SequencePosition)>,
@@ -101,49 +103,49 @@ impl Ord for FragmentType {
             (Self::Precursor, _) => Ordering::Less,
             (_, Self::Precursor) => Ordering::Greater,
             (Self::a(s, sv), Self::a(o, ov)) => s.cmp(o).then(sv.cmp(ov)),
-            (Self::a(_, _), _) => Ordering::Less,
-            (_, Self::a(_, _)) => Ordering::Greater,
+            (Self::a(..), _) => Ordering::Less,
+            (_, Self::a(..)) => Ordering::Greater,
             (Self::b(s, sv), Self::b(o, ov)) => s.cmp(o).then(sv.cmp(ov)),
-            (Self::b(_, _), _) => Ordering::Less,
-            (_, Self::b(_, _)) => Ordering::Greater,
+            (Self::b(..), _) => Ordering::Less,
+            (_, Self::b(..)) => Ordering::Greater,
             (Self::c(s, sv), Self::c(o, ov)) => s.cmp(o).then(sv.cmp(ov)),
-            (Self::c(_, _), _) => Ordering::Less,
-            (_, Self::c(_, _)) => Ordering::Greater,
+            (Self::c(..), _) => Ordering::Less,
+            (_, Self::c(..)) => Ordering::Greater,
             (Self::x(s, sv), Self::x(o, ov)) => s.cmp(o).then(sv.cmp(ov)),
-            (Self::x(_, _), _) => Ordering::Less,
-            (_, Self::x(_, _)) => Ordering::Greater,
+            (Self::x(..), _) => Ordering::Less,
+            (_, Self::x(..)) => Ordering::Greater,
             (Self::y(s, sv), Self::y(o, ov)) => s.cmp(o).then(sv.cmp(ov)),
-            (Self::y(_, _), _) => Ordering::Less,
-            (_, Self::y(_, _)) => Ordering::Greater,
+            (Self::y(..), _) => Ordering::Less,
+            (_, Self::y(..)) => Ordering::Greater,
             (Self::z(s, sv), Self::z(o, ov)) => s.cmp(o).then(sv.cmp(ov)),
-            (Self::z(_, _), _) => Ordering::Less,
-            (_, Self::z(_, _)) => Ordering::Greater,
+            (Self::z(..), _) => Ordering::Less,
+            (_, Self::z(..)) => Ordering::Greater,
             (Self::d(s, _, sd, sv, sl), Self::d(o, _, od, ov, ol)) => {
                 s.cmp(o).then(sd.cmp(od)).then(sv.cmp(ov)).then(sl.cmp(ol))
             }
-            (Self::d(_, _, _, _, _), _) => Ordering::Less,
-            (_, Self::d(_, _, _, _, _)) => Ordering::Greater,
+            (Self::d(..), _) => Ordering::Less,
+            (_, Self::d(..)) => Ordering::Greater,
             (Self::w(s, _, sd, sv, sl), Self::w(o, _, od, ov, ol)) => {
                 s.cmp(o).then(sd.cmp(od)).then(sv.cmp(ov)).then(sl.cmp(ol))
             }
-            (Self::w(_, _, _, _, _), _) => Ordering::Less,
-            (_, Self::w(_, _, _, _, _)) => Ordering::Greater,
+            (Self::w(..), _) => Ordering::Less,
+            (_, Self::w(..)) => Ordering::Greater,
             (Self::v(s, _, sd, sv), Self::v(o, _, od, ov)) => {
                 s.cmp(o).then(sd.cmp(od)).then(sv.cmp(ov))
             }
-            (Self::v(_, _, _, _), _) => Ordering::Less,
-            (_, Self::v(_, _, _, _)) => Ordering::Greater,
+            (Self::v(..), _) => Ordering::Less,
+            (_, Self::v(..)) => Ordering::Greater,
             (Self::Immonium(s, _), Self::Immonium(o, _)) => s.cmp(o),
-            (Self::Immonium(_, _), _) => Ordering::Less,
-            (_, Self::Immonium(_, _)) => Ordering::Greater,
+            (Self::Immonium(..), _) => Ordering::Less,
+            (_, Self::Immonium(..)) => Ordering::Greater,
             (Self::PrecursorSideChainLoss(s, _), Self::PrecursorSideChainLoss(o, _)) => s.cmp(o),
-            (Self::PrecursorSideChainLoss(_, _), _) => Ordering::Less,
-            (_, Self::PrecursorSideChainLoss(_, _)) => Ordering::Greater,
+            (Self::PrecursorSideChainLoss(..), _) => Ordering::Less,
+            (_, Self::PrecursorSideChainLoss(..)) => Ordering::Greater,
             (Self::Internal(st, sa, sb), Self::Internal(ot, oa, ob)) => {
                 sa.cmp(oa).then(sb.cmp(ob)).then(st.cmp(ot))
             }
-            (Self::Internal(_, _, _), _) => Ordering::Less,
-            (_, Self::Internal(_, _, _)) => Ordering::Greater,
+            (Self::Internal(..), _) => Ordering::Less,
+            (_, Self::Internal(..)) => Ordering::Greater,
             // Glycans
             (Self::B { b: sb, y: sy, .. }, Self::B { b: ob, y: oy, .. }) => {
                 sy.len().cmp(&oy.len()).then(sb.cmp(ob))
@@ -163,18 +165,16 @@ impl Ord for FragmentType {
             | (Self::YComposition(s, sl), Self::YComposition(o, ol)) => {
                 s.len().cmp(&o.len()).then(sl.cmp(ol))
             }
-            (Self::BComposition(s, sl), Self::YComposition(o, ol)) => s
-                .len()
-                .cmp(&o.len())
-                .then(sl.cmp(ol))
-                .then(Ordering::Greater),
+            (Self::BComposition(s, sl), Self::YComposition(o, ol)) => {
+                s.len().cmp(&o.len()).then(sl.cmp(ol)).then(Ordering::Greater)
+            }
             (Self::YComposition(s, sl), Self::BComposition(o, ol)) => {
                 s.len().cmp(&o.len()).then(sl.cmp(ol)).then(Ordering::Less)
             }
-            (Self::BComposition(_, _), _) => Ordering::Less,
-            (_, Self::BComposition(_, _)) => Ordering::Greater,
-            (Self::YComposition(_, _), _) => Ordering::Less,
-            (_, Self::YComposition(_, _)) => Ordering::Greater,
+            (Self::BComposition(..), _) => Ordering::Less,
+            (_, Self::BComposition(..)) => Ordering::Greater,
+            (Self::YComposition(..), _) => Ordering::Less,
+            (_, Self::YComposition(..)) => Ordering::Greater,
             // Other
             (Self::Diagnostic(s), Self::Diagnostic(o)) => s.cmp(o),
             (Self::Diagnostic(_), _) => Ordering::Less,
@@ -191,7 +191,8 @@ impl PartialOrd for FragmentType {
 }
 
 impl FragmentType {
-    /// Get a main ion series fragment with the specified variant, or pass the fragment type through unchanged
+    /// Get a main ion series fragment with the specified variant, or pass the fragment type through
+    /// unchanged
     #[must_use]
     pub fn with_variant(&self, variant: Variant) -> Self {
         match self {
@@ -214,9 +215,9 @@ impl FragmentType {
             Self::a(n, _)
             | Self::b(n, _)
             | Self::c(n, _)
-            | Self::d(n, _, _, _, _)
-            | Self::v(n, _, _, _)
-            | Self::w(n, _, _, _, _)
+            | Self::d(n, ..)
+            | Self::v(n, ..)
+            | Self::w(n, ..)
             | Self::x(n, _)
             | Self::y(n, _)
             | Self::z(n, _)
@@ -227,7 +228,8 @@ impl FragmentType {
         }
     }
 
-    /// Get the root glycan position of this ion (or None if not applicable), Y is not defined as it does not have a root break
+    /// Get the root glycan position of this ion (or None if not applicable), Y is not defined as it
+    /// does not have a root break
     pub const fn glycan_position(&self) -> Option<&GlycanPosition> {
         match self {
             Self::Diagnostic(DiagnosticPosition::Glycan(b, _)) | Self::B { b, .. } => Some(b),
@@ -235,8 +237,9 @@ impl FragmentType {
         }
     }
 
-    /// Get the glycan break positions of this ion (or None if not applicable), gives the sequence index, the root break, and the branch breaks.
-    /// Only available with feature 'glycan-render'.
+    /// Get the glycan break positions of this ion (or None if not applicable), gives the sequence
+    /// index, the root break, and the branch breaks. Only available with feature
+    /// 'glycan-render'.
     pub fn glycan_break_positions(
         &self,
     ) -> Option<(Option<SequencePosition>, GlycanSelection<'_>)> {
@@ -263,9 +266,9 @@ impl FragmentType {
             Self::a(n, _)
             | Self::b(n, _)
             | Self::c(n, _)
-            | Self::d(n, _, _, _, _)
-            | Self::v(n, _, _, _)
-            | Self::w(n, _, _, _, _)
+            | Self::d(n, ..)
+            | Self::v(n, ..)
+            | Self::w(n, ..)
             | Self::x(n, _)
             | Self::y(n, _)
             | Self::z(n, _)
@@ -275,19 +278,11 @@ impl FragmentType {
             Self::Diagnostic(DiagnosticPosition::Glycan(n, _)) => Some(n.label()),
             Self::Y(bonds) => Some(bonds.iter().map(GlycanPosition::label).join("Y")),
             Self::B { b, y, end } => Some(
-                b.label()
-                    + "Y"
-                    + &y.iter()
-                        .chain(end.iter())
-                        .map(GlycanPosition::label)
-                        .join("Y"),
+                b.label() + "Y" + &y.iter().chain(end.iter()).map(GlycanPosition::label).join("Y"),
             ),
-            Self::YComposition(sugars, _) | Self::BComposition(sugars, _) => Some(
-                sugars
-                    .iter()
-                    .map(|(sugar, amount)| format!("{sugar}{amount}"))
-                    .join(""),
-            ),
+            Self::YComposition(sugars, _) | Self::BComposition(sugars, _) => {
+                Some(sugars.iter().map(|(sugar, amount)| format!("{sugar}{amount}")).join(""))
+            }
             Self::Internal(_, pos1, pos2) => {
                 Some(format!("{}:{}", pos1.sequence_index, pos2.sequence_index))
             }
@@ -295,13 +290,14 @@ impl FragmentType {
             | Self::Unknown(_)
             | Self::Diagnostic(
                 DiagnosticPosition::Labile(_)
-                | DiagnosticPosition::GlycanCompositional(_, _)
+                | DiagnosticPosition::GlycanCompositional(..)
                 | DiagnosticPosition::Reporter,
             ) => None,
         }
     }
 
-    /// Get the label for this fragment type, the first argument is the optional superscript prefix, the second is the main label
+    /// Get the label for this fragment type, the first argument is the optional superscript prefix,
+    /// the second is the main label
     pub fn label(&self) -> (Option<String>, Cow<'_, str>) {
         let get_label = |ion: &'static str, v: i8| {
             if v == 0 {
@@ -348,8 +344,8 @@ impl FragmentType {
             Self::x(_, v) => (None, get_label("x", *v)),
             Self::y(_, v) => (None, get_label("y", *v)),
             Self::z(_, v) => (None, get_label("z", *v)),
-            Self::B { .. } | Self::BComposition(_, _) => (None, Cow::Borrowed("B")),
-            Self::Y(_) | Self::YComposition(_, _) => (None, Cow::Borrowed("Y")),
+            Self::B { .. } | Self::BComposition(..) => (None, Cow::Borrowed("B")),
+            Self::Y(_) | Self::YComposition(..) => (None, Cow::Borrowed("Y")),
             Self::Diagnostic(DiagnosticPosition::Peptide(_, aa)) => (
                 None,
                 Cow::Owned(
@@ -385,7 +381,7 @@ impl FragmentType {
                 ),
             ),
             Self::Precursor => (None, Cow::Borrowed("p")),
-            Self::Internal(fragmentation, _, _) => (
+            Self::Internal(fragmentation, ..) => (
                 None,
                 Cow::Owned(format!(
                     "m{}",
@@ -405,26 +401,26 @@ impl FragmentType {
     /// Get the kind of fragment, easier to match against
     pub const fn kind(&self) -> FragmentKind {
         match self {
-            Self::a(_, _) => FragmentKind::a,
-            Self::b(_, _) => FragmentKind::b,
-            Self::c(_, _) => FragmentKind::c,
-            Self::d(_, _, _, _, _) => FragmentKind::d,
-            Self::v(_, _, _, _) => FragmentKind::v,
-            Self::w(_, _, _, _, _) => FragmentKind::w,
-            Self::x(_, _) => FragmentKind::x,
-            Self::y(_, _) => FragmentKind::y,
-            Self::z(_, _) => FragmentKind::z,
-            Self::Y(_) | Self::YComposition(_, _) => FragmentKind::Y,
+            Self::a(..) => FragmentKind::a,
+            Self::b(..) => FragmentKind::b,
+            Self::c(..) => FragmentKind::c,
+            Self::d(..) => FragmentKind::d,
+            Self::v(..) => FragmentKind::v,
+            Self::w(..) => FragmentKind::w,
+            Self::x(..) => FragmentKind::x,
+            Self::y(..) => FragmentKind::y,
+            Self::z(..) => FragmentKind::z,
+            Self::Y(_) | Self::YComposition(..) => FragmentKind::Y,
             Self::Diagnostic(
-                DiagnosticPosition::Glycan(_, _) | DiagnosticPosition::GlycanCompositional(_, _),
+                DiagnosticPosition::Glycan(..) | DiagnosticPosition::GlycanCompositional(..),
             )
             | Self::B { .. }
-            | Self::BComposition(_, _) => FragmentKind::B,
+            | Self::BComposition(..) => FragmentKind::B,
             Self::Diagnostic(_) => FragmentKind::diagnostic,
-            Self::Immonium(_, _) => FragmentKind::immonium,
-            Self::PrecursorSideChainLoss(_, _) => FragmentKind::precursor_side_chain_loss,
+            Self::Immonium(..) => FragmentKind::immonium,
+            Self::PrecursorSideChainLoss(..) => FragmentKind::precursor_side_chain_loss,
             Self::Precursor => FragmentKind::precursor,
-            Self::Internal(_, _, _) => FragmentKind::internal,
+            Self::Internal(..) => FragmentKind::internal,
             Self::Unknown(_) => FragmentKind::unknown,
         }
     }
@@ -484,15 +480,11 @@ pub enum BackboneNFragment {
 
 impl Display for BackboneNFragment {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "{}",
-            match self {
-                Self::a => "a",
-                Self::b => "b",
-                Self::c => "c",
-            }
-        )
+        write!(f, "{}", match self {
+            Self::a => "a",
+            Self::b => "b",
+            Self::c => "c",
+        })
     }
 }
 
@@ -516,15 +508,11 @@ pub enum BackboneCFragment {
 
 impl Display for BackboneCFragment {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "{}",
-            match self {
-                Self::x => "x",
-                Self::y => "y",
-                Self::z => "z",
-            }
-        )
+        write!(f, "{}", match self {
+            Self::x => "x",
+            Self::y => "y",
+            Self::z => "z",
+        })
     }
 }
 
@@ -534,7 +522,8 @@ impl mzcore::space::Space for BackboneCFragment {
     }
 }
 
-/// The possible kinds of fragments, same options as [`FragmentType`] but without any additional data
+/// The possible kinds of fragments, same options as [`FragmentType`] but without any additional
+/// data
 #[derive(Clone, Copy, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 #[expect(non_camel_case_types)]
 pub enum FragmentKind {
@@ -558,7 +547,8 @@ pub enum FragmentKind {
     z,
     /// glycan Y fragment, generated by one or more branches broken
     Y,
-    /// B or glycan diagnostic ion or Internal glycan fragment, meaning both a B and Y breakages (and potentially multiple of both), resulting in a set of monosaccharides
+    /// B or glycan diagnostic ion or Internal glycan fragment, meaning both a B and Y breakages
+    /// (and potentially multiple of both), resulting in a set of monosaccharides
     B,
     /// Immonium ion
     immonium,
@@ -576,29 +566,25 @@ pub enum FragmentKind {
 
 impl Display for FragmentKind {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "{}",
-            match self {
-                Self::a => "a",
-                Self::b => "b",
-                Self::c => "c",
-                Self::d => "d",
-                Self::x => "x",
-                Self::y => "y",
-                Self::v => "v",
-                Self::w => "w",
-                Self::z => "z",
-                Self::Y => "Y",
-                Self::B => "oxonium",
-                Self::immonium => "immonium",
-                Self::precursor_side_chain_loss => "precursor side chain loss",
-                Self::diagnostic => "diagnostic",
-                Self::internal => "m",
-                Self::precursor => "precursor",
-                Self::unknown => "unknown",
-            }
-        )
+        write!(f, "{}", match self {
+            Self::a => "a",
+            Self::b => "b",
+            Self::c => "c",
+            Self::d => "d",
+            Self::x => "x",
+            Self::y => "y",
+            Self::v => "v",
+            Self::w => "w",
+            Self::z => "z",
+            Self::Y => "Y",
+            Self::B => "oxonium",
+            Self::immonium => "immonium",
+            Self::precursor_side_chain_loss => "precursor side chain loss",
+            Self::diagnostic => "diagnostic",
+            Self::internal => "m",
+            Self::precursor => "precursor",
+            Self::unknown => "unknown",
+        })
     }
 }
 

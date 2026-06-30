@@ -181,7 +181,8 @@ impl<T> SequenceElement<T> {
         )
     }
 
-    /// Get the molecular formulas for this position with the ambiguous modifications placed on the very first placed (and updating this in `placed`), without any global isotope modifications
+    /// Get the molecular formulas for this position with the ambiguous modifications placed on the
+    /// very first placed (and updating this in `placed`), without any global isotope modifications
     #[expect(clippy::too_many_arguments)]
     pub(crate) fn formulas_greedy(
         &self,
@@ -212,7 +213,8 @@ impl<T> SequenceElement<T> {
         )
     }
 
-    /// Get the molecular formulas for this position with all ambiguous modifications, without any global isotope modifications
+    /// Get the molecular formulas for this position with all ambiguous modifications, without any
+    /// global isotope modifications
     pub(crate) fn formulas_all(
         &self,
         all_peptidoforms: &[Peptidoform<Linked>],
@@ -241,7 +243,8 @@ impl<T> SequenceElement<T> {
         )
     }
 
-    /// Get the molecular formulas for this position with the ambiguous modifications placed on the very first placed (and updating this in `placed`), without any global isotope modifications
+    /// Get the molecular formulas for this position with the ambiguous modifications placed on the
+    /// very first placed (and updating this in `placed`), without any global isotope modifications
     #[expect(clippy::too_many_arguments)]
     pub(crate) fn formulas_generic(
         &self,
@@ -328,7 +331,8 @@ impl<T> SequenceElement<T> {
         )
     }
 
-    /// Enforce the placement rules of predefined modifications. Generates a warning for all modifications that are not placed according to the database rules.
+    /// Enforce the placement rules of predefined modifications. Generates a warning for all
+    /// modifications that are not placed according to the database rules.
     /// # Panics
     /// If any placement rule is placement on a PSI modification that does not exist.
     pub(crate) fn enforce_modification_rules<'a>(
@@ -339,10 +343,7 @@ impl<T> SequenceElement<T> {
         let mut warnings = Vec::new();
         for modification in &self.modifications {
             if modification.is_possible(self, position) == RulePossible::No {
-                let rules = modification
-                    .simple()
-                    .map(|s| s.placement_rules())
-                    .unwrap_or_default();
+                let rules = modification.simple().map(|s| s.placement_rules()).unwrap_or_default();
                 combine_error(
                     &mut warnings,
                     BoxedError::new(
@@ -383,7 +384,7 @@ impl<T> SequenceElement<T> {
         let mut diagnostic_ions = Vec::new();
         let modifications = match position {
             SequencePosition::NTerm => n_term,
-            SequencePosition::Index(_, _) => &self.modifications,
+            SequencePosition::Index(..) => &self.modifications,
             SequencePosition::CTerm => c_term,
         };
         for modification in modifications {

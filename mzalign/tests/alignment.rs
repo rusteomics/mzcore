@@ -35,7 +35,8 @@ fn identity() {
     }
 }
 
-/// Test for a set of peptidoforms from a database matcher if the match to the database is indeed perfect
+/// Test for a set of peptidoforms from a database matcher if the match to the database is indeed
+/// perfect
 #[test]
 fn alignment_to_database() {
     let peptidoforms: Vec<_> = open_psm_file(
@@ -75,7 +76,8 @@ fn alignment_to_database() {
     }
 }
 
-/// Test for a set of randomly paired peptidoforms if the alignment algorithm still gives the same result
+/// Test for a set of randomly paired peptidoforms if the alignment algorithm still gives the same
+/// result
 #[test]
 fn pairwise() {
     use std::io::Write;
@@ -111,18 +113,8 @@ fn pairwise() {
         .into_simple_linear()
         .unwrap();
         let path = line.index_column("path").unwrap().0;
-        let absolute_score: isize = line
-            .index_column("absolute score")
-            .unwrap()
-            .0
-            .parse()
-            .unwrap();
-        let maximal_score: isize = line
-            .index_column("maximal score")
-            .unwrap()
-            .0
-            .parse()
-            .unwrap();
+        let absolute_score: isize = line.index_column("absolute score").unwrap().0.parse().unwrap();
+        let maximal_score: isize = line.index_column("maximal score").unwrap().0.parse().unwrap();
         let alignment = align::<4, &Peptidoform<SimpleLinear>, &Peptidoform<SimpleLinear>>(
             &a,
             &b,

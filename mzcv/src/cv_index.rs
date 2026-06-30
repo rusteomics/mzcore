@@ -17,8 +17,8 @@ use crate::{CVData, CVSource, CVStructure, CVVersion, text::*};
 /// * From a URL [`Self::update_from_url`].
 ///
 /// Each of these stores the full data file at the default location
-/// ([`CVSource::default_stem`].[`CVFile::extension`](crate::CVFile::extension).gz). And updates the binary cache that
-/// is used as the fastest way of loading the data in [`Self::init`].
+/// ([`CVSource::default_stem`].[`CVFile::extension`](crate::CVFile::extension).gz). And updates the
+/// binary cache that is used as the fastest way of loading the data in [`Self::init`].
 #[derive(Debug)]
 pub struct CVIndex<CV: CVSource> {
     /// All data elements
@@ -27,7 +27,8 @@ pub struct CVIndex<CV: CVSource> {
     index: HashMap<<CV::Data as CVData>::Index, Arc<CV::Data>>,
     /// Lowercased name index
     name: HashMap<Box<str>, Arc<CV::Data>>,
-    /// Lowercased synonym index, multiple synonyms can link to the same data, but every synonym can only link to one data
+    /// Lowercased synonym index, multiple synonyms can link to the same data, but every synonym
+    /// can only link to one data
     synonyms: HashMap<Box<str>, Arc<CV::Data>>,
     #[cfg(feature = "search-index")]
     /// All trigrams for the names and synonyms
@@ -75,7 +76,9 @@ impl<CV: CVSource> CVIndex<CV> {
         self.name.get(&name).cloned()
     }
 
-    /// Load a data item by name or if that fails by synonym, names are matched in a case insensitive manner. Returns a boolean indicating if it matches a name `true` or a synonym `false`
+    /// Load a data item by name or if that fails by synonym, names are matched in a case
+    /// insensitive manner. Returns a boolean indicating if it matches a name `true` or a synonym
+    /// `false`
     pub fn get_by_name_or_synonym(&self, name: &str) -> Option<(bool, Arc<CV::Data>)> {
         let name = name.to_ascii_lowercase().into_boxed_str();
         self.name
@@ -85,17 +88,20 @@ impl<CV: CVSource> CVIndex<CV> {
     }
 
     /// Search trough the name and synonyms lists to find the closest terms.
-    /// This can be limited to a maximum amount of entries sent back and to a maximum edit distance with the search term.
-    /// The results are sorted unstably on edit distance so multiple calls could return different lists.
+    /// This can be limited to a maximum amount of entries sent back and to a maximum edit distance
+    /// with the search term. The results are sorted unstably on edit distance so multiple calls
+    /// could return different lists.
     ///
-    /// Returns the found mod, if this is based on name `true` or synonym `false` and the edit distance
+    /// Returns the found mod, if this is based on name `true` or synonym `false` and the edit
+    /// distance
     pub fn search(
         &self,
         term: &str,
         limit: usize,
         max_distance: usize,
     ) -> Vec<(Arc<CV::Data>, Option<String>, usize)> {
-        // Convert to lowercase, see if any name or synonym exactly matches before going over the trigram index and doing distance calculations
+        // Convert to lowercase, see if any name or synonym exactly matches before going over the
+        // trigram index and doing distance calculations
         let lowercase = term.to_ascii_lowercase().into_boxed_str();
         self.name
             .get(&lowercase)
@@ -140,14 +146,11 @@ impl<CV: CVSource> CVIndex<CV> {
                     results
                         .into_iter()
                         .filter_map(|(name, distance)| {
-                            self.name
-                                .get(name)
-                                .map(|m| (m.clone(), None, distance))
-                                .or_else(|| {
-                                    self.synonyms
-                                        .get(name)
-                                        .map(|m| (m.clone(), Some(name.to_string()), distance))
-                                })
+                            self.name.get(name).map(|m| (m.clone(), None, distance)).or_else(|| {
+                                self.synonyms
+                                    .get(name)
+                                    .map(|m| (m.clone(), Some(name.to_string()), distance))
+                            })
                         })
                         .collect()
                 },
@@ -220,7 +223,8 @@ impl<CV: CVSource> CVIndex<CV> {
         }
     }
 
-    /// Remove a modification. Returns true if this element was successfully deleted and false if this element could not be found.
+    /// Remove a modification. Returns true if this element was successfully deleted and false if
+    /// this element could not be found.
     pub fn remove(&mut self, index: &<CV::Data as CVData>::Index) -> bool {
         let pos = self
             .data
@@ -231,18 +235,14 @@ impl<CV: CVSource> CVIndex<CV> {
                 self.name.remove(name.as_ref());
                 #[cfg(feature = "search-index")]
                 for tag in tags(&name) {
-                    self.trigram_index
-                        .entry(tag)
-                        .and_modify(|v| v.retain(|i| **i != *name));
+                    self.trigram_index.entry(tag).and_modify(|v| v.retain(|i| **i != *name));
                 }
             }
             for synonym in m.synonyms() {
                 self.synonyms.remove(synonym);
                 #[cfg(feature = "search-index")]
                 for tag in tags(&synonym) {
-                    self.trigram_index
-                        .entry(tag)
-                        .and_modify(|v| v.retain(|i| **i != *synonym));
+                    self.trigram_index.entry(tag).and_modify(|v| v.retain(|i| **i != *synonym));
                 }
             }
             self.index.remove(index);
@@ -264,10 +264,7 @@ impl<CV: CVSource> CVIndex<CV> {
             let name = name.trim_ascii().to_ascii_lowercase().into_boxed_str();
             #[cfg(feature = "search-index")]
             for tag in tags(&name) {
-                self.trigram_index
-                    .entry(tag)
-                    .or_default()
-                    .push(name.clone());
+                self.trigram_index.entry(tag).or_default().push(name.clone());
             }
             self.name.insert(name, element.clone());
         }
@@ -275,10 +272,7 @@ impl<CV: CVSource> CVIndex<CV> {
             let keyword = keyword.trim_ascii().to_ascii_lowercase().into_boxed_str();
             #[cfg(feature = "search-index")]
             for tag in tags(&keyword) {
-                self.trigram_index
-                    .entry(tag)
-                    .or_default()
-                    .push(keyword.clone());
+                self.trigram_index.entry(tag).or_default().push(keyword.clone());
             }
             self.synonyms.insert(keyword, element.clone());
         }

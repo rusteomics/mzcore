@@ -4,6 +4,7 @@ use std::{borrow::Cow, sync::LazyLock};
 
 use serde::{Deserialize, Serialize};
 
+use super::is_amino_acid::IsAminoAcid;
 use crate::{
     chemistry::{AmbiguousLabel, MolecularFormula, MultiChemical, SatelliteLabel},
     molecular_formula,
@@ -11,8 +12,6 @@ use crate::{
     quantities::Multi,
     sequence::SequencePosition,
 };
-
-use super::is_amino_acid::IsAminoAcid;
 
 impl std::fmt::Display for dyn IsAminoAcid {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -96,6 +95,7 @@ impl std::error::Error for NotACodon {}
 impl AminoAcid {
     /// The total number of amino acids
     pub const TOTAL_NUMBER: usize = Self::Unknown as usize + 1;
+
     /// Translate the dna codon into the corresponding amino acid according to the standard DNA
     /// codon table. The table is fully written out to support ambiguous bases in codons. It returns
     /// `None` for a stop codon.
@@ -145,6 +145,7 @@ impl AminoAcid {
 
 impl std::str::FromStr for AminoAcid {
     type Err = ();
+
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         Self::try_from(s)
     }
@@ -152,6 +153,7 @@ impl std::str::FromStr for AminoAcid {
 
 impl TryFrom<&str> for AminoAcid {
     type Error = ();
+
     fn try_from(value: &str) -> Result<Self, Self::Error> {
         if value.is_ascii() && value.len() == 1 {
             let ch = value.chars().next().unwrap();
@@ -164,6 +166,7 @@ impl TryFrom<&str> for AminoAcid {
 
 impl TryFrom<String> for AminoAcid {
     type Error = ();
+
     fn try_from(value: String) -> Result<Self, Self::Error> {
         value.as_str().try_into()
     }
@@ -171,6 +174,7 @@ impl TryFrom<String> for AminoAcid {
 
 impl TryFrom<&String> for AminoAcid {
     type Error = ();
+
     fn try_from(value: &String) -> Result<Self, Self::Error> {
         value.as_str().try_into()
     }
@@ -178,6 +182,7 @@ impl TryFrom<&String> for AminoAcid {
 
 impl TryFrom<char> for AminoAcid {
     type Error = ();
+
     fn try_from(value: char) -> Result<Self, Self::Error> {
         if value.is_ascii() {
             let num = value as u8;
@@ -190,6 +195,7 @@ impl TryFrom<char> for AminoAcid {
 
 impl TryFrom<&u8> for AminoAcid {
     type Error = ();
+
     fn try_from(value: &u8) -> Result<Self, Self::Error> {
         match value {
             b'A' | b'a' => Ok(Self::Alanine),
@@ -225,6 +231,7 @@ impl TryFrom<&u8> for AminoAcid {
 
 impl TryFrom<u8> for AminoAcid {
     type Error = ();
+
     fn try_from(value: u8) -> Result<Self, Self::Error> {
         Self::try_from(&value)
     }
@@ -593,55 +600,6 @@ pub static BACKBONE: LazyLock<MolecularFormula> =
     LazyLock::new(|| molecular_formula!(H 3 C 2 N 1 O 1));
 
 impl AminoAcid {
-    /// All amino acids with a unique mass (no I/L in favour of J, no B, no Z, and no X)
-    pub const UNIQUE_MASS_AMINO_ACIDS: &'static [Self] = &[
-        Self::Glycine,
-        Self::Alanine,
-        Self::Arginine,
-        Self::Asparagine,
-        Self::AsparticAcid,
-        Self::Cysteine,
-        Self::Glutamine,
-        Self::GlutamicAcid,
-        Self::Histidine,
-        Self::AmbiguousLeucine,
-        Self::Lysine,
-        Self::Methionine,
-        Self::Phenylalanine,
-        Self::Proline,
-        Self::Serine,
-        Self::Threonine,
-        Self::Tryptophan,
-        Self::Tyrosine,
-        Self::Valine,
-        Self::Selenocysteine,
-        Self::Pyrrolysine,
-    ];
-
-    /// All 20 canonical amino acids
-    pub const CANONICAL_AMINO_ACIDS: &'static [Self] = &[
-        Self::Glycine,
-        Self::Alanine,
-        Self::Arginine,
-        Self::Asparagine,
-        Self::AsparticAcid,
-        Self::Cysteine,
-        Self::Glutamine,
-        Self::GlutamicAcid,
-        Self::Histidine,
-        Self::Leucine,
-        Self::Isoleucine,
-        Self::Lysine,
-        Self::Methionine,
-        Self::Phenylalanine,
-        Self::Proline,
-        Self::Serine,
-        Self::Threonine,
-        Self::Tryptophan,
-        Self::Tyrosine,
-        Self::Valine,
-    ];
-
     /// All amino acids (including I/L/J/B/Z but excluding X)
     pub const ALL_AMINO_ACIDS: &'static [Self] = &[
         Self::Alanine,
@@ -670,8 +628,56 @@ impl AminoAcid {
         Self::Tyrosine,
         Self::Valine,
     ];
+    /// All 20 canonical amino acids
+    pub const CANONICAL_AMINO_ACIDS: &'static [Self] = &[
+        Self::Glycine,
+        Self::Alanine,
+        Self::Arginine,
+        Self::Asparagine,
+        Self::AsparticAcid,
+        Self::Cysteine,
+        Self::Glutamine,
+        Self::GlutamicAcid,
+        Self::Histidine,
+        Self::Leucine,
+        Self::Isoleucine,
+        Self::Lysine,
+        Self::Methionine,
+        Self::Phenylalanine,
+        Self::Proline,
+        Self::Serine,
+        Self::Threonine,
+        Self::Tryptophan,
+        Self::Tyrosine,
+        Self::Valine,
+    ];
+    /// All amino acids with a unique mass (no I/L in favour of J, no B, no Z, and no X)
+    pub const UNIQUE_MASS_AMINO_ACIDS: &'static [Self] = &[
+        Self::Glycine,
+        Self::Alanine,
+        Self::Arginine,
+        Self::Asparagine,
+        Self::AsparticAcid,
+        Self::Cysteine,
+        Self::Glutamine,
+        Self::GlutamicAcid,
+        Self::Histidine,
+        Self::AmbiguousLeucine,
+        Self::Lysine,
+        Self::Methionine,
+        Self::Phenylalanine,
+        Self::Proline,
+        Self::Serine,
+        Self::Threonine,
+        Self::Tryptophan,
+        Self::Tyrosine,
+        Self::Valine,
+        Self::Selenocysteine,
+        Self::Pyrrolysine,
+    ];
 
-    /// Check if two amino acids are considered identical. X is identical to anything, J to IL, B to ND, Z to EQ.
+    /// Check if two amino acids are considered identical. X is identical to anything, J to IL, B to
+    /// ND, Z to EQ.
     pub(crate) fn canonical_identical(self, rhs: Self) -> bool {
         match (self, rhs) {
             (a, b) if a == b => true,

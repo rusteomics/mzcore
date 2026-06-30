@@ -1,15 +1,15 @@
 //! Code to handle the XL-MOD ontology
+use std::collections::HashMap;
+
 use context_error::{
     BoxedError, Context, CreateError, FullErrorContent, StaticErrorContent, combine_error,
     combine_errors,
 };
-use std::collections::HashMap;
-use thin_vec::ThinVec;
-
 use mzcv::{
     CVError, CVFile, CVSource, CVVersion, Comment, HashBufReader, Modifier, OboIdentifier,
     OboOntology, OboStanzaType, OboValue, RelationType,
 };
+use thin_vec::ThinVec;
 
 use crate::{
     chemistry::{DiagnosticIon, MolecularFormula, NeutralLoss},
@@ -31,6 +31,7 @@ pub struct XlMod {}
 impl CVSource for XlMod {
     type Data = SimpleModificationInner;
     type Structure = Vec<SimpleModification>;
+
     fn cv_name() -> &'static str {
         "XLMOD"
     }
@@ -289,9 +290,7 @@ fn parse_property_values(
                                     CVError::ItemError,
                                     "Out of range number of sites",
                                     "The number of sites can only be in range 0—255",
-                                    Context::default()
-                                        .lines(0, value[0].0.to_string())
-                                        .to_owned(),
+                                    Context::default().lines(0, value[0].0.to_string()).to_owned(),
                                 ),
                             );
                             None
@@ -318,8 +317,8 @@ fn parse_property_values(
                 }
             }
             "spacerLength" => {
-                for (def, _, _) in value {
-                    let length = if let OboValue::Float(n, _, _) = def {
+                for (def, ..) in value {
+                    let length = if let OboValue::Float(n, ..) = def {
                         *n
                     } else {
                         combine_error(
@@ -359,7 +358,7 @@ fn parse_property_values(
                         ),
                     );
                 }
-                let length = if let OboValue::Float(n, _, _) = value[0].0 {
+                let length = if let OboValue::Float(n, ..) = value[0].0 {
                     n
                 } else {
                     combine_error(
@@ -400,7 +399,7 @@ fn parse_property_values(
                         ),
                     );
                 }
-                let length = if let OboValue::Float(n, _, _) = value[0].0 {
+                let length = if let OboValue::Float(n, ..) = value[0].0 {
                     n
                 } else {
                     combine_error(
@@ -441,7 +440,7 @@ fn parse_property_values(
                         ),
                     );
                 }
-                mass = if let OboValue::Float(n, _, _) = value[0].0 {
+                mass = if let OboValue::Float(n, ..) = value[0].0 {
                     Some(ordered_float::OrderedFloat(n))
                 } else {
                     combine_error(
@@ -482,15 +481,14 @@ fn parse_property_values(
                     .ok();
             }
             "neutralLossFormula" => {
-                for (def, _, _) in value {
+                for (def, ..) in value {
                     match MolecularFormula::xlmod(&def.to_string()) {
                         Ok(v) => properties.neutral_losses.push(v.into()),
                         Err(err) => combine_error(
                             &mut errors,
-                            err.to_owned()
-                                .convert::<CVError, BoxedError<'static, CVError>>(|_| {
-                                    CVError::ItemError
-                                }),
+                            err.to_owned().convert::<CVError, BoxedError<'static, CVError>>(|_| {
+                                CVError::ItemError
+                            }),
                         ),
                     }
                 }
@@ -548,22 +546,19 @@ fn parse_property_values(
                         }));
                 } else {
                     properties.origins.0.extend(
-                        value[0]
-                            .0
-                            .to_string()
-                            .trim_matches(['(', ')'])
-                            .split(',')
-                            .filter_map(|s| {
+                        value[0].0.to_string().trim_matches(['(', ')']).split(',').filter_map(
+                            |s| {
                                 read_placement_rule(s.trim())
                                     .map_err(|err| combine_error(&mut errors, err))
                                     .ok()
-                            }),
+                            },
+                        ),
                     );
                 }
             }
             "secondarySpecificities" => {
-                // TODO: keep track that these are 'secondary' somewhere, similarly to the Unimod hidden state
-                // secondarySpecificities: "(S,T,Y)" xsd:string
+                // TODO: keep track that these are 'secondary' somewhere, similarly to the Unimod
+                // hidden state secondarySpecificities: "(S,T,Y)" xsd:string
                 if value.len() > 1 {
                     combine_error(
                         &mut errors,
@@ -576,16 +571,11 @@ fn parse_property_values(
                     );
                 }
                 properties.origins.0.extend(
-                    value[0]
-                        .0
-                        .to_string()
-                        .trim_matches(['(', ')'])
-                        .split(',')
-                        .filter_map(|s| {
-                            read_placement_rule(s.trim())
-                                .map_err(|err| combine_error(&mut errors, err))
-                                .ok()
-                        }),
+                    value[0].0.to_string().trim_matches(['(', ')']).split(',').filter_map(|s| {
+                        read_placement_rule(s.trim())
+                            .map_err(|err| combine_error(&mut errors, err))
+                            .ok()
+                    }),
                 );
             }
             "baseSpecificities" | "secondarybaseSpecificities" => {
@@ -594,10 +584,10 @@ fn parse_property_values(
             "reporterMass" | "CID_Fragment" => {
                 // reporterMass: "555.2481" xsd:double
                 // CID_Fragment: "828.5" xsd:double
-                for (def, _, _) in value {
+                for (def, ..) in value {
                     properties.diagnostic_ions.push(DiagnosticIon(
                         MolecularFormula::with_additional_mass(
-                            if let OboValue::Float(n, _, _) = def {
+                            if let OboValue::Float(n, ..) = def {
                                 *n
                             } else {
                                 combine_error(
@@ -622,15 +612,14 @@ fn parse_property_values(
                 }
             }
             "reporterFormula" => {
-                for (def, _, _) in value {
+                for (def, ..) in value {
                     match MolecularFormula::xlmod(&def.to_string()) {
                         Ok(v) => properties.diagnostic_ions.push(v.into()),
                         Err(err) => combine_error(
                             &mut errors,
-                            err.to_owned()
-                                .convert::<CVError, BoxedError<'static, CVError>>(|_| {
-                                    CVError::ItemError
-                                }),
+                            err.to_owned().convert::<CVError, BoxedError<'static, CVError>>(|_| {
+                                CVError::ItemError
+                            }),
                         ),
                     }
                 }
@@ -639,23 +628,21 @@ fn parse_property_values(
                 // CID = H4 C3 O2 S1, -H2 -O1 : H2 C3 O1
                 // ETD = -H1 :
                 // TODO: Extend the stub logic to handle the techniques and neutral losses
-                for (def, _, _) in value {
+                for (def, ..) in value {
                     if let OboValue::String(definition) = &def {
                         let (_techniques, definition) = definition.split_once('=').unwrap();
                         let (first, second) = definition.split_once(':').unwrap();
                         let mut split_first = first.split(',');
                         let mut split_second = second.split(',');
-                        let formula_first = split_first
-                            .next()
-                            .map_or_else(MolecularFormula::default, |v| {
+                        let formula_first =
+                            split_first.next().map_or_else(MolecularFormula::default, |v| {
                                 MolecularFormula::xlmod(v).unwrap()
                             });
                         let _losses_first: Vec<NeutralLoss> = split_first
                             .map(|v| MolecularFormula::xlmod(v).unwrap().into())
                             .collect();
-                        let formula_second = split_second
-                            .next()
-                            .map_or_else(MolecularFormula::default, |v| {
+                        let formula_second =
+                            split_second.next().map_or_else(MolecularFormula::default, |v| {
                                 MolecularFormula::xlmod(v).unwrap()
                             });
                         let _losses_second: Vec<NeutralLoss> = split_second

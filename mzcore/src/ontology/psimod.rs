@@ -5,7 +5,6 @@ use context_error::{
     BoxedError, Context, CreateError, FullErrorContent, StaticErrorContent, combine_error,
 };
 use itertools::Itertools;
-
 use mzcv::{
     AccessionCode, CVData, CVError, CVFile, CVSource, CVVersion, HashBufReader, OboIdentifier,
     OboOntology, OboStanzaType, SynonymScope,
@@ -31,18 +30,22 @@ pub struct PsiMod {}
 
 impl CVData for SimpleModificationInner {
     type Index = AccessionCode;
+
     fn index(&self) -> Option<AccessionCode> {
         self.description().map(ModificationId::id)
     }
+
     fn curie(&self) -> Option<mzcv::Curie> {
         self.description().map(|d| mzcv::Curie {
             cv: d.ontology.cv(),
             accession: d.id(),
         })
     }
+
     fn name(&self) -> Option<Cow<'_, str>> {
         self.description().map(|d| Cow::Borrowed(d.name.as_ref()))
     }
+
     fn synonyms(&self) -> impl Iterator<Item = &str> {
         self.description().into_iter().flat_map(|d| {
             d.synonyms
@@ -51,21 +54,20 @@ impl CVData for SimpleModificationInner {
                 .map(|(_, s)| s.as_ref())
         })
     }
+
     fn parents(&self) -> impl Iterator<Item = &Self::Index> {
-        self.description()
-            .into_iter()
-            .flat_map(|id| id.parents.iter())
+        self.description().into_iter().flat_map(|id| id.parents.iter())
     }
+
     fn children(&self) -> impl Iterator<Item = &Self::Index> {
-        self.description()
-            .into_iter()
-            .flat_map(|id| id.children.iter())
+        self.description().into_iter().flat_map(|id| id.children.iter())
     }
 }
 
 impl CVSource for PsiMod {
     type Data = SimpleModificationInner;
     type Structure = Vec<SimpleModification>;
+
     fn cv_label() -> &'static str {
         "MOD"
     }
@@ -160,7 +162,7 @@ impl CVSource for PsiMod {
                 ..OntologyModification::default()
             };
             modification.add_relationships(&obj.relationship);
-            if let Some((description, cross_ids, _, _)) = &obj.definition {
+            if let Some((description, cross_ids, ..)) = &obj.definition {
                 modification.description = description.clone();
                 match cross_ids
                     .iter()
@@ -172,9 +174,7 @@ impl CVSource for PsiMod {
                 }
             }
             for synonym in &obj.synonyms {
-                modification
-                    .synonyms
-                    .push((synonym.scope, synonym.synonym.clone()));
+                modification.synonyms.push((synonym.scope, synonym.synonym.clone()));
             }
 
             let mut origins = Vec::new();
@@ -256,10 +256,8 @@ impl CVSource for PsiMod {
                                 .split(';')
                                 .flat_map(|s| s.split('.'))
                                 .filter_map(|tag| {
-                                    tag.trim()
-                                        .to_ascii_lowercase()
-                                        .strip_prefix("cross-link")
-                                        .map(|v| {
+                                    tag.trim().to_ascii_lowercase().strip_prefix("cross-link").map(
+                                        |v| {
                                             v.trim()
                                                 .trim_end_matches('.')
                                                 .parse::<usize>()
@@ -267,7 +265,8 @@ impl CVSource for PsiMod {
                                                     format!("Could not parse '{tag}': {e}")
                                                 })
                                                 .unwrap()
-                                        })
+                                        },
+                                    )
                                 })
                                 .collect()
                         });
@@ -353,11 +352,9 @@ impl CVSource for PsiMod {
             }
 
             if let Some(charge) = charge {
-                modification
-                    .formula
-                    .set_charge(crate::system::isize::Charge::new::<crate::system::e>(
-                        charge,
-                    ));
+                modification.formula.set_charge(crate::system::isize::Charge::new::<
+                    crate::system::e,
+                >(charge));
             }
 
             if origins.len() <= 1 {

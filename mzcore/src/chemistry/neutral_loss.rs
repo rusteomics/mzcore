@@ -49,10 +49,17 @@ impl ParseJson for NeutralLoss {
                 if arr.len() == 2 {
                     if let Some(n) = arr[0].as_u64() {
                         Ok((
-                            u16::try_from(n).map_err(|_| BoxedError::new(BasicKind::Error,
-                                "Invalid NeutralLoss",
-                                format!("The {context} amount is too big, the number has to be below {}", u16::MAX),
-                                Context::default().lines(0, n.to_string())))?,
+                            u16::try_from(n).map_err(|_| {
+                                BoxedError::new(
+                                    BasicKind::Error,
+                                    "Invalid NeutralLoss",
+                                    format!(
+                                        "The {context} amount is too big, the number has to be below {}",
+                                        u16::MAX
+                                    ),
+                                    Context::default().lines(0, n.to_string()),
+                                )
+                            })?,
                             MolecularFormula::from_json_value(arr.pop().unwrap())?,
                         ))
                     } else {
@@ -156,10 +163,7 @@ impl From<MolecularFormula> for NeutralLoss {
             (
                 0,
                 0,
-                value
-                    .elements
-                    .first()
-                    .map_or(1, |(_, _, a)| a.unsigned_abs()),
+                value.elements.first().map_or(1, |(_, _, a)| a.unsigned_abs()),
             ),
             |(p, n, g), (_, _, a)| {
                 if *a >= 0 {
@@ -281,6 +285,7 @@ fn notation_helper(
 
 impl FromStr for NeutralLoss {
     type Err = BoxedError<'static, BasicKind>;
+
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         if let Ok(number) = s.parse::<f64>() {
             // Allow a simple numeric neutral loss
@@ -301,16 +306,33 @@ impl FromStr for NeutralLoss {
                 None => unreachable!(),
                 Some((start, end)) => {
                     if start.starts_with('-') || start.starts_with('+') {
-                        let amount = start.parse::<i32>().map_err(|error|BoxedError::new(BasicKind::Error,
-                            "Invalid neutral loss",
-                            "The text before the times symbol should be a valid number, like: `-1x12`",
-                            Context::default().lines(0, s).add_highlight((0, 0, start.len(), Cow::Owned(explain_number_error(&error).to_string()))).to_owned(),
-                        ))?;
-                        let mass = end.parse::<f64>().map_err(|error|BoxedError::new(BasicKind::Error,
-                            "Invalid neutral loss",
-                            "The text after the times symbol should be a valid number, like: `-1x12`",
-                            Context::default().lines(0, s).add_highlight((0, 0, start.len(), Cow::Owned(error.to_string()))).to_owned(),
-                        ))?;
+                        let amount = start.parse::<i32>().map_err(|error| {
+                            BoxedError::new(
+                                BasicKind::Error,
+                                "Invalid neutral loss",
+                                "The text before the times symbol should be a valid number, like: `-1x12`",
+                                Context::default()
+                                    .lines(0, s)
+                                    .add_highlight((
+                                        0,
+                                        0,
+                                        start.len(),
+                                        Cow::Owned(explain_number_error(&error).to_string()),
+                                    ))
+                                    .to_owned(),
+                            )
+                        })?;
+                        let mass = end.parse::<f64>().map_err(|error| {
+                            BoxedError::new(
+                                BasicKind::Error,
+                                "Invalid neutral loss",
+                                "The text after the times symbol should be a valid number, like: `-1x12`",
+                                Context::default()
+                                    .lines(0, s)
+                                    .add_highlight((0, 0, start.len(), Cow::Owned(error.to_string())))
+                                    .to_owned(),
+                            )
+                        })?;
                         if amount >= 0 {
                             Ok(Self::Gain(
                                 amount as u16,
@@ -327,10 +349,7 @@ impl FromStr for NeutralLoss {
                             BasicKind::Error,
                             "Invalid neutral loss",
                             "A neutral loss can only start with '+' or '-'",
-                            Context::default()
-                                .lines(0, s)
-                                .add_highlight((0, 0, 1))
-                                .to_owned(),
+                            Context::default().lines(0, s).add_highlight((0, 0, 1)).to_owned(),
                         ))
                     }
                 }
@@ -344,10 +363,7 @@ impl FromStr for NeutralLoss {
                     BasicKind::Error,
                     "Invalid neutral loss",
                     "A neutral loss can only start with '+' or '-'",
-                    Context::default()
-                        .lines(0, s)
-                        .add_highlight((0, 0, 1))
-                        .to_owned(),
+                    Context::default().lines(0, s).add_highlight((0, 0, 1)).to_owned(),
                 )),
             }?;
             let (amount, start) = if let Some(amount) = next_number::<false, false, u16>(s, 1..) {
@@ -398,6 +414,7 @@ impl Display for NeutralLoss {
 
 impl Add<&NeutralLoss> for &MolecularFormula {
     type Output = MolecularFormula;
+
     fn add(self, rhs: &NeutralLoss) -> Self::Output {
         match rhs {
             NeutralLoss::Gain(n, mol) => self + mol * n,
@@ -425,6 +442,7 @@ impl AddAssign<NeutralLoss> for MolecularFormula {
 
 impl Add<&NeutralLoss> for &Multi<MolecularFormula> {
     type Output = Multi<MolecularFormula>;
+
     fn add(self, rhs: &NeutralLoss) -> Self::Output {
         match rhs {
             NeutralLoss::Gain(n, mol) => self + mol * n,
@@ -463,7 +481,8 @@ mod tests {
     use std::str::FromStr;
 
     use crate::{
-        chemistry::MolecularFormula, chemistry::NeutralLoss, parse_json::ParseJson,
+        chemistry::{MolecularFormula, NeutralLoss},
+        parse_json::ParseJson,
         sequence::AminoAcid,
     };
 

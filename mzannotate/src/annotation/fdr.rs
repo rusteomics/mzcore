@@ -34,7 +34,7 @@ impl AnnotatedSpectrum {
                 f.mz(mass_mode)
                     .map(|mz| (mz, f.peptidoform_ion_index, f.peptidoform_index))
             })
-            .filter(|(mz, _, _)| parameters.mz_range.contains(mz))
+            .filter(|(mz, ..)| parameters.mz_range.contains(mz))
             .collect_vec();
 
         let individual_peptides = self
@@ -68,7 +68,7 @@ impl AnnotatedSpectrum {
             .collect();
         (
             self.internal_fdr(
-                mzs.iter().map(|(mz, _, _)| *mz).collect_vec().as_slice(),
+                mzs.iter().map(|(mz, ..)| *mz).collect_vec().as_slice(),
                 parameters,
             ),
             individual_peptides,
@@ -96,12 +96,14 @@ impl AnnotatedSpectrum {
             let mut number_peaks_annotated = 0;
             let mut intensity_annotated = 0.0;
             for mass in mzs {
-                // Get the index of the element closest to this value (spectrum is defined to always be sorted)
+                // Get the index of the element closest to this value (spectrum is defined to always
+                // be sorted)
                 let index = peaks
                     .binary_search_by(|p| p.value.total_cmp(&mass.value))
                     .unwrap_or_else(|i| i);
 
-                // Check index-1, index and index+1 (if existing) to find the one with the lowest ppm
+                // Check index-1, index and index+1 (if existing) to find the one with the lowest
+                // ppm
                 let mut closest = (0, Ratio::new::<mzcore::system::ratio::ppm>(f64::INFINITY));
                 #[expect(clippy::needless_range_loop)] // I like this better
                 for i in if index == 0 { 0 } else { index - 1 }
@@ -127,19 +129,14 @@ impl AnnotatedSpectrum {
             ));
         }
         let peaks_average = results.iter().map(|r| r.0).sum::<f64>() / results.len() as f64;
-        let peaks_st_dev = (results
-            .iter()
-            .map(|x| (x.0 - peaks_average).powi(2))
-            .sum::<f64>()
+        let peaks_st_dev = (results.iter().map(|x| (x.0 - peaks_average).powi(2)).sum::<f64>()
             / results.len() as f64)
             .sqrt();
         let intensity_average = results.iter().map(|r| r.1).sum::<f32>() / results.len() as f32;
-        let intensity_st_dev = (results
-            .iter()
-            .map(|x| (x.1 - intensity_average).powi(2))
-            .sum::<f32>()
-            / results.len() as f32)
-            .sqrt();
+        let intensity_st_dev =
+            (results.iter().map(|x| (x.1 - intensity_average).powi(2)).sum::<f32>()
+                / results.len() as f32)
+                .sqrt();
         let actual: (u32, f32) = self
             .peaks
             .iter()
@@ -189,12 +186,14 @@ impl Default for Fdr {
 
 impl Fdr {
     /// Get the false discovery rate (as a fraction).
-    /// The average number of false peaks annotated divided by the average number of annotated peaks.
+    /// The average number of false peaks annotated divided by the average number of annotated
+    /// peaks.
     pub fn peaks_fdr(self) -> f64 {
         self.peaks_average_false / self.peaks_actual
     }
 
-    /// Get the number of standard deviations the number of annotated peaks is from the average number of false annotations.
+    /// Get the number of standard deviations the number of annotated peaks is from the average
+    /// number of false annotations.
     pub fn peaks_sigma(self) -> f64 {
         (self.peaks_actual - self.peaks_average_false) / self.peaks_standard_deviation_false
     }
@@ -205,12 +204,14 @@ impl Fdr {
     }
 
     /// Get the false discovery rate (as a fraction).
-    /// The average number of false intensity annotated divided by the average number of annotated intensity.
+    /// The average number of false intensity annotated divided by the average number of annotated
+    /// intensity.
     pub fn intensity_fdr(self) -> f32 {
         self.intensity_average_false / self.intensity_actual
     }
 
-    /// Get the number of standard deviations the annotated intensity is from the average false annotations.
+    /// Get the number of standard deviations the annotated intensity is from the average false
+    /// annotations.
     pub fn intensity_sigma(self) -> f32 {
         (self.intensity_actual - self.intensity_average_false)
             / self.intensity_standard_deviation_false

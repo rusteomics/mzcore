@@ -71,9 +71,7 @@ pub fn tokenise_wurcs<'a>(
                     BasicKind::Error,
                     "Invalid WURCS 2.0",
                     format!("The res count {}", explain_number_error(&err)),
-                    base_context
-                        .clone()
-                        .add_highlight((0, index + offset, res.len())),
+                    base_context.clone().add_highlight((0, index + offset, res.len())),
                 )
             })?;
             if num as usize > unique_residues.len() || num == 0 {
@@ -81,9 +79,7 @@ pub fn tokenise_wurcs<'a>(
                     BasicKind::Error,
                     "Invalid WURCS 2.0",
                     "The sequence refers to a nonexisting unique residue",
-                    base_context
-                        .clone()
-                        .add_highlight((0, index + offset, res.len())),
+                    base_context.clone().add_highlight((0, index + offset, res.len())),
                 ));
             }
             offset += res.len() + 1;
@@ -146,9 +142,7 @@ pub fn tokenise_wurcs<'a>(
                             BasicKind::Error,
                             "Invalid WURCS 2.0",
                             "A residue alternate GLIP must contain more than one GLIP",
-                            base_context
-                                .clone()
-                                .add_highlight((0, index..=index + offset)),
+                            base_context.clone().add_highlight((0, index..=index + offset)),
                         ));
                     }
                     glips.push(match (backbone_prob, opposite_prob) {
@@ -157,9 +151,7 @@ pub fn tokenise_wurcs<'a>(
                                 BasicKind::Error,
                                 "Invalid WURCS 2.0",
                                 "A probability range can only be provided for the backbone or opposite side, not both at the same time",
-                                base_context
-                                    .clone()
-                                    .add_highlight((0, index..=index + offset)),
+                                base_context.clone().add_highlight((0, index..=index + offset)),
                             ));
                         }
                         (Some(prob), None) => GLIPOption::Statistic(true, prob, alternate[0]),
@@ -172,9 +164,7 @@ pub fn tokenise_wurcs<'a>(
                             BasicKind::Error,
                             "Invalid WURCS 2.0",
                             "A GLIP cannot be both statistic and alternate at the same time",
-                            base_context
-                                .clone()
-                                .add_highlight((0, index..=index + offset)),
+                            base_context.clone().add_highlight((0, index..=index + offset)),
                         ));
                     }
                     glips.push(match (res_alt_open, res_alt_close) {
@@ -183,9 +173,7 @@ pub fn tokenise_wurcs<'a>(
                                 BasicKind::Error,
                                 "Invalid WURCS 2.0",
                                 "A residue alternate GLIP can be can only use curly braces at one side, not both at the same time",
-                                base_context
-                                    .clone()
-                                    .add_highlight((0, index..=index + offset)),
+                                base_context.clone().add_highlight((0, index..=index + offset)),
                             ));
                         }
                         (true, false) => GLIPOption::RESAlternative(true, alternate),
@@ -207,13 +195,10 @@ pub fn tokenise_wurcs<'a>(
                 offset += 1;
                 let (len, repeat) = parse_repeat(value, index + offset..=end, base_context)?;
                 offset += len;
-                linkage.push(Linkage::Repeated(
-                    repeat,
-                    LIN {
-                        lips: glips,
-                        modification,
-                    },
-                ));
+                linkage.push(Linkage::Repeated(repeat, LIN {
+                    lips: glips,
+                    modification,
+                }));
             } else {
                 linkage.push(Linkage::Known(LIN {
                     lips: glips,
@@ -277,9 +262,7 @@ fn parse_glip<'a>(
             BasicKind::Error,
             "Invalid WURCS 2.0",
             "Missing residue index for GLIP",
-            base_context
-                .clone()
-                .add_highlight((0, range.start() + offset, 1)),
+            base_context.clone().add_highlight((0, range.start() + offset, 1)),
         ));
     }
     offset += len;
@@ -307,9 +290,7 @@ fn parse_glip<'a>(
                     BasicKind::Error,
                     "Invalid WURCS 2.0",
                     format!("The star index {}", explain_number_error(&err)),
-                    base_context
-                        .clone()
-                        .add_highlight((0, range.start() + offset, len)),
+                    base_context.clone().add_highlight((0, range.start() + offset, len)),
                 )
             })
             .map(|n| (len, n))
@@ -319,15 +300,12 @@ fn parse_glip<'a>(
     } else {
         None
     };
-    Ok((
-        offset,
-        GLIP {
-            res_index,
-            position,
-            direction: extra.clone().map_or(Direction::Obvious, |(d, _)| d),
-            star_index: extra.map_or(0, |(_, i)| i),
-        },
-    ))
+    Ok((offset, GLIP {
+        res_index,
+        position,
+        direction: extra.clone().map_or(Direction::Obvious, |(d, _)| d),
+        star_index: extra.map_or(0, |(_, i)| i),
+    }))
 }
 
 fn tokenise_counts<'a>(
@@ -429,9 +407,7 @@ fn tokenise_counts<'a>(
             BasicKind::Error,
             "Invalid WURCS 2.0",
             "There are too many counts provided",
-            base_context
-                .clone()
-                .add_highlight((0, index + offset..=end)),
+            base_context.clone().add_highlight((0, index + offset..=end)),
         ))
     }
 }
@@ -453,18 +429,14 @@ fn tokenise_unique_res<'a>(
     } else {
         offset += 1;
         Some(
-            value.as_bytes()[index + offset - 1]
-                .try_into()
-                .map_err(|()| {
-                    BoxedError::new(
-                        BasicKind::Error,
-                        "Invalid WURCS 2.0",
-                        "Invalid terminal carbon symbol at the start of the skeleton code",
-                        base_context
-                            .clone()
-                            .add_highlight((0, index + offset - 1, 1)),
-                    )
-                })?,
+            value.as_bytes()[index + offset - 1].try_into().map_err(|()| {
+                BoxedError::new(
+                    BasicKind::Error,
+                    "Invalid WURCS 2.0",
+                    "Invalid terminal carbon symbol at the start of the skeleton code",
+                    base_context.clone().add_highlight((0, index + offset - 1, 1)),
+                )
+            })?,
         )
     };
 
@@ -504,9 +476,7 @@ fn tokenise_unique_res<'a>(
             BasicKind::Error,
             "Invalid WURCS 2.0",
             "The repeating backbone was not closed with '>'",
-            base_context
-                .clone()
-                .add_highlight((0, index + offset, skeleton_length)),
+            base_context.clone().add_highlight((0, index + offset, skeleton_length)),
         ));
     }
 
@@ -594,29 +564,25 @@ fn tokenise_unique_res<'a>(
             }
             if alternate.len() == 1 {
                 lips.push(match (backbone_prob, opposite_prob) {
-                        (Some(_), Some(_)) => {
-                            return Err(BoxedError::new(
-                                BasicKind::Error,
-                                "Invalid WURCS 2.0",
-                                "A probability range can only be provided for the backbone or opposite side, not both at the same time",
-                                base_context
-                                    .clone()
-                                    .add_highlight((0, index..=index + offset)),
-                            ));
-                        }
-                        (Some(prob), None) => LIPOption::Statistic(true, prob, alternate[0]),
-                        (None, Some(prob)) => LIPOption::Statistic(false, prob, alternate[0]),
-                        (None, None) => LIPOption::Known(alternate[0]),
-                    });
+                    (Some(_), Some(_)) => {
+                        return Err(BoxedError::new(
+                            BasicKind::Error,
+                            "Invalid WURCS 2.0",
+                            "A probability range can only be provided for the backbone or opposite side, not both at the same time",
+                            base_context.clone().add_highlight((0, index..=index + offset)),
+                        ));
+                    }
+                    (Some(prob), None) => LIPOption::Statistic(true, prob, alternate[0]),
+                    (None, Some(prob)) => LIPOption::Statistic(false, prob, alternate[0]),
+                    (None, None) => LIPOption::Known(alternate[0]),
+                });
             } else {
                 if backbone_prob.is_some() || opposite_prob.is_some() {
                     return Err(BoxedError::new(
                         BasicKind::Error,
                         "Invalid WURCS 2.0",
                         "A LIP cannot be both statistic and alternate at the same time",
-                        base_context
-                            .clone()
-                            .add_highlight((0, index..=index + offset)),
+                        base_context.clone().add_highlight((0, index..=index + offset)),
                     ));
                 }
                 lips.push(LIPOption::Alternative(alternate));
@@ -637,14 +603,11 @@ fn tokenise_unique_res<'a>(
     // End at the closing ']'
     if value.as_bytes()[index + offset] == b']' {
         if repeating {
-            Ok((
-                offset + 1,
-                Residue {
-                    backbone: BackBone::Repeating(start, backbone, skeleton_end),
-                    anomeric,
-                    mods,
-                },
-            ))
+            Ok((offset + 1, Residue {
+                backbone: BackBone::Repeating(start, backbone, skeleton_end),
+                anomeric,
+                mods,
+            }))
         } else {
             let Some(start) = start else {
                 return Err(BoxedError::new(
@@ -670,19 +633,14 @@ fn tokenise_unique_res<'a>(
                     BasicKind::Error,
                     "Invalid WURCS 2.0",
                     "Skeleton has to have at least three carbons",
-                    base_context
-                        .clone()
-                        .add_highlight((0, index + 1, skeleton_length - 1)),
+                    base_context.clone().add_highlight((0, index + 1, skeleton_length - 1)),
                 ));
             }
-            Ok((
-                offset + 1,
-                Residue {
-                    backbone: BackBone::Defined(start, backbone, skeleton_end),
-                    anomeric,
-                    mods,
-                },
-            ))
+            Ok((offset + 1, Residue {
+                backbone: BackBone::Defined(start, backbone, skeleton_end),
+                anomeric,
+                mods,
+            }))
         }
     } else {
         Err(BoxedError::new(
@@ -724,9 +682,7 @@ fn parse_lip<'a>(
                     BasicKind::Error,
                     "Invalid WURCS 2.0",
                     format!("The star index {}", explain_number_error(&err)),
-                    base_context
-                        .clone()
-                        .add_highlight((0, range.start() + offset, len)),
+                    base_context.clone().add_highlight((0, range.start() + offset, len)),
                 )
             })
             .map(|n| (len, n))
@@ -736,14 +692,11 @@ fn parse_lip<'a>(
     } else {
         None
     };
-    Ok((
-        offset,
-        LIP {
-            position,
-            direction: extra.clone().map_or(Direction::Obvious, |(d, _)| d),
-            star_index: extra.map_or(0, |(_, i)| i),
-        },
-    ))
+    Ok((offset, LIP {
+        position,
+        direction: extra.clone().map_or(Direction::Obvious, |(d, _)| d),
+        star_index: extra.map_or(0, |(_, i)| i),
+    }))
 }
 
 fn maybe_number<'a>(
@@ -762,9 +715,7 @@ fn maybe_number<'a>(
                     BasicKind::Error,
                     "Invalid WURCS 2.0",
                     format!("The {number} is missing"),
-                    base_context
-                        .clone()
-                        .add_highlight((0, *range.clone().start(), 1)),
+                    base_context.clone().add_highlight((0, *range.clone().start(), 1)),
                 )
             })
             .map(|(len, _, num)| {
@@ -773,9 +724,7 @@ fn maybe_number<'a>(
                         BasicKind::Error,
                         "Invalid WURCS 2.0",
                         format!("The {number} {}", explain_number_error(&err)),
-                        base_context
-                            .clone()
-                            .add_highlight((0, *range.clone().start(), len)),
+                        base_context.clone().add_highlight((0, *range.clone().start(), len)),
                     )
                 })
                 .map(|n| (len, Some(n)))
@@ -839,9 +788,7 @@ fn tokenise_map<'a>(
                                 BasicKind::Error,
                                 "Invalid WURCS 2.0",
                                 format!("The branch index is missing"),
-                                base_context
-                                    .clone()
-                                    .add_highlight((0, range.start() + offset, 1)),
+                                base_context.clone().add_highlight((0, range.start() + offset, 1)),
                             )
                         })
                         .map(|(len, _, num)| {
@@ -872,9 +819,7 @@ fn tokenise_map<'a>(
                                 BasicKind::Error,
                                 "Invalid WURCS 2.0",
                                 format!("The cyclic index is missing"),
-                                base_context
-                                    .clone()
-                                    .add_highlight((0, range.start() + offset, 1)),
+                                base_context.clone().add_highlight((0, range.start() + offset, 1)),
                             )
                         })
                         .map(|(len, _, num)| {
@@ -910,9 +855,7 @@ fn tokenise_map<'a>(
                                 BasicKind::Error,
                                 "Invalid WURCS 2.0",
                                 "The chirality or gemoetrical isomerism indicator is invalid",
-                                base_context
-                                    .clone()
-                                    .add_highlight((0, range.start() + offset, 1)),
+                                base_context.clone().add_highlight((0, range.start() + offset, 1)),
                             ));
                         }
                     },
@@ -966,9 +909,7 @@ fn parse_probability<'a>(
                         BasicKind::Error,
                         "Invalid WURCS 2.0",
                         "A probability range cannot contain an empty number",
-                        base_context
-                            .clone()
-                            .add_highlight((0, *range.start() + offset, 1)),
+                        base_context.clone().add_highlight((0, *range.start() + offset, 1)),
                     ));
                 }
 
@@ -978,9 +919,7 @@ fn parse_probability<'a>(
                 BasicKind::Error,
                 "Invalid WURCS 2.0",
                 "A probability range number should start with a '.' or a '?'",
-                base_context
-                    .clone()
-                    .add_highlight((0, *range.start() + offset, 1)),
+                base_context.clone().add_highlight((0, *range.start() + offset, 1)),
             )),
         }
     };
@@ -1000,9 +939,7 @@ fn parse_probability<'a>(
             BasicKind::Error,
             "Invalid WURCS 2.0",
             "A probability range should end with '%'",
-            base_context
-                .clone()
-                .add_highlight((0, *range.start() + offset, 1)),
+            base_context.clone().add_highlight((0, *range.start() + offset, 1)),
         ))
     }
 }
@@ -1013,7 +950,8 @@ fn parse_repeat<'a>(
     base_context: &Context<'a>,
 ) -> Result<(usize, Repeat), BoxedError<'a, BasicKind>> {
     let (offset, first) = maybe_number(value, range.clone(), base_context, "repeat start", 'n')?;
-    // The spec specifies that only ':' can be used a range indicator, but the glycosmos glycan converter only allows '-' so allow both
+    // The spec specifies that only ':' can be used a range indicator, but the glycosmos glycan
+    // converter only allows '-' so allow both
     Ok(
         if value.as_bytes().get(range.start() + offset) == Some(&b':')
             || value.as_bytes().get(range.start() + offset) == Some(&b'-')
@@ -1034,6 +972,7 @@ fn parse_repeat<'a>(
 
 impl TryFrom<u8> for TerminalCarbon {
     type Error = ();
+
     fn try_from(value: u8) -> Result<Self, Self::Error> {
         match value {
             b'm' => Ok(Self::CHHH),
@@ -1074,6 +1013,7 @@ impl TryFrom<u8> for TerminalCarbon {
 
 impl TryFrom<u8> for Carbon {
     type Error = ();
+
     fn try_from(value: u8) -> Result<Self, Self::Error> {
         match value {
             b'd' => Ok(Self::Methylene),
@@ -1109,6 +1049,7 @@ impl TryFrom<u8> for Carbon {
 
 impl TryFrom<u8> for AnomericSymbol {
     type Error = ();
+
     fn try_from(value: u8) -> Result<Self, Self::Error> {
         match value {
             b'a' => Ok(Self::Alpha),
@@ -1124,6 +1065,7 @@ impl TryFrom<u8> for AnomericSymbol {
 
 impl TryFrom<u8> for Direction {
     type Error = ();
+
     fn try_from(value: u8) -> Result<Self, Self::Error> {
         match value {
             b'u' => Ok(Self::Upside),

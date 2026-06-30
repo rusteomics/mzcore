@@ -24,150 +24,157 @@ pub struct CheckedAminoAcid<T> {
 #[expect(non_upper_case_globals, missing_docs)]
 impl CheckedAminoAcid<UnAmbiguous> {
     pub const A: Self = Self::Alanine;
-    pub const C: Self = Self::Cysteine;
-    pub const D: Self = Self::AsparticAcid;
-    pub const E: Self = Self::GlutamicAcid;
-    pub const F: Self = Self::Phenylalanine;
-    pub const G: Self = Self::Glycine;
-    pub const H: Self = Self::Histidine;
-    pub const I: Self = Self::Isoleucine;
-    pub const J: Self = Self::AmbiguousLeucine;
-    pub const K: Self = Self::Lysine;
-    pub const L: Self = Self::Leucine;
-    pub const M: Self = Self::Methionine;
-    pub const N: Self = Self::Asparagine;
-    pub const O: Self = Self::Pyrrolysine;
-    pub const P: Self = Self::Proline;
-    pub const Q: Self = Self::Glutamine;
-    pub const R: Self = Self::Arginine;
-    pub const S: Self = Self::Serine;
-    pub const T: Self = Self::Threonine;
-    pub const U: Self = Self::Selenocysteine;
-    pub const V: Self = Self::Valine;
-    pub const W: Self = Self::Tryptophan;
-    pub const X: Self = Self::Unknown;
-    pub const Y: Self = Self::Tyrosine;
     pub const Ala: Self = Self::Alanine;
-    pub const Cys: Self = Self::Cysteine;
-    pub const Asn: Self = Self::Asparagine;
-    pub const Asp: Self = Self::AsparticAcid;
-    pub const Glu: Self = Self::GlutamicAcid;
-    pub const Phe: Self = Self::Phenylalanine;
-    pub const Gly: Self = Self::Glycine;
-    pub const His: Self = Self::Histidine;
-    pub const Ile: Self = Self::Isoleucine;
-    pub const Xle: Self = Self::AmbiguousLeucine;
-    pub const Lys: Self = Self::Lysine;
-    pub const Leu: Self = Self::Leucine;
-    pub const Met: Self = Self::Methionine;
-    pub const Pyl: Self = Self::Pyrrolysine;
-    pub const Pro: Self = Self::Proline;
-    pub const Gln: Self = Self::Glutamine;
-    pub const Arg: Self = Self::Arginine;
-    pub const Ser: Self = Self::Serine;
-    pub const Thr: Self = Self::Threonine;
-    pub const Sec: Self = Self::Selenocysteine;
-    pub const Val: Self = Self::Valine;
-    pub const Trp: Self = Self::Tryptophan;
-    pub const Tyr: Self = Self::Tyrosine;
-    pub const Xaa: Self = Self::Unknown;
     pub const Alanine: Self = Self {
         aminoacid: AminoAcid::Alanine,
-        marker: PhantomData,
-    };
-    pub const Cysteine: Self = Self {
-        aminoacid: AminoAcid::Cysteine,
-        marker: PhantomData,
-    };
-    pub const AsparticAcid: Self = Self {
-        aminoacid: AminoAcid::AsparticAcid,
-        marker: PhantomData,
-    };
-    pub const GlutamicAcid: Self = Self {
-        aminoacid: AminoAcid::GlutamicAcid,
-        marker: PhantomData,
-    };
-    pub const Phenylalanine: Self = Self {
-        aminoacid: AminoAcid::Phenylalanine,
-        marker: PhantomData,
-    };
-    pub const Glycine: Self = Self {
-        aminoacid: AminoAcid::Glycine,
-        marker: PhantomData,
-    };
-    pub const Histidine: Self = Self {
-        aminoacid: AminoAcid::Histidine,
-        marker: PhantomData,
-    };
-    pub const Isoleucine: Self = Self {
-        aminoacid: AminoAcid::Isoleucine,
         marker: PhantomData,
     };
     pub const AmbiguousLeucine: Self = Self {
         aminoacid: AminoAcid::AmbiguousLeucine,
         marker: PhantomData,
     };
-    pub const Lysine: Self = Self {
-        aminoacid: AminoAcid::Lysine,
+    pub const Arg: Self = Self::Arginine;
+    pub const Arginine: Self = Self {
+        aminoacid: AminoAcid::Arginine,
         marker: PhantomData,
     };
-    pub const Leucine: Self = Self {
-        aminoacid: AminoAcid::Leucine,
-        marker: PhantomData,
-    };
-    pub const Methionine: Self = Self {
-        aminoacid: AminoAcid::Methionine,
-        marker: PhantomData,
-    };
+    pub const Asn: Self = Self::Asparagine;
+    pub const Asp: Self = Self::AsparticAcid;
     pub const Asparagine: Self = Self {
         aminoacid: AminoAcid::Asparagine,
         marker: PhantomData,
     };
-    pub const Pyrrolysine: Self = Self {
-        aminoacid: AminoAcid::Pyrrolysine,
+    pub const AsparticAcid: Self = Self {
+        aminoacid: AminoAcid::AsparticAcid,
         marker: PhantomData,
     };
-    pub const Proline: Self = Self {
-        aminoacid: AminoAcid::Proline,
+    pub const C: Self = Self::Cysteine;
+    /// All 20 canonical amino acids
+    pub const CANONICAL_AMINO_ACIDS: &'static [Self] = &[
+        Self::Glycine,
+        Self::Alanine,
+        Self::Arginine,
+        Self::Asparagine,
+        Self::AsparticAcid,
+        Self::Cysteine,
+        Self::Glutamine,
+        Self::GlutamicAcid,
+        Self::Histidine,
+        Self::Leucine,
+        Self::Isoleucine,
+        Self::Lysine,
+        Self::Methionine,
+        Self::Phenylalanine,
+        Self::Proline,
+        Self::Serine,
+        Self::Threonine,
+        Self::Tryptophan,
+        Self::Tyrosine,
+        Self::Valine,
+    ];
+    pub const Cys: Self = Self::Cysteine;
+    pub const Cysteine: Self = Self {
+        aminoacid: AminoAcid::Cysteine,
+        marker: PhantomData,
+    };
+    pub const D: Self = Self::AsparticAcid;
+    pub const E: Self = Self::GlutamicAcid;
+    pub const F: Self = Self::Phenylalanine;
+    pub const G: Self = Self::Glycine;
+    pub const Gln: Self = Self::Glutamine;
+    pub const Glu: Self = Self::GlutamicAcid;
+    pub const GlutamicAcid: Self = Self {
+        aminoacid: AminoAcid::GlutamicAcid,
         marker: PhantomData,
     };
     pub const Glutamine: Self = Self {
         aminoacid: AminoAcid::Glutamine,
         marker: PhantomData,
     };
-    pub const Arginine: Self = Self {
-        aminoacid: AminoAcid::Arginine,
+    pub const Gly: Self = Self::Glycine;
+    pub const Glycine: Self = Self {
+        aminoacid: AminoAcid::Glycine,
         marker: PhantomData,
     };
-    pub const Serine: Self = Self {
-        aminoacid: AminoAcid::Serine,
+    pub const H: Self = Self::Histidine;
+    pub const His: Self = Self::Histidine;
+    pub const Histidine: Self = Self {
+        aminoacid: AminoAcid::Histidine,
         marker: PhantomData,
     };
-    pub const Threonine: Self = Self {
-        aminoacid: AminoAcid::Threonine,
+    pub const I: Self = Self::Isoleucine;
+    pub const Ile: Self = Self::Isoleucine;
+    pub const Isoleucine: Self = Self {
+        aminoacid: AminoAcid::Isoleucine,
         marker: PhantomData,
     };
+    pub const J: Self = Self::AmbiguousLeucine;
+    pub const K: Self = Self::Lysine;
+    pub const L: Self = Self::Leucine;
+    pub const Leu: Self = Self::Leucine;
+    pub const Leucine: Self = Self {
+        aminoacid: AminoAcid::Leucine,
+        marker: PhantomData,
+    };
+    pub const Lys: Self = Self::Lysine;
+    pub const Lysine: Self = Self {
+        aminoacid: AminoAcid::Lysine,
+        marker: PhantomData,
+    };
+    pub const M: Self = Self::Methionine;
+    pub const Met: Self = Self::Methionine;
+    pub const Methionine: Self = Self {
+        aminoacid: AminoAcid::Methionine,
+        marker: PhantomData,
+    };
+    pub const N: Self = Self::Asparagine;
+    pub const O: Self = Self::Pyrrolysine;
+    pub const P: Self = Self::Proline;
+    pub const Phe: Self = Self::Phenylalanine;
+    pub const Phenylalanine: Self = Self {
+        aminoacid: AminoAcid::Phenylalanine,
+        marker: PhantomData,
+    };
+    pub const Pro: Self = Self::Proline;
+    pub const Proline: Self = Self {
+        aminoacid: AminoAcid::Proline,
+        marker: PhantomData,
+    };
+    pub const Pyl: Self = Self::Pyrrolysine;
+    pub const Pyrrolysine: Self = Self {
+        aminoacid: AminoAcid::Pyrrolysine,
+        marker: PhantomData,
+    };
+    pub const Q: Self = Self::Glutamine;
+    pub const R: Self = Self::Arginine;
+    pub const S: Self = Self::Serine;
+    pub const Sec: Self = Self::Selenocysteine;
     pub const Selenocysteine: Self = Self {
         aminoacid: AminoAcid::Selenocysteine,
         marker: PhantomData,
     };
-    pub const Valine: Self = Self {
-        aminoacid: AminoAcid::Valine,
+    pub const Ser: Self = Self::Serine;
+    pub const Serine: Self = Self {
+        aminoacid: AminoAcid::Serine,
         marker: PhantomData,
     };
+    pub const T: Self = Self::Threonine;
+    pub const Thr: Self = Self::Threonine;
+    pub const Threonine: Self = Self {
+        aminoacid: AminoAcid::Threonine,
+        marker: PhantomData,
+    };
+    pub const Trp: Self = Self::Tryptophan;
     pub const Tryptophan: Self = Self {
         aminoacid: AminoAcid::Tryptophan,
         marker: PhantomData,
     };
-    pub const Unknown: Self = Self {
-        aminoacid: AminoAcid::Unknown,
-        marker: PhantomData,
-    };
+    pub const Tyr: Self = Self::Tyrosine;
     pub const Tyrosine: Self = Self {
         aminoacid: AminoAcid::Tyrosine,
         marker: PhantomData,
     };
-
+    pub const U: Self = Self::Selenocysteine;
     /// All amino acids with a unique mass (no I/L in favour of J, no B, no Z, and no X)
     pub const UNIQUE_MASS_AMINO_ACIDS: &'static [Self] = &[
         Self::Glycine,
@@ -192,38 +199,25 @@ impl CheckedAminoAcid<UnAmbiguous> {
         Self::Selenocysteine,
         Self::Pyrrolysine,
     ];
-
-    /// All 20 canonical amino acids
-    pub const CANONICAL_AMINO_ACIDS: &'static [Self] = &[
-        Self::Glycine,
-        Self::Alanine,
-        Self::Arginine,
-        Self::Asparagine,
-        Self::AsparticAcid,
-        Self::Cysteine,
-        Self::Glutamine,
-        Self::GlutamicAcid,
-        Self::Histidine,
-        Self::Leucine,
-        Self::Isoleucine,
-        Self::Lysine,
-        Self::Methionine,
-        Self::Phenylalanine,
-        Self::Proline,
-        Self::Serine,
-        Self::Threonine,
-        Self::Tryptophan,
-        Self::Tyrosine,
-        Self::Valine,
-    ];
+    pub const Unknown: Self = Self {
+        aminoacid: AminoAcid::Unknown,
+        marker: PhantomData,
+    };
+    pub const V: Self = Self::Valine;
+    pub const Val: Self = Self::Valine;
+    pub const Valine: Self = Self {
+        aminoacid: AminoAcid::Valine,
+        marker: PhantomData,
+    };
+    pub const W: Self = Self::Tryptophan;
+    pub const X: Self = Self::Unknown;
+    pub const Xaa: Self = Self::Unknown;
+    pub const Xle: Self = Self::AmbiguousLeucine;
+    pub const Y: Self = Self::Tyrosine;
 }
 
 #[expect(non_upper_case_globals, missing_docs)]
 impl CheckedAminoAcid<SemiAmbiguous> {
-    pub const B: Self = Self::AmbiguousAsparagine;
-    pub const Z: Self = Self::AmbiguousGlutamine;
-    pub const Asx: Self = Self::AmbiguousAsparagine;
-    pub const Glx: Self = Self::AmbiguousGlutamine;
     pub const AmbiguousAsparagine: Self = Self {
         aminoacid: AminoAcid::AmbiguousAsparagine,
         marker: PhantomData,
@@ -232,6 +226,10 @@ impl CheckedAminoAcid<SemiAmbiguous> {
         aminoacid: AminoAcid::AmbiguousGlutamine,
         marker: PhantomData,
     };
+    pub const Asx: Self = Self::AmbiguousAsparagine;
+    pub const B: Self = Self::AmbiguousAsparagine;
+    pub const Glx: Self = Self::AmbiguousGlutamine;
+    pub const Z: Self = Self::AmbiguousGlutamine;
 }
 
 impl From<AminoAcid> for CheckedAminoAcid<SemiAmbiguous> {
@@ -277,7 +275,8 @@ impl<T> CheckedAminoAcid<T> {
         self.is_unambiguous().then_some(self.mark())
     }
 
-    /// Check if two amino acids are considered identical. X is identical to anything, J to IL, B to ND, Z to EQ.
+    /// Check if two amino acids are considered identical. X is identical to anything, J to IL, B to
+    /// ND, Z to EQ.
     pub fn canonical_identical(self, rhs: Self) -> bool {
         self.aminoacid.canonical_identical(rhs.aminoacid)
     }
@@ -434,6 +433,7 @@ impl<T> std::fmt::Display for CheckedAminoAcid<T> {
 
 impl std::str::FromStr for CheckedAminoAcid<SemiAmbiguous> {
     type Err = ();
+
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         Self::try_from(s)
     }
@@ -441,6 +441,7 @@ impl std::str::FromStr for CheckedAminoAcid<SemiAmbiguous> {
 
 impl TryFrom<&str> for CheckedAminoAcid<SemiAmbiguous> {
     type Error = ();
+
     fn try_from(value: &str) -> Result<Self, Self::Error> {
         if value.is_ascii() && value.len() == 1 {
             let ch = value.chars().next().unwrap();
@@ -453,6 +454,7 @@ impl TryFrom<&str> for CheckedAminoAcid<SemiAmbiguous> {
 
 impl TryFrom<char> for CheckedAminoAcid<SemiAmbiguous> {
     type Error = ();
+
     fn try_from(value: char) -> Result<Self, Self::Error> {
         if value.is_ascii() {
             let num = value as u8;
@@ -465,6 +467,7 @@ impl TryFrom<char> for CheckedAminoAcid<SemiAmbiguous> {
 
 impl TryFrom<&u8> for CheckedAminoAcid<SemiAmbiguous> {
     type Error = ();
+
     fn try_from(value: &u8) -> Result<Self, Self::Error> {
         match value {
             b'A' | b'a' => Ok(CheckedAminoAcid::<UnAmbiguous>::Alanine.mark()),
@@ -500,6 +503,7 @@ impl TryFrom<&u8> for CheckedAminoAcid<SemiAmbiguous> {
 
 impl TryFrom<u8> for CheckedAminoAcid<SemiAmbiguous> {
     type Error = ();
+
     fn try_from(value: u8) -> Result<Self, Self::Error> {
         Self::try_from(&value)
     }

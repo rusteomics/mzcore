@@ -23,14 +23,16 @@ pub enum GlycanCompositionError {
     InvalidFormula,
     /// Some monosaccharide occurrence was outside of bounds for [`isize`]
     OutOfRangeOccurance,
-    /// An empty composition was given, this also includes cases where monosaccharides cancel each other out like `Hex2Hex-2`
+    /// An empty composition was given, this also includes cases where monosaccharides cancel each
+    /// other out like `Hex2Hex-2`
     #[default]
     Empty,
     /// A synonym was given (will only be checked in strict mode)
     ImproperName,
     /// A name was given with improper capitalisation (will only be checked in strict mode)
     ImproperCapitalisation,
-    /// The occurrence was missing for a glycan, this is always generated because it might mean that the composition was parsed as something not intended by the user
+    /// The occurrence was missing for a glycan, this is always generated because it might mean that
+    /// the composition was parsed as something not intended by the user
     ImproperMissingOccurance,
     /// The sign was missing for a mass custom monosaccharide, eg `{203}` instead of `{+203}`
     ImproperMissingSign,
@@ -38,6 +40,7 @@ pub enum GlycanCompositionError {
 
 impl ErrorKind for GlycanCompositionError {
     type Settings = ();
+
     fn descriptor(&self) -> &'static str {
         match self {
             Self::ImproperCapitalisation | Self::ImproperMissingOccurance | Self::ImproperName => {
@@ -46,9 +49,11 @@ impl ErrorKind for GlycanCompositionError {
             _ => "error",
         }
     }
+
     fn ignored(&self, _settings: Self::Settings) -> bool {
         false
     }
+
     fn is_error(&self, _settings: Self::Settings) -> bool {
         !matches!(
             self,
@@ -71,12 +76,22 @@ impl MonoSaccharide {
     /// Parse the given text as a ProForma glycan composition.
     /// ```rust
     /// use mzcore::glycan::MonoSaccharide;
-    /// assert!(MonoSaccharide::pro_forma_composition::<false>("HexNAc5Hex3Fuc1").is_ok());
-    /// assert!(MonoSaccharide::pro_forma_composition::<false>("HexNAc4Hex5Fuc1NeuAc1{C8H13N1O5Na1:z+1}1").is_ok());
+    /// assert!(
+    ///     MonoSaccharide::pro_forma_composition::<false>(
+    ///         "HexNAc5Hex3Fuc1"
+    ///     )
+    ///     .is_ok()
+    /// );
+    /// assert!(
+    ///     MonoSaccharide::pro_forma_composition::<false>(
+    ///         "HexNAc4Hex5Fuc1NeuAc1{C8H13N1O5Na1:z+1}1"
+    ///     )
+    ///     .is_ok()
+    /// );
     /// ```
     /// # Errors
-    /// When the composition could not be read. Or when any of the glycans numbers outside of the valid numerical range.
-    /// Warns when the amount is missing.
+    /// When the composition could not be read. Or when any of the glycans numbers outside of the
+    /// valid numerical range. Warns when the amount is missing.
     pub fn pro_forma_composition<const STRICT: bool>(
         value: &str,
     ) -> ParserResult<'_, Vec<(Self, isize)>, GlycanCompositionError> {
@@ -89,8 +104,8 @@ impl MonoSaccharide {
 
     /// Parse the given text as a ProForma glycan composition.
     /// # Errors
-    /// When the composition could not be read. Or when any of the glycans numbers outside of the valid numerical range.
-    /// Warns when the amount is missing.
+    /// When the composition could not be read. Or when any of the glycans numbers outside of the
+    /// valid numerical range. Warns when the amount is missing.
     pub fn pro_forma_composition_inner<'a, const STRICT: bool>(
         base_context: &Context<'a>,
         line: &'a str,
@@ -228,14 +243,9 @@ impl MonoSaccharide {
                 base_context.clone().add_highlight((0, range.clone())),
             )
         }));
-        if let Some(f) = composition
-            .iter()
-            .try_fold(MolecularFormula::default(), |acc, (s, n)| {
-                s.formula()
-                    .checked_mul_isize(*n)
-                    .and_then(|f| acc.checked_add(&f))
-            })
-        {
+        if let Some(f) = composition.iter().try_fold(MolecularFormula::default(), |acc, (s, n)| {
+            s.formula().checked_mul_isize(*n).and_then(|f| acc.checked_add(&f))
+        }) {
             if composition.is_empty() || f.is_empty() {
                 combine_error(
                     &mut errors,
@@ -265,7 +275,8 @@ impl MonoSaccharide {
     }
 
     /// Simplify a glycan composition to be sorted and deduplicated.
-    /// Returns None if overflow occurred, meaning that there where more than `isize::MAX` or less then `isize::MIN` monosaccharides for one species.
+    /// Returns None if overflow occurred, meaning that there where more than `isize::MAX` or less
+    /// then `isize::MIN` monosaccharides for one species.
     pub(crate) fn simplify_composition(
         mut composition: Vec<(Self, isize)>,
     ) -> Option<Vec<(Self, isize)>> {
@@ -295,7 +306,8 @@ impl MonoSaccharide {
     /// * HexNAc(5)Hex(3)Fuc(1)
     /// * HexNAc(4)Hex(5)Fuc(1)NeuAc(1)
     /// # Errors
-    /// When the composition could not be read. Or when any of the glycans occurs outside of the valid range
+    /// When the composition could not be read. Or when any of the glycans occurs outside of the
+    /// valid range
     pub fn byonic_composition(text: &str) -> Result<Vec<(Self, isize)>, BoxedError<'_, BasicKind>> {
         let mut index = 0;
         let mut output = Vec::new();
@@ -364,9 +376,7 @@ impl MonoSaccharide {
                     BasicKind::Error,
                     "Invalid MSFragger glycan composition",
                     "No opening bracket found but there is text left, the format expected is 'Sugar(Number)'",
-                    Context::default()
-                        .lines(0, text)
-                        .add_highlight((0, index, 1)),
+                    Context::default().lines(0, text).add_highlight((0, index, 1)),
                 ));
             }
         }

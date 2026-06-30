@@ -1,11 +1,10 @@
 use std::{ops::RangeInclusive, path::PathBuf};
 
-use serde::{Deserialize, Serialize};
-
 use mzcore::{
     space::{Space, UsedSpace},
     system::OrderedTime,
 };
+use serde::{Deserialize, Serialize};
 
 /// Multiple spectrum identifiers
 #[derive(Clone, Debug, Default, Deserialize, Eq, Hash, PartialEq, Serialize)]

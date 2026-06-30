@@ -24,6 +24,7 @@ pub trait HasPeptidoform<Complexity> {
 
 impl<Complexity> HasPeptidoformImpl for Peptidoform<Complexity> {
     type Complexity = Complexity;
+
     fn peptidoform(&self) -> &Self {
         self
     }
@@ -31,6 +32,7 @@ impl<Complexity> HasPeptidoformImpl for Peptidoform<Complexity> {
 
 impl<T: HasPeptidoformImpl> HasPeptidoformImpl for &T {
     type Complexity = T::Complexity;
+
     fn peptidoform(&self) -> &Peptidoform<T::Complexity> {
         (*self).peptidoform()
     }
@@ -38,6 +40,7 @@ impl<T: HasPeptidoformImpl> HasPeptidoformImpl for &T {
 
 impl<T: HasPeptidoformImpl> HasPeptidoformImpl for Arc<T> {
     type Complexity = T::Complexity;
+
     fn peptidoform(&self) -> &Peptidoform<T::Complexity> {
         self.as_ref().peptidoform()
     }
@@ -45,6 +48,7 @@ impl<T: HasPeptidoformImpl> HasPeptidoformImpl for Arc<T> {
 
 impl<T: HasPeptidoformImpl> HasPeptidoformImpl for Rc<T> {
     type Complexity = T::Complexity;
+
     fn peptidoform(&self) -> &Peptidoform<T::Complexity> {
         self.as_ref().peptidoform()
     }
@@ -52,6 +56,7 @@ impl<T: HasPeptidoformImpl> HasPeptidoformImpl for Rc<T> {
 
 impl<T: HasPeptidoformImpl> HasPeptidoformImpl for Box<T> {
     type Complexity = T::Complexity;
+
     fn peptidoform(&self) -> &Peptidoform<T::Complexity> {
         self.as_ref().peptidoform()
     }

@@ -10,18 +10,18 @@ use std::{
 
 use context_error::*;
 use itertools::Itertools;
-use serde::{Deserialize, Serialize};
-
-use crate::{
-    CVTerm, KnownFileFormat, PSM, PSMData, PSMMetaData, PeptidoformPresent, ProteinMetaData,
-    SpectrumIds, helper_functions::explain_number_error,
-};
 use mzcore::{
     sequence::{
         AminoAcid, AnnotatedPeptidoform, Annotation, FlankingSequence, HasPeptidoformImpl,
         Peptidoform, PeptidoformIonSet, Region, SemiAmbiguous, SequenceElement,
     },
     system::{Mass, MassOverCharge, Time, isize::Charge},
+};
+use serde::{Deserialize, Serialize};
+
+use crate::{
+    CVTerm, KnownFileFormat, PSM, PSMData, PSMMetaData, PeptidoformPresent, ProteinMetaData,
+    SpectrumIds, helper_functions::explain_number_error,
 };
 
 /// A single parsed line of a fasta file
@@ -52,6 +52,7 @@ impl PartialOrd for FastaData {
 
 impl HasPeptidoformImpl for FastaData {
     type Complexity = SemiAmbiguous;
+
     fn peptidoform(&self) -> &Peptidoform<Self::Complexity> {
         self.peptide()
     }
@@ -61,6 +62,7 @@ impl AnnotatedPeptidoform for FastaData {
     fn regions(&self) -> &[(Region, usize)] {
         &self.regions
     }
+
     fn annotations(&self) -> &[(Annotation, usize)] {
         &self.annotations
     }
@@ -379,9 +381,7 @@ impl FastaIdentifier<Range<usize>> {
             }
             Self::Undefined(decoy, a) => FastaIdentifier::Undefined(
                 *decoy,
-                header
-                    .get(a.clone())
-                    .map_or(String::new(), ToString::to_string),
+                header.get(a.clone()).map_or(String::new(), ToString::to_string),
             ),
             Self::Local(decoy, a) => FastaIdentifier::Local(*decoy, header[a.clone()].to_string()),
             Self::GenBank(decoy, a, b) => FastaIdentifier::GenBank(
@@ -614,23 +614,23 @@ impl<T> FastaIdentifier<T> {
             | Self::GenInfoBackboneMolType(decoy, _)
             | Self::GenInfoImportID(decoy, _)
             | Self::GenInfoIntegratedDatabase(decoy, _)
-            | Self::GenBank(decoy, _, _)
-            | Self::EMBL(decoy, _, _)
-            | Self::PIR(decoy, _, _)
-            | Self::SwissProt(decoy, _, _)
-            | Self::Patent(decoy, _, _, _)
-            | Self::PrePatent(decoy, _, _, _)
-            | Self::RefSeq(decoy, _, _)
-            | Self::GeneralDatabase(decoy, _, _)
-            | Self::DDBJ(decoy, _, _)
-            | Self::PRF(decoy, _, _)
-            | Self::ThirdPartyGenBank(decoy, _, _)
-            | Self::ThirdPartyEMBL(decoy, _, _)
-            | Self::ThirdPartyDDJ(decoy, _, _)
-            | Self::TrEMBL(decoy, _, _)
+            | Self::GenBank(decoy, ..)
+            | Self::EMBL(decoy, ..)
+            | Self::PIR(decoy, ..)
+            | Self::SwissProt(decoy, ..)
+            | Self::Patent(decoy, ..)
+            | Self::PrePatent(decoy, ..)
+            | Self::RefSeq(decoy, ..)
+            | Self::GeneralDatabase(decoy, ..)
+            | Self::DDBJ(decoy, ..)
+            | Self::PRF(decoy, ..)
+            | Self::ThirdPartyGenBank(decoy, ..)
+            | Self::ThirdPartyEMBL(decoy, ..)
+            | Self::ThirdPartyDDJ(decoy, ..)
+            | Self::TrEMBL(decoy, ..)
             | Self::Undefined(decoy, _)
             | Self::Local(decoy, _)
-            | Self::PDB(decoy, _, _) => *decoy,
+            | Self::PDB(decoy, ..) => *decoy,
         }
     }
 }
@@ -957,6 +957,7 @@ where
 
 impl FromStr for FastaIdentifier<String> {
     type Err = ParseIntError;
+
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         Ok(FastaIdentifier::<Range<usize>>::from_str(s)?.as_string(s))
     }
@@ -964,6 +965,7 @@ impl FromStr for FastaIdentifier<String> {
 
 impl FromStr for FastaIdentifier<Box<str>> {
     type Err = ParseIntError;
+
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         Ok(FastaIdentifier::<Range<usize>>::from_str(s)?.as_boxed_str(s))
     }
@@ -971,6 +973,7 @@ impl FromStr for FastaIdentifier<Box<str>> {
 
 impl FromStr for FastaIdentifier<Range<usize>> {
     type Err = ParseIntError;
+
     /// Get the header string as ">header|stuff", so including the '>' until the first space
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let mut offset = usize::from(s.starts_with('>'));
@@ -978,10 +981,7 @@ impl FromStr for FastaIdentifier<Range<usize>> {
         if decoy {
             offset += 4;
         }
-        let pipes = s
-            .char_indices()
-            .filter_map(|(i, c)| (c == '|').then_some(i))
-            .collect_vec();
+        let pipes = s.char_indices().filter_map(|(i, c)| (c == '|').then_some(i)).collect_vec();
         let len = s.len();
         if pipes.is_empty() {
             Ok(Self::Undefined(decoy, offset..len))
@@ -1224,7 +1224,8 @@ impl FastaData {
     }
 
     /// # Errors
-    /// If the total length of the regions is not identical to the length of the peptide, or if any of the annotations is outside of the peptide
+    /// If the total length of the regions is not identical to the length of the peptide, or if any
+    /// of the annotations is outside of the peptide
     fn validate(self) -> Result<Self, BoxedError<'static, BasicKind>> {
         let total_regions_len: usize = self.regions.iter().map(|(_, l)| *l).sum();
         if total_regions_len > 0 && total_regions_len != self.peptide.len() {
@@ -1238,11 +1239,7 @@ impl FastaData {
                 ),
                 Context::full_line(self.line_index as u32, &self.full_header).to_owned(),
             ))
-        } else if self
-            .annotations
-            .iter()
-            .any(|(_, p)| *p >= self.peptide.len())
-        {
+        } else if self.annotations.iter().any(|(_, p)| *p >= self.peptide.len()) {
             Err(BoxedError::new(
                 BasicKind::Error,
                 "Invalid annotations definition",
@@ -1388,9 +1385,7 @@ impl FastaData {
 
 fn trim_whitespace(line: &str, range: Range<usize>) -> Range<usize> {
     let start = range.start + range.len() - line[range.clone()].trim_start().len();
-    let end = range
-        .end
-        .saturating_sub(range.len() - line[range].trim_end().len());
+    let end = range.end.saturating_sub(range.len() - line[range].trim_end().len());
     start.min(end)..end
 }
 
@@ -1447,11 +1442,7 @@ fn parse_header() {
     assert_eq!(*identifier.name(), "EntryName");
     assert_eq!(*identifier.accession(), "UniqueIdentifier");
     assert_eq!(header.description(), "ProteinName");
-    assert!(
-        header
-            .tags()
-            .any(|(k, v)| k == "PE" && v == "ProteinExistence")
-    );
+    assert!(header.tags().any(|(k, v)| k == "PE" && v == "ProteinExistence"));
     assert_eq!(header.regions().len(), 3);
     assert_eq!(header.regions()[0], (Region::Framework(1), 12));
     assert_eq!(header.annotations().len(), 2);
@@ -1459,6 +1450,8 @@ fn parse_header() {
 }
 
 impl PSMMetaData for FastaData {
+    type Protein = Self;
+
     fn peptidoform_ion_set(&self) -> Option<Cow<'_, PeptidoformIonSet>> {
         Some(Cow::Owned(self.peptide().clone().into()))
     }
@@ -1519,7 +1512,6 @@ impl PSMMetaData for FastaData {
         None
     }
 
-    type Protein = Self;
     fn proteins(&self) -> Cow<'_, [Self::Protein]> {
         Cow::Borrowed(std::slice::from_ref(self))
     }

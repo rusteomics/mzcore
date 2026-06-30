@@ -6,13 +6,6 @@ use std::{
 };
 
 use context_error::*;
-use serde::{Deserialize, Serialize};
-
-use crate::{
-    BoxedIdentifiedPeptideIter, CVTerm, FastaIdentifier, KnownFileFormat, PSM, PSMData,
-    PSMFileFormatVersion, PSMMetaData, PSMSource, PeptidoformPresent, ProteinMetaData, Reliability,
-    SpectrumId, SpectrumIds, common_parser::Location,
-};
 use mzcore::{
     csv::{CsvLine, parse_csv},
     ontology::Ontologies,
@@ -21,6 +14,13 @@ use mzcore::{
         SequencePosition, SimpleModification, SloppyParsingParameters,
     },
     system::{Mass, MassOverCharge, Time, isize::Charge},
+};
+use serde::{Deserialize, Serialize};
+
+use crate::{
+    BoxedIdentifiedPeptideIter, CVTerm, FastaIdentifier, KnownFileFormat, PSM, PSMData,
+    PSMFileFormatVersion, PSMMetaData, PSMSource, PeptidoformPresent, ProteinMetaData, Reliability,
+    SpectrumId, SpectrumIds, common_parser::Location,
 };
 
 static NUMBER_ERROR: (&str, &str) = (
@@ -194,13 +194,9 @@ pub enum MetaMorpheusVersion {
 
 impl std::fmt::Display for MetaMorpheusVersion {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Error> {
-        write!(
-            f,
-            "{}",
-            match self {
-                Self::MetaMorpheus => "",
-            }
-        )
+        write!(f, "{}", match self {
+            Self::MetaMorpheus => "",
+        })
     }
 }
 
@@ -210,6 +206,7 @@ impl PSMFileFormatVersion<MetaMorpheusFormat> for MetaMorpheusVersion {
             Self::MetaMorpheus => META_MORPHEUS,
         }
     }
+
     fn name(self) -> &'static str {
         match self {
             Self::MetaMorpheus => "",
@@ -273,19 +270,17 @@ impl mzcore::space::Space for MetaMorpheusMatchKind {
 
 impl std::fmt::Display for MetaMorpheusMatchKind {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Error> {
-        write!(
-            f,
-            "{}",
-            match self {
-                Self::Decoy => "Decoy",
-                Self::Contamination => "Contamination",
-                Self::Target => "Target",
-            }
-        )
+        write!(f, "{}", match self {
+            Self::Decoy => "Decoy",
+            Self::Contamination => "Contamination",
+            Self::Target => "Target",
+        })
     }
 }
 
 impl PSMMetaData for MetaMorpheusPSM {
+    type Protein = MetaMorpheusProtein;
+
     fn peptidoform_ion_set(&self) -> Option<Cow<'_, PeptidoformIonSet>> {
         Some(Cow::Owned(self.peptide.clone()))
     }
@@ -335,10 +330,9 @@ impl PSMMetaData for MetaMorpheusPSM {
     }
 
     fn scans(&self) -> SpectrumIds {
-        SpectrumIds::FileKnown(vec![(
-            self.raw_file.clone(),
-            vec![SpectrumId::Number(self.scan_number)],
-        )])
+        SpectrumIds::FileKnown(vec![(self.raw_file.clone(), vec![SpectrumId::Number(
+            self.scan_number,
+        )])])
     }
 
     fn experimental_mz(&self) -> Option<MassOverCharge> {
@@ -348,8 +342,6 @@ impl PSMMetaData for MetaMorpheusPSM {
     fn experimental_mass(&self) -> Option<Mass> {
         Some(self.mass)
     }
-
-    type Protein = MetaMorpheusProtein;
 
     fn proteins(&self) -> Cow<'_, [Self::Protein]> {
         Cow::Borrowed(std::slice::from_ref(&self.accession))
@@ -361,12 +353,8 @@ impl PSMMetaData for MetaMorpheusPSM {
 
     fn flanking_sequences(&self) -> (&FlankingSequence, &FlankingSequence) {
         (
-            self.previous_residue
-                .first()
-                .unwrap_or(&FlankingSequence::Unknown),
-            self.next_residue
-                .first()
-                .unwrap_or(&FlankingSequence::Unknown),
+            self.previous_residue.first().unwrap_or(&FlankingSequence::Unknown),
+            self.next_residue.first().unwrap_or(&FlankingSequence::Unknown),
         )
     }
 

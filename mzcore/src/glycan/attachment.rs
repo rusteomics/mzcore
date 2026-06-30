@@ -46,12 +46,15 @@ pub trait GlycanAttachement {
 pub struct GlycanPeptideFragment {
     /// The full glycan stays attached
     pub(super) full: bool,
-    /// The glycan fragments and at any number of monosaccharides within the range (min, max, inclusive) stay attached (any fucoses on these fragments are always included and do not count towards the limit)
+    /// The glycan fragments and at any number of monosaccharides within the range (min, max,
+    /// inclusive) stay attached (any fucoses on these fragments are always included and do not
+    /// count towards the limit)
     pub(super) core: Option<(Option<usize>, Option<usize>)>,
 }
 
 impl std::ops::Add<&Self> for GlycanPeptideFragment {
     type Output = Self;
+
     fn add(self, rhs: &Self) -> Self::Output {
         Self {
             full: self.full || rhs.full,
@@ -66,25 +69,25 @@ impl std::ops::Add<&Self> for GlycanPeptideFragment {
 }
 
 impl GlycanPeptideFragment {
-    /// A default model that only allows full fragments
-    pub const FULL: Self = Self {
-        full: true,
-        core: None,
+    /// A default model that only allows core (1..=1)
+    pub const CORE: Self = Self {
+        full: false,
+        core: Some((Some(1), Some(1))),
     };
     /// A default model that only allows core and free (0..=1)
     pub const CORE_AND_FREE: Self = Self {
         full: false,
         core: Some((None, Some(1))),
     };
-    /// A default model that only allows core (1..=1)
-    pub const CORE: Self = Self {
-        full: false,
-        core: Some((Some(1), Some(1))),
-    };
     /// A default model that only allows free (0..=0)
     pub const FREE: Self = Self {
         full: false,
         core: Some((None, Some(0))),
+    };
+    /// A default model that only allows full fragments
+    pub const FULL: Self = Self {
+        full: true,
+        core: None,
     };
 
     /// Get if this models allows full glycans on peptide fragments
@@ -92,7 +95,8 @@ impl GlycanPeptideFragment {
         self.full
     }
 
-    /// Get if this models allows core fragments on peptide fragments and the depth range of those fragments
+    /// Get if this models allows core fragments on peptide fragments and the depth range of those
+    /// fragments
     pub const fn core(self) -> Option<(Option<usize>, Option<usize>)> {
         self.core
     }
@@ -130,21 +134,17 @@ pub enum BackboneFragmentKind {
 
 impl std::fmt::Display for BackboneFragmentKind {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "{}",
-            match self {
-                Self::a => "a",
-                Self::b => "b",
-                Self::c => "c",
-                Self::d => "d",
-                Self::x => "x",
-                Self::y => "y",
-                Self::v => "v",
-                Self::w => "w",
-                Self::z => "z",
-            }
-        )
+        write!(f, "{}", match self {
+            Self::a => "a",
+            Self::b => "b",
+            Self::c => "c",
+            Self::d => "d",
+            Self::x => "x",
+            Self::y => "y",
+            Self::v => "v",
+            Self::w => "w",
+            Self::z => "z",
+        })
     }
 }
 

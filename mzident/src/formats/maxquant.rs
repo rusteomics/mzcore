@@ -5,15 +5,6 @@ use std::{
 use itertools::Itertools;
 #[cfg(feature = "mzannotate")]
 use mzannotate::prelude::AnnotatedPeak;
-use serde::{Deserialize, Serialize};
-use thin_vec::ThinVec;
-
-use crate::{
-    BoxedIdentifiedPeptideIter, FastaIdentifier, KnownFileFormat, MaybePeptidoform, PSM, PSMData,
-    PSMFileFormatVersion, PSMMetaData, PSMSource, SpectrumId, SpectrumIds,
-    common_parser::{Location, OptionalColumn, OptionalLocation},
-    helper_functions::end_of_enclosure,
-};
 use mzcore::{
     csv::{CsvLine, parse_csv},
     ontology::Ontologies,
@@ -23,6 +14,15 @@ use mzcore::{
         SloppyParsingParameters,
     },
     system::{MassOverCharge, Time, dalton, f32::Mass, isize::Charge},
+};
+use serde::{Deserialize, Serialize};
+use thin_vec::ThinVec;
+
+use crate::{
+    BoxedIdentifiedPeptideIter, FastaIdentifier, KnownFileFormat, MaybePeptidoform, PSM, PSMData,
+    PSMFileFormatVersion, PSMMetaData, PSMSource, SpectrumId, SpectrumIds,
+    common_parser::{Location, OptionalColumn, OptionalLocation},
+    helper_functions::end_of_enclosure,
 };
 
 static NUMBER_ERROR: (&str, &str) = (
@@ -205,6 +205,7 @@ impl PSMFileFormatVersion<MaxQuantFormat> for MaxQuantVersion {
             Self::Silac => SILAC,
         }
     }
+
     fn name(self) -> &'static str {
         match self {
             Self::MSMS => "msms",
@@ -448,6 +449,8 @@ pub const SILAC: MaxQuantFormat = MaxQuantFormat {
 };
 
 impl PSMMetaData for MaxQuantPSM {
+    type Protein = FastaIdentifier<Box<str>>;
+
     fn peptidoform_ion_set(&self) -> Option<Cow<'_, PeptidoformIonSet>> {
         self.peptide.as_ref().map(|p| Cow::Owned(p.clone().into()))
     }
@@ -503,21 +506,13 @@ impl PSMMetaData for MaxQuantPSM {
         self.raw_file.as_ref().map_or_else(
             || {
                 SpectrumIds::FileNotKnown(
-                    self.scan_number
-                        .iter()
-                        .copied()
-                        .map(SpectrumId::Number)
-                        .collect(),
+                    self.scan_number.iter().copied().map(SpectrumId::Number).collect(),
                 )
             },
             |raw_file| {
                 SpectrumIds::FileKnown(vec![(
                     raw_file.clone(),
-                    self.scan_number
-                        .iter()
-                        .copied()
-                        .map(SpectrumId::Number)
-                        .collect(),
+                    self.scan_number.iter().copied().map(SpectrumId::Number).collect(),
                 )])
             },
         )
@@ -528,11 +523,8 @@ impl PSMMetaData for MaxQuantPSM {
     }
 
     fn experimental_mass(&self) -> Option<mzcore::system::f64::Mass> {
-        self.mass
-            .map(|v| mzcore::system::f64::Mass::new::<dalton>(v.value.into()))
+        self.mass.map(|v| mzcore::system::f64::Mass::new::<dalton>(v.value.into()))
     }
-
-    type Protein = FastaIdentifier<Box<str>>;
 
     fn proteins(&self) -> Cow<'_, [Self::Protein]> {
         Cow::Borrowed(&self.proteins)
@@ -564,7 +556,8 @@ impl PSMMetaData for MaxQuantPSM {
 
     #[cfg(feature = "mzannotate")]
     fn annotated_spectrum(&self) -> Option<Cow<'_, mzannotate::spectrum::AnnotatedSpectrum>> {
-        // TODO: create a generic function to convert a 'MetaData' into a spectrum description + analytes etc
+        // TODO: create a generic function to convert a 'MetaData' into a spectrum description +
+        // analytes etc
         self.spectrum.as_ref().map(|s| {
             use mzannotate::mzspeclib::Analyte;
 
@@ -609,7 +602,8 @@ impl PSMMetaData for MaxQuantPSM {
 /// absence of fragment ion peaks in the MS/MS scan. For example [WR] can be either WR or
 /// RW. The curly brackets “{}” contain amino acids that are separated by the pipe character “|”.
 /// The separated by “|” amino acids are equally possible to be at that position because they are
-/// isobaric or almost isobaric (up to mass tolerance error). For example {I|L} can be either I or L.
+/// isobaric or almost isobaric (up to mass tolerance error). For example {I|L} can be either I or
+/// L.
 #[expect(clippy::needless_pass_by_value)]
 fn parse_de_novo_sequence(
     location: Location,
@@ -661,13 +655,10 @@ fn parse_de_novo_sequence(
                                 location.context().to_owned(),
                             ))
                         } else {
-                            Ok((
-                                Self::Either(outer),
-                                Location {
-                                    range: end + 1..location.range.end,
-                                    ..location.clone()
-                                },
-                            ))
+                            Ok((Self::Either(outer), Location {
+                                range: end + 1..location.range.end,
+                                ..location.clone()
+                            }))
                         }
                     } else {
                         Err(BoxedError::new(
@@ -700,13 +691,10 @@ fn parse_de_novo_sequence(
                                 location.context().to_owned(),
                             ))
                         } else {
-                            Ok((
-                                Self::UnknownOrder(inner),
-                                Location {
-                                    range: end + 1..location.range.end,
-                                    ..location.clone()
-                                },
-                            ))
+                            Ok((Self::UnknownOrder(inner), Location {
+                                range: end + 1..location.range.end,
+                                ..location.clone()
+                            }))
                         }
                     } else {
                         Err(BoxedError::new(
@@ -771,13 +759,10 @@ fn parse_de_novo_sequence(
                         }
                     }
 
-                    Ok((
-                        Self::Sequence(aa),
-                        Location {
-                            range: offset..location.range.end,
-                            ..location.clone()
-                        },
-                    ))
+                    Ok((Self::Sequence(aa), Location {
+                        range: offset..location.range.end,
+                        ..location.clone()
+                    }))
                 }
             }
         }
@@ -825,7 +810,8 @@ fn parse_de_novo_sequence(
                         let id = with_id.unwrap_or(*ambiguous_group_id);
                         *ambiguous_group_id = ambiguous_group_id.saturating_add(1);
                         for el in outer.pop().unwrap() {
-                            // The unwrap is fine because it is guaranteed to have at least one element
+                            // The unwrap is fine because it is guaranteed to have at least one
+                            // element
                             el.add_to_peptidoform(peptidoform, ambiguous_group_id, Some(id));
                         }
                     }
@@ -860,8 +846,7 @@ fn parse_de_novo_sequence(
     let mut inner_location = location.clone();
     while !inner_location.is_empty() {
         let next = Element::parse(inner_location, ontologies)?;
-        next.0
-            .add_to_peptidoform(&mut peptidoform, &mut ambiguous_group_id, None);
+        next.0.add_to_peptidoform(&mut peptidoform, &mut ambiguous_group_id, None);
         inner_location = next.1;
     }
 

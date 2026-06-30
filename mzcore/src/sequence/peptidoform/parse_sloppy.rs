@@ -20,15 +20,18 @@ use crate::{
 #[derive(Clone, Debug, Default, Deserialize, Eq, Hash, PartialEq, Serialize)]
 #[serde(bound(deserialize = "'de: 'static"))]
 pub struct SloppyParsingParameters {
-    /// Ignore a prefix lowercase n as in `n[211]GC[779]RQSSEEK` as this indicates an N terminal modification in MSFragger
+    /// Ignore a prefix lowercase n as in `n[211]GC[779]RQSSEEK` as this indicates an N terminal
+    /// modification in MSFragger
     pub ignore_prefix_lowercase_n: bool,
     /// Allow AA+12AA instead of AA[+12]AA as used by Casanovo
     pub allow_unwrapped_modifications: bool,
     /// Allow Xmod as modification indication as used by DeepNovo
     pub mod_indications: (Option<&'static str>, Vec<(AminoAcid, SimpleModification)>),
-    /// Support for custom encodings, e.g. `AAAmAAA` instead of `AAAM[oxidation]AAA` as used by NovoB
+    /// Support for custom encodings, e.g. `AAAmAAA` instead of `AAAM[oxidation]AAA` as used by
+    /// NovoB
     pub custom_alphabet: Vec<(u8, SequenceElement<SemiAmbiguous>)>,
-    /// Replacing mass mods with known predefined mods, e.g. `AAA(+79.97)AAA` instead of `AAA[phospho]AAA` as used by InstaNovo
+    /// Replacing mass mods with known predefined mods, e.g. `AAA(+79.97)AAA` instead of
+    /// `AAA[phospho]AAA` as used by InstaNovo
     pub replace_mass_modifications: Option<Vec<SimpleModification>>,
 }
 
@@ -59,12 +62,14 @@ impl Peptidoform<SemiAmbiguous> {
                         base_context.clone().add_highlight((0, range.clone())),).add_underlying_errors(vec![pro_forma_error, sloppy_error])))
     }
 
-    /// Read sloppy ProForma like sequences. Defined by the use of square or round braces to indicate
-    /// modifications and missing any particular method of defining the N or C terminal modifications.
-    /// Additionally, any underscores will be ignored both on the ends and inside the sequence.
+    /// Read sloppy ProForma like sequences. Defined by the use of square or round braces to
+    /// indicate modifications and missing any particular method of defining the N or C terminal
+    /// modifications. Additionally, any underscores will be ignored both on the ends and inside
+    /// the sequence.
     ///
     /// All modifications follow the same definitions as the strict ProForma syntax, if it cannot be
-    /// parsed as a strict ProForma modification it falls back to [`Modification::sloppy_modification`].
+    /// parsed as a strict ProForma modification it falls back to
+    /// [`Modification::sloppy_modification`].
     ///
     /// # Errors
     /// If it does not fit the above description.
@@ -82,12 +87,14 @@ impl Peptidoform<SemiAmbiguous> {
         )
     }
 
-    /// Read sloppy ProForma like sequences. Defined by the use of square or round braces to indicate
-    /// modifications and missing any particular method of defining the N or C terminal modifications.
-    /// Additionally, any underscores will be ignored both on the ends and inside the sequence.
+    /// Read sloppy ProForma like sequences. Defined by the use of square or round braces to
+    /// indicate modifications and missing any particular method of defining the N or C terminal
+    /// modifications. Additionally, any underscores will be ignored both on the ends and inside
+    /// the sequence.
     ///
     /// All modifications follow the same definitions as the strict ProForma syntax, if it cannot be
-    /// parsed as a strict ProForma modification it falls back to [`Modification::sloppy_modification`].
+    /// parsed as a strict ProForma modification it falls back to
+    /// [`Modification::sloppy_modification`].
     ///
     /// # Errors
     /// If it does not fit the above description.
@@ -131,9 +138,7 @@ impl Peptidoform<SemiAmbiguous> {
                                 BasicKind::Error,
                                 "Invalid modification",
                                 "No valid closing delimiter",
-                                base_context
-                                    .clone()
-                                    .add_highlight((0, range.start + index, 1)),
+                                base_context.clone().add_highlight((0, range.start + index, 1)),
                             )
                         })?;
                     let modification = Modification::sloppy_modification(
@@ -184,11 +189,7 @@ impl Peptidoform<SemiAmbiguous> {
                     line[range.start + index..range.end].starts_with(pattern)
                 }) =>
                 {
-                    index += parameters
-                        .mod_indications
-                        .0
-                        .map(str::len)
-                        .unwrap_or_default();
+                    index += parameters.mod_indications.0.map(str::len).unwrap_or_default();
 
                     match peptide.sequence_mut().last_mut() {
                         Some(seq) => parameters
@@ -214,9 +215,7 @@ impl Peptidoform<SemiAmbiguous> {
                                 BasicKind::Error,
                                 "Invalid mod indication",
                                 "A mod indication should always follow an amino acid.",
-                                base_context
-                                    .clone()
-                                    .add_highlight((0, range.start + index - 3, 3)),
+                                base_context.clone().add_highlight((0, range.start + index - 3, 3)),
                             ));
                         }
                     }
@@ -229,15 +228,20 @@ impl Peptidoform<SemiAmbiguous> {
                         .iter()
                         .take_while(|c| c.is_ascii_digit() || **c == b'.')
                         .count();
-                    let modification = SimpleModificationInner::Mass(MassTag::None, Mass::new::<crate::system::dalton>(
-                        line[range.start + index..range.start + index + length]
-                        .parse::<f64>()
-                        .map_err(|err|
-                            BoxedError::new(BasicKind::Error,
+                    let modification = SimpleModificationInner::Mass(
+                        MassTag::None,
+                        Mass::new::<crate::system::dalton>(line[range.start + index..range.start + index + length].parse::<f64>().map_err(|err| {
+                            BoxedError::new(
+                                BasicKind::Error,
                                 "Invalid mass shift modification",
                                 format!("Mass shift modification must be a valid number but this number is invalid: {err}"),
-                                base_context.clone().add_highlight((0, range.start + index, length)))
-                            )?).into(), None).into();
+                                base_context.clone().add_highlight((0, range.start + index, length)),
+                            )
+                        })?)
+                        .into(),
+                        None,
+                    )
+                    .into();
                     match peptide.sequence_mut().last_mut() {
                         Some(aa) => aa.modifications.push(Modification::Simple(modification)),
                         None => {
@@ -260,9 +264,7 @@ impl Peptidoform<SemiAmbiguous> {
                                     BasicKind::Error,
                                     "Invalid amino acid",
                                     "This character is not a valid amino acid",
-                                    base_context
-                                        .clone()
-                                        .add_highlight((0, range.start + index, 1)),
+                                    base_context.clone().add_highlight((0, range.start + index, 1)),
                                 )
                             })?,
                             None,
@@ -287,9 +289,7 @@ impl Peptidoform<SemiAmbiguous> {
             .to_vec()
             .iter()
             .filter(|m| {
-                if m.is_possible(&peptide[0], SequencePosition::NTerm)
-                    .any_possible()
-                {
+                if m.is_possible(&peptide[0], SequencePosition::NTerm).any_possible() {
                     true
                 } else {
                     peptide[0].modifications.push((*m).clone());
@@ -329,8 +329,9 @@ impl Peptidoform<SemiAmbiguous> {
 impl Modification {
     /// Parse a modification defined by sloppy names
     /// # Errors
-    /// If the name is not in Unimod, PSI-MOD, the custom database, or the predefined list of common trivial names.
-    /// Or if this is the case when the modification follows a known structure (eg `mod (AAs)`).
+    /// If the name is not in Unimod, PSI-MOD, the custom database, or the predefined list of common
+    /// trivial names. Or if this is the case when the modification follows a known structure
+    /// (eg `mod (AAs)`).
     pub fn sloppy_modification<'a>(
         line: &'a str,
         location: std::ops::Range<usize>,
@@ -397,180 +398,106 @@ impl Modification {
         ontologies: &Ontologies,
     ) -> Option<SimpleModification> {
         let name = name.trim().to_lowercase();
-        // TODO: quite some of these are listed as synonyms in psimod so it would be nice if synonym search could be turned on here (but only the exact ones)
+        // TODO: quite some of these are listed as synonyms in psimod so it would be nice if synonym
+        // search could be turned on here (but only the exact ones)
         match name.as_str() {
-            "o" | "ox" | "hydroxylation" => ontologies
-                .unimod()
-                .get_by_index(&AccessionCode::Numeric(35)), // oxidation
+            "o" | "ox" | "hydroxylation" => {
+                ontologies.unimod().get_by_index(&AccessionCode::Numeric(35))
+            } // oxidation
             "cam" | "carbamidomethylation" => {
                 ontologies.unimod().get_by_index(&AccessionCode::Numeric(4))
             } // carbamidomethyl
-            "nem" => ontologies
-                .unimod()
-                .get_by_index(&AccessionCode::Numeric(108)), // Nethylmaleimide
+            "nem" => ontologies.unimod().get_by_index(&AccessionCode::Numeric(108)), /* Nethylmaleimide */
             "deamidation" | "deamidated asparagine" => {
                 ontologies.unimod().get_by_index(&AccessionCode::Numeric(7))
             } // deamidated
-            "formylation" => ontologies
-                .unimod()
-                .get_by_index(&AccessionCode::Numeric(122)), // formyl
-            "methylation" => ontologies
-                .unimod()
-                .get_by_index(&AccessionCode::Numeric(34)), // methyl
-            "acetylation" => ontologies.unimod().get_by_index(&AccessionCode::Numeric(1)), // acetyl
-            "crotonylation" => ontologies
-                .unimod()
-                .get_by_index(&AccessionCode::Numeric(1363)), // crotonyl
-            "reduction" => ontologies
-                .unimod()
-                .get_by_index(&AccessionCode::Numeric(447)), // deoxy
-            "water loss" => ontologies
-                .unimod()
-                .get_by_index(&AccessionCode::Numeric(23)), // dehydration
-            "ammonia loss" => ontologies
-                .unimod()
-                .get_by_index(&AccessionCode::Numeric(385)), // ammonia-loss
-            "sodium" => ontologies
-                .unimod()
-                .get_by_index(&AccessionCode::Numeric(30)), // Cation:Na
-            "calcium" => ontologies
-                .unimod()
-                .get_by_index(&AccessionCode::Numeric(951)), // Cation:Ca[II]
-            "zinc" => ontologies
-                .unimod()
-                .get_by_index(&AccessionCode::Numeric(954)), // Cation:Zn[II]
-            "n-acetylarginine" => ontologies
-                .psimod()
-                .get_by_index(&AccessionCode::Numeric(359)), // N2-acetyl-L-arginine
-            "n-acetylhistidine" => ontologies
-                .psimod()
-                .get_by_index(&AccessionCode::Numeric(781)), // N2-acetyl-L-histidine
-            "n-acetyllysine" => ontologies
-                .psimod()
-                .get_by_index(&AccessionCode::Numeric(57)), // N2-acetyl-L-lysine
-            "n6-acetyllysine" => ontologies
-                .psimod()
-                .get_by_index(&AccessionCode::Numeric(64)), // N6-acetyl-L-lysine
-            "n-acetylaspartate" => ontologies
-                .psimod()
-                .get_by_index(&AccessionCode::Numeric(51)), // N-acetyl-L-aspartic acid
-            "n-acetylglutamate" => ontologies
-                .psimod()
-                .get_by_index(&AccessionCode::Numeric(53)), // N-acetyl-L-glutamic acid
-            "n-acetylcysteine" => ontologies
-                .psimod()
-                .get_by_index(&AccessionCode::Numeric(52)), // N-acetyl-L-cysteine
-            "n-acetylproline" => ontologies
-                .psimod()
-                .get_by_index(&AccessionCode::Numeric(59)), // N-acetyl-L-proline
-            "n-acetylserine" => ontologies
-                .psimod()
-                .get_by_index(&AccessionCode::Numeric(60)), // N-acetyl-L-serine
-            "n-acetylthreonine" => ontologies
-                .psimod()
-                .get_by_index(&AccessionCode::Numeric(61)), // N-acetyl-L-threonine
-            "n-acetylasparagine" => ontologies
-                .psimod()
-                .get_by_index(&AccessionCode::Numeric(780)), // N-acetyl-L-asparagine
-            "n-acetylglutamine" => ontologies
-                .psimod()
-                .get_by_index(&AccessionCode::Numeric(54)), // N-acetyl-L-glutamine
-            "n-acetylphenylalanine" => ontologies
-                .psimod()
-                .get_by_index(&AccessionCode::Numeric(784)), // N-acetyl-L-phenylalanine
-            "n-acetyltyrosine" => ontologies
-                .psimod()
-                .get_by_index(&AccessionCode::Numeric(62)), // N-acetyl-L-tyrosine
-            "n-acetyltryptophan" => ontologies
-                .psimod()
-                .get_by_index(&AccessionCode::Numeric(785)), // N2-acetyl-L-tryptophan
-            "n-acetylalanine" => ontologies
-                .psimod()
-                .get_by_index(&AccessionCode::Numeric(50)), // N-acetyl-L-alanine
-            "n-acetylvaline" => ontologies
-                .psimod()
-                .get_by_index(&AccessionCode::Numeric(63)), // N-acetyl-L-valine
-            "n-acetylisoleucine" => ontologies
-                .psimod()
-                .get_by_index(&AccessionCode::Numeric(56)), // N-acetyl-L-isoleucine
-            "n-acetylleucine" => ontologies
-                .psimod()
-                .get_by_index(&AccessionCode::Numeric(782)), // N-acetyl-L-leucine
-            "n-acetylmethionine" => ontologies
-                .psimod()
-                .get_by_index(&AccessionCode::Numeric(58)), // N-acetyl-L-methionine
-            "4-hydroxyproline" => ontologies
-                .psimod()
-                .get_by_index(&AccessionCode::Numeric(39)), // 4-hydroxy-L-proline
-            "5-hydroxylysine" => ontologies
-                .psimod()
-                .get_by_index(&AccessionCode::Numeric(37)), // 5-hydroxy-L-lysine
-            "omega-n-methylarginine" => ontologies
-                .psimod()
-                .get_by_index(&AccessionCode::Numeric(78)), // omega-N-methyl-L-arginine
-            "tele-methylhistidine" => ontologies
-                .psimod()
-                .get_by_index(&AccessionCode::Numeric(322)), // 1'-methyl-L-histidine
-            "oxidation to kynurenine" => ontologies
-                .psimod()
-                .get_by_index(&AccessionCode::Numeric(462)), // l-kynurenine
-            "proline pyrrole to pyrrolidine six member ring" => ontologies
-                .unimod()
-                .get_by_index(&AccessionCode::Numeric(360)), // pro->pyrrolidinone
-            "n6,n6,n6-trimethyllysine" => ontologies
-                .psimod()
-                .get_by_index(&AccessionCode::Numeric(83)), // N6,N6,N6-trimethyl-L-lysine
-            "n6,n6-dimethyllysine" => ontologies
-                .psimod()
-                .get_by_index(&AccessionCode::Numeric(84)), // N6,N6-dimethyl-L-lysine
-            "n6-methyllysine" => ontologies
-                .psimod()
-                .get_by_index(&AccessionCode::Numeric(85)), // N6-methyl-L-lysine
-            "n6-succinyllysine" => ontologies
-                .psimod()
-                .get_by_index(&AccessionCode::Numeric(1819)), // N6-succinyl-L-lysine
-            "5-glutamyl glycerylphosphorylethanolamine" => ontologies
-                .psimod()
-                .get_by_index(&AccessionCode::Numeric(179)), // L-glutamyl 5-glycerylphosphorylethanolamine
-            "methionine (r)-sulfoxide" => ontologies
-                .psimod()
-                .get_by_index(&AccessionCode::Numeric(719)), // L-methionine sulfoxide
-            "(3s)-3-hydroxyasparagine" => ontologies
-                .psimod()
-                .get_by_index(&AccessionCode::Numeric(1401)), // (2S,3S)-3-hydroxyasparagine
-            "dimethylated arginine" => ontologies
-                .psimod()
-                .get_by_index(&AccessionCode::Numeric(783)), // dimethylated L-arginine
-            "symmetric dimethylarginine" => ontologies
-                .psimod()
-                .get_by_index(&AccessionCode::Numeric(76)), // symmetric dimethyl-L-arginine
-            "citrullination" | "citrulline" => ontologies
-                .psimod()
-                .get_by_index(&AccessionCode::Numeric(219)), // L-citrinulline
-            "4-carboxyglutamate" => ontologies
-                .psimod()
-                .get_by_index(&AccessionCode::Numeric(41)), // L-gamma-carboxyglutamic acid
-            "n6-(pyridoxal phosphate)lysine" => ontologies
-                .psimod()
-                .get_by_index(&AccessionCode::Numeric(128)), // N6-pyridoxal phosphate-L-lysine
-            "n6-butyryllysine" => ontologies
-                .psimod()
-                .get_by_index(&AccessionCode::Numeric(1781)), // N6-butanoyl-L-lysine
-            "s-nitrosocysteine" => ontologies
-                .psimod()
-                .get_by_index(&AccessionCode::Numeric(235)), // S-nitrosyl-L-cysteine
+            "formylation" => ontologies.unimod().get_by_index(&AccessionCode::Numeric(122)), /* formyl */
+            "methylation" => ontologies.unimod().get_by_index(&AccessionCode::Numeric(34)), /* methyl */
+            "acetylation" => ontologies.unimod().get_by_index(&AccessionCode::Numeric(1)), /* acetyl */
+            "crotonylation" => ontologies.unimod().get_by_index(&AccessionCode::Numeric(1363)), /* crotonyl */
+            "reduction" => ontologies.unimod().get_by_index(&AccessionCode::Numeric(447)), // deoxy
+            "water loss" => ontologies.unimod().get_by_index(&AccessionCode::Numeric(23)), /* dehydration */
+            "ammonia loss" => ontologies.unimod().get_by_index(&AccessionCode::Numeric(385)), /* ammonia-loss */
+            "sodium" => ontologies.unimod().get_by_index(&AccessionCode::Numeric(30)), // Cation:Na
+            "calcium" => ontologies.unimod().get_by_index(&AccessionCode::Numeric(951)), /* Cation:Ca[II] */
+            "zinc" => ontologies.unimod().get_by_index(&AccessionCode::Numeric(954)), /* Cation:Zn[II] */
+            "n-acetylarginine" => ontologies.psimod().get_by_index(&AccessionCode::Numeric(359)), /* N2-acetyl-L-arginine */
+            "n-acetylhistidine" => ontologies.psimod().get_by_index(&AccessionCode::Numeric(781)), /* N2-acetyl-L-histidine */
+            "n-acetyllysine" => ontologies.psimod().get_by_index(&AccessionCode::Numeric(57)), /* N2-acetyl-L-lysine */
+            "n6-acetyllysine" => ontologies.psimod().get_by_index(&AccessionCode::Numeric(64)), /* N6-acetyl-L-lysine */
+            "n-acetylaspartate" => ontologies.psimod().get_by_index(&AccessionCode::Numeric(51)), /* N-acetyl-L-aspartic acid */
+            "n-acetylglutamate" => ontologies.psimod().get_by_index(&AccessionCode::Numeric(53)), /* N-acetyl-L-glutamic acid */
+            "n-acetylcysteine" => ontologies.psimod().get_by_index(&AccessionCode::Numeric(52)), /* N-acetyl-L-cysteine */
+            "n-acetylproline" => ontologies.psimod().get_by_index(&AccessionCode::Numeric(59)), /* N-acetyl-L-proline */
+            "n-acetylserine" => ontologies.psimod().get_by_index(&AccessionCode::Numeric(60)), /* N-acetyl-L-serine */
+            "n-acetylthreonine" => ontologies.psimod().get_by_index(&AccessionCode::Numeric(61)), /* N-acetyl-L-threonine */
+            "n-acetylasparagine" => ontologies.psimod().get_by_index(&AccessionCode::Numeric(780)), /* N-acetyl-L-asparagine */
+            "n-acetylglutamine" => ontologies.psimod().get_by_index(&AccessionCode::Numeric(54)), /* N-acetyl-L-glutamine */
+            "n-acetylphenylalanine" => {
+                ontologies.psimod().get_by_index(&AccessionCode::Numeric(784))
+            } /* N-acetyl-L-phenylalanine */
+            "n-acetyltyrosine" => ontologies.psimod().get_by_index(&AccessionCode::Numeric(62)), /* N-acetyl-L-tyrosine */
+            "n-acetyltryptophan" => ontologies.psimod().get_by_index(&AccessionCode::Numeric(785)), /* N2-acetyl-L-tryptophan */
+            "n-acetylalanine" => ontologies.psimod().get_by_index(&AccessionCode::Numeric(50)), /* N-acetyl-L-alanine */
+            "n-acetylvaline" => ontologies.psimod().get_by_index(&AccessionCode::Numeric(63)), /* N-acetyl-L-valine */
+            "n-acetylisoleucine" => ontologies.psimod().get_by_index(&AccessionCode::Numeric(56)), /* N-acetyl-L-isoleucine */
+            "n-acetylleucine" => ontologies.psimod().get_by_index(&AccessionCode::Numeric(782)), /* N-acetyl-L-leucine */
+            "n-acetylmethionine" => ontologies.psimod().get_by_index(&AccessionCode::Numeric(58)), /* N-acetyl-L-methionine */
+            "4-hydroxyproline" => ontologies.psimod().get_by_index(&AccessionCode::Numeric(39)), /* 4-hydroxy-L-proline */
+            "5-hydroxylysine" => ontologies.psimod().get_by_index(&AccessionCode::Numeric(37)), /* 5-hydroxy-L-lysine */
+            "omega-n-methylarginine" => {
+                ontologies.psimod().get_by_index(&AccessionCode::Numeric(78))
+            } /* omega-N-methyl-L-arginine */
+            "tele-methylhistidine" => {
+                ontologies.psimod().get_by_index(&AccessionCode::Numeric(322))
+            } /* 1'-methyl-L-histidine */
+            "oxidation to kynurenine" => {
+                ontologies.psimod().get_by_index(&AccessionCode::Numeric(462))
+            } /* l-kynurenine */
+            "proline pyrrole to pyrrolidine six member ring" => {
+                ontologies.unimod().get_by_index(&AccessionCode::Numeric(360))
+            } /* pro->pyrrolidinone */
+            "n6,n6,n6-trimethyllysine" => {
+                ontologies.psimod().get_by_index(&AccessionCode::Numeric(83))
+            } /* N6,N6,N6-trimethyl-L-lysine */
+            "n6,n6-dimethyllysine" => ontologies.psimod().get_by_index(&AccessionCode::Numeric(84)), /* N6,N6-dimethyl-L-lysine */
+            "n6-methyllysine" => ontologies.psimod().get_by_index(&AccessionCode::Numeric(85)), /* N6-methyl-L-lysine */
+            "n6-succinyllysine" => ontologies.psimod().get_by_index(&AccessionCode::Numeric(1819)), /* N6-succinyl-L-lysine */
+            "5-glutamyl glycerylphosphorylethanolamine" => {
+                ontologies.psimod().get_by_index(&AccessionCode::Numeric(179))
+            } /* L-glutamyl 5-glycerylphosphorylethanolamine */
+            "methionine (r)-sulfoxide" => {
+                ontologies.psimod().get_by_index(&AccessionCode::Numeric(719))
+            } /* L-methionine sulfoxide */
+            "(3s)-3-hydroxyasparagine" => {
+                ontologies.psimod().get_by_index(&AccessionCode::Numeric(1401))
+            } /* (2S,3S)-3-hydroxyasparagine */
+            "dimethylated arginine" => {
+                ontologies.psimod().get_by_index(&AccessionCode::Numeric(783))
+            } /* dimethylated L-arginine */
+            "symmetric dimethylarginine" => {
+                ontologies.psimod().get_by_index(&AccessionCode::Numeric(76))
+            } /* symmetric dimethyl-L-arginine */
+            "citrullination" | "citrulline" => {
+                ontologies.psimod().get_by_index(&AccessionCode::Numeric(219))
+            } /* L-citrinulline */
+            "4-carboxyglutamate" => ontologies.psimod().get_by_index(&AccessionCode::Numeric(41)), /* L-gamma-carboxyglutamic acid */
+            "n6-(pyridoxal phosphate)lysine" => {
+                ontologies.psimod().get_by_index(&AccessionCode::Numeric(128))
+            } /* N6-pyridoxal phosphate-L-lysine */
+            "n6-butyryllysine" => ontologies.psimod().get_by_index(&AccessionCode::Numeric(1781)), /* N6-butanoyl-L-lysine */
+            "s-nitrosocysteine" => ontologies.psimod().get_by_index(&AccessionCode::Numeric(235)), /* S-nitrosyl-L-cysteine */
             "phosphoserine" | "phosphothreonine" | "phosphotyrosine" | "phosphorylation" => {
-                ontologies
-                    .unimod()
-                    .get_by_index(&AccessionCode::Numeric(21))
-            } // Phospho
+                ontologies.unimod().get_by_index(&AccessionCode::Numeric(21))
+            } /* Phospho */
             "pyro-glu" => ontologies.unimod().get_by_index(&AccessionCode::Numeric(
                 if position.is_some_and(|p| p.aminoacid.aminoacid() == AminoAcid::GlutamicAcid) {
                     27
                 } else {
                     28
                 },
-            )), // pyro Glu with the logic to pick the correct modification based on the amino acid it is placed on
+            )), /* pyro Glu with the logic to pick the correct modification based on the amino */
+            // acid it is placed on
             "sub a" => position
                 .filter(|p| p.modifications.is_empty())
                 .map(|p| p.aminoacid.aminoacid())
@@ -1082,114 +1009,114 @@ impl Modification {
                     _ => None,
                 })
                 .and_then(|i| ontologies.unimod().get_by_index(&AccessionCode::Numeric(i))),
-            "ala->ile" | "ala->leu" | "ala->xle" => ontologies
-                .unimod()
-                .get_by_index(&AccessionCode::Numeric(1125)),
-            "cys->ile" | "cys->leu" | "cys->xle" => ontologies
-                .unimod()
-                .get_by_index(&AccessionCode::Numeric(1126)),
-            "asp->ile" | "asp->leu" | "asp->xle" => ontologies
-                .unimod()
-                .get_by_index(&AccessionCode::Numeric(1127)),
-            "glu->ile" | "glu->leu" | "glu->xle" => ontologies
-                .unimod()
-                .get_by_index(&AccessionCode::Numeric(1128)),
-            "phe->ile" | "phe->leu" | "phe->xle" => ontologies
-                .unimod()
-                .get_by_index(&AccessionCode::Numeric(602)),
-            "gly->ile" | "gly->leu" | "gly->xle" => ontologies
-                .unimod()
-                .get_by_index(&AccessionCode::Numeric(1129)),
-            "his->ile" | "his->leu" | "his->xle" => ontologies
-                .unimod()
-                .get_by_index(&AccessionCode::Numeric(606)),
-            "lys->ile" | "lys->leu" | "lys->xle" => ontologies
-                .unimod()
-                .get_by_index(&AccessionCode::Numeric(590)),
-            "met->ile" | "met->leu" | "met->xle" => ontologies
-                .unimod()
-                .get_by_index(&AccessionCode::Numeric(608)),
-            "asn->ile" | "asn->leu" | "asn->xle" => ontologies
-                .unimod()
-                .get_by_index(&AccessionCode::Numeric(589)),
-            "pro->ile" | "pro->leu" | "pro->xle" => ontologies
-                .unimod()
-                .get_by_index(&AccessionCode::Numeric(604)),
-            "gln->ile" | "gln->leu" | "gln->xle" => ontologies
-                .unimod()
-                .get_by_index(&AccessionCode::Numeric(607)),
-            "arg->ile" | "arg->leu" | "arg->xle" => ontologies
-                .unimod()
-                .get_by_index(&AccessionCode::Numeric(609)),
-            "ser->ile" | "ser->leu" | "ser->xle" => ontologies
-                .unimod()
-                .get_by_index(&AccessionCode::Numeric(601)),
-            "thr->ile" | "thr->leu" | "thr->xle" => ontologies
-                .unimod()
-                .get_by_index(&AccessionCode::Numeric(588)),
-            "val->ile" | "val->leu" | "val->xle" => ontologies
-                .unimod()
-                .get_by_index(&AccessionCode::Numeric(605)),
-            "trp->ile" | "trp->leu" | "trp->xle" => ontologies
-                .unimod()
-                .get_by_index(&AccessionCode::Numeric(603)),
-            "tyr->ile" | "tyr->leu" | "tyr->xle" => ontologies
-                .unimod()
-                .get_by_index(&AccessionCode::Numeric(1130)),
-            "ile->ala" | "leu->ala" | "xle->ala" => ontologies
-                .unimod()
-                .get_by_index(&AccessionCode::Numeric(1047)),
-            "ile->arg" | "leu->arg" | "xle->arg" => ontologies
-                .unimod()
-                .get_by_index(&AccessionCode::Numeric(645)),
-            "ile->asn" | "leu->asn" | "xle->asn" => ontologies
-                .unimod()
-                .get_by_index(&AccessionCode::Numeric(622)),
-            "ile->asp" | "leu->asp" | "xle->asp" => ontologies
-                .unimod()
-                .get_by_index(&AccessionCode::Numeric(1069)),
-            "ile->cys" | "leu->cys" | "xle->cys" => ontologies
-                .unimod()
-                .get_by_index(&AccessionCode::Numeric(1059)),
-            "ile->gln" | "leu->gln" | "xle->gln" => ontologies
-                .unimod()
-                .get_by_index(&AccessionCode::Numeric(635)),
-            "ile->glu" | "leu->glu" | "xle->glu" => ontologies
-                .unimod()
-                .get_by_index(&AccessionCode::Numeric(1081)),
-            "ile->his" | "leu->his" | "xle->his" => ontologies
-                .unimod()
-                .get_by_index(&AccessionCode::Numeric(585)),
-            "ile->gly" | "leu->gly" | "xle->gly" => ontologies
-                .unimod()
-                .get_by_index(&AccessionCode::Numeric(1105)),
-            "ile->lys" | "leu->lys" | "xle->lys" => ontologies
-                .unimod()
-                .get_by_index(&AccessionCode::Numeric(600)),
-            "ile->met" | "leu->met" | "xle->met" => ontologies
-                .unimod()
-                .get_by_index(&AccessionCode::Numeric(614)),
-            "ile->phe" | "leu->phe" | "xle->phe" => ontologies
-                .unimod()
-                .get_by_index(&AccessionCode::Numeric(568)),
-            "ile->pro" | "leu->pro" | "xle->pro" => ontologies
-                .unimod()
-                .get_by_index(&AccessionCode::Numeric(629)),
-            "ile->ser" | "leu->ser" | "xle->ser" => ontologies
-                .unimod()
-                .get_by_index(&AccessionCode::Numeric(656)),
-            "ile->thr" | "leu->thr" | "xle->thr" => ontologies
-                .unimod()
-                .get_by_index(&AccessionCode::Numeric(664)),
-            "ile->trp" | "leu->trp" | "xle->trp" => ontologies
-                .unimod()
-                .get_by_index(&AccessionCode::Numeric(677)),
-            "ile->tyr" | "leu->tyr" | "xle->tyr" => ontologies
-                .unimod()
-                .get_by_index(&AccessionCode::Numeric(1248)),
-            "ile->val" | "leu->val" | "xle->val" => ontologies
-                .unimod()
-                .get_by_index(&AccessionCode::Numeric(671)),
+            "ala->ile" | "ala->leu" | "ala->xle" => {
+                ontologies.unimod().get_by_index(&AccessionCode::Numeric(1125))
+            }
+            "cys->ile" | "cys->leu" | "cys->xle" => {
+                ontologies.unimod().get_by_index(&AccessionCode::Numeric(1126))
+            }
+            "asp->ile" | "asp->leu" | "asp->xle" => {
+                ontologies.unimod().get_by_index(&AccessionCode::Numeric(1127))
+            }
+            "glu->ile" | "glu->leu" | "glu->xle" => {
+                ontologies.unimod().get_by_index(&AccessionCode::Numeric(1128))
+            }
+            "phe->ile" | "phe->leu" | "phe->xle" => {
+                ontologies.unimod().get_by_index(&AccessionCode::Numeric(602))
+            }
+            "gly->ile" | "gly->leu" | "gly->xle" => {
+                ontologies.unimod().get_by_index(&AccessionCode::Numeric(1129))
+            }
+            "his->ile" | "his->leu" | "his->xle" => {
+                ontologies.unimod().get_by_index(&AccessionCode::Numeric(606))
+            }
+            "lys->ile" | "lys->leu" | "lys->xle" => {
+                ontologies.unimod().get_by_index(&AccessionCode::Numeric(590))
+            }
+            "met->ile" | "met->leu" | "met->xle" => {
+                ontologies.unimod().get_by_index(&AccessionCode::Numeric(608))
+            }
+            "asn->ile" | "asn->leu" | "asn->xle" => {
+                ontologies.unimod().get_by_index(&AccessionCode::Numeric(589))
+            }
+            "pro->ile" | "pro->leu" | "pro->xle" => {
+                ontologies.unimod().get_by_index(&AccessionCode::Numeric(604))
+            }
+            "gln->ile" | "gln->leu" | "gln->xle" => {
+                ontologies.unimod().get_by_index(&AccessionCode::Numeric(607))
+            }
+            "arg->ile" | "arg->leu" | "arg->xle" => {
+                ontologies.unimod().get_by_index(&AccessionCode::Numeric(609))
+            }
+            "ser->ile" | "ser->leu" | "ser->xle" => {
+                ontologies.unimod().get_by_index(&AccessionCode::Numeric(601))
+            }
+            "thr->ile" | "thr->leu" | "thr->xle" => {
+                ontologies.unimod().get_by_index(&AccessionCode::Numeric(588))
+            }
+            "val->ile" | "val->leu" | "val->xle" => {
+                ontologies.unimod().get_by_index(&AccessionCode::Numeric(605))
+            }
+            "trp->ile" | "trp->leu" | "trp->xle" => {
+                ontologies.unimod().get_by_index(&AccessionCode::Numeric(603))
+            }
+            "tyr->ile" | "tyr->leu" | "tyr->xle" => {
+                ontologies.unimod().get_by_index(&AccessionCode::Numeric(1130))
+            }
+            "ile->ala" | "leu->ala" | "xle->ala" => {
+                ontologies.unimod().get_by_index(&AccessionCode::Numeric(1047))
+            }
+            "ile->arg" | "leu->arg" | "xle->arg" => {
+                ontologies.unimod().get_by_index(&AccessionCode::Numeric(645))
+            }
+            "ile->asn" | "leu->asn" | "xle->asn" => {
+                ontologies.unimod().get_by_index(&AccessionCode::Numeric(622))
+            }
+            "ile->asp" | "leu->asp" | "xle->asp" => {
+                ontologies.unimod().get_by_index(&AccessionCode::Numeric(1069))
+            }
+            "ile->cys" | "leu->cys" | "xle->cys" => {
+                ontologies.unimod().get_by_index(&AccessionCode::Numeric(1059))
+            }
+            "ile->gln" | "leu->gln" | "xle->gln" => {
+                ontologies.unimod().get_by_index(&AccessionCode::Numeric(635))
+            }
+            "ile->glu" | "leu->glu" | "xle->glu" => {
+                ontologies.unimod().get_by_index(&AccessionCode::Numeric(1081))
+            }
+            "ile->his" | "leu->his" | "xle->his" => {
+                ontologies.unimod().get_by_index(&AccessionCode::Numeric(585))
+            }
+            "ile->gly" | "leu->gly" | "xle->gly" => {
+                ontologies.unimod().get_by_index(&AccessionCode::Numeric(1105))
+            }
+            "ile->lys" | "leu->lys" | "xle->lys" => {
+                ontologies.unimod().get_by_index(&AccessionCode::Numeric(600))
+            }
+            "ile->met" | "leu->met" | "xle->met" => {
+                ontologies.unimod().get_by_index(&AccessionCode::Numeric(614))
+            }
+            "ile->phe" | "leu->phe" | "xle->phe" => {
+                ontologies.unimod().get_by_index(&AccessionCode::Numeric(568))
+            }
+            "ile->pro" | "leu->pro" | "xle->pro" => {
+                ontologies.unimod().get_by_index(&AccessionCode::Numeric(629))
+            }
+            "ile->ser" | "leu->ser" | "xle->ser" => {
+                ontologies.unimod().get_by_index(&AccessionCode::Numeric(656))
+            }
+            "ile->thr" | "leu->thr" | "xle->thr" => {
+                ontologies.unimod().get_by_index(&AccessionCode::Numeric(664))
+            }
+            "ile->trp" | "leu->trp" | "xle->trp" => {
+                ontologies.unimod().get_by_index(&AccessionCode::Numeric(677))
+            }
+            "ile->tyr" | "leu->tyr" | "xle->tyr" => {
+                ontologies.unimod().get_by_index(&AccessionCode::Numeric(1248))
+            }
+            "ile->val" | "leu->val" | "xle->val" => {
+                ontologies.unimod().get_by_index(&AccessionCode::Numeric(671))
+            }
             _ => parse_modification::numerical_mod(MassTag::None, &name)
                 .map(|m| m.1)
                 .ok()

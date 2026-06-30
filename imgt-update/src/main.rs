@@ -1,24 +1,20 @@
 //! Update the ontologies used in mzcore
-use context_error as _; // Used to set the colored feature
-use imgt::IMGT;
-use itertools::Itertools;
-use mzcv::CVIndex;
 use std::{
     fs::File,
     io::{BufWriter, Write},
 };
 
+use context_error as _; // Used to set the colored feature
+use imgt::IMGT;
+use itertools::Itertools;
+use mzcv::CVIndex;
+
 fn main() {
-    let args: Vec<String> = std::env::args()
-        .skip(1)
-        .map(|v| v.to_ascii_lowercase())
-        .collect();
+    let args: Vec<String> = std::env::args().skip(1).map(|v| v.to_ascii_lowercase()).collect();
     let mut index = CVIndex::<IMGT>::empty();
 
     let errs = if let Some(path) = args.first() {
-        index
-            .update_from_path([Some(std::path::Path::new(path))], false)
-            .unwrap()
+        index.update_from_path([Some(std::path::Path::new(path))], false).unwrap()
     } else {
         index.update_from_url(&[]).unwrap()
     };
@@ -33,9 +29,7 @@ fn main() {
         index.version().last_updated().as_deref().unwrap_or("-"),
         index.len()
     );
-    index
-        .save_to_cache_at(std::path::Path::new("imgt/src/IMGT.dat"))
-        .unwrap();
+    index.save_to_cache_at(std::path::Path::new("imgt/src/IMGT.dat")).unwrap();
 
     // Build docs
     let mut docs = BufWriter::new(File::create("imgt/src/germlines.md").unwrap());

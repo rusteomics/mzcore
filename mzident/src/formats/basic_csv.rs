@@ -5,18 +5,18 @@ use std::{
     path::{Path, PathBuf},
 };
 
+use mzcore::{
+    csv::{CsvLine, parse_csv},
+    ontology::Ontologies,
+    sequence::{FlankingSequence, Linked, PeptidoformIonSet},
+    system::{Mass, MassOverCharge, Time, isize::Charge},
+};
 use serde::{Deserialize, Serialize};
 
 use crate::{
     BoxedIdentifiedPeptideIter, KnownFileFormat, PSM, PSMData, PSMFileFormatVersion, PSMMetaData,
     PSMSource, PeptidoformPresent, SpectrumId, SpectrumIds,
     common_parser::{Location, OptionalColumn},
-};
-use mzcore::{
-    csv::{CsvLine, parse_csv},
-    ontology::Ontologies,
-    sequence::{FlankingSequence, Linked, PeptidoformIonSet},
-    system::{Mass, MassOverCharge, Time, isize::Charge},
 };
 
 static NUMBER_ERROR: (&str, &str) = (
@@ -54,6 +54,7 @@ impl PSMFileFormatVersion<BasicCSVFormat> for BasicCSVVersion {
             Self::Basic => BASIC,
         }
     }
+
     fn name(self) -> &'static str {
         match self {
             Self::Basic => "Basic",
@@ -78,6 +79,8 @@ pub const BASIC: BasicCSVFormat = BasicCSVFormat {
 };
 
 impl PSMMetaData for BasicCSVPSM {
+    type Protein = crate::NoProtein;
+
     fn peptidoform_ion_set(&self) -> Option<Cow<'_, PeptidoformIonSet>> {
         Some(Cow::Borrowed(&self.sequence))
     }
@@ -127,10 +130,9 @@ impl PSMMetaData for BasicCSVPSM {
     }
 
     fn scans(&self) -> SpectrumIds {
-        SpectrumIds::FileKnown(vec![(
-            self.raw_file.clone(),
-            vec![SpectrumId::Index(self.scan_index)],
-        )])
+        SpectrumIds::FileKnown(vec![(self.raw_file.clone(), vec![SpectrumId::Index(
+            self.scan_index,
+        )])])
     }
 
     fn experimental_mz(&self) -> Option<MassOverCharge> {
@@ -140,8 +142,6 @@ impl PSMMetaData for BasicCSVPSM {
     fn experimental_mass(&self) -> Option<Mass> {
         None
     }
-
-    type Protein = crate::NoProtein;
 
     fn protein_location(&self) -> Option<Range<u16>> {
         None

@@ -1,4 +1,11 @@
 #![allow(dead_code)]
+use std::{
+    num::NonZero,
+    ops::{Add, AddAssign},
+};
+
+use thin_vec::ThinVec;
+
 use crate::{
     chemistry::SatelliteLabel,
     glycan::{
@@ -9,11 +16,6 @@ use crate::{
     prelude::{AminoAcid, Element},
     sequence::{GnoSubsumption, MassTag, Position, SimpleModificationInner},
 };
-use std::{
-    num::NonZero,
-    ops::{Add, AddAssign},
-};
-use thin_vec::ThinVec;
 
 /// Query the used amount of space at runtime
 #[doc(hidden)]
@@ -107,6 +109,7 @@ impl AddAssign for UsedSpace {
 
 impl Add for UsedSpace {
     type Output = Self;
+
     fn add(self, rhs: Self) -> Self {
         Self {
             stack: self.stack + rhs.stack,
@@ -120,6 +123,7 @@ impl Add for UsedSpace {
 
 impl Add<()> for UsedSpace {
     type Output = Self;
+
     fn add(self, _rhs: ()) -> Self {
         self
     }
@@ -377,7 +381,7 @@ impl Space for mzcv::Curie {
 impl Space for mzcv::AccessionCode {
     fn space(&self) -> UsedSpace {
         match self {
-            Self::Alphanumeric(_, _) => UsedSpace::stack(8),
+            Self::Alphanumeric(..) => UsedSpace::stack(8),
             Self::Numeric(n) => n.space(),
         }
         .set_total::<Self>()
@@ -467,8 +471,7 @@ fn gnome_space() {
         .data()
         .iter_indexed()
         .fold((0_usize, UsedSpace::default()), |acc, (_, e)| {
-            e.description()
-                .map_or(acc, |d| (acc.0 + 1, d.space() + acc.1))
+            e.description().map_or(acc, |d| (acc.0 + 1, d.space() + acc.1))
         });
     let (number_structures, space_structures) = crate::ontology::STATIC_ONTOLOGIES
         .gnome()

@@ -6,12 +6,14 @@ use mzcore::{
 
 use crate::annotation::model::{FragmentationModel, get_all_sidechain_losses};
 
-/// The possibilities for primary ions, a list of all allowed neutral losses, all charge options, and all allowed variant ions
+/// The possibilities for primary ions, a list of all allowed neutral losses, all charge options,
+/// and all allowed variant ions
 pub type PossiblePrimaryIons<'a> = (Vec<Vec<NeutralLoss>>, ChargeRange, &'a [i8]);
 /// The possibilities for satellite ions, a list of all satellite ions with their amino acid and
 /// distance from the parent backbone cleavage, as well as all ion settings as for primary series.
 pub type PossibleSatelliteIons<'a> = (Vec<(AminoAcid, u8)>, PossiblePrimaryIons<'a>);
-/// The settings for immonium ions as a reference. The allowed charge range, and the allowed losses per amino acid.
+/// The settings for immonium ions as a reference. The allowed charge range, and the allowed losses
+/// per amino acid.
 pub type ImmoniumSettingsRef<'a> = (ChargeRange, &'a [(Vec<AminoAcid>, Vec<NeutralLoss>)]);
 
 /// A struct to handle all possible fragments that could be generated on a single location
@@ -43,38 +45,15 @@ pub struct PossibleIons<'a> {
 impl PossibleIons<'_> {
     /// Give an upper bound for the number of theoretical fragment for these possible ions
     pub fn size_upper_bound(&self) -> usize {
-        self.a
-            .as_ref()
-            .map(|o| (o.0.len() + 1) * o.2.len())
-            .unwrap_or_default()
-            + self
-                .b
-                .as_ref()
-                .map(|o| (o.0.len() + 1) * o.2.len())
-                .unwrap_or_default()
-            + self
-                .c
-                .as_ref()
-                .map(|o| (o.0.len() + 1) * o.2.len())
-                .unwrap_or_default()
+        self.a.as_ref().map(|o| (o.0.len() + 1) * o.2.len()).unwrap_or_default()
+            + self.b.as_ref().map(|o| (o.0.len() + 1) * o.2.len()).unwrap_or_default()
+            + self.c.as_ref().map(|o| (o.0.len() + 1) * o.2.len()).unwrap_or_default()
             + self.d.0.len() * 2 * (self.d.1.0.len() + 1) * self.d.1.2.len()
             + self.v.0.len() * (self.v.1.0.len() + 1) * self.v.1.2.len()
             + self.w.0.len() * 2 * (self.w.1.0.len() + 1) * self.w.1.2.len()
-            + self
-                .x
-                .as_ref()
-                .map(|o| (o.0.len() + 1) * o.2.len())
-                .unwrap_or_default()
-            + self
-                .y
-                .as_ref()
-                .map(|o| (o.0.len() + 1) * o.2.len())
-                .unwrap_or_default()
-            + self
-                .z
-                .as_ref()
-                .map(|o| (o.0.len() + 1) * o.2.len())
-                .unwrap_or_default()
+            + self.x.as_ref().map(|o| (o.0.len() + 1) * o.2.len()).unwrap_or_default()
+            + self.y.as_ref().map(|o| (o.0.len() + 1) * o.2.len()).unwrap_or_default()
+            + self.z.as_ref().map(|o| (o.0.len() + 1) * o.2.len()).unwrap_or_default()
             + usize::from(self.immonium.is_some())
     }
 }

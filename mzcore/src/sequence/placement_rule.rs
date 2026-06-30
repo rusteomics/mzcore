@@ -115,17 +115,13 @@ impl ParseJson for Position {
 
 impl std::fmt::Display for Position {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "{}",
-            match self {
-                Self::Anywhere => "Anywhere",
-                Self::AnyNTerm => "AnyNTerm",
-                Self::AnyCTerm => "AnyCTerm",
-                Self::ProteinNTerm => "ProteinNTerm",
-                Self::ProteinCTerm => "ProteinCTerm",
-            },
-        )
+        write!(f, "{}", match self {
+            Self::Anywhere => "Anywhere",
+            Self::AnyNTerm => "AnyNTerm",
+            Self::AnyCTerm => "AnyCTerm",
+            Self::ProteinNTerm => "ProteinNTerm",
+            Self::ProteinCTerm => "ProteinCTerm",
+        },)
     }
 }
 
@@ -164,7 +160,7 @@ impl PlacementRule {
             Self::AminoAcid(allowed_aa, r_pos) => {
                 allowed_aa.contains(&aa) && RulePosition::is_possible(*r_pos, position, false)
             }
-            Self::PsiModification(_, _) => false,
+            Self::PsiModification(..) => false,
             Self::Position(r_pos) => RulePosition::is_possible(*r_pos, position, true),
         }
     }
@@ -238,6 +234,7 @@ impl PlacementRule {
 
 impl FromStr for PlacementRule {
     type Err = BoxedError<'static, BasicKind>;
+
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         if let Some((head, tail)) = s.split_once('@') {
             let aa: Vec<AminoAcid> = head
@@ -249,17 +246,15 @@ impl FromStr for PlacementRule {
                             BasicKind::Error,
                             "Invalid amino acid",
                             "Invalid amino acid in specified amino acids in placement rule",
-                            Context::default()
-                                .lines(0, s)
-                                .add_highlight((0, i, 1))
-                                .to_owned(),
+                            Context::default().lines(0, s).add_highlight((0, i, 1)).to_owned(),
                         )
                     })
                 })
                 .collect::<Result<Vec<_>, _>>()?;
             tail.parse().map_or_else(
                 |()| {
-                    Err(BoxedError::new(BasicKind::Error,
+                    Err(BoxedError::new(
+                        BasicKind::Error,
                         "Invalid position",
                         "Use any of the following for the position: Anywhere, AnyNTerm, ProteinNTerm, AnyCTerm, ProteinCTerm",
                         Context::default().lines(0, s).add_highlight((0, head.len() + 1, tail.len())).to_owned(),
@@ -331,6 +326,7 @@ impl Position {
 
 impl FromStr for Position {
     type Err = ();
+
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s.to_ascii_lowercase().as_str() {
             "" | "anywhere" => Ok(Self::Anywhere),
@@ -347,12 +343,11 @@ impl FromStr for Position {
 #[expect(clippy::missing_panics_doc)]
 mod tests {
 
+    use super::*;
     use crate::{
         ontology::STATIC_ONTOLOGIES,
         sequence::{CheckedAminoAcid, RulePossible},
     };
-
-    use super::*;
     #[test]
     fn multi_level_rule() {
         let ontologies = &STATIC_ONTOLOGIES;
@@ -381,7 +376,8 @@ mod tests {
     #[test]
     fn place_anywhere() {
         assert!(
-            // TODO: needs to be able the tell apart side chain and terminus for N and C terminal AAs
+            // TODO: needs to be able the tell apart side chain and terminus for N and C terminal
+            // AAs
             PlacementRule::AminoAcid(vec![AminoAcid::Glutamine].into(), Position::ProteinNTerm)
                 .is_possible(
                     &SequenceElement::new(CheckedAminoAcid::Q, None),

@@ -5,13 +5,6 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use serde::{Deserialize, Serialize};
-
-use crate::{
-    BoxedIdentifiedPeptideIter, KnownFileFormat, PSM, PSMData, PSMFileFormatVersion, PSMMetaData,
-    PSMSource, PeptidoformPresent, SpectrumId, SpectrumIds,
-    common_parser::{Location, OptionalColumn},
-};
 use mzcore::{
     csv::{CsvLine, parse_csv},
     ontology::Ontologies,
@@ -19,6 +12,13 @@ use mzcore::{
         FlankingSequence, Peptidoform, PeptidoformIonSet, SemiAmbiguous, SloppyParsingParameters,
     },
     system::{Mass, MassOverCharge, Time, isize::Charge},
+};
+use serde::{Deserialize, Serialize};
+
+use crate::{
+    BoxedIdentifiedPeptideIter, KnownFileFormat, PSM, PSMData, PSMFileFormatVersion, PSMMetaData,
+    PSMSource, PeptidoformPresent, SpectrumId, SpectrumIds,
+    common_parser::{Location, OptionalColumn},
 };
 
 static NUMBER_ERROR: (&str, &str) = (
@@ -91,6 +91,7 @@ impl PSMFileFormatVersion<PowerNovoFormat> for PowerNovoVersion {
             Self::V1_0_17 => POWERNOVO_V1_0_17,
         }
     }
+
     fn name(self) -> &'static str {
         match self {
             Self::V1_0_17 => "v1.0.17",
@@ -99,6 +100,8 @@ impl PSMFileFormatVersion<PowerNovoFormat> for PowerNovoVersion {
 }
 
 impl PSMMetaData for PowerNovoPSM {
+    type Protein = crate::NoProtein;
+
     fn peptidoform_ion_set(&self) -> Option<Cow<'_, PeptidoformIonSet>> {
         Some(Cow::Owned(self.peptide.clone().into()))
     }
@@ -112,9 +115,7 @@ impl PSMMetaData for PowerNovoPSM {
     }
 
     fn id(&self) -> String {
-        self.scan
-            .as_ref()
-            .map_or_else(|| "-".to_string(), ToString::to_string)
+        self.scan.as_ref().map_or_else(|| "-".to_string(), ToString::to_string)
     }
 
     fn search_engine(&self) -> Option<mzcv::Term> {
@@ -168,8 +169,6 @@ impl PSMMetaData for PowerNovoPSM {
     fn experimental_mass(&self) -> Option<Mass> {
         None
     }
-
-    type Protein = crate::NoProtein;
 
     fn protein_location(&self) -> Option<Range<u16>> {
         None

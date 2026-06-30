@@ -1,6 +1,7 @@
 #![allow(clippy::missing_panics_doc)]
-use crate::{NovorPSM, NovorVersion, TestSettings, test_format};
 use std::io::BufReader;
+
+use crate::{NovorPSM, NovorVersion, TestSettings, test_format};
 
 #[test]
 fn novor_old_denovo() {

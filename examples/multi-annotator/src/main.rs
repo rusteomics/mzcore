@@ -12,9 +12,8 @@ use std::{
     },
 };
 
-use context_error::CombineErrorsExtender;
-
 use clap::Parser;
+use context_error::CombineErrorsExtender;
 use directories::ProjectDirs;
 use itertools::Itertools;
 use mzannotate::{
@@ -45,25 +44,31 @@ use rayon::prelude::*;
 #[allow(clippy::struct_excessive_bools)]
 #[derive(Debug, Parser)]
 struct Cli {
-    /// The input csv file, should have the following columns: `raw_file` (full path), `scan_index` (0-based index in the raw file), `z`, `sequence`, and can have `mode` (`etd`/`td_etd`/`ethcd`/`etcad`/`eacid`/`ead`/`hcd`/`cid`/`all`/`none`, defaults to the global model)
+    /// The input csv file, should have the following columns: `raw_file` (full path), `scan_index`
+    /// (0-based index in the raw file), `z`, `sequence`, and can have `mode`
+    /// (`etd`/`td_etd`/`ethcd`/`etcad`/`eacid`/`ead`/`hcd`/`cid`/`all`/`none`, defaults to the
+    /// global model)
     #[arg(short, long)]
     in_path: String,
     /// The output path to output the resulting csv file
     #[arg(short, long)]
     out_path: String,
-    /// Global mode, will be overruled by line specific modes (`etd`/`td_etd`/`ethcd`/`etcad`/`eacid`/`ead`/`hcd`/`cid`/`all`/`none`)
+    /// Global mode, will be overruled by line specific modes
+    /// (`etd`/`td_etd`/`ethcd`/`etcad`/`eacid`/`ead`/`hcd`/`cid`/`all`/`none`)
     #[arg(long, default_value_t = String::from("all"))]
     mode: String,
     /// Turns on reporting of glycan Y-ions in a charge independent manner
     #[arg(long)]
     charge_independent_Y: bool,
-    /// Turns on reporting of intensity statistics, the fraction of total TIC that could be annotated as well as the TIC for each spectrum
+    /// Turns on reporting of intensity statistics, the fraction of total TIC that could be
+    /// annotated as well as the TIC for each spectrum
     #[arg(long)]
     report_intensity: bool,
     /// Turns on reporting of false match rate statistics
     #[arg(long)]
     report_false_match_rate: bool,
-    /// Turns on reporting of I/L coverage by satellite ions, returns a list with a 0 (not covered) or 1 (covered) for each I or L in the peptide
+    /// Turns on reporting of I/L coverage by satellite ions, returns a list with a 0 (not covered)
+    /// or 1 (covered) for each I or L in the peptide
     #[arg(long)]
     report_IL_satellite_coverage: bool,
     /// Turns on reporting of fragments found and peaks annotated statistics
@@ -84,25 +89,27 @@ struct Cli {
     #[arg(long)]
     no_custom_models: bool,
     /// Turns on specific counting for glycan fragments. This collects statistics for any fragment
-    /// that contains the given monosaccharide. It returns two columns for every given monosaccharide
-    /// one containing B numbers `{found}/{total}` and one containing Y numbers `{found}/{total}`.
+    /// that contains the given monosaccharide. It returns two columns for every given
+    /// monosaccharide one containing B numbers `{found}/{total}` and one containing Y numbers
+    /// `{found}/{total}`.
     ///
     /// This parameters should be specified with monosaccharide names separated by commas.
     #[arg(long, value_parser=monosaccharide_parser, value_delimiter = ',')]
     glycan_buckets: Vec<MonoSaccharide>,
-    /// Filter the MS2 spectra to only contain peaks above this fraction of the intensity value of the TIC.
-    /// First the TIC filter is applied, then the base peak, then the absolute.
+    /// Filter the MS2 spectra to only contain peaks above this fraction of the intensity value of
+    /// the TIC. First the TIC filter is applied, then the base peak, then the absolute.
     #[arg(long)]
     tic_noise_threshold: Option<f32>,
-    /// Filter the MS2 spectra to only contain peaks above this fraction of the intensity value of the base peaks.
-    /// First the TIC filter is applied, then the base peak, then the absolute.
+    /// Filter the MS2 spectra to only contain peaks above this fraction of the intensity value of
+    /// the base peaks. First the TIC filter is applied, then the base peak, then the absolute.
     #[arg(long)]
     basepeak_noise_threshold: Option<f32>,
     /// Filter the MS2 spectra to only contain peaks above this intensity value.
     /// First the TIC filter is applied, then the base peak, then the absolute.
     #[arg(long)]
     absolute_noise_threshold: Option<f32>,
-    /// MS2 fragment match tolerance. Use a number followed by `ppm`, `Th`, `m/z`, or `mz` (capitalisation is ignored).
+    /// MS2 fragment match tolerance. Use a number followed by `ppm`, `Th`, `m/z`, or `mz`
+    /// (capitalisation is ignored).
     #[arg(short, long, default_value_t = Tolerance::new_ppm(20.0.into()), value_parser=mass_tolerance_parse)]
     tolerance: Tolerance<MassOverCharge>,
 }
@@ -162,7 +169,10 @@ fn main() {
     let custom_models = if args.no_custom_models || !custom_models_path.exists() {
         None
     } else {
-        Some(parse_custom_models(&custom_models_path).expect("Could not parse custom models file, if you do not need these you can skip parsing them using the appropriate flag"))
+        Some(
+            parse_custom_models(&custom_models_path)
+                .expect("Could not parse custom models file, if you do not need these you can skip parsing them using the appropriate flag"),
+        )
     };
     let model = select_model(
         &args.mode,

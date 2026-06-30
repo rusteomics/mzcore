@@ -1,7 +1,6 @@
 use std::{borrow::Cow, ops::Range, str::FromStr};
 
 use context_error::*;
-
 use mzcore::csv::CsvLine;
 
 /// The way to set up a format family.
@@ -20,13 +19,12 @@ use mzcore::csv::CsvLine;
 /// Please check the other file formats for how the precisely use the syntax.
 ///
 /// # Notes
-/// * Do not forget to implement `PSMMetaData` for the `<$format>PSM` type, this will set up the logic
-///   for an automatic `From<format> for PSMData` implementation.
+/// * Do not forget to implement `PSMMetaData` for the `<$format>PSM` type, this will set up the
+///   logic for an automatic `From<format> for PSMData` implementation.
 /// * Do not forget to create a `<$format>Version` enum which contains all supported version of the
 ///   format, which additionally should implement `PSMFileFormatVersion`.
 /// * For each version a public constant should be generated that contains an instantiation of the
 ///   `<$format>Format` type, these are also the ones that need to be listed in the versions list.
-///
 macro_rules! format_family {
      ($(#[doc = $ddoc:expr])*
      $format:ident,
@@ -255,7 +253,8 @@ pub(super) enum OptionalColumn {
     NotAvailable,
     /// This column is optional in this version
     Optional(&'static str),
-    /// This column is required in this version (but as it is an `OptionalColumn` not in some other version)
+    /// This column is required in this version (but as it is an `OptionalColumn` not in some other
+    /// version)
     Required(&'static str),
 }
 
@@ -297,7 +296,8 @@ impl HasLocation for CsvLine {
     }
 }
 
-/// The base location type to keep track of the location of to be parsed pieces in the monadic parser combinators below
+/// The base location type to keep track of the location of to be parsed pieces in the monadic
+/// parser combinators below
 #[derive(Clone)]
 pub(super) struct Location<'a> {
     pub(super) line: &'a CsvLine,
@@ -510,28 +510,34 @@ pub(super) trait OptionalLocation<'a> {
 }
 
 impl<'a> OptionalLocation<'a> for Option<Location<'a>> {
+    type ArrayIter = std::vec::IntoIter<Location<'a>>;
+
     fn parse<T: FromStr>(
         self,
         base_error: (&'static str, &'static str),
     ) -> Result<Option<T>, BoxedError<'static, BasicKind>> {
         self.map(|l| l.parse::<T>(base_error)).transpose()
     }
+
     fn parse_with<T>(
         self,
         f: impl Fn(Location<'a>) -> Result<T, BoxedError<'static, BasicKind>>,
     ) -> Result<Option<T>, BoxedError<'static, BasicKind>> {
         self.map(f).transpose()
     }
+
     fn get_string(self) -> Option<String> {
         self.map(Location::get_string)
     }
-    type ArrayIter = std::vec::IntoIter<Location<'a>>;
+
     fn array(self, sep: char) -> Self::ArrayIter {
         self.map(|l| l.array(sep)).unwrap_or_default()
     }
+
     fn optional_array(self, sep: char) -> Option<Self::ArrayIter> {
         self.map(|l| l.array(sep))
     }
+
     fn ignore(self, pattern: &str) -> Self {
         self.and_then(|s| s.ignore(pattern))
     }

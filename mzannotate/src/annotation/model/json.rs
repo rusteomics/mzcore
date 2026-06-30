@@ -29,75 +29,85 @@ impl ParseJson for FragmentationModel {
             };
             Ok(Self {
                 a: PrimaryIonSeries::from_json_value(map.remove("a").ok_or_else(|| {
-                    BoxedError::new(BasicKind::Error,
+                    BoxedError::new(
+                        BasicKind::Error,
                         "Invalid FragmentationModel",
                         "The required property 'a' is missing",
                         context(&map),
                     )
                 })?)?,
                 b: PrimaryIonSeries::from_json_value(map.remove("b").ok_or_else(|| {
-                    BoxedError::new(BasicKind::Error,
+                    BoxedError::new(
+                        BasicKind::Error,
                         "Invalid FragmentationModel",
                         "The required property 'b' is missing",
                         context(&map),
                     )
                 })?)?,
                 c: PrimaryIonSeries::from_json_value(map.remove("c").ok_or_else(|| {
-                    BoxedError::new(BasicKind::Error,
+                    BoxedError::new(
+                        BasicKind::Error,
                         "Invalid FragmentationModel",
                         "The required property 'c' is missing",
                         context(&map),
                     )
                 })?)?,
                 d: SatelliteIonSeries::from_json_value(map.remove("d").ok_or_else(|| {
-                    BoxedError::new(BasicKind::Error,
+                    BoxedError::new(
+                        BasicKind::Error,
                         "Invalid FragmentationModel",
                         "The required property 'd' is missing",
                         context(&map),
                     )
                 })?)?,
                 v: SatelliteIonSeries::from_json_value(map.remove("v").ok_or_else(|| {
-                    BoxedError::new(BasicKind::Error,
+                    BoxedError::new(
+                        BasicKind::Error,
                         "Invalid FragmentationModel",
                         "The required property 'v' is missing",
                         context(&map),
                     )
                 })?)?,
                 w: SatelliteIonSeries::from_json_value(map.remove("w").ok_or_else(|| {
-                    BoxedError::new(BasicKind::Error,
+                    BoxedError::new(
+                        BasicKind::Error,
                         "Invalid FragmentationModel",
                         "The required property 'w' is missing",
                         context(&map),
                     )
                 })?)?,
                 x: PrimaryIonSeries::from_json_value(map.remove("x").ok_or_else(|| {
-                    BoxedError::new(BasicKind::Error,
+                    BoxedError::new(
+                        BasicKind::Error,
                         "Invalid FragmentationModel",
                         "The required property 'x' is missing",
                         context(&map),
                     )
                 })?)?,
                 y: PrimaryIonSeries::from_json_value(map.remove("y").ok_or_else(|| {
-                    BoxedError::new(BasicKind::Error,
+                    BoxedError::new(
+                        BasicKind::Error,
                         "Invalid FragmentationModel",
                         "The required property 'y' is missing",
                         context(&map),
                     )
                 })?)?,
                 z: PrimaryIonSeries::from_json_value(map.remove("z").ok_or_else(|| {
-                    BoxedError::new(BasicKind::Error,
+                    BoxedError::new(
+                        BasicKind::Error,
                         "Invalid FragmentationModel",
                         "The required property 'z' is missing",
                         context(&map),
                     )
                 })?)?,
                 precursor: <(
-                        Vec<NeutralLoss>,
-                        Vec<(Vec<AminoAcid>, Vec<NeutralLoss>)>,
-                        (u8, Option<Vec<AminoAcid>>),
-                        ChargeRange,
-                    )>::from_json_value(map.remove("precursor").ok_or_else(|| {
-                    BoxedError::new(BasicKind::Error,
+                    Vec<NeutralLoss>,
+                    Vec<(Vec<AminoAcid>, Vec<NeutralLoss>)>,
+                    (u8, Option<Vec<AminoAcid>>),
+                    ChargeRange,
+                )>::from_json_value(map.remove("precursor").ok_or_else(|| {
+                    BoxedError::new(
+                        BasicKind::Error,
                         "Invalid FragmentationModel",
                         "The required property 'precursor' is missing",
                         context(&map),
@@ -105,40 +115,51 @@ impl ParseJson for FragmentationModel {
                 })?)?,
                 internal: None, //TODO: Parse at some point
                 immonium: Option::from_json_value(map.remove("immonium").ok_or_else(|| {
-                    BoxedError::new(BasicKind::Error,
+                    BoxedError::new(
+                        BasicKind::Error,
                         "Invalid FragmentationModel",
                         "The required property 'immonium' is missing",
                         context(&map),
                     )
                 })?)?,
-                modification_specific_neutral_losses: bool::from_json_value(map.remove("modification_specific_neutral_losses").ok_or_else(|| {
-                    BoxedError::new(BasicKind::Error,
-                        "Invalid FragmentationModel",
-                        "The required property 'modification_specific_neutral_losses' is missing",
-                        context(&map),
-                    )
-                })?)?,
-                modification_specific_diagnostic_ions: Option::from_json_value(map.remove("modification_specific_diagnostic_ions").ok_or_else(|| {
-                    BoxedError::new(BasicKind::Error,
-                        "Invalid FragmentationModel",
-                        "The required property 'modification_specific_diagnostic_ions' is missing",
-                        context(&map),
-                    )
-                })?)?,
+                modification_specific_neutral_losses: bool::from_json_value(
+                    map.remove("modification_specific_neutral_losses").ok_or_else(|| {
+                        BoxedError::new(
+                            BasicKind::Error,
+                            "Invalid FragmentationModel",
+                            "The required property 'modification_specific_neutral_losses' is missing",
+                            context(&map),
+                        )
+                    })?,
+                )?,
+                modification_specific_diagnostic_ions: Option::from_json_value(
+                    map.remove("modification_specific_diagnostic_ions").ok_or_else(|| {
+                        BoxedError::new(
+                            BasicKind::Error,
+                            "Invalid FragmentationModel",
+                            "The required property 'modification_specific_diagnostic_ions' is missing",
+                            context(&map),
+                        )
+                    })?,
+                )?,
                 glycan: GlycanModel::from_json_value(map.remove("glycan").ok_or_else(|| {
-                    BoxedError::new(BasicKind::Error,
+                    BoxedError::new(
+                        BasicKind::Error,
                         "Invalid FragmentationModel",
                         "The required property 'glycan' is missing",
                         context(&map),
                     )
                 })?)?,
-                allow_cross_link_cleavage: bool::from_json_value(map.remove("allow_cross_link_cleavage").ok_or_else(|| {
-                    BoxedError::new(BasicKind::Error,
-                        "Invalid FragmentationModel",
-                        "The required property 'allow_cross_link_cleavage' is missing",
-                        context(&map),
-                    )
-                })?)?,
+                allow_cross_link_cleavage: bool::from_json_value(map.remove("allow_cross_link_cleavage").ok_or_else(
+                    || {
+                        BoxedError::new(
+                            BasicKind::Error,
+                            "Invalid FragmentationModel",
+                            "The required property 'allow_cross_link_cleavage' is missing",
+                            context(&map),
+                        )
+                    },
+                )?)?,
             })
         } else {
             Err(BoxedError::new(

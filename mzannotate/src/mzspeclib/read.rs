@@ -66,7 +66,8 @@ pub enum MzSpecLibErrorKind {
     Peak,
     /// The end of the file was found but more data was expected
     Eof,
-    /// The state is inconsistent (for example the charge was defined multiple times with different values)
+    /// The state is inconsistent (for example the charge was defined multiple times with different
+    /// values)
     InconsistentState,
     /// A unit was missing on an attribute that needs one
     MissingUnit,
@@ -74,18 +75,22 @@ pub enum MzSpecLibErrorKind {
     ProForma,
     /// An mzPAF string was invalid
     MzPAF,
-    /// A currently unsupported feature of mzSpecLib was used. Interpretation members are currently unsupported.
+    /// A currently unsupported feature of mzSpecLib was used. Interpretation members are currently
+    /// unsupported.
     UnsupportedFeature,
 }
 
 impl ErrorKind for MzSpecLibErrorKind {
     type Settings = ();
+
     fn descriptor(&self) -> &'static str {
         "error"
     }
+
     fn ignored(&self, _settings: Self::Settings) -> bool {
         false
     }
+
     fn is_error(&self, _settings: Self::Settings) -> bool {
         true
     }
@@ -105,7 +110,8 @@ pub struct MzSpecLibTextParser<'ontologies, Reader: Read> {
     line_index: u32,
     path: Option<PathBuf>,
     offsets: LibraryIndex,
-    /// A flag to indicate is the last spectrum failed, if so it will scan to the start of the next spectrum next time a spectrum is requested.
+    /// A flag to indicate is the last spectrum failed, if so it will scan to the start of the next
+    /// spectrum next time a spectrum is requested.
     last_error: bool,
     /// The last peptidoform ion set, used when parsing the mzPAF peaks in a spectrum.
     last_peptidoform_ion_set: Vec<(NonZeroU32, AnalyteTarget)>,
@@ -136,7 +142,8 @@ impl<'ontologies> MzSpecLibTextParser<'ontologies, BufReader<File>> {
 }
 
 impl<'ontologies, R: BufRead> MzSpecLibTextParser<'ontologies, R> {
-    /// Parse a mzSpecLib file from the given stream, the original filepath can be given for nicer error messages.
+    /// Parse a mzSpecLib file from the given stream, the original filepath can be given for nicer
+    /// error messages.
     /// # Errors
     /// If the file does not contain valid mzSpecLib data.
     pub fn open(
@@ -172,15 +179,12 @@ impl<'ontologies, R: BufRead> MzSpecLibTextParser<'ontologies, R> {
         &self.header
     }
 
-    /// Get the current context, meaning the line index and file name (if known), the line itself will have to be added by the caller.
+    /// Get the current context, meaning the line index and file name (if known), the line itself
+    /// will have to be added by the caller.
     fn current_context(&self) -> Context<'_> {
         self.path.as_ref().map_or_else(
             || Context::default().line_index(self.line_index),
-            |p| {
-                Context::default()
-                    .line_index(self.line_index)
-                    .source(p.to_string_lossy())
-            },
+            |p| Context::default().line_index(self.line_index).source(p.to_string_lossy()),
         )
     }
 
@@ -208,7 +212,8 @@ impl<'ontologies, R: BufRead> MzSpecLibTextParser<'ontologies, R> {
             }
 
             while buf.trim().is_empty() || buf.starts_with('#') {
-                // Inlined the basis of 'read_next_line' to prevent stack overflows with recursively calling this function again
+                // Inlined the basis of 'read_next_line' to prevent stack overflows with recursively
+                // calling this function again
                 buf.clear();
                 let bytes_read = if let Some(cached) = self.line_cache.pop_front() {
                     *buf = cached;
@@ -280,11 +285,7 @@ impl<'ontologies, R: BufRead> MzSpecLibTextParser<'ontologies, R> {
             if let Some((namespace, id, attributes)) = current_attribute_set {
                 let mut attribute_vec = vec![Vec::new(); 1];
                 attribute_vec[0].extend(
-                    attributes
-                        .get(&None)
-                        .iter()
-                        .flat_map(|a| a.iter())
-                        .map(|(a, _)| a.clone()),
+                    attributes.get(&None).iter().flat_map(|a| a.iter()).map(|(a, _)| a.clone()),
                 );
                 attribute_vec.extend(
                     attributes
@@ -326,7 +327,8 @@ impl<'ontologies, R: BufRead> MzSpecLibTextParser<'ontologies, R> {
                         .as_mut()
                         .ok_or_else(|| {
                             BoxedError::new(
-                                // This should be impossible to reach because any lingering attributes should have been picked up in the header
+                                // This should be impossible to reach because any lingering
+                                // attributes should have been picked up in the header
                                 MzSpecLibErrorKind::Declaration,
                                 "Invalid attribute set",
                                 "An attribute was defined before an attribute set was defined",
@@ -523,10 +525,11 @@ impl<'ontologies, R: BufRead> MzSpecLibTextParser<'ontologies, R> {
                         MzSpecLibErrorKind::Declaration,
                         "Invalid declaration",
                         format!("The ID was {}", explain_number_error(&e)),
-                        self.current_context()
-                            .lines(0, buf)
-                            .to_owned()
-                            .add_highlight((0, before.len() + 1, val.len())),
+                        self.current_context().lines(0, buf).to_owned().add_highlight((
+                            0,
+                            before.len() + 1,
+                            val.len(),
+                        )),
                     )
                 })?
             } else {
@@ -588,10 +591,30 @@ impl<'ontologies, R: BufRead> MzSpecLibTextParser<'ontologies, R> {
                     if attr.name.accession == curie!(MS:1003270)
                         && let Value::String(_value) = attr.value.scalar().as_ref()
                     {
-                        let (mut peptidoform_ion, _) =
-                            PeptidoformIon::pro_forma_inner(&self.current_context().lines(0, &buf).to_owned(), &buf, range.clone(), self.ontologies).map_err(|errs| BoxedError::new(context_error::BasicKind::Error, "Invalid ProForma definition", "The string could not be parsed as a ProForma definition", self.current_context().lines(0, &buf).add_highlight((0, range)).to_owned()).add_underlying_errors(errs)).map_err(
-                                |e| e.to_owned().convert::<MzSpecLibErrorKind, BoxedError<'static, MzSpecLibErrorKind>>(|_| MzSpecLibErrorKind::ProForma),
-                            )?;
+                        let (mut peptidoform_ion, _) = PeptidoformIon::pro_forma_inner(
+                            &self.current_context().lines(0, &buf).to_owned(),
+                            &buf,
+                            range.clone(),
+                            self.ontologies,
+                        )
+                        .map_err(|errs| {
+                            BoxedError::new(
+                                context_error::BasicKind::Error,
+                                "Invalid ProForma definition",
+                                "The string could not be parsed as a ProForma definition",
+                                self.current_context()
+                                    .lines(0, &buf)
+                                    .add_highlight((0, range))
+                                    .to_owned(),
+                            )
+                            .add_underlying_errors(errs)
+                        })
+                        .map_err(|e| {
+                            e.to_owned()
+                                .convert::<MzSpecLibErrorKind, BoxedError<'static, MzSpecLibErrorKind>>(|_| {
+                                    MzSpecLibErrorKind::ProForma
+                                })
+                        })?;
                         if peptidoform_ion.get_charge_carriers().is_none() {
                             match analyte.target {
                                 AnalyteTarget::Unknown(Some(c)) => {
@@ -613,11 +636,12 @@ impl<'ontologies, R: BufRead> MzSpecLibTextParser<'ontologies, R> {
                         analyte.target = AnalyteTarget::PeptidoformIon(peptidoform_ion);
                     } else if attr.name.accession == curie!(MS:1000866) {
                         let value = attr.value.scalar().to_string();
-                        let mut formula = MolecularFormula::pro_forma::<false,false>(
-                            &value,
-
-                        )
-                        .map_err(|e| e.to_owned().convert::<MzSpecLibErrorKind, BoxedError<'static, MzSpecLibErrorKind>>(|_| MzSpecLibErrorKind::ProForma))?;
+                        let mut formula = MolecularFormula::pro_forma::<false, false>(&value).map_err(|e| {
+                            e.to_owned()
+                                .convert::<MzSpecLibErrorKind, BoxedError<'static, MzSpecLibErrorKind>>(|_| {
+                                    MzSpecLibErrorKind::ProForma
+                                })
+                        })?;
                         analyte.target = match analyte.target {
                             AnalyteTarget::Unknown(c) => {
                                 if let Some(c) = c {
@@ -678,19 +702,17 @@ impl<'ontologies, R: BufRead> MzSpecLibTextParser<'ontologies, R> {
         }
 
         for group in groups.values() {
-            if let Some((value, _)) = group
-                .iter()
-                .find(|a| a.0.name.accession == curie!(MS:1003275))
-                && let Some((name, _)) = group
-                    .iter()
-                    .find(|a| a.0.name.accession == curie!(MS:1003276))
+            if let Some((value, _)) =
+                group.iter().find(|a| a.0.name.accession == curie!(MS:1003275))
+                && let Some((name, _)) =
+                    group.iter().find(|a| a.0.name.accession == curie!(MS:1003276))
                 && group.len() == 2
             {
                 analyte.params.push(match &name.value {
                     AttributeValue::Term(term) => mzdata::params::Param {
                         accession: match term.accession.accession {
                             AccessionCode::Numeric(num) => Some(num),
-                            AccessionCode::Alphanumeric(_, _) => None,
+                            AccessionCode::Alphanumeric(..) => None,
                         },
                         name: term.name.to_string(),
                         value: value.value.scalar().into_owned(),
@@ -728,9 +750,7 @@ impl<'ontologies, R: BufRead> MzSpecLibTextParser<'ontologies, R> {
                 if group.len() == protein.attributes.len() {
                     // If zero attributes were understood as protein descriptions just store
                     // them as analyte parameters
-                    analyte
-                        .params
-                        .extend(protein.attributes.into_iter().map(Into::into));
+                    analyte.params.extend(protein.attributes.into_iter().map(Into::into));
                 } else {
                     analyte.proteins.push(protein);
                 }
@@ -740,9 +760,11 @@ impl<'ontologies, R: BufRead> MzSpecLibTextParser<'ontologies, R> {
         Ok(analyte)
     }
 
-    /// Read an interpretation from the current point in the reader. Assumes the current lines starts with `<Interpretation=`.
+    /// Read an interpretation from the current point in the reader. Assumes the current lines
+    /// starts with `<Interpretation=`.
     /// # Errors
-    /// If there is no valid interpretation at the current point or if the interpretation tag is missing.
+    /// If there is no valid interpretation at the current point or if the interpretation tag is
+    /// missing.
     fn read_interpretation(
         &mut self,
     ) -> Result<Interpretation, BoxedError<'static, MzSpecLibErrorKind>> {
@@ -884,10 +906,11 @@ impl<'ontologies, R: BufRead> MzSpecLibTextParser<'ontologies, R> {
                         MzSpecLibErrorKind::Peak,
                         "Peak m/z is not a number",
                         e.to_string(),
-                        self.current_context()
-                            .lines(0, buf)
-                            .to_owned()
-                            .add_highlight((0, field_offset, v.len())),
+                        self.current_context().lines(0, buf).to_owned().add_highlight((
+                            0,
+                            field_offset,
+                            v.len(),
+                        )),
                     )
                 });
                 field_offset += v.len() + 1;
@@ -910,10 +933,11 @@ impl<'ontologies, R: BufRead> MzSpecLibTextParser<'ontologies, R> {
                         MzSpecLibErrorKind::Peak,
                         "Peak intensity is not a number",
                         e.to_string(),
-                        self.current_context()
-                            .lines(0, buf)
-                            .to_owned()
-                            .add_highlight((0, field_offset, v.len())),
+                        self.current_context().lines(0, buf).to_owned().add_highlight((
+                            0,
+                            field_offset,
+                            v.len(),
+                        )),
                     )
                 });
                 field_offset += v.len() + 1;
@@ -998,17 +1022,12 @@ impl<'ontologies, R: BufRead> MzSpecLibTextParser<'ontologies, R> {
         spec.description.ms_level = 2;
         spec.description.signal_continuity = mzdata::spectrum::SignalContinuity::Centroid;
         // TODO: do better but should work for now
-        spec.description
-            .acquisition
-            .scans
-            .push(ScanEvent::default());
+        spec.description.acquisition.scans.push(ScanEvent::default());
         spec.description.acquisition.scans[0]
             .scan_windows
             .push(ScanWindow::default());
         spec.description.precursor.push(Precursor::default());
-        spec.description.precursor[0]
-            .ions
-            .push(SelectedIon::default());
+        spec.description.precursor[0].ions.push(SelectedIon::default());
 
         let mut term_collection: HashMap<Option<u32>, Vec<(Attribute, Context<'static>)>> =
             HashMap::new();
@@ -1054,10 +1073,7 @@ impl<'ontologies, R: BufRead> MzSpecLibTextParser<'ontologies, R> {
             &mut spec.description,
             &mut spec.attributes,
         )?;
-        if let Some(sets) = self
-            .header_attribute_sets_with_context
-            .get(&EntryType::Spectrum)
-        {
+        if let Some(sets) = self.header_attribute_sets_with_context.get(&EntryType::Spectrum) {
             populate_spectrum_description_from_attributes(
                 sets.iter()
                     .filter_map(|attr_set| {
@@ -1070,15 +1086,10 @@ impl<'ontologies, R: BufRead> MzSpecLibTextParser<'ontologies, R> {
             )?;
         }
 
-        spec.description.precursor[0]
-            .activation
-            ._extract_methods_from_params();
+        spec.description.precursor[0].activation._extract_methods_from_params();
 
-        self.last_peptidoform_ion_set = spec
-            .analytes
-            .iter()
-            .map(|a| (a.id, a.target.clone()))
-            .collect();
+        self.last_peptidoform_ion_set =
+            spec.analytes.iter().map(|a| (a.id, a.target.clone())).collect();
 
         if matches!(self.state, ParserState::Peaks) {
             loop {
@@ -1104,8 +1115,9 @@ impl<'ontologies, R: BufRead> MzSpecLibTextParser<'ontologies, R> {
                 }
 
                 let peak = self.parse_peak_line(buf_trimmed)?;
-                // TODO: validate that the peaks only reference existing analytes, also make sure that
-                // spectra with both formula and peptidoforms actually get assigned the correct peaks
+                // TODO: validate that the peaks only reference existing analytes, also make sure
+                // that spectra with both formula and peptidoforms actually get
+                // assigned the correct peaks
                 spec.peaks.push(peak);
             }
         }
@@ -1278,23 +1290,18 @@ impl<R: BufRead + Seek> MzSpecLibTextParser<'_, R> {
                     offset_index.insert(index, key, name, scan_number, record);
                 }
                 if let Ok(key) = key.parse::<Id>() {
-                    current_record = Some((
-                        index,
-                        key,
-                        None,
-                        None,
-                        LibraryIndexRecord {
-                            offset,
-                            line_index: line_count,
-                        },
-                    ));
+                    current_record = Some((index, key, None, None, LibraryIndexRecord {
+                        offset,
+                        line_index: line_count,
+                    }));
                     index += 1;
                 } else {
-                    // This is an 'all' (or something like that) spectrum, so reset all info but do not increase the index number
+                    // This is an 'all' (or something like that) spectrum, so reset all info but do
+                    // not increase the index number
                     current_record = None;
                 }
             } else if let Some(rest) = buf.strip_prefix("MS:1003061|library spectrum name=")
-                && let Some((_, _, name, _, _)) = &mut current_record
+                && let Some((_, _, name, ..)) = &mut current_record
             {
                 *name = Some(rest.trim().to_string().into_boxed_str());
             } else if let Some(rest) = buf.strip_prefix("MS:1003057|scan number=")
@@ -1544,11 +1551,8 @@ MS:0000000|unknown=a";
     #[test]
     fn stack_overflow() {
         let text = b"<mzSpecLib>\n";
-        let bytes: Vec<u8> = text
-            .iter()
-            .copied()
-            .chain(std::iter::repeat_n(b'\n', 10000))
-            .collect();
+        let bytes: Vec<u8> =
+            text.iter().copied().chain(std::iter::repeat_n(b'\n', 10000)).collect();
 
         let res =
             MzSpecLibTextParser::open(bytes.as_slice(), None, &mzcore::ontology::STATIC_ONTOLOGIES);

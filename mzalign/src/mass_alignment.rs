@@ -1,7 +1,3 @@
-use crate::{
-    Alignment, align_matrix::Matrix, align_type::*, alignment::Score,
-    diagonal_array::DiagonalArray, piece::*, scoring::*,
-};
 use mzcore::{
     chemistry::{MassMode, MolecularFormula},
     prelude::MultiChemical,
@@ -10,13 +6,19 @@ use mzcore::{
     system::{Mass, OrderedMass, dalton},
 };
 
-// TODO: potentially allow any gap to match to a list of aminoacids also if the mass difference is exactly a common modification
-// eg X[mass(W[oxidation]A)] should match WA
+use crate::{
+    Alignment, align_matrix::Matrix, align_type::*, alignment::Score,
+    diagonal_array::DiagonalArray, piece::*, scoring::*,
+};
+
+// TODO: potentially allow any gap to match to a list of aminoacids also if the mass difference is
+// exactly a common modification eg X[mass(W[oxidation]A)] should match WA
 
 /// Create an alignment of two peptides based on mass and homology.
-/// The substitution matrix is in the exact same order as the definition of [`AminoAcid`](mzcore::sequence::AminoAcid).
-/// The [`AlignScoring`] sets the rules and exact scores while scoring.
-/// The [`AlignType`] controls the alignment behaviour, global/local or anything in between.
+/// The substitution matrix is in the exact same order as the definition of
+/// [`AminoAcid`](mzcore::sequence::AminoAcid). The [`AlignScoring`] sets the rules and exact scores
+/// while scoring. The [`AlignType`] controls the alignment behaviour, global/local or anything in
+/// between.
 ///
 /// # Note
 /// * Terminal modifications are added to the mass of the terminal amino acid.
@@ -43,7 +45,8 @@ pub fn align<const STEPS: u16, A: HasPeptidoform<Linear>, B: HasPeptidoform<Line
     align_cached::<STEPS, A, B>(seq_a, &masses_a, seq_b, &masses_b, scoring, align_type)
 }
 
-/// Do mass based alignment, but with precomputed masses, see [align] for the normal entry point variant.
+/// Do mass based alignment, but with precomputed masses, see [align] for the normal entry point
+/// variant.
 /// # Panics
 /// It panics when the length of `seq_a` or `seq_b` is bigger than [`isize::MAX`].
 #[expect(clippy::too_many_lines)]
@@ -82,8 +85,8 @@ pub(super) fn align_cached<
     // However, in most of the cases masses are very different there and the check fails.
     // We precompute two following arrays:
     // - ranges_a[index_a - len_a .. index_a] = (min_mass, max_mass)
-    // min_mass is the minimal mass that matches at least one mass in masses_a[index_a - len_a .. index_a].
-    // max_mass is the same for maximal mass.
+    // min_mass is the minimal mass that matches at least one mass in masses_a[index_a - len_a ..
+    // index_a]. max_mass is the same for maximal mass.
     // - ranges_b[index_b - len_b .. index_b] = (min_mass, max_mass)
     // min_mass in the minimal mass across masses_b[index_b - len_b .. index_b].
     // max_mass is the same for maximal mass.
@@ -340,7 +343,8 @@ pub(super) fn score_pair<A: AtMax<Linear>, B: AtMax<Linear>>(
     }
 }
 
-/// Score a pair of sequence elements (AA + mods) when it is already known that the masses do not match
+/// Score a pair of sequence elements (AA + mods) when it is already known that the masses do not
+/// match
 pub(super) fn score_pair_mass_mismatch<A: AtMax<Linear>, B: AtMax<Linear>>(
     a: &SequenceElement<A>,
     b: &SequenceElement<B>,
@@ -497,14 +501,15 @@ pub(super) fn calculate_masses<const STEPS: u16>(
 #[cfg(test)]
 #[expect(clippy::missing_panics_doc)]
 mod tests {
-    use super::score;
-    use crate::scoring::AlignScoring;
     use mzcore::{
         chemistry::MolecularFormula,
         prelude::MultiChemical,
         quantities::Multi,
         sequence::{CheckedAminoAcid, SequenceElement},
     };
+
+    use super::score;
+    use crate::scoring::AlignScoring;
 
     #[test]
     fn pair() {
@@ -516,17 +521,13 @@ mod tests {
         let pair = dbg!(score(
             (
                 &a,
-                &a.iter()
-                    .map(MultiChemical::formulas)
-                    .sum::<Multi<MolecularFormula>>()[0]
+                &a.iter().map(MultiChemical::formulas).sum::<Multi<MolecularFormula>>()[0]
                     .monoisotopic_mass()
                     .into()
             ),
             (
                 &b,
-                &b.iter()
-                    .map(MultiChemical::formulas)
-                    .sum::<Multi<MolecularFormula>>()[0]
+                &b.iter().map(MultiChemical::formulas).sum::<Multi<MolecularFormula>>()[0]
                     .monoisotopic_mass()
                     .into()
             ),

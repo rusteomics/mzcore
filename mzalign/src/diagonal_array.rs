@@ -13,13 +13,15 @@ impl<T, const DEPTH: u16> DiagonalArray<T, DEPTH> {
         Self::length_with_depth(n, DEPTH as usize)
     }
 
-    /// Calculate the index of a given point (along the first axis; n) into the array, with a given depth
+    /// Calculate the index of a given point (along the first axis; n) into the array, with a given
+    /// depth
     const fn length_with_depth(n: usize, depth: usize) -> usize {
         let mi = if n >= depth { depth } else { n }; // Ord::min is not const
         (mi + 1) * mi / 2 + n.saturating_sub(depth) * depth
     }
 
-    /// Calculate the index of a given point (along the first axis; n) into the array, with a given depth
+    /// Calculate the index of a given point (along the first axis; n) into the array, with a given
+    /// depth
     fn iter(&self) -> impl Iterator<Item = (&T, [usize; 2])> + '_ {
         let mut index = [0, 0];
         self.data.iter().take(Self::length(self.len)).map(move |v| {
@@ -53,8 +55,8 @@ impl<T, const DEPTH: u16> DiagonalArray<T, DEPTH> {
     }
 
     /// # Safety
-    /// This function assumes the index to be valid. Not upholding this does an out of bounds unsafe [`[T]::get_unchecked`].
-    /// A debug assertion hold up this promise on debug builds.
+    /// This function assumes the index to be valid. Not upholding this does an out of bounds unsafe
+    /// [`[T]::get_unchecked`]. A debug assertion hold up this promise on debug builds.
     pub(super) unsafe fn get_unchecked(&self, index: [usize; 2]) -> &T {
         debug_assert!(self.validate_indices(index));
         let index = Self::length(index[0]) + index[1];
@@ -75,7 +77,8 @@ impl<const DEPTH: u16> DiagonalArray<f64, DEPTH> {
     }
 
     // Specifically for neighbour joining.
-    // This merges the indicated row+column indices and repacks the data to remove the far row+column this does not trim the underlying boxed slice.
+    // This merges the indicated row+column indices and repacks the data to remove the far
+    // row+column this does not trim the underlying boxed slice.
     pub(crate) fn merge_columns(
         mut self,
         close_index: usize,
@@ -135,7 +138,8 @@ impl<T: std::fmt::Display, const DEPTH: u16> DiagonalArray<T, DEPTH> {
 }
 
 impl<T: Default + Clone, const DEPTH: u16> DiagonalArray<T, DEPTH> {
-    /// Create a new diagonal array of the correct size, with all values initialised to the default value of the type
+    /// Create a new diagonal array of the correct size, with all values initialised to the default
+    /// value of the type
     pub(super) fn new(len: usize) -> Self {
         Self {
             len,
@@ -150,6 +154,7 @@ impl<T: Default + Clone, const DEPTH: u16> DiagonalArray<T, DEPTH> {
 
 impl<T, const DEPTH: u16> std::ops::Index<[usize; 2]> for DiagonalArray<T, DEPTH> {
     type Output = T;
+
     /// Index into the diagonal array
     fn index(&self, index: [usize; 2]) -> &Self::Output {
         assert!(self.validate_indices(index));

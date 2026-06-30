@@ -1,4 +1,5 @@
-//! Handle modification related issues, access provided if you want to dive deeply into modifications in your own code.
+//! Handle modification related issues, access provided if you want to dive deeply into
+//! modifications in your own code.
 
 use std::{
     collections::{BTreeSet, HashMap, HashSet},
@@ -38,28 +39,34 @@ use crate::{
 pub enum Modification {
     /// Any of the simple modifications
     Simple(SimpleModification),
-    /// A cross link to another (or the same) peptide, a branch is also seen as a cross-link but then the name is None.
+    /// A cross link to another (or the same) peptide, a branch is also seen as a cross-link but
+    /// then the name is None.
     CrossLink {
-        /// The index of the peptide this cross-link is bound to (can be the index for this peptide if it is an intra link)
+        /// The index of the peptide this cross-link is bound to (can be the index for this peptide
+        /// if it is an intra link)
         peptide: usize,
         /// The sequence index where this cross-link is bound to
         sequence_index: SequencePosition,
         /// The linker that defines the chemical structure that is the actual linker
         linker: SimpleModification,
-        /// The name of the cross-linker, if [`CrossLinkName::Branch`] it is a branch instead of cross-link
+        /// The name of the cross-linker, if [`CrossLinkName::Branch`] it is a branch instead of
+        /// cross-link
         name: CrossLinkName,
-        /// To determine if the cross-link is placed symmetrically or if asymmetrically if this is the left or right side
+        /// To determine if the cross-link is placed symmetrically or if asymmetrically if this is
+        /// the left or right side
         side: CrossLinkSide,
     },
     /// An ambiguous modification, that can be placed at multiple locations
     Ambiguous {
         /// The name of the group
         group: String,
-        /// The id to compare be able to find the other locations where this modifications can be placed
+        /// The id to compare be able to find the other locations where this modifications can be
+        /// placed
         id: usize,
         /// The modification itself
         modification: SimpleModification,
-        /// If present the localisation score, meaning the chance/ratio for this modification to show up on this exact spot
+        /// If present the localisation score, meaning the chance/ratio for this modification to
+        /// show up on this exact spot
         localisation_score: Option<OrderedFloat<f64>>,
         /// If this is the preferred location or not
         preferred: bool,
@@ -266,9 +273,7 @@ impl ParseJson for ModificationId {
                         context(&map),
                     )
                 })?)?,
-                obsolete: map
-                    .remove("obsolete")
-                    .map_or(Ok(false), |v| bool::from_json_value(v))?,
+                obsolete: map.remove("obsolete").map_or(Ok(false), |v| bool::from_json_value(v))?,
                 parents: map
                     .remove("parents")
                     .map(|v| ThinVec::from_json_value(v))
@@ -348,6 +353,7 @@ pub enum CrossId {
 
 impl TryFrom<(Option<Box<str>>, Box<str>)> for CrossId {
     type Error = BoxedError<'static, BasicKind>;
+
     fn try_from(value: (Option<Box<str>>, Box<str>)) -> Result<Self, Self::Error> {
         let parse_ref = |r: &str| {
             if let Some((loc, rule)) = r.split_once('#') {
@@ -489,7 +495,8 @@ impl TryFrom<(Option<Box<str>>, Box<str>)> for CrossId {
                     ));
                 }
 
-                // TODO: check the last number, this is a single digit that is a checksum of the entire number
+                // TODO: check the last number, this is a single digit that is a checksum of the
+                // entire number
                 Self::CAS(a, b, c)
             } // TODO: fix the one XLMOD that uses cs
             Some("chebi") => Self::ChEBI(value.1.parse().map_err(|err| {
@@ -606,16 +613,17 @@ impl TryFrom<(Option<Box<str>>, Box<str>)> for CrossId {
                         } else {
                             split[n].trim()
                         };
-                        let a = num.parse::<u16>().map_err(|err| {
-                            BoxedError::new(
-                                BasicKind::Error,
-                                "Invalid EC number",
-                                format!("The EC number {}", explain_number_error(&err)),
-                                Context::default()
-                                    .lines(0, value.1.to_string())
-                                    .add_highlight((0, offset, split[n].len())),
-                            )
-                        })?;
+                        let a =
+                            num.parse::<u16>().map_err(|err| {
+                                BoxedError::new(
+                                    BasicKind::Error,
+                                    "Invalid EC number",
+                                    format!("The EC number {}", explain_number_error(&err)),
+                                    Context::default()
+                                        .lines(0, value.1.to_string())
+                                        .add_highlight((0, offset, split[n].len())),
+                                )
+                            })?;
                         nums.push(a);
                         offset += split[n].len() + 1;
                     }
@@ -636,6 +644,7 @@ impl TryFrom<(Option<Box<str>>, Box<str>)> for CrossId {
 
 impl FromStr for CrossId {
     type Err = BoxedError<'static, BasicKind>;
+
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         s.split_once(':')
             .map_or_else(|| (None, s.into()), |(t, v)| (Some(t.into()), v.into()))
@@ -727,7 +736,7 @@ impl CrossId {
                 "https://iubmb.qmul.ac.uk/enzyme/EC{a}/{b}/{c}/{d}.html"
             )), //TODO: not sure how the preliminary works here
             Self::Findmod(a) => Some(format!("https://web.expasy.org/findmod/{a}.html")),
-            Self::GO(a) => Some(format!("https://amigo.geneontology.org/amigo/term/GO:{a}")), // TODO: test if this works (has enough 0s)
+            Self::GO(a) => Some(format!("https://amigo.geneontology.org/amigo/term/GO:{a}")), /* TODO: test if this works (has enough 0s) */
             Self::PDB(a) => Some(format!("https://www.rcsb.org/structure/{a}")),
             Self::PDBHet(a) => Some(format!("https://www.rcsb.org/ligand/{a}")),
             Self::PubChemCompound(a) => {
@@ -744,7 +753,7 @@ impl CrossId {
             | Self::COMe(_)
             | Self::Deltamass(_)
             | Self::MDL(_)
-            | Self::Mod(_, _, _)
+            | Self::Mod(..)
             | Self::OMSSA(_)
             | Self::Other(_)
             | Self::Patent(_)
@@ -801,7 +810,8 @@ impl Space for GnoComposition {
     }
 }
 
-/// All possible subsumption levels in the GNOme database indicating different levels of description for a glycan species
+/// All possible subsumption levels in the GNOme database indicating different levels of description
+/// for a glycan species
 #[derive(
     Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Default, Hash, Serialize, Deserialize,
 )]
@@ -883,9 +893,11 @@ pub enum RulePossible {
     No,
     /// This modification can be placed and if it is a cross-link it can be placed on both ends
     Symmetric(BTreeSet<usize>),
-    /// This modification can be placed and if it is a cross-link it can only be placed on the 'left' side of the cross-link
+    /// This modification can be placed and if it is a cross-link it can only be placed on the
+    /// 'left' side of the cross-link
     AsymmetricLeft(BTreeSet<usize>),
-    /// This modification can be placed and if it is a cross-link it can only be placed on the 'right' side of the cross-link
+    /// This modification can be placed and if it is a cross-link it can only be placed on the
+    /// 'right' side of the cross-link
     AsymmetricRight(BTreeSet<usize>),
 }
 
@@ -898,6 +910,7 @@ impl RulePossible {
 
 impl std::ops::Add for RulePossible {
     type Output = Self;
+
     fn add(self, rhs: Self) -> Self::Output {
         match (self, rhs) {
             (Self::Symmetric(a), _) | (_, Self::Symmetric(a)) => Self::Symmetric(a),
@@ -926,7 +939,8 @@ impl std::iter::Sum for RulePossible {
 }
 
 impl CrossLinkSide {
-    /// Get all allowed placement rules with all applicable neutral losses, stubs, and diagnostic ions.
+    /// Get all allowed placement rules with all applicable neutral losses, stubs, and diagnostic
+    /// ions.
     pub(crate) fn allowed_rules(
         &self,
         linker: &SimpleModification,
@@ -1005,10 +1019,12 @@ impl Modification {
     pub const fn is_simple(&self) -> bool {
         matches!(self, Self::Simple(_))
     }
+
     /// Check if this modification is a cross-link.
     pub const fn is_cross_link(&self) -> bool {
         matches!(self, Self::CrossLink { .. })
     }
+
     /// Check if this modification is an ambiguous modification.
     pub const fn is_ambiguous(&self) -> bool {
         matches!(self, Self::Ambiguous { .. })
@@ -1158,7 +1174,8 @@ impl Modification {
         }
     }
 
-    /// Get the formula for a modification, if it is a cross linked modification only get the cross link
+    /// Get the formula for a modification, if it is a cross linked modification only get the cross
+    /// link
     pub fn formula(&self) -> MolecularFormula {
         match self {
             Self::Simple(s) => s.formula(),
@@ -1195,7 +1212,8 @@ impl Modification {
         }
     }
 
-    /// Get a url for more information on this modification. Only defined for modifications from ontologies.
+    /// Get a url for more information on this modification. Only defined for modifications from
+    /// ontologies.
     pub fn ontology_url(&self) -> Option<String> {
         match self {
             Self::Simple(modification)
@@ -1213,10 +1231,9 @@ impl Modification {
         seq: &SequenceElement<T>,
         position: SequencePosition,
     ) -> RulePossible {
-        self.simple()
-            .map_or(RulePossible::Symmetric(BTreeSet::new()), |s| {
-                s.is_possible(seq, position)
-            })
+        self.simple().map_or(RulePossible::Symmetric(BTreeSet::new()), |s| {
+            s.is_possible(seq, position)
+        })
     }
 
     /// Get the name if this is an Unimod modification (for use in mzPAF)
@@ -1242,7 +1259,9 @@ impl Modification {
     }
 }
 
-/// The structure to lookup ambiguous modifications, with a list of all modifications (the order is fixed) with for each modification their name and the actual modification itself (if already defined)
+/// The structure to lookup ambiguous modifications, with a list of all modifications (the order is
+/// fixed) with for each modification their name and the actual modification itself (if already
+/// defined)
 pub type AmbiguousLookup = Vec<AmbiguousLookupEntry>;
 
 /// An entry in the ambiguous lookup
@@ -1254,11 +1273,13 @@ pub struct AmbiguousLookupEntry {
     pub group: Option<usize>,
     /// The modification itself
     pub modification: Option<SimpleModification>,
-    /// The allowed locations, the actual allowed locations is the intersection of this set with the ruleset from the modification
+    /// The allowed locations, the actual allowed locations is the intersection of this set with
+    /// the ruleset from the modification
     position: Option<Vec<PlacementRule>>,
     /// The maximal number of this modification on one place
     limit: Option<usize>,
-    /// Determines if this modification can colocalise with placed modifications eg if the modification of unknown position is allowed at the second M '[Oxidation]?MM[Dioxidation]M'
+    /// Determines if this modification can colocalise with placed modifications eg if the
+    /// modification of unknown position is allowed at the second M '[Oxidation]?MM[Dioxidation]M'
     comkp: bool,
     /// Determines if this modification can colocalise with other modifications of unknown position
     comup: bool,
@@ -1297,13 +1318,16 @@ impl AmbiguousLookupEntry {
     }
 }
 
-/// The structure to lookup cross-links, with a list of all linkers (the order is fixed) with for each linker their name or None if it is a branch and the actual linker itself (if already defined)
+/// The structure to lookup cross-links, with a list of all linkers (the order is fixed) with for
+/// each linker their name or None if it is a branch and the actual linker itself (if already
+/// defined)
 pub type CrossLinkLookup = Vec<(CrossLinkName, Option<SimpleModification>)>;
 
 impl Modification {
-    /// Display a modification either normalised to the internal representation or as fully valid ProForma
-    /// (no glycan structure or custom modifications). `display_ambiguous` shows or hides the modification
-    /// definition of any ambiguous modifications (eg true results in '+1#1' false in '#1').
+    /// Display a modification either normalised to the internal representation or as fully valid
+    /// ProForma (no glycan structure or custom modifications). `display_ambiguous` shows or
+    /// hides the modification definition of any ambiguous modifications (eg true results in
+    /// '+1#1' false in '#1').
     /// # Errors
     /// When the given writer errors.
     pub fn display(
@@ -1331,9 +1355,7 @@ impl Modification {
                 write!(
                     f,
                     "\x23{group}{}",
-                    localisation_score
-                        .map(|v| format!("({v})"))
-                        .unwrap_or_default()
+                    localisation_score.map(|v| format!("({v})")).unwrap_or_default()
                 )?;
                 Ok(())
             }
@@ -1401,9 +1423,8 @@ pub fn parse_custom_modifications_str(
 #[cfg(test)]
 #[expect(clippy::missing_panics_doc)]
 mod test {
-    use crate::ontology::STATIC_ONTOLOGIES;
-
     use super::*;
+    use crate::ontology::STATIC_ONTOLOGIES;
 
     #[test]
     fn test_reading_custom_modifications_json_2024() {

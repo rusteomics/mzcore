@@ -22,21 +22,14 @@ impl AnnotatedSpectrum {
     ) -> AmbiguousStatistics {
         let fragments = fragments
             .iter()
-            .filter(|f| {
-                f.mz(mass_mode)
-                    .is_some_and(|mz| parameters.mz_range.contains(&mz))
-            })
+            .filter(|f| f.mz(mass_mode).is_some_and(|mz| parameters.mz_range.contains(&mz)))
             .collect::<Vec<_>>();
         let total_intensity: f32 = self.peaks.iter().map(|p| p.intensity).sum();
 
         let theoretical = |label: &AmbiguousLabel| {
             fragments
                 .iter()
-                .filter(|f| {
-                    f.formula
-                        .as_ref()
-                        .is_some_and(|f| f.labels().contains(label))
-                })
+                .filter(|f| f.formula.as_ref().is_some_and(|f| f.labels().contains(label)))
                 .count() as u32
         };
         let annotated = |label: &AmbiguousLabel| {
@@ -44,11 +37,7 @@ impl AnnotatedSpectrum {
                 let count = p
                     .annotations
                     .iter()
-                    .filter(|f| {
-                        f.formula
-                            .as_ref()
-                            .is_some_and(|f| f.labels().contains(label))
-                    })
+                    .filter(|f| f.formula.as_ref().is_some_and(|f| f.labels().contains(label)))
                     .count();
                 if count == 0 {
                     acc
@@ -205,9 +194,11 @@ pub struct AmbiguousAminoAcid {
     pub peptidoform_index: usize,
     /// Peptidoform ion index
     pub peptidoform_ion_index: usize,
-    /// First option, the amino acid, the fraction of theoretical fragments found, and the fraction of TIC that is annotated
+    /// First option, the amino acid, the fraction of theoretical fragments found, and the fraction
+    /// of TIC that is annotated
     pub optiona_a: (AminoAcid, Recovered<u32>, Recovered<f32>),
-    /// Second option, the amino acid, the fraction of theoretical fragments found, and the fraction of TIC that is annotated
+    /// Second option, the amino acid, the fraction of theoretical fragments found, and the
+    /// fraction of TIC that is annotated
     pub optiona_b: (AminoAcid, Recovered<u32>, Recovered<f32>),
 }
 
@@ -220,6 +211,7 @@ pub struct AmbiguousModification {
     pub peptidoform_index: usize,
     /// Peptidoform ion index
     pub peptidoform_ion_index: usize,
-    /// All options, with the location, the fraction of theoretical fragments found, and the fraction of TIC that is annotated
+    /// All options, with the location, the fraction of theoretical fragments found, and the
+    /// fraction of TIC that is annotated
     pub options: Vec<(SequencePosition, Recovered<u32>, Recovered<f32>)>,
 }

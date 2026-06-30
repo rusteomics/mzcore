@@ -1,4 +1,5 @@
-//! The [`CVError`] which makes it easy for downstream users of the error type to match on the exact error.
+//! The [`CVError`] which makes it easy for downstream users of the error type to match on the exact
+//! error.
 
 use context_error::ErrorKind;
 
@@ -11,7 +12,8 @@ pub enum CVError {
     CacheCouldNotBeOpenend,
     /// The binary cache could not be made
     CacheCouldNotBeMade,
-    /// The binary cache could not be parsed (likely the result of different versions of the same CV with different struct definitions)
+    /// The binary cache could not be parsed (likely the result of different versions of the same CV
+    /// with different struct definitions)
     CacheCouldNotBeParsed,
     /// The CV file does not exist
     #[default]
@@ -26,7 +28,8 @@ pub enum CVError {
     FileCouldNotBeParsed,
     /// The CV does not have a URL set and neither was a URL supplied
     CVUrlNotSet,
-    /// The CV could not be read from the given URL, the URL could be wrong, or not up, or fail to download the file
+    /// The CV could not be read from the given URL, the URL could be wrong, or not up, or fail to
+    /// download the file
     CVUrlCouldNotBeRead,
     /// Not enough readers were given for this CV
     MissingReader,
@@ -38,6 +41,7 @@ pub enum CVError {
 
 impl ErrorKind for CVError {
     type Settings = ();
+
     fn descriptor(&self) -> &'static str {
         if *self == Self::ItemWarning {
             "warning"
@@ -45,9 +49,11 @@ impl ErrorKind for CVError {
             "error"
         }
     }
+
     fn ignored(&self, _settings: Self::Settings) -> bool {
         false
     }
+
     fn is_error(&self, _settings: Self::Settings) -> bool {
         *self != Self::ItemWarning
     }

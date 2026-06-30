@@ -171,11 +171,7 @@ fn validate_linking(
     xlmod: &CVIndex<XlMod>,
     resid: &CVIndex<Resid>,
 ) {
-    let mut new_unimod = unimod
-        .data()
-        .iter()
-        .map(|m| (**m).clone())
-        .collect::<Vec<_>>();
+    let mut new_unimod = unimod.data().iter().map(|m| (**m).clone()).collect::<Vec<_>>();
     let mut errors = Vec::new();
     for m in psimod.data() {
         if let Some(psimod_id) = m.description() {
@@ -250,8 +246,8 @@ fn validate_linking(
                 }
             }
 
-            // TODO: check at some point but be sure to first inherit any unimod links from parents and maybe also propose a link?
-            // if !unimod_link {
+            // TODO: check at some point but be sure to first inherit any unimod links from parents
+            // and maybe also propose a link? if !unimod_link {
             //     errors
             //         .entry("Not linked to Unimod")
             //         .or_default()
@@ -307,9 +303,7 @@ fn valid_link(
     }
     if *rule != PlacementRule::Position(Position::Anywhere)
         && let SimpleModificationInner::Database { specificities, .. } = two
-        && !specificities
-            .iter()
-            .any(|s| s.0.iter().any(|r| rule.is_subset(r)))
+        && !specificities.iter().any(|s| s.0.iter().any(|r| rule.is_subset(r)))
     {
         context_error::combine_error(
             warnings,

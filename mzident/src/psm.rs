@@ -2,10 +2,6 @@ use std::{borrow::Cow, marker::PhantomData, ops::Range};
 
 #[cfg(feature = "mzannotate")]
 use mzannotate::prelude::AnnotatedSpectrum;
-#[cfg(not(feature = "mzannotate"))]
-use serde::{Deserialize, Serialize};
-
-use crate::*;
 use mzcore::{
     sequence::{
         AtLeast, FlankingSequence, HasPeptidoformImpl, Linear, Linked, Peptidoform,
@@ -13,8 +9,13 @@ use mzcore::{
     },
     system::{Mass, MassOverCharge, Ratio, Time, isize::Charge},
 };
+#[cfg(not(feature = "mzannotate"))]
+use serde::{Deserialize, Serialize};
 
-/// A peptidoform that is identified by a _de novo_ or database matching program as matching to a spectrum
+use crate::*;
+
+/// A peptidoform that is identified by a _de novo_ or database matching program as matching to a
+/// spectrum
 #[cfg_attr(not(feature = "mzannotate"), derive(Deserialize, Serialize))]
 #[derive(Clone, Debug)]
 #[allow(clippy::upper_case_acronyms)]
@@ -25,7 +26,8 @@ pub struct PSM<Complexity, PeptidoformAvailability> {
     pub local_confidence: Option<Vec<f64>>,
     /// The full metadata of this peptide
     pub data: PSMData,
-    /// The marker for the complexity, Linked means full [`PeptidoformIonSet`] anything below means [`Peptidoform`], see [Complexity](crate::sequence::Complexity)
+    /// The marker for the complexity, Linked means full [`PeptidoformIonSet`] anything below means
+    /// [`Peptidoform`], see [Complexity](crate::sequence::Complexity)
     pub(super) complexity_marker: PhantomData<Complexity>,
     /// The marker for availability of the peptidoform, see [`PeptidoformAvailability`]
     pub(super) peptidoform_availability_marker: PhantomData<PeptidoformAvailability>,
@@ -86,7 +88,8 @@ pub enum PSMData {
 }
 
 impl<PeptidoformAvailability> PSM<Linear, PeptidoformAvailability> {
-    /// If this peptidoform contains a peptidoform that is valid as a linear peptidoform get a reference to the peptidoform.
+    /// If this peptidoform contains a peptidoform that is valid as a linear peptidoform get a
+    /// reference to the peptidoform.
     fn inner_peptidoform(&self) -> Option<&Peptidoform<Linear>> {
         match &self.data {
             PSMData::Novor(NovorPSM { peptide, .. })
@@ -139,9 +142,7 @@ impl<PeptidoformAvailability> PSM<Linear, PeptidoformAvailability> {
             PSMData::MetaMorpheus(MetaMorpheusPSM { peptide, .. })
             | PSMData::BasicCSV(BasicCSVPSM {
                 sequence: peptide, ..
-            }) => peptide
-                .singular_peptidoform_ref()
-                .and_then(|p| p.as_linear()),
+            }) => peptide.singular_peptidoform_ref().and_then(|p| p.as_linear()),
             PSMData::PLink(PLinkPSM { peptidoform, .. }) => {
                 peptidoform.singular_ref().and_then(|p| p.as_linear())
             }
@@ -166,7 +167,8 @@ impl<PeptidoformAvailability> PSM<Linear, PeptidoformAvailability> {
 }
 
 impl<PeptidoformAvailability> PSM<SimpleLinear, PeptidoformAvailability> {
-    /// If this peptidoform contains a peptidoform that is valid as a simple linear peptidoform get a reference to the peptidoform.
+    /// If this peptidoform contains a peptidoform that is valid as a simple linear peptidoform get
+    /// a reference to the peptidoform.
     fn inner_peptidoform(&self) -> Option<&Peptidoform<SimpleLinear>> {
         match &self.data {
             PSMData::Novor(NovorPSM { peptide, .. })
@@ -219,12 +221,10 @@ impl<PeptidoformAvailability> PSM<SimpleLinear, PeptidoformAvailability> {
             PSMData::MetaMorpheus(MetaMorpheusPSM { peptide, .. })
             | PSMData::BasicCSV(BasicCSVPSM {
                 sequence: peptide, ..
-            }) => peptide
-                .singular_peptidoform_ref()
-                .and_then(|p| p.as_simple_linear()),
-            PSMData::PLink(PLinkPSM { peptidoform, .. }) => peptidoform
-                .singular_ref()
-                .and_then(|p| p.as_simple_linear()),
+            }) => peptide.singular_peptidoform_ref().and_then(|p| p.as_simple_linear()),
+            PSMData::PLink(PLinkPSM { peptidoform, .. }) => {
+                peptidoform.singular_ref().and_then(|p| p.as_simple_linear())
+            }
             #[cfg(feature = "mzannotate")]
             PSMData::AnnotatedSpectrum(spectrum) => {
                 use itertools::Itertools;
@@ -246,7 +246,8 @@ impl<PeptidoformAvailability> PSM<SimpleLinear, PeptidoformAvailability> {
 }
 
 impl<PeptidoformAvailability> PSM<SemiAmbiguous, PeptidoformAvailability> {
-    /// If this peptidoform contains a peptidoform that is valid as a semi ambiguous peptidoform get a reference to the peptidoform.
+    /// If this peptidoform contains a peptidoform that is valid as a semi ambiguous peptidoform get
+    /// a reference to the peptidoform.
     fn inner_peptidoform(&self) -> Option<&Peptidoform<SemiAmbiguous>> {
         match &self.data {
             PSMData::Novor(NovorPSM { peptide, .. })
@@ -298,12 +299,10 @@ impl<PeptidoformAvailability> PSM<SemiAmbiguous, PeptidoformAvailability> {
             PSMData::MetaMorpheus(MetaMorpheusPSM { peptide, .. })
             | PSMData::BasicCSV(BasicCSVPSM {
                 sequence: peptide, ..
-            }) => peptide
-                .singular_peptidoform_ref()
-                .and_then(|p| p.as_semi_ambiguous()),
-            PSMData::PLink(PLinkPSM { peptidoform, .. }) => peptidoform
-                .singular_ref()
-                .and_then(|p| p.as_semi_ambiguous()),
+            }) => peptide.singular_peptidoform_ref().and_then(|p| p.as_semi_ambiguous()),
+            PSMData::PLink(PLinkPSM { peptidoform, .. }) => {
+                peptidoform.singular_ref().and_then(|p| p.as_semi_ambiguous())
+            }
             #[cfg(feature = "mzannotate")]
             PSMData::AnnotatedSpectrum(spectrum) => {
                 use itertools::Itertools;
@@ -324,7 +323,8 @@ impl<PeptidoformAvailability> PSM<SemiAmbiguous, PeptidoformAvailability> {
 }
 
 impl<PeptidoformAvailability> PSM<UnAmbiguous, PeptidoformAvailability> {
-    /// If this peptidoform contains a peptidoform that is valid as an unambiguous peptidoform get a reference to the peptidoform.
+    /// If this peptidoform contains a peptidoform that is valid as an unambiguous peptidoform get a
+    /// reference to the peptidoform.
     fn inner_peptidoform(&self) -> Option<&Peptidoform<UnAmbiguous>> {
         match &self.data {
             PSMData::Novor(NovorPSM { peptide, .. })
@@ -378,9 +378,7 @@ impl<PeptidoformAvailability> PSM<UnAmbiguous, PeptidoformAvailability> {
             PSMData::MetaMorpheus(MetaMorpheusPSM { peptide, .. })
             | PSMData::BasicCSV(BasicCSVPSM {
                 sequence: peptide, ..
-            }) => peptide
-                .singular_peptidoform_ref()
-                .and_then(|p| p.as_unambiguous()),
+            }) => peptide.singular_peptidoform_ref().and_then(|p| p.as_unambiguous()),
             PSMData::PLink(PLinkPSM { peptidoform, .. }) => {
                 peptidoform.singular_ref().and_then(|p| p.as_unambiguous())
             }
@@ -436,6 +434,7 @@ impl<Complexity, PeptidoformAvailability> PSM<Complexity, PeptidoformAvailabilit
 
 impl HasPeptidoformImpl for PSM<Linear, PeptidoformPresent> {
     type Complexity = Linear;
+
     fn peptidoform(&self) -> &Peptidoform<Linear> {
         self.inner_peptidoform()
             .expect("Identified peptidoform incorrectly marked as containing a peptidoform")
@@ -444,6 +443,7 @@ impl HasPeptidoformImpl for PSM<Linear, PeptidoformPresent> {
 
 impl HasPeptidoformImpl for PSM<SimpleLinear, PeptidoformPresent> {
     type Complexity = SimpleLinear;
+
     fn peptidoform(&self) -> &Peptidoform<SimpleLinear> {
         self.inner_peptidoform()
             .expect("Identified peptidoform incorrectly marked as containing a peptidoform")
@@ -452,6 +452,7 @@ impl HasPeptidoformImpl for PSM<SimpleLinear, PeptidoformPresent> {
 
 impl HasPeptidoformImpl for PSM<SemiAmbiguous, PeptidoformPresent> {
     type Complexity = SemiAmbiguous;
+
     fn peptidoform(&self) -> &Peptidoform<SemiAmbiguous> {
         self.inner_peptidoform()
             .expect("Identified peptidoform incorrectly marked as containing a peptidoform")
@@ -460,6 +461,7 @@ impl HasPeptidoformImpl for PSM<SemiAmbiguous, PeptidoformPresent> {
 
 impl HasPeptidoformImpl for PSM<UnAmbiguous, PeptidoformPresent> {
     type Complexity = UnAmbiguous;
+
     fn peptidoform(&self) -> &Peptidoform<UnAmbiguous> {
         self.inner_peptidoform()
             .expect("Identified peptidoform incorrectly marked as containing a peptidoform")
@@ -467,28 +469,32 @@ impl HasPeptidoformImpl for PSM<UnAmbiguous, PeptidoformPresent> {
 }
 
 impl PSM<Linear, MaybePeptidoform> {
-    /// If this peptidoform contains a peptidoform that is valid as a linear peptidoform get a reference to the peptidoform.
+    /// If this peptidoform contains a peptidoform that is valid as a linear peptidoform get a
+    /// reference to the peptidoform.
     pub fn peptidoform(&self) -> Option<&Peptidoform<Linear>> {
         self.inner_peptidoform()
     }
 }
 
 impl PSM<SimpleLinear, MaybePeptidoform> {
-    /// If this peptidoform contains a peptidoform that is valid as a simple linear peptidoform get a reference to the peptidoform.
+    /// If this peptidoform contains a peptidoform that is valid as a simple linear peptidoform get
+    /// a reference to the peptidoform.
     pub fn peptidoform(&self) -> Option<&Peptidoform<SimpleLinear>> {
         self.inner_peptidoform()
     }
 }
 
 impl PSM<SemiAmbiguous, MaybePeptidoform> {
-    /// If this peptidoform contains a peptidoform that is valid as a semi ambiguous peptidoform get a reference to the peptidoform.
+    /// If this peptidoform contains a peptidoform that is valid as a semi ambiguous peptidoform get
+    /// a reference to the peptidoform.
     pub fn peptidoform(&self) -> Option<&Peptidoform<SemiAmbiguous>> {
         self.inner_peptidoform()
     }
 }
 
 impl PSM<UnAmbiguous, MaybePeptidoform> {
-    /// If this peptidoform contains a peptidoform that is valid as an unambiguous peptidoform get a reference to the peptidoform.
+    /// If this peptidoform contains a peptidoform that is valid as an unambiguous peptidoform get a
+    /// reference to the peptidoform.
     pub fn peptidoform(&self) -> Option<&Peptidoform<UnAmbiguous>> {
         self.inner_peptidoform()
     }
@@ -519,8 +525,8 @@ impl<Complexity, PeptidoformAvailability> PSM<Complexity, PeptidoformAvailabilit
 }
 
 /// Implement the [`PSMMetaData`] trait for [`PSM`] without having to type everything
-/// out. Needs some macro fudging to allow for the proper syntax of just specifying a list of formats
-/// and a list of functions to implement.
+/// out. Needs some macro fudging to allow for the proper syntax of just specifying a list of
+/// formats and a list of functions to implement.
 macro_rules! impl_metadata {
     (formats: $format:tt; functions: {$($(#[cfg($cfg:expr)])?fn $function:ident(&self) -> $t:ty);+;}) => {
         impl<Complexity, PeptidoformAvailability> PSMMetaData for PSM<Complexity, PeptidoformAvailability> {

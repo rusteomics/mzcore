@@ -1,8 +1,16 @@
-//! Functions to generate alignments of peptides based on homology, while taking mass spectrometry errors into account.
+//! Functions to generate alignments of peptides based on homology, while taking mass spectrometry
+//! errors into account.
 
 use std::borrow::Cow;
 
 use itertools::Itertools;
+use mzcore::{
+    chemistry::MolecularFormula,
+    prelude::MultiChemical,
+    quantities::Multi,
+    sequence::{HasPeptidoform, Linear, SequencePosition},
+    system::{Mass, Ratio},
+};
 use ordered_float::OrderedFloat;
 use serde::{Deserialize, Serialize};
 
@@ -13,15 +21,10 @@ use crate::{
     piece::*,
     scoring::*,
 };
-use mzcore::{
-    chemistry::MolecularFormula,
-    prelude::MultiChemical,
-    quantities::Multi,
-    sequence::{HasPeptidoform, Linear, SequencePosition},
-    system::{Mass, Ratio},
-};
 
-/// An alignment of two reads. It has either a reference to the two sequences to prevent overzealous use of memory, or if needed use [`Self::to_owned`] to get a variant that clones the sequences and so can be used in more places.
+/// An alignment of two reads. It has either a reference to the two sequences to prevent overzealous
+/// use of memory, or if needed use [`Self::to_owned`] to get a variant that clones the sequences
+/// and so can be used in more places.
 #[derive(Debug, Deserialize, Serialize)]
 pub struct Alignment<A, B> {
     /// The first sequence
@@ -87,7 +90,8 @@ impl<A: PartialEq + Eq, B: PartialEq + Eq> Eq for Alignment<A, B> {}
 
 impl<A: Clone, B: Clone> Alignment<Cow<'_, A>, Cow<'_, B>> {
     /// Clone the referenced sequences to make an alignment that owns the sequences.
-    /// This can be necessary in some context where the references cannot be guaranteed to stay as long as you need the alignment.
+    /// This can be necessary in some context where the references cannot be guaranteed to stay as
+    /// long as you need the alignment.
     #[must_use]
     pub fn to_owned(&self) -> Self {
         Alignment {
@@ -301,6 +305,7 @@ impl<A, B> Alignment<A, B> {
     pub const fn seq_a(&self) -> &A {
         &self.seq_a
     }
+
     /// The second sequence
     pub const fn seq_b(&self) -> &B {
         &self.seq_b
@@ -394,8 +399,9 @@ impl<A, B> Alignment<A, B> {
     }
 
     /// Get a short representation of the alignment in CIGAR like format.
-    /// It has three additional classes `{a}(:{b})?(r|i)` and `{a}m` denoting any special step with the given a and b step size, if b is not given it is the same as a.
-    /// `r` is rotation, `i` is isobaric, and `m` is identity but mass mismatch (modification).
+    /// It has three additional classes `{a}(:{b})?(r|i)` and `{a}m` denoting any special step with
+    /// the given a and b step size, if b is not given it is the same as a. `r` is rotation, `i`
+    /// is isobaric, and `m` is identity but mass mismatch (modification).
     pub fn short(&self) -> String {
         Piece::cigar(self.path(), self.start_a, self.start_b)
     }
@@ -414,7 +420,8 @@ impl<A: HasPeptidoform<Linear>, B: HasPeptidoform<Linear>> Alignment<A, B> {
         1.0 - f64::midpoint(stats.mass_similar as f64, stats.identical as f64) / length as f64
     }
 
-    /// The mass(es) for the matched portion of the first sequence TODO: this assumes no terminal mods
+    /// The mass(es) for the matched portion of the first sequence TODO: this assumes no terminal
+    /// mods
     pub fn mass_a(&self) -> Multi<MolecularFormula> {
         let seq_a = self.seq_a().cast_peptidoform();
         if self.align_type().left.global_a() && self.align_type().right.global_a() {
@@ -452,8 +459,9 @@ impl<A: HasPeptidoform<Linear>, B: HasPeptidoform<Linear>> Alignment<A, B> {
         }
     }
 
-    /// Get the mass delta for this match, if it is a (partial) local match it will only take the matched amino acids into account.
-    /// If there are multiple possible masses for any of the stretches it returns the smallest difference.
+    /// Get the mass delta for this match, if it is a (partial) local match it will only take the
+    /// matched amino acids into account. If there are multiple possible masses for any of the
+    /// stretches it returns the smallest difference.
     #[expect(clippy::missing_panics_doc)]
     pub fn mass_difference(&self) -> Mass {
         self.mass_a()
@@ -464,8 +472,9 @@ impl<A: HasPeptidoform<Linear>, B: HasPeptidoform<Linear>> Alignment<A, B> {
             .expect("An empty Multi<MolecularFormula> was detected")
     }
 
-    /// Get the error in ppm for this match, if it is a (partial) local match it will only take the matched amino acids into account.
-    /// If there are multiple possible masses for any of the stretches it returns the smallest difference.
+    /// Get the error in ppm for this match, if it is a (partial) local match it will only take the
+    /// matched amino acids into account. If there are multiple possible masses for any of the
+    /// stretches it returns the smallest difference.
     #[expect(clippy::missing_panics_doc)]
     pub fn ppm(&self) -> Ratio {
         self.mass_a()
@@ -477,14 +486,16 @@ impl<A: HasPeptidoform<Linear>, B: HasPeptidoform<Linear>> Alignment<A, B> {
     }
 }
 
-/// Statistics for an alignment with some helper functions to easily retrieve the number of interest.
+/// Statistics for an alignment with some helper functions to easily retrieve the number of
+/// interest.
 #[derive(Clone, Copy, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
 pub struct Stats {
     /// The total number of identical positions
     pub identical: usize,
     /// The total number of mass similar positions, so including isobaric and rotations
     pub mass_similar: usize,
-    /// The total number of similar positions, where the scoring matrix scores above 0, and not isobaric
+    /// The total number of similar positions, where the scoring matrix scores above 0, and not
+    /// isobaric
     pub similar: usize,
     /// The total number of gap positions
     pub gaps: usize,
@@ -537,19 +548,21 @@ pub struct Score {
     pub normalised: OrderedFloat<f64>,
     /// The absolute score
     pub absolute: isize,
-    /// The maximal possible score, the average score of the sequence slices on sequence a and b if they were aligned to themself, rounded down.
-    ///    Think of it like this: `align(sequence_a.sequence[start_a..len_a], sequence_a.sequence[start_a..len_a])`.
+    /// The maximal possible score, the average score of the sequence slices on sequence a and b if
+    /// they were aligned to themself, rounded down.    Think of it like this:
+    /// `align(sequence_a.sequence[start_a..len_a], sequence_a.sequence[start_a..len_a])`.
     pub max: isize,
 }
 
 #[cfg(test)]
 #[expect(clippy::missing_panics_doc)]
 mod tests {
-    use crate::{AlignScoring, AlignType, align};
     use mzcore::{
         chemistry::MultiChemical,
         sequence::{AminoAcid, Peptidoform, SimpleLinear},
     };
+
+    use crate::{AlignScoring, AlignType, align};
 
     #[test]
     fn mass_difference() {

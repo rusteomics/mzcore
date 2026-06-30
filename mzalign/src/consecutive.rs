@@ -1,12 +1,13 @@
-use crate::*;
+use std::collections::HashSet;
+
 use imgt::*;
+use itertools::Itertools;
 use mzcore::sequence::{
     AnnotatedPeptidoform, AtMax, HasPeptidoform, Linear, Peptidoform, Region, UnAmbiguous,
 };
 use mzcv::CVIndex;
-use std::collections::HashSet;
 
-use itertools::Itertools;
+use crate::*;
 
 /// A single consecutive alignment, it contains the allele that was aligned and the alignment itself
 pub type ConsecutiveAlignmentPart<'lifetime, Complexity> = (
@@ -40,9 +41,8 @@ impl<A: AtMax<Linear>> ConsecutiveAlignment<'_, A> {
                     let mut index_a = alignment.start_a;
                     let mut start_region_b = alignment.start_b;
                     let mut index_b = alignment.start_b;
-                    let mut region = allele
-                        .get_region(index_a)
-                        .map_or(&Region::Framework(1), |(r, _)| r);
+                    let mut region =
+                        allele.get_region(index_a).map_or(&Region::Framework(1), |(r, _)| r);
                     let mut ranges = Vec::new();
 
                     for step in &alignment.path {
@@ -83,8 +83,9 @@ impl<A: AtMax<Linear>> ConsecutiveAlignment<'_, A> {
 }
 
 /// Only available if features `align` and `imgt` are turned on.
-/// Align one sequence to multiple consecutive genes. Each gene can be controlled to be global to the left or free to allow unmatched residues between it and the previous gene.
-/// If the sequence is too short to cover all genes only the genes that could be matched are returned.
+/// Align one sequence to multiple consecutive genes. Each gene can be controlled to be global to
+/// the left or free to allow unmatched residues between it and the previous gene. If the sequence
+/// is too short to cover all genes only the genes that could be matched are returned.
 /// # Panics
 /// If there are not two or more genes listed. If the return number is 0.
 #[expect(clippy::needless_pass_by_value)]
@@ -142,12 +143,11 @@ pub fn consecutive_align<'imgt, const STEPS: u16, A: HasPeptidoform<Linear> + Eq
             }
             .germlines(imgt)
             .map(|seq| {
-                let alignment = align::<
-                    STEPS,
-                    &'imgt Peptidoform<UnAmbiguous>,
-                    Peptidoform<Linear>,
-                >(
-                    seq.sequence, left_sequence.clone(), scoring, gene.1
+                let alignment = align::<STEPS, &'imgt Peptidoform<UnAmbiguous>, Peptidoform<Linear>>(
+                    seq.sequence,
+                    left_sequence.clone(),
+                    scoring,
+                    gene.1,
                 );
                 (seq, alignment)
             })
@@ -159,8 +159,9 @@ pub fn consecutive_align<'imgt, const STEPS: u16, A: HasPeptidoform<Linear> + Eq
 }
 
 /// Only available with if features `align`, `rayon`, and `imgt` are turned on.
-/// Align one sequence to multiple consecutive genes. Each gene can be controlled to be global to the left or free to allow unmatched residues between it and the previous gene.
-/// If the sequence is too short to cover all genes only the genes that could be matched are returned.
+/// Align one sequence to multiple consecutive genes. Each gene can be controlled to be global to
+/// the left or free to allow unmatched residues between it and the previous gene. If the sequence
+/// is too short to cover all genes only the genes that could be matched are returned.
 /// # Panics
 /// If there are not two or more genes listed. If the return number is 0.
 #[cfg(feature = "rayon")]
@@ -225,12 +226,11 @@ pub fn par_consecutive_align<
             }
             .par_germlines(imgt)
             .map(|seq| {
-                let alignment = align::<
-                    STEPS,
-                    &'imgt Peptidoform<UnAmbiguous>,
-                    Peptidoform<Linear>,
-                >(
-                    seq.sequence, left_sequence.clone(), scoring, gene.1
+                let alignment = align::<STEPS, &'imgt Peptidoform<UnAmbiguous>, Peptidoform<Linear>>(
+                    seq.sequence,
+                    left_sequence.clone(),
+                    scoring,
+                    gene.1,
                 );
                 (seq, alignment)
             })

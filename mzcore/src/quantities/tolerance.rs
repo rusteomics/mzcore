@@ -14,7 +14,8 @@ use crate::{
 pub enum Tolerance<T> {
     /// A relative search tolerance
     Relative(OrderedRatio),
-    /// An absolute tolerance defined by a constant offset from the unit (bounds are unit - tolerance, unit + tolerance)
+    /// An absolute tolerance defined by a constant offset from the unit (bounds are unit -
+    /// tolerance, unit + tolerance)
     Absolute(T),
 }
 
@@ -92,39 +93,31 @@ impl Tolerance<OrderedMass> {
 
 impl<T: Display> Display for Tolerance<T> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "{}",
-            match self {
-                Self::Absolute(value) => format!("{value} abs"),
-                Self::Relative(tolerance) => format!("{} rel", tolerance.value),
-            }
-        )
+        write!(f, "{}", match self {
+            Self::Absolute(value) => format!("{value} abs"),
+            Self::Relative(tolerance) => format!("{} rel", tolerance.value),
+        })
     }
 }
 
 impl Display for Tolerance<Mass> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "{}",
-            match self {
-                Self::Absolute(value) => format!(
-                    "{}",
-                    value.into_format_args(crate::system::mass::dalton, DisplayStyle::Abbreviation)
-                ),
-                Self::Relative(tolerance) => format!(
-                    "{}",
-                    tolerance
-                        .into_format_args(crate::system::ratio::ppm, DisplayStyle::Abbreviation)
-                ),
-            }
-        )
+        write!(f, "{}", match self {
+            Self::Absolute(value) => format!(
+                "{}",
+                value.into_format_args(crate::system::mass::dalton, DisplayStyle::Abbreviation)
+            ),
+            Self::Relative(tolerance) => format!(
+                "{}",
+                tolerance.into_format_args(crate::system::ratio::ppm, DisplayStyle::Abbreviation)
+            ),
+        })
     }
 }
 
 impl FromStr for Tolerance<Mass> {
     type Err = ();
+
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let num_str = String::from_utf8(
             s.bytes()
@@ -152,26 +145,22 @@ impl FromStr for Tolerance<Mass> {
 
 impl Display for Tolerance<OrderedMass> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "{}",
-            match self {
-                Self::Absolute(value) => format!(
-                    "{}",
-                    value.into_format_args(crate::system::mass::dalton, DisplayStyle::Abbreviation)
-                ),
-                Self::Relative(tolerance) => format!(
-                    "{}",
-                    tolerance
-                        .into_format_args(crate::system::ratio::ppm, DisplayStyle::Abbreviation)
-                ),
-            }
-        )
+        write!(f, "{}", match self {
+            Self::Absolute(value) => format!(
+                "{}",
+                value.into_format_args(crate::system::mass::dalton, DisplayStyle::Abbreviation)
+            ),
+            Self::Relative(tolerance) => format!(
+                "{}",
+                tolerance.into_format_args(crate::system::ratio::ppm, DisplayStyle::Abbreviation)
+            ),
+        })
     }
 }
 
 impl FromStr for Tolerance<OrderedMass> {
     type Err = ();
+
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let num_str = String::from_utf8(
             s.bytes()
@@ -199,29 +188,25 @@ impl FromStr for Tolerance<OrderedMass> {
 
 impl Display for Tolerance<MassOverCharge> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "{}",
-            match self {
-                Self::Absolute(value) => format!(
-                    "{}",
-                    value.into_format_args(
-                        crate::system::mass_over_charge::thomson,
-                        DisplayStyle::Abbreviation
-                    )
-                ),
-                Self::Relative(tolerance) => format!(
-                    "{}",
-                    tolerance
-                        .into_format_args(crate::system::ratio::ppm, DisplayStyle::Abbreviation)
-                ),
-            }
-        )
+        write!(f, "{}", match self {
+            Self::Absolute(value) => format!(
+                "{}",
+                value.into_format_args(
+                    crate::system::mass_over_charge::thomson,
+                    DisplayStyle::Abbreviation
+                )
+            ),
+            Self::Relative(tolerance) => format!(
+                "{}",
+                tolerance.into_format_args(crate::system::ratio::ppm, DisplayStyle::Abbreviation)
+            ),
+        })
     }
 }
 
 impl FromStr for Tolerance<MassOverCharge> {
     type Err = ();
+
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let num_str = String::from_utf8(
             s.bytes()
@@ -254,6 +239,7 @@ where
     Self: FromStr,
 {
     type Error = <Self as FromStr>::Err;
+
     fn try_from(value: &str) -> Result<Self, Self::Error> {
         value.parse()
     }
@@ -272,7 +258,8 @@ impl WithinTolerance<MassOverCharge, MassOverCharge> for Tolerance<MassOverCharg
             Self::Absolute(tol) => (a.value - b.value).abs() <= tol.value,
             Self::Relative(tolerance) => {
                 (a.value - b.value).abs() <= tolerance.value * a.value.abs()
-            } // This is the same as `a.ppm(*b) <= tolerance.into_inner()` but then without the floating point division
+            } /* This is the same as `a.ppm(*b) <= tolerance.into_inner()` but then without the
+               * floating point division */
         }
     }
 }
@@ -284,7 +271,8 @@ impl WithinTolerance<Mass, Mass> for Tolerance<Mass> {
             Self::Absolute(tol) => (a.value - b.value).abs() <= tol.value,
             Self::Relative(tolerance) => {
                 (a.value - b.value).abs() <= tolerance.value * a.value.abs()
-            } // This is the same as `a.ppm(*b) <= tolerance.into_inner()` but then without the floating point division
+            } /* This is the same as `a.ppm(*b) <= tolerance.into_inner()` but then without the
+               * floating point division */
         }
     }
 }
@@ -292,9 +280,7 @@ impl WithinTolerance<Mass, Mass> for Tolerance<Mass> {
 impl WithinTolerance<Multi<Mass>, Multi<Mass>> for Tolerance<Mass> {
     #[inline]
     fn within(&self, a: &Multi<Mass>, b: &Multi<Mass>) -> bool {
-        a.iter()
-            .cartesian_product(b.iter())
-            .any(|(a, b)| self.within(a, b))
+        a.iter().cartesian_product(b.iter()).any(|(a, b)| self.within(a, b))
     }
 }
 
@@ -348,9 +334,7 @@ impl WithinTolerance<OrderedMass, OrderedMass> for Tolerance<OrderedMass> {
 impl WithinTolerance<Multi<Mass>, Multi<Mass>> for Tolerance<OrderedMass> {
     #[inline]
     fn within(&self, a: &Multi<Mass>, b: &Multi<Mass>) -> bool {
-        a.iter()
-            .cartesian_product(b.iter())
-            .any(|(a, b)| self.within(a, b))
+        a.iter().cartesian_product(b.iter()).any(|(a, b)| self.within(a, b))
     }
 }
 

@@ -82,7 +82,8 @@ impl<R: Read, H: sha2::Digest> HashBufReader<R, H> {
         }
     }
 
-    /// Get the hash of the file or stream, this finalises the hasher and so also takes ownership of the [`HashBufReader`]
+    /// Get the hash of the file or stream, this finalises the hasher and so also takes ownership of
+    /// the [`HashBufReader`]
     pub fn hash(self) -> Vec<u8> {
         self.hash.finalize().to_vec()
     }
@@ -133,7 +134,8 @@ impl<R: Read, H: sha2::Digest> Iterator for Lines<'_, R, H> {
     }
 }
 
-/// Taken from the standard library [`std::io::Lines`] implementation but adapted for the stable std library interface
+/// Taken from the standard library [`std::io::Lines`] implementation but adapted for the stable std
+/// library interface
 /// # Errors
 /// When the underlying reader errors
 fn read_until<R: BufRead + ?Sized>(

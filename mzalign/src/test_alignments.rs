@@ -1,7 +1,8 @@
 #![allow(clippy::missing_panics_doc)]
 
-use crate::{AlignType, Alignment, align, scoring::AlignScoring};
 use mzcore::sequence::{Peptidoform, SimpleLinear};
+
+use crate::{AlignType, Alignment, align, scoring::AlignScoring};
 
 #[test]
 fn global_b() {
@@ -163,7 +164,8 @@ fn terminal_mods() {
 
 /// Test if the given alignment is as expected and can be recreated
 /// # Errors
-/// When the alignment is not identical to path and when the alignment cannot be recreated from the path.
+/// When the alignment is not identical to path and when the alignment cannot be recreated from the
+/// path.
 fn test_alignment(
     seq_a: &str,
     seq_b: &str,

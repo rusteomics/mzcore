@@ -6,18 +6,18 @@ use std::{
     str::FromStr,
 };
 
+use mzcore::{
+    csv::{CsvLine, parse_csv},
+    ontology::Ontologies,
+    sequence::{FlankingSequence, Peptidoform, PeptidoformIonSet, SemiAmbiguous},
+    system::{Mass, MassOverCharge, Ratio, Time, isize::Charge},
+};
 use serde::{Deserialize, Serialize};
 
 use crate::{
     BoxedIdentifiedPeptideIter, FastaIdentifier, KnownFileFormat, PSM, PSMData,
     PSMFileFormatVersion, PSMMetaData, PSMSource, PeptidoformPresent, SpectrumId, SpectrumIds,
     common_parser::Location,
-};
-use mzcore::{
-    csv::{CsvLine, parse_csv},
-    ontology::Ontologies,
-    sequence::{FlankingSequence, Peptidoform, PeptidoformIonSet, SemiAmbiguous},
-    system::{Mass, MassOverCharge, Ratio, Time, isize::Charge},
 };
 
 static NUMBER_ERROR: (&str, &str) = (
@@ -141,6 +141,7 @@ impl PSMFileFormatVersion<SageFormat> for SageVersion {
             Self::V0_14 => VERSION_0_14,
         }
     }
+
     fn name(self) -> &'static str {
         match self {
             Self::V0_14 => "v0.14",
@@ -149,6 +150,8 @@ impl PSMFileFormatVersion<SageFormat> for SageVersion {
 }
 
 impl PSMMetaData for SagePSM {
+    type Protein = FastaIdentifier<Box<str>>;
+
     fn peptidoform_ion_set(&self) -> Option<Cow<'_, PeptidoformIonSet>> {
         Some(Cow::Owned(self.peptide.clone().into()))
     }
@@ -214,7 +217,6 @@ impl PSMMetaData for SagePSM {
         Some(self.mass)
     }
 
-    type Protein = FastaIdentifier<Box<str>>;
     fn proteins(&self) -> Cow<'_, [Self::Protein]> {
         Cow::Borrowed(&self.proteins)
     }

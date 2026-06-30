@@ -16,8 +16,8 @@ pub struct Interpretation {
     pub attributes: Attributes,
     /// Analyte mixture members (MS:1003163)
     pub analyte_refs: Vec<Id>,
-    /// The interpretation members, this links to a specific analyte and gives additional attributes
-    /// about the interpretation of that analyte.
+    /// The interpretation members, this links to a specific analyte and gives additional
+    /// attributes about the interpretation of that analyte.
     pub members: HashMap<Id, Attributes>,
 }
 
@@ -42,10 +42,7 @@ impl Interpretation {
             attributes[0].push(Attribute::new(
                 term!(MS:1003163|analyte mixture members),
                 AttributeValue::List(
-                    self.analyte_refs
-                        .iter()
-                        .map(|v| Value::Int(i64::from(*v)))
-                        .collect(),
+                    self.analyte_refs.iter().map(|v| Value::Int(i64::from(*v))).collect(),
                 ),
             ));
         }

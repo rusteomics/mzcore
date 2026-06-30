@@ -165,24 +165,21 @@ fn tokenise_mod(
                 )
             });
     let (label, score) = label.map_or((None, None), |label| {
-        label
-            .strip_suffix(')')
-            .and_then(|label| label.split_once('('))
-            .map_or(
-                (Some((label, range.start + m.len() + 1..range.end)), None),
-                |(label, score)| {
-                    (
-                        Some((
-                            label,
-                            range.start + m.len() + 1..range.start + m.len() + 1 + label.len(),
-                        )),
-                        Some((
-                            score,
-                            range.start + m.len() + 2 + label.len()..range.end - 1,
-                        )),
-                    )
-                },
-            )
+        label.strip_suffix(')').and_then(|label| label.split_once('(')).map_or(
+            (Some((label, range.start + m.len() + 1..range.end)), None),
+            |(label, score)| {
+                (
+                    Some((
+                        label,
+                        range.start + m.len() + 1..range.start + m.len() + 1 + label.len(),
+                    )),
+                    Some((
+                        score,
+                        range.start + m.len() + 2 + label.len()..range.end - 1,
+                    )),
+                )
+            },
+        )
     });
 
     (tag, name, label, score)
@@ -266,19 +263,14 @@ fn parse_single_modification<'error, const STRICT: bool>(
             if by_name {
                 Ok((modification, Vec::new()))
             } else {
-                Ok((
-                    modification.clone(),
-                    vec![BoxedError::new(
-                        BasicKind::Warning,
-                        "Used modification synonym",
-                        "The name of the modification should be used to unambiguously identify a modification instead of a synonym",
-                        base_context.clone().add_highlight((
-                            0,
-                            range,
-                            format!("use {modification}"),
-                        )),
-                    )],
-                ))
+                Ok((modification.clone(), vec![BoxedError::new(
+                    BasicKind::Warning,
+                    "Used modification synonym",
+                    "The name of the modification should be used to unambiguously identify a modification instead of a synonym",
+                    base_context
+                        .clone()
+                        .add_highlight((0, range, format!("use {modification}"))),
+                )]))
             }
         } else {
             Err(vec![
@@ -307,12 +299,9 @@ fn parse_single_modification<'error, const STRICT: bool>(
                     base_context.clone().add_highlight((0, range)),
                 )
                 .suggestions(
-                    ontologies
-                        .search(search_selection, name)
-                        .into_iter()
-                        .map(|(m, s)| {
-                            s.map_or_else(|| m.to_string(), |s| format!("`{s}` synonym for `{m}`"))
-                        }),
+                    ontologies.search(search_selection, name).into_iter().map(|(m, s)| {
+                        s.map_or_else(|| m.to_string(), |s| format!("`{s}` synonym for `{m}`"))
+                    }),
                 ),
             ])
         }
@@ -337,170 +326,189 @@ fn parse_single_modification<'error, const STRICT: bool>(
         );
         let lowercase = head.0.to_ascii_lowercase();
         match (lowercase.as_str(), tail.0) {
-                ("unimod", tail) => {
-                    let id = tail.parse::<u32>().map_err(|_| {
-                        vec![basic_error.clone()
-                            .long_description("Unimod accession number should be a number")]
-                    })?;
-                    ontologies.unimod().get_by_index(&AccessionCode::Numeric(id))
-                        .map(Some)
-                        .ok_or_else(|| {
-                            vec![basic_error.clone().long_description(
-                            "The supplied Unimod accession number is not an existing modification",
-                        )]
-                        })
-                }
-                ("mod", tail) => {
-                    let id = tail.parse::<u32>().map_err(|_| {
-                        vec![basic_error.clone()
-                            .long_description("PSI-MOD accession number should be a number")]
-                    })?;
-                    ontologies.psimod().get_by_index(&AccessionCode::Numeric(id))
-                        .map(Some)
-                        .ok_or_else(|| {
-                            vec![basic_error.clone().long_description(
-                            "The supplied PSI-MOD accession number is not an existing modification",
-                        )]
-                        })
-                }
-                ("resid", tail) => {
-                    let id = tail.parse::<AccessionCode>().map_err(|_| {
-                        vec![basic_error.clone().long_description(
-                            "RESID accession number should be a number prefixed with 'AA'",
-                        )]
-                    })?;
-                    ontologies.resid().get_by_index(&id)
-                        .map(Some)
-                        .ok_or_else(|| {
-                            vec![basic_error.clone().long_description(
-                            "The supplied RESID accession number is not an existing modification",
-                        )]
-                        })
-                }
-                ("xlmod", tail) => {
-                    let id = tail.parse::<u32>().map_err(|_| {
-                        vec![basic_error.clone()
-                            .long_description("XLMOD accession number should be a number")]
-                    })?;
-                    ontologies.xlmod().get_by_index(&AccessionCode::Numeric(id))
-                        .map(Some)
-                        .ok_or_else(|| {
-                            vec![basic_error.clone().long_description(
-                            "The supplied XLMOD accession number is not an existing modification",
-                        )]
-                        })
-                }
-                ("custom", tail) => {
-                    let id = tail.parse::<u32>().map_err(|_| {
-                        vec![basic_error.clone()
-                            .long_description("Custom accession number should be a number")]
-                    })?;
-                    ontologies.custom().get_by_index(&AccessionCode::Numeric(id))
-                    .map(Some)
-                    .ok_or_else(|| {
-                        vec![basic_error.clone().long_description(
-                                "The supplied Custom accession number is not an existing modification",
-                            )]
-                    })
-                }
-                ("u", name) => Ok(Some(handle!(errors, numerical_mod(MassTag::Ontology(Ontology::Unimod), name).map(|(sign, m)| (m, if STRICT && !sign {vec![sign_warning.clone()]} else {Vec::new()})).or_else(|_| 
-                    single_name_resolution(ontologies, Ontology::Unimod, name, base_context, tail.1.clone())
-                )))),
-                ("m", name) => Ok(Some(handle!(errors, numerical_mod(MassTag::Ontology(Ontology::Psimod), name).map(|(sign, m)| (m, if STRICT && !sign {vec![sign_warning.clone()]} else {Vec::new()})).or_else(|_| 
-                    single_name_resolution(ontologies, Ontology::Psimod, name, base_context, tail.1.clone())
-                )))),
-                ("r", name) => Ok(Some(handle!(errors, numerical_mod(MassTag::Ontology(Ontology::Resid), name).map(|(sign, m)| (m, if STRICT && !sign {vec![sign_warning.clone()]} else {Vec::new()})).or_else(|_| 
-                    single_name_resolution(ontologies, Ontology::Resid, name, base_context, tail.1.clone())
-                )))),
-                ("x", name) => Ok(Some(handle!(errors, numerical_mod(MassTag::Ontology(Ontology::Xlmod), name).map(|(sign, m)| (m, if STRICT && !sign {vec![sign_warning.clone()]} else {Vec::new()})).or_else(|_| 
-                    single_name_resolution(ontologies, Ontology::Xlmod, name, base_context, tail.1.clone())
-                )))),
-                ("c", name) => Ok(Some(handle!(errors, numerical_mod(MassTag::Ontology(Ontology::Custom), name).map(|(sign, m)| (m, if STRICT && !sign {vec![sign_warning.clone()]} else {Vec::new()})).or_else(|_| 
-                    single_name_resolution(ontologies, Ontology::Custom, name, base_context, tail.1.clone())
-                )))),
-                ("gno" | "g", name) => Ok(Some(handle!(errors, numerical_mod(MassTag::Ontology(Ontology::Gnome), name).map(|(sign, m)| (m, if STRICT && !sign {vec![sign_warning.clone()]} else {Vec::new()})).or_else(|_| 
-                    single_name_resolution(ontologies, Ontology::Gnome, name, base_context, tail.1.clone())
-                )))),
-                ("formula", _) => Ok(Some(Arc::new(SimpleModificationInner::Formula(
-                    MolecularFormula::pro_forma_inner::<true, false>(base_context, line, tail.1.clone()).map_err(|e| {
-                       vec![e]
-                    })?,
-                )))),
-                ("glycan", _) =>
-                    Ok(Some(Arc::new(SimpleModificationInner::Glycan(
-                    handle!(errors, MonoSaccharide::pro_forma_composition_inner::<STRICT>(base_context, line, tail.1.clone()).map(|(v, w)| (v, w.into_iter().map(|e| e.convert::<BasicKind, BoxedError<'error, BasicKind>>(Into::into)).collect::<Vec<_>>())).map_err(|e| e.into_iter().map(|e| e.convert::<BasicKind, BoxedError<'error, BasicKind>>(Into::into)).collect::<Vec<_>>()))
-                )))),
-                ("glycanstructure", _) => GlycanStructure::parse(
-                    line,
-                    tail.1.clone(),
-                )
-                .map(|g| Some(Arc::new(SimpleModificationInner::GlycanStructure(g)))).map_err(|e| vec![e]),
-                ("info", tail) => Ok(Some(Arc::new(SimpleModificationInner::Info(tail.to_string())))),
-                ("obs", tail) => numerical_mod(MassTag::Observed,tail).map(|(sign, m)| {if STRICT && !sign {
-                    combine_error(&mut errors, sign_warning.clone());
-                }
-                Some(m)}).map_err(|_| {
-                    vec![basic_error.long_description(
-                        "This modification cannot be read as a numerical modification",
-                    )]
-                }),
-                ("position", _) => {
-                    match super::parse::parse_placement_rules(base_context, line, tail.1.clone()) {
-                        Ok(rules) => return Ok((SingleReturnModification::Positions(rules), errors)),
-                        Err(e) => Err(vec![e]),
-                    }
-                }
-                ("limit", tail) => {
-                    match tail.parse::<usize>().map_err(|error| {
-                        basic_error.long_description(format!(
-                            "Invalid limit for modification of unknown position, the number is {}",
-                            explain_number_error(&error)
-                        ))
-                    }) {
-                        Ok(l) => return Ok((SingleReturnModification::Limit(l), errors)),
-                        Err(e) => Err(vec![e]),
-                    }
-                }
-                ("colocalisemodificationsofknownposition" | "comkp", tail) => {
-                    match tail.parse::<bool>().map_err(|error| {
-                        basic_error.long_description(format!(
-                            "Invalid setting for colocalise placed modifications for modification of unknown position, the boolean is {error}",
-                        ))
-                    }) {
-                        Ok(s) => return Ok((SingleReturnModification::CoMKP(s), errors)),
-                        Err(e) => Err(vec![e]),
-                    }
-                }
-                ("colocalisemodificationsofunknownposition" | "comup", tail) => {
-                    match tail.parse::<bool>().map_err(|error| {
-                        basic_error.long_description(format!(
-                            "Invalid setting for colocalise modifications of unknown position for modification of unknown position, the boolean is {error}",
-                        ))
-                    }) {
-                        Ok(s) => return Ok((SingleReturnModification::CoMUP(s), errors)),
-                        Err(e) => Err(vec![e]),
-                    }
-                }
-                (_, _) => Ok(Some(handle!(errors, name_resolution(
-                        ontologies,
-                        &[Ontology::Unimod, Ontology::Psimod],
-                        &[],
-                        &line[head.1.start..tail.1.end],
-                        base_context,
-                        head.1.start..tail.1.end
-                    ))))
+            ("unimod", tail) => {
+                let id = tail
+                    .parse::<u32>()
+                    .map_err(|_| vec![basic_error.clone().long_description("Unimod accession number should be a number")])?;
+                ontologies.unimod().get_by_index(&AccessionCode::Numeric(id)).map(Some).ok_or_else(|| {
+                    vec![
+                        basic_error
+                            .clone()
+                            .long_description("The supplied Unimod accession number is not an existing modification"),
+                    ]
+                })
             }
+            ("mod", tail) => {
+                let id = tail
+                    .parse::<u32>()
+                    .map_err(|_| vec![basic_error.clone().long_description("PSI-MOD accession number should be a number")])?;
+                ontologies.psimod().get_by_index(&AccessionCode::Numeric(id)).map(Some).ok_or_else(|| {
+                    vec![
+                        basic_error
+                            .clone()
+                            .long_description("The supplied PSI-MOD accession number is not an existing modification"),
+                    ]
+                })
+            }
+            ("resid", tail) => {
+                let id = tail.parse::<AccessionCode>().map_err(|_| {
+                    vec![
+                        basic_error
+                            .clone()
+                            .long_description("RESID accession number should be a number prefixed with 'AA'"),
+                    ]
+                })?;
+                ontologies.resid().get_by_index(&id).map(Some).ok_or_else(|| {
+                    vec![
+                        basic_error
+                            .clone()
+                            .long_description("The supplied RESID accession number is not an existing modification"),
+                    ]
+                })
+            }
+            ("xlmod", tail) => {
+                let id = tail
+                    .parse::<u32>()
+                    .map_err(|_| vec![basic_error.clone().long_description("XLMOD accession number should be a number")])?;
+                ontologies.xlmod().get_by_index(&AccessionCode::Numeric(id)).map(Some).ok_or_else(|| {
+                    vec![
+                        basic_error
+                            .clone()
+                            .long_description("The supplied XLMOD accession number is not an existing modification"),
+                    ]
+                })
+            }
+            ("custom", tail) => {
+                let id = tail
+                    .parse::<u32>()
+                    .map_err(|_| vec![basic_error.clone().long_description("Custom accession number should be a number")])?;
+                ontologies.custom().get_by_index(&AccessionCode::Numeric(id)).map(Some).ok_or_else(|| {
+                    vec![
+                        basic_error
+                            .clone()
+                            .long_description("The supplied Custom accession number is not an existing modification"),
+                    ]
+                })
+            }
+            ("u", name) => Ok(Some(handle!(
+                errors,
+                numerical_mod(MassTag::Ontology(Ontology::Unimod), name)
+                    .map(|(sign, m)| (m, if STRICT && !sign { vec![sign_warning.clone()] } else { Vec::new() }))
+                    .or_else(|_| single_name_resolution(ontologies, Ontology::Unimod, name, base_context, tail.1.clone()))
+            ))),
+            ("m", name) => Ok(Some(handle!(
+                errors,
+                numerical_mod(MassTag::Ontology(Ontology::Psimod), name)
+                    .map(|(sign, m)| (m, if STRICT && !sign { vec![sign_warning.clone()] } else { Vec::new() }))
+                    .or_else(|_| single_name_resolution(ontologies, Ontology::Psimod, name, base_context, tail.1.clone()))
+            ))),
+            ("r", name) => Ok(Some(handle!(
+                errors,
+                numerical_mod(MassTag::Ontology(Ontology::Resid), name)
+                    .map(|(sign, m)| (m, if STRICT && !sign { vec![sign_warning.clone()] } else { Vec::new() }))
+                    .or_else(|_| single_name_resolution(ontologies, Ontology::Resid, name, base_context, tail.1.clone()))
+            ))),
+            ("x", name) => Ok(Some(handle!(
+                errors,
+                numerical_mod(MassTag::Ontology(Ontology::Xlmod), name)
+                    .map(|(sign, m)| (m, if STRICT && !sign { vec![sign_warning.clone()] } else { Vec::new() }))
+                    .or_else(|_| single_name_resolution(ontologies, Ontology::Xlmod, name, base_context, tail.1.clone()))
+            ))),
+            ("c", name) => Ok(Some(handle!(
+                errors,
+                numerical_mod(MassTag::Ontology(Ontology::Custom), name)
+                    .map(|(sign, m)| (m, if STRICT && !sign { vec![sign_warning.clone()] } else { Vec::new() }))
+                    .or_else(|_| single_name_resolution(ontologies, Ontology::Custom, name, base_context, tail.1.clone()))
+            ))),
+            ("gno" | "g", name) => Ok(Some(handle!(
+                errors,
+                numerical_mod(MassTag::Ontology(Ontology::Gnome), name)
+                    .map(|(sign, m)| (m, if STRICT && !sign { vec![sign_warning.clone()] } else { Vec::new() }))
+                    .or_else(|_| single_name_resolution(ontologies, Ontology::Gnome, name, base_context, tail.1.clone()))
+            ))),
+            ("formula", _) => Ok(Some(Arc::new(SimpleModificationInner::Formula(
+                MolecularFormula::pro_forma_inner::<true, false>(base_context, line, tail.1.clone()).map_err(|e| vec![e])?,
+            )))),
+            ("glycan", _) => Ok(Some(Arc::new(SimpleModificationInner::Glycan(handle!(
+                errors,
+                MonoSaccharide::pro_forma_composition_inner::<STRICT>(base_context, line, tail.1.clone())
+                    .map(|(v, w)| (
+                        v,
+                        w.into_iter()
+                            .map(|e| e.convert::<BasicKind, BoxedError<'error, BasicKind>>(Into::into))
+                            .collect::<Vec<_>>()
+                    ))
+                    .map_err(|e| e
+                        .into_iter()
+                        .map(|e| e.convert::<BasicKind, BoxedError<'error, BasicKind>>(Into::into))
+                        .collect::<Vec<_>>())
+            ))))),
+            ("glycanstructure", _) => GlycanStructure::parse(line, tail.1.clone())
+                .map(|g| Some(Arc::new(SimpleModificationInner::GlycanStructure(g))))
+                .map_err(|e| vec![e]),
+            ("info", tail) => Ok(Some(Arc::new(SimpleModificationInner::Info(tail.to_string())))),
+            ("obs", tail) => numerical_mod(MassTag::Observed, tail)
+                .map(|(sign, m)| {
+                    if STRICT && !sign {
+                        combine_error(&mut errors, sign_warning.clone());
+                    }
+                    Some(m)
+                })
+                .map_err(|_| vec![basic_error.long_description("This modification cannot be read as a numerical modification")]),
+            ("position", _) => match super::parse::parse_placement_rules(base_context, line, tail.1.clone()) {
+                Ok(rules) => return Ok((SingleReturnModification::Positions(rules), errors)),
+                Err(e) => Err(vec![e]),
+            },
+            ("limit", tail) => {
+                match tail.parse::<usize>().map_err(|error| {
+                    basic_error.long_description(format!(
+                        "Invalid limit for modification of unknown position, the number is {}",
+                        explain_number_error(&error)
+                    ))
+                }) {
+                    Ok(l) => return Ok((SingleReturnModification::Limit(l), errors)),
+                    Err(e) => Err(vec![e]),
+                }
+            }
+            ("colocalisemodificationsofknownposition" | "comkp", tail) => {
+                match tail.parse::<bool>().map_err(|error| {
+                    basic_error.long_description(format!(
+                        "Invalid setting for colocalise placed modifications for modification of unknown position, the boolean is {error}",
+                    ))
+                }) {
+                    Ok(s) => return Ok((SingleReturnModification::CoMKP(s), errors)),
+                    Err(e) => Err(vec![e]),
+                }
+            }
+            ("colocalisemodificationsofunknownposition" | "comup", tail) => {
+                match tail.parse::<bool>().map_err(|error| {
+                    basic_error.long_description(format!(
+                        "Invalid setting for colocalise modifications of unknown position for modification of unknown position, the boolean is {error}",
+                    ))
+                }) {
+                    Ok(s) => return Ok((SingleReturnModification::CoMUP(s), errors)),
+                    Err(e) => Err(vec![e]),
+                }
+            }
+            (_, _) => Ok(Some(handle!(
+                errors,
+                name_resolution(
+                    ontologies,
+                    &[Ontology::Unimod, Ontology::Psimod],
+                    &[],
+                    &line[head.1.start..tail.1.end],
+                    base_context,
+                    head.1.start..tail.1.end
+                )
+            ))),
+        }
     } else if head.0.is_empty() {
         Ok(None)
-    } else if full
-        .0
-        .eq_ignore_ascii_case("colocalisemodificationsofknownposition")
+    } else if full.0.eq_ignore_ascii_case("colocalisemodificationsofknownposition")
         || full.0.eq_ignore_ascii_case("comkp")
     {
         return Ok((SingleReturnModification::CoMKP(true), errors));
-    } else if full
-        .0
-        .eq_ignore_ascii_case("colocalisemodificationsofunknownposition")
+    } else if full.0.eq_ignore_ascii_case("colocalisemodificationsofunknownposition")
         || full.0.eq_ignore_ascii_case("comup")
     {
         return Ok((SingleReturnModification::CoMUP(true), errors));
@@ -569,11 +577,7 @@ fn parse_single_modification<'error, const STRICT: bool>(
                     index
                 });
             if let Some(linker) = modification {
-                if cross_link_lookup[index]
-                    .1
-                    .as_ref()
-                    .is_some_and(|l| *l != linker)
-                {
+                if cross_link_lookup[index].1.as_ref().is_some_and(|l| *l != linker) {
                     return Err(vec![BoxedError::new(
                         BasicKind::Error,
                         "Invalid branch definition",
@@ -591,20 +595,13 @@ fn parse_single_modification<'error, const STRICT: bool>(
             ))
         } else if let Some(name) = group.0.to_ascii_lowercase().strip_prefix("xl") {
             let name = CrossLinkName::Name(name.to_string().into_boxed_str());
-            let index = cross_link_lookup
-                .iter()
-                .position(|c| c.0 == name)
-                .unwrap_or_else(|| {
-                    let index = cross_link_lookup.len();
-                    cross_link_lookup.push((name, None));
-                    index
-                });
+            let index = cross_link_lookup.iter().position(|c| c.0 == name).unwrap_or_else(|| {
+                let index = cross_link_lookup.len();
+                cross_link_lookup.push((name, None));
+                index
+            });
             if let Some(linker) = modification {
-                if cross_link_lookup[index]
-                    .1
-                    .as_ref()
-                    .is_some_and(|l| *l != linker)
-                {
+                if cross_link_lookup[index].1.as_ref().is_some_and(|l| *l != linker) {
                     return Err(vec![BoxedError::new(
                         BasicKind::Error,
                         "Invalid cross-link definition",
@@ -671,13 +668,15 @@ fn handle_ambiguous_modification<'a>(
     ambiguous_lookup: &mut AmbiguousLookup,
     context: Context<'a>,
 ) -> ParserResult<'a, SingleReturnModification, BasicKind> {
-    // Search for a previous definition of this name, store as Some((index, modification_definition_present)) or None if there is no definition in place
+    // Search for a previous definition of this name, store as Some((index,
+    // modification_definition_present)) or None if there is no definition in place
     let found_definition = ambiguous_lookup
         .iter()
         .enumerate()
         .find(|(_, entry)| entry.name.eq_ignore_ascii_case(group.0))
         .map(|(index, entry)| (index, entry.modification.as_ref()));
-    // Handle all possible cases of having a modification found at this position and having a modification defined in the ambiguous lookup
+    // Handle all possible cases of having a modification found at this position and having a
+    // modification defined in the ambiguous lookup
     match (modification, found_definition) {
         // Have a mod defined here and already in the lookup (error)
         (Some(m), Some((index, Some(f)))) => {
@@ -747,7 +746,8 @@ fn handle_ambiguous_modification<'a>(
 pub enum ReturnModification {
     /// A fully self contained modification
     Defined(SimpleModification),
-    /// A modification that references an ambiguous modification, (id, localisation score, preferred)
+    /// A modification that references an ambiguous modification, (id, localisation score,
+    /// preferred)
     Ambiguous(usize, Option<OrderedFloat<f64>>, bool),
     /// A modification that references a cross-link
     CrossLinkReferenced(usize),
@@ -769,12 +769,14 @@ impl ReturnModification {
 pub enum GlobalModification {
     /// A global isotope modification
     Isotope(Element, Option<NonZeroU16>),
-    /// Can be placed on any place it fits, if that is the correct aminoacid and it fits according to the placement rules of the modification itself
+    /// Can be placed on any place it fits, if that is the correct aminoacid and it fits according
+    /// to the placement rules of the modification itself
     Fixed(PlacementRule, SimpleModification),
 }
 
 /// Returns a mass modification is this text could be parsed as a number.
-/// It also returns a boolean indicating if a sign was present (`true`) or not present to be able to create a warning for strict ProForma handling.
+/// It also returns a boolean indicating if a sign was present (`true`) or not present to be able to
+/// create a warning for strict ProForma handling.
 /// # Errors
 /// It returns an error when the text is not numerical
 pub(super) fn numerical_mod(

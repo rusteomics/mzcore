@@ -1,16 +1,16 @@
 //! Handle converting [`Attribute`]s to and from [`SpectrumDescription`]
 use std::borrow::Cow;
 
-use crate::mzspeclib::{
-    Attribute, AttributeValue, Attributes, MzSpecLibErrorKind, to_mzcv_curie, to_mzcv_cv,
-    to_mzcv_term, to_mzdata_curie, to_mzdata_cv, to_param,
-};
-
 use context_error::{BoxedError, Context, CreateError};
 use mzcv::{AccessionCode, Curie, Term, curie, term};
 use mzdata::{
     params::{ParamDescribed, ParamValue, Unit, Value},
     spectrum::{IsolationWindowState, ScanPolarity, SpectrumDescription, SpectrumSummary},
+};
+
+use crate::mzspeclib::{
+    Attribute, AttributeValue, Attributes, MzSpecLibErrorKind, to_mzcv_curie, to_mzcv_cv,
+    to_mzcv_term, to_mzdata_curie, to_mzdata_cv, to_param,
 };
 
 /// Create mzSpecLib attributes from a spectrum description.
@@ -191,17 +191,13 @@ pub fn get_attributes_from_spectrum_description(
         .params
         .iter()
         .chain(description.acquisition.params.iter().flat_map(|p| p.iter()))
+        .chain(description.precursor.iter().flat_map(|p| p.activation.params.iter()))
         .chain(
             description
                 .precursor
                 .iter()
-                .flat_map(|p| p.activation.params.iter()),
+                .flat_map(|p| p.ions.iter().flat_map(|i| i.params.iter().flat_map(|p| p.iter()))),
         )
-        .chain(description.precursor.iter().flat_map(|p| {
-            p.ions
-                .iter()
-                .flat_map(|i| i.params.iter().flat_map(|p| p.iter()))
-        }))
         .chain(
             description
                 .acquisition
@@ -282,18 +278,15 @@ pub(crate) fn populate_spectrum_description_from_attributes<'a>(
                     ..
                 },
                 _,
-            )) = group
-                .iter()
-                .find(|a| a.0.name.accession == curie!(UO:0000000))
+            )) = group.iter().find(|a| a.0.name.accession == curie!(UO:0000000))
             {
                 to_mzdata_curie(term.accession).map(|c| Unit::from_curie(&c))
             } else {
                 None
             };
 
-            if let Some((Attribute { value, .. }, context)) = group
-                .iter()
-                .find(|a| a.0.name.accession == curie!(MS:1000894))
+            if let Some((Attribute { value, .. }, context)) =
+                group.iter().find(|a| a.0.name.accession == curie!(MS:1000894))
                 && group.len() == 2
             {
                 description.acquisition.scans[0].start_time =
@@ -315,9 +308,8 @@ pub(crate) fn populate_spectrum_description_from_attributes<'a>(
                         Unit::Minute => 60.0,
                         _ => 1.0, // Assume seconds for anything else
                     };
-            } else if let Some((Attribute { value, .. }, context)) = group
-                .iter()
-                .find(|a| a.0.name.accession == curie!(MS:1000896))
+            } else if let Some((Attribute { value, .. }, context)) =
+                group.iter().find(|a| a.0.name.accession == curie!(MS:1000896))
                 && group.len() == 2
             {
                 let rt = f64::from(value.scalar().to_f32().map_err(|v| {
@@ -364,27 +356,24 @@ pub(crate) fn populate_spectrum_description_from_attributes<'a>(
             } else if let Some(unit) = unit
                 && group.len() == 2
             {
-                if let Some((other, _)) = group
-                    .iter()
-                    .find(|a| a.0.name.accession != curie!(UO:0000000))
+                if let Some((other, _)) =
+                    group.iter().find(|a| a.0.name.accession != curie!(UO:0000000))
                 {
                     description.add_param(to_param(&other.name, other.value.clone().into(), unit));
                 } else {
                     // Two units as a single group is not a sensible thing to have so just ignore
                 }
-            } else if let Some((value, _)) = group
-                .iter()
-                .find(|a| a.0.name.accession == curie!(MS:1003276))
-                && let Some((name, _)) = group
-                    .iter()
-                    .find(|a| a.0.name.accession == curie!(MS:1003275))
+            } else if let Some((value, _)) =
+                group.iter().find(|a| a.0.name.accession == curie!(MS:1003276))
+                && let Some((name, _)) =
+                    group.iter().find(|a| a.0.name.accession == curie!(MS:1003275))
                 && group.len() == 2
             {
                 description.add_param(match &name.value {
                     AttributeValue::Term(term) => mzdata::params::Param {
                         accession: match value.name.accession.accession {
                             AccessionCode::Numeric(num) => Some(num),
-                            AccessionCode::Alphanumeric(_, _) => None,
+                            AccessionCode::Alphanumeric(..) => None,
                         },
                         name: term.name.to_string(),
                         value: value.value.scalar().into_owned(),

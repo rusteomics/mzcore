@@ -18,10 +18,7 @@ pub(crate) fn next_num(
         start += 1;
         sign_set = true;
     }
-    let len = chars[start..]
-        .iter()
-        .take_while(|c| c.is_ascii_digit())
-        .count();
+    let len = chars[start..].iter().take_while(|c| c.is_ascii_digit()).count();
     if len == 0 {
         if allow_only_sign && sign_set {
             Some((1, sign))
@@ -29,10 +26,7 @@ pub(crate) fn next_num(
             None
         }
     } else {
-        let num: isize = std::str::from_utf8(&chars[start..start + len])
-            .unwrap()
-            .parse()
-            .ok()?;
+        let num: isize = std::str::from_utf8(&chars[start..start + len]).unwrap().parse().ok()?;
         Some((usize::from(sign_set) + len, sign * num))
     }
 }

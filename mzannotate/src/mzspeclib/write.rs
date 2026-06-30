@@ -4,6 +4,7 @@ use std::{
     num::NonZeroU32,
 };
 
+use itertools::Itertools;
 use mzcv::term;
 use mzdata::{mzpeaks::peak_set::PeakSetIter, params::Value, prelude::*};
 
@@ -11,8 +12,6 @@ use crate::{
     mzspeclib::{Attribute, AttributeValue, Attributes, EntryType, Id, LibraryHeader},
     prelude::ToMzPAF,
 };
-
-use itertools::Itertools;
 
 /// A wrapper around a writer to write out annotated spectra as mzSpecLib.txt files.
 ///
@@ -92,13 +91,7 @@ impl<Writer: Write> MzSpecLibTextWriter<Writer, Initial> {
             &EntryType::Interpretation,
             &EntryType::Cluster,
         ] {
-            for group in self
-                .header
-                .attribute_classes
-                .get(t)
-                .iter()
-                .flat_map(|s| s.iter())
-            {
+            for group in self.header.attribute_classes.get(t).iter().flat_map(|s| s.iter()) {
                 writeln!(&mut self.writer, "<AttributeSet {t}={}>", group.id)?;
                 for (id, group) in group.attributes.iter().enumerate() {
                     for attr in group {
@@ -136,10 +129,7 @@ impl<Writer: Write> MzSpecLibTextWriter<Writer, HeaderWritten> {
         for (id, group) in spectrum.spectrum().iter().enumerate() {
             for attr in group {
                 // Check if this attribute needs to be written.
-                if !self
-                    .header
-                    .is_already_defined(attr, EntryType::Spectrum, &["all"])
-                {
+                if !self.header.is_already_defined(attr, EntryType::Spectrum, &["all"]) {
                     if let Some(id) = id.checked_sub(1) {
                         writeln!(&mut self.writer, "[{id}]{attr}")?;
                     } else {
@@ -152,9 +142,7 @@ impl<Writer: Write> MzSpecLibTextWriter<Writer, HeaderWritten> {
             writeln!(&mut self.writer, "<Analyte={id}>")?;
             for (id, group) in attributes.iter().enumerate() {
                 for attr in group {
-                    if !self
-                        .header
-                        .is_already_defined(attr, EntryType::Analyte, &["all"])
+                    if !self.header.is_already_defined(attr, EntryType::Analyte, &["all"])
                     // TODO: check the protein groups additional set
                     {
                         if let Some(id) = id.checked_sub(1) {
@@ -170,10 +158,7 @@ impl<Writer: Write> MzSpecLibTextWriter<Writer, HeaderWritten> {
             writeln!(&mut self.writer, "<Interpretation={id}>")?;
             for (id, group) in attributes.iter().enumerate() {
                 for attr in group {
-                    if !self
-                        .header
-                        .is_already_defined(attr, EntryType::Interpretation, &["all"])
-                    {
+                    if !self.header.is_already_defined(attr, EntryType::Interpretation, &["all"]) {
                         if let Some(id) = id.checked_sub(1) {
                             writeln!(&mut self.writer, "[{id}]{attr}")?;
                         } else {

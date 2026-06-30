@@ -297,14 +297,14 @@ static MODEL_ETD: LazyLock<FragmentationModel> = LazyLock::new(|| FragmentationM
             NeutralLoss::Loss(1, molecular_formula!(H 3 N 1)),
         ],
         vec![
-            (
-                vec![AminoAcid::AsparticAcid],
-                vec![NeutralLoss::Loss(1, molecular_formula!(C 1 H 1 O 2))],
-            ),
-            (
-                vec![AminoAcid::GlutamicAcid],
-                vec![NeutralLoss::Loss(1, molecular_formula!(C 2 H 3 O 2))],
-            ),
+            (vec![AminoAcid::AsparticAcid], vec![NeutralLoss::Loss(
+                1,
+                molecular_formula!(C 1 H 1 O 2),
+            )]),
+            (vec![AminoAcid::GlutamicAcid], vec![NeutralLoss::Loss(
+                1,
+                molecular_formula!(C 2 H 3 O 2),
+            )]),
         ],
         (2, None),
         ChargeRange {
@@ -356,14 +356,14 @@ static MODEL_TD_ETD: LazyLock<FragmentationModel> = LazyLock::new(|| Fragmentati
             NeutralLoss::Gain(3, molecular_formula!(H 1)),
         ],
         vec![
-            (
-                vec![AminoAcid::AsparticAcid],
-                vec![NeutralLoss::Loss(1, molecular_formula!(C 1 H 1 O 2))],
-            ),
-            (
-                vec![AminoAcid::GlutamicAcid],
-                vec![NeutralLoss::Loss(1, molecular_formula!(C 2 H 3 O 2))],
-            ),
+            (vec![AminoAcid::AsparticAcid], vec![NeutralLoss::Loss(
+                1,
+                molecular_formula!(C 1 H 1 O 2),
+            )]),
+            (vec![AminoAcid::GlutamicAcid], vec![NeutralLoss::Loss(
+                1,
+                molecular_formula!(C 2 H 3 O 2),
+            )]),
         ],
         (0, None),
         ChargeRange::PRECURSOR,
@@ -476,6 +476,7 @@ pub enum BuiltInFragmentationModel {
 
 impl std::ops::Add for BuiltInFragmentationModel {
     type Output = Self;
+
     fn add(self, rhs: Self) -> Self::Output {
         match (self, rhs) {
             (a, Self::None) | (Self::None, a) => a,
@@ -486,7 +487,7 @@ impl std::ops::Add for BuiltInFragmentationModel {
             }
             (Self::UVPD, Self::CID) | (Self::CID, Self::UVPD) => Self::UVPD,
             (a, b) if a == b => a,
-            (_, _) => Self::All,
+            (..) => Self::All,
         }
     }
 }
@@ -549,21 +550,17 @@ impl From<&[DissociationMethodTerm]> for BuiltInFragmentationModel {
 
 impl std::fmt::Display for BuiltInFragmentationModel {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "{}",
-            match self {
-                Self::All => "All",
-                Self::None => "None",
-                Self::UVPD => "UVPD",
-                Self::CID => "CID",
-                Self::EAD => "EAD",
-                Self::EAciD => "EAciD",
-                Self::ETD => "ETD",
-                Self::ETD_TD => "ETD TD",
-                Self::ETciD => "ETciD",
-            }
-        )
+        write!(f, "{}", match self {
+            Self::All => "All",
+            Self::None => "None",
+            Self::UVPD => "UVPD",
+            Self::CID => "CID",
+            Self::EAD => "EAD",
+            Self::EAciD => "EAciD",
+            Self::ETD => "ETD",
+            Self::ETD_TD => "ETD TD",
+            Self::ETciD => "ETciD",
+        })
     }
 }
 
@@ -704,26 +701,20 @@ pub(super) static GLYCAN_LOSSES: LazyLock<Vec<(MonoSaccharide, bool, Vec<Neutral
                 ],
             ),
             (
-                MonoSaccharide::new(
-                    BaseSugar::Nonose(None),
-                    &[
-                        GlycanSubstituent::Amino,
-                        GlycanSubstituent::Acetyl,
-                        GlycanSubstituent::Acid,
-                    ],
-                ),
+                MonoSaccharide::new(BaseSugar::Nonose(None), &[
+                    GlycanSubstituent::Amino,
+                    GlycanSubstituent::Acetyl,
+                    GlycanSubstituent::Acid,
+                ]),
                 false,
                 vec![NeutralLoss::Loss(1, molecular_formula!(H 2 O 1))],
             ),
             (
-                MonoSaccharide::new(
-                    BaseSugar::Nonose(None),
-                    &[
-                        GlycanSubstituent::Amino,
-                        GlycanSubstituent::Glycolyl,
-                        GlycanSubstituent::Acid,
-                    ],
-                ),
+                MonoSaccharide::new(BaseSugar::Nonose(None), &[
+                    GlycanSubstituent::Amino,
+                    GlycanSubstituent::Glycolyl,
+                    GlycanSubstituent::Acid,
+                ]),
                 false,
                 vec![NeutralLoss::Loss(1, molecular_formula!(H 2 O 1))],
             ),
