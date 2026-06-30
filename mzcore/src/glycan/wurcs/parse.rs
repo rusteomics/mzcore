@@ -74,4 +74,21 @@ mod tests {
             BaseSugar::Hexose(Some(HexoseIsomer::Galactose))
         );
     }
+
+    #[test]
+    fn structure() {
+        // G58645HA,"Gal(b1-3)GalNAc-ol","WURCS=2.0/2,2,1/[h2112h_2*NCC/3=O][a2112h-1b_1-5]/1-2/a3-b1"
+
+        let tokens =
+            test_tokenise("WURCS=2.0/2,2,1/[h2112h_2*NCC/3=O][a2112h-1b_1-5]/1-2/a3-b1").unwrap();
+        println!(
+            "{}",
+            tokens.residues[0].to_structure().unwrap().to_dot().unwrap()
+        );
+        println!(
+            "{}",
+            tokens.residues[1].to_structure().unwrap().to_dot().unwrap()
+        );
+        todo!();
+    }
 }
