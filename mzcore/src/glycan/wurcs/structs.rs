@@ -151,20 +151,14 @@ impl Residue {
                 }
 
                 structure.infer([
-                    (
-                        vec![(0, Connection::SingleCovalent)],
-                        StructuralFormula {
-                            elements: vec![(Element::O, None), (Element::H, None)],
-                            connections: vec![(0, 1, Connection::SingleCovalent)],
-                        },
-                    ),
-                    (
-                        vec![(0, Connection::DoubleCovalent)],
-                        StructuralFormula {
-                            elements: vec![(Element::O, None)],
-                            connections: vec![],
-                        },
-                    ),
+                    (vec![(0, Connection::SingleCovalent)], StructuralFormula {
+                        elements: vec![(Element::O, None), (Element::H, None)],
+                        connections: vec![(0, 1, Connection::SingleCovalent)],
+                    }),
+                    (vec![(0, Connection::DoubleCovalent)], StructuralFormula {
+                        elements: vec![(Element::O, None)],
+                        connections: vec![],
+                    }),
                     (
                         vec![
                             (0, Connection::SingleCovalent),

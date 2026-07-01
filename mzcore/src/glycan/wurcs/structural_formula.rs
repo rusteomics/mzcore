@@ -5,8 +5,9 @@ use crate::chemistry::{Element, MolecularFormula};
 #[derive(Debug, PartialEq, Eq, Ord, PartialOrd, Hash, Default)]
 pub(super) struct StructuralFormula {
     pub(super) elements: Vec<(Element, Option<NonZeroU16>)>, // TODO: handle *
-    pub(super) connections: Vec<(usize, usize, Connection)>, // TODO: handle ambiguous connections
-                                                             // TODO: chimeric things
+    pub(super) connections: Vec<(usize, usize, Connection)>,
+    // TODO: handle ambiguous connections
+    // TODO: chimeric things
 }
 
 #[derive(Debug, PartialEq, Eq, Ord, PartialOrd, Hash, Copy, Clone)]
@@ -51,15 +52,11 @@ impl StructuralFormula {
         }
 
         for (i1, i2, ty) in &self.connections {
-            writeln!(
-                &mut res,
-                "n{i1} -- n{i2} [color=\"{}\"]",
-                match ty {
-                    Connection::SingleCovalent => "black",
-                    Connection::DoubleCovalent => "black:invis:black",
-                    Connection::TripleCovalent => "black:invis:black:invis:black",
-                }
-            )
+            writeln!(&mut res, "n{i1} -- n{i2} [color=\"{}\"]", match ty {
+                Connection::SingleCovalent => "black",
+                Connection::DoubleCovalent => "black:invis:black",
+                Connection::TripleCovalent => "black:invis:black:invis:black",
+            })
             .unwrap();
         }
 
@@ -101,7 +98,8 @@ impl StructuralFormula {
                     self.connections.push((c.0 + offset, i, c.1));
                 }
 
-                // TODO: handle if there are more empty spots than defined in the group, maybe also allow only having H as fill group
+                // TODO: handle if there are more empty spots than defined in the group, maybe also
+                // allow only having H as fill group
             }
         }
         self.elements.extend_from_slice(&added);
