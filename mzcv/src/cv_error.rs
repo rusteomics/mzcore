@@ -2,10 +2,10 @@
 //! error.
 
 use context_error::ErrorKind;
-use serde::{Deserialize, Serialize};
 
 /// An error encountered while parsing a CV
-#[derive(Clone, Copy, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 pub enum CVError {
     /// The binary cache does not exist
     CacheDoesNotExist,
