@@ -2,7 +2,7 @@ use std::{fmt::Write, num::NonZeroU16};
 
 use crate::chemistry::{Element, MolecularFormula};
 
-#[derive(Debug, PartialEq, Eq, Ord, PartialOrd, Hash, Default)]
+#[derive(Debug, Default, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub(super) struct StructuralFormula {
     pub(super) elements: Vec<(Element, Option<NonZeroU16>)>, // TODO: handle *
     pub(super) connections: Vec<(usize, usize, Connection)>,
@@ -10,7 +10,7 @@ pub(super) struct StructuralFormula {
     // TODO: chimeric things
 }
 
-#[derive(Debug, PartialEq, Eq, Ord, PartialOrd, Hash, Copy, Clone)]
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub(super) enum Connection {
     SingleCovalent,
     DoubleCovalent,

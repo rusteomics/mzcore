@@ -43,7 +43,7 @@ where
     Ok(number)
 }
 
-#[derive(Default, Clone, Copy)]
+#[derive(Clone, Copy, Default)]
 pub(super) struct TestSettings {
     pub allow_mass_mods: bool,
     pub expect_lc: bool,
