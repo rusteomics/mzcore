@@ -672,7 +672,7 @@ mod test {
         let hex_nac = MonoSaccharide::from_short_iupac("HexNAc", 0, 0).unwrap().0;
         let fuc = MonoSaccharide::from_short_iupac("Fuc", 0, 0).unwrap().0;
         let hex = MonoSaccharide::from_short_iupac("Hex", 0, 0).unwrap().0;
-        let neu_ac = MonoSaccharide::from_short_iupac("NeuAc", 0, 0).unwrap().0;
+        let neu_ac = MonoSaccharide::from_short_iupac("Neu5Ac", 0, 0).unwrap().0;
 
         assert!(structure.contains(&hex_nac, false, None, &[]).unwrap());
         assert!(structure.contains(&fuc, false, None, &[]).unwrap());

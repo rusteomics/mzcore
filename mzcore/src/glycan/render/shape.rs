@@ -32,7 +32,7 @@ impl MonoSaccharide {
             });
         }
         let mut outer_modifications = String::new();
-        for m in &self.substituents {
+        for (m, _) in &self.substituents {
             match m {
                 GlycanSubstituent::NAcetyl => nacetyl += 1,
                 GlycanSubstituent::Acid => acid += 1,

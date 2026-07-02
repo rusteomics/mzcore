@@ -36,7 +36,7 @@ pub enum Configuration {
 #[derive(Clone, Debug, Deserialize, Ord, PartialOrd, Serialize)]
 pub struct MonoSaccharide {
     pub(super) base_sugar: BaseSugar,
-    pub(super) substituents: ThinVec<GlycanSubstituent>,
+    pub(super) substituents: ThinVec<(GlycanSubstituent, Option<u8>)>,
     pub(super) furanose: bool,
     pub(super) configuration: Option<Configuration>,
 }
@@ -130,26 +130,28 @@ impl MonoSaccharide {
             BaseSugar::Hexose(isomer) if !self.furanose && self.configuration.is_none() => {
                 match *self.substituents.as_slice() {
                     [] => Cow::Borrowed("Hex"),
-                    [GlycanSubstituent::Acid] => Cow::Borrowed("aHex"),
+                    [(GlycanSubstituent::Acid, _)] => Cow::Borrowed("aHex"),
                     [
-                        GlycanSubstituent::Acid,
-                        GlycanSubstituent::Deoxy,
-                        GlycanSubstituent::Didehydro,
+                        (GlycanSubstituent::Acid, _),
+                        (GlycanSubstituent::Deoxy, _),
+                        (GlycanSubstituent::Didehydro, _),
                     ] => Cow::Borrowed("en,aHex"),
-                    [GlycanSubstituent::Deoxy] if isomer == Some(HexoseIsomer::Galactose) => {
+                    [(GlycanSubstituent::Deoxy, _)] if isomer == Some(HexoseIsomer::Galactose) => {
                         Cow::Borrowed("Fuc")
                     }
-                    [GlycanSubstituent::Deoxy] => Cow::Borrowed("dHex"),
-                    [GlycanSubstituent::NAcetyl, GlycanSubstituent::Sulfate] => {
-                        Cow::Borrowed("HexNAcS")
-                    }
-                    [GlycanSubstituent::Amino, GlycanSubstituent::Sulfate] => {
-                        Cow::Borrowed("HexNS")
-                    }
-                    [GlycanSubstituent::Amino] => Cow::Borrowed("HexN"),
-                    [GlycanSubstituent::NAcetyl] => Cow::Borrowed("HexNAc"),
-                    [GlycanSubstituent::Sulfate] => Cow::Borrowed("HexS"),
-                    [GlycanSubstituent::Phosphate] => Cow::Borrowed("HexP"),
+                    [(GlycanSubstituent::Deoxy, _)] => Cow::Borrowed("dHex"),
+                    [
+                        (GlycanSubstituent::NAcetyl, _),
+                        (GlycanSubstituent::Sulfate, _),
+                    ] => Cow::Borrowed("HexNAcS"),
+                    [
+                        (GlycanSubstituent::Amino, _),
+                        (GlycanSubstituent::Sulfate, _),
+                    ] => Cow::Borrowed("HexNS"),
+                    [(GlycanSubstituent::Amino, _)] => Cow::Borrowed("HexN"),
+                    [(GlycanSubstituent::NAcetyl, _)] => Cow::Borrowed("HexNAc"),
+                    [(GlycanSubstituent::Sulfate, _)] => Cow::Borrowed("HexS"),
+                    [(GlycanSubstituent::Phosphate, _)] => Cow::Borrowed("HexP"),
                     _ => Cow::Owned(format!("{{{}}}", self.formula())),
                 }
             }
@@ -171,19 +173,19 @@ impl MonoSaccharide {
                 match *self.substituents.as_slice() {
                     [] => Cow::Borrowed("Non"),
                     [
-                        GlycanSubstituent::Acetyl,
-                        GlycanSubstituent::Acid,
-                        GlycanSubstituent::Amino,
+                        (GlycanSubstituent::Acetyl, _),
+                        (GlycanSubstituent::Acid, _),
+                        (GlycanSubstituent::Amino, _),
                     ] => Cow::Borrowed("NeuAc"),
                     [
-                        GlycanSubstituent::Acid,
-                        GlycanSubstituent::Amino,
-                        GlycanSubstituent::Glycolyl,
+                        (GlycanSubstituent::Acid, _),
+                        (GlycanSubstituent::Amino, _),
+                        (GlycanSubstituent::Glycolyl, _),
                     ] => Cow::Borrowed("NeuGc"),
                     [
-                        GlycanSubstituent::Acid,
-                        GlycanSubstituent::Amino,
-                        GlycanSubstituent::Deoxy,
+                        (GlycanSubstituent::Acid, _),
+                        (GlycanSubstituent::Amino, _),
+                        (GlycanSubstituent::Deoxy, _),
                     ] => Cow::Borrowed("Neu"),
                     _ => Cow::Owned(format!("{{{}}}", self.formula())),
                 }
@@ -196,15 +198,19 @@ impl MonoSaccharide {
                 Cow::Borrowed("Dec")
             }
             BaseSugar::Custom(_)
-                if self.substituents == [GlycanSubstituent::Phosphate]
-                    && !self.furanose
+                if matches!(self.substituents.as_slice(), [(
+                    GlycanSubstituent::Phosphate,
+                    _
+                )]) && !self.furanose
                     && self.configuration.is_none() =>
             {
                 Cow::Borrowed("Phosphate")
             }
             BaseSugar::Custom(_)
-                if self.substituents == [GlycanSubstituent::Sulfate]
-                    && !self.furanose
+                if matches!(self.substituents.as_slice(), [(
+                    GlycanSubstituent::Sulfate,
+                    _
+                )]) && !self.furanose
                     && self.configuration.is_none() =>
             {
                 Cow::Borrowed("Sulfate")
@@ -221,11 +227,11 @@ impl MonoSaccharide {
     /// Check if this is a fucose
     pub fn is_fucose(&self) -> bool {
         self.base_sugar == BaseSugar::Hexose(Some(HexoseIsomer::Galactose))
-            && self.substituents.contains(&GlycanSubstituent::Deoxy)
+            && self.substituents.iter().any(|(s, _)| *s == GlycanSubstituent::Deoxy)
     }
 
     /// Create a new monosaccharide
-    pub fn new(sugar: BaseSugar, substituents: &[GlycanSubstituent]) -> Self {
+    pub fn new(sugar: BaseSugar, substituents: &[(GlycanSubstituent, Option<u8>)]) -> Self {
         Self {
             base_sugar: sugar,
             substituents: substituents.iter().copied().sorted().collect(),
@@ -301,9 +307,9 @@ impl MonoSaccharide {
                     }
                     index += 7;
                     substituents.extend_from_slice(&[
-                        GlycanSubstituent::Didehydro,
-                        GlycanSubstituent::Deoxy,
-                        GlycanSubstituent::Deoxy,
+                        (GlycanSubstituent::Didehydro, None),
+                        (GlycanSubstituent::Deoxy, None),
+                        (GlycanSubstituent::Deoxy, None),
                     ]);
                 }
                 Some(b',') => {
@@ -328,7 +334,7 @@ impl MonoSaccharide {
         // Get the prefix mods
         if !line[index..].starts_with("dig") && !line[index..].starts_with("dha") {
             if let Some(o) = line[index..].take_any(PREFIX_SUBSTITUENTS, |e| {
-                substituents.extend(std::iter::repeat_n(*e, amount));
+                substituents.extend(std::iter::repeat_n((*e, None), amount));
             }) {
                 index += o;
             }
@@ -367,7 +373,7 @@ impl MonoSaccharide {
                     furanose: false,
                     configuration,
                 };
-                alo.substituents.extend(s.iter().copied());
+                alo.substituents.extend(s.iter().copied().map(|s| (s, None)));
                 alo
             })
             .ok_or_else(|| {
@@ -392,7 +398,7 @@ impl MonoSaccharide {
             let mut single_amount = 0;
             let mut double_amount = 0;
             // Location
-            let (offset, mut amount, mut double) = line[index..].parse_location();
+            let (offset, mut amount, mut double, location) = line[index..].parse_location();
             index += offset;
             if double {
                 double_amount = amount;
@@ -401,7 +407,7 @@ impl MonoSaccharide {
             }
             if bytes[index] == b':' {
                 // additional place
-                let (offset, amt, dbl) = line[index + 1..].parse_location();
+                let (offset, amt, dbl, _location) = line[index + 1..].parse_location();
                 index += offset + 1;
                 amount += amt;
                 if double {
@@ -417,14 +423,13 @@ impl MonoSaccharide {
             if double {
                 if let Some(o) = line[index..].take_any(DOUBLE_LINKED_POSTFIX_SUBSTITUENTS, |e| {
                     sugar.substituents.extend(
-                        e.iter().flat_map(|s| std::iter::repeat_n(s, double_amount)).copied(),
+                        e.iter().flat_map(|s| std::iter::repeat_n((*s, None), double_amount)),
                     );
                     if single_amount > 0 {
                         sugar.substituents.extend(
                             e.iter()
                                 .filter(|s| **s != GlycanSubstituent::Water)
-                                .flat_map(|s| std::iter::repeat_n(s, single_amount))
-                                .copied(),
+                                .flat_map(|s| std::iter::repeat_n((*s, None), single_amount)),
                         );
                     }
                 }) {
@@ -443,13 +448,14 @@ impl MonoSaccharide {
             } else {
                 // Mod or an element
                 if let Some(o) = line[index..].take_any(POSTFIX_SUBSTITUENTS, |e| {
-                    sugar.substituents.extend(std::iter::repeat_n(*e, amount));
+                    sugar.substituents.extend(std::iter::repeat_n((*e, location), amount));
                 }) {
                     index += o;
                 } else if let Some(o) = line[index..].take_any(ELEMENT_PARSE_LIST, |e| {
-                    sugar
-                        .substituents
-                        .extend(std::iter::repeat_n(GlycanSubstituent::Element(*e), amount));
+                    sugar.substituents.extend(std::iter::repeat_n(
+                        (GlycanSubstituent::Element(*e), location),
+                        amount,
+                    ));
                 }) {
                     index += o;
                 } else {
@@ -484,7 +490,7 @@ impl MonoSaccharide {
 trait ParseHelper {
     fn ignore(self, ignore: &[&str]) -> usize;
     fn take_any<T>(self, parse_list: &[(&str, T)], f: impl FnMut(&T)) -> Option<usize>;
-    fn parse_location(self) -> (usize, usize, bool);
+    fn parse_location(self) -> (usize, usize, bool, Option<u8>);
 }
 
 impl ParseHelper for &str {
@@ -512,11 +518,12 @@ impl ParseHelper for &str {
 
     // Get a location, return the new index, the amount of the mod to place and if it is doubly
     // linked or not
-    fn parse_location(self) -> (usize, usize, bool) {
+    fn parse_location(self) -> (usize, usize, bool, Option<u8>) {
         let bytes = self.as_bytes();
         let mut index = 0;
         let mut amount = 1;
         let mut double = false;
+        let mut location = None;
         let possibly_unknown_number = |n: u8| n.is_ascii_digit() || n == b'?';
         let number_or_slash = |n: &u8| n.is_ascii_digit() || *n == b'/';
         let possibly_unknown_number_or_comma = |n: &u8| possibly_unknown_number(*n) || *n == b',';
@@ -560,10 +567,15 @@ impl ParseHelper for &str {
                         index += 2; // ?X{mod}
                     }
                 }
-                _ => index += 1, // X{mod}
+                _ => {
+                    if bytes[0].is_ascii_digit() {
+                        location = Some(bytes[0] - b'0');
+                    }
+                    index += 1 // X{mod}
+                }
             }
         }
-        (index, amount, double)
+        (index, amount, double, location)
     }
 }
 
@@ -574,10 +586,9 @@ impl Chemical for MonoSaccharide {
         peptidoform_index: usize,
     ) -> MolecularFormula {
         self.base_sugar.formula_inner(sequence_index, peptidoform_index)
-            + self
-                .substituents
-                .as_slice()
-                .formula_inner(sequence_index, peptidoform_index)
+            + self.substituents.iter().fold(MolecularFormula::default(), |acc, s| {
+                acc + s.0.formula_inner(sequence_index, peptidoform_index)
+            })
     }
 }
 
