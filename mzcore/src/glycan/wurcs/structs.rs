@@ -1,6 +1,6 @@
 use crate::{
-    chemistry::Element,
-    glycan::wurcs::structural_formula::{Connection, StructuralFormula},
+    chemistry::{Connection, Element, StructuralFormula},
+    system::isize::Charge,
 };
 
 #[derive(Debug)]
@@ -49,7 +49,7 @@ impl Residue {
                         {
                             // Assume ether
                             let i = structure.elements.len();
-                            structure.elements.push((Element::O, None));
+                            structure.elements.push((Some(Element::O), None, Charge::default()));
                             structure.connections.push((
                                 carbon_numbers[lip1 as usize],
                                 i,
@@ -90,7 +90,11 @@ impl Residue {
                                             ));
                                         }
                                         lut.push(structure.elements.len());
-                                        structure.elements.push((*e, None));
+                                        structure.elements.push((
+                                            Some(*e),
+                                            None,
+                                            Charge::default(),
+                                        ));
                                     }
                                     MAPSymbol::Star(i) => {
                                         connection = Some((
@@ -151,14 +155,23 @@ impl Residue {
                 }
 
                 structure.infer([
-                    (vec![(0, Connection::SingleCovalent)], StructuralFormula {
-                        elements: vec![(Element::O, None), (Element::H, None)],
-                        connections: vec![(0, 1, Connection::SingleCovalent)],
-                    }),
-                    (vec![(0, Connection::DoubleCovalent)], StructuralFormula {
-                        elements: vec![(Element::O, None)],
-                        connections: vec![],
-                    }),
+                    (
+                        vec![(0, Connection::SingleCovalent)],
+                        StructuralFormula {
+                            elements: vec![
+                                (Some(Element::O), None, Charge::default()),
+                                (Some(Element::H), None, Charge::default()),
+                            ],
+                            connections: vec![(0, 1, Connection::SingleCovalent)],
+                        },
+                    ),
+                    (
+                        vec![(0, Connection::DoubleCovalent)],
+                        StructuralFormula {
+                            elements: vec![(Some(Element::O), None, Charge::default())],
+                            connections: vec![],
+                        },
+                    ),
                     (
                         vec![
                             (0, Connection::SingleCovalent),
@@ -167,10 +180,10 @@ impl Residue {
                         ],
                         StructuralFormula {
                             elements: vec![
-                                (Element::O, None),
-                                (Element::H, None),
-                                (Element::H, None),
-                                (Element::H, None),
+                                (Some(Element::O), None, Charge::default()),
+                                (Some(Element::H), None, Charge::default()),
+                                (Some(Element::H), None, Charge::default()),
+                                (Some(Element::H), None, Charge::default()),
                             ],
                             connections: vec![(0, 1, Connection::SingleCovalent)],
                         },
@@ -263,9 +276,9 @@ impl Carbon {
                     return Err(format!("Expected single connection found {:?}", last.1));
                 }
                 structure.elements.extend_from_slice(&[
-                    (Element::C, None),
-                    (Element::H, None),
-                    (Element::H, None),
+                    (Some(Element::C), None, Charge::default()),
+                    (Some(Element::H), None, Charge::default()),
+                    (Some(Element::H), None, Charge::default()),
                 ]);
                 structure.connections.extend_from_slice(&[
                     (last.0, index, Connection::SingleCovalent),
@@ -282,9 +295,10 @@ impl Carbon {
                 if last.1 != Connection::SingleCovalent {
                     return Err(format!("Expected single connection found {:?}", last.1));
                 }
-                structure
-                    .elements
-                    .extend_from_slice(&[(Element::C, None), (Element::H, None)]);
+                structure.elements.extend_from_slice(&[
+                    (Some(Element::C), None, Charge::default()),
+                    (Some(Element::H), None, Charge::default()),
+                ]);
                 structure.connections.extend_from_slice(&[
                     (last.0, index, Connection::SingleCovalent),
                     (index, index + 1, Connection::SingleCovalent),
@@ -295,9 +309,10 @@ impl Carbon {
                 if last.1 != Connection::SingleCovalent {
                     return Err(format!("Expected single connection found {:?}", last.1));
                 }
-                structure
-                    .elements
-                    .extend_from_slice(&[(Element::C, None), (Element::O, None)]); // TODO: maybe this needs to be empty and fall back to O if not defined
+                structure.elements.extend_from_slice(&[
+                    (Some(Element::C), None, Charge::default()),
+                    (Some(Element::O), None, Charge::default()),
+                ]); // TODO: maybe this needs to be empty and fall back to O if not defined
                 structure.connections.extend_from_slice(&[
                     (last.0, index, Connection::SingleCovalent),
                     (index, index + 1, Connection::DoubleCovalent),
@@ -385,10 +400,10 @@ impl TerminalCarbon {
         match self {
             TerminalCarbon::CHHH => {
                 structure.elements.extend_from_slice(&[
-                    (Element::C, None),
-                    (Element::H, None),
-                    (Element::H, None),
-                    (Element::H, None),
+                    (Some(Element::C), None, Charge::default()),
+                    (Some(Element::H), None, Charge::default()),
+                    (Some(Element::H), None, Charge::default()),
+                    (Some(Element::H), None, Charge::default()),
                 ]);
                 structure.connections.extend_from_slice(&[
                     (index, index + 1, Connection::SingleCovalent),
@@ -399,9 +414,9 @@ impl TerminalCarbon {
             }
             TerminalCarbon::CHHX => {
                 structure.elements.extend_from_slice(&[
-                    (Element::C, None),
-                    (Element::H, None),
-                    (Element::H, None), // Needs to fall back to O
+                    (Some(Element::C), None, Charge::default()),
+                    (Some(Element::H), None, Charge::default()),
+                    (Some(Element::H), None, Charge::default()), // Needs to fall back to O
                 ]);
                 structure.connections.extend_from_slice(&[
                     (index, index + 1, Connection::SingleCovalent),
@@ -410,7 +425,7 @@ impl TerminalCarbon {
                 Ok((index, Connection::SingleCovalent))
             }
             TerminalCarbon::Hemiacetal => {
-                structure.elements.push((Element::C, None));
+                structure.elements.push((Some(Element::C), None, Charge::default()));
                 Ok((index, Connection::SingleCovalent))
             }
             c => Err(format!("Terminal carbon symbol {c:?} not supported yet")),
