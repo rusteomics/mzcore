@@ -133,14 +133,8 @@ mod tests {
 
         let tokens =
             test_tokenise("WURCS=2.0/2,2,1/[h2112h_2*NCC/3=O][a2112h-1b_1-5]/1-2/a3-b1").unwrap();
-        println!(
-            "{}",
-            tokens.residues[0].to_structure().unwrap().to_dot().unwrap()
-        );
-        println!(
-            "{}",
-            tokens.residues[1].to_structure().unwrap().to_dot().unwrap()
-        );
+        println!("{}", tokens.residues[0].to_structure().unwrap().to_dot());
+        println!("{}", tokens.residues[1].to_structure().unwrap().to_dot());
         // todo!();
     }
 }

@@ -143,8 +143,8 @@ mzpaf_test!("f{C14H11N}/0.45ppm", spec_positive_57);
 mzpaf_test!("f{C14H10NO}/0.03ppm", spec_positive_58);
 mzpaf_test!("f{C16H22O}+i^3", spec_positive_59);
 mzpaf_test!("f{C15[13C1]H22O}^3", spec_positive_60);
-// mzpaf_test!("s{CN=C=O}[M+H]/-0.55ppm", spec_positive_61); TODO: SMILES not supported
-// mzpaf_test!("s{COc(c1)cccc1C#N}[M+H+Na]^2/1.29ppm", spec_positive_62); TODO: SMILES not supported
+mzpaf_test!("s{CN=C=O}[M+H]/-0.55ppm", spec_positive_61);
+mzpaf_test!("s{COc(c1)cccc1C#N}[M+H+Na]^2/1.29ppm", spec_positive_62);
 mzpaf_test!("p-[Hex]", spec_positive_63);
 mzpaf_test!("y2+CO-H2O", spec_positive_64);
 mzpaf_test!("y2-H2O-NH3", spec_positive_65);

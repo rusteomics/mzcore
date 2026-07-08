@@ -48,8 +48,8 @@ impl Residue {
                             && let Some(lip2) = lip2.position
                         {
                             // Assume ether
-                            let i = structure.elements.len();
-                            structure.elements.push((Some(Element::O), None, Charge::default()));
+                            let i = structure.atoms.len();
+                            structure.atoms.push((Some(Element::O), None, Charge::default()));
                             structure.connections.push((
                                 carbon_numbers[lip1 as usize],
                                 i,
@@ -79,22 +79,18 @@ impl Residue {
                                         if let Some((i, c)) = connection.take() {
                                             structure.connections.push((
                                                 i,
-                                                structure.elements.len(),
+                                                structure.atoms.len(),
                                                 c,
                                             ));
                                         } else {
                                             structure.connections.push((
-                                                structure.elements.len() - 1,
-                                                structure.elements.len(),
+                                                structure.atoms.len() - 1,
+                                                structure.atoms.len(),
                                                 base,
                                             ));
                                         }
-                                        lut.push(structure.elements.len());
-                                        structure.elements.push((
-                                            Some(*e),
-                                            None,
-                                            Charge::default(),
-                                        ));
+                                        lut.push(structure.atoms.len());
+                                        structure.atoms.push((Some(*e), None, Charge::default()));
                                     }
                                     MAPSymbol::Star(i) => {
                                         connection = Some((
@@ -109,7 +105,7 @@ impl Residue {
                                         connection = Some((
                                             connection
                                                 .map(|c| c.0)
-                                                .unwrap_or(structure.elements.len() - 1),
+                                                .unwrap_or(structure.atoms.len() - 1),
                                             Connection::DoubleCovalent,
                                         ));
                                     }
@@ -117,20 +113,20 @@ impl Residue {
                                         connection = Some((
                                             connection
                                                 .map(|c| c.0)
-                                                .unwrap_or(structure.elements.len() - 1),
+                                                .unwrap_or(structure.atoms.len() - 1),
                                             Connection::TripleCovalent,
                                         ));
                                     }
                                     MAPSymbol::AromaticStart => {
                                         base = Connection::DoubleCovalent;
-                                        aromatic_start = Some(structure.elements.len() - 1);
+                                        aromatic_start = Some(structure.atoms.len() - 1);
                                     }
                                     MAPSymbol::AromaticEnd => {
                                         base = Connection::SingleCovalent;
                                         if let Some(start) = aromatic_start {
                                             structure.connections.push((
                                                 start,
-                                                structure.elements.len() - 1,
+                                                structure.atoms.len() - 1,
                                                 Connection::DoubleCovalent,
                                             ));
                                         }
@@ -156,14 +152,14 @@ impl Residue {
 
                 structure.infer([
                     (vec![(0, Connection::SingleCovalent)], StructuralFormula {
-                        elements: vec![
+                        atoms: vec![
                             (Some(Element::O), None, Charge::default()),
                             (Some(Element::H), None, Charge::default()),
                         ],
                         connections: vec![(0, 1, Connection::SingleCovalent)],
                     }),
                     (vec![(0, Connection::DoubleCovalent)], StructuralFormula {
-                        elements: vec![(Some(Element::O), None, Charge::default())],
+                        atoms: vec![(Some(Element::O), None, Charge::default())],
                         connections: vec![],
                     }),
                     (
@@ -173,7 +169,7 @@ impl Residue {
                             (3, Connection::SingleCovalent),
                         ],
                         StructuralFormula {
-                            elements: vec![
+                            atoms: vec![
                                 (Some(Element::O), None, Charge::default()),
                                 (Some(Element::H), None, Charge::default()),
                                 (Some(Element::H), None, Charge::default()),
@@ -263,13 +259,13 @@ impl Carbon {
         structure: &mut StructuralFormula,
         last: (usize, Connection),
     ) -> Result<(usize, Connection), String> {
-        let index = structure.elements.len();
+        let index = structure.atoms.len();
         match self {
             Carbon::Methylene => {
                 if last.1 != Connection::SingleCovalent {
                     return Err(format!("Expected single connection found {:?}", last.1));
                 }
-                structure.elements.extend_from_slice(&[
+                structure.atoms.extend_from_slice(&[
                     (Some(Element::C), None, Charge::default()),
                     (Some(Element::H), None, Charge::default()),
                     (Some(Element::H), None, Charge::default()),
@@ -289,7 +285,7 @@ impl Carbon {
                 if last.1 != Connection::SingleCovalent {
                     return Err(format!("Expected single connection found {:?}", last.1));
                 }
-                structure.elements.extend_from_slice(&[
+                structure.atoms.extend_from_slice(&[
                     (Some(Element::C), None, Charge::default()),
                     (Some(Element::H), None, Charge::default()),
                 ]);
@@ -303,7 +299,7 @@ impl Carbon {
                 if last.1 != Connection::SingleCovalent {
                     return Err(format!("Expected single connection found {:?}", last.1));
                 }
-                structure.elements.extend_from_slice(&[
+                structure.atoms.extend_from_slice(&[
                     (Some(Element::C), None, Charge::default()),
                     (Some(Element::O), None, Charge::default()),
                 ]); // TODO: maybe this needs to be empty and fall back to O if not defined
@@ -390,10 +386,10 @@ impl TerminalCarbon {
         &self,
         structure: &mut StructuralFormula,
     ) -> Result<(usize, Connection), String> {
-        let index = structure.elements.len();
+        let index = structure.atoms.len();
         match self {
             TerminalCarbon::CHHH => {
-                structure.elements.extend_from_slice(&[
+                structure.atoms.extend_from_slice(&[
                     (Some(Element::C), None, Charge::default()),
                     (Some(Element::H), None, Charge::default()),
                     (Some(Element::H), None, Charge::default()),
@@ -407,7 +403,7 @@ impl TerminalCarbon {
                 Ok((index, Connection::SingleCovalent))
             }
             TerminalCarbon::CHHX => {
-                structure.elements.extend_from_slice(&[
+                structure.atoms.extend_from_slice(&[
                     (Some(Element::C), None, Charge::default()),
                     (Some(Element::H), None, Charge::default()),
                     (Some(Element::H), None, Charge::default()), // Needs to fall back to O
@@ -419,7 +415,7 @@ impl TerminalCarbon {
                 Ok((index, Connection::SingleCovalent))
             }
             TerminalCarbon::Hemiacetal => {
-                structure.elements.push((Some(Element::C), None, Charge::default()));
+                structure.atoms.push((Some(Element::C), None, Charge::default()));
                 Ok((index, Connection::SingleCovalent))
             }
             c => Err(format!("Terminal carbon symbol {c:?} not supported yet")),

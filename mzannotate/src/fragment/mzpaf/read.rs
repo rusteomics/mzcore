@@ -9,7 +9,7 @@ use context_error::*;
 use mzcore::{
     chemistry::{
         Chemical, ELEMENT_PARSE_LIST, MolecularCharge, MolecularFormula, MultiChemical,
-        NeutralLoss, SatelliteLabel,
+        NeutralLoss, SatelliteLabel, StructuralFormula,
     },
     molecular_formula,
     ontology::Ontologies,
@@ -870,12 +870,51 @@ fn parse_ion<'a>(
                 IonType::Formula(formula),
             ))
         }
-        Some(b's') => Err(BoxedError::new(
-            BasicKind::Error,
-            "Unsupported feature",
-            "SMILES strings are currently not supported in mzPAF definitions",
-            base_context.clone().add_highlight((0, range.start, 1)),
-        )), // TODO: return as Formula
+        Some(b's') => {
+            // SMILES
+            let smiles_range = if line[range.start_index() + 1..].starts_with('{') {
+                let end = end_of_enclosure(line, range.start_index() + 2, b'{', b'}').ok_or_else(
+                    || {
+                        BoxedError::new(
+                            BasicKind::Error,
+                            "Invalid mzPAF SMILES fragment",
+                            "The curly braces are not closed",
+                            base_context.clone().add_highlight((0, range.start_index() + 1, 1)),
+                        )
+                    },
+                )?;
+                Ok(range.start_index() + 2..end)
+            } else {
+                Err(BoxedError::new(
+                    BasicKind::Error,
+                    "Invalid mzPAF SMILES",
+                    "A SMILES must have the SMILES defined with curly braces '{}' after the 's'",
+                    base_context.clone().add_highlight((0, range.start_index(), 1)),
+                ))
+            }?;
+            let structure =
+                StructuralFormula::from_smiles_inner(base_context, line, smiles_range.clone())?;
+            if structure.atoms.iter().any(|(_, _, c)| c.value != 0) {
+                return Err(BoxedError::new(
+                    BasicKind::Error,
+                    "Invalid mzPAF SMILES",
+                    "The SMILES string is charged",
+                    base_context.clone().add_highlight((0, smiles_range.clone())),
+                ));
+            }
+            let composition = structure.composition().ok_or_else(|| {
+                BoxedError::new(
+                    BasicKind::Error,
+                    "Invalid mzPAF SMILES",
+                    "There are invalid isotopes in this SMILES string",
+                    base_context.clone().add_highlight((0, smiles_range.clone())),
+                )
+            })?;
+            Ok((
+                range.add_start(3 + smiles_range.len()),
+                IonType::Formula(composition),
+            ))
+        }
         Some(_) => Err(BoxedError::new(
             BasicKind::Error,
             "Invalid ion",
