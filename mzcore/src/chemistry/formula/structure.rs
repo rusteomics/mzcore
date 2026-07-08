@@ -25,8 +25,10 @@ pub struct MolecularFormula {
     /// Save all constituent parts as the element in question, the isotope (or None for natural
     /// distribution), and the number of this part The elements will be sorted on
     /// element/isotope and deduplicated, guaranteed to only contain valid isotopes.
+    // TODO: this structure can be shrunk to half its size by using an i8 to indicate the isotope
+    // (n-Z-32) and switch to i16 amounts and allow overflow into multiple entries
     pub(in super::super) elements: ThinVec<(Element, Option<NonZeroU16>, i32)>,
-    /// Any addition mass, defined to be monoisotopic
+    /// Any additional mass, defined to be monoisotopic
     pub(in super::super) additional_mass: OrderedFloat<f64>,
     /// The labels of sources of ambiguity/multiplicity
     #[serde(default)]

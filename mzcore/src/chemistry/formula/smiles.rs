@@ -1,10 +1,10 @@
-use std::{num::NonZeroU16, ops::Range};
+use std::{collections::HashMap, num::NonZeroU16, ops::Range};
 
 use context_error::{BasicKind, BoxedError, Context, CreateError};
 
 use crate::{
     chemistry::{Connection, ELEMENT_PARSE_LIST, Element, StructuralFormula},
-    system::isize::Charge,
+    system::i8::Charge,
 };
 
 impl StructuralFormula {
@@ -15,23 +15,127 @@ impl StructuralFormula {
     /// # Errors
     /// If the string does not conform to the specification.
     pub fn from_smiles(value: &str) -> Result<Self, BoxedError<'_, BasicKind>> {
+        // TODO: aromatic rings
+        // TODO: cis/trans
         let tokens = tokenise_smiles(value)?;
         let mut structure = Self::default();
+        let mut branches = Vec::new();
+        let mut rings: HashMap<u8, (usize, Option<Connection>)> = HashMap::new();
+        let mut last: Option<(usize, Option<Connection>)> = None;
 
         for (location, token) in tokens {
             match token {
-                Token::Atom(_, isotope, element, _, hcount, charge, _) => {
+                Token::Atom(_aromatic, isotope, element, _chiral, hcount, charge, _class) => {
                     let index = structure.elements.len();
                     structure.elements.push((element, isotope, charge));
+                    if let Some((last_index, bond)) = last.take() {
+                        structure.connections.push((last_index, index, bond.unwrap_or_default()));
+                    }
+                    last = Some((index, None));
                     for i in 0..hcount as usize {
                         structure.elements.push((Some(Element::H), None, Charge::default()));
-                        structure.connections.push((index, index + i, Connection::SingleCovalent));
+                        structure.connections.push((
+                            index,
+                            index + i + 1,
+                            Connection::SingleCovalent,
+                        ));
                     }
                 }
-                _ => todo!(),
+                Token::Bond(bond) => {
+                    if let Some((last_index, last_bond)) = &mut last {
+                        *last_bond = Some(match bond {
+                            BondClass::Single => Connection::SingleCovalent,
+                            BondClass::Double => Connection::DoubleCovalent,
+                            BondClass::Triple => Connection::TripleCovalent,
+                            BondClass::Quadruple => Connection::QuadrupleCovalent,
+                            _ => todo!(),
+                        });
+                    }
+                }
+                Token::BranchOpen => {
+                    if let Some(last) = last {
+                        branches.push(last);
+                        // Keep last in place for the next atom
+                    } else {
+                        return Err(BoxedError::new(
+                            BasicKind::Error,
+                            "Invalid SMILES",
+                            "Cannot open a branch if no atom was defined before",
+                            Context::default().lines(0, value).add_highlight((0, location)),
+                        ));
+                    }
+                }
+                Token::BranchClose => {
+                    if let Some(previous) = branches.pop() {
+                        last = Some(previous);
+                    } else {
+                        return Err(BoxedError::new(
+                            BasicKind::Error,
+                            "Invalid SMILES",
+                            "Too many branches closed, this branch is missing the branch open bracket",
+                            Context::default().lines(0, value).add_highlight((0, location)),
+                        ));
+                    }
+                }
+                Token::Dot => {
+                    last = None;
+                }
+                Token::Reference(num) => {
+                    if let Some(current) = last {
+                        if let Some(previous) = rings.remove(&num) {
+                            structure.connections.push((previous.0, current.0, match (previous.1, current.1) {
+                                (None, a) | (a, None) => a.unwrap_or_default(),
+                                (a, b) => {
+                                    if a == b {
+                                        a.unwrap_or_default()
+                                    } else {
+                                        return Err(BoxedError::new(
+                                            BasicKind::Error,
+                                            "Invalid SMILES",
+                                            "The bond symbol has to be the same on both locations of the bond number",
+                                            Context::default().lines(0, value).add_highlight((0, location)),
+                                        ));
+                                    }
+                                }
+                            }));
+                        } else {
+                            rings.insert(num, current);
+                        }
+                        last = Some((current.0, None)); // Scrub the connection
+                    } else {
+                        return Err(BoxedError::new(
+                            BasicKind::Error,
+                            "Invalid SMILES",
+                            "A bond number can only be given after an atom is defined",
+                            Context::default().lines(0, value).add_highlight((0, location)),
+                        ));
+                    }
+                }
             }
         }
 
+        if !branches.is_empty() {
+            return Err(BoxedError::new(
+                BasicKind::Error,
+                "Invalid SMILES",
+                "No all branches are closed",
+                Context::default().lines(0, value),
+            ));
+        }
+        if !rings.is_empty() {
+            return Err(BoxedError::new(
+                BasicKind::Error,
+                "Invalid SMILES",
+                "No all rings are closed",
+                Context::default().lines(0, value),
+            ));
+        }
+        // TODO: Validate that only one connection is made between each pair of atoms
+        // TODO: Validate that no atom is bound to itself
+        // TODO: Technically only the organic subset has to be inferred (not the square bracket
+        // atoms)
+
+        structure.infer_hydrogens();
         Ok(structure)
     }
 }
@@ -257,16 +361,18 @@ fn tokenise_smiles(value: &str) -> Result<Vec<(Range<usize>, Token)>, BoxedError
                 if value.as_bytes().get(index).copied() == Some(b'-')
                     || value.as_bytes().get(index).copied() == Some(b'+')
                 {
-                    // Note that the notation ++ and -- is a deprecated notation, so ignore until needed
+                    // Note that the notation ++ and -- is a deprecated notation, so ignore until
+                    // needed
                     let neg = value.as_bytes().get(index).copied() == Some(b'-');
+                    charge = 1; // Handle cases where only the sign is given
                     index += 1;
                     if let Some(c @ (b'0'..=b'9')) = value.as_bytes().get(index) {
                         index += 1;
-                        charge = (c - b'0') as isize;
+                        charge = (c - b'0') as i8;
                         if let Some(c @ (b'0'..=b'9')) = value.as_bytes().get(index) {
                             index += 1;
                             charge *= 10;
-                            charge += (c - b'0') as isize;
+                            charge += (c - b'0') as i8;
                         }
                     }
                     if neg {
@@ -315,210 +421,34 @@ fn tokenise_smiles(value: &str) -> Result<Vec<(Range<usize>, Token)>, BoxedError
             d @ b'0'..=b'9' => {
                 tokens.push((index..index + 1, Token::Reference(d - b'0')));
             }
-            b'b' => tokens.push((
-                index..index + 1,
-                Token::Atom(
-                    true,
-                    None,
-                    Some(Element::B),
-                    None,
-                    0,
-                    Charge::default(),
-                    None,
-                ),
-            )),
-            b'c' => tokens.push((
-                index..index + 1,
-                Token::Atom(
-                    true,
-                    None,
-                    Some(Element::C),
-                    None,
-                    0,
-                    Charge::default(),
-                    None,
-                ),
-            )),
-            b'n' => tokens.push((
-                index..index + 1,
-                Token::Atom(
-                    true,
-                    None,
-                    Some(Element::N),
-                    None,
-                    0,
-                    Charge::default(),
-                    None,
-                ),
-            )),
-            b'o' => tokens.push((
-                index..index + 1,
-                Token::Atom(
-                    true,
-                    None,
-                    Some(Element::O),
-                    None,
-                    0,
-                    Charge::default(),
-                    None,
-                ),
-            )),
-            b's' => tokens.push((
-                index..index + 1,
-                Token::Atom(
-                    true,
-                    None,
-                    Some(Element::S),
-                    None,
-                    0,
-                    Charge::default(),
-                    None,
-                ),
-            )),
-            b'p' => tokens.push((
-                index..index + 1,
-                Token::Atom(
-                    true,
-                    None,
-                    Some(Element::P),
-                    None,
-                    0,
-                    Charge::default(),
-                    None,
-                ),
-            )),
+            b'b' => tokens.push((index..index + 1, Token::simple_atom(true, Element::B))),
+            b'c' => tokens.push((index..index + 1, Token::simple_atom(true, Element::C))),
+            b'n' => tokens.push((index..index + 1, Token::simple_atom(true, Element::N))),
+            b'o' => tokens.push((index..index + 1, Token::simple_atom(true, Element::O))),
+            b's' => tokens.push((index..index + 1, Token::simple_atom(true, Element::S))),
+            b'p' => tokens.push((index..index + 1, Token::simple_atom(true, Element::P))),
             b'B' => {
                 if value.as_bytes().get(index + 1).is_some_and(|b| *b == b'r') {
-                    tokens.push((
-                        index..index + 2,
-                        Token::Atom(
-                            false,
-                            None,
-                            Some(Element::Br),
-                            None,
-                            0,
-                            Charge::default(),
-                            None,
-                        ),
-                    ));
+                    tokens.push((index..index + 2, Token::simple_atom(false, Element::Br)));
                     index += 1;
                 } else {
-                    tokens.push((
-                        index..index + 1,
-                        Token::Atom(
-                            false,
-                            None,
-                            Some(Element::B),
-                            None,
-                            0,
-                            Charge::default(),
-                            None,
-                        ),
-                    ))
+                    tokens.push((index..index + 1, Token::simple_atom(false, Element::B)))
                 }
             }
             b'C' => {
                 if value.as_bytes().get(index + 1).is_some_and(|b| *b == b'l') {
-                    tokens.push((
-                        index..index + 2,
-                        Token::Atom(
-                            false,
-                            None,
-                            Some(Element::Cl),
-                            None,
-                            0,
-                            Charge::default(),
-                            None,
-                        ),
-                    ));
+                    tokens.push((index..index + 2, Token::simple_atom(false, Element::Cl)));
                     index += 1;
                 } else {
-                    tokens.push((
-                        index..index + 1,
-                        Token::Atom(
-                            false,
-                            None,
-                            Some(Element::C),
-                            None,
-                            0,
-                            Charge::default(),
-                            None,
-                        ),
-                    ))
+                    tokens.push((index..index + 1, Token::simple_atom(false, Element::C)))
                 }
             }
-            b'N' => tokens.push((
-                index..index + 1,
-                Token::Atom(
-                    false,
-                    None,
-                    Some(Element::N),
-                    None,
-                    0,
-                    Charge::default(),
-                    None,
-                ),
-            )),
-            b'O' => tokens.push((
-                index..index + 1,
-                Token::Atom(
-                    false,
-                    None,
-                    Some(Element::O),
-                    None,
-                    0,
-                    Charge::default(),
-                    None,
-                ),
-            )),
-            b'S' => tokens.push((
-                index..index + 1,
-                Token::Atom(
-                    false,
-                    None,
-                    Some(Element::S),
-                    None,
-                    0,
-                    Charge::default(),
-                    None,
-                ),
-            )),
-            b'P' => tokens.push((
-                index..index + 1,
-                Token::Atom(
-                    false,
-                    None,
-                    Some(Element::P),
-                    None,
-                    0,
-                    Charge::default(),
-                    None,
-                ),
-            )),
-            b'F' => tokens.push((
-                index..index + 1,
-                Token::Atom(
-                    false,
-                    None,
-                    Some(Element::F),
-                    None,
-                    0,
-                    Charge::default(),
-                    None,
-                ),
-            )),
-            b'I' => tokens.push((
-                index..index + 1,
-                Token::Atom(
-                    false,
-                    None,
-                    Some(Element::I),
-                    None,
-                    0,
-                    Charge::default(),
-                    None,
-                ),
-            )),
+            b'N' => tokens.push((index..index + 1, Token::simple_atom(false, Element::N))),
+            b'O' => tokens.push((index..index + 1, Token::simple_atom(false, Element::O))),
+            b'S' => tokens.push((index..index + 1, Token::simple_atom(false, Element::S))),
+            b'P' => tokens.push((index..index + 1, Token::simple_atom(false, Element::P))),
+            b'F' => tokens.push((index..index + 1, Token::simple_atom(false, Element::F))),
+            b'I' => tokens.push((index..index + 1, Token::simple_atom(false, Element::I))),
             b'*' => tokens.push((
                 index..index + 1,
                 Token::Atom(false, None, None, None, 0, Charge::default(), None),
@@ -557,6 +487,20 @@ enum Token {
     Dot,
 }
 
+impl Token {
+    fn simple_atom(aromatic: bool, element: Element) -> Self {
+        Self::Atom(
+            aromatic,
+            None,
+            Some(element),
+            None,
+            0,
+            Charge::default(),
+            None,
+        )
+    }
+}
+
 #[derive(Debug)]
 enum BondClass {
     Single,
@@ -584,7 +528,7 @@ enum ChiralClass {
 
 #[cfg(test)]
 mod tests {
-    use crate::chemistry::formula::smiles::tokenise_smiles;
+    use crate::chemistry::{StructuralFormula, formula::smiles::tokenise_smiles};
 
     #[test]
     fn tokenise() {
@@ -616,5 +560,49 @@ mod tests {
             }
             assert_eq!(last, o.len());
         }
+    }
+
+    #[test]
+    fn parse() {
+        let structure = StructuralFormula::from_smiles("CCC=O").unwrap();
+        assert_eq!(
+            structure.composition().unwrap(),
+            molecular_formula!(C 3 H 6 O 1)
+        );
+        // MOD:00064|N6-acetyl-L-lysine
+        let structure = StructuralFormula::from_smiles("CC(=O)NCCCC[C@H](N-*)C(-*)=O").unwrap();
+        assert_eq!(
+            structure.composition().unwrap(),
+            molecular_formula!(C 8 H 14 N 2 O 2)
+        );
+        let structure = StructuralFormula::from_smiles("N1CC2CCCCC2CC1").unwrap();
+        assert_eq!(
+            structure.composition().unwrap(),
+            molecular_formula!(C 9 H 17 N 1)
+        );
+        let structure = StructuralFormula::from_smiles("C=1CCCCC=1").unwrap();
+        let structure_a = StructuralFormula::from_smiles("C=1CCCCC=1").unwrap();
+        let structure_b = StructuralFormula::from_smiles("C=1CCCCC=1").unwrap();
+        assert_eq!(structure, structure_a);
+        assert_eq!(structure, structure_b);
+        assert_eq!(
+            structure.composition().unwrap(),
+            molecular_formula!(C 6 H 10)
+        );
+        let structure = StructuralFormula::from_smiles("C1CCCCC1C1CCCCC1").unwrap();
+        let structure_a = StructuralFormula::from_smiles("C1CCCCC1C2CCCCC2").unwrap();
+        let structure_b = StructuralFormula::from_smiles("C1CCCCC1C%42CCCCC%42").unwrap();
+        assert_eq!(structure, structure_a);
+        assert_eq!(structure, structure_b);
+        assert_eq!(
+            structure.composition().unwrap(),
+            molecular_formula!(C 12 H 22)
+        );
+        let structure = StructuralFormula::from_smiles("[NH4+].[NH4+].[O-]S(=O)(=O)[S-]").unwrap();
+        // println!("{}", structure.to_dot().unwrap());
+        assert_eq!(
+            structure.composition().unwrap(),
+            molecular_formula!(H 8 N 2 O 3 S 2)
+        );
     }
 }

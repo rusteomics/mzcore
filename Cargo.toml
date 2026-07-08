@@ -63,6 +63,7 @@ uom = { version = ">0.32, <=0.38", default-features = false, features = [
     "isize",
     "f64",
     "f32",
+    "i8",
 ] }
 zeno = { version = "0.3.2" }
 

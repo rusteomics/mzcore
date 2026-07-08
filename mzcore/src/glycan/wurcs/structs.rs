@@ -1,6 +1,6 @@
 use crate::{
     chemistry::{Connection, Element, StructuralFormula},
-    system::isize::Charge,
+    system::i8::Charge,
 };
 
 #[derive(Debug)]
@@ -155,23 +155,17 @@ impl Residue {
                 }
 
                 structure.infer([
-                    (
-                        vec![(0, Connection::SingleCovalent)],
-                        StructuralFormula {
-                            elements: vec![
-                                (Some(Element::O), None, Charge::default()),
-                                (Some(Element::H), None, Charge::default()),
-                            ],
-                            connections: vec![(0, 1, Connection::SingleCovalent)],
-                        },
-                    ),
-                    (
-                        vec![(0, Connection::DoubleCovalent)],
-                        StructuralFormula {
-                            elements: vec![(Some(Element::O), None, Charge::default())],
-                            connections: vec![],
-                        },
-                    ),
+                    (vec![(0, Connection::SingleCovalent)], StructuralFormula {
+                        elements: vec![
+                            (Some(Element::O), None, Charge::default()),
+                            (Some(Element::H), None, Charge::default()),
+                        ],
+                        connections: vec![(0, 1, Connection::SingleCovalent)],
+                    }),
+                    (vec![(0, Connection::DoubleCovalent)], StructuralFormula {
+                        elements: vec![(Some(Element::O), None, Charge::default())],
+                        connections: vec![],
+                    }),
                     (
                         vec![
                             (0, Connection::SingleCovalent),

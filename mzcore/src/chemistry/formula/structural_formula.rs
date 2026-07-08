@@ -2,7 +2,7 @@ use std::{fmt::Write, num::NonZeroU16};
 
 use crate::{
     chemistry::{Element, MolecularFormula},
-    system::isize::Charge,
+    system::i8::Charge,
 };
 
 #[derive(Debug, Default, Eq, Hash, Ord, PartialEq, PartialOrd)]
@@ -13,8 +13,9 @@ pub struct StructuralFormula {
     // TODO: chimeric things
 }
 
-#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[derive(Clone, Copy, Debug, Default, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub enum Connection {
+    #[default]
     SingleCovalent,
     DoubleCovalent,
     TripleCovalent,
@@ -59,16 +60,12 @@ impl StructuralFormula {
         }
 
         for (i1, i2, ty) in &self.connections {
-            writeln!(
-                &mut res,
-                "n{i1} -- n{i2} [color=\"{}\"]",
-                match ty {
-                    Connection::SingleCovalent => "black",
-                    Connection::DoubleCovalent => "black:invis:black",
-                    Connection::TripleCovalent => "black:invis:black:invis:black",
-                    Connection::QuadrupleCovalent => "black:invis:black:invis:black:invis:black",
-                }
-            )
+            writeln!(&mut res, "n{i1} -- n{i2} [color=\"{}\"]", match ty {
+                Connection::SingleCovalent => "black",
+                Connection::DoubleCovalent => "black:invis:black",
+                Connection::TripleCovalent => "black:invis:black:invis:black",
+                Connection::QuadrupleCovalent => "black:invis:black:invis:black:invis:black",
+            })
             .unwrap();
         }
 
@@ -76,7 +73,8 @@ impl StructuralFormula {
         Some(res)
     }
 
-    /// Get the composition of this structure. It returns `None` if any isotope is invalid. Any unknown elements are ignored.
+    /// Get the composition of this structure. It returns `None` if any isotope is invalid. Any
+    /// unknown elements are ignored.
     pub fn composition(&self) -> Option<MolecularFormula> {
         self.elements
             .iter()
@@ -99,8 +97,8 @@ impl StructuralFormula {
     // TODO: needs to be able to switch the group from OH on C to H on anything else
     pub fn infer(&mut self, group: [(Vec<(usize, Connection)>, Self); 3]) {
         let mut added = Vec::new();
-        for (i, (e, _, _)) in self.elements.iter().enumerate() {
-            // TODO: does the charge need to be handled
+        for (i, (e, ..)) in self.elements.iter().enumerate() {
+            // TODO: does the charge need to be handled?
             let sum: usize = self
                 .connections
                 .iter()
@@ -125,15 +123,58 @@ impl StructuralFormula {
         }
         self.elements.extend_from_slice(&added);
     }
+
+    /// Infer missing hydrogens in this graph.
+    pub fn infer_hydrogens(&mut self) {
+        let mut added = Vec::new();
+        for (i, (e, isotope, charge)) in self.elements.iter().enumerate() {
+            if charge.value != 0 {
+                continue; // Poor way of detecting square bracket atoms in smiles
+            }
+            // TODO: does the charge need to be handled?
+            let sum: usize = self
+                .connections
+                .iter()
+                .filter(|c| c.0 == i || c.1 == i)
+                .map(|c| c.2.covalent_bonds())
+                .sum();
+            let missing = missing_bonds(*e, sum);
+            for _ in 0..missing {
+                let offset = self.elements.len() + added.len();
+                added.push((Some(Element::H), None, Charge::default()));
+                self.connections.push((i, offset, Connection::SingleCovalent));
+            }
+        }
+        self.elements.extend_from_slice(&added);
+    }
 }
 
+/// Follows the OpenSMILES specification for the valence
 fn missing_bonds(element: Option<Element>, in_place: usize) -> usize {
     match element {
-        Some(Element::H) => 1_usize.saturating_sub(in_place),
-        Some(Element::C) => 4_usize.saturating_sub(in_place),
+        Some(
+            Element::H
+            | Element::F
+            | Element::Cl
+            | Element::Br
+            | Element::I
+            | Element::At
+            | Element::Ts,
+        ) => 1_usize.saturating_sub(in_place),
         Some(Element::O) => 2_usize.saturating_sub(in_place),
-        Some(Element::N) => 3_usize.saturating_sub(in_place),
-        None => 0,
-        _ => todo!(),
+        Some(Element::B) => 3_usize.saturating_sub(in_place),
+        Some(Element::C) => 4_usize.saturating_sub(in_place),
+        Some(Element::N | Element::P) => {
+            if in_place > 3 { 5_usize } else { 3 }.saturating_sub(in_place)
+        }
+        Some(Element::S) => if in_place > 4 {
+            6_usize
+        } else if in_place > 2 {
+            4
+        } else {
+            2
+        }
+        .saturating_sub(in_place),
+        _ => 0,
     }
 }

@@ -184,6 +184,18 @@ pub mod isize {
     pub use super::{charge::e, mass::dalton, mass_over_charge::thomson, ratio::fraction, time::s};
 }
 
+/// All quantities with i8 as underlying type
+#[allow(unused_imports)]
+pub mod i8 {
+    mod mks {
+        pub(super) use super::super::*;
+    }
+
+    Q!(self::mks, i8);
+
+    pub use super::{charge::e, mass::dalton, mass_over_charge::thomson, ratio::fraction, time::s};
+}
+
 impl usize::Charge {
     /// Convert a usize charge to f64 for computations
     pub fn to_float(self) -> Charge {
@@ -192,6 +204,13 @@ impl usize::Charge {
 }
 
 impl isize::Charge {
+    /// Convert an isize charge to f64 for computations
+    pub fn to_float(self) -> Charge {
+        Charge::new::<e>(self.value as f64)
+    }
+}
+
+impl i8::Charge {
     /// Convert an isize charge to f64 for computations
     pub fn to_float(self) -> Charge {
         Charge::new::<e>(self.value as f64)
