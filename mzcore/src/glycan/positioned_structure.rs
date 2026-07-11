@@ -3,10 +3,12 @@ use std::hash::Hash;
 
 use serde::{Deserialize, Serialize};
 
-use super::{glycan::MonoSaccharide, position::GlycanPosition};
 use crate::{
     chemistry::{Chemical, MolecularFormula},
-    glycan::position::GlycanBreakPos,
+    glycan::{
+        MonoSaccharide,
+        position::{GlycanBreakPos, GlycanPosition},
+    },
     sequence::{AminoAcid, SequencePosition},
 };
 

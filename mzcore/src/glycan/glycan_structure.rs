@@ -9,9 +9,8 @@ use thin_vec::ThinVec;
 use crate::{
     chemistry::{Chemical, MolecularFormula},
     glycan::{
-        GlycanBranchIndex, GlycanBranchMassIndex, GlycanPosition, PositionedGlycanStructure,
-        glycan::{BaseSugar, MonoSaccharide},
-        lists::GLYCAN_PARSE_LIST,
+        GlycanBranchIndex, GlycanBranchMassIndex, GlycanPosition, MonoSaccharide,
+        PositionedGlycanStructure, glycan::BaseSugar, lists::GLYCAN_PARSE_LIST,
     },
     helper_functions::{end_of_enclosure, next_char, str_starts_with},
     parse_json::{ParseJson, use_serde},

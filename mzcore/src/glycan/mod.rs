@@ -17,6 +17,7 @@ pub use composition::GlycanCompositionError;
 pub use glycan::*;
 pub use glycan_structure::*;
 pub(crate) use lists::*;
+pub use monosaccharide::MonoSaccharide;
 pub use position::*;
 pub use positioned_structure::*;
 #[cfg(feature = "glycan-render")]

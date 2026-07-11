@@ -2,9 +2,12 @@ use std::sync::LazyLock;
 
 use thin_vec::ThinVec;
 
-use super::glycan::{
-    BaseSugar, GlycanSubstituent, HeptoseIsomer, HexoseIsomer, MonoSaccharide, NonoseIsomer,
-    PentoseIsomer, TetroseIsomer,
+use super::{
+    MonoSaccharide,
+    glycan::{
+        BaseSugar, GlycanSubstituent, HeptoseIsomer, HexoseIsomer, NonoseIsomer, PentoseIsomer,
+        TetroseIsomer,
+    },
 };
 
 pub(crate) const BASE_SUGARS: &[(&str, BaseSugar, &[GlycanSubstituent])] = &[

@@ -1,13 +1,327 @@
 //! Handle monosaccharides
 
+use std::{borrow::Cow, fmt::Display, hash::Hash};
+
+use context_error::{BasicKind, BoxedError, Context, CreateError};
 use itertools::Itertools;
+use serde::{Deserialize, Serialize};
+use serde_json::Value;
+use thin_vec::ThinVec;
 
 use crate::{
     chemistry::{Chemical, MolecularFormula},
-    glycan::MonoSaccharide,
+    glycan::{BaseSugar, Configuration, GlycanSubstituent, HexoseIsomer},
+    parse_json::ParseJson,
+    space::{Space, UsedSpace},
 };
 
+/// A monosaccharide with all its complexity
+#[derive(Clone, Debug, Deserialize, Ord, PartialOrd, Serialize)]
+pub struct MonoSaccharide {
+    pub(super) base_sugar: BaseSugar,
+    pub(super) substituents: ThinVec<(GlycanSubstituent, Option<u8>)>,
+    pub(super) furanose: bool,
+    pub(super) configuration: Option<Configuration>,
+}
+
+impl Space for MonoSaccharide {
+    fn space(&self) -> UsedSpace {
+        (self.base_sugar.space()
+            + self.substituents.space()
+            + self.furanose.space()
+            + self.configuration.space())
+        .set_total::<Self>()
+    }
+}
+
 impl MonoSaccharide {
+    /// Check if this monosacharide is similar to another, this checks if the
+    /// [`BaseSugar::equivalent`] is true (passing the precise flag there as well) and if the
+    /// substituents are identical. If the precise flag is on it also checks if the furanose and
+    /// configuration state are the same as well.
+    pub fn equivalent(&self, other: &Self, precise: bool) -> bool {
+        self.base_sugar.equivalent(&other.base_sugar, precise)
+            && self.substituents == other.substituents
+            && (!precise
+                || (self.furanose == other.furanose && self.configuration == other.configuration))
+    }
+}
+
+impl PartialEq for MonoSaccharide {
+    fn eq(&self, other: &Self) -> bool {
+        self.equivalent(other, true)
+    }
+}
+
+impl Eq for MonoSaccharide {}
+
+impl Hash for MonoSaccharide {
+    fn hash<H: std::hash::Hasher>(&self, hasher: &mut H) {
+        self.base_sugar.hash(hasher);
+        self.substituents.hash(hasher);
+        self.furanose.hash(hasher);
+        self.configuration.hash(hasher);
+    }
+}
+
+impl Display for MonoSaccharide {
+    /// Display as valid ProForma glycan
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.pro_forma_name())
+    }
+}
+
+impl ParseJson for MonoSaccharide {
+    fn from_json_value(value: Value) -> Result<Self, BoxedError<'static, BasicKind>> {
+        if let Value::Object(mut map) = value {
+            let context = |map: &serde_json::Map<String, Value>| {
+                Context::default().lines(
+                    0,
+                    map.iter().map(|(k, v)| format!("\"{k}\": {v}")).join(","),
+                )
+            };
+            Ok(Self {
+                base_sugar: BaseSugar::from_json_value(map.remove("base_sugar").ok_or_else(
+                    || {
+                        BoxedError::new(
+                            BasicKind::Error,
+                            "Invalid MonoSaccharide",
+                            "The required property 'base_sugar' is missing",
+                            context(&map),
+                        )
+                    },
+                )?)?,
+                substituents: if let Value::Array(arr) =
+                    map.remove("substituents").ok_or_else(|| {
+                        BoxedError::new(
+                            BasicKind::Error,
+                            "Invalid MonoSaccharide",
+                            "The required property 'substituents' is missing",
+                            context(&map),
+                        )
+                    })? {
+                    arr.into_iter()
+                        .map(|el| match el {
+                            Value::Array(ref arr) if let [ref sub, ref num] = arr[..] => {
+                                GlycanSubstituent::from_json_value(sub.clone()).and_then(|sub| {
+                                    Option::from_json_value(num.clone()).map(|num| (sub, num))
+                                })
+                            }
+                            sub @ Value::String(_) => {
+                                GlycanSubstituent::from_json_value(sub).map(|sub| (sub, None))
+                            }
+                            _ => Err(BoxedError::new(
+                                BasicKind::Error,
+                                "Invalid MonoSaccharide",
+                                "The substituents need to be an array with the glycansubsistuent and the location",
+                                context(&map),
+                            )),
+                        })
+                        .collect()
+                } else {
+                    Err(BoxedError::new(
+                        BasicKind::Error,
+                        "Invalid MonoSaccharide",
+                        "The substituents need to be an array",
+                        context(&map),
+                    ))
+                }?,
+                configuration: Option::from_json_value(map.remove("configuration").ok_or_else(
+                    || {
+                        BoxedError::new(
+                            BasicKind::Error,
+                            "Invalid MonoSaccharide",
+                            "The required property 'configuration' is missing",
+                            context(&map),
+                        )
+                    },
+                )?)?,
+                furanose: bool::from_json_value(map.remove("furanose").ok_or_else(|| {
+                    BoxedError::new(
+                        BasicKind::Error,
+                        "Invalid MonoSaccharide",
+                        "The required property 'furanose' is missing",
+                        context(&map),
+                    )
+                })?)?,
+            })
+        } else {
+            Err(BoxedError::new(
+                BasicKind::Error,
+                "Invalid MonoSaccharide",
+                "The value has to be a map",
+                Context::default().lines(0, value.to_string()),
+            ))
+        }
+
+        // use_serde(value)
+    }
+}
+
+impl MonoSaccharide {
+    /// Get the name that should be used to represent this monosaccharide in ProForma glycan
+    /// compositions
+    pub fn pro_forma_name(&self) -> Cow<'static, str> {
+        match self.base_sugar {
+            BaseSugar::Sugar
+                if self.substituents.is_empty()
+                    && !self.furanose
+                    && self.configuration.is_none() =>
+            {
+                Cow::Borrowed("Sug")
+            }
+            BaseSugar::Triose
+                if self.substituents.is_empty()
+                    && !self.furanose
+                    && self.configuration.is_none() =>
+            {
+                Cow::Borrowed("Tri")
+            }
+            BaseSugar::Tetrose(_)
+                if self.substituents.is_empty()
+                    && !self.furanose
+                    && self.configuration.is_none() =>
+            {
+                Cow::Borrowed("Tet")
+            }
+            BaseSugar::Pentose(_)
+                if self.substituents.is_empty()
+                    && !self.furanose
+                    && self.configuration.is_none() =>
+            {
+                Cow::Borrowed("Pen")
+            }
+            BaseSugar::Hexose(isomer) if !self.furanose && self.configuration.is_none() => {
+                match *self.substituents.as_slice() {
+                    [] => Cow::Borrowed("Hex"),
+                    [(GlycanSubstituent::Acid, _)] => Cow::Borrowed("aHex"),
+                    [
+                        (GlycanSubstituent::Acid, _),
+                        (GlycanSubstituent::Deoxy, _),
+                        (GlycanSubstituent::Didehydro, _),
+                    ] => Cow::Borrowed("en,aHex"),
+                    [(GlycanSubstituent::Deoxy, _)] if isomer == Some(HexoseIsomer::Galactose) => {
+                        Cow::Borrowed("Fuc")
+                    }
+                    [(GlycanSubstituent::Deoxy, _)] => Cow::Borrowed("dHex"),
+                    [
+                        (GlycanSubstituent::NAcetyl, _),
+                        (GlycanSubstituent::Sulfate, _),
+                    ] => Cow::Borrowed("HexNAcS"),
+                    [
+                        (GlycanSubstituent::Amino, _),
+                        (GlycanSubstituent::Sulfate, _),
+                    ] => Cow::Borrowed("HexNS"),
+                    [(GlycanSubstituent::Amino, _)] => Cow::Borrowed("HexN"),
+                    [(GlycanSubstituent::NAcetyl, _)] => Cow::Borrowed("HexNAc"),
+                    [(GlycanSubstituent::Sulfate, _)] => Cow::Borrowed("HexS"),
+                    [(GlycanSubstituent::Phosphate, _)] => Cow::Borrowed("HexP"),
+                    _ => Cow::Owned(format!("{{{}}}", self.formula())),
+                }
+            }
+            BaseSugar::Heptose(_)
+                if self.substituents.is_empty()
+                    && !self.furanose
+                    && self.configuration.is_none() =>
+            {
+                Cow::Borrowed("Hep")
+            }
+            BaseSugar::Octose
+                if self.substituents.is_empty()
+                    && !self.furanose
+                    && self.configuration.is_none() =>
+            {
+                Cow::Borrowed("Oct")
+            }
+            BaseSugar::Nonose(None) if !self.furanose && self.configuration.is_none() => {
+                match *self.substituents.as_slice() {
+                    [] => Cow::Borrowed("Non"),
+                    [
+                        (GlycanSubstituent::Acetyl, _),
+                        (GlycanSubstituent::Acid, _),
+                        (GlycanSubstituent::Amino, _),
+                    ] => Cow::Borrowed("NeuAc"),
+                    [
+                        (GlycanSubstituent::Acid, _),
+                        (GlycanSubstituent::Amino, _),
+                        (GlycanSubstituent::Glycolyl, _),
+                    ] => Cow::Borrowed("NeuGc"),
+                    [
+                        (GlycanSubstituent::Acid, _),
+                        (GlycanSubstituent::Amino, _),
+                        (GlycanSubstituent::Deoxy, _),
+                    ] => Cow::Borrowed("Neu"),
+                    _ => Cow::Owned(format!("{{{}}}", self.formula())),
+                }
+            }
+            BaseSugar::Decose
+                if self.substituents.is_empty()
+                    && !self.furanose
+                    && self.configuration.is_none() =>
+            {
+                Cow::Borrowed("Dec")
+            }
+            BaseSugar::Custom(_)
+                if matches!(self.substituents.as_slice(), [(
+                    GlycanSubstituent::Phosphate,
+                    _
+                )]) && !self.furanose
+                    && self.configuration.is_none() =>
+            {
+                Cow::Borrowed("Phosphate")
+            }
+            BaseSugar::Custom(_)
+                if matches!(self.substituents.as_slice(), [(
+                    GlycanSubstituent::Sulfate,
+                    _
+                )]) && !self.furanose
+                    && self.configuration.is_none() =>
+            {
+                Cow::Borrowed("Sulfate")
+            }
+            _ => Cow::Owned(format!("{{{}}}", self.formula())),
+        }
+    }
+
+    /// Get the base sugar of this monosaccharide
+    pub const fn base_sugar(&self) -> &BaseSugar {
+        &self.base_sugar
+    }
+
+    /// Check if this is a fucose
+    pub fn is_fucose(&self) -> bool {
+        self.base_sugar == BaseSugar::Hexose(Some(HexoseIsomer::Galactose))
+            && self.substituents.iter().any(|(s, _)| *s == GlycanSubstituent::Deoxy)
+    }
+
+    /// Create a new monosaccharide
+    pub fn new(sugar: BaseSugar, substituents: &[(GlycanSubstituent, Option<u8>)]) -> Self {
+        Self {
+            base_sugar: sugar,
+            substituents: substituents.iter().copied().sorted().collect(),
+            furanose: false,
+            configuration: None,
+        }
+    }
+
+    /// Set this saccharide up as to be a furanose
+    #[must_use]
+    pub fn furanose(self) -> Self {
+        Self {
+            furanose: true,
+            ..self
+        }
+    }
+
+    /// Set this saccharide up to be a certain configuration
+    #[must_use]
+    pub fn configuration(self, configuration: Configuration) -> Self {
+        Self {
+            configuration: Some(configuration),
+            ..self
+        }
+    }
+
     /// Generate the composition used for searching on glycans
     pub(crate) fn search_composition(
         composition: &[(Self, isize)],
@@ -117,13 +431,12 @@ mod tests {
     use crate::{
         chemistry::Chemical,
         glycan::{
-            glycan::{
-                BaseSugar, Configuration, GlycanSubstituent, HexoseIsomer, MonoSaccharide,
-                PentoseIsomer,
-            },
+            glycan::{BaseSugar, Configuration, GlycanSubstituent, HexoseIsomer, PentoseIsomer},
             lists::GLYCAN_PARSE_LIST,
+            monosaccharide::MonoSaccharide,
         },
         molecular_formula,
+        parse_json::ParseJson,
     };
 
     #[test]
@@ -322,5 +635,31 @@ mod tests {
         );
         assert_eq!(w.len(), 1);
         // Maybe add warning that you are mixing single letter definitions with full names?
+    }
+
+    #[test]
+    fn parse_json() {
+        let hex = r#"{"base_sugar": {"Hexose": null},"substituents": [],"furanose": false,"configuration": null,"proforma_name": "Hex"}"#;
+        let hexnac = r#"{"base_sugar": {"Hexose": null},"substituents": ["NAcetyl"],"furanose": false,"configuration": null,"proforma_name": "HexNAc"}"#;
+        let fuc = r#"{"base_sugar": {"Hexose": "Galactose"},"substituents": ["Deoxy"],"furanose": false,"configuration": null,"proforma_name": "Fuc"}"#;
+
+        assert_eq!(
+            MonoSaccharide::from_json(hex).unwrap(),
+            MonoSaccharide::new(BaseSugar::Hexose(None), &[])
+        );
+        assert_eq!(
+            MonoSaccharide::from_json(hexnac).unwrap(),
+            MonoSaccharide::new(BaseSugar::Hexose(None), &[(
+                GlycanSubstituent::NAcetyl,
+                None
+            )])
+        );
+        assert_eq!(
+            MonoSaccharide::from_json(fuc).unwrap(),
+            MonoSaccharide::new(BaseSugar::Hexose(Some(HexoseIsomer::Galactose)), &[(
+                GlycanSubstituent::Deoxy,
+                None
+            )])
+        );
     }
 }

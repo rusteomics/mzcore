@@ -1,13 +1,11 @@
-use std::{borrow::Cow, fmt::Display, hash::Hash};
+use std::{fmt::Display, hash::Hash};
 
 use context_error::*;
-use itertools::Itertools;
 use serde::{Deserialize, Serialize};
-use thin_vec::ThinVec;
 
 use crate::{
     chemistry::{Chemical, ELEMENT_PARSE_LIST, Element, MolecularFormula},
-    glycan::lists::*,
+    glycan::{lists::*, monosaccharide::MonoSaccharide},
     helper_functions::str_starts_with,
     molecular_formula,
     parse_json::{ParseJson, use_serde},
@@ -32,232 +30,13 @@ pub enum Configuration {
     LD,
 }
 
-/// A monosaccharide with all its complexity
-#[derive(Clone, Debug, Deserialize, Ord, PartialOrd, Serialize)]
-pub struct MonoSaccharide {
-    pub(super) base_sugar: BaseSugar,
-    pub(super) substituents: ThinVec<(GlycanSubstituent, Option<u8>)>,
-    pub(super) furanose: bool,
-    pub(super) configuration: Option<Configuration>,
-}
-
-impl Space for MonoSaccharide {
-    fn space(&self) -> UsedSpace {
-        (self.base_sugar.space()
-            + self.substituents.space()
-            + self.furanose.space()
-            + self.configuration.space())
-        .set_total::<Self>()
-    }
-}
-
-impl MonoSaccharide {
-    /// Check if this monosacharide is similar to another, this checks if the
-    /// [`BaseSugar::equivalent`] is true (passing the precise flag there as well) and if the
-    /// substituents are identical. If the precise flag is on it also checks if the furanose and
-    /// configuration state are the same as well.
-    pub fn equivalent(&self, other: &Self, precise: bool) -> bool {
-        self.base_sugar.equivalent(&other.base_sugar, precise)
-            && self.substituents == other.substituents
-            && (!precise
-                || (self.furanose == other.furanose && self.configuration == other.configuration))
-    }
-}
-
-impl PartialEq for MonoSaccharide {
-    fn eq(&self, other: &Self) -> bool {
-        self.equivalent(other, true)
-    }
-}
-
-impl Eq for MonoSaccharide {}
-
-impl Hash for MonoSaccharide {
-    fn hash<H: std::hash::Hasher>(&self, hasher: &mut H) {
-        self.base_sugar.hash(hasher);
-        self.substituents.hash(hasher);
-        self.furanose.hash(hasher);
-        self.configuration.hash(hasher);
-    }
-}
-
-impl Display for MonoSaccharide {
-    /// Display as valid ProForma glycan
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.pro_forma_name())
-    }
-}
-
-impl ParseJson for MonoSaccharide {
+impl ParseJson for Configuration {
     fn from_json_value(value: serde_json::Value) -> Result<Self, BoxedError<'static, BasicKind>> {
         use_serde(value)
     }
 }
 
 impl MonoSaccharide {
-    /// Get the name that should be used to represent this monosaccharide in ProForma glycan
-    /// compositions
-    pub fn pro_forma_name(&self) -> Cow<'static, str> {
-        match self.base_sugar {
-            BaseSugar::Sugar
-                if self.substituents.is_empty()
-                    && !self.furanose
-                    && self.configuration.is_none() =>
-            {
-                Cow::Borrowed("Sug")
-            }
-            BaseSugar::Triose
-                if self.substituents.is_empty()
-                    && !self.furanose
-                    && self.configuration.is_none() =>
-            {
-                Cow::Borrowed("Tri")
-            }
-            BaseSugar::Tetrose(_)
-                if self.substituents.is_empty()
-                    && !self.furanose
-                    && self.configuration.is_none() =>
-            {
-                Cow::Borrowed("Tet")
-            }
-            BaseSugar::Pentose(_)
-                if self.substituents.is_empty()
-                    && !self.furanose
-                    && self.configuration.is_none() =>
-            {
-                Cow::Borrowed("Pen")
-            }
-            BaseSugar::Hexose(isomer) if !self.furanose && self.configuration.is_none() => {
-                match *self.substituents.as_slice() {
-                    [] => Cow::Borrowed("Hex"),
-                    [(GlycanSubstituent::Acid, _)] => Cow::Borrowed("aHex"),
-                    [
-                        (GlycanSubstituent::Acid, _),
-                        (GlycanSubstituent::Deoxy, _),
-                        (GlycanSubstituent::Didehydro, _),
-                    ] => Cow::Borrowed("en,aHex"),
-                    [(GlycanSubstituent::Deoxy, _)] if isomer == Some(HexoseIsomer::Galactose) => {
-                        Cow::Borrowed("Fuc")
-                    }
-                    [(GlycanSubstituent::Deoxy, _)] => Cow::Borrowed("dHex"),
-                    [
-                        (GlycanSubstituent::NAcetyl, _),
-                        (GlycanSubstituent::Sulfate, _),
-                    ] => Cow::Borrowed("HexNAcS"),
-                    [
-                        (GlycanSubstituent::Amino, _),
-                        (GlycanSubstituent::Sulfate, _),
-                    ] => Cow::Borrowed("HexNS"),
-                    [(GlycanSubstituent::Amino, _)] => Cow::Borrowed("HexN"),
-                    [(GlycanSubstituent::NAcetyl, _)] => Cow::Borrowed("HexNAc"),
-                    [(GlycanSubstituent::Sulfate, _)] => Cow::Borrowed("HexS"),
-                    [(GlycanSubstituent::Phosphate, _)] => Cow::Borrowed("HexP"),
-                    _ => Cow::Owned(format!("{{{}}}", self.formula())),
-                }
-            }
-            BaseSugar::Heptose(_)
-                if self.substituents.is_empty()
-                    && !self.furanose
-                    && self.configuration.is_none() =>
-            {
-                Cow::Borrowed("Hep")
-            }
-            BaseSugar::Octose
-                if self.substituents.is_empty()
-                    && !self.furanose
-                    && self.configuration.is_none() =>
-            {
-                Cow::Borrowed("Oct")
-            }
-            BaseSugar::Nonose(None) if !self.furanose && self.configuration.is_none() => {
-                match *self.substituents.as_slice() {
-                    [] => Cow::Borrowed("Non"),
-                    [
-                        (GlycanSubstituent::Acetyl, _),
-                        (GlycanSubstituent::Acid, _),
-                        (GlycanSubstituent::Amino, _),
-                    ] => Cow::Borrowed("NeuAc"),
-                    [
-                        (GlycanSubstituent::Acid, _),
-                        (GlycanSubstituent::Amino, _),
-                        (GlycanSubstituent::Glycolyl, _),
-                    ] => Cow::Borrowed("NeuGc"),
-                    [
-                        (GlycanSubstituent::Acid, _),
-                        (GlycanSubstituent::Amino, _),
-                        (GlycanSubstituent::Deoxy, _),
-                    ] => Cow::Borrowed("Neu"),
-                    _ => Cow::Owned(format!("{{{}}}", self.formula())),
-                }
-            }
-            BaseSugar::Decose
-                if self.substituents.is_empty()
-                    && !self.furanose
-                    && self.configuration.is_none() =>
-            {
-                Cow::Borrowed("Dec")
-            }
-            BaseSugar::Custom(_)
-                if matches!(self.substituents.as_slice(), [(
-                    GlycanSubstituent::Phosphate,
-                    _
-                )]) && !self.furanose
-                    && self.configuration.is_none() =>
-            {
-                Cow::Borrowed("Phosphate")
-            }
-            BaseSugar::Custom(_)
-                if matches!(self.substituents.as_slice(), [(
-                    GlycanSubstituent::Sulfate,
-                    _
-                )]) && !self.furanose
-                    && self.configuration.is_none() =>
-            {
-                Cow::Borrowed("Sulfate")
-            }
-            _ => Cow::Owned(format!("{{{}}}", self.formula())),
-        }
-    }
-
-    /// Get the base sugar of this monosaccharide
-    pub const fn base_sugar(&self) -> &BaseSugar {
-        &self.base_sugar
-    }
-
-    /// Check if this is a fucose
-    pub fn is_fucose(&self) -> bool {
-        self.base_sugar == BaseSugar::Hexose(Some(HexoseIsomer::Galactose))
-            && self.substituents.iter().any(|(s, _)| *s == GlycanSubstituent::Deoxy)
-    }
-
-    /// Create a new monosaccharide
-    pub fn new(sugar: BaseSugar, substituents: &[(GlycanSubstituent, Option<u8>)]) -> Self {
-        Self {
-            base_sugar: sugar,
-            substituents: substituents.iter().copied().sorted().collect(),
-            furanose: false,
-            configuration: None,
-        }
-    }
-
-    /// Set this saccharide up as to be a furanose
-    #[must_use]
-    pub fn furanose(self) -> Self {
-        Self {
-            furanose: true,
-            ..self
-        }
-    }
-
-    /// Set this saccharide up to be a certain configuration
-    #[must_use]
-    pub fn configuration(self, configuration: Configuration) -> Self {
-        Self {
-            configuration: Some(configuration),
-            ..self
-        }
-    }
-
     /// Parse a short IUPAC name from this string starting at `start` and returning,
     /// if successful, a monosaccharide and the offset in the string where parsing ended.
     /// # Errors
@@ -633,6 +412,12 @@ impl Space for BaseSugar {
     }
 }
 
+impl ParseJson for BaseSugar {
+    fn from_json_value(value: serde_json::Value) -> Result<Self, BoxedError<'static, BasicKind>> {
+        use_serde(value)
+    }
+}
+
 impl BaseSugar {
     /// Check if these two sugars are equivalent, meaning that both are the same type tetrose,
     /// hexose, nonose etc. If the `precise` flag is turned on the isomeric state has to be the
@@ -850,6 +635,12 @@ pub enum GlycanSubstituent {
     Ulof,
     ///`water` H2O
     Water,
+}
+
+impl ParseJson for GlycanSubstituent {
+    fn from_json_value(value: serde_json::Value) -> Result<Self, BoxedError<'static, BasicKind>> {
+        use_serde(value)
+    }
 }
 
 impl GlycanSubstituent {
