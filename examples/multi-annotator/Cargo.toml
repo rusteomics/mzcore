@@ -12,11 +12,13 @@ context_error = { workspace = true }
 directories = { workspace = true }
 itertools = { workspace = true }
 mzdata = { workspace = true, default-features = false, features = [
+    "nalgebra",
     "mgf",
     "mzml",
     "thermo",
     "bruker_tdf",
 ] }
+thermorawfilereader = {version="<=0.7.0"}
 rayon = { workspace = true }
 mzcore = { path = "../../mzcore", default-features = false, features = [
     "coloured-errors",
