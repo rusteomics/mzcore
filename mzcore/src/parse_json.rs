@@ -242,9 +242,9 @@ impl ParseJson for AccessionCode {
                 if let Some(n) = n.as_u64()
                     && let Ok(n) = u32::try_from(n) =>
             {
-                Ok(AccessionCode::Numeric(n))
+                Ok(Self::Numeric(n))
             }
-            Value::String(n) => AccessionCode::from_str(&n).map_err(|err| {
+            Value::String(n) => Self::from_str(&n).map_err(|err| {
                 BoxedError::new(
                     BasicKind::Error,
                     "Invalid alphanumeric ModificationID",
@@ -252,50 +252,55 @@ impl ParseJson for AccessionCode {
                     Context::default().lines(0, n),
                 )
             }),
-            Value::Object(map) => {
-                if let Some(n) = map.get("Numeric") {
-                    if let Ok(n) = u32::from_json_value(n.clone()) {
-                        Ok(AccessionCode::Numeric(n))
-                    } else {
-                        return Err(BoxedError::new(
-                            BasicKind::Error,
-                            "Invalid numeric ModificationID",
-                            format!(
-                                "The id has to be a positive integer within 0 to {}",
-                                u32::MAX
-                            ),
-                            Context::default().lines(0, n.to_string()),
-                        ));
-                    }
-                } else if let Some(n) = map.get("Alphanumeric") {
-                    AccessionCode::from_str(&n.to_string()).map_err(|err| {
-                        BoxedError::new(
-                            BasicKind::Error,
-                            "Invalid alphanumeric ModificationID",
-                            err.to_string(),
-                            Context::default().lines(0, n.to_string()),
-                        )
-                    })
-                } else {
-                    return Err(BoxedError::new(
-                        BasicKind::Error,
-                        "Invalid ModificationID",
-                        "The 'id' can only be 'Numeric' or 'Alphanumeric'",
-                        Context::default().lines(
-                            0,
-                            map.iter().map(|(k, v)| format!("\"{k}\": {v}")).join(","),
-                        ),
-                    ));
-                }
-            }
-            value => {
-                return Err(BoxedError::new(
-                    BasicKind::Error,
-                    "Invalid ModificationID",
-                    "The 'id' is in an invalid format",
-                    Context::default().lines(0, value.to_string()),
-                ));
-            }
+            Value::Object(map) => map.get("Numeric").map_or_else(
+                || {
+                    map.get("Alphanumeric").map_or_else(
+                        || {
+                            Err(BoxedError::new(
+                                BasicKind::Error,
+                                "Invalid ModificationID",
+                                "The 'id' can only be 'Numeric' or 'Alphanumeric'",
+                                Context::default().lines(
+                                    0,
+                                    map.iter().map(|(k, v)| format!("\"{k}\": {v}")).join(","),
+                                ),
+                            ))
+                        },
+                        |n| {
+                            Self::from_str(&n.to_string()).map_err(|err| {
+                                BoxedError::new(
+                                    BasicKind::Error,
+                                    "Invalid alphanumeric ModificationID",
+                                    err.to_string(),
+                                    Context::default().lines(0, n.to_string()),
+                                )
+                            })
+                        },
+                    )
+                },
+                |n| {
+                    u32::from_json_value(n.clone()).map_or_else(
+                        |_| {
+                            Err(BoxedError::new(
+                                BasicKind::Error,
+                                "Invalid numeric ModificationID",
+                                format!(
+                                    "The id has to be a positive integer within 0 to {}",
+                                    u32::MAX
+                                ),
+                                Context::default().lines(0, n.to_string()),
+                            ))
+                        },
+                        |n| Ok(Self::Numeric(n)),
+                    )
+                },
+            ),
+            value => Err(BoxedError::new(
+                BasicKind::Error,
+                "Invalid ModificationID",
+                "The 'id' is in an invalid format",
+                Context::default().lines(0, value.to_string()),
+            )),
         }
     }
 }

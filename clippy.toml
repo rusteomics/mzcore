@@ -16,6 +16,7 @@ doc-valid-idents = [
     "MzTab",
     "NovoB",
     "OPair",
+    "OpenSMILES",
     "PeakApex",
     "PepNet",
     "PGPointNovo",

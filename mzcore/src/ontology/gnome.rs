@@ -239,7 +239,7 @@ fn parse_gnome(
                             v[0].0
                                 .to_string()
                                 .parse()
-                                .expect(&format!("Invalid GlycToucanID {}", v[0].0)),
+                                .unwrap_or_else(|_| panic!("Invalid GlycToucanID {}", v[0].0)),
                             crate::sequence::PlacementRule::Position(Position::Anywhere),
                         )
                     })
@@ -547,10 +547,9 @@ impl GNOmeModification {
                         GnoComposition::Topology(structure)
                     } else if let Some(composition) = value.composition {
                         GnoComposition::Composition(composition)
-                    } else if let Some(mass) = value.weight {
-                        GnoComposition::Weight(crate::system::f64::da(mass).into())
                     } else {
-                        return None;
+                        let mass = value.weight?;
+                        GnoComposition::Weight(crate::system::f64::da(mass).into())
                     },
                     id: value.id,
                     structure_score: value.structure_score,

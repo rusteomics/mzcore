@@ -121,7 +121,7 @@ impl std::fmt::Display for Position {
             Self::AnyCTerm => "AnyCTerm",
             Self::ProteinNTerm => "ProteinNTerm",
             Self::ProteinCTerm => "ProteinCTerm",
-        },)
+        })
     }
 }
 
@@ -284,11 +284,11 @@ pub trait RulePosition {
 impl RulePosition for Position {
     fn is_possible(rule: Position, position: Self, _sidechain_strict: bool) -> bool {
         match rule {
-            Position::Anywhere => true,
-            Position::AnyNTerm => position == Self::AnyNTerm || position == Self::ProteinNTerm,
-            Position::ProteinNTerm => position == Self::ProteinNTerm,
-            Position::AnyCTerm => position == Self::AnyCTerm || position == Self::ProteinCTerm,
-            Position::ProteinCTerm => position == Self::ProteinCTerm,
+            Self::Anywhere => true,
+            Self::AnyNTerm => position == Self::AnyNTerm || position == Self::ProteinNTerm,
+            Self::ProteinNTerm => position == Self::ProteinNTerm,
+            Self::AnyCTerm => position == Self::AnyCTerm || position == Self::ProteinCTerm,
+            Self::ProteinCTerm => position == Self::ProteinCTerm,
         }
     }
 }
@@ -298,13 +298,13 @@ impl RulePosition for SequencePosition {
         match rule {
             Position::Anywhere => true,
             Position::AnyNTerm | Position::ProteinNTerm => {
-                position == SequencePosition::NTerm
-                    || !sidechain_strict && matches!(position, SequencePosition::Index(0, _))
+                position == Self::NTerm
+                    || !sidechain_strict && matches!(position, Self::Index(0, _))
             }
             Position::AnyCTerm | Position::ProteinCTerm => {
-                position == SequencePosition::CTerm
+                position == Self::CTerm
                     || !sidechain_strict
-                        && matches!(position, SequencePosition::Index(i, l) if i == l.saturating_sub(1))
+                        && matches!(position, Self::Index(i, l) if i == l.saturating_sub(1))
             }
         }
     }

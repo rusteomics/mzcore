@@ -496,6 +496,6 @@ impl std::fmt::Display for Ontology {
             Self::Xlmod => "XLMOD",
             Self::Resid => "Resid",
             Self::Custom => "Custom",
-        },)
+        })
     }
 }

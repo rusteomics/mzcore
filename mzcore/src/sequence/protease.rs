@@ -274,7 +274,7 @@ impl Protease {
     }
 
     fn matches_at<T>(&self, slice: &[SequenceElement<T>]) -> bool {
-        debug_assert!(slice.len() == self.before.len() + self.after.len());
+        debug_assert_eq!(slice.len(), self.before.len() + self.after.len());
         'positions: for (actual, pattern) in
             slice.iter().zip(self.before.iter().chain(self.after.iter()))
         {

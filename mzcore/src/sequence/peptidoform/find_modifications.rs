@@ -483,7 +483,7 @@ impl<'ontologies> PeptideModificationSearch<'ontologies> {
 #[test]
 #[expect(clippy::missing_panics_doc)]
 fn test_replacement() {
-    use crate::{ontology::STATIC_ONTOLOGIES, sequence::LinkerSpecificity};
+    use crate::ontology::STATIC_ONTOLOGIES;
 
     let mut search =
         PeptideModificationSearch::in_ontologies(vec![Ontology::Unimod], &STATIC_ONTOLOGIES)

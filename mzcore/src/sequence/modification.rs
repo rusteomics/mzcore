@@ -298,6 +298,7 @@ impl ParseJson for ModificationId {
 
 /// A cross-identifier for a modification
 #[derive(Clone, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
+#[allow(clippy::upper_case_acronyms, clippy::doc_markdown)]
 pub enum CrossId {
     /// A reference to an article
     Article(Box<str>),
@@ -594,24 +595,17 @@ impl TryFrom<(Option<Box<str>>, Box<str>)> for CrossId {
             Some("ec" | "brenda" | "expasy") => {
                 let split = value.1.split('.').collect::<Vec<_>>();
 
-                if split.len() != 4 {
-                    return Err(BoxedError::new(
-                        BasicKind::Error,
-                        "Invalid EC number",
-                        format!("An EC number consists of 4 parts separated by '.'"),
-                        Context::default().lines(0, value.1.to_string()),
-                    ));
-                } else {
+                if split.len() == 4 {
                     let mut nums = Vec::with_capacity(4);
                     let mut preliminary = false;
                     let mut offset = 0;
 
-                    for n in 0..4 {
-                        let num = if n == 3 && split[n].starts_with('n') {
+                    for (n, element) in split.iter().enumerate() {
+                        let num = if n == 3 && element.starts_with('n') {
                             preliminary = true;
-                            split[n][1..].trim()
+                            element[1..].trim()
                         } else {
-                            split[n].trim()
+                            element.trim()
                         };
                         let a =
                             num.parse::<u16>().map_err(|err| {
@@ -621,13 +615,20 @@ impl TryFrom<(Option<Box<str>>, Box<str>)> for CrossId {
                                     format!("The EC number {}", explain_number_error(&err)),
                                     Context::default()
                                         .lines(0, value.1.to_string())
-                                        .add_highlight((0, offset, split[n].len())),
+                                        .add_highlight((0, offset, element.len())),
                                 )
                             })?;
                         nums.push(a);
-                        offset += split[n].len() + 1;
+                        offset += element.len() + 1;
                     }
                     Self::EC(nums[0], nums[1], nums[2], nums[3], preliminary)
+                } else {
+                    return Err(BoxedError::new(
+                        BasicKind::Error,
+                        "Invalid EC number",
+                        "An EC number consists of 4 parts separated by '.'",
+                        Context::default().lines(0, value.1.to_string()),
+                    ));
                 }
             }
             Some(name) if value.1.starts_with("http://") | value.1.starts_with("https://") => {
@@ -687,30 +688,30 @@ impl Display for CrossId {
 impl Space for CrossId {
     fn space(&self) -> UsedSpace {
         match self {
-            Self::Article(a) => a.space(),
-            Self::Beilstein(a) => a.space(),
-            Self::Book(a) => a.space(),
             Self::CAS(a, b, c) => a.space() + b.space() + c.space(),
-            Self::ChEBI(a) => a.space(),
-            Self::ChemicalBook(a) => a.space(),
-            Self::ChemSpider(a) => a.space(),
-            Self::COMe(a) => a.space(),
-            Self::Deltamass(a) => a.space(),
-            Self::DOI(a) => a.space(),
             Self::EC(a, b, c, d, p) => a.space() + b.space() + c.space() + d.space() + p.space(),
-            Self::Findmod(a) => a.space(),
             Self::GO(a) => a.space(),
-            Self::MDL(a) => a.space(),
             Self::Mod(a, b, c) => a.space() + b.space() + c.space(),
-            Self::OMSSA(a) => a.space(),
-            Self::Other(a) => a.space(),
-            Self::Patent(a) => a.space(),
-            Self::PDB(a) => a.space(),
-            Self::PDBHet(a) => a.space(),
-            Self::PubChemCompound(a) => a.space(),
-            Self::PubChemSubstance(a) => a.space(),
-            Self::PubMed(a) => a.space(),
-            Self::Uniprot(a) => a.space(),
+            Self::Beilstein(a)
+            | Self::ChEBI(a)
+            | Self::ChemSpider(a)
+            | Self::Deltamass(a)
+            | Self::OMSSA(a)
+            | Self::PubChemCompound(a)
+            | Self::PubChemSubstance(a)
+            | Self::PubMed(a) => a.space(),
+            Self::Article(a)
+            | Self::Book(a)
+            | Self::ChemicalBook(a)
+            | Self::COMe(a)
+            | Self::DOI(a)
+            | Self::Findmod(a)
+            | Self::MDL(a)
+            | Self::Other(a)
+            | Self::Patent(a)
+            | Self::PDB(a)
+            | Self::PDBHet(a)
+            | Self::Uniprot(a) => a.space(),
             Self::URL(a, b) => a.space() + b.space(),
         }
         .set_total::<Self>()
@@ -768,7 +769,7 @@ impl ParseJson for CrossId {
             value @ Value::Object(_) => use_serde(value),
             Value::Array(value) => {
                 if value.len() == 2 {
-                    CrossId::try_from((
+                    Self::try_from((
                         (value[0] != Value::Null).then(|| value[0].to_string().into()),
                         value[1].to_string().into(),
                     ))
@@ -776,7 +777,7 @@ impl ParseJson for CrossId {
                     todo!()
                 }
             }
-            Value::String(value) => CrossId::from_str(&value),
+            Value::String(value) => Self::from_str(&value),
             value => Err(BoxedError::new(
                 BasicKind::Error,
                 "Invalid CrossId",

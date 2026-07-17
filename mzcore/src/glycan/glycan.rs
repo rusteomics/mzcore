@@ -350,7 +350,7 @@ impl ParseHelper for &str {
                     if bytes[0].is_ascii_digit() {
                         location = Some(bytes[0] - b'0');
                     }
-                    index += 1 // X{mod}
+                    index += 1; // X{mod}
                 }
             }
         }

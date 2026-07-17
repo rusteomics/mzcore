@@ -95,25 +95,19 @@ impl Residue {
                                     MAPSymbol::Star(i) => {
                                         connection = Some((
                                             carbon_numbers[i.unwrap_or(lip) as usize],
-                                            connection
-                                                .map(|c| c.1)
-                                                .unwrap_or(Connection::SingleCovalent),
+                                            connection.map_or(Connection::SingleCovalent, |c| c.1),
                                         ));
                                         lut.push(carbon_numbers[i.unwrap_or(lip) as usize]);
                                     }
                                     MAPSymbol::DoubleBond => {
                                         connection = Some((
-                                            connection
-                                                .map(|c| c.0)
-                                                .unwrap_or(structure.atoms.len() - 1),
+                                            connection.map_or(structure.atoms.len() - 1, |c| c.0),
                                             Connection::DoubleCovalent,
                                         ));
                                     }
                                     MAPSymbol::TripleBond => {
                                         connection = Some((
-                                            connection
-                                                .map(|c| c.0)
-                                                .unwrap_or(structure.atoms.len() - 1),
+                                            connection.map_or(structure.atoms.len() - 1, |c| c.0),
                                             Connection::TripleCovalent,
                                         ));
                                     }
@@ -134,9 +128,7 @@ impl Residue {
                                     MAPSymbol::Branch(i) | MAPSymbol::Cyclic(i) => {
                                         connection = Some((
                                             lut[*i as usize - 1],
-                                            connection
-                                                .map(|c| c.1)
-                                                .unwrap_or(Connection::SingleCovalent),
+                                            connection.map_or(Connection::SingleCovalent, |c| c.1),
                                         ));
                                     }
                                     MAPSymbol::Chirality(_) => (), // Ignore for now
@@ -196,7 +188,7 @@ pub enum BackBone {
     Repeating(Option<TerminalCarbon>, Vec<Carbon>, Option<TerminalCarbon>),
 }
 
-/// The carbon descriptors extended with the options in: https://pubs.acs.org/doi/suppl/10.1021/acs.jcim.6b00650/suppl_file/ci6b00650_si_001.pdf section 2.8.
+/// The carbon descriptors extended with the options in: <https://pubs.acs.org/doi/suppl/10.1021/acs.jcim.6b00650/suppl_file/ci6b00650_si_001.pdf> section 2.8.
 #[derive(Clone, Copy, Debug)]
 pub enum Carbon {
     /// 'd' deoxy `H-C-H`
@@ -261,7 +253,7 @@ impl Carbon {
     ) -> Result<(usize, Connection), String> {
         let index = structure.atoms.len();
         match self {
-            Carbon::Methylene => {
+            Self::Methylene => {
                 if last.1 != Connection::SingleCovalent {
                     return Err(format!("Expected single connection found {:?}", last.1));
                 }
@@ -277,11 +269,11 @@ impl Carbon {
                 ]);
                 Ok((index, Connection::SingleCovalent))
             }
-            Carbon::HydroxyLeft
-            | Carbon::HydroxyRight
-            | Carbon::HydroxySame
-            | Carbon::HydroxyOpposite
-            | Carbon::HydroxyUnknown => {
+            Self::HydroxyLeft
+            | Self::HydroxyRight
+            | Self::HydroxySame
+            | Self::HydroxyOpposite
+            | Self::HydroxyUnknown => {
                 if last.1 != Connection::SingleCovalent {
                     return Err(format!("Expected single connection found {:?}", last.1));
                 }
@@ -295,7 +287,7 @@ impl Carbon {
                 ]);
                 Ok((index, Connection::SingleCovalent))
             }
-            Carbon::Ketone => {
+            Self::Ketone => {
                 if last.1 != Connection::SingleCovalent {
                     return Err(format!("Expected single connection found {:?}", last.1));
                 }
@@ -315,7 +307,7 @@ impl Carbon {
 }
 
 #[derive(Clone, Copy, Debug)]
-#[allow(non_camel_case_types)]
+#[allow(non_camel_case_types, clippy::upper_case_acronyms)]
 pub enum TerminalCarbon {
     /// 'm'
     CHHH,
@@ -388,7 +380,7 @@ impl TerminalCarbon {
     ) -> Result<(usize, Connection), String> {
         let index = structure.atoms.len();
         match self {
-            TerminalCarbon::CHHH => {
+            Self::CHHH => {
                 structure.atoms.extend_from_slice(&[
                     (Some(Element::C), None, Charge::default()),
                     (Some(Element::H), None, Charge::default()),
@@ -402,7 +394,7 @@ impl TerminalCarbon {
                 ]);
                 Ok((index, Connection::SingleCovalent))
             }
-            TerminalCarbon::CHHX => {
+            Self::CHHX => {
                 structure.atoms.extend_from_slice(&[
                     (Some(Element::C), None, Charge::default()),
                     (Some(Element::H), None, Charge::default()),
@@ -414,7 +406,7 @@ impl TerminalCarbon {
                 ]);
                 Ok((index, Connection::SingleCovalent))
             }
-            TerminalCarbon::Hemiacetal => {
+            Self::Hemiacetal => {
                 structure.atoms.push((Some(Element::C), None, Charge::default()));
                 Ok((index, Connection::SingleCovalent))
             }

@@ -37,13 +37,13 @@ pub enum Connection {
 }
 
 impl Connection {
-    fn covalent_bonds(self) -> usize {
+    const fn covalent_bonds(self) -> usize {
         match self {
-            Self::SingleCovalent => 1,
             Self::DoubleCovalent => 2,
             Self::TripleCovalent => 3,
             Self::QuadrupleCovalent => 4,
-            Self::Aromatic => 1, // Yes the correct answer is 1.5 but that is handled somewhere else
+            // Aromatic is a bit of a special case, but that is handled elsewhere
+            Self::SingleCovalent | Self::Aromatic => 1,
         }
     }
 }
@@ -97,19 +97,15 @@ impl StructuralFormula {
     /// Get the composition of this structure. It returns `None` if any isotope is invalid. Any
     /// unknown elements are ignored.
     pub fn composition(&self) -> Option<MolecularFormula> {
-        self.atoms
-            .iter()
-            .fold(Some(MolecularFormula::default()), |acc, (e, i, c)| {
-                e.map_or(acc.clone(), |e| {
-                    acc.and_then(|acc| {
-                        MolecularFormula::new(
-                            &[(e, *i, 1), (Element::Electron, None, -c.value as i32)],
-                            &[],
-                        )
-                        .map(|s| acc + s)
-                    })
-                })
+        self.atoms.iter().try_fold(MolecularFormula::default(), |acc, (e, i, c)| {
+            e.map_or(Some(acc.clone()), |e| {
+                MolecularFormula::new(
+                    &[(e, *i, 1), (Element::Electron, None, i32::from(-c.value))],
+                    &[],
+                )
+                .map(|s| acc + s)
             })
+        })
     }
 
     /// Infer missing elements in this graph, given a lookup list of groups for each amount of
@@ -189,7 +185,7 @@ impl StructuralFormula {
     /// Sort the connections to have the lowest index as the first index and all connections sorted
     /// on the first index then the second index.
     pub(super) fn normalise_connections(&mut self) {
-        for (i1, i2, _) in self.connections.iter_mut() {
+        for (i1, i2, _) in &mut self.connections {
             *i1 = *i1.min(i2);
             *i2 = *i1.max(i2);
         }
@@ -198,7 +194,7 @@ impl StructuralFormula {
 }
 
 /// Follows the OpenSMILES specification for the valence
-fn missing_bonds(element: Option<Element>, in_place: usize) -> usize {
+const fn missing_bonds(element: Option<Element>, in_place: usize) -> usize {
     match element {
         Some(
             Element::H

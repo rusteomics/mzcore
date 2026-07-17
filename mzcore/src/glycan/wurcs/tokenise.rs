@@ -183,7 +183,6 @@ pub fn tokenise_wurcs<'a>(
                 }
                 if index + offset <= end && value.as_bytes().get(index + offset) == Some(&b'-') {
                     offset += 1;
-                    continue;
                 } else {
                     break;
                 }
@@ -246,7 +245,7 @@ fn parse_glip<'a>(
     let mut offset = 0;
     let mut res_index = 0;
     let mut len = 0;
-    for c in value[range.start() + offset..=*range.end()].as_bytes() {
+    for c in &value.as_bytes()[range.start() + offset..=*range.end()] {
         if c.is_ascii_lowercase() {
             len += 1;
             res_index = res_index * 52 + (c - b'a');
@@ -303,7 +302,7 @@ fn parse_glip<'a>(
     Ok((offset, GLIP {
         res_index,
         position,
-        direction: extra.clone().map_or(Direction::Obvious, |(d, _)| d),
+        direction: extra.map_or(Direction::Obvious, |(d, _)| d),
         star_index: extra.map_or(0, |(_, i)| i),
     }))
 }
@@ -327,7 +326,7 @@ fn tokenise_counts<'a>(
                 base_context.clone().add_highlight((0, index..=end)),
             )
         })
-        .map(|v| {
+        .and_then(|v| {
             offset += v.len() + 1;
             v.parse::<u8>().map_err(|err| {
                 BoxedError::new(
@@ -339,8 +338,7 @@ fn tokenise_counts<'a>(
                         .add_highlight((0, index + offset - v.len() - 1, v.len())),
                 )
             })
-        })
-        .flatten()?;
+        })?;
     let res_count = split
         .next()
         .ok_or_else(|| {
@@ -351,7 +349,7 @@ fn tokenise_counts<'a>(
                 base_context.clone().add_highlight((0, index..=end)),
             )
         })
-        .map(|v| {
+        .and_then(|v| {
             offset += v.len() + 1;
             v.parse::<u8>().map_err(|err| {
                 BoxedError::new(
@@ -363,8 +361,7 @@ fn tokenise_counts<'a>(
                         .add_highlight((0, index + offset - v.len() - 1, v.len())),
                 )
             })
-        })
-        .flatten()?;
+        })?;
     let (lin_count, uncertain) = split
         .next()
         .ok_or_else(|| {
@@ -375,7 +372,7 @@ fn tokenise_counts<'a>(
                 base_context.clone().add_highlight((0, index..=end)),
             )
         })
-        .map(|v| {
+        .and_then(|v| {
             offset += v.len() + 1;
             let (uncertain, number) = if v.ends_with('+') {
                 (true, &v[..v.len() - 1])
@@ -397,8 +394,7 @@ fn tokenise_counts<'a>(
                     )
                 })
                 .map(|n| (n, uncertain))
-        })
-        .flatten()?;
+        })?;
 
     if split.next().is_none() {
         Ok((unique_res_count, res_count, lin_count, uncertain))
@@ -445,8 +441,7 @@ fn tokenise_unique_res<'a>(
         repeating = true;
     }
 
-    let skeleton_length = value[index + offset..=end]
-        .as_bytes()
+    let skeleton_length = &value.as_bytes()[index + offset..=end]
         .iter()
         .take_while(|c| **c != b'-' && **c != b'_' && **c != b']' && **c != b'>')
         .count();
@@ -454,7 +449,7 @@ fn tokenise_unique_res<'a>(
     // Also handle '<x>' as unknown length.
     let backbone = value.as_bytes()
         [index + offset..index + offset + skeleton_length - usize::from(!repeating)]
-        .into_iter()
+        .iter()
         .enumerate()
         .map(|(i, s)| {
             (*s).try_into().map_err(|()| {
@@ -476,7 +471,7 @@ fn tokenise_unique_res<'a>(
             BasicKind::Error,
             "Invalid WURCS 2.0",
             "The repeating backbone was not closed with '>'",
-            base_context.clone().add_highlight((0, index + offset, skeleton_length)),
+            base_context.clone().add_highlight((0, index + offset, *skeleton_length)),
         ));
     }
 
@@ -589,7 +584,6 @@ fn tokenise_unique_res<'a>(
             }
             if index + offset <= end && value.as_bytes().get(index + offset) == Some(&b'-') {
                 offset += 1;
-                continue;
             } else {
                 break;
             }
@@ -694,7 +688,7 @@ fn parse_lip<'a>(
     };
     Ok((offset, LIP {
         position,
-        direction: extra.clone().map_or(Direction::Obvious, |(d, _)| d),
+        direction: extra.map_or(Direction::Obvious, |(d, _)| d),
         star_index: extra.map_or(0, |(_, i)| i),
     }))
 }
@@ -718,7 +712,7 @@ fn maybe_number<'a>(
                     base_context.clone().add_highlight((0, *range.clone().start(), 1)),
                 )
             })
-            .map(|(len, _, num)| {
+            .and_then(|(len, _, num)| {
                 num.map_err(|err| {
                     BoxedError::new(
                         BasicKind::Error,
@@ -729,7 +723,6 @@ fn maybe_number<'a>(
                 })
                 .map(|n| (len, Some(n)))
             })
-            .flatten()
     }
 }
 
@@ -787,11 +780,11 @@ fn tokenise_map<'a>(
                             BoxedError::new(
                                 BasicKind::Error,
                                 "Invalid WURCS 2.0",
-                                format!("The branch index is missing"),
+                                "The branch index is missing",
                                 base_context.clone().add_highlight((0, range.start() + offset, 1)),
                             )
                         })
-                        .map(|(len, _, num)| {
+                        .and_then(|(len, _, num)| {
                             num.map_err(|err| {
                                 BoxedError::new(
                                     BasicKind::Error,
@@ -805,8 +798,7 @@ fn tokenise_map<'a>(
                                 )
                             })
                             .map(|n| (len, n))
-                        })
-                        .flatten()?;
+                        })?;
                 offset += len;
                 tokens.push(MAPSymbol::Branch(num));
             }
@@ -818,11 +810,11 @@ fn tokenise_map<'a>(
                             BoxedError::new(
                                 BasicKind::Error,
                                 "Invalid WURCS 2.0",
-                                format!("The cyclic index is missing"),
+                                "The cyclic index is missing",
                                 base_context.clone().add_highlight((0, range.start() + offset, 1)),
                             )
                         })
-                        .map(|(len, _, num)| {
+                        .and_then(|(len, _, num)| {
                             num.map_err(|err| {
                                 BoxedError::new(
                                     BasicKind::Error,
@@ -836,8 +828,7 @@ fn tokenise_map<'a>(
                                 )
                             })
                             .map(|n| (len, n))
-                        })
-                        .flatten()?;
+                        })?;
                 offset += len;
                 tokens.push(MAPSymbol::Cyclic(num));
             }
@@ -901,7 +892,7 @@ fn parse_probability<'a>(
                     len += 1;
                     o += 1;
                     let v = *ch - b'0';
-                    num += (v as f32).powi(-len);
+                    num += f32::from(v).powi(-len);
                 }
 
                 if len == 0 {

@@ -530,7 +530,7 @@ impl<Complexity> Peptidoform<Complexity> {
             SequencePosition::NTerm => self.add_simple_n_term(modification),
             SequencePosition::CTerm => self.add_simple_c_term(modification),
             SequencePosition::Index(index, _) => {
-                self.sequence[index].modifications.push(Modification::Simple(modification))
+                self.sequence[index].modifications.push(Modification::Simple(modification));
             }
         }
     }

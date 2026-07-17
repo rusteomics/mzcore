@@ -213,7 +213,7 @@ impl isize::Charge {
 impl i8::Charge {
     /// Convert an isize charge to f64 for computations
     pub fn to_float(self) -> Charge {
-        Charge::new::<e>(self.value as f64)
+        Charge::new::<e>(f64::from(self.value))
     }
 }
 

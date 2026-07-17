@@ -60,7 +60,7 @@ impl std::ops::Add<&Self> for GlycanPeptideFragment {
             full: self.full || rhs.full,
             core: self
                 .core
-                .and_then(|c| rhs.core.map(|r| (c, r)))
+                .zip(rhs.core)
                 .map(|(c, r)| (c.0.min(r.0), c.1.max(r.1)))
                 .or(self.core)
                 .or(rhs.core),

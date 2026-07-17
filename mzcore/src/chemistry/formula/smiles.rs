@@ -14,7 +14,7 @@ impl StructuralFormula {
     ///
     /// # Errors
     /// If the string does not conform to the specification.
-    pub fn from_smiles<'a>(value: &'a str) -> Result<Self, BoxedError<'a, BasicKind>> {
+    pub fn from_smiles(value: &str) -> Result<Self, BoxedError<'_, BasicKind>> {
         Self::from_smiles_inner(&Context::default().lines(0, value), value, 0..value.len())
     }
 
@@ -29,7 +29,7 @@ impl StructuralFormula {
         line: &'a str,
         range: Range<usize>,
     ) -> Result<Self, BoxedError<'a, BasicKind>> {
-        let tokens = tokenise_smiles(base_context, line, range.clone())?;
+        let tokens = tokenise_smiles(base_context, line, range)?;
         let mut structure = Self::default();
         let mut branches = Vec::new();
         let mut rings: HashMap<u8, (usize, Option<Connection>, bool)> = HashMap::new();
@@ -59,7 +59,7 @@ impl StructuralFormula {
                         structure.connections.push((
                             last_index,
                             index,
-                            bond.unwrap_or_else(|| {
+                            bond.unwrap_or({
                                 if aromatic && last_aromatic {
                                     Connection::Aromatic
                                 } else {
@@ -137,7 +137,7 @@ impl StructuralFormula {
                                         ));
                                     }
                                 }
-                            }.unwrap_or_else(||  if current.2 && previous.2 {
+                            }.unwrap_or(if current.2 && previous.2 {
                                     Connection::Aromatic
                                 } else {
                                     Connection::SingleCovalent
@@ -202,7 +202,9 @@ impl StructuralFormula {
         }
 
         // Check for multiple bonds between the same atoms
-        for [one, two] in structure.connections.array_windows() {
+        for window in structure.connections.windows(2) {
+            let one = window[0];
+            let two = window[1];
             if one.0 == two.0 && one.1 == two.1 {
                 return Err(BoxedError::new(
                     BasicKind::Error,
@@ -265,12 +267,12 @@ fn tokenise_smiles<'a>(
             BasicKind::Error,
             "Invalid SMILES",
             "SMILES can only contain ASCII characters",
-            base_context.clone().add_highlight((0, range.clone())),
+            base_context.clone().add_highlight((0, range)),
         ));
     }
     let mut index = 0;
     let mut tokens = Vec::new();
-    let bytes = line[range.clone()].as_bytes();
+    let bytes = line[range].as_bytes();
 
     while let Some(c) = bytes.get(index) {
         match c {
@@ -323,7 +325,7 @@ fn tokenise_smiles<'a>(
                     && c.is_ascii_digit()
                 {
                     if let Some(i) =
-                        isotope.checked_mul(10).and_then(|i| i.checked_add((c - b'0') as u16))
+                        isotope.checked_mul(10).and_then(|i| i.checked_add(u16::from(c - b'0')))
                     {
                         isotope = i;
                     } else {
@@ -373,10 +375,9 @@ fn tokenise_smiles<'a>(
                 }
 
                 // Chirality
-                let mut chiral = None;
-                if bytes.get(index).copied() == Some(b'@') {
+                let chiral = if bytes.get(index).copied() == Some(b'@') {
                     index += 1;
-                    chiral = match bytes.get(index) {
+                    match bytes.get(index) {
                         Some(b'@') => {
                             index += 1;
                             Some(ChiralClass::Clockwise)
@@ -451,8 +452,10 @@ fn tokenise_smiles<'a>(
                             }
                         },
                         _ => Some(ChiralClass::Anticlockwise),
-                    };
-                }
+                    }
+                } else {
+                    None
+                };
 
                 // Hcount
                 let mut hcount = 0;
@@ -491,15 +494,15 @@ fn tokenise_smiles<'a>(
                 let charge = Charge::new::<crate::system::charge::e>(charge);
 
                 // Class
-                let mut class = None;
-                if bytes.get(index).copied() == Some(b':') {
+                let class = if bytes.get(index).copied() == Some(b':') {
                     index += 1;
                     let mut class_num: u16 = 0;
                     while let Some(c) = bytes.get(index)
                         && c.is_ascii_digit()
                     {
-                        if let Some(i) =
-                            class_num.checked_mul(10).and_then(|i| i.checked_add((c - b'0') as u16))
+                        if let Some(i) = class_num
+                            .checked_mul(10)
+                            .and_then(|i| i.checked_add(u16::from(c - b'0')))
                         {
                             class_num = i;
                         } else {
@@ -512,8 +515,10 @@ fn tokenise_smiles<'a>(
                         }
                         index += 1;
                     }
-                    class = Some(class_num);
-                }
+                    Some(class_num)
+                } else {
+                    None
+                };
 
                 // Closing bracket
                 if bytes.get(index).copied() != Some(b']') {
@@ -563,7 +568,7 @@ fn tokenise_smiles<'a>(
                     tokens.push((index..index + 2, Token::simple_atom(false, Element::Br)));
                     index += 1;
                 } else {
-                    tokens.push((index..index + 1, Token::simple_atom(false, Element::B)))
+                    tokens.push((index..index + 1, Token::simple_atom(false, Element::B)));
                 }
             }
             b'C' => {
@@ -571,7 +576,7 @@ fn tokenise_smiles<'a>(
                     tokens.push((index..index + 2, Token::simple_atom(false, Element::Cl)));
                     index += 1;
                 } else {
-                    tokens.push((index..index + 1, Token::simple_atom(false, Element::C)))
+                    tokens.push((index..index + 1, Token::simple_atom(false, Element::C)));
                 }
             }
             b'N' => tokens.push((index..index + 1, Token::simple_atom(false, Element::N))),

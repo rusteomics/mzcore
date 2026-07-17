@@ -246,7 +246,7 @@ impl CVSource for PsiMod {
                                     "A formal charge should contain the charge itself followed by the sign",
                                     Context::default().lines(0, obj.id.to_string()),
                                 ),
-                            )
+                            );
                         }
                     }
                     (Some("Origin"), value) => {

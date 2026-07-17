@@ -15,7 +15,7 @@ pub enum WurcsParseError {
 
 impl Wurcs {
     pub fn parse(self) -> Result<Vec<MonoSaccharide>, WurcsParseError> {
-        self.residues.into_iter().map(|r| r.parse()).collect()
+        self.residues.into_iter().map(Residue::parse).collect()
     }
 }
 
@@ -81,7 +81,7 @@ impl Residue {
         }
 
         if internal_cycle_count == 0 {
-            res.substituents.push((GlycanSubstituent::Alcohol, None))
+            res.substituents.push((GlycanSubstituent::Alcohol, None));
         }
         if internal_cycle_count > 1 {
             todo!();

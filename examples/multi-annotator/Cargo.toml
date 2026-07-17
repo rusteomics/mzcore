@@ -18,7 +18,6 @@ mzdata = { workspace = true, default-features = false, features = [
     "thermo",
     "bruker_tdf",
 ] }
-thermorawfilereader = {version="=0.7.0"}
 rayon = { workspace = true }
 mzcore = { path = "../../mzcore", default-features = false, features = [
     "coloured-errors",
