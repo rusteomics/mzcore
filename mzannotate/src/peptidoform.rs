@@ -454,7 +454,7 @@ pub(crate) fn generate_theoretical_fragments_inner<Complexity>(
     }
 
     // Add labile glycan fragments
-    for modification in peptidoform.get_labile() {
+    for (modification, _) in peptidoform.get_labile() {
         match &**modification {
             SimpleModificationInner::Glycan(composition) => {
                 output.extend(crate::monosaccharide::theoretical_fragments(
@@ -511,10 +511,8 @@ fn diagnostic_ions<Complexity>(
             })
         })
         .chain(
-            peptidoform
-                .get_labile()
-                .iter()
-                .flat_map(move |modification| match &**modification {
+            peptidoform.get_labile().iter().flat_map(
+                move |(modification, _)| match &**modification {
                     SimpleModificationInner::Database { specificities, .. } => specificities
                         .iter()
                         .flat_map(|(_, _, diagnostic)| diagnostic)
@@ -539,7 +537,8 @@ fn diagnostic_ions<Complexity>(
                         })
                         .collect::<Vec<_>>(),
                     _ => Vec::new(),
-                }),
+                },
+            ),
         )
         .unique()
         .collect()

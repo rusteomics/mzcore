@@ -20,11 +20,17 @@ For raw data centered HUPO-PSI standards support (eg mzML, USI) see [mzdata](htt
 
 ## Features
 
-- mzcore
-  - Read [ProForma](https://github.com/HUPO-PSI/ProForma) sequences (complete 2.0 and nearly complete 2.1)
+- All crates:
   - Extensive use of [uom](https://docs.rs/uom/latest/uom/) for compile time unit checking
   - Exhaustively fuzz tested for reliability (using [cargo-afl](https://crates.io/crates/cargo-afl))
+- mzcore
+  - Read [ProForma](https://github.com/HUPO-PSI/ProForma) sequences (complete 2.0 and 2.1)
   - Extensive support for glycans, including generating bitmap and vector images
+  - Support for chemistry building blocks
+    - Molecular formula in many flavours (ProForma, Unimod, PSI-MOD, XLMOD, & RESID)
+    - Structural formula in [OpenSMILES](http://opensmiles.org/opensmiles.html) v1.0
+    - Averagine isotopic distribution
+  - Support for modifications in the Unimod, PSI-MOD, XLMOD, RESID, & GNOme databases with complete metadata and search
 - mzannotate
   - Generate theoretical fragments with control over the fragmentation model from any ProForma peptidoform
     - Complex features supported: chimeric spectra, cross-links (also disulfides), modifications of unknown position
@@ -45,20 +51,23 @@ For raw data centered HUPO-PSI standards support (eg mzML, USI) see [mzdata](htt
   - Writing of mzTab files
 - mzcv
   - Handle ontologies both statically included and runtime updating
+  - Fast access by id, name, & exact synonyms
+  - Fuzzy search by name and exact synonym
 - rustyms-py
   - Python bindings are provided to several core components of the libraries. Go to the [Python documentation](https://rustyms.readthedocs.io/) for more information.
 
 ## Supported formats 
 
-The final goal would be to support all open standards (or at least the ones that are (widely) used) for both reading and writing. Below is the list of formats that are currently supported.
+The final goal would be to support all related open standards (or at least the ones that are (widely) used) for both reading and writing. Below is the list of formats that are currently supported.
 
 | Format | Version |  crate | Reading | Writing | Comment |
 | --- | --- | ---| --- | --- | --- |
-| [ProForma](https://github.com/HUPO-PSI/ProForma) | 2.0 & 2.1 | mzcore | ✅ | ✅ | Nearly full 2.1 support (full support is planned) |
+| [ProForma](https://github.com/HUPO-PSI/ProForma) | 2.0 & 2.1 | mzcore | ✅ | ✅ | |
+| [OpenSMILES](http://opensmiles.org/opensmiles.html) | 1.0 | mzcore | ✅ | ❌ | Chimeric information is not retained & atom class names are skipped |
 | [mzPAF](https://www.psidev.info/mzpaf) | 1.0 |mzannotate | ✅ | ✅ | |
 | [mzSpecLib](https://www.psidev.info/mzspeclib) | 1.0 | mzannotate | ✅ | ✅ | Not all metadata is used |
 | FASTA | - | mzident | ✅ | ❌ | |
-| [mzTab](https://www.psidev.info/mztab-specifications) | 1.0 | mzident | ✅ | ✅ | Not all metadata is accessible, peptides and small molecules are ignored |
+| [mzTab](https://www.psidev.info/mztab-specifications) | 1.0 | mzident | ✅ | ✅ | Peptides and small molecules are ignored |
 | [Spectrum Sequence List (SSL)](https://skyline.ms/home/software/BiblioSpec/wiki-page.view?name=BiblioSpec%20input%20and%20output%20file%20formats) | - | mzident | ✅ | ❌ | Small molecules are ignored |
 
 For raw data related formats (MGF/mzML/USI) see [mzdata](https://crates.io/crates/mzdata).
@@ -67,8 +76,9 @@ These formats are envisioned to have support for. Open an issue if you have a ne
 
 | Format | Version |  crate | Comment |
 | --- | --- | ---| --- | 
-| [mzIdentML](https://www.psidev.info/peff) | 1.3 | mzident | Including support for cross-linked identifications and mzSpecLib like annotated spectra |
-| [PEFF](https://www.psidev.info/mzidentml) | 1.0 | mzident |  |
+| [mzIdentML](https://www.psidev.info/peff) | 1.0 & 1.1 & 1.2 & 1.3 | mzident | Including support for cross-linked identifications and mzSpecLib like annotated spectra |
+| [PEFF](https://www.psidev.info/mzidentml) | 1.0 | mzident | |
+| [WURCS](https://github.com/glycoinfo/WURCS/wiki/WURCS-2.0-Manual) | 2.0 | mzcore | Some parsing is in place but it should not be trusted yet |
 
 # Folder organisation
 
@@ -94,11 +104,17 @@ Using the `rustyms-generate-databases` the definitions for the elemental data ca
 
 ## mzcore-update
 
-Using the `mzcore-update` the modification databases can be updated. All databases expect RESID will be downloaded and updated. For RESID download the file `ftp://ftp.proteininformationresource.org/pir_databases/other_databases/resid/RESIDUES.XML` and place this at `mzcore-update/data/RESID.xml`, a version is already provided there are as RESID is not developed any more you likely do not need to download the file. Then run `cargo run --releases -p mzcore-update` (from the root folder of this repository).
+Using the `mzcore-update` the modification databases can be updated. All databases expect RESID will be downloaded and updated. For RESID download the file `ftp://ftp.proteininformationresource.org/pir_databases/other_databases/resid/RESIDUES.XML` and place this at `mzcore-update/data/RESID.xml`, a version is already provided there are as RESID is not developed anymore you likely do not need to download the file. Then run `cargo run --releases -p mzcore-update` (from the root folder of this repository).
+
+> [!NOTE]  
+> Windows made the choice of marking any .exe with 'update' in the name as needing admin rights so if the above fails either rename the .exe (with no admin rights required...) or disable the related group policy: <https://learn.microsoft.com/en-us/previous-versions/windows/it-pro/windows-10/security/threat-protection/security-policy-settings/user-account-control-detect-application-installations-and-prompt-for-elevation>
 
 ## imgt-update
 
-Using the `imgt-update` the definitions for the germlines can be updated. Put the imgt.dat.Z file in the `imgt-update/data` directory and unpack it (this can be downloaded from https://www.imgt.org/download/LIGM-DB/imgt.dat.Z). Then run `cargo run --release -p imgt-update` (from the root folder of this repository).
+Using the `imgt-update` the definitions for the germlines can be updated from the IMGT website. Then run `cargo run --release -p imgt-update` (from the root folder of this repository).
+
+> [!NOTE]  
+> Windows made the choice of marking any .exe with 'update' in the name as needing admin rights so if the above fails either rename the .exe (with no admin rights required...) or disable the related group policy: <https://learn.microsoft.com/en-us/previous-versions/windows/it-pro/windows-10/security/threat-protection/security-policy-settings/user-account-control-detect-application-installations-and-prompt-for-elevation>
 
 # Contributing
 

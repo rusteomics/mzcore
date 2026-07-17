@@ -1332,7 +1332,11 @@ impl Peptidoform {
     /// list[Modification]
     #[getter]
     fn labile(&self) -> Vec<SimpleModification> {
-        self.0.get_labile().iter().map(|x| SimpleModification(x.clone())).collect()
+        self.0
+            .get_labile()
+            .iter()
+            .map(|(x, _)| SimpleModification(x.clone()))
+            .collect()
     }
 
     /// N-terminal modification.
