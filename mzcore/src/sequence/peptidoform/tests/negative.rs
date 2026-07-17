@@ -12,6 +12,7 @@ Id,Example,Source,Key,Notes
 10,"<[TMT6plex#g1]@A>AA",example,"","Invalid fixed modification: ambiguous group"
 11,"<[TMT6plex#XL1]@A>AA",example,"","Invalid fixed modification: cross-linker"
 12,"<[TMT6plex#BRANCH]@A>AA",example,"","Invalid fixed modification: branch"
+13,"{TMT6plex#g1}A[+12#g1]A",example,"","Invalid double use of the same name, either reuse of labile name or erroneous double definition"
 14,"{TMT6plex#XL1}AA",example,"","Invalid labile modification: cross-linker"
 15,"{TMT6plex#BRANCH}AA",example,"","Invalid labile modification: branch"
 16,"AA//AA",example,"","Cross-linked peptides with no cross-linker defined"
@@ -177,4 +178,7 @@ Id,Example,Source,Key,Notes
 176,"EN(?(GGE)[+100.00])KL",spec2_1,"","Overlapping ranges"
 177,"E(N(?GGE)[+100.00]K)L",spec2_1,"","Overlapping ranges"
 178,"EN((?GGE))[+100.00]KL",spec2_1,"","Overlapping ranges"
+179,"{TMT6plex#g1(1.0)}AA",example,"","Invalid labile modification with score"
+180,"{TMT6plex#g1}A[#g1(1.0)]A",example,"ignore","Invalid labile modification with score"
+181,"{#g1}AA",example,"","Invalid empty labile modification"
 );
