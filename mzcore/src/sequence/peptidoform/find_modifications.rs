@@ -361,9 +361,9 @@ impl<'ontologies> PeptideModificationSearch<'ontologies> {
                 });
             }
         }
-        for m in peptide.get_labile_mut_inner() {
+        for (m, _) in peptide.get_labile_mut_inner() {
             if let Some(replace) = self.find_replacement(SequencePosition::Index(1, 3), None, m) {
-                *m = replace;
+                *m = replace; // TODO: maybe use the positional info here as well?
             }
         }
         peptide.n_term(n_term).c_term(c_term)

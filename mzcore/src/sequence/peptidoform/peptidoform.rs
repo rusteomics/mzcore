@@ -25,6 +25,7 @@ use crate::{
         Modification, PeptidePosition, PlacementRule, Protease, SemiAmbiguous, SequenceElement,
         SequencePosition, SimpleLinear, SimpleModification, SimpleModificationInner, UnAmbiguous,
     },
+    space::UsedSpace,
 };
 
 /// A peptide with all data as specified by [ProForma](https://github.com/HUPO-PSI/ProForma).
@@ -85,11 +86,11 @@ pub struct Peptidoform<Complexity> {
     /// The name of this peptidoform
     name: String,
     /// Global isotope modifications, saved as the element and the species that
-    /// all occurrence of that element will consist of. For example (N, 15) will
+    /// all occurrence of that element will consist of. For example, (N, 15) will
     /// make all occurring nitrogen atoms be isotope 15.
     global: ThinVec<(Element, Option<NonZeroU16>)>,
     /// Labile modifications, which will not be found in the actual spectrum.
-    labile: ThinVec<SimpleModification>,
+    labile: ThinVec<(SimpleModification, LabileLocation)>,
     /// N terminal modifications
     n_term: ThinVec<Modification>,
     /// C terminal modifications
@@ -154,11 +155,32 @@ struct AmbiguousEntry {
 }
 
 impl crate::space::Space for AmbiguousEntry {
-    fn space(&self) -> crate::space::UsedSpace {
+    fn space(&self) -> UsedSpace {
         (self.positions.space()
             + self.limit.space()
             + self.colocalise_modifications_of_unknown_position.space()
             + self.group.space())
+        .set_total::<Self>()
+    }
+}
+
+/// The location for a labile modification
+#[derive(Clone, Debug, Default, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
+pub enum LabileLocation {
+    /// No location is provided, it could have been placed anywhere
+    #[default]
+    Unknown,
+    /// A (set of) location(s) is provided, it originated on any of these positions, with the name
+    /// to refer to this location group.
+    Known(String, Vec<SequencePosition>),
+}
+
+impl crate::space::Space for LabileLocation {
+    fn space(&self) -> UsedSpace {
+        match self {
+            Self::Known(a, b) => a.space() + b.space(),
+            Self::Unknown => UsedSpace::default(),
+        }
         .set_total::<Self>()
     }
 }
@@ -402,7 +424,8 @@ impl<Complexity: HighestOf<Linear>> Peptidoform<Complexity> {
         mut self,
         labile: impl IntoIterator<Item = SimpleModification>,
     ) -> Peptidoform<Complexity::HighestLevel> {
-        self.labile.extend(labile);
+        self.labile
+            .extend(labile.into_iter().map(|m| (m, LabileLocation::Unknown)));
         self.mark::<Complexity::HighestLevel>()
     }
 }
@@ -1231,10 +1254,22 @@ impl<Complexity> Peptidoform<Complexity> {
         if any_ambiguous {
             write!(f, "?")?;
         }
-        for labile in &self.labile {
-            write!(f, "{{{labile}}}")?;
+        let mut labile_locations = Vec::new();
+        for (labile, loc) in &self.labile {
+            if let LabileLocation::Known(name, locations) = loc {
+                labile_locations.push((name, locations));
+                write!(f, "{{{labile}#{name}}}")?;
+            } else {
+                write!(f, "{{{labile}}}")?;
+            }
         }
         let mut any_n = false;
+        for (n, l) in &labile_locations {
+            if l.contains(&SequencePosition::NTerm) {
+                write!(f, "[#{n}]")?;
+                any_n = true;
+            }
+        }
         for m in self.get_n_term() {
             let mut display_ambiguous = false;
 
@@ -1264,12 +1299,26 @@ impl<Complexity> Peptidoform<Complexity> {
                 last_ambiguous,
                 specification_compliant,
             )?;
+            for (n, l) in &labile_locations {
+                if l.iter().any(|l| matches!(l, SequencePosition::Index(i, _) if *i == index)) {
+                    write!(f, "[#{n}]")?;
+                }
+            }
             last_ambiguous = position.ambiguous;
         }
         if last_ambiguous.is_some() {
             write!(f, ")")?;
         }
         let mut first = true;
+        for (n, l) in &labile_locations {
+            if l.contains(&SequencePosition::CTerm) {
+                if first {
+                    write!(f, "-")?;
+                    first = false;
+                }
+                write!(f, "[#{n}]")?;
+            }
+        }
         for m in self.get_c_term() {
             let mut display_ambiguous = false;
             if let Modification::Ambiguous { id, .. } = m
@@ -1316,7 +1365,9 @@ impl<Complexity> Peptidoform<Complexity> {
     }
 
     /// Get all labile modifications
-    pub(super) const fn get_labile_mut_inner(&mut self) -> &mut ThinVec<SimpleModification> {
+    pub(super) const fn get_labile_mut_inner(
+        &mut self,
+    ) -> &mut ThinVec<(SimpleModification, LabileLocation)> {
         &mut self.labile
     }
 }
@@ -1504,12 +1555,12 @@ impl<Complexity: AtLeast<Linear>> Peptidoform<Complexity> {
     }
 
     /// Get all labile modifications
-    pub fn get_labile(&self) -> &[SimpleModification] {
+    pub fn get_labile(&self) -> &[(SimpleModification, LabileLocation)] {
         &self.labile
     }
 
     /// Get all labile modifications
-    pub const fn get_labile_mut(&mut self) -> &mut ThinVec<SimpleModification> {
+    pub const fn get_labile_mut(&mut self) -> &mut ThinVec<(SimpleModification, LabileLocation)> {
         &mut self.labile
     }
 
@@ -1816,7 +1867,7 @@ into!(UnAmbiguous => SemiAmbiguous);
 #[doc(hidden)]
 pub trait HiddenInternalMethods {
     fn get_global(&self) -> &[(Element, Option<NonZeroU16>)];
-    fn get_labile(&self) -> &[SimpleModification];
+    fn get_labile(&self) -> &[(SimpleModification, LabileLocation)];
     fn get_charge_carriers(&self) -> Option<&MolecularCharge>;
     fn formulas_inner(
         &self,
@@ -1839,7 +1890,7 @@ impl<Complexity> HiddenInternalMethods for Peptidoform<Complexity> {
         &self.global
     }
 
-    fn get_labile(&self) -> &[SimpleModification] {
+    fn get_labile(&self) -> &[(SimpleModification, LabileLocation)] {
         &self.labile
     }
 

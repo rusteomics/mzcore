@@ -1284,6 +1284,8 @@ pub struct AmbiguousLookupEntry {
     comkp: bool,
     /// Determines if this modification can colocalise with other modifications of unknown position
     comup: bool,
+    /// If this is a labile modification
+    pub labile: Option<usize>,
 }
 
 impl AmbiguousLookupEntry {
@@ -1297,6 +1299,7 @@ impl AmbiguousLookupEntry {
             position: None,
             comkp: true,
             comup: true,
+            labile: None,
         }
     }
 

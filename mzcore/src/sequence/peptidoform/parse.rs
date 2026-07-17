@@ -3,6 +3,7 @@ use std::{collections::BTreeMap, num::NonZeroU16, ops::Range};
 use context_error::*;
 use itertools::Itertools;
 use ordered_float::OrderedFloat;
+use thin_vec::ThinVec;
 
 use super::{GlobalModification, Linear, ReturnModification, SemiAmbiguous};
 use crate::{
@@ -13,9 +14,9 @@ use crate::{
     quantities::{Tolerance, WithinTolerance},
     sequence::{
         AmbiguousLookup, AmbiguousLookupEntry, AminoAcid, CheckedAminoAcid, CrossLinkLookup,
-        Linked, MUPSettings, MassTag, Peptidoform, PeptidoformIon, PeptidoformIonSet,
-        PlacementRule, Position, SequenceElement, SequencePosition, SimpleModification,
-        SimpleModificationInner,
+        LabileLocation, Linked, MUPSettings, MassTag, Peptidoform, PeptidoformIon,
+        PeptidoformIonSet, PlacementRule, Position, SequenceElement, SequencePosition,
+        SimpleModification, SimpleModificationInner,
     },
     system::OrderedMass,
 };
@@ -595,11 +596,17 @@ impl PeptidoformIonSet {
         );
 
         // Labile modification(s)
-        let (mut index, labile) = handle!(
+        let (mut index, mut labile) = handle!(
             errors,
-            labile_modifications::<STRICT>(base_context, line, index, ontologies)
+            labile_modifications::<STRICT>(
+                base_context,
+                line,
+                index,
+                ontologies,
+                &mut ambiguous_lookup
+            )
         );
-        peptide = peptide.labile(labile);
+        std::mem::swap(peptide.get_labile_mut(), &mut labile);
 
         // N term modifications
         let (end_index, n_term_mods) = handle!(
@@ -625,6 +632,7 @@ impl PeptidoformIonSet {
                     &mut peptide,
                     &mut ambiguous_found_positions,
                     &mut cross_link_found_positions,
+                    &ambiguous_lookup,
                 );
             }
         }
@@ -811,6 +819,7 @@ impl PeptidoformIonSet {
                             &mut peptide,
                             &mut ambiguous_found_positions,
                             &mut cross_link_found_positions,
+                            &ambiguous_lookup,
                         );
 
                         let (end_index, mods) = handle!(
@@ -834,6 +843,7 @@ impl PeptidoformIonSet {
                                 &mut peptide,
                                 &mut ambiguous_found_positions,
                                 &mut cross_link_found_positions,
+                                &ambiguous_lookup,
                             );
                         }
 
@@ -869,6 +879,7 @@ impl PeptidoformIonSet {
                             &mut peptide,
                             &mut ambiguous_found_positions,
                             &mut cross_link_found_positions,
+                            &ambiguous_lookup,
                         );
                     } else {
                         handle!(
@@ -1001,8 +1012,9 @@ impl PeptidoformIonSet {
 
         // Fill in ambiguous positions, ambiguous contains (index, preferred, id,
         // localisation_score)
-        for (id, entry) in ambiguous_lookup.iter().enumerate().filter(|(i, _)| {
-            grouped_positions.contains_key(i) || !unknown_position_modifications.contains(i)
+        for (id, entry) in ambiguous_lookup.iter().enumerate().filter(|(i, e)| {
+            grouped_positions.contains_key(i)
+                || (!unknown_position_modifications.contains(i) && e.labile.is_none())
         }) {
             let Some(ambiguous) = grouped_positions.get(&id) else {
                 combine_error(
@@ -1135,6 +1147,7 @@ fn place_modification(
     peptidoform: &mut Peptidoform<Linear>,
     ambiguous_found_positions: &mut Vec<(SequencePosition, bool, usize, Option<OrderedFloat<f64>>)>,
     cross_link_found_positions: &mut Vec<(usize, SequencePosition)>,
+    ambiguous_lookup: &AmbiguousLookup,
 ) {
     match modification {
         ReturnModification::Defined(simple) => {
@@ -1144,7 +1157,17 @@ fn place_modification(
             cross_link_found_positions.push((id, position));
         }
         ReturnModification::Ambiguous(id, localisation_score, preferred) => {
-            ambiguous_found_positions.push((position, preferred, id, localisation_score));
+            if let Some(labile_index) = ambiguous_lookup[id].labile {
+                if let LabileLocation::Known(_, locations) =
+                    &mut peptidoform.get_labile_mut()[labile_index].1
+                {
+                    locations.push(position);
+                }
+                // TODO: potentially check that the score is not set and no modification is defined
+                // again
+            } else {
+                ambiguous_found_positions.push((position, preferred, id, localisation_score));
+            }
         }
     }
 }
@@ -1523,10 +1546,11 @@ fn labile_modifications<'a, const STRICT: bool>(
     line: &'a str,
     mut index: usize,
     ontologies: &Ontologies,
-) -> ParserResult<'a, (usize, Vec<SimpleModification>), BasicKind> {
+    ambiguous_lookup: &mut AmbiguousLookup,
+) -> ParserResult<'a, (usize, ThinVec<(SimpleModification, LabileLocation)>), BasicKind> {
     let mut errors = Vec::new();
     let chars = line.as_bytes();
-    let mut labile = Vec::new();
+    let mut labile = ThinVec::new();
     while chars.get(index) == Some(&b'{') {
         let Some(end_index) = end_of_enclosure(line, index + 1, b'{', b'}') else {
             combine_error(
@@ -1545,13 +1569,53 @@ fn labile_modifications<'a, const STRICT: bool>(
             base_context,
             line,
             index + 1..end_index,
-            &mut Vec::new(),
+            ambiguous_lookup,
             &mut Vec::new(),
             ontologies,
         ) {
             Ok(((ReturnModification::Defined(m), _), warnings)) => {
                 combine_errors(&mut errors, warnings);
-                labile.push(m);
+                labile.push((m, LabileLocation::Unknown));
+            }
+            Ok(((ReturnModification::Ambiguous(id, score, _), _), warnings)) => {
+                combine_errors(&mut errors, warnings);
+                if score.is_some() {
+                    combine_error(
+                        &mut errors,
+                        BoxedError::new(
+                            BasicKind::Error,
+                            "Invalid labile modification",
+                            "A labile modification with location hints cannot have a score defined",
+                            base_context.clone().add_highlight((
+                                0,
+                                index + 1,
+                                end_index - 1 - index,
+                            )),
+                        ),
+                    );
+                }
+                let m = &mut ambiguous_lookup[id];
+                m.labile = Some(labile.len());
+                if let Some(modification) = &m.modification {
+                    labile.push((
+                        modification.clone(),
+                        LabileLocation::Known(m.name.clone(), Vec::new()),
+                    ));
+                } else {
+                    combine_error(
+                        &mut errors,
+                        BoxedError::new(
+                            BasicKind::Error,
+                            "Invalid labile modification",
+                            "A labile modification with location hints needs to have the modification defined",
+                            base_context.clone().add_highlight((
+                                0,
+                                index + 1,
+                                end_index - 1 - index,
+                            )),
+                        ),
+                    );
+                }
             }
             Ok((_, warnings)) => {
                 combine_errors(&mut errors, warnings);
@@ -1560,7 +1624,7 @@ fn labile_modifications<'a, const STRICT: bool>(
                     BoxedError::new(
                         BasicKind::Error,
                         "Invalid labile modification",
-                        "A labile modification cannot be ambiguous or a cross-linker",
+                        "A labile modification cannot be a cross-linker",
                         base_context.clone().add_highlight((0, index + 1, end_index - 1 - index)),
                     ),
                 );

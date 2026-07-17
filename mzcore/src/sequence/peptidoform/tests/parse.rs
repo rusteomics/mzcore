@@ -279,10 +279,7 @@ fn parse_labile() {
     assert_eq!(with.len(), 1);
     assert_eq!(without.len(), 1);
     assert_eq!(with.formulas(), without.formulas());
-    assert_eq!(
-        with.get_labile()[0].to_string(),
-        "Formula:C6H10O5".to_string()
-    );
+    assert_eq!(with.get_labile()[0].0.to_string(), "Formula:C6H10O5");
 }
 
 #[test]
