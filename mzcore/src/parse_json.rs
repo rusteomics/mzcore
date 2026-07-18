@@ -235,6 +235,44 @@ impl<A: ParseJson, B: ParseJson, C: ParseJson, D: ParseJson> ParseJson for (A, B
     }
 }
 
+impl<A: ParseJson, B: ParseJson, C: ParseJson, D: ParseJson, E: ParseJson> ParseJson
+    for (A, B, C, D, E)
+{
+    fn from_json_value(value: Value) -> Result<Self, BoxedError<'static, BasicKind>> {
+        if let Value::Array(mut arr) = value {
+            if arr.len() == 5 {
+                let e = E::from_json_value(arr.pop().unwrap())?;
+                let d = D::from_json_value(arr.pop().unwrap())?;
+                let c = C::from_json_value(arr.pop().unwrap())?;
+                let b = B::from_json_value(arr.pop().unwrap())?;
+                let a = A::from_json_value(arr.pop().unwrap())?;
+                Ok((a, b, c, d, e))
+            } else {
+                Err(BoxedError::new(
+                    BasicKind::Error,
+                    "Invalid JSON",
+                    "The JSON is a sequence but does not have 5 children",
+                    Context::default().lines(0, arr.iter().join(",")),
+                ))
+            }
+        } else {
+            Err(BoxedError::new(
+                BasicKind::Error,
+                "Invalid JSON",
+                format!(
+                    "The JSON has to be a sequence to parse a ({}, {}, {}, {}, {})",
+                    type_name::<A>(),
+                    type_name::<B>(),
+                    type_name::<C>(),
+                    type_name::<D>(),
+                    type_name::<E>(),
+                ),
+                Context::default().lines(0, value.to_string()),
+            ))
+        }
+    }
+}
+
 impl ParseJson for AccessionCode {
     fn from_json_value(value: Value) -> Result<Self, BoxedError<'static, BasicKind>> {
         match value {
