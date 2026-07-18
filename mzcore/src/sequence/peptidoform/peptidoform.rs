@@ -1140,7 +1140,8 @@ impl<Complexity> Peptidoform<Complexity> {
     /// Display this peptide.
     /// `specification_compliant` Displays this peptide either normalised to the internal
     /// representation or as fully spec compliant ProForma (no glycan structure or custom
-    /// modifications).
+    /// modifications). To ensure that no issues arise with identifiers or names run
+    /// `Self::are_identifiers_valid_proforma` before this function.
     /// # Errors
     /// If the formatter supplied errors.
     /// # Panics

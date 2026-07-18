@@ -253,7 +253,8 @@ impl PeptidoformIon {
     /// Display this peptidoform.
     /// `specification_compliant` Displays this peptidoform either normalised to the internal
     /// representation or as fully spec compliant ProForma (no glycan structure or custom
-    /// modifications).
+    /// modifications). To ensure that no issues arise with identifiers or names run
+    /// `Self::are_identifiers_valid_proforma` before this function.
     /// # Panics
     /// When some peptides do not have the same global isotope modifications.
     /// # Errors

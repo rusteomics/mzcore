@@ -99,7 +99,8 @@ impl PeptidoformIonSet {
     /// Display this peptidoform ion set.
     /// `specification_compliant` Displays this peptidoform ion set either normalised to the
     /// internal representation (with false) or as fully spec compliant ProForma (no glycan
-    /// structure or custom modifications) (with true).
+    /// structure or custom modifications) (with true).To ensure that no issues arise with
+    /// identifiers or names run `Self::are_identifiers_valid_proforma` before this function.
     /// # Errors
     /// Only if the underlying formatter (`f`) errors.
     pub fn display(&self, f: &mut impl Write, specification_compliant: bool) -> std::fmt::Result {

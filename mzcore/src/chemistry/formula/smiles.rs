@@ -672,6 +672,7 @@ enum ChiralClass {
 }
 
 #[cfg(test)]
+#[allow(clippy::missing_panics_doc)]
 mod tests {
     use context_error::Context;
 

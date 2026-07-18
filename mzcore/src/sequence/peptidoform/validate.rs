@@ -1,4 +1,4 @@
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashSet};
 
 use context_error::*;
 use itertools::Itertools;
@@ -8,10 +8,110 @@ use super::{GlobalModification, Linear};
 use crate::{
     ParserResult,
     sequence::{
-        AmbiguousLookup, CrossLinkName, Modification, Peptidoform, PeptidoformIon,
-        SequencePosition, SimpleModification,
+        AmbiguousLookup, CrossLinkName, HiddenInternalMethods, LabileLocation, Modification,
+        Peptidoform, PeptidoformIon, PeptidoformIonSet, SequencePosition, SimpleModification,
     },
 };
+
+impl PeptidoformIonSet {
+    /// Check if the names and identifiers in this peptidoform ion set follow all ProForma rules:
+    /// - All labile location identifiers and ambiguous identifiers follow the rules (nonempty,
+    ///   ASCII alphanumeric, not starting with "XL", and is not "BRANCH").
+    /// - No labile location identifier or ambiguous identifier is reused.
+    /// - The name does not contain unclosed braces `()`.
+    pub fn are_identifiers_valid_proforma(&self) -> bool {
+        if self.name().chars().filter(|c| *c == '(').count()
+            != self.name().chars().filter(|c| *c == ')').count()
+        {
+            return false;
+        }
+        for pep in self.peptidoform_ions() {
+            if !pep.are_identifiers_valid_proforma() {
+                return false;
+            }
+        }
+        true
+    }
+}
+
+impl PeptidoformIon {
+    /// Check if the names and identifiers in this peptidoform ion follow all ProForma rules:
+    /// - All labile location identifiers and ambiguous identifiers follow the rules (nonempty,
+    ///   ASCII alphanumeric, not starting with "XL", and is not "BRANCH").
+    /// - No labile location identifier or ambiguous identifier is reused.
+    /// - The name does not contain unclosed braces `()`.
+    pub fn are_identifiers_valid_proforma(&self) -> bool {
+        if self.name().chars().filter(|c| *c == '(').count()
+            != self.name().chars().filter(|c| *c == ')').count()
+        {
+            return false;
+        }
+        for pep in self.peptidoforms() {
+            if !pep.are_identifiers_valid_proforma() {
+                return false;
+            }
+        }
+        true
+    }
+}
+
+impl<Complexity> Peptidoform<Complexity> {
+    /// Check if the names and identifiers in this peptidoform follow all ProForma rules:
+    /// - All labile location identifiers and ambiguous identifiers follow the rules (nonempty,
+    ///   ASCII alphanumeric, not starting with "XL", and is not "BRANCH").
+    /// - No labile location identifier or ambiguous identifier is reused.
+    /// - The name does not contain unclosed braces `()`.
+    pub fn are_identifiers_valid_proforma(&self) -> bool {
+        fn valid_identifier(id: &str) -> bool {
+            !(id.is_empty()
+                || id.eq_ignore_ascii_case("BRANCH")
+                || id.chars().next().is_some_and(|c| c == 'X' || c == 'x')
+                    && id.chars().nth(1).is_some_and(|c| c == 'L' || c == 'l'))
+                && id.chars().all(|c| c.is_ascii_alphanumeric())
+        }
+
+        let mut identifiers = HashSet::new();
+        let mut ambiguous_mods = HashSet::new();
+        for labile_identifier in self.get_labile().iter().filter_map(|(_, p)| {
+            if let LabileLocation::Known(i, _) = p {
+                Some(i)
+            } else {
+                None
+            }
+        }) {
+            if !identifiers.insert(labile_identifier) || !valid_identifier(labile_identifier) {
+                return false;
+            }
+        }
+        for (id, ambiguous_identifier) in self
+            .get_n_term()
+            .iter()
+            .chain(self.get_c_term())
+            .chain(self.sequence().iter().flat_map(|s| s.modifications.iter()))
+            .filter_map(|m| {
+                if let Modification::Ambiguous { group, id, .. } = m {
+                    Some((id, group))
+                } else {
+                    None
+                }
+            })
+        {
+            if ambiguous_mods.insert(id) && !identifiers.insert(ambiguous_identifier)
+                || !valid_identifier(ambiguous_identifier)
+            {
+                return false;
+            }
+        }
+
+        if self.name().chars().filter(|c| *c == '(').count()
+            != self.name().chars().filter(|c| *c == ')').count()
+        {
+            return false;
+        }
+
+        true
+    }
+}
 
 /// Validate all cross links
 /// # Errors
@@ -25,8 +125,14 @@ pub(super) fn cross_links<'a>(
     line: &'a str,
 ) -> ParserResult<'a, PeptidoformIon, BasicKind> {
     let mut errors = Vec::new();
-    let mut peptidoform = PeptidoformIon::new(name, peptidoforms)
-        .expect("Not all global modifications and charges are identical, please report this error");
+    let mut peptidoform = PeptidoformIon::new(name, peptidoforms).ok_or_else(|| {
+        vec![BoxedError::new(
+            BasicKind::Error,
+            "Invalid peptidoform ion",
+            "Not all global modifications and charges are identical, please report this error",
+            Context::default().line_index(0).lines(0, line),
+        )]
+    })?;
     for (id, locations) in cross_links_found {
         let definition = &cross_link_lookup[id];
         if let Some(linker) = &definition.1 {
