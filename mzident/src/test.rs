@@ -185,7 +185,7 @@ fn test_size_plgs() {
         "= PLGS Total:\n{total}PSMs: {}\n\n= PLGS First:\n{first}\n= Protein First:\n{protein}",
         file.len()
     );
-    todo!();
+    panic!("See above for the output");
 }
 
 #[ignore = "only run when interested in the sizes of the data"]
@@ -209,5 +209,5 @@ fn test_size_plink() {
         "= pLink Total:\n{total}PSMs: {}\n\n= pLink First:\n{first}\n= Protein First:\n{protein}",
         file.len()
     );
-    todo!();
+    panic!("See above for the output");
 }

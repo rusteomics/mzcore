@@ -393,7 +393,7 @@ impl ProteinMetaData for PLGSProtein {
     }
 
     fn search_engine(&self) -> &[(CVTerm, Option<(f64, CVTerm)>)] {
-        &[] // TODO: PLGS does not have a search engine entry
+        &[] // TODO: PLGS (MS:1000601|ProteinLynx Global Server) does not have a score entry
     }
 
     fn ambiguity_members(&self) -> &[String] {

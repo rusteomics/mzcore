@@ -910,7 +910,6 @@ impl<W: Write, State: CanWriteProteins> MzTabWriter<W, State> {
         proteins: impl IntoIterator<Item = Protein>,
         custom_columns: &[MzTabOptionalColumn<Protein, W>],
     ) -> Result<MzTabWriter<W, ProteinsWritten>, std::io::Error> {
-        // TODO: allow custom additional columns (sequence for example, or regions/annotations)
         let prh = format!(
             "PRH\taccession\tdescription\ttaxid\tspecies\tdatabase\tdatabase_version\tsearch_engine\tambiguity_members\tmodifications\tprotein_coverage\tgo_terms\treliability\turi{}",
             custom_columns
@@ -1158,7 +1157,7 @@ impl<W: Write, State: CanWritePSMs> MzTabWriter<W, State> {
             (1..=self.metadata.psm_search_engines.len())
                 .map(|i| format!("search_engine_score[{i}]"))
                 .join("\t"),
-            MzTabOptionalColumnName::Term(mzcv::term!(MS:1003984|amino acid confidence level)), /* TODO: update if the final accepted name changes */
+            MzTabOptionalColumnName::Term(mzcv::term!(MS:1003984|amino acid confidence level)),
             custom_columns
                 .iter()
                 .map(|(term, id, _)| format!("\topt_{id}_{term}"))

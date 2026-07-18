@@ -497,12 +497,8 @@ fn test_replacement() {
     let res = search.search(peptide);
     assert_eq!(res, expected, "{res} != {expected}");
 
-    let (peptide, _) = Peptidoform::pro_forma(
-        // TODO fix the search + add terminal test
-        "Q[-17.02655]NKKSLM[+15.9949]E",
-        &STATIC_ONTOLOGIES,
-    )
-    .unwrap();
+    let (peptide, _) =
+        Peptidoform::pro_forma("Q[-17.02655]NKKSLM[+15.9949]E", &STATIC_ONTOLOGIES).unwrap();
     let (expected, _) =
         Peptidoform::pro_forma("Q[Gln->pyro-glu]NKKSLM[Oxidation]E", &STATIC_ONTOLOGIES).unwrap();
     let res = search.search(peptide);

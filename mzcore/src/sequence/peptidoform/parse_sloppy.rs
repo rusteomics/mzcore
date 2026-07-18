@@ -398,8 +398,6 @@ impl Modification {
         ontologies: &Ontologies,
     ) -> Option<SimpleModification> {
         let name = name.trim().to_lowercase();
-        // TODO: quite some of these are listed as synonyms in psimod so it would be nice if synonym
-        // search could be turned on here (but only the exact ones)
         match name.as_str() {
             "o" | "ox" | "hydroxylation" => {
                 ontologies.unimod().get_by_index(&AccessionCode::Numeric(35))
@@ -408,17 +406,9 @@ impl Modification {
                 ontologies.unimod().get_by_index(&AccessionCode::Numeric(4))
             } // carbamidomethyl
             "nem" => ontologies.unimod().get_by_index(&AccessionCode::Numeric(108)), /* Nethylmaleimide */
-            "deamidation" | "deamidated asparagine" => {
-                ontologies.unimod().get_by_index(&AccessionCode::Numeric(7))
-            } // deamidated
-            "formylation" => ontologies.unimod().get_by_index(&AccessionCode::Numeric(122)), /* formyl */
-            "methylation" => ontologies.unimod().get_by_index(&AccessionCode::Numeric(34)), /* methyl */
-            "acetylation" => ontologies.unimod().get_by_index(&AccessionCode::Numeric(1)), /* acetyl */
-            "crotonylation" => ontologies.unimod().get_by_index(&AccessionCode::Numeric(1363)), /* crotonyl */
-            "reduction" => ontologies.unimod().get_by_index(&AccessionCode::Numeric(447)), // deoxy
+            "deamidated asparagine" => ontologies.unimod().get_by_index(&AccessionCode::Numeric(7)), /* deamidated */
             "water loss" => ontologies.unimod().get_by_index(&AccessionCode::Numeric(23)), /* dehydration */
             "ammonia loss" => ontologies.unimod().get_by_index(&AccessionCode::Numeric(385)), /* ammonia-loss */
-            "sodium" => ontologies.unimod().get_by_index(&AccessionCode::Numeric(30)), // Cation:Na
             "calcium" => ontologies.unimod().get_by_index(&AccessionCode::Numeric(951)), /* Cation:Ca[II] */
             "zinc" => ontologies.unimod().get_by_index(&AccessionCode::Numeric(954)), /* Cation:Zn[II] */
             "n-acetylarginine" => ontologies.psimod().get_by_index(&AccessionCode::Numeric(359)), /* N2-acetyl-L-arginine */
@@ -478,16 +468,11 @@ impl Modification {
             "symmetric dimethylarginine" => {
                 ontologies.psimod().get_by_index(&AccessionCode::Numeric(76))
             } /* symmetric dimethyl-L-arginine */
-            "citrullination" | "citrulline" => {
-                ontologies.psimod().get_by_index(&AccessionCode::Numeric(219))
-            } /* L-citrinulline */
             "4-carboxyglutamate" => ontologies.psimod().get_by_index(&AccessionCode::Numeric(41)), /* L-gamma-carboxyglutamic acid */
             "n6-(pyridoxal phosphate)lysine" => {
                 ontologies.psimod().get_by_index(&AccessionCode::Numeric(128))
             } /* N6-pyridoxal phosphate-L-lysine */
-            "n6-butyryllysine" => ontologies.psimod().get_by_index(&AccessionCode::Numeric(1781)), /* N6-butanoyl-L-lysine */
-            "s-nitrosocysteine" => ontologies.psimod().get_by_index(&AccessionCode::Numeric(235)), /* S-nitrosyl-L-cysteine */
-            "phosphoserine" | "phosphothreonine" | "phosphotyrosine" | "phosphorylation" => {
+            "phosphoserine" | "phosphothreonine" | "phosphotyrosine" => {
                 ontologies.unimod().get_by_index(&AccessionCode::Numeric(21))
             } /* Phospho */
             "pyro-glu" => ontologies.unimod().get_by_index(&AccessionCode::Numeric(
@@ -1120,9 +1105,9 @@ impl Modification {
             _ => parse_modification::numerical_mod(MassTag::None, &name)
                 .map(|m| m.1)
                 .ok()
-                .or_else(|| ontologies.unimod().get_by_name(&name))
-                .or_else(|| ontologies.psimod().get_by_name(&name))
-                .or_else(|| ontologies.custom().get_by_name(&name)),
+                .or_else(|| ontologies.unimod().get_by_name_or_synonym(&name).map(|(_, m)| m))
+                .or_else(|| ontologies.psimod().get_by_name_or_synonym(&name).map(|(_, m)| m))
+                .or_else(|| ontologies.custom().get_by_name_or_synonym(&name).map(|(_, m)| m)),
         }
     }
 }

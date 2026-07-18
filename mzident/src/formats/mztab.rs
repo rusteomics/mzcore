@@ -786,7 +786,7 @@ impl MzTabPSM {
                     Ok(start.and_then(|s| end.map(|e| s..e)))
                 })?,
             local_confidence: line
-                .optional_column("opt_global_ms_1003984_amino_acid_confidence_level") // TODO: update if the final accepted name changes
+                .optional_column("opt_global_ms_1003984_amino_acid_confidence_level")
                 .or_else(|| line.optional_column("opt_ms_run[1]_aa_scores"))
                 .filter(|(lc, _)| !lc.trim().is_empty() && !lc.trim().eq_ignore_ascii_case("null"))
                 .map(|(v, r)| {

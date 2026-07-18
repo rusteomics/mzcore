@@ -498,5 +498,5 @@ fn gnome_space() {
     print!("{space_description}");
     println!("All used space for GlycanStructures ({number_structures} in total)");
     print!("{space_structures}");
-    todo!();
+    panic!("See above for the output");
 }

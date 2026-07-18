@@ -321,7 +321,7 @@ impl PSMMetaData for NovorPSM {
         Some(self.mass)
     }
 
-    // TODO: the protein is optional, which does not cuurently fit with the macro
+    // TODO: the protein is optional, which does not currently fit with the macro
 
     fn protein_location(&self) -> Option<Range<u16>> {
         self.protein_start.map(|s| s..s + self.peptide.len() as u16)

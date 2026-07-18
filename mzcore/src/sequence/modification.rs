@@ -767,14 +767,19 @@ impl ParseJson for CrossId {
     fn from_json_value(value: Value) -> Result<Self, BoxedError<'static, BasicKind>> {
         match value {
             value @ Value::Object(_) => use_serde(value),
-            Value::Array(value) => {
+            ref arr @ Value::Array(ref value) => {
                 if value.len() == 2 {
                     Self::try_from((
                         (value[0] != Value::Null).then(|| value[0].to_string().into()),
                         value[1].to_string().into(),
                     ))
                 } else {
-                    todo!()
+                    Err(BoxedError::new(
+                        BasicKind::Error,
+                        "Invalid CrossId",
+                        "A CrossId array has to have 2 elements",
+                        Context::default().lines(0, arr.to_string()),
+                    ))
                 }
             }
             Value::String(value) => Self::from_str(&value),

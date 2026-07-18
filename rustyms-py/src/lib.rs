@@ -671,7 +671,7 @@ impl Fragment {
             "Fragment(formula='{:?}', charge={}, ion='{}', peptidoform_ion_index={}, peptidoform_index={}, neutral_loss='{:?}')",
             Self::formula(self),
             self.charge(),
-            self.ion().0, // TODO: this could crash
+            self.ion().0,
             self.peptidoform_ion_index()
                 .map_or_else(|| "-".to_string(), |p| p.to_string()),
             self.peptidoform_index().map_or_else(|| "-".to_string(), |p| p.to_string()),
