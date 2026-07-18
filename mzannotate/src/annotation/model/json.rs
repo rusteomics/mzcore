@@ -113,7 +113,7 @@ impl ParseJson for FragmentationModel {
                         context(&map),
                     )
                 })?)?,
-                internal: map.remove("immonium").map(|v| Option::from_json_value(v)).transpose()?.flatten(),
+                internal: map.remove("internal").map(|v| Option::from_json_value(v)).transpose()?.flatten(),
                 immonium: Option::from_json_value(map.remove("immonium").ok_or_else(|| {
                     BoxedError::new(
                         BasicKind::Error,
