@@ -155,7 +155,8 @@ impl Stats {
 
     fn print(&self) {
         let duration = if self.fuzz_time > 0 {
-            Duration::from_secs_f64(self.fuzz_time as f64 / self.jobs as f64)
+            let v = self.fuzz_time as f64 / self.jobs as f64;
+            Duration::from_secs_f64(if v.is_nan() { 0.0 } else { v })
         } else {
             Duration::default()
         };
@@ -255,12 +256,7 @@ fn print_time(time: Duration) -> String {
         SMALL_SUFFIXES[(-((value.abs().log10() / 3.0).floor() as isize)
             .clamp(-(SMALL_SUFFIXES.len() as isize - 1), 0)) as usize]
     } else {
-        BIG_SUFFIXES
-            .iter()
-            .filter(|(v, _)| value > *v)
-            .last()
-            .unwrap()
-            .clone()
+        BIG_SUFFIXES.iter().filter(|(v, _)| value > *v).last().unwrap().clone()
     };
     format!("{:.PRECISION$}{}", value / base.0, base.1)
 }
