@@ -12,7 +12,7 @@ use std::io::{BufRead, BufWriter, Write};
 use std::iter::Sum;
 use std::process::{Command, Stdio};
 use std::sync::atomic::{AtomicUsize, Ordering};
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use std::thread;
 
@@ -63,6 +63,7 @@ fn main() {
 
         // run
         println!("Run fuzzer");
+        let start = Instant::now();
         let id = AtomicUsize::new(0);
         thread::scope(|s| {
             for i in 0..args.jobs {
@@ -91,7 +92,7 @@ fn main() {
                 thread::sleep(Duration::from_millis(10000));
                 loop {
                     thread::sleep(Duration::from_millis(1000));
-                    Stats::get(&target, args.jobs);
+                    Stats::get(&target, args.jobs, start);
                 }
             });
         });
@@ -100,7 +101,6 @@ fn main() {
 
 #[derive(Default)]
 struct Stats {
-    fuzz_time: usize,
     cycles_done: usize,
     execs_done: usize,
     saved_crashes: usize,
@@ -109,7 +109,7 @@ struct Stats {
 }
 
 impl Stats {
-    fn get(target: &str, jobs: u8) -> Option<()> {
+    fn get(target: &str, jobs: u8, start: Instant) -> Option<()> {
         let stats = (-1..(jobs - 1) as i16)
             .map(|i| {
                 let name = if i == -1 {
@@ -125,9 +125,6 @@ impl Stats {
                         let line = line.unwrap();
                         let (tag, value) = line.split_once(':').unwrap();
                         match tag.trim() {
-                            "fuzz_time" => {
-                                res.fuzz_time = value.trim().parse().unwrap();
-                            }
                             "cycles_done" => {
                                 res.cycles_done = value.trim().parse().unwrap();
                             }
@@ -149,17 +146,12 @@ impl Stats {
                 }
             })
             .sum::<Self>();
-        stats.print();
+        stats.print(start);
         Some(())
     }
 
-    fn print(&self) {
-        let duration = if self.fuzz_time > 0 {
-            let v = self.fuzz_time as f64 / self.jobs as f64;
-            Duration::from_secs_f64(if v.is_nan() { 0.0 } else { v })
-        } else {
-            Duration::default()
-        };
+    fn print(&self, start: Instant) {
+        let duration = start.elapsed();
         print!(
             "\rtime: {}, cycles: {}, execs: {}, crashes: {} hangs: {}",
             print_time(duration),
@@ -171,7 +163,6 @@ impl Stats {
     }
 
     fn add(&mut self, other: &Self) {
-        self.fuzz_time += other.fuzz_time;
         self.cycles_done += other.cycles_done;
         self.execs_done += other.execs_done;
         self.saved_crashes += other.saved_crashes;
