@@ -6,7 +6,10 @@ use crate::{
     chemistry::{AmbiguousLabel, Chemical, MolecularFormula, MultiChemical, SatelliteLabel},
     molecular_formula,
     quantities::Multi,
-    sequence::{AminoAcid, IsAminoAcid, SemiAmbiguous, SequencePosition, UnAmbiguous},
+    sequence::{
+        AminoAcid, AtLeast, IsAminoAcid, Linear, SemiAmbiguous, SequencePosition, SimpleLinear,
+        UnAmbiguous,
+    },
 };
 
 /// A checked amino acid. This wraps an [`AminoAcid`] to keep track of the maximal complexity of
@@ -244,7 +247,31 @@ impl From<&AminoAcid> for CheckedAminoAcid<SemiAmbiguous> {
     }
 }
 
-impl CheckedAminoAcid<SemiAmbiguous> {
+impl From<AminoAcid> for CheckedAminoAcid<SimpleLinear> {
+    fn from(value: AminoAcid) -> Self {
+        Self::new(value)
+    }
+}
+
+impl From<&AminoAcid> for CheckedAminoAcid<SimpleLinear> {
+    fn from(value: &AminoAcid) -> Self {
+        Self::new(*value)
+    }
+}
+
+impl From<AminoAcid> for CheckedAminoAcid<Linear> {
+    fn from(value: AminoAcid) -> Self {
+        Self::new(value)
+    }
+}
+
+impl From<&AminoAcid> for CheckedAminoAcid<Linear> {
+    fn from(value: &AminoAcid) -> Self {
+        Self::new(*value)
+    }
+}
+
+impl<Complexity: AtLeast<SemiAmbiguous>> CheckedAminoAcid<Complexity> {
     /// Create a new checked amino acid given a plain amino acid. This defaults to [`SemiAmbiguous`]
     /// because that is the highest level of complexity. If a [`UnAmbiguous`] is needed check
     /// [`Self::is_unambiguous`] or any of the default unambiguous amino acids.
@@ -257,7 +284,7 @@ impl CheckedAminoAcid<SemiAmbiguous> {
 }
 
 impl<T> CheckedAminoAcid<T> {
-    pub(super) const fn mark<M>(self) -> CheckedAminoAcid<M> {
+    pub(in crate::sequence) const fn mark<M>(self) -> CheckedAminoAcid<M> {
         CheckedAminoAcid {
             aminoacid: self.aminoacid,
             marker: PhantomData,

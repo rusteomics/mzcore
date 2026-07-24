@@ -156,7 +156,7 @@ pub fn building_blocks(
                                 },
                                 |rule| {
                                     rule.is_possible(
-                                        &SequenceElement::new(aa.into(), None),
+                                        &SequenceElement::<SemiAmbiguous>::new(aa.into(), None),
                                         position,
                                     )
                                 },

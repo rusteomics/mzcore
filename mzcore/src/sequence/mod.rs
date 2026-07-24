@@ -1,5 +1,4 @@
 mod aminoacid;
-mod checked_aminoacid;
 mod cross_link;
 mod modification;
 mod peptidoform;
@@ -10,7 +9,6 @@ mod sequence_position;
 mod simple_modification;
 
 pub use aminoacid::*;
-pub use checked_aminoacid::*;
 pub use cross_link::*;
 pub use modification::*;
 pub use peptidoform::*;

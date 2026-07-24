@@ -1926,7 +1926,7 @@ impl<Complexity> HiddenInternalMethods for Peptidoform<Complexity> {
 }
 
 impl<C> crate::space::Space for Peptidoform<C> {
-    fn space(&self) -> crate::space::UsedSpace {
+    fn space(&self) -> UsedSpace {
         (self.global.space()
             + self.name.space()
             + self.labile.space()

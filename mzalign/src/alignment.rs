@@ -134,8 +134,7 @@ where
         let mut index = 0;
         let mut steps = Vec::new();
         while index < path.len() {
-            if let Some((offset, num)) = next_num(path.as_bytes(), index, false) {
-                let num = u16::try_from(num).unwrap();
+            if let Some((offset, num)) = next_num(path.as_bytes(), index) {
                 index += offset + 1;
                 match path.as_bytes()[index - 1] {
                     b'I' => steps.push((MatchType::Gap, 0, num)),
@@ -146,8 +145,7 @@ where
                     b'r' => steps.push((MatchType::Rotation, num, num)),
                     b'i' => steps.push((MatchType::Isobaric, num, num)),
                     b':' => {
-                        if let Some((offset, num2)) = next_num(path.as_bytes(), index, false) {
-                            let num2 = u16::try_from(num2).unwrap();
+                        if let Some((offset, num2)) = next_num(path.as_bytes(), index) {
                             index += offset + 1;
                             match path.as_bytes()[index - 1] {
                                 b'i' => steps.push((MatchType::Isobaric, num, num2)),

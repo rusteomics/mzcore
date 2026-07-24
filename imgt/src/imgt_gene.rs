@@ -1,7 +1,7 @@
 use std::{collections::HashMap, fmt::Display};
 
 use itertools::Itertools;
-use mzcore::sequence::{AminoAcid, Annotation, CheckedAminoAcid, Region};
+use mzcore::sequence::{AminoAcid, Annotation, CheckedAminoAcid, Region, SemiAmbiguous};
 
 use crate::{
     AnnotatedSequence, Gene,
@@ -62,7 +62,7 @@ impl IMGTGene {
                             sequence
                                 .iter()
                                 .copied()
-                                .map(CheckedAminoAcid::new)
+                                .map(CheckedAminoAcid::<SemiAmbiguous>::new)
                                 .map(|p| p.into_unambiguous().unwrap())
                                 .collect(),
                             region_lengths,
