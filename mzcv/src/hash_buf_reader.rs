@@ -37,11 +37,9 @@ impl<R: Read, H: sha2::Digest> BufRead for HashBufReader<R, H> {
         if self.pos >= self.filled {
             self.pos = 0;
             self.filled = 0;
-            match self.r.read(&mut self.buf) {
-                Ok(r) => {
-                    self.filled = r;
-                }
-                Err(e) => return Err(e),
+            {
+                let r = self.r.read(&mut self.buf)?;
+                self.filled = r;
             }
         }
 

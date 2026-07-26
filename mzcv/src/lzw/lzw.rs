@@ -109,6 +109,8 @@ impl Lzw {
                             .copy_from_slice(&input[input_pos..input_pos + to_read]);
                         input_pos += to_read;
                         block_bit_offset = 0;
+                        // Taken over as is from the original author
+                        #[allow(clippy::cast_possible_wrap)]
                         let bit_count = (to_read << 3) as isize - (n_bits as isize - 1);
                         if bit_count <= 0 {
                             None::<usize>
@@ -152,9 +154,8 @@ impl Lzw {
         }
 
         // Read first code (must be a literal byte)
-        let first = match getcode!() {
-            Some(c) => c,
-            None => return Ok(output),
+        let Some(first) = getcode!() else {
+            return Ok(output);
         };
 
         if first > 255 {
@@ -169,11 +170,9 @@ impl Lzw {
         output.push(finchar);
 
         // Main decompression loop
+        #[allow(clippy::while_let_loop)] // The given other approach seems bad
         loop {
-            let incode = match getcode!() {
-                Some(c) => c,
-                None => break,
-            };
+            let Some(incode) = getcode!() else { break };
 
             // Handle CLEAR code in block mode
             if incode == 256 && block_mode {
@@ -184,15 +183,12 @@ impl Lzw {
                 // After CLEAR, the stream restarts with a literal code that
                 // initializes oldcode/finchar. This call sees clear_flag,
                 // realigns to the next block, and resets code width.
-                let next = match getcode!() {
-                    Some(c) => c,
-                    None => break,
-                };
+                let Some(next) = getcode!() else { break };
 
                 if next > 255 {
                     return Err(ArchiveError::DecompressionFailed {
                         entry: String::new(),
-                        reason: format!("Code {} after CLEAR is not a literal", next),
+                        reason: format!("Code {next} after CLEAR is not a literal"),
                     });
                 }
 
@@ -209,7 +205,7 @@ impl Lzw {
                 if code > free_ent {
                     return Err(ArchiveError::DecompressionFailed {
                         entry: String::new(),
-                        reason: format!("Invalid code {} > free_ent {}", code, free_ent),
+                        reason: format!("Invalid code {code} > free_ent {free_ent}"),
                     });
                 }
                 stack.push(finchar);

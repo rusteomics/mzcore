@@ -1,24 +1,30 @@
+#![allow(dead_code)] // TODO: until the parsing is fully done ignore dead code warnings
 use crate::{
     chemistry::{Connection, Element, StructuralFormula},
     system::i8::Charge,
 };
 
+/// A tokenised WURCS definition
 #[derive(Debug)]
 pub struct Wurcs {
-    pub residues: Vec<Residue>,
-    pub sequence: Vec<u8>,
-    pub linkage: Vec<Linkage>,
+    pub(super) residues: Vec<Residue>,
+    pub(super) sequence: Vec<u8>,
+    pub(super) linkage: Vec<Linkage>,
 }
 
 #[derive(Debug)]
-pub struct Residue {
+pub(super) struct Residue {
     pub backbone: BackBone,
     pub anomeric: Option<(Option<u8>, AnomericSymbol)>,
     pub mods: Vec<Mod>,
 }
 
 impl Residue {
-    pub fn to_structure(&self) -> Result<StructuralFormula, String> {
+    /// Convert this WURCS residue into a structural formula (similar to a SMILES string).
+    /// # Errors
+    /// If this residue is not fully known (connection ambiguous, undefined number of backbone
+    /// carbons etc.) this cannot be converted into a structural formula and so returns an error.
+    pub(super) fn to_structure(&self) -> Result<StructuralFormula, String> {
         if let BackBone::Defined(s, m, e) = &self.backbone {
             let mut structure = StructuralFormula::default();
             let mut carbon_numbers = Vec::new();
@@ -183,14 +189,14 @@ impl Residue {
 }
 
 #[derive(Debug)]
-pub enum BackBone {
+pub(super) enum BackBone {
     Defined(TerminalCarbon, Vec<Carbon>, TerminalCarbon),
     Repeating(Option<TerminalCarbon>, Vec<Carbon>, Option<TerminalCarbon>),
 }
 
 /// The carbon descriptors extended with the options in: <https://pubs.acs.org/doi/suppl/10.1021/acs.jcim.6b00650/suppl_file/ci6b00650_si_001.pdf> section 2.8.
 #[derive(Clone, Copy, Debug)]
-pub enum Carbon {
+pub(super) enum Carbon {
     /// 'd' deoxy `H-C-H`
     Methylene,
     /// 'C' `X-C-X`
@@ -246,8 +252,12 @@ pub enum Carbon {
 }
 
 impl Carbon {
+    /// Try to add this backbone carbon to a structural formula.
+    /// # Errors
+    /// If the carbon does not have the same number of connections as the last carbon implied, or if
+    /// this carbon is not yet added to the detection list.
     fn add_to_structure(
-        &self,
+        self,
         structure: &mut StructuralFormula,
         last: (usize, Connection),
     ) -> Result<(usize, Connection), String> {
@@ -308,7 +318,7 @@ impl Carbon {
 
 #[derive(Clone, Copy, Debug)]
 #[allow(non_camel_case_types, clippy::upper_case_acronyms)]
-pub enum TerminalCarbon {
+pub(super) enum TerminalCarbon {
     /// 'm'
     CHHH,
     /// 'M'
@@ -374,8 +384,11 @@ pub enum TerminalCarbon {
 }
 
 impl TerminalCarbon {
+    /// Try to add this terminal backbone carbon to a structural formula.
+    /// # Errors
+    /// If this carbon is not yet added to the detection list.
     fn add_to_structure(
-        &self,
+        self,
         structure: &mut StructuralFormula,
     ) -> Result<(usize, Connection), String> {
         let index = structure.atoms.len();
@@ -416,7 +429,7 @@ impl TerminalCarbon {
 }
 
 #[derive(Clone, Copy, Debug)]
-pub enum AnomericSymbol {
+pub(super) enum AnomericSymbol {
     /// 'a'
     Alpha,
     /// 'b'
@@ -432,27 +445,27 @@ pub enum AnomericSymbol {
 }
 
 #[derive(Debug)]
-pub struct Mod {
+pub(super) struct Mod {
     pub lips: Vec<LIPOption>,
     pub modification: Vec<MAPSymbol>,
 }
 
 #[derive(Clone, Debug)]
-pub enum LIPOption {
-    Known(LIP),
-    Statistic(bool, Probability, LIP),
-    Alternative(Vec<LIP>),
+pub(super) enum LIPOption {
+    Known(Lip),
+    Statistic(bool, Probability, Lip),
+    Alternative(Vec<Lip>),
 }
 
 #[derive(Clone, Copy, Debug)]
-pub struct LIP {
+pub(super) struct Lip {
     pub position: Option<u8>,
     pub direction: Direction,
     pub star_index: u8,
 }
 
 #[derive(Clone, Copy, Debug)]
-pub enum Direction {
+pub(super) enum Direction {
     /// 'u'
     Upside,
     /// 'd'
@@ -478,7 +491,7 @@ pub enum Direction {
 }
 
 #[derive(Clone, Copy, Debug)]
-pub enum MAPSymbol {
+pub(super) enum MAPSymbol {
     Element(Element),
     /// '*' or '*n'
     Star(Option<u8>),
@@ -496,7 +509,7 @@ pub enum MAPSymbol {
 }
 
 #[derive(Clone, Copy, Debug)]
-pub enum Chirality {
+pub(super) enum Chirality {
     R,
     S,
     E,
@@ -505,27 +518,27 @@ pub enum Chirality {
 }
 
 #[derive(Debug)]
-pub enum Linkage {
-    Known(LIN),
-    Repeated(Repeat, LIN),
+pub(super) enum Linkage {
+    Known(Lin),
+    Repeated(Repeat, Lin),
 }
 
 #[derive(Debug)]
-pub struct LIN {
+pub(super) struct Lin {
     pub lips: Vec<GLIPOption>,
     pub modification: Vec<MAPSymbol>,
 }
 
 #[derive(Clone, Debug)]
-pub enum GLIPOption {
-    Known(GLIP),
-    Statistic(bool, Probability, GLIP),
-    Alternative(Vec<GLIP>),
-    RESAlternative(bool, Vec<GLIP>),
+pub(super) enum GLIPOption {
+    Known(Glip),
+    Statistic(bool, Probability, Glip),
+    Alternative(Vec<Glip>),
+    RESAlternative(bool, Vec<Glip>),
 }
 
 #[derive(Clone, Copy, Debug)]
-pub struct GLIP {
+pub(super) struct Glip {
     /// Encoded using base 52
     pub res_index: u8,
     /// Position or unknown
@@ -535,13 +548,13 @@ pub struct GLIP {
 }
 
 #[derive(Clone, Copy, Debug)]
-pub enum Probability {
+pub(super) enum Probability {
     Single(Option<f32>),
     Range(Option<f32>, Option<f32>),
 }
 
 #[derive(Clone, Copy, Debug)]
-pub enum Repeat {
+pub(super) enum Repeat {
     Single(Option<u8>),
     /// Max, min
     Range(Option<u8>, Option<u8>),

@@ -373,6 +373,7 @@ impl Chemical for MonoSaccharide {
 
 /// The base sugar of a monosaccharide, optionally with the isomeric state saved as well.
 #[derive(Clone, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
+#[allow(variant_size_differences)] // The custom is needed, and so at least 16 bytes are necessary (8 for the Box and pad 8 to fulfil alignment), the rest is just very tiny.
 pub enum BaseSugar {
     /// Edge case, no defined sugar.
     Custom(Box<MolecularFormula>),

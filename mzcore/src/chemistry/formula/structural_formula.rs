@@ -50,9 +50,9 @@ impl Connection {
 
 impl StructuralFormula {
     // TODO: should be the default to_string as well
-    fn to_smiles(&self) -> Option<String> {
-        todo!()
-    }
+    // fn to_smiles(&self) -> Option<String> {
+    //     todo!()
+    // }
 
     /// Get a graph in dot language to display this structure for debug purposes.
     pub fn to_dot(&self) -> String {

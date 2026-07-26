@@ -9,6 +9,9 @@ use crate::{
     helper_functions::{RangeExtension, explain_number_error, next_number},
 };
 
+/// Tokenise a WURCS 2.0 definition.
+/// # Errors
+/// If this is an invalid definition.
 pub fn tokenise_wurcs<'a>(
     value: &'a str,
     base_context: &Context<'a>,
@@ -111,7 +114,7 @@ pub fn tokenise_wurcs<'a>(
                     None
                 };
                 // Parse glip
-                let (len, glip) = parse_glip(value, index + offset..=end, base_context)?;
+                let (len, glip) = tokenise_glip(value, index + offset..=end, base_context)?;
                 alternate.push(glip);
                 offset += len;
                 // Check if % (if not already parsed?)
@@ -126,7 +129,7 @@ pub fn tokenise_wurcs<'a>(
                 // Check if alternate
                 while index + offset <= end && value.as_bytes().get(index + offset) == Some(&b'|') {
                     offset += 1;
-                    let (len, glip) = parse_glip(value, index + offset..=end, base_context)?;
+                    let (len, glip) = tokenise_glip(value, index + offset..=end, base_context)?;
                     offset += len;
                     alternate.push(glip);
                 }
@@ -194,12 +197,12 @@ pub fn tokenise_wurcs<'a>(
                 offset += 1;
                 let (len, repeat) = parse_repeat(value, index + offset..=end, base_context)?;
                 offset += len;
-                linkage.push(Linkage::Repeated(repeat, LIN {
+                linkage.push(Linkage::Repeated(repeat, Lin {
                     lips: glips,
                     modification,
                 }));
             } else {
-                linkage.push(Linkage::Known(LIN {
+                linkage.push(Linkage::Known(Lin {
                     lips: glips,
                     modification,
                 }));
@@ -237,11 +240,14 @@ pub fn tokenise_wurcs<'a>(
     }
 }
 
-fn parse_glip<'a>(
+/// Tokenise a GLIP.
+/// # Errors
+/// If this is not a proper GLIP.
+fn tokenise_glip<'a>(
     value: &'a str,
     range: std::ops::RangeInclusive<usize>,
     base_context: &Context<'a>,
-) -> Result<(usize, GLIP), BoxedError<'a, BasicKind>> {
+) -> Result<(usize, Glip), BoxedError<'a, BasicKind>> {
     let mut offset = 0;
     let mut res_index = 0;
     let mut len = 0;
@@ -299,7 +305,7 @@ fn parse_glip<'a>(
     } else {
         None
     };
-    Ok((offset, GLIP {
+    Ok((offset, Glip {
         res_index,
         position,
         direction: extra.map_or(Direction::Obvious, |(d, _)| d),
@@ -307,6 +313,10 @@ fn parse_glip<'a>(
     }))
 }
 
+/// Tokenise the counts that are used for validation of the definition. It returns true as the last
+/// result if the LIN count is uncertain (ends with `+`).
+/// # Errors
+/// If these counts are invalid, too many, too little, or invalid numbers.
 fn tokenise_counts<'a>(
     value: &'a str,
     base_context: &Context<'a>,
@@ -374,11 +384,8 @@ fn tokenise_counts<'a>(
         })
         .and_then(|v| {
             offset += v.len() + 1;
-            let (uncertain, number) = if v.ends_with('+') {
-                (true, &v[..v.len() - 1])
-            } else {
-                (false, v)
-            };
+            let (uncertain, number) =
+                v.strip_suffix('+').map_or((false, v), |stripped| (true, stripped));
             number
                 .parse::<u8>()
                 .map_err(|err| {
@@ -408,7 +415,9 @@ fn tokenise_counts<'a>(
     }
 }
 
-/// Assumes to start at '['
+/// Tokenise a unique residue. Assumes to start at '['.
+/// # Errors
+/// If this is an invalid unique residue.
 fn tokenise_unique_res<'a>(
     value: &'a str,
     base_context: &Context<'a>,
@@ -646,17 +655,20 @@ fn tokenise_unique_res<'a>(
     }
 }
 
+/// Parse a LIP
+/// # Errors
+/// If it contains invalid numbers or an invalid start index.
 fn parse_lip<'a>(
     value: &'a str,
     range: std::ops::RangeInclusive<usize>,
     base_context: &Context<'a>,
-) -> Result<(usize, LIP), BoxedError<'a, BasicKind>> {
+) -> Result<(usize, Lip), BoxedError<'a, BasicKind>> {
     let mut offset = 0;
     let (len, position) = maybe_number(
         value,
         range.start() + offset..=*range.end(),
         base_context,
-        "GLIP Position",
+        "LIP Position",
         '?',
     )?;
     offset += len;
@@ -686,13 +698,17 @@ fn parse_lip<'a>(
     } else {
         None
     };
-    Ok((offset, LIP {
+    Ok((offset, Lip {
         position,
         direction: extra.map_or(Direction::Obvious, |(d, _)| d),
         star_index: extra.map_or(0, |(_, i)| i),
     }))
 }
 
+/// Parse a number or an unknown number with the given symbol.
+/// # Errors
+/// If there is no number and not the unknown number symbol. Or if the number does not fit within an
+/// unsigned int of 8 bits.
 fn maybe_number<'a>(
     value: &str,
     range: std::ops::RangeInclusive<usize>,
@@ -712,7 +728,7 @@ fn maybe_number<'a>(
                     base_context.clone().add_highlight((0, *range.clone().start(), 1)),
                 )
             })
-            .and_then(|(len, _, num)| {
+            .and_then(|(len, _sign, num)| {
                 num.map_err(|err| {
                     BoxedError::new(
                         BasicKind::Error,
@@ -726,6 +742,9 @@ fn maybe_number<'a>(
     }
 }
 
+/// Tokenise a list of MAP symbols and returns the number of bytes consumed.
+/// # Errors
+/// If this text contains symbols that are invalid in a MAP definition.
 fn tokenise_map<'a>(
     value: &str,
     range: std::ops::RangeInclusive<usize>,
@@ -873,6 +892,10 @@ fn tokenise_map<'a>(
     }
 }
 
+/// Parse a probability `<.int|?>(-<.int|?>)?%` and returns the number of bytes consumed.
+/// # Errors
+/// If the numbers are invalid (does not start with `.` or is not `?`), or if the probability does
+/// not end with `%`.
 fn parse_probability<'a>(
     value: &str,
     range: std::ops::RangeInclusive<usize>,
@@ -935,6 +958,9 @@ fn parse_probability<'a>(
     }
 }
 
+/// Parse a repeat `<int|'n'>([:-]<int|'n'>)?` and returns how many bytes are consumed.
+/// # Errors
+/// If either of the two numbers is invalid.
 fn parse_repeat<'a>(
     value: &str,
     range: std::ops::RangeInclusive<usize>,
@@ -1076,6 +1102,7 @@ impl TryFrom<u8> for Direction {
 }
 
 #[cfg(test)]
+#[allow(clippy::missing_errors_doc, clippy::missing_panics_doc)]
 mod tests {
     use context_error::{BasicKind, BoxedError, Context};
 

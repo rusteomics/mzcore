@@ -2,25 +2,37 @@ use crate::{
     chemistry::Element,
     glycan::{
         BaseSugar, GlycanSubstituent, HexoseIsomer, MonoSaccharide,
-        wurcs::structs::{BackBone, Carbon, LIP, LIPOption, MAPSymbol, Residue, Wurcs},
+        wurcs::structs::{BackBone, Carbon, LIPOption, Lip, MAPSymbol, Residue, Wurcs},
     },
 };
 
-#[derive(Debug)]
+/// The possible errors that can be returned from parsing a WURCS line
+#[derive(Debug, Clone, Copy)]
 pub enum WurcsParseError {
+    /// The definition is empty
     Empty,
+    /// It contains a repeating backbone, this is valid WURCS, but cannot be represented currently
+    /// in a [`MonoSaccharide`].
     RepeatingBackbone,
+    /// The backbone is too long for the current limitations of [`MonoSaccharide`].
     BackboneTooLong,
 }
 
 impl Wurcs {
+    /// Parse a tokenised WURCS line into [`MonoSaccharide`]s, note that this is very much work in
+    /// progress.
+    /// # Errors
+    /// If these tokens cannot be parsed into a [`MonoSaccharide`].
     pub fn parse(self) -> Result<Vec<MonoSaccharide>, WurcsParseError> {
         self.residues.into_iter().map(Residue::parse).collect()
     }
 }
 
 impl Residue {
-    pub fn parse(self) -> Result<MonoSaccharide, WurcsParseError> {
+    /// Parse a WURCS residue into a [`MonoSaccharide`].
+    /// # Errors
+    /// If this WURCS definition does not fit in the limitations of a [`MonoSaccharide`].
+    pub(super) fn parse(self) -> Result<MonoSaccharide, WurcsParseError> {
         let base = match self.backbone {
             BackBone::Defined(_s, m, _e) => match m.len() {
                 0 => BaseSugar::Sugar,
@@ -61,7 +73,7 @@ impl Residue {
                         MAPSymbol::DoubleBond,
                         MAPSymbol::Element(Element::O),
                     ] => res.substituents.push((GlycanSubstituent::NAcetyl, match m.lips[0] {
-                        LIPOption::Known(LIP { position, .. }) => position,
+                        LIPOption::Known(Lip { position, .. }) => position,
                         _ => None,
                     })),
                     other => {
@@ -92,6 +104,7 @@ impl Residue {
 }
 
 #[cfg(test)]
+#[allow(clippy::missing_panics_doc, clippy::missing_errors_doc)]
 mod tests {
     use context_error::{BasicKind, BoxedError, Context};
 

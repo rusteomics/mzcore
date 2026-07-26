@@ -12,6 +12,28 @@ use crate::{
     },
 };
 
+/// Settings to control how a glycan is rendered.
+#[non_exhaustive]
+#[derive(Clone, Debug, PartialEq)]
+pub struct GlycanRenderSettings {
+    /// The size (in pixels) of one block in the glycan, the full size with the padding and sugar
+    /// size included.
+    column_size: f32,
+    /// The size (in pixels) of a monosaccharide.
+    sugar_size: f32,
+    /// The size (in pixels) of the strokes in the graphic.
+    stroke_size: f32,
+    /// The colour to be used for the foreground, in RGB order.
+    foreground: [u8; 3],
+    /// The colour to be used for the background, in RGB order, this is used to fill 'empty' sugars
+    /// if the isomeric state is unknown.
+    background: [u8; 3],
+    // TODO: add settings:
+    // - modification precision
+    // - linkage precision
+    // - centre shape mods/orientation/conformation
+}
+
 impl GlycanStructure {
     /// Render this glycan to the internal representation. This can then be rendered to SVG or a
     /// bitmap.
