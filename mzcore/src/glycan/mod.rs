@@ -21,5 +21,5 @@ pub use monosaccharide::MonoSaccharide;
 pub use position::*;
 pub use positioned_structure::*;
 #[cfg(feature = "glycan-render")]
-pub use render::{GlycanDirection, GlycanRoot, RenderedGlycan};
+pub use render::{GlycanDirection, GlycanRenderSettings, GlycanRoot, RenderedGlycan};
 pub use wurcs::*;
