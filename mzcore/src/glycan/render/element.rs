@@ -97,14 +97,6 @@ pub(super) enum TextBaseline {
 ///
 /// ```rust
 /// # use mzcore::glycan::{GlycanStructure, GlycanDirection, GlycanRoot, GlycanSelection, GlycanRenderSettings};
-/// const SETTINGS = GlycanRenderSettings {
-///     column_size: 30.0,
-///     sugar_size: 15.0,
-///     stroke_size: 1.5,
-///     foreground: [0, 0, 0],
-///     background: [255, 255, 255],
-///     ..Default::default()
-/// }
 /// let mut output = String::new();
 /// let mut footnotes = Vec::new();
 /// let short_iupac = "Neu5Ac(a2-6)Gal(b1-4)GlcNAc(b1-2)Man(a1-3)[Gal(b1-4)GlcNAc(b1-2)Man(a1-6)]Man(b1-4)GlcNAc(b1-4)GlcNAc(?1-"; // Definition for G01670UQ
@@ -122,7 +114,7 @@ pub(super) enum TextBaseline {
 ///             root,
 ///             GlycanDirection::TopDown,
 ///             GlycanSelection::FULL,
-///             &SETTINGS,
+///             &GlycanRenderSettings::default(),
 ///             &mut footnotes,
 ///         )
 ///         .unwrap();
