@@ -1,21 +1,30 @@
+use std::{collections::HashMap, fmt::Write};
+
+use itertools::Itertools;
+
 use crate::glycan::{
-    BaseSugar, Configuration, GlycanSubstituent, HeptoseIsomer, HexoseIsomer, MonoSaccharide,
-    NonoseIsomer, PentoseIsomer,
+    BaseSugar, Configuration, GlycanModificationDetails, GlycanSubstituent, HeptoseIsomer,
+    HexoseIsomer, MonoSaccharide, NonoseIsomer, PentoseIsomer,
 };
 
 impl MonoSaccharide {
     /// Get the shape, colour, inner modifications, and outer modifications for this monosaccharide.
-    pub(super) fn get_shape(&self) -> (Shape, Colour, String, String) {
+    pub(super) fn get_shape(
+        &self,
+        modification_details: GlycanModificationDetails,
+    ) -> (Shape, Colour, String, String) {
         // Common substitutions
-        let mut nacetyl = 0;
-        let mut acid = 0;
-        let mut amino = 0;
-        let mut deoxy = 0;
+        let mut nacetyl = Vec::new();
+        let mut acid = Vec::new();
+        let mut amino = Vec::new();
+        let mut deoxy = Vec::new();
         // Additional needed substitutions
-        let mut acetyl = 0;
-        let mut glycolyl = 0;
-        let mut nglycolyl = 0;
-        let mut o_carboxy_ethyl = 0;
+        let mut acetyl = Vec::new();
+        let mut glycolyl = Vec::new();
+        let mut nglycolyl = Vec::new();
+        let mut o_carboxy_ethyl = Vec::new();
+        let mut didehydro = Vec::new();
+        let mut alcohol = Vec::new();
         let mut inner_modifications = if self.furanose {
             "f".to_string()
         } else {
@@ -31,42 +40,87 @@ impl MonoSaccharide {
                 Configuration::LD => "LD",
             });
         }
-        let mut outer_modifications = String::new();
-        for (m, _) in &self.substituents {
+        let mut outer_modifications: HashMap<&str, Vec<Option<u8>>> = HashMap::new();
+        for (m, location) in &self.substituents {
             match m {
-                GlycanSubstituent::NAcetyl => nacetyl += 1,
-                GlycanSubstituent::Acid => acid += 1,
-                GlycanSubstituent::Amino => amino += 1,
-                GlycanSubstituent::Deoxy => deoxy += 1,
-                GlycanSubstituent::Acetyl => acetyl += 1,
-                GlycanSubstituent::Glycolyl => glycolyl += 1,
-                GlycanSubstituent::OCarboxyEthyl => o_carboxy_ethyl += 1,
-                GlycanSubstituent::NGlycolyl => nglycolyl += 1,
-                GlycanSubstituent::Didehydro => inner_modifications.push_str("en"),
-                GlycanSubstituent::Alcohol => inner_modifications.push('o'), /* Missing symbols: */
+                GlycanSubstituent::NAcetyl => nacetyl.push(*location),
+                GlycanSubstituent::Acid => acid.push(*location),
+                GlycanSubstituent::Amino => amino.push(*location),
+                GlycanSubstituent::Deoxy => deoxy.push(*location),
+                GlycanSubstituent::Acetyl => acetyl.push(*location),
+                GlycanSubstituent::Glycolyl => glycolyl.push(*location),
+                GlycanSubstituent::OCarboxyEthyl => o_carboxy_ethyl.push(*location),
+                GlycanSubstituent::NGlycolyl => nglycolyl.push(*location),
+                GlycanSubstituent::Didehydro => didehydro.push(*location),
+                GlycanSubstituent::Alcohol => alcohol.push(*location), /* Missing symbols: */
                 // an for anhydro,
                 // on for lactone,
                 // am for lactam
-                _ => outer_modifications.push_str(m.notation()),
+                _ => outer_modifications.entry(m.notation()).or_default().push(*location),
             }
         }
-        let outer_mods = |nacetyl: usize,
-                          acid: usize,
-                          amino: usize,
-                          deoxy: usize,
-                          acetyl: usize,
-                          glycolyl: usize,
-                          nglycolyl: usize,
-                          o_carboxy_ethyl: usize| {
+        let show_mods = |locations: &[Option<u8>], name: &'static str| match modification_details {
+            GlycanModificationDetails::Full => {
+                if locations.is_empty() {
+                    String::new()
+                } else {
+                    locations.iter().fold(String::new(), |mut acc, l| {
+                        if !acc.is_empty() {
+                            let _ = acc.write_char(',');
+                        }
+                        if let Some(l) = l {
+                            let _ = write!(&mut acc, "{l}");
+                        } else {
+                            let _ = acc.write_char('?');
+                        }
+                        acc
+                    }) + name
+                }
+            }
+            GlycanModificationDetails::OnlyContent => name.repeat(locations.len()),
+            GlycanModificationDetails::NeverShow => String::new(),
+        };
+        inner_modifications.push_str(&show_mods(&didehydro, "en"));
+        inner_modifications.push_str(&show_mods(&alcohol, "o"));
+        let outer_modifications = outer_modifications
+            .into_iter()
+            .sorted()
+            .map(|(name, locations)| show_mods(&locations, name))
+            .collect();
+        let filter = |mut list: Vec<Option<u8>>, preferred: &[u8]| {
+            for p in preferred {
+                if let Some(p) = list
+                    .iter()
+                    .position(|e| *e == Some(*p))
+                    .or_else(|| list.iter().position(Option::is_none))
+                {
+                    list.remove(p);
+                } else {
+                    let _ = list.pop();
+                }
+            }
+            list
+        };
+        let outer_mods = |nacetyl: Vec<Option<u8>>,
+                          acid: Vec<Option<u8>>,
+                          amino: Vec<Option<u8>>,
+                          deoxy: Vec<Option<u8>>,
+                          acetyl: Vec<Option<u8>>,
+                          glycolyl: Vec<Option<u8>>,
+                          nglycolyl: Vec<Option<u8>>,
+                          o_carboxy_ethyl: Vec<Option<u8>>| {
             [
-                GlycanSubstituent::NAcetyl.notation().repeat(nacetyl),
-                GlycanSubstituent::Acid.notation().repeat(acid),
-                GlycanSubstituent::Amino.notation().repeat(amino),
-                GlycanSubstituent::Deoxy.notation().repeat(deoxy),
-                GlycanSubstituent::Acetyl.notation().repeat(acetyl),
-                GlycanSubstituent::Glycolyl.notation().repeat(glycolyl),
-                GlycanSubstituent::NGlycolyl.notation().repeat(nglycolyl),
-                GlycanSubstituent::OCarboxyEthyl.notation().repeat(o_carboxy_ethyl),
+                show_mods(&nacetyl, GlycanSubstituent::NAcetyl.notation()),
+                show_mods(&acid, GlycanSubstituent::Acid.notation()),
+                show_mods(&amino, GlycanSubstituent::Amino.notation()),
+                show_mods(&deoxy, GlycanSubstituent::Deoxy.notation()),
+                show_mods(&acetyl, GlycanSubstituent::Acetyl.notation()),
+                show_mods(&glycolyl, GlycanSubstituent::Glycyl.notation()),
+                show_mods(&nglycolyl, GlycanSubstituent::NGlycolyl.notation()),
+                show_mods(
+                    &o_carboxy_ethyl,
+                    GlycanSubstituent::OCarboxyEthyl.notation(),
+                ),
                 outer_modifications,
             ]
             .join("")
@@ -94,23 +148,23 @@ impl MonoSaccharide {
                 ),
             ),
             BaseSugar::Hexose(isomer) => {
-                if o_carboxy_ethyl > 0 && nacetyl > 0 {
+                if !o_carboxy_ethyl.is_empty() && !nacetyl.is_empty() {
                     (
                         Shape::Hexagon,
                         Colour::Purple,
                         inner_modifications,
                         outer_mods(
-                            nacetyl - 1,
+                            filter(nacetyl, &[2]),
                             acid,
                             amino,
                             deoxy,
                             acetyl,
                             glycolyl,
                             nglycolyl,
-                            o_carboxy_ethyl - 1,
+                            filter(o_carboxy_ethyl, &[3]),
                         ),
                     )
-                } else if o_carboxy_ethyl > 0 && nglycolyl > 0 {
+                } else if !o_carboxy_ethyl.is_empty() && !nglycolyl.is_empty() {
                     (
                         Shape::Hexagon,
                         Colour::LightBlue,
@@ -122,11 +176,11 @@ impl MonoSaccharide {
                             deoxy,
                             acetyl,
                             glycolyl,
-                            nglycolyl - 1,
-                            o_carboxy_ethyl - 1,
+                            filter(nglycolyl, &[2]),
+                            filter(o_carboxy_ethyl, &[3]),
                         ),
                     )
-                } else if o_carboxy_ethyl > 0 && amino > 0 {
+                } else if !o_carboxy_ethyl.is_empty() && !amino.is_empty() {
                     (
                         Shape::Hexagon,
                         Colour::Brown,
@@ -134,15 +188,15 @@ impl MonoSaccharide {
                         outer_mods(
                             nacetyl,
                             acid,
-                            amino - 1,
+                            filter(amino, &[2]),
                             deoxy,
                             acetyl,
                             glycolyl,
                             nglycolyl,
-                            o_carboxy_ethyl - 1,
+                            filter(o_carboxy_ethyl, &[3]),
                         ),
                     )
-                } else if deoxy > 1 {
+                } else if deoxy.len() > 1 {
                     let c = match isomer {
                         Some(HexoseIsomer::Glucose) => Colour::Blue,
                         Some(HexoseIsomer::Mannose) => Colour::Green,
@@ -160,14 +214,14 @@ impl MonoSaccharide {
                             nacetyl,
                             acid,
                             amino,
-                            deoxy - 2,
+                            filter(deoxy, &[2, 6]),
                             acetyl,
                             glycolyl,
                             nglycolyl,
                             o_carboxy_ethyl,
                         ),
                     )
-                } else if amino > 1 && deoxy > 0 {
+                } else if amino.len() > 1 && !deoxy.is_empty() {
                     (
                         Shape::Hexagon,
                         Colour::Blue,
@@ -175,15 +229,15 @@ impl MonoSaccharide {
                         outer_mods(
                             nacetyl,
                             acid,
-                            amino - 2,
-                            deoxy - 1,
+                            filter(amino, &[2, 4]),
+                            filter(deoxy, &[6]),
                             acetyl,
                             glycolyl,
                             nglycolyl,
                             o_carboxy_ethyl,
                         ),
                     )
-                } else if nacetyl > 0 && deoxy > 0 {
+                } else if !nacetyl.is_empty() && !deoxy.is_empty() {
                     let c = match isomer {
                         Some(HexoseIsomer::Glucose) => Colour::Blue,
                         Some(HexoseIsomer::Mannose) => Colour::Green,
@@ -197,17 +251,17 @@ impl MonoSaccharide {
                         c,
                         inner_modifications,
                         outer_mods(
-                            nacetyl - 1,
+                            filter(nacetyl, &[2]),
                             acid,
                             amino,
-                            deoxy - 1,
+                            filter(deoxy, &[6]),
                             acetyl,
                             glycolyl,
                             nglycolyl,
                             o_carboxy_ethyl,
                         ),
                     )
-                } else if deoxy > 0 {
+                } else if !deoxy.is_empty() {
                     let c = match isomer {
                         Some(HexoseIsomer::Glucose) => Colour::Blue,
                         Some(HexoseIsomer::Mannose) => Colour::Green,
@@ -225,14 +279,14 @@ impl MonoSaccharide {
                             nacetyl,
                             acid,
                             amino,
-                            deoxy - 1,
+                            filter(deoxy, &[6]),
                             acetyl,
                             glycolyl,
                             nglycolyl,
                             o_carboxy_ethyl,
                         ),
                     )
-                } else if acid > 0 || amino > 0 || nacetyl > 0 {
+                } else if !acid.is_empty() || !amino.is_empty() || !nacetyl.is_empty() {
                     let c = match isomer {
                         Some(HexoseIsomer::Glucose) => Colour::Blue,
                         Some(HexoseIsomer::Mannose) => Colour::Green,
@@ -244,21 +298,21 @@ impl MonoSaccharide {
                         Some(HexoseIsomer::Idose) => Colour::Brown,
                         Some(_) | None => Colour::Background,
                     };
-                    let shape = if acid > 0 {
-                        Shape::DividedDiamond
-                    } else if amino > 0 {
-                        Shape::CrossedSquare
+                    let (shape, nacetyl, acid, amino) = if !acid.is_empty() {
+                        (Shape::DividedDiamond, nacetyl, filter(acid, &[6]), amino)
+                    } else if !amino.is_empty() {
+                        (Shape::CrossedSquare, nacetyl, acid, filter(amino, &[2]))
                     } else {
-                        Shape::Square
+                        (Shape::Square, filter(nacetyl, &[2]), acid, amino)
                     };
                     (
                         shape,
                         c,
                         inner_modifications,
                         outer_mods(
-                            nacetyl - usize::from(shape == Shape::Square),
-                            acid - usize::from(shape == Shape::DividedDiamond),
-                            amino - usize::from(shape == Shape::CrossedSquare),
+                            nacetyl,
+                            acid,
+                            amino,
                             deoxy,
                             acetyl,
                             glycolyl,
@@ -314,38 +368,38 @@ impl MonoSaccharide {
                     o_carboxy_ethyl,
                 ),
             ),
-            BaseSugar::Heptose(None) if acid > 1 && deoxy > 0 => (
+            BaseSugar::Heptose(None) if acid.len() > 1 && !deoxy.is_empty() => (
                 Shape::Hexagon,
                 Colour::Orange,
                 inner_modifications,
                 outer_mods(
                     nacetyl,
-                    acid - 2,
+                    filter(acid, &[1, 6]),
                     amino,
-                    deoxy - 1,
+                    filter(deoxy, &[3]),
                     acetyl,
                     glycolyl,
                     nglycolyl,
                     o_carboxy_ethyl,
                 ),
             ),
-            BaseSugar::Octose if acid > 0 && deoxy > 0 => (
+            BaseSugar::Octose if !acid.is_empty() && !deoxy.is_empty() => (
                 Shape::Hexagon,
                 Colour::Yellow,
                 inner_modifications,
                 outer_mods(
                     nacetyl,
-                    acid - 1,
+                    filter(acid, &[2]),
                     amino,
-                    deoxy - 1,
+                    filter(deoxy, &[3]),
                     acetyl,
                     glycolyl,
                     nglycolyl,
                     o_carboxy_ethyl,
                 ),
             ),
-            BaseSugar::Nonose(isomer) if acid > 0 && amino > 0 => {
-                if amino > 1 && deoxy > 1 {
+            BaseSugar::Nonose(isomer) if !acid.is_empty() && !amino.is_empty() => {
+                if amino.len() > 1 && deoxy.len() > 1 {
                     (
                         Shape::FlatDiamond,
                         match isomer {
@@ -358,9 +412,9 @@ impl MonoSaccharide {
                         inner_modifications,
                         outer_mods(
                             nacetyl,
-                            acid - 1,
-                            amino - 2,
-                            deoxy - 2,
+                            filter(acid, &[2]),
+                            filter(amino, &[5, 7]),
+                            filter(deoxy, &[3, 9]),
                             acetyl,
                             glycolyl,
                             nglycolyl,
@@ -368,15 +422,18 @@ impl MonoSaccharide {
                         ),
                     )
                 } else {
-                    let colour = if deoxy > 0 {
+                    let colour = if !deoxy.is_empty() {
+                        deoxy = filter(deoxy, &[3]);
                         if *isomer == Some(NonoseIsomer::Kdn) {
                             Colour::Green
                         } else {
                             Colour::Red
                         }
-                    } else if acetyl > 0 {
+                    } else if !acetyl.is_empty() {
+                        acetyl = filter(acetyl, &[5]);
                         Colour::Purple
-                    } else if glycolyl > 0 {
+                    } else if !glycolyl.is_empty() {
+                        glycolyl = filter(glycolyl, &[5]);
                         Colour::LightBlue
                     } else {
                         Colour::Brown
@@ -387,11 +444,11 @@ impl MonoSaccharide {
                         inner_modifications,
                         outer_mods(
                             nacetyl,
-                            acid - 1,
-                            amino - 1,
-                            deoxy - usize::from(colour == Colour::Red || colour == Colour::Green),
-                            acetyl - usize::from(colour == Colour::Purple),
-                            glycolyl - usize::from(colour == Colour::LightBlue),
+                            filter(acid, &[2]),
+                            filter(amino, &[5]),
+                            deoxy,
+                            acetyl,
+                            glycolyl,
                             nglycolyl,
                             o_carboxy_ethyl,
                         ),

@@ -28,22 +28,93 @@ pub struct GlycanRenderSettings {
     /// The colour to be used for the background, in RGB order, this is used to fill 'empty' sugars
     /// if the isomeric state is unknown.
     pub background: [u8; 3],
+    /// The details to show on modifications.
+    pub modification_details: GlycanModificationDetails,
     // TODO: add settings:
     // - modification precision
     // - linkage precision
     // - centre shape mods/orientation/conformation
 }
 
-impl Default for GlycanRenderSettings {
-    fn default() -> Self {
+impl GlycanRenderSettings {
+    /// Set the column size
+    #[must_use]
+    pub const fn column_size(self, column_size: f32) -> Self {
+        Self {
+            column_size,
+            ..self
+        }
+    }
+
+    /// Set the sugar size
+    #[must_use]
+    pub const fn sugar_size(self, sugar_size: f32) -> Self {
+        Self { sugar_size, ..self }
+    }
+
+    /// Set the stroke size
+    #[must_use]
+    pub const fn stroke_size(self, stroke_size: f32) -> Self {
+        Self {
+            stroke_size,
+            ..self
+        }
+    }
+
+    /// Set the foreground colour
+    #[must_use]
+    pub const fn foreground(self, foreground: [u8; 3]) -> Self {
+        Self { foreground, ..self }
+    }
+
+    /// Set the background colour
+    #[must_use]
+    pub const fn background(self, background: [u8; 3]) -> Self {
+        Self { background, ..self }
+    }
+
+    /// Set the modification details level
+    #[must_use]
+    pub const fn modification_details(
+        self,
+        modification_details: GlycanModificationDetails,
+    ) -> Self {
+        Self {
+            modification_details,
+            ..self
+        }
+    }
+
+    /// Get a const compatible default
+    #[must_use]
+    pub const fn const_default() -> Self {
         Self {
             column_size: 30.0,
             sugar_size: 15.0,
             stroke_size: 1.5,
             foreground: [0, 0, 0],
             background: [255, 255, 255],
+            modification_details: GlycanModificationDetails::Full,
         }
     }
+}
+
+impl Default for GlycanRenderSettings {
+    fn default() -> Self {
+        Self::const_default()
+    }
+}
+
+/// The detail level to render modifications at when rendering glycans.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum GlycanModificationDetails {
+    /// Never render any modifications (but of course still use squares for HexNAc etc.). This will
+    /// also not insert any footnotes in the modification footnotes.
+    NeverShow,
+    /// Only show the content, never the location.
+    OnlyContent,
+    /// Show both the content and the location, if the location is not known show `?` instead.
+    Full,
 }
 
 impl GlycanStructure {
@@ -68,7 +139,7 @@ impl GlycanStructure {
         settings: &GlycanRenderSettings,
         footnotes: &'a mut Vec<String>,
     ) -> Option<RenderedGlycan> {
-        self.position_absolute(0, &[], footnotes)
+        self.position_absolute(0, &[], settings.modification_details, footnotes)
             .render(basis, direction, selection, settings, footnotes)
     }
 
@@ -79,9 +150,11 @@ impl GlycanStructure {
         &self,
         depth: u16,
         path: &[(GlycanBranchIndex, GlycanBranchMassIndex)],
+        modification_details: GlycanModificationDetails,
         footnotes: &mut Vec<String>,
     ) -> AbsolutePositionedGlycan {
-        let (shape, colour, inner_modifications, outer_modifications) = self.sugar.get_shape();
+        let (shape, colour, inner_modifications, outer_modifications) =
+            self.sugar.get_shape(modification_details);
         // Automatically make footnotes out of long outer modification texts
         let outer_modifications = if outer_modifications.len() > 6 {
             let index = footnotes.iter().position(|e| *e == outer_modifications);
@@ -146,6 +219,7 @@ impl GlycanStructure {
                     } else {
                         path
                     },
+                    modification_details,
                     footnotes,
                 );
                 rendered.branch_index = branch_index;

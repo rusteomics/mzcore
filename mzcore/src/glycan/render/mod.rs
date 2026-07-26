@@ -7,5 +7,5 @@ mod svg;
 #[cfg(all(test, not(github_action), feature = "glycan-render-bitmap"))]
 mod test;
 
-pub use absolute::{GlycanDirection, GlycanRenderSettings};
+pub use absolute::{GlycanDirection, GlycanModificationDetails, GlycanRenderSettings};
 pub use element::{GlycanRoot, RenderedGlycan};

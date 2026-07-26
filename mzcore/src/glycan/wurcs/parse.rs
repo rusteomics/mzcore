@@ -7,7 +7,7 @@ use crate::{
 };
 
 /// The possible errors that can be returned from parsing a WURCS line
-#[derive(Debug, Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub enum WurcsParseError {
     /// The definition is empty
     Empty,
