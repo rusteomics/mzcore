@@ -18,65 +18,58 @@ use crate::{
 pub struct GlycanRenderSettings {
     /// The size (in pixels) of one block in the glycan, the full size with the padding and sugar
     /// size included.
-    column_size: f32,
+    pub column_size: f32,
     /// The size (in pixels) of a monosaccharide.
-    sugar_size: f32,
+    pub sugar_size: f32,
     /// The size (in pixels) of the strokes in the graphic.
-    stroke_size: f32,
+    pub stroke_size: f32,
     /// The colour to be used for the foreground, in RGB order.
-    foreground: [u8; 3],
+    pub foreground: [u8; 3],
     /// The colour to be used for the background, in RGB order, this is used to fill 'empty' sugars
     /// if the isomeric state is unknown.
-    background: [u8; 3],
+    pub background: [u8; 3],
     // TODO: add settings:
     // - modification precision
     // - linkage precision
     // - centre shape mods/orientation/conformation
 }
 
+impl Default for GlycanRenderSettings {
+    fn default() -> Self {
+        Self {
+            column_size: 30.0,
+            sugar_size: 15.0,
+            stroke_size: 1.5,
+            foreground: [0, 0, 0],
+            background: [255, 255, 255],
+        }
+    }
+}
+
 impl GlycanStructure {
     /// Render this glycan to the internal representation. This can then be rendered to SVG or a
     /// bitmap.
     ///  * `basis`: the text or symbol to draw at the root of the tree.
-    ///  * `column_size`: the size (in pixels) of one block in the glycan, the full size with the
-    ///    padding and sugar size included.
-    ///  * `sugar_size`: the size (in pixels) of a monosaccharide.
-    ///  * `stroke_size`: the size (in pixels) of the strokes in the graphic.
     ///  * `direction`: the direction the draw the image in.
     ///  * `selection`: the selection of the glycan to draw, used to render fragments.
-    ///  * `foreground`: the colour to be used for the foreground, in RGB order.
-    ///  * `background`: the colour to be used for the background, in RGB order, this is used to
-    ///    fill 'empty' sugars if the isomeric state is unknown.
+    ///  * `settings`: the settings for how to render this glycan.
     ///  * `footnotes`: used to gather modification texts that are too big to place in line. The
     ///    caller will have to find their own way of displaying this to the user.
     ///
     /// # Errors
-    /// If the underlying buffer errors the error is returned. Otherwise `Ok(false)` is returned if
+    /// If the underlying buffer errors the error is returned. Otherwise, `Ok(false)` is returned if
     /// the given `root_break` is not valid, and `Ok(true)` is returned if the rendering was fully
     /// successful.
     pub fn render<'a>(
         &'a self,
         basis: GlycanRoot,
-        column_size: f32,
-        sugar_size: f32,
-        stroke_size: f32,
         direction: GlycanDirection,
         selection: GlycanSelection<'a>,
-        foreground: [u8; 3],
-        background: [u8; 3],
+        settings: &GlycanRenderSettings,
         footnotes: &'a mut Vec<String>,
     ) -> Option<RenderedGlycan> {
-        self.position_absolute(0, &[], footnotes).render(
-            basis,
-            column_size,
-            sugar_size,
-            stroke_size,
-            direction,
-            selection,
-            foreground,
-            background,
-            footnotes,
-        )
+        self.position_absolute(0, &[], footnotes)
+            .render(basis, direction, selection, settings, footnotes)
     }
 
     /// Build the rendered glycan.
@@ -262,9 +255,9 @@ pub(super) struct AbsolutePositionedGlycan {
     /// The index into the branches of the parent monosaccharide
     pub(super) branch_index: usize,
     /// All branches that go up the tree
-    pub(super) branches: Vec<AbsolutePositionedGlycan>,
+    pub(super) branches: Vec<Self>,
     /// All branches that go to the side (Fucoses)
-    pub(super) sides: Vec<AbsolutePositionedGlycan>,
+    pub(super) sides: Vec<Self>,
 }
 
 #[derive(Clone, Debug)]

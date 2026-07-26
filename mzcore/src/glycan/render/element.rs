@@ -3,7 +3,8 @@ use std::f32::consts::PI;
 use itertools::Itertools;
 
 use crate::glycan::{
-    GlycanBranchIndex, GlycanBranchMassIndex, GlycanDirection, GlycanSelection,
+    GlycanBranchIndex, GlycanBranchMassIndex, GlycanDirection, GlycanRenderSettings,
+    GlycanSelection,
     render::{
         absolute::{AbsolutePositionedGlycan, OuterModifications},
         shape::{Colour, Shape},
@@ -18,6 +19,7 @@ pub struct RenderedGlycan {
     /// All elements to be rendered
     pub(super) elements: Vec<Element>,
     /// The background colour
+    #[allow(dead_code)] // Only needed in the bitmap rendering
     pub(super) background: [u8; 3],
     /// Midpoint in pixels from the right for a top down glycan or in pixels from the top for a
     /// left to right glycan
@@ -94,10 +96,15 @@ pub(super) enum TextBaseline {
 /// _Glycan [G01670UQ](http://glytoucan.org/Structures/Glycans/G01670UQ) using the different root types: None, Line, Symbol, Text("pep"), Text("N"), Text("Arg")_
 ///
 /// ```rust
-/// # use mzcore::glycan::{GlycanStructure, GlycanDirection, GlycanRoot, GlycanSelection};
-/// const COLUMN_SIZE: f32 = 30.0;
-/// const SUGAR_SIZE: f32 = 15.0;
-/// const STROKE_SIZE: f32 = 1.5;
+/// # use mzcore::glycan::{GlycanStructure, GlycanDirection, GlycanRoot, GlycanSelection, GlycanRenderSettings};
+/// const SETTINGS = GlycanRenderSettings {
+///     column_size: 30.0,
+///     sugar_size: 15.0,
+///     stroke_size: 1.5,
+///     foreground: [0, 0, 0],
+///     background: [255, 255, 255],
+///     ..Default::default()
+/// }
 /// let mut output = String::new();
 /// let mut footnotes = Vec::new();
 /// let short_iupac = "Neu5Ac(a2-6)Gal(b1-4)GlcNAc(b1-2)Man(a1-3)[Gal(b1-4)GlcNAc(b1-2)Man(a1-6)]Man(b1-4)GlcNAc(b1-4)GlcNAc(?1-"; // Definition for G01670UQ
@@ -113,13 +120,9 @@ pub(super) enum TextBaseline {
 ///     let rendered = structure
 ///         .render(
 ///             root,
-///             COLUMN_SIZE,
-///             SUGAR_SIZE,
-///             STROKE_SIZE,
 ///             GlycanDirection::TopDown,
 ///             GlycanSelection::FULL,
-///             [0, 0, 0],
-///             [255, 255, 255],
+///             &SETTINGS,
 ///             &mut footnotes,
 ///         )
 ///         .unwrap();
@@ -153,27 +156,19 @@ impl AbsolutePositionedGlycan {
     pub(super) fn render<'a>(
         &'a self,
         basis: GlycanRoot,
-        column_size: f32,
-        sugar_size: f32,
-        stroke_size: f32,
         direction: GlycanDirection,
         selection: GlycanSelection<'a>,
-        foreground: [u8; 3],
-        background: [u8; 3],
+        settings: &GlycanRenderSettings,
         footnotes: &'a mut Vec<String>,
     ) -> Option<RenderedGlycan> {
         fn render_element(
             buffer: &mut Vec<Element>,
             element: &AbsolutePositionedGlycan,
-            column_size: f32,
-            sugar_size: f32,
-            stroke_size: f32,
             direction: GlycanDirection,
             x_offset: f32,
             y_offset: f32,
             breaks: &[(u16, Vec<(GlycanBranchIndex, GlycanBranchMassIndex)>)],
-            foreground: [u8; 3],
-            background: [u8; 3],
+            settings: &GlycanRenderSettings,
             incoming_stroke: (f32, f32, f32, f32),
             footnotes: &mut Vec<String>,
         ) {
@@ -189,53 +184,57 @@ impl AbsolutePositionedGlycan {
                 .map(|b| (false, b))
                 .chain(element.sides.iter().map(|b| (true, b)))
             {
-                let origin_x = (raw_x + element.mid_point) * column_size;
-                let origin_y = (raw_y + 0.5) * column_size;
-                let base_x = (branch.x + branch.mid_point - x_offset) * column_size;
+                let origin_x = (raw_x + element.mid_point) * settings.column_size;
+                let origin_y = (raw_y + 0.5) * settings.column_size;
+                let base_x = (branch.x + branch.mid_point - x_offset) * settings.column_size;
                 if (total_branches == 1 && breaks.iter().any(|b| b.0 == 1))
                     || breaks
                         .iter()
                         .any(|b| b.0 == 1 && b.1.first().map(|b| b.0) == Some(branch.branch_index))
                 {
-                    let base_y =
-                        (raw_y - 0.5 + f32::from(side)).mul_add(column_size, stroke_size * 0.5);
+                    let base_y = (raw_y - 0.5 + f32::from(side))
+                        .mul_add(settings.column_size, settings.stroke_size * 0.5);
                     let angle = f32::atan2(base_y - origin_y, base_x - origin_x);
                     buffer.push(Element::Line {
                         from: pick_point((origin_x, origin_y), direction),
                         to: pick_point((base_x, base_y), direction),
-                        stroke: foreground,
-                        stroke_size,
+                        stroke: settings.foreground,
+                        stroke_size: settings.stroke_size,
                     });
-                    let x1 = (sugar_size / 2.0).mul_add(0.5f32.mul_add(PI, -angle).cos(), base_x);
-                    let y1 =
-                        (sugar_size / 2.0).mul_add((-0.5f32).mul_add(PI, -angle).sin(), base_y);
-                    let x2 =
-                        (sugar_size / 2.0).mul_add((-0.5f32).mul_add(PI, -angle).cos(), base_x);
-                    let y2 = (sugar_size / 2.0).mul_add(0.5f32.mul_add(PI, -angle).sin(), base_y);
+                    let x1 = (settings.sugar_size / 2.0)
+                        .mul_add(0.5f32.mul_add(PI, -angle).cos(), base_x);
+                    let y1 = (settings.sugar_size / 2.0)
+                        .mul_add((-0.5f32).mul_add(PI, -angle).sin(), base_y);
+                    let x2 = (settings.sugar_size / 2.0)
+                        .mul_add((-0.5f32).mul_add(PI, -angle).cos(), base_x);
+                    let y2 = (settings.sugar_size / 2.0)
+                        .mul_add(0.5f32.mul_add(PI, -angle).sin(), base_y);
                     buffer.push(Element::Line {
                         from: pick_point((x1, y1), direction),
                         to: pick_point((x2, y2), direction),
-                        stroke: foreground,
-                        stroke_size,
+                        stroke: settings.foreground,
+                        stroke_size: settings.stroke_size,
                     });
-                    let x3 = (stroke_size * 2.0).mul_add(-angle.cos(), x1);
-                    let y3 = (stroke_size * 2.0).mul_add(-angle.sin(), y1);
+                    let x3 = (settings.stroke_size * 2.0).mul_add(-angle.cos(), x1);
+                    let y3 = (settings.stroke_size * 2.0).mul_add(-angle.sin(), y1);
                     buffer.push(Element::Line {
                         from: pick_point((x1, y1), direction),
                         to: pick_point((x3, y3), direction),
-                        stroke: foreground,
-                        stroke_size,
+                        stroke: settings.foreground,
+                        stroke_size: settings.stroke_size,
                     });
-                    let offset = 0.25f32.mul_add(column_size, stroke_size);
-                    let r = 0.25f32.mul_add(column_size, -stroke_size).min(sugar_size * 0.25);
+                    let offset = 0.25f32.mul_add(settings.column_size, settings.stroke_size);
+                    let r = 0.25f32
+                        .mul_add(settings.column_size, -settings.stroke_size)
+                        .min(settings.sugar_size * 0.25);
                     let adjusted_x = offset.mul_add(-angle.cos(), base_x);
                     let adjusted_y = offset.mul_add(-angle.sin(), base_y);
                     buffer.push(Element::Circle {
                         r,
                         center: pick_point((adjusted_x, adjusted_y), direction),
                         fill: None,
-                        stroke: foreground,
-                        stroke_size,
+                        stroke: settings.foreground,
+                        stroke_size: settings.stroke_size,
                         svg_header: String::new(),
                     });
                     strokes.push(pick_box(
@@ -248,12 +247,12 @@ impl AbsolutePositionedGlycan {
                         direction,
                     ));
                 } else {
-                    let base_y = ((branch.y as f32) - y_offset + 0.5) * column_size;
+                    let base_y = ((branch.y as f32) - y_offset + 0.5) * settings.column_size;
                     buffer.push(Element::Line {
                         from: pick_point((origin_x, origin_y), direction),
                         to: pick_point((base_x, base_y), direction),
-                        stroke: foreground,
-                        stroke_size,
+                        stroke: settings.foreground,
+                        stroke_size: settings.stroke_size,
                     });
                     strokes.push(pick_box(
                         (
@@ -269,7 +268,7 @@ impl AbsolutePositionedGlycan {
 
             // Render the sugar
             let fill = if element.colour == Colour::Background {
-                background
+                settings.background
             } else {
                 element.colour.rgb()
             };
@@ -281,81 +280,87 @@ impl AbsolutePositionedGlycan {
             );
             match element.shape {
                 Shape::Circle => buffer.push(Element::Circle {
-                    r: sugar_size / 2.0,
+                    r: settings.sugar_size / 2.0,
                     center: pick_point(
                         (
-                            (raw_x + element.mid_point) * column_size,
-                            (raw_y + 0.5) * column_size,
+                            (raw_x + element.mid_point) * settings.column_size,
+                            (raw_y + 0.5) * settings.column_size,
                         ),
                         direction,
                     ),
                     fill: Some(fill),
-                    stroke: foreground,
-                    stroke_size,
+                    stroke: settings.foreground,
+                    stroke_size: settings.stroke_size,
                     svg_header: title,
                 }),
                 Shape::Square => buffer.push(Element::Rectangle {
                     top: pick_point(
                         (
-                            (raw_x + element.mid_point).mul_add(column_size, -sugar_size / 2.0),
-                            (raw_y + 0.5).mul_add(column_size, -sugar_size / 2.0),
+                            (raw_x + element.mid_point)
+                                .mul_add(settings.column_size, -settings.sugar_size / 2.0),
+                            (raw_y + 0.5).mul_add(settings.column_size, -settings.sugar_size / 2.0),
                         ),
                         direction,
                     ),
-                    w: sugar_size,
-                    h: sugar_size,
+                    w: settings.sugar_size,
+                    h: settings.sugar_size,
                     fill,
-                    stroke: foreground,
-                    stroke_size,
+                    stroke: settings.foreground,
+                    stroke_size: settings.stroke_size,
                     svg_header: title,
                 }),
                 Shape::Rectangle => {
                     let (base_x, base_y) = pick_point(
                         (
-                            ((raw_x + element.mid_point) * column_size),
-                            (raw_y + 0.5) * column_size,
+                            ((raw_x + element.mid_point) * settings.column_size),
+                            (raw_y + 0.5) * settings.column_size,
                         ),
                         direction,
                     );
                     buffer.push(Element::Rectangle {
-                        top: (base_x - sugar_size / 2.0, base_y - sugar_size / 4.0),
-                        w: sugar_size,
-                        h: sugar_size / 2.0,
+                        top: (
+                            base_x - settings.sugar_size / 2.0,
+                            base_y - settings.sugar_size / 4.0,
+                        ),
+                        w: settings.sugar_size,
+                        h: settings.sugar_size / 2.0,
                         fill,
-                        stroke: foreground,
-                        stroke_size,
+                        stroke: settings.foreground,
+                        stroke_size: settings.stroke_size,
                         svg_header: title,
                     });
                 }
                 Shape::Triangle => {
                     let (base_x, base_y) = pick_point(
                         (
-                            ((raw_x + element.mid_point) * column_size),
-                            (raw_y + 0.5) * column_size,
+                            ((raw_x + element.mid_point) * settings.column_size),
+                            (raw_y + 0.5) * settings.column_size,
                         ),
                         direction,
                     );
-                    let x1 = base_x - sugar_size / 2.0;
-                    let x2 = x1 + sugar_size / 2.0;
-                    let x3 = x1 + sugar_size;
-                    let y1 = base_y - sugar_size / 2.0;
-                    let y2 = y1 + sugar_size;
+                    let x1 = base_x - settings.sugar_size / 2.0;
+                    let x2 = x1 + settings.sugar_size / 2.0;
+                    let x3 = x1 + settings.sugar_size;
+                    let y1 = base_y - settings.sugar_size / 2.0;
+                    let y2 = y1 + settings.sugar_size;
 
                     buffer.push(Element::Polygon {
                         points: vec![(x1, y2), (x2, y1), (x3, y2)],
                         fill,
-                        stroke: foreground,
-                        stroke_size,
+                        stroke: settings.foreground,
+                        stroke_size: settings.stroke_size,
                         svg_header: title,
                         bevel: false,
                     });
                 }
                 Shape::LeftPointingTriangle => {
-                    let x1 = (raw_x + element.mid_point).mul_add(column_size, -sugar_size / 2.0);
-                    let x2 = x1 + sugar_size;
-                    let y1 = (raw_y + 0.5).mul_add(column_size, -sugar_size / 2.0);
-                    let y2 = y1 + sugar_size / 2.0;
-                    let y3 = y1 + sugar_size;
+                    let x1 = (raw_x + element.mid_point)
+                        .mul_add(settings.column_size, -settings.sugar_size / 2.0);
+                    let x2 = x1 + settings.sugar_size;
+                    let y1 =
+                        (raw_y + 0.5).mul_add(settings.column_size, -settings.sugar_size / 2.0);
+                    let y2 = y1 + settings.sugar_size / 2.0;
+                    let y3 = y1 + settings.sugar_size;
 
                     buffer.push(Element::Polygon {
                         points: vec![
@@ -364,18 +369,20 @@ impl AbsolutePositionedGlycan {
                             pick_point((x2, y3), direction),
                         ],
                         fill,
-                        stroke: foreground,
-                        stroke_size,
+                        stroke: settings.foreground,
+                        stroke_size: settings.stroke_size,
                         svg_header: title,
                         bevel: false,
                     });
                 }
                 Shape::RightPointingTriangle => {
-                    let x1 = (raw_x + element.mid_point).mul_add(column_size, -sugar_size / 2.0);
-                    let x2 = x1 + sugar_size;
-                    let y1 = (raw_y + 0.5).mul_add(column_size, -sugar_size / 2.0);
-                    let y2 = y1 + sugar_size / 2.0;
-                    let y3 = y1 + sugar_size;
+                    let x1 = (raw_x + element.mid_point)
+                        .mul_add(settings.column_size, -settings.sugar_size / 2.0);
+                    let x2 = x1 + settings.sugar_size;
+                    let y1 =
+                        (raw_y + 0.5).mul_add(settings.column_size, -settings.sugar_size / 2.0);
+                    let y2 = y1 + settings.sugar_size / 2.0;
+                    let y3 = y1 + settings.sugar_size;
 
                     buffer.push(Element::Polygon {
                         points: vec![
@@ -384,8 +391,8 @@ impl AbsolutePositionedGlycan {
                             pick_point((x1, y3), direction),
                         ],
                         fill,
-                        stroke: foreground,
-                        stroke_size,
+                        stroke: settings.foreground,
+                        stroke_size: settings.stroke_size,
                         svg_header: title,
                         bevel: false,
                     });
@@ -393,23 +400,23 @@ impl AbsolutePositionedGlycan {
                 Shape::Diamond => {
                     let (base_x, base_y) = pick_point(
                         (
-                            ((raw_x + element.mid_point) * column_size),
-                            (raw_y + 0.5) * column_size,
+                            ((raw_x + element.mid_point) * settings.column_size),
+                            (raw_y + 0.5) * settings.column_size,
                         ),
                         direction,
                     );
-                    let x1 = base_x - sugar_size / 2.0;
-                    let x2 = x1 + sugar_size / 2.0;
-                    let x3 = x1 + sugar_size;
-                    let y1 = base_y - sugar_size / 2.0;
-                    let y2 = y1 + sugar_size / 2.0;
-                    let y3 = y1 + sugar_size;
+                    let x1 = base_x - settings.sugar_size / 2.0;
+                    let x2 = x1 + settings.sugar_size / 2.0;
+                    let x3 = x1 + settings.sugar_size;
+                    let y1 = base_y - settings.sugar_size / 2.0;
+                    let y2 = y1 + settings.sugar_size / 2.0;
+                    let y3 = y1 + settings.sugar_size;
 
                     buffer.push(Element::Polygon {
                         points: vec![(x2, y1), (x3, y2), (x2, y3), (x1, y2)],
                         fill,
-                        stroke: foreground,
-                        stroke_size,
+                        stroke: settings.foreground,
+                        stroke_size: settings.stroke_size,
                         svg_header: title,
                         bevel: false,
                     });
@@ -417,49 +424,49 @@ impl AbsolutePositionedGlycan {
                 Shape::FlatDiamond => {
                     let (base_x, base_y) = pick_point(
                         (
-                            ((raw_x + element.mid_point) * column_size),
-                            (raw_y + 0.5) * column_size,
+                            ((raw_x + element.mid_point) * settings.column_size),
+                            (raw_y + 0.5) * settings.column_size,
                         ),
                         direction,
                     );
-                    let x1 = base_x - sugar_size / 2.0;
-                    let x2 = x1 + sugar_size / 2.0;
-                    let x3 = x1 + sugar_size;
-                    let y1 = base_y - sugar_size / 4.0;
-                    let y2 = y1 + sugar_size / 4.0;
-                    let y3 = y1 + sugar_size / 2.0;
+                    let x1 = base_x - settings.sugar_size / 2.0;
+                    let x2 = x1 + settings.sugar_size / 2.0;
+                    let x3 = x1 + settings.sugar_size;
+                    let y1 = base_y - settings.sugar_size / 4.0;
+                    let y2 = y1 + settings.sugar_size / 4.0;
+                    let y3 = y1 + settings.sugar_size / 2.0;
 
                     buffer.push(Element::Polygon {
                         points: vec![(x2, y1), (x3, y2), (x2, y3), (x1, y2)],
                         fill,
-                        stroke: foreground,
-                        stroke_size,
+                        stroke: settings.foreground,
+                        stroke_size: settings.stroke_size,
                         svg_header: title,
                         bevel: false,
                     });
                 }
                 Shape::Hexagon => {
-                    let a = sugar_size / 2.0 / 3.0_f32.sqrt();
+                    let a = settings.sugar_size / 2.0 / 3.0_f32.sqrt();
                     let (base_x, base_y) = pick_point(
                         (
-                            ((raw_x + element.mid_point) * column_size),
-                            (raw_y + 0.5) * column_size,
+                            ((raw_x + element.mid_point) * settings.column_size),
+                            (raw_y + 0.5) * settings.column_size,
                         ),
                         direction,
                     );
-                    let x1 = base_x - sugar_size / 2.0;
+                    let x1 = base_x - settings.sugar_size / 2.0;
                     let x2 = x1 + a;
-                    let x3 = x1 + sugar_size - a;
-                    let x4 = x1 + sugar_size;
-                    let y1 = base_y - sugar_size / 4.0;
-                    let y2 = y1 + sugar_size / 4.0;
-                    let y3 = y1 + sugar_size / 2.0;
+                    let x3 = x1 + settings.sugar_size - a;
+                    let x4 = x1 + settings.sugar_size;
+                    let y1 = base_y - settings.sugar_size / 4.0;
+                    let y2 = y1 + settings.sugar_size / 4.0;
+                    let y3 = y1 + settings.sugar_size / 2.0;
 
                     buffer.push(Element::Polygon {
                         points: vec![(x1, y2), (x2, y1), (x3, y1), (x4, y2), (x3, y3), (x2, y3)],
                         fill,
-                        stroke: foreground,
-                        stroke_size,
+                        stroke: settings.foreground,
+                        stroke_size: settings.stroke_size,
                         svg_header: title,
                         bevel: false,
                     });
@@ -467,29 +474,29 @@ impl AbsolutePositionedGlycan {
                 Shape::Pentagon => {
                     let (base_x, base_y) = pick_point(
                         (
-                            ((raw_x + element.mid_point) * column_size),
-                            (raw_y + 0.5) * column_size,
+                            ((raw_x + element.mid_point) * settings.column_size),
+                            (raw_y + 0.5) * settings.column_size,
                         ),
                         direction,
                     );
-                    let a = (18.0 / 360.0 * 2.0 * PI).cos() * sugar_size / 2.0;
-                    let b = (18.0 / 360.0 * 2.0 * PI).sin() * sugar_size / 2.0;
-                    let c = (36.0 / 360.0 * 2.0 * PI).cos() * sugar_size / 2.0;
-                    let d = (36.0 / 360.0 * 2.0 * PI).sin() * sugar_size / 2.0;
+                    let a = (18.0 / 360.0 * 2.0 * PI).cos() * settings.sugar_size / 2.0;
+                    let b = (18.0 / 360.0 * 2.0 * PI).sin() * settings.sugar_size / 2.0;
+                    let c = (36.0 / 360.0 * 2.0 * PI).cos() * settings.sugar_size / 2.0;
+                    let d = (36.0 / 360.0 * 2.0 * PI).sin() * settings.sugar_size / 2.0;
                     let x1 = base_x - a;
                     let x2 = base_x - d;
                     let x3 = base_x;
                     let x4 = base_x + d;
                     let x5 = base_x + a;
-                    let y1 = base_y - sugar_size / 2.0;
-                    let y2 = y1 + sugar_size / 2.0 - b;
-                    let y3 = y1 + sugar_size / 2.0 + c;
+                    let y1 = base_y - settings.sugar_size / 2.0;
+                    let y2 = y1 + settings.sugar_size / 2.0 - b;
+                    let y3 = y1 + settings.sugar_size / 2.0 + c;
 
                     buffer.push(Element::Polygon {
                         points: vec![(x1, y2), (x3, y1), (x5, y2), (x4, y3), (x2, y3)],
                         fill,
-                        stroke: foreground,
-                        stroke_size,
+                        stroke: settings.foreground,
+                        stroke_size: settings.stroke_size,
                         svg_header: title,
                         bevel: false,
                     });
@@ -498,20 +505,21 @@ impl AbsolutePositionedGlycan {
                     // The Phi constant, the ratio for the "golden ratio"
                     const PHI: f32 = 1.618_034_f32;
                     // Calculate sizes of parts of the pentagram
-                    let a = (18.0 / 360.0 * 2.0 * PI).cos() * sugar_size / 2.0;
-                    let b = (18.0 / 360.0 * 2.0 * PI).sin() * sugar_size / 2.0;
-                    let c = (36.0 / 360.0 * 2.0 * PI).cos() * sugar_size / 2.0;
-                    let d = (36.0 / 360.0 * 2.0 * PI).sin() * sugar_size / 2.0;
+                    let a = (18.0 / 360.0 * 2.0 * PI).cos() * settings.sugar_size / 2.0;
+                    let b = (18.0 / 360.0 * 2.0 * PI).sin() * settings.sugar_size / 2.0;
+                    let c = (36.0 / 360.0 * 2.0 * PI).cos() * settings.sugar_size / 2.0;
+                    let d = (36.0 / 360.0 * 2.0 * PI).sin() * settings.sugar_size / 2.0;
                     let e = 2.0 * a / (54.0 / 360.0 * 2.0 * PI).sin() / (1.0 + 1.0 / PHI);
-                    let f = (18.0 / 360.0 * 2.0 * PI).cos().mul_add(e, -(sugar_size / 2.0));
+                    let f =
+                        (18.0 / 360.0 * 2.0 * PI).cos().mul_add(e, -(settings.sugar_size / 2.0));
                     let g = (18.0 / 360.0 * 2.0 * PI).sin() * e;
-                    let h = (sugar_size / 2.0 - b) * (18.0 / 360.0 * 2.0 * PI).tan();
+                    let h = (settings.sugar_size / 2.0 - b) * (18.0 / 360.0 * 2.0 * PI).tan();
                     let j = (18.0 / 360.0 * 2.0 * PI).tan() * g;
                     // Calculate the positions of the pentagram points
                     let (base_x, base_y) = pick_point(
                         (
-                            ((raw_x + element.mid_point) * column_size),
-                            (raw_y + 0.5) * column_size,
+                            ((raw_x + element.mid_point) * settings.column_size),
+                            (raw_y + 0.5) * settings.column_size,
                         ),
                         direction,
                     );
@@ -524,11 +532,11 @@ impl AbsolutePositionedGlycan {
                     let x7 = base_x + g;
                     let x8 = base_x + d;
                     let x9 = base_x + a;
-                    let y1 = base_y - sugar_size / 2.0;
-                    let y2 = y1 + sugar_size / 2.0 - b;
-                    let y3 = y1 + sugar_size / 2.0 + j;
-                    let y4 = y1 + sugar_size / 2.0 + f;
-                    let y5 = y1 + sugar_size / 2.0 + c;
+                    let y1 = base_y - settings.sugar_size / 2.0;
+                    let y2 = y1 + settings.sugar_size / 2.0 - b;
+                    let y3 = y1 + settings.sugar_size / 2.0 + j;
+                    let y4 = y1 + settings.sugar_size / 2.0 + f;
+                    let y5 = y1 + settings.sugar_size / 2.0 + c;
 
                     buffer.push(Element::Polygon {
                         points: vec![
@@ -544,8 +552,8 @@ impl AbsolutePositionedGlycan {
                             (x3, y3),
                         ],
                         fill,
-                        stroke: foreground,
-                        stroke_size,
+                        stroke: settings.foreground,
+                        stroke_size: settings.stroke_size,
                         svg_header: title,
                         bevel: false,
                     });
@@ -553,37 +561,37 @@ impl AbsolutePositionedGlycan {
                 Shape::CrossedSquare => {
                     let (base_x, base_y) = pick_point(
                         (
-                            ((raw_x + element.mid_point) * column_size),
-                            (raw_y + 0.5) * column_size,
+                            ((raw_x + element.mid_point) * settings.column_size),
+                            (raw_y + 0.5) * settings.column_size,
                         ),
                         direction,
                     );
-                    let x1 = base_x - sugar_size / 2.0;
-                    let y1 = base_y - sugar_size / 2.0;
-                    let x2 = x1 + sugar_size;
-                    let y2 = y1 + sugar_size;
+                    let x1 = base_x - settings.sugar_size / 2.0;
+                    let y1 = base_y - settings.sugar_size / 2.0;
+                    let x2 = x1 + settings.sugar_size;
+                    let y2 = y1 + settings.sugar_size;
 
                     buffer.push(Element::Polygon {
                         points: vec![(x1, y1), (x2, y1), (x2, y2)],
                         fill,
-                        stroke: foreground,
-                        stroke_size,
+                        stroke: settings.foreground,
+                        stroke_size: settings.stroke_size,
                         svg_header: String::new(),
                         bevel: true,
                     });
                     buffer.push(Element::Polygon {
                         points: vec![(x1, y1), (x1, y2), (x2, y2)],
                         fill,
-                        stroke: foreground,
-                        stroke_size,
+                        stroke: settings.foreground,
+                        stroke_size: settings.stroke_size,
                         svg_header: String::new(),
                         bevel: true,
                     });
                     buffer.push(Element::Polygon {
                         points: vec![(x1, y1), (x2, y1), (x2, y2), (x1, y2)],
                         fill,
-                        stroke: foreground,
-                        stroke_size,
+                        stroke: settings.foreground,
+                        stroke_size: settings.stroke_size,
                         svg_header: title,
                         bevel: false,
                     });
@@ -591,39 +599,39 @@ impl AbsolutePositionedGlycan {
                 Shape::DividedDiamond => {
                     let (base_x, base_y) = pick_point(
                         (
-                            ((raw_x + element.mid_point) * column_size),
-                            (raw_y + 0.5) * column_size,
+                            ((raw_x + element.mid_point) * settings.column_size),
+                            (raw_y + 0.5) * settings.column_size,
                         ),
                         direction,
                     );
-                    let x1 = base_x - sugar_size / 2.0;
-                    let x2 = x1 + sugar_size / 2.0;
-                    let x3 = x1 + sugar_size;
-                    let y1 = base_y - sugar_size / 2.0;
-                    let y2 = y1 + sugar_size / 2.0;
-                    let y3 = y1 + sugar_size;
+                    let x1 = base_x - settings.sugar_size / 2.0;
+                    let x2 = x1 + settings.sugar_size / 2.0;
+                    let x3 = x1 + settings.sugar_size;
+                    let y1 = base_y - settings.sugar_size / 2.0;
+                    let y2 = y1 + settings.sugar_size / 2.0;
+                    let y3 = y1 + settings.sugar_size;
 
                     buffer.push(Element::Polygon {
                         points: vec![(x1, y2), (x2, y1), (x3, y2)],
                         fill,
-                        stroke: foreground,
-                        stroke_size,
+                        stroke: settings.foreground,
+                        stroke_size: settings.stroke_size,
                         svg_header: String::new(),
                         bevel: true,
                     });
                     buffer.push(Element::Polygon {
                         points: vec![(x1, y2), (x2, y3), (x3, y2)],
                         fill,
-                        stroke: foreground,
-                        stroke_size,
+                        stroke: settings.foreground,
+                        stroke_size: settings.stroke_size,
                         svg_header: String::new(),
                         bevel: true,
                     });
                     buffer.push(Element::Polygon {
                         points: vec![(x1, y2), (x2, y1), (x3, y2), (x2, y3)],
                         fill,
-                        stroke: foreground,
-                        stroke_size,
+                        stroke: settings.foreground,
+                        stroke_size: settings.stroke_size,
                         svg_header: title,
                         bevel: false,
                     });
@@ -631,38 +639,38 @@ impl AbsolutePositionedGlycan {
                 Shape::DividedTriangle => {
                     let (base_x, base_y) = pick_point(
                         (
-                            ((raw_x + element.mid_point) * column_size),
-                            (raw_y + 0.5) * column_size,
+                            ((raw_x + element.mid_point) * settings.column_size),
+                            (raw_y + 0.5) * settings.column_size,
                         ),
                         direction,
                     );
-                    let x1 = base_x - sugar_size / 2.0;
-                    let x2 = x1 + sugar_size / 2.0;
-                    let x3 = x1 + sugar_size;
-                    let y1 = base_y - sugar_size / 2.0;
-                    let y2 = y1 + sugar_size;
+                    let x1 = base_x - settings.sugar_size / 2.0;
+                    let x2 = x1 + settings.sugar_size / 2.0;
+                    let x3 = x1 + settings.sugar_size;
+                    let y1 = base_y - settings.sugar_size / 2.0;
+                    let y2 = y1 + settings.sugar_size;
 
                     buffer.push(Element::Polygon {
                         points: vec![(x2, y1), (x3, y2), (x2, y2)],
                         fill,
-                        stroke: foreground,
-                        stroke_size,
+                        stroke: settings.foreground,
+                        stroke_size: settings.stroke_size,
                         svg_header: String::new(),
                         bevel: true,
                     });
                     buffer.push(Element::Polygon {
                         points: vec![(x2, y1), (x1, y2), (x2, y2)],
                         fill,
-                        stroke: foreground,
-                        stroke_size,
+                        stroke: settings.foreground,
+                        stroke_size: settings.stroke_size,
                         svg_header: String::new(),
                         bevel: true,
                     });
                     buffer.push(Element::Polygon {
                         points: vec![(x2, y1), (x3, y2), (x1, y2)],
                         fill,
-                        stroke: foreground,
-                        stroke_size,
+                        stroke: settings.foreground,
+                        stroke_size: settings.stroke_size,
                         svg_header: title,
                         bevel: false,
                     });
@@ -673,15 +681,15 @@ impl AbsolutePositionedGlycan {
                     text: element.inner_modifications.clone(),
                     position: pick_point(
                         (
-                            (raw_x + element.mid_point) * column_size,
-                            (raw_y + 0.5) * column_size,
+                            (raw_x + element.mid_point) * settings.column_size,
+                            (raw_y + 0.5) * settings.column_size,
                         ),
                         direction,
                     ),
                     anchor: TextAnchor::Middle,
                     baseline: TextBaseline::Middle,
-                    fill: foreground,
-                    size: sugar_size / 2.0,
+                    fill: settings.foreground,
+                    size: settings.sugar_size / 2.0,
                     italic: true,
                 });
             }
@@ -690,15 +698,13 @@ impl AbsolutePositionedGlycan {
                 element.shape,
                 pick_point(
                     (
-                        (raw_x + element.mid_point - 0.5) * column_size,
-                        raw_y * column_size,
+                        (raw_x + element.mid_point - 0.5) * settings.column_size,
+                        raw_y * settings.column_size,
                     ),
                     direction,
                 ),
-                column_size,
-                sugar_size,
-                stroke_size,
                 &strokes,
+                settings,
                 footnotes,
             ) {
                 buffer.push(Element::Text {
@@ -706,8 +712,8 @@ impl AbsolutePositionedGlycan {
                     position: (pos_x, pos_y),
                     anchor,
                     baseline: TextBaseline::Hanging,
-                    fill: foreground,
-                    size: sugar_size / 2.0,
+                    fill: settings.foreground,
+                    size: settings.sugar_size / 2.0,
                     italic: false,
                 });
             }
@@ -721,9 +727,6 @@ impl AbsolutePositionedGlycan {
                     render_element(
                         buffer,
                         branch,
-                        column_size,
-                        sugar_size,
-                        stroke_size,
                         direction,
                         x_offset,
                         y_offset,
@@ -737,8 +740,7 @@ impl AbsolutePositionedGlycan {
                             })
                             .map(|b| (b.0 - 1, b.1[usize::from(total_branches > 1)..].to_vec()))
                             .collect_vec(),
-                        foreground,
-                        background,
+                        settings,
                         strokes[index + 1],
                         footnotes,
                     );
@@ -750,18 +752,18 @@ impl AbsolutePositionedGlycan {
 
         let width =
             (sub_tree.tree.x + sub_tree.tree.width - sub_tree.left_offset - sub_tree.right_offset)
-                * column_size;
+                * settings.column_size;
         let depth = sub_tree.depth as f32 + if sub_tree.break_top { 0.75 } else { 0.0 };
         let height = depth.mul_add(
-            column_size,
+            settings.column_size,
             if sub_tree.break_bottom {
-                3.5 * stroke_size
+                3.5 * settings.stroke_size
             } else {
                 (match basis {
                     GlycanRoot::None => 0.0_f32,
                     GlycanRoot::Line | GlycanRoot::Symbol => 0.5,
                     GlycanRoot::Text(_) => 1.0,
-                }) * column_size
+                }) * settings.column_size
             },
         );
 
@@ -769,69 +771,82 @@ impl AbsolutePositionedGlycan {
 
         let mut buffer = Vec::new();
         let stroke = if sub_tree.break_bottom {
-            let base_x =
-                (sub_tree.tree.x + sub_tree.tree.mid_point - sub_tree.left_offset) * column_size;
-            let base_y = depth.mul_add(column_size, stroke_size * 3.0);
+            let base_x = (sub_tree.tree.x + sub_tree.tree.mid_point - sub_tree.left_offset)
+                * settings.column_size;
+            let base_y = depth.mul_add(settings.column_size, settings.stroke_size * 3.0);
             buffer.push(Element::Line {
-                from: pick_point((base_x, (depth - 0.5) * column_size), direction),
+                from: pick_point((base_x, (depth - 0.5) * settings.column_size), direction),
                 to: pick_point((base_x, base_y), direction),
-                stroke: foreground,
-                stroke_size,
+                stroke: settings.foreground,
+                stroke_size: settings.stroke_size,
             });
             buffer.push(Element::Line {
-                from: pick_point((base_x - sugar_size / 2.0, base_y), direction),
-                to: pick_point((base_x + sugar_size / 2.0, base_y), direction),
-                stroke: foreground,
-                stroke_size,
+                from: pick_point((base_x - settings.sugar_size / 2.0, base_y), direction),
+                to: pick_point((base_x + settings.sugar_size / 2.0, base_y), direction),
+                stroke: settings.foreground,
+                stroke_size: settings.stroke_size,
             });
-            let bs_x = base_x - sugar_size / 2.0;
+            let bs_x = base_x - settings.sugar_size / 2.0;
             buffer.push(Element::Line {
-                from: pick_point((bs_x, stroke_size.mul_add(-2.0, base_y)), direction),
+                from: pick_point(
+                    (bs_x, settings.stroke_size.mul_add(-2.0, base_y)),
+                    direction,
+                ),
                 to: pick_point((bs_x, base_y), direction),
-                stroke: foreground,
-                stroke_size,
+                stroke: settings.foreground,
+                stroke_size: settings.stroke_size,
             });
-            (base_x, (depth - 0.5) * column_size, base_x, base_y)
+            (base_x, (depth - 0.5) * settings.column_size, base_x, base_y)
         } else {
             match basis {
                 GlycanRoot::None => (
                     sub_tree.tree.x + sub_tree.tree.mid_point,
-                    (depth + 0.5) * column_size,
+                    (depth + 0.5) * settings.column_size,
                     sub_tree.tree.x + sub_tree.tree.mid_point,
-                    (depth + 0.5) * column_size,
+                    (depth + 0.5) * settings.column_size,
                 ),
                 GlycanRoot::Line => {
                     let base_x = (sub_tree.tree.x + sub_tree.tree.mid_point - sub_tree.left_offset)
-                        * column_size;
-                    let base_y = depth.mul_add(column_size, (column_size - sugar_size) / 2.0);
+                        * settings.column_size;
+                    let base_y = depth.mul_add(
+                        settings.column_size,
+                        (settings.column_size - settings.sugar_size) / 2.0,
+                    );
                     buffer.push(Element::Line {
-                        from: pick_point((base_x, (depth - 0.5) * column_size), direction),
+                        from: pick_point((base_x, (depth - 0.5) * settings.column_size), direction),
                         to: pick_point((base_x, base_y), direction),
-                        stroke: foreground,
-                        stroke_size,
+                        stroke: settings.foreground,
+                        stroke_size: settings.stroke_size,
                     });
-                    (base_x, (depth - 0.5) * column_size, base_x, base_y)
+                    (base_x, (depth - 0.5) * settings.column_size, base_x, base_y)
                 }
                 GlycanRoot::Symbol => {
                     let base_x = (sub_tree.tree.x + sub_tree.tree.mid_point - sub_tree.left_offset)
-                        * column_size;
-                    let base_y = depth.mul_add(column_size, (column_size - sugar_size) / 2.0);
+                        * settings.column_size;
+                    let base_y = depth.mul_add(
+                        settings.column_size,
+                        (settings.column_size - settings.sugar_size) / 2.0,
+                    );
                     buffer.push(Element::Line {
-                        from: pick_point((base_x, (depth - 0.5) * column_size), direction),
+                        from: pick_point((base_x, (depth - 0.5) * settings.column_size), direction),
                         to: pick_point((base_x, base_y), direction),
-                        stroke: foreground,
-                        stroke_size,
+                        stroke: settings.foreground,
+                        stroke_size: settings.stroke_size,
                     });
                     buffer.push(Element::Curve {
                         start: pick_point(
-                            (base_x - (sugar_size * 0.75).min(column_size * 0.5), base_y),
+                            (
+                                base_x
+                                    - (settings.sugar_size * 0.75).min(settings.column_size * 0.5),
+                                base_y,
+                            ),
                             direction,
                         ),
                         points: vec![
                             pick_double_point(
                                 (
-                                    sugar_size.mul_add(-0.5, base_x),
-                                    sugar_size.mul_add(0.5, base_y),
+                                    settings.sugar_size.mul_add(-0.5, base_x),
+                                    settings.sugar_size.mul_add(0.5, base_y),
                                     base_x,
                                     base_y,
                                 ),
@@ -839,111 +854,119 @@ impl AbsolutePositionedGlycan {
                             ),
                             pick_double_point(
                                 (
-                                    sugar_size.mul_add(0.5, base_x),
-                                    sugar_size.mul_add(-0.5, base_y),
-                                    base_x + (sugar_size * 0.75).min(column_size * 0.5),
+                                    settings.sugar_size.mul_add(0.5, base_x),
+                                    settings.sugar_size.mul_add(-0.5, base_y),
+                                    base_x
+                                        + (settings.sugar_size * 0.75)
+                                            .min(settings.column_size * 0.5),
                                     base_y,
                                 ),
                                 direction,
                             ),
                         ],
-                        stroke: foreground,
-                        stroke_size,
+                        stroke: settings.foreground,
+                        stroke_size: settings.stroke_size,
                     });
-                    (base_x, (depth - 0.5) * column_size, base_x, base_y)
+                    (base_x, (depth - 0.5) * settings.column_size, base_x, base_y)
                 }
                 GlycanRoot::Text(basis) => {
                     let base_x = (sub_tree.tree.x + sub_tree.tree.mid_point - sub_tree.left_offset)
-                        * column_size;
-                    let base_y = depth.mul_add(column_size, (column_size - sugar_size) / 2.0);
+                        * settings.column_size;
+                    let base_y = depth.mul_add(
+                        settings.column_size,
+                        (settings.column_size - settings.sugar_size) / 2.0,
+                    );
                     buffer.push(Element::Line {
-                        from: pick_point((base_x, (depth - 0.5) * column_size), direction),
+                        from: pick_point((base_x, (depth - 0.5) * settings.column_size), direction),
                         to: pick_point((base_x, base_y), direction),
-                        stroke: foreground,
-                        stroke_size,
+                        stroke: settings.foreground,
+                        stroke_size: settings.stroke_size,
                     });
                     if direction == GlycanDirection::TopDown {
                         buffer.push(Element::Text {
                             text: basis,
-                            position: (base_x, base_y + sugar_size),
+                            position: (base_x, base_y + settings.sugar_size),
                             anchor: TextAnchor::Middle,
                             baseline: TextBaseline::Ideographic,
-                            fill: foreground,
-                            size: sugar_size,
+                            fill: settings.foreground,
+                            size: settings.sugar_size,
                             italic: false,
                         });
                     } else {
                         buffer.push(Element::Text {
                             text: basis,
-                            position: ((depth + 1.0) * column_size, base_x),
+                            position: ((depth + 1.0) * settings.column_size, base_x),
                             anchor: TextAnchor::End,
                             baseline: TextBaseline::Middle,
-                            fill: foreground,
-                            size: sugar_size,
+                            fill: settings.foreground,
+                            size: settings.sugar_size,
                             italic: false,
                         });
                     }
-                    (base_x, (depth - 0.5) * column_size, base_x, base_y)
+                    (base_x, (depth - 0.5) * settings.column_size, base_x, base_y)
                 }
             }
         };
 
         // If the full glycan has broken off immediately draw the break symbol
         if sub_tree.branch_breaks.iter().any(|r| r.0 == 0) {
-            let origin_y = depth.mul_add(column_size, (column_size - sugar_size) / 2.0);
-            let base_x =
-                (sub_tree.tree.x + sub_tree.tree.mid_point - sub_tree.left_offset) * column_size;
-            let base_y = (depth - 0.5).mul_add(column_size, stroke_size * 0.5);
+            let origin_y = depth.mul_add(
+                settings.column_size,
+                (settings.column_size - settings.sugar_size) / 2.0,
+            );
+            let base_x = (sub_tree.tree.x + sub_tree.tree.mid_point - sub_tree.left_offset)
+                * settings.column_size;
+            let base_y = (depth - 0.5).mul_add(settings.column_size, settings.stroke_size * 0.5);
             let angle = -PI / 2.0; // Always straight
             buffer.push(Element::Line {
                 from: pick_point((base_x, origin_y), direction),
                 to: pick_point((base_x, base_y), direction),
-                stroke: foreground,
-                stroke_size,
+                stroke: settings.foreground,
+                stroke_size: settings.stroke_size,
             });
-            let x1 = (sugar_size / 2.0).mul_add(0.5f32.mul_add(PI, -angle).cos(), base_x);
-            let y1 = (sugar_size / 2.0).mul_add((-0.5f32).mul_add(PI, -angle).sin(), base_y);
-            let x2 = (sugar_size / 2.0).mul_add((-0.5f32).mul_add(PI, -angle).cos(), base_x);
-            let y2 = (sugar_size / 2.0).mul_add(0.5f32.mul_add(PI, -angle).sin(), base_y);
+            let x1 = (settings.sugar_size / 2.0).mul_add(0.5f32.mul_add(PI, -angle).cos(), base_x);
+            let y1 =
+                (settings.sugar_size / 2.0).mul_add((-0.5f32).mul_add(PI, -angle).sin(), base_y);
+            let x2 =
+                (settings.sugar_size / 2.0).mul_add((-0.5f32).mul_add(PI, -angle).cos(), base_x);
+            let y2 = (settings.sugar_size / 2.0).mul_add(0.5f32.mul_add(PI, -angle).sin(), base_y);
             buffer.push(Element::Line {
                 from: pick_point((x1, y1), direction),
                 to: pick_point((x2, y2), direction),
-                stroke: foreground,
-                stroke_size,
+                stroke: settings.foreground,
+                stroke_size: settings.stroke_size,
             });
-            let x3 = (stroke_size * 2.0).mul_add(-angle.cos(), x1);
-            let y3 = (stroke_size * 2.0).mul_add(-angle.sin(), y1);
+            let x3 = (settings.stroke_size * 2.0).mul_add(-angle.cos(), x1);
+            let y3 = (settings.stroke_size * 2.0).mul_add(-angle.sin(), y1);
             buffer.push(Element::Line {
                 from: pick_point((x1, y1), direction),
                 to: pick_point((x3, y3), direction),
-                stroke: foreground,
-                stroke_size,
+                stroke: settings.foreground,
+                stroke_size: settings.stroke_size,
             });
-            let offset = 0.25f32.mul_add(column_size, stroke_size);
-            let r = 0.25f32.mul_add(column_size, -stroke_size).min(sugar_size * 0.25);
+            let offset = 0.25f32.mul_add(settings.column_size, settings.stroke_size);
+            let r = 0.25f32
+                .mul_add(settings.column_size, -settings.stroke_size)
+                .min(settings.sugar_size * 0.25);
             let adjusted_x = offset.mul_add(-angle.cos(), base_x);
             let adjusted_y = offset.mul_add(-angle.sin(), base_y);
             buffer.push(Element::Circle {
                 r,
                 center: pick_point((adjusted_x, adjusted_y), direction),
                 fill: None,
-                stroke: foreground,
-                stroke_size,
+                stroke: settings.foreground,
+                stroke_size: settings.stroke_size,
                 svg_header: String::new(),
             });
         } else {
             render_element(
                 &mut buffer,
                 sub_tree.tree,
-                column_size,
-                sugar_size,
-                stroke_size,
                 direction,
                 sub_tree.left_offset,
                 sub_tree.tree.y as f32 - (depth - 1.0),
                 &sub_tree.branch_breaks,
-                foreground,
-                background,
+                settings,
                 pick_box(stroke, direction),
                 footnotes,
             );
@@ -952,8 +975,8 @@ impl AbsolutePositionedGlycan {
         Some(RenderedGlycan {
             size,
             elements: buffer,
-            background,
-            midpoint: (sub_tree.tree.mid_point - sub_tree.left_offset) * column_size,
+            background: settings.background,
+            midpoint: (sub_tree.tree.mid_point - sub_tree.left_offset) * settings.column_size,
         })
     }
 }
@@ -963,10 +986,8 @@ fn text_location(
     outer_modifications: &OuterModifications,
     shape: Shape,
     position: (f32, f32),
-    column_size: f32,
-    sugar_size: f32,
-    stroke_size: f32,
     strokes: &[(f32, f32, f32, f32)], // x1, y1, x2, y2
+    settings: &GlycanRenderSettings,
     footnotes: &mut Vec<String>,
 ) -> Option<(f32, f32, TextAnchor, String)> {
     let text = match outer_modifications {
@@ -976,45 +997,51 @@ fn text_location(
     };
 
     // Stay within box, dodge strokes, if not fitting fall back to adding to footnotes
-    let text_height = sugar_size / 2.0;
+    let text_height = settings.sugar_size / 2.0;
     let text_width = (text.len() as f32) * text_height; // Rule of thumb, on average text is thinner than square, so this should be a good upper limit
-    let vertical_padding = shape.height().mul_add(-sugar_size, column_size) / 2.0;
+    let vertical_padding = shape.height().mul_add(-settings.sugar_size, settings.column_size) / 2.0;
 
     if vertical_padding >= text_height {
         let mut options = vec![
             (
                 (
-                    (column_size - text_width).mul_add(0.5, position.0),
+                    (settings.column_size - text_width).mul_add(0.5, position.0),
                     position.1,
-                    (column_size + text_width).mul_add(0.5, position.0),
+                    (settings.column_size + text_width).mul_add(0.5, position.0),
                     position.1 + text_height,
                 ),
                 TextAnchor::Middle,
             ),
             (
                 (
-                    (column_size - text_width).mul_add(0.5, position.0),
-                    position.1 + column_size - text_height,
-                    (column_size + text_width).mul_add(0.5, position.0),
-                    position.1 + column_size,
+                    (settings.column_size - text_width).mul_add(0.5, position.0),
+                    position.1 + settings.column_size - text_height,
+                    (settings.column_size + text_width).mul_add(0.5, position.0),
+                    position.1 + settings.column_size,
                 ),
                 TextAnchor::Middle,
             ),
             (
                 (
-                    position.0 + column_size.mul_add(0.5, -stroke_size) - text_width,
+                    position.0 + settings.column_size.mul_add(0.5, -settings.stroke_size)
+                        - text_width,
                     position.1,
-                    position.0 + column_size.mul_add(0.5, -stroke_size),
+                    position.0 + settings.column_size.mul_add(0.5, -settings.stroke_size),
                     position.1 + text_height,
                 ),
                 TextAnchor::End,
             ),
             (
                 (
-                    stroke_size.mul_add(2.0, column_size.mul_add(0.5, position.0)),
-                    position.1 + column_size - text_height,
-                    stroke_size.mul_add(2.0, column_size.mul_add(0.5, position.0) + text_width),
-                    position.1 + column_size,
+                    settings
+                        .stroke_size
+                        .mul_add(2.0, settings.column_size.mul_add(0.5, position.0)),
+                    position.1 + settings.column_size - text_height,
+                    settings.stroke_size.mul_add(
+                        2.0,
+                        settings.column_size.mul_add(0.5, position.0) + text_width,
+                    ),
+                    position.1 + settings.column_size,
                 ),
                 TextAnchor::Start,
             ),
@@ -1029,9 +1056,9 @@ fn text_location(
             ),
             (
                 (
-                    position.0 + column_size - text_width,
+                    position.0 + settings.column_size - text_width,
                     position.1,
-                    position.0 + column_size,
+                    position.0 + settings.column_size,
                     position.1 + text_height,
                 ),
                 TextAnchor::End,
@@ -1039,18 +1066,18 @@ fn text_location(
             (
                 (
                     position.0,
-                    position.1 + column_size - text_height,
+                    position.1 + settings.column_size - text_height,
                     position.0 + text_width,
-                    position.1 + column_size,
+                    position.1 + settings.column_size,
                 ),
                 TextAnchor::Start,
             ),
             (
                 (
-                    position.0 + column_size - text_width,
-                    position.1 + column_size - text_height,
-                    position.0 + column_size,
-                    position.1 + column_size,
+                    position.0 + settings.column_size - text_width,
+                    position.1 + settings.column_size - text_height,
+                    position.0 + settings.column_size,
+                    position.1 + settings.column_size,
                 ),
                 TextAnchor::End,
             ),
@@ -1059,9 +1086,9 @@ fn text_location(
         // Remove any options that put text outside of the box
         options.retain(|(option, _)| {
             option.0 >= position.0
-                && option.2 <= position.0 + column_size
+                && option.2 <= position.0 + settings.column_size
                 && option.1 >= position.1
-                && option.3 <= position.1 + column_size
+                && option.3 <= position.1 + settings.column_size
         });
 
         for stroke in strokes {
@@ -1087,16 +1114,14 @@ fn text_location(
             &OuterModifications::Footnote(index),
             shape,
             position,
-            column_size,
-            sugar_size,
-            stroke_size,
             strokes,
+            settings,
             footnotes,
         )
     } else {
         Some((
-            position.0 + column_size,
-            position.1 + column_size - text_height,
+            position.0 + settings.column_size,
+            position.1 + settings.column_size - text_height,
             TextAnchor::End,
             text,
         ))
