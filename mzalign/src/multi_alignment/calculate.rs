@@ -8,7 +8,7 @@ use mzcore::{
 };
 
 use crate::{
-    AlignIndex, AlignScoring, MatchType, Piece,
+    AlignIndex, AlignScoring, MatchType, Piece, Score,
     align_matrix::Matrix,
     diagonal_array::DiagonalArray,
     mass_alignment::{
@@ -25,30 +25,7 @@ pub(super) struct MultiAlignmentLineTemp<'a, Sequence, const STEPS: u16> {
     pub path: Vec<MultiPiece>,
 }
 
-impl<'a, Sequence: HasPeptidoform<Linear>, const STEPS: u16>
-    MultiAlignmentLineTemp<'a, Sequence, STEPS>
-{
-    pub(super) fn single(
-        original_index: usize,
-        sequence: Sequence,
-        masses: &'a DiagonalArray<Multi<Mass>, STEPS>,
-    ) -> Self {
-        let len = sequence.cast_peptidoform().len();
-        Self {
-            original_index,
-            sequence,
-            masses: Cow::Borrowed(masses),
-            path: vec![
-                MultiPiece {
-                    match_type: MatchType::FullIdentity,
-                    aligned_length: 1,
-                    sequence_length: 1,
-                };
-                len
-            ],
-        }
-    }
-
+impl<Sequence, const STEPS: u16> MultiAlignmentLineTemp<'_, Sequence, STEPS> {
     /// Update this line with the given merged alignment, this does not add end gaps
     pub(super) fn update(mut self, path: &[Piece], is_a: bool, offset: u16) -> Self {
         let mut path_index = 0;
@@ -121,6 +98,31 @@ impl<'a, Sequence: HasPeptidoform<Linear>, const STEPS: u16>
                     sequence_length: 0,
                 });
             }
+        }
+    }
+}
+
+impl<'a, Sequence: HasPeptidoform<Linear>, const STEPS: u16>
+    MultiAlignmentLineTemp<'a, Sequence, STEPS>
+{
+    pub(super) fn single(
+        original_index: usize,
+        sequence: Sequence,
+        masses: &'a DiagonalArray<Multi<Mass>, STEPS>,
+    ) -> Self {
+        let len = sequence.cast_peptidoform().len();
+        Self {
+            original_index,
+            sequence,
+            masses: Cow::Borrowed(masses),
+            path: vec![
+                MultiPiece {
+                    match_type: MatchType::FullIdentity,
+                    aligned_length: 1,
+                    sequence_length: 1,
+                };
+                len
+            ],
         }
     }
 
@@ -289,7 +291,7 @@ impl<const STEPS: u16, Sequence: HasPeptidoform<Linear> + Clone> AlignIndex<STEP
             let close_node = std::mem::take(&mut nodes[close_index]);
             let far_node = nodes.remove(far_index);
             nodes[close_index] =
-                multi_align_cached::<STEPS, Sequence>(close_node, far_node, scoring, align_type);
+                multi_align_cached::<STEPS, Sequence>(close_node, far_node, scoring, align_type).0;
 
             // Update matrix to merge these columns
             distance_matrix = distance_matrix.merge_columns(close_index, far_index, distance);
@@ -382,7 +384,7 @@ pub(super) fn multi_align_cached<'a, const STEPS: u16, Sequence: HasPeptidoform<
     b: Vec<MultiAlignmentLineTemp<'a, Sequence, STEPS>>,
     scoring: AlignScoring<'_>,
     align_type: MultiAlignType,
-) -> Vec<MultiAlignmentLineTemp<'a, Sequence, STEPS>> {
+) -> (Vec<MultiAlignmentLineTemp<'a, Sequence, STEPS>>, isize) {
     let len_a = a.first().map_or(0, MultiAlignmentLineTemp::aligned_length);
     let len_b = b.first().map_or(0, MultiAlignmentLineTemp::aligned_length);
     let mut matrix = Matrix::new(len_a, len_b);
@@ -666,7 +668,47 @@ pub(super) fn multi_align_cached<'a, const STEPS: u16, Sequence: HasPeptidoform<
         s.pad(goal_length);
     }
 
-    sequences
+    (sequences, path.last().map(|p| p.score).unwrap_or_default())
+}
+
+pub(super) fn determine_final_score<const STEPS: u16, Sequence: HasPeptidoform<Linear>>(
+    mmsa: &[MultiAlignmentLineTemp<Sequence, STEPS>],
+    scoring: AlignScoring,
+    absolute_score: isize,
+) -> Score {
+    let maximal_score = maximal_score(mmsa, scoring);
+    Score {
+        normalised: if maximal_score == 0 {
+            ordered_float::OrderedFloat::default()
+        } else {
+            ordered_float::OrderedFloat((absolute_score as f64 / maximal_score as f64).min(1.0))
+        },
+        absolute: absolute_score,
+        max: maximal_score,
+    }
+}
+
+fn maximal_score<const STEPS: u16, Sequence: HasPeptidoform<Linear>>(
+    mmsa: &[MultiAlignmentLineTemp<Sequence, STEPS>],
+    scoring: AlignScoring,
+) -> isize {
+    let aligned_length = mmsa
+        .first()
+        .map(MultiAlignmentLineTemp::aligned_length)
+        .unwrap_or_default();
+    let mut score = 0;
+    for i in 0..aligned_length {
+        score += mmsa
+            .iter()
+            .map(|option| {
+                let aa = option.get_aa_at(i).0;
+                scoring.matrix[aa.aminoacid.aminoacid() as usize][aa.aminoacid.aminoacid() as usize]
+                    as isize
+            })
+            .max()
+            .unwrap_or_default();
+    }
+    score
 }
 
 #[allow(dead_code)]

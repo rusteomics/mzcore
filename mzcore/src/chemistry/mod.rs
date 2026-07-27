@@ -6,6 +6,7 @@ mod charge;
 mod isotopes;
 mod mass_mode;
 mod molecular_charge;
+mod molecule;
 mod neutral_loss;
 
 pub use charge::*;
@@ -13,4 +14,5 @@ pub use element::*;
 pub use formula::*;
 pub use mass_mode::*;
 pub use molecular_charge::*;
+pub use molecule::*;
 pub use neutral_loss::*;

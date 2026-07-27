@@ -180,6 +180,26 @@ impl Chemical for SimpleModificationInner {
     }
 }
 
+// TODO: implement for all three modes here as well, maybe go through a formula though, as those are
+// already allocated anyways this does not add too much overhead impl Molecule<Mode> for
+// SimpleModificationInner {     /// Get the molecular formula for this modification.
+//     fn formula_inner(
+//         &self,
+//         position: SequencePosition,
+//         peptidoform_index: usize,
+//     ) -> MolecularFormula {
+//         self.formula_inner(
+//             position,
+//             peptidoform_index,
+//             GlycanPeptideFragment::FULL,
+//             None,
+//         )
+//         .to_vec()
+//         .pop()
+//         .unwrap()
+//     }
+// }
+
 impl SimpleModificationInner {
     /// Get a url for more information on this modification. Only defined for modifications from
     /// ontologies.

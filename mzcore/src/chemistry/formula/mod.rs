@@ -2,6 +2,7 @@ mod pro_forma;
 mod psi_mod;
 #[macro_use]
 mod structure;
+mod chemical;
 mod formula;
 mod resid;
 mod search;
@@ -10,6 +11,7 @@ mod structural_formula;
 mod unimod;
 mod xlmod;
 
+pub use chemical::*;
 pub use search::*;
 pub use structural_formula::*;
 pub use structure::*;

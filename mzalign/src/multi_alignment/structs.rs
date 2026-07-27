@@ -9,7 +9,9 @@ use serde::{Deserialize, Serialize};
 use crate::{
     AlignScoring, AlignType, MatchType, Score,
     helper_functions::next_num,
-    multi_alignment::calculate::{MultiAlignmentLineTemp, multi_align_cached},
+    multi_alignment::calculate::{
+        MultiAlignmentLineTemp, determine_final_score, multi_align_cached,
+    },
 };
 
 /// A mass-based multiple sequence alignment (MMSA).
@@ -103,7 +105,8 @@ impl<Sequence: HasPeptidoform<Linear>> MultiAlignment<Sequence> {
         self.align_type
     }
 
-    /// Combine two `MultiAlignments` into one
+    /// Combine two `MultiAlignments` into one. Returns the new alignment + the absolute score of
+    /// joining these two.
     #[must_use]
     pub fn combine<const STEPS: u16>(
         self,
@@ -111,14 +114,12 @@ impl<Sequence: HasPeptidoform<Linear>> MultiAlignment<Sequence> {
         mass_mode: MassMode,
         scoring: AlignScoring<'_>,
         align_type: MultiAlignType,
-    ) -> Self {
+    ) -> (Self, Score) {
         let temp_self = self.lines.into_iter().map(|l| l.into_temp::<STEPS>(mass_mode)).collect();
         let temp_other = other.lines.into_iter().map(|l| l.into_temp::<STEPS>(mass_mode)).collect();
-
-        Self::new::<STEPS>(
-            multi_align_cached(temp_self, temp_other, scoring, align_type),
-            align_type,
-        )
+        let (lines, score) = multi_align_cached(temp_self, temp_other, scoring, align_type);
+        let score = determine_final_score(&lines, scoring, score);
+        (Self::new::<STEPS>(lines, align_type), score)
     }
 }
 

@@ -31,10 +31,21 @@ pub struct GlycanRenderSettings {
     /// The details to show on modifications.
     pub modification_details: GlycanModificationDetails,
     // TODO: add settings:
-    // - modification precision
     // - linkage precision
-    // - centre shape mods/orientation/conformation
+    // - inner shape mods/orientation/conformation
 }
+
+// TODO missing features for renderer:
+// - Linkage numbers.
+// - Modified linkage.
+// - Nice display of double mods (extra link) e.g. Pyr.
+// - Auto brackets around mod names with numbers.
+// - C/Z fragments.
+// - A/X fragments (I have seen half HexNAcs (■) once: ◤ and ◥, based on the exact A).
+// - Composition rendering
+// - Ambiguous linkage (Start with only global ambiguous)
+// - Check correctness of symbols for unknown monosaccharides (white with A-Z with footnote)
+// - Check correctness of abbreviations of mods
 
 impl GlycanRenderSettings {
     /// Set the column size
