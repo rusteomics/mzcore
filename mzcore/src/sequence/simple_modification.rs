@@ -12,7 +12,10 @@ use serde_json::Value;
 use thin_vec::ThinVec;
 
 use crate::{
-    chemistry::{AmbiguousLabel, Chemical, DiagnosticIon, MolecularFormula, NeutralLoss},
+    chemistry::{
+        AmbiguousLabel, Chemical, DiagnosticIon, MassOutputMode, MolecularFormula, Molecule,
+        NeutralLoss,
+    },
     glycan::{GlycanPeptideFragment, GlycanStructure, MonoSaccharide},
     ontology::Ontology,
     parse_json::{ParseJson, use_serde},
@@ -180,25 +183,22 @@ impl Chemical for SimpleModificationInner {
     }
 }
 
-// TODO: implement for all three modes here as well, maybe go through a formula though, as those are
-// already allocated anyways this does not add too much overhead impl Molecule<Mode> for
-// SimpleModificationInner {     /// Get the molecular formula for this modification.
-//     fn formula_inner(
-//         &self,
-//         position: SequencePosition,
-//         peptidoform_index: usize,
-//     ) -> MolecularFormula {
-//         self.formula_inner(
-//             position,
-//             peptidoform_index,
-//             GlycanPeptideFragment::FULL,
-//             None,
-//         )
-//         .to_vec()
-//         .pop()
-//         .unwrap()
-//     }
-// }
+impl<Mode: MassOutputMode> Molecule<Mode> for SimpleModificationInner {
+    /// Get the molecular formula for this modification.
+    fn formula_inner(&self, position: SequencePosition, peptidoform_index: usize) -> Mode::Output {
+        Mode::from_formula(
+            self.formula_inner(
+                position,
+                peptidoform_index,
+                GlycanPeptideFragment::FULL,
+                None,
+            )
+            .to_vec()
+            .pop()
+            .unwrap(),
+        )
+    }
+}
 
 impl SimpleModificationInner {
     /// Get a url for more information on this modification. Only defined for modifications from

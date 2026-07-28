@@ -7,8 +7,8 @@ use serde::{Deserialize, Serialize};
 use super::is_amino_acid::IsAminoAcid;
 use crate::{
     chemistry::{
-        AmbiguousLabel, AmbiguousMolecule, MolecularFormula, MultiChemical, OutputAverageWeight,
-        OutputMolecularFormula, OutputMonoIsotopic, SatelliteLabel,
+        AmbiguousLabel, AmbiguousMolecule, MassOutputMode, MolecularFormula, MultiChemical,
+        OutputAverageWeight, OutputMolecularFormula, OutputMonoIsotopic, SatelliteLabel,
     },
     molecular_formula,
     parse_json::{ParseJson, use_serde},
@@ -293,7 +293,7 @@ impl MultiChemical for AminoAcid {
     }
 }
 
-impl AmbiguousMolecule<OutputMolecularFormula> for AminoAcid {
+impl<Mode: MassOutputMode> AmbiguousMolecule<Mode> for AminoAcid {
     /// Get all possible formulas for an amino acid (has one for all except B/Z has two for these)
     /// # Panics
     /// Is the sequence index is a terminal index
@@ -302,45 +302,46 @@ impl AmbiguousMolecule<OutputMolecularFormula> for AminoAcid {
         sequence_index: SequencePosition,
         peptidoform_index: usize,
         peptidoform_ion_index: usize,
-    ) -> Multi<MolecularFormula> {
+    ) -> Multi<Mode::Output> {
         let SequencePosition::Index(sequence_index, _) = sequence_index else {
             panic!("Not allowed to call amino acid formulas with a terminal sequence index")
         };
         match self {
-            Self::Alanine => molecular_formula!(H 5 C 3 O 1 N 1).into(),
-            Self::Arginine => molecular_formula!(H 12 C 6 O 1 N 4).into(), // One of the H's counts as the charge carrier and is added later
-            Self::Asparagine => molecular_formula!(H 6 C 4 O 2 N 2).into(),
-            Self::AsparticAcid => molecular_formula!(H 5 C 4 O 3 N 1).into(),
+            Self::Alanine => Mode::from_formula(molecular_formula!(H 5 C 3 O 1 N 1)).into(),
+            Self::Arginine => Mode::from_formula(molecular_formula!(H 12 C 6 O 1 N 4)).into(),
+            Self::Asparagine => Mode::from_formula(molecular_formula!(H 6 C 4 O 2 N 2)).into(),
+            Self::AsparticAcid => Mode::from_formula(molecular_formula!(H 5 C 4 O 3 N 1)).into(),
             Self::AmbiguousAsparagine => vec![
-                molecular_formula!(H 6 C 4 O 2 N 2 (AmbiguousLabel::AminoAcid{option: Self::Asparagine, sequence_index, peptidoform_index, peptidoform_ion_index})),
-                molecular_formula!(H 5 C 4 O 3 N 1 (AmbiguousLabel::AminoAcid{option: Self::AsparticAcid, sequence_index, peptidoform_index, peptidoform_ion_index})),
+                Mode::from_formula(molecular_formula!(H 6 C 4 O 2 N 2 (AmbiguousLabel::AminoAcid{option: Self::Asparagine, sequence_index, peptidoform_index, peptidoform_ion_index}))),
+                Mode::from_formula(molecular_formula!(H 5 C 4 O 3 N 1 (AmbiguousLabel::AminoAcid{option: Self::AsparticAcid, sequence_index, peptidoform_index, peptidoform_ion_index}))),
             ]
             .into(),
-            Self::Cysteine => molecular_formula!(H 5 C 3 O 1 N 1 S 1).into(),
-            Self::Glutamine => molecular_formula!(H 8 C 5 O 2 N 2).into(),
-            Self::GlutamicAcid => molecular_formula!(H 7 C 5 O 3 N 1).into(),
+            Self::Cysteine => Mode::from_formula(molecular_formula!(H 5 C 3 O 1 N 1 S 1)).into(),
+            Self::Glutamine => Mode::from_formula(molecular_formula!(H 8 C 5 O 2 N 2)).into(),
+            Self::GlutamicAcid => Mode::from_formula(molecular_formula!(H 7 C 5 O 3 N 1)).into(),
             Self::AmbiguousGlutamine => vec![
-                molecular_formula!(H 8 C 5 O 2 N 2 (AmbiguousLabel::AminoAcid{option: Self::Glutamine, sequence_index, peptidoform_index, peptidoform_ion_index})),
-                molecular_formula!(H 7 C 5 O 3 N 1 (AmbiguousLabel::AminoAcid{option: Self::GlutamicAcid, sequence_index, peptidoform_index, peptidoform_ion_index})),
+                Mode::from_formula(molecular_formula!(H 8 C 5 O 2 N 2 (AmbiguousLabel::AminoAcid{option: Self::Glutamine, sequence_index, peptidoform_index,
+                     peptidoform_ion_index}))),
+                Mode::from_formula(molecular_formula!(H 7 C 5 O 3 N 1 (AmbiguousLabel::AminoAcid{option: Self::GlutamicAcid, sequence_index, peptidoform_index, peptidoform_ion_index}))),
             ]
             .into(),
-            Self::Glycine => molecular_formula!(H 3 C 2 O 1 N 1).into(),
-            Self::Histidine => molecular_formula!(H 7 C 6 O 1 N 3).into(),
+            Self::Glycine => Mode::from_formula(molecular_formula!(H 3 C 2 O 1 N 1)).into(),
+            Self::Histidine => Mode::from_formula(molecular_formula!(H 7 C 6 O 1 N 3)).into(),
             Self::AmbiguousLeucine | Self::Isoleucine | Self::Leucine => {
-                molecular_formula!(H 11 C 6 O 1 N 1).into()
+                Mode::from_formula(molecular_formula!(H 11 C 6 O 1 N 1)).into()
             }
-            Self::Lysine => molecular_formula!(H 12 C 6 O 1 N 2).into(),
-            Self::Methionine => molecular_formula!(H 9 C 5 O 1 N 1 S 1).into(),
-            Self::Phenylalanine => molecular_formula!(H 9 C 9 O 1 N 1).into(),
-            Self::Proline => molecular_formula!(H 7 C 5 O 1 N 1).into(),
-            Self::Pyrrolysine => molecular_formula!(H 19 C 11 O 2 N 3).into(),
-            Self::Selenocysteine => molecular_formula!(H 5 C 3 O 1 N 1 Se 1).into(),
-            Self::Serine => molecular_formula!(H 5 C 3 O 2 N 1).into(),
-            Self::Threonine => molecular_formula!(H 7 C 4 O 2 N 1).into(),
-            Self::Tryptophan => molecular_formula!(H 10 C 11 O 1 N 2).into(),
-            Self::Tyrosine => molecular_formula!(H 9 C 9 O 2 N 1).into(),
-            Self::Valine => molecular_formula!(H 9 C 5 O 1 N 1).into(),
-            Self::Unknown => molecular_formula!().into(),
+            Self::Lysine => Mode::from_formula(molecular_formula!(H 12 C 6 O 1 N 2)).into(),
+            Self::Methionine => Mode::from_formula(molecular_formula!(H 9 C 5 O 1 N 1 S 1)).into(),
+            Self::Phenylalanine => Mode::from_formula(molecular_formula!(H 9 C 9 O 1 N 1)).into(),
+            Self::Proline => Mode::from_formula(molecular_formula!(H 7 C 5 O 1 N 1)).into(),
+            Self::Pyrrolysine => Mode::from_formula(molecular_formula!(H 19 C 11 O 2 N 3)).into(),
+            Self::Selenocysteine => Mode::from_formula(molecular_formula!(H 5 C 3 O 1 N 1 Se 1)).into(),
+            Self::Serine => Mode::from_formula(molecular_formula!(H 5 C 3 O 2 N 1)).into(),
+            Self::Threonine => Mode::from_formula(molecular_formula!(H 7 C 4 O 2 N 1)).into(),
+            Self::Tryptophan => Mode::from_formula(molecular_formula!(H 10 C 11 O 1 N 2)).into(),
+            Self::Tyrosine => Mode::from_formula(molecular_formula!(H 9 C 9 O 2 N 1)).into(),
+            Self::Valine => Mode::from_formula(molecular_formula!(H 9 C 5 O 1 N 1)).into(),
+            Self::Unknown => Mode::from_formula(molecular_formula!()).into(),
         }
     }
 
@@ -349,117 +350,117 @@ impl AmbiguousMolecule<OutputMolecularFormula> for AminoAcid {
     }
 }
 
-impl AmbiguousMolecule<OutputMonoIsotopic> for AminoAcid {
-    /// Get all possible formulas for an amino acid (has one for all except B/Z has two for these)
-    /// # Panics
-    /// Is the sequence index is a terminal index
-    fn formulas_inner(
-        &self,
-        sequence_index: SequencePosition,
-        _peptidoform_index: usize,
-        _peptidoform_ion_index: usize,
-    ) -> Multi<Mass> {
-        let SequencePosition::Index(..) = sequence_index else {
-            panic!("Not allowed to call amino acid formulas with a terminal sequence index")
-        };
-        match self {
-            Self::Alanine => Mass::new::<crate::system::dalton>(71.037113783).into(),
-            Self::Arginine => Mass::new::<crate::system::dalton>(156.10111101903598).into(),
-            Self::Asparagine => Mass::new::<crate::system::dalton>(114.042927438408).into(),
-            Self::AsparticAcid => Mass::new::<crate::system::dalton>(115.02694302152).into(),
-            Self::AmbiguousAsparagine => vec![
-                Mass::new::<crate::system::dalton>(114.042927438408),
-                Mass::new::<crate::system::dalton>(115.02694302152),
-            ] // TODO: does the origin have to be stored here?
-            .into(),
-            Self::Cysteine => Mass::new::<crate::system::dalton>(103.00918495654).into(),
-            Self::Glutamine => Mass::new::<crate::system::dalton>(128.058577502204).into(),
-            Self::GlutamicAcid => Mass::new::<crate::system::dalton>(129.04259308531599).into(),
-            Self::AmbiguousGlutamine => vec![
-                Mass::new::<crate::system::dalton>(128.058577502204),
-                Mass::new::<crate::system::dalton>(129.04259308531599),
-            ] // TODO: does the origin have to be stored here?
-            .into(),
-            Self::Glycine => Mass::new::<crate::system::dalton>(57.021463719204).into(),
-            Self::Histidine => Mass::new::<crate::system::dalton>(137.058911855296).into(),
-            Self::AmbiguousLeucine | Self::Isoleucine | Self::Leucine => {
-                Mass::new::<crate::system::dalton>(113.084063974388).into()
-            }
-            Self::Lysine => Mass::new::<crate::system::dalton>(128.094963010536).into(),
-            Self::Methionine => Mass::new::<crate::system::dalton>(131.040485084132).into(),
-            Self::Phenylalanine => Mass::new::<crate::system::dalton>(147.068413910592).into(),
-            Self::Proline => Mass::new::<crate::system::dalton>(97.052763846796).into(),
-            Self::Pyrrolysine => Mass::new::<crate::system::dalton>(225.147726857332).into(),
-            Self::Selenocysteine => Mass::new::<crate::system::dalton>(150.953635544).into(),
-            Self::Serine => Mass::new::<crate::system::dalton>(87.03202840226).into(),
-            Self::Threonine => Mass::new::<crate::system::dalton>(101.047678466056).into(),
-            Self::Tryptophan => Mass::new::<crate::system::dalton>(186.07931294673998).into(),
-            Self::Tyrosine => Mass::new::<crate::system::dalton>(163.06332852985201).into(),
-            Self::Valine => Mass::new::<crate::system::dalton>(99.068413910592).into(),
-            Self::Unknown => Mass::new::<crate::system::dalton>(0.0).into(),
-        }
-    }
+// impl AmbiguousMolecule<OutputMonoIsotopic> for AminoAcid {
+//     /// Get all possible formulas for an amino acid (has one for all except B/Z has two for
+// these)     /// # Panics
+//     /// Is the sequence index is a terminal index
+//     fn formulas_inner(
+//         &self,
+//         sequence_index: SequencePosition,
+//         _peptidoform_index: usize,
+//         _peptidoform_ion_index: usize,
+//     ) -> Multi<Mass> {
+//         let SequencePosition::Index(..) = sequence_index else {
+//             panic!("Not allowed to call amino acid formulas with a terminal sequence index")
+//         };
+//         match self {
+//             Self::Alanine => Mass::new::<crate::system::dalton>(71.037113783).into(),
+//             Self::Arginine => Mass::new::<crate::system::dalton>(156.10111101903598).into(),
+//             Self::Asparagine => Mass::new::<crate::system::dalton>(114.042927438408).into(),
+//             Self::AsparticAcid => Mass::new::<crate::system::dalton>(115.02694302152).into(),
+//             Self::AmbiguousAsparagine => vec![
+//                 Mass::new::<crate::system::dalton>(114.042927438408),
+//                 Mass::new::<crate::system::dalton>(115.02694302152),
+//             ] // TODO: does the origin have to be stored here?
+//             .into(),
+//             Self::Cysteine => Mass::new::<crate::system::dalton>(103.00918495654).into(),
+//             Self::Glutamine => Mass::new::<crate::system::dalton>(128.058577502204).into(),
+//             Self::GlutamicAcid => Mass::new::<crate::system::dalton>(129.04259308531599).into(),
+//             Self::AmbiguousGlutamine => vec![
+//                 Mass::new::<crate::system::dalton>(128.058577502204),
+//                 Mass::new::<crate::system::dalton>(129.04259308531599),
+//             ] // TODO: does the origin have to be stored here?
+//             .into(),
+//             Self::Glycine => Mass::new::<crate::system::dalton>(57.021463719204).into(),
+//             Self::Histidine => Mass::new::<crate::system::dalton>(137.058911855296).into(),
+//             Self::AmbiguousLeucine | Self::Isoleucine | Self::Leucine => {
+//                 Mass::new::<crate::system::dalton>(113.084063974388).into()
+//             }
+//             Self::Lysine => Mass::new::<crate::system::dalton>(128.094963010536).into(),
+//             Self::Methionine => Mass::new::<crate::system::dalton>(131.040485084132).into(),
+//             Self::Phenylalanine => Mass::new::<crate::system::dalton>(147.068413910592).into(),
+//             Self::Proline => Mass::new::<crate::system::dalton>(97.052763846796).into(),
+//             Self::Pyrrolysine => Mass::new::<crate::system::dalton>(225.147726857332).into(),
+//             Self::Selenocysteine => Mass::new::<crate::system::dalton>(150.953635544).into(),
+//             Self::Serine => Mass::new::<crate::system::dalton>(87.03202840226).into(),
+//             Self::Threonine => Mass::new::<crate::system::dalton>(101.047678466056).into(),
+//             Self::Tryptophan => Mass::new::<crate::system::dalton>(186.07931294673998).into(),
+//             Self::Tyrosine => Mass::new::<crate::system::dalton>(163.06332852985201).into(),
+//             Self::Valine => Mass::new::<crate::system::dalton>(99.068413910592).into(),
+//             Self::Unknown => Mass::new::<crate::system::dalton>(0.0).into(),
+//         }
+//     }
 
-    fn charge(&self) -> Option<crate::system::isize::Charge> {
-        None
-    }
-}
+//     fn charge(&self) -> Option<crate::system::isize::Charge> {
+//         None
+//     }
+// }
 
-impl AmbiguousMolecule<OutputAverageWeight> for AminoAcid {
-    /// Get all possible formulas for an amino acid (has one for all except B/Z has two for these)
-    ///  # Panics
-    /// Is the sequence index is a terminal index
-    fn formulas_inner(
-        &self,
-        sequence_index: SequencePosition,
-        _peptidoform_index: usize,
-        _peptidoform_ion_index: usize,
-    ) -> Multi<Mass> {
-        let SequencePosition::Index(..) = sequence_index else {
-            panic!("Not allowed to call amino acid formulas with a terminal sequence index")
-        };
-        match self {
-            Self::Alanine => Mass::new::<crate::system::dalton>(71.07793000000001).into(),
-            Self::Arginine => Mass::new::<crate::system::dalton>(156.18612000000002).into(),
-            Self::Asparagine => Mass::new::<crate::system::dalton>(114.10276).into(),
-            Self::AsparticAcid => Mass::new::<crate::system::dalton>(115.08733).into(),
-            Self::AmbiguousAsparagine => vec![
-                Mass::new::<crate::system::dalton>(114.10276),
-                Mass::new::<crate::system::dalton>(115.08733),
-            ] // TODO: does the origin have to be stored here?
-            .into(),
-            Self::Cysteine => Mass::new::<crate::system::dalton>(103.14543).into(),
-            Self::Glutamine => Mass::new::<crate::system::dalton>(128.12931).into(),
-            Self::GlutamicAcid => Mass::new::<crate::system::dalton>(129.11388).into(),
-            Self::AmbiguousGlutamine => vec![
-                Mass::new::<crate::system::dalton>(128.12931),
-                Mass::new::<crate::system::dalton>(129.11388),
-            ] // TODO: does the origin have to be stored here?
-            .into(),
-            Self::Glycine => Mass::new::<crate::system::dalton>(57.05138).into(),
-            Self::Histidine => Mass::new::<crate::system::dalton>(137.13939000000002).into(),
-            Self::AmbiguousLeucine | Self::Isoleucine | Self::Leucine => {
-                Mass::new::<crate::system::dalton>(113.15758000000001).into()
-            }
-            Self::Lysine => Mass::new::<crate::system::dalton>(128.17241).into(),
-            Self::Methionine => Mass::new::<crate::system::dalton>(131.19853).into(),
-            Self::Phenylalanine => Mass::new::<crate::system::dalton>(147.17343).into(),
-            Self::Proline => Mass::new::<crate::system::dalton>(97.11507999999999).into(),
-            Self::Pyrrolysine => Mass::new::<crate::system::dalton>(225.28749).into(),
-            Self::Selenocysteine => Mass::new::<crate::system::dalton>(150.04893).into(),
-            Self::Serine => Mass::new::<crate::system::dalton>(87.07733).into(),
-            Self::Threonine => Mass::new::<crate::system::dalton>(101.10388).into(),
-            Self::Tryptophan => Mass::new::<crate::system::dalton>(186.20946).into(),
-            Self::Tyrosine => Mass::new::<crate::system::dalton>(163.17282999999998).into(),
-            Self::Valine => Mass::new::<crate::system::dalton>(99.13103).into(),
-            Self::Unknown => Mass::new::<crate::system::dalton>(0.0).into(),
-        }
-    }
+// impl AmbiguousMolecule<OutputAverageWeight> for AminoAcid {
+//     /// Get all possible formulas for an amino acid (has one for all except B/Z has two for
+// these)     ///  # Panics
+//     /// Is the sequence index is a terminal index
+//     fn formulas_inner(
+//         &self,
+//         sequence_index: SequencePosition,
+//         _peptidoform_index: usize,
+//         _peptidoform_ion_index: usize,
+//     ) -> Multi<Mass> {
+//         let SequencePosition::Index(..) = sequence_index else {
+//             panic!("Not allowed to call amino acid formulas with a terminal sequence index")
+//         };
+//         match self {
+//             Self::Alanine => Mass::new::<crate::system::dalton>(71.07793000000001).into(),
+//             Self::Arginine => Mass::new::<crate::system::dalton>(156.18612000000002).into(),
+//             Self::Asparagine => Mass::new::<crate::system::dalton>(114.10276).into(),
+//             Self::AsparticAcid => Mass::new::<crate::system::dalton>(115.08733).into(),
+//             Self::AmbiguousAsparagine => vec![
+//                 Mass::new::<crate::system::dalton>(114.10276),
+//                 Mass::new::<crate::system::dalton>(115.08733),
+//             ] // TODO: does the origin have to be stored here?
+//             .into(),
+//             Self::Cysteine => Mass::new::<crate::system::dalton>(103.14543).into(),
+//             Self::Glutamine => Mass::new::<crate::system::dalton>(128.12931).into(),
+//             Self::GlutamicAcid => Mass::new::<crate::system::dalton>(129.11388).into(),
+//             Self::AmbiguousGlutamine => vec![
+//                 Mass::new::<crate::system::dalton>(128.12931),
+//                 Mass::new::<crate::system::dalton>(129.11388),
+//             ] // TODO: does the origin have to be stored here?
+//             .into(),
+//             Self::Glycine => Mass::new::<crate::system::dalton>(57.05138).into(),
+//             Self::Histidine => Mass::new::<crate::system::dalton>(137.13939000000002).into(),
+//             Self::AmbiguousLeucine | Self::Isoleucine | Self::Leucine => {
+//                 Mass::new::<crate::system::dalton>(113.15758000000001).into()
+//             }
+//             Self::Lysine => Mass::new::<crate::system::dalton>(128.17241).into(),
+//             Self::Methionine => Mass::new::<crate::system::dalton>(131.19853).into(),
+//             Self::Phenylalanine => Mass::new::<crate::system::dalton>(147.17343).into(),
+//             Self::Proline => Mass::new::<crate::system::dalton>(97.11507999999999).into(),
+//             Self::Pyrrolysine => Mass::new::<crate::system::dalton>(225.28749).into(),
+//             Self::Selenocysteine => Mass::new::<crate::system::dalton>(150.04893).into(),
+//             Self::Serine => Mass::new::<crate::system::dalton>(87.07733).into(),
+//             Self::Threonine => Mass::new::<crate::system::dalton>(101.10388).into(),
+//             Self::Tryptophan => Mass::new::<crate::system::dalton>(186.20946).into(),
+//             Self::Tyrosine => Mass::new::<crate::system::dalton>(163.17282999999998).into(),
+//             Self::Valine => Mass::new::<crate::system::dalton>(99.13103).into(),
+//             Self::Unknown => Mass::new::<crate::system::dalton>(0.0).into(),
+//         }
+//     }
 
-    fn charge(&self) -> Option<crate::system::isize::Charge> {
-        None
-    }
-}
+//     fn charge(&self) -> Option<crate::system::isize::Charge> {
+//         None
+//     }
+// }
 
 impl std::fmt::Display for AminoAcid {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -877,12 +878,15 @@ impl ParseJson for AminoAcid {
 #[cfg(test)]
 #[expect(clippy::unreadable_literal, clippy::missing_panics_doc)]
 mod tests {
-    use super::*;
+    use super::{AminoAcid, IsAminoAcid};
+    use crate::chemistry::{AmbiguousMolecule, MolecularFormula, OutputMolecularFormula};
 
     #[test]
     fn mass() {
-        let weight_ala = AminoAcid::Alanine.formulas()[0].average_weight();
-        let mass_ala = AminoAcid::Alanine.formulas()[0].monoisotopic_mass();
+        let formula_ala: MolecularFormula =
+            AmbiguousMolecule::<OutputMolecularFormula>::formulas(&AminoAcid::Alanine)[0].clone();
+        let weight_ala = formula_ala.average_weight();
+        let mass_ala = formula_ala.monoisotopic_mass();
         assert_ne!(weight_ala, mass_ala);
         assert!((weight_ala.value - 71.07793).abs() < 1e-5);
         assert!((mass_ala.value - 71.037113783).abs() < 1e-5);
@@ -890,8 +894,11 @@ mod tests {
 
     #[test]
     fn mass_lysine() {
-        let weight_lys = AminoAcid::Lysine.formulas()[0].average_weight();
-        let mass_lys = AminoAcid::Lysine.formulas()[0].monoisotopic_mass();
+        let weight_lys = AmbiguousMolecule::<OutputMolecularFormula>::formulas(&AminoAcid::Lysine)
+            [0]
+        .average_weight();
+        let mass_lys = AmbiguousMolecule::<OutputMolecularFormula>::formulas(&AminoAcid::Lysine)[0]
+            .monoisotopic_mass();
         assert_ne!(weight_lys, mass_lys);
         assert!((weight_lys.value - 128.17240999999999).abs() < 1e-5);
         assert!((mass_lys.value - 128.094963010536).abs() < 1e-5);
@@ -925,8 +932,12 @@ mod tests {
         for (aa, mono_mass, average_weight) in known {
             let aa = AminoAcid::try_from(*aa).unwrap();
             let (mono, weight) = (
-                aa.formulas()[0].monoisotopic_mass().value,
-                aa.formulas()[0].average_weight().value,
+                AmbiguousMolecule::<OutputMolecularFormula>::formulas(&aa)[0]
+                    .monoisotopic_mass()
+                    .value,
+                AmbiguousMolecule::<OutputMolecularFormula>::formulas(&aa)[0]
+                    .average_weight()
+                    .value,
             );
             println!(
                 "{}: {} {} {} {}",

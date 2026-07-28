@@ -10,7 +10,7 @@ use serde::{Deserialize, Serialize};
 use thin_vec::ThinVec;
 
 use crate::{
-    chemistry::{DiagnosticIon, MolecularFormula, MultiChemical},
+    chemistry::{DiagnosticIon, MassOutputMode, MolecularFormula, Molecule, MultiChemical},
     glycan::{BackboneFragmentKind, FullGlycan, GlycanAttachement},
     quantities::Multi,
     sequence::{
@@ -152,185 +152,6 @@ impl<T> SequenceElement<T> {
         Ok(())
     }
 
-    /// Get the molecular formulas for this position without any the ambiguous modifications
-    pub(crate) fn formulas_base(
-        &self,
-        all_peptidoforms: &[Peptidoform<Linked>],
-        visited_peptidoforms: &[usize],
-        applied_cross_links: &mut Vec<CrossLinkName>,
-        allow_ms_cleavable: bool,
-        sequence_index: SequencePosition,
-        peptidoform_index: usize,
-        peptidoform_ion_index: usize,
-        glycan_model: &impl GlycanAttachement,
-    ) -> (
-        Multi<MolecularFormula>,
-        HashMap<BackboneFragmentKind, Multi<MolecularFormula>>,
-        HashSet<CrossLinkName>,
-    ) {
-        self.formulas_generic(
-            &mut |_| false,
-            all_peptidoforms,
-            visited_peptidoforms,
-            applied_cross_links,
-            allow_ms_cleavable,
-            sequence_index,
-            peptidoform_index,
-            peptidoform_ion_index,
-            glycan_model,
-        )
-    }
-
-    /// Get the molecular formulas for this position with the ambiguous modifications placed on the
-    /// very first placed (and updating this in `placed`), without any global isotope modifications
-    #[expect(clippy::too_many_arguments)]
-    pub(crate) fn formulas_greedy(
-        &self,
-        placed: &mut [bool],
-        all_peptidoforms: &[Peptidoform<Linked>],
-        visited_peptidoforms: &[usize],
-        applied_cross_links: &mut Vec<CrossLinkName>,
-        allow_ms_cleavable: bool,
-        sequence_index: SequencePosition,
-        peptidoform_index: usize,
-        peptidoform_ion_index: usize,
-        glycan_model: &impl GlycanAttachement,
-    ) -> (
-        Multi<MolecularFormula>,
-        HashMap<BackboneFragmentKind, Multi<MolecularFormula>>,
-        HashSet<CrossLinkName>,
-    ) {
-        self.formulas_generic(
-            &mut |id| (!placed[id]).then(|| placed[id] = true).is_some(),
-            all_peptidoforms,
-            visited_peptidoforms,
-            applied_cross_links,
-            allow_ms_cleavable,
-            sequence_index,
-            peptidoform_index,
-            peptidoform_ion_index,
-            glycan_model,
-        )
-    }
-
-    /// Get the molecular formulas for this position with all ambiguous modifications, without any
-    /// global isotope modifications
-    pub(crate) fn formulas_all(
-        &self,
-        all_peptidoforms: &[Peptidoform<Linked>],
-        visited_peptidoforms: &[usize],
-        applied_cross_links: &mut Vec<CrossLinkName>,
-        allow_ms_cleavable: bool,
-        sequence_index: SequencePosition,
-        peptidoform_index: usize,
-        peptidoform_ion_index: usize,
-        glycan_model: &impl GlycanAttachement,
-    ) -> (
-        Multi<MolecularFormula>,
-        HashMap<BackboneFragmentKind, Multi<MolecularFormula>>,
-        HashSet<CrossLinkName>,
-    ) {
-        self.formulas_generic(
-            &mut |_| true,
-            all_peptidoforms,
-            visited_peptidoforms,
-            applied_cross_links,
-            allow_ms_cleavable,
-            sequence_index,
-            peptidoform_index,
-            peptidoform_ion_index,
-            glycan_model,
-        )
-    }
-
-    /// Get the molecular formulas for this position with the ambiguous modifications placed on the
-    /// very first placed (and updating this in `placed`), without any global isotope modifications
-    #[expect(clippy::too_many_arguments)]
-    pub(crate) fn formulas_generic(
-        &self,
-        place_ambiguous: &mut impl FnMut(usize) -> bool,
-        all_peptidoforms: &[Peptidoform<Linked>],
-        visited_peptidoforms: &[usize],
-        applied_cross_links: &mut Vec<CrossLinkName>,
-        allow_ms_cleavable: bool,
-        sequence_index: SequencePosition,
-        peptidoform_index: usize,
-        peptidoform_ion_index: usize,
-        glycan_model: &impl GlycanAttachement,
-    ) -> (
-        Multi<MolecularFormula>,
-        HashMap<BackboneFragmentKind, Multi<MolecularFormula>>,
-        HashSet<CrossLinkName>,
-    ) {
-        let (formula, specific, seen) = self
-            .modifications
-            .iter()
-            .filter_map(|m| {
-                if let Modification::Ambiguous {
-                    id, modification, ..
-                } = m
-                {
-                    place_ambiguous(*id).then(|| {
-                        let default =
-                            glycan_model.get_default_fragments(Some(self.aminoacid.aminoacid()));
-                        let specific =
-                            glycan_model.get_specific_fragments(Some(self.aminoacid.aminoacid()));
-                        (
-                            modification.formula_inner(
-                                sequence_index,
-                                peptidoform_index,
-                                default,
-                                Some(self.aminoacid.aminoacid()),
-                            ),
-                            specific
-                                .into_iter()
-                                .map(|(k, setting)| {
-                                    (
-                                        k,
-                                        modification.formula_inner(
-                                            sequence_index,
-                                            peptidoform_index,
-                                            setting,
-                                            Some(self.aminoacid.aminoacid()),
-                                        ),
-                                    )
-                                })
-                                .collect(),
-                            HashSet::default(),
-                        )
-                    })
-                } else {
-                    let (formula, specific, seen) = m.formula_inner(
-                        all_peptidoforms,
-                        visited_peptidoforms,
-                        applied_cross_links,
-                        allow_ms_cleavable,
-                        sequence_index,
-                        peptidoform_index,
-                        peptidoform_ion_index,
-                        glycan_model,
-                        Some(self.aminoacid.aminoacid()),
-                    );
-                    Some((formula, specific, seen))
-                }
-            })
-            .fold(
-                (Multi::default(), HashMap::new(), HashSet::new()),
-                |(am, asp, av), (m, sp, v)| {
-                    let merged = crate::helper_functions::merge_hashmap(asp, &sp, &am, &m);
-                    (am * m, merged, av.union(&v).cloned().collect())
-                },
-            );
-        let own =
-            self.aminoacid
-                .formulas_inner(sequence_index, peptidoform_index, peptidoform_ion_index);
-        (
-            formula * &own,
-            specific.into_iter().map(|(k, v)| (k, v * &own)).collect(),
-            seen,
-        )
-    }
-
     /// Enforce the placement rules of predefined modifications. Generates a warning for all
     /// modifications that are not placed according to the database rules.
     /// # Panics
@@ -431,6 +252,188 @@ impl<T> SequenceElement<T> {
             }
         }
         diagnostic_ions
+    }
+}
+
+impl<T> SequenceElement<T> {
+    /// Get the molecular formulas for this position without any the ambiguous modifications
+    pub(crate) fn formulas_base<Mode: MassOutputMode>(
+        &self,
+        all_peptidoforms: &[Peptidoform<Linked>],
+        visited_peptidoforms: &[usize],
+        applied_cross_links: &mut Vec<CrossLinkName>,
+        allow_ms_cleavable: bool,
+        sequence_index: SequencePosition,
+        peptidoform_index: usize,
+        peptidoform_ion_index: usize,
+        glycan_model: &impl GlycanAttachement,
+    ) -> (
+        Multi<Mode::Output>,
+        HashMap<BackboneFragmentKind, Multi<Mode::Output>>,
+        HashSet<CrossLinkName>,
+    ) {
+        self.formulas_generic(
+            &mut |_| false,
+            all_peptidoforms,
+            visited_peptidoforms,
+            applied_cross_links,
+            allow_ms_cleavable,
+            sequence_index,
+            peptidoform_index,
+            peptidoform_ion_index,
+            glycan_model,
+        )
+    }
+
+    /// Get the molecular formulas for this position with the ambiguous modifications placed on the
+    /// very first placed (and updating this in `placed`), without any global isotope modifications
+    #[expect(clippy::too_many_arguments)]
+    pub(crate) fn formulas_greedy(
+        &self,
+        placed: &mut [bool],
+        all_peptidoforms: &[Peptidoform<Linked>],
+        visited_peptidoforms: &[usize],
+        applied_cross_links: &mut Vec<CrossLinkName>,
+        allow_ms_cleavable: bool,
+        sequence_index: SequencePosition,
+        peptidoform_index: usize,
+        peptidoform_ion_index: usize,
+        glycan_model: &impl GlycanAttachement,
+    ) -> (
+        Multi<MolecularFormula>,
+        HashMap<BackboneFragmentKind, Multi<MolecularFormula>>,
+        HashSet<CrossLinkName>,
+    ) {
+        self.formulas_generic(
+            &mut |id| (!placed[id]).then(|| placed[id] = true).is_some(),
+            all_peptidoforms,
+            visited_peptidoforms,
+            applied_cross_links,
+            allow_ms_cleavable,
+            sequence_index,
+            peptidoform_index,
+            peptidoform_ion_index,
+            glycan_model,
+        )
+    }
+
+    /// Get the molecular formulas for this position with all ambiguous modifications, without any
+    /// global isotope modifications
+    pub(crate) fn formulas_all(
+        &self,
+        all_peptidoforms: &[Peptidoform<Linked>],
+        visited_peptidoforms: &[usize],
+        applied_cross_links: &mut Vec<CrossLinkName>,
+        allow_ms_cleavable: bool,
+        sequence_index: SequencePosition,
+        peptidoform_index: usize,
+        peptidoform_ion_index: usize,
+        glycan_model: &impl GlycanAttachement,
+    ) -> (
+        Multi<MolecularFormula>,
+        HashMap<BackboneFragmentKind, Multi<MolecularFormula>>,
+        HashSet<CrossLinkName>,
+    ) {
+        self.formulas_generic(
+            &mut |_| true,
+            all_peptidoforms,
+            visited_peptidoforms,
+            applied_cross_links,
+            allow_ms_cleavable,
+            sequence_index,
+            peptidoform_index,
+            peptidoform_ion_index,
+            glycan_model,
+        )
+    }
+
+    /// Get the molecular formulas for this position with the ambiguous modifications placed on the
+    /// very first placed (and updating this in `placed`), without any global isotope modifications
+    #[expect(clippy::too_many_arguments)]
+    pub(crate) fn formulas_generic<Mode: MassOutputMode>(
+        &self,
+        place_ambiguous: &mut impl FnMut(usize) -> bool,
+        all_peptidoforms: &[Peptidoform<Linked>],
+        visited_peptidoforms: &[usize],
+        applied_cross_links: &mut Vec<CrossLinkName>,
+        allow_ms_cleavable: bool,
+        sequence_index: SequencePosition,
+        peptidoform_index: usize,
+        peptidoform_ion_index: usize,
+        glycan_model: &impl GlycanAttachement,
+    ) -> (
+        Multi<Mode::Output>,
+        HashMap<BackboneFragmentKind, Multi<Mode::Output>>,
+        HashSet<CrossLinkName>,
+    ) {
+        let (formula, specific, seen) = self
+            .modifications
+            .iter()
+            .filter_map(|m| {
+                if let Modification::Ambiguous {
+                    id, modification, ..
+                } = m
+                {
+                    place_ambiguous(*id).then(|| {
+                        let default =
+                            glycan_model.get_default_fragments(Some(self.aminoacid.aminoacid()));
+                        let specific =
+                            glycan_model.get_specific_fragments(Some(self.aminoacid.aminoacid()));
+                        (
+                            Molecule::<Mode>::formula_inner(
+                                &modification,
+                                sequence_index,
+                                peptidoform_index,
+                                default,
+                                Some(self.aminoacid.aminoacid()),
+                            ),
+                            specific
+                                .into_iter()
+                                .map(|(k, setting)| {
+                                    (
+                                        k,
+                                        modification.formula_inner(
+                                            sequence_index,
+                                            peptidoform_index,
+                                            setting,
+                                            Some(self.aminoacid.aminoacid()),
+                                        ),
+                                    )
+                                })
+                                .collect(),
+                            HashSet::default(),
+                        )
+                    })
+                } else {
+                    let (formula, specific, seen) = m.formula_inner(
+                        all_peptidoforms,
+                        visited_peptidoforms,
+                        applied_cross_links,
+                        allow_ms_cleavable,
+                        sequence_index,
+                        peptidoform_index,
+                        peptidoform_ion_index,
+                        glycan_model,
+                        Some(self.aminoacid.aminoacid()),
+                    );
+                    Some((formula, specific, seen))
+                }
+            })
+            .fold(
+                (Multi::default(), HashMap::new(), HashSet::new()),
+                |(am, asp, av), (m, sp, v)| {
+                    let merged = crate::helper_functions::merge_hashmap(asp, &sp, &am, &m);
+                    (am * m, merged, av.union(&v).cloned().collect())
+                },
+            );
+        let own =
+            self.aminoacid
+                .formulas_inner(sequence_index, peptidoform_index, peptidoform_ion_index);
+        (
+            formula * &own,
+            specific.into_iter().map(|(k, v)| (k, v * &own)).collect(),
+            seen,
+        )
     }
 }
 

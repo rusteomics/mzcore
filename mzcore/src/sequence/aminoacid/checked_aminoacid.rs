@@ -3,7 +3,10 @@ use std::marker::PhantomData;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    chemistry::{AmbiguousLabel, Chemical, MolecularFormula, MultiChemical, SatelliteLabel},
+    chemistry::{
+        AmbiguousLabel, AmbiguousMolecule, Chemical, MassOutputMode, MolecularFormula, Molecule,
+        MultiChemical, SatelliteLabel,
+    },
     molecular_formula,
     quantities::Multi,
     sequence::{
@@ -417,7 +420,45 @@ impl<T> MultiChemical for CheckedAminoAcid<T> {
             ]
             .into(),
             _ => unreachable!(),        }
-        }, |unambiguous| unambiguous.formula_inner(sequence_index, peptidoform_index).into())
+        }, |unambiguous| Chemical::formula_inner(&unambiguous, sequence_index, peptidoform_index).into())
+    }
+}
+
+impl<Mode: MassOutputMode> Molecule<Mode> for CheckedAminoAcid<UnAmbiguous> {
+    fn formula_inner(
+        &self,
+        sequence_index: SequencePosition,
+        peptidoform_index: usize,
+    ) -> Mode::Output {
+        AmbiguousMolecule::<Mode>::formulas_inner(
+            &self.aminoacid,
+            sequence_index,
+            peptidoform_index,
+            0,
+        )
+        .to_vec()
+        .pop()
+        .unwrap()
+    }
+}
+
+impl<Mode: MassOutputMode, T> AmbiguousMolecule<Mode> for CheckedAminoAcid<T> {
+    fn formulas_inner(
+        &self,
+        sequence_index: SequencePosition,
+        peptidoform_index: usize,
+        _peptidoform_ion_index: usize,
+    ) -> Multi<<Mode as MassOutputMode>::Output> {
+        AmbiguousMolecule::<Mode>::formulas_inner(
+            &self.aminoacid,
+            sequence_index,
+            peptidoform_index,
+            0,
+        )
+    }
+
+    fn charge(&self) -> Option<crate::system::isize::Charge> {
+        None
     }
 }
 

@@ -6,6 +6,9 @@ use crate::{
 pub trait MassOutputMode {
     /// The output type
     type Output: std::iter::Sum + Clone;
+
+    fn from_mass(mass: Mass) -> Self::Output;
+    fn from_formula(formula: MolecularFormula) -> Self::Output;
 }
 
 /// A trait to signify that only the final monoisotopic mass is interesting, note that this will be
@@ -14,6 +17,14 @@ pub struct OutputMonoIsotopic;
 
 impl MassOutputMode for OutputMonoIsotopic {
     type Output = Mass;
+
+    fn from_mass(mass: Mass) -> Self::Output {
+        mass
+    }
+
+    fn from_formula(formula: MolecularFormula) -> Self::Output {
+        formula.monoisotopic_mass()
+    }
 }
 
 /// A trait to signify that only the final average weight is interesting, note that this will be
@@ -22,12 +33,28 @@ pub struct OutputAverageWeight;
 
 impl MassOutputMode for OutputAverageWeight {
     type Output = Mass;
+
+    fn from_mass(mass: Mass) -> Self::Output {
+        mass
+    }
+
+    fn from_formula(formula: MolecularFormula) -> Self::Output {
+        formula.average_weight()
+    }
 }
 
 pub struct OutputMolecularFormula;
 
 impl MassOutputMode for OutputMolecularFormula {
     type Output = MolecularFormula;
+
+    fn from_mass(mass: Mass) -> Self::Output {
+        MolecularFormula::with_additional_mass(mass.value)
+    }
+
+    fn from_formula(formula: MolecularFormula) -> Self::Output {
+        formula
+    }
 }
 
 /// Any molecule that has a clearly defined single molecular formula
