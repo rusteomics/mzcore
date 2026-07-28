@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 use thin_vec::ThinVec;
 
 use crate::{
-    chemistry::{Chemical, MolecularFormula},
+    chemistry::{MassOutputMode, Molecule},
     glycan::{
         GlycanBranchIndex, GlycanBranchMassIndex, GlycanPosition, MonoSaccharide,
         PositionedGlycanStructure, glycan::BaseSugar, lists::GLYCAN_PARSE_LIST,
@@ -275,18 +275,18 @@ impl Display for GlycanStructure {
     }
 }
 
-impl Chemical for GlycanStructure {
-    fn formula_inner(
+impl Molecule for GlycanStructure {
+    fn calculate_mass_inner<Mode: MassOutputMode>(
         &self,
         sequence_index: SequencePosition,
         peptidoform_index: usize,
-    ) -> MolecularFormula {
-        self.sugar.formula_inner(sequence_index, peptidoform_index)
+    ) -> Mode::Output {
+        self.sugar.calculate_mass_inner::<Mode>(sequence_index, peptidoform_index)
             + self
                 .branches
                 .iter()
-                .map(|f| f.formula_inner(sequence_index, peptidoform_index))
-                .sum::<MolecularFormula>()
+                .map(|f| f.calculate_mass_inner::<Mode>(sequence_index, peptidoform_index))
+                .sum::<Mode::Output>()
     }
 }
 
@@ -395,8 +395,6 @@ impl GlycanStructure {
 
     /// Given the inner depth determine the correct positions and branch ordering
     /// Return the positioned tree and the outer depth.
-    /// # Panics
-    /// When any of the masses in this glycan cannot be compared see [`f64::partial_cmp`].
     fn internal_pos(
         self,
         inner_depth: u16,
@@ -408,10 +406,10 @@ impl GlycanStructure {
             .into_iter()
             .enumerate()
             .sorted_unstable_by(|(_, a), (_, b)| {
-                b.formula()
-                    .monoisotopic_mass()
-                    .partial_cmp(&a.formula().monoisotopic_mass())
-                    .unwrap()
+                b.monoisotopic_mass()
+                    .mass()
+                    .value
+                    .total_cmp(&a.monoisotopic_mass().mass().value)
             })
             .collect_vec();
 

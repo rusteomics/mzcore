@@ -2,9 +2,8 @@ use std::num::NonZeroU32;
 
 use itertools::Itertools;
 use mzcore::{
-    prelude::{
-        Chemical, IsAminoAcid, MolecularCharge, MolecularFormula, MultiChemical, PeptidoformIon,
-    },
+    chemistry::{AmbiguousMolecule, MassOutputMode, Molecule},
+    prelude::{IsAminoAcid, MolecularCharge, MolecularFormula, PeptidoformIon},
     system::isize::Charge,
 };
 use mzcv::term;
@@ -75,17 +74,21 @@ impl Default for AnalyteTarget {
     }
 }
 
-impl MultiChemical for AnalyteTarget {
-    fn formulas_inner(
+impl AmbiguousMolecule for AnalyteTarget {
+    fn calculate_masses_inner<Mode: MassOutputMode>(
         &self,
-        _sequence_index: mzcore::prelude::SequencePosition,
-        _peptidoform_index: usize,
-        _peptidoform_ion_index: usize,
-    ) -> mzcore::quantities::Multi<MolecularFormula> {
+        sequence_index: mzcore::prelude::SequencePosition,
+        peptidoform_index: usize,
+        peptidoform_ion_index: usize,
+    ) -> mzcore::quantities::Multi<Mode::Output> {
         match self {
             Self::Unknown(_) => mzcore::quantities::Multi::default(),
-            Self::PeptidoformIon(pep) => pep.formulas(),
-            Self::MolecularFormula(f) => f.into(),
+            Self::PeptidoformIon(pep) => pep.calculate_masses_inner::<Mode>(
+                sequence_index,
+                peptidoform_index,
+                peptidoform_ion_index,
+            ),
+            Self::MolecularFormula(f) => Mode::from_ref_formula(f).into(),
         }
     }
 }
@@ -125,7 +128,7 @@ impl AnalyteTarget {
             Self::Unknown(_) => None,
             Self::MolecularFormula(f) => Some(f.clone()),
             Self::PeptidoformIon(pep) => (pep.formulas()
-                + pep.get_charge_carriers().map(Chemical::formula).unwrap_or_default())
+                + pep.get_charge_carriers().map(|m| m.formula()).unwrap_or_default())
             .to_vec()
             .into_iter()
             .exactly_one()

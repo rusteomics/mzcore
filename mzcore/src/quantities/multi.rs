@@ -1,11 +1,14 @@
-use std::ops::{Add, AddAssign, Deref, Mul, MulAssign, Neg, Sub};
+use std::{
+    num::NonZeroU16,
+    ops::{Add, AddAssign, Deref, Mul, MulAssign, Neg, Sub},
+};
 
 use itertools::{Itertools, MinMaxResult};
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    chemistry::{AmbiguousLabel, MolecularFormula},
-    system::OrderedMass,
+    chemistry::{AmbiguousLabel, Element, MassOutput, MassOutputType},
+    system::{Mass, OrderedMass},
 };
 
 /// A collection of potentially multiple of the generic type, it is used be able to easily
@@ -18,6 +21,31 @@ impl<M> Multi<M> {
     #[must_use]
     pub fn single(mut self) -> Option<M> {
         if self.len() == 1 { self.0.pop() } else { None }
+    }
+}
+
+impl<M: MassOutputType> Multi<M> {
+    /// Apply the given global isotope modifications. It can return None if any of the substitutents
+    /// are invalid.
+    #[must_use]
+    pub(crate) fn with_global_isotope_modifications(
+        self,
+        isotopes: &[(Element, Option<NonZeroU16>)],
+    ) -> Option<Self> {
+        self.0
+            .into_iter()
+            .map(|o| o.with_global_isotope_modifications(isotopes))
+            .collect()
+    }
+
+    pub(crate) fn with_label(self, label: &AmbiguousLabel) -> Self {
+        Self(self.0.iter().cloned().map(|o| o.with_label(label.clone())).collect())
+    }
+}
+
+impl From<Multi<MassOutput>> for Multi<Mass> {
+    fn from(value: Multi<MassOutput>) -> Self {
+        value.0.into_iter().map(|o| o.mass()).collect()
     }
 }
 
@@ -365,11 +393,5 @@ impl<M> FromIterator<M> for Multi<M> {
 impl<'a, M: Clone + 'a> FromIterator<&'a M> for Multi<M> {
     fn from_iter<T: IntoIterator<Item = &'a M>>(iter: T) -> Self {
         Self(iter.into_iter().cloned().collect())
-    }
-}
-
-impl Multi<MolecularFormula> {
-    pub(crate) fn with_label(self, label: &AmbiguousLabel) -> Self {
-        Self(self.0.iter().cloned().map(|o| o.with_label(label.clone())).collect())
     }
 }

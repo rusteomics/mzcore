@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use thin_vec::ThinVec;
 
 use crate::{
-    chemistry::{ChargeRange, Chemical, MolecularFormula},
+    chemistry::{ChargeRange, MassOutputMode, MolecularFormula, Molecule},
     sequence::SequencePosition,
     system::isize::Charge,
 };
@@ -189,16 +189,16 @@ impl MolecularCharge {
     }
 }
 
-impl Chemical for MolecularCharge {
-    fn formula_inner(
+impl Molecule for MolecularCharge {
+    fn calculate_mass_inner<Mode: MassOutputMode>(
         &self,
         _sequence_index: SequencePosition,
         _peptidoform_index: usize,
-    ) -> MolecularFormula {
+    ) -> Mode::Output {
         self.charge_carriers
             .iter()
-            .map(|(n, mol)| mol.clone() * *n as i32)
-            .sum::<MolecularFormula>()
+            .map(|(n, mol)| Mode::from_ref_formula(mol) * *n as i32)
+            .sum()
     }
 }
 
@@ -247,7 +247,7 @@ impl From<Vec<(isize, MolecularFormula)>> for MolecularCharge {
 #[cfg(test)]
 #[expect(clippy::missing_panics_doc)]
 mod tests {
-    use crate::chemistry::{Chemical, MolecularCharge};
+    use crate::chemistry::{MolecularCharge, Molecule};
 
     #[test]
     fn simple_charge_options() {

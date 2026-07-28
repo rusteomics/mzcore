@@ -9,9 +9,10 @@ use serde_json::Value;
 use thin_vec::ThinVec;
 
 use crate::{
-    chemistry::{Chemical, MolecularFormula},
+    chemistry::{MassOutputMode, MolecularFormula, Molecule},
     glycan::{BaseSugar, Configuration, GlycanSubstituent, HexoseIsomer},
     parse_json::ParseJson,
+    sequence::SequencePosition,
     space::{Space, UsedSpace},
 };
 
@@ -22,6 +23,24 @@ pub struct MonoSaccharide {
     pub(super) substituents: ThinVec<(GlycanSubstituent, Option<u8>)>,
     pub(super) furanose: bool,
     pub(super) configuration: Option<Configuration>,
+}
+
+impl Molecule for MonoSaccharide {
+    fn calculate_mass_inner<Mode: MassOutputMode>(
+        &self,
+        sequence_index: SequencePosition,
+        peptidoform_index: usize,
+    ) -> Mode::Output {
+        (self
+            .base_sugar
+            .calculate_mass_inner::<Mode>(sequence_index, peptidoform_index)
+            + self
+                .substituents
+                .iter()
+                .map(|s| s.0.calculate_mass_inner::<Mode>(sequence_index, peptidoform_index))
+                .sum::<Mode::Output>())
+        .into()
+    }
 }
 
 impl Space for MonoSaccharide {
@@ -429,7 +448,7 @@ mod tests {
     use itertools::Itertools;
 
     use crate::{
-        chemistry::Chemical,
+        chemistry::Molecule,
         glycan::{
             glycan::{BaseSugar, Configuration, GlycanSubstituent, HexoseIsomer, PentoseIsomer},
             lists::GLYCAN_PARSE_LIST,

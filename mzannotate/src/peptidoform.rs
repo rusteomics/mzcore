@@ -2,7 +2,7 @@ use std::collections::{HashMap, HashSet};
 
 use itertools::Itertools;
 use mzcore::{
-    chemistry::{CachedCharge, DiagnosticIon},
+    chemistry::{CachedCharge, DiagnosticIon, MassOutputType, OutputMolecularFormula},
     molecular_formula,
     prelude::{
         MolecularCharge, MolecularFormula, Peptidoform, PeptidoformIon, PeptidoformIonSet,
@@ -108,10 +108,11 @@ pub(crate) fn generate_theoretical_fragments_inner<Complexity>(
         );
         let mut cross_links = Vec::new();
         let visited_peptides = vec![peptidoform_index];
-        let (n_term, n_term_specific, n_term_seen, n_term_losses) = peptidoform.all_masses(
+        let (n_term, n_term_specific, n_term_seen, n_term_losses) = peptidoform
+            .all_masses::<OutputMolecularFormula>(
             ..=sequence_index,
             ..sequence_index,
-            &peptidoform.get_n_term_mass(
+            &peptidoform.get_n_term_mass::<OutputMolecularFormula>(
                 all_peptides,
                 &visited_peptides,
                 &mut cross_links,
@@ -128,10 +129,11 @@ pub(crate) fn generate_theoretical_fragments_inner<Complexity>(
             peptidoform_ion_index,
             &model.glycan,
         );
-        let (c_term, c_term_specific, c_term_seen, c_term_losses) = peptidoform.all_masses(
+        let (c_term, c_term_specific, c_term_seen, c_term_losses) = peptidoform
+            .all_masses::<OutputMolecularFormula>(
             sequence_index..,
             sequence_index + 1..,
-            &peptidoform.get_c_term_mass(
+            &peptidoform.get_c_term_mass::<OutputMolecularFormula>(
                 all_peptides,
                 &visited_peptides,
                 &mut cross_links,
@@ -155,7 +157,7 @@ pub(crate) fn generate_theoretical_fragments_inner<Complexity>(
             peptidoform.sequence()[sequence_index].modifications.iter().fold(
                 (Multi::default(), HashMap::new(), HashSet::new()),
                 |acc, m| {
-                    let (f, specific, s) = m.formula_inner(
+                    let (f, specific, s) = m.formula_inner::<OutputMolecularFormula>(
                         all_peptides,
                         &[peptidoform_index],
                         &mut cross_links,
@@ -281,7 +283,7 @@ pub(crate) fn generate_theoretical_fragments_inner<Complexity>(
                         if c_possible {
                             output.extend(Fragment::generate_all(
                                 &(peptidoform
-                                    .all_masses(
+                                    .all_masses::<OutputMolecularFormula>(
                                         n..=c,
                                         n..=c,
                                         &(Multi::default(), HashMap::new()),
@@ -340,22 +342,23 @@ pub(crate) fn generate_theoretical_fragments_inner<Complexity>(
         }
     }
     for fragment in &mut output {
-        fragment.formula = fragment.formula.as_ref().map(|f| {
+        fragment.formula = fragment.formula.take().map(|f| {
             f.with_global_isotope_modifications(peptidoform.get_global())
                 .expect("Invalid global isotope modification")
         });
     }
 
     // Generate precursor peak
-    let (full_precursor, _precursor_specific, _all_cross_links) = peptidoform.formulas_inner(
-        peptidoform_index,
-        peptidoform_ion_index,
-        all_peptides,
-        &[],
-        &mut Vec::new(),
-        model.allow_cross_link_cleavage,
-        &model.glycan,
-    );
+    let (full_precursor, _precursor_specific, _all_cross_links) = peptidoform
+        .formulas_inner::<OutputMolecularFormula>(
+            peptidoform_index,
+            peptidoform_ion_index,
+            all_peptides,
+            &[],
+            &mut Vec::new(),
+            model.allow_cross_link_cleavage,
+            &model.glycan,
+        );
     // Allow neutral losses from modifications for the precursor
     let mut precursor_neutral_losses = if model.modification_specific_neutral_losses {
         peptidoform
@@ -404,7 +407,7 @@ pub(crate) fn generate_theoretical_fragments_inner<Complexity>(
     // Add glycan fragmentation to all peptide fragments
     // Assuming that only one glycan can ever fragment at the same time.
     let full_formula = peptidoform
-        .formulas_inner(
+        .formulas_inner::<OutputMolecularFormula>(
             peptidoform_index,
             peptidoform_ion_index,
             all_peptides,

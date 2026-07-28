@@ -3,14 +3,13 @@
 use std::borrow::Cow;
 
 use crate::{
-    chemistry::{MassMode, MolecularFormula, MultiChemical, SatelliteLabel},
+    chemistry::{MolecularFormula, SatelliteLabel},
     quantities::Multi,
     sequence::SequencePosition,
-    system::Mass,
 };
 
 /// A general trait to define amino acids.
-pub trait IsAminoAcid: MultiChemical {
+pub trait IsAminoAcid {
     /// The full name for this amino acid.
     fn name(&self) -> Cow<'_, str>;
     /// The three letter code for this amino acid. Or None if there is no common three letter
@@ -24,19 +23,6 @@ pub trait IsAminoAcid: MultiChemical {
     /// defined as an amino acid with an additional modification. For example `X[H9C2N2]` could be
     /// used if Arginine was not defined as `R` in ProForma.
     fn pro_forma_definition(&self) -> Cow<'_, str>;
-    /// The monoisotopic mass of this amino acid. Should be redefined for better performance.
-    fn monoisotopic_mass(&self) -> Cow<'_, Multi<Mass>> {
-        Cow::Owned(self.formulas().iter().map(MolecularFormula::monoisotopic_mass).collect())
-    }
-    /// The average weight of this amino acid. Should be redefined for better performance.
-    fn average_weight(&self) -> Cow<'_, Multi<Mass>> {
-        Cow::Owned(self.formulas().iter().map(MolecularFormula::average_weight).collect())
-    }
-    /// The mass with a given mass mode for this amino acid. Should be redefined for better
-    /// performance.
-    fn mass(&self, mode: MassMode) -> Cow<'_, Multi<Mass>> {
-        Cow::Owned(self.formulas().iter().map(|f| f.mass(mode)).collect())
-    }
     /// The molecular formula of the side chain of the amino acid. The `sequence_index` and
     /// `peptidoform_index` are used to keep track of ambiguous amino acids.
     fn side_chain(

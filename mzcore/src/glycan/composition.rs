@@ -4,10 +4,9 @@ use context_error::*;
 
 use crate::{
     ParserResult,
-    chemistry::MolecularFormula,
+    chemistry::{MolecularFormula, Molecule},
     glycan::{GLYCAN_PARSE_LIST, MonoSaccharide},
     helper_functions::{explain_number_error, next_number, str_starts_with},
-    prelude::Chemical,
 };
 
 /// All possible errors when parsing a ProForma glycan composition

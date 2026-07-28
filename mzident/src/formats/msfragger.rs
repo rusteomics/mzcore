@@ -1,7 +1,7 @@
 use std::{borrow::Cow, marker::PhantomData, ops::Range, path::PathBuf};
 
 use mzcore::{
-    chemistry::Chemical,
+    chemistry::Molecule,
     csv::{CsvLine, parse_csv},
     glycan::MonoSaccharide,
     ontology::Ontologies,

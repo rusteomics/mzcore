@@ -4,7 +4,7 @@ use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    chemistry::{MolecularCharge, MolecularFormula},
+    chemistry::{AmbiguousMolecule, MassOutputMode, MolecularCharge},
     glycan::FullGlycan,
     quantities::Multi,
     sequence::{
@@ -58,36 +58,6 @@ impl PeptidoformIon {
         for p in &mut self.peptidoforms {
             p.shrink_to_fit();
         }
-    }
-
-    /// Gives all possible formulas for this peptidoform (including breakage of cross-links that can
-    /// break). Includes the full glycan, if there are any glycans.
-    /// Assumes all peptides in this peptidoform are connected.
-    /// If there are no peptides in this peptidoform it returns [`Multi::default`].
-    pub fn formulas(&self) -> Multi<MolecularFormula> {
-        self.formulas_inner(0)
-    }
-
-    /// Gives all possible formulas for this peptidoform (including breakage of cross-links that can
-    /// break). Includes the full glycan, if there are any glycans.
-    /// Assumes all peptides in this peptidoform are connected.
-    /// If there are no peptides in this peptidoform it returns [`Multi::default`].
-    pub(crate) fn formulas_inner(&self, peptidoform_ion_index: usize) -> Multi<MolecularFormula> {
-        self.peptidoforms
-            .first()
-            .map(|p| {
-                p.formulas_inner(
-                    0,
-                    peptidoform_ion_index,
-                    &self.peptidoforms,
-                    &[],
-                    &mut Vec::new(),
-                    true,
-                    &FullGlycan {},
-                )
-                .0
-            })
-            .unwrap_or_default()
     }
 
     /// Assume there is exactly one peptide in this collection.
@@ -305,6 +275,31 @@ impl PeptidoformIon {
             first = false;
         }
         Ok(())
+    }
+}
+
+impl AmbiguousMolecule for PeptidoformIon {
+    fn calculate_masses_inner<Mode: MassOutputMode>(
+        &self,
+        _sequence_index: SequencePosition,
+        _peptidoform_index: usize,
+        peptidoform_ion_index: usize,
+    ) -> Multi<Mode::Output> {
+        self.peptidoforms
+            .first()
+            .map(|p| {
+                p.formulas_inner::<Mode>(
+                    0,
+                    peptidoform_ion_index,
+                    &self.peptidoforms,
+                    &[],
+                    &mut Vec::new(),
+                    true,
+                    &FullGlycan {},
+                )
+                .0
+            })
+            .unwrap_or_default()
     }
 }
 

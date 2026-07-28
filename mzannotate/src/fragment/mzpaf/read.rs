@@ -8,8 +8,8 @@ use std::{
 use context_error::*;
 use mzcore::{
     chemistry::{
-        Chemical, ELEMENT_PARSE_LIST, MolecularCharge, MolecularFormula, MultiChemical,
-        NeutralLoss, SatelliteLabel, StructuralFormula,
+        AmbiguousMolecule, ELEMENT_PARSE_LIST, MolecularCharge, MolecularFormula, Molecule,
+        NeutralLoss, OutputMolecularFormula, SatelliteLabel, StructuralFormula,
     },
     molecular_formula,
     ontology::Ontologies,
@@ -338,8 +338,11 @@ impl PeakAnnotation {
                 })
             }
             IonType::Immonium(aa, m) => (
-                aa.formulas().first().map(|f| {
-                    f + m.as_ref().map(|m| m.formula()).unwrap_or_default()
+                aa.calculate_masses::<OutputMolecularFormula>().first().map(|f| {
+                    f + m
+                        .as_ref()
+                        .map(|m| m.calculate_mass::<OutputMolecularFormula>())
+                        .unwrap_or_default()
                         - molecular_formula!(C 1 O 1)
                 }),
                 FragmentType::Immonium(

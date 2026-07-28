@@ -5,8 +5,8 @@ use std::borrow::Cow;
 
 use itertools::Itertools;
 use mzcore::{
-    chemistry::MolecularFormula,
-    prelude::MultiChemical,
+    chemistry::{MassOutputMode, OutputMonoIsotopic},
+    prelude::AmbiguousMolecule,
     quantities::Multi,
     sequence::{HasPeptidoform, Linear, SequencePosition},
     system::{Mass, Ratio},
@@ -206,7 +206,7 @@ where
                     (0..a)
                         .map(|_| {
                             let mass_a = seq_a.cast_peptidoform().sequence()[index_a]
-                                .formulas_inner(
+                                .calculate_masses_inner::<OutputMonoIsotopic>(
                                     SequencePosition::Index(
                                         index_a,
                                         seq_a.cast_peptidoform().len(),
@@ -215,10 +215,10 @@ where
                                     0,
                                 )
                                 .iter()
-                                .map(MolecularFormula::monoisotopic_mass)
+                                .map(|m| m.mass())
                                 .collect();
                             let mass_b = seq_b.cast_peptidoform()[index_b]
-                                .formulas_inner(
+                                .calculate_masses_inner::<OutputMonoIsotopic>(
                                     SequencePosition::Index(
                                         index_b,
                                         seq_b.cast_peptidoform().len(),
@@ -227,7 +227,7 @@ where
                                     0,
                                 )
                                 .iter()
-                                .map(MolecularFormula::monoisotopic_mass)
+                                .map(|m| m.mass())
                                 .collect();
                             let piece = score_pair(
                                 (&seq_a.cast_peptidoform()[index_a], &mass_a),
@@ -420,16 +420,16 @@ impl<A: HasPeptidoform<Linear>, B: HasPeptidoform<Linear>> Alignment<A, B> {
 
     /// The mass(es) for the matched portion of the first sequence TODO: this assumes no terminal
     /// mods
-    pub fn mass_a(&self) -> Multi<MolecularFormula> {
+    pub fn mass_a<Mode: MassOutputMode>(&self) -> Multi<Mode::Output> {
         let seq_a = self.seq_a().cast_peptidoform();
         if self.align_type().left.global_a() && self.align_type().right.global_a() {
-            seq_a.bare_formulas()
+            seq_a.bare_formulas::<Mode>()
         } else {
             seq_a[self.start_a()..self.start_a() + self.len_a()]
                 .iter()
                 .enumerate()
                 .fold(Multi::default(), |acc, (index, s)| {
-                    acc * s.formulas_inner(
+                    acc * s.calculate_masses_inner::<Mode>(
                         SequencePosition::Index(index, self.seq_a.cast_peptidoform().len()),
                         0,
                         0,
@@ -439,16 +439,16 @@ impl<A: HasPeptidoform<Linear>, B: HasPeptidoform<Linear>> Alignment<A, B> {
     }
 
     /// The mass(es) for the matched portion of the second sequence
-    pub fn mass_b(&self) -> Multi<MolecularFormula> {
+    pub fn mass_b<Mode: MassOutputMode>(&self) -> Multi<Mode::Output> {
         let seq_b = self.seq_b().cast_peptidoform();
         if self.align_type().left.global_b() && self.align_type().right.global_b() {
-            seq_b.bare_formulas()
+            seq_b.bare_formulas::<Mode>()
         } else {
             seq_b[self.start_b()..self.start_b() + self.len_b()]
                 .iter()
                 .enumerate()
                 .fold(Multi::default(), |acc, (index, s)| {
-                    acc * s.formulas_inner(
+                    acc * s.calculate_masses_inner::<Mode>(
                         SequencePosition::Index(index, self.seq_b.cast_peptidoform().len()),
                         0,
                         0,
@@ -462,10 +462,10 @@ impl<A: HasPeptidoform<Linear>, B: HasPeptidoform<Linear>> Alignment<A, B> {
     /// stretches it returns the smallest difference.
     #[expect(clippy::missing_panics_doc)]
     pub fn mass_difference(&self) -> Mass {
-        self.mass_a()
+        self.mass_a::<OutputMonoIsotopic>()
             .iter()
-            .cartesian_product(self.mass_b().iter())
-            .map(|(a, b)| a.monoisotopic_mass() - b.monoisotopic_mass())
+            .cartesian_product(self.mass_b::<OutputMonoIsotopic>().iter())
+            .map(|(a, b)| a.mass() - b.mass())
             .min_by(|a, b| a.abs().value.total_cmp(&b.abs().value))
             .expect("An empty Multi<MolecularFormula> was detected")
     }
@@ -475,10 +475,10 @@ impl<A: HasPeptidoform<Linear>, B: HasPeptidoform<Linear>> Alignment<A, B> {
     /// stretches it returns the smallest difference.
     #[expect(clippy::missing_panics_doc)]
     pub fn ppm(&self) -> Ratio {
-        self.mass_a()
+        self.mass_a::<OutputMonoIsotopic>()
             .iter()
-            .cartesian_product(self.mass_b().iter())
-            .map(|(a, b)| a.monoisotopic_mass().ppm(b.monoisotopic_mass()))
+            .cartesian_product(self.mass_b::<OutputMonoIsotopic>().iter())
+            .map(|(a, b)| a.mass().ppm(b.mass()))
             .min_by(|a, b| a.value.total_cmp(&b.value))
             .expect("An empty Multi<MolecularFormula> was detected")
     }

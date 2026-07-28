@@ -2,7 +2,7 @@
 
 use itertools::Itertools;
 use mzcore::{
-    chemistry::CachedCharge,
+    chemistry::{CachedCharge, OutputMolecularFormula},
     glycan::{GlycanBreakPos, PositionedGlycanStructure},
     prelude::*,
     quantities::Multi,
@@ -83,35 +83,39 @@ impl GlycanFragmention for PositionedGlycanStructure {
                         .collect_vec();
                 // Generate all Y fragments
                 base_fragments.extend(
-                    self.internal_break_points(0, peptidoform_index, attachment)
-                        .iter()
-                        .filter(|(_, bonds, _)| {
-                            bonds.iter().all(|b| !matches!(b, GlycanBreakPos::B(_)))
-                                && !bonds.iter().all(|b| matches!(b, GlycanBreakPos::End(_)))
-                        })
-                        .flat_map(move |(f, bonds, _)| {
-                            full_formula.iter().map(move |full| {
-                                Fragment::new(
-                                    full - self.formula_inner(
-                                        SequencePosition::default(),
-                                        peptidoform_index,
-                                    ) + f,
-                                    Charge::zero(),
-                                    peptidoform_ion_index,
+                    self.internal_break_points::<OutputMolecularFormula>(
+                        0,
+                        peptidoform_index,
+                        attachment,
+                    )
+                    .iter()
+                    .filter(|(_, bonds, _)| {
+                        bonds.iter().all(|b| !matches!(b, GlycanBreakPos::B(_)))
+                            && !bonds.iter().all(|b| matches!(b, GlycanBreakPos::End(_)))
+                    })
+                    .flat_map(move |(f, bonds, _)| {
+                        full_formula.iter().map(move |full| {
+                            Fragment::new(
+                                full - self.calculate_mass_inner::<OutputMolecularFormula>(
+                                    SequencePosition::default(),
                                     peptidoform_index,
-                                    FragmentType::Y(
-                                        bonds
-                                            .iter()
-                                            .filter(|b| !matches!(b, GlycanBreakPos::End(_)))
-                                            .map(GlycanBreakPos::position)
-                                            .cloned()
-                                            .collect(),
-                                    ),
-                                )
-                            })
+                                ) + f,
+                                Charge::zero(),
+                                peptidoform_ion_index,
+                                peptidoform_index,
+                                FragmentType::Y(
+                                    bonds
+                                        .iter()
+                                        .filter(|b| !matches!(b, GlycanBreakPos::End(_)))
+                                        .map(GlycanBreakPos::position)
+                                        .cloned()
+                                        .collect(),
+                                ),
+                            )
                         })
-                        .flat_map(|f| f.with_charge_range_slice(&charges_other))
-                        .flat_map(|f| f.with_neutral_losses(&model.glycan.neutral_losses)),
+                    })
+                    .flat_map(|f| f.with_charge_range_slice(&charges_other))
+                    .flat_map(|f| f.with_neutral_losses(&model.glycan.neutral_losses)),
                 );
                 // Generate all diagnostic ions
                 base_fragments.extend(
@@ -142,7 +146,7 @@ fn leaf_fragments(
 ) -> Vec<Fragment> {
     // Find all B type fragments (with and without Y breakage)
     let mut base_fragments = glycan
-        .internal_break_points(0, peptidoform_index, attachment)
+        .internal_break_points::<OutputMolecularFormula>(0, peptidoform_index, attachment)
         .into_iter()
         .filter(|(m, ..)| *m != MolecularFormula::default())
         .map(|(formula, breakages, _)| {
@@ -186,6 +190,7 @@ mod tests {
     use std::collections::HashMap;
 
     use mzcore::{
+        chemistry::OutputMolecularFormula,
         glycan::{BackboneFragmentKind, GlycanPeptideFragment},
         molecular_formula,
         prelude::*,
@@ -212,7 +217,7 @@ mod tests {
             GlycanPeptideFragment::FREE,
         ));
 
-        let (f, s, ..) = peptidoform.all_masses(
+        let (f, s, ..) = peptidoform.all_masses::<OutputMolecularFormula>(
             ..,
             ..,
             &(Multi::default(), HashMap::default()),

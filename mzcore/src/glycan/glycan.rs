@@ -4,7 +4,7 @@ use context_error::*;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    chemistry::{Chemical, ELEMENT_PARSE_LIST, Element, MolecularFormula},
+    chemistry::{ELEMENT_PARSE_LIST, Element, MassOutputMode, MolecularFormula, Molecule},
     glycan::{lists::*, monosaccharide::MonoSaccharide},
     helper_functions::str_starts_with,
     molecular_formula,
@@ -358,19 +358,6 @@ impl ParseHelper for &str {
     }
 }
 
-impl Chemical for MonoSaccharide {
-    fn formula_inner(
-        &self,
-        sequence_index: SequencePosition,
-        peptidoform_index: usize,
-    ) -> MolecularFormula {
-        self.base_sugar.formula_inner(sequence_index, peptidoform_index)
-            + self.substituents.iter().fold(MolecularFormula::default(), |acc, s| {
-                acc + s.0.formula_inner(sequence_index, peptidoform_index)
-            })
-    }
-}
-
 /// The base sugar of a monosaccharide, optionally with the isomeric state saved as well.
 #[derive(Clone, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 #[allow(variant_size_differences)] // The custom is needed, and so at least 16 bytes are necessary (8 for the Box and pad 8 to fulfil alignment), the rest is just very tiny.
@@ -457,23 +444,23 @@ impl Display for BaseSugar {
     }
 }
 
-impl Chemical for BaseSugar {
-    fn formula_inner(
+impl Molecule for BaseSugar {
+    fn calculate_mass_inner<Mode: MassOutputMode>(
         &self,
         _sequence_index: SequencePosition,
         _peptidoform_index: usize,
-    ) -> MolecularFormula {
+    ) -> Mode::Output {
         match self {
-            Self::Custom(a) => a.as_ref().clone(),
-            Self::Sugar => molecular_formula!(H 2 C 2 O 1),
-            Self::Triose => molecular_formula!(H 4 C 3 O 2),
-            Self::Tetrose(_) => molecular_formula!(H 6 C 4 O 3),
-            Self::Pentose(_) => molecular_formula!(H 8 C 5 O 4),
-            Self::Hexose(_) => molecular_formula!(H 10 C 6 O 5),
-            Self::Heptose(_) => molecular_formula!(H 12 C 7 O 6),
-            Self::Octose => molecular_formula!(H 14 C 8 O 7),
-            Self::Nonose(_) => molecular_formula!(H 16 C 9 O 8),
-            Self::Decose => molecular_formula!(H 18 C 10 O 9),
+            Self::Custom(a) => Mode::from_ref_formula(a.as_ref()),
+            Self::Sugar => Mode::from_formula(molecular_formula!(H 2 C 2 O 1)),
+            Self::Triose => Mode::from_formula(molecular_formula!(H 4 C 3 O 2)),
+            Self::Tetrose(_) => Mode::from_formula(molecular_formula!(H 6 C 4 O 3)),
+            Self::Pentose(_) => Mode::from_formula(molecular_formula!(H 8 C 5 O 4)),
+            Self::Hexose(_) => Mode::from_formula(molecular_formula!(H 10 C 6 O 5)),
+            Self::Heptose(_) => Mode::from_formula(molecular_formula!(H 12 C 7 O 6)),
+            Self::Octose => Mode::from_formula(molecular_formula!(H 14 C 8 O 7)),
+            Self::Nonose(_) => Mode::from_formula(molecular_formula!(H 16 C 9 O 8)),
+            Self::Decose => Mode::from_formula(molecular_formula!(H 18 C 10 O 9)),
         }
     }
 }
@@ -695,12 +682,12 @@ impl Display for GlycanSubstituent {
     }
 }
 
-impl Chemical for GlycanSubstituent {
-    fn formula_inner(
+impl Molecule for GlycanSubstituent {
+    fn calculate_mass_inner<Mode: MassOutputMode>(
         &self,
         _sequence_index: SequencePosition,
         _peptidoform_index: usize,
-    ) -> MolecularFormula {
+    ) -> Mode::Output {
         let side = match self {
             Self::Acetimidoyl => molecular_formula!(H 5 C 2 N 1),
             Self::Acetyl => molecular_formula!(H 3 C 2 O 1),
@@ -750,7 +737,7 @@ impl Chemical for GlycanSubstituent {
             Self::Ulof => molecular_formula!(H 4 C 1 O 2), /* Replaces H, together with replacement below this is H3C1O1 */
             Self::Water => molecular_formula!(H - 1),
         };
-        side - molecular_formula!(O 1 H 1) // substituent so replaces a standard oxygen side chain
+        Mode::from_formula(side) - Mode::from_formula(molecular_formula!(O 1 H 1)) // substituent so replaces a standard oxygen side chain
     }
 }
 

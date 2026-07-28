@@ -13,7 +13,7 @@ use thin_vec::ThinVec;
 
 use crate::{
     chemistry::{
-        AmbiguousLabel, Chemical, DiagnosticIon, MassOutputMode, MolecularFormula, Molecule,
+        AmbiguousLabel, DiagnosticIon, MassOutputMode, MassOutputType, MolecularFormula, Molecule,
         NeutralLoss,
     },
     glycan::{GlycanPeptideFragment, GlycanStructure, MonoSaccharide},
@@ -164,14 +164,14 @@ impl<Context> bincode::Decode<Context> for SimpleModificationInner {
     }
 }
 
-impl Chemical for SimpleModificationInner {
+impl Molecule for SimpleModificationInner {
     /// Get the molecular formula for this modification.
-    fn formula_inner(
+    fn calculate_mass_inner<Mode: MassOutputMode + ?Sized>(
         &self,
         position: SequencePosition,
         peptidoform_index: usize,
-    ) -> MolecularFormula {
-        self.formula_inner(
+    ) -> Mode::Output {
+        self.formula_inner::<Mode>(
             position,
             peptidoform_index,
             GlycanPeptideFragment::FULL,
@@ -180,23 +180,6 @@ impl Chemical for SimpleModificationInner {
         .to_vec()
         .pop()
         .unwrap()
-    }
-}
-
-impl<Mode: MassOutputMode> Molecule<Mode> for SimpleModificationInner {
-    /// Get the molecular formula for this modification.
-    fn formula_inner(&self, position: SequencePosition, peptidoform_index: usize) -> Mode::Output {
-        Mode::from_formula(
-            self.formula_inner(
-                position,
-                peptidoform_index,
-                GlycanPeptideFragment::FULL,
-                None,
-            )
-            .to_vec()
-            .pop()
-            .unwrap(),
-        )
     }
 }
 
@@ -216,20 +199,20 @@ impl SimpleModificationInner {
     }
 
     /// Internal formula code with the logic to make all labels right
-    pub(crate) fn formula_inner(
+    pub(crate) fn formula_inner<Mode: MassOutputMode>(
         &self,
         sequence_index: SequencePosition,
         peptidoform_index: usize,
         glycan_fragmentation: GlycanPeptideFragment,
         attachment: Option<AminoAcid>,
-    ) -> Multi<MolecularFormula> {
+    ) -> Multi<Mode::Output> {
         match self {
             Self::Info(_) => Multi::default(),
             Self::Mass(_, m, _)
             | Self::Gno {
                 composition: GnoComposition::Weight(m),
                 ..
-            } => MolecularFormula::with_additional_mass(m.value).into(),
+            } => Mode::from_mass(m.into_inner()).into(),
             Self::Gno {
                 composition: GnoComposition::Composition(monosaccharides),
                 ..
@@ -242,24 +225,30 @@ impl SimpleModificationInner {
                         options.push(
                             option
                                 .iter()
-                                .fold(MolecularFormula::default(), |acc, i| {
-                                    acc + i.0.formula_inner(sequence_index, peptidoform_index)
-                                        * i.1 as i32
+                                .map(|i| {
+                                    (i.0.calculate_mass_inner::<Mode>(sequence_index, peptidoform_index)
+                                        * i.1 as i32)
+                                        .into()
                                 })
+                                .sum::<Mode::Output>()
                                 .with_label(AmbiguousLabel::GlycanFragmentComposition(option)),
                         );
                     }
                 }
                 if glycan_fragmentation.full() {
-                    options.push(monosaccharides.iter().fold(
-                        MolecularFormula::default(),
-                        |acc, i| {
-                            acc + i.0.formula_inner(sequence_index, peptidoform_index) * i.1 as i32
-                        },
-                    ));
+                    options.push(
+                        monosaccharides
+                            .iter()
+                            .map(|i| {
+                                (i.0.calculate_mass_inner::<Mode>(sequence_index, peptidoform_index)
+                                    * i.1 as i32)
+                                    .into()
+                            })
+                            .sum(),
+                    );
                 }
                 if options.is_empty() {
-                    options.push(MolecularFormula::default());
+                    options.push(Mode::Output::default());
                 }
                 options.into()
             }
@@ -271,7 +260,7 @@ impl SimpleModificationInner {
                 let mut options = Vec::new();
 
                 if let Some(range) = glycan_fragmentation.core() {
-                    for option in glycan.clone().determine_positions().core_options(
+                    for option in glycan.clone().determine_positions().core_options::<Mode>(
                         range,
                         peptidoform_index,
                         attachment.map(|a| (a, sequence_index)),
@@ -280,16 +269,16 @@ impl SimpleModificationInner {
                     }
                 }
                 if glycan_fragmentation.full() {
-                    options.push(glycan.formula_inner(sequence_index, peptidoform_index));
+                    options.push(glycan.calculate_mass_inner::<Mode>(sequence_index, peptidoform_index));
                 }
                 if options.is_empty() {
-                    options.push(MolecularFormula::default());
+                    options.push(Mode::Output::default());
                 }
                 options.into()
             }
             Self::Formula(formula)
             | Self::Database { formula, .. }
-            | Self::Linker { formula, .. } => formula.into(),
+            | Self::Linker { formula, .. } => Mode::from_ref_formula(formula).into(),
         }
     }
 
@@ -773,7 +762,7 @@ impl ParseJson for LinkerLength {
 #[allow(clippy::missing_panics_doc)]
 mod tests {
     use super::*;
-    use crate::molecular_formula;
+    use crate::{chemistry::OutputMolecularFormula, molecular_formula};
 
     #[test]
     fn modification_masses() {
@@ -786,7 +775,7 @@ mod tests {
         .unwrap();
         let modification = modification.defined().unwrap();
         assert_eq!(
-            modification.formula_inner(
+            modification.formula_inner::<OutputMolecularFormula>(
                 SequencePosition::Index(0, 0),
                 0,
                 GlycanPeptideFragment::FULL,
@@ -795,7 +784,7 @@ mod tests {
             molecular_formula!(C 6 H 10 O 5).into()
         );
         assert_eq!(
-            modification.formula_inner(
+            modification.formula_inner::<OutputMolecularFormula>(
                 SequencePosition::Index(0, 0),
                 0,
                 GlycanPeptideFragment::CORE,
@@ -804,7 +793,7 @@ mod tests {
             molecular_formula!(C 6 H 10 O 5).into()
         );
         assert_eq!(
-            modification.formula_inner(
+            modification.formula_inner::<OutputMolecularFormula>(
                 SequencePosition::Index(0, 0),
                 0,
                 GlycanPeptideFragment::FREE,

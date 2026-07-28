@@ -4,7 +4,7 @@ use context_error::*;
 use thin_vec::ThinVec;
 
 use crate::{
-    chemistry::{AmbiguousLabel, Element, MolecularCharge, MultiChemical},
+    chemistry::{AmbiguousLabel, Element, MolecularCharge},
     molecular_formula,
     ontology::{Ontologies, Ontology, STATIC_ONTOLOGIES},
     sequence::{

@@ -1,5 +1,5 @@
 use mzcore::{
-    chemistry::AmbiguousLabel,
+    chemistry::{AmbiguousLabel, MassOutputType},
     prelude::{AminoAcid, MassMode, SequencePosition},
 };
 

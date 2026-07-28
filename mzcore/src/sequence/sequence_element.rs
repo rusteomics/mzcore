@@ -10,7 +10,7 @@ use serde::{Deserialize, Serialize};
 use thin_vec::ThinVec;
 
 use crate::{
-    chemistry::{DiagnosticIon, MassOutputMode, MolecularFormula, Molecule, MultiChemical},
+    chemistry::{AmbiguousMolecule, DiagnosticIon, MassOutputMode},
     glycan::{BackboneFragmentKind, FullGlycan, GlycanAttachement},
     quantities::Multi,
     sequence::{
@@ -272,7 +272,7 @@ impl<T> SequenceElement<T> {
         HashMap<BackboneFragmentKind, Multi<Mode::Output>>,
         HashSet<CrossLinkName>,
     ) {
-        self.formulas_generic(
+        self.formulas_generic::<Mode>(
             &mut |_| false,
             all_peptidoforms,
             visited_peptidoforms,
@@ -288,7 +288,7 @@ impl<T> SequenceElement<T> {
     /// Get the molecular formulas for this position with the ambiguous modifications placed on the
     /// very first placed (and updating this in `placed`), without any global isotope modifications
     #[expect(clippy::too_many_arguments)]
-    pub(crate) fn formulas_greedy(
+    pub(crate) fn formulas_greedy<Mode: MassOutputMode>(
         &self,
         placed: &mut [bool],
         all_peptidoforms: &[Peptidoform<Linked>],
@@ -300,11 +300,11 @@ impl<T> SequenceElement<T> {
         peptidoform_ion_index: usize,
         glycan_model: &impl GlycanAttachement,
     ) -> (
-        Multi<MolecularFormula>,
-        HashMap<BackboneFragmentKind, Multi<MolecularFormula>>,
+        Multi<Mode::Output>,
+        HashMap<BackboneFragmentKind, Multi<Mode::Output>>,
         HashSet<CrossLinkName>,
     ) {
-        self.formulas_generic(
+        self.formulas_generic::<Mode>(
             &mut |id| (!placed[id]).then(|| placed[id] = true).is_some(),
             all_peptidoforms,
             visited_peptidoforms,
@@ -319,7 +319,7 @@ impl<T> SequenceElement<T> {
 
     /// Get the molecular formulas for this position with all ambiguous modifications, without any
     /// global isotope modifications
-    pub(crate) fn formulas_all(
+    pub(crate) fn formulas_all<Mode: MassOutputMode>(
         &self,
         all_peptidoforms: &[Peptidoform<Linked>],
         visited_peptidoforms: &[usize],
@@ -330,11 +330,11 @@ impl<T> SequenceElement<T> {
         peptidoform_ion_index: usize,
         glycan_model: &impl GlycanAttachement,
     ) -> (
-        Multi<MolecularFormula>,
-        HashMap<BackboneFragmentKind, Multi<MolecularFormula>>,
+        Multi<Mode::Output>,
+        HashMap<BackboneFragmentKind, Multi<Mode::Output>>,
         HashSet<CrossLinkName>,
     ) {
-        self.formulas_generic(
+        self.formulas_generic::<Mode>(
             &mut |_| true,
             all_peptidoforms,
             visited_peptidoforms,
@@ -380,8 +380,7 @@ impl<T> SequenceElement<T> {
                         let specific =
                             glycan_model.get_specific_fragments(Some(self.aminoacid.aminoacid()));
                         (
-                            Molecule::<Mode>::formula_inner(
-                                &modification,
+                            modification.formula_inner::<Mode>(
                                 sequence_index,
                                 peptidoform_index,
                                 default,
@@ -392,7 +391,7 @@ impl<T> SequenceElement<T> {
                                 .map(|(k, setting)| {
                                     (
                                         k,
-                                        modification.formula_inner(
+                                        modification.formula_inner::<Mode>(
                                             sequence_index,
                                             peptidoform_index,
                                             setting,
@@ -405,7 +404,7 @@ impl<T> SequenceElement<T> {
                         )
                     })
                 } else {
-                    let (formula, specific, seen) = m.formula_inner(
+                    let (formula, specific, seen) = m.formula_inner::<Mode>(
                         all_peptidoforms,
                         visited_peptidoforms,
                         applied_cross_links,
@@ -426,9 +425,11 @@ impl<T> SequenceElement<T> {
                     (am * m, merged, av.union(&v).cloned().collect())
                 },
             );
-        let own =
-            self.aminoacid
-                .formulas_inner(sequence_index, peptidoform_index, peptidoform_ion_index);
+        let own = self.aminoacid.calculate_masses_inner::<Mode>(
+            sequence_index,
+            peptidoform_index,
+            peptidoform_ion_index,
+        );
         (
             formula * &own,
             specific.into_iter().map(|(k, v)| (k, v * &own)).collect(),
@@ -446,14 +447,14 @@ where
     }
 }
 
-impl<Complexity: AtMax<Linear>> MultiChemical for SequenceElement<Complexity> {
-    fn formulas_inner(
+impl<Complexity: AtMax<Linear>> AmbiguousMolecule for SequenceElement<Complexity> {
+    fn calculate_masses_inner<Mode: MassOutputMode + ?Sized>(
         &self,
         sequence_index: SequencePosition,
         peptidoform_index: usize,
         peptidoform_ion_index: usize,
-    ) -> Multi<MolecularFormula> {
-        self.formulas_all(
+    ) -> Multi<Mode::Output> {
+        self.formulas_all::<Mode>(
             &[],
             &[],
             &mut Vec::new(),

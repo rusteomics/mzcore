@@ -2,7 +2,7 @@
 
 use context_error::{self as _, BasicKind, BoxedError, CreateError};
 use mzcore::{
-    chemistry::Chemical,
+    chemistry::{Molecule, OutputMolecularFormula},
     ontology::*,
     sequence::{CrossId, PlacementRule, Position, SimpleModificationInner},
 };
@@ -283,7 +283,9 @@ fn valid_link(
         || two.to_string(),
         |o| format!("{}:{}", o.ontology.name(), o.id()),
     );
-    if one.formula() != two.formula() {
+    let one_f = one.calculate_mass::<OutputMolecularFormula>();
+    let two_f = two.calculate_mass::<OutputMolecularFormula>();
+    if one_f != two_f {
         context_error::combine_error(
             warnings,
             BoxedError::new(
@@ -294,10 +296,8 @@ fn valid_link(
                     one.description().map_or(Ontology::Custom, |d| d.ontology),
                     two.description().map_or(Ontology::Custom, |d| d.ontology)
                 ),
-                context_error::Context::default().lines(
-                    0,
-                    format!("{name_one}={} {name_two}={}", one.formula(), two.formula()),
-                ),
+                context_error::Context::default()
+                    .lines(0, format!("{name_one}={one_f} {name_two}={two_f}")),
             ),
         );
     }

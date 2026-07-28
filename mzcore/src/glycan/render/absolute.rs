@@ -1,7 +1,7 @@
 use itertools::Itertools;
 
 use crate::{
-    chemistry::Chemical,
+    chemistry::Molecule,
     glycan::{
         GlycanBranchIndex, GlycanBranchMassIndex, GlycanPosition, GlycanSelection, GlycanStructure,
         RenderedGlycan,

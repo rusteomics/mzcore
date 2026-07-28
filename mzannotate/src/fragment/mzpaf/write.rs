@@ -2,7 +2,7 @@ use std::sync::LazyLock;
 
 use itertools::Itertools;
 use mzcore::{
-    chemistry::{MultiChemical, NeutralLoss},
+    chemistry::{AmbiguousMolecule, NeutralLoss},
     quantities::Tolerance,
     sequence::{BACKBONE, IsAminoAcid},
 };

@@ -1,6 +1,7 @@
 use std::{borrow::Cow, ops::Range};
 
 use mzcore::{
+    chemistry::AmbiguousMolecule,
     sequence::{FlankingSequence, PeptidoformIonSet},
     system::{Mass, MassOverCharge, Ratio, Time, isize::Charge},
 };

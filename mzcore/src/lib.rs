@@ -30,7 +30,8 @@ pub mod system;
 pub mod prelude {
     pub use crate::{
         chemistry::{
-            Chemical, Element, MassMode, MolecularCharge, MolecularFormula, MultiChemical,
+            AmbiguousMolecule, Element, MassMode, MassOutputMode, MassOutputType, MolecularCharge,
+            MolecularFormula, Molecule,
         },
         isobaric_sets::{
             BuildingBlocks, IsobaricSetIterator, TerminalBuildingBlocks, building_blocks,

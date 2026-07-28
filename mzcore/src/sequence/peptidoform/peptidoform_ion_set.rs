@@ -5,8 +5,7 @@ use serde::{Deserialize, Serialize};
 use thin_vec::ThinVec;
 
 use crate::{
-    chemistry::MolecularFormula,
-    prelude::Chemical,
+    chemistry::{AmbiguousMolecule, MassOutputMode, Molecule},
     quantities::Multi,
     sequence::{Linked, Peptidoform, PeptidoformIon},
 };
@@ -38,25 +37,15 @@ impl PeptidoformIonSet {
         global_equal.then_some(result)
     }
 
-    /// Get all possible formulas for this peptidoform ion set
-    pub fn formulas(&self) -> Multi<MolecularFormula> {
+    /// Get all possible neutral formulas for this peptidoform ion set
+    pub fn neutral_formulas<Mode: MassOutputMode>(&self) -> Multi<Mode::Output> {
         self.peptidoforms
             .iter()
             .enumerate()
             .flat_map(|(i, p)| {
-                (p.formulas_inner(i)
-                    + p.get_charge_carriers().map(Chemical::formula).unwrap_or_default())
-                .to_vec()
+                p.calculate_masses_inner::<Mode>(crate::sequence::SequencePosition::CTerm, 0, i)
+                    .to_vec()
             })
-            .collect()
-    }
-
-    /// Get all possible neutral formulas for this peptidoform ion set
-    pub fn neutral_formulas(&self) -> Multi<MolecularFormula> {
-        self.peptidoforms
-            .iter()
-            .enumerate()
-            .flat_map(|(i, p)| p.formulas_inner(i).to_vec())
             .collect()
     }
 
@@ -143,6 +132,27 @@ impl PeptidoformIonSet {
     /// Get the name
     pub const fn name_mut(&mut self) -> &mut String {
         &mut self.name
+    }
+}
+
+impl AmbiguousMolecule for PeptidoformIonSet {
+    fn calculate_masses_inner<Mode: MassOutputMode>(
+        &self,
+        _sequence_index: crate::prelude::SequencePosition,
+        _peptidoform_index: usize,
+        _peptidoform_ion_index: usize,
+    ) -> Multi<Mode::Output> {
+        self.peptidoforms
+            .iter()
+            .enumerate()
+            .flat_map(|(i, p)| {
+                (p.calculate_masses_inner::<Mode>(crate::sequence::SequencePosition::CTerm, 0, i)
+                    + p.get_charge_carriers()
+                        .map(|c| c.calculate_mass::<Mode>())
+                        .unwrap_or_default())
+                .to_vec()
+            })
+            .collect()
     }
 }
 

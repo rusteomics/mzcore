@@ -10,7 +10,7 @@ use serde::{Deserialize, Serialize};
 use thin_vec::ThinVec;
 
 use crate::{
-    chemistry::Element,
+    chemistry::{Element, MassOutputType},
     glycan::{GlycanPosition, MonoSaccharide},
     sequence::{AminoAcid, CrossLinkName, SequencePosition},
     space::{Space, UsedSpace},
@@ -64,6 +64,50 @@ impl Space for MolecularFormula {
     fn space(&self) -> UsedSpace {
         (self.elements.space() + self.additional_mass.space() + self.labels.space())
             .set_total::<Self>()
+    }
+}
+
+impl MassOutputType for MolecularFormula {
+    fn labels(&self) -> &[AmbiguousLabel] {
+        &self.labels
+    }
+
+    fn with_label(mut self, label: AmbiguousLabel) -> Self {
+        self.labels.push(label);
+        self
+    }
+
+    fn with_labels(mut self, labels: &[AmbiguousLabel]) -> Self {
+        self.labels.extend_from_slice(labels);
+        self
+    }
+
+    /// Create a new molecular formula with the given global isotope modifications. If the given
+    /// isotope is not valid for this element it returns `None`.
+    fn with_global_isotope_modifications(
+        self,
+        substitutions: &[(Element, Option<NonZeroU16>)],
+    ) -> Option<Self> {
+        if substitutions.is_empty() {
+            Some(self.clone())
+        } else if substitutions.iter().all(|e| e.0.is_valid(e.1)) {
+            let mut new_elements = self.elements.clone();
+            for item in &mut new_elements {
+                for (substitute_element, substitute_species) in substitutions {
+                    if item.0 == *substitute_element {
+                        item.1 = *substitute_species;
+                    }
+                }
+            }
+            let result = Self {
+                elements: new_elements,
+                additional_mass: self.additional_mass,
+                labels: self.labels.clone(),
+            };
+            Some(result.simplify())
+        } else {
+            None
+        }
     }
 }
 
@@ -229,25 +273,6 @@ impl MolecularFormula {
         }
     }
 
-    /// Add the following labels to this formula
-    #[must_use]
-    pub fn with_labels(mut self, labels: &[AmbiguousLabel]) -> Self {
-        self.labels.extend_from_slice(labels);
-        self
-    }
-
-    /// Add the following label to this formula
-    #[must_use]
-    pub(crate) fn with_label(mut self, label: AmbiguousLabel) -> Self {
-        self.labels.push(label);
-        self
-    }
-
-    /// The labels of sources of ambiguity/multiplicity
-    pub fn labels(&self) -> &[AmbiguousLabel] {
-        &self.labels
-    }
-
     /// Add the given element to this formula (while keeping it ordered and simplified).
     /// # Errors
     /// If the added element does not have a defined mass, or if the added element
@@ -309,35 +334,6 @@ impl MolecularFormula {
     /// Get the additional mass of this formula
     pub const fn additional_mass(&self) -> OrderedFloat<f64> {
         self.additional_mass
-    }
-
-    /// Create a new molecular formula with the given global isotope modifications. If the given
-    /// isotope is not valid for this element it returns `None`.
-    #[must_use]
-    pub fn with_global_isotope_modifications(
-        &self,
-        substitutions: &[(Element, Option<NonZeroU16>)],
-    ) -> Option<Self> {
-        if substitutions.is_empty() {
-            Some(self.clone())
-        } else if substitutions.iter().all(|e| e.0.is_valid(e.1)) {
-            let mut new_elements = self.elements.clone();
-            for item in &mut new_elements {
-                for (substitute_element, substitute_species) in substitutions {
-                    if item.0 == *substitute_element {
-                        item.1 = *substitute_species;
-                    }
-                }
-            }
-            let result = Self {
-                elements: new_elements,
-                additional_mass: self.additional_mass,
-                labels: self.labels.clone(),
-            };
-            Some(result.simplify())
-        } else {
-            None
-        }
     }
 
     /// Get the number of electrons (the only charged species, any ionic species is saved as that

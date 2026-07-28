@@ -8,7 +8,7 @@ use thin_vec::ThinVec;
 use super::{GlobalModification, Linear, ReturnModification, SemiAmbiguous};
 use crate::{
     ParserResult,
-    chemistry::{Chemical, Element, MolecularCharge, MolecularFormula},
+    chemistry::{Element, MolecularCharge, MolecularFormula, Molecule},
     helper_functions::*,
     ontology::Ontologies,
     quantities::{Tolerance, WithinTolerance},
@@ -337,7 +337,7 @@ impl PeptidoformIonSet {
                             );
                             if let MassTag::Ontology(ontology) = tag
                                 && ontologies.data(&[ontology]).all(|m| {
-                                    !tolerance.within(&mass, &m.formula().monoisotopic_mass())
+                                    !tolerance.within(&mass, &m.monoisotopic_mass().mass())
                                 })
                             {
                                 combine_error(

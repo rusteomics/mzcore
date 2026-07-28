@@ -9,7 +9,7 @@ use std::{
 
 use itertools::Itertools;
 use mzcore::{
-    chemistry::{AmbiguousLabel, CachedCharge, ChargeRange, NeutralLoss},
+    chemistry::{AmbiguousLabel, CachedCharge, ChargeRange, NeutralLoss, OutputMolecularFormula},
     molecular_formula,
     prelude::*,
     quantities::{Multi, Tolerance},
@@ -114,8 +114,11 @@ impl Fragment {
             for mass in theoretical_mass.iter() {
                 let f = term + mass;
                 for charge in &charges {
-                    let f =
-                        &f + charge.formula_inner(SequencePosition::default(), peptidoform_index);
+                    let f = &f
+                        + charge.calculate_mass_inner::<OutputMolecularFormula>(
+                            SequencePosition::default(),
+                            peptidoform_index,
+                        );
                     if f.contains_negative_amount() {
                         continue;
                     }
@@ -178,8 +181,11 @@ impl Fragment {
             for mass in theoretical_mass.iter() {
                 let f = term + mass;
                 for charge in &charges {
-                    let f =
-                        &f + charge.formula_inner(SequencePosition::default(), peptidoform_index);
+                    let f = &f
+                        + charge.calculate_mass_inner::<OutputMolecularFormula>(
+                            SequencePosition::default(),
+                            peptidoform_index,
+                        );
                     if f.contains_negative_amount() {
                         continue;
                     }
@@ -214,9 +220,9 @@ impl Fragment {
     /// Create a copy of this fragment with the given charge
     #[must_use]
     fn with_charge(&self, charge: &MolecularCharge) -> Self {
-        let formula = charge
-            .formula()
-            .with_labels(&[AmbiguousLabel::ChargeCarrier(charge.formula())]);
+        let formula = charge.calculate_mass::<OutputMolecularFormula>().with_labels(&[
+            AmbiguousLabel::ChargeCarrier(charge.calculate_mass::<OutputMolecularFormula>()),
+        ]);
         let c = Charge::new::<system::charge::e>(formula.charge().value);
         Self {
             formula: Some(self.formula.clone().unwrap_or_default() + &formula),
@@ -400,7 +406,7 @@ mod tests {
     #[test]
     fn neutral_loss() {
         let a = Fragment::new(
-            AminoAcid::AsparticAcid.formulas()[0].clone(),
+            AminoAcid::AsparticAcid.calculate_masses::<OutputMolecularFormula>()[0].clone(),
             Charge::new::<system::charge::e>(1),
             0,
             0,

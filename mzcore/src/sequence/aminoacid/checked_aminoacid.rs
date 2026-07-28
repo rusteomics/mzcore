@@ -3,11 +3,7 @@ use std::marker::PhantomData;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    chemistry::{
-        AmbiguousLabel, AmbiguousMolecule, Chemical, MassOutputMode, MolecularFormula, Molecule,
-        MultiChemical, SatelliteLabel,
-    },
-    molecular_formula,
+    chemistry::{AmbiguousMolecule, MassOutputMode, MolecularFormula, Molecule, SatelliteLabel},
     quantities::Multi,
     sequence::{
         AminoAcid, AtLeast, IsAminoAcid, Linear, SemiAmbiguous, SequencePosition, SimpleLinear,
@@ -358,107 +354,28 @@ impl<T> IsAminoAcid for CheckedAminoAcid<T> {
     }
 }
 
-impl Chemical for CheckedAminoAcid<UnAmbiguous> {
-    /// Get all possible formula for an unambiguous amino acid (X is defined to be an empty formula)
-    fn formula_inner(
-        &self,
-        _sequence_index: SequencePosition,
-        _peptidoform_index: usize,
-    ) -> MolecularFormula {
-        match self.aminoacid {
-            AminoAcid::Alanine => molecular_formula!(H 5 C 3 O 1 N 1),
-            AminoAcid::Arginine => molecular_formula!(H 12 C 6 O 1 N 4),
-            AminoAcid::Asparagine => molecular_formula!(H 6 C 4 O 2 N 2),
-            AminoAcid::AsparticAcid => molecular_formula!(H 5 C 4 O 3 N 1),
-            AminoAcid::Cysteine => molecular_formula!(H 5 C 3 O 1 N 1 S 1),
-            AminoAcid::Glutamine => molecular_formula!(H 8 C 5 O 2 N 2),
-            AminoAcid::GlutamicAcid => molecular_formula!(H 7 C 5 O 3 N 1),
-            AminoAcid::Glycine => molecular_formula!(H 3 C 2 O 1 N 1),
-            AminoAcid::Histidine => molecular_formula!(H 7 C 6 O 1 N 3),
-            AminoAcid::AmbiguousLeucine | AminoAcid::Isoleucine | AminoAcid::Leucine => {
-                molecular_formula!(H 11 C 6 O 1 N 1)
-            }
-            AminoAcid::Lysine => molecular_formula!(H 12 C 6 O 1 N 2),
-            AminoAcid::Methionine => molecular_formula!(H 9 C 5 O 1 N 1 S 1),
-            AminoAcid::Phenylalanine => molecular_formula!(H 9 C 9 O 1 N 1),
-            AminoAcid::Proline => molecular_formula!(H 7 C 5 O 1 N 1),
-            AminoAcid::Pyrrolysine => molecular_formula!(H 19 C 11 O 2 N 3),
-            AminoAcid::Selenocysteine => molecular_formula!(H 5 C 3 O 1 N 1 Se 1),
-            AminoAcid::Serine => molecular_formula!(H 5 C 3 O 2 N 1),
-            AminoAcid::Threonine => molecular_formula!(H 7 C 4 O 2 N 1),
-            AminoAcid::Tryptophan => molecular_formula!(H 10 C 11 O 1 N 2),
-            AminoAcid::Tyrosine => molecular_formula!(H 9 C 9 O 2 N 1),
-            AminoAcid::Valine => molecular_formula!(H 9 C 5 O 1 N 1),
-            AminoAcid::Unknown => molecular_formula!(),
-            _ => unreachable!(),
-        }
-    }
-}
-
-impl<T> MultiChemical for CheckedAminoAcid<T> {
-    /// # Panics
-    /// Is the sequence index is a terminal index
-    fn formulas_inner(
-        &self,
-        sequence_index: SequencePosition,
-        peptidoform_index: usize,
-        peptidoform_ion_index: usize,
-    ) -> Multi<MolecularFormula> {
-        self.into_unambiguous().map_or_else(|| {
-            let SequencePosition::Index(sequence_index, _) = sequence_index else {
-                panic!("Not allowed to call amino acid formulas with a terminal sequence index")
-            };
-            match self.aminoacid {
-            AminoAcid::AmbiguousAsparagine => vec![
-                molecular_formula!(H 6 C 4 O 2 N 2 (AmbiguousLabel::AminoAcid{option: AminoAcid::Asparagine, sequence_index, peptidoform_index, peptidoform_ion_index})),
-                molecular_formula!(H 5 C 4 O 3 N 1 (AmbiguousLabel::AminoAcid{option: AminoAcid::AsparticAcid, sequence_index, peptidoform_index, peptidoform_ion_index})),
-            ]
-            .into(),
-            AminoAcid::AmbiguousGlutamine => vec![
-                molecular_formula!(H 8 C 5 O 2 N 2 (AmbiguousLabel::AminoAcid{option: AminoAcid::Glutamine, sequence_index, peptidoform_index, peptidoform_ion_index})),
-                molecular_formula!(H 7 C 5 O 3 N 1 (AmbiguousLabel::AminoAcid{option: AminoAcid::GlutamicAcid, sequence_index, peptidoform_index, peptidoform_ion_index})),
-            ]
-            .into(),
-            _ => unreachable!(),        }
-        }, |unambiguous| Chemical::formula_inner(&unambiguous, sequence_index, peptidoform_index).into())
-    }
-}
-
-impl<Mode: MassOutputMode> Molecule<Mode> for CheckedAminoAcid<UnAmbiguous> {
-    fn formula_inner(
+impl Molecule for CheckedAminoAcid<UnAmbiguous> {
+    fn calculate_mass_inner<Mode: MassOutputMode>(
         &self,
         sequence_index: SequencePosition,
         peptidoform_index: usize,
     ) -> Mode::Output {
-        AmbiguousMolecule::<Mode>::formulas_inner(
-            &self.aminoacid,
-            sequence_index,
-            peptidoform_index,
-            0,
-        )
-        .to_vec()
-        .pop()
-        .unwrap()
+        self.aminoacid
+            .calculate_masses_inner::<Mode>(sequence_index, peptidoform_index, 0)
+            .single()
+            .unwrap()
     }
 }
 
-impl<Mode: MassOutputMode, T> AmbiguousMolecule<Mode> for CheckedAminoAcid<T> {
-    fn formulas_inner(
+impl<T> AmbiguousMolecule for CheckedAminoAcid<T> {
+    fn calculate_masses_inner<Mode: MassOutputMode>(
         &self,
         sequence_index: SequencePosition,
         peptidoform_index: usize,
         _peptidoform_ion_index: usize,
     ) -> Multi<<Mode as MassOutputMode>::Output> {
-        AmbiguousMolecule::<Mode>::formulas_inner(
-            &self.aminoacid,
-            sequence_index,
-            peptidoform_index,
-            0,
-        )
-    }
-
-    fn charge(&self) -> Option<crate::system::isize::Charge> {
-        None
+        self.aminoacid
+            .calculate_masses_inner::<Mode>(sequence_index, peptidoform_index, 0)
     }
 }
 

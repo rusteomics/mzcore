@@ -4,8 +4,8 @@ use std::ops::RangeInclusive;
 
 use itertools::Itertools;
 use mzcore::{
-    chemistry::{ChargeRange, Chemical, NeutralLoss},
-    prelude::{AminoAcid, MultiChemical, Peptidoform, SequenceElement, SequencePosition},
+    chemistry::{AmbiguousMolecule, ChargeRange, Molecule, NeutralLoss, OutputMolecularFormula},
+    prelude::{AminoAcid, Peptidoform, SequenceElement, SequencePosition},
     sequence::{BACKBONE, CheckedAminoAcid, PeptidePosition},
 };
 use serde::{Deserialize, Serialize};
@@ -549,7 +549,7 @@ pub(crate) fn get_all_sidechain_losses<Complexity>(
                         ),
                     ]
                 } else {
-                    aa.formulas()
+                    aa.calculate_masses::<OutputMolecularFormula>()
                         .iter()
                         .map(|f| NeutralLoss::SideChainLoss(f - &*BACKBONE, aa))
                         .filter(|l| !l.is_empty())

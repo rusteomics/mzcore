@@ -9,7 +9,7 @@ use std::{
 use context_error::*;
 use itertools::Itertools;
 use mzcore::{
-    chemistry::Chemical,
+    chemistry::{AmbiguousMolecule, Molecule},
     csv::{CsvLine, parse_csv},
     molecular_formula,
     ontology::Ontologies,
@@ -215,10 +215,7 @@ format_family!(
                 - molecular_formula!(H 1 :z+1).monoisotopic_mass()
                 - parsed
                     .peptidoform
-                    .formulas() // TODO: this is the hot function this takes ~51% of runtime when parsing a pLink file
-                    .first()
-                    .unwrap()
-                    .monoisotopic_mass()
+                    .monoisotopic_masses().single().unwrap().mass()
                     - if parsed.peptide_type == PLinkPeptideType::Hydrolysed { molecular_formula!(H 2 O 1).monoisotopic_mass() } else { Mass::ZERO };
 
             let custom_linkers: Vec<_> = ontologies.custom().data().iter().filter(|m|

@@ -1,6 +1,6 @@
 use mzcore::{
-    chemistry::{MassMode, MolecularFormula},
-    prelude::MultiChemical,
+    chemistry::{MassMode, MassOutputType, MolecularFormula, Molecule, OutputMolecularFormula},
+    prelude::AmbiguousMolecule,
     quantities::{Multi, Tolerance, WithinTolerance},
     sequence::{AtMax, HasPeptidoform, Linear, Peptidoform, SequenceElement, SequencePosition},
     system::{Mass, OrderedMass, dalton},
@@ -455,7 +455,8 @@ pub(super) fn mass_range(masses: &Multi<Mass>) -> (Mass, Mass) {
     )
 }
 
-/// Get the masses of all sequence elements. This also adds the N and C terminal modifications.
+/// Get the masses of all sequence elements. This also adds the N and C terminal modifications. This
+/// ignores any global isotope modifications.
 /// # Panics
 /// If the global isotope modifications are invalid
 pub(super) fn calculate_masses<const STEPS: u16>(
@@ -466,33 +467,26 @@ pub(super) fn calculate_masses<const STEPS: u16>(
     let n = sequence
         .get_n_term()
         .iter()
-        .map(mzcore::sequence::Modification::formula)
-        .sum::<MolecularFormula>();
+        .map(|m| m.mass(mass_mode).mass())
+        .sum::<Mass>();
     let c = sequence
         .get_c_term()
         .iter()
-        .map(mzcore::sequence::Modification::formula)
-        .sum::<MolecularFormula>();
+        .map(|m| m.mass(mass_mode).mass())
+        .sum::<Mass>();
     for i in 0..sequence.len() {
         for j in 0..=i.min(STEPS as usize) {
             let mut seq = sequence[i - j..=i]
                 .iter()
-                .map(|p| p.formulas_inner(SequencePosition::Index(i, sequence.len()), 0, 0))
-                .sum::<Multi<MolecularFormula>>();
+                .map(|p| p.masses(mass_mode).into())
+                .sum::<Multi<Mass>>();
             if i - j == 0 {
                 seq += n.clone();
             }
             if i == sequence.len() - 1 {
                 seq += c.clone();
             }
-            array[[i, j]] = seq
-                .iter()
-                .map(|f| {
-                    f.with_global_isotope_modifications(mzcore::sequence::HiddenInternalMethods::get_global(sequence))
-                        .expect("Invalid global isotope modifications while calculating masses for alignment")
-                        .mass(mass_mode)
-                })
-                .collect();
+            array[[i, j]] = seq;
         }
     }
     array

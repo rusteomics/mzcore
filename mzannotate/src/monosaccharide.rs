@@ -1,7 +1,7 @@
 use mzcore::{
-    chemistry::CachedCharge,
+    chemistry::{CachedCharge, Molecule, OutputMolecularFormula},
     glycan::MonoSaccharide,
-    prelude::{AminoAcid, Chemical, MolecularFormula, SequencePosition},
+    prelude::{AminoAcid, MolecularFormula, SequencePosition},
     quantities::Multi,
     system::isize::Charge,
 };
@@ -37,7 +37,12 @@ pub(crate) fn theoretical_fragments(
     for fragment_composition in compositions {
         let formula: MolecularFormula = fragment_composition
             .iter()
-            .map(|s| s.0.formula_inner(SequencePosition::default(), peptidoform_index) * s.1 as i32)
+            .map(|s| {
+                s.0.calculate_mass_inner::<OutputMolecularFormula>(
+                    SequencePosition::default(),
+                    peptidoform_index,
+                ) * s.1 as i32
+            })
             .sum();
         fragments.extend(
             Fragment::new(
@@ -96,7 +101,7 @@ pub(crate) fn diagnostic_ions(
     model: &GlycanModel,
 ) -> Vec<Fragment> {
     let base = Fragment::new(
-        monosaccharide.formula(),
+        monosaccharide.calculate_mass::<OutputMolecularFormula>(),
         Charge::default(),
         peptidoform_ion_index,
         peptidoform_index,

@@ -3,10 +3,9 @@ use std::{num::NonZeroU16, ops::Range};
 use context_error::*;
 
 use crate::{
-    chemistry::{Chemical, Element, MolecularFormula},
+    chemistry::{Element, MolecularFormula, Molecule},
     glycan::MonoSaccharide,
     helper_functions::{RangeExtension, explain_number_error},
-    sequence::SequencePosition,
 };
 
 enum Brick {
@@ -31,7 +30,7 @@ fn parse_unimod_composition_brick(
         _ => Element::try_from(text[range.clone()].to_lowercase().as_str()).map_or_else(
             |()| {
                 if let Ok((ms, _)) = MonoSaccharide::from_short_iupac(text, range.start_index(), 0) {
-                    Ok(Brick::Formula(ms.formula_inner(SequencePosition::default(), 0)))
+                    Ok(Brick::Formula(ms.formula()))
                 } else {
                     Err(BoxedError::new(
                         BasicKind::Error,

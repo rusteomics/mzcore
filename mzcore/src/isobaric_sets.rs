@@ -3,7 +3,7 @@ use std::cmp::Ordering;
 use itertools::Itertools;
 
 use crate::{
-    chemistry::Chemical,
+    chemistry::{AmbiguousMolecule, Molecule, OutputMonoIsotopic},
     glycan::FullGlycan,
     quantities::Tolerance,
     sequence::{
@@ -116,7 +116,7 @@ pub fn building_blocks(
             })
             .flat_map(|(a, m)| {
                 let mc = m.clone();
-                a.formulas_all(
+                a.formulas_all::<OutputMonoIsotopic>(
                     &[],
                     &[],
                     &mut Vec::new(),
@@ -128,7 +128,7 @@ pub fn building_blocks(
                 )
                 .0
                 .iter()
-                .map(|f| f.monoisotopic_mass() + m.formula().monoisotopic_mass())
+                .map(|f| f.mass() + m.monoisotopic_mass().mass())
                 .map(|mass| (a.clone(), mc.clone(), mass))
                 .collect_vec()
             })
@@ -195,7 +195,7 @@ pub fn building_blocks(
                 options
             })
             .flat_map(|s| {
-                s.formulas_all(
+                s.formulas_all::<OutputMonoIsotopic>(
                     &[],
                     &[],
                     &mut Vec::new(),
@@ -207,7 +207,7 @@ pub fn building_blocks(
                 )
                 .0
                 .iter()
-                .map(|f| (s.clone(), f.monoisotopic_mass()))
+                .map(|f| (s.clone(), f.mass()))
                 .collect_vec()
             })
             .collect();
@@ -240,12 +240,7 @@ pub fn find_isobaric_sets(
 ) -> IsobaricSetIterator {
     let bounds = tolerance.bounds(mass);
     let base_mass = base
-        .and_then(|b| {
-            b.formulas()
-                .mass_bounds()
-                .into_option()
-                .map(|(f, _)| f.monoisotopic_mass())
-        })
+        .and_then(|b| b.monoisotopic_masses().mass_bounds().into_option().map(|(f, _)| f.mass()))
         .unwrap_or_default();
     let bounds = (bounds.0 - base_mass, bounds.1 - base_mass);
     assert!(
@@ -498,7 +493,7 @@ mod tests {
             .into_unambiguous()
             .unwrap();
         let sets: Vec<Peptidoform<SimpleLinear>> = find_isobaric_sets(
-            pep.bare_formula().monoisotopic_mass(),
+            pep.bare_formula::<OutputMonoIsotopic>().mass(),
             Tolerance::new_ppm(10.0),
             AminoAcid::UNIQUE_MASS_AMINO_ACIDS,
             &[],

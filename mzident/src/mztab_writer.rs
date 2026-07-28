@@ -13,7 +13,7 @@ use itertools::Itertools;
 #[cfg(feature = "mzdata")]
 use mzannotate::mzdata;
 use mzcore::{
-    chemistry::Chemical,
+    chemistry::{AmbiguousMolecule, Molecule},
     ontology::Ontology,
     prelude::{MolecularFormula, SequencePosition},
     sequence::{

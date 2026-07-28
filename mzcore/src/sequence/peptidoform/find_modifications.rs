@@ -5,7 +5,7 @@ use mzcv::CVStructure;
 
 use super::Peptidoform;
 use crate::{
-    chemistry::{Chemical, MassMode, MolecularFormula},
+    chemistry::{MassMode, MolecularFormula, Molecule},
     glycan::MonoSaccharide,
     ontology::{Ontologies, Ontology},
     quantities::{Tolerance, WithinTolerance},
@@ -32,7 +32,7 @@ pub fn modification_search_mass<'a>(
 ) -> impl Iterator<Item = SimpleModification> + 'a {
     ontologies
         .data(&[])
-        .filter(move |m| tolerance.within(&mass, &m.formula().mass(mass_mode)))
+        .filter(move |m| tolerance.within(&mass, &m.mass(mass_mode).mass()))
         .filter(move |m| {
             positions.is_none_or(|positions| {
                 positions
@@ -455,9 +455,7 @@ impl<'ontologies> PeptideModificationSearch<'ontologies> {
             _ => {
                 let distances: Vec<_> = options
                     .iter()
-                    .map(|m| {
-                        in_place.formula().mass(mass_mode).ppm(m.formula().mass(mass_mode)).value
-                    })
+                    .map(|m| in_place.mass(mass_mode).mass().ppm(m.mass(mass_mode).mass()).value)
                     .collect();
                 let max: f64 = distances
                     .iter()

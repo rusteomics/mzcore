@@ -15,7 +15,10 @@ use serde::{Deserialize, Serialize};
 use thin_vec::ThinVec;
 
 use crate::{
-    chemistry::{AmbiguousLabel, Element, MolecularCharge, MolecularFormula, NeutralLoss},
+    chemistry::{
+        AmbiguousLabel, AmbiguousMolecule, Element, MassOutputMode, MolecularCharge, Molecule,
+        NeutralLoss,
+    },
     glycan::{BackboneFragmentKind, FullGlycan, GlycanAttachement},
     helper_functions::{RangeExtension, merge_hashmap, peptide_range_contains},
     molecular_formula,
@@ -565,7 +568,7 @@ impl<Complexity> Peptidoform<Complexity> {
 
     /// The mass of the N terminal placed modifications. The global isotope modifications are NOT
     /// applied.
-    pub fn get_n_term_mass(
+    pub fn get_n_term_mass<Mode: MassOutputMode>(
         &self,
         all_peptides: &[Peptidoform<Linked>],
         visited_peptides: &[usize],
@@ -575,8 +578,8 @@ impl<Complexity> Peptidoform<Complexity> {
         peptidoform_ion_index: usize,
         glycan_model: &impl GlycanAttachement,
     ) -> (
-        Multi<MolecularFormula>,
-        HashMap<BackboneFragmentKind, Multi<MolecularFormula>>,
+        Multi<Mode::Output>,
+        HashMap<BackboneFragmentKind, Multi<Mode::Output>>,
     ) {
         let (base, mut specific) =
             self.n_term.iter().fold((Multi::default(), HashMap::new()), |acc, f| {
@@ -584,7 +587,7 @@ impl<Complexity> Peptidoform<Complexity> {
                     acc
                 } else {
                     let attachment = self.sequence.first().map(|s| s.aminoacid.aminoacid());
-                    let (formula, specific, _seen) = f.formula_inner(
+                    let (formula, specific, _seen) = f.formula_inner::<Mode>(
                         all_peptides,
                         visited_peptides,
                         applied_cross_links,
@@ -599,7 +602,7 @@ impl<Complexity> Peptidoform<Complexity> {
                     (acc.0 * formula, merged)
                 }
             });
-        let terminus = molecular_formula!(H 1);
+        let terminus = Mode::from_formula(molecular_formula!(H 1));
         for v in specific.values_mut() {
             *v += terminus.clone();
         }
@@ -607,7 +610,7 @@ impl<Complexity> Peptidoform<Complexity> {
     }
 
     /// The mass of the C terminal modifications. The global isotope modifications are NOT applied.
-    pub fn get_c_term_mass(
+    pub fn get_c_term_mass<Mode: MassOutputMode>(
         &self,
         all_peptides: &[Peptidoform<Linked>],
         visited_peptides: &[usize],
@@ -617,8 +620,8 @@ impl<Complexity> Peptidoform<Complexity> {
         peptidoform_ion_index: usize,
         glycan_model: &impl GlycanAttachement,
     ) -> (
-        Multi<MolecularFormula>,
-        HashMap<BackboneFragmentKind, Multi<MolecularFormula>>,
+        Multi<Mode::Output>,
+        HashMap<BackboneFragmentKind, Multi<Mode::Output>>,
     ) {
         let (base, mut specific) =
             self.c_term.iter().fold((Multi::default(), HashMap::new()), |acc, f| {
@@ -626,7 +629,7 @@ impl<Complexity> Peptidoform<Complexity> {
                     acc
                 } else {
                     let attachment = self.sequence.last().map(|s| s.aminoacid.aminoacid());
-                    let (formula, specific, _seen) = f.formula_inner(
+                    let (formula, specific, _seen) = f.formula_inner::<Mode>(
                         all_peptides,
                         visited_peptides,
                         applied_cross_links,
@@ -641,7 +644,7 @@ impl<Complexity> Peptidoform<Complexity> {
                     (acc.0 * formula, merged)
                 }
             });
-        let terminus = molecular_formula!(H 1 O 1);
+        let terminus = Mode::from_formula(molecular_formula!(H 1 O 1));
         for v in specific.values_mut() {
             *v += terminus.clone();
         }
@@ -772,13 +775,13 @@ impl<Complexity> Peptidoform<Complexity> {
     /// Additionally it also returns all peptides present as cross-link.
     // TODO: support limit and colocalise
     #[expect(clippy::too_many_arguments)]
-    fn ambiguous_patterns(
+    fn ambiguous_patterns<Mode: MassOutputMode>(
         &self,
         range: impl RangeBounds<usize>,
         aa_range: impl RangeBounds<usize> + Clone,
         base: &(
-            Multi<MolecularFormula>,
-            HashMap<BackboneFragmentKind, Multi<MolecularFormula>>,
+            Multi<Mode::Output>,
+            HashMap<BackboneFragmentKind, Multi<Mode::Output>>,
         ),
         all_peptides: &[Peptidoform<Linked>],
         visited_peptides: &[usize],
@@ -788,8 +791,8 @@ impl<Complexity> Peptidoform<Complexity> {
         peptidoform_ion_index: usize,
         glycan_model: &impl GlycanAttachement,
     ) -> (
-        Multi<MolecularFormula>,
-        HashMap<BackboneFragmentKind, Multi<MolecularFormula>>,
+        Multi<Mode::Output>,
+        HashMap<BackboneFragmentKind, Multi<Mode::Output>>,
         HashSet<CrossLinkName>,
     ) {
         // Calculate all formulas for the selected AA range without any ambiguous modifications
@@ -802,7 +805,7 @@ impl<Complexity> Peptidoform<Complexity> {
             .fold(
                 (base.0.clone(), base.1.clone(), HashSet::new()),
                 |previous_aa_formulas, (index, aa)| {
-                    let (f, specific, s) = aa.formulas_base(
+                    let (f, specific, s) = aa.formulas_base::<Mode>(
                         all_peptides,
                         visited_peptides,
                         applied_cross_links,
@@ -903,7 +906,7 @@ impl<Complexity> Peptidoform<Complexity> {
                                 (*mid == id).then(|| {
                                     (
                                         modification
-                                            .formula_inner(
+                                            .formula_inner::<Mode>(
                                                 *pos,
                                                 peptidoform_index,
                                                 default,
@@ -921,7 +924,7 @@ impl<Complexity> Peptidoform<Complexity> {
                                                 (
                                                     f,
                                                     modification
-                                                        .formula_inner(
+                                                        .formula_inner::<Mode>(
                                                             *pos,
                                                             peptidoform_index,
                                                             setting,
@@ -965,13 +968,13 @@ impl<Complexity> Peptidoform<Complexity> {
     /// neutral losses (if allowed in the model).
     // TODO: take terminal ambiguous into account
     #[expect(clippy::too_many_arguments)]
-    pub fn all_masses(
+    pub fn all_masses<Mode: MassOutputMode>(
         &self,
         range: impl RangeBounds<usize> + Clone,
         aa_range: impl RangeBounds<usize> + Clone,
         base: &(
-            Multi<MolecularFormula>,
-            HashMap<BackboneFragmentKind, Multi<MolecularFormula>>,
+            Multi<Mode::Output>,
+            HashMap<BackboneFragmentKind, Multi<Mode::Output>>,
         ),
         all_peptides: &[Peptidoform<Linked>],
         visited_peptides: &[usize],
@@ -981,12 +984,12 @@ impl<Complexity> Peptidoform<Complexity> {
         peptidoform_ion_index: usize,
         glycan_model: &impl GlycanAttachement,
     ) -> (
-        Multi<MolecularFormula>,
-        HashMap<BackboneFragmentKind, Multi<MolecularFormula>>,
+        Multi<Mode::Output>,
+        HashMap<BackboneFragmentKind, Multi<Mode::Output>>,
         HashSet<CrossLinkName>,
         Vec<Vec<NeutralLoss>>,
     ) {
-        let (ambiguous_mods_masses, specific, seen) = self.ambiguous_patterns(
+        let (ambiguous_mods_masses, specific, seen) = self.ambiguous_patterns::<Mode>(
             range.clone(),
             aa_range,
             base,
@@ -1012,7 +1015,7 @@ impl<Complexity> Peptidoform<Complexity> {
     /// Gives all the formulas for the whole peptide with no C and N terminal modifications. With
     /// the global isotope modifications applied. Ignores any potential glycan fragmentation.
     #[expect(clippy::missing_panics_doc)] // Global isotope mods are guaranteed to be correct
-    fn bare_formulas_inner(
+    fn bare_formulas_inner<Mode: MassOutputMode>(
         &self,
         all_peptides: &[Peptidoform<Linked>],
         visited_peptides: &[usize],
@@ -1020,12 +1023,12 @@ impl<Complexity> Peptidoform<Complexity> {
         allow_ms_cleavable: bool,
         peptidoform_index: usize,
         peptidoform_ion_index: usize,
-    ) -> Multi<MolecularFormula> {
+    ) -> Multi<Mode::Output> {
         let mut formulas = Multi::default();
         let mut placed = vec![false; self.modifications_of_unknown_position.len()];
         for (index, pos) in self.sequence.iter().enumerate() {
             formulas *= pos
-                .formulas_greedy(
+                .formulas_greedy::<Mode>(
                     &mut placed,
                     all_peptides,
                     visited_peptides,
@@ -1040,19 +1043,15 @@ impl<Complexity> Peptidoform<Complexity> {
         }
 
         formulas
-            .iter()
-            .map(|f| {
-                f.with_global_isotope_modifications(&self.global)
-                    .expect("Invalid global isotope modification in bare_formulas")
-            })
-            .collect()
+            .with_global_isotope_modifications(&self.global)
+            .expect("Invalid global isotope modification in bare_formulas")
     }
 
     /// Gives the formulas for the whole peptide. With the global isotope modifications applied.
     /// (Any B/Z will result in multiple possible formulas.)
     /// # Panics
     /// When this peptide is already in the set of visited peptides.
-    pub(crate) fn formulas_inner(
+    pub(crate) fn formulas_inner<Mode: MassOutputMode>(
         &self,
         peptidoform_index: usize,
         peptidoform_ion_index: usize,
@@ -1062,8 +1061,8 @@ impl<Complexity> Peptidoform<Complexity> {
         allow_ms_cleavable: bool,
         glycan_model: &impl GlycanAttachement,
     ) -> (
-        Multi<MolecularFormula>,
-        HashMap<BackboneFragmentKind, Multi<MolecularFormula>>,
+        Multi<Mode::Output>,
+        HashMap<BackboneFragmentKind, Multi<Mode::Output>>,
         HashSet<CrossLinkName>,
     ) {
         debug_assert!(
@@ -1072,7 +1071,7 @@ impl<Complexity> Peptidoform<Complexity> {
         );
         let mut new_visited_peptides = vec![peptidoform_index];
         new_visited_peptides.extend_from_slice(visited_peptides);
-        let (n, n_specific) = self.get_n_term_mass(
+        let (n, n_specific) = self.get_n_term_mass::<Mode>(
             all_peptides,
             visited_peptides,
             applied_cross_links,
@@ -1081,7 +1080,7 @@ impl<Complexity> Peptidoform<Complexity> {
             peptidoform_ion_index,
             glycan_model,
         );
-        let (c, c_specific) = self.get_c_term_mass(
+        let (c, c_specific) = self.get_c_term_mass::<Mode>(
             all_peptides,
             visited_peptides,
             applied_cross_links,
@@ -1091,11 +1090,11 @@ impl<Complexity> Peptidoform<Complexity> {
             glycan_model,
         );
         let mut formulas_specific = merge_hashmap(n_specific, &c_specific, &n, &c);
-        let mut formulas: Multi<MolecularFormula> = n * c;
+        let mut formulas: Multi<Mode::Output> = n * c;
         let mut placed = vec![false; self.modifications_of_unknown_position.len()];
         let mut seen = HashSet::new();
         for (index, pos) in self.sequence.iter().enumerate() {
-            let (pos_f, specific, pos_seen) = pos.formulas_greedy(
+            let (pos_f, specific, pos_seen) = pos.formulas_greedy::<Mode>(
                 &mut placed,
                 all_peptides,
                 &new_visited_peptides,
@@ -1111,25 +1110,15 @@ impl<Complexity> Peptidoform<Complexity> {
             seen.extend(pos_seen);
         }
 
-        let formulas = formulas
-            .iter()
-            .map(|f| {
-                f.with_global_isotope_modifications(&self.global)
-                    .expect("Global isotope modification invalid in determination of all formulas for a peptide")
-            })
-            .collect();
+        let formulas = formulas.with_global_isotope_modifications(&self.global).expect(
+            "Global isotope modification invalid in determination of all formulas for a peptide",
+        );
         let formulas_specific = formulas_specific
             .into_iter()
             .map(|(k, f)| {
                 (
                     k,
-                    f.iter()
-                        .map(|f| {
-                            f.with_global_isotope_modifications(&self.global).expect(
-                                "Global isotope modification invalid in determination of all formulas for a peptide",
-                            )
-                        })
-                        .collect(),
+                    f.with_global_isotope_modifications(&self.global).expect("Global isotope modification invalid in determination of all formulas for a peptide",),
                 )
             })
             .collect();
@@ -1466,70 +1455,76 @@ impl<Complexity: AtMax<Linear>> Peptidoform<Complexity> {
         self.c_term.iter().filter_map(|m| m.clone().into_simple()).collect()
     }
 
+    /// Gives all the formulas for the whole peptide with no C and N terminal modifications. With
+    /// the global isotope modifications applied.
+    pub fn bare_formulas<Mode: MassOutputMode>(&self) -> Multi<Mode::Output> {
+        self.bare_formulas_inner::<Mode>(&[], &[], &mut Vec::new(), false, 0, 0)
+    }
+}
+
+impl<Complexity: AtMax<Linear>> AmbiguousMolecule for Peptidoform<Complexity> {
     /// Gives the formulas for the whole peptide. With the global isotope modifications applied.
     /// (Any B/Z will result in multiple possible formulas.) Ignores any potential glycan
     /// fragmentation, assumes the glycan is always fully present.
     #[expect(clippy::missing_panics_doc)] // Can not panic (unless state is already corrupted)
-    pub fn formulas(&self) -> Multi<MolecularFormula> {
-        let mut formulas: Multi<MolecularFormula> = self
-            .get_n_term_mass(&[], &[], &mut Vec::new(), false, 0, 0, &FullGlycan {})
+    fn calculate_masses_inner<Mode: MassOutputMode>(
+        &self,
+        _sequence_index: SequencePosition,
+        peptidoform_index: usize,
+        peptidoform_ion_index: usize,
+    ) -> Multi<Mode::Output> {
+        let mut formulas: Multi<Mode::Output> = self
+            .get_n_term_mass::<Mode>(&[], &[], &mut Vec::new(), false, 0, 0, &FullGlycan {})
             .0
             * self
-                .get_c_term_mass(&[], &[], &mut Vec::new(), false, 0, 0, &FullGlycan {})
+                .get_c_term_mass::<Mode>(&[], &[], &mut Vec::new(), false, 0, 0, &FullGlycan {})
                 .0;
         let mut placed = vec![false; self.modifications_of_unknown_position.len()];
         for (index, pos) in self.sequence.iter().enumerate() {
             formulas *= pos
-                .formulas_greedy(
+                .formulas_greedy::<Mode>(
                     &mut placed,
                     &[],
                     &[],
                     &mut Vec::new(),
                     false,
                     SequencePosition::Index(index, self.len()),
-                    0,
-                    0,
+                    peptidoform_index,
+                    peptidoform_ion_index,
                     &FullGlycan {},
                 )
                 .0;
         }
 
-        formulas
-            .iter()
-            .map(|f| {
-                f.with_global_isotope_modifications(&self.global)
-                    .expect("Global isotope modification invalid in determination of all formulas for a peptide")
-            })
-            .collect()
-    }
-
-    /// Gives all the formulas for the whole peptide with no C and N terminal modifications. With
-    /// the global isotope modifications applied.
-    pub fn bare_formulas(&self) -> Multi<MolecularFormula> {
-        self.bare_formulas_inner(&[], &[], &mut Vec::new(), false, 0, 0)
+        formulas.with_global_isotope_modifications(&self.global).expect(
+            "Global isotope modification invalid in determination of all formulas for a peptide",
+        )
     }
 }
 
 impl Peptidoform<UnAmbiguous> {
-    /// Gives the formula for the whole peptide. With the global isotope modifications applied.
-    /// Ignores any potential glycan fragmentation, assumes the glycan is always fully present.
+    /// Gives the formula for the whole peptide with no C and N terminal modifications. With the
+    /// global isotope modifications applied.
     #[expect(clippy::missing_panics_doc)] // Can not panic (unless state is already corrupted)
-    pub fn formula(&self) -> MolecularFormula {
+    pub fn bare_formula<Mode: MassOutputMode>(&self) -> Mode::Output {
         let mut options = self
-            .formulas_inner(0, 0, &[], &[], &mut Vec::new(), false, &FullGlycan {})
-            .0
+            .bare_formulas_inner::<Mode>(&[], &[], &mut Vec::new(), false, 0, 0)
             .to_vec();
         assert_eq!(options.len(), 1);
         options.pop().unwrap()
     }
+}
 
-    /// Gives the formula for the whole peptide with no C and N terminal modifications. With the
-    /// global isotope modifications applied.
-    #[expect(clippy::missing_panics_doc)] // Can not panic (unless state is already corrupted)
-    pub fn bare_formula(&self) -> MolecularFormula {
-        let mut options = self.bare_formulas_inner(&[], &[], &mut Vec::new(), false, 0, 0).to_vec();
-        assert_eq!(options.len(), 1);
-        options.pop().unwrap()
+impl Molecule for Peptidoform<UnAmbiguous> {
+    fn calculate_mass_inner<Mode: MassOutputMode>(
+        &self,
+        _sequence_index: SequencePosition,
+        _peptidoform_index: usize,
+    ) -> Mode::Output {
+        self.formulas_inner::<Mode>(0, 0, &[], &[], &mut Vec::new(), false, &FullGlycan {})
+            .0
+            .single()
+            .unwrap()
     }
 }
 
@@ -1870,7 +1865,7 @@ pub trait HiddenInternalMethods {
     fn get_global(&self) -> &[(Element, Option<NonZeroU16>)];
     fn get_labile(&self) -> &[(SimpleModification, LabileLocation)];
     fn get_charge_carriers(&self) -> Option<&MolecularCharge>;
-    fn formulas_inner(
+    fn formulas_inner<Mode: MassOutputMode>(
         &self,
         peptidoform_index: usize,
         peptidoform_ion_index: usize,
@@ -1880,8 +1875,8 @@ pub trait HiddenInternalMethods {
         allow_ms_cleavable: bool,
         glycan_model: &impl GlycanAttachement,
     ) -> (
-        Multi<MolecularFormula>,
-        HashMap<BackboneFragmentKind, Multi<MolecularFormula>>,
+        Multi<Mode::Output>,
+        HashMap<BackboneFragmentKind, Multi<Mode::Output>>,
         HashSet<CrossLinkName>,
     );
 }
@@ -1899,7 +1894,7 @@ impl<Complexity> HiddenInternalMethods for Peptidoform<Complexity> {
         self.charge_carriers.as_ref()
     }
 
-    fn formulas_inner(
+    fn formulas_inner<Mode: MassOutputMode>(
         &self,
         peptidoform_index: usize,
         peptidoform_ion_index: usize,
@@ -1909,11 +1904,11 @@ impl<Complexity> HiddenInternalMethods for Peptidoform<Complexity> {
         allow_ms_cleavable: bool,
         glycan_model: &impl GlycanAttachement,
     ) -> (
-        Multi<MolecularFormula>,
-        HashMap<BackboneFragmentKind, Multi<MolecularFormula>>,
+        Multi<Mode::Output>,
+        HashMap<BackboneFragmentKind, Multi<Mode::Output>>,
         HashSet<CrossLinkName>,
     ) {
-        self.formulas_inner(
+        self.formulas_inner::<Mode>(
             peptidoform_index,
             peptidoform_ion_index,
             all_peptides,
