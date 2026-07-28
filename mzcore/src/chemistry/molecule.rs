@@ -22,6 +22,14 @@ pub trait MassOutputMode: Sized {
     /// Create this output from a molecular formula, for example from the values as defined in the
     /// source code.
     fn from_formula(formula: MolecularFormula) -> Self::Output;
+
+    /// Pick one of the three supplied values, to prevent having to allocate for the formula if that
+    /// is not necessary.
+    fn pick(
+        monoisotopic: MassOutput,
+        average_weight: MassOutput,
+        formula: impl FnOnce() -> MolecularFormula,
+    ) -> Self::Output;
 }
 
 /// A type that can be used as mass output in calculations.
@@ -76,6 +84,14 @@ impl MassOutputMode for OutputMonoIsotopic {
     fn from_formula(formula: MolecularFormula) -> Self::Output {
         formula.monoisotopic_mass().into()
     }
+
+    fn pick(
+        monoisotopic: MassOutput,
+        _average_weight: MassOutput,
+        _formula: impl FnOnce() -> MolecularFormula,
+    ) -> Self::Output {
+        monoisotopic
+    }
 }
 
 /// A trait to signify that only the final average weight is interesting, note that this will be
@@ -98,14 +114,22 @@ impl MassOutputMode for OutputAverageWeight {
     fn from_formula(formula: MolecularFormula) -> Self::Output {
         formula.average_weight().into()
     }
+
+    fn pick(
+        _monoisotopic: MassOutput,
+        average_weight: MassOutput,
+        _formula: impl FnOnce() -> MolecularFormula,
+    ) -> Self::Output {
+        average_weight
+    }
 }
 
 /// A mass output, contains the mass, charge, and any ambiguous labels.
 #[derive(Debug, Clone, Default)]
 pub struct MassOutput {
-    mass: Mass,
-    charge: crate::system::isize::Charge,
-    labels: thin_vec::ThinVec<AmbiguousLabel>,
+    pub(crate) mass: Mass,
+    pub(crate) charge: crate::system::isize::Charge,
+    pub(crate) labels: thin_vec::ThinVec<AmbiguousLabel>,
 }
 
 impl MassOutput {
@@ -285,6 +309,14 @@ impl MassOutputMode for OutputMolecularFormula {
 
     fn from_formula(formula: MolecularFormula) -> Self::Output {
         formula
+    }
+
+    fn pick(
+        _monoisotopic: MassOutput,
+        _average_weight: MassOutput,
+        formula: impl FnOnce() -> MolecularFormula,
+    ) -> Self::Output {
+        formula()
     }
 }
 

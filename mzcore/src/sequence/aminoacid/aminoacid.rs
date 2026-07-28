@@ -252,42 +252,61 @@ impl AmbiguousMolecule for AminoAcid {
         let SequencePosition::Index(sequence_index, _) = sequence_index else {
             panic!("Not allowed to call amino acid formulas with a terminal sequence index")
         };
+
+        macro_rules! mo {
+            ($v:literal) => {
+                $crate::chemistry::MassOutput{ mass: $crate::system::Mass::new::<$crate::system::dalton>($v), charge: $crate::system::isize::Charge::default(), labels: thin_vec::ThinVec::new()}
+            };
+            ($v:literal ($($l:expr),*)) => {
+                $crate::chemistry::MassOutput{ mass: $crate::system::Mass::new::<$crate::system::dalton>($v), charge: $crate::system::isize::Charge::default(), labels: [$($l),*].into()}
+            };
+        }
+
         match self {
-            Self::Alanine => Mode::from_formula(molecular_formula!(H 5 C 3 O 1 N 1)).into(),
-            Self::Arginine => Mode::from_formula(molecular_formula!(H 12 C 6 O 1 N 4)).into(),
-            Self::Asparagine => Mode::from_formula(molecular_formula!(H 6 C 4 O 2 N 2)).into(),
-            Self::AsparticAcid => Mode::from_formula(molecular_formula!(H 5 C 4 O 3 N 1)).into(),
+            Self::Alanine => Mode::pick(mo!(71.037113783), mo!(71.07793000000001), || molecular_formula!(H 5 C 3 O 1 N 1)).into(),
+            Self::Arginine => Mode::pick(mo!(156.10111101903598), mo!(156.18612000000002), || molecular_formula!(H 12 C 6 O 1 N 4)).into(),
+            Self::Asparagine => Mode::pick(mo!(114.042927438408), mo!(114.10276), || molecular_formula!(H 6 C 4 O 2 N 2)).into(),
+            Self::AsparticAcid => Mode::pick(mo!(115.02694302152), mo!(115.08733), || molecular_formula!(H 5 C 4 O 3 N 1)).into(),
             Self::AmbiguousAsparagine => vec![
-                Mode::from_formula(molecular_formula!(H 6 C 4 O 2 N 2 (AmbiguousLabel::AminoAcid{option: Self::Asparagine, sequence_index, peptidoform_index, peptidoform_ion_index}))),
-                Mode::from_formula(molecular_formula!(H 5 C 4 O 3 N 1 (AmbiguousLabel::AminoAcid{option: Self::AsparticAcid, sequence_index, peptidoform_index, peptidoform_ion_index}))),
+                Mode::pick(mo!(114.042927438408 (AmbiguousLabel::AminoAcid{option: Self::Asparagine, sequence_index, peptidoform_index, peptidoform_ion_index})), 
+                    mo!(114.10276 (AmbiguousLabel::AminoAcid{option: Self::Asparagine, sequence_index, peptidoform_index, peptidoform_ion_index})), 
+                    || molecular_formula!(H 6 C 4 O 2 N 2 (AmbiguousLabel::AminoAcid{option: Self::Asparagine, sequence_index, peptidoform_index, peptidoform_ion_index}))),
+                Mode::pick(
+                    mo!(115.02694302152 (AmbiguousLabel::AminoAcid{option: Self::AsparticAcid, sequence_index, peptidoform_index, peptidoform_ion_index})), 
+                    mo!(115.08733 (AmbiguousLabel::AminoAcid{option: Self::AsparticAcid, sequence_index, peptidoform_index, peptidoform_ion_index})), 
+                    || molecular_formula!(H 5 C 4 O 3 N 1 (AmbiguousLabel::AminoAcid{option: Self::AsparticAcid, sequence_index, peptidoform_index, peptidoform_ion_index}))),
             ]
             .into(),
-            Self::Cysteine => Mode::from_formula(molecular_formula!(H 5 C 3 O 1 N 1 S 1)).into(),
-            Self::Glutamine => Mode::from_formula(molecular_formula!(H 8 C 5 O 2 N 2)).into(),
-            Self::GlutamicAcid => Mode::from_formula(molecular_formula!(H 7 C 5 O 3 N 1)).into(),
+            Self::Cysteine => Mode::pick(mo!(103.00918495654), mo!(103.14543), || molecular_formula!(H 5 C 3 O 1 N 1 S 1)).into(),
+            Self::Glutamine => Mode::pick(mo!(128.058577502204), mo!(128.12931), || molecular_formula!(H 8 C 5 O 2 N 2)).into(),
+            Self::GlutamicAcid => Mode::pick(mo!(129.04259308531599), mo!(129.11388), || molecular_formula!(H 7 C 5 O 3 N 1)).into(),
             Self::AmbiguousGlutamine => vec![
-                Mode::from_formula(molecular_formula!(H 8 C 5 O 2 N 2 (AmbiguousLabel::AminoAcid{option: Self::Glutamine, sequence_index, peptidoform_index,
-                     peptidoform_ion_index}))),
-                Mode::from_formula(molecular_formula!(H 7 C 5 O 3 N 1 (AmbiguousLabel::AminoAcid{option: Self::GlutamicAcid, sequence_index, peptidoform_index, peptidoform_ion_index}))),
+                Mode::pick(
+                    mo!(128.058577502204 (AmbiguousLabel::AminoAcid{option: Self::Glutamine, sequence_index, peptidoform_index, peptidoform_ion_index})), 
+                    mo!(128.12931 (AmbiguousLabel::AminoAcid{option: Self::Glutamine, sequence_index, peptidoform_index, peptidoform_ion_index})), 
+                    || molecular_formula!(H 8 C 5 O 2 N 2 (AmbiguousLabel::AminoAcid{option: Self::Glutamine, sequence_index, peptidoform_index, peptidoform_ion_index}))),
+                Mode::pick(mo!(129.04259308531599 (AmbiguousLabel::AminoAcid{option: Self::GlutamicAcid, sequence_index, peptidoform_index, peptidoform_ion_index})), 
+                    mo!(129.11388 (AmbiguousLabel::AminoAcid{option: Self::GlutamicAcid, sequence_index, peptidoform_index, peptidoform_ion_index})),
+                    || molecular_formula!(H 7 C 5 O 3 N 1 (AmbiguousLabel::AminoAcid{option: Self::GlutamicAcid, sequence_index, peptidoform_index, peptidoform_ion_index}))),
             ]
             .into(),
-            Self::Glycine => Mode::from_formula(molecular_formula!(H 3 C 2 O 1 N 1)).into(),
-            Self::Histidine => Mode::from_formula(molecular_formula!(H 7 C 6 O 1 N 3)).into(),
+            Self::Glycine => Mode::pick(mo!(57.021463719204), mo!(57.05138), || molecular_formula!(H 3 C 2 O 1 N 1)).into(),
+            Self::Histidine => Mode::pick(mo!(137.058911855296), mo!(137.13939000000002), || molecular_formula!(H 7 C 6 O 1 N 3)).into(),
             Self::AmbiguousLeucine | Self::Isoleucine | Self::Leucine => {
-                Mode::from_formula(molecular_formula!(H 11 C 6 O 1 N 1)).into()
+                Mode::pick(mo!(113.084063974388), mo!(113.15758000000001), || molecular_formula!(H 11 C 6 O 1 N 1)).into()
             }
-            Self::Lysine => Mode::from_formula(molecular_formula!(H 12 C 6 O 1 N 2)).into(),
-            Self::Methionine => Mode::from_formula(molecular_formula!(H 9 C 5 O 1 N 1 S 1)).into(),
-            Self::Phenylalanine => Mode::from_formula(molecular_formula!(H 9 C 9 O 1 N 1)).into(),
-            Self::Proline => Mode::from_formula(molecular_formula!(H 7 C 5 O 1 N 1)).into(),
-            Self::Pyrrolysine => Mode::from_formula(molecular_formula!(H 19 C 11 O 2 N 3)).into(),
-            Self::Selenocysteine => Mode::from_formula(molecular_formula!(H 5 C 3 O 1 N 1 Se 1)).into(),
-            Self::Serine => Mode::from_formula(molecular_formula!(H 5 C 3 O 2 N 1)).into(),
-            Self::Threonine => Mode::from_formula(molecular_formula!(H 7 C 4 O 2 N 1)).into(),
-            Self::Tryptophan => Mode::from_formula(molecular_formula!(H 10 C 11 O 1 N 2)).into(),
-            Self::Tyrosine => Mode::from_formula(molecular_formula!(H 9 C 9 O 2 N 1)).into(),
-            Self::Valine => Mode::from_formula(molecular_formula!(H 9 C 5 O 1 N 1)).into(),
-            Self::Unknown => Mode::from_formula(molecular_formula!()).into(),
+            Self::Lysine => Mode::pick(mo!(128.094963010536), mo!(128.17241), || molecular_formula!(H 12 C 6 O 1 N 2)).into(),
+            Self::Methionine => Mode::pick(mo!(131.040485084132), mo!(131.19853), || molecular_formula!(H 9 C 5 O 1 N 1 S 1)).into(),
+            Self::Phenylalanine => Mode::pick(mo!(147.068413910592), mo!(147.17343), || molecular_formula!(H 9 C 9 O 1 N 1)).into(),
+            Self::Proline => Mode::pick(mo!(97.052763846796), mo!(97.11507999999999), || molecular_formula!(H 7 C 5 O 1 N 1)).into(),
+            Self::Pyrrolysine => Mode::pick(mo!(225.147726857332), mo!(225.28749), || molecular_formula!(H 19 C 11 O 2 N 3)).into(),
+            Self::Selenocysteine => Mode::pick(mo!(150.953635544), mo!(150.04893), || molecular_formula!(H 5 C 3 O 1 N 1 Se 1)).into(),
+            Self::Serine => Mode::pick(mo!(87.03202840226), mo!(87.07733), || molecular_formula!(H 5 C 3 O 2 N 1)).into(),
+            Self::Threonine => Mode::pick(mo!(101.047678466056), mo!(101.10388), || molecular_formula!(H 7 C 4 O 2 N 1)).into(),
+            Self::Tryptophan => Mode::pick(mo!(186.07931294673998), mo!(186.20946), || molecular_formula!(H 10 C 11 O 1 N 2)).into(),
+            Self::Tyrosine => Mode::pick(mo!(163.06332852985201), mo!(163.17282999999998), || molecular_formula!(H 9 C 9 O 2 N 1)).into(),
+            Self::Valine => Mode::pick(mo!(99.068413910592), mo!(99.13103), || molecular_formula!(H 9 C 5 O 1 N 1)).into(),
+            Self::Unknown => Mode::pick(mo!(0.0), mo!(0.0), || molecular_formula!()).into(),
         }
     }
 }
