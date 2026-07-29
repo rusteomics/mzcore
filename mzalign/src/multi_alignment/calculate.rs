@@ -290,8 +290,10 @@ impl<const STEPS: u16, Sequence: HasPeptidoform<Linear> + Clone> AlignIndex<STEP
             // Merge nodes (this is where the actual alignment happens)
             let close_node = std::mem::take(&mut nodes[close_index]);
             let far_node = nodes.remove(far_index);
-            nodes[close_index] =
-                multi_align_cached::<STEPS, Sequence>(close_node, far_node, scoring, align_type).0;
+            nodes[close_index] = multi_align_cached::<STEPS, false, Sequence>(
+                close_node, far_node, scoring, align_type,
+            )
+            .0;
 
             // Update matrix to merge these columns
             distance_matrix = distance_matrix.merge_columns(close_index, far_index, distance);
@@ -376,15 +378,25 @@ impl<const STEPS: u16, Sequence: HasPeptidoform<Linear> + Clone + Send + Sync>
     }
 }
 
-/// Do mass based alignment of two MMSA clusters, but with precomputed masses
+/// Do mass based alignment of two MMSA clusters, but with precomputed masses. If `DETRMINES_SCORES`
+/// is turned on it will report a score and overlap length, if not these will be default values.
 #[expect(clippy::too_many_lines)]
 #[allow(clippy::similar_names)]
-pub(super) fn multi_align_cached<'a, const STEPS: u16, Sequence: HasPeptidoform<Linear>>(
+pub(super) fn multi_align_cached<
+    'a,
+    const STEPS: u16,
+    const DETERMINE_SCORE: bool,
+    Sequence: HasPeptidoform<Linear>,
+>(
     a: Vec<MultiAlignmentLineTemp<'a, Sequence, STEPS>>,
     b: Vec<MultiAlignmentLineTemp<'a, Sequence, STEPS>>,
     scoring: AlignScoring<'_>,
     align_type: MultiAlignType,
-) -> (Vec<MultiAlignmentLineTemp<'a, Sequence, STEPS>>, isize) {
+) -> (
+    Vec<MultiAlignmentLineTemp<'a, Sequence, STEPS>>,
+    Score,
+    usize,
+) {
     let len_a = a.first().map_or(0, MultiAlignmentLineTemp::aligned_length);
     let len_b = b.first().map_or(0, MultiAlignmentLineTemp::aligned_length);
     let mut matrix = Matrix::new(len_a, len_b);
@@ -652,6 +664,26 @@ pub(super) fn multi_align_cached<'a, const STEPS: u16, Sequence: HasPeptidoform<
     // Finish up by tracing the path and updating all enclosed sequences to this path
     let (start_a, start_b, path) = matrix.trace_path(align_type.into(), global_highest);
 
+    let (score, overlap_length) = if DETERMINE_SCORE {
+        let (len_a, len_b) = path.iter().fold((0, 0), |(a, b), p| {
+            (a + p.step_a as usize, b + p.step_b as usize)
+        });
+
+        (
+            determine_final_score(
+                &a,
+                &b,
+                start_a..start_a + len_a,
+                start_b..start_b + len_b,
+                scoring,
+                path.last().map(|p| p.score).unwrap_or_default(),
+            ),
+            len_a.min(len_b),
+        )
+    } else {
+        (Score::default(), 0)
+    };
+
     let mut sequences = Vec::with_capacity(a.len() + b.len());
 
     for line in a {
@@ -668,15 +700,21 @@ pub(super) fn multi_align_cached<'a, const STEPS: u16, Sequence: HasPeptidoform<
         s.pad(goal_length);
     }
 
-    (sequences, path.last().map(|p| p.score).unwrap_or_default())
+    (sequences, score, overlap_length)
 }
 
 pub(super) fn determine_final_score<const STEPS: u16, Sequence: HasPeptidoform<Linear>>(
-    mmsa: &[MultiAlignmentLineTemp<Sequence, STEPS>],
+    mmsa_a: &[MultiAlignmentLineTemp<Sequence, STEPS>],
+    mmsa_b: &[MultiAlignmentLineTemp<Sequence, STEPS>],
+    range_a: std::ops::Range<usize>,
+    range_b: std::ops::Range<usize>,
     scoring: AlignScoring,
     absolute_score: isize,
 ) -> Score {
-    let maximal_score = maximal_score(mmsa, scoring);
+    let maximal_score = isize::midpoint(
+        maximal_score(range_a, mmsa_a, scoring),
+        maximal_score(range_b, mmsa_b, scoring),
+    );
     Score {
         normalised: if maximal_score == 0 {
             ordered_float::OrderedFloat::default()
@@ -689,15 +727,12 @@ pub(super) fn determine_final_score<const STEPS: u16, Sequence: HasPeptidoform<L
 }
 
 fn maximal_score<const STEPS: u16, Sequence: HasPeptidoform<Linear>>(
+    range: std::ops::Range<usize>,
     mmsa: &[MultiAlignmentLineTemp<Sequence, STEPS>],
     scoring: AlignScoring,
 ) -> isize {
-    let aligned_length = mmsa
-        .first()
-        .map(MultiAlignmentLineTemp::aligned_length)
-        .unwrap_or_default();
     let mut score = 0;
-    for i in 0..aligned_length {
+    for i in range {
         score += mmsa
             .iter()
             .map(|option| {

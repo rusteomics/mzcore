@@ -540,7 +540,9 @@ impl Stats {
 }
 
 /// The score of an alignment
-#[derive(Clone, Copy, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
+#[derive(
+    Clone, Copy, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize, Default,
+)]
 pub struct Score {
     /// The normalised score (absolute / max)
     pub normalised: OrderedFloat<f64>,
@@ -556,7 +558,7 @@ pub struct Score {
 #[expect(clippy::missing_panics_doc)]
 mod tests {
     use mzcore::{
-        chemistry::MultiChemical,
+        chemistry::AmbiguousMolecule,
         sequence::{AminoAcid, Peptidoform, SimpleLinear},
     };
 

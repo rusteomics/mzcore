@@ -105,8 +105,8 @@ impl<Sequence: HasPeptidoform<Linear>> MultiAlignment<Sequence> {
         self.align_type
     }
 
-    /// Combine two `MultiAlignments` into one. Returns the new alignment + the absolute score of
-    /// joining these two.
+    /// Combine two `MultiAlignments` into one. Returns the new alignment + the score of joining
+    /// these two + the overlap in minimal aligned length.
     #[must_use]
     pub fn combine<const STEPS: u16>(
         self,
@@ -114,12 +114,12 @@ impl<Sequence: HasPeptidoform<Linear>> MultiAlignment<Sequence> {
         mass_mode: MassMode,
         scoring: AlignScoring<'_>,
         align_type: MultiAlignType,
-    ) -> (Self, Score) {
+    ) -> (Self, Score, usize) {
         let temp_self = self.lines.into_iter().map(|l| l.into_temp::<STEPS>(mass_mode)).collect();
         let temp_other = other.lines.into_iter().map(|l| l.into_temp::<STEPS>(mass_mode)).collect();
-        let (lines, score) = multi_align_cached(temp_self, temp_other, scoring, align_type);
-        let score = determine_final_score(&lines, scoring, score);
-        (Self::new::<STEPS>(lines, align_type), score)
+        let (lines, score, overlap) =
+            multi_align_cached::<STEPS, true, Sequence>(temp_self, temp_other, scoring, align_type);
+        (Self::new::<STEPS>(lines, align_type), score, overlap)
     }
 }
 
