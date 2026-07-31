@@ -2,7 +2,7 @@ use std::fmt::{Debug, Write};
 
 /// A diagonal array of limited depth that is implemented as a single continuous slice of memory.
 #[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
-pub(super) struct DiagonalArray<T, const DEPTH: u16> {
+pub struct DiagonalArray<T, const DEPTH: u16> {
     len: usize,
     data: Box<[T]>,
 }

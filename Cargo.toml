@@ -31,7 +31,7 @@ codegen-units = 1
 
 [workspace.dependencies]
 afl = ">0.15, <=0.18"
-base64 = ">0.15, <=0.22"
+base64 = ">0.15, <=0.23"
 bincode = { version = "2.0", features = ["serde"] }
 chrono = "0.4"
 clap = { version = "4.6", features = ["derive", "cargo"] }

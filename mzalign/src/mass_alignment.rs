@@ -1,8 +1,8 @@
 use mzcore::{
-    chemistry::{MassMode, MassOutputType, MolecularFormula, Molecule, OutputMolecularFormula},
+    chemistry::{MassMode, Molecule},
     prelude::AmbiguousMolecule,
     quantities::{Multi, Tolerance, WithinTolerance},
-    sequence::{AtMax, HasPeptidoform, Linear, Peptidoform, SequenceElement, SequencePosition},
+    sequence::{AtMax, HasPeptidoform, Linear, Peptidoform, SequenceElement},
     system::{Mass, OrderedMass, dalton},
 };
 

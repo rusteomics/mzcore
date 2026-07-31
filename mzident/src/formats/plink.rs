@@ -320,13 +320,10 @@ fn plink_separate<'a>(
                 BasicKind::Error,
                 title,
                 format!("A pLink {field} should follow the format 'PEP1(pos1)-PEP2(pos2)' but the opening bracket '(' was not found for PEP1"),
-                Context::line(
-                    Some(location.line.line_index() as u32),
-                    location.full_line(),
-                    location.range.start,
-                    peptide1.len(),
-                )
-                .to_owned(),
+                Context::default()
+                    .line_index(location.line.line_index() as u32)
+                    .lines(0, location.full_line())
+                    .add_highlight((0, location.range.start, peptide1.len())).to_owned()
             )
         })?;
         let second_end = peptide2.rfind('(').ok_or_else(|| {
@@ -334,12 +331,10 @@ fn plink_separate<'a>(
                 BasicKind::Error,
                 title,
                 format!("A pLink {field} should follow the format 'PEP1(pos1)-PEP2(pos2)' but the opening bracket '(' was not found for PEP2"),
-                Context::line(
-                    Some(location.line.line_index() as u32),
-                    location.full_line(),
-                    location.range.start + peptide1.len() + 2,
-                    peptide2.len(),
-                ),
+                Context::default()
+                    .line_index(location.line.line_index() as u32)
+                    .lines(0, location.full_line())
+                    .add_highlight((0, location.range.start + peptide1.len() + 2, peptide2.len())).to_owned()
             )
         })?;
 
@@ -352,12 +347,10 @@ fn plink_separate<'a>(
                     "A pLink {field} should follow the format 'PEP1(pos1)-PEP2(pos2)' but the position for PEP1 {}",
                     explain_number_error(&err)
                 ),
-                Context::line_range(
-                    Some(location.line.line_index() as u32),
-                    location.full_line(),
-                    pos1.clone(),
-                )
-                .to_owned(),
+                Context::default()
+                    .line_index(location.line.line_index() as u32)
+                    .lines(0, location.full_line())
+                    .add_highlight((0, pos1.clone())).to_owned()
             )
         })?;
         let pos2 = location.range.start + peptide1.len() + 2 + second_end + 1
@@ -370,12 +363,10 @@ fn plink_separate<'a>(
                     "A pLink {field} should follow the format 'PEP1(pos1)-PEP2(pos2)' but the position for PEP1 {}",
                     explain_number_error(&err)
                 ),
-                Context::line_range(
-                    Some(location.line.line_index() as u32),
-                    location.full_line(),
-                    pos2.clone(),
-                )
-                .to_owned(),
+                Context::default()
+                    .line_index(location.line.line_index() as u32)
+                    .lines(0, location.full_line())
+                    .add_highlight((0, pos2.clone())).to_owned()
             )
         })?;
 
@@ -410,12 +401,10 @@ fn plink_separate<'a>(
                             "A pLink {field} should follow the format 'PEP(pos1)(pos2)' but the first position {}",
                             explain_number_error(&err)
                         ),
-                        Context::line_range(
-                            Some(location.line.line_index() as u32),
-                            location.full_line(),
-                            pos1.clone(),
-                        )
-                        .to_owned(),
+                        Context::default()
+                            .line_index(location.line.line_index() as u32)
+                            .lines(0, location.full_line())
+                            .add_highlight((0, pos1.clone())).to_owned(),
                     )
                 })?;
                 let pos2 = start_pos2..end - 1;
@@ -429,12 +418,10 @@ fn plink_separate<'a>(
                                 "A pLink {field} should follow the format 'PEP(pos1)(pos2)' but the second position {}",
                                 explain_number_error(&err)
                             ),
-                            Context::line_range(
-                                Some(location.line.line_index() as u32),
-                                location.full_line(),
-                                start_pos2..end - 1,
-                            )
-                            .to_owned(),
+                            Context::default()
+                                .line_index(location.line.line_index() as u32)
+                                .lines(0, location.full_line())
+                                .add_highlight((0, start_pos2..end - 1)).to_owned()
                         )
                     })?;
 
@@ -459,12 +446,10 @@ fn plink_separate<'a>(
                             "A pLink {field} should follow the format 'PEP(pos1)(pos2)' but the first position {}",
                             explain_number_error(&err)
                         ),
-                        Context::line_range(
-                            Some(location.line.line_index() as u32),
-                            location.full_line(),
-                            pos1.clone(),
-                        )
-                        .to_owned(),
+                        Context::default()
+                            .line_index(location.line.line_index() as u32)
+                            .lines(0, location.full_line())
+                            .add_highlight((0, pos1.clone())).to_owned()
                     )
                 })?;
 

@@ -1,6 +1,7 @@
 #![doc = include_str!("../README.md")]
 
 use mzcv as _;
+use num_traits as _; // Needed to not get too low versions when testing with minimal versions
 
 #[cfg(test)]
 mod fragmentation_tests;

@@ -1201,7 +1201,10 @@ impl FastaData {
                                         BasicKind::Error,
                                         "Failed reading fasta file",
                                         "Character is not an amino acid",
-                                        Context::line(Some(line_index as u32), &line, i, 1)
+                                        Context::default()
+                                            .line_index(line_index as u32)
+                                            .lines(0, &line)
+                                            .add_highlight((0, i, 1))
                                             .to_owned(),
                                     )
                                 })
@@ -1237,7 +1240,10 @@ impl FastaData {
                     total_regions_len,
                     self.peptide.len()
                 ),
-                Context::full_line(self.line_index as u32, &self.full_header).to_owned(),
+                Context::default()
+                    .line_index(self.line_index as u32)
+                    .lines(0, &self.full_header)
+                    .to_owned(),
             ))
         } else if self.annotations.iter().any(|(_, p)| *p >= self.peptide.len()) {
             Err(BoxedError::new(
@@ -1247,7 +1253,10 @@ impl FastaData {
                     "The 'ANNOTATIONS' definition is invalid, on of the annotations is out of range of the peptide (length {})",
                     self.peptide.len()
                 ),
-                Context::full_line(self.line_index as u32, &self.full_header).to_owned(),
+                Context::default()
+                    .line_index(self.line_index as u32)
+                    .lines(0, &self.full_header)
+                    .to_owned(),
             ))
         } else if total_regions_len > 0 {
             Ok(self)
@@ -1322,13 +1331,19 @@ impl FastaData {
                             n.parse::<usize>().map_err(|err| BoxedError::new(BasicKind::Error,
                             "Invalid regions definition",
                             format!("The fasta header 'REGIONS' key, should contain regions followed by a colon, e.g. 'CDR3:6', but the number is {}", explain_number_error(&err)),
-                            Context::line(Some(line_index as u32), &full_header, tag.1.start + last, tag.1.start+index).to_owned()))?
+                            Context::default()
+                                    .line_index(line_index as u32)
+                                    .lines(0, &full_header).add_highlight((0, tag.1.start + last, tag.1.start+index))
+                                    .to_owned()))?
                         ))
                     } else {
                         Err(BoxedError::new(BasicKind::Error,
                             "Invalid regions definition",
                             "The fasta header 'REGIONS' key, should contain regions followed by a colon, e.g. 'CDR3:6'",
-                            Context::line(Some(line_index as u32), &full_header, tag.1.start + last, tag.1.start+index).to_owned()))
+                            Context::default()
+                                    .line_index(line_index as u32)
+                                    .lines(0, &full_header).add_highlight((0, tag.1.start + last, tag.1.start+index))
+                                    .to_owned()))
                     }
                 }).collect::<Result<Vec<_>,_>>()?;
                 }
@@ -1343,13 +1358,19 @@ impl FastaData {
                             n.parse::<usize>().map_err(|err| BoxedError::new(BasicKind::Error,
                             "Invalid annotations definition",
                             format!("The fasta header 'ANNOTATIONS' key, should contain annotations followed by a colon, e.g. 'Conserved:6', but the number is {}", explain_number_error(&err)),
-                            Context::line(Some(line_index as u32), &full_header, tag.1.start + last, tag.1.start+index).to_owned()))?
+                            Context::default()
+                                    .line_index(line_index as u32)
+                                    .lines(0, &full_header).add_highlight((0, tag.1.start + last, tag.1.start+index))
+                                    .to_owned()))?
                         ))
                     } else {
                         Err(BoxedError::new(BasicKind::Error,
                             "Invalid annotations definition",
                             "The fasta header 'ANNOTATIONS' key, should contain annotations followed by a colon, e.g. 'Conserved:6'",
-                            Context::line(Some(line_index as u32), &full_header, tag.1.start + last, tag.1.start+index).to_owned()))
+                            Context::default()
+                                    .line_index(line_index as u32)
+                                    .lines(0, &full_header).add_highlight((0, tag.1.start + last, tag.1.start+index))
+                                    .to_owned()))
                     }
                 }).collect::<Result<Vec<_>,_>>()?;
                 }
@@ -1368,7 +1389,10 @@ impl FastaData {
                             "Error occurred parsing NCBI identifier: number {}",
                             explain_number_error(&err)
                         ),
-                        Context::line(Some(line_index as u32), &full_header, 1, first_space - 1)
+                        Context::default()
+                            .line_index(line_index as u32)
+                            .lines(0, &full_header)
+                            .add_highlight((0, 1, first_space - 1))
                             .to_owned(),
                     )
                 })?,

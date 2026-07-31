@@ -713,13 +713,11 @@ fn parse_de_novo_sequence(
                                     BasicKind::Error,
                                     "Invalid MaxNovo de novo sequence",
                                     "Invalid amino acid",
-                                    Context::line(
-                                        Some(location.line.line_index() as u32),
-                                        location.full_line(),
-                                        location.range.start,
-                                        1,
-                                    )
-                                    .to_owned(),
+                                    Context::default()
+                                        .line_index(location.line.line_index() as u32)
+                                        .lines(0, location.full_line())
+                                        .add_highlight((0, location.range.start, 1))
+                                        .to_owned(),
                                 )
                             })?
                             .into(),
@@ -748,13 +746,11 @@ fn parse_de_novo_sequence(
                                 BasicKind::Error,
                                 "Invalid MaxNovo de novo sequence",
                                 "The round bracket is never closed",
-                                Context::line(
-                                    Some(location.line.line_index() as u32),
-                                    location.full_line(),
-                                    location.range.start + 1,
-                                    1,
-                                )
-                                .to_owned(),
+                                Context::default()
+                                    .line_index(location.line.line_index() as u32)
+                                    .lines(0, location.full_line())
+                                    .add_highlight((0, location.range.start + 1, 1))
+                                    .to_owned(),
                             ));
                         }
                     }

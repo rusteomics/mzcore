@@ -9,9 +9,7 @@ use serde::{Deserialize, Serialize};
 use crate::{
     AlignScoring, AlignType, MatchType, Score,
     helper_functions::next_num,
-    multi_alignment::calculate::{
-        MultiAlignmentLineTemp, determine_final_score, multi_align_cached,
-    },
+    multi_alignment::calculate::{MultiAlignmentLineTemp, multi_align_cached},
 };
 
 /// A mass-based multiple sequence alignment (MMSA).

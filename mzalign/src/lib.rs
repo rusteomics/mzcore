@@ -31,6 +31,7 @@ pub use align_type::{AlignType, Side};
 pub use alignment::{Alignment, Score, Stats};
 #[cfg(feature = "imgt")]
 pub use consecutive::*;
+pub use diagonal_array::DiagonalArray;
 pub use index::AlignIndex;
 pub use mass_alignment::align;
 pub use multi_alignment::*;

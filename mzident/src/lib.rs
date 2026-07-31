@@ -1,4 +1,5 @@
 #![doc = include_str!("../README.md")]
+#![allow(mixed_script_confusables)] // Some tools names contain pi
 
 #[macro_use]
 mod common_parser;

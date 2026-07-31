@@ -47,12 +47,11 @@ format_family!(
                     return Err(BoxedError::new(BasicKind::Error,
                         "Invalid MetaMorpheus line",
                         "The location is not defined, it should be defined like this [<start> to <end>]",
-                        Context::line(
-                            Some(loc.line.line_index() as u32),
-                            loc.line.line(),
-                            loc.range.start,
-                            loc.range.len(),
-                        ).to_owned(),
+                        Context::default()
+                            .line_index(loc.line.line_index() as u32)
+                            .lines(0, loc.full_line())
+                            .add_highlight((0, loc.range.start, loc.range.len()))
+                            .to_owned(),
                     ))
                 }
                 let bytes =
@@ -67,22 +66,18 @@ format_family!(
                     loc.line.line()[loc.range.start + 1..loc.range.start + 1 + start]
                         .parse::<u16>()
                         .map_err(|_| {
-                            BoxedError::new(BasicKind::Error,NUMBER_ERROR.0, NUMBER_ERROR.1, Context::line(
-                                Some(loc.line.line_index() as u32),
-                                loc.line.line(),
-                                loc.range.start + 1,
-                                start,
-                            )).to_owned()
+                            BoxedError::new(BasicKind::Error,NUMBER_ERROR.0, NUMBER_ERROR.1, Context::default()
+                            .line_index(loc.line.line_index() as u32)
+                            .lines(0, loc.full_line())
+                            .add_highlight((0, loc.range.start+1, start)).to_owned())
                         })?..
                     loc.line.line()[loc.range.end - 1 - end..loc.range.end - 1]
                         .parse::<u16>()
                         .map_err(|_| {
-                            BoxedError::new(BasicKind::Error,NUMBER_ERROR.0, NUMBER_ERROR.1, Context::line(
-                                Some(loc.line.line_index() as u32),
-                                loc.line.line(),
-                                loc.range.end - 1 - end,
-                                end,
-                            ).to_owned())
+                            BoxedError::new(BasicKind::Error,NUMBER_ERROR.0, NUMBER_ERROR.1, Context::default()
+                                .line_index(loc.line.line_index() as u32)
+                                .lines(0, loc.full_line())
+                                .add_highlight((0, loc.range.end - 1 - end, end,)).to_owned())
                         })?
                 )
             },
@@ -95,12 +90,10 @@ format_family!(
                                 BoxedError::new(BasicKind::Error,
                                     "Invalid MetaMorpheus line",
                                     "The flanking residues could not be parsed as amino acids",
-                                    Context::line(
-                                        Some(l.line.line_index() as u32),
-                                        l.line.line(),
-                                        l.range.start,
-                                        1,
-                                    ).to_owned(),
+                                    Context::default()
+                                        .line_index(l.line.line_index() as u32)
+                                        .lines(0, l.full_line())
+                                        .add_highlight((0, l.range.start, 1)).to_owned()
                                 )
                             },
                         )?))
@@ -113,12 +106,10 @@ format_family!(
                                 BoxedError::new(BasicKind::Error,
                                     "Invalid MetaMorpheus line",
                                     "The flanking residues could not be parsed as amino acids",
-                                    Context::line(
-                                        Some(l.line.line_index() as u32),
-                                        l.line.line(),
-                                        l.range.start,
-                                        1,
-                                    ).to_owned(),
+                                    Context::default()
+                                        .line_index(l.line.line_index() as u32)
+                                        .lines(0, l.full_line())
+                                        .add_highlight((0, l.range.start, 1)).to_owned()
                                 )
                             },
                         )?))
@@ -168,12 +159,10 @@ format_family!(
                     _ => Err(BoxedError::new(BasicKind::Error,
                         "Invalid MetaMorpheus line",
                         "The kind column does not contain a valid value (T/C/D)",
-                        Context::line(
-                            Some(loc.line.line_index() as u32),
-                            loc.line.line(),
-                            loc.range.start,
-                            loc.range.len(),
-                        ).to_owned(),
+                        Context::default()
+                            .line_index(loc.line.line_index() as u32)
+                            .lines(0, loc.full_line())
+                            .add_highlight((0, loc.range.start, loc.range.len())).to_owned()
                     )),
                 }
             }).collect::<Result<Vec<_>,_>>();
