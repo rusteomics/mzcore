@@ -226,8 +226,10 @@ impl SimpleModificationInner {
                             option
                                 .iter()
                                 .map(|i| {
-                                    (i.0.calculate_mass_inner::<Mode>(sequence_index, peptidoform_index)
-                                        * i.1 as i32)
+                                    (i.0.calculate_mass_inner::<Mode>(
+                                        sequence_index,
+                                        peptidoform_index,
+                                    ) * i.1 as i32)
                                         .into()
                                 })
                                 .sum::<Mode::Output>()
@@ -240,8 +242,10 @@ impl SimpleModificationInner {
                         monosaccharides
                             .iter()
                             .map(|i| {
-                                (i.0.calculate_mass_inner::<Mode>(sequence_index, peptidoform_index)
-                                    * i.1 as i32)
+                                (i.0.calculate_mass_inner::<Mode>(
+                                    sequence_index,
+                                    peptidoform_index,
+                                ) * i.1 as i32)
                                     .into()
                             })
                             .sum(),
@@ -269,7 +273,9 @@ impl SimpleModificationInner {
                     }
                 }
                 if glycan_fragmentation.full() {
-                    options.push(glycan.calculate_mass_inner::<Mode>(sequence_index, peptidoform_index));
+                    options.push(
+                        glycan.calculate_mass_inner::<Mode>(sequence_index, peptidoform_index),
+                    );
                 }
                 if options.is_empty() {
                     options.push(Mode::Output::default());

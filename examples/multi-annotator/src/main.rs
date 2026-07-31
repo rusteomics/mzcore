@@ -23,7 +23,7 @@ use mzannotate::{
     prelude::*,
 };
 use mzcore::{
-    chemistry::MassMode,
+    chemistry::{AmbiguousMolecule, MassMode},
     csv::write_csv,
     glycan::MonoSaccharide,
     ontology::Ontologies,

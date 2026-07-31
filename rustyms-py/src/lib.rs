@@ -7,7 +7,7 @@ use context_error::CreateError;
 use mzalign::AlignScoring;
 use mzannotate::prelude::{GlycanFragmention, PeptidoformFragmentation, ToMzPAF};
 use mzcore::{
-    chemistry::{Chemical, MultiChemical},
+    chemistry::{AmbiguousMolecule, MassOutputType, Molecule},
     sequence::{IsAminoAcid, Linked, SimpleLinear},
     system::dalton,
 };
@@ -294,6 +294,7 @@ impl MolecularFormula {
         substitutions: Vec<(Element, Option<u16>)>,
     ) -> PyResult<Self> {
         self.0
+            .clone()
             .with_global_isotope_modifications(
                 substitutions
                     .iter()

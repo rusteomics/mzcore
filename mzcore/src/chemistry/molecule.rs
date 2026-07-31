@@ -125,7 +125,7 @@ impl MassOutputMode for OutputAverageWeight {
 }
 
 /// A mass output, contains the mass, charge, and any ambiguous labels.
-#[derive(Debug, Clone, Default)]
+#[derive(Clone, Debug, Default)]
 pub struct MassOutput {
     pub(crate) mass: Mass,
     pub(crate) charge: crate::system::isize::Charge,

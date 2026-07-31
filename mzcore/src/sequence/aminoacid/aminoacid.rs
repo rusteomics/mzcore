@@ -268,12 +268,12 @@ impl AmbiguousMolecule for AminoAcid {
             Self::Asparagine => Mode::pick(mo!(114.042927438408), mo!(114.10276), || molecular_formula!(H 6 C 4 O 2 N 2)).into(),
             Self::AsparticAcid => Mode::pick(mo!(115.02694302152), mo!(115.08733), || molecular_formula!(H 5 C 4 O 3 N 1)).into(),
             Self::AmbiguousAsparagine => vec![
-                Mode::pick(mo!(114.042927438408 (AmbiguousLabel::AminoAcid{option: Self::Asparagine, sequence_index, peptidoform_index, peptidoform_ion_index})), 
-                    mo!(114.10276 (AmbiguousLabel::AminoAcid{option: Self::Asparagine, sequence_index, peptidoform_index, peptidoform_ion_index})), 
+                Mode::pick(mo!(114.042927438408 (AmbiguousLabel::AminoAcid{option: Self::Asparagine, sequence_index, peptidoform_index, peptidoform_ion_index})),
+                    mo!(114.10276 (AmbiguousLabel::AminoAcid{option: Self::Asparagine, sequence_index, peptidoform_index, peptidoform_ion_index})),
                     || molecular_formula!(H 6 C 4 O 2 N 2 (AmbiguousLabel::AminoAcid{option: Self::Asparagine, sequence_index, peptidoform_index, peptidoform_ion_index}))),
                 Mode::pick(
-                    mo!(115.02694302152 (AmbiguousLabel::AminoAcid{option: Self::AsparticAcid, sequence_index, peptidoform_index, peptidoform_ion_index})), 
-                    mo!(115.08733 (AmbiguousLabel::AminoAcid{option: Self::AsparticAcid, sequence_index, peptidoform_index, peptidoform_ion_index})), 
+                    mo!(115.02694302152 (AmbiguousLabel::AminoAcid{option: Self::AsparticAcid, sequence_index, peptidoform_index, peptidoform_ion_index})),
+                    mo!(115.08733 (AmbiguousLabel::AminoAcid{option: Self::AsparticAcid, sequence_index, peptidoform_index, peptidoform_ion_index})),
                     || molecular_formula!(H 5 C 4 O 3 N 1 (AmbiguousLabel::AminoAcid{option: Self::AsparticAcid, sequence_index, peptidoform_index, peptidoform_ion_index}))),
             ]
             .into(),
@@ -282,10 +282,10 @@ impl AmbiguousMolecule for AminoAcid {
             Self::GlutamicAcid => Mode::pick(mo!(129.04259308531599), mo!(129.11388), || molecular_formula!(H 7 C 5 O 3 N 1)).into(),
             Self::AmbiguousGlutamine => vec![
                 Mode::pick(
-                    mo!(128.058577502204 (AmbiguousLabel::AminoAcid{option: Self::Glutamine, sequence_index, peptidoform_index, peptidoform_ion_index})), 
-                    mo!(128.12931 (AmbiguousLabel::AminoAcid{option: Self::Glutamine, sequence_index, peptidoform_index, peptidoform_ion_index})), 
+                    mo!(128.058577502204 (AmbiguousLabel::AminoAcid{option: Self::Glutamine, sequence_index, peptidoform_index, peptidoform_ion_index})),
+                    mo!(128.12931 (AmbiguousLabel::AminoAcid{option: Self::Glutamine, sequence_index, peptidoform_index, peptidoform_ion_index})),
                     || molecular_formula!(H 8 C 5 O 2 N 2 (AmbiguousLabel::AminoAcid{option: Self::Glutamine, sequence_index, peptidoform_index, peptidoform_ion_index}))),
-                Mode::pick(mo!(129.04259308531599 (AmbiguousLabel::AminoAcid{option: Self::GlutamicAcid, sequence_index, peptidoform_index, peptidoform_ion_index})), 
+                Mode::pick(mo!(129.04259308531599 (AmbiguousLabel::AminoAcid{option: Self::GlutamicAcid, sequence_index, peptidoform_index, peptidoform_ion_index})),
                     mo!(129.11388 (AmbiguousLabel::AminoAcid{option: Self::GlutamicAcid, sequence_index, peptidoform_index, peptidoform_ion_index})),
                     || molecular_formula!(H 7 C 5 O 3 N 1 (AmbiguousLabel::AminoAcid{option: Self::GlutamicAcid, sequence_index, peptidoform_index, peptidoform_ion_index}))),
             ]

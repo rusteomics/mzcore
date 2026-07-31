@@ -176,7 +176,7 @@ pub(super) fn align_cached<
                 for len_a in 1..=index_a.min(STEPS as usize) {
                     let range_a = unsafe { ranges_a.get_unchecked([index_a - 1, len_a - 1]) };
 
-                    let min_len_b = if len_a == 1 { 2 } else { 1 };
+                    let min_len_b = 1 + usize::from(len_a == 1);
 
                     for len_b in min_len_b..=index_b.min(STEPS as usize) {
                         let range_b = unsafe { ranges_b.get_unchecked([index_b - 1, len_b - 1]) };
