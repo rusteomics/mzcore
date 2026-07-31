@@ -497,7 +497,7 @@ pub(super) fn calculate_masses<const STEPS: u16>(
 mod tests {
     use mzcore::{
         chemistry::MolecularFormula,
-        prelude::MultiChemical,
+        prelude::AmbiguousMolecule,
         quantities::Multi,
         sequence::{CheckedAminoAcid, SequenceElement},
     };
@@ -515,13 +515,13 @@ mod tests {
         let pair = dbg!(score(
             (
                 &a,
-                &a.iter().map(MultiChemical::formulas).sum::<Multi<MolecularFormula>>()[0]
+                &a.iter().map(AmbiguousMolecule::formulas).sum::<Multi<MolecularFormula>>()[0]
                     .monoisotopic_mass()
                     .into()
             ),
             (
                 &b,
-                &b.iter().map(MultiChemical::formulas).sum::<Multi<MolecularFormula>>()[0]
+                &b.iter().map(AmbiguousMolecule::formulas).sum::<Multi<MolecularFormula>>()[0]
                     .monoisotopic_mass()
                     .into()
             ),

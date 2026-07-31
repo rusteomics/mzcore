@@ -4,7 +4,9 @@ use context_error::*;
 use thin_vec::ThinVec;
 
 use crate::{
-    chemistry::{AmbiguousLabel, Element, MolecularCharge},
+    chemistry::{
+        AmbiguousLabel, AmbiguousMolecule, Element, MassOutputType, MolecularCharge, Molecule,
+    },
     molecular_formula,
     ontology::{Ontologies, Ontology, STATIC_ONTOLOGIES},
     sequence::{
@@ -492,7 +494,7 @@ fn parse_xl_intra() {
     //dbg!(&singular.sequence[0].modifications);
     assert_eq!(
         peptide.formulas().to_vec()[0],
-        (AminoAcid::Alanine.single_formula().unwrap() * 2)
+        (AminoAcid::Alanine.formulas().single().unwrap() * 2)
             + molecular_formula!(C 8 H 10 O 2)
             + molecular_formula!(H 2 O 1).with_label(AmbiguousLabel::CrossLinkBound(
                 CrossLinkName::Name("test".to_string().into_boxed_str())
@@ -507,7 +509,7 @@ fn parse_xl_inter() {
     //dbg!(&singular.sequence[0].modifications);
     assert_eq!(
         peptide.formulas().to_vec()[0],
-        (AminoAcid::Alanine.single_formula().unwrap() * 2_i32
+        (AminoAcid::Alanine.formulas().single().unwrap() * 2_i32
             + molecular_formula!(C 8 H 10 O 2)
             + molecular_formula!(H 2 O 1) * 2_i32)
             .with_label(AmbiguousLabel::CrossLinkBound(CrossLinkName::Name(

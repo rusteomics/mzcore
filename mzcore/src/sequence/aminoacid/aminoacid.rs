@@ -728,7 +728,7 @@ impl ParseJson for AminoAcid {
 #[expect(clippy::unreadable_literal, clippy::missing_panics_doc)]
 mod tests {
     use super::{AminoAcid, IsAminoAcid};
-    use crate::chemistry::{AmbiguousMolecule, MolecularFormula, OutputMolecularFormula};
+    use crate::chemistry::{AmbiguousMolecule, MolecularFormula};
 
     #[test]
     fn mass() {
