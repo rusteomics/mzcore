@@ -32,7 +32,7 @@ use crate::{
     mzspeclib::AnalyteTarget,
 };
 
-impl Fragment {
+impl Fragment<OutputMolecularFormula> {
     /// Parse a [mzPAF](https://www.psidev.info/mzPAF) peak annotation line (can contain multiple annotations).
     /// mzPAF version 1.0 is supported. Except for the SMILES constructs.
     ///
@@ -173,7 +173,7 @@ impl PeakAnnotation {
         self,
         interpretation: &[(NonZeroU32, AnalyteTarget)],
         context: &Context<'a>,
-    ) -> Result<Fragment, BoxedError<'a, BasicKind>> {
+    ) -> Result<Fragment<OutputMolecularFormula>, BoxedError<'a, BasicKind>> {
         // Get the peptidoform (assume no cross-linkers)
         let target = if self.analyte_number == 0 {
             None

@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use thin_vec::ThinVec;
 
 use crate::{
-    chemistry::{ChargeRange, MassOutputMode, MolecularFormula, Molecule},
+    chemistry::{ChargeRange, MassOutputMode, MassOutputType, MolecularFormula, Molecule},
     sequence::SequencePosition,
     system::isize::Charge,
 };

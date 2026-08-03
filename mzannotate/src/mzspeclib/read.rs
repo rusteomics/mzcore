@@ -11,6 +11,7 @@ use context_error::{BoxedError, Context, CreateError, ErrorKind, FullErrorConten
 use indexmap::IndexMap;
 use itertools::Itertools;
 use mzcore::{
+    chemistry::OutputMolecularFormula,
     ontology::Ontologies,
     prelude::*,
     system::{MassOverCharge, isize::Charge},
@@ -886,7 +887,10 @@ impl<'ontologies, R: BufRead> MzSpecLibTextParser<'ontologies, R> {
     fn parse_peak_line(
         &self,
         buf: &str,
-    ) -> Result<AnnotatedPeak<Fragment>, BoxedError<'static, MzSpecLibErrorKind>> {
+    ) -> Result<
+        AnnotatedPeak<Fragment<OutputMolecularFormula>>,
+        BoxedError<'static, MzSpecLibErrorKind>,
+    > {
         let mut field_offset = buf.chars().take_while(char::is_ascii_whitespace).count(); // Because only ASCII this is a bytes offset as well
         let mut it = buf[field_offset..].split('\t');
 
@@ -992,7 +996,8 @@ impl<'ontologies, R: BufRead> MzSpecLibTextParser<'ontologies, R> {
     /// IF the next spectrum contains data that is not a valid spectrum.
     fn read_spectrum(
         &mut self,
-    ) -> Result<AnnotatedSpectrum, BoxedError<'static, MzSpecLibErrorKind>> {
+    ) -> Result<AnnotatedSpectrum<OutputMolecularFormula>, BoxedError<'static, MzSpecLibErrorKind>>
+    {
         let mut buf = String::new();
 
         let z = self.read_next_line(&mut buf).map_err(|e| {
@@ -1131,7 +1136,8 @@ impl<'ontologies, R: BufRead> MzSpecLibTextParser<'ontologies, R> {
     /// If the next spectrum contains invalid data.
     pub fn read_next(
         &mut self,
-    ) -> Result<AnnotatedSpectrum, BoxedError<'static, MzSpecLibErrorKind>> {
+    ) -> Result<AnnotatedSpectrum<OutputMolecularFormula>, BoxedError<'static, MzSpecLibErrorKind>>
+    {
         self.last_peptidoform_ion_set = Vec::new();
         if self.last_error {
             // If the last element went awry scan the buffer until the start of the next spectrum
@@ -1169,7 +1175,8 @@ impl<'ontologies, R: BufRead> MzSpecLibTextParser<'ontologies, R> {
 }
 
 impl<R: BufRead> Iterator for MzSpecLibTextParser<'_, R> {
-    type Item = Result<AnnotatedSpectrum, BoxedError<'static, MzSpecLibErrorKind>>;
+    type Item =
+        Result<AnnotatedSpectrum<OutputMolecularFormula>, BoxedError<'static, MzSpecLibErrorKind>>;
 
     fn next(&mut self) -> Option<Self::Item> {
         if matches!(self.state, ParserState::Eof) {
@@ -1339,7 +1346,9 @@ impl<R: BufRead + Seek> MzSpecLibTextParser<'_, R> {
     pub fn get_spectrum_by_key(
         &mut self,
         key: Id,
-    ) -> Option<Result<AnnotatedSpectrum, BoxedError<'static, MzSpecLibErrorKind>>> {
+    ) -> Option<
+        Result<AnnotatedSpectrum<OutputMolecularFormula>, BoxedError<'static, MzSpecLibErrorKind>>,
+    > {
         if !self.offsets.done
             && let Err(e) = self.build_index()
         {
@@ -1371,7 +1380,9 @@ impl<R: BufRead + Seek> MzSpecLibTextParser<'_, R> {
     pub fn get_spectrum_by_scan_number(
         &mut self,
         scan_number: usize,
-    ) -> Option<Result<AnnotatedSpectrum, BoxedError<'static, MzSpecLibErrorKind>>> {
+    ) -> Option<
+        Result<AnnotatedSpectrum<OutputMolecularFormula>, BoxedError<'static, MzSpecLibErrorKind>>,
+    > {
         if !self.offsets.done
             && let Err(e) = self.build_index()
         {
@@ -1403,7 +1414,9 @@ impl<R: BufRead + Seek> MzSpecLibTextParser<'_, R> {
     pub fn get_spectrum_by_index(
         &mut self,
         index: usize,
-    ) -> Option<Result<AnnotatedSpectrum, BoxedError<'static, MzSpecLibErrorKind>>> {
+    ) -> Option<
+        Result<AnnotatedSpectrum<OutputMolecularFormula>, BoxedError<'static, MzSpecLibErrorKind>>,
+    > {
         if !self.offsets.done
             && let Err(e) = self.build_index()
         {
@@ -1435,7 +1448,9 @@ impl<R: BufRead + Seek> MzSpecLibTextParser<'_, R> {
     pub fn get_spectrum_by_name(
         &mut self,
         name: &str,
-    ) -> Option<Result<AnnotatedSpectrum, BoxedError<'static, MzSpecLibErrorKind>>> {
+    ) -> Option<
+        Result<AnnotatedSpectrum<OutputMolecularFormula>, BoxedError<'static, MzSpecLibErrorKind>>,
+    > {
         if !self.offsets.done
             && let Err(e) = self.build_index()
         {

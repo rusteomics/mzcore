@@ -2,12 +2,9 @@ use std::collections::{HashMap, HashSet};
 
 use itertools::Itertools;
 use mzcore::{
-    chemistry::{CachedCharge, DiagnosticIon, MassOutputType, OutputMolecularFormula},
+    chemistry::{CachedCharge, DiagnosticIon, MassOutputMode, MassOutputType},
     molecular_formula,
-    prelude::{
-        MolecularCharge, MolecularFormula, Peptidoform, PeptidoformIon, PeptidoformIonSet,
-        SequencePosition,
-    },
+    prelude::{MolecularCharge, Peptidoform, PeptidoformIon, PeptidoformIonSet, SequencePosition},
     quantities::Multi,
     sequence::{
         AtMax, GnoComposition, HiddenInternalMethods, Linear, Linked, LinkerSpecificity,
@@ -30,20 +27,20 @@ use crate::{
 pub trait PeptidoformFragmentation {
     /// Generate theoretical fragments with the given maximal charge (ignored if the peptidoform
     /// contains charge carriers) and the given model.
-    fn generate_theoretical_fragments(
+    fn generate_theoretical_fragments<Mode: MassOutputMode>(
         &self,
         max_charge: Charge,
         model: &FragmentationModel,
-    ) -> Vec<Fragment>;
+    ) -> Vec<Fragment<Mode>>;
 }
 
 impl PeptidoformFragmentation for PeptidoformIonSet {
     /// Generate the theoretical fragments for this peptidoform ion set.
-    fn generate_theoretical_fragments(
+    fn generate_theoretical_fragments<Mode: MassOutputMode>(
         &self,
         max_charge: Charge,
         model: &FragmentationModel,
-    ) -> Vec<Fragment> {
+    ) -> Vec<Fragment<Mode>> {
         let mut base = Vec::new();
         for (index, peptidoform) in self.peptidoform_ions().iter().enumerate() {
             base.extend(peptidoform_ion_inner(peptidoform, max_charge, model, index));
@@ -54,22 +51,22 @@ impl PeptidoformFragmentation for PeptidoformIonSet {
 
 impl PeptidoformFragmentation for PeptidoformIon {
     /// Generate the theoretical fragments for this peptidoform.
-    fn generate_theoretical_fragments(
+    fn generate_theoretical_fragments<Mode: MassOutputMode>(
         &self,
         max_charge: Charge,
         model: &FragmentationModel,
-    ) -> Vec<Fragment> {
+    ) -> Vec<Fragment<Mode>> {
         peptidoform_ion_inner(self, max_charge, model, 0)
     }
 }
 
 /// Generate the theoretical fragments for this peptidoform.
-fn peptidoform_ion_inner(
+fn peptidoform_ion_inner<Mode: MassOutputMode>(
     peptidoform_ion: &PeptidoformIon,
     max_charge: Charge,
     model: &FragmentationModel,
     peptidoform_ion_index: usize,
-) -> Vec<Fragment> {
+) -> Vec<Fragment<Mode>> {
     let mut base = Vec::new();
     for (index, peptide) in peptidoform_ion.peptidoforms().iter().enumerate() {
         base.extend(generate_theoretical_fragments_inner(
@@ -88,19 +85,20 @@ fn peptidoform_ion_inner(
 /// fragments, and the given model. With the global isotope modifications applied.
 /// # Panics
 /// If the global isotope replacement is invalid.
-pub(crate) fn generate_theoretical_fragments_inner<Complexity>(
+pub(crate) fn generate_theoretical_fragments_inner<Complexity, Mode: MassOutputMode>(
     peptidoform: &Peptidoform<Complexity>,
     max_charge: Charge,
     model: &FragmentationModel,
     peptidoform_ion_index: usize,
     peptidoform_index: usize,
     all_peptides: &[Peptidoform<Linked>],
-) -> Vec<Fragment> {
+) -> Vec<Fragment<Mode>> {
     let default_charge = MolecularCharge::proton(max_charge);
     let mut charge_carriers: CachedCharge =
         peptidoform.get_charge_carriers().unwrap_or(&default_charge).into();
 
-    let mut output = Vec::with_capacity(20 * peptidoform.sequence().len() + 75); // Empirically derived required size of the buffer (Derived from Hecklib)
+    let mut output: Vec<Fragment<Mode>> =
+        Vec::with_capacity(20 * peptidoform.sequence().len() + 75); // Empirically derived required size of the buffer (Derived from Hecklib)
     for sequence_index in 0..peptidoform.sequence().len() {
         let position = PeptidePosition::n(
             SequencePosition::Index(sequence_index, peptidoform.len()),
@@ -108,11 +106,10 @@ pub(crate) fn generate_theoretical_fragments_inner<Complexity>(
         );
         let mut cross_links = Vec::new();
         let visited_peptides = vec![peptidoform_index];
-        let (n_term, n_term_specific, n_term_seen, n_term_losses) = peptidoform
-            .all_masses::<OutputMolecularFormula>(
+        let (n_term, n_term_specific, n_term_seen, n_term_losses) = peptidoform.all_masses::<Mode>(
             ..=sequence_index,
             ..sequence_index,
-            &peptidoform.get_n_term_mass::<OutputMolecularFormula>(
+            &peptidoform.get_n_term_mass::<Mode>(
                 all_peptides,
                 &visited_peptides,
                 &mut cross_links,
@@ -129,11 +126,10 @@ pub(crate) fn generate_theoretical_fragments_inner<Complexity>(
             peptidoform_ion_index,
             &model.glycan,
         );
-        let (c_term, c_term_specific, c_term_seen, c_term_losses) = peptidoform
-            .all_masses::<OutputMolecularFormula>(
+        let (c_term, c_term_specific, c_term_seen, c_term_losses) = peptidoform.all_masses::<Mode>(
             sequence_index..,
             sequence_index + 1..,
-            &peptidoform.get_c_term_mass::<OutputMolecularFormula>(
+            &peptidoform.get_c_term_mass::<Mode>(
                 all_peptides,
                 &visited_peptides,
                 &mut cross_links,
@@ -157,7 +153,7 @@ pub(crate) fn generate_theoretical_fragments_inner<Complexity>(
             peptidoform.sequence()[sequence_index].modifications.iter().fold(
                 (Multi::default(), HashMap::new(), HashSet::new()),
                 |acc, m| {
-                    let (f, specific, s) = m.formula_inner::<OutputMolecularFormula>(
+                    let (f, specific, s) = m.formula_inner::<Mode>(
                         all_peptides,
                         &[peptidoform_index],
                         &mut cross_links,
@@ -225,48 +221,52 @@ pub(crate) fn generate_theoretical_fragments_inner<Complexity>(
             .collect::<Vec<_>>();
 
         for n in 1..peptidoform.len().saturating_sub(*internal_range.start() + 1) {
-            for c in n..(peptidoform.len() - 1).min(n + internal_range.end()) {
+            for c in n..(peptidoform.len() - 1).min(*internal_range.end() + 1) {
                 let o_n = options[n];
                 let o_c = options[c];
-                // Allow neutral losses from modifications for the precursor
-                let mut internal_neutral_losses = if model.modification_specific_neutral_losses {
-                    peptidoform
-                        .potential_neutral_losses(
-                            ..,
-                            all_peptides,
-                            peptidoform_index,
-                            &mut Vec::new(),
-                        )
-                        .into_iter()
-                        .map(|(n, ..)| vec![n])
-                        .collect()
-                } else {
-                    Vec::new()
-                };
+                if !(o_c.0 || o_c.1 || o_c.2) && !(o_n.3 || o_n.4 || o_n.5) {
+                    continue;
+                }
+
                 // Add amino acid specific neutral losses
-                internal_neutral_losses.extend(
-                    specific_losses
-                        .iter()
-                        .filter_map(|(rule, losses)| {
-                            rule.iter()
-                                .any(|aa| {
-                                    peptidoform
-                                        .sequence()
-                                        .iter()
-                                        .any(|seq| seq.aminoacid.aminoacid() == *aa)
-                                })
-                                .then_some(losses)
-                        })
-                        .flatten()
-                        .map(|l| vec![l.clone()]),
-                );
+                let mut internal_neutral_losses = specific_losses
+                    .iter()
+                    .filter_map(|(rule, losses)| {
+                        rule.iter()
+                            .any(|aa| {
+                                peptidoform.sequence()[n..=c]
+                                    .iter()
+                                    .any(|seq| seq.aminoacid.aminoacid() == *aa)
+                            })
+                            .then_some(losses)
+                    })
+                    .flatten()
+                    .map(|l| vec![l.clone()])
+                    .collect::<Vec<_>>();
                 // Add amino acid side chain losses
                 internal_neutral_losses.extend(get_all_sidechain_losses(
-                    peptidoform.sequence(),
+                    &peptidoform.sequence()[n..=c],
                     side_chain_losses,
                 ));
                 // Add all normal neutral losses
                 internal_neutral_losses.extend(neutral_losses.iter().map(|l| vec![l.clone()]));
+                // TODO: this adds the full peptidoform if there is any cycle to the original
+                // peptidoform again.
+                let (mass, specific, _seen, losses) = peptidoform.all_masses::<Mode>(
+                    n..=c,
+                    n..=c,
+                    &(Multi::default(), HashMap::new()),
+                    all_peptides,
+                    &[],
+                    &mut Vec::new(),
+                    model.allow_cross_link_cleavage,
+                    peptidoform_index,
+                    peptidoform_ion_index,
+                    &model.glycan,
+                );
+                if model.modification_specific_neutral_losses {
+                    internal_neutral_losses.extend(losses);
+                }
                 for (frag_n, n_possible) in [
                     (BackboneCFragment::x, o_n.3),
                     (BackboneCFragment::y, o_n.4),
@@ -282,40 +282,31 @@ pub(crate) fn generate_theoretical_fragments_inner<Complexity>(
                     ] {
                         if c_possible {
                             output.extend(Fragment::generate_all(
-                                &(peptidoform
-                                    .all_masses::<OutputMolecularFormula>(
-                                        n..=c,
-                                        n..=c,
-                                        &(Multi::default(), HashMap::new()),
-                                        all_peptides,
-                                        &[],
-                                        &mut Vec::new(),
-                                        false,
-                                        peptidoform_index,
-                                        peptidoform_ion_index,
-                                        &model.glycan,
-                                    )
-                                    .0
+                                &((specific.get(&frag_n.into()).unwrap_or(&mass).clone()
+                                    * specific.get(&frag_c.into()).unwrap_or(&mass))
+                                .unique()
                                     + match (frag_n, frag_c) {
                                         (BackboneCFragment::y, BackboneNFragment::a) => {
-                                            molecular_formula!(C -1 O -1)
+                                            Mode::from_formula(molecular_formula!(C -1 O -1))
                                         }
                                         (BackboneCFragment::z, BackboneNFragment::a) => {
-                                            molecular_formula!(C -1 O -1 N -1 H - 1)
+                                            Mode::from_formula(
+                                                molecular_formula!(C -1 O -1 N -1 H - 1),
+                                            )
                                         }
                                         (BackboneCFragment::x, BackboneNFragment::b) => {
-                                            molecular_formula!(C 1 O 1)
+                                            Mode::from_formula(molecular_formula!(C 1 O 1))
                                         }
                                         (BackboneCFragment::z, BackboneNFragment::b) => {
-                                            molecular_formula!(N -1 H -1)
+                                            Mode::from_formula(molecular_formula!(N -1 H -1))
                                         }
                                         (BackboneCFragment::x, BackboneNFragment::c) => {
-                                            molecular_formula!(C 1 O 1 N 1 H 1)
+                                            Mode::from_formula(molecular_formula!(C 1 O 1 N 1 H 1))
                                         }
                                         (BackboneCFragment::y, BackboneNFragment::c) => {
-                                            molecular_formula!(N 1 H 1)
+                                            Mode::from_formula(molecular_formula!(N 1 H 1))
                                         }
-                                        _ => MolecularFormula::default(),
+                                        _ => Mode::Output::default(),
                                     }),
                                 peptidoform_ion_index,
                                 peptidoform_index,
@@ -350,7 +341,7 @@ pub(crate) fn generate_theoretical_fragments_inner<Complexity>(
 
     // Generate precursor peak
     let (full_precursor, _precursor_specific, _all_cross_links) = peptidoform
-        .formulas_inner::<OutputMolecularFormula>(
+        .formulas_inner::<Mode>(
             peptidoform_index,
             peptidoform_ion_index,
             all_peptides,
@@ -407,7 +398,7 @@ pub(crate) fn generate_theoretical_fragments_inner<Complexity>(
     // Add glycan fragmentation to all peptide fragments
     // Assuming that only one glycan can ever fragment at the same time.
     let full_formula = peptidoform
-        .formulas_inner::<OutputMolecularFormula>(
+        .formulas_inner::<Mode>(
             peptidoform_index,
             peptidoform_ion_index,
             all_peptides,
@@ -440,7 +431,7 @@ pub(crate) fn generate_theoretical_fragments_inner<Complexity>(
         for (dia, pos) in diagnostic_ions(peptidoform) {
             output.extend(
                 Fragment {
-                    formula: Some(dia.0),
+                    formula: Some(Mode::from_formula(dia.0)),
                     charge: Charge::default(),
                     ion: FragmentType::Diagnostic(pos),
                     isotope: ThinVec::new(),
@@ -552,11 +543,11 @@ impl<Complexity: AtMax<Linear>> PeptidoformFragmentation for Peptidoform<Complex
     /// fragments, and the given model. With the global isotope modifications applied.
     /// # Panics
     /// If the global isotope replacement is invalid.
-    fn generate_theoretical_fragments(
+    fn generate_theoretical_fragments<Mode: MassOutputMode>(
         &self,
         max_charge: Charge,
         model: &FragmentationModel,
-    ) -> Vec<Fragment> {
+    ) -> Vec<Fragment<Mode>> {
         generate_theoretical_fragments_inner(self, max_charge, model, 0, 0, &[])
     }
 }

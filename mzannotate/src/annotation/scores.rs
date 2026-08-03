@@ -2,6 +2,7 @@
 
 use itertools::Itertools;
 use mzcore::{
+    chemistry::MassOutputMode,
     prelude::{MassMode, Peptidoform},
     sequence::UnAmbiguous,
 };
@@ -14,13 +15,13 @@ use crate::{
     spectrum::AnnotatedSpectrum,
 };
 
-impl AnnotatedSpectrum {
+impl<Mode: MassOutputMode> AnnotatedSpectrum<Mode> {
     /// Get the spectrum scores for this annotated spectrum.
     /// The returned tuple has the scores for all peptides combined as first item
     /// and as second item a vector with for each peptide its individual scores.
     pub fn scores(
         &self,
-        fragments: &[Fragment],
+        fragments: &[Fragment<Mode>],
         parameters: &MatchingParameters,
         mass_mode: MassMode,
     ) -> (Scores, Vec<Vec<Scores>>) {
@@ -99,7 +100,7 @@ impl AnnotatedSpectrum {
     /// (Fragments, peaks, intensity)
     fn filtered_base_score(
         &self,
-        fragments: &[&Fragment],
+        fragments: &[&Fragment<Mode>],
         peptidoform_ion_index: Option<usize>,
         peptidoform_index: Option<usize>,
         ion: Option<FragmentKind>,
@@ -144,7 +145,7 @@ impl AnnotatedSpectrum {
     /// Get the total number of positions covered
     fn score_positions(
         &self,
-        fragments: &[&Fragment],
+        fragments: &[&Fragment<Mode>],
         peptidoform_ion_index: usize,
         peptidoform_index: usize,
         ion: Option<FragmentKind>,
@@ -181,7 +182,7 @@ impl AnnotatedSpectrum {
     /// Get the amount of unique formulas recovered
     fn score_unique_formulas(
         &self,
-        fragments: &[&Fragment],
+        fragments: &[&Fragment<Mode>],
         peptidoform_index: Option<usize>,
         ion: Option<FragmentKind>,
     ) -> Recovered<u32> {
@@ -212,7 +213,7 @@ impl AnnotatedSpectrum {
     /// Get the scores for the individual ion series
     fn score_individual_ions<T>(
         &self,
-        fragments: &[&Fragment],
+        fragments: &[&Fragment<Mode>],
         peptide: Option<(usize, usize, &Peptidoform<T>)>,
         total_intensity: f32,
     ) -> Vec<(FragmentKind, Score)> {

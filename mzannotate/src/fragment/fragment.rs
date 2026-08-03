@@ -2,6 +2,7 @@
 //! your own code.
 
 use std::{
+    cmp::Ordering,
     fmt::{Debug, Display},
     num::NonZeroU16,
     sync::LazyLock,
@@ -22,10 +23,10 @@ use thin_vec::ThinVec;
 use crate::{annotation::model::PossiblePrimaryIons, fragment::FragmentType};
 
 /// A theoretical fragment
-#[derive(Clone, Debug, Default, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
-pub struct Fragment {
+#[derive(Debug, Deserialize, Hash, Serialize)]
+pub struct Fragment<Mode: MassOutputMode> {
     /// The theoretical composition
-    pub formula: Option<MolecularFormula>,
+    pub formula: Option<Mode::Output>,
     /// The charge
     pub charge: Charge,
     /// The annotation for this fragment
@@ -48,7 +49,80 @@ pub struct Fragment {
     pub auxiliary: bool,
 }
 
-impl Fragment {
+impl<Mode: MassOutputMode> Clone for Fragment<Mode> {
+    fn clone(&self) -> Self {
+        Self {
+            formula: self.formula.clone(),
+            charge: self.charge.clone(),
+            ion: self.ion.clone(),
+            isotope: self.isotope.clone(),
+            peptidoform_ion_index: self.peptidoform_ion_index.clone(),
+            peptidoform_index: self.peptidoform_index.clone(),
+            neutral_loss: self.neutral_loss.clone(),
+            deviation: self.deviation.clone(),
+            confidence: self.confidence.clone(),
+            auxiliary: self.auxiliary.clone(),
+        }
+    }
+}
+
+impl<Mode: MassOutputMode> Default for Fragment<Mode> {
+    fn default() -> Self {
+        Self {
+            formula: Default::default(),
+            charge: Default::default(),
+            ion: Default::default(),
+            isotope: Default::default(),
+            peptidoform_ion_index: Default::default(),
+            peptidoform_index: Default::default(),
+            neutral_loss: Default::default(),
+            deviation: Default::default(),
+            confidence: Default::default(),
+            auxiliary: Default::default(),
+        }
+    }
+}
+
+impl<Mode: MassOutputMode> PartialOrd for Fragment<Mode> {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl<Mode: MassOutputMode> Ord for Fragment<Mode> {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.formula
+            .cmp(&other.formula)
+            .then(self.charge.cmp(&other.charge))
+            .then(self.ion.cmp(&other.ion))
+            .then(self.isotope.cmp(&other.isotope))
+            .then(self.peptidoform_ion_index.cmp(&other.peptidoform_ion_index))
+            .then(self.peptidoform_index.cmp(&other.peptidoform_index))
+            .then(self.neutral_loss.cmp(&other.neutral_loss))
+            .then(self.deviation.cmp(&other.deviation))
+            .then(self.confidence.cmp(&other.confidence))
+            .then(self.auxiliary.cmp(&other.auxiliary))
+    }
+}
+
+impl<Mode: MassOutputMode> PartialEq for Fragment<Mode> {
+    fn eq(&self, other: &Self) -> bool {
+        self.formula == other.formula
+            && self.charge == other.charge
+            && self.ion == other.ion
+            && self.isotope == other.isotope
+            && self.peptidoform_ion_index == other.peptidoform_ion_index
+            && self.peptidoform_index == other.peptidoform_index
+            && self.neutral_loss == other.neutral_loss
+            && self.deviation == other.deviation
+            && self.confidence == other.confidence
+            && self.auxiliary == other.auxiliary
+    }
+}
+
+impl<Mode: MassOutputMode> Eq for Fragment<Mode> {}
+
+impl<Mode: MassOutputMode> Fragment<Mode> {
     /// Get the mz
     pub fn mz(&self, mode: MassMode) -> Option<MassOverCharge> {
         self.formula.as_ref().map(|f| {
@@ -66,7 +140,7 @@ impl Fragment {
     /// Create a new fragment
     #[must_use]
     pub fn new(
-        theoretical_mass: MolecularFormula,
+        theoretical_mass: Mode::Output,
         charge: Charge,
         peptidoform_ion_index: usize,
         peptidoform_index: usize,
@@ -94,11 +168,11 @@ impl Fragment {
     #[expect(clippy::too_many_arguments)]
     #[must_use]
     pub fn generate_all(
-        theoretical_mass: &Multi<MolecularFormula>,
+        theoretical_mass: &Multi<Mode::Output>,
         peptidoform_ion_index: usize,
         peptidoform_index: usize,
         annotation: &FragmentType,
-        termini: &Multi<MolecularFormula>,
+        termini: &Multi<Mode::Output>,
         neutral_losses: &[Vec<NeutralLoss>],
         charge_carriers: &mut CachedCharge,
         charge_range: ChargeRange,
@@ -112,10 +186,10 @@ impl Fragment {
         );
         for term in termini.iter() {
             for mass in theoretical_mass.iter() {
-                let f = term + mass;
+                let f = term.clone() + mass.clone();
                 for charge in &charges {
-                    let f = &f
-                        + charge.calculate_mass_inner::<OutputMolecularFormula>(
+                    let f = f.clone()
+                        + charge.calculate_mass_inner::<Mode>(
                             SequencePosition::default(),
                             peptidoform_index,
                         );
@@ -124,7 +198,10 @@ impl Fragment {
                     }
                     let z = Charge::new::<system::e>(charge.charge().value);
                     for loss in &losses {
-                        let f = &f + loss.iter().flat_map(|l| l.iter()).sum::<MolecularFormula>();
+                        let f = f.clone()
+                            + Mode::from_formula(
+                                loss.iter().flat_map(|l| l.iter()).sum::<MolecularFormula>(),
+                            );
                         if f.contains_negative_amount() {
                             continue;
                         }
@@ -155,11 +232,11 @@ impl Fragment {
     #[must_use]
     #[expect(clippy::too_many_arguments)] // Needs many different pieces of information
     pub fn generate_series(
-        theoretical_mass: &Multi<MolecularFormula>,
+        theoretical_mass: &Multi<Mode::Output>,
         peptidoform_ion_index: usize,
         peptidoform_index: usize,
         annotation: &FragmentType,
-        termini: &Multi<MolecularFormula>,
+        termini: &Multi<Mode::Output>,
         neutral_losses: &[Vec<NeutralLoss>],
         charge_carriers: &mut CachedCharge,
         settings: &PossiblePrimaryIons,
@@ -179,10 +256,10 @@ impl Fragment {
 
         for term in termini.iter() {
             for mass in theoretical_mass.iter() {
-                let f = term + mass;
+                let f = term.clone() + mass.clone();
                 for charge in &charges {
-                    let f = &f
-                        + charge.calculate_mass_inner::<OutputMolecularFormula>(
+                    let f = f.clone()
+                        + charge.calculate_mass_inner::<Mode>(
                             SequencePosition::default(),
                             peptidoform_index,
                         );
@@ -191,9 +268,13 @@ impl Fragment {
                     }
                     let z = Charge::new::<system::e>(charge.charge().value);
                     for loss in &losses {
-                        let f = &f + loss.iter().flat_map(|l| l.iter()).sum::<MolecularFormula>();
+                        let f = f.clone()
+                            + Mode::from_formula(
+                                loss.iter().flat_map(|l| l.iter()).sum::<MolecularFormula>(),
+                            );
                         for variant in settings.2 {
-                            let f = &f + molecular_formula!(H 1) * variant;
+                            let f =
+                                f.clone() + Mode::from_formula(molecular_formula!(H 1) * variant);
                             if f.contains_negative_amount() {
                                 continue;
                             }
@@ -220,12 +301,15 @@ impl Fragment {
     /// Create a copy of this fragment with the given charge
     #[must_use]
     fn with_charge(&self, charge: &MolecularCharge) -> Self {
-        let formula = charge.calculate_mass::<OutputMolecularFormula>().with_labels(&[
-            AmbiguousLabel::ChargeCarrier(charge.calculate_mass::<OutputMolecularFormula>()),
-        ]);
+        let formula =
+            charge
+                .calculate_mass::<Mode>()
+                .with_labels(&[AmbiguousLabel::ChargeCarrier(
+                    charge.calculate_mass::<OutputMolecularFormula>(),
+                )]);
         let c = Charge::new::<system::charge::e>(formula.charge().value);
         Self {
-            formula: Some(self.formula.clone().unwrap_or_default() + &formula),
+            formula: Some(self.formula.clone().unwrap_or_default() + formula),
             charge: c,
             ..self.clone()
         }
@@ -259,7 +343,9 @@ impl Fragment {
         let mut new_neutral_loss = self.neutral_loss.clone();
         new_neutral_loss.push(neutral_loss.clone());
         Self {
-            formula: Some(self.formula.clone().unwrap_or_default() + neutral_loss),
+            formula: Some(
+                self.formula.clone().unwrap_or_default() + neutral_loss.calculate_mass::<Mode>(),
+            ),
             neutral_loss: new_neutral_loss,
             ..self.clone()
         }
@@ -292,7 +378,7 @@ impl Fragment {
         self.isotope = isotopes.iter().copied().filter(|(a, _)| *a != 0).collect();
         if let Some(formula) = &mut self.formula {
             for (amount, isotope) in &self.isotope {
-                isotope.add_to_formula(*amount, formula).unwrap();
+                isotope.add_to_formula::<Mode>(*amount, formula).unwrap();
             }
         }
         self
@@ -300,17 +386,17 @@ impl Fragment {
 
     /// Get the base formula with all isotopes removed. It returns None if no formula is available
     /// or if the calculations overflow when doing the subtraction of the isotopes.
-    pub fn base_formula(&self) -> Option<MolecularFormula> {
+    pub fn base_formula(&self) -> Option<Mode::Output> {
         self.formula.clone().and_then(|mut formula| {
             for (amount, isotope) in &self.isotope {
-                isotope.sub_from_formula(*amount, &mut formula)?;
+                isotope.sub_from_formula::<Mode>(*amount, &mut formula)?;
             }
             Some(formula)
         })
     }
 }
 
-impl Display for Fragment {
+impl<Mode: MassOutputMode> Display for Fragment<Mode> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
@@ -324,7 +410,7 @@ impl Display for Fragment {
     }
 }
 
-impl mzcore::space::Space for Fragment {
+impl<Mode: MassOutputMode> mzcore::space::Space for Fragment<Mode> {
     fn space(&self) -> mzcore::space::UsedSpace {
         (self.formula.space()
             + self.charge.space()
@@ -357,31 +443,53 @@ static ISOTOPE_OFFSET: LazyLock<f64> =
 impl Isotope {
     /// Add a certain amount of this isotope to a formula. It returns None if this isotope is
     /// invalid or if adding this isotope overflows the molecular formula.
-    fn add_to_formula(self, amount: i32, formula: &mut MolecularFormula) -> Option<()> {
+    fn add_to_formula<Mode: MassOutputMode>(
+        self,
+        amount: i32,
+        formula: &mut Mode::Output,
+    ) -> Option<()> {
         match self {
             Self::Average | Self::General => {
-                formula.add_mass((*ISOTOPE_OFFSET * f64::from(amount)).into());
+                *formula = formula.clone()
+                    + Mode::from_mass(system::Mass::new::<system::dalton>(
+                        *ISOTOPE_OFFSET * f64::from(amount),
+                    ));
                 Some(())
             }
-            Self::Specific(el, i) => formula.ref_mut_checked_add(&MolecularFormula::new(
-                &[(el, Some(i), amount), (el, None, -amount)],
-                &[],
-            )?),
+            Self::Specific(el, i) => {
+                *formula = formula.clone()
+                    + Mode::from_formula(MolecularFormula::new(
+                        &[(el, Some(i), amount), (el, None, -amount)],
+                        &[],
+                    )?);
+                Some(())
+            }
         }
     }
 
     /// Subtract a certain amount of this isotope to a formula. It returns None if this isotope is
     /// invalid or if subtracting this isotope overflows the molecular formula.
-    fn sub_from_formula(self, amount: i32, formula: &mut MolecularFormula) -> Option<()> {
+    fn sub_from_formula<Mode: MassOutputMode>(
+        self,
+        amount: i32,
+        formula: &mut Mode::Output,
+    ) -> Option<()> {
         match self {
             Self::Average | Self::General => {
-                formula.add_mass((*ISOTOPE_OFFSET * -1.0 * f64::from(amount)).into());
+                *formula = formula.clone()
+                    + Mode::from_mass(system::Mass::new::<system::dalton>(
+                        *ISOTOPE_OFFSET * -1.0 * f64::from(amount),
+                    ));
                 Some(())
             }
-            Self::Specific(el, i) => formula.ref_mut_checked_sub(&MolecularFormula::new(
-                &[(el, Some(i), amount), (el, None, -amount)],
-                &[],
-            )?),
+            Self::Specific(el, i) => {
+                *formula = formula.clone()
+                    - Mode::from_formula(MolecularFormula::new(
+                        &[(el, Some(i), amount), (el, None, -amount)],
+                        &[],
+                    )?);
+                Some(())
+            }
         }
     }
 }
@@ -405,7 +513,7 @@ mod tests {
 
     #[test]
     fn neutral_loss() {
-        let a = Fragment::new(
+        let a = Fragment::<OutputMolecularFormula>::new(
             AminoAcid::AsparticAcid.calculate_masses::<OutputMolecularFormula>()[0].clone(),
             Charge::new::<system::charge::e>(1),
             0,
@@ -413,7 +521,7 @@ mod tests {
             FragmentType::Precursor,
         );
         let loss = a.with_neutral_losses(&[NeutralLoss::Loss(1, molecular_formula!(H 2 O 1))]);
-        dbg!(&a, &loss);
+        //dbg!(&a, &loss);
         assert_eq!(a.formula, loss[0].formula);
         assert_eq!(
             a.formula.unwrap(),

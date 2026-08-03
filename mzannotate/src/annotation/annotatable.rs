@@ -1,11 +1,12 @@
 use std::num::NonZeroU32;
 
-#[cfg(feature = "isotopes")]
-use mzcore::{molecular_formula, system::MassOverCharge};
 use mzcore::{
+    chemistry::MassOutputMode,
     prelude::{MassMode, PeptidoformIonSet},
     system::thomson,
 };
+#[cfg(feature = "isotopes")]
+use mzcore::{molecular_formula, system::MassOverCharge};
 use mzdata::mzpeaks::PeakCollection;
 
 #[cfg(feature = "isotopes")]
@@ -18,10 +19,10 @@ use crate::prelude::{AnnotatedSpectrum, Fragment, MatchingParameters};
 /// TDF. Note this only takes the centroided data and that any 'Missing' and
 /// [`RawData`](mzdata::spectrum::RawSpectrum) from mzdata result in an empty annotated spectrum.
 /// Also note that the feature `mzdata` is required for the mzdata spectra to work.
-pub trait AnnotatableSpectrum: Sized {
+pub trait AnnotatableSpectrum<Mode: MassOutputMode>: Sized {
     /// Create an empty annotated spectrum. This spectrum is assumed to contain all peaks but
     /// without any annotations.
-    fn empty_annotated(self, peptide: PeptidoformIonSet) -> AnnotatedSpectrum;
+    fn empty_annotated(self, peptide: PeptidoformIonSet) -> AnnotatedSpectrum<Mode>;
 
     /// Annotate this spectrum with the given peptidoform and given fragments see
     /// [`crate::prelude::PeptidoformFragmentation::generate_theoretical_fragments`]
@@ -29,10 +30,10 @@ pub trait AnnotatableSpectrum: Sized {
     fn annotate(
         self,
         peptide: PeptidoformIonSet,
-        theoretical_fragments: &[Fragment],
+        theoretical_fragments: &[Fragment<Mode>],
         parameters: &MatchingParameters,
         mode: MassMode,
-    ) -> AnnotatedSpectrum {
+    ) -> AnnotatedSpectrum<Mode> {
         let tolerance = match parameters.tolerance {
             mzcore::quantities::Tolerance::Absolute(mz) => mzdata::prelude::Tolerance::Da(mz.value),
             mzcore::quantities::Tolerance::Relative(ratio) => {
@@ -123,9 +124,9 @@ pub trait AnnotatableSpectrum: Sized {
     }
 }
 
-impl<T: Into<AnnotatedSpectrum>> AnnotatableSpectrum for T {
-    fn empty_annotated(self, peptide: PeptidoformIonSet) -> AnnotatedSpectrum {
-        let mut spectrum: AnnotatedSpectrum = self.into();
+impl<T: Into<AnnotatedSpectrum<Mode>>, Mode: MassOutputMode> AnnotatableSpectrum<Mode> for T {
+    fn empty_annotated(self, peptide: PeptidoformIonSet) -> AnnotatedSpectrum<Mode> {
+        let mut spectrum: AnnotatedSpectrum<Mode> = self.into();
         for (index, peptidoform_ion) in peptide.into_peptidoform_ions().into_iter().enumerate() {
             spectrum.analytes.push(crate::mzspeclib::Analyte::new(
                 NonZeroU32::new(index as u32 + 1).unwrap(),

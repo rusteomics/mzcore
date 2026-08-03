@@ -1,7 +1,7 @@
 use mzcore::{
-    chemistry::{CachedCharge, Molecule, OutputMolecularFormula},
+    chemistry::{CachedCharge, MassOutputMode, Molecule},
     glycan::MonoSaccharide,
-    prelude::{AminoAcid, MolecularFormula, SequencePosition},
+    prelude::{AminoAcid, SequencePosition},
     quantities::Multi,
     system::isize::Charge,
 };
@@ -14,15 +14,15 @@ use crate::{
 
 /// Generate the theoretical fragments, if any monosaccharide is present a negative number of times
 /// no fragments are generated.
-pub(crate) fn theoretical_fragments(
+pub(crate) fn theoretical_fragments<Mode: MassOutputMode>(
     composition: &[(MonoSaccharide, isize)],
     model: &FragmentationModel,
     peptidoform_ion_index: usize,
     peptidoform_index: usize,
     charge_carriers: &mut CachedCharge,
-    full_formula: &Multi<MolecularFormula>,
+    full_formula: &Multi<Mode::Output>,
     attachment: Option<(AminoAcid, SequencePosition)>,
-) -> Vec<Fragment> {
+) -> Vec<Fragment<Mode>> {
     if composition.iter().any(|(_, a)| u16::try_from(*a).is_err()) {
         // u16: negative + also ensure it fits within the bounds of the molecular formula structure
         return Vec::new();
@@ -35,15 +35,13 @@ pub(crate) fn theoretical_fragments(
     let charges_other = charge_carriers.range(model.glycan.other_charge_range);
     let charges_oxonium = charge_carriers.range(model.glycan.oxonium_charge_range);
     for fragment_composition in compositions {
-        let formula: MolecularFormula = fragment_composition
+        let formula = fragment_composition
             .iter()
             .map(|s| {
-                s.0.calculate_mass_inner::<OutputMolecularFormula>(
-                    SequencePosition::default(),
-                    peptidoform_index,
-                ) * s.1 as i32
+                s.0.calculate_mass_inner::<Mode>(SequencePosition::default(), peptidoform_index)
+                    * s.1 as i32
             })
-            .sum();
+            .sum::<Mode::Output>();
         fragments.extend(
             Fragment::new(
                 formula.clone(),
@@ -56,9 +54,9 @@ pub(crate) fn theoretical_fragments(
             .flat_map(|o| o.with_neutral_losses(&model.glycan.neutral_losses)),
         );
 
-        fragments.extend(full_formula.to_vec().iter().flat_map(|base| {
+        fragments.extend(full_formula.iter().flat_map(|base| {
             Fragment::new(
-                base - &formula,
+                base.clone() - formula.clone(),
                 Charge::default(),
                 peptidoform_ion_index,
                 peptidoform_index,
@@ -92,16 +90,16 @@ pub(crate) fn theoretical_fragments(
 }
 
 /// Generate all uncharged diagnostic ions for this monosaccharide.
-pub(crate) fn diagnostic_ions(
+pub(crate) fn diagnostic_ions<Mode: MassOutputMode>(
     monosaccharide: &MonoSaccharide,
     peptidoform_ion_index: usize,
     peptidoform_index: usize,
     position: DiagnosticPosition,
     add_base: bool,
     model: &GlycanModel,
-) -> Vec<Fragment> {
-    let base = Fragment::new(
-        monosaccharide.calculate_mass::<OutputMolecularFormula>(),
+) -> Vec<Fragment<Mode>> {
+    let base = Fragment::<Mode>::new(
+        monosaccharide.calculate_mass::<Mode>(),
         Charge::default(),
         peptidoform_ion_index,
         peptidoform_index,

@@ -1,10 +1,10 @@
 use std::{collections::HashMap, sync::LazyLock};
 
 use mzcore::{
-    chemistry::{CachedCharge, NeutralLoss, OutputMolecularFormula},
+    chemistry::{CachedCharge, MassOutputMode, NeutralLoss},
     glycan::BackboneFragmentKind,
     molecular_formula,
-    prelude::{AmbiguousMolecule, AminoAcid, IsAminoAcid, MolecularFormula, SequencePosition},
+    prelude::{AmbiguousMolecule, AminoAcid, IsAminoAcid, SequencePosition},
     quantities::Multi,
     sequence::{BACKBONE, PeptidePosition},
 };
@@ -12,22 +12,22 @@ use mzcore::{
 use crate::{annotation::model::PossibleIons, fragment::FragmentType, prelude::Fragment};
 
 /// The information from the N and C terminal to properly generate fragments
-type TerminalInfo = (
-    Multi<MolecularFormula>,
-    HashMap<BackboneFragmentKind, Multi<MolecularFormula>>,
+type TerminalInfo<Output> = (
+    Multi<Output>,
+    HashMap<BackboneFragmentKind, Multi<Output>>,
     Vec<Vec<NeutralLoss>>,
 );
 
 // TODO: generalise over used storage type, so using molecularformula, monoisotopic mass, or average
 // mass, also make sure that AAs can return these numbers in a const fashion
 #[expect(clippy::too_many_lines, clippy::too_many_arguments)]
-pub(crate) fn fragments(
+pub(crate) fn fragments<Mode: MassOutputMode>(
     aminoacid: AminoAcid,
-    n_term: &TerminalInfo,
-    c_term: &TerminalInfo,
+    n_term: &TerminalInfo<Mode::Output>,
+    c_term: &TerminalInfo<Mode::Output>,
     modifications: &(
-        Multi<MolecularFormula>,
-        HashMap<BackboneFragmentKind, Multi<MolecularFormula>>,
+        Multi<Mode::Output>,
+        HashMap<BackboneFragmentKind, Multi<Mode::Output>>,
     ),
     charge_carriers: &mut CachedCharge,
     sequence_index: SequencePosition,
@@ -36,20 +36,24 @@ pub(crate) fn fragments(
     peptidoform_ion_index: usize,
     peptidoform_index: usize,
     allow_terminal: (bool, bool),
-) -> Vec<Fragment> {
+) -> Vec<Fragment<Mode>> {
     let mut base_fragments = Vec::with_capacity(ions.size_upper_bound());
     let n_pos = PeptidePosition::n(sequence_index, sequence_length);
     let c_pos = PeptidePosition::c(sequence_index, sequence_length);
 
     if allow_terminal.0 {
         if let Some(settings) = &ions.a {
-            base_fragments.extend(Fragment::generate_series(
-                &(aminoacid.calculate_masses_inner::<OutputMolecularFormula>(
+            base_fragments.extend(Fragment::<Mode>::generate_series(
+                &(aminoacid.calculate_masses_inner::<Mode>(
                     sequence_index,
                     peptidoform_index,
                     peptidoform_ion_index,
-                ) * (modifications.1.get(&BackboneFragmentKind::a).unwrap_or(&modifications.0)
-                    - molecular_formula!(H 1 C 1 O 1))),
+                ) * (modifications
+                    .1
+                    .get(&BackboneFragmentKind::a)
+                    .unwrap_or(&modifications.0)
+                    .clone()
+                    - Mode::from_formula(molecular_formula!(H 1 C 1 O 1)))),
                 peptidoform_ion_index,
                 peptidoform_index,
                 &FragmentType::a(n_pos, 0),
@@ -60,13 +64,17 @@ pub(crate) fn fragments(
             ));
         }
         if let Some(settings) = &ions.b {
-            base_fragments.extend(Fragment::generate_series(
-                &(aminoacid.calculate_masses_inner::<OutputMolecularFormula>(
+            base_fragments.extend(Fragment::<Mode>::generate_series(
+                &(aminoacid.calculate_masses_inner::<Mode>(
                     sequence_index,
                     peptidoform_index,
                     peptidoform_ion_index,
-                ) * (modifications.1.get(&BackboneFragmentKind::b).unwrap_or(&modifications.0)
-                    - molecular_formula!(H 1))),
+                ) * (modifications
+                    .1
+                    .get(&BackboneFragmentKind::b)
+                    .unwrap_or(&modifications.0)
+                    .clone()
+                    - Mode::from_formula(molecular_formula!(H 1)))),
                 peptidoform_ion_index,
                 peptidoform_index,
                 &FragmentType::b(n_pos, 0),
@@ -77,13 +85,17 @@ pub(crate) fn fragments(
             ));
         }
         if let Some(settings) = &ions.c {
-            base_fragments.extend(Fragment::generate_series(
-                &(aminoacid.calculate_masses_inner::<OutputMolecularFormula>(
+            base_fragments.extend(Fragment::<Mode>::generate_series(
+                &(aminoacid.calculate_masses_inner::<Mode>(
                     sequence_index,
                     peptidoform_index,
                     peptidoform_ion_index,
-                ) * (modifications.1.get(&BackboneFragmentKind::c).unwrap_or(&modifications.0)
-                    + molecular_formula!(H 2 N 1))),
+                ) * (modifications
+                    .1
+                    .get(&BackboneFragmentKind::c)
+                    .unwrap_or(&modifications.0)
+                    .clone()
+                    + Mode::from_formula(molecular_formula!(H 2 N 1)))),
                 peptidoform_ion_index,
                 peptidoform_index,
                 &FragmentType::c(n_pos, 0),
@@ -100,18 +112,19 @@ pub(crate) fn fragments(
                 peptidoform_ion_index,
             ) {
                 for (label, formula) in satellite_fragments.iter() {
-                    base_fragments.extend(Fragment::generate_series(
+                    base_fragments.extend(Fragment::<Mode>::generate_series(
                         &(modifications
                             .1
                             .get(&BackboneFragmentKind::d)
                             .unwrap_or(&modifications.0)
-                            * aminoacid.calculate_masses_inner::<OutputMolecularFormula>(
+                            .clone()
+                            * aminoacid.calculate_masses_inner::<Mode>(
                                 sequence_index,
                                 peptidoform_index,
                                 peptidoform_ion_index,
                             )
-                            + molecular_formula!(H 1 C 1 O 1)
-                            - formula),
+                            + Mode::from_formula(molecular_formula!(H 1 C 1 O 1))
+                            - Mode::from_ref_formula(formula)),
                         peptidoform_ion_index,
                         peptidoform_index,
                         &FragmentType::d(n_pos, *aa, *distance, 0, *label),
@@ -126,16 +139,16 @@ pub(crate) fn fragments(
     }
     if allow_terminal.1 {
         for (aa, distance) in &ions.v.0 {
-            base_fragments.extend(Fragment::generate_series(
-                &(aminoacid.calculate_masses_inner::<OutputMolecularFormula>(
+            base_fragments.extend(Fragment::<Mode>::generate_series(
+                &(aminoacid.calculate_masses_inner::<Mode>(
                     sequence_index,
                     peptidoform_index,
                     peptidoform_ion_index,
-                ) * -aa.calculate_masses_inner::<OutputMolecularFormula>(
+                ) * -aa.calculate_masses_inner::<Mode>(
                     sequence_index + *distance,
                     peptidoform_index,
                     peptidoform_ion_index,
-                ) + LazyLock::force(&BACKBONE)),
+                ) + Mode::from_ref_formula(LazyLock::force(&BACKBONE))),
                 peptidoform_ion_index,
                 peptidoform_index,
                 &FragmentType::v(c_pos, *aa, *distance, 0),
@@ -152,18 +165,19 @@ pub(crate) fn fragments(
                 peptidoform_ion_index,
             ) {
                 for (label, formula) in satellite_fragments.iter() {
-                    base_fragments.extend(Fragment::generate_series(
+                    base_fragments.extend(Fragment::<Mode>::generate_series(
                         &(modifications
                             .1
                             .get(&BackboneFragmentKind::w)
                             .unwrap_or(&modifications.0)
-                            * aminoacid.calculate_masses_inner::<OutputMolecularFormula>(
+                            .clone()
+                            * aminoacid.calculate_masses_inner::<Mode>(
                                 sequence_index,
                                 peptidoform_index,
                                 peptidoform_ion_index,
                             )
-                            + molecular_formula!(H 2 N 1)
-                            - formula),
+                            + Mode::from_formula(molecular_formula!(H 2 N 1))
+                            - Mode::from_ref_formula(formula)),
                         peptidoform_ion_index,
                         peptidoform_index,
                         &FragmentType::w(c_pos, *aa, *distance, 0, *label),
@@ -176,14 +190,17 @@ pub(crate) fn fragments(
             }
         }
         if let Some(settings) = &ions.x {
-            base_fragments.extend(Fragment::generate_series(
-                &(aminoacid.calculate_masses_inner::<OutputMolecularFormula>(
+            base_fragments.extend(Fragment::<Mode>::generate_series(
+                &(aminoacid.calculate_masses_inner::<Mode>(
                     sequence_index,
                     peptidoform_index,
                     peptidoform_ion_index,
-                ) * (modifications.1.get(&BackboneFragmentKind::x).unwrap_or(&modifications.0)
-                    + molecular_formula!(C 1 O 1)
-                    - molecular_formula!(H 1))),
+                ) * (modifications
+                    .1
+                    .get(&BackboneFragmentKind::x)
+                    .unwrap_or(&modifications.0)
+                    .clone()
+                    + Mode::from_formula(molecular_formula!(C 1 O 1 H -1)))),
                 peptidoform_ion_index,
                 peptidoform_index,
                 &FragmentType::x(c_pos, 0),
@@ -194,13 +211,17 @@ pub(crate) fn fragments(
             ));
         }
         if let Some(settings) = &ions.y {
-            base_fragments.extend(Fragment::generate_series(
-                &(aminoacid.calculate_masses_inner::<OutputMolecularFormula>(
+            base_fragments.extend(Fragment::<Mode>::generate_series(
+                &(aminoacid.calculate_masses_inner::<Mode>(
                     sequence_index,
                     peptidoform_index,
                     peptidoform_ion_index,
-                ) * (modifications.1.get(&BackboneFragmentKind::y).unwrap_or(&modifications.0)
-                    + molecular_formula!(H 1))),
+                ) * (modifications
+                    .1
+                    .get(&BackboneFragmentKind::y)
+                    .unwrap_or(&modifications.0)
+                    .clone()
+                    + Mode::from_formula(molecular_formula!(H 1)))),
                 peptidoform_ion_index,
                 peptidoform_index,
                 &FragmentType::y(c_pos, 0),
@@ -211,13 +232,17 @@ pub(crate) fn fragments(
             ));
         }
         if let Some(settings) = &ions.z {
-            base_fragments.extend(Fragment::generate_series(
-                &(aminoacid.calculate_masses_inner::<OutputMolecularFormula>(
+            base_fragments.extend(Fragment::<Mode>::generate_series(
+                &(aminoacid.calculate_masses_inner::<Mode>(
                     sequence_index,
                     peptidoform_index,
                     peptidoform_ion_index,
-                ) * (modifications.1.get(&BackboneFragmentKind::z).unwrap_or(&modifications.0)
-                    - molecular_formula!(H 2 N 1))),
+                ) * (modifications
+                    .1
+                    .get(&BackboneFragmentKind::z)
+                    .unwrap_or(&modifications.0)
+                    .clone()
+                    - Mode::from_formula(molecular_formula!(H 2 N 1)))),
                 peptidoform_ion_index,
                 peptidoform_index,
                 &FragmentType::z(c_pos, 0),
@@ -233,13 +258,13 @@ pub(crate) fn fragments(
         && allow_terminal.1
         && let Some((charge, losses)) = &ions.immonium
     {
-        base_fragments.extend(Fragment::generate_all(
-            &(aminoacid.calculate_masses_inner::<OutputMolecularFormula>(
+        base_fragments.extend(Fragment::<Mode>::generate_all(
+            &(aminoacid.calculate_masses_inner::<Mode>(
                 sequence_index,
                 peptidoform_index,
                 peptidoform_ion_index,
             ) * &modifications.0
-                - molecular_formula!(C 1 O 1)),
+                - Mode::from_formula(molecular_formula!(C 1 O 1))),
             peptidoform_ion_index,
             peptidoform_index,
             &FragmentType::Immonium(Some(n_pos), aminoacid.into()), /* TODO: get the actual

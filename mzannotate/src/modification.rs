@@ -1,6 +1,6 @@
 use mzcore::{
-    chemistry::CachedCharge,
-    prelude::{AminoAcid, MolecularFormula, SequencePosition},
+    chemistry::{CachedCharge, MassOutputMode},
+    prelude::{AminoAcid, SequencePosition},
     quantities::Multi,
     sequence::{GnoComposition, Modification, SimpleModificationInner},
 };
@@ -11,15 +11,15 @@ use crate::{
 };
 
 /// Generate theoretical fragments for side chains (glycans)
-pub(crate) fn generate_theoretical_fragments(
+pub(crate) fn generate_theoretical_fragments<Mode: MassOutputMode>(
     modification: &Modification,
     model: &FragmentationModel,
     peptidoform_ion_index: usize,
     peptidoform_index: usize,
     charge_carriers: &mut CachedCharge,
-    full_formula: &Multi<MolecularFormula>,
+    full_formula: &Multi<Mode::Output>,
     attachment: Option<(AminoAcid, SequencePosition)>,
-) -> Vec<Fragment> {
+) -> Vec<Fragment<Mode>> {
     match modification {
         Modification::Simple(modification) | Modification::Ambiguous { modification, .. } => {
             simple_modification_fragments(
@@ -37,15 +37,15 @@ pub(crate) fn generate_theoretical_fragments(
 }
 
 /// Generate theoretical fragments for side chains (glycans)
-pub(crate) fn simple_modification_fragments(
+pub(crate) fn simple_modification_fragments<Mode: MassOutputMode>(
     modification: &SimpleModificationInner,
     model: &FragmentationModel,
     peptidoform_ion_index: usize,
     peptidoform_index: usize,
     charge_carriers: &mut CachedCharge,
-    full_formula: &Multi<MolecularFormula>,
+    full_formula: &Multi<Mode::Output>,
     attachment: Option<(AminoAcid, SequencePosition)>,
-) -> Vec<Fragment> {
+) -> Vec<Fragment<Mode>> {
     match modification {
         SimpleModificationInner::GlycanStructure(glycan)
         | SimpleModificationInner::Gno {

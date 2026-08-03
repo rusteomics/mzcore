@@ -3,7 +3,7 @@ use std::fmt::Write;
 use itertools::Itertools;
 
 use crate::{
-    chemistry::{AmbiguousLabel, Element, MassMode, MolecularFormula},
+    chemistry::{AmbiguousLabel, Element, MassOutputType, MolecularFormula},
     glycan::GlycanPosition,
     parse_json::{ParseJson, use_serde},
     system::{Mass, OrderedMass, Ratio, da, fraction},
@@ -60,16 +60,6 @@ impl MolecularFormula {
             .enumerate()
             .max_by_key(|s| ordered_float::OrderedFloat(*s.1));
         self.monoisotopic_mass() + da(max.map_or(0.0, |f| f.0 as f64 * 1.0033548353399997)) // Offset of 12C to 13C
-    }
-
-    /// Get the mass in the given mode
-    pub fn mass(&self, mode: MassMode) -> Mass {
-        match mode {
-            MassMode::Monoisotopic => self.monoisotopic_mass(),
-            MassMode::Average => self.average_weight(),
-            #[cfg(feature = "isotopes")]
-            MassMode::MostAbundant => self.most_abundant_mass(),
-        }
     }
 
     /// Create a [Hill notation](https://en.wikipedia.org/wiki/Chemical_formula#Hill_system) from
@@ -142,12 +132,6 @@ impl MolecularFormula {
             true,
             true,
         )
-    }
-
-    /// Check if this formula contains a negative number of any element (ignores a negative number
-    /// of electrons).
-    pub fn contains_negative_amount(&self) -> bool {
-        self.elements().iter().any(|e| e.0 != Element::Electron && e.2 < 0)
     }
 
     /// Print this formula in XLMOD notation according to the Hill notation ordering

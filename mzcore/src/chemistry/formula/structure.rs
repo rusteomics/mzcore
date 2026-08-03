@@ -10,11 +10,11 @@ use serde::{Deserialize, Serialize};
 use thin_vec::ThinVec;
 
 use crate::{
-    chemistry::{Element, MassOutputType},
+    chemistry::{Element, MassMode, MassOutputType},
     glycan::{GlycanPosition, MonoSaccharide},
     sequence::{AminoAcid, CrossLinkName, SequencePosition},
     space::{Space, UsedSpace},
-    system::f64,
+    system::{Mass, f64},
 };
 
 /// A molecular formula, a selection of elements of specified isotopes together forming a structure
@@ -107,6 +107,38 @@ impl MassOutputType for MolecularFormula {
             Some(result.simplify())
         } else {
             None
+        }
+    }
+
+    /// Get the number of electrons (the only charged species, any ionic species is saved as that
+    /// element +/- the correct number of electrons). The inverse of that number is given as the
+    /// charge.
+    fn charge(&self) -> crate::system::isize::Charge {
+        -self
+            .elements
+            .iter()
+            .find(|el| el.0 == Element::Electron)
+            .map_or_else(crate::system::isize::Charge::default, |el| {
+                crate::system::isize::Charge::new::<crate::system::charge::e>(el.2 as isize)
+            })
+    }
+
+    /// Check if this formula contains a negative number of any element (ignores a negative number
+    /// of electrons).
+    fn contains_negative_amount(&self) -> bool {
+        self.elements().iter().any(|e| e.0 != Element::Electron && e.2 < 0)
+    }
+
+    fn as_formula(&self) -> MolecularFormula {
+        self.clone()
+    }
+
+    fn mass(&self, mode: MassMode) -> Mass {
+        match mode {
+            MassMode::Monoisotopic => self.monoisotopic_mass(),
+            MassMode::Average => self.average_weight(),
+            #[cfg(feature = "isotopes")]
+            MassMode::MostAbundant => self.most_abundant_mass(),
         }
     }
 }
@@ -334,19 +366,6 @@ impl MolecularFormula {
     /// Get the additional mass of this formula
     pub const fn additional_mass(&self) -> OrderedFloat<f64> {
         self.additional_mass
-    }
-
-    /// Get the number of electrons (the only charged species, any ionic species is saved as that
-    /// element +/- the correct number of electrons). The inverse of that number is given as the
-    /// charge.
-    pub fn charge(&self) -> crate::system::isize::Charge {
-        -self
-            .elements
-            .iter()
-            .find(|el| el.0 == Element::Electron)
-            .map_or_else(crate::system::isize::Charge::default, |el| {
-                crate::system::isize::Charge::new::<crate::system::charge::e>(el.2 as isize)
-            })
     }
 
     /// Set the charge. Only changes the number of electrons.

@@ -595,11 +595,31 @@ impl From<BackboneFragmentKind> for FragmentKind {
             BackboneFragmentKind::b => Self::b,
             BackboneFragmentKind::c => Self::c,
             BackboneFragmentKind::d => Self::d,
-            BackboneFragmentKind::x => Self::x,
-            BackboneFragmentKind::y => Self::y,
             BackboneFragmentKind::v => Self::v,
             BackboneFragmentKind::w => Self::w,
+            BackboneFragmentKind::x => Self::x,
+            BackboneFragmentKind::y => Self::y,
             BackboneFragmentKind::z => Self::z,
+        }
+    }
+}
+
+impl From<BackboneNFragment> for BackboneFragmentKind {
+    fn from(value: BackboneNFragment) -> Self {
+        match value {
+            BackboneNFragment::a => Self::a,
+            BackboneNFragment::b => Self::b,
+            BackboneNFragment::c => Self::c,
+        }
+    }
+}
+
+impl From<BackboneCFragment> for BackboneFragmentKind {
+    fn from(value: BackboneCFragment) -> Self {
+        match value {
+            BackboneCFragment::x => Self::x,
+            BackboneCFragment::y => Self::y,
+            BackboneCFragment::z => Self::z,
         }
     }
 }

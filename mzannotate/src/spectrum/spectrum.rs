@@ -1,6 +1,6 @@
 use std::num::NonZeroU32;
 
-use mzcore::system::MassOverCharge;
+use mzcore::{chemistry::MassOutputMode, system::MassOverCharge};
 use mzcv::term;
 use mzdata::{
     mzpeaks::{
@@ -24,7 +24,7 @@ use crate::{
 
 /// An annotated spectrum.
 #[derive(Clone, Debug)]
-pub struct AnnotatedSpectrum {
+pub struct AnnotatedSpectrum<Mode: MassOutputMode> {
     /// The ID for a spectrum
     pub key: Id,
     /// The spectrum description
@@ -36,10 +36,10 @@ pub struct AnnotatedSpectrum {
     /// The interpretations
     pub interpretations: Vec<Interpretation>,
     /// The spectrum itself
-    pub peaks: MZPeakSetType<AnnotatedPeak<Fragment>>,
+    pub peaks: MZPeakSetType<AnnotatedPeak<Fragment<Mode>>>,
 }
 
-impl Default for AnnotatedSpectrum {
+impl<Mode: MassOutputMode> Default for AnnotatedSpectrum<Mode> {
     fn default() -> Self {
         Self {
             key: 0,
@@ -52,7 +52,7 @@ impl Default for AnnotatedSpectrum {
     }
 }
 
-impl AnnotatedSpectrum {
+impl<Mode: MassOutputMode> AnnotatedSpectrum<Mode> {
     /// Create a new annotated spectrum
     pub const fn new(
         key: Id,
@@ -60,7 +60,7 @@ impl AnnotatedSpectrum {
         attributes: Attributes,
         analytes: Vec<Analyte>,
         interpretations: Vec<Interpretation>,
-        peaks: MZPeakSetType<AnnotatedPeak<Fragment>>,
+        peaks: MZPeakSetType<AnnotatedPeak<Fragment<Mode>>>,
     ) -> Self {
         Self {
             key,
@@ -73,8 +73,9 @@ impl AnnotatedSpectrum {
     }
 }
 
-impl SpectrumLike<AnnotatedPeak<Fragment>, mzdata::mzpeaks::DeconvolutedPeak>
-    for AnnotatedSpectrum
+impl<Mode: MassOutputMode>
+    SpectrumLike<AnnotatedPeak<Fragment<Mode>>, mzdata::mzpeaks::DeconvolutedPeak>
+    for AnnotatedSpectrum<Mode>
 {
     fn description(&self) -> &SpectrumDescription {
         &self.description
@@ -88,7 +89,7 @@ impl SpectrumLike<AnnotatedPeak<Fragment>, mzdata::mzpeaks::DeconvolutedPeak>
         &'_ self,
     ) -> mzdata::spectrum::RefPeakDataLevel<
         '_,
-        AnnotatedPeak<Fragment>,
+        AnnotatedPeak<Fragment<Mode>>,
         mzdata::mzpeaks::DeconvolutedPeak,
     > {
         mzdata::spectrum::RefPeakDataLevel::Centroid(&self.peaks)
@@ -101,7 +102,10 @@ impl SpectrumLike<AnnotatedPeak<Fragment>, mzdata::mzpeaks::DeconvolutedPeak>
     fn into_peaks_and_description(
         self,
     ) -> (
-        mzdata::spectrum::PeakDataLevel<AnnotatedPeak<Fragment>, mzdata::mzpeaks::DeconvolutedPeak>,
+        mzdata::spectrum::PeakDataLevel<
+            AnnotatedPeak<Fragment<Mode>>,
+            mzdata::mzpeaks::DeconvolutedPeak,
+        >,
         SpectrumDescription,
     ) {
         (
@@ -113,7 +117,7 @@ impl SpectrumLike<AnnotatedPeak<Fragment>, mzdata::mzpeaks::DeconvolutedPeak>
 
 // TODO: this now misses most of the params in the other storage facilities (analytes, attributes,
 // etc)
-impl ParamDescribed for AnnotatedSpectrum {
+impl<Mode: MassOutputMode> ParamDescribed for AnnotatedSpectrum<Mode> {
     fn params(&self) -> &[mzdata::params::Param] {
         <SpectrumDescription as ParamDescribed>::params(&self.description)
     }
@@ -126,7 +130,7 @@ impl ParamDescribed for AnnotatedSpectrum {
 #[expect(clippy::fallible_impl_from)] // Cannot fail, but cannot be proven to the compiler.
 // Basically the Attribute::unit has to be fallible to handle Unit::Unknown, but the units are
 // known at compile time so this cannot happen.
-impl<Spectrum: SpectrumLike> From<Spectrum> for AnnotatedSpectrum {
+impl<Spectrum: SpectrumLike, Mode: MassOutputMode> From<Spectrum> for AnnotatedSpectrum<Mode> {
     fn from(value: Spectrum) -> Self {
         let mut this = Self {
             key: (value.index() + 1) as Id,
@@ -229,8 +233,8 @@ impl<Spectrum: SpectrumLike> From<Spectrum> for AnnotatedSpectrum {
     }
 }
 
-impl From<AnnotatedSpectrum> for MultiLayerSpectrum {
-    fn from(value: AnnotatedSpectrum) -> Self {
+impl<Mode: MassOutputMode> From<AnnotatedSpectrum<Mode>> for MultiLayerSpectrum {
+    fn from(value: AnnotatedSpectrum<Mode>) -> Self {
         let sort = value.peaks.peaks.is_sorted();
         Self {
             description: value.description,
@@ -244,10 +248,10 @@ impl From<AnnotatedSpectrum> for MultiLayerSpectrum {
     }
 }
 
-impl crate::mzspeclib::MzSpecLibEncode for AnnotatedSpectrum {
+impl<Mode: MassOutputMode> crate::mzspeclib::MzSpecLibEncode for AnnotatedSpectrum<Mode> {
     type InterpretationMemberIter = Vec<(Id, Attributes)>;
     /// The peak type
-    type Peak = AnnotatedPeak<Fragment>;
+    type Peak = AnnotatedPeak<Fragment<Mode>>;
 
     /// The key for this spectrum
     fn key(&self) -> Id {
@@ -315,7 +319,7 @@ impl crate::mzspeclib::MzSpecLibEncode for AnnotatedSpectrum {
     }
 }
 
-impl mzcore::space::Space for AnnotatedSpectrum {
+impl<Mode: MassOutputMode> mzcore::space::Space for AnnotatedSpectrum<Mode> {
     fn space(&self) -> mzcore::space::UsedSpace {
         mzcore::space::UsedSpace::default() // TODO: this does not take any data into account because the Space trait cannot be
             // applied to mzdata because of orphan rules

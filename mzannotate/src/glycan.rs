@@ -2,7 +2,7 @@
 
 use itertools::Itertools;
 use mzcore::{
-    chemistry::{CachedCharge, OutputMolecularFormula},
+    chemistry::CachedCharge,
     glycan::{GlycanBreakPos, PositionedGlycanStructure},
     prelude::*,
     quantities::Multi,
@@ -15,25 +15,25 @@ use crate::{annotation::model::GlycanModel, fragment::FragmentType, prelude::*};
 /// Helper trait to be able to define fragmentation on glycan structures.
 pub trait GlycanFragmention {
     /// Generate theoretical fragments based on the model.
-    fn generate_theoretical_fragments(
+    fn generate_theoretical_fragments<Mode: MassOutputMode>(
         &self,
         model: &FragmentationModel,
         peptidoform_ion_index: usize,
         peptidoform_index: usize,
         charge_carriers: &mut CachedCharge,
-        full_formula: &Multi<MolecularFormula>,
+        full_formula: &Multi<Mode::Output>,
         attachment: Option<(AminoAcid, SequencePosition)>,
-    ) -> Vec<Fragment>;
+    ) -> Vec<Fragment<Mode>>;
 }
 
 /// Get uncharged diagnostic ions from all positions
-fn diagnostic_ions(
+fn diagnostic_ions<Mode: MassOutputMode>(
     glycan: &PositionedGlycanStructure,
     peptidoform_ion_index: usize,
     peptidoform_index: usize,
     attachment: Option<(AminoAcid, SequencePosition)>,
     model: &GlycanModel,
-) -> Vec<Fragment> {
+) -> Vec<Fragment<Mode>> {
     let mut output = crate::monosaccharide::diagnostic_ions(
         &glycan.sugar,
         peptidoform_ion_index,
@@ -61,15 +61,15 @@ fn diagnostic_ions(
 impl GlycanFragmention for PositionedGlycanStructure {
     /// Generate all theoretical fragments for this glycan
     /// * `full_formula` the total formula of the whole peptide + glycan
-    fn generate_theoretical_fragments(
+    fn generate_theoretical_fragments<Mode: MassOutputMode>(
         &self,
         model: &FragmentationModel,
         peptidoform_ion_index: usize,
         peptidoform_index: usize,
         charge_carriers: &mut CachedCharge,
-        full_formula: &Multi<MolecularFormula>,
+        full_formula: &Multi<Mode::Output>,
         attachment: Option<(AminoAcid, SequencePosition)>,
-    ) -> Vec<Fragment> {
+    ) -> Vec<Fragment<Mode>> {
         let charges_other = charge_carriers.range(model.glycan.other_charge_range);
         let charges_oxonium = charge_carriers.range(model.glycan.oxonium_charge_range);
         if model.glycan.allow_structural {
@@ -83,39 +83,37 @@ impl GlycanFragmention for PositionedGlycanStructure {
                         .collect_vec();
                 // Generate all Y fragments
                 base_fragments.extend(
-                    self.internal_break_points::<OutputMolecularFormula>(
-                        0,
-                        peptidoform_index,
-                        attachment,
-                    )
-                    .iter()
-                    .filter(|(_, bonds, _)| {
-                        bonds.iter().all(|b| !matches!(b, GlycanBreakPos::B(_)))
-                            && !bonds.iter().all(|b| matches!(b, GlycanBreakPos::End(_)))
-                    })
-                    .flat_map(move |(f, bonds, _)| {
-                        full_formula.iter().map(move |full| {
-                            Fragment::new(
-                                full - self.calculate_mass_inner::<OutputMolecularFormula>(
-                                    SequencePosition::default(),
-                                    peptidoform_index,
-                                ) + f,
-                                Charge::zero(),
-                                peptidoform_ion_index,
-                                peptidoform_index,
-                                FragmentType::Y(
-                                    bonds
-                                        .iter()
-                                        .filter(|b| !matches!(b, GlycanBreakPos::End(_)))
-                                        .map(GlycanBreakPos::position)
-                                        .cloned()
-                                        .collect(),
-                                ),
-                            )
+                    self.internal_break_points::<Mode>(0, peptidoform_index, attachment)
+                        .iter()
+                        .filter(|(_, bonds, _)| {
+                            bonds.iter().all(|b| !matches!(b, GlycanBreakPos::B(_)))
+                                && !bonds.iter().all(|b| matches!(b, GlycanBreakPos::End(_)))
                         })
-                    })
-                    .flat_map(|f| f.with_charge_range_slice(&charges_other))
-                    .flat_map(|f| f.with_neutral_losses(&model.glycan.neutral_losses)),
+                        .flat_map(move |(f, bonds, _)| {
+                            full_formula.iter().map(move |full| {
+                                Fragment::<Mode>::new(
+                                    full.clone()
+                                        - self.calculate_mass_inner::<Mode>(
+                                            SequencePosition::default(),
+                                            peptidoform_index,
+                                        )
+                                        + f.clone(),
+                                    Charge::zero(),
+                                    peptidoform_ion_index,
+                                    peptidoform_index,
+                                    FragmentType::Y(
+                                        bonds
+                                            .iter()
+                                            .filter(|b| !matches!(b, GlycanBreakPos::End(_)))
+                                            .map(GlycanBreakPos::position)
+                                            .cloned()
+                                            .collect(),
+                                    ),
+                                )
+                            })
+                        })
+                        .flat_map(|f| f.with_charge_range_slice(&charges_other))
+                        .flat_map(|f| f.with_neutral_losses(&model.glycan.neutral_losses)),
                 );
                 // Generate all diagnostic ions
                 base_fragments.extend(
@@ -138,17 +136,17 @@ impl GlycanFragmention for PositionedGlycanStructure {
 }
 
 /// Generate all fragments without charge and neutral loss options
-fn leaf_fragments(
+fn leaf_fragments<Mode: MassOutputMode>(
     glycan: &PositionedGlycanStructure,
     peptidoform_ion_index: usize,
     peptidoform_index: usize,
     attachment: Option<(AminoAcid, SequencePosition)>,
-) -> Vec<Fragment> {
+) -> Vec<Fragment<Mode>> {
     // Find all B type fragments (with and without Y breakage)
     let mut base_fragments = glycan
-        .internal_break_points::<OutputMolecularFormula>(0, peptidoform_index, attachment)
+        .internal_break_points::<Mode>(0, peptidoform_index, attachment)
         .into_iter()
-        .filter(|(m, ..)| *m != MolecularFormula::default())
+        .filter(|(m, ..)| *m != Mode::Output::default())
         .map(|(formula, breakages, _)| {
             Fragment::new(
                 formula,

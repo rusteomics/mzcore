@@ -2,7 +2,7 @@ use std::num::NonZeroU32;
 
 use itertools::Itertools;
 use mzcore::{
-    chemistry::{AmbiguousMolecule, MassOutputMode, Molecule},
+    chemistry::{AmbiguousMolecule, MassOutputMode, MassOutputType, Molecule},
     prelude::{IsAminoAcid, MolecularCharge, MolecularFormula, PeptidoformIon},
     system::isize::Charge,
 };

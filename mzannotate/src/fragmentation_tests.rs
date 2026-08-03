@@ -708,12 +708,10 @@ fn intra_link() {
         false,
     );
     let fragments = peptide.generate_theoretical_fragments(Charge::new::<system::e>(2), &model);
-    let doubly_annotated = dbg!(
-        fragments
-            .iter()
-            .filter(|f| f.formula.as_ref().unwrap().labels().len() > 2)
-            .collect_vec()
-    );
+    let doubly_annotated = fragments
+        .iter()
+        .filter(|f| f.formula.as_ref().unwrap().labels().len() > 2)
+        .collect_vec();
     assert_eq!(doubly_annotated.len(), 0);
 }
 
@@ -728,10 +726,10 @@ fn ensure_no_double_xl_labels_breaking() {
         .y(PrimaryIonSeries::default())
         .allow_cross_link_cleavage(true);
     let fragments = peptide.generate_theoretical_fragments(Charge::new::<system::e>(2), &model);
-    let doubly_annotated = dbg!(
-        fragments
-            .iter()
-            .filter(|f| f.formula.as_ref().unwrap().labels().len()
+    let doubly_annotated = fragments
+        .iter()
+        .filter(|f| {
+            f.formula.as_ref().unwrap().labels().len()
                 > f.formula
                     .as_ref()
                     .unwrap()
@@ -743,9 +741,9 @@ fn ensure_no_double_xl_labels_breaking() {
                         _ => String::new(),
                     })
                     .unique()
-                    .count())
-            .collect_vec()
-    );
+                    .count()
+        })
+        .collect_vec();
     assert_eq!(doubly_annotated.len(), 0);
 }
 
@@ -760,10 +758,10 @@ fn ensure_no_double_xl_labels_non_breaking() {
         .y(PrimaryIonSeries::default())
         .allow_cross_link_cleavage(false);
     let fragments = peptide.generate_theoretical_fragments(Charge::new::<system::e>(2), &model);
-    let doubly_annotated = dbg!(
-        fragments
-            .iter()
-            .filter(|f| f.formula.as_ref().unwrap().labels().len()
+    let doubly_annotated = fragments
+        .iter()
+        .filter(|f| {
+            f.formula.as_ref().unwrap().labels().len()
                 > f.formula
                     .as_ref()
                     .unwrap()
@@ -775,9 +773,9 @@ fn ensure_no_double_xl_labels_non_breaking() {
                         _ => String::new(),
                     })
                     .unique()
-                    .count())
-            .collect_vec()
-    );
+                    .count()
+        })
+        .collect_vec();
     assert_eq!(doubly_annotated.len(), 0);
 }
 
@@ -794,12 +792,10 @@ fn ensure_no_double_xl_labels_small_breaking() {
         .y(PrimaryIonSeries::default())
         .allow_cross_link_cleavage(true);
     let fragments = peptide.generate_theoretical_fragments(Charge::new::<system::e>(2), &model);
-    let doubly_annotated = dbg!(
-        fragments
-            .iter()
-            .filter(|f| f.formula.as_ref().unwrap().labels().len() > 2)
-            .collect_vec()
-    );
+    let doubly_annotated = fragments
+        .iter()
+        .filter(|f| f.formula.as_ref().unwrap().labels().len() > 2)
+        .collect_vec();
     assert_eq!(doubly_annotated.len(), 0);
 }
 
@@ -816,12 +812,10 @@ fn ensure_no_double_xl_labels_small_non_breaking() {
         .y(PrimaryIonSeries::default())
         .allow_cross_link_cleavage(false);
     let fragments = peptide.generate_theoretical_fragments(Charge::new::<system::e>(2), &model);
-    let doubly_annotated = dbg!(
-        fragments
-            .iter()
-            .filter(|f| f.formula.as_ref().unwrap().labels().len() > 2)
-            .collect_vec()
-    );
+    let doubly_annotated = fragments
+        .iter()
+        .filter(|f| f.formula.as_ref().unwrap().labels().len() > 2)
+        .collect_vec();
     assert_eq!(doubly_annotated.len(), 0);
 }
 

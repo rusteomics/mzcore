@@ -12,7 +12,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use crate::{
-    chemistry::MolecularFormula,
+    chemistry::{MassOutputMode, MolecularFormula, Molecule},
     helper_functions::{explain_number_error, next_number},
     parse_json::{ParseJson, use_serde},
     quantities::Multi,
@@ -409,6 +409,20 @@ impl FromStr for NeutralLoss {
 impl Display for NeutralLoss {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.hill_notation())
+    }
+}
+
+impl Molecule for NeutralLoss {
+    fn calculate_mass_inner<Mode: MassOutputMode>(
+        &self,
+        _sequence_index: crate::prelude::SequencePosition,
+        _peptidoform_index: usize,
+    ) -> Mode::Output {
+        match self {
+            Self::Gain(n, f) => Mode::from_ref_formula(f) * i32::from(*n),
+            Self::Loss(n, f) => Mode::from_ref_formula(f) * i32::from(*n) * -1,
+            Self::SideChainLoss(f, _) => Mode::from_ref_formula(f),
+        }
     }
 }
 

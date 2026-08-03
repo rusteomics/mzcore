@@ -1,5 +1,5 @@
 use mzcore::{
-    chemistry::{AmbiguousLabel, MassOutputType},
+    chemistry::{AmbiguousLabel, MassOutputMode, MassOutputType},
     prelude::{AminoAcid, MassMode, SequencePosition},
 };
 
@@ -10,13 +10,13 @@ use crate::{
     spectrum::AnnotatedSpectrum,
 };
 
-impl AnnotatedSpectrum {
+impl<Mode: MassOutputMode> AnnotatedSpectrum<Mode> {
     /// Get the spectrum scores for this annotated spectrum.
     /// The returned tuple has the scores for all peptides combined as first item
     /// and as second item a vector with for each peptide its individual scores.
     pub fn ambigous_statistics(
         &self,
-        fragments: &[Fragment],
+        fragments: &[Fragment<Mode>],
         parameters: &MatchingParameters,
         mass_mode: MassMode,
     ) -> AmbiguousStatistics {

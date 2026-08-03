@@ -74,7 +74,7 @@ macro_rules! mzpaf_test {
             let res =
                 $crate::fragment::Fragment::mz_paf($case, &mzcore::ontology::STATIC_ONTOLOGIES, &[
                 ]);
-            println!("{}\n{:?}", $case, res);
+            //println!("{}\n{:?}", $case, res);
             assert!(res.is_err());
         }
     };

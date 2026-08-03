@@ -1,9 +1,12 @@
 use std::num::NonZeroU16;
 
+use serde::{Deserialize, Serialize};
+
 use crate::{
     chemistry::{AmbiguousLabel, Element, MassMode, MolecularFormula},
     quantities::Multi,
     sequence::SequencePosition,
+    space::Space,
     system::{Mass, OrderedMass},
 };
 
@@ -38,11 +41,18 @@ where
     Self: std::iter::Sum<Self>
         + Clone
         + Default
-        + std::ops::Add<Self, Output = Self>
-        + std::ops::Sub<Self, Output = Self>
-        + std::ops::Mul<i32, Output = Self>
         + Eq
-        + std::hash::Hash,
+        + Ord
+        + PartialEq
+        + serde::de::DeserializeOwned
+        + Serialize
+        + Space
+        + std::fmt::Debug
+        + std::hash::Hash
+        + std::ops::Add<Self, Output = Self>
+        + std::ops::Mul<i32, Output = Self>
+        + std::ops::Neg<Output = Self>
+        + std::ops::Sub<Self, Output = Self>,
 {
     /// Add the following labels to this formula
     #[must_use]
@@ -62,6 +72,19 @@ where
         self,
         isotopes: &[(Element, Option<NonZeroU16>)],
     ) -> Option<Self>;
+
+    /// Charge
+    fn charge(&self) -> crate::system::isize::Charge;
+
+    /// Check if this output contains negative amounts of anything. Returns true if the mass is
+    /// negative or if this is a [`MolecularFormula`] if any of the elements has a negative amount.
+    fn contains_negative_amount(&self) -> bool;
+
+    /// Get this as a molecular formula
+    fn as_formula(&self) -> MolecularFormula;
+
+    /// Get the mass of this, if this is a singular mass return that regardless of the mass mode
+    fn mass(&self, mode: MassMode) -> Mass;
 }
 
 /// A trait to signify that only the final monoisotopic mass is interesting, note that this will be
@@ -125,7 +148,7 @@ impl MassOutputMode for OutputAverageWeight {
 }
 
 /// A mass output, contains the mass, charge, and any ambiguous labels.
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, Deserialize, Serialize)]
 pub struct MassOutput {
     pub(crate) mass: Mass,
     pub(crate) charge: crate::system::isize::Charge,
@@ -258,6 +281,18 @@ impl std::ops::Sub<MassOutput> for MassOutput {
     }
 }
 
+impl std::ops::Neg for MassOutput {
+    type Output = MassOutput;
+
+    fn neg(self) -> Self::Output {
+        Self {
+            mass: -self.mass,
+            charge: -self.charge,
+            labels: self.labels,
+        }
+    }
+}
+
 impl std::iter::Sum<MassOutput> for MassOutput {
     fn sum<I: Iterator<Item = MassOutput>>(iter: I) -> Self {
         iter.fold(Self::default(), |acc, i| acc + i)
@@ -288,6 +323,31 @@ impl MassOutputType for MassOutput {
         } else {
             None // No elements are stored so this cannot be applied
         }
+    }
+
+    fn charge(&self) -> crate::system::isize::Charge {
+        self.charge
+    }
+
+    fn contains_negative_amount(&self) -> bool {
+        self.mass.value >= 0.0
+    }
+
+    fn as_formula(&self) -> MolecularFormula {
+        let mut f = MolecularFormula::new(&[], self.labels()).unwrap();
+        f.add_mass(self.mass.value.into());
+        f.set_charge(self.charge);
+        f
+    }
+
+    fn mass(&self, _mode: MassMode) -> Mass {
+        self.mass
+    }
+}
+
+impl Space for MassOutput {
+    fn space(&self) -> crate::space::UsedSpace {
+        self.mass.space() + self.charge.space() + self.labels.space()
     }
 }
 

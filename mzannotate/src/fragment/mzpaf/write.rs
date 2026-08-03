@@ -2,7 +2,7 @@ use std::sync::LazyLock;
 
 use itertools::Itertools;
 use mzcore::{
-    chemistry::{AmbiguousMolecule, NeutralLoss},
+    chemistry::{AmbiguousMolecule, MassOutputMode, MassOutputType, NeutralLoss},
     quantities::Tolerance,
     sequence::{BACKBONE, IsAminoAcid},
 };
@@ -23,7 +23,7 @@ pub trait ToMzPAF {
     fn to_mz_paf(&self, w: impl std::fmt::Write) -> std::fmt::Result;
 }
 
-impl ToMzPAF for Fragment {
+impl<Mode: MassOutputMode> ToMzPAF for Fragment<Mode> {
     /// Write the fragment as a [mzPAF](https://www.psidev.info/mzPAF) string. Note that mzPAF
     /// does not have support for all complexities that are supported by this crate. So fragments
     /// of glycans and cross-links for example can not be encoded in a way to keeps the semantics
@@ -184,7 +184,7 @@ impl ToMzPAF for Fragment {
             FragmentType::Unknown(num) => {
                 if let Some(num) = num {
                     write!(w, "?{num}")?;
-                } else if let Some(formula) = self.base_formula() {
+                } else if let Some(formula) = self.base_formula().map(|f| f.as_formula()) {
                     write!(w, "f{{{formula}}}")?;
                 } else {
                     write!(w, "?")?;
@@ -195,7 +195,7 @@ impl ToMzPAF for Fragment {
             | FragmentType::BComposition(..)
             | FragmentType::Y(_)
             | FragmentType::YComposition(..) => {
-                if let Some(formula) = self.base_formula() {
+                if let Some(formula) = self.base_formula().map(|f| f.as_formula()) {
                     write!(w, "f{{{}}}", formula.hill_notation_core())?;
                     if formula.additional_mass() != 0.0 {
                         write!(w, "{:+}", formula.additional_mass())?;
@@ -261,5 +261,11 @@ impl ToMzPAF for Fragment {
             write!(w, "*{confidence}")?;
         }
         Ok(())
+    }
+
+    fn to_mz_paf_string(&self) -> String {
+        let mut output = String::new();
+        self.to_mz_paf(&mut output).unwrap(); // String writing cannot fail
+        output
     }
 }

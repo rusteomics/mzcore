@@ -1,4 +1,4 @@
-use std::{num::NonZeroU16, sync::Arc};
+use std::{collections::HashMap, num::NonZeroU16, sync::Arc};
 
 use context_error::*;
 use thin_vec::ThinVec;
@@ -6,9 +6,12 @@ use thin_vec::ThinVec;
 use crate::{
     chemistry::{
         AmbiguousLabel, AmbiguousMolecule, Element, MassOutputType, MolecularCharge, Molecule,
+        OutputMonoIsotopic,
     },
+    glycan::FullGlycan,
     molecular_formula,
     ontology::{Ontologies, Ontology, STATIC_ONTOLOGIES},
+    quantities::Multi,
     sequence::{
         AminoAcid, CrossLinkName, GlobalModification, MassTag, ModificationId, Peptidoform,
         PeptidoformIon, PeptidoformIonSet, PlacementRule, Position, SimpleModificationInner,
@@ -623,4 +626,32 @@ fn strict_warnings() {
     assert_eq!(warnings("A[Glycan:Man1]").len(), 1);
     assert_eq!(warnings("A[Glycan:hex1]").len(), 1);
     assert_eq!(warnings("AaA").len(), 1);
+}
+
+#[test]
+fn all_masses() {
+    let (peptide, _) =
+        Peptidoform::pro_forma("PE[+42#XL1]PTID[#XL1]E", &STATIC_ONTOLOGIES).unwrap();
+    assert!(
+        peptide
+            .all_masses::<OutputMonoIsotopic>(
+                0..1,
+                0..1,
+                &(Multi::default(), HashMap::new()),
+                std::slice::from_ref(&peptide),
+                &[],
+                &mut Vec::new(),
+                true,
+                0,
+                0,
+                &FullGlycan {}
+            )
+            .0
+            .single()
+            .unwrap()
+            .mass()
+            .value
+            - 97.0528
+            < 1e-5
+    );
 }

@@ -8,7 +8,7 @@ use thin_vec::ThinVec;
 use super::{GlobalModification, Linear, ReturnModification, SemiAmbiguous};
 use crate::{
     ParserResult,
-    chemistry::{Element, MolecularCharge, MolecularFormula, Molecule},
+    chemistry::{Element, MassOutputType, MolecularCharge, MolecularFormula, Molecule},
     helper_functions::*,
     ontology::Ontologies,
     quantities::{Tolerance, WithinTolerance},

@@ -416,7 +416,7 @@ impl<'ontologies> PeptideModificationSearch<'ontologies> {
         let check_matches =
             |in_place: &SimpleModification, provided: &SimpleModification| match &**in_place {
                 SimpleModificationInner::Mass(_, mass, _) => {
-                    tolerance.within(&mass.into_inner(), &provided.formula().mass(mass_mode))
+                    tolerance.within(&mass.into_inner(), &provided.mass(mass_mode).mass())
                 }
                 SimpleModificationInner::Formula(formula) if replace_formulas => {
                     *formula == provided.formula()

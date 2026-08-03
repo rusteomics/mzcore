@@ -1,5 +1,6 @@
 use itertools::Itertools;
 use mzcore::{
+    chemistry::MassOutputMode,
     prelude::MassMode,
     quantities::WithinTolerance,
     system::{MassOverCharge, Ratio},
@@ -11,7 +12,7 @@ use crate::{
     annotation::model::MatchingParameters, fragment::Fragment, spectrum::AnnotatedSpectrum,
 };
 
-impl AnnotatedSpectrum {
+impl<Mode: MassOutputMode> AnnotatedSpectrum<Mode> {
     /// Get a false discovery rate estimation for this annotation. See the [`Fdr`] struct for all
     /// statistics that can be retrieved. The returned tuple has the FDR for all peptides combined
     /// as first item and as second item a vector with for each peptide its individual scores.
@@ -24,7 +25,7 @@ impl AnnotatedSpectrum {
     /// spurious matches from 1 Da isotopes.
     pub fn fdr(
         &self,
-        fragments: &[Fragment],
+        fragments: &[Fragment<Mode>],
         parameters: &MatchingParameters,
         mass_mode: MassMode,
     ) -> (Fdr, Vec<Vec<Fdr>>) {

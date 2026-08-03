@@ -1,7 +1,11 @@
 use std::{num::NonZeroU32, ops::Range};
 
 use context_error::{BasicKind, BoxedError, Context, CreateError};
-use mzcore::{chemistry::SatelliteLabel, prelude::*, sequence::SimpleLinear};
+use mzcore::{
+    chemistry::{OutputMolecularFormula, SatelliteLabel},
+    prelude::*,
+    sequence::SimpleLinear,
+};
 
 use crate::{
     fragment::{Fragment, IonType, PeakAnnotation},
@@ -9,7 +13,7 @@ use crate::{
     mzspeclib::AnalyteTarget,
 };
 
-impl Fragment {
+impl Fragment<OutputMolecularFormula> {
     /// Parse a maxquant ion annotation. Some examples:
     /// ```plain
     /// y2;y5;y6;y13;y8-NH3;y30(2+);a2;b25;b2-H2O;b3-H2O;b5-H2O;b14(2+);z°10;z°12;z'12;z'13;cm5;cp27;cp31;b27
@@ -216,6 +220,6 @@ fn maxquant_annotations() {
     .into_simple_linear()
     .unwrap();
     for annotation in "y2;y5;y6;y7;y8;y9;y10;y11;y12;y13;y14;y15;y8-NH3;y30(2+);a2;b2;b3;b4;b5;b6;b7;b18;b25;b2-H2O;b3-H2O;b5-H2O;b14(2+);b22(2+);b26(2+);y2;y3;y4;y7;y10;y12;y13;c2;c5;c6;c10;c14;c32;c39;c40;c41;z°10;z°12;z°14;z°19;z°34;z°36;z°37;z'12;z'13;cm5;cp27;cp31;cp33;cp34;cp35;b2;b3;b4;b5;b6;b7;b10;b11;b27".split(';') {
-        Fragment::maxquant(annotation, &peptide).unwrap();
+        Fragment::<OutputMolecularFormula>::maxquant(annotation, &peptide).unwrap();
     }
 }
