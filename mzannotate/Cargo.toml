@@ -17,7 +17,7 @@ readme = "README.md"
 include = ["src/**/*", "tests/**/*", "README.md", "benches/**/*"]
 
 [dependencies]
-mzcore = { path = "../mzcore", version = "0.1.0" }
+mzcore = { path = "../mzcore" }
 mzcv = { path = "../mzcv"}
 
 context_error = { workspace = true }

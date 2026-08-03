@@ -19,3 +19,21 @@ Handle mass spectrometry calculations in Rust. This crate is mostly used for pro
 * `isotopes` - gives access to generation of an averagine model for isotopes, also enables two additional dependencies.
 * `glycan-render` - enables the rendering to SVGs for glycans and glycan fragments
 * `glycan-render-bitmap` - enables the rendering to bitmaps for glycans, by enabling the optional dependencies zeno and swash
+
+## Changelog
+### 0.2.0 
+
+- Made mass calculations generic, they can now either calculate as MolecularFormula or as Mass directly, the latter is faster (2.5 times so in some benchmarks) but makes it impossible to generate isotopic distributions or to calculate most abundant isotope. To do this the trait Chemical has been updated with a lot of additional functions, but still needs only one function to be imnplemented. No changes should be needed if the previous behaviour is to be retained, except that the trait Chemical has been renamed to Molecule, and MultiChemical to AmbiguousMolecule. Peptidoforms, ions, and sets now implement the Molecule trait as well which should mean that it is easier to calculate the masses there as well.
+- CompoundPeptidoformIon has been renamed to PeptidoformIonSet as decided for ProForma 2.1.
+- ProForma 2.1 is now released and fully supported in mzcore.
+- PlacementRule Anywhere and Terminal have been combined into PlacementRule::Position.
+- OpenSMILES v1.0 is now supported (only reading and converting to MolecularFormula).
+- Molecular formulas can now be formatted in PSI-MOD and XLMOD notation alongside the already in place ProForma notation.
+- Tracked positions of modifications for monosaccharides (not all positions are parsed yet from short IUPAC, open an issue if this is needed).
+- Removed all styling options from glycan rendering functions in favour of a struct with these options. New options are control over the modifications, if they should be rendered, and if the positions should be rendered.
+- The CrossId has been broken into the different options leading to more precise parsing, and the ability to fix formatting issues in Obo files.
+- Added shrink_to_fit functions to trim any unnecessary empty space from Vecs, Strings, and the like.
+- Used wider dependency definitions to be less likely to lead to duplicated dependencies.
+- Added charges when defined in PSI-MOD
+- Added stubs when defined in XLMOD
+- Updated static modification databases 

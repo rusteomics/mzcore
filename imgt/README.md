@@ -24,3 +24,11 @@ assert_eq!(first.name(), "IGHV1-2*01");
 ## Compilation features
 
 * `rayon` - enables parallel iterators using rayon
+
+## Changelog
+### 0.2.0 
+
+- Added more constant chain options
+- Added Lzw parsing (in mzcv) to allow automatic download and update
+- Fixed some issues with parsing
+- Updated static data to 202631-5 from 2026-07-31

@@ -19,3 +19,15 @@ There are three major ways of looking up data: [index](CVIndex::get_by_index), [
 - `http` allow downloading ontologies from the internet
 - `serde` allow using serde (de)serialise to store data in the cache
 - `search-index` builds a trigram index to speed up fuzzy matching
+
+## Changelog
+
+### v0.3.0
+
+- Added relationship and xref to OboStanza
+- Removed OboStanza is_a and part_of in favour of relationship
+- Tracked types of Obo values
+- Added children tracking in CVData
+- Added a Term structure (curie + name)
+- Made levenshtein_distance public, was used for fuzzy matching internally already
+- Implemented common traits for many structures

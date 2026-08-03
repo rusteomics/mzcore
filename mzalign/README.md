@@ -168,5 +168,12 @@ assert_eq!(stats.mass_similar, 6); // 6 out of the 6 positions are mass similar
 * `imgt` - enables access to the IMGT database of antibodies germline sequences, with annotations. This also turns on the use of consecutive alignments.
 * `rayon` - enables parallel iterators using rayon, this also turns on rayon in `imgt`.
 
+## Changelog 
+### 0.2.0 
+
+- Allowed alignment of Linear complexity peptides (and below)
+- Added mass-based multiple sequence alignment (MMSA)
+- Added more precise alignment options for AlignIndex
+
 [^1]: Schulte, D.; Snijder, J. A Handle on Mass Coincidence Errors in De Novo Sequencing of Antibodies by Bottom-up Proteomics. <https://doi.org/10.1021/acs.jproteome.4c00188>.
 [^2]: Ehrenmann, F.; Kaas, Q.; Lefranc, M.-P. IMGT/3Dstructure-DB and IMGT/DomainGapAlign: A Database and a Tool for Immunoglobulins or Antibodies, T Cell Receptors, MHC, IgSF and MhcSF. <https://doi.org/10.1093/nar/gkp946>.
