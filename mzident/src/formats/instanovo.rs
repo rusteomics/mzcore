@@ -353,6 +353,8 @@ impl std::str::FromStr for UsedModel {
 
 impl PSMMetaData for InstaNovoPSM {
     type Protein = crate::NoProtein;
+    #[cfg(feature = "mzannotate")]
+    type SpectrumOutputMode = mzcore::chemistry::OutputMolecularFormula;
 
     fn peptidoform_ion_set(&self) -> Option<Cow<'_, PeptidoformIonSet>> {
         Some(Cow::Owned(self.peptide.clone().into()))

@@ -269,6 +269,8 @@ impl std::fmt::Display for MetaMorpheusMatchKind {
 
 impl PSMMetaData for MetaMorpheusPSM {
     type Protein = MetaMorpheusProtein;
+    #[cfg(feature = "mzannotate")]
+    type SpectrumOutputMode = mzcore::chemistry::OutputMolecularFormula;
 
     fn peptidoform_ion_set(&self) -> Option<Cow<'_, PeptidoformIonSet>> {
         Some(Cow::Owned(self.peptide.clone()))

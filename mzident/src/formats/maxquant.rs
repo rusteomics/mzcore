@@ -5,6 +5,8 @@ use std::{
 use itertools::Itertools;
 #[cfg(feature = "mzannotate")]
 use mzannotate::prelude::AnnotatedPeak;
+#[cfg(feature = "mzannotate")]
+use mzcore::chemistry::OutputMolecularFormula;
 use mzcore::{
     csv::{CsvLine, parse_csv},
     ontology::Ontologies,
@@ -126,7 +128,7 @@ format_family!(
         simple_mass_error_ppm: f32, |location: Location, _| location.parse::<f32>(NUMBER_ERROR);
         total_ion_current: f32, |location: Location, _| location.parse::<f32>(NUMBER_ERROR);
         #[cfg(feature = "mzannotate")]
-        spectrum: ThinVec<AnnotatedPeak<mzannotate::fragment::Fragment>>, |_, _| None;
+        spectrum: ThinVec<AnnotatedPeak<mzannotate::fragment::Fragment<OutputMolecularFormula>>>, |_, _| None;
     }
 
     fn post_process(source: &CsvLine, mut parsed: Self, _ontologies: &Ontologies) -> Result<Self, BoxedError<'static, BasicKind>> {
@@ -450,6 +452,8 @@ pub const SILAC: MaxQuantFormat = MaxQuantFormat {
 
 impl PSMMetaData for MaxQuantPSM {
     type Protein = FastaIdentifier<Box<str>>;
+    #[cfg(feature = "mzannotate")]
+    type SpectrumOutputMode = OutputMolecularFormula;
 
     fn peptidoform_ion_set(&self) -> Option<Cow<'_, PeptidoformIonSet>> {
         self.peptide.as_ref().map(|p| Cow::Owned(p.clone().into()))
@@ -555,7 +559,9 @@ impl PSMMetaData for MaxQuantPSM {
     }
 
     #[cfg(feature = "mzannotate")]
-    fn annotated_spectrum(&self) -> Option<Cow<'_, mzannotate::spectrum::AnnotatedSpectrum>> {
+    fn annotated_spectrum(
+        &self,
+    ) -> Option<Cow<'_, mzannotate::spectrum::AnnotatedSpectrum<OutputMolecularFormula>>> {
         // TODO: create a generic function to convert a 'MetaData' into a spectrum description +
         // analytes etc
         self.spectrum.as_ref().map(|s| {

@@ -1,5 +1,7 @@
 use std::{borrow::Cow, ops::Range};
 
+#[cfg(feature = "mzannotate")]
+use mzcore::chemistry::MassOutputMode;
 use mzcore::{
     chemistry::AmbiguousMolecule,
     sequence::{FlankingSequence, PeptidoformIonSet},
@@ -120,10 +122,16 @@ pub trait PSMMetaData {
     /// Get the URI for this PSM
     fn uri(&self) -> Option<String>;
 
+    /// What mode is the spectrum stored in
+    #[cfg(feature = "mzannotate")]
+    type SpectrumOutputMode: MassOutputMode;
+
     /// Get the annotated spectrum if this is encoded in the format
     // TODO: built parsers for OPair, PLGS, MetaMorpheus
     #[cfg(feature = "mzannotate")]
-    fn annotated_spectrum(&self) -> Option<Cow<'_, mzannotate::spectrum::AnnotatedSpectrum>> {
+    fn annotated_spectrum(
+        &self,
+    ) -> Option<Cow<'_, mzannotate::spectrum::AnnotatedSpectrum<Self::SpectrumOutputMode>>> {
         None
     }
 
@@ -140,6 +148,8 @@ macro_rules! impl_ref {
     ($t:ty) => {
         impl<T: PSMMetaData> PSMMetaData for $t {
             type Protein = T::Protein;
+            #[cfg(feature = "mzannotate")]
+            type SpectrumOutputMode = T::SpectrumOutputMode;
 
             fn peptidoform_ion_set(&self) -> Option<Cow<'_, PeptidoformIonSet>> {
                 (**self).peptidoform_ion_set()
@@ -240,7 +250,8 @@ macro_rules! impl_ref {
             #[cfg(feature = "mzannotate")]
             fn annotated_spectrum(
                 &self,
-            ) -> Option<Cow<'_, mzannotate::spectrum::AnnotatedSpectrum>> {
+            ) -> Option<Cow<'_, mzannotate::spectrum::AnnotatedSpectrum<Self::SpectrumOutputMode>>>
+            {
                 (**self).annotated_spectrum()
             }
 

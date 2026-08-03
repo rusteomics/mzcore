@@ -90,7 +90,7 @@ where
 /// A trait to signify that only the final monoisotopic mass is interesting, note that this will be
 /// less precise than going through a [`MolecularFormula`] first. And this will miss any global
 /// isotope modifications.
-#[allow(missing_copy_implementations, missing_debug_implementations)]
+#[derive(Copy, Clone, Debug)]
 pub struct OutputMonoIsotopic;
 
 impl MassOutputMode for OutputMonoIsotopic {
@@ -120,7 +120,7 @@ impl MassOutputMode for OutputMonoIsotopic {
 /// A trait to signify that only the final average weight is interesting, note that this will be
 /// less precise than going through a [`MolecularFormula`] first. And this will miss any global
 /// isotope modifications.
-#[allow(missing_copy_implementations, missing_debug_implementations)]
+#[derive(Copy, Clone, Debug)]
 pub struct OutputAverageWeight;
 
 impl MassOutputMode for OutputAverageWeight {
@@ -353,7 +353,7 @@ impl Space for MassOutput {
 
 /// Calculate masses as molecular formula. This allows for maximally precise values, most abundant
 /// isotope calculation, isotopic pattern generation and more.
-#[allow(missing_copy_implementations, missing_debug_implementations)]
+#[derive(Copy, Clone, Debug)]
 pub struct OutputMolecularFormula;
 
 impl MassOutputMode for OutputMolecularFormula {

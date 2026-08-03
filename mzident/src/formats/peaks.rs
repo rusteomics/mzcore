@@ -658,6 +658,8 @@ impl PSMFileFormatVersion<PeaksFormat> for PeaksVersion {
 
 impl PSMMetaData for PeaksPSM {
     type Protein = crate::NoProtein;
+    #[cfg(feature = "mzannotate")]
+    type SpectrumOutputMode = mzcore::chemistry::OutputMolecularFormula;
 
     fn peptidoform_ion_set(&self) -> Option<Cow<'_, PeptidoformIonSet>> {
         Some(Cow::Owned(self.peptide.1.clone().into()))

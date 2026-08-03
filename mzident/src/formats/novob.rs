@@ -182,6 +182,8 @@ impl PSMFileFormatVersion<NovoBFormat> for NovoBVersion {
 
 impl PSMMetaData for NovoBPSM {
     type Protein = crate::NoProtein;
+    #[cfg(feature = "mzannotate")]
+    type SpectrumOutputMode = mzcore::chemistry::OutputMolecularFormula;
 
     fn peptidoform_ion_set(&self) -> Option<Cow<'_, PeptidoformIonSet>> {
         if self.score_forward >= self.score_reverse {

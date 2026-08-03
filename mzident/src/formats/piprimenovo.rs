@@ -81,6 +81,8 @@ impl PSMFileFormatVersion<PiPrimeNovoFormat> for PiPrimeNovoVersion {
 
 impl PSMMetaData for PiPrimeNovoPSM {
     type Protein = crate::NoProtein;
+    #[cfg(feature = "mzannotate")]
+    type SpectrumOutputMode = mzcore::chemistry::OutputMolecularFormula;
 
     fn peptidoform_ion_set(&self) -> Option<Cow<'_, PeptidoformIonSet>> {
         self.peptide.as_ref().map(|p| Cow::Owned(p.clone().into()))

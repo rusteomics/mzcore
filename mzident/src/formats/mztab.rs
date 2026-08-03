@@ -2312,6 +2312,8 @@ fn parse_mztab_reader<T: BufRead>(
 
 impl PSMMetaData for MzTabPSM {
     type Protein = MzTabProtein;
+    #[cfg(feature = "mzannotate")]
+    type SpectrumOutputMode = mzcore::chemistry::OutputMolecularFormula;
 
     fn peptidoform_ion_set(&self) -> Option<Cow<'_, PeptidoformIonSet>> {
         self.peptidoform.as_ref().map(|p| Cow::Owned(p.clone().into()))

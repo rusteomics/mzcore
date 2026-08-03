@@ -69,6 +69,17 @@ impl<B> AnnotatedPeak<B> {
             aggregations: value.aggregations,
         }
     }
+
+    /// Convert an annotated peak into a different annotation type using `From`.
+    pub fn from_with<A>(value: AnnotatedPeak<A>, f: impl Fn(A) -> B) -> Self {
+        Self {
+            mz: value.mz,
+            intensity: value.intensity,
+            index: value.index,
+            annotations: value.annotations.into_iter().map(f).collect(),
+            aggregations: value.aggregations,
+        }
+    }
 }
 
 impl<B> AnnotatedPeak<B> {

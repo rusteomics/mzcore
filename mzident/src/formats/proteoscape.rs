@@ -132,6 +132,8 @@ pub const V2025B: ProteoscapeFormat = ProteoscapeFormat {
 
 impl PSMMetaData for ProteoscapePSM {
     type Protein = FastaIdentifier<Box<str>>;
+    #[cfg(feature = "mzannotate")]
+    type SpectrumOutputMode = mzcore::chemistry::OutputMolecularFormula;
 
     fn peptidoform_ion_set(&self) -> Option<Cow<'_, PeptidoformIonSet>> {
         Some(Cow::Owned(self.peptide.1.clone().into()))

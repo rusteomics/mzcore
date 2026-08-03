@@ -565,6 +565,8 @@ impl PSMFileFormatVersion<PLinkFormat> for PLinkVersion {
 
 impl PSMMetaData for PLinkPSM {
     type Protein = FastaIdentifier<Box<str>>;
+    #[cfg(feature = "mzannotate")]
+    type SpectrumOutputMode = mzcore::chemistry::OutputMolecularFormula;
 
     fn peptidoform_ion_set(&self) -> Option<Cow<'_, PeptidoformIonSet>> {
         Some(Cow::Owned(self.peptidoform.clone().into()))

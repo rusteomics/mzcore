@@ -80,6 +80,8 @@ pub const BASIC: BasicCSVFormat = BasicCSVFormat {
 
 impl PSMMetaData for BasicCSVPSM {
     type Protein = crate::NoProtein;
+    #[cfg(feature = "mzannotate")]
+    type SpectrumOutputMode = mzcore::chemistry::OutputMolecularFormula;
 
     fn peptidoform_ion_set(&self) -> Option<Cow<'_, PeptidoformIonSet>> {
         Some(Cow::Borrowed(&self.sequence))

@@ -134,6 +134,8 @@ impl PSMFileFormatVersion<PUniFindFormat> for PUniFindVersion {
 
 impl PSMMetaData for PUniFindPSM {
     type Protein = crate::NoProtein;
+    #[cfg(feature = "mzannotate")]
+    type SpectrumOutputMode = mzcore::chemistry::OutputMolecularFormula;
 
     fn peptidoform_ion_set(&self) -> Option<Cow<'_, PeptidoformIonSet>> {
         Some(Cow::Owned(self.peptidoform.clone().into()))

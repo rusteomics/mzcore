@@ -9,6 +9,7 @@ use context_error::{BasicKind, BoxedError, FullErrorContent};
 use itertools::Itertools;
 use mzannotate::prelude::AnnotatedSpectrum;
 use mzcore::{
+    chemistry::OutputMolecularFormula,
     ontology::Ontologies,
     prelude::*,
     sequence::{FlankingSequence, Linked},
@@ -20,8 +21,9 @@ use crate::{
     SpectrumIds,
 };
 
-impl PSMMetaData for AnnotatedSpectrum {
+impl<Mode: MassOutputMode> PSMMetaData for AnnotatedSpectrum<Mode> {
     type Protein = crate::NoProtein;
+    type SpectrumOutputMode = Mode;
 
     fn peptidoform_ion_set(&self) -> Option<Cow<'_, PeptidoformIonSet>> {
         let cpi: PeptidoformIonSet = self
@@ -202,7 +204,7 @@ impl PSMMetaData for AnnotatedSpectrum {
         None
     }
 
-    fn annotated_spectrum(&self) -> Option<Cow<'_, AnnotatedSpectrum>> {
+    fn annotated_spectrum(&self) -> Option<Cow<'_, AnnotatedSpectrum<Mode>>> {
         Some(Cow::Borrowed(self))
     }
 
@@ -211,8 +213,8 @@ impl PSMMetaData for AnnotatedSpectrum {
     }
 }
 
-impl From<AnnotatedSpectrum> for PSM<Linked, MaybePeptidoform> {
-    fn from(value: AnnotatedSpectrum) -> Self {
+impl From<AnnotatedSpectrum<OutputMolecularFormula>> for PSM<Linked, MaybePeptidoform> {
+    fn from(value: AnnotatedSpectrum<OutputMolecularFormula>) -> Self {
         Self {
             score: value.confidence(),
             local_confidence: value.local_confidence().map(|v| v.to_vec()),

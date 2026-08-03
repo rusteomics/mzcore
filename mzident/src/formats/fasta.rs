@@ -1475,6 +1475,8 @@ fn parse_header() {
 
 impl PSMMetaData for FastaData {
     type Protein = Self;
+    #[cfg(feature = "mzannotate")]
+    type SpectrumOutputMode = mzcore::chemistry::OutputMolecularFormula;
 
     fn peptidoform_ion_set(&self) -> Option<Cow<'_, PeptidoformIonSet>> {
         Some(Cow::Owned(self.peptide().clone().into()))

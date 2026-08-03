@@ -252,6 +252,8 @@ pub const NEW_PSM: NovorFormat = NovorFormat {
 
 impl PSMMetaData for NovorPSM {
     type Protein = crate::NoProtein;
+    #[cfg(feature = "mzannotate")]
+    type SpectrumOutputMode = mzcore::chemistry::OutputMolecularFormula;
 
     fn peptidoform_ion_set(&self) -> Option<Cow<'_, PeptidoformIonSet>> {
         Some(Cow::Owned(self.peptide.clone().into()))

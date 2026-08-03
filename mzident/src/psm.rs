@@ -2,6 +2,8 @@ use std::{borrow::Cow, marker::PhantomData, ops::Range};
 
 #[cfg(feature = "mzannotate")]
 use mzannotate::prelude::AnnotatedSpectrum;
+#[cfg(feature = "mzannotate")]
+use mzcore::chemistry::OutputMolecularFormula;
 use mzcore::{
     sequence::{
         AtLeast, FlankingSequence, HasPeptidoformImpl, Linear, Linked, Peptidoform,
@@ -84,7 +86,7 @@ pub enum PSMData {
     SpectrumSequenceList(SpectrumSequenceListPSM),
     /// An mzSpecLib spectrum (only available if the feature `mzannotate` is turned on)
     #[cfg(feature = "mzannotate")]
-    AnnotatedSpectrum(AnnotatedSpectrum),
+    AnnotatedSpectrum(AnnotatedSpectrum<OutputMolecularFormula>),
 }
 
 impl<PeptidoformAvailability> PSM<Linear, PeptidoformAvailability> {
@@ -528,7 +530,7 @@ impl<Complexity, PeptidoformAvailability> PSM<Complexity, PeptidoformAvailabilit
 /// out. Needs some macro fudging to allow for the proper syntax of just specifying a list of
 /// formats and a list of functions to implement.
 macro_rules! impl_metadata {
-    (formats: $format:tt; functions: {$($(#[cfg($cfg:expr)])?fn $function:ident(&self) -> $t:ty);+;}) => {
+    (formats: $format:tt; functions: {$($(#[cfg($cfg:expr)])?fn $function:ident$(<$at:tt: $bound:path>)?(&self) -> $t:ty);+;}) => {
         impl<Complexity, PeptidoformAvailability> PSMMetaData for PSM<Complexity, PeptidoformAvailability> {
             /// Reuse the cached normalised confidence
             fn confidence(&self) -> Option<f64> {
@@ -543,17 +545,18 @@ macro_rules! impl_metadata {
             }
 
             type Protein = ProteinData;
+            type SpectrumOutputMode = mzcore::chemistry::OutputMolecularFormula;
 
             fn proteins(&self) -> Cow<'_, [Self::Protein]> {
                 Cow::Owned(impl_metadata!(match: self, formats: $format; function: proteins;))
             }
 
-            $(impl_metadata!(inner: formats: $format; function: $function -> $t);)+
+            $(impl_metadata!(inner: formats: $format; function: $function $(<$at: $bound>)? -> $t);)+
         }
     };
-    (inner: formats: {$($format:ident),*}; function: $(#[cfg($cfg:expr)])?$function:ident -> $t:ty) => {
+    (inner: formats: {$($format:ident),*}; function: $(#[cfg($cfg:expr)])?$function:ident $(<$at:tt: $bound:path>)? -> $t:ty) => {
         $(#[cfg($cfg)])?
-        fn $function(&self) -> $t {
+        fn $function$(<$at: $bound>)?(&self) -> $t {
             match &self.data {
                 $(PSMData::$format(d) => PSMMetaData::$function(d)),*
             }
@@ -619,7 +622,7 @@ impl_metadata!(
         fn unique(&self) -> Option<bool>;
         fn reliability(&self) -> Option<Reliability>;
         fn uri(&self) -> Option<String>;
-        fn annotated_spectrum(&self) -> Option<Cow<'_, AnnotatedSpectrum>>;
+        fn annotated_spectrum(&self) -> Option<Cow<'_, AnnotatedSpectrum<OutputMolecularFormula>>>;
         fn has_annotated_spectrum(&self) -> bool;
     }
 );

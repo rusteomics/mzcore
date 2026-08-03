@@ -522,6 +522,8 @@ pub const FRAGPIPE_V22: MSFraggerFormat = MSFraggerFormat {
 
 impl PSMMetaData for MSFraggerPSM {
     type Protein = MSFraggerProtein;
+    #[cfg(feature = "mzannotate")]
+    type SpectrumOutputMode = mzcore::chemistry::OutputMolecularFormula;
 
     fn peptidoform_ion_set(&self) -> Option<Cow<'_, PeptidoformIonSet>> {
         Some(Cow::Owned(self.peptide.clone().into()))

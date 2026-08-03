@@ -282,6 +282,8 @@ pub const O_PAIR: OpairFormat = OpairFormat {
 
 impl PSMMetaData for OpairPSM {
     type Protein = OpairProtein;
+    #[cfg(feature = "mzannotate")]
+    type SpectrumOutputMode = mzcore::chemistry::OutputMolecularFormula;
 
     fn peptidoform_ion_set(&self) -> Option<Cow<'_, PeptidoformIonSet>> {
         Some(Cow::Owned(self.peptide.clone().into()))

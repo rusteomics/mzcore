@@ -23,7 +23,7 @@ use crate::{
 };
 
 /// An annotated spectrum.
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub struct AnnotatedSpectrum<Mode: MassOutputMode> {
     /// The ID for a spectrum
     pub key: Id,
@@ -37,6 +37,19 @@ pub struct AnnotatedSpectrum<Mode: MassOutputMode> {
     pub interpretations: Vec<Interpretation>,
     /// The spectrum itself
     pub peaks: MZPeakSetType<AnnotatedPeak<Fragment<Mode>>>,
+}
+
+impl<Mode: MassOutputMode> Clone for AnnotatedSpectrum<Mode> {
+    fn clone(&self) -> Self {
+        Self {
+            key: self.key,
+            description: self.description.clone(),
+            attributes: self.attributes.clone(),
+            analytes: self.analytes.clone(),
+            interpretations: self.interpretations.clone(),
+            peaks: self.peaks.clone(),
+        }
+    }
 }
 
 impl<Mode: MassOutputMode> Default for AnnotatedSpectrum<Mode> {

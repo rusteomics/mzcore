@@ -394,6 +394,22 @@ impl<Mode: MassOutputMode> Fragment<Mode> {
             Some(formula)
         })
     }
+
+    /// Convert a formula fragment into this mode (cannot be From because of specialisation)
+    pub fn from(value: Fragment<OutputMolecularFormula>) -> Self {
+        Self {
+            formula: value.formula.map(|f| Mode::from_formula(f)),
+            charge: value.charge,
+            ion: value.ion,
+            isotope: value.isotope,
+            peptidoform_ion_index: value.peptidoform_ion_index,
+            peptidoform_index: value.peptidoform_index,
+            neutral_loss: value.neutral_loss,
+            deviation: value.deviation,
+            confidence: value.confidence,
+            auxiliary: value.auxiliary,
+        }
+    }
 }
 
 impl<Mode: MassOutputMode> Display for Fragment<Mode> {
