@@ -35,7 +35,7 @@ mzcore = {path = "mzcore", version = "0.2.0" }
 mzannotate = {path = "mzannotate", version = "0.2.0" }
 mzalign = {path = "mzalign", version = "0.2.0" }
 imgt = {path = "imgt", version = "0.2.0" }
-mzident = {path = "mzident", version = "0.2.0" }
+mzident = {path = "mzident", version = "0.2.1" }
 
 afl = ">0.15, <=0.18"
 base64 = ">0.15, <=0.23"
