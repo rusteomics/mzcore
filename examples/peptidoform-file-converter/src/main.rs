@@ -75,6 +75,9 @@ fn main() {
     }
 }
 
+/// # Panics
+/// If the raw data cannot be linked properly, if the index does not contain the path and no path is
+/// provided.
 fn save_csv<PSM: PSMMetaData>(
     mut out_file: BufWriter<File>,
     psms: &[PSM],

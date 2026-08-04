@@ -545,6 +545,7 @@ macro_rules! impl_metadata {
             }
 
             type Protein = ProteinData;
+            #[cfg(feature = "mzannotate")]
             type SpectrumOutputMode = mzcore::chemistry::OutputMolecularFormula;
 
             fn proteins(&self) -> Cow<'_, [Self::Protein]> {
