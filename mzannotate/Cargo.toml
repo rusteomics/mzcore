@@ -5,7 +5,7 @@ edition.workspace = true
 license.workspace = true
 publish = true
 rust-version.workspace = true
-version = "0.1.0"
+version = "0.2.0"
 description = "Handle fragmentation of (complex) peptidoforms."
 categories = [
     "science::bioinformatics::proteomics",
@@ -17,8 +17,8 @@ readme = "README.md"
 include = ["src/**/*", "tests/**/*", "README.md", "benches/**/*"]
 
 [dependencies]
-mzcore = { path = "../mzcore" }
-mzcv = { path = "../mzcv"}
+mzcore = { workspace = true }
+mzcv = { workspace = true }
 
 context_error = { workspace = true }
 indexmap = { workspace = true }

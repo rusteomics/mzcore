@@ -14,9 +14,9 @@ readme = "README.md"
 include = ["src/**/*", "images/**/*", "README.md", "benches/**/*"]
 
 [dependencies]
-mzcore = { path = "../mzcore" }
-mzcv = { path = "../mzcv", features=["serde"] }
-mzannotate = { path = "../mzannotate", optional = true }
+mzcore = { workspace = true }
+mzcv = { workspace = true, features=["serde"] }
+mzannotate = { workspace = true, optional = true }
 
 context_error = { workspace = true }
 flate2 = { workspace = true }

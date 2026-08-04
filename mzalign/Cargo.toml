@@ -17,9 +17,9 @@ readme = "README.md"
 include = ["src/**/*", "tests/**/*", "README.md", "benches/**/*"]
 
 [dependencies]
-mzcore = { path = "../mzcore" }
-mzcv = { path = "../mzcv" }
-imgt = { path = "../imgt", default-features = false, optional = true }
+mzcore = { workspace = true }
+mzcv = { workspace = true }
+imgt = { workspace = true, optional = true }
 
 itertools = { workspace = true }
 ordered-float = { workspace = true }

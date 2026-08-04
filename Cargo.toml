@@ -30,6 +30,13 @@ lto = true
 codegen-units = 1
 
 [workspace.dependencies]
+mzcv = {path = "mzcv", version = "0.3.0" }
+mzcore = {path = "mzcore", version = "0.2.0" }
+mzannotate = {path = "mzannotate", version = "0.2.0" }
+mzalign = {path = "mzalign", version = "0.2.0" }
+imgt = {path = "imgt", version = "0.2.0" }
+mzident = {path = "mzident", version = "0.2.0" }
+
 afl = ">0.15, <=0.18"
 base64 = ">0.15, <=0.23"
 bincode = { version = "2.0", features = ["serde"] }
