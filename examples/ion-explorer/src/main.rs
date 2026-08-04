@@ -15,7 +15,7 @@ use mzannotate::{
     prelude::*,
 };
 use mzcore::{
-    chemistry::MassMode,
+    chemistry::{MassMode, OutputMonoIsotopic},
     ontology::Ontologies,
     sequence::{Modification, PeptidoformIonSet},
 };
@@ -138,8 +138,8 @@ fn main() {
 
 fn extract_and_merge(
     stack: &mut Stack,
-    spectrum: &AnnotatedSpectrum,
-    fragments: &[Fragment],
+    spectrum: &AnnotatedSpectrum<OutputMonoIsotopic>,
+    fragments: &[Fragment<OutputMonoIsotopic>],
     peptidoform: &PeptidoformIonSet,
     args: &Cli,
 ) {
@@ -202,7 +202,7 @@ fn extract_and_merge(
 
 fn merge_stack(
     points: &mut Vec<Point>,
-    slice: &[AnnotatedPeak<Fragment>],
+    slice: &[AnnotatedPeak<Fragment<OutputMonoIsotopic>>],
     charge: isize,
     center: f64,
     resolution: f64,
