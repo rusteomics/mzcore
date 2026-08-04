@@ -31,4 +31,4 @@ assert_eq!(first.name(), "IGHV1-2*01");
 - Added more constant chain options
 - Added Lzw parsing (in mzcv) to allow automatic download and update
 - Fixed some issues with parsing
-- Updated static data to 202631-5 from 2026-07-31
+- Updated static data to version 202631-5 date 2026-07-31
