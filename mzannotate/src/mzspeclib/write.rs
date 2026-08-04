@@ -32,8 +32,8 @@ use crate::{
 /// // writing the header twice or not writing the header at all.
 /// let mut writer = writer.write_header().unwrap();
 /// // Write the spectra, either one by one or a bigger group in one go
-/// writer.write_spectrum(&AnnotatedSpectrum::default()).unwrap();
-/// writer.write_spectra(&[AnnotatedSpectrum::default()]).unwrap();
+/// writer.write_spectrum(&AnnotatedSpectrum::<mzcore::chemistry::OutputMonoIsotopic>::default()).unwrap();
+/// writer.write_spectra(&[AnnotatedSpectrum::<mzcore::chemistry::OutputMonoIsotopic>::default()]).unwrap();
 /// ```
 #[derive(Debug)]
 pub struct MzSpecLibTextWriter<Writer: Write, State> {

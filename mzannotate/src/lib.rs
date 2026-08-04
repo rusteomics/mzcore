@@ -42,7 +42,7 @@ pub mod prelude {
 #[cfg(test)]
 #[expect(clippy::missing_panics_doc)]
 mod test {
-    use mzcore::prelude::*;
+    use mzcore::{chemistry::OutputMonoIsotopic, prelude::*};
 
     use crate::prelude::*;
 
@@ -53,7 +53,7 @@ mod test {
             .0
             .into_linear()
             .unwrap();
-        let fragments = peptide.generate_theoretical_fragments(
+        let fragments = peptide.generate_theoretical_fragments::<OutputMonoIsotopic>(
             mzcore::system::isize::Charge::new::<mzcore::system::e>(1),
             FragmentationModel::all(),
         );
