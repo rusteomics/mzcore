@@ -42,7 +42,7 @@ base64 = ">0.15, <=0.23"
 bincode = { version = "2.0", features = ["serde"] }
 chrono = "0.4"
 clap = { version = "4.6", features = ["derive", "cargo"] }
-context_error = { git = "https://github.com/douweschulte/context_error", features = ["serde"] }
+context_error = { version = "0.3.0", features = ["serde"] }
 directories = "6.0"
 flate2 = "1.0"
 indexmap = "2.11"
