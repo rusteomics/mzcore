@@ -7,7 +7,7 @@ use context_error::CreateError;
 use mzalign::AlignScoring;
 use mzannotate::prelude::{GlycanFragmention, PeptidoformFragmentation, ToMzPAF};
 use mzcore::{
-    chemistry::{AmbiguousMolecule, MassOutputType, Molecule},
+    chemistry::{AmbiguousMolecule, MassOutputType, Molecule, OutputMolecularFormula},
     sequence::{IsAminoAcid, Linked, SimpleLinear},
     system::dalton,
 };
@@ -663,7 +663,7 @@ impl Modification {
 /// A theoretical fragment of a peptidoform.
 #[pyclass]
 #[derive(Debug)]
-pub struct Fragment(mzannotate::fragment::Fragment);
+pub struct Fragment(mzannotate::fragment::Fragment<OutputMolecularFormula>);
 
 #[pymethods]
 impl Fragment {
@@ -1525,7 +1525,9 @@ impl Alignment {
 
 #[pyclass]
 /// Represents an annotated peak in a mass spectrometry spectrum.
-struct AnnotatedPeak(mzannotate::spectrum::AnnotatedPeak<mzannotate::fragment::Fragment>);
+struct AnnotatedPeak(
+    mzannotate::spectrum::AnnotatedPeak<mzannotate::fragment::Fragment<OutputMolecularFormula>>,
+);
 
 #[pymethods]
 impl AnnotatedPeak {
@@ -1588,7 +1590,7 @@ impl std::fmt::Display for AnnotatedPeak {
 /// An annotated spectrum.
 #[pyclass]
 #[derive(Debug)]
-pub struct AnnotatedSpectrum(mzannotate::spectrum::AnnotatedSpectrum);
+pub struct AnnotatedSpectrum(mzannotate::spectrum::AnnotatedSpectrum<OutputMolecularFormula>);
 
 #[pymethods]
 impl AnnotatedSpectrum {
