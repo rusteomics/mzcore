@@ -27,27 +27,37 @@ pub(super) struct MultiAlignmentLineTemp<'a, Sequence, const STEPS: u16> {
 
 impl<Sequence, const STEPS: u16> MultiAlignmentLineTemp<'_, Sequence, STEPS> {
     /// Update this line with the given merged alignment, this does not add end gaps
-    pub(super) fn update(mut self, path: &[Piece], is_a: bool, offset: u16) -> Self {
+    pub(super) fn update(mut self, merge_path: &[Piece], is_a: bool, offset: u16) -> Self {
+        // Which step in the self.path are we at
         let mut path_index = 0;
+
         let mut aligned_index = 0;
         let mut goal = 0;
-        let mut internal_index = 0;
+        let mut initial_offset_correction = 0;
+
+        // Insert leading gaps if needed
         if offset > 0 {
+            // Extend the existing leading gap
             if self.path[0].match_type == MatchType::Gap {
                 self.path[0].aligned_length += offset;
-                internal_index = offset;
+                initial_offset_correction = offset;
             } else {
-                self.path.insert(path_index, MultiPiece {
+                // Create a new leading gap
+                self.path.insert(0, MultiPiece {
                     match_type: MatchType::Gap,
                     aligned_length: offset,
                     sequence_length: 0,
                 });
-                path_index += 1;
+                path_index = 1;
             }
         }
-        for piece in path {
+
+        // Go over the merge path
+        for piece in merge_path {
             let aligned_step = if is_a { piece.step_b } else { piece.step_a };
             let sequence_step = if is_a { piece.step_a } else { piece.step_b };
+
+            // A new gap needs to be inserted
             if sequence_step == 0 {
                 self.path.insert(path_index, MultiPiece {
                     match_type: MatchType::Gap,
@@ -57,14 +67,51 @@ impl<Sequence, const STEPS: u16> MultiAlignmentLineTemp<'_, Sequence, STEPS> {
                 aligned_index += aligned_step;
                 path_index += 1;
             } else {
-                self.path[path_index].aligned_length += aligned_step.saturating_sub(sequence_step);
-                goal += aligned_step.max(sequence_step);
-                while aligned_index + internal_index < goal {
-                    aligned_index += self.path[path_index].aligned_length - internal_index;
-                    internal_index = 0;
-                    path_index += usize::from(path_index != self.path.len() - 1); // just saturate for now
-                    if path_index == self.path.len() - 1 {
-                        break;
+                // A different type of step, extend this path piece with the stretch factor for this
+                // step, then walk through the path
+
+                if aligned_step > sequence_step && sequence_step > 1 {
+                    // If this is a bigger step (isobaric or rotation) group all amino acids that
+                    // are involved and set the lengths correctly. TODO: Note that this currently
+                    // does not handle the case of grouping together single amino acids with a
+                    // bigger preexisting group.
+                    let mut length_goal = 0;
+                    let mut total_aligned_length = 0;
+                    let mut total_sequence_length = 0;
+                    let mut first = true;
+                    let take = self.path[path_index..]
+                        .iter()
+                        .take_while(|p| {
+                            length_goal += p.aligned_length;
+                            if length_goal <= sequence_step || first {
+                                total_aligned_length += p.aligned_length;
+                                total_sequence_length += p.sequence_length;
+                                first = false;
+                                true
+                            } else {
+                                false
+                            }
+                        })
+                        .count();
+                    self.path[path_index].aligned_length =
+                        total_aligned_length + aligned_step - sequence_step;
+                    self.path[path_index].sequence_length = total_sequence_length;
+                    self.path[path_index].match_type = piece.match_type;
+                    for _ in 0..take - 1 {
+                        self.path.remove(path_index + 1);
+                    }
+                    path_index += usize::from(path_index != self.path.len() - 1); // Just saturate for now 
+                } else {
+                    self.path[path_index].aligned_length +=
+                        aligned_step.saturating_sub(sequence_step);
+
+                    // Walk forward through the sequence until this step is exhausted
+                    goal += aligned_step.max(sequence_step);
+                    while aligned_index + initial_offset_correction < goal {
+                        aligned_index +=
+                            self.path[path_index].aligned_length - initial_offset_correction;
+                        initial_offset_correction = 0;
+                        path_index += usize::from(path_index != self.path.len() - 1); // Just saturate for now 
                     }
                 }
             }
@@ -663,6 +710,8 @@ pub(super) fn multi_align_cached<
 
     // Finish up by tracing the path and updating all enclosed sequences to this path
     let (start_a, start_b, path) = matrix.trace_path(align_type.into(), global_highest);
+
+    // println!("{}", Piece::cigar(&path, start_a, start_b));
 
     let (score, overlap_length) = if DETERMINE_SCORE {
         let (len_a, len_b) = path.iter().fold((0, 0), |(a, b), p| {

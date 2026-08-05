@@ -29,7 +29,7 @@ fn simple() {
     alignment[0].debug_display(&mut buf);
     println!("{buf}");
     buf = buf.split('\n').skip(1).join("\n");
-    let expected = "AGGWHD\nAN·WHN\nAH·YDH\n";
+    let expected = "AGGWHD\nAN·WHN\nAHY·DH\n";
     assert_eq!(buf, expected, "Expected:\n{expected}");
 }
 
@@ -317,5 +317,28 @@ fn bad_either_global() {
     println!("{buf}");
     buf = buf.split('\n').skip(1).join("\n");
     let expected = "-------------------------HPVYTF-G\nMPK-----TGNR--DJGVYYCFQGSHVPYTFGG\n--------------DJGVYYCYQGSHVPYTFGG\n---AGHVQFMJJ--KJGVYYCFQGSHVPYTFGG\nAARVTDJDJGVYYAKJGVYYAFQGSHVPYTFGG\n";
+    assert_eq!(buf, expected, "Expected:\n{expected}");
+}
+
+#[test]
+fn longer_isobaric() {
+    let index = AlignIndex::<4, Peptidoform<Linear>>::new(
+        [seq("ATRNK"), seq("AGRTGK"), seq("ARGTGK")],
+        MassMode::Monoisotopic,
+    );
+    let mmsa = index
+        .multi_align(None, AlignScoring::default(), MultiAlignType {
+            left: MultiAlignSide::EitherGlobal,
+            right: MultiAlignSide::Global,
+        })
+        .pop()
+        .unwrap();
+    let mut buf = String::new();
+    mmsa.debug_display(&mut buf);
+    println!("{buf}");
+    println!("{}", mmsa.iter().map(|l| l.short()).join(","));
+
+    buf = buf.split('\n').skip(1).join("\n");
+    let expected = "ATRN·K\nAGRTGK\nARGTGK\n";
     assert_eq!(buf, expected, "Expected:\n{expected}");
 }
