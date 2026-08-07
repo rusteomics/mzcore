@@ -96,7 +96,9 @@ impl<Sequence, const STEPS: u16> MultiAlignmentLineTemp<'_, Sequence, STEPS> {
                     self.path[path_index].aligned_length =
                         total_aligned_length + aligned_step - sequence_step;
                     self.path[path_index].sequence_length = total_sequence_length;
-                    self.path[path_index].match_type = piece.match_type;
+                    if self.path[path_index].match_type != MatchType::Gap {
+                        self.path[path_index].match_type = piece.match_type;
+                    }
                     for _ in 0..take - 1 {
                         self.path.remove(path_index + 1);
                     }
