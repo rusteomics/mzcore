@@ -128,7 +128,7 @@ impl MonoSaccharide {
                 )));
 
                 let ms = if let Ok(num) = line[index + 1..index + 1 + end_formula].parse::<f64>() {
-                    if line[index + 1..].starts_with('+') && line[index + 1..].starts_with('-') {
+                    if !line[index + 1..].starts_with('+') && !line[index + 1..].starts_with('-') {
                         errors.push(BoxedError::new(
                             GlycanCompositionError::ImproperMissingSign,
                             "Improper modification",

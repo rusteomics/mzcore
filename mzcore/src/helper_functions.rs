@@ -92,7 +92,7 @@ where
     fn start_index(&self) -> usize;
     // Give the max of the end index (inclusive) or the upper bound
     fn end_index(&self, upper_bound: usize) -> usize;
-    // Give the max of the end index (inclusive) or the upper bound
+    // Give the max of the end index (exclusive) or the upper bound
     fn end_index_exclusive(&self, upper_bound: usize) -> usize;
     fn bounds(&self, upper_bound: usize) -> (usize, usize) {
         (self.start_index(), self.end_index(upper_bound))
@@ -108,6 +108,7 @@ impl<Ra: RangeBounds<usize>> RangeExtension for Ra {
         }
     }
 
+    // Give the max of the end index (inclusive) or the upper bound
     fn end_index(&self, upper_bound: usize) -> usize {
         match self.end_bound() {
             Bound::Unbounded => upper_bound,
@@ -116,6 +117,7 @@ impl<Ra: RangeBounds<usize>> RangeExtension for Ra {
         }
     }
 
+    // Give the max of the end index (exclusive) or the upper bound
     fn end_index_exclusive(&self, upper_bound: usize) -> usize {
         match self.end_bound() {
             Bound::Unbounded => upper_bound,

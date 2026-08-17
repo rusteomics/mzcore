@@ -1,12 +1,12 @@
-use std::{fmt::Display, hash::Hash};
+use std::{fmt::Display, hash::Hash, ops::RangeBounds};
 
 use context_error::*;
 use serde::{Deserialize, Serialize};
 
 use crate::{
     chemistry::{ELEMENT_PARSE_LIST, Element, MassOutputMode, MolecularFormula, Molecule},
-    glycan::{lists::*, monosaccharide::MonoSaccharide},
-    helper_functions::str_starts_with,
+    glycan::{GlycanCompositionError, lists::*, monosaccharide::MonoSaccharide},
+    helper_functions::{RangeExtension, str_starts_with},
     molecular_formula,
     parse_json::{ParseJson, use_serde},
     sequence::SequencePosition,
@@ -37,6 +37,98 @@ impl ParseJson for Configuration {
 }
 
 impl MonoSaccharide {
+    /// Parse a monosaccharide from common name or from custom composition, e.g. `{C8H13NO4}`.
+    /// In strict mode this gives a warning if the name is not the same as listed in ProForma, e.g.
+    /// `Glc` is accepted but gives a warning.
+    pub fn from_pro_forma<'a, const STRICT: bool>(
+        base_context: &Context<'a>,
+        line: &'a str,
+        range: impl RangeBounds<usize>,
+    ) -> Result<
+        (Self, Vec<BoxedError<'a, GlycanCompositionError>>),
+        Vec<BoxedError<'a, GlycanCompositionError>>,
+    > {
+        let index = range.start_index();
+        let end = range.end_index_exclusive(line.len());
+        let mut errors = Vec::new();
+        if line[index..end].starts_with('{') {
+            let end_formula = handle!(single errors, line[index + 1..end].find('}').ok_or_else(||BoxedError::new(
+                GlycanCompositionError::NoClosingBracket,
+                "Invalid ProForma glycan",
+                "The custom formula is not closed. No closing bracket '}' could be found.",
+                base_context.clone().add_highlight((0, index..end)),
+            )));
+
+            let ms = if let Ok(num) = line[index + 1..index + 1 + end_formula].parse::<f64>() {
+                if !line[index + 1..].starts_with('+') && !line[index + 1..].starts_with('-') {
+                    errors.push(BoxedError::new(
+                        GlycanCompositionError::ImproperMissingSign,
+                        "Improper modification",
+                        "A numerical modification should always be specified with a sign (+/-) to help it be recognised as a mass modification and not a modification index.",
+                        base_context
+                            .clone()
+                            .add_highlight((0, index+1, 1)),
+                    ));
+                }
+
+                Self::new(
+                    BaseSugar::Custom(Box::new(MolecularFormula::with_additional_mass(num))),
+                    &[],
+                )
+            } else {
+                let formula = handle!(single errors,
+                        MolecularFormula::pro_forma_inner::<true, false>(base_context, line, index + 1..index + 1+end_formula).map_err(|e| e.convert(|_| GlycanCompositionError::InvalidFormula)));
+                Self::new(BaseSugar::Custom(formula.into()), &[])
+            };
+            Ok((ms, errors))
+        } else {
+            let mut found = None;
+            'find_glycan: for (names, sugar) in GLYCAN_PARSE_LIST.iter() {
+                for name in names {
+                    if line[index..end].eq_ignore_ascii_case(name) {
+                        found = Some(sugar.clone());
+                        if STRICT {
+                            let pro_forma_name = sugar.pro_forma_name();
+                            if **name != pro_forma_name {
+                                combine_error(
+                                    &mut errors,
+                                    BoxedError::new(
+                                        GlycanCompositionError::ImproperName,
+                                        "Improper ProForma glycan",
+                                        format!(
+                                            "While `{name}` can be unambiguously parsed the proper name in ProForma is `{pro_forma_name}`."
+                                        ),
+                                        base_context.clone().add_highlight((0, index, name.len())),
+                                    ),
+                                );
+                            } else if !line[index..end].starts_with(&**name) {
+                                combine_error(
+                                    &mut errors,
+                                    BoxedError::new(
+                                        GlycanCompositionError::ImproperCapitalisation,
+                                        "Improper ProForma glycan",
+                                        "This glycan was not written with the proper capitalisation.",
+                                        base_context.clone().add_highlight((0, index, name.len())),
+                                    ),
+                                );
+                            }
+                        }
+                        break 'find_glycan;
+                    }
+                }
+            }
+            Ok((
+                handle!(single errors, found.ok_or_else(|| BoxedError::new(
+                    GlycanCompositionError::UnrecognisedName,
+                    "Invalid ProForma glycan",
+                    "No valid glycan name could be recognised.",
+                    base_context.clone().add_highlight((0, index..end)),
+                ))),
+                errors,
+            ))
+        }
+    }
+
     /// Parse a short IUPAC name from this string starting at `start` and returning,
     /// if successful, a monosaccharide and the offset in the string where parsing ended.
     /// # Errors
@@ -152,7 +244,7 @@ impl MonoSaccharide {
                     furanose: false,
                     configuration,
                 };
-                alo.substituents.extend(s.iter().copied().map(|s| (s, None)));
+                alo.substituents.extend_from_slice(s);
                 alo
             })
             .ok_or_else(|| {

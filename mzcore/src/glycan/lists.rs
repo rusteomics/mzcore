@@ -10,7 +10,7 @@ use super::{
     },
 };
 
-pub(crate) const BASE_SUGARS: &[(&str, BaseSugar, &[GlycanSubstituent])] = &[
+pub(crate) const BASE_SUGARS: &[(&str, BaseSugar, &[(GlycanSubstituent, Option<u8>)])] = &[
     ("sug", BaseSugar::Sugar, &[]),
     ("tri", BaseSugar::Triose, &[]),
     ("tet", BaseSugar::Tetrose(None), &[]),
@@ -45,64 +45,76 @@ pub(crate) const BASE_SUGARS: &[(&str, BaseSugar, &[GlycanSubstituent])] = &[
         &[],
     ),
     ("neu", BaseSugar::Nonose(None), &[
-        GlycanSubstituent::Acid,
-        GlycanSubstituent::Amino,
+        (GlycanSubstituent::Acid, None),
+        (GlycanSubstituent::Amino, None),
     ]),
     ("sia", BaseSugar::Nonose(None), &[
-        GlycanSubstituent::Acid,
-        GlycanSubstituent::Amino,
-        GlycanSubstituent::Deoxy,
+        (GlycanSubstituent::Acid, None),
+        (GlycanSubstituent::Amino, None),
+        (GlycanSubstituent::Deoxy, None),
     ]),
     ("kdn", BaseSugar::Nonose(Some(NonoseIsomer::Kdn)), &[
-        GlycanSubstituent::Amino,
-        GlycanSubstituent::Deoxy,
-        GlycanSubstituent::Acid,
+        (GlycanSubstituent::Amino, None),
+        (GlycanSubstituent::Deoxy, None),
+        (GlycanSubstituent::Acid, None),
     ]),
     ("kdo", BaseSugar::Octose, &[
-        GlycanSubstituent::Acid,
-        GlycanSubstituent::Deoxy,
+        (GlycanSubstituent::Acid, None),
+        (GlycanSubstituent::Deoxy, None),
     ]),
     ("fuc", BaseSugar::Hexose(Some(HexoseIsomer::Galactose)), &[
-        GlycanSubstituent::Deoxy,
+        (GlycanSubstituent::Deoxy, None),
     ]),
-    ("rha", BaseSugar::Hexose(Some(HexoseIsomer::Mannose)), &[
+    ("rha", BaseSugar::Hexose(Some(HexoseIsomer::Mannose)), &[(
         GlycanSubstituent::Deoxy,
-    ]),
-    ("qui", BaseSugar::Hexose(Some(HexoseIsomer::Glucose)), &[
+        None,
+    )]),
+    ("qui", BaseSugar::Hexose(Some(HexoseIsomer::Glucose)), &[(
         GlycanSubstituent::Deoxy,
-    ]),
+        None,
+    )]),
     ("oli", BaseSugar::Hexose(Some(HexoseIsomer::Glucose)), &[
-        GlycanSubstituent::Deoxy,
-        GlycanSubstituent::Deoxy,
+        (GlycanSubstituent::Deoxy, None),
+        (GlycanSubstituent::Deoxy, None),
     ]),
     ("tyv", BaseSugar::Hexose(Some(HexoseIsomer::Mannose)), &[
-        GlycanSubstituent::Deoxy,
-        GlycanSubstituent::Deoxy,
+        (GlycanSubstituent::Deoxy, None),
+        (GlycanSubstituent::Deoxy, None),
     ]),
     ("asc", BaseSugar::Hexose(Some(HexoseIsomer::Galactose)), &[
-        GlycanSubstituent::Deoxy,
-        GlycanSubstituent::Deoxy,
+        (GlycanSubstituent::Deoxy, None),
+        (GlycanSubstituent::Deoxy, None),
     ]),
     ("abe", BaseSugar::Hexose(Some(HexoseIsomer::Gulose)), &[
-        GlycanSubstituent::Deoxy,
-        GlycanSubstituent::Deoxy,
+        (GlycanSubstituent::Deoxy, None),
+        (GlycanSubstituent::Deoxy, None),
     ]),
     ("par", BaseSugar::Hexose(Some(HexoseIsomer::Altrose)), &[
-        GlycanSubstituent::Deoxy,
-        GlycanSubstituent::Deoxy,
+        (GlycanSubstituent::Deoxy, None),
+        (GlycanSubstituent::Deoxy, None),
     ]),
     ("dig", BaseSugar::Hexose(Some(HexoseIsomer::Allose)), &[
-        GlycanSubstituent::Deoxy,
-        GlycanSubstituent::Deoxy,
+        (GlycanSubstituent::Deoxy, None),
+        (GlycanSubstituent::Deoxy, None),
     ]),
     ("col", BaseSugar::Hexose(Some(HexoseIsomer::Talose)), &[
-        GlycanSubstituent::Deoxy,
-        GlycanSubstituent::Deoxy,
+        (GlycanSubstituent::Deoxy, None),
+        (GlycanSubstituent::Deoxy, None),
     ]),
     ("psi", BaseSugar::Hexose(Some(HexoseIsomer::Psicose)), &[]),
     ("fru", BaseSugar::Hexose(Some(HexoseIsomer::Fructose)), &[]),
     ("sor", BaseSugar::Hexose(Some(HexoseIsomer::Sorbose)), &[]),
     ("tag", BaseSugar::Hexose(Some(HexoseIsomer::Tagatose)), &[]),
+    ("vionac", BaseSugar::Hexose(Some(HexoseIsomer::Glucose)), &[
+        (GlycanSubstituent::Deoxy, Some(4)),
+        (GlycanSubstituent::Deoxy, Some(6)),
+        (GlycanSubstituent::NAcetyl, Some(4)),
+    ]),
+    ("vio", BaseSugar::Hexose(Some(HexoseIsomer::Glucose)), &[
+        (GlycanSubstituent::Amino, Some(4)),
+        (GlycanSubstituent::Deoxy, Some(4)),
+        (GlycanSubstituent::Deoxy, Some(6)),
+    ]),
     ("xul", BaseSugar::Pentose(Some(PentoseIsomer::Xylulose)), &[
     ]),
     (
@@ -111,52 +123,52 @@ pub(crate) const BASE_SUGARS: &[(&str, BaseSugar, &[GlycanSubstituent])] = &[
         &[],
     ),
     ("murnac", BaseSugar::Hexose(Some(HexoseIsomer::Glucose)), &[
-        GlycanSubstituent::NAcetyl,
-        GlycanSubstituent::OCarboxyEthyl,
+        (GlycanSubstituent::NAcetyl, None),
+        (GlycanSubstituent::OCarboxyEthyl, None),
     ]),
     ("murngc", BaseSugar::Hexose(Some(HexoseIsomer::Glucose)), &[
-        GlycanSubstituent::NGlycolyl,
-        GlycanSubstituent::OCarboxyEthyl,
+        (GlycanSubstituent::NGlycolyl, None),
+        (GlycanSubstituent::OCarboxyEthyl, None),
     ]),
     ("mur", BaseSugar::Hexose(Some(HexoseIsomer::Glucose)), &[
-        GlycanSubstituent::Amino,
-        GlycanSubstituent::OCarboxyEthyl,
+        (GlycanSubstituent::Amino, None),
+        (GlycanSubstituent::OCarboxyEthyl, None),
     ]),
     (
         "api",
         BaseSugar::Tetrose(Some(TetroseIsomer::Erythrose)),
-        &[GlycanSubstituent::HydroxyMethyl],
+        &[(GlycanSubstituent::HydroxyMethyl, None)],
     ),
     ("dha", BaseSugar::Heptose(None), &[
-        GlycanSubstituent::Acid,
-        GlycanSubstituent::Acid,
-        GlycanSubstituent::Deoxy,
+        (GlycanSubstituent::Acid, None),
+        (GlycanSubstituent::Acid, None),
+        (GlycanSubstituent::Deoxy, None),
     ]),
     ("bac", BaseSugar::Hexose(Some(HexoseIsomer::Glucose)), &[
-        GlycanSubstituent::Amino,
-        GlycanSubstituent::Amino,
-        GlycanSubstituent::Deoxy,
+        (GlycanSubstituent::Amino, None),
+        (GlycanSubstituent::Amino, None),
+        (GlycanSubstituent::Deoxy, None),
     ]),
     ("pse", BaseSugar::Nonose(Some(NonoseIsomer::Pse)), &[
-        GlycanSubstituent::Acid,
-        GlycanSubstituent::Amino,
-        GlycanSubstituent::Amino,
-        GlycanSubstituent::Deoxy,
-        GlycanSubstituent::Deoxy,
+        (GlycanSubstituent::Acid, None),
+        (GlycanSubstituent::Amino, None),
+        (GlycanSubstituent::Amino, None),
+        (GlycanSubstituent::Deoxy, None),
+        (GlycanSubstituent::Deoxy, None),
     ]),
     ("leg", BaseSugar::Nonose(Some(NonoseIsomer::Leg)), &[
-        GlycanSubstituent::Acid,
-        GlycanSubstituent::Amino,
-        GlycanSubstituent::Amino,
-        GlycanSubstituent::Deoxy,
-        GlycanSubstituent::Deoxy,
+        (GlycanSubstituent::Acid, None),
+        (GlycanSubstituent::Amino, None),
+        (GlycanSubstituent::Amino, None),
+        (GlycanSubstituent::Deoxy, None),
+        (GlycanSubstituent::Deoxy, None),
     ]),
     ("aci", BaseSugar::Nonose(Some(NonoseIsomer::Aci)), &[
-        GlycanSubstituent::Acid,
-        GlycanSubstituent::Amino,
-        GlycanSubstituent::Amino,
-        GlycanSubstituent::Deoxy,
-        GlycanSubstituent::Deoxy,
+        (GlycanSubstituent::Acid, None),
+        (GlycanSubstituent::Amino, None),
+        (GlycanSubstituent::Amino, None),
+        (GlycanSubstituent::Deoxy, None),
+        (GlycanSubstituent::Deoxy, None),
     ]),
 ];
 
@@ -312,6 +324,28 @@ pub(crate) static GLYCAN_PARSE_LIST: LazyLock<Vec<(Vec<&'static str>, MonoSaccha
                     configuration: None,
                 },
             ),
+            (vec!["VioNAc"], MonoSaccharide {
+                base_sugar: BaseSugar::Hexose(Some(HexoseIsomer::Glucose)),
+                substituents: vec![
+                    (GlycanSubstituent::Deoxy, Some(4)),
+                    (GlycanSubstituent::Deoxy, Some(6)),
+                    (GlycanSubstituent::NAcetyl, Some(4)),
+                ]
+                .into(),
+                furanose: false,
+                configuration: None,
+            }),
+            (vec!["Vio"], MonoSaccharide {
+                base_sugar: BaseSugar::Hexose(Some(HexoseIsomer::Glucose)),
+                substituents: vec![
+                    (GlycanSubstituent::Amino, Some(4)),
+                    (GlycanSubstituent::Deoxy, Some(4)),
+                    (GlycanSubstituent::Deoxy, Some(6)),
+                ]
+                .into(),
+                furanose: false,
+                configuration: None,
+            }),
             (vec!["HexNS"], MonoSaccharide {
                 base_sugar: BaseSugar::Hexose(None),
                 substituents: vec![

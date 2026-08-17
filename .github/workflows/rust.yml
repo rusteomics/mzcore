@@ -41,6 +41,9 @@ jobs:
         cargo build -p mzcore --no-default-features --features isotopes,glycan-render
         cargo build -p mzcore --no-default-features --features isotopes,glycan-render,search-index
         cargo build -p mzannotate
+        cargo build -p mzannotate --no-default-features
+        cargo build -p mzannotate --no-default-features --features isotopes
+        cargo build -p mzident
         cargo build -p mzident --no-default-features
         cargo build -p mzident --no-default-features --features mzannotate
         cargo build -p imgt

@@ -6,7 +6,7 @@ use mzcore::{
     system::thomson,
 };
 #[cfg(feature = "isotopes")]
-use mzcore::{molecular_formula, system::MassOverCharge};
+use mzcore::{chemistry::MassOutputType, molecular_formula};
 use mzdata::mzpeaks::PeakCollection;
 
 #[cfg(feature = "isotopes")]
@@ -55,44 +55,47 @@ pub trait AnnotatableSpectrum<Mode: MassOutputMode>: Sized {
                 if let Some(index) = annotated.peaks.search(mz.get::<thomson>(), tolerance) {
                     #[cfg(feature = "isotopes")]
                     if parameters.match_isotopes
-                        && let Some(formula) = &fragment.formula
+                        && let Some(output) = &fragment.formula
                     {
-                        let envelope =
-                            formula.isotopic_distribution(parameters.isotope_minimum_probability);
-                        let base = if mode == MassMode::Monoisotopic {
-                            mz
-                        } else {
-                            formula.mass(MassMode::Monoisotopic) / fragment.charge.to_float()
-                        };
-                        let mut matched_envelope = Vec::with_capacity(envelope.len());
-                        let mut matches = Vec::with_capacity(envelope.len());
-                        for (index, intensity) in envelope.into_iter().enumerate() {
-                            let isotope_mz =
-                                base + (index as f64 * isotope_shift) / fragment.charge.to_float();
-                            let peak =
-                                annotated.peaks.search(isotope_mz.get::<thomson>(), tolerance);
-                            matched_envelope.push((
-                                isotope_mz.value,
-                                peak.map_or(0.0, |i| annotated.peaks[i].mz.value),
-                                intensity.sqrt(),
-                                peak.map_or(0.0, |i| {
-                                    f64::from(annotated.peaks[i].intensity.sqrt())
-                                }),
-                            ));
-                            matches.push(peak);
-                        }
-                        let similarity = cosine_similarity(&matched_envelope);
-                        if similarity >= parameters.isotope_filter {
-                            for (index, peak) in matches.into_iter().enumerate() {
-                                if let Some(peak) = peak {
-                                    let frag = fragment
-                                        .clone()
-                                        .with_isotope(&[(index as i32, Isotope::General)]);
-                                    let frag_index = annotated.peaks[peak]
-                                        .annotations
-                                        .binary_search(&frag)
-                                        .unwrap_or_else(|i| i);
-                                    annotated.peaks[peak].annotations.insert(frag_index, frag);
+                        let formula = output.as_formula();
+                        if !formula.elements().is_empty() {
+                            let envelope = formula
+                                .isotopic_distribution(parameters.isotope_minimum_probability);
+                            let base = if mode == MassMode::Monoisotopic {
+                                mz
+                            } else {
+                                formula.mass(MassMode::Monoisotopic) / fragment.charge.to_float()
+                            };
+                            let mut matched_envelope = Vec::with_capacity(envelope.len());
+                            let mut matches = Vec::with_capacity(envelope.len());
+                            for (index, intensity) in envelope.into_iter().enumerate() {
+                                let isotope_mz = base
+                                    + (index as f64 * isotope_shift) / fragment.charge.to_float();
+                                let peak =
+                                    annotated.peaks.search(isotope_mz.get::<thomson>(), tolerance);
+                                matched_envelope.push((
+                                    isotope_mz.value,
+                                    peak.map_or(0.0, |i| annotated.peaks[i].mz.value),
+                                    intensity.sqrt(),
+                                    peak.map_or(0.0, |i| {
+                                        f64::from(annotated.peaks[i].intensity.sqrt())
+                                    }),
+                                ));
+                                matches.push(peak);
+                            }
+                            let similarity = cosine_similarity(&matched_envelope);
+                            if similarity >= parameters.isotope_filter {
+                                for (index, peak) in matches.into_iter().enumerate() {
+                                    if let Some(peak) = peak {
+                                        let frag = fragment
+                                            .clone()
+                                            .with_isotope(&[(index as i32, Isotope::General)]);
+                                        let frag_index = annotated.peaks[peak]
+                                            .annotations
+                                            .binary_search(&frag)
+                                            .unwrap_or_else(|i| i);
+                                        annotated.peaks[peak].annotations.insert(frag_index, frag);
+                                    }
                                 }
                             }
                         }
