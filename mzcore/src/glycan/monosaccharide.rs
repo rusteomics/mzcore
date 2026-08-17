@@ -31,15 +31,13 @@ impl Molecule for MonoSaccharide {
         sequence_index: SequencePosition,
         peptidoform_index: usize,
     ) -> Mode::Output {
-        (self
-            .base_sugar
+        self.base_sugar
             .calculate_mass_inner::<Mode>(sequence_index, peptidoform_index)
             + self
                 .substituents
                 .iter()
                 .map(|s| s.0.calculate_mass_inner::<Mode>(sequence_index, peptidoform_index))
-                .sum::<Mode::Output>())
-        .into()
+                .sum::<Mode::Output>()
     }
 }
 
