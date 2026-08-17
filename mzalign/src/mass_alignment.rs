@@ -230,6 +230,7 @@ pub(super) fn align_cached<
             }
         }
     }
+
     let (start_a, start_b, path) = matrix.trace_path(align_type, global_highest);
     let score = determine_final_score(
         peptidoform_a,

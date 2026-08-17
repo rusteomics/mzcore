@@ -36,7 +36,7 @@ static ID_ERROR: (&str, &str) = (
 
 format_family!(
     Peaks,
-    SemiAmbiguous, PeptidoformPresent, [&V13_DIA, &V12, &V11, &V11_FEATURES, &XPLUS, &AB, &X_PATCHED, &X, &DB_PEPTIDE, &DB_PSM, &DB_PROTEIN_PEPTIDE], b',', None;
+    SemiAmbiguous, PeptidoformPresent, [&V13_5, &V13_DIA, &V12, &V11, &V11_FEATURES, &XPLUS, &AB, &X_PATCHED, &X, &DB_PEPTIDE, &DB_PSM, &DB_PROTEIN_PEPTIDE], b',', None;
     required {
         peptide: (FlankingSequence, ThinVec<Peptidoform<SemiAmbiguous>>, FlankingSequence), |location: Location, ontologies: &Ontologies| {
             let n_flanking: Option<AminoAcid>  =
@@ -423,6 +423,46 @@ pub const V12: PeaksFormat = PeaksFormat {
     precursor_id: OptionalColumn::NotAvailable,
     k0_range: OptionalColumn::NotAvailable,
 };
+/// Version 13.5 of PEAKS export
+pub const V13_5: PeaksFormat = PeaksFormat {
+    version: PeaksVersion::V13_5,
+    scan_number: OptionalColumn::Required("scan"),
+    peptide: "peptide",
+    alc: OptionalColumn::Required("alc (%)"),
+    mz: "m/z",
+    z: OptionalColumn::Required("z"),
+    mass: OptionalColumn::Required("mass"),
+    rt: "rt",
+    area: "area",
+    ptm: OptionalColumn::Required("ptm"),
+    local_confidence: OptionalColumn::Required("local confidence (%)"),
+    tag: OptionalColumn::Required("tag(>=0%)"),
+    mode: OptionalColumn::Required("mode"),
+    fraction: OptionalColumn::NotAvailable,
+    raw_file: OptionalColumn::NotAvailable,
+    feature: OptionalColumn::Required("feature id"),
+    de_novo_score: OptionalColumn::NotAvailable,
+    predicted_rt: OptionalColumn::NotAvailable,
+    ascore: OptionalColumn::NotAvailable,
+    found_by: OptionalColumn::NotAvailable,
+    logp: OptionalColumn::NotAvailable,
+    feature_tryp_cid: OptionalColumn::NotAvailable,
+    feature_tryp_ead: OptionalColumn::NotAvailable,
+    area_tryp_ead: OptionalColumn::NotAvailable,
+    id: OptionalColumn::NotAvailable,
+    from_chimera: OptionalColumn::NotAvailable,
+    unique: OptionalColumn::NotAvailable,
+    protein_group: OptionalColumn::NotAvailable,
+    protein_id: OptionalColumn::NotAvailable,
+    protein_accession: OptionalColumn::NotAvailable,
+    start: OptionalColumn::NotAvailable,
+    end: OptionalColumn::NotAvailable,
+    quality: OptionalColumn::NotAvailable,
+    rt_begin: OptionalColumn::NotAvailable,
+    rt_end: OptionalColumn::NotAvailable,
+    precursor_id: OptionalColumn::NotAvailable,
+    k0_range: OptionalColumn::NotAvailable,
+};
 /// Version Ab of PEAKS export
 pub const AB: PeaksFormat = PeaksFormat {
     version: PeaksVersion::Ab,
@@ -614,6 +654,8 @@ pub enum PeaksVersion {
     V12,
     /// Version 13 Dia
     V13Dia,
+    /// Version 13.5
+    V13_5,
 }
 
 impl std::fmt::Display for PeaksVersion {
@@ -636,6 +678,7 @@ impl PSMFileFormatVersion<PeaksFormat> for PeaksVersion {
             Self::V11Features => V11_FEATURES,
             Self::V12 => V12,
             Self::V13Dia => V13_DIA,
+            Self::V13_5 => V13_5,
         }
     }
 
@@ -652,6 +695,7 @@ impl PSMFileFormatVersion<PeaksFormat> for PeaksVersion {
             Self::V11Features => "11 features",
             Self::V12 => "12",
             Self::V13Dia => "V13 Dia",
+            Self::V13_5 => "V13.5",
         }
     }
 }
