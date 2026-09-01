@@ -133,3 +133,39 @@ fn read_all_files() {
     //     "Some interpretation attributes unused"
     // );
 }
+
+#[test]
+fn a_second_and_a_minute_declaration_of_one_instant_agree() {
+    /// The same instant, declared twice: 1719.50946 s is 28.658491 min.
+    const LIBRARY: &str = "<mzSpecLib>
+MS:1003186|library format version=1.0
+<Spectrum=1>
+[1]MS:1000894|retention time=1719.509460
+[1]UO:0000000|unit=UO:0000010|second
+<Peaks>
+
+<Spectrum=2>
+[1]MS:1000894|retention time=28.658491
+[1]UO:0000000|unit=UO:0000031|minute
+<Peaks>
+";
+
+    let spectra: Vec<_> = MzSpecLibTextParser::open(
+        LIBRARY.as_bytes(),
+        None,
+        &mzcore::ontology::STATIC_ONTOLOGIES,
+    )
+    .unwrap()
+    .map(|s| s.unwrap())
+    .collect();
+
+    let times: Vec<f64> = spectra
+        .iter()
+        .map(|x| x.description.acquisition.scans[0].start_time)
+        .collect();
+
+    assert_eq!(times[0], times[1], "1719.50946 s is 28.658491 min");
+    // mzdata documents start_time as minutes (mzdata::/src/spectrum/scan_properties.rs:138). The
+    // tolerance is for the to_f32 the parser applies on the way in.
+    assert!((times[0] - 28.658_491).abs() < 1e-4, "got {}", times[0]);
+}
