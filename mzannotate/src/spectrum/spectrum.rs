@@ -3,11 +3,7 @@ use std::num::NonZeroU32;
 use mzcore::{chemistry::MassOutputMode, system::MassOverCharge};
 use mzcv::term;
 use mzdata::{
-    mzpeaks::{
-        MZPeakSetType,
-        peak_set::{PeakSetIter, PeakSetVec},
-        prelude::*,
-    },
+    mzpeaks::{MZPeakSetType, peak_set::PeakSetVec, prelude::*},
     params::{ParamDescribed, ParamLike, Unit, Value, ValueRef},
     prelude::{IonProperties, SpectrumLike},
     spectrum::{MultiLayerSpectrum, SignalContinuity, SpectrumDescription},
@@ -264,7 +260,10 @@ impl<Mode: MassOutputMode> From<AnnotatedSpectrum<Mode>> for MultiLayerSpectrum 
 impl<Mode: MassOutputMode> crate::mzspeclib::MzSpecLibEncode for AnnotatedSpectrum<Mode> {
     type InterpretationMemberIter = Vec<(Id, Attributes)>;
     /// The peak type
-    type Peak = AnnotatedPeak<Fragment<Mode>>;
+    type Peak<'a>
+        = &'a AnnotatedPeak<Fragment<Mode>>
+    where
+        Mode: 'a;
 
     /// The key for this spectrum
     fn key(&self) -> Id {
@@ -327,7 +326,7 @@ impl<Mode: MassOutputMode> crate::mzspeclib::MzSpecLibEncode for AnnotatedSpectr
     }
 
     /// The peaks
-    fn peaks(&self) -> PeakSetIter<'_, Self::Peak> {
+    fn peaks(&self) -> impl Iterator<Item = Self::Peak<'_>> {
         self.peaks.iter()
     }
 }

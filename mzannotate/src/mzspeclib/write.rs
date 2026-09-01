@@ -4,9 +4,8 @@ use std::{
     num::NonZeroU32,
 };
 
-use itertools::Itertools;
 use mzcv::term;
-use mzdata::{mzpeaks::peak_set::PeakSetIter, params::Value, prelude::*};
+use mzdata::{params::Value, prelude::*};
 
 use crate::{
     mzspeclib::{Attribute, AttributeValue, Attributes, EntryType, Id, LibraryHeader},
@@ -203,7 +202,14 @@ impl<Writer: Write> MzSpecLibTextWriter<Writer, HeaderWritten> {
                     write!(&mut self.writer, "\t")?;
                 }
                 write!(&mut self.writer, "\t")?;
-                write!(&mut self.writer, "{}", p.aggregations().join(","))?;
+                let mut trailing = false;
+                for agg in p.aggregations() {
+                    if trailing {
+                        write!(&mut self.writer, ",")?;
+                    }
+                    write!(&mut self.writer, "{agg}")?;
+                    trailing = true;
+                }
             }
             writeln!(&mut self.writer)?;
         }
@@ -235,7 +241,9 @@ pub struct HeaderWritten;
 /// A single spectrum that can be encoded as an mzSpecLib file
 pub trait MzSpecLibEncode {
     /// The peak type
-    type Peak: MzSpecLibPeakEncode;
+    type Peak<'a>: MzSpecLibPeakEncode + 'a
+    where
+        Self: 'a;
     /// The key for this spectrum
     fn key(&self) -> Id;
     /// The attributes for this spectrum
@@ -249,7 +257,7 @@ pub trait MzSpecLibEncode {
         &self,
     ) -> impl Iterator<Item = (Id, Attributes, Self::InterpretationMemberIter)>;
     /// The peaks
-    fn peaks(&self) -> PeakSetIter<'_, Self::Peak>;
+    fn peaks(&self) -> impl Iterator<Item = Self::Peak<'_>>;
 }
 
 /// A peak that can be encoded for use in an mzSpecLib file
@@ -259,5 +267,5 @@ pub trait MzSpecLibPeakEncode: CentroidLike {
     /// The annotations
     fn annotations(&self) -> impl Iterator<Item = &Self::A>;
     /// The aggregations
-    fn aggregations(&self) -> impl Iterator<Item = &str>;
+    fn aggregations(&self) -> impl Iterator<Item = impl std::fmt::Display>;
 }

@@ -1,3 +1,5 @@
+use std::fmt::Display;
+
 use mzcore::system::MassOverCharge;
 use mzdata::{
     mzpeaks::prelude::*,
@@ -212,7 +214,21 @@ impl<A: ToMzPAF> crate::mzspeclib::MzSpecLibPeakEncode for AnnotatedPeak<A> {
     }
 
     /// The aggregations
-    fn aggregations(&self) -> impl Iterator<Item = &str> {
+    fn aggregations(&self) -> impl Iterator<Item = impl Display> {
+        self.aggregations.iter().map(String::as_str)
+    }
+}
+
+impl<A: ToMzPAF> crate::mzspeclib::MzSpecLibPeakEncode for &AnnotatedPeak<A> {
+    type A = A;
+
+    /// The annotations
+    fn annotations(&self) -> impl Iterator<Item = &Self::A> {
+        self.annotations.iter()
+    }
+
+    /// The aggregations
+    fn aggregations(&self) -> impl Iterator<Item = impl Display> {
         self.aggregations.iter().map(String::as_str)
     }
 }
