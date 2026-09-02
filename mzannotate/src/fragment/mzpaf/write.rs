@@ -168,9 +168,6 @@ impl<Mode: MassOutputMode> ToMzPAF for Fragment<Mode> {
                 }
             }
             FragmentType::Precursor => write!(w, "p")?,
-            FragmentType::PrecursorSideChainLoss(_, aa) => {
-                write!(w, "p-r[sidechain_{aa}]")?;
-            }
             FragmentType::Immonium(_, seq) => write!(
                 w,
                 "I{}{}",

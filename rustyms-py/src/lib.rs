@@ -815,8 +815,6 @@ pub enum FragmentKind {
     B,
     /// Immonium ion
     immonium,
-    /// Precursor with amino acid side chain loss
-    precursor_side_chain_loss,
     /// Diagnostic ion for a given position
     diagnostic,
     /// Internal ion
@@ -842,9 +840,6 @@ impl From<mzannotate::fragment::FragmentKind> for FragmentKind {
             mzannotate::fragment::FragmentKind::Y => Self::Y,
             mzannotate::fragment::FragmentKind::B => Self::B,
             mzannotate::fragment::FragmentKind::immonium => Self::immonium,
-            mzannotate::fragment::FragmentKind::precursor_side_chain_loss => {
-                Self::precursor_side_chain_loss
-            }
             mzannotate::fragment::FragmentKind::diagnostic => Self::diagnostic,
             mzannotate::fragment::FragmentKind::internal => Self::internal,
             mzannotate::fragment::FragmentKind::precursor => Self::precursor,

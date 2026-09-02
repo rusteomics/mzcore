@@ -76,8 +76,6 @@ pub enum FragmentType {
     ),
     /// Immonium ion
     Immonium(Option<PeptidePosition>, SequenceElement<SemiAmbiguous>),
-    /// Precursor with amino acid side chain loss
-    PrecursorSideChainLoss(PeptidePosition, AminoAcid),
     /// Diagnostic ion for a given position
     Diagnostic(DiagnosticPosition),
     /// An internal fragment, potentially with the named bonds that resulted in this fragment
@@ -138,9 +136,6 @@ impl Ord for FragmentType {
             (Self::Immonium(s, _), Self::Immonium(o, _)) => s.cmp(o),
             (Self::Immonium(..), _) => Ordering::Less,
             (_, Self::Immonium(..)) => Ordering::Greater,
-            (Self::PrecursorSideChainLoss(s, _), Self::PrecursorSideChainLoss(o, _)) => s.cmp(o),
-            (Self::PrecursorSideChainLoss(..), _) => Ordering::Less,
-            (_, Self::PrecursorSideChainLoss(..)) => Ordering::Greater,
             (Self::Internal(st, sa, sb), Self::Internal(ot, oa, ob)) => {
                 sa.cmp(oa).then(sb.cmp(ob)).then(st.cmp(ot))
             }
@@ -221,8 +216,7 @@ impl FragmentType {
             | Self::x(n, _)
             | Self::y(n, _)
             | Self::z(n, _)
-            | Self::Diagnostic(DiagnosticPosition::Peptide(n, _))
-            | Self::PrecursorSideChainLoss(n, _) => Some(n),
+            | Self::Diagnostic(DiagnosticPosition::Peptide(n, _)) => Some(n),
             Self::Immonium(n, _) => n.as_ref(),
             _ => None,
         }
@@ -272,8 +266,9 @@ impl FragmentType {
             | Self::x(n, _)
             | Self::y(n, _)
             | Self::z(n, _)
-            | Self::Diagnostic(DiagnosticPosition::Peptide(n, _))
-            | Self::PrecursorSideChainLoss(n, _) => Some(n.series_number.to_string()),
+            | Self::Diagnostic(DiagnosticPosition::Peptide(n, _)) => {
+                Some(n.series_number.to_string())
+            }
             Self::Immonium(n, _) => n.map(|n| n.series_number.to_string()),
             Self::Diagnostic(DiagnosticPosition::Glycan(n, _)) => Some(n.label()),
             Self::Y(bonds) => Some(bonds.iter().map(GlycanPosition::label).join("Y")),
@@ -371,15 +366,6 @@ impl FragmentType {
                         .unwrap_or_else(|| format!("i{}", aa.aminoacid.name())),
                 ),
             ),
-            Self::PrecursorSideChainLoss(_, aa) => (
-                None,
-                Cow::Owned(
-                    aa.one_letter_code()
-                        .map(|c| format!("p-s{c}"))
-                        .or_else(|| aa.three_letter_code().map(|c| format!("p-s{c}")))
-                        .unwrap_or_else(|| format!("p-s{}", aa.name())),
-                ),
-            ),
             Self::Precursor => (None, Cow::Borrowed("p")),
             Self::Internal(fragmentation, ..) => (
                 None,
@@ -418,7 +404,6 @@ impl FragmentType {
             | Self::BComposition(..) => FragmentKind::B,
             Self::Diagnostic(_) => FragmentKind::diagnostic,
             Self::Immonium(..) => FragmentKind::immonium,
-            Self::PrecursorSideChainLoss(..) => FragmentKind::precursor_side_chain_loss,
             Self::Precursor => FragmentKind::precursor,
             Self::Internal(..) => FragmentKind::internal,
             Self::Unknown(_) => FragmentKind::unknown,
@@ -456,7 +441,6 @@ impl mzcore::space::Space for FragmentType {
             Self::B { b, y, end } => b.space() + y.space() + end.space(),
             Self::BComposition(c, a) | Self::YComposition(c, a) => c.space() + a.space(),
             Self::Immonium(p, s) => p.space() + s.space(),
-            Self::PrecursorSideChainLoss(p, a) => p.space() + a.space(),
             Self::Diagnostic(p) => p.space(),
             Self::Internal(p, a, b) => p.space() + a.space() + b.space(),
             Self::Unknown(s) => s.space(),
@@ -552,8 +536,6 @@ pub enum FragmentKind {
     B,
     /// Immonium ion
     immonium,
-    /// Precursor with amino acid side chain loss
-    precursor_side_chain_loss,
     /// Diagnostic ion for a given position
     diagnostic,
     /// Internal ion
@@ -579,12 +561,60 @@ impl Display for FragmentKind {
             Self::Y => "Y",
             Self::B => "oxonium",
             Self::immonium => "immonium",
-            Self::precursor_side_chain_loss => "precursor side chain loss",
             Self::diagnostic => "diagnostic",
             Self::internal => "m",
             Self::precursor => "precursor",
             Self::unknown => "unknown",
         })
+    }
+}
+
+impl FragmentKind {
+    /// Get the symbol used to denote this fragment type in mzPAF.
+    /// Note: this uses the not yet stable B and Y symbols, and uses `f` for the diagnostic.
+    pub const fn mzpaf_symbol(self) -> char {
+        match self {
+            Self::a => 'a',
+            Self::b => 'b',
+            Self::c => 'c',
+            Self::d => 'd',
+            Self::x => 'x',
+            Self::y => 'y',
+            Self::v => 'v',
+            Self::w => 'w',
+            Self::z => 'z',
+            Self::Y => 'Y',
+            Self::B => 'B',
+            Self::immonium => 'I',
+            Self::diagnostic => 'f',
+            Self::internal => 'm',
+            Self::precursor => 'p',
+            Self::unknown => '?',
+        }
+    }
+}
+
+impl From<char> for FragmentKind {
+    /// Parse a fragment kind from the mzPAF symbol
+    fn from(value: char) -> Self {
+        match value {
+            'a' => Self::a,
+            'b' => Self::b,
+            'c' => Self::c,
+            'd' => Self::d,
+            'x' => Self::x,
+            'y' => Self::y,
+            'v' => Self::v,
+            'w' => Self::w,
+            'z' => Self::z,
+            'Y' => Self::Y,
+            'B' => Self::B,
+            'I' => Self::immonium,
+            'f' => Self::diagnostic,
+            'm' => Self::internal,
+            'p' => Self::precursor,
+            _ => Self::unknown,
+        }
     }
 }
 

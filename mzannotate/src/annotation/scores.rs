@@ -272,7 +272,6 @@ impl<Mode: MassOutputMode> AnnotatedSpectrum<Mode> {
                 FragmentKind::Y,
                 FragmentKind::B,
                 FragmentKind::immonium,
-                FragmentKind::precursor_side_chain_loss,
                 FragmentKind::diagnostic,
                 FragmentKind::precursor,
             ]
