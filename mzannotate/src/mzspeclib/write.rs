@@ -263,9 +263,11 @@ pub trait MzSpecLibEncode {
 /// A peak that can be encoded for use in an mzSpecLib file
 pub trait MzSpecLibPeakEncode: CentroidLike {
     /// The annotation type, need to be able to be written as mzPAF
-    type A: ToMzPAF;
+    type A<'a>: ToMzPAF
+    where
+        Self: 'a;
     /// The annotations
-    fn annotations(&self) -> impl Iterator<Item = &Self::A>;
+    fn annotations(&self) -> impl Iterator<Item = Self::A<'_>>;
     /// The aggregations
     fn aggregations(&self) -> impl Iterator<Item = impl std::fmt::Display>;
 }

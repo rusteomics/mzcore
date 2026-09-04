@@ -54,7 +54,7 @@ mod test {
             .into_linear()
             .unwrap();
         let fragments = peptide.generate_theoretical_fragments::<OutputMonoIsotopic>(
-            mzcore::system::isize::Charge::new::<mzcore::system::e>(1),
+            Some(mzcore::system::isize::Charge::new::<mzcore::system::e>(1)),
             FragmentationModel::all(),
         );
         println!("{}", fragments.len());

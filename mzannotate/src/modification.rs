@@ -16,7 +16,7 @@ pub(crate) fn generate_theoretical_fragments<Mode: MassOutputMode>(
     model: &FragmentationModel,
     peptidoform_ion_index: usize,
     peptidoform_index: usize,
-    charge_carriers: &mut CachedCharge,
+    charge_carriers: &mut Option<CachedCharge>,
     full_formula: &Multi<Mode::Output>,
     attachment: Option<(AminoAcid, SequencePosition)>,
 ) -> Vec<Fragment<Mode>> {
@@ -42,7 +42,7 @@ pub(crate) fn simple_modification_fragments<Mode: MassOutputMode>(
     model: &FragmentationModel,
     peptidoform_ion_index: usize,
     peptidoform_index: usize,
-    charge_carriers: &mut CachedCharge,
+    charge_carriers: &mut Option<CachedCharge>,
     full_formula: &Multi<Mode::Output>,
     attachment: Option<(AminoAcid, SequencePosition)>,
 ) -> Vec<Fragment<Mode>> {

@@ -126,7 +126,12 @@ impl<Mode: MassOutputMode> Fragment<Mode> {
     /// Get the mz
     pub fn mz(&self, mode: MassMode) -> Option<MassOverCharge> {
         self.formula.as_ref().map(|f| {
-            f.mass(mode) / system::f64::Charge::new::<system::charge::e>(self.charge.value as f64)
+            f.mass(mode)
+                / if self.charge.value == 0 {
+                    system::f64::Charge::new::<system::e>(1.0)
+                } else {
+                    self.charge.to_float()
+                }
         })
     }
 
@@ -174,10 +179,14 @@ impl<Mode: MassOutputMode> Fragment<Mode> {
         annotation: &FragmentType,
         termini: &Multi<Mode::Output>,
         neutral_losses: &[Vec<NeutralLoss>],
-        charge_carriers: &mut CachedCharge,
+        charge_carriers: &mut Option<CachedCharge>,
         charge_range: ChargeRange,
     ) -> Vec<Self> {
-        let charges = charge_carriers.range(charge_range);
+        let charges = charge_carriers
+            .as_mut()
+            .map_or(vec![MolecularCharge::proton(Charge::default())], |c| {
+                c.range(charge_range)
+            });
         let losses = std::iter::once(None)
             .chain(neutral_losses.iter().map(Some))
             .collect::<Vec<_>>();
@@ -238,10 +247,14 @@ impl<Mode: MassOutputMode> Fragment<Mode> {
         annotation: &FragmentType,
         termini: &Multi<Mode::Output>,
         neutral_losses: &[Vec<NeutralLoss>],
-        charge_carriers: &mut CachedCharge,
+        charge_carriers: &mut Option<CachedCharge>,
         settings: &PossiblePrimaryIons,
     ) -> Vec<Self> {
-        let charges = charge_carriers.range(settings.1);
+        let charges = charge_carriers
+            .as_mut()
+            .map_or(vec![MolecularCharge::proton(Charge::default())], |c| {
+                c.range(settings.1)
+            });
         let losses = std::iter::once(None)
             .chain(settings.0.iter().map(Some))
             .chain(neutral_losses.iter().map(Some))
@@ -318,11 +331,14 @@ impl<Mode: MassOutputMode> Fragment<Mode> {
     /// Create a copy of this fragment with the given charges
     pub fn with_charge_range(
         self,
-        charge_carriers: &mut CachedCharge,
+        charge_carriers: &mut Option<CachedCharge>,
         charge_range: ChargeRange,
     ) -> impl Iterator<Item = Self> {
         charge_carriers
-            .range(charge_range)
+            .as_mut()
+            .map_or(vec![MolecularCharge::proton(Charge::default())], |c| {
+                c.range(charge_range)
+            })
             .into_iter()
             .map(move |c| self.with_charge(&c))
     }

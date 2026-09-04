@@ -707,8 +707,10 @@ fn intra_link() {
         true,
         false,
     );
-    let fragments = peptide
-        .generate_theoretical_fragments::<OutputMonoIsotopic>(Charge::new::<system::e>(2), &model);
+    let fragments = peptide.generate_theoretical_fragments::<OutputMonoIsotopic>(
+        Some(Charge::new::<system::e>(2)),
+        &model,
+    );
     let doubly_annotated = fragments
         .iter()
         .filter(|f| f.formula.as_ref().unwrap().labels().len() > 2)
@@ -726,8 +728,10 @@ fn ensure_no_double_xl_labels_breaking() {
         .b(PrimaryIonSeries::default())
         .y(PrimaryIonSeries::default())
         .allow_cross_link_cleavage(true);
-    let fragments = peptide
-        .generate_theoretical_fragments::<OutputMonoIsotopic>(Charge::new::<system::e>(2), &model);
+    let fragments = peptide.generate_theoretical_fragments::<OutputMonoIsotopic>(
+        Some(Charge::new::<system::e>(2)),
+        &model,
+    );
     let doubly_annotated = fragments
         .iter()
         .filter(|f| {
@@ -759,8 +763,10 @@ fn ensure_no_double_xl_labels_non_breaking() {
         .b(PrimaryIonSeries::default())
         .y(PrimaryIonSeries::default())
         .allow_cross_link_cleavage(false);
-    let fragments = peptide
-        .generate_theoretical_fragments::<OutputMonoIsotopic>(Charge::new::<system::e>(2), &model);
+    let fragments = peptide.generate_theoretical_fragments::<OutputMonoIsotopic>(
+        Some(Charge::new::<system::e>(2)),
+        &model,
+    );
     let doubly_annotated = fragments
         .iter()
         .filter(|f| {
@@ -794,8 +800,10 @@ fn ensure_no_double_xl_labels_small_breaking() {
         .b(PrimaryIonSeries::default())
         .y(PrimaryIonSeries::default())
         .allow_cross_link_cleavage(true);
-    let fragments = peptide
-        .generate_theoretical_fragments::<OutputMonoIsotopic>(Charge::new::<system::e>(2), &model);
+    let fragments = peptide.generate_theoretical_fragments::<OutputMonoIsotopic>(
+        Some(Charge::new::<system::e>(2)),
+        &model,
+    );
     let doubly_annotated = fragments
         .iter()
         .filter(|f| f.formula.as_ref().unwrap().labels().len() > 2)
@@ -815,8 +823,10 @@ fn ensure_no_double_xl_labels_small_non_breaking() {
         .b(PrimaryIonSeries::default())
         .y(PrimaryIonSeries::default())
         .allow_cross_link_cleavage(false);
-    let fragments = peptide
-        .generate_theoretical_fragments::<OutputMonoIsotopic>(Charge::new::<system::e>(2), &model);
+    let fragments = peptide.generate_theoretical_fragments::<OutputMonoIsotopic>(
+        Some(Charge::new::<system::e>(2)),
+        &model,
+    );
     let doubly_annotated = fragments
         .iter()
         .filter(|f| f.formula.as_ref().unwrap().labels().len() > 2)
@@ -835,7 +845,7 @@ fn test(
     let peptide = peptide.into();
     let mut calculated_fragments = peptide
         .generate_theoretical_fragments::<OutputMolecularFormula>(
-            Charge::new::<system::e>(charge),
+            Some(Charge::new::<system::e>(charge)),
             model,
         );
     let mut found = Vec::new();

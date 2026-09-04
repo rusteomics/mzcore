@@ -242,7 +242,7 @@ fn main() {
                     if let Some(threshold) = args.absolute_noise_threshold && let Some(peaks) = spectrum.peaks.as_mut() {
                             peaks.peaks.retain(|p: &mzdata::mzpeaks::CentroidPeak| p.intensity > threshold);
                     }
-                    let fragments = line.sequence.generate_theoretical_fragments(line.z, selected_model);
+                    let fragments = line.sequence.generate_theoretical_fragments(Some(line.z), selected_model);
                     let annotated = spectrum.annotate(
                         line.sequence.clone(),
                         &fragments,

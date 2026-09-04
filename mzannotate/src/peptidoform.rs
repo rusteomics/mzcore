@@ -29,7 +29,7 @@ pub trait PeptidoformFragmentation {
     /// contains charge carriers) and the given model.
     fn generate_theoretical_fragments<Mode: MassOutputMode>(
         &self,
-        max_charge: Charge,
+        max_charge: Option<Charge>,
         model: &FragmentationModel,
     ) -> Vec<Fragment<Mode>>;
 }
@@ -38,7 +38,7 @@ impl PeptidoformFragmentation for PeptidoformIonSet {
     /// Generate the theoretical fragments for this peptidoform ion set.
     fn generate_theoretical_fragments<Mode: MassOutputMode>(
         &self,
-        max_charge: Charge,
+        max_charge: Option<Charge>,
         model: &FragmentationModel,
     ) -> Vec<Fragment<Mode>> {
         let mut base = Vec::new();
@@ -53,7 +53,7 @@ impl PeptidoformFragmentation for PeptidoformIon {
     /// Generate the theoretical fragments for this peptidoform.
     fn generate_theoretical_fragments<Mode: MassOutputMode>(
         &self,
-        max_charge: Charge,
+        max_charge: Option<Charge>,
         model: &FragmentationModel,
     ) -> Vec<Fragment<Mode>> {
         peptidoform_ion_inner(self, max_charge, model, 0)
@@ -63,7 +63,7 @@ impl PeptidoformFragmentation for PeptidoformIon {
 /// Generate the theoretical fragments for this peptidoform.
 fn peptidoform_ion_inner<Mode: MassOutputMode>(
     peptidoform_ion: &PeptidoformIon,
-    max_charge: Charge,
+    max_charge: Option<Charge>,
     model: &FragmentationModel,
     peptidoform_ion_index: usize,
 ) -> Vec<Fragment<Mode>> {
@@ -82,20 +82,22 @@ fn peptidoform_ion_inner<Mode: MassOutputMode>(
 }
 
 /// Generate the theoretical fragments for this peptide, with the given maximal charge of the
-/// fragments, and the given model. With the global isotope modifications applied.
+/// fragments, and the given model. With the global isotope modifications applied. If the charge is
+/// None it is decharged data.
 /// # Panics
 /// If the global isotope replacement is invalid.
 pub(crate) fn generate_theoretical_fragments_inner<Complexity, Mode: MassOutputMode>(
     peptidoform: &Peptidoform<Complexity>,
-    max_charge: Charge,
+    max_charge: Option<Charge>,
     model: &FragmentationModel,
     peptidoform_ion_index: usize,
     peptidoform_index: usize,
     all_peptides: &[Peptidoform<Linked>],
 ) -> Vec<Fragment<Mode>> {
-    let default_charge = MolecularCharge::proton(max_charge);
-    let mut charge_carriers: CachedCharge =
-        peptidoform.get_charge_carriers().unwrap_or(&default_charge).into();
+    let default_charge = max_charge.map(|c| MolecularCharge::proton(c));
+    let mut charge_carriers: Option<CachedCharge> = default_charge
+        .as_ref()
+        .map(|c| CachedCharge::from(peptidoform.get_charge_carriers().unwrap_or(&c)));
 
     let mut output: Vec<Fragment<Mode>> =
         Vec::with_capacity(20 * peptidoform.sequence().len() + 75); // Empirically derived required size of the buffer (Derived from Hecklib)
@@ -545,7 +547,7 @@ impl<Complexity: AtMax<Linear>> PeptidoformFragmentation for Peptidoform<Complex
     /// If the global isotope replacement is invalid.
     fn generate_theoretical_fragments<Mode: MassOutputMode>(
         &self,
-        max_charge: Charge,
+        max_charge: Option<Charge>,
         model: &FragmentationModel,
     ) -> Vec<Fragment<Mode>> {
         generate_theoretical_fragments_inner(self, max_charge, model, 0, 0, &[])

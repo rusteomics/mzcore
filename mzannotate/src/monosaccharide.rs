@@ -1,5 +1,5 @@
 use mzcore::{
-    chemistry::{CachedCharge, MassOutputMode, Molecule},
+    chemistry::{CachedCharge, MassOutputMode, MolecularCharge, Molecule},
     glycan::MonoSaccharide,
     prelude::{AminoAcid, SequencePosition},
     quantities::Multi,
@@ -19,7 +19,7 @@ pub(crate) fn theoretical_fragments<Mode: MassOutputMode>(
     model: &FragmentationModel,
     peptidoform_ion_index: usize,
     peptidoform_index: usize,
-    charge_carriers: &mut CachedCharge,
+    charge_carriers: &mut Option<CachedCharge>,
     full_formula: &Multi<Mode::Output>,
     attachment: Option<(AminoAcid, SequencePosition)>,
 ) -> Vec<Fragment<Mode>> {
@@ -32,8 +32,16 @@ pub(crate) fn theoretical_fragments<Mode: MassOutputMode>(
         MonoSaccharide::composition_options(composition, model.glycan.compositional_range);
 
     // Generate compositional B and Y ions
-    let charges_other = charge_carriers.range(model.glycan.other_charge_range);
-    let charges_oxonium = charge_carriers.range(model.glycan.oxonium_charge_range);
+    let charges_other = charge_carriers
+        .as_mut()
+        .map_or(vec![MolecularCharge::proton(Charge::default())], |c| {
+            c.range(model.glycan.other_charge_range)
+        });
+    let charges_oxonium = charge_carriers
+        .as_mut()
+        .map_or(vec![MolecularCharge::proton(Charge::default())], |c| {
+            c.range(model.glycan.oxonium_charge_range)
+        });
     for fragment_composition in compositions {
         let formula = fragment_composition
             .iter()

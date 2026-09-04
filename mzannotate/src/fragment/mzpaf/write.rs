@@ -23,6 +23,12 @@ pub trait ToMzPAF {
     fn to_mz_paf(&self, w: impl std::fmt::Write) -> std::fmt::Result;
 }
 
+impl<T: ToMzPAF> ToMzPAF for &T {
+    fn to_mz_paf(&self, w: impl std::fmt::Write) -> std::fmt::Result {
+        T::to_mz_paf(self, w)
+    }
+}
+
 impl<Mode: MassOutputMode> ToMzPAF for Fragment<Mode> {
     /// Write the fragment as a [mzPAF](https://www.psidev.info/mzPAF) string. Note that mzPAF
     /// does not have support for all complexities that are supported by this crate. So fragments

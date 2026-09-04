@@ -1092,12 +1092,12 @@ impl PeptidoformIonSet {
     ///   The theoretical fragments.
     fn generate_theoretical_fragments(
         &self,
-        max_charge: isize,
+        max_charge: Option<isize>,
         model: &FragmentationModel,
     ) -> Vec<Fragment> {
         self.0
             .generate_theoretical_fragments(
-                mzcore::system::isize::Charge::new::<mzcore::system::e>(max_charge),
+                max_charge.map(|c| mzcore::system::isize::Charge::new::<mzcore::system::e>(c)),
                 &match_model(model),
             )
             .iter()
@@ -1159,7 +1159,7 @@ impl GlycanStructure {
     ///   The theoretical fragments.
     fn generate_theoretical_fragments(
         &self,
-        max_charge: isize,
+        max_charge: Option<isize>,
         model: &FragmentationModel,
     ) -> Vec<Fragment> {
         let full = self.0.formula();
@@ -1170,10 +1170,12 @@ impl GlycanStructure {
                 &match_model(model),
                 0,
                 0,
-                &mut mzcore::chemistry::MolecularCharge::proton(
-                    mzcore::system::isize::Charge::new::<mzcore::system::e>(max_charge),
-                )
-                .into(),
+                &mut max_charge.map(|c| {
+                    mzcore::chemistry::MolecularCharge::proton(
+                        mzcore::system::isize::Charge::new::<mzcore::system::e>(c),
+                    )
+                    .into()
+                }),
                 &full.into(),
                 None,
             )
@@ -1253,12 +1255,12 @@ impl PeptidoformIon {
     ///   The theoretical fragments.
     fn generate_theoretical_fragments(
         &self,
-        max_charge: isize,
+        max_charge: Option<isize>,
         model: &FragmentationModel,
     ) -> Vec<Fragment> {
         self.0
             .generate_theoretical_fragments(
-                mzcore::system::isize::Charge::new::<mzcore::system::e>(max_charge),
+                max_charge.map(|c| mzcore::system::isize::Charge::new::<mzcore::system::e>(c)),
                 &match_model(model),
             )
             .into_iter()
@@ -1452,12 +1454,12 @@ impl Peptidoform {
     ///   The theoretical fragments.
     fn generate_theoretical_fragments(
         &self,
-        max_charge: isize,
+        max_charge: Option<isize>,
         model: &FragmentationModel,
     ) -> Option<Vec<Fragment>> {
         self.0.clone().into_linear().map(|p| {
             p.generate_theoretical_fragments(
-                mzcore::system::isize::Charge::new::<mzcore::system::e>(max_charge),
+                max_charge.map(|c| mzcore::system::isize::Charge::new::<mzcore::system::e>(c)),
                 &match_model(model),
             )
             .into_iter()

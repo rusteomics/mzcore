@@ -206,10 +206,13 @@ impl<A> From<mzdata::mzpeaks::CentroidPeak> for AnnotatedPeak<A> {
 }
 
 impl<A: ToMzPAF> crate::mzspeclib::MzSpecLibPeakEncode for AnnotatedPeak<A> {
-    type A = A;
+    type A<'a>
+        = &'a A
+    where
+        Self: 'a;
 
     /// The annotations
-    fn annotations(&self) -> impl Iterator<Item = &Self::A> {
+    fn annotations(&self) -> impl Iterator<Item = Self::A<'_>> {
         self.annotations.iter()
     }
 
@@ -220,10 +223,13 @@ impl<A: ToMzPAF> crate::mzspeclib::MzSpecLibPeakEncode for AnnotatedPeak<A> {
 }
 
 impl<A: ToMzPAF> crate::mzspeclib::MzSpecLibPeakEncode for &AnnotatedPeak<A> {
-    type A = A;
+    type A<'a>
+        = &'a A
+    where
+        Self: 'a;
 
     /// The annotations
-    fn annotations(&self) -> impl Iterator<Item = &Self::A> {
+    fn annotations(&self) -> impl Iterator<Item = Self::A<'_>> {
         self.annotations.iter()
     }
 

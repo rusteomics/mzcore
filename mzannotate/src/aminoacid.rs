@@ -29,7 +29,7 @@ pub(crate) fn fragments<Mode: MassOutputMode>(
         Multi<Mode::Output>,
         HashMap<BackboneFragmentKind, Multi<Mode::Output>>,
     ),
-    charge_carriers: &mut CachedCharge,
+    charge_carriers: &mut Option<CachedCharge>,
     sequence_index: SequencePosition,
     sequence_length: usize,
     ions: &PossibleIons,
