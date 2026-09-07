@@ -47,7 +47,7 @@ fn main() {
             index.data().len()
         );
         index
-            .save_to_cache_at(std::path::Path::new("mzcore/src/databases/psimod.dat"))
+            .save_to_compressed_cache_at(std::path::Path::new("mzcore/src/databases/psimod.dat"))
             .unwrap();
         Some(index)
     } else {
@@ -69,7 +69,7 @@ fn main() {
                 index.data().len()
             );
             index
-                .save_to_cache_at(std::path::Path::new("mzcore/src/databases/resid.dat"))
+                .save_to_compressed_cache_at(std::path::Path::new("mzcore/src/databases/resid.dat"))
                 .unwrap();
             Some(index)
         } else {
@@ -102,7 +102,7 @@ fn main() {
             index.data().len()
         );
         index
-            .save_to_cache_at(std::path::Path::new("mzcore/src/databases/xlmod.dat"))
+            .save_to_compressed_cache_at(std::path::Path::new("mzcore/src/databases/xlmod.dat"))
             .unwrap();
         Some(index)
     } else {
@@ -147,7 +147,7 @@ fn main() {
             index.data().len()
         );
         index
-            .save_to_cache_at(std::path::Path::new("mzcore/src/databases/gnome.dat"))
+            .save_to_compressed_cache_at(std::path::Path::new("mzcore/src/databases/gnome.dat"))
             .unwrap();
     }
     if link
@@ -160,7 +160,7 @@ fn main() {
     }
     if let Some(index) = unimod {
         index
-            .save_to_cache_at(std::path::Path::new("mzcore/src/databases/unimod.dat"))
+            .save_to_compressed_cache_at(std::path::Path::new("mzcore/src/databases/unimod.dat"))
             .unwrap();
     }
 }

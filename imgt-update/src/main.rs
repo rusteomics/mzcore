@@ -10,7 +10,7 @@ use itertools::Itertools;
 use mzcv::CVIndex;
 
 fn main() {
-    let args: Vec<String> = std::env::args().skip(1).map(|v| v.to_ascii_lowercase()).collect();
+    let args: Vec<String> = std::env::args().skip(1).collect();
     let mut index = CVIndex::<IMGT>::empty();
 
     let errs = if let Some(path) = args.first() {
@@ -29,7 +29,9 @@ fn main() {
         index.version().last_updated().as_deref().unwrap_or("-"),
         index.len()
     );
-    index.save_to_cache_at(std::path::Path::new("imgt/src/IMGT.dat")).unwrap();
+    index
+        .save_to_compressed_cache_at(std::path::Path::new("imgt/src/IMGT.dat"))
+        .unwrap();
 
     // Build docs
     let mut docs = BufWriter::new(File::create("imgt/src/germlines.md").unwrap());

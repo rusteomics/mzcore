@@ -19,6 +19,7 @@ mzcv = { workspace = true }
 
 bincode = { workspace = true }
 context_error = { workspace = true }
+flate2 = { workspace = true }
 itertools = { workspace = true }
 rayon = { workspace = true, optional = true }
 serde = { workspace = true }

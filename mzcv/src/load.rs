@@ -89,6 +89,39 @@ impl<CV: CVSource> CVIndex<CV> {
         Ok(())
     }
 
+    /// Store this index compressed using `flate2` at a certain location.
+    /// # Errors
+    /// If the file could not be written to.
+    pub fn save_to_compressed_cache_at(
+        &self,
+        path: &Path,
+    ) -> Result<(), BoxedError<'static, CVError>> {
+        let file = std::fs::File::create(path).map_err(|e| {
+            BoxedError::new(
+                CVError::CacheCouldNotBeOpenend,
+                "CV cache file could not be openend",
+                e.to_string(),
+                Context::default().source(path.to_string_lossy()).to_owned(),
+            )
+        })?;
+        let mut writer =
+            flate2::write::GzEncoder::new(BufWriter::new(file), flate2::Compression::best());
+        bincode::encode_into_std_write(
+            (self.version().clone(), self.data()),
+            &mut writer,
+            bincode::config::standard(),
+        )
+        .map_err(|e| {
+            BoxedError::new(
+                CVError::CacheCouldNotBeMade,
+                "CV cache file could not be made",
+                e.to_string(),
+                Context::default().source(path.to_string_lossy()).to_owned(),
+            )
+        })?;
+        Ok(())
+    }
+
     /// Store the uncompressed file at a certain location.
     /// # Errors
     /// If the file could not be written to.

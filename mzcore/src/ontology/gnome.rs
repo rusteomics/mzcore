@@ -59,12 +59,14 @@ impl CVSource for Gnome {
         #[cfg(not(feature = "internal-no-data"))]
         {
             use bincode::config::Configuration;
-            let cache = bincode::decode_from_slice::<(CVVersion, Self::Structure), Configuration>(
-                include_bytes!("../databases/gnome.dat"),
-                Configuration::default(),
-            )
-            .unwrap()
-            .0;
+            let buf = std::io::Cursor::new(include_bytes!("../databases/gnome.dat"));
+            let mut reader = flate2::bufread::GzDecoder::new(buf);
+            let cache = bincode::decode_from_std_read::<
+                (CVVersion, Self::Structure),
+                Configuration,
+                _,
+            >(&mut reader, Configuration::default())
+            .unwrap();
             Some(cache)
         }
         #[cfg(feature = "internal-no-data")]
