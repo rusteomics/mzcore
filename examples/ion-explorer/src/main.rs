@@ -220,14 +220,11 @@ fn merge_stack(
                 points[index].total_intensity += f64::from(found_peak.intensity);
             }
             Err(index) => {
-                points.insert(
-                    index,
-                    Point {
-                        mass: normalised_mass,
-                        count: 1,
-                        total_intensity: f64::from(found_peak.intensity),
-                    },
-                );
+                points.insert(index, Point {
+                    mass: normalised_mass,
+                    count: 1,
+                    total_intensity: f64::from(found_peak.intensity),
+                });
             }
         }
     }

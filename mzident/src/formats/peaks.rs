@@ -36,7 +36,7 @@ static ID_ERROR: (&str, &str) = (
 
 format_family!(
     Peaks,
-    SemiAmbiguous, PeptidoformPresent, [&V13_5, &V13_DIA, &V12, &V11, &V11_FEATURES, &XPLUS, &AB, &X_PATCHED, &X, &DB_PEPTIDE, &DB_PSM, &DB_PROTEIN_PEPTIDE], b',', None;
+    SemiAmbiguous, PeptidoformPresent, [&V12, &V13_5, &V13_DIA, &V11, &V11_FEATURES, &XPLUS, &AB, &X_PATCHED, &X, &DB_PEPTIDE, &DB_PSM, &DB_PROTEIN_PEPTIDE], b',', None;
     required {
         peptide: (FlankingSequence, ThinVec<Peptidoform<SemiAmbiguous>>, FlankingSequence), |location: Location, ontologies: &Ontologies| {
             let n_flanking: Option<AminoAcid>  =
