@@ -239,6 +239,9 @@ impl PSMFileFormatVersion<InstaNovoFormat> for InstaNovoVersion {
     }
 }
 
+/// Validates that all required columns for each version are present.
+/// # Errors
+/// If a required column is missing.
 fn validate_instanovo_schema(
     source: &CsvLine,
     parsed: &InstaNovoPSM,

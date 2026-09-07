@@ -329,7 +329,7 @@ impl OboValue {
                 match unit {
                     "xsd:double" => "double",
                     "xsd:decimal" => "decimal",
-                    "xsd:float" | _ => "float",
+                    _ => "float", // "xsd:float"
                 },
                 float_digits(value),
             )),
@@ -358,7 +358,7 @@ impl OboValue {
                         "xsd:int" => "int",
                         "xsd:nonNegativeInteger" => "nonNegativeInteger",
                         "xsd:positiveInteger" => "positiveInteger",
-                        "xsd:integer" | _ => "integer",
+                        _ => "integer", // "xsd:integer"
                     },
                 ))
             }

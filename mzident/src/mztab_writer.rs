@@ -996,6 +996,9 @@ impl<W: Write, State: CanWriteProteins> MzTabWriter<W, State> {
     }
 }
 
+/// Write a modification in mzTab format.
+/// # Errors
+/// If the writer errors.
 fn write_mod(
     mut w: impl Write,
     prefix: &str,

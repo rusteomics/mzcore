@@ -62,7 +62,7 @@ macro_rules! format_family {
         $(#[doc = $ddoc])*
         #[non_exhaustive]
         #[derive(Clone, Debug, Default, Deserialize, PartialEq, Serialize)]
-        #[allow(missing_docs)]
+        #[allow(missing_docs, clippy::upper_case_acronyms)]
         pub struct [<$format PSM>] {
             $($(#[doc = $rdoc])? pub $rname: $rtyp,)*
             $($(#[doc = $odoc])? $(#[cfg(feature = $ocfg)])?  pub $oname: Option<$otyp>,)*

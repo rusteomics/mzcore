@@ -204,7 +204,7 @@ impl<Mode: MassOutputMode> PSMMetaData for AnnotatedSpectrum<Mode> {
         None
     }
 
-    fn annotated_spectrum(&self) -> Option<Cow<'_, AnnotatedSpectrum<Mode>>> {
+    fn annotated_spectrum(&self) -> Option<Cow<'_, Self>> {
         Some(Cow::Borrowed(self))
     }
 

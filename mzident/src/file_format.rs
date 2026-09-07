@@ -157,6 +157,7 @@ impl TryFrom<CVTerm> for KnownFileFormat {
     type Error = ();
 
     fn try_from(value: CVTerm) -> Result<Self, Self::Error> {
+        #[allow(clippy::unnested_or_patterns)]
         match value.term.accession {
             curie!(MS:1001348|FASTA format) => Ok(Self::Fasta),
             curie!(MS:1003996|DeepNovo) => {

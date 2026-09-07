@@ -165,6 +165,8 @@ impl MzTabPSM {
     /// Parse a mzTab file directly from a buffered reader (needed for the `.lines()` function).
     /// Returns the metadata, all proteins, and an iterator over the PSMs. The file is consumed
     /// until the first PSM line is detected and is consumed lazily after that.
+    /// # Errors
+    /// If the reader errors, or if this file contains invalid data.
     pub fn parse_reader<'a, T: BufRead + 'a>(
         reader: T,
         ontologies: &'a Ontologies,
@@ -309,7 +311,7 @@ impl MzTabPSM {
                         &fields,
                     )
                     .and_then(|line| {
-                        Self::from_line(&line, ontologies, &proteins, metadata.clone()).map_err(BoxedError::to_owned)
+                        Self::from_line(&line, ontologies, &proteins, &metadata).map_err(BoxedError::to_owned)
                     }),
                     Ok(
                         MzTabLine::MTD(line_index, ..)
@@ -335,7 +337,7 @@ impl MzTabPSM {
         line: &PSMLine<'a>,
         ontologies: &Ontologies,
         proteins: &HashMap<String, Arc<MzTabProtein>>,
-        metadata: Arc<MzTabMetadata>,
+        metadata: &Arc<MzTabMetadata>,
     ) -> Result<Self, BoxedError<'a, BasicKind>> {
         let (mod_column, mod_range) =
             line.required_column("modifications").map_err(BoxedError::to_owned)?;
@@ -916,16 +918,12 @@ fn parse_metadata<'a>(
                 }
             }
             m if m.starts_with("psm_search_engine_score[") && m.ends_with(']') => {
-                match CVTerm::from_str(&line[fields[2].clone()]) {
-                    Ok(term) => metadata.psm_search_engines.push(term),
-                    Err(err) => return Err(err),
-                }
+                let term = CVTerm::from_str(&line[fields[2].clone()])?;
+                metadata.psm_search_engines.push(term);
             }
             m if m.starts_with("protein_search_engine_score[") && m.ends_with(']') => {
-                match CVTerm::from_str(&line[fields[2].clone()]) {
-                    Ok(term) => metadata.protein_search_engines.push(term),
-                    Err(err) => return Err(err),
-                }
+                let term = CVTerm::from_str(&line[fields[2].clone()])?;
+                metadata.protein_search_engines.push(term);
             }
             "description" => metadata.description = line[fields[2].clone()].into(),
             "title" => metadata.title = line[fields[2].clone()].into(),
@@ -965,11 +963,10 @@ fn parse_metadata<'a>(
                 metadata.uri.push(line[fields[2].clone()].into());
             }
             "protein-quantification-unit" => {
-                metadata.protein_quantification_unit =
-                    match CVTerm::from_str(&line[fields[2].clone()]) {
-                        Ok(term) => Some(term),
-                        Err(err) => return Err(err),
-                    }
+                metadata.protein_quantification_unit = {
+                    let term = CVTerm::from_str(&line[fields[2].clone()])?;
+                    Some(term)
+                }
             }
             "custom" => {
                 metadata.custom.push(CVTerm::from_str(&line[fields[2].clone()])?);
@@ -984,9 +981,9 @@ fn parse_metadata<'a>(
                     })?;
             }
             "quantification_method" => {
-                metadata.quantification_method = match CVTerm::from_str(&line[fields[2].clone()]) {
-                    Ok(term) => Some(term),
-                    Err(err) => return Err(err),
+                metadata.quantification_method = {
+                    let term = CVTerm::from_str(&line[fields[2].clone()])?;
+                    Some(term)
                 }
             }
             m if m.starts_with("software[") => {
@@ -998,16 +995,16 @@ fn parse_metadata<'a>(
                         context.clone().add_highlight((0, fields[1].clone())),
                     ));
                 };
-                let index = match index.parse::<NonZeroUsize>().map_err(|err| {
-                    BoxedError::new(
-                        BasicKind::Error,
-                        "Invalid mzTab software identifier",
-                        format!("The software identifier {}", explain_number_error(&err)),
-                        context.clone().add_highlight((0, fields[1].clone())),
-                    )
-                }) {
-                    Ok(i) => i.get() - 1,
-                    Err(err) => return Err(err),
+                let index = {
+                    let i = index.parse::<NonZeroUsize>().map_err(|err| {
+                        BoxedError::new(
+                            BasicKind::Error,
+                            "Invalid mzTab software identifier",
+                            format!("The software identifier {}", explain_number_error(&err)),
+                            context.clone().add_highlight((0, fields[1].clone())),
+                        )
+                    })?;
+                    i.get() - 1
                 };
 
                 while metadata.software.len() <= index {
@@ -1042,16 +1039,16 @@ fn parse_metadata<'a>(
                         context.clone().add_highlight((0, fields[1].clone())),
                     ));
                 };
-                let index = match index.parse::<NonZeroUsize>().map_err(|err| {
-                    BoxedError::new(
-                        BasicKind::Error,
-                        "Invalid mzTab ms_run identifier",
-                        format!("The ms_run identifier {}", explain_number_error(&err)),
-                        context.clone().add_highlight((0, fields[1].clone())),
-                    )
-                }) {
-                    Ok(i) => i.get() - 1,
-                    Err(err) => return Err(err),
+                let index = {
+                    let i = index.parse::<NonZeroUsize>().map_err(|err| {
+                        BoxedError::new(
+                            BasicKind::Error,
+                            "Invalid mzTab ms_run identifier",
+                            format!("The ms_run identifier {}", explain_number_error(&err)),
+                            context.clone().add_highlight((0, fields[1].clone())),
+                        )
+                    })?;
+                    i.get() - 1
                 };
 
                 while metadata.ms_runs.len() <= index {
@@ -1062,22 +1059,22 @@ fn parse_metadata<'a>(
 
                 match tag {
                     "location" => elem.location = line[fields[2].clone()].into(),
-                    "format" => match CVTerm::from_str(&line[fields[2].clone()]) {
-                        Ok(i) => elem.format = Some(i),
-                        Err(err) => return Err(err),
-                    },
-                    "id_format" => match CVTerm::from_str(&line[fields[2].clone()]) {
-                        Ok(i) => elem.id_format = Some(i),
-                        Err(err) => return Err(err),
-                    },
-                    "fragmentation_method" => match CVTerm::from_str(&line[fields[2].clone()]) {
-                        Ok(i) => elem.fragmentation_method = Some(i),
-                        Err(err) => return Err(err),
-                    },
-                    "hash_method" => match CVTerm::from_str(&line[fields[2].clone()]) {
-                        Ok(i) => elem.hash_method = Some(i),
-                        Err(err) => return Err(err),
-                    },
+                    "format" => {
+                        let i = CVTerm::from_str(&line[fields[2].clone()])?;
+                        elem.format = Some(i);
+                    }
+                    "id_format" => {
+                        let i = CVTerm::from_str(&line[fields[2].clone()])?;
+                        elem.id_format = Some(i);
+                    }
+                    "fragmentation_method" => {
+                        let i = CVTerm::from_str(&line[fields[2].clone()])?;
+                        elem.fragmentation_method = Some(i);
+                    }
+                    "hash_method" => {
+                        let i = CVTerm::from_str(&line[fields[2].clone()])?;
+                        elem.hash_method = Some(i);
+                    }
                     "hash" => elem.hash = Some(line[fields[2].clone()].to_string()),
                     _ => {
                         return Err(BoxedError::new(
@@ -1098,16 +1095,16 @@ fn parse_metadata<'a>(
                         context.clone().add_highlight((0, fields[1].clone())),
                     ));
                 };
-                let index = match index.parse::<NonZeroUsize>().map_err(|err| {
-                    BoxedError::new(
-                        BasicKind::Error,
-                        "Invalid mzTab assay identifier",
-                        format!("The assay identifier {}", explain_number_error(&err)),
-                        context.clone().add_highlight((0, fields[1].clone())),
-                    )
-                }) {
-                    Ok(i) => i.get() - 1,
-                    Err(err) => return Err(err),
+                let index = {
+                    let i = index.parse::<NonZeroUsize>().map_err(|err| {
+                        BoxedError::new(
+                            BasicKind::Error,
+                            "Invalid mzTab assay identifier",
+                            format!("The assay identifier {}", explain_number_error(&err)),
+                            context.clone().add_highlight((0, fields[1].clone())),
+                        )
+                    })?;
+                    i.get() - 1
                 };
 
                 while metadata.assay.len() <= index {
@@ -1124,10 +1121,10 @@ fn parse_metadata<'a>(
                             &context.clone().add_highlight((0, fields[2].clone())),
                         )?);
                     }
-                    "quantification_reagent" => match CVTerm::from_str(&line[fields[2].clone()]) {
-                        Ok(i) => elem.quantification_reagent = i,
-                        Err(err) => return Err(err),
-                    },
+                    "quantification_reagent" => {
+                        let i = CVTerm::from_str(&line[fields[2].clone()])?;
+                        elem.quantification_reagent = i;
+                    }
                     "sample_ref" => {
                         elem.sample_ref = Some(parse_ref(
                             "sample",
@@ -1162,16 +1159,16 @@ fn parse_metadata<'a>(
                         context.clone().add_highlight((0, fields[1].clone())),
                     ));
                 };
-                let index = match index.parse::<NonZeroUsize>().map_err(|err| {
-                    BoxedError::new(
-                        BasicKind::Error,
-                        "Invalid mzTab instrument identifier",
-                        format!("The instrument identifier {}", explain_number_error(&err)),
-                        context.clone().add_highlight((0, fields[1].clone())),
-                    )
-                }) {
-                    Ok(i) => i.get() - 1,
-                    Err(err) => return Err(err),
+                let index = {
+                    let i = index.parse::<NonZeroUsize>().map_err(|err| {
+                        BoxedError::new(
+                            BasicKind::Error,
+                            "Invalid mzTab instrument identifier",
+                            format!("The instrument identifier {}", explain_number_error(&err)),
+                            context.clone().add_highlight((0, fields[1].clone())),
+                        )
+                    })?;
+                    i.get() - 1
                 };
 
                 while metadata.instruments.len() <= index {
@@ -1186,18 +1183,18 @@ fn parse_metadata<'a>(
                 let elem = &mut metadata.instruments[index];
 
                 match tag {
-                    "name" => match CVTerm::from_str(&line[fields[2].clone()]) {
-                        Ok(i) => elem.name = i,
-                        Err(err) => return Err(err),
-                    },
-                    "source" => match CVTerm::from_str(&line[fields[2].clone()]) {
-                        Ok(i) => elem.source = i,
-                        Err(err) => return Err(err),
-                    },
-                    "detector" => match CVTerm::from_str(&line[fields[2].clone()]) {
-                        Ok(i) => elem.detector = i,
-                        Err(err) => return Err(err),
-                    },
+                    "name" => {
+                        let i = CVTerm::from_str(&line[fields[2].clone()])?;
+                        elem.name = i;
+                    }
+                    "source" => {
+                        let i = CVTerm::from_str(&line[fields[2].clone()])?;
+                        elem.source = i;
+                    }
+                    "detector" => {
+                        let i = CVTerm::from_str(&line[fields[2].clone()])?;
+                        elem.detector = i;
+                    }
                     _ => {
                         if let Some(m) = tag.strip_prefix("analyzer[") {
                             if m.ends_with(']') {
@@ -1223,16 +1220,16 @@ fn parse_metadata<'a>(
                         context.clone().add_highlight((0, fields[1].clone())),
                     ));
                 };
-                let index = match index.parse::<NonZeroUsize>().map_err(|err| {
-                    BoxedError::new(
-                        BasicKind::Error,
-                        "Invalid mzTab contact identifier",
-                        format!("The contact identifier {}", explain_number_error(&err)),
-                        context.clone().add_highlight((0, fields[1].clone())),
-                    )
-                }) {
-                    Ok(i) => i.get() - 1,
-                    Err(err) => return Err(err),
+                let index = {
+                    let i = index.parse::<NonZeroUsize>().map_err(|err| {
+                        BoxedError::new(
+                            BasicKind::Error,
+                            "Invalid mzTab contact identifier",
+                            format!("The contact identifier {}", explain_number_error(&err)),
+                            context.clone().add_highlight((0, fields[1].clone())),
+                        )
+                    })?;
+                    i.get() - 1
                 };
 
                 while metadata.contact.len() <= index {
@@ -1264,16 +1261,16 @@ fn parse_metadata<'a>(
                         context.clone().add_highlight((0, fields[1].clone())),
                     ));
                 };
-                let index = match index.parse::<NonZeroUsize>().map_err(|err| {
-                    BoxedError::new(
-                        BasicKind::Error,
-                        "Invalid mzTab sample identifier",
-                        format!("The sample identifier {}", explain_number_error(&err)),
-                        context.clone().add_highlight((0, fields[1].clone())),
-                    )
-                }) {
-                    Ok(i) => i.get() - 1,
-                    Err(err) => return Err(err),
+                let index = {
+                    let i = index.parse::<NonZeroUsize>().map_err(|err| {
+                        BoxedError::new(
+                            BasicKind::Error,
+                            "Invalid mzTab sample identifier",
+                            format!("The sample identifier {}", explain_number_error(&err)),
+                            context.clone().add_highlight((0, fields[1].clone())),
+                        )
+                    })?;
+                    i.get() - 1
                 };
 
                 while metadata.sample.len() <= index {
@@ -1286,19 +1283,19 @@ fn parse_metadata<'a>(
                     "description" => elem.description = line[fields[2].clone()].into(),
                     _ => match tag.split_once('[') {
                         Some(("species", _)) => {
-                            elem.species.push(CVTerm::from_str(&line[fields[2].clone()])?)
+                            elem.species.push(CVTerm::from_str(&line[fields[2].clone()])?);
                         }
                         Some(("tissue", _)) => {
-                            elem.tissue.push(CVTerm::from_str(&line[fields[2].clone()])?)
+                            elem.tissue.push(CVTerm::from_str(&line[fields[2].clone()])?);
                         }
                         Some(("cell_type", _)) => {
-                            elem.cell_type.push(CVTerm::from_str(&line[fields[2].clone()])?)
+                            elem.cell_type.push(CVTerm::from_str(&line[fields[2].clone()])?);
                         }
                         Some(("disease", _)) => {
-                            elem.disease.push(CVTerm::from_str(&line[fields[2].clone()])?)
+                            elem.disease.push(CVTerm::from_str(&line[fields[2].clone()])?);
                         }
                         Some(("custom", _)) => {
-                            elem.custom.push(CVTerm::from_str(&line[fields[2].clone()])?)
+                            elem.custom.push(CVTerm::from_str(&line[fields[2].clone()])?);
                         }
                         _ => {
                             return Err(BoxedError::new(
@@ -1321,19 +1318,19 @@ fn parse_metadata<'a>(
                         context.clone().add_highlight((0, fields[1].clone())),
                     ));
                 };
-                let index = match index.parse::<NonZeroUsize>().map_err(|err| {
-                    BoxedError::new(
-                        BasicKind::Error,
-                        "Invalid mzTab study_variable identifier",
-                        format!(
-                            "The study_variable identifier {}",
-                            explain_number_error(&err)
-                        ),
-                        context.clone().add_highlight((0, fields[1].clone())),
-                    )
-                }) {
-                    Ok(i) => i.get() - 1,
-                    Err(err) => return Err(err),
+                let index = {
+                    let i = index.parse::<NonZeroUsize>().map_err(|err| {
+                        BoxedError::new(
+                            BasicKind::Error,
+                            "Invalid mzTab study_variable identifier",
+                            format!(
+                                "The study_variable identifier {}",
+                                explain_number_error(&err)
+                            ),
+                            context.clone().add_highlight((0, fields[1].clone())),
+                        )
+                    })?;
+                    i.get() - 1
                 };
 
                 while metadata.study_variable.len() <= index {
@@ -1377,16 +1374,16 @@ fn parse_metadata<'a>(
                         context.clone().add_highlight((0, fields[1].clone())),
                     ));
                 };
-                let index = match index.parse::<NonZeroUsize>().map_err(|err| {
-                    BoxedError::new(
-                        BasicKind::Error,
-                        "Invalid mzTab cv identifier",
-                        format!("The cv identifier {}", explain_number_error(&err)),
-                        context.clone().add_highlight((0, fields[1].clone())),
-                    )
-                }) {
-                    Ok(i) => i.get() - 1,
-                    Err(err) => return Err(err),
+                let index = {
+                    let i = index.parse::<NonZeroUsize>().map_err(|err| {
+                        BoxedError::new(
+                            BasicKind::Error,
+                            "Invalid mzTab cv identifier",
+                            format!("The cv identifier {}", explain_number_error(&err)),
+                            context.clone().add_highlight((0, fields[1].clone())),
+                        )
+                    })?;
+                    i.get() - 1
                 };
 
                 while metadata.cv.len() <= index {
@@ -1478,6 +1475,9 @@ fn parse_metadata<'a>(
     }
 }
 
+/// Parse a list of references e.g. `sample[1],sample[2], sample[3]`.
+/// # Errors
+/// If any of the references is invalid.
 fn parse_refs<'a>(
     ty: &'static str,
     value: &str,
@@ -1486,6 +1486,9 @@ fn parse_refs<'a>(
     value.split(',').map(|s| parse_ref(ty, s, context)).collect()
 }
 
+/// Parse a reference of a known type e.g. `sample[1]`. The text is trimmed for whitespace.
+/// # Errors
+/// If the tag is missing, the brackets are missing, or the number is invalid.
 fn parse_ref<'a>(
     ty: &'static str,
     value: &str,
