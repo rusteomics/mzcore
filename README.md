@@ -118,4 +118,8 @@ Using the `imgt-update` the definitions for the germlines can be updated from th
 
 # Contributing
 
-Any contribution is welcome (especially adding/fixing documentation as that is very hard to do as main developer).
+Any contribution is welcome, code as well as documentation and examples. Any contribution will be licensed under the projects license. This projects follows the [Rust API guidelines](https://rust-lang.github.io/api-guidelines/about.html) and the [Rust LLM policy](https://forge.rust-lang.org/policies/llm-usage.html) (at least for now but this will be discussed in upcoming meetings). mzcore and rusteomics in general are community projects originally started at a EuBIC hackathon. There is a channel in the EuBIC slack for rusteomics discussions, ask any of the maintainers if you want to be added. There are also meetings about once a month where we discuss how to align all the crates within rusteomics, further improvements, and preferred solutions for technical issues. The link to join these meetings is shared in the slack channel.
+
+## EuBIC 2027 hackathon
+
+There will (very likely) be another EuBIC hackathon on rusteomics in 2027. We are very interested in any community requests for things we can work on during that hackathon, so feel free to leave any ideas in the discussion (https://github.com/EuBIC/EuBIC2027/discussions/6) and of course also feel free to join the hackathon.
