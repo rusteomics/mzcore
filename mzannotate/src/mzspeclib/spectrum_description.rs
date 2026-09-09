@@ -1,5 +1,5 @@
 //! Handle converting [`Attribute`]s to and from [`SpectrumDescription`]
-use std::borrow::Cow;
+use std::{borrow::Cow, hint::black_box};
 
 use context_error::{BoxedError, Context, CreateError};
 use mzcv::{AccessionCode, Curie, Term, curie, term};
@@ -287,39 +287,49 @@ pub(crate) fn populate_spectrum_description_from_attributes<'a>(
 
             if let Some((Attribute { value, .. }, context)) =
                 group.iter().find(|a| a.0.name.accession == curie!(MS:1000894))
-                && group.len() == 2
+                && group.len() >= 2
             {
-                description.acquisition.scans[0].start_time =
-                    f64::from(value.scalar().to_f32().map_err(|v| {
-                        BoxedError::new(
-                            MzSpecLibErrorKind::Attribute,
-                            "Invalid attribute",
-                            v.to_string(),
-                            context.clone(),
-                        )
-                    })?) / match unit.ok_or_else(|| {
-                        BoxedError::new(
-                            MzSpecLibErrorKind::MissingUnit,
-                            "Invalid attribute",
-                            "MS:1000894|retention time needs a unit",
-                            context.clone(),
-                        )
-                    })? {
-                        Unit::Minute => 60.0,
-                        _ => 1.0, // Assume seconds for anything else
-                    };
-            } else if let Some((Attribute { value, .. }, context)) =
-                group.iter().find(|a| a.0.name.accession == curie!(MS:1000896))
-                && group.len() == 2
-            {
-                let rt = f64::from(value.scalar().to_f32().map_err(|v| {
+                let enumerator = f64::from(value.scalar().to_f32().map_err(|v| {
                     BoxedError::new(
                         MzSpecLibErrorKind::Attribute,
                         "Invalid attribute",
                         v.to_string(),
                         context.clone(),
                     )
-                })?) / match unit.ok_or_else(|| {
+                })?);
+                let divisor = match unit.ok_or_else(|| {
+                    BoxedError::new(
+                        MzSpecLibErrorKind::MissingUnit,
+                        "Invalid attribute",
+                        "MS:1000894|retention time needs a unit",
+                        context.clone(),
+                    )
+                })? {
+                    Unit::Minute => 1.0,
+                    Unit::Millisecond => 60.0 * (1000.0),
+                    Unit::Second => 60.0,
+                    _ => {
+                        black_box(()); // We should probably warn here
+                        1.0 // Assume minutes for anything else
+                    }
+                };
+
+                // Start time is meant to be represented in "minutes"
+                description.acquisition.scans[0].start_time = enumerator / divisor;
+            } else if let Some((Attribute { value, .. }, context)) =
+                group.iter().find(|a| a.0.name.accession == curie!(MS:1000896))
+                && group.len() >= 2
+            {
+                let enumerator = f64::from(value.scalar().to_f32().map_err(|v| {
+                    BoxedError::new(
+                        MzSpecLibErrorKind::Attribute,
+                        "Invalid attribute",
+                        v.to_string(),
+                        context.clone(),
+                    )
+                })?);
+
+                let denominator = match unit.ok_or_else(|| {
                     BoxedError::new(
                         MzSpecLibErrorKind::MissingUnit,
                         "Invalid attribute",
@@ -327,9 +337,16 @@ pub(crate) fn populate_spectrum_description_from_attributes<'a>(
                         context.clone(),
                     )
                 })? {
-                    Unit::Minute => 60.0,
-                    _ => 1.0, // Assume seconds for anything else
+                    Unit::Minute => 1.0,
+                    Unit::Millisecond => 60.0 * (1000.0),
+                    Unit::Second => 60.0,
+                    _ => {
+                        black_box(()); // We should probably warn here
+                        1.0 // Assume minutes for anything else
+                    }
                 };
+                let rt = enumerator / denominator;
+
                 // This is normalised time so if normal time is already set ignore this param
                 if description.acquisition.scans[0].start_time == 0.0 {
                     description.acquisition.scans[0].start_time = rt;

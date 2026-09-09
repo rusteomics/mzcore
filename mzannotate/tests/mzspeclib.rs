@@ -133,3 +133,66 @@ fn read_all_files() {
     //     "Some interpretation attributes unused"
     // );
 }
+
+#[test]
+fn a_second_and_a_minute_declaration_of_one_instant_agree() {
+    /// The same instant: 1719.50946 s == 28.658491 min.
+    const LIBRARY: &str = "<mzSpecLib>
+MS:1003186|library format version=1.0
+<Spectrum=1>
+[1]MS:1000894|retention time=1719.509460
+[1]UO:0000000|unit=UO:0000010|second
+<Peaks>
+
+<Spectrum=2>
+[1]MS:1000894|retention time=28.658491
+[1]UO:0000000|unit=UO:0000031|minute
+<Peaks>
+
+<Spectrum=3>
+[1]MS:1000894|retention time=1719509.460
+[1]UO:0000000|unit=UO:0000028|millisecond
+<Peaks>
+
+# JSP: This is silently replaced to 0.0
+# which I am not sure is the correct behavior
+# <Spectrum=4>
+# [1]MS:1000894|retention time=28.658491
+# <Peaks>
+
+<Spectrum=5>
+[1]MS:1000894|retention time=1719.509460
+[1]UO:0000000|unit=UO:0000010|second
+[1]MS:1003174|attribute maximum=1800.0
+[1]MS:1003175|attribute minimum=1600.0
+<Peaks>
+";
+
+    let spectra: Vec<_> = MzSpecLibTextParser::open(
+        LIBRARY.as_bytes(),
+        None,
+        &mzcore::ontology::STATIC_ONTOLOGIES,
+    )
+    .unwrap()
+    .map(|s| s.unwrap())
+    .collect();
+
+    let times: Vec<f64> = spectra
+        .iter()
+        .map(|x| x.description.acquisition.scans[0].start_time)
+        .collect();
+
+    fn assert_approx_eq(a: f64, b: f64, msg: &str) {
+        if (a - b).abs() > 1e-4 {
+            panic!("no aprox eq {a} {b}; {msg}");
+        }
+    }
+
+    assert_approx_eq(times[0], times[1], "1719.50946 s is 28.658491 min");
+    assert_approx_eq(times[0], times[2], "1719.50946 s is 1719509.46 ms");
+    // mzdata documents start_time as minutes (mzdata::/src/spectrum/scan_properties.rs:138). The
+    // tolerance is for the to_f32 the parser applies on the way in.
+    for (idx, x) in times.iter().enumerate() {
+        assert_approx_eq(*x, 28.658_491, &format!("got {x} at idx {idx}"));
+    }
+}
