@@ -1,5 +1,5 @@
 //! Handle converting [`Attribute`]s to and from [`SpectrumDescription`]
-use std::{borrow::Cow, hint::black_box};
+use std::borrow::Cow;
 
 use context_error::{BoxedError, Context, CreateError};
 use mzcv::{AccessionCode, Curie, Term, curie, term};
@@ -297,6 +297,7 @@ pub(crate) fn populate_spectrum_description_from_attributes<'a>(
                         context.clone(),
                     )
                 })?);
+                #[allow(clippy::match_same_arms)]
                 let divisor = match unit.ok_or_else(|| {
                     BoxedError::new(
                         MzSpecLibErrorKind::MissingUnit,
@@ -306,11 +307,10 @@ pub(crate) fn populate_spectrum_description_from_attributes<'a>(
                     )
                 })? {
                     Unit::Minute => 1.0,
-                    Unit::Millisecond => 60.0 * (1000.0),
+                    Unit::Millisecond => 60.0 * 1000.0,
                     Unit::Second => 60.0,
                     _ => {
-                        black_box(()); // We should probably warn here
-                        1.0 // Assume minutes for anything else
+                        60.0 // Assume seconds for anything else, TODO: add a warning
                     }
                 };
 
@@ -328,7 +328,7 @@ pub(crate) fn populate_spectrum_description_from_attributes<'a>(
                         context.clone(),
                     )
                 })?);
-
+                #[allow(clippy::match_same_arms)]
                 let denominator = match unit.ok_or_else(|| {
                     BoxedError::new(
                         MzSpecLibErrorKind::MissingUnit,
@@ -338,11 +338,10 @@ pub(crate) fn populate_spectrum_description_from_attributes<'a>(
                     )
                 })? {
                     Unit::Minute => 1.0,
-                    Unit::Millisecond => 60.0 * (1000.0),
+                    Unit::Millisecond => 60.0 * 1000.0,
                     Unit::Second => 60.0,
                     _ => {
-                        black_box(()); // We should probably warn here
-                        1.0 // Assume minutes for anything else
+                        60.0 // Assume seconds for anything else, TODO: add a warning
                     }
                 };
                 let rt = enumerator / denominator;
