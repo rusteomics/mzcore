@@ -128,7 +128,7 @@ impl AnalyteTarget {
             Self::Unknown(_) => None,
             Self::MolecularFormula(f) => Some(f.clone()),
             Self::PeptidoformIon(pep) => (pep.formulas()
-                + pep.get_charge_carriers().map(|m| m.formula()).unwrap_or_default())
+                + pep.get_charge_carriers().map(Molecule::formula).unwrap_or_default())
             .to_vec()
             .into_iter()
             .exactly_one()

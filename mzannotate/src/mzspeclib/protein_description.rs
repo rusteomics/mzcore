@@ -245,7 +245,7 @@ impl ProteinDescription {
                 }
             }
             curie!(MS:1003212) => {
-                self.set_names.push(attribute.value.scalar().to_string().into_boxed_str())
+                self.set_names.push(attribute.value.scalar().to_string().into_boxed_str());
             }
             curie!(MS:1000885) => {
                 let string = attribute.value.scalar().to_string();

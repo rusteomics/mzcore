@@ -94,10 +94,10 @@ pub(crate) fn generate_theoretical_fragments_inner<Complexity, Mode: MassOutputM
     peptidoform_index: usize,
     all_peptides: &[Peptidoform<Linked>],
 ) -> Vec<Fragment<Mode>> {
-    let default_charge = max_charge.map(|c| MolecularCharge::proton(c));
+    let default_charge = max_charge.map(MolecularCharge::proton);
     let mut charge_carriers: Option<CachedCharge> = default_charge
         .as_ref()
-        .map(|c| CachedCharge::from(peptidoform.get_charge_carriers().unwrap_or(&c)));
+        .map(|c| CachedCharge::from(peptidoform.get_charge_carriers().unwrap_or(c)));
 
     let mut output: Vec<Fragment<Mode>> =
         Vec::with_capacity(20 * peptidoform.sequence().len() + 75); // Empirically derived required size of the buffer (Derived from Hecklib)
@@ -226,7 +226,7 @@ pub(crate) fn generate_theoretical_fragments_inner<Complexity, Mode: MassOutputM
             for c in n..(peptidoform.len() - 1).min(*internal_range.end() + 1) {
                 let o_n = options[n];
                 let o_c = options[c];
-                if !(o_c.0 || o_c.1 || o_c.2) && !(o_n.3 || o_n.4 || o_n.5) {
+                if !(o_c.0 || o_c.1 || o_c.2 || o_n.3 || o_n.4 || o_n.5) {
                     continue;
                 }
 

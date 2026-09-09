@@ -84,8 +84,8 @@ impl Matrix {
             }
             high = (
                 0,
-                high.1 - value.step_a as usize,
-                high.2 - value.step_b as usize,
+                high.1.saturating_sub(value.step_a as usize),
+                high.2.saturating_sub(value.step_b as usize),
             );
             path.push(value);
         }
