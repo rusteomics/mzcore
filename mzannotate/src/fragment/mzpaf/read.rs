@@ -137,20 +137,17 @@ fn parse_annotation<'a>(
     let (left_range, charge) = parse_charge(base_context, line, left_range)?;
     let (left_range, deviation) = parse_deviation(base_context, line, left_range)?;
     let (left_range, confidence) = parse_confidence(base_context, line, left_range)?;
-    Ok((
-        left_range,
-        PeakAnnotation {
-            auxiliary,
-            analyte_number,
-            ion,
-            neutral_losses,
-            isotopes,
-            charge: adduct_type
-                .unwrap_or_else(|| MolecularCharge::proton(Charge::new::<e>(charge.value))),
-            deviation,
-            confidence,
-        },
-    ))
+    Ok((left_range, PeakAnnotation {
+        auxiliary,
+        analyte_number,
+        ion,
+        neutral_losses,
+        isotopes,
+        charge: adduct_type
+            .unwrap_or_else(|| MolecularCharge::proton(Charge::new::<e>(charge.value))),
+        deviation,
+        confidence,
+    }))
 }
 
 /// An mzPAF single peak annotation.
@@ -241,119 +238,104 @@ impl PeakAnnotation {
                 } else {
                     (0, AminoAcid::Unknown, AminoAcid::Unknown)
                 };
-                (
-                    None,
-                    match series {
-                        b'a' => FragmentType::a(
-                            PeptidePosition {
-                                sequence_index: SequencePosition::Index(
-                                    ordinal - 1,
-                                    sequence_length,
-                                ),
-                                series_number: ordinal,
+                (None, match series {
+                    b'a' => FragmentType::a(
+                        PeptidePosition {
+                            sequence_index: SequencePosition::Index(ordinal - 1, sequence_length),
+                            series_number: ordinal,
+                            sequence_length,
+                        },
+                        variant,
+                    ),
+                    b'b' => FragmentType::b(
+                        PeptidePosition {
+                            sequence_index: SequencePosition::Index(ordinal - 1, sequence_length),
+                            series_number: ordinal,
+                            sequence_length,
+                        },
+                        variant,
+                    ),
+                    b'c' => FragmentType::c(
+                        PeptidePosition {
+                            sequence_index: SequencePosition::Index(ordinal - 1, sequence_length),
+                            series_number: ordinal,
+                            sequence_length,
+                        },
+                        variant,
+                    ),
+                    b'd' => FragmentType::d(
+                        PeptidePosition {
+                            sequence_index: SequencePosition::Index(ordinal - 1, sequence_length),
+                            series_number: ordinal,
+                            sequence_length,
+                        },
+                        n_aa,
+                        0,
+                        variant,
+                        sub,
+                    ),
+                    b'v' => FragmentType::v(
+                        PeptidePosition {
+                            sequence_index: SequencePosition::Index(
+                                sequence_length.saturating_sub(ordinal),
                                 sequence_length,
-                            },
-                            variant,
-                        ),
-                        b'b' => FragmentType::b(
-                            PeptidePosition {
-                                sequence_index: SequencePosition::Index(
-                                    ordinal - 1,
-                                    sequence_length,
-                                ),
-                                series_number: ordinal,
+                            ),
+                            series_number: ordinal,
+                            sequence_length,
+                        },
+                        c_aa,
+                        0,
+                        variant,
+                    ),
+                    b'w' => FragmentType::w(
+                        PeptidePosition {
+                            sequence_index: SequencePosition::Index(
+                                sequence_length.saturating_sub(ordinal),
                                 sequence_length,
-                            },
-                            variant,
-                        ),
-                        b'c' => FragmentType::c(
-                            PeptidePosition {
-                                sequence_index: SequencePosition::Index(
-                                    ordinal - 1,
-                                    sequence_length,
-                                ),
-                                series_number: ordinal,
+                            ),
+                            series_number: ordinal,
+                            sequence_length,
+                        },
+                        c_aa,
+                        0,
+                        variant,
+                        sub,
+                    ),
+                    b'x' => FragmentType::x(
+                        PeptidePosition {
+                            sequence_index: SequencePosition::Index(
+                                sequence_length.saturating_sub(ordinal),
                                 sequence_length,
-                            },
-                            variant,
-                        ),
-                        b'd' => FragmentType::d(
-                            PeptidePosition {
-                                sequence_index: SequencePosition::Index(
-                                    ordinal - 1,
-                                    sequence_length,
-                                ),
-                                series_number: ordinal,
+                            ),
+                            series_number: ordinal,
+                            sequence_length,
+                        },
+                        variant,
+                    ),
+                    b'y' => FragmentType::y(
+                        PeptidePosition {
+                            sequence_index: SequencePosition::Index(
+                                sequence_length.saturating_sub(ordinal),
                                 sequence_length,
-                            },
-                            n_aa,
-                            0,
-                            variant,
-                            sub,
-                        ),
-                        b'v' => FragmentType::v(
-                            PeptidePosition {
-                                sequence_index: SequencePosition::Index(
-                                    sequence_length.saturating_sub(ordinal),
-                                    sequence_length,
-                                ),
-                                series_number: ordinal,
+                            ),
+                            series_number: ordinal,
+                            sequence_length,
+                        },
+                        variant,
+                    ),
+                    b'z' => FragmentType::z(
+                        PeptidePosition {
+                            sequence_index: SequencePosition::Index(
+                                sequence_length.saturating_sub(ordinal),
                                 sequence_length,
-                            },
-                            c_aa,
-                            0,
-                            variant,
-                        ),
-                        b'w' => FragmentType::w(
-                            PeptidePosition {
-                                sequence_index: SequencePosition::Index(
-                                    sequence_length.saturating_sub(ordinal),
-                                    sequence_length,
-                                ),
-                                series_number: ordinal,
-                                sequence_length,
-                            },
-                            c_aa,
-                            0,
-                            variant,
-                            sub,
-                        ),
-                        b'x' => FragmentType::x(
-                            PeptidePosition {
-                                sequence_index: SequencePosition::Index(
-                                    sequence_length.saturating_sub(ordinal),
-                                    sequence_length,
-                                ),
-                                series_number: ordinal,
-                                sequence_length,
-                            },
-                            variant,
-                        ),
-                        b'y' => FragmentType::y(
-                            PeptidePosition {
-                                sequence_index: SequencePosition::Index(
-                                    sequence_length.saturating_sub(ordinal),
-                                    sequence_length,
-                                ),
-                                series_number: ordinal,
-                                sequence_length,
-                            },
-                            variant,
-                        ),
-                        b'z' => FragmentType::z(
-                            PeptidePosition {
-                                sequence_index: SequencePosition::Index(
-                                    sequence_length.saturating_sub(ordinal),
-                                    sequence_length,
-                                ),
-                                series_number: ordinal,
-                                sequence_length,
-                            },
-                            variant,
-                        ),
-                        _ => unreachable!(),
-                    },
-                )
+                            ),
+                            series_number: ordinal,
+                            sequence_length,
+                        },
+                        variant,
+                    ),
+                    _ => unreachable!(),
+                })
             }
             IonType::Immonium(aa, m) => (
                 aa.calculate_masses::<OutputMolecularFormula>().first().map(|f| {
@@ -1512,24 +1494,24 @@ static MZPAF_NAMED_MOLECULES: LazyLock<Vec<(&str, MolecularFormula)>> = LazyLock
 fn neutral_loss() {
     assert_eq!(
         parse_neutral_loss(&Context::default(), "-H2O", 0..4),
-        Ok((
-            4..4,
-            vec![NeutralLoss::Loss(1, molecular_formula!(H 2 O 1))]
-        ))
+        Ok((4..4, vec![NeutralLoss::Loss(
+            1,
+            molecular_formula!(H 2 O 1)
+        )]))
     );
     assert_eq!(
         parse_neutral_loss(&Context::default(), "+H2O", 0..4),
-        Ok((
-            4..4,
-            vec![NeutralLoss::Gain(1, molecular_formula!(H 2 O 1))]
-        ))
+        Ok((4..4, vec![NeutralLoss::Gain(
+            1,
+            molecular_formula!(H 2 O 1)
+        )]))
     );
     assert_eq!(
         parse_neutral_loss(&Context::default(), "+NH3", 0..4),
-        Ok((
-            4..4,
-            vec![NeutralLoss::Gain(1, molecular_formula!(N 1 H 3))]
-        ))
+        Ok((4..4, vec![NeutralLoss::Gain(
+            1,
+            molecular_formula!(N 1 H 3)
+        )]))
     );
     assert_eq!(
         parse_neutral_loss(&Context::default(), "/-0.0008", 0..8),

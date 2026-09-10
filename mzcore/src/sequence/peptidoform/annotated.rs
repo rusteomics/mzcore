@@ -212,11 +212,9 @@ impl std::fmt::Display for Region {
     }
 }
 
-impl std::str::FromStr for Region {
-    type Err = ();
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Ok(match s {
+impl From<&str> for Region {
+    fn from(value: &str) -> Self {
+        match value {
             "" => Self::None,
             "CL" => Self::ConstantLight,
             "CHS" => Self::SecratoryTail,
@@ -240,7 +238,25 @@ impl std::str::FromStr for Region {
                 |c| Self::MembraneTail(Some(c)),
             ),
             o => Self::Other(o.to_string()),
-        })
+        }
+    }
+}
+
+impl std::str::FromStr for Region {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Ok(s.into())
+    }
+}
+
+impl From<&str> for Annotation {
+    fn from(value: &str) -> Self {
+        match value {
+            "C" | "Conserved" => Self::Conserved,
+            "N" | "NGlycan" => Self::NGlycan,
+            o => Self::Other(o.to_string()),
+        }
     }
 }
 
@@ -248,11 +264,7 @@ impl std::str::FromStr for Annotation {
     type Err = ();
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Ok(match s {
-            "C" | "Conserved" => Self::Conserved,
-            "N" | "NGlycan" => Self::NGlycan,
-            o => Self::Other(o.to_string()),
-        })
+        Ok(s.into())
     }
 }
 
